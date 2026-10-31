@@ -602,6 +602,37 @@
         background: var(--color-border);
     }
 
+    /* The one-line tools row below 900 (<x-bs-admin::tool-row>): it never wraps; when the buttons do not fit,
+       Sort drops its word first, then Filter, each keeping its icon (and Filter its count); then the select-all
+       label may wrap. The script only sets data-fit; the sizes stay here. */
+    .list-tools-row {
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 0;
+    }
+
+    .list-tools-row > * {
+        flex-shrink: 0;
+    }
+
+    .list-tools-row:is([data-fit='1'], [data-fit='2'], [data-fit='3']) [data-sort-text],
+    .list-tools-row:is([data-fit='2'], [data-fit='3']) [data-lf-text] {
+        display: none;
+    }
+
+    .list-tools-row:is([data-fit='1'], [data-fit='2'], [data-fit='3']) [data-sort],
+    .list-tools-row:is([data-fit='2'], [data-fit='3']) [data-lf] {
+        min-width: var(--spacing-control);
+        padding-inline: 0.625rem;
+    }
+
+    .list-tools-row[data-fit='3'] > :first-child {
+        flex-shrink: 1;
+        min-width: 0;
+    }
+
     /* ── Below 600: a card per record ─────────────────────────────────────────────────────── */
     @container list (width < 37.5rem) {
         .list-r:not(.list-hd) {

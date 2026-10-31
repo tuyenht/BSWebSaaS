@@ -28,6 +28,8 @@ use Illuminate\Support\Carbon;
  * @property int|null $cover_media_id
  * @property int|null $author_id
  * @property Carbon|null $published_at
+ * @property int $position
+ * @property int $view_count
  * @property string|null $workflow_state the stage of the section's approval workflow, null until it joins one
  * @property int|null $assigned_to
  * @property array<string, mixed> $meta

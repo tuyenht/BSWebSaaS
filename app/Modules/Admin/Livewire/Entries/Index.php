@@ -18,6 +18,7 @@ use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
 use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\ConcurrencyError;
 use App\Modules\Shared\Support\Slugger;
 use App\Modules\Tenancy\Context\SiteLocale;
@@ -36,8 +37,10 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Throwable;
@@ -51,6 +54,12 @@ use Throwable;
  * parent). Pages are a small per-site set, so the tree is grouped + paged in memory at a flat
  * query budget (enforced by a Query-Budget test); other types stay flat. Read access is gated
  * by EntryPolicy::viewAny; the entry is addressed by ulid, never its raw id.
+ *
+ * The header follows the shared list layout: status groups (a row from 900px, the Filter
+ * sheet's first section below), search, the filters (Mẫu trang, Bản dịch, Ngôn ngữ, Người tạo,
+ * Thời gian for posts), a Sort menu whose default depends on the type (pages: their order on
+ * the website; posts: last edited first), and what each member chooses to show (Cột on a wide
+ * list, Hiện trên thẻ on phone cards), kept in their own users.preferences.
  */
 #[Layout('admin::layouts.app')]
 final class Index extends Component
@@ -65,11 +74,13 @@ final class Index extends Component
     #[Url(as: 'q', except: '')]
     public string $search = '';
 
-    #[Url(as: 'sort', except: 'updated')]
-    public string $sortKey = 'updated';
+    /** '' = the type's default sort (pages: order on the website; posts: last edited). */
+    #[Url(as: 'sort', except: '')]
+    public string $sortKey = '';
 
-    #[Url(as: 'dir', except: 'desc')]
-    public string $sortDir = 'desc';
+    /** '' = the chosen key's natural direction (newest / most first for dates and views). */
+    #[Url(as: 'dir', except: '')]
+    public string $sortDir = '';
 
     #[Url(as: 'page', except: 1)]
     public int $page = 1;
@@ -93,8 +104,58 @@ final class Index extends Component
     #[Url(as: 'tpl')]
     public array $templateF = [];
 
+    /** @var list<string> translation states (full / partial / none) — OR within the group; multi-language sites only. */
+    #[Url(as: 'tr')]
+    public array $transF = [];
+
+    /** "Thời gian" of a post list: a preset from WHEN, or RANGE while the two dates below decide. */
+    #[Url(as: 'when', except: '')]
+    public string $when = '';
+
+    #[Url(as: 'from', except: '')]
+    public string $from = '';
+
+    #[Url(as: 'to', except: '')]
+    public string $to = '';
+
+    /** @var list<string> what this member shows on a wide list ("Cột"); kept in their own preferences. */
+    public array $cols = self::COLS_DEFAULT;
+
+    /** @var list<string> what this member adds to a phone card ("Hiện trên thẻ"); kept in their own preferences. */
+    public array $card = [];
+
+    private ?string $sectionFor = null;
+
+    private ?ContentSection $sectionRow = null;
+
+    /** The listed type (page / post), fixed when the screen opens. */
+    #[Locked]
+    public string $entryType = 'page';
+
     /** Tabs that map to a concrete status; the rest: all = every non-trashed, trash = deleted. */
-    private const array STATUS_TABS = ['published', 'draft', 'scheduled', 'private'];
+    private const array STATUS_TABS = ['published', 'draft', 'scheduled', 'private', 'pending', 'archived'];
+
+    /** Every status group a member may pick. */
+    private const array TABS = ['all', ...self::STATUS_TABS, 'trash'];
+
+    /** The "Thời gian" presets ('' = any time); RANGE means the two dates are in use. */
+    public const array WHEN = ['', 'today', '7', '30', '90'];
+
+    public const string RANGE = 'range';
+
+    /** Translation states: every site language has content, some do, only one does. */
+    public const array TRANS = ['full', 'partial', 'none'];
+
+    /** Sort keys, each with the one type it belongs to (null = both). */
+    public const array SORTS = ['order' => 'page', 'name' => null, 'updated' => null, 'pub' => 'post', 'status' => null, 'views' => null, 'creator' => null];
+
+    /** Optional columns of a wide list ("Cột"), and the ones on until the member says otherwise. */
+    private const array COLS = ['path', 'langs', 'creator', 'tpl'];
+
+    private const array COLS_DEFAULT = ['path', 'langs', 'creator'];
+
+    /** What a phone card may add ("Hiện trên thẻ"), all off until the member turns them on. */
+    private const array CARD = ['tpl', 'path', 'langs'];
 
     /** Sentinel value for the "no template" (null template_override) filter option. */
     private const string TEMPLATE_NONE = '__default__';
@@ -113,6 +174,14 @@ final class Index extends Component
             $this->perPage = 20;
         }
         $this->authorize('viewAny', Entry::class);
+
+        $section = $this->resolveSection();
+        $this->entryType = $section instanceof ContentSection && $section->entry_type === 'post' ? 'post' : 'page';
+        $lists = Cast::arr(Cast::arr($this->actingUser()->preferences)['lists'] ?? null);
+        $view = Cast::arr($lists[$this->viewKey()] ?? null);
+        $this->cols = isset($view['cols']) ? self::known(Cast::arr($view['cols']), self::COLS) : self::COLS_DEFAULT;
+        $this->card = self::known(Cast::arr($view['card'] ?? null), self::CARD);
+        $this->clean();
     }
 
     public function updatedSearch(): void
@@ -120,28 +189,90 @@ final class Index extends Component
         $this->page = 1; // a new term must not strand the user on a stale page number
     }
 
+    /**
+     * A filter changed from the browser (the Filter panel binds its fields live): keep only values
+     * the screen knows, then return to page 1. A preset of "Thời gian" drops the two dates; a
+     * date picks the range.
+     */
+    public function updated(string $property): void
+    {
+        $name = Str::before($property, '.');
+        if ($name === 'when' && $this->when !== self::RANGE) {
+            $this->from = $this->to = '';
+        }
+        if ($name === 'from' || $name === 'to') {
+            $this->when = self::dateOr($this->from) !== '' || self::dateOr($this->to) !== '' ? self::RANGE : '';
+        }
+        if (in_array($name, ['tab', 'transF', 'langF', 'creatorF', 'templateF', 'when', 'from', 'to', 'sortKey', 'sortDir'], true)) {
+            $this->authorize('viewAny', Entry::class);
+            $this->clean();
+            $this->page = 1;
+        }
+        if ($name === 'tab') {
+            $this->selected = []; // as setTab(): never act on rows of another group
+        }
+    }
+
+    /** "Cột" changed: kept for this member only. */
+    public function updatedCols(): void
+    {
+        $this->authorize('viewAny', Entry::class);
+        $this->cols = self::known($this->cols, self::COLS);
+        $this->saveView();
+    }
+
+    /** "Hiện trên thẻ" changed: kept for this member only. */
+    public function updatedCard(): void
+    {
+        $this->authorize('viewAny', Entry::class);
+        $this->card = self::known($this->card, self::CARD);
+        $this->saveView();
+    }
+
     public function setTab(string $tab): void
     {
-        $this->tab = $tab;
+        $this->tab = in_array($tab, self::TABS, true) ? $tab : 'all';
         $this->page = 1;
         // A selection made on one tab is not shown on the next, and the next tab's bar offers
         // other actions (the Trash's is "Xóa vĩnh viễn") — never let it act on rows out of sight.
         $this->selected = [];
     }
 
+    /** A column header: the same key again turns the direction round; a new key starts in its natural direction. */
     public function sortBy(string $key): void
     {
         if (! in_array($key, ['name', 'status', 'creator', 'updated'], true)) {
             return;
         }
 
-        if ($this->sortKey === $key) {
-            $this->sortDir = $this->sortDir === 'asc' ? 'desc' : 'asc';
-        } else {
-            $this->sortKey = $key;
-            $this->sortDir = in_array($key, ['name', 'creator'], true) ? 'asc' : 'desc';
+        [$current, $dir] = $this->sorting();
+        $this->setSorting($key, $current === $key ? ($dir === 'asc' ? 'desc' : 'asc') : self::naturalDir($key));
+    }
+
+    /** The Sort menu: one choice, in its natural direction. */
+    public function setSort(string $key): void
+    {
+        $this->authorize('viewAny', Entry::class);
+        if (! $this->sortsHere($key)) {
+            return;
         }
 
+        $this->setSorting($key, self::naturalDir($key));
+    }
+
+    /** Back to the type's default sort (the sort chip's ✕). */
+    public function resetSort(): void
+    {
+        $this->authorize('viewAny', Entry::class);
+        $this->sortKey = $this->sortDir = '';
+        $this->page = 1;
+    }
+
+    /** "Bỏ lọc" on the Thời gian chip. */
+    public function clearWhen(): void
+    {
+        $this->authorize('viewAny', Entry::class);
+        $this->when = $this->from = $this->to = '';
         $this->page = 1;
     }
 
@@ -177,6 +308,8 @@ final class Index extends Component
             $this->creatorF = $this->toggleIn($this->creatorF, $value);
         } elseif ($group === 'template') {
             $this->templateF = $this->toggleIn($this->templateF, $value);
+        } elseif ($group === 'trans' && in_array($value, self::TRANS, true)) {
+            $this->transF = $this->toggleIn($this->transF, $value);
         }
 
         $this->page = 1;
@@ -190,17 +323,26 @@ final class Index extends Component
             $this->creatorF = [];
         } elseif ($group === 'template') {
             $this->templateF = [];
+        } elseif ($group === 'trans') {
+            $this->transF = [];
         }
 
         $this->page = 1;
     }
 
+    /** "Bỏ lọc": every filter, the search words and the group go; the sort stays. */
     public function clearAllFilters(): void
     {
         $this->langF = [];
         $this->creatorF = [];
         $this->templateF = [];
+        $this->transF = [];
+        $this->when = $this->from = $this->to = '';
         $this->search = '';
+        if ($this->tab !== 'all') {
+            $this->tab = 'all';
+            $this->selected = [];
+        }
         $this->page = 1;
     }
 
@@ -799,10 +941,156 @@ final class Index extends Component
         return $values;
     }
 
+    /** Where this list's view choices live in the member's preferences (pages and each post section apart). */
+    private function viewKey(): string
+    {
+        return 'entries.'.($this->entryType === 'post' ? 'post.'.($this->section ?? '') : 'page');
+    }
+
+    /** Keep this member's Cột / Hiện trên thẻ choice in their own preferences, nobody else's. */
+    private function saveView(): void
+    {
+        $user = $this->actingUser();
+        $preferences = Cast::arr($user->preferences);
+        $lists = Cast::arr($preferences['lists'] ?? null);
+        $lists[$this->viewKey()] = ['cols' => $this->cols, 'card' => $this->card];
+        $preferences['lists'] = $lists;
+        $user->preferences = $preferences;
+        $user->save();
+    }
+
+    /**
+     * The values of $values the screen knows, in the screen's own order.
+     *
+     * @param  array<mixed>  $values
+     * @param  list<string>  $known
+     * @return list<string>
+     */
+    private static function known(array $values, array $known): array
+    {
+        return array_values(array_intersect($known, array_filter($values, 'is_string')));
+    }
+
+    /** Public properties come from the browser: keep only values the screen knows. */
+    private function clean(): void
+    {
+        $this->tab = in_array($this->tab, self::TABS, true) ? $this->tab : 'all';
+        $this->transF = self::known($this->transF, self::TRANS);
+        $this->langF = array_values(array_unique(array_filter($this->langF, 'is_string')));
+        $this->creatorF = array_values(array_unique(array_filter($this->creatorF, 'is_string')));
+        $this->templateF = array_values(array_unique(array_filter($this->templateF, 'is_string')));
+        if ($this->entryType !== 'post') {
+            $this->when = $this->from = $this->to = ''; // Thời gian is a post filter (pages have no publish date to pick by)
+        }
+        $this->from = self::dateOr($this->from);
+        $this->to = self::dateOr($this->to);
+        if ($this->from !== '' && $this->to !== '' && $this->from > $this->to) {
+            [$this->from, $this->to] = [$this->to, $this->from]; // dates picked the wrong way round mean the same span
+        }
+        $ranged = $this->from !== '' || $this->to !== '';
+        $this->when = $ranged ? self::RANGE : (in_array($this->when, self::WHEN, true) ? $this->when : '');
+        if ($this->sortKey !== '' && ! $this->sortsHere($this->sortKey)) {
+            $this->sortKey = '';
+        }
+        $this->sortDir = in_array($this->sortDir, ['asc', 'desc'], true) ? $this->sortDir : '';
+    }
+
+    /** "2026-10-08" as the date field sends it, a real day; anything else is dropped. */
+    private static function dateOr(string $value): string
+    {
+        return preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $value, $m) === 1 && checkdate((int) $m[2], (int) $m[3], (int) $m[1]) ? $value : '';
+    }
+
+    private function sortsHere(string $key): bool
+    {
+        return array_key_exists($key, self::SORTS) && (self::SORTS[$key] === null || self::SORTS[$key] === $this->entryType);
+    }
+
+    /** Dates and views read newest / most first; names, order, status and people A to Z. */
+    private static function naturalDir(string $key): string
+    {
+        return in_array($key, ['updated', 'pub', 'views'], true) ? 'desc' : 'asc';
+    }
+
+    /** The type's own default: pages in their order on the website, posts last edited first. */
+    private function defaultSortKey(): string
+    {
+        return $this->entryType === 'page' ? 'order' : 'updated';
+    }
+
+    /**
+     * The sort in force: [key, direction].
+     *
+     * @return array{0: string, 1: string}
+     */
+    private function sorting(): array
+    {
+        $key = $this->sortKey !== '' && $this->sortsHere($this->sortKey) ? $this->sortKey : $this->defaultSortKey();
+        $dir = in_array($this->sortDir, ['asc', 'desc'], true) ? $this->sortDir : self::naturalDir($key);
+
+        return [$key, $dir];
+    }
+
+    /** Store a sort, leaving the URL bare when it is the type's default. */
+    private function setSorting(string $key, string $dir): void
+    {
+        $default = $key === $this->defaultSortKey();
+        $this->sortKey = $default ? '' : $key;
+        $this->sortDir = $dir === self::naturalDir($key) ? '' : $dir;
+        $this->page = 1;
+    }
+
+    /**
+     * The chosen "Thời gian" span as UTC bounds [start, end), days counted in the site's zone.
+     *
+     * @return array{0: CarbonImmutable|null, 1: CarbonImmutable|null}
+     */
+    private function period(): array
+    {
+        $zone = app(SiteTime::class)->zone();
+        $today = CarbonImmutable::now($zone)->startOfDay();
+
+        if ($this->when !== '' && $this->when !== self::RANGE) {
+            $start = $this->when === 'today' ? $today : $today->subDays(Cast::int($this->when) - 1);
+
+            return [$start->utc(), null];
+        }
+
+        $day = fn (string $date): ?CarbonImmutable => $date === '' ? null : CarbonImmutable::parse($date, $zone)->startOfDay();
+
+        return [$day($this->from)?->utc(), $day($this->to)?->addDay()->utc()];
+    }
+
+    /**
+     * A record's translation state among the site's languages: every one, some, or only one.
+     *
+     * @param  list<string>  $locales
+     */
+    private static function transState(Entry $entry, array $locales): string
+    {
+        $have = $entry->translations->filter(fn (EntryTranslation $t): bool => in_array($t->locale, $locales, true))->count();
+        if (count($locales) < 2 || $have >= count($locales)) {
+            return 'full';
+        }
+
+        return $have <= 1 ? 'none' : 'partial';
+    }
+
+    /**
+     * How many filter values are on (the Lọc badge): each chosen value, the time span as one,
+     * and a status group other than "Tất cả" as one.
+     */
+    private function filterCount(): int
+    {
+        return count($this->templateF) + count($this->transF) + count($this->creatorF) + count($this->langF)
+            + ($this->when !== '' ? 1 : 0) + ($this->tab !== 'all' ? 1 : 0);
+    }
+
     public function render(): View
     {
+        $this->clean();
         $section = $this->resolveSection();
-        $type = $section instanceof ContentSection ? ($section->entry_type ?? 'page') : 'page';
+        $type = $this->entryType;
         $siteLocale = app(SiteLocale::class);
         $locale = $siteLocale->default();
         $locales = $siteLocale->enabled();
@@ -843,14 +1131,21 @@ final class Index extends Component
             }
         }
 
+        $multilingual = count($locales) >= 2;
+        if (! $multilingual) {
+            $this->transF = []; // one language: every record is complete, the filter is not offered
+        }
+        [$from, $until] = $this->period();
         $facets = [
             'lang' => $this->langFacet($base, $locales),
-            'creator' => $this->creatorFacet($base),
+            'creator' => $this->creatorFacet($base, $user),
             'template' => $this->templateFacet($base),
+            'trans' => $multilingual ? $this->transFacet($base, $locales) : [],
         ];
 
-        // OR within a group, AND across groups — applied in memory (pages are a small per-site set).
-        $filtered = $base->filter(fn (Entry $entry): bool => $this->passesFilters($entry));
+        // OR within a group, AND across groups — applied in memory, on the rows already loaded.
+        $filtered = $base->filter(fn (Entry $entry): bool => $this->passesFilters($entry, $locales, $from, $until));
+        [$sortKey, $sortDir] = $this->sorting();
 
         $ordered = $type === 'page'
             ? $this->buildTree($filtered, $locale)
@@ -883,6 +1178,13 @@ final class Index extends Component
             'counts' => $this->counts($type, $section),
             'facets' => $facets,
             'activeChips' => $this->activeChips($facets),
+            'filterCount' => $this->filterCount(),
+            'sortOn' => $sortKey,
+            'sortWay' => $sortDir,
+            'sortIsDefault' => $sortKey === $this->defaultSortKey() && $sortDir === self::naturalDir($sortKey),
+            'sorts' => array_values(array_filter(array_keys(self::SORTS), fn (string $key): bool => $this->sortsHere($key))),
+            'multilingual' => $multilingual,
+            'type' => $type,
             'matchCount' => $filtered->count(),
             'baseCount' => $base->count(),
             'locale' => $locale,
@@ -893,6 +1195,7 @@ final class Index extends Component
             'canPublish' => $user->can('entries.publish'),
             'canCreate' => $user->can('entries.create'),
             'canDelete' => $user->can('entries.delete.any') || $user->can('entries.delete.own'),
+            'canSeeTrash' => $user->can('entries.delete.any'),
             'siteTime' => app(SiteTime::class),
         ]);
     }
@@ -903,7 +1206,13 @@ final class Index extends Component
             return null;
         }
 
-        return ContentSection::query()->where('key', $this->section)->first();
+        // asked once per request (mount and render both need it); never kept across requests
+        if ($this->sectionFor !== $this->section) {
+            $this->sectionFor = $this->section;
+            $this->sectionRow = ContentSection::query()->where('key', $this->section)->first();
+        }
+
+        return $this->sectionRow;
     }
 
     /**
@@ -928,15 +1237,15 @@ final class Index extends Component
     }
 
     /**
-     * Tab counts in ONE grouped query on the (site_id, type, status) index (+ a trash count) —
+     * Group counts in ONE grouped query on the (site_id, type, status) index (+ a trash count) —
      * flat, not per-row, so the render's query budget stays constant as rows grow (§6). `all`
-     * sums every non-trashed status (so pending/archived, which have no tab, still count there).
+     * sums every non-trashed status.
      *
-     * @return array{all: int, published: int, draft: int, scheduled: int, private: int, trash: int}
+     * @return array{all: int, published: int, draft: int, scheduled: int, private: int, pending: int, archived: int, trash: int}
      */
     private function counts(string $type, ?ContentSection $section): array
     {
-        $tally = ['all' => 0, 'published' => 0, 'draft' => 0, 'scheduled' => 0, 'private' => 0, 'trash' => 0];
+        $tally = ['all' => 0, 'published' => 0, 'draft' => 0, 'scheduled' => 0, 'private' => 0, 'pending' => 0, 'archived' => 0, 'trash' => 0];
 
         // One grouped query for every tab + the trash count, split by deleted_at via FILTER.
         // Scoped to the section (like the list) so a collection's tab counts match its own rows.
@@ -952,7 +1261,7 @@ final class Index extends Component
             $status = $row->status;
             $live = is_numeric($row->getAttribute('live')) ? (int) $row->getAttribute('live') : 0;
             $trashed = is_numeric($row->getAttribute('trashed')) ? (int) $row->getAttribute('trashed') : 0;
-            $tally['all'] += $live;      // includes pending/archived (real states without a tab)
+            $tally['all'] += $live;
             $tally['trash'] += $trashed;
             if (in_array($status, self::STATUS_TABS, true)) {
                 $tally[$status] += $live;
@@ -988,7 +1297,7 @@ final class Index extends Component
      * @param  EloquentCollection<int, Entry>  $base
      * @return list<array{value: string, label: string, count: int, active: bool}>
      */
-    private function creatorFacet(EloquentCollection $base): array
+    private function creatorFacet(EloquentCollection $base, User $me): array
     {
         $byUlid = [];
         foreach ($base as $entry) {
@@ -1003,7 +1312,36 @@ final class Index extends Component
             $byUlid[$ulid]['count']++;
         }
 
+        // The member themself comes first, named "Của tôi (…)", so their own work is one tap away.
+        $mine = (string) $me->ulid;
+        if (isset($byUlid[$mine])) {
+            $byUlid[$mine]['label'] = __('entries.f_mine', ['name' => $byUlid[$mine]['label']]);
+            $byUlid = [$mine => $byUlid[$mine]] + $byUlid;
+        }
+
         return array_values($byUlid);
+    }
+
+    /**
+     * Translation facet: how many rows have every site language, some, or only one.
+     *
+     * @param  EloquentCollection<int, Entry>  $base
+     * @param  list<string>  $locales
+     * @return list<array{value: string, label: string, count: int, active: bool}>
+     */
+    private function transFacet(EloquentCollection $base, array $locales): array
+    {
+        $count = array_fill_keys(self::TRANS, 0);
+        foreach ($base as $entry) {
+            $count[self::transState($entry, $locales)]++;
+        }
+
+        $out = [];
+        foreach (self::TRANS as $state) {
+            $out[] = ['value' => $state, 'label' => __('entries.trans_'.$state), 'count' => $count[$state], 'active' => in_array($state, $this->transF, true)];
+        }
+
+        return $out;
     }
 
     /**
@@ -1027,9 +1365,25 @@ final class Index extends Component
         return array_values($byTemplate);
     }
 
-    /** OR within each group, AND across groups (an empty group adds no constraint). */
-    private function passesFilters(Entry $entry): bool
+    /**
+     * OR within each group, AND across groups (an empty group adds no constraint).
+     *
+     * @param  list<string>  $locales
+     */
+    private function passesFilters(Entry $entry, array $locales, ?CarbonImmutable $from, ?CarbonImmutable $until): bool
     {
+        if ($this->transF !== [] && ! in_array(self::transState($entry, $locales), $this->transF, true)) {
+            return false;
+        }
+
+        if ($from !== null || $until !== null) {
+            // By publish date: a draft has none, so a time span lists only published or scheduled posts.
+            $at = $entry->published_at;
+            if ($at === null || ($from !== null && $at->lt($from)) || ($until !== null && $at->gte($until))) {
+                return false;
+            }
+        }
+
         if ($this->langF !== [] && ! $entry->translations->contains(fn (EntryTranslation $t): bool => in_array($t->locale, $this->langF, true))) {
             return false;
         }
@@ -1051,13 +1405,13 @@ final class Index extends Component
     /**
      * Active filter chips, in group order, labelled from the facets.
      *
-     * @param  array{lang: list<array{value: string, label: string, count: int, active: bool}>, creator: list<array{value: string, label: string, count: int, active: bool}>, template: list<array{value: string, label: string, count: int, active: bool}>}  $facets
+     * @param  array{lang: list<array{value: string, label: string, count: int, active: bool}>, creator: list<array{value: string, label: string, count: int, active: bool}>, template: list<array{value: string, label: string, count: int, active: bool}>, trans: list<array{value: string, label: string, count: int, active: bool}>}  $facets
      * @return list<array{group: string, value: string, label: string}>
      */
     private function activeChips(array $facets): array
     {
         $chips = [];
-        foreach (['lang', 'creator', 'template'] as $group) {
+        foreach (['template', 'trans', 'creator', 'lang'] as $group) {
             foreach ($facets[$group] as $option) {
                 if ($option['active']) {
                     $chips[] = ['group' => $group, 'value' => $option['value'], 'label' => $option['label']];
@@ -1141,14 +1495,19 @@ final class Index extends Component
      */
     private function comparator(string $locale): callable
     {
-        $direction = $this->sortDir === 'asc' ? 1 : -1;
+        [$key, $dir] = $this->sorting();
+        $direction = $dir === 'asc' ? 1 : -1;
         $rank = ['published' => 0, 'scheduled' => 1, 'pending' => 2, 'draft' => 3, 'private' => 4, 'archived' => 5];
 
-        $value = function (Entry $entry) use ($locale, $rank): string|int {
-            return match ($this->sortKey) {
+        $value = function (Entry $entry) use ($locale, $rank, $key): string|int {
+            return match ($key) {
                 'name' => $this->sortableTitle($entry, $locale),
                 'status' => $rank[$entry->status] ?? 99,
                 'creator' => $this->sortableCreator($entry),
+                'order' => $entry->position,
+                'views' => $entry->view_count,
+                // a post never published sorts as the oldest
+                'pub' => $entry->published_at?->getTimestamp() ?? 0,
                 default => $entry->updated_at?->getTimestamp() ?? 0,
             };
         };
@@ -1197,11 +1556,15 @@ final class Index extends Component
         return $paginator->appends(array_filter([
             'tab' => $this->tab !== 'all' ? $this->tab : null,
             'q' => trim($this->search) !== '' ? trim($this->search) : null,
-            'sort' => $this->sortKey !== 'updated' ? $this->sortKey : null,
-            'dir' => $this->sortDir !== 'desc' ? $this->sortDir : null,
+            'sort' => $this->sortKey !== '' ? $this->sortKey : null,
+            'dir' => $this->sortDir !== '' ? $this->sortDir : null,
             'lang' => $this->langF !== [] ? $this->langF : null,
             'author' => $this->creatorF !== [] ? $this->creatorF : null,
             'tpl' => $this->templateF !== [] ? $this->templateF : null,
+            'tr' => $this->transF !== [] ? $this->transF : null,
+            'when' => $this->when !== '' && $this->when !== self::RANGE ? $this->when : null,
+            'from' => $this->from !== '' ? $this->from : null,
+            'to' => $this->to !== '' ? $this->to : null,
             'per_page' => $this->perPage !== 20 ? $this->perPage : null,
         ]));
     }

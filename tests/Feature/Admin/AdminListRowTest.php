@@ -247,10 +247,10 @@ describe('the posts and pages list on the shared row', function (): void {
 
             $source = (string) file_get_contents(base_path('app/Modules/Admin/resources/views/livewire/entries/index.blade.php'));
             expect($source)->not->toMatch('/\\btruncate\\b|line-clamp/')
-                // until the member picks columns, a phone-width list starts with path and languages off
-                ->and($source)->toContain('{ path: null, langs: null, creator: true }')
-                ->and($source)->toContain('this.cols.path = wide;')
-                ->and($source)->toContain('this.cols.langs = wide;');
+                // a phone card shows the path and languages only once the member turns them on in
+                // "Hiện trên thẻ" (kept in their own preferences, see EntriesListHeaderTest)
+                ->and($source)->toContain('x-show="vPath"')
+                ->and($source)->toContain('show="vLangs"');
         });
     });
 
@@ -264,12 +264,12 @@ describe('the posts and pages list on the shared row', function (): void {
 
             $page = Livewire::actingAs($user->fresh())->test(Index::class);
             $page->assertSeeHtml('role="checkbox" aria-checked="false"')
-                ->assertDontSeeHtml('aria-checked="true"');
+                ->assertDontSeeHtml('role="checkbox" aria-checked="true"');
 
             $page->call('toggleSelectAll', [$a->ulid])
                 ->assertSet('selected', [$a->ulid])
-                ->assertSeeHtml('aria-checked="true"')
-                ->assertSeeHtml('aria-checked="mixed"')
+                ->assertSeeHtml('role="checkbox" aria-checked="true"')
+                ->assertSeeHtml('role="checkbox" aria-checked="mixed"')
                 ->assertSeeHtml('data-sel="1"');
         });
     });
@@ -316,7 +316,7 @@ describe('the posts and pages list on the shared row', function (): void {
             Livewire::actingAs($user->fresh())->test(Index::class)
                 ->assertSee('Chỉ xem')
                 ->assertDontSeeHtml('class="list-qe"')
-                ->assertDontSeeHtml('aria-haspopup="menu"')
+                ->assertDontSeeHtml(e(__('admin.list.more_for', ['name' => 'Chỉ xem'])))
                 ->assertDontSeeHtml('$wire.trash(');
         });
     });
@@ -442,9 +442,9 @@ describe('the posts and pages list on the shared row', function (): void {
                     ->and($html)->toContain('<span class="list-lmiss" role="note" title="Chưa có bản tiếng Anh, tiếng Nhật và tiếng Trung"')
                     ->and($html)->toContain('<span>Chưa dịch: Anh, Nhật, Trung</span>')
                     // the complete row's piece follows the column choice
-                    ->and($html)->toContain('<span class="list-m" data-for="langs" x-show="cols.langs">')
+                    ->and($html)->toContain('<span class="list-m" data-for="langs" x-show="vLangs">')
                     // the column choice hides only the chips with content
-                    ->and($html)->toContain('x-bind:data-off="(cols.langs) ? null : \'\'"');
+                    ->and($html)->toContain('x-bind:data-off="(vLangs) ? null : \'\'"');
             });
 
             expect(listCss())->toMatch("/\\.list-lcg\\[data-off\\] > \\.list-lc:not\\(\\[data-s='empty'\\]\\)\\s*\\{\\s*display: none;/");
@@ -483,7 +483,7 @@ describe('the posts and pages list on the shared row', function (): void {
                 expect($html)->not->toContain('class="list-lc"')
                     ->and(substr_count($html, 'role="note"'))->toBe(1)
                     ->and($html)->toContain('<span>Chưa dịch: Nhật, Trung, Hàn</span>')
-                    ->and(substr_count($html, '<span class="list-lsw" x-show="cols.langs"'))->toBe(2)
+                    ->and(substr_count($html, '<span class="list-lsw" x-show="vLangs"'))->toBe(2)
                     ->and($html)->toContain('<span>Thiếu 3 ngôn ngữ</span>')
                     ->and($html)->toContain('<span>Đủ 5 ngôn ngữ</span>')
                     ->and($html)->toContain('aria-label="'.e('Bản dịch của “Nhiều ngôn ngữ”: Thiếu 3 ngôn ngữ — bấm để chọn bản').'"')

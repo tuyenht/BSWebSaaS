@@ -197,9 +197,20 @@
             $galleryGroupLabel = collect($galleryGroups)->firstWhere('key', $galleryGroup)['label'] ?? null;
         @endphp
         <x-bs-admin::group-row :groups="$galleryGroups" :active="$galleryGroup" model="galleryGroup" label="Nhóm tệp" class="-mx-4 mb-2" />
-        <div class="flex items-center gap-3">
-            <div class="min-w-0 flex-1"><x-bs-admin::search label="Tìm theo tên tệp" wire:model.live.debounce.300ms="gallerySearch" /></div>
-            <x-bs-admin::filter-panel :sections="$gallerySections" :active="$galleryActive" clear="clearGalleryFilters" />
+        @php
+            // the groups also lead the Filter sheet below 900, where their row hides (a sheet-only section)
+            $gallerySections = [['key' => 'group', 'label' => 'Nhóm', 'model' => 'galleryGroup', 'value' => $galleryGroup, 'default' => 'all', 'sheet' => true, 'class' => 'min-[900px]:hidden',
+                'options' => array_map(fn (array $g): array => ['value' => $g['key'], 'label' => $g['label'], 'count' => $g['count'], 'divider' => $g['trash'] ?? false], $galleryGroups)], ...$gallerySections];
+        @endphp
+        <div class="flex flex-col gap-3">
+            <x-bs-admin::search label="Tìm theo tên tệp" wire:model.live.debounce.300ms="gallerySearch" />
+            {{-- one line that never wraps: Sắp xếp drops its word first, then Lọc --}}
+            <x-bs-admin::tool-row>
+                <x-bs-admin::list.check :checked="false" label="Chọn tất cả" visible />
+                <x-bs-admin::filter-panel class="ms-auto flex-nowrap" :sections="$gallerySections" :active="$galleryActive + ($galleryGroup === 'all' ? 0 : 1)" clear="clearGalleryFilters" />
+                <x-bs-admin::sort-menu :options="[['key' => 'name', 'label' => 'Tên (A–Z)', 'icon' => 'ri-sort-alphabet-asc'], ['key' => 'size', 'label' => 'Lớn nhất trước'], ['key' => 'new', 'label' => 'Mới tải lên']]"
+                    :active="$gallerySort" :lit="$gallerySort !== 'name'" set="setGallerySort" />
+            </x-bs-admin::tool-row>
         </div>
         <x-bs-admin::filter-status class="-mx-3 mt-2" :group="$galleryGroup === 'all' ? null : $galleryGroupLabel" :summary="$galleryGroup === 'all' && $galleryActive === 0 ? null : '12 tệp'"
             :chips="array_map(fn (string $k): array => ['label' => $k === 'pdf' ? 'Tài liệu PDF' : 'Ảnh', 'remove' => '$set(\'galleryKinds\', [])'], $galleryKinds)" clear="clearGalleryFilters" />
