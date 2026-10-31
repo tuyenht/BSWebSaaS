@@ -1,6 +1,7 @@
 @props([
     'sections' => [],
     'active' => 0,
+    'activeNarrow' => null,
     'results' => null,
     'clear' => null,
     'label' => null,
@@ -25,6 +26,9 @@
     //            which have their own row from 900px; "Hiện trên thẻ"). class: added to the section and its jump
     //            button in the sheet, to show it only at some widths (the groups: `min-[900px]:hidden`).
     // $active: how many conditions are on (shown on the Lọc button and in its name).
+    // $activeNarrow: the count below 900px when it differs — a list whose status groups have their own row from 900
+    //            and live in the sheet below adds a chosen group there only (canvas fN / fNm). The button shows
+    //            and is named by the count of its width; its tint follows $active.
     // $results: the footer button text, e.g. "Xem 12 dòng" — filters apply as they change, so it only closes the sheet.
     // $clear: the host's public method that resets every filter (shown when $active > 0).
     //
@@ -32,6 +36,10 @@
     // stays inside the sheet.
     $label ??= __('admin.list.filter');
     $name = $active > 0 ? __('admin.list.filter_active', ['n' => $active]) : $label;
+    $narrow = $activeNarrow ?? $active;
+    $nameNarrow = $narrow > 0 ? __('admin.list.filter_active', ['n' => $narrow]) : $label;
+    $split = $narrow !== $active;
+    $badge = 'inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-caption font-bold leading-5 text-white';
     // stable across renders: a live update that renamed the radio groups could drop the checked state and focus
     $uid = substr(md5(implode('|', array_map(fn (array $s): string => $s['key'].':'.$s['model'], $sections))), 0, 8);
     $panelId = 'lf-'.$uid;
@@ -132,13 +140,26 @@
         <button type="button" x-ref="button" data-lf
                 @click="open ? hide() : show()"
                 :aria-expanded="open ? 'true' : 'false'" aria-controls="{{ $panelId }}"
-                aria-label="{{ $name }}" title="{{ $name }}"
+                @unless ($split) aria-label="{{ $name }}" title="{{ $name }}" @else title="{{ $label }}" @endunless
                 class="{{ $pill }} {{ $pillState($active > 0) }}">
             <x-bs-admin::icon name="ri-filter-3" class="{{ $pillIcon($active > 0) }}" />
-            <span data-lf-text>{{ $label }}</span>
-            @if ($active > 0)
-                <span class="inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-caption font-bold leading-5 text-white">{{ $active }}</span>
-            @endif
+            @unless ($split)
+                <span data-lf-text>{{ $label }}</span>
+                @if ($active > 0)
+                    <span class="{{ $badge }}">{{ $active }}</span>
+                @endif
+            @else
+                {{-- two counts: the name is the hidden text of the width in force (one of the two is display: none) --}}
+                <span data-lf-text aria-hidden="true">{{ $label }}</span>
+                <span class="sr-only max-[899.98px]:hidden">{{ $name }}</span>
+                <span class="sr-only min-[900px]:hidden">{{ $nameNarrow }}</span>
+                @if ($active > 0)
+                    <span data-lf-count class="{{ $badge }} max-[899.98px]:hidden" aria-hidden="true">{{ $active }}</span>
+                @endif
+                @if ($narrow > 0)
+                    <span data-lf-count-narrow class="{{ $badge }} min-[900px]:hidden" aria-hidden="true">{{ $narrow }}</span>
+                @endif
+            @endunless
         </button>
 
         <div x-show="open" x-cloak @click="hide()" class="fixed inset-0 z-60 bg-[rgb(15_18_30/0.45)]" aria-hidden="true"></div>
@@ -193,7 +214,7 @@
                 </div>
             </div>
             <div class="flex shrink-0 flex-wrap justify-end gap-3 border-t border-border px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
-                @if ($clear && $active > 0)
+                @if ($clear && max($active, $narrow) > 0)
                     <x-bs-admin::button variant="outline" color="secondary" class="min-w-0 flex-1" wire:click="{{ $clear }}">{{ __('admin.list.clear_filters') }}</x-bs-admin::button>
                 @endif
                 <x-bs-admin::button class="min-w-0 flex-1" @click="hide()">{{ $results ?? __('admin.list.close_filters') }}</x-bs-admin::button>

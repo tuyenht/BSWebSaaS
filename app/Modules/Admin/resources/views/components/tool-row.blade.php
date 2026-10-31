@@ -4,8 +4,9 @@
     // (data-fit="1"), then the Filter button (data-fit="2"), each keeping its icon, tooltip, accessible name and the
     // Filter count badge; only then may the select-all label wrap (data-fit="3"). The words are the ones marked
     // [data-sort-text] and [data-lf-text]; the rules live in resources/css/admin-list.css (.list-tools-row).
-    // A host may make the row `display: contents` from some width up (its items join a wider row); it is not
-    // measured then. A Livewire re-render puts the server HTML back, so the row measures again after each one.
+    // A host may let the row wrap from some width up (it then goes down as one group beside a wider row), or make it
+    // `display: contents` (its items join that row); it is not measured then. A wrapping row says whether it went
+    // below the item before it (data-below="1"), so that item (the search) can take the whole line, as on the canvas. A Livewire re-render puts the server HTML back, so the row measures again after each one.
 @endphp
 <div {{ $attributes->merge(['class' => 'list-tools-row']) }} wire:ignore.self
      x-data="{
@@ -14,7 +15,14 @@
          fit() {
              const row = this.$root;
              row.dataset.fit = '0';
-             if (getComputedStyle(row).display === 'contents') return;
+             const css = getComputedStyle(row);
+             if (css.display === 'contents') return;
+             if (css.flexWrap === 'wrap') {
+                 const prev = row.previousElementSibling;
+                 row.dataset.below = prev && row.getBoundingClientRect().top >= prev.getBoundingClientRect().bottom - 1 ? '1' : '0';
+                 return;
+             }
+             delete row.dataset.below;
              for (const step of ['1', '2', '3']) {
                  if (row.scrollWidth <= row.clientWidth) return;
                  row.dataset.fit = step;

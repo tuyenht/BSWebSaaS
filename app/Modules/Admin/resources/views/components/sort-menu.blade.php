@@ -14,9 +14,11 @@
     // $options: list<array{key: string, label: string, icon?: string|null}>. $active: the key in force.
     // $set: the host's public method a choice calls with the key, e.g. "setSort" — a fixed name, never input.
     //
-    // Opens with Enter, Space or ↓ (focus goes to the order in force); ↑ ↓ move through it; Esc closes it and
-    // focus returns to the button.
+    // Opens with Enter, Space or ↓ (focus goes to the order in force); ↑ ↓ move through it, Home / End jump to
+    // the first / last; Esc or Tab closes it and focus returns to the button. One item at a time is in the
+    // Tab order (roving tabindex): the order in force, or the first when none is.
     $current = collect($options)->firstWhere('key', $active)['label'] ?? '';
+    $anyOn = in_array($active, array_column($options, 'key'), true);
     $name = __('admin.list.sort_named', ['name' => $current]);
     $menuId = 'sm-'.substr(md5($set.'|'.implode(',', array_column($options, 'key'))), 0, 8);
     $pill = 'hit-area group inline-flex min-h-control shrink-0 items-center justify-center gap-1.5 rounded-full border px-3.5 text-body font-medium transition-colors pointer-coarse:min-h-hit aria-expanded:border-primary-text aria-expanded:bg-primary/12 aria-expanded:text-primary-text';
@@ -28,13 +30,16 @@
          items() { return [...this.$refs.menu.querySelectorAll('[role=menuitemradio]')]; },
          show() {
              this.open = true;
-             this.whenShown(() => { this.place(); (this.$refs.menu.querySelector('[aria-checked=true]') || this.items()[0])?.focus(); });
+             this.whenShown(() => { this.place(); this.go(this.$refs.menu.querySelector('[aria-checked=true]') || this.items()[0]); });
          },
+         // the item given focus is the only one in the Tab order
+         go(el) { if (! el) return; this.items().forEach((i) => { i.tabIndex = i === el ? 0 : -1; }); el.focus(); },
          whenShown(fn, tries = 20) { this.$refs.menu.getClientRects().length || ! tries ? fn() : setTimeout(() => this.whenShown(fn, tries - 1), 16); },
          // the menu hangs from the button's end edge and never leaves the screen
          place() { const m = this.$refs.menu; m.style.insetInlineEnd = ''; const over = 8 - m.getBoundingClientRect().left; if (over > 0) m.style.insetInlineEnd = -over + 'px'; },
          hide(back = true) { if (! this.open) return; this.open = false; if (back) this.$refs.button.focus(); },
-         step(d) { const f = this.items(), i = f.indexOf(document.activeElement); f[(i + d + f.length) % f.length]?.focus(); },
+         step(d) { const f = this.items(), i = f.indexOf(document.activeElement); this.go(f[(i + d + f.length) % f.length]); },
+         edge(last) { const f = this.items(); this.go(last ? f[f.length - 1] : f[0]); },
      }"
      @keydown.escape.prevent.stop="hide()"
      @click.outside="hide(false)"
@@ -48,12 +53,13 @@
         <span data-sort-text>{{ __('admin.list.sort') }}</span>
     </button>
     <div x-show="open" x-cloak x-ref="menu" id="{{ $menuId }}" role="menu" aria-label="{{ __('admin.list.sort_by') }}"
-         @keydown.down.prevent="step(1)" @keydown.up.prevent="step(-1)"
+         @keydown.down.prevent="step(1)" @keydown.up.prevent="step(-1)" @keydown.home.prevent="edge(false)" @keydown.end.prevent="edge(true)"
+         @keydown.tab.prevent="hide()"
          class="absolute end-0 top-full z-60 mt-1.5 w-max min-w-60 max-w-[min(20rem,calc(100vw-2rem))] rounded-md border border-border bg-surface p-1 shadow-lg">
         <p aria-hidden="true" class="m-0 px-2.5 pb-1 pt-1.5 text-small font-semibold text-text-strong">{{ __('admin.list.sort_by') }}</p>
         @foreach ($options as $option)
             @php $on = $option['key'] === $active; @endphp
-            <button type="button" role="menuitemradio" aria-checked="{{ $on ? 'true' : 'false' }}"
+            <button type="button" role="menuitemradio" aria-checked="{{ $on ? 'true' : 'false' }}" tabindex="{{ $on || (! $anyOn && $loop->first) ? '0' : '-1' }}"
                     wire:click="{{ $set }}({{ \Illuminate\Support\Js::from($option['key']) }})" @click="hide()"
                     @class([
                         'flex min-h-control w-full items-center gap-2.5 rounded px-2.5 py-1.5 text-start text-body [overflow-wrap:anywhere] hover:bg-surface-hover pointer-coarse:min-h-hit',

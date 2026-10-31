@@ -207,7 +207,7 @@
             {{-- one line that never wraps: Sắp xếp drops its word first, then Lọc --}}
             <x-bs-admin::tool-row>
                 <x-bs-admin::list.check :checked="false" label="Chọn tất cả" visible />
-                <x-bs-admin::filter-panel class="ms-auto flex-nowrap" :sections="$gallerySections" :active="$galleryActive + ($galleryGroup === 'all' ? 0 : 1)" clear="clearGalleryFilters" />
+                <x-bs-admin::filter-panel class="ms-auto flex-nowrap" :sections="$gallerySections" :active="$galleryActive" :active-narrow="$galleryActive + ($galleryGroup === 'all' ? 0 : 1)" clear="clearGalleryFilters" />
                 <x-bs-admin::sort-menu :options="[['key' => 'name', 'label' => 'Tên (A–Z)', 'icon' => 'ri-sort-alphabet-asc'], ['key' => 'size', 'label' => 'Lớn nhất trước'], ['key' => 'new', 'label' => 'Mới tải lên']]"
                     :active="$gallerySort" :lit="$gallerySort !== 'name'" set="setGallerySort" />
             </x-bs-admin::tool-row>

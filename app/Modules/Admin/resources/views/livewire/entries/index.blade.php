@@ -82,8 +82,9 @@
             'range' => ['from' => 'from', 'to' => 'to', 'from_label' => __('entries.when_from'), 'to_label' => __('entries.when_to')]]
             + ($when === EntriesIndex::RANGE ? ['on' => true, 'summary' => $whenText, 'suffix' => ': '.$whenText] : []);
     }
-    // a view choice, not a filter: never counted, never marked as filtering
-    $sections[] = ['key' => 'card', 'label' => __('entries.f_card'), 'model' => 'card', 'multiple' => true, 'value' => $card, 'sheet' => true, 'class' => 'min-[600px]:hidden', 'on' => false,
+    // a view choice, not a filter: never counted, never marked as filtering. It is there exactly while the rows are
+    // cards (the list narrower than 37.5rem, as mode below); from there to 900 every detail shows, and from 900 Cột decides.
+    $sections[] = ['key' => 'card', 'label' => __('entries.f_card'), 'model' => 'card', 'multiple' => true, 'value' => $card, 'sheet' => true, 'class' => '@min-[37.5rem]/lt:hidden', 'on' => false,
         'options' => array_map(fn (string $k, string $l): array => ['value' => $k, 'label' => $l], array_keys($cardOptions), $cardOptions)];
 
     $sortOptions = [];
@@ -186,25 +187,38 @@
              }"
              x-init="size(); new ResizeObserver(() => size()).observe($el)">
             <div class="flex flex-col gap-3 pb-3 min-[600px]:px-4 min-[600px]:pt-4 min-[900px]:pt-3 @min-[56.25rem]/lt:flex-row @min-[56.25rem]/lt:flex-wrap @min-[56.25rem]/lt:items-center">
-                <div class="min-w-0 @min-[56.25rem]/lt:max-w-[26rem] @min-[56.25rem]/lt:flex-[1_1_16rem]">
+                {{-- From 900 the search and the tools share a row: the search keeps room for its whole hint (sized in
+                     its own text size, so it grows with the member's text size) and takes the free space; when the
+                     tools no longer fit beside it they go down together, as one group, and the search takes the whole
+                     line (the tools row marks itself data-below). --}}
+                <div class="min-w-0 text-body @min-[56.25rem]/lt:min-w-[19em] @min-[56.25rem]/lt:max-w-[30em] @min-[56.25rem]/lt:flex-[999_1_19em] @min-[56.25rem]/lt:[&:has(+[data-below='1'])]:max-w-none">
                     <x-bs-admin::search id="entries-search" :label="__('entries.search_placeholder')" wire:model.live.debounce.300ms="search" />
                 </div>
-                <x-bs-admin::tool-row class="@min-[56.25rem]/lt:contents">
+                <x-bs-admin::tool-row class="@min-[56.25rem]/lt:min-w-0 @min-[56.25rem]/lt:flex-[1_1_auto] @min-[56.25rem]/lt:flex-wrap @min-[56.25rem]/lt:gap-3">
                     @if ($pageUlids !== [])
                         <div class="min-w-0 @min-[56.25rem]/lt:hidden">
                             <x-bs-admin::list.check :checked="$allState" :label="__('entries.select_all')" visible :wire:click="$selectAllCall" />
                         </div>
                     @endif
-                    <x-bs-admin::filter-panel class="ms-auto flex-nowrap @min-[56.25rem]/lt:ms-0 @min-[56.25rem]/lt:flex-wrap" :sections="$sections" :active="$filterCount"
-                        :results="__('entries.show_n', ['n' => $fmt($matchCount), 'unit' => $noun])" clear="clearAllFilters" />
+                    <x-bs-admin::filter-panel class="ms-auto flex-nowrap @min-[56.25rem]/lt:ms-0 @min-[56.25rem]/lt:min-w-0 @min-[56.25rem]/lt:shrink @min-[56.25rem]/lt:flex-wrap" :sections="$sections"
+                        :active="$filterCount" :active-narrow="$filterCountNarrow" :results="__('entries.show_n', ['n' => $fmt($matchCount), 'unit' => $noun])" clear="clearAllFilters" />
                     <x-bs-admin::sort-menu class="@min-[56.25rem]/lt:ms-auto" :options="$sortOptions" :active="$sortOn" :lit="! $sortIsDefault" set="setSort" />
-                    <div class="relative hidden shrink-0 @min-[56.25rem]/lt:block" x-data="{ open: false }" @click.outside="open = false" @keydown.escape.prevent.stop="open && (open = false, $refs.cols.focus())">
-                        <button type="button" x-ref="cols" @click="open = ! open" :aria-expanded="open ? 'true' : 'false'" aria-controls="entries-cols"
+                    {{-- Opening moves focus to the first choice; Esc puts it back on the button; leaving it (Tab, a click away) closes it. --}}
+                    <div class="relative hidden shrink-0 @min-[56.25rem]/lt:block"
+                         x-data="{
+                             open: false,
+                             show() { this.open = true; this.whenShown(() => this.$refs.colsPanel.querySelector('input:not([disabled])')?.focus()); },
+                             hide(back = true) { if (! this.open) return; this.open = false; if (back) this.$refs.cols.focus(); },
+                             whenShown(fn, tries = 20) { this.$refs.colsPanel.getClientRects().length || ! tries ? fn() : setTimeout(() => this.whenShown(fn, tries - 1), 16); },
+                         }"
+                         @click.outside="hide(false)" @keydown.escape.prevent.stop="hide()"
+                         @focusout="if ($event.relatedTarget && ! $root.contains($event.relatedTarget)) hide(false)">
+                        <button type="button" x-ref="cols" @click="open ? hide() : show()" :aria-expanded="open ? 'true' : 'false'" aria-controls="entries-cols"
                             class="hit-area inline-flex min-h-control items-center gap-1.5 rounded-full border border-transparent bg-primary/7 px-3.5 text-body font-medium text-text transition-colors hover:bg-primary/12">
                             <x-bs-admin::icon name="ri-layout-column" class="size-4 text-text-muted" /> {{ __('entries.cols_button') }}
                             <x-bs-admin::icon name="chevron-down" class="size-4 text-text-muted transition-transform" ::class="open && 'rotate-180'" />
                         </button>
-                        <div x-show="open" x-cloak x-transition id="entries-cols" role="group" aria-label="{{ __('entries.cols_button') }}"
+                        <div x-show="open" x-cloak x-transition x-ref="colsPanel" id="entries-cols" role="group" aria-label="{{ __('entries.cols_button') }}"
                             class="absolute end-0 top-full z-60 mt-1.5 w-60 rounded-md border border-border bg-surface p-1.5 shadow-lg">
                             <p class="m-0 px-2 pb-1 pt-1.5 text-caption font-semibold text-text-muted">{{ __('entries.cols_required') }}</p>
                             @foreach ([__('entries.title_label'), __('entries.col_status'), __('admin.actions')] as $locked)

@@ -66,6 +66,8 @@ final class Index extends Component
 {
     use AuthorizesRequests;
 
+    /** The content section the screen opened on (?section=…); fixed for the screen's life, never sent back by the browser. */
+    #[Locked]
     public ?string $section = null;
 
     #[Url(as: 'tab', except: 'all')]
@@ -132,6 +134,14 @@ final class Index extends Component
     #[Locked]
     public string $entryType = 'page';
 
+    /**
+     * Where this list's view choices live in the member's preferences, fixed when the screen opens from the
+     * resolved list: "entries.page", or "entries.post.<key>" of a section that exists — so the keys a member
+     * can collect are bounded by the site's own lists, whatever the browser sends.
+     */
+    #[Locked]
+    public string $viewKey = 'entries.page';
+
     /** Tabs that map to a concrete status; the rest: all = every non-trashed, trash = deleted. */
     private const array STATUS_TABS = ['published', 'draft', 'scheduled', 'private', 'pending', 'archived'];
 
@@ -163,6 +173,15 @@ final class Index extends Component
     /** The most rows one bulk action takes: every one is locked and worked through in a single request. */
     private const int BULK_LIMIT = 200;
 
+    /**
+     * Every request of this screen — the first render, each action and each live property change — is
+     * refused once the member may no longer see entries: the livewire/update endpoint skips route middleware.
+     */
+    public function boot(): void
+    {
+        $this->authorize('viewAny', Entry::class);
+    }
+
     public function mount(?string $section = null): void
     {
         $this->section = $section ?? request()->query('section');
@@ -173,12 +192,12 @@ final class Index extends Component
         if (! in_array($this->perPage, [10, 20, 50], true)) {
             $this->perPage = 20;
         }
-        $this->authorize('viewAny', Entry::class);
 
         $section = $this->resolveSection();
         $this->entryType = $section instanceof ContentSection && $section->entry_type === 'post' ? 'post' : 'page';
+        $this->viewKey = $this->entryType === 'post' && $section instanceof ContentSection ? 'entries.post.'.$section->key : 'entries.page';
         $lists = Cast::arr(Cast::arr($this->actingUser()->preferences)['lists'] ?? null);
-        $view = Cast::arr($lists[$this->viewKey()] ?? null);
+        $view = Cast::arr($lists[$this->viewKey] ?? null);
         $this->cols = isset($view['cols']) ? self::known(Cast::arr($view['cols']), self::COLS) : self::COLS_DEFAULT;
         $this->card = self::known(Cast::arr($view['card'] ?? null), self::CARD);
         $this->clean();
@@ -204,7 +223,6 @@ final class Index extends Component
             $this->when = self::dateOr($this->from) !== '' || self::dateOr($this->to) !== '' ? self::RANGE : '';
         }
         if (in_array($name, ['tab', 'transF', 'langF', 'creatorF', 'templateF', 'when', 'from', 'to', 'sortKey', 'sortDir'], true)) {
-            $this->authorize('viewAny', Entry::class);
             $this->clean();
             $this->page = 1;
         }
@@ -216,7 +234,6 @@ final class Index extends Component
     /** "Cột" changed: kept for this member only. */
     public function updatedCols(): void
     {
-        $this->authorize('viewAny', Entry::class);
         $this->cols = self::known($this->cols, self::COLS);
         $this->saveView();
     }
@@ -224,7 +241,6 @@ final class Index extends Component
     /** "Hiện trên thẻ" changed: kept for this member only. */
     public function updatedCard(): void
     {
-        $this->authorize('viewAny', Entry::class);
         $this->card = self::known($this->card, self::CARD);
         $this->saveView();
     }
@@ -252,7 +268,6 @@ final class Index extends Component
     /** The Sort menu: one choice, in its natural direction. */
     public function setSort(string $key): void
     {
-        $this->authorize('viewAny', Entry::class);
         if (! $this->sortsHere($key)) {
             return;
         }
@@ -263,7 +278,6 @@ final class Index extends Component
     /** Back to the type's default sort (the sort chip's ✕). */
     public function resetSort(): void
     {
-        $this->authorize('viewAny', Entry::class);
         $this->sortKey = $this->sortDir = '';
         $this->page = 1;
     }
@@ -271,7 +285,6 @@ final class Index extends Component
     /** "Bỏ lọc" on the Thời gian chip. */
     public function clearWhen(): void
     {
-        $this->authorize('viewAny', Entry::class);
         $this->when = $this->from = $this->to = '';
         $this->page = 1;
     }
@@ -941,22 +954,32 @@ final class Index extends Component
         return $values;
     }
 
-    /** Where this list's view choices live in the member's preferences (pages and each post section apart). */
-    private function viewKey(): string
-    {
-        return 'entries.'.($this->entryType === 'post' ? 'post.'.($this->section ?? '') : 'page');
-    }
-
-    /** Keep this member's Cột / Hiện trên thẻ choice in their own preferences, nobody else's. */
+    /**
+     * Keep this member's Cột / Hiện trên thẻ choice in their own preferences, nobody else's. One UPDATE
+     * writes just this list's entry inside preferences.lists, so whatever else was saved since the screen
+     * opened (the theme, another list's choice, from another tab) is kept rather than overwritten.
+     */
     private function saveView(): void
     {
         $user = $this->actingUser();
-        $preferences = Cast::arr($user->preferences);
-        $lists = Cast::arr($preferences['lists'] ?? null);
-        $lists[$this->viewKey()] = ['cols' => $this->cols, 'card' => $this->card];
-        $preferences['lists'] = $lists;
-        $user->preferences = $preferences;
-        $user->save();
+
+        // preferences and preferences.lists are made objects first (a missing or odd value starts empty), then
+        // only lists.<this list> is set
+        DB::connection($user->getConnectionName())->update(<<<SQL
+            update {$user->getTable()} set preferences = jsonb_set(
+                jsonb_set(
+                    case when jsonb_typeof(preferences) = 'object' then preferences else '{}'::jsonb end,
+                    '{lists}',
+                    case when jsonb_typeof(preferences->'lists') = 'object' then preferences->'lists' else '{}'::jsonb end,
+                    true
+                ),
+                array['lists', ?]::text[],
+                ?::jsonb,
+                true
+            ) where id = ?
+            SQL,
+            [$this->viewKey, json_encode(['cols' => $this->cols, 'card' => $this->card], JSON_THROW_ON_ERROR), $user->getKey()],
+        );
     }
 
     /**
@@ -990,7 +1013,7 @@ final class Index extends Component
         $ranged = $this->from !== '' || $this->to !== '';
         $this->when = $ranged ? self::RANGE : (in_array($this->when, self::WHEN, true) ? $this->when : '');
         if ($this->sortKey !== '' && ! $this->sortsHere($this->sortKey)) {
-            $this->sortKey = '';
+            $this->sortKey = $this->sortDir = ''; // a direction means nothing without its order: back to the default, both
         }
         $this->sortDir = in_array($this->sortDir, ['asc', 'desc'], true) ? $this->sortDir : '';
     }
@@ -1041,7 +1064,9 @@ final class Index extends Component
     }
 
     /**
-     * The chosen "Thời gian" span as UTC bounds [start, end), days counted in the site's zone.
+     * The chosen "Thời gian" span as UTC bounds [start, end), days counted in the site's zone. A preset
+     * ("Hôm nay", "7 ngày qua"…) is whole days up to the end of today, so a post scheduled for a later day is
+     * never in it.
      *
      * @return array{0: CarbonImmutable|null, 1: CarbonImmutable|null}
      */
@@ -1053,7 +1078,7 @@ final class Index extends Component
         if ($this->when !== '' && $this->when !== self::RANGE) {
             $start = $this->when === 'today' ? $today : $today->subDays(Cast::int($this->when) - 1);
 
-            return [$start->utc(), null];
+            return [$start->utc(), $today->addDay()->utc()];
         }
 
         $day = fn (string $date): ?CarbonImmutable => $date === '' ? null : CarbonImmutable::parse($date, $zone)->startOfDay();
@@ -1077,13 +1102,14 @@ final class Index extends Component
     }
 
     /**
-     * How many filter values are on (the Lọc badge): each chosen value, the time span as one,
-     * and a status group other than "Tất cả" as one.
+     * How many filter values are on (the Lọc badge): each chosen value and the time span as one. Below
+     * 900px, where the status groups live in the Filter sheet, a group other than "Tất cả" adds one more
+     * (render() passes both counts; from 900 the groups have their own row and are not counted).
      */
     private function filterCount(): int
     {
         return count($this->templateF) + count($this->transF) + count($this->creatorF) + count($this->langF)
-            + ($this->when !== '' ? 1 : 0) + ($this->tab !== 'all' ? 1 : 0);
+            + ($this->when !== '' ? 1 : 0);
     }
 
     public function render(): View
@@ -1169,6 +1195,8 @@ final class Index extends Component
             $rowEditable[$item['entry']->ulid] = $user->can('update', $item['entry']);
         }
 
+        $canDelete = $user->can('entries.delete.any') || $user->can('entries.delete.own');
+
         return view('admin::livewire.entries.index', [
             'rows' => $rows,
             'pageUlids' => $pageUlids,
@@ -1179,6 +1207,7 @@ final class Index extends Component
             'facets' => $facets,
             'activeChips' => $this->activeChips($facets),
             'filterCount' => $this->filterCount(),
+            'filterCountNarrow' => $this->filterCount() + ($this->tab !== 'all' ? 1 : 0),
             'sortOn' => $sortKey,
             'sortWay' => $sortDir,
             'sortIsDefault' => $sortKey === $this->defaultSortKey() && $sortDir === self::naturalDir($sortKey),
@@ -1194,8 +1223,9 @@ final class Index extends Component
             'sectionKey' => $this->section,
             'canPublish' => $user->can('entries.publish'),
             'canCreate' => $user->can('entries.create'),
-            'canDelete' => $user->can('entries.delete.any') || $user->can('entries.delete.own'),
-            'canSeeTrash' => $user->can('entries.delete.any'),
+            'canDelete' => $canDelete,
+            // whoever may delete (their own or any) reaches the Trash, to restore what they removed
+            'canSeeTrash' => $canDelete,
             'siteTime' => app(SiteTime::class),
         ]);
     }

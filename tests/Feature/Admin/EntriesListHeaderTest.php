@@ -9,6 +9,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteLocale;
 use Illuminate\Support\Carbon;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -153,6 +154,23 @@ describe('sort', function (): void {
             $posts->call('setSort', 'order')->assertSet('sortKey', '');
         });
     });
+
+    it('drops the direction with an order the type does not have, so a posts link opens pages in their own order', function (): void {
+        $user = User::factory()->create();
+
+        app(Tenancy::class)->enter(1, function () use ($user): void {
+            grantRole($user, 'editor', ['entries.view']);
+            lhPage($user, 'Hai', ['position' => 1]);
+            lhPage($user, 'Một', ['position' => 0]);
+
+            $pages = Livewire::withQueryParams(['sort' => 'pub', 'dir' => 'desc'])->actingAs($user->fresh())->test(Index::class)
+                ->assertSet('sortKey', '')
+                ->assertSet('sortDir', '');
+            expect(lhTitles($pages))->toBe(['Một', 'Hai'])
+                ->and($pages->viewData('sortWay'))->toBe('asc')
+                ->and($pages->viewData('sortIsDefault'))->toBeTrue();
+        });
+    });
 });
 
 describe('filters', function (): void {
@@ -232,6 +250,31 @@ describe('filters', function (): void {
         });
     });
 
+    it('ends every time preset with today, so a post scheduled for a later day is in none of them', function (): void {
+        $user = User::factory()->create();
+
+        app(Tenancy::class)->enter(1, function () use ($user): void {
+            grantRole($user, 'editor', ['entries.view']);
+            $cat = (int) lhSection()->taxonomy_id;
+            Carbon::setTestNow('2026-10-31 03:00:00'); // 10:00 in the site's zone (Asia/Ho_Chi_Minh)
+            lhPost($user, 'Sáng nay', $cat, ['published_at' => now()->subHour()]);
+            lhPost($user, 'Chiều nay', $cat, ['status' => 'scheduled', 'published_at' => now()->addHours(5)]);
+            lhPost($user, 'Ngày mai', $cat, ['status' => 'scheduled', 'published_at' => now()->addDay()]);
+            lhPost($user, 'Tuần sau', $cat, ['status' => 'scheduled', 'published_at' => now()->addDays(6)]);
+
+            $list = Livewire::actingAs($user->fresh())->test(Index::class, ['section' => 'tin-tuc']);
+            foreach (['today', '7', '30', '90'] as $preset) {
+                $list->set('when', $preset);
+                expect(lhTitles($list))->toEqualCanonicalizing(['Sáng nay', 'Chiều nay']);
+            }
+
+            // a range that reaches ahead still lists what is scheduled in it
+            $list->set('from', '2026-11-01')->set('to', '2026-11-30');
+            expect(lhTitles($list))->toEqualCanonicalizing(['Ngày mai', 'Tuần sau']);
+            Carbon::setTestNow();
+        });
+    });
+
     it('never applies the time filter to pages', function (): void {
         $user = User::factory()->create();
 
@@ -262,7 +305,7 @@ describe('filters', function (): void {
         });
     });
 
-    it('counts each filter value and a chosen group for Lọc, and Bỏ lọc clears them but keeps the sort', function (): void {
+    it('counts each filter value for Lọc, and a chosen group only below 900 where the groups live in the sheet; Bỏ lọc clears them but keeps the sort', function (): void {
         $user = User::factory()->create();
 
         app(Tenancy::class)->enter(1, function () use ($user): void {
@@ -279,8 +322,12 @@ describe('filters', function (): void {
                 ->set('transF', ['none'])
                 ->set('langF', ['vi'])
                 ->set('search', 'Nh');
-            expect($list->viewData('filterCount'))->toBe(3)
+            expect($list->viewData('filterCount'))->toBe(2)
+                ->and($list->viewData('filterCountNarrow'))->toBe(3)
                 ->and(lhTitles($list))->toBe(['Nháp'])
+                // from 900 the groups have their own row: Lọc counts 2; below, where Trạng thái is in the sheet, 3
+                ->and($list->html())->toMatch('/<span class="sr-only max-\[899\.98px\]:hidden">'.preg_quote(e(__('admin.list.filter_active', ['n' => 2])), '/').'<\/span>/')
+                ->and($list->html())->toMatch('/<span class="sr-only min-\[900px\]:hidden">'.preg_quote(e(__('admin.list.filter_active', ['n' => 3])), '/').'<\/span>/')
                 // the active-filter line: the group, "N trong M trang" and Bỏ lọc
                 ->and($list->html())->toContain(e(__('entries.match_of', ['n' => 1, 'm' => 1, 'unit' => __('entries.noun_page')])))
                 ->and($list->html())->toContain('wire:click="clearAllFilters"');
@@ -291,25 +338,35 @@ describe('filters', function (): void {
                 ->assertSet('langF', [])
                 ->assertSet('search', '')
                 ->assertSet('sortKey', 'name');
-            expect($list->viewData('filterCount'))->toBe(0)->and(lhTitles($list))->toEqualCanonicalizing(['Đăng', 'Nháp']);
+            expect($list->viewData('filterCount'))->toBe(0)->and($list->viewData('filterCountNarrow'))->toBe(0)
+                ->and(lhTitles($list))->toEqualCanonicalizing(['Đăng', 'Nháp']);
         });
     });
 });
 
 describe('groups', function (): void {
-    it('shows Chờ duyệt only once something waits, and Thùng rác only to who may empty it', function (): void {
+    it('shows Chờ duyệt only once something waits, and Thùng rác to whoever may delete, their own or any', function (): void {
         $boss = User::factory()->create();
         $writer = User::factory()->create();
+        $reader = User::factory()->create();
 
-        app(Tenancy::class)->enter(1, function () use ($boss, $writer): void {
+        app(Tenancy::class)->enter(1, function () use ($boss, $writer, $reader): void {
             grantRole($boss, 'editor', ['entries.view', 'entries.delete.any']);
             grantRole($writer, 'author', ['entries.view', 'entries.delete.own']);
+            grantRole($reader, 'viewer', ['entries.view']);
             lhPage($boss, 'Trang');
+            lhPage($writer, 'Của tôi')->delete();
 
             $html = Livewire::actingAs($boss->fresh())->test(Index::class)->html();
             expect($html)->toContain('data-g="trash"')->and($html)->not->toContain('data-g="pending"')
                 ->and($html)->toContain('data-g="archived"');
-            expect(Livewire::actingAs($writer->fresh())->test(Index::class)->html())->not->toContain('data-g="trash"');
+            expect(Livewire::actingAs($reader->fresh())->test(Index::class)->html())->not->toContain('data-g="trash"');
+
+            // who may delete their own reaches the Trash, and may restore what they removed there
+            $mine = Livewire::actingAs($writer->fresh())->test(Index::class);
+            expect($mine->html())->toContain('data-g="trash"');
+            $mine->call('setTab', 'trash');
+            expect(lhTitles($mine))->toBe(['Của tôi'])->and($mine->viewData('canDelete'))->toBeTrue();
 
             lhPage($boss, 'Chờ', ['status' => 'pending']);
             $list = Livewire::actingAs($boss->fresh())->test(Index::class);
@@ -373,6 +430,70 @@ describe('view choices', function (): void {
         });
     });
 
+    it('keys a view choice to the list the screen opened, whatever section the browser sends', function (): void {
+        $user = User::factory()->create();
+
+        app(Tenancy::class)->enter(1, function () use ($user): void {
+            grantRole($user, 'editor', ['entries.view']);
+            lhSection();
+
+            $posts = Livewire::actingAs($user->fresh())->test(Index::class, ['section' => 'tin-tuc'])->assertSet('viewKey', 'entries.post.tin-tuc');
+            expect(fn () => $posts->set('section', 'forged-'.str_repeat('x', 40)))->toThrow(CannotUpdateLockedPropertyException::class);
+            expect(fn () => $posts->set('viewKey', 'entries.post.forged'))->toThrow(CannotUpdateLockedPropertyException::class);
+            $posts->set('cols', ['path']);
+            expect(array_keys($user->fresh()->preferences['lists']))->toBe(['entries.post.tin-tuc']);
+
+            // a section that does not exist opens the pages list, and keeps the pages choice
+            Livewire::withQueryParams(['section' => 'no-such-section'])->actingAs($user->fresh())->test(Index::class)
+                ->assertSet('viewKey', 'entries.page')
+                ->set('card', ['path']);
+            expect(array_keys($user->fresh()->preferences['lists']))->toEqualCanonicalizing(['entries.post.tin-tuc', 'entries.page']);
+        });
+    });
+
+    it('writes only its own list choice, keeping what was saved meanwhile from elsewhere', function (): void {
+        $user = User::factory()->create();
+
+        app(Tenancy::class)->enter(1, function () use ($user): void {
+            grantRole($user, 'editor', ['entries.view']);
+            $list = Livewire::actingAs($user->fresh())->test(Index::class);
+
+            // after the screen read the preferences, another tab saves the theme and another list's choice
+            $other = $user->fresh();
+            $other->forceFill(['preferences' => ['theme' => ['mode' => 'dark'], 'lists' => ['entries.post.tin-tuc' => ['cols' => [], 'card' => []]]]])->save();
+
+            $list->set('cols', ['creator']);
+            $saved = $user->fresh()->preferences;
+            expect($saved['theme'])->toBe(['mode' => 'dark'])
+                ->and($saved['lists']['entries.post.tin-tuc'])->toEqual(['cols' => [], 'card' => []])
+                ->and($saved['lists']['entries.page'])->toEqual(['cols' => ['creator'], 'card' => []]);
+        });
+    });
+
+    it('starts the lists entry afresh when the stored preferences hold something else there', function (): void {
+        $user = User::factory()->create();
+        $user->forceFill(['preferences' => ['theme' => ['mode' => 'dark'], 'lists' => 'odd']])->save();
+
+        app(Tenancy::class)->enter(1, function () use ($user): void {
+            grantRole($user, 'editor', ['entries.view']);
+            Livewire::actingAs($user->fresh())->test(Index::class)->set('card', ['tpl']);
+            expect($user->fresh()->preferences)->toEqual(['theme' => ['mode' => 'dark'], 'lists' => ['entries.page' => ['cols' => ['path', 'langs', 'creator'], 'card' => ['tpl']]]]);
+        });
+    });
+
+    it('offers Hiện trên thẻ in the Filter sheet exactly while the rows are cards, by the list\'s own width', function (): void {
+        $user = User::factory()->create();
+
+        app(Tenancy::class)->enter(1, function () use ($user): void {
+            grantRole($user, 'editor', ['entries.view']);
+            lhPage($user, 'Trang');
+
+            $html = Livewire::actingAs($user->fresh())->test(Index::class)->html();
+            expect($html)->toMatch('/class="[^"]*@min-\[37\.5rem\]\/lt:hidden[^"]*" data-fsheet="card"/')
+                ->and($html)->not->toContain('data-fsec="card"');
+        });
+    });
+
     it('keeps the member\'s other preferences when saving a view choice', function (): void {
         $user = User::factory()->create();
         $user->forceFill(['preferences' => ['theme' => ['mode' => 'dark']]])->save();
@@ -409,11 +530,22 @@ describe('authorization', function (): void {
                 'filter' => $list->set('transF', ['full']),
                 'when' => $list->set('when', '7'),
                 'tab' => $list->set('tab', 'draft'),
+                'sortBy' => $list->call('sortBy', 'name'),
+                'toggleFilterValue' => $list->call('toggleFilterValue', 'creator', 'x'),
+                'resetFilterGroup' => $list->call('resetFilterGroup', 'creator'),
+                'clearAllFilters' => $list->call('clearAllFilters'),
+                'setTab' => $list->call('setTab', 'draft'),
+                'gotoPage' => $list->call('gotoPage', 2),
+                'cyclePerPage' => $list->call('cyclePerPage'),
+                'toggleSelectAll' => $list->call('toggleSelectAll', ['x']),
+                'search' => $list->set('search', 'tin'),
+                'render' => $list->call('$refresh'),
             };
             $answer->assertForbidden();
             expect($user->fresh()->preferences['lists'] ?? null)->toBeNull();
         });
-    })->with(['setSort', 'resetSort', 'clearWhen', 'cols', 'card', 'filter', 'when', 'tab']);
+    })->with(['setSort', 'resetSort', 'clearWhen', 'cols', 'card', 'filter', 'when', 'tab', 'sortBy', 'toggleFilterValue', 'resetFilterGroup',
+        'clearAllFilters', 'setTab', 'gotoPage', 'cyclePerPage', 'toggleSelectAll', 'search', 'render']);
 });
 
 describe('query budget', function (): void {
@@ -457,7 +589,18 @@ describe('shared parts', function (): void {
             ->and($html)->toContain('aria-haspopup="menu"')
             ->and($html)->toContain('data-sort="views" data-act="1"')
             ->and($html)->toContain('<span data-sort-text>'.e(__('admin.list.sort')).'</span>')
-            ->and($html)->toContain("wire:click=\"setSort('views')\"");
+            ->and($html)->toContain("wire:click=\"setSort('views')\"")
+            // one item in the Tab order: the order in force
+            ->and($html)->toContain('aria-checked="true" tabindex="0"')
+            ->and($html)->toContain('aria-checked="false" tabindex="-1"')
+            ->and(substr_count($html, 'tabindex="0"'))->toBe(1);
+
+        // none in force (an order this list does not offer): the first item takes the Tab stop
+        $none = (string) $this->blade('<x-bs-admin::sort-menu :options="$o" active="gone" set="setSort" />', [
+            'o' => [['key' => 'updated', 'label' => 'Mới sửa gần đây'], ['key' => 'views', 'label' => 'Lượt xem nhiều nhất']],
+        ]);
+        expect(substr_count($none, 'tabindex="0"'))->toBe(1)
+            ->and(strpos($none, 'tabindex="0"'))->toBeLessThan(strpos($none, 'Lượt xem nhiều nhất'));
     });
 
     it('lets the tools row drop the Sort word first, then the Filter word, from the shared stylesheet', function (): void {
