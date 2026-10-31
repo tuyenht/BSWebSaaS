@@ -85,7 +85,7 @@ final class MediaUploadController
         return response()->json(['ulid' => $media->ulid]);
     }
 
-    public function upload(Request $request, UploadMedia $upload, CurrentSite $current, SiteDirectory $sites): JsonResponse
+    public function upload(Request $request, UploadMedia $upload): JsonResponse
     {
         try {
             $request->validate([
@@ -97,7 +97,7 @@ final class MediaUploadController
                 return response()->json(['message' => __('media.err_file_invalid')], 422);
             }
 
-            $media = $upload->handle($file, $sites->nameOfCurrent($current), 'library', $this->actorId(), $this->mayRestore());
+            $media = $upload->handle($file, 'library', $this->actorId(), $this->mayRestore());
         } catch (ValidationException $e) {
             return response()->json(['message' => $e->getMessage(), 'errors' => $e->errors()], 422);
         } catch (MediaRejectedException $e) {

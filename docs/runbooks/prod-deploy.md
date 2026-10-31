@@ -49,6 +49,9 @@ Prod is a separate git checkout, `/opt/bswebsaas/prod` (branch `main`), on the s
 2. Migrations, from `/opt/bswebsaas/prod`: `docker compose --profile ops run --rm --no-deps migrate`.
    - This one-off container is the only app process that receives the superuser password (from `/opt/bswebsaas/secrets/db-admin.env`); the app, the queue and the scheduler never hold it.
    - Any other superuser-only artisan command runs the same way: `docker compose --profile ops run --rm --no-deps migrate php artisan <command> --database=pgsql_admin`.
+   - `2036_01_01_000000_add_code_to_sites` must run as a superuser or BYPASSRLS role (`media` has FORCE ROW LEVEL SECURITY); it aborts otherwise. The `migrate` service signs in as `POSTGRES_USER`; to confirm: `docker exec bsweb_prod_pg sh -c 'psql -U "$POSTGRES_USER" -d bswebsaas -tAc "SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user"'`. It also aborts on a storage key that is not a clean relative path; list those first, the same way, with `SELECT site_id, storage_key FROM media WHERE storage_key !~ '^[A-Za-z0-9][A-Za-z0-9._-]*(/[A-Za-z0-9][A-Za-z0-9._-]*)+$'`.
+   - A website's code (`sites.code`, the prefix of its media keys) is freed if its `sites` row is ever hard-deleted, and may be issued again. Hard-deleting a site must therefore purge its R2 prefix `{code}/` too.
+   - Once any upload is filed under a site code, that migration's rollback refuses to run: restore the pre-migration `pg_dump` instead.
 3. Front-end: in `/opt/bswebsaas/prod`, run `pnpm install --frozen-lockfile` (only if the lockfile changed), then `pnpm run build`.
    - `public/build` is gitignored, and Tailwind emits only the classes it saw at build time.
    - Skip this step and new screens ship with stale CSS — silently.

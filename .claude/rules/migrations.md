@@ -18,5 +18,6 @@ paths:
   - Test the migration's own `down()` → insert the awkward pre-existing row → `up()` (pattern: `tests/Feature/Tenancy/DropDefaultLocaleTest.php`).
   - CI migrates an empty database and cannot catch this.
 - A migration that changes the `site_notifications.kind` CHECK (a new notification kind): point `latestNotificationKinds()` in `tests/Feature/Notifications/SiteNotificationsTest.php` at it. That file re-runs an older migration's `down()` → `up()`, which puts the old kind list back on the shared dev DB; the helper restores the newest list, and a stale one fails later tests with `violates check constraint "site_notifications_kind_check"`.
+- `sites` has no table-level UPDATE for `app_user` (column grants, so `code` stays read-only). A migration that adds a column to `sites` also runs `GRANT UPDATE (<column>) ON sites TO app_user`; `tests/Feature/Tenancy/SiteCodeTest.php` fails until it does.
 - Prod deploys with migrations take a `pg_dump` first (`docs/runbooks/prod-deploy.md`).
 - A migration that adds, drops or retypes a column leaves PgBouncer holding plans that no longer fit ("cached plan must not change result type"). After running it on the shared dev DB (from a worktree too), run `docker compose restart pgbouncer` before Pest; on prod, the runbook's PgBouncer step.

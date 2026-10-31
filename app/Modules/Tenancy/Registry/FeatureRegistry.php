@@ -33,6 +33,9 @@ final class FeatureRegistry
             'sites.max' => ['name' => 'Số site tối đa', 'kind' => 'limit', 'default' => 1, 'scope' => 'tenant'],
             // Media storage ceiling in megabytes.
             'media.storage_mb' => ['name' => 'Dung lượng media (MB)', 'kind' => 'limit', 'default' => 500, 'scope' => 'site'],
+            // Whether new uploads go into year/month folders ({code}/{yyyy}/{mm}/…, the site's own
+            // clock). Set by the platform per site; files already stored keep their address.
+            'media.year_month_folders' => ['name' => 'Thư mục ảnh theo năm/tháng', 'kind' => 'boolean', 'default' => false, 'scope' => 'site'],
             // Content languages a site may have enabled, its default included — 2 = Vietnamese plus
             // one foreign language. Checked only when a language is switched on, so a site already
             // above its plan keeps what it has.

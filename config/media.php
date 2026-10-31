@@ -10,15 +10,11 @@ return [
     // local → upload proxied through Laravel (dev). The action reads this, not a hardcoded 'r2'.
     'disk' => env('MEDIA_DISK', 'r2'),
 
-    // Whether the storage key is prefixed with the tenant slug ({tenant}/{collection}/…). True in
-    // multi-tenant SaaS (isolates each tenant's objects); false for a standalone exported single
-    // site, giving a cleaner {collection}/{slug}.{ext}. RLS still scopes uniqueness either way.
-    'tenant_prefix' => (bool) env('MEDIA_TENANT_PREFIX', true),
-
-    // Opaque content-hash length embedded in the storage key (cache-bust + uniqueness; NOT the dedup
-    // hash — that is the full 64-hex media.hash column). Media is public, so anti-enumerate is waived;
-    // a collision only extends this length. 0 = no suffix at all → a clean {slug}.{ext} (but then a
-    // same-slug Replace keeps the URL, so the CDN must be busted by renaming the slug). Default 4.
+    // Content-hash length embedded in the storage key {code}/[{yyyy}/{mm}/]{slug}-{hashN}.{ext}
+    // (cache-bust + uniqueness; NOT the dedup hash — that is the full 64-hex media.hash column).
+    // Media is public, so anti-enumerate is waived; a collision only extends this length. Never
+    // below 4 (MediaKey::MIN_HASH_LENGTH): without a suffix, replacing a file would keep its URL and
+    // any cached copy of the old file. Default 4.
     'url_hash_length' => (int) env('MEDIA_URL_HASH_LENGTH', 4),
 
     // Cloudflare Worker plane (cf.image reads ?w). Also the base for the `static` raw-master driver.

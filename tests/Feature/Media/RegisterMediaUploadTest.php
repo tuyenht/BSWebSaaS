@@ -44,7 +44,7 @@ it('finalizes a valid upload: copies temp→content-hash key + stamps the site',
     expect($media->site_id)->toBe(1)
         ->and($media->mime)->toBe('image/png')
         ->and(strlen($media->hash))->toBe(64)
-        ->and($media->storage_key)->toStartWith('a/library/')
+        ->and($media->storage_key)->toStartWith(siteCode(1).'/bang-gia-')
         ->and($media->storage_key)->not->toContain('_incoming');
     Storage::disk('r2')->assertExists($media->storage_key);
     Storage::disk('r2')->assertMissing($tempKey);
@@ -100,14 +100,15 @@ it('dedups identical content within a site (one master, temp dropped)', function
     Storage::disk('r2')->assertMissing('_incoming/a/01two.png');
 });
 
-it('omits the hash suffix when url_hash_length is 0 (clean {slug}.{ext})', function (): void {
+it('keeps a 4-hex suffix when url_hash_length is 0 (never a bare {slug}.{ext})', function (): void {
     config(['media.url_hash_length' => 0]);
     $tempKey = '_incoming/a/01zero.png';
     stageUpload(1, $tempKey, pngContent());
 
     $media = app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'about-doi-ngu.png'));
 
-    expect($media->storage_key)->toBe('a/library/about-doi-ngu.png'); // no -hash suffix
+    // A bare key would survive a Replace unchanged, leaving the old file in every cache.
+    expect($media->storage_key)->toBe(siteCode(1).'/about-doi-ngu-'.substr(hash('sha256', pngContent()), 0, 4).'.png');
 });
 
 it('uses an 8-hex suffix when url_hash_length is 8', function (): void {
@@ -117,18 +118,18 @@ it('uses an 8-hex suffix when url_hash_length is 8', function (): void {
 
     $media = app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'anh.png'));
 
-    expect($media->storage_key)->toMatch('#^a/library/anh-[0-9a-f]{8}\.png$#');
+    expect($media->storage_key)->toMatch('#^'.siteCode(1).'/anh-[0-9a-f]{8}\.png$#');
 });
 
-it('omits the tenant prefix in standalone (non-SaaS) mode', function (): void {
-    config(['media.tenant_prefix' => false]);
+it('always prefixes the key with the site code, never the site name or the collection', function (): void {
     $tempKey = '_incoming/a/01solo.png';
     stageUpload(1, $tempKey, pngContent());
 
     $media = app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'logo.png'));
 
-    expect($media->storage_key)->toStartWith('library/logo')
-        ->and($media->storage_key)->not->toStartWith('a/');
+    expect($media->storage_key)->toStartWith(siteCode(1).'/logo-')
+        ->and($media->storage_key)->not->toStartWith('a/')
+        ->and($media->storage_key)->not->toContain('library/');
 });
 
 it('rejects an oversize object via HEAD before loading it (OOM guard)', function (): void {
