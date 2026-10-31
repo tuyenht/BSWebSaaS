@@ -124,6 +124,27 @@ it('says All, dimmed, for a section with nothing chosen and shortens long choice
         ->and($html)->toContain('aria-label="Đi tới phần Định dạng: JPG, PNG, WEBP và 2 mục khác"');
 });
 
+it('marks a section that filters with a dot and its value in bold in the list of sections', function (): void {
+    app()->setLocale('vi');
+    $sections = filterSections();
+    $sections[1]['value'] = ['image'];
+    $html = (string) $this->blade('<x-bs-admin::filter-panel :sections="$sections" />', ['sections' => $sections]);
+
+    expect(substr_count($html, 'data-on aria-hidden="true"'))->toBe(1)
+        ->and($html)->toMatch('/Loại tệp<span data-on aria-hidden="true"/')
+        ->and($html)->toMatch('/font-semibold[^"]*"[^>]*>\s*Ảnh\s*</')
+        ->and($html)->not->toMatch('/Trạng thái<span data-on/');
+});
+
+it('draws a thin rule above an option set apart from the ones before it', function (): void {
+    $sections = filterSections();
+    $sections[0]['options'][1]['divider'] = true;
+    $html = (string) $this->blade('<x-bs-admin::filter-panel :sections="$sections" />', ['sections' => $sections]);
+
+    expect($html)->toMatch('/border-t border-border"[^>]*>\s*<input type="radio"[^>]*value="trash"/')
+        ->and($html)->not->toMatch('/border-t border-border"[^>]*>\s*<input type="radio"[^>]*value="live"/');
+});
+
 it('keeps the same ids across renders, so a live update never renames the radio groups', function (): void {
     $render = fn (): string => (string) $this->blade('<x-bs-admin::filter-panel :sections="$sections" />', ['sections' => filterSections()]);
 

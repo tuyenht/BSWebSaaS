@@ -157,10 +157,13 @@
                         <button type="button" @click="go({{ $i }})" :aria-current="cur === {{ $i }} ? 'true' : null"
                                 aria-label="{{ __('admin.list.go_to_section', ['name' => $section['label']]) }}{{ $section['summary'] !== '' ? ': '.$section['summary'] : '' }}"
                                 class="group flex min-h-hit w-full flex-col items-start justify-center gap-0.5 rounded px-3 py-2 text-start transition-colors hover:bg-surface-hover aria-[current=true]:bg-primary/10 aria-[current=true]:font-semibold aria-[current=true]:text-primary-text">
-                            <span class="min-w-0 max-w-full [overflow-wrap:anywhere]">{{ $section['label'] }}</span>
+                            {{-- a section that filters carries an accent dot and its value in bold, so it reads as on without opening it --}}
+                            <span class="min-w-0 max-w-full [overflow-wrap:anywhere]">{{ $section['label'] }}@if ($section['on'])<span data-on aria-hidden="true" class="ms-1.5 inline-block size-2 rounded-full bg-primary-text align-[0.125em]"></span>@endif</span>
                             @if ($section['summary'] !== '')
                                 <span @if ($section['all']) data-all @endif @class([
-                                    'min-w-0 max-w-full text-small font-normal [overflow-wrap:anywhere] group-aria-[current=true]:text-primary-text',
+                                    'min-w-0 max-w-full text-small [overflow-wrap:anywhere] group-aria-[current=true]:text-primary-text',
+                                    'font-semibold' => $section['on'],
+                                    'font-normal' => ! $section['on'],
                                     'text-text-muted' => $section['all'],
                                     'text-text' => ! $section['all'],
                                 ])>{{ $section['summary'] }}</span>

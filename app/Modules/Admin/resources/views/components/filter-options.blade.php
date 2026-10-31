@@ -7,12 +7,14 @@
     // choice) or checkboxes (several) bound live to the host property, each with its count. $name keeps the radio
     // groups of the two surfaces apart, so checking one never unchecks the other's copy.
     //
-    // $section: array{key: string, model: string, multiple?: bool, options: list<array{value: string, label: string, count?: int|null}>,
+    // $section: array{key: string, model: string, multiple?: bool, options: list<array{value: string, label: string, count?: int|null, divider?: bool}>,
     //           search?: array{model: string, label: string, placeholder?: string},
     //           range?: array{from: string, to: string, from_label: string, to_label: string}}
     // search: a field above the options that narrows them (a long list such as websites); its host property is
     //         bound with a short debounce and the host returns the matching options.
     // range: two date fields below the options ("Từ ngày" · "Đến ngày"), each bound to its own host property.
+    // divider: a thin rule above the option, set off from the ones before it (Thùng rác after the live statuses); the
+    //          rule sits inside the option's own row, so no gap opens between two tap targets.
 @endphp
 @if ($section['search'] ?? null)
     <div class="px-4 pb-1 pt-1">
@@ -21,7 +23,10 @@
     </div>
 @endif
 @foreach ($section['options'] as $option)
-    <label class="flex min-h-hit cursor-pointer items-center gap-2.5 px-4 py-1.5 text-body text-text hover:bg-surface-hover has-checked:font-bold pointer-coarse:min-h-12">
+    <label @class([
+        'flex min-h-hit cursor-pointer items-center gap-2.5 px-4 py-1.5 text-body text-text hover:bg-surface-hover has-checked:font-bold pointer-coarse:min-h-12',
+        'border-t border-border' => $option['divider'] ?? false,
+    ])>
         <input type="{{ ($section['multiple'] ?? false) ? 'checkbox' : 'radio' }}"
                name="{{ $name }}"
                value="{{ $option['value'] }}"

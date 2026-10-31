@@ -173,7 +173,7 @@
             $gallerySections = [
                 ['key' => 'status', 'label' => 'Trạng thái', 'model' => 'galleryStatus', 'icon' => 'ri-inbox-archive', 'value' => $galleryStatus, 'options' => [
                     ['value' => 'live', 'label' => 'Tệp đang có', 'count' => 21],
-                    ['value' => 'trash', 'label' => 'Thùng rác', 'count' => 3],
+                    ['value' => 'trash', 'label' => 'Thùng rác', 'count' => 3, 'divider' => true],
                 ]],
                 ['key' => 'kind', 'label' => 'Loại tệp', 'model' => 'galleryKinds', 'multiple' => true, 'icon' => 'ri-image-2', 'value' => $galleryKinds, 'options' => [
                     ['value' => 'image', 'label' => 'Ảnh', 'count' => 19],
