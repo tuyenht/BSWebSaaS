@@ -70,16 +70,19 @@ it('gives the platform console the shared tools but omits tenant account links',
         ->assertDontSee(route('admin.settings.security', absolute: false), false); // no tenant account link on the operator plane
 });
 
-it('exposes a mobile menu trigger on the platform console so small screens keep the nav', function (): void {
+it('gives the platform console a menu button that opens the sidebar drawer on small screens', function (): void {
     $host = (string) config('tenancy.platform_host');
     $operator = User::factory()->create();
     app(PlatformAccess::class)->onPlatform(fn () => $operator->assignRole('super_admin'));
     app(PlatformAccess::class)->forgetMemo();
 
-    // The console nav is `hidden md:flex`; below md it lives only in the hamburger dropdown,
-    // so the trigger + click-away panel must be present or small screens hit a dead-end.
+    // Below 1024px the sidebar is a drawer: the menu button toggles it, Esc and the backdrop close
+    // it, the closed drawer takes no focus and the open one keeps Tab inside it.
     $this->actingAs($operator->fresh())->get("http://{$host}/tenants")
         ->assertOk()
-        ->assertSee('@click="open = ! open"', false)          // hamburger toggles the dropdown
-        ->assertSee('@click.outside="open = false"', false);  // click-away closes the mobile nav panel
+        ->assertSee('aria-controls="platform-sidebar"', false)
+        ->assertSee('@click="open = ! open"', false)
+        ->assertSee('@keydown.escape.window="close()"', false)
+        ->assertSee('x-trap.noautofocus="open && ! wide"', false)
+        ->assertSee('$el.inert = mobile && ! open', false);
 });

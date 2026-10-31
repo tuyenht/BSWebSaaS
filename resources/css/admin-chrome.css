@@ -360,10 +360,15 @@
 
 /* ---- Brand logo (config-driven, replaces text initials) -------------------
    Sidebar shows the white logo on the dark sidebar, the dark logo on a light
-   sidebar, and the compact mark when collapsed (sm). Platform topbar uses the
-   dark logo statically. */
+   sidebar, and the compact mark when collapsed (sm). The platform's phone/tablet
+   topbar shows the compact mark, then from 840px the full logo in the scheme's ink. */
 .brand-logo { display: none; }
-.brand-logo--static { display: block; }
+.brand-logo--topbar-sm { display: block; }
+@media (min-width: 52.5rem) {
+    .brand-logo--topbar-sm { display: none; }
+    :root:not([data-bs-theme='dark']) .brand-logo--topbar-dark, /* legacy-token-ok: AdminChromeResolver still writes this attribute */
+    :root[data-bs-theme='dark'] .brand-logo--topbar-light { display: block; } /* legacy-token-ok: same attribute */
+}
 .admin-sidebar .brand-logo--light { display: block; } /* default dark sidebar → white logo */
 :root[data-sidebar='light'] .admin-sidebar .brand-logo--light { display: none; }
 :root[data-sidebar='light'] .admin-sidebar .brand-logo--dark { display: block; }
@@ -396,4 +401,98 @@
 .admin-sidebar nav.is-scrolling::-webkit-scrollbar-thumb,
 .admin-sidebar nav:hover::-webkit-scrollbar-thumb {
     background-color: rgb(148 163 184 / 0.6);
+}
+
+/* ---- Platform console shell (layouts/platform.blade.php) --------------------------------------
+   Below 1024px the sidebar is a drawer the menu button slides in (Alpine sets data-nav-open on
+   .platform-shell); 1024–1279px it is an icon rail, and the menu button lays the full menu over
+   the page without moving it; from 1280px it stays open. Scheme-only plane: no sidebar-size or
+   layout axis applies here, so these rules never meet the tenant shell's [data-sidebar-size]. */
+.platform-shell .admin-sidebar {
+    width: var(--sidebar-width);
+    transform: translateX(-100%);
+    transition: transform var(--duration-base) var(--ease-standard), width var(--duration-base) var(--ease-standard);
+}
+.platform-shell[data-nav-open] .admin-sidebar {
+    transform: none;
+    box-shadow: var(--shadow-lg);
+}
+@media (min-width: 64rem) {
+    .platform-shell .admin-sidebar {
+        transform: none;
+    }
+    .platform-shell .admin-content {
+        padding-inline-start: var(--sidebar-width-collapsed);
+    }
+}
+@media (min-width: 80rem) {
+    .platform-shell .admin-content {
+        padding-inline-start: var(--sidebar-width);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .platform-shell .admin-sidebar {
+        transition: none;
+    }
+}
+
+/* The icon rail (1024–1279px, menu not laid over): icons only, centred; a link's name stays in
+   the accessibility tree (visually hidden) and shows beside the rail on hover or keyboard focus.
+   The first heading drops out; each later one becomes a thin divider between its groups. */
+@media (min-width: 64rem) and (max-width: 79.99rem) {
+    .platform-shell:not([data-nav-open]) .admin-sidebar {
+        width: var(--sidebar-width-collapsed);
+    }
+    .platform-shell:not([data-nav-open]) .admin-sidebar nav {
+        overflow: visible; /* the scroll box would clip the name beside the rail */
+    }
+    .platform-shell:not([data-nav-open]) .admin-sidebar .sidebar-link {
+        position: relative;
+        justify-content: center;
+        padding-inline: 0;
+    }
+    .platform-shell:not([data-nav-open]) .admin-sidebar .sidebar-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+    .platform-shell:not([data-nav-open]) .admin-sidebar .sidebar-link:is(:hover, :focus-visible) .sidebar-label {
+        inset-inline-start: calc(100% - 2px); /* overlaps the rail edge (same fill) so no seam breaks the hover */
+        top: 0;
+        z-index: 50;
+        display: flex;
+        align-items: center;
+        width: max-content;
+        max-width: 16rem;
+        height: auto;
+        min-height: 100%;
+        padding-inline: 0.875rem;
+        overflow: visible;
+        clip-path: none;
+        white-space: normal;
+        border-radius: 0 0.25rem 0.25rem 0;
+        background: var(--color-sidebar-bg);
+        color: var(--color-sidebar-fg-hover);
+        box-shadow: var(--shadow-card);
+    }
+    .platform-shell:not([data-nav-open]) .admin-sidebar .sidebar-heading {
+        height: 1px;
+        margin: 0.5625rem 1.25rem;
+        padding: 0;
+        overflow: hidden;
+        background: var(--color-sidebar-hover);
+    }
+    .platform-shell:not([data-nav-open]) .admin-sidebar .sidebar-heading:first-child {
+        display: none;
+    }
+    .platform-shell:not([data-nav-open]) .admin-sidebar .brand-logo--light,
+    .platform-shell:not([data-nav-open]) .admin-sidebar .brand-logo--dark {
+        display: none;
+    }
+    .platform-shell:not([data-nav-open]) .admin-sidebar .brand-logo--sm {
+        display: block;
+    }
 }

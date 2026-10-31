@@ -12,8 +12,12 @@
 @endphp
 @if ($hasLogo)
     @if ($context === 'topbar')
-        {{-- Platform topbar: light bg → dark (blue) logo, single image. --}}
-        <img src="{{ asset($logo['dark']) }}" alt="{{ $brandName }}" class="brand-logo brand-logo--static h-7 w-auto">
+        {{-- Platform phone/tablet topbar (the sidebar is a drawer there): the compact mark, the
+             full logo from 840px — dark ink on the light scheme, light ink on the dark one. CSS
+             picks the one shown (admin-chrome.css). --}}
+        <img src="{{ asset($logo['sm']) }}" alt="{{ $brandName }}" class="brand-logo brand-logo--topbar-sm h-7 w-auto">
+        <img src="{{ asset($logo['dark']) }}" alt="{{ $brandName }}" class="brand-logo brand-logo--topbar-dark h-7 w-auto">
+        <img src="{{ asset($logo['light']) }}" alt="{{ $brandName }}" class="brand-logo brand-logo--topbar-light h-7 w-auto">
     @else
         {{-- Sidebar: CSS picks the variant by [data-sidebar] / [data-sidebar-size] (see admin-chrome.css). --}}
         <img src="{{ asset($logo['light']) }}" alt="{{ $brandName }}" class="brand-logo brand-logo--light h-12 w-auto">
