@@ -1,0 +1,584 @@
+/*
+ | Shared record-list rows (<x-bs-admin::list> and list.*; design 05 "Bài viết", flat rows).
+ | The list is a size container: every row lays itself out by the LIST's width —
+ |   below 600 (37.5rem)  a card: [select · name + meta] / [status … Xem Sửa ⋮], the button group
+ |                        wrapping whole onto its own line, right-aligned, when it does not fit;
+ |   600–899              one record per line: [select] [name + meta] [status] [buttons];
+ |   from 900 (56.25rem)  a table: a header row and the rows on ONE grid (subgrid), so a header
+ |                        always stands over its column; the author column joins from 1280 (80rem).
+ | Widths are in rem so the switches move with the reader's text size. Every size comes from the
+ | shared tokens (--spacing-hit, --spacing-control-row, --text-*); a screen passes content only.
+ | Names and meta text wrap and are never clipped.
+ */
+@layer components {
+    .list-rows {
+        /* The quick-edit button's size: the row check reads it to line up with the title line. */
+        --list-qe-s: var(--spacing-tap-cell);
+        container: list / inline-size;
+        min-width: 0;
+    }
+
+    @media (pointer: coarse) {
+        .list-rows {
+            --list-qe-s: var(--spacing-hit);
+        }
+    }
+
+    .list-g {
+        min-width: 0;
+        border-top: 1px solid var(--color-border);
+    }
+
+    .list-r {
+        box-sizing: border-box;
+        min-width: 0;
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .list-r:last-child {
+        border-bottom: 0;
+    }
+
+    @media (hover: hover) {
+        .list-r:not(.list-hd):hover {
+            background: var(--color-surface-muted);
+        }
+    }
+
+    .list-r[data-sel],
+    .list-r[data-sel]:hover {
+        background: color-mix(in srgb, var(--color-primary-text) 5%, var(--color-surface));
+    }
+
+    .list-c {
+        box-sizing: border-box;
+        min-width: 0;
+    }
+
+    .list-c-full {
+        padding: 3rem 1rem;
+        text-align: center;
+        color: var(--color-text-muted);
+    }
+
+    /* Header row: shown from 900 only. */
+    .list-hd {
+        display: none;
+        background: var(--color-surface-muted);
+        font-size: var(--text-small);
+        font-weight: 600;
+        color: var(--color-text-muted);
+    }
+
+    .list-sb {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        min-height: var(--spacing-hit);
+        padding: 0;
+        border: 0;
+        background: transparent;
+        font: inherit;
+        color: inherit;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .list-sb:hover,
+    .list-sb[data-a] {
+        color: var(--color-primary-text);
+    }
+
+    .list-sb-i {
+        flex: none;
+        width: calc(0.875rem + var(--user-text-boost));
+        height: calc(0.875rem + var(--user-text-boost));
+    }
+
+    /* Select box: a 44 × 44 button, the visible box 18px. */
+    .list-ck {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        width: var(--spacing-hit);
+        height: var(--spacing-hit);
+        padding: 0;
+        border: 0;
+        border-radius: 0.25rem;
+        background: transparent;
+        cursor: pointer;
+    }
+
+    .list-ck-text {
+        width: auto;
+        gap: 0.8125rem;
+        padding-inline: 0.8125rem 0.5rem;
+        margin-inline-start: -0.8125rem;
+        font-size: var(--text-body);
+        color: var(--color-text);
+    }
+
+    .list-box {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        width: 1.125rem;
+        height: 1.125rem;
+        border: 1px solid var(--color-border-input);
+        border-radius: 0.25rem;
+        background: var(--color-surface);
+        color: var(--color-on-primary);
+    }
+
+    .list-ck:hover .list-box {
+        border-color: var(--color-primary-text);
+    }
+
+    .list-ck:is([aria-checked='true'], [aria-checked='mixed']) .list-box {
+        border-color: var(--color-primary);
+        background: var(--color-primary);
+    }
+
+    .list-box-i {
+        width: 0.875rem;
+        height: 0.875rem;
+    }
+
+    .list-selbar {
+        display: flex;
+        align-items: center;
+        min-height: var(--spacing-hit);
+        padding-inline: 0.75rem;
+    }
+
+    /* Name: a link to the editor, wrapping, never clipped; the ✎ quick-edit button beside it. */
+    .list-tl {
+        display: block;
+        min-width: 0;
+    }
+
+    .list-name {
+        font-size: var(--text-body);
+        font-weight: 600;
+        line-height: 1.45;
+        color: var(--color-text-strong);
+        overflow-wrap: anywhere;
+    }
+
+    /* The tree mark of a child record, drawn in the 1.25rem indent the screen gives it. */
+    .list-tree {
+        display: inline-block;
+        flex: none;
+        width: 0.875rem;
+        height: 0.875rem;
+        margin-inline: -1.25rem 0.375rem;
+        vertical-align: -0.125rem;
+        color: var(--color-text-faint);
+    }
+
+    a.list-name:hover {
+        color: var(--color-primary-text);
+        text-decoration: underline;
+        text-underline-offset: 3px;
+    }
+
+    /* The ✎ is a small target in the name cell: 24 with a mouse at the default text size, 44 from
+       the next size up and on touch (one shared size, --spacing-tap-cell). */
+    .list-qe {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: var(--list-qe-s);
+        height: var(--list-qe-s);
+        margin-inline-start: 0.5rem;
+        padding: 0;
+        border: 0;
+        border-radius: 0.25rem;
+        background: transparent;
+        color: var(--color-text-muted);
+        vertical-align: middle;
+        cursor: pointer;
+    }
+
+    .list-qe:hover {
+        background: var(--color-surface-hover);
+        color: var(--color-primary-text);
+    }
+
+    .list-qe-i {
+        width: calc(1rem + var(--user-text-boost));
+        height: calc(1rem + var(--user-text-boost));
+    }
+
+    /* The title field that replaces the name while it is being edited. */
+    .list-in {
+        box-sizing: border-box;
+        width: 100%;
+        min-height: var(--spacing-control);
+        padding: 0.25rem 0.5rem;
+        border: 1px solid var(--color-primary-text);
+        border-radius: 0.25rem;
+        background: var(--color-surface);
+        font-size: var(--text-body);
+        font-weight: 600;
+        color: var(--color-text);
+    }
+
+    /* Meta line: pieces joined by " · ". Each dot sits in the gap before its piece; a dot that
+       would open a line falls left of the line box and is clipped away. */
+    .list-meta {
+        --list-dw: 0.5em;
+        --list-dg: 0.5rem;
+        position: relative;
+        z-index: 2;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        column-gap: calc(var(--list-dw) + 2 * var(--list-dg));
+        row-gap: 0.125rem;
+        margin-top: 0.25rem;
+        clip-path: inset(-100vh -100vw -100vh calc(-1 * var(--list-dg)));
+        font-size: var(--text-small);
+        line-height: 1.45;
+        color: var(--color-text-muted);
+    }
+
+    .list-m {
+        position: relative;
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .list-m::before {
+        content: '·';
+        display: inline-block;
+        width: var(--list-dw);
+        margin-inline: calc(-1 * (var(--list-dw) + var(--list-dg))) var(--list-dg);
+        text-align: center;
+        pointer-events: none;
+    }
+
+    .list-m[data-for='when'] {
+        display: none;
+    }
+
+    .list-rows[data-hide~='au'] .list-m[data-for='au'] {
+        display: none;
+    }
+
+    /* Status cell: the shared status pill, then the date line. */
+    .list-stw {
+        position: relative;
+        display: flex;
+        align-items: center;
+        min-height: var(--spacing-hit);
+    }
+
+    .list-st-meta {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: var(--text-caption);
+        color: var(--color-text-muted);
+    }
+
+    .list-au {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: var(--spacing-hit);
+        font-size: var(--text-body);
+        color: var(--color-text);
+        overflow-wrap: anywhere;
+    }
+
+    .list-avi {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        width: calc(1.625rem + var(--user-text-boost));
+        height: calc(1.625rem + var(--user-text-boost));
+        border-radius: 9999px;
+        font-size: var(--text-caption);
+        font-weight: 700;
+    }
+
+    /* Row buttons + ⋮. */
+    .list-acts {
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        min-height: var(--spacing-hit);
+    }
+
+    .list-acts > * {
+        flex: none;
+    }
+
+    .list-more {
+        position: relative;
+    }
+
+    .list-more-i {
+        width: calc(1rem + var(--user-text-boost));
+        height: calc(1rem + var(--user-text-boost));
+    }
+
+    .list-menu {
+        position: absolute;
+        top: calc(100% + 0.375rem);
+        right: 0;
+        z-index: 30;
+        min-width: 15rem;
+        max-width: min(20rem, calc(100vw - 2rem));
+        padding-block: 0.25rem;
+        border: 1px solid var(--color-border-strong);
+        border-radius: 0.375rem;
+        background: var(--color-surface);
+        box-shadow: 0 10px 30px rgb(15 18 30 / 0.18);
+        font-size: var(--text-body);
+        color: var(--color-text);
+        text-align: left;
+    }
+
+    .list-mi {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        box-sizing: border-box;
+        width: 100%;
+        min-height: var(--spacing-control);
+        padding: 0.5rem 0.875rem;
+        border: 0;
+        background: transparent;
+        font: inherit;
+        color: inherit;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    @media (pointer: coarse) {
+        .list-mi {
+            min-height: 3rem;
+        }
+    }
+
+    .list-mi:hover,
+    .list-mi:focus-visible {
+        background: var(--color-surface-hover);
+    }
+
+    .list-mi-i {
+        flex: none;
+        width: calc(1rem + var(--user-text-boost));
+        height: calc(1rem + var(--user-text-boost));
+        color: var(--color-text-muted);
+    }
+
+    .list-mi[data-t='danger'],
+    .list-mi[data-t='danger'] .list-mi-i {
+        color: var(--color-danger-text);
+    }
+
+    .list-msep {
+        height: 1px;
+        margin-block: 0.25rem;
+        background: var(--color-border);
+    }
+
+    /* ── Below 600: a card per record ─────────────────────────────────────────────────────── */
+    @container list (width < 37.5rem) {
+        .list-r:not(.list-hd) {
+            --list-nlh: calc((0.9375rem + var(--user-text-boost)) * 1.45);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            gap: 0.5rem;
+            padding: clamp(0.625rem, 2.5cqw, 0.75rem) 0.75rem;
+        }
+
+        /* The 18px box starts at the card's inner edge; its 44 frame overlaps the 8px gap. */
+        .list-c-chk {
+            display: flex;
+            flex: 0 0 var(--spacing-hit);
+            margin: calc(var(--list-nlh) / 2 - var(--spacing-hit) / 2) -0.5rem 0 calc((1.125rem - var(--spacing-hit)) / 2);
+        }
+
+        /* A quick-edit button makes the first title line as tall as the button. */
+        .list-r:has(.list-qe) > .list-c-chk {
+            margin-top: calc(max(var(--list-nlh), var(--list-qe-s)) / 2 - var(--spacing-hit) / 2);
+        }
+
+        .list-c-main {
+            flex: 1 1 calc(100% - var(--spacing-hit) - (1.125rem - var(--spacing-hit)) / 2);
+        }
+
+        .list-c-main .list-name {
+            font-size: calc(0.9375rem + var(--user-text-boost));
+            line-height: var(--list-nlh);
+        }
+
+        .list-c-st {
+            order: 1;
+            flex: 0 0 auto;
+            align-self: center;
+        }
+
+        .list-c-act {
+            order: 2;
+            flex: 0 0 auto;
+            margin-inline-start: auto;
+            align-self: center;
+        }
+
+        .list-c-au,
+        .list-st-meta {
+            display: none;
+        }
+
+        .list-m[data-for='when'] {
+            display: inline;
+        }
+
+        .list-stw,
+        .list-acts {
+            min-height: 0;
+        }
+    }
+
+    /* ── 600–899: one record per line ─────────────────────────────────────────────────────── */
+    @container list (37.5rem <= width < 56.25rem) {
+        .list-r:not(.list-hd) {
+            display: grid;
+            grid-template-columns: var(--spacing-hit) minmax(0, 1fr) auto auto;
+            grid-template-areas: 'chk main st act';
+            column-gap: 0.5rem;
+            row-gap: 0.5rem;
+            align-items: start;
+            padding: clamp(0.625rem, 2.5cqw, 0.75rem) 0.75rem;
+        }
+
+        .list-c-chk {
+            grid-area: chk;
+        }
+
+        .list-c-main {
+            grid-area: main;
+        }
+
+        .list-c-st {
+            grid-area: st;
+        }
+
+        .list-c-act {
+            grid-area: act;
+        }
+
+        .list-c-full {
+            grid-column: 1 / -1;
+        }
+
+        .list-c-au {
+            display: none;
+        }
+
+        .list-tl {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            min-height: var(--spacing-hit);
+        }
+    }
+
+    /* ── From 900: a table on one grid ────────────────────────────────────────────────────── */
+    @container list (width >= 56.25rem) {
+        .list-g {
+            display: grid;
+            grid-template-columns: [chk] 3.5rem [main] minmax(0, 1fr) [st] 10.75rem [act] auto [end];
+        }
+
+        .list-r {
+            display: grid;
+            grid-column: chk / end;
+            grid-template-columns: subgrid;
+            align-items: start;
+            min-height: calc(var(--spacing-hit) + 0.625rem);
+        }
+
+        .list-hd {
+            align-items: center;
+            min-height: 0;
+            padding-bottom: 0.625rem;
+        }
+
+        .list-c {
+            padding: 0.3125rem 0.5rem;
+        }
+
+        .list-hd > .list-c {
+            padding-block: 0.375rem 0;
+        }
+
+        .list-c-chk {
+            grid-column: chk;
+            padding-left: 0.75rem;
+            padding-right: 0;
+        }
+
+        .list-c-main {
+            grid-column: main;
+        }
+
+        .list-c-st {
+            grid-column: st;
+        }
+
+        .list-c-au {
+            display: none;
+            grid-column: au;
+        }
+
+        .list-c-act {
+            grid-column: act;
+            padding-right: 1rem;
+        }
+
+        .list-hd > .list-c-act {
+            text-align: right;
+        }
+
+        .list-c-full {
+            grid-column: chk / end;
+        }
+
+        .list-tl {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            min-height: var(--spacing-hit);
+        }
+
+        .list-acts {
+            column-gap: 0.625rem;
+        }
+    }
+
+    @container list (width >= 80rem) {
+        .list-rows:not([data-hide~='au']) .list-g {
+            grid-template-columns: [chk] 3.5rem [main] minmax(0, 1fr) [st] 10.75rem [au] 8.75rem [act] auto [end];
+        }
+
+        .list-rows:not([data-hide~='au']) .list-c-au {
+            display: block;
+        }
+
+        .list-rows:not([data-hide~='au']) .list-m[data-for='au'] {
+            display: none;
+        }
+    }
+}

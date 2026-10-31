@@ -6,6 +6,9 @@
 /* Admin chrome value switches (dark scheme, topbar/sidebar presets, zone overrides). */
 @import './admin-chrome.css';
 
+/* Shared record-list rows (<x-bs-admin::list>): layout by the list's own width. */
+@import './admin-list.css';
+
 /* Scan module Blade + bundled theme Blade + framework/runtime views so utility classes aren't purged. */
 @source '../../app/Modules/**/*.blade.php';
 @source '../../themes/**/*.blade.php';
@@ -217,6 +220,9 @@
     --spacing-control: calc(2.5rem + min(0.25rem, var(--user-text-boost) * 2));
     --spacing-control-row: calc(2.25rem + min(0.5rem, var(--user-text-boost) * 2));
     --spacing-hit: 2.75rem;
+    /* A small target inside a list's name cell (the quick-edit ✎): 24px with a mouse at the default
+       text size, 44px from the next size up; touch takes --spacing-hit. */
+    --spacing-tap-cell: min(2.75rem, calc(1.5rem + var(--user-text-boost) * 10));
 }
 
 /* Dense-table font sizes (Velzon fs-* scale): the caption and small roles. */

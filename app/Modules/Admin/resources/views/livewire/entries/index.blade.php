@@ -30,7 +30,6 @@
             ['bg' => '#d1fae5', 'fg' => '#047857'], ['bg' => '#fef3c7', 'fg' => '#b45309'],
             ['bg' => '#dbeafe', 'fg' => '#1d4ed8'], ['bg' => '#fee2e2', 'fg' => '#b91c1c'],
         ];
-        $sortIcon = fn (string $key): string => $sortKey !== $key ? 'chevron-up-down' : ($sortDir === 'asc' ? 'chevron-up' : 'chevron-down');
         // Gap 2 (design §3a): each tab's count badge is tinted by its OWN status, not by
         // whether the tab is active — literal Tailwind strings only (bg-{$x}/10 never compiles).
         $tabBadgeClass = fn (string $key): string => match ($key) {
@@ -211,134 +210,175 @@
                 </div>
             @endif
 
-            <x-bs-admin::table>
-                <thead>
-                    <tr>
-                        <th class="w-10">
-                            <input type="checkbox" @checked($pageUlids !== [] && array_diff($pageUlids, $selected) === [])
-                                wire:click="toggleSelectAll(@js($pageUlids))" aria-label="{{ __('entries.select_all') }}"
-                                class="size-4 rounded border-border-strong text-accent focus:ring-admin-primary/30">
-                        </th>
-                        <th class="w-full">
-                            <button type="button" wire:click="sortBy('name')" class="inline-flex items-center gap-1 hover:text-body-text">
-                                {{ __('entries.title_label') }} <x-bs-admin::icon :name="$sortIcon('name')" class="size-3.5 {{ $sortKey === 'name' ? 'text-accent' : '' }}" />
-                            </button>
-                        </th>
-                        <th x-show="cols.path">{{ __('entries.col_path') }}</th>
-                        <th>
-                            <button type="button" wire:click="sortBy('status')" class="inline-flex items-center gap-1 hover:text-body-text">
-                                {{ __('entries.col_status') }} <x-bs-admin::icon :name="$sortIcon('status')" class="size-3.5 {{ $sortKey === 'status' ? 'text-accent' : '' }}" />
-                            </button>
-                        </th>
-                        <th x-show="cols.langs">{{ __('entries.col_language') }}</th>
-                        <th x-show="cols.creator">
-                            <button type="button" wire:click="sortBy('creator')" class="inline-flex items-center gap-1 hover:text-body-text">
-                                {{ __('entries.col_creator') }} <x-bs-admin::icon :name="$sortIcon('creator')" class="size-3.5 {{ $sortKey === 'creator' ? 'text-accent' : '' }}" />
-                            </button>
-                        </th>
-                        <th class="w-[132px] text-center">{{ __('entries.col_actions') }}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($rows as $row)
-                        @php
-                            $entry = $row['entry'];
-                            $depth = $row['depth'];
-                            $t = $entry->translations->firstWhere('locale', $locale);
-                            $route = $entry->routes->firstWhere('locale', $locale);
-                            $path = $route?->path ?? ($t?->slug ? '/'.ltrim($t->slug, '/') : null);
-                            $isHome = $path === '/' || $t?->slug === $homeSlug;
-                            $status = $entry->status;
-                            $isScheduled = $status === 'scheduled';
-                            $creator = $entry->author?->name;
-                            $parts = $creator ? preg_split('/\s+/', trim($creator)) : [];
-                            $initials = $parts ? mb_strtoupper(mb_substr($parts[0], 0, 1).(count($parts) > 1 ? mb_substr(end($parts), 0, 1) : '')) : '—';
-                            $c = $avatarPalette[$creator ? abs(crc32($creator)) % count($avatarPalette) : 0];
-                            $when = $siteTime->forDisplay($isScheduled ? $entry->published_at : $entry->updated_at);
-                            $slugLeaf = $t?->slug;
-                            $slugPrefix = ($path !== null && $slugLeaf) ? \Illuminate\Support\Str::beforeLast($path, $slugLeaf) : '/';
-                        @endphp
-                        <tr wire:key="entry-{{ $entry->ulid }}">
-                            <td class="align-top">
-                                <input type="checkbox" wire:model.live="selected" value="{{ $entry->ulid }}"
-                                    aria-label="{{ __('entries.select_row') }}"
-                                    class="mt-0.5 size-4 rounded border-border-strong text-accent focus:ring-admin-primary/30">
-                            </td>
-                            <td class="w-full">
-                                <div @class(['flex items-center gap-1.5', 'pl-5' => $depth]) x-data="{ editing: false, value: @js($t?->title ?? ''), cancel: false }">
-                                    @if ($depth)
-                                        <x-bs-admin::icon name="chevron-right" class="size-3.5 shrink-0 text-placeholder" />
-                                    @endif
-                                    @if ($canEdit && ! $entry->trashed())
-                                        <button type="button" x-show="!editing"
-                                            @click="editing = true; cancel = false; $nextTick(() => { $refs.titleInput.focus(); $refs.titleInput.select() })"
-                                            title="{{ __('entries.edit_name_hint') }}"
-                                            class="group relative -mx-1 rounded py-0.5 pl-1 pr-5 text-left font-medium text-text transition-colors hover:bg-primary-soft hover:text-primary-text">{{ $t?->title ?? __('entries.untitled') }}
-                                            <x-bs-admin::icon name="ri-pencil" class="pointer-events-none absolute right-1.5 top-1/2 size-3 -translate-y-1/2 text-accent opacity-0 transition-opacity group-hover:opacity-100" />
-                                        </button>
-                                        <input type="text" x-show="editing" x-cloak x-ref="titleInput" x-model="value"
-                                            @keydown.enter.prevent="cancel = false; $el.blur()"
-                                            @keydown.escape="cancel = true; $el.blur()"
-                                            @blur="editing = false; if (! cancel) { $wire.saveTitle(@js($entry->ulid), value) }"
-                                            class="w-full rounded border border-accent bg-white px-1 py-0.5 text-sm font-medium text-body-text">
-                                    @else
-                                        <span class="font-medium text-body-text">{{ $t?->title ?? __('entries.untitled') }}</span>
-                                    @endif
+            @php
+                $pageSelected = count(array_intersect($pageUlids, $selected));
+                $allState = $pageUlids !== [] && $pageSelected === count($pageUlids) ? true : ($pageSelected > 0 ? 'mixed' : false);
+                $selectAllCall = 'toggleSelectAll(['.collect($pageUlids)->map(fn (string $u): string => "'".$u."'")->implode(',').'])';
+                $ariaSort = fn (string $key): string => $sortKey !== $key ? 'none' : ($sortDir === 'asc' ? 'ascending' : 'descending');
+                $Js = \Illuminate\Support\Js::class;
+            @endphp
+            {{-- The shared list row: a card below 600, one record per line to 900, a table from 900
+                 (by the list's own width). The author column hides with the column picker. --}}
+            <x-bs-admin::list :label="__('entries.list_label', ['label' => $sectionLabel])" class="-mx-4" x-bind:data-hide="cols.creator ? '' : 'au'">
+                @if ($pageUlids !== [])
+                    <x-slot:select>
+                        <x-bs-admin::list.check :checked="$allState" :label="__('entries.select_all')" visible :wire:click="$selectAllCall" />
+                    </x-slot:select>
+                @endif
+
+                <x-bs-admin::list.head>
+                    <x-bs-admin::list.cell head col="chk">
+                        @if ($pageUlids !== [])
+                            <x-bs-admin::list.check :checked="$allState" :label="__('entries.select_all')" :wire:click="$selectAllCall" />
+                        @endif
+                    </x-bs-admin::list.cell>
+                    <x-bs-admin::list.cell head col="main" :sort="$ariaSort('name')">
+                        <x-bs-admin::list.sort :active="$sortKey === 'name'" :dir="$sortDir" wire:click="sortBy('name')">{{ __('entries.title_label') }}</x-bs-admin::list.sort>
+                    </x-bs-admin::list.cell>
+                    <x-bs-admin::list.cell head col="st" :sort="$ariaSort('status')">
+                        <x-bs-admin::list.sort :active="$sortKey === 'status'" :dir="$sortDir" wire:click="sortBy('status')">{{ __('entries.col_status') }}</x-bs-admin::list.sort>
+                    </x-bs-admin::list.cell>
+                    <x-bs-admin::list.cell head col="au" :sort="$ariaSort('creator')">
+                        <x-bs-admin::list.sort :active="$sortKey === 'creator'" :dir="$sortDir" wire:click="sortBy('creator')">{{ __('entries.col_creator') }}</x-bs-admin::list.sort>
+                    </x-bs-admin::list.cell>
+                    <x-bs-admin::list.cell head col="act">{{ __('entries.col_actions') }}</x-bs-admin::list.cell>
+                </x-bs-admin::list.head>
+
+                @forelse ($rows as $row)
+                    @php
+                        $entry = $row['entry'];
+                        $depth = $row['depth'];
+                        $t = $entry->translations->firstWhere('locale', $locale);
+                        $route = $entry->routes->firstWhere('locale', $locale);
+                        $path = $route?->path ?? ($t?->slug ? '/'.ltrim($t->slug, '/') : null);
+                        $isHome = $path === '/' || $t?->slug === $homeSlug;
+                        $status = $entry->status;
+                        $isScheduled = $status === 'scheduled';
+                        $trashed = $entry->trashed();
+                        $title = $t?->title ?? __('entries.untitled');
+                        $isSelected = in_array($entry->ulid, $selected, true);
+                        $creator = $entry->author?->name;
+                        $parts = $creator ? preg_split('/\s+/', trim($creator)) : [];
+                        $initials = $parts ? mb_strtoupper(mb_substr($parts[0], 0, 1).(count($parts) > 1 ? mb_substr(end($parts), 0, 1) : '')) : '—';
+                        $c = $avatarPalette[$creator ? abs(crc32($creator)) % count($avatarPalette) : 0];
+                        $when = $siteTime->forDisplay($isScheduled ? $entry->published_at : $entry->updated_at);
+                        $whenText = $when ? ($isScheduled
+                            ? __('entries.scheduled_prefix').' '.$when->locale(app()->getLocale())->isoFormat('D MMM, Y').' · '.$when->format('H:i')
+                            : $when->locale(app()->getLocale())->isoFormat('D MMM, Y')) : null;
+                        $slugLeaf = $t?->slug;
+                        $slugPrefix = ($path !== null && $slugLeaf) ? \Illuminate\Support\Str::beforeLast($path, $slugLeaf) : '/';
+                        $quickEdit = $canEdit && ! $trashed;
+                    @endphp
+                    <x-bs-admin::list.row :selected="$isSelected" wire:key="entry-{{ $entry->ulid }}"
+                        x-data="{ editing: false, value: {{ $Js::from($t?->title ?? '') }}, cancel: false }"
+                        x-on:list-quick-edit="editing = true; cancel = false">
+                        <x-bs-admin::list.cell col="chk">
+                            <x-bs-admin::list.check :checked="$isSelected" :label="__('entries.select_named', ['title' => $title])" wire:click="toggleSelectAll(['{{ $entry->ulid }}'])" />
+                        </x-bs-admin::list.cell>
+
+                        <x-bs-admin::list.cell col="main">
+                            <div @class(['pl-5' => $depth])>
+                                <div x-show="! editing">
+                                    <x-bs-admin::list.name :href="$trashed ? null : route('admin.entries.edit', ['ulid' => $entry->ulid])"
+                                        :quick-edit="$quickEdit ? __('entries.quick_edit_named', ['title' => $title]) : null" :child="$depth > 0">{{ $title }}</x-bs-admin::list.name>
                                 </div>
-                                <div @class(['mt-0.5 flex items-center gap-1 text-[11px] text-placeholder', 'pl-5' => $depth])>
-                                    <x-bs-admin::icon name="ri-eye" class="size-3" />
-                                    {{ $entry->view_count > 0 ? __('entries.views_count', ['count' => number_format($entry->view_count)]) : __('entries.no_views') }}
-                                </div>
-                            </td>
-                            <td x-show="cols.path" class="align-top font-mono text-xs text-body-muted">
-                                @if ($isHome)
-                                    <span class="inline-flex items-center gap-1 text-placeholder" title="{{ __('entries.home_locked') }}">{{ $path ?? '/' }} <x-bs-admin::icon name="ri-lock" class="size-3" /></span>
-                                @elseif ($canEdit && ! $entry->trashed())
-                                    <div wire:key="slug-{{ $entry->ulid }}-{{ $slugLeaf }}" x-data="{ editing: false, value: @js($slugLeaf ?? ''), cancel: false }" class="flex max-w-[240px] items-center">
-                                        <button type="button" x-show="!editing"
-                                            @click="editing = true; cancel = false; $nextTick(() => { $refs.slugInput.focus(); $refs.slugInput.select() })"
-                                            title="{{ $path }} · {{ __('entries.edit_hint') }}"
-                                            class="group relative -mx-1 truncate rounded py-0.5 pl-1 pr-4 text-text-muted transition-colors hover:bg-primary-soft hover:text-primary-text">{{ $path ?? '—' }}
-                                            <x-bs-admin::icon name="ri-pencil" class="pointer-events-none absolute right-1 top-1/2 size-2.5 -translate-y-1/2 text-accent opacity-0 transition-opacity group-hover:opacity-100" />
-                                        </button>
-                                        <span x-show="editing" x-cloak class="flex w-full items-center gap-0.5">
-                                            <span class="whitespace-nowrap text-placeholder">{{ $slugPrefix }}</span>
-                                            <input type="text" x-ref="slugInput" x-model="value"
-                                                @keydown.enter.prevent="cancel = false; $el.blur()"
-                                                @keydown.escape="cancel = true; $el.blur()"
-                                                @blur="editing = false; if (! cancel) { $wire.saveSlug(@js($entry->ulid), value) }"
-                                                class="min-w-0 flex-1 rounded border border-accent bg-white px-1 py-0.5">
-                                        </span>
-                                    </div>
-                                @else
-                                    <span class="block max-w-[240px] truncate" title="{{ $path }}">{{ $path ?? '—' }}</span>
+                                @if ($quickEdit)
+                                    <input type="text" x-show="editing" x-cloak x-model="value" class="list-in"
+                                        aria-label="{{ __('entries.quick_edit_named', ['title' => $title]) }}"
+                                        x-init="$watch('editing', on => on && $nextTick(() => { $el.focus(); $el.select() }))"
+                                        @keydown.enter.prevent="cancel = false; $el.blur()"
+                                        @keydown.escape="cancel = true; $el.blur()"
+                                        @blur="editing = false; if (! cancel) { $wire.saveTitle(@js($entry->ulid), value) }">
                                 @endif
-                            </td>
-                            <td class="whitespace-nowrap align-top">
-                                @if ($canPublish && ! $entry->trashed())
-                                    <div x-data="{ open: false, sched: false }" @click.outside="open = false; sched = false" class="relative inline-block">
+
+                                <x-bs-admin::list.meta>
+                                    <span class="list-m" x-show="cols.path">
+                                        @if ($isHome)
+                                            <span class="inline-flex items-center gap-1 font-mono text-caption" title="{{ __('entries.home_locked') }}">{{ $path ?? '/' }} <x-bs-admin::icon name="ri-lock" class="size-3" /></span>
+                                        @elseif ($canEdit && ! $trashed)
+                                            <span wire:key="slug-{{ $entry->ulid }}-{{ $slugLeaf }}" x-data="{ editing: false, value: @js($slugLeaf ?? ''), cancel: false }">
+                                                <button type="button" x-show="! editing"
+                                                    @click="editing = true; cancel = false; $nextTick(() => { $refs.slugInput.focus(); $refs.slugInput.select() })"
+                                                    title="{{ $path }} · {{ __('entries.edit_hint') }}"
+                                                    class="min-h-tap-cell rounded px-1 -mx-1 text-left font-mono text-caption text-text-muted [overflow-wrap:anywhere] transition-colors hover:bg-primary-soft hover:text-primary-text">{{ $path ?? '—' }}</button>
+                                                <span x-show="editing" x-cloak class="inline-flex w-full items-center gap-0.5 font-mono text-caption">
+                                                    <span class="whitespace-nowrap text-placeholder">{{ $slugPrefix }}</span>
+                                                    <input type="text" x-ref="slugInput" x-model="value" aria-label="{{ __('entries.col_path') }}"
+                                                        @keydown.enter.prevent="cancel = false; $el.blur()"
+                                                        @keydown.escape="cancel = true; $el.blur()"
+                                                        @blur="editing = false; if (! cancel) { $wire.saveSlug(@js($entry->ulid), value) }"
+                                                        class="min-h-tap-cell min-w-0 flex-1 rounded border border-primary-text bg-surface px-1">
+                                                </span>
+                                            </span>
+                                        @else
+                                            <span class="font-mono text-caption" title="{{ $path }}">{{ $path ?? '—' }}</span>
+                                        @endif
+                                    </span>
+                                    <span class="list-m" x-show="cols.langs">
+                                        <span class="inline-flex flex-wrap items-center gap-1 align-middle">
+                                            @foreach ($locales as $lc)
+                                                @php
+                                                    $has = $entry->translations->contains(fn ($tr) => $tr->locale === $lc);
+                                                    $langHint = $has
+                                                        ? __('entries.edit_translation_hint', ['lang' => __('entries.language_'.$lc), 'title' => $t?->title ?? '—'])
+                                                        : __('entries.add_translation_hint', ['lang' => __('entries.language_'.$lc), 'title' => $t?->title ?? '—']);
+                                                @endphp
+                                                {{-- The code itself isn't clickable; hover reveals a floating Sửa/Thêm that opens the editor for that locale
+                                                     (not on a Trash row: the editor does not open trashed content). The popover is wrapped with a
+                                                     padding-gap (not a margin) + pointer-events so the cursor can travel onto it without the hover dropping. --}}
+                                                <span class="group relative inline-flex">
+                                                    <span @if ($canEdit && ! $trashed) title="{{ $langHint }}" @endif @class([
+                                                        'inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none',
+                                                        'border border-border bg-surface-muted text-text' => $has,
+                                                        'border border-dashed border-border-strong text-placeholder' => ! $has,
+                                                    ])>{{ strtoupper($lc) }}</span>
+                                                    @if ($canEdit && ! $trashed)
+                                                        <span class="pointer-events-none absolute bottom-full left-1/2 z-20 -translate-x-1/2 pb-1.5 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
+                                                            <a href="{{ route('admin.entries.edit', ['ulid' => $entry->ulid, 'locale' => $lc]) }}" wire:navigate title="{{ $langHint }}"
+                                                                class="inline-flex items-center gap-1 whitespace-nowrap rounded px-2 py-1 text-[11px] font-semibold text-on-primary shadow-lg {{ $has ? 'bg-primary' : 'bg-success' }}">
+                                                                <x-bs-admin::icon :name="$has ? 'ri-pencil' : 'ri-add'" class="size-3" />
+                                                                {{ $has ? __('entries.edit_action') : __('entries.add_translation') }}
+                                                            </a>
+                                                        </span>
+                                                    @endif
+                                                </span>
+                                            @endforeach
+                                        </span>
+                                    </span>
+                                    <span class="list-m">{{ $entry->view_count > 0 ? __('entries.views_count', ['count' => number_format($entry->view_count)]) : __('entries.no_views') }}</span>
+                                    @if ($creator)
+                                        <span class="list-m" data-for="au">{{ $creator }}</span>
+                                    @endif
+                                    @if ($whenText)
+                                        <span class="list-m" data-for="when">{{ $whenText }}</span>
+                                    @endif
+                                </x-bs-admin::list.meta>
+                            </div>
+                        </x-bs-admin::list.cell>
+
+                        <x-bs-admin::list.cell col="st">
+                            <div class="list-stw">
+                                @if ($canPublish && ! $trashed)
+                                    <div x-data="{ open: false, sched: false }" @click.outside="open = false; sched = false" @keydown.escape="open = false; sched = false" class="relative inline-block">
                                         <x-bs-admin::status-pill button :status="$status" x-on:click="open = ! open" x-bind:aria-expanded="open.toString()" aria-haspopup="true" title="{{ __('entries.status_menu_label') }}">{{ __('entries.status_'.$status) }}<span class="sr-only"> · {{ __('entries.status_menu_label') }}</span></x-bs-admin::status-pill>
                                         <div x-show="open" x-cloak x-transition
-                                            class="absolute left-0 z-30 mt-1 w-48 rounded-lg border border-border bg-surface p-1 shadow-lg">
+                                            class="absolute left-0 z-30 mt-1 w-56 rounded-lg border border-border bg-surface p-1 shadow-lg">
                                             @foreach (['published', 'draft', 'private'] as $opt)
-                                                <button type="button" x-on:click="$wire.changeStatus(@js($entry->ulid), @js($opt)); open = false"
-                                                    class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-surface-hover">
+                                                <button type="button" x-on:click="$wire.changeStatus(@js($entry->ulid), @js($opt)); open = false" class="list-mi rounded">
                                                     <x-bs-admin::status-pill :status="$opt">{{ __('entries.status_'.$opt) }}</x-bs-admin::status-pill>
-                                                    @if ($status === $opt)<x-bs-admin::icon name="ri-check" class="ml-auto size-3.5 text-accent" />@endif
+                                                    @if ($status === $opt)<x-bs-admin::icon name="ri-check" class="ml-auto size-3.5 text-primary-text" />@endif
                                                 </button>
                                             @endforeach
                                             <div class="mt-0.5 border-t border-border pt-0.5">
-                                                <button type="button" @click="sched = ! sched"
-                                                    class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-surface-hover">
+                                                <button type="button" @click="sched = ! sched" x-bind:aria-expanded="sched.toString()" class="list-mi rounded">
                                                     <x-bs-admin::status-pill status="scheduled">{{ __('entries.status_scheduled') }}</x-bs-admin::status-pill>
                                                     <x-bs-admin::icon name="chevron-down" class="ml-auto size-3.5 text-placeholder transition-transform" ::class="sched && 'rotate-180'" />
                                                 </button>
                                                 <div x-show="sched" x-cloak class="px-2 pb-1.5 pt-1">
-                                                    <label class="mb-1 block text-[11px] text-body-muted">{{ __('entries.schedule_at') }}</label>
-                                                    <input type="datetime-local" x-ref="when" min="{{ $siteTime->now()->format('Y-m-d\TH:i') }}"
-                                                        class="w-full rounded border border-border-strong bg-surface px-2 py-1 text-xs text-body-text">
-                                                    <button type="button" x-on:click="$wire.scheduleEntry(@js($entry->ulid), $refs.when.value); open = false; sched = false"
-                                                        class="mt-1.5 w-full rounded bg-admin-primary py-1 text-xs font-medium text-white transition-opacity hover:opacity-90">{{ __('entries.schedule_set_action') }}</button>
+                                                    <label for="sched-{{ $entry->ulid }}" class="mb-1 block text-caption text-text-muted">{{ __('entries.schedule_at') }}</label>
+                                                    <input id="sched-{{ $entry->ulid }}" type="datetime-local" x-ref="when" min="{{ $siteTime->now()->format('Y-m-d\TH:i') }}"
+                                                        class="min-h-control w-full rounded border border-border-input bg-surface px-2 text-small text-text">
+                                                    <x-bs-admin::button size="sm" class="mt-1.5 w-full" x-on:click="$wire.scheduleEntry({{ $Js::from($entry->ulid) }}, $refs.when.value); open = false; sched = false">{{ __('entries.schedule_set_action') }}</x-bs-admin::button>
                                                 </div>
                                             </div>
                                         </div>
@@ -346,108 +386,78 @@
                                 @else
                                     <x-bs-admin::status-pill :status="$status">{{ __('entries.status_'.$status) }}</x-bs-admin::status-pill>
                                 @endif
-                                @if ($when)
-                                    <div class="mt-1 flex items-center gap-1 text-[11px] text-placeholder">
-                                        <x-bs-admin::icon :name="$isScheduled ? 'ri-time' : 'ri-history'" class="size-3" />
-                                        @if ($isScheduled)
-                                            {{ __('entries.scheduled_prefix') }} {{ $when->locale(app()->getLocale())->isoFormat('D MMM, Y') }} · {{ $when->format('H:i') }}
-                                        @else
-                                            {{ $when->locale(app()->getLocale())->isoFormat('D MMM, Y') }}
-                                        @endif
-                                    </div>
-                                @endif
-                            </td>
-                            <td x-show="cols.langs" class="whitespace-nowrap align-top">
-                                <div class="flex flex-wrap items-center gap-1">
-                                    @foreach ($locales as $lc)
-                                        @php $has = $entry->translations->contains(fn ($tr) => $tr->locale === $lc); @endphp
-                                        {{-- The code itself isn't clickable; hover reveals a floating Sửa/Thêm that opens the editor for that locale
-                                             (not on a Trash row: the editor does not open trashed content). --}}
-                                        <div class="group relative">
-                                            <span @if ($canEdit && ! $entry->trashed()) title="{{ $has ? __('entries.edit_translation_hint', ['lang' => __('entries.language_'.$lc), 'title' => $t?->title ?? '—']) : __('entries.add_translation_hint', ['lang' => __('entries.language_'.$lc), 'title' => $t?->title ?? '—']) }}" @endif @class([
-                                                'inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none',
-                                                'border border-border bg-surface-muted text-body-text' => $has,
-                                                'border border-dashed border-border-strong text-placeholder' => ! $has,
-                                            ])>{{ strtoupper($lc) }}</span>
-                                            @if ($canEdit && ! $entry->trashed())
-                                                {{-- §3a: the popover is wrapped with a padding-gap (not a margin) + pointer-events so the
-                                                     cursor can travel from the chip onto the Sửa/Thêm button without the hover dropping. --}}
-                                                <span class="pointer-events-none absolute bottom-full left-1/2 z-20 -translate-x-1/2 pb-1.5 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
-                                                    <a href="{{ route('admin.entries.edit', ['ulid' => $entry->ulid, 'locale' => $lc]) }}" wire:navigate
-                                                        title="{{ $has ? __('entries.edit_translation_hint', ['lang' => __('entries.language_'.$lc), 'title' => $t?->title ?? '—']) : __('entries.add_translation_hint', ['lang' => __('entries.language_'.$lc), 'title' => $t?->title ?? '—']) }}"
-                                                        class="inline-flex items-center gap-1 whitespace-nowrap rounded px-2 py-1 text-[11px] font-semibold text-white shadow-lg {{ $has ? 'bg-admin-primary' : 'bg-admin-success-solid' }}">
-                                                        <x-bs-admin::icon :name="$has ? 'ri-pencil' : 'ri-add'" class="size-3" />
-                                                        {{ $has ? __('entries.edit_action') : __('entries.add_translation') }}
-                                                    </a>
-                                                </span>
-                                            @endif
-                                        </div>
-                                    @endforeach
+                            </div>
+                            @if ($whenText)
+                                <div class="list-st-meta">
+                                    <x-bs-admin::icon :name="$isScheduled ? 'ri-time' : 'ri-history'" class="size-3 shrink-0" />
+                                    <span>{{ $whenText }}</span>
                                 </div>
-                            </td>
-                            <td x-show="cols.creator" class="whitespace-nowrap">
-                                <div class="flex items-center gap-2">
-                                    <span class="grid size-6 shrink-0 place-items-center rounded-full text-[10px] font-bold" style="background: {{ $c['bg'] }}; color: {{ $c['fg'] }};">{{ $initials }}</span>
-                                    <span class="text-sm text-body-text">{{ $creator ?? '—' }}</span>
-                                </div>
-                            </td>
-                            <td class="whitespace-nowrap text-right align-top">
-                                <div class="inline-flex items-center gap-0.5">
-                                    @if ($entry->trashed())
-                                        @if ($canDelete)
-                                            <button type="button" wire:click="restore('{{ $entry->ulid }}')" title="{{ __('entries.action_restore') }}"
-                                                class="grid size-7 place-items-center rounded text-body-muted transition-colors hover:bg-surface-hover hover:text-body-text">
-                                                <x-bs-admin::icon name="ri-refresh" class="size-4" />
-                                            </button>
-                                            <button type="button" title="{{ __('entries.action_destroy') }}"
-                                                x-on:click="$bsConfirm({ icon: 'trash-danger', text: @js(__('entries.force_delete_confirm')), confirm: @js(__('entries.action_destroy')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.forceDelete(@js($entry->ulid)))"
-                                                class="grid size-7 place-items-center rounded text-body-muted transition-colors hover:bg-surface-hover hover:text-admin-danger-text">
-                                                <x-bs-admin::icon name="ri-delete-bin" class="size-4" />
-                                            </button>
-                                        @endif
-                                    @else
-                                        @if ($path)
-                                            <a href="{{ $path }}" target="_blank" rel="noopener" title="{{ __('entries.action_preview') }}"
-                                                class="grid size-7 place-items-center rounded text-body-muted transition-colors hover:bg-surface-hover hover:text-body-text">
-                                                <x-bs-admin::icon name="ri-eye" class="size-4" />
-                                            </a>
-                                        @endif
-                                        <a href="{{ route('admin.entries.edit', ['ulid' => $entry->ulid]) }}" wire:navigate title="{{ __('entries.edit_action') }}"
-                                            class="grid size-7 place-items-center rounded text-body-muted transition-colors hover:bg-surface-hover hover:text-body-text">
-                                            <x-bs-admin::icon name="ri-pencil" class="size-4" />
-                                        </a>
-                                        @if ($canCreate)
-                                            <button type="button" wire:click="duplicate('{{ $entry->ulid }}')" title="{{ __('entries.action_duplicate') }}"
-                                                class="grid size-7 place-items-center rounded text-body-muted transition-colors hover:bg-surface-hover hover:text-body-text">
-                                                <x-bs-admin::icon name="ri-file-copy" class="size-4" />
-                                            </button>
-                                        @endif
-                                        @if ($canDelete)
-                                            <button type="button" title="{{ __('entries.action_trash') }}"
-                                                x-on:click="$bsConfirm({ icon: 'trash', text: @js(__('entries.trash_confirm')), confirm: @js(__('entries.action_trash')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.trash(@js($entry->ulid)))"
-                                                class="grid size-7 place-items-center rounded text-body-muted transition-colors hover:bg-surface-hover hover:text-admin-danger-text">
-                                                <x-bs-admin::icon name="ri-delete-bin" class="size-4" />
-                                            </button>
-                                        @endif
+                            @endif
+                        </x-bs-admin::list.cell>
+
+                        <x-bs-admin::list.cell col="au">
+                            <span class="list-au">
+                                <span class="list-avi" aria-hidden="true" style="background: {{ $c['bg'] }}; color: {{ $c['fg'] }};">{{ $initials }}</span>
+                                <span>{{ $creator ?? '—' }}</span>
+                            </span>
+                        </x-bs-admin::list.cell>
+
+                        <x-bs-admin::list.cell col="act">
+                            <x-bs-admin::list.actions :name="$title">
+                                @if ($trashed)
+                                    @if ($canDelete)
+                                        <x-bs-admin::button size="sm" variant="soft" color="primary" wire:click="restore('{{ $entry->ulid }}')">
+                                            <x-bs-admin::icon name="ri-arrow-go-back" class="size-4" /> {{ __('entries.action_restore') }}
+                                        </x-bs-admin::button>
+                                        <x-slot:menu>
+                                            <x-bs-admin::list.menu-item icon="ri-delete-bin" danger
+                                                x-on:click="$bsConfirm({ icon: 'trash-danger', text: {{ $Js::from(__('entries.force_delete_confirm')) }}, confirm: {{ $Js::from(__('entries.action_destroy')) }}, cancel: {{ $Js::from(__('admin.cancel')) }} }).then(ok => ok && $wire.forceDelete({{ $Js::from($entry->ulid) }}))">{{ __('entries.action_destroy') }}</x-bs-admin::list.menu-item>
+                                        </x-slot:menu>
                                     @endif
-                                </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="7" class="py-12 text-center text-body-muted">
-                                @if ($tab === 'trash')
-                                    {{ __('entries.trash_empty') }}
-                                @elseif (trim($search) !== '')
-                                    {{ __('entries.search_empty') }}
                                 @else
-                                    {{ __('entries.empty') }}
+                                    @if ($path)
+                                        <x-bs-admin::button size="sm" variant="soft" color="secondary" :href="$path" :navigate="false" target="_blank" rel="noopener"
+                                            :title="__('entries.action_preview')" :aria-label="__('entries.view_named', ['title' => $title])">
+                                            <x-bs-admin::icon name="ri-eye" class="size-4" /> {{ __('admin.view') }}
+                                        </x-bs-admin::button>
+                                    @endif
+                                    <x-bs-admin::button size="sm" variant="soft" color="primary" :href="route('admin.entries.edit', ['ulid' => $entry->ulid])"
+                                        :aria-label="__('entries.edit_named', ['title' => $title])">
+                                        <x-bs-admin::icon name="ri-pencil" class="size-4" /> {{ __('entries.edit_action') }}
+                                    </x-bs-admin::button>
+                                    <x-slot:menu>
+                                        @if ($quickEdit)
+                                            <x-bs-admin::list.menu-item icon="ri-pencil" x-on:click="$dispatch('list-quick-edit')">{{ __('entries.quick_edit_title') }}</x-bs-admin::list.menu-item>
+                                        @endif
+                                        @if ($canCreate)
+                                            <x-bs-admin::list.menu-item icon="ri-file-copy" wire:click="duplicate('{{ $entry->ulid }}')">{{ __('entries.action_duplicate') }}</x-bs-admin::list.menu-item>
+                                        @endif
+                                        @if ($canDelete)
+                                            @if ($quickEdit || $canCreate)
+                                                <x-bs-admin::list.menu-sep />
+                                            @endif
+                                            <x-bs-admin::list.menu-item icon="ri-delete-bin" danger
+                                                x-on:click="$bsConfirm({ icon: 'trash', text: {{ $Js::from(__('entries.trash_confirm')) }}, confirm: {{ $Js::from(__('entries.action_trash')) }}, cancel: {{ $Js::from(__('admin.cancel')) }} }).then(ok => ok && $wire.trash({{ $Js::from($entry->ulid) }}))">{{ __('entries.action_trash') }}</x-bs-admin::list.menu-item>
+                                        @endif
+                                    </x-slot:menu>
                                 @endif
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </x-bs-admin::table>
+                            </x-bs-admin::list.actions>
+                        </x-bs-admin::list.cell>
+                    </x-bs-admin::list.row>
+                @empty
+                    <x-bs-admin::list.row>
+                        <x-bs-admin::list.cell col="full">
+                            @if ($tab === 'trash')
+                                {{ __('entries.trash_empty') }}
+                            @elseif (trim($search) !== '')
+                                {{ __('entries.search_empty') }}
+                            @else
+                                {{ __('entries.empty') }}
+                            @endif
+                        </x-bs-admin::list.cell>
+                    </x-bs-admin::list.row>
+                @endforelse
+            </x-bs-admin::list>
 
             <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
                 <span class="text-xs text-body-muted">
