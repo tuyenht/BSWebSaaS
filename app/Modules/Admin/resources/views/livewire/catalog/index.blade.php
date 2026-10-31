@@ -17,7 +17,7 @@
             <label for="catalog-search" class="sr-only">{{ __('catalog.search_placeholder') }}</label>
             <input type="search" id="catalog-search" wire:model.live.debounce.300ms="search"
                    placeholder="{{ __('catalog.search_placeholder') }}"
-                   class="block w-full rounded border border-border-strong bg-surface px-3 py-2 text-sm text-body-text placeholder:text-placeholder transition-colors focus:border-accent">
+                   class="field block w-full rounded border border-border-strong bg-surface px-3 text-text placeholder:text-placeholder transition-colors focus:border-primary-text">
         </div>
 
         <x-bs-admin::table>

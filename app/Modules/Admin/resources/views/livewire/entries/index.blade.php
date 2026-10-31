@@ -418,7 +418,7 @@
                                                 <div x-show="sched" x-cloak class="px-2 pb-1.5 pt-1">
                                                     <label for="sched-{{ $entry->ulid }}" class="mb-1 block text-caption text-text-muted">{{ __('entries.schedule_at') }}</label>
                                                     <input id="sched-{{ $entry->ulid }}" type="datetime-local" x-ref="when" min="{{ $siteTime->now()->format('Y-m-d\TH:i') }}"
-                                                        class="min-h-control w-full rounded border border-border-input bg-surface px-2 text-small text-text">
+                                                        class="field w-full rounded border border-border-input bg-surface px-2 text-text">
                                                     <x-bs-admin::button size="sm" class="mt-1.5 w-full" x-on:click="$wire.scheduleEntry({{ $Js::from($entry->ulid) }}, $refs.when.value); open = false; sched = false">{{ __('entries.schedule_set_action') }}</x-bs-admin::button>
                                                 </div>
                                             </div>

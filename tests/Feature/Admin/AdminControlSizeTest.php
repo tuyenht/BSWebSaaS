@@ -71,9 +71,9 @@ it('sizes the kit button by the tokens, never by padding alone', function (strin
     'row icon' => ['<x-bs-admin::button icon size="sm" aria-label="Xoá">×</x-bs-admin::button>', 'size-control-row', 'text-caption'],
 ]);
 
-it('sizes the kit input by the main control token, 44 on touch', function (): void {
+it('sizes the kit input by the shared field size (main control, 44 on touch)', function (): void {
     expect(classNames((string) $this->blade('<x-bs-admin::input name="email" label="Email" />')))
-        ->toContain('min-h-control', 'pointer-coarse:min-h-hit', 'text-body', 'aria-invalid:border-danger-text');
+        ->toContain('field', 'aria-invalid:border-danger-text');
 });
 
 it('marks a field the server rejected, and only that field', function (): void {

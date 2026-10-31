@@ -48,7 +48,7 @@
             <label class="flex min-w-0 flex-col gap-1 text-small text-text-muted">
                 {{ $section['range'][$end.'_label'] }}
                 <input type="date" wire:model.live="{{ $section['range'][$end] }}"
-                       class="min-h-control w-full min-w-0 rounded border border-border-input bg-surface px-2 text-body text-text pointer-coarse:min-h-hit">
+                       class="field w-full min-w-0 rounded border border-border-input bg-surface px-2 text-text">
             </label>
         @endforeach
     </div>

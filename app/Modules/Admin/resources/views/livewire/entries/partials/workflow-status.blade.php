@@ -245,7 +245,7 @@
                     </div>
                     <div class="flex flex-col gap-1.5">
                         <label class="text-xs font-semibold text-body-text" for="wf-who-{{ $action['key'] }}">{{ __('admin.wfb.assign_label') }} <span class="font-normal text-body-muted">{{ __('admin.wfb.assign_optional') }}</span></label>
-                        <select id="wf-who-{{ $action['key'] }}" wire:model="assignTo" class="min-h-[38px] w-full rounded border border-border bg-surface px-2.5 text-[13px] text-body-text focus:border-accent">
+                        <select id="wf-who-{{ $action['key'] }}" wire:model="assignTo" class="field w-full rounded border border-border bg-surface px-2.5 text-text focus:border-primary-text">
                             <option value="">{{ __('admin.wfb.assign_none') }}</option>
                             @foreach ($action['members'] as $member)
                                 <option value="{{ $member['id'] }}">{{ $member['name'] }}</option>

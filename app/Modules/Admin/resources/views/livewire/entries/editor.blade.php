@@ -11,18 +11,18 @@
     @endif
 
     <label>{{ __('entries.title_label') }}
-        <input type="text" wire:model="title">
+        <input type="text" wire:model="title" class="field">
     </label>
     @error('title') <p class="error">{{ $message }}</p> @enderror
 
     <label>{{ __('entries.slug_label') }}
-        <input type="text" wire:model="slug">
+        <input type="text" wire:model="slug" class="field">
     </label>
     @error('slug') <p class="error">{{ $message }}</p> @enderror
 
     @if ($type === 'post')
         <label>{{ __('entries.category_label') }}
-            <select wire:model="categoryId">
+            <select wire:model="categoryId" class="field">
                 <option value="">{{ __('entries.category_placeholder') }}</option>
                 @foreach ($categories as $category)
                     <option value="{{ $category['id'] }}">{{ $category['name'] }}</option>
