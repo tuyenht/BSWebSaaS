@@ -1,64 +1,63 @@
 <?php
 
+use App\Modules\Admin\Livewire\Catalog\Editor as CatalogEditor;
+use App\Modules\Catalog\Models\ProductTranslation;
+use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
 use App\Modules\Cms\Components\EntryGridComponent;
+use App\Modules\Cms\Data\TaxonomyData;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Identity\Models\User;
+use App\Modules\Rbac\Actions\InviteMember;
+use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Rbac\Exceptions\InvitationRejectedException;
+use App\Modules\Rbac\Models\Role;
+use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Shared\Support\Slugger;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Database\Events\QueryExecuted;
-use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Livewire\Livewire;
 
 /*
  * The slug and invitation-address lookups on website tables compare the citext column read as text
  * against a lower-cased value, because under RLS only a leakproof operator may become an index
- * condition and no citext operator is one. This pins the indexes built on that expression, the
- * lower-case CHECKs that keep the stored values findable, and plans the real queries as app_user
- * inside a website, with the generic plan a prepared statement gets (`plan_cache_mode =
- * force_generic_plan`), so a query rewritten back to a citext comparison fails here.
+ * condition and no citext operator is one. This pins the indexes built on that expression, that no
+ * lower-case CHECK holds old rows back yet, and plans the real queries as app_user inside a website,
+ * with the generic plan a prepared statement gets (`plan_cache_mode = force_generic_plan`), so a
+ * query rewritten back to a citext comparison fails here.
  */
-
-/** @var array<string, array{string, string}> constraint => [table, column] */
-const LCL_CHECKS = [
-    'taxonomy_translations_slug_lower_case' => ['taxonomy_translations', 'slug'],
-    'entry_translations_slug_lower_case' => ['entry_translations', 'slug'],
-    'product_translations_slug_lower_case' => ['product_translations', 'slug'],
-    'invitations_email_lower_case' => ['invitations', 'email'],
-];
-
-/** Puts a CHECK back as the migration leaves it: present and NOT VALID. */
-function lclResetCheck(string $constraint): void
-{
-    [$table, $column] = LCL_CHECKS[$constraint];
-    $admin = DB::connection('pgsql_admin');
-    $admin->statement("ALTER TABLE {$table} DROP CONSTRAINT IF EXISTS {$constraint}");
-    $admin->statement("ALTER TABLE {$table} ADD CONSTRAINT {$constraint} CHECK ({$column}::text = lower({$column}::text)) NOT VALID");
-}
-
-/** @return array<string, bool> constraint => validated */
-function lclValidated(): array
-{
-    $rows = DB::connection('pgsql_admin')->table('pg_constraint')
-        ->whereIn('conname', array_keys(LCL_CHECKS))
-        ->pluck('convalidated', 'conname')
-        ->all();
-    ksort($rows);
-
-    return $rows;
-}
 
 beforeEach(function (): void {
     seedTenancy();
-    foreach (array_keys(LCL_CHECKS) as $constraint) {
-        lclResetCheck($constraint);
-    }
 });
 
-afterEach(function (): void {
-    foreach (array_keys(LCL_CHECKS) as $constraint) {
-        lclResetCheck($constraint);
-    }
-});
+/** Catalog roles and permissions as a fresh install has them. */
+function lclSyncRbac(): void
+{
+    truncateRbac();
+    expect(Artisan::call('rbac:sync'))->toBe(0);
+    app(TeamContext::class)->forget();
+}
+
+/** 4000 products over sites 1 and 2, each with a Vietnamese link `ban-<id>`. */
+function lclSeedProducts(): void
+{
+    $admin = DB::connection('pgsql_admin');
+    $admin->statement("insert into products (ulid, site_id) select lpad(g::text, 26, '0'), 1 + g % 2 from generate_series(1, 4000) g");
+    $admin->statement("insert into product_translations (product_id, site_id, locale, name, slug) select id, site_id, 'vi', 'Bàn '||id, 'ban-'||id from products");
+    $admin->statement('analyze products, product_translations');
+}
+
+/** 4000 categories over sites 1 and 2, each with a Vietnamese link `muc-<id>`. */
+function lclSeedCategories(): void
+{
+    $admin = DB::connection('pgsql_admin');
+    $admin->statement("insert into taxonomies (site_id, vocabulary, position) select 1 + g % 2, 'post_cat', g from generate_series(1, 4000) g");
+    $admin->statement("insert into taxonomy_translations (taxonomy_id, site_id, locale, name, slug) select id, site_id, 'vi', 'Mục '||id, 'muc-'||id from taxonomies");
+    $admin->statement('analyze taxonomies, taxonomy_translations');
+}
 
 /**
  * The generic plan of $sql as app_user inside site 1 (RLS on), as JSON: the plan a prepared
@@ -153,30 +152,23 @@ it('drops the citext category index app_user could not use past the language', f
     expect(DB::selectOne("select to_regclass('taxonomy_translations_site_id_locale_slug_index') as idx")->idx)->toBeNull();
 });
 
-it('holds new links and invitation addresses to lower case', function (string $constraint): void {
-    [$table, $column] = LCL_CHECKS[$constraint];
-    $def = DB::connection('pgsql_admin')->selectOne(
-        'select pg_get_constraintdef(oid) as def from pg_constraint where conname = ? and conrelid = to_regclass(?)',
-        [$constraint, $table],
-    );
+it('adds no lower-case CHECK, so a row stored with capitals can still be saved', function (): void {
+    $checks = DB::connection('pgsql_admin')->table('pg_constraint')->where('conname', 'like', '%lower_case')->pluck('conname')->all();
+    expect($checks)->toBe([]);
 
-    expect($def?->def)->toBe("CHECK ((({$column})::text = lower(({$column})::text))) NOT VALID");
-})->with(array_keys(LCL_CHECKS));
-
-it('refuses a link stored with capitals', function (): void {
-    app(Tenancy::class)->enter(1, function (): void {
+    $saved = app(Tenancy::class)->enter(1, function (): string {
         $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
+        $translation = $category->translations()->create(['locale' => 'vi', 'name' => 'Tin tức', 'slug' => 'Tin-Tuc']);
+        $translation->update(['name' => 'Tin tức mới']);
 
-        expect(fn () => DB::transaction(fn () => $category->translations()->create(['locale' => 'vi', 'name' => 'Tin tức', 'slug' => 'Tin-Tuc'])))
-            ->toThrow(QueryException::class, 'taxonomy_translations_slug_lower_case');
+        return (string) $translation->fresh()?->name;
     });
+
+    expect($saved)->toBe('Tin tức mới');
 });
 
 it('plans the storefront grid category lookup on the slug index, generic plan included', function (): void {
-    $admin = DB::connection('pgsql_admin');
-    $admin->statement("insert into taxonomies (site_id, vocabulary, position) select 1 + g % 2, 'post_cat', g from generate_series(1, 4000) g");
-    $admin->statement("insert into taxonomy_translations (taxonomy_id, site_id, locale, name, slug) select id, site_id, 'vi', 'Mục '||id, 'muc-'||id from taxonomies");
-    $admin->statement('analyze taxonomies, taxonomy_translations');
+    lclSeedCategories();
 
     ['sql' => $sql, 'bindings' => $bindings] = lclCapture('taxonomy_translations', function (): void {
         app(EntryGridComponent::class)->data(['taxonomy_slug' => 'Muc-7', 'locale' => 'vi']);
@@ -214,53 +206,117 @@ it('plans the free-link probe and its fallback range on the entry slug index, ge
         ->and($scans[0][1])->toContain('~>=~ $')->toContain('~<~ $');
 });
 
-it('reports no capitals and leaves the CHECKs as they are without --validate', function (): void {
-    $this->artisan('db:lower-case-keys')
-        ->expectsOutputToContain('taxonomy_translations.slug: 0 rows with capitals · CHECK not validated')
-        ->expectsOutputToContain('invitations.email: 0 rows with capitals · CHECK not validated')
-        ->assertSuccessful();
+it('plans the category slug-taken check on the category slug index, generic plan included', function (): void {
+    lclSeedCategories();
 
-    expect(array_values(lclValidated()))->toBe([false, false, false, false]);
+    ['sql' => $sql, 'bindings' => $bindings] = lclCapture('taxonomy_translations', function (): void {
+        app(CreateTaxonomy::class)->handle('post_cat', null, new TaxonomyData(names: ['vi' => 'Mục mới'], slugs: ['vi' => 'muc-moi']));
+    }, 'slug::text = ?');
+
+    expect($bindings)->toContain('muc-moi');
+
+    $scans = lclScans(lclGenericPlan($sql, $bindings));
+    expect($scans)->toHaveCount(1)
+        ->and($scans[0][0])->toBe('taxonomy_translations_site_id_locale_slug_text_index')
+        ->and($scans[0][1])->toContain('(slug)::text = $');
 });
 
-it('names the rows with capitals, validates nothing while they remain, then validates every CHECK', function (): void {
+it('plans the product link rule on the product slug index, generic plan included', function (): void {
+    lclSyncRbac();
+    lclSeedProducts();
+    $editor = User::factory()->create();
+
+    ['sql' => $sql, 'bindings' => $bindings] = lclCapture('product_translations', function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage']);
+
+        Livewire::actingAs($editor->fresh())->test(CatalogEditor::class)
+            ->set('name', 'Bàn khác')->set('slug', 'Ban-7')->call('save')
+            ->assertHasErrors(['slug']);
+    }, 'slug::text = ?');
+
+    expect($bindings)->toContain('ban-7');
+
+    $scans = lclScans(lclGenericPlan($sql, $bindings));
+    expect($scans)->toHaveCount(1)
+        ->and($scans[0][0])->toBe('product_translations_site_id_locale_slug_text_index')
+        ->and($scans[0][1])->toContain('(slug)::text = $');
+});
+
+it('plans the free product link probe on the product slug index, generic plan included', function (): void {
+    lclSeedProducts();
+
+    $probe = lclCapture('product_translations', fn () => Slugger::takenAmong(ProductTranslation::query()->where('locale', 'vi'), 'slug', 'ban-7'));
+
+    $scans = lclScans(lclGenericPlan($probe['sql'], $probe['bindings']));
+    expect($scans)->toHaveCount(1)
+        ->and($scans[0][0])->toBe('product_translations_site_id_locale_slug_text_index')
+        ->and($scans[0][1])->toContain('(slug)::text = ANY');
+});
+
+it('plans the pending-invitation lookup on the invitation address index, generic plan included', function (): void {
+    lclSyncRbac();
+    $admin = DB::connection('pgsql_admin');
+    $admin->statement("insert into invitations (ulid, site_id, email, token_hash, expires_at, sent_at, created_at, updated_at) select lpad(g::text, 26, '0'), 1 + g % 2, 'khach-'||g||'@example.test', md5(g::text)||md5('x'||g), now() + interval '7 days', now() - interval '2 days', now(), now() from generate_series(1, 4000) g");
+    $admin->statement('analyze invitations');
+
+    $owner = User::factory()->create();
+    ['sql' => $sql, 'bindings' => $bindings] = lclCapture('invitations', function () use ($owner): void {
+        $roles = [];
+        foreach (['owner', 'viewer'] as $name) {
+            $template = PermissionRegistry::tenantRoleTemplates('corporate')[$name];
+            $role = Role::findOrCreate($name, PermissionRegistry::GUARD);
+            $role->forceFill(['level' => $template['level'], 'is_system' => true])->save();
+            $role->syncPermissions($template['permissions'] === '*' ? PermissionRegistry::TENANT_PERMISSIONS : $template['permissions']);
+            $roles[$name] = $role;
+        }
+        $owner->assignRole($roles['owner']);
+
+        try {
+            app(InviteMember::class)->handle($owner->fresh(), 'Moi@Example.Test', [$roles['viewer']]);
+        } catch (InvitationRejectedException) {
+            // A send limit refusing the mail comes after the lookup this plans.
+        }
+    }, 'email::text = ?');
+
+    expect($bindings)->toContain('moi@example.test');
+
+    $scans = lclScans(lclGenericPlan($sql, $bindings));
+    expect($scans)->toHaveCount(1)
+        ->and($scans[0][0])->toBe('invitations_pending_email_text_index')
+        ->and($scans[0][1])->toContain('(email)::text = $');
+});
+
+it('reports no capitals in any column and succeeds', function (): void {
+    $this->artisan('db:lower-case-keys')
+        ->expectsOutputToContain('taxonomy_translations.slug: 0 rows with capitals')
+        ->expectsOutputToContain('entry_translations.slug: 0 rows with capitals')
+        ->expectsOutputToContain('product_translations.slug: 0 rows with capitals')
+        ->expectsOutputToContain('invitations.email: 0 rows with capitals')
+        ->expectsOutputToContain('media_folders.slug: 0 rows with capitals')
+        ->expectsOutputToContain('No row holds capitals.')
+        ->assertSuccessful();
+});
+
+it('names the website and row of each row with capitals, never its value, and fails while any remain', function (): void {
     $admin = DB::connection('pgsql_admin');
     $entry = $admin->table('entries')->insertGetId(['ulid' => str_repeat('0', 25).'1', 'site_id' => 2, 'type' => 'page']);
-    // A row from before the CHECK: the CHECK is put back NOT VALID over it, as on a live database.
-    $admin->statement('ALTER TABLE entry_translations DROP CONSTRAINT entry_translations_slug_lower_case');
     $row = $admin->table('entry_translations')->insertGetId(['entry_id' => $entry, 'site_id' => 2, 'locale' => 'vi', 'title' => 'Cũ', 'slug' => 'Bang-Gia', 'status' => 'draft']);
-    lclResetCheck('entry_translations_slug_lower_case');
+    $folder = $admin->table('media_folders')->insertGetId(['site_id' => 1, 'name' => 'Ảnh cũ', 'slug' => 'Anh-Cu', 'created_at' => now(), 'updated_at' => now()]);
 
     $this->artisan('db:lower-case-keys')
-        ->expectsOutputToContain('entry_translations.slug: 1 rows with capitals · CHECK not validated')
+        ->expectsOutputToContain('entry_translations.slug: 1 rows with capitals')
         ->expectsOutputToContain("site 2, row {$row}")
+        ->expectsOutputToContain('media_folders.slug: 1 rows with capitals')
+        ->expectsOutputToContain("site 1, row {$folder}")
+        ->expectsOutputToContain('2 rows hold capitals')
+        ->doesntExpectOutputToContain('Bang-Gia')
+        ->doesntExpectOutputToContain('Anh-Cu')
         ->assertFailed();
-
-    $this->artisan('db:lower-case-keys --validate')
-        ->expectsOutputToContain('1 rows still hold capitals: lower-case them first. Nothing validated.')
-        ->assertFailed();
-    expect(array_values(lclValidated()))->toBe([false, false, false, false]);
 
     $admin->table('entry_translations')->where('id', $row)->update(['slug' => 'bang-gia']);
-
-    $this->artisan('db:lower-case-keys --validate')
-        ->expectsOutputToContain('entry_translations: entry_translations_slug_lower_case validated')
-        ->expectsOutputToContain('Every lower-case CHECK is validated.')
-        ->assertSuccessful();
-    expect(array_values(lclValidated()))->toBe([true, true, true, true]);
+    $admin->table('media_folders')->where('id', $folder)->update(['slug' => 'anh-cu']);
 
     $this->artisan('db:lower-case-keys')
-        ->expectsOutputToContain('entry_translations.slug: 0 rows with capitals · CHECK validated')
+        ->expectsOutputToContain('No row holds capitals.')
         ->assertSuccessful();
-});
-
-it('validates nothing while a CHECK is missing', function (): void {
-    DB::connection('pgsql_admin')->statement('ALTER TABLE invitations DROP CONSTRAINT invitations_email_lower_case');
-
-    $this->artisan('db:lower-case-keys --validate')
-        ->expectsOutputToContain('invitations.email: 0 rows with capitals · CHECK missing')
-        ->expectsOutputToContain('A lower-case CHECK is missing: run the migrations first. Nothing validated.')
-        ->assertFailed();
-
-    expect(lclValidated())->not->toHaveKey('invitations_email_lower_case');
 });

@@ -66,11 +66,14 @@ final class Slugger
     /**
      * $base itself when free, else the lowest free `$base-N` (N from 2). One call to $takenAmong
      * answers for every candidate, so the cost does not grow with the number already taken.
+     * $base is lower-cased first: a copy's link is built from the stored link, a row stored before
+     * links were held to lower case may hold capitals, and the lookups find only lower-case links.
      *
      * @param  \Closure(string): array<array-key, string>  $takenAmong  given $base, the used values among `$base` and `$base-N`
      */
     public static function free(string $base, \Closure $takenAmong): string
     {
+        $base = mb_strtolower($base);
         $taken = array_flip(array_map(strval(...), array_values($takenAmong($base))));
 
         if (! isset($taken[$base])) {
@@ -91,8 +94,8 @@ final class Slugger
     /**
      * The values of $column (with $prefix removed, lower-cased) among `$prefix$base` and
      * `$prefix$base-<digits>`, for [free()]: one indexed query, a second one only when every
-     * probed copy is taken. The stored values are lower case (a CHECK on the citext slug columns),
-     * so the input is lower-cased and compared with the column read as text.
+     * probed copy is taken. The links are written in lower case, so the input is lower-cased and
+     * compared with the column read as text.
      *
      * @param  Builder<*>  $query  already narrowed to the rows that count (language, other owners…)
      * @param  literal-string  $column  a column of $query's table, written into the SQL as it is
@@ -131,8 +134,7 @@ final class Slugger
                 ->all();
         }
 
-        // A row stored before the lower-case CHECK may still hold capitals; free() compares with
-        // isset, so fold here.
+        // free() compares with isset, so the values come back folded to lower case, as $full is.
         $taken = [];
         $lowerPrefix = mb_strtolower($prefix);
         foreach ($values as $value) {

@@ -25,15 +25,14 @@ use Illuminate\Support\Facades\DB;
  *
  * A text comparison is exact, so the stored value must be lower case for the lookups to find it
  * (citext found it in any case). Every writer already stores lower case (the slug rules allow
- * [a-z0-9-] only; invitation addresses are lower-cased). The CHECKs below hold new and changed rows
- * to that. They are added NOT VALID because rows stored earlier are not checked:
- * `php artisan db:lower-case-keys` lists the tables with capitals left and, with --validate,
- * validates the CHECKs once there are none.
+ * [a-z0-9-] only; invitation addresses are lower-cased). Rows stored earlier may still hold
+ * capitals: `php artisan db:lower-case-keys` reports them. No CHECK is added here: even NOT VALID,
+ * a CHECK is enforced on every update, so editing, publishing or accepting such an old row would
+ * fail. Lower-case CHECKs come in a later migration, once that report shows no capitals left.
  *
  * CONCURRENTLY forbids a transaction, so a mid-run failure must be safely re-runnable: an index an
- * interrupted build left INVALID is dropped and built again (IF NOT EXISTS alone would keep it), and
- * a CHECK that exists is left as it is. Each CHECK takes a brief exclusive lock (no table scan) that
- * gives up after 5s instead of queueing the storefront's reads behind it. down() reverses all of it.
+ * interrupted build left INVALID is dropped and built again (IF NOT EXISTS alone would keep it).
+ * down() reverses all of it.
  */
 return new class extends Migration
 {
@@ -51,14 +50,6 @@ return new class extends Migration
     /** The citext category index app_user cannot use beyond site_id and locale. */
     private const string OLD_INDEX = 'taxonomy_translations_site_id_locale_slug_index';
 
-    /** @var array<string, array{string, string}> constraint name => [table, column] */
-    private const array LOWER_CASE_CHECKS = [
-        'taxonomy_translations_slug_lower_case' => ['taxonomy_translations', 'slug'],
-        'entry_translations_slug_lower_case' => ['entry_translations', 'slug'],
-        'product_translations_slug_lower_case' => ['product_translations', 'slug'],
-        'invitations_email_lower_case' => ['invitations', 'email'],
-    ];
-
     public function up(): void
     {
         foreach (self::INDEXES as $index => [$table, $definition]) {
@@ -68,28 +59,10 @@ return new class extends Migration
         }
 
         DB::statement('DROP INDEX CONCURRENTLY IF EXISTS '.self::OLD_INDEX);
-
-        foreach (self::LOWER_CASE_CHECKS as $constraint => [$table, $column]) {
-            if ($this->constraintExists($table, $constraint)) {
-                continue;
-            }
-
-            DB::transaction(function () use ($table, $constraint, $column): void {
-                DB::statement("SET LOCAL lock_timeout = '5s'");
-                DB::statement("ALTER TABLE {$table} ADD CONSTRAINT {$constraint} CHECK ({$column}::text = lower({$column}::text)) NOT VALID");
-            });
-        }
     }
 
     public function down(): void
     {
-        foreach (self::LOWER_CASE_CHECKS as $constraint => [$table]) {
-            DB::transaction(function () use ($table, $constraint): void {
-                DB::statement("SET LOCAL lock_timeout = '5s'");
-                DB::statement("ALTER TABLE {$table} DROP CONSTRAINT IF EXISTS {$constraint}");
-            });
-        }
-
         $this->dropIfInvalid(self::OLD_INDEX);
         DB::statement('CREATE INDEX CONCURRENTLY IF NOT EXISTS '.self::OLD_INDEX.' ON taxonomy_translations (site_id, locale, slug)');
 
@@ -108,13 +81,5 @@ return new class extends Migration
         if ($invalid !== null) {
             DB::statement("DROP INDEX CONCURRENTLY IF EXISTS {$index}");
         }
-    }
-
-    private function constraintExists(string $table, string $constraint): bool
-    {
-        return DB::selectOne(
-            'SELECT 1 FROM pg_constraint WHERE conrelid = to_regclass(?) AND conname = ?',
-            [$table, $constraint],
-        ) !== null;
     }
 };
