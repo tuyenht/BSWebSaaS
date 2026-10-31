@@ -1,5 +1,5 @@
 <!doctype html>
-{{-- The resolver emits only data-bs-theme and data-sidebar-size here: the platform console never
+{{-- The resolver emits only the scheme and the sidebar size attributes here: the platform console never
      follows tenant sidebar/topbar variants, but shares the per-user sidebar size (lg|sm) its menu
      button toggles from 1280px. --}}
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full" @foreach ($chrome as $attr => $value) {{ $attr }}="{{ $value }}" @endforeach>
@@ -29,10 +29,11 @@
      the page; from 1280px it stays open, and the menu button switches it between the full sidebar
      and the icon rail through the per-user sidebar size ($store.adminTheme, saved like the tenant
      shell's). `open` resets when the width crosses a breakpoint. The open drawer or laid-over menu
-     is a modal dialog: focus moves to the first link, Tab stays inside, the rest of the page is
-     hidden from assistive technology and does not scroll. Below 1024px the closed drawer is hidden
-     by CSS (so it takes no focus before Alpine starts) and inert. Esc or the backdrop closes it and
-     focus goes back to the menu button. --}}
+     is a dialog: focus moves to the first link, Tab stays inside and the page behind does not
+     scroll. The page stays readable to screen readers (as in the design), so the menu button can
+     still close it. Below 1024px the closed drawer is hidden by CSS (so it takes no focus before
+     Alpine starts) and inert. Esc or the backdrop closes it and focus goes back to the menu
+     button. --}}
 <div class="{{ $hasNav ? 'platform-shell ' : '' }}min-h-screen"
      x-data="{
         open: false,
@@ -89,14 +90,13 @@
              class="fixed inset-0 z-30 bg-gray-900/40 xl:hidden"></div>
 
         <aside id="platform-sidebar"
-               class="admin-sidebar fixed inset-y-0 start-0 z-40 flex flex-col bg-sidebar text-sidebar-fg"
-               x-trap.inert.noscroll.noautofocus="open && ! wide"
+               class="admin-sidebar fixed inset-y-0 start-0 z-40 flex flex-col bg-sidebar-bg text-sidebar-fg"
+               x-trap.noscroll.noautofocus="open && ! wide"
                :role="open && ! wide ? 'dialog' : null"
-               :aria-modal="open && ! wide ? 'true' : null"
                :aria-label="open && ! wide ? @js(__('admin.menu')) : null"
                x-effect="$el.inert = mobile && ! open">
             {{-- Brand (from config — white-label safe) --}}
-            <div class="flex h-[var(--spacing-header)] shrink-0 items-center px-4">
+            <div class="flex h-(--topbar-height) shrink-0 items-center px-4">
                 <a href="{{ route('platform.dashboard') }}" wire:navigate class="sidebar-brand-link flex w-full items-center justify-center gap-2.5 text-sidebar-brand">
                     <x-bs-admin::brand-logo />
                 </a>
@@ -133,7 +133,7 @@
     <div class="admin-content flex min-h-screen flex-col">
         {{-- Topbar. Phone: menu button + logo + tools; the logo moves into the sidebar from 1024px.
              With no sidebar (an operator who may see no console screen) it stays here at every width. --}}
-        <header class="sticky top-0 z-20 flex h-[var(--spacing-header)] items-center gap-2 border-b border-topbar-border bg-topbar ps-3 pe-3 shadow-card sm:gap-3 sm:pe-6">
+        <header class="sticky top-0 z-20 flex h-(--topbar-height) items-center gap-2 border-b border-topbar-border bg-topbar-bg ps-3 pe-3 shadow-card sm:gap-3 sm:pe-6">
             @if ($hasNav)
                 {{-- Menu button: below 1024px a soft 36px tile inside a 44px hit area that opens the
                      drawer; from 1024px a plain ☰ in a 48px round hit area — 1024–1279px it lays the
@@ -172,11 +172,11 @@
             {{ $slot }}
         </main>
 
-        <footer class="border-t border-border px-4 py-4 text-xs text-footer">
+        <footer class="border-t border-border px-4 py-4 text-xs text-footer-fg">
             <div class="flex flex-col items-center gap-1 sm:flex-row sm:justify-between">
                 <span>&copy; {{ now()->year }}
                     <a href="{{ config('admin.brand.company_url') }}" target="_blank" rel="noopener noreferrer"
-                       class="font-medium text-body-muted transition-colors hover:text-accent hover:underline">{{ config('admin.brand.company') }}</a>.
+                       class="font-medium text-text-muted transition-colors hover:text-primary-text hover:underline">{{ config('admin.brand.company') }}</a>.
                 </span>
                 <span class="hidden sm:inline">{{ __('auth.rights') }}</span>
             </div>

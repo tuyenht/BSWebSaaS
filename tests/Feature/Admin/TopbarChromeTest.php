@@ -125,12 +125,14 @@ it('gives the platform console a menu button that drives the drawer, the laid-ov
         ->and($shell->getAttribute(':data-nav-open'))->toBe("open ? '' : null")
         ->and((string) $shell->getAttribute('x-data'))->toContain("\$store.adminTheme.set('sidebar_size'");
 
-    // The open drawer / laid-over menu is a modal dialog: Tab stays inside, the rest of the page is
-    // hidden from assistive technology and does not scroll; the closed phone drawer is inert.
+    // The open drawer / laid-over menu is a dialog: Tab stays inside and the page does not scroll,
+    // but the page is never hidden from screen readers — the drawer has no close button of its own,
+    // so the menu button must stay reachable. The closed phone drawer is inert.
     $aside = platformShellOne($dom, 'aside#platform-sidebar');
-    expect($aside->getAttribute('x-trap.inert.noscroll.noautofocus'))->toBe('open && ! wide')
+    expect($aside->getAttribute('x-trap.noscroll.noautofocus'))->toBe('open && ! wide')
+        ->and($aside->hasAttribute('x-trap.inert.noscroll.noautofocus'))->toBeFalse()
+        ->and($aside->hasAttribute(':aria-modal'))->toBeFalse()
         ->and($aside->getAttribute(':role'))->toBe("open && ! wide ? 'dialog' : null")
-        ->and($aside->getAttribute(':aria-modal'))->toBe("open && ! wide ? 'true' : null")
         ->and((string) $aside->getAttribute(':aria-label'))->toContain(__('admin.menu'))
         ->and($aside->getAttribute('x-effect'))->toBe('$el.inert = mobile && ! open')
         ->and($aside->querySelector('nav[aria-label] a[href]'))->toBeInstanceOf(Element::class);
