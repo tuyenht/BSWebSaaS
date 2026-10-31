@@ -36,13 +36,14 @@ it('wires the phone drawer for keyboard, screen readers and touch', function ():
     $dom = HTMLDocument::createFromString((string) $html, LIBXML_NOERROR);
 
     $shell = tenantShellOne($dom, 'div.admin-shell-wrapper');
-    expect($shell->getAttribute('@keydown.escape.window'))->toBe('close()')
+    expect($shell->getAttribute('@keydown.escape.window'))->toBe('close($event)')
+        ->and((string) $shell->getAttribute('x-data'))->toContain('event?.defaultPrevented')
+        ->and((string) $shell->getAttribute('x-data'))->toContain("\$watch('\$store.adminTheme.open'")
         ->and((string) $shell->getAttribute('x-data'))->toContain('$refs.menuButton?.focus()')
         ->and((string) $shell->getAttribute('x-data'))->toContain('#admin-sidebar nav :is(a[href], button)');
 
     $aside = tenantShellOne($dom, 'aside#admin-sidebar');
-    expect($aside->getAttribute('x-trap.noscroll.noautofocus'))->toBe('open && mobile')
-        ->and($aside->hasAttribute('x-trap.inert.noscroll.noautofocus'))->toBeFalse()
+    expect($aside->getAttribute('x-trap.noscroll.noreturn.noautofocus'))->toBe('open && mobile')
         ->and(array_filter($aside->getAttributeNames(), fn (string $name): bool => str_contains($name, 'aria-modal')))->toBe([])
         ->and($aside->getAttribute(':role'))->toBe("open && mobile ? 'dialog' : null")
         ->and((string) $aside->getAttribute(':aria-label'))->toContain(__('admin.menu'))

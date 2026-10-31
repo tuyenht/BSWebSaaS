@@ -17,9 +17,12 @@
 </head>
 <body class="admin-shell min-h-full bg-bg font-sans text-base text-text antialiased">
 {{-- Below 1024px the sidebar is a drawer the menu button opens: focus moves to its first item,
-     Tab stays inside and the page behind does not scroll; Esc, the overlay or the menu button
-     again closes it and focus goes back to the menu button. The closed drawer is inert. `open` resets when the width
-     crosses 1024px. --}}
+     Tab stays inside and the page behind does not scroll. Esc or the overlay closes it and focus
+     goes back to the menu button; the page stays readable to screen readers, so they can also
+     close it with the menu button (the open drawer covers it for touch and mouse, as in the
+     design). An Esc another dialog already handled is left alone, and opening the theme panel
+     closes the drawer without pulling focus back. The closed drawer is inert. `open` resets
+     when the width crosses 1024px. --}}
 <div x-data="{
         open: false,
         mobile: false,
@@ -32,6 +35,11 @@
             lg.addEventListener('change', sync);
             // wire:navigate swaps the page: drop the listener with the component.
             this.unlisten = () => lg.removeEventListener('change', sync);
+            this.$watch('$store.adminTheme.open', (value) => {
+                if (value) {
+                    this.open = false;
+                }
+            });
             this.$watch('open', (value) => {
                 if (value) {
                     this.$nextTick(() => root.querySelector('#admin-sidebar nav :is(a[href], button)')?.focus());
@@ -41,15 +49,15 @@
         destroy() {
             this.unlisten?.();
         },
-        close() {
-            if (! this.open) {
+        close(event = null) {
+            if (! this.open || event?.defaultPrevented) {
                 return;
             }
             this.open = false;
             this.$nextTick(() => this.$refs.menuButton?.focus());
         },
      }"
-     @keydown.escape.window="close()" class="admin-shell-wrapper min-h-screen">
+     @keydown.escape.window="close($event)" class="admin-shell-wrapper min-h-screen">
 
     {{-- Mobile overlay --}}
     <div x-show="open" @click="close()" x-cloak
@@ -59,7 +67,7 @@
 
     {{-- Sidebar (Velzon dark vertical). `admin-sidebar` is the [data-layout-position] flip hook. --}}
     <aside id="admin-sidebar"
-        x-trap.noscroll.noautofocus="open && mobile"
+        x-trap.noscroll.noreturn.noautofocus="open && mobile"
         :role="open && mobile ? 'dialog' : null"
         :aria-label="open && mobile ? @js(__('admin.menu')) : null"
         x-effect="$el.inert = mobile && ! open"
