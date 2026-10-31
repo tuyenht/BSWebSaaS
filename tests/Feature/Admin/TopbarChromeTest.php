@@ -131,7 +131,7 @@ it('gives the platform console a menu button that drives the drawer, the laid-ov
     $aside = platformShellOne($dom, 'aside#platform-sidebar');
     expect($aside->getAttribute('x-trap.noscroll.noautofocus'))->toBe('open && ! wide')
         ->and($aside->hasAttribute('x-trap.inert.noscroll.noautofocus'))->toBeFalse()
-        ->and($aside->hasAttribute(':aria-modal'))->toBeFalse()
+        ->and(array_filter($aside->getAttributeNames(), fn (string $name): bool => str_contains($name, 'aria-modal')))->toBe([])
         ->and($aside->getAttribute(':role'))->toBe("open && ! wide ? 'dialog' : null")
         ->and((string) $aside->getAttribute(':aria-label'))->toContain(__('admin.menu'))
         ->and($aside->getAttribute('x-effect'))->toBe('$el.inert = mobile && ! open')
