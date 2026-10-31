@@ -24,6 +24,14 @@ final class ComponentGallery extends Component
 
     public string $galleryGroup = 'all';
 
+    public string $gallerySort = 'name';
+
+    /** The Sort menu sample: one of the shown orders. */
+    public function setGallerySort(string $key): void
+    {
+        $this->gallerySort = in_array($key, ['name', 'size', 'new'], true) ? $key : 'name';
+    }
+
     public function clearGalleryFilters(): void
     {
         $this->galleryStatus = 'live';

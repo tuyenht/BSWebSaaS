@@ -8,14 +8,18 @@
     // groups of the two surfaces apart, so checking one never unchecks the other's copy.
     //
     // $section: array{key: string, model: string, multiple?: bool, options: list<array{value: string, label: string, count?: int|null, divider?: bool}>,
-    //           search?: array{model: string, label: string, placeholder?: string},
+    //           search?: array{model: string, label: string, placeholder?: string}, note?: string,
     //           range?: array{from: string, to: string, from_label: string, to_label: string}}
     // search: a field above the options that narrows them (a long list such as websites); its host property is
     //         bound with a short debounce and the host returns the matching options.
     // range: two date fields below the options ("Từ ngày" · "Đến ngày"), each bound to its own host property.
+    // note: one plain sentence above the options saying what the section goes by ("Theo ngày đăng — …").
     // divider: a thin rule above the option, set off from the ones before it (Thùng rác after the live statuses); the
     //          rule sits inside the option's own row, so no gap opens between two tap targets.
 @endphp
+@if ($section['note'] ?? null)
+    <p class="m-0 px-4 pb-1 text-small text-text-muted [overflow-wrap:anywhere]">{{ $section['note'] }}</p>
+@endif
 @if ($section['search'] ?? null)
     <div class="px-4 pb-1 pt-1">
         <x-bs-admin::search :label="$section['search']['label']" :placeholder="$section['search']['placeholder'] ?? null"

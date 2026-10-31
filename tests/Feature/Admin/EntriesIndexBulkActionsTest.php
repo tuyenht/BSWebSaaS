@@ -87,10 +87,10 @@ it('never purges a live row named in a Trash-tab selection, however the selectio
         grantRole($editor, 'editor', ['entries.view', 'entries.delete.any']);
         $live = bulkRow($editor, 'Trang đang chạy');
 
-        // `tab` set directly, not through setTab(): the selection survives, as a forged one would.
+        // A selection forged after the Trash group is chosen (a group change itself drops the selection).
         $component = Livewire::actingAs($editor->fresh())->test(Index::class)
-            ->set('selected', [$live->ulid])
             ->set('tab', 'trash')
+            ->set('selected', [$live->ulid])
             ->call('bulkForceDelete');
 
         expect(bulkFind($live)?->trashed())->toBeFalse();

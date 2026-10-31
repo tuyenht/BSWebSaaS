@@ -1,6 +1,7 @@
 @props([
     'sections' => [],
     'active' => 0,
+    'activeNarrow' => null,
     'results' => null,
     'clear' => null,
     'label' => null,
@@ -18,10 +19,16 @@
     //
     // $sections: list<array{key: string, label: string, model: string, multiple?: bool, icon?: string|null,
     //            value?: string|list<string>|null, default?: string|null,
-    //            options: list<array{value: string, label: string, count?: int|null}>}>
+    //            sheet?: bool, class?: string, options: list<array{value: string, label: string, count?: int|null}>}>
     //            value is the host property's current value, so every re-render says what is chosen; a one-choice section
     //            filters when its value differs from default (its first option unless given).
+    //            sheet: the section lives in the Filter sheet only, never as a button of its own (the status groups,
+    //            which have their own row from 900px; "Hiện trên thẻ"). class: added to the section and its jump
+    //            button in the sheet, to show it only at some widths (the groups: `min-[900px]:hidden`).
     // $active: how many conditions are on (shown on the Lọc button and in its name).
+    // $activeNarrow: the count below 900px when it differs — a list whose status groups have their own row from 900
+    //            and live in the sheet below adds a chosen group there only (canvas fN / fNm). The button shows
+    //            and is named by the count of its width; its tint follows $active.
     // $results: the footer button text, e.g. "Xem 12 dòng" — filters apply as they change, so it only closes the sheet.
     // $clear: the host's public method that resets every filter (shown when $active > 0).
     //
@@ -29,6 +36,10 @@
     // stays inside the sheet.
     $label ??= __('admin.list.filter');
     $name = $active > 0 ? __('admin.list.filter_active', ['n' => $active]) : $label;
+    $narrow = $activeNarrow ?? $active;
+    $nameNarrow = $narrow > 0 ? __('admin.list.filter_active', ['n' => $narrow]) : $label;
+    $split = $narrow !== $active;
+    $badge = 'inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-caption font-bold leading-5 text-white';
     // stable across renders: a live update that renamed the radio groups could drop the checked state and focus
     $uid = substr(md5(implode('|', array_map(fn (array $s): string => $s['key'].':'.$s['model'], $sections))), 0, 8);
     $panelId = 'lf-'.$uid;
@@ -70,7 +81,7 @@
     $pillIcon = fn (bool $on): string => 'size-4 shrink-0 group-aria-expanded:text-primary-text '.($on ? 'text-primary-text' : 'text-text-muted');
 @endphp
 <div {{ $attributes->merge(['class' => 'flex min-w-0 shrink-0 flex-wrap items-center gap-2']) }}>
-    @foreach ($view as $section)
+    @foreach (array_filter($view, fn (array $s): bool => ! ($s['sheet'] ?? false)) as $section)
         <div class="relative hidden shrink-0 min-[1024px]:block"
              x-data="{
                  open: false,
@@ -108,33 +119,47 @@
 
     <div class="relative shrink-0 min-[1024px]:hidden"
          x-data="{
-             open: false, cols: 1, cur: 0, pin: null, prog: 0,
+             open: false, cols: 1, cur: null, pin: null, prog: 0,
              // two columns once the screen is at least 29 body-text widths wide; decided on opening and on resize only
              decide() { const fs = parseFloat(getComputedStyle(this.$refs.panel).fontSize) || 14; this.cols = window.innerWidth / fs >= 29 ? 2 : 1; },
              show() { this.decide(); this.open = true; this.whenShown(() => { this.mark(); this.focusables().find((el) => this.$refs.scroll.contains(el))?.focus(); }); },
              hide(back = true) { if (! this.open) return; this.open = false; if (back) this.$refs.button.focus(); },
              // x-show reveals the sheet a moment after open turns true, so wait until it is on screen
              whenShown(fn, tries = 20) { this.$refs.panel.getClientRects().length || ! tries ? fn() : setTimeout(() => this.whenShown(fn, tries - 1), 16); },
-             heads() { return [...this.$refs.scroll.querySelectorAll('legend[data-sec]')]; },
-             go(i) { const h = this.heads()[i], s = this.$refs.scroll; if (! h) return; this.prog = Date.now(); this.pin = i; s.scrollTop = Math.max(0, h.getBoundingClientRect().top - s.getBoundingClientRect().top + s.scrollTop - 4); h.focus({ preventScroll: true }); this.cur = i; },
+             // only the sections shown at this width (one may be hidden by its own class)
+             heads() { return [...this.$refs.scroll.querySelectorAll('legend[data-sec]')].filter((h) => h.getClientRects().length); },
+             go(k) { const h = this.heads().find((el) => el.dataset.sec === k), s = this.$refs.scroll; if (! h) return; this.prog = Date.now(); this.pin = k; s.scrollTop = Math.max(0, h.getBoundingClientRect().top - s.getBoundingClientRect().top + s.scrollTop - 4); h.focus({ preventScroll: true }); this.cur = k; },
              // the current section is the last whose heading has passed the top of the right column; a section reached by a
              // tap stays current until the user scrolls, since the last ones cannot scroll up to the top
-             mark() { if (Date.now() - this.prog > 250) this.pin = null; if (this.pin !== null) { this.cur = this.pin; return; } const top = this.$refs.scroll.getBoundingClientRect().top + 12; let c = 0; this.heads().forEach((h, i) => { if (h.getBoundingClientRect().top <= top) c = i; }); this.cur = c; },
+             mark() { if (Date.now() - this.prog > 250) this.pin = null; if (this.pin !== null) { this.cur = this.pin; return; } const top = this.$refs.scroll.getBoundingClientRect().top + 12, hs = this.heads(); let c = hs[0]?.dataset.sec ?? null; hs.forEach((h) => { if (h.getBoundingClientRect().top <= top) c = h.dataset.sec; }); this.cur = c; },
              focusables() { return [...this.$refs.panel.querySelectorAll('input:not([disabled]),button:not([disabled])')].filter((el) => el.getClientRects().length && ! (el.type === 'radio' && ! el.checked && this.$refs.panel.querySelector(`input[type=radio][name='${CSS.escape(el.name)}']:checked`))); },
              trap(e) { const f = this.focusables(); if (! f.length) return; const first = f[0], last = f[f.length - 1]; if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (! e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); } },
          }"
          @keydown.escape.prevent.stop="hide()"
          @resize.window="open && (window.innerWidth >= 1024 ? hide(false) : decide())">
-        <button type="button" x-ref="button"
+        <button type="button" x-ref="button" data-lf
                 @click="open ? hide() : show()"
                 :aria-expanded="open ? 'true' : 'false'" aria-controls="{{ $panelId }}"
-                aria-label="{{ $name }}" title="{{ $name }}"
+                @unless ($split) aria-label="{{ $name }}" title="{{ $name }}" @else title="{{ $label }}" @endunless
                 class="{{ $pill }} {{ $pillState($active > 0) }}">
             <x-bs-admin::icon name="ri-filter-3" class="{{ $pillIcon($active > 0) }}" />
-            <span data-lf-text>{{ $label }}</span>
-            @if ($active > 0)
-                <span class="inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-caption font-bold leading-5 text-white">{{ $active }}</span>
-            @endif
+            @unless ($split)
+                <span data-lf-text>{{ $label }}</span>
+                @if ($active > 0)
+                    <span class="{{ $badge }}">{{ $active }}</span>
+                @endif
+            @else
+                {{-- two counts: the name is the hidden text of the width in force (one of the two is display: none) --}}
+                <span data-lf-text aria-hidden="true">{{ $label }}</span>
+                <span class="sr-only max-[899.98px]:hidden">{{ $name }}</span>
+                <span class="sr-only min-[900px]:hidden">{{ $nameNarrow }}</span>
+                @if ($active > 0)
+                    <span data-lf-count class="{{ $badge }} max-[899.98px]:hidden" aria-hidden="true">{{ $active }}</span>
+                @endif
+                @if ($narrow > 0)
+                    <span data-lf-count-narrow class="{{ $badge }} min-[900px]:hidden" aria-hidden="true">{{ $narrow }}</span>
+                @endif
+            @endunless
         </button>
 
         <div x-show="open" x-cloak @click="hide()" class="fixed inset-0 z-60 bg-[rgb(15_18_30/0.45)]" aria-hidden="true"></div>
@@ -153,10 +178,11 @@
             <div class="flex min-h-0 flex-1">
                 <nav x-show="cols === 2" aria-label="{{ __('admin.list.filter_sections') }}"
                      class="flex w-[min(16em,36%)] shrink-0 flex-col gap-0.5 overflow-y-auto overflow-x-hidden overscroll-contain border-e border-border bg-surface-muted p-2">
-                    @foreach ($view as $i => $section)
-                        <button type="button" @click="go({{ $i }})" :aria-current="cur === {{ $i }} ? 'true' : null"
+                    @foreach ($view as $section)
+                        @php $jump = \Illuminate\Support\Js::from($section['key']); @endphp
+                        <button type="button" @click="go({{ $jump }})" :aria-current="cur === {{ $jump }} ? 'true' : null"
                                 aria-label="{{ __('admin.list.go_to_section', ['name' => $section['label']]) }}{{ $section['summary'] !== '' ? ': '.$section['summary'] : '' }}"
-                                class="group flex min-h-hit w-full flex-col items-start justify-center gap-0.5 rounded px-3 py-2 text-start transition-colors hover:bg-surface-hover aria-[current=true]:bg-primary/10 aria-[current=true]:font-semibold aria-[current=true]:text-primary-text">
+                                class="group flex min-h-hit w-full flex-col items-start justify-center gap-0.5 rounded px-3 py-2 text-start transition-colors hover:bg-surface-hover aria-[current=true]:bg-primary/10 aria-[current=true]:font-semibold aria-[current=true]:text-primary-text {{ $section['class'] ?? '' }}">
                             {{-- a section that filters carries an accent dot and its value in bold, so it reads as on without opening it --}}
                             <span class="min-w-0 max-w-full [overflow-wrap:anywhere]">{{ $section['label'] }}@if ($section['on'])<span data-on aria-hidden="true" class="ms-1.5 inline-block size-2 rounded-full bg-primary-text align-[0.125em]"></span>@endif</span>
                             @if ($section['summary'] !== '')
@@ -174,9 +200,10 @@
                 <div x-ref="scroll" @scroll.passive="mark()" class="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain py-1">
                     @foreach ($view as $section)
                         {{-- the divider sits on a wrapper: a fieldset's own top border is cut by its legend --}}
-                        <div @class(['border-t border-border' => ! $loop->first])>
+                        {{-- the divider sits under each section but the last, so a first section hidden at this width leaves none on top --}}
+                        <div class="border-border [&:not(:last-child)]:border-b {{ $section['class'] ?? '' }}" data-fsheet="{{ $section['key'] }}">
                         <fieldset class="m-0 min-w-0 border-0 px-0 pb-2 pt-1">
-                            <legend data-sec tabindex="-1" class="flex flex-wrap items-baseline gap-x-2 px-4 pb-1 pt-3 text-small font-semibold text-text-strong">
+                            <legend data-sec="{{ $section['key'] }}" tabindex="-1" class="flex flex-wrap items-baseline gap-x-2 px-4 pb-1 pt-3 text-small font-semibold text-text-strong">
                                 <span>{{ $section['label'] }}@if ($section['suffix'] !== '')<span x-show="cols === 1" class="font-normal">{{ $section['suffix'] }}</span>@endif</span>
                                 <span class="font-normal text-text-muted">{{ __($section['multiple'] ? 'admin.list.choose_many' : 'admin.list.choose_one') }}</span>
                             </legend>
@@ -187,7 +214,7 @@
                 </div>
             </div>
             <div class="flex shrink-0 flex-wrap justify-end gap-3 border-t border-border px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
-                @if ($clear && $active > 0)
+                @if ($clear && max($active, $narrow) > 0)
                     <x-bs-admin::button variant="outline" color="secondary" class="min-w-0 flex-1" wire:click="{{ $clear }}">{{ __('admin.list.clear_filters') }}</x-bs-admin::button>
                 @endif
                 <x-bs-admin::button class="min-w-0 flex-1" @click="hide()">{{ $results ?? __('admin.list.close_filters') }}</x-bs-admin::button>
