@@ -221,6 +221,52 @@ it('counts to "hơn 10.000", offers no last page, and turns pages past 10,000 wi
     });
 });
 
+it('keeps a cursor on its author when an author who sorts before them appears between two pages', function (): void {
+    $user = User::factory()->create();
+    $zed = User::factory()->create(['name' => 'Zed']);
+    $anh = User::factory()->create(['name' => 'Anh']);
+    pagingManyPosts(10230);
+    DB::connection('pgsql_admin')->update('update entries set author_id = ? where site_id = 1', [$zed->id]);
+
+    app(Tenancy::class)->enter(1, function () use ($user, $anh): void {
+        grantRole($user, 'editor', ['entries.view']);
+        pagingSection();
+        $list = pagingList();
+        $order = $list->rows(pagingGroups($list, 'creator', 'asc'), 10000, 100)->modelKeys();
+
+        $test = Livewire::withQueryParams(['section' => 'posts', 'sort' => 'creator', 'dir' => 'asc', 'page' => 201, 'per_page' => 50])
+            ->actingAs($user->fresh())->test(Index::class, ['section' => 'posts']);
+        $token = $test->viewData('pager')['next']['token'];
+
+        // the author list gains a run before Zed's: a cursor naming its run by position would land in it
+        Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $anh->id]);
+
+        $test->call('turnPage', $token);
+        expect($test->get('page'))->toBe(202)
+            ->and(collect($test->viewData('rows')->items())->map(fn (array $r): int => $r['entry']->id)->all())->toBe(array_slice($order, 50, 50));
+    });
+});
+
+it('starts again from page 1 when the author a cursor stands in has no posts left', function (): void {
+    $user = User::factory()->create();
+    $zed = User::factory()->create(['name' => 'Zed']);
+    pagingManyPosts(10230);
+    DB::connection('pgsql_admin')->update('update entries set author_id = ? where site_id = 1', [$zed->id]);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        grantRole($user, 'editor', ['entries.view']);
+        pagingSection();
+        $test = Livewire::withQueryParams(['section' => 'posts', 'sort' => 'creator', 'dir' => 'asc', 'page' => 201, 'per_page' => 50])
+            ->actingAs($user->fresh())->test(Index::class, ['section' => 'posts']);
+        $token = $test->viewData('pager')['next']['token'];
+
+        DB::connection('pgsql_admin')->update('update entries set author_id = null where site_id = 1');
+
+        $test->call('turnPage', $token);
+        expect($test->get('page'))->toBe(1)->and($test->get('cursor'))->toBe('');
+    });
+});
+
 it('stops numbered pages at the 10,000th row and clamps a deeper page number there', function (): void {
     $user = User::factory()->create();
     pagingManyPosts(10230);

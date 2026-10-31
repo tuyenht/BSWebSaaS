@@ -1498,14 +1498,20 @@ final class Index extends Component
     {
         $size = $this->perPage;
         $note = ListCursor::open($this->cursor, $this->fingerprint());
-        if ($note === null) {
+        // the run is named by its key: when it is gone (an author's last post trashed), start again
+        $run = $note === null ? false : array_search($note['k'], array_map(fn (ListGroup $g): string => $g->key, $groups), true);
+        if ($run === false) {
+            if ($note !== null) {
+                $this->page = 1;
+            }
+            $note = null;
             $this->cursor = '';
         }
         $total = $known;
 
         if ($note !== null) {
             $current = $note['n'];
-            $anchor = ['g' => $note['g'], 'v' => $note['v'], 'id' => $note['id']];
+            $anchor = ['g' => $run, 'v' => $note['v'], 'id' => $note['id']];
             if ($note['w'] === 'before') {
                 // read backwards from the row the next page starts with, then turn the rows round
                 $last = count($groups) - 1;
@@ -1545,7 +1551,7 @@ final class Index extends Component
         $first = $rows->first();
         $lastRow = $rows->last();
         $fingerprint = $this->fingerprint();
-        $mark = fn (Entry $row, string $way, int $n): string => ListCursor::make($fingerprint, Cast::int($row->getAttribute('__g')),
+        $mark = fn (Entry $row, string $way, int $n): string => ListCursor::make($fingerprint, $groups[Cast::int($row->getAttribute('__g'))]->key,
             Cast::stringOrNull($row->getAttribute('__sv')), $row->id, $way, $n);
 
         $offset = ($current - 1) * $size;
