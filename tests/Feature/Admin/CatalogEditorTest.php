@@ -588,3 +588,41 @@ it('refuses an address a page already owns and keeps nothing of the save', funct
             ->and(productRoutePath($product))->toBe('/san-pham-a');
     });
 });
+
+it('refuses a link another product holds in this language, with the same message, whatever its capitals', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(2, function (): void {
+        $elsewhere = Product::query()->create(['status' => 'draft']);
+        $elsewhere->translations()->create(['locale' => 'vi', 'name' => 'Bàn máy', 'slug' => 'ban-may']);
+    });
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage']);
+
+        $existing = Product::query()->create(['status' => 'draft']);
+        $existing->translations()->create(['locale' => 'vi', 'name' => 'Đồ gá', 'slug' => 'do-ga']);
+        $english = Product::query()->create(['status' => 'draft']);
+        $english->translations()->create(['locale' => 'en', 'name' => 'Lathe', 'slug' => 'may-tien']);
+
+        $taken = Livewire::actingAs($editor->fresh())->test(Editor::class)
+            ->set('name', 'Sản phẩm khác')->set('slug', 'do-ga')->call('save')
+            ->assertHasErrors(['slug']);
+        expect($taken->errors()->get('slug'))->toBe([__('catalog.slug_taken')]);
+
+        $capitals = Livewire::actingAs($editor->fresh())->test(Editor::class)
+            ->set('name', 'Sản phẩm khác')->set('slug', 'Do-Ga')->call('save')
+            ->assertHasErrors(['slug']);
+        expect($capitals->errors()->get('slug'))->toBe([__('catalog.slug_format'), __('catalog.slug_taken')]);
+
+        // Another language and another website may hold the same link.
+        Livewire::actingAs($editor->fresh())->test(Editor::class)
+            ->set('name', 'Máy tiện')->set('slug', 'may-tien')->call('save')
+            ->assertHasNoErrors();
+        Livewire::actingAs($editor->fresh())->test(Editor::class)
+            ->set('name', 'Bàn máy')->set('slug', 'ban-may')->call('save')
+            ->assertHasNoErrors();
+
+        expect(Product::query()->count())->toBe(4);
+    });
+});

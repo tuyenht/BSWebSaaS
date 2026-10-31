@@ -212,16 +212,14 @@ final class Editor extends Component
         // Uniqueness is validated app-side within the current site (validator queries run under
         // RLS): the slug keys the P3 ETL and the future product route; the sku has a partial
         // UNIQUE(site_id, sku) index that would otherwise surface as a raw 500.
-        $uniqueSlug = Rule::unique('product_translations', 'slug')->where('locale', $this->locale);
         $uniqueSku = Rule::unique('products', 'sku');
         if ($this->productId !== null) {
-            $uniqueSlug->ignore($this->productId, 'product_id');
             $uniqueSku->ignore($this->productId);
         }
 
         return [
             'name' => ['required', 'string', 'max:200'],
-            'slug' => ['required', 'string', 'max:200', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $uniqueSlug],
+            'slug' => ['required', 'string', 'max:200', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $this->slugIsFree(...)],
             'description' => ['nullable', 'string'],
             'summary' => ['nullable', 'string'],
             'seoTitle' => ['nullable', 'string', 'max:255'],
@@ -246,12 +244,36 @@ final class Editor extends Component
     {
         return [
             'slug.regex' => __('catalog.slug_format'),
-            'slug.unique' => __('catalog.slug_taken'),
             'sku.unique' => __('catalog.sku_taken'),
             'categoryId.exists' => __('catalog.category_invalid'),
             'imageMediaIds.*.exists' => __('catalog.gallery_invalid'),
             'imageMediaIds.*.integer' => __('catalog.gallery_invalid'),
         ];
+    }
+
+    /**
+     * No other product of this site holds the slug in this language. Rule::unique would send
+     * `slug = ?`, a citext comparison RLS keeps out of the index (no citext operator is leakproof),
+     * so it read every product link of the language; as text against the lower-cased value it is
+     * served by the (site_id, locale, (slug::text)) index. Same refusal and message as before.
+     *
+     * @param  \Closure(string): mixed  $fail
+     */
+    private function slugIsFree(string $attribute, mixed $value, \Closure $fail): void
+    {
+        if (! is_string($value)) {
+            return;
+        }
+
+        $taken = ProductTranslation::query()
+            ->where('locale', $this->locale)
+            ->whereRaw('slug::text = ?', [mb_strtolower($value)])
+            ->when($this->productId !== null, fn ($q) => $q->where('product_id', '!=', $this->productId))
+            ->exists();
+
+        if ($taken) {
+            $fail(__('catalog.slug_taken'));
+        }
     }
 
     /**

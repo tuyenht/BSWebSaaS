@@ -149,9 +149,11 @@ trait EditsTaxonomyTree
             $slugChanged = ! $old instanceof TaxonomyTranslation || $old->slug !== $translation['slug'];
 
             // Two categories sharing a slug in one language would give their items the same prefix.
+            // Compared as text against the lower-cased slug, so the (site_id, locale, (slug::text))
+            // index serves it under RLS (a citext `=` is not leakproof and reads the whole language).
             $taken = $slugChanged && TaxonomyTranslation::query()
                 ->where('locale', $locale)
-                ->where('slug', $translation['slug'])
+                ->whereRaw('slug::text = ?', [mb_strtolower($translation['slug'])])
                 ->where('taxonomy_id', '!=', $taxonomy->id)
                 ->exists();
             if ($taken) {

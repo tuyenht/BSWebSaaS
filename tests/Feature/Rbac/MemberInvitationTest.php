@@ -332,3 +332,15 @@ it('keeps each site to its own daily cap', function (): void {
 
     expect(invitationRefusal(fn () => invite(2, $otherOwner, 'website-khac@example.test')))->toBeNull();
 });
+
+it('finds the open invitation of an address typed with other capitals', function (): void {
+    $owner = invitationMember(1, 'owner');
+    $first = invite(1, $owner, 'moi@example.test');
+
+    expect(invitationRefusal(fn () => invite(1, $owner, 'MOI@Example.TEST')))->toBe('resend_too_soon');
+
+    $this->travel(InviteMember::RESEND_COOLDOWN_SECONDS + 1)->seconds();
+
+    expect(invite(1, $owner, 'Moi@Example.Test')->invitation->id)->toBe($first->invitation->id)
+        ->and(DB::connection('pgsql_admin')->table('invitations')->pluck('email')->all())->toBe(['moi@example.test']);
+});

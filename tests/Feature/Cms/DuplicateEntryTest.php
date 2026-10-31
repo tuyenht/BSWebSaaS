@@ -77,6 +77,23 @@ it('suffixes the slug again when the copy slug is already taken', function (): v
     });
 });
 
+it('gives the copy of a link stored with capitals a free lower-case link', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.create']);
+        // A row from before links were held to lower case.
+        $page = Entry::query()->create(['type' => 'page', 'status' => 'published']);
+        $page->translations()->create(['locale' => 'vi', 'title' => 'Bảng giá', 'slug' => 'Bang-Gia', 'status' => 'published', 'body' => ['blocks' => []]]);
+
+        $first = app(DuplicateEntry::class)->handle($page->fresh(), $editor->fresh());
+        $second = app(DuplicateEntry::class)->handle($page->fresh(), $editor->fresh());
+
+        expect($first->translationFor('vi')->slug)->toBe('bang-gia-ban-sao')
+            ->and($second->translationFor('vi')->slug)->toBe('bang-gia-ban-sao-2');
+    });
+});
+
 it('carries over the categories', function (): void {
     $editor = User::factory()->create();
 

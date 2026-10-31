@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Shared\Support;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Transliterator;
 
@@ -65,11 +66,14 @@ final class Slugger
     /**
      * $base itself when free, else the lowest free `$base-N` (N from 2). One call to $takenAmong
      * answers for every candidate, so the cost does not grow with the number already taken.
+     * $base is lower-cased first: a copy's link is built from the stored link, a row stored before
+     * links were held to lower case may hold capitals, and the lookups find only lower-case links.
      *
      * @param  \Closure(string): array<array-key, string>  $takenAmong  given $base, the used values among `$base` and `$base-N`
      */
     public static function free(string $base, \Closure $takenAmong): string
     {
+        $base = mb_strtolower($base);
         $taken = array_flip(array_map(strval(...), array_values($takenAmong($base))));
 
         if (! isset($taken[$base])) {
@@ -90,38 +94,53 @@ final class Slugger
     /**
      * The values of $column (with $prefix removed, lower-cased) among `$prefix$base` and
      * `$prefix$base-<digits>`, for [free()]: one indexed query, a second one only when every
-     * probed copy is taken.
+     * probed copy is taken. The links are written in lower case, so the input is lower-cased and
+     * compared with the column read as text.
      *
      * @param  Builder<*>  $query  already narrowed to the rows that count (language, other owners…)
+     * @param  literal-string  $column  a column of $query's table, written into the SQL as it is
      * @return list<string>
      */
     public static function takenAmong(Builder $query, string $column, string $base, string $prefix = ''): array
     {
-        $full = $prefix.$base;
+        $full = mb_strtolower($prefix.$base);
+        $text = $column.'::text';
 
-        // Equality on `$full`, `$full-2` … `$full-50` uses the column's index (routes: the
-        // (site_id, locale, path) unique), so a save reads at most 50 rows however big the site is.
+        // Under RLS the planner may put only leakproof operators into an index condition, and no
+        // citext operator is leakproof: `slug = ?` on a citext column narrows the index to the site
+        // and language and then reads every row of them. Read as text, the column compares with
+        // the leakproof text operators, so the equality on `$full`, `$full-2` … `$full-50` is
+        // served by (site_id, locale, (slug::text)) on the translation tables and by the
+        // (site_id, locale, path) unique on routes: a save reads at most 50 rows however big the site is.
         $probe = [$full];
         for ($n = 2; $n <= self::PROBE; $n++) {
             $probe[] = $full.'-'.$n;
         }
-        $values = (clone $query)->whereIn($column, $probe)->pluck($column)->all();
+        $values = (clone $query)->whereIn(DB::raw($text), $probe)->pluck($column)->all();
 
-        // Every probed candidate is taken (rare): one match for the numbered copies beyond it, with
-        // the text's regex metacharacters escaped so they match only themselves.
+        // Every probed candidate is taken (rare): one range read for the numbered copies beyond it.
+        // A regex is not leakproof either, so the index reads the byte-wise range from `$full` up to
+        // `$full.` (every value starting with `$full-` sorts inside it, '.' following '-'), served
+        // by the text_pattern_ops slug indexes of entries and products (routes and the rest read
+        // their site and language part of an index), and the regex then keeps only `$full` and `$full-N`.
+        // Its metacharacters are escaped so the text matches only itself.
         if (count($values) >= self::PROBE) {
-            $numbered = '^'.preg_replace('/[\\\\.^$*+?()\\[\\]{}|-]/', '\\\\$0', $full).'-[0-9]+$';
-            $values = $query->where(fn (Builder $q) => $q->where($column, $full)->orWhere($column, '~', $numbered))
+            $exact = '^'.preg_replace('/[\\\\.^$*+?()\\[\\]{}|-]/', '\\\\$0', $full).'(-[0-9]+)?$';
+            $values = $query
+                ->whereRaw("{$text} ~>=~ ?", [$full])
+                ->whereRaw("{$text} ~<~ ?", [$full.'.'])
+                ->whereRaw("{$text} ~ ?", [$exact])
                 ->pluck($column)
                 ->all();
         }
 
-        // The columns compare without case (citext); free() compares with isset, so fold here.
+        // free() compares with isset, so the values come back folded to lower case, as $full is.
         $taken = [];
+        $lowerPrefix = mb_strtolower($prefix);
         foreach ($values as $value) {
             $value = is_string($value) ? mb_strtolower($value) : null;
-            if ($value !== null && str_starts_with($value, mb_strtolower($prefix))) {
-                $taken[] = substr($value, strlen(mb_strtolower($prefix)));
+            if ($value !== null && str_starts_with($value, $lowerPrefix)) {
+                $taken[] = substr($value, strlen($lowerPrefix));
             }
         }
 

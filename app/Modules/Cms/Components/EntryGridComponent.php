@@ -55,8 +55,10 @@ final readonly class EntryGridComponent implements Component
         $slug = is_string($props['taxonomy_slug'] ?? null) ? $props['taxonomy_slug'] : '';
 
         // Resolve the taxonomy by its localized slug (RLS-scoped). Unknown/empty slug → empty grid.
+        // Slugs are stored lower case; read as text the column compares with a leakproof operator,
+        // which RLS lets the (site_id, locale, (slug::text)) index serve (a citext `=` it does not).
         $taxonomyTranslation = $slug !== ''
-            ? TaxonomyTranslation::query()->where('locale', $locale)->where('slug', $slug)->first()
+            ? TaxonomyTranslation::query()->where('locale', $locale)->whereRaw('slug::text = ?', [mb_strtolower($slug)])->first()
             : null;
 
         if ($taxonomyTranslation === null) {
