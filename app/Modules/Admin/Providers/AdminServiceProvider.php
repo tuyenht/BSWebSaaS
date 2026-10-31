@@ -156,7 +156,7 @@ final class AdminServiceProvider extends ServiceProvider
 
         // Operator console nav (platform plane) — data-driven by platform permissions.
         View::composer('admin::layouts.platform', function (ViewContract $view): void {
-            $view->with('platformNav', app(PlatformNav::class)->items(Auth::user()));
+            $view->with('platformNav', app(PlatformNav::class)->sections(Auth::user(), Route::currentRouteName()));
         });
 
         // Resolved admin-chrome theme (app → site → user) as <html data-*> attributes,

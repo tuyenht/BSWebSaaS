@@ -21,8 +21,9 @@ use App\Modules\Shared\Support\Cast;
  *
  * Stateless on purpose (Octane): no cross-request memo; the layout composers call it
  * once per request. The platform console has no tenant context (no SetCurrentSite on
- * that route group), so the site tier is skipped there — which also keeps the plane
- * scheme-only by construction.
+ * that route group), so the site tier is skipped there. Its plane emits only the
+ * PLATFORM_FIELDS axes: the scheme, plus the sidebar size the console's menu button
+ * toggles (one per-user preference shared with the tenant admin).
  */
 final readonly class AdminChromeResolver
 {
@@ -50,7 +51,25 @@ final readonly class AdminChromeResolver
         'sidebar_image' => 'data-sidebar-image',
     ];
 
+    /**
+     * The axes the platform console renders. Its sidebar, topbar and position never follow
+     * tenant-admin variants; the sidebar size is the one exception — the console's menu
+     * button collapses its sidebar to the icon rail from 1280px, using the same per-user
+     * preference as the tenant shell.
+     */
+    public const array PLATFORM_FIELDS = ['scheme', 'sidebar_size'];
+
     public function __construct(private SettingsRepository $settings) {}
+
+    /**
+     * The axes the current plane renders onto <html> (and theme-boot re-applies).
+     *
+     * @return list<string>
+     */
+    public static function planeFields(): array
+    {
+        return AdminPlane::isPlatform() ? self::PLATFORM_FIELDS : array_keys(self::FIELDS);
+    }
 
     /**
      * @return array<string, string> field => resolved value (always complete)
@@ -68,18 +87,16 @@ final readonly class AdminChromeResolver
 
     /**
      * The `data-*` attributes the current plane's layout SSRs onto <html>. The platform
-     * console is a scheme-only plane: it has no sidebar and its topbar/position must not
-     * follow tenant-admin variants.
+     * console renders only PLATFORM_FIELDS: its sidebar/topbar/position must not follow
+     * tenant-admin variants.
      *
      * @return array<string, string> attribute name => value
      */
     public function attributes(?User $user): array
     {
         $resolved = $this->resolve($user);
-        $fields = AdminPlane::isPlatform() ? ['scheme'] : array_keys(self::FIELDS);
-
         $attributes = [];
-        foreach ($fields as $field) {
+        foreach (self::planeFields() as $field) {
             $attributes[self::ATTRIBUTES[$field]] = $resolved[$field];
         }
 
