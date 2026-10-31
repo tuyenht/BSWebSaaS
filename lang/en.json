@@ -305,7 +305,7 @@
     "admin.audit.loading": "Loading the log…",
     "admin.audit.error_title": "The log could not be loaded",
     "admin.audit.error_text": "Something went wrong while loading the log. Your filters are kept; try again in a few minutes.",
-    "admin.audit.timeout_text": "The search took more than 3 seconds and was stopped. Choose a shorter time span or add a filter, then try again.",
+    "admin.audit.timeout_text": "The search took more than 3 seconds and was stopped. Narrow it in the filters: choose a person under Done by or a website under Website, or a shorter Time, then try again.",
     "admin.audit.retry": "Try again",
     "admin.audit.empty_title": "Nothing has been recorded yet",
     "admin.audit.empty_text": "Actions by staff and customers will appear here as soon as they happen.",

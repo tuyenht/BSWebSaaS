@@ -5,6 +5,8 @@ use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Support\PlatformAccess;
+use App\Modules\Shared\Support\VietnameseFold;
+use App\Modules\Tenancy\Models\Site;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -18,7 +20,8 @@ use Livewire\Livewire;
  * the query; each test starts from the same 2,000 analysed rows, because statistics left by an
  * earlier test (TRUNCATE keeps them) would otherwise sway the choice between indexes. A screen
  * query rewritten so it no longer matches its index (the support predicate above all, which a
- * partial index matches only word for word) fails here.
+ * partial index matches only word for word) fails here. The people and website search is
+ * planned the same way against the trigram indexes on users and sites.
  */
 
 beforeEach(function (): void {
@@ -140,4 +143,44 @@ it('plans one person as the member or the staff member behind them on both perso
     expect(auditPlannedIndexes($sql, $bindings))
         ->toContain('audit_logs_actor_id_index')
         ->toContain('audit_logs_impersonator_id_index');
+});
+
+/** The folded-name expression VietnameseFold::sql() writes, as Postgres prints it in an index. */
+function auditFoldedName(): string
+{
+    $letters = fn (string $name): string => (string) (new ReflectionClassConstant(VietnameseFold::class, $name))->getValue();
+
+    return "lower(translate((name)::text, '".$letters('FROM')."'::text, '".$letters('TO')."'::text))";
+}
+
+it('defines the name and email search indexes on the expressions the search writes', function (string $index, string $table, string $expression): void {
+    $row = DB::selectOne('select pg_get_indexdef(indexrelid) as def, indisvalid as valid from pg_index where indexrelid = to_regclass(?)', [$index]);
+
+    expect($row)->not->toBeNull("{$index} is missing")
+        ->and($row->valid)->toBeTrue()
+        ->and($row->def)->toBe("CREATE INDEX {$index} ON public.{$table} USING gin ({$expression} gin_trgm_ops)");
+})->with([
+    'person name' => fn (): array => ['users_name_fold_trgm_index', 'users', auditFoldedName()],
+    'person email' => ['users_email_lower_trgm_index', 'users', 'lower((email)::text)'],
+    'website name' => fn (): array => ['sites_name_fold_trgm_index', 'sites', auditFoldedName()],
+]);
+
+it('plans the search for people on the trigram indexes, without a change to its SQL', function (): void {
+    ['sql' => $sql, 'bindings' => $bindings] = auditPageQuery(['q' => 'Nguyễn']);
+
+    expect($sql)->toContain(VietnameseFold::sql('name').' LIKE ?')
+        ->and($sql)->toContain('lower(email) LIKE ?')
+        ->and(auditPlannedIndexes($sql, $bindings))
+        ->toContain('users_name_fold_trgm_index')
+        ->toContain('users_email_lower_trgm_index');
+});
+
+it('matches the website name search to its trigram index', function (): void {
+    // The screen's website lookup also skips websites in the trash, and with a handful of
+    // websites the planner reads the live-websites index instead, whatever the name index; so
+    // the name condition is planned on its own, which only the trigram index can serve.
+    $sites = Site::query()->withoutGlobalScopes()->select('id')
+        ->whereRaw(VietnameseFold::sql('name').' LIKE ?', [VietnameseFold::like(VietnameseFold::text('An Vinh'))]);
+
+    expect(auditPlannedIndexes($sites->toSql(), $sites->getBindings()))->toBe(['sites_name_fold_trgm_index']);
 });

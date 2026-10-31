@@ -244,6 +244,8 @@ it('says the search took too long instead of failing when the time limit is hit'
 
     Livewire::actingAs(auditOperator('support'))->test(Index::class)
         ->assertSee('Tìm lâu quá 3 giây nên đã dừng')
+        // the filters that do narrow a search: a person or a website first, then a shorter period
+        ->assertSee('chọn Người làm hoặc Website, hoặc chọn Thời gian ngắn hơn')
         ->assertSee('Thử lại');
 });
 

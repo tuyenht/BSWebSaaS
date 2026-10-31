@@ -305,7 +305,7 @@
     "admin.audit.loading": "Đang tải nhật ký…",
     "admin.audit.error_title": "Chưa tải được nhật ký",
     "admin.audit.error_text": "Đã có lỗi khi tải nhật ký. Bộ lọc bạn chọn vẫn giữ nguyên, bấm Thử lại sau ít phút.",
-    "admin.audit.timeout_text": "Tìm lâu quá 3 giây nên đã dừng. Chọn khoảng thời gian ngắn hơn hoặc thêm điều kiện lọc, rồi bấm Thử lại.",
+    "admin.audit.timeout_text": "Tìm lâu quá 3 giây nên đã dừng. Hãy thu hẹp trong bộ lọc: chọn Người làm hoặc Website, hoặc chọn Thời gian ngắn hơn, rồi bấm Thử lại.",
     "admin.audit.retry": "Thử lại",
     "admin.audit.empty_title": "Chưa có thao tác nào được ghi",
     "admin.audit.empty_text": "Thao tác của nhân viên và khách hàng sẽ hiện ở đây ngay khi có.",

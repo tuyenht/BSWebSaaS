@@ -13,6 +13,10 @@ namespace App\Modules\Shared\Support;
  * Only the Vietnamese letters are folded (other scripts pass through unchanged, then lowercased),
  * which is what a Vietnamese admin types; a precomposed form is assumed on the database side, and
  * the needle is normalized to it first (a Mac keyboard may send combining marks).
+ *
+ * The trigram indexes on users.name and sites.name (2039_01_01_000100) are built on sql('name')
+ * word for word, which is what lets the planner use them: changing the letter table means a
+ * migration rebuilding those indexes (AuditLogIndexesTest fails until then).
  */
 final class VietnameseFold
 {
