@@ -305,7 +305,7 @@
     "admin.audit.loading": "ログを読み込み中…",
     "admin.audit.error_title": "ログを読み込めませんでした",
     "admin.audit.error_text": "ログの読み込み中に問題が発生しました。選んだ絞り込みはそのままです。数分後にもう一度お試しください。",
-    "admin.audit.timeout_text": "検索が3秒を超えたため中止しました。期間を短くするか絞り込みを追加して、もう一度お試しください。",
+    "admin.audit.timeout_text": "検索が3秒を超えたため中止しました。絞り込みで「実行者」または「ウェブサイト」を選ぶか、「期間」を短くしてから、もう一度お試しください。",
     "admin.audit.retry": "再試行",
     "admin.audit.empty_title": "まだ記録された操作はありません",
     "admin.audit.empty_text": "スタッフとお客様の操作は、行われるとすぐここに表示されます。",

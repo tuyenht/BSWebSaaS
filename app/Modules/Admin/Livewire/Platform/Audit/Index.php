@@ -421,7 +421,8 @@ final class Index extends Component
             $codes = $catalog->codesMatching($needle);
             // plan features are stored by key and shown by name: search the name
             $features = array_keys(array_filter(FeatureRegistry::all(), fn (array $f): bool => str_contains(VietnameseFold::text($f['name']), $needle)));
-            // every matching person and website, as subqueries: a common name ("nguyễn") may match many
+            // every matching person and website, as subqueries: a common name ("nguyễn") may match many;
+            // trigram indexes on these exact expressions serve them (2039_01_01_000100), so keep them as written
             $users = fn () => User::query()->select('id')
                 ->where(fn (Builder $w) => $w->whereRaw(VietnameseFold::sql('name').' LIKE ?', [$like])->orWhereRaw('lower(email) LIKE ?', [$like]));
             $sites = Site::query()->select('id')->whereRaw(VietnameseFold::sql('name').' LIKE ?', [$like]);

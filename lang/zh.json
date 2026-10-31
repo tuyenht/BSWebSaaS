@@ -305,7 +305,7 @@
     "admin.audit.loading": "正在加载日志…",
     "admin.audit.error_title": "无法加载日志",
     "admin.audit.error_text": "加载日志时出错。您选择的筛选条件已保留，请几分钟后重试。",
-    "admin.audit.timeout_text": "搜索超过 3 秒已停止。请缩短时间范围或增加筛选条件后重试。",
+    "admin.audit.timeout_text": "搜索超过 3 秒已停止。请在筛选中选择“操作人”或“网站”，或缩短“时间”，然后重试。",
     "admin.audit.retry": "重试",
     "admin.audit.empty_title": "尚未记录任何操作",
     "admin.audit.empty_text": "员工和客户的操作一发生就会显示在这里。",
