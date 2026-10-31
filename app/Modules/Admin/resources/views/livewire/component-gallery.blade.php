@@ -90,10 +90,10 @@
     <x-bs-admin::card title="List rows">
         @php
             $galleryRows = [
-                ['title' => 'Giới thiệu công ty', 'pill' => 'published', 'meta' => ['/gioi-thieu', '1.204 lượt xem'], 'author' => 'Nguyễn Văn Demo', 'when' => '12 Thg 10, 2026', 'state' => 'normal'],
-                ['title' => 'Chính sách bảo hành và đổi trả sản phẩm gia công cơ khí chính xác cho khách hàng doanh nghiệp tại Việt Nam', 'pill' => 'draft', 'meta' => ['/chinh-sach-bao-hanh-va-doi-tra-san-pham-gia-cong-co-khi-chinh-xac', 'Chưa có lượt xem'], 'author' => 'Trần Thị Ngọc Anh', 'when' => '30 Thg 10, 2026', 'state' => 'selected'],
-                ['title' => 'Tuyển dụng kỹ sư CNC', 'pill' => 'scheduled', 'meta' => ['/tuyen-dung', 'Chưa có lượt xem'], 'author' => 'Lê Minh Trí', 'when' => 'Lên lịch 05 Thg 11, 2026 · 08:00', 'state' => 'readonly'],
-                ['title' => 'Trang cũ đã bỏ', 'pill' => 'archived', 'meta' => ['/trang-cu', '18 lượt xem'], 'author' => 'Nguyễn Văn Demo', 'when' => '01 Thg 9, 2026', 'state' => 'trashed'],
+                ['title' => 'Giới thiệu công ty', 'pill' => 'published', 'meta' => ['/gioi-thieu', '1.204 lượt xem'], 'author' => 'Nguyễn Văn Demo', 'when' => '12 Thg 10, 2026', 'state' => 'normal', 'langs' => ['vi', 'en', 'ja'], 'has' => ['vi', 'en']],
+                ['title' => 'Chính sách bảo hành và đổi trả sản phẩm gia công cơ khí chính xác cho khách hàng doanh nghiệp tại Việt Nam', 'pill' => 'draft', 'meta' => ['/chinh-sach-bao-hanh-va-doi-tra-san-pham-gia-cong-co-khi-chinh-xac', 'Chưa có lượt xem'], 'author' => 'Trần Thị Ngọc Anh', 'when' => '30 Thg 10, 2026', 'state' => 'selected', 'langs' => ['vi', 'en', 'ja', 'zh', 'ko'], 'has' => ['vi', 'en']],
+                ['title' => 'Tuyển dụng kỹ sư CNC', 'pill' => 'scheduled', 'meta' => ['/tuyen-dung', 'Chưa có lượt xem'], 'author' => 'Lê Minh Trí', 'when' => 'Lên lịch 05 Thg 11, 2026 · 08:00', 'state' => 'readonly', 'langs' => ['vi', 'en'], 'has' => ['vi']],
+                ['title' => 'Trang cũ đã bỏ', 'pill' => 'archived', 'meta' => ['/trang-cu', '18 lượt xem'], 'author' => 'Nguyễn Văn Demo', 'when' => '01 Thg 9, 2026', 'state' => 'trashed', 'langs' => ['vi', 'en'], 'has' => ['vi', 'en']],
             ];
         @endphp
         <x-bs-admin::list label="Danh sách mẫu" class="-mx-4">
@@ -117,6 +117,9 @@
                             @foreach ($gr['meta'] as $piece)
                                 <span class="list-m">{{ $piece }}</span>
                             @endforeach
+                            <x-bs-admin::list.langs :locales="$gr['langs']" :has="$gr['has']" source="vi" :name="$gr['title']"
+                                :href="$grEdit ? fn (string $lc): string => '#' : null"
+                                :why="$grTrashed ? __('entries.lc_why_trashed') : __('entries.lc_why_view_only', ['noun' => __('entries.noun_page')])" />
                             <span class="list-m" data-for="au">{{ $gr['author'] }}</span>
                             <span class="list-m" data-for="when">{{ $gr['when'] }}</span>
                         </x-bs-admin::list.meta>

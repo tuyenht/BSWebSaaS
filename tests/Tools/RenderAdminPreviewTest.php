@@ -54,7 +54,7 @@ beforeEach(function (): void {
     app(ProvisionSite::class)->handle(new ProvisionSiteData(
         tenantName: 'Preview', siteName: 'Công ty Demo', hostname: ADMIN_PREVIEW_HOST,
         ownerEmail: 'owner@'.ADMIN_PREVIEW_HOST, ownerName: 'Nguyễn Văn Demo',
-        ownerPassword: 'a-strong-password', locales: ['vi'], modules: ['cms', 'media'],
+        ownerPassword: 'a-strong-password', locales: ['vi', 'en'], modules: ['cms', 'media'],
     ));
 });
 
@@ -71,11 +71,15 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
 
     $owner = User::query()->where('email', 'owner@'.ADMIN_PREVIEW_HOST)->firstOrFail();
 
-    // A few entries in mixed states so the list screen shows real rows, not an empty state.
+    // A few entries in mixed states so the list screen shows real rows, not an empty state; the site
+    // has two languages and one page is translated, so the rows show both language-chip states.
     app(Tenancy::class)->enter(1, function () use ($owner): void {
         foreach ([['Trang chủ', 'trang-chu', 'published'], ['Giới thiệu', 'gioi-thieu', 'published'], ['Liên hệ', 'lien-he', 'draft'], ['Tuyển dụng', 'tuyen-dung', 'scheduled']] as [$title, $slug, $status]) {
             $entry = Entry::query()->create(['type' => 'page', 'status' => $status, 'author_id' => $owner->id]);
             $entry->translations()->create(['locale' => 'vi', 'title' => $title, 'slug' => $slug, 'status' => 'draft', 'body' => ['blocks' => []]]);
+            if ($slug === 'gioi-thieu') {
+                $entry->translations()->create(['locale' => 'en', 'title' => 'About us', 'slug' => 'about-us', 'status' => 'draft', 'body' => ['blocks' => []]]);
+            }
         }
     });
 

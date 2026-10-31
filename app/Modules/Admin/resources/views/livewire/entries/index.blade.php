@@ -323,37 +323,10 @@
                                             <span class="font-mono text-caption" title="{{ $path }}">{{ $path ?? '—' }}</span>
                                         @endif
                                     </span>
-                                    <span class="list-m" x-show="cols.langs">
-                                        <span class="inline-flex flex-wrap items-center gap-1 align-middle">
-                                            @foreach ($locales as $lc)
-                                                @php
-                                                    $has = $entry->translations->contains(fn ($tr) => $tr->locale === $lc);
-                                                    $langHint = $has
-                                                        ? __('entries.edit_translation_hint', ['lang' => __('entries.language_'.$lc), 'title' => $t?->title ?? '—'])
-                                                        : __('entries.add_translation_hint', ['lang' => __('entries.language_'.$lc), 'title' => $t?->title ?? '—']);
-                                                @endphp
-                                                {{-- The code itself isn't clickable; hover or keyboard focus reveals a floating Sửa/Thêm that opens the editor for that locale
-                                                     (not on a Trash row: the editor does not open trashed content). The popover is wrapped with a
-                                                     padding-gap (not a margin) + pointer-events so the cursor can travel onto it without the hover dropping. --}}
-                                                <span class="group relative inline-flex">
-                                                    <span @if ($canEdit && ! $trashed) title="{{ $langHint }}" @endif @class([
-                                                        'inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none',
-                                                        'border border-border bg-surface-muted text-text' => $has,
-                                                        'border border-dashed border-border-strong text-placeholder' => ! $has,
-                                                    ])>{{ strtoupper($lc) }}</span>
-                                                    @if ($canEdit && ! $trashed)
-                                                        <span class="pointer-events-none absolute bottom-full left-0 z-20 pb-1.5 opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
-                                                            <a href="{{ route('admin.entries.edit', ['ulid' => $entry->ulid, 'locale' => $lc]) }}" wire:navigate title="{{ $langHint }}"
-                                                                class="inline-flex items-center gap-1 whitespace-nowrap rounded px-2 py-1 text-[11px] font-semibold text-on-primary shadow-lg {{ $has ? 'bg-primary' : 'bg-success' }}">
-                                                                <x-bs-admin::icon :name="$has ? 'ri-pencil' : 'ri-add'" class="size-3" />
-                                                                {{ $has ? __('entries.edit_action') : __('entries.add_translation') }}
-                                                            </a>
-                                                        </span>
-                                                    @endif
-                                                </span>
-                                            @endforeach
-                                        </span>
-                                    </span>
+                                    <x-bs-admin::list.langs :locales="$locales" :source="$locale" :name="$title" show="cols.langs"
+                                        :has="$entry->translations->pluck('locale')->all()"
+                                        :href="$quickEdit ? fn (string $lc): string => route('admin.entries.edit', ['ulid' => $entry->ulid, 'locale' => $lc]) : null"
+                                        :why="$trashed ? __('entries.lc_why_trashed') : __('entries.lc_why_view_only', ['noun' => __('entries.noun_'.$entry->type)])" />
                                     {{-- as in the design, views are named only once there are some --}}
                                     @if ($entry->view_count > 0)
                                         <span class="list-m" data-for="views">{{ __('entries.views_count', ['count' => \Illuminate\Support\Number::format($entry->view_count, locale: app()->getLocale())]) }}</span>

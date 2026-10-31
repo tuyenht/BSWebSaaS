@@ -268,6 +268,210 @@
         display: none;
     }
 
+    /* Language versions (list.langs): the "Chưa dịch" note, then a chip per locale. A chip is drawn
+       small (1px box, radius 4); its hit area is --list-qe-s (24 with a mouse at the default text
+       size, 44 on touch) through a transparent ::after, so neither the chip nor the line grows. The
+       hit area reaches at most --list-lc-up above the chip (the gap under the name) and the rest
+       below, so it never lies over the name. Its popover and menu hang from the meta line. */
+    .list-m[data-for='langs'] {
+        --list-lc-up: 0.25rem;
+        position: static;
+    }
+
+    .list-lcs,
+    .list-lcg {
+        display: inline-flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.25rem 0.5rem;
+        max-width: 100%;
+        min-width: 0;
+        vertical-align: middle;
+    }
+
+    /* On touch the 44 hit areas of neighbouring chips do not overlap. */
+    @media (pointer: coarse) {
+        .list-lcs,
+        .list-lcg {
+            column-gap: 0.75rem;
+        }
+    }
+
+    .list-lmiss {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 0.25rem;
+        font-size: var(--text-caption);
+        font-weight: 600;
+        line-height: 1.4;
+        color: var(--color-warning-text);
+        overflow-wrap: anywhere;
+    }
+
+    .list-lmiss-i {
+        align-self: center;
+    }
+
+    .list-lc,
+    .list-lsum {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        font: inherit;
+        cursor: pointer;
+    }
+
+    .list-lc::after,
+    .list-lsum::after {
+        --list-lc-out: max(0px, calc(var(--list-qe-s) - 100%));
+        content: '';
+        position: absolute;
+        inset-inline: min(0px, calc((100% - var(--list-qe-s)) / 2));
+        top: calc(-1 * min(var(--list-lc-up), var(--list-lc-out) / 2));
+        bottom: calc(-1 * (var(--list-lc-out) - min(var(--list-lc-up), var(--list-lc-out) / 2)));
+    }
+
+    .list-lc {
+        gap: 0.125rem;
+        padding: 0.0625rem 0.4375rem;
+        border: 1px solid var(--color-border-input);
+        border-radius: 0.25rem;
+        background: var(--color-surface);
+        font-size: var(--text-caption);
+        font-weight: 700;
+        line-height: 1.4;
+        color: var(--color-text);
+        text-decoration: none;
+    }
+
+    .list-lc[data-s='empty'] {
+        border-style: dashed;
+        background: transparent;
+        color: var(--color-text-muted);
+    }
+
+    .list-lc[data-add]::before {
+        content: '+';
+        font-weight: 700;
+    }
+
+    .list-lc:hover {
+        border-color: var(--color-primary-text);
+    }
+
+    .list-lc-star {
+        color: var(--color-warning-text);
+    }
+
+    /* More than four locales: one summary button, its text wrapping (never clipped). */
+    .list-lsum {
+        gap: 0.375rem;
+        padding: 0 0.25rem;
+        margin-inline-start: -0.25rem;
+        border: 0;
+        border-radius: 0.25rem;
+        background: transparent;
+        font-size: var(--text-small);
+        line-height: 1.45;
+        color: var(--color-text);
+        text-align: left;
+        overflow-wrap: anywhere;
+    }
+
+    .list-lsum:hover {
+        background: var(--color-surface-hover);
+    }
+
+    .list-lsum-i {
+        color: var(--color-success-text);
+    }
+
+    .list-lsum[data-ok='0'] .list-lsum-i {
+        color: var(--color-warning-text);
+    }
+
+    /* An open popover or menu lifts its meta line over the rows after it. */
+    .list-meta:has([aria-expanded='true']) {
+        z-index: 31;
+    }
+
+    .list-menu:is(.list-lmenu, .list-pop) {
+        top: calc(100% + 0.25rem);
+        right: auto;
+        left: 0;
+        width: max-content;
+        min-width: min(15rem, 100%);
+        max-width: min(20rem, 100%);
+    }
+
+    .list-lmh {
+        padding: 0.375rem 0.875rem 0.25rem;
+        font-size: var(--text-caption);
+        font-weight: 600;
+        color: var(--color-text-muted);
+    }
+
+    .list-mi-tx {
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .list-mi-st {
+        margin-inline-start: 0.25rem;
+        font-size: var(--text-caption);
+        color: var(--color-text-muted);
+    }
+
+    .list-mi-act {
+        flex: none;
+        font-weight: 600;
+        color: var(--color-primary-text);
+    }
+
+    .list-mi[aria-disabled='true'] {
+        cursor: default;
+    }
+
+    .list-lmw,
+    .list-pop-w {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.375rem;
+        font-size: var(--text-caption);
+        color: var(--color-text-muted);
+    }
+
+    .list-lmw {
+        padding: 0.5rem 0.875rem 0.375rem;
+        border-top: 1px solid var(--color-border);
+    }
+
+    .list-lmw-i {
+        margin-top: 0.125rem;
+    }
+
+    /* The why-note of a chip the member cannot open (drawn as a list menu). */
+    .list-menu.list-pop {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        box-sizing: border-box;
+        padding: 0.625rem 0.75rem;
+        font-size: var(--text-small);
+        overflow-wrap: anywhere;
+    }
+
+    /* The column choice off: chips with content hide (below 600 all chips, see the card band). */
+    .list-lcg[data-off] > .list-lc:not([data-s='empty']) {
+        display: none;
+    }
+
+    .list-pop-h {
+        font-weight: 600;
+        color: var(--color-text-strong);
+    }
+
     /* Status cell: the shared status pill, then the date line. */
     .list-stw {
         position: relative;
@@ -421,6 +625,21 @@
 
         .list-m[data-for='views'] {
             order: 3;
+        }
+
+        /* Languages close the detail line. With the column choice off only the note shows; with it
+           on, the chips' line is as tall as their hit area, which sits evenly around them. */
+        .list-m[data-for='langs'] {
+            --list-lc-up: var(--list-qe-s);
+            order: 4;
+        }
+
+        .list-lcg {
+            min-height: var(--list-qe-s);
+        }
+
+        .list-lcg[data-off] {
+            display: none;
         }
 
         .list-c-main {
