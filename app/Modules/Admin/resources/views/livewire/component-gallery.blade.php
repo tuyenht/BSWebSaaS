@@ -86,6 +86,78 @@
         </div>
     </x-bs-admin::card>
 
+    {{-- Shared list row: one row in each state (card < 600, one line to 900, table from 900 — by the list's width) --}}
+    <x-bs-admin::card title="List rows">
+        @php
+            $galleryRows = [
+                ['title' => 'Giới thiệu công ty', 'pill' => 'published', 'meta' => ['/gioi-thieu', '1.204 lượt xem'], 'author' => 'Nguyễn Văn Demo', 'when' => '12 Thg 10, 2026', 'state' => 'normal'],
+                ['title' => 'Chính sách bảo hành và đổi trả sản phẩm gia công cơ khí chính xác cho khách hàng doanh nghiệp tại Việt Nam', 'pill' => 'draft', 'meta' => ['/chinh-sach-bao-hanh-va-doi-tra-san-pham-gia-cong-co-khi-chinh-xac', 'Chưa có lượt xem'], 'author' => 'Trần Thị Ngọc Anh', 'when' => '30 Thg 10, 2026', 'state' => 'selected'],
+                ['title' => 'Tuyển dụng kỹ sư CNC', 'pill' => 'scheduled', 'meta' => ['/tuyen-dung', 'Chưa có lượt xem'], 'author' => 'Lê Minh Trí', 'when' => 'Lên lịch 05 Thg 11, 2026 · 08:00', 'state' => 'readonly'],
+                ['title' => 'Trang cũ đã bỏ', 'pill' => 'archived', 'meta' => ['/trang-cu', '18 lượt xem'], 'author' => 'Nguyễn Văn Demo', 'when' => '01 Thg 9, 2026', 'state' => 'trashed'],
+            ];
+        @endphp
+        <x-bs-admin::list label="Danh sách mẫu" class="-mx-4">
+            <x-slot:select>
+                <x-bs-admin::list.check checked="mixed" label="Chọn tất cả" visible />
+            </x-slot:select>
+            <x-bs-admin::list.head>
+                <x-bs-admin::list.cell head col="chk"><x-bs-admin::list.check checked="mixed" label="Chọn tất cả" /></x-bs-admin::list.cell>
+                <x-bs-admin::list.cell head col="main" sort="ascending"><x-bs-admin::list.sort active dir="asc">Tiêu đề</x-bs-admin::list.sort></x-bs-admin::list.cell>
+                <x-bs-admin::list.cell head col="st" sort="none"><x-bs-admin::list.sort>Trạng thái</x-bs-admin::list.sort></x-bs-admin::list.cell>
+                <x-bs-admin::list.cell head col="au" sort="none"><x-bs-admin::list.sort>Người tạo</x-bs-admin::list.sort></x-bs-admin::list.cell>
+                <x-bs-admin::list.cell head col="act">Thao tác</x-bs-admin::list.cell>
+            </x-bs-admin::list.head>
+            @foreach ($galleryRows as $gr)
+                @php $grTrashed = $gr['state'] === 'trashed'; $grEdit = $gr['state'] !== 'readonly' && ! $grTrashed; @endphp
+                <x-bs-admin::list.row :selected="$gr['state'] === 'selected'">
+                    <x-bs-admin::list.cell col="chk"><x-bs-admin::list.check :checked="$gr['state'] === 'selected'" :label="'Chọn “'.$gr['title'].'”'" /></x-bs-admin::list.cell>
+                    <x-bs-admin::list.cell col="main">
+                        <x-bs-admin::list.name :href="$grTrashed ? null : '#'" :quick-edit="$grEdit ? 'Sửa nhanh tiêu đề “'.$gr['title'].'”' : null">{{ $gr['title'] }}</x-bs-admin::list.name>
+                        <x-bs-admin::list.meta>
+                            @foreach ($gr['meta'] as $piece)
+                                <span class="list-m">{{ $piece }}</span>
+                            @endforeach
+                            <span class="list-m" data-for="au">{{ $gr['author'] }}</span>
+                            <span class="list-m" data-for="when">{{ $gr['when'] }}</span>
+                        </x-bs-admin::list.meta>
+                    </x-bs-admin::list.cell>
+                    <x-bs-admin::list.cell col="st">
+                        <div class="list-stw">
+                            @if ($grEdit)
+                                <x-bs-admin::status-pill button :status="$gr['pill']" aria-haspopup="true">{{ __('entries.status_'.$gr['pill']) }}</x-bs-admin::status-pill>
+                            @else
+                                <x-bs-admin::status-pill :status="$gr['pill']">{{ __('entries.status_'.$gr['pill']) }}</x-bs-admin::status-pill>
+                            @endif
+                        </div>
+                        <div class="list-st-meta">{{ $gr['when'] }}</div>
+                    </x-bs-admin::list.cell>
+                    <x-bs-admin::list.cell col="au"><span class="list-au">{{ $gr['author'] }}</span></x-bs-admin::list.cell>
+                    <x-bs-admin::list.cell col="act">
+                        <x-bs-admin::list.actions :name="$gr['title']">
+                            @if ($grTrashed)
+                                <x-bs-admin::button size="sm" variant="soft" color="primary"><x-bs-admin::icon name="ri-arrow-go-back" class="size-4" /> {{ __('entries.action_restore') }}</x-bs-admin::button>
+                                <x-slot:menu>
+                                    <x-bs-admin::list.menu-item icon="ri-delete-bin" danger>{{ __('entries.action_destroy') }}</x-bs-admin::list.menu-item>
+                                </x-slot:menu>
+                            @else
+                                <x-bs-admin::button size="sm" variant="soft" color="secondary"><x-bs-admin::icon name="ri-eye" class="size-4" /> {{ __('admin.view') }}</x-bs-admin::button>
+                                <x-bs-admin::button size="sm" variant="soft" color="primary"><x-bs-admin::icon name="ri-pencil" class="size-4" /> {{ __('entries.edit_action') }}</x-bs-admin::button>
+                                @if ($grEdit)
+                                    <x-slot:menu>
+                                        <x-bs-admin::list.menu-item icon="ri-pencil">{{ __('entries.quick_edit_title') }}</x-bs-admin::list.menu-item>
+                                        <x-bs-admin::list.menu-item icon="ri-file-copy">{{ __('entries.action_duplicate') }}</x-bs-admin::list.menu-item>
+                                        <x-bs-admin::list.menu-sep />
+                                        <x-bs-admin::list.menu-item icon="ri-delete-bin" danger>{{ __('entries.action_trash') }}</x-bs-admin::list.menu-item>
+                                    </x-slot:menu>
+                                @endif
+                            @endif
+                        </x-bs-admin::list.actions>
+                    </x-bs-admin::list.cell>
+                </x-bs-admin::list.row>
+            @endforeach
+        </x-bs-admin::list>
+    </x-bs-admin::card>
+
     {{-- Inputs --}}
     <x-bs-admin::card title="Inputs">
         <div class="grid gap-4 sm:grid-cols-2">
