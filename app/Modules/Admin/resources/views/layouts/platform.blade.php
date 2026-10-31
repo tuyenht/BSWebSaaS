@@ -33,8 +33,7 @@
      scroll. The page stays readable to screen readers (as in the design), so the menu button can
      still close it. Below 1024px the closed drawer is hidden by CSS (so it takes no focus before
      Alpine starts) and inert. Esc or the backdrop closes it and focus goes back to the menu
-     button; an Esc another dialog already handled is left alone, and opening the theme panel
-     closes it without pulling focus back. --}}
+     button, as it does whenever the menu closes; opening the theme panel closes it. --}}
 <div class="{{ $hasNav ? 'platform-shell ' : '' }}min-h-screen"
      x-data="{
         open: false,
@@ -77,8 +76,8 @@
                 this.open = ! this.open;
             }
         },
-        close(event = null) {
-            if (! this.open || event?.defaultPrevented) {
+        close() {
+            if (! this.open) {
                 return;
             }
             this.open = false;
@@ -86,7 +85,7 @@
         },
      }"
      :data-nav-open="open ? '' : null"
-     @keydown.escape.window="close($event)">
+     @keydown.escape.window="close()">
 
     @if ($hasNav)
         {{-- Backdrop under the open drawer / the menu laid over the rail. --}}
@@ -97,7 +96,7 @@
 
         <aside id="platform-sidebar"
                class="admin-sidebar fixed inset-y-0 start-0 z-40 flex flex-col bg-sidebar-bg text-sidebar-fg"
-               x-trap.noscroll.noreturn.noautofocus="open && ! wide"
+               x-trap.noscroll.noautofocus="open && ! wide"
                :role="open && ! wide ? 'dialog' : null"
                :aria-label="open && ! wide ? @js(__('admin.menu')) : null"
                x-effect="$el.inert = mobile && ! open">

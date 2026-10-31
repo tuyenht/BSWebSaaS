@@ -20,8 +20,7 @@
      Tab stays inside and the page behind does not scroll. Esc or the overlay closes it and focus
      goes back to the menu button; the page stays readable to screen readers, so they can also
      close it with the menu button (the open drawer covers it for touch and mouse, as in the
-     design). An Esc another dialog already handled is left alone, and opening the theme panel
-     closes the drawer without pulling focus back. The closed drawer is inert. `open` resets
+     design). Opening the theme panel closes the drawer. The closed drawer is inert. `open` resets
      when the width crosses 1024px. --}}
 <div x-data="{
         open: false,
@@ -49,15 +48,15 @@
         destroy() {
             this.unlisten?.();
         },
-        close(event = null) {
-            if (! this.open || event?.defaultPrevented) {
+        close() {
+            if (! this.open) {
                 return;
             }
             this.open = false;
             this.$nextTick(() => this.$refs.menuButton?.focus());
         },
      }"
-     @keydown.escape.window="close($event)" class="admin-shell-wrapper min-h-screen">
+     @keydown.escape.window="close()" class="admin-shell-wrapper min-h-screen">
 
     {{-- Mobile overlay --}}
     <div x-show="open" @click="close()" x-cloak
@@ -67,7 +66,7 @@
 
     {{-- Sidebar (Velzon dark vertical). `admin-sidebar` is the [data-layout-position] flip hook. --}}
     <aside id="admin-sidebar"
-        x-trap.noscroll.noreturn.noautofocus="open && mobile"
+        x-trap.noscroll.noautofocus="open && mobile"
         :role="open && mobile ? 'dialog' : null"
         :aria-label="open && mobile ? @js(__('admin.menu')) : null"
         x-effect="$el.inert = mobile && ! open"

@@ -121,8 +121,7 @@ it('gives the platform console a menu button that drives the drawer, the laid-ov
 
     // The shell's state lives on its wrapper: Esc closes; the toggle saves the shared sidebar size.
     $shell = platformShellOne($dom, 'div.platform-shell');
-    expect($shell->getAttribute('@keydown.escape.window'))->toBe('close($event)')
-        ->and((string) $shell->getAttribute('x-data'))->toContain('event?.defaultPrevented')
+    expect($shell->getAttribute('@keydown.escape.window'))->toBe('close()')
         ->and((string) $shell->getAttribute('x-data'))->toContain("\$watch('\$store.adminTheme.open'")
         ->and($shell->getAttribute(':data-nav-open'))->toBe("open ? '' : null")
         ->and((string) $shell->getAttribute('x-data'))->toContain("\$store.adminTheme.set('sidebar_size'");
@@ -131,7 +130,7 @@ it('gives the platform console a menu button that drives the drawer, the laid-ov
     // but the page is never hidden from screen readers — the drawer has no close button of its own,
     // so the menu button must stay reachable. The closed phone drawer is inert.
     $aside = platformShellOne($dom, 'aside#platform-sidebar');
-    expect($aside->getAttribute('x-trap.noscroll.noreturn.noautofocus'))->toBe('open && ! wide')
+    expect($aside->getAttribute('x-trap.noscroll.noautofocus'))->toBe('open && ! wide')
         ->and(array_filter($aside->getAttributeNames(), fn (string $name): bool => str_contains($name, 'aria-modal')))->toBe([])
         ->and($aside->getAttribute(':role'))->toBe("open && ! wide ? 'dialog' : null")
         ->and((string) $aside->getAttribute(':aria-label'))->toContain(__('admin.menu'))
