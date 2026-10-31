@@ -12,12 +12,13 @@
     // last first, while the chosen group and Trash always stay in the row. "Khác" sits right after
     // the last group and Trash at the far end, at least 2rem apart; the menu never leaves the row.
     //
-    // $groups: list<array{key: string, label: string, icon?: string|null, count?: int|null, trash?: bool}>
+    // $groups: list<array{key: string, label: string, icon?: string|null, count?: int|string|null, trash?: bool}>
+    // A count given as text ("hơn 10.000", for a list that stops counting) is shown as given.
     // $active: the chosen group's key. $model: the host Livewire property a click sets.
     // $label: the row's name, e.g. "Nhóm tệp".
     //
     // "Khác" opens with Enter, Space or ↓; ↑ ↓ move through it; Esc closes it and focus returns to it.
-    $fmt = fn (?int $n): ?string => $n === null ? null : \Illuminate\Support\Number::format($n, locale: app()->getLocale());
+    $fmt = fn (int|string|null $n): ?string => is_int($n) ? \Illuminate\Support\Number::format($n, locale: app()->getLocale()) : $n;
     $setter = fn (string $key): string => '$set('.\Illuminate\Support\Js::from($model).', '.\Illuminate\Support\Js::from($key).')';
     // Stable across re-renders, so a morph never rewrites aria-controls under an open menu
     $menuId = 'gm-'.substr(md5($model), 0, 8);

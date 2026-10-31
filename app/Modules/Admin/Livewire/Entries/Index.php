@@ -2,6 +2,10 @@
 
 namespace App\Modules\Admin\Livewire\Entries;
 
+use App\Modules\Admin\Support\Entries\EntryListFilter;
+use App\Modules\Admin\Support\Entries\EntryListQuery;
+use App\Modules\Admin\Support\Entries\ListCursor;
+use App\Modules\Admin\Support\Entries\ListGroup;
 use App\Modules\Cms\Actions\DuplicateEntry;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\RecordEntryRevision;
@@ -21,6 +25,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\ConcurrencyError;
 use App\Modules\Shared\Support\Slugger;
+use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Models\ContentSection;
@@ -51,9 +56,12 @@ use Throwable;
  * tabs + counts, name/slug search, and sortable columns all run server-side. The page tree is
  * kept intact: only parents are sorted, children ride directly under their parent, and a child
  * whose parent is filtered out is promoted to the top level (never orphaned under a wrong
- * parent). Pages are a small per-site set, so the tree is grouped + paged in memory at a flat
- * query budget (enforced by a Query-Budget test); other types stay flat. Read access is gated
- * by EntryPolicy::viewAny; the entry is addressed by ulid, never its raw id.
+ * parent). Up to PAGES_IN_MEMORY pages the tree is grouped + paged in memory; posts, and pages
+ * past that, are filtered, sorted and paged in the database (EntryListQuery), one page of rows at
+ * a time, at a flat query budget (enforced by a Query-Budget test). Numbered pages reach the first
+ * 10,000 rows; past them the pager goes on with an encrypted cursor, and counts stop at "hơn
+ * 10.000". Read access is gated by EntryPolicy::viewAny; the entry is addressed by ulid, never its
+ * raw id.
  *
  * The header follows the shared list layout: status groups (a row from 900px, the Filter
  * sheet's first section below), search, the filters (Mẫu trang, Bản dịch, Ngôn ngữ, Người tạo,
@@ -90,6 +98,14 @@ final class Index extends Component
     /** Rows per page — cycled 10/20/50 by the footer's "Dòng/trang" control (§3a). */
     #[Url(as: 'per_page', except: 20)]
     public int $perPage = 20;
+
+    /**
+     * The page read past the numbered pages: an encrypted note of the row the page follows (or
+     * precedes), so the list goes on from there however deep it is. Never in the URL; the row's id
+     * inside stays unreadable. Empty on a numbered page; every change of what the list shows clears it.
+     */
+    #[Locked]
+    public string $cursor = '';
 
     /** @var list<string> ulids selected for a bulk action (transient — not URL-persisted). */
     public array $selected = [];
@@ -173,6 +189,25 @@ final class Index extends Component
     /** The most rows one bulk action takes: every one is locked and worked through in a single request. */
     private const int BULK_LIMIT = 200;
 
+    /** A page list this size or smaller is read whole and sorted, filtered and treed in memory. */
+    private const int PAGES_IN_MEMORY = 1000;
+
+    /** At most this many pages ride below the top pages of one page of the tree. */
+    private const int TREE_CHILDREN = 1000;
+
+    /** What a row shows besides its own columns, loaded for the rows of the page only. */
+    private const array ROW_RELATIONS = [
+        'translations:id,entry_id,locale,title,slug,status',
+        'routes:id,entry_id,locale,path',
+        'author:id,ulid,name',
+    ];
+
+    /** The same, less the author: a list read in SQL already knows its authors. */
+    private const array ROW_RELATIONS_BUT_AUTHOR = [
+        'translations:id,entry_id,locale,title,slug,status',
+        'routes:id,entry_id,locale,path',
+    ];
+
     /**
      * Every request of this screen — the first render, each action and each live property change — is
      * refused once the member may no longer see entries: the livewire/update endpoint skips route middleware.
@@ -205,7 +240,7 @@ final class Index extends Component
 
     public function updatedSearch(): void
     {
-        $this->page = 1; // a new term must not strand the user on a stale page number
+        $this->restart(); // a new term must not strand the user on a stale page number
     }
 
     /**
@@ -224,7 +259,7 @@ final class Index extends Component
         }
         if (in_array($name, ['tab', 'transF', 'langF', 'creatorF', 'templateF', 'when', 'from', 'to', 'sortKey', 'sortDir'], true)) {
             $this->clean();
-            $this->page = 1;
+            $this->restart();
         }
         if ($name === 'tab') {
             $this->selected = []; // as setTab(): never act on rows of another group
@@ -248,7 +283,7 @@ final class Index extends Component
     public function setTab(string $tab): void
     {
         $this->tab = in_array($tab, self::TABS, true) ? $tab : 'all';
-        $this->page = 1;
+        $this->restart();
         // A selection made on one tab is not shown on the next, and the next tab's bar offers
         // other actions (the Trash's is "Xóa vĩnh viễn") — never let it act on rows out of sight.
         $this->selected = [];
@@ -279,14 +314,14 @@ final class Index extends Component
     public function resetSort(): void
     {
         $this->sortKey = $this->sortDir = '';
-        $this->page = 1;
+        $this->restart();
     }
 
     /** "Bỏ lọc" on the Thời gian chip. */
     public function clearWhen(): void
     {
         $this->when = $this->from = $this->to = '';
-        $this->page = 1;
+        $this->restart();
     }
 
     /** Footer "Dòng/trang" control — cycles 10 → 20 → 50 → 10, then returns to page 1. */
@@ -295,7 +330,7 @@ final class Index extends Component
         $options = [10, 20, 50];
         $index = array_search($this->perPage, $options, true);
         $this->perPage = $options[$index === false ? 0 : ($index + 1) % count($options)];
-        $this->page = 1;
+        $this->restart();
     }
 
     /** Guards a live property change (e.g. a forged $wire.set) — mount()'s own clamp covers the URL. */
@@ -304,13 +339,38 @@ final class Index extends Component
         if (! in_array($this->perPage, [10, 20, 50], true)) {
             $this->perPage = 20;
         }
+        $this->restart();
+    }
+
+    /** Back to the first page: what the list shows changed, so a page number or a cursor means nothing now. */
+    private function restart(): void
+    {
         $this->page = 1;
+        $this->cursor = '';
+    }
+
+    /**
+     * Footer pager past the numbered pages: the next or previous page, after or before a row the
+     * last render named. A note that does not open, or one made for another view of the list, goes
+     * back to the first page.
+     */
+    public function turnPage(string $token): void
+    {
+        $note = ListCursor::open($token, $this->fingerprint());
+        if ($note === null) {
+            $this->restart();
+
+            return;
+        }
+        $this->cursor = $token;
+        $this->page = $note['n'];
     }
 
     /** Footer pager — page-pill/arrow clicks; paginate() clamps an out-of-range target below. */
     public function gotoPage(int $page): void
     {
         $this->page = max(1, $page);
+        $this->cursor = '';
     }
 
     public function toggleFilterValue(string $group, string $value): void
@@ -325,7 +385,7 @@ final class Index extends Component
             $this->transF = $this->toggleIn($this->transF, $value);
         }
 
-        $this->page = 1;
+        $this->restart();
     }
 
     public function resetFilterGroup(string $group): void
@@ -340,7 +400,7 @@ final class Index extends Component
             $this->transF = [];
         }
 
-        $this->page = 1;
+        $this->restart();
     }
 
     /** "Bỏ lọc": every filter, the search words and the group go; the sort stays. */
@@ -356,7 +416,7 @@ final class Index extends Component
             $this->tab = 'all';
             $this->selected = [];
         }
-        $this->page = 1;
+        $this->restart();
     }
 
     /**
@@ -1060,7 +1120,7 @@ final class Index extends Component
         $default = $key === $this->defaultSortKey();
         $this->sortKey = $default ? '' : $key;
         $this->sortDir = $dir === self::naturalDir($key) ? '' : $dir;
-        $this->page = 1;
+        $this->restart();
     }
 
     /**
@@ -1115,69 +1175,54 @@ final class Index extends Component
     public function render(): View
     {
         $this->clean();
+        // The list's statements are planned for this website's own numbers. PgBouncer keeps
+        // prepared statements, and a plan Postgres makes once for every website (a generic plan)
+        // assumes a website of average size: on a website of a million posts, a section's counts
+        // planned that way did not finish within a minute, where a plan for the website takes a second.
+        // SET LOCAL ends with the request's tenancy transaction, so it never reaches another request.
+        if (DB::transactionLevel() > 0) {
+            DB::statement('SET LOCAL plan_cache_mode = force_custom_plan');
+        }
         $section = $this->resolveSection();
         $type = $this->entryType;
         $siteLocale = app(SiteLocale::class);
         $locale = $siteLocale->default();
         $locales = $siteLocale->enabled();
-
-        $query = Entry::query()->where('type', $type);
-        $this->scopeToSection($query, $section);
-
-        if ($this->tab === 'trash') {
-            $query->onlyTrashed();
-        } elseif (in_array($this->tab, self::STATUS_TABS, true)) {
-            $query->where('status', $this->tab);
-        }
-
-        $term = trim($this->search);
-        if ($term !== '') {
-            $query->whereHas('translations', fn (Builder $t) => $t
-                ->where('title', 'ilike', "%{$term}%")
-                ->orWhere('slug', 'ilike', "%{$term}%"));
-        }
-
-        $user = $this->actingUser();
-        $scopes = app(CategoryScopes::class);
-        // Whether this member has category limits here rides along on the rows' own query, so a
-        // member without limits costs the list nothing more.
-        $scopes->selectHasLimits($query, $user);
-
-        $base = $query->with([
-            'translations:id,entry_id,locale,title,slug,status',
-            'routes:id,entry_id,locale,path',
-            'author:id,ulid,name',
-        ])->get();
-
-        $limited = false;
-        if ($base->isNotEmpty()) {
-            $limited = $scopes->learnHasLimits($user, $base->first()->getAttribute(CategoryScopes::HAS_LIMITS)) && $scopes->isLimited($user);
-            if ($limited && $type === 'post') {
-                $base->load(self::primaryCategoryOnly());
-            }
-        }
-
         $multilingual = count($locales) >= 2;
         if (! $multilingual) {
             $this->transF = []; // one language: every record is complete, the filter is not offered
         }
+
+        $user = $this->actingUser();
+        $scopes = app(CategoryScopes::class);
         [$from, $until] = $this->period();
-        $facets = [
-            'lang' => $this->langFacet($base, $locales),
-            'creator' => $this->creatorFacet($base, $user),
-            'template' => $this->templateFacet($base),
-            'trans' => $multilingual ? $this->transFacet($base, $locales) : [],
-        ];
+        $filter = new EntryListFilter($type === 'post' ? 'post' : 'page', $this->tab, $section?->taxonomy_id, $this->search, $this->langF, $this->creatorF,
+            $this->templateF, $this->transF, $locales, $locale, $from, $until);
+        // Whether this member has category limits here rides along on the rows' own query, so a
+        // member without limits costs the list nothing more.
+        $list = new EntryListQuery($filter, app(CurrentSite::class)->id(),
+            fn (Builder $rows) => $scopes->selectHasLimits($rows, $user, EntryListQuery::COLUMNS));
 
-        // OR within a group, AND across groups — applied in memory, on the rows already loaded.
-        $filtered = $base->filter(fn (Entry $entry): bool => $this->passesFilters($entry, $locales, $from, $until));
-        [$sortKey, $sortDir] = $this->sorting();
+        // Group counts, bounded: a website past 10,000 rows reads "hơn 10.000", at the cost of 10,001 rows.
+        // Pages count first, to know whether they fit in memory; a list of posts counts its groups in the
+        // statement that counts its facets.
+        $inMemory = false;
+        $tally = [];
+        if ($type === 'page') {
+            $tally = EntryListQuery::counts($list->tabCountSql());
+            $inMemory = ($this->tab === 'trash' ? $tally['trash'] : $tally['all']) <= self::PAGES_IN_MEMORY;
+        }
 
-        $ordered = $type === 'page'
-            ? $this->buildTree($filtered, $locale)
-            : $this->sortFlat($filtered, $locale);
-
-        $rows = $this->paginate($ordered);
+        $read = $inMemory
+            ? $this->readInMemory($list, $locale, $locales, $user, $scopes)
+            : $this->readInSql($list, $type === 'post', $tally, $locale, $locales, $multilingual, $user, $scopes);
+        $tally += $read['counts'];
+        $counts = [];
+        foreach (self::TABS as $tab) {
+            $counts[$tab] = $tally[$tab] ?? 0;
+        }
+        $rows = $read['rows'];
+        $limited = $read['limited'];
 
         // Which rows this person may change at all, as far as their category limits go (the
         // primary category is loaded above, so this costs no query per row). Every action still
@@ -1196,16 +1241,19 @@ final class Index extends Component
         }
 
         $canDelete = $user->can('entries.delete.any') || $user->can('entries.delete.own');
+        [$sortKey, $sortDir] = $this->sorting();
 
         return view('admin::livewire.entries.index', [
             'rows' => $rows,
+            'pager' => $read['pager'],
+            'parentPaths' => $read['parents'],
             'pageUlids' => $pageUlids,
             'rowCovered' => $rowCovered,
             'rowEditable' => $rowEditable,
             'scopeRefusal' => $limited ? $scopes->refusal($user) : null,
-            'counts' => $this->counts($type, $section),
-            'facets' => $facets,
-            'activeChips' => $this->activeChips($facets),
+            'counts' => $counts,
+            'facets' => $read['facets'],
+            'activeChips' => $this->activeChips($read['facets']),
             'filterCount' => $this->filterCount(),
             'filterCountNarrow' => $this->filterCount() + ($this->tab !== 'all' ? 1 : 0),
             'sortOn' => $sortKey,
@@ -1214,8 +1262,8 @@ final class Index extends Component
             'sorts' => array_values(array_filter(array_keys(self::SORTS), fn (string $key): bool => $this->sortsHere($key))),
             'multilingual' => $multilingual,
             'type' => $type,
-            'matchCount' => $filtered->count(),
-            'baseCount' => $base->count(),
+            'matchCount' => $read['total'],
+            'baseCount' => $counts[$this->tab] ?? 0,
             'locale' => $locale,
             'locales' => $locales,
             'homeSlug' => PathBuilder::HOME_SLUG,
@@ -1228,6 +1276,423 @@ final class Index extends Component
             'canSeeTrash' => $canDelete,
             'siteTime' => app(SiteTime::class),
         ]);
+    }
+
+    /**
+     * A small page list (at most PAGES_IN_MEMORY pages): every row of the group is read once, and
+     * the facets, the filters and the tree are made in memory, as the list always has.
+     *
+     * @param  list<string>  $locales
+     * @return array{rows: LengthAwarePaginator<int, array{entry: Entry, depth: int}>, pager: array<string, mixed>, parents: array<string, string>, facets: array{lang: list<array<string, mixed>>, creator: list<array<string, mixed>>, template: list<array<string, mixed>>, trans: list<array<string, mixed>>}, total: int, limited: bool, counts: array<string, int>}
+     */
+    private function readInMemory(EntryListQuery $list, string $locale, array $locales, User $user, CategoryScopes $scopes): array
+    {
+        $query = $list->base();
+        $scopes->selectHasLimits($query, $user, EntryListQuery::COLUMNS);
+        $base = $query->with(self::ROW_RELATIONS)->get();
+
+        $limited = $base->isNotEmpty()
+            && $scopes->learnHasLimits($user, $base->first()->getAttribute(CategoryScopes::HAS_LIMITS)) && $scopes->isLimited($user);
+
+        [$from, $until] = $this->period();
+        $facets = [
+            'lang' => $this->langFacet($base, $locales),
+            'creator' => $this->creatorFacet($base, $user),
+            'template' => $this->templateFacet($base),
+            'trans' => count($locales) >= 2 ? $this->transFacet($base, $locales) : [],
+        ];
+
+        // OR within a group, AND across groups — applied in memory, on the rows already loaded.
+        $filtered = $base->filter(fn (Entry $entry): bool => $this->passesFilters($entry, $locales, $from, $until));
+        $rows = $this->paginate($this->buildTree($filtered, $locale));
+        $this->cursor = '';
+
+        return ['rows' => $rows, 'pager' => $this->pager($rows->currentPage(), $rows->total(), count($rows->items()), null, null),
+            'parents' => [], 'facets' => $facets, 'total' => $filtered->count(), 'limited' => $limited, 'counts' => []];
+    }
+
+    /**
+     * A list read in the database: one page of rows, in the order chosen, with the facets counted
+     * there. Pages keep their tree while nothing narrows the list and they stand in their website
+     * order (the top level is paged; each top page brings the pages below it); otherwise they are a
+     * flat list, each row naming the pages above it.
+     *
+     * A search reads its page first: when that page is the whole result, the facets count just
+     * those rows, so a search that finds little walks the website once, not twice.
+     *
+     * @param  bool  $tabs  read the group counts with the facets
+     * @param  array<string, int>  $counts  the group counts already read
+     * @param  list<string>  $locales
+     * @return array{rows: LengthAwarePaginator<int, array{entry: Entry, depth: int}>, pager: array<string, mixed>, parents: array<string, string>, facets: array{lang: list<array<string, mixed>>, creator: list<array<string, mixed>>, template: list<array<string, mixed>>, trans: list<array<string, mixed>>}, total: int, limited: bool, counts: array<string, int>}
+     */
+    private function readInSql(EntryListQuery $list, bool $tabs, array $counts, string $locale, array $locales, bool $multilingual, User $user, CategoryScopes $scopes): array
+    {
+        $type = $this->entryType;
+        [$sortKey, $sortDir] = $this->sorting();
+        $dir = $sortDir === 'desc' ? 'desc' : 'asc';
+        $searching = trim($this->search) !== '';
+        $filtering = $this->filterCount() > 0;
+        $tree = $type === 'page' && $this->tab === 'all' && ! $searching && ! $filtering && $sortKey === 'order';
+
+        $tally = $searching ? null : $list->facets($multilingual, $tabs, null, true, true);
+        $counts += $tally['counts'] ?? [];
+        // an author with nothing in the group has no run in the author order
+        $authors = [];
+        $people = $tally['people'] ?? $list->authors();
+        foreach ($people as $author) {
+            $n = $tally['author'][$author['id']] ?? 0;
+            if ($tally === null || ! $tally['exact'] || $n > 0) {
+                $authors[] = $author + ['count' => $n];
+            }
+        }
+
+        $groups = $tree ? $list->treeTopGroups($dir) : $list->groups($sortKey, $dir, $authors);
+        $known = $tree || $filtering || $searching ? null : ($counts[$this->tab] ?? 0);
+        $countAll = function () use (&$tally, $list, $multilingual, $tabs, $tree, $filtering): int {
+            if ($tree) {
+                return $list->treeTopCount();
+            }
+            // a search is counted by the facet walk, which walks its rows anyway
+            $tally ??= $list->facets($multilingual, $tabs);
+
+            return $filtering ? $list->count($list->filtered()) : $tally['n'];
+        };
+
+        $page = $this->readPage($list, $groups, $known, $countAll);
+        $entries = $page['rows'];
+        if ($tally === null) {
+            // the first page holds the whole search: its facets are those rows' own
+            $whole = ! $filtering && $page['current'] === 1 && $page['total'] === $entries->count() && $this->cursor === '';
+            $tally = $list->facets($multilingual, $tabs, $whole ? array_values(array_map(Cast::int(...), $entries->modelKeys())) : null);
+            $counts += $tally['counts'];
+        }
+        $facets = $this->sqlFacets($list, $tally, $authors, $locales, $multilingual, $user);
+
+        $items = [];
+        $parents = [];
+        if ($tree) {
+            $below = $list->descendants(array_values(array_map(Cast::int(...), $entries->modelKeys())), self::TREE_CHILDREN);
+            $all = $entries->concat($below);
+            $this->loadRows($all, $people);
+            foreach ($this->hangBelow($entries, $below, $dir) as $item) {
+                $items[] = $item;
+            }
+        } else {
+            $this->loadRows($entries, $people);
+            $all = $entries;
+            foreach ($entries as $entry) {
+                $items[] = ['entry' => $entry, 'depth' => 0];
+            }
+            if ($type === 'page') {
+                $parentIds = array_values(array_unique(array_filter($entries->pluck('parent_id')->all(), 'is_int')));
+                $paths = $list->ancestorTitles($parentIds, __('entries.untitled'));
+                foreach ($entries as $entry) {
+                    if ($entry->parent_id !== null && ($paths[$entry->parent_id] ?? []) !== []) {
+                        $parents[$entry->ulid] = implode(' › ', $paths[$entry->parent_id]);
+                    }
+                }
+            }
+        }
+
+        $limited = $all->isNotEmpty()
+            && $scopes->learnHasLimits($user, $all->first()->getAttribute(CategoryScopes::HAS_LIMITS)) && $scopes->isLimited($user);
+        if ($limited && $type === 'post') {
+            $all->load(self::primaryCategoryOnly());
+        }
+
+        $rows = new LengthAwarePaginator(collect($items), max($page['total'], $page['to']), $this->perPage, $page['current'],
+            ['path' => LengthAwarePaginator::resolveCurrentPath(), 'pageName' => 'page']);
+
+        return ['rows' => $rows, 'pager' => $page['pager'], 'parents' => $parents, 'facets' => $facets, 'total' => $page['total'], 'limited' => $limited,
+            'counts' => $counts];
+    }
+
+    /**
+     * The filter options of a list read in the database. Facet counts are known for a group (and
+     * search) of up to 10,000 rows; a larger one offers its values without a number.
+     *
+     * @param  array{n: int, exact: bool, counts: array<string, int>, lang: array<string, int>, trans: array<string, int>, author: array<int, int>, template: array<string, int>}  $tally
+     * @param  list<array{id: int, ulid: string, name: string, count: int}>  $authors
+     * @param  list<string>  $locales
+     * @return array{lang: list<array<string, mixed>>, creator: list<array<string, mixed>>, template: list<array<string, mixed>>, trans: list<array<string, mixed>>}
+     */
+    private function sqlFacets(EntryListQuery $list, array $tally, array $authors, array $locales, bool $multilingual, User $user): array
+    {
+        $exact = $tally['exact'];
+        $count = fn (int $n): array => $exact ? ['count' => $this->countLabel($n)] : [];
+        $counted = [];
+        foreach ($authors as $author) {
+            $n = $tally['author'][$author['id']] ?? 0;
+            if (! $exact || $n > 0) {
+                $counted[] = ['count' => $n] + $author;
+            }
+        }
+        $templates = [];
+        if ($this->entryType === 'page') {
+            foreach ($exact ? array_keys($tally['template']) : $list->templateValues() as $value) {
+                $templates[] = ['value' => (string) $value, 'count' => $tally['template'][$value] ?? 0];
+            }
+            usort($templates, fn (array $a, array $b): int => [$a['value'] !== self::TEMPLATE_NONE, $a['value']] <=> [$b['value'] !== self::TEMPLATE_NONE, $b['value']]);
+        }
+
+        return [
+            'lang' => array_map(fn (string $lc): array => ['value' => $lc, 'label' => __('entries.language_'.$lc).' ('.strtoupper($lc).')']
+                + $count($tally['lang'][$lc] ?? 0) + ['active' => in_array($lc, $this->langF, true)], $locales),
+            'creator' => $this->creatorOptions($counted, $user, $exact),
+            'template' => $this->templateOptions($this->entryType === 'page' ? $templates : null, $exact),
+            'trans' => $multilingual ? array_map(fn (string $state): array => ['value' => $state, 'label' => __('entries.trans_'.$state)]
+                + $count($tally['trans'][$state] ?? 0) + ['active' => in_array($state, $this->transF, true)], self::TRANS) : [],
+        ];
+    }
+
+    /**
+     * The top pages of a page of the tree, each followed by every page below it (one level of
+     * indent, in website order), as the list has always shown them.
+     *
+     * @param  EloquentCollection<int, Entry>  $tops
+     * @param  EloquentCollection<int, Entry>  $below
+     * @return list<array{entry: Entry, depth: int}>
+     */
+    private function hangBelow(EloquentCollection $tops, EloquentCollection $below, string $dir): array
+    {
+        $byId = [];
+        foreach ($tops->concat($below) as $entry) {
+            $byId[$entry->id] = $entry;
+        }
+        $topIds = array_flip($tops->modelKeys());
+        $children = [];
+        foreach ($below as $entry) {
+            $root = $entry;
+            for ($guard = 0; ! isset($topIds[$root->id]) && $root->parent_id !== null && isset($byId[$root->parent_id]) && $guard < 64; $guard++) {
+                $root = $byId[$root->parent_id];
+            }
+            if (isset($topIds[$root->id]) && $root->id !== $entry->id) {
+                $children[$root->id][] = $entry;
+            }
+        }
+
+        $way = $dir === 'desc' ? -1 : 1;
+        $items = [];
+        foreach ($tops as $top) {
+            $items[] = ['entry' => $top, 'depth' => 0];
+            $group = $children[$top->id] ?? [];
+            usort($group, fn (Entry $a, Entry $b): int => (($a->position <=> $b->position) ?: ($a->id <=> $b->id)) * $way);
+            foreach ($group as $child) {
+                $items[] = ['entry' => $child, 'depth' => 1];
+            }
+        }
+
+        return $items;
+    }
+
+    /**
+     * One page of rows from the database: by number while the page starts within the first CAP
+     * rows, past that after (or before) the row the cursor names.
+     *
+     * @param  list<ListGroup>  $groups
+     * @param  int|null  $known  the list's size when already counted (the group count, no filter)
+     * @param  Closure(): int  $count  counts the list (bounded) when it is not known
+     * @return array{rows: EloquentCollection<int, Entry>, total: int, current: int, to: int, pager: array<string, mixed>}
+     */
+    private function readPage(EntryListQuery $list, array $groups, ?int $known, Closure $count): array
+    {
+        $size = $this->perPage;
+        $note = ListCursor::open($this->cursor, $this->fingerprint());
+        if ($note === null) {
+            $this->cursor = '';
+        }
+        $total = $known;
+
+        if ($note !== null) {
+            $current = $note['n'];
+            $anchor = ['g' => $note['g'], 'v' => $note['v'], 'id' => $note['id']];
+            if ($note['w'] === 'before') {
+                // read backwards from the row the next page starts with, then turn the rows round
+                $last = count($groups) - 1;
+                $back = array_reverse(array_map(fn (ListGroup $g): ListGroup => new ListGroup($g->key, $g->where, $g->order, $g->value, $g->cast,
+                    $g->nullable, $g->dir === 'desc' ? 'asc' : 'desc', $g->joinTitle, $g->tie, $g->rare), $groups));
+                $anchor['g'] = $last - $anchor['g'];
+                $rows = $list->rows($back, 0, $size, $anchor)->reverse()->values();
+                foreach ($rows as $row) {
+                    $row->setAttribute('__g', $last - Cast::int($row->getAttribute('__g')));
+                }
+                $more = true;
+            } else {
+                $rows = $list->rows($groups, 0, $size + 1, $anchor);
+                $more = $rows->count() > $size;
+                $rows = $rows->take($size)->values();
+            }
+            $this->page = $current;
+        } else {
+            $deepest = intdiv(EntryListQuery::CAP, $size) + 1;
+            if ($total === null && $this->page > 1) {
+                $total = $count();
+            }
+            $current = max(1, min($this->page, $deepest));
+            if ($total !== null && $total <= EntryListQuery::CAP) {
+                $current = min($current, max(1, (int) ceil($total / $size)));
+            }
+            $this->page = $current;
+            $rows = $list->rows($groups, ($current - 1) * $size, $size + 1);
+            $more = $rows->count() > $size;
+            $rows = $rows->take($size)->values();
+        }
+
+        if ($total === null) {
+            $total = $note === null && $current === 1 && ! $more ? $rows->count() : $count();
+        }
+
+        $first = $rows->first();
+        $lastRow = $rows->last();
+        $fingerprint = $this->fingerprint();
+        $mark = fn (Entry $row, string $way, int $n): string => ListCursor::make($fingerprint, Cast::int($row->getAttribute('__g')),
+            Cast::stringOrNull($row->getAttribute('__sv')), $row->id, $way, $n);
+
+        $offset = ($current - 1) * $size;
+        $prev = null;
+        if ($current > 1) {
+            $prev = ($current - 2) * $size <= EntryListQuery::CAP || $first === null
+                ? ['page' => min($current - 1, intdiv(EntryListQuery::CAP, $size) + 1)]
+                : ['token' => $mark($first, 'before', $current - 1)];
+        }
+        $next = null;
+        if ($more && $lastRow !== null) {
+            $next = $current * $size <= EntryListQuery::CAP ? ['page' => $current + 1] : ['token' => $mark($lastRow, 'after', $current + 1)];
+        }
+
+        $to = $offset + $rows->count();
+
+        return ['rows' => $rows, 'total' => $total, 'current' => $current, 'to' => $to,
+            'pager' => $this->pager($current, $total, $rows->count(), $prev, $next, $note !== null)];
+    }
+
+    /**
+     * What the footer shows: the rows shown, the size of the list ("hơn 10.000" past the cap, with no
+     * last page then), the page cells and the two arrows (a page number, or a cursor past the cap).
+     *
+     * @param  array{page: int}|array{token: string}|null  $prev
+     * @param  array{page: int}|array{token: string}|null  $next
+     * @return array{from: int, to: int, total: int|string, current: int, last: int|null, cells: list<int|null>, prev: array{page: int}|array{token: string}|null, next: array{page: int}|array{token: string}|null}
+     */
+    private function pager(int $current, int $total, int $shown, ?array $prev, ?array $next, bool $keyset = false): array
+    {
+        $size = $this->perPage;
+        $capped = $total > EntryListQuery::CAP;
+        $last = $capped ? null : max(1, (int) ceil($total / $size));
+        if ($last !== null && ! $keyset) {
+            // a list read in memory, or a short one: the arrows follow the page numbers
+            $prev ??= $current > 1 ? ['page' => $current - 1] : null;
+            $next ??= $current < $last ? ['page' => $current + 1] : null;
+        }
+
+        // first, last and current±1; a gap is one "…" (null). Past the cap there is no last page,
+        // and past the numbered pages only the current one is named.
+        $deepest = intdiv(EntryListQuery::CAP, $size) + 1;
+        $keep = [1, $current];
+        if (! $keyset) {
+            $keep = [...$keep, $current - 1, $current + 1];
+        }
+        if ($last !== null) {
+            $keep[] = $last;
+        }
+        $keep = array_values(array_unique(array_filter($keep, fn (int $p): bool => $p >= 1 && ($last === null || $p <= $last)
+            && ($p <= $deepest || $p === $current) && ($p <= $current || $next !== null))));
+        sort($keep);
+        $cells = [];
+        $before = null;
+        foreach ($keep as $p) {
+            if ($before !== null && $p - $before > 1) {
+                $cells[] = null;
+            }
+            $cells[] = $p;
+            $before = $p;
+        }
+
+        $from = $shown > 0 ? ($current - 1) * $size + 1 : 0;
+
+        return ['from' => $from, 'to' => $shown > 0 ? $from + $shown - 1 : 0, 'total' => $this->countLabel($total), 'current' => $current,
+            'last' => $last, 'cells' => $cells, 'prev' => $prev, 'next' => $next];
+    }
+
+    /** A count as the list shows it: the number, or "hơn 10.000" past the cap. */
+    private function countLabel(int $n): int|string
+    {
+        return $n > EntryListQuery::CAP ? Cast::string(__('entries.count_over')) : $n;
+    }
+
+    /** Names the view of the list a page cursor belongs to: what is filtered, searched, sorted, and the page size. */
+    private function fingerprint(): string
+    {
+        return hash('xxh128', json_encode([$this->entryType, $this->section, $this->tab, trim($this->search), $this->langF, $this->creatorF,
+            $this->templateF, $this->transF, $this->when, $this->from, $this->to, $this->sorting(), $this->perPage], JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * Load what the rows show. Their authors come from $people, the authors of every row of the
+     * tab already read for the Người tạo filter; one missing from it (written meanwhile) is read.
+     *
+     * @param  EloquentCollection<int, Entry>  $rows
+     * @param  list<array{id: int, ulid: string, name: string}>  $people
+     */
+    private function loadRows(EloquentCollection $rows, array $people): void
+    {
+        $rows->load(self::ROW_RELATIONS_BUT_AUTHOR);
+        $byId = [];
+        foreach ($people as $person) {
+            $byId[$person['id']] = $person;
+        }
+        foreach ($rows as $entry) {
+            $id = $entry->author_id;
+            if ($id === null) {
+                $entry->setRelation('author', null);
+            } elseif (isset($byId[$id])) {
+                $entry->setRelation('author', (new User)->newFromBuilder($byId[$id]));
+            }
+        }
+        $rows->loadMissing('author:id,ulid,name');
+    }
+
+    /**
+     * The Người tạo options from the counted authors: the member first, as "Của tôi (…)".
+     *
+     * @param  list<array{id: int, ulid: string, name: string, count: int}>  $authors
+     * @return list<array{value: string, label: string, count?: int|string, active: bool}>
+     */
+    private function creatorOptions(array $authors, User $me, bool $counted): array
+    {
+        usort($authors, fn (array $a, array $b): int => [mb_strtolower($a['name']), $a['ulid']] <=> [mb_strtolower($b['name']), $b['ulid']]);
+        $mine = (string) $me->ulid;
+        $out = [];
+        foreach ($authors as $author) {
+            $option = ['value' => $author['ulid'], 'label' => $author['name']] + ($counted ? ['count' => $this->countLabel($author['count'])] : [])
+                + ['active' => in_array($author['ulid'], $this->creatorF, true)];
+            if ($author['ulid'] === $mine) {
+                $option['label'] = __('entries.f_mine', ['name' => $author['name']]);
+                array_unshift($out, $option);
+            } else {
+                $out[] = $option;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * The Mẫu trang options: counted for pages; a post list offers no such filter, so only a value
+     * already chosen is named (for its chip).
+     *
+     * @param  list<array{value: string, count: int}>|null  $counted
+     * @return list<array{value: string, label: string, count?: int|string, active: bool}>
+     */
+    private function templateOptions(?array $counted, bool $exact = true): array
+    {
+        $label = fn (string $value): string => $value === self::TEMPLATE_NONE ? __('entries.template_default') : $value;
+        if ($counted === null) {
+            return array_map(fn (string $value): array => ['value' => $value, 'label' => $label($value), 'active' => true], $this->templateF);
+        }
+
+        return array_map(fn (array $t): array => ['value' => $t['value'], 'label' => $label($t['value'])] + ($exact ? ['count' => $this->countLabel($t['count'])] : [])
+            + ['active' => in_array($t['value'], $this->templateF, true)], $counted);
     }
 
     private function resolveSection(): ?ContentSection
@@ -1243,62 +1708,6 @@ final class Index extends Component
         }
 
         return $this->sectionRow;
-    }
-
-    /**
-     * Scope a post query to the section it belongs to: entries whose PRIMARY category (pivot
-     * position 0) is the section's bound taxonomy — so each collection section (Tin tức, Dịch vụ,
-     * Dự án…) lists only its own posts instead of every post of the type. A section with no bound
-     * taxonomy (Pages) or an unresolved key adds no constraint. Mirrors the storefront category
-     * listing (exact primary match); a post filed under a sub-category is a later, ltree step.
-     *
-     * @param  Builder<Entry>  $query
-     */
-    private function scopeToSection(Builder $query, ?ContentSection $section): void
-    {
-        if ($section === null || $section->taxonomy_id === null) {
-            return;
-        }
-
-        $taxonomyId = $section->taxonomy_id;
-        $query->whereHas('taxonomies', fn (Builder $taxonomy): Builder => $taxonomy
-            ->where('taxonomies.id', $taxonomyId)
-            ->where('entry_taxonomies.position', 0));
-    }
-
-    /**
-     * Group counts in ONE grouped query on the (site_id, type, status) index (+ a trash count) —
-     * flat, not per-row, so the render's query budget stays constant as rows grow (§6). `all`
-     * sums every non-trashed status.
-     *
-     * @return array{all: int, published: int, draft: int, scheduled: int, private: int, pending: int, archived: int, trash: int}
-     */
-    private function counts(string $type, ?ContentSection $section): array
-    {
-        $tally = ['all' => 0, 'published' => 0, 'draft' => 0, 'scheduled' => 0, 'private' => 0, 'pending' => 0, 'archived' => 0, 'trash' => 0];
-
-        // One grouped query for every tab + the trash count, split by deleted_at via FILTER.
-        // Scoped to the section (like the list) so a collection's tab counts match its own rows.
-        $query = Entry::query()->withTrashed()->where('type', $type);
-        $this->scopeToSection($query, $section);
-
-        $rows = $query
-            ->selectRaw('status, count(*) filter (where deleted_at is null) as live, count(*) filter (where deleted_at is not null) as trashed')
-            ->groupBy('status')
-            ->get();
-
-        foreach ($rows as $row) {
-            $status = $row->status;
-            $live = is_numeric($row->getAttribute('live')) ? (int) $row->getAttribute('live') : 0;
-            $trashed = is_numeric($row->getAttribute('trashed')) ? (int) $row->getAttribute('trashed') : 0;
-            $tally['all'] += $live;
-            $tally['trash'] += $trashed;
-            if (in_array($status, self::STATUS_TABS, true)) {
-                $tally[$status] += $live;
-            }
-        }
-
-        return $tally;
     }
 
     /**
@@ -1435,7 +1844,7 @@ final class Index extends Component
     /**
      * Active filter chips, in group order, labelled from the facets.
      *
-     * @param  array{lang: list<array{value: string, label: string, count: int, active: bool}>, creator: list<array{value: string, label: string, count: int, active: bool}>, template: list<array{value: string, label: string, count: int, active: bool}>, trans: list<array{value: string, label: string, count: int, active: bool}>}  $facets
+     * @param  array{lang: list<array<string, mixed>>, creator: list<array<string, mixed>>, template: list<array<string, mixed>>, trans: list<array<string, mixed>>}  $facets
      * @return list<array{group: string, value: string, label: string}>
      */
     private function activeChips(array $facets): array
@@ -1443,8 +1852,8 @@ final class Index extends Component
         $chips = [];
         foreach (['template', 'trans', 'creator', 'lang'] as $group) {
             foreach ($facets[$group] as $option) {
-                if ($option['active']) {
-                    $chips[] = ['group' => $group, 'value' => $option['value'], 'label' => $option['label']];
+                if (($option['active'] ?? false) === true) {
+                    $chips[] = ['group' => $group, 'value' => Cast::string($option['value'] ?? ''), 'label' => Cast::string($option['label'] ?? '')];
                 }
             }
         }
@@ -1501,21 +1910,6 @@ final class Index extends Component
         }
 
         return collect($ordered);
-    }
-
-    /**
-     * @param  EloquentCollection<int, Entry>  $entries
-     * @return Collection<int, array{entry: Entry, depth: int}>
-     */
-    private function sortFlat(EloquentCollection $entries, string $locale): Collection
-    {
-        /** @var list<array{entry: Entry, depth: int}> $rows */
-        $rows = [];
-        foreach ($entries->sort($this->comparator($locale))->values() as $entry) {
-            $rows[] = ['entry' => $entry, 'depth' => 0];
-        }
-
-        return collect($rows);
     }
 
     /**

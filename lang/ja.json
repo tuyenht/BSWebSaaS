@@ -890,6 +890,8 @@
     "entries.chip_search": "検索: 「:q」",
     "entries.f_card": "カードに表示",
     "entries.meta_tpl": "テンプレート: :name",
+    "entries.meta_parent": "親: :path",
+    "entries.count_over": "10,000件以上",
     "entries.match_of": ":m件の:unit中 :n件",
     "entries.show_n": ":n件の:unitを表示",
     "entries.desc_page": "「会社概要」「お問い合わせ」などの固定ページです。",

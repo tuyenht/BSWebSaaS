@@ -19,7 +19,7 @@
     //
     // $sections: list<array{key: string, label: string, model: string, multiple?: bool, icon?: string|null,
     //            value?: string|list<string>|null, default?: string|null,
-    //            sheet?: bool, class?: string, options: list<array{value: string, label: string, count?: int|null}>}>
+    //            sheet?: bool, class?: string, options: list<array{value: string, label: string, count?: int|string|null}>}> (a text count is shown as given)
     //            value is the host property's current value, so every re-render says what is chosen; a one-choice section
     //            filters when its value differs from default (its first option unless given).
     //            sheet: the section lives in the Filter sheet only, never as a button of its own (the status groups,

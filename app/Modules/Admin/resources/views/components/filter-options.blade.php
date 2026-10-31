@@ -38,7 +38,7 @@
                class="size-4.5 shrink-0 accent-primary-text">
         <span class="min-w-0 flex-1 [overflow-wrap:anywhere]">{{ $option['label'] }}</span>
         @if (isset($option['count']))
-            <span class="shrink-0 text-small font-normal text-text-muted">{{ \Illuminate\Support\Number::format($option['count'], locale: app()->getLocale()) }}</span>
+            <span class="shrink-0 text-small font-normal text-text-muted">{{ is_int($option['count']) ? \Illuminate\Support\Number::format($option['count'], locale: app()->getLocale()) : $option['count'] }}</span>
         @endif
     </label>
 @endforeach
