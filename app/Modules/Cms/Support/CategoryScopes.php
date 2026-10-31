@@ -281,13 +281,26 @@ final class CategoryScopes
      * the list learns it without a query of its own; hand the value to learnHasLimits().
      *
      * @param  Builder<Entry>  $rows
+     * @param  list<string>  $columns  the row columns the list reads (all of them by default)
      */
-    public function selectHasLimits(Builder $rows, User $user): void
+    public function selectHasLimits(Builder $rows, User $user, array $columns = ['*']): void
     {
-        $rows->select($rows->getModel()->qualifyColumn('*'))->selectRaw(
+        $rows->select(array_map(fn (string $column): string => $rows->getModel()->qualifyColumn($column), $columns));
+        [$sql, $bindings] = $this->hasLimitsColumn($user);
+        $rows->selectRaw($sql, $bindings);
+    }
+
+    /**
+     * The HAS_LIMITS column as SQL, for a list that builds its own select.
+     *
+     * @return array{0: literal-string, 1: list<mixed>}
+     */
+    public function hasLimitsColumn(User $user): array
+    {
+        return [
             'exists(select 1 from member_category_scopes where member_category_scopes.site_id = ? and member_category_scopes.user_id = ?) as '.self::HAS_LIMITS,
             [$this->site->id(), $user->getKey()],
-        );
+        ];
     }
 
     /**

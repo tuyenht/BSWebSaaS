@@ -6,7 +6,10 @@
     $pageTitle = __('entries.manage_title', ['label' => $sectionLabel]);
     $isPost = $type === 'post';
     $noun = __('entries.noun_'.$type);
-    $fmt = fn (int $n): string => \Illuminate\Support\Number::format($n, locale: app()->getLocale());
+    // a list stops counting past 10,000 rows: such a count reads "hơn 10.000"
+    $fmt = fn (int|string $n): string => is_string($n) ? $n : ($n > \App\Modules\Admin\Support\Entries\EntryListQuery::CAP ? __('entries.count_over') : \Illuminate\Support\Number::format($n, locale: app()->getLocale()));
+    $num = fn (int $n): string => \Illuminate\Support\Number::format($n, locale: app()->getLocale());
+    $countOf = fn (int $n): int|string => $n > \App\Modules\Admin\Support\Entries\EntryListQuery::CAP ? __('entries.count_over') : $n;
     $avatarPalette = [
         ['bg' => '#e0e7ff', 'fg' => '#4338ca'], ['bg' => '#fce7f3', 'fg' => '#be185d'],
         ['bg' => '#d1fae5', 'fg' => '#047857'], ['bg' => '#fef3c7', 'fg' => '#b45309'],
@@ -31,10 +34,10 @@
         if ($key === 'pending' && ($counts['pending'] ?? 0) === 0 && $tab !== 'pending') {
             continue;
         }
-        $groups[] = ['key' => $key, 'label' => $key === 'all' ? __('entries.tab_all') : __('entries.status_'.$key), 'icon' => $tabIcon($key), 'count' => $counts[$key] ?? 0];
+        $groups[] = ['key' => $key, 'label' => $key === 'all' ? __('entries.tab_all') : __('entries.status_'.$key), 'icon' => $tabIcon($key), 'count' => $countOf($counts[$key] ?? 0)];
     }
     if ($canSeeTrash || $tab === 'trash') {
-        $groups[] = ['key' => 'trash', 'label' => __('entries.tab_trash'), 'icon' => 'ri-delete-bin', 'count' => $counts['trash'] ?? 0, 'trash' => true];
+        $groups[] = ['key' => 'trash', 'label' => __('entries.tab_trash'), 'icon' => 'ri-delete-bin', 'count' => $countOf($counts['trash'] ?? 0), 'trash' => true];
     }
     $groupLabel = $tab === 'all' ? null : (collect($groups)->firstWhere('key', $tab)['label'] ?? null);
 
@@ -110,24 +113,6 @@
         $chips[] = ['label' => __('entries.sort_chip_'.$sortOn.'_'.$sortWay), 'remove' => 'resetSort'];
     }
 
-    // Footer pager: windowed to first, last and current±1; any gap collapses to one "…" (a null cell).
-    $pagerWindow = function (int $current, int $last): array {
-        $keep = collect([1, $last, $current - 1, $current, $current + 1])
-            ->filter(fn (int $p): bool => $p >= 1 && $p <= $last)
-            ->unique()->sort()->values();
-
-        $cells = [];
-        $prev = null;
-        foreach ($keep as $p) {
-            if ($prev !== null && $p - $prev > 1) {
-                $cells[] = null;
-            }
-            $cells[] = $p;
-            $prev = $p;
-        }
-
-        return $cells;
-    };
     $pageSelected = count(array_intersect($pageUlids, $selected));
     $allState = $pageUlids !== [] && $pageSelected === count($pageUlids) ? true : ($pageSelected > 0 ? 'mixed' : false);
     $selectAllCall = 'toggleSelectAll(['.collect($pageUlids)->map(fn (string $u): string => "'".$u."'")->implode(',').'])';
@@ -388,6 +373,9 @@
                                             <span class="font-mono text-caption" title="{{ $path }}">{{ $path ?? '—' }}</span>
                                         @endif
                                     </span>
+                                    @if (isset($parentPaths[$entry->ulid]))
+                                        <span class="list-m [overflow-wrap:anywhere]" data-for="parent">{{ __('entries.meta_parent', ['path' => $parentPaths[$entry->ulid]]) }}</span>
+                                    @endif
                                     <x-bs-admin::list.langs :locales="$locales" :source="$locale" :name="$title" show="vLangs"
                                         :has="$entry->translations->pluck('locale')->all()"
                                         :href="$quickEdit ? fn (string $lc): string => route('admin.entries.edit', ['ulid' => $entry->ulid, 'locale' => $lc]) : null"
@@ -515,7 +503,7 @@
 
             <div class="mt-4 flex flex-wrap items-center justify-between gap-3 min-[600px]:px-4">
                 <span class="text-xs text-body-muted">
-                    {{ __('entries.footer_showing', ['first' => $rows->firstItem() ?? 0, 'last' => $rows->lastItem() ?? 0, 'total' => $rows->total()]) }}
+                    {{ __('entries.footer_showing', ['first' => $num($pager['from']), 'last' => $num($pager['to']), 'total' => $fmt($pager['total'])]) }}
                 </span>
                 <div class="flex flex-wrap items-center gap-4">
                     <div class="flex items-center gap-2 text-xs text-body-muted">
@@ -526,29 +514,32 @@
                         </button>
                     </div>
                     @php
-                        $pgCurrent = $rows->currentPage();
-                        $pgLast = $rows->lastPage();
+                        // an arrow turns to a page number, or, past the numbered pages, to the row the page follows
+                        $pgCurrent = $pager['current'];
                         $pgBase = 'inline-flex h-9 min-w-9 items-center justify-center rounded px-3 text-sm transition-colors';
+                        $turn = fn (?array $to): ?string => $to === null ? null : (isset($to['token']) ? 'turnPage('.$Js::from($to['token']).')' : 'gotoPage('.(int) $to['page'].')');
+                        $pgPrev = $turn($pager['prev']);
+                        $pgNext = $turn($pager['next']);
                     @endphp
                     <nav aria-label="Pagination" class="flex items-center gap-1">
-                        <button type="button" wire:click="gotoPage({{ max(1, $pgCurrent - 1) }})" @disabled($pgCurrent <= 1)
+                        <button type="button" @if ($pgPrev) wire:click="{{ $pgPrev }}" @endif @disabled($pgPrev === null)
                             aria-label="{{ __('admin.pagination.previous') }}"
-                            @class([$pgBase, 'text-body-muted hover:bg-surface-hover' => $pgCurrent > 1, 'cursor-not-allowed text-ink-ghost' => $pgCurrent <= 1])>
+                            @class([$pgBase, 'text-text-muted hover:bg-surface-hover' => $pgPrev !== null, 'cursor-not-allowed text-icon-ghost' => $pgPrev === null])>
                             <x-bs-admin::icon name="chevron-left" class="size-4" />
                         </button>
-                        @foreach ($pagerWindow($pgCurrent, $pgLast) as $cell)
+                        @foreach ($pager['cells'] as $cell)
                             @if ($cell === null)
                                 <span class="px-1 text-placeholder">&hellip;</span>
                             @else
-                                <button type="button" wire:click="gotoPage({{ $cell }})"
+                                <button type="button" wire:click="gotoPage({{ $cell }})" @if ($cell === $pgCurrent) aria-current="page" @endif
                                     @class([$pgBase, 'bg-admin-primary font-medium text-white' => $cell === $pgCurrent, 'text-body-muted hover:bg-surface-hover' => $cell !== $pgCurrent])>
-                                    {{ $cell }}
+                                    {{ $num($cell) }}
                                 </button>
                             @endif
                         @endforeach
-                        <button type="button" wire:click="gotoPage({{ min($pgLast, $pgCurrent + 1) }})" @disabled($pgCurrent >= $pgLast)
+                        <button type="button" @if ($pgNext) wire:click="{{ $pgNext }}" @endif @disabled($pgNext === null)
                             aria-label="{{ __('admin.pagination.next') }}"
-                            @class([$pgBase, 'text-body-muted hover:bg-surface-hover' => $pgCurrent < $pgLast, 'cursor-not-allowed text-ink-ghost' => $pgCurrent >= $pgLast])>
+                            @class([$pgBase, 'text-text-muted hover:bg-surface-hover' => $pgNext !== null, 'cursor-not-allowed text-icon-ghost' => $pgNext === null])>
                             <x-bs-admin::icon name="chevron-right" class="size-4" />
                         </button>
                     </nav>
