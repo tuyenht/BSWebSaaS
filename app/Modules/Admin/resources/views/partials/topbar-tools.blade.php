@@ -22,7 +22,7 @@
 <div class="relative" x-data="{ langOpen: false }">
     <button type="button" @click="langOpen = ! langOpen" :aria-expanded="langOpen"
             aria-label="{{ __('admin.language') }}"
-            class="grid size-10 place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg">
+            class="grid size-control place-items-center rounded text-topbar-fg pointer-coarse:size-hit transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg">
         @if ($flag($current['code']))
             <img src="{{ $flag($current['code']) }}" alt="{{ $current['label'] }}" class="size-5 rounded-full object-cover">
         @else
@@ -34,7 +34,7 @@
         @foreach ($locales as $l)
             <a wire:navigate href="{{ \App\Modules\Admin\Support\AdminPlane::route('locale', ['set' => $l['code']]) }}" role="menuitem"
                @class([
-                   'flex items-center gap-2.5 px-4 py-2 text-sm transition-colors hover:bg-surface-hover',
+                   'flex min-h-menu-row items-center gap-2.5 px-4 py-2 text-body transition-colors hover:bg-surface-hover pointer-coarse:min-h-menu-row-touch',
                    'font-semibold text-accent' => $l['active'],
                    'text-body-text' => ! $l['active'],
                ])>
@@ -54,7 +54,7 @@
         @fullscreenchange.document="full = !! document.fullscreenElement"
         @click="document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()"
         aria-label="{{ __('admin.fullscreen') }}"
-        class="hidden size-10 place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg sm:grid">
+        class="hidden size-control place-items-center rounded text-topbar-fg pointer-coarse:size-hit transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg sm:grid">
     <x-bs-admin::icon name="fullscreen" class="size-5" x-show="! full" />
     <x-bs-admin::icon name="minimize" class="size-5" x-show="full" x-cloak />
 </button>
@@ -64,7 +64,7 @@
         @click="$store.adminTheme.set('scheme', $store.adminTheme.state.scheme === 'dark' ? 'light' : 'dark')"
         aria-label="{{ __('admin.theme_dark') }}"
         :aria-label="$store.adminTheme.state.scheme === 'dark' ? @js(__('admin.theme_light')) : @js(__('admin.theme_dark'))"
-        class="grid size-10 place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg">
+        class="grid size-control place-items-center rounded text-topbar-fg pointer-coarse:size-hit transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg">
     <x-bs-admin::icon name="moon" class="size-5" x-show="$store.adminTheme.state.scheme !== 'dark'" />
     <x-bs-admin::icon name="sun" class="size-5" x-show="$store.adminTheme.state.scheme === 'dark'" x-cloak />
 </button>
@@ -73,7 +73,7 @@
 <div class="relative" x-data="{ notifOpen: false }">
     <button type="button" @click="notifOpen = ! notifOpen" :aria-expanded="notifOpen"
             aria-label="{{ __('admin.notifications') }}"
-            class="grid size-10 place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg">
+            class="grid size-control place-items-center rounded text-topbar-fg pointer-coarse:size-hit transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg">
         <x-bs-admin::icon name="bell" class="size-5" />
     </button>
     <div x-show="notifOpen" @click.outside="notifOpen = false" x-transition x-cloak

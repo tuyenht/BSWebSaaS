@@ -207,14 +207,14 @@
                             class="absolute end-0 top-full z-60 mt-1.5 w-60 rounded-md border border-border bg-surface p-1.5 shadow-lg">
                             <p class="m-0 px-2 pb-1 pt-1.5 text-caption font-semibold text-text-muted">{{ __('entries.cols_required') }}</p>
                             @foreach ([__('entries.title_label'), __('entries.col_status'), __('admin.actions')] as $locked)
-                                <label class="flex min-h-control cursor-not-allowed items-center gap-2.5 rounded px-2 text-body text-text-muted">
+                                <label class="flex min-h-menu-row cursor-not-allowed items-center gap-2.5 rounded px-2 text-body text-text-muted pointer-coarse:min-h-menu-row-touch">
                                     <input type="checkbox" checked disabled class="size-4 rounded border-border-strong">
                                     {{ $locked }}
                                 </label>
                             @endforeach
                             <p class="m-0 px-2 pb-1 pt-2 text-caption font-semibold text-text-muted">{{ __('entries.cols_optional') }}</p>
                             @foreach ($colOptions as $key => $label)
-                                <label class="flex min-h-control cursor-pointer items-center gap-2.5 rounded px-2 text-body text-text hover:bg-surface-hover">
+                                <label class="flex min-h-menu-row cursor-pointer items-center gap-2.5 rounded px-2 text-body text-text hover:bg-surface-hover pointer-coarse:min-h-menu-row-touch">
                                     <input type="checkbox" value="{{ $key }}" wire:model.live="cols" class="size-4 shrink-0 accent-primary-text">
                                     {{ $label }}
                                 </label>
@@ -516,15 +516,14 @@
                     @php
                         // an arrow turns to a page number, or, past the numbered pages, to the row the page follows
                         $pgCurrent = $pager['current'];
-                        $pgBase = 'inline-flex h-9 min-w-9 items-center justify-center rounded px-3 text-sm transition-colors';
                         $turn = fn (?array $to): ?string => $to === null ? null : (isset($to['token']) ? 'turnPage('.$Js::from($to['token']).')' : 'gotoPage('.(int) $to['page'].')');
                         $pgPrev = $turn($pager['prev']);
                         $pgNext = $turn($pager['next']);
                     @endphp
-                    <nav aria-label="Pagination" class="flex items-center gap-1">
+                    <nav aria-label="Pagination" class="flex flex-wrap items-center gap-2">
                         <button type="button" @if ($pgPrev) wire:click="{{ $pgPrev }}" @endif @disabled($pgPrev === null)
                             aria-label="{{ __('admin.pagination.previous') }}"
-                            @class([$pgBase, 'text-text-muted hover:bg-surface-hover' => $pgPrev !== null, 'cursor-not-allowed text-icon-ghost' => $pgPrev === null])>
+                            @class(['pager-link', 'text-text-muted hover:bg-surface-hover' => $pgPrev !== null, 'cursor-not-allowed text-icon-ghost' => $pgPrev === null])>
                             <x-bs-admin::icon name="chevron-left" class="size-4" />
                         </button>
                         @foreach ($pager['cells'] as $cell)
@@ -532,14 +531,14 @@
                                 <span class="px-1 text-placeholder">&hellip;</span>
                             @else
                                 <button type="button" wire:click="gotoPage({{ $cell }})" @if ($cell === $pgCurrent) aria-current="page" @endif
-                                    @class([$pgBase, 'bg-admin-primary font-medium text-white' => $cell === $pgCurrent, 'text-body-muted hover:bg-surface-hover' => $cell !== $pgCurrent])>
+                                    @class(['pager-link', 'bg-primary font-medium text-white' => $cell === $pgCurrent, 'text-text-muted hover:bg-surface-hover' => $cell !== $pgCurrent])>
                                     {{ $num($cell) }}
                                 </button>
                             @endif
                         @endforeach
                         <button type="button" @if ($pgNext) wire:click="{{ $pgNext }}" @endif @disabled($pgNext === null)
                             aria-label="{{ __('admin.pagination.next') }}"
-                            @class([$pgBase, 'text-text-muted hover:bg-surface-hover' => $pgNext !== null, 'cursor-not-allowed text-icon-ghost' => $pgNext === null])>
+                            @class(['pager-link', 'text-text-muted hover:bg-surface-hover' => $pgNext !== null, 'cursor-not-allowed text-icon-ghost' => $pgNext === null])>
                             <x-bs-admin::icon name="chevron-right" class="size-4" />
                         </button>
                     </nav>

@@ -10,9 +10,10 @@
     <div @click="open = ! open" aria-haspopup="true" :aria-expanded="open ? 'true' : 'false'" class="inline-flex cursor-pointer">
         {{ $trigger }}
     </div>
-    {{-- A disclosure popover of links, not an ARIA menu (which would owe roving arrow-key nav). --}}
+    {{-- A disclosure popover of links, not an ARIA menu (which would owe roving arrow-key nav).
+         Each row the consumer writes is a menu row: the shared height, centred, at the user's text size. --}}
     <div x-show="open" @click.outside="open = false" x-transition x-cloak
-         class="absolute {{ $menuAlign }} z-30 mt-1 min-w-44 rounded-md border border-border bg-surface py-1 text-sm shadow-card">
+         class="absolute {{ $menuAlign }} z-30 mt-1 min-w-44 rounded-md border border-border bg-surface py-1 text-body shadow-card *:flex *:min-h-menu-row *:items-center pointer-coarse:*:min-h-menu-row-touch">
         {{ $slot }}
     </div>
 </div>
