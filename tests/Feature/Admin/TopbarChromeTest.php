@@ -123,6 +123,8 @@ it('gives the platform console a menu button that drives the drawer, the laid-ov
     $shell = platformShellOne($dom, 'div.platform-shell');
     expect($shell->getAttribute('@keydown.escape.window'))->toBe('close()')
         ->and((string) $shell->getAttribute('x-data'))->toContain("\$watch('\$store.adminTheme.open'")
+        ->and((string) $shell->getAttribute('x-data'))->toMatch('/else if \(this\.open\) \{\s*this\.close\(\);/')
+        ->and((string) $shell->getAttribute('x-data'))->not->toContain('defaultPrevented')
         ->and($shell->getAttribute(':data-nav-open'))->toBe("open ? '' : null")
         ->and((string) $shell->getAttribute('x-data'))->toContain("\$store.adminTheme.set('sidebar_size'");
 

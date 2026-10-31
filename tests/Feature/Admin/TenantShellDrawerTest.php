@@ -38,6 +38,7 @@ it('wires the phone drawer for keyboard, screen readers and touch', function ():
     $shell = tenantShellOne($dom, 'div.admin-shell-wrapper');
     expect($shell->getAttribute('@keydown.escape.window'))->toBe('close()')
         ->and((string) $shell->getAttribute('x-data'))->toContain("\$watch('\$store.adminTheme.open'")
+        ->and((string) $shell->getAttribute('x-data'))->not->toContain('defaultPrevented')
         ->and((string) $shell->getAttribute('x-data'))->toContain('$refs.menuButton?.focus()')
         ->and((string) $shell->getAttribute('x-data'))->toContain('#admin-sidebar nav :is(a[href], button)');
 

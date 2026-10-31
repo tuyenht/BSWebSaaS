@@ -72,8 +72,10 @@
         toggle() {
             if (this.wide) {
                 this.$store.adminTheme.set('sidebar_size', this.expanded ? 'sm' : 'lg');
+            } else if (this.open) {
+                this.close();
             } else {
-                this.open = ! this.open;
+                this.open = true;
             }
         },
         close() {
