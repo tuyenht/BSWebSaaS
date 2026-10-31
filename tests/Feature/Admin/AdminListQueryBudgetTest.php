@@ -47,6 +47,28 @@ it('lists admin entries on a flat query budget (no N+1 across rows)', function (
     expect($count)->toBeLessThanOrEqual(22);
 });
 
+it('lists admin entries on the same budget for a member who may edit only their own records', function (): void {
+    $author = User::factory()->create();
+    $other = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $other): void {
+        grantRole($author, 'author', ['entries.view', 'entries.edit.own']);
+
+        // Half the rows are theirs, half someone else's: the per-row edit right (policy, own vs
+        // other, category limits) must come from data already loaded, not a query per row.
+        foreach (range(1, 10) as $i) {
+            $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $i % 2 ? $author->id : $other->id]);
+            $entry->translations()->create([
+                'locale' => 'vi', 'title' => "Page {$i}", 'slug' => "page-{$i}", 'status' => 'draft', 'body' => ['blocks' => []],
+            ]);
+        }
+    });
+
+    $count = countQueries(fn () => $this->actingAs($author)->get('http://a.test/admin/content')->assertOk());
+
+    expect($count)->toBeLessThanOrEqual(22);
+});
+
 it('lists admin catalog on a flat query budget (no N+1 across rows)', function (): void {
     $viewer = User::factory()->create();
 
