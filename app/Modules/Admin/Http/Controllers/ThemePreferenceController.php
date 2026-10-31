@@ -45,7 +45,8 @@ final class ThemePreferenceController
      * Reset drops this PLANE's per-user pins, letting the site/app default show through.
      * The tenant admin clears every axis; the platform console — whose launcher shows
      * only the Scheme axis — clears just the scheme, so an operator's sidebar/topbar/
-     * position pins for tenant admins survive a console reset.
+     * position pins for tenant admins survive a console reset (the sidebar size too: the
+     * console's menu button shares that one preference with the tenant admin).
      */
     public function destroy(AdminChromeResolver $resolver): JsonResponse
     {

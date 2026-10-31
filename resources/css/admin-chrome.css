@@ -246,27 +246,29 @@
    Icon-only 70px rail (Velzon data-sidebar-size="sm"): labels hidden, link content
    centered, content column reflows to the collapsed width. Size is a desktop concept
    — the <lg off-canvas keeps its full width and slides over content. This REPLACES
-   the old Alpine `collapsed` toggle (the header button now flips this persisted axis). */
+   the old Alpine `collapsed` toggle (the header button now flips this persisted axis).
+   Scoped to the tenant shell (:where adds no specificity): the platform console shares the
+   attribute but draws its own rail (see "Platform console shell"). */
 @media (min-width: 64rem) {
-    :root[data-sidebar-size='sm'] .admin-sidebar {
+    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar {
         width: var(--sidebar-width-collapsed); /* 70px */
     }
-    :root[data-sidebar-size='sm'] .admin-content {
+    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-content {
         padding-left: var(--sidebar-width-collapsed);
     }
-    :root[data-sidebar-size='sm'] .admin-sidebar .sidebar-label {
+    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar .sidebar-label {
         display: none;
     }
     /* Center ONLY the rail's own items (icon-only). Scoping to the direct row keeps the
        hover flyout's child links left-aligned instead of centered/staggered. */
-    :root[data-sidebar-size='sm'] .admin-sidebar nav > ul > li > a,
-    :root[data-sidebar-size='sm'] .admin-sidebar nav > ul > li > div > button,
-    :root[data-sidebar-size='sm'] .admin-sidebar .sidebar-brand-link {
+    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar nav > ul > li > a,
+    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar nav > ul > li > div > button,
+    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar .sidebar-brand-link {
         justify-content: center;
     }
 
     /* Collapsed rail = icons only → nested submenus stay hidden inline… */
-    :root[data-sidebar-size='sm'] .admin-sidebar nav ul ul {
+    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar nav ul ul {
         display: none;
     }
 
@@ -275,18 +277,18 @@
        a native title tooltip. Target span.sidebar-label only (the chevron carries the class too). */
     /* The scroll container (overflow-y:auto forces overflow-x:auto) would CLIP the absolute flyout —
        let the collapsed rail overflow (icon rail is short enough not to need its own scroll). */
-    :root[data-sidebar-size='sm'] .admin-sidebar nav {
+    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar nav {
         overflow: visible;
         /* Drop the row inset (Velzon uses container padding:0) so each <li> spans the FULL 70px
            rail and butts against the flyout. With the inset, the <li> ended ~12px short of the
            rail edge, leaving a dead gap the pointer could not cross to reach the flyout links. */
         padding-inline: 0;
     }
-    :root[data-sidebar-size='sm'] .admin-sidebar nav > ul > li {
+    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar nav > ul > li {
         position: relative;
     }
-    :root[data-sidebar-size='sm'] .admin-sidebar nav > ul > li:hover > a > span.sidebar-label,
-    :root[data-sidebar-size='sm'] .admin-sidebar nav > ul > li:hover > div > button > span.sidebar-label {
+    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar nav > ul > li:hover > a > span.sidebar-label,
+    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar nav > ul > li:hover > div > button > span.sidebar-label {
         display: block;
         position: absolute;
         left: calc(var(--sidebar-width-collapsed) - 2px); /* overlap the rail edge 2px (same bg) so no seam breaks the hover */
@@ -301,7 +303,7 @@
         text-align: start;
     }
     /* Group children fly out below the label box; re-show the child labels inside it. */
-    :root[data-sidebar-size='sm'] .admin-sidebar nav > ul > li:hover > div > ul {
+    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar nav > ul > li:hover > div > ul {
         display: block !important;
         position: absolute;
         left: calc(var(--sidebar-width-collapsed) - 2px); /* overlap the rail edge 2px (same bg) so no seam breaks the hover */
@@ -314,7 +316,7 @@
         border-radius: 0 0 0.25rem 0.25rem;
         box-shadow: var(--shadow-card);
     }
-    :root[data-sidebar-size='sm'] .admin-sidebar nav > ul > li:hover > div > ul span.sidebar-label {
+    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar nav > ul > li:hover > div > ul span.sidebar-label {
         display: inline;
     }
 }
@@ -360,17 +362,22 @@
 
 /* ---- Brand logo (config-driven, replaces text initials) -------------------
    Sidebar shows the white logo on the dark sidebar, the dark logo on a light
-   sidebar, and the compact mark when collapsed (sm). Platform topbar uses the
-   dark logo statically. */
+   sidebar, and the compact mark when collapsed (sm). The platform's phone/tablet
+   topbar shows the compact mark, then from 840px the full logo in the scheme's ink. */
 .brand-logo { display: none; }
-.brand-logo--static { display: block; }
+.brand-logo--topbar-sm { display: block; }
+@media (min-width: 52.5rem) {
+    .brand-logo--topbar-sm { display: none; }
+    :root:not([data-bs-theme='dark']) .brand-logo--topbar-dark, /* legacy-token-ok: AdminChromeResolver still writes this attribute */
+    :root[data-bs-theme='dark'] .brand-logo--topbar-light { display: block; } /* legacy-token-ok: same attribute */
+}
 .admin-sidebar .brand-logo--light { display: block; } /* default dark sidebar → white logo */
 :root[data-sidebar='light'] .admin-sidebar .brand-logo--light { display: none; }
 :root[data-sidebar='light'] .admin-sidebar .brand-logo--dark { display: block; }
 @media (min-width: 64rem) {
-    :root[data-sidebar-size='sm'] .admin-sidebar .brand-logo--light,
-    :root[data-sidebar-size='sm'] .admin-sidebar .brand-logo--dark { display: none; }
-    :root[data-sidebar-size='sm'] .admin-sidebar .brand-logo--sm { display: block; }
+    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar .brand-logo--light,
+    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar .brand-logo--dark { display: none; }
+    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar .brand-logo--sm { display: block; }
 }
 
 /* ---- Sidebar scrollbar: thin + auto-hide (Velzon/SimpleBar-like, no JS library — ADR-A1) ---
@@ -396,4 +403,177 @@
 .admin-sidebar nav.is-scrolling::-webkit-scrollbar-thumb,
 .admin-sidebar nav:hover::-webkit-scrollbar-thumb {
     background-color: rgb(148 163 184 / 0.6);
+}
+
+/* ---- Platform console shell (layouts/platform.blade.php) --------------------------------------
+   Below 1024px the sidebar is a drawer the menu button slides in (Alpine sets data-nav-open on
+   .platform-shell); 1024–1279px it is an icon rail, and the menu button lays the full menu over
+   the page without moving it; from 1280px it stays open, and the menu button switches it to the
+   same icon rail and back through the per-user [data-sidebar-size] (lg | sm) on <html>. The
+   tenant shell's sidebar-size rules are scoped to .admin-shell-wrapper, so they never reach here.
+   The closed drawer is visibility:hidden, so it takes no focus even before Alpine starts; the
+   visibility switch waits for the slide-out and is immediate on the way in. */
+.platform-shell .admin-sidebar {
+    width: var(--sidebar-width);
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition:
+        transform var(--duration-base) var(--ease-standard),
+        width var(--duration-base) var(--ease-standard),
+        visibility 0s linear var(--duration-base);
+}
+.platform-shell[data-nav-open] .admin-sidebar {
+    transform: none;
+    visibility: visible;
+    box-shadow: var(--shadow-lg);
+    transition-delay: 0s;
+}
+@media (min-width: 64rem) {
+    .platform-shell .admin-sidebar {
+        transform: none;
+        visibility: visible;
+    }
+    .platform-shell .admin-content {
+        padding-inline-start: var(--sidebar-width-collapsed);
+        transition: padding-inline-start var(--duration-base) var(--ease-standard);
+    }
+}
+@media (min-width: 80rem) {
+    .platform-shell .admin-content {
+        padding-inline-start: var(--sidebar-width);
+    }
+    :root[data-sidebar-size='sm'] .platform-shell .admin-content {
+        padding-inline-start: var(--sidebar-width-collapsed);
+    }
+}
+/* The backdrop's fade (x-transition classes on the layout's backdrop). */
+.platform-fade {
+    transition: opacity var(--duration-base) var(--ease-standard);
+}
+@media (prefers-reduced-motion: reduce) {
+    .platform-shell .admin-sidebar,
+    .platform-shell .admin-content,
+    .platform-fade {
+        transition: none;
+    }
+}
+
+/* The icon rail: 1024–1279px while the menu is not laid over, and from 1280px when the operator
+   collapsed the sidebar (sm). Icons only, centred; a link's name stays in the accessibility tree
+   (visually hidden) and shows beside the rail on hover or keyboard focus. The first heading drops
+   out; each later one becomes a thin divider between its groups. The two blocks are identical
+   apart from their condition. */
+@media (min-width: 64rem) and (max-width: 79.99rem) {
+    .platform-shell:not([data-nav-open]) .admin-sidebar {
+        width: var(--sidebar-width-collapsed);
+    }
+    .platform-shell:not([data-nav-open]) .admin-sidebar nav {
+        overflow: visible; /* the scroll box would clip the name beside the rail */
+    }
+    .platform-shell:not([data-nav-open]) .admin-sidebar .sidebar-link {
+        position: relative;
+        justify-content: center;
+        padding-inline: 0;
+    }
+    .platform-shell:not([data-nav-open]) .admin-sidebar .sidebar-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+    .platform-shell:not([data-nav-open]) .admin-sidebar .sidebar-link:is(:hover, :focus-visible) .sidebar-label {
+        inset-inline-start: calc(100% - 2px); /* overlaps the rail edge (same fill) so no seam breaks the hover */
+        top: 0;
+        z-index: 50;
+        display: flex;
+        align-items: center;
+        width: max-content;
+        max-width: 16rem;
+        height: auto;
+        min-height: 100%;
+        padding-inline: 0.875rem;
+        overflow: visible;
+        clip-path: none;
+        white-space: normal;
+        border-radius: 0 0.25rem 0.25rem 0;
+        background: var(--color-sidebar-bg);
+        color: var(--color-sidebar-fg-hover);
+        box-shadow: var(--shadow-card);
+    }
+    .platform-shell:not([data-nav-open]) .admin-sidebar .sidebar-heading {
+        height: 1px;
+        margin: 0.5625rem 1.25rem;
+        padding: 0;
+        overflow: hidden;
+        background: var(--color-sidebar-hover);
+    }
+    .platform-shell:not([data-nav-open]) .admin-sidebar .sidebar-heading:first-child {
+        display: none;
+    }
+    .platform-shell:not([data-nav-open]) .admin-sidebar .brand-logo--light,
+    .platform-shell:not([data-nav-open]) .admin-sidebar .brand-logo--dark {
+        display: none;
+    }
+    .platform-shell:not([data-nav-open]) .admin-sidebar .brand-logo--sm {
+        display: block;
+    }
+}
+@media (min-width: 80rem) {
+    :root[data-sidebar-size='sm'] .platform-shell .admin-sidebar {
+        width: var(--sidebar-width-collapsed);
+    }
+    :root[data-sidebar-size='sm'] .platform-shell .admin-sidebar nav {
+        overflow: visible; /* the scroll box would clip the name beside the rail */
+    }
+    :root[data-sidebar-size='sm'] .platform-shell .admin-sidebar .sidebar-link {
+        position: relative;
+        justify-content: center;
+        padding-inline: 0;
+    }
+    :root[data-sidebar-size='sm'] .platform-shell .admin-sidebar .sidebar-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+    :root[data-sidebar-size='sm'] .platform-shell .admin-sidebar .sidebar-link:is(:hover, :focus-visible) .sidebar-label {
+        inset-inline-start: calc(100% - 2px); /* overlaps the rail edge (same fill) so no seam breaks the hover */
+        top: 0;
+        z-index: 50;
+        display: flex;
+        align-items: center;
+        width: max-content;
+        max-width: 16rem;
+        height: auto;
+        min-height: 100%;
+        padding-inline: 0.875rem;
+        overflow: visible;
+        clip-path: none;
+        white-space: normal;
+        border-radius: 0 0.25rem 0.25rem 0;
+        background: var(--color-sidebar-bg);
+        color: var(--color-sidebar-fg-hover);
+        box-shadow: var(--shadow-card);
+    }
+    :root[data-sidebar-size='sm'] .platform-shell .admin-sidebar .sidebar-heading {
+        height: 1px;
+        margin: 0.5625rem 1.25rem;
+        padding: 0;
+        overflow: hidden;
+        background: var(--color-sidebar-hover);
+    }
+    :root[data-sidebar-size='sm'] .platform-shell .admin-sidebar .sidebar-heading:first-child {
+        display: none;
+    }
+    :root[data-sidebar-size='sm'] .platform-shell .admin-sidebar .brand-logo--light,
+    :root[data-sidebar-size='sm'] .platform-shell .admin-sidebar .brand-logo--dark {
+        display: none;
+    }
+    :root[data-sidebar-size='sm'] .platform-shell .admin-sidebar .brand-logo--sm {
+        display: block;
+    }
 }
