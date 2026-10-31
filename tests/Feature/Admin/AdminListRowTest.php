@@ -370,7 +370,10 @@ describe('the posts and pages list on the shared row', function (): void {
                     ->assertDontSeeHtml('class="list-menu list-pop"');
 
                 $html = Livewire::actingAs($user->fresh())->test(Index::class)->html();
-                expect($html)->toMatch('/<a href="'.preg_quote($edit('ja'), '/').'" wire:navigate class="list-lc" data-s="empty"\s+data-add/');
+                // each chip reads as its short language name, not a code
+                expect($html)->toMatch('/<a href="'.preg_quote($edit('ja'), '/').'" wire:navigate class="list-lc" data-s="empty"\s+data-add\s+title="[^"]*" aria-label="[^"]*">Nhật(<!--.*?-->)*<\/a>/')
+                    ->and($html)->toMatch('/data-s="src"\s+title="[^"]*" aria-label="[^"]*">Việt(<!--.*?-->)*<svg/')
+                    ->and($html)->toMatch('/aria-label="Sửa bản tiếng Anh — “Giới thiệu”">Anh(<!--.*?-->)*<\/a>/');
             });
 
             $source = (string) file_get_contents(base_path('app/Modules/Admin/resources/views/livewire/entries/index.blade.php'));
@@ -430,8 +433,8 @@ describe('the posts and pages list on the shared row', function (): void {
                 // one note, on the row that misses three, outside the column choice
                 expect(substr_count($html, 'role="note"'))->toBe(1)
                     ->and($html)->toContain('<span class="list-m" data-for="langs">')
-                    ->and($html)->toContain('<span class="list-lmiss" role="note" title="Chưa có bản tiếng Anh, tiếng Nhật, tiếng Trung"')
-                    ->and($html)->toContain('<span>Chưa dịch: EN, JA, ZH</span>')
+                    ->and($html)->toContain('<span class="list-lmiss" role="note" title="Chưa có bản tiếng Anh, tiếng Nhật và tiếng Trung"')
+                    ->and($html)->toContain('<span>Chưa dịch: Anh, Nhật, Trung</span>')
                     // the complete row's piece follows the column choice
                     ->and($html)->toContain('<span class="list-m" data-for="langs" x-show="cols.langs">')
                     // the column choice hides only the chips with content
@@ -439,6 +442,21 @@ describe('the posts and pages list on the shared row', function (): void {
             });
 
             expect(listCss())->toMatch("/\\.list-lcg\\[data-off\\] > \\.list-lc:not\\(\\[data-s='empty'\\]\\)\\s*\\{\\s*display: none;/");
+        });
+
+        it('shows no language chips and no note on a single-language site', function (): void {
+            $user = User::factory()->create();
+
+            app(Tenancy::class)->enter(1, function () use ($user): void {
+                grantRole($user, 'editor', ['entries.view', 'entries.edit.any']);
+                listRowLocales(['vi']);
+                listRowEntry($user, 'Một ngôn ngữ', 'mot-ngon-ngu');
+
+                Livewire::actingAs($user->fresh())->test(Index::class)
+                    ->assertSee('Một ngôn ngữ')
+                    ->assertDontSeeHtml('data-for="langs"')
+                    ->assertDontSeeHtml('role="note"');
+            });
         });
 
         it('sums up more than four locales in one button that opens a menu of the versions', function (): void {
@@ -454,7 +472,9 @@ describe('the posts and pages list on the shared row', function (): void {
 
                 $html = Livewire::actingAs($user->fresh())->test(Index::class)->html();
 
+                // the summary says what is missing, so there is no separate note
                 expect($html)->not->toContain('class="list-lc"')
+                    ->and($html)->not->toContain('role="note"')
                     ->and($html)->toContain('<span>Thiếu 3 ngôn ngữ</span>')
                     ->and($html)->toContain('<span>Đủ 5 ngôn ngữ</span>')
                     ->and($html)->toContain('aria-label="'.e('Bản dịch của “Nhiều ngôn ngữ”: Thiếu 3 ngôn ngữ — bấm để chọn bản').'"')

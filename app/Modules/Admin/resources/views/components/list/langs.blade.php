@@ -8,40 +8,48 @@
     'show' => 'true',
 ])
 @php
-    // A record's language versions in its meta line, as one piece: the "Chưa dịch: EN" note (shown
+    // A record's language versions in its meta line, as one piece: the "Chưa dịch: Anh" note (shown
     // whenever a translation is missing, whatever the member's column choice) and a chip per site
-    // locale. A member who may edit gets each chip as a link to that locale's editor (`href`, a
-    // closure taking the locale); otherwise the chip opens a small note saying why (`why`). The
-    // source locale carries a star; a missing one is drawn dashed (with a "+" when it can be added).
-    // `show` is the Alpine expression of the member's column choice: off hides the chips that have
-    // content (below 600 all chips; the note stays). With more than four locales one summary button
-    // opens a menu of the versions instead of the chips.
+    // locale, each named by its short language name. A member who may edit gets each chip as a link
+    // to that locale's editor (`href`, a closure taking the locale); otherwise the chip opens a small
+    // note saying why (`why`). The source locale carries a star; a missing one is drawn dashed (with
+    // a "+" when it can be added). `show` is the Alpine expression of the member's column choice:
+    // off hides the chips that have content (below 600 all chips; the note stays). With more than
+    // four locales one summary button, which itself says what is missing, opens a menu of the
+    // versions instead of the note and the chips. A single-language site shows nothing.
     $locales = array_values($locales);
     $has = array_values($has);
     $canEdit = $href instanceof \Closure;
-    $langName = function (string $lc): string {
-        $key = 'entries.language_'.$lc;
-        if (\Illuminate\Support\Facades\Lang::has($key)) {
-            return __($key);
+    // Short name ("Anh"), the name inside a sentence ("tiếng Anh") and on its own ("Tiếng Anh");
+    // a locale without a short name reads as its upper-case code.
+    $short = fn (string $lc): string => \Illuminate\Support\Facades\Lang::has('entries.lang_short_'.$lc) ? __('entries.lang_short_'.$lc) : strtoupper($lc);
+    $langLow = fn (string $lc): string => __('entries.lang_inline', ['name' => $short($lc)]);
+    $langName = function (string $lc) use ($langLow): string {
+        if (\Illuminate\Support\Facades\Lang::has('entries.language_'.$lc)) {
+            return __('entries.language_'.$lc);
         }
-        $n = class_exists(\Locale::class) ? (string) \Locale::getDisplayLanguage($lc, app()->getLocale()) : '';
+        $n = $langLow($lc);
 
-        return $n !== '' && $n !== $lc ? mb_strtoupper(mb_substr($n, 0, 1)).mb_substr($n, 1) : strtoupper($lc);
+        return mb_strtoupper(mb_substr($n, 0, 1)).mb_substr($n, 1);
     };
-    $langLow = fn (string $lc): string => \Illuminate\Support\Facades\Lang::has('entries.language_lower_'.$lc) ? __('entries.language_lower_'.$lc) : $langName($lc);
+    $list = function (array $names): string {
+        $last = array_pop($names);
+
+        return $names === [] ? (string) $last : __('entries.lc_list', ['rest' => implode(', ', $names), 'last' => $last]);
+    };
     $missing = array_values(array_filter($locales, fn (string $lc): bool => ! in_array($lc, $has, true)));
     $summary = count($locales) > 4;
     $state = fn (string $lc): string => $lc === $source ? 'src' : (in_array($lc, $has, true) ? 'full' : 'empty');
     $Js = \Illuminate\Support\Js::class;
 @endphp
-@if ($locales !== [])
+@if (count($locales) > 1)
     <span class="list-m" data-for="langs"@if ($missing === []) x-show="{{ $show }}"@endif>
         <span class="list-lcs">
-            @if ($missing !== [])
-                @php $missLabel = __('entries.lc_missing', ['lang' => implode(', ', array_map($langLow, $missing))]); @endphp
+            @if ($missing !== [] && ! $summary)
+                @php $missLabel = __('entries.lc_missing', ['lang' => $list(array_map($langLow, $missing))]); @endphp
                 <span class="list-lmiss" role="note" title="{{ $missLabel }}" aria-label="{{ $missLabel }}">
                     <x-bs-admin::icon name="ri-translate-2" class="size-[calc(0.875rem+var(--user-text-boost))] shrink-0 list-lmiss-i" />
-                    <span>{{ __('entries.lc_missing_note', ['codes' => implode(', ', array_map('strtoupper', $missing))]) }}</span>
+                    <span>{{ __('entries.lc_missing_note', ['names' => implode(', ', array_map($short, $missing))]) }}</span>
                 </span>
             @endif
 
@@ -55,7 +63,7 @@
                     $stText = fn (string $lc): string => __('entries.lc_st_'.['src' => 'source', 'full' => 'has', 'empty' => 'missing'][$state($lc)]);
                     $sumTip = collect($locales)->map(fn (string $lc): string => __('entries.lc_tip_item', ['lang' => $langName($lc), 'state' => $stText($lc)]))->implode(' · ');
                 @endphp
-                <span class="list-lsw" x-show="{{ $show }}"
+                <span class="list-lsw"
                     x-data="{ open: false, close(back) { this.open = false; if (back) { this.$refs.sum.focus() } } }"
                     x-on:click.outside="open = false" x-on:keydown.escape.prevent.stop="close(true)">
                     <button type="button" class="list-lsum" data-ok="{{ $missing === [] ? '1' : '0' }}" x-ref="sum"
@@ -107,7 +115,7 @@
                                 $aria = __('entries.lc_named', ['label' => $s === 'empty' ? __('entries.lc_add', ['lang' => $lang]) : $tip, 'title' => $name]);
                             @endphp
                             <a href="{{ $href($lc) }}" wire:navigate class="list-lc" data-s="{{ $s }}" @if ($s === 'empty') data-add @endif
-                                title="{{ $tip }}" aria-label="{{ $aria }}">{{ strtoupper($lc) }}@if ($s === 'src')<x-bs-admin::icon name="ri-star-fill" class="size-[calc(0.75rem+var(--user-text-boost))] shrink-0 list-lc-star" />@endif</a>
+                                title="{{ $tip }}" aria-label="{{ $aria }}">{{ $short($lc) }}@if ($s === 'src')<x-bs-admin::icon name="ri-star-fill" class="size-[calc(0.75rem+var(--user-text-boost))] shrink-0 list-lc-star" />@endif</a>
                         @else
                             @php
                                 $what = $s === 'empty'
@@ -118,7 +126,7 @@
                             <button type="button" class="list-lc" data-s="{{ $s }}" x-ref="lc_{{ $lc }}"
                                 title="{{ $label }}" aria-label="{{ $label }}" aria-expanded="false"
                                 x-bind:aria-expanded="(pop === {{ $Js::from($lc) }}).toString()"
-                                x-on:click="pop = pop === {{ $Js::from($lc) }} ? null : {{ $Js::from($lc) }}">{{ strtoupper($lc) }}@if ($s === 'src')<x-bs-admin::icon name="ri-star-fill" class="size-[calc(0.75rem+var(--user-text-boost))] shrink-0 list-lc-star" />@endif</button>
+                                x-on:click="pop = pop === {{ $Js::from($lc) }} ? null : {{ $Js::from($lc) }}">{{ $short($lc) }}@if ($s === 'src')<x-bs-admin::icon name="ri-star-fill" class="size-[calc(0.75rem+var(--user-text-boost))] shrink-0 list-lc-star" />@endif</button>
                         @endif
                     @endforeach
 
