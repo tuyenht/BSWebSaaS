@@ -13,7 +13,7 @@
     @if ($hasMenu)
         <div class="list-more" x-data="{ open: false, close(back) { this.open = false; if (back) { this.$refs.more.focus() } } }"
             x-on:click.outside="open = false" x-on:keydown.escape.prevent.stop="close(true)">
-            <x-bs-admin::button size="sm" variant="soft" color="secondary" icon x-ref="more"
+            <x-bs-admin::button size="sm" variant="ghost" color="primary" icon x-ref="more"
                 aria-label="{{ __('admin.list.more_for', ['name' => $name]) }}" title="{{ __('admin.list.more') }}"
                 aria-haspopup="menu" ::aria-expanded="open.toString()"
                 x-on:click="open = ! open; open && $nextTick(() => $focus.within($refs.menu).first())">
