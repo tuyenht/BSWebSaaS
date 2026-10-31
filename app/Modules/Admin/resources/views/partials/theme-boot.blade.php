@@ -6,16 +6,14 @@
     finished" race. The DB stays the source of truth; a stale mirror can never
     override it because only unsaved writes live in the buffer.
 
-    Axes come from AdminChromeResolver per plane (the platform console is
-    scheme-only) and values are allow-listed here too — localStorage is
+    Axes come from AdminChromeResolver per plane (the platform console has
+    only the scheme and the sidebar size) and values are allow-listed here too — localStorage is
     user-editable, nothing outside the enum may reach <html>.
 
     The admin planes carry no CSP (unlike the storefront), so inline is fine.
 --}}
 @php
-    $planeFields = \App\Modules\Admin\Support\AdminPlane::isPlatform()
-        ? ['scheme']
-        : array_keys(\App\Modules\Admin\Theme\AdminChromeResolver::FIELDS);
+    $planeFields = \App\Modules\Admin\Theme\AdminChromeResolver::planeFields();
     $axes = [];
     foreach ($planeFields as $field) {
         $axes[$field] = [

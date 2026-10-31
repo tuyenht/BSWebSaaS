@@ -1,6 +1,7 @@
 <!doctype html>
-{{-- Scheme-only plane: the resolver emits just data-bs-theme here — the platform console
-     never follows tenant sidebar/topbar variants (so no sidebar-size axis either). --}}
+{{-- The resolver emits only data-bs-theme and data-sidebar-size here: the platform console never
+     follows tenant sidebar/topbar variants, but shares the per-user sidebar size (lg|sm) its menu
+     button toggles from 1280px. --}}
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full" @foreach ($chrome as $attr => $value) {{ $attr }}="{{ $value }}" @endforeach>
 <head>
     <meta charset="utf-8">
@@ -25,15 +26,19 @@
 @endphp
 {{-- Shell (admin-chrome.css "Platform console shell"): below 1024px the sidebar is a drawer the
      menu button opens; 1024–1279px it is an icon rail and the menu button lays the full menu over
-     the page; from 1280px it stays open. `open` is the only state; it resets when the width
-     crosses a breakpoint. Opening moves focus to the first link and keeps Tab inside the open
-     menu; below 1024px the closed drawer is inert. Esc or the backdrop closes it and focus goes
-     back to the menu button. --}}
+     the page; from 1280px it stays open, and the menu button switches it between the full sidebar
+     and the icon rail through the per-user sidebar size ($store.adminTheme, saved like the tenant
+     shell's). `open` resets when the width crosses a breakpoint. The open drawer or laid-over menu
+     is a modal dialog: focus moves to the first link, Tab stays inside, the rest of the page is
+     hidden from assistive technology and does not scroll. Below 1024px the closed drawer is hidden
+     by CSS (so it takes no focus before Alpine starts) and inert. Esc or the backdrop closes it and
+     focus goes back to the menu button. --}}
 <div class="{{ $hasNav ? 'platform-shell ' : '' }}min-h-screen"
      x-data="{
         open: false,
         mobile: false,
         wide: false,
+        unlisten: null,
         init() {
             const lg = window.matchMedia('(min-width: 64rem)');
             const xl = window.matchMedia('(min-width: 80rem)');
@@ -41,11 +46,29 @@
             sync();
             lg.addEventListener('change', sync);
             xl.addEventListener('change', sync);
+            // wire:navigate swaps the page: drop the listeners with the component.
+            this.unlisten = () => {
+                lg.removeEventListener('change', sync);
+                xl.removeEventListener('change', sync);
+            };
             this.$watch('open', (value) => {
                 if (value) {
                     this.$nextTick(() => this.$refs.nav?.querySelector('a[href]')?.focus());
                 }
             });
+        },
+        destroy() {
+            this.unlisten?.();
+        },
+        get expanded() {
+            return this.wide ? this.$store.adminTheme.state.sidebar_size !== 'sm' : this.open;
+        },
+        toggle() {
+            if (this.wide) {
+                this.$store.adminTheme.set('sidebar_size', this.expanded ? 'sm' : 'lg');
+            } else {
+                this.open = ! this.open;
+            }
         },
         close() {
             if (! this.open) {
@@ -60,12 +83,17 @@
 
     @if ($hasNav)
         {{-- Backdrop under the open drawer / the menu laid over the rail. --}}
-        <div x-show="open" x-cloak x-transition.opacity @click="close()" aria-hidden="true"
+        <div x-show="open" x-cloak @click="close()" aria-hidden="true"
+             x-transition:enter="platform-fade" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+             x-transition:leave="platform-fade" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
              class="fixed inset-0 z-30 bg-gray-900/40 xl:hidden"></div>
 
         <aside id="platform-sidebar"
                class="admin-sidebar fixed inset-y-0 start-0 z-40 flex flex-col bg-sidebar text-sidebar-fg"
-               x-trap.noautofocus="open && ! wide"
+               x-trap.inert.noscroll.noautofocus="open && ! wide"
+               :role="open && ! wide ? 'dialog' : null"
+               :aria-modal="open && ! wide ? 'true' : null"
+               :aria-label="open && ! wide ? @js(__('admin.menu')) : null"
                x-effect="$el.inert = mobile && ! open">
             {{-- Brand (from config — white-label safe) --}}
             <div class="flex h-[var(--spacing-header)] shrink-0 items-center px-4">
@@ -103,17 +131,21 @@
 
     {{-- Content column --}}
     <div class="admin-content flex min-h-screen flex-col">
-        {{-- Topbar. Phone: menu button + logo + tools; the logo moves into the sidebar from 1024px. --}}
+        {{-- Topbar. Phone: menu button + logo + tools; the logo moves into the sidebar from 1024px.
+             With no sidebar (an operator who may see no console screen) it stays here at every width. --}}
         <header class="sticky top-0 z-20 flex h-[var(--spacing-header)] items-center gap-2 border-b border-topbar-border bg-topbar ps-3 pe-3 shadow-card sm:gap-3 sm:pe-6">
             @if ($hasNav)
-                {{-- Menu button: below 1024px a soft 36px tile inside a 44px hit area; 1024–1279px a
-                     plain ☰ in a 48px round hit area; gone from 1280px, where the sidebar stays open. --}}
-                <button type="button" x-ref="menuButton" @click="open = ! open"
+                {{-- Menu button: below 1024px a soft 36px tile inside a 44px hit area that opens the
+                     drawer; from 1024px a plain ☰ in a 48px round hit area — 1024–1279px it lays the
+                     full menu over the rail, from 1280px it collapses the sidebar to the rail and back
+                     (the per-user sidebar size). The name stays "Menu"; the title and aria-expanded
+                     follow the state. --}}
+                <button type="button" x-ref="menuButton" @click="toggle()"
                         aria-label="{{ __('admin.menu') }}" aria-controls="platform-sidebar" aria-expanded="false"
-                        :aria-expanded="open ? 'true' : 'false'"
+                        :aria-expanded="expanded ? 'true' : 'false'"
                         title="{{ __('admin.menu') }}"
-                        :title="mobile ? @js(__('admin.menu')) : (open ? @js(__('admin.collapse_menu')) : @js(__('admin.expand_menu')))"
-                        class="group -ms-1 grid size-hit shrink-0 place-items-center rounded-xl text-topbar-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg lg:ms-0 lg:size-12 lg:rounded-full lg:transition-colors lg:hover:bg-topbar-hover xl:hidden">
+                        :title="mobile ? @js(__('admin.menu')) : (expanded ? @js(__('admin.collapse_menu')) : @js(__('admin.expand_menu')))"
+                        class="group -ms-1 grid size-hit shrink-0 place-items-center rounded-xl text-topbar-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg lg:ms-0 lg:size-12 lg:rounded-full lg:transition-colors lg:hover:bg-topbar-hover">
                     <span class="grid size-9 place-items-center rounded-[0.625rem] bg-surface-muted transition-colors group-hover:bg-topbar-hover group-aria-expanded:bg-topbar-hover lg:hidden">
                         <svg class="h-3 w-[1.375rem]" viewBox="0 0 24 13" fill="currentColor" aria-hidden="true" focusable="false">
                             <rect x="0" y="0.5" width="24" height="2.2" rx="1.1" />
@@ -124,7 +156,7 @@
                     <x-bs-admin::icon name="menu" class="hidden size-6 lg:block" />
                 </button>
             @endif
-            <a href="{{ route('platform.dashboard') }}" wire:navigate class="flex shrink-0 items-center lg:hidden">
+            <a href="{{ route('platform.dashboard') }}" wire:navigate @class(['flex shrink-0 items-center', 'lg:hidden' => $hasNav])>
                 {{-- Brand mark stays literal brand: an identity mark, fixed across every scheme. --}}
                 <x-bs-admin::brand-logo context="topbar" />
             </a>

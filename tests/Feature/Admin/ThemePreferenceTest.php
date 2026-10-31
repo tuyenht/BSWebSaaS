@@ -98,17 +98,38 @@ it('resets only the scheme on the platform console, keeping tenant-plane pins', 
     app(PlatformAccess::class)->forgetMemo();
 
     $operator = $operator->fresh();
-    $operator->preferences = ['theme' => ['scheme' => 'dark', 'sidebar' => 'light']];
+    $operator->preferences = ['theme' => ['scheme' => 'dark', 'sidebar' => 'light', 'sidebar_size' => 'sm']];
     $operator->save();
 
     $this->actingAs($operator->fresh())
         ->deleteJson("http://{$host}/theme-preference")
         ->assertOk()
-        ->assertJsonPath('attributes.data-bs-theme', 'light');
+        ->assertJsonPath('attributes.data-bs-theme', 'light')
+        ->assertJsonPath('attributes.data-sidebar-size', 'sm');
 
     // The console launcher only shows Scheme — its reset must not silently drop the
-    // operator's sidebar pin for tenant admins.
-    expect($operator->fresh()->preferences['theme'])->toBe(['sidebar' => 'light']);
+    // operator's sidebar pins for tenant admins, nor the shared sidebar size.
+    expect($operator->fresh()->preferences['theme'])->toBe(['sidebar' => 'light', 'sidebar_size' => 'sm']);
+});
+
+it('saves the sidebar size from the platform console and renders the console collapsed', function (): void {
+    $host = (string) config('tenancy.platform_host');
+    $operator = User::factory()->create();
+    app(PlatformAccess::class)->onPlatform(fn () => $operator->assignRole('super_admin'));
+    app(PlatformAccess::class)->forgetMemo();
+
+    $this->actingAs($operator->fresh())
+        ->postJson("http://{$host}/theme-preference", ['sidebar_size' => 'sm'])
+        ->assertOk()
+        ->assertJsonPath('attributes.data-sidebar-size', 'sm')
+        ->assertJsonMissingPath('attributes.data-sidebar');
+
+    // One per-user preference: the console and the tenant admin read the same pin.
+    expect($operator->fresh()->preferences['theme'])->toBe(['sidebar_size' => 'sm']);
+
+    $this->actingAs($operator->fresh())->get("http://{$host}/tenants")
+        ->assertOk()
+        ->assertSee('data-sidebar-size="sm"', false);
 });
 
 it('persists on the platform plane through the mirrored route', function (): void {

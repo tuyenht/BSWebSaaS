@@ -2,8 +2,8 @@
     Floating Theme Customizer: launcher button (fixed bottom-right, hidden on small
     screens per Velzon) + right offcanvas panel. Per-USER overrides only — instant
     attribute flip via the `adminTheme` Alpine store, persisted through the plane's
-    theme-preference endpoint. The platform console is a scheme-only plane, so it
-    renders just the Scheme axis.
+    theme-preference endpoint. The platform console's launcher renders just the
+    Scheme axis (its sidebar size is the topbar menu button's, not a launcher axis).
 
     State lives in the global Alpine store (survives wire:navigate morphs); this
     partial is pure template.

@@ -225,7 +225,6 @@
     "admin.oauth_connected_ok": "メールアカウントを接続しました。",
     "admin.oauth_login_no_account": "このメールに一致するアカウントがありません。",
     "admin.oauth_login_not_member": "このアカウントはこのサイトのメンバーではありません。",
-    "admin.platform_console": "プラットフォームコンソール",
     "admin.settings_system": "システム（全サイト）",
     "admin.system_email": "システムメール",
     "admin.system_login_security": "ログインセキュリティ",

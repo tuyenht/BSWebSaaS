@@ -225,7 +225,6 @@
     "admin.oauth_connected_ok": "Email account connected.",
     "admin.oauth_login_no_account": "No account matches this email.",
     "admin.oauth_login_not_member": "This account is not a member of this site.",
-    "admin.platform_console": "Platform Console",
     "admin.settings_system": "System (all sites)",
     "admin.system_email": "System Email",
     "admin.system_login_security": "Login Security",

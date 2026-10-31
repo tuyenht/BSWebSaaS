@@ -225,7 +225,6 @@
     "admin.oauth_connected_ok": "已连接邮件账户。",
     "admin.oauth_login_no_account": "没有与此邮箱匹配的账户。",
     "admin.oauth_login_not_member": "此账户不是本站点的成员。",
-    "admin.platform_console": "平台控制台",
     "admin.settings_system": "系统（所有网站）",
     "admin.system_email": "系统邮件",
     "admin.system_login_security": "登录安全",
