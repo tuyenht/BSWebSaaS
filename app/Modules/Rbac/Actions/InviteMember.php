@@ -98,7 +98,9 @@ final readonly class InviteMember
             $invitation = Invitation::query()
                 ->whereNull('accepted_at')
                 ->whereNull('revoked_at')
-                ->where('email', $email)
+                // $email is lower case; as text the column compares with a leakproof operator, which
+                // RLS lets the partial (site_id, (email::text)) index serve (a citext `=` it does not).
+                ->whereRaw('email::text = ?', [$email])
                 ->first();
 
             if ($invitation !== null && $invitation->sent_at->isAfter(now()->subSeconds(self::RESEND_COOLDOWN_SECONDS))) {

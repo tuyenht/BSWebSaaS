@@ -331,21 +331,33 @@ it('reads back only the base and its numbered copies, not every link that starts
     expect($taken)->toEqualCanonicalizing(['may-tien', 'may-tien-2']);
 });
 
-it('finds the next free number past the probed copies, and folds a stored link to lower case', function (): void {
-    [$past, $folded] = app(Tenancy::class)->enter(1, function (): array {
-        foreach (array_merge(['may-tien'], array_map(fn (int $n): string => 'may-tien-'.$n, range(2, Slugger::PROBE + 1))) as $slug) {
+it('finds the next free number past the probed copies, reading back only the base and its numbered copies', function (): void {
+    [$past, $taken] = app(Tenancy::class)->enter(1, function (): array {
+        $numbered = array_map(fn (int $n): string => 'may-tien-'.$n, range(2, Slugger::PROBE + 1));
+        // Values the range read passes over or the regex drops: other links sharing the start.
+        foreach (['may-tien', ...$numbered, 'may-tien-cnc', 'may-tien-60-truc', 'may-tienx', 'may-tie'] as $slug) {
             $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft']);
             $entry->translations()->create(['locale' => 'vi', 'title' => 'Máy', 'slug' => $slug, 'body' => ['blocks' => []], 'status' => 'draft']);
         }
-        $legacy = Entry::query()->create(['type' => 'page', 'status' => 'draft']);
-        $legacy->translations()->create(['locale' => 'vi', 'title' => 'Cũ', 'slug' => 'Bang-Gia', 'body' => ['blocks' => []], 'status' => 'draft']);
 
         $taken = fn (string $base): array => Slugger::takenAmong(EntryTranslation::query()->where('locale', 'vi'), 'slug', $base);
 
-        return [Slugger::free('may-tien', $taken), Slugger::free('bang-gia', $taken)];
+        return [Slugger::free('may-tien', $taken), $taken('may-tien')];
     });
 
-    expect($past)->toBe('may-tien-'.(Slugger::PROBE + 2))->and($folded)->toBe('bang-gia-2');
+    expect($past)->toBe('may-tien-'.(Slugger::PROBE + 2))
+        ->and($taken)->toEqualCanonicalizing(['may-tien', ...array_map(fn (int $n): string => 'may-tien-'.$n, range(2, Slugger::PROBE + 1))]);
+});
+
+it('looks a typed base up in lower case, as the links are stored', function (): void {
+    $taken = app(Tenancy::class)->enter(1, function (): array {
+        $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft']);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'Bảng giá', 'slug' => 'bang-gia', 'body' => ['blocks' => []], 'status' => 'draft']);
+
+        return Slugger::takenAmong(EntryTranslation::query()->where('locale', 'vi'), 'slug', 'Bang-Gia');
+    });
+
+    expect($taken)->toBe(['bang-gia']);
 });
 
 it('never gives a flat page the link that publishing turns into the home page', function (): void {
