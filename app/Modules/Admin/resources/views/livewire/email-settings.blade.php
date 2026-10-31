@@ -67,7 +67,7 @@
                     <x-bs-admin::input :label="__('admin.smtp_port')" type="number" wire:model="smtpPort" placeholder="587" />
                     <div>
                         <label class="mb-1.5 block text-sm font-medium text-body-text">{{ __('admin.smtp_encryption') }}</label>
-                        <select wire:model="smtpEncryption" class="block w-full rounded border border-border-strong bg-surface px-3 py-2 text-sm text-body-text focus:border-accent">
+                        <select wire:model="smtpEncryption" class="field block w-full rounded border border-border-strong bg-surface px-3 text-text focus:border-primary-text">
                             <option value="tls">{{ __('admin.encryption_tls') }}</option>
                             <option value="ssl">{{ __('admin.encryption_ssl') }}</option>
                             <option value="null">{{ __('admin.encryption_none') }}</option>
@@ -86,7 +86,7 @@
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div>
                         <label class="mb-1.5 block text-sm font-medium text-body-text">{{ __('admin.email_provider') }}</label>
-                        <select wire:model.live="oauthProvider" class="block w-full rounded border border-border-strong bg-surface px-3 py-2 text-sm text-body-text focus:border-accent">
+                        <select wire:model.live="oauthProvider" class="field block w-full rounded border border-border-strong bg-surface px-3 text-text focus:border-primary-text">
                             <option value="google">Google</option>
                             <option value="microsoft">Microsoft</option>
                             <option value="yahoo">Yahoo</option>
@@ -117,7 +117,7 @@
                     <label class="block pt-1 text-xs font-medium text-body-muted">{{ __('admin.redirect_uri') }}</label>
                     <div class="flex items-center gap-2" x-data="{ copied: false }">
                         <input type="text" readonly value="{{ \App\Modules\Admin\Support\OAuthFlow::callbackUrl() }}"
-                               class="block w-full select-all rounded border border-border-strong bg-surface px-3 py-2 font-mono text-xs text-body-text">
+                               class="field block w-full select-all rounded border border-border-strong bg-surface px-3 font-mono text-text">
                         <x-bs-admin::button type="button" variant="soft" size="sm"
                                          x-on:click="navigator.clipboard.writeText('{{ \App\Modules\Admin\Support\OAuthFlow::callbackUrl() }}'); copied = true; setTimeout(() => copied = false, 1500)">
                             <span x-show="!copied">{{ __('admin.copy') }}</span><span x-show="copied" x-cloak>{{ __('admin.copied') }}</span>

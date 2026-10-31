@@ -22,13 +22,13 @@
             <div class="flex-1">
                 <label for="inviteEmail" class="mb-1 block text-xs font-medium text-body-muted">{{ __('admin.email') }}</label>
                 <input type="email" id="inviteEmail" wire:model="inviteEmail" placeholder="name@example.com"
-                       class="w-full rounded border border-border bg-surface-muted px-3 py-2 text-sm text-body-text placeholder:text-placeholder transition-colors focus:border-accent focus:bg-surface">
+                       class="field w-full rounded border border-border bg-surface-muted px-3 text-text placeholder:text-placeholder transition-colors focus:border-primary-text focus:bg-surface">
                 @error('inviteEmail') <p class="mt-1 text-xs text-admin-danger-text">{{ $message }}</p> @enderror
             </div>
             <div class="flex-1">
                 <label for="inviteRole" class="mb-1 block text-xs font-medium text-body-muted">{{ __('admin.role') }}</label>
                 <select id="inviteRole" wire:model="inviteRole"
-                        class="w-full rounded border border-border bg-surface-muted px-3 py-2 text-sm text-body-text transition-colors focus:border-accent focus:bg-surface">
+                        class="field w-full rounded border border-border bg-surface-muted px-3 text-text transition-colors focus:border-primary-text focus:bg-surface">
                     <option value="">{{ __('admin.select_role') }}</option>
                     @foreach ($assignableRoles as $role)
                         <option value="{{ $role->name }}">{{ $role->name }}</option>
@@ -70,7 +70,7 @@
                             <div class="flex items-center justify-end gap-2">
                                 @if ($assignableRoles->isNotEmpty())
                                     <select wire:change="changeRole(@js($member->ulid), $event.target.value)"
-                                            class="rounded border border-border bg-surface px-2 py-1 text-xs text-body-text focus:border-accent">
+                                            class="field field-row rounded border border-border bg-surface px-2 text-text focus:border-primary-text">
                                         <option value="">{{ __('admin.change_role') }}</option>
                                         @foreach ($assignableRoles as $role)
                                             <option value="{{ $role->name }}">{{ $role->name }}</option>

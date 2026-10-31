@@ -15,7 +15,7 @@
             <label class="mb-1 block text-sm font-medium text-body-text">{{ __('admin.redirect_uri') }}</label>
             <div class="flex items-center gap-2" x-data="{ copied: false }">
                 <input type="text" readonly value="{{ $redirectUri }}"
-                       class="block w-full select-all rounded border border-border-strong bg-surface-muted px-3 py-2 font-mono text-xs text-body-text">
+                       class="field block w-full select-all rounded border border-border-strong bg-surface-muted px-3 font-mono text-text">
                 <x-bs-admin::button type="button" variant="soft" size="sm"
                                  x-on:click="navigator.clipboard.writeText('{{ $redirectUri }}'); copied = true; setTimeout(() => copied = false, 1500)">
                     <span x-show="!copied">{{ __('admin.copy') }}</span>

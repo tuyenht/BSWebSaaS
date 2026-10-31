@@ -19,7 +19,7 @@
             <x-bs-admin::icon name="ri-link" class="absolute left-3 top-1/2 size-[15px] -translate-y-1/2 text-body-muted" />
             <input type="url" wire:model="pickerUrlInput" wire:keydown.enter="previewPickerUrl"
                    placeholder="{{ __('media.picker_url_placeholder') }}"
-                   class="block w-full rounded-lg border border-border-strong bg-surface py-2.5 pl-[35px] pr-3 text-[13px] text-body-text placeholder:text-placeholder focus:border-accent">
+                   class="field block w-full rounded-lg border border-border-strong bg-surface pl-[35px] pr-3 text-text placeholder:text-placeholder focus:border-primary-text">
         </div>
         <button type="button" wire:click="previewPickerUrl"
                 class="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-admin-primary px-4 py-2.5 text-[13px] font-semibold text-white">

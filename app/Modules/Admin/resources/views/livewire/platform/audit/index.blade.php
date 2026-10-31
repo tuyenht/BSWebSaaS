@@ -150,7 +150,7 @@
             <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-border px-4 py-2.5">
                 <label class="flex items-center gap-2 text-small">
                     {{ __('admin.audit.per_page') }}
-                    <select wire:model.live="per" class="min-h-control rounded border border-border-input bg-surface px-2 text-body text-text-strong pointer-coarse:min-h-hit">
+                    <select wire:model.live="per" class="field rounded border border-border-input bg-surface px-2 text-text-strong">
                         @foreach (Index::PER_PAGE as $n)
                             <option value="{{ $n }}">{{ $n }}</option>
                         @endforeach

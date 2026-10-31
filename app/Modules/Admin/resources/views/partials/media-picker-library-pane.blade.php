@@ -33,7 +33,7 @@
                 <div class="mt-1.5 flex flex-col gap-2 rounded-[9px] border border-border-strong bg-surface p-2.5">
                     <input type="text" wire:model.live.debounce.300ms="pickerNewFolderName" wire:keydown.enter="createPickerFolder"
                            placeholder="{{ __('media.picker_folder_name_placeholder') }}" x-init="$el.focus()"
-                           class="block w-full rounded-[7px] border border-border-strong bg-surface px-2 py-1.5 text-[12.5px] text-body-text placeholder:text-placeholder focus:border-accent">
+                           class="field block w-full rounded-[7px] border border-border-strong bg-surface px-2 text-text placeholder:text-placeholder focus:border-primary-text">
                     @error('pickerNewFolderName') <p class="text-[11px] text-admin-danger-text">{{ $message }}</p> @enderror
 
                     {{-- Slug preview /{slug}; the pencil opens it for hand-editing (freezes auto-derive). --}}
@@ -42,7 +42,7 @@
                             <x-bs-admin::icon name="ri-link" class="size-3 shrink-0 text-body-muted" />
                             <span class="text-body-muted">/</span>
                             <input type="text" wire:model.live="pickerNewFolderSlug"
-                                   class="min-w-0 flex-1 rounded border border-border-strong bg-surface px-1.5 py-0.5 text-[11px] font-semibold text-accent focus:border-accent">
+                                   class="field field-row min-w-0 flex-1 rounded border border-border-strong bg-surface px-1.5 font-semibold text-primary-text focus:border-primary-text">
                         </div>
                     @elseif ($pickerNewFolderSlug !== '')
                         <div class="flex min-w-0 items-center gap-1.5 text-[11px] text-body-muted">
@@ -94,7 +94,7 @@
         <div class="flex shrink-0 flex-wrap items-center gap-[9px] border-b border-border px-4 py-3">
             @unless ($pickerTrash)
                 {{-- Folder picker on narrow screens (the sidebar rail is hidden <640px). --}}
-                <select wire:model.live="pickerFolderId" class="cursor-pointer rounded-lg border border-border-strong bg-surface px-2.5 py-2 text-[12.5px] text-body-text min-[640px]:hidden" aria-label="{{ __('media.picker_folders') }}">
+                <select wire:model.live="pickerFolderId" class="field cursor-pointer rounded-lg border border-border-strong bg-surface px-2.5 text-text min-[640px]:hidden" aria-label="{{ __('media.picker_folders') }}">
                     <option value="">{{ __('media.picker_all_images') }} ({{ $mp['total'] }})</option>
                     @foreach ($mp['folders'] as $folder)
                         <option value="{{ $folder->id }}">{{ $folder->name }} ({{ $folder->media_count }})</option>
@@ -104,10 +104,10 @@
             <div class="relative min-w-[150px] flex-1">
                 <x-bs-admin::icon name="ri-search" class="absolute left-[11px] top-1/2 size-[15px] -translate-y-1/2 text-body-muted" />
                 <input type="search" wire:model.live.debounce.250ms="pickerSearch" placeholder="{{ __('media.picker_search_placeholder') }}"
-                       class="block w-full rounded-lg border border-border-strong bg-surface py-2 pl-[34px] pr-3 text-[13px] text-body-text placeholder:text-placeholder focus:border-accent">
+                       class="field block w-full rounded-lg border border-border-strong bg-surface pl-[34px] pr-3 text-text placeholder:text-placeholder focus:border-primary-text">
             </div>
             @unless ($pickerTrash)
-                <select wire:model.live="pickerSort" class="cursor-pointer rounded-lg border border-border-strong bg-surface px-2.5 py-2 text-[12.5px] text-body-text" aria-label="{{ __('media.picker_sort_label') }}">
+                <select wire:model.live="pickerSort" class="field cursor-pointer rounded-lg border border-border-strong bg-surface px-2.5 text-text" aria-label="{{ __('media.picker_sort_label') }}">
                     <option value="recent">{{ __('media.picker_sort_recent') }}</option>
                     <option value="oldest">{{ __('media.picker_sort_oldest') }}</option>
                     <option value="nameAsc">{{ __('media.picker_sort_name_asc') }}</option>
@@ -116,7 +116,7 @@
                     <option value="sizeAsc">{{ __('media.picker_sort_size_asc') }}</option>
                     <option value="ext">{{ __('media.picker_sort_ext') }}</option>
                 </select>
-                <select wire:model.live="pickerType" class="cursor-pointer rounded-lg border border-border-strong bg-surface px-2.5 py-2 text-[12.5px] text-body-text" aria-label="{{ __('media.picker_type_label') }}">
+                <select wire:model.live="pickerType" class="field cursor-pointer rounded-lg border border-border-strong bg-surface px-2.5 text-text" aria-label="{{ __('media.picker_type_label') }}">
                     <option value="all">{{ __('media.picker_type_all') }}</option>
                     <option value="image">{{ __('media.picker_type_image') }}</option>
                     <option value="video">{{ __('media.picker_type_video') }}</option>
@@ -125,7 +125,7 @@
                     <option value="used">{{ __('media.picker_type_used') }}</option>
                     <option value="unused">{{ __('media.picker_type_unused') }}</option>
                 </select>
-                <select wire:model.live="pickerFormat" class="cursor-pointer rounded-lg border border-border-strong bg-surface px-2.5 py-2 text-[12.5px] text-body-text" aria-label="{{ __('media.picker_format_label') }}">
+                <select wire:model.live="pickerFormat" class="field cursor-pointer rounded-lg border border-border-strong bg-surface px-2.5 text-text" aria-label="{{ __('media.picker_format_label') }}">
                     <option value="all">{{ __('media.picker_format_all') }}</option>
                     @foreach ($mp['formats'] as $ext)
                         <option value="{{ $ext }}">{{ strtoupper($ext) }}</option>

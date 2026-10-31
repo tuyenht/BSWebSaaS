@@ -5,10 +5,10 @@
             <textarea wire:model="{{ $model }}"></textarea>
             @break
         @case('int')
-            <input type="number" wire:model="{{ $model }}">
+            <input type="number" wire:model="{{ $model }}" class="field">
             @break
         @case('url')
-            <input type="url" wire:model="{{ $model }}">
+            <input type="url" wire:model="{{ $model }}" class="field">
             @break
         @case('image')
             @php $imagePath = \Illuminate\Support\Str::after($model, 'blocks.'); @endphp
@@ -23,6 +23,6 @@
             </span>
             @break
         @default
-            <input type="text" wire:model="{{ $model }}">
+            <input type="text" wire:model="{{ $model }}" class="field">
     @endswitch
 </label>

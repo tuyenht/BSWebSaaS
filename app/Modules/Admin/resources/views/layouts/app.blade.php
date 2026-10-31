@@ -187,7 +187,7 @@
                     <x-bs-admin::icon name="search" class="size-4" />
                 </span>
                 <input type="search" aria-label="{{ __('admin.search') }}" placeholder="{{ __('admin.search_placeholder') }}"
-                       class="w-56 rounded border border-topbar-search-border bg-topbar-search py-2 pl-9 pr-3 text-sm text-topbar-search-fg placeholder:text-topbar-search-placeholder transition-colors focus:border-topbar-search-accent focus:bg-topbar-search-focus lg:w-72">
+                       class="field w-56 rounded border border-topbar-search-border bg-topbar-search pl-9 pr-3 text-topbar-search-fg placeholder:text-topbar-search-placeholder transition-colors focus:border-topbar-search-accent focus:bg-topbar-search-focus lg:w-72">
             </div>
 
             {{-- Right cluster: language · fullscreen · light/dark · notifications · user --}}

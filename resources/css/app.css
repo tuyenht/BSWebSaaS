@@ -251,6 +251,25 @@
     }
 }
 
+/* The size of every admin text field and select (the kit input and each hand-built field): the main
+   control height (40px at the default text size, 44px from the next size up), 44px on touch, the
+   text at the user's body size. Only the size lives here; each field keeps its own width, border,
+   radius, colours and inline padding. `field-row` draws a field on a list row or inline at the
+   row-control size (36 / 40 / 44px) and keeps the 44px touch height. A bordered box that holds a
+   bare field (an icon + input label) takes `field` itself; the bare input inherits its text. */
+@utility field {
+    min-height: var(--field-height, var(--spacing-control));
+    padding-block: 0.375rem;
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+
+    @apply pointer-coarse:min-h-hit;
+}
+
+@utility field-row {
+    --field-height: var(--spacing-control-row);
+}
+
 /* A pager link (the kit pagination and the posts list's keyset pager): drawn at the row-control size
    (36 / 40 / 44px across the text sizes) at every pointer; on touch the shared transparent hit area
    extends the target to 44px without changing what is drawn. */

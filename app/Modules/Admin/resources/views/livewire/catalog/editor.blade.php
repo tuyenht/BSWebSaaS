@@ -107,7 +107,7 @@
             <x-bs-admin::card :title="__('catalog.card_publish')">
                 <label class="mb-1.5 block text-sm font-medium text-body-text" for="catalog-status">{{ __('catalog.status_label') }}</label>
                 <select id="catalog-status" wire:model="status"
-                        class="block w-full rounded border border-border-strong bg-surface px-3 py-2 text-sm text-body-text transition-colors focus:border-accent">
+                        class="field block w-full rounded border border-border-strong bg-surface px-3 text-text transition-colors focus:border-primary-text">
                     <option value="draft">{{ __('catalog.status_draft') }}</option>
                     <option value="published">{{ __('catalog.status_published') }}</option>
                     <option value="archived">{{ __('catalog.status_archived') }}</option>
@@ -117,7 +117,7 @@
 
             <x-bs-admin::card :title="__('catalog.category_label')">
                 <select id="catalog-category" wire:model="categoryId"
-                        class="block w-full rounded border border-border-strong bg-surface px-3 py-2 text-sm text-body-text transition-colors focus:border-accent">
+                        class="field block w-full rounded border border-border-strong bg-surface px-3 text-text transition-colors focus:border-primary-text">
                     <option value="">{{ __('catalog.category_placeholder') }}</option>
                     @foreach ($categories as $category)
                         <option value="{{ $category['id'] }}">{{ $category['name'] }}</option>
