@@ -354,7 +354,10 @@
                                             @endforeach
                                         </span>
                                     </span>
-                                    <span class="list-m" data-for="views"@unless ($entry->view_count > 0) data-empty="1"@endunless>{{ $entry->view_count > 0 ? __('entries.views_count', ['count' => number_format($entry->view_count)]) : __('entries.no_views') }}</span>
+                                    {{-- as in the design, views are named only once there are some --}}
+                                    @if ($entry->view_count > 0)
+                                        <span class="list-m" data-for="views">{{ __('entries.views_count', ['count' => \Illuminate\Support\Number::format($entry->view_count, locale: app()->getLocale())]) }}</span>
+                                    @endif
                                     @if ($creator)
                                         <span class="list-m" data-for="au">{{ $creator }}</span>
                                     @endif

@@ -171,11 +171,10 @@ it('keeps a phone card to the name, one detail line and one row of status and bu
     $card = listCssBand('@container list (width < 37.5rem)', '@container list (37.5rem <= width < 56.25rem)');
 
     expect($card)
-        // author · date · views, and no "no views yet" piece
+        // author · date · views
         ->toMatch("/\\.list-m\\[data-for='au'\\]\\s*\\{\\s*order: 1;/")
         ->toMatch("/\\.list-m\\[data-for='when'\\]\\s*\\{\\s*display: inline;\\s*order: 2;/")
         ->toMatch("/\\.list-m\\[data-for='views'\\]\\s*\\{\\s*order: 3;/")
-        ->toMatch("/\\.list-m\\[data-for='views'\\]\\[data-empty\\]\\s*\\{\\s*display: none;/")
         // the quick-edit hit area does not make the title line taller
         ->toContain('margin-block: calc((var(--list-nlh) - var(--list-qe-s)) / 2)')
         // the button group runs into the card's side padding, as in the design
@@ -206,6 +205,20 @@ describe('the posts and pages list on the shared row', function (): void {
         return $entry;
     }
 
+    it('names views only once there are some, written in the member\'s locale', function (): void {
+        $user = User::factory()->create();
+        app()->setLocale('vi');
+
+        app(Tenancy::class)->enter(1, function () use ($user): void {
+            grantRole($user, 'editor', ['entries.view', 'entries.edit.any']);
+            $entry = listRowEntry($user, 'Bài được đọc', 'bai-duoc-doc');
+            Entry::query()->whereKey($entry->getKey())->update(['view_count' => 1234]);
+
+            Livewire::actingAs($user->fresh())->test(Index::class)
+                ->assertSeeHtml('data-for="views">1.234 lượt xem</span>');
+        });
+    });
+
     it('renders the rows as a table with a header, select boxes and a ⋮ per record', function (): void {
         $user = User::factory()->create();
 
@@ -224,7 +237,8 @@ describe('the posts and pages list on the shared row', function (): void {
                 ->assertSeeHtml('href="'.route('admin.entries.edit', ['ulid' => $entry->ulid]).'"')
                 ->assertSeeHtml(e(__('entries.action_duplicate')))
                 ->assertSeeHtml('class="list-c list-c-act">'.e(__('admin.actions')).'</div>')
-                ->assertSeeHtml('data-for="views" data-empty="1"');
+                ->assertDontSeeHtml('data-for="views"')
+                ->assertDontSeeHtml(e(__('entries.views_count', ['count' => 0])));
 
             $source = (string) file_get_contents(base_path('app/Modules/Admin/resources/views/livewire/entries/index.blade.php'));
             expect($source)->not->toMatch('/\\btruncate\\b|line-clamp/')
