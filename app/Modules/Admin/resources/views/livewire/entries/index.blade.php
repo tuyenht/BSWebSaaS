@@ -276,7 +276,7 @@
                             : $when->locale(app()->getLocale())->isoFormat('D MMM, Y')) : null;
                         $slugLeaf = $t?->slug;
                         $slugPrefix = ($path !== null && $slugLeaf) ? \Illuminate\Support\Str::beforeLast($path, $slugLeaf) : '/';
-                        $quickEdit = $canEdit && ! $trashed;
+                        $quickEdit = ($rowEditable[$entry->ulid] ?? false) && ! $trashed;
                     @endphp
                     <x-bs-admin::list.row :selected="$isSelected" wire:key="entry-{{ $entry->ulid }}"
                         x-data="{ editing: false, value: {{ $Js::from($t?->title ?? '') }}, cancel: false }"
@@ -304,7 +304,7 @@
                                     <span class="list-m" x-show="cols.path">
                                         @if ($isHome)
                                             <span class="inline-flex items-center gap-1 font-mono text-caption" title="{{ __('entries.home_locked') }}">{{ $path ?? '/' }} <x-bs-admin::icon name="ri-lock" class="size-3" /></span>
-                                        @elseif ($canEdit && ! $trashed)
+                                        @elseif ($quickEdit)
                                             <span wire:key="slug-{{ $entry->ulid }}-{{ $slugLeaf }}" x-data="{ editing: false, value: @js($slugLeaf ?? ''), cancel: false }">
                                                 <button type="button" x-show="! editing"
                                                     @click="editing = true; cancel = false; $nextTick(() => { $refs.slugInput.focus(); $refs.slugInput.select() })"

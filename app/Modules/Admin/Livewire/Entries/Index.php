@@ -861,17 +861,24 @@ final class Index extends Component
         // Which rows this person may change at all, as far as their category limits go (the
         // primary category is loaded above, so this costs no query per row). Every action still
         // asks the policy itself; this only lets a row show its actions locked, with the reason.
+        // Which rows they may edit is asked of the policy row by row (edit.any, or edit.own on
+        // their own record, inside those limits), so a row they may not edit offers the reason
+        // instead of a link that would be refused; permissions and limits are read once per
+        // request, so this too adds no query per row.
         $pageUlids = [];
         $rowCovered = [];
+        $rowEditable = [];
         foreach ($rows->items() as $item) {
             $pageUlids[] = $item['entry']->ulid;
             $rowCovered[$item['entry']->ulid] = ! $limited || $scopes->coversEntry($user, $item['entry']);
+            $rowEditable[$item['entry']->ulid] = $user->can('update', $item['entry']);
         }
 
         return view('admin::livewire.entries.index', [
             'rows' => $rows,
             'pageUlids' => $pageUlids,
             'rowCovered' => $rowCovered,
+            'rowEditable' => $rowEditable,
             'scopeRefusal' => $limited ? $scopes->refusal($user) : null,
             'counts' => $this->counts($type, $section),
             'facets' => $facets,
@@ -886,7 +893,6 @@ final class Index extends Component
             'canPublish' => $user->can('entries.publish'),
             'canCreate' => $user->can('entries.create'),
             'canDelete' => $user->can('entries.delete.any') || $user->can('entries.delete.own'),
-            'canEdit' => $user->can('entries.edit.any') || $user->can('entries.edit.own'),
             'siteTime' => app(SiteTime::class),
         ]);
     }

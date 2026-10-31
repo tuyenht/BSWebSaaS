@@ -150,6 +150,10 @@ it('switches layout on the list width in rem, from shared tokens, never clipping
     }
 });
 
+it('keeps neighbouring language chips\' touch hit areas apart, each chip at least its hit size less the gap', function (): void {
+    expect(listCss())->toMatch('/@media \\(pointer: coarse\\) \\{\\s*\\.list-lcs,\\s*\\.list-lcg \\{\\s*--list-lc-gap: [^;]+;\\s*column-gap: var\\(--list-lc-gap\\);\\s*\\}\\s*\\.list-lc \\{[^}]*min-width: calc\\(var\\(--list-qe-s\\) - var\\(--list-lc-gap\\)\\);/');
+});
+
 it('keeps meta text at 12px or more', function (): void {
     preg_match_all('/font-size:\s*([^;]+);/', listCss(), $m);
 
@@ -395,6 +399,8 @@ describe('the posts and pages list on the shared row', function (): void {
                     ->assertSeeHtml('aria-label="Chưa có bản tiếng Anh. Bạn chỉ xem được trang này" aria-expanded="false"')
                     ->assertSeeHtml('class="list-menu list-pop" role="group" aria-label="Tiếng Anh"')
                     ->assertSeeHtml(e('Chưa có bản dịch cho ngôn ngữ này.'))
+                    // Tab out of the chips closes the note, as it does the summary menu
+                    ->assertSeeHtml('x-on:click.outside="pop = null" x-on:keydown.tab="pop = null"')
                     ->assertDontSeeHtml('locale=en')
                     ->assertDontSeeHtml('data-add');
             });
@@ -459,7 +465,7 @@ describe('the posts and pages list on the shared row', function (): void {
             });
         });
 
-        it('sums up more than four locales in one button that opens a menu of the versions', function (): void {
+        it('sums up more than four locales in one button, shown with the column, that opens a menu of the versions', function (): void {
             $user = User::factory()->create();
             app()->setLocale('vi');
 
@@ -472,9 +478,12 @@ describe('the posts and pages list on the shared row', function (): void {
 
                 $html = Livewire::actingAs($user->fresh())->test(Index::class)->html();
 
-                // the summary says what is missing, so there is no separate note
+                // no chips; the note still names what is missing (whatever the column choice), and
+                // the summary button follows the column choice
                 expect($html)->not->toContain('class="list-lc"')
-                    ->and($html)->not->toContain('role="note"')
+                    ->and(substr_count($html, 'role="note"'))->toBe(1)
+                    ->and($html)->toContain('<span>Chưa dịch: Nhật, Trung, Hàn</span>')
+                    ->and(substr_count($html, '<span class="list-lsw" x-show="cols.langs"'))->toBe(2)
                     ->and($html)->toContain('<span>Thiếu 3 ngôn ngữ</span>')
                     ->and($html)->toContain('<span>Đủ 5 ngôn ngữ</span>')
                     ->and($html)->toContain('aria-label="'.e('Bản dịch của “Nhiều ngôn ngữ”: Thiếu 3 ngôn ngữ — bấm để chọn bản').'"')
@@ -483,6 +492,70 @@ describe('the posts and pages list on the shared row', function (): void {
                     ->and(substr_count($html, 'wire:navigate role="menuitem"'))->toBe(10)
                     ->and($html)->toContain('href="'.e(route('admin.entries.edit', ['ulid' => $entry->ulid, 'locale' => 'ko'])).'" wire:navigate role="menuitem"')
                     ->and($html)->toContain('x-on:keydown.down.prevent=');
+            });
+        });
+
+        it('draws a source with no content as missing, starred, named in the note', function (): void {
+            $user = User::factory()->create();
+            app()->setLocale('vi');
+
+            app(Tenancy::class)->enter(1, function () use ($user): void {
+                grantRole($user, 'editor', ['entries.view', 'entries.edit.any']);
+                listRowLocales(['vi', 'en']);
+                $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $user->id]);
+                listRowTranslate($entry, 'en');
+                $edit = fn (string $lc): string => e(route('admin.entries.edit', ['ulid' => $entry->ulid, 'locale' => $lc]));
+
+                $html = Livewire::actingAs($user->fresh())->test(Index::class)->html();
+
+                expect($html)->toContain('<a href="'.$edit('vi').'" wire:navigate class="list-lc" data-s="empty"')
+                    ->and($html)->not->toContain('data-s="src"')
+                    ->and($html)->toContain('<a href="'.$edit('en').'" wire:navigate class="list-lc" data-s="full"')
+                    ->and($html)->toContain('title="Chưa có bản tiếng Việt (bản nguồn) — bấm để thêm" aria-label="Thêm bản tiếng Việt (bản nguồn) — “')
+                    // the star still marks it as the source
+                    ->and($html)->toMatch('/data-s="empty"\s+data-add\s+title="Chưa có bản tiếng Việt \(bản nguồn\)[^"]*" aria-label="[^"]*">Việt(<!--.*?-->)*<svg[^>]*list-lc-star/')
+                    ->and($html)->toContain('<span>Chưa dịch: Việt</span>')
+                    ->and($html)->toContain('title="Chưa có bản tiếng Việt"');
+            });
+        });
+
+        it('tells a member who may view only that the source has no content yet', function (): void {
+            $user = User::factory()->create();
+            app()->setLocale('vi');
+
+            app(Tenancy::class)->enter(1, function () use ($user): void {
+                grantRole($user, 'viewer', ['entries.view']);
+                listRowLocales(['vi', 'en']);
+                listRowTranslate(Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $user->id]), 'en');
+
+                Livewire::actingAs($user->fresh())->test(Index::class)
+                    ->assertSeeHtml('<button type="button" class="list-lc" data-s="empty"')
+                    ->assertSeeHtml('aria-label="Chưa có bản tiếng Việt (bản nguồn). Bạn chỉ xem được trang này"')
+                    ->assertSeeHtml('class="list-menu list-pop" role="group" aria-label="Tiếng Việt · bản nguồn"')
+                    ->assertSeeHtml(e('Bản nguồn chưa có nội dung.'))
+                    ->assertSeeHtml('<span>Chưa dịch: Việt</span>');
+            });
+        });
+
+        it('links a member who may edit only their own records on their rows, and says why on the others', function (): void {
+            $user = User::factory()->create();
+            $other = User::factory()->create();
+            app()->setLocale('vi');
+
+            app(Tenancy::class)->enter(1, function () use ($user, $other): void {
+                grantRole($user, 'author', ['entries.view', 'entries.edit.own']);
+                listRowLocales(['vi', 'en']);
+                $mine = listRowEntry($user, 'Bài của tôi', 'bai-cua-toi');
+                $theirs = listRowEntry($other, 'Bài người khác', 'bai-nguoi-khac');
+
+                $html = Livewire::actingAs($user->fresh())->test(Index::class)->html();
+
+                expect($html)->toContain('<a href="'.e(route('admin.entries.edit', ['ulid' => $mine->ulid, 'locale' => 'en'])).'" wire:navigate class="list-lc"')
+                    ->and($html)->not->toContain(e(route('admin.entries.edit', ['ulid' => $theirs->ulid, 'locale' => 'en'])))
+                    ->and($html)->toContain('aria-label="Chưa có bản tiếng Anh. Bạn chỉ xem được trang này"')
+                    // quick edit follows the same per-row right
+                    ->and($html)->toContain(e(__('entries.quick_edit_named', ['title' => 'Bài của tôi'])))
+                    ->and($html)->not->toContain(e(__('entries.quick_edit_named', ['title' => 'Bài người khác'])));
             });
         });
     });
