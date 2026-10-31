@@ -83,7 +83,6 @@
     "auth.reset_email_intro": "アカウントのパスワードリセットのリクエストを受け取りました。",
     "auth.reset_email_outro": "リクエストしていない場合は、このメールを無視してください。",
     "admin.welcome": "おかえりなさい！",
-    "admin.open_menu": "メニューを開く",
     "admin.collapse_menu": "メニューを折りたたむ",
     "admin.expand_menu": "メニューを展開",
     "admin.search": "検索",

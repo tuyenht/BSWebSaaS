@@ -33,7 +33,8 @@
      scroll. The page stays readable to screen readers (as in the design), so the menu button can
      still close it. Below 1024px the closed drawer is hidden by CSS (so it takes no focus before
      Alpine starts) and inert. Esc or the backdrop closes it and focus goes back to the menu
-     button. --}}
+     button; an Esc another dialog already handled is left alone, and opening the theme panel
+     closes it without pulling focus back. --}}
 <div class="{{ $hasNav ? 'platform-shell ' : '' }}min-h-screen"
      x-data="{
         open: false,
@@ -52,6 +53,11 @@
                 lg.removeEventListener('change', sync);
                 xl.removeEventListener('change', sync);
             };
+            this.$watch('$store.adminTheme.open', (value) => {
+                if (value) {
+                    this.open = false;
+                }
+            });
             this.$watch('open', (value) => {
                 if (value) {
                     this.$nextTick(() => this.$refs.nav?.querySelector('a[href]')?.focus());
@@ -71,8 +77,8 @@
                 this.open = ! this.open;
             }
         },
-        close() {
-            if (! this.open) {
+        close(event = null) {
+            if (! this.open || event?.defaultPrevented) {
                 return;
             }
             this.open = false;
@@ -80,7 +86,7 @@
         },
      }"
      :data-nav-open="open ? '' : null"
-     @keydown.escape.window="close()">
+     @keydown.escape.window="close($event)">
 
     @if ($hasNav)
         {{-- Backdrop under the open drawer / the menu laid over the rail. --}}
@@ -91,7 +97,7 @@
 
         <aside id="platform-sidebar"
                class="admin-sidebar fixed inset-y-0 start-0 z-40 flex flex-col bg-sidebar-bg text-sidebar-fg"
-               x-trap.noscroll.noautofocus="open && ! wide"
+               x-trap.noscroll.noreturn.noautofocus="open && ! wide"
                :role="open && ! wide ? 'dialog' : null"
                :aria-label="open && ! wide ? @js(__('admin.menu')) : null"
                x-effect="$el.inert = mobile && ! open">
