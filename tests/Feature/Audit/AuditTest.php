@@ -127,6 +127,7 @@ it('adds and removes the impersonator columns reversibly', function (): void {
         $migration->up();
         $migration->up();   // re-runnable after a mid-run failure
     } finally {
+        rebuildAuditFilterIndexes();
         DB::setDefaultConnection($original);
     }
 
@@ -150,6 +151,7 @@ it('adds and removes the support session column reversibly', function (): void {
     } finally {
         $migration->up();
         $migration->up();   // re-runnable after a mid-run failure
+        rebuildAuditFilterIndexes();
         DB::setDefaultConnection($original);
     }
 
@@ -254,3 +256,14 @@ it('stays best-effort for a lock conflict outside any transaction, where nothing
 
     expect(AuditLog::count())->toBe(0);
 });
+
+/**
+ * Dropping a column drops the filter indexes built on it, and putting the column back does not
+ * bring them back. Rebuild them so the tests that pin those indexes do not depend on test order.
+ */
+function rebuildAuditFilterIndexes(): void
+{
+    /** @var Migration $indexes */
+    $indexes = require database_path('migrations/2038_01_01_000000_add_filter_indexes_to_audit_logs.php');
+    $indexes->up();
+}
