@@ -49,6 +49,7 @@ Prod is a separate git checkout, `/opt/bswebsaas/prod` (branch `main`), on the s
 2. Migrations, from `/opt/bswebsaas/prod`: `docker compose --profile ops run --rm --no-deps migrate`.
    - This one-off container is the only app process that receives the superuser password (from `/opt/bswebsaas/secrets/db-admin.env`); the app, the queue and the scheduler never hold it.
    - Any other superuser-only artisan command runs the same way: `docker compose --profile ops run --rm --no-deps migrate php artisan <command> --database=pgsql_admin`.
+   - A migration that builds an index CONCURRENTLY waits for every open transaction to finish. If the step seems stuck, look for a session left idle in a transaction (`SELECT pid, state, xact_start FROM pg_stat_activity WHERE state LIKE 'idle in transaction%'`) before anything else; the build carries on by itself once that session ends.
 3. Front-end: in `/opt/bswebsaas/prod`, run `pnpm install --frozen-lockfile` (only if the lockfile changed), then `pnpm run build`.
    - `public/build` is gitignored, and Tailwind emits only the classes it saw at build time.
    - Skip this step and new screens ship with stale CSS — silently.

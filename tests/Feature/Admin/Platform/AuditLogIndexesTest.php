@@ -102,11 +102,11 @@ it('defines each filter index of the activity log as signed', function (string $
         ->and($row->valid)->toBeTrue()
         ->and($row->def)->toBe("CREATE INDEX {$index} ON public.audit_logs USING btree {$definition}");
 })->with([
-    'first page, groups, platform, period' => ['audit_logs_created_at_id_index', '(created_at DESC, id DESC)'],
+    'first page, groups, platform, period' => ['audit_logs_created_at_id_index', '(created_at, id)'],
     'person' => ['audit_logs_actor_id_index', '(actor_id)'],
     'staff member behind a support sign-in' => ['audit_logs_impersonator_id_index', '(impersonator_id) WHERE (impersonator_id IS NOT NULL)'],
-    'support actions only' => ['audit_logs_support_created_at_index', "(created_at DESC, id DESC) WHERE ((impersonator_id IS NOT NULL) OR ((action)::text ~~ 'support.%'::text))"],
-    'one support session' => ['audit_logs_support_session_created_at_index', '(support_session_ulid, created_at DESC, id DESC) WHERE (support_session_ulid IS NOT NULL)'],
+    'support actions only' => ['audit_logs_support_created_at_index', "(created_at, id) WHERE ((impersonator_id IS NOT NULL) OR ((action)::text ~~ 'support.%'::text))"],
+    'one support session' => ['audit_logs_support_session_created_at_index', '(support_session_ulid, created_at, id) WHERE (support_session_ulid IS NOT NULL)'],
 ]);
 
 it('plans the first page and a period on the newest-first index', function (array $filters): void {

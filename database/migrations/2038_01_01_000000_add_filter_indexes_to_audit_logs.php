@@ -20,6 +20,9 @@ use Illuminate\Support\Facades\DB;
  * and sorting, so neither carries created_at: with it they were no faster and five times larger.
  * The support predicate is written exactly as the screen sends it, or the partial index would
  * not match. Leading with created_at also suits a later split of the table by month.
+ * The keys are ascending although the screen reads newest first: Postgres scans them backward just as
+ * fast, and new rows then land on the right edge, where page splits leave full pages. Descending
+ * keys would put every insert on the left edge and leave pages half empty.
  *
  * Writes: an ordinary row maintains two more indexes; the three partial ones hold support rows
  * only (~2%). The app only appends to this table, so no update or delete pays for them.
@@ -35,11 +38,11 @@ return new class extends Migration
 
     /** @var array<string, string> index name => definition after "ON audit_logs" */
     private const array INDEXES = [
-        'audit_logs_created_at_id_index' => '(created_at DESC, id DESC)',
+        'audit_logs_created_at_id_index' => '(created_at, id)',
         'audit_logs_actor_id_index' => '(actor_id)',
         'audit_logs_impersonator_id_index' => '(impersonator_id) WHERE impersonator_id IS NOT NULL',
-        'audit_logs_support_created_at_index' => "(created_at DESC, id DESC) WHERE impersonator_id IS NOT NULL OR action LIKE 'support.%'",
-        'audit_logs_support_session_created_at_index' => '(support_session_ulid, created_at DESC, id DESC) WHERE support_session_ulid IS NOT NULL',
+        'audit_logs_support_created_at_index' => "(created_at, id) WHERE impersonator_id IS NOT NULL OR action LIKE 'support.%'",
+        'audit_logs_support_session_created_at_index' => '(support_session_ulid, created_at, id) WHERE support_session_ulid IS NOT NULL',
     ];
 
     public function up(): void
