@@ -117,7 +117,7 @@
                                         :aria-expanded="openGroup === '{{ $item->key }}'"
                                         :class="openGroup === '{{ $item->key }}' && 'text-sidebar-fg-active'"
                                         @class([
-                                            'group flex min-h-control w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors hover:text-sidebar-fg-hover any-pointer-coarse:min-h-hit',
+                                            'group flex min-h-control w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-body font-medium transition-colors hover:text-sidebar-fg-hover any-pointer-coarse:min-h-hit',
                                             $currentRow => $item->active,
                                         ])>
                                     <x-bs-admin::icon :name="$item->icon ?? 'doc'" class="size-5 shrink-0" />
@@ -134,7 +134,7 @@
                                         <li>
                                             <a href="{{ $child->url }}" wire:navigate @if ($child->active) aria-current="page" @endif
                                                @class([
-                                                   'flex min-h-control items-center gap-2.5 px-3 py-2 text-[13px] transition-colors hover:text-sidebar-fg-hover any-pointer-coarse:min-h-hit',
+                                                   'flex min-h-control items-center gap-2.5 px-3 py-2 text-small transition-colors hover:text-sidebar-fg-hover any-pointer-coarse:min-h-hit',
                                                    $currentRow => $child->active,
                                                ])>
                                                 <span class="h-[1.5px] w-1.5 shrink-0 rounded-full bg-current opacity-60"></span>
@@ -147,14 +147,14 @@
                         @else
                             <a href="{{ $item->url }}" wire:navigate aria-label="{{ $item->label }}" @if ($item->active) aria-current="page" @endif
                                @class([
-                                   'group flex min-h-control w-full items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors hover:text-sidebar-fg-hover any-pointer-coarse:min-h-hit',
+                                   'group flex min-h-control w-full items-center gap-3 px-3 py-2.5 text-body font-medium transition-colors hover:text-sidebar-fg-hover any-pointer-coarse:min-h-hit',
                                    $currentRow => $item->active,
                                ])>
                                 <x-bs-admin::icon :name="$item->icon ?? 'doc'" class="size-5 shrink-0" />
                                 <span class="sidebar-label">{{ $item->label }}</span>
                                 @if ($item->badge !== null)
                                     {{-- Work waiting on this person; hidden with the labels when the rail collapses. --}}
-                                    <span class="sidebar-label ml-auto rounded-full bg-admin-danger-solid px-1.5 py-0.5 text-[10.5px] font-bold leading-none text-white">{{ $item->badge }}</span>
+                                    <span class="sidebar-label ml-auto rounded-full bg-danger px-1.5 py-0.5 text-caption font-bold leading-none text-white">{{ $item->badge }}</span>
                                 @endif
                             </a>
                         @endif

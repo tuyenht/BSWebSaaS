@@ -359,7 +359,7 @@
                                                 <button type="button" x-show="! editing"
                                                     @click="editing = true; cancel = false; $nextTick(() => { $refs.slugInput.focus(); $refs.slugInput.select() })"
                                                     title="{{ $path }} · {{ __('entries.edit_hint') }}"
-                                                    class="hit-area min-h-tap-cell rounded text-left font-mono text-caption text-text-muted [overflow-wrap:anywhere] transition-colors hover:bg-primary-soft hover:text-primary-text">{{ $path ?? '—' }}</button>
+                                                    class="list-path font-mono text-caption text-text-muted [overflow-wrap:anywhere] transition-colors hover:bg-primary-soft hover:text-primary-text">{{ $path ?? '—' }}</button>
                                                 <span x-show="editing" x-cloak class="inline-flex w-full items-center gap-0.5 font-mono text-caption">
                                                     <span class="whitespace-nowrap text-placeholder">{{ $slugPrefix }}</span>
                                                     <input type="text" x-ref="slugInput" x-model="value" aria-label="{{ __('entries.col_path') }}"
@@ -502,15 +502,17 @@
             </div>
 
             <div class="mt-4 flex flex-wrap items-center justify-between gap-3 min-[600px]:px-4">
-                <span class="text-xs text-body-muted">
+                <span class="text-caption text-text-muted">
                     {{ __('entries.footer_showing', ['first' => $num($pager['from']), 'last' => $num($pager['to']), 'total' => $fmt($pager['total'])]) }}
                 </span>
                 <div class="flex flex-wrap items-center gap-4">
-                    <div class="flex items-center gap-2 text-xs text-body-muted">
+                    <div class="flex items-center gap-2 text-caption text-text-muted">
                         {{ __('entries.rows_per_page') }}
+                        {{-- Drawn at the row-control size (36 / 40 / 44px across the text sizes) like the pager
+                             beside it; on touch the shared transparent hit area makes it 44px. --}}
                         <button type="button" wire:click="cyclePerPage" title="{{ __('entries.rows_per_page') }}"
-                            class="inline-flex items-center gap-1.5 rounded border border-border-strong bg-surface px-2.5 py-1 font-medium text-body-text transition-colors hover:bg-surface-hover">
-                            {{ $perPage }} <x-bs-admin::icon name="chevron-down" class="size-3.5 text-body-muted" />
+                            class="inline-flex min-h-control-row min-w-control-row items-center justify-center gap-1.5 rounded border border-border-strong bg-surface px-2.5 font-medium text-text transition-colors hover:bg-surface-hover any-pointer-coarse:hit-area">
+                            {{ $perPage }} <x-bs-admin::icon name="chevron-down" class="size-3.5 text-text-muted" />
                         </button>
                     </div>
                     @php

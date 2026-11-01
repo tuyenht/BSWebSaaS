@@ -12,8 +12,14 @@
  */
 @layer components {
     .list-rows {
-        /* The quick-edit button's size: the row check reads it to line up with the title line. */
+        /* The size of a small target in the table's name cell (✎, language chips): 24 with a mouse
+           at the default text size, 44 from the next size up and on touch. */
         --list-qe-s: var(--spacing-tap-cell);
+        /* The name link and the path button: 44 below 900 at every pointer, as in the design; the
+           table (from 900) takes --list-qe-s. */
+        --list-tap: var(--spacing-hit);
+        /* One line of the name, so its box can centre the first line in the target height. */
+        --list-nlh: calc(var(--text-body) * 1.45);
         container: list / inline-size;
         min-width: 0;
     }
@@ -153,18 +159,37 @@
         padding-inline: 0.75rem;
     }
 
-    /* Name: a link to the editor, wrapping, never clipped; the ✎ quick-edit button beside it. */
+    /* Name: a link to the editor, wrapping, never clipped; the ✎ quick-edit button beside it. The
+       link's box is at least the target height (--list-tap), its first line centred in that height
+       however many lines follow, so the row check lines up with the first line at every size. */
     .list-tl {
-        display: block;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
         min-width: 0;
+        min-height: var(--list-tap);
     }
 
     .list-name {
+        box-sizing: border-box;
+        min-height: var(--list-tap);
+        padding-block: max(0rem, calc((var(--list-tap) - var(--list-nlh)) / 2));
         font-size: var(--text-body);
         font-weight: 600;
-        line-height: 1.45;
+        line-height: var(--list-nlh);
         color: var(--color-text-strong);
         overflow-wrap: anywhere;
+    }
+
+    /* The path button: as tall as the name's target, the text centred; nothing reaches past its box. */
+    .list-path {
+        display: inline-flex;
+        align-items: center;
+        box-sizing: border-box;
+        min-height: var(--list-tap);
+        margin-block: 0.25rem;
+        border-radius: 0.25rem;
+        text-align: left;
     }
 
     /* The tree mark of a child record, drawn in the 1.25rem indent the screen gives it. */
@@ -279,8 +304,10 @@
     /* Language versions (list.langs): the "Chưa dịch" note, then a chip per locale. A chip is drawn
        small (1px box, radius 4); its hit area is --list-qe-s (24 with a mouse at the default text
        size, 44 on touch) through a transparent ::after, so neither the chip nor the line grows. The
-       hit area reaches at most --list-lc-up above the chip (the gap under the name) and the rest
-       below, so it never lies over the name. Its popover and menu hang from the meta line. */
+       hit area reaches at most --list-lc-up above the chip and the rest below. The chips' group,
+       like the path button, keeps 0.25rem above and below, so with the meta line's own gap a chip's
+       area stays 8px clear of the name and of a path button on the line above. Its popover and
+       menu hang from the meta line. */
     .list-m[data-for='langs'] {
         --list-lc-up: 0.25rem;
         position: static;
@@ -295,6 +322,10 @@
         max-width: 100%;
         min-width: 0;
         vertical-align: middle;
+    }
+
+    .list-lcg {
+        margin-block: 0.25rem;
     }
 
     /* On touch the 44 hit areas of neighbouring chips do not overlap: a chip is at least its hit
@@ -652,11 +683,12 @@
             padding: clamp(0.625rem, 2.5cqw, 0.75rem) 0.75rem;
         }
 
-        /* The 18px box starts at the card's inner edge; its 44 frame overlaps the 8px gap. */
+        /* The 18px box starts at the card's inner edge; its 44 frame keeps the 8px gap to the name.
+           The name centres its first line in 44, so the two tops line up. */
         .list-c-chk {
             display: flex;
             flex: 0 0 var(--spacing-hit);
-            margin: calc(var(--list-nlh) / 2 - var(--spacing-hit) / 2) -0.5rem 0 calc((1.125rem - var(--spacing-hit)) / 2);
+            margin: 0 0 0 calc((1.125rem - var(--spacing-hit)) / 2);
         }
 
         /* One detail line: author · date · views. */
@@ -668,15 +700,9 @@
             order: 3;
         }
 
-        /* Languages close the detail line. With the column choice off only the note shows; with it
-           on, the chips' line is as tall as their hit area, which sits evenly around them. */
+        /* Languages close the detail line. With the column choice off only the note shows. */
         .list-m[data-for='langs'] {
-            --list-lc-up: var(--list-qe-s);
             order: 4;
-        }
-
-        .list-lcg {
-            min-height: var(--list-qe-s);
         }
 
         .list-lcg[data-off] {
@@ -684,7 +710,7 @@
         }
 
         .list-c-main {
-            flex: 1 1 calc(100% - var(--spacing-hit) - (1.125rem - var(--spacing-hit)) / 2);
+            flex: 1 1 calc(100% - var(--spacing-hit) - (1.125rem - var(--spacing-hit)) / 2 - 0.5rem);
         }
 
         .list-c-main .list-name {
@@ -728,6 +754,16 @@
         .list-qe {
             display: none;
         }
+
+        /* The chips' line is as tall as their hit area, which sits evenly around them, so a chip's
+           area never reaches past its line onto a path button or a name. */
+        .list-m[data-for='langs'] {
+            --list-lc-up: var(--list-qe-s);
+        }
+
+        .list-lcg {
+            min-height: var(--list-qe-s);
+        }
     }
 
     /* ── 600–899: one record per line ─────────────────────────────────────────────────────── */
@@ -764,13 +800,6 @@
 
         .list-c-au {
             display: none;
-        }
-
-        .list-tl {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            min-height: var(--spacing-hit);
         }
     }
 
@@ -840,11 +869,25 @@
             grid-column: chk / end;
         }
 
+        /* The name cell's small targets (name, ✎, path, chips) take --list-qe-s: 24 with a mouse at
+           the default text size, 8px apart; 44 from the next size up and on touch. The title line
+           drops by half of what the name is short of 44, so its first line stays level with the
+           row's 44 controls; under it the meta line keeps 0.375rem, plus the 0.25rem of a path
+           button or chips' group, and the chips reach at most 0.125rem up: 8px clear of the name. */
+        .list-r {
+            --list-tap: var(--list-qe-s);
+        }
+
         .list-tl {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            min-height: var(--spacing-hit);
+            padding-top: calc((var(--spacing-hit) - var(--list-tap)) / 2);
+        }
+
+        .list-meta {
+            margin-top: 0.375rem;
+        }
+
+        .list-m[data-for='langs'] {
+            --list-lc-up: 0.125rem;
         }
 
         .list-acts {
