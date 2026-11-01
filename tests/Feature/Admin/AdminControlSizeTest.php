@@ -100,7 +100,7 @@ function cssRuleFor(string $file, string $selector): array
     $css = (string) file_get_contents(resource_path('css/'.$file));
     $quoted = preg_quote($selector, '/');
     preg_match('/^\s*'.$quoted.' \{([^}]*)\}/m', $css, $mouse);
-    preg_match('/@media \(pointer: coarse\) \{\s*'.$quoted.' \{([^}]*)\}/', $css, $touch);
+    preg_match('/@media \(any-pointer: coarse\) \{\s*'.$quoted.' \{([^}]*)\}/', $css, $touch);
 
     return ['mouse' => $mouse[1] ?? '', 'touch' => $touch[1] ?? ''];
 }
@@ -248,17 +248,37 @@ it('leaves the workflow status buttons to the shared button size', function (): 
 });
 
 it('sizes touch targets for any touch screen, touch laptops included', function (): void {
-    $sources = ['resources/css/app.css' => (string) file_get_contents(resource_path('css/app.css'))];
+    $sources = [];
+    foreach (glob(resource_path('css/*.css')) ?: [] as $css) {
+        $sources[$css] = (string) file_get_contents($css);
+    }
     foreach ([base_path('app/Modules'), resource_path('views')] as $root) {
         foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS)) as $file) {
-            if (str_ends_with($file->getPathname(), '.blade.php') && str_contains($file->getPathname(), '/resources/views/') || str_starts_with($file->getPathname(), resource_path('views'))) {
+            if ((str_ends_with($file->getPathname(), '.blade.php') && str_contains($file->getPathname(), '/resources/views/')) || str_starts_with($file->getPathname(), resource_path('views'))) {
                 $sources[$file->getPathname()] = (string) file_get_contents($file->getPathname());
             }
         }
     }
 
-    $offenders = array_keys(array_filter($sources, fn (string $source): bool => preg_match('/(?<![-\w])pointer-coarse:/', $source) === 1));
+    $offenders = array_keys(array_filter($sources, fn (string $source): bool => preg_match('/(?<![-\w])pointer-coarse:|(?<![-\w])pointer:\s*coarse/', $source) === 1));
 
-    // `pointer-coarse:` follows only the main pointer; a touch laptop's trackpad would keep the mouse sizes
+    // `pointer-coarse:` and `(pointer: coarse)` follow only the main pointer; a touch laptop's trackpad would keep the mouse sizes
     expect($offenders)->toBe([]);
+});
+
+it('draws the picker tile details badge inside a control-size button', function (): void {
+    $source = (string) file_get_contents(app_path('Modules/Admin/resources/views/partials/media-picker-library-pane.blade.php'));
+    preg_match('/<button\b[^>]*wire:click\.stop="openPickerDetail.*?<\/button>/s', $source, $button);
+
+    expect($button)->not->toBeEmpty()
+        ->and($button[0])->toContain('aria-label="{{ __(\'media.picker_detail\') }}"')
+        ->toMatch('/<span class="[^"]*\bsize-\[calc\(1\.375rem\+var\(--user-text-boost\)\)\][^"]*\bbg-black\/30\b[^"]*">\s*<x-bs-admin::icon name="ri-information"/');
+});
+
+it('keeps the picker view toggles touch area outside a clipping box', function (): void {
+    $source = (string) file_get_contents(app_path('Modules/Admin/resources/views/partials/media-picker-library-pane.blade.php'));
+    preg_match('/<div class="([^"]*)">\s*<button[^>]*setPickerView\(\'grid\'\)/', $source, $group);
+
+    expect($group)->not->toBeEmpty()
+        ->and(explode(' ', $group[1]))->not->toContain('overflow-hidden');
 });

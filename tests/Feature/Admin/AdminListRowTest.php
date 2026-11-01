@@ -151,7 +151,7 @@ it('switches layout on the list width in rem, from shared tokens, never clipping
 });
 
 it('keeps neighbouring language chips\' touch hit areas apart, each chip at least its hit size less the gap', function (): void {
-    expect(listCss())->toMatch('/@media \\(pointer: coarse\\) \\{\\s*\\.list-lcs,\\s*\\.list-lcg \\{\\s*--list-lc-gap: [^;]+;\\s*column-gap: var\\(--list-lc-gap\\);\\s*\\}\\s*\\.list-lc \\{[^}]*min-width: calc\\(var\\(--list-qe-s\\) - var\\(--list-lc-gap\\)\\);/');
+    expect(listCss())->toMatch('/@media \\(any-pointer: coarse\\) \\{\\s*\\.list-lcs,\\s*\\.list-lcg \\{\\s*--list-lc-gap: [^;]+;\\s*column-gap: var\\(--list-lc-gap\\);\\s*\\}\\s*\\.list-lc \\{[^}]*min-width: calc\\(var\\(--list-qe-s\\) - var\\(--list-lc-gap\\)\\);/');
 });
 
 it('keeps meta text at 12px or more', function (): void {

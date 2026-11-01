@@ -140,13 +140,13 @@
                     </button>
                 @endif
             @endunless
-            <div class="flex overflow-hidden rounded-lg border border-border-strong">
+            <div class="flex rounded-lg border border-border-strong">
                 <button type="button" wire:click="setPickerView('grid')" title="{{ __('media.picker_view_grid') }}"
-                        class="hit-area flex size-control items-center justify-center {{ $pickerView === 'grid' ? 'bg-primary text-white' : 'bg-surface text-text-muted' }}">
+                        class="hit-area flex size-control items-center justify-center first:rounded-s-[calc(var(--radius-lg)-1px)] last:rounded-e-[calc(var(--radius-lg)-1px)] {{ $pickerView === 'grid' ? 'bg-primary text-white' : 'bg-surface text-text-muted' }}">
                     <x-bs-admin::icon name="ri-grid" class="size-[15px]" />
                 </button>
                 <button type="button" wire:click="setPickerView('list')" title="{{ __('media.picker_view_list') }}"
-                        class="hit-area flex size-control items-center justify-center {{ $pickerView === 'list' ? 'bg-primary text-white' : 'bg-surface text-text-muted' }}">
+                        class="hit-area flex size-control items-center justify-center first:rounded-s-[calc(var(--radius-lg)-1px)] last:rounded-e-[calc(var(--radius-lg)-1px)] {{ $pickerView === 'list' ? 'bg-primary text-white' : 'bg-surface text-text-muted' }}">
                     <x-bs-admin::icon name="ri-list-check-2" class="size-[15px]" />
                 </button>
             </div>
