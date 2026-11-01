@@ -27,7 +27,10 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
  *
  * Search ignores diacritics and case (VietnameseFold) over the customer's name and its owner's
  * name and email, through the trigram indexes on those folded expressions (tenants:
- * 2044_01_01_000000; users: 2039_01_01_000100).
+ * 2044_01_01_000000; users: 2039_01_01_000100). A trigram index needs three letters or digits in
+ * a row: anything shorter would read every customer and every member, so such a search is not run
+ * (the list says so) and the list stays as it is. The customer's code ("KH-000123", prefix and
+ * padding from config/customers.php) is matched exactly on customer_no, at any length.
  */
 final class CustomerDirectory
 {
@@ -38,11 +41,15 @@ final class CustomerDirectory
 
     public const int SEARCH_MAX = 100;
 
+    /** How many letters or digits in a row a search needs before it runs (a trigram). */
+    public const int SEARCH_MIN = 3;
+
     /**
      * One page of customers, newest first, with the list's counts under the same search.
      *
-     * One statement: the customers matching the search are found once (a MATERIALIZED CTE), then
-     * both counted and paged from there. A wide search spends most of its time finding them (the
+     * One statement when searching: the customers matching the search are found once (a
+     * MATERIALIZED CTE), then both counted and paged from there. With no search, the page and the
+     * counts read the table directly (two statements, each cheaper than gathering everyone). A wide search spends most of its time finding them (the
      * trigram index checks every matched row again with the fold), so a second statement for the
      * counts would double it.
      *
@@ -58,38 +65,52 @@ final class CustomerDirectory
             $newer = false;
         }
 
-        $matches = $this->filtered($search)->toBase()
-            ->select(['tenants.id', 'tenants.status', 'tenants.plan_id', 'tenants.created_at']);
-
+        $searching = self::searches($search);
         $direction = $newer ? 'asc' : 'desc';
-        $page = Tenant::query()
-            ->whereIn('tenants.id', fn (QueryBuilder $q) => $q->from('customer_matches')->select('id'))
+        // the page's rows are picked from tenants alone, then joined to their owners: joining first
+        // made the planner hash every member before sorting (about 50 ms at 50,000)
+        $picked = Tenant::query()
+            ->when($searching, fn (Builder $w) => $w->whereIn('tenants.id', fn (QueryBuilder $q) => $q->from('customer_matches')->select('id')))
             ->when($status !== '', fn (Builder $w) => $w->where('tenants.status', $status))
             ->when($plans !== [], fn (Builder $w) => $w->whereIn('tenants.plan_id', Plan::query()->select('id')->whereIn('key', $plans)))
-            ->leftJoin('users', 'users.id', '=', 'tenants.owner_user_id')
+            // a customer with no created_at sorts as the oldest, so it still pages (a NULL in the
+            // row comparison would make every page after it empty)
             ->when($anchor !== null, fn (Builder $w) => $w->whereRaw(
-                '(tenants.created_at, tenants.id) '.($newer ? '>' : '<').' (?, ?)',
+                "(coalesce(tenants.created_at, '-infinity'), tenants.id) ".($newer ? '>' : '<')." (coalesce(?::timestamptz, '-infinity'), ?)",
                 [$anchor?->getRawOriginal('created_at'), $anchor?->getKey()],
             ))
             ->select(['tenants.id', 'tenants.ulid', 'tenants.name', 'tenants.status', 'tenants.plan_id', 'tenants.created_at',
+                'tenants.owner_user_id', 'tenants.deleted_at'])
+            ->orderByRaw("coalesce(tenants.created_at, '-infinity') {$direction}")->orderBy('tenants.id', $direction)
+            ->limit($per + 1);
+        $page = Tenant::query()->fromSub($picked, 'tenants')
+            ->leftJoin('users', 'users.id', '=', 'tenants.owner_user_id')
+            ->select(['tenants.id', 'tenants.ulid', 'tenants.name', 'tenants.status', 'tenants.plan_id', 'tenants.created_at',
                 'users.name as owner_name', 'users.email as owner_email'])
             ->withCount('sites')
-            ->orderBy('tenants.created_at', $direction)->orderBy('tenants.id', $direction)
-            ->limit($per + 1);
+            ->orderByRaw("coalesce(tenants.created_at, '-infinity') {$direction}")->orderBy('tenants.id', $direction);
 
-        // the counts row is always there; the page joins it, and may be empty
-        $sql = 'with customer_matches as materialized ('.$matches->toSql().') '
-            .'select c.match_counts, p.* from (select json_agg(g) as match_counts from '
-            .'(select status, plan_id, count(*) as n from customer_matches group by status, plan_id) as g) as c '
-            .'left join lateral ('.$page->toSql().') as p on true '
-            ."order by p.created_at {$direction}, p.id {$direction}";
-        $bindings = [...$matches->getBindings(), ...$page->getBindings()];
-
-        $read = Tenant::fromQuery($sql, $bindings);
-        $first = $read->first();
-        $tally = is_string($first?->getAttribute('match_counts')) ? json_decode($first->getAttribute('match_counts'), true) : [];
-        $rows = $read->filter(fn (Tenant $t): bool => $t->getKey() !== null)
-            ->each(fn (Tenant $t) => $t->offsetUnset('match_counts'));
+        if ($searching) {
+            $matches = $this->filtered($search)->toBase()
+                ->select(['tenants.id', 'tenants.status', 'tenants.plan_id', 'tenants.created_at']);
+            // the counts row is always there; the page joins it, and may be empty
+            $sql = 'with customer_matches as materialized ('.$matches->toSql().') '
+                .'select c.match_counts, p.* from (select json_agg(g) as match_counts from '
+                .'(select status, plan_id, count(*) as n from customer_matches group by status, plan_id) as g) as c '
+                .'left join lateral ('.$page->toSql().') as p on true '
+                ."order by coalesce(p.created_at, '-infinity') {$direction}, p.id {$direction}";
+            $read = Tenant::fromQuery($sql, [...$matches->getBindings(), ...$page->getBindings()]);
+            $first = $read->first();
+            $tally = is_string($first?->getAttribute('match_counts')) ? json_decode($first->getAttribute('match_counts'), true) : [];
+            $counts = $this->tally(is_array($tally) ? $tally : [], $plans);
+            $rows = $read->filter(fn (Tenant $t): bool => $t->getKey() !== null)
+                ->each(fn (Tenant $t) => $t->offsetUnset('match_counts'));
+        } else {
+            // no search: every customer matches, so the matches are not gathered first (that alone
+            // cost about 80 ms at 50,000); the page and one GROUP BY read the table directly
+            $rows = $page->get();
+            $counts = $this->counts('', $plans);
+        }
 
         if ($anchor !== null && $rows->isEmpty()) {
             // a page link gone stale (nothing older or newer any more): the first page
@@ -110,7 +131,7 @@ final class CustomerDirectory
             'rows' => $rows,
             'older' => $hasOlder && $rows->isNotEmpty() ? $rows->last()->ulid : null,
             'newer' => $hasNewer && $rows->isNotEmpty() ? $rows->first()->ulid : null,
-            'counts' => $this->tally(is_array($tally) ? $tally : [], $plans),
+            'counts' => $counts,
         ];
     }
 
@@ -179,28 +200,82 @@ final class CustomerDirectory
     }
 
     /**
-     * Customers matching the search (every customer when it is empty).
+     * Whether $search narrows the list: false when it is empty, or too short to run and not a
+     * customer code (the list then shows every customer and says why).
+     */
+    public static function searches(string $search): bool
+    {
+        $needle = self::needle($search);
+
+        return $needle !== '' && (self::wordy($needle) || self::customerNo($needle) !== null);
+    }
+
+    /** Typed, but too short to run: the list says how much to type. */
+    public static function tooShort(string $search): bool
+    {
+        return self::needle($search) !== '' && ! self::searches($search);
+    }
+
+    /**
+     * Customers matching the search (every customer when it does not narrow, see searches()).
      *
      * @return Builder<Tenant>
      */
     private function filtered(string $search): Builder
     {
         $query = Tenant::query();
-
-        $needle = VietnameseFold::text(mb_substr(trim($search), 0, self::SEARCH_MAX));
-        if ($needle !== '') {
-            $like = VietnameseFold::like($needle);
-            // Each condition is its own lookup, joined by UNION, so each is served by its own index
-            // (the customer's name, the owner's name, the owner's email, then the owner's customers).
-            // Written as one OR across tenants and users, no index serves it, and the name of every
-            // customer is folded on each search (about 10 µs a row with this letter table).
-            $owners = User::query()->select('id')->whereRaw(VietnameseFold::sql('name').' LIKE ?', [$like])
-                ->union(User::query()->select('id')->whereRaw('lower(email) LIKE ?', [$like]));
-            $matching = Tenant::query()->select('id')->whereRaw(VietnameseFold::sql('name').' LIKE ?', [$like])
-                ->union(Tenant::query()->select('id')->whereIn('owner_user_id', $owners));
-            $query->whereIn('tenants.id', $matching);
+        if (! self::searches($search)) {
+            return $query;
         }
 
-        return $query;
+        $needle = self::needle($search);
+        $number = self::customerNo($needle);
+        $byCode = $number === null ? null : Tenant::query()->select('id')->where('customer_no', $number);
+        if (! self::wordy($needle) && $byCode !== null) {
+            // a short code ("KH-12"): the unique index on the number alone
+            return $query->whereIn('tenants.id', $byCode);
+        }
+
+        $like = VietnameseFold::like($needle);
+        // Each condition is its own lookup, joined by UNION, so each is served by its own index
+        // (the customer's name, the owner's name, the owner's email, then the owner's customers,
+        // and the customer's number when the search reads as a code). Written as one OR across
+        // tenants and users, no index serves it, and the name of every customer is folded on each
+        // search (about 10 µs a row with this letter table).
+        $owners = User::query()->select('id')->whereRaw(VietnameseFold::sql('name').' LIKE ?', [$like])
+            ->union(User::query()->select('id')->whereRaw('lower(email) LIKE ?', [$like]));
+        $matching = Tenant::query()->select('id')->whereRaw(VietnameseFold::sql('name').' LIKE ?', [$like])
+            ->union(Tenant::query()->select('id')->whereIn('owner_user_id', $owners));
+        if ($byCode !== null) {
+            $matching->union($byCode);
+        }
+
+        return $query->whereIn('tenants.id', $matching);
+    }
+
+    private static function needle(string $search): string
+    {
+        return VietnameseFold::text(trim(mb_substr(trim($search), 0, self::SEARCH_MAX)));
+    }
+
+    /** At least SEARCH_MIN letters or digits in a row: what a trigram index can look up. */
+    private static function wordy(string $needle): bool
+    {
+        return preg_match('/[\p{L}\p{N}]{'.self::SEARCH_MIN.'}/u', $needle) === 1;
+    }
+
+    /**
+     * The customer number when the folded needle is a customer code: the configured prefix (any
+     * case, diacritics ignored), then digits, padded or not ("KH-000123", "kh-123" → 123).
+     */
+    private static function customerNo(string $needle): ?int
+    {
+        $prefix = VietnameseFold::text(Cast::string(config('customers.code_prefix')));
+        if (preg_match('/^'.preg_quote($prefix, '/').'0*(\d{1,18})$/u', $needle, $m) !== 1) {
+            return null;
+        }
+        $number = (int) $m[1];
+
+        return $number > 0 ? $number : null;
     }
 }

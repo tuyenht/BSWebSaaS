@@ -13,6 +13,7 @@ use App\Modules\Tenancy\Models\SiteFeature;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Registry\FeatureRegistry;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Number;
 
 /**
@@ -83,43 +84,74 @@ final readonly class PlanChangePreview
     }
 
     /**
-     * Where the customer already uses more than $to gives, one plain sentence each.
+     * What each live website already uses, for overages(): read once per dialog (the caller keeps
+     * it), since it does not depend on the plan chosen.
+     *
+     * Own domains for every website come in one query (`domains` is platform-wide). Languages and
+     * own feature values live in tenant tables (RLS) and can only be read inside each website's own
+     * tenant context, so each website costs one statement there (both reads as sub-selects), plus
+     * the context's own setup: a few queries per website, the customer's handful of websites.
      *
      * @param  Collection<int, Site>  $liveSites  the customer's live websites (id, name)
-     * @param  array<string, bool|int>  $to
-     * @return list<string>
+     * @return list<array{site: string, own: list<string>, domains: int, locales: int}>
      */
-    public function overages(Collection $liveSites, array $to): array
+    public function usage(Collection $liveSites): array
     {
-        $out = [];
-        $sitesMax = (int) ($to['sites.max'] ?? 0);
-        if ($liveSites->count() > $sitesMax) {
-            $out[] = __('admin.customers_dlg_over_sites', ['n' => self::num($liveSites->count()), 'max' => self::num($sitesMax)]);
-        }
         if ($liveSites->isEmpty()) {
-            return $out;
+            return [];
         }
 
         // the websites' own domains, through the site relation (a hostname is resolved only by SiteResolver)
         $domains = Site::query()->whereIn('id', $liveSites->pluck('id')->all())->with('domains:id,site_id,hostname,kind')->get(['id'])
             ->mapWithKeys(fn (Site $s): array => [$s->id => $s->domains->where('kind', 'custom')->pluck('hostname')->all()]);
 
+        $out = [];
         foreach ($liveSites as $site) {
-            [$own, $locales] = $this->tenancy->enter($site->id, fn (): array => [
-                Cast::strings(SiteFeature::query()->pluck('feature_key')->all()),
-                SiteLocale::query()->where('enabled', true)->count(),
-            ]);
-            $pairs = count(array_unique(array_map(
-                fn (mixed $host): string => DomainName::pairKey(Cast::string($host)),
-                Cast::arr($domains->get($site->id)),
-            )));
+            $row = $this->tenancy->enter($site->id, fn (): ?object => DB::query()
+                ->selectSub(SiteFeature::query()->selectRaw("coalesce(json_agg(feature_key), '[]'::json)"), 'own')
+                ->selectSub(SiteLocale::query()->where('enabled', true)->selectRaw('count(*)'), 'locales')
+                ->first());
+            $own = json_decode(Cast::string($row->own ?? null, '[]'), true);
 
-            $used = ['custom_domains.max' => [$pairs, 'admin.customers_usage_domains'], 'locales.max' => [$locales, 'admin.customers_usage_locales']];
+            $out[] = [
+                'site' => $site->name,
+                'own' => Cast::strings(is_array($own) ? $own : []),
+                // a name and its www. spelling count once, as AttachDomain does
+                'domains' => count(array_unique(array_map(
+                    fn (mixed $host): string => DomainName::pairKey(Cast::string($host)),
+                    Cast::arr($domains->get($site->id)),
+                ))),
+                'locales' => Cast::int($row->locales ?? null),
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * Where the customer already uses more than $to gives, one plain sentence each. No query: the
+     * websites' usage comes from usage().
+     *
+     * @param  int  $sites  how many live websites the customer has
+     * @param  list<array{site: string, own: list<string>, domains: int, locales: int}>  $usage
+     * @param  array<string, bool|int>  $to
+     * @return list<string>
+     */
+    public function overages(int $sites, array $usage, array $to): array
+    {
+        $out = [];
+        $sitesMax = (int) ($to['sites.max'] ?? 0);
+        if ($sites > $sitesMax) {
+            $out[] = __('admin.customers_dlg_over_sites', ['n' => self::num($sites), 'max' => self::num($sitesMax)]);
+        }
+
+        foreach ($usage as $site) {
+            $used = ['custom_domains.max' => [$site['domains'], 'admin.customers_usage_domains'], 'locales.max' => [$site['locales'], 'admin.customers_usage_locales']];
             foreach ($used as $key => [$n, $label]) {
                 $limit = (int) ($to[$key] ?? 0);
-                if (! in_array($key, $own, true) && $n > $limit) {
+                if (! in_array($key, $site['own'], true) && $n > $limit) {
                     $out[] = __('admin.customers_dlg_over_limit', [
-                        'site' => $site->name, 'used' => __($label, ['n' => self::num($n)]), 'max' => self::format($key, $limit),
+                        'site' => $site['site'], 'used' => __($label, ['n' => self::num($n)]), 'max' => self::format($key, $limit),
                     ]);
                 }
             }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Support\Customers\CustomerDirectory;
+use App\Modules\Tenancy\Support\CustomerCode;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -14,6 +15,11 @@ use Illuminate\Support\Facades\DB;
  * before the indexes). A wide search, matching at least a tenth of the customers, stays within
  * 250 ms (measured 190–230 ms; 2.4 s before): the trigram index must check every row it matched
  * again with the fold, about 115 ms for the 10,000 matches here, which no index can remove.
+ *
+ * A search by customer code (the unique index on customer_no) stays within 50 ms (measured 3 ms).
+ * So does the list with no search (measured 36 ms: the page is picked from tenants alone, then
+ * joined to its owners, and the counts are one GROUP BY), a search too short to run (the same
+ * read) and the "N trong M" totals a narrowed list adds (measured 16 ms).
  *
  * The fixture is vacuumed, as autovacuum keeps a live table: freshly loaded, the trigram indexes
  * still hold the new rows in their pending list and the heap the rows the previous run deleted,
@@ -43,16 +49,35 @@ beforeEach(function (): void {
 
 afterEach(function (): void {
     seedTenancy();
-    DB::connection('pgsql_admin')->statement("delete from users where email like 'kh-budget-%'");
+    $admin = DB::connection('pgsql_admin');
+    $admin->statement("delete from users where email like 'kh-budget-%'");
+    // fresh statistics, so later tests are not planned for 50,000 rows that are gone
+    $admin->statement('analyze users');
+    $admin->statement('analyze tenants');
 });
 
 /** Milliseconds of what the list reads for one search: the median of five runs after a warm-up. */
 function khSearchMs(string $q): float
 {
     $directory = app(CustomerDirectory::class);
-    $read = function () use ($directory, $q): void {
+
+    return khMedianMs(function () use ($directory, $q): void {
         $directory->page($q, '', [], 20, '', '');
-    };
+    });
+}
+
+/** Milliseconds of the list's totals with neither search nor plans (what a narrowed list adds). */
+function khCountsMs(): float
+{
+    $directory = app(CustomerDirectory::class);
+
+    return khMedianMs(function () use ($directory): void {
+        $directory->counts('', []);
+    });
+}
+
+function khMedianMs(Closure $read): float
+{
     $read();
     $times = [];
     for ($i = 0; $i < 5; $i++) {
@@ -67,13 +92,23 @@ function khSearchMs(string $q): float
 
 it('searches 50,000 customers within 50 ms, a wide search within 250 ms', function (): void {
     expect(DB::table('tenants')->count())->toBeGreaterThanOrEqual(50000);
+    $no = (int) DB::table('tenants')->where('name', 'like', '% 31337')->value('customer_no');
 
     $narrow = khSearchMs('tam duc 4997');   // a few customers, by name without diacritics
     $owner = khSearchMs('kh-budget-31337@'); // one customer, by its owner's email
+    $code = khSearchMs(CustomerCode::format($no)); // one customer, by its code
     $wide = khSearchMs('nguyen');          // a fifth of every customer, by the owner's name
-    fwrite(STDERR, sprintf("\n  customer search at 50k: narrow %.1f ms · owner email %.1f ms · wide %.1f ms\n", $narrow, $owner, $wide));
+    $none = khSearchMs('');                // no search: the first page of everyone
+    $short = khSearchMs('an');             // too short to run: the same as no search
+    $base = khCountsMs();                  // the "N trong M" totals a narrowed list adds
+    fwrite(STDERR, sprintf("\n  customer search at 50k: narrow %.1f ms · owner email %.1f ms · code %.1f ms · wide %.1f ms · none %.1f ms · 2 letters %.1f ms · totals %.1f ms\n",
+        $narrow, $owner, $code, $wide, $none, $short, $base));
 
     expect($narrow)->toBeLessThanOrEqual(50.0)
         ->and($owner)->toBeLessThanOrEqual(50.0)
-        ->and($wide)->toBeLessThanOrEqual(250.0);
+        ->and($code)->toBeLessThanOrEqual(50.0)
+        ->and($wide)->toBeLessThanOrEqual(250.0)
+        ->and($none)->toBeLessThanOrEqual(50.0)
+        ->and($short)->toBeLessThanOrEqual(50.0)
+        ->and($base)->toBeLessThanOrEqual(50.0);
 });

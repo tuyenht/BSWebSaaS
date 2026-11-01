@@ -1,6 +1,7 @@
 @php
     use App\Modules\Admin\Support\Customers\PlanChangePreview;
     use App\Modules\Tenancy\Registry\FeatureRegistry;
+    use Carbon\CarbonImmutable;
     use Illuminate\Support\Js;
     use Illuminate\Support\Number;
 
@@ -15,6 +16,15 @@
     $cardHead = 'flex flex-wrap items-center gap-2 border-b border-border px-4 py-3';
     $h2 = 'm-0 flex-auto text-[calc(1rem+var(--user-text-boost))] font-semibold text-text-strong';
     $why = 'm-0 flex items-start gap-1.5 text-small text-text-muted';
+    $noPlan = __('admin.customers_no_plan');
+    $historyText = function (array $h) use ($noPlan): string {
+        $what = $h['kind'] === 'plan_changed'
+            ? __('admin.customers_history_plan_changed', ['from' => $h['from'] ?? $noPlan, 'to' => $h['to'] ?? $noPlan])
+            : __('admin.customers_history_other');
+
+        return $h['reason'] === null ? $what : __('admin.customers_history_with_reason', ['what' => $what, 'reason' => $h['reason']]);
+    };
+    $historyAt = fn (array $h): string => $siteTime->forDisplay(CarbonImmutable::parse($h['at']))?->locale(app()->getLocale())->isoFormat('L LT') ?? '—';
 @endphp
 <div class="@container/kh flex flex-col gap-4">
     <div>
@@ -82,7 +92,9 @@
                         @endif
                     </dd>
                     <dt class="text-text-muted">{{ __('admin.customers_info_joined') }}</dt>
-                    <dd class="m-0 text-text-strong">{{ $joined }}</dd>
+                    <dd class="m-0 mb-2 text-text-strong @min-[30rem]/kh:mb-0">{{ $joined }}</dd>
+                    <dt class="text-text-muted">{{ __('admin.customers_info_code') }}</dt>
+                    <dd class="m-0 text-text-strong [overflow-wrap:anywhere]">{{ $tenant->customer_code }}</dd>
                 </dl>
             </section>
 
@@ -133,6 +145,36 @@
                     @endforelse
                     @if (! $canOpenSites && $sites->isNotEmpty())
                         <p class="{{ $why }} my-2"><x-bs-admin::icon name="ri-lock" class="mt-0.5 size-4 shrink-0" /><span>{{ __('admin.customers_sites_locked') }}</span></p>
+                    @endif
+                </div>
+            </section>
+
+            {{-- newest first; "older" adds the next rows below the oldest one shown --}}
+            <section class="{{ $card }}" aria-labelledby="kh-s4">
+                <div class="{{ $cardHead }}"><h2 id="kh-s4" class="{{ $h2 }}">{{ __('admin.customers_history_title') }}</h2></div>
+                <div class="flex flex-col gap-2 px-4 py-2">
+                    @if ($history === [])
+                        <p class="my-2 text-body text-text">{{ __('admin.customers_history_empty') }}</p>
+                    @else
+                        <ul class="m-0 list-none p-0">
+                            @foreach ($history as $h)
+                                <li class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-2.5 gap-y-0.5 border-b border-border py-2 text-body last:border-b-0" wire:key="kh-h-{{ $loop->index }}">
+                                    <x-bs-admin::icon name="ri-history" class="row-span-2 mt-0.5 size-[calc(1rem+var(--user-text-boost))] shrink-0 text-text-muted" />
+                                    <span class="text-text-strong [overflow-wrap:anywhere]">{{ $historyText($h) }}</span>
+                                    <span class="text-small text-text-muted [overflow-wrap:anywhere]">{{ $historyAt($h) }} · {{ $h['actor'] ?? __('admin.customers_history_system') }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                        @if ($historyOlder !== null)
+                            <div class="pb-2">
+                                <x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="olderHistory({{ Js::from($historyOlder) }})"
+                                    wire:loading.attr="disabled" wire:target="olderHistory">
+                                    <x-bs-admin::icon name="ri-arrow-down-s" class="size-4" wire:loading.remove wire:target="olderHistory" />
+                                    <x-bs-admin::icon name="ri-loader-4" class="size-4 animate-spin motion-reduce:animate-none" wire:loading wire:target="olderHistory" />
+                                    {{ __('admin.customers_history_older') }}
+                                </x-bs-admin::button>
+                            </div>
+                        @endif
                     @endif
                 </div>
             </section>

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire\Platform\Tenants;
 
+use App\Modules\Admin\Support\Customers\CustomerHistory;
 use App\Modules\Admin\Support\Customers\CustomerPermissions;
 use App\Modules\Admin\Support\Customers\PlanChangePreview;
 use App\Modules\Identity\Models\User;
@@ -18,8 +19,8 @@ use Livewire\Attributes\On;
 use Livewire\Component;
 
 /**
- * One customer on the platform (design 03, detail): who owns it, its plan and what the plan gives,
- * its websites. Addressed by ulid (D2 — never the raw bigint id, which is why the component keeps
+ * One customer on the platform (design 03, detail): who owns it and its code, its plan and what
+ * the plan gives, its websites, and its history (CustomerHistory, newest first). Addressed by ulid (D2 — never the raw bigint id, which is why the component keeps
  * only the ulid and reads the customer on each render). Gated by platform.tenants.view, re-checked
  * in boot() (livewire/update is auth-less). "Đổi gói" is the shared ChangePlanDialog.
  *
@@ -30,6 +31,12 @@ final class Detail extends Component
 {
     #[Locked]
     public string $ulid = '';
+
+    /**
+     * The oldest history row shown, as CustomerHistory's encrypted cursor ('' = the first page).
+     * Not locked: a cursor the browser altered no longer decrypts and reads as the first page.
+     */
+    public string $historyUntil = '';
 
     public function boot(): void
     {
@@ -45,6 +52,13 @@ final class Detail extends Component
             ], 404));
         }
         $this->ulid = $ulid;
+    }
+
+    /** "Xem thay đổi cũ hơn": the next rows below the oldest one shown. */
+    public function olderHistory(string $cursor): void
+    {
+        $tenant = Tenant::query()->where('ulid', $this->ulid)->firstOrFail(['id']);
+        $this->historyUntil = app(CustomerHistory::class)->older($tenant->id, $cursor);
     }
 
     /** A customer's plan changed in the dialog: the next render reads it again. */
@@ -64,6 +78,7 @@ final class Detail extends Component
         $values = app(PlanChangePreview::class)->values([$plan?->id])[$plan === null ? '' : $plan->id];
         $sites = $tenant->sites()->with('domains:id,site_id,hostname,is_primary')->orderBy('id')->get(['id', 'ulid', 'tenant_id', 'name', 'status']);
         $reason = Cast::string(Cast::arr($tenant->settings)['suspension_reason'] ?? null);
+        $history = app(CustomerHistory::class)->read($tenant->id, $this->historyUntil);
 
         $view = view('admin::livewire.platform.tenants.detail', [
             'tenant' => $tenant,
@@ -71,6 +86,8 @@ final class Detail extends Component
             'plan' => $plan,
             'values' => $values,
             'sites' => $sites,
+            'history' => $history['rows'],
+            'historyOlder' => $history['more'] ? $history['oldest'] : null,
             'suspensionReason' => $tenant->status === 'suspended' ? trim($reason) : '',
             'siteTime' => app(SiteTime::class),
             'canChangePlan' => $permissions->canChangePlan($user),

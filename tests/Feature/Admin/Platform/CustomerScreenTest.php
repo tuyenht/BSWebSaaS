@@ -6,6 +6,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Support\CustomerCode;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
@@ -15,12 +16,16 @@ use Livewire\Livewire;
  * `tenants` is platform-wide (no RLS), read with no tenant context and only by staff who hold
  * platform.tenants.view. Customers are addressed by ulid, never by id. The list reads newest
  * first, page by page from the last row seen; the search ignores diacritics and covers the
- * customer's name and its owner's name and email. The member's page size and columns are their
- * own, each saved on its own without touching the rest of their preferences.
+ * customer's name and its owner's name and email, from three letters or digits in a row, and the
+ * customer's code exactly. The member's page size and columns are their own, each saved on its
+ * own without touching the rest of their preferences. A customer's page shows its code and its
+ * history, newest first.
  */
 
 beforeEach(function (): void {
     truncateRbac();
+    // members and their audit rows from earlier tests (fixed emails below would collide)
+    DB::connection('pgsql_admin')->statement('truncate users, audit_logs restart identity cascade');
     seedTenancy(); // customer T1 (id 1) with websites A (a.test) and B (b.test)
     DB::connection('pgsql_admin')->statement('delete from plans');
     $this->artisan('rbac:sync')->assertSuccessful();
@@ -65,6 +70,37 @@ function khHost(): string
     return 'http://'.config('tenancy.platform_host');
 }
 
+/**
+ * Each needle appears in $html, each after the one before.
+ *
+ * @param  list<string>  $needles
+ */
+function khInOrder(string $html, array $needles): void
+{
+    $at = 0;
+    foreach ($needles as $needle) {
+        $found = mb_strpos($html, $needle, $at);
+        expect($found)->not->toBeFalse("“{$needle}” missing or out of order");
+        $at = (int) $found + mb_strlen($needle);
+    }
+}
+
+function khNo(string $ulid): int
+{
+    return (int) DB::connection('pgsql_admin')->table('tenants')->where('ulid', $ulid)->value('customer_no');
+}
+
+/**
+ * @param  array<string, mixed>  $attributes
+ */
+function khHistory(int $tenantId, ?int $from, ?int $to, string $reason, ?int $actor, string $at, array $attributes = []): void
+{
+    DB::connection('pgsql_admin')->table('tenant_history')->insert($attributes + [
+        'tenant_id' => $tenantId, 'kind' => 'plan_changed', 'from_plan_id' => $from, 'to_plan_id' => $to,
+        'reason' => $reason, 'actor_user_id' => $actor, 'created_at' => $at,
+    ]);
+}
+
 it('lists customers with their owner, plan, websites and join date, linked by ulid only', function (): void {
     $owner = User::factory()->create(['name' => 'Nguyễn Văn Hùng', 'email' => 'hung@anvinh.test']);
     $plan = khPlan('pro', 'Chuyên nghiệp');
@@ -102,6 +138,42 @@ it('finds customers without diacritics by name, owner name or owner email', func
     $page->assertSee(__('admin.customers_nomatch_title'));
 });
 
+it('finds a customer by its code, exactly, whatever the case or padding', function (): void {
+    $wanted = khCustomer('Nha khoa Tâm Đức');
+    $other = khCustomer('Spa Hoa Sen');
+    $no = khNo($wanted);
+    $page = Livewire::actingAs(khStaff('support'))->test(Index::class);
+    $found = fn (string $q): array => $page->set('search', $q)->viewData('rows')->pluck('ulid')->map(fn ($u): string => trim((string) $u))->all();
+
+    expect($found(CustomerCode::format($no)))->toBe([$wanted])
+        ->and($found(mb_strtolower(CustomerCode::format($no))))->toBe([$wanted])
+        ->and($found(config('customers.code_prefix').$no))->toBe([$wanted])
+        ->and($found(CustomerCode::format(khNo($other))))->toBe([$other])
+        // a number no customer has
+        ->and($found(CustomerCode::format($no + 1000)))->toBe([]);
+    $page->assertSee(__('admin.customers_filter_search_chip', ['q' => CustomerCode::format($no + 1000)]));
+});
+
+it('runs no search under three letters or digits in a row, and says so', function (): void {
+    khCustomer('An Phát');
+    khCustomer('Bình Minh');
+    $page = Livewire::actingAs(khStaff('support'))->test(Index::class);
+
+    foreach (['a', 'an', ' an ', 'a b', 'ă'] as $short) {
+        $page->set('search', $short);
+        expect($page->viewData('rows'))->toHaveCount(3)
+            ->and($page->viewData('baseCounts'))->toBeNull();
+        $page->assertSee(__('admin.customers_search_too_short', ['n' => 3]))
+            ->assertDontSee(__('admin.customers_filter_search_chip', ['q' => trim($short)]))
+            ->assertDontSee(__('admin.customers_nomatch_title'));
+    }
+
+    // three in a row search, and the line goes
+    $page->set('search', 'phá');
+    expect($page->viewData('rows')->pluck('name')->all())->toBe(['An Phát']);
+    $page->assertDontSee(__('admin.customers_search_too_short', ['n' => 3]));
+});
+
 it('reads newest first, page by page, with no customer repeated or skipped', function (): void {
     $at = now()->subDay();
     $made = [];
@@ -131,6 +203,24 @@ it('reads newest first, page by page, with no customer repeated or skipped', fun
 
     // a cursor from the browser that is not a ulid is dropped, never used as an id
     $page->set('after', '3')->assertSet('after', '');
+});
+
+it('pages past a customer with no join date, which sorts as the oldest', function (): void {
+    $undated = khCustomer('Không ngày', ['created_at' => null, 'updated_at' => null]);
+    for ($i = 0; $i < 3; $i++) {
+        khCustomer('Khách '.$i, ['created_at' => now()->subMinutes($i)]);
+    }
+    $page = Livewire::actingAs(khStaff('support'))->test(Index::class)->set('per', 10);
+    DB::connection('pgsql_admin')->table('tenants')->where('id', 1)->update(['created_at' => null]);
+    $ulids = fn (): array => $page->viewData('rows')->pluck('ulid')->map(fn ($u): string => trim((string) $u))->all();
+
+    $page->call('planChanged'); // read again
+    $all = $ulids();
+    expect($all)->toHaveCount(5)->and($all[3])->toBe($undated);
+
+    // a page whose last row has no date still has an older page after it
+    $page->call('older', $all[3]);
+    expect($ulids())->toBe([$all[4]]);
 });
 
 it('counts the status groups and filters by plan, a plan no longer sold included', function (): void {
@@ -191,7 +281,53 @@ it('shows one customer: owner, plan values, websites with their main domain', fu
         ->assertSeeInOrder(['Số ngôn ngữ tối đa', '3'])
         ->assertSee(__('admin.customers_sites_usage', ['used' => 2, 'max' => 1]))
         ->assertSee('a.test')
-        ->assertSee(route('platform.sites.show', trim((string) DB::connection('pgsql_admin')->table('sites')->where('id', 1)->value('ulid'))));
+        ->assertSee(route('platform.sites.show', trim((string) DB::connection('pgsql_admin')->table('sites')->where('id', 1)->value('ulid'))))
+        ->assertSeeInOrder([__('admin.customers_info_code'), CustomerCode::format(khNo($ulid))]);
+});
+
+it('shows the customer\'s history newest first, who made each change, and older rows on request', function (): void {
+    $staff = khStaff('billing');
+    $hien = User::factory()->create(['name' => 'Trần Thu Hà']);
+    $basic = khPlan('basic', 'Cơ bản');
+    $pro = khPlan('pro', 'Chuyên nghiệp');
+    $ulid = trim((string) DB::connection('pgsql_admin')->table('tenants')->where('id', 1)->value('ulid'));
+
+    $page = Livewire::actingAs($staff)->test(Detail::class, ['ulid' => $ulid]);
+    $page->assertSee(__('admin.customers_history_title'))->assertSee(__('admin.customers_history_empty'))
+        ->assertDontSee(__('admin.customers_history_older'));
+
+    khHistory(1, null, $basic, 'Bắt đầu', null, '2025-03-12 01:45:00+00');
+    khHistory(1, $basic, $pro, 'Khách mở thêm website phụ tùng', $hien->id, '2025-06-01 03:30:00+00');
+    // another customer's history never shows here
+    $other = khCustomer('Khác');
+    khHistory((int) DB::connection('pgsql_admin')->table('tenants')->where('ulid', $other)->value('id'), null, $pro, 'Không thuộc khách này', null, '2025-07-01 00:00:00+00');
+
+    $page->call('planChanged')->assertDontSee(__('admin.customers_history_empty'));
+    khInOrder($page->html(), [
+        __('admin.customers_history_with_reason', ['what' => __('admin.customers_history_plan_changed', ['from' => 'Cơ bản', 'to' => 'Chuyên nghiệp']), 'reason' => 'Khách mở thêm website phụ tùng']),
+        'Trần Thu Hà',
+        __('admin.customers_history_with_reason', ['what' => __('admin.customers_history_plan_changed', ['from' => __('admin.customers_no_plan'), 'to' => 'Cơ bản']), 'reason' => 'Bắt đầu']),
+        __('admin.customers_history_system'),
+    ]);
+    $page->assertDontSee('Không thuộc khách này')
+        ->assertDontSee(__('admin.customers_history_older'));
+
+    // more than a page: the newest ten, then the rest below them; the same moment for many (the id breaks the tie)
+    for ($i = 1; $i <= 11; $i++) {
+        khHistory(1, $pro, $basic, 'Lần '.$i, null, '2026-01-01 00:00:00+00');
+    }
+    $page->call('planChanged')->assertSee(__('admin.customers_history_older'))
+        ->assertSee('Lần 11')->assertSee('Lần 2')->assertDontSeeHtml('Lần 1<')
+        ->assertDontSee('Khách mở thêm website phụ tùng');
+    $cursor = $page->viewData('historyOlder');
+    expect($cursor)->toBeString()->not->toContain('|');
+
+    $page->call('olderHistory', $cursor)->assertDontSee(__('admin.customers_history_older'));
+    khInOrder($page->html(), ['Lần 11', 'Lần 2', 'Lần 1<', 'Khách mở thêm website phụ tùng', 'Bắt đầu']);
+
+    // a cursor the browser made up reads as the first page
+    $page->set('historyUntil', 'nope')->assertSee('Lần 2')->assertDontSee('Bắt đầu');
+    $page->call('olderHistory', base64_encode('2026-01-01|1'))->assertSet('historyUntil', '')->assertDontSee('Bắt đầu');
 });
 
 it('says why a customer is suspended, and shows no line when no reason was given', function (): void {
@@ -274,6 +410,10 @@ it('reads the list and a customer in a fixed number of queries, however many the
     for ($i = 0; $i < 4; $i++) {
         $site = (int) $admin->table('sites')->insertGetId(['ulid' => (string) Str::ulid(), 'tenant_id' => 1, 'name' => 'S'.$i, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
         $admin->table('domains')->insert(['site_id' => $site, 'hostname' => "s{$i}.test", 'is_primary' => true, 'kind' => 'custom', 'created_at' => now(), 'updated_at' => now()]);
+    }
+
+    for ($i = 0; $i < 15; $i++) {
+        khHistory(1, null, $plan, 'Lần '.$i, $owner->id, now()->subMinutes($i)->toIso8601String());
     }
 
     expect($listQueries())->toBe($fewList)

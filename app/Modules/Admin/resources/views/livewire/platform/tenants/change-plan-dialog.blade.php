@@ -27,7 +27,7 @@
             @if ($failure !== '')
                 <div role="alert" class="flex items-start gap-2 rounded bg-danger-soft px-3.5 py-3 text-body text-danger-text">
                     <x-bs-admin::icon name="ri-close-circle" class="mt-0.5 size-5 shrink-0" />
-                    <span>{{ __($failure === 'not_sold' ? 'admin.customers_dlg_not_sold' : 'admin.customers_dlg_failed') }}</span>
+                    <span>{{ __(match ($failure) { 'not_sold' => 'admin.customers_dlg_not_sold', 'same' => 'admin.customers_dlg_same_plan', default => 'admin.customers_dlg_failed' }) }}</span>
                 </div>
             @endif
 

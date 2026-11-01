@@ -145,7 +145,7 @@ final class Index extends Component
                 $plans = $directory->plans();
                 $chosen = array_values(array_intersect($this->plans, Cast::strings($plans->pluck('key')->all())));
                 $status = $this->tab === 'all' ? '' : $this->tab;
-                $narrowed = trim($this->search) !== '' || $chosen !== [];
+                $narrowed = CustomerDirectory::searches($this->search) || $chosen !== [];
 
                 $page = $directory->page($this->search, $status, $chosen, $this->per, $this->after, $this->before);
 
@@ -169,6 +169,9 @@ final class Index extends Component
 
         $view = view('admin::livewire.platform.tenants.index', $data + [
             'failed' => $failed,
+            // a search too short to run: the list stays whole and says how much to type
+            'searching' => CustomerDirectory::searches($this->search),
+            'searchTooShort' => CustomerDirectory::tooShort($this->search),
             'planList' => $plans,
             'siteTime' => app(SiteTime::class),
             'canChangePlan' => $permissions->canChangePlan($member),

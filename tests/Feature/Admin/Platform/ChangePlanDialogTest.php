@@ -8,6 +8,7 @@ use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Models\Plan;
 use App\Modules\Tenancy\Models\Tenant;
+use App\Modules\Tenancy\Models\TenantHistory;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -87,6 +88,33 @@ it('moves a customer to the chosen plan, recording the reason and both plans', f
     expect(cpCustomer()->plan_id)->toBe($pro->id)
         ->and($row->actor_id)->toBe($staff->id)
         ->and($row->meta)->toMatchArray(['customer' => $customer->ulid, 'from' => $basic->key, 'to' => $pro->key, 'reason' => 'Khách gia hạn năm']);
+
+    // the customer's history, which the customer page shows, has the change too
+    $history = TenantHistory::query()->where('tenant_id', $customer->id)->orderByDesc('created_at')->orderByDesc('id')->firstOrFail();
+    expect($history->kind)->toBe(TenantHistory::KIND_PLAN_CHANGED)
+        ->and($history->from_plan_id)->toBe($basic->id)
+        ->and($history->to_plan_id)->toBe($pro->id)
+        ->and($history->reason)->toBe('Khách gia hạn năm')
+        ->and($history->actor_user_id)->toBe($staff->id);
+});
+
+it('refuses to "change" to the plan the customer is already on, with no success message', function (): void {
+    $staff = cpStaff('billing');
+    $pro = cpPlan($staff, 'Chuyên nghiệp');
+    app(PlatformPlans::class)->changeCustomerPlan($staff, cpCustomer(), $pro, 'Bắt đầu');
+    $before = TenantHistory::query()->count();
+    $audits = AuditLog::query()->where('action', 'tenancy.customer.plan_changed')->count();
+
+    // choose() refuses the current plan, so the browser sets it straight
+    Livewire::actingAs($staff)->test(ChangePlanDialog::class)->call('openFor', cpCustomer()->ulid)
+        ->set('to', $pro->key)->set('reason', 'Thử lại')
+        ->call('save')
+        ->assertSet('failure', 'same')->assertSet('open', true)->assertSet('toast', '')->assertSet('reason', 'Thử lại')
+        ->assertSee(__('admin.customers_dlg_same_plan'))
+        ->assertNotDispatched('customer-plan-changed');
+
+    expect(TenantHistory::query()->count())->toBe($before)
+        ->and(AuditLog::query()->where('action', 'tenancy.customer.plan_changed')->count())->toBe($audits);
 });
 
 it('asks for a plan and a reason before saving, and changes nothing until then', function (): void {
@@ -178,4 +206,31 @@ it('takes the customer only by a real ulid, and keeps it locked', function (): v
 
     expect(fn () => Livewire::actingAs($staff)->test(ChangePlanDialog::class)->set('customer', cpCustomer()->ulid))
         ->toThrow(Exception::class);
+});
+
+it('reads what the websites use once per dialog, so its renders cost the same however many websites', function (): void {
+    $staff = cpStaff('billing');
+    $pro = cpPlan($staff, 'Chuyên nghiệp', ['sites.max' => 20]);
+    $small = cpPlan($staff, 'Nhỏ', ['sites.max' => 1]);
+    $admin = DB::connection('pgsql_admin');
+    $measure = function () use ($staff, $pro, $small): array {
+        $dialog = Livewire::actingAs($staff)->test(ChangePlanDialog::class)->call('openFor', cpCustomer()->ulid);
+        $choose = countQueries(fn () => $dialog->call('choose', $small->key));
+        $again = countQueries(fn () => $dialog->set('reason', 'Khách thu hẹp')->call('choose', $pro->key)->call('choose', $small->key));
+
+        return [$choose, $again];
+    };
+
+    [$chooseFew, $againFew] = $measure(); // websites A and B
+    for ($i = 0; $i < 6; $i++) {
+        $site = (int) $admin->table('sites')->insertGetId(['ulid' => (string) Str::ulid(), 'tenant_id' => 1, 'name' => 'S'.$i, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $admin->table('domains')->insert(['site_id' => $site, 'hostname' => "s{$i}.example", 'is_primary' => true, 'kind' => 'custom', 'created_at' => now(), 'updated_at' => now()]);
+    }
+    [$chooseMany, $againMany] = $measure(); // eight websites
+
+    // later renders (the reason typed, other plans tried) read no website again
+    expect($againMany)->toBe($againFew)
+        // the first choice reads each website once: at most three queries each (its tenant context, one read)
+        ->and($chooseMany - $chooseFew)->toBeLessThanOrEqual(6 * 3)
+        ->and($chooseFew)->toBeLessThanOrEqual(30);
 });

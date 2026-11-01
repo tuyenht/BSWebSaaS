@@ -1,6 +1,7 @@
 @php
     use App\Modules\Admin\Livewire\Platform\Tenants\Index;
     use App\Modules\Admin\Support\Customers\CustomerDirectory;
+    use App\Modules\Tenancy\Support\CustomerCode;
     use Illuminate\Support\Js;
     use Illuminate\Support\Number;
 
@@ -47,10 +48,10 @@
 
     $chosenPlans = array_values(array_filter($plans, fn (string $k): bool => $planList->contains('key', $k)));
     $q = trim($search);
-    $narrowed = $q !== '' || $chosenPlans !== [];
+    $narrowed = $searching || $chosenPlans !== [];
     // remove calls are fixed method names with Js::from() arguments, never raw input (filter-status contract)
     $chips = [];
-    if ($q !== '') {
+    if ($searching) {
         $chips[] = ['label' => __('admin.customers_filter_search_chip', ['q' => $q]), 'remove' => 'clearSearch'];
     }
     foreach ($chosenPlans as $key) {
@@ -84,8 +85,11 @@
 
         <div class="flex flex-wrap items-center gap-3 pb-3 min-[600px]:px-4 min-[600px]:pt-4 min-[900px]:pt-3">
             <div class="min-w-0 flex-[1_1_12rem] text-body min-[900px]:max-w-[30em]">
-                <x-bs-admin::search id="customers-search" :label="__('admin.customers_search_label')" :placeholder="__('admin.customers_search_placeholder')"
-                    maxlength="{{ CustomerDirectory::SEARCH_MAX }}" wire:model.live.debounce.300ms="search" />
+                <x-bs-admin::search id="customers-search" :label="__('admin.customers_search_label')"
+                    :placeholder="__('admin.customers_search_placeholder', ['code' => CustomerCode::format(123)])"
+                    maxlength="{{ CustomerDirectory::SEARCH_MAX }}" wire:model.live.debounce.300ms="search" aria-describedby="customers-search-hint" />
+                {{-- always in the page, so a screen reader hears the line when it appears --}}
+                <p id="customers-search-hint" role="status" class="m-0 empty:hidden">@if ($searchTooShort)<span class="mt-1.5 flex items-start gap-1.5 text-small text-text-muted"><x-bs-admin::icon name="ri-information" class="mt-0.5 size-4 shrink-0" /><span>{{ __('admin.customers_search_too_short', ['n' => CustomerDirectory::SEARCH_MIN]) }}</span></span>@endif</p>
             </div>
             <x-bs-admin::filter-panel class="shrink-0 flex-nowrap min-[900px]:ms-auto" :sections="$sections" :label="__('admin.list.filter')"
                 :active="count($chosenPlans)" :active-narrow="count($chosenPlans) + ($tab !== 'all' ? 1 : 0)"
