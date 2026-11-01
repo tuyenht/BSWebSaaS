@@ -41,6 +41,7 @@ final class PermissionRegistry
         'users.invite',
         'users.manage',
         'roles.manage',
+        'domains.view',
         'domains.manage',
     ];
 
@@ -82,6 +83,7 @@ final class PermissionRegistry
         'media.delete' => ['media.view'],
         'forms.manage' => ['forms.view'],
         'catalog.manage' => ['catalog.view'],
+        'domains.manage' => ['domains.view'],
     ];
 
     /**
@@ -194,7 +196,7 @@ final class PermissionRegistry
                 'entries.submit', 'entries.review', 'entries.approve', 'entries.publish',
                 'media.view', 'media.upload', 'media.delete',
                 'taxonomies.manage', 'menus.manage', 'forms.view', 'forms.manage',
-                'catalog.view', 'catalog.manage',
+                'catalog.view', 'catalog.manage', 'domains.view',
             ]],
             'author' => ['level' => 30, 'permissions' => [
                 'entries.view', 'entries.create', 'entries.edit.own', 'entries.delete.own',
@@ -204,7 +206,7 @@ final class PermissionRegistry
                 'entries.view', 'entries.create', 'entries.edit.own', 'entries.submit', 'media.view',
             ]],
             'viewer' => ['level' => 10, 'permissions' => [
-                'entries.view', 'media.view', 'forms.view', 'catalog.view',
+                'entries.view', 'media.view', 'forms.view', 'catalog.view', 'domains.view',
             ]],
         ];
     }

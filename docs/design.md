@@ -375,7 +375,7 @@ site_settings(site_id, group, key, value JSONB, UNIQUE(site_id, group, key))   -
 
 ### 15.1 RBAC — nhóm + phân cấp + tùy chỉnh
 - **spatie/laravel-permission + teams** (`team_id = site_id`). 2 phạm vi: **Platform** (Bảo Sơn: super_admin/support/billing) và **Tenant** (per site: owner/admin/editor/author/contributor/viewer + role tùy chỉnh).
-- **Permission hạt nhỏ** (`resource.action`) theo registry: `entries.create/edit/delete/submit/review/approve/publish`, `products.*`, `orders.*`, `media.*`, `settings.manage`, `users.invite/manage`, `roles.manage`, `domains.manage`, `locales.manage`…
+- **Permission hạt nhỏ** (`resource.action`) theo registry: `entries.create/edit/delete/submit/review/approve/publish`, `products.*`, `orders.*`, `media.*`, `settings.manage`, `users.invite/manage`, `roles.manage`, `domains.view/manage`, `locales.manage`…
 - **Phân cấp `role.level` (chokepoint chống leo thang — gán/sửa/fork role ĐỀU qua 1 service gác):** guard `grant ≤ self` — chỉ gán role cấp thấp hơn, chỉ cấp quyền mình ĐANG có, chỉ quản user cấp thấp hơn, **trong cùng team (= site_id)**. Visibility-scope: admin chỉ THẤY + GÁN module/quyền site mình ĐƯỢC CẤP. (Provisioning system-level bỏ qua guard.)
 - **Scope own/any:** `entries.edit.own` vs `.any` (author sửa bài mình, editor sửa tất cả). Đa site/1 user (agency) qua team.
 
