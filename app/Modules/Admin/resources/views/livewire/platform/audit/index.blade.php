@@ -134,9 +134,9 @@
                                     </span>
                                 </span>
                                 <span aria-hidden="true" class="hidden @max-[47.9375rem]:inline">·</span>
-                                <span class="{{ $cell }} w-42.5 @max-[47.9375rem]:w-auto">{{ $site($row) }}</span>
+                                <span class="{{ $cell }} w-42.5 @max-[47.9375rem]:w-auto @max-[47.9375rem]:max-w-full @max-[47.9375rem]:shrink">{{ $site($row) }}</span>
                                 <span aria-hidden="true" class="hidden @max-[47.9375rem]:inline">·</span>
-                                <span class="{{ $cell }} hidden w-37.5 @min-[73.8125rem]:block @max-[47.9375rem]:block @max-[47.9375rem]:w-auto">{{ $row->ip_address ?? '—' }} · {{ $entries->device($row) }}</span>
+                                <span class="{{ $cell }} hidden w-37.5 @min-[73.8125rem]:block @max-[47.9375rem]:block @max-[47.9375rem]:w-auto @max-[47.9375rem]:max-w-full @max-[47.9375rem]:shrink">{{ $row->ip_address ?? '—' }} · {{ $entries->device($row) }}</span>
                             </span>
                             <span class="sr-only">{{ __('admin.audit.open_row') }}</span>
                             <x-bs-admin::icon name="chevron-right" class="size-5 shrink-0 text-text-muted @max-[47.9375rem]:hidden" />

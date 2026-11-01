@@ -244,8 +244,19 @@ it('keeps the More menu id across renders and fits the row again after every Liv
     preg_match('/aria-controls="(gm-[a-z0-9]{8})"/', $render(), $b);
 
     expect($a[1])->toBe($b[1])
-        ->and($render())->toContain('onMorphed(() => this.fit())')
+        ->and($render())->toContain('onMorphed(() => { this.observeGroups?.(); this.fit(); })')
         ->and($render())->toContain('@focusout=');
+});
+
+it('fits the row again when a group grows while the row keeps its box (larger text, late font)', function (): void {
+    $html = (string) $this->blade('<x-bs-admin::group-row :groups="$groups" active="used" model="group" label="Nhóm tệp" />', ['groups' => statusGroups()]);
+
+    // on touch every group is already 44px tall, so a larger text size widens the groups without
+    // resizing the row: each shown group is watched too; a group the fit just hid is skipped
+    expect($html)->toContain('x-init="$nextTick(() => fit()); watchSize(); watchMorph()"')
+        ->toContain("this.observeGroups = () => row.querySelectorAll(':scope > [data-g]').forEach((el) => ro.observe(el))")
+        ->toContain('entries.some((e) => e.target === row || ! e.target.hidden)')
+        ->toContain('destroy() { this.stopMorph?.(); this.stopSize?.(); }');
 });
 
 it('says what is filtered in plain words, with Clear and one removable chip per condition', function (): void {

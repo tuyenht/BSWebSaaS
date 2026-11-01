@@ -359,7 +359,7 @@
                                                 <button type="button" x-show="! editing"
                                                     @click="editing = true; cancel = false; $nextTick(() => { $refs.slugInput.focus(); $refs.slugInput.select() })"
                                                     title="{{ $path }} · {{ __('entries.edit_hint') }}"
-                                                    class="hit-area min-h-tap-cell rounded px-1 -mx-1 text-left font-mono text-caption text-text-muted [overflow-wrap:anywhere] transition-colors hover:bg-primary-soft hover:text-primary-text">{{ $path ?? '—' }}</button>
+                                                    class="hit-area min-h-tap-cell rounded text-left font-mono text-caption text-text-muted [overflow-wrap:anywhere] transition-colors hover:bg-primary-soft hover:text-primary-text">{{ $path ?? '—' }}</button>
                                                 <span x-show="editing" x-cloak class="inline-flex w-full items-center gap-0.5 font-mono text-caption">
                                                     <span class="whitespace-nowrap text-placeholder">{{ $slugPrefix }}</span>
                                                     <input type="text" x-ref="slugInput" x-model="value" aria-label="{{ __('entries.col_path') }}"

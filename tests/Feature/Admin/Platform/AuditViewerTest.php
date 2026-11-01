@@ -278,6 +278,19 @@ it('narrows the website choices by name without diacritics and keeps a chosen we
     expect($labels($page))->toContain('Nha khoa Tâm Đức')->toContain('Cơ khí An Vinh');
 });
 
+it('lets the website and device pieces of a phone row wrap inside the row instead of widening it', function (): void {
+    auditRow('rbac.role.assigned', ['site_id' => 1, 'ip_address' => '14.232.10.5', 'meta' => ['role' => 'Biên tập viên']]);
+    $host = (string) config('tenancy.platform_host');
+
+    $html = (string) $this->actingAs(auditOperator('support'))->get("http://{$host}/audit")->assertOk()->getContent();
+
+    foreach (['w-42.5' => 'Nha khoa Tâm Đức', 'w-37.5' => '14.232.10.5 · '] as $width => $text) {
+        $pattern = '/<span class="([^"]*(?<=\\s|")'.preg_quote($width, '/').'\\s[^"]*)">'.preg_quote($text, '/').'/u';
+        expect(preg_match($pattern, $html, $m))->toBe(1, "missing: {$text}")
+            ->and(explode(' ', $m[1]))->toContain('@max-[47.9375rem]:max-w-full', '@max-[47.9375rem]:shrink');
+    }
+});
+
 it('shows a support row as the staff member on behalf of the member, with the reason', function (): void {
     $anh = User::factory()->create(['name' => 'Nguyễn Ngọc Anh']);
     $phuc = User::factory()->create(['name' => 'Lê Hoàng Phúc']);

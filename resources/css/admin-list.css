@@ -185,7 +185,9 @@
     }
 
     /* The ✎ is a small target in the name cell: 24 with a mouse at the default text size, 44 from
-       the next size up and on touch (one shared size, --spacing-tap-cell). */
+       the next size up and on touch (one shared size, --spacing-tap-cell). It shows in the table
+       only (from 900); below that, as in the design, "Sửa nhanh tiêu đề" stays in the row's ⋮ menu,
+       so no touch-size hit box reaches over the detail line under the name. */
     .list-qe {
         display: inline-flex;
         align-items: center;
@@ -657,11 +659,6 @@
             margin: calc(var(--list-nlh) / 2 - var(--spacing-hit) / 2) -0.5rem 0 calc((1.125rem - var(--spacing-hit)) / 2);
         }
 
-        /* The quick-edit button keeps its full hit area but no longer makes the title line taller. */
-        .list-qe {
-            margin-block: calc((var(--list-nlh) - var(--list-qe-s)) / 2);
-        }
-
         /* One detail line: author · date · views. */
         .list-m[data-for='au'] {
             order: 1;
@@ -723,6 +720,13 @@
         .list-stw,
         .list-acts {
             min-height: 0;
+        }
+    }
+
+    /* ── Below 900: the ✎ leaves the name; the row's ⋮ menu carries the quick edit ──────────── */
+    @container list (width < 56.25rem) {
+        .list-qe {
+            display: none;
         }
     }
 

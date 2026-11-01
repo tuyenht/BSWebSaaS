@@ -10,9 +10,11 @@
 --}}
 @php($planeIsPlatform = \App\Modules\Admin\Support\AdminPlane::isPlatform())
 <div x-data class="contents">
+    {{-- Drawn round; a transparent square ::after keeps the whole 48px box tappable (a round box
+         alone lets the corners fall through to the page, leaving a 34px square that hits). --}}
     <button type="button" @click="$store.adminTheme.open = true"
             aria-label="{{ __('admin.customize_theme') }}"
-            class="fixed bottom-6 end-6 z-40 hidden size-12 place-items-center rounded-full bg-admin-info-solid text-white shadow-lg transition-transform hover:scale-105 md:grid">
+            class="fixed bottom-6 end-6 z-40 hidden size-12 place-items-center rounded-full bg-info text-white shadow-lg transition-transform after:absolute after:inset-0 hover:scale-105 md:grid">
         {{-- Slow continuous spin draws the eye to the launcher (Velzon parity); paused for reduced-motion. --}}
         <x-bs-admin::icon name="settings" class="size-5 customizer-gear" />
     </button>
