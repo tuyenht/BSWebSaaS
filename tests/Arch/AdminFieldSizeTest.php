@@ -73,7 +73,7 @@ it('declares the field size once: the main control height, 44 on touch, the user
     $css = (string) file_get_contents(resource_path('css/app.css'));
 
     expect(preg_match('/@utility field \{(.*?)\n\}/s', $css, $field))->toBe(1)
-        ->and($field[1])->toContain('min-height: var(--field-height, var(--spacing-control));', 'font-size: var(--text-body);', '@apply pointer-coarse:min-h-hit;')
+        ->and($field[1])->toContain('min-height: var(--field-height, var(--spacing-control));', 'font-size: var(--text-body);', '@apply any-pointer-coarse:min-h-hit;')
         ->and(preg_match('/@utility field-row \{(.*?)\n\}/s', $css, $row))->toBe(1)
         ->and(trim($row[1]))->toBe('--field-height: var(--spacing-control-row);');
 });
@@ -102,7 +102,7 @@ it('sizes every admin text field and select by the shared field utility, never b
             || in_array('min-h-tap-cell', $classes, true)
             || (in_array('border-0', $classes, true) && in_array('bg-transparent', $classes, true));
         expect($shared)->toBeTrue("{$where}: a field without the shared `field` size");
-        expect(array_diff($sizes, ['min-h-control', 'pointer-coarse:min-h-hit', 'text-body', 'min-h-tap-cell', 'p-0']))
+        expect(array_diff($sizes, ['min-h-control', 'any-pointer-coarse:min-h-hit', 'text-body', 'min-h-tap-cell', 'p-0']))
             ->toBe([], "{$where}: a field sized by hand");
     }
 });

@@ -87,7 +87,7 @@
                             aria-haspopup="menu" aria-controls="{{ $menuId }}" :aria-expanded="open ? 'true' : 'false'"
                             @click="open ? hide() : show()"
                             @keydown.down.prevent="show()"
-                            class="-mb-px inline-flex min-h-control items-center gap-1 whitespace-nowrap border-b-2 border-transparent px-2.5 text-body font-medium text-text-muted transition-colors hover:text-text-strong pointer-coarse:min-h-hit">
+                            class="-mb-px inline-flex min-h-control items-center gap-1 whitespace-nowrap border-b-2 border-transparent px-2.5 text-body font-medium text-text-muted transition-colors hover:text-text-strong any-pointer-coarse:min-h-hit">
                         <span>{{ __('admin.list.more_groups') }}</span>
                         <x-bs-admin::icon name="chevron-down" class="size-4 shrink-0" />
                     </button>
@@ -99,7 +99,7 @@
                     aria-pressed="{{ $on ? 'true' : 'false' }}"
                     wire:click="{{ $setter($group['key']) }}"
                     @class([
-                        '-mb-px inline-flex min-h-control shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-2.5 text-body transition-colors pointer-coarse:min-h-hit',
+                        '-mb-px inline-flex min-h-control shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-2.5 text-body transition-colors any-pointer-coarse:min-h-hit',
                         'ms-auto' => $group['trash'] ?? false,
                         'border-transparent font-medium text-text-muted hover:text-text-strong' => ! $on,
                         'border-primary-text font-bold text-primary-text' => $on && ! ($group['trash'] ?? false),
@@ -131,7 +131,7 @@
                     x-show="over.includes(@js($group['key']))"
                     wire:click="{{ $setter($group['key']) }}" @click="hide()"
                     @class([
-                        'flex min-h-menu-row w-full items-center gap-2 rounded px-2.5 py-1.5 text-start text-body [overflow-wrap:anywhere] hover:bg-surface-hover pointer-coarse:min-h-menu-row-touch',
+                        'flex min-h-menu-row w-full items-center gap-2 rounded px-2.5 py-1.5 text-start text-body [overflow-wrap:anywhere] hover:bg-surface-hover any-pointer-coarse:min-h-menu-row-touch',
                         'font-bold text-primary-text' => $on,
                         'text-text' => ! $on,
                     ])>

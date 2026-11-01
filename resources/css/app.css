@@ -221,7 +221,7 @@
     --spacing-control-row: calc(2.25rem + min(0.5rem, var(--user-text-boost) * 2));
     --spacing-hit: 2.75rem;
     /* A row in a menu or an option list: 40 / 44 / 48 / 48px with a mouse across the four text
-       sizes, 48px on touch (`pointer-coarse:min-h-menu-row-touch`). */
+       sizes, 48px on touch (`any-pointer-coarse:min-h-menu-row-touch`). */
     --spacing-menu-row: calc(2.5rem + min(0.5rem, var(--user-text-boost) * 2));
     --spacing-menu-row-touch: 3rem;
     /* A small target inside a list's name cell (the quick-edit ✎): 24px with a mouse at the default
@@ -263,7 +263,7 @@
     font-size: var(--text-body);
     line-height: var(--text-body--line-height);
 
-    @apply pointer-coarse:min-h-hit;
+    @apply any-pointer-coarse:min-h-hit;
 }
 
 @utility field-row {
@@ -287,7 +287,7 @@
     transition-timing-function: var(--default-transition-timing-function);
     transition-duration: var(--default-transition-duration);
 
-    @apply pointer-coarse:hit-area;
+    @apply any-pointer-coarse:hit-area;
 }
 
 /* A box that draws one control around a bare field (the list search: icon + input inside a

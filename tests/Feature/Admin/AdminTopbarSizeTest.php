@@ -38,7 +38,7 @@ it('sizes every topbar icon button as a main control, 44 on touch', function ():
     expect($buttons->length)->toBe(6);
     foreach ($buttons as $button) {
         expect(explode(' ', (string) $button->getAttribute('class')))
-            ->toContain('size-control', 'pointer-coarse:size-hit')
+            ->toContain('size-control', 'any-pointer-coarse:size-hit')
             ->not->toContain('size-10');
     }
 });
@@ -49,7 +49,7 @@ it('sizes the language and account menu rows as menu rows at the user text size'
     expect($rows->length)->toBeGreaterThanOrEqual(2);
     foreach ($rows as $row) {
         expect(explode(' ', (string) $row->getAttribute('class')))
-            ->toContain('min-h-menu-row', 'pointer-coarse:min-h-menu-row-touch', 'text-body')
+            ->toContain('min-h-menu-row', 'any-pointer-coarse:min-h-menu-row-touch', 'text-body')
             ->not->toContain('text-sm');
     }
 });

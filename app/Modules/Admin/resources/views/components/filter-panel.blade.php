@@ -76,7 +76,7 @@
             },
         ];
     }
-    $pill = 'hit-area group inline-flex min-h-control items-center gap-1.5 rounded-full border px-3.5 text-body font-medium transition-colors pointer-coarse:min-h-hit aria-expanded:border-primary-text aria-expanded:bg-primary/12 aria-expanded:text-primary-text';
+    $pill = 'hit-area group inline-flex min-h-control items-center gap-1.5 rounded-full border px-3.5 text-body font-medium transition-colors any-pointer-coarse:min-h-hit aria-expanded:border-primary-text aria-expanded:bg-primary/12 aria-expanded:text-primary-text';
     $pillState = fn (bool $on): string => $on ? 'border-primary-text bg-primary/12 text-primary-text' : 'border-transparent bg-primary/7 text-text hover:bg-primary/12';
     $pillIcon = fn (bool $on): string => 'size-4 shrink-0 group-aria-expanded:text-primary-text '.($on ? 'text-primary-text' : 'text-text-muted');
 @endphp

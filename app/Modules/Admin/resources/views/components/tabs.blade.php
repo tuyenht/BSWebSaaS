@@ -18,7 +18,7 @@
                     @click="active = @js($key)"
                     @keydown.right.prevent="move(1)" @keydown.left.prevent="move(-1)"
                     :class="active === @js($key) ? 'border-accent text-accent' : 'border-transparent text-body-muted hover:text-body-text'"
-                    class="-mb-px inline-flex min-h-control items-center border-b-2 px-4 py-1 text-body font-medium transition-colors pointer-coarse:min-h-hit">
+                    class="-mb-px inline-flex min-h-control items-center border-b-2 px-4 py-1 text-body font-medium transition-colors any-pointer-coarse:min-h-hit">
                 {{ $label }}
             </button>
         @endforeach

@@ -117,7 +117,7 @@
                                         :aria-expanded="openGroup === '{{ $item->key }}'"
                                         :class="openGroup === '{{ $item->key }}' && 'text-sidebar-fg-active'"
                                         @class([
-                                            'group flex min-h-control w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors hover:text-sidebar-fg-hover pointer-coarse:min-h-hit',
+                                            'group flex min-h-control w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors hover:text-sidebar-fg-hover any-pointer-coarse:min-h-hit',
                                             $currentRow => $item->active,
                                         ])>
                                     <x-bs-admin::icon :name="$item->icon ?? 'doc'" class="size-5 shrink-0" />
@@ -134,7 +134,7 @@
                                         <li>
                                             <a href="{{ $child->url }}" wire:navigate @if ($child->active) aria-current="page" @endif
                                                @class([
-                                                   'flex min-h-control items-center gap-2.5 px-3 py-2 text-[13px] transition-colors hover:text-sidebar-fg-hover pointer-coarse:min-h-hit',
+                                                   'flex min-h-control items-center gap-2.5 px-3 py-2 text-[13px] transition-colors hover:text-sidebar-fg-hover any-pointer-coarse:min-h-hit',
                                                    $currentRow => $child->active,
                                                ])>
                                                 <span class="h-[1.5px] w-1.5 shrink-0 rounded-full bg-current opacity-60"></span>
@@ -147,7 +147,7 @@
                         @else
                             <a href="{{ $item->url }}" wire:navigate aria-label="{{ $item->label }}" @if ($item->active) aria-current="page" @endif
                                @class([
-                                   'group flex min-h-control w-full items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors hover:text-sidebar-fg-hover pointer-coarse:min-h-hit',
+                                   'group flex min-h-control w-full items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors hover:text-sidebar-fg-hover any-pointer-coarse:min-h-hit',
                                    $currentRow => $item->active,
                                ])>
                                 <x-bs-admin::icon :name="$item->icon ?? 'doc'" class="size-5 shrink-0" />
@@ -173,11 +173,11 @@
         <header class="admin-topbar sticky top-0 z-20 flex h-[var(--spacing-header)] items-center gap-3 border-b border-topbar-border bg-topbar ps-3 pe-6 shadow-card">
             <button type="button" x-ref="menuButton" @click="open ? close() : (open = true)" aria-label="{{ __('admin.menu') }}"
                     aria-controls="admin-sidebar" aria-expanded="false" :aria-expanded="open ? 'true' : 'false'"
-                    class="grid size-control pointer-coarse:size-hit place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg lg:hidden">
+                    class="grid size-control any-pointer-coarse:size-hit place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg lg:hidden">
                 <x-bs-admin::icon name="menu" class="size-5" />
             </button>
             <button type="button" @click="$store.adminTheme.set('sidebar_size', $store.adminTheme.state.sidebar_size === 'sm' ? 'lg' : 'sm')" aria-label="{{ __('admin.collapse_menu') }}"
-                    class="hidden size-control pointer-coarse:size-hit place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg lg:grid">
+                    class="hidden size-control any-pointer-coarse:size-hit place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg lg:grid">
                 <x-bs-admin::icon name="menu" class="size-5" />
             </button>
 

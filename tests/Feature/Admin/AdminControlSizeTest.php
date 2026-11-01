@@ -100,7 +100,7 @@ function cssRuleFor(string $file, string $selector): array
     $css = (string) file_get_contents(resource_path('css/'.$file));
     $quoted = preg_quote($selector, '/');
     preg_match('/^\s*'.$quoted.' \{([^}]*)\}/m', $css, $mouse);
-    preg_match('/@media \(pointer: coarse\) \{\s*'.$quoted.' \{([^}]*)\}/', $css, $touch);
+    preg_match('/@media \(any-pointer: coarse\) \{\s*'.$quoted.' \{([^}]*)\}/', $css, $touch);
 
     return ['mouse' => $mouse[1] ?? '', 'touch' => $touch[1] ?? ''];
 }
@@ -123,7 +123,7 @@ it('draws a pager link at the row-control size with a 44 touch hit area', functi
     $css = (string) file_get_contents(resource_path('css/app.css'));
 
     expect(preg_match('/@utility pager-link \{(.*?)\n\}/s', $css, $m))->toBe(1)
-        ->and($m[1])->toContain('min-width: var(--spacing-control-row);', 'min-height: var(--spacing-control-row);', 'padding-inline: 0.5rem;', '@apply pointer-coarse:hit-area;')
+        ->and($m[1])->toContain('min-width: var(--spacing-control-row);', 'min-height: var(--spacing-control-row);', 'padding-inline: 0.5rem;', '@apply any-pointer-coarse:hit-area;')
         ->and($m[1])->not->toContain('--spacing-hit', '--spacing-control);');
 });
 
@@ -152,8 +152,8 @@ it('sizes the kit menu rows by the menu-row tokens at the user text size', funct
     expect($rows->length)->toBeGreaterThan(0);
     foreach ($rows as $row) {
         expect(explode(' ', (string) $row->getAttribute('class')))
-            ->toContain('min-h-menu-row', 'pointer-coarse:min-h-menu-row-touch', 'text-body')
-            ->not->toContain('min-h-control', 'min-h-hit', 'pointer-coarse:min-h-hit', 'pointer-coarse:min-h-12', 'text-sm');
+            ->toContain('min-h-menu-row', 'any-pointer-coarse:min-h-menu-row-touch', 'text-body')
+            ->not->toContain('min-h-control', 'min-h-hit', 'any-pointer-coarse:min-h-hit', 'any-pointer-coarse:min-h-12', 'text-sm');
     }
 })->with([
     'sort menu' => ['<x-bs-admin::sort-menu :options="$sort" active="new" set="setSort" />', '[role=menu] [role=menuitemradio]'],
@@ -177,7 +177,7 @@ it('makes every row of the kit dropdown a menu row at the user text size', funct
     $dom = HTMLDocument::createFromString((string) $this->blade('<x-bs-admin::dropdown><x-slot:trigger>Mở</x-slot:trigger><a href="#">Sửa</a></x-bs-admin::dropdown>'), LIBXML_NOERROR);
     $panel = explode(' ', (string) $dom->querySelector('div[x-show="open"]')?->getAttribute('class'));
 
-    expect($panel)->toContain('*:flex', '*:items-center', '*:min-h-menu-row', 'pointer-coarse:*:min-h-menu-row-touch', 'text-body')
+    expect($panel)->toContain('*:flex', '*:items-center', '*:min-h-menu-row', 'any-pointer-coarse:*:min-h-menu-row-touch', 'text-body')
         ->not->toContain('text-sm');
 });
 
@@ -188,7 +188,7 @@ it('sizes the kit tabs as main controls at the user text size, 44 on touch', fun
     expect($tabs->length)->toBe(2);
     foreach ($tabs as $tab) {
         expect(explode(' ', (string) $tab->getAttribute('class')))
-            ->toContain('min-h-control', 'pointer-coarse:min-h-hit', 'text-body')
+            ->toContain('min-h-control', 'any-pointer-coarse:min-h-hit', 'text-body')
             ->not->toContain('py-2', 'text-sm');
     }
 });
@@ -235,5 +235,50 @@ it('sizes the image picker and theme panel buttons by the shared control tokens'
     'picker previous page' => ['partials/media-picker-library-pane.blade.php', 'wire:click="pickerPrev"', 'pager-link'],
     'picker next page' => ['partials/media-picker-library-pane.blade.php', 'wire:click="pickerNext"', 'pager-link'],
     'picker folder link edit' => ['partials/media-picker-library-pane.blade.php', 'wire:click="editPickerFolderSlug"', 'hit-area size-tap-cell'],
+    'picker grid view' => ['partials/media-picker-library-pane.blade.php', "wire:click=\"setPickerView('grid')\"", 'hit-area size-control'],
+    'picker list view' => ['partials/media-picker-library-pane.blade.php', "wire:click=\"setPickerView('list')\"", 'hit-area size-control'],
+    'picker grid tile details' => ['partials/media-picker-library-pane.blade.php', 'absolute start-[3px] top-[3px]', 'size-control any-pointer-coarse:size-hit'],
     'theme panel close' => ['partials/customizer.blade.php', '@click="$store.adminTheme.open = false"', 'hit-area size-control'],
 ]);
+
+it('leaves the workflow status buttons to the shared button size', function (): void {
+    $source = (string) file_get_contents(app_path('Modules/Admin/resources/views/livewire/entries/partials/workflow-status.blade.php'));
+
+    expect($source)->not->toContain('min-h-11');
+});
+
+it('sizes touch targets for any touch screen, touch laptops included', function (): void {
+    $sources = [];
+    foreach (glob(resource_path('css/*.css')) ?: [] as $css) {
+        $sources[$css] = (string) file_get_contents($css);
+    }
+    foreach ([base_path('app/Modules'), resource_path('views')] as $root) {
+        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS)) as $file) {
+            if ((str_ends_with($file->getPathname(), '.blade.php') && str_contains($file->getPathname(), '/resources/views/')) || str_starts_with($file->getPathname(), resource_path('views'))) {
+                $sources[$file->getPathname()] = (string) file_get_contents($file->getPathname());
+            }
+        }
+    }
+
+    $offenders = array_keys(array_filter($sources, fn (string $source): bool => preg_match('/(?<![-\w])pointer-coarse:|(?<![-\w])pointer:\s*coarse/', $source) === 1));
+
+    // `pointer-coarse:` and `(pointer: coarse)` follow only the main pointer; a touch laptop's trackpad would keep the mouse sizes
+    expect($offenders)->toBe([]);
+});
+
+it('draws the picker tile details badge inside a control-size button', function (): void {
+    $source = (string) file_get_contents(app_path('Modules/Admin/resources/views/partials/media-picker-library-pane.blade.php'));
+    preg_match('/<button\b[^>]*wire:click\.stop="openPickerDetail.*?<\/button>/s', $source, $button);
+
+    expect($button)->not->toBeEmpty()
+        ->and($button[0])->toContain('aria-label="{{ __(\'media.picker_detail\') }}"')
+        ->toMatch('/<span class="[^"]*\bsize-\[calc\(1\.375rem\+var\(--user-text-boost\)\)\][^"]*\bbg-black\/30\b[^"]*">\s*<x-bs-admin::icon name="ri-information"/');
+});
+
+it('keeps the picker view toggles touch area outside a clipping box', function (): void {
+    $source = (string) file_get_contents(app_path('Modules/Admin/resources/views/partials/media-picker-library-pane.blade.php'));
+    preg_match('/<div class="([^"]*)">\s*<button[^>]*setPickerView\(\'grid\'\)/', $source, $group);
+
+    expect($group)->not->toBeEmpty()
+        ->and(explode(' ', $group[1]))->not->toContain('overflow-hidden');
+});

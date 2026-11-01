@@ -18,7 +18,7 @@
         min-width: 0;
     }
 
-    @media (pointer: coarse) {
+    @media (any-pointer: coarse) {
         .list-rows {
             --list-qe-s: var(--spacing-hit);
         }
@@ -226,7 +226,7 @@
         color: var(--color-text);
     }
 
-    @media (pointer: coarse) {
+    @media (any-pointer: coarse) {
         .list-in {
             min-height: var(--spacing-hit);
         }
@@ -297,7 +297,7 @@
 
     /* On touch the 44 hit areas of neighbouring chips do not overlap: a chip is at least its hit
        size less the gap, so even the narrowest name ("Ý") leaves its neighbour's area alone. */
-    @media (pointer: coarse) {
+    @media (any-pointer: coarse) {
         .list-lcs,
         .list-lcg {
             --list-lc-gap: 0.75rem;
@@ -579,7 +579,7 @@
         cursor: pointer;
     }
 
-    @media (pointer: coarse) {
+    @media (any-pointer: coarse) {
         .list-mi {
             min-height: var(--spacing-menu-row-touch);
         }

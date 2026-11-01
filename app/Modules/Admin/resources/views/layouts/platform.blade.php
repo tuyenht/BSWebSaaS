@@ -122,7 +122,7 @@
                             <li>
                                 <a href="{{ $item->url }}" wire:navigate @if ($item->active) aria-current="page" @endif
                                    @class([
-                                       'sidebar-link flex min-h-control w-full items-center gap-3 px-5 py-2 text-body font-medium transition-colors hover:bg-sidebar-hover hover:text-sidebar-fg-hover pointer-coarse:min-h-hit',
+                                       'sidebar-link flex min-h-control w-full items-center gap-3 px-5 py-2 text-body font-medium transition-colors hover:bg-sidebar-hover hover:text-sidebar-fg-hover any-pointer-coarse:min-h-hit',
                                        $currentRow => $item->active,
                                    ])>
                                     <x-bs-admin::icon :name="$item->icon ?? 'doc'" class="size-5 shrink-0" />

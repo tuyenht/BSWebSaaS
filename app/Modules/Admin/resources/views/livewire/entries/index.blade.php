@@ -207,14 +207,14 @@
                             class="absolute end-0 top-full z-60 mt-1.5 w-60 rounded-md border border-border bg-surface p-1.5 shadow-lg">
                             <p class="m-0 px-2 pb-1 pt-1.5 text-caption font-semibold text-text-muted">{{ __('entries.cols_required') }}</p>
                             @foreach ([__('entries.title_label'), __('entries.col_status'), __('admin.actions')] as $locked)
-                                <label class="flex min-h-menu-row cursor-not-allowed items-center gap-2.5 rounded px-2 text-body text-text-muted pointer-coarse:min-h-menu-row-touch">
+                                <label class="flex min-h-menu-row cursor-not-allowed items-center gap-2.5 rounded px-2 text-body text-text-muted any-pointer-coarse:min-h-menu-row-touch">
                                     <input type="checkbox" checked disabled class="size-4 rounded border-border-strong">
                                     {{ $locked }}
                                 </label>
                             @endforeach
                             <p class="m-0 px-2 pb-1 pt-2 text-caption font-semibold text-text-muted">{{ __('entries.cols_optional') }}</p>
                             @foreach ($colOptions as $key => $label)
-                                <label class="flex min-h-menu-row cursor-pointer items-center gap-2.5 rounded px-2 text-body text-text hover:bg-surface-hover pointer-coarse:min-h-menu-row-touch">
+                                <label class="flex min-h-menu-row cursor-pointer items-center gap-2.5 rounded px-2 text-body text-text hover:bg-surface-hover any-pointer-coarse:min-h-menu-row-touch">
                                     <input type="checkbox" value="{{ $key }}" wire:model.live="cols" class="size-4 shrink-0 accent-primary-text">
                                     {{ $label }}
                                 </label>

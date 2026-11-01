@@ -18,7 +18,7 @@
     // names and Js::from() arguments, never from user input.
 @endphp
 @if ($group !== null || $chips !== [])
-    <p {{ $attributes->merge(['class' => 'm-0 flex min-h-control flex-wrap items-center gap-x-1.5 gap-y-1 px-3 pb-1 text-body text-text [overflow-wrap:anywhere] pointer-coarse:min-h-hit']) }}>
+    <p {{ $attributes->merge(['class' => 'm-0 flex min-h-control flex-wrap items-center gap-x-1.5 gap-y-1 px-3 pb-1 text-body text-text [overflow-wrap:anywhere] any-pointer-coarse:min-h-hit']) }}>
         @if ($group !== null || $summary !== null)
             <span role="status" class="inline-flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1">
                 @if ($group !== null)
@@ -33,7 +33,7 @@
         @if ($clear)
             @if ($group !== null || $summary !== null)<span aria-hidden="true">·</span>@endif
             <button type="button" wire:click="{{ $clear }}"
-                    class="inline-flex min-h-control items-center px-1 text-primary-text underline pointer-coarse:min-h-hit">{{ __('admin.list.clear_filters') }}</button>
+                    class="inline-flex min-h-control items-center px-1 text-primary-text underline any-pointer-coarse:min-h-hit">{{ __('admin.list.clear_filters') }}</button>
         @endif
         @foreach ($chips as $chip)
             <span class="inline-flex min-h-8 min-w-0 max-w-full items-center gap-1 rounded-full border border-border-input bg-surface ps-2.5 text-small">
