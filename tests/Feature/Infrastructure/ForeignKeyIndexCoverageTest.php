@@ -28,7 +28,8 @@ it('gives every foreign key an index that its parent-delete lookup can use', fun
             'entries.assigned_to', 'entries.author_id', 'entry_drafts.assigned_to',
             'entry_drafts.created_by', 'entry_drafts.updated_by', 'entry_revisions.created_by',
             'invitations.accepted_user_id', 'invitations.invited_by', 'site_notifications.user_id',
-            'tenant_users.user_id', 'workflow_log.actor_id', 'workflow_log.assigned_to',
+            'tenant_history.actor_user_id', 'tenant_users.user_id', 'workflow_log.actor_id',
+            'workflow_log.assigned_to',
         ],
         // Soft-deleted only.
         'sites' => ['form_fields.site_id', 'mediables.site_id', 'site_profile_translations.site_id'],
@@ -37,9 +38,10 @@ it('gives every foreign key an index that its parent-delete lookup can use', fun
         'forms' => ['form_submissions.form_id'],
         // Media folders have no delete action yet.
         'media_folders' => ['media.folder_id'],
-        // Reference catalogs: synced or imported, never deleted.
+        // Reference catalogs: synced or imported, never deleted. A plan a customer's history
+        // names cannot be deleted at all (tenant_history's plan keys are ON DELETE RESTRICT).
         'permissions' => ['model_has_permissions.permission_id'],
-        'plans' => ['tenants.plan_id'],
+        'plans' => ['tenant_history.from_plan_id', 'tenant_history.to_plan_id', 'tenants.plan_id'],
         'provinces' => ['site_profiles.province_id'],
         'wards' => ['site_profiles.ward_id'],
         // InstantiateWorkflow replaces a workflow's states and transitions, never the workflow.

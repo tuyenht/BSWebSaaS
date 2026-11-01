@@ -115,8 +115,9 @@ final readonly class PlatformPlans
     }
 
     /**
-     * Put a customer on a plan, or on none. The reason goes on record: it is the only trace of why
-     * a customer's websites gained or lost what they may do.
+     * Put a customer on a plan, or on none. The reason (at most 500 characters) goes on record, in
+     * the customer's history and the audit trail: it is the only trace of why a customer's websites
+     * gained or lost what they may do.
      *
      * @throws AuthorizationException
      * @throws PlanChangeRejectedException reason_required · plan_not_sold
@@ -126,11 +127,11 @@ final readonly class PlatformPlans
         $this->authorize($actor);
 
         $reason = trim($reason);
-        if ($reason === '') {
+        if ($reason === '' || mb_strlen($reason) > 500) {
             throw new PlanChangeRejectedException('reason_required');
         }
 
-        $was = app(ChangeCustomerPlan::class)->handle($customer, $plan);
+        $was = app(ChangeCustomerPlan::class)->handle($customer, $plan, $reason, Cast::int($actor->getKey()));
 
         $this->audit($actor, 'tenancy.customer.plan_changed', array_filter([
             'customer' => $customer->ulid,

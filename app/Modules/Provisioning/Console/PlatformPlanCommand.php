@@ -60,7 +60,7 @@ final class PlatformPlanCommand extends Command
         } catch (PlanChangeRejectedException|FeatureChangeRejectedException $e) {
             $this->error(match ($e->reason) {
                 'name_required' => 'name_required — a plan needs a name.',
-                'reason_required' => 'reason_required — add --reason="…": it is the only record of why the customer changed plan.',
+                'reason_required' => 'reason_required — add --reason="…" (up to 500 characters): it is the only record of why the customer changed plan.',
                 'plan_not_sold' => 'plan_not_sold — this plan is no longer sold; use --sell first, or pick another plan.',
                 'unknown_feature' => 'unknown_feature — no feature has that key; run site:feature with a host to list them.',
                 default => 'wrong_kind — a switch takes on or off, a limit takes a whole number of 0 or more.',
@@ -157,7 +157,7 @@ final class PlatformPlanCommand extends Command
     private function assign(Plan $plan, string $host): int
     {
         $reason = trim((string) $this->option('reason'));
-        if ($reason === '') {
+        if ($reason === '' || mb_strlen($reason) > 500) {
             throw new PlanChangeRejectedException('reason_required');
         }
 
@@ -169,7 +169,7 @@ final class PlatformPlanCommand extends Command
             return self::FAILURE;
         }
 
-        $was = app(ChangeCustomerPlan::class)->handle($customer, $plan);
+        $was = app(ChangeCustomerPlan::class)->handle($customer, $plan, $reason);
         $this->audit('provisioning.customer.plan_changed', array_filter([
             'customer' => $customer->ulid,
             'from' => $was === null ? null : Plan::query()->whereKey($was)->value('key'),
