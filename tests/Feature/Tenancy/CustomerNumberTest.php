@@ -29,48 +29,91 @@ function cnTenant(string $name, string $createdAt, ?string $deletedAt = null): i
     ]);
 }
 
-/** Runs the migration's down(), then $between, then up() — up() runs even when $between fails. */
-function cnRerun(Closure $between): void
+/**
+ * Runs $scenario against a scratch copy of tenants (cn_scratch, numbered from its own sequence
+ * cn_scratch_seq), never the live table: dropping and re-adding tenants.customer_no would move the
+ * column to the end of the table, so dev would drift from prod and pooled connections holding a
+ * prepared statement on tenants would fail. Everything runs in one pgsql_admin transaction that
+ * is rolled back, so the scratch table and its sequence never outlive the test.
+ *
+ * $scenario receives: number() runs the migration's numbering on the scratch table; row(id,
+ * created_at, deleted_at = null, customer_no = null) adds a customer; numbers() lists customer_no
+ * by id; next() draws the number the next new customer would get.
+ */
+function cnScratch(Closure $scenario): void
 {
     /** @var Migration $migration */
     $migration = require database_path(CUSTOMER_NO_MIGRATION);
+    $admin = DB::connection('pgsql_admin');
 
     $original = DB::getDefaultConnection();
     DB::setDefaultConnection('pgsql_admin');
+    $admin->beginTransaction();
     try {
-        $migration->down();
-        try {
-            $between();
-        } finally {
-            $migration->up();
-        }
+        $admin->statement('CREATE TEMP TABLE cn_scratch (LIKE tenants INCLUDING DEFAULTS)');
+        $admin->statement('CREATE TEMP SEQUENCE cn_scratch_seq AS bigint');
+        $admin->statement('ALTER TABLE cn_scratch ALTER COLUMN id DROP DEFAULT');
+        $admin->statement('ALTER TABLE cn_scratch ALTER COLUMN customer_no DROP NOT NULL');
+        $admin->statement("ALTER TABLE cn_scratch ALTER COLUMN customer_no SET DEFAULT nextval('cn_scratch_seq')");
+
+        $scenario(
+            fn () => $migration->numberUnnumbered('cn_scratch', 'cn_scratch_seq'),
+            fn (int $id, string $createdAt, ?string $deletedAt = null, ?int $customerNo = null) => $admin->table('cn_scratch')->insert([
+                'id' => $id, 'ulid' => (string) Str::ulid(), 'name' => "Customer {$id}", 'settings' => '{}',
+                'created_at' => $createdAt, 'updated_at' => $createdAt, 'deleted_at' => $deletedAt, 'customer_no' => $customerNo,
+            ]),
+            fn (): array => $admin->table('cn_scratch')->orderBy('id')->pluck('customer_no', 'id')->all(),
+            fn (): int => (int) $admin->scalar("SELECT nextval('cn_scratch_seq')"),
+        );
     } finally {
+        $admin->rollBack();
         DB::setDefaultConnection($original);
     }
 }
 
 it('numbers the customers that already exist oldest first, ties by id, deleted ones too', function (): void {
-    $ids = [];
-    cnRerun(function () use (&$ids): void {
-        $ids['march'] = cnTenant('March', '2026-03-01 08:00:00+00');
-        $ids['january'] = cnTenant('January', '2026-01-15 08:00:00+00');
-        $ids['january_too'] = cnTenant('January too', '2026-01-15 08:00:00+00');
-        $ids['deleted'] = cnTenant('Deleted', '2026-02-01 08:00:00+00', '2026-02-02 08:00:00+00');
+    cnScratch(function (Closure $number, Closure $row, Closure $numbers, Closure $next): void {
+        $row(10, '2026-03-01 08:00:00+00');                               // March
+        $row(12, '2026-01-15 08:00:00+00');                               // January, the higher id
+        $row(11, '2026-01-15 08:00:00+00');                               // January, the lower id
+        $row(13, '2026-02-01 08:00:00+00', '2026-02-02 08:00:00+00');     // February, soft-deleted
+
+        $number();
+
+        expect($numbers())->toBe([10 => 4, 11 => 1, 12 => 2, 13 => 3])
+            ->and($next())->toBe(5);
     });
+});
 
-    $numbers = DB::table('tenants')->pluck('customer_no', 'id');
+it('starts at 1 when there were no customers', function (): void {
+    cnScratch(function (Closure $number, Closure $row, Closure $numbers, Closure $next): void {
+        $number();
 
-    expect($numbers[$ids['january']])->toBe(1)
-        ->and($numbers[$ids['january_too']])->toBe(2)
-        ->and($numbers[$ids['deleted']])->toBe(3)
-        ->and($numbers[$ids['march']])->toBe(4);
+        expect($next())->toBe(1);
+    });
+});
+
+it('numbers only the customers without a number when it runs again', function (): void {
+    cnScratch(function (Closure $number, Closure $row, Closure $numbers, Closure $next): void {
+        $row(1, '2026-01-01 08:00:00+00');
+        $row(2, '2026-01-02 08:00:00+00');
+        $number();
+
+        // Two customers without a number yet (as after a run interrupted before NOT NULL), the
+        // second one older than everyone: they follow the highest number, oldest first, and
+        // nobody numbered before is renumbered.
+        $row(3, '2026-01-05 08:00:00+00');
+        $row(4, '2025-06-01 08:00:00+00');
+        $number();
+
+        expect($numbers())->toBe([1 => 1, 2 => 2, 3 => 4, 4 => 3])
+            ->and($next())->toBe(5);
+    });
 });
 
 it('gives the next customer the number after the last one, even from code that does not know the column', function (): void {
-    cnRerun(function (): void {
-        cnTenant('Old', '2026-01-01 08:00:00+00');
-        cnTenant('Older', '2025-01-01 08:00:00+00');
-    });
+    cnTenant('Old', '2026-01-01 08:00:00+00');
+    cnTenant('Older', '2025-01-01 08:00:00+00');
 
     // app_user, the role the application runs as, draws from the sequence too.
     DB::table('tenants')->insert(['ulid' => (string) Str::ulid(), 'name' => 'New', 'settings' => '{}', 'created_at' => now(), 'updated_at' => now()]);
@@ -80,15 +123,7 @@ it('gives the next customer the number after the last one, even from code that d
         ->and(Tenant::query()->findOrFail($created->id)->customer_no)->toBe(4);
 });
 
-it('starts at 1 when there were no customers', function (): void {
-    cnRerun(fn () => null);
-
-    cnTenant('First', '2026-01-01 08:00:00+00');
-
-    expect(DB::table('tenants')->value('customer_no'))->toBe(1);
-});
-
-it('runs again without renumbering anyone', function (): void {
+it('runs the whole migration again without renumbering anyone', function (): void {
     cnTenant('A', '2026-01-01 08:00:00+00');
     cnTenant('B', '2026-01-02 08:00:00+00');
     $before = DB::table('tenants')->orderBy('id')->pluck('customer_no')->all();

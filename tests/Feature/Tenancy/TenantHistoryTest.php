@@ -149,7 +149,8 @@ it('keeps the row and forgets the person when the person is removed', function (
     $staff = thStaff();
     app(PlatformPlans::class)->changeCustomerPlan($staff, Tenant::query()->findOrFail(1), thPlan('pro'), 'Ký hợp đồng');
 
-    DB::connection('pgsql_admin')->table('users')->where('id', $staff->id)->delete();
+    // As app_user, which may not change a history row itself: the SET NULL runs as the table owner.
+    DB::transaction(fn () => DB::table('users')->where('id', $staff->id)->delete());
 
     expect(TenantHistory::query()->sole()->only('actor_user_id', 'reason'))->toBe(['actor_user_id' => null, 'reason' => 'Ký hợp đồng']);
 });
@@ -157,10 +158,22 @@ it('keeps the row and forgets the person when the person is removed', function (
 it('goes with the customer when the customer is removed for good', function (): void {
     app(PlatformPlans::class)->changeCustomerPlan(thStaff(), Tenant::query()->findOrFail(1), thPlan('pro'), 'Ký hợp đồng');
 
-    DB::connection('pgsql_admin')->table('tenants')->where('id', 1)->delete();
+    // As app_user, which may not delete a history row itself: the CASCADE runs as the table owner.
+    DB::transaction(fn () => DB::table('tenants')->where('id', 1)->delete());
 
     expect(TenantHistory::query()->count())->toBe(0);
 });
+
+it('lets the application add history rows but never change or delete one', function (string $change): void {
+    app(ChangeCustomerPlan::class)->handle(Tenant::query()->findOrFail(1), thPlan('pro'), 'Ký hợp đồng');
+
+    $run = fn () => DB::transaction(fn () => $change === 'update'
+        ? DB::table('tenant_history')->update(['reason' => 'Sửa lại'])
+        : DB::table('tenant_history')->delete());
+
+    expect($run)->toThrow(QueryException::class, 'permission denied')
+        ->and(TenantHistory::query()->sole()->reason)->toBe('Ký hợp đồng');
+})->with(['update', 'delete']);
 
 it('reads a customer history newest first from its own index', function (): void {
     $index = DB::selectOne("select pg_get_indexdef('tenant_history_tenant_id_created_at_id_index'::regclass) as def")->def;
