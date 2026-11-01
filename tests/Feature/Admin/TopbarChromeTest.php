@@ -181,3 +181,61 @@ it('keeps the logo and a way home in the topbar at every width when the operator
     expect(platformShellClasses($home))->not->toContain('lg:hidden')
         ->and($home->firstElementChild)->toBeInstanceOf(Element::class); // the logo (or the initials chip)
 });
+
+/** Classes of every element matching a selector. @return list<list<string>> */
+function shellClassesOf(HTMLDocument $dom, string $selector): array
+{
+    $out = [];
+    foreach ($dom->querySelectorAll($selector) as $element) {
+        $out[] = platformShellClasses($element);
+    }
+
+    return $out;
+}
+
+it('sizes the shell text by the text roles and gives its small links a 44px hit area', function (): void {
+    $user = User::factory()->create(['name' => 'Topbar Tester']);
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
+
+    $dom = platformShellDom((string) $this->actingAs($user->fresh())->get('http://a.test/admin/content')->assertOk()->getContent());
+
+    // footer: caption-size text; the company link keeps its look, one box, with the transparent 44 extension
+    $footer = platformShellClasses(platformShellOne($dom, 'div.admin-content > footer'));
+    $link = platformShellClasses(platformShellOne($dom, 'div.admin-content > footer a[href]'));
+    expect($footer)->toContain('text-caption')->not->toContain('text-xs')
+        ->and($link)->toContain('hit-area', 'inline-block')
+        ->and(platformShellClasses(platformShellOne($dom, 'div.admin-content > footer > div')))->toContain('gap-y-3.5');
+
+    // user block: name at the small size over the role at the caption size, never fixed pixels
+    $name = platformShellOne($dom, 'header.admin-topbar span.text-topbar-fg-strong');
+    expect(trim((string) $name->textContent))->toBe('Topbar Tester')
+        ->and(platformShellClasses($name))->toContain('text-small')
+        ->and(platformShellClasses($name->nextElementSibling ?? $name))->toContain('text-caption')
+        ->and(array_merge(...shellClassesOf($dom, 'header.admin-topbar span')))->not->toContain('text-[13px]', 'text-[11px]');
+
+    // the round theme launcher keeps its whole 48px square tappable through a transparent ::after
+    $launcher = platformShellOne($dom, 'button[aria-label="'.__('admin.customize_theme').'"].fixed');
+    expect(platformShellClasses($launcher))->toContain('fixed', 'rounded-full', 'after:absolute', 'after:inset-0')
+        ->not->toContain('hit-area', 'relative');
+});
+
+it('gives the platform console logo and footer link a 44px hit area and caption-size footer text', function (): void {
+    $host = (string) config('tenancy.platform_host');
+    $operator = User::factory()->create();
+    app(PlatformAccess::class)->onPlatform(fn () => $operator->assignRole('super_admin'));
+    app(PlatformAccess::class)->forgetMemo();
+
+    $dom = platformShellDom((string) $this->actingAs($operator->fresh())->get("http://{$host}/tenants")->assertOk()->getContent());
+
+    expect(platformShellClasses(platformShellOne($dom, 'header a[href="'.route('platform.dashboard').'"]')))->toContain('hit-area')
+        ->and(platformShellClasses(platformShellOne($dom, 'div.admin-content > footer')))->toContain('text-caption')->not->toContain('text-xs')
+        ->and(platformShellClasses(platformShellOne($dom, 'div.admin-content > footer a[href]')))->toContain('hit-area', 'inline-block');
+});
+
+it('sizes the kit badge at the caption size, so it follows the reader\'s text size', function (): void {
+    $html = (string) $this->blade('<x-bs-admin::badge color="warning" soft pill>Hỗ trợ</x-bs-admin::badge>');
+
+    preg_match('/<span class="([^"]*)">Hỗ trợ<\/span>/', $html, $m);
+    expect($m)->not->toBeEmpty()
+        ->and(explode(' ', $m[1]))->toContain('text-caption')->not->toContain('text-xs');
+});

@@ -204,11 +204,14 @@
 
         {{-- Footer --}}
         {{-- Footer — one left-aligned line (owner preference; deliberately NOT the reference's split layout). --}}
-        <footer class="border-t border-border px-4 py-4 text-xs text-footer">
-            <div class="flex flex-wrap items-center gap-1">
+        {{-- Text at the caption size, so it follows the reader's text size. The link keeps its look and
+             gets a 44px hit area through a transparent extension (one box, so it never splits across
+             lines); a wrapped second line starts below that area, never under it. --}}
+        <footer class="border-t border-border px-4 py-4 text-caption text-footer-fg">
+            <div class="flex flex-wrap items-center gap-x-1 gap-y-3.5">
                 <span>&copy; {{ now()->year }}
                     <a href="{{ config('admin.brand.company_url') }}" target="_blank" rel="noopener noreferrer"
-                       class="font-medium text-body-muted transition-colors hover:text-accent hover:underline">{{ config('admin.brand.company') }}</a>.
+                       class="hit-area inline-block font-medium text-text-muted transition-colors hover:text-primary-text hover:underline">{{ config('admin.brand.company') }}</a>.
                 </span>
                 <span>{{ __('auth.rights') }}</span>
             </div>

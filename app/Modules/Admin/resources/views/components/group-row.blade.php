@@ -29,6 +29,8 @@
         open: false,
         left: 0,
         stopMorph: null,
+        stopSize: null,
+        observeGroups: null,
         fits() {
             const row = this.$refs.row, trash = row.querySelector(':scope > [data-trash]');
             if (row.scrollWidth > row.clientWidth) return false;
@@ -55,11 +57,24 @@
             this.over = over;
             if (! over.length) { more.hidden = true; this.open = false; }
         },
+        // Fit again when the row's width changes, and when a shown group's width changes while the row
+        // keeps its box: a larger text size (on touch every group is already 44px tall, so the row
+        // does not grow) or a web font that arrives late. A group fit() has just hidden reports a
+        // zero size and is skipped, so a fit never triggers itself. Groups a re-render adds are
+        // observed too (observeGroups() runs again after each morph).
+        watchSize() {
+            const row = this.$refs.row;
+            const ro = new ResizeObserver((entries) => { if (entries.some((e) => e.target === row || ! e.target.hidden)) this.fit(); });
+            ro.observe(row);
+            this.observeGroups = () => row.querySelectorAll(':scope > [data-g]').forEach((el) => ro.observe(el));
+            this.observeGroups();
+            this.stopSize = () => ro.disconnect();
+        },
         // A Livewire re-render morphs the row back to the server HTML (every group shown, Khác hidden): fit again after each one
         watchMorph() {
-            try { this.stopMorph = this.$wire.interceptMessage(({ onSuccess }) => onSuccess(({ onMorphed }) => onMorphed(() => this.fit()))); } catch (e) {}
+            try { this.stopMorph = this.$wire.interceptMessage(({ onSuccess }) => onSuccess(({ onMorphed }) => onMorphed(() => { this.observeGroups?.(); this.fit(); }))); } catch (e) {}
         },
-        destroy() { this.stopMorph?.(); },
+        destroy() { this.stopMorph?.(); this.stopSize?.(); },
         items() { return [...this.$refs.menu.querySelectorAll('[role=menuitemradio]')].filter((el) => el.offsetParent !== null); },
         show(focusFirst = true) {
             this.left = this.$refs.more.offsetLeft;
@@ -74,7 +89,7 @@
         hide(back = true) { if (! this.open) return; this.open = false; if (back) this.$refs.moreButton.focus(); },
         step(d) { const f = this.items(), i = f.indexOf(document.activeElement); f[(i + d + f.length) % f.length]?.focus(); },
     }"
-    x-init="$nextTick(() => fit()); new ResizeObserver(() => fit()).observe($refs.row); watchMorph()"
+    x-init="$nextTick(() => fit()); watchSize(); watchMorph()"
     @keydown.escape="hide()"
     @click.outside="hide(false)"
     {{ $attributes->merge(['class' => 'relative hidden min-w-0 border-b border-border min-[900px]:block']) }}
