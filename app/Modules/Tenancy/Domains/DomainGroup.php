@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Admin\Support\Domains;
+namespace App\Modules\Tenancy\Domains;
 
 use Carbon\CarbonImmutable;
 

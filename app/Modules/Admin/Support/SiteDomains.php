@@ -19,6 +19,7 @@ use App\Modules\Tenancy\Actions\SetPrimaryDomain;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Domains\DomainCheck;
+use App\Modules\Tenancy\Domains\DomainGroups;
 use App\Modules\Tenancy\Domains\DomainName;
 use App\Modules\Tenancy\Domains\PointingMethod;
 use App\Modules\Tenancy\Domains\PointingRecords;
@@ -191,12 +192,9 @@ final readonly class SiteDomains
     {
         $this->within($actor, $site, function (int $siteId) use ($actor, $domain): void {
             $host = DomainName::parse($domain);
-            $rows = Domain::query()
-                ->where('site_id', $siteId)->where('kind', 'custom')
-                ->whereIn('hostname', [$host, DomainName::sibling($host)])
-                ->get(['hostname', 'is_redirect']);
+            $group = app(DomainGroups::class)->forSite($siteId)->find(DomainName::pairKey($host));
 
-            if ($rows->firstWhere('hostname', $host) === null) {
+            if ($group === null || $group->platform) {
                 throw new DomainChangeRejectedException('not_found');
             }
 
@@ -205,11 +203,9 @@ final readonly class SiteDomains
                 throw new DomainChangeRejectedException('too_many_attempts');
             }
 
-            $runs = $rows->firstWhere('is_redirect', false)->hostname ?? $host;
-            $alt = $rows->first(fn (Domain $row): bool => $row->hostname !== $runs)?->hostname;
             $records = array_map(
                 fn (array $record): array => ['label' => $record['label'], 'kind' => $record['kind'] === 'ip' ? 'A' : 'CNAME', 'target' => $record['target']],
-                PointingRecords::for($runs, $alt),
+                PointingRecords::for($group->runs, $group->alt),
             );
             $mailbox = Cast::string(config('support.mailbox')) ?: Cast::string(config('mail.from.address'));
 

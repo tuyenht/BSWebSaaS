@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Livewire\Settings;
 
-use App\Modules\Admin\Support\Domains\DomainGroup;
-use App\Modules\Admin\Support\Domains\DomainGroups;
-use App\Modules\Admin\Support\Domains\DomainOverview;
 use App\Modules\Admin\Support\SiteDomains;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
@@ -18,7 +15,10 @@ use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Domains\DnsLookup;
 use App\Modules\Tenancy\Domains\DomainCheck;
+use App\Modules\Tenancy\Domains\DomainGroup;
+use App\Modules\Tenancy\Domains\DomainGroups;
 use App\Modules\Tenancy\Domains\DomainName;
+use App\Modules\Tenancy\Domains\DomainOverview;
 use App\Modules\Tenancy\Domains\OwnershipProof;
 use App\Modules\Tenancy\Domains\PointingMethod;
 use App\Modules\Tenancy\Domains\PointingRecords;

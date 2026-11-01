@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Admin\Support\Domains;
+namespace App\Modules\Tenancy\Domains;
 
 /**
  * A site's names as its Domains screen lists them, with what counts against the plan: `used` is

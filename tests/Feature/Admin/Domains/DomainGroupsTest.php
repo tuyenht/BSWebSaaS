@@ -1,7 +1,7 @@
 <?php
 
-use App\Modules\Admin\Support\Domains\DomainGroup;
-use App\Modules\Admin\Support\Domains\DomainGroups;
+use App\Modules\Tenancy\Domains\DomainGroup;
+use App\Modules\Tenancy\Domains\DomainGroups;
 use App\Modules\Tenancy\Domains\DomainName;
 use App\Modules\Tenancy\Domains\PointingRecords;
 use Carbon\CarbonImmutable;

@@ -56,7 +56,7 @@
                 <div class="mt-1.5 flex flex-col gap-2">
                     <span class="text-text-muted">{{ __('admin.domains_point_apex_intro') }}</span>
                     @foreach (['move' => 'admin.domains_point_opt_move', 'ip' => 'admin.domains_point_opt_ip'] as $option => $key)
-                        <button type="button" aria-pressed="{{ $apex === $option ? 'true' : 'false' }}" wire:click="pickApex(@js($group->name), '{{ $option }}')"
+                        <button type="button" aria-pressed="{{ $apex === $option ? 'true' : 'false' }}" wire:click="pickApex({{ \Illuminate\Support\Js::from($group->name) }}, '{{ $option }}')"
                                 class="flex w-full min-w-0 cursor-pointer flex-col items-start gap-1 rounded-md border border-border-input bg-surface px-3 py-2.5 text-left aria-pressed:border-2 aria-pressed:border-primary-text aria-pressed:px-[0.6875rem] aria-pressed:py-[0.5625rem]">
                             <span class="font-semibold text-text-strong">{{ __($key.'_title') }}</span>
                             <span @class(['text-text-muted' => $option === 'move', 'text-warning-text' => $option === 'ip'])>{{ __($key.'_body') }}</span>
@@ -74,7 +74,7 @@
         </details>
         @if ($manage)
             <div class="flex flex-wrap items-center gap-2">
-                <x-bs-admin::button variant="ghost" color="primary" size="sm" wire:click="requestHelp(@js($group->name))" :aria-disabled="$locked ? 'true' : null">
+                <x-bs-admin::button variant="ghost" color="primary" size="sm" wire:click="requestHelp({{ \Illuminate\Support\Js::from($group->name) }})" :aria-disabled="$locked ? 'true' : null">
                     <x-bs-admin::icon name="ri-customer-service-2" class="size-[calc(1rem+var(--user-text-boost))]" />
                     <span>{{ __('admin.domains_point_help_btn') }}</span>
                 </x-bs-admin::button>

@@ -90,7 +90,7 @@
                 <x-bs-admin::alert color="danger" icon="ri-shield-cross">
                     <div class="flex flex-wrap items-start gap-2">
                         <span class="min-w-0 flex-[1_1_16rem]">{{ __('admin.domains_claim_taken_alert', ['name' => $taken['name']]) }}</span>
-                        <x-bs-admin::button size="sm" variant="outline" color="danger" wire:click="acknowledgeTaken(@js($taken['ulid']))">{{ __('admin.domains_claim_ack') }}</x-bs-admin::button>
+                        <x-bs-admin::button size="sm" variant="outline" color="danger" wire:click="acknowledgeTaken({{ \Illuminate\Support\Js::from($taken['ulid']) }})">{{ __('admin.domains_claim_ack') }}</x-bs-admin::button>
                     </div>
                 </x-bs-admin::alert>
             @endif

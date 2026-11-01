@@ -2,13 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Admin\Support\Domains;
+namespace App\Modules\Tenancy\Domains;
 
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteTime;
-use App\Modules\Tenancy\Domains\DomainHealth;
-use App\Modules\Tenancy\Domains\DomainName;
-use App\Modules\Tenancy\Domains\PointingMethod;
 use App\Modules\Tenancy\Models\Domain;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;

@@ -20,7 +20,7 @@
     @endif
     <span class="min-w-0 flex-[1_1_10rem] font-mono text-small font-semibold text-text-strong [overflow-wrap:anywhere]">{{ $value }}</span>
     <x-bs-admin::button size="sm" variant="outline" color="primary"
-        x-data x-on:click="navigator.clipboard ? navigator.clipboard.writeText(@js($value)).then(() => {{ $call(true) }}, () => {{ $call(false) }}) : {{ $call(false) }}">
+        x-data x-on:click="navigator.clipboard ? navigator.clipboard.writeText({{ \Illuminate\Support\Js::from($value) }}).then(() => {{ $call(true) }}, () => {{ $call(false) }}) : {{ $call(false) }}">
         <x-bs-admin::icon name="ri-file-copy" class="size-[calc(1rem+var(--user-text-boost))]" />
         <span>{{ __('admin.copy') }}</span>
     </x-bs-admin::button>
