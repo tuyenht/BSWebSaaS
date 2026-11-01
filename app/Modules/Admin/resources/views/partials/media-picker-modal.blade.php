@@ -26,7 +26,7 @@
                     </div>
                 </div>
                 <button type="button" wire:click="closeImagePicker" title="{{ __('admin.dismiss') }}"
-                        class="flex size-8 items-center justify-center rounded-lg bg-surface-hover text-body-muted transition-colors hover:text-body-text">
+                        class="hit-area flex size-control items-center justify-center rounded-lg bg-surface-hover text-text-muted transition-colors hover:text-text">
                     <x-bs-admin::icon name="ri-close" class="size-[17px]" />
                 </button>
             </div>

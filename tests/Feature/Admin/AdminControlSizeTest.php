@@ -216,3 +216,24 @@ it('gives the workflow close buttons the main-control size and its switches a 44
     'workflow settings' => ['livewire/workflow-settings.blade.php', 1, 2],
     'workflow status' => ['livewire/entries/partials/workflow-status.blade.php', 1, 0],
 ]);
+
+it('sizes the image picker and theme panel buttons by the shared control tokens', function (string $view, string $marker, string $size): void {
+    $source = (string) file_get_contents(app_path('Modules/Admin/resources/views/'.$view));
+    // up to the class attribute: earlier attributes may hold "->" (wire:click="open({{ $m->id }})")
+    preg_match_all('/<button\b.*?class="[^"]*"/s', $source, $buttons);
+    $matched = array_values(array_filter($buttons[0], fn (string $button): bool => str_contains($button, $marker)));
+
+    expect($matched)->not->toBeEmpty();
+    foreach ($matched as $button) {
+        preg_match('/class="([^"]*)"$/', $button, $class);
+        expect(explode(' ', $class[1]))->toContain(...explode(' ', $size))
+            ->not->toContain('size-7', 'size-8');
+    }
+})->with([
+    'picker close' => ['partials/media-picker-modal.blade.php', 'wire:click="closeImagePicker" title=', 'hit-area size-control'],
+    'picker file details (list row)' => ['partials/media-picker-library-pane.blade.php', 'shrink-0 items-center justify-center', 'hit-area size-control-row'],
+    'picker previous page' => ['partials/media-picker-library-pane.blade.php', 'wire:click="pickerPrev"', 'pager-link'],
+    'picker next page' => ['partials/media-picker-library-pane.blade.php', 'wire:click="pickerNext"', 'pager-link'],
+    'picker folder link edit' => ['partials/media-picker-library-pane.blade.php', 'wire:click="editPickerFolderSlug"', 'hit-area size-tap-cell'],
+    'theme panel close' => ['partials/customizer.blade.php', '@click="$store.adminTheme.open = false"', 'hit-area size-control'],
+]);
