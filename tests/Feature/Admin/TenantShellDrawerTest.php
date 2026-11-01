@@ -59,13 +59,13 @@ it('wires the phone drawer for keyboard, screen readers and touch', function ():
         ->and($button->getAttribute('x-ref'))->toBe('menuButton')
         ->and($button->getAttribute('@click'))->toBe('open ? close() : (open = true)')
         ->and($button->getAttribute(':aria-expanded'))->toBe("open ? 'true' : 'false'")
-        ->and(explode(' ', (string) $button->getAttribute('class')))->toContain('pointer-coarse:size-hit');
+        ->and(explode(' ', (string) $button->getAttribute('class')))->toContain('any-pointer-coarse:size-hit');
 
     $rows = $dom->querySelectorAll('aside#admin-sidebar nav :is(a[href], button)');
     expect($rows->length)->toBeGreaterThan(0);
     foreach ($rows as $row) {
         expect(explode(' ', (string) $row->getAttribute('class')))
             ->toContain('min-h-control')
-            ->toContain('pointer-coarse:min-h-hit');
+            ->toContain('any-pointer-coarse:min-h-hit');
     }
 });

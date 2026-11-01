@@ -21,7 +21,7 @@
     $anyOn = in_array($active, array_column($options, 'key'), true);
     $name = __('admin.list.sort_named', ['name' => $current]);
     $menuId = 'sm-'.substr(md5($set.'|'.implode(',', array_column($options, 'key'))), 0, 8);
-    $pill = 'hit-area group inline-flex min-h-control shrink-0 items-center justify-center gap-1.5 rounded-full border px-3.5 text-body font-medium transition-colors pointer-coarse:min-h-hit aria-expanded:border-primary-text aria-expanded:bg-primary/12 aria-expanded:text-primary-text';
+    $pill = 'hit-area group inline-flex min-h-control shrink-0 items-center justify-center gap-1.5 rounded-full border px-3.5 text-body font-medium transition-colors any-pointer-coarse:min-h-hit aria-expanded:border-primary-text aria-expanded:bg-primary/12 aria-expanded:text-primary-text';
     $state = $lit ? 'border-primary-text bg-primary/12 text-primary-text' : 'border-transparent bg-primary/7 text-text hover:bg-primary/12';
 @endphp
 <div {{ $attributes->merge(['class' => 'relative shrink-0']) }}
@@ -62,7 +62,7 @@
             <button type="button" role="menuitemradio" aria-checked="{{ $on ? 'true' : 'false' }}" tabindex="{{ $on || (! $anyOn && $loop->first) ? '0' : '-1' }}"
                     wire:click="{{ $set }}({{ \Illuminate\Support\Js::from($option['key']) }})" @click="hide()"
                     @class([
-                        'flex min-h-menu-row w-full items-center gap-2.5 rounded px-2.5 py-1.5 text-start text-body [overflow-wrap:anywhere] hover:bg-surface-hover pointer-coarse:min-h-menu-row-touch',
+                        'flex min-h-menu-row w-full items-center gap-2.5 rounded px-2.5 py-1.5 text-start text-body [overflow-wrap:anywhere] hover:bg-surface-hover any-pointer-coarse:min-h-menu-row-touch',
                         'font-bold text-primary-text' => $on,
                         'text-text' => ! $on,
                     ])>

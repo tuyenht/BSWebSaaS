@@ -142,11 +142,11 @@
             @endunless
             <div class="flex overflow-hidden rounded-lg border border-border-strong">
                 <button type="button" wire:click="setPickerView('grid')" title="{{ __('media.picker_view_grid') }}"
-                        class="flex h-8 w-[34px] items-center justify-center {{ $pickerView === 'grid' ? 'bg-admin-primary text-white' : 'bg-surface text-body-muted' }}">
+                        class="hit-area flex size-control items-center justify-center {{ $pickerView === 'grid' ? 'bg-primary text-white' : 'bg-surface text-text-muted' }}">
                     <x-bs-admin::icon name="ri-grid" class="size-[15px]" />
                 </button>
                 <button type="button" wire:click="setPickerView('list')" title="{{ __('media.picker_view_list') }}"
-                        class="flex h-8 w-[34px] items-center justify-center {{ $pickerView === 'list' ? 'bg-admin-primary text-white' : 'bg-surface text-body-muted' }}">
+                        class="hit-area flex size-control items-center justify-center {{ $pickerView === 'list' ? 'bg-primary text-white' : 'bg-surface text-text-muted' }}">
                     <x-bs-admin::icon name="ri-list-check-2" class="size-[15px]" />
                 </button>
             </div>
@@ -231,8 +231,11 @@
                             {{-- ⓘ only in the picker (manage-mode tile click already opens detail; trash hides it). --}}
                             @unless ($pickerTrash || $manage)
                                 <button type="button" wire:click.stop="openPickerDetail({{ $m->id }})" title="{{ __('media.picker_detail') }}"
-                                        class="absolute left-[7px] top-[7px] flex size-[22px] items-center justify-center rounded-md bg-black/30 text-white transition-colors hover:bg-black/50">
-                                    <x-bs-admin::icon name="ri-information" class="size-3.5" />
+                                        aria-label="{{ __('media.picker_detail') }}"
+                                        class="group absolute start-[3px] top-[3px] grid size-control any-pointer-coarse:size-hit place-items-center">
+                                    <span class="grid size-[calc(1.375rem+var(--user-text-boost))] place-items-center rounded-md bg-black/30 text-white transition-colors group-hover:bg-black/50">
+                                        <x-bs-admin::icon name="ri-information" class="size-3.5" />
+                                    </span>
                                 </button>
                             @endunless
                             {{-- Selected = primary tint wash + a filled check badge that reads clearly on any

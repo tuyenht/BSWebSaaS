@@ -69,7 +69,7 @@
         </div>
         <x-bs-admin::filter-panel :sections="$sections" :active="$active" :results="__('admin.audit.show_results')" clear="clearFilters" />
         <button type="button" wire:click="$toggle('support')" aria-pressed="{{ $support ? 'true' : 'false' }}"
-                class="hit-area inline-flex min-h-control shrink-0 items-center gap-1.5 rounded border px-3 text-body transition-colors pointer-coarse:min-h-hit {{ $support ? 'border-primary-text bg-primary/10 font-semibold text-primary-text' : 'border-border-input bg-surface text-text-strong hover:bg-surface-hover' }}">
+                class="hit-area inline-flex min-h-control shrink-0 items-center gap-1.5 rounded border px-3 text-body transition-colors any-pointer-coarse:min-h-hit {{ $support ? 'border-primary-text bg-primary/10 font-semibold text-primary-text' : 'border-border-input bg-surface text-text-strong hover:bg-surface-hover' }}">
             <x-bs-admin::icon name="ri-user-shared" class="size-4 shrink-0" />
             <span>{{ __('admin.audit.support_only') }}</span>
         </button>
