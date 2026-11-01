@@ -49,7 +49,7 @@
                             <x-bs-admin::icon name="ri-link" class="size-3 shrink-0" />
                             <span class="truncate font-semibold text-accent">/{{ $pickerNewFolderSlug }}</span>
                             <button type="button" wire:click="editPickerFolderSlug" title="{{ __('media.picker_folder_slug_edit') }}"
-                                    class="shrink-0 text-body-muted hover:text-accent">
+                                    class="hit-area grid size-tap-cell shrink-0 place-items-center rounded text-body-muted hover:text-accent">
                                 <x-bs-admin::icon name="ri-pencil" class="size-3" />
                             </button>
                         </div>
@@ -298,11 +298,11 @@
                             <span class="w-[52px]"><span class="rounded-[5px] bg-admin-primary/8 px-[7px] py-0.5 text-[10px] font-semibold uppercase text-accent">{{ $m->extLabel() }}</span></span>
                             @unless ($pickerTrash)
                                 <button type="button" wire:click.stop="openPickerDetail({{ $m->id }})" title="{{ __('media.picker_detail') }}"
-                                        class="flex size-7 shrink-0 items-center justify-center text-body-muted hover:text-accent">
+                                        class="hit-area flex size-control-row shrink-0 items-center justify-center rounded text-body-muted hover:text-accent">
                                     <x-bs-admin::icon name="ri-information" class="size-4" />
                                 </button>
                             @else
-                                <span class="w-7 shrink-0"></span>
+                                <span class="w-control-row shrink-0"></span>
                             @endunless
                         </div>
                     @endforeach
@@ -315,11 +315,11 @@
             <div class="flex shrink-0 items-center justify-end gap-2 border-t border-border px-4 py-2">
                 <span class="text-xs text-body-muted">{{ __('media.picker_page_of', ['page' => $mp['page']->currentPage(), 'pages' => $mp['page']->lastPage()]) }}</span>
                 <button type="button" wire:click="pickerPrev" @disabled($mp['page']->onFirstPage()) title="{{ __('media.picker_prev') }}"
-                        class="flex size-7 items-center justify-center rounded-md border border-border-strong text-body-muted disabled:opacity-40">
+                        class="pager-link border border-border-strong text-body-muted disabled:opacity-40">
                     <x-bs-admin::icon name="chevron-left" class="size-3.5" />
                 </button>
                 <button type="button" wire:click="pickerNext" @disabled(! $mp['page']->hasMorePages()) title="{{ __('media.picker_next') }}"
-                        class="flex size-7 items-center justify-center rounded-md border border-border-strong text-body-muted disabled:opacity-40">
+                        class="pager-link border border-border-strong text-body-muted disabled:opacity-40">
                     <x-bs-admin::icon name="chevron-right" class="size-3.5" />
                 </button>
             </div>

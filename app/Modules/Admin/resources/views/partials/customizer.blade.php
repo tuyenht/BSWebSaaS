@@ -30,7 +30,7 @@
         <header class="flex items-center gap-2 bg-primary px-4 py-3 text-white [--color-focus:currentColor]">
             <h2 class="text-sm font-semibold">{{ __('admin.customize_theme') }}</h2>
             <button type="button" @click="$store.adminTheme.open = false" aria-label="{{ __('admin.close') }}"
-                    class="ms-auto grid size-8 place-items-center rounded transition-colors hover:bg-white/10">
+                    class="hit-area ms-auto grid size-control place-items-center rounded transition-colors hover:bg-white/10">
                 <x-bs-admin::icon name="x" class="size-4" />
             </button>
         </header>
