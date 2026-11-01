@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Support;
 
+use App\Modules\Admin\Notifications\DomainHelpRequestNotification;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
@@ -20,12 +21,15 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Domains\DomainCheck;
 use App\Modules\Tenancy\Domains\DomainName;
 use App\Modules\Tenancy\Domains\PointingMethod;
+use App\Modules\Tenancy\Domains\PointingRecords;
 use App\Modules\Tenancy\Exceptions\DomainChangeRejectedException;
 use App\Modules\Tenancy\Models\Domain;
 use App\Modules\Tenancy\Models\Site;
 use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\RateLimiter;
 
 /**
  * Who may change a site's own domains, and the trail each change leaves (design.md §28) — the one
@@ -172,6 +176,52 @@ final readonly class SiteDomains
             $this->audit($actor, $siteId, 'tenancy.domain.removed', ['hostnames' => $removed]);
 
             return $removed;
+        });
+    }
+
+    /**
+     * Ask the support team to point a domain for the site ("Nhờ hỗ trợ trỏ giúp"): a mail to the
+     * support mailbox with the rows to add, and a line in the site's trail. A few requests an hour
+     * per site; the support team answers by mail.
+     *
+     * @throws AuthorizationException
+     * @throws DomainChangeRejectedException invalid · not_found · too_many_attempts
+     */
+    public function requestHelp(User $actor, string $domain, ?Site $site = null): void
+    {
+        $this->within($actor, $site, function (int $siteId) use ($actor, $domain): void {
+            $host = DomainName::parse($domain);
+            $rows = Domain::query()
+                ->where('site_id', $siteId)->where('kind', 'custom')
+                ->whereIn('hostname', [$host, DomainName::sibling($host)])
+                ->get(['hostname', 'is_redirect']);
+
+            if ($rows->firstWhere('hostname', $host) === null) {
+                throw new DomainChangeRejectedException('not_found');
+            }
+
+            $limit = Cast::int(config('support.help_requests_per_hour'), 3);
+            if (! RateLimiter::attempt('domain-help:'.$siteId, $limit, fn (): bool => true, 3600)) {
+                throw new DomainChangeRejectedException('too_many_attempts');
+            }
+
+            $runs = $rows->firstWhere('is_redirect', false)->hostname ?? $host;
+            $alt = $rows->first(fn (Domain $row): bool => $row->hostname !== $runs)?->hostname;
+            $records = array_map(
+                fn (array $record): array => ['label' => $record['label'], 'kind' => $record['kind'] === 'ip' ? 'A' : 'CNAME', 'target' => $record['target']],
+                PointingRecords::for($runs, $alt),
+            );
+            $mailbox = Cast::string(config('support.mailbox')) ?: Cast::string(config('mail.from.address'));
+
+            Notification::route('mail', $mailbox)->notify(new DomainHelpRequestNotification(
+                Cast::string(Site::query()->whereKey($siteId)->value('name')),
+                DomainName::display(DomainName::pairKey($host)),
+                Cast::string($actor->name),
+                Cast::string($actor->email),
+                $records,
+            ));
+
+            $this->audit($actor, $siteId, 'tenancy.domain.help_requested', ['hostname' => DomainName::pairKey($host)]);
         });
     }
 

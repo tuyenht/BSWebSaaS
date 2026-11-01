@@ -257,6 +257,18 @@ final class AdminNav
                 }
             }
 
+            // Domains: read-only for whoever holds domains.view (adding and changing need
+            // domains.manage on the screen itself), so it sits outside the settings.manage block.
+            if (in_array('domains', $entitled, true) && $can('domains.view')) {
+                $settingsChildren[] = new NavItem(
+                    key: 'settings.domains',
+                    label: __('admin.domains'),
+                    url: route('admin.settings.domains'),
+                    active: $request->routeIs('admin.settings.domains'),
+                    permission: 'domains.view',
+                );
+            }
+
             // Operator-only: approval-workflow switchboard. No tenant role template carries
             // this permission, so only platform operators (Gate::before) ever see the tab.
             if ($can('platform.workflows.manage')) {

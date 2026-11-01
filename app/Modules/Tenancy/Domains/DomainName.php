@@ -13,6 +13,12 @@ use App\Modules\Tenancy\Exceptions\DomainChangeRejectedException;
  */
 final class DomainName
 {
+    /** Endings sold as one: a name under them is registered at the third label (`tencongty.com.vn`). */
+    private const array TWO_LABEL_ENDINGS = [
+        'com.vn', 'net.vn', 'org.vn', 'edu.vn', 'gov.vn', 'biz.vn', 'info.vn', 'name.vn', 'pro.vn',
+        'health.vn', 'ac.vn', 'int.vn', 'id.vn', 'io.vn', 'co.uk', 'org.uk', 'com.au', 'com.sg',
+    ];
+
     /**
      * Labels kept for the platform's own services under every platform base. They always apply,
      * whatever `tenancy.reserved_labels` holds (that key only adds to them), so a stale config
@@ -136,6 +142,38 @@ final class DomainName
     public static function pairKey(string $host): string
     {
         return str_starts_with($host, 'www.') ? substr($host, 4) : $host;
+    }
+
+    /**
+     * The name a customer registered — the part the DNS rows of a name are written under, so the
+     * pointing table can say `@` for it and `shop` / `www.shop` for the names below it. Knows the
+     * two-label endings people buy most (`com.vn`, `co.uk`…); any other ending is one label.
+     */
+    public static function registrable(string $host): string
+    {
+        $labels = explode('.', $host);
+        $count = count($labels);
+
+        if ($count <= 2) {
+            return $host;
+        }
+
+        $ending = $labels[$count - 2].'.'.$labels[$count - 1];
+        $keep = in_array($ending, self::TWO_LABEL_ENDINGS, true) ? 3 : 2;
+
+        return implode('.', array_slice($labels, -$keep));
+    }
+
+    /** A stored hostname as people read it: `bảo-sơn.vn`, not its punycode. */
+    public static function display(string $host): string
+    {
+        if (! str_contains($host, 'xn--')) {
+            return $host;
+        }
+
+        $unicode = idn_to_utf8($host, IDNA_DEFAULT, INTL_IDNA_VARIANT_UTS46);
+
+        return is_string($unicode) && $unicode !== '' ? $unicode : $host;
     }
 
     /**

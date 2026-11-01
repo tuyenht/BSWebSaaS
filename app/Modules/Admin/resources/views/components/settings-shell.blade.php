@@ -40,6 +40,10 @@
                 $workspace[] = ['key' => 'workflow', 'route' => 'admin.settings.workflows', 'label' => __('admin.workflow_settings')];
             }
         }
+        // Domains are readable with domains.view alone (changes need domains.manage on the page).
+        if (Route::has('admin.settings.domains') && \Illuminate\Support\Facades\Gate::allows('domains.view')) {
+            $workspace[] = ['key' => 'domains', 'route' => 'admin.settings.domains', 'label' => __('admin.domains')];
+        }
         if ($workspace !== []) {
             $nav[] = ['group' => __('admin.settings_workspace'), 'items' => $workspace];
         }
