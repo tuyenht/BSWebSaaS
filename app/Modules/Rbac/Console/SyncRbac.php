@@ -150,9 +150,10 @@ final class SyncRbac extends Command
         $granted = 0;
 
         foreach (Role::query()->where('is_system', false)->with('permissions')->get() as $role) {
-            $current = $role->permissions->pluck('name')
-                ->map(fn ($name): string => is_string($name) ? $name : '')
-                ->all();
+            $current = array_values(array_map(
+                fn ($name): string => is_string($name) ? $name : '',
+                $role->permissions->pluck('name')->all(),
+            ));
             $missing = array_values(array_diff(PermissionRegistry::withImplied($current), $current));
 
             if ($missing !== []) {
