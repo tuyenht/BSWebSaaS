@@ -18,6 +18,10 @@
         'pending' => ['[--c:var(--color-warning-text)]', 'ri-inbox-unarchive'],
         'private' => ['[--c:var(--color-primary-text)]', 'ri-lock-2'],
         'archived' => ['[--c:var(--color-text-muted)]', 'ri-archive'],
+        // a customer or a website on the platform: running, paused, still being set up
+        'active' => ['[--c:var(--color-success-text)]', 'ri-checkbox-circle'],
+        'suspended' => ['[--c:var(--color-warning-text)]', 'ri-pause-circle'],
+        'provisioning' => ['[--c:var(--color-info-text)]', 'ri-loader-4'],
     ];
     [$tone, $icon] = $tones[$status] ?? ['[--c:var(--color-text)]', null];
 

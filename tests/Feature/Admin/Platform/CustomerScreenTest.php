@@ -1,0 +1,283 @@
+<?php
+
+use App\Modules\Admin\Livewire\Platform\Tenants\Detail;
+use App\Modules\Admin\Livewire\Platform\Tenants\Index;
+use App\Modules\Identity\Models\User;
+use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Rbac\Support\PlatformAccess;
+use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Livewire\Livewire;
+
+/*
+ * The platform's customer screens (design 03 "Khách hàng"): the list and one customer's page.
+ * `tenants` is platform-wide (no RLS), read with no tenant context and only by staff who hold
+ * platform.tenants.view. Customers are addressed by ulid, never by id. The list reads newest
+ * first, page by page from the last row seen; the search ignores diacritics and covers the
+ * customer's name and its owner's name and email. The member's page size and columns are their
+ * own, each saved on its own without touching the rest of their preferences.
+ */
+
+beforeEach(function (): void {
+    truncateRbac();
+    seedTenancy(); // customer T1 (id 1) with websites A (a.test) and B (b.test)
+    DB::connection('pgsql_admin')->statement('delete from plans');
+    $this->artisan('rbac:sync')->assertSuccessful();
+    app(TeamContext::class)->forget();
+    app(PlatformAccess::class)->forgetMemo();
+    app()->setLocale('vi'); // Livewire::test renders outside the locale middleware
+    // the seeded ulid is not a real one, and the screens take only real ones from the browser
+    DB::connection('pgsql_admin')->table('tenants')->where('id', 1)->update(['ulid' => (string) Str::ulid()]);
+});
+
+function khStaff(string $role): User
+{
+    $user = User::factory()->create();
+    app(PlatformAccess::class)->onPlatform(fn () => $user->assignRole($role));
+    app(PlatformAccess::class)->forgetMemo();
+
+    return $user->fresh();
+}
+
+/**
+ * @param  array<string, mixed>  $attributes
+ */
+function khCustomer(string $name, array $attributes = []): string
+{
+    $ulid = (string) Str::ulid();
+    DB::connection('pgsql_admin')->table('tenants')->insert($attributes + [
+        'ulid' => $ulid, 'name' => $name, 'status' => 'active', 'settings' => '{}', 'created_at' => now(), 'updated_at' => now(),
+    ]);
+
+    return $ulid;
+}
+
+function khPlan(string $key, string $name, bool $active = true): int
+{
+    return (int) DB::connection('pgsql_admin')->table('plans')->insertGetId([
+        'key' => $key, 'name' => $name, 'is_active' => $active, 'sort_order' => 0, 'created_at' => now(), 'updated_at' => now(),
+    ]);
+}
+
+function khHost(): string
+{
+    return 'http://'.config('tenancy.platform_host');
+}
+
+it('lists customers with their owner, plan, websites and join date, linked by ulid only', function (): void {
+    $owner = User::factory()->create(['name' => 'Nguyễn Văn Hùng', 'email' => 'hung@anvinh.test']);
+    $plan = khPlan('pro', 'Chuyên nghiệp');
+    DB::connection('pgsql_admin')->table('tenants')->where('id', 1)->update(['name' => 'Cơ khí An Vinh', 'owner_user_id' => $owner->id, 'plan_id' => $plan]);
+    $ulid = (string) DB::connection('pgsql_admin')->table('tenants')->where('id', 1)->value('ulid');
+
+    $this->actingAs(khStaff('super_admin'))->get(khHost().'/tenants')
+        ->assertOk()
+        ->assertSee('Cơ khí An Vinh')
+        ->assertSee('Nguyễn Văn Hùng')
+        ->assertSee('hung@<wbr>anvinh.<wbr>test', false)
+        ->assertSee('Chuyên nghiệp')
+        ->assertSee('2 website')
+        ->assertSee(route('platform.tenants.show', $ulid))
+        ->assertDontSee('/tenants/1"', false)
+        // a super admin can do everything here: no note about a limited group
+        ->assertDontSee(__('admin.customers_role_strip_support'))
+        ->assertDontSee(__('admin.customers_role_strip_billing'));
+});
+
+it('finds customers without diacritics by name, owner name or owner email', function (): void {
+    $owner = User::factory()->create(['name' => 'Nguyễn Thị Lan', 'email' => 'Lan.Tran@Example.test']);
+    $byName = khCustomer('Nha khoa Tâm Đức');
+    $byOwner = khCustomer('Spa Hoa Sen', ['owner_user_id' => $owner->id]);
+    $other = khCustomer('Cửa hàng Bình An');
+    $page = Livewire::actingAs(khStaff('support'))->test(Index::class);
+
+    $found = fn (string $q): array => $page->set('search', $q)->viewData('rows')->pluck('ulid')->map(fn ($u): string => trim((string) $u))->all();
+
+    expect($found('tam duc'))->toBe([$byName])
+        ->and($found('NGUYEN'))->toBe([$byOwner])
+        ->and($found('lan.tran@'))->toBe([$byOwner])
+        ->and($found('binh an'))->toBe([$other])
+        ->and($found('khong co ai'))->toBe([]);
+    $page->assertSee(__('admin.customers_nomatch_title'));
+});
+
+it('reads newest first, page by page, with no customer repeated or skipped', function (): void {
+    $at = now()->subDay();
+    $made = [];
+    for ($i = 0; $i < 25; $i++) {
+        // the same moment for all: the id breaks the tie
+        $made[] = khCustomer('Khách '.$i, ['created_at' => $at, 'updated_at' => $at]);
+    }
+    $expected = DB::connection('pgsql_admin')->table('tenants')->orderByDesc('created_at')->orderByDesc('id')->pluck('ulid')
+        ->map(fn ($u): string => trim((string) $u))->all();
+
+    $page = Livewire::actingAs(khStaff('support'))->test(Index::class)->set('per', 10);
+    $seen = [];
+    $first = $page->viewData('rows')->pluck('ulid')->map(fn ($u): string => trim((string) $u))->all();
+    $seen = [...$seen, ...$first];
+    while (($older = $page->viewData('older')) !== null) {
+        $page->call('older', $older);
+        $seen = [...$seen, ...$page->viewData('rows')->pluck('ulid')->map(fn ($u): string => trim((string) $u))->all()];
+    }
+
+    expect($seen)->toBe($expected)->and($seen)->toHaveCount(26);
+
+    // and back: the page before the second is the first again
+    $page->set('after', '')->set('before', '');
+    $page->call('older', $page->viewData('older'));
+    $page->call('newer', $page->viewData('newer'));
+    expect($page->viewData('rows')->pluck('ulid')->map(fn ($u): string => trim((string) $u))->all())->toBe($first);
+
+    // a cursor from the browser that is not a ulid is dropped, never used as an id
+    $page->set('after', '3')->assertSet('after', '');
+});
+
+it('counts the status groups and filters by plan, a plan no longer sold included', function (): void {
+    $pro = khPlan('pro', 'Chuyên nghiệp');
+    $old = khPlan('old', 'Cũ', false);
+    $a = khCustomer('An Phát', ['plan_id' => $pro]);
+    khCustomer('Bảo Minh', ['plan_id' => $old, 'status' => 'suspended']);
+    $page = Livewire::actingAs(khStaff('support'))->test(Index::class);
+
+    expect($page->viewData('counts'))->toBe(['all' => 3, 'active' => 2, 'suspended' => 1]);
+
+    $page->set('plans', ['pro']);
+    expect($page->viewData('rows')->pluck('ulid')->map(fn ($u): string => trim((string) $u))->all())->toBe([$a])
+        ->and($page->viewData('counts'))->toBe(['all' => 1, 'active' => 1, 'suspended' => 0]);
+    $page->assertSee(__('admin.customers_filter_summary_of', ['n' => 1, 'm' => 3]));
+
+    $page->set('plans', ['old'])->set('tab', 'suspended');
+    expect($page->viewData('rows')->pluck('name')->all())->toBe(['Bảo Minh']);
+    $page->assertSee(__('admin.customers_plan_legacy', ['plan' => 'Cũ']));
+
+    // unknown values from the browser fall back to safe ones
+    $page->set('tab', 'deleted')->assertSet('tab', 'all')->set('plans', ['nope'])->assertSet('plans', ['nope']);
+    expect($page->viewData('rows'))->toHaveCount(3);
+});
+
+it('keeps the member\'s page size and columns, each written without touching their other choices', function (): void {
+    $user = khStaff('support');
+    $user->forceFill(['preferences' => ['theme' => ['scheme' => 'dark'], 'lists' => ['other.list' => ['per' => 50]]]])->save();
+
+    Livewire::actingAs($user)->test(Index::class)->set('per', 50)->set('cols', ['joined', 'plan', 'nope']);
+
+    $prefs = $user->fresh()->preferences;
+    expect($prefs['theme'])->toBe(['scheme' => 'dark'])
+        ->and($prefs['lists']['other.list'])->toBe(['per' => 50])
+        ->and($prefs['lists'][Index::PREFS]['per'])->toBe(50)
+        ->and($prefs['lists'][Index::PREFS]['cols'])->toBe(['plan', 'joined']);
+
+    // the next visit starts from them; a hidden column is not drawn
+    Livewire::actingAs($user->fresh())->test(Index::class)
+        ->assertSet('per', 50)->assertSet('cols', ['plan', 'joined'])
+        ->assertDontSeeHtml('list-c-f2')
+        ->assertSeeHtml('list-c-f3')
+        ->assertSee(__('admin.customers_columns_hidden', ['n' => 1]));
+});
+
+it('shows one customer: owner, plan values, websites with their main domain', function (): void {
+    $owner = User::factory()->create(['name' => 'Trần Minh', 'email' => 'minh@example.test']);
+    $plan = khPlan('pro', 'Chuyên nghiệp');
+    DB::connection('pgsql_admin')->table('plan_features')->insert(['plan_id' => $plan, 'feature_key' => 'locales.max', 'value' => '3']);
+    DB::connection('pgsql_admin')->table('tenants')->where('id', 1)->update(['owner_user_id' => $owner->id, 'plan_id' => $plan]);
+    $ulid = trim((string) DB::connection('pgsql_admin')->table('tenants')->where('id', 1)->value('ulid'));
+
+    $this->actingAs(khStaff('super_admin'))->get(khHost().'/tenants/'.$ulid)
+        ->assertOk()
+        ->assertSee('Trần Minh')
+        ->assertSee('mailto:minh@example.test', false)
+        ->assertSee(__('admin.customers_plan_tag', ['plan' => 'Chuyên nghiệp']))
+        ->assertSeeInOrder(['Số ngôn ngữ tối đa', '3'])
+        ->assertSee(__('admin.customers_sites_usage', ['used' => 2, 'max' => 1]))
+        ->assertSee('a.test')
+        ->assertSee(route('platform.sites.show', trim((string) DB::connection('pgsql_admin')->table('sites')->where('id', 1)->value('ulid'))));
+});
+
+it('says why a customer is suspended, and shows no line when no reason was given', function (): void {
+    DB::connection('pgsql_admin')->table('tenants')->where('id', 1)->update(['status' => 'suspended', 'settings' => json_encode(['suspension_reason' => 'Quá hạn thanh toán'])]);
+    $ulid = trim((string) DB::connection('pgsql_admin')->table('tenants')->where('id', 1)->value('ulid'));
+    $silent = khCustomer('Không lý do', ['status' => 'suspended']);
+    $staff = khStaff('support');
+
+    $this->actingAs($staff)->get(khHost().'/tenants/'.$ulid)->assertOk()
+        ->assertSee(__('admin.customers_suspended_why', ['why' => 'Quá hạn thanh toán']));
+    $this->actingAs($staff)->get(khHost().'/tenants/'.$silent)->assertOk()
+        ->assertDontSee('Đang tạm ngưng:');
+});
+
+it('answers an unknown customer address with 404 and a way back', function (): void {
+    $this->actingAs(khStaff('support'))->get(khHost().'/tenants/'.Str::ulid())
+        ->assertNotFound()
+        ->assertSee(__('admin.customers_notfound_title'))
+        ->assertSee(route('platform.tenants.index'));
+
+    $this->actingAs(khStaff('support'))->get(khHost().'/tenants/1')->assertNotFound();
+});
+
+it('locks plan changes for support, with the reason, and keeps website pages from billing', function (): void {
+    $ulid = trim((string) DB::connection('pgsql_admin')->table('tenants')->where('id', 1)->value('ulid'));
+    $siteLink = route('platform.sites.show', trim((string) DB::connection('pgsql_admin')->table('sites')->where('id', 1)->value('ulid')));
+
+    $support = khStaff('support');
+    $this->actingAs($support)->get(khHost().'/tenants')->assertOk()
+        ->assertSee(__('admin.customers_role_strip_support'))
+        ->assertSee(__('admin.customers_plan_locked', ['role' => __('admin.customers_role_support')]))
+        ->assertSeeHtml('list-mi-locked');
+    $this->actingAs($support)->get(khHost().'/tenants/'.$ulid)->assertOk()
+        ->assertSee('aria-disabled="true"', false)
+        ->assertSee($siteLink);
+
+    $billing = khStaff('billing');
+    $this->actingAs($billing)->get(khHost().'/tenants')->assertOk()
+        ->assertSee(__('admin.customers_role_strip_billing'))
+        ->assertDontSeeHtml('list-mi-locked')
+        ->assertSee(__('admin.customers_action_change_plan'));
+    $this->actingAs($billing)->get(khHost().'/tenants/'.$ulid)->assertOk()
+        ->assertDontSee($siteLink)
+        ->assertSee(__('admin.customers_sites_locked'));
+});
+
+it('forbids anyone without platform.tenants.view, on the page and on every update', function (): void {
+    $user = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'admin', ['users.manage', 'entries.view']));
+    $ulid = trim((string) DB::connection('pgsql_admin')->table('tenants')->where('id', 1)->value('ulid'));
+
+    $this->actingAs($user)->get(khHost().'/tenants')->assertForbidden();
+    $this->actingAs($user)->get(khHost().'/tenants/'.$ulid)->assertForbidden();
+    Livewire::actingAs($user)->test(Index::class)->assertForbidden();
+    Livewire::actingAs($user)->test(Detail::class, ['ulid' => $ulid])->assertForbidden();
+});
+
+it('reads the list and a customer in a fixed number of queries, however many there are', function (): void {
+    $staff = khStaff('billing');
+    $plan = khPlan('pro', 'Chuyên nghiệp');
+    $owner = User::factory()->create();
+    $listQueries = function () use ($staff): int {
+        $this->actingAs($staff)->get(khHost().'/tenants')->assertOk(); // warm up: grants, settings
+
+        return countQueries(fn () => $this->actingAs($staff)->get(khHost().'/tenants')->assertOk());
+    };
+    $ulid = trim((string) DB::connection('pgsql_admin')->table('tenants')->where('id', 1)->value('ulid'));
+    $detailQueries = function () use ($staff, $ulid): int {
+        $this->actingAs($staff)->get(khHost().'/tenants/'.$ulid)->assertOk();
+
+        return countQueries(fn () => $this->actingAs($staff)->get(khHost().'/tenants/'.$ulid)->assertOk());
+    };
+
+    $fewList = $listQueries();
+    $fewDetail = $detailQueries();
+    for ($i = 0; $i < 15; $i++) {
+        khCustomer('Khách '.$i, ['plan_id' => $plan, 'owner_user_id' => $owner->id]);
+    }
+    $admin = DB::connection('pgsql_admin');
+    for ($i = 0; $i < 4; $i++) {
+        $site = (int) $admin->table('sites')->insertGetId(['ulid' => (string) Str::ulid(), 'tenant_id' => 1, 'name' => 'S'.$i, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $admin->table('domains')->insert(['site_id' => $site, 'hostname' => "s{$i}.test", 'is_primary' => true, 'kind' => 'custom', 'created_at' => now(), 'updated_at' => now()]);
+    }
+
+    expect($listQueries())->toBe($fewList)
+        ->and($detailQueries())->toBe($fewDetail)
+        ->and($fewList)->toBeLessThanOrEqual(30)
+        ->and($fewDetail)->toBeLessThanOrEqual(30);
+});

@@ -24,6 +24,7 @@ use App\Modules\Admin\Livewire\Placeholder;
 use App\Modules\Admin\Livewire\Platform\Audit\Index as PlatformAuditIndex;
 use App\Modules\Admin\Livewire\Platform\Sites\Detail as PlatformSitesDetail;
 use App\Modules\Admin\Livewire\Platform\Sites\Index as PlatformSitesIndex;
+use App\Modules\Admin\Livewire\Platform\Tenants\ChangePlanDialog as PlatformChangePlanDialog;
 use App\Modules\Admin\Livewire\Platform\Tenants\Detail as PlatformTenantsDetail;
 use App\Modules\Admin\Livewire\Platform\Tenants\Index as PlatformTenantsIndex;
 use App\Modules\Admin\Livewire\ResetPassword;
@@ -105,6 +106,7 @@ final class AdminServiceProvider extends ServiceProvider
         Livewire::component('admin.users.index', UsersIndex::class);
         Livewire::component('admin.platform.tenants.index', PlatformTenantsIndex::class);
         Livewire::component('admin.platform.tenants.detail', PlatformTenantsDetail::class);
+        Livewire::component('admin.platform.tenants.change-plan-dialog', PlatformChangePlanDialog::class);
         Livewire::component('admin.platform.sites.index', PlatformSitesIndex::class);
         Livewire::component('admin.platform.sites.detail', PlatformSitesDetail::class);
         Livewire::component('admin.platform.audit.index', PlatformAuditIndex::class);
