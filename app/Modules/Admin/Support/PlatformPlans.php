@@ -132,6 +132,9 @@ final readonly class PlatformPlans
         }
 
         $was = app(ChangeCustomerPlan::class)->handle($customer, $plan, $reason, Cast::int($actor->getKey()));
+        if ($was === $plan?->id) {
+            return;
+        }
 
         $this->audit($actor, 'tenancy.customer.plan_changed', array_filter([
             'customer' => $customer->ulid,

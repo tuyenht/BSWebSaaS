@@ -170,6 +170,10 @@ final class PlatformPlanCommand extends Command
         }
 
         $was = app(ChangeCustomerPlan::class)->handle($customer, $plan, $reason);
+        if ($was === $plan->id) {
+            return $this->done();
+        }
+
         $this->audit('provisioning.customer.plan_changed', array_filter([
             'customer' => $customer->ulid,
             'from' => $was === null ? null : Plan::query()->whereKey($was)->value('key'),

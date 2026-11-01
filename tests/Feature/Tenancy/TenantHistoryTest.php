@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Support\PlatformPlans;
+use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Support\PlatformAccess;
@@ -85,7 +86,8 @@ it('records nothing when the customer stays on the same plan', function (): void
     app(PlatformPlans::class)->changeCustomerPlan($staff, $tenant, $pro, 'Ký hợp đồng');
     app(PlatformPlans::class)->changeCustomerPlan($staff, $tenant, $pro, 'Bấm lại');
 
-    expect(TenantHistory::query()->count())->toBe(1);
+    expect(TenantHistory::query()->count())->toBe(1)
+        ->and(AuditLog::query()->where('action', 'tenancy.customer.plan_changed')->count())->toBe(1);
 });
 
 it('records nothing for a refused change', function (): void {

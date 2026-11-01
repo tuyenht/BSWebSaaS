@@ -24,17 +24,19 @@ use Illuminate\Support\Facades\DB;
  * at once each record the plan the other left.
  *
  * Who may change a customer's plan, and checking the reason (at most 500 characters), are the
- * caller's; so is the audit entry.
+ * caller's; so is the audit entry, which the caller skips when the returned plan is the one
+ * asked for (nothing changed, nothing to record).
  */
 final readonly class ChangeCustomerPlan
 {
     /**
+     * @param  string  $reason  why, as staff gave it; the history row keeps it
      * @param  int|null  $actorUserId  who made the change; null from the console
      * @return int|null the id of the plan the customer was on
      *
      * @throws PlanChangeRejectedException plan_not_sold
      */
-    public function handle(Tenant $customer, ?Plan $plan, ?string $reason = null, ?int $actorUserId = null): ?int
+    public function handle(Tenant $customer, ?Plan $plan, string $reason, ?int $actorUserId = null): ?int
     {
         $to = $plan?->id;
 

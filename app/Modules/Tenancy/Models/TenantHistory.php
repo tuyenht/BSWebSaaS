@@ -27,9 +27,7 @@ final class TenantHistory extends Model
 
     public const UPDATED_AT = null;
 
-    #[\Override]
     protected $table = 'tenant_history';
 
-    #[\Override]
     protected $guarded = [];
 }
