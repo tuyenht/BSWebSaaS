@@ -101,6 +101,19 @@ it('creates a blank custom role below the creator, normalized and audited', func
         ->and(consoleIn(1, fn (): bool => AuditLog::query()->where('action', 'rbac.role.created')->exists()))->toBeTrue(); // R6
 });
 
+it('lets a member whose role manages domains also see them', function (): void {
+    consoleSite(1);
+    $owner = consoleTemplateUser(1, 'owner');
+    $admin = consoleTemplateUser(1, 'admin');
+
+    $role = consoleIn(1, fn (): Role => app(CreateCustomRole::class)->handle($owner->fresh(), 'Quản lý tên miền', 40, ['domains.manage']));
+    $member = consoleUserWith(1, $role);
+
+    expect($role->permissions->pluck('name')->all())->toEqualCanonicalizing(['domains.manage', 'domains.view'])
+        ->and(consoleIn(1, fn (): bool => $member->fresh()->can('domains.view')))->toBeTrue()
+        ->and(consoleIn(1, fn (): bool => $admin->fresh()->can('domains.view')))->toBeTrue();
+});
+
 it('forks a system role, remembering where it came from', function (): void {
     consoleSite(1);
     $owner = consoleTemplateUser(1, 'owner');

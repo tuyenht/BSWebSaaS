@@ -68,6 +68,33 @@ it('back-fills drifted PER-SITE template roles (the genesis/prod shape)', functi
     expect($viewerHas)->toBeTrue();
 });
 
+it('back-fills the read-only domains permission on an existing site\'s editor and viewer roles', function (): void {
+    // A site provisioned before `domains.view` existed: its editor and viewer roles lack it.
+    foreach (['editor', 'viewer'] as $name) {
+        Role::query()->where('site_id', 1)->where('name', $name)->firstOrFail()->revokePermissionTo('domains.view');
+    }
+    $editor = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => $editor->assignRole(Role::query()->where('site_id', 1)->where('name', 'editor')->firstOrFail()));
+    $canView = fn (string $role): bool => DB::table('role_has_permissions')
+        ->join('roles', 'roles.id', '=', 'role_has_permissions.role_id')
+        ->join('permissions', 'permissions.id', '=', 'role_has_permissions.permission_id')
+        ->where('roles.site_id', 1)->where('roles.name', $role)
+        ->where('permissions.name', 'domains.view')
+        ->exists();
+
+    expect(app(Tenancy::class)->enter(1, fn (): bool => $editor->fresh()->can('domains.view')))->toBeFalse();
+
+    $this->artisan('rbac:sync')->assertSuccessful();
+    $this->artisan('rbac:sync')->assertSuccessful(); // re-runnable: the second run adds nothing
+
+    expect($canView('editor'))->toBeTrue()
+        ->and($canView('viewer'))->toBeTrue()
+        ->and($canView('author'))->toBeFalse()
+        ->and($canView('contributor'))->toBeFalse()
+        ->and(app(Tenancy::class)->enter(1, fn (): bool => $editor->fresh()->can('domains.view')))->toBeTrue()
+        ->and(app(Tenancy::class)->enter(1, fn (): bool => $editor->fresh()->can('domains.manage')))->toBeFalse();
+});
+
 it('back-fills drifted SHARED team-0 template roles (the legacy leak shape)', function (): void {
     // Reproduce an environment provisioned under the old leak: tenant roles live on team 0.
     DB::table('roles')->whereIn('name', ['owner', 'admin', 'editor', 'author', 'contributor', 'viewer'])
