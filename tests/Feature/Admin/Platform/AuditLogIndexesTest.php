@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Livewire\Platform\Audit\Index;
+use App\Modules\Admin\Support\Customers\CustomerDirectory;
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
@@ -163,7 +164,52 @@ it('defines the name and email search indexes on the expressions the search writ
     'person name' => fn (): array => ['users_name_fold_trgm_index', 'users', auditFoldedName()],
     'person email' => ['users_email_lower_trgm_index', 'users', 'lower((email)::text)'],
     'website name' => fn (): array => ['sites_name_fold_trgm_index', 'sites', auditFoldedName()],
+    'customer name' => fn (): array => ['tenants_name_fold_trgm_index', 'tenants', auditFoldedName()],
 ]);
+
+it('indexes the customers of an owner, which the customer search looks up', function (): void {
+    $row = DB::selectOne('select pg_get_indexdef(indexrelid) as def, indisvalid as valid from pg_index where indexrelid = to_regclass(?)', ['tenants_owner_user_id_index']);
+
+    expect($row)->not->toBeNull('tenants_owner_user_id_index is missing')
+        ->and($row->valid)->toBeTrue()
+        ->and($row->def)->toBe('CREATE INDEX tenants_owner_user_id_index ON public.tenants USING btree (owner_user_id)');
+});
+
+it('plans the customer search on the customer and owner indexes', function (): void {
+    // 2,000 customers with an owner each, analysed: with a handful of rows (and statistics an
+    // earlier test left) the planner reads the primary keys instead, whatever the other indexes
+    $admin = DB::connection('pgsql_admin');
+    $admin->statement("delete from users where email like 'ix-plan-%'");
+    $admin->statement(<<<'SQL'
+        insert into users (ulid, name, email, password, created_at, updated_at)
+        select lpad(upper(to_hex(i)), 26, 'P'), 'Chủ ' || (array['Nguyễn','Trần','Lê','Phạm','Hoàng'])[1 + i % 5] || ' ' || i,
+               'ix-plan-' || i || '@example.test', 'x', now(), now()
+        from generate_series(1, 2000) as i
+        SQL);
+    $admin->statement(<<<'SQL'
+        insert into tenants (ulid, name, status, settings, owner_user_id, created_at, updated_at)
+        select lpad(upper(to_hex(id)), 26, 'Q'), 'Công ty ' || id, 'active', '{}', id, now(), now()
+        from users where email like 'ix-plan-%'
+        SQL);
+    $admin->statement('vacuum analyze users, tenants');
+
+    $sent = [];
+    DB::listen(function (QueryExecuted $query) use (&$sent): void {
+        if (str_starts_with($query->sql, 'with customer_matches')) {
+            $sent[] = ['sql' => $query->sql, 'bindings' => $query->bindings];
+        }
+    });
+    app(CustomerDirectory::class)->page('ix-plan-1234@', '', [], 20, '', ''); // one owner, by email
+
+    expect($sent)->toHaveCount(1)
+        ->and(auditPlannedIndexes($sent[0]['sql'], $sent[0]['bindings']))
+        ->toContain('tenants_name_fold_trgm_index')
+        ->toContain('users_name_fold_trgm_index')
+        ->toContain('users_email_lower_trgm_index')
+        ->toContain('tenants_owner_user_id_index');
+
+    $admin->statement("delete from users where email like 'ix-plan-%'"); // the customers go with the next seedTenancy()
+});
 
 it('plans the search for people on the trigram indexes, without a change to its SQL', function (): void {
     ['sql' => $sql, 'bindings' => $bindings] = auditPageQuery(['q' => 'Nguyễn']);

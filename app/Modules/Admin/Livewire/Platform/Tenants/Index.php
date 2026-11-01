@@ -147,11 +147,16 @@ final class Index extends Component
                 $status = $this->tab === 'all' ? '' : $this->tab;
                 $narrowed = trim($this->search) !== '' || $chosen !== [];
 
-                return $directory->page($this->search, $status, $chosen, $this->per, $this->after, $this->before) + [
-                    'counts' => $directory->groupCounts($this->search, $chosen),
-                    'planCounts' => $directory->planCounts($this->search),
+                $page = $directory->page($this->search, $status, $chosen, $this->per, $this->after, $this->before);
+
+                return [
+                    'rows' => $page['rows'],
+                    'older' => $page['older'],
+                    'newer' => $page['newer'],
+                    'counts' => $page['counts']['groups'],
+                    'planCounts' => $page['counts']['plans'],
                     // "N trong M": M is the same group with neither the search nor the plans
-                    'baseCounts' => $narrowed ? $directory->groupCounts('', []) : null,
+                    'baseCounts' => $narrowed ? $directory->counts('', [])['groups'] : null,
                 ];
             });
         } catch (QueryException $e) {
