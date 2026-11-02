@@ -2,7 +2,9 @@
     A category list page as a card grid (layouts grid-product / grid-project / grid-news). The
     category title band carries the page's single h1 (no photo: a solid band), so card titles are
     h2. Chips link to the child categories' own pages. The first card's photo is the likely LCP
-    image (high priority), the next two load eagerly, the rest lazily. `cards` and `chips` are
+    image (high priority); the rest load lazily, so on a phone, where the grid is one column, the
+    photos below the fold do not compete with it (on a wide screen the browser still fetches the
+    ones in view at once). `cards` and `chips` are
     built by the controller from stored routes; no id reaches the markup.
 --}}
 @php
@@ -38,7 +40,7 @@
 @if (count($sfCards) > 0)
             <ul class="sf-grid {{ $sfGrid }}">
 @foreach ($sfCards as $index => $card)
-                <li>@include('theme::partials.sf-card', ['card' => $card, 'kind' => $sfKind, 'level' => 'h2', 'sizes' => $sfSizes, 'priority' => $index === 0 ? 'high' : ($index < 3 ? 'eager' : 'lazy')])</li>
+                <li>@include('theme::partials.sf-card', ['card' => $card, 'kind' => $sfKind, 'level' => 'h2', 'sizes' => $sfSizes, 'priority' => $index === 0 ? 'high' : 'lazy'])</li>
 @endforeach
             </ul>
 @if (! empty($pagination['prevUrl']) || ! empty($pagination['nextUrl']) || ! empty($pagination['firstUrl']))

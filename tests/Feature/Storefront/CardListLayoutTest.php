@@ -7,8 +7,8 @@ use Tests\Fixtures\StorefrontCards;
 
 /*
  * Category lists as card grids (list templates grid-news / grid-project / grid-product): the title
- * band is the page's one h1 and card titles are h2; the first photo is high priority, the next two
- * eager; child-category chips link to the children's own pages; a parent lists its whole subtree;
+ * band is the page's one h1 and card titles are h2; the first photo is high priority, the rest
+ * lazy; child-category chips link to the children's own pages; a parent lists its whole subtree;
  * a category under the catalog root lists its products on either layout; dates are the site's
  * local day; empty lists say so; another site's rows never show.
  */
@@ -66,16 +66,15 @@ it('makes the title band the one h1 and card titles h2', function (string $path)
         ->and($html)->not->toContain('<h3 class="sf-card__title"');
 })->with(['/tin-tuc', '/san-pham']);
 
-it('loads the first photo with high priority, the next two eagerly and the rest lazily', function (): void {
+it('loads the first photo with high priority and the rest lazily', function (): void {
     cardSite();
     preg_match_all('#<img class="sf-card__img"[^>]*>#', cardPage('/tin-tuc'), $images);
 
     expect($images[0])->toHaveCount(5)
-        ->and($images[0][0])->toContain('loading="eager" fetchpriority="high"')
-        ->and($images[0][1])->toContain('loading="eager" decoding="async"')
-        ->and($images[0][2])->toContain('loading="eager" decoding="async"')
-        ->and($images[0][3])->toContain('loading="lazy"')
-        ->and($images[0][4])->toContain('loading="lazy"');
+        ->and($images[0][0])->toContain('loading="eager" fetchpriority="high"');
+    foreach (array_slice($images[0], 1) as $image) {
+        expect($image)->toContain('loading="lazy" decoding="async"')->not->toContain('fetchpriority');
+    }
 });
 
 it('frames photos by kind: 8:5 for news and projects, 4:3 for products', function (): void {
