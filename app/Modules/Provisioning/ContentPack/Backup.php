@@ -23,7 +23,8 @@ use Illuminate\Support\Facades\DB;
  * Before --apply writes anything: a gzip JSON file of every row the plan is about to change (per
  * item: the record, its translations, routes, category links, images, image-usage rows or menu
  * tree; for a category, the routes of the posts and products it carries along; settings; the
- * profile; redirects) plus every redirect from or to an address the load moves, writes or vacates,
+ * profile; redirects) plus every redirect from or to an address the load moves, writes or vacates
+ * (the new addresses of the posts and products a category carries along included),
  * and the previous ledger, so one item can be inspected or restored by hand.
  * `storage/app/private/content-pack-backups/<site-ulid>/<pack>-v<version>-<UTC>-<fingerprint>.json.gz`, mode
  * 0600, flushed to disk with its folder and re-read before the write transaction opens. Rows are read inside the
@@ -64,6 +65,11 @@ final readonly class Backup
             }
             foreach ($planner->plannedPaths()[$planned->item->key] ?? [] as $locale => $path) {
                 $paths[$locale][$path] = true;
+            }
+            // The new addresses of the posts and products a category write carries along: RouteSync
+            // drops the redirect from each of them too.
+            foreach ($planner->carriedMoves()[$planned->item->key] ?? [] as $move) {
+                $paths[$move['locale']][$move['to']] = true;
             }
         }
 

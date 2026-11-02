@@ -1,7 +1,10 @@
 <?php
 
 use App\Modules\Admin\Livewire\Entries\Editor;
+use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Actions\RecordEntryRevision;
+use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
+use App\Modules\Cms\Data\TaxonomyData;
 use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryDraft;
@@ -9,11 +12,15 @@ use App\Modules\Cms\Models\EntryRevision;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
+use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Identity\Models\User;
+use App\Modules\Provisioning\ContentPack\Applier;
 use App\Modules\Provisioning\ContentPack\Ledger;
 use App\Modules\Provisioning\ContentPack\PackReader;
+use App\Modules\Provisioning\ContentPack\Plan;
+use App\Modules\Provisioning\ContentPack\PlanItem;
 use App\Modules\Provisioning\ContentPack\Planner;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Models\Site;
@@ -443,33 +450,155 @@ it('plans as a conflict every address the load would write that already belongs 
     }, 'tax:post_cat/tin-tuc/ban-tin'],
 ]);
 
-it('plans the same addresses the platform then writes, under every permalink preset', function (array $posts, array $products): void {
+/** The last plan's addresses: [planned paths, carried moves], planned in the site's tenant context. @return array{0: array<string, array<string, string>>, 1: array<string, list<array<string, mixed>>>} */
+function cpPlannedAddresses(int $siteId): array
+{
+    return ContentPacks::in($siteId, function (): array {
+        $planner = app(Planner::class);
+        $planner->plan(app(PackReader::class)->read('demo-co'), (string) Site::query()->value('ulid'), 'Demo', ContentPacks::HOST);
+
+        return [$planner->plannedPaths(), $planner->carriedMoves()];
+    });
+}
+
+/**
+ * A published post or product staff filed primarily under a category, routed in every language it
+ * has a slug in. Returns its id.
+ *
+ * @param  array<string, string>  $slugs  locale → slug
+ */
+function cpStaffItem(int $siteId, string $kind, array $slugs, string $categorySlug): int
+{
+    return ContentPacks::in($siteId, function () use ($kind, $slugs, $categorySlug): int {
+        $category = (int) TaxonomyTranslation::query()->where('slug', $categorySlug)->value('taxonomy_id');
+        if ($kind === 'product') {
+            $product = Product::query()->create(['status' => 'published', 'published_at' => now()]);
+            foreach ($slugs as $locale => $slug) {
+                $product->translations()->create(['locale' => $locale, 'name' => $slug, 'slug' => $slug]);
+            }
+            $product->assignCategories([$category]);
+            $product->unsetRelation('taxonomies');
+            foreach ($slugs as $locale => $slug) {
+                app(RouteSync::class)->syncProduct($product->id, $product->primaryCategory(), $locale, $slug);
+            }
+
+            return $product->id;
+        }
+        $post = Entry::query()->create(['type' => 'post', 'status' => 'published', 'published_at' => now()]);
+        foreach ($slugs as $locale => $slug) {
+            $post->translations()->create(['locale' => $locale, 'title' => $slug, 'slug' => $slug, 'status' => 'published', 'body' => ['blocks' => []]]);
+        }
+        $post->assignCategories([$category]);
+        $post->unsetRelation('taxonomies');
+        foreach ($slugs as $locale => $slug) {
+            app(RouteSync::class)->sync($post, $locale, $slug);
+        }
+
+        return $post->id;
+    });
+}
+
+/** Staff gives a category a name and an address in another language. */
+function cpStaffCategoryIn(int $siteId, string $slug, string $locale, string $localized): void
+{
+    ContentPacks::in($siteId, function () use ($slug, $locale, $localized): void {
+        $taxonomy = Taxonomy::query()->findOrFail(TaxonomyTranslation::query()->where('slug', $slug)->value('taxonomy_id'));
+        $taxonomy->translations()->create(['locale' => $locale, 'name' => $localized, 'slug' => $localized]);
+        app(RouteSync::class)->syncTaxonomy($taxonomy, $locale, $localized);
+    });
+}
+
+function cpEnableEnglish(int $siteId): void
+{
+    ContentPacks::in($siteId, fn () => SiteLocale::query()->create(['locale' => 'en', 'is_default' => false, 'enabled' => true]));
+}
+
+/** Every route of these posts and products: "column:id:locale" → path. @param array<string, list<int>> $ids column → ids @return array<string, string> */
+function cpRoutesOf(int $siteId, array $ids): array
+{
+    return ContentPacks::in($siteId, function () use ($ids): array {
+        $routes = [];
+        foreach ($ids as $column => $list) {
+            foreach (SiteRoute::query()->whereIn($column, $list)->get([$column, 'locale', 'path']) as $route) {
+                $routes["{$column}:{$route->{$column}}:{$route->locale}"] = $route->path;
+            }
+        }
+        ksort($routes);
+
+        return $routes;
+    });
+}
+
+it('plans the same addresses the platform then writes, under every permalink preset', function (array $posts, array $products, array $moving): void {
     ContentPacks::in($this->siteId, function () use ($posts, $products): void {
         SiteSetting::query()->updateOrCreate(['group_name' => 'permalinks', 'key' => 'posts'], ['value' => $posts]);
         SiteSetting::query()->updateOrCreate(['group_name' => 'permalinks', 'key' => 'products'], ['value' => $products]);
     });
-    $planned = ContentPacks::in($this->siteId, function (): array {
-        $planner = app(Planner::class);
-        $planner->plan(app(PackReader::class)->read('demo-co'), (string) Site::query()->value('ulid'), 'Demo', ContentPacks::HOST);
-
-        return $planner->plannedPaths();
-    });
+    // The site has a language the pack leaves out.
+    cpEnableEnglish($this->siteId);
+    [$planned] = cpPlannedAddresses($this->siteId);
 
     [$exit, $output] = ContentPacks::load();
     expect($exit)->toBe(0, $output)->and($planned)->toHaveKeys(['post:ra-mat-website', 'product:may-mau-a', 'tax:post_cat/tin-tuc/cap-nhat']);
-
-    ContentPacks::in($this->siteId, function () use ($planned): void {
-        foreach ($planned as $key => $paths) {
-            foreach ($paths as $locale => $path) {
-                expect(SiteRoute::query()->where('locale', $locale)->where('path', $path)->exists())->toBeTrue("{$key} was planned at {$path}");
+    $routed = function (array $planned): void {
+        ContentPacks::in($this->siteId, function () use ($planned): void {
+            foreach ($planned as $key => $paths) {
+                foreach ($paths as $locale => $path) {
+                    expect(SiteRoute::query()->where('locale', $locale)->where('path', $path)->exists())->toBeTrue("{$key} was planned at {$path}");
+                }
             }
+        });
+    };
+    $routed($planned);
+
+    // Staff files posts and a product under the categories v2 renames, in both languages, one post
+    // in a category of their own under the renamed one (its address carries the renamed parent).
+    cpStaffCategoryIn($this->siteId, 'cap-nhat', 'en', 'updates');
+    cpStaffCategoryIn($this->siteId, 'san-pham', 'en', 'products');
+    ContentPacks::in($this->siteId, fn () => app(CreateTaxonomy::class)->handle(
+        'post_cat',
+        Taxonomy::query()->findOrFail(TaxonomyTranslation::query()->where('slug', 'cap-nhat')->value('taxonomy_id')),
+        new TaxonomyData(names: ['vi' => 'Tháng một', 'en' => 'January']),
+    ));
+    $ids = [
+        'entry_id' => [
+            cpStaffItem($this->siteId, 'post', ['vi' => 'bai-cua-nhan-vien', 'en' => 'staff-post'], 'cap-nhat'),
+            cpStaffItem($this->siteId, 'post', ['vi' => 'bai-thang-mot', 'en' => 'january-post'], 'thang-mot'),
+        ],
+        'product_id' => [cpStaffItem($this->siteId, 'product', ['vi' => 'may-cua-nhan-vien', 'en' => 'staff-machine'], 'san-pham')],
+    ];
+
+    // v2 renames both categories.
+    cpRenameCapNhat($this->folder);
+    ContentPacks::item($this->folder, 'taxonomies.json', 'tax:post_cat/san-pham', fn (array $item): array => ['key' => 'tax:post_cat/may-moc', 'was' => ['san-pham'], 'name' => ['vi' => 'Máy móc']] + $item);
+    foreach (['product:may-mau-a', 'product:may-mau-b'] as $key) {
+        ContentPacks::item($this->folder, 'products.json', $key, fn (array $item): array => ['categories' => ['tax:post_cat/may-moc']] + $item);
+    }
+
+    [$planned, $carried] = cpPlannedAddresses($this->siteId);
+    foreach ($carried as $moves) {
+        foreach ($moves as $move) {
+            $ids[$move['column']][] = $move['id'];   // pack posts and products v2 leaves as they are move too
         }
-    });
+    }
+    $before = cpRoutesOf($this->siteId, $ids);
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)->and(array_keys($carried))->toEqualCanonicalizing($moving);
+    $routed($planned);
+
+    // Every route of what the categories carry is where the plan said it moves to, and nowhere else.
+    $expected = $before;
+    foreach ($carried as $moves) {
+        foreach ($moves as $move) {
+            $expected["{$move['column']}:{$move['id']}:{$move['locale']}"] = $move['to'];
+        }
+    }
+    expect(cpRoutesOf($this->siteId, $ids))->toBe($expected);
 })->with([
-    'flat' => [['pattern' => 'flat'], ['pattern' => 'flat']],
-    'category' => [['pattern' => 'category'], ['pattern' => 'category']],
-    'category path' => [['pattern' => 'category_path'], ['pattern' => 'category_path']],
-    'base' => [['pattern' => 'base', 'base' => 'bai-viet'], ['pattern' => 'base', 'base' => 'may']],
+    'flat' => [['pattern' => 'flat'], ['pattern' => 'flat'], []],
+    'category' => [['pattern' => 'category'], ['pattern' => 'category'], ['tax:post_cat/tin-tuc/ban-tin', 'tax:post_cat/may-moc']],
+    'category path' => [['pattern' => 'category_path'], ['pattern' => 'category_path'], ['tax:post_cat/tin-tuc/ban-tin', 'tax:post_cat/may-moc']],
+    'base' => [['pattern' => 'base', 'base' => 'bai-viet'], ['pattern' => 'base', 'base' => 'may'], []],
 ]);
 
 it('locks the rows it writes while it re-plans for --apply, and takes no lock on a dry run', function (): void {
@@ -482,11 +611,98 @@ it('locks the rows it writes while it re-plans for --apply, and takes no lock on
     });
     $apply = cpQueries(fn () => ContentPacks::run('demo-co', ['--apply' => true, '--plan' => ContentPacks::fingerprint($output)]));
 
-    $locked = fn (array $queries): array => array_values(array_unique(array_map(
+    $locked = fn (array $queries, string $mode): array => array_values(array_unique(array_map(
         fn (string $sql): string => preg_match('/\bfrom "([a-z_]+)"/', $sql, $m) === 1 ? $m[1] : '?',
-        array_filter($queries, fn (string $sql): bool => str_contains(strtolower($sql), 'for update')),
+        array_filter($queries, fn (string $sql): bool => preg_match('/\bfor '.$mode.'\b/i', $sql) === 1),
     )));
-    expect($locked($dry))->toBe([])
-        ->and($locked($apply))->toContain('entries', 'entry_translations', 'products', 'product_translations', 'taxonomies', 'taxonomy_translations',
+    // FOR NO KEY UPDATE, never FOR UPDATE: a staff save filing a post under a category takes FOR KEY
+    // SHARE on it (the foreign-key check), which FOR UPDATE blocks — the two would deadlock.
+    expect($locked($dry, '(no key )?update'))->toBe([])
+        ->and($locked($apply, 'update'))->toBe([])
+        ->and($locked($apply, 'no key update'))->toContain('entries', 'entry_translations', 'products', 'product_translations', 'taxonomies', 'taxonomy_translations',
             'menus', 'menu_items', 'site_settings', 'site_profiles', 'site_profile_translations', 'redirects');
+});
+
+it('relinks every permalink preset a category write affects when its slug and parent change together', function (): void {
+    ContentPacks::in($this->siteId, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'permalinks', 'key' => 'products'], ['value' => ['pattern' => 'category']]));
+    ContentPacks::load();
+
+    // A pack cannot give a category a new parent (its parent is the chain of its key, and it is
+    // matched under that parent), so the write is handed to the Applier as a plan line.
+    ContentPacks::in($this->siteId, function (): void {
+        $planner = app(Planner::class);
+        $plan = $planner->plan(app(PackReader::class)->read('demo-co'), (string) Site::query()->value('ulid'), 'Demo', ContentPacks::HOST);
+        $items = array_map(function (PlanItem $planned): PlanItem {
+            if ($planned->item->key !== 'tax:post_cat/san-pham') {
+                return $planned;
+            }
+            $desired = ['parent' => 'tax:post_cat/tin-tuc', 'translations' => ['vi' => ['name' => 'Máy móc', 'slug' => 'may-moc']]] + $planned->desired;
+
+            return new PlanItem($planned->item, PlanItem::UPDATE, $planned->current, $desired, null, $planned->recordId);
+        }, $plan->items);
+        app(Applier::class)->apply(new Plan($plan->pack, $plan->siteUlid, $plan->siteName, $plan->host, $items, [], [], [], $plan->ledger, $plan->media), $planner);
+    });
+
+    ContentPacks::in($this->siteId, fn () => expect(SiteRoute::query()->whereNotNull('product_id')->where('path', 'like', '%/may-mau-a')->value('path'))->toBe('/may-moc/may-mau-a')
+        ->and(Redirect::query()->where('from_path', '/san-pham/may-mau-a')->value('to_path'))->toBe('/may-moc/may-mau-a'));
+});
+
+it('carries a staff post along in a site language the pack leaves out: backed up, and filing one there in between changes the plan', function (): void {
+    cpEnableEnglish($this->siteId);
+    ContentPacks::load();
+    cpStaffCategoryIn($this->siteId, 'cap-nhat', 'en', 'updates');
+    cpStaffItem($this->siteId, 'post', ['vi' => 'bai-cua-nhan-vien', 'en' => 'staff-post'], 'cap-nhat');
+    cpRenameCapNhat($this->folder);
+
+    [, $dry] = ContentPacks::run();
+    cpStaffItem($this->siteId, 'post', ['en' => 'late-post'], 'cap-nhat');
+    [$exit, $output] = ContentPacks::run('demo-co', ['--apply' => true, '--plan' => ContentPacks::fingerprint($dry)]);
+    expect($exit)->toBe(1)->and($output)->toContain('plan changed, run the dry run again');
+
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output);
+    $branch = collect(cpBackupItem(cpBackup($output), 'tax:post_cat/tin-tuc/ban-tin')['rows']['branch_routes'])
+        ->map(fn (array $route): string => $route['locale'].':'.$route['path'])->all();
+
+    expect($branch)->toContain('vi:/cap-nhat/bai-cua-nhan-vien', 'en:/updates/staff-post', 'en:/updates/late-post');
+    ContentPacks::in($this->siteId, fn () => expect(SiteRoute::query()->where('locale', 'en')->where('path', '/updates/staff-post')->exists())->toBeTrue()
+        ->and(SiteRoute::query()->where('locale', 'vi')->where('path', '/ban-tin/bai-cua-nhan-vien')->exists())->toBeTrue());
+});
+
+it('backs up the redirect a carried post\'s new address replaces', function (): void {
+    ContentPacks::load();
+    cpStaffPost($this->siteId, 'bai-cua-nhan-vien', 'cap-nhat');
+    ContentPacks::in($this->siteId, fn () => Redirect::query()->create(['locale' => 'vi', 'from_path' => '/ban-tin/bai-cua-nhan-vien', 'to_path' => '/trang-cu', 'status_code' => 301]));
+    cpRenameCapNhat($this->folder);
+
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output);
+    $redirect = collect(cpBackup($output)['redirects'])->firstWhere('from_path', '/ban-tin/bai-cua-nhan-vien');
+
+    // RouteSync drops it — the address is live content now — so the backup is the only copy.
+    expect($redirect['to_path'] ?? null)->toBe('/trang-cu');
+    ContentPacks::in($this->siteId, fn () => expect(Redirect::query()->where('from_path', '/ban-tin/bai-cua-nhan-vien')->exists())->toBeFalse()
+        ->and(SiteRoute::query()->where('path', '/ban-tin/bai-cua-nhan-vien')->exists())->toBeTrue());
+});
+
+it('moves the posts of a category renamed in its second language only, with a 301', function (): void {
+    cpEnableEnglish($this->siteId);
+    ContentPacks::edit($this->folder, 'pack.json', fn (array $pack): array => ['locales' => ['vi', 'en']] + $pack);
+    ContentPacks::item($this->folder, 'taxonomies.json', 'tax:post_cat/tin-tuc/cap-nhat', fn (array $item): array => ['name' => ['vi' => 'Cập nhật', 'en' => 'Updates'], 'slug' => ['en' => 'updates']] + $item);
+    ContentPacks::item($this->folder, 'posts.json', 'post:ra-mat-website', fn (array $item): array => ['title' => ['vi' => 'Ra mắt website', 'en' => 'Website launch'], 'slug' => ['en' => 'website-launch']] + $item);
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output);
+    ContentPacks::in($this->siteId, fn () => expect(SiteRoute::query()->where('locale', 'en')->where('path', '/updates/website-launch')->exists())->toBeTrue());
+
+    cpVersion2($this->folder);
+    ContentPacks::item($this->folder, 'taxonomies.json', 'tax:post_cat/tin-tuc/cap-nhat', fn (array $item): array => ['name' => ['vi' => 'Cập nhật', 'en' => 'News'], 'slug' => ['en' => 'news']] + $item);
+    [, $dry] = ContentPacks::run();
+    expect(ContentPacks::verdict($dry, 'tax:post_cat/tin-tuc/cap-nhat'))->toBe('update')
+        ->and(ContentPacks::verdict($dry, 'post:ra-mat-website'))->toBe('unchanged');
+
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output);
+    ContentPacks::in($this->siteId, fn () => expect(SiteRoute::query()->where('locale', 'en')->whereNotNull('entry_id')->where('path', 'like', '%/website-launch')->value('path'))->toBe('/news/website-launch')
+        ->and(Redirect::query()->where('locale', 'en')->where('from_path', '/updates/website-launch')->value('to_path'))->toBe('/news/website-launch')
+        ->and(SiteRoute::query()->where('locale', 'vi')->where('path', '/cap-nhat/ra-mat-website')->exists())->toBeTrue());
 });

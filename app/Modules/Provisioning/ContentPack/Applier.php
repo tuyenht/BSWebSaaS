@@ -16,7 +16,6 @@ use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
-use App\Modules\Cms\Routing\CategoryChange;
 use App\Modules\Cms\Routing\CategoryRelinker;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Routing\SectionResolver;
@@ -156,8 +155,6 @@ final class Applier
             'list_template' => Cast::stringOrNull($desired['list_template'] ?? null),
         ];
 
-        $oldParent = $planned->current['parent'] ?? null;
-
         if ($planned->recordId === null) {
             $taxonomy = Taxonomy::query()->create($attributes);
         } else {
@@ -176,10 +173,12 @@ final class Applier
         }
         $this->paths->refreshBranch($taxonomy->id);
 
-        // A slug change in any language, or a new parent, moves the posts and products under the branch.
-        if ($planned->recordId !== null && PlanItem::taxonomyMoves($planned->current, $desired)) {
+        // A slug change in any language, a new parent, or both move the posts and products under the
+        // branch: relinked with every change it went through, as the Planner predicted them.
+        $changes = $planned->recordId === null ? [] : PlanItem::taxonomyChanges($planned->current, $desired);
+        if ($changes !== []) {
             $this->sections->flush();
-            $this->relinker->relink(array_keys(TaxonomyTree::branchOf($taxonomy->id)), $oldParent !== $parentKey ? CategoryChange::Moved : CategoryChange::Renamed);
+            $this->relinker->relink(array_keys(TaxonomyTree::branchOf($taxonomy->id)), ...$changes);
         }
     }
 

@@ -17,6 +17,7 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Queries\EntryRevisions;
 use App\Modules\Cms\Queries\PendingEntryDrafts;
+use App\Modules\Cms\Routing\CategoryRelinker;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
@@ -41,7 +42,9 @@ use Illuminate\Support\Facades\DB;
  * loader wrote it hashes equal to its plan's `desired`.
  *
  * On the re-plan inside the --apply transaction (`$lock`), every row a verdict rests on is read
- * FOR UPDATE, so no staff save can land between the plan and the write; the dry run takes no lock.
+ * FOR NO KEY UPDATE (LOCK), so no staff save can land between the plan and the write; the dry run
+ * takes no lock. Not FOR UPDATE: that also blocks the FOR KEY SHARE a staff save takes on a
+ * category it files a post under (the foreign-key check), and the two transactions deadlock.
  * Every address the load would write is composed the way the platform composes it and checked
  * against the routes before anything is written (addresses()).
  *
@@ -88,18 +91,25 @@ final class Planner
     /** @var array<string, list<int>> category key → ids of the routes of the posts and products it carries along */
     private array $branchRoutes = [];
 
+    /** @var array<string, list<array{column: string, id: int, locale: string, from: string, to: string}>> category key → the moves of the posts and products it carries along */
+    private array $carriedMoves = [];
+
     private bool $lock = false;
+
+    /** The row lock of the --apply re-plan (see the class comment). */
+    private const string LOCK = 'for no key update';
 
     public function __construct(
         private readonly CurrentSite $site,
         private readonly MediaUrlResolver $urls,
         private readonly PathBuilder $paths,
         private readonly PermalinkConfig $permalinks,
+        private readonly CategoryRelinker $relinker,
     ) {}
 
     /**
      * @param  list<string>  $forced  --force-item keys
-     * @param  bool  $lock  read the rows the plan rests on FOR UPDATE (only inside the --apply transaction)
+     * @param  bool  $lock  read the rows the plan rests on FOR NO KEY UPDATE (only inside the --apply transaction)
      *
      * @throws PackRejected the pack's languages do not fit the site, or a forced key is not in the pack
      */
@@ -189,6 +199,17 @@ final class Planner
         return $this->branchRoutes[$key] ?? [];
     }
 
+    /**
+     * Where each post and product a category write of the last plan carries along moves to — one
+     * line per address that changes, under every moving category above the item.
+     *
+     * @return array<string, list<array{column: string, id: int, locale: string, from: string, to: string}>>
+     */
+    public function carriedMoves(): array
+    {
+        return $this->carriedMoves;
+    }
+
     /** The record a planned key was matched to (after the plan; internal to the loader). */
     public function matchedId(string $key): ?int
     {
@@ -233,11 +254,12 @@ final class Planner
         $this->carried = [];
         $this->plannedPaths = [];
         $this->branchRoutes = [];
+        $this->carriedMoves = [];
         $this->lock = false;
     }
 
     /**
-     * The query, read FOR UPDATE on the --apply re-plan.
+     * The query, read FOR NO KEY UPDATE on the --apply re-plan.
      *
      * @template TQuery of Builder<*>|Relation<*, *, *>
      *
@@ -247,7 +269,7 @@ final class Planner
     private function locked(Builder|Relation $query): Builder|Relation
     {
         if ($this->lock) {
-            $query->lockForUpdate();
+            $query->lock(self::LOCK);
         }
 
         return $query;
@@ -409,7 +431,9 @@ final class Planner
     private function loadTaxonomies(): void
     {
         $rows = $this->locked(Taxonomy::query())->get(['id', 'vocabulary', 'parent_id', 'position', 'list_template']);
-        $translations = $this->locked(TaxonomyTranslation::query()->whereIn('locale', $this->locales))->get(['taxonomy_id', 'locale', 'name', 'slug']);
+        // Every language, not only the pack's: a category write re-syncs the posts and products under
+        // it in every language they are routed in, and their addresses there carry these slugs.
+        $translations = $this->locked(TaxonomyTranslation::query())->get(['taxonomy_id', 'locale', 'name', 'slug']);
 
         foreach ($rows as $row) {
             $this->taxonomies[$row->id] = [
@@ -748,7 +772,7 @@ final class Planner
         $query = DB::table($pivot)->where('site_id', $this->site->id())->whereIn($column, $ids)
             ->where('position', '<', self::FACET_BASE)->orderBy('position');
         if ($this->lock) {
-            $query->lockForUpdate();
+            $query->lock(self::LOCK);
         }
         $rows = $query->get([$column, 'taxonomy_id']);
 
@@ -934,7 +958,7 @@ final class Planner
             ->where('product_images.site_id', $this->site->id())->whereIn('product_images.product_id', $ids)
             ->orderBy('product_images.position')->orderBy('product_images.id');
         if ($this->lock) {
-            $images->lock('for update of product_images');
+            $images->lock(self::LOCK.' of product_images');
         }
         $images = $images->get(['product_images.product_id', 'media.storage_key']);
         $gallery = [];
@@ -1651,7 +1675,9 @@ final class Planner
     /**
      * The published posts and products filed (primary) under a category whose address changes,
      * other than the pack's own writing items: where each one moves to (a claim), how many move per
-     * category, and the hash of each moving category's rows.
+     * category, and the hash of each moving category's rows. It takes exactly the rows the Applier's
+     * relink re-syncs: every language the item is routed in (not only the pack's), and only the kinds
+     * CategoryRelinker re-syncs for the changes the category goes through (PlanItem::taxonomyChanges).
      *
      * @param  list<PlanItem>  $writing
      * @param  array<string, array{id: int|null, parent: string|null, slugs: array<string, string>}>  $tree
@@ -1661,10 +1687,13 @@ final class Planner
     private function branchMoves(array $writing, array $tree, array $bindings): array
     {
         $moving = [];   // taxonomy id → key
+        $changes = [];  // key → what the write does to the addresses under it
         $own = ['post' => [], 'product' => []];
         foreach ($writing as $planned) {
-            if ($planned->item->kind === 'taxonomy' && $planned->recordId !== null && PlanItem::taxonomyMoves($planned->current, $planned->desired)) {
+            $change = $planned->item->kind === 'taxonomy' && $planned->recordId !== null ? PlanItem::taxonomyChanges($planned->current, $planned->desired) : [];
+            if ($change !== []) {
                 $moving[$planned->recordId] = $planned->item->key;
+                $changes[$planned->item->key] = $change;
             }
             if (in_array($planned->item->kind, ['post', 'product'], true) && $planned->recordId !== null) {
                 $own[$planned->item->kind][$planned->recordId] = true;
@@ -1696,7 +1725,12 @@ final class Planner
 
         $rows = [];
         foreach (['post' => ['entry_taxonomies', 'entry_id', 'entries', 'entry_translations'], 'product' => ['product_taxonomies', 'product_id', 'products', 'product_translations']] as $kind => [$pivot, $column, $table, $translations]) {
-            foreach (array_chunk(array_keys($owners), 1000) as $chunk) {
+            // The categories whose moving owners make the relink re-sync this kind.
+            $followed = array_keys(array_filter($owners, fn (array $keys): bool => $this->relinker->resyncs(
+                $pivot,
+                ...array_merge(...array_map(fn (string $key): array => $changes[$key], $keys)),
+            )));
+            foreach (array_chunk($followed, 1000) as $chunk) {
                 $query = DB::table("{$pivot} as pv")
                     ->join("{$table} as it", 'it.id', '=', "pv.{$column}")
                     ->join('routes as r', "r.{$column}", '=', 'it.id')
@@ -1706,13 +1740,12 @@ final class Planner
                     ->whereIn('pv.taxonomy_id', $chunk)
                     ->where('it.status', 'published')
                     ->whereNull('it.deleted_at')
-                    ->whereIn('r.locale', $this->locales)
                     ->orderBy('it.id')->orderBy('r.locale');
                 if ($kind === 'post') {
                     $query->where('it.type', 'post');
                 }
                 if ($this->lock) {
-                    $query->lockForUpdate();
+                    $query->lock(self::LOCK);
                 }
                 foreach ($query->get(['it.id', 'pv.taxonomy_id', 'r.id as route_id', 'r.locale', 'r.path', 'tr.slug']) as $row) {
                     $rows[] = ['kind' => $kind, 'column' => $column] + Cast::arr((array) $row);
@@ -1743,6 +1776,9 @@ final class Planner
             $moves[$key] ??= ['post' => 0, 'product' => 0];
             $moves[$key][$row['kind']]++;
             $claims[] = ['key' => $key, 'locale' => $locale, 'path' => $new, 'column' => Cast::string($row['column']), 'id' => $id, 'what' => "a {$row['kind']} it moves from {$path}"];
+            foreach ($owners[$taxonomyId] ?? [] as $owner) {
+                $this->carriedMoves[$owner][] = ['column' => Cast::string($row['column']), 'id' => $id, 'locale' => $locale, 'from' => $path, 'to' => $new];
+            }
         }
 
         $scopes = [];
@@ -1779,9 +1815,10 @@ final class Planner
         }
 
         $paths = array_values(array_unique(array_map(fn (array $claim): string => $claim['path'], $claims)));
+        $locales = array_values(array_unique(array_map(fn (array $claim): string => $claim['locale'], $claims)));
         $routes = [];
         foreach (array_chunk($paths, 1000) as $chunk) {
-            foreach (SiteRoute::query()->whereIn('locale', $this->locales)->whereIn('path', $chunk)->get(['locale', 'path', 'entry_id', 'taxonomy_id', 'product_id']) as $route) {
+            foreach (SiteRoute::query()->whereIn('locale', $locales)->whereIn('path', $chunk)->get(['locale', 'path', 'entry_id', 'taxonomy_id', 'product_id']) as $route) {
                 $routes[$route->locale."\0".$route->path] = $route;
             }
         }

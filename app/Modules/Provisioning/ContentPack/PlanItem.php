@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Provisioning\ContentPack;
 
+use App\Modules\Cms\Routing\CategoryChange;
 use App\Modules\Shared\Support\Cast;
 
 /**
@@ -70,29 +71,45 @@ final readonly class PlanItem
     }
 
     /**
-     * Whether a category write changes an address under it: its slug in any language, or its
-     * parent. Then the posts and products filed under the branch move with it.
+     * What a category write does to the addresses under it: Renamed when its slug changes in any
+     * language, Moved when its parent changes — both when both do. The Planner predicts the posts
+     * and products it carries along from this list and the Applier relinks the branch with it, so the
+     * two agree on which items follow. Empty: nothing under it moves.
+     *
+     * @param  array<string, mixed>|null  $current
+     * @param  array<string, mixed>  $desired
+     * @return list<CategoryChange>
+     */
+    public static function taxonomyChanges(?array $current, array $desired): array
+    {
+        if ($current === null) {
+            return [];
+        }
+        $changes = [];
+        $before = Cast::arr($current['translations'] ?? null);
+        foreach (Cast::arr($desired['translations'] ?? null) as $locale => $row) {
+            $slug = Cast::arr($row)['slug'] ?? null;
+            if (is_string($slug) && $slug !== (Cast::arr($before[$locale] ?? null)['slug'] ?? null)) {
+                $changes[] = CategoryChange::Renamed;
+                break;
+            }
+        }
+        if (($current['parent'] ?? null) !== ($desired['parent'] ?? null)) {
+            $changes[] = CategoryChange::Moved;
+        }
+
+        return $changes;
+    }
+
+    /**
+     * Whether a category write changes an address under it (see taxonomyChanges()).
      *
      * @param  array<string, mixed>|null  $current
      * @param  array<string, mixed>  $desired
      */
     public static function taxonomyMoves(?array $current, array $desired): bool
     {
-        if ($current === null) {
-            return false;
-        }
-        if (($current['parent'] ?? null) !== ($desired['parent'] ?? null)) {
-            return true;
-        }
-        $before = Cast::arr($current['translations'] ?? null);
-        foreach (Cast::arr($desired['translations'] ?? null) as $locale => $row) {
-            $slug = Cast::arr($row)['slug'] ?? null;
-            if (is_string($slug) && $slug !== (Cast::arr($before[$locale] ?? null)['slug'] ?? null)) {
-                return true;
-            }
-        }
-
-        return false;
+        return self::taxonomyChanges($current, $desired) !== [];
     }
 
     public function currentHash(): ?string
