@@ -1,13 +1,19 @@
 <?php
 
+use App\Modules\Tenancy\Actions\CheckDomain;
+use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Domains\DnsLookup;
 use App\Modules\Tenancy\Domains\OwnershipProof;
 use App\Modules\Tenancy\Domains\WaitingDomains;
+use App\Modules\Tenancy\Events\DomainNeedsAttention;
 use Carbon\Carbon;
+use Illuminate\Cache\ArrayStore;
 use Illuminate\Console\Scheduling\Event as ScheduledEvent;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Queue;
 use Tests\Fixtures\FakeDns;
 
@@ -97,15 +103,20 @@ it('starts where the last run stopped, so a slow first name never keeps the othe
     wdPair(1, 'cham.vn');        // never pointed, and its nameserver answers slowly
     wdPair(1, 'tencongty.vn');   // pointed
     $this->dns->pointHere('tencongty.vn', 'www.tencongty.vn');
-    // Each lookup of cham.vn's spellings takes five minutes, past the one-minute budget.
-    app()->instance(DnsLookup::class, new class($this->dns) implements DnsLookup
+    // Each lookup of cham.vn's spellings takes five minutes, past the one-minute budget; any other
+    // customer name takes one, so a run that checked tencongty.vn has no time left for cham.vn.
+    $dns = new class($this->dns) implements DnsLookup
     {
+        /** @var list<string> */
+        public array $asked = [];
+
         public function __construct(private FakeDns $dns) {}
 
         public function addresses(string $host): array
         {
-            if (str_ends_with($host, 'cham.vn')) {
-                Carbon::setTestNow(now()->addMinutes(5));
+            if (str_ends_with($host, '.vn')) {
+                $this->asked[] = $host;
+                Carbon::setTestNow(now()->addMinutes(str_ends_with($host, 'cham.vn') ? 5 : 1));
             }
 
             return $this->dns->addresses($host);
@@ -115,19 +126,79 @@ it('starts where the last run stopped, so a slow first name never keeps the othe
         {
             return $this->dns->txt($host);
         }
-    });
+    };
+    app()->instance(DnsLookup::class, $dns);
 
-    foreach (range(1, 3) as $ignored) {
-        $this->artisan('domains:recheck-waiting', ['--budget' => 60])->assertSuccessful();
-    }
+    // Run 1 checks the slow pair, both spellings at once, and stops before tencongty.vn.
+    $this->artisan('domains:recheck-waiting', ['--budget' => 60])->assertSuccessful();
+    expect(array_values(array_unique($dns->asked)))->toBe(['cham.vn', 'www.cham.vn'])
+        ->and(wdRow('tencongty.vn')?->verified_at)->toBeNull();
 
-    expect(wdRow('tencongty.vn')?->verified_at)->not->toBeNull()
+    // Run 2 starts after the pair's second spelling, never at it: cham.vn is not checked again.
+    $dns->asked = [];
+    $this->artisan('domains:recheck-waiting', ['--budget' => 60])->assertSuccessful();
+    expect(array_values(array_unique($dns->asked)))->toBe(['tencongty.vn', 'www.tencongty.vn'])
+        ->and(wdRow('tencongty.vn')?->verified_at)->not->toBeNull()
         ->and(wdRow('cham.vn')?->failure_reason)->toBe('not_pointing');
 
     // Every waiting name was reached: the next run starts from the beginning again.
     $this->artisan('domains:recheck-waiting', ['--budget' => 3600])->assertSuccessful();
     expect(Cache::get(WaitingDomains::RESUME_KEY))->toBe(0);
     Carbon::setTestNow();
+});
+
+it('still checks every name and notes the verified ones when the cache cannot keep its place', function (): void {
+    wdPair(1, 'tencongty.vn');
+    wdPair(1, 'chua-tro.vn');
+    $this->dns->pointHere('tencongty.vn', 'www.tencongty.vn');
+    // The cache (Valkey) fails on the run's own place: reading it and saving it.
+    Cache::extend('resume-down', fn () => Cache::repository(new class extends ArrayStore
+    {
+        public function get($key): mixed
+        {
+            return $key === WaitingDomains::RESUME_KEY ? throw new RuntimeException('cache down') : parent::get($key);
+        }
+
+        public function forever($key, $value): bool
+        {
+            return $key === WaitingDomains::RESUME_KEY ? throw new RuntimeException('cache down') : parent::forever($key, $value);
+        }
+    }));
+    config(['cache.stores.resume-down' => ['driver' => 'resume-down'], 'cache.default' => 'resume-down']);
+    Exceptions::fake();
+
+    $this->artisan('domains:recheck-waiting')->expectsOutputToContain('2 verified.')->assertSuccessful();
+
+    // Started from the beginning, reached every name, and kept the trail; both failures reported.
+    expect(wdRow('chua-tro.vn')?->failure_reason)->toBe('not_pointing')
+        ->and(wdTrail())->toBe([
+            ['tenancy.domain.verified', 1, 'tencongty.vn', 'system'],
+            ['tenancy.domain.verified', 1, 'www.tencongty.vn', 'system'],
+        ]);
+    Exceptions::assertReportedCount(2);
+    Exceptions::assertReported(fn (RuntimeException $e): bool => $e->getMessage() === 'cache down');
+});
+
+it('never starts a failing streak on a name that went live between its lookups and the write', function (): void {
+    wdPair(1, 'tencongty.vn');
+    $check = app(CheckDomain::class);
+    $probe = $check->probe('tencongty.vn', 1);   // the 15-minute run: not pointed yet
+    expect($probe->pointing)->toBe('not_pointing')->and($probe->twin?->pointing)->toBe('not_pointing');
+
+    // Meanwhile the owner points it and presses "Kiểm tra": both spellings go live.
+    $this->dns->pointHere('tencongty.vn', 'www.tencongty.vn');
+    app(Tenancy::class)->enter(1, fn () => app(CheckDomain::class)->handle('tencongty.vn'));
+    $live = [wdRow('tencongty.vn'), wdRow('www.tencongty.vn')];
+    Event::fake([DomainNeedsAttention::class]);
+
+    $result = app(Tenancy::class)->enter(1, fn () => $check->apply($probe));
+
+    expect($result->streak)->toBeNull()
+        ->and($result->twin)->toBeNull()
+        ->and([wdRow('tencongty.vn'), wdRow('www.tencongty.vn')])->toEqual($live)
+        ->and(wdRow('tencongty.vn')?->failing_since)->toBeNull()
+        ->and(wdRow('tencongty.vn')?->failure_reason)->toBeNull();
+    Event::assertNotDispatched(DomainNeedsAttention::class);
 });
 
 it('looks only at names that never went live: not at live, failing or stopped ones', function (): void {

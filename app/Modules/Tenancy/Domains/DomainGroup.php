@@ -54,10 +54,13 @@ final readonly class DomainGroup
         return str_starts_with($this->runs, 'www.');
     }
 
-    /** The running spelling is live; only the other one waits for its own TXT line (another site holds it). */
+    /**
+     * Only the other spelling needs its own TXT line (another site holds it); the running one is not
+     * contested, whatever its state (design 21: the "half" proof block, with its own "Kiểm tra lại").
+     */
     public function altClaimOnly(): bool
     {
-        return $this->altClaim && in_array($this->state, ['verified', 'issuing', 'https_err', 'active'], true);
+        return $this->altClaim && $this->state !== 'claim';
     }
 
     /** A check may still change what the screen says: the name waits, or another site holds it. */

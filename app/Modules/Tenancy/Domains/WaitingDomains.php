@@ -66,12 +66,21 @@ final readonly class WaitingDomains
 
         $budget = $budgetSeconds ?? Cast::int(config('tenancy.custom_domains.recheck_budget_seconds'), 600);
         $deadline = CarbonImmutable::now()->addSeconds(max(0, $budget));
-        $after = Cast::int(Cache::get(self::RESUME_KEY), 0);
+        $after = $this->resumeAfter();
         $state = ['verified' => [], 'seen' => [], 'last' => $after, 'stopped' => false];
 
         $visit = function (Collection $chunk) use (&$state, $deadline): bool {
             foreach ($chunk as $row) {
                 assert($row instanceof Domain);
+                $key = $row->site_id.'|'.DomainName::pairKey($row->hostname);
+
+                // Both spellings of a pair are checked together: the second one of the run is done,
+                // and is passed even after the budget ran out, so the next run never starts there.
+                if (isset($state['seen'][$key])) {
+                    $state['last'] = $row->id;
+
+                    continue;
+                }
 
                 if (CarbonImmutable::now()->gte($deadline)) {
                     $state['stopped'] = true;
@@ -80,12 +89,6 @@ final readonly class WaitingDomains
                 }
 
                 $state['last'] = $row->id;
-                $key = $row->site_id.'|'.DomainName::pairKey($row->hostname);
-
-                // Both spellings of a pair are checked together: the second one of the run is done.
-                if (isset($state['seen'][$key])) {
-                    continue;
-                }
                 $state['seen'][$key] = true;
 
                 foreach ($this->checkOne($row) as $name) {
@@ -103,9 +106,31 @@ final readonly class WaitingDomains
             $this->waiting()->where('id', '<=', $after)->chunkById(self::CHUNK, $visit);
         }
 
-        Cache::forever(self::RESUME_KEY, $state['stopped'] ? $state['last'] : 0);
+        $this->saveResume($state['stopped'] ? $state['last'] : 0);
 
         return $state['verified'];
+    }
+
+    /** Where the last run stopped; the start when the cache cannot say (the run goes on regardless). */
+    private function resumeAfter(): int
+    {
+        try {
+            return Cast::int(Cache::get(self::RESUME_KEY), 0);
+        } catch (Throwable $e) {
+            report($e);
+
+            return 0;
+        }
+    }
+
+    /** A cache that cannot keep the place costs the next run its head start, never this run's names. */
+    private function saveResume(int $after): void
+    {
+        try {
+            Cache::forever(self::RESUME_KEY, $after);
+        } catch (Throwable $e) {
+            report($e);
+        }
     }
 
     /** @return Builder<Domain> */

@@ -11,7 +11,9 @@ namespace App\Modules\Tenancy\Domains;
  *
  * `pointing` is null when the name points at the platform, else the reason it does not
  * (not_pointing · points_elsewhere); `proved` says the site's TXT record for this hostname is
- * published. `twin` is the other spelling, when the check will need it.
+ * published. `seen` is how the row stood when it was read for the probe (verified, failing, last
+ * checked): a write that finds the row changed since then knows someone else checked it meanwhile.
+ * `twin` is the other spelling, when the check will need it.
  */
 final readonly class DomainProbe
 {
@@ -23,11 +25,12 @@ final readonly class DomainProbe
         public string $txtValue,
         public ?string $pointing,
         public bool $proved,
+        public string $seen,
         public ?DomainProbe $twin = null,
     ) {}
 
     public function withTwin(DomainProbe $twin): self
     {
-        return new self($this->siteId, $this->host, $this->txtName, $this->txtValue, $this->pointing, $this->proved, $twin);
+        return new self($this->siteId, $this->host, $this->txtName, $this->txtValue, $this->pointing, $this->proved, $this->seen, $twin);
     }
 }

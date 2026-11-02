@@ -2,9 +2,11 @@
     The TXT rows that prove a contested name is this site's: each with its name and value and
     [Sao chép]. The proof is per hostname, so when the other spelling (with or without www) is held
     by another site as well it gets its own pair, labelled for that spelling, with one sentence
-    saying both lines are needed. Once the running spelling is proved, only the other one's pair is
-    left, with its own "Kiểm tra lại" (design 21, scenario disputeHalf). Another site is only ever
-    "a website khác" — never named.
+    saying both lines are needed. When only the other spelling is held elsewhere (the running one is
+    proved, waits, or was lost), only its pair is shown, with the sentence that names "Kiểm tra lại"
+    and that button beside it (design 21, scenario disputeHalf). The add dialog has no such button,
+    so it shows the pair without that sentence. Another site is only ever "a website khác" — never
+    named.
     In: $group, $proof (name, value), $twinProof (name, value, or null), $dialog (bool),
         $manage (bool: the reader may check the name), $locked (bool).
 --}}
@@ -20,7 +22,11 @@
         <x-bs-admin::copy-field :label="__('admin.domains_claim_value')" :value="$proof['value']" copied="copied" :args="['txt_value', $group->name]" />
     @endif
     @if ($twinProof)
-        <span class="text-small text-text-muted">{{ $first ? __('admin.domains_claim_twin_why', ['alt' => $alt]) : __('admin.domains_claim_twin_only', ['alt' => $alt]) }}</span>
+        @if ($first)
+            <span class="text-small text-text-muted">{{ __('admin.domains_claim_twin_why', ['alt' => $alt]) }}</span>
+        @elseif (! $dialog)
+            <span class="text-small text-text-muted">{{ __('admin.domains_claim_twin_only', ['alt' => $alt]) }}</span>
+        @endif
         <x-bs-admin::copy-field :label="__('admin.domains_claim_name')" :value="$twinProof['name']" copied="copied" :args="['txt2_name', $group->name]" />
         <x-bs-admin::copy-field :label="__('admin.domains_claim_value')" :value="$twinProof['value']" copied="copied" :args="['txt2_value', $group->name]" />
         @if (! $dialog && $manage && $group->altClaimOnly())

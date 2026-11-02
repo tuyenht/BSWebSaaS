@@ -710,6 +710,45 @@ it('verifies each spelling by its own proof, and says when the other one still n
     expect(dsHosts(2))->toBe(['b.test']);
 });
 
+it('names “Kiểm tra lại” only where that button is: wherever only the other spelling still needs its line', function (string $runs, bool $half): void {
+    // www.mot-nua.vn is held by another site; the running spelling is in state $runs.
+    dsPair(1, 'mot-nua.vn', match ($runs) {
+        'wait' => [],
+        'lost' => ['failing_since' => now()->subDays(40), 'failure_reason' => 'not_pointing'],
+        'active' => ['verified_at' => now(), 'ssl_status' => 'active'],
+        'failing' => ['verified_at' => now(), 'ssl_status' => 'active', 'failing_since' => now()->subDays(3), 'failure_reason' => 'not_pointing'],
+        'claim' => ['failure_reason' => 'needs_proof'],
+    }, ['failure_reason' => 'needs_proof']);
+    $twinOnly = 'www.mot-nua.vn vẫn đang gắn ở website khác, nên cách viết đó cần dòng xác minh riêng dưới đây. Thêm dòng này rồi bấm “Kiểm tra lại”.';
+
+    $screen = dsScreen(dsMember(1, 'owner'))->assertSee(app(OwnershipProof::class)->recordValue(1, 'www.mot-nua.vn'));
+
+    $half
+        ? $screen->assertSee($twinOnly)->assertSeeHtml('data-check-alt')->assertDontSee('Thêm đủ cả hai dòng')
+        : $screen->assertDontSee($twinOnly)->assertDontSeeHtml('data-check-alt')->assertSee('Thêm đủ cả hai dòng rồi mới bấm “Kiểm tra”.');
+})->with([
+    'waiting' => ['wait', true],
+    'lost' => ['lost', true],
+    'live' => ['active', true],
+    'failing' => ['failing', true],
+    'both spellings held elsewhere' => ['claim', false],
+]);
+
+it('shows the other spelling\'s line in the add dialog without naming a button the dialog lacks', function (): void {
+    // Another site serves www.moi.vn only; moi.vn itself is free there.
+    dsPair(2, 'moi.vn', [], ['verified_at' => now(), 'ssl_status' => 'active']);
+    $proof = app(OwnershipProof::class);
+    $screen = dsScreen(dsMember(1, 'owner'));
+
+    $html = dsIn(1, fn () => $screen->call('openAdd')->set('addName', 'moi.vn')->call('submitAdd'))->html();
+
+    // The list behind the dialog shows the half block (sentence + button) once; the dialog adds
+    // only the pair. A copy field holds its value twice: the text and the copy call.
+    expect(substr_count($html, $proof->recordValue(1, 'www.moi.vn')))->toBe(4)
+        ->and(substr_count($html, 'www.moi.vn vẫn đang gắn ở website khác'))->toBe(1)
+        ->and(substr_count($html, 'data-check-alt="'))->toBe(1);
+});
+
 // ── Checks, spelling, polling ───────────────────────────────────────────────
 
 it('holds a second check for a minute whatever the name\'s state', function (): void {
