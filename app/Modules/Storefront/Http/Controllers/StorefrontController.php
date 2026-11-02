@@ -18,7 +18,9 @@ use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Tenancy\Context\ContentSections;
 use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
+use App\Modules\Theme\Chrome\StorefrontChrome;
 use App\Modules\Theme\Rendering\PageRenderer;
+use App\Modules\Theme\Theming\StorefrontSettings;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -45,6 +47,7 @@ final readonly class StorefrontController
         private EntryViewCounter $views,
         private SiteIdentity $identity,
         private ContentSections $sections,
+        private StorefrontSettings $settings,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -72,11 +75,26 @@ final readonly class StorefrontController
             return redirect()->to($redirect->to_path, $redirect->status_code);
         }
 
+        // The optional rich header/footer (site settings, normalized; null = the classic one). Read
+        // through the same one-query settings reader the design tokens use.
+        /** @var list<string> $mapHosts */
+        $mapHosts = config('cms.map_hosts', []);
+        $header = StorefrontChrome::header($this->settings->get('storefront', 'header'), $locale, $default);
+        $footer = StorefrontChrome::footer($this->settings->get('storefront', 'footer'), $locale, $default, $mapHosts);
+
         // Page chrome for the active locale: header nav (active-state matches the prefixed request
-        // path; a missing per-locale assignment falls back to the default-locale menu), the
-        // <html lang>, and the hreflang alternates.
+        // path; a missing per-locale assignment falls back to the default-locale menu) and, for
+        // the rich footer, its link columns — both regions resolved together — the <html lang>,
+        // and the hreflang alternates.
+        $menus = $this->nav->resolveMany(
+            $footer === null ? ['primary'] : ['primary', $footer['region']],
+            $locale, $default, $requestPath,
+        );
         $chrome = [
-            'menu' => $this->nav->resolve('primary', $locale, $default, $requestPath),
+            'menu' => $menus['primary'] ?? [],
+            'footerMenu' => $footer === null ? [] : ($menus[$footer['region']] ?? []),
+            'header' => $header,
+            'footer' => $footer,
             'lang' => $locale,
             'hreflang' => $this->hreflangFor($resolved, $locale, $default, $path),
             // Business identity in the page's language (site_profiles + translations, the legacy

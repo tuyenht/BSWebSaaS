@@ -186,3 +186,29 @@ it('scans bundled theme blades for Tailwind classes so storefront utilities are 
     // cover it, else moving views out of app/Modules/ silently purges their utility classes.
     expect(file_get_contents(base_path('resources/css/app.css')))->toContain("@source '../../themes/");
 });
+
+it('renders the page title band with an eager, decorative LCP image and a clamped overlay', function (int $overlay, string $opacity): void {
+    $html = View::make('theme::sections.page_header', ['props' => [
+        'title' => 'Giới thiệu', 'subtitle' => 'Về chúng tôi', 'image_url' => 'https://files.baoson.net/band.jpg', 'overlay' => $overlay, '_lead' => true,
+    ]])->render();
+
+    expect($html)
+        ->toMatch('#<img class="page-band__bg"\s+src="https://files\.baoson\.net/band\.jpg"\s+alt=""\s+width="1600"\s+height="400"\s+loading="eager"\s+fetchpriority="high">#')
+        ->toContain('<div class="page-band__overlay" style="opacity:'.$opacity.'"></div>')
+        ->toContain('<h1 class="page-band__title">Giới thiệu</h1>')
+        ->toContain('<p class="page-band__subtitle">Về chúng tôi</p>');
+})->with([
+    'in range' => [70, '0.7'],
+    'too light' => [5, '0.4'],
+    'too dark' => [100, '0.8'],
+]);
+
+it('renders a solid band with an h2 when it has no image and does not lead the page', function (): void {
+    $plain = View::make('theme::sections.page_header', ['props' => ['title' => 'Nhà xưởng']])->render();
+    $unsafe = View::make('theme::sections.page_header', ['props' => ['title' => 'X', 'image_url' => 'javascript:alert(1)']])->render();
+
+    expect($plain)->toContain('<h2 class="page-band__title">Nhà xưởng</h2>')
+        ->not->toContain('<img')
+        ->not->toContain('page-band__overlay')
+        ->and($unsafe)->not->toContain('<img')->not->toContain('javascript:');
+});

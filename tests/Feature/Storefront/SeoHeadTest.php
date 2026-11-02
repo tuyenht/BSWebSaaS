@@ -159,3 +159,40 @@ it('uses the tenant brand favicon when set, and the platform file only as fallba
     expect($html)->toContain('<link rel="icon" href="https://files.example.test/an-vinh/brand/logo-64.png"');
     expect($html)->not->toContain('<link rel="icon" href="/favicon.ico"');
 });
+
+it('preloads the Inter Latin subset only for a site whose font is Inter', function (): void {
+    seoProvision();
+    $site = Site::query()->firstWhere('name', 'An Vinh');
+    $preload = '<link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>';
+
+    expect($this->get('http://anvinh.platform.test/')->assertOk()->getContent())->not->toContain('rel="preload"');
+
+    app(Tenancy::class)->enter($site->id, fn () => SiteSetting::query()->create(
+        ['group_name' => 'theme', 'key' => 'tokens', 'value' => ['font' => 'Inter, Inter-Fallback, system-ui, sans-serif']],
+    ));
+
+    expect($this->get('http://anvinh.platform.test/')->assertOk()->getContent())->toContain($preload)
+        ->not->toContain('inter-vietnamese.woff2" as="font"');
+});
+
+it('loads the text-size script only when the header offers the text-size button, and no inline script at all', function (): void {
+    seoProvision();
+    $site = Site::query()->firstWhere('name', 'An Vinh');
+    $setHeader = fn (array $header) => app(Tenancy::class)->enter($site->id, fn () => SiteSetting::query()->updateOrCreate(
+        ['group_name' => 'storefront', 'key' => 'header'], ['value' => $header],
+    ));
+
+    $setHeader(['text_size' => false]);
+    $without = $this->get('http://anvinh.platform.test/')->assertOk()->getContent();
+    $setHeader(['text_size' => true]);
+    $with = $this->get('http://anvinh.platform.test/')->assertOk()->getContent();
+
+    expect($without)->not->toContain('fs-boot.js')
+        ->and($with)->toMatch('#<head>.*<script src="/storefront/fs-boot\.js\?v=[0-9a-f]{10}"></script>.*</head>#s');
+
+    // The storefront CSP allows no inline script: every <script> either loads a file or is JSON-LD.
+    foreach ([$without, $with] as $html) {
+        preg_match_all('/<script(?![^>]*\bsrc=)(?![^>]*type="application\/ld\+json")[^>]*>/', $html, $inline);
+        expect($inline[0])->toBe([]);
+    }
+});

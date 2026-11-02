@@ -21,7 +21,8 @@ final class MenuRules
 
     /**
      * The link when it is safe to show, else null: site-relative paths and anchors, and absolute
-     * links with http(s), mailto or tel — never javascript:, data: or another scheme.
+     * links with http(s), mailto or tel — never javascript:, data: or another scheme. A path that
+     * starts with `//` or `/\` opens another host in the browser, so it is not site-relative.
      */
     public static function safeUrl(?string $url): ?string
     {
@@ -30,6 +31,9 @@ final class MenuRules
         }
         $url = trim($url);
         if ($url === '') {
+            return null;
+        }
+        if (str_starts_with($url, '//') || str_starts_with($url, '/\\')) {
             return null;
         }
         if (str_starts_with($url, '/') || str_starts_with($url, '#')) {

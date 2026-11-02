@@ -4,18 +4,17 @@ declare(strict_types=1);
 
 namespace App\Modules\Theme\Theming;
 
-use App\Modules\Tenancy\Models\SiteSetting;
-
 /**
  * Per-site customization over the SHARED master template (design.md §19): every site
  * uses the same theme Blade, but overrides design tokens (colors/fonts/…) to fit its
  * brand. No customer code runs (ADR-04) — overrides are CONFIG, applied as CSS
  * variables. Tokens are sanitized (CSS context) to prevent style breakout.
  *
- * Octane-safe: reads the current site's settings per call (RLS-scoped); no site
+ * Octane-safe: reads the current site's settings through the request-scoped
+ * StorefrontSettings (RLS-scoped, one query shared with the header and footer); no site
  * context → safe defaults only.
  */
-final class ThemeResolver
+final readonly class ThemeResolver
 {
     /**
      * storefront.css paints the page as color-mix(in srgb, var(--surface) 97%, var(--ink)); brand
@@ -45,17 +44,15 @@ final class ThemeResolver
         'body' => '#333333',
     ];
 
+    public function __construct(private StorefrontSettings $settings) {}
+
     /**
      * @return array<string, string>
      */
     public function tokens(): array
     {
-        $setting = SiteSetting::query()
-            ->where('group_name', 'theme')
-            ->where('key', 'tokens')
-            ->first();
-
-        $custom = is_array($setting?->value) ? $setting->value : [];
+        $stored = $this->settings->get('theme', 'tokens');
+        $custom = is_array($stored) ? $stored : [];
         $tokens = self::DEFAULTS;
 
         foreach ($custom as $key => $value) {
@@ -71,9 +68,10 @@ final class ThemeResolver
      * What the storefront prints into :root — the seeds plus the roles CSS cannot derive by itself
      * (docs/notes/section-style-system.md §1). `primary-text` is the brand color made readable
      * (WCAG AA) on `surface` AND on the page background, for brand-colored TEXT on light surfaces;
-     * fills and borders keep `primary` exactly as the site chose it. Always derived, never read
-     * from settings; a seed that is not a hex color (a name, rgb()) cannot be measured, so the role
-     * falls back to the ink color. `brand-50` … `brand-900` are the brand palette (BrandPalette).
+     * fills and borders keep `primary` exactly as the site chose it. The page background is the
+     * site's `page` token when it sets one, else the surface/ink mix storefront.css paints by
+     * default. Always derived, never read from settings; a seed that is not a hex color (a name,
+     * rgb()) cannot be measured, so the role falls back to the ink color. `brand-50` … `brand-900` are the brand palette (BrandPalette).
      *
      * The standard names (docs/notes/design-tokens.md §7) are printed next to the old ones that
      * storefront.css still reads, with the same values: `color-primary`, `color-primary-text`,
@@ -86,7 +84,7 @@ final class ThemeResolver
     public function cssVariables(): array
     {
         $variables = $this->tokens();
-        $page = ReadableColor::mix($variables['surface'], $variables['ink'], self::PAGE_SURFACE_SHARE);
+        $page = $variables['page'] ?? ReadableColor::mix($variables['surface'], $variables['ink'], self::PAGE_SURFACE_SHARE);
         $backgrounds = $page === null ? [$variables['surface']] : [$variables['surface'], $page];
         $primaryText = ReadableColor::onAll($variables['primary'], $backgrounds);
         $variables['primary-text'] = $primaryText ?? 'var(--ink)';

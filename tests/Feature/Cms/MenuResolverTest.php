@@ -6,6 +6,7 @@ use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Navigation\MenuResolver;
+use App\Modules\Cms\Navigation\MenuRules;
 use App\Modules\Tenancy\Context\Tenancy;
 
 /*
@@ -226,4 +227,63 @@ it('prefixes resolved URLs for a non-default-locale menu (via PathBuilder)', fun
 
     expect(collect($tree)->firstWhere('label', 'News')['url'])->toBe('/en/tin-tuc')
         ->and(collect($tree)->firstWhere('label', 'Home')['url'])->toBe('/en');
+});
+
+it('drops a url item that only looks site-relative but opens another host', function (string $url): void {
+    $ids = seedNavFixture();
+
+    $tree = app(Tenancy::class)->enter(1, function () use ($ids, $url) {
+        $bad = MenuItem::query()->create(['menu_id' => $ids['menu'], 'link_type' => 'url', 'url' => $url, 'position' => 2]);
+        $bad->translations()->create(['locale' => 'vi', 'label' => 'Lạ']);
+
+        return app(MenuResolver::class)->resolve('primary', 'vi', 'vi', '/');
+    });
+
+    expect(collect($tree)->pluck('label')->all())->not->toContain('Lạ')
+        ->and(MenuRules::safeUrl($url))->toBeNull();
+})->with(['protocol-relative' => '//evil.example/x', 'backslash' => '/\\evil.example']);
+
+it('keeps site paths, anchors and safe schemes', function (string $url): void {
+    expect(MenuRules::safeUrl($url))->toBe($url);
+})->with(['/lien-he', '#', 'https://example.com/a', 'mailto:a@example.com', 'tel:+84901234567']);
+
+it('resolves several regions at once into the same trees as one region at a time', function (): void {
+    $ids = seedNavFixture();
+
+    [$together, $alone, $count] = app(Tenancy::class)->enter(1, function () use ($ids): array {
+        $footer = Menu::query()->create(['handle' => 'footer-vi', 'name' => 'Chân trang']);
+        $heading = MenuItem::query()->create(['menu_id' => $footer->id, 'link_type' => 'url', 'url' => '#', 'position' => 0]);
+        $heading->translations()->create(['locale' => 'vi', 'label' => 'Liên kết']);
+        $link = MenuItem::query()->create(['menu_id' => $footer->id, 'parent_id' => $heading->id, 'link_type' => 'taxonomy',
+            'routable_type' => 'taxonomy', 'routable_id' => $ids['news'], 'position' => 0]);
+        $link->translations()->create(['locale' => 'vi', 'label' => 'Tin tức']);
+        MenuAssignment::query()->create(['region_key' => 'footer', 'locale' => 'vi', 'menu_id' => $footer->id]);
+
+        $resolver = app(MenuResolver::class);
+        $alone = ['primary' => $resolver->resolve('primary', 'vi', 'vi', '/tin-tuc'), 'footer' => $resolver->resolve('footer', 'vi', 'vi', '/tin-tuc')];
+        $count = countQueries(fn () => $resolver->resolveMany(['primary', 'footer', 'sidebar'], 'vi', 'vi', '/tin-tuc'));
+
+        return [$resolver->resolveMany(['primary', 'footer', 'sidebar'], 'vi', 'vi', '/tin-tuc'), $alone, $count];
+    });
+
+    expect($together)->toBe($alone + ['sidebar' => []])
+        ->and($together['footer'][0]['children'][0]['url'])->toBe('/tin-tuc')
+        ->and($count)->toBeLessThanOrEqual(4);   // assignments + items + labels + routes, for all regions
+});
+
+it('falls back to the default-locale menu region by region', function (): void {
+    $ids = seedNavFixture();   // primary: vi only
+
+    $trees = app(Tenancy::class)->enter(1, function (): array {
+        $footer = Menu::query()->create(['handle' => 'footer-en', 'name' => 'Footer']);
+        $home = MenuItem::query()->create(['menu_id' => $footer->id, 'link_type' => 'dynamic', 'dynamic_key' => 'home', 'position' => 0]);
+        $home->translations()->create(['locale' => 'en', 'label' => 'Home']);
+        MenuAssignment::query()->create(['region_key' => 'footer', 'locale' => 'en', 'menu_id' => $footer->id]);
+
+        return app(MenuResolver::class)->resolveMany(['primary', 'footer'], 'en', 'vi', '/en');
+    });
+
+    expect(collect($trees['primary'])->pluck('label')->all())->toBe(['Trang chủ', 'Tin tức'])   // vi menu, no en one
+        ->and(collect($trees['footer'])->pluck('label')->all())->toBe(['Home'])                // its own en menu
+        ->and($trees['footer'][0]['url'])->toBe('/en');
 });

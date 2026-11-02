@@ -40,6 +40,25 @@ final readonly class BlockRenderer
     }
 
     /**
+     * The type of the first block that will actually render (registered, well formed), or null —
+     * the layout asks this to know whether a title band leads the page and carries its h1. Pure:
+     * no query.
+     *
+     * @param  array<string, mixed>  $body
+     */
+    public function leadType(array $body): ?string
+    {
+        foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
+            $type = is_array($block) ? ($block['type'] ?? null) : null;
+            if (is_string($type) && $this->registry->has($type)) {
+                return $type;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * @param  array<string, mixed>  $body
      */
     public function render(array $body): string

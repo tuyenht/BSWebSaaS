@@ -3,7 +3,7 @@
 namespace App\Modules\Cms\Navigation;
 
 use App\Modules\Cms\Models\EntryTranslation;
-use App\Modules\Cms\Models\Menu;
+use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\MenuItemTranslation;
 use App\Modules\Cms\Models\SiteRoute;
@@ -36,59 +36,81 @@ final readonly class MenuResolver
      */
     public function resolve(string $region, string $locale, string $defaultLocale, string $currentPath = '/'): array
     {
-        [$menu, $effectiveLocale] = $this->menuFor($region, $locale, $defaultLocale);
+        return $this->resolveMany([$region], $locale, $defaultLocale, $currentPath)[$region] ?? [];
+    }
 
-        if ($menu === null) {
-            return [];
+    /**
+     * Several regions at once (the header's and the footer's menus): one assignments query for all
+     * of them, one items query (+ translations) for every chosen menu, and the URL/title lookups
+     * batched per language — so a second region costs no extra round trips for its lookups.
+     *
+     * @param  list<string>  $regions
+     * @return array<string, list<array<string, mixed>>> region → its tree (empty when no menu is bound)
+     */
+    public function resolveMany(array $regions, string $locale, string $defaultLocale, string $currentPath = '/'): array
+    {
+        $regions = array_values(array_unique($regions));
+        $trees = array_fill_keys($regions, []);
+        $chosen = $this->menusFor($regions, $locale, $defaultLocale);
+
+        if ($chosen === []) {
+            return $trees;
         }
 
-        // Resolve labels + URLs in the locale the chosen menu is actually assigned under: a
-        // default-locale fallback menu must be rendered in the default locale, not the
-        // requested one (otherwise every label/URL would miss and the menu would drop out).
         /** @var Collection<int, MenuItem> $items */
-        $items = $menu->items()
+        $items = MenuItem::query()
+            ->whereIn('menu_id', array_values(array_unique(array_column($chosen, 'menu'))))
             ->with('translations')
             ->orderBy('position')
             ->orderBy('id')
             ->get();
 
-        $urls = $this->resolveUrls($items, $effectiveLocale);
-        $titles = $this->resolveFallbackTitles($items, $effectiveLocale);
+        // Resolve labels + URLs in the locale each chosen menu is actually assigned under: a
+        // default-locale fallback menu must be rendered in the default locale, not the
+        // requested one (otherwise every label/URL would miss and the menu would drop out).
+        $lookups = [];   // effective locale → [urls, titles]
+        foreach (array_unique(array_column($chosen, 'locale')) as $effective) {
+            $menuIds = array_column(array_filter($chosen, fn (array $pick): bool => $pick['locale'] === $effective), 'menu');
+            $subset = $items->whereIn('menu_id', $menuIds);
+            $lookups[$effective] = [$this->resolveUrls($subset, $effective), $this->resolveFallbackTitles($subset, $effective)];
+        }
 
-        return $this->buildTree($items, null, $effectiveLocale, $currentPath, $urls, $titles, 0);
+        foreach ($chosen as $region => $pick) {
+            [$urls, $titles] = $lookups[$pick['locale']];
+            $menuItems = $items->where('menu_id', $pick['menu'])->values();
+            $trees[$region] = $this->buildTree($menuItems, null, $pick['locale'], $currentPath, $urls, $titles, 0);
+        }
+
+        return $trees;
     }
 
     /**
-     * The menu bound to the region for the active locale, plus the locale it was found
-     * under — falling back to the site's default locale so an untranslated region is never
-     * a dead-end.
+     * The menu bound to each region for the active locale, plus the locale it was found under —
+     * falling back to the site's default locale so an untranslated region is never a dead-end.
+     * One query for every region. A region with no menu in either locale is left out.
      *
-     * @return array{0: Menu|null, 1: string}
+     * @param  list<string>  $regions
+     * @return array<string, array{menu: int, locale: string}>
      */
-    private function menuFor(string $region, string $locale, string $defaultLocale): array
+    private function menusFor(array $regions, string $locale, string $defaultLocale): array
     {
-        $menu = $this->assignedMenu($region, $locale);
-        if ($menu instanceof Menu) {
-            return [$menu, $locale];
-        }
+        $assignments = MenuAssignment::query()
+            ->whereIn('region_key', $regions)
+            ->whereIn('locale', array_values(array_unique([$locale, $defaultLocale])))
+            ->orderBy('id')
+            ->get(['region_key', 'locale', 'menu_id']);
 
-        if ($defaultLocale !== $locale) {
-            $menu = $this->assignedMenu($region, $defaultLocale);
-            if ($menu instanceof Menu) {
-                return [$menu, $defaultLocale];
+        $chosen = [];
+        foreach ([$locale, $defaultLocale] as $candidate) {
+            foreach ($assignments as $assignment) {
+                $region = (string) $assignment->region_key;
+                if ($assignment->locale === $candidate && ! isset($chosen[$region])) {
+                    $chosen[$region] = ['menu' => (int) $assignment->menu_id, 'locale' => $candidate];
+                }
             }
         }
 
-        return [null, $locale];
-    }
-
-    private function assignedMenu(string $region, string $locale): ?Menu
-    {
-        return Menu::query()
-            ->whereHas('assignments', fn (Builder $query) => $query
-                ->where('region_key', $region)
-                ->where('locale', $locale))
-            ->first();
+        return $chosen;
     }
 
     /**

@@ -92,6 +92,7 @@ it('reads a site that has only a profile — no legacy setting', function (): vo
         SiteProfile::query()->firstOrFail()->update([
             'brand_name' => 'Chỉ Có Hồ Sơ', 'phone' => '0911 111 111', 'address_line' => '2 Đường Mới', 'province' => 'TP Huế',
             'social_links' => ['facebook' => 'https://facebook.com/chicohoso', 'youtube' => ''],
+            'license_issued_at' => '2019-04-15',
         ]);
 
         return app(SiteIdentity::class)->for('vi');
@@ -99,7 +100,8 @@ it('reads a site that has only a profile — no legacy setting', function (): vo
 
     expect($identity['name'])->toBe('Chỉ Có Hồ Sơ')
         ->and($identity['address'])->toBe('2 Đường Mới, TP Huế')
-        ->and($identity['social_links'])->toBe(['https://facebook.com/chicohoso']);   // blanks dropped
+        ->and($identity['social_links'])->toBe(['facebook' => 'https://facebook.com/chicohoso'])   // keyed by network, blanks dropped
+        ->and($identity['license_issued_at'])->toBe('2019-04-15');
 });
 
 it('is empty for a site with a blank profile and no setting', function (): void {

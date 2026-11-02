@@ -2,8 +2,10 @@
 
 namespace App\Modules\Theme\Providers;
 
+use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SectionComponent;
+use App\Modules\Theme\Theming\StorefrontSettings;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -70,6 +72,15 @@ final class ThemeServiceProvider extends ServiceProvider
             'email' => ['type' => 'url'],
             'map_embed' => ['type' => 'url'],
         ],
+        // The title band of an inner page: it carries the page's single h1 (the layout skips its
+        // own when this block leads the page). Title defaults to the page title; overlay is the
+        // darkening over the photo in percent, kept within 40–80 so white text stays readable.
+        'page_header' => [
+            'title' => ['type' => 'text'],
+            'subtitle' => ['type' => 'text'],
+            'image_url' => ['type' => 'image'],
+            'overlay' => ['type' => 'int', 'default' => 60],
+        ],
     ];
 
     #[\Override]
@@ -84,11 +95,23 @@ final class ThemeServiceProvider extends ServiceProvider
 
             return $registry;
         });
+
+        // Per request (Octane-safe): one settings read shared by the tokens, header and footer.
+        $this->app->scoped(StorefrontSettings::class);
     }
 
     public function boot(): void
     {
         View::addNamespace('theme', $this->activeThemePath());
+
+        // A setting written in this request is read fresh by the next render in it.
+        $forget = function (): void {
+            if ($this->app->resolved(StorefrontSettings::class)) {
+                $this->app->make(StorefrontSettings::class)->forget();
+            }
+        };
+        SiteSetting::saved($forget);
+        SiteSetting::deleted($forget);
     }
 
     private function activeThemePath(): string

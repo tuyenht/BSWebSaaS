@@ -148,7 +148,58 @@ it('measures the page background the storefront stylesheet actually paints', fun
     $share = (int) round(ThemeResolver::PAGE_SURFACE_SHARE * 100);
 
     expect((string) file_get_contents(resource_path('css/storefront.css')))
-        ->toMatch("/body \\{[^}]*background: color-mix\\(in srgb, var\\(--surface\\) {$share}%, var\\(--ink\\)\\);/");
+        ->toMatch("/body \\{[^}]*background: var\\(--page, color-mix\\(in srgb, var\\(--surface\\) {$share}%, var\\(--ink\\)\\)\\);/");
+});
+
+it('measures the brand text against the site’s own page colour when it sets one', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteSetting::query()->create([
+            'group_name' => 'theme',
+            'key' => 'tokens',
+            'value' => ['primary' => '#f59e0b', 'ink' => '#0f172a', 'page' => '#e2e8f0'],
+        ]);
+
+        $variables = app(ThemeResolver::class)->cssVariables();
+
+        expect($variables['page'])->toBe('#e2e8f0')
+            ->and(ReadableColor::ratio($variables['primary-text'], '#e2e8f0'))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT)
+            ->and(ReadableColor::ratio($variables['primary-text'], $variables['surface']))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT);
+    });
+});
+
+it('prints exactly the same variables as before for a site with no settings', function (): void {
+    $variables = app(Tenancy::class)->enter(1, fn (): array => app(ThemeResolver::class)->cssVariables());
+
+    $expected = [
+        'primary' => '#3b82f6', 'surface' => '#ffffff', 'text' => '#111111', 'font' => 'system-ui, sans-serif',
+        'ink' => '#111111', 'body' => '#333333', 'primary-text' => '#326fd1', 'primary-on-ink' => '#3b82f6',
+        'color-primary' => '#3b82f6', 'color-on-primary' => '#111111', 'color-primary-text' => '#326fd1',
+        'color-primary-on-dark' => '#3b82f6', 'color-surface' => '#ffffff', 'color-text' => '#333333',
+    ];
+    $palette = ['50' => '#f0f6ff', '100' => '#deebff', '200' => '#c4dbff', '300' => '#9cc2ff', '400' => '#659fff',
+        '500' => '#3b82f6', '600' => '#226adb', '700' => '#1b5abd', '800' => '#12499e', '900' => '#103e86'];
+    foreach ($palette as $step => $color) {
+        $expected["brand-{$step}"] = $color;
+        $expected["color-brand-{$step}"] = $color;
+    }
+
+    expect($variables)->toBe($expected);
+});
+
+it('accepts the optional size and dark-scale tokens but not one that breaks out of its value', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteSetting::query()->create([
+            'group_name' => 'theme',
+            'key' => 'tokens',
+            'value' => ['text-base' => '1.0625rem', 'ink-raised' => '#1e293b', 'on-ink' => '17px;}'],
+        ]);
+
+        $tokens = app(ThemeResolver::class)->tokens();
+
+        expect($tokens['text-base'])->toBe('1.0625rem')
+            ->and($tokens['ink-raised'])->toBe('#1e293b')
+            ->and($tokens)->not->toHaveKey('on-ink');
+    });
 });
 
 it('falls back to the ink color when the brand seed is not a hex color', function (): void {

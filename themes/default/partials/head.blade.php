@@ -1,7 +1,14 @@
 {{--
     Shared storefront <head>: SSR SEO baseline — canonical, Open Graph, optional BreadcrumbList
-    JSON-LD, hreflang alternates, design-token CSS variables, storefront stylesheet. Included
-    inside each layout's <head>; inherits layout view data. Adds no DB queries.
+    JSON-LD, hreflang alternates, design-token CSS variables, font preload, storefront stylesheet
+    and the optional header scripts. Included inside each layout's <head>; inherits layout view
+    data. Adds no DB queries.
+    Inter's Latin subset is preloaded only when the site's font is Inter (the Vietnamese and
+    Latin-extended subsets load on demand; a site on another font downloads no font). The
+    visitor's text size is applied before the first paint by a tiny same-origin script (the
+    storefront CSP allows no inline script). The header script (submenus, menu panel, text size)
+    loads only where there is something for it to do. These lines sit in column 0 so a site
+    without them renders the same bytes as before.
 --}}
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -138,5 +145,14 @@
 {{-- Per-site design tokens over the shared template (values are sanitized server-side). --}}
 <style>:root{@foreach (($tokens ?? []) as $name => $value)--{{ $name }}:{{ $value }};@endforeach}</style>
 
+@if (str_starts_with((string) ($tokens['font'] ?? ''), 'Inter'))
+<link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+@endif
+@if (! empty($header['text_size']))
+<script src="{{ \App\Modules\Theme\Chrome\StorefrontChrome::versioned('storefront/fs-boot.js') }}"></script>
+@endif
 {{-- Storefront stylesheet (Vite-managed; faked in tests via withoutVite()). --}}
 @vite(['resources/css/storefront.css'])
+@if (! empty($header) || \App\Modules\Theme\Chrome\StorefrontChrome::hasSubmenus($menu ?? []))
+@vite(['resources/js/storefront.js'])
+@endif

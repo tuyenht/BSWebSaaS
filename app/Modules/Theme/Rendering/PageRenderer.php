@@ -30,14 +30,56 @@ final readonly class PageRenderer
     {
         /** @var view-string $layout a theme layout name (TemplateResolver) */
         $layout = $this->templates->layoutFor($type, $templateOverride, $categoryTemplate);
+        $leadBlock = $this->blocks->leadType($body);
 
         return $this->views->make($layout, [
             'title' => $title,
             'seoTitle' => $seo['title'] ?? $title,
             'seoDescription' => $seo['description'] ?? null,
             'tokens' => $this->theme->cssVariables(),
-            'sections' => $this->blocks->render($body),
+            'sections' => $this->blocks->render(self::withPageTitle($body, $title, $leadBlock)),
+            // A page_header band leading the page renders the h1 itself; the layout then skips its own.
+            'leadBlock' => $leadBlock,
         ] + $extra)->render();
+    }
+
+    /**
+     * Prepare the page_header blocks: one without its own title shows the page title, and only
+     * the band that leads the page is marked as the page's h1 (`_lead`, always set here so a
+     * stored value never counts) — any later band is an h2.
+     *
+     * @param  array<string, mixed>  $body
+     * @return array<string, mixed>
+     */
+    private static function withPageTitle(array $body, string $title, ?string $leadType): array
+    {
+        if ($leadType === null || ! is_array($body['blocks'] ?? null)) {
+            return $body;
+        }
+
+        $blocks = $body['blocks'];
+        $leadFound = false;
+        foreach ($blocks as $index => $block) {
+            if (! is_array($block) || ! is_string($block['type'] ?? null)) {
+                continue;
+            }
+            $isLead = ! $leadFound && $block['type'] === $leadType;
+            $leadFound = $leadFound || $isLead;
+            if ($block['type'] !== 'page_header') {
+                continue;
+            }
+
+            $props = is_array($block['props'] ?? null) ? $block['props'] : [];
+            if (! is_string($props['title'] ?? null) || trim($props['title']) === '') {
+                $props['title'] = $title;
+            }
+            $props['_lead'] = $isLead;
+            $block['props'] = $props;
+            $blocks[$index] = $block;
+        }
+        $body['blocks'] = $blocks;
+
+        return $body;
     }
 
     /**

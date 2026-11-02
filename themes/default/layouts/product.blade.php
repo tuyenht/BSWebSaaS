@@ -4,8 +4,9 @@
 @include('theme::partials.head')
 </head>
 <body>
+    <a class="sf-skip" href="#noi-dung">{{ __('storefront.skip_to_content') }}</a>
     @include('theme::partials.header', ['menu' => $menu ?? [], 'brand' => $brand ?? null])
-    <article class="product">
+    <article class="product" id="noi-dung" tabindex="-1">
         <h1 class="product__title">{{ $title }}</h1>
         @if (! empty($images))
             <div class="product__gallery">

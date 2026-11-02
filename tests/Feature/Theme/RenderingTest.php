@@ -62,7 +62,7 @@ it('threads a per-category detail_template through to the layout', function (): 
         'blocks' => [['type' => 'hero', 'props' => ['heading' => 'Y']]],
     ], [], 'page');
 
-    expect($html)->toContain('<main>')->not->toContain('class="post"');
+    expect($html)->toContain('<main id="noi-dung" tabindex="-1">')->not->toContain('class="post"');
 });
 
 it('renders a category list page with posts + pagination links', function (): void {
