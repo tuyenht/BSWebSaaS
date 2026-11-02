@@ -512,7 +512,7 @@
                              beside it; the shared row hit area makes each 40 / 44px with a mouse, 44px on touch. --}}
                         @foreach ([10, 20, 50] as $rows)
                             <button type="button" wire:click="setPerPage({{ $rows }})" aria-pressed="{{ $perPage === $rows ? 'true' : 'false' }}"
-                                @class(['pager-link border', 'border-primary bg-primary-base/10 font-semibold text-primary-text' => $perPage === $rows, 'border-border-strong bg-surface font-medium text-text hover:bg-surface-hover' => $perPage !== $rows])>
+                                @class(['pager-link border', 'border-primary bg-primary-base/8 font-semibold text-primary-text' => $perPage === $rows, 'border-border-strong bg-surface font-medium text-text hover:bg-surface-hover' => $perPage !== $rows])>
                                 {{ $rows }}
                             </button>
                         @endforeach
