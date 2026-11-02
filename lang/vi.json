@@ -871,6 +871,7 @@
     "entries.views_count": ":count lượt xem",
     "entries.footer_showing": "Hiển thị :first–:last trong :total trang",
     "entries.rows_per_page": "Dòng/trang",
+    "entries.rows_per_page_label": "Số dòng mỗi trang",
     "entries.manage_title": "Quản lý :label",
     "entries.groups_label": "Nhóm :noun",
     "entries.f_trans": "Bản dịch",

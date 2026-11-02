@@ -871,6 +871,7 @@
     "entries.views_count": ":count 回閲覧",
     "entries.footer_showing": "全:total件中 :first–:last件を表示",
     "entries.rows_per_page": "1ページの行数",
+    "entries.rows_per_page_label": "1ページの行数を選ぶ",
     "entries.manage_title": ":label管理",
     "entries.groups_label": "ステータス別グループ",
     "entries.f_trans": "翻訳",
