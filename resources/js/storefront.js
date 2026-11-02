@@ -46,6 +46,7 @@ document.querySelectorAll('[data-disclosure]').forEach((item) => {
 
     item.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && item.classList.contains('is-open')) {
+            event.stopPropagation(); // one Escape closes the submenu only, not the mobile panel around it
             setOpen(item, false);
             toggle.focus();
         }

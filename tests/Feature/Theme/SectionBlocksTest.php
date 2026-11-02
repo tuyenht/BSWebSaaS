@@ -172,6 +172,16 @@ it('sandboxes the contact map iframe and names it even when the heading is empty
         ->toContain('title="Bản đồ"')->not->toContain('title=""');              // a11y fallback name
 });
 
+it('embeds a contact map only from an allowed web link', function (): void {
+    $render = fn (string $url): string => View::make('theme::sections.contact', ['props' => ['map_embed' => $url]])->render();
+
+    expect($render('//evil.example/e'))->not->toContain('<iframe');
+
+    config(['cms.map_hosts' => ['google.com']]);
+    expect($render('https://www.google.com/maps/embed?pb=1'))->toContain('src="https://www.google.com/maps/embed?pb=1"')
+        ->and($render('https://maps.example/e'))->not->toContain('<iframe');
+});
+
 it('does not link a partner logo that has a url but no name (a11y: no name-less link)', function (): void {
     $props = ['logos' => [['image_url' => 'https://cdn.example/p.png', 'url' => 'https://p.test']]];
 

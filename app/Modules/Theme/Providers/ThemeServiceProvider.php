@@ -105,9 +105,10 @@ final class ThemeServiceProvider extends ServiceProvider
         View::addNamespace('theme', $this->activeThemePath());
 
         // A setting written in this request is read fresh by the next render in it.
+        // app(), not $this->app: under Octane each request runs in a clone of the booted app.
         $forget = function (): void {
-            if ($this->app->resolved(StorefrontSettings::class)) {
-                $this->app->make(StorefrontSettings::class)->forget();
+            if (app()->resolved(StorefrontSettings::class)) {
+                app(StorefrontSettings::class)->forget();
             }
         };
         SiteSetting::saved($forget);

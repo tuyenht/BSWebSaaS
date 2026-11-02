@@ -22,8 +22,9 @@ return [
         'plan_lock_wait' => (int) env('CMS_SITEMAP_PLAN_LOCK_WAIT', 0),
     ],
 
-    // Hosts a storefront footer's "view map" link may point at (a subdomain matches too), e.g.
-    // google.com,maps.app.goo.gl. Empty: any http(s) link passes the link check.
+    // Hosts a storefront map may come from — the footer's "view map" link and the contact block's
+    // embedded map (a subdomain matches too), e.g. google.com,maps.app.goo.gl. Empty: any http(s)
+    // link passes the link check.
     'map_hosts' => array_values(array_filter(array_map('trim', explode(',', (string) env('CMS_MAP_HOSTS', ''))))),
 
 ];

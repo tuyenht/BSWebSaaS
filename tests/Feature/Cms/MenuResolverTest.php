@@ -241,7 +241,7 @@ it('drops a url item that only looks site-relative but opens another host', func
 
     expect(collect($tree)->pluck('label')->all())->not->toContain('Lạ')
         ->and(MenuRules::safeUrl($url))->toBeNull();
-})->with(['protocol-relative' => '//evil.example/x', 'backslash' => '/\\evil.example']);
+})->with(['protocol-relative' => '//evil.example/x', 'backslash' => '/\\evil.example', 'tab inside' => "/\t/evil.example", 'line break inside' => "/\n/evil.example"]);
 
 it('keeps site paths, anchors and safe schemes', function (string $url): void {
     expect(MenuRules::safeUrl($url))->toBe($url);

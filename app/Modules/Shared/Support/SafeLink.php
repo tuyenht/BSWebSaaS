@@ -52,7 +52,8 @@ final class SafeLink
         if (! is_string($phone)) {
             return null;
         }
-        $digits = (string) preg_replace('/[^\d+]/', '', $phone);
+        // "+84 (0)90…": the bracketed trunk 0 is not dialled after a country code
+        $digits = (string) preg_replace('/[^\d+]/', '', str_replace('(0)', '', $phone));
         $digits = ($digits !== '' && $digits[0] === '+' ? '+' : '').str_replace('+', '', $digits);
 
         return preg_match('/^\+?\d{3,20}$/', $digits) === 1 ? 'tel:'.$digits : null;
