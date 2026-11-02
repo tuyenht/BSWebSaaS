@@ -23,6 +23,15 @@ final readonly class ThemeResolver
      */
     public const float PAGE_SURFACE_SHARE = 0.97;
 
+    /** Every spacing step is a multiple of this many px, whatever the density. */
+    public const int SPACE_GRID = 4;
+
+    /** The spacing scale at normal density, in px. */
+    private const array SPACE_STEPS = ['s' => 8, 'm' => 16, 'l' => 32, 'xl' => 64];
+
+    /** Density seed values and the factor each applies to SPACE_STEPS. */
+    private const array DENSITY = ['compact' => 0.85, 'normal' => 1.0, 'airy' => 1.2];
+
     /** @var array<string, string> */
     private const array DEFAULTS = [
         // #3b82f6, not the more obvious #0a66c2: storefront.css puts `ink` as TEXT on
@@ -32,7 +41,6 @@ final readonly class ThemeResolver
         // caught it live in the `cwv` CI job, 23/09). #3b82f6 clears ~5.1:1.
         'primary' => '#3b82f6',
         'surface' => '#ffffff',
-        'text' => '#111111',
         'font' => 'system-ui, sans-serif',
         // Storefront seeds (docs/notes/section-style-system.md §1 — persisted per site, so
         // renaming one means migrating every tenant's data; CSS roles derive from these): `ink` is the
@@ -76,7 +84,7 @@ final readonly class ThemeResolver
      * The standard names (docs/notes/design-tokens.md §7) are printed next to the old ones that
      * storefront.css still reads, with the same values: `color-primary`, `color-primary-text`,
      * `color-primary-on-dark`, `color-surface`, `color-text`, `color-text-strong`, `color-dark`,
-     * `font-body`, `color-brand-*`, plus
+     * `font-body`, `color-brand-*`, the scales (`space-*`, `radius-*`, `shadow-*`, `gradient-*`, `motion-*`), plus
      * `color-on-primary` — white or the ink color on the brand fill, whichever reads better. A new
      * name never points back at an old one, so a fallback is the color itself, not `var(--ink)`.
      *
@@ -117,7 +125,36 @@ final readonly class ThemeResolver
             $variables["color-brand-{$step}"] = $color;
         }
 
-        return $variables;
+        return array_merge($variables, $this->scales($variables['density'] ?? 'normal'));
+    }
+
+    /**
+     * The theme scales (docs/notes/section-style-system.md §1), derived: spacing × density, radius, shadow,
+     * gradient and motion. Like the roles above, a same-named key in settings never wins (they are merged over the stored values). Spacing is
+     * rounded to the 4px grid after the density factor; an unknown density means normal. Gradients and
+     * shadows are built from the roles with color-mix(), so they work for a brand that is not hex.
+     *
+     * @return array<string, string>
+     */
+    private function scales(string $density): array
+    {
+        $unit = self::DENSITY[$density] ?? self::DENSITY['normal'];
+        $scales = ['space-unit' => rtrim(rtrim(number_format($unit, 2, '.', ''), '0'), '.')];
+        foreach (self::SPACE_STEPS as $step => $px) {
+            $scales["space-{$step}"] = (int) (round($px * $unit / self::SPACE_GRID) * self::SPACE_GRID).'px';
+        }
+
+        return $scales + [
+            'radius-soft' => '8px',
+            'radius-round' => '9999px',
+            'shadow-soft' => '0 1px 3px color-mix(in srgb, var(--color-dark) 12%, transparent)',
+            'shadow-medium' => '0 6px 16px color-mix(in srgb, var(--color-dark) 16%, transparent)',
+            'gradient-1' => 'linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 55%, var(--color-dark)))',
+            'gradient-2' => 'linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 55%, white))',
+            'gradient-3' => 'linear-gradient(135deg, var(--color-dark), var(--color-primary))',
+            'motion-duration' => '250ms',
+            'motion-distance' => '24px',
+        ];
     }
 
     /**
