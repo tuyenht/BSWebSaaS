@@ -25,7 +25,7 @@
  *   darkened role would read worse.
  *
  * Architecture: BEM (.block__element--modifier), mobile-first, zero JS framework.
- * Target: <15 KB minified. No @import 'tailwindcss' — passed through Vite as plain CSS.
+ * Size (built file, 02/11): 45.8 KB minified, 7.9 KB gzip; 30.0 / 5.6 KB before the card looks. No @import 'tailwindcss' — passed through Vite as plain CSS.
  */
 
 /* ───── Fonts ────────────────────────────────────────────────────────────── */
@@ -381,7 +381,7 @@ html:not(.sf-js) .site-nav__item:focus-within > .site-nav__list--level-1 {
  * without a duplicate visible heading. The h1 remains in the DOM for semantics
  * and machine readability.
  */
-main:has(.hero) .page__title {
+main:has(.hero, .sf-slider) .page__title {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -2081,5 +2081,1034 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 
     .sf-factory:hover {
         box-shadow: none;
+    }
+}
+
+/* ───── Block looks, cards, slider and card lists ────────────────────────── */
+/*
+ * Opt-in looks of the blocks (`variant` / `bg`), the shared card, the hero slider and the card-grid
+ * list layouts. A site that sets none of them renders none of these classes. Fixed photo ratios
+ * (aspect-ratio + object-fit), never fixed heights. Light surfaces use --color-primary-text for
+ * coloured text and icons; fills and dark surfaces use --color-primary.
+ */
+.sf-band {
+    padding-block: 5rem;
+}
+
+.sf-band--surface {
+    background: var(--color-surface);
+}
+
+.sf-band--tint {
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+}
+
+.sf-band--dark {
+    background: var(--color-dark);
+    color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white));
+}
+
+.sf-section-head {
+    max-width: 48rem;
+    margin: 0 auto 3rem;
+    text-align: center;
+}
+
+.sf-section-head__title {
+    margin-bottom: 1rem;
+    color: var(--color-text-strong);
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.sf-section-head__rule {
+    display: block;
+    width: min(16rem, 60%);
+    height: 0.1875rem;
+    margin-inline: auto;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, transparent, var(--color-primary) 20%, var(--color-primary) 80%, transparent);
+}
+
+.sf-section-head__text {
+    margin-top: 1rem;
+    color: var(--color-text);
+    font-size: 1rem;
+}
+
+.sf-band--dark .sf-section-head__title {
+    color: var(--color-surface);
+}
+
+.sf-band--dark .sf-section-head__text {
+    color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white));
+}
+
+/* Grids: --4 (2 from md, 4 from lg) · --4s (2 from sm, 4 from lg) · --3 (3 from md)
+ * · --3s (2 from sm, 3 from lg) · --3m (2 from md, 3 from lg). */
+.sf-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.sf-grid > li {
+    display: flex;
+    min-width: 0;
+}
+
+.sf-grid > li > * {
+    flex: 1;
+}
+
+@media (min-width: 640px) {
+    .sf-grid--4s,
+    .sf-grid--3s {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 768px) {
+    .sf-grid--4,
+    .sf-grid--3m {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .sf-grid--3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1024px) {
+    .sf-grid--4,
+    .sf-grid--4s {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .sf-grid--3s,
+    .sf-grid--3m {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+.sf-empty {
+    color: var(--color-text);
+    text-align: center;
+}
+
+.sf-view-all {
+    margin-top: 3rem;
+    text-align: center;
+}
+
+.sf-view-all__link,
+.sf-slide__cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    padding: 0.75rem 2rem;
+    border-radius: 0.375rem;
+    background: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
+    color: #fff;
+    font-weight: 700;
+    transition: background 0.3s, transform 0.3s;
+}
+
+/* The shared card. One link (the title), stretched over the whole card. */
+.sf-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 0.5rem;
+    background: var(--color-surface);
+    color: var(--color-text);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    transition: box-shadow 0.3s, transform 0.3s, border-color 0.3s;
+}
+
+.sf-card__title {
+    color: var(--color-text-strong);
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.sf-card__link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+}
+
+.sf-card__link:focus-visible {
+    outline: none;
+}
+
+.sf-card:has(.sf-card__link:focus-visible) {
+    outline: 2px solid var(--color-primary-text);
+    outline-offset: 3px;
+}
+
+.sf-band--dark .sf-card:has(.sf-card__link:focus-visible) {
+    outline-color: var(--color-primary);
+}
+
+.sf-card__text {
+    font-size: 0.875rem;
+    line-height: 1.625;
+}
+
+.sf-card__more {
+    margin-top: auto;
+    color: var(--color-text-strong);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.sf-card__arrow {
+    display: inline-block;
+    transition: transform 0.3s;
+}
+
+.sf-card__frame {
+    position: relative;
+    overflow: hidden;
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+}
+
+.sf-card__frame--4x3 {
+    aspect-ratio: 4 / 3;
+}
+
+.sf-card__frame--8x5 {
+    aspect-ratio: 8 / 5;
+}
+
+.sf-card__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s;
+}
+
+.sf-card__body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    padding: 1.5rem;
+}
+
+.sf-card__label {
+    color: var(--color-text);
+    font-size: 0.875rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+/* Icon card (services). */
+.sf-card--icon {
+    align-items: center;
+    padding: 2rem;
+    text-align: center;
+}
+
+.sf-card__icon {
+    display: block;
+    margin-bottom: 1.5rem;
+    color: var(--color-primary-text);
+    transition: transform 0.3s;
+}
+
+.sf-card__icon .icon,
+.sf-feature__icon .icon {
+    width: 4rem;
+    height: 4rem;
+    color: inherit;
+}
+
+.sf-card--icon .sf-card__title {
+    margin-bottom: 0.75rem;
+}
+
+.sf-card--icon .sf-card__text {
+    flex-grow: 1;
+    margin-bottom: 1.25rem;
+}
+
+/* Product card (list) and product overlay card (block). */
+.sf-card--product {
+    border: 1px solid color-mix(in srgb, var(--color-surface) 90%, var(--color-dark));
+}
+
+.sf-card--product .sf-card__title {
+    margin-top: 0.25rem;
+}
+
+.sf-card--product-overlay .sf-card__frame {
+    background: var(--color-dark);
+}
+
+.sf-card--product-overlay .sf-card__img {
+    transition-duration: 0.5s;
+}
+
+.sf-card__shade {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgb(0 0 0 / 0.8), rgb(0 0 0 / 0.4) 50%, transparent);
+}
+
+.sf-card--project .sf-card__shade {
+    background: linear-gradient(to top, rgb(0 0 0 / 0.8), transparent);
+}
+
+.sf-card__hover {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgb(0 0 0 / 0.4);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.sf-card__eye {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 4rem;
+    height: 4rem;
+    border-radius: 9999px;
+    background: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
+    color: #fff;
+}
+
+.sf-card__eye .icon {
+    width: 2rem;
+    height: 2rem;
+    color: inherit;
+}
+
+.sf-card__caption {
+    position: absolute;
+    inset: auto 0 0;
+    z-index: 1;
+    padding: 1.5rem;
+}
+
+.sf-card--product-overlay .sf-card__label {
+    color: var(--color-primary);
+    font-size: 0.75rem;
+    line-height: 1rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.sf-card--product-overlay .sf-card__title {
+    color: #fff;
+    transition: color 0.3s;
+}
+
+/* Project card. */
+.sf-card--project .sf-card__title {
+    margin-bottom: 0.5rem;
+}
+
+.sf-band--dark .sf-card--project {
+    border: 1px solid var(--color-dark-line, color-mix(in srgb, var(--color-dark) 75%, white));
+    background: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
+    color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white));
+}
+
+.sf-band--dark .sf-card--project .sf-card__title {
+    color: var(--color-primary);
+}
+
+/* An excerpt is body text (not a name), so it alone may be cut at four lines. */
+.sf-band--dark .sf-card--project .sf-card__text,
+.sf-card--news .sf-card__text {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
+    overflow: hidden;
+}
+
+/* News card. */
+.sf-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.sf-card__chip {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+    color: var(--color-text-strong);
+    font-size: 0.75rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.sf-card__date {
+    color: color-mix(in srgb, var(--color-text) 80%, white);
+    font-size: 0.75rem;
+}
+
+.sf-card--news .sf-card__title {
+    flex-grow: 1;
+    margin-bottom: 0.75rem;
+}
+
+.sf-card--news .sf-card__text {
+    margin-bottom: 1rem;
+}
+
+/* Features, top-rule look (capabilities). */
+.sf-feature {
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem;
+    border-top: 0.25rem solid var(--color-primary);
+    border-radius: 0.5rem;
+    background: var(--color-surface);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    text-align: center;
+    transition: box-shadow 0.3s, transform 0.3s;
+}
+
+.sf-feature__icon {
+    display: inline-flex;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark))) 80%, var(--color-dark));
+    color: var(--color-primary-text);
+}
+
+.sf-feature__title {
+    margin-bottom: 0.75rem;
+    color: var(--color-text-strong);
+    font-size: 1.25rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.sf-feature__text {
+    color: var(--color-text);
+    font-size: 0.875rem;
+}
+
+/* CTA: the sub-line (both looks) and the rounded look. */
+.cta__text {
+    max-width: 42rem;
+    margin: 0 auto 1.5rem;
+    color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white));
+    font-size: 1.125rem;
+    line-height: 1.5rem;
+}
+
+.cta.cta--rounded {
+    padding: 5rem 0;
+    background: var(--color-dark);
+}
+
+.cta__title {
+    color: #fff;
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    overflow-wrap: anywhere;
+}
+
+.cta--rounded .cta__text {
+    margin: 1rem auto 0;
+}
+
+.cta__button.cta__button--pill {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    margin-top: 2rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 9999px;
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+    font-weight: 500;
+    transition: background 0.3s, transform 0.3s;
+}
+
+@media (min-width: 640px) {
+    .cta__button.cta__button--pill {
+        display: inline-flex;
+    }
+}
+
+/* Contact, card look. */
+.sf-contact-cards {
+    display: grid;
+    gap: 2rem;
+    margin: 0 0 5rem;
+    padding: 0;
+    list-style: none;
+}
+
+@media (min-width: 768px) {
+    .sf-contact-cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1024px) {
+    .sf-contact-cards {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+.sf-contact-card {
+    display: flex;
+    gap: 1rem;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+}
+
+.sf-contact-card__icon {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 0.375rem;
+    background: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
+    color: #fff;
+}
+
+.sf-contact-card__title {
+    color: var(--color-text-strong);
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+    font-weight: 600;
+}
+
+.sf-contact-card__value,
+.sf-contact-card__text {
+    margin-top: 0.25rem;
+    color: var(--color-text);
+    font-size: 0.875rem;
+    overflow-wrap: anywhere;
+}
+
+.sf-contact-card__value {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.5rem;
+}
+
+.sf-map,
+.lead-form__map {
+    display: block;
+    width: 100%;
+    height: 20rem;
+    border: 1px solid color-mix(in srgb, var(--color-surface) 80%, var(--color-dark));
+    border-radius: 0.5rem;
+}
+
+/* Form beside a map. */
+.lead-form__description {
+    margin-bottom: 1.5rem;
+    color: var(--color-text);
+}
+
+.lead-form.lead-form--map {
+    display: grid;
+    gap: 3rem;
+    padding: 2rem;
+    border: 1px solid color-mix(in srgb, var(--color-surface) 90%, var(--color-dark));
+    border-radius: 0.5rem;
+    background: var(--color-surface);
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}
+
+@media (min-width: 768px) {
+    .lead-form.lead-form--map {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        padding: 3rem;
+    }
+
+    .lead-form--map .lead-form__map {
+        height: 100%;
+        min-height: 20rem;
+    }
+}
+
+/* Hero slider. Every slide shares one grid cell: the box is the tallest slide, so a switch never
+ * moves the page. 16:9 on common screens, capped at the viewport, a readable floor on phones. */
+.sf-slider {
+    position: relative;
+    overflow: hidden;
+    background: var(--color-dark);
+    color: #fff;
+}
+
+.sf-slider__viewport {
+    display: grid;
+}
+
+.sf-slide {
+    position: relative;
+    display: flex;
+    grid-area: 1 / 1;
+    align-items: center;
+    justify-content: center;
+    min-height: max(28rem, min(56.25vw, 100svh));
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 1s, visibility 1s;
+}
+
+.sf-slide.is-active {
+    visibility: visible;
+    opacity: 1;
+}
+
+.sf-slide__media,
+.sf-slide__overlay {
+    position: absolute;
+    inset: 0;
+}
+
+.sf-slide__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.sf-slide__overlay {
+    background: #000;
+}
+
+.sf-slide__content {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 64rem;
+    padding: 3rem 1rem 7rem;
+    text-align: center;
+}
+
+.sf-slide__title {
+    margin-bottom: 1rem;
+    color: #fff;
+    font-size: 1.875rem;
+    line-height: 1.2;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    text-shadow: 0 4px 8px rgb(0 0 0 / 0.4);
+    overflow-wrap: anywhere;
+}
+
+.sf-slide__text {
+    max-width: 48rem;
+    margin: 0 auto 2rem;
+    color: #fff;
+    font-size: 1rem;
+    text-shadow: 0 2px 4px rgb(0 0 0 / 0.5);
+}
+
+.sf-slide__ctas {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.sf-slide__cta {
+    border-radius: 9999px;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+.sf-slide__cta.sf-slide__cta--accent {
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+}
+
+@media (min-width: 640px) {
+    .sf-slide__title {
+        font-size: 2.25rem;
+    }
+
+    .sf-slide__ctas {
+        flex-direction: row;
+    }
+}
+
+@media (min-width: 768px) {
+    .sf-slide__text {
+        font-size: 1.125rem;
+    }
+}
+
+/* Controls. Below md they form one bottom row (prev · dots · pause · next), so the arrows never
+ * cover the centered text; from md the arrows sit at the sides and the row keeps pause + dots. */
+.sf-slider__controls {
+    position: absolute;
+    inset: auto 0 1.25rem;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.sf-slider__controls[hidden] {
+    display: none;
+}
+
+.sf-slider__btn {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    padding: 0;
+    border: 0;
+    border-radius: 9999px;
+    background: rgb(0 0 0 / 0.3);
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.sf-slider__btn:focus-visible,
+.sf-slider__dot:focus-visible,
+.sf-slide__cta:focus-visible {
+    outline: 2px solid #fff;
+    box-shadow: 0 0 0 4px rgb(0 0 0 / 0.6);
+}
+
+.sf-slider__prev {
+    order: 1;
+}
+
+.sf-slider__dots {
+    display: flex;
+    order: 2;
+}
+
+.sf-slider__pause {
+    order: 3;
+    width: 2.75rem;
+    height: 2.75rem;
+}
+
+.sf-slider__next {
+    order: 4;
+}
+
+.sf-slider__pause .sf-slider__icon-play,
+.sf-slider__pause.is-paused .sf-slider__icon-pause {
+    display: none;
+}
+
+.sf-slider__pause.is-paused .sf-slider__icon-play {
+    display: block;
+}
+
+.sf-slider__dot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+}
+
+.sf-slider__dot-mark {
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 9999px;
+    background: rgb(255 255 255 / 0.6);
+    transition: background 0.3s, transform 0.3s;
+}
+
+.sf-slider__dot[aria-current="true"] .sf-slider__dot-mark {
+    background: var(--color-primary);
+    transform: scale(1.25);
+}
+
+@media (min-width: 768px) {
+    /* The row spans the slider (clicks pass through to the slide) so the arrows can center. */
+    .sf-slider__controls {
+        inset: 0;
+        align-items: flex-end;
+        padding-bottom: 2rem;
+        pointer-events: none;
+    }
+
+    .sf-slider__controls > * {
+        pointer-events: auto;
+    }
+
+    .sf-slider__pause {
+        order: 0;
+    }
+
+    .sf-slider__prev,
+    .sf-slider__next {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .sf-slider__prev {
+        left: 1.25rem;
+    }
+
+    .sf-slider__next {
+        right: 1.25rem;
+    }
+
+    .sf-slide__content {
+        padding-bottom: 6rem;
+    }
+}
+
+/* Card-grid list pages. */
+.sf-list__body {
+    padding-block: 5rem;
+}
+
+.sf-list--product .sf-list__body {
+    padding-block: 4rem;
+}
+
+.sf-chips {
+    margin-bottom: 3rem;
+}
+
+.sf-chips__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+    margin: 0;
+    padding: 0.25rem;
+    list-style: none;
+}
+
+@media (max-width: 639.98px) {
+    .sf-chips__list {
+        border-radius: 1rem;
+        background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+    }
+}
+
+.sf-chips__chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.5rem;
+    padding: 0.5rem 1.25rem;
+    border-radius: 9999px;
+    background: var(--color-surface);
+    color: var(--color-text-strong);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+    font-weight: 600;
+    overflow-wrap: anywhere;
+    transition: background 0.2s, color 0.2s;
+}
+
+.sf-chips__chip[aria-current="page"] {
+    background: var(--color-dark);
+    color: #fff;
+}
+
+.sf-empty-box {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: center;
+    padding: 2rem 1rem;
+    border-radius: 0.5rem;
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+    color: var(--color-text);
+    font-size: 1rem;
+    text-align: center;
+}
+
+.sf-empty-box__link {
+    color: var(--color-primary-text);
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+.pagination__prev,
+.pagination__next,
+.pagination__first {
+    min-height: 2.5rem;
+}
+
+.pagination__first {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.625rem 1.25rem;
+    border-radius: 0.375rem;
+    background: color-mix(in srgb, var(--color-surface) 94%, var(--color-dark));
+    color: color-mix(in srgb, var(--color-dark) 85%, white);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+/* Hover only where a pointer can hover (never a touch-only state). */
+@media (hover: hover) {
+    .sf-card--icon:hover,
+    .sf-card--product:hover {
+        transform: translateY(-0.5rem);
+    }
+
+    .sf-card--icon:hover {
+        box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+    }
+
+    .sf-card--icon:hover .sf-card__icon {
+        transform: scale(1.1);
+    }
+
+    .sf-card--icon:hover .sf-card__more {
+        color: var(--color-primary-text);
+    }
+
+    .sf-card:hover .sf-card__arrow {
+        transform: translateX(0.25rem);
+    }
+
+    .sf-card--product:hover {
+        box-shadow: 0 0 20px rgb(30 41 59 / 0.2);
+    }
+
+    .sf-card--product:hover .sf-card__img {
+        transform: scale(1.1);
+    }
+
+    .sf-card--product-overlay:hover .sf-card__img {
+        transform: scale(1.05);
+    }
+
+    .sf-card--product-overlay:hover .sf-card__hover {
+        opacity: 1;
+    }
+
+    .sf-card--product-overlay:hover .sf-card__title {
+        color: var(--color-primary);
+    }
+
+    .sf-band--dark .sf-card--project:hover {
+        border-color: var(--color-primary);
+    }
+
+    .sf-feature:hover {
+        box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+        transform: translateY(-0.25rem);
+    }
+
+    .sf-view-all__link:hover,
+    .sf-slide__cta:hover {
+        background: var(--color-dark-line, color-mix(in srgb, var(--color-dark) 75%, white));
+    }
+
+    .sf-slide__cta:hover {
+        transform: scale(1.05);
+    }
+
+    .sf-slide__cta.sf-slide__cta--accent:hover,
+    .cta__button.cta__button--pill:hover {
+        background: color-mix(in srgb, var(--color-primary) 85%, black);
+        transform: scale(1.05);
+    }
+
+    .sf-slider__btn:hover {
+        background: rgb(0 0 0 / 0.5);
+    }
+
+    .sf-slider__dot:hover .sf-slider__dot-mark {
+        background: #fff;
+    }
+
+    .sf-slider__dot[aria-current="true"]:hover .sf-slider__dot-mark {
+        background: var(--color-primary);
+    }
+
+    .sf-contact-card__value:hover {
+        color: var(--color-text-strong);
+    }
+
+    .sf-chips__chip:not([aria-current="page"]):hover,
+    .pagination__first:hover {
+        background: var(--color-primary);
+        color: var(--color-on-primary);
+    }
+}
+
+/* Touch screens: the new controls reach 44px. */
+@media (any-pointer: coarse) {
+    .sf-slider__dot {
+        width: 2.75rem;
+        height: 2.75rem;
+    }
+
+    .sf-contact-card__value,
+    .sf-chips__chip,
+    .pagination__prev,
+    .pagination__next,
+    .pagination__first {
+        min-height: 2.75rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sf-slide,
+    .sf-card,
+    .sf-card__img,
+    .sf-card__icon,
+    .sf-card__arrow,
+    .sf-card__hover,
+    .sf-feature,
+    .sf-slide__cta,
+    .sf-slider__btn,
+    .sf-slider__dot-mark,
+    .sf-view-all__link,
+    .cta__button.cta__button--pill {
+        transition: none;
+    }
+
+    .sf-card:hover,
+    .sf-feature:hover,
+    .sf-slide__cta:hover,
+    .cta__button.cta__button--pill:hover,
+    .sf-card:hover .sf-card__img,
+    .sf-card:hover .sf-card__icon,
+    .sf-card:hover .sf-card__arrow {
+        transform: none;
     }
 }

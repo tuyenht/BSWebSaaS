@@ -22,6 +22,20 @@ final readonly class MediaLibraryUrls
      */
     public function urlsForIds(array $ids, ?int $width = null): array
     {
+        return $this->resolve($ids, $width)['urls'];
+    }
+
+    /**
+     * The URLs of urlsForIds() plus, from the same single SELECT, a `srcset` per URL at
+     * $srcsetWidths (capped at each master's stored width). A URL whose srcset would hold fewer
+     * than two distinct candidates has none (MediaUrlResolver::srcset).
+     *
+     * @param  array<array-key, mixed>  $ids
+     * @param  list<int>  $srcsetWidths
+     * @return array{urls: array<int, string>, srcsets: array<string, string>}
+     */
+    public function resolve(array $ids, ?int $width = null, array $srcsetWidths = []): array
+    {
         $wanted = [];
         foreach ($ids as $id) {
             if (is_int($id) && $id > 0) {
@@ -30,14 +44,21 @@ final readonly class MediaLibraryUrls
         }
 
         if ($wanted === []) {
-            return [];
+            return ['urls' => [], 'srcsets' => []];
         }
 
         $urls = [];
-        foreach (Media::query()->whereIn('id', array_keys($wanted))->get(['id', 'storage_key']) as $media) {
-            $urls[(int) $media->id] = $this->resolver->url((string) $media->storage_key, $width);
+        $srcsets = [];
+        foreach (Media::query()->whereIn('id', array_keys($wanted))->get(['id', 'storage_key', 'width']) as $media) {
+            $key = (string) $media->storage_key;
+            $url = $this->resolver->url($key, $width);
+            $urls[(int) $media->id] = $url;
+            $srcset = $srcsetWidths !== [] ? $this->resolver->srcset($key, $srcsetWidths, $media->width) : null;
+            if ($srcset !== null) {
+                $srcsets[$url] = $srcset;
+            }
         }
 
-        return $urls;
+        return ['urls' => $urls, 'srcsets' => $srcsets];
     }
 }

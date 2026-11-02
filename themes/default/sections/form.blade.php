@@ -3,12 +3,25 @@
     Cloudflare Turnstile widget, loaded async/defer ONLY when a site_key is configured (prod) — so
     dev/test render no third-party JS. Anti-spam: hidden honeypot (off-screen, a11y-hidden) +
     Turnstile + server-side rate-limit. POSTs same-origin to /forms/{key} (form-action 'self').
+    Optional: a `description` line under the heading, and a `map_embed` (host-checked against
+    cms.map_hosts like the contact block) that puts the form in a card beside the map.
 --}}
+@php
+    $sfMap = \App\Modules\Shared\Support\SafeLink::href($props['map_embed'] ?? null, config('cms.map_hosts'));
+@endphp
 @if (! empty($action))
+@if ($sfMap !== null)
+    <section class="lead-form lead-form--map">
+        <div class="lead-form__main">
+@else
     <section class="lead-form">
+@endif
         @if (! empty($heading))
             <h2 class="lead-form__heading">{{ $heading }}</h2>
         @endif
+@if (! empty($props['description']))
+        <p class="lead-form__description">{{ $props['description'] }}</p>
+@endif
 
         @if (session('form_success'))
             <p class="lead-form__success" role="status">{{ session('form_success') }}</p>
@@ -68,5 +81,9 @@
 
             <button type="submit" class="lead-form__submit">{{ __('forms.submit_button') }}</button>
         </form>
+@if ($sfMap !== null)
+        </div>
+        <iframe class="lead-form__map" src="{{ $sfMap }}" title="{{ __('storefront.map') }}" width="600" height="340" loading="lazy" referrerpolicy="no-referrer-when-downgrade" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
+@endif
     </section>
 @endif

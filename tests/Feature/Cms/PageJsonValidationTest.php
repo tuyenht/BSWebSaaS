@@ -100,6 +100,25 @@ it('rejects a dangerous URL scheme in a url prop (stored-XSS guard)', function (
         ->and(validateBlocks([['type' => 'cta', 'props' => ['button_url' => 'data:text/html,<script>']]])->fails())->toBeTrue();
 });
 
+it('refuses a look that is not in its list and accepts a listed one or none', function (): void {
+    expect(validateBlocks([['type' => 'entry_grid', 'props' => ['variant' => 'icon-cards', 'bg' => 'tint']]])->passes())->toBeTrue()
+        ->and(validateBlocks([['type' => 'cta', 'props' => ['variant' => null]]])->passes())->toBeTrue()
+        ->and(validateBlocks([['type' => 'features', 'props' => []]])->passes())->toBeTrue();
+
+    foreach ([['entry_grid', 'variant', 'carousel'], ['product_grid', 'bg', 'neon'], ['contact', 'variant', 'Cards'], ['cta', 'variant', 1]] as [$type, $prop, $value]) {
+        $validator = validateBlocks([['type' => $type, 'props' => [$prop => $value]]]);
+        expect($validator->fails())->toBeTrue("{$type}.{$prop}={$value} should fail")
+            ->and($validator->errors()->first('blocks'))->toBe(__('entries.err_block_option_invalid', ['type' => $type]));
+    }
+});
+
+it('checks a choice inside a list item too', function (): void {
+    registerSchemaBlock('test_enum_list', ['items' => ['type' => 'list', 'of' => ['look' => ['type' => 'enum', 'options' => ['a', 'b'], 'default' => 'a']]]]);
+
+    expect(validateBlocks([['type' => 'test_enum_list', 'props' => ['items' => [['look' => 'b']]]]])->passes())->toBeTrue()
+        ->and(validateBlocks([['type' => 'test_enum_list', 'props' => ['items' => [['look' => 'c']]]]])->fails())->toBeTrue();
+});
+
 it('allows safe URL schemes in url props', function (): void {
     expect(validateBlocks([['type' => 'cta', 'props' => ['button_url' => '/lien-he']]])->passes())->toBeTrue()
         ->and(validateBlocks([['type' => 'cta', 'props' => ['button_url' => 'https://example.test/x']]])->passes())->toBeTrue()

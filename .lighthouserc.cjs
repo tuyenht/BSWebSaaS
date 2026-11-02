@@ -18,9 +18,10 @@ const budgets = (level) => ({
 module.exports = {
   ci: {
     collect: {
-      // Pages the provisioned measurement site already publishes: home, the contact page (a form
-      // block) and the seeded news category list.
-      url: [`${origin}/`, `${origin}/lien-he`, `${origin}/tin-tuc`],
+      // Pages the provisioned measurement site publishes: home, the contact page (a form block),
+      // the news list (a card grid with chips once site:seed-measurement has run) and /do-kiem
+      // (slider, card grids, contact cards; seeded by the same command).
+      url: [`${origin}/`, `${origin}/lien-he`, `${origin}/tin-tuc`, `${origin}/do-kiem`],
       numberOfRuns: 3,
       startServerCommand: `php artisan serve --host=0.0.0.0 --port=${port}`,
       startServerReadyPattern: 'Server running on',
@@ -31,10 +32,14 @@ module.exports = {
       },
     },
     assert: {
-      // All three pages gated. Calibration (CI, 24/09): / 18 samples, /lien-he + /tin-tuc 12 each —
-      // LCP 750–1055 ms (two clusters from simulated throttling), JS 0 bytes, axe clean.
-      // A page added later joins through an assertMatrix entry at 'warn' first.
-      assertions: budgets('error'),
+      // The first three pages gated. Calibration (CI, 24/09): / 18 samples, /lien-he + /tin-tuc 12
+      // each — LCP 750–1055 ms (two clusters from simulated throttling), JS 0 bytes, axe clean.
+      // A page added later joins at 'warn' with the same budgets: /do-kiem since 02/11, promoted
+      // to 'error' once its own CI samples show headroom.
+      assertMatrix: [
+        { matchingUrlPattern: '/do-kiem$', assertions: budgets('warn') },
+        { matchingUrlPattern: '^https?://[^/]+(/|/lien-he|/tin-tuc)$', assertions: budgets('error') },
+      ],
     },
     upload: {
       target: 'filesystem',

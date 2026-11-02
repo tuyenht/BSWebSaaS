@@ -18,8 +18,11 @@
                 @endforeach
             </ul>
 
-            @if (! empty($pagination['prevUrl']) || ! empty($pagination['nextUrl']))
+            @if (! empty($pagination['prevUrl']) || ! empty($pagination['nextUrl']) || ! empty($pagination['firstUrl']))
                 <nav class="pagination" aria-label="{{ __('storefront.pagination') }}">
+@if (! empty($pagination['firstUrl']))
+                    <a class="pagination__first" href="{{ $pagination['firstUrl'] }}">{{ __('storefront.back_to_first') }}</a>
+@endif
                     @if (! empty($pagination['prevUrl']))
                         <a class="pagination__prev" rel="prev" href="{{ $pagination['prevUrl'] }}">{{ __('storefront.prev_page') }}</a>
                     @endif

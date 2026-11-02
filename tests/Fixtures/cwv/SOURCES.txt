@@ -1,0 +1,13 @@
+Measurement-page photos for the CI cwv job (site:seed-measurement). Stock photos under the Pexels
+licence (https://www.pexels.com/license/: free for commercial use, no attribution required, may be
+modified), cropped, toned and downscaled to 640 px wide. They illustrate no real company.
+
+slide-1.webp    https://www.pexels.com/photo/8865187/
+slide-2.webp    https://www.pexels.com/photo/29976478/
+slide-3.webp    https://www.pexels.com/photo/31004832/
+product-1.webp  https://www.pexels.com/photo/17937669/
+product-2.webp  https://www.pexels.com/photo/36522037/
+product-3.webp  https://www.pexels.com/photo/10406128/
+news-1.webp     https://www.pexels.com/photo/34207359/
+news-2.webp     https://www.pexels.com/photo/3861437/
+news-3.webp     https://www.pexels.com/photo/32845668/

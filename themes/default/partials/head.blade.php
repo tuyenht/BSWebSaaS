@@ -7,7 +7,9 @@
     Latin-extended subsets load on demand; a site on another font downloads no font). The
     visitor's text size is applied before the first paint by a tiny same-origin script (the
     storefront CSP allows no inline script). The header script (submenus, menu panel, text size)
-    loads only where there is something for it to do. These lines sit in column 0 so a site
+    loads only where there is something for it to do, the slider script only on a page with a
+    slider to rotate (plus a preconnect to the media host when the slider leads the page), and a
+    robots line only where a page asks for one. These lines sit in column 0 so a site
     without them renders the same bytes as before.
 --}}
 <meta charset="utf-8">
@@ -15,6 +17,9 @@
 <title>{{ $seoTitle }}</title>
 {{-- Tenant favicon from the brand setting; the platform file is only the no-brand fallback. --}}
 <link rel="icon" href="{{ data_get($brand ?? null, 'favicon') ?: '/favicon.ico' }}" sizes="any">
+@if (! empty($robots))
+<meta name="robots" content="{{ $robots }}">
+@endif
 @php
     // Brand description fallback: category-list and other pages without a per-page description
     // (seoDescription = null/empty) fall back to the tenant's brand short description so the
@@ -148,6 +153,9 @@
 @if (str_starts_with((string) ($tokens['font'] ?? ''), 'Inter'))
 <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 @endif
+@if (! empty($mediaOrigin))
+<link rel="preconnect" href="{{ $mediaOrigin }}">
+@endif
 @if (! empty($header['text_size']))
 <script src="{{ \App\Modules\Theme\Chrome\StorefrontChrome::versioned('storefront/fs-boot.js') }}"></script>
 @endif
@@ -155,4 +163,7 @@
 @vite(['resources/css/storefront.css'])
 @if (! empty($header) || \App\Modules\Theme\Chrome\StorefrontChrome::hasSubmenus($menu ?? []))
 @vite(['resources/js/storefront.js'])
+@endif
+@if (! empty($sliderScript))
+@vite(['resources/js/sf-slider.js'])
 @endif

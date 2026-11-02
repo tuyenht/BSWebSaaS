@@ -75,8 +75,15 @@ final readonly class ValidPageJson implements ValidationRule
                 return;
             }
 
-            if (! $this->urlPropsSafe($block['props'], $this->registry->get($type)->schema())) {
+            $schema = $this->registry->get($type)->schema();
+            if (! $this->urlPropsSafe($block['props'], $schema)) {
                 $fail(__('entries.err_block_link_invalid', ['type' => $type]));
+
+                return;
+            }
+
+            if (! $this->choicesValid($block['props'], $schema)) {
+                $fail(__('entries.err_block_option_invalid', ['type' => $type]));
 
                 return;
             }
@@ -144,6 +151,48 @@ final readonly class ValidPageJson implements ValidationRule
         // htmlspecialchars() at render (TypeError → 500s the published page), so the boundary that
         // distrusts the wire payload rejects it here too. null = an absent prop, which is fine.
         return $value === null || is_scalar($value);
+    }
+
+    /**
+     * Every `enum` prop (at any depth, through list `of`) holds null or one of its declared options,
+     * compared as strings exactly. The render side falls back to the default for anything else
+     * (SectionProps::choice), so this keeps a stored value honest rather than safe.
+     */
+    private function choicesValid(mixed $data, mixed $schema): bool
+    {
+        if (! is_array($schema)) {
+            return true;
+        }
+
+        foreach ($schema as $prop => $spec) {
+            if (! is_array($spec)) {
+                continue;
+            }
+            $value = is_array($data) ? ($data[$prop] ?? null) : null;
+            $type = $spec['type'] ?? null;
+
+            if ($type === 'enum') {
+                $options = is_array($spec['options'] ?? null) ? $spec['options'] : [];
+                if ($value !== null && ! in_array($value, $options, true)) {
+                    return false;
+                }
+
+                continue;
+            }
+
+            $of = $spec['of'] ?? null;
+            if ($type !== 'list' || ! is_array($of) || ! is_array($value)) {
+                continue;
+            }
+            $scalarOf = isset($of['type']) && is_string($of['type']);
+            foreach ($value as $item) {
+                if (! ($scalarOf ? $this->choicesValid(['item' => $item], ['item' => $of]) : $this->choicesValid($item, $of))) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     /** Reject dangerous URL schemes; whitespace/control chars are stripped to defeat obfuscation. */

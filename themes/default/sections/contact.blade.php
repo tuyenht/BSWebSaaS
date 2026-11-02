@@ -1,3 +1,47 @@
+@if (\App\Modules\Theme\Components\SectionProps::choice($props, 'variant', \App\Modules\Theme\Components\SectionProps::CONTACT_VARIANTS) === 'cards')
+{{-- The card look (opt-in): one card per contact way, then the map. Card titles are h3, so a
+     block without its own heading prints a visually hidden h2 above them. --}}
+@php($sfMap = \App\Modules\Shared\Support\SafeLink::href($props['map_embed'] ?? null, config('cms.map_hosts')))
+<section class="contact contact--cards">
+@if (! empty($props['heading']))
+    <h2 class="contact__heading">{{ $props['heading'] }}</h2>
+@else
+    <h2 class="sr-only">{{ __('storefront.contact_info') }}</h2>
+@endif
+    <ul class="sf-contact-cards">
+@if (! empty($props['phone']))
+        <li class="sf-contact-card">
+            <span class="sf-contact-card__icon">@include('theme::partials.sf-icon', ['name' => 'phone', 'size' => 24])</span>
+            <div>
+                <h3 class="sf-contact-card__title">{{ \App\Modules\Theme\Components\SectionProps::text($props, 'phone_label', __('storefront.contact_phone')) }}</h3>
+                <a class="sf-contact-card__value" href="{{ 'tel:'.$props['phone'] }}">{{ $props['phone'] }}</a>
+            </div>
+        </li>
+@endif
+@if (! empty($props['email']))
+        <li class="sf-contact-card">
+            <span class="sf-contact-card__icon">@include('theme::partials.sf-icon', ['name' => 'email', 'size' => 24])</span>
+            <div>
+                <h3 class="sf-contact-card__title">{{ \App\Modules\Theme\Components\SectionProps::text($props, 'email_label', __('storefront.contact_email')) }}</h3>
+                <a class="sf-contact-card__value" href="{{ 'mailto:'.$props['email'] }}">{{ $props['email'] }}</a>
+            </div>
+        </li>
+@endif
+@if (! empty($props['address']))
+        <li class="sf-contact-card">
+            <span class="sf-contact-card__icon">@include('theme::partials.sf-icon', ['name' => 'address', 'size' => 24])</span>
+            <div>
+                <h3 class="sf-contact-card__title">{{ \App\Modules\Theme\Components\SectionProps::text($props, 'address_label', __('storefront.contact_address')) }}</h3>
+                <p class="sf-contact-card__text">{{ $props['address'] }}</p>
+            </div>
+        </li>
+@endif
+    </ul>
+@if ($sfMap !== null)
+    <iframe class="sf-map" src="{{ $sfMap }}" title="{{ ($props['heading'] ?? '') ?: __('storefront.map') }}" width="600" height="340" loading="lazy" referrerpolicy="no-referrer-when-downgrade" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
+@endif
+</section>
+@else
 <section class="contact">
     @if (! empty($props['heading']))
         <h2 class="contact__heading">{{ $props['heading'] }}</h2>
@@ -19,3 +63,4 @@
         <iframe class="contact__map" src="{{ \App\Modules\Shared\Support\SafeLink::href($props['map_embed'], config('cms.map_hosts')) }}" title="{{ ($props['heading'] ?? '') ?: __('storefront.map') }}" width="600" height="450" loading="lazy" referrerpolicy="no-referrer-when-downgrade" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
     @endif
 </section>
+@endif
