@@ -101,7 +101,7 @@ final readonly class EntryBlockMediaReconciler
                 $type = $block['type'] ?? null;
                 $props = is_array($block['props'] ?? null) ? $block['props'] : [];
                 if (is_string($type) && $this->registry->has($type)) {
-                    $ids = array_merge($ids, SchemaImages::ids($props, $this->registry->get($type)->schema()));
+                    $ids = array_merge($ids, SchemaImages::ids($props, $this->registry->schemaFor($type)));
                 }
             }
         }

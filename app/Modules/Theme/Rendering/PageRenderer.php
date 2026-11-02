@@ -34,6 +34,8 @@ final readonly class PageRenderer
         $layout = $this->templates->layoutFor($type, $templateOverride, $categoryTemplate);
         $leadBlock = $this->blocks->leadType($body);
         $extra += in_array('hero_slider', $this->blocks->types($body), true) ? self::sliderHints($body, $leadBlock, $this->media) : [];
+        // The scroll-in motion script loads only on a page with a block that moves.
+        $extra += $this->blocks->moves($body) ? ['sectionsScript' => true] : [];
 
         return $this->views->make($layout, [
             'title' => $title,

@@ -400,7 +400,7 @@ main:has(.hero, .sf-slider) .page__title {
     min-height: 28rem;
     display: flex;
     align-items: center;
-    background: var(--color-dark);
+    background: var(--sch-bg, var(--color-dark));
     overflow: hidden;
 }
 
@@ -439,7 +439,7 @@ main:has(.hero, .sf-slider) .page__title {
 .hero__heading {
     font-size: clamp(1.75rem, 5vw, 3rem);
     font-weight: 900;
-    color: var(--color-surface);
+    color: var(--sch-head, var(--color-surface));
     margin: 0 0 1rem;
     text-transform: uppercase;
     letter-spacing: 0.01em;
@@ -447,7 +447,7 @@ main:has(.hero, .sf-slider) .page__title {
 
 .hero__subheading {
     font-size: clamp(1rem, 2vw, 1.25rem);
-    color: color-mix(in srgb, var(--color-dark) 22%, white);
+    color: var(--sch-body, color-mix(in srgb, var(--color-dark) 22%, white));
     max-width: 40rem;
     line-height: 1.65;
     margin: 0 0 2rem;
@@ -456,8 +456,8 @@ main:has(.hero, .sf-slider) .page__title {
 .hero__cta {
     display: inline-block;
     padding: 0.75rem 1.75rem;
-    background: var(--color-primary);
-    color: var(--color-text-strong);
+    background: var(--sch-pri-bg, var(--color-primary));
+    color: var(--sch-pri-fg, var(--color-text-strong));
     font-weight: 700;
     font-size: 0.95rem;
     border-radius: 0.375rem;
@@ -467,18 +467,18 @@ main:has(.hero, .sf-slider) .page__title {
 }
 
 .hero__cta:hover {
-    background: color-mix(in srgb, var(--color-primary) 85%, black);
+    background: color-mix(in srgb, var(--sch-pri-bg, var(--color-primary)) 85%, black);
 }
 
 .hero__cta--secondary {
     background: transparent;
-    border: 2px solid var(--color-primary);
-    color: var(--color-primary-on-dark);
+    border: 2px solid var(--sch-sec-fg, var(--color-primary));
+    color: var(--sch-sec-fg, var(--color-primary-on-dark));
 }
 
 .hero__cta--secondary:hover {
-    background: var(--color-primary);
-    color: var(--color-text-strong);
+    background: var(--sch-pri-bg, var(--color-primary));
+    color: var(--sch-pri-fg, var(--color-text-strong));
 }
 
 /* ───── About section ────────────────────────────────────────────────────── */
@@ -519,12 +519,12 @@ main:has(.hero, .sf-slider) .page__title {
 .about__heading {
     font-size: clamp(1.25rem, 2.5vw, 1.875rem);
     font-weight: 800;
-    color: var(--color-text-strong);
+    color: var(--sch-head, var(--color-text-strong));
     margin: 0 0 1rem;
 }
 
 .about__paragraph {
-    color: color-mix(in srgb, var(--color-text) 80%, white);
+    color: var(--sch-body, color-mix(in srgb, var(--color-text) 80%, white));
     line-height: 1.75;
     margin: 0 0 0.875rem;
 }
@@ -533,8 +533,8 @@ main:has(.hero, .sf-slider) .page__title {
     display: inline-block;
     margin-top: 0.5rem;
     padding: 0.625rem 1.5rem;
-    background: var(--color-primary);
-    color: var(--color-text-strong);
+    background: var(--sch-pri-bg, var(--color-primary));
+    color: var(--sch-pri-fg, var(--color-text-strong));
     font-weight: 700;
     font-size: 0.9rem;
     border-radius: 0.375rem;
@@ -542,7 +542,7 @@ main:has(.hero, .sf-slider) .page__title {
 }
 
 .about__cta:hover {
-    background: color-mix(in srgb, var(--color-primary) 85%, black);
+    background: color-mix(in srgb, var(--sch-pri-bg, var(--color-primary)) 85%, black);
 }
 
 .about__image {
@@ -572,10 +572,10 @@ main:has(.hero, .sf-slider) .page__title {
 .entry-grid__heading {
     font-size: clamp(1.25rem, 2.5vw, 1.875rem);
     font-weight: 800;
-    color: var(--color-text-strong);
+    color: var(--sch-head, var(--color-text-strong));
     margin: 0 0 2rem;
     padding-bottom: 0.625rem;
-    border-bottom: 3px solid var(--color-primary);
+    border-bottom: 3px solid var(--sch-rule, var(--color-primary));
     display: inline-block;
 }
 
@@ -663,7 +663,7 @@ main:has(.hero, .sf-slider) .page__title {
 }
 
 .entry-grid__empty {
-    color: color-mix(in srgb, var(--color-text) 80%, white);
+    color: var(--sch-body, color-mix(in srgb, var(--color-text) 80%, white));
     font-style: italic;
 }
 
@@ -809,15 +809,15 @@ main:has(.hero, .sf-slider) .page__title {
 .contact__heading {
     font-size: clamp(1.25rem, 2.5vw, 1.875rem);
     font-weight: 800;
-    color: var(--color-text-strong);
+    color: var(--sch-head, var(--color-text-strong));
     margin: 0 0 1.25rem;
     padding-bottom: 0.625rem;
-    border-bottom: 3px solid var(--color-primary);
+    border-bottom: 3px solid var(--sch-rule, var(--color-primary));
     display: inline-block;
 }
 
 .contact__address {
-    color: color-mix(in srgb, var(--color-text) 80%, white);
+    color: var(--sch-body, color-mix(in srgb, var(--color-text) 80%, white));
     line-height: 1.65;
     margin-bottom: 0.75rem;
 }
@@ -827,14 +827,14 @@ main:has(.hero, .sf-slider) .page__title {
     display: inline-block;
     font-size: 1.0625rem;
     font-weight: 700;
-    color: var(--color-primary-text);
+    color: var(--sch-link, var(--color-primary-text));
     margin: 0 1.5rem 0.5rem 0;
     transition: color 0.2s;
 }
 
 .contact__phone:hover,
 .contact__email:hover {
-    color: color-mix(in srgb, var(--color-primary-text) 85%, black);
+    color: color-mix(in srgb, var(--sch-link, var(--color-primary-text)) 85%, black);
 }
 
 .contact__map {
@@ -849,7 +849,7 @@ main:has(.hero, .sf-slider) .page__title {
 
 /* ───── CTA section ──────────────────────────────────────────────────────── */
 .cta {
-    background: var(--color-dark);
+    background: var(--sch-bg, var(--color-dark));
     padding: 4rem 1.5rem;
     text-align: center;
 }
@@ -863,15 +863,15 @@ main:has(.hero, .sf-slider) .page__title {
 .cta h2 {
     font-size: clamp(1.25rem, 2.5vw, 1.875rem);
     font-weight: 800;
-    color: var(--color-surface);
+    color: var(--sch-head, var(--color-surface));
     margin: 0 0 1.5rem;
 }
 
 .cta__button {
     display: inline-block;
     padding: 0.75rem 2rem;
-    background: var(--color-primary);
-    color: var(--color-text-strong);
+    background: var(--sch-pri-bg, var(--color-primary));
+    color: var(--sch-pri-fg, var(--color-text-strong));
     font-weight: 700;
     font-size: 1rem;
     border-radius: 0.375rem;
@@ -879,7 +879,7 @@ main:has(.hero, .sf-slider) .page__title {
 }
 
 .cta__button:hover {
-    background: color-mix(in srgb, var(--color-primary) 85%, black);
+    background: color-mix(in srgb, var(--sch-pri-bg, var(--color-primary)) 85%, black);
 }
 
 /* ───── Partners section ─────────────────────────────────────────────────── */
@@ -898,10 +898,10 @@ main:has(.hero, .sf-slider) .page__title {
 .partners__heading {
     font-size: clamp(1.25rem, 2.5vw, 1.875rem);
     font-weight: 800;
-    color: var(--color-text-strong);
+    color: var(--sch-head, var(--color-text-strong));
     margin: 0 0 2rem;
     padding-bottom: 0.625rem;
-    border-bottom: 3px solid var(--color-primary);
+    border-bottom: 3px solid var(--sch-rule, var(--color-primary));
     display: inline-block;
 }
 
@@ -946,10 +946,10 @@ main:has(.hero, .sf-slider) .page__title {
 .features h2 {
     font-size: clamp(1.25rem, 2.5vw, 1.875rem);
     font-weight: 800;
-    color: var(--color-text-strong);
+    color: var(--sch-head, var(--color-text-strong));
     margin: 0 0 2rem;
     padding-bottom: 0.625rem;
-    border-bottom: 3px solid var(--color-primary);
+    border-bottom: 3px solid var(--sch-rule, var(--color-primary));
     display: inline-block;
 }
 
@@ -1007,12 +1007,12 @@ main:has(.hero, .sf-slider) .page__title {
 .richtext h2 {
     font-size: clamp(1.125rem, 2vw, 1.5rem);
     font-weight: 700;
-    color: var(--color-text-strong);
+    color: var(--sch-head, var(--color-text-strong));
     margin: 0 0 0.875rem;
 }
 
 .richtext p {
-    color: color-mix(in srgb, var(--color-text) 80%, white);
+    color: var(--sch-body, color-mix(in srgb, var(--color-text) 80%, white));
     line-height: 1.75;
     margin-bottom: 0.75rem;
 }
@@ -1033,10 +1033,10 @@ main:has(.hero, .sf-slider) .page__title {
 .latest-posts h2 {
     font-size: clamp(1.25rem, 2.5vw, 1.875rem);
     font-weight: 800;
-    color: var(--color-text-strong);
+    color: var(--sch-head, var(--color-text-strong));
     margin: 0 0 1.5rem;
     padding-bottom: 0.625rem;
-    border-bottom: 3px solid var(--color-primary);
+    border-bottom: 3px solid var(--sch-rule, var(--color-primary));
     display: inline-block;
 }
 
@@ -2003,7 +2003,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     justify-content: center;
     min-height: 13rem;
     overflow: hidden;
-    background: var(--color-dark);
+    background: var(--sch-bg, var(--color-dark));
     color: #fff;
     text-align: center;
 }
@@ -2031,7 +2031,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 
 .page-band__title {
     margin-bottom: 0.5rem;
-    color: #fff;
+    color: var(--sch-head, #fff);
     font-size: 1.875rem;
     font-weight: 800;
     overflow-wrap: anywhere;
@@ -2044,7 +2044,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 }
 
 .page-band__subtitle {
-    color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white));
+    color: var(--sch-body, var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white)));
     font-size: 1.125rem;
 }
 
@@ -2117,7 +2117,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 
 .sf-section-head__title {
     margin-bottom: 1rem;
-    color: var(--color-text-strong);
+    color: var(--sch-head, var(--color-text-strong));
     font-size: 1.875rem;
     line-height: 2.25rem;
     font-weight: 700;
@@ -2135,7 +2135,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 
 .sf-section-head__text {
     margin-top: 1rem;
-    color: var(--color-text);
+    color: var(--sch-body, var(--color-text));
     font-size: 1rem;
 }
 
@@ -2517,18 +2517,18 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 .cta__text {
     max-width: 42rem;
     margin: 0 auto 1.5rem;
-    color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white));
+    color: var(--sch-body, var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white)));
     font-size: 1.125rem;
     line-height: 1.5rem;
 }
 
 .cta.cta--rounded {
     padding: 5rem 0;
-    background: var(--color-dark);
+    background: var(--sch-bg, var(--color-dark));
 }
 
 .cta__title {
-    color: #fff;
+    color: var(--sch-head, #fff);
     font-size: 1.875rem;
     line-height: 2.25rem;
     font-weight: 800;
@@ -2548,8 +2548,8 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     margin-top: 2rem;
     padding: 0.75rem 1.5rem;
     border-radius: 9999px;
-    background: var(--color-primary);
-    color: var(--color-on-primary);
+    background: var(--sch-pri-bg, var(--color-primary));
+    color: var(--sch-pri-fg, var(--color-on-primary));
     box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
     font-weight: 500;
     transition: background 0.3s, transform 0.3s;
@@ -2635,7 +2635,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 /* Form beside a map. */
 .lead-form__description {
     margin-bottom: 1.5rem;
-    color: var(--color-text);
+    color: var(--sch-body, var(--color-text));
 }
 
 .lead-form.lead-form--map {
@@ -3110,6 +3110,242 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     .sf-card:hover .sf-card__img,
     .sf-card:hover .sf-card__icon,
     .sf-card:hover .sf-card__arrow {
+        transform: none;
+    }
+}
+
+/*
+ * Section look (StyleProps, docs/notes/section-style-system.md §2): the wrapper BlockRenderer puts
+ * around a block that sets one; a block without a look has no wrapper, so none of this reaches it.
+ * Every class comes from a fixed table. A colour set gives the block --sch-* roles (ThemeResolver
+ * prints them per site, contrast-fitted); the block rules below read them with their own colour as
+ * the fallback, so outside a set every block keeps the look it always had.
+ */
+.sf-s {
+    position: relative;
+}
+
+.sf-s--sch-light {
+    --sch-bg: transparent;
+    --sch-head: var(--color-text-strong);
+    --sch-body: var(--color-text);
+    --sch-link: var(--color-primary-text);
+    --sch-pri-bg: var(--color-primary);
+    --sch-pri-fg: var(--color-on-primary);
+    --sch-sec-fg: var(--color-text-strong);
+    --sch-rule: var(--color-primary);
+}
+
+.sf-s--sch-soft,
+.sf-s--sch-brand,
+.sf-s--sch-dark {
+    --sch-bg: var(--sch-set-bg);
+    --sch-head: var(--sch-set-head);
+    --sch-body: var(--sch-set-body);
+    --sch-link: var(--sch-set-link);
+    --sch-pri-bg: var(--sch-set-pri-bg);
+    --sch-pri-fg: var(--sch-set-pri-fg);
+    --sch-sec-fg: var(--sch-set-sec-fg);
+    --sch-rule: var(--sch-set-pri-bg);
+}
+
+.sf-s--sch-soft {
+    --sch-set-bg: var(--sch-soft-bg);
+    --sch-set-head: var(--sch-soft-head);
+    --sch-set-body: var(--sch-soft-body);
+    --sch-set-link: var(--sch-soft-link);
+    --sch-set-pri-bg: var(--sch-soft-pri-bg);
+    --sch-set-pri-fg: var(--sch-soft-pri-fg);
+    --sch-set-sec-fg: var(--sch-soft-sec-fg);
+}
+
+.sf-s--sch-brand {
+    --sch-set-bg: var(--sch-brand-bg);
+    --sch-set-head: var(--sch-brand-head);
+    --sch-set-body: var(--sch-brand-body);
+    --sch-set-link: var(--sch-brand-link);
+    --sch-set-pri-bg: var(--sch-brand-pri-bg);
+    --sch-set-pri-fg: var(--sch-brand-pri-fg);
+    --sch-set-sec-fg: var(--sch-brand-sec-fg);
+}
+
+.sf-s--sch-brand {
+    --sch-rule: var(--sch-brand-head);
+}
+
+.sf-s--sch-dark {
+    --sch-set-bg: var(--sch-dark-bg);
+    --sch-set-head: var(--sch-dark-head);
+    --sch-set-body: var(--sch-dark-body);
+    --sch-set-link: var(--sch-dark-link);
+    --sch-set-pri-bg: var(--sch-dark-pri-bg);
+    --sch-set-pri-fg: var(--sch-dark-pri-fg);
+    --sch-set-sec-fg: var(--sch-dark-sec-fg);
+}
+
+/* A photo behind the block: white text over an overlay that keeps it at 4.5:1 on any photo. */
+.sf-s--image {
+    --sch-bg: transparent;
+    --sch-head: #fff;
+    --sch-body: rgb(255 255 255 / 0.9);
+    --sch-link: #fff;
+    /* A white button: 3:1 on the overlay over any photo, where a brand fill may not be. */
+    --sch-pri-bg: #fff;
+    --sch-pri-fg: var(--color-dark);
+    --sch-sec-fg: #fff;
+    --sch-rule: #fff;
+    isolation: isolate;
+    overflow: clip;
+    background: var(--color-dark);
+}
+
+:is(.sf-s--sch-light, .sf-s--sch-soft, .sf-s--sch-brand, .sf-s--sch-dark) {
+    background: var(--sch-bg);
+}
+
+:is(.sf-s--sch-light, .sf-s--sch-soft, .sf-s--sch-brand, .sf-s--sch-dark, .sf-s--image) {
+    color: var(--sch-body);
+}
+
+.sf-s__bg {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+}
+
+.sf-s__img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.sf-s__bg::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgb(9 14 26 / var(--sf-overlay));
+}
+
+/* "Tự động" (0): the least overlay that keeps white headings and 90% white text at 4.5:1 even
+   over a white photo (62%). */
+.sf-s--ov-0 {
+    --sf-overlay: 0.62;
+}
+
+.sf-s--ov-75 {
+    --sf-overlay: 0.75;
+}
+
+.sf-s--ov-90 {
+    --sf-overlay: 0.9;
+}
+
+/* Spacing replaces the block's own top / bottom padding (the photo layer is not the block); a step
+   not set keeps it. */
+.sf-s--pt-none > :nth-child(1 of :not(.sf-s__bg)) {
+    padding-top: 0;
+}
+
+.sf-s--pt-s > :nth-child(1 of :not(.sf-s__bg)) {
+    padding-top: var(--space-m);
+}
+
+.sf-s--pt-m > :nth-child(1 of :not(.sf-s__bg)) {
+    padding-top: var(--space-l);
+}
+
+.sf-s--pt-l > :nth-child(1 of :not(.sf-s__bg)) {
+    padding-top: calc(var(--space-l) + var(--space-m) + var(--space-s));
+}
+
+.sf-s--pt-xl > :nth-child(1 of :not(.sf-s__bg)) {
+    padding-top: calc(var(--space-xl) + var(--space-m));
+}
+
+.sf-s--pb-none > :nth-last-child(1 of :not(.sf-s__bg)) {
+    padding-bottom: 0;
+}
+
+.sf-s--pb-s > :nth-last-child(1 of :not(.sf-s__bg)) {
+    padding-bottom: var(--space-m);
+}
+
+.sf-s--pb-m > :nth-last-child(1 of :not(.sf-s__bg)) {
+    padding-bottom: var(--space-l);
+}
+
+.sf-s--pb-l > :nth-last-child(1 of :not(.sf-s__bg)) {
+    padding-bottom: calc(var(--space-l) + var(--space-m) + var(--space-s));
+}
+
+.sf-s--pb-xl > :nth-last-child(1 of :not(.sf-s__bg)) {
+    padding-bottom: calc(var(--space-xl) + var(--space-m));
+}
+
+/* Width of the content: the block's own column, or the container inside a full-bleed band. */
+.sf-s--w-narrow > :is(.about, .features, .entry-grid, .contact, .partners, .richtext, .latest-posts, .lead-form),
+.sf-s--w-narrow :is(.sf-container, .hero__content, .page-band__content, .sf-slide__content) {
+    max-width: 48rem;
+}
+
+.sf-s--w-full > :is(.about, .features, .entry-grid, .contact, .partners, .richtext, .latest-posts, .lead-form),
+.sf-s--w-full :is(.sf-container, .hero__content, .page-band__content) {
+    max-width: none;
+}
+
+.sf-s--a-center {
+    text-align: center;
+}
+
+.sf-s--corner-soft {
+    border-radius: var(--radius-soft);
+    overflow: clip;
+}
+
+.sf-s--shadow-soft {
+    box-shadow: var(--shadow-soft);
+}
+
+@media (max-width: 767.98px) {
+    .sf-s--hide-mobile {
+        display: none;
+    }
+}
+
+@media (min-width: 768px) {
+    .sf-s--hide-desktop {
+        display: none;
+    }
+}
+
+/* Scroll-in motion: sections.js sets back only what is still below the screen; opacity and
+   transform only, so nothing shifts. Without the script, or with reduced motion, nothing moves. */
+.sf-s--m-fade,
+.sf-s--m-rise {
+    transition: opacity var(--motion-duration) ease-out, transform var(--motion-duration) ease-out;
+}
+
+.sf-s--m-fade.sf-s--before,
+.sf-s--m-rise.sf-s--before {
+    opacity: 0;
+}
+
+.sf-s--m-rise.sf-s--before {
+    transform: translateY(var(--motion-distance));
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sf-s--m-fade,
+    .sf-s--m-rise {
+        transition: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce), print {
+    .sf-s--m-fade.sf-s--before,
+    .sf-s--m-rise.sf-s--before {
+        opacity: 1;
         transform: none;
     }
 }

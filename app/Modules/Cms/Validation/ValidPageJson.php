@@ -75,7 +75,7 @@ final readonly class ValidPageJson implements ValidationRule
                 return;
             }
 
-            $schema = $this->registry->get($type)->schema();
+            $schema = $this->registry->schemaFor($type);
             if (! $this->urlPropsSafe($block['props'], $schema)) {
                 $fail(__('entries.err_block_link_invalid', ['type' => $type]));
 
@@ -155,7 +155,7 @@ final readonly class ValidPageJson implements ValidationRule
 
     /**
      * Every `enum` prop (at any depth, through list `of`) holds null or one of its declared options,
-     * compared as strings exactly. The render side falls back to the default for anything else
+     * compared as strings exactly, and every text prop with a `pattern` holds null or a match. The render side falls back to the default for anything else
      * (SectionProps::choice), so this keeps a stored value honest rather than safe.
      */
     private function choicesValid(mixed $data, mixed $schema): bool
@@ -170,6 +170,12 @@ final readonly class ValidPageJson implements ValidationRule
             }
             $value = is_array($data) ? ($data[$prop] ?? null) : null;
             $type = $spec['type'] ?? null;
+
+            // A text prop with a `pattern` (a section's link anchor) must match it whole; blank means unset.
+            if (is_string($spec['pattern'] ?? null) && $value !== null && $value !== ''
+                && ! (is_string($value) && preg_match($spec['pattern'], $value) === 1)) {
+                return false;
+            }
 
             if ($type === 'enum') {
                 $options = is_array($spec['options'] ?? null) ? $spec['options'] : [];

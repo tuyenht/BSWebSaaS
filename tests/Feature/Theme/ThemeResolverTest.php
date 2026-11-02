@@ -190,6 +190,12 @@ it('prints exactly the same variables as before for a site with no settings', fu
         'gradient-2' => 'linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 55%, white))',
         'gradient-3' => 'linear-gradient(135deg, var(--color-dark), var(--color-primary))',
         'motion-duration' => '250ms', 'motion-distance' => '24px',
+        'sch-soft-bg' => '#f0f6ff', 'sch-soft-head' => '#111111', 'sch-soft-body' => '#333333', 'sch-soft-link' => '#2f68c5',
+        'sch-soft-pri-bg' => '#3b82f6', 'sch-soft-pri-fg' => '#111111', 'sch-soft-sec-fg' => '#111111',
+        'sch-brand-bg' => '#3b82f6', 'sch-brand-head' => '#111111', 'sch-brand-body' => '#111111', 'sch-brand-link' => '#111111',
+        'sch-brand-pri-bg' => '#ffffff', 'sch-brand-pri-fg' => '#326fd1', 'sch-brand-sec-fg' => '#111111',
+        'sch-dark-bg' => '#111111', 'sch-dark-head' => '#ffffff', 'sch-dark-body' => '#cbcbcb', 'sch-dark-link' => '#3b82f6',
+        'sch-dark-pri-bg' => '#3b82f6', 'sch-dark-pri-fg' => '#111111', 'sch-dark-sec-fg' => '#ffffff',
     ];
 
     expect($variables)->toBe($expected);

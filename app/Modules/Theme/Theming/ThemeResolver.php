@@ -26,6 +26,12 @@ final readonly class ThemeResolver
     /** Every spacing step is a multiple of this many px, whatever the density. */
     public const int SPACE_GRID = 4;
 
+    /** WCAG 2.2 non-text contrast: a button fill against the band it sits on. */
+    private const float FILL_CONTRAST = 3.0;
+
+    /** Body text on the dark set: the surface colour, this share of it, the rest the ink. */
+    private const float ON_DARK_SHARE = 0.78;
+
     /** The spacing scale at normal density, in px. */
     private const array SPACE_STEPS = ['s' => 8, 'm' => 16, 'l' => 32, 'xl' => 64];
 
@@ -115,8 +121,9 @@ final readonly class ThemeResolver
 
         // Tints, fills and dark accents of the brand (--brand-50 … --brand-900), derived — like the
         // roles above, a same-named key in settings never wins. A non-hex brand yields no palette.
+        // The colour-set roles (sch-*) are derived too: a stored one would recolour every block.
         foreach (array_keys($variables) as $key) {
-            if (str_starts_with($key, 'brand-') || str_starts_with($key, 'color-brand-')) {
+            if (str_starts_with($key, 'brand-') || str_starts_with($key, 'color-brand-') || str_starts_with($key, 'sch-')) {
                 unset($variables[$key]);
             }
         }
@@ -125,7 +132,7 @@ final readonly class ThemeResolver
             $variables["color-brand-{$step}"] = $color;
         }
 
-        return array_merge($variables, $this->scales($variables['density'] ?? 'normal'));
+        return array_merge($variables, $this->scales($variables['density'] ?? 'normal'), $this->schemes($variables));
     }
 
     /**
@@ -155,6 +162,90 @@ final readonly class ThemeResolver
             'motion-duration' => '250ms',
             'motion-distance' => '24px',
         ];
+    }
+
+    /**
+     * The colour sets a section can pick (StyleProps::SCHEMES; "Bộ màu" in the editor), as roles
+     * `sch-{set}-{role}`: bg, head, body, link, pri-bg / pri-fg (the main button), sec-fg (the
+     * outlined button). Text is fitted to 4.5:1 on its background and the button fill to 3:1
+     * (ReadableColor), so any brand reads well; a fill no text reaches 4.5:1 on (a mid-tone brand
+     * on the brand set or a button) is shifted until it does. `light` is the page itself and uses the roles
+     * above, so it prints nothing. A seed that is not hex cannot be measured and is used as it is.
+     *
+     * @param  array<string, string>  $variables
+     * @return array<string, string>
+     */
+    private function schemes(array $variables): array
+    {
+        $ink = $variables['ink'];
+        $primary = $variables['primary'];
+        $white = '#ffffff';
+        $fit = static fn (string $color, string $background, float $minimum = ReadableColor::AA_NORMAL_TEXT): string => ReadableColor::on($color, $background, $minimum) ?? $color;
+
+        $soft = $variables['brand-50'] ?? $variables['surface'];
+        [$brand, $onBrand] = $this->fillWithText($primary, $ink);
+        $brandButton = (ReadableColor::ratio($white, $brand) ?? 0.0) >= self::FILL_CONTRAST ? $white : $ink;
+        $darkBody = ReadableColor::mix($variables['surface'], $ink, self::ON_DARK_SHARE) ?? $variables['surface'];
+
+        $sets = [
+            'soft' => [
+                'bg' => $soft,
+                'head' => $fit($ink, $soft),
+                'body' => $fit($variables['body'], $soft),
+                'link' => $fit($primary, $soft),
+                'pri-bg' => $fit($primary, $soft, self::FILL_CONTRAST),
+            ],
+            'brand' => [
+                'bg' => $brand,
+                'head' => $onBrand,
+                'body' => $onBrand,
+                'link' => $onBrand,
+                'pri-bg' => $brandButton,
+                'pri-fg' => $brandButton === $white ? $fit($brand, $white) : $this->textOnFill($ink, $ink),
+            ],
+            'dark' => [
+                'bg' => $ink,
+                'head' => $fit($variables['surface'], $ink),
+                'body' => $fit($darkBody, $ink),
+                'link' => $fit($primary, $ink),
+                'pri-bg' => $fit($primary, $ink, self::FILL_CONTRAST),
+            ],
+        ];
+
+        $roles = [];
+        foreach ($sets as $set => $role) {
+            if (! isset($role['pri-fg'])) {
+                [$role['pri-bg'], $role['pri-fg']] = $this->fillWithText($role['pri-bg'], $ink, $role['bg']);
+            }
+            $role['sec-fg'] = $role['head'];
+            foreach ($role as $name => $value) {
+                $roles["sch-{$set}-{$name}"] = $value;
+            }
+        }
+
+        return $roles;
+    }
+
+    /**
+     * A fill and the text on it (textOnFill) at 4.5:1: when neither white nor the ink reaches it,
+     * the fill is moved away from the text (darker under white, lighter under the ink), hue kept.
+     * A button fill also keeps 3:1 on its $band: when moving it one way loses that, the other text
+     * (and so the other way) is used.
+     *
+     * @return array{0: string, 1: string}
+     */
+    private function fillWithText(string $fill, string $ink, ?string $band = null): array
+    {
+        $text = $this->textOnFill($fill, $ink);
+        $first = [ReadableColor::on($fill, $text) ?? $fill, $text];
+        if ($band === null || (ReadableColor::ratio($first[0], $band) ?? self::FILL_CONTRAST) >= self::FILL_CONTRAST) {
+            return $first;
+        }
+
+        $other = $text === '#ffffff' ? $ink : '#ffffff';
+        $second = [ReadableColor::on($fill, $other) ?? $fill, $other];
+
+        return (ReadableColor::ratio($second[0], $band) ?? 0.0) >= self::FILL_CONTRAST ? $second : $first;
     }
 
     /**
