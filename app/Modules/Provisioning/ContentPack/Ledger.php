@@ -20,11 +20,16 @@ final class Ledger
     public const string GROUP = 'content_pack';
 
     /**
+     * @param  bool  $lock  read the row FOR UPDATE (inside the --apply transaction)
      * @return array{pack_version: int, loaded_at: string, items: array<string, array{hash: string, ref: string}>}|null
      */
-    public static function read(string $code): ?array
+    public static function read(string $code, bool $lock = false): ?array
     {
-        $value = SiteSetting::query()->where('group_name', self::GROUP)->where('key', $code)->value('value');
+        $query = SiteSetting::query()->where('group_name', self::GROUP)->where('key', $code);
+        if ($lock) {
+            $query->lockForUpdate();
+        }
+        $value = $query->value('value');
         if ($value === null) {
             return null;
         }

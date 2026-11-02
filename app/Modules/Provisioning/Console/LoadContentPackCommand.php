@@ -135,7 +135,8 @@ final class LoadContentPackCommand extends Command
         try {
             $written = $tenancy->enter($siteId, function () use ($planner, $pack, $site, $host, $forced, $expected, $siteId, $backupFile): int {
                 TaxonomyTree::lock($siteId);
-                $plan = $planner->plan($pack, $site->ulid, $site->name, $host, $forced);
+                // Re-planned with the rows it rests on locked, so nothing changes under the write.
+                $plan = $planner->plan($pack, $site->ulid, $site->name, $host, $forced, lock: true);
                 if (! hash_equals($plan->fingerprint, $expected)) {
                     throw new PackRejected('Refused: plan changed, run the dry run again.');
                 }
@@ -169,7 +170,8 @@ final class LoadContentPackCommand extends Command
     /**
      * Read every item back with the planner's own readers and record its hash. A written item must
      * read back exactly as planned, or the load is rolled back. Skipped and orphaned items keep
-     * their previous ledger line, so a staff edit is never taken for the loader's own write.
+     * their previous ledger line (a renamed category's under its new key), so a staff edit is never
+     * taken for the loader's own write.
      */
     private function recordLedger(Plan $plan, Planner $planner): void
     {
@@ -195,6 +197,8 @@ final class LoadContentPackCommand extends Command
                 $items[$key] = ['hash' => $hash, 'ref' => (string) $readBack->ref];
             } elseif (isset($previous[$key])) {
                 $items[$key] = $previous[$key];
+            } elseif (isset($previous[$plan->carried[$key] ?? ''])) {
+                $items[$key] = $previous[$plan->carried[$key]];
             }
         }
         foreach ($plan->orphans as $key) {

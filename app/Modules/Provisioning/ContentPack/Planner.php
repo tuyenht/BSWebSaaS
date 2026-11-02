@@ -17,13 +17,19 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Queries\EntryRevisions;
 use App\Modules\Cms\Queries\PendingEntryDrafts;
+use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
+use App\Modules\Tenancy\Context\PermalinkConfig;
+use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Database\Query\JoinClause;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -33,6 +39,11 @@ use Illuminate\Support\Facades\DB;
  * the site's tenant context, one lookup query per kind (batched by key), never per item. The same
  * readers produce the hash the ledger records after a write, so a record read back right after the
  * loader wrote it hashes equal to its plan's `desired`.
+ *
+ * On the re-plan inside the --apply transaction (`$lock`), every row a verdict rests on is read
+ * FOR UPDATE, so no staff save can land between the plan and the write; the dry run takes no lock.
+ * Every address the load would write is composed the way the platform composes it and checked
+ * against the routes before anything is written (addresses()).
  *
  * Images (this build has no image step): a slot resolves only when its `legacy_key` names a media
  * row the site already has. A block image prop whose slot does not resolve is left out; a card
@@ -71,19 +82,31 @@ final class Planner
     /** @var array<string, string> pack key → the earlier ledger key it carries on (a renamed or moved category) */
     private array $carried = [];
 
+    /** @var array<string, array<string, string>> pack key → locale → the address the load gives it */
+    private array $plannedPaths = [];
+
+    /** @var array<string, list<int>> category key → ids of the routes of the posts and products it carries along */
+    private array $branchRoutes = [];
+
+    private bool $lock = false;
+
     public function __construct(
         private readonly CurrentSite $site,
         private readonly MediaUrlResolver $urls,
+        private readonly PathBuilder $paths,
+        private readonly PermalinkConfig $permalinks,
     ) {}
 
     /**
      * @param  list<string>  $forced  --force-item keys
+     * @param  bool  $lock  read the rows the plan rests on FOR UPDATE (only inside the --apply transaction)
      *
      * @throws PackRejected the pack's languages do not fit the site, or a forced key is not in the pack
      */
-    public function plan(Pack $pack, string $siteUlid, string $siteName, string $host, array $forced = []): Plan
+    public function plan(Pack $pack, string $siteUlid, string $siteName, string $host, array $forced = [], bool $lock = false): Plan
     {
         $this->reset();
+        $this->lock = $lock;
         $this->languages($pack);
 
         foreach ($forced as $key) {
@@ -92,7 +115,7 @@ final class Planner
             }
         }
 
-        $ledger = Ledger::read($pack->code);
+        $ledger = Ledger::read($pack->code, $lock);
         $ledgerItems = $ledger['items'] ?? [];
         $this->resolveSlots($pack);
         $this->loadTaxonomies();
@@ -121,6 +144,7 @@ final class Planner
                 $items[] = $planned;
             }
         }
+        $items = $this->addresses($items);
         usort($items, fn (PlanItem $a, PlanItem $b): int => array_search($a->item->kind, Pack::KINDS, true) <=> array_search($b->item->kind, Pack::KINDS, true));
 
         $this->gridWarnings($pack);
@@ -140,7 +164,29 @@ final class Planner
             warnings: array_values(array_unique($this->warnings)),
             ledger: $ledger,
             media: ['slots' => count($pack->slots), 'resolved' => $resolved],
+            carried: $this->carried,
         );
+    }
+
+    /**
+     * The address each category, page, post and product of the last plan is given, per language
+     * (only the items that write, and only where the platform would route them).
+     *
+     * @return array<string, array<string, string>>
+     */
+    public function plannedPaths(): array
+    {
+        return $this->plannedPaths;
+    }
+
+    /**
+     * Ids of the routes of the posts and products a category write of the last plan carries along.
+     *
+     * @return list<int>
+     */
+    public function branchRoutes(string $key): array
+    {
+        return $this->branchRoutes[$key] ?? [];
     }
 
     /** The record a planned key was matched to (after the plan; internal to the loader). */
@@ -185,6 +231,26 @@ final class Planner
         $this->warnings = [];
         $this->matched = [];
         $this->carried = [];
+        $this->plannedPaths = [];
+        $this->branchRoutes = [];
+        $this->lock = false;
+    }
+
+    /**
+     * The query, read FOR UPDATE on the --apply re-plan.
+     *
+     * @template TQuery of Builder<*>|Relation<*, *, *>
+     *
+     * @param  TQuery  $query
+     * @return TQuery
+     */
+    private function locked(Builder|Relation $query): Builder|Relation
+    {
+        if ($this->lock) {
+            $query->lockForUpdate();
+        }
+
+        return $query;
     }
 
     private function languages(Pack $pack): void
@@ -342,8 +408,8 @@ final class Planner
 
     private function loadTaxonomies(): void
     {
-        $rows = Taxonomy::query()->get(['id', 'vocabulary', 'parent_id', 'position', 'list_template']);
-        $translations = TaxonomyTranslation::query()->whereIn('locale', $this->locales)->get(['taxonomy_id', 'locale', 'name', 'slug']);
+        $rows = $this->locked(Taxonomy::query())->get(['id', 'vocabulary', 'parent_id', 'position', 'list_template']);
+        $translations = $this->locked(TaxonomyTranslation::query()->whereIn('locale', $this->locales))->get(['taxonomy_id', 'locale', 'name', 'slug']);
 
         foreach ($rows as $row) {
             $this->taxonomies[$row->id] = [
@@ -412,34 +478,13 @@ final class Planner
             }
         }
 
-        $paths = [];
-        foreach ($items as $item) {
-            $paths[] = '/'.$this->taxonomySlug($item);
-        }
-        $routes = SiteRoute::query()->where('locale', $this->locale)->whereIn('path', $paths)->get(['path', 'entry_id', 'taxonomy_id', 'product_id'])->keyBy('path');
-        $pagePaths = array_map(fn (PackItem $page): string => $page->anchor(), $pack->ofKind('page'));
-
+        // Addresses (conflicts, and the posts a rename moves) are checked once every item is planned.
         $planned = [];
         foreach ($items as $item) {
             $id = $this->matched[$item->key] ?? null;
             $current = $id === null ? null : $this->taxonomyState($id);
             $desired = $this->desiredTaxonomy($item, $current);
-            $path = '/'.$this->taxonomySlug($item);
-
-            $conflict = null;
-            $route = $routes->get($path);
-            if ($route instanceof SiteRoute && ($route->taxonomy_id === null || $route->taxonomy_id !== $id)) {
-                $conflict = "the address {$path} already belongs to another page or item";
-            } elseif (in_array($path, $pagePaths, true)) {
-                $conflict = "the address {$path} is also a page of this pack";
-            }
-
             $notes = [];
-            $oldSlug = $current === null ? null : Cast::arr(Cast::arr($current['translations'])[$this->locale] ?? null)['slug'] ?? null;
-            if (is_string($oldSlug) && $oldSlug !== $this->taxonomySlug($item)) {
-                $count = DB::table('entry_taxonomies')->where('site_id', $this->site->id())->where('taxonomy_id', $id)->where('position', 0)->count();
-                $notes[] = "URL /{$oldSlug} → {$path} (301 + {$count} posts)";
-            }
 
             // A category whose key changed (renamed through `was`, or under a renamed parent) keeps
             // the ledger line of its earlier key, so a staff edit since the last load still counts.
@@ -448,7 +493,7 @@ final class Planner
                 $this->carried[$item->key] = $ref;
             }
 
-            $planned[] = $this->decide($context, $item, $current, $desired, $ref, $id, $notes, conflict: $conflict);
+            $planned[] = $this->decide($context, $item, $current, $desired, $ref, $id, $notes);
         }
 
         return $planned;
@@ -650,8 +695,8 @@ final class Planner
             return [];
         }
 
-        $entries = Entry::query()->whereIn('id', $ids)->get(['id', 'ulid', 'type', 'status', 'meta']);
-        $translations = EntryTranslation::query()->whereIn('entry_id', $ids)->whereIn('locale', $this->locales)
+        $entries = $this->locked(Entry::query()->whereIn('id', $ids))->get(['id', 'ulid', 'type', 'status', 'meta']);
+        $translations = $this->locked(EntryTranslation::query()->whereIn('entry_id', $ids)->whereIn('locale', $this->locales))
             ->get(['entry_id', 'locale', 'title', 'slug', 'body', 'excerpt', 'seo_title', 'seo_description', 'status']);
         $byEntry = [];
         foreach ($translations as $translation) {
@@ -700,8 +745,12 @@ final class Planner
      */
     private function categoryKeys(string $pivot, string $column, array $ids): array
     {
-        $rows = DB::table($pivot)->where('site_id', $this->site->id())->whereIn($column, $ids)
-            ->where('position', '<', self::FACET_BASE)->orderBy('position')->get([$column, 'taxonomy_id']);
+        $query = DB::table($pivot)->where('site_id', $this->site->id())->whereIn($column, $ids)
+            ->where('position', '<', self::FACET_BASE)->orderBy('position');
+        if ($this->lock) {
+            $query->lockForUpdate();
+        }
+        $rows = $query->get([$column, 'taxonomy_id']);
 
         $keys = [];
         foreach ($rows as $row) {
@@ -873,8 +922,8 @@ final class Planner
             return [];
         }
 
-        $products = Product::query()->whereIn('id', $ids)->get(['id', 'ulid', 'status']);
-        $translations = ProductTranslation::query()->whereIn('product_id', $ids)->whereIn('locale', $this->locales)
+        $products = $this->locked(Product::query()->whereIn('id', $ids))->get(['id', 'ulid', 'status']);
+        $translations = $this->locked(ProductTranslation::query()->whereIn('product_id', $ids)->whereIn('locale', $this->locales))
             ->get(['product_id', 'locale', 'name', 'slug', 'summary', 'description', 'seo_title', 'seo_description']);
         $byProduct = [];
         foreach ($translations as $translation) {
@@ -883,8 +932,11 @@ final class Planner
         $categories = $this->categoryKeys('product_taxonomies', 'product_id', $ids);
         $images = DB::table('product_images')->join('media', 'media.id', '=', 'product_images.media_id')
             ->where('product_images.site_id', $this->site->id())->whereIn('product_images.product_id', $ids)
-            ->orderBy('product_images.position')->orderBy('product_images.id')
-            ->get(['product_images.product_id', 'media.storage_key']);
+            ->orderBy('product_images.position')->orderBy('product_images.id');
+        if ($this->lock) {
+            $images->lock('for update of product_images');
+        }
+        $images = $images->get(['product_images.product_id', 'media.storage_key']);
         $gallery = [];
         foreach ($images as $image) {
             $gallery[Cast::int($image->product_id ?? null)][] = Cast::string($image->storage_key ?? null);
@@ -1021,8 +1073,8 @@ final class Planner
             return [];
         }
 
-        $menus = Menu::query()->whereIn('id', $ids)->pluck('ulid', 'id');
-        $nodes = MenuItem::query()->whereIn('menu_id', $ids)->orderBy('position')->orderBy('id')
+        $menus = $this->locked(Menu::query()->whereIn('id', $ids))->pluck('ulid', 'id');
+        $nodes = $this->locked(MenuItem::query()->whereIn('menu_id', $ids))->orderBy('position')->orderBy('id')
             ->with(['translations' => fn ($query) => $query->whereIn('locale', $this->locales)])
             ->get(['id', 'menu_id', 'parent_id', 'position', 'link_type', 'routable_type', 'routable_id', 'url', 'dynamic_key']);
         $this->rememberTargets(array_values($nodes->all()));
@@ -1226,7 +1278,7 @@ final class Planner
     private function settingItem(PackItem $item, PlanContext $context): PlanItem
     {
         [$group, $name] = explode('.', $item->anchor(), 2);
-        $row = SiteSetting::query()->where('group_name', $group)->where('key', $name)->first(['group_name', 'key', 'value']);
+        $row = $this->locked(SiteSetting::query()->where('group_name', $group)->where('key', $name))->first(['group_name', 'key', 'value']);
         $live = $row === null ? null : Cast::arr($row->value);
         $managed = isset($item->data['managed_keys']) ? Cast::strings($item->data['managed_keys']) : null;
 
@@ -1306,7 +1358,7 @@ final class Planner
      */
     public function profileState(array $fields, array $localized): ?array
     {
-        $profile = SiteProfile::query()->first();
+        $profile = $this->locked(SiteProfile::query())->first();
         if ($profile === null) {
             return null;
         }
@@ -1316,7 +1368,7 @@ final class Planner
             $value = $profile->getAttribute($field);
             $state[$field] = $value instanceof \DateTimeInterface ? $value->format('Y-m-d') : $value;
         }
-        $translations = $profile->translations()->whereIn('locale', $this->locales)->get();
+        $translations = $this->locked($profile->translations()->whereIn('locale', $this->locales))->get();
         $state['translations'] = [];
         foreach ($this->locales as $locale) {
             $translation = $translations->firstWhere('locale', $locale);
@@ -1333,13 +1385,416 @@ final class Planner
     private function redirectItem(PackItem $item, PlanContext $context): PlanItem
     {
         [$locale, $from] = explode(':', $item->anchor(), 2);
-        $redirect = Redirect::query()->where('locale', $locale)->where('from_path', $from)->first(['to_path', 'status_code']);
+        $redirect = $this->locked(Redirect::query()->where('locale', $locale)->where('from_path', $from))->first(['to_path', 'status_code']);
         $current = $redirect === null ? null : ['to' => $redirect->to_path, 'status' => $redirect->status_code];
         $desired = ['to' => Cast::string($item->data['to'] ?? null), 'status' => Cast::int($item->data['status'] ?? 301, 301)];
         $live = SiteRoute::query()->where('locale', $locale)->where('path', $from)->exists();
 
         return $this->decide($context, $item, $current, $desired, $current === null ? null : $from, null,
             conflict: $live ? "{$from} is a live address; a redirect would hide it" : null);
+    }
+
+    // ---------------------------------------------------------------- addresses
+
+    /**
+     * Every address the load would write — each category, page, post and product that writes, in
+     * every pack language it has (posts and products only where the platform routes them: published,
+     * or already routed), plus the published posts and products filed under a category whose slug or
+     * parent changes, which the category write carries along — composed the way PathBuilder composes
+     * it, then checked in one routes query per batch. An address that belongs to something else, or
+     * that two items of this load both claim, makes the claiming item a conflict in the dry run. A
+     * moving category also gets a scope: the hash of the rows it carries along, so a post filed
+     * under it between the dry run and --apply changes the fingerprint.
+     *
+     * @param  list<PlanItem>  $items
+     * @return list<PlanItem>
+     */
+    private function addresses(array $items): array
+    {
+        $tree = $this->plannedTree($items);
+        $bindings = $this->sectionBindings();
+        $writing = array_values(array_filter($items, fn (PlanItem $planned): bool => $planned->writes()));
+
+        $routed = $this->routedLocales($writing);
+        $pages = $this->livePages($writing);
+
+        /** @var list<array{key: string, locale: string, path: string, column: string, id: int|null, what: string}> $claims */
+        $claims = [];
+        foreach ($writing as $planned) {
+            $kind = $planned->item->kind;
+            $column = match ($kind) {
+                'taxonomy' => 'taxonomy_id',
+                'product' => 'product_id',
+                'page', 'post' => 'entry_id',
+                default => null,
+            };
+            if ($column === null) {
+                continue;
+            }
+            $published = ($planned->desired['status'] ?? null) === 'published';
+            $primary = Cast::strings($planned->desired['categories'] ?? [])[0] ?? null;
+            foreach ($this->locales as $locale) {
+                $row = Cast::arr(Cast::arr($planned->desired['translations'] ?? null)[$locale] ?? null);
+                if ($row === []) {
+                    continue;
+                }
+                $isRouted = $planned->recordId !== null && isset($routed[$column][$planned->recordId][$locale]);
+                $path = match ($kind) {
+                    'taxonomy' => $this->paths->forTaxonomy(Cast::string($row['slug'] ?? null)),
+                    'page' => $this->pagePath($planned, $pages, $locale),
+                    'post', 'product' => $published || $isRouted
+                        ? $this->itemPath($kind, $primary, $tree, $bindings, $locale, Cast::string($row['slug'] ?? null))
+                        : null,
+                };
+                if ($path !== null) {
+                    $this->plannedPaths[$planned->item->key][$locale] = $path;
+                    $claims[] = ['key' => $planned->item->key, 'locale' => $locale, 'path' => $path, 'column' => $column, 'id' => $planned->recordId, 'what' => $planned->item->key];
+                }
+            }
+        }
+
+        [$branchClaims, $moves, $scopes] = $this->branchMoves($writing, $tree, $bindings);
+        array_push($claims, ...$branchClaims);
+
+        $conflicts = $this->claimConflicts($claims);
+
+        $out = [];
+        foreach ($items as $planned) {
+            $key = $planned->item->key;
+            if (isset($conflicts[$key])) {
+                $out[] = $planned->asConflict($conflicts[$key]);
+
+                continue;
+            }
+            if (isset($scopes[$key])) {
+                $notes = [];
+                $old = Cast::arr(Cast::arr($planned->current['translations'] ?? null)[$this->locale] ?? null)['slug'] ?? null;
+                $new = $this->plannedPaths[$key][$this->locale] ?? null;
+                if (is_string($old) && $new !== null && $this->paths->forTaxonomy($old) !== $new) {
+                    $count = $moves[$key] ?? ['post' => 0, 'product' => 0];
+                    $notes[] = "URL {$this->paths->forTaxonomy($old)} → {$new} (301 + {$count['post']} posts".($count['product'] > 0 ? ", {$count['product']} products" : '').')';
+                }
+                $planned = $planned->carrying($notes, $scopes[$key]);
+            }
+            $out[] = $planned;
+        }
+
+        return $out;
+    }
+
+    /**
+     * The category tree as the load leaves it: every live category, with the writing pack items'
+     * parent and slugs in their place. Keyed by category key.
+     *
+     * @param  list<PlanItem>  $items
+     * @return array<string, array{id: int|null, parent: string|null, slugs: array<string, string>}>
+     */
+    private function plannedTree(array $items): array
+    {
+        $tree = [];
+        foreach ($this->taxonomies as $id => $row) {
+            $slugs = [];
+            foreach ($row['tr'] as $locale => $translation) {
+                $slugs[$locale] = $translation['slug'];
+            }
+            $tree[$this->taxonomyKey($id)] = ['id' => $id, 'parent' => $row['parent_id'] === null ? null : $this->taxonomyKey($row['parent_id']), 'slugs' => $slugs];
+        }
+        foreach ($items as $planned) {
+            if ($planned->item->kind !== 'taxonomy' || ! $planned->writes()) {
+                continue;
+            }
+            $slugs = $tree[$planned->item->key]['slugs'] ?? [];
+            foreach (Cast::arr($planned->desired['translations'] ?? null) as $locale => $row) {
+                $slug = Cast::arr($row)['slug'] ?? null;
+                if (is_string($slug)) {
+                    $slugs[(string) $locale] = $slug;
+                }
+            }
+            $tree[$planned->item->key] = ['id' => $planned->recordId, 'parent' => Cast::stringOrNull($planned->desired['parent'] ?? null), 'slugs' => $slugs];
+        }
+
+        return $tree;
+    }
+
+    /**
+     * The section built on each category (the first by display order), as SectionResolver reads it.
+     *
+     * @return array<int, array{key: string, type: string}>
+     */
+    private function sectionBindings(): array
+    {
+        $bindings = [];
+        foreach (ContentSection::query()->whereNotNull('taxonomy_id')->orderBy('sort_order')->orderBy('id')->get(['taxonomy_id', 'key', 'entry_type']) as $section) {
+            $bindings[Cast::int($section->taxonomy_id)] ??= ['key' => Cast::string($section->key), 'type' => $section->entry_type === 'page' ? 'pages' : 'posts'];
+        }
+
+        return $bindings;
+    }
+
+    /**
+     * The languages each writing post and product is already routed in.
+     *
+     * @param  list<PlanItem>  $writing
+     * @return array<string, array<int, array<string, true>>> column → id → locale
+     */
+    private function routedLocales(array $writing): array
+    {
+        $ids = ['entry_id' => [], 'product_id' => []];
+        foreach ($writing as $planned) {
+            if ($planned->recordId !== null && in_array($planned->item->kind, ['post', 'product'], true)) {
+                $ids[$planned->item->kind === 'post' ? 'entry_id' : 'product_id'][] = $planned->recordId;
+            }
+        }
+        $routed = [];
+        foreach ($ids as $column => $list) {
+            if ($list === []) {
+                continue;
+            }
+            foreach (SiteRoute::query()->whereIn($column, $list)->get([$column, 'locale']) as $route) {
+                $routed[$column][Cast::int($route->{$column})][$route->locale] = true;
+            }
+        }
+
+        return $routed;
+    }
+
+    /**
+     * The live pages the load writes, with their slugs (a page keeps its live slug).
+     *
+     * @param  list<PlanItem>  $writing
+     * @return array<int, Entry>
+     */
+    private function livePages(array $writing): array
+    {
+        $ids = [];
+        foreach ($writing as $planned) {
+            if ($planned->item->kind === 'page' && $planned->recordId !== null) {
+                $ids[] = $planned->recordId;
+            }
+        }
+
+        $pages = [];
+        if ($ids !== []) {
+            foreach (Entry::withTrashed()->with(['translations:id,entry_id,locale,slug', 'parent.translations:id,entry_id,locale,slug'])->whereIn('id', $ids)->get(['id', 'type', 'parent_id']) as $page) {
+                $pages[$page->id] = $page;
+            }
+        }
+
+        return $pages;
+    }
+
+    /** @param array<int, Entry> $pages */
+    private function pagePath(PlanItem $planned, array $pages, string $locale): string
+    {
+        $page = $planned->recordId === null ? null : ($pages[$planned->recordId] ?? null);
+        $slug = $page?->translationFor($locale)?->slug;
+        $slug ??= trim($planned->item->anchor(), '/') === '' ? PathBuilder::HOME_SLUG : trim($planned->item->anchor(), '/');
+        if ($page instanceof Entry) {
+            return $this->paths->forEntry($page, $locale, $slug);
+        }
+        if ($slug === PathBuilder::HOME_SLUG) {
+            return '/';
+        }
+        $base = $this->permalinks->pattern('pages', 'pages') === 'base' ? $this->permalinks->base('pages') : null;
+
+        return ($base === null ? '' : '/'.$base).'/'.$slug;   // a new page has no parent page
+    }
+
+    /**
+     * A post's or product's address from its primary category in the planned tree — PathBuilder's
+     * presets (flat, category, category_path, base) and SectionResolver's section walk.
+     *
+     * @param  array<string, array{id: int|null, parent: string|null, slugs: array<string, string>}>  $tree
+     * @param  array<int, array{key: string, type: string}>  $bindings
+     */
+    private function itemPath(string $kind, ?string $primary, array $tree, array $bindings, string $locale, string $slug): string
+    {
+        if ($kind === 'product') {
+            $section = 'products';
+            $pattern = $this->permalinks->pattern('products', 'products');
+        } else {
+            $bound = null;
+            $seen = [];
+            for ($cursor = $primary; $cursor !== null && isset($tree[$cursor]) && ! isset($seen[$cursor]); $cursor = $tree[$cursor]['parent']) {
+                $seen[$cursor] = true;
+                $id = $tree[$cursor]['id'];
+                if ($id !== null && isset($bindings[$id])) {
+                    $bound = $bindings[$id];
+                    break;
+                }
+            }
+            $section = $bound['key'] ?? null;
+            $pattern = $bound === null ? PermalinkConfig::DEFAULT_PATTERN : $this->permalinks->pattern($bound['key'], $bound['type']);
+        }
+
+        $chain = [];
+        $seen = [];
+        for ($cursor = $primary; $pattern === 'category_path' && $cursor !== null && isset($tree[$cursor]) && ! isset($seen[$cursor]); $cursor = $tree[$cursor]['parent']) {
+            $seen[$cursor] = true;
+            $segment = trim($tree[$cursor]['slugs'][$locale] ?? '', '/');
+            if ($segment !== '') {
+                array_unshift($chain, $segment);
+            }
+        }
+        $base = $section === null ? null : $this->permalinks->base($section);
+
+        $prefix = match ($pattern) {
+            'category' => $primary !== null && isset($tree[$primary]['slugs'][$locale]) ? '/'.trim($tree[$primary]['slugs'][$locale], '/') : '',
+            'category_path' => $chain === [] ? '' : '/'.implode('/', $chain),
+            'base' => $base === null ? '' : '/'.$base,
+            default => '',
+        };
+
+        return $prefix.'/'.trim($slug, '/');
+    }
+
+    /**
+     * The published posts and products filed (primary) under a category whose address changes,
+     * other than the pack's own writing items: where each one moves to (a claim), how many move per
+     * category, and the hash of each moving category's rows.
+     *
+     * @param  list<PlanItem>  $writing
+     * @param  array<string, array{id: int|null, parent: string|null, slugs: array<string, string>}>  $tree
+     * @param  array<int, array{key: string, type: string}>  $bindings
+     * @return array{0: list<array{key: string, locale: string, path: string, column: string, id: int|null, what: string}>, 1: array<string, array{post: int, product: int}>, 2: array<string, string>}
+     */
+    private function branchMoves(array $writing, array $tree, array $bindings): array
+    {
+        $moving = [];   // taxonomy id → key
+        $own = ['post' => [], 'product' => []];
+        foreach ($writing as $planned) {
+            if ($planned->item->kind === 'taxonomy' && $planned->recordId !== null && PlanItem::taxonomyMoves($planned->current, $planned->desired)) {
+                $moving[$planned->recordId] = $planned->item->key;
+            }
+            if (in_array($planned->item->kind, ['post', 'product'], true) && $planned->recordId !== null) {
+                $own[$planned->item->kind][$planned->recordId] = true;
+            }
+        }
+        if ($moving === []) {
+            return [[], [], []];
+        }
+
+        // Every category under a moving one, with the moving categories above it (nearest first).
+        $children = [];
+        foreach ($this->taxonomies as $id => $row) {
+            if ($row['parent_id'] !== null) {
+                $children[$row['parent_id']][] = $id;
+            }
+        }
+        $owners = [];
+        foreach (array_keys($moving) as $root) {
+            $stack = [$root];
+            while ($stack !== []) {
+                $id = array_pop($stack);
+                if (isset($owners[$id]) && in_array($moving[$root], $owners[$id], true)) {
+                    continue;
+                }
+                $owners[$id][] = $moving[$root];
+                array_push($stack, ...($children[$id] ?? []));
+            }
+        }
+
+        $rows = [];
+        foreach (['post' => ['entry_taxonomies', 'entry_id', 'entries', 'entry_translations'], 'product' => ['product_taxonomies', 'product_id', 'products', 'product_translations']] as $kind => [$pivot, $column, $table, $translations]) {
+            foreach (array_chunk(array_keys($owners), 1000) as $chunk) {
+                $query = DB::table("{$pivot} as pv")
+                    ->join("{$table} as it", 'it.id', '=', "pv.{$column}")
+                    ->join('routes as r', "r.{$column}", '=', 'it.id')
+                    ->join("{$translations} as tr", fn (JoinClause $join) => $join->on("tr.{$column}", '=', 'it.id')->on('tr.locale', '=', 'r.locale'))
+                    ->where('pv.site_id', $this->site->id())
+                    ->where('pv.position', 0)
+                    ->whereIn('pv.taxonomy_id', $chunk)
+                    ->where('it.status', 'published')
+                    ->whereNull('it.deleted_at')
+                    ->whereIn('r.locale', $this->locales)
+                    ->orderBy('it.id')->orderBy('r.locale');
+                if ($kind === 'post') {
+                    $query->where('it.type', 'post');
+                }
+                if ($this->lock) {
+                    $query->lockForUpdate();
+                }
+                foreach ($query->get(['it.id', 'pv.taxonomy_id', 'r.id as route_id', 'r.locale', 'r.path', 'tr.slug']) as $row) {
+                    $rows[] = ['kind' => $kind, 'column' => $column] + Cast::arr((array) $row);
+                }
+            }
+        }
+
+        $claims = [];
+        $moves = [];
+        $scoped = array_fill_keys(array_values($moving), []);
+        foreach ($rows as $row) {
+            $id = Cast::int($row['id']);
+            $taxonomyId = Cast::int($row['taxonomy_id']);
+            $locale = Cast::string($row['locale']);
+            $path = Cast::string($row['path']);
+            foreach ($owners[$taxonomyId] ?? [] as $key) {
+                $scoped[$key][] = [$row['kind'], $id, $locale, $path, Cast::string($row['slug'])];
+                $this->branchRoutes[$key][] = Cast::int($row['route_id']);
+            }
+            if (isset($own[$row['kind']][$id])) {
+                continue;   // a pack item: claimed above with its own new address
+            }
+            $new = $this->itemPath($row['kind'], $this->taxonomyKey($taxonomyId), $tree, $bindings, $locale, Cast::string($row['slug']));
+            if ($new === $path) {
+                continue;
+            }
+            $key = ($owners[$taxonomyId] ?? [''])[0];
+            $moves[$key] ??= ['post' => 0, 'product' => 0];
+            $moves[$key][$row['kind']]++;
+            $claims[] = ['key' => $key, 'locale' => $locale, 'path' => $new, 'column' => Cast::string($row['column']), 'id' => $id, 'what' => "a {$row['kind']} it moves from {$path}"];
+        }
+
+        $scopes = [];
+        foreach ($scoped as $key => $list) {
+            $scopes[$key] = CanonicalHash::of($list);
+        }
+
+        return [$claims, $moves, $scopes];
+    }
+
+    /**
+     * Which claiming items conflict, and why: the address belongs to another record, or two claims
+     * of this load want it.
+     *
+     * @param  list<array{key: string, locale: string, path: string, column: string, id: int|null, what: string}>  $claims
+     * @return array<string, string> pack key → reason
+     */
+    private function claimConflicts(array $claims): array
+    {
+        $conflicts = [];
+        $byAddress = [];
+        foreach ($claims as $claim) {
+            $byAddress[$claim['locale']."\0".$claim['path']][] = $claim;
+        }
+        foreach ($byAddress as $list) {
+            $owners = array_unique(array_map(fn (array $claim): string => $claim['column'].':'.($claim['id'] ?? 'new:'.$claim['key']), $list));
+            if (count($owners) < 2) {
+                continue;
+            }
+            foreach ($list as $claim) {
+                $others = array_values(array_unique(array_map(fn (array $other): string => $other['what'], array_filter($list, fn (array $other): bool => $other !== $claim))));
+                $conflicts[$claim['key']] ??= "the address {$claim['path']} ({$claim['locale']}) is also claimed in this load by ".implode(', ', $others);
+            }
+        }
+
+        $paths = array_values(array_unique(array_map(fn (array $claim): string => $claim['path'], $claims)));
+        $routes = [];
+        foreach (array_chunk($paths, 1000) as $chunk) {
+            foreach (SiteRoute::query()->whereIn('locale', $this->locales)->whereIn('path', $chunk)->get(['locale', 'path', 'entry_id', 'taxonomy_id', 'product_id']) as $route) {
+                $routes[$route->locale."\0".$route->path] = $route;
+            }
+        }
+        foreach ($claims as $claim) {
+            $route = $routes[$claim['locale']."\0".$claim['path']] ?? null;
+            if (! $route instanceof SiteRoute || ($claim['id'] !== null && $route->getAttribute($claim['column']) === $claim['id'])) {
+                continue;
+            }
+            $what = $claim['what'] === $claim['key'] ? '' : " (for {$claim['what']})";
+            $conflicts[$claim['key']] ??= "the address {$claim['path']} ({$claim['locale']}) already belongs to another page or item{$what}";
+        }
+
+        return $conflicts;
     }
 
     // ---------------------------------------------------------------- warnings

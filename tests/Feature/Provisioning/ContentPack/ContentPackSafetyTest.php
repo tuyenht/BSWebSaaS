@@ -7,11 +7,18 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\EntryRevision;
 use App\Modules\Cms\Models\EntryTranslation;
+use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\TaxonomyTranslation;
+use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\ContentPack\Ledger;
+use App\Modules\Provisioning\ContentPack\PackReader;
+use App\Modules\Provisioning\ContentPack\Planner;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Tenancy\Models\Site;
+use App\Modules\Tenancy\Models\SiteLocale;
+use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Livewire\Livewire;
@@ -28,7 +35,7 @@ beforeEach(function (): void {
     StorefrontCards::reset();
     StorefrontCards::pinMediaConfig();
     $this->folder = ContentPacks::use();
-    $this->siteId = StorefrontCards::site('Demo', ContentPacks::HOST);
+    $this->siteId = ContentPacks::site();
 });
 
 afterEach(fn () => ContentPacks::cleanup());
@@ -211,12 +218,6 @@ it('never touches another site with the same slugs and paths, under the strict t
 
 it('rolls the whole load back when an item fails half way, ledger included', function (): void {
     ContentPacks::load();
-    // An unrelated page already owns the path the new post would take.
-    ContentPacks::in($this->siteId, function (): void {
-        $page = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()]);
-        $page->translations()->create(['locale' => 'vi', 'title' => 'Trang khác', 'slug' => 'bai-moi', 'status' => 'published', 'body' => ['blocks' => []]]);
-        SiteRoute::query()->create(['locale' => 'vi', 'path' => '/tin-tuc/bai-moi', 'entry_id' => $page->id]);
-    });
     cpVersion2($this->folder);
     ContentPacks::item($this->folder, 'settings.json', 'setting:theme.tokens', fn (array $item): array => ['value' => ['primary' => '#1d4ed8', 'ink' => '#111827']] + $item);
     ContentPacks::item($this->folder, 'taxonomies.json', 'tax:post_cat/dich-vu', fn (array $item): array => ['name' => ['vi' => 'Dịch vụ bản 2']] + $item);
@@ -224,12 +225,19 @@ it('rolls the whole load back when an item fails half way, ledger included', fun
         'key' => 'post:bai-moi', 'verified' => true, 'status' => 'published', 'categories' => ['tax:post_cat/tin-tuc'],
         'title' => ['vi' => 'Bài mới'], 'body' => ['vi' => [['type' => 'richtext', 'props' => ['paragraphs' => ['Bài mới.']]]]],
     ]]]);
+    [, $dry] = ContentPacks::run();
     $before = cpSnapshot($this->siteId);
     $ledger = ContentPacks::in($this->siteId, fn (): ?array => Ledger::read('demo-co'));
 
-    [$exit, $output] = ContentPacks::load();
+    // The settings and the category are written by then; the new post's text is where it breaks.
+    EntryTranslation::creating(function (EntryTranslation $translation): void {
+        if ($translation->title === 'Bài mới') {
+            throw new RuntimeException('the disk is full');
+        }
+    });
+    [$exit, $output] = ContentPacks::run('demo-co', ['--apply' => true, '--plan' => ContentPacks::fingerprint($dry)]);
 
-    expect($exit)->toBe(1)->and($output)->toContain('rolled back')->toContain('/tin-tuc/bai-moi')
+    expect($exit)->toBe(1)->and($output)->toContain('rolled back')->toContain('the disk is full')
         ->and(cpSnapshot($this->siteId))->toBe($before)
         ->and(ContentPacks::in($this->siteId, fn (): ?array => Ledger::read('demo-co')))->toBe($ledger);
 });
@@ -290,4 +298,195 @@ it('reports a redirect over a live path as a conflict', function (): void {
     [$exit, $output] = ContentPacks::run();
 
     expect($exit)->toBe(1)->and(ContentPacks::verdict($output, 'redirect:vi:/gioi-thieu'))->toBe('conflict');
+});
+
+/** A published post staff filed primarily under a category, at the address the site composes for it. */
+function cpStaffPost(int $siteId, string $slug, string $categorySlug): void
+{
+    ContentPacks::in($siteId, function () use ($slug, $categorySlug): void {
+        $post = Entry::query()->create(['type' => 'post', 'status' => 'published', 'published_at' => now()]);
+        $post->translations()->create(['locale' => 'vi', 'title' => 'Bài của nhân viên', 'slug' => $slug, 'status' => 'published', 'body' => ['blocks' => []]]);
+        $post->assignCategories([(int) TaxonomyTranslation::query()->where('slug', $categorySlug)->value('taxonomy_id')]);
+        $post->unsetRelation('taxonomies');
+        app(RouteSync::class)->sync($post, 'vi', $slug);
+    });
+}
+
+/** v2 of the fixture: the news child category cap-nhat becomes ban-tin (its post follows the key). */
+function cpRenameCapNhat(string $folder, array $extra = []): void
+{
+    cpVersion2($folder);
+    ContentPacks::item($folder, 'taxonomies.json', 'tax:post_cat/tin-tuc/cap-nhat', fn (array $item): array => ['key' => 'tax:post_cat/tin-tuc/ban-tin', 'was' => ['cap-nhat'], 'name' => ['vi' => 'Bản tin']] + $extra + $item);
+    ContentPacks::item($folder, 'posts.json', 'post:ra-mat-website', fn (array $item): array => ['categories' => ['tax:post_cat/tin-tuc/ban-tin', 'tax:post_cat/tin-tuc']] + $item);
+}
+
+/** Every SQL statement the callback issues. @return list<string> */
+function cpQueries(callable $callback): array
+{
+    $queries = [];
+    DB::listen(function ($query) use (&$queries): void {
+        $queries[] = $query->sql;
+    });
+    $callback();
+
+    return $queries;
+}
+
+it('never follows a stored redirect off the site', function (string $to): void {
+    ContentPacks::in($this->siteId, fn () => Redirect::query()->create(['locale' => 'vi', 'from_path' => '/ra-ngoai', 'to_path' => $to, 'status_code' => 301]));
+
+    $this->get('http://'.ContentPacks::HOST.'/ra-ngoai')->assertNotFound();
+})->with(['//evil.example/x', '/\evil.example', 'https://evil.example/x']);
+
+it('backs up every row a category rename changes, staff posts under it included, and a post filed in between changes the plan', function (): void {
+    $about = ContentPacks::in($this->siteId, fn () => StorefrontCards::media('about'));
+    ContentPacks::load();
+    cpStaffPost($this->siteId, 'bai-cua-nhan-vien', 'cap-nhat');
+    ContentPacks::in($this->siteId, fn () => Redirect::query()->create(['locale' => 'vi', 'from_path' => '/bai-cu', 'to_path' => '/cap-nhat/bai-cua-nhan-vien', 'status_code' => 301]));
+    cpRenameCapNhat($this->folder);
+    // The home page drops its image, so the media usage index loses the page's row.
+    ContentPacks::item($this->folder, 'pages.json', 'page:/', function (array $item): array {
+        unset($item['body']['vi'][0]['props']['image_url']);
+
+        return $item;
+    });
+
+    [, $dry] = ContentPacks::run();
+    cpStaffPost($this->siteId, 'bai-nop-sau', 'cap-nhat');
+    [$exit, $output] = ContentPacks::run('demo-co', ['--apply' => true, '--plan' => ContentPacks::fingerprint($dry)]);
+    expect($exit)->toBe(1)->and($output)->toContain('plan changed, run the dry run again');
+
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output);
+    $backup = cpBackup($output);
+    $category = cpBackupItem($backup, 'tax:post_cat/tin-tuc/ban-tin')['rows'];
+    $redirect = collect($backup['redirects'])->firstWhere('from_path', '/bai-cu');
+
+    expect(array_column($category['branch_routes'], 'path'))->toContain('/cap-nhat/bai-cua-nhan-vien', '/cap-nhat/bai-nop-sau', '/cap-nhat/ra-mat-website')
+        ->and($redirect['to_path'] ?? null)->toBe('/cap-nhat/bai-cua-nhan-vien')
+        ->and(array_column(cpBackupItem($backup, 'page:/')['rows']['mediables'], 'media_id'))->toBe([$about->id]);
+
+    // …and those rows are indeed what the load changed.
+    ContentPacks::in($this->siteId, fn () => expect(Redirect::query()->where('from_path', '/bai-cu')->value('to_path'))->toBe('/ban-tin/bai-cua-nhan-vien')
+        ->and(SiteRoute::query()->where('path', '/ban-tin/bai-nop-sau')->exists())->toBeTrue()
+        ->and(DB::table('mediables')->where('media_id', $about->id)->exists())->toBeFalse());
+});
+
+it('keeps protecting a staff edit on a renamed category the load skipped, run after run', function (): void {
+    ContentPacks::load();
+    ContentPacks::in($this->siteId, fn () => TaxonomyTranslation::query()->where('slug', 'cap-nhat')->update(['name' => 'Cập nhật của nhân viên']));
+    cpRenameCapNhat($this->folder);
+
+    [, $dry] = ContentPacks::run();
+    expect(ContentPacks::verdict($dry, 'tax:post_cat/tin-tuc/ban-tin'))->toBe('skip:edited');
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)
+        ->and(array_keys(ContentPacks::in($this->siteId, fn (): ?array => Ledger::read('demo-co'))['items'] ?? []))->toContain('tax:post_cat/tin-tuc/ban-tin');
+
+    [, $again] = ContentPacks::run();
+    expect(ContentPacks::verdict($again, 'tax:post_cat/tin-tuc/ban-tin'))->toBe('skip:edited');
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output);
+    ContentPacks::in($this->siteId, fn () => expect(TaxonomyTranslation::query()->where('slug', 'cap-nhat')->value('name'))->toBe('Cập nhật của nhân viên'));
+});
+
+it('plans as a conflict every address the load would write that already belongs to something else', function (Closure $setup, string $key): void {
+    $setup($this);
+
+    [$exit, $output] = ContentPacks::run();
+
+    expect($exit)->toBe(1, $output)->and(ContentPacks::verdict($output, $key))->toBe('conflict');
+})->with([
+    'a new post at a page\'s address' => [function ($test): void {
+        ContentPacks::in($test->siteId, function (): void {
+            $page = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()]);
+            $page->translations()->create(['locale' => 'vi', 'title' => 'Trang khác', 'slug' => 'bai-moi', 'status' => 'published', 'body' => ['blocks' => []]]);
+            SiteRoute::query()->create(['locale' => 'vi', 'path' => '/tin-tuc/bai-moi', 'entry_id' => $page->id]);
+        });
+        ContentPacks::edit($test->folder, 'posts.json', fn (array $data): array => ['items' => [...$data['items'], [
+            'key' => 'post:bai-moi', 'verified' => true, 'status' => 'published', 'categories' => ['tax:post_cat/tin-tuc'],
+            'title' => ['vi' => 'Bài mới'], 'body' => ['vi' => [['type' => 'richtext', 'props' => ['paragraphs' => ['Bài mới.']]]]],
+        ]]]);
+    }, 'post:bai-moi'],
+    'a new product at a page\'s address' => [function ($test): void {
+        ContentPacks::in($test->siteId, function (): void {
+            $page = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()]);
+            $page->translations()->create(['locale' => 'vi', 'title' => 'Máy cũ', 'slug' => 'may-mau-a', 'status' => 'published', 'body' => ['blocks' => []]]);
+            SiteRoute::query()->create(['locale' => 'vi', 'path' => '/may-mau-a', 'entry_id' => $page->id]);
+        });
+    }, 'product:may-mau-a'],
+    'a post at the address of a category of the same pack' => [function ($test): void {
+        ContentPacks::edit($test->folder, 'posts.json', fn (array $data): array => ['items' => [...$data['items'], [
+            'key' => 'post:dich-vu', 'verified' => true, 'status' => 'published', 'categories' => ['tax:post_cat/san-pham'],
+            'title' => ['vi' => 'Dịch vụ'], 'body' => ['vi' => [['type' => 'richtext', 'props' => ['paragraphs' => ['Dịch vụ.']]]]],
+        ]]]);
+    }, 'post:dich-vu'],
+    'a category\'s address in a second language' => [function ($test): void {
+        ContentPacks::in($test->siteId, function (): void {
+            SiteLocale::query()->create(['locale' => 'en', 'is_default' => false, 'enabled' => true]);
+            $page = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()]);
+            $page->translations()->create(['locale' => 'en', 'title' => 'Services', 'slug' => 'services', 'status' => 'published', 'body' => ['blocks' => []]]);
+            SiteRoute::query()->create(['locale' => 'en', 'path' => '/services', 'entry_id' => $page->id]);
+        });
+        ContentPacks::edit($test->folder, 'pack.json', fn (array $pack): array => ['locales' => ['vi', 'en']] + $pack);
+        ContentPacks::item($test->folder, 'taxonomies.json', 'tax:post_cat/dich-vu', fn (array $item): array => ['name' => ['vi' => 'Dịch vụ', 'en' => 'Services'], 'slug' => ['en' => 'services']] + $item);
+    }, 'tax:post_cat/dich-vu'],
+    'a staff post a category rename would move onto a taken address' => [function ($test): void {
+        ContentPacks::load();
+        cpStaffPost($test->siteId, 'bai-cua-nhan-vien', 'cap-nhat');
+        ContentPacks::in($test->siteId, function (): void {
+            $page = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()]);
+            $page->translations()->create(['locale' => 'vi', 'title' => 'Trang khác', 'slug' => 'bai-cua-nhan-vien', 'status' => 'published', 'body' => ['blocks' => []]]);
+            SiteRoute::query()->create(['locale' => 'vi', 'path' => '/ban-tin/bai-cua-nhan-vien', 'entry_id' => $page->id]);
+        });
+        cpRenameCapNhat($test->folder);
+    }, 'tax:post_cat/tin-tuc/ban-tin'],
+]);
+
+it('plans the same addresses the platform then writes, under every permalink preset', function (array $posts, array $products): void {
+    ContentPacks::in($this->siteId, function () use ($posts, $products): void {
+        SiteSetting::query()->updateOrCreate(['group_name' => 'permalinks', 'key' => 'posts'], ['value' => $posts]);
+        SiteSetting::query()->updateOrCreate(['group_name' => 'permalinks', 'key' => 'products'], ['value' => $products]);
+    });
+    $planned = ContentPacks::in($this->siteId, function (): array {
+        $planner = app(Planner::class);
+        $planner->plan(app(PackReader::class)->read('demo-co'), (string) Site::query()->value('ulid'), 'Demo', ContentPacks::HOST);
+
+        return $planner->plannedPaths();
+    });
+
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)->and($planned)->toHaveKeys(['post:ra-mat-website', 'product:may-mau-a', 'tax:post_cat/tin-tuc/cap-nhat']);
+
+    ContentPacks::in($this->siteId, function () use ($planned): void {
+        foreach ($planned as $key => $paths) {
+            foreach ($paths as $locale => $path) {
+                expect(SiteRoute::query()->where('locale', $locale)->where('path', $path)->exists())->toBeTrue("{$key} was planned at {$path}");
+            }
+        }
+    });
+})->with([
+    'flat' => [['pattern' => 'flat'], ['pattern' => 'flat']],
+    'category' => [['pattern' => 'category'], ['pattern' => 'category']],
+    'category path' => [['pattern' => 'category_path'], ['pattern' => 'category_path']],
+    'base' => [['pattern' => 'base', 'base' => 'bai-viet'], ['pattern' => 'base', 'base' => 'may']],
+]);
+
+it('locks the rows it writes while it re-plans for --apply, and takes no lock on a dry run', function (): void {
+    ContentPacks::load();
+    cpVersion2($this->folder);
+    ContentPacks::item($this->folder, 'pages.json', 'page:/', fn (array $item): array => ['title' => ['vi' => 'Trang chủ bản 2']] + $item);
+
+    $dry = cpQueries(function () use (&$output): void {
+        [, $output] = ContentPacks::run();
+    });
+    $apply = cpQueries(fn () => ContentPacks::run('demo-co', ['--apply' => true, '--plan' => ContentPacks::fingerprint($output)]));
+
+    $locked = fn (array $queries): array => array_values(array_unique(array_map(
+        fn (string $sql): string => preg_match('/\bfrom "([a-z_]+)"/', $sql, $m) === 1 ? $m[1] : '?',
+        array_filter($queries, fn (string $sql): bool => str_contains(strtolower($sql), 'for update')),
+    )));
+    expect($locked($dry))->toBe([])
+        ->and($locked($apply))->toContain('entries', 'entry_translations', 'products', 'product_translations', 'taxonomies', 'taxonomy_translations',
+            'menus', 'menu_items', 'site_settings', 'site_profiles', 'site_profile_translations', 'redirects');
 });

@@ -8,12 +8,6 @@
    }
   },
   {
-   "key": "setting:permalinks.posts",
-   "value": {
-    "pattern": "category"
-   }
-  },
-  {
    "key": "setting:general.brand",
    "managed_keys": [
     "name",

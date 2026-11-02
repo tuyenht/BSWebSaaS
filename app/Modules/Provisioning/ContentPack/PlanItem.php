@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace App\Modules\Provisioning\ContentPack;
 
+use App\Modules\Shared\Support\Cast;
+
 /**
  * One line of the plan: what the loader will do with one pack item, and why. `current` and
  * `desired` are the item's managed fields in canonical form (null current = no live record); their
  * hashes, with the ledger's, decide the verdict. `recordId` is internal (never printed, never
- * stored): the Applier writes through it.
+ * stored): the Applier writes through it. `scope` is a hash of the other rows the write changes
+ * along the way (the posts and products a renamed or moved category carries), so the fingerprint
+ * changes when one of them does.
  */
 final readonly class PlanItem
 {
@@ -35,6 +39,7 @@ final readonly class PlanItem
      * @param  array<string, mixed>|null  $current
      * @param  array<string, mixed>  $desired
      * @param  list<string>  $notes  plain-language detail for the dry run (unpublish, URL moves, reasons)
+     * @param  string|null  $scope  hash of the rows the write carries along (fingerprinted)
      */
     public function __construct(
         public PackItem $item,
@@ -45,7 +50,50 @@ final readonly class PlanItem
         public ?int $recordId,
         public array $notes = [],
         public bool $forced = false,
+        public ?string $scope = null,
     ) {}
+
+    /** The same line as a conflict: nothing is written, and the dry run says why. */
+    public function asConflict(string $why): self
+    {
+        return new self($this->item, self::CONFLICT, $this->current, $this->desired, $this->ref, $this->recordId, [$why]);
+    }
+
+    /**
+     * The same line with more notes and the scope of the rows it carries along.
+     *
+     * @param  list<string>  $notes
+     */
+    public function carrying(array $notes, ?string $scope): self
+    {
+        return new self($this->item, $this->verdict, $this->current, $this->desired, $this->ref, $this->recordId, [...$this->notes, ...$notes], $this->forced, $scope);
+    }
+
+    /**
+     * Whether a category write changes an address under it: its slug in any language, or its
+     * parent. Then the posts and products filed under the branch move with it.
+     *
+     * @param  array<string, mixed>|null  $current
+     * @param  array<string, mixed>  $desired
+     */
+    public static function taxonomyMoves(?array $current, array $desired): bool
+    {
+        if ($current === null) {
+            return false;
+        }
+        if (($current['parent'] ?? null) !== ($desired['parent'] ?? null)) {
+            return true;
+        }
+        $before = Cast::arr($current['translations'] ?? null);
+        foreach (Cast::arr($desired['translations'] ?? null) as $locale => $row) {
+            $slug = Cast::arr($row)['slug'] ?? null;
+            if (is_string($slug) && $slug !== (Cast::arr($before[$locale] ?? null)['slug'] ?? null)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     public function currentHash(): ?string
     {

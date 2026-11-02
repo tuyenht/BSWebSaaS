@@ -30,7 +30,7 @@ beforeEach(function (): void {
     StorefrontCards::reset();
     StorefrontCards::pinMediaConfig();
     $this->folder = ContentPacks::use();
-    $this->siteId = StorefrontCards::site('Demo', ContentPacks::HOST);
+    $this->siteId = ContentPacks::site();
 });
 
 afterEach(fn () => ContentPacks::cleanup());

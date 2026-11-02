@@ -156,7 +156,6 @@ final class Applier
             'list_template' => Cast::stringOrNull($desired['list_template'] ?? null),
         ];
 
-        $oldSlug = Cast::stringOrNull(Cast::arr(Cast::arr($planned->current['translations'] ?? null)[$this->locale] ?? null)['slug'] ?? null);
         $oldParent = $planned->current['parent'] ?? null;
 
         if ($planned->recordId === null) {
@@ -177,8 +176,8 @@ final class Applier
         }
         $this->paths->refreshBranch($taxonomy->id);
 
-        $newSlug = Cast::arr(Cast::arr($desired['translations'] ?? null)[$this->locale] ?? null)['slug'] ?? null;
-        if ($planned->recordId !== null && ($oldSlug !== $newSlug || $oldParent !== $parentKey)) {
+        // A slug change in any language, or a new parent, moves the posts and products under the branch.
+        if ($planned->recordId !== null && PlanItem::taxonomyMoves($planned->current, $desired)) {
             $this->sections->flush();
             $this->relinker->relink(array_keys(TaxonomyTree::branchOf($taxonomy->id)), $oldParent !== $parentKey ? CategoryChange::Moved : CategoryChange::Renamed);
         }

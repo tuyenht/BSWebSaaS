@@ -8,6 +8,7 @@ use App\Modules\Provisioning\ContentPack\Backup;
 use App\Modules\Provisioning\ContentPack\PackReader;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -37,6 +38,18 @@ final class ContentPacks
         app()->bind(Backup::class, fn (): Backup => new Backup(app(CurrentSite::class), $root.'/backups'));
 
         return $root.'/'.$code;
+    }
+
+    /**
+     * Provision the demo site the fixture pack is meant for, with news posts addressed under their
+     * category (`/{category}/{slug}`) — a site's own permalink setting, which a pack never writes.
+     */
+    public static function site(): int
+    {
+        $siteId = StorefrontCards::site('Demo', self::HOST);
+        self::in($siteId, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'permalinks', 'key' => 'posts'], ['value' => ['pattern' => 'category']]));
+
+        return $siteId;
     }
 
     /** Remove every scratch copy (and its backups) made since the last cleanup. */

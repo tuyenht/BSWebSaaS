@@ -16,6 +16,7 @@ use App\Modules\Cms\Routing\ResolvedProduct;
 use App\Modules\Cms\Routing\RouteResolver;
 use App\Modules\Cms\Support\EntryViewCounter;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Shared\Support\SafeLink;
 use App\Modules\Storefront\Support\ListPage;
 use App\Modules\Tenancy\Context\ContentSections;
 use App\Modules\Tenancy\Context\SiteIdentity;
@@ -74,7 +75,9 @@ final readonly class StorefrontController
 
         if ($resolved === null) {
             $redirect = $this->resolver->redirect($locale, $path);
-            abort_if(! $redirect instanceof Redirect, 404);
+            // A stored target that is not a path on this site (`//host`, `/\host`, a full link) is
+            // never followed: a redirect row must not become a way off the site.
+            abort_if(! $redirect instanceof Redirect || ! SafeLink::isSitePath($redirect->to_path), 404);
 
             return redirect()->to($redirect->to_path, $redirect->status_code);
         }
@@ -138,7 +141,9 @@ final readonly class StorefrontController
         }
 
         if ($first === $default) {
-            $rest = '/'.implode('/', array_slice($segments, 1));   // /{default}/x → /x ; /{default} → /
+            // /{default}/x → /x ; /{default} → /. Empty segments are dropped: /{default}//host
+            // must never become a protocol-relative `//host` redirect off the site.
+            $rest = '/'.implode('/', array_filter(array_slice($segments, 1), fn (string $segment): bool => $segment !== ''));
 
             return [$default, $path, $rest];
         }

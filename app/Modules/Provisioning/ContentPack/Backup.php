@@ -21,10 +21,12 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Before --apply writes anything: a gzip JSON file of every row the plan is about to change (per
- * item: the record, its translations, routes, category links, images or menu tree; settings; the
- * profile; redirects) plus the previous ledger, so one item can be inspected or restored by hand.
+ * item: the record, its translations, routes, category links, images, image-usage rows or menu
+ * tree; for a category, the routes of the posts and products it carries along; settings; the
+ * profile; redirects) plus every redirect from or to an address the load moves, writes or vacates,
+ * and the previous ledger, so one item can be inspected or restored by hand.
  * `storage/app/private/content-pack-backups/<site-ulid>/<pack>-v<version>-<UTC>-<fingerprint>.json.gz`, mode
- * 0600, flushed to disk and re-read before the write transaction opens. Rows are read inside the
+ * 0600, flushed to disk with its folder and re-read before the write transaction opens. Rows are read inside the
  * site's tenant context. The file stays even when the apply then fails — a record of the attempt.
  */
 final readonly class Backup
@@ -44,16 +46,25 @@ final readonly class Backup
     public function snapshot(Plan $plan, Planner $planner): array
     {
         $items = [];
+        $paths = [];
         foreach ($plan->writes() as $planned) {
+            $rows = $planned->recordId === null && ! in_array($planned->item->kind, ['setting', 'profile', 'redirect'], true)
+                ? null
+                : $this->rows($planned, $planner);
             $items[] = [
                 'key' => $planned->item->key,
                 'verdict' => $planned->verdict,
                 'forced' => $planned->forced,
                 'ref' => $planned->ref,
-                'rows' => $planned->recordId === null && ! in_array($planned->item->kind, ['setting', 'profile', 'redirect'], true)
-                    ? null
-                    : $this->rows($planned, $planner),
+                'rows' => $rows,
             ];
+            foreach ([...Cast::arr($rows['routes'] ?? null), ...Cast::arr($rows['branch_routes'] ?? null)] as $route) {
+                $route = Cast::arr($route);
+                $paths[Cast::string($route['locale'] ?? null)][Cast::string($route['path'] ?? null)] = true;
+            }
+            foreach ($planner->plannedPaths()[$planned->item->key] ?? [] as $locale => $path) {
+                $paths[$locale][$path] = true;
+            }
         }
 
         return [
@@ -65,7 +76,33 @@ final readonly class Backup
             'taken_at' => now()->utc()->toIso8601String(),
             'previous_ledger' => $plan->ledger,
             'items' => $items,
+            'redirects' => $this->redirectsAround($paths),
         ];
+    }
+
+    /**
+     * Every redirect from or to one of these addresses: RouteSync adds one from each old address,
+     * points the ones that led to it at the new one, and drops the one from a new address.
+     *
+     * @param  array<string, array<string, true>>  $paths  locale → path
+     * @return list<array<string, mixed>>
+     */
+    private function redirectsAround(array $paths): array
+    {
+        $rows = [];
+        foreach ($paths as $locale => $set) {
+            foreach (array_chunk(array_keys($set), 1000) as $chunk) {
+                $found = Redirect::query()->where('locale', $locale)
+                    ->where(fn ($query) => $query->whereIn('from_path', $chunk)->orWhereIn('to_path', $chunk))
+                    ->orderBy('id')->get();
+                foreach ($found as $redirect) {
+                    $rows[$redirect->id] = $redirect->attributesToArray();
+                }
+            }
+        }
+        ksort($rows);
+
+        return array_values($rows);
     }
 
     /**
@@ -95,6 +132,9 @@ final readonly class Backup
                 && fsync($handle)
                 && fclose($handle);
             $ok = $ok && chmod($path, 0600) && hash_file('sha256', $path) === hash('sha256', $bytes);
+            // The file's directory entry must reach the disk too, or a crash can lose the file.
+            $folder = $ok ? @fopen($dir, 'r') : false;
+            $ok = $folder !== false && fsync($folder) && fclose($folder);
         }
 
         if (! $ok) {
@@ -112,7 +152,7 @@ final readonly class Backup
         return match ($planned->item->kind) {
             'page', 'post' => $this->entryRows((int) $id),
             'product' => $this->productRows((int) $id),
-            'taxonomy' => $this->taxonomyRows((int) $id),
+            'taxonomy' => $this->taxonomyRows((int) $id, $planned->item->key, $planner),
             'menu' => $this->menuRows((int) $id),
             'setting' => $this->settingRows($planned->item->anchor()),
             'profile' => $this->profileRows(),
@@ -131,6 +171,9 @@ final readonly class Backup
             'translations' => $entry->translations->map(fn (Model $row): array => $row->attributesToArray())->all(),
             'routes' => SiteRoute::query()->where('entry_id', $id)->get()->map(fn (Model $row): array => $row->attributesToArray())->all(),
             'categories' => $this->pivot('entry_taxonomies', 'entry_id', $id),
+            // The image-usage index the media reconciler rewrites after a body write.
+            'mediables' => array_values(DB::table('mediables')->where('site_id', $this->site->id())->where('mediable_type', 'entry')->where('mediable_id', $id)
+                ->orderBy('id')->get()->map(fn (object $row): array => Cast::arr((array) $row))->all()),
         ];
     }
 
@@ -149,14 +192,20 @@ final readonly class Backup
     }
 
     /** @return array<string, mixed> */
-    private function taxonomyRows(int $id): array
+    private function taxonomyRows(int $id, string $key, Planner $planner): array
     {
         $taxonomy = Taxonomy::query()->with('translations')->findOrFail($id);
+        $branch = [];
+        foreach (array_chunk($planner->branchRoutes($key), 1000) as $chunk) {
+            array_push($branch, ...SiteRoute::query()->whereIn('id', $chunk)->orderBy('id')->get()->map(fn (Model $row): array => $row->attributesToArray())->all());
+        }
 
         return [
             'taxonomy' => $taxonomy->attributesToArray(),
             'translations' => $taxonomy->translations->map(fn (Model $row): array => $row->attributesToArray())->all(),
             'routes' => SiteRoute::query()->where('taxonomy_id', $id)->get()->map(fn (Model $row): array => $row->attributesToArray())->all(),
+            // The posts and products filed under the branch, whose addresses a rename or move changes.
+            'branch_routes' => $branch,
         ];
     }
 

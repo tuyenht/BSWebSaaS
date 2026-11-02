@@ -46,6 +46,19 @@ final class SafeLink
         return $hosts === [] || self::onHost($host, $hosts) ? $url : null;
     }
 
+    /**
+     * A path on this site and nothing else: one leading `/` not followed by `/` or `\`, no `://`
+     * inside, no backslash, whitespace or control character anywhere — so a browser can never read
+     * it as another host. Unlike href() it trims nothing: the value must already be exact.
+     */
+    public static function isSitePath(mixed $path): bool
+    {
+        return is_string($path)
+            && strlen($path) <= self::MAX_LENGTH
+            && ! str_contains($path, '://')
+            && preg_match('/\A\/(?![\/\\\\])[^\s\p{C}\p{Z}\\\\]*\z/u', $path) === 1;
+    }
+
     /** A tel: link from the digits (and a leading +) of a phone number; null when none are left. */
     public static function tel(mixed $phone): ?string
     {

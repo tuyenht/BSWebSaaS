@@ -7,8 +7,8 @@ namespace App\Modules\Provisioning\ContentPack;
 /**
  * The loader's plan for one pack on one site — what the dry run prints and what --apply executes
  * after recomputing it and comparing fingerprints. The fingerprint covers the pack's content, the
- * site, the forced keys, every item's verdict and hashes, and the ledger: any staff edit or pack
- * change between the dry run and the apply changes it.
+ * site, the forced keys, every item's verdict and hashes (with the rows a category write carries
+ * along), and the ledger: any staff edit or pack change between the dry run and the apply changes it.
  */
 final readonly class Plan
 {
@@ -21,6 +21,7 @@ final readonly class Plan
      * @param  list<string>  $warnings
      * @param  array{pack_version: int, loaded_at: string, items: array<string, array{hash: string, ref: string}>}|null  $ledger
      * @param  array{slots: int, resolved: int}  $media
+     * @param  array<string, string>  $carried  pack key → the earlier ledger key it carries on (a renamed or moved category)
      */
     public function __construct(
         public Pack $pack,
@@ -33,11 +34,12 @@ final readonly class Plan
         public array $warnings,
         public ?array $ledger,
         public array $media,
+        public array $carried = [],
     ) {
         $forcedKeys = $forced;
         sort($forcedKeys, SORT_STRING);
         $lines = array_map(
-            fn (PlanItem $item): array => [$item->item->key, $item->verdict, $item->currentHash(), $item->desiredHash()],
+            fn (PlanItem $item): array => [$item->item->key, $item->verdict, $item->currentHash(), $item->desiredHash(), $item->scope],
             $items,
         );
 

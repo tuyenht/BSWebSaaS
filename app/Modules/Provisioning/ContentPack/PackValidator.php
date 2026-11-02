@@ -10,6 +10,7 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\RichTextSanitizer;
 use App\Modules\Shared\Support\SafeLink;
 use App\Modules\Theme\Chrome\StorefrontChrome;
+use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Theming\ThemeResolver;
 use Illuminate\Support\Facades\Validator;
 
@@ -43,6 +44,15 @@ final readonly class PackValidator
 
     private const array DYNAMIC_LINKS = ['home'];
 
+    /** The setting groups and names a pack may write; everything else is the site's own. */
+    private const array SETTINGS = [
+        'theme' => ['tokens'],
+        'storefront' => ['header', 'footer'],
+        'general' => ['brand'],
+    ];
+
+    private const string LINK_RULE = 'a site path (/…, never //host, a backslash or a space) or an http(s) link';
+
     private const int MENU_DEPTH = 3;
 
     /** Image magic bytes → MIME (the upload whitelist's raster types). */
@@ -54,7 +64,23 @@ final readonly class PackValidator
     public function __construct(
         private ValidPageJson $pageJson,
         private RichTextSanitizer $sanitizer,
+        private ComponentRegistry $components,
     ) {}
+
+    /**
+     * A link a pack may write: a path on the site (SafeLink::isSitePath) or an exact http(s) link
+     * with a host — never a protocol-relative `//host`, `/\host`, another scheme, or padding.
+     */
+    public static function isLink(mixed $value): bool
+    {
+        return SafeLink::isSitePath($value) || self::isWebLink($value);
+    }
+
+    /** An exact http(s) link with a host (no site path). */
+    public static function isWebLink(mixed $value): bool
+    {
+        return is_string($value) && ! str_starts_with($value, '/') && SafeLink::href($value) === $value;
+    }
 
     /**
      * @return list<string> every problem found; empty = valid
@@ -167,6 +193,14 @@ final readonly class PackValidator
         }
         if ($m[1] === Ledger::GROUP) {
             $errors[] = "{$item->key}: the '".Ledger::GROUP."' group is the loader's own.";
+        } elseif (! in_array($m[2], self::SETTINGS[$m[1]] ?? [], true)) {
+            $allowed = [];
+            foreach (self::SETTINGS as $group => $names) {
+                foreach ($names as $name) {
+                    $allowed[] = "setting:{$group}.{$name}";
+                }
+            }
+            $errors[] = "{$item->key}: the loader writes only ".implode(', ', $allowed).'; any other setting stays the site\'s own.';
         }
 
         $value = $item->data['value'] ?? null;
@@ -194,6 +228,7 @@ final readonly class PackValidator
                 $errors[] = "{$item->key}: '{$name}' is not a valid image reference.";
             }
         }
+        $this->settingLinks($item->key, $value, '', $errors);
 
         $default = $pack->defaultLocale;
         match ($item->key) {
@@ -203,6 +238,25 @@ final readonly class PackValidator
             default => null,
         };
         unset($default);
+    }
+
+    /**
+     * Every string under a `url`, `href` or `*_url` key, at any depth, must be a link a pack may
+     * write — whatever the reader of that setting later does with it.
+     *
+     * @param  array<array-key, mixed>  $value
+     * @param  list<string>  $errors
+     */
+    private function settingLinks(string $at, array $value, string $prefix, array &$errors): void
+    {
+        foreach ($value as $name => $sub) {
+            $path = $prefix.$name;
+            if (is_array($sub)) {
+                $this->settingLinks($at, $sub, $path.'.', $errors);
+            } elseif (is_string($name) && ($name === 'url' || $name === 'href' || str_ends_with($name, '_url')) && ! self::isLink($sub)) {
+                $errors[] = "{$at}: '{$path}' must be ".self::LINK_RULE.'.';
+            }
+        }
     }
 
     /**
@@ -298,7 +352,9 @@ final readonly class PackValidator
                 continue;
             }
             $ok = match ($name) {
-                'social_links' => is_array($value) && ($value === [] || ! array_is_list($value)) && Cast::strings($value) === array_values($value),
+                'social_links' => is_array($value) && ($value === [] || ! array_is_list($value)) && Cast::strings($value) === array_values($value)
+                    && array_all($value, self::isWebLink(...)),
+                'moit_url' => $value === null || (self::isWebLink($value) && mb_strlen(Cast::string($value)) <= self::TEXT_MAX),
                 'moit_registered' => is_bool($value),
                 'license_issued_at' => $value === null || (is_string($value) && self::isDate($value)),
                 default => $value === null || (is_string($value) && mb_strlen($value) <= self::TEXT_MAX),
@@ -317,6 +373,11 @@ final readonly class PackValidator
             $name = (string) $name;
             if (! in_array($name, self::PROFILE_LOCALIZED, true)) {
                 $errors[] = "profile: '{$name}' is not a localized profile field the loader writes.";
+
+                continue;
+            }
+            if ($localized[$name] === null) {
+                $errors[] = "profile: {$name} must be a language map like {\"{$pack->defaultLocale}\": \"…\"}; leave the field out to keep the live text.";
 
                 continue;
             }
@@ -484,6 +545,47 @@ final readonly class PackValidator
             foreach ($check->errors()->all() as $message) {
                 $errors[] = "{$item->key}: body ({$locale}): {$message}";
             }
+            foreach (is_array($blocks) ? array_values($blocks) : [] as $index => $block) {
+                $type = is_array($block) ? ($block['type'] ?? null) : null;
+                if (is_string($type) && $this->components->has($type) && is_array($block['props'] ?? null)) {
+                    $this->blockLinks("{$item->key}: body ({$locale}): block ".($index + 1)." ({$type})", $block['props'], $this->components->get($type)->schema(), '', $errors);
+                }
+            }
+        }
+    }
+
+    /**
+     * The schema's `url`-typed props (lists included): a contact `phone` must make a tel: link, an
+     * `email` a mailto: link, and every other one must be a link a pack may write. The editor's own
+     * rule only refuses dangerous schemes; a pack is held to the stricter one.
+     *
+     * @param  array<array-key, mixed>  $props
+     * @param  list<string>  $errors
+     */
+    private function blockLinks(string $at, array $props, mixed $schema, string $prefix, array &$errors): void
+    {
+        foreach (is_array($schema) ? $schema : [] as $name => $spec) {
+            $value = $props[$name] ?? null;
+            if (! is_array($spec) || $value === null) {
+                continue;
+            }
+            $type = $spec['type'] ?? null;
+            if ($type === 'url') {
+                $problem = match ($name) {
+                    'phone' => SafeLink::tel($value) === null ? 'must be a phone number' : null,
+                    'email' => SafeLink::mailto($value) === null ? 'must be an email address' : null,
+                    default => self::isLink($value) ? null : 'must be '.self::LINK_RULE,
+                };
+                if ($problem !== null) {
+                    $errors[] = "{$at}: {$prefix}{$name} {$problem}.";
+                }
+            } elseif ($type === 'list' && is_array($value) && is_array($spec['of'] ?? null) && ! is_string($spec['of']['type'] ?? null)) {
+                foreach (array_values($value) as $n => $row) {
+                    if (is_array($row)) {
+                        $this->blockLinks($at, $row, $spec['of'], "{$prefix}{$name} ".($n + 1).' ', $errors);
+                    }
+                }
+            }
         }
     }
 
@@ -581,7 +683,7 @@ final readonly class PackValidator
                 $errors[] = "{$where}: give exactly one of target, url, dynamic.";
             } elseif (isset($node['target']) && ! (is_string($node['target']) && self::isTargetKey($node['target']))) {
                 $errors[] = "{$where}: target must be a page, post, category or product key.";
-            } elseif (isset($node['url']) && ! (is_string($node['url']) && ($node['url'] === '#' || SafeLink::href($node['url']) !== null))) {
+            } elseif (isset($node['url']) && ! (is_string($node['url']) && ($node['url'] === '#' || self::isLink($node['url'])))) {
                 $errors[] = "{$where}: url is not a safe link.";
             } elseif (isset($node['dynamic']) && ! in_array($node['dynamic'], self::DYNAMIC_LINKS, true)) {
                 $errors[] = "{$where}: dynamic must be one of ".implode(', ', self::DYNAMIC_LINKS).'.';
@@ -601,7 +703,7 @@ final readonly class PackValidator
     /** @param list<string> $errors */
     private function redirect(Pack $pack, PackItem $item, array &$errors): void
     {
-        if (preg_match('/\Aredirect:([a-z]{2,3}(?:-[A-Za-z0-9]{2,8})?):(\/[^\s]*)\z/', $item->key, $m) !== 1) {
+        if (preg_match('/\Aredirect:([a-z]{2,3}(?:-[A-Za-z0-9]{2,8})?):(.*)\z/s', $item->key, $m) !== 1 || ! SafeLink::isSitePath($m[2])) {
             $errors[] = "{$item->key}: a redirect key is redirect:<locale>:/<path>.";
 
             return;
@@ -610,8 +712,8 @@ final readonly class PackValidator
             $errors[] = "{$item->key}: the pack does not list language '{$m[1]}'.";
         }
         $to = $item->data['to'] ?? null;
-        if (! is_string($to) || ! str_starts_with($to, '/') || $to === $m[2] || mb_strlen($to) > self::TEXT_MAX) {
-            $errors[] = "{$item->key}: to must be another site path.";
+        if (! SafeLink::isSitePath($to) || $to === $m[2] || mb_strlen(Cast::string($to)) > self::TEXT_MAX) {
+            $errors[] = "{$item->key}: to must be another path on this site (/…, never //host, a backslash, a space or a full link).";
         }
         if (! in_array($item->data['status'] ?? 301, [301, 302], true)) {
             $errors[] = "{$item->key}: status must be 301 or 302.";

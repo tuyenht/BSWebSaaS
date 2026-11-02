@@ -108,3 +108,12 @@ it('reads the default dynamically — flipping it flips which prefix is canonica
     // vi is now a valid non-default prefix → resolves the vi category → 200.
     $this->get('http://anvinh.platform.test/vi/tin-tuc')->assertOk();
 });
+
+it('never turns a default-locale prefix into a redirect off the site', function (string $path): void {
+    provision('An Vinh', 'anvinh.platform.test', 'owner@anvinh.test');
+
+    $res = $this->get('http://anvinh.platform.test'.$path)->assertStatus(301);
+
+    expect((string) $res->headers->get('Location'))->toStartWith('http://anvinh.platform.test/')
+        ->and(redirectPath($res))->toBe('/evil.example/x');
+})->with(['/vi//evil.example/x', '/vi///evil.example/x']);
