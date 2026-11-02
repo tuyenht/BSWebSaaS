@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
@@ -22,7 +23,7 @@ use Tests\Fixtures\StorefrontCards;
 
 /*
  * site:load-content — the dry run, the first apply and the ledger, idempotency, unverified
- * content, refusals, images in this build (no image step) and the old seeder's guard. Every run
+ * content, refusals, images without the image step (MediaStepTest covers it) and the old seeder's guard. Every run
  * goes through the command as the app connection, against a site provisioned like a customer's.
  */
 
@@ -192,10 +193,16 @@ it('reuses an existing image for a slot with a legacy key, leaves the others out
     }
 });
 
-it('refuses the image step in this build', function (): void {
-    [$exit, $output] = ContentPacks::run('demo-co', ['--media' => true]);
+it('keeps the image step out of the content load: it uploads nothing and refuses a media slot key', function (): void {
+    Storage::fake('r2');
 
-    expect($exit)->toBe(1)->and($output)->toContain('image step is not available in this build');
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)
+        ->and($output)->not->toContain('Uploaded')
+        ->and(Storage::disk('r2')->allFiles())->toBe([]);
+
+    [$exit, $output] = ContentPacks::run('demo-co', ['--force-item' => ['media:header']]);
+    expect($exit)->toBe(1)->and($output)->toContain('--force-item media:header is not an item of the pack');
 });
 
 it('makes the old seeder refuse a site loaded from a content pack', function (): void {
@@ -204,4 +211,15 @@ it('makes the old seeder refuse a site loaded from a content pack', function ():
     $exit = Artisan::call('anvinh:seed-content', ['--host' => ContentPacks::HOST]);
 
     expect($exit)->toBe(1)->and(Artisan::output())->toContain('site:load-content');
+});
+
+it('records one audit row per apply with the pack, its fingerprint and the totals', function (): void {
+    $before = (int) AuditLog::query()->max('id'); // audit rows outlive the tables a test truncates
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output);
+
+    $meta = AuditLog::query()->where('action', 'content_pack.applied')->where('id', '>', $before)->sole()->meta;
+    expect($meta)->toMatchArray(['pack' => 'demo-co', 'version' => 1])
+        ->and($meta['fingerprint'])->toMatch('/^[0-9a-f]{12}$/')
+        ->and($meta['totals'])->toHaveKey('create');
 });

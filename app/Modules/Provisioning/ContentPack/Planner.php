@@ -50,9 +50,10 @@ use Illuminate\Support\Facades\DB;
  * Every address the load would write is composed the way the platform composes it and checked
  * against the routes before anything is written (addresses()).
  *
- * Images (this build has no image step): a slot resolves only when its `legacy_key` names a media
- * row the site already has. A block image prop whose slot does not resolve is left out; a card
- * image, a product gallery or a setting whose slot does not resolve keeps its live value.
+ * Images: a slot resolves to the site's media row holding the slot's own file (same collection, same
+ * sha256 — what the image step, `--media`, uploads), else to the row its `legacy_key` names. A block
+ * image prop whose slot does not resolve is left out; a card image, a product gallery or a setting
+ * whose slot does not resolve keeps its live value. Rows in the Trash never resolve.
  */
 final class Planner
 {
@@ -77,6 +78,12 @@ final class Planner
 
     /** @var array<string, array{id: int, key: string}|null> */
     private array $slots = [];
+
+    /** Slots resolved to the pack's own file (the rest of the resolved ones use a legacy image). */
+    private int $packed = 0;
+
+    /** @var array<string, true> slots that name a file in the pack */
+    private array $slotFiles = [];
 
     /** @var list<string> */
     private array $warnings = [];
@@ -181,7 +188,7 @@ final class Planner
             orphans: $orphans,
             warnings: array_values(array_unique($this->warnings)),
             ledger: $ledger,
-            media: ['slots' => count($pack->slots), 'resolved' => $resolved],
+            media: ['slots' => count($pack->slots), 'resolved' => $resolved, 'packed' => $this->packed],
             carried: $this->carried,
         );
     }
@@ -257,6 +264,8 @@ final class Planner
         $this->entryKeys = [];
         $this->productKeys = [];
         $this->slots = [];
+        $this->packed = 0;
+        $this->slotFiles = [];
         $this->warnings = [];
         $this->matched = [];
         $this->carried = [];
@@ -305,11 +314,35 @@ final class Planner
 
     private function resolveSlots(Pack $pack): void
     {
-        $keys = [];
+        $hashes = [];
         foreach ($pack->slots as $name => $slot) {
             $this->slots[$name] = null;
+            $file = $slot['file'] ?? null;
+            if (is_string($file) && $file !== '') {
+                $this->slotFiles[$name] = true;
+                $hashes[$name] = Cast::string($slot['collection'] ?? 'library')."\0".hash_file('sha256', $pack->dir.'/'.$file);
+            }
+        }
+        if ($hashes !== []) {
+            $rows = Media::query()->whereIn('hash', array_values(array_unique(array_map(fn (string $at): string => explode("\0", $at, 2)[1], $hashes))))
+                ->get(['id', 'collection', 'hash', 'storage_key']);
+            $byHash = [];
+            foreach ($rows as $row) {
+                $byHash[$row->collection."\0".$row->hash] = $row;
+            }
+            foreach ($hashes as $name => $at) {
+                $row = $byHash[$at] ?? null;
+                if ($row instanceof Media) {
+                    $this->slots[$name] = ['id' => $row->id, 'key' => $row->storage_key];
+                    $this->packed++;
+                }
+            }
+        }
+
+        $keys = [];
+        foreach ($pack->slots as $name => $slot) {
             $legacy = $slot['legacy_key'] ?? null;
-            if (is_string($legacy) && $legacy !== '') {
+            if ($this->slots[$name] === null && is_string($legacy) && $legacy !== '') {
                 $keys[$name] = $legacy;
             }
         }
@@ -324,6 +357,14 @@ final class Planner
                 $this->slots[$name] = ['id' => $row->id, 'key' => $row->storage_key];
             }
         }
+    }
+
+    /** Why a slot did not resolve, for a warning: its file is not uploaded yet, or it has none. */
+    private function unresolved(string $slot): string
+    {
+        return isset($this->slotFiles[$slot])
+            ? "image slot '{$slot}' is not uploaded yet (run with --media first)"
+            : "image slot '{$slot}' has no file and no existing image";
     }
 
     /**
@@ -342,7 +383,7 @@ final class Planner
             if (PackValidator::isMediaRef($child)) {
                 $slot = $this->slots[$child['media']] ?? null;
                 if ($slot === null) {
-                    $this->warnings[] = "{$at}: image slot '{$child['media']}' has no file and no existing image; the image is left out.";
+                    $this->warnings[] = "{$at}: {$this->unresolved($child['media'])}; the image is left out.";
 
                     continue;
                 }
@@ -809,7 +850,7 @@ final class Planner
             if (PackValidator::isMediaRef($image)) {
                 $slot = $this->slots[$image['media']] ?? null;
                 if ($slot === null) {
-                    $this->warnings[] = "{$item->key}: image slot '{$image['media']}' has no file and no existing image; the card keeps its live image.";
+                    $this->warnings[] = "{$item->key}: {$this->unresolved($image['media'])}; the card keeps its live image.";
                 }
                 $state['image'] = $slot['key'] ?? Cast::stringOrNull($current['image'] ?? null);
             } else {
@@ -1020,7 +1061,7 @@ final class Planner
             $images[] = $slot['key'];
         }
         if (! $complete) {
-            $this->warnings[] = "{$item->key}: an image slot has no file and no existing image; the gallery keeps its live images.";
+            $this->warnings[] = "{$item->key}: an image slot is not uploaded yet or has no file and no existing image; the gallery keeps its live images.";
             $images = Cast::strings($current['images'] ?? []);
         }
 
@@ -1323,7 +1364,7 @@ final class Planner
             if (PackValidator::isMediaRef($value)) {
                 $slot = $this->slots[$value['media']] ?? null;
                 if ($slot === null) {
-                    $this->warnings[] = "{$item->key}: image slot '{$value['media']}' has no file and no existing image; '{$key}' keeps its live value.";
+                    $this->warnings[] = "{$item->key}: {$this->unresolved($value['media'])}; '{$key}' keeps its live value.";
                     if ($current !== null && array_key_exists($key, $current)) {
                         $desired[$key] = $current[$key];
                     }
