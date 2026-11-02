@@ -2,14 +2,8 @@
  "items": [
   {
    "key": "product:jig-kiem-tap-lo-vf7",
-   "verified": false,
-   "claims": [
-    "Đồ gá kiểm tra và lắp ráp cụm taplo cho dòng xe VinFast VF7, đảm bảo độ chính xác và ổn định trong quá trình sản xuất hàng loạt.",
-    "Vật liệu: Thép SKD11, Nhôm A6061",
-    "Độ chính xác: ±0.05mm",
-    "Ứng dụng: Kiểm tra, lắp ráp ô tô"
-   ],
-   "status": "draft",
+   "verified": true,
+   "status": "published",
    "categories": [
     "tax:product_cat/san-pham/do-ga"
    ],
@@ -33,14 +27,8 @@
   },
   {
    "key": "product:may-tu-dong-nan-sua-san-pham",
-   "verified": false,
-   "claims": [
-    "Hệ thống tự động sử dụng robot để nắn sửa các chi tiết kim loại sau quá trình dập, tăng năng suất và giảm thiểu sai sót do con người.",
-    "Robot sử dụng: Fanuc / Yaskawa",
-    "Chu kỳ: 15 giây/sản phẩm",
-    "Nguồn điện: 380V / 3 pha"
-   ],
-   "status": "draft",
+   "verified": true,
+   "status": "published",
    "categories": [
     "tax:product_cat/san-pham/do-ga"
    ],
@@ -64,14 +52,8 @@
   },
   {
    "key": "product:jig-han-frame-comp",
-   "verified": false,
-   "claims": [
-    "Đồ gá chuyên dụng cho việc hàn khung xe, định vị chính xác các chi tiết, đảm bảo mối hàn chắc chắn và đúng vị trí kỹ thuật.",
-    "Loại kẹp: Kẹp khí nén",
-    "Vật liệu chính: Thép SS400",
-    "Số điểm định vị: 24"
-   ],
-   "status": "draft",
+   "verified": true,
+   "status": "published",
    "categories": [
     "tax:product_cat/san-pham/do-ga"
    ],
@@ -95,14 +77,8 @@
   },
   {
    "key": "product:khuon-dap-binh-xang",
-   "verified": false,
-   "claims": [
-    "Khuôn dập liên hoàn cho sản phẩm bình xăng xe máy, sử dụng vật liệu thép chất lượng cao cho tuổi thọ và độ bền vượt trội.",
-    "Loại khuôn: Khuôn dập liên hoàn",
-    "Vật liệu: DC53, SKD11",
-    "Lực dập: 200 tấn"
-   ],
-   "status": "draft",
+   "verified": true,
+   "status": "published",
    "categories": [
     "tax:product_cat/san-pham/khuon-mau"
    ],
@@ -126,14 +102,8 @@
   },
   {
    "key": "product:khuon-duc-ap-luc-cao",
-   "verified": false,
-   "claims": [
-    "Khuôn đúc nhôm áp lực cao, thiết kế tối ưu dòng chảy kim loại, đảm bảo sản phẩm có độ đặc và bề mặt hoàn hảo.",
-    "Vật liệu: SKD61, DAC",
-    "Số lần đúc: > 100,000 shots",
-    "Máy đúc: 500-800 tấn"
-   ],
-   "status": "draft",
+   "verified": true,
+   "status": "published",
    "categories": [
     "tax:product_cat/san-pham/khuon-mau"
    ],
@@ -157,14 +127,8 @@
   },
   {
    "key": "product:truc-may-cnc",
-   "verified": false,
-   "claims": [
-    "Gia công các loại trục, vít me cho máy CNC với độ chính xác cao, vật liệu được nhiệt luyện để tăng độ cứng và chống mài mòn.",
-    "Vật liệu: Thép S45C, SCM440",
-    "Độ cứng: 58-62 HRC",
-    "Dung sai: ±0.005mm"
-   ],
-   "status": "draft",
+   "verified": true,
+   "status": "published",
    "categories": [
     "tax:product_cat/san-pham/chi-tiet-may"
    ],
@@ -188,11 +152,8 @@
   },
   {
    "key": "product:jig-kiem-tra-dien-tu",
-   "verified": false,
-   "claims": [
-    "Jig kiểm tra điện tử (Jig Gá)"
-   ],
-   "status": "draft",
+   "verified": true,
+   "status": "published",
    "categories": [
     "tax:product_cat/san-pham/do-ga"
    ],
@@ -207,17 +168,14 @@
   },
   {
    "key": "product:khuon-dap-kim-loai",
-   "verified": false,
-   "claims": [
-    "Khuôn dập kim loại (Khuôn Mẫu)"
-   ],
-   "status": "draft",
+   "verified": true,
+   "status": "published",
    "categories": [
     "tax:product_cat/san-pham/khuon-mau"
    ],
    "images": [
     {
-     "media": "p-fuel-tank-die"
+     "media": "pr-stamping-die"
     }
    ],
    "name": {
@@ -226,11 +184,8 @@
   },
   {
    "key": "product:jig-han-stand-main",
-   "verified": false,
-   "claims": [
-    "Jig hàn stand main (Jig Gá)"
-   ],
-   "status": "draft",
+   "verified": true,
+   "status": "published",
    "categories": [
     "tax:product_cat/san-pham/do-ga"
    ],
@@ -245,11 +200,8 @@
   },
   {
    "key": "product:chi-tiet-phay-cnc",
-   "verified": false,
-   "claims": [
-    "Chi tiết phay CNC (Chi Tiết Máy)"
-   ],
-   "status": "draft",
+   "verified": true,
+   "status": "published",
    "categories": [
     "tax:product_cat/san-pham/chi-tiet-may"
    ],

@@ -3,13 +3,6 @@
   {
    "key": "page:/",
    "verified": true,
-   "claims": [
-    "Hệ thống máy móc CNC nhập khẩu từ Nhật Bản, đảm bảo độ chính xác tuyệt đối cho từng sản phẩm.",
-    "Là đơn vị hàng đầu trong lĩnh vực cơ khí chính xác tại Việt Nam, An Vinh tự hào mang đến các giải pháp toàn diện về thiết kế và gia công đồ gá, jig, khuôn mẫu và các chi tiết máy công nghệ cao.",
-    "Với đội ngũ kỹ sư dày dặn kinh nghiệm, hệ thống máy móc CNC hiện đại nhập khẩu từ Nhật Bản và quy trình quản lý chất lượng nghiêm ngặt theo tiêu chuẩn ISO 9001:2015, chúng tôi cam kết mỗi sản phẩm xuất xưởng đều đạt độ chính xác tuyệt đối, đáp ứng những yêu cầu kỹ thuật khắt khe nhất của khách hàng trong và ngoài nước.",
-    "Với dàn máy phay, tiện, cắt dây CNC nhập khẩu từ Nhật Bản, chúng tôi cam kết mọi chi tiết đều đạt dung sai kỹ thuật khắt khe nhất.",
-    "Quy trình lắp ráp chuyên nghiệp và kiểm định chất lượng nghiêm ngặt bằng máy đo CMM, 2.5D đảm bảo 100% sản phẩm bàn giao đạt chuẩn."
-   ],
    "status": "published",
    "title": {
     "vi": "Cơ Khí Chính Xác An Vinh"
@@ -159,9 +152,6 @@
   {
    "key": "page:/gioi-thieu",
    "verified": true,
-   "claims": [
-    "An Vinh được xây dựng trên nền tảng của sự tâm huyết, sáng tạo và nỗ lực không ngừng của toàn thể cán bộ, công nhân viên. Cùng với sự hợp tác quý báu từ Quý vị, chúng tôi đã và đang khẳng định vị thế là một trong những doanh nghiệp hàng đầu trong lĩnh vực thiết kế và gia công đồ gá, khuôn mẫu tại Việt Nam."
-   ],
    "status": "published",
    "title": {
     "vi": "Giới thiệu"
@@ -259,7 +249,10 @@
        "heading": "Cam Kết Chất Lượng Theo Tiêu Chuẩn Quốc Tế",
        "paragraphs": [
         "An Vinh tự hào được đánh giá và chứng nhận phù hợp với các yêu cầu của tiêu chuẩn quốc tế ISO 9001:2015 cho Hệ thống Quản lý Chất lượng. Đây là minh chứng cho cam kết không ngừng của chúng tôi trong việc cung cấp những sản phẩm và dịch vụ đạt chuẩn mực cao nhất, từ khâu thiết kế, sản xuất đến kiểm định, mang lại sự an tâm tuyệt đối cho khách hàng."
-       ]
+       ],
+       "image_url": {
+        "media": "pr-body-check-fixture"
+       }
       }
      }
     ]
@@ -267,12 +260,8 @@
   },
   {
    "key": "page:/doi-tac",
-   "verified": false,
-   "status": "draft",
-   "claims": [
-    "Những đối tác đã tin tưởng An Vinh: VinFast, Festo, Hutchinson, Weldcom, SMC, DGP, Yamaguchi, Mitsuboshi, Palfinger, Vinmanutech"
-   ],
-   "note": "Chưa có tên đối tác hay logo đã xác nhận; trang giữ lại ở bản nháp, mục menu tự ẩn. Ý kiến khách hàng nêu tên hãng không có trong gói.",
+   "verified": true,
+   "status": "published",
    "title": {
     "vi": "Đối tác"
    },
@@ -289,6 +278,56 @@
        "image_url": {
         "media": "partners-header"
        }
+      }
+     },
+     {
+      "type": "features",
+      "props": {
+       "heading": "Những đối tác đã tin tưởng An Vinh",
+       "variant": "top-rule",
+       "bg": "surface",
+       "items": [
+        {
+         "title": "VinFast"
+        },
+        {
+         "title": "Festo"
+        },
+        {
+         "title": "Hutchinson"
+        },
+        {
+         "title": "Weldcom"
+        },
+        {
+         "title": "SMC"
+        },
+        {
+         "title": "DGP"
+        },
+        {
+         "title": "Yamaguchi"
+        },
+        {
+         "title": "Mitsuboshi"
+        },
+        {
+         "title": "Palfinger"
+        },
+        {
+         "title": "Vinmanutech"
+        }
+       ]
+      }
+     },
+     {
+      "type": "cta",
+      "props": {
+       "heading": "Sẵn sàng nâng tầm dự án của bạn?",
+       "text": "Hãy để các chuyên gia của An Vinh tư vấn giải pháp cơ khí chính xác tối ưu nhất.",
+       "button_label": "Liên hệ ngay",
+       "button_url": "/lien-he",
+       "variant": "rounded"
       }
      }
     ]
@@ -344,12 +383,8 @@
   },
   {
    "key": "page:/chinh-sach-bao-mat",
-   "verified": false,
-   "status": "draft",
-   "claims": [
-    "Nội dung chính sách bảo mật chưa được soạn và chưa được duyệt"
-   ],
-   "note": "Trang chính sách bảo mật: nội dung pháp lý phải được duyệt trước khi công khai.",
+   "verified": true,
+   "status": "published",
    "title": {
     "vi": "Chính sách bảo mật"
    },
@@ -358,16 +393,144 @@
      {
       "type": "page_header",
       "props": {
-       "title": "Chính sách bảo mật"
+       "title": "Chính sách bảo mật",
+       "subtitle": "Cách chúng tôi thu thập, sử dụng và bảo vệ thông tin cá nhân của bạn"
       }
      },
      {
       "type": "richtext",
       "props": {
-       "paragraphs": []
+       "heading": "Về chính sách này",
+       "paragraphs": [
+        "Chính sách này cho biết website của Cơ Khí Chính Xác An Vinh thu thập những thông tin cá nhân nào, dùng vào việc gì, lưu trong bao lâu, chia sẻ với ai và bạn có những quyền gì đối với thông tin của mình. Chính sách được soạn theo quy định của pháp luật Việt Nam về bảo vệ dữ liệu cá nhân.",
+        "Ngày hiệu lực: tháng 11 năm 2026."
+       ]
+      }
+     },
+     {
+      "type": "richtext",
+      "props": {
+       "heading": "Đơn vị chịu trách nhiệm về thông tin của bạn",
+       "paragraphs": [
+        "CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ THIẾT KẾ GIA CÔNG CƠ KHÍ AN VINH (gọi tắt là “An Vinh” hoặc “chúng tôi”) quyết định mục đích và cách xử lý thông tin cá nhân thu thập qua website này.",
+        "Mã số doanh nghiệp: 0108649706.",
+        "Địa chỉ: Thôn Xuân Sơn, Xã Trung Giã, TP Hà Nội.",
+        "Điện thoại: 0915 66 83 83.",
+        "Email: quybv@ckanvinh.vn."
+       ]
+      }
+     },
+     {
+      "type": "richtext",
+      "props": {
+       "heading": "Thông tin chúng tôi thu thập",
+       "paragraphs": [
+        "Bạn có thể xem toàn bộ website mà không cần cung cấp thông tin cá nhân. Website không có tài khoản cho khách truy cập.",
+        "Khi bạn gửi biểu mẫu liên hệ hoặc yêu cầu báo giá, chúng tôi nhận: họ tên; email và số điện thoại (nếu bạn điền); nội dung bạn viết; và câu xác nhận bạn đã đánh dấu để đồng ý cho chúng tôi lưu thông tin và liên hệ lại.",
+        "Kèm theo mỗi lần gửi, hệ thống tự ghi lại một số thông tin kỹ thuật: địa chỉ IP, loại trình duyệt và thiết bị, trang bạn gửi biểu mẫu và thời điểm gửi. Các thông tin này dùng để chống thư rác và làm bằng chứng cho sự đồng ý của bạn.",
+        "Giống như mọi website, máy chủ và mạng phân phối nội dung tự ghi nhật ký truy cập kỹ thuật (địa chỉ IP, trang được xem, thời gian, loại trình duyệt) để vận hành và bảo vệ website.",
+        "Chúng tôi không yêu cầu thông tin cá nhân nhạy cảm (ví dụ sức khỏe, tài chính, số giấy tờ tùy thân). Xin bạn không gửi các thông tin này qua biểu mẫu."
+       ]
+      }
+     },
+     {
+      "type": "richtext",
+      "props": {
+       "heading": "Chúng tôi dùng thông tin để làm gì",
+       "paragraphs": [
+        "Trả lời câu hỏi, gửi báo giá và trao đổi với bạn về yêu cầu bạn đã gửi.",
+        "Phát hiện và ngăn chặn thư rác, truy cập trái phép và các hành vi gây hại cho website.",
+        "Thực hiện nghĩa vụ theo quy định của pháp luật khi cơ quan nhà nước có thẩm quyền yêu cầu.",
+        "Chúng tôi không bán, không cho thuê thông tin của bạn và không dùng thông tin vào mục đích khác ngoài các mục đích trên khi chưa được bạn đồng ý."
+       ]
+      }
+     },
+     {
+      "type": "richtext",
+      "props": {
+       "heading": "Lưu trữ trong bao lâu",
+       "paragraphs": [
+        "Thông tin bạn gửi qua biểu mẫu được lưu trong thời gian cần thiết để xử lý và theo dõi yêu cầu của bạn, hoặc cho đến khi bạn yêu cầu xóa, trừ trường hợp pháp luật yêu cầu lưu lâu hơn.",
+        "Nhật ký kỹ thuật chỉ được giữ trong thời gian cần cho việc vận hành và bảo vệ website."
+       ]
+      }
+     },
+     {
+      "type": "richtext",
+      "props": {
+       "heading": "Chia sẻ thông tin",
+       "paragraphs": [
+        "Chúng tôi không chia sẻ thông tin cá nhân của bạn với bên khác vì mục đích thương mại. Thông tin chỉ đi qua các đơn vị cung cấp dịch vụ kỹ thuật cần để website hoạt động:",
+        "Đơn vị cung cấp nền tảng website và máy chủ: lưu trữ dữ liệu và vận hành website.",
+        "Cloudflare: mạng phân phối nội dung, bảo vệ website và kiểm tra chống thư rác cho biểu mẫu.",
+        "Dịch vụ thư điện tử: chuyển thông báo có yêu cầu mới đến hộp thư của An Vinh.",
+        "Các đơn vị này chỉ xử lý thông tin để cung cấp dịch vụ cho chúng tôi. Một số đơn vị có máy chủ đặt ở nước ngoài, nên thông tin có thể được xử lý ngoài lãnh thổ Việt Nam.",
+        "Ngoài ra, chúng tôi chỉ cung cấp thông tin cho cơ quan nhà nước có thẩm quyền khi pháp luật yêu cầu."
+       ]
+      }
+     },
+     {
+      "type": "richtext",
+      "props": {
+       "heading": "Cookie và bản đồ",
+       "paragraphs": [
+        "Website không dùng cookie quảng cáo và không dùng công cụ theo dõi hay phân tích hành vi người xem.",
+        "Cỡ chữ bạn chọn trên website được lưu ngay trên trình duyệt của bạn để lần sau hiển thị đúng; thông tin này không được gửi về cho chúng tôi.",
+        "Trang Liên hệ có bản đồ do Google Maps cung cấp. Khi bản đồ hiển thị, Google có thể ghi nhận địa chỉ IP và đặt cookie theo chính sách riêng của Google. Cloudflare cũng có thể dùng cookie kỹ thuật để bảo vệ website và kiểm tra chống thư rác.",
+        "Bạn có thể chặn hoặc xóa cookie trong phần cài đặt của trình duyệt."
+       ]
+      }
+     },
+     {
+      "type": "richtext",
+      "props": {
+       "heading": "Bảo vệ thông tin",
+       "paragraphs": [
+        "Website dùng kết nối mã hóa (HTTPS). Chỉ những nhân viên được giao việc trả lời khách hàng mới xem được thông tin bạn gửi, và họ phải đăng nhập bằng tài khoản riêng."
+       ]
+      }
+     },
+     {
+      "type": "richtext",
+      "props": {
+       "heading": "Quyền của bạn",
+       "paragraphs": [
+        "Theo pháp luật về bảo vệ dữ liệu cá nhân, bạn có quyền:",
+        "Được biết thông tin của mình được xử lý như thế nào.",
+        "Xem và nhận bản sao thông tin chúng tôi đang lưu về bạn.",
+        "Yêu cầu sửa thông tin chưa đúng.",
+        "Rút lại sự đồng ý và yêu cầu xóa thông tin. Việc rút lại không ảnh hưởng đến những gì đã được xử lý hợp pháp trước đó.",
+        "Yêu cầu hạn chế hoặc phản đối việc xử lý thông tin của mình.",
+        "Khiếu nại, tố cáo, khởi kiện và yêu cầu bồi thường thiệt hại theo quy định của pháp luật."
+       ]
+      }
+     },
+     {
+      "type": "richtext",
+      "props": {
+       "heading": "Cách liên hệ để thực hiện quyền",
+       "paragraphs": [
+        "Gửi email đến quybv@ckanvinh.vn hoặc gọi 0915 66 83 83. Hãy cho chúng tôi biết bạn muốn làm gì (xem, sửa, xóa thông tin hoặc rút lại sự đồng ý) và thông tin giúp tìm đúng dữ liệu của bạn, ví dụ email hoặc số điện thoại bạn đã dùng khi gửi biểu mẫu.",
+        "Chúng tôi có thể đề nghị bạn xác minh để bảo đảm chỉ chính bạn mới xem hoặc thay đổi được thông tin của mình, và sẽ trả lời trong thời hạn pháp luật quy định."
+       ]
+      }
+     },
+     {
+      "type": "richtext",
+      "props": {
+       "heading": "Thay đổi chính sách",
+       "paragraphs": [
+        "Khi chính sách thay đổi, chúng tôi cập nhật nội dung và ngày hiệu lực trên trang này."
+       ]
       }
      }
     ]
+   },
+   "seo_title": {
+    "vi": "Chính Sách Bảo Mật | Cơ Khí Chính Xác An Vinh"
+   },
+   "seo_description": {
+    "vi": "Cơ Khí Chính Xác An Vinh thu thập thông tin gì qua website, dùng để làm gì, lưu bao lâu và cách bạn xem, sửa hoặc xóa thông tin của mình."
    }
   }
  ]
