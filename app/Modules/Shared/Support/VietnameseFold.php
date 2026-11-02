@@ -51,6 +51,21 @@ final class VietnameseFold
         return 'lower(translate('.$expression.", '".self::FROM."', '".self::TO."'))";
     }
 
+    /**
+     * The words of $expression folded by sql(), as a text-search vector (the 'simple'
+     * configuration: every word kept, no stemming): match it with `@@ to_tsquery('simple', …)` and
+     * a prefix query ("an:*") to find a word that starts with a few letters, which a trigram index
+     * cannot serve. The word indexes of 2044_01_01_000000 are built on this expression word for
+     * word.
+     *
+     * @param  literal-string  $expression
+     * @return literal-string
+     */
+    public static function words(string $expression): string
+    {
+        return "to_tsvector('simple'::regconfig, ".self::sql($expression).')';
+    }
+
     /** "50%_off" → "50\%\_off": a folded needle used inside LIKE '%…%' matches only itself. */
     public static function like(string $folded): string
     {

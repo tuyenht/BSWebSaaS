@@ -911,4 +911,283 @@
             display: none;
         }
     }
+
+    /* ── A list of facts (list kind="facts"; design 03 "Khách hàng") ──────────────────────────
+       Records with no select box and up to three short fact columns (col="f1"…"f3") between the
+       name and the status. The list's width picks the layout, as for every list:
+         below 600   a card: [name … ⋮] then one line "status · facts" (.list-line);
+         600–767     [name … ⋮] / [status] / [facts joined by " · "];
+         from 768    a table: a header row and one row per record, the columns at fixed widths
+                     (narrower up to 1100) so a header always stands over its cells.
+       A screen leaves out the fact columns its member hid; the header leaves out the same ones. */
+    .list-rows[data-kind='facts'] .list-g {
+        display: block;
+    }
+
+    .list-rows[data-kind='facts'] .list-r {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        column-gap: 0.5rem;
+        row-gap: 0.25rem;
+        min-height: 0;
+        padding: 0.75rem;
+    }
+
+    .list-rows[data-kind='facts'] .list-c {
+        padding: 0;
+        margin: 0;
+        min-width: 0;
+    }
+
+    .list-rows[data-kind='facts'] .list-c-main {
+        order: 1;
+        flex: 1 1 0;
+    }
+
+    .list-rows[data-kind='facts'] .list-c-act {
+        order: 2;
+        flex: 0 0 auto;
+        margin: 0;
+    }
+
+    .list-rows[data-kind='facts'] .list-c-st {
+        order: 3;
+        flex: 1 0 100%;
+    }
+
+    .list-rows[data-kind='facts'] .list-c-f {
+        order: 4;
+        flex: 0 1 auto;
+        font-size: var(--text-small);
+        color: var(--color-text-muted);
+        overflow-wrap: anywhere;
+    }
+
+    .list-rows[data-kind='facts'] .list-c-f + .list-c-f::before {
+        content: '·';
+        margin-inline-end: 0.5rem;
+    }
+
+    .list-rows[data-kind='facts'] .list-c-full {
+        flex: 1 1 100%;
+        padding: 0;
+        text-align: start;
+        color: inherit;
+    }
+
+    /* The sub line under the name (owner · email) shows from 768; the card line below 600 only. */
+    .list-sub {
+        display: none;
+        margin-top: 0.125rem;
+        font-size: var(--text-small);
+        color: var(--color-text-muted);
+        overflow-wrap: anywhere;
+    }
+
+    .list-sub-em {
+        overflow-wrap: break-word;
+    }
+
+    .list-line {
+        display: none;
+    }
+
+    @container list (width < 37.5rem) {
+        .list-rows[data-kind='facts'] .list-r:not(.list-hd) {
+            --list-nlh: calc((0.9375rem + var(--user-text-boost)) * 1.45);
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) var(--spacing-hit);
+            column-gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+        }
+
+        .list-rows[data-kind='facts'] .list-c-st,
+        .list-rows[data-kind='facts'] .list-c-f {
+            display: none;
+        }
+
+        .list-rows[data-kind='facts'] .list-c-full {
+            grid-column: 1 / -1;
+        }
+
+        /* The name keeps a whole hit-sized line for itself, without making the card taller. */
+        .list-rows[data-kind='facts'] .list-c-main .list-name {
+            display: block;
+            position: relative;
+            z-index: 1;
+            font-size: calc(0.9375rem + var(--user-text-boost));
+            line-height: var(--list-nlh);
+            padding-block: max(0px, calc((var(--spacing-hit) - var(--list-nlh)) / 2));
+            margin-block: min(0px, calc((var(--list-nlh) - var(--spacing-hit)) / 2));
+        }
+
+        .list-rows[data-kind='facts'] .list-c-act {
+            align-self: start;
+            justify-content: center;
+            margin-top: calc(var(--list-nlh) / 2 - var(--spacing-hit) / 2);
+        }
+
+        .list-rows[data-kind='facts'] .list-c-act [data-row-btn] {
+            display: none;
+        }
+
+        .list-line {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0 0.25rem;
+            margin-top: 0.125rem;
+            font-size: var(--text-small);
+            line-height: 1.4;
+            color: var(--color-text-muted);
+            overflow-wrap: anywhere;
+        }
+
+        .list-line > * + *::before {
+            content: '·';
+            margin-inline-end: 0.25rem;
+        }
+
+        /* The status pill inside the line is as tall as the text: it is not a button. */
+        .list-line [data-s] {
+            min-height: 0;
+            padding-block: 0;
+            line-height: 1.4;
+            font-size: var(--text-caption);
+        }
+    }
+
+    @container list (37.5rem <= width < 48rem) {
+        .list-rows[data-kind='facts'] .list-c-act [data-row-btn] {
+            display: none;
+        }
+
+        .list-rows[data-kind='facts'] .list-c-st > * {
+            justify-self: start;
+        }
+    }
+
+    @container list (width >= 48rem) {
+        .list-rows[data-kind='facts'] .list-r {
+            flex-wrap: nowrap;
+            align-items: center;
+            column-gap: 0.75rem;
+            padding: 0.625rem 1rem;
+        }
+
+        .list-rows[data-kind='facts'] .list-hd {
+            display: flex;
+            padding-block: 0.5rem;
+            border-radius: 0.375rem 0.375rem 0 0;
+        }
+
+        .list-rows[data-kind='facts'] .list-c-main {
+            order: 1;
+        }
+
+        .list-rows[data-kind='facts'] .list-c-f {
+            order: 2;
+            font-size: var(--text-body);
+            color: inherit;
+        }
+
+        .list-rows[data-kind='facts'] .list-hd > .list-c-f {
+            font-size: inherit;
+        }
+
+        .list-rows[data-kind='facts'] .list-c-f + .list-c-f::before {
+            content: none;
+        }
+
+        .list-rows[data-kind='facts'] .list-c-f1 {
+            flex: 0 0 10.625rem;
+        }
+
+        .list-rows[data-kind='facts'] .list-c-f2 {
+            flex: 0 0 5.625rem;
+        }
+
+        .list-rows[data-kind='facts'] .list-c-f3 {
+            flex: 0 0 calc(6.5rem + 4 * var(--user-text-boost));
+            white-space: nowrap;
+        }
+
+        /* "Đang hoạt động" stays on one line at every text size. */
+        .list-rows[data-kind='facts'] .list-c-st {
+            order: 3;
+            flex: 0 1 max(8.75rem, 9.5em);
+            min-width: 8.75rem;
+        }
+
+        .list-rows[data-kind='facts'] .list-c-act {
+            order: 4;
+            flex: 0 0 8.25rem;
+        }
+
+        .list-rows[data-kind='facts'] .list-hd > .list-c-act {
+            text-align: right;
+        }
+
+        .list-sub {
+            display: block;
+        }
+    }
+
+    @container list (48rem <= width < 68.75rem) {
+        .list-rows[data-kind='facts'] .list-c-main {
+            min-width: 11.25rem;
+        }
+
+        .list-rows[data-kind='facts'] .list-c-f1 {
+            flex-basis: 7.5rem;
+        }
+
+        .list-rows[data-kind='facts'] .list-c-f2 {
+            flex-basis: 4.75rem;
+        }
+
+        .list-rows[data-kind='facts'] .list-c-f3 {
+            flex-basis: calc(6rem + 5 * var(--user-text-boost));
+        }
+
+        /* Room for Xem + ⋮ at every text size; it may shrink to just that on a tight row. */
+        .list-rows[data-kind='facts'] .list-c-act {
+            flex: 0 1 calc(3 * var(--spacing-control-row));
+        }
+    }
+
+    /* A ⋮ menu's heading ("Thao tác cho …") and the reason under an item that is locked. */
+    .list-mh {
+        padding: 0.375rem 0.875rem 0.25rem;
+        font-size: var(--text-caption);
+        font-weight: 600;
+        color: var(--color-text-muted);
+        overflow-wrap: anywhere;
+    }
+
+    .list-mwhy {
+        display: block;
+        margin-top: 0.125rem;
+        font-size: var(--text-caption);
+        font-weight: 400;
+        color: var(--color-text-muted);
+        white-space: normal;
+    }
+
+    /* A menu with a locked item and its reason keeps a readable line length. */
+    .list-menu:has(.list-mi-locked) {
+        width: min(20rem, calc(100vw - 2rem));
+    }
+
+    .list-mi-locked {
+        align-items: flex-start;
+        padding-block: 0.5rem;
+        text-align: start;
+    }
+
+    .list-mi[aria-disabled='true'] {
+        color: var(--color-text-muted);
+        cursor: not-allowed;
+    }
 }

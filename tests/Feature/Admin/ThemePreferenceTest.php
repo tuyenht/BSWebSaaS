@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\UserPreferences;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
@@ -157,4 +158,30 @@ it('pins new visual axes and echoes their attributes', function (): void {
 
     expect($user->fresh()->preferences['theme'])
         ->toEqualCanonicalizing(['sidebar' => 'gradient-3', 'sidebar_size' => 'sm']);
+});
+
+it('keeps the member\'s list choices when the theme is saved or reset', function (): void {
+    $user = prefMember();
+    $lists = ['platform.customers' => ['per' => 50, 'cols' => ['plan']]];
+    $user->forceFill(['preferences' => ['theme' => ['sidebar' => 'light'], 'lists' => $lists]])->save();
+
+    $this->actingAs($user->fresh())->postJson('http://a.test/admin/theme-preference', ['scheme' => 'dark'])->assertOk();
+    expect($user->fresh()->preferences['lists'])->toBe($lists)
+        ->and($user->fresh()->preferences['theme'])->toEqualCanonicalizing(['sidebar' => 'light', 'scheme' => 'dark']);
+
+    $this->actingAs($user->fresh())->deleteJson('http://a.test/admin/theme-preference')->assertOk();
+    expect($user->fresh()->preferences)->toBe(['lists' => $lists]);
+});
+
+it('keeps a theme saved meanwhile when a list choice is written, and the other way round', function (): void {
+    $user = prefMember();
+    $stale = $user->fresh(); // a model read before the theme was saved, as a long-lived page holds it
+
+    $this->actingAs($user)->postJson('http://a.test/admin/theme-preference', ['scheme' => 'dark'])->assertOk();
+    UserPreferences::set($stale, ['lists', 'platform.customers', 'per'], 50);
+
+    expect($user->fresh()->preferences)->toEqualCanonicalizing([
+        'theme' => ['scheme' => 'dark'],
+        'lists' => ['platform.customers' => ['per' => 50]],
+    ]);
 });
