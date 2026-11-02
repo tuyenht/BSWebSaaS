@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Cms\Queries;
 
+use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryRevision;
+use App\Modules\Shared\Support\Cast;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
@@ -61,6 +63,23 @@ final readonly class EntryRevisions
             'rows' => $rows,
             'cursor' => $hasMore && $last instanceof EntryRevision ? $last->ulid : null,
         ];
+    }
+
+    /**
+     * Of these entries, the ones a person changed through the editor or a restore (a revision with
+     * an author). Loader and seeder revisions have no author, so they never count.
+     *
+     * @param  list<int>  $entryIds
+     * @return list<int>
+     */
+    public function editedByPeople(array $entryIds): array
+    {
+        if ($entryIds === []) {
+            return [];
+        }
+
+        return array_values(array_map(Cast::int(...), EntryRevision::query()->whereIn('entry_id', $entryIds)->whereNotNull('created_by')
+            ->whereIn('kind', [RevisionKind::Edit->value, RevisionKind::Restore->value])->distinct()->pluck('entry_id')->all()));
     }
 
     /** The full revision (snapshot included) by its ulid, within the current site; null when there is none. */
