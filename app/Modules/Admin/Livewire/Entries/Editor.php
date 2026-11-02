@@ -28,6 +28,8 @@ use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SchemaImages;
+use App\Modules\Theme\Components\StyleProps;
+use App\Modules\Theme\Theming\ThemeResolver;
 use App\Modules\Workflow\Exceptions\InvalidTransitionException;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowState;
@@ -42,6 +44,7 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -117,6 +120,14 @@ final class Editor extends Component
 
     /** @var list<array<string, mixed>> */
     public array $blocks = [];
+
+    /**
+     * Blocks whose "Trình bày" panel shows the top and bottom spacing apart, by index (editor state
+     * only, never saved; a block whose two steps differ shows them apart anyway).
+     *
+     * @var array<int, bool>
+     */
+    public array $lookSplit = [];
 
     #[Locked]
     public ?string $status = null;
@@ -235,6 +246,7 @@ final class Editor extends Component
         $blocks = $this->blocks;
         array_splice($blocks, $index, 1);
         $this->blocks = $blocks;
+        $this->lookSplit = [];
     }
 
     public function moveUp(int $index): void
@@ -246,6 +258,7 @@ final class Editor extends Component
         $blocks = $this->blocks;
         [$blocks[$index - 1], $blocks[$index]] = [$blocks[$index], $blocks[$index - 1]];
         $this->blocks = $blocks;
+        $this->lookSplit = [];
     }
 
     public function moveDown(int $index): void
@@ -257,6 +270,108 @@ final class Editor extends Component
         $blocks = $this->blocks;
         [$blocks[$index], $blocks[$index + 1]] = [$blocks[$index + 1], $blocks[$index]];
         $this->blocks = $blocks;
+        $this->lookSplit = [];
+    }
+
+    /**
+     * One choice on a block's "Trình bày" panel. Only a value listed in StyleProps is kept, and only
+     * where the block's schema takes the look prop (page_header's own `overlay` is not this one). A
+     * colour set paints the band (under a photo it waits until the photo is removed); `spacing` sets
+     * the top and bottom step together.
+     */
+    public function setLook(int $index, string $prop, string $value): void
+    {
+        $type = $this->blocks[$index]['type'] ?? null;
+        $key = $prop === 'spacing' ? 'spacing_top' : $prop;
+        $registry = app(ComponentRegistry::class);
+        if (! is_string($type) || ! $registry->has($type) || ! in_array($value, StyleProps::CHOICES[$prop] ?? [], true)
+            || ($registry->schemaFor($type)[$key] ?? null) !== (StyleProps::SCHEMA[$key] ?? false)) {
+            return;
+        }
+
+        $props = $this->lookProps($index);
+        if ($prop === 'scheme') {
+            $props['scheme'] = $value;
+            $props['bg'] = ($props['bg'] ?? null) === 'image' ? 'image' : 'scheme';
+        } elseif ($prop === 'spacing') {
+            $props['spacing_top'] = $value;
+            $props['spacing_bottom'] = $value;
+        } else {
+            $props[$prop] = $value;
+        }
+        $this->setBlockProp("{$index}.props", $props);
+    }
+
+    /** Show the top and bottom spacing apart, or join them again (bottom takes the top step). */
+    public function toggleLookSplit(int $index): void
+    {
+        if (! array_key_exists($index, $this->blocks)) {
+            return;
+        }
+
+        if ($this->spacingSplit($index)) {
+            unset($this->lookSplit[$index]);
+            $props = $this->lookProps($index);
+            $top = $props['spacing_top'] ?? null;
+            if (is_string($top)) {
+                $props['spacing_bottom'] = $top;
+            } else {
+                unset($props['spacing_bottom']);
+            }
+            $this->setBlockProp("{$index}.props", $props);
+        } else {
+            $this->lookSplit[$index] = true;
+        }
+    }
+
+    /** Take the background photo away: the band goes back to the chosen colour set, if any. */
+    public function removeLookImage(int $index): void
+    {
+        if (! array_key_exists($index, $this->blocks)) {
+            return;
+        }
+
+        $props = $this->lookProps($index);
+        unset($props['bg_image'], $props['overlay']);
+        $props['bg'] = isset($props['scheme']) ? 'scheme' : 'none';
+        $this->setBlockProp("{$index}.props", $props);
+    }
+
+    /** A typed link anchor becomes a valid one ("Liên hệ" → "lien-he"); blank clears it. */
+    public function updatedBlocks(mixed $value, ?string $key = null): void
+    {
+        if ($key === null || preg_match('/^(\d+)\.props\.anchor_id$/', $key, $match) !== 1) {
+            return;
+        }
+
+        $index = (int) $match[1];
+        $props = $this->lookProps($index);
+        $anchor = rtrim(Str::limit(Str::slug(is_string($value) ? $value : ''), 64, ''), '-');
+        if ($anchor === '') {
+            unset($props['anchor_id']);
+        } else {
+            $props['anchor_id'] = $anchor;
+        }
+        $this->setBlockProp("{$index}.props", $props);
+    }
+
+    private function spacingSplit(int $index): bool
+    {
+        $props = $this->lookProps($index);
+
+        return ($this->lookSplit[$index] ?? false) || ($props['spacing_top'] ?? null) !== ($props['spacing_bottom'] ?? null);
+    }
+
+    /**
+     * A block's props (an empty list for a missing block).
+     *
+     * @return array<array-key, mixed>
+     */
+    private function lookProps(int $index): array
+    {
+        $props = $this->blocks[$index]['props'] ?? null;
+
+        return is_array($props) ? $props : [];
     }
 
     /** Append a blank item (shaped by the list's `of` schema) to a list-typed prop. */
@@ -670,6 +785,9 @@ final class Editor extends Component
 
         if ($this->blockImagePickerPath !== '' && Media::query()->whereKey($mediaId)->exists()) {
             $this->setBlockProp($this->blockImagePickerPath, $mediaId);
+            if (preg_match('/^(\d+)\.props\.bg_image$/', $this->blockImagePickerPath, $match) === 1) {
+                $this->setBlockProp("{$match[1]}.props.bg", 'image');
+            }
         }
 
         $this->showBlockImagePicker = false;
@@ -703,6 +821,8 @@ final class Editor extends Component
             'urls' => $urls,
             'coverUrl' => $this->coverImageKey !== '' ? $urls->url($this->coverImageKey, 640) : null,
             'blockImageUrls' => $this->resolveBlockImageUrls($schemas),
+            'looks' => $this->looks(),
+            'schemeColours' => $this->schemeColours(),
             'pickerMedia' => $this->showMediaPicker || $this->showBlockImagePicker
                 ? Media::query()->orderByDesc('created_at')->limit(60)->get()
                 : collect(),
@@ -710,6 +830,62 @@ final class Editor extends Component
                 ? $this->workflowPanel($workflow, $this->ulid !== null ? $this->resolveOrFail($this->ulid) : null)
                 : null,
         ]);
+    }
+
+    /**
+     * What each block's "Trình bày" panel shows: the colour set it paints today, whether a heavy set
+     * (brand, dark) repeats on a neighbour (two such bands side by side read as one), the photo band,
+     * the first block (it never moves) and whether its spacing is shown apart.
+     *
+     * @return array<int, array{scheme: string, clash: bool, image: bool, first: bool, split: bool}>
+     */
+    private function looks(): array
+    {
+        $schemes = [];
+        $types = [];
+        foreach (array_keys($this->blocks) as $i) {
+            $props = $this->lookProps($i);
+            $types[$i] = is_string($this->blocks[$i]['type'] ?? null) ? $this->blocks[$i]['type'] : '';
+            $schemes[$i] = ($props['bg'] ?? null) === 'image' ? null : StyleProps::schemeOf($props, $types[$i]);
+        }
+
+        $looks = [];
+        foreach (array_keys($this->blocks) as $i) {
+            $scheme = $schemes[$i];
+            $heavy = $scheme === 'brand' || $scheme === 'dark';
+            $looks[$i] = [
+                'scheme' => $scheme ?? StyleProps::schemeOf(['bg' => 'scheme'] + $this->lookProps($i), $types[$i]),
+                'clash' => $heavy && (($schemes[$i - 1] ?? null) === $scheme || ($schemes[$i + 1] ?? null) === $scheme),
+                'image' => $scheme === null,
+                'first' => $i === 0,
+                'split' => $this->spacingSplit($i),
+            ];
+        }
+
+        return $looks;
+    }
+
+    /**
+     * The site's colours for each set, so a "Bộ màu" card shows the band it paints: `light` is the
+     * page itself, the others the roles ThemeResolver derives.
+     *
+     * @return array<string, array{bg: string, head: string, body: string, button: string, button_text: string}>
+     */
+    private function schemeColours(): array
+    {
+        $variables = app(ThemeResolver::class)->cssVariables();
+        $colours = ['light' => [
+            'bg' => $variables['surface'], 'head' => $variables['ink'], 'body' => $variables['body'],
+            'button' => $variables['primary'], 'button_text' => $variables['color-on-primary'],
+        ]];
+        foreach (['soft', 'brand', 'dark'] as $set) {
+            $colours[$set] = [
+                'bg' => $variables["sch-{$set}-bg"], 'head' => $variables["sch-{$set}-head"], 'body' => $variables["sch-{$set}-body"],
+                'button' => $variables["sch-{$set}-pri-bg"], 'button_text' => $variables["sch-{$set}-pri-fg"],
+            ];
+        }
+
+        return $colours;
     }
 
     /**
@@ -1033,7 +1209,7 @@ final class Editor extends Component
             return null;
         }
 
-        $spec = $registry->get($type)->schema()[$key] ?? null;
+        $spec = $registry->schemaFor($type)[$key] ?? null;
         if (! is_array($spec) || ($spec['type'] ?? null) !== 'list') {
             return null;
         }
@@ -1128,7 +1304,8 @@ final class Editor extends Component
     }
 
     /**
-     * Every registered type's §E7 schema, for the editor view to render inputs/repeaters.
+     * Every registered type's §E7 schema with the look props, for the editor view to render
+     * inputs/repeaters (the look props, group `style`, render on the "Trình bày" panel instead).
      *
      * @return array<string, array<string, array<string, mixed>>>
      */
@@ -1137,7 +1314,7 @@ final class Editor extends Component
         $registry = app(ComponentRegistry::class);
         $schemas = [];
         foreach ($registry->types() as $type) {
-            $schemas[$type] = $registry->get($type)->schema();
+            $schemas[$type] = $registry->schemaFor($type);
         }
 
         return $schemas;

@@ -46,7 +46,6 @@ final readonly class ProductGridComponent implements Component
             'heading' => ['type' => 'text'],
             'limit' => ['type' => 'int', 'default' => 6],
             'variant' => ['type' => 'enum', 'options' => SectionProps::PRODUCT_GRID_VARIANTS, 'default' => 'grid'],
-            'bg' => ['type' => 'enum', 'options' => SectionProps::BG, 'default' => 'none'],
             'description' => ['type' => 'textarea'],
             'view_all_label' => ['type' => 'text'],
             'view_all_url' => ['type' => 'url'],

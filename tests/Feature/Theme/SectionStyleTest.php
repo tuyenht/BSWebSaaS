@@ -42,8 +42,7 @@ beforeEach(function (): void {
 it('adds the look props to every block type and lets no block declare a reserved name itself', function (): void {
     $registry = app(ComponentRegistry::class);
     // The two photo blocks had their own `overlay` (how dark their photo is) first; it keeps that meaning.
-    // Three blocks still list the older `bg` the editor offers them, until the editor shows the look panel.
-    $own = ['page_header' => ['overlay'], 'hero_slider' => ['overlay'], 'features' => ['bg'], 'entry_grid' => ['bg'], 'product_grid' => ['bg']];
+    $own = ['page_header' => ['overlay'], 'hero_slider' => ['overlay']];
 
     foreach ($registry->types() as $type) {
         expect(array_values(array_diff(array_intersect(array_keys($registry->get($type)->schema()), StyleProps::RESERVED), $own[$type] ?? [])))->toBe([], "{$type} declares a reserved look prop")

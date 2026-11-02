@@ -45,6 +45,17 @@ final class StyleProps
     public const string ANCHOR_PATTERN = '/^[a-z0-9-]{1,64}$/D';
 
     /**
+     * The choices the editor's panel sets one at a time (Editor::setLook), each with its list.
+     * `spacing` is both steps at once (top and bottom joined).
+     */
+    public const array CHOICES = [
+        'scheme' => self::SCHEMES, 'overlay' => self::OVERLAY, 'spacing' => self::SPACING,
+        'spacing_top' => self::SPACING, 'spacing_bottom' => self::SPACING, 'width' => self::WIDTH,
+        'align' => self::ALIGN, 'corner' => self::CORNER, 'shadow' => self::SHADOW,
+        'hide_on' => self::HIDE_ON, 'motion' => self::MOTION,
+    ];
+
+    /**
      * Every look prop and its schema leaf. A spacing prop that is not set keeps the block's own spacing,
      * so it has no default.
      */
@@ -124,6 +135,27 @@ final class StyleProps
         }
 
         return ['classes' => ['sf-s', ...$classes], 'id' => $id, 'image' => $image];
+    }
+
+    /**
+     * The colour set a block shows today, for the editor's "Bộ màu" cards: the chosen set when the
+     * band paints one; otherwise what the block paints itself — hero and cta their dark band
+     * (storefront.css falls back to --color-dark), the older `surface` / `tint` a soft band, `dark`
+     * a dark one, anything else the page (light).
+     *
+     * @param  array<array-key, mixed>  $props
+     */
+    public static function schemeOf(array $props, string $type): string
+    {
+        $bg = SectionProps::choice($props, 'bg', self::BG);
+
+        return match (true) {
+            $bg === 'scheme' => SectionProps::choice($props, 'scheme', self::SCHEMES),
+            $bg === 'none' && in_array($type, ['hero', 'cta'], true) => 'dark',
+            $bg === 'surface', $bg === 'tint' => 'soft',
+            $bg === 'dark' => 'dark',
+            default => 'light',
+        };
     }
 
     /**

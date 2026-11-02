@@ -114,6 +114,7 @@
                     </header>
                     <div class="block-props">
                         @foreach (($schemas[$block['type']] ?? []) as $prop => $spec)
+                            @continue(($spec['group'] ?? null) === 'style')
                             @if (($spec['type'] ?? 'text') === 'list')
                                 <fieldset class="prop-list" wire:key="list-{{ $i }}-{{ $prop }}">
                                     <legend>{{ $prop }}</legend>
@@ -138,6 +139,7 @@
                             @endif
                         @endforeach
                     </div>
+                    @include('admin::livewire.entries.partials.block-look', ['look' => $looks[$i]])
                 </li>
             @endforeach
         </ol>

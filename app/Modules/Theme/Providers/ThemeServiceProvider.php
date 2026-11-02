@@ -48,7 +48,6 @@ final class ThemeServiceProvider extends ServiceProvider
                 'icon' => ['type' => 'text'],
             ]],
             'variant' => ['type' => 'enum', 'options' => SectionProps::FEATURES_VARIANTS, 'default' => 'default'],
-            'bg' => ['type' => 'enum', 'options' => SectionProps::BG, 'default' => 'none'],
             'description' => ['type' => 'textarea'],
         ],
         'about' => [
