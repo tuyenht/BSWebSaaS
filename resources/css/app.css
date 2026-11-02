@@ -455,9 +455,9 @@ button:not(:disabled) {
 }
 .block-look button[aria-pressed='true'],
 .block-look button[aria-checked='true'] {
-    border-color: var(--color-accent);
-    background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface));
-    color: var(--color-accent);
+    border-color: var(--color-primary-text);
+    background: color-mix(in srgb, var(--color-primary-text) 10%, var(--color-surface));
+    color: var(--color-primary-text);
     font-weight: 600;
 }
 .block-look button[aria-pressed='true']::before,
