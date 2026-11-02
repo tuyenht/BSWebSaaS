@@ -31,9 +31,8 @@ final class ComponentRegistry
 
     /**
      * A type's full §E7 schema: its own props plus the look props every block shares (StyleProps).
-     * Validation, rendering and the media index read a block's props through here, so the look props
-     * are checked and resolved like any other prop (the editor still lists each type's own schema
-     * until it shows the look panel).
+     * Validation, rendering, the media index and the editor read a block's props through here, so
+     * the look props are checked and resolved like any other prop.
      *
      * @return array<string, array<string, mixed>>
      */

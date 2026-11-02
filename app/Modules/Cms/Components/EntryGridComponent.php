@@ -48,7 +48,6 @@ final readonly class EntryGridComponent implements Component
             'taxonomy_slug' => ['type' => 'text'],
             'limit' => ['type' => 'int', 'default' => 6],
             'variant' => ['type' => 'enum', 'options' => SectionProps::ENTRY_GRID_VARIANTS, 'default' => 'list'],
-            'bg' => ['type' => 'enum', 'options' => SectionProps::BG, 'default' => 'none'],
             'description' => ['type' => 'textarea'],
             'link_label' => ['type' => 'text'],
             'view_all_label' => ['type' => 'text'],
