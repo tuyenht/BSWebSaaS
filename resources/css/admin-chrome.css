@@ -307,7 +307,9 @@
         display: block !important;
         position: absolute;
         left: calc(var(--sidebar-width-collapsed) - 2px); /* overlap the rail edge 2px (same bg) so no seam breaks the hover */
-        top: 2.35rem; /* overlaps the label box slightly (same bg) so hover can't drop through a seam */
+        /* overlaps the label box (padding 2 × 0.625rem + one line of the body text) by 0.2rem (same bg)
+           so hover can't drop through a seam; follows the text size so a larger label is not covered */
+        top: calc(1.25rem + var(--text-body) * 1.5 - 0.2rem);
         z-index: 50;
         width: 12rem;
         margin: 0;

@@ -239,3 +239,23 @@ it('sizes the kit badge at the caption size, so it follows the reader\'s text si
     expect($m)->not->toBeEmpty()
         ->and(explode(' ', $m[1]))->toContain('text-caption')->not->toContain('text-xs');
 });
+
+it('sizes the site menu labels by the text roles, so they follow the reader\'s text size', function (): void {
+    $user = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
+
+    $dom = platformShellDom((string) $this->actingAs($user->fresh())->get('http://a.test/admin/content')->assertOk()->getContent());
+
+    $links = shellClassesOf($dom, 'aside.admin-sidebar nav a, aside.admin-sidebar nav button');
+    expect($links)->not->toBeEmpty();
+    foreach ($links as $classes) {
+        expect(array_intersect($classes, ['text-body', 'text-small']))->not->toBeEmpty()
+            ->and($classes)->not->toContain('text-sm', 'text-[13px]');
+    }
+    expect(array_merge(...shellClassesOf($dom, 'aside.admin-sidebar span')))->not->toContain('text-[10.5px]');
+
+    // the collapsed rail's flyout starts just under the label line at every text size
+    $chrome = (string) file_get_contents(resource_path('css/admin-chrome.css'));
+    expect($chrome)->toContain('top: calc(1.25rem + var(--text-body) * 1.5 - 0.2rem);')
+        ->not->toContain('top: 2.35rem;');
+});

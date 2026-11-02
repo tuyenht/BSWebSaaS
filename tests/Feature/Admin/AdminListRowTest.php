@@ -200,7 +200,43 @@ it('keeps the path button inside its meta piece (no negative margin past the lin
     preg_match('/<button type="button" x-show="! editing".*?\sclass="([^"]*)"/s', $source, $button);
 
     expect($button)->not->toBeEmpty()
-        ->and(explode(' ', $button[1]))->toContain('hit-area', 'min-h-tap-cell')->not->toContain('-mx-1', 'px-1');
+        ->and(explode(' ', $button[1]))->toContain('list-path')->not->toContain('hit-area', 'min-h-tap-cell', '-mx-1', 'px-1');
+});
+
+it('draws the name link and the path button at the full target size, the table cutting them to the name-cell size', function (): void {
+    $css = listCss();
+    $table = listCssBand('@container list (width >= 56.25rem)', '@container list (width >= 80rem)');
+
+    // 44 everywhere by default: the visible box itself is the target, so nothing reaches over a neighbour
+    expect($css)->toMatch('/\\.list-rows\\s*\\{[^}]*--list-tap: var\\(--spacing-hit\\);/')
+        ->toMatch('/\\.list-tl\\s*\\{[^}]*min-height: var\\(--list-tap\\);/')
+        ->toMatch('/\\.list-name\\s*\\{[^}]*display: flex;\\s*align-items: center;\\s*min-height: var\\(--list-tap\\);/')
+        ->not->toMatch('/\\.list-name\\s*\\{[^}]*padding-block/')
+        ->toMatch('/\\.list-path\\s*\\{[^}]*min-height: var\\(--list-tap\\);/')
+        // the table takes the name-cell size (24 with a mouse at the default text size, 44 otherwise)
+        ->and($table)->toMatch('/\\.list-r\\s*\\{\\s*--list-tap: var\\(--list-qe-s\\);\\s*\\}/');
+});
+
+it('keeps the card check box inside its row, with no negative margin into the name', function (): void {
+    $card = listCssBand('@container list (width < 37.5rem)', '@container list (37.5rem <= width < 56.25rem)');
+
+    expect($card)->toMatch('/\\.list-c-chk\\s*\\{[^}]*margin: 0 0 0 calc\\(\\(1\\.125rem - var\\(--spacing-hit\\)\\) \\/ 2\\);/')
+        ->not->toContain('-0.5rem');
+});
+
+it('gives the chips line below 900 the height of their hit area', function (): void {
+    expect(listCssBand('@container list (width < 56.25rem)', '@container list (37.5rem <= width < 56.25rem)'))
+        ->toMatch("/\\.list-m\\[data-for='langs'\\]\\s*\\{\\s*--list-lc-up: var\\(--list-qe-s\\);/")
+        ->toMatch('/\\.list-lcg\\s*\\{\\s*min-height: var\\(--list-qe-s\\);/');
+});
+
+it('draws the rows-per-page button at the row-control size with a touch hit area, its texts at the caption size', function (): void {
+    $source = (string) file_get_contents(app_path('Modules/Admin/resources/views/livewire/entries/index.blade.php'));
+    preg_match('/<button type="button" wire:click="cyclePerPage"[^>]*class="([^"]*)"/', $source, $button);
+
+    expect($button)->not->toBeEmpty()
+        ->and(explode(' ', $button[1]))->toContain('min-h-control-row', 'min-w-control-row', 'any-pointer-coarse:hit-area')->not->toContain('py-1')
+        ->and($source)->not->toContain('text-xs text-body-muted');
 });
 
 it('drops the select-all bar from 900, where the header box selects the page', function (): void {
