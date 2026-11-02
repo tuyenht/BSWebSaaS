@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\SiteRoute;
@@ -209,4 +210,94 @@ it('resolves the pack\'s image slots to the uploaded media on the next content l
 
     $html = $this->get('http://'.ContentPacks::HOST.'/gioi-thieu')->assertOk()->getContent();
     expect($html)->toContain('header-');
+});
+
+it('counts a website in the Trash when it looks for a shared storage folder', function (): void {
+    $otherId = StorefrontCards::site('DEMO!', 'khac.platform.test');
+    Site::query()->whereKey($otherId)->firstOrFail()->delete();
+
+    [$exit, $output] = ContentPacks::run('demo-co', ['--media' => true]);
+
+    expect($exit)->toBe(1, $output)->and($output)->toContain('another website');
+});
+
+it('refuses an upload that would overwrite an object no image of the site owns', function (): void {
+    [, $output] = ContentPacks::run('demo-co', ['--media' => true]);
+    preg_match('#(demo/library/header-[0-9a-f]{4}\.png)#', $output, $m);
+    Storage::disk('r2')->put($m[1], 'left by an earlier owner of the folder');
+
+    [$exit, $output] = ContentPacks::run('demo-co', ['--media' => true]);
+
+    expect($exit)->toBe(1, $output)
+        ->and($output)->toContain('would overwrite an object')
+        ->and(Storage::disk('r2')->get($m[1]))->toBe('left by an earlier owner of the folder')
+        ->and(packMedia($this->siteId))->toBe([]);
+});
+
+it('refuses a forced restore of a row stored outside the site\'s folder', function (): void {
+    $bytes = (string) file_get_contents($this->folder.'/media/header.png');
+    ContentPacks::in($this->siteId, fn () => Media::query()->create([
+        'collection' => 'library', 'slug' => 'cu', 'hash' => hash('sha256', $bytes),
+        'storage_key' => 'cu/library/cu-0000.png', 'mime' => 'image/png', 'size' => strlen($bytes),
+    ])->delete());
+
+    [$exit, $output] = ContentPacks::run('demo-co', ['--media' => true]);
+    expect($exit)->toBe(0, $output)->and(ContentPacks::verdict($output, 'media:header'))->toBe('in-trash');
+
+    [$exit, $output] = ContentPacks::run('demo-co', ['--media' => true, '--force-item' => ['media:header']]);
+    expect($exit)->toBe(1, $output)->and($output)->toContain("outside this site's storage folder 'demo/'");
+});
+
+it('gives two slots with the same bytes one row, and forcing either restores it for both', function (): void {
+    ContentPacks::edit($this->folder, 'media.json', function (array $media): array {
+        $media['slots'][] = ['slot' => 'header-copy', 'file' => 'media/header.png', 'alt' => ['vi' => 'Bản sao']];
+
+        return $media;
+    });
+
+    [$exit, $output] = mediaLoad();
+    expect($exit)->toBe(0, $output)
+        ->and(ContentPacks::verdict($output, 'media:header'))->toBe('upload')
+        ->and(ContentPacks::verdict($output, 'media:header-copy'))->toBe('reuse')
+        ->and(ContentPacks::in($this->siteId, fn () => Media::query()->count()))->toBe(2);
+
+    $key = packMedia($this->siteId)['header.png'];
+    ContentPacks::in($this->siteId, fn () => Media::query()->where('storage_key', $key)->firstOrFail()->delete());
+
+    [, $output] = ContentPacks::run('demo-co', ['--media' => true]);
+    expect(ContentPacks::verdict($output, 'media:header'))->toBe('in-trash')
+        ->and(ContentPacks::verdict($output, 'media:header-copy'))->toBe('in-trash');
+
+    [$exit, $output] = mediaLoad(['media:header-copy']);
+    expect($exit)->toBe(0, $output)
+        ->and(ContentPacks::verdict($output, 'media:header'))->toBe('restore')
+        ->and(ContentPacks::verdict($output, 'media:header-copy'))->toBe('reuse (forced)')
+        ->and(ContentPacks::in($this->siteId, fn () => Media::query()->where('storage_key', $key)->exists()))->toBeTrue();
+});
+
+it('puts back the stored copy of a file the site has when it went missing, and records the run', function (): void {
+    $before = (int) AuditLog::query()->max('id'); // audit rows outlive the tables a test truncates
+    mediaLoad();
+    $key = packMedia($this->siteId)['header.png'];
+    Storage::disk('r2')->delete($key);
+
+    [$exit, $output] = mediaLoad();
+
+    expect($exit)->toBe(0, $output)
+        ->and(ContentPacks::verdict($output, 'media:header'))->toBe('repair')
+        ->and(ContentPacks::verdict($output, 'media:news-1'))->toBe('reuse')
+        ->and(Storage::disk('r2')->get($key))->toBe(file_get_contents($this->folder.'/media/header.png'))
+        ->and(AuditLog::query()->where('action', 'content_pack.media_applied')->where('id', '>', $before)->count())->toBe(2)
+        ->and(AuditLog::query()->where('action', 'content_pack.media_applied')->where('id', '>', $before)->latest('id')->firstOrFail()->meta)->toMatchArray(['pack' => 'demo-co', 'written' => 1]);
+});
+
+it('never resolves a content slot to a file in the Trash', function (): void {
+    mediaLoad();
+    $key = packMedia($this->siteId)['header.png'];
+    ContentPacks::in($this->siteId, fn () => Media::query()->where('storage_key', $key)->firstOrFail()->delete());
+
+    [, $output] = ContentPacks::run();
+
+    expect($output)->toContain('1 with the pack\'s own image')
+        ->and($output)->toContain("image slot 'header' is not uploaded yet (run with --media first)");
 });

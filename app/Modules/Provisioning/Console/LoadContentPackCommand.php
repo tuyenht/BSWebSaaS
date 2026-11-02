@@ -150,13 +150,13 @@ final class LoadContentPackCommand extends Command
                 $this->recordLedger($plan, $planner);
 
                 if ($written > 0) {
-                    Audit::record('content_pack.applied', [
+                    Audit::record('content_pack.applied', ['meta' => [
                         'pack' => $pack->code,
                         'version' => $pack->version,
                         'fingerprint' => $plan->fingerprint,
                         'backup' => $backupFile === null ? null : basename($backupFile),
                         'totals' => $plan->totals(),
-                    ]);
+                    ]]);
                 }
 
                 return $written;
@@ -252,7 +252,7 @@ final class LoadContentPackCommand extends Command
         }
         $counts = array_count_values(array_column($lines, 'verdict'));
         $totals = [];
-        foreach ([MediaStep::UPLOAD, MediaStep::REUSE, MediaStep::IN_TRASH, MediaStep::RESTORE] as $verdict) {
+        foreach ([MediaStep::UPLOAD, MediaStep::REUSE, MediaStep::IN_TRASH, MediaStep::RESTORE, MediaStep::REPAIR] as $verdict) {
             $totals[] = $verdict.' '.($counts[$verdict] ?? 0);
         }
         $this->line('Totals: '.implode(' · ', $totals));
@@ -276,24 +276,26 @@ final class LoadContentPackCommand extends Command
         $written = 0;
         try {
             foreach ($lines as $line) {
-                if (! in_array($line['verdict'], [MediaStep::UPLOAD, MediaStep::RESTORE], true)) {
+                if (! in_array($line['verdict'], MediaStep::WRITES, true)) {
                     continue;
                 }
                 $tenancy->enter($site->id, fn () => $step->write($pack, $site, $line, $pack->slots[$line['slot']]));
                 $written++;
-                $this->line(($line['verdict'] === MediaStep::UPLOAD ? 'Uploaded ' : 'Restored ').$line['key'].' → '.$line['storage_key']);
+                $done = [MediaStep::UPLOAD => 'Uploaded', MediaStep::RESTORE => 'Restored', MediaStep::REPAIR => 'Repaired'][$line['verdict']];
+                $this->line("{$done} {$line['key']} → {$line['storage_key']}");
             }
         } catch (Throwable $e) {
             throw new PackRejected("Refused: the image step stopped after {$written} files; the files before it are kept and the next run reuses them. ({$e->getMessage()})");
-        }
-
-        if ($written > 0) {
-            $tenancy->enter($site->id, fn () => Audit::record('content_pack.media_applied', [
-                'pack' => $pack->code,
-                'version' => $pack->version,
-                'fingerprint' => $fingerprint,
-                'written' => $written,
-            ]));
+        } finally {
+            // Also after a failure: the files written before it are on the site.
+            if ($written > 0) {
+                $tenancy->enter($site->id, fn () => Audit::record('content_pack.media_applied', ['meta' => [
+                    'pack' => $pack->code,
+                    'version' => $pack->version,
+                    'fingerprint' => $fingerprint,
+                    'written' => $written,
+                ]]));
+            }
         }
         $this->info("Image step of {$pack->code} v{$pack->version} on {$host}: {$written} files written. Run the content load again so the pages use them.");
 
@@ -309,6 +311,7 @@ final class LoadContentPackCommand extends Command
             MediaStep::UPLOAD => "{$line['file']} ({$size}) → {$line['storage_key']}",
             MediaStep::REUSE => "the site already has this file ({$line['storage_key']})",
             MediaStep::IN_TRASH => "the site has this file in the Trash; left there (restore it with --force-item={$line['key']})",
+            MediaStep::REPAIR => "the site has this file but its stored copy is missing; it is put back ({$line['storage_key']})",
             default => "taken back out of the Trash ({$line['storage_key']})",
         };
     }

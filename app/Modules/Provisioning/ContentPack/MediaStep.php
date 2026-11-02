@@ -11,6 +11,7 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\Slugger;
 use App\Modules\Tenancy\Models\Site;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -26,8 +27,10 @@ use RuntimeException;
  * Storage keys: new keys are prefixed with the slug of the site's name (MediaKey), so two websites
  * whose names give the same slug would file images in the same folder and could overwrite each
  * other. The step therefore refuses, before planning anything, when another website's name gives
- * this site's folder, and refuses a planned key that does not start with that folder. Both checks
- * read only this site's own folder name; the refusal never names the other website.
+ * this site's folder; it refuses a planned key that does not start with that folder, and a new key
+ * whose object already exists (no row of this site owns it, so it is someone else's). A refusal
+ * never names the other website. A live row whose object went missing is repaired (the upload's
+ * own self-heal puts the bytes back under the row's key).
  *
  * R2 writes are not transactional, so the step runs on its own, before any content load: a failed
  * run leaves at most an object the next run reuses by hash. A dry run reads only.
@@ -41,6 +44,11 @@ final readonly class MediaStep
     public const string IN_TRASH = 'in-trash';
 
     public const string RESTORE = 'restore';
+
+    public const string REPAIR = 'repair';
+
+    /** The verdicts that write: an object, a row, or both. */
+    public const array WRITES = [self::UPLOAD, self::RESTORE, self::REPAIR];
 
     /** Forced keys of this step: `media:<slot>`. */
     public const string KEY_PREFIX = 'media:';
@@ -82,13 +90,14 @@ final readonly class MediaStep
 
     /**
      * What each slot with a file would do, in media.json order. Runs in the site's tenant context
-     * and reads only: one lookup of the site's media by hash, plus the free-key check of each new
-     * upload (the same MediaKey::unique the upload makes).
+     * and reads only: one lookup of the site's media by hash, the free-key check of each new upload
+     * (the same MediaKey::unique the upload makes) and an existence check of each planned object.
      *
      * @param  list<string>  $forced  `media:<slot>` keys
      * @return list<array{key: string, slot: string, file: string, size: int, collection: string, hash: string, verdict: string, forced: bool, storage_key: string}>
      *
-     * @throws PackRejected a planned key lands outside the site's folder
+     * @throws PackRejected a planned key lands outside the site's folder, would overwrite an object no
+     *                      row of the site owns, or is planned twice
      */
     public function plan(Pack $pack, Site $site, array $forced): array
     {
@@ -118,32 +127,56 @@ final readonly class MediaStep
             }
         }
 
+        $disk = Storage::disk(MediaKey::disk());
+        // Slots with the same bytes share one row, so forcing one of them restores it for all.
+        $forcedAt = [];
+        foreach ($slots as $name => $slot) {
+            if (in_array(self::KEY_PREFIX.$name, $forced, true)) {
+                $forcedAt[$slot['collection']."\0".$slot['hash']] = true;
+            }
+        }
+
         $lines = [];
         $planned = [];
+        $newKeys = [];
         foreach ($slots as $name => $slot) {
             $key = self::KEY_PREFIX.$name;
-            $isForced = in_array($key, $forced, true);
-            $match = $existing[$slot['collection']."\0".$slot['hash']] ?? null;
-            $earlier = $planned[$slot['collection']."\0".$slot['hash']] ?? null;
+            $at = $slot['collection']."\0".$slot['hash'];
+            $match = $existing[$at] ?? null;
+            $earlier = $planned[$at] ?? null;
 
-            if ($match instanceof Media) {
-                $verdict = ! $match->trashed() ? self::REUSE : ($isForced ? self::RESTORE : self::IN_TRASH);
+            if ($earlier !== null) {
+                // The same bytes as an earlier slot: that line writes (or leaves) the one row.
+                $verdict = $earlier['verdict'] === self::IN_TRASH ? self::IN_TRASH : self::REUSE;
+                $storageKey = $earlier['key'];
+            } elseif ($match instanceof Media && $match->trashed()) {
+                $verdict = isset($forcedAt[$at]) ? self::RESTORE : self::IN_TRASH;
                 $storageKey = $match->storage_key;
-            } elseif ($earlier !== null) {
-                // Two slots with the same bytes: the first uploads, the second gets its row.
-                $verdict = self::REUSE;
-                $storageKey = $earlier;
+            } elseif ($match instanceof Media) {
+                // A live row whose object went missing gets the bytes back under its own key — the
+                // upload's self-heal; otherwise nothing is written.
+                $storageKey = $match->storage_key;
+                $verdict = $disk->exists($storageKey) ? self::REUSE : self::REPAIR;
             } else {
                 $verdict = self::UPLOAD;
                 $storageKey = $this->newKey($site, $slot['collection'], $slot['path'], $slot['hash']);
+                if (isset($newKeys[$storageKey])) {
+                    throw new PackRejected("Refused: {$key} and another slot would both be stored under '{$storageKey}'; rename one of the two files. Nothing was uploaded.");
+                }
+                // No row of this site holds the key, so an object already there is not this site's
+                // to overwrite (left by a site that once had this site's folder name, for one).
+                if ($disk->exists($storageKey)) {
+                    throw new PackRejected("Refused: the image for {$key} would overwrite an object at '{$storageKey}' that no image of this site owns. Nothing was uploaded.");
+                }
+                $newKeys[$storageKey] = true;
             }
 
-            // Only an upload or a restore can write an object (a restore puts the bytes back under
-            // the row's key when its object is gone); either must stay inside this site's folder.
-            if (in_array($verdict, [self::UPLOAD, self::RESTORE], true) && ! str_starts_with($storageKey, $folder)) {
+            // An upload, a restore and a repair can write an object (a restore puts the bytes back
+            // when its object is gone); each must stay inside this site's folder.
+            if (in_array($verdict, self::WRITES, true) && ! str_starts_with($storageKey, $folder)) {
                 throw new PackRejected("Refused: the image for {$key} would be stored under '{$storageKey}', outside this site's storage folder '{$folder}'. Nothing was uploaded.");
             }
-            $planned[$slot['collection']."\0".$slot['hash']] ??= $storageKey;
+            $planned[$at] ??= ['key' => $storageKey, 'verdict' => $verdict];
 
             $lines[] = [
                 'key' => $key,
@@ -153,7 +186,7 @@ final readonly class MediaStep
                 'collection' => $slot['collection'],
                 'hash' => $slot['hash'],
                 'verdict' => $verdict,
-                'forced' => $isForced,
+                'forced' => in_array($key, $forced, true),
                 'storage_key' => $storageKey,
             ];
         }
