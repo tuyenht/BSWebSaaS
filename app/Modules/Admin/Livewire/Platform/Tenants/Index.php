@@ -155,8 +155,9 @@ final class Index extends Component
                     'newer' => $page['newer'],
                     'counts' => $page['counts']['groups'],
                     'planCounts' => $page['counts']['plans'],
-                    // "N trong M": M is the same group with neither the search nor the plans
-                    'baseCounts' => $narrowed ? $directory->counts('', [])['groups'] : null,
+                    // "N trong M": M is the same group with neither the search nor the plans (read
+                    // with the page's own counts when there is no search)
+                    'baseCounts' => $narrowed ? ($page['base'] ?? $directory->counts('', [])['groups']) : null,
                 ];
             });
         } catch (QueryException $e) {
@@ -169,9 +170,9 @@ final class Index extends Component
 
         $view = view('admin::livewire.platform.tenants.index', $data + [
             'failed' => $failed,
-            // a search too short to run: the list stays whole and says how much to type
+            // text with no letter or digit: the list stays whole and says what to type
             'searching' => CustomerDirectory::searches($this->search),
-            'searchTooShort' => CustomerDirectory::tooShort($this->search),
+            'searchNoLetters' => CustomerDirectory::unsearchable($this->search),
             'planList' => $plans,
             'siteTime' => app(SiteTime::class),
             'canChangePlan' => $permissions->canChangePlan($member),

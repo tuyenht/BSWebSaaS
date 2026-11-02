@@ -18,13 +18,18 @@ use Illuminate\Support\Facades\DB;
  *
  * Read by keyset on (created_at, id), newest first, which the index (tenant_id, created_at DESC,
  * id DESC) serves in order: the first PAGE rows, then "older" adds the next PAGE below the oldest
- * row shown. What the page holds is the oldest row shown, as an encrypted cursor: the browser never
- * sees a row id, and a cursor it made up or altered reads as the first page. The plans' and the
- * person's names come in the same statement (joins), never a query per row.
+ * row shown. What the page holds is the oldest row shown, as an encrypted cursor bound to its
+ * customer: the browser never sees a row id, and a cursor it made up, altered or took from another
+ * customer reads as the first page. However far "older" went, one render reads at most MAX_ROWS
+ * rows, those just above and at the anchor. The plans' and the person's names come in the same
+ * statement (joins), never a query per row.
  */
 final class CustomerHistory
 {
     public const int PAGE = 10;
+
+    /** The most rows one render shows: past it, the newest rows give way to the older ones. */
+    public const int MAX_ROWS = self::PAGE * 50;
 
     /**
      * The rows from the newest down to $until (the first PAGE when $until is empty), whether older
@@ -34,13 +39,16 @@ final class CustomerHistory
      */
     public function read(int $tenantId, string $until): array
     {
-        $anchor = self::anchor($until);
+        $anchor = self::anchor($until, $tenantId);
         if ($anchor === null) {
             $rows = $this->base($tenantId)->limit(self::PAGE + 1)->get();
             $more = $rows->count() > self::PAGE;
             $rows = $rows->take(self::PAGE);
         } else {
-            $rows = $this->base($tenantId)->whereRaw('(h.created_at, h.id) >= (?::timestamptz, ?)', $anchor)->get();
+            // read from the anchor up (the index scanned backwards), so the rows shown always end
+            // at the anchor and "older" keeps moving even past MAX_ROWS
+            $rows = $this->base($tenantId)->whereRaw('(h.created_at, h.id) >= (?::timestamptz, ?)', $anchor)
+                ->reorder('h.created_at')->orderBy('h.id')->limit(self::MAX_ROWS)->get()->reverse()->values();
             $more = $this->base($tenantId)->whereRaw('(h.created_at, h.id) < (?::timestamptz, ?)', $anchor)->exists();
         }
 
@@ -49,7 +57,7 @@ final class CustomerHistory
         return [
             'rows' => array_values($rows->map(fn (object $r): array => self::row($r))->all()),
             'more' => $more,
-            'oldest' => $last === null ? null : self::cursor($last),
+            'oldest' => $last === null ? null : self::cursor($last, $tenantId),
         ];
     }
 
@@ -59,7 +67,7 @@ final class CustomerHistory
      */
     public function older(int $tenantId, string $cursor): string
     {
-        $anchor = self::anchor($cursor);
+        $anchor = self::anchor($cursor, $tenantId);
         if ($anchor === null) {
             return '';
         }
@@ -68,7 +76,7 @@ final class CustomerHistory
             ->limit(self::PAGE)->get()->all();
         $last = $next === [] ? null : $next[array_key_last($next)];
 
-        return $last === null ? $cursor : self::cursor($last);
+        return $last === null ? $cursor : self::cursor($last, $tenantId);
     }
 
     private function base(int $tenantId): Builder
@@ -102,15 +110,16 @@ final class CustomerHistory
         ];
     }
 
-    private static function cursor(object $r): string
+    /** The customer, then the row: a cursor read for another customer is refused. */
+    private static function cursor(object $r, int $tenantId): string
     {
-        return Crypt::encryptString(Cast::string($r->created_at ?? null).'|'.Cast::int($r->id ?? null));
+        return Crypt::encryptString($tenantId.'|'.Cast::string($r->created_at ?? null).'|'.Cast::int($r->id ?? null));
     }
 
     /**
      * @return array{0: string, 1: int}|null
      */
-    private static function anchor(string $cursor): ?array
+    private static function anchor(string $cursor, int $tenantId): ?array
     {
         if ($cursor === '') {
             return null;
@@ -120,10 +129,10 @@ final class CustomerHistory
         } catch (DecryptException) {
             return null;
         }
-        if (preg_match('/^(.+)\|([1-9]\d{0,18})$/', $plain, $m) !== 1) {
+        if (preg_match('/^([1-9]\d{0,18})\|(.+)\|([1-9]\d{0,18})$/', $plain, $m) !== 1 || $m[1] !== (string) $tenantId) {
             return null;
         }
 
-        return [$m[1], (int) $m[2]];
+        return [$m[2], (int) $m[3]];
     }
 }

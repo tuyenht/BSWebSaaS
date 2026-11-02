@@ -660,7 +660,7 @@
     "admin.customers_group_all": "すべて",
     "admin.customers_search_label": "顧客を検索",
     "admin.customers_search_placeholder": "An Vinh、:code、オーナー名またはメール",
-    "admin.customers_search_too_short": "検索するには文字か数字を続けて :n 文字以上入力してください（例:「vin」）。この語ではまだ絞り込んでいません。",
+    "admin.customers_search_no_letters": "検索するには文字か数字を入力してください（例:「an」）。この語ではまだ絞り込んでいません。",
     "admin.customers_filter_title": "顧客を絞り込む",
     "admin.customers_filter_status": "状態",
     "admin.customers_filter_plan": "プラン",

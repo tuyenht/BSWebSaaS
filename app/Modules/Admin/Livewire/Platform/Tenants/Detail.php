@@ -34,7 +34,8 @@ final class Detail extends Component
 
     /**
      * The oldest history row shown, as CustomerHistory's encrypted cursor ('' = the first page).
-     * Not locked: a cursor the browser altered no longer decrypts and reads as the first page.
+     * Not locked: a cursor the browser altered no longer decrypts, and one of another customer is
+     * refused (the cursor names its customer); either reads as the first page.
      */
     public string $historyUntil = '';
 

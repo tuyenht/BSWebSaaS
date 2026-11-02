@@ -19,11 +19,20 @@ use Illuminate\Support\Facades\DB;
  * platform-wide (D6), so the trigram index leads with the searched expression, the exception the
  * migration rules allow for D6 tables backed by measurements.
  *
- * The expression must stay word for word what VietnameseFold::sql() produces, or the planner stops
- * using it: changing its letter table means a migration rebuilding the trigram index and those of
- * 2039_01_01_000100. The letter table is written out here, not read from the class, so this
- * migration keeps building the index production has; AuditLogIndexesTest compares it with the
- * class, and the owner index next to it.
+ * A search of one or two letters ("an", "hà") finds the customers and owners with a name whose
+ * word starts with them. A trigram index cannot serve it on its own: with "(^| )an" it finds the
+ * rows, but checks each one again with the fold (300 ms for 20,000 matches at 50,000 customers),
+ * and a single letter, or a word start after any other separator, reads the whole table (530 to
+ * 790 ms). A word index serves it with no second check: a GIN index on the folded name as a text
+ * search vector (VietnameseFold::words, the 'simple' configuration: every word, no stemming),
+ * queried by prefix ("an:*"), on `tenants` and on `users` (the owners; also D6). Measured at
+ * 50,000: 6 to 16 ms for 10,000 to 50,000 matches. Both lead with that expression, as above.
+ *
+ * The expressions must stay word for word what VietnameseFold::sql() and words() produce, or the
+ * planner stops using them: changing the letter table means a migration rebuilding these indexes
+ * and those of 2039_01_01_000100. The letter table is written out here, not read from the class,
+ * so this migration keeps building the indexes production has; AuditLogIndexesTest compares them
+ * with the class, and checks the owner index next to them.
  *
  * CONCURRENTLY forbids a transaction, so a mid-run failure must be safely re-runnable: an index an
  * interrupted build left INVALID is dropped and built again (IF NOT EXISTS alone would keep it).
@@ -62,10 +71,13 @@ return new class extends Migration
     private function indexes(): array
     {
         $folded = "lower(translate(name, '".self::FROM."', '".self::TO."'))";
+        $words = "to_tsvector('simple'::regconfig, {$folded})";
 
         return [
             'tenants_name_fold_trgm_index' => "tenants USING gin (({$folded}) gin_trgm_ops)",
             'tenants_owner_user_id_index' => 'tenants USING btree (owner_user_id)',
+            'tenants_name_fold_words_index' => "tenants USING gin (({$words}))",
+            'users_name_fold_words_index' => "users USING gin (({$words}))",
         ];
     }
 

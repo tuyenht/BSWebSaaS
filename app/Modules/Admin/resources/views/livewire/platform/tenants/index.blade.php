@@ -89,7 +89,7 @@
                     :placeholder="__('admin.customers_search_placeholder', ['code' => CustomerCode::format(123)])"
                     maxlength="{{ CustomerDirectory::SEARCH_MAX }}" wire:model.live.debounce.300ms="search" aria-describedby="customers-search-hint" />
                 {{-- always in the page, so a screen reader hears the line when it appears --}}
-                <p id="customers-search-hint" role="status" class="m-0 empty:hidden">@if ($searchTooShort)<span class="mt-1.5 flex items-start gap-1.5 text-small text-text-muted"><x-bs-admin::icon name="ri-information" class="mt-0.5 size-4 shrink-0" /><span>{{ __('admin.customers_search_too_short', ['n' => CustomerDirectory::SEARCH_MIN]) }}</span></span>@endif</p>
+                <p id="customers-search-hint" role="status" class="m-0 empty:hidden">@if ($searchNoLetters)<span class="mt-1.5 flex items-start gap-1.5 text-small text-text-muted"><x-bs-admin::icon name="ri-information" class="mt-0.5 size-4 shrink-0" /><span>{{ __('admin.customers_search_no_letters') }}</span></span>@endif</p>
             </div>
             <x-bs-admin::filter-panel class="shrink-0 flex-nowrap min-[900px]:ms-auto" :sections="$sections" :label="__('admin.list.filter')"
                 :active="count($chosenPlans)" :active-narrow="count($chosenPlans) + ($tab !== 'all' ? 1 : 0)"

@@ -167,6 +167,17 @@ it('defines the name and email search indexes on the expressions the search writ
     'customer name' => fn (): array => ['tenants_name_fold_trgm_index', 'tenants', auditFoldedName()],
 ]);
 
+it('defines the word indexes for a search of one or two letters on the expression the search writes', function (string $index, string $table): void {
+    $row = DB::selectOne('select pg_get_indexdef(indexrelid) as def, indisvalid as valid from pg_index where indexrelid = to_regclass(?)', [$index]);
+
+    expect($row)->not->toBeNull("{$index} is missing")
+        ->and($row->valid)->toBeTrue()
+        ->and($row->def)->toBe("CREATE INDEX {$index} ON public.{$table} USING gin (to_tsvector('simple'::regconfig, ".auditFoldedName().'))');
+})->with([
+    'customer name' => ['tenants_name_fold_words_index', 'tenants'],
+    'person name' => ['users_name_fold_words_index', 'users'],
+]);
+
 it('indexes the customers of an owner, which the customer search looks up', function (): void {
     $row = DB::selectOne('select pg_get_indexdef(indexrelid) as def, indisvalid as valid from pg_index where indexrelid = to_regclass(?)', ['tenants_owner_user_id_index']);
 
@@ -200,12 +211,17 @@ it('plans the customer search on the customer and owner indexes', function (): v
         }
     });
     app(CustomerDirectory::class)->page('ix-plan-1234@', '', [], 20, '', ''); // one owner, by email
+    app(CustomerDirectory::class)->page('ng', '', [], 20, '', ''); // two letters: word starts
 
-    expect($sent)->toHaveCount(1)
+    expect($sent)->toHaveCount(2)
         ->and(auditPlannedIndexes($sent[0]['sql'], $sent[0]['bindings']))
         ->toContain('tenants_name_fold_trgm_index')
         ->toContain('users_name_fold_trgm_index')
         ->toContain('users_email_lower_trgm_index')
+        ->toContain('tenants_owner_user_id_index')
+        ->and(auditPlannedIndexes($sent[1]['sql'], $sent[1]['bindings']))
+        ->toContain('tenants_name_fold_words_index')
+        ->toContain('users_name_fold_words_index')
         ->toContain('tenants_owner_user_id_index');
 
     $admin->statement("delete from users where email like 'ix-plan-%'"); // the customers go with the next seedTenancy()

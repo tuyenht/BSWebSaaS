@@ -660,7 +660,7 @@
     "admin.customers_group_all": "All",
     "admin.customers_search_label": "Search customers",
     "admin.customers_search_placeholder": "An Vinh, :code, owner name or email",
-    "admin.customers_search_too_short": "Type at least :n letters or digits in a row to search, for example “vin”. The list is not filtered by this yet.",
+    "admin.customers_search_no_letters": "Type letters or digits to search, for example “an”. The list is not filtered by this yet.",
     "admin.customers_filter_title": "Filter customers",
     "admin.customers_filter_status": "Status",
     "admin.customers_filter_plan": "Plan",

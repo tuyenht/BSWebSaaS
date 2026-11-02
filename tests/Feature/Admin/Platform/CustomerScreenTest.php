@@ -2,6 +2,8 @@
 
 use App\Modules\Admin\Livewire\Platform\Tenants\Detail;
 use App\Modules\Admin\Livewire\Platform\Tenants\Index;
+use App\Modules\Admin\Support\Customers\CustomerDirectory;
+use App\Modules\Admin\Support\Customers\CustomerHistory;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Support\PlatformAccess;
@@ -138,7 +140,7 @@ it('finds customers without diacritics by name, owner name or owner email', func
     $page->assertSee(__('admin.customers_nomatch_title'));
 });
 
-it('finds a customer by its code, exactly, whatever the case or padding', function (): void {
+it('finds a customer by its code, exactly, whatever the case or padding, with or without the prefix', function (): void {
     $wanted = khCustomer('Nha khoa Tâm Đức');
     $other = khCustomer('Spa Hoa Sen');
     $no = khNo($wanted);
@@ -149,29 +151,68 @@ it('finds a customer by its code, exactly, whatever the case or padding', functi
         ->and($found(mb_strtolower(CustomerCode::format($no))))->toBe([$wanted])
         ->and($found(config('customers.code_prefix').$no))->toBe([$wanted])
         ->and($found(CustomerCode::format(khNo($other))))->toBe([$other])
+        // the number alone, padded or not
+        ->and($found(str_pad((string) $no, 6, '0', STR_PAD_LEFT)))->toBe([$wanted])
+        ->and($found((string) $no))->toBe([$wanted])
+        // too many digits for a number, or 0: no code, and no name has them
+        ->and($found('9999999999999999999'))->toBe([])
+        ->and($found('0'))->toBe([])
         // a number no customer has
         ->and($found(CustomerCode::format($no + 1000)))->toBe([]);
     $page->assertSee(__('admin.customers_filter_search_chip', ['q' => CustomerCode::format($no + 1000)]));
 });
 
-it('runs no search under three letters or digits in a row, and says so', function (): void {
+it('finds one or two letters at the start of a word of the customer\'s or the owner\'s name', function (): void {
+    $owner = User::factory()->create(['name' => 'Hà Thị Mai', 'email' => 'an@example.test']);
+    $anVinh = khCustomer('Cơ khí An Vinh');
+    $anPhat = khCustomer('An Phát');
+    $haNoi = khCustomer('Hà Nội Steel');
+    $byOwner = khCustomer('Spa Hoa Sen', ['owner_user_id' => $owner->id]);
+    khCustomer('Thanh Bình'); // "an" inside a word only
+    $page = Livewire::actingAs(khStaff('support'))->test(Index::class);
+    $found = function (string $q) use ($page): array {
+        $rows = $page->set('search', $q)->viewData('rows')->pluck('ulid')->map(fn ($u): string => trim((string) $u))->all();
+        sort($rows);
+
+        return $rows;
+    };
+    $sorted = function (string ...$ulids): array {
+        sort($ulids);
+
+        return $ulids;
+    };
+
+    // the owner's email is no word: "an@…" does not count for "an"
+    expect($found('an'))->toBe($sorted($anVinh, $anPhat))
+        ->and($found(' AN '))->toBe($sorted($anVinh, $anPhat))
+        ->and($found('ha'))->toBe($sorted($haNoi, $byOwner))
+        ->and($found('hà'))->toBe($sorted($haNoi, $byOwner))
+        ->and($found('h'))->toBe($sorted($haNoi, $byOwner))
+        // each part starts a word, in any order
+        ->and($found('a v'))->toBe([$anVinh])
+        ->and($found('v a'))->toBe([$anVinh])
+        ->and($found('ă'))->toBe($sorted($anVinh, $anPhat))
+        ->and($found('xy'))->toBe([]);
+    $page->set('search', 'an')
+        ->assertSee(__('admin.customers_filter_search_chip', ['q' => 'an']))
+        ->assertDontSee(__('admin.customers_search_no_letters'));
+    $page->set('search', 'xy')->assertSee(__('admin.customers_nomatch_title'));
+});
+
+it('runs no search for text with no letter or digit, and says what to type', function (): void {
     khCustomer('An Phát');
-    khCustomer('Bình Minh');
     $page = Livewire::actingAs(khStaff('support'))->test(Index::class);
 
-    foreach (['a', 'an', ' an ', 'a b', 'ă'] as $short) {
-        $page->set('search', $short);
-        expect($page->viewData('rows'))->toHaveCount(3)
+    foreach (['-', ' % ', '@.', '__'] as $nothing) {
+        $page->set('search', $nothing);
+        expect($page->viewData('rows'))->toHaveCount(2)
             ->and($page->viewData('baseCounts'))->toBeNull();
-        $page->assertSee(__('admin.customers_search_too_short', ['n' => 3]))
-            ->assertDontSee(__('admin.customers_filter_search_chip', ['q' => trim($short)]))
+        $page->assertSee(__('admin.customers_search_no_letters'))
             ->assertDontSee(__('admin.customers_nomatch_title'));
     }
 
-    // three in a row search, and the line goes
-    $page->set('search', 'phá');
-    expect($page->viewData('rows')->pluck('name')->all())->toBe(['An Phát']);
-    $page->assertDontSee(__('admin.customers_search_too_short', ['n' => 3]));
+    // text that is not UTF-8 never reaches the database
+    expect(app(CustomerDirectory::class)->page("\xff\xfe", '', [], 20, '', '')['rows'])->toHaveCount(2);
 });
 
 it('reads newest first, page by page, with no customer repeated or skipped', function (): void {
@@ -236,6 +277,15 @@ it('counts the status groups and filters by plan, a plan no longer sold included
     expect($page->viewData('rows')->pluck('ulid')->map(fn ($u): string => trim((string) $u))->all())->toBe([$a])
         ->and($page->viewData('counts'))->toBe(['all' => 1, 'active' => 1, 'suspended' => 0]);
     $page->assertSee(__('admin.customers_filter_summary_of', ['n' => 1, 'm' => 3]));
+
+    // with no search, the plan's counts and the "trong M" totals come from one GROUP BY
+    $groupBys = 0;
+    DB::listen(function ($query) use (&$groupBys): void {
+        $groupBys += str_contains($query->sql, 'group by "tenants"."status"') ? 1 : 0;
+    });
+    $page->call('$refresh');
+    expect($groupBys)->toBe(1)
+        ->and($page->viewData('baseCounts'))->toBe(['all' => 3, 'active' => 2, 'suspended' => 1]);
 
     $page->set('plans', ['old'])->set('tab', 'suspended');
     expect($page->viewData('rows')->pluck('name')->all())->toBe(['Bảo Minh']);
@@ -328,6 +378,43 @@ it('shows the customer\'s history newest first, who made each change, and older 
     // a cursor the browser made up reads as the first page
     $page->set('historyUntil', 'nope')->assertSee('Lần 2')->assertDontSee('Bắt đầu');
     $page->call('olderHistory', base64_encode('2026-01-01|1'))->assertSet('historyUntil', '')->assertDontSee('Bắt đầu');
+
+    // a real cursor of another customer's history reads as the first page here
+    $otherId = (int) DB::connection('pgsql_admin')->table('tenants')->where('ulid', $other)->value('id');
+    for ($i = 1; $i <= 11; $i++) {
+        khHistory($otherId, $pro, $basic, 'Khác '.$i, null, '2026-02-01 00:00:00+00');
+    }
+    $foreign = Livewire::actingAs($staff)->test(Detail::class, ['ulid' => $other])->viewData('historyOlder');
+    expect($foreign)->toBeString();
+    $page->set('historyUntil', $foreign)->assertSee('Lần 2')->assertDontSee('Bắt đầu')->assertDontSee('Khác 1');
+    $page->set('historyUntil', '')->call('olderHistory', $foreign)->assertSet('historyUntil', '');
+});
+
+it('reads at most a fixed number of history rows in one render, however far "older" went', function (): void {
+    $pro = khPlan('pro', 'Chuyên nghiệp');
+    $total = CustomerHistory::MAX_ROWS + 25;
+    DB::connection('pgsql_admin')->statement(
+        "insert into tenant_history (tenant_id, kind, to_plan_id, reason, created_at)
+         select 1, 'plan_changed', ?, 'Lần ' || i, timestamptz '2026-01-01 00:00:00+00' + make_interval(mins => i)
+         from generate_series(1, ?) as i",
+        [$pro, $total],
+    );
+    $history = app(CustomerHistory::class);
+
+    $first = $history->read(1, '');
+    expect($first['rows'])->toHaveCount(CustomerHistory::PAGE)->and($first['more'])->toBeTrue()
+        ->and($first['rows'][0]['reason'])->toBe('Lần '.$total);
+
+    // "older" all the way down: each step moves the anchor, never past the oldest row
+    $cursor = (string) $first['oldest'];
+    for ($step = 0; $step < intdiv($total, CustomerHistory::PAGE) + 1; $step++) {
+        $cursor = $history->older(1, $cursor);
+    }
+    $last = $history->read(1, $cursor);
+    expect($last['rows'])->toHaveCount(CustomerHistory::MAX_ROWS)
+        ->and($last['more'])->toBeFalse()
+        ->and($last['rows'][CustomerHistory::MAX_ROWS - 1]['reason'])->toBe('Lần 1')
+        ->and($last['rows'][0]['reason'])->toBe('Lần '.CustomerHistory::MAX_ROWS);
 });
 
 it('says why a customer is suspended, and shows no line when no reason was given', function (): void {

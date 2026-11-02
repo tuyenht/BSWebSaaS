@@ -660,7 +660,7 @@
     "admin.customers_group_all": "Tất cả",
     "admin.customers_search_label": "Tìm khách hàng",
     "admin.customers_search_placeholder": "An Vinh, :code, tên hoặc email chủ website",
-    "admin.customers_search_too_short": "Cần gõ ít nhất :n chữ hoặc số liền nhau để tìm, ví dụ “vin”. Danh sách chưa lọc theo từ này.",
+    "admin.customers_search_no_letters": "Gõ chữ hoặc số để tìm, ví dụ “an”. Danh sách chưa lọc theo từ này.",
     "admin.customers_filter_title": "Lọc khách hàng",
     "admin.customers_filter_status": "Trạng thái",
     "admin.customers_filter_plan": "Gói",

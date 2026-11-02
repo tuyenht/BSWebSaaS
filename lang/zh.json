@@ -660,7 +660,7 @@
     "admin.customers_group_all": "全部",
     "admin.customers_search_label": "搜索客户",
     "admin.customers_search_placeholder": "An Vinh、:code、所有者姓名或邮箱",
-    "admin.customers_search_too_short": "请连续输入至少 :n 个字母或数字再搜索，例如“vin”。列表尚未按此词筛选。",
+    "admin.customers_search_no_letters": "请输入字母或数字再搜索，例如“an”。列表尚未按此词筛选。",
     "admin.customers_filter_title": "筛选客户",
     "admin.customers_filter_status": "状态",
     "admin.customers_filter_plan": "套餐",
