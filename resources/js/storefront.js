@@ -90,7 +90,7 @@ if (burger && panel) {
     });
 }
 
-// Text size: Vừa → Lớn → Cực lớn, kept in localStorage (fs-boot.js applies it before paint).
+// Text size: Vừa → Lớn → Cực lớn, kept in localStorage (the inline boot script in the head applies it before paint).
 const sizeButton = document.querySelector('[data-fs-toggle]');
 
 function showSize(size) {

@@ -13,6 +13,7 @@ use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Chrome\StorefrontChrome;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -137,7 +138,7 @@ it('renders the classic chrome of a site without storefront settings exactly as 
     expect(sfcChrome($html))->toBe(file_get_contents(__DIR__.'/golden/default-chrome.html'))
         ->and($html)->not->toContain('sf-header')
         ->not->toContain('sf-footer')
-        ->not->toContain('fs-boot.js')
+        ->not->toContain(StorefrontChrome::TEXT_SIZE_BOOT)
         ->not->toContain('rel="preload" href="/fonts/');
 });
 
@@ -156,7 +157,7 @@ it('renders the top bar with safe tel and mailto links and each item’s breakpo
         ->toContain('<span>Số 1 Đường Thử</span>')
         ->toContain('data-fs-toggle')
         ->toContain('aria-label="Cỡ chữ: Vừa. Bấm để đổi"')
-        ->toMatch('#<script src="/storefront/fs-boot\.js\?v=[0-9a-f]{10}"></script>#')
+        ->toContain('<script>'.StorefrontChrome::TEXT_SIZE_BOOT.'</script>')
         ->not->toContain('site-header');
 });
 

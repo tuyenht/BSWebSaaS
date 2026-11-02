@@ -5,8 +5,8 @@
     data. Adds no DB queries.
     Inter's Latin and Vietnamese subsets are preloaded only when the site's font is Inter (the
     Latin-extended subset loads on demand for other scripts; a site on another font downloads no font). The
-    visitor's text size is applied before the first paint by a tiny same-origin script (the
-    storefront CSP allows no inline script). The header script (submenus, menu panel, text size)
+    visitor's text size is applied before the first paint by a tiny inline script that the
+    storefront CSP allows by its hash (no request, nothing else inline runs). The header script (submenus, menu panel, text size)
     loads only where there is something for it to do, the slider script only on a page with a
     slider to rotate (plus a preconnect to the media host when the slider leads the page), and a
     robots line only where a page asks for one. These lines sit in column 0 so a site
@@ -158,7 +158,7 @@
 <link rel="preconnect" href="{{ $mediaOrigin }}">
 @endif
 @if (! empty($header['text_size']))
-<script src="{{ \App\Modules\Theme\Chrome\StorefrontChrome::versioned('storefront/fs-boot.js') }}"></script>
+<script>{!! \App\Modules\Theme\Chrome\StorefrontChrome::TEXT_SIZE_BOOT !!}</script>
 @endif
 {{-- Storefront stylesheet (Vite-managed; faked in tests via withoutVite()). --}}
 @vite(['resources/css/storefront.css'])
