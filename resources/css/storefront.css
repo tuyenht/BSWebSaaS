@@ -2,8 +2,10 @@
  * storefront.css — shared storefront design system (every tenant; per-site look = tokens)
  *
  * Palette — driven by per-site tokens (ThemeResolver, :root custom properties),
- * NOT hardcoded here. Every color below is `var(--primary|surface|ink|body)` or a
- * `color-mix()` shade of one of those four, so a site can change its brand by
+ * NOT hardcoded here. The stylesheet reads ROLES only (`--color-primary|surface|dark|text|
+ * text-strong`, `--color-primary-text|primary-on-dark`), which ThemeResolver derives from the
+ * stored seeds (primary, surface, ink, body); every color below is such a role or a
+ * `color-mix()` shade of one, so a site can change its brand by
  * overriding `site_settings.theme.tokens` — no CSS edit needed (design.md §19).
  * An Vinh's current values (what you'll see if you inspect a rendered page):
  *   --ink      #111111 default → An Vinh #0f172a (slate-900) — headings, dark
@@ -15,10 +17,10 @@
  *              secondary/muted text shades are `color-mix()` off this
  *
  * Contrast floor (WCAG 2 AA, 4.5:1 — computed for the default AND An Vinh seeds, 24/09):
- *   muted text on a light surface = `color-mix(in srgb, var(--body) 80%, white)` (≥5.4:1);
+ *   muted text on a light surface = `color-mix(in srgb, var(--color-text) 80%, white)` (≥5.4:1);
  *   anything lighter (--body 65%, --ink 40%) fails there. Light text on the dark header/
- *   footer = `color-mix(in srgb, var(--ink) 40%, white)` (≥7:1). Brand-colored TEXT on a light
- *   surface = `var(--primary-text)` — ThemeResolver darkens the brand seed (hue kept) until it
+ *   footer = `color-mix(in srgb, var(--color-dark) 40%, white)` (≥7:1). Brand-colored TEXT on a light
+ *   surface = `var(--color-primary-text)` — ThemeResolver darkens the brand seed (hue kept) until it
  *   clears 4.5:1 against --surface AND the page background below, since breadcrumb and contact
  *   details sit straight on the page (a light brand like An Vinh's amber alone reads ≈2.1:1).
  *   `--primary` stays for fills, borders and text on the dark header/hero/footer, where the
@@ -99,8 +101,8 @@ body {
     /* ThemeResolver::PAGE_SURFACE_SHARE mirrors the 97% — --color-primary-text is measured on this (or on
        the site's own --page colour when it sets one). */
     background: var(--page, color-mix(in srgb, var(--color-surface) 97%, var(--color-dark)));
-    color: color-mix(in srgb, var(--ink) 85%, white);
-    font-family: var(--font, system-ui, -apple-system, sans-serif);
+    color: color-mix(in srgb, var(--color-dark) 85%, white);
+    font-family: var(--font-body, system-ui, -apple-system, sans-serif);
     font-size: 1rem;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
@@ -110,7 +112,7 @@ body {
    never the browser default (~2.7:1). A placeholder holds only an example value; instructions belong
    in a hint line under the field. */
 ::placeholder {
-    color: color-mix(in srgb, var(--body) 80%, white);
+    color: color-mix(in srgb, var(--color-text) 80%, white);
     opacity: 1; /* Firefox dims placeholders by default */
 }
 
@@ -189,7 +191,7 @@ p {
     position: sticky;
     top: 0;
     z-index: 50;
-    background: var(--ink);
+    background: var(--color-dark);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -256,7 +258,7 @@ p {
     top: 100%;
     left: 0;
     z-index: 60;
-    background: color-mix(in srgb, var(--ink) 85%, white);
+    background: color-mix(in srgb, var(--color-dark) 85%, white);
     border-radius: 0.375rem;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
     min-width: 11rem;
@@ -275,7 +277,7 @@ p {
 .site-nav__link {
     display: block;
     padding: 0.4rem 0.625rem;
-    color: color-mix(in srgb, var(--ink) 22%, white);
+    color: color-mix(in srgb, var(--color-dark) 22%, white);
     font-size: 0.875rem;
     font-weight: 600;
     border-radius: 0.25rem;
@@ -285,8 +287,8 @@ p {
 
 .site-nav__link:hover,
 .site-nav__link[aria-current="page"] {
-    background: var(--body);
-    color: var(--surface);
+    background: var(--color-text);
+    color: var(--color-surface);
 }
 
 .site-nav__list--level-1 .site-nav__link {
@@ -295,8 +297,8 @@ p {
 }
 
 .site-nav__list--level-1 .site-nav__link:hover {
-    background: var(--ink);
-    color: var(--primary-on-ink);
+    background: var(--color-dark);
+    color: var(--color-primary-on-dark);
 }
 
 /* A parent item is a disclosure (theme::partials.menu-list): its panel opens on hover, on keyboard
@@ -360,7 +362,7 @@ html:not(.sf-js) .site-nav__item:focus-within > .site-nav__list--level-1 {
 .page__title {
     font-size: clamp(1.75rem, 3.5vw, 2.5rem);
     font-weight: 800;
-    color: var(--ink);
+    color: var(--color-text-strong);
     padding: 2rem 1.5rem 0.5rem;
     max-width: 80rem;
     margin-inline: auto;
@@ -398,7 +400,7 @@ main:has(.hero, .sf-slider) .page__title {
     min-height: 28rem;
     display: flex;
     align-items: center;
-    background: var(--ink);
+    background: var(--color-dark);
     overflow: hidden;
 }
 
@@ -437,7 +439,7 @@ main:has(.hero, .sf-slider) .page__title {
 .hero__heading {
     font-size: clamp(1.75rem, 5vw, 3rem);
     font-weight: 900;
-    color: var(--surface);
+    color: var(--color-surface);
     margin: 0 0 1rem;
     text-transform: uppercase;
     letter-spacing: 0.01em;
@@ -445,7 +447,7 @@ main:has(.hero, .sf-slider) .page__title {
 
 .hero__subheading {
     font-size: clamp(1rem, 2vw, 1.25rem);
-    color: color-mix(in srgb, var(--ink) 22%, white);
+    color: color-mix(in srgb, var(--color-dark) 22%, white);
     max-width: 40rem;
     line-height: 1.65;
     margin: 0 0 2rem;
@@ -454,8 +456,8 @@ main:has(.hero, .sf-slider) .page__title {
 .hero__cta {
     display: inline-block;
     padding: 0.75rem 1.75rem;
-    background: var(--primary);
-    color: var(--ink);
+    background: var(--color-primary);
+    color: var(--color-text-strong);
     font-weight: 700;
     font-size: 0.95rem;
     border-radius: 0.375rem;
@@ -465,18 +467,18 @@ main:has(.hero, .sf-slider) .page__title {
 }
 
 .hero__cta:hover {
-    background: color-mix(in srgb, var(--primary) 85%, black);
+    background: color-mix(in srgb, var(--color-primary) 85%, black);
 }
 
 .hero__cta--secondary {
     background: transparent;
-    border: 2px solid var(--primary);
-    color: var(--primary-on-ink);
+    border: 2px solid var(--color-primary);
+    color: var(--color-primary-on-dark);
 }
 
 .hero__cta--secondary:hover {
-    background: var(--primary);
-    color: var(--ink);
+    background: var(--color-primary);
+    color: var(--color-text-strong);
 }
 
 /* ───── About section ────────────────────────────────────────────────────── */
@@ -517,12 +519,12 @@ main:has(.hero, .sf-slider) .page__title {
 .about__heading {
     font-size: clamp(1.25rem, 2.5vw, 1.875rem);
     font-weight: 800;
-    color: var(--ink);
+    color: var(--color-text-strong);
     margin: 0 0 1rem;
 }
 
 .about__paragraph {
-    color: color-mix(in srgb, var(--body) 80%, white);
+    color: color-mix(in srgb, var(--color-text) 80%, white);
     line-height: 1.75;
     margin: 0 0 0.875rem;
 }
@@ -531,8 +533,8 @@ main:has(.hero, .sf-slider) .page__title {
     display: inline-block;
     margin-top: 0.5rem;
     padding: 0.625rem 1.5rem;
-    background: var(--primary);
-    color: var(--ink);
+    background: var(--color-primary);
+    color: var(--color-text-strong);
     font-weight: 700;
     font-size: 0.9rem;
     border-radius: 0.375rem;
@@ -540,7 +542,7 @@ main:has(.hero, .sf-slider) .page__title {
 }
 
 .about__cta:hover {
-    background: color-mix(in srgb, var(--primary) 85%, black);
+    background: color-mix(in srgb, var(--color-primary) 85%, black);
 }
 
 .about__image {
@@ -570,10 +572,10 @@ main:has(.hero, .sf-slider) .page__title {
 .entry-grid__heading {
     font-size: clamp(1.25rem, 2.5vw, 1.875rem);
     font-weight: 800;
-    color: var(--ink);
+    color: var(--color-text-strong);
     margin: 0 0 2rem;
     padding-bottom: 0.625rem;
-    border-bottom: 3px solid var(--primary);
+    border-bottom: 3px solid var(--color-primary);
     display: inline-block;
 }
 
@@ -596,7 +598,7 @@ main:has(.hero, .sf-slider) .page__title {
 }
 
 .entry-grid__card {
-    background: var(--surface);
+    background: var(--color-surface);
     border-radius: 0.5rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.05);
     overflow: hidden;
@@ -621,13 +623,13 @@ main:has(.hero, .sf-slider) .page__title {
     width: 3rem;
     height: 3rem;
     margin: 1.5rem 1.5rem 0;
-    color: var(--primary);
+    color: var(--color-primary);
 }
 
 .entry-grid__title {
     font-size: 1rem;
     font-weight: 700;
-    color: var(--ink);
+    color: var(--color-text-strong);
     margin: 0;
     padding: 0.875rem 1rem 0.375rem;
     line-height: 1.4;
@@ -639,7 +641,7 @@ main:has(.hero, .sf-slider) .page__title {
 }
 
 .entry-grid__title a:hover {
-    color: var(--primary-text);
+    color: var(--color-primary-text);
 }
 
 .entry-grid__sector {
@@ -647,7 +649,7 @@ main:has(.hero, .sf-slider) .page__title {
     padding: 0 1rem 0.25rem;
     font-size: 0.75rem;
     font-weight: 600;
-    color: var(--primary-text);
+    color: var(--color-primary-text);
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
@@ -655,13 +657,13 @@ main:has(.hero, .sf-slider) .page__title {
 .entry-grid__outcome {
     padding: 0 1rem 1rem;
     font-size: 0.875rem;
-    color: color-mix(in srgb, var(--body) 80%, white);
+    color: color-mix(in srgb, var(--color-text) 80%, white);
     line-height: 1.55;
     flex: 1;
 }
 
 .entry-grid__empty {
-    color: color-mix(in srgb, var(--body) 80%, white);
+    color: color-mix(in srgb, var(--color-text) 80%, white);
     font-style: italic;
 }
 
@@ -681,10 +683,10 @@ main:has(.hero, .sf-slider) .page__title {
 .category__title {
     font-size: clamp(1.5rem, 3vw, 2.25rem);
     font-weight: 800;
-    color: var(--ink);
+    color: var(--color-text-strong);
     margin: 0 0 2rem;
     padding-bottom: 0.625rem;
-    border-bottom: 3px solid var(--primary);
+    border-bottom: 3px solid var(--color-primary);
     display: inline-block;
 }
 
@@ -707,7 +709,7 @@ main:has(.hero, .sf-slider) .page__title {
 }
 
 .category__item {
-    background: var(--surface);
+    background: var(--color-surface);
     border-radius: 0.375rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
     overflow: hidden;
@@ -722,16 +724,16 @@ main:has(.hero, .sf-slider) .page__title {
     display: block;
     padding: 1rem 1.25rem;
     font-weight: 600;
-    color: color-mix(in srgb, var(--ink) 85%, white);
+    color: color-mix(in srgb, var(--color-dark) 85%, white);
     transition: color 0.2s;
 }
 
 .category__item a:hover {
-    color: var(--primary-text);
+    color: var(--color-primary-text);
 }
 
 .category__empty {
-    color: color-mix(in srgb, var(--body) 80%, white);
+    color: color-mix(in srgb, var(--color-text) 80%, white);
     font-style: italic;
 }
 
@@ -750,29 +752,29 @@ main:has(.hero, .sf-slider) .page__title {
 
 .post__breadcrumb {
     font-size: 0.875rem;
-    color: color-mix(in srgb, var(--body) 80%, white);
+    color: color-mix(in srgb, var(--color-text) 80%, white);
     margin-bottom: 1rem;
 }
 
 .post__breadcrumb a {
-    color: var(--primary-text);
+    color: var(--color-primary-text);
     font-weight: 600;
     transition: color 0.2s;
 }
 
 .post__breadcrumb a:hover {
-    color: color-mix(in srgb, var(--primary-text) 85%, black);
+    color: color-mix(in srgb, var(--color-primary-text) 85%, black);
 }
 
 .post__title {
     font-size: clamp(1.5rem, 3vw, 2.25rem);
     font-weight: 800;
-    color: var(--ink);
+    color: var(--color-text-strong);
     margin: 0 0 2rem;
 }
 
 .post__body {
-    color: var(--body);
+    color: var(--color-text);
 }
 
 .post__body section {
@@ -782,7 +784,7 @@ main:has(.hero, .sf-slider) .page__title {
 .post__body h2 {
     font-size: 1.375rem;
     font-weight: 700;
-    color: var(--ink);
+    color: var(--color-text-strong);
     margin: 1.75rem 0 0.625rem;
 }
 
@@ -807,15 +809,15 @@ main:has(.hero, .sf-slider) .page__title {
 .contact__heading {
     font-size: clamp(1.25rem, 2.5vw, 1.875rem);
     font-weight: 800;
-    color: var(--ink);
+    color: var(--color-text-strong);
     margin: 0 0 1.25rem;
     padding-bottom: 0.625rem;
-    border-bottom: 3px solid var(--primary);
+    border-bottom: 3px solid var(--color-primary);
     display: inline-block;
 }
 
 .contact__address {
-    color: color-mix(in srgb, var(--body) 80%, white);
+    color: color-mix(in srgb, var(--color-text) 80%, white);
     line-height: 1.65;
     margin-bottom: 0.75rem;
 }
@@ -825,14 +827,14 @@ main:has(.hero, .sf-slider) .page__title {
     display: inline-block;
     font-size: 1.0625rem;
     font-weight: 700;
-    color: var(--primary-text);
+    color: var(--color-primary-text);
     margin: 0 1.5rem 0.5rem 0;
     transition: color 0.2s;
 }
 
 .contact__phone:hover,
 .contact__email:hover {
-    color: color-mix(in srgb, var(--primary-text) 85%, black);
+    color: color-mix(in srgb, var(--color-primary-text) 85%, black);
 }
 
 .contact__map {
@@ -847,7 +849,7 @@ main:has(.hero, .sf-slider) .page__title {
 
 /* ───── CTA section ──────────────────────────────────────────────────────── */
 .cta {
-    background: var(--ink);
+    background: var(--color-dark);
     padding: 4rem 1.5rem;
     text-align: center;
 }
@@ -861,15 +863,15 @@ main:has(.hero, .sf-slider) .page__title {
 .cta h2 {
     font-size: clamp(1.25rem, 2.5vw, 1.875rem);
     font-weight: 800;
-    color: var(--surface);
+    color: var(--color-surface);
     margin: 0 0 1.5rem;
 }
 
 .cta__button {
     display: inline-block;
     padding: 0.75rem 2rem;
-    background: var(--primary);
-    color: var(--ink);
+    background: var(--color-primary);
+    color: var(--color-text-strong);
     font-weight: 700;
     font-size: 1rem;
     border-radius: 0.375rem;
@@ -877,7 +879,7 @@ main:has(.hero, .sf-slider) .page__title {
 }
 
 .cta__button:hover {
-    background: color-mix(in srgb, var(--primary) 85%, black);
+    background: color-mix(in srgb, var(--color-primary) 85%, black);
 }
 
 /* ───── Partners section ─────────────────────────────────────────────────── */
@@ -896,10 +898,10 @@ main:has(.hero, .sf-slider) .page__title {
 .partners__heading {
     font-size: clamp(1.25rem, 2.5vw, 1.875rem);
     font-weight: 800;
-    color: var(--ink);
+    color: var(--color-text-strong);
     margin: 0 0 2rem;
     padding-bottom: 0.625rem;
-    border-bottom: 3px solid var(--primary);
+    border-bottom: 3px solid var(--color-primary);
     display: inline-block;
 }
 
@@ -944,10 +946,10 @@ main:has(.hero, .sf-slider) .page__title {
 .features h2 {
     font-size: clamp(1.25rem, 2.5vw, 1.875rem);
     font-weight: 800;
-    color: var(--ink);
+    color: var(--color-text-strong);
     margin: 0 0 2rem;
     padding-bottom: 0.625rem;
-    border-bottom: 3px solid var(--primary);
+    border-bottom: 3px solid var(--color-primary);
     display: inline-block;
 }
 
@@ -970,7 +972,7 @@ main:has(.hero, .sf-slider) .page__title {
 }
 
 .features__item {
-    background: var(--surface);
+    background: var(--color-surface);
     border-radius: 0.5rem;
     padding: 1.5rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
@@ -979,13 +981,13 @@ main:has(.hero, .sf-slider) .page__title {
 .features__item h3 {
     font-size: 1rem;
     font-weight: 700;
-    color: var(--ink);
+    color: var(--color-text-strong);
     margin: 0 0 0.5rem;
 }
 
 .features__item p {
     font-size: 0.9rem;
-    color: color-mix(in srgb, var(--body) 80%, white);
+    color: color-mix(in srgb, var(--color-text) 80%, white);
     line-height: 1.6;
 }
 
@@ -1005,12 +1007,12 @@ main:has(.hero, .sf-slider) .page__title {
 .richtext h2 {
     font-size: clamp(1.125rem, 2vw, 1.5rem);
     font-weight: 700;
-    color: var(--ink);
+    color: var(--color-text-strong);
     margin: 0 0 0.875rem;
 }
 
 .richtext p {
-    color: color-mix(in srgb, var(--body) 80%, white);
+    color: color-mix(in srgb, var(--color-text) 80%, white);
     line-height: 1.75;
     margin-bottom: 0.75rem;
 }
@@ -1031,10 +1033,10 @@ main:has(.hero, .sf-slider) .page__title {
 .latest-posts h2 {
     font-size: clamp(1.25rem, 2.5vw, 1.875rem);
     font-weight: 800;
-    color: var(--ink);
+    color: var(--color-text-strong);
     margin: 0 0 1.5rem;
     padding-bottom: 0.625rem;
-    border-bottom: 3px solid var(--primary);
+    border-bottom: 3px solid var(--color-primary);
     display: inline-block;
 }
 
@@ -1044,7 +1046,7 @@ main:has(.hero, .sf-slider) .page__title {
 }
 
 .latest-posts__item {
-    background: var(--surface);
+    background: var(--color-surface);
     border-radius: 0.375rem;
     padding: 0.875rem 1rem;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
@@ -1052,12 +1054,12 @@ main:has(.hero, .sf-slider) .page__title {
 
 .latest-posts__item a {
     font-weight: 600;
-    color: color-mix(in srgb, var(--ink) 85%, white);
+    color: color-mix(in srgb, var(--color-dark) 85%, white);
     transition: color 0.2s;
 }
 
 .latest-posts__item a:hover {
-    color: var(--primary-text);
+    color: var(--color-primary-text);
 }
 
 /* ───── Pagination ───────────────────────────────────────────────────────── */
@@ -1073,8 +1075,8 @@ main:has(.hero, .sf-slider) .page__title {
 .pagination__next {
     display: inline-block;
     padding: 0.625rem 1.25rem;
-    background: color-mix(in srgb, var(--surface) 94%, var(--ink));
-    color: color-mix(in srgb, var(--ink) 85%, white);
+    background: color-mix(in srgb, var(--color-surface) 94%, var(--color-dark));
+    color: color-mix(in srgb, var(--color-dark) 85%, white);
     border-radius: 0.375rem;
     font-weight: 600;
     font-size: 0.9rem;
@@ -1083,21 +1085,21 @@ main:has(.hero, .sf-slider) .page__title {
 
 .pagination__prev:hover,
 .pagination__next:hover {
-    background: var(--primary);
-    color: var(--ink);
+    background: var(--color-primary);
+    color: var(--color-text-strong);
 }
 
 /* ───── Inline icon glyphs (theme::partials.icon) ───────────────────────── */
 .icon {
     display: block;
-    color: var(--primary);
+    color: var(--color-primary);
 }
 
 /* ───── Site footer ──────────────────────────────────────────────────────── */
 .site-footer {
-    background: var(--ink);
-    border-top: 4px solid var(--primary);
-    color: color-mix(in srgb, var(--ink) 40%, white);
+    background: var(--color-dark);
+    border-top: 4px solid var(--color-primary);
+    color: color-mix(in srgb, var(--color-dark) 40%, white);
 }
 
 .site-footer__inner {
@@ -1126,7 +1128,7 @@ main:has(.hero, .sf-slider) .page__title {
 .site-footer__company {
     font-size: 0.875rem;
     font-weight: 700;
-    color: color-mix(in srgb, var(--ink) 15%, white);
+    color: color-mix(in srgb, var(--color-dark) 15%, white);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     margin: 0 0 0.75rem;
@@ -1138,24 +1140,24 @@ main:has(.hero, .sf-slider) .page__title {
 }
 
 .site-footer__nap a {
-    color: var(--primary-on-ink);
+    color: var(--color-primary-on-dark);
     transition: color 0.2s;
 }
 
 .site-footer__nap a:hover {
-    color: color-mix(in srgb, var(--primary-on-ink) 80%, white);
+    color: color-mix(in srgb, var(--color-primary-on-dark) 80%, white);
 }
 
 .site-footer__license {
     font-size: 0.8125rem;
-    color: color-mix(in srgb, var(--ink) 40%, white);
+    color: color-mix(in srgb, var(--color-dark) 40%, white);
     margin-top: 0.75rem;
 }
 
 .site-footer__heading {
     font-size: 0.875rem;
     font-weight: 700;
-    color: color-mix(in srgb, var(--ink) 15%, white);
+    color: color-mix(in srgb, var(--color-dark) 15%, white);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     margin: 0 0 0.75rem;
@@ -1170,22 +1172,22 @@ main:has(.hero, .sf-slider) .page__title {
 /* Hover in CSS: the storefront CSP (script-src 'self') blocks inline event handlers. */
 .site-footer__link {
     font-size: 0.875rem;
-    color: color-mix(in srgb, var(--ink) 40%, white);
+    color: color-mix(in srgb, var(--color-dark) 40%, white);
     transition: color 0.2s;
 }
 
 .site-footer__link:hover,
 .site-footer__link:focus-visible {
-    color: var(--primary);
+    color: var(--color-primary);
 }
 
 .site-footer__bottom {
-    background: color-mix(in srgb, var(--ink) 88%, black);
+    background: color-mix(in srgb, var(--color-dark) 88%, black);
     padding: 1rem 1.5rem;
     text-align: center;
     font-size: 0.8125rem;
-    color: color-mix(in srgb, var(--ink) 40%, white); /* was #475569 — failed WCAG2AA on this background (axe, 23/09) */
-    border-top: 1px solid color-mix(in srgb, var(--ink) 85%, white);
+    color: color-mix(in srgb, var(--color-dark) 40%, white); /* was #475569 — failed WCAG2AA on this background (axe, 23/09) */
+    border-top: 1px solid color-mix(in srgb, var(--color-dark) 85%, white);
 }
 
 @media (min-width: 1024px) {
@@ -1208,7 +1210,7 @@ main:has(.hero, .sf-slider) .page__title {
 .error-page__code {
     font-size: 6rem;
     font-weight: 900;
-    color: var(--primary-text);
+    color: var(--color-primary-text);
     line-height: 1;
     margin-bottom: 0.5rem;
 }
@@ -1216,12 +1218,12 @@ main:has(.hero, .sf-slider) .page__title {
 .error-page__title {
     font-size: 1.5rem;
     font-weight: 700;
-    color: var(--ink);
+    color: var(--color-text-strong);
     margin: 0 0 1rem;
 }
 
 .error-page__message {
-    color: color-mix(in srgb, var(--body) 80%, white);
+    color: color-mix(in srgb, var(--color-text) 80%, white);
     max-width: 28rem;
     line-height: 1.65;
     margin: 0 0 2rem;
@@ -1230,15 +1232,15 @@ main:has(.hero, .sf-slider) .page__title {
 .error-page__cta {
     display: inline-block;
     padding: 0.75rem 1.75rem;
-    background: var(--primary);
-    color: var(--ink);
+    background: var(--color-primary);
+    color: var(--color-text-strong);
     font-weight: 700;
     border-radius: 0.375rem;
     transition: background 0.2s;
 }
 
 .error-page__cta:hover {
-    background: color-mix(in srgb, var(--primary) 85%, black);
+    background: color-mix(in srgb, var(--color-primary) 85%, black);
 }
 
 /* ───── Rich header, footer and page band (opt-in by site setting) ──────── */
