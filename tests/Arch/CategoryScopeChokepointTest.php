@@ -47,6 +47,7 @@ it('files entries under categories only through the writer that applies category
         'app/Modules/Provisioning/Actions/SeedAnVinhContent.php',                      // seeder, no person
         'app/Modules/Provisioning/Actions/PromoteAnVinhProductPostsToCatalog.php',     // seeder, no person
         'app/Modules/Provisioning/Actions/SeedMeasurementSite.php',                    // CI seeder, no person
+        'app/Modules/Provisioning/ContentPack/Applier.php',                             // content-pack loader, no person
     ];
 
     $offenders = [];

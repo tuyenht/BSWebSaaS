@@ -1,0 +1,374 @@
+{
+ "items": [
+  {
+   "key": "page:/",
+   "verified": true,
+   "claims": [
+    "Hệ thống máy móc CNC nhập khẩu từ Nhật Bản, đảm bảo độ chính xác tuyệt đối cho từng sản phẩm.",
+    "Là đơn vị hàng đầu trong lĩnh vực cơ khí chính xác tại Việt Nam, An Vinh tự hào mang đến các giải pháp toàn diện về thiết kế và gia công đồ gá, jig, khuôn mẫu và các chi tiết máy công nghệ cao.",
+    "Với đội ngũ kỹ sư dày dặn kinh nghiệm, hệ thống máy móc CNC hiện đại nhập khẩu từ Nhật Bản và quy trình quản lý chất lượng nghiêm ngặt theo tiêu chuẩn ISO 9001:2015, chúng tôi cam kết mỗi sản phẩm xuất xưởng đều đạt độ chính xác tuyệt đối, đáp ứng những yêu cầu kỹ thuật khắt khe nhất của khách hàng trong và ngoài nước.",
+    "Với dàn máy phay, tiện, cắt dây CNC nhập khẩu từ Nhật Bản, chúng tôi cam kết mọi chi tiết đều đạt dung sai kỹ thuật khắt khe nhất.",
+    "Quy trình lắp ráp chuyên nghiệp và kiểm định chất lượng nghiêm ngặt bằng máy đo CMM, 2.5D đảm bảo 100% sản phẩm bàn giao đạt chuẩn."
+   ],
+   "status": "published",
+   "title": {
+    "vi": "Cơ Khí Chính Xác An Vinh"
+   },
+   "seo_title": {
+    "vi": "Trang Chủ | Cơ Khí Chính Xác An Vinh"
+   },
+   "seo_description": {
+    "vi": "An Vinh - Dẫn đầu về giải pháp cơ khí chính xác, chuyên thiết kế, gia công đồ gá, jig, và khuôn mẫu chất lượng cao tại Việt Nam."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "hero_slider",
+      "props": {
+       "slides": [
+        {
+         "image_url": {
+          "media": "hero-1"
+         },
+         "heading": "CÔNG NGHỆ HIỆN ĐẠI - TIÊU CHUẨN TOÀN CẦU",
+         "subheading": "Hệ thống máy móc CNC, đảm bảo độ chính xác tuyệt đối cho từng sản phẩm."
+        },
+        {
+         "image_url": {
+          "media": "hero-2"
+         },
+         "heading": "THIẾT KẾ & CHẾ TẠO JIG, ĐỒ GÁ",
+         "subheading": "Giải pháp tối ưu cho dây chuyền lắp ráp và kiểm tra sản phẩm trong ngành công nghiệp ô tô, điện tử."
+        },
+        {
+         "image_url": {
+          "media": "hero-3"
+         },
+         "heading": "SẢN XUẤT KHUÔN MẪU CHẤT LƯỢNG CAO",
+         "subheading": "Chuyên gia công khuôn dập, khuôn ép nhựa, khuôn đúc áp lực với độ bền và tuổi thọ vượt trội."
+        }
+       ],
+       "cta_label": "Yêu Cầu Báo Giá",
+       "cta_url": "/lien-he",
+       "cta2_label": "Xem Sản Phẩm",
+       "cta2_url": "/san-pham",
+       "autoplay": 5,
+       "overlay": 60
+      }
+     },
+     {
+      "type": "about",
+      "props": {
+       "heading": "Chế Tác Tinh Hoa - Nâng Tầm Chính Xác",
+       "paragraphs": [
+        "An Vinh tự hào mang đến các giải pháp toàn diện về thiết kế và gia công đồ gá, jig, khuôn mẫu và các chi tiết máy công nghệ cao.",
+        "Với đội ngũ kỹ sư dày dặn kinh nghiệm, hệ thống máy móc CNC hiện đại và quy trình quản lý chất lượng nghiêm ngặt theo tiêu chuẩn ISO 9001:2015, chúng tôi cam kết mỗi sản phẩm xuất xưởng đều đạt độ chính xác tuyệt đối, đáp ứng những yêu cầu kỹ thuật khắt khe nhất của khách hàng trong và ngoài nước."
+       ],
+       "cta_label": "Về Chúng Tôi",
+       "cta_url": "/gioi-thieu"
+      }
+     },
+     {
+      "type": "entry_grid",
+      "props": {
+       "heading": "Dịch vụ của chúng tôi",
+       "description": "Với đội ngũ kỹ sư giàu kinh nghiệm và hệ thống máy móc hiện đại, An Vinh cung cấp các giải pháp gia công toàn diện, đáp ứng những yêu cầu kỹ thuật khắt khe nhất.",
+       "taxonomy_slug": "nang-luc",
+       "limit": 4,
+       "variant": "icon-cards",
+       "bg": "tint",
+       "link_label": "Xem chi tiết"
+      }
+     },
+     {
+      "type": "product_grid",
+      "props": {
+       "heading": "Sản phẩm tiêu biểu",
+       "description": "Các sản phẩm của chúng tôi là minh chứng cho năng lực kỹ thuật và cam kết về chất lượng, phục vụ các ngành công nghiệp đòi hỏi độ chính xác cao.",
+       "limit": 6,
+       "variant": "overlay",
+       "bg": "surface",
+       "view_all_label": "Xem tất cả sản phẩm",
+       "view_all_url": "/san-pham"
+      }
+     },
+     {
+      "type": "features",
+      "props": {
+       "heading": "Năng Lực Triển Khai Vượt Trội",
+       "description": "Mỗi dự án thành công là kết tinh của một quy trình làm việc chuyên nghiệp, từ khâu thiết kế đến kiểm soát chất lượng, đảm bảo mang lại giá trị tối ưu cho khách hàng.",
+       "variant": "top-rule",
+       "bg": "tint",
+       "items": [
+        {
+         "title": "Tư Vấn & Thiết Kế 3D Tối Ưu",
+         "icon": "box",
+         "text": "Từ ý tưởng đến bản vẽ 3D chi tiết, chúng tôi mô phỏng và tối ưu hóa mọi khía cạnh để đảm bảo giải pháp hiệu quả và tiết kiệm chi phí nhất."
+        },
+        {
+         "title": "Sản Xuất Chính Xác Trên Hệ Thống CNC",
+         "icon": "cog",
+         "text": "Với dàn máy phay, tiện, cắt dây CNC, chúng tôi cam kết mọi chi tiết đều đạt dung sai kỹ thuật khắt khe nhất."
+        },
+        {
+         "title": "Lắp Ráp & Kiểm Định Chất Lượng QA/QC",
+         "icon": "check",
+         "text": "Quy trình lắp ráp chuyên nghiệp và kiểm định chất lượng nghiêm ngặt đảm bảo 100% sản phẩm bàn giao đạt chuẩn."
+        }
+       ]
+      }
+     },
+     {
+      "type": "entry_grid",
+      "props": {
+       "heading": "Dự Án Nổi Bật",
+       "description": "Những dự án thực tế là minh chứng rõ nét nhất cho năng lực và cam kết của An Vinh về chất lượng.",
+       "taxonomy_slug": "du-an",
+       "limit": 8,
+       "variant": "project-cards",
+       "bg": "dark",
+       "view_all_label": "Xem tất cả dự án",
+       "view_all_url": "/du-an"
+      }
+     },
+     {
+      "type": "entry_grid",
+      "props": {
+       "heading": "Tin tức & Sự kiện",
+       "description": "Luôn cập nhật những thông tin mới nhất về hoạt động của An Vinh cũng như các xu hướng nổi bật trong ngành cơ khí chế tạo.",
+       "taxonomy_slug": "tin-tuc",
+       "limit": 3,
+       "variant": "news-cards",
+       "view_all_label": "Xem tất cả tin tức",
+       "view_all_url": "/tin-tuc"
+      }
+     },
+     {
+      "type": "cta",
+      "props": {
+       "heading": "Sẵn sàng nâng tầm dự án của bạn?",
+       "text": "Hãy để các chuyên gia của An Vinh tư vấn giải pháp cơ khí chính xác tối ưu nhất.",
+       "button_label": "Liên hệ ngay",
+       "button_url": "/lien-he",
+       "variant": "rounded"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "key": "page:/gioi-thieu",
+   "verified": true,
+   "claims": [
+    "An Vinh được xây dựng trên nền tảng của sự tâm huyết, sáng tạo và nỗ lực không ngừng của toàn thể cán bộ, công nhân viên. Cùng với sự hợp tác quý báu từ Quý vị, chúng tôi đã và đang khẳng định vị thế là một trong những doanh nghiệp hàng đầu trong lĩnh vực thiết kế và gia công đồ gá, khuôn mẫu tại Việt Nam."
+   ],
+   "status": "published",
+   "title": {
+    "vi": "Giới thiệu"
+   },
+   "seo_title": {
+    "vi": "Về Chúng Tôi | Cơ Khí Chính Xác An Vinh"
+   },
+   "seo_description": {
+    "vi": "Chế Tác Tinh Hoa - Kiến Tạo Tương Lai"
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "page_header",
+      "props": {
+       "title": "Về An Vinh",
+       "subtitle": "Chế Tác Tinh Hoa - Kiến Tạo Tương Lai",
+       "image_url": {
+        "media": "about-header"
+       }
+      }
+     },
+     {
+      "type": "about",
+      "props": {
+       "heading": "Thư Ngỏ từ Ban Lãnh Đạo",
+       "paragraphs": [
+        "Kính gửi Quý Đối tác và Khách hàng!",
+        "Thay mặt tập thể CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ THIẾT KẾ GIA CÔNG CƠ KHÍ AN VINH, Ban Lãnh đạo chúng tôi xin trân trọng gửi lời chúc sức khỏe, thành công và lời cảm ơn sâu sắc đến Quý vị đã luôn tin tưởng, đồng hành cùng sự phát triển của công ty trong suốt thời gian qua.",
+        "An Vinh được xây dựng trên nền tảng của sự tâm huyết, sáng tạo và nỗ lực không ngừng của toàn thể cán bộ, công nhân viên. Cùng với sự hợp tác quý báu từ Quý vị, chúng tôi đã và đang khẳng định vị thế.",
+        "Với đội ngũ kỹ sư chất lượng cao, giàu kinh nghiệm và chiến lược đầu tư vào hệ thống máy móc, trang thiết bị hiện đại, chúng tôi cam kết mang đến những giải pháp toàn diện, đáp ứng và vượt trên sự mong đợi của khách hàng.",
+        "Chúng tôi lấy chất lượng sản phẩm và sự hài lòng của Quý vị làm kim chỉ nam cho mọi hoạt động. Sự thành công của An Vinh gắn liền với sự thịnh vượng của Quý vị. Vì vậy, chúng tôi luôn mở rộng vòng tay hợp tác với các doanh nghiệp trên cả nước, trên tinh thần chia sẻ lợi ích và cùng nhau phát triển bền vững.",
+        "Xin trân trọng cảm ơn!"
+       ],
+       "image_url": {
+        "media": "about-letter"
+       }
+      }
+     },
+     {
+      "type": "features",
+      "props": {
+       "heading": "Định Hướng Phát Triển",
+       "description": "An Vinh không ngừng vươn tới những tiêu chuẩn cao hơn, kiến tạo giá trị bền vững cho khách hàng và xã hội.",
+       "variant": "top-rule",
+       "bg": "tint",
+       "items": [
+        {
+         "title": "Tầm Nhìn",
+         "text": "Trở thành công ty gia công cơ khí chính xác, thiết kế đồ gá, khuôn mẫu hàng đầu Việt Nam với trang thiết bị hiện đại, tiên tiến. Cung cấp sản phẩm, dịch vụ chất lượng tốt nhất, giá cả cạnh tranh, thoả mãn mọi nhu cầu của khách hàng."
+        },
+        {
+         "title": "Sứ Mệnh",
+         "text": "Thiết kế, thi công và sản xuất những sản phẩm có chất lượng tốt, an toàn, đảm bảo tiến độ và hiệu quả kinh tế. Phát huy cao nhất năng lực đội ngũ và nâng cao chất lượng đời sống vật chất, tinh thần cho toàn thể cán bộ nhân viên."
+        }
+       ]
+      }
+     },
+     {
+      "type": "features",
+      "props": {
+       "heading": "Giá Trị Cốt Lõi",
+       "bg": "dark",
+       "items": [
+        {
+         "title": "Uy Tín",
+         "text": "Luôn nỗ lực hết mình để đảm bảo chất lượng hoàn hảo và cam kết đúng tiến độ."
+        },
+        {
+         "title": "Sáng Tạo",
+         "text": "Không ngừng sáng tạo nhằm tạo sự khác biệt và mang đậm bản sắc riêng."
+        },
+        {
+         "title": "Trách Nhiệm",
+         "text": "Luôn làm việc tận tụy và có trách nhiệm với những gì đã cam kết."
+        },
+        {
+         "title": "Hiệu Quả",
+         "text": "Cải tiến liên tục kỹ năng để phục vụ khách hàng với hiệu suất cao nhất."
+        },
+        {
+         "title": "Khách Hàng Là Trọng Tâm",
+         "text": "Lấy sự hài lòng của khách hàng làm thước đo cho thành công."
+        },
+        {
+         "title": "Chia Sẻ Thành Công",
+         "text": "Đồng hành cùng sự phát triển của khách hàng và cộng đồng."
+        }
+       ]
+      }
+     },
+     {
+      "type": "about",
+      "props": {
+       "heading": "Cam Kết Chất Lượng Theo Tiêu Chuẩn Quốc Tế",
+       "paragraphs": [
+        "An Vinh tự hào được đánh giá và chứng nhận phù hợp với các yêu cầu của tiêu chuẩn quốc tế ISO 9001:2015 cho Hệ thống Quản lý Chất lượng. Đây là minh chứng cho cam kết không ngừng của chúng tôi trong việc cung cấp những sản phẩm và dịch vụ đạt chuẩn mực cao nhất, từ khâu thiết kế, sản xuất đến kiểm định, mang lại sự an tâm tuyệt đối cho khách hàng."
+       ]
+      }
+     }
+    ]
+   }
+  },
+  {
+   "key": "page:/doi-tac",
+   "verified": false,
+   "status": "draft",
+   "claims": [
+    "Những đối tác đã tin tưởng An Vinh: VinFast, Festo, Hutchinson, Weldcom, SMC, DGP, Yamaguchi, Mitsuboshi, Palfinger, Vinmanutech"
+   ],
+   "note": "Chưa có tên đối tác hay logo đã xác nhận; trang giữ lại ở bản nháp, mục menu tự ẩn. Ý kiến khách hàng nêu tên hãng không có trong gói.",
+   "title": {
+    "vi": "Đối tác"
+   },
+   "seo_title": {
+    "vi": "Đối Tác | Cơ Khí Chính Xác An Vinh"
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "page_header",
+      "props": {
+       "title": "Đối Tác Của Chúng Tôi",
+       "subtitle": "Cùng nhau xây dựng thành công bền vững",
+       "image_url": {
+        "media": "partners-header"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "key": "page:/lien-he",
+   "verified": true,
+   "status": "published",
+   "title": {
+    "vi": "Liên hệ"
+   },
+   "seo_title": {
+    "vi": "Liên Hệ | Cơ Khí Chính Xác An Vinh"
+   },
+   "seo_description": {
+    "vi": "Chúng tôi luôn sẵn sàng lắng nghe và tư vấn giải pháp cho bạn"
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "page_header",
+      "props": {
+       "title": "Liên Hệ Với Chúng Tôi",
+       "subtitle": "Chúng tôi luôn sẵn sàng lắng nghe và tư vấn giải pháp cho bạn",
+       "image_url": {
+        "media": "contact-header"
+       }
+      }
+     },
+     {
+      "type": "contact",
+      "props": {
+       "variant": "cards",
+       "phone": "0915668383",
+       "phone_label": "Điện thoại",
+       "email": "quybv@ckanvinh.vn",
+       "email_label": "Email",
+       "address": "Xã Trung Giã, TP Hà Nội",
+       "address_label": "Trụ sở & Nhà máy"
+      }
+     },
+     {
+      "type": "form",
+      "props": {
+       "form_key": "contact",
+       "description": "Điền vào biểu mẫu bên dưới và chúng tôi sẽ liên hệ lại với bạn trong thời gian sớm nhất.",
+       "map_embed": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d12503.468002335805!2d105.85833024594946!3d21.29902948043917!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31351dc82e015dad%3A0xc3a6d44da6b27bb9!2zQ8O0bmcgdHkgY8ahIGtow60gQW4gVmluaA!5e0!3m2!1svi!2s!4v1762317872785!5m2!1svi!2s"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "key": "page:/chinh-sach-bao-mat",
+   "verified": false,
+   "status": "draft",
+   "claims": [
+    "Nội dung chính sách bảo mật chưa được soạn và chưa được duyệt"
+   ],
+   "note": "Trang chính sách bảo mật: nội dung pháp lý phải được duyệt trước khi công khai.",
+   "title": {
+    "vi": "Chính sách bảo mật"
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "page_header",
+      "props": {
+       "title": "Chính sách bảo mật"
+      }
+     },
+     {
+      "type": "richtext",
+      "props": {
+       "paragraphs": []
+      }
+     }
+    ]
+   }
+  }
+ ]
+}

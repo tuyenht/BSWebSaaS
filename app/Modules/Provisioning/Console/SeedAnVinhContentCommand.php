@@ -3,6 +3,7 @@
 namespace App\Modules\Provisioning\Console;
 
 use App\Modules\Provisioning\Actions\SeedAnVinhContent;
+use App\Modules\Provisioning\ContentPack\Ledger;
 use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Console\Command;
@@ -27,6 +28,14 @@ final class SeedAnVinhContentCommand extends Command
         $resolved = app(SiteResolver::class)->resolve($host);
         if ($resolved === null) {
             $this->error("No site found for host '{$host}'.");
+
+            return self::FAILURE;
+        }
+
+        // Once a content pack has been loaded, the pack owns this content: re-running the old seeder
+        // would write over it without the ledger, the backup or the staff-edit check.
+        if ($tenancy->enter($resolved->siteId, fn (): bool => Ledger::any())) {
+            $this->error("Refused: {$host} is loaded from a content pack; use `php artisan site:load-content <pack> --host={$host}` instead.");
 
             return self::FAILURE;
         }

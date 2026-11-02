@@ -56,7 +56,7 @@ final readonly class ThemeResolver
         $tokens = self::DEFAULTS;
 
         foreach ($custom as $key => $value) {
-            if (is_string($value) && $this->safeKey((string) $key) && $this->safeValue($value)) {
+            if (self::acceptsToken((string) $key, $value)) {
                 $tokens[(string) $key] = $value;
             }
         }
@@ -133,14 +133,17 @@ final readonly class ThemeResolver
         return $white !== null && ($dark === null || $white > $dark) ? '#ffffff' : $ink;
     }
 
-    private function safeKey(string $key): bool
+    /**
+     * Whether a stored token survives tokens() — the one rule, so a writer (the content-pack loader)
+     * can refuse a value the storefront would silently drop. Keys are `[a-z0-9-]`; values hold
+     * CSS-value-safe characters only: no ; { } : < > " — prevents style breakout.
+     *
+     * @phpstan-assert-if-true string $value
+     */
+    public static function acceptsToken(string $key, mixed $value): bool
     {
-        return preg_match('/^[a-z0-9-]{1,40}$/', $key) === 1;
-    }
-
-    private function safeValue(string $value): bool
-    {
-        // CSS-value-safe characters only: no ; { } : < > " — prevents style breakout.
-        return preg_match('/^[a-zA-Z0-9#,.%()\s_-]{1,80}$/', $value) === 1;
+        return is_string($value)
+            && preg_match('/^[a-z0-9-]{1,40}$/', $key) === 1
+            && preg_match('/^[a-zA-Z0-9#,.%()\s_-]{1,80}$/', $value) === 1;
     }
 }

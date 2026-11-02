@@ -1,0 +1,48 @@
+{
+ "items": [
+  {
+   "key": "menu:primary",
+   "name": "Menu chính",
+   "items": [
+    {
+     "label": {
+      "vi": "Trang chủ"
+     },
+     "dynamic": "home"
+    },
+    {
+     "label": {
+      "vi": "Giới thiệu"
+     },
+     "target": "page:/gioi-thieu"
+    },
+    {
+     "label": {
+      "vi": "Dịch vụ"
+     },
+     "target": "tax:post_cat/dich-vu",
+     "children": [
+      {
+       "label": {
+        "vi": "Thiết kế mẫu"
+       },
+       "target": "post:thiet-ke-mau"
+      }
+     ]
+    },
+    {
+     "label": {
+      "vi": "Tin tức"
+     },
+     "target": "tax:post_cat/tin-tuc"
+    },
+    {
+     "label": {
+      "vi": "Liên hệ"
+     },
+     "target": "page:/lien-he"
+    }
+   ]
+  }
+ ]
+}
