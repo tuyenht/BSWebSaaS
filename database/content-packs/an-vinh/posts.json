@@ -122,12 +122,8 @@
   },
   {
    "key": "post:day-chuyen-lap-rap-tu-dong",
-   "verified": false,
-   "claims": [
-    "Dây chuyền lắp ráp tự động",
-    "Thiết kế và thi công hệ thống dây chuyền lắp ráp linh kiện điện tử, tăng năng suất 200%."
-   ],
-   "status": "draft",
+   "verified": true,
+   "status": "published",
    "categories": [
     "tax:post_cat/du-an"
    ],
@@ -158,12 +154,8 @@
   },
   {
    "key": "post:he-thong-jig-han-robot",
-   "verified": false,
-   "claims": [
-    "Hệ thống Jig hàn robot",
-    "Phát triển hệ thống đồ gá hàn cho robot, ứng dụng trong ngành công nghiệp ô tô."
-   ],
-   "status": "draft",
+   "verified": true,
+   "status": "published",
    "categories": [
     "tax:post_cat/du-an"
    ],
@@ -194,12 +186,8 @@
   },
   {
    "key": "post:khuon-mau-san-pham-gia-dung",
-   "verified": false,
-   "claims": [
-    "Khuôn mẫu cho sản phẩm gia dụng",
-    "Chế tạo loạt khuôn ép nhựa cho các sản phẩm gia dụng phức tạp, đáp ứng tiêu chuẩn xuất khẩu."
-   ],
-   "status": "draft",
+   "verified": true,
+   "status": "published",
    "categories": [
     "tax:post_cat/du-an"
    ],
@@ -230,12 +218,8 @@
   },
   {
    "key": "post:do-ga-kiem-tra-than-vo-xe",
-   "verified": false,
-   "claims": [
-    "Đồ gá kiểm tra thân vỏ xe",
-    "Sản xuất đồ gá kiểm tra kích thước 3D cho thân vỏ ô tô, đảm bảo độ chính xác tuyệt đối."
-   ],
-   "status": "draft",
+   "verified": true,
+   "status": "published",
    "categories": [
     "tax:post_cat/du-an"
    ],
@@ -266,12 +250,8 @@
   },
   {
    "key": "post:gia-cong-chi-tiet-hang-khong",
-   "verified": false,
-   "claims": [
-    "Gia công chi tiết hàng không",
-    "Tham gia dự án gia công các chi tiết cơ khí phức tạp cho ngành hàng không vũ trụ."
-   ],
-   "status": "draft",
+   "verified": true,
+   "status": "published",
    "categories": [
     "tax:post_cat/du-an"
    ],
@@ -302,12 +282,8 @@
   },
   {
    "key": "post:cai-tien-day-chuyen-san-xuat",
-   "verified": false,
-   "claims": [
-    "Cải tiến dây chuyền sản xuất",
-    "Tư vấn và thực hiện cải tiến, tối ưu hóa dây chuyền sản xuất cho các đối tác lớn trong và ngoài nước."
-   ],
-   "status": "draft",
+   "verified": true,
+   "status": "published",
    "categories": [
     "tax:post_cat/du-an"
    ],
@@ -338,12 +314,8 @@
   },
   {
    "key": "post:khuon-dap-chi-tiet-than-vo-weldcom",
-   "verified": false,
-   "claims": [
-    "Khuôn dập chi tiết thân vỏ Weldcom",
-    "Sản xuất khuôn dập liên hoàn cho các chi tiết vỏ máy công nghiệp, tối ưu hóa vật liệu và chu kỳ dập."
-   ],
-   "status": "draft",
+   "verified": true,
+   "status": "published",
    "categories": [
     "tax:post_cat/du-an"
    ],
@@ -374,12 +346,8 @@
   },
   {
    "key": "post:jig-kiem-tra-cum-den-pha-festo",
-   "verified": false,
-   "claims": [
-    "Jig kiểm tra cụm đèn pha Festo",
-    "Chế tạo đồ gá kiểm tra chức năng và độ kín của cụm đèn pha, tích hợp hệ thống khí nén tự động từ Festo."
-   ],
-   "status": "draft",
+   "verified": true,
+   "status": "published",
    "categories": [
     "tax:post_cat/du-an"
    ],
@@ -410,12 +378,8 @@
   },
   {
    "key": "post:he-thong-cap-phoi-tu-dong-hutchinson",
-   "verified": false,
-   "claims": [
-    "Hệ thống cấp phôi tự động Hutchinson",
-    "Thiết kế và lắp đặt hệ thống cấp phôi tự động cho máy ép, hợp tác cùng chuyên gia từ Hutchinson."
-   ],
-   "status": "draft",
+   "verified": true,
+   "status": "published",
    "categories": [
     "tax:post_cat/du-an"
    ],
@@ -446,12 +410,8 @@
   },
   {
    "key": "post:an-vinh-to-chuc-team-building-2024",
-   "verified": false,
-   "claims": [
-    "An Vinh tổ chức team building 2024",
-    "Hoạt động team building thường niên nhằm gắn kết tinh thần đồng đội và tái tạo năng lượng cho toàn thể cán bộ nhân viên."
-   ],
-   "status": "draft",
+   "verified": true,
+   "status": "published",
    "categories": [
     "tax:post_cat/tin-tuc/tin-noi-bo",
     "tax:post_cat/tin-tuc"
@@ -484,12 +444,8 @@
   },
   {
    "key": "post:khanh-thanh-nha-may-so-3",
-   "verified": false,
-   "claims": [
-    "Khánh thành nhà máy số 3 tại Thạch Thất",
-    "Việc đưa vào hoạt động nhà máy số 3 giúp An Vinh nâng cao năng lực sản xuất, đáp ứng các đơn hàng lớn."
-   ],
-   "status": "draft",
+   "verified": true,
+   "status": "published",
    "categories": [
     "tax:post_cat/tin-tuc/tin-noi-bo",
     "tax:post_cat/tin-tuc"
@@ -522,12 +478,8 @@
   },
   {
    "key": "post:dao-tao-an-toan-lao-dong",
-   "verified": false,
-   "claims": [
-    "Đào tạo an toàn lao động định kỳ",
-    "Tổ chức khóa đào tạo về an toàn lao động và phòng chống cháy nổ cho toàn bộ nhân viên nhà máy."
-   ],
-   "status": "draft",
+   "verified": true,
+   "status": "published",
    "categories": [
     "tax:post_cat/tin-tuc/tin-noi-bo",
     "tax:post_cat/tin-tuc"
@@ -560,11 +512,8 @@
   },
   {
    "key": "post:dao-tao-van-hanh-may-phay-cnc-5-truc",
-   "verified": false,
-   "claims": [
-    "Đào tạo vận hành máy phay CNC 5 trục"
-   ],
-   "status": "draft",
+   "verified": true,
+   "status": "published",
    "categories": [
     "tax:post_cat/tin-tuc/tin-noi-bo",
     "tax:post_cat/tin-tuc"
@@ -589,12 +538,8 @@
   },
   {
    "key": "post:xu-huong-tu-dong-hoa-nganh-co-khi",
-   "verified": false,
-   "claims": [
-    "Xu hướng tự động hóa trong ngành cơ khí chế tạo",
-    "Tự động hóa và robot đang thay đổi bộ mặt của ngành cơ khí, mang lại hiệu suất và độ chính xác chưa từng có."
-   ],
-   "status": "draft",
+   "verified": true,
+   "status": "published",
    "categories": [
     "tax:post_cat/tin-tuc/tin-nganh",
     "tax:post_cat/tin-tuc"
@@ -627,12 +572,8 @@
   },
   {
    "key": "post:ung-dung-vat-lieu-moi-khuon-mau",
-   "verified": false,
-   "claims": [
-    "Ứng dụng vật liệu mới trong chế tạo khuôn mẫu",
-    "Các loại thép công cụ thế hệ mới giúp tăng tuổi thọ khuôn và cải thiện chất lượng bề mặt sản phẩm."
-   ],
-   "status": "draft",
+   "verified": true,
+   "status": "published",
    "categories": [
     "tax:post_cat/tin-tuc/tin-nganh",
     "tax:post_cat/tin-tuc"
@@ -665,12 +606,8 @@
   },
   {
    "key": "post:cong-nghe-in-3d-kim-loai",
-   "verified": false,
-   "claims": [
-    "Công nghệ in 3D kim loại và tương lai của ngành",
-    "In 3D kim loại mở ra những khả năng mới trong việc tạo mẫu nhanh và sản xuất các chi tiết phức tạp."
-   ],
-   "status": "draft",
+   "verified": true,
+   "status": "published",
    "categories": [
     "tax:post_cat/tin-tuc/tin-nganh",
     "tax:post_cat/tin-tuc"
@@ -703,15 +640,15 @@
   },
   {
    "key": "post:trien-lam-mta-vietnam-2024-co-hoi-va-thach-thuc",
-   "verified": false,
-   "claims": [
-    "Triển lãm MTA Vietnam 2024: Cơ hội và thách thức"
-   ],
-   "status": "draft",
+   "verified": true,
+   "status": "published",
    "categories": [
     "tax:post_cat/tin-tuc/tin-nganh",
     "tax:post_cat/tin-tuc"
    ],
+   "image": {
+    "media": "news-header"
+   },
    "published_at": "2024-07-05",
    "title": {
     "vi": "Triển lãm MTA Vietnam 2024: Cơ hội và thách thức"
