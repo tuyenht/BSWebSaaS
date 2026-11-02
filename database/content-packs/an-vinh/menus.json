@@ -1,0 +1,208 @@
+{
+ "items": [
+  {
+   "key": "menu:primary",
+   "name": "Menu chính",
+   "items": [
+    {
+     "label": {
+      "vi": "Trang chủ"
+     },
+     "dynamic": "home"
+    },
+    {
+     "label": {
+      "vi": "Giới thiệu"
+     },
+     "url": "#",
+     "children": [
+      {
+       "label": {
+        "vi": "Giới thiệu công ty"
+       },
+       "target": "page:/gioi-thieu"
+      }
+     ]
+    },
+    {
+     "label": {
+      "vi": "Năng lực"
+     },
+     "target": "tax:post_cat/nang-luc",
+     "children": [
+      {
+       "label": {
+        "vi": "Thiết kế Jig & Đồ gá"
+       },
+       "target": "post:thiet-ke-jig-do-ga"
+      },
+      {
+       "label": {
+        "vi": "Gia công Phay & Tiện CNC"
+       },
+       "target": "post:gia-cong-phay-tien-cnc"
+      },
+      {
+       "label": {
+        "vi": "Hàn & Lắp ráp cơ khí"
+       },
+       "target": "post:han-lap-rap-co-khi"
+      },
+      {
+       "label": {
+        "vi": "Sản xuất chi tiết máy & OEM"
+       },
+       "target": "post:san-xuat-chi-tiet-may-oem"
+      }
+     ]
+    },
+    {
+     "label": {
+      "vi": "Sản phẩm"
+     },
+     "target": "tax:post_cat/san-pham",
+     "children": [
+      {
+       "label": {
+        "vi": "Jig & Đồ gá"
+       },
+       "target": "tax:product_cat/san-pham/do-ga"
+      },
+      {
+       "label": {
+        "vi": "Khuôn mẫu"
+       },
+       "target": "tax:product_cat/san-pham/khuon-mau"
+      },
+      {
+       "label": {
+        "vi": "Chi tiết máy"
+       },
+       "target": "tax:product_cat/san-pham/chi-tiet-may"
+      }
+     ]
+    },
+    {
+     "label": {
+      "vi": "Dự án"
+     },
+     "target": "tax:post_cat/du-an"
+    },
+    {
+     "label": {
+      "vi": "Đối tác"
+     },
+     "target": "page:/doi-tac"
+    },
+    {
+     "label": {
+      "vi": "Tin tức"
+     },
+     "target": "tax:post_cat/tin-tuc"
+    },
+    {
+     "label": {
+      "vi": "Liên hệ"
+     },
+     "target": "page:/lien-he"
+    }
+   ]
+  },
+  {
+   "key": "menu:footer",
+   "name": "Menu chân trang",
+   "items": [
+    {
+     "label": {
+      "vi": "GIỚI THIỆU"
+     },
+     "url": "#",
+     "children": [
+      {
+       "label": {
+        "vi": "Về công ty"
+       },
+       "target": "page:/gioi-thieu"
+      },
+      {
+       "label": {
+        "vi": "Dự án"
+       },
+       "target": "tax:post_cat/du-an"
+      },
+      {
+       "label": {
+        "vi": "Tin tức"
+       },
+       "target": "tax:post_cat/tin-tuc"
+      },
+      {
+       "label": {
+        "vi": "Liên hệ"
+       },
+       "target": "page:/lien-he"
+      }
+     ]
+    },
+    {
+     "label": {
+      "vi": "SẢN PHẨM"
+     },
+     "url": "#",
+     "children": [
+      {
+       "label": {
+        "vi": "Jig & Đồ gá"
+       },
+       "target": "tax:product_cat/san-pham/do-ga"
+      },
+      {
+       "label": {
+        "vi": "Khuôn mẫu"
+       },
+       "target": "tax:product_cat/san-pham/khuon-mau"
+      },
+      {
+       "label": {
+        "vi": "Chi tiết máy"
+       },
+       "target": "tax:product_cat/san-pham/chi-tiet-may"
+      }
+     ]
+    },
+    {
+     "label": {
+      "vi": "NĂNG LỰC"
+     },
+     "url": "#",
+     "children": [
+      {
+       "label": {
+        "vi": "Thiết kế Jig & Đồ gá"
+       },
+       "target": "post:thiet-ke-jig-do-ga"
+      },
+      {
+       "label": {
+        "vi": "Gia công Phay & Tiện CNC"
+       },
+       "target": "post:gia-cong-phay-tien-cnc"
+      },
+      {
+       "label": {
+        "vi": "Hàn & Lắp ráp cơ khí"
+       },
+       "target": "post:han-lap-rap-co-khi"
+      },
+      {
+       "label": {
+        "vi": "Sản xuất chi tiết máy & OEM"
+       },
+       "target": "post:san-xuat-chi-tiet-may-oem"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

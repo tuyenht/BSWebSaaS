@@ -1,0 +1,11 @@
+{
+ "code": "an-vinh",
+ "version": 1,
+ "hosts": [
+  "av1.baoson.net"
+ ],
+ "default_locale": "vi",
+ "locales": [
+  "vi"
+ ]
+}
