@@ -627,16 +627,22 @@ it('relinks every permalink preset a category write affects when its slug and pa
     ContentPacks::in($this->siteId, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'permalinks', 'key' => 'products'], ['value' => ['pattern' => 'category']]));
     ContentPacks::load();
 
-    // A pack cannot give a category a new parent (its parent is the chain of its key, and it is
-    // matched under that parent), so the write is handed to the Applier as a plan line.
+    // The pack renames the category (so the Planner carries its products along); a pack cannot give
+    // a category a new parent (its parent is the chain of its key, and it is matched under that
+    // parent), so the move is added to the Applier's plan line.
+    ContentPacks::item($this->folder, 'taxonomies.json', 'tax:post_cat/san-pham', fn (array $item): array => ['key' => 'tax:post_cat/may-moc', 'was' => ['san-pham'], 'name' => ['vi' => 'Máy móc']] + $item);
+    ContentPacks::edit($this->folder, 'products.json', fn (array $data): array => ['items' => array_map(
+        fn (array $item): array => ['categories' => array_map(fn (string $key): string => $key === 'tax:post_cat/san-pham' ? 'tax:post_cat/may-moc' : $key, $item['categories'])] + $item,
+        $data['items'],
+    )] + $data);
     ContentPacks::in($this->siteId, function (): void {
         $planner = app(Planner::class);
         $plan = $planner->plan(app(PackReader::class)->read('demo-co'), (string) Site::query()->value('ulid'), 'Demo', ContentPacks::HOST);
         $items = array_map(function (PlanItem $planned): PlanItem {
-            if ($planned->item->key !== 'tax:post_cat/san-pham') {
+            if ($planned->item->key !== 'tax:post_cat/may-moc') {
                 return $planned;
             }
-            $desired = ['parent' => 'tax:post_cat/tin-tuc', 'translations' => ['vi' => ['name' => 'Máy móc', 'slug' => 'may-moc']]] + $planned->desired;
+            $desired = ['parent' => 'tax:post_cat/tin-tuc'] + $planned->desired;
 
             return new PlanItem($planned->item, PlanItem::UPDATE, $planned->current, $desired, null, $planned->recordId);
         }, $plan->items);
@@ -705,4 +711,33 @@ it('moves the posts of a category renamed in its second language only, with a 30
     ContentPacks::in($this->siteId, fn () => expect(SiteRoute::query()->where('locale', 'en')->whereNotNull('entry_id')->where('path', 'like', '%/website-launch')->value('path'))->toBe('/news/website-launch')
         ->and(Redirect::query()->where('locale', 'en')->where('from_path', '/updates/website-launch')->value('to_path'))->toBe('/news/website-launch')
         ->and(SiteRoute::query()->where('locale', 'vi')->where('path', '/cap-nhat/ra-mat-website')->exists())->toBeTrue());
+});
+
+it('stops the whole load when a post is filed under a moving category after the locked re-plan', function (): void {
+    ContentPacks::load();
+    cpStaffPost($this->siteId, 'bai-cua-nhan-vien', 'cap-nhat');
+    cpRenameCapNhat($this->folder);
+    [, $dry] = ContentPacks::run();
+    $before = cpSnapshot($this->siteId);
+
+    // Staff files a post under the category after the re-plan and before the relink: simulated at
+    // the moment the load renames the category, inside the load's own transaction.
+    $filed = false;
+    TaxonomyTranslation::updated(function (TaxonomyTranslation $translation) use (&$filed): void {
+        if ($filed || $translation->slug !== 'ban-tin') {
+            return;
+        }
+        $filed = true;
+        $post = Entry::query()->create(['type' => 'post', 'status' => 'published', 'published_at' => now()]);
+        $post->translations()->create(['locale' => 'vi', 'title' => 'Bài nộp giữa chừng', 'slug' => 'bai-nop-giua-chung', 'status' => 'published', 'body' => ['blocks' => []]]);
+        $post->assignCategories([(int) $translation->taxonomy_id]);
+        $post->unsetRelation('taxonomies');
+        app(RouteSync::class)->sync($post, 'vi', 'bai-nop-giua-chung');
+    });
+    [$exit, $output] = ContentPacks::run('demo-co', ['--apply' => true, '--plan' => ContentPacks::fingerprint($dry)]);
+
+    expect($filed)->toBeTrue()
+        ->and($exit)->toBe(1)
+        ->and($output)->toContain('plan changed, run the dry run again')->toContain('tax:post_cat/tin-tuc/ban-tin')
+        ->and(cpSnapshot($this->siteId))->toBe($before);
 });

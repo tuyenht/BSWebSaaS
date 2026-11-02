@@ -101,17 +101,6 @@ final readonly class PlanItem
         return $changes;
     }
 
-    /**
-     * Whether a category write changes an address under it (see taxonomyChanges()).
-     *
-     * @param  array<string, mixed>|null  $current
-     * @param  array<string, mixed>  $desired
-     */
-    public static function taxonomyMoves(?array $current, array $desired): bool
-    {
-        return self::taxonomyChanges($current, $desired) !== [];
-    }
-
     public function currentHash(): ?string
     {
         return $this->current === null ? null : CanonicalHash::of($this->current);

@@ -17,6 +17,7 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Queries\EntryRevisions;
 use App\Modules\Cms\Queries\PendingEntryDrafts;
+use App\Modules\Cms\Routing\CategoryChange;
 use App\Modules\Cms\Routing\CategoryRelinker;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Media\Models\Media;
@@ -30,6 +31,7 @@ use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\Query\JoinClause;
 use Illuminate\Support\Facades\DB;
 
@@ -98,6 +100,12 @@ final class Planner
 
     /** The row lock of the --apply re-plan (see the class comment). */
     private const string LOCK = 'for no key update';
+
+    /** The kinds a category relink carries along: pivot, item column, item table, translation table. */
+    private const array BRANCH_KINDS = [
+        'post' => ['entry_taxonomies', 'entry_id', 'entries', 'entry_translations'],
+        'product' => ['product_taxonomies', 'product_id', 'products', 'product_translations'],
+    ];
 
     public function __construct(
         private readonly CurrentSite $site,
@@ -1724,26 +1732,14 @@ final class Planner
         }
 
         $rows = [];
-        foreach (['post' => ['entry_taxonomies', 'entry_id', 'entries', 'entry_translations'], 'product' => ['product_taxonomies', 'product_id', 'products', 'product_translations']] as $kind => [$pivot, $column, $table, $translations]) {
+        foreach (self::BRANCH_KINDS as $kind => [$pivot, $column]) {
             // The categories whose moving owners make the relink re-sync this kind.
             $followed = array_keys(array_filter($owners, fn (array $keys): bool => $this->relinker->resyncs(
                 $pivot,
                 ...array_merge(...array_map(fn (string $key): array => $changes[$key], $keys)),
             )));
             foreach (array_chunk($followed, 1000) as $chunk) {
-                $query = DB::table("{$pivot} as pv")
-                    ->join("{$table} as it", 'it.id', '=', "pv.{$column}")
-                    ->join('routes as r', "r.{$column}", '=', 'it.id')
-                    ->join("{$translations} as tr", fn (JoinClause $join) => $join->on("tr.{$column}", '=', 'it.id')->on('tr.locale', '=', 'r.locale'))
-                    ->where('pv.site_id', $this->site->id())
-                    ->where('pv.position', 0)
-                    ->whereIn('pv.taxonomy_id', $chunk)
-                    ->where('it.status', 'published')
-                    ->whereNull('it.deleted_at')
-                    ->orderBy('it.id')->orderBy('r.locale');
-                if ($kind === 'post') {
-                    $query->where('it.type', 'post');
-                }
+                $query = $this->branchItems($kind, $chunk)->orderBy('it.id')->orderBy('r.locale');
                 if ($this->lock) {
                     $query->lock(self::LOCK);
                 }
@@ -1787,6 +1783,63 @@ final class Planner
         }
 
         return [$claims, $moves, $scopes];
+    }
+
+    /**
+     * The routes a category relink about to run with these changes would re-sync under the branch,
+     * but which the last plan did not carry along for that category: a post or product published or
+     * filed there after the plan was made. Its old address is not in the backup and its new one was
+     * never checked, so the caller must not relink. One query.
+     *
+     * @param  list<int>  $branch  the category and every category under it, as the tree stands now
+     * @return list<int> route ids
+     */
+    public function unplannedBranchRoutes(string $key, array $branch, CategoryChange ...$changes): array
+    {
+        $query = null;
+        foreach (self::BRANCH_KINDS as $kind => [$pivot]) {
+            if ($branch === [] || ! $this->relinker->resyncs($pivot, ...$changes)) {
+                continue;
+            }
+            $part = $this->branchItems($kind, $branch)->select('r.id');
+            $query = $query === null ? $part : $query->unionAll($part);
+        }
+        if ($query === null) {
+            return [];
+        }
+
+        $planned = array_flip($this->branchRoutes[$key] ?? []);
+
+        return array_values(array_filter(
+            array_map(Cast::int(...), $query->pluck('id')->all()),
+            fn (int $id): bool => ! isset($planned[$id]),
+        ));
+    }
+
+    /**
+     * The published posts (or products) filed primarily under these categories, one row per
+     * language they are routed in: what CategoryRelinker re-syncs for that kind.
+     *
+     * @param  'post'|'product'  $kind
+     * @param  list<int>  $taxonomyIds
+     */
+    private function branchItems(string $kind, array $taxonomyIds): QueryBuilder
+    {
+        [$pivot, $column, $table, $translations] = self::BRANCH_KINDS[$kind];
+        $query = DB::table("{$pivot} as pv")
+            ->join("{$table} as it", 'it.id', '=', "pv.{$column}")
+            ->join('routes as r', "r.{$column}", '=', 'it.id')
+            ->join("{$translations} as tr", fn (JoinClause $join) => $join->on("tr.{$column}", '=', 'it.id')->on('tr.locale', '=', 'r.locale'))
+            ->where('pv.site_id', $this->site->id())
+            ->where('pv.position', 0)
+            ->whereIn('pv.taxonomy_id', $taxonomyIds)
+            ->where('it.status', 'published')
+            ->whereNull('it.deleted_at');
+        if ($kind === 'post') {
+            $query->where('it.type', 'post');
+        }
+
+        return $query;
     }
 
     /**
