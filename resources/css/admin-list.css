@@ -170,10 +170,13 @@
         min-height: var(--list-tap);
     }
 
+    /* The text sits centred in a box at least one target tall; a wrapped title grows by its lines only,
+       not by the target's spare height (the slot is plain text, so it stays one flex item). */
     .list-name {
         box-sizing: border-box;
+        display: flex;
+        align-items: center;
         min-height: var(--list-tap);
-        padding-block: max(0rem, calc((var(--list-tap) - var(--list-nlh)) / 2));
         font-size: var(--text-body);
         font-weight: 600;
         line-height: var(--list-nlh);

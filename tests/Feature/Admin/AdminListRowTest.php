@@ -210,7 +210,8 @@ it('draws the name link and the path button at the full target size, the table c
     // 44 everywhere by default: the visible box itself is the target, so nothing reaches over a neighbour
     expect($css)->toMatch('/\\.list-rows\\s*\\{[^}]*--list-tap: var\\(--spacing-hit\\);/')
         ->toMatch('/\\.list-tl\\s*\\{[^}]*min-height: var\\(--list-tap\\);/')
-        ->toMatch('/\\.list-name\\s*\\{[^}]*min-height: var\\(--list-tap\\);[^}]*padding-block: max\\(0rem, calc\\(\\(var\\(--list-tap\\) - var\\(--list-nlh\\)\\) \\/ 2\\)\\);/')
+        ->toMatch('/\\.list-name\\s*\\{[^}]*display: flex;\\s*align-items: center;\\s*min-height: var\\(--list-tap\\);/')
+        ->not->toMatch('/\\.list-name\\s*\\{[^}]*padding-block/')
         ->toMatch('/\\.list-path\\s*\\{[^}]*min-height: var\\(--list-tap\\);/')
         // the table takes the name-cell size (24 with a mouse at the default text size, 44 otherwise)
         ->and($table)->toMatch('/\\.list-r\\s*\\{\\s*--list-tap: var\\(--list-qe-s\\);\\s*\\}/');
