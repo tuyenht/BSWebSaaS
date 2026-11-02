@@ -13,7 +13,6 @@ use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\Tenancy;
-use App\Modules\Tenancy\Domains\DnsLookup;
 use App\Modules\Tenancy\Domains\DomainCheck;
 use App\Modules\Tenancy\Domains\DomainGroup;
 use App\Modules\Tenancy\Domains\DomainGroups;
@@ -42,6 +41,8 @@ use Throwable;
  * page for one site (`/sites/{ulid}/domains`). Every change goes through SiteDomains, which checks
  * who may make it and leaves the trail.
  *
+ *  - On the site's admin the site must be entitled to the `domains` module first (no page, no
+ *    link otherwise); the console is platform-wide.
  *  - Reading needs `domains.view` on the site (`platform.sites.view` on the console). Staff signed
  *    in for support may look; they never change a name — the controls stay visible and say why.
  *  - `domains` has no row-level security: every name the browser sends is looked up among the
@@ -84,17 +85,17 @@ final class Domains extends Component
     #[Locked]
     public array $panels = [];
 
-    /** @var array<string, string> how the owner points `@`, by name: move · ip */
+    /**
+     * @var array<string, string> how the owner points `@`, by name: move · ip. Read from the
+     *                            names' stored pointing method; a choice is stored when the reader
+     *                            may change the site's names, and kept on the screen only otherwise.
+     */
     #[Locked]
     public array $apex = [];
 
-    /** The server's address, looked up once when someone asks to point `@` by number. */
+    /** When the screen began looking again for a certificate on its way (unix time); null when none is. */
     #[Locked]
-    public ?string $serverIp = null;
-
-    /** @var array<string, bool> names whose HTTPS retry must wait (the 5-minute limit) */
-    #[Locked]
-    public array $retryLater = [];
+    public ?int $pollingSince = null;
 
     /** @var array<string, string> each name's state when the screen last drew it */
     #[Locked]
@@ -114,10 +115,17 @@ final class Domains extends Component
     #[Locked]
     public ?string $undoHost = null;
 
+    /** Counts the messages shown: a new one — even with the same words — starts its own timer. */
+    #[Locked]
+    public int $toastSeq = 0;
+
     private ?Site $consoleSite = null;
 
     /** This request's read of the site's names; every change goes through domains(), which drops it. */
     private ?DomainOverview $overviewMemo = null;
+
+    /** Whether the site may use its own domains at all, read once per request. */
+    private ?bool $entitledMemo = null;
 
     public function mount(?string $ulid = null): void
     {
@@ -125,6 +133,9 @@ final class Domains extends Component
             $this->siteUlid = $ulid;
             $this->authorizeView();
             $this->site();
+        } else {
+            // A site not entitled to its own domains has no such page (the link is not shown either).
+            abort_unless($this->entitled(), 403);
         }
 
         if (! $this->mayView()) {
@@ -139,10 +150,6 @@ final class Domains extends Component
             if ($group->byNumber) {
                 $this->apex[$group->name] = 'ip';
             }
-        }
-
-        if (in_array('ip', $this->apex, true)) {
-            $this->serverIp = $this->lookUpServerIp();
         }
     }
 
@@ -258,8 +265,8 @@ final class Domains extends Component
     public function check(string $name): void
     {
         $this->withGroup($name, function (DomainGroup $group): void {
-            if (in_array($group->state, ['wait', 'claim'], true)
-                && ! RateLimiter::attempt('domain-check:'.$this->siteId().':'.$group->name, 1, fn (): bool => true, 60)) {
+            // Every check asks DNS several times: one a minute per name, whatever its state.
+            if (! RateLimiter::attempt('domain-check:'.$this->siteId().':'.$group->name, 1, fn (): bool => true, 60)) {
                 $this->flash(__('admin.domains_toast_throttle'), 'error');
 
                 return;
@@ -280,12 +287,10 @@ final class Domains extends Component
                     throw $e;
                 }
 
-                $this->retryLater[$group->name] = true;
-
+                // The screen reads the wait from the limiter itself, so it survives a reload.
                 return;
             }
 
-            unset($this->retryLater[$group->name]);
             $this->seen[$group->name] = 'issuing';
         });
     }
@@ -324,9 +329,15 @@ final class Domains extends Component
                 return;
             }
 
-            $this->domains()->chooseRunningSpelling($this->user(), $group->alt, $this->site());
-            $this->flash(__('admin.domains_toast_www_switched', ['host' => DomainName::display($group->alt)]));
-            $this->toastUndo = true;
+            try {
+                $this->domains()->chooseRunningSpelling($this->user(), $group->alt, $this->site());
+            } catch (DomainChangeRejectedException $e) {
+                $this->flash($this->spellingRejection($e->getMessage(), $group->alt), 'error');
+
+                return;
+            }
+
+            $this->flash(__('admin.domains_toast_www_switched', ['host' => DomainName::display($group->alt)]), 'success', undo: true);
             $this->undoHost = $group->runs;
         });
     }
@@ -367,7 +378,13 @@ final class Domains extends Component
                 $this->domains()->makePrimary($actor, $group->runs, $site);
                 $this->flash(__('admin.domains_toast_primary_set', ['host' => DomainName::display($group->runs)]));
             } elseif ($kind === 'spelling' && $group->alt !== null) {
-                $this->domains()->chooseRunningSpelling($actor, $group->alt, $site);
+                try {
+                    $this->domains()->chooseRunningSpelling($actor, $group->alt, $site);
+                } catch (DomainChangeRejectedException $e) {
+                    $this->flash($this->spellingRejection($e->getMessage(), $group->alt), 'error');
+
+                    return;
+                }
                 $this->flash(__('admin.domains_toast_spelling_set', ['host' => DomainName::display($group->alt)]));
             } elseif ($kind === 'remove') {
                 $this->domains()->remove($actor, $group->runs, $site);
@@ -424,7 +441,11 @@ final class Domains extends Component
         $this->panels[$group->name] = ! $this->panelOpen($group);
     }
 
-    /** How to point `@` when the registrar cannot point it at a name: move · ip. */
+    /**
+     * How to point `@` when the registrar cannot point it at a name: move · ip. Stored on the name
+     * when the reader may change the site's names (it is who to warn before the server moves);
+     * anyone else who may look only sees the rows for it.
+     */
     public function pickApex(string $name, string $option): void
     {
         $this->authorizeView();
@@ -436,22 +457,27 @@ final class Domains extends Component
             return;
         }
 
-        if ($option === 'move') {
-            $this->apex[$group->name] = 'move';
-            $this->flash(__('admin.domains_point_moved_toast'), 'info');
-
-            return;
-        }
-
-        $this->serverIp ??= $this->lookUpServerIp();
-
-        if ($this->serverIp === null) {
+        if ($option === 'ip' && $this->serverIp() === null) {
             $this->flash(__('admin.domains_toast_ip_unknown'), 'error');
 
             return;
         }
 
-        $this->apex[$group->name] = 'ip';
+        if ($this->mayManage() && ! $this->supportActive()) {
+            try {
+                $this->domains()->choosePointing($this->user(), $group->runs, $option === 'ip' ? PointingMethod::ARecord : PointingMethod::Alias, $this->site());
+            } catch (DomainChangeRejectedException $e) {
+                $this->flash($this->rejectionMessage($e->getMessage()), 'error');
+
+                return;
+            }
+        }
+
+        $this->apex[$group->name] = $option;
+
+        if ($option === 'move') {
+            $this->flash(__('admin.domains_point_moved_toast'), 'info');
+        }
     }
 
     /** The browser copied a value (target · txt_name · txt_value) of a name, or could not. */
@@ -459,9 +485,12 @@ final class Domains extends Component
     {
         $this->authorizeView();
         $group = $this->find($name);
-        $labels = ['target' => 'admin.domains_copied_target', 'txt_name' => 'admin.domains_copied_txt_name', 'txt_value' => 'admin.domains_copied_txt_value'];
+        $labels = [
+            'target' => 'admin.domains_copied_target', 'txt_name' => 'admin.domains_copied_txt_name', 'txt_value' => 'admin.domains_copied_txt_value',
+            'txt2_name' => 'admin.domains_copied_txt2_name', 'txt2_value' => 'admin.domains_copied_txt2_value',
+        ];
 
-        if ($group === null || ! isset($labels[$what])) {
+        if ($group === null || ! isset($labels[$what]) || (str_starts_with($what, 'txt2_') && $group->alt === null)) {
             $this->notFound();
 
             return;
@@ -474,9 +503,12 @@ final class Domains extends Component
         }
 
         $proof = $this->proof($group);
+        $second = $group->alt !== null ? $this->proof($group, $group->alt) : $proof;
         $text = match ($what) {
             'txt_name' => $proof['name'],
             'txt_value' => $proof['value'],
+            'txt2_name' => $second['name'],
+            'txt2_value' => $second['value'],
             default => PointingRecords::target(),
         };
 
@@ -531,6 +563,7 @@ final class Domains extends Component
 
         $this->noticeChanges($overview);
         [$taken, $recovered] = $this->notices();
+        $poll = $this->pollEvery($overview);
         $manage = $this->mayManage();
         $site = $this->site();
 
@@ -550,8 +583,14 @@ final class Domains extends Component
                 array_map(fn (DomainGroup $g): string => $g->name, $overview->groups),
                 array_map(fn (DomainGroup $g): bool => $this->panelOpen($g), $overview->groups),
             ),
-            'records' => fn (DomainGroup $g): array => PointingRecords::for($g->runs, $g->alt, ($this->apex[$g->name] ?? null) === 'ip' ? $this->serverIp : null),
+            'records' => fn (DomainGroup $g): array => PointingRecords::for($g->runs, $g->alt, ($this->apex[$g->name] ?? null) === 'ip' ? $this->serverIp() : null),
             'proof' => fn (DomainGroup $g): array => $this->proof($g),
+            'twinProof' => fn (DomainGroup $g): ?array => $g->altClaim && $g->alt !== null ? $this->proof($g, $g->alt) : null,
+            'retryLater' => array_fill_keys(array_map(
+                fn (DomainGroup $g): string => $g->name,
+                array_filter($overview->groups, fn (DomainGroup $g): bool => $g->state === 'https_err' && SiteDomains::httpsMustWait($g->runs)),
+            ), true),
+            'poll' => $poll,
             'added' => $this->addStep === 2 && $this->addedName !== null ? $overview->find($this->addedName) : null,
             'confirmGroup' => $this->confirmName !== null ? $overview->find($this->confirmName) : null,
             'addPreview' => $this->addPreview(),
@@ -577,16 +616,27 @@ final class Domains extends Component
         }
 
         $twinVerified = $result->twin?->verified() === true;
+        // The other spelling is held by another site too: it needs its own TXT proof (per hostname).
+        $twinProof = $before->alt !== null && $result->twin?->status === 'needs_proof'
+            ? Cast::string(__('admin.domains_toast_twin_proof', ['alt' => DomainName::display($before->alt)]))
+            : null;
+        $live = $before->alt !== null && in_array($before->state, ['verified', 'issuing', 'https_err', 'active'], true);
 
-        $message = match (true) {
+        $message = Cast::string(match (true) {
+            $live && $twinProof !== null => $twinProof,
             $before->state === 'claim' => __('admin.domains_toast_claim_ok', ['name' => $name]),
             in_array($before->state, ['failing', 'expiring', 'lost'], true) => __('admin.domains_toast_recovered', ['name' => $name]),
-            $before->state === 'active' && $before->alt !== null && $twinVerified => __('admin.domains_toast_alt_pointed', ['alt' => DomainName::display($before->alt), 'run' => DomainName::display($before->runs)]),
+            $live && $twinVerified => __('admin.domains_toast_alt_pointed', ['alt' => DomainName::display((string) $before->alt), 'run' => DomainName::display($before->runs)]),
             $before->state === 'active' && $before->alt !== null => __('admin.domains_toast_not_pointed', ['name' => DomainName::display($before->alt)]),
             default => __('admin.domains_toast_verified', ['name' => $name]),
-        };
+        });
 
-        $this->flash($message, $before->state === 'active' && ! $twinVerified ? 'error' : 'success');
+        if (! $live && $twinProof !== null) {
+            $message .= ' '.$twinProof;
+        }
+
+        // A sentence the owner still has to act on stays until it is closed.
+        $this->flash($message, $twinProof !== null || ($before->state === 'active' && ! $twinVerified) ? 'error' : 'success');
     }
 
     /** A certificate that was on its way is on now: say so once. */
@@ -656,7 +706,13 @@ final class Domains extends Component
             return $platform->isSuperAdmin($user) || $platform->can($user, 'platform.sites.view');
         }
 
-        return Gate::forUser($user)->allows('domains.view');
+        return $this->entitled() && Gate::forUser($user)->allows('domains.view');
+    }
+
+    /** Entitlement before RBAC: the site may use its own domains at all (the console is platform-wide). */
+    private function entitled(): bool
+    {
+        return $this->entitledMemo ??= in_array('domains', app(Entitlement::class)->entitledModuleKeys(), true);
     }
 
     private function mayManage(): bool
@@ -756,15 +812,40 @@ final class Domains extends Component
     }
 
     /**
-     * The TXT record that proves a contested name is this site's.
+     * The TXT record that proves a contested spelling is this site's — the running one unless
+     * $host names the other: the proof is per hostname.
      *
      * @return array{name: string, value: string}
      */
-    private function proof(DomainGroup $group): array
+    private function proof(DomainGroup $group, ?string $host = null): array
     {
         $proof = app(OwnershipProof::class);
+        $host ??= $group->runs;
 
-        return ['name' => $proof->recordName($group->runs), 'value' => $proof->recordValue($this->siteId(), $group->runs)];
+        return ['name' => $proof->recordName($host), 'value' => $proof->recordValue($this->siteId(), $host)];
+    }
+
+    /**
+     * How often the screen looks again while a certificate is on its way: every 5 seconds for the
+     * first 3 minutes, every 30 seconds up to 30 minutes, then no more (the message stays; a reload
+     * starts again). Null when nothing is on its way.
+     */
+    private function pollEvery(DomainOverview $overview): ?string
+    {
+        if (! $overview->pending()) {
+            $this->pollingSince = null;
+
+            return null;
+        }
+
+        $this->pollingSince ??= now()->getTimestamp();
+        $waited = now()->getTimestamp() - $this->pollingSince;
+
+        return match (true) {
+            $waited < 180 => '5s',
+            $waited < 1800 => '30s',
+            default => null,
+        };
     }
 
     private function panelOpen(DomainGroup $group): bool
@@ -813,15 +894,9 @@ final class Domains extends Component
         return app(SiteDomains::class);
     }
 
-    private function lookUpServerIp(): ?string
+    private function serverIp(): ?string
     {
-        foreach (app(DnsLookup::class)->addresses(PointingRecords::target()) as $address) {
-            if (filter_var($address, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false) {
-                return $address;
-            }
-        }
-
-        return null;
+        return PointingRecords::serverIp();
     }
 
     private function platformHost(DomainOverview $overview): string
@@ -852,9 +927,9 @@ final class Domains extends Component
 
     // ── Words ────────────────────────────────────────────────────────────────
 
-    private function flash(string $message, string $tone = 'success'): void
+    private function flash(string $message, string $tone = 'success', bool $undo = false): void
     {
-        $this->fill(['toast' => $message, 'toastTone' => $tone, 'toastUndo' => false, 'undoHost' => null]);
+        $this->fill(['toast' => $message, 'toastTone' => $tone, 'toastUndo' => $undo, 'undoHost' => null, 'toastSeq' => $this->toastSeq + 1]);
     }
 
     private function notFound(): void
@@ -867,9 +942,20 @@ final class Domains extends Component
     {
         return match ($code) {
             'https_not_on', 'not_verified' => __('admin.domains_menu_primary_need_https'),
+            'redirect_only' => __('admin.domains_err_redirect_only'),
             'too_many_attempts' => __('admin.domains_https_err_ratelimit'),
             'platform_subdomain' => __('admin.domains_msg_platform'),
             default => __('admin.domains_err_not_found'),
+        };
+    }
+
+    /** Why the other spelling cannot run yet (it would take the main name's place). */
+    private function spellingRejection(string $code, string $alt): string
+    {
+        return match ($code) {
+            'not_verified' => __('admin.domains_spelling_need_pointed', ['alt' => DomainName::display($alt)]),
+            'https_not_on' => __('admin.domains_spelling_need_https', ['alt' => DomainName::display($alt)]),
+            default => $this->rejectionMessage($code),
         };
     }
 

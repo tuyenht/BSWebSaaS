@@ -47,4 +47,15 @@ final class PointingRecords
     {
         return Cast::string(config('tenancy.custom_domains.target'));
     }
+
+    /**
+     * The server's IPv4 address for pointing `@` by number: platform config, never looked up in
+     * DNS (a page that only draws must not ask DNS). Null when it is not configured.
+     */
+    public static function serverIp(): ?string
+    {
+        $ip = trim(Cast::string(config('tenancy.custom_domains.ip')));
+
+        return filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false ? $ip : null;
+    }
 }

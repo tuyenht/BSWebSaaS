@@ -9,6 +9,7 @@ use App\Modules\Provisioning\Console\PlatformPlanCommand;
 use App\Modules\Provisioning\Console\PromoteAnVinhProductPostsToCatalogCommand;
 use App\Modules\Provisioning\Console\ProvisionSiteCommand;
 use App\Modules\Provisioning\Console\RecheckDomainsCommand;
+use App\Modules\Provisioning\Console\RecheckWaitingDomainsCommand;
 use App\Modules\Provisioning\Console\ReflowSitePermalinksCommand;
 use App\Modules\Provisioning\Console\SeedAnVinhContentCommand;
 use App\Modules\Provisioning\Console\SiteDomainCommand;
@@ -36,6 +37,7 @@ final class ProvisioningServiceProvider extends ServiceProvider
                 PlatformPlanCommand::class,
                 SiteDomainCommand::class,
                 RecheckDomainsCommand::class,
+                RecheckWaitingDomainsCommand::class,
             ]);
         }
     }

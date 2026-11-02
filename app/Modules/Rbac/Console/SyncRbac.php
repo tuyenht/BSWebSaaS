@@ -7,6 +7,7 @@ use App\Modules\Rbac\Models\Permission;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -143,24 +144,27 @@ final class SyncRbac extends Command
     /**
      * Give every custom (non-system) role the permissions its own permissions imply and it lacks.
      * Only what IMPLIES derives from the role's current grants is added — never a template grant,
-     * never a revocation. Roles are read with their permissions in one eager load.
+     * never a revocation. Roles are read by keyset, 500 at a time, each chunk with its permissions
+     * in one eager load: every website's custom roles never sit in memory at once.
      */
     private function closeCustomRolesUnderImplies(): int
     {
         $granted = 0;
 
-        foreach (Role::query()->where('is_system', false)->with('permissions')->get() as $role) {
-            $current = array_values(array_map(
-                fn ($name): string => is_string($name) ? $name : '',
-                $role->permissions->pluck('name')->all(),
-            ));
-            $missing = array_values(array_diff(PermissionRegistry::withImplied($current), $current));
+        Role::query()->where('is_system', false)->with('permissions')->chunkById(500, function (Collection $roles) use (&$granted): void {
+            foreach ($roles as $role) {
+                $current = array_values(array_map(
+                    fn ($name): string => is_string($name) ? $name : '',
+                    $role->permissions->pluck('name')->all(),
+                ));
+                $missing = array_values(array_diff(PermissionRegistry::withImplied($current), $current));
 
-            if ($missing !== []) {
-                $role->givePermissionTo($missing);
-                $granted += count($missing);
+                if ($missing !== []) {
+                    $role->givePermissionTo($missing);
+                    $granted += count($missing);
+                }
             }
-        }
+        });
 
         return $granted;
     }

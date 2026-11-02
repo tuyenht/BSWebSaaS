@@ -37,13 +37,21 @@ beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
     DB::connection('pgsql_admin')->statement('truncate users, audit_logs, site_notifications restart identity cascade');
+    // Both sites may use their own domains (entitlement comes before any permission).
+    DB::connection('pgsql_admin')->table('site_modules')->insert([
+        ['site_id' => 1, 'module_key' => 'domains', 'enabled' => true, 'created_at' => now(), 'updated_at' => now()],
+        ['site_id' => 2, 'module_key' => 'domains', 'enabled' => true, 'created_at' => now(), 'updated_at' => now()],
+    ]);
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
     Cache::flush();
     foreach (['domain-help:1', 'domain-help:2', 'domain-https:tencongty.vn', 'domain-https:www.tencongty.vn'] as $key) {
         RateLimiter::clear($key);
     }
-    config(['tenancy.custom_domains.target' => 'target.platform.test', 'tenancy.base_domains' => ['platform.test']]);
+    config([
+        'tenancy.custom_domains.target' => 'target.platform.test', 'tenancy.base_domains' => ['platform.test'],
+        'tenancy.custom_domains.ip' => FakeDns::PLATFORM_IP,
+    ]);
     $this->dns = FakeDns::install();
     Queue::fake();
 });
@@ -373,16 +381,23 @@ it('turns HTTPS on, looks again while the certificate is on its way, and says wh
         ->assertDontSeeHtml('wire:poll.5s');
 });
 
-it('asks the certificate step to wait five minutes after a failed try', function (): void {
+it('asks the certificate step to wait five minutes after a failed try, also after a reload', function (): void {
     dsPair(1, 'tencongty.vn', ['verified_at' => now(), 'ssl_status' => 'failed', 'failure_reason' => 'points_elsewhere']);
-    RateLimiter::hit('domain-https:tencongty.vn', 300);
 
-    $screen = dsScreen(dsMember(1, 'owner'))
-        ->assertSee('Tên miền đang trỏ tới nơi khác. Xóa dòng trỏ cũ ở nơi quản lý tên miền rồi bấm Thử lại.');
+    dsScreen(dsMember(1, 'owner'))
+        ->assertSee('Tên miền đang trỏ tới nơi khác. Xóa dòng trỏ cũ ở nơi quản lý tên miền rồi bấm Thử lại.')
+        ->assertDontSee('Thử lại sau 5 phút');
+
+    RateLimiter::hit('domain-https:tencongty.vn', 300);
+    $screen = dsScreen(dsMember(1, 'owner'));
 
     dsIn(1, fn () => $screen->call('enableHttps', 'tencongty.vn'))
+        ->assertSee('Tên miền đang trỏ tới nơi khác. Xóa dòng trỏ cũ ở nơi quản lý tên miền rồi bấm Thử lại.')
         ->assertSee('Thử lại sau 5 phút')
         ->assertSee('Vừa thử nhiều lần — hãy thử lại sau 5 phút.');
+
+    // Read from the limiter itself: a fresh page says the same.
+    dsScreen(dsMember(1, 'owner'))->assertSee('Thử lại sau 5 phút')->assertSee('Vừa thử nhiều lần — hãy thử lại sau 5 phút.');
 });
 
 it('makes a live name the main one after a confirmation', function (): void {
@@ -466,6 +481,37 @@ it('shows the pointing rows, and the server address once the owner picks it for 
     dsIn(1, fn () => $screen->call('pickApex', 'tencongty.vn', 'ip'))
         ->assertSee(FakeDns::PLATFORM_IP)
         ->assertSee('Đang dùng tạm dãy số máy chủ cho dòng “@”.');
+
+    // Stored on both spellings (who to warn before the server moves), so a reload keeps it.
+    expect(dsRow('tencongty.vn')?->pointing_method)->toBe(PointingMethod::ARecord->value)
+        ->and(dsRow('www.tencongty.vn')?->pointing_method)->toBe(PointingMethod::ARecord->value)
+        ->and(dsTrail())->toBe(['tenancy.domain.pointing_changed']);
+    dsScreen(dsMember(1, 'owner'))->assertSee('Đang dùng tạm dãy số máy chủ cho dòng “@”.');
+
+    dsIn(1, fn () => $screen->call('pickApex', 'tencongty.vn', 'move'))->assertDontSee('Đang dùng tạm dãy số máy chủ cho dòng “@”.');
+    expect(dsRow('tencongty.vn')?->pointing_method)->toBe(PointingMethod::Alias->value);
+});
+
+it('shows the server address to a member who may only look, without storing their choice', function (): void {
+    dsPair(1, 'tencongty.vn');
+    $screen = dsScreen(dsMember(1, 'editor'));
+
+    dsIn(1, fn () => $screen->call('pickApex', 'tencongty.vn', 'ip'))->assertSee(FakeDns::PLATFORM_IP);
+
+    expect(dsRow('tencongty.vn')?->pointing_method)->toBeNull()->and(dsTrail())->toBe([]);
+});
+
+it('offers no server address when the platform has none configured, and never asks DNS for it', function (): void {
+    config(['tenancy.custom_domains.ip' => '']);
+    dsPair(1, 'tencongty.vn');
+    $screen = dsScreen(dsMember(1, 'owner'));
+    $this->dns->lookups = 0;
+
+    dsIn(1, fn () => $screen->call('pickApex', 'tencongty.vn', 'ip'))
+        ->assertSet('toast', 'Chưa có dãy số máy chủ để dùng cho dòng “@”. Hãy nhờ hỗ trợ trỏ giúp.')
+        ->assertDontSee('Đang dùng tạm dãy số máy chủ cho dòng “@”.');
+
+    expect($this->dns->lookups)->toBe(0)->and(dsRow('tencongty.vn')?->pointing_method)->toBeNull();
 });
 
 it('starts on the server address when the name was attached to point by number', function (): void {
@@ -524,18 +570,21 @@ it('reads the screen on a flat query budget and never asks DNS while drawing it'
     $this->artisan('site:feature', ['host' => 'a.test', 'feature' => 'custom_domains.max', 'value' => '5'])->assertSuccessful();
     $owner = dsMember(1, 'owner');
     dsPair(1, 'mot.vn');
+    // A name pointed by number draws the server's address too — from config, never from DNS.
+    dsPair(1, 'so.vn', ['pointing_method' => PointingMethod::ARecord->value]);
     $this->actingAs($owner)->get('http://a.test/admin/settings/domains')->assertOk(); // warm the per-process caches
     $this->dns->lookups = 0;
 
-    $one = countQueries(fn () => $this->actingAs($owner)->get('http://a.test/admin/settings/domains')->assertOk()->assertSee('mot.vn'));
+    $one = countQueries(fn () => $this->actingAs($owner)->get('http://a.test/admin/settings/domains')->assertOk()->assertSee('mot.vn')->assertSee(FakeDns::PLATFORM_IP));
 
     foreach (['hai.vn', 'ba.vn', 'bon.vn'] as $name) {
         dsPair(1, $name);
     }
     $four = countQueries(fn () => $this->actingAs($owner)->get('http://a.test/admin/settings/domains')->assertOk()->assertSee('bon.vn'));
 
-    // One read of the names, one yes/no on names served elsewhere, the notices — never one per name.
-    expect($one)->toBeLessThanOrEqual(12)
+    // One read of the names, one yes/no on names served elsewhere, the notices, the site's
+    // entitlement (asked by the page and again by the admin nav: 2 + 2) — never one per name.
+    expect($one)->toBeLessThanOrEqual(14)
         ->and($four)->toBe($one)
         ->and($this->dns->lookups)->toBe(0);
 });
@@ -572,4 +621,140 @@ it('lets platform staff who manage sites change a site\'s names, logged on that 
 
 it('keeps the console page off a website\'s own host', function (): void {
     $this->actingAs(dsMember(1, 'owner'))->get('http://a.test/sites/SITEA000000000000000000001/domains')->assertNotFound();
+});
+
+// ── Both spellings held by another site: one proof per spelling ─────────────
+
+it('shows a second TXT pair for the other spelling when another site holds both, in the list and the add dialog', function (): void {
+    dsLive(2, 'tranh-chap.vn', primary: true);
+    $proof = app(OwnershipProof::class);
+    $screen = dsScreen(dsMember(1, 'owner'));
+
+    dsIn(1, fn () => $screen->call('openAdd')->set('addName', 'tranh-chap.vn')->call('submitAdd'))
+        ->assertSee($proof->recordName('tranh-chap.vn'))
+        ->assertSee($proof->recordValue(1, 'tranh-chap.vn'))
+        ->assertSee($proof->recordName('www.tranh-chap.vn'))
+        ->assertSee($proof->recordValue(1, 'www.tranh-chap.vn'))
+        ->assertSee('www.tranh-chap.vn cũng đang gắn ở website kia, nên cần thêm dòng thứ hai này cho cách viết đó. Thêm đủ cả hai dòng rồi mới bấm “Kiểm tra”.');
+
+    dsIn(1, fn () => $screen->call('closeAdd'))
+        ->assertSee($proof->recordValue(1, 'www.tranh-chap.vn'))
+        ->assertSee('Thêm đủ cả hai dòng rồi mới bấm “Kiểm tra”.');
+
+    dsIn(1, fn () => $screen->call('copied', 'txt2_value', 'tranh-chap.vn'))
+        ->assertSet('toast', 'Đã sao chép giá trị dòng xác minh thứ hai.');
+    dsIn(1, fn () => $screen->call('copied', 'txt2_name', 'tranh-chap.vn', false))
+        ->assertSet('toast', 'Chưa sao chép được — bôi đen rồi chép tay: '.$proof->recordName('www.tranh-chap.vn'));
+});
+
+it('shows one TXT pair only when the other spelling is free', function (): void {
+    DB::connection('pgsql_admin')->table('domains')->insert([
+        'site_id' => 2, 'hostname' => 'tranh-chap.vn', 'kind' => 'custom', 'is_primary' => false, 'is_redirect' => false,
+        'verified_at' => now(), 'created_at' => now(), 'updated_at' => now(),
+    ]);
+    dsPair(1, 'tranh-chap.vn');
+
+    dsScreen(dsMember(1, 'owner'))
+        ->assertSee(app(OwnershipProof::class)->recordValue(1, 'tranh-chap.vn'))
+        ->assertDontSee(app(OwnershipProof::class)->recordValue(1, 'www.tranh-chap.vn'))
+        ->assertDontSee('Thêm đủ cả hai dòng');
+});
+
+it('verifies each spelling by its own proof, and says when the other one still needs its line', function (): void {
+    dsLive(2, 'tranh-chap.vn', primary: true);
+    dsPair(1, 'tranh-chap.vn', ['failure_reason' => 'needs_proof'], ['failure_reason' => 'needs_proof']);
+    $this->dns->pointHere('tranh-chap.vn', 'www.tranh-chap.vn');
+    $proof = app(OwnershipProof::class);
+    $this->dns->txt['_site-verification.tranh-chap.vn'] = [$proof->recordValue(1, 'tranh-chap.vn')];
+
+    $screen = dsScreen(dsMember(1, 'owner'));
+
+    dsIn(1, fn () => $screen->call('check', 'tranh-chap.vn'))
+        ->assertSet('toast', 'Đã xác minh bạn là chủ tranh-chap.vn. Website kia đã nhận thông báo. Việc tiếp theo: bật kết nối bảo mật. Còn www.tranh-chap.vn chưa xác minh: cách viết đó cũng đang gắn ở website khác, cần thêm dòng xác minh thứ hai cho nó rồi bấm Kiểm tra lại.')
+        ->assertSet('toastTone', 'error')
+        // Only the other spelling's pair is left, with a way to check it again.
+        ->assertDontSee($proof->recordValue(1, 'tranh-chap.vn'))
+        ->assertSee($proof->recordValue(1, 'www.tranh-chap.vn'))
+        ->assertSee('www.tranh-chap.vn đang gắn ở website khác, nên cách viết đó cần dòng xác minh riêng dưới đây.')
+        ->assertSee('Kiểm tra lại');
+
+    expect(dsRow('tranh-chap.vn')?->verified_at)->not->toBeNull()
+        ->and(dsRow('www.tranh-chap.vn')?->verified_at)->toBeNull()
+        ->and(dsHosts(2))->toBe(['b.test', 'www.tranh-chap.vn']);
+
+    $this->dns->txt['_site-verification.www.tranh-chap.vn'] = [$proof->recordValue(1, 'www.tranh-chap.vn')];
+    RateLimiter::clear('domain-check:1:tranh-chap.vn');
+
+    dsIn(1, fn () => $screen->call('check', 'tranh-chap.vn'))
+        ->assertSet('toast', 'www.tranh-chap.vn đã trỏ về hệ thống và tự chuyển về tranh-chap.vn.')
+        ->assertDontSee($proof->recordValue(1, 'www.tranh-chap.vn'));
+
+    expect(dsHosts(2))->toBe(['b.test']);
+});
+
+// ── Checks, spelling, polling ───────────────────────────────────────────────
+
+it('holds a second check for a minute whatever the name\'s state', function (): void {
+    dsPair(1, 'tencongty.vn', ['verified_at' => now(), 'ssl_status' => 'active'], []);
+    $screen = dsScreen(dsMember(1, 'owner'));
+    $this->dns->pointHere('tencongty.vn');
+
+    dsIn(1, fn () => $screen->call('check', 'tencongty.vn'))->assertSet('toast', 'Chưa thấy www.tencongty.vn trỏ về hệ thống. Nơi quản lý tên miền có thể cần thêm thời gian — hệ thống tự kiểm lại mỗi 15 phút.');
+    $this->dns->lookups = 0;
+
+    dsIn(1, fn () => $screen->call('check', 'tencongty.vn'))
+        ->assertSet('toast', 'Vừa kiểm tra — thử lại sau ít phút. Hệ thống vẫn tự kiểm lại mỗi 15 phút.');
+    expect($this->dns->lookups)->toBe(0);
+});
+
+it('says why the main name cannot run at its other spelling yet, in the menu and when asked', function (?string $twinSsl, bool $twinVerified, string $why): void {
+    DB::connection('pgsql_admin')->table('domains')->where('hostname', 'a.test')->update(['is_primary' => false]);
+    dsPair(1, 'tencongty.vn', ['verified_at' => now(), 'ssl_status' => 'active', 'is_primary' => true],
+        ['verified_at' => $twinVerified ? now() : null, 'ssl_status' => $twinSsl]);
+    $screen = dsScreen(dsMember(1, 'owner'))->assertSee($why);
+
+    dsIn(1, fn () => $screen->call('switchSpelling', 'tencongty.vn'))->assertSet('confirm', 'spelling');
+    dsIn(1, fn () => $screen->call('confirmOk'))->assertSet('toast', $why)->assertSet('toastTone', 'error');
+
+    expect(dsRow('tencongty.vn')?->is_primary)->toBeTrue();
+})->with([
+    'not pointed' => [null, false, 'Chưa chạy được ở www.tencongty.vn: cách viết này chưa trỏ về hệ thống. Trỏ xong rồi thử lại.'],
+    'no HTTPS' => ['failed', true, 'Chưa chạy được ở www.tencongty.vn: cách viết này chưa bật kết nối bảo mật.'],
+]);
+
+it('looks again for a certificate every 5 seconds at first, then every 30, then stops', function (): void {
+    dsPair(1, 'tencongty.vn', ['verified_at' => now(), 'ssl_status' => 'pending'], ['verified_at' => now(), 'ssl_status' => 'pending']);
+    $screen = dsScreen(dsMember(1, 'owner'))->assertSeeHtml('wire:poll.5s');
+
+    $this->travel(5)->minutes();
+    dsIn(1, fn () => $screen->call('$refresh'))->assertSeeHtml('wire:poll.30s');
+
+    $this->travel(30)->minutes();
+    dsIn(1, fn () => $screen->call('$refresh'))->assertDontSeeHtml('wire:poll')->assertSee('Đang bật kết nối bảo mật');
+});
+
+// ── Messages ────────────────────────────────────────────────────────────────
+
+it('hides a success message after 6 seconds, an undo after 10, and keeps an error until it is closed', function (): void {
+    dsLive(1, 'tencongty.vn');
+    dsPair(1, 'cho.vn');
+    $screen = dsScreen(dsMember(1, 'owner'));
+
+    dsIn(1, fn () => $screen->call('copied', 'target', 'cho.vn'))->assertSeeHtml('(), 6000) }, destroy() { clearTimeout(this.timer) }');
+    dsIn(1, fn () => $screen->call('switchSpelling', 'tencongty.vn'))->assertSeeHtml('(), 10000) }');
+    dsIn(1, fn () => $screen->call('check', 'cho.vn'))->assertSet('toastTone', 'error')->assertDontSeeHtml('setTimeout(');
+
+    // The same words again are a new message, with a timer of their own.
+    $first = dsIn(1, fn () => $screen->call('copied', 'target', 'cho.vn'))->get('toastSeq');
+    expect(dsIn(1, fn () => $screen->call('copied', 'target', 'cho.vn'))->get('toastSeq'))->toBe($first + 1);
+});
+
+// ── Entitlement before permission ───────────────────────────────────────────
+
+it('has no Domains page or link on a site not entitled to its own domains', function (): void {
+    DB::connection('pgsql_admin')->table('site_modules')->where('site_id', 1)->delete();
+    $owner = dsMember(1, 'owner');
+
+    $this->actingAs($owner)->get('http://a.test/admin/settings/domains')->assertForbidden();
+    $this->actingAs($owner)->get('http://a.test/admin/settings/security')->assertOk()->assertDontSee('/admin/settings/domains');
 });

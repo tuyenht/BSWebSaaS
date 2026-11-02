@@ -20,6 +20,10 @@ use Carbon\CarbonImmutable;
  *   failing    live, but no longer pointed here (`until` is when it stops being served);
  *   expiring   failing, with a week or less left (`daysLeft`);
  *   lost       stopped being served after a month of failing; checking it again brings it back.
+ *
+ * The other spelling has its own state too: `altVerified` (it points here and is this site's),
+ * `altHttps` (its certificate is on) and `altClaim` (another site holds it as well, so it needs its
+ * own TXT proof — the proof is per hostname, whatever the running spelling's state).
  */
 final readonly class DomainGroup
 {
@@ -36,6 +40,9 @@ final readonly class DomainGroup
         public ?CarbonImmutable $until = null,
         public ?string $httpsError = null,
         public bool $byNumber = false,
+        public bool $altVerified = false,
+        public bool $altHttps = false,
+        public bool $altClaim = false,
     ) {}
 
     /** The `www.` spelling runs. */

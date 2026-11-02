@@ -13,10 +13,31 @@ use App\Modules\Tenancy\Exceptions\DomainChangeRejectedException;
  */
 final class DomainName
 {
-    /** Endings sold as one: a name under them is registered at the third label (`tencongty.com.vn`). */
+    /**
+     * Endings sold as one: a name under them is registered at the third label (`tencongty.com.vn`,
+     * `shop.hanoi.vn`). Vietnam's whole list (the generic ones and each province's), and the
+     * common ones elsewhere; any other country ending whose second label is a generic one
+     * (GENERIC_SECOND_LABELS: `co.jp`, `com.br`…) counts too.
+     */
     private const array TWO_LABEL_ENDINGS = [
         'com.vn', 'net.vn', 'org.vn', 'edu.vn', 'gov.vn', 'biz.vn', 'info.vn', 'name.vn', 'pro.vn',
-        'health.vn', 'ac.vn', 'int.vn', 'id.vn', 'io.vn', 'co.uk', 'org.uk', 'com.au', 'com.sg',
+        'health.vn', 'ac.vn', 'int.vn', 'id.vn', 'io.vn', 'ai.vn',
+        'angiang.vn', 'bacgiang.vn', 'backan.vn', 'baclieu.vn', 'bacninh.vn', 'baria-vungtau.vn', 'bentre.vn',
+        'binhdinh.vn', 'binhduong.vn', 'binhphuoc.vn', 'binhthuan.vn', 'camau.vn', 'cantho.vn', 'caobang.vn',
+        'daklak.vn', 'daknong.vn', 'danang.vn', 'dienbien.vn', 'dongnai.vn', 'dongthap.vn', 'gialai.vn',
+        'hagiang.vn', 'haiduong.vn', 'haiphong.vn', 'hanam.vn', 'hanoi.vn', 'hatinh.vn', 'haugiang.vn',
+        'hoabinh.vn', 'hungyen.vn', 'khanhhoa.vn', 'kiengiang.vn', 'kontum.vn', 'laichau.vn', 'lamdong.vn',
+        'langson.vn', 'laocai.vn', 'longan.vn', 'namdinh.vn', 'nghean.vn', 'ninhbinh.vn', 'ninhthuan.vn',
+        'phutho.vn', 'phuyen.vn', 'quangbinh.vn', 'quangnam.vn', 'quangngai.vn', 'quangninh.vn', 'quangtri.vn',
+        'soctrang.vn', 'sonla.vn', 'tayninh.vn', 'thaibinh.vn', 'thainguyen.vn', 'thanhhoa.vn',
+        'thanhphohochiminh.vn', 'hochiminh.vn', 'thuathienhue.vn', 'tiengiang.vn', 'travinh.vn', 'tuyenquang.vn',
+        'vinhlong.vn', 'vinhphuc.vn', 'yenbai.vn',
+        'co.uk', 'org.uk', 'me.uk', 'ltd.uk', 'plc.uk',
+    ];
+
+    /** Second labels that, under a two-letter country ending, are sold as part of the ending. */
+    private const array GENERIC_SECOND_LABELS = [
+        'com', 'net', 'org', 'edu', 'gov', 'co', 'ne', 'or', 'ac', 'biz', 'info', 'ltd', 'plc', 'gen', 'nom',
     ];
 
     /**
@@ -158,8 +179,11 @@ final class DomainName
             return $host;
         }
 
-        $ending = $labels[$count - 2].'.'.$labels[$count - 1];
-        $keep = in_array($ending, self::TWO_LABEL_ENDINGS, true) ? 3 : 2;
+        $second = $labels[$count - 2];
+        $top = $labels[$count - 1];
+        $twoLabel = in_array($second.'.'.$top, self::TWO_LABEL_ENDINGS, true)
+            || (strlen($top) === 2 && in_array($second, self::GENERIC_SECOND_LABELS, true));
+        $keep = $twoLabel ? 3 : 2;
 
         return implode('.', array_slice($labels, -$keep));
     }

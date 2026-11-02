@@ -139,7 +139,37 @@ it('writes the DNS rows under the registered name', function (string $runs, ?str
     ['tencongty.vn', 'www.tencongty.vn', ['@', 'www']],
     ['www.tencongty.com.vn', 'tencongty.com.vn', ['www', '@']],
     ['shop.khuyen-mai.tencongty.com.vn', 'www.shop.khuyen-mai.tencongty.com.vn', ['shop.khuyen-mai', 'www.shop.khuyen-mai']],
+    // A province's ending, and the generic second labels of other countries.
+    ['tencongty.hanoi.vn', 'www.tencongty.hanoi.vn', ['@', 'www']],
+    ['shop.co.jp', 'www.shop.co.jp', ['@', 'www']],
+    ['x.com.br', 'www.x.com.br', ['@', 'www']],
+    ['blog.tencongty.com.br', 'www.blog.tencongty.com.br', ['blog', 'www.blog']],
+    // Not a generic label: the name under a plain country ending.
+    ['shop.tencongty.de', 'www.shop.tencongty.de', ['shop', 'www.shop']],
 ]);
+
+it('says when the other spelling is held by another site too, and needs its own proof', function (): void {
+    dgPair(2, 'tranh-chap.vn', ['verified_at' => '2026-10-01', 'ssl_status' => 'active'], ['verified_at' => '2026-10-01']);
+    dgPair(1, 'tranh-chap.vn');
+    // Only the running spelling held elsewhere: the other is free.
+    DB::connection('pgsql_admin')->table('domains')->insert([
+        'site_id' => 2, 'hostname' => 'mot-nua.vn', 'kind' => 'custom', 'is_primary' => false, 'is_redirect' => false,
+        'verified_at' => '2026-10-01', 'created_at' => now(), 'updated_at' => now(),
+    ]);
+    dgPair(1, 'mot-nua.vn');
+    // Live here, its other spelling found claimed by a check.
+    dgPair(1, 'song.vn', ['verified_at' => '2026-10-01', 'ssl_status' => 'active'], ['failure_reason' => 'needs_proof']);
+
+    $groups = dgGroups();
+
+    expect($groups['tranh-chap.vn']->state)->toBe('claim')
+        ->and($groups['tranh-chap.vn']->altClaim)->toBeTrue()
+        ->and($groups['mot-nua.vn']->state)->toBe('claim')
+        ->and($groups['mot-nua.vn']->altClaim)->toBeFalse()
+        ->and($groups['song.vn']->state)->toBe('active')
+        ->and($groups['song.vn']->altClaim)->toBeTrue()
+        ->and($groups['song.vn']->altVerified)->toBeFalse();
+});
 
 it('points only the registered name by number when the owner chose the server address', function (): void {
     $records = PointingRecords::for('tencongty.vn', 'www.tencongty.vn', '203.0.113.10');

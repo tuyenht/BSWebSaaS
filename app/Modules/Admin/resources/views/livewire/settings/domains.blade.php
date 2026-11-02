@@ -27,7 +27,7 @@
     ];
     $glyph = 'size-[calc(1rem+var(--user-text-boost))] shrink-0';
 @endphp
-<div class="@container" @if ($allowed && ! ($failed ?? false) && $overview->pending()) wire:poll.5s @endif>
+<div class="@container" @if ($allowed && ! ($failed ?? false) && ($poll ?? null) !== null) wire:poll.{{ $poll }} @endif>
     <div class="flex max-w-295 flex-col gap-3.5">
         {{-- Breadcrumb, title, description --}}
         <div class="min-w-0">
@@ -130,7 +130,7 @@
                     @php
                         $name = $display($g->name);
                         $retry = ($retryLater[$g->name] ?? false) === true;
-                        $err = $retry ? 'ratelimit' : ($g->httpsError ?? 'notpointed');
+                        $err = $g->httpsError ?? 'notpointed';
                         $next = null;
                         if (! $g->platform && $manage) {
                             $next = match ($g->state) {
@@ -148,7 +148,7 @@
                             $g->state === 'claim' => [__('admin.domains_msg_claim'), null, 'warn', null],
                             $g->state === 'verified' => [__('admin.domains_msg_verified'), null, 'info', null],
                             $g->state === 'issuing' => [__('admin.domains_msg_issuing'), null, 'info', null],
-                            $g->state === 'https_err' => [__('admin.domains_https_err_'.$err), null, 'danger', __('admin.domains_https_err_'.$err.'_adv')],
+                            $g->state === 'https_err' => [__('admin.domains_https_err_'.$err), $retry ? __('admin.domains_https_err_ratelimit') : null, 'danger', __('admin.domains_https_err_'.$err.'_adv')],
                             $g->state === 'failing' => [__('admin.domains_msg_failing', ['date' => $g->until?->format('d/m/Y')]), $g->primary ? __('admin.domains_msg_failing_primary') : null, 'danger', null],
                             $g->state === 'expiring' => [__('admin.domains_msg_expiring', ['n' => $g->daysLeft, 'date' => $g->until?->format('d/m/Y')]), __('admin.domains_msg_expiring_fix'), 'danger', null],
                             $g->state === 'lost' => [__('admin.domains_msg_lost'), null, 'danger', null],
@@ -206,14 +206,23 @@
                                         <x-bs-admin::list.menu-item icon="ri-table" wire:click="togglePanel({{ Js::from($g->name) }})">{{ ($open[$g->name] ?? false) ? __('admin.domains_menu_hide_table') : __('admin.domains_menu_show_table') }}</x-bs-admin::list.menu-item>
                                         @if ($manage)
                                             @php $lockWhy = $locked ? __('admin.domains_locked') : null; @endphp
-                                            @if ($g->state === 'active' && $g->altOptional)
+                                            @if ($g->altOptional && ! $g->checkable())
                                                 <x-bs-admin::list.menu-item icon="ri-radar" :why="$lockWhy" wire:click="check({{ Js::from($g->name) }})">{{ __('admin.domains_next_recheck') }}</x-bs-admin::list.menu-item>
                                             @endif
                                             @if (! $g->primary && $g->state !== 'active')
                                                 <x-bs-admin::list.menu-item icon="ri-star" :why="$lockWhy ?? __('admin.domains_menu_primary_need_https')" wire:click="askPrimary({{ Js::from($g->name) }})">{{ __('admin.domains_next_primary') }}</x-bs-admin::list.menu-item>
                                             @endif
                                             @if ($g->alt !== null)
-                                                <x-bs-admin::list.menu-item icon="ri-arrow-left-right" :why="$lockWhy" wire:click="switchSpelling({{ Js::from($g->name) }})">{{ $g->www() ? __('admin.domains_menu_www_off') : __('admin.domains_menu_www_on', ['name' => $display($g->name)]) }}</x-bs-admin::list.menu-item>
+                                                @php
+                                                    // The main name's other spelling takes its place: it must answer visitors already.
+                                                    $spellWhy = $lockWhy ?? match (true) {
+                                                        ! $g->primary => null,
+                                                        ! $g->altVerified => __('admin.domains_spelling_need_pointed', ['alt' => $display($g->alt)]),
+                                                        ! $g->altHttps => __('admin.domains_spelling_need_https', ['alt' => $display($g->alt)]),
+                                                        default => null,
+                                                    };
+                                                @endphp
+                                                <x-bs-admin::list.menu-item icon="ri-arrow-left-right" :why="$spellWhy" wire:click="switchSpelling({{ Js::from($g->name) }})">{{ $g->www() ? __('admin.domains_menu_www_off') : __('admin.domains_menu_www_on', ['name' => $display($g->name)]) }}</x-bs-admin::list.menu-item>
                                             @endif
                                             <x-bs-admin::list.menu-sep />
                                             <x-bs-admin::list.menu-item icon="ri-delete-bin" danger :why="$lockWhy" wire:click="askRemove({{ Js::from($g->name) }})">{{ __('admin.domains_menu_remove') }}</x-bs-admin::list.menu-item>
@@ -258,8 +267,8 @@
                             </div>
                         </div>
 
-                        @if ($g->state === 'claim')
-                            @include('admin::livewire.settings.domains.proof', ['group' => $g, 'proof' => $proof($g), 'dialog' => false])
+                        @if ($g->state === 'claim' || $g->altClaim)
+                            @include('admin::livewire.settings.domains.proof', ['group' => $g, 'proof' => $proof($g), 'twinProof' => $twinProof($g), 'dialog' => false])
                         @endif
                         @if ($open[$g->name] ?? false)
                             @include('admin::livewire.settings.domains.pointing', ['group' => $g, 'records' => $records($g), 'apex' => $apex[$g->name] ?? null, 'dialog' => false])
@@ -303,9 +312,12 @@
                             {{ $added->state === 'claim' ? __('admin.domains_dlg_added_claim', ['name' => $display($added->name)]) : __('admin.domains_dlg_added', ['name' => $display($added->name)]) }}
                         </x-bs-admin::alert>
                         @if ($added->state === 'claim')
-                            @include('admin::livewire.settings.domains.proof', ['group' => $added, 'proof' => $proof($added), 'dialog' => true])
+                            @include('admin::livewire.settings.domains.proof', ['group' => $added, 'proof' => $proof($added), 'twinProof' => $twinProof($added), 'dialog' => true])
                         @else
                             @include('admin::livewire.settings.domains.pointing', ['group' => $added, 'records' => $records($added), 'apex' => null, 'dialog' => true])
+                            @if ($added->altClaim)
+                                @include('admin::livewire.settings.domains.proof', ['group' => $added, 'proof' => $proof($added), 'twinProof' => $twinProof($added), 'dialog' => true])
+                            @endif
                         @endif
                         <span class="text-small text-text-muted">{{ __('admin.domains_dlg_check_foot') }}</span>
                     @endif
@@ -366,5 +378,5 @@
         @endif
     </div>
 
-    <x-bs-admin::toast :message="$toast" :tone="$toastTone" dismiss="dismissToast" :undo="$toastUndo ? 'undo' : null" />
+    <x-bs-admin::toast :message="$toast" :tone="$toastTone" dismiss="dismissToast" :undo="$toastUndo ? 'undo' : null" :seq="$toastSeq" />
 </div>

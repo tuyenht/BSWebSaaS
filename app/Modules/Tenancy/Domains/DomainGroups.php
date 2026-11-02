@@ -95,6 +95,9 @@ final readonly class DomainGroups
             until: in_array($state, ['failing', 'expiring'], true) ? $until : null,
             httpsError: $state === 'https_err' ? self::httpsError($runs->failure_reason) : null,
             byNumber: $runs->pointing_method === PointingMethod::ARecord->value,
+            altVerified: $alt?->verified_at !== null,
+            altHttps: $alt?->verified_at !== null && $alt->ssl_status === 'active',
+            altClaim: $alt !== null && self::contested($alt, $heldElsewhere),
         );
     }
 
@@ -106,7 +109,7 @@ final readonly class DomainGroups
                 return 'lost';
             }
 
-            return $runs->failure_reason === 'needs_proof' || isset($heldElsewhere[$runs->hostname]) ? 'claim' : 'wait';
+            return self::contested($runs, $heldElsewhere) ? 'claim' : 'wait';
         }
 
         if ($runs->failing_since !== null) {
@@ -122,8 +125,20 @@ final readonly class DomainGroups
     }
 
     /**
-     * The waiting names of this site another site already serves — read as a yes or no per
-     * name, through the index on verified hostnames.
+     * A spelling that never went live here, and another site holds: a check found it claimed
+     * elsewhere, or another site serves it.
+     *
+     * @param  array<string, true>  $heldElsewhere
+     */
+    private static function contested(Domain $row, array $heldElsewhere): bool
+    {
+        return $row->verified_at === null && $row->failing_since === null
+            && ($row->failure_reason === 'needs_proof' || isset($heldElsewhere[$row->hostname]));
+    }
+
+    /**
+     * The waiting spellings of this site another site already serves — both spellings of each
+     * name, read as a yes or no per hostname in one query, through the index on verified hostnames.
      *
      * @param  Collection<string, Collection<int, Domain>>  $pairs
      * @return array<string, true>
@@ -133,7 +148,7 @@ final readonly class DomainGroups
         $waiting = [];
         foreach ($pairs as $rows) {
             foreach ($rows as $row) {
-                if (! $row->is_redirect && $row->verified_at === null && $row->failing_since === null && $row->failure_reason !== 'needs_proof') {
+                if ($row->verified_at === null && $row->failing_since === null && $row->failure_reason !== 'needs_proof') {
                     $waiting[] = $row->hostname;
                 }
             }

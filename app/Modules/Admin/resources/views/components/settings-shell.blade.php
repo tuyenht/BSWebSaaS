@@ -40,8 +40,13 @@
                 $workspace[] = ['key' => 'workflow', 'route' => 'admin.settings.workflows', 'label' => __('admin.workflow_settings')];
             }
         }
-        // Domains are readable with domains.view alone (changes need domains.manage on the page).
-        if (Route::has('admin.settings.domains') && \Illuminate\Support\Facades\Gate::allows('domains.view')) {
+        // Domains are readable with domains.view alone (changes need domains.manage on the page),
+        // on a site entitled to its own domains — entitlement before RBAC, as the admin nav does.
+        // The Domains page itself refuses a site that is not entitled, so there it is not asked twice.
+        if (Route::has('admin.settings.domains')
+            && (request()->routeIs('admin.settings.domains')
+                || in_array('domains', app(\App\Modules\Tenancy\Entitlement\Entitlement::class)->entitledModuleKeys(), true))
+            && \Illuminate\Support\Facades\Gate::allows('domains.view')) {
             $workspace[] = ['key' => 'domains', 'route' => 'admin.settings.domains', 'label' => __('admin.domains')];
         }
         if ($workspace !== []) {

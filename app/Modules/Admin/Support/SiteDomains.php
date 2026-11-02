@@ -12,6 +12,7 @@ use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Actions\AttachDomain;
 use App\Modules\Tenancy\Actions\CheckDomain;
+use App\Modules\Tenancy\Actions\ChoosePointingMethod;
 use App\Modules\Tenancy\Actions\ChooseRunningSpelling;
 use App\Modules\Tenancy\Actions\EnableHttps;
 use App\Modules\Tenancy\Actions\RemoveDomain;
@@ -132,6 +133,15 @@ final readonly class SiteDomains
     }
 
     /**
+     * Whether a request for HTTPS on $host was made a moment ago, so the screen can say "try again
+     * later" even after a reload. A cache read; changes nothing.
+     */
+    public static function httpsMustWait(string $host): bool
+    {
+        return EnableHttps::mustWait($host);
+    }
+
+    /**
      * @throws AuthorizationException
      * @throws DomainChangeRejectedException invalid · not_found · not_verified · redirect_only · https_not_on
      */
@@ -160,6 +170,25 @@ final readonly class SiteDomains
             $this->audit($actor, $siteId, 'tenancy.domain.spelling_changed', ['runs' => $row->hostname]);
 
             return $row;
+        });
+    }
+
+    /**
+     * How the owner points `@`: by name, or by the server's address (the names to warn before the
+     * server moves). Only a real change leaves a trail.
+     *
+     * @throws AuthorizationException
+     * @throws DomainChangeRejectedException invalid · not_found
+     */
+    public function choosePointing(User $actor, string $domain, PointingMethod $method, ?Site $site = null): void
+    {
+        $this->within($actor, $site, function (int $siteId) use ($actor, $domain, $method): void {
+            if (app(ChoosePointingMethod::class)->handle($domain, $method)) {
+                $this->audit($actor, $siteId, 'tenancy.domain.pointing_changed', [
+                    'hostname' => DomainName::pairKey(DomainName::parse($domain)),
+                    'pointing' => $method->value,
+                ]);
+            }
         });
     }
 
@@ -205,7 +234,8 @@ final readonly class SiteDomains
 
             $records = array_map(
                 fn (array $record): array => ['label' => $record['label'], 'kind' => $record['kind'] === 'ip' ? 'A' : 'CNAME', 'target' => $record['target']],
-                PointingRecords::for($group->runs, $group->alt),
+                // The rows the owner sees: `@` by the server's address when they chose to point it so.
+                PointingRecords::for($group->runs, $group->alt, $group->byNumber ? PointingRecords::serverIp() : null),
             );
             $mailbox = Cast::string(config('support.mailbox')) ?: Cast::string(config('mail.from.address'));
 
