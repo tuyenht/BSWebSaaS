@@ -363,7 +363,7 @@ jobs:
             --no-interaction
 
       # The richer storefront looks on real pages: /do-kiem (slider, card grids, contact cards)
-      # and /tin-tuc as a news card grid with child-category chips. The photos are the licensed
+      # and /ban-tin, a news card grid with child-category chips. The photos are the licensed
       # fixtures in tests/Fixtures/cwv, served from this origin by the static media driver (the
       # serving steps below set MEDIA_DRIVER/MEDIA_CF_BASE; a media host equal to the site's host
       # would make provisioning refuse the name, so it is not set job-wide).
@@ -481,7 +481,7 @@ jobs:
       # fixed de81d6b), clean on every run since. A WCAG2A/AA violation fails the job (--exit).
       - name: axe accessibility scan
         run: >-
-          pnpm exec axe "http://${CWV_HOST}:${CWV_PORT}/" "http://${CWV_HOST}:${CWV_PORT}/lien-he" "http://${CWV_HOST}:${CWV_PORT}/tin-tuc" "http://${CWV_HOST}:${CWV_PORT}/do-kiem"
+          pnpm exec axe "http://${CWV_HOST}:${CWV_PORT}/" "http://${CWV_HOST}:${CWV_PORT}/lien-he" "http://${CWV_HOST}:${CWV_PORT}/tin-tuc" "http://${CWV_HOST}:${CWV_PORT}/do-kiem" "http://${CWV_HOST}:${CWV_PORT}/ban-tin"
           --tags wcag2a,wcag2aa
           --chrome-path="${{ steps.chrome.outputs.chrome-path }}"
           --chromedriver-path="${{ steps.chrome.outputs.chromedriver-path }}"

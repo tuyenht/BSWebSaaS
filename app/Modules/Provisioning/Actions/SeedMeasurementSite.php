@@ -23,7 +23,8 @@ use Carbon\CarbonImmutable;
  * measures them on real pages: theme tokens, header and footer settings, nine photo rows pointing
  * at the CI fixture files (`tests/Fixtures/cwv`, served by the static media driver), a `/do-kiem`
  * page (slider, service icon cards, product photo cards, top-rule features, a rounded call to
- * action, contact cards) and `/tin-tuc` as a news card grid with two child categories.
+ * action, contact cards) and `/ban-tin`, a news card grid with two child categories. The
+ * provisioned `/tin-tuc` list is left as it is.
  *
  * White-label: neutral sample text, no brand. Idempotent: rows are looked up by slug, storage key,
  * setting key or route path and refreshed or left as they are. Runs inside the site's tenant
@@ -43,7 +44,7 @@ final readonly class SeedMeasurementSite
 
     public const string PAGE_PATH = '/do-kiem';
 
-    private const string NEWS_SLUG = 'tin-tuc';
+    public const string NEWS_PATH = '/ban-tin';
 
     public function __construct(
         private RouteSync $routes,
@@ -141,19 +142,15 @@ final readonly class SeedMeasurementSite
     }
 
     /**
-     * `/tin-tuc` as a news card grid: two routed child categories on the same layout and six
-     * posts with photos, two on the parent and two on each child.
+     * `/ban-tin` as a news card grid: its own category (the provisioned `/tin-tuc` list stays
+     * as provisioning made it), two routed child categories on the same layout and six posts with
+     * photos, two on the parent and two on each child.
      *
      * @param  array<string, Media>  $photos
      */
     private function seedNews(string $locale, array $photos): void
     {
-        $newsId = TaxonomyTranslation::query()->where('locale', $locale)->where('slug', self::NEWS_SLUG)->value('taxonomy_id');
-        $news = is_numeric($newsId) ? Taxonomy::query()->find((int) $newsId) : null;
-        if ($news === null) {
-            $news = $this->category($locale, 'Tin tức', self::NEWS_SLUG, 'post_cat');
-        }
-        $news->update(['list_template' => 'grid-news']);
+        $news = $this->category($locale, 'Bản tin', ltrim(self::NEWS_PATH, '/'), 'post_cat', null, 0, 'grid-news');
         $company = $this->category($locale, 'Tin công ty', 'tin-cong-ty', 'post_cat', $news, 1, 'grid-news');
         $industry = $this->category($locale, 'Tin ngành', 'tin-nganh', 'post_cat', $news, 2, 'grid-news');
 
@@ -181,7 +178,7 @@ final readonly class SeedMeasurementSite
                     ['image_url' => $photos['slide-3']->id, 'heading' => 'Khuôn dập, khuôn ép', 'subheading' => 'Thiết kế, chế tạo và bảo trì khuôn.'],
                 ],
                 'cta_label' => 'Nhận báo giá', 'cta_url' => '/lien-he',
-                'cta2_label' => 'Xem tin tức', 'cta2_url' => '/tin-tuc',
+                'cta2_label' => 'Xem tin tức', 'cta2_url' => self::NEWS_PATH,
                 'autoplay' => 5,
             ]],
             ['type' => 'entry_grid', 'props' => [
