@@ -145,9 +145,9 @@ final readonly class ThemeResolver
         }
 
         return $scales + [
-            'radius-soft' => '8px',
+            'radius-soft' => '16px',
             'radius-round' => '9999px',
-            'shadow-soft' => '0 1px 3px color-mix(in srgb, var(--color-dark) 12%, transparent)',
+            'shadow-soft' => '0 16px 36px -18px color-mix(in srgb, var(--color-dark) 35%, transparent)',
             'shadow-medium' => '0 6px 16px color-mix(in srgb, var(--color-dark) 16%, transparent)',
             'gradient-1' => 'linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 55%, var(--color-dark)))',
             'gradient-2' => 'linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 55%, white))',

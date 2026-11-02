@@ -30,12 +30,12 @@
 |---|---|---|
 | Màu | `--brand-50..900` (palette generator từ **1 màu brand** — §E7 đã đặc tả) + vai trò `--color-surface / surface-tint / dark / on-dark / text / text-muted / accent` | Chữ trên nền tối/ảnh **tự đổi theo class nền** (CSS đi kèm `sec--bg-dark/image`) — KHÔNG có prop chọn màu chữ |
 | Chữ | `--font-heading` + `--font-body` (nâng từ 1 `--font` hiện tại) + scale modular h1–h4/body/small | Font chọn từ danh sách Việt-subset — KHÔNG upload font tự do |
-| Khoảng cách | thang `--space-s/m/l/xl` × hệ số mật độ `--space-unit` (compact 0.85 · normal 1 · airy 1.2), mỗi giá trị làm tròn về bội số 4px (owner 03/11/2026: giữ mật độ, làm tròn về 4) | 1 cài đặt site đổi "độ thở" mọi section |
+| Khoảng cách | thang `--space-s/m/l/xl` × hệ số mật độ `--space-unit` (compact 0.85 · normal 1 · airy 1.2), mỗi giá trị làm tròn về bội số 4px (AI quyết thay owner 03/11/2026 theo quy tắc 31/10, owner lật được: giữ mật độ, làm tròn về 4) | 1 cài đặt site đổi "độ thở" mọi section |
 | Bo & bóng | `--radius-soft/round` · `--shadow-soft/medium` | |
 | Gradient | `--gradient-1..3` sinh từ brand (brand→đậm · brand→accent · dark→brand) | |
-| Motion | `--motion-duration` (tối đa 250ms — owner 03/11/2026, chặt hơn 0,5s của ADR-04) · `--motion-distance` (24px) | 1 công tắc site tắt toàn bộ motion |
+| Motion | `--motion-duration` (tối đa 250ms — AI quyết thay owner 03/11/2026 theo chuẩn thiết kế 06–07/10, chặt hơn 0,5s của ADR-04; owner lật được) · `--motion-distance` (24px) | 1 công tắc site tắt toàn bộ motion |
 
-> **Tên token (07/10/2026):** theo chuẩn chung `docs/notes/design-tokens.md`: giữ các tên vai trò trong bảng trên; `--brand-50..900` đổi thành `--color-brand-50..900` (bí danh tên cũ trong thời gian chuyển). Mật độ khoảng cách và thời lượng hiệu ứng đã được owner chốt 03/11/2026 (làm tròn về bội số 4px; tối đa 250ms).
+> **Tên token (07/10/2026):** theo chuẩn chung `docs/notes/design-tokens.md`: giữ các tên vai trò trong bảng trên; `--brand-50..900` đổi thành `--color-brand-50..900` (bí danh tên cũ trong thời gian chuyển). Mật độ khoảng cách và thời lượng hiệu ứng đã được AI quyết thay owner 03/11/2026 (owner lật được, ghi ở `plans/cho-ky.md` mục Đã quyết thay) (làm tròn về bội số 4px; tối đa 250ms).
 
 **Hai tầng token (chốt 23/09/2026 — khớp as-built `ThemeResolver`):**
 - **Seed = giá trị LƯU per-site** (`site_settings` group `theme` key `tokens`) — contract bền: đổi tên seed = migrate data mọi tenant ⇒ tên giữ nguyên as-built: `primary` (màu thương hiệu — nguồn duy nhất của `--brand-50..900` + gradient) · `surface` (nền) · `ink` (gần-đen: heading, nền tối header/footer, chữ đặt trên nền `primary`) · `body` (màu chữ nội dung dài, mềm hơn `ink`) · `font` (fallback cho tới khi thêm cặp seed `font-heading`/`font-body` — additive). Seed do operator/seeder hoặc panel "Giao diện" (5 quyết định bên dưới) ghi; KHÔNG phải knob per-section.

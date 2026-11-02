@@ -233,4 +233,4 @@ Chuẩn thiết kế của owner (06–07/10) chặt hơn vài chỗ đã chốt
   - hiệu ứng xuất hiện 0,5 giây (chuẩn cho 150–250ms).
   
   Đề xuất: giữ hệ số mật độ nhưng làm tròn kết quả về bội số 4; hiệu ứng xuất hiện tối đa 250ms và tắt khi máy đặt giảm chuyển động.
-  **Owner chốt 03/11/2026:** đúng như đề xuất. `ThemeResolver` sinh `--space-s/m/l/xl` đã làm tròn về bội số 4px và `--motion-duration: 250ms`.
+  **AI quyết thay owner 03/11/2026** (quy tắc 31/10, owner lật được; `plans/cho-ky.md` mục Đã quyết thay): đúng như đề xuất. `ThemeResolver` sinh `--space-s/m/l/xl` đã làm tròn về bội số 4px và `--motion-duration: 250ms`.
