@@ -88,20 +88,30 @@ final readonly class ListPage
     public function window(Builder|BelongsToMany $query, string $model, array $position): array
     {
         $table = (new $model)->getTable();
-        $query->orderByDesc($table.'.published_at')->orderByDesc($table.'.id');
+        // Each order is its index read backwards: products (site_id, status, published_at, id) puts
+        // undated rows first, entries (site_id, published_at NULLS FIRST, id) puts them last.
+        $undatedFirst = $table === 'products';
+        $query->orderByRaw($undatedFirst
+            ? 'products.published_at DESC NULLS FIRST, products.id DESC'
+            : 'entries.published_at DESC NULLS LAST, entries.id DESC');
 
         if ($position['after'] !== null) {
             $anchor = $model::query()->where('ulid', $position['after'])->first(['id', 'published_at']);
             abort_if($anchor === null, 404);
             $publishedAt = $anchor->getRawOriginal('published_at');
+            $tuple = $undatedFirst
+                ? '(products.published_at, products.id) < (?::timestamptz, ?)'
+                : '(entries.published_at, entries.id) < (?::timestamptz, ?)';
             if ($publishedAt === null) {
-                // Rows without a date sort first (DESC); after such an anchor come the older ids
-                // without a date, then every dated row.
-                $query->where(fn ($rows) => $rows->whereNotNull($table.'.published_at')->orWhere($table.'.id', '<', $anchor->id));
+                // After an undated anchor: the older undated ids, then (products) every dated row.
+                $query->where(fn ($rows) => $undatedFirst
+                    ? $rows->whereNotNull($table.'.published_at')->orWhere($table.'.id', '<', $anchor->id)
+                    : $rows->whereNull($table.'.published_at')->where($table.'.id', '<', $anchor->id));
             } else {
-                $query->whereRaw($table === 'products'
-                    ? '(products.published_at, products.id) < (?::timestamptz, ?)'
-                    : '(entries.published_at, entries.id) < (?::timestamptz, ?)', [$publishedAt, $anchor->id]);
+                // After a dated anchor: the older dated rows, then (entries) every undated row.
+                $query->where(fn ($rows) => $undatedFirst
+                    ? $rows->whereRaw($tuple, [$publishedAt, $anchor->id])
+                    : $rows->whereRaw($tuple, [$publishedAt, $anchor->id])->orWhereNull($table.'.published_at'));
             }
         } else {
             $query->offset(($position['page'] - 1) * self::PER_PAGE);

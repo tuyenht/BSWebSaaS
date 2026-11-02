@@ -238,14 +238,14 @@ final readonly class StorefrontController
         // the product index — list published products instead of entries (the storefront may depend
         // on Catalog). With no products yet it falls through to the entry list, so the page keeps
         // working through the post→product migration (posts until products land, products after).
-        // A category below the catalog root lists the products filed under it.
+        // A category below the catalog root lists the products filed under it, on the same terms.
         $taxonomy = $resolved->taxonomy;
         $catalogRoot = $this->sections->taxonomyIdOf('products');
-        if ($catalogRoot === $taxonomy->id
-            && Product::query()->where('status', 'published')->exists()) {
+        $hasProducts = fn (): bool => Product::query()->where('status', 'published')->exists();
+        if ($catalogRoot === $taxonomy->id && $hasProducts()) {
             return $this->renderProductIndex($resolved, $locale, $path, $chrome, false);
         }
-        if ($catalogRoot !== null && $this->lists->isUnder($taxonomy, $catalogRoot)) {
+        if ($catalogRoot !== null && $this->lists->isUnder($taxonomy, $catalogRoot) && $hasProducts()) {
             return $this->renderProductIndex($resolved, $locale, $path, $chrome, true);
         }
 

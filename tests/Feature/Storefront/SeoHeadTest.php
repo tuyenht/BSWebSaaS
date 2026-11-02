@@ -160,7 +160,7 @@ it('uses the tenant brand favicon when set, and the platform file only as fallba
     expect($html)->not->toContain('<link rel="icon" href="/favicon.ico"');
 });
 
-it('preloads the Inter Latin subset only for a site whose font is Inter', function (): void {
+it('preloads the Inter Latin and Vietnamese subsets only for a site whose font is Inter', function (): void {
     seoProvision();
     $site = Site::query()->firstWhere('name', 'An Vinh');
     $preload = '<link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>';
@@ -172,7 +172,8 @@ it('preloads the Inter Latin subset only for a site whose font is Inter', functi
     ));
 
     expect($this->get('http://anvinh.platform.test/')->assertOk()->getContent())->toContain($preload)
-        ->not->toContain('inter-vietnamese.woff2" as="font"');
+        ->toContain('<link rel="preload" href="/fonts/inter-vietnamese.woff2" as="font" type="font/woff2" crossorigin>')
+        ->not->toContain('inter-latin-ext.woff2" as="font"');
 });
 
 it('loads the text-size script only when the header offers the text-size button, and no inline script at all', function (): void {

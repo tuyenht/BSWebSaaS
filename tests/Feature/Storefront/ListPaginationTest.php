@@ -62,6 +62,22 @@ it('keeps a stable order among equal publish times, page after page', function (
         ->and($second)->toBe([2, 1]);
 });
 
+it('lists posts without a publish date after the dated ones, also after a keyset anchor', function (): void {
+    $siteId = pagedNews(3);
+    $ulid = fn (string $slug): string => (string) app(Tenancy::class)->enter($siteId, function () use ($slug): string {
+        $id = DB::table('entry_translations')->where('slug', $slug)->value('entry_id');
+
+        return (string) DB::table('entries')->where('id', $id)->value('ulid');
+    });
+    app(Tenancy::class)->enter($siteId, fn () => DB::table('entries')
+        ->whereIn('id', DB::table('entry_translations')->where('slug', 'bai-3')->select('entry_id'))
+        ->update(['published_at' => null]));
+
+    expect(listedPosts(test()->get('http://mau.platform.test/tin-tuc')->getContent()))->toBe([2, 1, 3])
+        ->and(listedPosts(test()->get('http://mau.platform.test/tin-tuc?sau='.$ulid('bai-2'))->getContent()))->toBe([1, 3])
+        ->and(listedPosts(test()->get('http://mau.platform.test/tin-tuc?sau='.$ulid('bai-3'))->getContent()))->toBe([]);
+});
+
 it('continues past page 50 by keyset, forward only and not indexed', function (): void {
     pagedNews(601);
 

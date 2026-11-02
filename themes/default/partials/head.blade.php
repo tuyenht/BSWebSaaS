@@ -3,8 +3,8 @@
     JSON-LD, hreflang alternates, design-token CSS variables, font preload, storefront stylesheet
     and the optional header scripts. Included inside each layout's <head>; inherits layout view
     data. Adds no DB queries.
-    Inter's Latin subset is preloaded only when the site's font is Inter (the Vietnamese and
-    Latin-extended subsets load on demand; a site on another font downloads no font). The
+    Inter's Latin and Vietnamese subsets are preloaded only when the site's font is Inter (the
+    Latin-extended subset loads on demand for other scripts; a site on another font downloads no font). The
     visitor's text size is applied before the first paint by a tiny same-origin script (the
     storefront CSP allows no inline script). The header script (submenus, menu panel, text size)
     loads only where there is something for it to do, the slider script only on a page with a
@@ -152,6 +152,7 @@
 
 @if (str_starts_with((string) ($tokens['font'] ?? ''), 'Inter'))
 <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/inter-vietnamese.woff2" as="font" type="font/woff2" crossorigin>
 @endif
 @if (! empty($mediaOrigin))
 <link rel="preconnect" href="{{ $mediaOrigin }}">
