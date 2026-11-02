@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Provisioning\Providers;
 
 use App\Modules\Provisioning\Console\ImportAdminUnitsCommand;
+use App\Modules\Provisioning\Console\LoadContentPackCommand;
 use App\Modules\Provisioning\Console\PlatformPlanCommand;
 use App\Modules\Provisioning\Console\PromoteAnVinhProductPostsToCatalogCommand;
 use App\Modules\Provisioning\Console\ProvisionSiteCommand;
@@ -28,6 +29,7 @@ final class ProvisioningServiceProvider extends ServiceProvider
             $this->commands([
                 ProvisionSiteCommand::class,
                 SeedAnVinhContentCommand::class,
+                LoadContentPackCommand::class,
                 SeedMeasurementCommand::class,
                 PromoteAnVinhProductPostsToCatalogCommand::class,
                 ReflowSitePermalinksCommand::class,

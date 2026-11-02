@@ -1,0 +1,45 @@
+{
+ "items": [
+  {
+   "key": "setting:theme.tokens",
+   "value": {
+    "primary": "#0f766e",
+    "ink": "#111827"
+   }
+  },
+  {
+   "key": "setting:permalinks.posts",
+   "value": {
+    "pattern": "category"
+   }
+  },
+  {
+   "key": "setting:general.brand",
+   "managed_keys": [
+    "name",
+    "phone",
+    "logo"
+   ],
+   "value": {
+    "name": "Công ty Mẫu",
+    "phone": "0900 000 000",
+    "logo": {
+     "media": "logo"
+    }
+   }
+  },
+  {
+   "key": "profile",
+   "fields": {
+    "brand_name": "Công ty Mẫu",
+    "phone": "0900 000 000",
+    "email": "hello@demo.test"
+   },
+   "localized": {
+    "short_description": {
+     "vi": "Một công ty mẫu dùng để thử."
+    }
+   }
+  }
+ ]
+}

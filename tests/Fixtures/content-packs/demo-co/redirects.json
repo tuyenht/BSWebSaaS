@@ -1,0 +1,9 @@
+{
+ "items": [
+  {
+   "key": "redirect:vi:/trang-cu",
+   "to": "/gioi-thieu",
+   "status": 301
+  }
+ ]
+}
