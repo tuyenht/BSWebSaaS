@@ -43,7 +43,8 @@ final class AuditCatalog
             'tenancy.domain.attached', 'tenancy.domain.verified', 'tenancy.domain.primary_changed',
             'tenancy.domain.spelling_changed', 'tenancy.domain.https_requested', 'tenancy.domain.taken_over',
             'tenancy.domain.removed', 'tenancy.domain.failing', 'tenancy.domain.expiring', 'tenancy.domain.recovered',
-            'tenancy.domain.lost', 'tenancy.domain.wait_expired', 'tenancy.domain.notice_failed',
+            'tenancy.domain.lost', 'tenancy.domain.wait_expired', 'tenancy.domain.notice_failed', 'tenancy.domain.help_requested',
+            'tenancy.domain.pointing_changed',
         ],
         'plans' => [
             'tenancy.customer.plan_changed', 'provisioning.customer.plan_changed',

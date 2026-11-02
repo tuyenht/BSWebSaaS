@@ -61,6 +61,8 @@
         <server name="R2_BUCKET" value="test-bucket" force="true"/>
         <env name="MAIL_MAILER" value="array" force="true"/>
         <server name="MAIL_MAILER" value="array" force="true"/>
+        <env name="SUPPORT_MAILBOX_ADDRESS" value="support@platform.test" force="true"/>
+        <server name="SUPPORT_MAILBOX_ADDRESS" value="support@platform.test" force="true"/>
         <env name="QUEUE_CONNECTION" value="sync" force="true"/>
         <server name="QUEUE_CONNECTION" value="sync" force="true"/>
         <env name="SESSION_DRIVER" value="array" force="true"/>

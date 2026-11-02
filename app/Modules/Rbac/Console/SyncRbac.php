@@ -7,17 +7,25 @@ use App\Modules\Rbac\Models\Permission;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * Materialize the permission catalog + platform roles from the registry, then back-fill the
- * per-site SYSTEM tenant roles. Site-type templates drift as the platform grows — a module
- * shipped after a site was provisioned adds permissions its is_system roles never received
- * (ProvisionSite only materializes the template once). The back-fill is ADD-ONLY: a role
- * receives the template permissions it is missing, and nothing is ever revoked on deploy
- * (revoking is a deliberate decision, never a sync side-effect). Custom (non-system) roles
- * are never touched. Idempotent, so it is safe to run on every deploy.
+ * Materialize the permission catalog + platform roles from the registry, then bring existing
+ * tenant roles up to date. Two passes, both ADD-ONLY — a role only ever receives permissions,
+ * nothing is revoked on deploy (revoking is a deliberate decision, never a sync side-effect):
+ *
+ *  - SYSTEM tenant roles get the template permissions they are missing. Site-type templates
+ *    drift as the platform grows — a module shipped after a site was provisioned adds
+ *    permissions its is_system roles never received (ProvisionSite materializes them once).
+ *  - CUSTOM (non-system) roles are closed under PermissionRegistry::IMPLIES: a role holding a
+ *    permission gains what that permission implies (`domains.manage` → `domains.view`). Saving
+ *    a custom role already normalizes it this way; this heals roles saved before an implication
+ *    was added, so a screen that checks the read permission never locks out a member who may
+ *    change the same thing. Custom roles never receive template grants.
+ *
+ * Idempotent, so it is safe to run on every deploy.
  */
 final class SyncRbac extends Command
 {
@@ -51,14 +59,16 @@ final class SyncRbac extends Command
             }
 
             $backfilled = $this->backfillSystemTenantRoles();
+            $closed = $this->closeCustomRolesUnderImplies();
 
             $registrar->forgetCachedPermissions();
 
             $this->info(sprintf(
-                'RBAC synced: %d permissions, %d platform roles, %d tenant grants back-filled.',
+                'RBAC synced: %d permissions, %d platform roles, %d tenant grants back-filled, %d custom-role grants closed.',
                 count(PermissionRegistry::permissions()),
                 count(PermissionRegistry::platformRoles()),
                 $backfilled,
+                $closed,
             ));
 
             return self::SUCCESS;
@@ -127,6 +137,34 @@ final class SyncRbac extends Command
                 }
             }
         }
+
+        return $granted;
+    }
+
+    /**
+     * Give every custom (non-system) role the permissions its own permissions imply and it lacks.
+     * Only what IMPLIES derives from the role's current grants is added — never a template grant,
+     * never a revocation. Roles are read by keyset, 500 at a time, each chunk with its permissions
+     * in one eager load: every website's custom roles never sit in memory at once.
+     */
+    private function closeCustomRolesUnderImplies(): int
+    {
+        $granted = 0;
+
+        Role::query()->where('is_system', false)->with('permissions')->chunkById(500, function (Collection $roles) use (&$granted): void {
+            foreach ($roles as $role) {
+                $current = array_values(array_map(
+                    fn ($name): string => is_string($name) ? $name : '',
+                    $role->permissions->pluck('name')->all(),
+                ));
+                $missing = array_values(array_diff(PermissionRegistry::withImplied($current), $current));
+
+                if ($missing !== []) {
+                    $role->givePermissionTo($missing);
+                    $granted += count($missing);
+                }
+            }
+        });
 
         return $granted;
     }

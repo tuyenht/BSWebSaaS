@@ -31,6 +31,7 @@ use App\Modules\Admin\Livewire\Platform\Tenants\Detail;
 use App\Modules\Admin\Livewire\Platform\Tenants\Index;
 use App\Modules\Admin\Livewire\ResetPassword;
 use App\Modules\Admin\Livewire\Settings;
+use App\Modules\Admin\Livewire\Settings\Domains as DomainSettings;
 use App\Modules\Admin\Livewire\SocialSettings;
 use App\Modules\Admin\Livewire\TwoFactorChallenge;
 use App\Modules\Admin\Livewire\Users\Index as UsersIndex;
@@ -111,6 +112,9 @@ Route::domain((string) config('tenancy.platform_host'))
         // Operator site directory (read-only) + global audit log (cross-site).
         Route::get('/sites', SiteIndex::class)->name('platform.sites.index');
         Route::get('/sites/{ulid}', SiteDetail::class)->name('platform.sites.show');
+        // One site's domain names; reading needs platform.sites.view, changing platform.sites.manage
+        // (checked by the component on every request, including Livewire updates).
+        Route::get('/sites/{ulid}/domains', DomainSettings::class)->name('platform.sites.domains');
         Route::get('/audit', AuditIndex::class)->name('platform.audit.index');
 
         Route::get('/settings/email', EmailSettings::class)->defaults('scope', 'platform')->name('platform.settings.email');
@@ -203,6 +207,9 @@ Route::prefix(config('admin.prefix', 'admin'))
         Route::get('/settings/social', SocialSettings::class)->middleware('can:settings.manage')->name('admin.settings.social');
         Route::get('/settings/appearance', AppearanceSettings::class)->middleware('can:settings.manage')->name('admin.settings.appearance');
         Route::get('/settings/catalog', CatalogSettings::class)->middleware('can:settings.manage')->name('admin.settings.catalog');
+        // The site's domain names: whoever holds domains.view may look, domains.manage may change.
+        // The component checks both itself (no route gate: a viewer gets the no-permission card).
+        Route::get('/settings/domains', DomainSettings::class)->name('admin.settings.domains');
         // Approval-workflow switchboard — platform operators only (no tenant role template
         // grants this permission; super_admin passes via Gate::before).
         Route::get('/settings/workflows', WorkflowSettings::class)->middleware('can:platform.workflows.manage')->name('admin.settings.workflows');
