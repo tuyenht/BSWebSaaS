@@ -167,3 +167,6 @@
 @if (! empty($sliderScript))
 @vite(['resources/js/sf-slider.js'])
 @endif
+@if (! empty($sectionsScript))
+@vite(['resources/js/sections.js'])
+@endif

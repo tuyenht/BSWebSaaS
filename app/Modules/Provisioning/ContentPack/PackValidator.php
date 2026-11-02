@@ -549,7 +549,7 @@ final readonly class PackValidator
             foreach (is_array($blocks) ? array_values($blocks) : [] as $index => $block) {
                 $type = is_array($block) ? ($block['type'] ?? null) : null;
                 if (is_string($type) && $this->components->has($type) && is_array($block['props'] ?? null)) {
-                    $this->blockLinks("{$item->key}: body ({$locale}): block ".($index + 1)." ({$type})", $block['props'], $this->components->get($type)->schema(), '', $errors);
+                    $this->blockLinks("{$item->key}: body ({$locale}): block ".($index + 1)." ({$type})", $block['props'], $this->components->schemaFor($type), '', $errors);
                 }
             }
         }
