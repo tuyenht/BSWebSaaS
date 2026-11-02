@@ -29,6 +29,9 @@ final class FormComponent implements Component
     {
         return [
             'form_key' => ['type' => 'text', 'default' => 'contact'],
+            // Optional, opt-in: a line under the heading, and a map that puts the form in a card beside it.
+            'description' => ['type' => 'textarea'],
+            'map_embed' => ['type' => 'url'],
         ];
     }
 

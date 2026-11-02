@@ -28,6 +28,12 @@ final readonly class BlockRenderer
      */
     private const int CONTENT_IMAGE_WIDTH = 1280;
 
+    /**
+     * The widths a full-width block image (a slide) offers the browser through `srcset`; views that
+     * print one read it from `$srcsets` by the image's URL. Older views ignore it.
+     */
+    public const array SRCSET_WIDTHS = [640, 960, 1280, 1600, 2048];
+
     public function __construct(
         private ViewFactory $views,
         private ComponentRegistry $registry,
@@ -59,6 +65,26 @@ final readonly class BlockRenderer
     }
 
     /**
+     * The distinct types of the blocks that will render, in page order. Pure: no query. The layout
+     * uses it to load a block's script only on the pages that have that block.
+     *
+     * @param  array<string, mixed>  $body
+     * @return list<string>
+     */
+    public function types(array $body): array
+    {
+        $types = [];
+        foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
+            $type = is_array($block) ? ($block['type'] ?? null) : null;
+            if (is_string($type) && $this->registry->has($type) && ! in_array($type, $types, true)) {
+                $types[] = $type;
+            }
+        }
+
+        return $types;
+    }
+
+    /**
      * @param  array<string, mixed>  $body
      */
     public function render(array $body): string
@@ -83,7 +109,8 @@ final readonly class BlockRenderer
         }
 
         // One batched lookup for the whole page (site-scoped; unknown ids simply resolve to nothing).
-        $urls = $this->mediaUrls->urlsForIds($ids, self::CONTENT_IMAGE_WIDTH);
+        // The same rows give each URL its srcset (server-built from storage keys, never from props).
+        ['urls' => $urls, 'srcsets' => $srcsets] = $this->mediaUrls->resolve($ids, self::CONTENT_IMAGE_WIDTH, self::SRCSET_WIDTHS);
 
         // Pass 2 — render each block, swapping each image prop's media_id for its resolved URL.
         $html = '';
@@ -105,7 +132,7 @@ final readonly class BlockRenderer
 
             /** @var view-string $view a theme section view (ComponentRegistry) */
             $view = $component->view();
-            $html .= $this->views->make($view, $component->data($resolved))->render();
+            $html .= $this->views->make($view, $component->data($resolved) + ['srcsets' => $srcsets])->render();
         }
 
         return $html;

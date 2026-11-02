@@ -242,6 +242,10 @@ jobs:
       - name: Contrast tokens (WCAG AA)
         run: node scripts/contrast-check.mjs
 
+      # The storefront slider's behaviour (rotation, pause, keys, reduced motion) in jsdom.
+      - name: Storefront slider behaviour
+        run: node scripts/storefront/slider-check.mjs
+
       # New lines in resources/ and module Blade must use the standard token names
       # (docs/notes/design-tokens.md §7); lines already on main are left to move over as touched.
       # A pull request checks out its merge commit, whose first parent is the base branch.
@@ -358,6 +362,17 @@ jobs:
             --owner-email="cwv-ci@example.test" \
             --no-interaction
 
+      # The richer storefront looks on real pages: /do-kiem (slider, card grids, contact cards)
+      # and /ban-tin, a news card grid with child-category chips. The photos are the licensed
+      # fixtures in tests/Fixtures/cwv, served from this origin by the static media driver (the
+      # serving steps below set MEDIA_DRIVER/MEDIA_CF_BASE; a media host equal to the site's host
+      # would make provisioning refuse the name, so it is not set job-wide).
+      - name: Seed the measurement pages
+        run: |
+          php artisan site:seed-measurement --host="${CWV_HOST}"
+          mkdir -p public/cwv-media/cwv/library
+          cp tests/Fixtures/cwv/*.webp public/cwv-media/cwv/library/
+
       # Chrome (via Lighthouse/axe) resolves this by real hostname, same as production —
       # no Host-header spoofing needed, and the multi-tenant domain resolver sees a real domain.
       - name: Map the CI hostname to localhost
@@ -381,6 +396,9 @@ jobs:
       # FAIL the job (calibrated 24/09 on 18 real samples — see that file); the overall
       # performance score only warns.
       - name: Lighthouse CI (performance + LCP + JS budget)
+        env:
+          MEDIA_DRIVER: static
+          MEDIA_CF_BASE: http://${{ env.CWV_HOST }}:${{ env.CWV_PORT }}/cwv-media
         run: pnpm exec lhci autorun --collect.chromePath="${{ steps.chrome.outputs.chrome-path }}"
 
       # The numbers the "warn" thresholds must be calibrated against, printed where they cannot
@@ -448,6 +466,9 @@ jobs:
           retention-days: 7
 
       - name: Boot a server for the axe pass
+        env:
+          MEDIA_DRIVER: static
+          MEDIA_CF_BASE: http://${{ env.CWV_HOST }}:${{ env.CWV_PORT }}/cwv-media
         run: |
           php artisan serve --host=0.0.0.0 --port="${CWV_PORT}" &
           for i in $(seq 1 15); do
@@ -461,7 +482,7 @@ jobs:
       # fixed de81d6b), clean on every run since. A WCAG2A/AA violation fails the job (--exit).
       - name: axe accessibility scan
         run: >-
-          pnpm exec axe "http://${CWV_HOST}:${CWV_PORT}/" "http://${CWV_HOST}:${CWV_PORT}/lien-he" "http://${CWV_HOST}:${CWV_PORT}/tin-tuc"
+          pnpm exec axe "http://${CWV_HOST}:${CWV_PORT}/" "http://${CWV_HOST}:${CWV_PORT}/lien-he" "http://${CWV_HOST}:${CWV_PORT}/tin-tuc" "http://${CWV_HOST}:${CWV_PORT}/do-kiem" "http://${CWV_HOST}:${CWV_PORT}/ban-tin"
           --tags wcag2a,wcag2aa
           --chrome-path="${{ steps.chrome.outputs.chrome-path }}"
           --chromedriver-path="${{ steps.chrome.outputs.chromedriver-path }}"

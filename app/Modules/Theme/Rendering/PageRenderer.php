@@ -2,6 +2,7 @@
 
 namespace App\Modules\Theme\Rendering;
 
+use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Theme\Theming\ThemeResolver;
 use Illuminate\Contracts\View\Factory as ViewFactory;
 
@@ -18,6 +19,7 @@ final readonly class PageRenderer
         private TemplateResolver $templates,
         private BlockRenderer $blocks,
         private ThemeResolver $theme,
+        private MediaUrlResolver $media,
     ) {}
 
     /**
@@ -31,6 +33,7 @@ final readonly class PageRenderer
         /** @var view-string $layout a theme layout name (TemplateResolver) */
         $layout = $this->templates->layoutFor($type, $templateOverride, $categoryTemplate);
         $leadBlock = $this->blocks->leadType($body);
+        $extra += in_array('hero_slider', $this->blocks->types($body), true) ? self::sliderHints($body, $leadBlock, $this->media) : [];
 
         return $this->views->make($layout, [
             'title' => $title,
@@ -41,6 +44,43 @@ final readonly class PageRenderer
             // A page_header band leading the page renders the h1 itself; the layout then skips its own.
             'leadBlock' => $leadBlock,
         ] + $extra)->render();
+    }
+
+    /**
+     * What the head needs for a slider: `sliderScript` when a slider on the page has two or more
+     * slides to rotate (the script loads nowhere else), and `mediaOrigin` when a slider leads the
+     * page with a photo on its first slide and the media host is another origin (a `preconnect`,
+     * so the LCP image's connection starts with the HTML). Pages without a slider get nothing, so
+     * their head is unchanged. Pure: no query.
+     *
+     * @param  array<string, mixed>  $body
+     * @return array{sliderScript?: true, mediaOrigin?: string}
+     */
+    private static function sliderHints(array $body, ?string $leadType, MediaUrlResolver $media): array
+    {
+        $hints = [];
+        $leadSeen = false;
+        foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
+            if (! is_array($block) || ($block['type'] ?? null) !== 'hero_slider') {
+                continue;
+            }
+            $slides = array_values(array_filter(
+                is_array(data_get($block, 'props.slides')) ? data_get($block, 'props.slides') : [],
+                fn (mixed $slide): bool => is_array($slide) && (! empty($slide['image_url']) || (is_string($slide['heading'] ?? null) && trim($slide['heading']) !== '')),
+            ));
+            if (count($slides) > 1) {
+                $hints['sliderScript'] = true;
+            }
+            if ($leadType === 'hero_slider' && ! $leadSeen) {
+                $leadSeen = true;
+                $origin = $slides !== [] && ! empty($slides[0]['image_url']) ? $media->origin() : null;
+                if ($origin !== null && $origin !== request()->getSchemeAndHttpHost()) {
+                    $hints['mediaOrigin'] = $origin;
+                }
+            }
+        }
+
+        return $hints;
     }
 
     /**

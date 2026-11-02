@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Storefront\Http\Controllers;
 
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Navigation\MenuResolver;
@@ -15,13 +16,17 @@ use App\Modules\Cms\Routing\ResolvedProduct;
 use App\Modules\Cms\Routing\RouteResolver;
 use App\Modules\Cms\Support\EntryViewCounter;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Storefront\Support\ListPage;
 use App\Modules\Tenancy\Context\ContentSections;
 use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Theme\Chrome\StorefrontChrome;
 use App\Modules\Theme\Rendering\PageRenderer;
+use App\Modules\Theme\Rendering\TemplateResolver;
 use App\Modules\Theme\Theming\StorefrontSettings;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Database\Query\JoinClause;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -34,9 +39,6 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final readonly class StorefrontController
 {
-    /** Posts per category-list page. */
-    private const int POSTS_PER_PAGE = 12;
-
     public function __construct(
         private RouteResolver $resolver,
         private PageRenderer $renderer,
@@ -48,6 +50,8 @@ final readonly class StorefrontController
         private SiteIdentity $identity,
         private ContentSections $sections,
         private StorefrontSettings $settings,
+        private ListPage $lists,
+        private TemplateResolver $templates,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -222,6 +226,10 @@ final readonly class StorefrontController
     }
 
     /**
+     * A category list page. A category with a card layout (`grid-*` list template) lists its whole
+     * subtree as cards with child-category chips; the default layout lists only its own posts as
+     * titles. Both page without a COUNT (ListPage).
+     *
      * @param  array<string, mixed>  $chrome  page chrome (menu, lang, hreflang)
      */
     private function renderCategory(ResolvedCategory $resolved, string $locale, string $path, array $chrome): Response
@@ -230,100 +238,131 @@ final readonly class StorefrontController
         // the product index — list published products instead of entries (the storefront may depend
         // on Catalog). With no products yet it falls through to the entry list, so the page keeps
         // working through the post→product migration (posts until products land, products after).
-        if ($this->sections->taxonomyIdOf('products') === $resolved->taxonomy->id
-            && Product::query()->where('status', 'published')->exists()) {
-            return $this->renderProductIndex($resolved, $locale, $path, $chrome);
+        // A category below the catalog root lists the products filed under it, on the same terms.
+        $taxonomy = $resolved->taxonomy;
+        $catalogRoot = $this->sections->taxonomyIdOf('products');
+        $hasProducts = fn (): bool => Product::query()->where('status', 'published')->exists();
+        if ($catalogRoot === $taxonomy->id && $hasProducts()) {
+            return $this->renderProductIndex($resolved, $locale, $path, $chrome, false);
+        }
+        if ($catalogRoot !== null && $this->lists->isUnder($taxonomy, $catalogRoot) && $hasProducts()) {
+            return $this->renderProductIndex($resolved, $locale, $path, $chrome, true);
         }
 
-        // Posts whose PRIMARY category (pivot position 0) is this one. Only published, locale-present.
-        $paginator = $resolved->taxonomy->entries()
-            ->where('entries.type', 'post')
+        $position = $this->lists->position(request());
+        $cards = $this->templates->listShape($taxonomy->list_template) === 'cards';
+
+        if ($cards) {
+            // Posts whose PRIMARY category (pivot position 0) is this one or any below it.
+            $query = Entry::query()
+                ->select('entries.*', 'entry_taxonomies.taxonomy_id as primary_taxonomy_id')
+                ->join('entry_taxonomies', fn (JoinClause $join) => $join->on('entry_taxonomies.entry_id', '=', 'entries.id')->where('entry_taxonomies.position', 0))
+                ->whereIn('entry_taxonomies.taxonomy_id', $this->lists->subtree($taxonomy));
+        } else {
+            // Posts whose PRIMARY category (pivot position 0) is this one.
+            $query = $taxonomy->entries()->where('entry_taxonomies.position', 0);
+        }
+        $query->where('entries.type', 'post')
             ->where('entries.status', 'published')
-            ->where('entry_taxonomies.position', 0)
             ->whereHas('translations', fn (Builder $query) => $query->where('locale', $locale)->where('status', 'published'))
-            ->with(['translations', 'routes'])
-            ->orderByDesc('entries.published_at')
-            ->paginate(self::POSTS_PER_PAGE);
+            ->with(['translations', 'routes']);
+        ['rows' => $rows, 'more' => $more] = $this->lists->window($query, Entry::class, $position);
 
         $posts = [];
-        foreach ($paginator->items() as $post) {
-            $translation = $post->translationFor($locale);
-            if ($translation === null) {
-                continue;
-            }
-            // Link each card to the post's STORED route, so it follows the section's permalink
-            // preset (flat, category, …) exactly instead of a hardcoded shape. A published post
-            // always has a route; fall back to a config-correct compose if one is somehow absent.
-            $route = $post->routes->firstWhere('locale', $locale);
-            $unprefixed = $route !== null
-                ? $route->path
-                : $this->paths->forEntry($post, $locale, trim((string) $translation->slug, '/'));
-            $posts[] = [
-                'title' => $translation->title,
-                'url' => $this->paths->publicUrl($unprefixed, $locale),
-            ];
-        }
-
-        // Each paginated page self-canonicals (with ?page=N) — rel=prev/next signals the series;
-        // canonicaling page-N→page-1 would drop the deeper pages from the index.
-        $canonical = url($this->paths->publicUrl($path, $locale));
-        if ($paginator->currentPage() > 1) {
-            $canonical .= '?page='.$paginator->currentPage();
-        }
         $extra = $chrome;
-        $extra['canonical'] = $canonical;
-        $extra['ogType'] = 'website';
-        $extra['breadcrumb'] = [
-            $this->homeCrumb($locale),
-            ['name' => $resolved->translation->name, 'url' => $canonical],
-        ];
+        if ($cards) {
+            ['chips' => $chips, 'labels' => $labels] = $this->lists->chips($taxonomy, $locale);
+            $extra['cards'] = $this->lists->postCards($rows, $locale, $labels, $taxonomy->list_template === 'grid-news');
+            $extra['chips'] = $chips;
+        } else {
+            foreach ($rows as $post) {
+                $translation = $post->translationFor($locale);
+                if ($translation === null) {
+                    continue;
+                }
+                // Link each card to the post's STORED route, so it follows the section's permalink
+                // preset (flat, category, …) exactly instead of a hardcoded shape. A published post
+                // always has a route; fall back to a config-correct compose if one is somehow absent.
+                $route = $post->routes->firstWhere('locale', $locale);
+                $unprefixed = $route !== null
+                    ? $route->path
+                    : $this->paths->forEntry($post, $locale, trim((string) $translation->slug, '/'));
+                $posts[] = [
+                    'title' => $translation->title,
+                    'url' => $this->paths->publicUrl($unprefixed, $locale),
+                ];
+            }
+        }
 
-        $html = $this->renderer->renderCategory(
-            $resolved->taxonomy->list_template,
-            $resolved->translation->name,
-            $posts,
-            [
-                'prevUrl' => $paginator->previousPageUrl(),
-                'nextUrl' => $paginator->nextPageUrl(),
-            ],
-            ['title' => $resolved->translation->name],
-            $extra,
-        );
-
-        return response($html);
+        return $this->listResponse($resolved, $locale, $path, $position, $more, ListPage::ulidOf($rows->last()), $posts, $extra);
     }
 
     /**
      * The catalog product index — the catalog section's category (e.g. /san-pham) lists published
-     * products newest-first, each linking to its canonical product route, on the category layout.
-     * The product query lives here so Cms and Theme stay Catalog-agnostic.
+     * products newest-first, each linking to its canonical product route; a category below it
+     * lists the products filed under it (its own on the default layout, its whole subtree on a
+     * card layout). The product query lives here so Cms and Theme stay Catalog-agnostic.
      *
      * @param  array<string, mixed>  $chrome  page chrome (menu, lang, hreflang)
      */
-    private function renderProductIndex(ResolvedCategory $resolved, string $locale, string $path, array $chrome): Response
+    private function renderProductIndex(ResolvedCategory $resolved, string $locale, string $path, array $chrome, bool $filtered): Response
     {
-        $paginator = Product::query()
+        $taxonomy = $resolved->taxonomy;
+        $position = $this->lists->position(request());
+        $cards = $this->templates->listShape($taxonomy->list_template) === 'cards';
+
+        $query = Product::query()
             ->where('status', 'published')
-            ->with(['translations', 'taxonomies'])
-            ->orderByDesc('published_at')
-            ->orderByDesc('id')
-            ->paginate(self::POSTS_PER_PAGE);
+            ->with($cards ? ['translations', 'taxonomies.translations', 'images.media'] : ['translations', 'taxonomies']);
+        if ($filtered) {
+            $ids = $cards ? $this->lists->subtree($taxonomy) : [$taxonomy->id];
+            $query->whereExists(fn (QueryBuilder $filed) => $filed->selectRaw('1')
+                ->from('product_taxonomies')
+                ->whereColumn('product_taxonomies.product_id', 'products.id')
+                ->whereIn('product_taxonomies.taxonomy_id', $ids));
+        }
+        ['rows' => $rows, 'more' => $more] = $this->lists->window($query, Product::class, $position);
 
         $products = [];
-        foreach ($paginator->items() as $product) {
-            $translation = $product->translationFor($locale);
-            if ($translation === null) {
-                continue;
+        $extra = $chrome;
+        if ($cards) {
+            $extra['cards'] = $this->lists->productCards($rows, $locale);
+            $extra['chips'] = $this->lists->chips($taxonomy, $locale)['chips'];
+            $extra['emptyKey'] = 'storefront.no_products';
+        } else {
+            foreach ($rows as $product) {
+                $translation = $product->translationFor($locale);
+                if ($translation === null) {
+                    continue;
+                }
+                $unprefixed = $this->paths->forProduct($product->primaryCategory(), (string) $translation->slug, $locale);
+                $products[] = ['title' => $translation->name, 'url' => $this->paths->publicUrl($unprefixed, $locale)];
             }
-            $unprefixed = $this->paths->forProduct($product->primaryCategory(), (string) $translation->slug, $locale);
-            $products[] = ['title' => $translation->name, 'url' => $this->paths->publicUrl($unprefixed, $locale)];
         }
 
-        $canonical = url($this->paths->publicUrl($path, $locale));
-        if ($paginator->currentPage() > 1) {
-            $canonical .= '?page='.$paginator->currentPage();
+        return $this->listResponse($resolved, $locale, $path, $position, $more, ListPage::ulidOf($rows->last()), $products, $extra);
+    }
+
+    /**
+     * Render a list page: self canonical (with its page or anchor), breadcrumb, the paging links,
+     * and `noindex,follow` on keyset pages (the sitemap lists every item).
+     *
+     * @param  array{page: int, after: string|null}  $position
+     * @param  list<array{title: string, url: string}>  $titles
+     * @param  array<string, mixed>  $extra
+     */
+    private function listResponse(ResolvedCategory $resolved, string $locale, string $path, array $position, bool $more, ?string $lastUlid, array $titles, array $extra): Response
+    {
+        // Each paginated page self-canonicals (with ?page=N) — rel=prev/next signals the series;
+        // canonicaling page-N→page-1 would drop the deeper pages from the index.
+        $base = url($this->paths->publicUrl($path, $locale));
+        $canonical = $base;
+        if ($position['after'] !== null) {
+            $canonical .= '?sau='.$position['after'];
+            $extra['robots'] = 'noindex,follow';
+        } elseif ($position['page'] > 1) {
+            $canonical .= '?page='.$position['page'];
         }
-        $extra = $chrome;
         $extra['canonical'] = $canonical;
         $extra['ogType'] = 'website';
         $extra['breadcrumb'] = [
@@ -334,8 +373,8 @@ final readonly class StorefrontController
         $html = $this->renderer->renderCategory(
             $resolved->taxonomy->list_template,
             $resolved->translation->name,
-            $products,
-            ['prevUrl' => $paginator->previousPageUrl(), 'nextUrl' => $paginator->nextPageUrl()],
+            $titles,
+            $this->lists->links(request()->url(), $position, $more, $lastUlid),
             ['title' => $resolved->translation->name],
             $extra,
         );

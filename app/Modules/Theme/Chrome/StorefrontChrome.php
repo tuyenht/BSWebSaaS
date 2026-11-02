@@ -221,15 +221,16 @@ final class StorefrontChrome
     }
 
     /**
-     * A public file's URL with a content version, so it can be cached for long and still change
-     * the moment the file does.
+     * The visitor's saved text size (Vừa / Lớn / Cực lớn), applied before the first paint. It is
+     * inlined in the head so it costs no request, and the storefront CSP allows exactly this text
+     * by its hash (see textSizeBootHash()), so no other inline script can run.
      */
-    public static function versioned(string $publicPath): string
-    {
-        $file = public_path($publicPath);
-        $hash = is_file($file) ? md5_file($file) : false;
+    public const string TEXT_SIZE_BOOT = "try{var s=localStorage.getItem('sf-fs');if(s==='l'||s==='xl')document.documentElement.setAttribute('data-fs',s)}catch(e){}";
 
-        return '/'.ltrim($publicPath, '/').($hash === false ? '' : '?v='.substr($hash, 0, 10));
+    /** The CSP source that allows TEXT_SIZE_BOOT and nothing else. */
+    public static function textSizeBootHash(): string
+    {
+        return "'sha256-".base64_encode(hash('sha256', self::TEXT_SIZE_BOOT, true))."'";
     }
 
     /**

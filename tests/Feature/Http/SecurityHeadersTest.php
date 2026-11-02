@@ -11,6 +11,8 @@
  *   4. Admin and platform pages still render 200 (CSP omission did not break them).
  */
 
+use App\Modules\Theme\Chrome\StorefrontChrome;
+
 beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
@@ -47,7 +49,9 @@ it('storefront response carries the allow-list Content-Security-Policy', functio
         ->toContain("style-src 'self' 'unsafe-inline'")
         // Cloudflare Turnstile (lead-form anti-spam, §23/R20) loads a script + iframe from
         // challenges.cloudflare.com → both directives must allow that one trusted origin.
-        ->toContain("script-src 'self' https://challenges.cloudflare.com")
+        // plus the hash of the one inline script (the text-size boot) and no 'unsafe-inline'.
+        ->toContain("script-src 'self' ".StorefrontChrome::textSizeBootHash().' https://challenges.cloudflare.com')
+        ->not->toMatch("/script-src[^;]*'unsafe-inline'/")
         ->toContain('frame-src https://www.google.com https://challenges.cloudflare.com')
         ->toContain("base-uri 'self'")
         ->toContain("form-action 'self'");

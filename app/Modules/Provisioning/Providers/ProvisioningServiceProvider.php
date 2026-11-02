@@ -12,6 +12,7 @@ use App\Modules\Provisioning\Console\RecheckDomainsCommand;
 use App\Modules\Provisioning\Console\RecheckWaitingDomainsCommand;
 use App\Modules\Provisioning\Console\ReflowSitePermalinksCommand;
 use App\Modules\Provisioning\Console\SeedAnVinhContentCommand;
+use App\Modules\Provisioning\Console\SeedMeasurementCommand;
 use App\Modules\Provisioning\Console\SiteDomainCommand;
 use App\Modules\Provisioning\Console\SiteFeatureCommand;
 use App\Modules\Provisioning\Console\SiteLocaleCommand;
@@ -27,6 +28,7 @@ final class ProvisioningServiceProvider extends ServiceProvider
             $this->commands([
                 ProvisionSiteCommand::class,
                 SeedAnVinhContentCommand::class,
+                SeedMeasurementCommand::class,
                 PromoteAnVinhProductPostsToCatalogCommand::class,
                 ReflowSitePermalinksCommand::class,
                 SyncSiteProfilesFromBrandCommand::class,

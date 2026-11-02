@@ -1,4 +1,5 @@
-{{-- One labelled input for a typed prop (§E7): text | textarea | url | int. --}}
+{{-- One labelled input for a typed prop (§E7): text | textarea | url | int | image | enum (a choice
+     from `options`, labelled entries.opt_{prop}_{value}). --}}
 <label>{{ $fieldLabel }}
     @switch($fieldType)
         @case('textarea')
@@ -6,6 +7,13 @@
             @break
         @case('int')
             <input type="number" wire:model="{{ $model }}" class="field">
+            @break
+        @case('enum')
+            <select wire:model="{{ $model }}" class="field">
+                @foreach (($options ?? []) as $option)
+                    <option value="{{ $option }}">{{ __('entries.opt_'.$fieldLabel.'_'.$option) }}</option>
+                @endforeach
+            </select>
             @break
         @case('url')
             <input type="url" wire:model="{{ $model }}" class="field">

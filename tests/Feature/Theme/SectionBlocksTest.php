@@ -211,7 +211,8 @@ it('renders the page title band with an eager, decorative LCP image and a clampe
         ->toContain('<p class="page-band__subtitle">Về chúng tôi</p>');
 })->with([
     'in range' => [70, '0.7'],
-    'too light' => [5, '0.4'],
+    'too light' => [5, '0.55'],
+    'below the readable floor' => [40, '0.55'],
     'too dark' => [100, '0.8'],
 ]);
 

@@ -5,6 +5,7 @@ namespace App\Modules\Theme\Providers;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SectionComponent;
+use App\Modules\Theme\Components\SectionProps;
 use App\Modules\Theme\Theming\StorefrontSettings;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -43,7 +44,12 @@ final class ThemeServiceProvider extends ServiceProvider
             'items' => ['type' => 'list', 'of' => [
                 'title' => ['type' => 'text'],
                 'text' => ['type' => 'textarea'],
+                // A glyph key of theme::partials.icon (unknown → no icon); shown by the top-rule cards.
+                'icon' => ['type' => 'text'],
             ]],
+            'variant' => ['type' => 'enum', 'options' => SectionProps::FEATURES_VARIANTS, 'default' => 'default'],
+            'bg' => ['type' => 'enum', 'options' => SectionProps::BG, 'default' => 'none'],
+            'description' => ['type' => 'textarea'],
         ],
         'about' => [
             'heading' => ['type' => 'text'],
@@ -64,6 +70,8 @@ final class ThemeServiceProvider extends ServiceProvider
             'heading' => ['type' => 'text'],
             'button_label' => ['type' => 'text'],
             'button_url' => ['type' => 'url'],
+            'text' => ['type' => 'textarea'],
+            'variant' => ['type' => 'enum', 'options' => SectionProps::CTA_VARIANTS, 'default' => 'default'],
         ],
         'contact' => [
             'heading' => ['type' => 'text'],
@@ -71,14 +79,34 @@ final class ThemeServiceProvider extends ServiceProvider
             'phone' => ['type' => 'url'],
             'email' => ['type' => 'url'],
             'map_embed' => ['type' => 'url'],
+            'variant' => ['type' => 'enum', 'options' => SectionProps::CONTACT_VARIANTS, 'default' => 'list'],
+            'phone_label' => ['type' => 'text'],
+            'email_label' => ['type' => 'text'],
+            'address_label' => ['type' => 'text'],
         ],
         // The title band of an inner page: it carries the page's single h1 (the layout skips its
         // own when this block leads the page). Title defaults to the page title; overlay is the
-        // darkening over the photo in percent, kept within 40–80 so white text stays readable.
+        // darkening over the photo in percent, kept within 55–80 so white text stays readable.
         'page_header' => [
             'title' => ['type' => 'text'],
             'subtitle' => ['type' => 'text'],
             'image_url' => ['type' => 'image'],
+            'overlay' => ['type' => 'int', 'default' => 60],
+        ],
+        // The home slider: up to five photos with a heading and a line each, and the same two buttons
+        // on every slide. autoplay is seconds per slide (0 = off, else 5–15); overlay is the darkening
+        // over the photos in percent (55–80, so white text stays readable on any picture).
+        'hero_slider' => [
+            'slides' => ['type' => 'list', 'of' => [
+                'image_url' => ['type' => 'image'],
+                'heading' => ['type' => 'text'],
+                'subheading' => ['type' => 'textarea'],
+            ]],
+            'cta_label' => ['type' => 'text'],
+            'cta_url' => ['type' => 'url'],
+            'cta2_label' => ['type' => 'text'],
+            'cta2_url' => ['type' => 'url'],
+            'autoplay' => ['type' => 'int', 'default' => 0],
             'overlay' => ['type' => 'int', 'default' => 60],
         ],
     ];

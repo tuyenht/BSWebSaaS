@@ -9,6 +9,7 @@ use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Chrome\StorefrontChrome;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -160,10 +161,10 @@ it('uses the tenant brand favicon when set, and the platform file only as fallba
     expect($html)->not->toContain('<link rel="icon" href="/favicon.ico"');
 });
 
-it('preloads the Inter Latin subset only for a site whose font is Inter', function (): void {
+it('preloads the one Inter Latin and Vietnamese file only for a site whose font is Inter', function (): void {
     seoProvision();
     $site = Site::query()->firstWhere('name', 'An Vinh');
-    $preload = '<link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>';
+    $preload = '<link rel="preload" href="/fonts/inter-latin-vi.woff2" as="font" type="font/woff2" crossorigin>';
 
     expect($this->get('http://anvinh.platform.test/')->assertOk()->getContent())->not->toContain('rel="preload"');
 
@@ -171,11 +172,12 @@ it('preloads the Inter Latin subset only for a site whose font is Inter', functi
         ['group_name' => 'theme', 'key' => 'tokens', 'value' => ['font' => 'Inter, Inter-Fallback, system-ui, sans-serif']],
     ));
 
-    expect($this->get('http://anvinh.platform.test/')->assertOk()->getContent())->toContain($preload)
-        ->not->toContain('inter-vietnamese.woff2" as="font"');
+    $html = $this->get('http://anvinh.platform.test/')->assertOk()->getContent();
+    expect($html)->toContain($preload)
+        ->and(substr_count($html, 'as="font"'))->toBe(1);
 });
 
-it('loads the text-size script only when the header offers the text-size button, and no inline script at all', function (): void {
+it('inlines the text-size script only when the header offers the button, and every inline script is allowed by its CSP hash', function (): void {
     seoProvision();
     $site = Site::query()->firstWhere('name', 'An Vinh');
     $setHeader = fn (array $header) => app(Tenancy::class)->enter($site->id, fn () => SiteSetting::query()->updateOrCreate(
@@ -183,16 +185,23 @@ it('loads the text-size script only when the header offers the text-size button,
     ));
 
     $setHeader(['text_size' => false]);
-    $without = $this->get('http://anvinh.platform.test/')->assertOk()->getContent();
+    $without = $this->get('http://anvinh.platform.test/')->assertOk();
     $setHeader(['text_size' => true]);
-    $with = $this->get('http://anvinh.platform.test/')->assertOk()->getContent();
+    $with = $this->get('http://anvinh.platform.test/')->assertOk();
 
-    expect($without)->not->toContain('fs-boot.js')
-        ->and($with)->toMatch('#<head>.*<script src="/storefront/fs-boot\.js\?v=[0-9a-f]{10}"></script>.*</head>#s');
+    expect($without->getContent())->not->toContain(StorefrontChrome::TEXT_SIZE_BOOT)
+        ->and($with->getContent())->toMatch('#<head>.*<script>'.preg_quote(StorefrontChrome::TEXT_SIZE_BOOT, '#').'</script>.*</head>#s');
 
-    // The storefront CSP allows no inline script: every <script> either loads a file or is JSON-LD.
-    foreach ([$without, $with] as $html) {
-        preg_match_all('/<script(?![^>]*\bsrc=)(?![^>]*type="application\/ld\+json")[^>]*>/', $html, $inline);
-        expect($inline[0])->toBe([]);
+    // Every <script> loads a file, is JSON-LD, or is inline text whose sha256 the page's CSP lists
+    // (an edit to the boot script that forgets the hash fails here, not silently in browsers).
+    $inlineCount = [];
+    foreach (['without' => $without, 'with' => $with] as $case => $response) {
+        $csp = (string) $response->headers->get('Content-Security-Policy');
+        preg_match_all('/<script(?![^>]*\ssrc=)(?![^>]*\stype="application\/ld\+json")[^>]*>(.*?)<\/script>/s', (string) $response->getContent(), $inline);
+        foreach ($inline[1] as $code) {
+            expect($csp)->toContain("'sha256-".base64_encode(hash('sha256', $code, true))."'");
+        }
+        $inlineCount[$case] = count($inline[1]);
     }
+    expect($inlineCount)->toBe(['without' => 0, 'with' => 1]);
 });

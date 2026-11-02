@@ -3,11 +3,11 @@
     layout skips its own — PageRenderer marks it `_lead`); a later band is an h2. The background is
     a real <img> (not a CSS background) so fetchpriority="high" reaches the LCP image; alt="" since
     the heading is its text. No image (or one whose URL is not a safe web link) → a solid ink band. The overlay darkens the photo by
-    40–80% (default 60) so the white text stays readable on any picture.
+    55–80% (default 60): at 55% white text over a white photo still reads 4.76:1.
 --}}
 @php
     $overlay = is_numeric($props['overlay'] ?? null) ? (int) $props['overlay'] : 60;
-    $overlay = max(40, min(80, $overlay));
+    $overlay = max(55, min(80, $overlay));
     $heading = ! empty($props['_lead']) ? 'h1' : 'h2';
     $image = \App\Modules\Shared\Support\SafeLink::href($props['image_url'] ?? null);
 @endphp
