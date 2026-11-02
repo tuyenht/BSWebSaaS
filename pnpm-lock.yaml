@@ -12,8 +12,8 @@ importers:
   .:
     dependencies:
       jodit:
-        specifier: ^4.18.10
-        version: 4.18.10
+        specifier: ^4.18.12
+        version: 4.18.12
       remixicon:
         specifier: ^4.9.1
         version: 4.9.1
@@ -1172,8 +1172,8 @@ packages:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
     hasBin: true
 
-  jodit@4.18.10:
-    resolution: {integrity: sha512-vS9Ur9WHGBPU07sUN26dYtVqqlhy0OZpwwhQ7ihEgIZOPtNbuPgSjl3pZ7pmRj2AjSMVA6I7DXh9P99XzLsr1Q==}
+  jodit@4.18.12:
+    resolution: {integrity: sha512-//jljicUy78WlbhrbBvMXqM0lOIHuJJf272IviYuYL2jlP2fVMVb7s6tV6Hb5LnfO2uS0v7K8U4e1+oJy0A3+Q==}
 
   jpeg-js@0.4.4:
     resolution: {integrity: sha512-WZzeDOEtTOBK4Mdsar0IqEU5sMr3vSV2RqkAIzUEV2BHnUfKGyswWFPFwK5EeDo93K3FohSHbLAjj0s1Wzd+dg==}
@@ -3364,7 +3364,7 @@ snapshots:
 
   jiti@2.7.0: {}
 
-  jodit@4.18.10: {}
+  jodit@4.18.12: {}
 
   jpeg-js@0.4.4: {}
 
