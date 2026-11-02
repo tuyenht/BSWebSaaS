@@ -10,6 +10,7 @@ use App\Modules\Provisioning\ContentPack\Applier;
 use App\Modules\Provisioning\ContentPack\Backup;
 use App\Modules\Provisioning\ContentPack\CanonicalHash;
 use App\Modules\Provisioning\ContentPack\Ledger;
+use App\Modules\Provisioning\ContentPack\MediaStep;
 use App\Modules\Provisioning\ContentPack\Pack;
 use App\Modules\Provisioning\ContentPack\PackReader;
 use App\Modules\Provisioning\ContentPack\PackRejected;
@@ -32,6 +33,10 @@ use Throwable;
  * between changes the fingerprint and the command refuses. Never deletes; never overwrites what
  * staff changed since the last load unless the item is named with --force-item. Runs as the app
  * connection with the site's tenant context (RLS on) — allowed on production.
+ *
+ * `--media` runs the image step instead (MediaStep): the same dry run / `--apply --plan` pair,
+ * uploading the pack's image files to the site's media library. Run it before the content load
+ * that should use the images; that load then resolves each slot to its uploaded row.
  */
 final class LoadContentPackCommand extends Command
 {
@@ -79,10 +84,6 @@ final class LoadContentPackCommand extends Command
             return self::SUCCESS;
         }
 
-        if ($this->option('media') === true) {
-            throw new PackRejected('Refused: the image step is not available in this build; run without --media (images that already exist on the site are reused).');
-        }
-
         $host = SiteResolver::normalize(Cast::string($this->option('host'))) ?? '';
         $resolved = $host === '' ? null : $resolver->resolve($host);
         if ($resolved === null) {
@@ -98,6 +99,10 @@ final class LoadContentPackCommand extends Command
         }
         $forced = array_values(array_unique(Cast::strings($this->option('force-item'))));
         $siteId = $site->id;
+
+        if ($this->option('media') === true) {
+            return $this->media($pack, $site, $host, $forced, $tenancy);
+        }
 
         $planner = app(Planner::class);
         $plan = $tenancy->enter($siteId, fn (): Plan => $planner->plan($pack, $site->ulid, $site->name, $host, $forced));
@@ -214,6 +219,100 @@ final class LoadContentPackCommand extends Command
         Ledger::write($plan->pack->code, $plan->pack->version, $items, $plan->ledger);
     }
 
+    /**
+     * The image step: plan every slot with a file, print it (dry run), or upload exactly that plan.
+     * Refused before anything is read from the site's media when another website shares its
+     * storage folder.
+     *
+     * @param  list<string>  $forced
+     */
+    private function media(Pack $pack, Site $site, string $host, array $forced, Tenancy $tenancy): int
+    {
+        foreach ($forced as $key) {
+            $slot = str_starts_with($key, MediaStep::KEY_PREFIX) ? substr($key, strlen(MediaStep::KEY_PREFIX)) : null;
+            if ($slot === null || ! is_string($pack->slots[$slot]['file'] ?? null)) {
+                throw new PackRejected("Refused: --force-item with --media takes media:<slot> keys of slots with a file ({$key} is not one).");
+            }
+        }
+
+        $step = app(MediaStep::class);
+        $step->assertFolderNotShared($site);
+        $lines = $tenancy->enter($site->id, fn (): array => $step->plan($pack, $site, $forced));
+        $fingerprint = MediaStep::fingerprint($pack, $site->ulid, $forced, $lines);
+
+        if ($this->option('apply') !== true && $this->option('json') === true) {
+            $this->line(CanonicalHash::encode(['site' => ['name' => $site->name, 'host' => $host, 'ulid' => $site->ulid], 'pack' => ['code' => $pack->code, 'version' => $pack->version], 'media' => $lines, 'fingerprint' => $fingerprint]));
+
+            return self::SUCCESS;
+        }
+
+        $this->line("Site: {$site->name} ({$host})   Pack: {$pack->code} v{$pack->version}   Image step");
+        foreach ($lines as $index => $line) {
+            $this->line(sprintf('%-10s %-19s %-44s %s', $index === 0 ? 'MEDIA' : '', $line['forced'] ? $line['verdict'].' (forced)' : $line['verdict'], $line['key'], $this->mediaDetail($line)));
+        }
+        $counts = array_count_values(array_column($lines, 'verdict'));
+        $totals = [];
+        foreach ([MediaStep::UPLOAD, MediaStep::REUSE, MediaStep::IN_TRASH, MediaStep::RESTORE] as $verdict) {
+            $totals[] = $verdict.' '.($counts[$verdict] ?? 0);
+        }
+        $this->line('Totals: '.implode(' · ', $totals));
+
+        if ($this->option('apply') !== true) {
+            $this->line("Plan fingerprint: {$fingerprint}   →  --media --apply --plan={$fingerprint}");
+
+            return self::SUCCESS;
+        }
+
+        $expected = Cast::string($this->option('plan'));
+        if ($expected === '') {
+            throw new PackRejected('Refused: --apply needs --plan=<fingerprint> from a dry run.');
+        }
+        if (! hash_equals($fingerprint, $expected)) {
+            throw new PackRejected('Refused: plan changed, run the dry run again.');
+        }
+
+        // One transaction per file: R2 is not transactional, so a failure keeps every file written
+        // before it (its row with its object), and the next run reuses those by hash.
+        $written = 0;
+        try {
+            foreach ($lines as $line) {
+                if (! in_array($line['verdict'], [MediaStep::UPLOAD, MediaStep::RESTORE], true)) {
+                    continue;
+                }
+                $tenancy->enter($site->id, fn () => $step->write($pack, $site, $line, $pack->slots[$line['slot']]));
+                $written++;
+                $this->line(($line['verdict'] === MediaStep::UPLOAD ? 'Uploaded ' : 'Restored ').$line['key'].' → '.$line['storage_key']);
+            }
+        } catch (Throwable $e) {
+            throw new PackRejected("Refused: the image step stopped after {$written} files; the files before it are kept and the next run reuses them. ({$e->getMessage()})");
+        }
+
+        if ($written > 0) {
+            $tenancy->enter($site->id, fn () => Audit::record('content_pack.media_applied', [
+                'pack' => $pack->code,
+                'version' => $pack->version,
+                'fingerprint' => $fingerprint,
+                'written' => $written,
+            ]));
+        }
+        $this->info("Image step of {$pack->code} v{$pack->version} on {$host}: {$written} files written. Run the content load again so the pages use them.");
+
+        return self::SUCCESS;
+    }
+
+    /** @param  array{verdict: string, key: string, file: string, size: int, storage_key: string}  $line */
+    private function mediaDetail(array $line): string
+    {
+        $size = number_format($line['size'] / 1024, 0).' KB';
+
+        return match ($line['verdict']) {
+            MediaStep::UPLOAD => "{$line['file']} ({$size}) → {$line['storage_key']}",
+            MediaStep::REUSE => "the site already has this file ({$line['storage_key']})",
+            MediaStep::IN_TRASH => "the site has this file in the Trash; left there (restore it with --force-item={$line['key']})",
+            default => "taken back out of the Trash ({$line['storage_key']})",
+        };
+    }
+
     private function printClaims(Pack $pack): void
     {
         $claims = $pack->claims();
@@ -260,7 +359,10 @@ final class LoadContentPackCommand extends Command
         foreach ($plan->orphans as $key) {
             $this->line(sprintf('%-10s %-19s %s', 'ORPHANS', 'orphan', $key.' (in the ledger, no longer in the pack; left as it is)'));
         }
-        $this->line(sprintf('%-10s %s', 'MEDIA', "skipped (no image step in this build; {$plan->media['slots']} slots, {$plan->media['resolved']} using existing images)"));
+        $media = $plan->media;
+        $legacy = $media['resolved'] - $media['packed'];
+        $none = $media['slots'] - $media['resolved'];
+        $this->line(sprintf('%-10s %s', 'MEDIA', "{$media['slots']} slots: {$media['packed']} with the pack's own image, {$legacy} using existing images, {$none} with none (the pack's images are uploaded by --media)"));
         foreach ($plan->warnings as $index => $warning) {
             $this->line(sprintf('%-10s %s', $index === 0 ? 'WARNINGS' : '', $warning));
         }

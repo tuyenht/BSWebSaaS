@@ -16,6 +16,7 @@
   },
   {
    "slot": "header",
+   "file": "media/header.png",
    "alt": {
     "vi": "Đầu trang"
    }
@@ -29,6 +30,7 @@
   },
   {
    "slot": "news-1",
+   "file": "media/news-1.png",
    "alt": {
     "vi": "Ra mắt"
    }

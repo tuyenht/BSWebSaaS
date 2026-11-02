@@ -6,6 +6,7 @@ namespace App\Modules\Provisioning\ContentPack;
 
 use App\Modules\Cms\Taxonomy\TaxonomyRules;
 use App\Modules\Cms\Validation\ValidPageJson;
+use App\Modules\Media\Models\Media;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\RichTextSanitizer;
 use App\Modules\Shared\Support\SafeLink;
@@ -739,7 +740,7 @@ final readonly class PackValidator
             $errors[] = "{$at}: legacy_key must be a storage key.";
         }
         if (isset($slot['alt'])) {
-            $this->localeMap($pack, $at, $slot, 'alt', false, self::TEXT_MAX, $errors);
+            $this->localeMap($pack, $at, $slot, 'alt', false, Media::ALT_MAX_LENGTH, $errors);
         }
 
         $file = $slot['file'] ?? null;
