@@ -11,7 +11,9 @@ $public = dirname(__DIR__).'/public';
 $path = urldecode((string) (parse_url((string) $_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/'));
 $gzip = str_contains((string) ($_SERVER['HTTP_ACCEPT_ENCODING'] ?? ''), 'gzip');
 
-// The text types Caddy's encoder compresses by default; fonts (woff2) and photos are compressed already.
+// Caddy's encoder skips bodies under 512 bytes and compresses text types and icons; woff2 and
+// photos are compressed already, so they pass through as they are.
+$minimum = 512;
 $types = [
     'css' => 'text/css; charset=utf-8',
     'js' => 'text/javascript; charset=utf-8',
@@ -19,11 +21,12 @@ $types = [
     'svg' => 'image/svg+xml',
     'txt' => 'text/plain; charset=utf-8',
     'xml' => 'application/xml',
+    'ico' => 'image/x-icon',
 ];
 
 if ($path !== '/' && ! str_contains($path, '..') && is_file($public.$path)) {
     $type = $types[strtolower(pathinfo($path, PATHINFO_EXTENSION))] ?? null;
-    if ($type === null || ! $gzip) {
+    if ($type === null || ! $gzip || filesize($public.$path) < $minimum) {
         return false; // the built-in server sends the file as it is
     }
     header('Content-Type: '.$type);
@@ -34,5 +37,16 @@ if ($path !== '/' && ! str_contains($path, '..') && is_file($public.$path)) {
     return true;
 }
 
-ob_start('ob_gzhandler'); // compresses only when the request accepts gzip
+// A page is compressed when it accepts gzip, has a body of 512 bytes or more, carries no
+// Content-Length of its own and is not a 204 or 304 (which must have no body).
+ob_start(static function (string $body) use ($gzip, $minimum): string {
+    $sized = preg_grep('/^content-(length|encoding):/i', headers_list()) !== [];
+    if (! $gzip || $sized || strlen($body) < $minimum || in_array(http_response_code(), [204, 304], true)) {
+        return $body;
+    }
+    header('Content-Encoding: gzip');
+    header('Vary: Accept-Encoding', false);
+
+    return (string) gzencode($body, 6);
+});
 require $public.'/index.php';
