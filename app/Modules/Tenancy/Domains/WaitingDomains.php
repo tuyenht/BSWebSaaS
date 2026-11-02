@@ -8,7 +8,10 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Actions\CheckDomain;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\Domain;
+use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Cache;
 use RuntimeException;
 use Throwable;
 
@@ -17,26 +20,31 @@ use Throwable;
  * the platform checks again on its own every 15 minutes, so a name pointed — or proved — and never
  * checked by hand still goes live. It is the owner's own check (CheckDomain), run for them:
  *
- *  - only names that never went live: not verified and with no failing streak — a name still to be
- *    pointed, or one another site holds that waits for its TXT proof. Live, failing and stopped
- *    names are the daily sweep's (DomainHealth);
- *  - the spelling that runs; its other spelling is checked along with it. The redirecting spelling
- *    is looked at on its own only when a check found it waiting for its own proof (the running one
- *    may be live already);
- *  - read by keyset in chunks, one site's transaction per name, and stopped once the time budget
- *    is spent: a slow resolver (the system resolver's own timeout bounds each lookup) never makes
- *    one run reach the next;
+ *  - only spellings that never went live: not verified and with no failing streak — a name still
+ *    to be pointed, one another site holds that waits for its TXT proof, or the other spelling of
+ *    a live name the owner has not pointed yet. Live, failing and stopped names are the daily
+ *    sweep's (DomainHealth);
+ *  - one check per pair and run: a waiting spelling is checked with its other spelling when that
+ *    one waits too (CheckDomain checks both); a spelling whose other one is live is checked alone;
+ *  - the DNS lookups (CheckDomain::probe) run before the site's transaction opens; only the write
+ *    runs inside it, so no transaction stays open and no row stays locked while DNS answers;
+ *  - read by keyset in chunks and stopped once the time budget is spent (a slow resolver never
+ *    makes one run reach the next). The next run starts after the last row this one reached and
+ *    wraps round to the start, so every waiting name is reached however slow the first ones are;
  *  - idempotent: a verified name leaves the set; a name still waiting is only looked at again.
  *
  * Without the target's own addresses nothing is checked (a resolver outage is not the customers'
  * fault). One name failing to process never stops the rest. `domains` is a GLOBAL table (D6): read
- * with no tenant context; each check runs inside its site's.
+ * with no tenant context; each write runs inside its site's.
  *
  * Returns the names this run verified, for the caller to audit.
  */
 final readonly class WaitingDomains
 {
     public const int CHUNK = 100;
+
+    /** Where the next run starts: the id of the last waiting row a run reached (0 = the start). */
+    public const string RESUME_KEY = 'domains:recheck-waiting:after';
 
     public function __construct(
         private Pointing $pointing,
@@ -57,49 +65,82 @@ final readonly class WaitingDomains
         }
 
         $budget = $budgetSeconds ?? Cast::int(config('tenancy.custom_domains.recheck_budget_seconds'), 600);
-        $deadline = microtime(true) + max(0, $budget);
-        $verified = [];
-        $seen = [];
+        $deadline = CarbonImmutable::now()->addSeconds(max(0, $budget));
+        $after = Cast::int(Cache::get(self::RESUME_KEY), 0);
+        $state = ['verified' => [], 'seen' => [], 'last' => $after, 'stopped' => false];
 
-        Domain::query()
-            ->where('kind', 'custom')->whereNull('verified_at')->whereNull('failing_since')
-            ->select(['id', 'site_id', 'hostname', 'is_redirect', 'failure_reason'])
-            ->chunkById(self::CHUNK, function (Collection $chunk) use (&$verified, &$seen, $deadline): bool {
-                foreach ($chunk as $row) {
-                    if (microtime(true) >= $deadline) {
-                        return false;
-                    }
+        $visit = function (Collection $chunk) use (&$state, $deadline): bool {
+            foreach ($chunk as $row) {
+                assert($row instanceof Domain);
 
-                    // A redirecting spelling rides along with the running one, unless it waits for its own proof.
-                    if ($row->is_redirect && $row->failure_reason !== 'needs_proof') {
-                        continue;
-                    }
+                if (CarbonImmutable::now()->gte($deadline)) {
+                    $state['stopped'] = true;
 
-                    $key = $row->site_id.'|'.DomainName::pairKey($row->hostname);
-                    if (isset($seen[$key])) {
-                        continue;
-                    }
-                    $seen[$key] = true;
-
-                    try {
-                        $result = $this->tenancy->enter($row->site_id, fn (): DomainCheck => $this->check->handle($row->hostname));
-                    } catch (Throwable $e) {
-                        report($e);
-
-                        continue;
-                    }
-
-                    if ($result->verified()) {
-                        $verified[] = ['site_id' => $row->site_id, 'hostname' => $row->hostname, 'evicted' => $result->evictedSiteIds];
-                    }
-
-                    if ($result->twin?->verified() === true) {
-                        $verified[] = ['site_id' => $row->site_id, 'hostname' => DomainName::sibling($row->hostname), 'evicted' => $result->twin->evictedSiteIds];
-                    }
+                    return false;
                 }
 
-                return true;
-            });
+                $state['last'] = $row->id;
+                $key = $row->site_id.'|'.DomainName::pairKey($row->hostname);
+
+                // Both spellings of a pair are checked together: the second one of the run is done.
+                if (isset($state['seen'][$key])) {
+                    continue;
+                }
+                $state['seen'][$key] = true;
+
+                foreach ($this->checkOne($row) as $name) {
+                    $state['verified'][] = $name;
+                }
+            }
+
+            return true;
+        };
+
+        // From where the last run stopped to the end, then round from the start up to there.
+        $this->waiting()->where('id', '>', $after)->chunkById(self::CHUNK, $visit);
+
+        if (! $state['stopped'] && $after > 0) {
+            $this->waiting()->where('id', '<=', $after)->chunkById(self::CHUNK, $visit);
+        }
+
+        Cache::forever(self::RESUME_KEY, $state['stopped'] ? $state['last'] : 0);
+
+        return $state['verified'];
+    }
+
+    /** @return Builder<Domain> */
+    private function waiting(): Builder
+    {
+        return Domain::query()
+            ->where('kind', 'custom')->whereNull('verified_at')->whereNull('failing_since')
+            ->select(['id', 'site_id', 'hostname']);
+    }
+
+    /**
+     * Check one waiting spelling (and its other spelling with it) as its owner would.
+     *
+     * @return list<array{site_id: int, hostname: string, evicted: list<int>}>
+     */
+    private function checkOne(Domain $row): array
+    {
+        try {
+            $probe = $this->check->probe($row->hostname, $row->site_id);
+            $result = $this->tenancy->enter($row->site_id, fn (): DomainCheck => $this->check->apply($probe));
+        } catch (Throwable $e) {
+            report($e);
+
+            return [];
+        }
+
+        $verified = [];
+
+        if ($result->verified()) {
+            $verified[] = ['site_id' => $row->site_id, 'hostname' => $row->hostname, 'evicted' => $result->evictedSiteIds];
+        }
+
+        if ($result->twin?->verified() === true) {
+            $verified[] = ['site_id' => $row->site_id, 'hostname' => DomainName::sibling($row->hostname), 'evicted' => $result->twin->evictedSiteIds];
+        }
 
         return $verified;
     }

@@ -17,6 +17,7 @@
         'lost' => ['text-danger-text', 'ri-close-circle', 'admin.domains_rowst_lost'],
         'failing' => ['text-danger-text', 'ri-link-unlink', 'admin.domains_rowst_failing'],
         'optional' => ['text-text-muted', 'ri-indeterminate-circle', 'admin.domains_rowst_optional'],
+        'claim' => ['text-warning-text', 'ri-time', 'admin.domains_rowst_claim'],
     ];
     $msgTones = [
         'ok' => ['text-success-text', 'ri-checkbox-circle'],
@@ -268,7 +269,7 @@
                         </div>
 
                         @if ($g->state === 'claim' || $g->altClaim)
-                            @include('admin::livewire.settings.domains.proof', ['group' => $g, 'proof' => $proof($g), 'twinProof' => $twinProof($g), 'dialog' => false])
+                            @include('admin::livewire.settings.domains.proof', ['group' => $g, 'proof' => $proof($g), 'twinProof' => $twinProof($g), 'dialog' => false, 'manage' => $manage, 'locked' => $locked])
                         @endif
                         @if ($open[$g->name] ?? false)
                             @include('admin::livewire.settings.domains.pointing', ['group' => $g, 'records' => $records($g), 'apex' => $apex[$g->name] ?? null, 'dialog' => false])
@@ -312,11 +313,11 @@
                             {{ $added->state === 'claim' ? __('admin.domains_dlg_added_claim', ['name' => $display($added->name)]) : __('admin.domains_dlg_added', ['name' => $display($added->name)]) }}
                         </x-bs-admin::alert>
                         @if ($added->state === 'claim')
-                            @include('admin::livewire.settings.domains.proof', ['group' => $added, 'proof' => $proof($added), 'twinProof' => $twinProof($added), 'dialog' => true])
+                            @include('admin::livewire.settings.domains.proof', ['group' => $added, 'proof' => $proof($added), 'twinProof' => $twinProof($added), 'dialog' => true, 'manage' => $manage, 'locked' => $locked])
                         @else
                             @include('admin::livewire.settings.domains.pointing', ['group' => $added, 'records' => $records($added), 'apex' => null, 'dialog' => true])
                             @if ($added->altClaim)
-                                @include('admin::livewire.settings.domains.proof', ['group' => $added, 'proof' => $proof($added), 'twinProof' => $twinProof($added), 'dialog' => true])
+                                @include('admin::livewire.settings.domains.proof', ['group' => $added, 'proof' => $proof($added), 'twinProof' => $twinProof($added), 'dialog' => true, 'manage' => $manage, 'locked' => $locked])
                             @endif
                         @endif
                         <span class="text-small text-text-muted">{{ __('admin.domains_dlg_check_foot') }}</span>

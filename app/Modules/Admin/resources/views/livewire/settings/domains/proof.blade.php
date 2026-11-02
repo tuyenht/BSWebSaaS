@@ -3,8 +3,10 @@
     [Sao chép]. The proof is per hostname, so when the other spelling (with or without www) is held
     by another site as well it gets its own pair, labelled for that spelling, with one sentence
     saying both lines are needed. Once the running spelling is proved, only the other one's pair is
-    left. Another site is only ever "a website khác" — never named.
-    In: $group, $proof (name, value), $twinProof (name, value, or null), $dialog (bool).
+    left, with its own "Kiểm tra lại" (design 21, scenario disputeHalf). Another site is only ever
+    "a website khác" — never named.
+    In: $group, $proof (name, value), $twinProof (name, value, or null), $dialog (bool),
+        $manage (bool: the reader may check the name), $locked (bool).
 --}}
 @php
     $first = $group->state === 'claim';
@@ -21,6 +23,16 @@
         <span class="text-small text-text-muted">{{ $first ? __('admin.domains_claim_twin_why', ['alt' => $alt]) : __('admin.domains_claim_twin_only', ['alt' => $alt]) }}</span>
         <x-bs-admin::copy-field :label="__('admin.domains_claim_name')" :value="$twinProof['name']" copied="copied" :args="['txt2_name', $group->name]" />
         <x-bs-admin::copy-field :label="__('admin.domains_claim_value')" :value="$twinProof['value']" copied="copied" :args="['txt2_value', $group->name]" />
+        @if (! $dialog && $manage && $group->altClaimOnly())
+            <div>
+                <x-bs-admin::button variant="outline" color="primary" size="sm" wire:click="check({{ \Illuminate\Support\Js::from($group->name) }})"
+                    wire:loading.attr="disabled" wire:target="check({{ \Illuminate\Support\Js::from($group->name) }})" data-check-alt
+                    :aria-disabled="$locked ? 'true' : null">
+                    <x-bs-admin::icon name="ri-radar" class="size-[calc(1rem+var(--user-text-boost))]" />
+                    <span>{{ __('admin.domains_next_recheck') }}</span>
+                </x-bs-admin::button>
+            </div>
+        @endif
     @endif
     <span class="text-caption text-text-muted">{{ $dialog ? __('admin.domains_claim_dlg_type') : __('admin.domains_claim_type_hint') }}</span>
 </div>

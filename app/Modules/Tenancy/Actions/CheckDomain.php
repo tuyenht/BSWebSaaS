@@ -9,6 +9,7 @@ use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Domains\DomainCheck;
 use App\Modules\Tenancy\Domains\DomainHealth;
 use App\Modules\Tenancy\Domains\DomainName;
+use App\Modules\Tenancy\Domains\DomainProbe;
 use App\Modules\Tenancy\Domains\OwnershipProof;
 use App\Modules\Tenancy\Domains\Pointing;
 use App\Modules\Tenancy\Domains\PrimaryDomain;
@@ -17,6 +18,7 @@ use App\Modules\Tenancy\Exceptions\DomainChangeRejectedException;
 use App\Modules\Tenancy\Models\Domain;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 /**
  * Check a domain attached to the current site and, when it points at the platform, verify it
@@ -40,7 +42,8 @@ use Illuminate\Support\Facades\DB;
  * 'recovered'), since the daily sweep will then see nothing new.
  *
  * Returns the outcome instead of throwing for DNS states — those are ordinary, the caller shows
- * them. Who may manage a site's domains is the caller's check. Runs inside the tenant context.
+ * them. Who may manage a site's domains is the caller's check. The DNS lookups (probe) come first,
+ * outside any lock; the writes (apply) run inside the tenant context.
  */
 final readonly class CheckDomain
 {
@@ -52,13 +55,67 @@ final readonly class CheckDomain
     ) {}
 
     /**
+     * Check the name for the current site: probe() then apply(), for a caller already inside the
+     * site's context (no row is locked while DNS answers).
+     *
      * @throws DomainChangeRejectedException invalid · not_found
      */
     public function handle(string $input): DomainCheck
     {
+        return $this->apply($this->probe($input, $this->current->id()));
+    }
+
+    /**
+     * Ask DNS about the name — and its other spelling when apply() may check it too. Opens no
+     * transaction and needs no tenant context (`domains` and `sites` are global, D6, and every read
+     * names the site), so a caller that enters the site itself runs this first: nothing stays open
+     * or locked while a slow nameserver answers.
+     *
+     * @throws DomainChangeRejectedException invalid · not_found
+     */
+    public function probe(string $input, int $siteId): DomainProbe
+    {
         $host = DomainName::parse($input);
+        $twin = DomainName::sibling($host);
+        $rows = Domain::query()
+            ->where('site_id', $siteId)->where('kind', 'custom')->whereIn('hostname', [$host, $twin])
+            ->get(['hostname', 'verified_at', 'failing_since']);
+        $mine = $rows->firstWhere('hostname', $host);
+
+        if ($mine === null) {
+            throw new DomainChangeRejectedException('not_found');
+        }
+
+        $probe = $this->ask($host, $siteId);
+        $other = $rows->firstWhere('hostname', $twin);
+
+        // apply() checks the other spelling while it waits, and when this check starts or ends the
+        // name's failing streak — look it up in those cases (a lost name may look it up for nothing).
+        $streakMayChange = $probe->pointing !== null
+            ? $mine->verified_at !== null && $mine->failing_since === null
+            : $mine->failing_since !== null;
+
+        return $other !== null && ($other->verified_at === null || $streakMayChange)
+            ? $probe->withTwin($this->ask($twin, $siteId))
+            : $probe;
+    }
+
+    /**
+     * Write what probe() found, inside the site's context (each spelling in its own short
+     * transaction, its rows locked only for the write).
+     *
+     * @throws DomainChangeRejectedException not_found
+     */
+    public function apply(DomainProbe $probe): DomainCheck
+    {
         $siteId = $this->current->id();
-        $check = $this->checkOne($host, $siteId);
+
+        if ($probe->siteId !== $siteId) {
+            throw new RuntimeException("A domain check gathered for site {$probe->siteId} cannot be written in site {$siteId}.");
+        }
+
+        $host = $probe->host;
+        $check = $this->write($probe);
 
         // The other spelling is checked too while it waits — and when this check found the name
         // failing or back, so both spellings move (and are announced) together.
@@ -67,8 +124,8 @@ final readonly class CheckDomain
             ->where('site_id', $siteId)->where('hostname', $twin)->where('kind', 'custom')
             ->first(['verified_at']);
 
-        if ($twinVerifiedAt !== null && ($twinVerifiedAt->verified_at === null || $check->streak !== null)) {
-            $check = $check->withTwin($this->checkOne($twin, $siteId));
+        if ($probe->twin !== null && $twinVerifiedAt !== null && ($twinVerifiedAt->verified_at === null || $check->streak !== null)) {
+            $check = $check->withTwin($this->write($probe->twin));
         }
 
         $this->announceTakeovers($check, $host, $twin);
@@ -116,14 +173,30 @@ final readonly class CheckDomain
         }
     }
 
-    /** @throws DomainChangeRejectedException not_found */
-    private function checkOne(string $host, int $siteId): DomainCheck
+    /** One spelling's DNS answers: does it point here, and is this site's TXT record published? */
+    private function ask(string $host, int $siteId): DomainProbe
     {
-        $txtName = $this->proof->recordName($host);
-        $txtValue = $this->proof->recordValue($siteId, $host);
-
         $pointing = $this->pointing->problem($host);
-        $proved = $pointing === null && $this->proof->published($siteId, $host);
+
+        return new DomainProbe(
+            $siteId,
+            $host,
+            $this->proof->recordName($host),
+            $this->proof->recordValue($siteId, $host),
+            $pointing,
+            $pointing === null && $this->proof->published($siteId, $host),
+        );
+    }
+
+    /** @throws DomainChangeRejectedException not_found */
+    private function write(DomainProbe $probe): DomainCheck
+    {
+        $host = $probe->host;
+        $siteId = $probe->siteId;
+        $txtName = $probe->txtName;
+        $txtValue = $probe->txtValue;
+        $pointing = $probe->pointing;
+        $proved = $probe->proved;
 
         $check = DB::transaction(function () use ($host, $siteId, $txtName, $txtValue, $pointing, $proved): DomainCheck {
             // Every site's row for this name, locked: two sites checking at once must not both win.

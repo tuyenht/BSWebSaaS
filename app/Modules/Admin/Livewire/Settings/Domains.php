@@ -124,9 +124,6 @@ final class Domains extends Component
     /** This request's read of the site's names; every change goes through domains(), which drops it. */
     private ?DomainOverview $overviewMemo = null;
 
-    /** Whether the site may use its own domains at all, read once per request. */
-    private ?bool $entitledMemo = null;
-
     public function mount(?string $ulid = null): void
     {
         if ($ulid !== null) {
@@ -147,8 +144,11 @@ final class Domains extends Component
         foreach ($overview->groups as $group) {
             $this->seen[$group->name] = $group->state;
 
+            // The owner's answer for "@", as stored: by number, or moved to a place that points by name.
             if ($group->byNumber) {
                 $this->apex[$group->name] = 'ip';
+            } elseif ($group->byName) {
+                $this->apex[$group->name] = 'move';
             }
         }
     }
@@ -229,7 +229,7 @@ final class Domains extends Component
         }
 
         try {
-            $created = $this->domains()->attach($this->user(), $this->addName, PointingMethod::Alias, $this->addWww, $this->site());
+            $created = $this->domains()->attach($this->user(), $this->addName, null, $this->addWww, $this->site());
         } catch (DomainChangeRejectedException $e) {
             $this->addError('addName', $this->attachMessage($e->getMessage(), $this->addName));
 
@@ -354,7 +354,7 @@ final class Domains extends Component
 
         $this->withGroup(DomainName::pairKey($host), function () use ($host): void {
             $this->domains()->chooseRunningSpelling($this->user(), $host, $this->site());
-            $this->dismissToast();
+            $this->clearToast();
         });
     }
 
@@ -525,10 +525,17 @@ final class Domains extends Component
         }
     }
 
-    public function dismissToast(): void
+    /**
+     * The message $seq hid itself or was closed. Only that message is cleared: a timer that fires
+     * while a newer message is on its way never takes the newer one away.
+     */
+    public function dismissToast(int $seq): void
     {
         $this->authorizeView();
-        $this->fill(['toast' => '', 'toastTone' => 'success', 'toastUndo' => false, 'undoHost' => null]);
+
+        if ($seq === $this->toastSeq) {
+            $this->clearToast();
+        }
     }
 
     public function render(): View
@@ -616,24 +623,23 @@ final class Domains extends Component
         }
 
         $twinVerified = $result->twin?->verified() === true;
-        // The other spelling is held by another site too: it needs its own TXT proof (per hostname).
-        $twinProof = $before->alt !== null && $result->twin?->status === 'needs_proof'
-            ? Cast::string(__('admin.domains_toast_twin_proof', ['alt' => DomainName::display($before->alt)]))
-            : null;
         $live = $before->alt !== null && in_array($before->state, ['verified', 'issuing', 'https_err', 'active'], true);
+        // A live name whose other spelling is held by another site too: that one still needs its own
+        // TXT line (the proof is per hostname). A name that just went live says so in its block.
+        $twinProof = $live && $result->twin?->status === 'needs_proof'
+            ? Cast::string(__('admin.domains_toast_twin_proof', ['alt' => DomainName::display((string) $before->alt)]))
+            : null;
 
         $message = Cast::string(match (true) {
-            $live && $twinProof !== null => $twinProof,
+            $twinProof !== null => $twinProof,
+            // Only the other spelling's line was left: proved now, so it is this site's as well.
+            $live && $before->altClaim && $twinVerified => __('admin.domains_toast_alt_claim_ok', ['alt' => DomainName::display((string) $before->alt), 'run' => DomainName::display($before->runs)]),
             $before->state === 'claim' => __('admin.domains_toast_claim_ok', ['name' => $name]),
             in_array($before->state, ['failing', 'expiring', 'lost'], true) => __('admin.domains_toast_recovered', ['name' => $name]),
             $live && $twinVerified => __('admin.domains_toast_alt_pointed', ['alt' => DomainName::display((string) $before->alt), 'run' => DomainName::display($before->runs)]),
             $before->state === 'active' && $before->alt !== null => __('admin.domains_toast_not_pointed', ['name' => DomainName::display($before->alt)]),
             default => __('admin.domains_toast_verified', ['name' => $name]),
         });
-
-        if (! $live && $twinProof !== null) {
-            $message .= ' '.$twinProof;
-        }
 
         // A sentence the owner still has to act on stays until it is closed.
         $this->flash($message, $twinProof !== null || ($before->state === 'active' && ! $twinVerified) ? 'error' : 'success');
@@ -712,7 +718,8 @@ final class Domains extends Component
     /** Entitlement before RBAC: the site may use its own domains at all (the console is platform-wide). */
     private function entitled(): bool
     {
-        return $this->entitledMemo ??= in_array('domains', app(Entitlement::class)->entitledModuleKeys(), true);
+        // Entitlement remembers the answer for the request, so the admin nav and this page share it.
+        return in_array('domains', app(Entitlement::class)->entitledModuleKeys(), true);
     }
 
     private function mayManage(): bool
@@ -930,6 +937,11 @@ final class Domains extends Component
     private function flash(string $message, string $tone = 'success', bool $undo = false): void
     {
         $this->fill(['toast' => $message, 'toastTone' => $tone, 'toastUndo' => $undo, 'undoHost' => null, 'toastSeq' => $this->toastSeq + 1]);
+    }
+
+    private function clearToast(): void
+    {
+        $this->fill(['toast' => '', 'toastTone' => 'success', 'toastUndo' => false, 'undoHost' => null]);
     }
 
     private function notFound(): void

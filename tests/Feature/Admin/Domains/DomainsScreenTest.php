@@ -490,6 +490,18 @@ it('shows the pointing rows, and the server address once the owner picks it for 
 
     dsIn(1, fn () => $screen->call('pickApex', 'tencongty.vn', 'move'))->assertDontSee('Đang dùng tạm dãy số máy chủ cho dòng “@”.');
     expect(dsRow('tencongty.vn')?->pointing_method)->toBe(PointingMethod::Alias->value);
+
+    // The "move" answer is kept as well: a reload still shows it chosen.
+    dsScreen(dsMember(1, 'owner'))->assertSet('apex', ['tencongty.vn' => 'move']);
+});
+
+it('adds a name with no answer for “@” yet, so nothing shows as chosen', function (): void {
+    $screen = dsScreen(dsMember(1, 'owner'));
+
+    dsIn(1, fn () => $screen->call('openAdd')->set('addName', 'moi.vn')->call('submitAdd'));
+
+    expect(dsRow('moi.vn')?->pointing_method)->toBeNull();
+    dsScreen(dsMember(1, 'owner'))->assertSet('apex', []);
 });
 
 it('shows the server address to a member who may only look, without storing their choice', function (): void {
@@ -583,8 +595,9 @@ it('reads the screen on a flat query budget and never asks DNS while drawing it'
     $four = countQueries(fn () => $this->actingAs($owner)->get('http://a.test/admin/settings/domains')->assertOk()->assertSee('bon.vn'));
 
     // One read of the names, one yes/no on names served elsewhere, the notices, the site's
-    // entitlement (asked by the page and again by the admin nav: 2 + 2) — never one per name.
-    expect($one)->toBeLessThanOrEqual(14)
+    // entitlement (2, remembered for the request: the page and the admin nav share it) — never
+    // one per name.
+    expect($one)->toBeLessThanOrEqual(12)
         ->and($four)->toBe($one)
         ->and($this->dns->lookups)->toBe(0);
 });
@@ -670,13 +683,15 @@ it('verifies each spelling by its own proof, and says when the other one still n
     $screen = dsScreen(dsMember(1, 'owner'));
 
     dsIn(1, fn () => $screen->call('check', 'tranh-chap.vn'))
-        ->assertSet('toast', 'Đã xác minh bạn là chủ tranh-chap.vn. Website kia đã nhận thông báo. Việc tiếp theo: bật kết nối bảo mật. Còn www.tranh-chap.vn chưa xác minh: cách viết đó cũng đang gắn ở website khác, cần thêm dòng xác minh thứ hai cho nó rồi bấm Kiểm tra lại.')
-        ->assertSet('toastTone', 'error')
-        // Only the other spelling's pair is left, with a way to check it again.
+        ->assertSet('toast', 'Đã xác minh bạn là chủ tranh-chap.vn. Website kia đã nhận thông báo. Việc tiếp theo: bật kết nối bảo mật.')
+        ->assertSet('toastTone', 'success')
+        // Only the other spelling's pair is left (design 21, disputeHalf), with its own
+        // "Kiểm tra lại" in the block and its row saying another website holds it.
         ->assertDontSee($proof->recordValue(1, 'tranh-chap.vn'))
         ->assertSee($proof->recordValue(1, 'www.tranh-chap.vn'))
-        ->assertSee('www.tranh-chap.vn đang gắn ở website khác, nên cách viết đó cần dòng xác minh riêng dưới đây.')
-        ->assertSee('Kiểm tra lại');
+        ->assertSee('www.tranh-chap.vn vẫn đang gắn ở website khác, nên cách viết đó cần dòng xác minh riêng dưới đây. Thêm dòng này rồi bấm “Kiểm tra lại”.')
+        ->assertSee('Đang gắn ở website khác')
+        ->assertSeeHtml('data-check-alt');
 
     expect(dsRow('tranh-chap.vn')?->verified_at)->not->toBeNull()
         ->and(dsRow('www.tranh-chap.vn')?->verified_at)->toBeNull()
@@ -686,8 +701,11 @@ it('verifies each spelling by its own proof, and says when the other one still n
     RateLimiter::clear('domain-check:1:tranh-chap.vn');
 
     dsIn(1, fn () => $screen->call('check', 'tranh-chap.vn'))
-        ->assertSet('toast', 'www.tranh-chap.vn đã trỏ về hệ thống và tự chuyển về tranh-chap.vn.')
-        ->assertDontSee($proof->recordValue(1, 'www.tranh-chap.vn'));
+        ->assertSet('toast', 'Đã xác minh bạn là chủ www.tranh-chap.vn. Website kia đã nhận thông báo; www.tranh-chap.vn giờ tự chuyển về tranh-chap.vn.')
+        ->assertSet('toastTone', 'success')
+        ->assertDontSee($proof->recordValue(1, 'www.tranh-chap.vn'))
+        ->assertDontSee('Đang gắn ở website khác')
+        ->assertDontSeeHtml('data-check-alt');
 
     expect(dsHosts(2))->toBe(['b.test']);
 });
@@ -740,13 +758,32 @@ it('hides a success message after 6 seconds, an undo after 10, and keeps an erro
     dsPair(1, 'cho.vn');
     $screen = dsScreen(dsMember(1, 'owner'));
 
-    dsIn(1, fn () => $screen->call('copied', 'target', 'cho.vn'))->assertSeeHtml('(), 6000) }, destroy() { clearTimeout(this.timer) }');
-    dsIn(1, fn () => $screen->call('switchSpelling', 'tencongty.vn'))->assertSeeHtml('(), 10000) }');
+    $seq = dsIn(1, fn () => $screen->call('copied', 'target', 'cho.vn'))->get('toastSeq');
+    dsIn(1, fn () => $screen->call('$refresh'))->assertSeeHtml('dismissToast('.$seq.'), 6000) }, destroy() { clearTimeout(this.timer) }');
+    dsIn(1, fn () => $screen->call('switchSpelling', 'tencongty.vn'))->assertSeeHtml('), 10000) }');
     dsIn(1, fn () => $screen->call('check', 'cho.vn'))->assertSet('toastTone', 'error')->assertDontSeeHtml('setTimeout(');
 
     // The same words again are a new message, with a timer of their own.
     $first = dsIn(1, fn () => $screen->call('copied', 'target', 'cho.vn'))->get('toastSeq');
     expect(dsIn(1, fn () => $screen->call('copied', 'target', 'cho.vn'))->get('toastSeq'))->toBe($first + 1);
+});
+
+it('lets a message\'s timer clear only that message, never a newer one that arrived first', function (): void {
+    dsPair(1, 'cho.vn');
+    $screen = dsScreen(dsMember(1, 'owner'));
+
+    // A success message starts its 6-second timer; the owner presses Check, whose error answers
+    // before that timer fires.
+    $old = dsIn(1, fn () => $screen->call('copied', 'target', 'cho.vn'))->get('toastSeq');
+    dsIn(1, fn () => $screen->call('check', 'cho.vn'))->assertSet('toastTone', 'error');
+    $error = $screen->get('toast');
+
+    // The old timer fires now: the error must stay until it is closed.
+    dsIn(1, fn () => $screen->call('dismissToast', $old))->assertSet('toast', $error)->assertSet('toastTone', 'error');
+    expect($error)->not->toBe('');
+
+    // "Đóng" on the error itself carries its own number and clears it.
+    dsIn(1, fn () => $screen->call('dismissToast', $old + 1))->assertSet('toast', '');
 });
 
 // ── Entitlement before permission ───────────────────────────────────────────

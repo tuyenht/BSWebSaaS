@@ -55,13 +55,14 @@ final readonly class SiteDomains
     ) {}
 
     /**
+     * @param  PointingMethod|null  $pointing  how the owner pointed it; null when they have not said yet
      * @param  bool  $useWww  run the `www.` spelling; by default the one without `www.` runs
      * @return list<Domain> the rows created — the spelling that runs first
      *
      * @throws AuthorizationException
      * @throws DomainChangeRejectedException invalid · reserved · already_attached · limit_reached
      */
-    public function attach(User $actor, string $domain, PointingMethod $pointing = PointingMethod::Alias, bool $useWww = false, ?Site $site = null): array
+    public function attach(User $actor, string $domain, ?PointingMethod $pointing = PointingMethod::Alias, bool $useWww = false, ?Site $site = null): array
     {
         return $this->within($actor, $site, function (int $siteId) use ($actor, $domain, $pointing, $useWww): array {
             $created = app(AttachDomain::class)->handle($domain, $pointing, $useWww);
@@ -69,7 +70,7 @@ final readonly class SiteDomains
             $this->audit($actor, $siteId, 'tenancy.domain.attached', [
                 'hostnames' => array_map(fn (Domain $row): string => $row->hostname, $created),
                 'runs' => $created[0]->hostname,
-                'pointing' => $pointing->value,
+                'pointing' => $pointing?->value,
             ]);
 
             return $created;
@@ -85,8 +86,13 @@ final readonly class SiteDomains
      */
     public function check(User $actor, string $domain, ?Site $site = null): DomainCheck
     {
-        return $this->within($actor, $site, function (int $siteId) use ($actor, $domain): DomainCheck {
-            $check = app(CheckDomain::class)->handle($domain);
+        $siteId = $this->allowed($actor, $site);
+        // The DNS lookups come first, once the actor may check: no domain row is locked while a
+        // nameserver answers and, on the console, the site's transaction is not open yet.
+        $probe = app(CheckDomain::class)->probe($domain, $siteId);
+
+        return $this->inSite($site, $siteId, function (int $siteId) use ($actor, $domain, $probe): DomainCheck {
+            $check = app(CheckDomain::class)->apply($probe);
 
             if ($check->twin?->verified() === true) {
                 $this->audit($actor, $siteId, 'tenancy.domain.verified', ['hostname' => DomainName::sibling(DomainName::parse($domain)), 'took_over_from' => count($check->twin->evictedSiteIds)]);
@@ -264,21 +270,43 @@ final readonly class SiteDomains
      */
     private function within(User $actor, ?Site $site, Closure $change): mixed
     {
+        return $this->inSite($site, $this->allowed($actor, $site), $change);
+    }
+
+    /**
+     * May the actor change this site's domains? Returns the site's id.
+     *
+     * @throws AuthorizationException
+     */
+    private function allowed(User $actor, ?Site $site): int
+    {
         if ($site === null) {
             // Never on someone's behalf: a domain decides where the whole website lives.
             $this->support->forbid();
             Gate::forUser($actor)->authorize('domains.manage');
 
-            return $change($this->current->id());
+            return $this->current->id();
         }
 
         if (! $this->platform->isSuperAdmin($actor) && ! $this->platform->can($actor, 'platform.sites.manage')) {
             throw new AuthorizationException;
         }
 
-        $siteId = Cast::int($site->getKey());
+        return Cast::int($site->getKey());
+    }
 
-        return $this->tenancy->enter($siteId, fn () => $change($siteId));
+    /**
+     * Run $change in the site: the request's own context on the site's admin, the site's entered
+     * context on the console.
+     *
+     * @template TReturn
+     *
+     * @param  Closure(int): TReturn  $change
+     * @return TReturn
+     */
+    private function inSite(?Site $site, int $siteId, Closure $change): mixed
+    {
+        return $site === null ? $change($siteId) : $this->tenancy->enter($siteId, fn () => $change($siteId));
     }
 
     /** @param  array<string, mixed>  $meta */

@@ -95,6 +95,7 @@ final readonly class DomainGroups
             until: in_array($state, ['failing', 'expiring'], true) ? $until : null,
             httpsError: $state === 'https_err' ? self::httpsError($runs->failure_reason) : null,
             byNumber: $runs->pointing_method === PointingMethod::ARecord->value,
+            byName: $runs->pointing_method === PointingMethod::Alias->value,
             altVerified: $alt?->verified_at !== null,
             altHttps: $alt?->verified_at !== null && $alt->ssl_status === 'active',
             altClaim: $alt !== null && self::contested($alt, $heldElsewhere),

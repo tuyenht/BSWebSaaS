@@ -1,6 +1,9 @@
 <?php
 
+use App\Modules\Tenancy\Domains\DnsLookup;
 use App\Modules\Tenancy\Domains\OwnershipProof;
+use App\Modules\Tenancy\Domains\WaitingDomains;
+use Carbon\Carbon;
 use Illuminate\Console\Scheduling\Event as ScheduledEvent;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Cache;
@@ -74,6 +77,57 @@ it('is idempotent: a second run finds nothing new and leaves the verified names 
 
     // Only the target host is looked up: no verified name is asked about again.
     expect($this->dns->lookups)->toBe(1)->and(count(wdTrail()))->toBe(2);
+});
+
+it('verifies the other spelling of a live name once its owner points it', function (): void {
+    // tencongty.vn is live; www was checked yesterday and was not pointed yet. The screen tells
+    // the owner the platform checks again every 15 minutes, so the run must reach it.
+    wdPair(1, 'tencongty.vn', ['verified_at' => now(), 'ssl_status' => 'active'],
+        ['failure_reason' => 'not_pointing', 'checked_at' => now()->subDay()]);
+    $this->dns->pointHere('tencongty.vn', 'www.tencongty.vn');
+
+    $this->artisan('domains:recheck-waiting')->expectsOutputToContain('1 verified.')->assertSuccessful();
+
+    expect(wdRow('www.tencongty.vn')?->verified_at)->not->toBeNull()
+        ->and(wdRow('www.tencongty.vn')?->failure_reason)->toBeNull()
+        ->and(wdTrail())->toBe([['tenancy.domain.verified', 1, 'www.tencongty.vn', 'system']]);
+});
+
+it('starts where the last run stopped, so a slow first name never keeps the others waiting', function (): void {
+    wdPair(1, 'cham.vn');        // never pointed, and its nameserver answers slowly
+    wdPair(1, 'tencongty.vn');   // pointed
+    $this->dns->pointHere('tencongty.vn', 'www.tencongty.vn');
+    // Each lookup of cham.vn's spellings takes five minutes, past the one-minute budget.
+    app()->instance(DnsLookup::class, new class($this->dns) implements DnsLookup
+    {
+        public function __construct(private FakeDns $dns) {}
+
+        public function addresses(string $host): array
+        {
+            if (str_ends_with($host, 'cham.vn')) {
+                Carbon::setTestNow(now()->addMinutes(5));
+            }
+
+            return $this->dns->addresses($host);
+        }
+
+        public function txt(string $host): array
+        {
+            return $this->dns->txt($host);
+        }
+    });
+
+    foreach (range(1, 3) as $ignored) {
+        $this->artisan('domains:recheck-waiting', ['--budget' => 60])->assertSuccessful();
+    }
+
+    expect(wdRow('tencongty.vn')?->verified_at)->not->toBeNull()
+        ->and(wdRow('cham.vn')?->failure_reason)->toBe('not_pointing');
+
+    // Every waiting name was reached: the next run starts from the beginning again.
+    $this->artisan('domains:recheck-waiting', ['--budget' => 3600])->assertSuccessful();
+    expect(Cache::get(WaitingDomains::RESUME_KEY))->toBe(0);
+    Carbon::setTestNow();
 });
 
 it('looks only at names that never went live: not at live, failing or stopped ones', function (): void {

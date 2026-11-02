@@ -24,6 +24,8 @@ use Carbon\CarbonImmutable;
  * The other spelling has its own state too: `altVerified` (it points here and is this site's),
  * `altHttps` (its certificate is on) and `altClaim` (another site holds it as well, so it needs its
  * own TXT proof — the proof is per hostname, whatever the running spelling's state).
+ * `byNumber` / `byName` are the owner's stored answer for "@": by the server's number, or moved to
+ * a place that points by name; neither while they have not said.
  */
 final readonly class DomainGroup
 {
@@ -40,6 +42,7 @@ final readonly class DomainGroup
         public ?CarbonImmutable $until = null,
         public ?string $httpsError = null,
         public bool $byNumber = false,
+        public bool $byName = false,
         public bool $altVerified = false,
         public bool $altHttps = false,
         public bool $altClaim = false,
@@ -49,6 +52,12 @@ final readonly class DomainGroup
     public function www(): bool
     {
         return str_starts_with($this->runs, 'www.');
+    }
+
+    /** The running spelling is live; only the other one waits for its own TXT line (another site holds it). */
+    public function altClaimOnly(): bool
+    {
+        return $this->altClaim && in_array($this->state, ['verified', 'issuing', 'https_err', 'active'], true);
     }
 
     /** A check may still change what the screen says: the name waits, or another site holds it. */
@@ -63,6 +72,10 @@ final readonly class DomainGroup
      */
     public function rowState(bool $running): string
     {
+        if (! $running && $this->altClaim && $this->state !== 'claim') {
+            return 'claim';
+        }
+
         if (! $running && $this->altOptional) {
             return 'optional';
         }
