@@ -60,7 +60,7 @@
     /* Fontsource's latin-ext range minus every code point inter-latin-vi already covers (Ă Đ Ĩ Ũ
        Ơ Ư, ỳ–ỹ, ₫, the shared combining marks): overlapping ranges made every Vietnamese page
        download this 74 KB file too. */
-    unicode-range: U+0100-0101, U+0104-010F, U+0112-0127, U+012A-0167, U+016A-019F, U+01A2-01AE, U+01B1-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1D00-1DBF, U+1E00-1E9F, U+1EFA-1EFF, U+20A0-20AA, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    unicode-range: U+0100-0101, U+0104-010F, U+0112-0127, U+012A-0130, U+0132-0151, U+0154-0167, U+016A-019F, U+01A2-01AE, U+01B1-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1D00-1DBF, U+1E00-1E9F, U+1EFA-1EFF, U+20A0-20AA, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
 @font-face {
