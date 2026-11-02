@@ -83,7 +83,7 @@ final class Applier
             match ($planned->item->kind) {
                 'setting' => $this->setting($planned),
                 'profile' => $this->profile($planned),
-                'taxonomy' => $this->taxonomy($planned),
+                'taxonomy' => $this->taxonomy($planned, $planner),
                 'product' => $this->product($planned),
                 'post', 'page' => $this->entry($planned),
                 'menu' => $this->menu($planned, $planner),
@@ -144,7 +144,7 @@ final class Applier
         }
     }
 
-    private function taxonomy(PlanItem $planned): void
+    private function taxonomy(PlanItem $planned, Planner $planner): void
     {
         $desired = $planned->desired;
         $parentKey = Cast::stringOrNull($desired['parent'] ?? null);
@@ -174,11 +174,17 @@ final class Applier
         $this->paths->refreshBranch($taxonomy->id);
 
         // A slug change in any language, a new parent, or both move the posts and products under the
-        // branch: relinked with every change it went through, as the Planner predicted them.
+        // branch: relinked with every change it went through, as the Planner predicted them. A post
+        // or product filed there after the re-plan would move unplanned (no backup of its old address,
+        // no address check), so the whole load stops instead.
         $changes = $planned->recordId === null ? [] : PlanItem::taxonomyChanges($planned->current, $desired);
         if ($changes !== []) {
             $this->sections->flush();
-            $this->relinker->relink(array_keys(TaxonomyTree::branchOf($taxonomy->id)), ...$changes);
+            $branch = array_keys(TaxonomyTree::branchOf($taxonomy->id));
+            if ($planner->unplannedBranchRoutes($planned->item->key, $branch, ...$changes) !== []) {
+                throw new PackRejected("Refused: plan changed, run the dry run again (a post or product was filed under {$planned->item->key} while the load ran; nothing was changed).");
+            }
+            $this->relinker->relink($branch, ...$changes);
         }
     }
 
