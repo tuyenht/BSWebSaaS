@@ -175,7 +175,9 @@ it('sandboxes the contact map iframe and names it even when the heading is empty
 it('embeds a contact map only from an allowed web link', function (): void {
     $render = fn (string $url): string => View::make('theme::sections.contact', ['props' => ['map_embed' => $url]])->render();
 
-    expect($render('//evil.example/e'))->not->toContain('<iframe');
+    expect($render('//evil.example/e'))->not->toContain('<iframe')
+        ->and($render('javascript:alert(1)'))->not->toContain('<iframe')
+        ->and($render('https://maps.example/e?a=1&b=2'))->toContain('src="https://maps.example/e?a=1&amp;b=2"');   // no host list: any web link
 
     config(['cms.map_hosts' => ['google.com']]);
     expect($render('https://www.google.com/maps/embed?pb=1'))->toContain('src="https://www.google.com/maps/embed?pb=1"')

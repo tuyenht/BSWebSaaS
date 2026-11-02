@@ -17,7 +17,7 @@ namespace App\Modules\Theme\Theming;
 final readonly class ThemeResolver
 {
     /**
-     * storefront.css paints the page as color-mix(in srgb, var(--surface) 97%, var(--ink)); brand
+     * storefront.css paints the page as color-mix(in srgb, var(--color-surface) 97%, var(--color-dark)); brand
      * text sits both on cards (`surface`) and straight on that page (breadcrumb, contact details).
      * ThemeResolverTest pins the stylesheet to this share.
      */
@@ -75,7 +75,8 @@ final readonly class ThemeResolver
      *
      * The standard names (docs/notes/design-tokens.md §7) are printed next to the old ones that
      * storefront.css still reads, with the same values: `color-primary`, `color-primary-text`,
-     * `color-primary-on-dark`, `color-surface`, `color-text`, `color-brand-*`, plus
+     * `color-primary-on-dark`, `color-surface`, `color-text`, `color-text-strong`, `color-dark`,
+     * `font-body`, `color-brand-*`, plus
      * `color-on-primary` — white or the ink color on the brand fill, whichever reads better. A new
      * name never points back at an old one, so a fallback is the color itself, not `var(--ink)`.
      *
@@ -100,6 +101,9 @@ final readonly class ThemeResolver
         $variables['color-primary-on-dark'] = $primaryOnDark ?? $variables['surface'];
         $variables['color-surface'] = $variables['surface'];
         $variables['color-text'] = $variables['body'];
+        $variables['color-text-strong'] = $variables['ink'];
+        $variables['color-dark'] = $variables['ink'];
+        $variables['font-body'] = $variables['font'];
 
         // Tints, fills and dark accents of the brand (--brand-50 … --brand-900), derived — like the
         // roles above, a same-named key in settings never wins. A non-hex brand yields no palette.

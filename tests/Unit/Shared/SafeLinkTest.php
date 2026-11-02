@@ -37,6 +37,8 @@ it('builds tel and mailto links from safe values only', function (): void {
     expect(SafeLink::tel('+84 901-234-567'))->toBe('tel:+84901234567')
         ->and(SafeLink::tel('0901 234 567'))->toBe('tel:0901234567')
         ->and(SafeLink::tel('+84 (0)90 123 4567'))->toBe('tel:+84901234567')
+        ->and(SafeLink::tel('+84 ( 0 ) 90 123 4567'))->toBe('tel:+84901234567')
+        ->and(SafeLink::tel('(0)28 3822 1234'))->toBe('tel:02838221234')
         ->and(SafeLink::tel('12'))->toBeNull()
         ->and(SafeLink::tel('call me'))->toBeNull()
         ->and(SafeLink::mailto('lienhe@example.com'))->toBe('mailto:lienhe@example.com')

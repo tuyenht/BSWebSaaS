@@ -148,7 +148,7 @@ it('measures the page background the storefront stylesheet actually paints', fun
     $share = (int) round(ThemeResolver::PAGE_SURFACE_SHARE * 100);
 
     expect((string) file_get_contents(resource_path('css/storefront.css')))
-        ->toMatch("/body \\{[^}]*background: var\\(--page, color-mix\\(in srgb, var\\(--surface\\) {$share}%, var\\(--ink\\)\\)\\);/");
+        ->toMatch("/body \\{[^}]*background: var\\(--page, color-mix\\(in srgb, var\\(--color-surface\\) {$share}%, var\\(--color-dark\\)\\)\\);/");
 });
 
 it('measures the brand text against the site’s own page colour when it sets one', function (): void {
@@ -175,6 +175,7 @@ it('prints exactly the same variables as before for a site with no settings', fu
         'ink' => '#111111', 'body' => '#333333', 'primary-text' => '#326fd1', 'primary-on-ink' => '#3b82f6',
         'color-primary' => '#3b82f6', 'color-on-primary' => '#111111', 'color-primary-text' => '#326fd1',
         'color-primary-on-dark' => '#3b82f6', 'color-surface' => '#ffffff', 'color-text' => '#333333',
+        'color-text-strong' => '#111111', 'color-dark' => '#111111', 'font-body' => 'system-ui, sans-serif',
     ];
     $palette = ['50' => '#f0f6ff', '100' => '#deebff', '200' => '#c4dbff', '300' => '#9cc2ff', '400' => '#659fff',
         '500' => '#3b82f6', '600' => '#226adb', '700' => '#1b5abd', '800' => '#12499e', '900' => '#103e86'];
@@ -191,14 +192,14 @@ it('accepts the optional size and dark-scale tokens but not one that breaks out 
         SiteSetting::query()->create([
             'group_name' => 'theme',
             'key' => 'tokens',
-            'value' => ['text-base' => '1.0625rem', 'ink-raised' => '#1e293b', 'on-ink' => '17px;}'],
+            'value' => ['text-base' => '1.0625rem', 'color-dark-raised' => '#1e293b', 'color-on-dark' => '17px;}'],
         ]);
 
         $tokens = app(ThemeResolver::class)->tokens();
 
         expect($tokens['text-base'])->toBe('1.0625rem')
-            ->and($tokens['ink-raised'])->toBe('#1e293b')
-            ->and($tokens)->not->toHaveKey('on-ink');
+            ->and($tokens['color-dark-raised'])->toBe('#1e293b')
+            ->and($tokens)->not->toHaveKey('color-on-dark');
     });
 });
 

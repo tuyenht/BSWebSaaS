@@ -13,10 +13,9 @@
     @if (! empty($props['email']))
         <a class="contact__email" href="{{ 'mailto:'.$props['email'] }}">{{ $props['email'] }}</a>
     @endif
-    @php($mapSrc = \App\Modules\Shared\Support\SafeLink::href($props['map_embed'] ?? null, config('cms.map_hosts')))
-    @if ($mapSrc !== null)
+    @if (\App\Modules\Shared\Support\SafeLink::href($props['map_embed'] ?? null, config('cms.map_hosts')) !== null)
         {{-- Tenant's own map embed URL (scheme-checked at save, host-checked here against cms.map_hosts);
              lazy + fixed box reserves space (no CLS). --}}
-        <iframe class="contact__map" src="{{ $mapSrc }}" title="{{ ($props['heading'] ?? '') ?: __('storefront.map') }}" width="600" height="450" loading="lazy" referrerpolicy="no-referrer-when-downgrade" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
+        <iframe class="contact__map" src="{{ \App\Modules\Shared\Support\SafeLink::href($props['map_embed'], config('cms.map_hosts')) }}" title="{{ ($props['heading'] ?? '') ?: __('storefront.map') }}" width="600" height="450" loading="lazy" referrerpolicy="no-referrer-when-downgrade" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
     @endif
 </section>
