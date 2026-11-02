@@ -285,16 +285,21 @@ final class LoadContentPackCommand extends Command
                 $this->line("{$done} {$line['key']} → {$line['storage_key']}");
             }
         } catch (Throwable $e) {
-            throw new PackRejected("Refused: the image step stopped after {$written} files; the files before it are kept and the next run reuses them. ({$e->getMessage()})");
+            throw new PackRejected("Refused: the image step stopped part-way ({$written} written); the files written are kept and the next run reuses them. ({$e->getMessage()})");
         } finally {
-            // Also after a failure: the files written before it are on the site.
+            // Also after a failure: the files written before it are on the site. Best-effort, so
+            // an audit failure never hides why the run stopped.
             if ($written > 0) {
-                $tenancy->enter($site->id, fn () => Audit::record('content_pack.media_applied', ['meta' => [
-                    'pack' => $pack->code,
-                    'version' => $pack->version,
-                    'fingerprint' => $fingerprint,
-                    'written' => $written,
-                ]]));
+                try {
+                    $tenancy->enter($site->id, fn () => Audit::record('content_pack.media_applied', ['meta' => [
+                        'pack' => $pack->code,
+                        'version' => $pack->version,
+                        'fingerprint' => $fingerprint,
+                        'written' => $written,
+                    ]]));
+                } catch (Throwable $e) {
+                    report($e);
+                }
             }
         }
         $this->info("Image step of {$pack->code} v{$pack->version} on {$host}: {$written} files written. Run the content load again so the pages use them.");
@@ -305,7 +310,7 @@ final class LoadContentPackCommand extends Command
     /** @param  array{verdict: string, key: string, file: string, size: int, storage_key: string}  $line */
     private function mediaDetail(array $line): string
     {
-        $size = number_format($line['size'] / 1024, 0).' KB';
+        $size = $line['size'] < 1024 ? $line['size'].' B' : number_format($line['size'] / 1024, 0).' KB';
 
         return match ($line['verdict']) {
             MediaStep::UPLOAD => "{$line['file']} ({$size}) → {$line['storage_key']}",

@@ -163,9 +163,10 @@ final readonly class MediaStep
                 if (isset($newKeys[$storageKey])) {
                     throw new PackRejected("Refused: {$key} and another slot would both be stored under '{$storageKey}'; rename one of the two files. Nothing was uploaded.");
                 }
-                // No row of this site holds the key, so an object already there is not this site's
-                // to overwrite (left by a site that once had this site's folder name, for one).
-                if ($disk->exists($storageKey)) {
+                // No row of this site holds the key, so an object already there is not this site's to
+                // overwrite (left by a site that once had this site's folder name, for one) — unless
+                // it holds these very bytes: what a run that failed after the put leaves behind.
+                if ($disk->exists($storageKey) && hash('sha256', (string) $disk->get($storageKey)) !== $slot['hash']) {
                     throw new PackRejected("Refused: the image for {$key} would overwrite an object at '{$storageKey}' that no image of this site owns. Nothing was uploaded.");
                 }
                 $newKeys[$storageKey] = true;

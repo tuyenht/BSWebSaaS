@@ -8,6 +8,7 @@ use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
 use App\Modules\Tenancy\Models\Site;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Tests\Fixtures\ContentPacks;
 use Tests\Fixtures\StorefrontCards;
@@ -300,4 +301,63 @@ it('never resolves a content slot to a file in the Trash', function (): void {
 
     expect($output)->toContain('1 with the pack\'s own image')
         ->and($output)->toContain("image slot 'header' is not uploaded yet (run with --media first)");
+});
+
+it('uploads over an object that already holds the same bytes (left by a run that failed after its put)', function (): void {
+    [, $output] = ContentPacks::run('demo-co', ['--media' => true]);
+    preg_match('#(demo/library/header-[0-9a-f]{4}\.png)#', $output, $m);
+    Storage::disk('r2')->put($m[1], (string) file_get_contents($this->folder.'/media/header.png'));
+
+    [$exit, $output] = mediaLoad();
+
+    expect($exit)->toBe(0, $output)
+        ->and(ContentPacks::verdict($output, 'media:header'))->toBe('upload')
+        ->and(packMedia($this->siteId)['header.png'] ?? null)->toBe($m[1]);
+});
+
+it('refuses two slots that would be stored under the same key', function (): void {
+    config(['media.url_hash_length' => 0]);
+    File::ensureDirectoryExists($this->folder.'/other');
+    // Another picture under the same file name (other bytes: a trailer after the PNG's end).
+    File::put($this->folder.'/other/header.png', File::get($this->folder.'/media/header.png').'other');
+    ContentPacks::edit($this->folder, 'media.json', function (array $media): array {
+        $media['slots'][] = ['slot' => 'header-other', 'file' => 'other/header.png'];
+
+        return $media;
+    });
+
+    [$exit, $output] = ContentPacks::run('demo-co', ['--media' => true]);
+
+    expect($exit)->toBe(1, $output)->and($output)->toContain('would both be stored under');
+});
+
+it('refuses to repair a row stored outside the site\'s folder', function (): void {
+    $bytes = (string) file_get_contents($this->folder.'/media/header.png');
+    ContentPacks::in($this->siteId, fn () => Media::query()->create([
+        'collection' => 'library', 'slug' => 'cu', 'hash' => hash('sha256', $bytes),
+        'storage_key' => 'cu/library/cu-0000.png', 'mime' => 'image/png', 'size' => strlen($bytes),
+    ]));
+
+    [$exit, $output] = ContentPacks::run('demo-co', ['--media' => true]);
+
+    expect($exit)->toBe(1, $output)->and($output)->toContain("outside this site's storage folder 'demo/'")
+        ->and(Storage::disk('r2')->allFiles())->toBe([]);
+});
+
+it('records the files written before a run stopped part-way', function (): void {
+    $before = (int) AuditLog::query()->max('id'); // audit rows outlive the tables a test truncates
+    [, $output] = ContentPacks::run('demo-co', ['--media' => true]);
+    $created = 0;
+    Media::creating(function () use (&$created): void {
+        if (++$created > 1) {
+            throw new RuntimeException('the database went away');
+        }
+    });
+
+    [$exit, $output] = ContentPacks::run('demo-co', ['--media' => true, '--apply' => true, '--plan' => ContentPacks::fingerprint($output)]);
+
+    expect($exit)->toBe(1, $output)
+        ->and($output)->toContain('stopped part-way (1 written)')
+        ->and(packMedia($this->siteId))->toHaveCount(1)
+        ->and(AuditLog::query()->where('action', 'content_pack.media_applied')->where('id', '>', $before)->sole()->meta)->toMatchArray(['written' => 1]);
 });
