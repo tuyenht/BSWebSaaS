@@ -506,14 +506,16 @@
                     {{ __('entries.footer_showing', ['first' => $num($pager['from']), 'last' => $num($pager['to']), 'total' => $fmt($pager['total'])]) }}
                 </span>
                 <div class="flex flex-wrap items-center gap-4">
-                    <div class="flex items-center gap-2 text-caption text-text-muted">
-                        {{ __('entries.rows_per_page') }}
+                    <div role="group" aria-label="{{ __('entries.rows_per_page_label') }}" class="flex items-center gap-2 text-caption text-text-muted">
+                        <span class="mr-1">{{ __('entries.rows_per_page') }}</span>
                         {{-- Drawn at the row-control size (36 / 40 / 44px across the text sizes) like the pager
-                             beside it; on touch the shared transparent hit area makes it 44px. --}}
-                        <button type="button" wire:click="cyclePerPage" title="{{ __('entries.rows_per_page') }}"
-                            class="inline-flex min-h-control-row min-w-control-row items-center justify-center gap-1.5 rounded border border-border-strong bg-surface px-2.5 font-medium text-text transition-colors hover:bg-surface-hover any-pointer-coarse:hit-area">
-                            {{ $perPage }} <x-bs-admin::icon name="chevron-down" class="size-3.5 text-text-muted" />
-                        </button>
+                             beside it; the shared row hit area makes each 40 / 44px with a mouse, 44px on touch. --}}
+                        @foreach ([10, 20, 50] as $rows)
+                            <button type="button" wire:click="setPerPage({{ $rows }})" aria-pressed="{{ $perPage === $rows ? 'true' : 'false' }}"
+                                @class(['pager-link border', 'border-primary bg-primary-base/10 font-semibold text-primary-text' => $perPage === $rows, 'border-border-strong bg-surface font-medium text-text hover:bg-surface-hover' => $perPage !== $rows])>
+                                {{ $rows }}
+                            </button>
+                        @endforeach
                     </div>
                     @php
                         // an arrow turns to a page number, or, past the numbered pages, to the row the page follows

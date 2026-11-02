@@ -871,6 +871,7 @@
     "entries.views_count": ":count views",
     "entries.footer_showing": "Showing :first–:last of :total pages",
     "entries.rows_per_page": "Rows per page",
+    "entries.rows_per_page_label": "Choose how many rows per page",
     "entries.manage_title": "Manage :label",
     "entries.groups_label": "Status groups",
     "entries.f_trans": "Translations",

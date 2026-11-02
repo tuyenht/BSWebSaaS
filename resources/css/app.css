@@ -251,6 +251,28 @@
     }
 }
 
+/* Hit area of a button in a row of neighbours (the pager, the rows-per-page group): at least
+   --spacing-control with a mouse (40px at the default text size, 44px from the next size up) and
+   --spacing-hit on touch. The transparent ::after grows full height but, sideways, stops at half the
+   gap (--hit-gap, 8px unless a row says otherwise) so it never covers a neighbour. */
+@utility hit-area-row {
+    --hit-size: var(--spacing-control);
+    position: relative;
+
+    @media (any-pointer: coarse) {
+        --hit-size: var(--spacing-hit);
+    }
+
+    &::after {
+        content: '';
+        position: absolute;
+        top: min(0px, calc((100% - var(--hit-size)) / 2));
+        bottom: min(0px, calc((100% - var(--hit-size)) / 2));
+        left: max(min(0px, calc((100% - var(--hit-size)) / 2)), calc(var(--hit-gap, 0.5rem) / -2));
+        right: max(min(0px, calc((100% - var(--hit-size)) / 2)), calc(var(--hit-gap, 0.5rem) / -2));
+    }
+}
+
 /* The size of every admin text field and select (the kit input and each hand-built field): the main
    control height (40px at the default text size, 44px from the next size up), 44px on touch, the
    text at the user's body size. Only the size lives here; each field keeps its own width, border,
@@ -271,8 +293,8 @@
 }
 
 /* A pager link (the kit pagination and the posts list's keyset pager): drawn at the row-control size
-   (36 / 40 / 44px across the text sizes) at every pointer; on touch the shared transparent hit area
-   extends the target to 44px without changing what is drawn. */
+   (36 / 40 / 44px across the text sizes) at every pointer; the shared transparent row hit area
+   (`hit-area-row`) makes the target 40 / 44px with a mouse and 44px on touch without changing what is drawn. */
 @utility pager-link {
     display: inline-flex;
     align-items: center;
@@ -287,7 +309,7 @@
     transition-timing-function: var(--default-transition-timing-function);
     transition-duration: var(--default-transition-duration);
 
-    @apply any-pointer-coarse:hit-area;
+    @apply hit-area-row;
 }
 
 /* A box that draws one control around a bare field (the list search: icon + input inside a

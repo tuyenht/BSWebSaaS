@@ -536,7 +536,7 @@ describe('authorization', function (): void {
                 'clearAllFilters' => $list->call('clearAllFilters'),
                 'setTab' => $list->call('setTab', 'draft'),
                 'gotoPage' => $list->call('gotoPage', 2),
-                'cyclePerPage' => $list->call('cyclePerPage'),
+                'setPerPage' => $list->call('setPerPage', 50),
                 'toggleSelectAll' => $list->call('toggleSelectAll', ['x']),
                 'search' => $list->set('search', 'tin'),
                 'render' => $list->call('$refresh'),
@@ -545,7 +545,7 @@ describe('authorization', function (): void {
             expect($user->fresh()->preferences['lists'] ?? null)->toBeNull();
         });
     })->with(['setSort', 'resetSort', 'clearWhen', 'cols', 'card', 'filter', 'when', 'tab', 'sortBy', 'toggleFilterValue', 'resetFilterGroup',
-        'clearAllFilters', 'setTab', 'gotoPage', 'cyclePerPage', 'toggleSelectAll', 'search', 'render']);
+        'clearAllFilters', 'setTab', 'gotoPage', 'setPerPage', 'toggleSelectAll', 'search', 'render']);
 });
 
 describe('query budget', function (): void {

@@ -10,6 +10,7 @@ use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteSetting;
+use Dom\HTMLDocument;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
@@ -232,7 +233,7 @@ it('changes a row status to published through the workflow', function (): void {
     });
 });
 
-it('cycles rows-per-page 20 → 50 → 10 → 20 and returns to the first page', function (): void {
+it('sets rows-per-page to 10, 20 or 50, returns to the first page and ignores any other value', function (): void {
     $user = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
@@ -242,10 +243,41 @@ it('cycles rows-per-page 20 → 50 → 10 → 20 and returns to the first page',
         Livewire::actingAs($user->fresh())->test(Index::class)
             ->assertSet('perPage', 20)
             ->set('page', 2)
-            ->call('cyclePerPage')->assertSet('perPage', 50)->assertSet('page', 1)
-            ->call('cyclePerPage')->assertSet('perPage', 10)
-            ->call('cyclePerPage')->assertSet('perPage', 20);
+            ->call('setPerPage', 50)->assertSet('perPage', 50)->assertSet('page', 1)
+            ->call('setPerPage', 10)->assertSet('perPage', 10)
+            ->call('setPerPage', 20)->assertSet('perPage', 20)
+            ->call('setPerPage', 7)->assertSet('perPage', 20)
+            ->call('setPerPage', 1000)->assertSet('perPage', 20)
+            ->assertSee('Trang một');
     });
+});
+
+it('renders the rows-per-page group with aria-pressed on the current value', function (int $current): void {
+    $user = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($user, $current): void {
+        grantRole($user, 'editor', ['entries.view']);
+        makePageEntry($user, 'Trang một', 'trang-mot');
+
+        $html = Livewire::actingAs($user->fresh())->test(Index::class)->call('setPerPage', $current)->html();
+        $dom = HTMLDocument::createFromString($html, LIBXML_NOERROR);
+        $group = $dom->querySelector('[role="group"][aria-label="'.__('entries.rows_per_page_label').'"]');
+
+        expect($group)->not->toBeNull();
+        foreach ($group->querySelectorAll('button') as $button) {
+            $value = (int) trim($button->textContent);
+            expect($button->getAttribute('aria-pressed'))->toBe($value === $current ? 'true' : 'false')
+                ->and($button->getAttribute('wire:click'))->toBe("setPerPage({$value})");
+        }
+        expect($group->querySelectorAll('button')->length)->toBe(3);
+    });
+})->with([10, 20, 50]);
+
+it('gives the pager and the rows-per-page buttons the 40 / 44 row hit area, stopping at half the gap', function (): void {
+    $css = (string) file_get_contents(resource_path('css/app.css'));
+
+    expect(preg_match('/@utility hit-area-row \{(.*?)\n\}/s', $css, $m))->toBe(1)
+        ->and($m[1])->toContain('--hit-size: var(--spacing-control);', '--hit-size: var(--spacing-hit);', 'any-pointer: coarse', 'var(--hit-gap, 0.5rem) / -2');
 });
 
 it('schedules a row for a future time', function (): void {

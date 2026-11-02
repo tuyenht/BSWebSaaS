@@ -230,12 +230,13 @@ it('gives the chips line below 900 the height of their hit area', function (): v
         ->toMatch('/\\.list-lcg\\s*\\{\\s*min-height: var\\(--list-qe-s\\);/');
 });
 
-it('draws the rows-per-page button at the row-control size with a touch hit area, its texts at the caption size', function (): void {
+it('draws the rows-per-page buttons as the shared pager link, with the row hit area', function (): void {
     $source = (string) file_get_contents(app_path('Modules/Admin/resources/views/livewire/entries/index.blade.php'));
-    preg_match('/<button type="button" wire:click="cyclePerPage"[^>]*class="([^"]*)"/', $source, $button);
+    preg_match('/<button type="button" wire:click="setPerPage\([^>]*@class\(\[\'([^\']*)\'/', $source, $button);
 
     expect($button)->not->toBeEmpty()
-        ->and(explode(' ', $button[1]))->toContain('min-h-control-row', 'min-w-control-row', 'any-pointer-coarse:hit-area')->not->toContain('py-1')
+        ->and(explode(' ', $button[1]))->toContain('pager-link')
+        ->and($source)->not->toContain('cyclePerPage')
         ->and($source)->not->toContain('text-xs text-body-muted');
 });
 
