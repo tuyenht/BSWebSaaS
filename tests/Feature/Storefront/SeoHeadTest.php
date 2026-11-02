@@ -197,7 +197,7 @@ it('inlines the text-size script only when the header offers the button, and eve
     $inlineCount = [];
     foreach (['without' => $without, 'with' => $with] as $case => $response) {
         $csp = (string) $response->headers->get('Content-Security-Policy');
-        preg_match_all('/<script(?![^>]*\bsrc=)(?![^>]*type="application\/ld\+json")[^>]*>(.*?)<\/script>/s', (string) $response->getContent(), $inline);
+        preg_match_all('/<script(?![^>]*\ssrc=)(?![^>]*\stype="application\/ld\+json")[^>]*>(.*?)<\/script>/s', (string) $response->getContent(), $inline);
         foreach ($inline[1] as $code) {
             expect($csp)->toContain("'sha256-".base64_encode(hash('sha256', $code, true))."'");
         }
