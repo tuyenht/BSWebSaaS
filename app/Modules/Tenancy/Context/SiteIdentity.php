@@ -71,7 +71,7 @@ final readonly class SiteIdentity
             ->select([
                 'p.brand_name', 'p.legal_name', 'p.tax_code', 'p.business_license_no', 'p.representative',
                 'p.email', 'p.phone', 'p.hotline', 'p.address_line', 'p.ward', 'p.province',
-                'p.social_links', 'p.moit_registered', 'p.moit_url',
+                'p.social_links', 'p.license_issued_at', 'p.moit_registered', 'p.moit_url',
                 't.locale as t_locale', 't.brand_name as t_brand_name', 't.legal_name as t_legal_name',
                 't.tagline as t_tagline', 't.short_description as t_description', 't.address_line as t_address_line',
                 't.representative as t_representative', 't.opening_hours_text as t_opening_hours',
@@ -120,8 +120,10 @@ final readonly class SiteIdentity
      */
     private function shared(array $row): array
     {
+        // Keyed by network (facebook → url), so the footer can pick each network's icon; the
+        // JSON-LD sameAs takes the values only.
         $links = $this->decode($row['social_links'] ?? null);
-        $links = array_values(array_filter($links, fn (mixed $url): bool => is_string($url) && $url !== ''));
+        $links = array_filter($links, fn (mixed $url): bool => is_string($url) && $url !== '');
 
         return [
             'name' => $row['brand_name'] ?? null,
@@ -135,6 +137,7 @@ final readonly class SiteIdentity
             'email' => $row['email'] ?? null,
             'tax_id' => $row['tax_code'] ?? null,
             'license' => $row['business_license_no'] ?? null,
+            'license_issued_at' => $row['license_issued_at'] ?? null,   // Y-m-d
             'social_links' => $links === [] ? null : $links,
             'moit_url' => ($row['moit_registered'] ?? false) ? ($row['moit_url'] ?? null) : null,
         ];
