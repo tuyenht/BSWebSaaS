@@ -203,7 +203,8 @@ it('runs no search for text with no letter or digit, and says what to type', fun
     khCustomer('An Phát');
     $page = Livewire::actingAs(khStaff('support'))->test(Index::class);
 
-    foreach (['-', ' % ', '@.', '__'] as $nothing) {
+    // "½" and "²" are no letter or digit to PostgreSQL's parser: its tsquery would be empty
+    foreach (['-', ' % ', '@.', '__', '½', ' ² '] as $nothing) {
         $page->set('search', $nothing);
         expect($page->viewData('rows'))->toHaveCount(2)
             ->and($page->viewData('baseCounts'))->toBeNull();
@@ -211,8 +212,30 @@ it('runs no search for text with no letter or digit, and says what to type', fun
             ->assertDontSee(__('admin.customers_nomatch_title'));
     }
 
-    // text that is not UTF-8 never reaches the database
-    expect(app(CustomerDirectory::class)->page("\xff\xfe", '', [], 20, '', '')['rows'])->toHaveCount(2);
+    // Text that is not UTF-8 is no search and not "typed with nothing to look for" either: the list
+    // stays unfiltered and shows no hint (unsearchable() would be true without the encoding guard).
+    expect(CustomerDirectory::searches("\xff\xfe"))->toBeFalse()
+        ->and(CustomerDirectory::unsearchable("\xff\xfe"))->toBeFalse()
+        ->and(CustomerDirectory::unsearchable("an \xff"))->toBeFalse()
+        ->and(app(CustomerDirectory::class)->page("\xff\xfe", '', [], 20, '', '')['rows'])->toHaveCount(2);
+});
+
+it('looks up each part of a short search once, and at most five', function (): void {
+    khCustomer('An Phát');
+    $prefixes = [];
+    DB::listen(function ($query) use (&$prefixes): void {
+        if (str_contains($query->sql, 'to_tsquery') && is_string($query->bindings[0] ?? null)) {
+            $prefixes[] = $query->bindings[0];
+        }
+    });
+    $directory = app(CustomerDirectory::class);
+
+    $directory->page(implode(' ', range('a', 'x')).' a b', '', [], 20, '', '');
+    expect($prefixes)->not->toBe([])->and(substr_count($prefixes[0], ':*'))->toBe(CustomerDirectory::MAX_PARTS);
+
+    $prefixes = [];
+    $directory->page('a A a b b', '', [], 20, '', '');
+    expect(substr_count($prefixes[0], ':*'))->toBe(2);
 });
 
 it('reads newest first, page by page, with no customer repeated or skipped', function (): void {
@@ -372,7 +395,8 @@ it('shows the customer\'s history newest first, who made each change, and older 
     $cursor = $page->viewData('historyOlder');
     expect($cursor)->toBeString()->not->toContain('|');
 
-    $page->call('olderHistory', $cursor)->assertDontSee(__('admin.customers_history_older'));
+    $page->call('olderHistory', $cursor)->assertDontSee(__('admin.customers_history_older'))
+        ->assertDontSee(__('admin.customers_history_newest'));
     khInOrder($page->html(), ['Lần 11', 'Lần 2', 'Lần 1<', 'Khách mở thêm website phụ tùng', 'Bắt đầu']);
 
     // a cursor the browser made up reads as the first page
@@ -414,7 +438,20 @@ it('reads at most a fixed number of history rows in one render, however far "old
     expect($last['rows'])->toHaveCount(CustomerHistory::MAX_ROWS)
         ->and($last['more'])->toBeFalse()
         ->and($last['rows'][CustomerHistory::MAX_ROWS - 1]['reason'])->toBe('Lần 1')
-        ->and($last['rows'][0]['reason'])->toBe('Lần '.CustomerHistory::MAX_ROWS);
+        ->and($last['rows'][0]['reason'])->toBe('Lần '.CustomerHistory::MAX_ROWS)
+        ->and($last['cut'])->toBeTrue()
+        ->and($first['cut'])->toBeFalse();
+
+    // rows were left out above: the page offers the way back to the newest, and it goes there
+    $ulid = trim((string) DB::connection('pgsql_admin')->table('tenants')->where('id', 1)->value('ulid'));
+    $page = Livewire::actingAs(khStaff('support'))->test(Detail::class, ['ulid' => $ulid])
+        ->assertDontSee(__('admin.customers_history_newest'))
+        ->set('historyUntil', $cursor)
+        ->assertSee(__('admin.customers_history_newest'))
+        ->call('newestHistory')
+        ->assertSet('historyUntil', '')
+        ->assertDontSee(__('admin.customers_history_newest'))
+        ->assertSee('Lần '.$total);
 });
 
 it('says why a customer is suspended, and shows no line when no reason was given', function (): void {

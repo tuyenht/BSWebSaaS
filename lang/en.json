@@ -741,6 +741,7 @@
     "admin.customers_history_with_reason": ":what — :reason",
     "admin.customers_history_system": "System",
     "admin.customers_history_older": "Show older changes",
+    "admin.customers_history_newest": "Back to the newest changes",
     "admin.customers_dlg_title": "Change the plan of :name",
     "admin.customers_dlg_sub": "On the :cur plan now. The new plan applies at once.",
     "admin.customers_dlg_close_aria": "Close the Change plan dialog",

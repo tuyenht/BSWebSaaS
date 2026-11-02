@@ -741,6 +741,7 @@
     "admin.customers_history_with_reason": ":what — :reason",
     "admin.customers_history_system": "システム",
     "admin.customers_history_older": "古い変更を表示",
+    "admin.customers_history_newest": "最新の変更に戻る",
     "admin.customers_dlg_title": ":name のプランを変更",
     "admin.customers_dlg_sub": "現在のプランは :cur です。新しいプランはすぐに適用されます。",
     "admin.customers_dlg_close_aria": "プラン変更を閉じる",

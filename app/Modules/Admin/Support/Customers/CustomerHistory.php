@@ -33,13 +33,15 @@ final class CustomerHistory
 
     /**
      * The rows from the newest down to $until (the first PAGE when $until is empty), whether older
-     * rows remain, and the cursor of the oldest row shown (what "older" takes).
+     * rows remain, whether newer rows were left out above MAX_ROWS (the page then offers the way back
+     * to the newest), and the cursor of the oldest row shown (what "older" takes).
      *
-     * @return array{rows: list<array{kind: string, from: string|null, to: string|null, reason: string|null, actor: string|null, at: string}>, more: bool, oldest: string|null}
+     * @return array{rows: list<array{kind: string, from: string|null, to: string|null, reason: string|null, actor: string|null, at: string}>, more: bool, cut: bool, oldest: string|null}
      */
     public function read(int $tenantId, string $until): array
     {
         $anchor = self::anchor($until, $tenantId);
+        $cut = false;
         if ($anchor === null) {
             $rows = $this->base($tenantId)->limit(self::PAGE + 1)->get();
             $more = $rows->count() > self::PAGE;
@@ -48,7 +50,9 @@ final class CustomerHistory
             // read from the anchor up (the index scanned backwards), so the rows shown always end
             // at the anchor and "older" keeps moving even past MAX_ROWS
             $rows = $this->base($tenantId)->whereRaw('(h.created_at, h.id) >= (?::timestamptz, ?)', $anchor)
-                ->reorder('h.created_at')->orderBy('h.id')->limit(self::MAX_ROWS)->get()->reverse()->values();
+                ->reorder('h.created_at')->orderBy('h.id')->limit(self::MAX_ROWS + 1)->get();
+            $cut = $rows->count() > self::MAX_ROWS;
+            $rows = $rows->take(self::MAX_ROWS)->reverse()->values();
             $more = $this->base($tenantId)->whereRaw('(h.created_at, h.id) < (?::timestamptz, ?)', $anchor)->exists();
         }
 
@@ -57,6 +61,7 @@ final class CustomerHistory
         return [
             'rows' => array_values($rows->map(fn (object $r): array => self::row($r))->all()),
             'more' => $more,
+            'cut' => $cut,
             'oldest' => $last === null ? null : self::cursor($last, $tenantId),
         ];
     }

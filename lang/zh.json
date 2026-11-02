@@ -741,6 +741,7 @@
     "admin.customers_history_with_reason": ":what — :reason",
     "admin.customers_history_system": "系统",
     "admin.customers_history_older": "查看更早的更改",
+    "admin.customers_history_newest": "回到最新的更改",
     "admin.customers_dlg_title": "为 :name 更改套餐",
     "admin.customers_dlg_sub": "当前使用 :cur 套餐。新套餐立即生效。",
     "admin.customers_dlg_close_aria": "关闭更改套餐对话框",

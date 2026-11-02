@@ -156,6 +156,14 @@
                     @if ($history === [])
                         <p class="my-2 text-body text-text">{{ __('admin.customers_history_empty') }}</p>
                     @else
+                        @if ($historyCut)
+                            <div class="pb-2">
+                                <x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="newestHistory">
+                                    <x-bs-admin::icon name="ri-arrow-up-s" class="size-4" />
+                                    {{ __('admin.customers_history_newest') }}
+                                </x-bs-admin::button>
+                            </div>
+                        @endif
                         <ul class="m-0 list-none p-0">
                             @foreach ($history as $h)
                                 <li class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-2.5 gap-y-0.5 border-b border-border py-2 text-body last:border-b-0" wire:key="kh-h-{{ $loop->index }}">

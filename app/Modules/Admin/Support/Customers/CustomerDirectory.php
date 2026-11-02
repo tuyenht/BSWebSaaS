@@ -51,6 +51,9 @@ final class CustomerDirectory
     /** How many letters or digits in a row a trigram index can look up. */
     private const int TRIGRAM = 3;
 
+    /** The most parts of a short search looked up at word starts (each is a scan of the word indexes). */
+    public const int MAX_PARTS = 5;
+
     /**
      * One page of customers, newest first, with the list's counts under the same search.
      *
@@ -295,7 +298,10 @@ final class CustomerDirectory
     private static function wordStarts(string $needle, ?int $number): array
     {
         $words = VietnameseFold::words('name')." @@ to_tsquery('simple', ?)";
-        $prefixes = implode(' & ', array_map(fn (string $part): string => $part.':*', self::parts($needle)));
+        // each part is a prefix scan on the word indexes: repeats add nothing, and more than
+        // MAX_PARTS would only add work (the first ones narrow the list)
+        $parts = array_slice(array_values(array_unique(self::parts($needle))), 0, self::MAX_PARTS);
+        $prefixes = implode(' & ', array_map(fn (string $part): string => $part.':*', $parts));
         $columns = implode(', ', self::PICKED);
         $notCode = $number === null ? '' : ' and tenants.customer_no <> ?';
         $code = $number === null ? [] : [$number];
@@ -324,18 +330,19 @@ final class CustomerDirectory
     /** At least TRIGRAM letters or digits in a row: what a trigram index can look up. */
     private static function wordy(string $needle): bool
     {
-        return preg_match('/[\p{L}\p{N}]{'.self::TRIGRAM.'}/u', $needle) === 1;
+        return preg_match('/[\p{L}\p{Nd}]{'.self::TRIGRAM.'}/u', $needle) === 1;
     }
 
     /**
-     * The runs of letters and digits in the folded needle ("an-v." → an, v): what a short search
-     * looks for at the start of words. Only letters and digits, so each is safe in a tsquery.
+     * The runs of letters and decimal digits in the folded needle ("an-v." → an, v): what a short
+     * search looks for at the start of words. Only what PostgreSQL's parser keeps as a word ("½" and
+     * "²" it drops, so they are no part), so each is safe in a tsquery and none is lost.
      *
      * @return list<string>
      */
     private static function parts(string $needle): array
     {
-        return preg_match_all('/[\p{L}\p{N}]+/u', $needle, $m) > 0 ? $m[0] : [];
+        return preg_match_all('/[\p{L}\p{Nd}]+/u', $needle, $m) > 0 ? $m[0] : [];
     }
 
     /**

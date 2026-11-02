@@ -62,6 +62,12 @@ final class Detail extends Component
         $this->historyUntil = app(CustomerHistory::class)->older($tenant->id, $cursor);
     }
 
+    /** "Về thay đổi mới nhất": the first page again, after "older" went past the rows one render shows. */
+    public function newestHistory(): void
+    {
+        $this->historyUntil = '';
+    }
+
     /** A customer's plan changed in the dialog: the next render reads it again. */
     #[On('customer-plan-changed')]
     public function planChanged(): void {}
@@ -89,6 +95,7 @@ final class Detail extends Component
             'sites' => $sites,
             'history' => $history['rows'],
             'historyOlder' => $history['more'] ? $history['oldest'] : null,
+            'historyCut' => $history['cut'],
             'suspensionReason' => $tenant->status === 'suspended' ? trim($reason) : '',
             'siteTime' => app(SiteTime::class),
             'canChangePlan' => $permissions->canChangePlan($user),

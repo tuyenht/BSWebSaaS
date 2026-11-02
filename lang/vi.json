@@ -741,6 +741,7 @@
     "admin.customers_history_with_reason": ":what — :reason",
     "admin.customers_history_system": "Hệ thống",
     "admin.customers_history_older": "Xem thay đổi cũ hơn",
+    "admin.customers_history_newest": "Về thay đổi mới nhất",
     "admin.customers_dlg_title": "Đổi gói cho :name",
     "admin.customers_dlg_sub": "Đang dùng gói :cur. Gói mới có hiệu lực ngay.",
     "admin.customers_dlg_close_aria": "Đóng hộp Đổi gói",
