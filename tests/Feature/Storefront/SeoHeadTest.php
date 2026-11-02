@@ -161,10 +161,10 @@ it('uses the tenant brand favicon when set, and the platform file only as fallba
     expect($html)->not->toContain('<link rel="icon" href="/favicon.ico"');
 });
 
-it('preloads the Inter Latin and Vietnamese subsets only for a site whose font is Inter', function (): void {
+it('preloads the one Inter Latin and Vietnamese file only for a site whose font is Inter', function (): void {
     seoProvision();
     $site = Site::query()->firstWhere('name', 'An Vinh');
-    $preload = '<link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>';
+    $preload = '<link rel="preload" href="/fonts/inter-latin-vi.woff2" as="font" type="font/woff2" crossorigin>';
 
     expect($this->get('http://anvinh.platform.test/')->assertOk()->getContent())->not->toContain('rel="preload"');
 
@@ -172,9 +172,9 @@ it('preloads the Inter Latin and Vietnamese subsets only for a site whose font i
         ['group_name' => 'theme', 'key' => 'tokens', 'value' => ['font' => 'Inter, Inter-Fallback, system-ui, sans-serif']],
     ));
 
-    expect($this->get('http://anvinh.platform.test/')->assertOk()->getContent())->toContain($preload)
-        ->toContain('<link rel="preload" href="/fonts/inter-vietnamese.woff2" as="font" type="font/woff2" crossorigin>')
-        ->not->toContain('inter-latin-ext.woff2" as="font"');
+    $html = $this->get('http://anvinh.platform.test/')->assertOk()->getContent();
+    expect($html)->toContain($preload)
+        ->and(substr_count($html, 'as="font"'))->toBe(1);
 });
 
 it('inlines the text-size script only when the header offers the button, and every inline script is allowed by its CSP hash', function (): void {
