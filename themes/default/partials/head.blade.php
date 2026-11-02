@@ -151,8 +151,6 @@
 <style>:root{@foreach (($tokens ?? []) as $name => $value)--{{ $name }}:{{ $value }};@endforeach}</style>
 
 @if (str_starts_with((string) ($tokens['font'] ?? ''), 'Inter'))
-<link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="/fonts/inter-vietnamese.woff2" as="font" type="font/woff2" crossorigin>
 @endif
 @if (! empty($mediaOrigin))
 <link rel="preconnect" href="{{ $mediaOrigin }}">
