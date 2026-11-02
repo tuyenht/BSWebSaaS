@@ -32,7 +32,7 @@
 | Chữ | `--font-heading` + `--font-body` (nâng từ 1 `--font` hiện tại) + scale modular h1–h4/body/small | Font chọn từ danh sách Việt-subset — KHÔNG upload font tự do |
 | Khoảng cách | thang `--space-s/m/l/xl` × hệ số mật độ `--space-unit` (compact 0.85 · normal 1 · airy 1.2), mỗi giá trị làm tròn về bội số 4px (AI quyết thay owner 03/11/2026 theo quy tắc 31/10, owner lật được: giữ mật độ, làm tròn về 4) | 1 cài đặt site đổi "độ thở" mọi section |
 | Bo & bóng | `--radius-soft/round` · `--shadow-soft/medium` | |
-| Gradient | `--gradient-1..3` sinh từ brand (brand→đậm · brand→accent · dark→brand) | |
+| Gradient | `--gradient-1..3` sinh từ brand (brand→đậm · brand→accent, tạm thời brand→sáng cho tới khi có vai trò `--color-accent` · dark→brand) | |
 | Motion | `--motion-duration` (tối đa 250ms — AI quyết thay owner 03/11/2026 theo chuẩn thiết kế 06–07/10, chặt hơn 0,5s của ADR-04; owner lật được) · `--motion-distance` (24px) | 1 công tắc site tắt toàn bộ motion |
 
 > **Tên token (07/10/2026):** theo chuẩn chung `docs/notes/design-tokens.md`: giữ các tên vai trò trong bảng trên; `--brand-50..900` đổi thành `--color-brand-50..900` (bí danh tên cũ trong thời gian chuyển). Mật độ khoảng cách và thời lượng hiệu ứng đã được AI quyết thay owner 03/11/2026 (owner lật được, ghi ở `plans/cho-ky.md` mục Đã quyết thay) (làm tròn về bội số 4px; tối đa 250ms).
