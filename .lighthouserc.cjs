@@ -23,8 +23,10 @@ module.exports = {
       // contact cards) and /ban-tin (a news card grid with child-category chips).
       url: [`${origin}/`, `${origin}/lien-he`, `${origin}/tin-tuc`, `${origin}/do-kiem`, `${origin}/ban-tin`],
       numberOfRuns: 3,
-      startServerCommand: `php artisan serve --host=0.0.0.0 --port=${port}`,
-      startServerReadyPattern: 'Server running on',
+      // PHP's built-in server behind a router that gzips HTML, CSS and JS the way production's
+      // Caddy does (`encode zstd gzip`), so the page weighs what a visitor downloads.
+      startServerCommand: `php -S 0.0.0.0:${port} -t public scripts/cwv-serve.php`,
+      startServerReadyPattern: 'Development Server',
       startServerReadyTimeout: 15000,
       settings: {
         onlyCategories: ['performance'],
