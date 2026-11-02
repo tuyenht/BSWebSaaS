@@ -79,6 +79,32 @@ it('gives every project, news card and product its own image and the quality blo
     expect($quality['props']['image_url'])->toBe(['media' => 'pr-body-check-fixture']);
 });
 
+it('gives every post body text, an excerpt and a search description', function (): void {
+    $posts = collect((new PackReader)->read('an-vinh')->items)->filter(fn ($item) => str_starts_with($item->key, 'post:'));
+
+    foreach ($posts as $item) {
+        $paragraphs = collect($item->data['body']['vi'])->where('type', 'richtext')->flatMap(fn (array $block): array => $block['props']['paragraphs']);
+        expect($paragraphs->filter()->count())->toBeGreaterThan(0, $item->key)
+            ->and($item->data['excerpt']['vi'] ?? '')->not->toBe('', $item->key)
+            ->and($item->data['seo_description']['vi'] ?? '')->not->toBe('', $item->key);
+    }
+});
+
+it('lists the partners on their page with a call to contact, and links the privacy policy from the footer', function (): void {
+    $items = collect((new PackReader)->read('an-vinh')->items)->keyBy(fn ($item) => $item->key);
+
+    $blocks = collect($items['page:/doi-tac']->data['body']['vi']);
+    expect($blocks->pluck('type')->all())->toBe(['page_header', 'features', 'cta'])
+        ->and(collect($blocks[1]['props']['items'])->pluck('title')->all())->toBe([
+            'VinFast', 'Festo', 'Hutchinson', 'Weldcom', 'SMC', 'DGP', 'Yamaguchi', 'Mitsuboshi', 'Palfinger', 'Vinmanutech',
+        ])
+        ->and($blocks[2]['props']['button_url'])->toBe('/lien-he');
+
+    $about = $items['menu:footer']->data['items'][0];
+    expect($about['label']['vi'])->toBe('GIỚI THIỆU')
+        ->and(collect($about['children'])->firstWhere('target', 'page:/chinh-sach-bao-mat')['label']['vi'] ?? null)->toBe('Chính sách bảo mật');
+});
+
 it('publishes a privacy policy naming the company, what the form collects and how to exercise rights', function (): void {
     $page = collect((new PackReader)->read('an-vinh')->items)->firstWhere('key', 'page:/chinh-sach-bao-mat');
     $blocks = $page->data['body']['vi'];

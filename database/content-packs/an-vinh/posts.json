@@ -525,15 +525,25 @@
    "title": {
     "vi": "Đào tạo vận hành máy phay CNC 5 trục"
    },
+   "excerpt": {
+    "vi": "An Vinh tổ chức khóa đào tạo vận hành máy phay CNC 5 trục, giúp đội ngũ kỹ thuật làm chủ thiết bị và gia công tốt hơn các chi tiết phức tạp."
+   },
    "body": {
     "vi": [
      {
       "type": "richtext",
       "props": {
-       "paragraphs": []
+       "paragraphs": [
+        "An Vinh tổ chức khóa đào tạo vận hành máy phay CNC 5 trục cho đội ngũ kỹ thuật viên và công nhân vận hành tại nhà máy.",
+        "Khóa học kết hợp lý thuyết với thực hành trực tiếp trên máy: thiết lập và vận hành máy, lập trình gia công, gá đặt phôi và kiểm tra kích thước sau gia công.",
+        "Nâng cao tay nghề vận hành giúp An Vinh gia công chính xác hơn các chi tiết có hình dạng phức tạp và đáp ứng tốt hơn yêu cầu kỹ thuật của khách hàng."
+       ]
       }
      }
     ]
+   },
+   "seo_description": {
+    "vi": "An Vinh tổ chức khóa đào tạo vận hành máy phay CNC 5 trục, giúp đội ngũ kỹ thuật làm chủ thiết bị và gia công tốt hơn các chi tiết phức tạp."
    }
   },
   {
@@ -653,15 +663,25 @@
    "title": {
     "vi": "Triển lãm MTA Vietnam 2024: Cơ hội và thách thức"
    },
+   "excerpt": {
+    "vi": "Triển lãm MTA Vietnam 2024 giới thiệu nhiều công nghệ mới về máy công cụ và gia công kim loại, mang đến cả cơ hội lẫn thách thức cho doanh nghiệp cơ khí trong nước."
+   },
    "body": {
     "vi": [
      {
       "type": "richtext",
       "props": {
-       "paragraphs": []
+       "paragraphs": [
+        "MTA Vietnam là triển lãm chuyên ngành về máy công cụ, gia công kim loại và tự động hóa, nơi các doanh nghiệp trong và ngoài nước giới thiệu thiết bị và giải pháp sản xuất mới.",
+        "Với doanh nghiệp cơ khí Việt Nam, đây là cơ hội để cập nhật công nghệ, tìm hiểu xu hướng gia công chính xác và tự động hóa, đồng thời mở rộng kết nối với khách hàng và nhà cung cấp.",
+        "Đi cùng cơ hội là thách thức: yêu cầu về độ chính xác, chất lượng và tiến độ ngày càng cao, đòi hỏi doanh nghiệp liên tục đầu tư thiết bị, nâng cao tay nghề và cải tiến quy trình để cạnh tranh."
+       ]
       }
      }
     ]
+   },
+   "seo_description": {
+    "vi": "Triển lãm MTA Vietnam 2024 giới thiệu nhiều công nghệ mới về máy công cụ và gia công kim loại, mang đến cả cơ hội lẫn thách thức cho doanh nghiệp cơ khí trong nước."
    }
   }
  ]

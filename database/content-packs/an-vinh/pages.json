@@ -279,6 +279,56 @@
         "media": "partners-header"
        }
       }
+     },
+     {
+      "type": "features",
+      "props": {
+       "heading": "Những đối tác đã tin tưởng An Vinh",
+       "variant": "top-rule",
+       "bg": "surface",
+       "items": [
+        {
+         "title": "VinFast"
+        },
+        {
+         "title": "Festo"
+        },
+        {
+         "title": "Hutchinson"
+        },
+        {
+         "title": "Weldcom"
+        },
+        {
+         "title": "SMC"
+        },
+        {
+         "title": "DGP"
+        },
+        {
+         "title": "Yamaguchi"
+        },
+        {
+         "title": "Mitsuboshi"
+        },
+        {
+         "title": "Palfinger"
+        },
+        {
+         "title": "Vinmanutech"
+        }
+       ]
+      }
+     },
+     {
+      "type": "cta",
+      "props": {
+       "heading": "Sẵn sàng nâng tầm dự án của bạn?",
+       "text": "Hãy để các chuyên gia của An Vinh tư vấn giải pháp cơ khí chính xác tối ưu nhất.",
+       "button_label": "Liên hệ ngay",
+       "button_url": "/lien-he",
+       "variant": "rounded"
+      }
      }
     ]
    }

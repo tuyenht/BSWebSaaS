@@ -141,6 +141,12 @@
         "vi": "Liên hệ"
        },
        "target": "page:/lien-he"
+      },
+      {
+       "label": {
+        "vi": "Chính sách bảo mật"
+       },
+       "target": "page:/chinh-sach-bao-mat"
       }
      ]
     },
