@@ -73,6 +73,18 @@ it('verifies a waiting name its owner pointed, with its other spelling, and note
         ]);
 });
 
+it('leaves the waiting names of a site that is not active alone, as a check by hand would', function (): void {
+    DB::connection('pgsql_admin')->table('sites')->where('id', 2)->update(['status' => 'suspended']);
+    wdPair(2, 'tam-ngung.vn');
+    $this->dns->pointHere('tam-ngung.vn', 'www.tam-ngung.vn');
+
+    $this->artisan('domains:recheck-waiting')->expectsOutputToContain('0 verified.')->assertSuccessful();
+
+    expect(wdRow('tam-ngung.vn', 2)?->verified_at)->toBeNull()
+        ->and(wdRow('tam-ngung.vn', 2)?->failure_reason)->toBeNull()
+        ->and(wdTrail())->toBe([]);
+});
+
 it('is idempotent: a second run finds nothing new and leaves the verified names alone', function (): void {
     wdPair(1, 'tencongty.vn');
     $this->dns->pointHere('tencongty.vn', 'www.tencongty.vn');

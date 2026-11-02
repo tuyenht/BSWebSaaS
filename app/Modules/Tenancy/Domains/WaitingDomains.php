@@ -11,6 +11,7 @@ use App\Modules\Tenancy\Models\Domain;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\Cache;
 use RuntimeException;
 use Throwable;
@@ -138,6 +139,9 @@ final readonly class WaitingDomains
     {
         return Domain::query()
             ->where('kind', 'custom')->whereNull('verified_at')->whereNull('failing_since')
+            // As a check by hand: a site that is not served (suspended, archived…) claims nothing.
+            ->whereExists(fn (QueryBuilder $site) => $site->selectRaw('1')->from('sites')
+                ->whereColumn('sites.id', 'domains.site_id')->where('sites.status', 'active'))
             ->select(['id', 'site_id', 'hostname']);
     }
 
