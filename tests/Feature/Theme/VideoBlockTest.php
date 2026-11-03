@@ -175,12 +175,22 @@ describe('videos in rich text', function (): void {
             ->and($html)->not->toContain('<p><div')->not->toContain('<p></p>');
     });
 
+    it('lifts a centred frame out of its styled paragraph too', function (): void {
+        $stored = app(RichTextSanitizer::class)->full('<p>A</p><p style="text-align: center;"><iframe src="https://www.youtube.com/embed/SxwkhMy4Ywo"></iframe></p><p>B</p>');
+        ['html' => $html, 'videos' => $videos] = app(VideoFacades::class)->render($stored);
+
+        expect($videos)->toBe(1)
+            ->and($html)->not->toContain('text-align')->not->toContain('<p></p>')
+            ->and((string) preg_replace('~>\s+<~', '><', $html))->toStartWith('<p>A</p><div class="sf-video')->toEndWith('</a></div><p>B</p>');
+    });
+
     it('names each video of a description apart', function (): void {
         $one = '<div class="video-embed"><iframe src="https://www.youtube.com/embed/SxwkhMy4Ywo"></iframe></div>';
         ['html' => $html] = app(VideoFacades::class)->render($one.$one);
 
         expect($html)->toContain('<span class="sr-only">: Video YouTube 1</span>')
-            ->and($html)->toContain('<span class="sr-only">: Video YouTube 2</span>');
+            ->and($html)->toContain('<span class="sr-only">: Video YouTube 2</span>')
+            ->and(app(VideoFacades::class)->render($one)['html'])->toContain('<span class="sr-only">: Video YouTube</span>');
     });
 
     it('keeps an unknown iframe stripped, on save and on render', function (): void {

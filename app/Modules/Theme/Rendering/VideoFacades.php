@@ -22,7 +22,7 @@ final readonly class VideoFacades
     private const string WRAPPED = '~<div class="video-embed">\s*<iframe\b([^>]*)>\s*</iframe>\s*</div>~i';
 
     /** A paragraph holding nothing but one frame: the façade is a block, so the paragraph goes. */
-    private const string IN_PARAGRAPH = '~<p>\s*(<iframe\b[^>]*>\s*</iframe>)\s*</p>~i';
+    private const string IN_PARAGRAPH = '~<p\b[^>]*>(?:\s|&nbsp;|<br\s*/?>)*(<iframe\b[^>]*>\s*</iframe>)(?:\s|&nbsp;|<br\s*/?>)*</p>~i';
 
     /** Any other frame's opening tag, with its closing tag when nothing but space sits between. */
     private const string BARE = '~<iframe\b([^>]*)>(?:\s*</iframe>)?~i';
@@ -40,7 +40,8 @@ final readonly class VideoFacades
         }
 
         $videos = 0;
-        $swap = function (array $match) use (&$videos): string {
+        $several = preg_match_all('~<iframe\b~i', $html) > 1;
+        $swap = function (array $match) use (&$videos, $several): string {
             $video = VideoEmbed::player(self::src(is_string($match[1] ?? null) ? $match[1] : ''));
             if ($video === null) {
                 return '';
@@ -49,8 +50,8 @@ final readonly class VideoFacades
 
             return $this->views->make('theme::partials.sf-video', [
                 'video' => $video,
-                // numbered, so two videos in one description are told apart by name
-                'title' => __('storefront.video_frame_'.$video['provider']).' '.$videos,
+                // numbered when there are several, so the videos of a description are told apart by name
+                'title' => __('storefront.video_frame_'.$video['provider']).($several ? ' '.$videos : ''),
                 'poster' => null,
                 'srcset' => null,
             ])->render();
