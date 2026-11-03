@@ -23,7 +23,12 @@
     $sheetBox = $sheetBoxes[$size] ?? $sheetBoxes['md'];
     $tid = $model ? 'modal-title-'.substr(md5($model), 0, 8) : 'modal-title-'.\Illuminate\Support\Str::random(6);
     $state = $model
-        ? "{ open: \$wire.entangle('".$model."').live, opener: null, show() { this.open = true; }, hide() { this.open = false; } }"
+        // the server may open it too, so the opener is taken whenever `open` turns true, and focus goes
+        // back to it on close while it is still on the page (a row menu's item is gone by then, but the
+        // menu puts focus on its ⋮ before the dialog opens, so the ⋮ is what is kept)
+        ? "{ open: \$wire.entangle('".$model."').live, opener: null, show() { this.open = true; }, hide() { this.open = false; },"
+            ." init() { this.\$watch('open', (v) => { if (v) { this.opener = document.activeElement; return; }"
+            ." const back = this.opener; this.opener = null; this.\$nextTick(() => { if (back && back.isConnected) back.focus(); }); }); } }"
         : '{ open: false, opener: null, show() { this.opener = document.activeElement; this.open = true; }, hide() { this.open = false; this.opener?.focus(); } }';
 @endphp
 <div x-data="{{ $state }}"

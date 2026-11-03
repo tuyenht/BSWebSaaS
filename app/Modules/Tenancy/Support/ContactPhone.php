@@ -79,10 +79,15 @@ final class ContactPhone
 
     /**
      * The digits to look for inside stored numbers when staff search: at least three digits, a
-     * leading 0 read as the home country code (so "0901" finds +84901…); null when too few.
+     * leading 0 read as the home country code (so "0901" finds +84901…); null when too few, or
+     * when the search is not written as a phone number (only digits, spaces and `+ - . ( )`):
+     * a customer code ("KH-000123"), an email or a name with digits in it is no phone search.
      */
     public static function searchDigits(string $query): ?string
     {
+        if (preg_match('/^[\d\s\p{Zs}+\-.()]+$/u', $query) !== 1) {
+            return null;
+        }
         $digits = (string) preg_replace('/\D/', '', $query);
         if (strlen($digits) < 3) {
             return null;
@@ -91,7 +96,7 @@ final class ContactPhone
         $home = self::homeCode();
         $digits = str_starts_with($digits, '0') && ! str_starts_with($digits, '00') ? $home.substr($digits, 1) : ltrim($digits, '0');
         // "+84 0901…" written with its code and trunk 0: stored without the 0, as normalize() does
-        $explicit = str_starts_with(ltrim($query), '+') || str_starts_with(ltrim($query), '00');
+        $explicit = preg_match('/^[\s\p{Zs}(]*(?:\+|00)/u', $query) === 1;
         foreach (array_unique([$home, '84']) as $code) {
             if ($explicit && str_starts_with($digits, $code.'0')) {
                 $digits = $code.substr($digits, strlen($code) + 1);

@@ -75,7 +75,14 @@ it('searches by digits, a leading 0 meaning the home country, from three digits'
         ->and(ContactPhone::searchDigits('840901'))->toBe('840901')
         ->and(ContactPhone::searchDigits('09'))->toBeNull()
         ->and(ContactPhone::searchDigits('000'))->toBeNull()
-        ->and(ContactPhone::searchDigits('Công ty'))->toBeNull();
+        ->and(ContactPhone::searchDigits('Công ty'))->toBeNull()
+        // not written as a phone number: a customer code, an email, a name with digits
+        ->and(ContactPhone::searchDigits('KH-000123'))->toBeNull()
+        ->and(ContactPhone::searchDigits('an123@example.test'))->toBeNull()
+        ->and(ContactPhone::searchDigits('Spa 12 Hoa 345'))->toBeNull()
+        ->and(ContactPhone::searchDigits("(028)\u{00A0}3812-3456"))->toBe('842838123456')
+        ->and(ContactPhone::searchDigits('(+84) 0901 234'))->toBe('84901234')
+        ->and(ContactPhone::searchDigits("\u{00A0}+84 0901"))->toBe('84901');
 });
 
 it('takes the home country from config, so another market changes no code', function (): void {

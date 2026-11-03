@@ -5,6 +5,7 @@ namespace App\Modules\Admin\Http\Controllers;
 use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Admin\Theme\AdminChromeResolver;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\UserPreferences;
 use App\Modules\Shared\Support\Cast;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,9 +18,11 @@ use Illuminate\Validation\ValidationException;
  * endpoint behind the floating launcher. Registered once per plane (admin.* + platform.*)
  * because the two consoles live on different hosts and fetch() must stay same-origin.
  *
- * Only the submitted axes are written (per-field pin); `preferences` is guarded on the
- * model, so this validated setter is the single write path. Responses mirror the DAM
- * controllers: validation errors come back as JSON 422 for the fetch client.
+ * Only the submitted axes are written (per-field pin), each one key of preferences.theme on its
+ * own (UserPreferences): the other keys of the column — a list's columns, a page size, saved by
+ * another screen or tab — are never rewritten. `preferences` is guarded on the model, so this
+ * validated setter is the theme's single write path. Responses mirror the DAM controllers:
+ * validation errors come back as JSON 422 for the fetch client.
  */
 final class ThemePreferenceController
 {
@@ -33,10 +36,10 @@ final class ThemePreferenceController
             return response()->json(['message' => $e->getMessage(), 'errors' => $e->errors()], 422);
         }
 
-        $preferences = $user->preferences;
-        $preferences['theme'] = array_merge(Cast::arr($preferences['theme'] ?? null), Cast::arr($validated));
-        $user->preferences = $preferences;
-        $user->save();
+        foreach (Cast::arr($validated) as $field => $value) {
+            UserPreferences::set($user, ['theme', (string) $field], $value);
+        }
+        UserPreferences::reload($user);
 
         return response()->json(['attributes' => $resolver->attributes($user)]);
     }
@@ -52,20 +55,8 @@ final class ThemePreferenceController
     {
         $user = $this->user();
 
-        $preferences = $user->preferences;
-        if (AdminPlane::isPlatform()) {
-            $theme = Cast::arr($preferences['theme'] ?? null);
-            unset($theme['scheme']);
-            if ($theme === []) {
-                unset($preferences['theme']);
-            } else {
-                $preferences['theme'] = $theme;
-            }
-        } else {
-            unset($preferences['theme']);
-        }
-        $user->preferences = $preferences;
-        $user->save();
+        UserPreferences::forget($user, AdminPlane::isPlatform() ? ['theme', 'scheme'] : ['theme']);
+        UserPreferences::reload($user);
 
         return response()->json(['attributes' => $resolver->attributes($user)]);
     }
