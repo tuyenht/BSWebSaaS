@@ -186,6 +186,14 @@ it('indexes the customers of an owner, which the customer search looks up', func
         ->and($row->def)->toBe('CREATE INDEX tenants_owner_user_id_index ON public.tenants USING btree (owner_user_id)');
 });
 
+it('indexes the customers\' phones, which a search by number looks in', function (): void {
+    $row = DB::selectOne('select pg_get_indexdef(indexrelid) as def, indisvalid as valid from pg_index where indexrelid = to_regclass(?)', ['tenants_contact_phone_trgm_index']);
+
+    expect($row)->not->toBeNull('tenants_contact_phone_trgm_index is missing')
+        ->and($row->valid)->toBeTrue()
+        ->and($row->def)->toBe('CREATE INDEX tenants_contact_phone_trgm_index ON public.tenants USING gin (contact_phone gin_trgm_ops) WHERE (contact_phone IS NOT NULL)');
+});
+
 it('plans the customer search on the customer and owner indexes', function (): void {
     // 2,000 customers with an owner each, analysed: with a handful of rows (and statistics an
     // earlier test left) the planner reads the primary keys instead, whatever the other indexes

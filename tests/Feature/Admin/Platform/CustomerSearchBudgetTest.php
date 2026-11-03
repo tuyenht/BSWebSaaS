@@ -164,7 +164,10 @@ it('plans a one-letter search and a search by number on the indexes, never a ful
     expect($reads)->not->toBe([])
         ->and($seq('users'))->toBe(0, $report)
         ->and($seq('tenants'))->toBeLessThanOrEqual($q === '#' ? 0 : 1, $report);
-    if ($q !== '#') {
+    if ($q === '#') {
+        // a number is also looked for in the customers' phones
+        expect($indexes)->toContain('tenants_contact_phone_trgm_index');
+    } else {
         // the word indexes on the folded names, of the owners and of the customers
         expect($indexes)->toContain('users_name_fold_words_index', 'tenants_name_fold_words_index');
     }

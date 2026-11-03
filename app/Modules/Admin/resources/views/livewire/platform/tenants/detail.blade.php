@@ -91,6 +91,14 @@
                             <span class="text-text-strong">{{ __('admin.customers_none') }}</span>
                         @endif
                     </dd>
+                    <dt class="text-text-muted">{{ __('admin.customers_info_phone') }}</dt>
+                    <dd class="m-0 mb-2 [overflow-wrap:anywhere] @min-[30rem]/kh:mb-0">
+                        @if ($phone !== null)
+                            <a href="tel:{{ $tenant->contact_phone }}" class="inline-flex min-h-hit items-center text-primary-text underline">{{ $phone }}</a>
+                        @else
+                            <span class="text-text-strong">{{ __('admin.customers_none') }}</span>
+                        @endif
+                    </dd>
                     <dt class="text-text-muted">{{ __('admin.customers_info_joined') }}</dt>
                     <dd class="m-0 mb-2 text-text-strong @min-[30rem]/kh:mb-0">{{ $joined }}</dd>
                     <dt class="text-text-muted">{{ __('admin.customers_info_code') }}</dt>

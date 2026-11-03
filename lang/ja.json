@@ -931,6 +931,7 @@
     "admin.customers_info_title": "情報",
     "admin.customers_info_owner": "ウェブサイトの所有者",
     "admin.customers_info_email": "メール",
+    "admin.customers_info_phone": "電話",
     "admin.customers_info_joined": "登録日",
     "admin.customers_info_code": "顧客コード",
     "admin.customers_none": "未設定",

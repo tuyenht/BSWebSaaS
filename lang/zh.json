@@ -931,6 +931,7 @@
     "admin.customers_info_title": "信息",
     "admin.customers_info_owner": "网站所有者",
     "admin.customers_info_email": "邮箱",
+    "admin.customers_info_phone": "电话",
     "admin.customers_info_joined": "加入",
     "admin.customers_info_code": "客户编号",
     "admin.customers_none": "暂无",

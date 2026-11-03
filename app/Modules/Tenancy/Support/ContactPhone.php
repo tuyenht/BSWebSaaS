@@ -79,10 +79,15 @@ final class ContactPhone
 
     /**
      * The digits to look for inside stored numbers when staff search: at least three digits, a
-     * leading 0 read as the home country code (so "0901" finds +84901…); null when too few.
+     * leading 0 read as the home country code (so "0901" finds +84901…); null when too few, or
+     * when the search is not written as a phone number (only digits, spaces and `+ - . ( )`):
+     * a customer code ("KH-000123"), an email or a name with digits in it is no phone search.
      */
     public static function searchDigits(string $query): ?string
     {
+        if (preg_match('/^[\d\s\p{Zs}+\-.()]+$/u', $query) !== 1) {
+            return null;
+        }
         $digits = (string) preg_replace('/\D/', '', $query);
         if (strlen($digits) < 3) {
             return null;

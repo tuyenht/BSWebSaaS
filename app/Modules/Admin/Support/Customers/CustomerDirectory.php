@@ -9,6 +9,7 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\VietnameseFold;
 use App\Modules\Tenancy\Models\Plan;
 use App\Modules\Tenancy\Models\Tenant;
+use App\Modules\Tenancy\Support\ContactPhone;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -32,8 +33,12 @@ use Illuminate\Database\Eloquent\Collection;
  * "Thanh"; emails are not words), through the word indexes on the same folded names
  * (2044_01_01_000000): a trigram index can find word starts too, but checks every row it found
  * again with the fold (about 300 ms for 20,000 matches). The customer's code ("KH-000123", "000123" or "123"; prefix and
- * padding from config/customers.php) is matched exactly on customer_no, at any length. Text with
- * no letter or digit at all is no search: the list stays as it is and says so.
+ * padding from config/customers.php) is matched exactly on customer_no, at any length. A search
+ * written as a phone number (digits, spaces and `+ - . ( )` only, three digits or more, however
+ * short its groups: "0901", "234 567", "09 01 23") also looks for the customer's contact phone
+ * anywhere in its digits (a leading 0 is the home country code, ContactPhone::searchDigits, or a
+ * piece from inside the number), through a trigram index on the phone (2047_01_01_000000). Text
+ * with no letter or digit at all is no search: the list stays as it is and says so.
  */
 final class CustomerDirectory
 {
@@ -255,7 +260,8 @@ final class CustomerDirectory
         $number = self::customerNo($needle);
         $byCode = $number === null ? null : Tenant::query()->select('id')->where('customer_no', $number);
 
-        if (! self::wordy($needle)) {
+        $phone = self::phoneFragments($search);
+        if (! self::wordy($needle) && $phone === []) {
             // too short for a trigram: word starts, on the word indexes
             [$from, $bindings] = self::wordStarts($needle, $number);
 
@@ -274,6 +280,9 @@ final class CustomerDirectory
             ->union(Tenant::query()->select('id')->whereIn('owner_user_id', $owners));
         if ($byCode !== null) {
             $matching->union($byCode);
+        }
+        foreach ($phone as $fragment) {
+            $matching->union(Tenant::query()->select('id')->where('contact_phone', 'like', '%'.$fragment.'%'));
         }
 
         return $query->whereIn('tenants.id', $matching);
@@ -343,6 +352,24 @@ final class CustomerDirectory
     private static function parts(string $needle): array
     {
         return preg_match_all('/[\p{L}\p{Nd}]+/u', $needle, $m) > 0 ? $m[0] : [];
+    }
+
+    /**
+     * The digits a search written as a phone number looks for in the customers' phones: as
+     * ContactPhone::searchDigits reads them ("0901" → "84901"), and as typed when they start with
+     * one 0, which may also be a piece from inside the number ("0567" in +84901230567).
+     *
+     * @return list<string>
+     */
+    private static function phoneFragments(string $search): array
+    {
+        $digits = ContactPhone::searchDigits(trim($search));
+        if ($digits === null) {
+            return [];
+        }
+        $typed = (string) preg_replace('/\D/', '', $search);
+
+        return str_starts_with($typed, '0') && ! str_starts_with($typed, '00') && $typed !== $digits ? [$digits, $typed] : [$digits];
     }
 
     /**

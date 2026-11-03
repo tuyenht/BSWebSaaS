@@ -10,6 +10,7 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Models\Plan;
 use App\Modules\Tenancy\Models\Tenant;
+use App\Modules\Tenancy\Support\ContactPhone;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\HtmlString;
 use Illuminate\View\View;
@@ -90,6 +91,7 @@ final class Detail extends Component
         $view = view('admin::livewire.platform.tenants.detail', [
             'tenant' => $tenant,
             'owner' => $owner,
+            'phone' => $tenant->contact_phone === null ? null : ContactPhone::display($tenant->contact_phone),
             'plan' => $plan,
             'values' => $values,
             'sites' => $sites,

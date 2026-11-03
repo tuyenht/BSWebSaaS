@@ -162,6 +162,52 @@ it('finds a customer by its code, exactly, whatever the case or padding, with or
     $page->assertSee(__('admin.customers_filter_search_chip', ['q' => CustomerCode::format($no + 1000)]));
 });
 
+it('finds a customer by three or more digits of its contact phone, typed however staff dial it', function (): void {
+    $wanted = khCustomer('Nha khoa Tâm Đức', ['contact_phone' => '+84901234567']);
+    $landline = khCustomer('Spa Hoa Sen', ['contact_phone' => '+842838123456']);
+    $none = khCustomer('Cửa hàng Bình An');
+    $page = Livewire::actingAs(khStaff('support'))->test(Index::class);
+    $found = fn (string $q): array => $page->set('search', $q)->viewData('rows')->pluck('ulid')->map(fn ($u): string => trim((string) $u))->sort()->values()->all();
+
+    expect($found('0901'))->toBe([$wanted])
+        ->and($found('0901 234 567'))->toBe([$wanted])
+        ->and($found('+84 901 234'))->toBe([$wanted])
+        ->and($found('234 567'))->toBe([$wanted])
+        ->and($found('028 3812'))->toBe([$landline])
+        ->and($found('09 01 23'))->toBe([$wanted])
+        ->and($found('4567'))->toBe([$wanted])
+        ->and($found('0909'))->toBe([])
+        ->and($found('84'))->toBe([])
+        ->and(in_array($none, $found('Bình An'), true))->toBeTrue();
+});
+
+it('looks in the phones only for a search written as a phone number', function (): void {
+    $code = khCustomer('Nha khoa Tâm Đức', ['contact_phone' => '+84901230567']);
+    $phone = khCustomer('Spa Hoa Sen', ['contact_phone' => '+84912312345']);
+    $page = Livewire::actingAs(khStaff('support'))->test(Index::class);
+    $found = fn (string $q): array => $page->set('search', $q)->viewData('rows')->pluck('ulid')->map(fn ($u): string => trim((string) $u))->sort()->values()->all();
+    $no = (int) DB::table('tenants')->where('ulid', $code)->value('customer_no');
+
+    // the exact code finds that customer only, never a phone holding its digits
+    expect($found(CustomerCode::format($no)))->toBe([$code])
+        ->and($found('Spa 12 Hoa 345'))->toBe([])
+        ->and($found('0567'))->toBe([$code])
+        ->and($found('123'))->toContain($code, $phone);
+});
+
+it('shows the customer\'s contact phone to call, or says there is none', function (): void {
+    $withPhone = khCustomer('Nha khoa Tâm Đức', ['contact_phone' => '+84901234567']);
+    $without = khCustomer('Spa Hoa Sen');
+    $staff = khStaff('super_admin');
+
+    $this->actingAs($staff)->get(khHost().'/tenants/'.$withPhone)
+        ->assertOk()
+        ->assertSeeInOrder([__('admin.customers_info_phone'), 'href="tel:+84901234567"', '0901 234 567'], false);
+    $this->actingAs($staff)->get(khHost().'/tenants/'.$without)
+        ->assertOk()
+        ->assertSeeInOrder([__('admin.customers_info_phone'), __('admin.customers_none'), __('admin.customers_info_joined')]);
+});
+
 it('finds one or two letters at the start of a word of the customer\'s or the owner\'s name', function (): void {
     $owner = User::factory()->create(['name' => 'Hà Thị Mai', 'email' => 'an@example.test']);
     $anVinh = khCustomer('Cơ khí An Vinh');

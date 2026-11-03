@@ -931,6 +931,7 @@
     "admin.customers_info_title": "Details",
     "admin.customers_info_owner": "Website owner",
     "admin.customers_info_email": "Email",
+    "admin.customers_info_phone": "Phone",
     "admin.customers_info_joined": "Joined",
     "admin.customers_info_code": "Customer code",
     "admin.customers_none": "None yet",

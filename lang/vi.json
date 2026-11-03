@@ -931,6 +931,7 @@
     "admin.customers_info_title": "Thông tin",
     "admin.customers_info_owner": "Chủ website",
     "admin.customers_info_email": "Email",
+    "admin.customers_info_phone": "Điện thoại",
     "admin.customers_info_joined": "Tham gia",
     "admin.customers_info_code": "Mã khách hàng",
     "admin.customers_none": "Chưa có",
