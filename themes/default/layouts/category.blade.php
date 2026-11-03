@@ -4,8 +4,9 @@
 @include('theme::partials.head')
 </head>
 <body>
+    <a class="sf-skip" href="#noi-dung">{{ __('storefront.skip_to_content') }}</a>
     @include('theme::partials.header', ['menu' => $menu ?? [], 'brand' => $brand ?? null])
-    <main class="category">
+    <main class="category" id="noi-dung" tabindex="-1">
         <h1 class="category__title">{{ $title }}</h1>
 
         @if (count($posts) > 0)
@@ -17,8 +18,11 @@
                 @endforeach
             </ul>
 
-            @if (! empty($pagination['prevUrl']) || ! empty($pagination['nextUrl']))
+            @if (! empty($pagination['prevUrl']) || ! empty($pagination['nextUrl']) || ! empty($pagination['firstUrl']))
                 <nav class="pagination" aria-label="{{ __('storefront.pagination') }}">
+@if (! empty($pagination['firstUrl']))
+                    <a class="pagination__first" href="{{ $pagination['firstUrl'] }}">{{ __('storefront.back_to_first') }}</a>
+@endif
                     @if (! empty($pagination['prevUrl']))
                         <a class="pagination__prev" rel="prev" href="{{ $pagination['prevUrl'] }}">{{ __('storefront.prev_page') }}</a>
                     @endif

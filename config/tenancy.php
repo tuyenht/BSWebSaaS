@@ -111,6 +111,12 @@ return [
         // the customer's host kept as SNI. Blank = the domain's public address.
         'tls_endpoint' => env('CUSTOM_DOMAIN_TLS_ENDPOINT', ''),
         'tls_timeout' => (int) env('CUSTOM_DOMAIN_TLS_TIMEOUT', 45),
+        // The server's IPv4 address, for the registrars that cannot point "@" at a name (the screen
+        // offers it as a fallback). Platform config, never looked up while a page is drawn; blank =
+        // the option says it is not available.
+        'ip' => env('CUSTOM_DOMAIN_IP', ''),
+        // How long one 15-minute re-check of the waiting names may keep taking new names.
+        'recheck_budget_seconds' => (int) env('CUSTOM_DOMAIN_RECHECK_BUDGET', 600),
     ],
 
 ];

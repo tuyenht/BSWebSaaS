@@ -45,13 +45,15 @@ final readonly class CategoryRelinker
     ) {}
 
     /**
-     * Re-sync the items filed primarily under these categories. Returns the routes moved.
+     * Re-sync the items filed primarily under these categories. Returns the routes moved. Pass every
+     * change the categories went through (a rename and a move together): a kind is re-synced when
+     * any of them can change its paths.
      *
      * @param  list<int>  $taxonomyIds  the changed categories and everything under them
      *
      * @throws RouteConflictException an item's new path already belongs to something else
      */
-    public function relink(array $taxonomyIds, CategoryChange $change): int
+    public function relink(array $taxonomyIds, CategoryChange ...$changes): int
     {
         $moved = 0;
         if ($taxonomyIds === []) {
@@ -59,7 +61,7 @@ final readonly class CategoryRelinker
         }
 
         foreach ($this->kinds() as $kind) {
-            if (! $this->follows($kind['section'], $change)) {
+            if (! $this->follows($kind['section'], $changes)) {
                 continue;
             }
 
@@ -94,7 +96,7 @@ final readonly class CategoryRelinker
         }
 
         foreach ($this->kinds() as $kind) {
-            $follows = $this->follows($kind['section'], CategoryChange::Refiled);
+            $follows = $this->follows($kind['section'], [CategoryChange::Refiled]);
             $after = 0;
 
             do {
@@ -122,6 +124,22 @@ final readonly class CategoryRelinker
         }
 
         return ['items' => $items, 'routes' => $routes];
+    }
+
+    /**
+     * Whether relink() with these changes re-syncs the paths of the items filed through this pivot
+     * (`entry_taxonomies` for posts, or a registered kind's) — for a planner that must predict
+     * exactly which items a category write carries along.
+     */
+    public function resyncs(string $pivot, CategoryChange ...$changes): bool
+    {
+        foreach ($this->kinds() as $kind) {
+            if ($kind['pivot'] === $pivot) {
+                return $this->follows($kind['section'], $changes);
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -170,8 +188,23 @@ final readonly class CategoryRelinker
         ];
     }
 
-    /** Whether a kind's public paths can change with this kind of category change. */
-    private function follows(?string $section, CategoryChange $change): bool
+    /**
+     * Whether a kind's public paths can change with any of these category changes.
+     *
+     * @param  array<array-key, CategoryChange>  $changes
+     */
+    private function follows(?string $section, array $changes): bool
+    {
+        foreach ($changes as $change) {
+            if ($this->followsOne($section, $change)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function followsOne(?string $section, CategoryChange $change): bool
     {
         if ($section === null) {
             // A post's preset comes from the section its primary category resolves to, and a move or

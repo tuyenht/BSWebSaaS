@@ -13,7 +13,6 @@ it('returns the six safe defaults when a site has no theme setting', function ()
         expect(app(ThemeResolver::class)->tokens())->toBe([
             'primary' => '#3b82f6',
             'surface' => '#ffffff',
-            'text' => '#111111',
             'font' => 'system-ui, sans-serif',
             'ink' => '#111111',
             'body' => '#333333',
@@ -69,7 +68,6 @@ it('falls back to safe defaults with no site context at all', function (): void 
     expect(app(ThemeResolver::class)->tokens())->toBe([
         'primary' => '#3b82f6',
         'surface' => '#ffffff',
-        'text' => '#111111',
         'font' => 'system-ui, sans-serif',
         'ink' => '#111111',
         'body' => '#333333',
@@ -148,7 +146,75 @@ it('measures the page background the storefront stylesheet actually paints', fun
     $share = (int) round(ThemeResolver::PAGE_SURFACE_SHARE * 100);
 
     expect((string) file_get_contents(resource_path('css/storefront.css')))
-        ->toMatch("/body \\{[^}]*background: color-mix\\(in srgb, var\\(--surface\\) {$share}%, var\\(--ink\\)\\);/");
+        ->toMatch("/body \\{[^}]*background: var\\(--page, color-mix\\(in srgb, var\\(--color-surface\\) {$share}%, var\\(--color-dark\\)\\)\\);/");
+});
+
+it('measures the brand text against the site’s own page colour when it sets one', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteSetting::query()->create([
+            'group_name' => 'theme',
+            'key' => 'tokens',
+            'value' => ['primary' => '#f59e0b', 'ink' => '#0f172a', 'page' => '#e2e8f0'],
+        ]);
+
+        $variables = app(ThemeResolver::class)->cssVariables();
+
+        expect($variables['page'])->toBe('#e2e8f0')
+            ->and(ReadableColor::ratio($variables['primary-text'], '#e2e8f0'))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT)
+            ->and(ReadableColor::ratio($variables['primary-text'], $variables['surface']))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT);
+    });
+});
+
+it('prints exactly the same variables as before for a site with no settings', function (): void {
+    $variables = app(Tenancy::class)->enter(1, fn (): array => app(ThemeResolver::class)->cssVariables());
+
+    $expected = [
+        'primary' => '#3b82f6', 'surface' => '#ffffff', 'font' => 'system-ui, sans-serif',
+        'ink' => '#111111', 'body' => '#333333', 'primary-text' => '#326fd1', 'primary-on-ink' => '#3b82f6',
+        'color-primary' => '#3b82f6', 'color-on-primary' => '#111111', 'color-primary-hover' => '#5895f7', 'color-primary-text' => '#326fd1',
+        'color-primary-on-dark' => '#3b82f6', 'color-surface' => '#ffffff', 'color-text' => '#333333',
+        'color-text-strong' => '#111111', 'color-dark' => '#111111', 'font-body' => 'system-ui, sans-serif',
+    ];
+    $palette = ['50' => '#f0f6ff', '100' => '#deebff', '200' => '#c4dbff', '300' => '#9cc2ff', '400' => '#659fff',
+        '500' => '#3b82f6', '600' => '#226adb', '700' => '#1b5abd', '800' => '#12499e', '900' => '#103e86'];
+    foreach ($palette as $step => $color) {
+        $expected["brand-{$step}"] = $color;
+        $expected["color-brand-{$step}"] = $color;
+    }
+    $expected += [
+        'space-unit' => '1', 'space-s' => '8px', 'space-m' => '16px', 'space-l' => '32px', 'space-xl' => '64px',
+        'radius-soft' => '16px', 'radius-round' => '9999px',
+        'shadow-soft' => '0 16px 36px -18px color-mix(in srgb, var(--color-dark) 35%, transparent)',
+        'shadow-medium' => '0 6px 16px color-mix(in srgb, var(--color-dark) 16%, transparent)',
+        'gradient-1' => 'linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 55%, var(--color-dark)))',
+        'gradient-2' => 'linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 55%, white))',
+        'gradient-3' => 'linear-gradient(135deg, var(--color-dark), var(--color-primary))',
+        'motion-duration' => '250ms', 'motion-distance' => '24px',
+        'sch-soft-bg' => '#f0f6ff', 'sch-soft-head' => '#111111', 'sch-soft-body' => '#333333', 'sch-soft-link' => '#2f68c5',
+        'sch-soft-pri-bg' => '#3b82f6', 'sch-soft-pri-fg' => '#111111', 'sch-soft-sec-fg' => '#111111', 'sch-soft-pri-hover' => '#5895f7',
+        'sch-brand-bg' => '#3b82f6', 'sch-brand-head' => '#111111', 'sch-brand-body' => '#111111', 'sch-brand-link' => '#111111',
+        'sch-brand-pri-bg' => '#ffffff', 'sch-brand-pri-fg' => '#326fd1', 'sch-brand-sec-fg' => '#111111', 'sch-brand-pri-hover' => '#f7f7f7',
+        'sch-dark-bg' => '#111111', 'sch-dark-head' => '#ffffff', 'sch-dark-body' => '#cbcbcb', 'sch-dark-link' => '#3b82f6',
+        'sch-dark-pri-bg' => '#3b82f6', 'sch-dark-pri-fg' => '#111111', 'sch-dark-sec-fg' => '#ffffff', 'sch-dark-pri-hover' => '#5895f7',
+    ];
+
+    expect($variables)->toBe($expected);
+});
+
+it('accepts the optional size and dark-scale tokens but not one that breaks out of its value', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteSetting::query()->create([
+            'group_name' => 'theme',
+            'key' => 'tokens',
+            'value' => ['text-base' => '1.0625rem', 'color-dark-raised' => '#1e293b', 'color-on-dark' => '17px;}'],
+        ]);
+
+        $tokens = app(ThemeResolver::class)->tokens();
+
+        expect($tokens['text-base'])->toBe('1.0625rem')
+            ->and($tokens['color-dark-raised'])->toBe('#1e293b')
+            ->and($tokens)->not->toHaveKey('color-on-dark');
+    });
 });
 
 it('falls back to the ink color when the brand seed is not a hex color', function (): void {
@@ -203,7 +269,10 @@ it('prints every standard token name next to its old name, with the same value',
             ->and($variables['color-primary-text'])->toBe($variables['primary-text'])
             ->and($variables['color-primary-on-dark'])->toBe($variables['primary-on-ink'])
             ->and($variables['color-surface'])->toBe($variables['surface'])
-            ->and($variables['color-text'])->toBe($variables['body']);
+            ->and($variables['color-text'])->toBe($variables['body'])
+            ->and($variables['color-dark'])->toBe($variables['ink'])
+            ->and($variables['color-text-strong'])->toBe($variables['ink'])
+            ->and($variables['font-body'])->toBe($variables['font']);
 
         foreach ([50, 100, 200, 300, 400, 500, 600, 700, 800, 900] as $step) {
             expect($variables["color-brand-{$step}"])->toBe($variables["brand-{$step}"]);
@@ -211,19 +280,21 @@ it('prints every standard token name next to its old name, with the same value',
     });
 })->with('brand seeds');
 
-it('puts white or the ink colour on the brand fill, whichever reads better', function (string $primary, string $expected): void {
+it('puts white or the ink colour on the brand fill, whichever reads better, and never moves the fill', function (string $primary, string $expected): void {
     app(Tenancy::class)->enter(1, function () use ($primary, $expected): void {
         SiteSetting::query()->create(['group_name' => 'theme', 'key' => 'tokens', 'value' => ['primary' => $primary, 'ink' => '#111111']]);
 
         $variables = app(ThemeResolver::class)->cssVariables();
 
         expect($variables['color-on-primary'])->toBe($expected)
+            ->and($variables['color-primary'])->toBe($primary)
             ->and(ReadableColor::ratio($variables['color-on-primary'], $primary))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT);
     });
 })->with([
     'the default blue takes the dark ink (white reads 3.7:1 there)' => ['#3b82f6', '#111111'],
     'an amber brand takes the dark ink' => ['#f59e0b', '#111111'],
     'a navy brand takes white' => ['#1e3a5f', '#ffffff'],
+    'a mid-tone brand, where white reads 4.29:1 and the ink 4.41:1, takes the ink darkened' => ['#7a7a7a', '#0d0d0d'],
 ]);
 
 it('derives the standard names even when settings try to pin them', function (): void {
@@ -256,5 +327,41 @@ it('falls back to the ink and surface colours themselves when the brand seed is 
             ->and($variables['primary-on-ink'])->toBe('var(--surface)')
             ->and($variables['color-primary-on-dark'])->toBe('#ffffff')
             ->and($variables['color-on-primary'])->toBe('#0f172a');
+    });
+});
+
+it('reads only roles in the storefront stylesheet, never a seed', function (): void {
+    $css = (string) preg_replace('~/\*.*?\*/~s', '', (string) file_get_contents(resource_path('css/storefront.css')));
+
+    expect(preg_match_all('/var\(--(?:primary|primary-text|primary-on-ink|ink|body|surface|font)[,)]/', $css, $seeds))->toBe(0, implode(', ', $seeds[0]));
+});
+
+it('rounds every spacing step to the 4px grid at each density', function (string $density, array $expected, string $unit): void {
+    app(Tenancy::class)->enter(1, function () use ($density, $expected, $unit): void {
+        SiteSetting::query()->create(['group_name' => 'theme', 'key' => 'tokens', 'value' => ['density' => $density]]);
+
+        $variables = app(ThemeResolver::class)->cssVariables();
+
+        expect($variables['space-unit'])->toBe($unit);
+        foreach ($expected as $step => $px) {
+            expect($variables["space-{$step}"])->toBe("{$px}px")
+                ->and($px % ThemeResolver::SPACE_GRID)->toBe(0);
+        }
+    });
+})->with([
+    'compact' => ['compact', ['s' => 8, 'm' => 12, 'l' => 28, 'xl' => 56], '0.85'],
+    'normal' => ['normal', ['s' => 8, 'm' => 16, 'l' => 32, 'xl' => 64], '1'],
+    'airy' => ['airy', ['s' => 8, 'm' => 20, 'l' => 40, 'xl' => 76], '1.2'],
+    'an unknown value means normal' => ['huge', ['s' => 8, 'm' => 16, 'l' => 32, 'xl' => 64], '1'],
+]);
+
+it('derives the scales even when settings try to pin them, and keeps motion within 250ms', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteSetting::query()->create(['group_name' => 'theme', 'key' => 'tokens', 'value' => ['space-m' => '99px', 'motion-duration' => '2s']]);
+
+        $variables = app(ThemeResolver::class)->cssVariables();
+
+        expect($variables['space-m'])->toBe('16px')
+            ->and($variables['motion-duration'])->toBe('250ms');
     });
 });

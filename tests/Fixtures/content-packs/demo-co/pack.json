@@ -1,0 +1,11 @@
+{
+ "code": "demo-co",
+ "version": 1,
+ "hosts": [
+  "demo.platform.test"
+ ],
+ "default_locale": "vi",
+ "locales": [
+  "vi"
+ ]
+}

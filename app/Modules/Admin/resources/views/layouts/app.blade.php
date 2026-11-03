@@ -117,7 +117,7 @@
                                         :aria-expanded="openGroup === '{{ $item->key }}'"
                                         :class="openGroup === '{{ $item->key }}' && 'text-sidebar-fg-active'"
                                         @class([
-                                            'group flex min-h-control w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors hover:text-sidebar-fg-hover any-pointer-coarse:min-h-hit',
+                                            'group flex min-h-control w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-body font-medium transition-colors hover:text-sidebar-fg-hover any-pointer-coarse:min-h-hit',
                                             $currentRow => $item->active,
                                         ])>
                                     <x-bs-admin::icon :name="$item->icon ?? 'doc'" class="size-5 shrink-0" />
@@ -134,7 +134,7 @@
                                         <li>
                                             <a href="{{ $child->url }}" wire:navigate @if ($child->active) aria-current="page" @endif
                                                @class([
-                                                   'flex min-h-control items-center gap-2.5 px-3 py-2 text-[13px] transition-colors hover:text-sidebar-fg-hover any-pointer-coarse:min-h-hit',
+                                                   'flex min-h-control items-center gap-2.5 px-3 py-2 text-small transition-colors hover:text-sidebar-fg-hover any-pointer-coarse:min-h-hit',
                                                    $currentRow => $child->active,
                                                ])>
                                                 <span class="h-[1.5px] w-1.5 shrink-0 rounded-full bg-current opacity-60"></span>
@@ -147,14 +147,14 @@
                         @else
                             <a href="{{ $item->url }}" wire:navigate aria-label="{{ $item->label }}" @if ($item->active) aria-current="page" @endif
                                @class([
-                                   'group flex min-h-control w-full items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors hover:text-sidebar-fg-hover any-pointer-coarse:min-h-hit',
+                                   'group flex min-h-control w-full items-center gap-3 px-3 py-2.5 text-body font-medium transition-colors hover:text-sidebar-fg-hover any-pointer-coarse:min-h-hit',
                                    $currentRow => $item->active,
                                ])>
                                 <x-bs-admin::icon :name="$item->icon ?? 'doc'" class="size-5 shrink-0" />
                                 <span class="sidebar-label">{{ $item->label }}</span>
                                 @if ($item->badge !== null)
                                     {{-- Work waiting on this person; hidden with the labels when the rail collapses. --}}
-                                    <span class="sidebar-label ml-auto rounded-full bg-admin-danger-solid px-1.5 py-0.5 text-[10.5px] font-bold leading-none text-white">{{ $item->badge }}</span>
+                                    <span class="sidebar-label ml-auto rounded-full bg-danger px-1.5 py-0.5 text-caption font-bold leading-none text-white">{{ $item->badge }}</span>
                                 @endif
                             </a>
                         @endif
@@ -204,11 +204,14 @@
 
         {{-- Footer --}}
         {{-- Footer — one left-aligned line (owner preference; deliberately NOT the reference's split layout). --}}
-        <footer class="border-t border-border px-4 py-4 text-xs text-footer">
-            <div class="flex flex-wrap items-center gap-1">
+        {{-- Text at the caption size, so it follows the reader's text size. The link keeps its look and
+             gets a 44px hit area through a transparent extension (one box, so it never splits across
+             lines); a wrapped second line starts below that area, never under it. --}}
+        <footer class="border-t border-border px-4 py-4 text-caption text-footer-fg">
+            <div class="flex flex-wrap items-center gap-x-1 gap-y-3.5">
                 <span>&copy; {{ now()->year }}
                     <a href="{{ config('admin.brand.company_url') }}" target="_blank" rel="noopener noreferrer"
-                       class="font-medium text-body-muted transition-colors hover:text-accent hover:underline">{{ config('admin.brand.company') }}</a>.
+                       class="hit-area inline-block font-medium text-text-muted transition-colors hover:text-primary-text hover:underline">{{ config('admin.brand.company') }}</a>.
                 </span>
                 <span>{{ __('auth.rights') }}</span>
             </div>

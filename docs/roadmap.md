@@ -4,6 +4,8 @@
 > vốn bị `.gitignore` và đã lỗi thời). Chi tiết thiết kế ở `design.md`; tiến độ từng commit ở `git log`.
 > Không ghi SHA của prod ở đây (lỗi thời nhanh) — xem nhật ký deploy.
 
+**Website khách An Vinh (02/11):** ✅ lát A — đầu trang, chân trang, dải tiêu đề (#344) → 🔶 lát B — slider, thẻ dịch vụ/sản phẩm/dự án/tin, danh sách dạng thẻ có lọc chuyên mục, phân trang không COUNT, trang đo `/do-kiem` trong CI (PR mở) → ⬜ các trang còn lại theo demo.
+
 **Where we are (28/09):** ✅ như dưới + lô §2b (#94–#113) trên prod, diễn tập khôi phục đạt, giám sát bật, prod chạy image riêng, hết nợ Q14, lịch sử phiên bản bài/trang (backend) trên prod → 🔶 **BẠN Ở ĐÂY: thiết kế D0 (chưa handoff nào về) ∥ việc nền không cần UI** → ⬜ build core theo handoff → ⬜ đóng gói (3 kênh).
 
 **Where we were (24/09):** ✅ Spine (Tenancy/RLS/RBAC/Provisioning) → ✅ CMS + Media + Catalog + Admin Velzon → ✅ An Vinh LIVE →

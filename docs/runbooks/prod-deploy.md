@@ -120,3 +120,14 @@ Rollback (any step): `sed -i '/^DB_ADMIN_PASSWORD=/d' /opt/bswebsaas/prod/.env &
   2. `pnpm run build` → `optimize` → `octane:reload` → restart horizon.
   3. Remove data the old code cannot render (whatever the deploy's post-reload commands added).
   4. If a migration broke data, restore the pre-deploy dump.
+
+## Loading a site's content pack
+
+`site:load-content` writes a pack from `database/content-packs/<pack>/` into one site. It runs as the app user inside that site's tenant context, never as the superuser. It never deletes anything, and it skips what staff changed since the last load unless an item is named with `--force-item=<key>`. The owner runs every step.
+
+1. Take the pre-deploy dump (Before, step 4), even when the delta has no migration.
+2. Dry run, which writes nothing: `docker exec bsweb_prod_app php artisan site:load-content an-vinh --host=av1.baoson.net -v`. Read the unpublish notes, the `skip:*` lines and the warnings. Any `conflict` line stops the load: the command exits 1 and refuses to apply. This output is what you read before `--apply`. On the first load into a site whose products the loader did not write, every product shows `skip:edited`, because catalog edits leave no history. Check each one, then name it with `--force-item=product:<slug>` in both the dry run and the apply.
+3. Apply exactly that plan: `docker exec bsweb_prod_app php artisan site:load-content an-vinh --host=av1.baoson.net --apply --plan=<fingerprint>`. If anything changed after the dry run (a staff edit, a pack change, or a post or product filed under a category the load renames while it runs), the command refuses with "plan changed" and writes nothing. Run step 2 again.
+4. Before writing, the apply saves a backup and prints its path (`Backup: …`). The file holds every row it is about to change, plus the previous ledger. Prod mounts the checkout, so it is on the host under `/opt/bswebsaas/prod/storage/app/private/content-pack-backups/<site-ulid>/`, mode 0600. Keep it with the dump.
+5. Resubmit the sitemap in Search Console.
+6. `--claims` prints every unverified claim the pack holds. Those items load as drafts until the facts are confirmed.

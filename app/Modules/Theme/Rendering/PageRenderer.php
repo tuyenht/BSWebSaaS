@@ -2,6 +2,7 @@
 
 namespace App\Modules\Theme\Rendering;
 
+use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Theme\Theming\ThemeResolver;
 use Illuminate\Contracts\View\Factory as ViewFactory;
 
@@ -18,6 +19,7 @@ final readonly class PageRenderer
         private TemplateResolver $templates,
         private BlockRenderer $blocks,
         private ThemeResolver $theme,
+        private MediaUrlResolver $media,
     ) {}
 
     /**
@@ -30,14 +32,96 @@ final readonly class PageRenderer
     {
         /** @var view-string $layout a theme layout name (TemplateResolver) */
         $layout = $this->templates->layoutFor($type, $templateOverride, $categoryTemplate);
+        $leadBlock = $this->blocks->leadType($body);
+        $extra += in_array('hero_slider', $this->blocks->types($body), true) ? self::sliderHints($body, $leadBlock, $this->media) : [];
+        // The scroll-in motion script loads only on a page with a block that moves.
+        $extra += $this->blocks->moves($body) ? ['sectionsScript' => true] : [];
 
         return $this->views->make($layout, [
             'title' => $title,
             'seoTitle' => $seo['title'] ?? $title,
             'seoDescription' => $seo['description'] ?? null,
             'tokens' => $this->theme->cssVariables(),
-            'sections' => $this->blocks->render($body),
+            'sections' => $this->blocks->render(self::withPageTitle($body, $title, $leadBlock)),
+            // A page_header band leading the page renders the h1 itself; the layout then skips its own.
+            'leadBlock' => $leadBlock,
         ] + $extra)->render();
+    }
+
+    /**
+     * What the head needs for a slider: `sliderScript` when a slider on the page has two or more
+     * slides to rotate (the script loads nowhere else), and `mediaOrigin` when a slider leads the
+     * page with a photo on its first slide and the media host is another origin (a `preconnect`,
+     * so the LCP image's connection starts with the HTML). Pages without a slider get nothing, so
+     * their head is unchanged. Pure: no query.
+     *
+     * @param  array<string, mixed>  $body
+     * @return array{sliderScript?: true, mediaOrigin?: string}
+     */
+    private static function sliderHints(array $body, ?string $leadType, MediaUrlResolver $media): array
+    {
+        $hints = [];
+        $leadSeen = false;
+        foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
+            if (! is_array($block) || ($block['type'] ?? null) !== 'hero_slider') {
+                continue;
+            }
+            $slides = array_values(array_filter(
+                is_array(data_get($block, 'props.slides')) ? data_get($block, 'props.slides') : [],
+                fn (mixed $slide): bool => is_array($slide) && (! empty($slide['image_url']) || (is_string($slide['heading'] ?? null) && trim($slide['heading']) !== '')),
+            ));
+            if (count($slides) > 1) {
+                $hints['sliderScript'] = true;
+            }
+            if ($leadType === 'hero_slider' && ! $leadSeen) {
+                $leadSeen = true;
+                $origin = $slides !== [] && ! empty($slides[0]['image_url']) ? $media->origin() : null;
+                if ($origin !== null && $origin !== request()->getSchemeAndHttpHost()) {
+                    $hints['mediaOrigin'] = $origin;
+                }
+            }
+        }
+
+        return $hints;
+    }
+
+    /**
+     * Prepare the page_header blocks: one without its own title shows the page title, and only
+     * the band that leads the page is marked as the page's h1 (`_lead`, always set here so a
+     * stored value never counts) — any later band is an h2.
+     *
+     * @param  array<string, mixed>  $body
+     * @return array<string, mixed>
+     */
+    private static function withPageTitle(array $body, string $title, ?string $leadType): array
+    {
+        if ($leadType === null || ! is_array($body['blocks'] ?? null)) {
+            return $body;
+        }
+
+        $blocks = $body['blocks'];
+        $leadFound = false;
+        foreach ($blocks as $index => $block) {
+            if (! is_array($block) || ! is_string($block['type'] ?? null)) {
+                continue;
+            }
+            $isLead = ! $leadFound && $block['type'] === $leadType;
+            $leadFound = $leadFound || $isLead;
+            if ($block['type'] !== 'page_header') {
+                continue;
+            }
+
+            $props = is_array($block['props'] ?? null) ? $block['props'] : [];
+            if (! is_string($props['title'] ?? null) || trim($props['title']) === '') {
+                $props['title'] = $title;
+            }
+            $props['_lead'] = $isLead;
+            $block['props'] = $props;
+            $blocks[$index] = $block;
+        }
+        $body['blocks'] = $blocks;
+
+        return $body;
     }
 
     /**

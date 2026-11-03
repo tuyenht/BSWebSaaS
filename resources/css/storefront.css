@@ -2,8 +2,10 @@
  * storefront.css — shared storefront design system (every tenant; per-site look = tokens)
  *
  * Palette — driven by per-site tokens (ThemeResolver, :root custom properties),
- * NOT hardcoded here. Every color below is `var(--primary|surface|ink|body)` or a
- * `color-mix()` shade of one of those four, so a site can change its brand by
+ * NOT hardcoded here. The stylesheet reads ROLES only (`--color-primary|surface|dark|text|
+ * text-strong`, `--color-primary-text|primary-on-dark`), which ThemeResolver derives from the
+ * stored seeds (primary, surface, ink, body); every color below is such a role or a
+ * `color-mix()` shade of one, so a site can change its brand by
  * overriding `site_settings.theme.tokens` — no CSS edit needed (design.md §19).
  * An Vinh's current values (what you'll see if you inspect a rendered page):
  *   --ink      #111111 default → An Vinh #0f172a (slate-900) — headings, dark
@@ -15,18 +17,62 @@
  *              secondary/muted text shades are `color-mix()` off this
  *
  * Contrast floor (WCAG 2 AA, 4.5:1 — computed for the default AND An Vinh seeds, 24/09):
- *   muted text on a light surface = `color-mix(in srgb, var(--body) 80%, white)` (≥5.4:1);
+ *   muted text on a light surface = `color-mix(in srgb, var(--color-text) 80%, white)` (≥5.4:1);
  *   anything lighter (--body 65%, --ink 40%) fails there. Light text on the dark header/
- *   footer = `color-mix(in srgb, var(--ink) 40%, white)` (≥7:1). Brand-colored TEXT on a light
- *   surface = `var(--primary-text)` — ThemeResolver darkens the brand seed (hue kept) until it
+ *   footer = `color-mix(in srgb, var(--color-dark) 40%, white)` (≥7:1). Brand-colored TEXT on a light
+ *   surface = `var(--color-primary-text)` — ThemeResolver darkens the brand seed (hue kept) until it
  *   clears 4.5:1 against --surface AND the page background below, since breadcrumb and contact
  *   details sit straight on the page (a light brand like An Vinh's amber alone reads ≈2.1:1).
  *   `--primary` stays for fills, borders and text on the dark header/hero/footer, where the
  *   darkened role would read worse.
  *
  * Architecture: BEM (.block__element--modifier), mobile-first, zero JS framework.
- * Target: <15 KB minified. No @import 'tailwindcss' — passed through Vite as plain CSS.
+ * Size (built file, 02/11): 45.8 KB minified, 7.9 KB gzip; 30.0 / 5.6 KB before the card looks. No @import 'tailwindcss' — passed through Vite as plain CSS.
  */
+
+/* ───── Fonts ────────────────────────────────────────────────────────────── */
+/*
+ * Inter (OFL — public/fonts/OFL-Inter.txt), self-hosted as two variable files: one with every
+ * Latin and Vietnamese character (inter-latin-vi, built by scripts/build-inter-latin-vi.py; 39 KB,
+ * weights 400–900) and Fontsource's latin-ext subset for the rest. A face downloads only when a
+ * site's --font-body names Inter and the page uses a character in its range, so other sites fetch
+ * nothing. The head preloads inter-latin-vi for an Inter site only. `font-display: optional`: a
+ * preloaded file that arrives in the first ~100 ms is used straight away, else the page keeps the
+ * fallback and the next page has Inter from the cache, so text never repaints late (measured on CI
+ * 02/11, home page LCP 1.51 s with optional vs 1.65 s with swap). "Inter-Fallback" is local Arial
+ * resized to Inter's metrics, so either look takes the same room: a site sets --font-body to
+ * `Inter, Inter-Fallback, system-ui, sans-serif`.
+ */
+@font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 400 900;
+    font-display: optional;
+    src: url("/fonts/inter-latin-vi.woff2") format("woff2");
+    /* Keep in step with RANGES in scripts/build-inter-latin-vi.py. */
+    unicode-range: U+0000-00FF, U+0102-0103, U+0110-0111, U+0128-0129, U+0131, U+0152-0153, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+2000-206F, U+2074, U+20AB-20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: optional;
+    src: url("/fonts/inter-latin-ext.woff2") format("woff2");
+    /* Fontsource's latin-ext range minus every code point inter-latin-vi already covers (Ă Đ Ĩ Ũ
+       Ơ Ư, ỳ–ỹ, ₫, the shared combining marks): overlapping ranges made every Vietnamese page
+       download this 74 KB file too. */
+    unicode-range: U+0100-0101, U+0104-010F, U+0112-0127, U+012A-0130, U+0132-0151, U+0154-0167, U+016A-019F, U+01A2-01AE, U+01B1-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1D00-1DBF, U+1E00-1E9F, U+1EFA-1EFF, U+20A0-20AA, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+    font-family: "Inter-Fallback";
+    src: local("Arial");
+    size-adjust: 107.4%;
+    ascent-override: 90.2%;
+    descent-override: 22.48%;
+    line-gap-override: 0%;
+}
 
 /* ───── Reset & base ─────────────────────────────────────────────────────── */
 *,
@@ -35,16 +81,28 @@
     box-sizing: border-box;
 }
 
+/* --text-base is a site's root size (default 1rem = the browser's); the text-size control steps it
+   up 1.125x / 1.25x, and every rem/em in this sheet follows. */
 html {
     scroll-behavior: smooth;
+    font-size: var(--text-base, 1rem);
+}
+
+html[data-fs="l"] {
+    font-size: calc(var(--text-base, 1rem) * 1.125);
+}
+
+html[data-fs="xl"] {
+    font-size: calc(var(--text-base, 1rem) * 1.25);
 }
 
 body {
     margin: 0;
-    /* ThemeResolver::PAGE_SURFACE_SHARE mirrors the 97% — --primary-text is measured on this. */
-    background: color-mix(in srgb, var(--surface) 97%, var(--ink));
-    color: color-mix(in srgb, var(--ink) 85%, white);
-    font-family: var(--font, system-ui, -apple-system, sans-serif);
+    /* ThemeResolver::PAGE_SURFACE_SHARE mirrors the 97% — --color-primary-text is measured on this (or on
+       the site's own --page colour when it sets one). */
+    background: var(--page, color-mix(in srgb, var(--color-surface) 97%, var(--color-dark)));
+    color: color-mix(in srgb, var(--color-dark) 85%, white);
+    font-family: var(--font-body, system-ui, -apple-system, sans-serif);
     font-size: 1rem;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
@@ -54,7 +112,7 @@ body {
    never the browser default (~2.7:1). A placeholder holds only an example value; instructions belong
    in a hint line under the field. */
 ::placeholder {
-    color: color-mix(in srgb, var(--body) 80%, white);
+    color: color-mix(in srgb, var(--color-text) 80%, white);
     opacity: 1; /* Firefox dims placeholders by default */
 }
 
@@ -98,12 +156,42 @@ p {
     border: 0;
 }
 
+/* Skip link: the first focusable element of every page, shown only while it has focus. */
+.sf-skip {
+    position: absolute;
+    top: 0.5rem;
+    left: 1rem;
+    z-index: 100;
+    padding: 0.75rem 1rem;
+    background: var(--color-surface);
+    color: var(--color-text-strong);
+    font-weight: 700;
+    border-radius: 0.375rem;
+    white-space: nowrap;
+    clip-path: inset(50%);
+}
+
+.sf-skip:focus {
+    clip-path: none;
+}
+
+/* The page content's focus target (skip link): no ring on the whole page. */
+#noi-dung:focus {
+    outline: none;
+}
+
+/* Inline glyphs of the header and footer (theme::partials.sf-icon). */
+.sf-icon {
+    display: block;
+    flex-shrink: 0;
+}
+
 /* ───── Site header ──────────────────────────────────────────────────────── */
 .site-header {
     position: sticky;
     top: 0;
     z-index: 50;
-    background: var(--ink);
+    background: var(--color-dark);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -170,7 +258,7 @@ p {
     top: 100%;
     left: 0;
     z-index: 60;
-    background: color-mix(in srgb, var(--ink) 85%, white);
+    background: color-mix(in srgb, var(--color-dark) 85%, white);
     border-radius: 0.375rem;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
     min-width: 11rem;
@@ -189,7 +277,7 @@ p {
 .site-nav__link {
     display: block;
     padding: 0.4rem 0.625rem;
-    color: color-mix(in srgb, var(--ink) 22%, white);
+    color: color-mix(in srgb, var(--color-dark) 22%, white);
     font-size: 0.875rem;
     font-weight: 600;
     border-radius: 0.25rem;
@@ -199,8 +287,8 @@ p {
 
 .site-nav__link:hover,
 .site-nav__link[aria-current="page"] {
-    background: var(--body);
-    color: var(--surface);
+    background: var(--color-text);
+    color: var(--color-surface);
 }
 
 .site-nav__list--level-1 .site-nav__link {
@@ -209,15 +297,72 @@ p {
 }
 
 .site-nav__list--level-1 .site-nav__link:hover {
-    background: var(--ink);
-    color: var(--primary-on-ink);
+    background: var(--color-dark);
+    color: var(--color-primary-on-dark);
+}
+
+/* A parent item is a disclosure (theme::partials.menu-list): its panel opens on hover, on keyboard
+   focus (until storefront.js takes over, adding .sf-js), and on click/Enter/Space (.is-open). */
+.site-nav__item--parent {
+    display: flex;
+    align-items: center;
+}
+
+.site-nav__item.is-open > .site-nav__list--level-1,
+html:not(.sf-js) .site-nav__item:focus-within > .site-nav__list--level-1 {
+    display: block;
+}
+
+.site-nav__toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border: 0;
+    background: none;
+    font-family: inherit;
+    line-height: inherit;
+    cursor: pointer;
+}
+
+.site-nav__toggle--split {
+    justify-content: center;
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    padding: 0;
+    border-radius: 0.25rem;
+    color: color-mix(in srgb, var(--color-dark) 22%, white);
+}
+
+.site-nav__toggle--split:hover {
+    background: var(--color-text);
+    color: var(--color-surface);
+}
+
+.site-nav__toggle .sf-icon {
+    transition: transform 0.15s;
+}
+
+.site-nav__toggle[aria-expanded="true"] .sf-icon {
+    transform: rotate(180deg);
+}
+
+.site-nav__item.is-trail > .site-nav__link {
+    background: var(--color-text);
+    color: var(--color-surface);
+}
+
+@media (any-pointer: coarse) {
+    .site-nav__toggle--split {
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+    }
 }
 
 /* ───── Page title (page layout h1, sr-only when hero is present) ────────── */
 .page__title {
     font-size: clamp(1.75rem, 3.5vw, 2.5rem);
     font-weight: 800;
-    color: var(--ink);
+    color: var(--color-text-strong);
     padding: 2rem 1.5rem 0.5rem;
     max-width: 80rem;
     margin-inline: auto;
@@ -237,7 +382,7 @@ p {
  * without a duplicate visible heading. The h1 remains in the DOM for semantics
  * and machine readability.
  */
-main:has(.hero) .page__title {
+main:has(.hero, .sf-slider) .page__title {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -255,7 +400,7 @@ main:has(.hero) .page__title {
     min-height: 28rem;
     display: flex;
     align-items: center;
-    background: var(--ink);
+    background: var(--sch-bg, var(--color-dark));
     overflow: hidden;
 }
 
@@ -294,7 +439,7 @@ main:has(.hero) .page__title {
 .hero__heading {
     font-size: clamp(1.75rem, 5vw, 3rem);
     font-weight: 900;
-    color: var(--surface);
+    color: var(--sch-head, var(--color-surface));
     margin: 0 0 1rem;
     text-transform: uppercase;
     letter-spacing: 0.01em;
@@ -302,7 +447,7 @@ main:has(.hero) .page__title {
 
 .hero__subheading {
     font-size: clamp(1rem, 2vw, 1.25rem);
-    color: color-mix(in srgb, var(--ink) 22%, white);
+    color: var(--sch-body, color-mix(in srgb, var(--color-dark) 22%, white));
     max-width: 40rem;
     line-height: 1.65;
     margin: 0 0 2rem;
@@ -311,8 +456,8 @@ main:has(.hero) .page__title {
 .hero__cta {
     display: inline-block;
     padding: 0.75rem 1.75rem;
-    background: var(--primary);
-    color: var(--ink);
+    background: var(--sch-pri-bg, var(--color-primary));
+    color: var(--sch-pri-fg, var(--color-on-primary));
     font-weight: 700;
     font-size: 0.95rem;
     border-radius: 0.375rem;
@@ -322,18 +467,18 @@ main:has(.hero) .page__title {
 }
 
 .hero__cta:hover {
-    background: color-mix(in srgb, var(--primary) 85%, black);
+    background: var(--sch-pri-hover, var(--color-primary-hover));
 }
 
 .hero__cta--secondary {
     background: transparent;
-    border: 2px solid var(--primary);
-    color: var(--primary-on-ink);
+    border: 2px solid var(--sch-sec-fg, var(--color-primary));
+    color: var(--sch-sec-fg, var(--color-primary-on-dark));
 }
 
 .hero__cta--secondary:hover {
-    background: var(--primary);
-    color: var(--ink);
+    background: var(--sch-pri-bg, var(--color-primary));
+    color: var(--sch-pri-fg, var(--color-on-primary));
 }
 
 /* ───── About section ────────────────────────────────────────────────────── */
@@ -374,12 +519,12 @@ main:has(.hero) .page__title {
 .about__heading {
     font-size: clamp(1.25rem, 2.5vw, 1.875rem);
     font-weight: 800;
-    color: var(--ink);
+    color: var(--sch-head, var(--color-text-strong));
     margin: 0 0 1rem;
 }
 
 .about__paragraph {
-    color: color-mix(in srgb, var(--body) 80%, white);
+    color: var(--sch-body, color-mix(in srgb, var(--color-text) 80%, white));
     line-height: 1.75;
     margin: 0 0 0.875rem;
 }
@@ -388,8 +533,8 @@ main:has(.hero) .page__title {
     display: inline-block;
     margin-top: 0.5rem;
     padding: 0.625rem 1.5rem;
-    background: var(--primary);
-    color: var(--ink);
+    background: var(--sch-pri-bg, var(--color-primary));
+    color: var(--sch-pri-fg, var(--color-on-primary));
     font-weight: 700;
     font-size: 0.9rem;
     border-radius: 0.375rem;
@@ -397,7 +542,7 @@ main:has(.hero) .page__title {
 }
 
 .about__cta:hover {
-    background: color-mix(in srgb, var(--primary) 85%, black);
+    background: var(--sch-pri-hover, var(--color-primary-hover));
 }
 
 .about__image {
@@ -427,10 +572,10 @@ main:has(.hero) .page__title {
 .entry-grid__heading {
     font-size: clamp(1.25rem, 2.5vw, 1.875rem);
     font-weight: 800;
-    color: var(--ink);
+    color: var(--sch-head, var(--color-text-strong));
     margin: 0 0 2rem;
     padding-bottom: 0.625rem;
-    border-bottom: 3px solid var(--primary);
+    border-bottom: 3px solid var(--sch-rule, var(--color-primary));
     display: inline-block;
 }
 
@@ -453,7 +598,7 @@ main:has(.hero) .page__title {
 }
 
 .entry-grid__card {
-    background: var(--surface);
+    background: var(--color-surface);
     border-radius: 0.5rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.05);
     overflow: hidden;
@@ -478,13 +623,13 @@ main:has(.hero) .page__title {
     width: 3rem;
     height: 3rem;
     margin: 1.5rem 1.5rem 0;
-    color: var(--primary);
+    color: var(--color-primary);
 }
 
 .entry-grid__title {
     font-size: 1rem;
     font-weight: 700;
-    color: var(--ink);
+    color: var(--color-text-strong);
     margin: 0;
     padding: 0.875rem 1rem 0.375rem;
     line-height: 1.4;
@@ -496,7 +641,7 @@ main:has(.hero) .page__title {
 }
 
 .entry-grid__title a:hover {
-    color: var(--primary-text);
+    color: var(--color-primary-text);
 }
 
 .entry-grid__sector {
@@ -504,7 +649,7 @@ main:has(.hero) .page__title {
     padding: 0 1rem 0.25rem;
     font-size: 0.75rem;
     font-weight: 600;
-    color: var(--primary-text);
+    color: var(--color-primary-text);
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
@@ -512,13 +657,13 @@ main:has(.hero) .page__title {
 .entry-grid__outcome {
     padding: 0 1rem 1rem;
     font-size: 0.875rem;
-    color: color-mix(in srgb, var(--body) 80%, white);
+    color: color-mix(in srgb, var(--color-text) 80%, white);
     line-height: 1.55;
     flex: 1;
 }
 
 .entry-grid__empty {
-    color: color-mix(in srgb, var(--body) 80%, white);
+    color: var(--sch-body, color-mix(in srgb, var(--color-text) 80%, white));
     font-style: italic;
 }
 
@@ -538,10 +683,10 @@ main:has(.hero) .page__title {
 .category__title {
     font-size: clamp(1.5rem, 3vw, 2.25rem);
     font-weight: 800;
-    color: var(--ink);
+    color: var(--color-text-strong);
     margin: 0 0 2rem;
     padding-bottom: 0.625rem;
-    border-bottom: 3px solid var(--primary);
+    border-bottom: 3px solid var(--color-primary);
     display: inline-block;
 }
 
@@ -564,7 +709,7 @@ main:has(.hero) .page__title {
 }
 
 .category__item {
-    background: var(--surface);
+    background: var(--color-surface);
     border-radius: 0.375rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
     overflow: hidden;
@@ -579,16 +724,16 @@ main:has(.hero) .page__title {
     display: block;
     padding: 1rem 1.25rem;
     font-weight: 600;
-    color: color-mix(in srgb, var(--ink) 85%, white);
+    color: color-mix(in srgb, var(--color-dark) 85%, white);
     transition: color 0.2s;
 }
 
 .category__item a:hover {
-    color: var(--primary-text);
+    color: var(--color-primary-text);
 }
 
 .category__empty {
-    color: color-mix(in srgb, var(--body) 80%, white);
+    color: color-mix(in srgb, var(--color-text) 80%, white);
     font-style: italic;
 }
 
@@ -607,29 +752,29 @@ main:has(.hero) .page__title {
 
 .post__breadcrumb {
     font-size: 0.875rem;
-    color: color-mix(in srgb, var(--body) 80%, white);
+    color: color-mix(in srgb, var(--color-text) 80%, white);
     margin-bottom: 1rem;
 }
 
 .post__breadcrumb a {
-    color: var(--primary-text);
+    color: var(--color-primary-text);
     font-weight: 600;
     transition: color 0.2s;
 }
 
 .post__breadcrumb a:hover {
-    color: color-mix(in srgb, var(--primary-text) 85%, black);
+    color: color-mix(in srgb, var(--color-primary-text) 85%, black);
 }
 
 .post__title {
     font-size: clamp(1.5rem, 3vw, 2.25rem);
     font-weight: 800;
-    color: var(--ink);
+    color: var(--color-text-strong);
     margin: 0 0 2rem;
 }
 
 .post__body {
-    color: var(--body);
+    color: var(--color-text);
 }
 
 .post__body section {
@@ -639,7 +784,7 @@ main:has(.hero) .page__title {
 .post__body h2 {
     font-size: 1.375rem;
     font-weight: 700;
-    color: var(--ink);
+    color: var(--color-text-strong);
     margin: 1.75rem 0 0.625rem;
 }
 
@@ -664,15 +809,15 @@ main:has(.hero) .page__title {
 .contact__heading {
     font-size: clamp(1.25rem, 2.5vw, 1.875rem);
     font-weight: 800;
-    color: var(--ink);
+    color: var(--sch-head, var(--color-text-strong));
     margin: 0 0 1.25rem;
     padding-bottom: 0.625rem;
-    border-bottom: 3px solid var(--primary);
+    border-bottom: 3px solid var(--sch-rule, var(--color-primary));
     display: inline-block;
 }
 
 .contact__address {
-    color: color-mix(in srgb, var(--body) 80%, white);
+    color: var(--sch-body, color-mix(in srgb, var(--color-text) 80%, white));
     line-height: 1.65;
     margin-bottom: 0.75rem;
 }
@@ -682,14 +827,14 @@ main:has(.hero) .page__title {
     display: inline-block;
     font-size: 1.0625rem;
     font-weight: 700;
-    color: var(--primary-text);
+    color: var(--sch-link, var(--color-primary-text));
     margin: 0 1.5rem 0.5rem 0;
     transition: color 0.2s;
 }
 
 .contact__phone:hover,
 .contact__email:hover {
-    color: color-mix(in srgb, var(--primary-text) 85%, black);
+    color: color-mix(in srgb, var(--sch-link, var(--color-primary-text)) 85%, black);
 }
 
 .contact__map {
@@ -704,7 +849,7 @@ main:has(.hero) .page__title {
 
 /* ───── CTA section ──────────────────────────────────────────────────────── */
 .cta {
-    background: var(--ink);
+    background: var(--sch-bg, var(--color-dark));
     padding: 4rem 1.5rem;
     text-align: center;
 }
@@ -718,15 +863,15 @@ main:has(.hero) .page__title {
 .cta h2 {
     font-size: clamp(1.25rem, 2.5vw, 1.875rem);
     font-weight: 800;
-    color: var(--surface);
+    color: var(--sch-head, var(--color-surface));
     margin: 0 0 1.5rem;
 }
 
 .cta__button {
     display: inline-block;
     padding: 0.75rem 2rem;
-    background: var(--primary);
-    color: var(--ink);
+    background: var(--sch-pri-bg, var(--color-primary));
+    color: var(--sch-pri-fg, var(--color-on-primary));
     font-weight: 700;
     font-size: 1rem;
     border-radius: 0.375rem;
@@ -734,7 +879,7 @@ main:has(.hero) .page__title {
 }
 
 .cta__button:hover {
-    background: color-mix(in srgb, var(--primary) 85%, black);
+    background: var(--sch-pri-hover, var(--color-primary-hover));
 }
 
 /* ───── Partners section ─────────────────────────────────────────────────── */
@@ -753,10 +898,10 @@ main:has(.hero) .page__title {
 .partners__heading {
     font-size: clamp(1.25rem, 2.5vw, 1.875rem);
     font-weight: 800;
-    color: var(--ink);
+    color: var(--sch-head, var(--color-text-strong));
     margin: 0 0 2rem;
     padding-bottom: 0.625rem;
-    border-bottom: 3px solid var(--primary);
+    border-bottom: 3px solid var(--sch-rule, var(--color-primary));
     display: inline-block;
 }
 
@@ -801,10 +946,10 @@ main:has(.hero) .page__title {
 .features h2 {
     font-size: clamp(1.25rem, 2.5vw, 1.875rem);
     font-weight: 800;
-    color: var(--ink);
+    color: var(--sch-head, var(--color-text-strong));
     margin: 0 0 2rem;
     padding-bottom: 0.625rem;
-    border-bottom: 3px solid var(--primary);
+    border-bottom: 3px solid var(--sch-rule, var(--color-primary));
     display: inline-block;
 }
 
@@ -827,7 +972,7 @@ main:has(.hero) .page__title {
 }
 
 .features__item {
-    background: var(--surface);
+    background: var(--color-surface);
     border-radius: 0.5rem;
     padding: 1.5rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
@@ -836,13 +981,13 @@ main:has(.hero) .page__title {
 .features__item h3 {
     font-size: 1rem;
     font-weight: 700;
-    color: var(--ink);
+    color: var(--color-text-strong);
     margin: 0 0 0.5rem;
 }
 
 .features__item p {
     font-size: 0.9rem;
-    color: color-mix(in srgb, var(--body) 80%, white);
+    color: color-mix(in srgb, var(--color-text) 80%, white);
     line-height: 1.6;
 }
 
@@ -862,12 +1007,12 @@ main:has(.hero) .page__title {
 .richtext h2 {
     font-size: clamp(1.125rem, 2vw, 1.5rem);
     font-weight: 700;
-    color: var(--ink);
+    color: var(--sch-head, var(--color-text-strong));
     margin: 0 0 0.875rem;
 }
 
 .richtext p {
-    color: color-mix(in srgb, var(--body) 80%, white);
+    color: var(--sch-body, color-mix(in srgb, var(--color-text) 80%, white));
     line-height: 1.75;
     margin-bottom: 0.75rem;
 }
@@ -888,10 +1033,10 @@ main:has(.hero) .page__title {
 .latest-posts h2 {
     font-size: clamp(1.25rem, 2.5vw, 1.875rem);
     font-weight: 800;
-    color: var(--ink);
+    color: var(--sch-head, var(--color-text-strong));
     margin: 0 0 1.5rem;
     padding-bottom: 0.625rem;
-    border-bottom: 3px solid var(--primary);
+    border-bottom: 3px solid var(--sch-rule, var(--color-primary));
     display: inline-block;
 }
 
@@ -901,7 +1046,7 @@ main:has(.hero) .page__title {
 }
 
 .latest-posts__item {
-    background: var(--surface);
+    background: var(--color-surface);
     border-radius: 0.375rem;
     padding: 0.875rem 1rem;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
@@ -909,12 +1054,12 @@ main:has(.hero) .page__title {
 
 .latest-posts__item a {
     font-weight: 600;
-    color: color-mix(in srgb, var(--ink) 85%, white);
+    color: color-mix(in srgb, var(--color-dark) 85%, white);
     transition: color 0.2s;
 }
 
 .latest-posts__item a:hover {
-    color: var(--primary-text);
+    color: var(--color-primary-text);
 }
 
 /* ───── Pagination ───────────────────────────────────────────────────────── */
@@ -930,8 +1075,8 @@ main:has(.hero) .page__title {
 .pagination__next {
     display: inline-block;
     padding: 0.625rem 1.25rem;
-    background: color-mix(in srgb, var(--surface) 94%, var(--ink));
-    color: color-mix(in srgb, var(--ink) 85%, white);
+    background: color-mix(in srgb, var(--color-surface) 94%, var(--color-dark));
+    color: color-mix(in srgb, var(--color-dark) 85%, white);
     border-radius: 0.375rem;
     font-weight: 600;
     font-size: 0.9rem;
@@ -940,21 +1085,21 @@ main:has(.hero) .page__title {
 
 .pagination__prev:hover,
 .pagination__next:hover {
-    background: var(--primary);
-    color: var(--ink);
+    background: var(--color-primary);
+    color: var(--color-on-primary);
 }
 
 /* ───── Inline icon glyphs (theme::partials.icon) ───────────────────────── */
 .icon {
     display: block;
-    color: var(--primary);
+    color: var(--color-primary);
 }
 
 /* ───── Site footer ──────────────────────────────────────────────────────── */
 .site-footer {
-    background: var(--ink);
-    border-top: 4px solid var(--primary);
-    color: color-mix(in srgb, var(--ink) 40%, white);
+    background: var(--color-dark);
+    border-top: 4px solid var(--color-primary);
+    color: color-mix(in srgb, var(--color-dark) 40%, white);
 }
 
 .site-footer__inner {
@@ -983,7 +1128,7 @@ main:has(.hero) .page__title {
 .site-footer__company {
     font-size: 0.875rem;
     font-weight: 700;
-    color: color-mix(in srgb, var(--ink) 15%, white);
+    color: color-mix(in srgb, var(--color-dark) 15%, white);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     margin: 0 0 0.75rem;
@@ -995,24 +1140,24 @@ main:has(.hero) .page__title {
 }
 
 .site-footer__nap a {
-    color: var(--primary-on-ink);
+    color: var(--color-primary-on-dark);
     transition: color 0.2s;
 }
 
 .site-footer__nap a:hover {
-    color: color-mix(in srgb, var(--primary-on-ink) 80%, white);
+    color: color-mix(in srgb, var(--color-primary-on-dark) 80%, white);
 }
 
 .site-footer__license {
     font-size: 0.8125rem;
-    color: color-mix(in srgb, var(--ink) 40%, white);
+    color: color-mix(in srgb, var(--color-dark) 40%, white);
     margin-top: 0.75rem;
 }
 
 .site-footer__heading {
     font-size: 0.875rem;
     font-weight: 700;
-    color: color-mix(in srgb, var(--ink) 15%, white);
+    color: color-mix(in srgb, var(--color-dark) 15%, white);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     margin: 0 0 0.75rem;
@@ -1027,22 +1172,22 @@ main:has(.hero) .page__title {
 /* Hover in CSS: the storefront CSP (script-src 'self') blocks inline event handlers. */
 .site-footer__link {
     font-size: 0.875rem;
-    color: color-mix(in srgb, var(--ink) 40%, white);
+    color: color-mix(in srgb, var(--color-dark) 40%, white);
     transition: color 0.2s;
 }
 
 .site-footer__link:hover,
 .site-footer__link:focus-visible {
-    color: var(--primary);
+    color: var(--color-primary);
 }
 
 .site-footer__bottom {
-    background: color-mix(in srgb, var(--ink) 88%, black);
+    background: color-mix(in srgb, var(--color-dark) 88%, black);
     padding: 1rem 1.5rem;
     text-align: center;
     font-size: 0.8125rem;
-    color: color-mix(in srgb, var(--ink) 40%, white); /* was #475569 — failed WCAG2AA on this background (axe, 23/09) */
-    border-top: 1px solid color-mix(in srgb, var(--ink) 85%, white);
+    color: color-mix(in srgb, var(--color-dark) 40%, white); /* was #475569 — failed WCAG2AA on this background (axe, 23/09) */
+    border-top: 1px solid color-mix(in srgb, var(--color-dark) 85%, white);
 }
 
 @media (min-width: 1024px) {
@@ -1065,7 +1210,7 @@ main:has(.hero) .page__title {
 .error-page__code {
     font-size: 6rem;
     font-weight: 900;
-    color: var(--primary-text);
+    color: var(--color-primary-text);
     line-height: 1;
     margin-bottom: 0.5rem;
 }
@@ -1073,12 +1218,12 @@ main:has(.hero) .page__title {
 .error-page__title {
     font-size: 1.5rem;
     font-weight: 700;
-    color: var(--ink);
+    color: var(--color-text-strong);
     margin: 0 0 1rem;
 }
 
 .error-page__message {
-    color: color-mix(in srgb, var(--body) 80%, white);
+    color: color-mix(in srgb, var(--color-text) 80%, white);
     max-width: 28rem;
     line-height: 1.65;
     margin: 0 0 2rem;
@@ -1087,13 +1232,2131 @@ main:has(.hero) .page__title {
 .error-page__cta {
     display: inline-block;
     padding: 0.75rem 1.75rem;
-    background: var(--primary);
-    color: var(--ink);
+    background: var(--color-primary);
+    color: var(--color-on-primary);
     font-weight: 700;
     border-radius: 0.375rem;
     transition: background 0.2s;
 }
 
 .error-page__cta:hover {
-    background: color-mix(in srgb, var(--primary) 85%, black);
+    background: var(--color-primary-hover);
+}
+
+/* ───── Rich header, footer and page band (opt-in by site setting) ──────── */
+/*
+ * Used only by sites with the `storefront.header` / `storefront.footer` settings or a page_header
+ * block. Optional dark-scale tokens, each falling back to a shade of --color-dark so a site that sets only
+ * the four seeds still reads correctly: --color-dark-raised (raised dark surface: top bar, sub-menu,
+ * cards), --color-dark-line (lines and hover fills on dark), --color-on-dark (text on dark), --color-on-dark-muted
+ * (secondary text on dark). Hit areas: 40px with a mouse, 44px on touch.
+ */
+.sf-container {
+    max-width: 80rem;
+    margin-inline: auto;
+    padding-inline: 1rem;
+}
+
+@media (min-width: 640px) {
+    .sf-container {
+        padding-inline: 1.5rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .sf-container {
+        padding-inline: 2rem;
+    }
+}
+
+/* Header: the top bar scrolls away, the main bar stays (sticky by the top bar's height). */
+.sf-header {
+    --sf-topbar-h: 0px;
+    background: var(--color-dark);
+}
+
+.sf-header--topbar {
+    --sf-topbar-h: 2.5rem;
+}
+
+.sf-header--sticky {
+    position: sticky;
+    top: calc(-1 * var(--sf-topbar-h));
+    z-index: 50;
+}
+
+html:has(.sf-header--sticky) {
+    scroll-padding-top: 5rem;
+}
+
+.sf-topbar {
+    height: var(--sf-topbar-h);
+    background: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
+    border-bottom: 1px solid var(--color-dark-line, color-mix(in srgb, var(--color-dark) 75%, white));
+    color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white));
+    font-size: 0.75rem;
+}
+
+.sf-topbar__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    height: 100%;
+}
+
+.sf-topbar__items {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    min-width: 0;
+}
+
+.sf-topbar__item,
+.sf-topbar__link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+}
+
+.sf-topbar__link {
+    min-height: var(--sf-topbar-h);
+}
+
+.sf-topbar__item .sf-icon {
+    color: var(--color-primary);
+}
+
+.sf-topbar__link:hover,
+.sf-topbar__link:focus-visible {
+    color: var(--color-primary);
+}
+
+/* Visibility by breakpoint (`from`), plus an optional "also below" for the phone on small screens. */
+.sf-from-sm,
+.sf-from-md,
+.sf-from-lg {
+    display: none;
+}
+
+@media (min-width: 640px) {
+    .sf-from-sm {
+        display: flex;
+    }
+}
+
+@media (min-width: 768px) {
+    .sf-from-md {
+        display: flex;
+    }
+}
+
+@media (min-width: 1024px) {
+    .sf-from-lg {
+        display: flex;
+    }
+}
+
+@media (max-width: 639.98px) {
+    .sf-below-sm {
+        display: flex;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .sf-below-md {
+        display: flex;
+    }
+}
+
+@media (max-width: 1023.98px) {
+    .sf-below-lg {
+        display: flex;
+    }
+}
+
+.sf-topbar__tools {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.sf-lang__list {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.sf-lang__link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--sf-topbar-h);
+    padding: 0 0.5rem;
+    border-radius: 0.125rem;
+}
+
+.sf-lang__link:hover {
+    background: var(--color-dark-line, color-mix(in srgb, var(--color-dark) 75%, white));
+}
+
+.sf-lang__link[aria-current="true"] {
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+    font-weight: 700;
+}
+
+.sf-fs {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: var(--sf-topbar-h);
+    padding: 0 0.5rem;
+    border: 0;
+    border-radius: 0.125rem;
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.sf-fs:hover {
+    background: var(--color-dark-line, color-mix(in srgb, var(--color-dark) 75%, white));
+}
+
+.sf-fs__value {
+    display: none;
+}
+
+@media (min-width: 640px) {
+    .sf-fs__value {
+        display: inline;
+    }
+}
+
+.sf-bar__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 5rem;
+}
+
+.sf-bar__brand {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.sf-bar__logo {
+    height: 3rem;
+    width: auto;
+    object-fit: contain;
+}
+
+/* Menu, desktop (from lg) and mobile panel (below lg) — theme::partials.nav-disclosure. */
+.sf-nav--desk {
+    display: none;
+}
+
+@media (min-width: 1024px) {
+    .sf-nav--desk {
+        display: block;
+        margin-left: 2.5rem;
+        margin-right: auto;
+    }
+
+    .sf-burger {
+        display: none;
+    }
+}
+
+.sf-nav--desk > .sf-nav__list {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.sf-nav__item {
+    position: relative;
+}
+
+.sf-nav__item--parent {
+    display: flex;
+    align-items: center;
+}
+
+.sf-nav__link,
+.sf-nav__chev {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-height: 2.5rem;
+    padding: 0.5rem 0.75rem;
+    border: 0;
+    border-radius: 0.375rem;
+    background: none;
+    color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white));
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.25;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.sf-nav__chev {
+    justify-content: center;
+    min-width: 2.5rem;
+    padding: 0;
+}
+
+.sf-nav__link:hover,
+.sf-nav__chev:hover,
+.sf-nav__link[aria-current="page"],
+.sf-nav__link.is-trail,
+.sf-nav__item--parent.is-open > .sf-nav__link {
+    background: var(--color-dark-line, color-mix(in srgb, var(--color-dark) 75%, white));
+    color: #fff;
+}
+
+.sf-nav__toggle .sf-icon,
+.sf-nav__chev .sf-icon {
+    transition: transform 0.3s;
+}
+
+.sf-nav [aria-expanded="true"] .sf-icon {
+    transform: rotate(180deg);
+}
+
+.sf-nav__sublink {
+    display: flex;
+    align-items: center;
+    min-height: 2.5rem;
+    padding: 0.5rem 1rem;
+    color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white));
+    font-size: 0.875rem;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.sf-nav__sublink:hover,
+.sf-nav__sublink:focus-visible,
+.sf-nav__sublink[aria-current="page"] {
+    background: var(--color-dark-line, color-mix(in srgb, var(--color-dark) 75%, white));
+    color: var(--color-primary);
+}
+
+.sf-nav__nested .sf-nav__nested {
+    padding-left: 1rem;
+}
+
+.sf-nav--desk .sf-nav__panel {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    z-index: 60;
+    width: 14rem;
+    margin-top: 0.75rem;
+    padding: 0.25rem 0;
+    background: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
+    border-radius: 0.375rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-50%, 0.5rem);
+    transition: opacity 0.3s, transform 0.3s, visibility 0.3s;
+}
+
+/* Bridges the gap above the panel so the pointer can travel to it without closing it. */
+.sf-nav--desk .sf-nav__panel::before {
+    content: "";
+    position: absolute;
+    inset: -0.75rem 0 auto;
+    height: 0.75rem;
+}
+
+.sf-nav--desk .sf-nav__item--parent:hover > .sf-nav__panel,
+.sf-nav--desk .sf-nav__item--parent.is-open > .sf-nav__panel,
+html:not(.sf-js) .sf-nav--desk .sf-nav__item--parent:focus-within > .sf-nav__panel {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0);
+}
+
+.sf-burger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 0;
+    border-radius: 0.375rem;
+    background: none;
+    color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white));
+    cursor: pointer;
+}
+
+.sf-burger:hover {
+    background: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
+}
+
+.sf-burger__close,
+.sf-burger[aria-expanded="true"] .sf-burger__open {
+    display: none;
+}
+
+.sf-burger[aria-expanded="true"] .sf-burger__close {
+    display: inline-flex;
+}
+
+/* The mobile panel keeps its `hidden` attribute as the open/closed state (never a display here). */
+.sf-nav--mob {
+    max-height: calc(100dvh - 5rem);
+    overflow-y: auto;
+    padding: 0.5rem 0.5rem 0.75rem;
+    background: var(--color-dark);
+    border-top: 1px solid var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
+}
+
+@media (min-width: 1024px) {
+    .sf-nav--mob {
+        visibility: hidden;
+        height: 0;
+        padding: 0;
+        overflow: hidden;
+    }
+}
+
+.sf-nav--mob .sf-nav__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.sf-nav--mob .sf-nav__item--parent {
+    flex-wrap: wrap;
+}
+
+.sf-nav--mob .sf-nav__link,
+.sf-nav--mob .sf-nav__sublink {
+    display: flex;
+    flex: 1;
+    min-height: 2.75rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem;
+    font-size: 1rem;
+    font-weight: 500;
+    white-space: normal;
+}
+
+.sf-nav--mob .sf-nav__toggle {
+    justify-content: space-between;
+    text-align: left;
+}
+
+.sf-nav--mob .sf-nav__chev {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+}
+
+.sf-nav--mob .sf-nav__link:hover,
+.sf-nav--mob .sf-nav__sublink:hover {
+    background: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
+    color: #fff;
+}
+
+.sf-nav--mob .sf-nav__link[aria-current="page"],
+.sf-nav--mob .sf-nav__sublink[aria-current="page"] {
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+}
+
+.sf-nav--mob .sf-nav__panel {
+    display: none;
+    width: 100%;
+    margin-top: 0.5rem;
+    padding-left: 1rem;
+}
+
+.sf-nav--mob .sf-nav__item--parent.is-open > .sf-nav__panel,
+html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
+    display: block;
+}
+
+/* Rich footer (theme::partials.footer-rich). */
+.sf-footer {
+    background: var(--color-dark);
+    border-top: 4px solid var(--color-primary);
+    color: var(--color-on-dark-muted, color-mix(in srgb, var(--color-dark) 40%, white));
+}
+
+.sf-footer__top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3rem;
+    padding-block: 4rem;
+}
+
+@media (min-width: 768px) {
+    .sf-footer__top {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1024px) {
+    .sf-footer__top {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+.sf-footer__logo-link {
+    display: inline-block;
+}
+
+.sf-footer__logo {
+    height: 3rem;
+    width: auto;
+    margin-bottom: 1rem;
+}
+
+.sf-footer__about {
+    font-size: 0.875rem;
+    line-height: 1.6;
+}
+
+.sf-footer__socials {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 1.5rem 0 0 -0.625rem;
+}
+
+.sf-footer__social {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    color: var(--color-on-dark-muted, color-mix(in srgb, var(--color-dark) 40%, white));
+    transition: color 0.3s;
+}
+
+.sf-footer__social:hover,
+.sf-footer__social:focus-visible,
+.sf-footer__link:hover,
+.sf-footer__link:focus-visible,
+.sf-footer__heading a:hover {
+    color: var(--color-primary);
+}
+
+.sf-footer__heading {
+    color: #fff;
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.sf-footer__links {
+    display: flex;
+    flex-direction: column;
+    margin-top: 1rem;
+}
+
+.sf-footer__link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.5rem;
+    color: var(--color-on-dark-muted, color-mix(in srgb, var(--color-dark) 40%, white));
+    transition: color 0.3s;
+}
+
+.sf-footer__company {
+    padding-block: 2.5rem;
+    background: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
+}
+
+.sf-footer__legal {
+    max-width: 68rem;
+    margin: 0 auto 2.5rem;
+}
+
+.sf-footer__legal-name {
+    margin-bottom: 1.5rem;
+    color: color-mix(in srgb, var(--color-dark) 10%, white);
+    font-size: 1.25rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.sf-footer__facts {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+    color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white));
+    font-size: 0.875rem;
+}
+
+.sf-footer__fact {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.sf-footer__fact--row {
+    flex-wrap: wrap;
+    column-gap: 2rem;
+    row-gap: 1rem;
+}
+
+.sf-footer__fact .sf-icon {
+    color: var(--color-primary);
+}
+
+.sf-footer__fact a {
+    color: var(--color-primary-on-dark);
+}
+
+.sf-footer__fact a:hover {
+    text-decoration: underline;
+}
+
+@media (min-width: 1024px) {
+    .sf-footer__legal {
+        text-align: center;
+    }
+
+    .sf-footer__facts {
+        align-items: center;
+    }
+
+    .sf-footer__fact--row {
+        justify-content: center;
+    }
+}
+
+.sf-footer__factories {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+}
+
+@media (min-width: 640px) {
+    .sf-footer__factories {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 768px) {
+    .sf-footer__factories {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+.sf-factory {
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+    background: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
+    border: 1px solid var(--color-dark-line, color-mix(in srgb, var(--color-dark) 75%, white));
+    border-radius: 0.5rem;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.sf-factory:hover {
+    border-color: var(--color-primary);
+    box-shadow: 0 20px 25px -5px color-mix(in srgb, var(--color-primary) 10%, transparent), 0 8px 10px -6px color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+.sf-factory__head {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.sf-factory__icon {
+    display: inline-flex;
+    padding: 0.75rem;
+    background: var(--color-dark-line, color-mix(in srgb, var(--color-dark) 75%, white));
+    border-radius: 0.375rem;
+    color: var(--color-primary);
+}
+
+.sf-factory__titles {
+    flex: 1;
+    min-width: 0;
+}
+
+.sf-factory__title-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.sf-factory__title {
+    color: #fff;
+    font-size: 1.125rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.sf-factory__chip {
+    display: none;
+    padding: 0.25rem 0.625rem;
+    background: var(--color-dark-line, color-mix(in srgb, var(--color-dark) 75%, white));
+    border-radius: 0.375rem;
+    color: var(--color-primary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.sf-factory__name {
+    display: none;
+    margin-top: 0.25rem;
+    color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white));
+    font-size: 0.875rem;
+}
+
+.sf-factory__area {
+    margin-top: 0.25rem;
+    color: var(--color-primary);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+@media (min-width: 1024px) {
+    .sf-factory__chip {
+        display: inline-block;
+    }
+
+    .sf-factory__name {
+        display: block;
+    }
+
+    .sf-factory__area {
+        display: none;
+    }
+}
+
+.sf-factory__address {
+    display: flex;
+    flex-grow: 1;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.sf-factory__address .sf-icon {
+    margin-top: 0.125rem;
+}
+
+.sf-factory__map {
+    display: inline-flex;
+    align-self: flex-start;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.5rem;
+    margin-top: 1.5rem;
+    padding: 0.375rem 0.75rem;
+    border: 1px solid color-mix(in srgb, var(--color-dark-line, #334155) 60%, var(--color-on-dark-muted, #94a3b8));
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: border-color 0.3s, color 0.3s;
+}
+
+.sf-factory__map:hover,
+.sf-factory__map:focus-visible {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.sf-footer__bottom {
+    padding-block: 1rem;
+    border-top: 1px solid var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
+    font-size: 0.875rem;
+    text-align: center;
+}
+
+.sf-footer__bottom strong {
+    color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white));
+    font-weight: 600;
+}
+
+.sf-footer__bottom a:hover strong {
+    color: var(--color-primary);
+}
+
+/* Page title band (theme::sections.page_header). */
+.page-band {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 13rem;
+    overflow: hidden;
+    background: var(--sch-bg, var(--color-dark));
+    color: #fff;
+    text-align: center;
+}
+
+.page-band__bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.page-band__overlay {
+    position: absolute;
+    inset: 0;
+    background: #000;
+}
+
+.page-band__content {
+    position: relative;
+    z-index: 1;
+    max-width: 80rem;
+    padding: 2rem 1rem;
+}
+
+.page-band__title {
+    margin-bottom: 0.5rem;
+    color: var(--sch-head, #fff);
+    font-size: 1.875rem;
+    font-weight: 800;
+    overflow-wrap: anywhere;
+}
+
+@media (min-width: 768px) {
+    .page-band__title {
+        font-size: 2.25rem;
+    }
+}
+
+.page-band__subtitle {
+    color: var(--sch-body, var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white)));
+    font-size: 1.125rem;
+}
+
+/* Touch screens: every control of the rich chrome reaches 44px. */
+@media (any-pointer: coarse) {
+    .sf-header--topbar {
+        --sf-topbar-h: 2.75rem;
+    }
+
+    .sf-nav__link,
+    .sf-nav__chev,
+    .sf-nav__sublink,
+    .sf-footer__link,
+    .sf-factory__map {
+        min-height: 2.75rem;
+    }
+
+    .sf-nav__chev {
+        min-width: 2.75rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sf-nav__link,
+    .sf-nav__chev,
+    .sf-nav__sublink,
+    .sf-nav__panel,
+    .sf-nav .sf-icon,
+    .sf-footer__social,
+    .sf-footer__link,
+    .sf-factory,
+    .sf-factory__map {
+        transition: none;
+    }
+
+    .sf-factory:hover {
+        box-shadow: none;
+    }
+}
+
+/* ───── Block looks, cards, slider and card lists ────────────────────────── */
+/*
+ * Opt-in looks of the blocks (`variant` / `bg`), the shared card, the hero slider and the card-grid
+ * list layouts. A site that sets none of them renders none of these classes. Fixed photo ratios
+ * (aspect-ratio + object-fit), never fixed heights. Light surfaces use --color-primary-text for
+ * coloured text and icons; fills and dark surfaces use --color-primary.
+ */
+.sf-band {
+    padding-block: 5rem;
+}
+
+.sf-band--surface {
+    background: var(--color-surface);
+}
+
+.sf-band--tint {
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+}
+
+.sf-band--dark {
+    background: var(--color-dark);
+    color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white));
+}
+
+.sf-section-head {
+    max-width: 48rem;
+    margin: 0 auto 3rem;
+    text-align: center;
+}
+
+.sf-section-head__title {
+    margin-bottom: 1rem;
+    color: var(--sch-head, var(--color-text-strong));
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.sf-section-head__rule {
+    display: block;
+    width: min(16rem, 60%);
+    height: 0.1875rem;
+    margin-inline: auto;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, transparent, var(--color-primary) 20%, var(--color-primary) 80%, transparent);
+}
+
+.sf-section-head__text {
+    margin-top: 1rem;
+    color: var(--sch-body, var(--color-text));
+    font-size: 1rem;
+}
+
+.sf-band--dark .sf-section-head__title {
+    color: var(--color-surface);
+}
+
+.sf-band--dark .sf-section-head__text {
+    color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white));
+}
+
+/* Grids: --4 (2 from md, 4 from lg) · --4s (2 from sm, 4 from lg) · --3 (3 from md)
+ * · --3s (2 from sm, 3 from lg) · --3m (2 from md, 3 from lg). */
+.sf-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.sf-grid > li {
+    display: flex;
+    min-width: 0;
+}
+
+.sf-grid > li > * {
+    flex: 1;
+}
+
+@media (min-width: 640px) {
+    .sf-grid--4s,
+    .sf-grid--3s {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 768px) {
+    .sf-grid--4,
+    .sf-grid--3m {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .sf-grid--3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1024px) {
+    .sf-grid--4,
+    .sf-grid--4s {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .sf-grid--3s,
+    .sf-grid--3m {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+.sf-empty {
+    color: var(--color-text);
+    text-align: center;
+}
+
+.sf-view-all {
+    margin-top: 3rem;
+    text-align: center;
+}
+
+.sf-view-all__link,
+.sf-slide__cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    padding: 0.75rem 2rem;
+    border-radius: 0.375rem;
+    background: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
+    color: #fff;
+    font-weight: 700;
+    transition: background 0.3s, transform 0.3s;
+}
+
+/* The shared card. One link (the title), stretched over the whole card. */
+.sf-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 0.5rem;
+    background: var(--color-surface);
+    color: var(--color-text);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    transition: box-shadow 0.3s, transform 0.3s, border-color 0.3s;
+}
+
+.sf-card__title {
+    color: var(--color-text-strong);
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.sf-card__link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+}
+
+.sf-card__link:focus-visible {
+    outline: none;
+}
+
+.sf-card:has(.sf-card__link:focus-visible) {
+    outline: 2px solid var(--color-primary-text);
+    outline-offset: 3px;
+}
+
+.sf-band--dark .sf-card:has(.sf-card__link:focus-visible) {
+    outline-color: var(--color-primary);
+}
+
+.sf-card__text {
+    font-size: 0.875rem;
+    line-height: 1.625;
+}
+
+.sf-card__more {
+    margin-top: auto;
+    color: var(--color-text-strong);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.sf-card__arrow {
+    display: inline-block;
+    transition: transform 0.3s;
+}
+
+.sf-card__frame {
+    position: relative;
+    overflow: hidden;
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+}
+
+.sf-card__frame--4x3 {
+    aspect-ratio: 4 / 3;
+}
+
+.sf-card__frame--8x5 {
+    aspect-ratio: 8 / 5;
+}
+
+.sf-card__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s;
+}
+
+.sf-card__body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    padding: 1.5rem;
+}
+
+.sf-card__label {
+    color: var(--color-text);
+    font-size: 0.875rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+/* Icon card (services). */
+.sf-card--icon {
+    align-items: center;
+    padding: 2rem;
+    text-align: center;
+}
+
+.sf-card__icon {
+    display: block;
+    margin-bottom: 1.5rem;
+    color: var(--color-primary-text);
+    transition: transform 0.3s;
+}
+
+.sf-card__icon .icon,
+.sf-feature__icon .icon {
+    width: 4rem;
+    height: 4rem;
+    color: inherit;
+}
+
+.sf-card--icon .sf-card__title {
+    margin-bottom: 0.75rem;
+}
+
+.sf-card--icon .sf-card__text {
+    flex-grow: 1;
+    margin-bottom: 1.25rem;
+}
+
+/* Product card (list) and product overlay card (block). */
+.sf-card--product {
+    border: 1px solid color-mix(in srgb, var(--color-surface) 90%, var(--color-dark));
+}
+
+.sf-card--product .sf-card__title {
+    margin-top: 0.25rem;
+}
+
+.sf-card--product-overlay .sf-card__frame {
+    background: var(--color-dark);
+}
+
+.sf-card--product-overlay .sf-card__img {
+    transition-duration: 0.5s;
+}
+
+.sf-card__shade {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgb(0 0 0 / 0.8), rgb(0 0 0 / 0.4) 50%, transparent);
+}
+
+.sf-card--project .sf-card__shade {
+    background: linear-gradient(to top, rgb(0 0 0 / 0.8), transparent);
+}
+
+.sf-card__hover {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgb(0 0 0 / 0.4);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.sf-card__eye {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 4rem;
+    height: 4rem;
+    border-radius: 9999px;
+    background: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
+    color: #fff;
+}
+
+.sf-card__eye .icon {
+    width: 2rem;
+    height: 2rem;
+    color: inherit;
+}
+
+.sf-card__caption {
+    position: absolute;
+    inset: auto 0 0;
+    z-index: 1;
+    padding: 1.5rem;
+}
+
+.sf-card--product-overlay .sf-card__label {
+    color: var(--color-primary);
+    font-size: 0.75rem;
+    line-height: 1rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.sf-card--product-overlay .sf-card__title {
+    color: #fff;
+    transition: color 0.3s;
+}
+
+/* Project card. */
+.sf-card--project .sf-card__title {
+    margin-bottom: 0.5rem;
+}
+
+.sf-band--dark .sf-card--project {
+    border: 1px solid var(--color-dark-line, color-mix(in srgb, var(--color-dark) 75%, white));
+    background: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
+    color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white));
+}
+
+.sf-band--dark .sf-card--project .sf-card__title {
+    color: var(--color-primary);
+}
+
+/* An excerpt is body text (not a name), so it alone may be cut at four lines. */
+.sf-band--dark .sf-card--project .sf-card__text,
+.sf-card--news .sf-card__text {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
+    overflow: hidden;
+}
+
+/* News card. */
+.sf-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.sf-card__chip {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+    color: var(--color-text-strong);
+    font-size: 0.75rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.sf-card__date {
+    color: color-mix(in srgb, var(--color-text) 80%, white);
+    font-size: 0.75rem;
+}
+
+.sf-card--news .sf-card__title {
+    flex-grow: 1;
+    margin-bottom: 0.75rem;
+}
+
+.sf-card--news .sf-card__text {
+    margin-bottom: 1rem;
+}
+
+/* Features, top-rule look (capabilities). */
+.sf-feature {
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem;
+    border-top: 0.25rem solid var(--color-primary);
+    border-radius: 0.5rem;
+    background: var(--color-surface);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    text-align: center;
+    transition: box-shadow 0.3s, transform 0.3s;
+}
+
+.sf-feature__icon {
+    display: inline-flex;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark))) 80%, var(--color-dark));
+    color: var(--color-primary-text);
+}
+
+.sf-feature__title {
+    margin-bottom: 0.75rem;
+    color: var(--color-text-strong);
+    font-size: 1.25rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.sf-feature__text {
+    color: var(--color-text);
+    font-size: 0.875rem;
+}
+
+/* CTA: the sub-line (both looks) and the rounded look. */
+.cta__text {
+    max-width: 42rem;
+    margin: 0 auto 1.5rem;
+    color: var(--sch-body, var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white)));
+    font-size: 1.125rem;
+    line-height: 1.5rem;
+}
+
+.cta.cta--rounded {
+    padding: 5rem 0;
+    background: var(--sch-bg, var(--color-dark));
+}
+
+.cta__title {
+    color: var(--sch-head, #fff);
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    overflow-wrap: anywhere;
+}
+
+.cta--rounded .cta__text {
+    margin: 1rem auto 0;
+}
+
+.cta__button.cta__button--pill {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    margin-top: 2rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 9999px;
+    background: var(--sch-pri-bg, var(--color-primary));
+    color: var(--sch-pri-fg, var(--color-on-primary));
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+    font-weight: 500;
+    transition: background 0.3s, transform 0.3s;
+}
+
+@media (min-width: 640px) {
+    .cta__button.cta__button--pill {
+        display: inline-flex;
+    }
+}
+
+/* Contact, card look. */
+.sf-contact-cards {
+    display: grid;
+    gap: 2rem;
+    margin: 0 0 5rem;
+    padding: 0;
+    list-style: none;
+}
+
+@media (min-width: 768px) {
+    .sf-contact-cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1024px) {
+    .sf-contact-cards {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+.sf-contact-card {
+    display: flex;
+    gap: 1rem;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+}
+
+.sf-contact-card__icon {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 0.375rem;
+    background: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
+    color: #fff;
+}
+
+.sf-contact-card__title {
+    color: var(--color-text-strong);
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+    font-weight: 600;
+}
+
+.sf-contact-card__value,
+.sf-contact-card__text {
+    margin-top: 0.25rem;
+    color: var(--color-text);
+    font-size: 0.875rem;
+    overflow-wrap: anywhere;
+}
+
+.sf-contact-card__value {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.5rem;
+}
+
+.sf-map,
+.lead-form__map {
+    display: block;
+    width: 100%;
+    height: 20rem;
+    border: 1px solid color-mix(in srgb, var(--color-surface) 80%, var(--color-dark));
+    border-radius: 0.5rem;
+}
+
+/* Form beside a map. */
+.lead-form__description {
+    margin-bottom: 1.5rem;
+    color: var(--sch-body, var(--color-text));
+}
+
+.lead-form.lead-form--map {
+    display: grid;
+    gap: 3rem;
+    padding: 2rem;
+    border: 1px solid color-mix(in srgb, var(--color-surface) 90%, var(--color-dark));
+    border-radius: 0.5rem;
+    background: var(--color-surface);
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}
+
+@media (min-width: 768px) {
+    .lead-form.lead-form--map {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        padding: 3rem;
+    }
+
+    .lead-form--map .lead-form__map {
+        height: 100%;
+        min-height: 20rem;
+    }
+}
+
+/* Hero slider. Every slide shares one grid cell: the box is the tallest slide, so a switch never
+ * moves the page. 16:9 on common screens, capped at the viewport, a readable floor on phones. */
+.sf-slider {
+    position: relative;
+    overflow: hidden;
+    background: var(--color-dark);
+    color: #fff;
+}
+
+.sf-slider__viewport {
+    display: grid;
+}
+
+.sf-slide {
+    position: relative;
+    display: flex;
+    grid-area: 1 / 1;
+    align-items: center;
+    justify-content: center;
+    min-height: max(28rem, min(56.25vw, 100svh));
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 1s, visibility 1s;
+}
+
+.sf-slide.is-active {
+    visibility: visible;
+    opacity: 1;
+}
+
+.sf-slide__media,
+.sf-slide__overlay {
+    position: absolute;
+    inset: 0;
+}
+
+.sf-slide__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.sf-slide__overlay {
+    background: #000;
+}
+
+.sf-slide__content {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 64rem;
+    padding: 3rem 1rem 7rem;
+    text-align: center;
+}
+
+.sf-slide__title {
+    margin-bottom: 1rem;
+    color: #fff;
+    font-size: 1.875rem;
+    line-height: 1.2;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    text-shadow: 0 4px 8px rgb(0 0 0 / 0.4);
+    overflow-wrap: anywhere;
+}
+
+.sf-slide__text {
+    max-width: 48rem;
+    margin: 0 auto 2rem;
+    color: #fff;
+    font-size: 1rem;
+    text-shadow: 0 2px 4px rgb(0 0 0 / 0.5);
+}
+
+.sf-slide__ctas {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.sf-slide__cta {
+    border-radius: 9999px;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+.sf-slide__cta.sf-slide__cta--accent {
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+}
+
+@media (min-width: 640px) {
+    .sf-slide__title {
+        font-size: 2.25rem;
+    }
+
+    .sf-slide__ctas {
+        flex-direction: row;
+    }
+}
+
+@media (min-width: 768px) {
+    .sf-slide__text {
+        font-size: 1.125rem;
+    }
+}
+
+/* Controls. Below md they form one bottom row (prev · dots · pause · next), so the arrows never
+ * cover the centered text; from md the arrows sit at the sides and the row keeps pause + dots. */
+.sf-slider__controls {
+    position: absolute;
+    inset: auto 0 1.25rem;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.sf-slider__controls[hidden] {
+    display: none;
+}
+
+.sf-slider__btn {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    padding: 0;
+    border: 0;
+    border-radius: 9999px;
+    background: rgb(0 0 0 / 0.3);
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.sf-slider__btn:focus-visible,
+.sf-slider__dot:focus-visible,
+.sf-slide__cta:focus-visible {
+    outline: 2px solid #fff;
+    box-shadow: 0 0 0 4px rgb(0 0 0 / 0.6);
+}
+
+.sf-slider__prev {
+    order: 1;
+}
+
+.sf-slider__dots {
+    display: flex;
+    order: 2;
+}
+
+.sf-slider__pause {
+    order: 3;
+    width: 2.75rem;
+    height: 2.75rem;
+}
+
+.sf-slider__next {
+    order: 4;
+}
+
+.sf-slider__pause .sf-slider__icon-play,
+.sf-slider__pause.is-paused .sf-slider__icon-pause {
+    display: none;
+}
+
+.sf-slider__pause.is-paused .sf-slider__icon-play {
+    display: block;
+}
+
+.sf-slider__dot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+}
+
+.sf-slider__dot-mark {
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 9999px;
+    background: rgb(255 255 255 / 0.6);
+    transition: background 0.3s, transform 0.3s;
+}
+
+.sf-slider__dot[aria-current="true"] .sf-slider__dot-mark {
+    background: var(--color-primary);
+    transform: scale(1.25);
+}
+
+@media (min-width: 768px) {
+    /* The row spans the slider (clicks pass through to the slide) so the arrows can center. */
+    .sf-slider__controls {
+        inset: 0;
+        align-items: flex-end;
+        padding-bottom: 2rem;
+        pointer-events: none;
+    }
+
+    .sf-slider__controls > * {
+        pointer-events: auto;
+    }
+
+    .sf-slider__pause {
+        order: 0;
+    }
+
+    .sf-slider__prev,
+    .sf-slider__next {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .sf-slider__prev {
+        left: 1.25rem;
+    }
+
+    .sf-slider__next {
+        right: 1.25rem;
+    }
+
+    .sf-slide__content {
+        padding-bottom: 6rem;
+    }
+}
+
+/* Card-grid list pages. */
+.sf-list__body {
+    padding-block: 5rem;
+}
+
+.sf-list--product .sf-list__body {
+    padding-block: 4rem;
+}
+
+.sf-chips {
+    margin-bottom: 3rem;
+}
+
+.sf-chips__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+    margin: 0;
+    padding: 0.25rem;
+    list-style: none;
+}
+
+@media (max-width: 639.98px) {
+    .sf-chips__list {
+        border-radius: 1rem;
+        background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+    }
+}
+
+.sf-chips__chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.5rem;
+    padding: 0.5rem 1.25rem;
+    border-radius: 9999px;
+    background: var(--color-surface);
+    color: var(--color-text-strong);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+    font-weight: 600;
+    overflow-wrap: anywhere;
+    transition: background 0.2s, color 0.2s;
+}
+
+.sf-chips__chip[aria-current="page"] {
+    background: var(--color-dark);
+    color: #fff;
+}
+
+.sf-empty-box {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: center;
+    padding: 2rem 1rem;
+    border-radius: 0.5rem;
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+    color: var(--color-text);
+    font-size: 1rem;
+    text-align: center;
+}
+
+.sf-empty-box__link {
+    color: var(--color-primary-text);
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+.pagination__prev,
+.pagination__next,
+.pagination__first {
+    min-height: 2.5rem;
+}
+
+.pagination__first {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.625rem 1.25rem;
+    border-radius: 0.375rem;
+    background: color-mix(in srgb, var(--color-surface) 94%, var(--color-dark));
+    color: color-mix(in srgb, var(--color-dark) 85%, white);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+/* Hover only where a pointer can hover (never a touch-only state). */
+@media (hover: hover) {
+    .sf-card--icon:hover,
+    .sf-card--product:hover {
+        transform: translateY(-0.5rem);
+    }
+
+    .sf-card--icon:hover {
+        box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+    }
+
+    .sf-card--icon:hover .sf-card__icon {
+        transform: scale(1.1);
+    }
+
+    .sf-card--icon:hover .sf-card__more {
+        color: var(--color-primary-text);
+    }
+
+    .sf-card:hover .sf-card__arrow {
+        transform: translateX(0.25rem);
+    }
+
+    .sf-card--product:hover {
+        box-shadow: 0 0 20px rgb(30 41 59 / 0.2);
+    }
+
+    .sf-card--product:hover .sf-card__img {
+        transform: scale(1.1);
+    }
+
+    .sf-card--product-overlay:hover .sf-card__img {
+        transform: scale(1.05);
+    }
+
+    .sf-card--product-overlay:hover .sf-card__hover {
+        opacity: 1;
+    }
+
+    .sf-card--product-overlay:hover .sf-card__title {
+        color: var(--color-primary);
+    }
+
+    .sf-band--dark .sf-card--project:hover {
+        border-color: var(--color-primary);
+    }
+
+    .sf-feature:hover {
+        box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+        transform: translateY(-0.25rem);
+    }
+
+    .sf-view-all__link:hover,
+    .sf-slide__cta:hover {
+        background: var(--color-dark-line, color-mix(in srgb, var(--color-dark) 75%, white));
+    }
+
+    .sf-slide__cta:hover {
+        transform: scale(1.05);
+    }
+
+    /* Each hovers from the fill it rests on: the slide's own brand fill, the pill's colour-set fill. */
+    .sf-slide__cta.sf-slide__cta--accent:hover {
+        background: var(--color-primary-hover);
+        transform: scale(1.05);
+    }
+
+    .cta__button.cta__button--pill:hover {
+        background: var(--sch-pri-hover, var(--color-primary-hover));
+        transform: scale(1.05);
+    }
+
+    .sf-slider__btn:hover {
+        background: rgb(0 0 0 / 0.5);
+    }
+
+    .sf-slider__dot:hover .sf-slider__dot-mark {
+        background: #fff;
+    }
+
+    .sf-slider__dot[aria-current="true"]:hover .sf-slider__dot-mark {
+        background: var(--color-primary);
+    }
+
+    .sf-contact-card__value:hover {
+        color: var(--color-text-strong);
+    }
+
+    .sf-chips__chip:not([aria-current="page"]):hover,
+    .pagination__first:hover {
+        background: var(--color-primary);
+        color: var(--color-on-primary);
+    }
+}
+
+/* Touch screens: the new controls reach 44px. */
+@media (any-pointer: coarse) {
+    .sf-slider__dot {
+        width: 2.75rem;
+        height: 2.75rem;
+    }
+
+    .sf-contact-card__value,
+    .sf-chips__chip,
+    .pagination__prev,
+    .pagination__next,
+    .pagination__first {
+        min-height: 2.75rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sf-slide,
+    .sf-card,
+    .sf-card__img,
+    .sf-card__icon,
+    .sf-card__arrow,
+    .sf-card__hover,
+    .sf-feature,
+    .sf-slide__cta,
+    .sf-slider__btn,
+    .sf-slider__dot-mark,
+    .sf-view-all__link,
+    .cta__button.cta__button--pill {
+        transition: none;
+    }
+
+    .sf-card:hover,
+    .sf-feature:hover,
+    .sf-slide__cta:hover,
+    .cta__button.cta__button--pill:hover,
+    .sf-card:hover .sf-card__img,
+    .sf-card:hover .sf-card__icon,
+    .sf-card:hover .sf-card__arrow {
+        transform: none;
+    }
+}
+
+/*
+ * Section look (StyleProps, docs/notes/section-style-system.md §2): the wrapper BlockRenderer puts
+ * around a block that sets one; a block without a look has no wrapper, so none of this reaches it.
+ * Every class comes from a fixed table. A colour set gives the block --sch-* roles (ThemeResolver
+ * prints them per site, contrast-fitted); the block rules below read them with their own colour as
+ * the fallback, so outside a set every block keeps the look it always had.
+ */
+.sf-s {
+    position: relative;
+}
+
+.sf-s--sch-light {
+    --sch-bg: transparent;
+    --sch-head: var(--color-text-strong);
+    --sch-body: var(--color-text);
+    --sch-link: var(--color-primary-text);
+    --sch-pri-bg: var(--color-primary);
+    --sch-pri-fg: var(--color-on-primary);
+    --sch-pri-hover: var(--color-primary-hover);
+    --sch-sec-fg: var(--color-text-strong);
+    --sch-rule: var(--color-primary);
+}
+
+.sf-s--sch-soft,
+.sf-s--sch-brand,
+.sf-s--sch-dark {
+    --sch-bg: var(--sch-set-bg);
+    --sch-head: var(--sch-set-head);
+    --sch-body: var(--sch-set-body);
+    --sch-link: var(--sch-set-link);
+    --sch-pri-bg: var(--sch-set-pri-bg);
+    --sch-pri-fg: var(--sch-set-pri-fg);
+    --sch-pri-hover: var(--sch-set-pri-hover);
+    --sch-sec-fg: var(--sch-set-sec-fg);
+    --sch-rule: var(--sch-set-pri-bg);
+}
+
+.sf-s--sch-soft {
+    --sch-set-bg: var(--sch-soft-bg);
+    --sch-set-head: var(--sch-soft-head);
+    --sch-set-body: var(--sch-soft-body);
+    --sch-set-link: var(--sch-soft-link);
+    --sch-set-pri-bg: var(--sch-soft-pri-bg);
+    --sch-set-pri-fg: var(--sch-soft-pri-fg);
+    --sch-set-pri-hover: var(--sch-soft-pri-hover);
+    --sch-set-sec-fg: var(--sch-soft-sec-fg);
+}
+
+.sf-s--sch-brand {
+    --sch-set-bg: var(--sch-brand-bg);
+    --sch-set-head: var(--sch-brand-head);
+    --sch-set-body: var(--sch-brand-body);
+    --sch-set-link: var(--sch-brand-link);
+    --sch-set-pri-bg: var(--sch-brand-pri-bg);
+    --sch-set-pri-fg: var(--sch-brand-pri-fg);
+    --sch-set-pri-hover: var(--sch-brand-pri-hover);
+    --sch-set-sec-fg: var(--sch-brand-sec-fg);
+}
+
+.sf-s--sch-brand {
+    --sch-rule: var(--sch-brand-head);
+}
+
+.sf-s--sch-dark {
+    --sch-set-bg: var(--sch-dark-bg);
+    --sch-set-head: var(--sch-dark-head);
+    --sch-set-body: var(--sch-dark-body);
+    --sch-set-link: var(--sch-dark-link);
+    --sch-set-pri-bg: var(--sch-dark-pri-bg);
+    --sch-set-pri-fg: var(--sch-dark-pri-fg);
+    --sch-set-pri-hover: var(--sch-dark-pri-hover);
+    --sch-set-sec-fg: var(--sch-dark-sec-fg);
+}
+
+/* A photo behind the block: white text over an overlay that keeps it at 4.5:1 on any photo. */
+.sf-s--image {
+    --sch-bg: transparent;
+    --sch-head: #fff;
+    --sch-body: rgb(255 255 255 / 0.9);
+    --sch-link: #fff;
+    /* A white button: 3:1 on the overlay over any photo, where a brand fill may not be. */
+    --sch-pri-bg: #fff;
+    --sch-pri-fg: var(--color-dark);
+    --sch-pri-hover: color-mix(in srgb, #fff 85%, black);
+    --sch-sec-fg: #fff;
+    --sch-rule: #fff;
+    isolation: isolate;
+    overflow: clip;
+    background: var(--color-dark);
+}
+
+:is(.sf-s--sch-light, .sf-s--sch-soft, .sf-s--sch-brand, .sf-s--sch-dark) {
+    background: var(--sch-bg);
+}
+
+:is(.sf-s--sch-light, .sf-s--sch-soft, .sf-s--sch-brand, .sf-s--sch-dark, .sf-s--image) {
+    color: var(--sch-body);
+}
+
+.sf-s__bg {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+}
+
+.sf-s__img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.sf-s__bg::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgb(9 14 26 / var(--sf-overlay));
+}
+
+/* "Tự động" (0): the least overlay that keeps white headings and 90% white text at 4.5:1 even
+   over a white photo (62%). */
+.sf-s--ov-0 {
+    --sf-overlay: 0.62;
+}
+
+.sf-s--ov-75 {
+    --sf-overlay: 0.75;
+}
+
+.sf-s--ov-90 {
+    --sf-overlay: 0.9;
+}
+
+/* Spacing replaces the block's own top / bottom padding (the photo layer is not the block); a step
+   not set keeps it. */
+.sf-s--pt-none > :nth-child(1 of :not(.sf-s__bg)) {
+    padding-top: 0;
+}
+
+.sf-s--pt-s > :nth-child(1 of :not(.sf-s__bg)) {
+    padding-top: var(--space-m);
+}
+
+.sf-s--pt-m > :nth-child(1 of :not(.sf-s__bg)) {
+    padding-top: var(--space-l);
+}
+
+.sf-s--pt-l > :nth-child(1 of :not(.sf-s__bg)) {
+    padding-top: calc(var(--space-l) + var(--space-m) + var(--space-s));
+}
+
+.sf-s--pt-xl > :nth-child(1 of :not(.sf-s__bg)) {
+    padding-top: calc(var(--space-xl) + var(--space-m));
+}
+
+.sf-s--pb-none > :nth-last-child(1 of :not(.sf-s__bg)) {
+    padding-bottom: 0;
+}
+
+.sf-s--pb-s > :nth-last-child(1 of :not(.sf-s__bg)) {
+    padding-bottom: var(--space-m);
+}
+
+.sf-s--pb-m > :nth-last-child(1 of :not(.sf-s__bg)) {
+    padding-bottom: var(--space-l);
+}
+
+.sf-s--pb-l > :nth-last-child(1 of :not(.sf-s__bg)) {
+    padding-bottom: calc(var(--space-l) + var(--space-m) + var(--space-s));
+}
+
+.sf-s--pb-xl > :nth-last-child(1 of :not(.sf-s__bg)) {
+    padding-bottom: calc(var(--space-xl) + var(--space-m));
+}
+
+/* Width of the content: the block's own column, or the container inside a full-bleed band. */
+.sf-s--w-narrow > :is(.about, .features, .entry-grid, .contact, .partners, .richtext, .latest-posts, .lead-form),
+.sf-s--w-narrow :is(.sf-container, .hero__content, .page-band__content, .sf-slide__content) {
+    max-width: 48rem;
+}
+
+.sf-s--w-full > :is(.about, .features, .entry-grid, .contact, .partners, .richtext, .latest-posts, .lead-form),
+.sf-s--w-full :is(.sf-container, .hero__content, .page-band__content) {
+    max-width: none;
+}
+
+.sf-s--a-center {
+    text-align: center;
+}
+
+.sf-s--corner-soft {
+    border-radius: var(--radius-soft);
+    overflow: clip;
+}
+
+.sf-s--shadow-soft {
+    box-shadow: var(--shadow-soft);
+}
+
+@media (max-width: 767.98px) {
+    .sf-s--hide-mobile {
+        display: none;
+    }
+}
+
+@media (min-width: 768px) {
+    .sf-s--hide-desktop {
+        display: none;
+    }
+}
+
+/* Scroll-in motion: sections.js sets back only what is still below the screen; opacity and
+   transform only, so nothing shifts. Without the script, or with reduced motion, nothing moves. */
+.sf-s--m-fade,
+.sf-s--m-rise {
+    transition: opacity var(--motion-duration) ease-out, transform var(--motion-duration) ease-out;
+}
+
+.sf-s--m-fade.sf-s--before,
+.sf-s--m-rise.sf-s--before {
+    opacity: 0;
+}
+
+.sf-s--m-rise.sf-s--before {
+    transform: translateY(var(--motion-distance));
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sf-s--m-fade,
+    .sf-s--m-rise {
+        transition: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce), print {
+    .sf-s--m-fade.sf-s--before,
+    .sf-s--m-rise.sf-s--before {
+        opacity: 1;
+        transform: none;
+    }
 }

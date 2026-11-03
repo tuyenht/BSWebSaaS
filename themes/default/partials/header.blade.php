@@ -1,8 +1,12 @@
 {{-- Storefront primary navigation (design.md §13). The menu is resolved server-side to a
      primitive tree (label/url/active/children) and rendered here: semantic, zero-JS, a11y
      (landmark + aria-current). Renders nothing when no menu is bound to the region, so an
-     unconfigured site is never a dead-end. Values are Blade-escaped (URLs pre-sanitized). --}}
-@if (! empty($menu) || ! empty($brand['logo']))
+     unconfigured site is never a dead-end. Values are Blade-escaped (URLs pre-sanitized).
+     A site with the `storefront.header` setting gets the rich header (top bar, text size,
+     mobile menu panel) instead; $header is that setting, already normalized. --}}
+@if (! empty($header))
+@include('theme::partials.header-bar')
+@elseif (! empty($menu) || ! empty($brand['logo']))
     <header class="site-header">
         @if (! empty($brand['logo']))
             {{-- Brand logo = a server-resolved media URL from the tenant's 'brand' site setting

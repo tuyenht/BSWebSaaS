@@ -31,6 +31,12 @@ Schedule::command('cms:prune-revisions')->daily()->withoutOverlapping();
 // domain that has been failing for 30 days, drop the ones never pointed here (design.md §28).
 Schedule::command('domains:recheck')->daily()->withoutOverlapping();
 
+// The names still waiting to be pointed or proved are checked again every 15 minutes, as the
+// Domains screen tells their owner. In the background so a slow resolver never holds back the
+// tasks after it; the lock lapses after 20 minutes should the run die (each run stops taking new
+// names after tenancy.custom_domains.recheck_budget_seconds).
+Schedule::command('domains:recheck-waiting')->everyFifteenMinutes()->withoutOverlapping(20)->runInBackground();
+
 // Error notices: the morning summary of the counting day that just closed, at a local time set
 // explicitly (the app clock stays UTC). Mails only when there is something to say.
 Schedule::command('monitoring:summary')

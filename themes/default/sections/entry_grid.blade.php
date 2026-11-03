@@ -1,3 +1,37 @@
+@if (in_array($variant ?? 'list', ['icon-cards', 'project-cards', 'news-cards', 'overlay'], true))
+{{-- A card look (opt-in through `variant`, SectionProps): the shared band, head, card and
+     "view all" partials. The default look below is the original markup, untouched. --}}
+@php
+    $sfKind = ['icon-cards' => 'icon', 'project-cards' => 'project', 'news-cards' => 'news', 'overlay' => 'product-overlay'][$variant];
+    $sfGrid = ['icon' => 'sf-grid--4', 'project' => 'sf-grid--4s', 'news' => 'sf-grid--4s', 'product-overlay' => 'sf-grid--3s'][$sfKind];
+    $sfSizes = $sfKind === 'product-overlay'
+        ? '(min-width:1360px) 408px, (min-width:1024px) calc((100vw - 8.5rem)/3), (min-width:640px) calc((100vw - 5rem)/2), calc(100vw - 2rem)'
+        : '(min-width:1360px) 298px, (min-width:1024px) calc((100vw - 10.5rem)/4), (min-width:640px) calc((100vw - 5rem)/2), calc(100vw - 2rem)';
+    $sfBg = \App\Modules\Theme\Components\SectionProps::choice($props, 'bg', \App\Modules\Theme\Components\SectionProps::BG);
+@endphp
+@component('theme::partials.sf-band', ['bg' => $sfBg, 'class' => 'sf-cards sf-cards--'.$sfKind])
+@include('theme::partials.sf-section-head', [
+    'heading' => \App\Modules\Theme\Components\SectionProps::text($props, 'heading'),
+    'description' => \App\Modules\Theme\Components\SectionProps::text($props, 'description'),
+])
+@if (count($items) > 0)
+<ul class="sf-grid {{ $sfGrid }}">
+@foreach ($items as $card)
+<li>@include('theme::partials.sf-card', [
+    'card' => $card,
+    'kind' => $sfKind,
+    'level' => 'h3',
+    'sizes' => $sfSizes,
+    'linkLabel' => \App\Modules\Theme\Components\SectionProps::text($props, 'link_label', __('storefront.view_detail')),
+])</li>
+@endforeach
+</ul>
+@else
+<p class="sf-empty">{{ __('storefront.no_content') }}</p>
+@endif
+@include('theme::partials.sf-view-all', ['label' => \App\Modules\Theme\Components\SectionProps::text($props, 'view_all_label'), 'url' => $props['view_all_url'] ?? null])
+@endcomponent
+@else
 <section class="entry-grid">
     @if (! empty($props['heading']))
         <h2 class="entry-grid__heading">{{ $props['heading'] }}</h2>
@@ -40,3 +74,4 @@
         <p class="entry-grid__empty">{{ __('storefront.no_content') }}</p>
     @endif
 </section>
+@endif

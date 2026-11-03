@@ -113,7 +113,7 @@ it('back-fills drifted SHARED team-0 template roles (the legacy leak shape)', fu
     expect($ownerHas)->toBeTrue();
 });
 
-it('never touches custom (non-system) tenant roles', function (): void {
+it('never gives custom (non-system) tenant roles template grants', function (): void {
     $member = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($member): void {
@@ -129,4 +129,34 @@ it('never touches custom (non-system) tenant roles', function (): void {
         ->pluck('permissions.name')->all();
 
     expect($perms)->toBe(['entries.view']); // untouched — no template grants injected
+});
+
+it('closes custom roles under the implied permissions, add-only and idempotent', function (): void {
+    $member = User::factory()->create();
+
+    // Custom roles saved before `domains.manage` implied `domains.view`: they hold the change
+    // permission without the read one the Domains screen now checks.
+    app(Tenancy::class)->enter(1, function () use ($member): void {
+        grantRole($member, 'custom-domains', ['domains.manage', 'entries.create', 'media.view']);
+        grantRole(User::factory()->create(), 'custom-reader', ['domains.view']);
+    });
+    $perms = fn (string $role): array => DB::table('role_has_permissions')
+        ->join('roles', 'roles.id', '=', 'role_has_permissions.role_id')
+        ->join('permissions', 'permissions.id', '=', 'role_has_permissions.permission_id')
+        ->where('roles.name', $role)->orderBy('permissions.name')
+        ->pluck('permissions.name')->all();
+
+    expect(app(Tenancy::class)->enter(1, fn (): bool => $member->fresh()->can('domains.view')))->toBeFalse();
+
+    $this->artisan('rbac:sync')->assertSuccessful();
+
+    expect($perms('custom-domains'))->toBe(['domains.manage', 'domains.view', 'entries.create', 'entries.view', 'media.view'])
+        ->and($perms('custom-reader'))->toBe(['domains.view']) // nothing implied, nothing revoked
+        ->and(app(Tenancy::class)->enter(1, fn (): bool => $member->fresh()->can('domains.view')))->toBeTrue();
+
+    $this->artisan('rbac:sync')
+        ->expectsOutputToContain('0 custom-role grants closed')
+        ->assertSuccessful();
+
+    expect($perms('custom-domains'))->toBe(['domains.manage', 'domains.view', 'entries.create', 'entries.view', 'media.view']);
 });

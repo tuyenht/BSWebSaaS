@@ -12,6 +12,20 @@
     // A label wraps only when the pill alone is wider than its cell (names are never clipped).
     // Unknown statuses read as plain text with no icon.
     $tones = [
+        // a website's own domain name: its state, and the main / platform / working-again marks
+        'domain-wait' => ['[--c:var(--color-warning-text)]', 'ri-time'],
+        'domain-claim' => ['[--c:var(--color-warning-text)]', 'ri-shield-user'],
+        'domain-verified' => ['[--c:var(--color-info-text)]', 'ri-checkbox-circle'],
+        'domain-issuing' => ['[--c:var(--color-info-text)]', 'ri-shield-keyhole'],
+        'domain-https_err' => ['[--c:var(--color-danger-text)]', 'ri-error-warning'],
+        'domain-active' => ['[--c:var(--color-success-text)]', 'ri-lock'],
+        'domain-failing' => ['[--c:var(--color-warning-text)]', 'ri-link-unlink'],
+        'domain-expiring' => ['[--c:var(--color-danger-text)]', 'ri-alarm-warning'],
+        'domain-lost' => ['[--c:var(--color-danger-text)]', 'ri-close-circle'],
+        'domain-primary' => ['[--c:var(--color-primary-text)]', 'ri-star-fill'],
+        'domain-platform' => ['[--c:var(--color-text)]', 'ri-home-4'],
+        'domain-recovered' => ['[--c:var(--color-success-text)]', 'ri-refresh'],
+        'domain-locked' => ['[--c:var(--color-warning-text)]', 'ri-lock-2'],
         'published' => ['[--c:var(--color-success-text)]', 'ri-global'],
         'draft' => ['[--c:var(--color-text)]', 'ri-draft'],
         'scheduled' => ['[--c:color-mix(in_oklab,var(--color-secondary-text)_80%,var(--color-text-strong))]', 'ri-calendar-schedule'],

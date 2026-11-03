@@ -8,6 +8,8 @@ use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Contracts\Component;
+use App\Modules\Theme\Components\SectionProps;
+use Illuminate\Support\Collection;
 
 /**
  * A DATA-BOUND grid of published catalog products, rendered as cards (image / name / summary) on the
@@ -15,11 +17,17 @@ use App\Modules\Shared\Contracts\Component;
  * product card carries the same shape (title / url / image / short outcome) minus the sector badge.
  * URLs come from the STORED product routes in ONE batched lookup, so the grid links exactly where
  * the resolver serves (matching the entry grid, no N+1).
+ *
+ * The `overlay` variant shows each product as a photo card with its category over it (the shared
+ * card partial); it adds the products' categories and their names to the same batch (two reads).
  */
 final readonly class ProductGridComponent implements Component
 {
     /** Cards display ~480px wide; 640 (next Worker-whitelist width) keeps them crisp on retina. */
     private const int CARD_WIDTH = 640;
+
+    /** The widths a card photo offers through srcset. */
+    private const array CARD_SRCSET_WIDTHS = [320, 640, 960, 1280];
 
     public function __construct(private MediaUrlResolver $media) {}
 
@@ -37,6 +45,10 @@ final readonly class ProductGridComponent implements Component
         return [
             'heading' => ['type' => 'text'],
             'limit' => ['type' => 'int', 'default' => 6],
+            'variant' => ['type' => 'enum', 'options' => SectionProps::PRODUCT_GRID_VARIANTS, 'default' => 'grid'],
+            'description' => ['type' => 'textarea'],
+            'view_all_label' => ['type' => 'text'],
+            'view_all_url' => ['type' => 'url'],
         ];
     }
 
@@ -51,10 +63,11 @@ final readonly class ProductGridComponent implements Component
         $rawLimit = $props['limit'] ?? 6;
         $limit = is_numeric($rawLimit) ? min(50, max(1, (int) $rawLimit)) : 6;
         $locale = is_string($props['locale'] ?? null) ? $props['locale'] : 'vi';
+        $variant = SectionProps::choice($props, 'variant', SectionProps::PRODUCT_GRID_VARIANTS);
 
         $products = Product::query()
             ->where('status', 'published')
-            ->with(['translations', 'images.media'])
+            ->with($variant === 'overlay' ? ['translations', 'images.media', 'taxonomies.translations'] : ['translations', 'images.media'])
             ->orderByDesc('published_at')
             ->orderByDesc('id')
             ->limit($limit)
@@ -65,6 +78,10 @@ final readonly class ProductGridComponent implements Component
             ->whereIn('product_id', $products->pluck('id'))
             ->where('locale', $locale)
             ->pluck('path', 'product_id');
+
+        if ($variant === 'overlay') {
+            return ['props' => $props, 'items' => $this->cards($products, $locale, $paths), 'variant' => $variant];
+        }
 
         $items = $products->map(function (Product $product) use ($locale, $paths): array {
             $translation = $product->translationFor($locale);
@@ -80,6 +97,39 @@ final readonly class ProductGridComponent implements Component
             ];
         })->all();
 
-        return ['props' => $props, 'items' => $items];
+        return ['props' => $props, 'items' => $items, 'variant' => $variant];
+    }
+
+    /**
+     * The card shape the shared card partial reads (no id leaves the server).
+     *
+     * @param  iterable<Product>  $products
+     * @param  Collection<int|string, mixed>  $paths
+     * @return list<array{title: string, url: string, image: string, srcset: string|null, icon: string, excerpt: string, date: string, datetime: string, label: string}>
+     */
+    private function cards(iterable $products, string $locale, Collection $paths): array
+    {
+        $cards = [];
+        foreach ($products as $product) {
+            $translation = $product->translationFor($locale);
+            $media = $product->images->first()?->media;
+            $key = $media?->storage_key;
+            $path = $paths->get($product->id);
+            $category = $product->primaryCategory();
+
+            $cards[] = [
+                'title' => $translation !== null ? $translation->name : '',
+                'url' => is_string($path) ? $path : '',
+                'image' => is_string($key) && $key !== '' ? $this->media->url($key, self::CARD_WIDTH) : '',
+                'srcset' => is_string($key) && $key !== '' ? $this->media->srcset($key, self::CARD_SRCSET_WIDTHS, $media->width) : null,
+                'icon' => '',
+                'excerpt' => $translation !== null ? ($translation->summary ?? '') : '',
+                'date' => '',
+                'datetime' => '',
+                'label' => $category?->translationFor($locale)->name ?? '',
+            ];
+        }
+
+        return $cards;
     }
 }

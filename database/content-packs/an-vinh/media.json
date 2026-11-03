@@ -1,0 +1,348 @@
+{
+ "slots": [
+  {
+   "slot": "hero-1",
+   "file": "media/hero-1.webp",
+   "alt": {
+    "vi": "Trục chính máy CNC đang cắt kim loại với nước làm mát, cận cảnh trong nền tối"
+   },
+   "collection": "library",
+   "legacy_key": "an-vinh/hero/hero-home-7ca90eafe212.jpg",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/8865187/"
+  },
+  {
+   "slot": "hero-2",
+   "file": "media/hero-2.webp",
+   "alt": {
+    "vi": "Hàn công nghiệp với tia lửa màu hổ phách trong không gian tối"
+   },
+   "collection": "library",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/29976478/"
+  },
+  {
+   "slot": "hero-3",
+   "file": "media/hero-3.webp",
+   "alt": {
+    "vi": "Phôi kim loại nóng trong khuôn dập kín"
+   },
+   "collection": "library",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/31004832/"
+  },
+  {
+   "slot": "about-header",
+   "file": "media/about-header.webp",
+   "alt": {
+    "vi": "Xưởng cơ khí lớn với các máy tiện và máy công cụ"
+   },
+   "collection": "library",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/18569750/"
+  },
+  {
+   "slot": "about-letter",
+   "file": "media/about-letter.webp",
+   "alt": {
+    "vi": "Ba kỹ sư đội mũ bảo hộ xem máy tính bảng trong nhà máy thép"
+   },
+   "collection": "library",
+   "legacy_key": "an-vinh/content/about-doi-ngu-a7b78a0a6ff7.jpg",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/32845690/"
+  },
+  {
+   "slot": "products-header",
+   "file": "media/products-header.webp",
+   "alt": {
+    "vi": "Các chi tiết đồng gia công chính xác, cận cảnh"
+   },
+   "collection": "library",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/28752153/"
+  },
+  {
+   "slot": "projects-header",
+   "file": "media/projects-header.webp",
+   "alt": {
+    "vi": "Cụm robot công nghiệp màu xanh cùng đồ gá trên dây chuyền sản xuất"
+   },
+   "collection": "library",
+   "license": "Unsplash License (https://unsplash.com/license): dùng thương mại, không cần ghi nguồn. Nguồn: https://unsplash.com/photos/blue-industrial-robot-arm-in-factory-sz1CHL7Pky0"
+  },
+  {
+   "slot": "partners-header",
+   "file": "media/partners-header.webp",
+   "alt": {
+    "vi": "Các kỹ sư trao đổi bên cạnh khung máy trong xưởng"
+   },
+   "collection": "library",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/3862129/"
+  },
+  {
+   "slot": "news-header",
+   "file": "media/news-header.webp",
+   "alt": {
+    "vi": "Công nhân kiểm tra các cuộn thép lớn trong nhà xưởng, ánh sáng mạnh"
+   },
+   "collection": "library",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/32845682/"
+  },
+  {
+   "slot": "contact-header",
+   "file": "media/contact-header.webp",
+   "alt": {
+    "vi": "Mặt tiền nhà xưởng ốp thép nhìn từ dưới lên, nền trời"
+   },
+   "collection": "library",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/18709802/"
+  },
+  {
+   "slot": "p-taplo-jig",
+   "file": "media/p-taplo-jig.webp",
+   "alt": {
+    "vi": "Đồ gá lắp ráp với các kẹp vàng giữ chi tiết kim loại"
+   },
+   "collection": "library",
+   "legacy_key": "an-vinh/san-pham/sp-jig-kiem-taplo-vf7-b2897cdd401e.jpg",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/17937669/"
+  },
+  {
+   "slot": "p-fuel-tank-die",
+   "file": "media/p-fuel-tank-die.webp",
+   "alt": {
+    "vi": "Máy ép kim loại cỡ lớn trong xưởng"
+   },
+   "collection": "library",
+   "legacy_key": "an-vinh/san-pham/sp-khuon-dap-binh-xang-e992548adeed.jpg",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/18569745/"
+  },
+  {
+   "slot": "p-robot-straighten",
+   "file": "media/p-robot-straighten.webp",
+   "alt": {
+    "vi": "Cánh tay robot công nghiệp có kẹp gắp trong nhà máy"
+   },
+   "collection": "library",
+   "legacy_key": "an-vinh/san-pham/sp-may-tu-dong-nan-sua-d2e8cabcfba6.jpg",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/16544054/"
+  },
+  {
+   "slot": "p-cnc-shaft",
+   "file": "media/p-cnc-shaft.webp",
+   "alt": {
+    "vi": "Máy tiện đang gia công chi tiết kim loại, có ống làm mát màu xanh"
+   },
+   "collection": "library",
+   "legacy_key": "an-vinh/san-pham/sp-truc-may-cnc-3e982930d535.jpg",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/28752150/"
+  },
+  {
+   "slot": "p-die-cast-mould",
+   "file": "media/p-die-cast-mould.webp",
+   "alt": {
+    "vi": "Kim loại nóng chảy được rót vào khuôn, ánh cam rực"
+   },
+   "collection": "library",
+   "legacy_key": "an-vinh/san-pham/sp-khuon-duc-ap-luc-cao-ed70e2dd620b.jpg",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/7505186/"
+  },
+  {
+   "slot": "p-weld-jig-frame",
+   "file": "media/p-weld-jig-frame.webp",
+   "alt": {
+    "vi": "Hàn các ống thép được kẹp trên tấm đồ gá"
+   },
+   "collection": "library",
+   "legacy_key": "an-vinh/san-pham/sp-jig-han-frame-comp-bcd2a076a0ed.jpg",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/36522037/"
+  },
+  {
+   "slot": "p-electronic-test-jig",
+   "file": "media/p-electronic-test-jig.webp",
+   "alt": {
+    "vi": "Đo kiểm bảng mạch điện tử bằng đầu dò"
+   },
+   "collection": "library",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/10699357/"
+  },
+  {
+   "slot": "p-weld-jig-stand",
+   "file": "media/p-weld-jig-stand.webp",
+   "alt": {
+    "vi": "Thợ hàn làm việc với hồ quang sáng trong xưởng tối"
+   },
+   "collection": "library",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/5846247/"
+  },
+  {
+   "slot": "p-cnc-milled",
+   "file": "media/p-cnc-milled.webp",
+   "alt": {
+    "vi": "Dao phay CNC gia công khối nhôm, phoi kim loại bắn ra"
+   },
+   "collection": "library",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/10406128/"
+  },
+  {
+   "slot": "pr-robot-weld-line",
+   "file": "media/pr-robot-weld-line.webp",
+   "alt": {
+    "vi": "Các cánh tay robot quanh thân xe trên dây chuyền lắp ráp ô tô"
+   },
+   "collection": "library",
+   "legacy_key": "an-vinh/du-an/da-he-thong-jig-han-robot-eedb8ed77afb.jpg",
+   "license": "Unsplash License (https://unsplash.com/license): dùng thương mại, không cần ghi nguồn. Nguồn: https://unsplash.com/photos/car-assembly-line-with-robotic-arms-and-car-body-RWwaf60fw0w"
+  },
+  {
+   "slot": "pr-body-check-fixture",
+   "file": "media/pr-body-check-fixture.webp",
+   "alt": {
+    "vi": "Thước kẹp điện tử đo một thanh thép"
+   },
+   "collection": "library",
+   "legacy_key": "an-vinh/du-an/da-do-ga-kiem-tra-than-vo-xe-420ed0bd4bb3.jpg",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/36003971/"
+  },
+  {
+   "slot": "pr-injection-mould",
+   "file": "media/pr-injection-mould.webp",
+   "alt": {
+    "vi": "Các chi tiết nhựa đen vừa ép trong khuôn"
+   },
+   "collection": "library",
+   "legacy_key": "an-vinh/du-an/da-khuon-mau-san-pham-gia-dung-c9da111cbfb7.jpg",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/7221088/"
+  },
+  {
+   "slot": "pr-electronic-line",
+   "file": "media/pr-electronic-line.webp",
+   "alt": {
+    "vi": "Bảng mạch điện tử trên dây chuyền sản xuất"
+   },
+   "collection": "library",
+   "legacy_key": "an-vinh/du-an/da-day-chuyen-lap-rap-tu-dong-0bec2c6d066c.jpg",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/5554949/"
+  },
+  {
+   "slot": "pr-stamping-die",
+   "file": "media/pr-stamping-die.webp",
+   "alt": {
+    "vi": "Người vận hành đưa tấm kim loại vào bộ khuôn dập"
+   },
+   "collection": "library",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/27084592/"
+  },
+  {
+   "slot": "pr-headlamp-jig",
+   "file": "media/pr-headlamp-jig.webp",
+   "alt": {
+    "vi": "Trạm kiểm tra tự động hóa với xi lanh khí nén và ống dẫn"
+   },
+   "collection": "library",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/18471551/"
+  },
+  {
+   "slot": "pr-auto-feeder",
+   "file": "media/pr-auto-feeder.webp",
+   "alt": {
+    "vi": "Băng tải tự động có robot gắp trong nhà máy"
+   },
+   "collection": "library",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/34222005/"
+  },
+  {
+   "slot": "pr-aero-parts",
+   "file": "media/pr-aero-parts.webp",
+   "alt": {
+    "vi": "Cánh quạt tua-bin, cận cảnh"
+   },
+   "collection": "library",
+   "legacy_key": "an-vinh/du-an/da-gia-cong-chi-tiet-hang-khong-ae396a44dff9.jpg",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/11493642/"
+  },
+  {
+   "slot": "pr-line-improve",
+   "file": "media/pr-line-improve.webp",
+   "alt": {
+    "vi": "Các kỹ sư đứng bên tủ điều khiển công nghiệp"
+   },
+   "collection": "library",
+   "legacy_key": "an-vinh/du-an/da-cai-tien-day-chuyen-san-xuat-0df18b440a22.jpg",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/32845695/"
+  },
+  {
+   "slot": "n-team-building",
+   "file": "media/n-team-building.webp",
+   "alt": {
+    "vi": "Nhân viên mặc áo đồng phục chơi trò chơi tập thể trên sân"
+   },
+   "collection": "library",
+   "legacy_key": "an-vinh/tin-tuc/tt-team-building-2024-d0f883162905.jpg",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/40338267/"
+  },
+  {
+   "slot": "n-automation",
+   "file": "media/n-automation.webp",
+   "alt": {
+    "vi": "Cánh tay robot công nghiệp màu vàng trong khu sản xuất"
+   },
+   "collection": "library",
+   "legacy_key": "an-vinh/tin-tuc/tt-xu-huong-tu-dong-hoa-e435190fc7d2.jpg",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/34207359/"
+  },
+  {
+   "slot": "n-factory-opening",
+   "file": "media/n-factory-opening.webp",
+   "alt": {
+    "vi": "Mặt tiền nhà xưởng công nghiệp dưới trời xanh"
+   },
+   "collection": "library",
+   "legacy_key": "an-vinh/tin-tuc/tt-khanh-thanh-nha-may-3-222228314bc5.jpg",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/17180396/"
+  },
+  {
+   "slot": "n-new-materials",
+   "file": "media/n-new-materials.webp",
+   "alt": {
+    "vi": "Giá đỡ các thanh thép và nhôm trong nhà xưởng"
+   },
+   "collection": "library",
+   "legacy_key": "an-vinh/tin-tuc/tt-vat-lieu-moi-khuon-mau-5bd3cd43bc3c.jpg",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/15508177/"
+  },
+  {
+   "slot": "n-safety-training",
+   "file": "media/n-safety-training.webp",
+   "alt": {
+    "vi": "Nhóm công nhân đội mũ bảo hộ, mặc áo phản quang trong buổi phổ biến"
+   },
+   "collection": "library",
+   "legacy_key": "an-vinh/tin-tuc/tt-dao-tao-an-toan-lao-dong-2932ad3f6de8.jpg",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/10871621/"
+  },
+  {
+   "slot": "n-metal-3d-print",
+   "file": "media/n-metal-3d-print.webp",
+   "alt": {
+    "vi": "Đôi tay đeo găng cầm các chi tiết kim loại in 3D dạng lưới"
+   },
+   "collection": "library",
+   "legacy_key": "an-vinh/tin-tuc/tt-cong-nghe-in-3d-kim-loai-a707a16fb5fb.jpg",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/3861437/"
+  },
+  {
+   "slot": "n-cnc-5axis-training",
+   "file": "media/n-cnc-5axis-training.webp",
+   "alt": {
+    "vi": "Người vận hành đội mũ bảo hộ tại bảng điều khiển trung tâm gia công CNC"
+   },
+   "collection": "library",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/32845668/"
+  },
+  {
+   "slot": "logo",
+   "alt": {
+    "vi": "Logo Cơ Khí Chính Xác An Vinh"
+   },
+   "collection": "library",
+   "legacy_key": "an-vinh/brand/logo-e76d7cb1dfe4.png",
+   "license": "Logo của khách hàng, đã có trong thư viện ảnh."
+  }
+ ]
+}

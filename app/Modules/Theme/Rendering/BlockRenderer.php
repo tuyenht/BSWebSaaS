@@ -5,6 +5,7 @@ namespace App\Modules\Theme\Rendering;
 use App\Modules\Media\Services\MediaLibraryUrls;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SchemaImages;
+use App\Modules\Theme\Components\StyleProps;
 use Illuminate\Contracts\View\Factory as ViewFactory;
 
 /**
@@ -28,6 +29,12 @@ final readonly class BlockRenderer
      */
     private const int CONTENT_IMAGE_WIDTH = 1280;
 
+    /**
+     * The widths a full-width block image (a slide) offers the browser through `srcset`; views that
+     * print one read it from `$srcsets` by the image's URL. Older views ignore it.
+     */
+    public const array SRCSET_WIDTHS = [640, 960, 1280, 1600, 2048];
+
     public function __construct(
         private ViewFactory $views,
         private ComponentRegistry $registry,
@@ -37,6 +44,68 @@ final readonly class BlockRenderer
     public function allows(string $type): bool
     {
         return $this->registry->has($type);
+    }
+
+    /**
+     * The type of the first block that will actually render (registered, well formed), or null —
+     * the layout asks this to know whether a title band leads the page and carries its h1. Pure:
+     * no query.
+     *
+     * @param  array<string, mixed>  $body
+     */
+    public function leadType(array $body): ?string
+    {
+        foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
+            $type = is_array($block) ? ($block['type'] ?? null) : null;
+            if (is_string($type) && $this->registry->has($type)) {
+                return $type;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The distinct types of the blocks that will render, in page order. Pure: no query. The layout
+     * uses it to load a block's script only on the pages that have that block.
+     *
+     * @param  array<string, mixed>  $body
+     * @return list<string>
+     */
+    public function types(array $body): array
+    {
+        $types = [];
+        foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
+            $type = is_array($block) ? ($block['type'] ?? null) : null;
+            if (is_string($type) && $this->registry->has($type) && ! in_array($type, $types, true)) {
+                $types[] = $type;
+            }
+        }
+
+        return $types;
+    }
+
+    /**
+     * Whether a block after the first asks for the scroll-in motion — the layout loads the small
+     * sections script only then. Pure: no query.
+     *
+     * @param  array<string, mixed>  $body
+     */
+    public function moves(array $body): bool
+    {
+        $first = true;
+        foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
+            $type = is_array($block) ? ($block['type'] ?? null) : null;
+            if (! is_string($type) || ! $this->registry->has($type)) {
+                continue;
+            }
+            if (StyleProps::moves(is_array($block['props'] ?? null) ? $block['props'] : [], $first)) {
+                return true;
+            }
+            $first = false;
+        }
+
+        return false;
     }
 
     /**
@@ -60,14 +129,17 @@ final readonly class BlockRenderer
 
             /** @var array<string, mixed> $props */
             $props = is_array($block['props'] ?? null) ? $block['props'] : [];
-            $ids = array_merge($ids, SchemaImages::ids($props, $this->registry->get($type)->schema()));
+            $ids = array_merge($ids, SchemaImages::ids($props, $this->registry->schemaFor($type)));
         }
 
         // One batched lookup for the whole page (site-scoped; unknown ids simply resolve to nothing).
-        $urls = $this->mediaUrls->urlsForIds($ids, self::CONTENT_IMAGE_WIDTH);
+        // The same rows give each URL its srcset (server-built from storage keys, never from props).
+        ['urls' => $urls, 'srcsets' => $srcsets] = $this->mediaUrls->resolve($ids, self::CONTENT_IMAGE_WIDTH, self::SRCSET_WIDTHS);
 
-        // Pass 2 — render each block, swapping each image prop's media_id for its resolved URL.
+        // Pass 2 — render each block, swapping each image prop's media_id for its resolved URL, inside
+        // the look wrapper when the block sets one (StyleProps).
         $html = '';
+        $first = true;
         foreach ($blocks as $block) {
             if (! is_array($block)) {
                 continue;
@@ -82,11 +154,21 @@ final readonly class BlockRenderer
             $props = is_array($block['props'] ?? null) ? $block['props'] : [];
             $component = $this->registry->get($type);
             /** @var array<string, mixed> $resolved */
-            $resolved = SchemaImages::replace($props, $component->schema(), $urls);
+            $resolved = SchemaImages::replace($props, $this->registry->schemaFor($type), $urls);
 
             /** @var view-string $view a theme section view (ComponentRegistry) */
             $view = $component->view();
-            $html .= $this->views->make($view, $component->data($resolved))->render();
+            $section = $this->views->make($view, $component->data($resolved) + ['srcsets' => $srcsets])->render();
+
+            $image = $resolved['bg_image'] ?? null;
+            $wrapper = StyleProps::wrapper($props, $first, is_string($image) ? $image : null);
+            $html .= $wrapper === null ? $section : $this->views->make('theme::partials.sf-section', [
+                'wrapper' => $wrapper,
+                'section' => $section,
+                'srcset' => $wrapper['image'] !== null ? ($srcsets[$wrapper['image']] ?? null) : null,
+                'eager' => $first,
+            ])->render();
+            $first = false;
         }
 
         return $html;

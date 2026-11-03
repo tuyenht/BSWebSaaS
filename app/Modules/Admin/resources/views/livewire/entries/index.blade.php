@@ -120,11 +120,12 @@
 <div class="entries-index flex flex-col gap-3">
 
     {{-- Title row: the name · (?) · the main button on one line (the name wraps, never clipped), then one line on
-         what the list holds. Below 600 the way back is the menu, so the breadcrumb gives its room to the list. --}}
+         what the list holds. Below 600 the way back is the menu, so the breadcrumb gives its room to the list; its link
+         reaches 44px through the shared transparent hit area, drawn as before. --}}
     <header class="flex flex-col gap-1">
         <nav aria-label="{{ __('admin.breadcrumb') }}" class="hidden text-caption text-text-muted min-[600px]:block">
             <div class="flex items-center gap-1.5">
-                <a href="{{ route('admin.dashboard') }}" wire:navigate class="inline-flex items-center gap-1 transition-colors hover:text-primary-text">
+                <a href="{{ route('admin.dashboard') }}" wire:navigate class="hit-area inline-flex items-center gap-1 transition-colors hover:text-primary-text">
                     <x-bs-admin::icon name="home" class="size-3.5" /> {{ __('admin.breadcrumb_home') }}
                 </a>
                 <x-bs-admin::icon name="chevron-right" class="size-3.5 text-placeholder" />
@@ -359,7 +360,7 @@
                                                 <button type="button" x-show="! editing"
                                                     @click="editing = true; cancel = false; $nextTick(() => { $refs.slugInput.focus(); $refs.slugInput.select() })"
                                                     title="{{ $path }} · {{ __('entries.edit_hint') }}"
-                                                    class="hit-area min-h-tap-cell rounded px-1 -mx-1 text-left font-mono text-caption text-text-muted [overflow-wrap:anywhere] transition-colors hover:bg-primary-soft hover:text-primary-text">{{ $path ?? '—' }}</button>
+                                                    class="list-path font-mono text-caption text-text-muted [overflow-wrap:anywhere] transition-colors hover:bg-primary-soft hover:text-primary-text">{{ $path ?? '—' }}</button>
                                                 <span x-show="editing" x-cloak class="inline-flex w-full items-center gap-0.5 font-mono text-caption">
                                                     <span class="whitespace-nowrap text-placeholder">{{ $slugPrefix }}</span>
                                                     <input type="text" x-ref="slugInput" x-model="value" aria-label="{{ __('entries.col_path') }}"
@@ -502,16 +503,20 @@
             </div>
 
             <div class="mt-4 flex flex-wrap items-center justify-between gap-3 min-[600px]:px-4">
-                <span class="text-xs text-body-muted">
+                <span class="text-caption text-text-muted">
                     {{ __('entries.footer_showing', ['first' => $num($pager['from']), 'last' => $num($pager['to']), 'total' => $fmt($pager['total'])]) }}
                 </span>
                 <div class="flex flex-wrap items-center gap-4">
-                    <div class="flex items-center gap-2 text-xs text-body-muted">
-                        {{ __('entries.rows_per_page') }}
-                        <button type="button" wire:click="cyclePerPage" title="{{ __('entries.rows_per_page') }}"
-                            class="inline-flex items-center gap-1.5 rounded border border-border-strong bg-surface px-2.5 py-1 font-medium text-body-text transition-colors hover:bg-surface-hover">
-                            {{ $perPage }} <x-bs-admin::icon name="chevron-down" class="size-3.5 text-body-muted" />
-                        </button>
+                    <div role="group" aria-label="{{ __('entries.rows_per_page_label') }}" class="flex items-center gap-2 text-caption text-text-muted">
+                        <span class="mr-1">{{ __('entries.rows_per_page') }}</span>
+                        {{-- Drawn at the row-control size (36 / 40 / 44px across the text sizes) like the pager
+                             beside it; the shared row hit area makes each 40 / 44px with a mouse, 44px on touch. --}}
+                        @foreach ([10, 20, 50] as $rows)
+                            <button type="button" wire:click="setPerPage({{ $rows }})" aria-pressed="{{ $perPage === $rows ? 'true' : 'false' }}"
+                                @class(['pager-link border', 'border-primary bg-primary-base/8 font-semibold text-primary-text' => $perPage === $rows, 'border-border-strong bg-surface font-medium text-text hover:bg-surface-hover' => $perPage !== $rows])>
+                                {{ $rows }}
+                            </button>
+                        @endforeach
                     </div>
                     @php
                         // an arrow turns to a page number, or, past the numbered pages, to the row the page follows

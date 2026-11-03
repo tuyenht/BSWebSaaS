@@ -20,6 +20,9 @@ final class FakeDns implements DnsLookup
     /** @var array<string, list<string>> */
     public array $txt = [];
 
+    /** How many lookups were made — a screen that only draws must not make any. */
+    public int $lookups = 0;
+
     public static function install(): self
     {
         $dns = new self;
@@ -42,12 +45,16 @@ final class FakeDns implements DnsLookup
     #[\Override]
     public function addresses(string $host): array
     {
+        $this->lookups++;
+
         return $this->addresses[$host] ?? [];
     }
 
     #[\Override]
     public function txt(string $host): array
     {
+        $this->lookups++;
+
         return $this->txt[$host] ?? [];
     }
 }

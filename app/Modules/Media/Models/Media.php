@@ -24,6 +24,8 @@ use Illuminate\Support\Str;
  * @property string $disk
  * @property string $mime
  * @property int $size
+ * @property int|null $width
+ * @property int|null $height
  * @property string|null $original_filename
  * @property int|null $folder_id
  * @property int $position

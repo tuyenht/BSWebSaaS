@@ -1,0 +1,39 @@
+{
+ "slots": [
+  {
+   "slot": "logo",
+   "alt": {
+    "vi": "Logo"
+   },
+   "legacy_key": "s/library/logo-3598ce6f965b.webp"
+  },
+  {
+   "slot": "about",
+   "alt": {
+    "vi": "Xưởng"
+   },
+   "legacy_key": "s/library/about-a4262e1c9bcb.webp"
+  },
+  {
+   "slot": "header",
+   "file": "media/header.png",
+   "alt": {
+    "vi": "Đầu trang"
+   }
+  },
+  {
+   "slot": "product-a",
+   "alt": {
+    "vi": "Máy mẫu A"
+   },
+   "legacy_key": "s/library/product-a-2898b41b903d.webp"
+  },
+  {
+   "slot": "news-1",
+   "file": "media/news-1.png",
+   "alt": {
+    "vi": "Ra mắt"
+   }
+  }
+ ]
+}

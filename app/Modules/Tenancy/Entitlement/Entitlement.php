@@ -13,11 +13,15 @@ use App\Modules\Tenancy\Registry\ModuleCatalog;
 
 /**
  * Defense-in-depth layer #1 (design.md §15.2): what the current site is entitled to,
- * checked BEFORE RBAC + RLS. Stateless / fail-closed — CurrentSite is resolved fresh
- * each call (Octane-safe), and no context means no entitlement.
+ * checked BEFORE RBAC + RLS. Fail-closed — CurrentSite is resolved fresh each call, and no
+ * context means no entitlement. A SCOPED binding: the module keys are remembered per site for one
+ * request/job (the admin nav and the page ask the same question) and flushed with it under Octane.
  */
 final class Entitlement
 {
+    /** @var array<int, list<string>> entitledModuleKeys() per site id, for this request only */
+    private array $moduleKeys = [];
+
     public function moduleEnabled(string $moduleKey): bool
     {
         // SiteModule is BelongsToSite — the query is auto-scoped to the current site
@@ -43,11 +47,17 @@ final class Entitlement
             return [];
         }
 
+        return $this->moduleKeys[$current->id()] ??= $this->resolveModuleKeys($current->id());
+    }
+
+    /** @return list<string> */
+    private function resolveModuleKeys(int $siteId): array
+    {
         // One JOIN for the site_type key — not with('siteType') (which is 2 queries) — so the
         // whole resolution is a flat 2 queries (this + the override pluck) on the admin-nav hot
         // path, staying within the query budget without needing a cache.
         $typeKey = Site::query()
-            ->whereKey($current->id())
+            ->whereKey($siteId)
             ->join('site_types', 'sites.site_type_id', '=', 'site_types.id')
             ->value('site_types.key');
 

@@ -30,6 +30,18 @@ final class ComponentRegistry
     }
 
     /**
+     * A type's full §E7 schema: its own props plus the look props every block shares (StyleProps).
+     * Validation, rendering, the media index and the editor read a block's props through here, so
+     * the look props are checked and resolved like any other prop.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public function schemaFor(string $type): array
+    {
+        return $this->components[$type]->schema() + StyleProps::SCHEMA;
+    }
+
+    /**
      * @return list<string>
      */
     public function types(): array

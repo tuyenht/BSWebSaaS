@@ -1,0 +1,178 @@
+{
+ "items": [
+  {
+   "key": "setting:theme.tokens",
+   "note": "Bộ màu và chữ của An Vinh (cỡ chữ gốc 17px như bản mẫu).",
+   "value": {
+    "primary": "#f59e0b",
+    "ink": "#0f172a",
+    "surface": "#ffffff",
+    "text": "#1f2937",
+    "body": "#4b5563",
+    "page": "#f8fafc",
+    "color-dark-raised": "#1e293b",
+    "color-dark-line": "#334155",
+    "color-on-dark": "#cbd5e1",
+    "color-on-dark-muted": "#94a3b8",
+    "primary-hover": "#d97706",
+    "font": "Inter, system-ui, sans-serif",
+    "text-base": "17px"
+   }
+  },
+  {
+   "key": "setting:storefront.header",
+   "value": {
+    "top_bar": {
+     "items": [
+      {
+       "kind": "address",
+       "text": {
+        "vi": "Trụ sở & Nhà máy: Xã Trung Giã, TP Hà Nội"
+       },
+       "from": "sm"
+      },
+      {
+       "kind": "phone",
+       "text": {
+        "vi": "Hotline: 0915 66 83 83"
+       },
+       "value": "0915668383",
+       "from": "md",
+       "phone_only_below": "sm"
+      },
+      {
+       "kind": "email",
+       "text": {
+        "vi": "Email: quybv@ckanvinh.vn"
+       },
+       "value": "quybv@ckanvinh.vn",
+       "from": "lg"
+      }
+     ]
+    },
+    "text_size": true,
+    "sticky": true
+   }
+  },
+  {
+   "key": "setting:storefront.footer",
+   "note": "Không có map_url (chưa có liên kết bản đồ thật) và không có start_year (bản mẫu ghi 2014, giấy phép 2019, chờ xác nhận).",
+   "value": {
+    "about": {
+     "vi": "An Vinh - Dẫn đầu về giải pháp cơ khí chính xác, chuyên thiết kế, gia công đồ gá, jig, và khuôn mẫu chất lượng cao tại Việt Nam."
+    },
+    "columns_menu_region": "footer",
+    "legal": {
+     "license_issuer": {
+      "vi": "Sở Tài Chính Hà Nội"
+     },
+     "show_contact": true
+    },
+    "factories": [
+     {
+      "title": {
+       "vi": "NHÀ MÁY 1"
+      },
+      "area_m2": 2000,
+      "name": {
+       "vi": "Nhà máy lắp ráp & sản xuất hàn, dập"
+      },
+      "address": {
+       "vi": "Đường 418, thôn Xuân Sơn, xã Trung Giã, TP Hà Nội"
+      }
+     },
+     {
+      "title": {
+       "vi": "NHÀ MÁY 2"
+      },
+      "area_m2": 500,
+      "name": {
+       "vi": "Nhà máy lắp ráp"
+      },
+      "address": {
+       "vi": "Đường QL3, thôn Hương Ninh, xã Trung Giã, TP Hà Nội"
+      }
+     },
+     {
+      "title": {
+       "vi": "NHÀ MÁY 3"
+      },
+      "area_m2": 1800,
+      "name": {
+       "vi": "Nhà máy gia công"
+      },
+      "address": {
+       "vi": "Đội 6, thôn Ngũ Sơn, xã Thạch Thất, TP Hà Nội"
+      }
+     }
+    ],
+    "copyright": {
+     "holder": {
+      "vi": "Cơ khí An Vinh"
+     }
+    },
+    "credit": {
+     "label": {
+      "vi": "Bảo Sơn"
+     },
+     "url": "https://baoson.net"
+    }
+   }
+  },
+  {
+   "key": "setting:general.brand",
+   "managed_keys": [
+    "name",
+    "legal_name",
+    "description",
+    "address",
+    "address_line",
+    "ward",
+    "province",
+    "phone",
+    "email",
+    "license",
+    "logo"
+   ],
+   "value": {
+    "name": "Cơ Khí Chính Xác An Vinh",
+    "legal_name": "CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ THIẾT KẾ GIA CÔNG CƠ KHÍ AN VINH",
+    "description": "An Vinh - Dẫn đầu về giải pháp cơ khí chính xác, chuyên thiết kế, gia công đồ gá, jig, và khuôn mẫu chất lượng cao tại Việt Nam.",
+    "address": "Thôn Xuân Sơn, Xã Trung Giã, TP Hà Nội",
+    "address_line": "Thôn Xuân Sơn",
+    "ward": "Xã Trung Giã",
+    "province": "TP Hà Nội",
+    "phone": "0915 66 83 83",
+    "email": "quybv@ckanvinh.vn",
+    "license": "0108649706",
+    "logo": {
+     "media": "logo"
+    }
+   }
+  },
+  {
+   "key": "profile",
+   "fields": {
+    "legal_name": "CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ THIẾT KẾ GIA CÔNG CƠ KHÍ AN VINH",
+    "brand_name": "Cơ Khí Chính Xác An Vinh",
+    "business_license_no": "0108649706",
+    "phone": "0915 66 83 83",
+    "hotline": "0915 66 83 83",
+    "email": "quybv@ckanvinh.vn",
+    "address_line": "Thôn Xuân Sơn",
+    "ward": "Xã Trung Giã",
+    "province": "TP Hà Nội",
+    "license_issued_at": "2019-03-15",
+    "social_links": {}
+   },
+   "localized": {
+    "brand_name": {
+     "vi": "Cơ Khí Chính Xác An Vinh"
+    },
+    "short_description": {
+     "vi": "An Vinh - Dẫn đầu về giải pháp cơ khí chính xác, chuyên thiết kế, gia công đồ gá, jig, và khuôn mẫu chất lượng cao tại Việt Nam."
+    }
+   }
+  }
+ ]
+}

@@ -180,10 +180,64 @@ it('keeps a phone card to the name, one detail line and one row of status and bu
         ->toMatch("/\\.list-m\\[data-for='au'\\]\\s*\\{\\s*order: 1;/")
         ->toMatch("/\\.list-m\\[data-for='when'\\]\\s*\\{\\s*display: inline;\\s*order: 2;/")
         ->toMatch("/\\.list-m\\[data-for='views'\\]\\s*\\{\\s*order: 3;/")
-        // the quick-edit hit area does not make the title line taller
-        ->toContain('margin-block: calc((var(--list-nlh) - var(--list-qe-s)) / 2)')
         // the button group runs into the card's side padding, as in the design
         ->toContain('margin-inline: auto -0.75rem');
+});
+
+it('shows the quick-edit pencil in the table only, so below 900 no 44px box reaches over the detail line', function (): void {
+    // as in the design: below 900 the name stands alone and the row's ⋮ menu carries the quick edit
+    expect(listCssBand('@container list (width < 56.25rem)', '@container list (37.5rem <= width < 56.25rem)'))
+        ->toMatch('/\\.list-qe\\s*\\{\\s*display: none;\\s*\\}/')
+        ->and(listCssBand('@container list (width < 37.5rem)', '@container list (width < 56.25rem)'))->not->toContain('.list-qe');
+
+    $source = (string) file_get_contents(app_path('Modules/Admin/resources/views/livewire/entries/index.blade.php'));
+    expect($source)->toMatch('/@if \\(\\$quickEdit\\)\\s*<x-bs-admin::list\\.menu-item icon="ri-pencil" x-on:click="\\$dispatch\\(\'list-quick-edit\'\\)">/');
+});
+
+it('keeps the path button inside its meta piece (no negative margin past the line)', function (): void {
+    $source = (string) file_get_contents(app_path('Modules/Admin/resources/views/livewire/entries/index.blade.php'));
+    // up to the first class attribute: the click handler before it holds "=>"
+    preg_match('/<button type="button" x-show="! editing".*?\sclass="([^"]*)"/s', $source, $button);
+
+    expect($button)->not->toBeEmpty()
+        ->and(explode(' ', $button[1]))->toContain('list-path')->not->toContain('hit-area', 'min-h-tap-cell', '-mx-1', 'px-1');
+});
+
+it('draws the name link and the path button at the full target size, the table cutting them to the name-cell size', function (): void {
+    $css = listCss();
+    $table = listCssBand('@container list (width >= 56.25rem)', '@container list (width >= 80rem)');
+
+    // 44 everywhere by default: the visible box itself is the target, so nothing reaches over a neighbour
+    expect($css)->toMatch('/\\.list-rows\\s*\\{[^}]*--list-tap: var\\(--spacing-hit\\);/')
+        ->toMatch('/\\.list-tl\\s*\\{[^}]*min-height: var\\(--list-tap\\);/')
+        ->toMatch('/\\.list-name\\s*\\{[^}]*display: flex;\\s*align-items: center;\\s*min-height: var\\(--list-tap\\);/')
+        ->not->toMatch('/\\.list-name\\s*\\{[^}]*padding-block/')
+        ->toMatch('/\\.list-path\\s*\\{[^}]*min-height: var\\(--list-tap\\);/')
+        // the table takes the name-cell size (24 with a mouse at the default text size, 44 otherwise)
+        ->and($table)->toMatch('/\\.list-r\\s*\\{\\s*--list-tap: var\\(--list-qe-s\\);\\s*\\}/');
+});
+
+it('keeps the card check box inside its row, with no negative margin into the name', function (): void {
+    $card = listCssBand('@container list (width < 37.5rem)', '@container list (37.5rem <= width < 56.25rem)');
+
+    expect($card)->toMatch('/\\.list-c-chk\\s*\\{[^}]*margin: 0 0 0 calc\\(\\(1\\.125rem - var\\(--spacing-hit\\)\\) \\/ 2\\);/')
+        ->not->toContain('-0.5rem');
+});
+
+it('gives the chips line below 900 the height of their hit area', function (): void {
+    expect(listCssBand('@container list (width < 56.25rem)', '@container list (37.5rem <= width < 56.25rem)'))
+        ->toMatch("/\\.list-m\\[data-for='langs'\\]\\s*\\{\\s*--list-lc-up: var\\(--list-qe-s\\);/")
+        ->toMatch('/\\.list-lcg\\s*\\{\\s*min-height: var\\(--list-qe-s\\);/');
+});
+
+it('draws the rows-per-page buttons as the shared pager link, with the row hit area', function (): void {
+    $source = (string) file_get_contents(app_path('Modules/Admin/resources/views/livewire/entries/index.blade.php'));
+    preg_match('/<button type="button" wire:click="setPerPage\([^>]*@class\(\[\'([^\']*)\'/', $source, $button);
+
+    expect($button)->not->toBeEmpty()
+        ->and(explode(' ', $button[1]))->toContain('pager-link')
+        ->and($source)->not->toContain('cyclePerPage')
+        ->and($source)->not->toContain('text-xs text-body-muted');
 });
 
 it('drops the select-all bar from 900, where the header box selects the page', function (): void {

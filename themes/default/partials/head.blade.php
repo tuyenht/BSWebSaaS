@@ -1,13 +1,25 @@
 {{--
     Shared storefront <head>: SSR SEO baseline — canonical, Open Graph, optional BreadcrumbList
-    JSON-LD, hreflang alternates, design-token CSS variables, storefront stylesheet. Included
-    inside each layout's <head>; inherits layout view data. Adds no DB queries.
+    JSON-LD, hreflang alternates, design-token CSS variables, font preload, storefront stylesheet
+    and the optional header scripts. Included inside each layout's <head>; inherits layout view
+    data. Adds no DB queries.
+    Inter's one Latin + Vietnamese file is preloaded only when the site's font is Inter (the
+    Latin-extended subset loads on demand for other scripts; a site on another font downloads no font). The
+    visitor's text size is applied before the first paint by a tiny inline script that the
+    storefront CSP allows by its hash (no request, nothing else inline runs). The header script (submenus, menu panel, text size)
+    loads only where there is something for it to do, the slider script only on a page with a
+    slider to rotate (plus a preconnect to the media host when the slider leads the page), and a
+    robots line only where a page asks for one. These lines sit in column 0 so a site
+    without them renders the same bytes as before.
 --}}
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ $seoTitle }}</title>
 {{-- Tenant favicon from the brand setting; the platform file is only the no-brand fallback. --}}
 <link rel="icon" href="{{ data_get($brand ?? null, 'favicon') ?: '/favicon.ico' }}" sizes="any">
+@if (! empty($robots))
+<meta name="robots" content="{{ $robots }}">
+@endif
 @php
     // Brand description fallback: category-list and other pages without a per-page description
     // (seoDescription = null/empty) fall back to the tenant's brand short description so the
@@ -138,5 +150,23 @@
 {{-- Per-site design tokens over the shared template (values are sanitized server-side). --}}
 <style>:root{@foreach (($tokens ?? []) as $name => $value)--{{ $name }}:{{ $value }};@endforeach}</style>
 
+@if (str_starts_with((string) ($tokens['font'] ?? ''), 'Inter'))
+<link rel="preload" href="/fonts/inter-latin-vi.woff2" as="font" type="font/woff2" crossorigin>
+@endif
+@if (! empty($mediaOrigin))
+<link rel="preconnect" href="{{ $mediaOrigin }}">
+@endif
+@if (! empty($header['text_size']))
+<script>{!! \App\Modules\Theme\Chrome\StorefrontChrome::TEXT_SIZE_BOOT !!}</script>
+@endif
 {{-- Storefront stylesheet (Vite-managed; faked in tests via withoutVite()). --}}
 @vite(['resources/css/storefront.css'])
+@if (! empty($header) || \App\Modules\Theme\Chrome\StorefrontChrome::hasSubmenus($menu ?? []))
+@vite(['resources/js/storefront.js'])
+@endif
+@if (! empty($sliderScript))
+@vite(['resources/js/sf-slider.js'])
+@endif
+@if (! empty($sectionsScript))
+@vite(['resources/js/sections.js'])
+@endif

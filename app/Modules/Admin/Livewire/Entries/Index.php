@@ -324,12 +324,14 @@ final class Index extends Component
         $this->restart();
     }
 
-    /** Footer "Dòng/trang" control — cycles 10 → 20 → 50 → 10, then returns to page 1. */
-    public function cyclePerPage(): void
+    /** Footer "Dòng/trang" group — one of 10 / 20 / 50, then back to page 1. Anything else is ignored. */
+    public function setPerPage(int $rows): void
     {
-        $options = [10, 20, 50];
-        $index = array_search($this->perPage, $options, true);
-        $this->perPage = $options[$index === false ? 0 : ($index + 1) % count($options)];
+        if (! in_array($rows, [10, 20, 50], true)) {
+            return;
+        }
+
+        $this->perPage = $rows;
         $this->restart();
     }
 

@@ -3,7 +3,11 @@
     $brand (SiteIdentity: the page's language), labels from the storefront translations, colors
     from the site's tokens (storefront.css) — nothing here names a tenant, a year or a language.
     Sections are conditional so tenants without NAP data get a minimal but valid footer.
+    A site with the `storefront.footer` setting gets the rich footer instead ($footer, normalized).
 --}}
+@if (! empty($footer))
+@include('theme::partials.footer-rich')
+@else
 <footer class="site-footer" role="contentinfo">
     <div class="site-footer__inner">
         <div>
@@ -55,3 +59,4 @@
         @endif
     </div>
 </footer>
+@endif

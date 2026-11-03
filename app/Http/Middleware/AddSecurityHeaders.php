@@ -7,6 +7,7 @@ namespace App\Http\Middleware;
 use App\Modules\Tenancy\Context\ResolvedHost;
 use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Domains\DomainName;
+use App\Modules\Theme\Chrome\StorefrontChrome;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -111,6 +112,8 @@ final readonly class AddSecurityHeaders
      *                                    no external stylesheet dependencies
      *   script-src   'self' + CF       – /build/* Vite assets + the Cloudflare Turnstile
      *                                    api.js (lead-form anti-spam, §23/R20)
+     *                sha256 hash       – the one inline script: the text-size boot
+     *                                    (StorefrontChrome::TEXT_SIZE_BOOT), no 'unsafe-inline'
      *   frame-src    google.com + CF   – Google Maps embed on /lien-he + the Turnstile
      *                                    challenge iframe (challenges.cloudflare.com)
      *   font-src     'self'            – self-hosted web fonts
@@ -123,7 +126,7 @@ final readonly class AddSecurityHeaders
             "default-src 'self'",
             trim("img-src 'self' ".implode(' ', $this->mediaOrigins()).' data:'),
             "style-src 'self' 'unsafe-inline'",
-            "script-src 'self' https://challenges.cloudflare.com",
+            "script-src 'self' ".StorefrontChrome::textSizeBootHash().' https://challenges.cloudflare.com',
             'frame-src https://www.google.com https://challenges.cloudflare.com',
             "font-src 'self'",
             "base-uri 'self'",

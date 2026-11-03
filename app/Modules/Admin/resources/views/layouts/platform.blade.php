@@ -163,7 +163,8 @@
                     <x-bs-admin::icon name="menu" class="hidden size-6 lg:block" />
                 </button>
             @endif
-            <a href="{{ route('platform.dashboard') }}" wire:navigate @class(['flex shrink-0 items-center', 'lg:hidden' => $hasNav])>
+            {{-- The 28px mark gets a 44px hit area through a transparent extension; the bar keeps its layout. --}}
+            <a href="{{ route('platform.dashboard') }}" wire:navigate @class(['hit-area flex shrink-0 items-center', 'lg:hidden' => $hasNav])>
                 {{-- Brand mark stays literal brand: an identity mark, fixed across every scheme. --}}
                 <x-bs-admin::brand-logo context="topbar" />
             </a>
@@ -179,11 +180,13 @@
             {{ $slot }}
         </main>
 
-        <footer class="border-t border-border px-4 py-4 text-xs text-footer-fg">
+        {{-- Caption-size text that follows the reader's text size; the link has a 44px hit area through
+             a transparent extension, in one box. --}}
+        <footer class="border-t border-border px-4 py-4 text-caption text-footer-fg">
             <div class="flex flex-col items-center gap-1 sm:flex-row sm:justify-between">
                 <span>&copy; {{ now()->year }}
                     <a href="{{ config('admin.brand.company_url') }}" target="_blank" rel="noopener noreferrer"
-                       class="font-medium text-text-muted transition-colors hover:text-primary-text hover:underline">{{ config('admin.brand.company') }}</a>.
+                       class="hit-area inline-block font-medium text-text-muted transition-colors hover:text-primary-text hover:underline">{{ config('admin.brand.company') }}</a>.
                 </span>
                 <span class="hidden sm:inline">{{ __('auth.rights') }}</span>
             </div>

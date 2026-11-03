@@ -9,6 +9,7 @@ use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Chrome\StorefrontChrome;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -158,4 +159,49 @@ it('uses the tenant brand favicon when set, and the platform file only as fallba
     $html = $this->get('http://anvinh.platform.test/')->assertOk()->getContent();
     expect($html)->toContain('<link rel="icon" href="https://files.example.test/an-vinh/brand/logo-64.png"');
     expect($html)->not->toContain('<link rel="icon" href="/favicon.ico"');
+});
+
+it('preloads the one Inter Latin and Vietnamese file only for a site whose font is Inter', function (): void {
+    seoProvision();
+    $site = Site::query()->firstWhere('name', 'An Vinh');
+    $preload = '<link rel="preload" href="/fonts/inter-latin-vi.woff2" as="font" type="font/woff2" crossorigin>';
+
+    expect($this->get('http://anvinh.platform.test/')->assertOk()->getContent())->not->toContain('rel="preload"');
+
+    app(Tenancy::class)->enter($site->id, fn () => SiteSetting::query()->create(
+        ['group_name' => 'theme', 'key' => 'tokens', 'value' => ['font' => 'Inter, Inter-Fallback, system-ui, sans-serif']],
+    ));
+
+    $html = $this->get('http://anvinh.platform.test/')->assertOk()->getContent();
+    expect($html)->toContain($preload)
+        ->and(substr_count($html, 'as="font"'))->toBe(1);
+});
+
+it('inlines the text-size script only when the header offers the button, and every inline script is allowed by its CSP hash', function (): void {
+    seoProvision();
+    $site = Site::query()->firstWhere('name', 'An Vinh');
+    $setHeader = fn (array $header) => app(Tenancy::class)->enter($site->id, fn () => SiteSetting::query()->updateOrCreate(
+        ['group_name' => 'storefront', 'key' => 'header'], ['value' => $header],
+    ));
+
+    $setHeader(['text_size' => false]);
+    $without = $this->get('http://anvinh.platform.test/')->assertOk();
+    $setHeader(['text_size' => true]);
+    $with = $this->get('http://anvinh.platform.test/')->assertOk();
+
+    expect($without->getContent())->not->toContain(StorefrontChrome::TEXT_SIZE_BOOT)
+        ->and($with->getContent())->toMatch('#<head>.*<script>'.preg_quote(StorefrontChrome::TEXT_SIZE_BOOT, '#').'</script>.*</head>#s');
+
+    // Every <script> loads a file, is JSON-LD, or is inline text whose sha256 the page's CSP lists
+    // (an edit to the boot script that forgets the hash fails here, not silently in browsers).
+    $inlineCount = [];
+    foreach (['without' => $without, 'with' => $with] as $case => $response) {
+        $csp = (string) $response->headers->get('Content-Security-Policy');
+        preg_match_all('/<script(?![^>]*\ssrc=)(?![^>]*\stype="application\/ld\+json")[^>]*>(.*?)<\/script>/s', (string) $response->getContent(), $inline);
+        foreach ($inline[1] as $code) {
+            expect($csp)->toContain("'sha256-".base64_encode(hash('sha256', $code, true))."'");
+        }
+        $inlineCount[$case] = count($inline[1]);
+    }
+    expect($inlineCount)->toBe(['without' => 0, 'with' => 1]);
 });

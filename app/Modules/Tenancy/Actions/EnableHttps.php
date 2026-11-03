@@ -82,10 +82,21 @@ final readonly class EnableHttps
         return $requested;
     }
 
+    /** The certificate was asked for this name moments ago: the next try must wait (a cache read, no query). */
+    public static function mustWait(string $host): bool
+    {
+        return RateLimiter::tooManyAttempts(self::limiterKey($host), 1);
+    }
+
+    private static function limiterKey(string $host): string
+    {
+        return 'domain-https:'.$host;
+    }
+
     /** Ask for the certificate, unless it was asked for moments ago. */
     private function request(int $siteId, Domain $domain): bool
     {
-        if (! RateLimiter::attempt('domain-https:'.$domain->hostname, 1, fn (): bool => true, self::RETRY_AFTER_SECONDS)) {
+        if (! RateLimiter::attempt(self::limiterKey($domain->hostname), 1, fn (): bool => true, self::RETRY_AFTER_SECONDS)) {
             return false;
         }
 

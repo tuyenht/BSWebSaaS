@@ -119,11 +119,11 @@ it('gives the list title field 44 on touch', function (): void {
         ->and($rule['touch'])->toContain('min-height: var(--spacing-hit);');
 });
 
-it('draws a pager link at the row-control size with a 44 touch hit area', function (): void {
+it('draws a pager link at the row-control size with the 40 / 44 row hit area', function (): void {
     $css = (string) file_get_contents(resource_path('css/app.css'));
 
     expect(preg_match('/@utility pager-link \{(.*?)\n\}/s', $css, $m))->toBe(1)
-        ->and($m[1])->toContain('min-width: var(--spacing-control-row);', 'min-height: var(--spacing-control-row);', 'padding-inline: 0.5rem;', '@apply any-pointer-coarse:hit-area;')
+        ->and($m[1])->toContain('min-width: var(--spacing-control-row);', 'min-height: var(--spacing-control-row);', 'padding-inline: 0.5rem;', '@apply hit-area-row;')
         ->and($m[1])->not->toContain('--spacing-hit', '--spacing-control);');
 });
 

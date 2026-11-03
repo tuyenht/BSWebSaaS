@@ -12,6 +12,7 @@ use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Domains\CaddyOnDemandProvisioner;
 use App\Modules\Tenancy\Domains\DnsLookup;
 use App\Modules\Tenancy\Domains\SystemDnsLookup;
+use App\Modules\Tenancy\Entitlement\Entitlement;
 use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -38,6 +39,10 @@ final class TenancyServiceProvider extends ServiceProvider
         // SiteTime memoizes the per-site display timezone; scoped so the memo never leaks a
         // stale zone across requests.
         $this->app->scoped(SiteTime::class);
+
+        // Entitlement memoizes a site's module keys for the request (the admin nav and the page
+        // both ask); scoped so the memo never outlives the request or the job.
+        $this->app->scoped(Entitlement::class);
 
         // Public DNS, behind an interface so tests answer without the network.
         $this->app->bind(DnsLookup::class, SystemDnsLookup::class);

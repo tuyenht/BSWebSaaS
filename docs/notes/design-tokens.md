@@ -64,7 +64,8 @@ Luật:
 | `--color-border` · `--color-border-strong` · `--color-border-soft` | Vạch chia (trang trí) | miễn |
 | `--color-border-input` | Viền ô nhập, nút viền | ≥ 3:1 |
 | `--color-primary` | Nền màu thương hiệu (nút chính, huy hiệu) | `on-primary` trên nó ≥ 4,5:1 |
-| `--color-on-primary` | Chữ / biểu tượng trên `primary` | PHP chọn trắng hay `--color-dark`, cái nào đọc được. Website khách màu sáng (vàng hổ phách của An Vinh) thì là chữ tối. |
+| `--color-on-primary` | Chữ / biểu tượng trên `primary` | PHP chọn trắng hay `--color-dark`, cái nào đọc được. Website khách màu sáng (vàng hổ phách của An Vinh) thì là chữ tối. Màu thương hiệu tông giữa (cả hai dưới 4,5:1) thì chữ tối được đậm thêm; nền thương hiệu không bị đổi. |
+| `--color-primary-hover` (website khách) | Nền nút thương hiệu khi trỏ chuột | PHP dời nền ra xa màu chữ (chữ tối → nền sáng lên, chữ trắng → nền tối đi), nên chữ vẫn ≥ 4,5:1. Mỗi bộ màu có `--sch-{bộ}-pri-hover` riêng. |
 | `--color-primary-text` | Màu thương hiệu làm CHỮ, viền, liên kết | ≥ 4,5:1, có giá trị riêng cho chế độ tối |
 | `--color-primary-soft` | Nền nhạt màu thương hiệu (mục đang chọn) | `primary-text` trên nó ≥ 4,5:1 |
 | `--color-focus` | Vòng focus (Focus 1b) | ≥ 3:1 |
@@ -204,7 +205,7 @@ Cách khai báo:
 | `--fsp` (thiết kế, 3.362 chỗ) | `--user-text-boost`; mỗi `calc(Npx + var(--fsp))` thành `var(--text-…)` theo §2.4 và §3. Từ 27/10/2026 canvas thiết kế đã dùng `--user-text-boost` và rem (gốc 100 %), nên `calc(0.875rem + var(--user-text-boost))` → `text-body` là đổi thẳng. Canvas đăng ký `@property --user-text-boost` (kiểu `<length>`) để script đọc ra px; script nào của mã thật đọc biến này cũng cần dòng đăng ký đó trong admin-chrome.css |
 | `--spacing-sidebar` · `--spacing-sidebar-collapsed` · `--spacing-header` · `--topbar-h` · `--vz-boxed-width` | `--sidebar-width` · `--sidebar-width-collapsed` · `--topbar-height` · `--topbar-height` · `--container-boxed` |
 | `data-bs-theme` · `data-scheme` | `data-theme` |
-| Tên của ADR-04 (`--space-*`, `--radius-soft/round`, `--shadow-soft/medium`, `--gradient-*`, `--motion-*`, `--color-surface-tint`, `--color-dark`, `--color-on-dark`, `--font-heading/body`) | Giữ nguyên |
+| Tên của ADR-04 (`--space-*`, `--radius-soft/round`, `--shadow-soft/medium`, `--gradient-*`, `--motion-*`, `--color-surface-tint`, `--color-dark`, `--color-on-dark`, `--font-heading/body`) | Giữ nguyên. Website khách dùng `--color-surface-tint` từ 02/11 (nền `bg=tint` của khối và thẻ biểu tượng): đặt theo site trong token `color-surface-tint`; site không đặt thì `color-mix(in srgb, var(--color-surface) 94%, var(--color-dark))` |
 
 Biến làm việc cục bộ trong một thành phần (`--c`, `--bs-fr`, `--focus-inner`, `--sticky-top`…) không phải token. Đổi tên khi chuyển thành phần đó, không cần bí danh.
 
@@ -233,3 +234,4 @@ Chuẩn thiết kế của owner (06–07/10) chặt hơn vài chỗ đã chốt
   - hiệu ứng xuất hiện 0,5 giây (chuẩn cho 150–250ms).
   
   Đề xuất: giữ hệ số mật độ nhưng làm tròn kết quả về bội số 4; hiệu ứng xuất hiện tối đa 250ms và tắt khi máy đặt giảm chuyển động.
+  **AI quyết thay owner 03/11/2026** (quy tắc 31/10, owner lật được; `plans/cho-ky.md` mục Đã quyết thay): đúng như đề xuất. `ThemeResolver` sinh `--space-s/m/l/xl` đã làm tròn về bội số 4px và `--motion-duration: 250ms`.

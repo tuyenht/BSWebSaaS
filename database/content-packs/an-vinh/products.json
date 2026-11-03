@@ -1,0 +1,218 @@
+{
+ "items": [
+  {
+   "key": "product:jig-kiem-tap-lo-vf7",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:product_cat/san-pham/do-ga"
+   ],
+   "images": [
+    {
+     "media": "p-taplo-jig"
+    }
+   ],
+   "name": {
+    "vi": "Jig kiểm cụm Taplo cho xe VF7"
+   },
+   "summary": {
+    "vi": "Đồ gá kiểm tra và lắp ráp cụm taplo cho dòng xe VinFast VF7, đảm bảo độ chính xác và ổn định trong quá trình sản xuất hàng loạt."
+   },
+   "description": {
+    "vi": "<p>Đồ gá kiểm tra và lắp ráp cụm taplo cho dòng xe VinFast VF7, đảm bảo độ chính xác và ổn định trong quá trình sản xuất hàng loạt.</p><p><strong>Thông số kỹ thuật</strong></p><table><tbody><tr><th>Vật liệu</th><td>Thép SKD11, Nhôm A6061</td></tr><tr><th>Độ chính xác</th><td>±0.05mm</td></tr><tr><th>Ứng dụng</th><td>Kiểm tra, lắp ráp ô tô</td></tr></tbody></table>"
+   },
+   "seo_description": {
+    "vi": "Đồ gá kiểm tra và lắp ráp cụm taplo cho dòng xe VinFast VF7, đảm bảo độ chính xác và ổn định trong quá trình sản xuất hàng loạt."
+   }
+  },
+  {
+   "key": "product:may-tu-dong-nan-sua-san-pham",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:product_cat/san-pham/do-ga"
+   ],
+   "images": [
+    {
+     "media": "p-robot-straighten"
+    }
+   ],
+   "name": {
+    "vi": "Máy tự động nắn sửa sản phẩm"
+   },
+   "summary": {
+    "vi": "Hệ thống tự động sử dụng robot để nắn sửa các chi tiết kim loại sau quá trình dập, tăng năng suất và giảm thiểu sai sót do con người."
+   },
+   "description": {
+    "vi": "<p>Hệ thống tự động sử dụng robot để nắn sửa các chi tiết kim loại sau quá trình dập, tăng năng suất và giảm thiểu sai sót do con người.</p><p><strong>Thông số kỹ thuật</strong></p><table><tbody><tr><th>Robot sử dụng</th><td>Fanuc / Yaskawa</td></tr><tr><th>Chu kỳ</th><td>15 giây/sản phẩm</td></tr><tr><th>Nguồn điện</th><td>380V / 3 pha</td></tr></tbody></table>"
+   },
+   "seo_description": {
+    "vi": "Hệ thống tự động sử dụng robot để nắn sửa các chi tiết kim loại sau quá trình dập, tăng năng suất và giảm thiểu sai sót do con người."
+   }
+  },
+  {
+   "key": "product:jig-han-frame-comp",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:product_cat/san-pham/do-ga"
+   ],
+   "images": [
+    {
+     "media": "p-weld-jig-frame"
+    }
+   ],
+   "name": {
+    "vi": "Jig hàn Frame Comp"
+   },
+   "summary": {
+    "vi": "Đồ gá chuyên dụng cho việc hàn khung xe, định vị chính xác các chi tiết, đảm bảo mối hàn chắc chắn và đúng vị trí kỹ thuật."
+   },
+   "description": {
+    "vi": "<p>Đồ gá chuyên dụng cho việc hàn khung xe, định vị chính xác các chi tiết, đảm bảo mối hàn chắc chắn và đúng vị trí kỹ thuật.</p><p><strong>Thông số kỹ thuật</strong></p><table><tbody><tr><th>Loại kẹp</th><td>Kẹp khí nén</td></tr><tr><th>Vật liệu chính</th><td>Thép SS400</td></tr><tr><th>Số điểm định vị</th><td>24</td></tr></tbody></table>"
+   },
+   "seo_description": {
+    "vi": "Đồ gá chuyên dụng cho việc hàn khung xe, định vị chính xác các chi tiết, đảm bảo mối hàn chắc chắn và đúng vị trí kỹ thuật."
+   }
+  },
+  {
+   "key": "product:khuon-dap-binh-xang",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:product_cat/san-pham/khuon-mau"
+   ],
+   "images": [
+    {
+     "media": "p-fuel-tank-die"
+    }
+   ],
+   "name": {
+    "vi": "Khuôn dập bình xăng"
+   },
+   "summary": {
+    "vi": "Khuôn dập liên hoàn cho sản phẩm bình xăng xe máy, sử dụng vật liệu thép chất lượng cao cho tuổi thọ và độ bền vượt trội."
+   },
+   "description": {
+    "vi": "<p>Khuôn dập liên hoàn cho sản phẩm bình xăng xe máy, sử dụng vật liệu thép chất lượng cao cho tuổi thọ và độ bền vượt trội.</p><p><strong>Thông số kỹ thuật</strong></p><table><tbody><tr><th>Loại khuôn</th><td>Khuôn dập liên hoàn</td></tr><tr><th>Vật liệu</th><td>DC53, SKD11</td></tr><tr><th>Lực dập</th><td>200 tấn</td></tr></tbody></table>"
+   },
+   "seo_description": {
+    "vi": "Khuôn dập liên hoàn cho sản phẩm bình xăng xe máy, sử dụng vật liệu thép chất lượng cao cho tuổi thọ và độ bền vượt trội."
+   }
+  },
+  {
+   "key": "product:khuon-duc-ap-luc-cao",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:product_cat/san-pham/khuon-mau"
+   ],
+   "images": [
+    {
+     "media": "p-die-cast-mould"
+    }
+   ],
+   "name": {
+    "vi": "Khuôn đúc áp lực cao"
+   },
+   "summary": {
+    "vi": "Khuôn đúc nhôm áp lực cao, thiết kế tối ưu dòng chảy kim loại, đảm bảo sản phẩm có độ đặc và bề mặt hoàn hảo."
+   },
+   "description": {
+    "vi": "<p>Khuôn đúc nhôm áp lực cao, thiết kế tối ưu dòng chảy kim loại, đảm bảo sản phẩm có độ đặc và bề mặt hoàn hảo.</p><p><strong>Thông số kỹ thuật</strong></p><table><tbody><tr><th>Vật liệu</th><td>SKD61, DAC</td></tr><tr><th>Số lần đúc</th><td>&gt; 100,000 shots</td></tr><tr><th>Máy đúc</th><td>500-800 tấn</td></tr></tbody></table>"
+   },
+   "seo_description": {
+    "vi": "Khuôn đúc nhôm áp lực cao, thiết kế tối ưu dòng chảy kim loại, đảm bảo sản phẩm có độ đặc và bề mặt hoàn hảo."
+   }
+  },
+  {
+   "key": "product:truc-may-cnc",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:product_cat/san-pham/chi-tiet-may"
+   ],
+   "images": [
+    {
+     "media": "p-cnc-shaft"
+    }
+   ],
+   "name": {
+    "vi": "Trục máy CNC"
+   },
+   "summary": {
+    "vi": "Gia công các loại trục, vít me cho máy CNC với độ chính xác cao, vật liệu được nhiệt luyện để tăng độ cứng và chống mài mòn."
+   },
+   "description": {
+    "vi": "<p>Gia công các loại trục, vít me cho máy CNC với độ chính xác cao, vật liệu được nhiệt luyện để tăng độ cứng và chống mài mòn.</p><p><strong>Thông số kỹ thuật</strong></p><table><tbody><tr><th>Vật liệu</th><td>Thép S45C, SCM440</td></tr><tr><th>Độ cứng</th><td>58-62 HRC</td></tr><tr><th>Dung sai</th><td>±0.005mm</td></tr></tbody></table>"
+   },
+   "seo_description": {
+    "vi": "Gia công các loại trục, vít me cho máy CNC với độ chính xác cao, vật liệu được nhiệt luyện để tăng độ cứng và chống mài mòn."
+   }
+  },
+  {
+   "key": "product:jig-kiem-tra-dien-tu",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:product_cat/san-pham/do-ga"
+   ],
+   "images": [
+    {
+     "media": "p-electronic-test-jig"
+    }
+   ],
+   "name": {
+    "vi": "Jig kiểm tra điện tử"
+   }
+  },
+  {
+   "key": "product:khuon-dap-kim-loai",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:product_cat/san-pham/khuon-mau"
+   ],
+   "images": [
+    {
+     "media": "pr-stamping-die"
+    }
+   ],
+   "name": {
+    "vi": "Khuôn dập kim loại"
+   }
+  },
+  {
+   "key": "product:jig-han-stand-main",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:product_cat/san-pham/do-ga"
+   ],
+   "images": [
+    {
+     "media": "p-weld-jig-stand"
+    }
+   ],
+   "name": {
+    "vi": "Jig hàn stand main"
+   }
+  },
+  {
+   "key": "product:chi-tiet-phay-cnc",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:product_cat/san-pham/chi-tiet-may"
+   ],
+   "images": [
+    {
+     "media": "p-cnc-milled"
+    }
+   ],
+   "name": {
+    "vi": "Chi tiết phay CNC"
+   }
+  }
+ ]
+}

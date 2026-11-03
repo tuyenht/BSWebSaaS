@@ -204,10 +204,11 @@ jobs:
       - name: Translations (same keys in every language)
         run: php artisan lang:check
 
-      # One process runs every suite, and its memory grows with the test count (the run died at
-      # 256M near 1190 tests). The limit is raised for this step only; composer qa matches it.
+      # One process runs every suite, and its memory grows with the test count and the code the
+      # arch rules parse (it died at 256M near 1190 tests, and peaked at 530M near 2880). The limit
+      # is raised for this step only; composer qa matches it.
       - name: Pest (unit · feature · arch · query-budget)
-        run: php -d memory_limit=512M vendor/bin/pest
+        run: php -d memory_limit=768M vendor/bin/pest
 
   frontend:
     name: Frontend build (Vite + Tailwind)
@@ -241,6 +242,10 @@ jobs:
       # fails if any checked text/border/focus pair drops below its threshold. Pure Node, no deps.
       - name: Contrast tokens (WCAG AA)
         run: node scripts/contrast-check.mjs
+
+      # The storefront slider's behaviour (rotation, pause, keys, reduced motion) in jsdom.
+      - name: Storefront slider behaviour
+        run: node scripts/storefront/slider-check.mjs
 
       # New lines in resources/ and module Blade must use the standard token names
       # (docs/notes/design-tokens.md §7); lines already on main are left to move over as touched.
@@ -358,6 +363,17 @@ jobs:
             --owner-email="cwv-ci@example.test" \
             --no-interaction
 
+      # The richer storefront looks on real pages: /do-kiem (slider, card grids, contact cards)
+      # and /ban-tin, a news card grid with child-category chips. The photos are the licensed
+      # fixtures in tests/Fixtures/cwv, served from this origin by the static media driver (the
+      # serving steps below set MEDIA_DRIVER/MEDIA_CF_BASE; a media host equal to the site's host
+      # would make provisioning refuse the name, so it is not set job-wide).
+      - name: Seed the measurement pages
+        run: |
+          php artisan site:seed-measurement --host="${CWV_HOST}"
+          mkdir -p public/cwv-media/cwv/library
+          cp tests/Fixtures/cwv/*.webp public/cwv-media/cwv/library/
+
       # Chrome (via Lighthouse/axe) resolves this by real hostname, same as production —
       # no Host-header spoofing needed, and the multi-tenant domain resolver sees a real domain.
       - name: Map the CI hostname to localhost
@@ -375,11 +391,15 @@ jobs:
           chrome-version: stable
           install-chromedriver: true
 
-      # Self-contained: lhci boots `php artisan serve`, waits for it, runs Lighthouse 3x,
+      # Self-contained: lhci boots PHP's built-in server behind scripts/cwv-serve.php (gzip, as
+      # production's Caddy compresses), waits for it, runs Lighthouse 3x,
       # asserts against .lighthouserc.cjs, then stops the server. LCP ≤ 1.5s and JS ≤ 30KB
       # FAIL the job (calibrated 24/09 on 18 real samples — see that file); the overall
       # performance score only warns.
       - name: Lighthouse CI (performance + LCP + JS budget)
+        env:
+          MEDIA_DRIVER: static
+          MEDIA_CF_BASE: http://${{ env.CWV_HOST }}:${{ env.CWV_PORT }}/cwv-media
         run: pnpm exec lhci autorun --collect.chromePath="${{ steps.chrome.outputs.chrome-path }}"
 
       # The numbers the "warn" thresholds must be calibrated against, printed where they cannot
@@ -447,6 +467,9 @@ jobs:
           retention-days: 7
 
       - name: Boot a server for the axe pass
+        env:
+          MEDIA_DRIVER: static
+          MEDIA_CF_BASE: http://${{ env.CWV_HOST }}:${{ env.CWV_PORT }}/cwv-media
         run: |
           php artisan serve --host=0.0.0.0 --port="${CWV_PORT}" &
           for i in $(seq 1 15); do
@@ -460,7 +483,7 @@ jobs:
       # fixed de81d6b), clean on every run since. A WCAG2A/AA violation fails the job (--exit).
       - name: axe accessibility scan
         run: >-
-          pnpm exec axe "http://${CWV_HOST}:${CWV_PORT}/" "http://${CWV_HOST}:${CWV_PORT}/lien-he" "http://${CWV_HOST}:${CWV_PORT}/tin-tuc"
+          pnpm exec axe "http://${CWV_HOST}:${CWV_PORT}/" "http://${CWV_HOST}:${CWV_PORT}/lien-he" "http://${CWV_HOST}:${CWV_PORT}/tin-tuc" "http://${CWV_HOST}:${CWV_PORT}/do-kiem" "http://${CWV_HOST}:${CWV_PORT}/ban-tin"
           --tags wcag2a,wcag2aa
           --chrome-path="${{ steps.chrome.outputs.chrome-path }}"
           --chromedriver-path="${{ steps.chrome.outputs.chromedriver-path }}"

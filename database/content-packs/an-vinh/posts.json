@@ -1,0 +1,688 @@
+{
+ "items": [
+  {
+   "key": "post:thiet-ke-jig-do-ga",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:post_cat/nang-luc"
+   ],
+   "image": "cog",
+   "title": {
+    "vi": "Thiết kế Jig & Đồ gá"
+   },
+   "excerpt": {
+    "vi": "Cung cấp các thiết kế đồ gá tối ưu, đảm bảo độ chính xác cao và công năng vượt trội cho dây chuyền."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "richtext",
+      "props": {
+       "paragraphs": [
+        "Cung cấp các thiết kế đồ gá tối ưu, đảm bảo độ chính xác cao và công năng vượt trội cho dây chuyền."
+       ]
+      }
+     }
+    ]
+   },
+   "seo_description": {
+    "vi": "Cung cấp các thiết kế đồ gá tối ưu, đảm bảo độ chính xác cao và công năng vượt trội cho dây chuyền."
+   }
+  },
+  {
+   "key": "post:gia-cong-phay-tien-cnc",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:post_cat/nang-luc"
+   ],
+   "image": "box",
+   "title": {
+    "vi": "Gia công Phay & Tiện CNC"
+   },
+   "excerpt": {
+    "vi": "Gia công phay, tiện CNC trên các vật liệu đa dạng, đáp ứng nhanh nhu cầu khách hàng, tăng năng suất sản xuất."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "richtext",
+      "props": {
+       "paragraphs": [
+        "Gia công phay, tiện CNC trên các vật liệu đa dạng, đáp ứng nhanh nhu cầu khách hàng, tăng năng suất sản xuất."
+       ]
+      }
+     }
+    ]
+   },
+   "seo_description": {
+    "vi": "Gia công phay, tiện CNC trên các vật liệu đa dạng, đáp ứng nhanh nhu cầu khách hàng, tăng năng suất sản xuất."
+   }
+  },
+  {
+   "key": "post:han-lap-rap-co-khi",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:post_cat/nang-luc"
+   ],
+   "image": "users",
+   "title": {
+    "vi": "Hàn & Lắp ráp cơ khí"
+   },
+   "excerpt": {
+    "vi": "Thực hiện đa dạng các phương pháp hàn và lắp ráp cụm chi tiết với độ chính xác và thẩm mỹ cao."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "richtext",
+      "props": {
+       "paragraphs": [
+        "Thực hiện đa dạng các phương pháp hàn và lắp ráp cụm chi tiết với độ chính xác và thẩm mỹ cao."
+       ]
+      }
+     }
+    ]
+   },
+   "seo_description": {
+    "vi": "Thực hiện đa dạng các phương pháp hàn và lắp ráp cụm chi tiết với độ chính xác và thẩm mỹ cao."
+   }
+  },
+  {
+   "key": "post:san-xuat-chi-tiet-may-oem",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:post_cat/nang-luc"
+   ],
+   "image": "shield",
+   "title": {
+    "vi": "Sản xuất chi tiết máy & OEM"
+   },
+   "excerpt": {
+    "vi": "Sản xuất các chi tiết máy, linh kiện thay thế theo yêu cầu bản vẽ kỹ thuật, đảm bảo chất lượng và tiến độ."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "richtext",
+      "props": {
+       "paragraphs": [
+        "Sản xuất các chi tiết máy, linh kiện thay thế theo yêu cầu bản vẽ kỹ thuật, đảm bảo chất lượng và tiến độ."
+       ]
+      }
+     }
+    ]
+   },
+   "seo_description": {
+    "vi": "Sản xuất các chi tiết máy, linh kiện thay thế theo yêu cầu bản vẽ kỹ thuật, đảm bảo chất lượng và tiến độ."
+   }
+  },
+  {
+   "key": "post:day-chuyen-lap-rap-tu-dong",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:post_cat/du-an"
+   ],
+   "image": {
+    "media": "pr-electronic-line"
+   },
+   "title": {
+    "vi": "Dây chuyền lắp ráp tự động"
+   },
+   "excerpt": {
+    "vi": "Thiết kế và thi công hệ thống dây chuyền lắp ráp linh kiện điện tử, tăng năng suất 200%."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "richtext",
+      "props": {
+       "paragraphs": [
+        "Thiết kế và thi công hệ thống dây chuyền lắp ráp linh kiện điện tử, tăng năng suất 200%."
+       ]
+      }
+     }
+    ]
+   },
+   "seo_description": {
+    "vi": "Thiết kế và thi công hệ thống dây chuyền lắp ráp linh kiện điện tử, tăng năng suất 200%."
+   }
+  },
+  {
+   "key": "post:he-thong-jig-han-robot",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:post_cat/du-an"
+   ],
+   "image": {
+    "media": "pr-robot-weld-line"
+   },
+   "title": {
+    "vi": "Hệ thống Jig hàn robot"
+   },
+   "excerpt": {
+    "vi": "Phát triển hệ thống đồ gá hàn cho robot, ứng dụng trong ngành công nghiệp ô tô."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "richtext",
+      "props": {
+       "paragraphs": [
+        "Phát triển hệ thống đồ gá hàn cho robot, ứng dụng trong ngành công nghiệp ô tô."
+       ]
+      }
+     }
+    ]
+   },
+   "seo_description": {
+    "vi": "Phát triển hệ thống đồ gá hàn cho robot, ứng dụng trong ngành công nghiệp ô tô."
+   }
+  },
+  {
+   "key": "post:khuon-mau-san-pham-gia-dung",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:post_cat/du-an"
+   ],
+   "image": {
+    "media": "pr-injection-mould"
+   },
+   "title": {
+    "vi": "Khuôn mẫu cho sản phẩm gia dụng"
+   },
+   "excerpt": {
+    "vi": "Chế tạo loạt khuôn ép nhựa cho các sản phẩm gia dụng phức tạp, đáp ứng tiêu chuẩn xuất khẩu."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "richtext",
+      "props": {
+       "paragraphs": [
+        "Chế tạo loạt khuôn ép nhựa cho các sản phẩm gia dụng phức tạp, đáp ứng tiêu chuẩn xuất khẩu."
+       ]
+      }
+     }
+    ]
+   },
+   "seo_description": {
+    "vi": "Chế tạo loạt khuôn ép nhựa cho các sản phẩm gia dụng phức tạp, đáp ứng tiêu chuẩn xuất khẩu."
+   }
+  },
+  {
+   "key": "post:do-ga-kiem-tra-than-vo-xe",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:post_cat/du-an"
+   ],
+   "image": {
+    "media": "pr-body-check-fixture"
+   },
+   "title": {
+    "vi": "Đồ gá kiểm tra thân vỏ xe"
+   },
+   "excerpt": {
+    "vi": "Sản xuất đồ gá kiểm tra kích thước 3D cho thân vỏ ô tô, đảm bảo độ chính xác tuyệt đối."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "richtext",
+      "props": {
+       "paragraphs": [
+        "Sản xuất đồ gá kiểm tra kích thước 3D cho thân vỏ ô tô, đảm bảo độ chính xác tuyệt đối."
+       ]
+      }
+     }
+    ]
+   },
+   "seo_description": {
+    "vi": "Sản xuất đồ gá kiểm tra kích thước 3D cho thân vỏ ô tô, đảm bảo độ chính xác tuyệt đối."
+   }
+  },
+  {
+   "key": "post:gia-cong-chi-tiet-hang-khong",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:post_cat/du-an"
+   ],
+   "image": {
+    "media": "pr-aero-parts"
+   },
+   "title": {
+    "vi": "Gia công chi tiết hàng không"
+   },
+   "excerpt": {
+    "vi": "Tham gia dự án gia công các chi tiết cơ khí phức tạp cho ngành hàng không vũ trụ."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "richtext",
+      "props": {
+       "paragraphs": [
+        "Tham gia dự án gia công các chi tiết cơ khí phức tạp cho ngành hàng không vũ trụ."
+       ]
+      }
+     }
+    ]
+   },
+   "seo_description": {
+    "vi": "Tham gia dự án gia công các chi tiết cơ khí phức tạp cho ngành hàng không vũ trụ."
+   }
+  },
+  {
+   "key": "post:cai-tien-day-chuyen-san-xuat",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:post_cat/du-an"
+   ],
+   "image": {
+    "media": "pr-line-improve"
+   },
+   "title": {
+    "vi": "Cải tiến dây chuyền sản xuất"
+   },
+   "excerpt": {
+    "vi": "Tư vấn và thực hiện cải tiến, tối ưu hóa dây chuyền sản xuất cho các đối tác lớn trong và ngoài nước."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "richtext",
+      "props": {
+       "paragraphs": [
+        "Tư vấn và thực hiện cải tiến, tối ưu hóa dây chuyền sản xuất cho các đối tác lớn trong và ngoài nước."
+       ]
+      }
+     }
+    ]
+   },
+   "seo_description": {
+    "vi": "Tư vấn và thực hiện cải tiến, tối ưu hóa dây chuyền sản xuất cho các đối tác lớn trong và ngoài nước."
+   }
+  },
+  {
+   "key": "post:khuon-dap-chi-tiet-than-vo-weldcom",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:post_cat/du-an"
+   ],
+   "image": {
+    "media": "pr-stamping-die"
+   },
+   "title": {
+    "vi": "Khuôn dập chi tiết thân vỏ Weldcom"
+   },
+   "excerpt": {
+    "vi": "Sản xuất khuôn dập liên hoàn cho các chi tiết vỏ máy công nghiệp, tối ưu hóa vật liệu và chu kỳ dập."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "richtext",
+      "props": {
+       "paragraphs": [
+        "Sản xuất khuôn dập liên hoàn cho các chi tiết vỏ máy công nghiệp, tối ưu hóa vật liệu và chu kỳ dập."
+       ]
+      }
+     }
+    ]
+   },
+   "seo_description": {
+    "vi": "Sản xuất khuôn dập liên hoàn cho các chi tiết vỏ máy công nghiệp, tối ưu hóa vật liệu và chu kỳ dập."
+   }
+  },
+  {
+   "key": "post:jig-kiem-tra-cum-den-pha-festo",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:post_cat/du-an"
+   ],
+   "image": {
+    "media": "pr-headlamp-jig"
+   },
+   "title": {
+    "vi": "Jig kiểm tra cụm đèn pha Festo"
+   },
+   "excerpt": {
+    "vi": "Chế tạo đồ gá kiểm tra chức năng và độ kín của cụm đèn pha, tích hợp hệ thống khí nén tự động từ Festo."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "richtext",
+      "props": {
+       "paragraphs": [
+        "Chế tạo đồ gá kiểm tra chức năng và độ kín của cụm đèn pha, tích hợp hệ thống khí nén tự động từ Festo."
+       ]
+      }
+     }
+    ]
+   },
+   "seo_description": {
+    "vi": "Chế tạo đồ gá kiểm tra chức năng và độ kín của cụm đèn pha, tích hợp hệ thống khí nén tự động từ Festo."
+   }
+  },
+  {
+   "key": "post:he-thong-cap-phoi-tu-dong-hutchinson",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:post_cat/du-an"
+   ],
+   "image": {
+    "media": "pr-auto-feeder"
+   },
+   "title": {
+    "vi": "Hệ thống cấp phôi tự động Hutchinson"
+   },
+   "excerpt": {
+    "vi": "Thiết kế và lắp đặt hệ thống cấp phôi tự động cho máy ép, hợp tác cùng chuyên gia từ Hutchinson."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "richtext",
+      "props": {
+       "paragraphs": [
+        "Thiết kế và lắp đặt hệ thống cấp phôi tự động cho máy ép, hợp tác cùng chuyên gia từ Hutchinson."
+       ]
+      }
+     }
+    ]
+   },
+   "seo_description": {
+    "vi": "Thiết kế và lắp đặt hệ thống cấp phôi tự động cho máy ép, hợp tác cùng chuyên gia từ Hutchinson."
+   }
+  },
+  {
+   "key": "post:an-vinh-to-chuc-team-building-2024",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:post_cat/tin-tuc/tin-noi-bo",
+    "tax:post_cat/tin-tuc"
+   ],
+   "image": {
+    "media": "n-team-building"
+   },
+   "published_at": "2024-07-20",
+   "title": {
+    "vi": "An Vinh tổ chức team building 2024"
+   },
+   "excerpt": {
+    "vi": "Hoạt động team building thường niên nhằm gắn kết tinh thần đồng đội và tái tạo năng lượng cho toàn thể cán bộ nhân viên."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "richtext",
+      "props": {
+       "paragraphs": [
+        "Hoạt động team building thường niên nhằm gắn kết tinh thần đồng đội và tái tạo năng lượng cho toàn thể cán bộ nhân viên."
+       ]
+      }
+     }
+    ]
+   },
+   "seo_description": {
+    "vi": "Hoạt động team building thường niên nhằm gắn kết tinh thần đồng đội và tái tạo năng lượng cho toàn thể cán bộ nhân viên."
+   }
+  },
+  {
+   "key": "post:khanh-thanh-nha-may-so-3",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:post_cat/tin-tuc/tin-noi-bo",
+    "tax:post_cat/tin-tuc"
+   ],
+   "image": {
+    "media": "n-factory-opening"
+   },
+   "published_at": "2024-06-01",
+   "title": {
+    "vi": "Khánh thành nhà máy số 3 tại Thạch Thất"
+   },
+   "excerpt": {
+    "vi": "Việc đưa vào hoạt động nhà máy số 3 giúp An Vinh nâng cao năng lực sản xuất, đáp ứng các đơn hàng lớn."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "richtext",
+      "props": {
+       "paragraphs": [
+        "Việc đưa vào hoạt động nhà máy số 3 giúp An Vinh nâng cao năng lực sản xuất, đáp ứng các đơn hàng lớn."
+       ]
+      }
+     }
+    ]
+   },
+   "seo_description": {
+    "vi": "Việc đưa vào hoạt động nhà máy số 3 giúp An Vinh nâng cao năng lực sản xuất, đáp ứng các đơn hàng lớn."
+   }
+  },
+  {
+   "key": "post:dao-tao-an-toan-lao-dong",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:post_cat/tin-tuc/tin-noi-bo",
+    "tax:post_cat/tin-tuc"
+   ],
+   "image": {
+    "media": "n-safety-training"
+   },
+   "published_at": "2024-04-15",
+   "title": {
+    "vi": "Đào tạo an toàn lao động định kỳ"
+   },
+   "excerpt": {
+    "vi": "Tổ chức khóa đào tạo về an toàn lao động và phòng chống cháy nổ cho toàn bộ nhân viên nhà máy."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "richtext",
+      "props": {
+       "paragraphs": [
+        "Tổ chức khóa đào tạo về an toàn lao động và phòng chống cháy nổ cho toàn bộ nhân viên nhà máy."
+       ]
+      }
+     }
+    ]
+   },
+   "seo_description": {
+    "vi": "Tổ chức khóa đào tạo về an toàn lao động và phòng chống cháy nổ cho toàn bộ nhân viên nhà máy."
+   }
+  },
+  {
+   "key": "post:dao-tao-van-hanh-may-phay-cnc-5-truc",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:post_cat/tin-tuc/tin-noi-bo",
+    "tax:post_cat/tin-tuc"
+   ],
+   "image": {
+    "media": "n-cnc-5axis-training"
+   },
+   "published_at": "2024-05-18",
+   "title": {
+    "vi": "Đào tạo vận hành máy phay CNC 5 trục"
+   },
+   "excerpt": {
+    "vi": "An Vinh tổ chức khóa đào tạo vận hành máy phay CNC 5 trục, giúp đội ngũ kỹ thuật làm chủ thiết bị và gia công tốt hơn các chi tiết phức tạp."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "richtext",
+      "props": {
+       "paragraphs": [
+        "An Vinh tổ chức khóa đào tạo vận hành máy phay CNC 5 trục cho đội ngũ kỹ thuật viên và công nhân vận hành tại nhà máy.",
+        "Khóa học kết hợp lý thuyết với thực hành trực tiếp trên máy: thiết lập và vận hành máy, lập trình gia công, gá đặt phôi và kiểm tra kích thước sau gia công.",
+        "Nâng cao tay nghề vận hành giúp An Vinh gia công chính xác hơn các chi tiết có hình dạng phức tạp và đáp ứng tốt hơn yêu cầu kỹ thuật của khách hàng."
+       ]
+      }
+     }
+    ]
+   },
+   "seo_description": {
+    "vi": "An Vinh tổ chức khóa đào tạo vận hành máy phay CNC 5 trục, giúp đội ngũ kỹ thuật làm chủ thiết bị và gia công tốt hơn các chi tiết phức tạp."
+   }
+  },
+  {
+   "key": "post:xu-huong-tu-dong-hoa-nganh-co-khi",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:post_cat/tin-tuc/tin-nganh",
+    "tax:post_cat/tin-tuc"
+   ],
+   "image": {
+    "media": "n-automation"
+   },
+   "published_at": "2024-07-15",
+   "title": {
+    "vi": "Xu hướng tự động hóa trong ngành cơ khí chế tạo"
+   },
+   "excerpt": {
+    "vi": "Tự động hóa và robot đang thay đổi bộ mặt của ngành cơ khí, mang lại hiệu suất và độ chính xác chưa từng có."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "richtext",
+      "props": {
+       "paragraphs": [
+        "Tự động hóa và robot đang thay đổi bộ mặt của ngành cơ khí, mang lại hiệu suất và độ chính xác chưa từng có."
+       ]
+      }
+     }
+    ]
+   },
+   "seo_description": {
+    "vi": "Tự động hóa và robot đang thay đổi bộ mặt của ngành cơ khí, mang lại hiệu suất và độ chính xác chưa từng có."
+   }
+  },
+  {
+   "key": "post:ung-dung-vat-lieu-moi-khuon-mau",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:post_cat/tin-tuc/tin-nganh",
+    "tax:post_cat/tin-tuc"
+   ],
+   "image": {
+    "media": "n-new-materials"
+   },
+   "published_at": "2024-05-25",
+   "title": {
+    "vi": "Ứng dụng vật liệu mới trong chế tạo khuôn mẫu"
+   },
+   "excerpt": {
+    "vi": "Các loại thép công cụ thế hệ mới giúp tăng tuổi thọ khuôn và cải thiện chất lượng bề mặt sản phẩm."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "richtext",
+      "props": {
+       "paragraphs": [
+        "Các loại thép công cụ thế hệ mới giúp tăng tuổi thọ khuôn và cải thiện chất lượng bề mặt sản phẩm."
+       ]
+      }
+     }
+    ]
+   },
+   "seo_description": {
+    "vi": "Các loại thép công cụ thế hệ mới giúp tăng tuổi thọ khuôn và cải thiện chất lượng bề mặt sản phẩm."
+   }
+  },
+  {
+   "key": "post:cong-nghe-in-3d-kim-loai",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:post_cat/tin-tuc/tin-nganh",
+    "tax:post_cat/tin-tuc"
+   ],
+   "image": {
+    "media": "n-metal-3d-print"
+   },
+   "published_at": "2024-04-10",
+   "title": {
+    "vi": "Công nghệ in 3D kim loại và tương lai của ngành"
+   },
+   "excerpt": {
+    "vi": "In 3D kim loại mở ra những khả năng mới trong việc tạo mẫu nhanh và sản xuất các chi tiết phức tạp."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "richtext",
+      "props": {
+       "paragraphs": [
+        "In 3D kim loại mở ra những khả năng mới trong việc tạo mẫu nhanh và sản xuất các chi tiết phức tạp."
+       ]
+      }
+     }
+    ]
+   },
+   "seo_description": {
+    "vi": "In 3D kim loại mở ra những khả năng mới trong việc tạo mẫu nhanh và sản xuất các chi tiết phức tạp."
+   }
+  },
+  {
+   "key": "post:trien-lam-mta-vietnam-2024-co-hoi-va-thach-thuc",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:post_cat/tin-tuc/tin-nganh",
+    "tax:post_cat/tin-tuc"
+   ],
+   "image": {
+    "media": "news-header"
+   },
+   "published_at": "2024-07-05",
+   "title": {
+    "vi": "Triển lãm MTA Vietnam 2024: Cơ hội và thách thức"
+   },
+   "excerpt": {
+    "vi": "Triển lãm MTA Vietnam 2024 giới thiệu nhiều công nghệ mới về máy công cụ và gia công kim loại, mang đến cả cơ hội lẫn thách thức cho doanh nghiệp cơ khí trong nước."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "richtext",
+      "props": {
+       "paragraphs": [
+        "MTA Vietnam là triển lãm chuyên ngành về máy công cụ, gia công kim loại và tự động hóa, nơi các doanh nghiệp trong và ngoài nước giới thiệu thiết bị và giải pháp sản xuất mới.",
+        "Với doanh nghiệp cơ khí Việt Nam, đây là cơ hội để cập nhật công nghệ, tìm hiểu xu hướng gia công chính xác và tự động hóa, đồng thời mở rộng kết nối với khách hàng và nhà cung cấp.",
+        "Đi cùng cơ hội là thách thức: yêu cầu về độ chính xác, chất lượng và tiến độ ngày càng cao, đòi hỏi doanh nghiệp liên tục đầu tư thiết bị, nâng cao tay nghề và cải tiến quy trình để cạnh tranh."
+       ]
+      }
+     }
+    ]
+   },
+   "seo_description": {
+    "vi": "Triển lãm MTA Vietnam 2024 giới thiệu nhiều công nghệ mới về máy công cụ và gia công kim loại, mang đến cả cơ hội lẫn thách thức cho doanh nghiệp cơ khí trong nước."
+   }
+  }
+ ]
+}

@@ -129,7 +129,7 @@ final readonly class EntryContentWriter
     {
         $blockIds = [];
         foreach ($content['blocks'] as $i => $block) {
-            $blockIds[$i] = SchemaImages::ids($block['props'], $this->registry->get($block['type'])->schema());
+            $blockIds[$i] = SchemaImages::ids($block['props'], $this->registry->schemaFor($block['type']));
         }
 
         $referenced = array_merge([], ...array_values($blockIds));
@@ -155,7 +155,7 @@ final readonly class EntryContentWriter
             $missing = array_diff($blockIds[$i], $existing);
             if ($missing !== []) {
                 $dropped += count($missing);
-                $content['blocks'][$i]['props'] = SchemaImages::retain($block['props'], $this->registry->get($block['type'])->schema(), $existing);
+                $content['blocks'][$i]['props'] = SchemaImages::retain($block['props'], $this->registry->schemaFor($block['type']), $existing);
             }
         }
 

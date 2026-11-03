@@ -46,6 +46,8 @@ it('files entries under categories only through the writer that applies category
         'app/Modules/Admin/Livewire/Catalog/Editor.php',                               // products: not limited
         'app/Modules/Provisioning/Actions/SeedAnVinhContent.php',                      // seeder, no person
         'app/Modules/Provisioning/Actions/PromoteAnVinhProductPostsToCatalog.php',     // seeder, no person
+        'app/Modules/Provisioning/Actions/SeedMeasurementSite.php',                    // CI seeder, no person
+        'app/Modules/Provisioning/ContentPack/Applier.php',                             // content-pack loader, no person
     ];
 
     $offenders = [];
@@ -71,6 +73,7 @@ it('writes the entry taxonomy pivot directly only in the known places', function
     $allowed = [
         'app/Modules/Cms/Concerns/HasCategoryTaxonomies.php',   // assignCategories() itself
         'app/Modules/Cms/Actions/DuplicateEntry.php',           // copies facet terms only (positions ≥ FACET_POSITION_BASE)
+        'app/Modules/Provisioning/Actions/SeedMeasurementSite.php', // product categories (product_taxonomies), not entries
     ];
 
     $offenders = [];

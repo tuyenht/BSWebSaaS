@@ -23,6 +23,24 @@ it('reports a module enabled only for the site that has it', function (): void {
         ->and($tenancy->enter(2, fn () => app(Entitlement::class)->moduleEnabled('cms')))->toBeFalse();
 });
 
+it('remembers a site\'s module keys for one request only, per site, never across requests', function (): void {
+    $tenancy = app(Tenancy::class);
+    $tenancy->enter(1, fn () => SiteModule::create(['module_key' => 'domains', 'enabled' => true]));
+
+    $first = $tenancy->enter(1, fn () => countQueries(fn () => app(Entitlement::class)->entitledModuleKeys()));
+    $again = $tenancy->enter(1, fn () => countQueries(fn () => app(Entitlement::class)->entitledModuleKeys()));
+
+    expect($first)->toBe(2)->and($again)->toBe(0)
+        ->and($tenancy->enter(1, fn () => app(Entitlement::class)->entitledModuleKeys()))->toContain('domains')
+        ->and($tenancy->enter(2, fn () => app(Entitlement::class)->entitledModuleKeys()))->not->toContain('domains');
+
+    // The next request (Octane flushes scoped bindings between them) asks again.
+    $tenancy->enter(1, fn () => SiteModule::query()->where('module_key', 'domains')->delete());
+    app()->forgetScopedInstances();
+
+    expect($tenancy->enter(1, fn () => app(Entitlement::class)->entitledModuleKeys()))->not->toContain('domains');
+});
+
 it('blocks a request into a module the site is not entitled to', function (): void {
     app(Tenancy::class)->enter(1, fn () => SiteModule::create(['module_key' => 'cms', 'enabled' => true]));
 
