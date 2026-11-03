@@ -112,6 +112,24 @@ it('applies a template — staged off by default, or switched on immediately', f
     });
 });
 
+it('applies the same template to several content types of one site', function (): void {
+    $operator = wfOperator();
+
+    app(Tenancy::class)->enter(1, function () use ($operator): void {
+        wfSection('posts', 'Tin tức', 'tin-tuc');
+        wfSection('jobs', 'Tuyển dụng', 'tuyen-dung');
+
+        $settings = Livewire::actingAs($operator->fresh())->test(WorkflowSettings::class);
+        $settings->call('apply', 'posts', 'admin_approval', true)->assertHasNoErrors();
+        $settings->call('apply', 'jobs', 'admin_approval')->assertHasNoErrors();
+
+        expect(Workflow::query()->orderBy('applies_to_type')->get(['applies_to_type', 'key', 'template', 'is_active'])->toArray())->toBe([
+            ['applies_to_type' => 'jobs', 'key' => 'jobs', 'template' => 'admin_approval', 'is_active' => false],
+            ['applies_to_type' => 'posts', 'key' => 'posts', 'template' => 'admin_approval', 'is_active' => true],
+        ]);
+    });
+});
+
 it('locks the editorial template behind its entitlement and opens it when granted', function (): void {
     $operator = wfOperator();
 
