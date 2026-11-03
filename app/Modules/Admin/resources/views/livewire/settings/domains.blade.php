@@ -34,9 +34,9 @@
         <div class="min-w-0">
             <nav aria-label="{{ __('admin.breadcrumb') }}" class="flex flex-wrap items-center gap-1 text-small text-text-muted">
                 @if ($siteUlid !== null)
-                    <a href="{{ route('platform.sites.index') }}" wire:navigate class="text-primary-text hover:underline">{{ __('admin.domains_crumb_site') }}</a>
+                    <a href="{{ route('platform.sites.index') }}" wire:navigate class="hit-area text-primary-text hover:underline">{{ __('admin.domains_crumb_site') }}</a>
                     <x-bs-admin::icon name="ri-arrow-right-s" :class="$glyph" />
-                    <a href="{{ route('platform.sites.show', $siteUlid) }}" wire:navigate class="text-primary-text hover:underline [overflow-wrap:anywhere]">{{ $console ?? '' }}</a>
+                    <a href="{{ route('platform.sites.show', $siteUlid) }}" wire:navigate class="hit-area text-primary-text hover:underline [overflow-wrap:anywhere]">{{ $console ?? '' }}</a>
                 @else
                     <span>{{ __('admin.domains_crumb_settings') }}</span>
                     <x-bs-admin::icon name="ri-arrow-right-s" :class="$glyph" />
