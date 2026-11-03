@@ -120,11 +120,12 @@
 <div class="entries-index flex flex-col gap-3">
 
     {{-- Title row: the name · (?) · the main button on one line (the name wraps, never clipped), then one line on
-         what the list holds. Below 600 the way back is the menu, so the breadcrumb gives its room to the list. --}}
+         what the list holds. Below 600 the way back is the menu, so the breadcrumb gives its room to the list; its link
+         reaches 44px through the shared transparent hit area, drawn as before. --}}
     <header class="flex flex-col gap-1">
         <nav aria-label="{{ __('admin.breadcrumb') }}" class="hidden text-caption text-text-muted min-[600px]:block">
             <div class="flex items-center gap-1.5">
-                <a href="{{ route('admin.dashboard') }}" wire:navigate class="inline-flex items-center gap-1 transition-colors hover:text-primary-text">
+                <a href="{{ route('admin.dashboard') }}" wire:navigate class="hit-area inline-flex items-center gap-1 transition-colors hover:text-primary-text">
                     <x-bs-admin::icon name="home" class="size-3.5" /> {{ __('admin.breadcrumb_home') }}
                 </a>
                 <x-bs-admin::icon name="chevron-right" class="size-3.5 text-placeholder" />
