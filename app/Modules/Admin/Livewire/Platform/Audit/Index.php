@@ -351,7 +351,11 @@ final class Index extends Component
 
         $direction = $newer ? 'asc' : 'desc';
         $rows = (clone $query)
-            ->when($anchor !== null, fn (Builder $w) => $w->whereRaw('(created_at, id) '.($newer ? '>' : '<').' (?, ?)', [$anchor?->getRawOriginal('created_at'), $anchor?->getKey()]))
+            // The plain bound on created_at repeats the row comparison so the planner can skip the
+            // months of the log on the far side of the anchor (it does not prune on a row value).
+            ->when($anchor !== null, fn (Builder $w) => $w
+                ->where('created_at', $newer ? '>=' : '<=', $anchor?->getRawOriginal('created_at'))
+                ->whereRaw('(created_at, id) '.($newer ? '>' : '<').' (?, ?)', [$anchor?->getRawOriginal('created_at'), $anchor?->getKey()]))
             ->orderBy('created_at', $direction)->orderBy('id', $direction)->limit($this->per + 1)
             ->get(['id', 'ulid', 'created_at', 'action', 'actor_id', 'actor_label', 'impersonator_id', 'impersonator_label',
                 'site_id', 'ip_address', 'user_agent', 'meta', 'support_session_ulid']);

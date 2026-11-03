@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Providers\AdminServiceProvider;
+use App\Modules\Audit\Providers\AuditServiceProvider;
 use App\Modules\Catalog\Providers\CatalogServiceProvider;
 use App\Modules\Cms\Providers\CmsServiceProvider;
 use App\Modules\Forms\Providers\FormsServiceProvider;
@@ -21,6 +22,7 @@ return [
     IdentityServiceProvider::class,
     TenancyServiceProvider::class,
     RbacServiceProvider::class,
+    AuditServiceProvider::class,
     NotificationsServiceProvider::class,
     ProvisioningServiceProvider::class,
     ThemeServiceProvider::class,
