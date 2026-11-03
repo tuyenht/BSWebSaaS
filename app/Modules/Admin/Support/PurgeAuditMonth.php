@@ -59,12 +59,14 @@ final class PurgeAuditMonth
         if (! $this->months->isRemovable($month)) {
             throw ValidationException::withMessages(['month' => __('admin.audit.purge.too_recent', ['months' => AuditMonths::MANUAL_FLOOR_MONTHS])]);
         }
+        if (! in_array($month, array_column($this->months->months(), 'month'), true)) {
+            throw ValidationException::withMessages(['month' => __('admin.audit.purge.missing')]);
+        }
 
         try {
-            return $this->months->drop([$month], self::ACTION, [
+            return $this->months->drop($month, self::ACTION, [
                 'actor_id' => Cast::int($actor->getKey()),
                 'actor_label' => $actor->email,
-                'meta' => ['month' => $month],
             ]);
         } catch (AuditMonthRefused $e) {
             throw ValidationException::withMessages(['month' => match ($e->reason) {

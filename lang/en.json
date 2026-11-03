@@ -438,6 +438,7 @@
     "admin.audit.purge.throttled": "The password was wrong too many times. Try again in :seconds seconds.",
     "admin.audit.purge.too_recent": "The log of this month and the :months months before it is always kept. Choose an older month.",
     "admin.audit.purge.busy": "The log is busy and was not deleted. Try again in a few minutes.",
+    "admin.audit.purge.missing": "The activity log has no entries for this month: they were deleted already or there never were any.",
     "admin.status": "Status",
     "admin.all_statuses": "All statuses",
     "admin.status_active": "Active",

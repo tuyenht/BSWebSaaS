@@ -61,10 +61,14 @@ final class AuditService
      * record().
      *
      * @param  array<string, mixed>  $context
+     * @return string the row's ulid
      */
-    public function recordOrFail(string $action, array $context = []): void
+    public function recordOrFail(string $action, array $context = []): string
     {
-        $this->entry($action, $context)->saveOrFail();
+        $entry = $this->entry($action, $context);
+        $entry->saveOrFail();
+
+        return $entry->ulid;
     }
 
     /** @param  array<string, mixed>  $context */

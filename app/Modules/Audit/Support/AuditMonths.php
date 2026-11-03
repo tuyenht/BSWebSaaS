@@ -7,6 +7,7 @@ namespace App\Modules\Audit\Support;
 use App\Modules\Audit\AuditService;
 use App\Modules\Audit\Exceptions\AuditMonthRefused;
 use App\Modules\Shared\Support\Cast;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
@@ -15,8 +16,11 @@ use Illuminate\Support\Facades\DB;
  * partitioning migration created: the app may not create or drop a table itself. Months are
  * written 'YYYY-MM'. The running month comes from the database clock, the one its functions use.
  *
- * Dropping months and writing the audit row that says so happen in one transaction, with an
- * insert that does not swallow its failure: a month is never gone without its row.
+ * Dropping a month and writing the audit row that says so happen in one transaction: the row is
+ * written first, with an insert that does not swallow its failure, and the database function
+ * refuses a month whose row it cannot find, then writes the row count into it. A month is never
+ * gone without its row, whoever calls the function. One month per transaction, so the lock its
+ * removal takes on the log lasts only as long as that one month.
  */
 final class AuditMonths
 {
@@ -55,12 +59,24 @@ final class AuditMonths
         return $months;
     }
 
-    /** How many months exist after the running one. */
+    /**
+     * How many months in a row are ready after the running one (0 when the running month itself is
+     * missing): a gap means the writes of that month have nowhere to go.
+     */
     public function monthsAhead(): int
     {
-        $running = $this->runningMonth();
+        $ready = array_column($this->months(), 'month');
+        $month = CarbonImmutable::createFromFormat('!Y-m', $this->runningMonth(), 'UTC');
+        if ($month === null || ! in_array($month->format('Y-m'), $ready, true)) {
+            return 0;
+        }
 
-        return count(array_filter($this->months(), fn (array $m): bool => $m['month'] > $running));
+        $ahead = 0;
+        while (in_array($month->addMonthsNoOverflow($ahead + 1)->format('Y-m'), $ready, true)) {
+            $ahead++;
+        }
+
+        return $ahead;
     }
 
     /** The exact number of rows in one month, for the confirmation that names it. */
@@ -96,37 +112,29 @@ final class AuditMonths
     }
 
     /**
-     * Drops the months and records $action with their row count, in one transaction.
+     * Drops one month and records $action (meta: month, rows) in one transaction.
      *
-     * @param  list<string>  $months
-     * @param  array<string, mixed>  $context  AuditService context; `rows` is added to its meta
+     * @param  array<string, mixed>  $context  AuditService context; `month` and `rows` go in its meta
      * @return int the rows removed
      *
      * @throws AuditMonthRefused
      */
-    public function drop(array $months, string $action, array $context = []): int
+    public function drop(string $month, string $action, array $context = []): int
     {
-        foreach ($months as $month) {
-            if (! self::isMonth($month)) {
-                throw new AuditMonthRefused('invalid');
-            }
+        if (! self::isMonth($month)) {
+            throw new AuditMonthRefused('invalid');
         }
 
         try {
-            return DB::transaction(function () use ($months, $action, $context): int {
-                $rows = 0;
-                foreach ($months as $month) {
-                    $rows += Cast::int(DB::scalar('select public.audit_log_month_drop(?::date)', [self::firstDay($month)]));
-                }
-
+            return DB::transaction(function () use ($month, $action, $context): int {
                 $meta = is_array($context['meta'] ?? null) ? $context['meta'] : [];
-                $this->audit->recordOrFail($action, ['meta' => [...$meta, 'rows' => $rows]] + $context);
+                $record = $this->audit->recordOrFail($action, ['meta' => [...$meta, 'month' => $month, 'rows' => 0]] + $context);
 
-                return $rows;
+                return Cast::int(DB::scalar('select public.audit_log_month_drop(?::date, ?)', [self::firstDay($month), $record]));
             });
         } catch (QueryException $e) {
             $reason = match ($e->errorInfo[0] ?? null) {
-                '42501' => 'kept',
+                'AUKPT' => 'kept',
                 '55P03' => 'busy',
                 '22023' => 'invalid',
                 default => null,

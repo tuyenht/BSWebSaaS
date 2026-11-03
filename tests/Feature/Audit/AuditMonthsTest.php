@@ -2,6 +2,7 @@
 
 use App\Modules\Admin\Livewire\Platform\Audit\Index;
 use App\Modules\Admin\Support\PurgeAuditMonth;
+use App\Modules\Audit\AuditService;
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Audit\Support\AuditMonths;
 use App\Modules\Identity\Models\User;
@@ -95,6 +96,19 @@ function amCreate(string $month): void
     DB::connection('pgsql_admin')->statement('select public.audit_log_month_create(?::date)', [$month.'-01']);
 }
 
+/** Drops a month through the function, with its audit row written first as AuditMonths does. */
+function amDrop(string $month): mixed
+{
+    return DB::transaction(function () use ($month): mixed {
+        $record = app(AuditService::class)->recordOrFail(PurgeAuditMonth::ACTION, ['meta' => ['month' => $month, 'rows' => 0]]);
+
+        return DB::scalar('select public.audit_log_month_drop(?::date, ?)', [$month.'-01', $record]);
+    });
+}
+
+/** A ulid no audit row carries. */
+const AM_NO_ROW = '01AAAAAAAAAAAAAAAAAAAAAAAA';
+
 function amDropAsAdmin(string $month): void
 {
     DB::connection('pgsql_admin')->statement('drop table if exists public.'.amTable($month));
@@ -169,6 +183,22 @@ it('converts the plain table keeping every row, id, ulid and the column order, a
         ->and(amMonths()[0])->toBe($old)
         ->and(end($after)->id)->toBe(41);
 });
+
+it('refuses to split a log holding a row dated far off, which would make a month for every month in between', function (string $at): void {
+    try {
+        amAsAdmin(fn () => amMigration()->down());
+        $admin = DB::connection('pgsql_admin');
+        $admin->table('audit_logs')->insert(['ulid' => (string) Str::ulid(), 'action' => 'cms.menu.saved', 'meta' => '{}', 'created_at' => $at]);
+
+        expect(fn () => amAsAdmin(fn () => amMigration()->up()))->toThrow(RuntimeException::class, 'correct or remove them')
+            ->and($admin->scalar("select relkind::text from pg_class where oid = 'public.audit_logs'::regclass"))->toBe('r');
+    } finally {
+        DB::connection('pgsql_admin')->table('audit_logs')->where('created_at', $at)->delete();
+        amAsAdmin(fn () => amMigration()->up());
+    }
+
+    expect(DB::connection('pgsql_admin')->scalar("select relkind::text from pg_class where oid = 'public.audit_logs'::regclass"))->toBe('p');
+})->with(['a clock reset to 1970' => '1970-01-01 00:00:00+00', 'a year typed wrong' => '2099-06-01 00:00:00+00']);
 
 it('creates the 24 months before the running one and the 3 after it on an empty table, so older rows still fit', function (): void {
     try {
@@ -332,13 +362,13 @@ it('ensures the same UTC months whatever time zone the session uses and whatever
 it('refuses to drop the running month or any of the 12 before it', function (int $back): void {
     $month = amMonth(-$back);
 
-    expect(fn () => DB::scalar('select public.audit_log_month_drop(?::date)', [$month.'-01']))
+    expect(fn () => amDrop($month))
         ->toThrow(QueryException::class, 'is kept')
         ->and(amExists($month))->toBeTrue();
 })->with(range(0, 12));
 
 it('refuses a day that does not start a month, and infinity', function (string $day): void {
-    expect(fn () => DB::scalar('select public.audit_log_month_drop(?::date)', [$day]))
+    expect(fn () => DB::scalar('select public.audit_log_month_drop(?::date, ?)', [$day, AM_NO_ROW]))
         ->toThrow(QueryException::class, 'first day of a month');
 })->with([
     'the 15th' => fn (): string => amMonth(-20).'-15',
@@ -349,7 +379,8 @@ it('refuses a day that does not start a month, and infinity', function (string $
 it('does nothing for a NULL month', function (): void {
     $before = amMonths();
 
-    expect(DB::scalar('select public.audit_log_month_drop(null::date)'))->toBeNull()
+    expect(DB::scalar('select public.audit_log_month_drop(null::date, ?)', [AM_NO_ROW]))->toBeNull()
+        ->and(DB::scalar("select public.audit_log_month_drop('1990-01-01'::date, null)"))->toBeNull()
         ->and(amMonths())->toBe($before);
 });
 
@@ -360,8 +391,8 @@ it('drops an old month and returns its row count, and 0 for a month that does no
     amRow(amMonth(0).'-01 00:00:00+00');
 
     try {
-        $dropped = DB::scalar('select public.audit_log_month_drop(?::date)', [$month.'-01']);
-        $missing = DB::scalar("select public.audit_log_month_drop('1990-01-01'::date)");
+        $dropped = amDrop($month);
+        $missing = amDrop('1990-01');
         $gone = ! amExists($month);
     } finally {
         amCreate($month);
@@ -370,14 +401,32 @@ it('drops an old month and returns its row count, and 0 for a month that does no
     expect($dropped)->toBe(2)
         ->and($missing)->toBe(0)
         ->and($gone)->toBeTrue()
-        ->and(AuditLog::query()->count())->toBe(1);
+        ->and(AuditLog::query()->where('action', '<>', PurgeAuditMonth::ACTION)->count())->toBe(1)
+        ->and(AuditLog::query()->where('action', PurgeAuditMonth::ACTION)->orderBy('id')->pluck('meta')->all())
+        ->toEqual([['month' => $month, 'rows' => 2], ['month' => '1990-01', 'rows' => 0]]);
 });
+
+it('refuses to drop a month without its audit row, whoever calls', function (string $who): void {
+    $month = amMonth(-13);
+    amRow($month.'-03 00:00:00+00');
+    $connection = $who === 'app' ? DB::connection() : DB::connection('pgsql_admin');
+    // a row for another month, or one written long ago, does not count either
+    $other = amRow(amMonth(0).'-01 00:00:00+00', ['action' => PurgeAuditMonth::ACTION, 'meta' => ['month' => amMonth(-14)]]);
+    $old = amRow(amMonth(0).'-01 00:00:00+00', ['action' => PurgeAuditMonth::ACTION, 'meta' => ['month' => $month], 'created_at' => now()->subHour()]);
+
+    foreach ([AM_NO_ROW, $other->ulid, $old->ulid] as $record) {
+        expect(fn () => $connection->scalar('select public.audit_log_month_drop(?::date, ?)', [$month.'-01', $record]))
+            ->toThrow(QueryException::class, 'only after its audit row is written');
+    }
+
+    expect(amExists($month))->toBeTrue();
+})->with(['app', 'migration role']);
 
 it('refuses to drop a table named like a month that is not part of the log', function (): void {
     DB::connection('pgsql_admin')->statement('create table public.audit_logs_y1999m01 (id int)');
 
     try {
-        expect(fn () => DB::scalar("select public.audit_log_month_drop('1999-01-01'::date)"))
+        expect(fn () => amDrop('1999-01'))
             ->toThrow(QueryException::class, 'is not a month of the audit log');
         expect(DB::connection('pgsql_admin')->scalar("select to_regclass('public.audit_logs_y1999m01') is not null"))->toBeTrue();
     } finally {
@@ -440,6 +489,48 @@ it('refuses a wrong password, and stops trying after five within a minute', func
         ->and(amExists($month))->toBeTrue();
 });
 
+it('counts wrong passwords per person, so one super-admin locked out does not lock out another', function (): void {
+    $first = amOperator('super_admin');
+    $second = User::factory()->create(['password' => 'password']);
+    app(PlatformAccess::class)->onPlatform(fn () => $second->assignRole('super_admin'));
+    app(PlatformAccess::class)->forgetMemo();
+    $month = amMonth(-13);
+
+    foreach (range(1, PurgeAuditMonth::ATTEMPTS + 1) as $attempt) {
+        amRefusal(fn () => app(PurgeAuditMonth::class)->handle($first, $month, 'not-it'), 'password');
+    }
+
+    expect(amRefusal(fn () => app(PurgeAuditMonth::class)->handle($second, $month, 'not-it'), 'password'))
+        ->toBe(__('admin.audit.purge.wrong_password'));
+});
+
+it('tells the super-admin to try again later when the log is busy, and keeps the month', function (): void {
+    $actor = amOperator('super_admin');
+    $month = amMonth(-13);
+    amRow($month.'-03 00:00:00+00');
+    $admin = DB::connection('pgsql_admin');
+    $admin->beginTransaction();
+    $admin->statement('lock table public.audit_logs in access share mode');
+
+    try {
+        $message = amRefusal(fn () => app(PurgeAuditMonth::class)->handle($actor, $month, 'password'), 'month');
+    } finally {
+        $admin->rollBack();
+    }
+
+    expect($message)->toBe(__('admin.audit.purge.busy'))
+        ->and(amExists($month))->toBeTrue()
+        ->and(AuditLog::query()->where('action', PurgeAuditMonth::ACTION)->count())->toBe(0);
+});
+
+it('refuses by hand a month the log does not have', function (): void {
+    $actor = amOperator('super_admin');
+
+    expect(amRefusal(fn () => app(PurgeAuditMonth::class)->handle($actor, '1990-01', 'password'), 'month'))
+        ->toBe(__('admin.audit.purge.missing'))
+        ->and(AuditLog::query()->where('action', PurgeAuditMonth::ACTION)->count())->toBe(0);
+});
+
 it('refuses manual cleanup to an account without a password', function (): void {
     $actor = amOperator('super_admin');
     DB::connection('pgsql_admin')->table('users')->where('id', $actor->id)->update(['password' => '']);
@@ -498,7 +589,7 @@ it('keeps the month when its audit row cannot be written', function (): void {
 
 it('prunes only the months older than 24 full months, audits it, and does nothing on a rerun', function (): void {
     foreach (app(AuditMonths::class)->expired() as $leftOver) {
-        DB::connection('pgsql_admin')->statement('select public.audit_log_month_drop(?::date)', [$leftOver.'-01']);
+        amDrop($leftOver);
     }
     [$kept, $old, $older] = [amMonth(-24), amMonth(-25), amMonth(-26)];
     amCreate($old);
@@ -511,11 +602,12 @@ it('prunes only the months older than 24 full months, audits it, and does nothin
     expect(amExists($old))->toBeFalse()
         ->and(amExists($older))->toBeFalse()
         ->and(amExists($kept))->toBeTrue()
-        ->and(AuditLog::query()->where('action', 'audit.months_pruned')->sole()->meta)->toMatchArray(['months' => [$older, $old], 'rows' => 1]);
+        ->and(AuditLog::query()->where('action', 'audit.months_pruned')->orderBy('id')->pluck('meta')->all())
+        ->toEqual([['month' => $older, 'rows' => 0], ['month' => $old, 'rows' => 1]]);
 
     $this->artisan('audit:prune')->expectsOutputToContain('No audit log month is older than 24 full months.')->assertSuccessful();
 
-    expect(AuditLog::query()->where('action', 'audit.months_pruned')->count())->toBe(1)
+    expect(AuditLog::query()->where('action', 'audit.months_pruned')->count())->toBe(2)
         ->and(amExists($kept))->toBeTrue();
 });
 

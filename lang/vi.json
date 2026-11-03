@@ -438,6 +438,7 @@
     "admin.audit.purge.throttled": "Bạn đã nhập sai mật khẩu nhiều lần. Hãy thử lại sau :seconds giây.",
     "admin.audit.purge.too_recent": "Nhật ký của tháng này và :months tháng trước đó luôn được giữ lại. Hãy chọn một tháng cũ hơn.",
     "admin.audit.purge.busy": "Nhật ký đang bận ghi nên chưa xoá được. Hãy thử lại sau ít phút.",
+    "admin.audit.purge.missing": "Nhật ký không có tháng này: tháng đã được xoá trước đó hoặc chưa từng có ghi chép nào.",
     "admin.status": "Trạng thái",
     "admin.all_statuses": "Tất cả trạng thái",
     "admin.status_active": "Đang hoạt động",

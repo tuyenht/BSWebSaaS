@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Shared\Support\Cast;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
@@ -18,10 +19,12 @@ use Illuminate\Support\Facades\DB;
  *     named directly is refused to it.
  *   - The app cannot create or drop a table itself (no owner or superuser password in any app
  *     process). It calls SECURITY DEFINER functions instead: audit_log_months_ensure() creates the
- *     running month and the three after it; audit_log_month_drop(m) drops one month, and refuses
- *     the running month and the 12 before it, whatever the caller asks. That refusal is the
- *     guarantee; the PHP check before it only gives the friendly message. Each function runs with
- *     a fixed search_path (pg_temp last) and TimeZone UTC, names tables with format('%I'), takes
+ *     running month and the three after it; audit_log_month_drop(m, record) drops one month, and
+ *     refuses the running month and the 12 before it, whatever the caller asks, and any month
+ *     whose audit row (`record`, its ulid, written in the same transaction just before) is
+ *     missing; it writes the row count into that row. Those refusals are the guarantee; the PHP
+ *     checks before them only give the friendly message. Each function runs with a fixed
+ *     search_path (pg_catalog, pg_temp: every table is named with its schema) and TimeZone UTC, names tables with format('%I'), takes
  *     only the first day of a finite month and is STRICT, so a temporary table named like a month,
  *     a caller's time zone, infinity or NULL cannot steer it.
  *   - A month is created as an empty table and then ATTACHed (a lock that lets reads and writes
@@ -95,7 +98,7 @@ return new class extends Migration
     private const string FUNCTIONS = <<<'SQL'
         CREATE FUNCTION public.audit_log_month_create(m date) RETURNS boolean
             LANGUAGE plpgsql VOLATILE STRICT SECURITY DEFINER
-            SET search_path = pg_catalog, public, pg_temp
+            SET search_path = pg_catalog, pg_temp
             SET TimeZone = 'UTC'
             SET lock_timeout = '2s'
         AS $fn$
@@ -131,7 +134,7 @@ return new class extends Migration
 
         CREATE FUNCTION public.audit_log_months_ensure() RETURNS integer
             LANGUAGE plpgsql VOLATILE SECURITY DEFINER
-            SET search_path = pg_catalog, public, pg_temp
+            SET search_path = pg_catalog, pg_temp
             SET TimeZone = 'UTC'
             SET lock_timeout = '2s'
         AS $fn$
@@ -154,9 +157,9 @@ return new class extends Migration
         END
         $fn$;
 
-        CREATE FUNCTION public.audit_log_month_drop(m date) RETURNS bigint
+        CREATE FUNCTION public.audit_log_month_drop(m date, record text) RETURNS bigint
             LANGUAGE plpgsql VOLATILE STRICT SECURITY DEFINER
-            SET search_path = pg_catalog, public, pg_temp
+            SET search_path = pg_catalog, pg_temp
             SET TimeZone = 'UTC'
             SET lock_timeout = '2s'
         AS $fn$
@@ -164,6 +167,7 @@ return new class extends Migration
             kept_from date := (date_trunc('month', now() AT TIME ZONE 'UTC') - interval '12 months')::date;
             part text;
             rel regclass;
+            noted timestamptz;
             removed bigint;
         BEGIN
             IF NOT isfinite(m) OR m <> date_trunc('month', m::timestamp)::date THEN
@@ -171,21 +175,35 @@ return new class extends Migration
             END IF;
             IF m >= kept_from THEN
                 RAISE EXCEPTION 'audit log month % is kept: the running month and the 12 before it are never removed', to_char(m, 'YYYY-MM')
-                    USING ERRCODE = '42501';
+                    USING ERRCODE = 'AUKPT';
+            END IF;
+            -- the audit row that says so comes first, in the same transaction: no month goes unrecorded
+            SELECT a.created_at INTO noted FROM public.audit_logs a
+            WHERE a.ulid = record::character(26)
+              AND a.created_at >= now() - interval '10 minutes'
+              AND a.action IN ('audit.month_deleted', 'audit.months_pruned')
+              AND a.meta->>'month' = to_char(m, 'YYYY-MM');
+            IF noted IS NULL THEN
+                RAISE EXCEPTION 'audit log month % is removed only after its audit row is written', to_char(m, 'YYYY-MM')
+                    USING ERRCODE = 'AUNRC';
             END IF;
 
             part := 'audit_logs_' || to_char(m, '"y"YYYY"m"MM');
             rel := to_regclass(format('public.%I', part));
             IF rel IS NULL THEN
-                RETURN 0;
-            END IF;
-            IF NOT EXISTS (SELECT 1 FROM pg_inherits WHERE inhrelid = rel AND inhparent = 'public.audit_logs'::regclass) THEN
+                removed := 0;
+            ELSIF NOT EXISTS (SELECT 1 FROM pg_inherits WHERE inhrelid = rel AND inhparent = 'public.audit_logs'::regclass) THEN
                 RAISE EXCEPTION 'table % is not a month of the audit log', part USING ERRCODE = '42809';
+            ELSE
+                -- counted before the DETACH: the parent is locked from the DETACH until the commit,
+                -- and an old month gets no new rows (writers stamp now())
+                EXECUTE format('SELECT count(*) FROM public.%I', part) INTO removed;
+                EXECUTE format('ALTER TABLE public.audit_logs DETACH PARTITION public.%I', part);
+                EXECUTE format('DROP TABLE public.%I', part);
             END IF;
 
-            EXECUTE format('ALTER TABLE public.audit_logs DETACH PARTITION public.%I', part);
-            EXECUTE format('SELECT count(*) FROM public.%I', part) INTO removed;
-            EXECUTE format('DROP TABLE public.%I', part);
+            UPDATE public.audit_logs SET meta = jsonb_set(meta, '{rows}', to_jsonb(removed))
+            WHERE ulid = record::character(26) AND created_at = noted;
 
             RETURN removed;
         END
@@ -193,7 +211,7 @@ return new class extends Migration
 
         CREATE FUNCTION public.audit_log_months() RETURNS TABLE (month date, rows_estimate bigint)
             LANGUAGE sql STABLE
-            SET search_path = pg_catalog, public, pg_temp
+            SET search_path = pg_catalog, pg_temp
             SET TimeZone = 'UTC'
         AS $fn$
             SELECT to_date(substring(c.relname FROM '^audit_logs_y([0-9]{4})m[0-9]{2}$')
@@ -208,7 +226,7 @@ return new class extends Migration
 
         CREATE FUNCTION public.audit_log_month_count(m date) RETURNS bigint
             LANGUAGE plpgsql STABLE STRICT
-            SET search_path = pg_catalog, public, pg_temp
+            SET search_path = pg_catalog, pg_temp
             SET TimeZone = 'UTC'
         AS $fn$
         DECLARE
@@ -228,11 +246,11 @@ return new class extends Migration
 
         REVOKE ALL ON FUNCTION public.audit_log_month_create(date) FROM PUBLIC;
         REVOKE ALL ON FUNCTION public.audit_log_months_ensure() FROM PUBLIC;
-        REVOKE ALL ON FUNCTION public.audit_log_month_drop(date) FROM PUBLIC;
+        REVOKE ALL ON FUNCTION public.audit_log_month_drop(date, text) FROM PUBLIC;
         REVOKE ALL ON FUNCTION public.audit_log_months() FROM PUBLIC;
         REVOKE ALL ON FUNCTION public.audit_log_month_count(date) FROM PUBLIC;
         GRANT EXECUTE ON FUNCTION public.audit_log_months_ensure() TO app_user;
-        GRANT EXECUTE ON FUNCTION public.audit_log_month_drop(date) TO app_user;
+        GRANT EXECUTE ON FUNCTION public.audit_log_month_drop(date, text) TO app_user;
         GRANT EXECUTE ON FUNCTION public.audit_log_months() TO app_user;
         GRANT EXECUTE ON FUNCTION public.audit_log_month_count(date) TO app_user;
         SQL;
@@ -268,6 +286,15 @@ return new class extends Migration
                 .'CONSTRAINT audit_logs_ulid_unique UNIQUE (ulid, created_at)) PARTITION BY RANGE (created_at)');
             DB::unprepared(self::FUNCTIONS);
             DB::statement('RESET ROLE');
+
+            // a stray date (a clock fault) would otherwise make one month per month in between
+            $stray = Cast::int(DB::scalar(<<<'SQL'
+                SELECT count(*) FROM public.audit_logs_old
+                WHERE created_at < now() - interval '10 years' OR created_at > now() + interval '1 year'
+                SQL));
+            if ($stray !== 0) {
+                throw new RuntimeException("audit_logs has {$stray} rows dated more than 10 years back or 1 year ahead: correct or remove them before splitting the log by month.");
+            }
 
             DB::select(<<<'SQL'
                 WITH span AS (
@@ -325,7 +352,7 @@ return new class extends Migration
                 REVOKE UPDATE, DELETE ON TABLE public.audit_logs FROM app_user;
                 DROP TABLE public.audit_logs_parted;
                 DROP FUNCTION IF EXISTS public.audit_log_months_ensure();
-                DROP FUNCTION IF EXISTS public.audit_log_month_drop(date);
+                DROP FUNCTION IF EXISTS public.audit_log_month_drop(date, text);
                 DROP FUNCTION IF EXISTS public.audit_log_months();
                 DROP FUNCTION IF EXISTS public.audit_log_month_count(date);
                 DROP FUNCTION IF EXISTS public.audit_log_month_create(date);
