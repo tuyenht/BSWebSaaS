@@ -135,7 +135,8 @@ final class AuditMonths
         } catch (QueryException $e) {
             $reason = match ($e->errorInfo[0] ?? null) {
                 'AUKPT' => 'kept',
-                '55P03' => 'busy',
+                // lock_timeout, or two drops at once (a purge during the prune) deadlocking
+                '55P03', '40P01' => 'busy',
                 '22023' => 'invalid',
                 'AUGON' => 'missing',
                 'AUNRC' => 'unrecorded',

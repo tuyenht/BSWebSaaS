@@ -73,6 +73,7 @@ final class PurgeAuditMonth
                 'kept' => __('admin.audit.purge.too_recent', ['months' => AuditMonths::MANUAL_FLOOR_MONTHS]),
                 'busy' => __('admin.audit.purge.busy'),
                 'missing' => __('admin.audit.purge.missing'),
+                'unrecorded' => __('admin.audit.purge.unrecorded'),
                 default => __('admin.audit.purge.invalid_month'),
             }]);
         }

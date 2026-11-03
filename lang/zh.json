@@ -438,6 +438,7 @@
     "admin.audit.purge.throttled": "密码错误次数过多。请在 :seconds 秒后重试。",
     "admin.audit.purge.too_recent": "本月及之前 :months 个月的日志会一直保留。请选择更早的月份。",
     "admin.audit.purge.busy": "日志正忙，未能删除。请几分钟后重试。",
+    "admin.audit.purge.unrecorded": "数据库时钟与系统不一致，未能删除该月。请联系技术人员。",
     "admin.audit.purge.missing": "活动日志中没有这个月的记录：已被删除，或从未有过记录。",
     "admin.status": "状态",
     "admin.all_statuses": "所有状态",

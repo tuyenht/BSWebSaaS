@@ -45,7 +45,6 @@ Prod is a separate git checkout, `/opt/bswebsaas/prod` (branch `main`), on the s
    ```bash
    docker exec bsweb_prod_pg sh -c 'psql -U "$POSTGRES_USER" -d bswebsaas -tAc "SELECT count(*), min(created_at), max(created_at) FROM audit_logs"'
    ```
-   After the migrations, restart PgBouncer (its server connections cache plans of the old table) and run `docker exec bsweb_prod_app php artisan audit:months` once; it must report at least 2 months ahead.
 
 ## Deploy
 
@@ -54,6 +53,7 @@ Prod is a separate git checkout, `/opt/bswebsaas/prod` (branch `main`), on the s
 2. Migrations, from `/opt/bswebsaas/prod`: `docker compose --profile ops run --rm --no-deps migrate`.
    - This one-off container is the only app process that receives the superuser password (from `/opt/bswebsaas/secrets/db-admin.env`); the app, the queue and the scheduler never hold it.
    - Any other superuser-only artisan command runs the same way: `docker compose --profile ops run --rm --no-deps migrate php artisan <command> --database=pgsql_admin`.
+   - After the migration that splits `audit_logs` by month (Before step 6): compare the row count, restart PgBouncer (`docker restart bsweb_prod_pgbouncer`; its pooled server connections still hold prepared statements planned for the old table), then run `docker exec bsweb_prod_app php artisan audit:months` once; it must report at least 2 months ahead.
    - A migration that builds an index CONCURRENTLY waits for every open transaction to finish. If the step seems stuck, look for a session left idle in a transaction (`SELECT pid, state, xact_start FROM pg_stat_activity WHERE state LIKE 'idle in transaction%'`) before anything else; the build carries on by itself once that session ends.
 3. Front-end: in `/opt/bswebsaas/prod`, run `pnpm install --frozen-lockfile` (only if the lockfile changed), then `pnpm run build`.
    - `public/build` is gitignored, and Tailwind emits only the classes it saw at build time.
