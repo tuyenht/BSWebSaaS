@@ -9,6 +9,9 @@
 /* Shared record-list rows (<x-bs-admin::list>): layout by the list's own width. */
 @import './admin-list.css';
 
+/* The approval-workflow list (design 18): its table → three columns → flat rows by the page's width. */
+@import './admin-workflow.css';
+
 /* Scan module Blade + bundled theme Blade + framework/runtime views so utility classes aren't purged. */
 @source '../../app/Modules/**/*.blade.php';
 @source '../../themes/**/*.blade.php';

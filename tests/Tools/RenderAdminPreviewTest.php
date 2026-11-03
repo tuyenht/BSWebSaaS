@@ -160,12 +160,16 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
             $category->translations()->create(['locale' => 'vi', 'name' => $label, 'slug' => $slug]);
             ContentSection::query()->create(['key' => $key, 'label' => $label, 'entry_type' => 'post', 'taxonomy_id' => $category->id,
                 'permission_prefix' => 'entries', 'sort_order' => 1]);
-            Livewire::actingAs($top)->test(WorkflowSettings::class)->call('apply', $key, 'admin_approval', $on)->assertHasNoErrors();
+            Livewire::actingAs($top)->test(WorkflowSettings::class)
+                ->call('save', [['key' => $key, 'template' => 'admin_approval', 'active' => $on]])->assertHasNoErrors();
         }
     });
     $this->flushSession();
     $html = $this->actingAs($top)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/workflows')->assertOk()->getContent();
-    expect(substr_count($html, 'role="switch"'))->toBe(2);
+    // every collection's row carries its switch (shown once it has a flow); only "Dự án" is on
+    expect(substr_count($html, 'role="switch"'))->toBeGreaterThanOrEqual(2)
+        ->and(substr_count($html, 'aria-checked="true"'))->toBe(1)
+        ->and($html)->toContain('Dự án', 'Tuyển dụng');
     file_put_contents($dir.'/workflows.html', $html);
 
     // The domain screen with its "add a name" dialog open on the first step (the www switch).

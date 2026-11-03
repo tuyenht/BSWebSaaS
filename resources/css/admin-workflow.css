@@ -1,0 +1,178 @@
+/*
+ | The approval-workflow list (design 18 "Quy trình duyệt"). The page is a size container (wf) and
+ | every row lays itself out by its width:
+ |   from 900 (56.25rem)  a table of four columns: section · workflow · switch · change button;
+ |   600–899              three columns: the switch and the button stack in the last one;
+ |   below 600 (37.5rem)  flat rows: name / counts / "Quy trình: …" each on their own line, then the
+ |                        switch on the left and [Xem sơ đồ] [Đổi quy trình] on the right, the
+ |                        buttons wrapping whole onto a second line when they do not fit.
+ | Column widths are in rem plus the reader's text-size boost, so the button labels stay on one line
+ | at every text size. Names and counts wrap and are never clipped.
+ */
+@layer components {
+    .wf-page {
+        container: wf / inline-size;
+        min-width: 0;
+    }
+
+    .wf-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 14.125rem 9.5rem calc(9.375rem + var(--user-text-boost) * 6);
+        column-gap: 0.75rem;
+        align-items: center;
+        padding: 0.75rem 1rem;
+    }
+
+    .wf-head {
+        padding-block: 0.5625rem;
+        border-bottom: 1px solid var(--color-border);
+        background: var(--color-surface-muted);
+    }
+
+    .wf-row + .wf-row {
+        border-top: 1px solid var(--color-border-soft);
+    }
+
+    .wf-row:hover {
+        background: var(--color-surface-muted);
+    }
+
+    .wf-c1,
+    .wf-c2 {
+        display: flex;
+        flex-direction: column;
+        gap: 0.1875rem;
+        min-width: 0;
+    }
+
+    .wf-c3 {
+        display: flex;
+        align-items: center;
+        min-width: 0;
+    }
+
+    .wf-c4 {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 0;
+    }
+
+    .wf-c4 > .wf-change {
+        width: 100%;
+    }
+
+    /* only in the flat rows: the "Quy trình:" lead-in and the [Xem sơ đồ] button */
+    .wf-narrow {
+        display: none;
+    }
+
+    @container wf (width < 56.25rem) {
+        .wf-grid {
+            grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) calc(10.75rem + var(--user-text-boost) * 3);
+        }
+
+        .wf-head > :nth-child(4) {
+            display: none;
+        }
+
+        .wf-row {
+            grid-template-areas: 'c1 c2 c3' 'c1 c2 c4';
+            row-gap: 0.25rem;
+        }
+
+        .wf-row > .wf-c1 {
+            grid-area: c1;
+        }
+
+        .wf-row > .wf-c2 {
+            grid-area: c2;
+        }
+
+        .wf-row > .wf-c3 {
+            grid-area: c3;
+        }
+
+        .wf-row > .wf-c4 {
+            grid-area: c4;
+        }
+    }
+
+    @container wf (width < 37.5rem) {
+        .wf-head {
+            display: none;
+        }
+
+        .wf-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.25rem 0.5rem;
+            padding: 0.5rem 0.75rem;
+        }
+
+        .wf-row:hover {
+            background: transparent;
+        }
+
+        .wf-row > .wf-c1,
+        .wf-row > .wf-c2 {
+            display: contents;
+        }
+
+        .wf-name {
+            flex: 1 1 100%;
+            order: 1;
+        }
+
+        .wf-sub {
+            flex: 1 1 100%;
+            order: 2;
+        }
+
+        .wf-flow,
+        .wf-none {
+            flex: 1 1 100%;
+            order: 3;
+        }
+
+        .wf-c2 > .wf-view {
+            display: none;
+        }
+
+        .wf-row > .wf-c3 {
+            order: 4;
+            margin-right: auto;
+        }
+
+        .wf-row > .wf-c4 {
+            order: 5;
+            flex-wrap: wrap;
+            margin-left: auto;
+        }
+
+        .wf-c4 > .wf-change {
+            width: auto;
+        }
+
+        .wf-narrow {
+            display: inline-flex;
+        }
+
+        /* the card's three header lines become a title and one line under it */
+        .wf-cardhead-wide {
+            display: none;
+        }
+    }
+
+    .wf-cardhead-narrow {
+        display: none;
+    }
+
+    @container wf (width < 37.5rem) {
+        .wf-cardhead-narrow {
+            display: block;
+        }
+    }
+}
