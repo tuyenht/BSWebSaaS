@@ -1310,6 +1310,7 @@
     "admin.wf.none": "暂无流程 — 有发布权限即可直接发布。",
     "admin.wf.view_steps": "查看步骤图",
     "admin.wf.enabled": "已启用",
+    "admin.wf.switch_label": ":name 发布前审核 · :state",
     "admin.wf.disabled": "已停用",
     "admin.wf.pending_count": ":count篇待审",
     "admin.wf.choose": "选择流程",

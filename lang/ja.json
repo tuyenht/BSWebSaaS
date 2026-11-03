@@ -1310,6 +1310,7 @@
     "admin.wf.none": "ワークフローなし — 公開権限があれば直接公開できます。",
     "admin.wf.view_steps": "ステップ図を見る",
     "admin.wf.enabled": "有効",
+    "admin.wf.switch_label": ":name の公開前レビュー · :state",
     "admin.wf.disabled": "無効",
     "admin.wf.pending_count": "承認待ち:count件",
     "admin.wf.choose": "ワークフローを選ぶ",
