@@ -174,3 +174,46 @@ it('plans a one-letter search and a search by number on the indexes, never a ful
         expect($indexes)->toContain('users_name_fold_words_index', 'tenants_name_fold_words_index');
     }
 })->with(['one letter' => 'b', 'the letter every owner has' => 'v', 'a number' => '#', 'a phone in short groups' => '09 01 23']);
+
+it('plans the whole list, newest first, on the order index: no read of every customer', function (string $status): void {
+    $sent = [];
+    DB::listen(function ($query) use (&$sent): void {
+        if (str_contains($query->sql, "order by coalesce(tenants.created_at, '-infinity') desc")) {
+            $sent[] = ['sql' => $query->sql, 'bindings' => $query->connection->prepareBindings($query->bindings)];
+        }
+    });
+    $directory = app(CustomerDirectory::class);
+    $first = $directory->page('', $status, [], 20, '', '');
+    // a later page: the keyset after the first page's last row
+    $directory->page('', $status, [], 20, (string) $first['older'], '');
+    expect($sent)->toHaveCount(2);
+
+    foreach ($sent as $statement) {
+        $nodes = [];
+        $walk = function (array $node) use (&$walk, &$nodes): void {
+            $nodes[] = [(string) $node['Node Type'], (string) ($node['Relation Name'] ?? ''), (string) ($node['Index Name'] ?? '')];
+            foreach ($node['Plans'] ?? [] as $child) {
+                $walk($child);
+            }
+        };
+        $plan = (array) DB::selectOne('EXPLAIN (FORMAT JSON) '.$statement['sql'], $statement['bindings']);
+        $walk(json_decode((string) reset($plan), true)[0]['Plan']);
+        $report = json_encode($nodes);
+
+        expect(array_column($nodes, 2))->toContain('tenants_listing_order_index')
+            ->and(array_filter($nodes, fn (array $n): bool => $n[0] === 'Seq Scan' && $n[1] === 'tenants'))->toBe([], (string) $report);
+    }
+})->with(['every customer' => '', 'one status' => 'active']);
+
+it('reads the whole list\'s totals behind a search once, not on every search typed', function (): void {
+    $directory = app(CustomerDirectory::class);
+    $first = $directory->baseCounts();
+    DB::connection('pgsql_admin')->table('tenants')->where('name', 'like', '% 31337')->update(['status' => 'suspended']);
+
+    $live = $directory->counts('', [])['groups'];
+
+    expect($directory->baseCounts())->toBe($first)
+        ->and($live['suspended'])->toBe($first['suspended'] + 1)
+        ->and($first['all'])->toBeGreaterThanOrEqual(50000)
+        ->and($first['all'])->toBe($first['active'] + $first['suspended']);
+});

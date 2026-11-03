@@ -157,7 +157,7 @@ final class Index extends Component
                     'planCounts' => $page['counts']['plans'],
                     // "N trong M": M is the same group with neither the search nor the plans (read
                     // with the page's own counts when there is no search)
-                    'baseCounts' => $narrowed ? ($page['base'] ?? $directory->counts('', [])['groups']) : null,
+                    'baseCounts' => $narrowed ? ($page['base'] ?? $directory->baseCounts()) : null,
                 ];
             });
         } catch (QueryException $e) {
