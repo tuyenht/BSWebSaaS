@@ -6,6 +6,7 @@ namespace App\Modules\Provisioning\ContentPack;
 
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
+use App\Modules\Cms\Casts\SanitizedPageBody;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Menu;
@@ -874,7 +875,9 @@ final class Planner
             $row = [
                 'title' => $title,
                 'excerpt' => self::text($item->data, 'excerpt', $locale),
-                'body' => ['blocks' => $this->resolveBody(Cast::arr($bodies[$locale] ?? $bodies[$this->locale] ?? []), $item->key)],
+                // as the body cast will store it (formatted text sanitized), so the read-back check and the
+                // next run's comparison see the same body
+                'body' => SanitizedPageBody::cleanBody(['blocks' => $this->resolveBody(Cast::arr($bodies[$locale] ?? $bodies[$this->locale] ?? []), $item->key)]),
                 'seo_title' => self::text($item->data, 'seo_title', $locale),
                 'seo_description' => self::text($item->data, 'seo_description', $locale),
                 'status' => $status,

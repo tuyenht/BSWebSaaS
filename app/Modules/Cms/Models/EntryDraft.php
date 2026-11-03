@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Cms\Models;
 
+use App\Modules\Cms\Casts\SanitizedPageBody;
 use App\Modules\Identity\Models\User;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
 use Carbon\CarbonImmutable;
@@ -94,13 +95,34 @@ class EntryDraft extends Model
     }
 
     /**
+     * A JSON-path write (`content->locales`) goes round the cast's set(), so the whole content is
+     * cleaned again right after it (no such write exists; PageBodyWriteChokepointTest bans them too).
+     *
+     * @param  string  $key
+     * @param  mixed  $value
+     * @return $this
+     */
+    #[\Override]
+    public function fillJsonAttribute($key, $value)
+    {
+        parent::fillJsonAttribute($key, $value);
+        if (explode('->', $key, 2)[0] === 'content') {
+            $this->setAttribute('content', $this->getAttribute('content'));
+        }
+
+        return $this;
+    }
+
+    /**
+     * content: the html props of each language's body are sanitized on every write (ADR-19).
+     *
      * @return array<string, string>
      */
     #[\Override]
     protected function casts(): array
     {
         return [
-            'content' => 'array',
+            'content' => SanitizedPageBody::class.':draft',
             'assigned_to' => 'integer',
             'created_by' => 'integer',
             'updated_by' => 'integer',

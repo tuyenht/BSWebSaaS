@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Cms\Models;
 
+use App\Modules\Cms\Casts\SanitizedPageBody;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
 
@@ -32,13 +33,34 @@ class EntryTranslation extends Model
     protected $guarded = [];
 
     /**
+     * A JSON-path write (`body->blocks`) goes round the cast's set(), so the whole body is cleaned
+     * again right after it (no such write exists; PageBodyWriteChokepointTest bans them too).
+     *
+     * @param  string  $key
+     * @param  mixed  $value
+     * @return $this
+     */
+    #[\Override]
+    public function fillJsonAttribute($key, $value)
+    {
+        parent::fillJsonAttribute($key, $value);
+        if (explode('->', $key, 2)[0] === 'body') {
+            $this->setAttribute('body', $this->getAttribute('body'));
+        }
+
+        return $this;
+    }
+
+    /**
+     * body: every html prop is sanitized on every write (ADR-19, SanitizedPageBody).
+     *
      * @return array<string, string>
      */
     #[\Override]
     protected function casts(): array
     {
         return [
-            'body' => 'array',
+            'body' => SanitizedPageBody::class,
         ];
     }
 }
