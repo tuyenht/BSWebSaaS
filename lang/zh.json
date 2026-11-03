@@ -1708,6 +1708,7 @@
     "provisioning.tenant_host_taken": "网站 :host 已存在（属于客户 :tenant），因此没有创建新客户。要完成该网站，请用 --tenant=:tenant 重新运行。",
     "provisioning.tenant_rerun_needs_tenant": "网站 :host 已存在（属于客户 :tenant）。要完成该网站，请用 --tenant=:tenant 重新运行。",
     "provisioning.host_invalid": "“:host”不是网站可用的主机名。只能使用字母、数字和连字符，并至少包含两部分，例如 shop.example.vn。",
+    "customers.phone_invalid": "此电话号码无法使用。请按拨号时的方式输入，例如 0901 234 567，或带国家代码，例如 +84 901 234 567。",
     "validation.attributes": {
         "email": "邮箱",
         "password": "密码",
