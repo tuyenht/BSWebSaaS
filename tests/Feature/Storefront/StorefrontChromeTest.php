@@ -161,6 +161,37 @@ it('renders the top bar with safe tel and mailto links and each item’s breakpo
         ->not->toContain('site-header');
 });
 
+it('drops a top bar that holds only the text-size button from the laptop layout', function (): void {
+    $siteId = sfcSite();
+    sfcSetting($siteId, 'header', ['top_bar' => ['items' => []], 'text_size' => true, 'sticky' => false]);
+
+    $this->get('http://mau.platform.test/gioi-thieu')->assertOk()
+        ->assertSee('<header class="sf-header sf-header--topbar sf-header--fs-only">', false);
+
+    sfcSetting($siteId, 'header', sfcHeader());
+    $this->get('http://mau.platform.test/gioi-thieu')->assertOk()
+        ->assertDontSee('sf-header--fs-only', false);
+});
+
+it('hides the menu button and the text-size control in the laptop layout, after the rules that show them', function (): void {
+    // equal selectors: the later rule wins, so each lg rule must come after the base rule it overrides
+    $css = (string) file_get_contents(resource_path('css/storefront.css'));
+    $at = fn (string $needle): int => (int) strpos($css, $needle);
+
+    foreach (['sf-burger', 'sf-fs'] as $class) {
+        $base = $at("\n.{$class} {\n    display: inline-flex;");
+        $hidden = $at("@media (min-width: 1024px) {\n    .{$class} {\n        display: none;");
+
+        expect($base)->toBeGreaterThan(0, "base .{$class} rule not found")
+            ->and($hidden)->toBeGreaterThan($base, "the lg rule hiding .{$class} must come after its base rule");
+    }
+    // the small-laptop spacing comes after the menu's own gap and padding
+    expect($at('@media (min-width: 1024px) and (max-width: 1279.98px)'))->toBeGreaterThan($at(".sf-nav--desk > .sf-nav__list {\n    display: flex;"));
+    // the enlarged sizes apply below lg only
+    expect(preg_match('/@media \(max-width: 1023\.98px\) \{\s*html\[data-fs="l"\][^}]*\}\s*html\[data-fs="xl"\]/', $css))->toBe(1)
+        ->and(substr_count($css, 'html[data-fs='))->toBe(2);
+});
+
 it('makes submenus disclosures: a # parent is a button, a page parent keeps its link plus a toggle', function (): void {
     $siteId = sfcSite();
     sfcSetting($siteId, 'header', ['sticky' => false]);

@@ -82,18 +82,21 @@
 }
 
 /* --text-base is a site's root size (default 1rem = the browser's); the text-size control steps it
-   up 1.125x / 1.25x, and every rem/em in this sheet follows. */
+   up 1.125x / 1.25x on phones and tablets, and every rem/em in this sheet follows. From lg (the
+   laptop layout) there is no control and the site's own size always applies. */
 html {
     scroll-behavior: smooth;
     font-size: var(--text-base, 1rem);
 }
 
-html[data-fs="l"] {
-    font-size: calc(var(--text-base, 1rem) * 1.125);
-}
+@media (max-width: 1023.98px) {
+    html[data-fs="l"] {
+        font-size: calc(var(--text-base, 1rem) * 1.125);
+    }
 
-html[data-fs="xl"] {
-    font-size: calc(var(--text-base, 1rem) * 1.25);
+    html[data-fs="xl"] {
+        font-size: calc(var(--text-base, 1rem) * 1.25);
+    }
 }
 
 body {
@@ -1436,6 +1439,21 @@ html:has(.sf-header--sticky) {
     }
 }
 
+/* The laptop layout has no text-size control (the browser's own zoom is there). */
+@media (min-width: 1024px) {
+    .sf-fs {
+        display: none;
+    }
+
+    .sf-header--fs-only {
+        --sf-topbar-h: 0px;
+    }
+
+    .sf-header--fs-only .sf-topbar {
+        display: none;
+    }
+}
+
 .sf-bar__inner {
     display: flex;
     align-items: center;
@@ -1466,10 +1484,6 @@ html:has(.sf-header--sticky) {
         display: block;
         margin-left: 2.5rem;
         margin-right: auto;
-    }
-
-    .sf-burger {
-        display: none;
     }
 }
 
@@ -1611,6 +1625,29 @@ html:not(.sf-js) .sf-nav--desk .sf-nav__item--parent:focus-within > .sf-nav__pan
 
 .sf-burger[aria-expanded="true"] .sf-burger__close {
     display: inline-flex;
+}
+
+/* After the base rule above, which it must override: the laptop layout has the full menu. */
+@media (min-width: 1024px) {
+    .sf-burger {
+        display: none;
+    }
+}
+/* Small laptops (1024–1279px, e.g. 1366 at 125% scaling): tighter spacing keeps an eight-item
+   menu on one line beside the logo; the hit height is unchanged. Placed after the menu's base
+   rules, which it overrides */
+@media (min-width: 1024px) and (max-width: 1279.98px) {
+    .sf-nav--desk {
+        margin-left: 0.5rem;
+    }
+
+    .sf-nav--desk > .sf-nav__list {
+        gap: 0;
+    }
+
+    .sf-nav--desk .sf-nav__link {
+        padding-inline: 0.4375rem;
+    }
 }
 
 /* The mobile panel keeps its `hidden` attribute as the open/closed state (never a display here). */
