@@ -1,7 +1,7 @@
 {{--
-    Gallery: pictures from the site's library in a grid of 2–4 columns (one on a phone, two on a
-    tablet), each with an optional caption. A picture that did not resolve is skipped. The picture
-    is decorative (alt=""), its caption carries the text.
+    Gallery: pictures from the site's library in a grid of 2–4 columns (two on a phone), each with an
+    optional caption. A picture that did not resolve is skipped. A picture with a caption keeps
+    alt="" (the caption carries the text); one without takes the library's alt text.
 --}}
 @php
     $heading = \App\Modules\Theme\Components\SectionProps::text($props, 'heading');
@@ -18,7 +18,7 @@
 @foreach ($pictures as $item)
 @php($caption = \App\Modules\Theme\Components\SectionProps::text($item, 'caption'))
 <li><figure class="sf-gallery__item">
-@include('theme::partials.sf-img', ['src' => $item['image'], 'srcset' => ($srcsets ?? [])[$item['image']] ?? null, 'sizes' => '(min-width: 64rem) 25vw, (min-width: 40rem) 50vw, 100vw', 'w' => 800, 'h' => 600, 'class' => 'sf-gallery__img'])
+@include('theme::partials.sf-img', ['src' => $item['image'], 'srcset' => ($srcsets ?? [])[$item['image']] ?? null, 'alt' => $caption === '' ? (($alts ?? [])[$item['image']] ?? '') : '', 'sizes' => '(min-width: 64rem) 25vw, 50vw', 'w' => 800, 'h' => 600, 'class' => 'sf-gallery__img'])
 @if ($caption !== '')
 <figcaption class="sf-gallery__caption">{{ $caption }}</figcaption>
 @endif

@@ -240,7 +240,10 @@ final readonly class ValidPageJson implements ValidationRule
                 if (is_int($spec['max'] ?? null) && $count > $spec['max']) {
                     return __('entries.err_block_list_max', ['type' => $type, 'max' => $spec['max']]);
                 }
-                if (is_int($spec['min'] ?? null) && $count > 0 && $count < $spec['min']) {
+                // A list that names `min_of` counts only the items whose field of that name is not
+                // blank — the ones the storefront can actually draw.
+                $usable = is_string($spec['min_of'] ?? null) ? $this->usableItems($value, $spec['min_of']) : $count;
+                if (is_int($spec['min'] ?? null) && $count > 0 && $usable < $spec['min']) {
                     return __('entries.err_block_list_min', ['type' => $type, 'min' => $spec['min']]);
                 }
                 $of = $spec['of'] ?? null;
@@ -270,6 +273,24 @@ final readonly class ValidPageJson implements ValidationRule
         }
 
         return null;
+    }
+
+    /**
+     * How many items of a list have a non-blank text in `$field`.
+     *
+     * @param  array<array-key, mixed>  $items
+     */
+    private function usableItems(array $items, string $field): int
+    {
+        $usable = 0;
+        foreach ($items as $item) {
+            $text = is_array($item) ? ($item[$field] ?? null) : null;
+            if (is_string($text) && trim($text) !== '') {
+                $usable++;
+            }
+        }
+
+        return $usable;
     }
 
     /**

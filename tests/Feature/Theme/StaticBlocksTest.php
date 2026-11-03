@@ -28,12 +28,13 @@ function staticBlockErrors(string $type, array $props): array
 /**
  * @param  array<string, mixed>  $props
  * @param  array<string, string>  $srcsets
+ * @param  array<string, string>  $alts
  */
-function staticBlock(string $type, array $props, array $srcsets = []): string
+function staticBlock(string $type, array $props, array $srcsets = [], array $alts = []): string
 {
     app()->setLocale('vi');
 
-    return View::make("theme::sections.{$type}", ['props' => $props, 'srcsets' => $srcsets])->render();
+    return View::make("theme::sections.{$type}", ['props' => $props, 'srcsets' => $srcsets, 'alts' => $alts])->render();
 }
 
 /**
@@ -83,6 +84,14 @@ describe('validation', function (): void {
             ->and(staticBlockErrors('process', ['steps' => []]))->toBe([])
             ->and(staticBlockErrors('pricing', ['plans' => [['name' => 'A']]]))->toHaveCount(1)
             ->and(staticBlockErrors('pricing', ['plans' => repeatItem(['name' => 'A'], 2)]))->toBe([]);
+    });
+
+    it('counts only the steps with a title and the plans with a name toward the minimum', function (): void {
+        $unnamed = ['name' => '  ', 'price' => 1000];
+        expect(staticBlockErrors('pricing', ['plans' => [['name' => 'A'], $unnamed]]))->toHaveCount(1)
+            ->and(staticBlockErrors('pricing', ['plans' => [['name' => 'A'], ['name' => 'B'], $unnamed]]))->toBe([])
+            ->and(staticBlockErrors('process', ['steps' => [['title' => 'A'], ['title' => 'B'], ['title' => '', 'text' => 'x']]]))->toHaveCount(1)
+            ->and(staticBlockErrors('process', ['steps' => [['title' => 'A'], ['title' => 'B'], ['title' => 'C'], ['text' => 'x']]]))->toBe([]);
     });
 
     it('refuses a script address, a bad icon, a bad column count and a picture typed as an address', function (string $type, array $props): void {
@@ -148,6 +157,21 @@ describe('quick_links', function (): void {
             ->and($html)->toContain('<svg class="sf-icon"');
     });
 
+    it('draws the chosen variant, defaulting to the 2x2 grid', function (string $variant, string $expected): void {
+        $items = repeatItem(['icon' => 'phone', 'label' => 'Gọi', 'url' => '/lien-he'], 3);
+
+        expect(staticBlock('quick_links', ['variant' => $variant, 'items' => $items]))->toContain($expected);
+    })->with([
+        'default' => ['', 'sf-qlinks__list--grid-2x2'],
+        'unknown' => ['nope', 'sf-qlinks__list--grid-2x2'],
+        'row' => ['row', 'sf-qlinks__list--row sf-qlinks__list--n3'],
+        'pill' => ['pill', 'sf-qlinks__list--pill'],
+    ]);
+
+    it('caps a row at four tiles across', function (): void {
+        expect(staticBlock('quick_links', ['variant' => 'row', 'items' => repeatItem(['label' => 'A', 'url' => '/a'], 6)]))->toContain('sf-qlinks__list--n4');
+    });
+
     it('renders nothing without a usable tile', function (): void {
         expect(trim(staticBlock('quick_links', ['heading' => 'Trống'])))->toBe('');
     });
@@ -170,6 +194,22 @@ describe('gallery', function (): void {
             ->and(trim(staticBlock('gallery', ['images' => [['image' => null]]])))->toBe('');
     });
 
+    it('keeps alt empty under a caption and uses the library alt text, escaped, without one', function (): void {
+        $a = 'https://files.test/a.webp';
+        $b = 'https://files.test/b.webp';
+        $c = 'https://files.test/c.webp';
+        $html = staticBlock('gallery', ['images' => [
+            ['image' => $a, 'caption' => 'Có chú thích'],
+            ['image' => $b],
+            ['image' => $c],
+        ]], [], [$a => 'Không dùng', $b => 'Xưởng "CNC" <b>']);
+
+        expect($html)->toMatch('#src="https://files\.test/a\.webp"[^>]* alt="" #')
+            ->and($html)->toMatch('#src="https://files\.test/b\.webp"[^>]* alt="Xưởng &quot;CNC&quot; &lt;b&gt;" #')
+            ->and($html)->toMatch('#src="https://files\.test/c\.webp"[^>]* alt="" #')
+            ->and($html)->not->toContain('Không dùng');
+    });
+
     it('prints no caption element when the caption is empty', function (): void {
         expect(staticBlock('gallery', ['images' => [['image' => 'https://files.test/a.webp', 'caption' => '  ']]]))->not->toContain('figcaption');
     });
@@ -184,7 +224,9 @@ describe('faq', function (): void {
         ]]);
 
         expect($html)->toContain('sf-faq__list--2')
-            ->and(substr_count($html, '<details class="sf-faq__item">'))->toBe(2)
+            ->and(substr_count($html, '<details class="sf-faq__item"'))->toBe(2)
+            ->and(substr_count($html, ' open'))->toBe(1)
+            ->and($html)->toContain('<details class="sf-faq__item" open>')
             ->and($html)->toContain('<span class="sf-faq__q-text">Giao &lt;hàng&gt;?</span>')
             ->and($html)->toContain('Có &lt;script&gt;x&lt;/script&gt;
 Trong 2 ngày')
@@ -216,6 +258,26 @@ describe('testimonial', function (): void {
     });
 });
 
+describe('testimonial layout', function (): void {
+    it('shows a quote glyph, the italic text and an initial when there is no avatar', function (): void {
+        $html = staticBlock('testimonial', ['items' => [['quote' => 'Tốt', 'name' => 'ánh Mai', 'role' => 'Chủ xưởng'], ['quote' => 'Hai', 'name' => '', 'role' => 'Khách']]]);
+
+        expect($html)->toContain('sf-quote__mark')->toContain('<svg class="sf-icon"')
+            ->and($html)->toContain('<span class="sf-quote__avatar sf-quote__avatar--initial" aria-hidden="true">Á</span>')
+            ->and(substr_count($html, 'sf-quote__avatar--initial'))->toBe(1)
+            ->and($html)->not->toContain('<img');
+    });
+
+    it('draws two columns by default and three on request, never more than the quotes', function (): void {
+        $two = repeatItem(['quote' => 'Q'], 2);
+
+        expect(staticBlock('testimonial', ['items' => repeatItem(['quote' => 'Q'], 5)]))->toContain('sf-quotes__list--grid-2 sf-quotes__list--n2')
+            ->and(staticBlock('testimonial', ['variant' => 'grid-3', 'items' => repeatItem(['quote' => 'Q'], 5)]))->toContain('sf-quotes__list--grid-3 sf-quotes__list--n3')
+            ->and(staticBlock('testimonial', ['variant' => 'grid-3', 'items' => $two]))->toContain('sf-quotes__list--n2')
+            ->and(staticBlock('testimonial', ['variant' => 'x', 'items' => $two]))->toContain('sf-quotes__list--grid-2');
+    });
+});
+
 describe('team', function (): void {
     it('puts each name in a heading one level under the section heading', function (): void {
         $photo = 'https://files.test/s/library/p.webp?w=1280';
@@ -224,7 +286,7 @@ describe('team', function (): void {
         expect($html)->toContain('<h2 class="sf-section-head__title">Đội ngũ</h2>')
             ->and($html)->toContain('<h3 class="sf-member__name">Bình &lt;x&gt;</h3>')
             ->and($html)->toContain('<p class="sf-member__role">Kỹ sư</p>')
-            ->and($html)->toMatch('#<img class="sf-member__photo" src="[^"]+"[^>]* width="400" height="400" loading="lazy"#')
+            ->and($html)->toMatch('#<img class="sf-member__photo" src="[^"]+"[^>]* width="168" height="168" loading="lazy"#')
             ->and($html)->not->toContain('Vô danh');
     });
 
@@ -232,6 +294,22 @@ describe('team', function (): void {
         $html = staticBlock('team', ['members' => [['name' => 'Bình', 'photo' => null]]]);
 
         expect($html)->toContain('<h2 class="sf-member__name">Bình</h2>')->not->toContain('<img');
+    });
+
+    it('shows the uppercase first letter on a tinted disc when a member has no photo', function (): void {
+        $html = staticBlock('team', ['members' => [['name' => 'ơn Hải'], ['name' => 'Bình', 'photo' => 'https://files.test/p.webp']]]);
+
+        expect($html)->toContain('<span class="sf-member__photo sf-member__photo--initial" aria-hidden="true">Ơ</span>')
+            ->and(substr_count($html, 'sf-member__photo--initial'))->toBe(1)
+            ->and($html)->toContain('<img class="sf-member__photo"');
+    });
+
+    it('draws three columns by default and four on request, never more than the members', function (): void {
+        $members = fn (int $n): array => repeatItem(['name' => 'A'], $n);
+
+        expect(staticBlock('team', ['members' => $members(8)]))->toContain('sf-team__list--grid-3 sf-team__list--n3')
+            ->and(staticBlock('team', ['variant' => 'grid-4', 'members' => $members(8)]))->toContain('sf-team__list--grid-4 sf-team__list--n4')
+            ->and(staticBlock('team', ['variant' => 'grid-4', 'members' => $members(2)]))->toContain('sf-team__list--n2');
     });
 });
 
@@ -268,9 +346,28 @@ describe('pricing', function (): void {
             ->and(substr_count($html, 'Liên hệ'))->toBe(2)
             ->and($html)->toContain('<li>Hai &lt;i&gt;</li>')
             ->and(substr_count($html, '<ul class="sf-plan__features">'))->toBe(1)
-            ->and($html)->toContain('<a class="sf-view-all__link sf-plan__cta" href="/lien-he">Đăng ký</a>')
+            ->and($html)->toContain('<a class="sf-view-all__link sf-plan__cta sf-plan__cta--outline" href="/lien-he">Đăng ký</a>')
             ->and($html)->not->toContain('javascript')
-            ->and(substr_count($html, 'sf-plan__cta"'))->toBe(1);
+            ->and(substr_count($html, 'sf-plan__cta '))->toBe(1);
+    });
+
+    it('features the second plan only when there are three or more', function (): void {
+        $plan = fn (string $name): array => ['name' => $name, 'price' => 1000, 'cta_label' => 'Chọn', 'cta_url' => '/lien-he'];
+        $three = staticBlock('pricing', ['plans' => [$plan('A'), $plan('B'), $plan('C')]]);
+        $two = staticBlock('pricing', ['plans' => [$plan('A'), $plan('B')]]);
+
+        expect(substr_count($three, 'sf-plan--featured'))->toBe(1)
+            ->and($three)->toMatch('#<li class="sf-plan sf-plan--featured">\s*<h2 class="sf-plan__name">B</h2>#')
+            ->and(substr_count($three, 'sf-plan__cta--filled'))->toBe(1)
+            ->and(substr_count($three, 'sf-plan__cta--outline'))->toBe(2)
+            ->and($two)->not->toContain('sf-plan--featured')->not->toContain('sf-plan__cta--filled')
+            ->and(substr_count($two, 'sf-plan__cta--outline'))->toBe(2);
+    });
+
+    it('does not count an unnamed plan when picking the featured one', function (): void {
+        $html = staticBlock('pricing', ['plans' => [['name' => 'A'], ['name' => ''], ['name' => 'C']]]);
+
+        expect($html)->not->toContain('sf-plan--featured');
     });
 
     it('shows no unit next to "Liên hệ"', function (): void {
@@ -281,7 +378,7 @@ describe('pricing', function (): void {
 
     it('renders nothing with fewer than two named plans and never more than four', function (): void {
         expect(trim(staticBlock('pricing', ['plans' => [['name' => 'A'], ['name' => '']]])))->toBe('')
-            ->and(substr_count(staticBlock('pricing', ['plans' => repeatItem(['name' => 'A'], 7)]), '<li class="sf-plan">'))->toBe(4);
+            ->and(substr_count(staticBlock('pricing', ['plans' => repeatItem(['name' => 'A'], 7)]), '<li class="sf-plan'))->toBe(4);
     });
 });
 
@@ -314,6 +411,31 @@ describe('on a page', function (): void {
         ]);
 
         expect(preg_match_all('#<img class="sf-(?:gallery__img|member__photo|quote__avatar)" src="https://files\.test/s/library/pic-khoi-\d-[0-9a-f]{12}\.webp\?w=1280" srcset="[^"]+"#', $html))->toBe(3);
+    });
+
+    it('gives a gallery picture without a caption the library alt text of the page locale', function (): void {
+        [$viId, $enOnlyId, $bareId, $captionedId] = app(Tenancy::class)->enter(test()->siteId, function (): array {
+            $make = function (string $slug, array $alt): int {
+                $media = StorefrontCards::media($slug);
+                $media->forceFill(['alt' => $alt])->save();
+
+                return $media->id;
+            };
+
+            return [
+                $make('alt-vi', ['vi' => 'Máy phay <CNC>', 'en' => 'CNC mill']),
+                $make('alt-other', ['en' => 'Only English']),
+                $make('alt-none', []),
+                $make('alt-cap', ['vi' => 'Bị bỏ']),
+            ];
+        });
+        $html = staticPage('/alt', [['type' => 'gallery', 'props' => ['images' => [
+            ['image' => $viId], ['image' => $enOnlyId], ['image' => $bareId], ['image' => $captionedId, 'caption' => 'Chú thích'],
+        ]]]]);
+
+        expect($html)->toContain('alt="Máy phay &lt;CNC&gt;"')
+            ->and($html)->not->toContain('Bị bỏ')
+            ->and(preg_match_all('#class="sf-gallery__img"[^>]* alt="" #', $html))->toBe(3);
     });
 
     it('resolves every picture of the page in the one media lookup', function (): void {

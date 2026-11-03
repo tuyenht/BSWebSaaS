@@ -117,7 +117,8 @@ final class ThemeServiceProvider extends ServiceProvider
             'poster' => ['type' => 'image'],
         ],
         // Static blocks drawn by the page builder design. Every list carries its own `max` (and `min`
-        // where a block needs a few items to make sense); ValidPageJson refuses a list outside them.
+        // where a block needs a few items to make sense, counting only the items whose `min_of` field is
+        // filled); ValidPageJson refuses a list outside them.
         'quick_links' => [
             'heading' => ['type' => 'text'],
             'items' => ['type' => 'list', 'max' => SectionProps::MAX_ITEMS, 'of' => [
@@ -125,6 +126,7 @@ final class ThemeServiceProvider extends ServiceProvider
                 'label' => ['type' => 'text'],
                 'url' => ['type' => 'url'],
             ]],
+            'variant' => ['type' => 'enum', 'options' => SectionProps::QUICK_LINK_VARIANTS, 'default' => 'grid-2x2'],
         ],
         'gallery' => [
             'heading' => ['type' => 'text'],
@@ -150,6 +152,7 @@ final class ThemeServiceProvider extends ServiceProvider
                 'role' => ['type' => 'text'],
                 'avatar' => ['type' => 'image'],
             ]],
+            'variant' => ['type' => 'enum', 'options' => SectionProps::TESTIMONIAL_VARIANTS, 'default' => 'grid-2'],
         ],
         'team' => [
             'heading' => ['type' => 'text'],
@@ -158,10 +161,11 @@ final class ThemeServiceProvider extends ServiceProvider
                 'role' => ['type' => 'text'],
                 'photo' => ['type' => 'image'],
             ]],
+            'variant' => ['type' => 'enum', 'options' => SectionProps::TEAM_VARIANTS, 'default' => 'grid-3'],
         ],
         'process' => [
             'heading' => ['type' => 'text'],
-            'steps' => ['type' => 'list', 'min' => 3, 'max' => 6, 'of' => [
+            'steps' => ['type' => 'list', 'min' => 3, 'min_of' => 'title', 'max' => 6, 'of' => [
                 'title' => ['type' => 'text'],
                 'text' => ['type' => 'textarea'],
             ]],
@@ -169,7 +173,7 @@ final class ThemeServiceProvider extends ServiceProvider
         // price is whole dong; empty or 0 shows "Liên hệ". features is one benefit per line.
         'pricing' => [
             'heading' => ['type' => 'text'],
-            'plans' => ['type' => 'list', 'min' => 2, 'max' => 4, 'of' => [
+            'plans' => ['type' => 'list', 'min' => 2, 'min_of' => 'name', 'max' => 4, 'of' => [
                 'name' => ['type' => 'text'],
                 'price' => ['type' => 'int', 'min' => 0, 'max' => 999_999_999_999],
                 'unit' => ['type' => 'text'],

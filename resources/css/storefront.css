@@ -3543,7 +3543,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 }
 
 /* ───── Static blocks: quick links, gallery, FAQ, testimonials, team, process, pricing ───── */
-/* Mobile first, one column on a phone; every grid cell may shrink (minmax(0, 1fr)) so nothing
+/* Mobile first, one column on a phone (two for quick links, gallery and team); every grid cell may shrink (minmax(0, 1fr)) so nothing
    scrolls sideways at 320px. Cards sit on --color-surface with explicit text colours, so they read
    the same on every band. Light and dark follow the site's colour tokens (the storefront has no
    separate dark theme). */
@@ -3569,7 +3569,17 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     min-width: 0;
 }
 
-/* Quick links: tiles, two across from a small tablet. */
+/* Quick links: tiles, two across everywhere (a row of up to four on a wide screen, or pills). */
+.sf-qlinks__list,
+.sf-gallery__list,
+.sf-team__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.sf-team__list--n1 {
+    grid-template-columns: minmax(0, 1fr);
+}
+
 .sf-qlinks__tile {
     display: flex;
     flex-direction: column;
@@ -3588,10 +3598,35 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 
 .sf-qlinks__icon {
     display: inline-flex;
-    padding: 0.875rem;
-    border-radius: 9999px;
-    background: color-mix(in srgb, var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark))) 80%, var(--color-dark));
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 0.625rem;
+    background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
     color: var(--color-primary-text);
+}
+
+/* Pills: icon and label side by side in a wrapping, centred row. */
+.sf-qlinks__list--pill {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
+}
+
+.sf-qlinks__list--pill .sf-qlinks__tile {
+    flex-direction: row;
+    min-height: 2.75rem;
+    padding: 0.5rem 1.25rem;
+    gap: 0.5rem;
+    border-radius: 9999px;
+}
+
+.sf-qlinks__list--pill .sf-qlinks__icon {
+    width: auto;
+    height: auto;
+    background: none;
 }
 
 .sf-qlinks__label {
@@ -3600,16 +3635,17 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     overflow-wrap: anywhere;
 }
 
-.sf-qlinks__tile:hover {
-    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.15), 0 4px 6px -4px rgb(0 0 0 / 0.15);
-    transform: translateY(-0.125rem);
-}
-
 .sf-qlinks__tile:focus-visible,
 .sf-faq__q:focus-visible,
 .sf-plan__cta:focus-visible {
     outline: 2px solid var(--color-primary-text);
     outline-offset: 2px;
+}
+
+.sf-band--dark .sf-qlinks__tile:focus-visible,
+.sf-band--dark .sf-faq__q:focus-visible,
+.sf-band--dark .sf-plan__cta:focus-visible {
+    outline-color: var(--color-primary);
 }
 
 /* Gallery. */
@@ -3640,7 +3676,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     grid-template-columns: minmax(0, 1fr);
     gap: 0.75rem 1.5rem;
     align-items: start;
-    max-width: 64rem;
+    max-width: 47.5rem;
     margin-inline: auto;
 }
 
@@ -3707,10 +3743,15 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 .sf-quote__text {
     flex: 1;
     margin: 0;
-    padding-left: 1rem;
-    border-left: 0.25rem solid var(--color-primary);
     font-size: 1.0625rem;
+    font-style: italic;
     overflow-wrap: anywhere;
+}
+
+.sf-quote__mark {
+    display: inline-flex;
+    color: var(--color-primary-text);
+    opacity: 0.35;
 }
 
 .sf-quote__text p {
@@ -3726,10 +3767,20 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 
 .sf-quote__avatar {
     flex: none;
-    width: 3rem;
-    height: 3rem;
+    width: 2.375rem;
+    height: 2.375rem;
     border-radius: 9999px;
     object-fit: cover;
+}
+
+.sf-quote__avatar--initial,
+.sf-member__photo--initial {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
+    color: var(--color-primary-text);
+    font-weight: 700;
 }
 
 .sf-quote__who {
@@ -3751,22 +3802,25 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 
 /* Team. */
 .sf-member {
-    padding: 1rem;
-    border-radius: 0.5rem;
-    background: var(--color-surface);
-    color: var(--color-text);
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     text-align: center;
 }
 
 .sf-member__photo {
     display: block;
-    width: 100%;
-    height: auto;
-    aspect-ratio: 1 / 1;
+    flex: none;
+    width: 5.25rem;
+    height: 5.25rem;
     object-fit: cover;
-    margin-bottom: 1rem;
-    border-radius: 0.5rem;
+    margin-bottom: 0.75rem;
+    border-radius: 9999px;
+}
+
+.sf-member__photo--initial {
+    display: flex;
+    font-size: 2rem;
 }
 
 .sf-member__name {
@@ -3892,16 +3946,27 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     transform: rotate(45deg);
 }
 
-@media (min-width: 480px) {
-    .sf-qlinks__list,
-    .sf-gallery__list {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+/* Pricing: the featured plan (second of three or more) and the buttons. */
+.sf-plan--featured {
+    border: 0.125rem solid var(--color-primary);
+    border-top-width: 0.25rem;
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.15), 0 8px 10px -6px rgb(0 0 0 / 0.15);
+}
+
+.sf-plan__cta--filled {
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+}
+
+.sf-plan__cta--outline {
+    background: transparent;
+    box-shadow: inset 0 0 0 1.5px var(--color-text-strong);
+    color: var(--color-text-strong);
 }
 
 @media (min-width: 640px) {
-    .sf-quotes__list,
-    .sf-team__list {
+    .sf-quotes__list--n2,
+    .sf-quotes__list--n3 {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
@@ -3915,10 +3980,35 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 @media (min-width: 768px) {
     .sf-faq__list--2 {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+        max-width: 64rem;
     }
 
-    .sf-team__list {
+    .sf-quotes__list--n3 {
         grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .sf-team__list--n2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .sf-team__list--n3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .sf-team__list--n4 {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .sf-qlinks__list--row.sf-qlinks__list--n1 {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .sf-qlinks__list--row.sf-qlinks__list--n3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .sf-qlinks__list--row.sf-qlinks__list--n4 {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 
     .sf-gallery__list--3,
@@ -3952,6 +4042,14 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 
     .sf-step::before {
         top: 1rem;
+    }
+}
+
+/* Hover only where a pointer can hover (never a touch-only state). */
+@media (hover: hover) {
+    .sf-qlinks__tile:hover {
+        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.15), 0 4px 6px -4px rgb(0 0 0 / 0.15);
+        transform: translateY(-0.125rem);
     }
 }
 

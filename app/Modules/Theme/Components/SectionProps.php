@@ -35,6 +35,15 @@ final class SectionProps
 
     public const array FAQ_COLUMNS = ['1', '2'];
 
+    /** Team: three or four members across on a wide screen (two on a phone). */
+    public const array TEAM_VARIANTS = ['grid-3', 'grid-4'];
+
+    /** Testimonials: two or three cards across on a wide screen (one on a phone). */
+    public const array TESTIMONIAL_VARIANTS = ['grid-2', 'grid-3'];
+
+    /** Quick links: a 2x2 grid, one row (up to four across), or wrapping pills. */
+    public const array QUICK_LINK_VARIANTS = ['grid-2x2', 'row', 'pill'];
+
     /** The most items a list of a static block holds (the block's own list may set a lower `max`). */
     public const int MAX_ITEMS = 12;
 
@@ -72,6 +81,12 @@ final class SectionProps
         $value = $props[$key] ?? null;
 
         return is_numeric($value) ? max($min, min($max, (int) $value)) : $default;
+    }
+
+    /** The first letter of a name, uppercase: the stand-in for a missing photo. */
+    public static function initial(string $name): string
+    {
+        return mb_strtoupper(mb_substr(trim($name), 0, 1));
     }
 
     /**
