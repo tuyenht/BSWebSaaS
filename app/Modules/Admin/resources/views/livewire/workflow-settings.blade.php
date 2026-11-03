@@ -19,10 +19,13 @@
     $kindIcons = ['initial' => 'ri-draft', 'middle' => 'ri-user-search', 'terminal' => 'ri-archive', 'published' => 'ri-global'];
 
     $state = [
+        'site' => $site['key'],
         'rows' => array_map(fn (array $row): array => [
             'key' => $row['key'],
             'label' => $row['label'],
             'pending' => $row['pending'],
+            // what a pick, a removal or a switch-off would move: the number every confirm names
+            'movable' => $row['movable'],
             'template' => $row['template'],
             'active' => $row['active'],
         ], $rows),
@@ -62,9 +65,19 @@
             </div>
         </div>
 
-        @error('changes')
-            <x-bs-admin::alert color="danger" icon="ri-error-warning">{{ $message }}</x-bs-admin::alert>
-        @enderror
+        {{-- Why the last save was refused: stays until a save goes through or it is closed --}}
+        @if ($saveError !== '')
+            <x-bs-admin::alert color="danger" icon="ri-error-warning">
+                <span class="flex items-start gap-2">
+                    <span class="min-w-0 flex-1 [overflow-wrap:anywhere]">{{ $saveError }}</span>
+                    <button type="button" wire:click="dismissSaveError"
+                            class="hit-area -my-2 -me-1.5 flex size-control shrink-0 items-center justify-center rounded hover:bg-current/10"
+                            aria-label="{{ __('admin.dismiss') }}" title="{{ __('admin.dismiss') }}">
+                        <x-bs-admin::icon name="ri-close" class="size-5" />
+                    </button>
+                </span>
+            </x-bs-admin::alert>
+        @endif
 
         {{-- While "Tải lại" runs: the list's outline with placeholder lines --}}
         <div wire:loading.block wire:target="$refresh" aria-busy="true" class="rounded-md border border-border bg-surface shadow-card">
@@ -177,7 +190,7 @@
                                                 <span aria-hidden="true">·</span>
                                                 <a href="{{ route('admin.entries.review', ['type' => $row['key']]) }}" wire:navigate
                                                    title="{{ __('admin.wf.pending_title', ['count' => $row['pending'], 'name' => $row['label']]) }}"
-                                                   class="inline-flex min-h-tap-cell items-center gap-1 font-semibold whitespace-nowrap text-warning-text hover:underline any-pointer-coarse:min-h-hit">
+                                                   class="wf-pend inline-flex min-h-control items-center gap-1 font-semibold whitespace-nowrap text-warning-text hover:underline any-pointer-coarse:min-h-hit">
                                                     <x-bs-admin::icon name="ri-time" class="size-[min(1.5rem,calc(0.75rem+var(--user-text-boost)))] shrink-0" />{{ __('admin.wf.pending_line', ['count' => $num($row['pending'])]) }}
                                                 </a>
                                             @endif
@@ -193,7 +206,7 @@
                                         </span>
                                         <span wire:ignore.self class="wf-view" x-show="row({{ $k }}).template" {!! $hidden(! $has) !!}>
                                             <button type="button" x-on:click="openPick({{ $k }})"
-                                                    class="inline-flex min-h-tap-cell items-center text-left text-caption font-semibold text-primary-text hover:underline any-pointer-coarse:min-h-hit">{{ __('admin.wf.view_steps') }}</button>
+                                                    class="inline-flex min-h-control items-center text-left text-caption font-semibold text-primary-text hover:underline any-pointer-coarse:min-h-hit">{{ __('admin.wf.view_steps') }}</button>
                                         </span>
                                         <span wire:ignore.self class="wf-none text-[calc(0.78125rem+var(--user-text-boost))] leading-normal text-text-muted" x-show="! row({{ $k }}).template" {!! $hidden($has) !!}>{{ __('admin.wf.none') }}</span>
                                     </span>

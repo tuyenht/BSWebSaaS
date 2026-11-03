@@ -1382,6 +1382,7 @@
     "admin.wf.staged_none": "“:name” switches to direct publishing — press Save to apply",
     "admin.wf.staged_pick": "“:name” will use :wf — press Save to apply",
     "admin.wf.save_invalid": "Not saved: the list of content types changed since the page opened. Press Reload and choose again.",
+    "admin.wf.save_stale": "Someone has just changed the workflow of “:name”; press Reload to see the new version, then make your change again.",
     "admin.wf.no_sections": "This site has no content types an approval flow could govern yet.",
     "admin.wf.view_steps": "View the step map",
     "admin.wf.enabled": "On",

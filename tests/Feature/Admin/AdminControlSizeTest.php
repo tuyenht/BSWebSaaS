@@ -266,6 +266,20 @@ it('leaves the workflow status buttons to the shared button size', function (): 
     expect($source)->not->toContain('min-h-11');
 });
 
+it('gives the workflow list text links the main-control height, the touch size on touch', function (): void {
+    // "Xem sơ đồ các bước" and "… bài chờ duyệt" sit in a list row, not a table name cell: they
+    // take the normal hit size (40 with a mouse at the default text size, 44 from Lớn and on touch)
+    $source = (string) file_get_contents(app_path('Modules/Admin/resources/views/livewire/workflow-settings.blade.php'));
+    preg_match('/<a href="\{\{ route\(\'admin\.entries\.review\'.*?class="([^"]*)"/s', $source, $pending);
+    preg_match('/<button\b[^>]*?class="([^"]*)"[^>]*>\{\{ __\(\'admin\.wf\.view_steps\'\) \}\}/s', $source, $steps);
+
+    foreach ([$pending[1] ?? '', $steps[1] ?? ''] as $class) {
+        expect($class)->toMatch('/\bmin-h-control\b(?!-)/')
+            ->toContain('any-pointer-coarse:min-h-hit')
+            ->not->toContain('min-h-tap-cell');
+    }
+});
+
 it('sizes touch targets for any touch screen, touch laptops included', function (): void {
     $sources = [];
     foreach (glob(resource_path('css/*.css')) ?: [] as $css) {

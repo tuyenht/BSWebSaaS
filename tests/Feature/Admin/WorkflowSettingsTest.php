@@ -2,6 +2,7 @@
 
 use App\Modules\Admin\Livewire\WorkflowSettings;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
@@ -14,6 +15,7 @@ use App\Modules\Tenancy\Models\SiteFeature;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowLog;
 use Illuminate\Support\Facades\DB;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 
 /*
@@ -81,10 +83,41 @@ function wfChildCategory(ContentSection $section, string $slug): Taxonomy
     return $child;
 }
 
-/** @return array{key: string, template: string|null, active: bool} */
-function wfChange(string $key, ?string $template, bool $active = true): array
+/** A sub-category under the section's own category that another section is bound to. */
+function wfNestedSection(ContentSection $parent, string $key, string $label, string $slug): ContentSection
 {
-    return ['key' => $key, 'template' => $template, 'active' => $active];
+    $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'parent_id' => $parent->taxonomy_id, 'position' => 2]);
+    $category->translations()->create(['locale' => 'vi', 'name' => $label, 'slug' => $slug]);
+
+    return ContentSection::query()->create([
+        'key' => $key,
+        'label' => $label,
+        'entry_type' => 'post',
+        'taxonomy_id' => $category->id,
+        'permission_prefix' => 'entries',
+        'sort_order' => 2,
+    ]);
+}
+
+/** A pending change to a live post, at a stage of its workflow (null = the first stage). */
+function wfPendingChange(Entry $entry, ?string $state): EntryDraft
+{
+    return EntryDraft::query()->create([
+        'entry_id' => $entry->id,
+        'workflow_state' => $state,
+        'content' => ['v' => 1, 'locales' => ['vi' => ['title' => 'Bản sửa '.$entry->id]]],
+    ]);
+}
+
+/**
+ * One staged change as the page sends it: the pick, and the saved state the page last showed for
+ * the section (`from`), which the save checks against the database.
+ *
+ * @return array{key: string, template: string|null, active: bool, from: array{template: string|null, active: bool}}
+ */
+function wfChange(string $key, ?string $template, bool $active = true, ?string $fromTemplate = null, bool $fromActive = false): array
+{
+    return ['key' => $key, 'template' => $template, 'active' => $active, 'from' => ['template' => $fromTemplate, 'active' => $fromActive]];
 }
 
 it('opens for a platform operator and stays closed to every tenant role, on mount and on save', function (): void {
@@ -147,18 +180,22 @@ it('saves nothing when one entry of the batch is invalid', function (array $bad)
             ->test(WorkflowSettings::class)
             ->call('save', [wfChange('posts', 'admin_approval'), $bad])
             ->assertReturned(false)
-            ->assertHasErrors('changes')
+            ->assertSet('saveError', __('admin.wf.save_invalid'))
             ->assertSet('toast', '');
 
         expect(Workflow::query()->count())->toBe(0);
     });
 })->with([
-    'unknown section' => [['key' => 'khong-ton-tai', 'template' => 'admin_approval', 'active' => true]],
-    'unknown template' => [['key' => 'jobs', 'template' => 'khong-co-template', 'active' => true]],
-    'the same section twice' => [['key' => 'posts', 'template' => null, 'active' => false]],
-    'a missing field' => [['key' => 'jobs', 'active' => true]],
-    'an extra field' => [['key' => 'jobs', 'template' => 'admin_approval', 'active' => true, 'site_id' => 2]],
-    'a non-boolean switch' => [['key' => 'jobs', 'template' => 'admin_approval', 'active' => 'maybe']],
+    'unknown section' => [wfChange('khong-ton-tai', 'admin_approval')],
+    'unknown template' => [wfChange('jobs', 'khong-co-template')],
+    // `nullable` lets a blank string past the template list; it must not reach the builder (a 500)
+    'an empty template' => [wfChange('jobs', '')],
+    'an empty template it was changed from' => [['key' => 'jobs', 'template' => 'admin_approval', 'active' => true, 'from' => ['template' => '', 'active' => false]]],
+    'the same section twice' => [wfChange('posts', null, false)],
+    'a missing field' => [['key' => 'jobs', 'active' => true, 'from' => ['template' => null, 'active' => false]]],
+    'a missing saved state' => [['key' => 'jobs', 'template' => 'admin_approval', 'active' => true]],
+    'an extra field' => [[...wfChange('jobs', 'admin_approval'), 'site_id' => 2]],
+    'a non-boolean switch' => [array_replace(wfChange('jobs', 'admin_approval'), ['active' => 'maybe'])],
 ]);
 
 it('refuses the editorial flow without its entitlement even when sent directly, and opens it when granted', function (): void {
@@ -174,7 +211,7 @@ it('refuses the editorial flow without its entitlement even when sent directly, 
             ->test(WorkflowSettings::class)
             ->call('save', [wfChange('jobs', 'admin_approval'), wfChange('posts', 'editorial')])
             ->assertReturned(false)
-            ->assertHasErrors(['changes' => __('admin.wf.locked_error')]);
+            ->assertSet('saveError', __('admin.wf.locked_error'));
         expect(Workflow::query()->count())->toBe(0);
 
         // A per-site feature grant opens it.
@@ -209,7 +246,7 @@ it('takes a section back to publishing directly: the stages go, waiting posts ar
             'transition_key' => 'submit', 'from_state' => 'draft', 'to_state' => 'pending',
         ]);
 
-        $page->call('save', [wfChange('posts', null, false)])->assertHasNoErrors()->assertReturned(true);
+        $page->call('save', [wfChange('posts', null, false, 'admin_approval', true)])->assertHasNoErrors()->assertReturned(true);
 
         $workflow->refresh();
         expect($workflow->template)->toBe('none')
@@ -251,13 +288,19 @@ it('sends waiting posts back to the first stage when the flow is swapped, sub-ca
         $atRoot = wfPost($news, 'pending', 'reviewing');
         $inChild = wfPost($news, 'pending', 'reviewing', category: $child->id);
         $elsewhere = wfPost($services, 'pending', 'reviewing');
+        // a live post's pending change at the old flow's middle stage restarts with it; editorial and
+        // admin_approval both define `pending`, so a pointer left behind would sit at the wrong step
+        $change = wfPendingChange(wfPost($news, 'published'), 'pending');
+        $changeElsewhere = wfPendingChange(wfPost($services, 'published'), 'reviewing');
 
-        $page->call('save', [wfChange('posts', 'admin_approval')])->assertReturned(true);
+        $page->call('save', [wfChange('posts', 'admin_approval', true, 'editorial', true)])->assertReturned(true);
 
         expect($atRoot->refresh()->workflow_state)->toBeNull()
             ->and($atRoot->status)->toBe('pending')
             ->and($inChild->refresh()->workflow_state)->toBeNull()
-            ->and($elsewhere->refresh()->workflow_state)->toBe('reviewing');
+            ->and($elsewhere->refresh()->workflow_state)->toBe('reviewing')
+            ->and($change->refresh()->workflow_state)->toBeNull()
+            ->and($changeElsewhere->refresh()->workflow_state)->toBe('reviewing');
     });
 });
 
@@ -273,10 +316,10 @@ it('switches a flow on and off without rebuilding it', function (): void {
         $stateIds = $workflow->states()->orderBy('id')->pluck('id')->all();
         $waiting = wfPost($news, 'pending', 'pending');
 
-        $page->call('save', [wfChange('posts', 'admin_approval', false)])->assertReturned(true);
+        $page->call('save', [wfChange('posts', 'admin_approval', false, 'admin_approval', true)])->assertReturned(true);
         expect($workflow->refresh()->is_active)->toBeFalse();
 
-        $page->call('save', [wfChange('posts', 'admin_approval')])->assertReturned(true);
+        $page->call('save', [wfChange('posts', 'admin_approval', true, 'admin_approval', false)])->assertReturned(true);
         expect($workflow->refresh()->is_active)->toBeTrue()
             ->and($workflow->states()->orderBy('id')->pluck('id')->all())->toBe($stateIds)
             ->and($waiting->refresh()->workflow_state)->toBe('pending');
@@ -310,8 +353,10 @@ it('counts posts, writers and waiting posts of every section in one query', func
         $tallies = collect(DB::getQueryLog())->pluck('query')->filter(fn (string $sql): bool => str_contains($sql, 'entry_taxonomies'))->values();
         DB::disableQueryLog();
 
-        expect($tallies)->toHaveCount(1)
-            ->and($tallies[0])->toContain('count(distinct');
+        // one grouped tally for the list, one for what a change would move (every section at once)
+        expect($tallies)->toHaveCount(2)
+            ->and($tallies->filter(fn (string $sql): bool => str_contains($sql, 'count(distinct')))->toHaveCount(1)
+            ->and($tallies->filter(fn (string $sql): bool => str_contains($sql, 'WITH RECURSIVE')))->toHaveCount(1);
     });
 });
 
@@ -423,5 +468,181 @@ it('only notes a staged pick, writing nothing', function (): void {
         $page->call('dismissToast', $seq)->assertSet('toast', '');
 
         expect(Workflow::query()->count())->toBe(0);
+    });
+});
+
+it('warns with the posts a change will move: in-flight posts of the section and its sub-categories, and pending changes', function (): void {
+    $operator = wfOperator();
+
+    app(Tenancy::class)->enter(1, function () use ($operator): void {
+        $news = wfSection('posts', 'Tin tức', 'tin-tuc');
+        $child = wfChildCategory($news, 'tin-noi-bo');
+        // a sub-category with a section of its own belongs to that section, not to "Tin tức"
+        $archive = wfNestedSection($news, 'archive', 'Lưu trữ', 'luu-tru');
+        wfSection('jobs', 'Tuyển dụng', 'tuyen-dung');
+
+        $page = Livewire::actingAs($operator->fresh())->test(WorkflowSettings::class);
+        $page->call('save', [wfChange('posts', 'admin_approval'), wfChange('archive', 'admin_approval')])->assertReturned(true);
+
+        $atRoot = wfPost($news, 'pending', 'pending');
+        $inChild = wfPost($news, 'pending', 'pending', category: $child->id);
+        $liveChange = wfPendingChange(wfPost($news, 'published'), 'pending');
+        // not moved: a change still at the first stage, a draft, a post in the trash, the nested section
+        $firstStage = wfPendingChange(wfPost($news, 'published'), null);
+        wfPost($news);
+        wfPost($news, 'pending', 'pending')->delete();
+        $nested = wfPost($archive, 'pending', 'pending');
+
+        $page->call('$refresh');
+        $rows = collect($page->viewData('rows'))->keyBy('key');
+
+        // the list keeps its own counts (the section's own category); the warning counts what moves
+        expect($rows['posts'])->toMatchArray(['total' => 4, 'pending' => 1, 'movable' => 3])
+            ->and($rows['archive'])->toMatchArray(['movable' => 1])
+            ->and($rows['jobs'])->toMatchArray(['movable' => 0]);
+        // the page script reads it from the state block, next to the list's own waiting count
+        $page->assertSee('"key":"posts","label":'.json_encode($news->localizedLabel(), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT).',"pending":1,"movable":3', false);
+
+        // and exactly those are the posts that move when the section drops its flow
+        $page->call('save', [wfChange('posts', null, false, 'admin_approval', true)])->assertReturned(true);
+
+        expect($atRoot->refresh()->workflow_state)->toBeNull()
+            ->and($inChild->refresh()->workflow_state)->toBeNull()
+            ->and($liveChange->refresh()->workflow_state)->toBeNull()
+            ->and($firstStage->refresh()->workflow_state)->toBeNull()
+            ->and($nested->refresh()->workflow_state)->toBe('pending');
+        $page->call('$refresh');
+        expect(collect($page->viewData('rows'))->keyBy('key')['posts']['movable'])->toBe(0);
+    });
+});
+
+it('refuses the whole batch when a section was saved meanwhile, and keeps the message until dismissed or saved', function (): void {
+    $operator = wfOperator();
+
+    app(Tenancy::class)->enter(1, function () use ($operator): void {
+        wfSection('posts', 'Tin tức', 'tin-tuc');
+        $jobs = wfSection('jobs', 'Tuyển dụng', 'tuyen-dung');
+
+        $mine = Livewire::actingAs($operator->fresh())->test(WorkflowSettings::class);
+        $mine->call('save', [wfChange('jobs', 'admin_approval')])->assertReturned(true);
+
+        // someone else switches "Tuyển dụng" off after this page last read it
+        Livewire::actingAs($operator->fresh())->test(WorkflowSettings::class)
+            ->call('save', [wfChange('jobs', 'admin_approval', false, 'admin_approval', true)])
+            ->assertReturned(true);
+
+        // this page still believes it is on; its batch is refused whole, "Tin tức" included
+        $stale = __('admin.wf.save_stale', ['name' => $jobs->localizedLabel()]);
+        $mine->call('save', [wfChange('posts', 'admin_approval'), wfChange('jobs', null, false, 'admin_approval', true)])
+            ->assertReturned(false)
+            ->assertSet('saveError', $stale)
+            ->assertSee($stale);
+
+        expect(Workflow::query()->where('applies_to_type', 'posts')->exists())->toBeFalse()
+            ->and(Workflow::query()->where('applies_to_type', 'jobs')->first(['template', 'is_active'])?->toArray())
+            ->toBe(['template' => 'admin_approval', 'is_active' => false]);
+
+        // the message survives the next request (a reload, a staged-pick note)...
+        $mine->call('$refresh')->assertSet('saveError', $stale)->assertSee($stale);
+        $mine->call('staged', 'posts', 'admin_approval')->assertSet('saveError', $stale);
+
+        // ...until it is closed
+        $mine->call('dismissSaveError')->assertSet('saveError', '')->assertDontSee($stale);
+
+        // or a save goes through
+        $mine->call('save', [wfChange('jobs', null, false, 'admin_approval', true)])->assertSet('saveError', $stale);
+        $mine->call('save', [wfChange('jobs', null, false, 'admin_approval', false)])
+            ->assertReturned(true)
+            ->assertSet('saveError', '');
+
+        // the page cannot clear or set it itself
+        expect(fn () => $mine->set('saveError', 'x'))->toThrow(CannotUpdateLockedPropertyException::class);
+    });
+});
+
+it('lets only the first of two first saves of a section through, under one lock per site', function (): void {
+    $operator = wfOperator();
+
+    app(Tenancy::class)->enter(1, function () use ($operator): void {
+        $news = wfSection('posts', 'Tin tức', 'tin-tuc');
+        SiteFeature::query()->create(['feature_key' => 'workflow.editorial', 'value' => true]);
+
+        // two pages opened while "Tin tức" had no flow at all
+        $first = Livewire::actingAs($operator->fresh())->test(WorkflowSettings::class);
+        $second = Livewire::actingAs($operator->fresh())->test(WorkflowSettings::class);
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $first->call('save', [wfChange('posts', 'admin_approval')])->assertReturned(true);
+        $queries = collect(DB::getQueryLog())->pluck('query');
+        DB::disableQueryLog();
+
+        // the row the second page never saw exists now: refused, not a unique-key error
+        $second->call('save', [wfChange('posts', 'editorial')])
+            ->assertReturned(false)
+            ->assertSet('saveError', __('admin.wf.save_stale', ['name' => $news->localizedLabel()]));
+
+        expect(Workflow::query()->where('applies_to_type', 'posts')->pluck('template')->all())->toBe(['admin_approval'])
+            // saves of one site queue on one lock, so the second one reads the first one's row
+            ->and($queries->filter(fn (string $sql): bool => str_contains($sql, 'pg_advisory_xact_lock')))->toHaveCount(1)
+            ->and($queries->filter(fn (string $sql): bool => str_contains($sql, 'for update')))->toHaveCount(1);
+    });
+});
+
+it('rolls the whole batch back when a later change fails while it is being applied', function (): void {
+    $operator = wfOperator();
+
+    app(Tenancy::class)->enter(1, function () use ($operator): void {
+        $news = wfSection('posts', 'Tin tức', 'tin-tuc');
+        $jobs = wfSection('jobs', 'Tuyển dụng', 'tuyen-dung');
+
+        $page = Livewire::actingAs($operator->fresh())->test(WorkflowSettings::class);
+        $page->call('save', [wfChange('posts', 'admin_approval'), wfChange('jobs', 'admin_approval')])->assertReturned(true);
+        $workflow = Workflow::query()->where('applies_to_type', 'posts')->firstOrFail();
+        $stateIds = $workflow->states()->orderBy('id')->pluck('id')->all();
+        $waiting = wfPost($news, 'pending', 'pending');
+        $change = wfPendingChange(wfPost($news, 'published'), 'pending');
+
+        // "Tin tức" goes first and is valid (its stages are removed, its posts released); "Tuyển
+        // dụng" then fails its check against the saved state: nothing of the first may remain
+        $page->call('save', [
+            wfChange('posts', null, false, 'admin_approval', true),
+            wfChange('jobs', null, false, 'admin_approval', false),
+        ])->assertReturned(false)->assertSet('saveError', __('admin.wf.save_stale', ['name' => $jobs->localizedLabel()]));
+
+        expect($workflow->refresh()->template)->toBe('admin_approval')
+            ->and($workflow->is_active)->toBeTrue()
+            ->and($workflow->states()->orderBy('id')->pluck('id')->all())->toBe($stateIds)
+            ->and($workflow->transitions()->count())->toBe(5)
+            ->and($waiting->refresh()->workflow_state)->toBe('pending')
+            ->and($change->refresh()->workflow_state)->toBe('pending')
+            ->and(Workflow::query()->where('applies_to_type', 'jobs')->value('is_active'))->toBeTrue();
+    });
+});
+
+it('saves a batch of three sections on a bounded query budget', function (): void {
+    $operator = wfOperator();
+
+    app(Tenancy::class)->enter(1, function () use ($operator): void {
+        foreach (['posts' => 'Tin tức', 'jobs' => 'Tuyển dụng', 'services' => 'Dịch vụ'] as $key => $label) {
+            $section = wfSection($key, $label, $key);
+            wfPost($section, 'pending', 'pending');
+        }
+
+        $page = Livewire::actingAs($operator->fresh())->test(WorkflowSettings::class);
+        $page->call('save', [wfChange('posts', 'admin_approval'), wfChange('jobs', 'admin_approval')])->assertReturned(true);
+
+        // one of each kind: a flow taken out, a new flow built, a switch flipped — plus the re-render
+        $count = countQueries(fn () => $page->call('save', [
+            wfChange('posts', null, false, 'admin_approval', true),
+            wfChange('jobs', 'admin_approval', false, 'admin_approval', true),
+            wfChange('services', 'admin_approval'),
+        ])->assertReturned(true));
+
+        // 31 measured. Building a flow writes its 4 stages and 5 moves row by row
+        // (InstantiateWorkflow, 14 queries); the rest is flat: the sections, the lock, ONE locked
+        // read of the batch's rows, two releases per flow taken out, one update per switch, and the
+        // page's flat render (sections, flows, the two tallies, plan and site).
+        expect($count)->toBeLessThanOrEqual(32);
     });
 });

@@ -161,7 +161,7 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
             ContentSection::query()->create(['key' => $key, 'label' => $label, 'entry_type' => 'post', 'taxonomy_id' => $category->id,
                 'permission_prefix' => 'entries', 'sort_order' => 1]);
             Livewire::actingAs($top)->test(WorkflowSettings::class)
-                ->call('save', [['key' => $key, 'template' => 'admin_approval', 'active' => $on]])->assertHasNoErrors();
+                ->call('save', [['key' => $key, 'template' => 'admin_approval', 'active' => $on, 'from' => ['template' => null, 'active' => false]]])->assertReturned(true);
         }
     });
     $this->flushSession();

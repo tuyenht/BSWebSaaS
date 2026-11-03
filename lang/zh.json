@@ -1382,6 +1382,7 @@
     "admin.wf.staged_none": "“:name”改为直接发布 — 点击保存后生效",
     "admin.wf.staged_pick": "“:name”将使用 :wf — 点击保存后生效",
     "admin.wf.save_invalid": "未能保存：自打开页面以来内容类型列表已更改。请点击重新加载后重新选择。",
+    "admin.wf.save_stale": "有人刚刚更改了“:name”的流程；请点击“重新加载”查看新版本，然后再修改一次。",
     "admin.wf.no_sections": "该站点暂无可应用审批流程的内容类型。",
     "admin.wf.view_steps": "查看步骤图",
     "admin.wf.enabled": "已启用",

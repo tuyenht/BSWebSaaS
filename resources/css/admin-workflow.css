@@ -166,6 +166,32 @@
         }
     }
 
+    /* the height the waiting-posts link takes for its hit area (min-h-control / min-h-hit) */
+    .wf-pend {
+        --wf-tap: var(--spacing-control);
+    }
+
+    @media (any-pointer: coarse) {
+        .wf-pend {
+            --wf-tap: var(--spacing-hit);
+        }
+    }
+
+    @container wf (width < 37.5rem) {
+        .wf-sub {
+            align-items: center;
+        }
+
+        /* The link keeps its full hit height but takes one text line of the counts line: negative
+           block margins, the bottom one no deeper than the row gap, so its hit area never covers
+           the "Quy trình: …" line below it. */
+        .wf-sub > .wf-pend {
+            position: relative;
+            z-index: 1;
+            margin-block: calc((1.5em - var(--wf-tap)) / 2) max(-0.25rem, calc((1.5em - var(--wf-tap)) / 2));
+        }
+    }
+
     .wf-cardhead-narrow {
         display: none;
     }

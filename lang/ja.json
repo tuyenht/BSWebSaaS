@@ -1382,6 +1382,7 @@
     "admin.wf.staged_none": "「:name」はそのまま公開に切り替わります — 保存を押すと反映されます",
     "admin.wf.staged_pick": "「:name」は :wf を使います — 保存を押すと反映されます",
     "admin.wf.save_invalid": "保存できませんでした: ページを開いた後に種別の一覧が変わりました。再読み込みしてから選び直してください。",
+    "admin.wf.save_stale": "「:name」のワークフローを他の人が変更しました。「再読み込み」を押して新しい内容を確認してから、もう一度変更してください。",
     "admin.wf.no_sections": "このサイトには承認フローを適用できるコンテンツ種別がまだありません。",
     "admin.wf.view_steps": "ステップ図を見る",
     "admin.wf.enabled": "有効",

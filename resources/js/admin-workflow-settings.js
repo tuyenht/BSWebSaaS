@@ -4,13 +4,26 @@
 // ([data-wf-state]) and is read again after every round trip, so a save, a reload or a newer page
 // becomes the new baseline while the changes not yet saved stay staged.
 //
+// Each staged section remembers the saved state it was changed from (`base`); the save sends it as
+// `from`, and the server refuses the batch when someone else has saved that section since. "Tải
+// lại" then shows the newer version of such a section; the other staged changes stay.
+//
+// The staged changes are also kept in sessionStorage, per site, next to the saved state they were
+// made on: leaving with the browser's back button and coming back restores them as long as nothing
+// was saved meanwhile.
+//
 // Dialogs (picker, confirm, plan, leave) are drawn by the view; this object only says which one is
 // open. Escape closes the top one; focus is held and returned by x-trap.
 
 const NONE = 'none';
+const STORE = 'bs.wf.staged:';
 
 function clone(rows) {
     return JSON.parse(JSON.stringify(rows));
+}
+
+function same(a, b) {
+    return Boolean(a && b) && a.template === b.template && a.active === b.active;
 }
 
 function fill(text, values) {
@@ -25,6 +38,8 @@ document.addEventListener('alpine:init', () => {
         texts: {},
         saved: {},
         staged: {},
+        base: {},
+        site: '',
         pick: null,
         sel: null,
         confirm: null,
@@ -39,6 +54,7 @@ document.addEventListener('alpine:init', () => {
 
         init() {
             this.read(true);
+            this.restore();
 
             // A failed request (lost connection, server error) shows the error card with "Thử lại",
             // which sends the same request again; the staged changes are kept meanwhile.
@@ -53,7 +69,12 @@ document.addEventListener('alpine:init', () => {
                     }
                 };
                 onFailure(fail);
-                onError(({ preventDefault }) => {
+                onError(({ response, preventDefault }) => {
+                    // An expired page (419) is Livewire's to handle: it offers to reload the page.
+                    // The staged changes survive that reload (sessionStorage).
+                    if (response?.status === 419) {
+                        return;
+                    }
                     if (action.name === 'save' || action.name === '$refresh') {
                         preventDefault();
                     }
@@ -64,7 +85,7 @@ document.addEventListener('alpine:init', () => {
                         this.failed = false;
                     }
                 });
-                onFinish(() => this.$nextTick(() => this.read(false)));
+                onFinish(() => this.$nextTick(() => this.read(false, action.name === '$refresh')));
             });
 
             this.onUnload = (event) => {
@@ -82,8 +103,10 @@ document.addEventListener('alpine:init', () => {
         },
 
         // The server's view of the sections. On the first read it is also what is staged; later a
-        // section the member has not touched follows the server, a touched one keeps its pick.
-        read(first) {
+        // section the member has not touched follows the server, a touched one keeps its pick and
+        // the saved state it was made on — except on "Tải lại" when someone else has saved that
+        // section meanwhile: the reload shows their version, and the member makes the change again.
+        read(first, reload = false) {
             const block = this.$root.querySelector('[data-wf-state]');
             if (!block) {
                 return;
@@ -93,24 +116,90 @@ document.addEventListener('alpine:init', () => {
             const meta = {};
             state.rows.forEach((row) => {
                 saved[row.key] = { template: row.template, active: row.active };
-                meta[row.key] = { label: row.label, pending: row.pending };
+                meta[row.key] = { label: row.label, pending: row.pending, movable: row.movable };
             });
 
             const staged = {};
+            const base = {};
             Object.keys(saved).forEach((key) => {
-                const before = this.saved[key];
+                const was = this.base[key];
                 const mine = this.staged[key];
-                const touched = !first && before && mine
-                    && (before.template !== mine.template || before.active !== mine.active);
-                staged[key] = touched ? { ...mine } : { ...saved[key] };
+                const touched = !first && was && mine && !same(was, mine);
+                const overtaken = reload && !same(was, saved[key]);
+                staged[key] = touched && !overtaken ? { ...mine } : { ...saved[key] };
+                base[key] = touched && !overtaken ? { ...was } : { ...saved[key] };
             });
 
+            this.site = state.site ?? '';
             this.order = state.rows.map((row) => row.key);
             this.meta = meta;
             this.templates = state.templates;
             this.texts = state.texts;
             this.saved = saved;
             this.staged = staged;
+            this.base = base;
+            if (!first) {
+                this.persist();
+            }
+        },
+
+        // ---- kept across back/forward (sessionStorage; the page works the same without it) ----
+
+        storeKey() {
+            return STORE + this.site;
+        },
+
+        snapshot() {
+            return JSON.stringify(this.order.map((key) => [key, this.saved[key]?.template ?? null, Boolean(this.saved[key]?.active)]));
+        },
+
+        persist() {
+            try {
+                if (this.dirtyCount() === 0) {
+                    window.sessionStorage.removeItem(this.storeKey());
+
+                    return;
+                }
+                window.sessionStorage.setItem(this.storeKey(), JSON.stringify({ snapshot: this.snapshot(), staged: this.staged, base: this.base }));
+            } catch {
+                // storage blocked or full: the changes simply are not kept
+            }
+        },
+
+        // Only on the very state they were made on: anything saved meanwhile drops them.
+        restore() {
+            let kept = null;
+            try {
+                kept = JSON.parse(window.sessionStorage.getItem(this.storeKey()) ?? 'null');
+                if (kept && kept.snapshot !== this.snapshot()) {
+                    window.sessionStorage.removeItem(this.storeKey());
+                    kept = null;
+                }
+            } catch {
+                kept = null;
+            }
+            if (!kept || typeof kept.staged !== 'object' || typeof kept.base !== 'object') {
+                return;
+            }
+            const valid = (row) => Boolean(row) && typeof row.active === 'boolean'
+                && (row.template === null || (Object.hasOwn(this.templates, row.template) && !this.templates[row.template].locked));
+            this.order.forEach((key) => {
+                const mine = kept.staged?.[key];
+                const was = kept.base?.[key];
+                if (valid(mine) && valid(was) && !same(mine, this.saved[key])) {
+                    this.staged[key] = { template: mine.template, active: mine.template !== null && mine.active };
+                    this.base[key] = { template: was.template, active: was.active };
+                }
+            });
+            if (this.dirtyCount() > 0) {
+                // the first-run card would hide the list holding the restored changes
+                this.fromEmpty = true;
+            }
+        },
+
+        stage(key, row) {
+            this.staged[key] = row;
+            this.persist();
         },
 
         row(key) {
@@ -209,18 +298,20 @@ document.addEventListener('alpine:init', () => {
             if (!key || !choice || this.applyWhy() !== '') {
                 return;
             }
-            const pending = this.meta[key]?.pending ?? 0;
+            // every post the save would move: in-flight in the section or its sub-categories,
+            // or holding a pending change mid-review
+            const moving = this.meta[key]?.movable ?? 0;
             const label = this.meta[key]?.label ?? '';
             const was = this.saved[key]?.template ?? null;
 
             if (choice === NONE) {
                 const go = () => {
-                    this.staged[key] = { template: null, active: false };
+                    this.stage(key, { template: null, active: false });
                     this.$wire.staged(key, null);
                 };
                 this.closePick();
-                if (was && pending > 0) {
-                    this.ask(fill(this.texts.cf_none_title, { name: label }), fill(this.texts.cf_none_text, { count: pending }), this.texts.cf_none_ok, go);
+                if (was && moving > 0) {
+                    this.ask(fill(this.texts.cf_none_title, { name: label }), fill(this.texts.cf_none_text, { count: moving }), this.texts.cf_none_ok, go);
 
                     return;
                 }
@@ -230,13 +321,13 @@ document.addEventListener('alpine:init', () => {
             }
 
             const go = () => {
-                this.staged[key] = { template: choice, active: true };
+                this.stage(key, { template: choice, active: true });
                 this.$wire.staged(key, choice);
             };
             this.closePick();
             // a different flow sends the posts waiting in the saved one back to its first stage
-            if (was && was !== choice && pending > 0) {
-                this.ask(fill(this.texts.cf_swap_title, { name: label }), fill(this.texts.swap_confirm, { count: pending }), this.texts.swap_go, go);
+            if (was && was !== choice && moving > 0) {
+                this.ask(fill(this.texts.cf_swap_title, { name: label }), fill(this.texts.swap_confirm, { count: moving }), this.texts.swap_go, go);
 
                 return;
             }
@@ -250,18 +341,18 @@ document.addEventListener('alpine:init', () => {
             if (!current.template) {
                 return;
             }
-            const pending = this.meta[key]?.pending ?? 0;
-            if (current.active && pending > 0) {
+            const moving = this.meta[key]?.movable ?? 0;
+            if (current.active && moving > 0) {
                 this.ask(
                     fill(this.texts.cf_off_title, { name: this.meta[key]?.label ?? '' }),
-                    fill(this.texts.turn_off_confirm, { count: pending }),
+                    fill(this.texts.turn_off_confirm, { count: moving }),
                     this.texts.turn_off,
-                    () => { this.staged[key] = { ...current, active: false }; },
+                    () => { this.stage(key, { ...current, active: false }); },
                 );
 
                 return;
             }
-            this.staged[key] = { ...current, active: !current.active };
+            this.stage(key, { ...current, active: !current.active });
         },
 
         // ---- confirm ----
@@ -281,7 +372,13 @@ document.addEventListener('alpine:init', () => {
         changes() {
             return this.order
                 .filter((key) => this.isChanged(key))
-                .map((key) => ({ key, template: this.staged[key].template, active: Boolean(this.staged[key].template) && this.staged[key].active }));
+                .map((key) => ({
+                    key,
+                    template: this.staged[key].template,
+                    active: Boolean(this.staged[key].template) && this.staged[key].active,
+                    // the saved state this change was made on: refused if someone saved over it since
+                    from: { template: this.base[key]?.template ?? null, active: Boolean(this.base[key]?.active) },
+                }));
         },
 
         save() {
@@ -295,7 +392,11 @@ document.addEventListener('alpine:init', () => {
                     if (ok) {
                         // the new server state is the baseline for everything, touched or not
                         this.saved = {};
-                        this.$nextTick(() => this.read(true));
+                        this.base = {};
+                        this.$nextTick(() => {
+                            this.read(true);
+                            this.persist();
+                        });
                     }
                 })
                 .catch(() => {})
@@ -304,6 +405,8 @@ document.addEventListener('alpine:init', () => {
 
         discard() {
             this.staged = clone(this.saved);
+            this.base = clone(this.saved);
+            this.persist();
         },
 
         // ---- leave guard (links inside the admin open in place, so beforeunload never sees them) ----
@@ -319,7 +422,7 @@ document.addEventListener('alpine:init', () => {
         leaveNow() {
             const url = this.leave;
             this.leave = null;
-            this.staged = clone(this.saved);
+            this.discard();
             if (url) {
                 window.Livewire.navigate(url);
             }

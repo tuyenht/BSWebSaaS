@@ -1382,6 +1382,7 @@
     "admin.wf.staged_none": "“:name” chuyển về đăng thẳng — bấm Lưu để có hiệu lực",
     "admin.wf.staged_pick": "“:name” sẽ dùng :wf — bấm Lưu để có hiệu lực",
     "admin.wf.save_invalid": "Chưa lưu được: danh sách thể loại đã đổi từ lúc mở trang. Bấm Tải lại rồi chọn lại.",
+    "admin.wf.save_stale": "Có người vừa đổi quy trình của “:name”; bấm Tải lại để xem bản mới rồi làm lại.",
     "admin.wf.no_sections": "Site này chưa có thể loại nội dung nào để áp quy trình duyệt.",
     "admin.wf.view_steps": "Xem sơ đồ các bước",
     "admin.wf.enabled": "Đang bật",
