@@ -27,6 +27,17 @@ final class SectionProps
 
     public const array FEATURES_VARIANTS = ['default', 'top-rule'];
 
+    /** The glyphs of the quick-links tiles: keys of theme::partials.sf-icon that suit a link. */
+    public const array QUICK_LINK_ICONS = ['link', 'phone', 'email', 'address', 'map', 'building', 'license'];
+
+    /** Columns on a wide screen; a phone always shows one (gallery two). Stored as the digit string. */
+    public const array GALLERY_COLUMNS = ['3', '2', '4'];
+
+    public const array FAQ_COLUMNS = ['1', '2'];
+
+    /** The most items a list of a static block holds (the block's own list may set a lower `max`). */
+    public const int MAX_ITEMS = 12;
+
     /**
      * The schema leaf of a choice prop.
      *
@@ -73,5 +84,48 @@ final class SectionProps
         $value = $props[$key] ?? null;
 
         return is_scalar($value) && trim((string) $value) !== '' ? (string) $value : $fallback;
+    }
+
+    /**
+     * The first $max entries of a list prop that are objects, re-indexed; anything else is dropped.
+     *
+     * @param  array<array-key, mixed>  $props
+     * @return list<array<array-key, mixed>>
+     */
+    public static function items(array $props, string $key, int $max = self::MAX_ITEMS): array
+    {
+        $value = $props[$key] ?? null;
+
+        return is_array($value) ? array_slice(array_values(array_filter($value, is_array(...))), 0, $max) : [];
+    }
+
+    /**
+     * A price in whole dong as printed in Vietnamese ("1.500.000 ₫", the space is a no-break one), or
+     * null when the price is unset or not above zero — the view then says "Liên hệ". Only an integer
+     * or a string of digits counts; there is no float anywhere on the way.
+     */
+    public static function price(mixed $value): ?string
+    {
+        if (is_string($value) && preg_match('/\A\d{1,15}\z/', $value) === 1) {
+            $value = (int) $value;
+        }
+
+        return is_int($value) && $value > 0 ? number_format($value, 0, ',', '.')."\u{A0}₫" : null;
+    }
+
+    /**
+     * The non-blank lines of a textarea prop, trimmed, at most $max of them.
+     *
+     * @return list<string>
+     */
+    public static function lines(mixed $value, int $max = self::MAX_ITEMS): array
+    {
+        if (! is_string($value)) {
+            return [];
+        }
+
+        $lines = array_filter(array_map(trim(...), preg_split('/\R/u', $value) ?: []), static fn (string $line): bool => $line !== '');
+
+        return array_slice(array_values($lines), 0, $max);
     }
 }

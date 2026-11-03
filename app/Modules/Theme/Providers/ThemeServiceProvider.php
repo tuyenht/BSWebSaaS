@@ -116,6 +116,68 @@ final class ThemeServiceProvider extends ServiceProvider
             'url' => ['type' => 'url', 'video' => true],
             'poster' => ['type' => 'image'],
         ],
+        // Static blocks drawn by the page builder design. Every list carries its own `max` (and `min`
+        // where a block needs a few items to make sense); ValidPageJson refuses a list outside them.
+        'quick_links' => [
+            'heading' => ['type' => 'text'],
+            'items' => ['type' => 'list', 'max' => SectionProps::MAX_ITEMS, 'of' => [
+                'icon' => ['type' => 'enum', 'options' => SectionProps::QUICK_LINK_ICONS, 'default' => 'link'],
+                'label' => ['type' => 'text'],
+                'url' => ['type' => 'url'],
+            ]],
+        ],
+        'gallery' => [
+            'heading' => ['type' => 'text'],
+            'images' => ['type' => 'list', 'max' => SectionProps::MAX_ITEMS, 'of' => [
+                'image' => ['type' => 'image'],
+                'caption' => ['type' => 'text'],
+            ]],
+            'columns' => ['type' => 'enum', 'options' => SectionProps::GALLERY_COLUMNS, 'default' => '3'],
+        ],
+        'faq' => [
+            'heading' => ['type' => 'text'],
+            'items' => ['type' => 'list', 'max' => SectionProps::MAX_ITEMS, 'of' => [
+                'q' => ['type' => 'text'],
+                'a' => ['type' => 'textarea'],
+            ]],
+            'columns' => ['type' => 'enum', 'options' => SectionProps::FAQ_COLUMNS, 'default' => '1'],
+        ],
+        'testimonial' => [
+            'heading' => ['type' => 'text'],
+            'items' => ['type' => 'list', 'max' => SectionProps::MAX_ITEMS, 'of' => [
+                'quote' => ['type' => 'textarea'],
+                'name' => ['type' => 'text'],
+                'role' => ['type' => 'text'],
+                'avatar' => ['type' => 'image'],
+            ]],
+        ],
+        'team' => [
+            'heading' => ['type' => 'text'],
+            'members' => ['type' => 'list', 'max' => SectionProps::MAX_ITEMS, 'of' => [
+                'name' => ['type' => 'text'],
+                'role' => ['type' => 'text'],
+                'photo' => ['type' => 'image'],
+            ]],
+        ],
+        'process' => [
+            'heading' => ['type' => 'text'],
+            'steps' => ['type' => 'list', 'min' => 3, 'max' => 6, 'of' => [
+                'title' => ['type' => 'text'],
+                'text' => ['type' => 'textarea'],
+            ]],
+        ],
+        // price is whole dong; empty or 0 shows "Liên hệ". features is one benefit per line.
+        'pricing' => [
+            'heading' => ['type' => 'text'],
+            'plans' => ['type' => 'list', 'min' => 2, 'max' => 4, 'of' => [
+                'name' => ['type' => 'text'],
+                'price' => ['type' => 'int', 'min' => 0, 'max' => 999_999_999_999],
+                'unit' => ['type' => 'text'],
+                'features' => ['type' => 'textarea', 'max_lines' => SectionProps::MAX_ITEMS],
+                'cta_label' => ['type' => 'text'],
+                'cta_url' => ['type' => 'url'],
+            ]],
+        ],
     ];
 
     #[\Override]
