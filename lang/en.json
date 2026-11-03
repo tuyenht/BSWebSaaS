@@ -1334,6 +1334,7 @@
     "entries.look_motion_first": "The first block always shows at once, with no effect, so the page loads fast.",
     "entries.look_anchor": "Link anchor",
     "entries.look_anchor_hint": "To point a button or menu straight at this block, for example /trang-chu#lien-he.",
+    "entries.look_anchor_invalid": "An anchor takes only plain letters, digits and hyphens, for example contact-us. Please type it again in Latin letters.",
     "workflow.err_transition_unknown": "The review step ':transition' does not exist in this workflow.",
     "workflow.err_transition_wrong_state": "':transition' cannot be done while the content is in the ':state' state.",
     "workflow.err_note_required": "':transition' needs a note.",
