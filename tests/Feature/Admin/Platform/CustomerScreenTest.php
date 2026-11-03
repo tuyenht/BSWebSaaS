@@ -488,6 +488,50 @@ it('shows the customer\'s history newest first, who made each change, and older 
     $page->set('historyUntil', '')->call('olderHistory', $foreign)->assertSet('historyUntil', '');
 });
 
+it('tells every kind of change in a plain sentence, the website by its name then', function (): void {
+    $staff = khStaff('billing');
+    $ha = User::factory()->create(['name' => 'Trần Thu Hà']);
+    $nam = User::factory()->create(['name' => 'Lê Hoàng Nam']);
+    $basic = khPlan('basic', 'Cơ bản');
+    $ulid = trim((string) DB::connection('pgsql_admin')->table('tenants')->where('id', 1)->value('ulid'));
+    $site = fn (array $more = []): array => ['meta' => json_encode(['site' => (string) Str::ulid(), 'site_name' => 'An Vinh'] + $more)];
+
+    khHistory(1, null, $basic, '', null, '2025-03-12 01:45:00+00', ['kind' => 'customer_created', 'reason' => null]);
+    khHistory(1, null, null, '', null, '2025-03-12 01:46:00+00', ['kind' => 'customer_created', 'reason' => null]);
+    khHistory(1, null, null, '', null, '2025-08-18 08:02:00+00', ['kind' => 'site_created', 'reason' => null, 'meta' => json_encode(['site' => (string) Str::ulid(), 'site_name' => 'An Vinh Tuyển dụng'])]);
+    khHistory(1, null, null, 'Khách cần thêm tiếng Hàn', $ha->id, '2026-10-02 02:14:00+00', ['kind' => 'feature_overridden'] + $site(['feature' => 'locales.max', 'value' => 5]));
+    khHistory(1, null, null, '', $ha->id, '2026-10-03 02:14:00+00', ['kind' => 'feature_overridden', 'reason' => null] + $site(['feature' => 'media.storage_mb', 'value' => 2000]));
+    khHistory(1, null, null, '', $ha->id, '2026-10-04 02:14:00+00', ['kind' => 'feature_overridden', 'reason' => null] + $site(['feature' => 'rbac.custom_roles', 'value' => true]));
+    khHistory(1, null, null, '', $ha->id, '2026-10-05 02:14:00+00', ['kind' => 'feature_overridden', 'reason' => null] + $site(['feature' => 'locales.max', 'value' => null]));
+    khHistory(1, null, null, 'Quá hạn thanh toán 45 ngày', $nam->id, '2026-10-06 01:00:00+00', ['kind' => 'suspended']);
+    khHistory(1, null, null, '', $nam->id, '2026-10-07 01:00:00+00', ['kind' => 'resumed', 'reason' => null]);
+
+    $page = Livewire::actingAs($staff)->test(Detail::class, ['ulid' => $ulid]);
+
+    khInOrder($page->html(), array_map(e(...), [
+        'Mở lại khách hàng', 'Lê Hoàng Nam',
+        'Tạm ngưng khách hàng — Quá hạn thanh toán 45 ngày', 'Lê Hoàng Nam',
+        'Bỏ ghi đè "Số ngôn ngữ tối đa" của An Vinh, theo lại gói', 'Trần Thu Hà',
+        'Ghi đè "Nhóm quyền tùy chỉnh" của An Vinh: '.__('admin.customers_value_yes'), 'Trần Thu Hà',
+        'Ghi đè "Dung lượng media (MB)" của An Vinh: '.__('admin.customers_value_mb', ['n' => '2.000']), 'Trần Thu Hà',
+        'Ghi đè "Số ngôn ngữ tối đa" của An Vinh: 5 — Khách cần thêm tiếng Hàn', 'Trần Thu Hà',
+        'Tạo website An Vinh Tuyển dụng', 'Hệ thống',
+        'Tạo khách hàng, chưa có gói', 'Hệ thống',
+        'Tạo khách hàng, gói Cơ bản', 'Hệ thống',
+    ]));
+    $page->assertDontSee(__('admin.customers_history_other'));
+});
+
+it('shows a website name as text, markup and all', function (): void {
+    $ulid = trim((string) DB::connection('pgsql_admin')->table('tenants')->where('id', 1)->value('ulid'));
+    khHistory(1, null, null, '', null, '2026-10-01 01:00:00+00', ['kind' => 'site_created', 'reason' => null, 'meta' => json_encode(['site' => (string) Str::ulid(), 'site_name' => '<b onmouseover="x()">Hà</b> & Co'])]);
+
+    $html = Livewire::actingAs(khStaff('billing'))->test(Detail::class, ['ulid' => $ulid])->html();
+
+    expect($html)->toContain(e('Tạo website <b onmouseover="x()">Hà</b> & Co'))
+        ->not->toContain('<b onmouseover');
+});
+
 it('reads at most a fixed number of history rows in one render, however far "older" went', function (): void {
     $pro = khPlan('pro', 'Chuyên nghiệp');
     $total = CustomerHistory::MAX_ROWS + 25;
@@ -611,7 +655,12 @@ it('reads the list and a customer in a fixed number of queries, however many the
     }
 
     for ($i = 0; $i < 15; $i++) {
-        khHistory(1, null, $plan, 'Lần '.$i, $owner->id, now()->subMinutes($i)->toIso8601String());
+        // every kind, websites by the name the row keeps (never a query per row)
+        khHistory(1, null, $plan, 'Lần '.$i, $i % 2 === 0 ? $owner->id : null, now()->subMinutes($i)->toIso8601String(), match ($i % 3) {
+            0 => [],
+            1 => ['kind' => 'site_created', 'meta' => json_encode(['site' => (string) Str::ulid(), 'site_name' => 'S'.$i])],
+            default => ['kind' => 'feature_overridden', 'meta' => json_encode(['site' => (string) Str::ulid(), 'site_name' => 'S'.$i, 'feature' => 'locales.max', 'value' => $i])],
+        });
     }
 
     expect($listQueries())->toBe($fewList)
