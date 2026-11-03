@@ -133,8 +133,9 @@ final readonly class BlockRenderer
         }
 
         // One batched lookup for the whole page (site-scoped; unknown ids simply resolve to nothing).
-        // The same rows give each URL its srcset (server-built from storage keys, never from props).
-        ['urls' => $urls, 'srcsets' => $srcsets] = $this->mediaUrls->resolve($ids, self::CONTENT_IMAGE_WIDTH, self::SRCSET_WIDTHS);
+        // The same rows give each URL its srcset (server-built from storage keys, never from props) and
+        // its alt text from the library.
+        ['urls' => $urls, 'srcsets' => $srcsets, 'alts' => $alts] = $this->mediaUrls->resolve($ids, self::CONTENT_IMAGE_WIDTH, self::SRCSET_WIDTHS);
 
         // Pass 2 — render each block, swapping each image prop's media_id for its resolved URL, inside
         // the look wrapper when the block sets one (StyleProps).
@@ -158,7 +159,7 @@ final readonly class BlockRenderer
 
             /** @var view-string $view a theme section view (ComponentRegistry) */
             $view = $component->view();
-            $section = $this->views->make($view, $component->data($resolved) + ['srcsets' => $srcsets])->render();
+            $section = $this->views->make($view, $component->data($resolved) + ['srcsets' => $srcsets, 'alts' => $alts])->render();
 
             $image = $resolved['bg_image'] ?? null;
             $wrapper = StyleProps::wrapper($props, $first, is_string($image) ? $image : null);

@@ -90,6 +90,13 @@ final readonly class ValidPageJson implements ValidationRule
                 return;
             }
 
+            $bound = $this->boundsViolation($block['props'], $schema, $type);
+            if ($bound !== null) {
+                $fail($bound);
+
+                return;
+            }
+
             if (! $this->videosRecognised($block['props'], $schema)) {
                 $fail(__('entries.err_block_video_invalid'));
 
@@ -207,6 +214,83 @@ final readonly class ValidPageJson implements ValidationRule
         }
 
         return true;
+    }
+
+    /**
+     * The plain-language message for the first prop outside its declared bounds, or null: a list with
+     * `max` (and `min`, checked once it holds an item) items, an int with `min`/`max` that is a whole
+     * number inside them (blank = unset), a textarea with `max_lines` non-blank lines. Walks lists
+     * of objects like the other schema walks.
+     */
+    private function boundsViolation(mixed $data, mixed $schema, string $type): ?string
+    {
+        if (! is_array($schema)) {
+            return null;
+        }
+
+        foreach ($schema as $prop => $spec) {
+            if (! is_array($spec)) {
+                continue;
+            }
+            $value = is_array($data) ? ($data[$prop] ?? null) : null;
+            $kind = $spec['type'] ?? null;
+
+            if ($kind === 'list' && is_array($value)) {
+                $count = count($value);
+                if (is_int($spec['max'] ?? null) && $count > $spec['max']) {
+                    return __('entries.err_block_list_max', ['type' => $type, 'max' => $spec['max']]);
+                }
+                // A list that names `min_of` counts only the items whose field of that name is not
+                // blank — the ones the storefront can actually draw.
+                $usable = is_string($spec['min_of'] ?? null) ? $this->usableItems($value, $spec['min_of']) : $count;
+                if (is_int($spec['min'] ?? null) && $count > 0 && $usable < $spec['min']) {
+                    return __('entries.err_block_list_min', ['type' => $type, 'min' => $spec['min']]);
+                }
+                $of = $spec['of'] ?? null;
+                if (is_array($of) && ! (isset($of['type']) && is_string($of['type']))) {
+                    foreach ($value as $item) {
+                        $found = $this->boundsViolation($item, $of, $type);
+                        if ($found !== null) {
+                            return $found;
+                        }
+                    }
+                }
+
+                continue;
+            }
+
+            if ($kind === 'int' && (isset($spec['min']) || isset($spec['max'])) && $value !== null && $value !== '') {
+                $number = is_int($value) ? $value : (is_string($value) && preg_match('/\A-?\d{1,15}\z/', $value) === 1 ? (int) $value : null);
+                if ($number === null || $number < ($spec['min'] ?? PHP_INT_MIN) || $number > ($spec['max'] ?? PHP_INT_MAX)) {
+                    return __('entries.err_block_number_invalid', ['type' => $type]);
+                }
+            }
+
+            if ($kind === 'textarea' && is_int($spec['max_lines'] ?? null) && is_string($value)
+                && count(array_filter(preg_split('/\R/u', $value) ?: [], static fn (string $line): bool => trim($line) !== '')) > $spec['max_lines']) {
+                return __('entries.err_block_lines_max', ['type' => $type, 'max' => $spec['max_lines']]);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * How many items of a list have a non-blank text in `$field`.
+     *
+     * @param  array<array-key, mixed>  $items
+     */
+    private function usableItems(array $items, string $field): int
+    {
+        $usable = 0;
+        foreach ($items as $item) {
+            $text = is_array($item) ? ($item[$field] ?? null) : null;
+            if (is_string($text) && trim($text) !== '') {
+                $usable++;
+            }
+        }
+
+        return $usable;
     }
 
     /**

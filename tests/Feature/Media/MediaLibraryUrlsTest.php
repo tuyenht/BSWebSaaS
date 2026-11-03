@@ -4,6 +4,7 @@ use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaLibraryUrls;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\DB;
+use Tests\Fixtures\StorefrontCards;
 
 /*
  * Slice 1 (content ↔ media by media_id). Content stores media_id, never a URL; MediaLibraryUrls is
@@ -64,5 +65,34 @@ it('never resolves another tenant\'s media id (RLS isolation)', function (): voi
 
     app(Tenancy::class)->enter(1, function () use ($foreign): void {
         expect(app(MediaLibraryUrls::class)->urlsForIds([$foreign->id]))->toBe([]);
+    });
+});
+
+it('returns the alt text per URL from the same one query: current locale, else the site default, else none', function (): void {
+    StorefrontCards::reset();
+    StorefrontCards::pinMediaConfig();
+    $siteId = StorefrontCards::site();
+
+    app(Tenancy::class)->enter($siteId, function (): void {
+        $make = function (string $slug, array $alt): int {
+            $media = StorefrontCards::media($slug);
+            $media->forceFill(['alt' => $alt])->save();
+
+            return $media->id;
+        };
+        $own = $make('urls-alt-own', ['en' => 'English', 'vi' => 'Tiếng Việt']);
+        $fallback = $make('urls-alt-fallback', ['vi' => 'Chỉ tiếng Việt']);
+        $none = $make('urls-alt-none', ['ja' => 'Other']);
+        app()->setLocale('en');
+
+        $queries = countQueries(function () use ($own, $fallback, $none, &$result): void {
+            $result = app(MediaLibraryUrls::class)->resolve([$own, $fallback, $none], 1280);
+        });
+
+        expect($result['alts'])->toHaveCount(2)
+            ->and($result['alts'][$result['urls'][$own]])->toBe('English')
+            ->and($result['alts'][$result['urls'][$fallback]])->toBe('Chỉ tiếng Việt')
+            ->and($result['alts'])->not->toHaveKey($result['urls'][$none])
+            ->and($queries)->toBeLessThanOrEqual(2);
     });
 });
