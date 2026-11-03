@@ -185,7 +185,7 @@ final class ThemeServiceProvider extends ServiceProvider
         // value is a whole number counted up on scroll; the suffix ("+", "%") is trimmed to 8 characters at render.
         'stats' => [
             'heading' => ['type' => 'text'],
-            'items' => ['type' => 'list', 'max' => 8, 'of' => [
+            'items' => ['type' => 'list', 'max' => SectionProps::STATS_MAX_ITEMS, 'of' => [
                 'value' => ['type' => 'int', 'min' => 0, 'max' => 999_999_999_999],
                 'suffix' => ['type' => 'text'],
                 'label' => ['type' => 'text'],

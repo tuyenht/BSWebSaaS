@@ -4,6 +4,7 @@ namespace App\Modules\Theme\Rendering;
 
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\VideoEmbed;
+use App\Modules\Theme\Components\SectionProps;
 use App\Modules\Theme\Theming\ThemeResolver;
 use Illuminate\Contracts\View\Factory as ViewFactory;
 
@@ -118,10 +119,9 @@ final readonly class PageRenderer
     private static function countsUp(array $body): bool
     {
         foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
-            $items = is_array($block) && ($block['type'] ?? null) === 'stats' ? data_get($block, 'props.items') : null;
-            foreach (is_array($items) ? $items : [] as $item) {
-                $value = is_array($item) ? ($item['value'] ?? null) : null;
-                if (is_int($value) && $value >= 0 || is_string($value) && preg_match('/\A\d{1,12}\z/', trim($value)) === 1) {
+            $props = is_array($block) && ($block['type'] ?? null) === 'stats' ? ($block['props'] ?? null) : null;
+            foreach (is_array($props) ? SectionProps::items($props, 'items', SectionProps::STATS_MAX_ITEMS) : [] as $item) {
+                if (SectionProps::statNumber($item['value'] ?? null) !== null) {
                     return true;
                 }
             }

@@ -4093,7 +4093,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 }
 
 .sf-stat__value {
-    color: var(--sch-head, var(--color-primary-text));
+    color: var(--sch-head, var(--color-text-strong));
     font-size: 2.375rem;
     font-weight: 800;
     line-height: 1.1;

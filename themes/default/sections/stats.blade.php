@@ -6,12 +6,9 @@
 --}}
 @php
     $heading = \App\Modules\Theme\Components\SectionProps::text($props, 'heading');
-    $level = $heading !== '' ? 'h3' : 'h2';
     $stats = [];
-    foreach (\App\Modules\Theme\Components\SectionProps::items($props, 'items', 8) as $item) {
-        $raw = $item['value'] ?? null;
-        $value = is_string($raw) && preg_match('/\A\d{1,12}\z/', trim($raw)) === 1 ? (int) trim($raw) : $raw;
-        $value = is_int($value) && $value >= 0 && $value <= 999_999_999_999 ? $value : null;
+    foreach (\App\Modules\Theme\Components\SectionProps::items($props, 'items', \App\Modules\Theme\Components\SectionProps::STATS_MAX_ITEMS) as $item) {
+        $value = \App\Modules\Theme\Components\SectionProps::statNumber($item['value'] ?? null);
         $label = \App\Modules\Theme\Components\SectionProps::text($item, 'label');
         if ($value === null && $label === '') {
             continue;

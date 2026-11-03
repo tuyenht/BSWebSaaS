@@ -138,7 +138,15 @@ describe('on a page', function (): void {
         'no stats block' => [[['type' => 'richtext', 'props' => ['heading' => 'Một']]]],
         'labels only' => [[['type' => 'stats', 'props' => ['items' => [['label' => 'Chỉ chữ']]]]]],
         'blank and negative values' => [[['type' => 'stats', 'props' => ['items' => [['value' => '', 'label' => 'A'], ['value' => -4, 'label' => 'B']]]]]],
+        'a number only past the eighth item' => [[['type' => 'stats', 'props' => ['items' => [...array_fill(0, 8, ['label' => 'Chữ']), ['value' => 5, 'label' => 'Số']]]]]],
+        'a number over the maximum' => [[['type' => 'stats', 'props' => ['items' => [['value' => 10 ** 13, 'label' => 'Lớn']]]]]],
     ]);
+
+    it('shows and counts a number typed with leading zeros, as the save check accepts it', function (): void {
+        $html = statsPage('/so-0', [['type' => 'stats', 'props' => ['items' => [['value' => '0000000000005', 'label' => 'Năm']]]]]);
+
+        expect($html)->toContain('data-count="5"')->toContain('sf-stats.js');
+    });
 
     it('costs no extra queries compared with a plain page', function (): void {
         statsPage('/thuong', [['type' => 'richtext', 'props' => ['heading' => 'Một']]]);
