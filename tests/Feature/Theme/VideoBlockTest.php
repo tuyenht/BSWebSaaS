@@ -175,6 +175,15 @@ describe('videos in rich text', function (): void {
             ->and($html)->not->toContain('<p><div')->not->toContain('<p></p>');
     });
 
+    it('lifts a frame padded with no-break spaces and line breaks, and survives a huge blank paragraph', function (): void {
+        $stored = app(RichTextSanitizer::class)->full('<p>A</p><p>&nbsp;<br><iframe src="https://www.youtube.com/embed/SxwkhMy4Ywo"></iframe>&nbsp;</p><p>B</p>');
+        ['html' => $html, 'videos' => $videos] = app(VideoFacades::class)->render($stored);
+        expect($videos)->toBe(1)->and($html)->not->toContain('<p><div')->not->toContain('<p>'."\u{00A0}");
+
+        $huge = '<p>'.str_repeat(' ', 20000).'chữ</p><div class="video-embed"><iframe src="https://www.youtube.com/embed/SxwkhMy4Ywo"></iframe></div>';
+        expect(app(VideoFacades::class)->render($huge)['videos'])->toBe(1);
+    });
+
     it('lifts a centred frame out of its styled paragraph too', function (): void {
         $stored = app(RichTextSanitizer::class)->full('<p>A</p><p style="text-align: center;"><iframe src="https://www.youtube.com/embed/SxwkhMy4Ywo"></iframe></p><p>B</p>');
         ['html' => $html, 'videos' => $videos] = app(VideoFacades::class)->render($stored);
@@ -190,7 +199,8 @@ describe('videos in rich text', function (): void {
 
         expect($html)->toContain('<span class="sr-only">: Video YouTube 1</span>')
             ->and($html)->toContain('<span class="sr-only">: Video YouTube 2</span>')
-            ->and(app(VideoFacades::class)->render($one)['html'])->toContain('<span class="sr-only">: Video YouTube</span>');
+            ->and(app(VideoFacades::class)->render($one)['html'])->toContain('<span class="sr-only">: Video YouTube</span>')
+            ->and(app(VideoFacades::class)->render($one.'<iframe src="https://evil.example/x"></iframe>')['html'])->toContain('<span class="sr-only">: Video YouTube</span>');
     });
 
     it('keeps an unknown iframe stripped, on save and on render', function (): void {

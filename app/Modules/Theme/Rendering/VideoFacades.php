@@ -22,7 +22,9 @@ final readonly class VideoFacades
     private const string WRAPPED = '~<div class="video-embed">\s*<iframe\b([^>]*)>\s*</iframe>\s*</div>~i';
 
     /** A paragraph holding nothing but one frame: the façade is a block, so the paragraph goes. */
-    private const string IN_PARAGRAPH = '~<p\b[^>]*>(?:\s|&nbsp;|<br\s*/?>)*(<iframe\b[^>]*>\s*</iframe>)(?:\s|&nbsp;|<br\s*/?>)*</p>~i';
+    // possessive filler: a paragraph of thousands of spaces must not exhaust the regex stack; the
+    // sanitizer prints a no-break space as the raw character, not as &nbsp;
+    private const string IN_PARAGRAPH = '~<p\b[^>]*>(?:\s++|&nbsp;|\xC2\xA0|<br\s*/?>)*+(<iframe\b[^>]*>\s*</iframe>)(?:\s++|&nbsp;|\xC2\xA0|<br\s*/?>)*+</p>~i';
 
     /** Any other frame's opening tag, with its closing tag when nothing but space sits between. */
     private const string BARE = '~<iframe\b([^>]*)>(?:\s*</iframe>)?~i';
@@ -40,7 +42,9 @@ final readonly class VideoFacades
         }
 
         $videos = 0;
-        $several = preg_match_all('~<iframe\b~i', $html) > 1;
+        // only frames that become a video count: a dropped unknown frame must not number the one video
+        preg_match_all('~<iframe\b([^>]*)>~i', $html, $frames);
+        $several = count(array_filter($frames[1], fn (string $attributes): bool => VideoEmbed::player(self::src($attributes)) !== null)) > 1;
         $swap = function (array $match) use (&$videos, $several): string {
             $video = VideoEmbed::player(self::src(is_string($match[1] ?? null) ? $match[1] : ''));
             if ($video === null) {
