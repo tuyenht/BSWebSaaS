@@ -224,11 +224,12 @@ it('draws every on/off switch of the admin with the one shared switch', function
     $found = 0;
     foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($views, FilesystemIterator::SKIP_DOTS)) as $file) {
         $source = (string) file_get_contents($file->getPathname());
-        // every switch writes role before class; no attribute in between holds a "<"
-        preg_match_all('/<button\b[^<]*?\brole="switch"[^<]*?\bclass="([^"]*)"/s', $source, $switches);
-        foreach ($switches[1] as $class) {
+        // any element with the switch role, its attributes in any order (no attribute holds a "<")
+        preg_match_all('/<\w+\b[^<]*\brole="switch"[^<]*/s', $source, $switches);
+        foreach ($switches[0] as $switch) {
             $found++;
-            expect($class)->toBeIn(['switch hit-area', 'switch-row'], $file->getFilename());
+            expect(preg_match('/\bclass="([^"]*)"/', $switch, $class) === 1 ? $class[1] : '')
+                ->toBeIn(['switch hit-area', 'switch-row'], $file->getFilename());
         }
         expect($source)->not->toMatch('/rounded-full[^"]*\bbg-white shadow\b/', $file->getFilename());
     }
