@@ -396,10 +396,13 @@
         transition: transform 0.15s;
     }
 
+    /* on: the brand fill with a white knob; the border is the brand ink, which is the fill itself
+       in the light scheme and the light brand tint in the dark one, where the fill on the dark card
+       is only about 2:1 (design .dsw, --color-switch-on-border) */
     &[aria-checked='true'] {
-        --switch-knob: var(--color-surface);
+        --switch-knob: var(--color-white);
         border-color: var(--color-primary-text);
-        background-color: var(--color-primary-text);
+        background-color: var(--color-primary);
     }
 
     &[aria-checked='true']::before {
@@ -447,12 +450,12 @@
     }
 
     &[aria-checked='true'] {
-        --switch-knob: var(--color-surface);
+        --switch-knob: var(--color-white);
     }
 
     &[aria-checked='true']::before {
         border-color: var(--color-primary-text);
-        background-color: var(--color-primary-text);
+        background-color: var(--color-primary);
         background-position: 1.25rem 0;
     }
 
