@@ -21,6 +21,7 @@
  * render with the real compiled CSS/JS, so build the front end first (pnpm run build).
  */
 
+use App\Modules\Admin\Livewire\Platform\Audit\CleanupDialog;
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Identity\Models\User;
@@ -29,6 +30,7 @@ use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\DB;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 uses(TestCase::class);
@@ -127,5 +129,25 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         file_put_contents($dir.'/'.$name.'.html', str_replace($platform, 'http://'.ADMIN_PREVIEW_HOST, $html));
     }
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 3);
+    // The same log as the platform super-admin, who also gets "Dọn nhật ký" in the tool row.
+    $top = User::factory()->create(['name' => 'Trần Thu Hà']);
+    app(PlatformAccess::class)->onPlatform(fn () => $top->assignRole('super_admin'));
+    app(PlatformAccess::class)->forgetMemo();
+    $this->flushSession();
+    $html = $this->actingAs($top)->get($platform.'/audit')->assertOk()->getContent();
+    file_put_contents($dir.'/audit-cleanup.html', str_replace($platform, 'http://'.ADMIN_PREVIEW_HOST, $html));
+
+    // Its dialog open on each step, put into that page (it opens from the browser, never from a URL).
+    $old = now()->utc()->startOfMonth()->subMonths(13)->format('Y-m');
+    DB::connection('pgsql_admin')->statement('select public.audit_log_month_create(?::date)', [$old.'-01']);
+    $dialog = Livewire::actingAs($top)->test(CleanupDialog::class)->call('openDialog')->call('loadMonths');
+    $pick = $dialog->html();
+    $dialog->set('month', $old)->call('next')->call('countRows')->assertSet('step', 'confirm');
+    expect($dialog->get('exact'))->not->toBeNull();
+    $steps = ['audit-cleanup-pick' => $pick, 'audit-cleanup-confirm' => $dialog->html()];
+    foreach ($steps as $name => $open) {
+        file_put_contents($dir.'/'.$name.'.html', str_replace([$platform, '</body>'], ['http://'.ADMIN_PREVIEW_HOST, $open.'</body>'], $html));
+    }
+
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 6);
 });

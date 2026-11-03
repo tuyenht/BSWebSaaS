@@ -21,6 +21,7 @@ use App\Modules\Admin\Livewire\ForgotPassword;
 use App\Modules\Admin\Livewire\Login;
 use App\Modules\Admin\Livewire\LoginSecuritySettings;
 use App\Modules\Admin\Livewire\Placeholder;
+use App\Modules\Admin\Livewire\Platform\Audit\CleanupDialog as PlatformAuditCleanupDialog;
 use App\Modules\Admin\Livewire\Platform\Audit\Index as PlatformAuditIndex;
 use App\Modules\Admin\Livewire\Platform\Sites\Detail as PlatformSitesDetail;
 use App\Modules\Admin\Livewire\Platform\Sites\Index as PlatformSitesIndex;
@@ -110,6 +111,7 @@ final class AdminServiceProvider extends ServiceProvider
         Livewire::component('admin.platform.sites.index', PlatformSitesIndex::class);
         Livewire::component('admin.platform.sites.detail', PlatformSitesDetail::class);
         Livewire::component('admin.platform.audit.index', PlatformAuditIndex::class);
+        Livewire::component('admin.platform.audit.cleanup-dialog', PlatformAuditCleanupDialog::class);
 
         // Password-reset mail is NOT the framework default notification: ForgotPassword dispatches
         // the queued ResetPasswordLinkNotification with a request-built URL (plane + host resolve
