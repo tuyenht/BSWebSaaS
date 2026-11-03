@@ -58,7 +58,7 @@ final class AuditCatalog
         ],
         'new_site' => ['provisioning.site.provisioned'],
         'support' => ['support.session.issued', 'support.session.entered', 'support.session.ended', 'support.session.notice_failed'],
-        'settings' => ['settings.support_access.changed', 'platform.security.turnstile_login'],
+        'settings' => ['settings.support_access.changed', 'platform.security.turnstile_login', 'audit.month_deleted', 'audit.months_pruned'],
     ];
 
     /** @var array<string, string>|null code => group key */

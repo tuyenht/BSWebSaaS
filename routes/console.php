@@ -37,6 +37,14 @@ Schedule::command('domains:recheck')->daily()->withoutOverlapping();
 // names after tenancy.custom_domains.recheck_budget_seconds).
 Schedule::command('domains:recheck-waiting')->everyFifteenMinutes()->withoutOverlapping(20)->runInBackground();
 
+// The audit log is one table per month (UTC): make sure the running month and the next three
+// exist. The command fails when fewer than two lie ahead, which the morning summary reports.
+Schedule::command('audit:months')->dailyAt('03:00')->timezone('UTC')->withoutOverlapping();
+
+// Retention of the audit log: on the 1st of each month, remove the months older than the running
+// month and the 24 full months before it, with an audit row saying so.
+Schedule::command('audit:prune')->monthlyOn(1, '03:30')->timezone('UTC')->withoutOverlapping();
+
 // Error notices: the morning summary of the counting day that just closed, at a local time set
 // explicitly (the app clock stays UTC). Mails only when there is something to say.
 Schedule::command('monitoring:summary')
