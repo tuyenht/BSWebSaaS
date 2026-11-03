@@ -193,7 +193,7 @@ it('sizes the kit tabs as main controls at the user text size, 44 on touch', fun
     }
 });
 
-it('gives the workflow close buttons the main-control size and its switches a 44 hit area', function (string $view, int $closes, int $switches): void {
+it('gives the workflow close buttons the main-control size and its switches a 44 hit area or a whole-row target', function (string $view, int $closes, int $switches): void {
     $source = (string) file_get_contents(app_path('Modules/Admin/resources/views/'.$view));
     // up to the class attribute: later attributes may hold an arrow function's ">"
     preg_match_all('/<button\b[^>]*?class="[^"]*"[^>]*?(?:aria-label="[^"]*"|>)/', $source, $buttons);
@@ -207,13 +207,13 @@ it('gives the workflow close buttons the main-control size and its switches a 44
         }
         if (str_contains($button, 'role="switch"')) {
             $seen['switch']++;
-            expect($button)->toMatch('/class="switch hit-area"/');
+            expect($button)->toMatch('/class="(?:switch hit-area|switch-row)"/');
         }
     }
 
     expect($seen)->toBe(['close' => $closes, 'switch' => $switches]);
 })->with([
-    'workflow settings' => ['livewire/workflow-settings.blade.php', 1, 2],
+    'workflow settings' => ['livewire/workflow-settings.blade.php', 1, 1],
     'workflow status' => ['livewire/entries/partials/workflow-status.blade.php', 1, 0],
 ]);
 
@@ -233,7 +233,7 @@ it('draws every on/off switch of the admin with the one shared switch', function
         }
         expect($source)->not->toMatch('/rounded-full[^"]*\bbg-white shadow\b/', $file->getFilename());
     }
-    expect($found)->toBe(5); // workflow 2, domains 1, the look panel 2 (one in a loop)
+    expect($found)->toBe(4); // workflow 1 (in its row loop), domains 1, the look panel 2 (one in a loop)
 });
 
 it('sizes the image picker and theme panel buttons by the shared control tokens', function (string $view, string $marker, string $size): void {
@@ -264,6 +264,20 @@ it('leaves the workflow status buttons to the shared button size', function (): 
     $source = (string) file_get_contents(app_path('Modules/Admin/resources/views/livewire/entries/partials/workflow-status.blade.php'));
 
     expect($source)->not->toContain('min-h-11');
+});
+
+it('gives the workflow list text links the main-control height, the touch size on touch', function (): void {
+    // "Xem sơ đồ các bước" and "… bài chờ duyệt" sit in a list row, not a table name cell: they
+    // take the normal hit size (40 with a mouse at the default text size, 44 from Lớn and on touch)
+    $source = (string) file_get_contents(app_path('Modules/Admin/resources/views/livewire/workflow-settings.blade.php'));
+    preg_match('/<a href="\{\{ route\(\'admin\.entries\.review\'.*?class="([^"]*)"/s', $source, $pending);
+    preg_match('/<button\b[^>]*?class="([^"]*)"[^>]*>\{\{ __\(\'admin\.wf\.view_steps\'\) \}\}/s', $source, $steps);
+
+    foreach ([$pending[1] ?? '', $steps[1] ?? ''] as $class) {
+        expect($class)->toMatch('/\bmin-h-control\b(?!-)/')
+            ->toContain('any-pointer-coarse:min-h-hit')
+            ->not->toContain('min-h-tap-cell');
+    }
 });
 
 it('sizes touch targets for any touch screen, touch laptops included', function (): void {

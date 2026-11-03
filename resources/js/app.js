@@ -11,6 +11,9 @@ import './sweet-confirm.js';
 // `bs-toast` event Livewire dispatches after an action. Lazy-loads SweetAlert2 on first use.
 import './sweet-toast.js';
 
+// The approval-workflow screen's staged picks and switches (Alpine.data 'workflowSettings').
+import './admin-workflow-settings.js';
+
 let uploader = null;
 
 function teardown() {
