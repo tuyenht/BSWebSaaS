@@ -19,19 +19,21 @@ use App\Modules\Shared\Support\RichTextSanitizer;
  *    library row, lazy loading, the library alt text when the editor gave none; the id itself
  *    is never printed. A picture whose id does not resolve in this site is dropped, and a figure
  *    left with no picture goes too.
- * 3. Video frames become the click-to-load façade (VideoFacades).
+ * 3. Tables become focusable, so a keyboard can scroll a wide one.
+ * 4. Video frames become the click-to-load façade (VideoFacades).
  */
 final readonly class RichHtml
 {
     /**
      * `sizes` per picture width (RichTextSanitizer::IMAGE_SIZES): a share of the 48rem text column,
-     * matching storefront.css (below 40rem the large and medium widths fill the column, small is half).
+     * matching storefront.css (on a narrow column a medium or small picture set left or right is
+     * drawn at half width, so the small one asks for half too).
      */
     private const array SIZES = [
         'full' => '(min-width: 52rem) 48rem, 100vw',
-        'lg' => '(min-width: 52rem) 36rem, (min-width: 40rem) 75vw, 100vw',
-        'md' => '(min-width: 52rem) 24rem, (min-width: 40rem) 50vw, 100vw',
-        'sm' => '(min-width: 52rem) 16rem, (min-width: 40rem) 33vw, 50vw',
+        'lg' => '(min-width: 52rem) 36rem, 75vw',
+        'md' => '(min-width: 52rem) 24rem, 50vw',
+        'sm' => '(min-width: 52rem) 16rem, 50vw',
     ];
 
     private const array SCHEMES = ['http', 'https', 'mailto', 'tel'];
@@ -80,6 +82,9 @@ final readonly class RichHtml
         if (stripos($html, '<img') !== false) {
             $html = self::pictures($html, $urls, $srcsets, $alts, $dims);
         }
+
+        // A wide table scrolls inside itself; a keyboard user reaches it to scroll it.
+        $html = (string) preg_replace('~<table\b~', '<table tabindex="0"', $html);
 
         return $this->videos->render($html);
     }

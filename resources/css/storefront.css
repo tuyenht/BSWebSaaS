@@ -1033,6 +1033,9 @@ main:has(.hero, .sf-slider) .page__title {
     color: var(--sch-body, var(--color-text));
     line-height: 1.75;
     overflow-wrap: break-word;
+    /* the picture rules below follow the column's width, and floated pictures stay inside it */
+    container: prose / inline-size;
+    display: flow-root;
 }
 
 @media (min-width: 1024px) {
@@ -1147,23 +1150,64 @@ main:has(.hero, .sf-slider) .page__title {
     margin-inline: auto 0;
 }
 
-/* On a phone a quarter-width picture is too small to see: the three smaller widths step up. */
-.sf-prose__img--sm {
+/* Width as a share of the text column — the editor's sizes. */
+.sf-prose__img--lg {
+    width: 75%;
+}
+
+.sf-prose__img--md {
     width: 50%;
 }
 
-@media (min-width: 40rem) {
-    .sf-prose__img--lg {
-        width: 75%;
+.sf-prose__img--sm {
+    width: 33.333%;
+}
+
+/* A medium or small picture set left or right lets the text run round it while the column is at
+   least 600px wide, as in the editor; headings, tables and rules start below it. Narrower, it
+   stands alone, half the column wide and centred. */
+@container prose (min-width: 600px) {
+    .sf-prose figure:has(> :is(.sf-prose__img--md, .sf-prose__img--sm).sf-prose__img--left) {
+        float: left;
+        margin: 0.25rem 1.5rem 1rem 0;
     }
 
-    .sf-prose__img--md {
+    .sf-prose figure:has(> :is(.sf-prose__img--md, .sf-prose__img--sm).sf-prose__img--right) {
+        float: right;
+        margin: 0.25rem 0 1rem 1.5rem;
+    }
+
+    .sf-prose figure:has(> .sf-prose__img--md:is(.sf-prose__img--left, .sf-prose__img--right)) {
         width: 50%;
     }
 
-    .sf-prose__img--sm {
+    .sf-prose figure:has(> .sf-prose__img--sm:is(.sf-prose__img--left, .sf-prose__img--right)) {
         width: 33.333%;
     }
+
+    .sf-prose figure > :is(.sf-prose__img--md, .sf-prose__img--sm):is(.sf-prose__img--left, .sf-prose__img--right) {
+        width: 100%;
+    }
+}
+
+@container prose (max-width: 599.98px) {
+    .sf-prose :is(.sf-prose__img--md, .sf-prose__img--sm):is(.sf-prose__img--left, .sf-prose__img--right) {
+        width: 50%;
+        margin-inline: auto;
+    }
+
+    .sf-prose figure:has(> :is(.sf-prose__img--md, .sf-prose__img--sm):is(.sf-prose__img--left, .sf-prose__img--right)) figcaption {
+        text-align: center;
+    }
+}
+
+.sf-prose :is(h2, h3, h4, h5, table, hr, .sf-video) {
+    clear: both;
+}
+
+/* Beside a floated picture, a quote's bar and a list's markers stay next to it, not behind it. */
+.sf-prose :is(blockquote, ul, ol) {
+    display: flow-root;
 }
 
 .sf-prose .sf-video {
