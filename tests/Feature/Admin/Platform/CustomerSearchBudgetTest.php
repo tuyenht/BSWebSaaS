@@ -202,6 +202,9 @@ it('plans the whole list, newest first, on the order index: no read of every cus
         ->and($older['rows'])->toHaveCount(20);
 
     foreach ($sent as $i => $statement) {
+        // the plan goes in as its id: behind a subquery on plans the planner guessed the plan's
+        // share from sampled statistics and at times read the whole plan to sort it
+        expect($statement['sql'])->not->toContain('"plans"');
         $nodes = [];
         $walk = function (array $node) use (&$walk, &$nodes): void {
             $nodes[] = [(string) $node['Node Type'], (string) ($node['Relation Name'] ?? ''), (string) ($node['Index Name'] ?? ''), (string) ($node['Index Cond'] ?? '')];
