@@ -433,7 +433,7 @@ site_types(id BIGINT PK, key UNIQUE, label JSONB{vi,en,ja}, meta JSONB)   -- GLO
 - **TẦNG 1 — Permission-driven (mặc định, KHÔNG cần cấu hình):** có `entries.publish` → **đăng thẳng** (admin + role/user được cấp); không có → lưu **pending**, người có publish/approve duyệt. Admin phân quyền **theo nhóm HOẶC theo user cụ thể**.
 - **TẦNG 2 — Workflow state machine (tùy chọn, data-driven):** khi cần nhiều bước (phóng viên→biên tập→giám đốc). Định nghĩa bằng DỮ LIỆU → đổi/thêm cấp không cần code (thay cho cột cứng `L1/L2` của t5g — chính chỗ "vênh" cần tránh).
 
-```sql
+workflows(id, site_id, key, name, applies_to_type, template, is_active)  -- one per content type; key = applies_to_type; template: none|admin_approval|editorial
 workflows(id, site_id, key, name, applies_to_type, is_active)        -- template: none|admin_approval|editorial
 workflow_states(id, workflow_id, key, label, sort_order, is_initial, is_published, is_terminal)
 workflow_transitions(id, workflow_id, key, label, from_state, to_state, required_permission, requires_note)  -- guard = permission
