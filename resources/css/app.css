@@ -364,9 +364,63 @@
     }
 }
 
-/* An on/off setting as one row: the drawn switch (36 × 20) then its words. The whole row is the
-   target, as tall as a main control (40 / 44px with a mouse, 44px on touch). */
+/* The drawn on/off switch, one look everywhere (design standard `.dsw`): a 44 × 24 track with
+   the field border, a 16px knob; on = the brand as ink with a surface-coloured knob (the dark
+   scheme lightens that ink, so the track keeps 3:1 against the dark page; the brand fill would
+   not). `switch` is the switch alone (its words sit elsewhere and name it through aria-labelledby or
+   aria-label; add `hit-area` for the 44px touch target); `switch-row` is the switch then its words,
+   the whole row being the target, as tall as a main control (40 / 44px with a mouse, 44 on touch).
+   Both draw the track from the same custom properties. */
+@utility switch {
+    --switch-knob: var(--color-text-muted);
+    flex-shrink: 0;
+    width: 2.75rem;
+    height: 1.5rem;
+    padding: 0;
+    border: 1px solid var(--color-border-input);
+    border-radius: 0.75rem;
+    background-color: var(--color-surface-hover);
+    cursor: pointer;
+    transition: background-color 0.15s;
+
+    &::before {
+        content: '';
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 1rem;
+        height: 1rem;
+        border-radius: 50%;
+        background: var(--switch-knob);
+        transition: transform 0.15s;
+    }
+
+    &[aria-checked='true'] {
+        --switch-knob: var(--color-surface);
+        border-color: var(--color-primary-text);
+        background-color: var(--color-primary-text);
+    }
+
+    &[aria-checked='true']::before {
+        transform: translateX(1.25rem);
+    }
+
+    &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        transition: none;
+
+        &::before {
+            transition: none;
+        }
+    }
+}
+
 @utility switch-row {
+    --switch-knob: var(--color-text-muted);
     display: flex;
     align-items: center;
     gap: 0.625rem;
@@ -378,25 +432,32 @@
 
     @apply any-pointer-coarse:min-h-hit;
 
+    /* the same track as `switch`, drawn in one box: the knob is a circle in the background, moved
+       by its position */
     &::before {
         content: '';
         flex-shrink: 0;
-        width: 2.25rem;
-        height: 1.25rem;
-        border-radius: 1.25rem;
-        background: radial-gradient(circle at 0.625rem 50%, var(--switch-knob, #fff) 0.5rem, transparent calc(0.5rem + 0.5px)) var(--color-border-input);
-        transition: background-position 0.15s;
+        width: 2.75rem;
+        height: 1.5rem;
+        border: 1px solid var(--color-border-input);
+        border-radius: 0.75rem;
+        background: radial-gradient(circle at 0.6875rem 50%, var(--switch-knob) 0.5rem, transparent calc(0.5rem + 0.5px)) no-repeat var(--color-surface-hover);
+        transition: background-position 0.15s, background-color 0.15s;
     }
 
-    /* On: the knob takes the surface colour, so it stands out on the brand track in both schemes
-       (the dark scheme lightens the brand ink, and a white knob would fade into it). */
     &[aria-checked='true'] {
         --switch-knob: var(--color-surface);
     }
 
     &[aria-checked='true']::before {
+        border-color: var(--color-primary-text);
         background-color: var(--color-primary-text);
-        background-position: 1rem 0;
+        background-position: 1.25rem 0;
+    }
+
+    &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
     }
 
     @media (prefers-reduced-motion: reduce) {

@@ -301,9 +301,7 @@
                                 <span class="block text-small text-text-muted">{{ __($addWww ? 'admin.domains_dlg_www_hint_on' : 'admin.domains_dlg_www_hint_off', ['n' => $n]) }}</span>
                             </div>
                             <button type="button" role="switch" aria-checked="{{ $addWww ? 'true' : 'false' }}" aria-labelledby="tm-www-l" wire:click="toggleWww"
-                                    class="hit-area relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors motion-reduce:transition-none {{ $addWww ? 'bg-primary' : 'bg-border-input' }}">
-                                <span class="absolute top-0.5 size-5 rounded-full bg-white shadow {{ $addWww ? 'right-0.5' : 'left-0.5' }}"></span>
-                            </button>
+                                    class="switch hit-area"></button>
                         </div>
                         @if ($preview['name'] !== '')
                             <x-bs-admin::alert color="info" class="text-small">{{ __('admin.domains_dlg_preview', ['run' => $preview['runs'], 'alt' => $preview['alt']]).($preview['typedWww'] && $addWww ? ' '.__('admin.domains_dlg_preview_www_note') : '') }}</x-bs-admin::alert>

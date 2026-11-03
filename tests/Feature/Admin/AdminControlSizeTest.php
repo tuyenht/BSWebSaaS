@@ -207,7 +207,7 @@ it('gives the workflow close buttons the main-control size and its switches a 44
         }
         if (str_contains($button, 'role="switch"')) {
             $seen['switch']++;
-            expect($button)->toMatch('/class="[^"]*\bhit-area h-6 w-11\b/');
+            expect($button)->toMatch('/class="switch hit-area"/');
         }
     }
 
@@ -216,6 +216,24 @@ it('gives the workflow close buttons the main-control size and its switches a 44
     'workflow settings' => ['livewire/workflow-settings.blade.php', 1, 2],
     'workflow status' => ['livewire/entries/partials/workflow-status.blade.php', 1, 0],
 ]);
+
+it('draws every on/off switch of the admin with the one shared switch', function (): void {
+    // one look everywhere (44 × 24, the field border, on = the brand colour): the switch alone or
+    // the switch-then-words row, never a track and knob drawn by hand on one screen
+    $views = app_path('Modules/Admin/resources/views');
+    $found = 0;
+    foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($views, FilesystemIterator::SKIP_DOTS)) as $file) {
+        $source = (string) file_get_contents($file->getPathname());
+        // every switch writes role before class; no attribute in between holds a "<"
+        preg_match_all('/<button\b[^<]*?\brole="switch"[^<]*?\bclass="([^"]*)"/s', $source, $switches);
+        foreach ($switches[1] as $class) {
+            $found++;
+            expect($class)->toBeIn(['switch hit-area', 'switch-row'], $file->getFilename());
+        }
+        expect($source)->not->toMatch('/rounded-full[^"]*\bbg-white shadow\b/', $file->getFilename());
+    }
+    expect($found)->toBe(5); // workflow 2, domains 1, the look panel 2 (one in a loop)
+});
 
 it('sizes the image picker and theme panel buttons by the shared control tokens', function (string $view, string $marker, string $size): void {
     $source = (string) file_get_contents(app_path('Modules/Admin/resources/views/'.$view));
