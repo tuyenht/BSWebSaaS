@@ -108,6 +108,14 @@ final class ThemeServiceProvider extends ServiceProvider
             'autoplay' => ['type' => 'int', 'default' => 0],
             'overlay' => ['type' => 'int', 'default' => 60],
         ],
+        // A click-to-load video: nothing loads from YouTube/Vimeo until the visitor presses play.
+        // `video` makes ValidPageJson accept only an address VideoEmbed recognises (blank = unset);
+        // the poster is the site's own picture, never the host's thumbnail.
+        'video' => [
+            'heading' => ['type' => 'text'],
+            'url' => ['type' => 'url', 'video' => true],
+            'poster' => ['type' => 'image'],
+        ],
     ];
 
     #[\Override]

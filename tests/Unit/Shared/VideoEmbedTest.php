@@ -50,3 +50,29 @@ it('rejects anything that is not a recognizable youtube/vimeo url', function (st
     'not-a-url',
     'https://vimeo.com/about',             // non-numeric path
 ]);
+
+it('gives the click-to-play player and the video page of a youtube url, through nocookie', function (string $url): void {
+    expect(VideoEmbed::player($url))->toBe([
+        'provider' => 'youtube',
+        'src' => 'https://www.youtube-nocookie.com/embed/SxwkhMy4Ywo?rel=0&autoplay=1',
+        'watch' => 'https://www.youtube.com/watch?v=SxwkhMy4Ywo',
+    ]);
+})->with([
+    'https://www.youtube.com/watch?v=SxwkhMy4Ywo',
+    'https://youtu.be/SxwkhMy4Ywo',
+    'https://www.youtube.com/embed/SxwkhMy4Ywo?rel=0',
+    'https://www.youtube-nocookie.com/embed/SxwkhMy4Ywo?rel=0&autoplay=1&mute=1',
+    '  https://m.youtube.com/watch?v=SxwkhMy4Ywo&t=42s  ',
+]);
+
+it('gives the click-to-play player and the video page of a vimeo url', function (string $url): void {
+    expect(VideoEmbed::player($url))->toBe([
+        'provider' => 'vimeo',
+        'src' => 'https://player.vimeo.com/video/123456789?autoplay=1',
+        'watch' => 'https://vimeo.com/123456789',
+    ]);
+})->with(['https://vimeo.com/123456789', 'https://player.vimeo.com/video/123456789?autoplay=1&muted=1']);
+
+it('gives no player for an address it does not recognise', function (string $url): void {
+    expect(VideoEmbed::player($url))->toBeNull();
+})->with(['', 'https://evil.example.com/embed/xxx', 'https://www.youtube.com/', 'javascript:alert(1)', '//www.youtube.com/embed/SxwkhMy4Ywo']);

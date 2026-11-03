@@ -247,6 +247,10 @@ jobs:
       - name: Storefront slider behaviour
         run: node scripts/storefront/slider-check.mjs
 
+      # The click-to-load video: link → button, no player before the press, player + focus after.
+      - name: Storefront video behaviour
+        run: node scripts/storefront/video-check.mjs
+
       # New lines in resources/ and module Blade must use the standard token names
       # (docs/notes/design-tokens.md §7); lines already on main are left to move over as touched.
       # A pull request checks out its merge commit, whose first parent is the base branch.

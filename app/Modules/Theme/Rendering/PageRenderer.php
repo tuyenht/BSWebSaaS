@@ -3,6 +3,7 @@
 namespace App\Modules\Theme\Rendering;
 
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Shared\Support\VideoEmbed;
 use App\Modules\Theme\Theming\ThemeResolver;
 use Illuminate\Contracts\View\Factory as ViewFactory;
 
@@ -20,6 +21,7 @@ final readonly class PageRenderer
         private BlockRenderer $blocks,
         private ThemeResolver $theme,
         private MediaUrlResolver $media,
+        private VideoFacades $videos,
     ) {}
 
     /**
@@ -36,6 +38,8 @@ final readonly class PageRenderer
         $extra += in_array('hero_slider', $this->blocks->types($body), true) ? self::sliderHints($body, $leadBlock, $this->media) : [];
         // The scroll-in motion script loads only on a page with a block that moves.
         $extra += $this->blocks->moves($body) ? ['sectionsScript' => true] : [];
+        // The click-to-load video script loads only on a page with a video it can play.
+        $extra += self::playsVideo($body) ? ['videoScript' => true] : [];
 
         return $this->views->make($layout, [
             'title' => $title,
@@ -83,6 +87,24 @@ final readonly class PageRenderer
         }
 
         return $hints;
+    }
+
+    /**
+     * Whether a video block on the page holds an address VideoEmbed recognises (the block renders
+     * nothing otherwise). Pure: no query.
+     *
+     * @param  array<string, mixed>  $body
+     */
+    private static function playsVideo(array $body): bool
+    {
+        foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
+            $url = is_array($block) && ($block['type'] ?? null) === 'video' ? data_get($block, 'props.url') : null;
+            if (is_string($url) && VideoEmbed::player($url) !== null) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -163,6 +185,8 @@ final readonly class PageRenderer
     {
         /** @var view-string $layout a theme layout name (TemplateResolver) */
         $layout = $this->templates->layoutFor('product');
+        // Videos stored in the description render as the click-to-load façade (VideoFacades).
+        ['html' => $descriptionHtml, 'videos' => $videos] = $this->videos->render($descriptionHtml);
 
         return $this->views->make($layout, [
             'title' => $name,
@@ -171,6 +195,6 @@ final readonly class PageRenderer
             'tokens' => $this->theme->cssVariables(),
             'description' => $descriptionHtml,
             'images' => $images,
-        ] + $extra)->render();
+        ] + ($videos > 0 ? ['videoScript' => true] : []) + $extra)->render();
     }
 }

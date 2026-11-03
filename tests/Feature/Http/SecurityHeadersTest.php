@@ -52,7 +52,9 @@ it('storefront response carries the allow-list Content-Security-Policy', functio
         // plus the hash of the one inline script (the text-size boot) and no 'unsafe-inline'.
         ->toContain("script-src 'self' ".StorefrontChrome::textSizeBootHash().' https://challenges.cloudflare.com')
         ->not->toMatch("/script-src[^;]*'unsafe-inline'/")
-        ->toContain('frame-src https://www.google.com https://challenges.cloudflare.com')
+        // Maps + Turnstile, and the two video players a visitor starts by pressing play (the
+        // click-to-load façade builds the iframe only then) — exactly these, nothing wider.
+        ->toMatch('#(?:^|; )frame-src https://www\.google\.com https://challenges\.cloudflare\.com https://www\.youtube-nocookie\.com https://player\.vimeo\.com(?:;|$)#')
         ->toContain("base-uri 'self'")
         ->toContain("form-action 'self'");
 });

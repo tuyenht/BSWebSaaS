@@ -23,7 +23,46 @@ final class VideoEmbed
         return '<div class="video-embed"><iframe src="'.e($src).'" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>';
     }
 
+    /**
+     * The click-to-load parts of a recognised video (the storefront façade): the player address the
+     * script loads on the visitor's press — youtube-nocookie or the vimeo player, with autoplay so
+     * that one press plays (the press is the user gesture, so sound is allowed) — and the video's
+     * own page, the link a visitor without the script follows. Null for anything not recognised.
+     *
+     * @return array{provider: 'youtube'|'vimeo', src: string, watch: string}|null
+     */
+    public static function player(string $url): ?array
+    {
+        $video = self::parse(trim($url));
+        if ($video === null) {
+            return null;
+        }
+        ['provider' => $provider, 'id' => $id] = $video;
+
+        return $provider === 'youtube'
+            ? ['provider' => 'youtube', 'src' => "https://www.youtube-nocookie.com/embed/{$id}?rel=0&autoplay=1", 'watch' => "https://www.youtube.com/watch?v={$id}"]
+            : ['provider' => 'vimeo', 'src' => "https://player.vimeo.com/video/{$id}?autoplay=1", 'watch' => "https://vimeo.com/{$id}"];
+    }
+
     private static function embedSrc(string $url, bool $autoplay): ?string
+    {
+        $video = self::parse($url);
+        if ($video === null) {
+            return null;
+        }
+        ['provider' => $provider, 'id' => $id] = $video;
+
+        return $provider === 'youtube'
+            ? "https://www.youtube-nocookie.com/embed/{$id}?rel=0".($autoplay ? '&autoplay=1&mute=1' : '')
+            : "https://player.vimeo.com/video/{$id}".($autoplay ? '?autoplay=1&muted=1' : '');
+    }
+
+    /**
+     * The host and video id of a youtube/vimeo URL in any common shape, or null.
+     *
+     * @return array{provider: 'youtube'|'vimeo', id: string}|null
+     */
+    private static function parse(string $url): ?array
     {
         if (! preg_match('~^https?://~i', $url)) {
             return null;
@@ -45,22 +84,15 @@ final class VideoEmbed
         }
 
         if ($youtubeId !== null && preg_match('~^[\w-]{5,20}$~', $youtubeId)) {
-            $params = 'rel=0'.($autoplay ? '&autoplay=1&mute=1' : '');
-
-            return "https://www.youtube-nocookie.com/embed/{$youtubeId}?{$params}";
+            return ['provider' => 'youtube', 'id' => $youtubeId];
         }
 
-        $vimeoId = null;
         if (in_array($host, ['vimeo.com', 'www.vimeo.com'], true) && preg_match('~^/(\d{6,12})(?:$|/)~', $path, $m)) {
-            $vimeoId = $m[1];
-        } elseif ($host === 'player.vimeo.com' && preg_match('~^/video/(\d{6,12})~', $path, $m)) {
-            $vimeoId = $m[1];
+            return ['provider' => 'vimeo', 'id' => $m[1]];
         }
 
-        if ($vimeoId !== null) {
-            $params = $autoplay ? '?autoplay=1&muted=1' : '';
-
-            return "https://player.vimeo.com/video/{$vimeoId}{$params}";
+        if ($host === 'player.vimeo.com' && preg_match('~^/video/(\d{6,12})~', $path, $m)) {
+            return ['provider' => 'vimeo', 'id' => $m[1]];
         }
 
         return null;

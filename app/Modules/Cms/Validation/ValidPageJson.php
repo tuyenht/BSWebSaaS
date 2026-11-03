@@ -2,6 +2,7 @@
 
 namespace App\Modules\Cms\Validation;
 
+use App\Modules\Shared\Support\VideoEmbed;
 use App\Modules\Theme\Components\ComponentRegistry;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -16,7 +17,8 @@ use Illuminate\Contracts\Validation\ValidationRule;
  * §E7 schema types as `url` — at any depth, through list `of` — must use a safe scheme
  * (no javascript:/data:/vbscript: — stored-XSS guard, since url props render into href/src).
  * URL-safety is SCHEMA-DRIVEN (by declared type, not prop name), so it cannot drift from the
- * sinks. The body is also capped in count + size (storefront DoS / CWV guard).
+ * sinks. A url prop the schema marks `video` must also be a YouTube/Vimeo address VideoEmbed
+ * recognises. The body is also capped in count + size (storefront DoS / CWV guard).
  */
 final readonly class ValidPageJson implements ValidationRule
 {
@@ -84,6 +86,12 @@ final readonly class ValidPageJson implements ValidationRule
 
             if (! $this->choicesValid($block['props'], $schema)) {
                 $fail(__('entries.err_block_option_invalid', ['type' => $type]));
+
+                return;
+            }
+
+            if (! $this->videosRecognised($block['props'], $schema)) {
+                $fail(__('entries.err_block_video_invalid'));
 
                 return;
             }
@@ -193,6 +201,46 @@ final readonly class ValidPageJson implements ValidationRule
             $scalarOf = isset($of['type']) && is_string($of['type']);
             foreach ($value as $item) {
                 if (! ($scalarOf ? $this->choicesValid(['item' => $item], ['item' => $of]) : $this->choicesValid($item, $of))) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Every url prop the schema marks `video` (at any depth, through list `of`) holds null, a blank
+     * string (unset) or an address VideoEmbed recognises — the storefront can only play those, so
+     * anything else is refused at save with a plain message rather than shown as an empty block.
+     */
+    private function videosRecognised(mixed $data, mixed $schema): bool
+    {
+        if (! is_array($schema)) {
+            return true;
+        }
+
+        foreach ($schema as $prop => $spec) {
+            if (! is_array($spec)) {
+                continue;
+            }
+            $value = is_array($data) ? ($data[$prop] ?? null) : null;
+
+            if (($spec['video'] ?? false) === true) {
+                if (is_string($value) && trim($value) !== '' && VideoEmbed::player($value) === null) {
+                    return false;
+                }
+
+                continue;
+            }
+
+            $of = $spec['of'] ?? null;
+            if (($spec['type'] ?? null) !== 'list' || ! is_array($of) || ! is_array($value)) {
+                continue;
+            }
+            $scalarOf = isset($of['type']) && is_string($of['type']);
+            foreach ($value as $item) {
+                if (! ($scalarOf ? $this->videosRecognised(['item' => $item], ['item' => $of]) : $this->videosRecognised($item, $of))) {
                     return false;
                 }
             }

@@ -116,6 +116,9 @@ final readonly class AddSecurityHeaders
      *                                    (StorefrontChrome::TEXT_SIZE_BOOT), no 'unsafe-inline'
      *   frame-src    google.com + CF   – Google Maps embed on /lien-he + the Turnstile
      *                                    challenge iframe (challenges.cloudflare.com)
+     *                video players     – www.youtube-nocookie.com + player.vimeo.com, the
+     *                                    frames the click-to-load video façade builds only
+     *                                    when the visitor presses play (nothing loads before)
      *   font-src     'self'            – self-hosted web fonts
      *   base-uri     'self'            – prevent base-tag injection attacks
      *   form-action  'self'            – constrain POST submission targets
@@ -127,7 +130,7 @@ final readonly class AddSecurityHeaders
             trim("img-src 'self' ".implode(' ', $this->mediaOrigins()).' data:'),
             "style-src 'self' 'unsafe-inline'",
             "script-src 'self' ".StorefrontChrome::textSizeBootHash().' https://challenges.cloudflare.com',
-            'frame-src https://www.google.com https://challenges.cloudflare.com',
+            'frame-src https://www.google.com https://challenges.cloudflare.com https://www.youtube-nocookie.com https://player.vimeo.com',
             "font-src 'self'",
             "base-uri 'self'",
             "form-action 'self'",

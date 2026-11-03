@@ -170,3 +170,6 @@
 @if (! empty($sectionsScript))
 @vite(['resources/js/sections.js'])
 @endif
+@if (! empty($videoScript))
+@vite(['resources/js/sf-video.js'])
+@endif
