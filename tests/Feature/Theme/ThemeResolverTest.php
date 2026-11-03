@@ -171,7 +171,7 @@ it('prints exactly the same variables as before for a site with no settings', fu
     $expected = [
         'primary' => '#3b82f6', 'surface' => '#ffffff', 'font' => 'system-ui, sans-serif',
         'ink' => '#111111', 'body' => '#333333', 'primary-text' => '#326fd1', 'primary-on-ink' => '#3b82f6',
-        'color-primary' => '#3b82f6', 'color-on-primary' => '#111111', 'color-primary-text' => '#326fd1',
+        'color-primary' => '#3b82f6', 'color-on-primary' => '#111111', 'color-primary-hover' => '#5895f7', 'color-primary-text' => '#326fd1',
         'color-primary-on-dark' => '#3b82f6', 'color-surface' => '#ffffff', 'color-text' => '#333333',
         'color-text-strong' => '#111111', 'color-dark' => '#111111', 'font-body' => 'system-ui, sans-serif',
     ];
@@ -191,11 +191,11 @@ it('prints exactly the same variables as before for a site with no settings', fu
         'gradient-3' => 'linear-gradient(135deg, var(--color-dark), var(--color-primary))',
         'motion-duration' => '250ms', 'motion-distance' => '24px',
         'sch-soft-bg' => '#f0f6ff', 'sch-soft-head' => '#111111', 'sch-soft-body' => '#333333', 'sch-soft-link' => '#2f68c5',
-        'sch-soft-pri-bg' => '#3b82f6', 'sch-soft-pri-fg' => '#111111', 'sch-soft-sec-fg' => '#111111',
+        'sch-soft-pri-bg' => '#3b82f6', 'sch-soft-pri-fg' => '#111111', 'sch-soft-sec-fg' => '#111111', 'sch-soft-pri-hover' => '#5895f7',
         'sch-brand-bg' => '#3b82f6', 'sch-brand-head' => '#111111', 'sch-brand-body' => '#111111', 'sch-brand-link' => '#111111',
-        'sch-brand-pri-bg' => '#ffffff', 'sch-brand-pri-fg' => '#326fd1', 'sch-brand-sec-fg' => '#111111',
+        'sch-brand-pri-bg' => '#ffffff', 'sch-brand-pri-fg' => '#326fd1', 'sch-brand-sec-fg' => '#111111', 'sch-brand-pri-hover' => '#f7f7f7',
         'sch-dark-bg' => '#111111', 'sch-dark-head' => '#ffffff', 'sch-dark-body' => '#cbcbcb', 'sch-dark-link' => '#3b82f6',
-        'sch-dark-pri-bg' => '#3b82f6', 'sch-dark-pri-fg' => '#111111', 'sch-dark-sec-fg' => '#ffffff',
+        'sch-dark-pri-bg' => '#3b82f6', 'sch-dark-pri-fg' => '#111111', 'sch-dark-sec-fg' => '#ffffff', 'sch-dark-pri-hover' => '#5895f7',
     ];
 
     expect($variables)->toBe($expected);
@@ -280,19 +280,21 @@ it('prints every standard token name next to its old name, with the same value',
     });
 })->with('brand seeds');
 
-it('puts white or the ink colour on the brand fill, whichever reads better', function (string $primary, string $expected): void {
+it('puts white or the ink colour on the brand fill, whichever reads better, and never moves the fill', function (string $primary, string $expected): void {
     app(Tenancy::class)->enter(1, function () use ($primary, $expected): void {
         SiteSetting::query()->create(['group_name' => 'theme', 'key' => 'tokens', 'value' => ['primary' => $primary, 'ink' => '#111111']]);
 
         $variables = app(ThemeResolver::class)->cssVariables();
 
         expect($variables['color-on-primary'])->toBe($expected)
+            ->and($variables['color-primary'])->toBe($primary)
             ->and(ReadableColor::ratio($variables['color-on-primary'], $primary))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT);
     });
 })->with([
     'the default blue takes the dark ink (white reads 3.7:1 there)' => ['#3b82f6', '#111111'],
     'an amber brand takes the dark ink' => ['#f59e0b', '#111111'],
     'a navy brand takes white' => ['#1e3a5f', '#ffffff'],
+    'a mid-tone brand, where white reads 4.29:1 and the ink 4.41:1, takes the ink darkened' => ['#7a7a7a', '#0d0d0d'],
 ]);
 
 it('derives the standard names even when settings try to pin them', function (): void {

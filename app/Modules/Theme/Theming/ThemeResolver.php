@@ -32,6 +32,12 @@ final readonly class ThemeResolver
     /** Body text on the dark set: the surface colour, this share of it, the rest the ink. */
     private const float ON_DARK_SHARE = 0.78;
 
+    /** A fill on hover: this share of it, the rest black or white (away from its text). */
+    private const float HOVER_SHARE = 0.85;
+
+    /** Below this contrast against its resting fill a hover colour is not seen as a change. */
+    private const float HOVER_VISIBLE = 1.1;
+
     /** The spacing scale at normal density, in px. */
     private const array SPACE_STEPS = ['s' => 8, 'm' => 16, 'l' => 32, 'xl' => 64];
 
@@ -91,7 +97,9 @@ final readonly class ThemeResolver
      * storefront.css still reads, with the same values: `color-primary`, `color-primary-text`,
      * `color-primary-on-dark`, `color-surface`, `color-text`, `color-text-strong`, `color-dark`,
      * `font-body`, `color-brand-*`, the scales (`space-*`, `radius-*`, `shadow-*`, `gradient-*`, `motion-*`), plus
-     * `color-on-primary` — white or the ink color on the brand fill, whichever reads better. A new
+     * `color-on-primary` — white or the ink color on the brand fill, whichever reads better (the ink
+     * darkened when neither reaches 4.5:1), and `color-primary-hover` — the fill a hovered brand button
+     * takes, moved away from that text so it reads at least as well. A new
      * name never points back at an old one, so a fallback is the color itself, not `var(--ink)`.
      *
      * @return array<string, string>
@@ -110,7 +118,8 @@ final readonly class ThemeResolver
         $variables['primary-on-ink'] = $primaryOnDark ?? 'var(--surface)';
 
         $variables['color-primary'] = $variables['primary'];
-        $variables['color-on-primary'] = $this->textOnFill($variables['primary'], $variables['ink']);
+        $variables['color-on-primary'] = $this->textOnBrand($variables['primary'], $variables['ink']);
+        $variables['color-primary-hover'] = $this->hoverFill($variables['primary'], $variables['color-on-primary']);
         $variables['color-primary-text'] = $primaryText ?? $variables['ink'];
         $variables['color-primary-on-dark'] = $primaryOnDark ?? $variables['surface'];
         $variables['color-surface'] = $variables['surface'];
@@ -166,7 +175,7 @@ final readonly class ThemeResolver
 
     /**
      * The colour sets a section can pick (StyleProps::SCHEMES; "Bộ màu" in the editor), as roles
-     * `sch-{set}-{role}`: bg, head, body, link, pri-bg / pri-fg (the main button), sec-fg (the
+     * `sch-{set}-{role}`: bg, head, body, link, pri-bg / pri-fg / pri-hover (the main button), sec-fg (the
      * outlined button). Text is fitted to 4.5:1 on its background and the button fill to 3:1
      * (ReadableColor), so any brand reads well; a fill no text reaches 4.5:1 on (a mid-tone brand
      * on the brand set or a button) is shifted until it does. `light` is the page itself and uses the roles
@@ -218,6 +227,7 @@ final readonly class ThemeResolver
                 [$role['pri-bg'], $role['pri-fg']] = $this->fillWithText($role['pri-bg'], $ink, $role['bg']);
             }
             $role['sec-fg'] = $role['head'];
+            $role['pri-hover'] = $this->hoverFill($role['pri-bg'], $role['pri-fg']);
             foreach ($role as $name => $value) {
                 $roles["sch-{$set}-{$name}"] = $value;
             }
@@ -246,6 +256,49 @@ final readonly class ThemeResolver
         $second = [ReadableColor::on($fill, $other) ?? $fill, $other];
 
         return (ReadableColor::ratio($second[0], $band) ?? 0.0) >= self::FILL_CONTRAST ? $second : $first;
+    }
+
+    /**
+     * Text on the brand fill as the site chose it (the fill is never moved): textOnFill, and when
+     * neither white nor the ink reaches 4.5:1 (a mid-tone brand under a softer ink), the ink moved
+     * toward black until it does — black always reaches it where white does not.
+     */
+    private function textOnBrand(string $fill, string $ink): string
+    {
+        $text = $this->textOnFill($fill, $ink);
+        if ((ReadableColor::ratio($text, $fill) ?? ReadableColor::AA_NORMAL_TEXT) >= ReadableColor::AA_NORMAL_TEXT) {
+            return $text;
+        }
+
+        return ReadableColor::on($ink, $fill) ?? $text;
+    }
+
+    /**
+     * A button fill on hover: moved toward black under lighter text, toward white under darker text, so
+     * the text reads at least as well as at rest. A fill already at that end (a white button) moves
+     * the other way instead, only as far as its text keeps 4.5:1 (a faint tint, or none). A fill that is not hex keeps the
+     * darker mix the stylesheet always painted.
+     */
+    private function hoverFill(string $fill, string $text): string
+    {
+        // Text darker than its fill (contrast with black is a luminance order) → the fill lightens.
+        $darkText = (ReadableColor::ratio($text, '#000000') ?? 0.0) < (ReadableColor::ratio($fill, '#000000') ?? 0.0);
+        $away = ReadableColor::mix($fill, $darkText ? '#ffffff' : '#000000', self::HOVER_SHARE);
+        if ($away === null) {
+            return "color-mix(in srgb, {$fill} 85%, black)";
+        }
+        if ((ReadableColor::ratio($away, $fill) ?? 1.0) >= self::HOVER_VISIBLE) {
+            return $away;
+        }
+
+        for ($share = self::HOVER_SHARE; $share < 1.0; $share += 0.03) {
+            $toward = ReadableColor::mix($fill, $darkText ? '#000000' : '#ffffff', $share);
+            if ($toward !== null && (ReadableColor::ratio($text, $toward) ?? 0.0) >= ReadableColor::AA_NORMAL_TEXT) {
+                return $toward;
+            }
+        }
+
+        return $away;
     }
 
     /**

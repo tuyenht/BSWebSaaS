@@ -125,7 +125,7 @@ it('falls back to the colour set when the background photo is missing', function
     expect($html)->not->toContain('sf-s__bg')->not->toContain('sf-s--image');
 });
 
-it('fits every colour set to the brand: text 4.5:1 and the button fill 3:1 on its band', function (string $primary, ?string $ink): void {
+it('fits every colour set to the brand: text 4.5:1 and the button fill 3:1 on its band, hovered too', function (string $primary, ?string $ink): void {
     $variables = app(Tenancy::class)->enter($this->siteId, function () use ($primary, $ink): array {
         SiteSetting::query()->create(['group_name' => 'theme', 'key' => 'tokens', 'value' => ['primary' => $primary] + ($ink === null ? [] : ['ink' => $ink])]);
 
@@ -138,12 +138,19 @@ it('fits every colour set to the brand: text 4.5:1 and the button fill 3:1 on it
             expect(ReadableColor::ratio($variables["sch-{$set}-{$role}"], $bg))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT, "{$set} {$role} on {$primary}");
         }
         expect(ReadableColor::ratio($variables["sch-{$set}-pri-bg"], $bg))->toBeGreaterThanOrEqual(3.0, "{$set} button on {$primary}")
-            ->and(ReadableColor::ratio($variables["sch-{$set}-pri-fg"], $variables["sch-{$set}-pri-bg"]))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT, "{$set} button text on {$primary}");
+            ->and(ReadableColor::ratio($variables["sch-{$set}-pri-fg"], $variables["sch-{$set}-pri-bg"]))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT, "{$set} button text on {$primary}")
+            ->and(ReadableColor::ratio($variables["sch-{$set}-pri-fg"], $variables["sch-{$set}-pri-hover"]))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT, "{$set} hovered button text on {$primary}");
     }
+    // The light set is the page itself: the brand fill as the site chose it, at rest and hovered.
+    expect($variables['color-primary'])->toBe($primary)
+        ->and(ReadableColor::ratio($variables['color-on-primary'], $variables['color-primary']))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT, "light button text on {$primary}")
+        ->and(ReadableColor::ratio($variables['color-on-primary'], $variables['color-primary-hover']))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT, "light hovered button text on {$primary}")
+        ->and($variables['color-primary-hover'])->not->toBe($primary);
 })->with([
     'blue' => ['#3b82f6', null], 'amber' => ['#f59e0b', null], 'navy' => ['#0b1f4d', null], 'green' => ['#16a34a', null],
     'yellow' => ['#ffd400', null], 'red' => ['#ef4444', null], 'red, slate ink' => ['#ef4444', '#1f2937'],
     'grey, slate ink' => ['#808080', '#1f2937'], 'teal, slate ink' => ['#0d9488', '#1f2937'],
+    'mid grey' => ['#7a7a7a', null], 'mid green, slate ink' => ['#2f9e6e', '#1f2937'],
 ]);
 
 it('loads the motion script only on a page where a block after the first moves', function (): void {
