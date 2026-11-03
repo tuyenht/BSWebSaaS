@@ -287,6 +287,8 @@ it('sends waiting posts back to the first stage when the flow is swapped, sub-ca
         // review inbox and stuck for its author.
         $atRoot = wfPost($news, 'pending', 'reviewing');
         $inChild = wfPost($news, 'pending', 'reviewing', category: $child->id);
+        $trashed = wfPost($news, 'pending', 'reviewing');
+        $trashed->delete();
         $elsewhere = wfPost($services, 'pending', 'reviewing');
         // a live post's pending change at the old flow's middle stage restarts with it; editorial and
         // admin_approval both define `pending`, so a pointer left behind would sit at the wrong step
@@ -298,6 +300,7 @@ it('sends waiting posts back to the first stage when the flow is swapped, sub-ca
         expect($atRoot->refresh()->workflow_state)->toBeNull()
             ->and($atRoot->status)->toBe('pending')
             ->and($inChild->refresh()->workflow_state)->toBeNull()
+            ->and(Entry::withTrashed()->findOrFail($trashed->id)->workflow_state)->toBeNull()
             ->and($elsewhere->refresh()->workflow_state)->toBe('reviewing')
             ->and($change->refresh()->workflow_state)->toBeNull()
             ->and($changeElsewhere->refresh()->workflow_state)->toBe('reviewing');

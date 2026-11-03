@@ -537,7 +537,8 @@ final class WorkflowSettings extends Component
             SQL;
         $bindings[] = app(CurrentSite::class)->id();
 
-        Entry::query()
+        // trashed posts too: a restore keeps the pointer, which would then name a step of the new flow
+        Entry::withTrashed()
             ->whereNotNull('workflow_state')
             ->whereRaw("entries.id IN ({$members})", $bindings)
             ->update(['workflow_state' => null]);

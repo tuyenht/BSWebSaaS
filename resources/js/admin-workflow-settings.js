@@ -51,6 +51,7 @@ document.addEventListener('alpine:init', () => {
         fromEmpty: false,
         stopIntercept: null,
         onUnload: null,
+        expired: false,
 
         init() {
             this.read(true);
@@ -73,6 +74,9 @@ document.addEventListener('alpine:init', () => {
                     // An expired page (419) is Livewire's to handle: it offers to reload the page.
                     // The staged changes survive that reload (sessionStorage).
                     if (response?.status === 419) {
+                        // the reload Livewire offers must not raise the leave prompt as well
+                        this.expired = true;
+
                         return;
                     }
                     if (action.name === 'save' || action.name === '$refresh') {
@@ -89,7 +93,7 @@ document.addEventListener('alpine:init', () => {
             });
 
             this.onUnload = (event) => {
-                if (this.dirtyCount() > 0) {
+                if (this.dirtyCount() > 0 && !this.expired) {
                     event.preventDefault();
                     event.returnValue = '';
                 }
@@ -124,7 +128,9 @@ document.addEventListener('alpine:init', () => {
             Object.keys(saved).forEach((key) => {
                 const was = this.base[key];
                 const mine = this.staged[key];
-                const touched = !first && was && mine && !same(was, mine);
+                // a pick that now equals the saved state is no longer a change: it takes the saved
+                // state as its base, so a later change is not refused as stale
+                const touched = !first && was && mine && !same(was, mine) && !same(mine, saved[key]);
                 const overtaken = reload && !same(was, saved[key]);
                 staged[key] = touched && !overtaken ? { ...mine } : { ...saved[key] };
                 base[key] = touched && !overtaken ? { ...was } : { ...saved[key] };
