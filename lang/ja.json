@@ -1587,6 +1587,7 @@
     "provisioning.tenant_host_taken": "ウェブサイト :host はすでにあるため（顧客 :tenant）、新しい顧客は作成していません。そのウェブサイトを完成させるには、--tenant=:tenant を指定して、もう一度実行してください。",
     "provisioning.tenant_rerun_needs_tenant": "ウェブサイト :host はすでにあります（顧客 :tenant）。完成させるには、--tenant=:tenant を指定して、もう一度実行してください。",
     "provisioning.host_invalid": "「:host」はウェブサイトに使えるホスト名ではありません。英字・数字・ハイフンだけを使い、shop.example.vn のように 2 つ以上の部分で指定してください。",
+    "customers.phone_invalid": "この電話番号は使用できません。発信するときと同じように入力してください（例: 0901 234 567、または国番号付きで +84 901 234 567）。",
     "validation.attributes": {
         "email": "メールアドレス",
         "password": "パスワード",
