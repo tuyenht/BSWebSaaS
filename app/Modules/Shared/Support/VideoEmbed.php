@@ -37,11 +37,22 @@ final class VideoEmbed
         if ($video === null) {
             return null;
         }
-        ['provider' => $provider, 'id' => $id] = $video;
+        ['provider' => $provider, 'id' => $id, 'start' => $start, 'hash' => $hash] = $video;
 
-        return $provider === 'youtube'
-            ? ['provider' => 'youtube', 'src' => "https://www.youtube-nocookie.com/embed/{$id}?rel=0&autoplay=1", 'watch' => "https://www.youtube.com/watch?v={$id}"]
-            : ['provider' => 'vimeo', 'src' => "https://player.vimeo.com/video/{$id}?autoplay=1", 'watch' => "https://vimeo.com/{$id}"];
+        if ($provider === 'youtube') {
+            return [
+                'provider' => 'youtube',
+                'src' => "https://www.youtube-nocookie.com/embed/{$id}?rel=0&autoplay=1".($start !== null ? "&start={$start}" : ''),
+                'watch' => "https://www.youtube.com/watch?v={$id}".($start !== null ? "&t={$start}s" : ''),
+            ];
+        }
+
+        // an unlisted vimeo video plays only with its private hash
+        return [
+            'provider' => 'vimeo',
+            'src' => "https://player.vimeo.com/video/{$id}?autoplay=1".($hash !== null ? "&h={$hash}" : ''),
+            'watch' => "https://vimeo.com/{$id}".($hash !== null ? "/{$hash}" : ''),
+        ];
     }
 
     private static function embedSrc(string $url, bool $autoplay): ?string
@@ -58,9 +69,11 @@ final class VideoEmbed
     }
 
     /**
-     * The host and video id of a youtube/vimeo URL in any common shape, or null.
+     * The host and video id of a youtube/vimeo URL in any common shape, or null; plus a youtube
+     * start second (`start=` or `t=`, whole seconds) and a vimeo private hash (`h=` or the path's
+     * second part), each kept only when it matches its strict shape.
      *
-     * @return array{provider: 'youtube'|'vimeo', id: string}|null
+     * @return array{provider: 'youtube'|'vimeo', id: string, start: int|null, hash: string|null}|null
      */
     private static function parse(string $url): ?array
     {
@@ -84,15 +97,20 @@ final class VideoEmbed
         }
 
         if ($youtubeId !== null && preg_match('~^[\w-]{5,20}$~', $youtubeId)) {
-            return ['provider' => 'youtube', 'id' => $youtubeId];
+            $at = $query['start'] ?? $query['t'] ?? null;
+            $start = is_string($at) && preg_match('~^(\d{1,6})s?$~', $at, $s) && (int) $s[1] > 0 ? (int) $s[1] : null;
+
+            return ['provider' => 'youtube', 'id' => $youtubeId, 'start' => $start, 'hash' => null];
         }
 
-        if (in_array($host, ['vimeo.com', 'www.vimeo.com'], true) && preg_match('~^/(\d{6,12})(?:$|/)~', $path, $m)) {
-            return ['provider' => 'vimeo', 'id' => $m[1]];
+        $hash = isset($query['h']) && is_string($query['h']) && preg_match('~^[0-9a-f]{6,20}$~', $query['h']) ? $query['h'] : null;
+
+        if (in_array($host, ['vimeo.com', 'www.vimeo.com'], true) && preg_match('~^/(\d{6,12})(?:/([0-9a-f]{6,20}))?(?:$|/)~', $path, $m)) {
+            return ['provider' => 'vimeo', 'id' => $m[1], 'start' => null, 'hash' => $hash ?? (($m[2] ?? '') !== '' ? $m[2] : null)];
         }
 
         if ($host === 'player.vimeo.com' && preg_match('~^/video/(\d{6,12})~', $path, $m)) {
-            return ['provider' => 'vimeo', 'id' => $m[1]];
+            return ['provider' => 'vimeo', 'id' => $m[1], 'start' => null, 'hash' => $hash];
         }
 
         return null;

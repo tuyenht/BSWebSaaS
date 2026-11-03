@@ -21,6 +21,9 @@ final readonly class VideoFacades
     /** The editor's wrapper around one empty frame (HTMLPurifier prints it exactly so). */
     private const string WRAPPED = '~<div class="video-embed">\s*<iframe\b([^>]*)>\s*</iframe>\s*</div>~i';
 
+    /** A paragraph holding nothing but one frame: the façade is a block, so the paragraph goes. */
+    private const string IN_PARAGRAPH = '~<p>\s*(<iframe\b[^>]*>\s*</iframe>)\s*</p>~i';
+
     /** Any other frame's opening tag, with its closing tag when nothing but space sits between. */
     private const string BARE = '~<iframe\b([^>]*)>(?:\s*</iframe>)?~i';
 
@@ -46,13 +49,15 @@ final readonly class VideoFacades
 
             return $this->views->make('theme::partials.sf-video', [
                 'video' => $video,
-                'title' => __('storefront.video_frame_'.$video['provider']),
+                // numbered, so two videos in one description are told apart by name
+                'title' => __('storefront.video_frame_'.$video['provider']).' '.$videos,
                 'poster' => null,
                 'srcset' => null,
             ])->render();
         };
 
-        $out = preg_replace_callback(self::WRAPPED, $swap, $html);
+        $out = preg_replace(self::IN_PARAGRAPH, '$1', $html);
+        $out = $out !== null ? preg_replace_callback(self::WRAPPED, $swap, $out) : null;
         if ($out !== null) {
             $out = preg_replace_callback(self::BARE, $swap, $out);
         }

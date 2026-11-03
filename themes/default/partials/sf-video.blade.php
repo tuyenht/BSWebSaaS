@@ -14,5 +14,6 @@
     <a class="sf-video__play" href="{{ $video['watch'] }}">
         <span class="sf-video__icon" aria-hidden="true">@include('theme::partials.sf-icon', ['name' => 'play', 'size' => 32])</span>
         <span class="sf-video__notice">{{ __('storefront.video_play_'.$video['provider']) }}</span>
+        <span class="sr-only">: {{ $title }}</span>
     </a>
 </div>

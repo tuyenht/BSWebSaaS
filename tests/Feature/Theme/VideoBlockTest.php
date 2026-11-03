@@ -159,6 +159,30 @@ describe('videos in rich text', function (): void {
         expectNothingFetchedFromTheVideoHost($html);
     });
 
+    it('plays an unlisted vimeo video pasted with its hash', function (): void {
+        $stored = app(RichTextSanitizer::class)->full('<iframe src="https://player.vimeo.com/video/123456789?h=abc123def0"></iframe>');
+        ['html' => $html] = app(VideoFacades::class)->render($stored);
+
+        expect($html)->toContain('data-src="https://player.vimeo.com/video/123456789?autoplay=1&amp;h=abc123def0"');
+    });
+
+    it('lifts a frame out of the paragraph holding it, so the paragraph is not split', function (): void {
+        ['html' => $html, 'videos' => $videos] = app(VideoFacades::class)->render('<p>A</p><p><iframe src="https://www.youtube.com/embed/SxwkhMy4Ywo"></iframe></p><p>B</p>');
+
+        expect($videos)->toBe(1)
+            ->and($html)->toStartWith('<p>A</p><div class="sf-video')
+            ->and((string) preg_replace('~>\s+<~', '><', $html))->toEndWith('</a></div><p>B</p>')
+            ->and($html)->not->toContain('<p><div')->not->toContain('<p></p>');
+    });
+
+    it('names each video of a description apart', function (): void {
+        $one = '<div class="video-embed"><iframe src="https://www.youtube.com/embed/SxwkhMy4Ywo"></iframe></div>';
+        ['html' => $html] = app(VideoFacades::class)->render($one.$one);
+
+        expect($html)->toContain('<span class="sr-only">: Video YouTube 1</span>')
+            ->and($html)->toContain('<span class="sr-only">: Video YouTube 2</span>');
+    });
+
     it('keeps an unknown iframe stripped, on save and on render', function (): void {
         $saved = app(RichTextSanitizer::class)->full('<p>A</p><iframe src="https://evil.example/x"></iframe><p>B</p>');
         expect($saved)->not->toContain('evil.example');
