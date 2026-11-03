@@ -139,8 +139,12 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
 
     // Its dialog open on each step, put into that page (it opens from the browser, never from a URL).
     $old = now()->utc()->startOfMonth()->subMonths(13)->format('Y-m');
+    DB::connection('pgsql_admin')->statement('select public.audit_log_month_create(?::date)', [$old.'-01']);
     $dialog = Livewire::actingAs($top)->test(CleanupDialog::class)->call('openDialog')->call('loadMonths');
-    $steps = ['audit-cleanup-pick' => $dialog->html(), 'audit-cleanup-confirm' => $dialog->set('month', $old)->call('next')->call('countRows')->html()];
+    $pick = $dialog->html();
+    $dialog->set('month', $old)->call('next')->call('countRows')->assertSet('step', 'confirm');
+    expect($dialog->get('exact'))->not->toBeNull();
+    $steps = ['audit-cleanup-pick' => $pick, 'audit-cleanup-confirm' => $dialog->html()];
     foreach ($steps as $name => $open) {
         file_put_contents($dir.'/'.$name.'.html', str_replace([$platform, '</body>'], ['http://'.ADMIN_PREVIEW_HOST, $open.'</body>'], $html));
     }

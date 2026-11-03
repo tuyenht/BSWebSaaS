@@ -395,7 +395,14 @@ it('keeps the names a drawer host defines apart from the names the drawer define
     $drawer = $keys("{$views}/components/drawer.blade.php");
     expect($drawer)->toContain('back', 'hide');
 
-    foreach (['livewire/platform/audit/cleanup-dialog.blade.php', 'livewire/platform/audit/index.blade.php'] as $host) {
-        expect(array_values(array_intersect($keys("{$views}/{$host}"), $drawer)))->toBe([], $host);
+    expect($keys("{$views}/livewire/platform/audit/cleanup-dialog.blade.php"))->toContain('toPick');
+
+    $hosts = array_filter(
+        iterator_to_array(new RecursiveIteratorIterator(new RecursiveDirectoryIterator($views, FilesystemIterator::SKIP_DOTS))),
+        fn (SplFileInfo $f): bool => str_ends_with($f->getFilename(), '.blade.php') && str_contains((string) file_get_contents($f->getPathname()), '<x-bs-admin::drawer'),
+    );
+    expect($hosts)->not->toBeEmpty();
+    foreach ($hosts as $host) {
+        expect(array_values(array_intersect($keys($host->getPathname()), $drawer)))->toBe([], $host->getPathname());
     }
 });
