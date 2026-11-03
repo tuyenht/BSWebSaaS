@@ -12,7 +12,9 @@ use App\Modules\Tenancy\Models\Tenant;
 use App\Modules\Tenancy\Support\ContactPhone;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Cache;
+use Throwable;
 
 /**
  * Reads the platform's customer list (design 03 "Khách hàng"). `tenants`, `users`, `sites` and
@@ -173,8 +175,16 @@ final class CustomerDirectory
      */
     public function baseCounts(): array
     {
-        /** @var array{all: int|string, active: int|string, suspended: int|string} $groups */
-        $groups = Cache::remember('admin:customers:base-counts:v1', self::BASE_COUNTS_SECONDS, fn (): array => $this->counts('', [])['groups']);
+        try {
+            /** @var array{all: int|string, active: int|string, suspended: int|string} $groups */
+            $groups = Cache::remember('admin:customers:base-counts:v1', self::BASE_COUNTS_SECONDS, fn (): array => $this->counts('', [])['groups']);
+        } catch (QueryException $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            // the cache store is down: count live rather than fail the list
+            report($e);
+            $groups = $this->counts('', [])['groups'];
+        }
 
         // a cache store may hand numbers back as strings
         return ['all' => (int) $groups['all'], 'active' => (int) $groups['active'], 'suspended' => (int) $groups['suspended']];

@@ -9,7 +9,9 @@ use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Support\CustomerCode;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 
@@ -332,6 +334,26 @@ it('pages past a customer with no join date, which sorts as the oldest', functio
     // a page whose last row has no date still has an older page after it
     $page->call('older', $all[3]);
     expect($ulids())->toBe([$all[4]]);
+});
+
+it('never shows more found than the whole list holds while its totals are cached', function (): void {
+    khCustomer('An Phát');
+    // totals cached before these customers existed
+    Cache::put('admin:customers:base-counts:v1', ['all' => 0, 'active' => 0, 'suspended' => 0], CustomerDirectory::BASE_COUNTS_SECONDS);
+
+    $page = Livewire::actingAs(khStaff('support'))->test(Index::class)->set('search', 'an');
+
+    expect($page->viewData('counts'))->toBe(['all' => 1, 'active' => 1, 'suspended' => 0])
+        ->and($page->viewData('baseCounts'))->toBe(['all' => 1, 'active' => 1, 'suspended' => 0]);
+});
+
+it('counts the whole list live when the cache store is down', function (): void {
+    khCustomer('An Phát');
+    Exceptions::fake();
+    Cache::shouldReceive('remember')->once()->andThrow(new RuntimeException('cache store unreachable'));
+
+    expect(app(CustomerDirectory::class)->baseCounts())->toBe(['all' => 2, 'active' => 2, 'suspended' => 0]);
+    Exceptions::assertReported(RuntimeException::class);
 });
 
 it('counts the status groups and filters by plan, a plan no longer sold included', function (): void {
