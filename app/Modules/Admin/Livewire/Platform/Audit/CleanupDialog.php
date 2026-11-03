@@ -125,6 +125,14 @@ final class CleanupDialog extends Component
         $this->authorizeCleanup();
         $this->month = $this->removable($this->month) ? $this->month : '';
         $this->pickError = false;
+        if ($this->step !== 'pick') {
+            // the confirmation names one month and its exact count: a month changed under it (sent
+            // from the browser, never offered there) goes back to the list instead of being deleted
+            $this->step = 'pick';
+            $this->exact = null;
+            $this->countFailed = $this->monthRefused = false;
+            $this->passwordError = $this->monthError = '';
+        }
     }
 
     /** "Tiếp tục": on to the confirmation, whose exact count is read next (countRows). */

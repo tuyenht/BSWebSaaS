@@ -299,7 +299,7 @@ it('shows a busy log as the alert above the buttons and lets the member try agai
         $admin->rollBack();
     }
 
-    $dialog->assertSee('Nhật ký đang bận ghi nên chưa xoá được. Hãy thử lại sau ít phút.')
+    $dialog->assertSee('Nhật ký đang bận ghi nên chưa xóa được. Hãy thử lại sau ít phút.')
         ->assertSee('id="audit-cleanup-alert"', false)
         ->assertSet('monthRefused', false)
         ->assertSet('passwordError', '');
@@ -317,7 +317,7 @@ it('takes a month gone meanwhile off the list and offers another', function (): 
         acdCreate($month);
     }
 
-    $dialog->assertSee('Nhật ký không có tháng này: tháng đã được xoá trước đó hoặc chưa từng có ghi chép nào.')
+    $dialog->assertSee('Nhật ký không có tháng này: tháng đã được xóa trước đó hoặc chưa từng có ghi chép nào.')
         ->assertSet('monthRefused', true);
     expect(array_column((array) $dialog->get('months'), 'month'))->not->toContain($month);
 
@@ -348,6 +348,29 @@ it('shows each month refusal as the alert, and only a refused month asks for ano
     'busy' => ['busy', 'admin.audit.purge.busy', false],
     'clock skew' => ['unrecorded', 'admin.audit.purge.unrecorded', false],
 ]);
+
+it('never deletes a month other than the one the confirmation names and counted', function (): void {
+    $actor = acdOperator('super_admin');
+    [$shown, $other] = [acdMonth(-13), acdMonth(-14)];
+    acdRow($shown.'-03 00:00:00+00');
+    acdRow($other.'-03 00:00:00+00');
+
+    try {
+        // the radios are gone on the confirm step; a month can only arrive from the browser console
+        $dialog = acdConfirming($actor, $shown)->assertSet('exact', 1)
+            ->set('month', $other)
+            ->assertSet('step', 'pick')->assertSet('exact', null)
+            ->call('purge', 'password');
+        $kept = acdExists($shown) && acdExists($other);
+    } finally {
+        acdCreate($shown);
+        acdCreate($other);
+    }
+
+    expect($kept)->toBeTrue()
+        ->and(AuditLog::query()->where('action', PurgeAuditMonth::ACTION)->count())->toBe(0);
+    $dialog->assertSet('open', true)->assertSet('step', 'pick')->assertSet('month', $other);
+});
 
 it('deletes the month, records it, closes with the toast and brings the list back to its first page', function (): void {
     $actor = acdOperator('super_admin');
