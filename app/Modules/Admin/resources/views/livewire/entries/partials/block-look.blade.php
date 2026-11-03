@@ -44,7 +44,6 @@
         @endif
         <p class="block-look__hint">{{ __('entries.look_scheme_note') }}</p>
     </fieldset>
-
     @unless ($photoBlock)
         <fieldset class="block-look__group">
             <legend>{{ __('entries.look_image') }}</legend>
@@ -52,16 +51,22 @@
                 @if (is_int($props['bg_image'] ?? null) && ! empty($blockImageUrls[$props['bg_image']]))
                     <img src="{{ $blockImageUrls[$props['bg_image']] }}" alt="" class="block-look__photo" width="160" height="90" style="width:160px;height:90px;object-fit:cover;display:block">
                 @endif
-                <button type="button" wire:click="openBlockImagePicker('{{ $i }}.props.bg_image')">{{ __('entries.look_image_change') }}</button>
-                <button type="button" wire:click="removeLookImage({{ $i }})">{{ __('entries.look_image_remove') }}</button>
-                <div role="group" aria-labelledby="look-{{ $i }}-overlay">
-                    <span id="look-{{ $i }}-overlay">{{ __('entries.look_overlay') }}</span>
-                    @foreach (['0', '75', '90'] as $value)
-                        <button type="button" wire:click="setLook({{ $i }}, 'overlay', '{{ $value }}')" aria-pressed="{{ ($props['overlay'] ?? '0') === $value ? 'true' : 'false' }}">{{ __('entries.look_overlay_'.$value) }}</button>
-                    @endforeach
+                <div class="block-look__actions">
+                    <x-admin::button size="sm" variant="outline" color="secondary" wire:click="openBlockImagePicker('{{ $i }}.props.bg_image')">{{ __('entries.look_image_change') }}</x-admin::button>
+                    <x-admin::button size="sm" variant="outline" color="secondary" wire:click="removeLookImage({{ $i }})">{{ __('entries.look_image_remove') }}</x-admin::button>
+                </div>
+                <div class="block-look__setting" role="group" aria-labelledby="look-{{ $i }}-overlay">
+                    <span class="block-look__label" id="look-{{ $i }}-overlay">{{ __('entries.look_overlay') }}</span>
+                    <div class="seg">
+                        @foreach (['0', '75', '90'] as $value)
+                            <button type="button" wire:click="setLook({{ $i }}, 'overlay', '{{ $value }}')" aria-pressed="{{ ($props['overlay'] ?? '0') === $value ? 'true' : 'false' }}">{{ __('entries.look_overlay_'.$value) }}</button>
+                        @endforeach
+                    </div>
                 </div>
             @else
-                <button type="button" wire:click="openBlockImagePicker('{{ $i }}.props.bg_image')">{{ __('entries.look_image_add') }}</button>
+                <div class="block-look__actions">
+                    <x-admin::button size="sm" variant="outline" color="secondary" wire:click="openBlockImagePicker('{{ $i }}.props.bg_image')">{{ __('entries.look_image_add') }}</x-admin::button>
+                </div>
                 <p class="block-look__hint">{{ __('entries.look_image_hint') }}</p>
             @endif
         </fieldset>
@@ -70,50 +75,61 @@
     <fieldset class="block-look__group">
         <legend>{{ __('entries.look_layout') }}</legend>
         @foreach ($look['split'] ? ['spacing_top', 'spacing_bottom'] : ['spacing'] as $row)
-            <div role="group" aria-labelledby="look-{{ $i }}-{{ $row }}">
-                <span id="look-{{ $i }}-{{ $row }}">{{ __('entries.look_'.$row) }}</span>
-                @foreach (['none', 's', 'm', 'l', 'xl'] as $value)
-                    <button type="button" wire:click="setLook({{ $i }}, '{{ $row }}', '{{ $value }}')" aria-pressed="{{ $pressed($row === 'spacing' ? 'spacing_top' : $row, $value) }}">{{ __('entries.look_spacing_'.$value) }}</button>
-                @endforeach
+            <div class="block-look__setting" role="group" aria-labelledby="look-{{ $i }}-{{ $row }}">
+                <span class="block-look__label" id="look-{{ $i }}-{{ $row }}">{{ __('entries.look_'.$row) }}</span>
+                <div class="seg">
+                    @foreach (['none', 's', 'm', 'l', 'xl'] as $value)
+                        <button type="button" wire:click="setLook({{ $i }}, '{{ $row }}', '{{ $value }}')" aria-pressed="{{ $pressed($row === 'spacing' ? 'spacing_top' : $row, $value) }}">{{ __('entries.look_spacing_'.$value) }}</button>
+                    @endforeach
+                </div>
             </div>
         @endforeach
         @if (! isset($props['spacing_top']) && ! isset($props['spacing_bottom']))
             <p class="block-look__hint">{{ __('entries.look_spacing_unset') }}</p>
         @endif
         @foreach ($choiceRow as $prop => $values)
-            <div role="group" aria-labelledby="look-{{ $i }}-{{ $prop }}">
-                <span id="look-{{ $i }}-{{ $prop }}">{{ __('entries.look_'.$prop) }}</span>
-                @foreach ($values as $value)
-                    <button type="button" wire:click="setLook({{ $i }}, '{{ $prop }}', '{{ $value }}')" aria-pressed="{{ ($props[$prop] ?? $values[$prop === 'width' ? 1 : 0]) === $value ? 'true' : 'false' }}">{{ __('entries.look_'.$prop.'_'.$value) }}</button>
-                @endforeach
+            <div class="block-look__setting" role="group" aria-labelledby="look-{{ $i }}-{{ $prop }}">
+                <span class="block-look__label" id="look-{{ $i }}-{{ $prop }}">{{ __('entries.look_'.$prop) }}</span>
+                <div class="seg">
+                    @foreach ($values as $value)
+                        <button type="button" wire:click="setLook({{ $i }}, '{{ $prop }}', '{{ $value }}')" aria-pressed="{{ ($props[$prop] ?? $values[$prop === 'width' ? 1 : 0]) === $value ? 'true' : 'false' }}">{{ __('entries.look_'.$prop.'_'.$value) }}</button>
+                    @endforeach
+                </div>
             </div>
         @endforeach
-        <button type="button" role="switch" wire:click="toggleLookSplit({{ $i }})" aria-checked="{{ $look['split'] ? 'true' : 'false' }}">{{ __('entries.look_split') }}</button>
-        @foreach (['corner', 'shadow'] as $prop)
-            @php $on = ($props[$prop] ?? 'none') === 'soft'; @endphp
-            <button type="button" role="switch" wire:click="setLook({{ $i }}, '{{ $prop }}', '{{ $on ? 'none' : 'soft' }}')" aria-checked="{{ $on ? 'true' : 'false' }}">{{ __('entries.look_'.$prop) }}</button>
-        @endforeach
+        <div>
+            <button type="button" role="switch" class="switch-row" wire:click="toggleLookSplit({{ $i }})" aria-checked="{{ $look['split'] ? 'true' : 'false' }}">{{ __('entries.look_split') }}</button>
+            @foreach (['corner', 'shadow'] as $prop)
+                @php $on = ($props[$prop] ?? 'none') === 'soft'; @endphp
+                <button type="button" role="switch" class="switch-row" wire:click="setLook({{ $i }}, '{{ $prop }}', '{{ $on ? 'none' : 'soft' }}')" aria-checked="{{ $on ? 'true' : 'false' }}">{{ __('entries.look_'.$prop) }}</button>
+            @endforeach
+        </div>
     </fieldset>
 
     {{-- wire:ignore.self: a choice re-renders the panel, and the section stays as the user left it. --}}
     <details class="block-look__group" wire:ignore.self>
         <summary>{{ __('entries.look_advanced') }} <span class="block-look__hint">{{ $summary }}</span></summary>
-        <div role="group" aria-labelledby="look-{{ $i }}-hide_on">
-            <span id="look-{{ $i }}-hide_on">{{ __('entries.look_hide_on') }}</span>
-            @foreach (['none', 'desktop', 'mobile'] as $value)
-                <button type="button" wire:click="setLook({{ $i }}, 'hide_on', '{{ $value }}')" aria-pressed="{{ $hideOn === $value ? 'true' : 'false' }}">{{ __('entries.look_hide_on_'.$value) }}</button>
-            @endforeach
+        <div class="block-look__setting" role="group" aria-labelledby="look-{{ $i }}-hide_on">
+            <span class="block-look__label" id="look-{{ $i }}-hide_on">{{ __('entries.look_hide_on') }}</span>
+            <div class="seg">
+                @foreach (['none', 'desktop', 'mobile'] as $value)
+                    <button type="button" wire:click="setLook({{ $i }}, 'hide_on', '{{ $value }}')" aria-pressed="{{ $hideOn === $value ? 'true' : 'false' }}">{{ __('entries.look_hide_on_'.$value) }}</button>
+                @endforeach
+            </div>
         </div>
-        <div role="group" aria-labelledby="look-{{ $i }}-motion">
-            <span id="look-{{ $i }}-motion">{{ __('entries.look_motion') }}</span>
-            @foreach (['none', 'fade', 'rise'] as $value)
-                <button type="button" wire:click="setLook({{ $i }}, 'motion', '{{ $value }}')" aria-pressed="{{ ($props['motion'] ?? 'none') === $value ? 'true' : 'false' }}">{{ __('entries.look_motion_'.$value) }}</button>
-            @endforeach
+        <div class="block-look__setting" role="group" aria-labelledby="look-{{ $i }}-motion">
+            <span class="block-look__label" id="look-{{ $i }}-motion">{{ __('entries.look_motion') }}</span>
+            <div class="seg">
+                @foreach (['none', 'fade', 'rise'] as $value)
+                    <button type="button" wire:click="setLook({{ $i }}, 'motion', '{{ $value }}')" aria-pressed="{{ ($props['motion'] ?? 'none') === $value ? 'true' : 'false' }}">{{ __('entries.look_motion_'.$value) }}</button>
+                @endforeach
+            </div>
             @if ($look['first'])
                 <p class="block-look__hint">{{ __('entries.look_motion_first') }}</p>
             @endif
         </div>
-        <label>{{ __('entries.look_anchor') }}
+        <label class="block-look__setting">
+            <span class="block-look__label">{{ __('entries.look_anchor') }}</span>
             <span class="block-look__anchor">#<input type="text" wire:model.blur="blocks.{{ $i }}.props.anchor_id" placeholder="lien-he" class="field" maxlength="64" autocapitalize="off" spellcheck="false"></span>
         </label>
         @error("blocks.{$i}.props.anchor_id") <p class="error">{{ $message }}</p> @enderror

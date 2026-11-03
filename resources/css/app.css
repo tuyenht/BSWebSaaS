@@ -312,6 +312,90 @@
     @apply hit-area-row;
 }
 
+/* A segmented choice: one soft frame holding the options of one setting side by side, the chosen
+   one raised on the surface in the brand ink and bold (aria-pressed). Each option is drawn at the
+   row-control size (36 / 40 / 44px) and reaches 40 / 44px with a mouse and 44px on touch through
+   the shared transparent row hit area. Options wrap to a new line when the frame is too narrow; the
+   gap between lines leaves room for that hit area, so one never covers the option below it. */
+@utility seg {
+    display: flex;
+    flex-wrap: wrap;
+    gap: max(2px, calc(var(--spacing-hit) - var(--spacing-control-row))) 2px;
+    width: fit-content;
+    max-width: 100%;
+    padding: 3px;
+    border-radius: 0.375rem;
+    background: var(--color-surface-hover);
+
+    & > button {
+        --hit-gap: 2px;
+        flex: 1 0 auto;
+        max-width: 100%;
+        min-width: var(--spacing-control-row);
+        min-height: var(--spacing-control-row);
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        color: var(--color-text-muted);
+        font-size: var(--text-caption);
+        font-weight: 500;
+        line-height: 1.4;
+        cursor: pointer;
+
+        @apply hit-area-row;
+    }
+
+    & > button:hover {
+        color: var(--color-text);
+    }
+
+    & > button[aria-pressed='true'] {
+        background: var(--color-surface);
+        /* The thin brand edge keeps the chosen option clear on the dark scheme, where the surface
+           and the frame are close in tone. */
+        box-shadow:
+            0 1px 2px rgb(56 65 74 / 0.15),
+            inset 0 0 0 1px color-mix(in srgb, var(--color-primary-text) 45%, transparent);
+        color: var(--color-primary-text);
+        font-weight: 600;
+    }
+}
+
+/* An on/off setting as one row: the drawn switch (36 × 20) then its words. The whole row is the
+   target, as tall as a main control (40 / 44px with a mouse, 44px on touch). */
+@utility switch-row {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    width: 100%;
+    min-height: var(--spacing-control);
+    padding-block: 0.25rem;
+    text-align: start;
+    cursor: pointer;
+
+    @apply any-pointer-coarse:min-h-hit;
+
+    &::before {
+        content: '';
+        flex-shrink: 0;
+        width: 2.25rem;
+        height: 1.25rem;
+        border-radius: 1.25rem;
+        background: radial-gradient(circle at 0.625rem 50%, #fff 0.5rem, transparent calc(0.5rem + 0.5px)) var(--color-border-input);
+        transition: background-position 0.15s;
+    }
+
+    &[aria-checked='true']::before {
+        background-color: var(--color-primary-text);
+        background-position: 1rem 0;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        &::before {
+            transition: none;
+        }
+    }
+}
+
 /* A box that draws one control around a bare field (the list search: icon + input inside a
    bordered label) carries the shared focus ring on the box, not on the field inside it. */
 @utility focus-ring-within {
@@ -424,8 +508,9 @@ button:not(:disabled) {
     display: none;
 }
 
-/* The editor's "Trình bày" panel under each block: groups of choices, the chosen one marked by its
-   fill and a check (not by colour alone), controls at the shared control size. */
+/* The editor's "Trình bày" panel under each block: groups of choices, each setting a shared
+   segmented choice (`seg`) and each on/off a shared switch row (`switch-row`); the colour sets are
+   cards that show the set they paint. */
 .block-look {
     display: grid;
     gap: 1rem;
@@ -446,41 +531,19 @@ button:not(:disabled) {
     margin-bottom: 0.25rem;
     font-weight: 700;
 }
-.block-look [role='group'] {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem;
+.block-look__setting {
+    display: grid;
+    gap: 0.3125rem;
 }
-.block-look [role='group'] > span {
-    flex-basis: 100%;
-    font-weight: 500;
-}
-/* A lone button (add a photo, the on/off choices) is as wide as its words, not the whole panel. */
-.block-look__group > button {
-    justify-self: start;
-}
-/* Mouse: 40px at the default text size, 44px from the next size up; touch: 44px. */
-.block-look button {
-    min-height: var(--spacing-control);
-    padding: 0 0.75rem;
-    border: 1px solid var(--color-border-input);
-    border-radius: 0.375rem;
-    background: var(--color-surface);
-    color: var(--color-text);
-}
-.block-look button[aria-pressed='true'],
-.block-look button[aria-checked='true'] {
-    border-color: var(--color-primary-text);
-    background: color-mix(in srgb, var(--color-primary-text) 10%, var(--color-surface));
-    color: var(--color-primary-text);
+.block-look__label {
+    color: var(--color-text-muted);
+    font-size: var(--text-caption);
     font-weight: 600;
 }
-.block-look button[aria-pressed='true']::before,
-.block-look button[aria-checked='true']::before {
-    content: '✓ ';
-    /* The pressed state is already announced; the tick is for the eye only. */
-    content: '✓ ' / '';
+.block-look__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
 }
 /* While the choice is on its way to the server: shown at once, so a tap never looks ignored. */
 .block-look button[data-loading] {
@@ -492,19 +555,27 @@ button:not(:disabled) {
     grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
     gap: 0.5rem;
 }
-.block-look__schemes .block-look__scheme {
+.block-look__scheme {
     display: grid;
     align-content: start;
     gap: 0.25rem;
     padding: 0.5rem;
+    border: 1px solid var(--color-border-input);
+    border-radius: 0.375rem;
+    background: var(--color-surface);
+    color: var(--color-text);
     text-align: left;
 }
-/* The tick of the chosen set goes before its name, so every card keeps the same rows. */
-.block-look__schemes .block-look__scheme::before {
-    content: none;
+/* The chosen set: the brand border and fill, and a tick before its name (not by colour alone). */
+.block-look__scheme[aria-pressed='true'] {
+    border-color: var(--color-primary-text);
+    background: color-mix(in srgb, var(--color-primary-text) 10%, var(--color-surface));
+    color: var(--color-primary-text);
+    font-weight: 600;
 }
 .block-look__scheme[aria-pressed='true'] > span:nth-child(2)::before {
     content: '✓ ';
+    /* The pressed state is already announced; the tick is for the eye only. */
     content: '✓ ' / '';
 }
 .block-look__sample {
@@ -538,9 +609,7 @@ button:not(:disabled) {
     font-weight: 600;
 }
 @media (any-pointer: coarse) {
-    .block-look button,
-    .block-look summary,
-    .block-look__anchor input {
+    .block-look summary {
         min-height: var(--spacing-hit);
     }
 }
@@ -548,8 +617,5 @@ button:not(:disabled) {
     display: flex;
     align-items: center;
     gap: 0.25rem;
-}
-.block-look__anchor input {
-    min-height: var(--spacing-control);
 }
 
