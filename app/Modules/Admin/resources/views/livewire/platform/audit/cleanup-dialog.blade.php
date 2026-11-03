@@ -79,7 +79,7 @@
                             <label wire:key="audit-cleanup-{{ $m['month'] }}"
                                    class="flex min-h-hit cursor-pointer items-start gap-2.5 rounded-md border border-border-strong px-3 py-2.5 has-checked:border-accent has-checked:bg-accent/6">
                                 <input type="radio" name="audit-cleanup-month" value="{{ $m['month'] }}" wire:model.live="month"
-                                       class="mt-0.5 size-4.5 shrink-0 accent-admin-primary">
+                                       class="mt-0.5 size-4.5 shrink-0 accent-primary">
                                 <span class="flex min-w-0 flex-1 flex-wrap items-baseline justify-between gap-x-3 [overflow-wrap:anywhere]">
                                     <b class="font-semibold text-text-strong">{{ __('admin.audit.purge.month', ['month' => CleanupDialog::label($m['month'])]) }}</b>
                                     <span class="text-text-muted">{{ __('admin.audit.purge.estimate', ['n' => $num($m['rows_estimate'])]) }}</span>
