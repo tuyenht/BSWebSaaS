@@ -1598,6 +1598,7 @@
     "provisioning.tenant_host_taken": "The website :host already exists (customer :tenant), so no new customer was created. To finish that website, run again with --tenant=:tenant.",
     "provisioning.tenant_rerun_needs_tenant": "The website :host already exists (customer :tenant). To finish it, run again with --tenant=:tenant.",
     "provisioning.host_invalid": "\":host\" is not a hostname a website can use. Use letters, digits and hyphens, with at least two parts, e.g. shop.example.vn.",
+    "customers.phone_invalid": "This phone number cannot be used. Type it as you would dial it, e.g. 0901 234 567, or with the country code, e.g. +84 901 234 567.",
     "validation.attributes": {
         "email": "email",
         "password": "password",
