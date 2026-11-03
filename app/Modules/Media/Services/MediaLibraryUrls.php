@@ -31,11 +31,12 @@ final readonly class MediaLibraryUrls
      * $srcsetWidths (capped at each master's stored width). A URL whose srcset would hold fewer
      * than two distinct candidates has none (MediaUrlResolver::srcset). `alts` holds, per URL, the
      * library's alt text in the current locale (else the site's default locale); a picture with no
-     * alt text is left out. Same rows, no extra query.
+     * alt text is left out. `dims` holds, per URL, the master's stored [width, height] (for the
+     * intrinsic ratio of an <img>); a picture without both is left out. Same rows, no extra query.
      *
      * @param  array<array-key, mixed>  $ids
      * @param  list<int>  $srcsetWidths
-     * @return array{urls: array<int, string>, srcsets: array<string, string>, alts: array<string, string>}
+     * @return array{urls: array<int, string>, srcsets: array<string, string>, alts: array<string, string>, dims: array<string, array{0: int, 1: int}>}
      */
     public function resolve(array $ids, ?int $width = null, array $srcsetWidths = []): array
     {
@@ -47,13 +48,14 @@ final readonly class MediaLibraryUrls
         }
 
         if ($wanted === []) {
-            return ['urls' => [], 'srcsets' => [], 'alts' => []];
+            return ['urls' => [], 'srcsets' => [], 'alts' => [], 'dims' => []];
         }
 
         $urls = [];
         $srcsets = [];
         $alts = [];
-        foreach (Media::query()->whereIn('id', array_keys($wanted))->get(['id', 'storage_key', 'width', 'alt']) as $media) {
+        $dims = [];
+        foreach (Media::query()->whereIn('id', array_keys($wanted))->get(['id', 'storage_key', 'width', 'height', 'alt']) as $media) {
             $key = (string) $media->storage_key;
             $url = $this->resolver->url($key, $width);
             $urls[(int) $media->id] = $url;
@@ -65,9 +67,12 @@ final readonly class MediaLibraryUrls
             if ($alt !== '') {
                 $alts[$url] = $alt;
             }
+            if (is_int($media->width) && $media->width > 0 && is_int($media->height) && $media->height > 0) {
+                $dims[$url] = [$media->width, $media->height];
+            }
         }
 
-        return ['urls' => $urls, 'srcsets' => $srcsets, 'alts' => $alts];
+        return ['urls' => $urls, 'srcsets' => $srcsets, 'alts' => $alts, 'dims' => $dims];
     }
 
     /**

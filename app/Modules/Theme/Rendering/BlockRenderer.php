@@ -4,6 +4,7 @@ namespace App\Modules\Theme\Rendering;
 
 use App\Modules\Media\Services\MediaLibraryUrls;
 use App\Modules\Theme\Components\ComponentRegistry;
+use App\Modules\Theme\Components\SchemaHtml;
 use App\Modules\Theme\Components\SchemaImages;
 use App\Modules\Theme\Components\StyleProps;
 use Illuminate\Contracts\View\Factory as ViewFactory;
@@ -17,7 +18,9 @@ use Illuminate\Contracts\View\Factory as ViewFactory;
  *
  * Image props hold a media_id (ADR-17: content never stores a URL). They are resolved to public
  * URLs in TWO passes — collect every id across the page, then one batched lookup — so a page with
- * N images costs one media query, not N (the anti-N+1 contract at tenant scale).
+ * N images costs one media query, not N (the anti-N+1 contract at tenant scale). The library
+ * pictures inside formatted text (`html` props, `img[data-media-id]`) join the same lookup, and
+ * each html prop is then prepared for printing by RichHtml (pictures, video façades).
  */
 final readonly class BlockRenderer
 {
@@ -39,6 +42,7 @@ final readonly class BlockRenderer
         private ViewFactory $views,
         private ComponentRegistry $registry,
         private MediaLibraryUrls $mediaUrls,
+        private RichHtml $richHtml,
     ) {}
 
     public function allows(string $type): bool
@@ -109,6 +113,29 @@ final readonly class BlockRenderer
     }
 
     /**
+     * Whether a formatted-text prop on the page holds a video the façade can play — the layout loads
+     * the video script only then. Pure: no query.
+     *
+     * @param  array<string, mixed>  $body
+     */
+    public function playsRichVideo(array $body): bool
+    {
+        foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
+            $type = is_array($block) ? ($block['type'] ?? null) : null;
+            if (! is_string($type) || ! $this->registry->has($type) || ! is_array($block['props'] ?? null)) {
+                continue;
+            }
+            foreach (SchemaHtml::values($block['props'], $this->registry->schemaFor($type)) as $html) {
+                if (VideoFacades::plays($html)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * @param  array<string, mixed>  $body
      */
     public function render(array $body): string
@@ -129,13 +156,17 @@ final readonly class BlockRenderer
 
             /** @var array<string, mixed> $props */
             $props = is_array($block['props'] ?? null) ? $block['props'] : [];
-            $ids = array_merge($ids, SchemaImages::ids($props, $this->registry->schemaFor($type)));
+            $schema = $this->registry->schemaFor($type);
+            $ids = array_merge($ids, SchemaImages::ids($props, $schema));
+            foreach (SchemaHtml::values($props, $schema) as $html) {
+                $ids = array_merge($ids, RichHtml::imageIds($html));
+            }
         }
 
         // One batched lookup for the whole page (site-scoped; unknown ids simply resolve to nothing).
         // The same rows give each URL its srcset (server-built from storage keys, never from props) and
         // its alt text from the library.
-        ['urls' => $urls, 'srcsets' => $srcsets, 'alts' => $alts] = $this->mediaUrls->resolve($ids, self::CONTENT_IMAGE_WIDTH, self::SRCSET_WIDTHS);
+        ['urls' => $urls, 'srcsets' => $srcsets, 'alts' => $alts, 'dims' => $dims] = $this->mediaUrls->resolve($ids, self::CONTENT_IMAGE_WIDTH, self::SRCSET_WIDTHS);
 
         // Pass 2 — render each block, swapping each image prop's media_id for its resolved URL, inside
         // the look wrapper when the block sets one (StyleProps).
@@ -154,8 +185,13 @@ final readonly class BlockRenderer
             /** @var array<string, mixed> $props */
             $props = is_array($block['props'] ?? null) ? $block['props'] : [];
             $component = $this->registry->get($type);
+            $schema = $this->registry->schemaFor($type);
             /** @var array<string, mixed> $resolved */
-            $resolved = SchemaImages::replace($props, $this->registry->schemaFor($type), $urls);
+            $resolved = SchemaHtml::map(
+                SchemaImages::replace($props, $schema, $urls),
+                $schema,
+                fn (string $html): string => $this->richHtml->render($html, $urls, $srcsets, $alts, $dims)['html'],
+            );
 
             /** @var view-string $view a theme section view (ComponentRegistry) */
             $view = $component->view();
