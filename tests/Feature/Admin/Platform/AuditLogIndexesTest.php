@@ -80,20 +80,29 @@ function auditPageQuery(array $filters): array
 }
 
 /**
- * The indexes Postgres plans to read for $sql when a full table read is ruled out.
+ * The indexes Postgres plans to read for $sql when a full table read is ruled out. The audit log
+ * is one table per month, so the plan reads each month's copy of an index; each is named here by
+ * the index on audit_logs it belongs to.
  *
  * @param  array<int, mixed>  $bindings
  * @return list<string>
  */
 function auditPlannedIndexes(string $sql, array $bindings): array
 {
-    return DB::transaction(function () use ($sql, $bindings): array {
+    $names = DB::transaction(function () use ($sql, $bindings): array {
         DB::statement('SET LOCAL enable_seqscan = off');
         $plan = (array) DB::selectOne('EXPLAIN (FORMAT JSON) '.$sql, $bindings);
-        preg_match_all('/"Index Name":\s*"([a-z_]+)"/', (string) reset($plan), $names);
+        preg_match_all('/"Index Name":\s*"([a-z0-9_]+)"/', (string) reset($plan), $names);
 
-        return array_values(array_unique($names[1]));
+        return $names[1];
     });
+
+    $parents = array_map(fn (string $name): string => (string) DB::scalar(
+        'select coalesce((select p.relname from pg_inherits i join pg_class c on c.oid = i.inhrelid join pg_class p on p.oid = i.inhparent where c.relname = ?), ?)',
+        [$name, $name],
+    ), $names);
+
+    return array_values(array_unique($parents));
 }
 
 it('defines each filter index of the activity log as signed', function (string $index, string $definition): void {
@@ -101,7 +110,7 @@ it('defines each filter index of the activity log as signed', function (string $
 
     expect($row)->not->toBeNull("{$index} is missing")
         ->and($row->valid)->toBeTrue()
-        ->and($row->def)->toBe("CREATE INDEX {$index} ON public.audit_logs USING btree {$definition}");
+        ->and($row->def)->toBe("CREATE INDEX {$index} ON ONLY public.audit_logs USING btree {$definition}");
 })->with([
     'first page, groups, platform, period' => ['audit_logs_created_at_id_index', '(created_at, id)'],
     'person' => ['audit_logs_actor_id_index', '(actor_id)'],

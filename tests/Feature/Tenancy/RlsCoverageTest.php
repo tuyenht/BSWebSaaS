@@ -23,8 +23,10 @@ it('enforces RLS + FORCE on every table that has a site_id column', function ():
           --     resolved during auth (outside any tenant tx), scoped IN-APP by the
           --     spatie team key (= site_id); platform rows use sentinel site_id 0.
           --   • audit_logs — append-only platform trail; best-effort writes may have
-          --     no tenant context, operators need cross-site visibility.
+          --     no tenant context, operators need cross-site visibility. Its monthly
+          --     tables (partitions of it) are the same table.
           and c.relname not in ('domains', 'roles', 'model_has_roles', 'model_has_permissions', 'audit_logs')
+          and not exists (select 1 from pg_inherits i where i.inhrelid = c.oid and i.inhparent = to_regclass('public.audit_logs'))
           and exists (
             select 1 from information_schema.columns col
             where col.table_schema = 'public'
@@ -52,8 +54,10 @@ it('has at least one isolation policy on every tenant table', function (): void 
           --     resolved during auth (outside any tenant tx), scoped IN-APP by the
           --     spatie team key (= site_id); platform rows use sentinel site_id 0.
           --   • audit_logs — append-only platform trail; best-effort writes may have
-          --     no tenant context, operators need cross-site visibility.
+          --     no tenant context, operators need cross-site visibility. Its monthly
+          --     tables (partitions of it) are the same table.
           and c.relname not in ('domains', 'roles', 'model_has_roles', 'model_has_permissions', 'audit_logs')
+          and not exists (select 1 from pg_inherits i where i.inhrelid = c.oid and i.inhparent = to_regclass('public.audit_logs'))
           and exists (
             select 1 from information_schema.columns col
             where col.table_schema = 'public'
