@@ -33,7 +33,7 @@
              $wire.purge(this.pw).then(() => $nextTick(() => this.after())).finally(() => { this.busy = false; });
          },
          next() { $wire.next().then(() => $nextTick(() => { if (document.getElementById('audit-cleanup-pick-err')) this.radio()?.focus(); })); },
-         back() { this.pw = ''; $wire.back().then(() => $nextTick(() => this.radio()?.focus())); },
+         toPick() { this.pw = ''; $wire.back().then(() => $nextTick(() => this.radio()?.focus())); },
      }">
     @if ($open)
         <x-bs-admin::drawer :title="__('admin.audit.purge.title')"
@@ -119,7 +119,7 @@
                         <x-bs-admin::button variant="outline" color="secondary" wire:click="retry">
                             <x-bs-admin::icon name="ri-refresh" class="size-4" />{{ __('admin.audit.retry') }}
                         </x-bs-admin::button>
-                        <x-bs-admin::button variant="ghost" x-on:click="back()">
+                        <x-bs-admin::button variant="ghost" x-on:click="toPick()">
                             <x-bs-admin::icon name="ri-arrow-left" class="size-4" />{{ __('admin.audit.purge.back') }}
                         </x-bs-admin::button>
                     </div>
@@ -137,7 +137,7 @@
                     </p>
                     @unless ($monthRefused)
                         <div>
-                            <x-bs-admin::button variant="ghost" x-on:click="if (! busy) back()" class="{{ $off }}"
+                            <x-bs-admin::button variant="ghost" x-on:click="if (! busy) toPick()" class="{{ $off }}"
                                                 wire:loading.attr="aria-disabled" wire:target="purge">
                                 <x-bs-admin::icon name="ri-arrow-left" class="size-4" />{{ __('admin.audit.purge.back') }}
                             </x-bs-admin::button>
@@ -162,7 +162,7 @@
                                 <span class="min-w-0 [overflow-wrap:anywhere]">{{ $monthError }}</span>
                             </span>
                             @if ($monthRefused)
-                                <x-bs-admin::button variant="outline" color="secondary" x-on:click="back()">
+                                <x-bs-admin::button variant="outline" color="secondary" x-on:click="toPick()">
                                     <x-bs-admin::icon name="ri-arrow-left" class="size-4" />{{ __('admin.audit.purge.back') }}
                                 </x-bs-admin::button>
                             @endif

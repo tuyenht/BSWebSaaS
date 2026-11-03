@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Livewire\Platform\Audit\Index;
+use App\Modules\Admin\Support\AuditMonthPurgeRefused;
 use App\Modules\Admin\Support\PurgeAuditMonth;
 use App\Modules\Audit\AuditService;
 use App\Modules\Audit\Models\AuditLog;
@@ -560,6 +561,8 @@ it('refuses by hand a month the log does not have', function (): void {
 
     expect(amRefusal(fn () => app(PurgeAuditMonth::class)->handle($actor, '1990-01', 'password'), 'month'))
         ->toBe(__('admin.audit.purge.missing'))
+        ->and(fn () => app(PurgeAuditMonth::class)->handle($actor, '1990-01', 'password'))
+        ->toThrow(fn (AuditMonthPurgeRefused $e) => expect($e->reason)->toBe('missing'))
         ->and(AuditLog::query()->where('action', PurgeAuditMonth::ACTION)->count())->toBe(0);
 });
 

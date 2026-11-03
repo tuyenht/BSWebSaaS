@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Livewire\Platform\Audit;
 
+use App\Modules\Admin\Support\AuditMonthPurgeRefused;
 use App\Modules\Admin\Support\PurgeAuditMonth;
 use App\Modules\Audit\Support\AuditMonths;
 use App\Modules\Identity\Models\User;
@@ -212,6 +213,15 @@ final class CleanupDialog extends Component
             $rows = app(PurgeAuditMonth::class)->handle($actor, $this->month, $password);
         } catch (AuthorizationException) {
             abort(403);
+        } catch (AuditMonthPurgeRefused $e) {
+            if ($e->reason === 'missing') {
+                // gone already (deleted elsewhere): it leaves the list
+                $this->months = array_values(array_filter($this->months ?? [], fn (array $m): bool => $m['month'] !== $this->month));
+            }
+            // busy / unrecorded: the same month may work on a retry, so no "another month" offer
+            $this->refuseMonth($e->validator->errors()->first('month'), in_array($e->reason, ['missing', 'kept', 'invalid'], true));
+
+            return;
         } catch (ValidationException $e) {
             $errors = $e->validator->errors();
             if ($errors->has('password')) {
@@ -219,14 +229,7 @@ final class CleanupDialog extends Component
 
                 return;
             }
-            $message = $errors->has('month') ? $errors->first('month') : Cast::string(__('admin.audit.purge.invalid_month'));
-            $missing = $message === __('admin.audit.purge.missing');
-            if ($missing) {
-                // gone already (deleted elsewhere): it leaves the list
-                $this->months = array_values(array_filter($this->months ?? [], fn (array $m): bool => $m['month'] !== $this->month));
-            }
-            $tooRecent = $message === __('admin.audit.purge.too_recent', ['months' => AuditMonths::MANUAL_FLOOR_MONTHS]);
-            $this->refuseMonth($message, $missing || $tooRecent || $message === __('admin.audit.purge.invalid_month'));
+            $this->refuseMonth($errors->has('month') ? $errors->first('month') : Cast::string(__('admin.audit.purge.invalid_month')), true);
 
             return;
         }

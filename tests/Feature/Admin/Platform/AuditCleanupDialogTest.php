@@ -2,6 +2,7 @@
 
 use App\Modules\Admin\Livewire\Platform\Audit\CleanupDialog;
 use App\Modules\Admin\Livewire\Platform\Audit\Index;
+use App\Modules\Admin\Support\AuditMonthPurgeRefused;
 use App\Modules\Admin\Support\PurgeAuditMonth;
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Audit\Support\AuditMonths;
@@ -11,7 +12,6 @@ use App\Modules\Rbac\Support\PlatformAccess;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 
@@ -325,16 +325,16 @@ it('takes a month gone meanwhile off the list and offers another', function (): 
         ->assertDontSee('Tháng '.acdLabel($month));
 });
 
-it('shows each month refusal as the alert, and only a refused month asks for another', function (string $key, bool $another): void {
+it('shows each month refusal as the alert, and only a refused month asks for another', function (string $reason, string $key, bool $another): void {
     $message = (string) __($key, ['months' => AuditMonths::MANUAL_FLOOR_MONTHS]);
     $dialog = acdConfirming(acdOperator('super_admin'), acdMonth(-13));
-    app()->instance(PurgeAuditMonth::class, new class($message)
+    app()->instance(PurgeAuditMonth::class, new class($reason, $message)
     {
-        public function __construct(private string $message) {}
+        public function __construct(private string $reason, private string $message) {}
 
         public function handle(User $actor, string $month, string $password): int
         {
-            throw ValidationException::withMessages(['month' => $this->message]);
+            throw AuditMonthPurgeRefused::because($this->reason, $this->message);
         }
     });
 
@@ -343,9 +343,10 @@ it('shows each month refusal as the alert, and only a refused month asks for ano
         ->assertSet('monthRefused', $another)
         ->assertSet('open', true);
 })->with([
-    'too recent' => ['admin.audit.purge.too_recent', true],
-    'busy' => ['admin.audit.purge.busy', false],
-    'clock skew' => ['admin.audit.purge.unrecorded', false],
+    'too recent' => ['kept', 'admin.audit.purge.too_recent', true],
+    'not a month' => ['invalid', 'admin.audit.purge.invalid_month', true],
+    'busy' => ['busy', 'admin.audit.purge.busy', false],
+    'clock skew' => ['unrecorded', 'admin.audit.purge.unrecorded', false],
 ]);
 
 it('deletes the month, records it, closes with the toast and brings the list back to its first page', function (): void {
@@ -378,4 +379,23 @@ it('deletes the month, records it, closes with the toast and brings the list bac
         ->dispatch('audit-month-deleted')
         ->assertSet('open', '')
         ->assertSet('after', '');
+});
+
+it('keeps the names a drawer host defines apart from the names the drawer defines itself', function (): void {
+    // Alpine looks a name up in the nearest x-data first: a host method named like one of the
+    // drawer's own keys is never reached from inside the drawer ("Chọn tháng khác" was dead).
+    // Calling the drawer's own hide() from the host's buttons is meant and stays allowed.
+    $views = base_path('app/Modules/Admin/resources/views');
+    $keys = function (string $file): array {
+        preg_match_all('/x-data="\{(.*?)\}"/s', (string) file_get_contents($file), $blocks);
+        preg_match_all('/(?:^|[{,])\s*([A-Za-z_]\w*)\s*[:(]/m', implode("\n", $blocks[1]), $names);
+
+        return array_values(array_diff(array_unique($names[1]), ['if', 'for', 'while', 'switch', 'return']));
+    };
+    $drawer = $keys("{$views}/components/drawer.blade.php");
+    expect($drawer)->toContain('back', 'hide');
+
+    foreach (['livewire/platform/audit/cleanup-dialog.blade.php', 'livewire/platform/audit/index.blade.php'] as $host) {
+        expect(array_values(array_intersect($keys("{$views}/{$host}"), $drawer)))->toBe([], $host);
+    }
 });

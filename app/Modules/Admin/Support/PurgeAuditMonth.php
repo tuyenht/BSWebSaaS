@@ -40,7 +40,7 @@ final class PurgeAuditMonth
      * @return int the rows deleted
      *
      * @throws AuthorizationException
-     * @throws ValidationException
+     * @throws ValidationException a refused month as AuditMonthPurgeRefused
      */
     public function handle(User $actor, string $month, string $password): int
     {
@@ -57,10 +57,10 @@ final class PurgeAuditMonth
         $this->confirmPassword($actor, $password);
 
         if (! $this->months->isRemovable($month)) {
-            throw ValidationException::withMessages(['month' => __('admin.audit.purge.too_recent', ['months' => AuditMonths::MANUAL_FLOOR_MONTHS])]);
+            throw self::refused('kept');
         }
         if (! in_array($month, array_column($this->months->months(), 'month'), true)) {
-            throw ValidationException::withMessages(['month' => __('admin.audit.purge.missing')]);
+            throw self::refused('missing');
         }
 
         try {
@@ -70,14 +70,21 @@ final class PurgeAuditMonth
                 'meta' => ['confirmed' => 'password'],
             ]);
         } catch (AuditMonthRefused $e) {
-            throw ValidationException::withMessages(['month' => match ($e->reason) {
-                'kept' => __('admin.audit.purge.too_recent', ['months' => AuditMonths::MANUAL_FLOOR_MONTHS]),
-                'busy' => __('admin.audit.purge.busy'),
-                'missing' => __('admin.audit.purge.missing'),
-                'unrecorded' => __('admin.audit.purge.unrecorded'),
-                default => __('admin.audit.purge.invalid_month'),
-            }]);
+            throw self::refused($e->reason);
         }
+    }
+
+    private static function refused(string $reason): AuditMonthPurgeRefused
+    {
+        $reason = in_array($reason, ['kept', 'busy', 'missing', 'unrecorded'], true) ? $reason : 'invalid';
+
+        return AuditMonthPurgeRefused::because($reason, Cast::string(match ($reason) {
+            'kept' => __('admin.audit.purge.too_recent', ['months' => AuditMonths::MANUAL_FLOOR_MONTHS]),
+            'busy' => __('admin.audit.purge.busy'),
+            'missing' => __('admin.audit.purge.missing'),
+            'unrecorded' => __('admin.audit.purge.unrecorded'),
+            default => __('admin.audit.purge.invalid_month'),
+        }));
     }
 
     /** @throws ValidationException */

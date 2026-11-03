@@ -21,6 +21,7 @@
  * render with the real compiled CSS/JS, so build the front end first (pnpm run build).
  */
 
+use App\Modules\Admin\Livewire\Platform\Audit\CleanupDialog;
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Identity\Models\User;
@@ -29,6 +30,7 @@ use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\DB;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 uses(TestCase::class);
@@ -135,5 +137,13 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->actingAs($top)->get($platform.'/audit')->assertOk()->getContent();
     file_put_contents($dir.'/audit-cleanup.html', str_replace($platform, 'http://'.ADMIN_PREVIEW_HOST, $html));
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 4);
+    // Its dialog open on each step, put into that page (it opens from the browser, never from a URL).
+    $old = now()->utc()->startOfMonth()->subMonths(13)->format('Y-m');
+    $dialog = Livewire::actingAs($top)->test(CleanupDialog::class)->call('openDialog')->call('loadMonths');
+    $steps = ['audit-cleanup-pick' => $dialog->html(), 'audit-cleanup-confirm' => $dialog->set('month', $old)->call('next')->call('countRows')->html()];
+    foreach ($steps as $name => $open) {
+        file_put_contents($dir.'/'.$name.'.html', str_replace([$platform, '</body>'], ['http://'.ADMIN_PREVIEW_HOST, $open.'</body>'], $html));
+    }
+
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 6);
 });
