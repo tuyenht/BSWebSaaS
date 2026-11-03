@@ -105,6 +105,23 @@ final class SectionProps
         return is_scalar($value) && trim((string) $value) !== '' ? (string) $value : $fallback;
     }
 
+    /** The most numbers a stats block shows. */
+    public const int STATS_MAX_ITEMS = 8;
+
+    /**
+     * The number of a stats item: a whole number from 0 to 999 999 999 999, typed as an int or as digits
+     * (leading zeros allowed, as the save check accepts them), or null. The view and the page's
+     * count-up flag both read it, so the script loads only when a number is actually shown.
+     */
+    public static function statNumber(mixed $raw): ?int
+    {
+        if (is_string($raw) && preg_match('/\A\d{1,15}\z/', trim($raw)) === 1) {
+            $raw = (int) trim($raw);
+        }
+
+        return is_int($raw) && $raw >= 0 && $raw <= 999_999_999_999 ? $raw : null;
+    }
+
     /**
      * The first $max entries of a list prop that are objects, re-indexed; anything else is dropped.
      *

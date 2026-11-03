@@ -4,6 +4,7 @@ namespace App\Modules\Theme\Rendering;
 
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\VideoEmbed;
+use App\Modules\Theme\Components\SectionProps;
 use App\Modules\Theme\Theming\ThemeResolver;
 use Illuminate\Contracts\View\Factory as ViewFactory;
 
@@ -40,6 +41,8 @@ final readonly class PageRenderer
         $extra += $this->blocks->moves($body) ? ['sectionsScript' => true] : [];
         // The click-to-load video script loads only on a page with a video it can play.
         $extra += self::playsVideo($body) ? ['videoScript' => true] : [];
+        // The count-up script loads only on a page with a stats block that holds a number.
+        $extra += self::countsUp($body) ? ['statsScript' => true] : [];
 
         return $this->views->make($layout, [
             'title' => $title,
@@ -101,6 +104,26 @@ final readonly class PageRenderer
             $url = is_array($block) && ($block['type'] ?? null) === 'video' ? data_get($block, 'props.url') : null;
             if (is_string($url) && VideoEmbed::player($url) !== null) {
                 return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether a stats block on the page holds at least one usable number (the only thing the count-up
+     * script animates). Pure: no query.
+     *
+     * @param  array<string, mixed>  $body
+     */
+    private static function countsUp(array $body): bool
+    {
+        foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
+            $props = is_array($block) && ($block['type'] ?? null) === 'stats' ? ($block['props'] ?? null) : null;
+            foreach (is_array($props) ? SectionProps::items($props, 'items', SectionProps::STATS_MAX_ITEMS) : [] as $item) {
+                if (SectionProps::statNumber($item['value'] ?? null) !== null) {
+                    return true;
+                }
             }
         }
 
