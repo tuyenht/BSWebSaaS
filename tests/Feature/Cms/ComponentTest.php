@@ -88,7 +88,8 @@ it('every registered component declares a typed prop schema (§E7)', function ()
 
         foreach ($schema as $spec) {
             expect($spec)->toBeArray()->toHaveKey('type');
-            expect(['text', 'textarea', 'url', 'int', 'list', 'image', 'enum'])->toContain($spec['type']);
+            // html (formatted text, ADR-19) is declared only by richtext_html: PageJsonValidationTest.
+            expect(['text', 'textarea', 'url', 'int', 'list', 'image', 'enum', 'html'])->toContain($spec['type']);
 
             // A repeater (list) must declare its item shape so the editor can build new items.
             if ($spec['type'] === 'list') {
