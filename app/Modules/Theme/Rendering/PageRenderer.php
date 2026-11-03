@@ -40,6 +40,8 @@ final readonly class PageRenderer
         $extra += $this->blocks->moves($body) ? ['sectionsScript' => true] : [];
         // The click-to-load video script loads only on a page with a video it can play.
         $extra += self::playsVideo($body) ? ['videoScript' => true] : [];
+        // The count-up script loads only on a page with a stats block that holds a number.
+        $extra += self::countsUp($body) ? ['statsScript' => true] : [];
 
         return $this->views->make($layout, [
             'title' => $title,
@@ -101,6 +103,27 @@ final readonly class PageRenderer
             $url = is_array($block) && ($block['type'] ?? null) === 'video' ? data_get($block, 'props.url') : null;
             if (is_string($url) && VideoEmbed::player($url) !== null) {
                 return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether a stats block on the page holds at least one usable number (the only thing the count-up
+     * script animates). Pure: no query.
+     *
+     * @param  array<string, mixed>  $body
+     */
+    private static function countsUp(array $body): bool
+    {
+        foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
+            $items = is_array($block) && ($block['type'] ?? null) === 'stats' ? data_get($block, 'props.items') : null;
+            foreach (is_array($items) ? $items : [] as $item) {
+                $value = is_array($item) ? ($item['value'] ?? null) : null;
+                if (is_int($value) && $value >= 0 || is_string($value) && preg_match('/\A\d{1,12}\z/', trim($value)) === 1) {
+                    return true;
+                }
             }
         }
 

@@ -173,3 +173,6 @@
 @if (! empty($videoScript))
 @vite(['resources/js/sf-video.js'])
 @endif
+@if (! empty($statsScript))
+@vite(['resources/js/sf-stats.js'])
+@endif
