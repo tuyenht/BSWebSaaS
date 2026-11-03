@@ -380,8 +380,14 @@
         width: 2.25rem;
         height: 1.25rem;
         border-radius: 1.25rem;
-        background: radial-gradient(circle at 0.625rem 50%, #fff 0.5rem, transparent calc(0.5rem + 0.5px)) var(--color-border-input);
+        background: radial-gradient(circle at 0.625rem 50%, var(--switch-knob, #fff) 0.5rem, transparent calc(0.5rem + 0.5px)) var(--color-border-input);
         transition: background-position 0.15s;
+    }
+
+    /* On: the knob takes the surface colour, so it stands out on the brand track in both schemes
+       (the dark scheme lightens the brand ink, and a white knob would fade into it). */
+    &[aria-checked='true'] {
+        --switch-knob: var(--color-surface);
     }
 
     &[aria-checked='true']::before {
