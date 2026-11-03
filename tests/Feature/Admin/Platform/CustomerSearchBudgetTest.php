@@ -42,9 +42,10 @@ beforeEach(function (): void {
         from generate_series(1, 50000) as i
         SQL);
     $admin->statement(<<<'SQL'
-        insert into tenants (ulid, name, status, settings, owner_user_id, created_at, updated_at)
+        insert into tenants (ulid, name, status, settings, owner_user_id, contact_phone, created_at, updated_at)
         select lpad(upper(to_hex(u.n)), 26, 'K'), 'Công ty ' || (array['Đức Phát','Bình An','Tâm Đức','An Vinh','Hòa Bình'])[1 + u.n % 5] || ' ' || u.n,
                case when u.n % 10 = 0 then 'suspended' else 'active' end, '{}', u.id,
+               case when u.n % 5 = 0 then null else '+849' || lpad(((u.n::bigint * 7919) % 100000000)::text, 8, '0') end,
                now() - make_interval(mins => u.n), now()
         from (select id, substring(email from 'kh-budget-([0-9]+)@')::int as n from users where email like 'kh-budget-%') as u
         SQL);
@@ -164,11 +165,12 @@ it('plans a one-letter search and a search by number on the indexes, never a ful
     expect($reads)->not->toBe([])
         ->and($seq('users'))->toBe(0, $report)
         ->and($seq('tenants'))->toBeLessThanOrEqual($q === '#' ? 0 : 1, $report);
-    if ($q === '#') {
+    if ($q === '#' || $q === '09 01 23') {
         // a number is also looked for in the customers' phones
         expect($indexes)->toContain('tenants_contact_phone_trgm_index');
-    } else {
+    }
+    if ($q !== '#') {
         // the word indexes on the folded names, of the owners and of the customers
         expect($indexes)->toContain('users_name_fold_words_index', 'tenants_name_fold_words_index');
     }
-})->with(['one letter' => 'b', 'the letter every owner has' => 'v', 'a number' => '#']);
+})->with(['one letter' => 'b', 'the letter every owner has' => 'v', 'a number' => '#', 'a phone in short groups' => '09 01 23']);

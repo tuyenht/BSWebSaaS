@@ -166,6 +166,7 @@ it('finds a customer by three or more digits of its contact phone, typed however
     $wanted = khCustomer('Nha khoa Tâm Đức', ['contact_phone' => '+84901234567']);
     $landline = khCustomer('Spa Hoa Sen', ['contact_phone' => '+842838123456']);
     $none = khCustomer('Cửa hàng Bình An');
+    $numbered = khCustomer('Phở 10 Lý Quốc Sư 5');
     $page = Livewire::actingAs(khStaff('support'))->test(Index::class);
     $found = fn (string $q): array => $page->set('search', $q)->viewData('rows')->pluck('ulid')->map(fn ($u): string => trim((string) $u))->sort()->values()->all();
 
@@ -175,6 +176,8 @@ it('finds a customer by three or more digits of its contact phone, typed however
         ->and($found('234 567'))->toBe([$wanted])
         ->and($found('028 3812'))->toBe([$landline])
         ->and($found('09 01 23'))->toBe([$wanted])
+        // a short search keeps finding names with words starting with its parts
+        ->and($found('10 5'))->toBe([$numbered])
         ->and($found('4567'))->toBe([$wanted])
         ->and($found('0909'))->toBe([])
         ->and($found('84'))->toBe([])
@@ -182,14 +185,12 @@ it('finds a customer by three or more digits of its contact phone, typed however
 });
 
 it('looks in the phones only for a search written as a phone number', function (): void {
-    $code = khCustomer('Nha khoa Tâm Đức', ['contact_phone' => '+84901230567']);
+    $code = khCustomer('Nha khoa Tâm Đức', ['contact_phone' => '+84901230567', 'customer_no' => 123]);
     $phone = khCustomer('Spa Hoa Sen', ['contact_phone' => '+84912312345']);
     $page = Livewire::actingAs(khStaff('support'))->test(Index::class);
     $found = fn (string $q): array => $page->set('search', $q)->viewData('rows')->pluck('ulid')->map(fn ($u): string => trim((string) $u))->sort()->values()->all();
-    $no = (int) DB::table('tenants')->where('ulid', $code)->value('customer_no');
-
-    // the exact code finds that customer only, never a phone holding its digits
-    expect($found(CustomerCode::format($no)))->toBe([$code])
+    // the exact code finds that customer only, never a phone holding its digits ("KH-000123")
+    expect($found(CustomerCode::format(123)))->toBe([$code])
         ->and($found('Spa 12 Hoa 345'))->toBe([])
         ->and($found('0567'))->toBe([$code])
         ->and($found('123'))->toContain($code, $phone);

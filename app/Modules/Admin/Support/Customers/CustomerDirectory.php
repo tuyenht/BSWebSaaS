@@ -261,9 +261,9 @@ final class CustomerDirectory
         $byCode = $number === null ? null : Tenant::query()->select('id')->where('customer_no', $number);
 
         $phone = self::phoneFragments($search);
-        if (! self::wordy($needle) && $phone === []) {
+        if (! self::wordy($needle)) {
             // too short for a trigram: word starts, on the word indexes
-            [$from, $bindings] = self::wordStarts($needle, $number);
+            [$from, $bindings] = self::wordStarts($needle, $number, $phone);
 
             return $query->fromRaw($from, $bindings);
         }
@@ -291,9 +291,11 @@ final class CustomerDirectory
     /**
      * A search too short for a trigram: the customers with a word starting with each part of the
      * needle in their own name or their owner's, on the word indexes (VietnameseFold::words), and
-     * the customer with that number. Such a search often matches a large share of the customers,
-     * so each lookup returns the rows themselves, and the lookups never overlap (by the owner; by
-     * the customer's own name, owner not matched; by code, neither): gathering ids first and
+     * the customer with that number, and, for a search written as a phone number ("09 01 23"),
+     * the customers with those digits in their phone. Such a search often matches a large share of
+     * the customers, so each lookup returns the rows themselves, and the lookups never overlap (by
+     * the owner; by the customer's own name, owner not matched; by code, neither; by phone, none of
+     * those): gathering ids first and
      * reading those customers again cost a pass over the whole table, and dropping duplicates
      * (UNION) hashed every row matched, spilling to disk at 50,000. The owners matched are read
      * once (a MATERIALIZED CTE), as both lookups use them. Measured at 50,000 (median of five):
@@ -302,9 +304,10 @@ final class CustomerDirectory
      * found by name out of the owner lookup instead measured 37-49 and 91-99 ms. Deleted customers
      * go in the caller's scope.
      *
+     * @param  list<string>  $phone  the digits to look for in the phones (phoneFragments)
      * @return array{0: literal-string, 1: list<int|string>} the FROM expression, aliased "tenants", and its bindings
      */
-    private static function wordStarts(string $needle, ?int $number): array
+    private static function wordStarts(string $needle, ?int $number, array $phone): array
     {
         $words = VietnameseFold::words('name')." @@ to_tsquery('simple', ?)";
         // each part is a prefix scan on the word indexes: repeats add nothing, and more than
@@ -319,12 +322,18 @@ final class CustomerDirectory
             ."select {$columns} from tenants where tenants.owner_user_id in (select id from owners){$notCode} "
             ."union all select {$columns} from tenants where {$words}"
             ." and (tenants.owner_user_id is null or tenants.owner_user_id not in (select id from owners)){$notCode}"
-            .($number === null ? '' : " union all select {$columns} from tenants where tenants.customer_no = ?");
+            .($number === null ? '' : " union all select {$columns} from tenants where tenants.customer_no = ?")
+            .($phone === [] ? '' : " union all select {$columns} from tenants where ("
+                .implode(' or ', array_fill(0, count($phone), 'tenants.contact_phone like ?')).')'
+                .' and (tenants.owner_user_id is null or tenants.owner_user_id not in (select id from owners))'
+                ." and not ({$words}){$notCode}");
 
         /** @var literal-string $from built from constants only; the needle goes in the bindings */
         $from = "({$sql}) as tenants";
 
-        return [$from, [$prefixes, ...$code, $prefixes, ...$code, ...$code]];
+        $phones = array_map(fn (string $fragment): string => '%'.$fragment.'%', $phone);
+
+        return [$from, [$prefixes, ...$code, $prefixes, ...$code, ...$code, ...($phone === [] ? [] : [...$phones, $prefixes, ...$code])]];
     }
 
     private static function needle(string $search): string

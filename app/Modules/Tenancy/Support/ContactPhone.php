@@ -96,7 +96,7 @@ final class ContactPhone
         $home = self::homeCode();
         $digits = str_starts_with($digits, '0') && ! str_starts_with($digits, '00') ? $home.substr($digits, 1) : ltrim($digits, '0');
         // "+84 0901…" written with its code and trunk 0: stored without the 0, as normalize() does
-        $explicit = str_starts_with(ltrim($query), '+') || str_starts_with(ltrim($query), '00');
+        $explicit = preg_match('/^[\s\p{Zs}(]*(?:\+|00)/u', $query) === 1;
         foreach (array_unique([$home, '84']) as $code) {
             if ($explicit && str_starts_with($digits, $code.'0')) {
                 $digits = $code.substr($digits, strlen($code) + 1);
