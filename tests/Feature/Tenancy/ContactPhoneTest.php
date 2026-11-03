@@ -60,6 +60,8 @@ it('refuses what is not a phone number', function (string $typed): void {
 it('reads a home number in its national form and any other as stored', function (): void {
     expect(ContactPhone::display('+84901234567'))->toBe('0901 234 567')
         ->and(ContactPhone::display('+842838123456'))->toBe('028 3812 3456')
+        ->and(ContactPhone::display('+842437123456'))->toBe('024 3712 3456')
+        ->and(ContactPhone::display('+842991234567'))->toBe('0299 123 4567')
         ->and(ContactPhone::display('+14155550132'))->toBe('+14155550132');
 });
 
@@ -68,6 +70,9 @@ it('searches by digits, a leading 0 meaning the home country, from three digits'
         ->and(ContactPhone::searchDigits('234 567'))->toBe('234567')
         ->and(ContactPhone::searchDigits('+84 90'))->toBe('8490')
         ->and(ContactPhone::searchDigits('0084 9'))->toBe('849')
+        ->and(ContactPhone::searchDigits('+84 0901'))->toBe('84901')
+        ->and(ContactPhone::searchDigits('0084 0901'))->toBe('84901')
+        ->and(ContactPhone::searchDigits('840901'))->toBe('840901')
         ->and(ContactPhone::searchDigits('09'))->toBeNull()
         ->and(ContactPhone::searchDigits('000'))->toBeNull()
         ->and(ContactPhone::searchDigits('Công ty'))->toBeNull();

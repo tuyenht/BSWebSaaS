@@ -66,10 +66,15 @@ final class ContactPhone
         }
         $national = '0'.substr($stored, strlen($home));
 
-        // a landline (11 digits with its 0: "028 3812 3456") groups 3-4-4, a mobile 4-3-3
-        return strlen($national) === 11
-            ? substr($national, 0, 3).' '.substr($national, 3, 4).' '.substr($national, 7)
-            : trim(substr($national, 0, 4).' '.substr($national, 4, 3).' '.substr($national, 7));
+        // a landline (11 digits with its 0) follows its area code: Hà Nội and Hồ Chí Minh City have two
+        // digits ("028 3812 3456"), every other province three ("0299 123 4567"); a mobile is 4-3-3
+        if (strlen($national) === 11) {
+            return in_array(substr($national, 1, 2), ['24', '28'], true)
+                ? substr($national, 0, 3).' '.substr($national, 3, 4).' '.substr($national, 7)
+                : substr($national, 0, 4).' '.substr($national, 4, 3).' '.substr($national, 7);
+        }
+
+        return trim(substr($national, 0, 4).' '.substr($national, 4, 3).' '.substr($national, 7));
     }
 
     /**
@@ -83,7 +88,16 @@ final class ContactPhone
             return null;
         }
 
-        $digits = str_starts_with($digits, '0') && ! str_starts_with($digits, '00') ? self::homeCode().substr($digits, 1) : ltrim($digits, '0');
+        $home = self::homeCode();
+        $digits = str_starts_with($digits, '0') && ! str_starts_with($digits, '00') ? $home.substr($digits, 1) : ltrim($digits, '0');
+        // "+84 0901…" written with its code and trunk 0: stored without the 0, as normalize() does
+        $explicit = str_starts_with(ltrim($query), '+') || str_starts_with(ltrim($query), '00');
+        foreach (array_unique([$home, '84']) as $code) {
+            if ($explicit && str_starts_with($digits, $code.'0')) {
+                $digits = $code.substr($digits, strlen($code) + 1);
+                break;
+            }
+        }
 
         return strlen($digits) >= 3 ? $digits : null;
     }
