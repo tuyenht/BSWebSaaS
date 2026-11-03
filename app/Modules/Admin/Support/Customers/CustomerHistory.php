@@ -22,7 +22,8 @@ use Illuminate\Support\Facades\DB;
  * customer: the browser never sees a row id, and a cursor it made up, altered or took from another
  * customer reads as the first page. However far "older" went, one render reads at most MAX_ROWS
  * rows, those just above and at the anchor. The plans' and the person's names come in the same
- * statement (joins), never a query per row.
+ * statement (joins), never a query per row; a website's name comes from the row's own meta (its
+ * name at the time), never a join or a query per row.
  */
 final class CustomerHistory
 {
@@ -36,7 +37,7 @@ final class CustomerHistory
      * rows remain, whether newer rows were left out above MAX_ROWS (the page then offers the way back
      * to the newest), and the cursor of the oldest row shown (what "older" takes).
      *
-     * @return array{rows: list<array{kind: string, from: string|null, to: string|null, reason: string|null, actor: string|null, at: string}>, more: bool, cut: bool, oldest: string|null}
+     * @return array{rows: list<array{kind: string, from: string|null, to: string|null, reason: string|null, actor: string|null, at: string, site: string|null, feature: string|null, value: bool|int|null}>, more: bool, cut: bool, oldest: string|null}
      */
     public function read(int $tenantId, string $until): array
     {
@@ -91,20 +92,23 @@ final class CustomerHistory
             ->leftJoin('plans as t', 't.id', '=', 'h.to_plan_id')
             ->leftJoin('users as u', 'u.id', '=', 'h.actor_user_id')
             ->where('h.tenant_id', $tenantId)
-            ->select(['h.id', 'h.created_at', 'h.kind', 'h.reason', 'h.from_plan_id', 'h.to_plan_id', 'h.actor_user_id',
+            ->select(['h.id', 'h.created_at', 'h.kind', 'h.reason', 'h.from_plan_id', 'h.to_plan_id', 'h.actor_user_id', 'h.meta',
                 'f.name as from_name', 't.name as to_name', 'u.name as actor_name'])
             ->orderByDesc('h.created_at')->orderByDesc('h.id');
     }
 
     /**
-     * @return array{kind: string, from: string|null, to: string|null, reason: string|null, actor: string|null, at: string}
+     * @return array{kind: string, from: string|null, to: string|null, reason: string|null, actor: string|null, at: string, site: string|null, feature: string|null, value: bool|int|null}
      */
     private static function row(object $r): array
     {
         $kind = Cast::string($r->kind ?? null);
+        $meta = is_string($r->meta ?? null) ? json_decode($r->meta, true) : null;
+        $meta = is_array($meta) ? $meta : [];
+        $value = $meta['value'] ?? null;
 
         return [
-            'kind' => $kind === TenantHistory::KIND_PLAN_CHANGED ? $kind : 'other',
+            'kind' => in_array($kind, TenantHistory::KINDS, true) ? $kind : 'other',
             // null: no plan on that side
             'from' => ($r->from_plan_id ?? null) === null ? null : Cast::string($r->from_name ?? null),
             'to' => ($r->to_plan_id ?? null) === null ? null : Cast::string($r->to_name ?? null),
@@ -112,6 +116,11 @@ final class CustomerHistory
             // null: made from the console (no person)
             'actor' => ($r->actor_user_id ?? null) === null ? null : Cast::string($r->actor_name ?? null),
             'at' => Cast::string($r->created_at ?? null),
+            // the website a change was made on, by its name then (null: not a website's change)
+            'site' => is_string($meta['site_name'] ?? null) ? $meta['site_name'] : null,
+            'feature' => is_string($meta['feature'] ?? null) ? $meta['feature'] : null,
+            // null: the override was cleared
+            'value' => is_bool($value) || is_int($value) ? $value : null,
         ];
     }
 

@@ -21,8 +21,9 @@ use Illuminate\Auth\Access\AuthorizationException;
  * `platform.entitlements.manage` (managing websites is not enough): what a website is granted is
  * the platform's call, never the website's own.
  *
- * The rules of the change itself live in OverrideSiteFeature; a refused change throws its
- * FeatureChangeRejectedException and leaves no trail.
+ * The rules of the change itself live in OverrideSiteFeature, which also writes the customer's
+ * history row naming this person; a refused change throws its FeatureChangeRejectedException and
+ * leaves no trail.
  */
 final readonly class SiteFeatures
 {
@@ -63,7 +64,7 @@ final readonly class SiteFeatures
             // What the website had before the change — its override, or what its plan gave it.
             $was = app(Entitlement::class)->featureValue($key);
 
-            app(OverrideSiteFeature::class)->handle($key, $value);
+            app(OverrideSiteFeature::class)->handle($key, $value, Cast::int($actor->getKey()));
 
             Audit::record($action, [
                 'site_id' => $siteId,

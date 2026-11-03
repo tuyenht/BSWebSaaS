@@ -18,9 +18,20 @@
     $why = 'm-0 flex items-start gap-1.5 text-small text-text-muted';
     $noPlan = __('admin.customers_no_plan');
     $historyText = function (array $h) use ($noPlan): string {
-        $what = $h['kind'] === 'plan_changed'
-            ? __('admin.customers_history_plan_changed', ['from' => $h['from'] ?? $noPlan, 'to' => $h['to'] ?? $noPlan])
-            : __('admin.customers_history_other');
+        $site = $h['site'] ?? __('admin.customers_history_a_site');
+        // a feature by its name in the registry (its key only if it was ever taken out), its value as the plan card writes it
+        $feature = $h['feature'] === null ? '' : (FeatureRegistry::all()[$h['feature']]['name'] ?? $h['feature']);
+        $what = match ($h['kind']) {
+            'plan_changed' => __('admin.customers_history_plan_changed', ['from' => $h['from'] ?? $noPlan, 'to' => $h['to'] ?? $noPlan]),
+            'customer_created' => $h['to'] === null ? __('admin.customers_history_customer_created_no_plan') : __('admin.customers_history_customer_created', ['plan' => $h['to']]),
+            'site_created' => __('admin.customers_history_site_created', ['site' => $site]),
+            'feature_overridden' => $h['value'] === null || $h['feature'] === null
+                ? __('admin.customers_history_feature_cleared', ['feature' => $feature, 'site' => $site])
+                : __('admin.customers_history_feature_overridden', ['feature' => $feature, 'site' => $site, 'value' => PlanChangePreview::format($h['feature'], $h['value'])]),
+            'suspended' => __('admin.customers_history_suspended'),
+            'resumed' => __('admin.customers_history_resumed'),
+            default => __('admin.customers_history_other'),
+        };
 
         return $h['reason'] === null ? $what : __('admin.customers_history_with_reason', ['what' => $what, 'reason' => $h['reason']]);
     };
