@@ -829,12 +829,14 @@ main:has(.hero, .sf-slider) .page__title {
     font-weight: 700;
     color: var(--sch-link, var(--color-primary-text));
     margin: 0 1.5rem 0.5rem 0;
-    transition: color 0.2s;
 }
 
+/* Hover underlines and keeps the colour: on a dark or brand colour set (light link text) a darker
+   mix would lower the contrast the set was chosen for. */
 .contact__phone:hover,
 .contact__email:hover {
-    color: color-mix(in srgb, var(--sch-link, var(--color-primary-text)) 85%, black);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
 }
 
 .contact__map {
