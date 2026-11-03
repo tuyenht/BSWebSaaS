@@ -40,7 +40,7 @@ final readonly class PageRenderer
         // The scroll-in motion script loads only on a page with a block that moves.
         $extra += $this->blocks->moves($body) ? ['sectionsScript' => true] : [];
         // The click-to-load video script loads only on a page with a video it can play.
-        $extra += self::playsVideo($body) ? ['videoScript' => true] : [];
+        $extra += self::playsVideo($body) || $this->blocks->playsRichVideo($body) ? ['videoScript' => true] : [];
         // The count-up script loads only on a page with a stats block that holds a number.
         $extra += self::countsUp($body) ? ['statsScript' => true] : [];
 

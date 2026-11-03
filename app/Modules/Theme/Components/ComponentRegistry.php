@@ -14,9 +14,22 @@ final class ComponentRegistry
     /** @var array<string, Component> */
     private array $components = [];
 
-    public function register(string $type, Component $component): void
+    /** @var array<string, true> types that render and validate but are not offered in the builder's add list */
+    private array $unlisted = [];
+
+    /**
+     * $listed false keeps a type out of the builder's add list while it still renders and
+     * validates — for a block whose editor field is not built yet, so existing bodies holding it
+     * keep working and nobody is handed a half-built field.
+     */
+    public function register(string $type, Component $component, bool $listed = true): void
     {
         $this->components[$type] = $component;
+        if ($listed) {
+            unset($this->unlisted[$type]);
+        } else {
+            $this->unlisted[$type] = true;
+        }
     }
 
     public function has(string $type): bool
@@ -47,5 +60,15 @@ final class ComponentRegistry
     public function types(): array
     {
         return array_keys($this->components);
+    }
+
+    /**
+     * The types the builder offers to add.
+     *
+     * @return list<string>
+     */
+    public function listedTypes(): array
+    {
+        return array_values(array_filter($this->types(), fn (string $type): bool => ! isset($this->unlisted[$type])));
     }
 }

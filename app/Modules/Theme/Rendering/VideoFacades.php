@@ -75,6 +75,20 @@ final readonly class VideoFacades
         return ['html' => (string) preg_replace('~</iframe\s*>~i', '', $out), 'videos' => $videos];
     }
 
+    /**
+     * Whether render() would turn at least one frame of $html into a façade — the layout loads the
+     * video script only then. Pure: no query, nothing rendered.
+     */
+    public static function plays(string $html): bool
+    {
+        if (stripos($html, '<iframe') === false) {
+            return false;
+        }
+        preg_match_all('~<iframe\b([^>]*)>~i', $html, $frames);
+
+        return array_any($frames[1], fn (string $attributes): bool => VideoEmbed::player(self::src($attributes)) !== null);
+    }
+
     /** The frame's src (entities decoded, a protocol-relative address made https), or ''. */
     private static function src(string $attributes): string
     {

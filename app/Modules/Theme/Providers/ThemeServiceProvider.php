@@ -191,7 +191,16 @@ final class ThemeServiceProvider extends ServiceProvider
                 'label' => ['type' => 'text'],
             ]],
         ],
+        // Formatted text ("Văn bản có định dạng", ADR-19): `html` is the one prop type printed without
+        // escaping, allowed on this block only. Every write runs it through RichTextSanitizer::cms (the
+        // body casts); images name a library picture by id and get their address when the page is drawn.
+        'richtext_html' => [
+            'html' => ['type' => 'html'],
+        ],
     ];
+
+    /** Types that render and validate but stay out of the builder's add list until their editor field exists. */
+    private const array UNLISTED = ['richtext_html'];
 
     #[\Override]
     public function register(): void
@@ -200,7 +209,7 @@ final class ThemeServiceProvider extends ServiceProvider
             $registry = new ComponentRegistry;
 
             foreach (self::SECTION_SCHEMAS as $type => $schema) {
-                $registry->register($type, new SectionComponent("theme::sections.{$type}", $schema));
+                $registry->register($type, new SectionComponent("theme::sections.{$type}", $schema), ! in_array($type, self::UNLISTED, true));
             }
 
             return $registry;

@@ -28,6 +28,13 @@ final readonly class ValidPageJson implements ValidationRule
     /** Serialized body byte ceiling (~256KB) — keeps entry_translations.body + render sane. */
     private const int MAX_BYTES = 262_144;
 
+    /**
+     * Characters one formatted-text (`html`) prop may hold. Product descriptions have no cap of their
+     * own to reuse, so this is named here: room for a long article with its markup (about 15,000
+     * words), well inside MAX_BYTES for mostly-ASCII markup; the whole-body ceiling still applies.
+     */
+    public const int MAX_HTML_CHARS = 100_000;
+
     public function __construct(private ComponentRegistry $registry) {}
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
@@ -78,6 +85,13 @@ final readonly class ValidPageJson implements ValidationRule
             }
 
             $schema = $this->registry->schemaFor($type);
+            $html = $this->htmlViolation($block['props'], $schema);
+            if ($html !== null) {
+                $fail($html);
+
+                return;
+            }
+
             if (! $this->urlPropsSafe($block['props'], $schema)) {
                 $fail(__('entries.err_block_link_invalid', ['type' => $type]));
 
@@ -139,6 +153,13 @@ final readonly class ValidPageJson implements ValidationRule
             // A url prop, if present, must be a safe string; a non-string would also crash the
             // e()'d href render (TypeError), so reject it here too.
             return $value === null || (is_string($value) && $this->isSafeUrl($value));
+        }
+
+        if (($spec['type'] ?? null) === 'html') {
+            // Printed WITHOUT escaping, so it is named explicitly rather than left to the scalar
+            // default: null or a string, nothing else. Structure only — the HTML itself is cleaned
+            // by the body casts on every write (ADR-19), never here.
+            return $value === null || is_string($value);
         }
 
         if (($spec['type'] ?? null) === 'image') {
@@ -269,6 +290,49 @@ final readonly class ValidPageJson implements ValidationRule
             if ($kind === 'textarea' && is_int($spec['max_lines'] ?? null) && is_string($value)
                 && count(array_filter(preg_split('/\R/u', $value) ?: [], static fn (string $line): bool => trim($line) !== '')) > $spec['max_lines']) {
                 return __('entries.err_block_lines_max', ['type' => $type, 'max' => $spec['max_lines']]);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The plain-language message for the first `html` prop (at any depth, through list `of`) that is
+     * neither null nor a string, or longer than MAX_HTML_CHARS; null when all are fine.
+     */
+    private function htmlViolation(mixed $data, mixed $schema): ?string
+    {
+        if (! is_array($schema)) {
+            return null;
+        }
+
+        foreach ($schema as $prop => $spec) {
+            if (! is_array($spec)) {
+                continue;
+            }
+            $value = is_array($data) ? ($data[$prop] ?? null) : null;
+
+            if (($spec['type'] ?? null) === 'html') {
+                if ($value !== null && ! is_string($value)) {
+                    return __('entries.err_block_html_invalid');
+                }
+                if (is_string($value) && mb_strlen($value) > self::MAX_HTML_CHARS) {
+                    return __('entries.err_block_html_too_long', ['max' => self::MAX_HTML_CHARS]);
+                }
+
+                continue;
+            }
+
+            $of = $spec['of'] ?? null;
+            if (($spec['type'] ?? null) !== 'list' || ! is_array($of) || ! is_array($value)) {
+                continue;
+            }
+            $scalarOf = isset($of['type']) && is_string($of['type']);
+            foreach ($value as $item) {
+                $found = $scalarOf ? $this->htmlViolation(['item' => $item], ['item' => $of]) : $this->htmlViolation($item, $of);
+                if ($found !== null) {
+                    return $found;
+                }
             }
         }
 

@@ -1022,6 +1022,198 @@ main:has(.hero, .sf-slider) .page__title {
     margin-bottom: 0.75rem;
 }
 
+/* ───── Formatted text section (richtext_html) ───────────────────────────── */
+/* A readable 48rem column of sanitized HTML (ADR-19). Pictures carry their width (share of the
+   column) and alignment as classes printed by RichHtml; tables scroll inside themselves so the page
+   never scrolls sideways. Links are underlined: in running text colour alone would not mark them. */
+.sf-prose {
+    max-width: 48rem;
+    margin-inline: auto;
+    padding: 2.5rem 1.5rem;
+    color: var(--sch-body, var(--color-text));
+    line-height: 1.75;
+    overflow-wrap: break-word;
+    /* the picture rules below follow the column's width, and floated pictures stay inside it */
+    container: prose / inline-size;
+    display: flow-root;
+}
+
+@media (min-width: 1024px) {
+    .sf-prose {
+        padding: 3rem 2rem;
+    }
+}
+
+.sf-prose > :first-child {
+    margin-top: 0;
+}
+
+.sf-prose :is(h2, h3, h4, h5) {
+    color: var(--sch-head, var(--color-text-strong));
+    font-weight: 700;
+    line-height: 1.3;
+    margin: 1.75rem 0 0.625rem;
+}
+
+.sf-prose h2 {
+    font-size: clamp(1.25rem, 2.2vw, 1.5rem);
+}
+
+.sf-prose h3 {
+    font-size: 1.25rem;
+}
+
+.sf-prose h4 {
+    font-size: 1.125rem;
+}
+
+.sf-prose h5 {
+    font-size: 1rem;
+}
+
+.sf-prose :is(p, ul, ol, blockquote, table, figure) {
+    margin: 0 0 0.875rem;
+}
+
+.sf-prose :is(ul, ol) {
+    padding-left: 1.5rem;
+}
+
+.sf-prose ul {
+    list-style: disc;
+}
+
+.sf-prose ol {
+    list-style: decimal;
+}
+
+.sf-prose a {
+    color: var(--color-primary-text);
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+}
+
+.sf-prose blockquote {
+    border-left: 4px solid var(--color-primary);
+    padding-left: 1rem;
+    font-style: italic;
+}
+
+.sf-prose table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    border-collapse: collapse;
+}
+
+.sf-prose :is(th, td) {
+    border: 1px solid color-mix(in srgb, var(--color-text) 35%, transparent);
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    vertical-align: top;
+}
+
+.sf-prose hr {
+    border: 0;
+    border-top: 1px solid color-mix(in srgb, var(--color-text) 35%, transparent);
+    margin: 1.75rem 0;
+}
+
+.sf-prose figcaption {
+    margin-top: 0.375rem;
+    font-size: 0.875rem;
+    text-align: center;
+}
+
+.sf-prose figure:has(> .sf-prose__img--left) figcaption {
+    text-align: left;
+}
+
+.sf-prose figure:has(> .sf-prose__img--right) figcaption {
+    text-align: right;
+}
+
+.sf-prose__img {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    margin-inline: auto;
+    border-radius: 0.375rem;
+}
+
+.sf-prose__img--left {
+    margin-inline: 0 auto;
+}
+
+.sf-prose__img--right {
+    margin-inline: auto 0;
+}
+
+/* Width as a share of the text column — the editor's sizes. */
+.sf-prose__img--lg {
+    width: 75%;
+}
+
+.sf-prose__img--md {
+    width: 50%;
+}
+
+.sf-prose__img--sm {
+    width: 33.333%;
+}
+
+/* A medium or small picture set left or right lets the text run round it while the column is at
+   least 600px wide, as in the editor; headings, tables and rules start below it. Narrower, it
+   stands alone, half the column wide and centred. */
+@container prose (min-width: 600px) {
+    .sf-prose figure:has(> :is(.sf-prose__img--md, .sf-prose__img--sm).sf-prose__img--left) {
+        float: left;
+        margin: 0.25rem 1.5rem 1rem 0;
+    }
+
+    .sf-prose figure:has(> :is(.sf-prose__img--md, .sf-prose__img--sm).sf-prose__img--right) {
+        float: right;
+        margin: 0.25rem 0 1rem 1.5rem;
+    }
+
+    .sf-prose figure:has(> .sf-prose__img--md:is(.sf-prose__img--left, .sf-prose__img--right)) {
+        width: 50%;
+    }
+
+    .sf-prose figure:has(> .sf-prose__img--sm:is(.sf-prose__img--left, .sf-prose__img--right)) {
+        width: 33.333%;
+    }
+
+    .sf-prose figure > :is(.sf-prose__img--md, .sf-prose__img--sm):is(.sf-prose__img--left, .sf-prose__img--right) {
+        width: 100%;
+    }
+}
+
+@container prose (max-width: 599.98px) {
+    .sf-prose :is(.sf-prose__img--md, .sf-prose__img--sm):is(.sf-prose__img--left, .sf-prose__img--right) {
+        width: 50%;
+        margin-inline: auto;
+    }
+
+    .sf-prose figure:has(> :is(.sf-prose__img--md, .sf-prose__img--sm):is(.sf-prose__img--left, .sf-prose__img--right)) figcaption {
+        text-align: center;
+    }
+}
+
+.sf-prose :is(h2, h3, h4, h5, table, hr, .sf-video) {
+    clear: both;
+}
+
+/* Beside a floated picture, a quote's bar and a list's markers stay next to it, not behind it. */
+.sf-prose :is(blockquote, ul, ol) {
+    display: flow-root;
+}
+
+.sf-prose .sf-video {
+    margin-block: var(--space-m, 1.5rem);
+}
+
 /* ───── Latest posts section ─────────────────────────────────────────────── */
 .latest-posts {
     max-width: 80rem;
@@ -3343,12 +3535,12 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 }
 
 /* Width of the content: the block's own column, or the container inside a full-bleed band. */
-.sf-s--w-narrow > :is(.about, .features, .entry-grid, .contact, .partners, .richtext, .latest-posts, .lead-form),
+.sf-s--w-narrow > :is(.about, .features, .entry-grid, .contact, .partners, .richtext, .sf-prose, .latest-posts, .lead-form),
 .sf-s--w-narrow :is(.sf-container, .hero__content, .page-band__content, .sf-slide__content) {
     max-width: 48rem;
 }
 
-.sf-s--w-full > :is(.about, .features, .entry-grid, .contact, .partners, .richtext, .latest-posts, .lead-form),
+.sf-s--w-full > :is(.about, .features, .entry-grid, .contact, .partners, .richtext, .sf-prose, .latest-posts, .lead-form),
 .sf-s--w-full :is(.sf-container, .hero__content, .page-band__content) {
     max-width: none;
 }

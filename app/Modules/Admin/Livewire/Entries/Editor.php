@@ -227,7 +227,7 @@ final class Editor extends Component
 
     public function addBlock(string $type): void
     {
-        if (! app(ComponentRegistry::class)->has($type)) {
+        if (! in_array($type, app(ComponentRegistry::class)->listedTypes(), true)) {
             $this->addError('blocks', __('entries.block_unsupported', ['type' => $type]));
 
             return;
@@ -864,7 +864,7 @@ final class Editor extends Component
         $workflow = $this->governingWorkflow();
 
         return view('admin::livewire.entries.editor', [
-            'availableTypes' => app(ComponentRegistry::class)->types(),
+            'availableTypes' => app(ComponentRegistry::class)->listedTypes(),
             'schemas' => $schemas,
             'categories' => $this->type === 'post' ? $this->availableCategories() : [],
             'urls' => $urls,
