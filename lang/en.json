@@ -1310,6 +1310,7 @@
     "admin.wf.none": "No workflow — anyone with publish rights posts directly.",
     "admin.wf.view_steps": "View the step map",
     "admin.wf.enabled": "On",
+    "admin.wf.switch_label": "Review before publishing for :name · :state",
     "admin.wf.disabled": "Off",
     "admin.wf.pending_count": ":count awaiting review",
     "admin.wf.choose": "Choose workflow",

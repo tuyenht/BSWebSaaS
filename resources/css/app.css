@@ -373,6 +373,7 @@
    Both draw the track from the same custom properties. */
 @utility switch {
     --switch-knob: var(--color-text-muted);
+    position: relative;
     flex-shrink: 0;
     width: 2.75rem;
     height: 1.5rem;

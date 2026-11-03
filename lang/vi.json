@@ -1310,6 +1310,7 @@
     "admin.wf.none": "Chưa có quy trình — ai có quyền đăng sẽ đăng thẳng.",
     "admin.wf.view_steps": "Xem sơ đồ các bước",
     "admin.wf.enabled": "Đang bật",
+    "admin.wf.switch_label": "Duyệt trước khi đăng cho :name · :state",
     "admin.wf.disabled": "Đã tắt",
     "admin.wf.pending_count": ":count bài đang chờ",
     "admin.wf.choose": "Chọn quy trình",

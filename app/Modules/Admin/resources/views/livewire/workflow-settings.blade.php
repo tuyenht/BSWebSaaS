@@ -111,8 +111,7 @@
                                 </x-bs-admin::button>
                                 @if ($row['template'] !== null)
                                     @if ($row['active'] && $row['pending'] > 0)
-                                        <button type="button" role="switch" aria-checked="true" aria-label="{{ $row['label'] }}"
-                                                class="switch hit-area"
+                                        <button type="button" role="switch" class="switch hit-area" aria-checked="true" aria-label="{{ __('admin.wf.switch_label', ['name' => $row['label'], 'state' => __('admin.wf.enabled')]) }}"
                                                 title="{{ __('admin.wf.turn_off') }}"
                                                 x-on:click="$bsConfirm({
                                                     icon: 'warning',
@@ -121,8 +120,7 @@
                                                     cancel: @js(__('admin.cancel')),
                                                 }).then(ok => ok && $wire.toggle(@js($row['key'])))"></button>
                                     @else
-                                        <button type="button" role="switch" aria-checked="{{ $row['active'] ? 'true' : 'false' }}" aria-label="{{ $row['label'] }}"
-                                                class="switch hit-area"
+                                        <button type="button" role="switch" class="switch hit-area" aria-checked="{{ $row['active'] ? 'true' : 'false' }}" aria-label="{{ __('admin.wf.switch_label', ['name' => $row['label'], 'state' => __($row['active'] ? 'admin.wf.enabled' : 'admin.wf.disabled')]) }}"
                                                 title="{{ $row['active'] ? __('admin.wf.turn_off') : __('admin.wf.turn_on') }}"
                                                 wire:click="toggle(@js($row['key']))" wire:loading.attr="disabled"></button>
                                     @endif

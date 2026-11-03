@@ -22,13 +22,17 @@
  */
 
 use App\Modules\Admin\Livewire\Platform\Audit\CleanupDialog;
+use App\Modules\Admin\Livewire\Settings\Domains as DomainSettings;
+use App\Modules\Admin\Livewire\WorkflowSettings;
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\ContentSection;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -149,5 +153,28 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         file_put_contents($dir.'/'.$name.'.html', str_replace([$platform, '</body>'], ['http://'.ADMIN_PREVIEW_HOST, $open.'</body>'], $html));
     }
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 6);
+    // The approval workflow settings, one collection on and one off, as the platform super-admin.
+    app(Tenancy::class)->enter(1, function () use ($top): void {
+        foreach ([['pv-news', 'Dự án', 'du-an-pv', true], ['pv-jobs', 'Tuyển dụng', 'tuyen-dung-pv', false]] as [$key, $label, $slug, $on]) {
+            $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
+            $category->translations()->create(['locale' => 'vi', 'name' => $label, 'slug' => $slug]);
+            ContentSection::query()->create(['key' => $key, 'label' => $label, 'entry_type' => 'post', 'taxonomy_id' => $category->id,
+                'permission_prefix' => 'entries', 'sort_order' => 1]);
+            Livewire::actingAs($top)->test(WorkflowSettings::class)->call('apply', $key, 'admin_approval', $on)->assertHasNoErrors();
+        }
+    });
+    $this->flushSession();
+    $html = $this->actingAs($top)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/workflows')->assertOk()->getContent();
+    expect(substr_count($html, 'role="switch"'))->toBe(2);
+    file_put_contents($dir.'/workflows.html', $html);
+
+    // The domain screen with its "add a name" dialog open on the first step (the www switch).
+    $this->flushSession();
+    $page = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/domains')->assertOk()->getContent();
+    $open = app(Tenancy::class)->enter(1, fn (): string => Livewire::actingAs($owner)->test(DomainSettings::class)
+        ->call('openAdd')->set('addName', 'congtydemo.vn')->assertSet('addOpen', true)->html());
+    expect($open)->toContain('role="switch"');
+    file_put_contents($dir.'/domains-add.html', str_replace('</body>', $open.'</body>', $page));
+
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 8);
 });

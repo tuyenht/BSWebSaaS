@@ -44,7 +44,8 @@
                 <x-bs-admin::button variant="outline" color="secondary" autofocus wire:click="{{ $cancel }}">{{ __('admin.cancel') }}</x-bs-admin::button>
                 <x-bs-admin::button :color="$danger ? 'danger' : 'primary'" wire:click="{{ $confirm }}">
                     @if ($danger)<x-bs-admin::icon name="ri-delete-bin" class="size-[calc(1rem+var(--user-text-boost))]" />@endif
-                    <span>{{ $ok }}</span>
+                    {{-- a host fills its labels only when it opens the dialog: closed, the button still has a name --}}
+                    <span>{{ $ok !== '' ? $ok : __('admin.confirm') }}</span>
                 </x-bs-admin::button>
             </div>
         </div>
