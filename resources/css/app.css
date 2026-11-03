@@ -303,8 +303,9 @@
     min-height: var(--spacing-control-row);
     padding-inline: 0.5rem;
     border-radius: 0.25rem;
-    font-size: var(--text-sm);
-    line-height: var(--text-sm--line-height);
+    /* Body text, so the numbers grow with the user's text size like the rest of the list foot. */
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
     transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke;
     transition-timing-function: var(--default-transition-timing-function);
     transition-duration: var(--default-transition-duration);
