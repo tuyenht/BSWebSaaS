@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Support\Customers\CustomerDirectory;
+use App\Modules\Tenancy\Models\Plan;
 use App\Modules\Tenancy\Support\CustomerCode;
 use Illuminate\Support\Facades\DB;
 
@@ -57,6 +58,7 @@ afterEach(function (): void {
     seedTenancy();
     $admin = DB::connection('pgsql_admin');
     $admin->statement("delete from users where email like 'kh-budget-%'");
+    $admin->statement("delete from plans where key = 'kh-budget'");
     // fresh statistics, so later tests are not planned for 50,000 rows that are gone
     $admin->statement('analyze users');
     $admin->statement('analyze tenants');
@@ -174,3 +176,67 @@ it('plans a one-letter search and a search by number on the indexes, never a ful
         expect($indexes)->toContain('users_name_fold_words_index', 'tenants_name_fold_words_index');
     }
 })->with(['one letter' => 'b', 'the letter every owner has' => 'v', 'a number' => '#', 'a phone in short groups' => '09 01 23']);
+
+it('plans the whole list, newest first, on the order index: no read of every customer', function (string $status, bool $planned): void {
+    $plans = [];
+    if ($planned) {
+        // one customer in three on the first plan, so the plan filter narrows the list
+        $plan = Plan::query()->create(['key' => 'kh-budget', 'name' => 'Gói đo', 'is_active' => true, 'sort_order' => 1]);
+        DB::connection('pgsql_admin')->statement("update tenants set plan_id = ? where ulid like 'K%' and customer_no % 3 = 0", [$plan->id]);
+        DB::connection('pgsql_admin')->statement('analyze tenants');
+        $plans = [$plan->key];
+    }
+    $sent = [];
+    DB::listen(function ($query) use (&$sent): void {
+        if (preg_match("/order by coalesce\\(tenants\\.created_at, '-infinity'\\) (asc|desc)/", $query->sql) === 1) {
+            $sent[] = ['sql' => $query->sql, 'bindings' => $query->connection->prepareBindings($query->bindings)];
+        }
+    });
+    $directory = app(CustomerDirectory::class);
+    $first = $directory->page('', $status, $plans, 20, '', '');
+    // an older page (the keyset after the first page's last row), then the newer page back from it
+    $older = $directory->page('', $status, $plans, 20, (string) $first['older'], '');
+    $directory->page('', $status, $plans, 20, '', (string) $older['newer']);
+    expect($sent)->toHaveCount(3)
+        ->and($first['rows'])->toHaveCount(20)
+        ->and($older['rows'])->toHaveCount(20);
+
+    foreach ($sent as $i => $statement) {
+        $nodes = [];
+        $walk = function (array $node) use (&$walk, &$nodes): void {
+            $nodes[] = [(string) $node['Node Type'], (string) ($node['Relation Name'] ?? ''), (string) ($node['Index Name'] ?? ''), (string) ($node['Index Cond'] ?? '')];
+            foreach ($node['Plans'] ?? [] as $child) {
+                $walk($child);
+            }
+        };
+        $plan = (array) DB::selectOne('EXPLAIN (FORMAT JSON) '.$statement['sql'], $statement['bindings']);
+        $walk(json_decode((string) reset($plan), true)[0]['Plan']);
+        $report = (string) json_encode($nodes);
+        $ordered = array_values(array_filter($nodes, fn (array $n): bool => $n[2] === 'tenants_listing_order_index'));
+
+        expect($ordered)->not->toBe([], $report)
+            ->and(array_filter($nodes, fn (array $n): bool => $n[0] === 'Seq Scan' && $n[1] === 'tenants'))->toBe([], $report);
+        if ($i > 0) {
+            // the keyset starts the index read where the page begins, not a filter over every row
+            expect(str_contains($ordered[0][3], 'COALESCE(created_at'))->toBeTrue($report);
+        }
+    }
+})->with([
+    'every customer' => ['', false],
+    'the active ones' => ['active', false],
+    'the suspended ones' => ['suspended', false],
+    'one plan' => ['', true],
+]);
+
+it('reads the whole list\'s totals behind a search once, not on every search typed', function (): void {
+    $directory = app(CustomerDirectory::class);
+    $first = $directory->baseCounts();
+    DB::connection('pgsql_admin')->table('tenants')->where('name', 'like', '% 31337')->update(['status' => 'suspended']);
+
+    $live = $directory->counts('', [])['groups'];
+
+    expect($directory->baseCounts())->toBe($first)
+        ->and($live['suspended'])->toBe($first['suspended'] + 1)
+        ->and($first['all'])->toBeGreaterThanOrEqual(50000)
+        ->and($first['all'])->toBe($first['active'] + $first['suspended']);
+});

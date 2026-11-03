@@ -157,7 +157,7 @@ final class Index extends Component
                     'planCounts' => $page['counts']['plans'],
                     // "N trong M": M is the same group with neither the search nor the plans (read
                     // with the page's own counts when there is no search)
-                    'baseCounts' => $narrowed ? ($page['base'] ?? $directory->counts('', [])['groups']) : null,
+                    'baseCounts' => $narrowed ? self::atLeast($page['base'] ?? $directory->baseCounts(), $page['counts']['groups']) : null,
                 ];
             });
         } catch (QueryException $e) {
@@ -212,6 +212,22 @@ final class Index extends Component
     private static function known(array $values, array $known): array
     {
         return array_values(array_intersect($known, array_filter($values, 'is_string')));
+    }
+
+    /**
+     * The whole list's totals may be up to a few seconds old (cached): never show fewer than the
+     * page itself counts ("N trong M" with N > M).
+     *
+     * @param  array{all: int, active: int, suspended: int}  $base
+     * @param  array{all: int, active: int, suspended: int}  $counts
+     * @return array{all: int, active: int, suspended: int}
+     */
+    private static function atLeast(array $base, array $counts): array
+    {
+        $active = max($base['active'], $counts['active']);
+        $suspended = max($base['suspended'], $counts['suspended']);
+
+        return ['all' => max($base['all'], $active + $suspended), 'active' => $active, 'suspended' => $suspended];
     }
 
     private static function ulidOr(string $value): string

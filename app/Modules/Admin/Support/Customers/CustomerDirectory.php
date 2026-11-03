@@ -12,6 +12,9 @@ use App\Modules\Tenancy\Models\Tenant;
 use App\Modules\Tenancy\Support\ContactPhone;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Cache;
+use Throwable;
 
 /**
  * Reads the platform's customer list (design 03 "Khách hàng"). `tenants`, `users`, `sites` and
@@ -43,6 +46,9 @@ use Illuminate\Database\Eloquent\Collection;
 final class CustomerDirectory
 {
     public const array STATUSES = ['active', 'suspended'];
+
+    /** How long the whole list's status counts behind a search are reused (baseCounts). */
+    public const int BASE_COUNTS_SECONDS = 30;
 
     /** @var list<int> */
     public const array PER_PAGE = [10, 20, 50];
@@ -156,6 +162,32 @@ final class CustomerDirectory
             'counts' => $counts,
             'base' => $base,
         ];
+    }
+
+    /**
+     * The status groups of the whole list (no search, no plans): the "M" of a search's "N trong
+     * M". A count over every customer (about 9 ms at 50,000), so it is read once per
+     * BASE_COUNTS_SECONDS for every search typed, not on each keystroke; a customer added or
+     * suspended meanwhile shows in it at the latest that much later. The key carries a version:
+     * a value cached in another shape by an earlier deploy must never be read as this one.
+     *
+     * @return array{all: int, active: int, suspended: int}
+     */
+    public function baseCounts(): array
+    {
+        try {
+            /** @var array{all: int|string, active: int|string, suspended: int|string} $groups */
+            $groups = Cache::remember('admin:customers:base-counts:v1', self::BASE_COUNTS_SECONDS, fn (): array => $this->counts('', [])['groups']);
+        } catch (QueryException $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            // the cache store is down: count live rather than fail the list
+            report($e);
+            $groups = $this->counts('', [])['groups'];
+        }
+
+        // a cache store may hand numbers back as strings
+        return ['all' => (int) $groups['all'], 'active' => (int) $groups['active'], 'suspended' => (int) $groups['suspended']];
     }
 
     /**
