@@ -124,6 +124,12 @@ describe('validation', function (): void {
 });
 
 describe('helpers', function (): void {
+    it('takes the first letter of a name with its accent, also from a decomposed name', function (): void {
+        expect(SectionProps::initial(' đức '))->toBe('Đ')
+            ->and(SectionProps::initial("A\u{0301}nh"))->toBe('Á')
+            ->and(SectionProps::initial(''))->toBe('');
+    });
+
     it('prints the price in whole dong the Vietnamese way, and nothing for an unset one', function (): void {
         expect(SectionProps::price(1500000))->toBe("1.500.000\u{A0}₫")
             ->and(SectionProps::price('990000'))->toBe("990.000\u{A0}₫")

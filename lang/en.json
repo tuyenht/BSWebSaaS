@@ -1496,7 +1496,7 @@
     "entries.opt_variant_grid-2": "2 columns",
     "entries.opt_variant_grid-2x2": "2 by 2 grid",
     "entries.opt_variant_row": "One row",
-    "entries.opt_variant_pill": "Pills",
+    "entries.opt_variant_pill": "Rounded buttons",
     "entries.opt_bg_none": "None",
     "entries.opt_bg_surface": "White background",
     "entries.opt_bg_tint": "Light background",

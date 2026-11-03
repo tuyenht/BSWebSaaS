@@ -86,7 +86,11 @@ final class SectionProps
     /** The first letter of a name, uppercase: the stand-in for a missing photo. */
     public static function initial(string $name): string
     {
-        return mb_strtoupper(mb_substr(trim($name), 0, 1));
+        // Composed first, so a name pasted in decomposed form ("A" + combining accent) keeps its accent.
+        $name = trim($name);
+        $composed = \Normalizer::normalize($name, \Normalizer::FORM_C);
+
+        return mb_strtoupper(mb_substr(is_string($composed) ? $composed : $name, 0, 1));
     }
 
     /**
