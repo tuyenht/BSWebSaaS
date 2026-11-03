@@ -7,12 +7,15 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 /*
  * A customer's contact phone (tenants.contact_phone): staff type it however they dial it, it is
  * stored in one international form (+84901234567) so a search by digits and a tel: link work the
  * same for every customer, and staff read it back in the national form ("0901 234 567").
  */
+
+const CONTACT_PHONE_MIGRATION = 'migrations/2045_01_01_000000_add_contact_phone_to_tenants.php';
 
 beforeEach(function (): void {
     DB::connection('pgsql_admin')->statement('truncate tenant_probes, domains, sites, tenants restart identity cascade');
@@ -29,6 +32,8 @@ it('stores every way a Vietnamese number is typed in one form', function (string
     '00 prefix' => ['0084 901234567', '+84901234567'],
     'landline' => ['(028) 3812 3456', '+842838123456'],
     'surrounding spaces' => ['  0901234567 ', '+84901234567'],
+    'no-break spaces from a copy' => ["0901\u{00A0}234\u{2009}567", '+84901234567'],
+    'bracketed country code' => ['(+84) 901 234 567', '+84901234567'],
     'another country keeps its code' => ['+1 (415) 555-0132', '+14155550132'],
 ]);
 
@@ -44,6 +49,12 @@ it('refuses what is not a phone number', function (string $typed): void {
     'plus in the middle' => ['0901+234567'],
     'extension text' => ['0901234567 ext 12'],
     'too long overall' => ['+1234567890123456'],
+    'a mobile with a digit too many' => ['0901 2345 678'],
+    'a landline with a digit too few' => ['028 381 2345'],
+    'the old 01x mobile prefix' => ['0123 456 789'],
+    'two trunk zeros' => ['+84 0 0901234567'],
+    'a hotline' => ['1900 123456'],
+    'country code without plus' => ['84901234567'],
 ]);
 
 it('reads a home number in its national form and any other as stored', function (): void {
@@ -63,12 +74,14 @@ it('searches by digits, a leading 0 meaning the home country, from three digits'
 });
 
 it('takes the home country from config, so another market changes no code', function (): void {
-    config(['customers.phone_country_code' => '66']);
+    config(['customers.phone_country_code' => 66]);
 
     expect(ContactPhone::normalize('081 234 5678'))->toBe('+66812345678')
         ->and(ContactPhone::display('+66812345678'))->toBe('0812 345 678')
         ->and(ContactPhone::display('+84901234567'))->toBe('+84901234567')
-        ->and(ContactPhone::searchDigits('081'))->toBe('6681');
+        ->and(ContactPhone::searchDigits('081'))->toBe('6681')
+        ->and(ContactPhone::normalize('+84 0901 234 567'))->toBe('+84901234567')
+        ->and(ContactPhone::normalize('+84 090 123 456'))->toBeNull();
 });
 
 it('gives staff a plain message when the number cannot be used, and allows none', function (): void {
@@ -100,7 +113,24 @@ it('lets the database refuse any other shape, whichever code writes', function (
     ]))->toThrow(QueryException::class, 'tenants_contact_phone_e164_check');
 })->with(['national form' => ['0901234567'], 'spaces' => ['+84 901 234 567'], 'too short' => ['+8490']]);
 
-it('refuses a typed number that is not a phone through the model too', function (): void {
-    expect(fn () => Tenant::query()->create(['name' => 'Bad', 'contact_phone' => 'call me']))
-        ->toThrow(QueryException::class, 'tenants_contact_phone_e164_check');
+it('refuses through the model what is not a phone, even in the stored shape', function (string $typed): void {
+    expect(fn () => Tenant::query()->create(['name' => 'Bad', 'contact_phone' => $typed]))
+        ->toThrow(ValidationException::class, __('customers.phone_invalid'));
+
+    expect(Tenant::query()->count())->toBe(0);
+})->with(['words' => ['call me'], 'a +84 number too short' => ['+8490123456']]);
+
+it('runs the migration again without a change', function (): void {
+    $migration = require database_path(CONTACT_PHONE_MIGRATION);
+    $original = DB::getDefaultConnection();
+    DB::setDefaultConnection('pgsql_admin');
+    try {
+        $migration->up();
+    } finally {
+        DB::setDefaultConnection($original);
+    }
+
+    expect(DB::connection('pgsql_admin')->scalar(
+        "SELECT count(*) FROM pg_constraint WHERE conrelid = 'tenants'::regclass AND conname = 'tenants_contact_phone_e164_check'"
+    ))->toBe(1);
 });

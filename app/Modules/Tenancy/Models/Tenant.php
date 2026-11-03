@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Validation\ValidationException;
 
 /**
  * GLOBAL table (D6). A customer; owns 1..N sites.
@@ -54,8 +55,8 @@ final class Tenant extends Model
 
     /**
      * Stores what staff typed in its one international form; a blank value clears it. A value that
-     * is not a phone number is kept as typed so the column's CHECK refuses it loudly (validate with
-     * ContactPhoneRule first to give the user a plain message).
+     * is not a phone number is refused with the same plain message as ContactPhoneRule (validate with
+     * the rule first so the form shows it beside the field), never saved as typed.
      *
      * @return Attribute<string|null, string|null>
      */
@@ -66,7 +67,8 @@ final class Tenant extends Model
                 return null;
             }
 
-            return ContactPhone::normalize($value) ?? $value;
+            return ContactPhone::normalize($value)
+                ?? throw ValidationException::withMessages(['contact_phone' => __('customers.phone_invalid')]);
         });
     }
 
