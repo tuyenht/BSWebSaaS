@@ -345,6 +345,11 @@ it('never shows more found than the whole list holds while its totals are cached
 
     expect($page->viewData('counts'))->toBe(['all' => 1, 'active' => 1, 'suspended' => 0])
         ->and($page->viewData('baseCounts'))->toBe(['all' => 1, 'active' => 1, 'suspended' => 0]);
+
+    // each group is raised on its own, and the whole list is still the sum of its groups
+    Cache::put('admin:customers:base-counts:v1', ['all' => 5, 'active' => 5, 'suspended' => 0], CustomerDirectory::BASE_COUNTS_SECONDS);
+    khCustomer('An Bình', ['status' => 'suspended']);
+    expect($page->set('search', 'an ')->viewData('baseCounts'))->toBe(['all' => 6, 'active' => 5, 'suspended' => 1]);
 });
 
 it('counts the whole list live when the cache store is down', function (): void {

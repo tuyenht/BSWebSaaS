@@ -58,6 +58,7 @@ afterEach(function (): void {
     seedTenancy();
     $admin = DB::connection('pgsql_admin');
     $admin->statement("delete from users where email like 'kh-budget-%'");
+    $admin->statement("delete from plans where key = 'kh-budget'");
     // fresh statistics, so later tests are not planned for 50,000 rows that are gone
     $admin->statement('analyze users');
     $admin->statement('analyze tenants');

@@ -224,7 +224,10 @@ final class Index extends Component
      */
     private static function atLeast(array $base, array $counts): array
     {
-        return ['all' => max($base['all'], $counts['all']), 'active' => max($base['active'], $counts['active']), 'suspended' => max($base['suspended'], $counts['suspended'])];
+        $active = max($base['active'], $counts['active']);
+        $suspended = max($base['suspended'], $counts['suspended']);
+
+        return ['all' => max($base['all'], $active + $suspended), 'active' => $active, 'suspended' => $suspended];
     }
 
     private static function ulidOr(string $value): string
