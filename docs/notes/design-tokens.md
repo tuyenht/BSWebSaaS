@@ -64,7 +64,8 @@ Luật:
 | `--color-border` · `--color-border-strong` · `--color-border-soft` | Vạch chia (trang trí) | miễn |
 | `--color-border-input` | Viền ô nhập, nút viền | ≥ 3:1 |
 | `--color-primary` | Nền màu thương hiệu (nút chính, huy hiệu) | `on-primary` trên nó ≥ 4,5:1 |
-| `--color-on-primary` | Chữ / biểu tượng trên `primary` | PHP chọn trắng hay `--color-dark`, cái nào đọc được. Website khách màu sáng (vàng hổ phách của An Vinh) thì là chữ tối. |
+| `--color-on-primary` | Chữ / biểu tượng trên `primary` | PHP chọn trắng hay `--color-dark`, cái nào đọc được. Website khách màu sáng (vàng hổ phách của An Vinh) thì là chữ tối. Màu thương hiệu tông giữa (cả hai dưới 4,5:1) thì chữ tối được đậm thêm; nền thương hiệu không bị đổi. |
+| `--color-primary-hover` (website khách) | Nền nút thương hiệu khi trỏ chuột | PHP dời nền ra xa màu chữ (chữ tối → nền sáng lên, chữ trắng → nền tối đi), nên chữ vẫn ≥ 4,5:1. Mỗi bộ màu có `--sch-{bộ}-pri-hover` riêng. |
 | `--color-primary-text` | Màu thương hiệu làm CHỮ, viền, liên kết | ≥ 4,5:1, có giá trị riêng cho chế độ tối |
 | `--color-primary-soft` | Nền nhạt màu thương hiệu (mục đang chọn) | `primary-text` trên nó ≥ 4,5:1 |
 | `--color-focus` | Vòng focus (Focus 1b) | ≥ 3:1 |
