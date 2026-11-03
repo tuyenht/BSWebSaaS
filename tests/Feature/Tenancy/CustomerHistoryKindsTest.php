@@ -218,6 +218,31 @@ it('records an override made from the console with no person behind it', functio
         'meta' => ['feature' => 'media.storage_mb', 'site' => 'SITEB000000000000000000001', 'site_name' => 'B', 'value' => 2000]]]);
 });
 
+it('records the overrides the site:feature and site:locale commands make, with no person behind them', function (): void {
+    seedTenancy();
+
+    $this->artisan('site:feature', ['host' => 'a.test', 'feature' => 'media.storage_mb', 'value' => '2000'])->assertSuccessful();
+    $this->artisan('site:feature', ['host' => 'a.test', 'feature' => 'media.storage_mb', '--clear' => true])->assertSuccessful();
+    $this->artisan('site:locale', ['host' => 'b.test', '--limit' => '4'])->assertSuccessful();
+
+    $meta = fn (string $site, string $name, string $feature, ?int $value): array => ['feature' => $feature, 'site' => $site, 'site_name' => $name, 'value' => $value];
+    expect(chkRows())->toBe([
+        ['tenant_id' => 1, 'kind' => 'feature_overridden', 'to_plan_id' => null, 'actor_user_id' => null, 'meta' => $meta('SITEA000000000000000000001', 'A', 'media.storage_mb', 2000)],
+        ['tenant_id' => 1, 'kind' => 'feature_overridden', 'to_plan_id' => null, 'actor_user_id' => null, 'meta' => $meta('SITEA000000000000000000001', 'A', 'media.storage_mb', null)],
+        ['tenant_id' => 1, 'kind' => 'feature_overridden', 'to_plan_id' => null, 'actor_user_id' => null, 'meta' => $meta('SITEB000000000000000000001', 'B', 'locales.max', 4)],
+    ]);
+});
+
+it('clears a stored value of an unexpected shape, and records it', function (): void {
+    seedTenancy();
+    DB::connection('pgsql_admin')->table('site_features')->insert(['site_id' => 1, 'feature_key' => 'locales.max', 'value' => json_encode('five'), 'created_at' => now(), 'updated_at' => now()]);
+
+    app(Tenancy::class)->enter(1, fn () => app(OverrideSiteFeature::class)->handle('locales.max', null));
+
+    expect(DB::connection('pgsql_admin')->table('site_features')->where('site_id', 1)->count())->toBe(0)
+        ->and(array_column(chkRows(), 'kind'))->toBe(['feature_overridden']);
+});
+
 it('records nothing for a refused override', function (): void {
     seedTenancy();
     $site = Site::query()->findOrFail(1);

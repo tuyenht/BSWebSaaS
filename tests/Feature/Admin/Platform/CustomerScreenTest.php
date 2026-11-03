@@ -522,6 +522,16 @@ it('tells every kind of change in a plain sentence, the website by its name then
     $page->assertDontSee(__('admin.customers_history_other'));
 });
 
+it('shows a website name as text, markup and all', function (): void {
+    $ulid = trim((string) DB::connection('pgsql_admin')->table('tenants')->where('id', 1)->value('ulid'));
+    khHistory(1, null, null, '', null, '2026-10-01 01:00:00+00', ['kind' => 'site_created', 'reason' => null, 'meta' => json_encode(['site' => (string) Str::ulid(), 'site_name' => '<b onmouseover="x()">Hà</b> & Co'])]);
+
+    $html = Livewire::actingAs(khStaff('billing'))->test(Detail::class, ['ulid' => $ulid])->html();
+
+    expect($html)->toContain(e('Tạo website <b onmouseover="x()">Hà</b> & Co'))
+        ->not->toContain('<b onmouseover');
+});
+
 it('reads at most a fixed number of history rows in one render, however far "older" went', function (): void {
     $pro = khPlan('pro', 'Chuyên nghiệp');
     $total = CustomerHistory::MAX_ROWS + 25;

@@ -59,12 +59,14 @@ final readonly class OverrideSiteFeature
         $stored = $row?->getAttribute('value');
         $was = is_bool($stored) || is_int($stored) ? $stored : null;
 
-        if ($was === $value) {
+        // a clear is a no-op only when there is no row at all: a stored value of an unexpected
+        // shape still goes when cleared
+        if ($value === null ? $row === null : $was === $value) {
             return $was;
         }
 
         if ($value === null) {
-            $row?->delete();
+            $row->delete();
         } else {
             SiteFeature::query()->updateOrCreate(['feature_key' => $key], ['value' => $value]);
         }
