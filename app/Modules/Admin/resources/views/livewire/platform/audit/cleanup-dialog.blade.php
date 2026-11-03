@@ -77,7 +77,7 @@
                         <legend class="float-left mb-1.5 w-full p-0 text-small font-semibold text-text-strong">{{ __('admin.audit.purge.legend') }}</legend>
                         @foreach ($removable as $m)
                             <label wire:key="audit-cleanup-{{ $m['month'] }}"
-                                   class="flex min-h-hit cursor-pointer items-start gap-2.5 rounded-md border border-border-strong px-3 py-2.5 has-checked:border-accent has-checked:bg-accent/6">
+                                   class="flex min-h-hit cursor-pointer items-start gap-2.5 rounded-md border border-border-strong px-3 py-2.5 has-checked:border-primary-text has-checked:bg-primary-text/6">
                                 <input type="radio" name="audit-cleanup-month" value="{{ $m['month'] }}" wire:model.live="month"
                                        class="mt-0.5 size-4.5 shrink-0 accent-primary">
                                 <span class="flex min-w-0 flex-1 flex-wrap items-baseline justify-between gap-x-3 [overflow-wrap:anywhere]">
