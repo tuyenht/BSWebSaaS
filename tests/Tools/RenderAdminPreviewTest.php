@@ -92,6 +92,21 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         file_put_contents($dir.'/'.$name.'.html', $html);
     }
 
+    // The page editor with blocks carrying looks, so the "Trình bày" panel under each block shows its
+    // chosen, joined and split states.
+    $page = app(Tenancy::class)->enter(1, function () use ($owner): Entry {
+        $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $owner->id]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'Dịch vụ', 'slug' => 'dich-vu', 'status' => 'draft', 'body' => ['blocks' => [
+            ['type' => 'hero', 'props' => ['heading' => 'Gia công cơ khí chính xác', 'motion' => 'fade']],
+            ['type' => 'richtext', 'props' => ['heading' => 'Năng lực', 'scheme' => 'brand', 'bg' => 'scheme', 'spacing_top' => 'l', 'spacing_bottom' => 'l', 'corner' => 'soft', 'anchor_id' => 'nang-luc']],
+            ['type' => 'richtext', 'props' => ['heading' => 'Quy trình', 'scheme' => 'brand', 'bg' => 'scheme', 'spacing_top' => 's', 'spacing_bottom' => 'xl', 'motion' => 'rise']],
+        ]]]);
+
+        return $entry;
+    });
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$page->ulid.'/edit')->assertOk()->getContent();
+    file_put_contents($dir.'/editor.html', $html);
+
     // The platform Audit log, as a support operator, with a member's row and a support sign-in row.
     DB::connection('pgsql_admin')->statement('truncate audit_logs restart identity cascade');
     $this->artisan('rbac:sync')->assertSuccessful(); // the platform roles
@@ -112,5 +127,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         file_put_contents($dir.'/'.$name.'.html', str_replace($platform, 'http://'.ADMIN_PREVIEW_HOST, $html));
     }
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 2);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 3);
 });

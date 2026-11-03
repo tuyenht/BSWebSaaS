@@ -139,6 +139,33 @@ it('makes a typed anchor a valid one and clears a blank one', function (): void 
     });
 });
 
+it('keeps an anchor with no Latin letters as typed and says how to fix it', function (): void {
+    lookEditor([['type' => 'richtext', 'props' => ['anchor_id' => 'cu']]], function (Testable $test): void {
+        $test->set('blocks.0.props.anchor_id', 'お問い合わせ')
+            ->assertSet('blocks.0.props.anchor_id', 'お問い合わせ')
+            ->assertHasErrors('blocks.0.props.anchor_id')
+            ->assertSee(__('entries.look_anchor_invalid'))
+            ->set('blocks.0.props.anchor_id', 'lien he')
+            ->assertSet('blocks.0.props.anchor_id', 'lien-he')
+            ->assertHasNoErrors('blocks.0.props.anchor_id');
+    });
+});
+
+it('numbers an anchor another block or the page layout already uses', function (): void {
+    lookEditor([['type' => 'richtext', 'props' => ['anchor_id' => 'lien-he']], ['type' => 'richtext', 'props' => []], ['type' => 'richtext', 'props' => []]], function (Testable $test): void {
+        $test->set('blocks.1.props.anchor_id', 'Liên hệ')
+            ->assertSet('blocks.1.props.anchor_id', 'lien-he-2')
+            ->set('blocks.2.props.anchor_id', 'Liên hệ')
+            ->assertSet('blocks.2.props.anchor_id', 'lien-he-3')
+            // The skip link's target: a menu link to it must reach the block, not the top of the page.
+            ->set('blocks.2.props.anchor_id', 'Nội dung')
+            ->assertSet('blocks.2.props.anchor_id', 'noi-dung-2')
+            // Retyping a block's own anchor keeps it.
+            ->set('blocks.0.props.anchor_id', 'lien-he')
+            ->assertSet('blocks.0.props.anchor_id', 'lien-he');
+    });
+});
+
 it('adds a block with no look props and saves a chosen look through the page validation', function (): void {
     lookEditor([], function (Testable $test): void {
         $test->set('title', 'Giới thiệu')
@@ -162,7 +189,25 @@ it('leaves a block\'s own prop of the same name alone', function (): void {
     lookEditor([['type' => 'page_header', 'props' => ['title' => 'Một', 'overlay' => 40]]], function (Testable $test): void {
         $test->call('setLook', 0, 'overlay', '75')
             ->assertSet('blocks.0.props.overlay', 40)
+            // Its photo and darkening are its own: the panel's photo actions leave them alone.
+            ->call('removeLookImage', 0)
+            ->assertSet('blocks.0.props.overlay', 40)
             ->call('setLook', 0, 'width', 'narrow')
             ->assertSet('blocks.0.props.width', 'narrow');
     });
+});
+
+it('never turns the panel photo band on for a block with a photo of its own', function (): void {
+    lookEditor([['type' => 'page_header', 'props' => ['title' => 'Một', 'overlay' => 60]]], function (Testable $test): void {
+        $photo = Media::query()->create([
+            'collection' => 'library', 'slug' => 'anh-dau-trang', 'hash' => str_repeat('b', 64),
+            'storage_key' => 'a/library/y-bbbbbbbbbbbb.png', 'disk' => 'r2', 'mime' => 'image/png', 'size' => 1024,
+        ]);
+
+        // A crafted call: the panel shows no photo button on this block.
+        $test->call('openBlockImagePicker', '0.props.bg_image')
+            ->call('selectBlockImage', $photo->id)
+            ->assertSet('blocks.0.props.bg', null)
+            ->assertSet('blocks.0.props.overlay', 60);
+    }, ['entries.view', 'entries.create', 'entries.edit.any', 'media.view']);
 });

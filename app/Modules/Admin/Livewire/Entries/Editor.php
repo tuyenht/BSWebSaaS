@@ -281,11 +281,7 @@ final class Editor extends Component
      */
     public function setLook(int $index, string $prop, string $value): void
     {
-        $type = $this->blocks[$index]['type'] ?? null;
-        $key = $prop === 'spacing' ? 'spacing_top' : $prop;
-        $registry = app(ComponentRegistry::class);
-        if (! is_string($type) || ! $registry->has($type) || ! in_array($value, StyleProps::CHOICES[$prop] ?? [], true)
-            || ($registry->schemaFor($type)[$key] ?? null) !== (StyleProps::SCHEMA[$key] ?? false)) {
+        if (! in_array($value, StyleProps::CHOICES[$prop] ?? [], true) || ! $this->takesLook($index, $prop === 'spacing' ? 'spacing_top' : $prop)) {
             return;
         }
 
@@ -327,7 +323,7 @@ final class Editor extends Component
     /** Take the background photo away: the band goes back to the chosen colour set, if any. */
     public function removeLookImage(int $index): void
     {
-        if (! array_key_exists($index, $this->blocks)) {
+        if (! $this->takesLookPhoto($index)) {
             return;
         }
 
@@ -337,7 +333,12 @@ final class Editor extends Component
         $this->setBlockProp("{$index}.props", $props);
     }
 
-    /** A typed link anchor becomes a valid one ("Liên hệ" → "lien-he"); blank clears it. */
+    /**
+     * A typed link anchor becomes a valid one ("Liên hệ" → "lien-he"); blank clears it. One that another
+     * block or the page layout already uses gets a number ("lien-he-2"), so a link never lands on the
+     * wrong place. Text with no Latin letter or digit (お問い合わせ, emoji) stays as typed, with a message
+     * saying how to fix it, instead of vanishing.
+     */
     public function updatedBlocks(mixed $value, ?string $key = null): void
     {
         if ($key === null || preg_match('/^(\d+)\.props\.anchor_id$/', $key, $match) !== 1) {
@@ -345,14 +346,62 @@ final class Editor extends Component
         }
 
         $index = (int) $match[1];
+        $field = "blocks.{$index}.props.anchor_id";
+        $typed = is_string($value) ? trim($value) : '';
+        $anchor = rtrim(Str::limit(Str::slug($typed), 64, ''), '-');
+        if ($typed !== '' && $anchor === '') {
+            $this->addError($field, __('entries.look_anchor_invalid'));
+
+            return;
+        }
+
+        $this->resetErrorBag($field);
         $props = $this->lookProps($index);
-        $anchor = rtrim(Str::limit(Str::slug(is_string($value) ? $value : ''), 64, ''), '-');
         if ($anchor === '') {
             unset($props['anchor_id']);
         } else {
-            $props['anchor_id'] = $anchor;
+            $props['anchor_id'] = $this->freeAnchor($anchor, $index);
         }
         $this->setBlockProp("{$index}.props", $props);
+    }
+
+    /** Whether the block at $index takes this look prop from the panel (not a same-named prop of its own). */
+    private function takesLook(int $index, string $key): bool
+    {
+        $type = $this->blocks[$index]['type'] ?? null;
+        $registry = app(ComponentRegistry::class);
+
+        return is_string($type) && $registry->has($type)
+            && ($registry->schemaFor($type)[$key] ?? null) === (StyleProps::SCHEMA[$key] ?? false);
+    }
+
+    /**
+     * Whether the panel's background photo applies: a block with a photo and darkening of its own
+     * (page_header, hero_slider) keeps those, and the panel offers no second photo.
+     */
+    private function takesLookPhoto(int $index): bool
+    {
+        return $this->takesLook($index, 'bg_image') && $this->takesLook($index, 'overlay');
+    }
+
+    /** $anchor, or it with the first free number, when another block or the layout already uses it. */
+    private function freeAnchor(string $anchor, int $index): string
+    {
+        $taken = StyleProps::LAYOUT_IDS;
+        foreach (array_keys($this->blocks) as $other) {
+            $used = $this->lookProps($other)['anchor_id'] ?? null;
+            if ($other !== $index && is_string($used)) {
+                $taken[] = $used;
+            }
+        }
+
+        $candidate = $anchor;
+        for ($n = 2; in_array($candidate, $taken, true); $n++) {
+            $suffix = '-'.$n;
+            $candidate = rtrim(substr($anchor, 0, 64 - strlen($suffix)), '-').$suffix;
+        }
+
+        return $candidate;
     }
 
     private function spacingSplit(int $index): bool
@@ -785,7 +834,7 @@ final class Editor extends Component
 
         if ($this->blockImagePickerPath !== '' && Media::query()->whereKey($mediaId)->exists()) {
             $this->setBlockProp($this->blockImagePickerPath, $mediaId);
-            if (preg_match('/^(\d+)\.props\.bg_image$/', $this->blockImagePickerPath, $match) === 1) {
+            if (preg_match('/^(\d+)\.props\.bg_image$/', $this->blockImagePickerPath, $match) === 1 && $this->takesLookPhoto((int) $match[1])) {
                 $this->setBlockProp("{$match[1]}.props.bg", 'image');
             }
         }

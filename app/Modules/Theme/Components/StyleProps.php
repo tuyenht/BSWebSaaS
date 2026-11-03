@@ -44,6 +44,9 @@ final class StyleProps
 
     public const string ANCHOR_PATTERN = '/^[a-z0-9-]{1,64}$/D';
 
+    /** Ids the storefront layout already uses (the skip link's target, the phone menu): never an anchor. */
+    public const array LAYOUT_IDS = ['noi-dung', 'mobile-menu'];
+
     /**
      * The choices the editor's panel sets one at a time (Editor::setLook), each with its list.
      * `spacing` is both steps at once (top and bottom joined).

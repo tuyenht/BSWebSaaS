@@ -1334,6 +1334,7 @@
     "entries.look_motion_first": "页面第一个区块总是立即显示，不加效果，以便页面快速加载。",
     "entries.look_anchor": "链接锚点",
     "entries.look_anchor_hint": "用于让按钮或菜单直接跳转到此区块，例如 /trang-chu#lien-he。",
+    "entries.look_anchor_invalid": "锚点只能使用英文字母、数字和连字符，例如 contact-us。请改用英文字母重新输入。",
     "workflow.err_transition_unknown": "此流程中不存在审核操作“:transition”。",
     "workflow.err_transition_wrong_state": "内容处于“:state”状态时无法执行“:transition”。",
     "workflow.err_note_required": "“:transition”操作必须附带备注。",

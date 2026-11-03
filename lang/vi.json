@@ -1334,6 +1334,7 @@
     "entries.look_motion_first": "Khối đầu trang luôn hiện ngay, không áp hiệu ứng để trang tải nhanh.",
     "entries.look_anchor": "Neo liên kết",
     "entries.look_anchor_hint": "Để trỏ nút hoặc menu thẳng tới khối này, ví dụ /trang-chu#lien-he.",
+    "entries.look_anchor_invalid": "Tên mốc chỉ nhận chữ cái không dấu, số và dấu gạch ngang, ví dụ lien-he. Hãy gõ lại bằng chữ Latinh.",
     "workflow.err_transition_unknown": "Thao tác duyệt ':transition' không tồn tại trong quy trình này.",
     "workflow.err_transition_wrong_state": "Không thể thực hiện ':transition' khi nội dung đang ở trạng thái ':state'.",
     "workflow.err_note_required": "Thao tác ':transition' bắt buộc phải kèm ghi chú.",

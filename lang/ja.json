@@ -1334,6 +1334,7 @@
     "entries.look_motion_first": "先頭のブロックはページを速く表示するため、効果なしですぐに表示されます。",
     "entries.look_anchor": "リンクアンカー",
     "entries.look_anchor_hint": "ボタンやメニューからこのブロックへ直接移動させるときに使います。例：/trang-chu#lien-he",
+    "entries.look_anchor_invalid": "アンカーには半角英字・数字・ハイフンのみ使えます（例：contact-us）。半角英字で入力し直してください。",
     "workflow.err_transition_unknown": "承認操作「:transition」はこのワークフローにありません。",
     "workflow.err_transition_wrong_state": "コンテンツが「:state」の状態のときは「:transition」を実行できません。",
     "workflow.err_note_required": "「:transition」にはメモが必要です。",

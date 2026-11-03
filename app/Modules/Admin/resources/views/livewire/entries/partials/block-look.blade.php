@@ -37,7 +37,7 @@
             @endforeach
         </div>
         @if ($look['clash'])
-            <p class="block-look__warn" role="status">{{ __('entries.look_scheme_clash', ['scheme' => __('entries.look_scheme_'.$look['scheme'])]) }}</p>
+            <p class="block-look__warn">{{ __('entries.look_scheme_clash', ['scheme' => __('entries.look_scheme_'.$look['scheme'])]) }}</p>
         @endif
         @if ($look['image'])
             <p class="block-look__hint">{{ __('entries.look_image_on_note') }}</p>
@@ -116,6 +116,7 @@
         <label>{{ __('entries.look_anchor') }}
             <span class="block-look__anchor">#<input type="text" wire:model.blur="blocks.{{ $i }}.props.anchor_id" placeholder="lien-he" class="field" maxlength="64" autocapitalize="off" spellcheck="false"></span>
         </label>
+        @error("blocks.{$i}.props.anchor_id") <p class="error">{{ $message }}</p> @enderror
         <p class="block-look__hint">{{ __('entries.look_anchor_hint') }}</p>
     </details>
 </fieldset>
