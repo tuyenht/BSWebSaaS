@@ -5,7 +5,9 @@ namespace App\Modules\Shared\Support;
 use HTMLPurifier;
 use HTMLPurifier_AttrDef_Enum;
 use HTMLPurifier_AttrDef_Integer;
+use HTMLPurifier_AttrTransform_ImgRequired;
 use HTMLPurifier_Config;
+use HTMLPurifier_ElementDef;
 use HTMLPurifier_HTMLDefinition;
 
 /**
@@ -40,9 +42,13 @@ final class RichTextSanitizer
     /** The CMS allow-list, `tag[attr|attr]` comma-separated (RichHtml reads it to recognise clean output). */
     public const string CMS_ALLOWED = self::TEXT_ALLOWED.',figure,figcaption,img[data-media-id|data-size|data-align|alt]';
 
-    // Layout props are what the editor's own tools write: indent → margin-left (padding-left
-    // inside table cells), column/table drag-resize → width/height. All inert — no script vector.
-    private const string ALLOWED_CSS = 'color,background-color,font-size,text-align,'
+    /**
+     * The inline-style properties every profile keeps, comma-separated (RichHtml reads it to
+     * recognise clean output). Layout props are what the editor's own tools write: indent →
+     * margin-left (padding-left inside table cells), column/table drag-resize → width/height.
+     * All inert — no script vector.
+     */
+    public const string ALLOWED_CSS = 'color,background-color,font-size,text-align,'
         .'margin-left,padding-left,width,height';
 
     /** @var array<string, HTMLPurifier> */
@@ -100,6 +106,9 @@ final class RichTextSanitizer
                 self::libraryImages($definition);
             }
         }
+        if ($libraryImages) {
+            self::noInventedAlt($config);
+        }
 
         return $config;
     }
@@ -110,7 +119,8 @@ final class RichTextSanitizer
      * stock img requires `src` and `alt`; here `src` is removed outright (so no address, of any
      * scheme, can be stored), `data-media-id` is required (an img without a valid id is dropped)
      * and `alt` is optional (the library's alt text fills in at print).
-     * Core.RemoveInvalidImg (on by default) keeps purifier from inventing a src.
+     * Core.RemoveInvalidImg (on by default) keeps purifier from inventing a src; noInventedAlt()
+     * keeps it from inventing an alt.
      */
     private static function libraryImages(HTMLPurifier_HTMLDefinition $definition): void
     {
@@ -127,5 +137,26 @@ final class RichTextSanitizer
             'data-size' => new HTMLPurifier_AttrDef_Enum(self::IMAGE_SIZES),
             'data-align' => new HTMLPurifier_AttrDef_Enum(self::IMAGE_ALIGNS),
         ]);
+    }
+
+    /**
+     * The stock img carries a transform that, before the attributes are checked, fills a missing
+     * alt from the file name of the src — so `<img data-media-id="5" src="https://evil/x.png">`
+     * would be stored with `alt="x.png"` (the src itself then dropped), and that alt would beat the
+     * library's at print. A library picture has no src to name, so the CMS img goes without it: a
+     * missing alt stays missing. Transforms merge by appending, so they are filtered out of the
+     * finished definition (this config's own; the other profiles keep the stock img).
+     */
+    private static function noInventedAlt(HTMLPurifier_Config $config): void
+    {
+        $definition = $config->getHTMLDefinition();
+        $elements = $definition instanceof HTMLPurifier_HTMLDefinition && is_array($definition->info) ? $definition->info : [];
+        $img = $elements['img'] ?? null;
+        if (! $img instanceof HTMLPurifier_ElementDef || ! is_array($img->attr_transform_pre) || ! is_array($img->attr_transform_post)) {
+            return;
+        }
+        $keep = static fn (mixed $transform): bool => ! $transform instanceof HTMLPurifier_AttrTransform_ImgRequired;
+        $img->attr_transform_pre = array_values(array_filter($img->attr_transform_pre, $keep));
+        $img->attr_transform_post = array_values(array_filter($img->attr_transform_post, $keep));
     }
 }

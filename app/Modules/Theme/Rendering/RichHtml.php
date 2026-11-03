@@ -12,9 +12,10 @@ use App\Modules\Shared\Support\RichTextSanitizer;
  *
  * 1. The value was cleaned by RichTextSanitizer::cms when it was written (the body casts), so its
  *    shape is purifier output. A cheap structural check confirms that shape (every tag and
- *    attribute on the CMS allow-list, quoted values, plain web/mail/phone links, inert styles);
- *    a value that fails it — only data written round the model, which the write-path test bans —
- *    is sanitized again here. Clean data never pays for the sanitizer on the storefront.
+ *    attribute on the CMS allow-list, nested as purifier nests them and all closed, quoted values,
+ *    plain web/mail/phone links, styles of allowed properties with plain values); a value that
+ *    fails it — only data written round the model, which the write-path test bans — is sanitized
+ *    again here. Clean data never pays for the sanitizer on the storefront.
  * 2. Each `img[data-media-id]` becomes a library picture: src/srcset/sizes/width/height from the
  *    library row, lazy loading, the library alt text when the editor gave none; the id itself
  *    is never printed. A picture whose id does not resolve in this site is dropped, and a figure
@@ -37,6 +38,43 @@ final readonly class RichHtml
     ];
 
     private const array SCHEMES = ['http', 'https', 'mailto', 'tel'];
+
+    /** Elements written `<x />`, never opened and closed. */
+    private const array VOID = ['br' => true, 'hr' => true, 'img' => true];
+
+    private const array INLINE = ['strong', 'em', 'b', 'i', 'u', 's', 'sub', 'sup', 'a', 'span', 'br', 'img', 'iframe'];
+
+    private const array BLOCK = ['p', 'h2', 'h3', 'h4', 'h5', 'blockquote', 'ul', 'ol', 'table', 'div', 'hr', 'figure'];
+
+    /**
+     * What each element may hold, as purifier's content models print it for the CMS allow-list
+     * (XHTML 1.0 Transitional + the figure/figcaption definitions): `flow` = inline and block,
+     * `inline` = inline only, a list = exactly those children. '' is the body itself. An element
+     * missing here is never accepted — a tag added to the allow-list without a rule fails closed.
+     */
+    private const array CONTENT = [
+        '' => 'flow', 'li' => 'flow', 'td' => 'flow', 'th' => 'flow', 'blockquote' => 'flow', 'div' => 'flow',
+        'figcaption' => 'flow', 'figure' => ['figcaption', 'flow'],
+        'p' => 'inline', 'h2' => 'inline', 'h3' => 'inline', 'h4' => 'inline', 'h5' => 'inline',
+        'strong' => 'inline', 'em' => 'inline', 'b' => 'inline', 'i' => 'inline', 'u' => 'inline', 's' => 'inline',
+        'sub' => 'inline', 'sup' => 'inline', 'a' => 'inline', 'span' => 'inline',
+        'ul' => ['li'], 'ol' => ['li'], 'table' => ['thead', 'tbody', 'tr'], 'thead' => ['tr'], 'tbody' => ['tr'],
+        'tr' => ['td', 'th'],
+        // the player's fallback content: text only (purifier keeps markup there, which is then re-sanitized)
+        'iframe' => [],
+    ];
+
+    /** Containers purifier prints with nothing but whitespace between their children. */
+    private const array NO_TEXT = ['ul' => true, 'ol' => true, 'table' => true, 'thead' => true, 'tbody' => true, 'tr' => true];
+
+    /**
+     * A colour function exactly as purifier prints one (numbers only) — the one `(` a clean style value
+     * may carry.
+     */
+    private const string COLOUR_FUNCTION = '~\b(?:rgba?|hsla?)\([0-9.,%\s]*\)~i';
+
+    /** Left by a dropped picture so its figure can go too; purified output never holds a comment. */
+    private const string DROPPED = '<!--dropped-picture-->';
 
     public function __construct(
         private RichTextSanitizer $sanitizer,
@@ -90,11 +128,14 @@ final readonly class RichHtml
     }
 
     /**
-     * Whether $html has exactly the shape RichTextSanitizer::cms prints: every `<` opens a tag on
-     * the allow-list carrying only its allowed attributes, each double-quoted with nothing but the
-     * four entities purifier writes; links use a web, mail or phone scheme (or none); styles carry
-     * no url()/expression()/escapes; the only class is the video wrapper. A false answer means
-     * "sanitize before printing", never "print as is".
+     * Whether $html has exactly the shape RichTextSanitizer::cms prints: every `<` opens or closes a
+     * tag on the allow-list carrying only its allowed attributes, each double-quoted with nothing but
+     * the four entities purifier writes; tags nest as purifier nests them (CONTENT: no block in a
+     * paragraph or an inline, a caption only directly in a figure, no link in a link, list items in
+     * lists, cells in rows) and every one is closed, innermost first; links use a web, mail or phone
+     * scheme (or none); a style is `prop:value;` declarations of allowed properties with plain values;
+     * the only class is the video wrapper. A false answer means "sanitize before printing", never
+     * "print as is".
      */
     public static function looksSanitized(string $html): bool
     {
@@ -103,29 +144,62 @@ final readonly class RichHtml
             return true;
         }
 
-        if (preg_match_all('~<(/?)([a-z][a-z0-9]*)((?:\s[a-z][a-z-]*="[^"<>]*")*)\s?/?>~', $html, $tags, PREG_SET_ORDER) !== $opened) {
+        // each match: the text before the tag, then the tag (closing slash, name, attributes, ` /`)
+        if (preg_match_all('~([^<]*+)<(/?)([a-z][a-z0-9]*)((?:\s[a-z][a-z-]*="[^"<>]*")*)( /)?>~', $html, $tags, PREG_SET_ORDER) !== $opened) {
             return false;
         }
 
         $allowed = self::allowList();
+        $content = self::contentModel();
+        $stack = [];
+        $parent = '';
+        $links = 0;
+        // a body repeats the same few attribute sets (one style on every cell…): check each once
+        $checked = [];
         foreach ($tags as $tag) {
-            $name = $tag[2];
-            if (! isset($allowed[$name]) || ($tag[1] === '/' && $tag[3] !== '')) {
+            $name = $tag[3];
+            if (isset(self::NO_TEXT[$parent]) && strspn($tag[1], " \t\r\n") !== strlen($tag[1])) {
                 return false;
             }
-            if ($tag[3] === '') {
+            $selfClosed = isset($tag[5]);
+
+            if ($tag[2] === '/') {
+                if ($tag[4] !== '' || $selfClosed || $name !== $parent) {
+                    return false;
+                }
+                array_pop($stack);
+                $parent = $stack === [] ? '' : $stack[array_key_last($stack)];
+                if ($name === 'a') {
+                    $links--;
+                }
+
                 continue;
             }
 
-            preg_match_all('~\s([a-z][a-z-]*)="([^"]*)"~', $tag[3], $attributes, PREG_SET_ORDER);
+            if (! isset($allowed[$name], $content[$parent][$name]) || $selfClosed !== isset(self::VOID[$name]) || ($name === 'a' && $links > 0)) {
+                return false;
+            }
+            if (! $selfClosed) {
+                $stack[] = $parent = $name;
+                if ($name === 'a') {
+                    $links++;
+                }
+            }
+            $set = $tag[4];
+            if ($set === '' || isset($checked[$name][$set])) {
+                continue;
+            }
+
+            preg_match_all('~\s([a-z][a-z-]*)="([^"]*)"~', $set, $attributes, PREG_SET_ORDER);
             foreach ($attributes as [, $attribute, $value]) {
                 if (! isset($allowed[$name][$attribute]) || ! self::valueLooksSanitized($attribute, $value)) {
                     return false;
                 }
             }
+            $checked[$name][$set] = true;
         }
 
-        return true;
+        return $stack === [];
     }
 
     private static function valueLooksSanitized(string $attribute, string $value): bool
@@ -140,10 +214,35 @@ final readonly class RichHtml
         return match ($attribute) {
             'href', 'src' => preg_match('~^\s|[\x00-\x1F\x7F]~', $decoded) !== 1
                 && (preg_match('~^([a-z][a-z0-9+.-]*):~i', $decoded, $scheme) !== 1 || in_array(strtolower($scheme[1]), self::SCHEMES, true)),
-            'style' => preg_match('~url\s*\(|expression|\\\\|/\*|@|<|>~i', $decoded) !== 1,
+            'style' => self::styleLooksSanitized($decoded),
             'class' => $decoded === 'video-embed',
             default => true,
         };
+    }
+
+    /**
+     * `prop:value;` declarations only, each property on the sanitizer's CSS allow-list and each value
+     * plain: letters, digits, `#`, `.`, `%`, `,`, `-` and spaces, plus purifier's numeric colour
+     * functions — so no other `(`, no `\`, no quotes, no `url`.
+     */
+    private static function styleLooksSanitized(string $style): bool
+    {
+        $properties = self::cssAllowList();
+        foreach (explode(';', $style) as $declaration) {
+            if ($declaration === '') {
+                continue;
+            }
+            $colon = strpos($declaration, ':');
+            if ($colon === false || ! isset($properties[substr($declaration, 0, $colon)])) {
+                return false;
+            }
+            $value = (string) preg_replace(self::COLOUR_FUNCTION, '0', substr($declaration, $colon + 1));
+            if (preg_match('~^[#a-z0-9.%, -]+$~i', $value) !== 1 || stripos($value, 'url') !== false) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -172,6 +271,48 @@ final readonly class RichHtml
     }
 
     /**
+     * property => true, read from the sanitizer's own CSS allow-list.
+     *
+     * @return array<string, true>
+     */
+    private static function cssAllowList(): array
+    {
+        /** @var array<string, true>|null $cache */
+        static $cache = null;
+
+        return $cache ??= array_fill_keys(array_map(trim(...), explode(',', RichTextSanitizer::ALLOWED_CSS)), true);
+    }
+
+    /**
+     * parent => [child => true], CONTENT with `flow` and `inline` spelled out.
+     *
+     * @return array<string, array<string, true>>
+     */
+    private static function contentModel(): array
+    {
+        /** @var array<string, array<string, true>>|null $cache */
+        static $cache = null;
+        if ($cache !== null) {
+            return $cache;
+        }
+
+        $model = [];
+        foreach (self::CONTENT as $parent => $rule) {
+            $children = [];
+            foreach ((array) $rule as $part) {
+                $children = [...$children, ...match ($part) {
+                    'flow' => [...self::INLINE, ...self::BLOCK],
+                    'inline' => self::INLINE,
+                    default => [$part],
+                }];
+            }
+            $model[$parent] = array_fill_keys($children, true);
+        }
+
+        return $cache = $model;
+    }
+
+    /**
      * @param  array<int, string>  $urls
      * @param  array<string, string>  $srcsets
      * @param  array<string, string>  $alts
@@ -189,7 +330,7 @@ final readonly class RichHtml
             $id = self::positiveInt($attributes['data-media-id'] ?? '');
             $url = $id !== null ? ($urls[$id] ?? null) : null;
             if ($url === null) {
-                return '';
+                return self::DROPPED;
             }
 
             $size = in_array($attributes['data-size'] ?? null, RichTextSanitizer::IMAGE_SIZES, true) ? $attributes['data-size'] : 'full';
@@ -214,8 +355,13 @@ final readonly class RichHtml
             return (string) preg_replace('~<img\b[^>]*>~i', '', $html);
         }
 
-        // A figure whose picture did not resolve keeps nothing worth showing (at most its caption).
-        return (string) preg_replace('~<figure\b[^>]*>(?:\s++|<figcaption\b[^>]*>(?:(?!</?figure\b).)*?</figcaption>)*+</figure>~is', '', $out);
+        // A figure whose picture was dropped and that holds nothing else keeps nothing worth showing
+        // (at most its caption); a figure that never had a picture stays.
+        $caption = '<figcaption\b[^>]*>(?:(?!</?figure\b).)*?</figcaption>';
+        $dropped = preg_quote(self::DROPPED, '~');
+        $out = preg_replace('~<figure\b[^>]*>(?:\s++|'.$caption.')*+'.$dropped.'(?:\s++|'.$caption.'|'.$dropped.')*+</figure>~is', '', $out) ?? $out;
+
+        return str_replace(self::DROPPED, '', $out);
     }
 
     private static function positiveInt(string $raw): ?int

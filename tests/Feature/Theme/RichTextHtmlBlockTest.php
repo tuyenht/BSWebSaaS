@@ -4,6 +4,7 @@ use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Shared\Support\RichTextSanitizer;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Rendering\RichHtml;
@@ -94,6 +95,19 @@ describe('on a page', function (): void {
         }));
 
         expect($prose)->toMatch('#<img class="sf-prose__img sf-prose__img--full sf-prose__img--center" src="[^"]+" srcset="[^"]+" sizes="\(min-width: 52rem\) 48rem, 100vw" alt="Nhà máy &quot;An&quot; &lt;1&gt;" width="1600" height="900"#');
+    });
+
+    it('prints the library alt for a picture stored with an address and no alt', function (): void {
+        $prose = proseOf(richPage('/anh-co-dia-chi', function (): array {
+            $media = StorefrontCards::media('xuong-moi');
+            $media->update(['alt' => ['vi' => 'Xưởng mới']]);
+
+            return [richBlock("<p><img data-media-id=\"{$media->id}\" src=\"https://evil.test/x.png\"></p>")];
+        }));
+
+        expect($prose)->toContain('alt="Xưởng mới"')
+            ->and($prose)->not->toContain('x.png')
+            ->and($prose)->not->toContain('evil.test');
     });
 
     it('drops a picture that is not in this site\'s library, and its empty figure', function (): void {
@@ -212,7 +226,58 @@ describe('the renderer', function (): void {
         'comment' => ['<!-- x --><p>a</p>', false],
         'stray angle bracket' => ['<p>a < b</p>', false],
         'img with an address' => ['<img src="https://evil.test/x.png" />', false],
+        'style off the list' => ['<p style="position:fixed;inset:0;z-index:99999;background-color:white">a</p>', false],
+        'style function' => ['<span style="background-image:image-set(&quot;https://evil.test/x.png&quot; 1x)">x</span>', false],
+        'style value with quotes' => ['<p style="font-size:&quot;x&quot;;">a</p>', false],
+        'style value with an escape' => ['<p style="color:\\72 ed;">a</p>', false],
+        'style value naming url' => ['<p style="color:url;">a</p>', false],
+        'style without a value' => ['<p style="color;">a</p>', false],
+        'stray closers' => ['</p></div></div></div><p>outside</p>', false],
+        'left open' => ['<p><a href="https://evil.test">unclosed</p>', false],
+        'never closed' => ['<p>a', false],
+        'caption outside a figure' => ['<figcaption>x</figcaption>', false],
+        'link in a link' => ['<a href="/a"><a href="/b">x</a></a>', false],
+        'link deep in a link' => ['<a href="/a"><b><a href="/b">x</a></b></a>', false],
+        'block in a paragraph' => ['<p><div>x</div></p>', false],
+        'block in an inline' => ['<strong><p>x</p></strong>', false],
+        'list item outside a list' => ['<li>x</li>', false],
+        'cell outside a row' => ['<table><td>x</td></table>', false],
+        'text loose in a list' => ['<ul>x<li>a</li></ul>', false],
+        'tag inside a frame' => ['<iframe src="https://www.youtube.com/embed/SxwkhMy4Ywo"><p>x</p></iframe>', false],
+        'closed void' => ['<p>a<br></br></p>', false],
+        'self-closed paragraph' => ['<p />', false],
+        'unclosed void' => ['<p>a<br>b</p>', false],
     ]);
+
+    it('prints what the sanitizer would for markup it does not recognise as clean', function (string $payload, string $gone): void {
+        $clean = app(RichTextSanitizer::class)->cms($payload);
+        $printed = app(RichHtml::class)->render($payload, [])['html'];
+
+        expect(RichHtml::looksSanitized($payload))->toBeFalse()
+            ->and($printed)->toBe($clean)
+            ->and($printed)->not->toContain($gone);
+    })->with([
+        'fixed overlay' => ['<p style="position:fixed;inset:0;z-index:99999;background-color:white">Fake login</p>', 'position'],
+        'image-set' => ['<span style="background-image:image-set(&quot;https://evil.test/x.png&quot; 1x)">x</span>', 'image-set'],
+        'closes the theme\'s wrappers' => ['</p></div></div></div><p>outside</p>', '</div>'],
+        'unclosed link' => ['<p><a href="https://evil.test">unclosed</p>', '<p><a href="https://evil.test">unclosed</p>'],
+        'caption outside a figure' => ['<figcaption>x</figcaption>', 'figcaption'],
+        'link in a link' => ['<a href="/a"><a href="/b">x</a></a>', '<a href="/a"><a'],
+    ]);
+
+    it('drops only the figures whose picture was dropped', function (): void {
+        $printed = app(RichHtml::class)->render(
+            '<figure><figcaption>Only text</figcaption></figure><p><img data-media-id="999999" /></p>'
+            .'<figure><img data-media-id="999998" /><figcaption>Mất ảnh</figcaption></figure>'
+            .'<figure><img data-media-id="999997" /><img data-media-id="5" /></figure>',
+            [5 => 'https://files.test/s/library/a.webp'],
+        )['html'];
+
+        expect($printed)->toStartWith('<figure><figcaption>Only text</figcaption></figure><p></p><figure><img class="sf-prose__img')
+            ->and($printed)->not->toContain('Mất ảnh')
+            ->and(substr_count($printed, '<figure>'))->toBe(2)
+            ->and($printed)->not->toContain('<!--');
+    });
 
     it('lists the library ids the pictures name, once each', function (): void {
         expect(RichHtml::imageIds('<img data-media-id="5" /><p>x</p><img alt="a" data-media-id="5" /><img data-media-id="12" /><img data-media-id="0" />'))
