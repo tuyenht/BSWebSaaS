@@ -254,7 +254,9 @@
 /* Hit area of a button in a row of neighbours (the pager, the rows-per-page group): at least
    --spacing-control with a mouse (40px at the default text size, 44px from the next size up) and
    --spacing-hit on touch. The transparent ::after grows full height but, sideways, stops at half the
-   gap (--hit-gap, 8px unless a row says otherwise) so it never covers a neighbour. */
+   gap (--hit-gap, 8px unless a row says otherwise) so it never covers a neighbour. It is placed from
+   the inside of the border, so a bordered button names its border width (--hit-border) to reach the
+   middle of the gap: without it a 36px bordered button got 42px on touch, not 44. */
 @utility hit-area-row {
     --hit-size: var(--spacing-control);
     position: relative;
@@ -268,8 +270,8 @@
         position: absolute;
         top: min(0px, calc((100% - var(--hit-size)) / 2));
         bottom: min(0px, calc((100% - var(--hit-size)) / 2));
-        left: max(min(0px, calc((100% - var(--hit-size)) / 2)), calc(var(--hit-gap, 0.5rem) / -2));
-        right: max(min(0px, calc((100% - var(--hit-size)) / 2)), calc(var(--hit-gap, 0.5rem) / -2));
+        left: max(min(0px, calc((100% - var(--hit-size)) / 2)), calc(var(--hit-gap, 0.5rem) / -2 - var(--hit-border, 0px)));
+        right: max(min(0px, calc((100% - var(--hit-size)) / 2)), calc(var(--hit-gap, 0.5rem) / -2 - var(--hit-border, 0px)));
     }
 }
 
@@ -311,6 +313,11 @@
     transition-duration: var(--default-transition-duration);
 
     @apply hit-area-row;
+
+    /* the bordered ones (rows per page, the media picker's pager) */
+    &.border {
+        --hit-border: 1px;
+    }
 }
 
 /* A segmented choice: one soft frame holding the options of one setting side by side, the chosen

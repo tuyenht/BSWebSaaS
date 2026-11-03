@@ -276,8 +276,12 @@ it('renders the rows-per-page group with aria-pressed on the current value', fun
 it('gives the pager and the rows-per-page buttons the 40 / 44 row hit area, stopping at half the gap', function (): void {
     $css = (string) file_get_contents(resource_path('css/app.css'));
 
+    // the ::after is placed from inside the border: a bordered button adds its border width, or its
+    // touch target stops 1px short on each side (42px, measured on the rows-per-page buttons)
     expect(preg_match('/@utility hit-area-row \{(.*?)\n\}/s', $css, $m))->toBe(1)
-        ->and($m[1])->toContain('--hit-size: var(--spacing-control);', '--hit-size: var(--spacing-hit);', 'any-pointer: coarse', 'var(--hit-gap, 0.5rem) / -2');
+        ->and($m[1])->toContain('--hit-size: var(--spacing-control);', '--hit-size: var(--spacing-hit);', 'any-pointer: coarse', 'var(--hit-gap, 0.5rem) / -2 - var(--hit-border, 0px)')
+        ->and(preg_match('/@utility pager-link \{(.*?)\n\}/s', $css, $p))->toBe(1)
+        ->and(preg_replace('/\s+/', ' ', $p[1]))->toContain('&.border { --hit-border: 1px; }');
 });
 
 it('schedules a row for a future time', function (): void {
