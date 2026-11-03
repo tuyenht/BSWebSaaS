@@ -52,8 +52,8 @@
                     <img src="{{ $blockImageUrls[$props['bg_image']] }}" alt="" class="block-look__photo" width="160" height="90" style="width:160px;height:90px;object-fit:cover;display:block">
                 @endif
                 <div class="block-look__actions">
-                    <x-admin::button size="sm" variant="outline" color="secondary" wire:click="openBlockImagePicker('{{ $i }}.props.bg_image')">{{ __('entries.look_image_change') }}</x-admin::button>
-                    <x-admin::button size="sm" variant="outline" color="secondary" wire:click="removeLookImage({{ $i }})">{{ __('entries.look_image_remove') }}</x-admin::button>
+                    <x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="openBlockImagePicker('{{ $i }}.props.bg_image')">{{ __('entries.look_image_change') }}</x-bs-admin::button>
+                    <x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="removeLookImage({{ $i }})">{{ __('entries.look_image_remove') }}</x-bs-admin::button>
                 </div>
                 <div class="block-look__setting" role="group" aria-labelledby="look-{{ $i }}-overlay">
                     <span class="block-look__label" id="look-{{ $i }}-overlay">{{ __('entries.look_overlay') }}</span>
@@ -65,7 +65,7 @@
                 </div>
             @else
                 <div class="block-look__actions">
-                    <x-admin::button size="sm" variant="outline" color="secondary" wire:click="openBlockImagePicker('{{ $i }}.props.bg_image')">{{ __('entries.look_image_add') }}</x-admin::button>
+                    <x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="openBlockImagePicker('{{ $i }}.props.bg_image')">{{ __('entries.look_image_add') }}</x-bs-admin::button>
                 </div>
                 <p class="block-look__hint">{{ __('entries.look_image_hint') }}</p>
             @endif
