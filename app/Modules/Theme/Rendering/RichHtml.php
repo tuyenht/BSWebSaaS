@@ -144,8 +144,9 @@ final readonly class RichHtml
             return true;
         }
 
-        // each match: the text before the tag, then the tag (closing slash, name, attributes, ` /`)
-        if (preg_match_all('~([^<]*+)<(/?)([a-z][a-z0-9]*)((?:\s[a-z][a-z-]*="[^"<>]*")*)( /)?>~', $html, $tags, PREG_SET_ORDER) !== $opened) {
+        // each match: the text before the tag, then the tag (closing slash, name, attributes, ` /`);
+        // purifier separates attributes with one space — `\s` would also take a vertical tab, which HTML does not
+        if (preg_match_all('~([^<]*+)<(/?)([a-z][a-z0-9]*)((?: [a-z][a-z-]*="[^"<>]*")*)( /)?>~', $html, $tags, PREG_SET_ORDER) !== $opened) {
             return false;
         }
 
@@ -190,7 +191,7 @@ final readonly class RichHtml
                 continue;
             }
 
-            preg_match_all('~\s([a-z][a-z-]*)="([^"]*)"~', $set, $attributes, PREG_SET_ORDER);
+            preg_match_all('~ ([a-z][a-z-]*)="([^"]*)"~', $set, $attributes, PREG_SET_ORDER);
             foreach ($attributes as [, $attribute, $value]) {
                 if (! isset($allowed[$name][$attribute]) || ! self::valueLooksSanitized($attribute, $value)) {
                     return false;
@@ -212,8 +213,10 @@ final readonly class RichHtml
         $decoded = htmlspecialchars_decode($value, ENT_QUOTES);
 
         return match ($attribute) {
-            'href', 'src' => preg_match('~^\s|[\x00-\x1F\x7F]~', $decoded) !== 1
+            'href' => preg_match('~^\s|[\x00-\x1F\x7F]~', $decoded) !== 1
                 && (preg_match('~^([a-z][a-z0-9+.-]*):~i', $decoded, $scheme) !== 1 || in_array(strtolower($scheme[1]), self::SCHEMES, true)),
+            // only a frame carries src in the CMS list: the same players the sanitizer lets through
+            'src' => preg_match('~[\x00-\x20\x7F]~', $decoded) !== 1 && preg_match(RichTextSanitizer::SAFE_IFRAME, $decoded) === 1,
             'style' => self::styleLooksSanitized($decoded),
             'class' => $decoded === 'video-embed',
             default => true,
@@ -237,7 +240,7 @@ final readonly class RichHtml
                 return false;
             }
             $value = (string) preg_replace(self::COLOUR_FUNCTION, '0', substr($declaration, $colon + 1));
-            if (preg_match('~^[#a-z0-9.%, -]+$~i', $value) !== 1 || stripos($value, 'url') !== false) {
+            if (preg_match('~^[#a-z0-9.%, -]+$~i', $value) !== 1 || stripos($value, 'url') !== false || preg_match('~(?:^|[ ,])-[a-z]~i', $value) === 1) {
                 return false;
             }
         }

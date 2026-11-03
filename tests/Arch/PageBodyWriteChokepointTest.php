@@ -32,7 +32,7 @@ function pageBodyBypasses(string $source): array
     $bulkInsert = '~(?:->|::)(?:insert|insertOrIgnore|insertGetId|insertUsing|upsert|updateOrInsert|fillAndInsert)\(~';
     $bulkWrite = '~->(?:update|insert\w*|upsert|updateOrInsert|updateFrom|increment|decrement)\(~';
     // a call that returns one model: an update right after it is that model's own (through the cast)
-    $instanceUpdate = '~(?:->|::)(?:first\w*|find\w*|sole|create\w*|make|updateOrCreate|fresh)(\((?:[^()]++|(?1))*\))->update\(~';
+    $instanceUpdate = '~(?:->|::)(?:first\w*|find\w*|sole|create\w*|make|updateOrCreate|fresh)(\((?:[^()]++|(?1))*\))\??->update\(~';
     // the last call of a right-hand side that still holds a builder (not a model, rows or a value)
     $builderEnd = '~(?:->|::)(?:query|newQuery|toQuery|toBase|getQuery|translations|draft|where\w*|orWhere\w*|orderBy\w*|latest|oldest|limit|take|skip|offset|with\w*|join\w*|select\w*|has|doesntHave|lockForUpdate|sharedLock)(\((?:[^()]++|(?1))*\))$~';
     // SQL handed to the connection: DB::…, or a connection's own update/insert given a string
@@ -66,7 +66,7 @@ function pageBodyBypasses(string $source): array
             'raw SQL write' => preg_match('~\b(?:update|insert\s+into|merge\s+into|copy)\s+(?:only\s+)?(?:public\.)?"?'.$tables.'\b~i', $strings) === 1,
             'raw SQL write to a computed table' => $namesTheTables && preg_match($rawCall, $code) === 1
                 && ($strings === '' || (preg_match($computedTable, $strings) === 1 && preg_match($bodyColumn, $strings) === 1)),
-            'query-builder write on the table' => preg_match('~(?:table|from|into)\([\'"]'.$tables.'\b~', $code) === 1 && preg_match($bulkWrite, $code) === 1,
+            'query-builder write on the table' => preg_match('~(?:table|from|into)\([\'"](?:public\.)?'.$tables.'\b~', $code) === 1 && preg_match($bulkWrite, $code) === 1,
             'bulk insert/upsert on the model' => $anchored && preg_match($bulkInsert, $code) === 1,
             'bulk update of the body on the model' => $anchored && $bulkUpdate && preg_match('~'.$columns.'~', $code) === 1,
             'bulk update of a computed column on the model' => $anchored && $computedKey,
@@ -192,6 +192,7 @@ it('catches each banned way of writing a body', function (string $source): void 
     expect(pageBodyBypasses("<?php\n".$source))->not->toBe([]);
 })->with([
     'DB::table update' => "DB::table('entry_translations')->where('id', \$id)->update(['body' => \$json]);",
+    'DB::table with the schema' => "DB::table('public.entry_translations')->where('id', \$id)->update(['body' => \$json]);",
     'DB::table insert' => "DB::table('entry_drafts')->insert(['entry_id' => 1, 'content' => \$json]);",
     'DB::table upsert' => "DB::connection('pgsql_admin')->table('entry_translations')->upsert(\$rows, ['id']);",
     'query from' => "DB::query()->from('entry_drafts')->updateOrInsert(['entry_id' => 1], ['content' => \$json]);",
@@ -229,6 +230,7 @@ it('lets the model roads through', function (string $source): void {
     'updateOrCreate' => "\$entry->translations()->updateOrCreate(['locale' => \$locale], ['body' => \$body]);",
     'fill and save' => "\$entry->translations()->firstOrNew(['locale' => 'vi'])->fill(['body' => \$body])->save();",
     'instance update' => "\$translation->update(['body' => \$body]);",
+    'instance update when found' => "EntryTranslation::query()->where('id', \$id)->first()?->update(['body' => \$body]);",
     'a read through the table' => "DB::table('entry_translations')->where('entry_id', \$id)->value('body');",
     'another table' => "DB::table('product_translations')->where('id', \$id)->update(['description' => \$html]);",
     'workflow state' => "EntryDraft::query()->whereKey(\$id)->update(['workflow_state' => null]);",

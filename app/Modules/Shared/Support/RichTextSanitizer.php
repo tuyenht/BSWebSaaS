@@ -31,6 +31,9 @@ final class RichTextSanitizer
     /** Where a picture narrower than the column sits. */
     public const array IMAGE_ALIGNS = ['left', 'center', 'right'];
 
+    /** The video players a frame may load (RichHtml holds stored frames to the same rule). */
+    public const string SAFE_IFRAME = '%^(?:https?:)?//(?:www\.youtube(?:-nocookie)?\.com/embed/|player\.vimeo\.com/video/)%';
+
     private const string BASIC_ALLOWED = 'p,br,strong,em,b,i,u,ul,ol,li,a[href]';
 
     private const string TEXT_ALLOWED = 'p[style],br,hr,strong,em,b,i,u,s,sub,sup,ul,ol,li,a[href],'
@@ -84,7 +87,7 @@ final class RichTextSanitizer
         // Embeds: ONLY youtube (incl. nocookie) and vimeo players survive; every other iframe
         // src is stripped. Images come from the library picker, so src stays plain http(s).
         $config->set('HTML.SafeIframe', true);
-        $config->set('URI.SafeIframeRegexp', '%^(?:https?:)?//(?:www\.youtube(?:-nocookie)?\.com/embed/|player\.vimeo\.com/video/)%');
+        $config->set('URI.SafeIframeRegexp', self::SAFE_IFRAME);
         // No filesystem definition cache: saves are low-frequency and this keeps workers free
         // of writable-path coupling under Octane. MUST precede maybeGetRawHTMLDefinition() —
         // that call finalizes the config and any set() after it throws.
