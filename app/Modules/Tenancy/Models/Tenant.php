@@ -6,6 +6,7 @@ namespace App\Modules\Tenancy\Models;
 
 use App\Modules\Shared\Concerns\HasUlidColumn;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Tenancy\Support\ContactPhone;
 use App\Modules\Tenancy\Support\CustomerCode;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
@@ -24,6 +25,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $status
  * @property int|null $plan_id
  * @property int $customer_no
+ * @property string|null $contact_phone stored as +84901234567; set it in any typed form (ContactPhone)
  * @property-read string|null $customer_code null when customer_no was not selected
  */
 final class Tenant extends Model
@@ -47,6 +49,24 @@ final class Tenant extends Model
             $number = $this->getAttributes()['customer_no'] ?? null;
 
             return $number === null ? null : CustomerCode::format(Cast::int($number));
+        });
+    }
+
+    /**
+     * Stores what staff typed in its one international form; a blank value clears it. A value that
+     * is not a phone number is kept as typed so the column's CHECK refuses it loudly (validate with
+     * ContactPhoneRule first to give the user a plain message).
+     *
+     * @return Attribute<string|null, string|null>
+     */
+    protected function contactPhone(): Attribute
+    {
+        return Attribute::set(function (?string $value): ?string {
+            if ($value === null || trim($value) === '') {
+                return null;
+            }
+
+            return ContactPhone::normalize($value) ?? $value;
         });
     }
 

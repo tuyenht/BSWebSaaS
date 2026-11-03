@@ -10,4 +10,8 @@ return [
 
     'code_pad' => (int) env('CUSTOMER_CODE_PAD', 6),
 
+    // The country a customer's contact phone belongs to when it is typed without one ("0901 234 567"
+    // → +84901234567), and the one shown back in its national form (tenants.contact_phone).
+    'phone_country_code' => env('CUSTOMER_PHONE_COUNTRY_CODE', '84'),
+
 ];
