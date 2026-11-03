@@ -72,6 +72,7 @@ final class PurgeAuditMonth
             throw ValidationException::withMessages(['month' => match ($e->reason) {
                 'kept' => __('admin.audit.purge.too_recent', ['months' => AuditMonths::MANUAL_FLOOR_MONTHS]),
                 'busy' => __('admin.audit.purge.busy'),
+                'missing' => __('admin.audit.purge.missing'),
                 default => __('admin.audit.purge.invalid_month'),
             }]);
         }

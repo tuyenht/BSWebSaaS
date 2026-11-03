@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Audit\Console;
 
+use App\Modules\Audit\Exceptions\AuditMonthRefused;
 use App\Modules\Audit\Support\AuditMonths;
 use Illuminate\Console\Command;
 
@@ -34,12 +35,24 @@ final class PruneAuditMonths extends Command
         }
 
         $rows = 0;
+        $removed = [];
+        $left = [];
         foreach ($expired as $month) {
-            $rows += $months->drop($month, self::ACTION);
+            try {
+                $rows += $months->drop($month, self::ACTION);
+                $removed[] = $month;
+            } catch (AuditMonthRefused $e) {
+                // removed a moment ago by someone else: nothing left to do; any other refusal (a
+                // month the log stayed locked on) is left for the next run, the other months go on
+                if ($e->reason !== 'missing') {
+                    $left[] = $month;
+                    $this->warn("Audit log month {$month} not removed ({$e->reason}); the next run tries again.");
+                }
+            }
         }
 
-        $this->info('Removed '.count($expired).' audit log months ('.implode(', ', $expired).") with {$rows} rows.");
+        $this->info('Removed '.count($removed).' audit log months ('.implode(', ', $removed).") with {$rows} rows.");
 
-        return self::SUCCESS;
+        return $left === [] ? self::SUCCESS : self::FAILURE;
     }
 }

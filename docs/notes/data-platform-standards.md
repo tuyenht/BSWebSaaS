@@ -12,14 +12,14 @@
 - Cô lập: `site_id` + **RLS FORCE fail-closed**; `set_config('app.current_site_id',…,is_local=true)` (sống qua PgBouncer txn-pool). ✅
 - `BelongsToSite` global scope **bơm `WHERE site_id = ?` TƯỜNG MINH** (bind) + fail-closed `1=0` + stamp on create. ✅
 - Read-path tenant **đã trong explicit transaction**: `SetCurrentSite` chạy TRỌN request trong `Tenancy::enter` = `connection()->transaction()`. ✅
-- **CHƯA partition** (D10 measure-first). CI thực: Pint · Larastan(max) · Pest(unit/feature/arch/query-budget) · migrate · FE-build. **KHÔNG chạy**: Infection/mutation · Rector · Lighthouse · axe (doc-drift §6 — đừng coi là "đã bảo vệ").
+- **CHƯA partition** (D10 measure-first), trừ `audit_logs`: chia theo tháng UTC từ `2046_01_01_000000` (chủ dự án ký 03/11/2026: tự xoá tháng cũ hơn 24 tháng, xoá tay không bao giờ 12 tháng gần nhất). CI thực: Pint · Larastan(max) · Pest(unit/feature/arch/query-budget) · migrate · FE-build. **KHÔNG chạy**: Infection/mutation · Rector · Lighthouse · axe (doc-drift §6 — đừng coi là "đã bảo vệ").
 
 ## Quyết định
 
 ### B · Partitioning — measure-first CÓ TRIGGER (không hoãn mơ hồ)
 Greenfield xóa lý do gốc hoãn (migration 5000 site). Nhưng partition-now = over-engineer ở scale hiện tại + gánh ops solo-dev + **HASH-by-`site_id` KHÔNG cô lập whale** (rows whale rải đều mọi partition) → whale vẫn phải tách-DB (ADR-03). PG17 với 1 bảng ~100M + index-dẫn-`site_id` + keyset chạy tốt; partition lãi ở **≥~50M/BẢNG** hoặc archive-thời-gian.
 - **Trigger (đo được, không cảm tính):** một bảng ứng viên chạm **≥30M rows** (pg_stat) **HOẶC** p99-query breach → mới partition. Chọn **30M (không 50M)** để retrofit còn nhanh (copy ít hơn).
-- **Ứng viên + chiến lược pre-commit:** HASH `site_id` = `entries · products · media · mediables` (✅ tồn tại) + `orders/order_items` (⏳ **CHƯA tồn tại** — khi commerce build); RANGE `created_at` + **pg_partman** auto-tạo-kỳ (chống quên-kỳ → **INSERT-FAIL prod**) = `form_submissions · audit_logs` (audit_logs global).
+- **Ứng viên + chiến lược pre-commit:** HASH `site_id` = `entries · products · media · mediables` (✅ tồn tại) + `orders/order_items` (⏳ **CHƯA tồn tại** — khi commerce build); RANGE `created_at` + **pg_partman** auto-tạo-kỳ (chống quên-kỳ → **INSERT-FAIL prod**) = `form_submissions`; `audit_logs` (global) đã chia theo tháng bằng lệnh của chính dự án (`audit:months` mỗi ngày tạo trước 3 tháng, `audit:prune` ngày 1 hằng tháng), không dùng pg_partman.
 - ⚠ **Trigger cần DETECTOR (audit 07/07):** "≥30M / p99-breach" chỉ bắn nếu có monitoring `pg_stat_user_tables` (row-count) + `pg_stat_statements` (p99). KHÔNG detector = measure-first thành *never-until-broken*. Dựng detector = task ops khi bảng lớn dần — KHÔNG phải giờ (bảng hiện tí hon).
 - **KHÔNG partition:** config · RBAC (D6 team-key) · lookup · `tenants` · `domains` · `sites`.
 - **Whale = tách-DB** (ADR-03 escape-hatch) là câu trả lời whale CHÍNH, KHÔNG phải partition.

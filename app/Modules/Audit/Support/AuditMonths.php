@@ -137,6 +137,8 @@ final class AuditMonths
                 'AUKPT' => 'kept',
                 '55P03' => 'busy',
                 '22023' => 'invalid',
+                'AUGON' => 'missing',
+                'AUNRC' => 'unrecorded',
                 default => null,
             };
 

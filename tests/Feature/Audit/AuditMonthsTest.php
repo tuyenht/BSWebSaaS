@@ -151,6 +151,18 @@ function amRefusal(Closure $run, string $field): ?string
     return null;
 }
 
+/** The SQLSTATE the database refuses $run with, or null when it is not refused. */
+function amCode(Closure $run): ?string
+{
+    try {
+        $run();
+    } catch (QueryException $e) {
+        return is_string($e->errorInfo[0] ?? null) ? $e->errorInfo[0] : null;
+    }
+
+    return null;
+}
+
 // --- conversion ---------------------------------------------------------------------------------
 
 it('converts the plain table keeping every row, id, ulid and the column order, and continues the ids', function (): void {
@@ -384,7 +396,7 @@ it('does nothing for a NULL month', function (): void {
         ->and(amMonths())->toBe($before);
 });
 
-it('drops an old month and returns its row count, and 0 for a month that does not exist', function (): void {
+it('drops an old month and returns its row count', function (): void {
     $month = amMonth(-13);
     amRow($month.'-03 00:00:00+00');
     amRow($month.'-20 00:00:00+00');
@@ -392,18 +404,38 @@ it('drops an old month and returns its row count, and 0 for a month that does no
 
     try {
         $dropped = amDrop($month);
-        $missing = amDrop('1990-01');
         $gone = ! amExists($month);
     } finally {
         amCreate($month);
     }
 
     expect($dropped)->toBe(2)
-        ->and($missing)->toBe(0)
         ->and($gone)->toBeTrue()
         ->and(AuditLog::query()->where('action', '<>', PurgeAuditMonth::ACTION)->count())->toBe(1)
-        ->and(AuditLog::query()->where('action', PurgeAuditMonth::ACTION)->orderBy('id')->pluck('meta')->all())
-        ->toEqual([['month' => $month, 'rows' => 2], ['month' => '1990-01', 'rows' => 0]]);
+        ->and(AuditLog::query()->where('action', PurgeAuditMonth::ACTION)->pluck('meta')->all())
+        ->toEqual([['month' => $month, 'rows' => 2]]);
+});
+
+it('refuses a month that does not exist, so a second call cannot rewrite the count its row recorded', function (): void {
+    $month = amMonth(-13);
+    amRow($month.'-03 00:00:00+00');
+
+    try {
+        $record = DB::transaction(function () use ($month): string {
+            $record = app(AuditService::class)->recordOrFail(PurgeAuditMonth::ACTION, ['meta' => ['month' => $month, 'rows' => 0]]);
+            DB::scalar('select public.audit_log_month_drop(?::date, ?)', [$month.'-01', $record]);
+
+            return $record;
+        });
+        $again = amCode(fn () => DB::transaction(fn () => DB::scalar('select public.audit_log_month_drop(?::date, ?)', [$month.'-01', $record])));
+    } finally {
+        amCreate($month);
+    }
+
+    expect($again)->toBe('AUGON')
+        ->and(amCode(fn () => amDrop('1990-01')))->toBe('AUGON')
+        ->and(AuditLog::query()->where('action', PurgeAuditMonth::ACTION)->pluck('meta')->all())
+        ->toEqual([['month' => $month, 'rows' => 1]]);
 });
 
 it('refuses to drop a month without its audit row, whoever calls', function (string $who): void {
@@ -609,6 +641,34 @@ it('prunes only the months older than 24 full months, audits it, and does nothin
 
     expect(AuditLog::query()->where('action', 'audit.months_pruned')->count())->toBe(2)
         ->and(amExists($kept))->toBeTrue();
+});
+
+it('prunes the other months when one is busy, leaves that one for the next run and says so', function (): void {
+    foreach (app(AuditMonths::class)->expired() as $leftOver) {
+        amDrop($leftOver);
+    }
+    [$old, $older] = [amMonth(-25), amMonth(-26)];
+    amCreate($old);
+    amCreate($older);
+    $admin = DB::connection('pgsql_admin');
+    $admin->beginTransaction();
+    $admin->statement('lock table public.'.amTable($older).' in access share mode');
+
+    try {
+        $this->artisan('audit:prune')
+            ->expectsOutputToContain("Audit log month {$older} not removed (busy)")
+            ->expectsOutputToContain("Removed 1 audit log months ({$old}) with 0 rows.")
+            ->assertFailed();
+    } finally {
+        $admin->rollBack();
+    }
+
+    expect(amExists($older))->toBeTrue()
+        ->and(amExists($old))->toBeFalse()
+        ->and(AuditLog::query()->where('action', 'audit.months_pruned')->pluck('meta')->all())
+        ->toEqual([['month' => $old, 'rows' => 0]]);
+
+    $this->artisan('audit:prune')->expectsOutputToContain("Removed 1 audit log months ({$older}) with 0 rows.")->assertSuccessful();
 });
 
 it('creates the coming months and warns when fewer than two are ready because it could not lock the log', function (): void {

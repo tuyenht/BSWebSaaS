@@ -41,6 +41,11 @@ Prod is a separate git checkout, `/opt/bswebsaas/prod` (branch `main`), on the s
    ```bash
    docker exec bsweb_prod_pg sh -c 'psql -U "$POSTGRES_USER" -d bswebsaas -tAc "SELECT count(*) FROM audit_logs WHERE created_at IS NULL"'
    ```
+6. The migration that splits `audit_logs` by month (`2046_01_01_000000`) copies every row and refuses rows dated more than 10 years back or 1 year ahead. Before step 2, record the row count and the oldest and newest `created_at` (read-only), and compare the count after:
+   ```bash
+   docker exec bsweb_prod_pg sh -c 'psql -U "$POSTGRES_USER" -d bswebsaas -tAc "SELECT count(*), min(created_at), max(created_at) FROM audit_logs"'
+   ```
+   After the migrations, restart PgBouncer (its server connections cache plans of the old table) and run `docker exec bsweb_prod_app php artisan audit:months` once; it must report at least 2 months ahead.
 
 ## Deploy
 

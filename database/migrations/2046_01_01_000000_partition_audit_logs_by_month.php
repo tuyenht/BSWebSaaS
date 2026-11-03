@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\DB;
  *     running month and the three after it; audit_log_month_drop(m, record) drops one month, and
  *     refuses the running month and the 12 before it, whatever the caller asks, and any month
  *     whose audit row (`record`, its ulid, written in the same transaction just before) is
- *     missing; it writes the row count into that row. Those refusals are the guarantee; the PHP
+ *     missing, and a month that no longer exists; it writes the row count into that row. Those refusals are the guarantee; the PHP
  *     checks before them only give the friendly message. Each function runs with a fixed
  *     search_path (pg_catalog, pg_temp: every table is named with its schema) and TimeZone UTC, names tables with format('%I'), takes
  *     only the first day of a finite month and is STRICT, so a temporary table named like a month,
@@ -178,20 +178,23 @@ return new class extends Migration
                     USING ERRCODE = 'AUKPT';
             END IF;
             -- the audit row that says so comes first, in the same transaction: no month goes unrecorded
-            SELECT a.created_at INTO noted FROM public.audit_logs a
-            WHERE a.ulid = record::character(26)
-              AND a.created_at >= now() - interval '10 minutes'
-              AND a.action IN ('audit.month_deleted', 'audit.months_pruned')
-              AND a.meta->>'month' = to_char(m, 'YYYY-MM');
-            IF noted IS NULL THEN
+            BEGIN
+                SELECT a.created_at INTO STRICT noted FROM public.audit_logs a
+                WHERE a.ulid = record::character(26)
+                  AND a.created_at >= now() - interval '10 minutes'
+                  AND a.action IN ('audit.month_deleted', 'audit.months_pruned')
+                  AND a.meta->>'month' = to_char(m, 'YYYY-MM');
+            EXCEPTION WHEN no_data_found OR too_many_rows THEN
                 RAISE EXCEPTION 'audit log month % is removed only after its audit row is written', to_char(m, 'YYYY-MM')
                     USING ERRCODE = 'AUNRC';
-            END IF;
+            END;
 
             part := 'audit_logs_' || to_char(m, '"y"YYYY"m"MM');
             rel := to_regclass(format('public.%I', part));
+            -- a month already gone is refused, never "removed with 0 rows": a second call with the
+            -- same audit row could otherwise rewrite the row count that row recorded
             IF rel IS NULL THEN
-                removed := 0;
+                RAISE EXCEPTION 'audit log month % does not exist', to_char(m, 'YYYY-MM') USING ERRCODE = 'AUGON';
             ELSIF NOT EXISTS (SELECT 1 FROM pg_inherits WHERE inhrelid = rel AND inhparent = 'public.audit_logs'::regclass) THEN
                 RAISE EXCEPTION 'table % is not a month of the audit log', part USING ERRCODE = '42809';
             ELSE
