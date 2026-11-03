@@ -4,6 +4,7 @@
     'close',
     'returnTo' => null,
     'closeLabel' => null,
+    'busy' => null,
 ])
 @php
     // A details panel (canvas .nk-drw): from the right edge on wider screens, from the bottom below 600px, over a dimmed
@@ -14,6 +15,8 @@
     // click on plain text does); Esc anywhere, ✕, the footer's own close button or a tap on the dimmed page close it,
     // and focus returns to the element whose id is $returnTo (the row that opened it — it survives the re-render, the
     // old element does not), or to the page heading when that element is not on the page (opened from a link). $close is printed into JS: a fixed method name, never input.
+    // $busy (optional, a fixed method name too): while the host's call to it runs, the panel is aria-busy, ✕ is aria-disabled
+    // and nothing closes the panel (an irreversible step must not be left half-seen).
     $tid = 'drw-'.\Illuminate\Support\Str::random(6);
     $closeLabel ??= __('admin.dismiss');
 @endphp
@@ -21,23 +24,25 @@
          back: @js($returnTo),
          init() { document.body.style.overflow = 'hidden'; this.$nextTick(() => this.$refs.x.focus()); },
          destroy() { document.body.style.overflow = ''; },
-         hide() { const back = this.back; $wire.$call(@js($close)).then(() => { let to = back && document.getElementById(back); if (! to) { to = document.querySelector('h1'); to?.setAttribute('tabindex', '-1'); } to?.focus(); }); },
+         hide() { if (this.$refs.panel.hasAttribute('aria-busy')) return; const back = this.back; $wire.$call(@js($close)).then(() => { let to = back && document.getElementById(back); if (! to) { to = document.querySelector('h1'); to?.setAttribute('tabindex', '-1'); } to?.focus(); }); },
          trap(e) { const f = [...this.$refs.panel.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select,textarea,[tabindex]:not([tabindex=\'-1\'])')].filter((el) => el.getClientRects().length); if (! f.length) return; const first = f[0], last = f[f.length - 1]; const a = document.activeElement; if (a === this.$refs.panel || ! this.$refs.panel.contains(a)) { e.preventDefault(); (e.shiftKey ? last : first).focus(); } else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (! e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); } },
      }"
      @keydown.escape.window.prevent.stop="hide()"
      @keydown.tab.window="trap($event)"
      {{ $attributes }}>
     <div @click="hide()" class="fixed inset-0 z-60 bg-[rgb(15_18_30/0.45)]" aria-hidden="true"></div>
-    <div x-ref="panel" role="dialog" aria-modal="true" aria-labelledby="{{ $tid }}" tabindex="-1"
+    <div x-ref="panel" role="dialog" aria-modal="true" aria-labelledby="{{ $tid }}" @if ($subtitle) aria-describedby="{{ $tid }}-s" @endif tabindex="-1"
+         @if ($busy) wire:loading.attr="aria-busy" wire:target="{{ $busy }}" @endif
          class="fixed inset-x-0 bottom-0 z-60 flex max-h-[92dvh] flex-col rounded-t-xl bg-surface text-body text-text shadow-lg @container min-[600px]:inset-y-0 min-[600px]:start-auto min-[600px]:end-0 min-[600px]:max-h-none min-[600px]:w-[min(30rem,100vw)] min-[600px]:rounded-none">
         <div class="flex shrink-0 items-start gap-3 border-b border-border py-3 pe-2 ps-5">
             <div class="min-w-0 flex-1 pt-1">
                 <h2 id="{{ $tid }}" class="m-0 text-[calc(1.125rem+var(--user-text-boost))] font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ $title }}</h2>
                 @if ($subtitle)
-                    <p class="m-0 mt-1 text-small text-text-muted [overflow-wrap:anywhere]">{{ $subtitle }}</p>
+                    <p id="{{ $tid }}-s" class="m-0 mt-1 text-small text-text-muted [overflow-wrap:anywhere]">{{ $subtitle }}</p>
                 @endif
             </div>
             <button type="button" x-ref="x" @click="hide()" aria-label="{{ $closeLabel }}" title="{{ $closeLabel }}"
+                    @if ($busy) wire:loading.attr="aria-disabled" wire:target="{{ $busy }}" @endif
                     class="inline-flex size-hit shrink-0 items-center justify-center rounded text-text-muted hover:bg-surface-hover hover:text-text-strong">
                 <x-bs-admin::icon name="ri-close" class="size-5" />
             </button>

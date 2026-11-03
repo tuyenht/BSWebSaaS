@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -40,6 +41,9 @@ use Livewire\Component;
  *
  * Search ignores diacritics and case, and looks at the action's sentence, the people's names and
  * emails, the website's name, the IP address and the row's details.
+ *
+ * The platform super-admin also gets "Dọn nhật ký" (CleanupDialog, which checks that again on every
+ * request); a month deleted there brings the list back to its first page, where its own row is.
  */
 #[Layout('admin::layouts.platform')]
 final class Index extends Component
@@ -204,6 +208,13 @@ final class Index extends Component
         $this->firstPage();
     }
 
+    #[On('audit-month-deleted')]
+    public function monthDeleted(): void
+    {
+        $this->open = '';
+        $this->firstPage();
+    }
+
     public function openDetail(string $ulid): void
     {
         $this->open = self::ulidOr($ulid);
@@ -248,6 +259,7 @@ final class Index extends Component
             'entries' => new AuditEntryView($data['names'], Cast::string(config('admin.brand.name'))),
             'siteTime' => app(SiteTime::class),
             'filtering' => $this->filtering(),
+            'canPurge' => $this->canPurge(),
         ]);
         $view->title(__('admin.platform_audit'));
 
@@ -497,6 +509,13 @@ final class Index extends Component
         }
 
         return $choices;
+    }
+
+    private function canPurge(): bool
+    {
+        $user = auth()->user();
+
+        return $user instanceof User && app(PlatformAccess::class)->isSuperAdmin($user);
     }
 
     private function filtering(): bool

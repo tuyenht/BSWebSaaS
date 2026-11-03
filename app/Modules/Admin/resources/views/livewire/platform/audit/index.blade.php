@@ -73,6 +73,13 @@
             <x-bs-admin::icon name="ri-user-shared" class="size-4 shrink-0" />
             <span>{{ __('admin.audit.support_only') }}</span>
         </button>
+        @if ($canPurge)
+            <div class="ms-auto flex max-w-full flex-wrap justify-end gap-3">
+                <x-bs-admin::button id="audit-cleanup-open" variant="outline" color="secondary" aria-haspopup="dialog" x-on:click="$dispatch('open-audit-cleanup')">
+                    <x-bs-admin::icon name="ri-delete-bin" class="size-4" />{{ __('admin.audit.purge.open') }}
+                </x-bs-admin::button>
+            </div>
+        @endif
     </div>
 
     <x-bs-admin::filter-status class="-mx-3 -mt-2" :chips="$chips" :clear="$chips === [] ? null : 'clearFilters'" />
@@ -218,5 +225,9 @@
                 <x-bs-admin::button @click="hide()">{{ __('admin.audit.close') }}</x-bs-admin::button>
             </x-slot:footer>
         </x-bs-admin::drawer>
+    @endif
+
+    @if ($canPurge)
+        <livewire:admin.platform.audit.cleanup-dialog />
     @endif
 </div>

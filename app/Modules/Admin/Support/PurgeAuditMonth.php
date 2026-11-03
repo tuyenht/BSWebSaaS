@@ -67,6 +67,7 @@ final class PurgeAuditMonth
             return $this->months->drop($month, self::ACTION, [
                 'actor_id' => Cast::int($actor->getKey()),
                 'actor_label' => $actor->email,
+                'meta' => ['confirmed' => 'password'],
             ]);
         } catch (AuditMonthRefused $e) {
             throw ValidationException::withMessages(['month' => match ($e->reason) {

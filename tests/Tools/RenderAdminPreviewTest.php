@@ -127,5 +127,13 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         file_put_contents($dir.'/'.$name.'.html', str_replace($platform, 'http://'.ADMIN_PREVIEW_HOST, $html));
     }
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 3);
+    // The same log as the platform super-admin, who also gets "Dọn nhật ký" in the tool row.
+    $top = User::factory()->create(['name' => 'Trần Thu Hà']);
+    app(PlatformAccess::class)->onPlatform(fn () => $top->assignRole('super_admin'));
+    app(PlatformAccess::class)->forgetMemo();
+    $this->flushSession();
+    $html = $this->actingAs($top)->get($platform.'/audit')->assertOk()->getContent();
+    file_put_contents($dir.'/audit-cleanup.html', str_replace($platform, 'http://'.ADMIN_PREVIEW_HOST, $html));
+
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 4);
 });

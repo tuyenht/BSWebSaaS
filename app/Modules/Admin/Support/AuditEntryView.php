@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Support;
 
 use App\Modules\Audit\Models\AuditLog;
+use App\Modules\Audit\Support\AuditMonths;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Registry\FeatureRegistry;
+use Illuminate\Support\Number;
 
 /**
  * Turns one audit row into what the Audit log screen says about it, in plain words: who did it
@@ -21,12 +23,13 @@ final readonly class AuditEntryView
     private const array TARGET_KEYS = ['hostname', 'name', 'member', 'role'];
 
     /** The keys shown under "Chi tiết", in this order. */
-    private const array DETAIL_KEYS = ['reason', 'minutes', 'why', 'factor', 'hostname', 'role', 'name', 'member', 'was', 'value'];
+    private const array DETAIL_KEYS = ['reason', 'minutes', 'why', 'factor', 'hostname', 'role', 'name', 'member', 'was', 'value', 'rows', 'confirmed'];
 
-    /** Values of `why` and `factor` that have words; any other value is left out. */
+    /** Values of `why`, `factor` and `confirmed` that have words; any other value is left out. */
     private const array WORDED = [
         'why' => ['left', 'expired', 'replaced'],
         'factor' => ['email_otp', 'totp', 'recovery'],
+        'confirmed' => ['password'],
     ];
 
     /**
@@ -108,6 +111,11 @@ final readonly class AuditEntryView
         if (is_string($feature) && FeatureRegistry::has($feature)) {
             return FeatureRegistry::all()[$feature]['name'];
         }
+        // a month of the log removed ('YYYY-MM'), named as the screen writes months
+        $month = self::month($row);
+        if ($month !== null) {
+            return Cast::string(__('admin.audit.meta.month_target', ['month' => $month]));
+        }
 
         foreach (self::TARGET_KEYS as $key) {
             $value = $row->meta[$key] ?? null;
@@ -138,6 +146,14 @@ final readonly class AuditEntryView
             if ($key === $targetKey || ! array_key_exists($key, $meta)) {
                 continue;
             }
+            if ($key === 'rows') {
+                // the rows a removed month held: only beside that month, other rows may use the word
+                if (self::month($row) !== null && is_int($meta['rows'])) {
+                    $details[] = ['label' => Cast::string(__('admin.audit.meta.rows')), 'value' => Cast::string(Number::format($meta['rows'], locale: app()->getLocale()))];
+                }
+
+                continue;
+            }
             $value = $this->worded($key, $meta[$key]);
             if ($value !== null) {
                 $details[] = ['label' => __('admin.audit.meta.'.$key), 'value' => $value];
@@ -160,6 +176,14 @@ final readonly class AuditEntryView
             is_int($value), is_float($value) => (string) $value,
             default => null,
         };
+    }
+
+    /** The removed month a row names, as 'MM/YYYY', or null when it names none. */
+    private static function month(AuditLog $row): ?string
+    {
+        $month = $row->meta['month'] ?? null;
+
+        return is_string($month) && AuditMonths::isMonth($month) ? substr($month, 5, 2).'/'.substr($month, 0, 4) : null;
     }
 
     private function isSystem(AuditLog $row): bool

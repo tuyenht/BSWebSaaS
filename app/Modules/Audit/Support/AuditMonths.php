@@ -93,7 +93,13 @@ final class AuditMonths
     /** May this month be removed by hand (older than the running month and the 12 before it)? */
     public function isRemovable(string $month): bool
     {
-        return self::isMonth($month) && $month < $this->monthsBack(self::MANUAL_FLOOR_MONTHS);
+        return self::isMonth($month) && $month < $this->manualFloor();
+    }
+
+    /** The oldest month kept from removal by hand: the 12th before the running one, 'YYYY-MM'. */
+    public function manualFloor(): string
+    {
+        return $this->monthsBack(self::MANUAL_FLOOR_MONTHS);
     }
 
     /**
