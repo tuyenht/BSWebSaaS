@@ -92,13 +92,17 @@ final class CustomerDirectory
         }
 
         $searching = self::searches($search);
+        // the plans as their ids, not a subquery: with the ids written in, the planner knows how
+        // many customers each plan holds and keeps the ordered index read; behind a subquery it
+        // guessed from sampled statistics and at times read the whole plan to sort it
+        $chosen = $this->planIds($plans);
         $direction = $newer ? 'asc' : 'desc';
         // the page's rows are picked from tenants alone, then joined to their owners: joining first
         // made the planner hash every member before sorting (about 50 ms at 50,000)
         $picked = Tenant::query()
             ->when($searching, fn (Builder $w) => $w->from('customer_matches', 'tenants'))
             ->when($status !== '', fn (Builder $w) => $w->where('tenants.status', $status))
-            ->when($plans !== [], fn (Builder $w) => $w->whereIn('tenants.plan_id', Plan::query()->select('id')->whereIn('key', $plans)))
+            ->when($chosen !== null, fn (Builder $w) => $w->whereIn('tenants.plan_id', $chosen))
             // a customer with no created_at sorts as the oldest, so it still pages (a NULL in the
             // row comparison would make every page after it empty)
             ->when($anchor !== null, fn (Builder $w) => $w->whereRaw(
@@ -126,7 +130,7 @@ final class CustomerDirectory
             $read = Tenant::fromQuery($sql, [...$matches->getBindings(), ...$page->getBindings()]);
             $first = $read->first();
             $tally = is_string($first?->getAttribute('match_counts')) ? json_decode($first->getAttribute('match_counts'), true) : [];
-            $counts = $this->tally(is_array($tally) ? $tally : [], $plans);
+            $counts = $this->tally(is_array($tally) ? $tally : [], $chosen);
             $base = null;
             $rows = $read->filter(fn (Tenant $t): bool => $t->getKey() !== null)
                 ->each(fn (Tenant $t) => $t->offsetUnset('match_counts'));
@@ -136,8 +140,8 @@ final class CustomerDirectory
             // that GROUP BY gives the totals with no plan chosen too
             $rows = $page->get();
             $groups = $this->groups('');
-            $counts = $this->tally($groups, $plans);
-            $base = $plans === [] ? $counts['groups'] : $this->tally($groups, [])['groups'];
+            $counts = $this->tally($groups, $chosen);
+            $base = $chosen === null ? $counts['groups'] : $this->tally($groups, null)['groups'];
         }
 
         if ($anchor !== null && $rows->isEmpty()) {
@@ -199,7 +203,7 @@ final class CustomerDirectory
      */
     public function counts(string $search, array $plans): array
     {
-        return $this->tally($this->groups($search), $plans);
+        return $this->tally($this->groups($search), $this->planIds($plans));
     }
 
     /**
@@ -216,20 +220,30 @@ final class CustomerDirectory
     }
 
     /**
+     * The ids of the chosen plans, null when none is chosen.
+     *
+     * @param  list<string>  $plans  plan keys
+     * @return list<int>|null
+     */
+    private function planIds(array $plans): ?array
+    {
+        return $plans === [] ? null
+            : array_values(array_map(fn (mixed $id): int => Cast::int($id), Plan::query()->whereIn('key', $plans)->pluck('id')->all()));
+    }
+
+    /**
      * Sums the (status, plan) groups: how many customers each status group holds within the
      * chosen plans (all plans when none is chosen), and how many each plan holds whatever the plan
      * filter (the plan filter's own counts). The groups are few (statuses x plans).
      *
      * @param  array<array-key, mixed>  $rows  {status, plan_id, n} each
-     * @param  list<string>  $plans  plan keys
+     * @param  list<int>|null  $chosen  the chosen plans' ids, null when none is chosen
      * @return array{groups: array{all: int, active: int, suspended: int}, plans: array<int, int>}
      */
-    private function tally(array $rows, array $plans): array
+    private function tally(array $rows, ?array $chosen): array
     {
         $groups = ['all' => 0, 'active' => 0, 'suspended' => 0];
         $byPlan = [];
-        $chosen = $plans === [] ? null
-            : array_map(fn (mixed $id): int => Cast::int($id), Plan::query()->whereIn('key', $plans)->pluck('id')->all());
 
         foreach ($rows as $row) {
             if (! is_array($row)) {
