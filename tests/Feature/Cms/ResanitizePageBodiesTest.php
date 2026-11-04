@@ -2,6 +2,7 @@
 
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryDraft;
+use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Shared\Support\RichTextSanitizer;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\DB;
@@ -163,4 +164,82 @@ it('walks a site chunk after chunk until every row is read', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         expect(DB::table('entry_translations')->where('body', 'like', '%<script%')->count())->toBe(0);
     });
+});
+
+it('leaves a block of a type it does not know as stored, counting the row unchanged', function (): void {
+    $entryId = app(Tenancy::class)->enter(1, function (): int {
+        $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'meta' => []]);
+        $translation = $entry->translations()->create(['locale' => 'vi', 'title' => 'Bài', 'slug' => 'bai', 'status' => 'draft', 'body' => resanitizeBody('<p>sạch</p>')]);
+        // Such a block never renders and the editor refuses it, so the cleaning does not look inside it.
+        $unknown = ['blocks' => [['type' => 'no_such_block', 'props' => ['html' => RESANITIZE_DIRTY]]]];
+        DB::table('entry_translations')->where('id', $translation->id)->update(['body' => json_encode($unknown)]);
+
+        return (int) $entry->id;
+    });
+
+    $this->artisan('cms:resanitize-bodies --site=a.test')
+        ->expectsOutputToContain('Site 1: 1 checked, 0 changed.')
+        ->assertSuccessful();
+
+    $stored = app(Tenancy::class)->enter(1, fn (): mixed => DB::table('entry_translations')->where('entry_id', $entryId)->value('body'));
+    expect(data_get(json_decode((string) $stored, true), 'blocks.0.props.html'))->toBe(RESANITIZE_DIRTY);
+});
+
+it('keeps an editor save made between finding a dirty body and cleaning it', function (): void {
+    $entryId = seedDirtyBodies(1, 'bai');
+    $translationId = (int) app(Tenancy::class)->enter(1, fn (): mixed => EntryTranslation::query()->where('entry_id', $entryId)->value('id'));
+    $newer = '<p>Bản mới của biên tập viên</p>';
+
+    // The first pass reads its chunk (this event fires once it holds the old dirty body) and only
+    // later does the second pass clean the row: an editor saving right here is the race. The save
+    // goes through the model, so it is already clean; it must survive, not be replaced by the old
+    // body cleaned. No hook in the command is needed for this.
+    $saved = false;
+    EntryTranslation::retrieved(function (EntryTranslation $row) use (&$saved, $translationId, $newer): void {
+        if ($saved || (int) $row->getKey() !== $translationId) {
+            return;
+        }
+        $saved = true;
+        $editor = EntryTranslation::query()->findOrFail($translationId);
+        $editor->body = resanitizeBody($newer);
+        $editor->save();
+    });
+
+    $this->artisan('cms:resanitize-bodies --site=a.test')
+        ->expectsOutputToContain('Site 1: 3 checked, 1 changed.')
+        ->assertSuccessful();
+
+    $stored = storedBodies(1, $entryId);
+    expect($saved)->toBeTrue()
+        ->and($stored['body'])->toBe(app(RichTextSanitizer::class)->cms($newer))
+        ->and($stored['draft'])->toBe(app(RichTextSanitizer::class)->cms(RESANITIZE_DIRTY));
+});
+
+it('reports a row it cannot clean, cleans the other rows and sites, and ends with an error', function (): void {
+    // Stored first, so the rows after it on the same site show the sweep carries on past it.
+    $broken = app(Tenancy::class)->enter(1, function (): int {
+        $translation = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'meta' => []])
+            ->translations()->create(['locale' => 'vi', 'title' => 'Hỏng', 'slug' => 'hong', 'status' => 'draft', 'body' => resanitizeBody('<p>sạch</p>')]);
+        // A number too large for a PHP float decodes to INF, which the cast cannot encode again.
+        DB::table('entry_translations')->where('id', $translation->id)->update(['body' => '{"blocks": [], "size": 1e400}']);
+
+        return (int) $translation->id;
+    });
+    $mine = seedDirtyBodies(1, 'bai');
+    $theirs = seedDirtyBodies(2, 'bai');
+    $clean = app(RichTextSanitizer::class)->cms(RESANITIZE_DIRTY);
+
+    $this->artisan('cms:resanitize-bodies')
+        ->expectsOutputToContain("Site 1: body row {$broken} could not be cleaned: JsonException")
+        ->expectsOutputToContain('Site 1: 4 checked, 2 changed, 1 could not be cleaned.')
+        ->expectsOutputToContain('Site 2: 3 checked, 2 changed.')
+        ->expectsOutputToContain('1 row(s) could not be cleaned')
+        ->assertFailed();
+
+    $stillBroken = app(Tenancy::class)->enter(1, fn (): mixed => DB::table('entry_translations')->where('id', $broken)->value('body'));
+    expect(storedBodies(1, $mine)['body'])->toBe($clean)
+        ->and(storedBodies(1, $mine)['draft'])->toBe($clean)
+        ->and(storedBodies(2, $theirs)['body'])->toBe($clean)
+        ->and(storedBodies(2, $theirs)['draft'])->toBe($clean)
+        ->and((string) $stillBroken)->toContain('"size"');
 });

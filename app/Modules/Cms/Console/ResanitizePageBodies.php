@@ -9,10 +9,11 @@ use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Context\Tenancy;
-use Closure;
 use Illuminate\Console\Command;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Str;
+use Throwable;
 
 /**
  * Cleans the formatted text already stored in page and post bodies again (ADR-19 point 7): every
@@ -30,10 +31,19 @@ use Illuminate\Database\Eloquent\Model;
  * "edited" times do not move. A pending change's content fingerprint (EntryDraft::version) does
  * change when its text changes, so a reviewer holding the old screen is asked to reload.
  *
- * Per site inside Tenancy::enter, by keyset on id, one short transaction per chunk of rows.
- * Idempotent: a second run changes nothing. A failure stops the run with what was written so far
- * kept; run it again. A picture the cleaning removes may still be listed as used until
- * `media:reconcile-content-usage` runs.
+ * Two passes per site, each inside Tenancy::enter. The first reads a chunk of rows by keyset on id,
+ * without a lock, and finds the ones the cleaning would change (a dry run stops there and counts
+ * them). The second cleans each of those in its own short transaction: it re-reads that one row
+ * with FOR UPDATE and cleans the value it holds now, so an editor's save made in between is kept
+ * (that save was cleaned by the cast already, so the row simply ends up unchanged) and never
+ * overwritten with the old body. At most one row lock is held at a time and entries is never
+ * locked, so this cannot deadlock with an editor, who locks the entry first. "changed" counts the
+ * rows the second pass wrote.
+ *
+ * Idempotent: a second run changes nothing. A row that cannot be cleaned is named (site, column,
+ * row id) and skipped; the sweep carries on with the next rows and sites and then exits with an
+ * error, so look at those rows and run it again. A picture the cleaning removes may still be
+ * listed as used until `media:reconcile-content-usage` runs.
  */
 final class ResanitizePageBodies extends Command
 {
@@ -65,61 +75,124 @@ final class ResanitizePageBodies extends Command
             $siteIds = $tenancy->siteIds();
         }
 
-        /** @var array<string, Closure(int): Collection<int, covariant Model>> $sources column => the next chunk of rows after an id */
+        /** @var array<string, class-string<Model>> $sources column => the model that holds it */
         $sources = [
-            'body' => fn (int $after): Collection => EntryTranslation::query()
-                ->where('id', '>', $after)->orderBy('id')->limit(self::CHUNK)->get(['id', 'body']),
-            'content' => fn (int $after): Collection => EntryDraft::query()
-                ->where('id', '>', $after)->orderBy('id')->limit(self::CHUNK)->get(['id', 'content']),
+            'body' => EntryTranslation::class,
+            'content' => EntryDraft::class,
         ];
 
         $total = 0;
+        $failed = 0;
         $visited = 0;
         foreach ($siteIds as $siteId) {
             $checked = 0;
             $changed = 0;
-            foreach ($sources as $column => $next) {
+            $siteFailed = 0;
+            foreach ($sources as $column => $model) {
                 $after = 0;
                 do {
-                    [$after, $rows, $dirty] = $tenancy->enter($siteId, fn (): array => $this->cleanChunk($next($after), $column, $after, $dryRun));
+                    /** @var array{0: int, 1: int, 2: list<int>, 3: int} $chunk */
+                    $chunk = $tenancy->enter($siteId, fn (): array => $this->findDirty($model, $column, $after, $siteId));
+                    [$after, $rows, $dirty, $unreadable] = $chunk;
                     $checked += $rows;
-                    $changed += $dirty;
+                    $siteFailed += $unreadable;
+
+                    if ($dryRun) {
+                        $changed += count($dirty);
+                    } else {
+                        foreach ($dirty as $id) {
+                            try {
+                                $changed += $tenancy->enter($siteId, fn (): bool => $this->cleanRow($model, $column, $id)) ? 1 : 0;
+                            } catch (Throwable $e) {
+                                // Caught outside the row's transaction, so it has rolled back and the next row starts clean.
+                                $this->reportRow($siteId, $column, $id, $e);
+                                $siteFailed++;
+                            }
+                        }
+                    }
                 } while ($rows === self::CHUNK);
             }
 
-            $this->line("Site {$siteId}: {$checked} checked, {$changed} {$verb}.");
+            $this->line("Site {$siteId}: {$checked} checked, {$changed} {$verb}".($siteFailed > 0 ? ", {$siteFailed} could not be cleaned." : '.'));
             $total += $changed;
+            $failed += $siteFailed;
             $visited++;
         }
 
         $this->info("{$total} {$verb} on {$visited} site(s).");
 
+        if ($failed > 0) {
+            $this->error("{$failed} row(s) could not be cleaned (listed above); the others were.");
+
+            return self::FAILURE;
+        }
+
         return self::SUCCESS;
     }
 
     /**
-     * @param  Collection<int, covariant Model>  $rows
-     * @return array{0: int, 1: int, 2: int} the last id read, rows read, rows that (would) change
+     * Pass 1, no lock and no write: the ids in the next chunk whose value the cast would change.
+     *
+     * @param  class-string<Model>  $model
+     * @return array{0: int, 1: int, 2: list<int>, 3: int} the last id read, rows read, ids that would change, rows that could not be read
      */
-    private function cleanChunk(Collection $rows, string $column, int $after, bool $dryRun): array
+    private function findDirty(string $model, string $column, int $after, int $siteId): array
     {
-        $dirty = 0;
-        foreach ($rows as $row) {
-            // Assigned back through the cast, which cleans it; its comparison says whether that changed anything.
-            $row->setAttribute($column, $row->getAttribute($column));
-            if (! $row->isDirty($column)) {
-                continue;
-            }
+        $rows = $model::query()->where('id', '>', $after)->orderBy('id')->limit(self::CHUNK)->get(['id', $column]);
 
-            $dirty++;
-            if (! $dryRun) {
-                $row->timestamps = false;
-                $row->saveQuietly();
+        $dirty = [];
+        $unreadable = 0;
+        foreach ($rows as $row) {
+            $id = Cast::int($row->getKey());
+            try {
+                if ($this->assignBack($row, $column)) {
+                    $dirty[] = $id;
+                }
+            } catch (Throwable $e) {
+                $this->reportRow($siteId, $column, $id, $e);
+                $unreadable++;
             }
         }
 
         $last = $rows->last();
 
-        return [$last === null ? $after : Cast::int($last->getKey()), $rows->count(), $dirty];
+        return [$last === null ? $after : Cast::int($last->getKey()), $rows->count(), $dirty, $unreadable];
+    }
+
+    /**
+     * Pass 2, one row in its own transaction: re-read it under a row lock and clean the value it
+     * holds now. False when that value is already clean (an editor saved it meanwhile) or the row is gone.
+     *
+     * @param  class-string<Model>  $model
+     */
+    private function cleanRow(string $model, string $column, int $id): bool
+    {
+        $row = $model::query()->whereKey($id)->lockForUpdate()->first(['id', $column]);
+        if ($row === null || ! $this->assignBack($row, $column)) {
+            return false;
+        }
+
+        $row->timestamps = false;
+        $row->saveQuietly();
+
+        return true;
+    }
+
+    /** Assigns the column back through its cast, which cleans it; true when that changed the value. */
+    private function assignBack(Model $row, string $column): bool
+    {
+        $row->setAttribute($column, $row->getAttribute($column));
+
+        return $row->isDirty($column);
+    }
+
+    /** Names the row and the kind of failure only: a database error's message can carry the body it tried to write. */
+    private function reportRow(int $siteId, string $column, int $id, Throwable $e): void
+    {
+        $reason = $e instanceof QueryException
+            ? 'database error (SQLSTATE '.$e->getCode().')'
+            : class_basename($e).': '.Str::limit(Str::squish($e->getMessage()), 160);
+
+        $this->error("Site {$siteId}: {$column} row {$id} could not be cleaned: {$reason}");
     }
 }
