@@ -12,6 +12,9 @@
 /* The approval-workflow list (design 18): its table → three columns → flat rows by the page's width. */
 @import './admin-workflow.css';
 
+/* The shared admin tree (<x-bs-admin::tree>): guide lines, the drop placeholder, the drag label. */
+@import './admin-tree.css';
+
 /* Scan module Blade + bundled theme Blade + framework/runtime views so utility classes aren't purged. */
 @source '../../app/Modules/**/*.blade.php';
 @source '../../themes/**/*.blade.php';

@@ -1,0 +1,508 @@
+/*
+ | The shared admin tree (<x-bs-admin::tree>, tree.row, tree.name, tree.placeholder): pages,
+ | categories, menus and product categories draw their hierarchy the same way.
+ |   · A row: [grip] [indent · toggle · name …] [buttons]. The grip column stays at the left; the
+ |     indent is 32px per level, 24px when the tree is narrower than 600 (its own width).
+ |   · Guide lines (├ └ │) run through the middle of each parent's toggle: "v" a line passing by,
+ |     "t" ├, "l" └, "down" the start of the line under an open parent.
+ |   · A drop placeholder at the level the record will take, the reason in red when refused.
+ | Every control size comes from the shared tokens (--spacing-control, --spacing-hit, --text-*);
+ | the toggle and the name are 40 / 44 with a mouse across the text sizes and 44 on touch. Names
+ | and labels wrap and are never clipped.
+ */
+@layer components {
+    .tree-w {
+        container: tree / inline-size;
+        min-width: 0;
+    }
+
+    .tree {
+        --tree-step: 32px;
+        --tree-x0: 0.25rem;
+        --tree-grip: 1.5rem;
+        --tree-tg: var(--spacing-control);
+        --tree-py: 0.25rem;
+        --tree-icon: min(1.5rem, calc(1.125rem + var(--user-text-boost)));
+        --tree-mid: calc(var(--tree-py) + var(--tree-tg) / 2);
+        --tree-line: color-mix(in srgb, var(--color-border-input) 60%, var(--color-surface));
+        min-width: 0;
+        border-top: 1px solid var(--color-border);
+    }
+
+    @container tree (max-width: 37.4375rem) {
+        .tree {
+            --tree-step: 24px;
+        }
+    }
+
+    /* On touch the whole row is the drag handle and moves go through the row's menu: no grip. */
+    @media (any-pointer: coarse) {
+        .tree {
+            --tree-grip: 0px;
+            --tree-tg: var(--spacing-hit);
+        }
+    }
+
+    .tree-r {
+        --tree-lv: 1;
+        position: relative;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        column-gap: 0.5rem;
+        box-sizing: border-box;
+        min-width: 0;
+        padding: var(--tree-py) 0.75rem var(--tree-py) var(--tree-x0);
+        border-bottom: 1px solid var(--color-border);
+        background: var(--color-surface);
+    }
+
+    .tree-r[data-lv="2"] { --tree-lv: 2; }
+    .tree-r[data-lv="3"] { --tree-lv: 3; }
+    .tree-r[data-lv="4"] { --tree-lv: 4; }
+    .tree-r[data-lv="5"] { --tree-lv: 5; }
+    .tree-r[data-lv="6"] { --tree-lv: 6; }
+    .tree-r[data-lv="7"] { --tree-lv: 7; }
+    .tree-r[data-lv="8"] { --tree-lv: 8; }
+
+    .tree-r[hidden] {
+        display: none;
+    }
+
+    @media (hover: hover) {
+        .tree-r:hover {
+            background: var(--color-surface-muted);
+        }
+    }
+
+    /* Drag states: the row being dragged fades; the row a drop would go into is outlined, in the
+       accent ink when allowed and in red when refused. */
+    .tree-r[data-drag="1"] {
+        opacity: 0.5;
+    }
+
+    .tree-r[data-drop="in"] {
+        background: color-mix(in srgb, var(--color-primary-text) 10%, var(--color-surface));
+        box-shadow: inset 0 0 0 2px var(--color-primary-text);
+    }
+
+    .tree-r[data-drop="bad"] {
+        background: color-mix(in srgb, var(--color-danger-text) 8%, var(--color-surface));
+        box-shadow: inset 0 0 0 2px var(--color-danger-text);
+    }
+
+    .tree-r[data-flash="1"] {
+        animation: tree-flash 1s ease-out;
+    }
+
+    @keyframes tree-flash {
+        from {
+            background: color-mix(in srgb, var(--color-primary-text) 16%, var(--color-surface));
+        }
+    }
+
+    /* ---- guide lines -------------------------------------------------------------------- */
+    .tree-g {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+    }
+
+    .tree-gl {
+        --d: 1;
+        position: absolute;
+        top: -1px;
+        bottom: -1px;
+        width: 1px;
+        background: var(--tree-line);
+        left: calc(var(--tree-x0) + var(--tree-grip) + (var(--d) - 1) * var(--tree-step) + var(--tree-tg) / 2);
+    }
+
+    .tree-gl[data-d="2"] { --d: 2; }
+    .tree-gl[data-d="3"] { --d: 3; }
+    .tree-gl[data-d="4"] { --d: 4; }
+    .tree-gl[data-d="5"] { --d: 5; }
+    .tree-gl[data-d="6"] { --d: 6; }
+    .tree-gl[data-d="7"] { --d: 7; }
+
+    .tree-gl[data-k="l"] {
+        bottom: auto;
+        height: calc(var(--tree-mid) + 1px);
+    }
+
+    /* The arm of ├ and └: to just before the record's own chevron, or, without children, to just
+       before its name. */
+    .tree-gl[data-k="t"]::after,
+    .tree-gl[data-k="l"]::after {
+        content: "";
+        position: absolute;
+        top: calc(var(--tree-mid) + 1px);
+        left: 0;
+        width: calc(var(--tree-step) + var(--tree-tg) / 2 - 0.25rem);
+        height: 1px;
+        background: var(--tree-line);
+    }
+
+    .tree-r[data-kids="1"] .tree-gl[data-k="t"]::after,
+    .tree-r[data-kids="1"] .tree-gl[data-k="l"]::after {
+        width: calc(var(--tree-step) - var(--tree-icon) / 2 - 2px);
+    }
+
+    .tree-gl[data-k="down"] {
+        top: calc(var(--tree-mid) + var(--tree-icon) / 2 + 2px);
+    }
+
+    .tree-r[aria-expanded="false"] .tree-gl[data-k="down"] {
+        display: none;
+    }
+
+    /* ---- the cells ---------------------------------------------------------------------- */
+    .tree-grip {
+        display: flex;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        width: var(--tree-grip);
+        height: var(--tree-tg);
+        color: var(--color-text-muted);
+        cursor: grab;
+    }
+
+    .tree-grip[data-off="1"] {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+    .tree-grip-i {
+        width: calc(1rem + var(--user-text-boost));
+        height: calc(1rem + var(--user-text-boost));
+    }
+
+    @media (any-pointer: coarse) {
+        .tree-grip {
+            display: none;
+        }
+    }
+
+    .tree-c-main {
+        display: flex;
+        flex: 1 1 9rem; /* below this the actions drop under the name instead of squeezing it */
+        align-items: flex-start;
+        min-width: 0;
+        padding-left: calc((var(--tree-lv) - 1) * var(--tree-step));
+    }
+
+    .tree-tg,
+    .tree-tg0 {
+        flex: none;
+        width: var(--tree-tg);
+        height: var(--tree-tg);
+    }
+
+    .tree-tg {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border: 0;
+        border-radius: 0.25rem;
+        background: transparent;
+        color: var(--color-text);
+        cursor: pointer;
+    }
+
+    .tree-tg:hover {
+        background: var(--color-surface-hover);
+    }
+
+    .tree-tg-i {
+        width: var(--tree-icon);
+        height: var(--tree-icon);
+        transition: transform 0.15s ease-out;
+    }
+
+    .tree-r[aria-expanded="false"] .tree-tg-i {
+        transform: rotate(-90deg);
+    }
+
+    .tree-main {
+        display: flex;
+        flex: 1 1 auto;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0 0.5rem;
+        min-width: 0;
+        min-height: var(--tree-tg);
+    }
+
+    .tree-nm {
+        display: inline-flex;
+        align-items: center;
+        box-sizing: border-box;
+        max-width: 100%;
+        min-height: var(--tree-tg);
+        padding: 0.25rem;
+        border: 0;
+        border-radius: 0.25rem;
+        background: transparent;
+        font-size: var(--text-body);
+        font-weight: 500;
+        line-height: 1.45;
+        color: var(--color-text-strong);
+        text-align: left;
+        overflow-wrap: anywhere;
+        cursor: pointer;
+    }
+
+    .tree-r[data-lv="1"] .tree-nm {
+        font-weight: 600;
+    }
+
+    span.tree-nm {
+        cursor: inherit;
+    }
+
+    a.tree-nm:hover,
+    button.tree-nm:hover {
+        color: var(--color-primary-text);
+        text-decoration: underline;
+        text-underline-offset: 3px;
+    }
+
+    /* "🔒 <who> đang sửa": the reason a record cannot move, beside its name, wrapping. */
+    .tree-lk {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        max-width: 100%;
+        font-size: var(--text-caption);
+        font-weight: 600;
+        line-height: 1.4;
+        color: var(--color-warning-text);
+        overflow-wrap: anywhere;
+    }
+
+    .tree-lk-i {
+        flex: none;
+        width: calc(0.875rem + var(--user-text-boost));
+        height: calc(0.875rem + var(--user-text-boost));
+    }
+
+    .tree-c-act {
+        display: flex;
+        flex: none;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        min-height: var(--tree-tg);
+        margin-left: auto;
+    }
+
+    /* ---- the drop placeholder ---------------------------------------------------------- */
+    .tree-ph {
+        --tree-lv: 1;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        box-sizing: border-box;
+        min-height: var(--tree-phh, calc(var(--tree-tg) + 2 * var(--tree-py)));
+        margin: 2px 0.75rem 2px calc(var(--tree-x0) + var(--tree-grip) + (var(--tree-lv) - 1) * var(--tree-step));
+        padding: 0.375rem 0.75rem;
+        border: 2px dashed var(--color-primary-text);
+        border-radius: 0.375rem;
+        background: color-mix(in srgb, var(--color-primary-text) 6%, var(--color-surface));
+        color: var(--color-primary-text);
+        font-size: var(--text-small);
+        font-weight: 600;
+        line-height: 1.4;
+        overflow-wrap: anywhere;
+        transition: margin-left 0.15s ease-out;
+    }
+
+    .tree-ph[hidden] {
+        display: none;
+    }
+
+    .tree-ph[data-lv="2"] { --tree-lv: 2; }
+    .tree-ph[data-lv="3"] { --tree-lv: 3; }
+    .tree-ph[data-lv="4"] { --tree-lv: 4; }
+    .tree-ph[data-lv="5"] { --tree-lv: 5; }
+    .tree-ph[data-lv="6"] { --tree-lv: 6; }
+    .tree-ph[data-lv="7"] { --tree-lv: 7; }
+    .tree-ph[data-lv="8"] { --tree-lv: 8; }
+
+    .tree-ph[data-bad="1"] {
+        border-color: var(--color-danger-text);
+        background: color-mix(in srgb, var(--color-danger-text) 8%, var(--color-surface));
+        color: var(--color-danger-text);
+    }
+
+    .tree-ph-i {
+        flex: none;
+        width: min(1.5rem, calc(1rem + var(--user-text-boost)));
+        height: min(1.5rem, calc(1rem + var(--user-text-boost)));
+    }
+
+    .tree-ph[data-bad="1"] .tree-ph-ok,
+    .tree-ph:not([data-bad="1"]) .tree-ph-no {
+        display: none;
+    }
+
+    .tree-ph > span {
+        min-width: 0;
+    }
+
+    /* The label that follows the pointer while dragging (the drag rule puts it on <body>). */
+    .tree-dl {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 400;
+        visibility: hidden;
+        box-sizing: border-box;
+        max-width: min(21.25rem, calc(100vw - 1rem));
+        padding: 0.375rem 0.625rem;
+        border-radius: 0.375rem;
+        background: var(--color-text-strong);
+        color: var(--color-surface);
+        font-size: var(--text-small);
+        font-weight: 600;
+        line-height: 1.4;
+        overflow-wrap: anywhere;
+        pointer-events: none;
+        box-shadow: 0 4px 12px rgb(0 0 0 / 0.2);
+    }
+
+    .tree-dl[data-on="1"] {
+        visibility: visible;
+    }
+
+    .tree-dl[data-bad="1"] {
+        background: var(--color-danger-text);
+    }
+
+    .tree-sr {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
+    /* ---- the result line under the tree -------------------------------------------------- */
+    .tree-msg {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.25rem 0.5rem;
+        margin-top: 0.5rem;
+        padding: 0.375rem 0.5rem 0.375rem 0.75rem;
+        border: 1px solid var(--color-border);
+        border-radius: 0.375rem;
+        background: var(--color-surface-muted);
+        font-size: var(--text-small);
+        line-height: 1.5;
+        color: var(--color-text);
+    }
+
+    .tree-msg[data-bad="1"] {
+        border-color: color-mix(in srgb, var(--color-danger-text) 40%, var(--color-surface));
+        background: color-mix(in srgb, var(--color-danger-text) 6%, var(--color-surface));
+    }
+
+    .tree-msg-t {
+        flex: 1 1 12rem;
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .tree-msg-i {
+        flex: none;
+        width: calc(1rem + var(--user-text-boost));
+        height: calc(1rem + var(--user-text-boost));
+        color: var(--color-success-text);
+    }
+
+    .tree-msg-no {
+        color: var(--color-danger-text);
+    }
+
+    .tree-msg[data-bad="1"] .tree-msg-ok,
+    .tree-msg:not([data-bad="1"]) .tree-msg-no {
+        display: none;
+    }
+
+    /* ---- "Phím tắt" ------------------------------------------------------------------- */
+    .tree-keys {
+        margin-top: 0.5rem;
+        font-size: var(--text-small);
+        color: var(--color-text-muted);
+    }
+
+    .tree-keys > summary {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        min-height: var(--spacing-control);
+        font-weight: 600;
+        color: var(--color-text);
+        cursor: pointer;
+    }
+
+    @media (any-pointer: coarse) {
+        .tree-keys > summary {
+            min-height: var(--spacing-hit);
+        }
+    }
+
+    .tree-keys > p {
+        margin: 0 0 0.25rem;
+    }
+
+    .tree-keys > dl {
+        display: grid;
+        grid-template-columns: max-content minmax(0, 1fr);
+        gap: 0.25rem 0.75rem;
+        margin: 0;
+    }
+
+    .tree-keys dd {
+        margin: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .tree-keys kbd {
+        display: inline-block;
+        min-width: 1.5em;
+        padding: 0 0.3em;
+        border: 1px solid var(--color-border-input);
+        border-radius: 0.25rem;
+        background: var(--color-surface);
+        font: inherit;
+        font-size: var(--text-caption);
+        text-align: center;
+        color: var(--color-text);
+    }
+
+    @container tree (max-width: 23.75rem) {
+        .tree-keys > dl {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .tree-keys dd {
+            margin-bottom: 0.25rem;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .tree-ph,
+        .tree-tg-i {
+            transition: none;
+        }
+
+        .tree-r[data-flash] {
+            animation: none;
+        }
+    }
+}

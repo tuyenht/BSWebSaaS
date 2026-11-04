@@ -14,6 +14,9 @@ import './sweet-toast.js';
 // The approval-workflow screen's staged picks and switches (Alpine.data 'workflowSettings').
 import './admin-workflow-settings.js';
 
+// The shared admin tree: collapse, the one drag rule and the keyboard moves (Alpine.data 'bsTree').
+import './admin-tree.js';
+
 let uploader = null;
 
 function teardown() {
