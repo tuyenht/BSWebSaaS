@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire\Entries;
 
+use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\RecordEntryRevision;
@@ -103,6 +104,19 @@ final class Editor extends Component
 
     public string $slug = '';
 
+    /** The short excerpt of this language (news cards, category pages; the Google description's fallback). */
+    public string $excerpt = '';
+
+    /** The title Google shows for this language; empty = the page title. */
+    public string $seoTitle = '';
+
+    /** The description Google shows for this language; empty = the excerpt. */
+    public string $seoDescription = '';
+
+    /** Whether the site writes in more than one language (the per-language fields then carry its code). */
+    #[Locked]
+    public bool $multiLocale = false;
+
     /** Primary category id (posts only; index 0 of entry_taxonomies drives the URL). */
     public ?int $categoryId = null;
 
@@ -169,6 +183,7 @@ final class Editor extends Component
     public function mount(?string $ulid = null, ?string $section = null, ?string $locale = null): void
     {
         $this->locale = $this->resolveLocale(app(SiteLocale::class), $locale ?? request()->query('locale'));
+        $this->multiLocale = count(app(SiteLocale::class)->enabled()) > 1;
 
         if ($ulid === null) {
             $this->authorize('create', Entry::class);
@@ -196,6 +211,9 @@ final class Editor extends Component
             $this->title = $translation->title;
             $this->slug = $translation->slug;
             $this->blocks = $this->normalizeBlocks($translation->body['blocks'] ?? []);
+            $this->excerpt = $translation->excerpt ?? '';
+            $this->seoTitle = $translation->seo_title ?? '';
+            $this->seoDescription = $translation->seo_description ?? '';
         }
 
         $cover = data_get($entry->meta, 'image_url');
@@ -963,7 +981,7 @@ final class Editor extends Component
      */
     protected function rules(): array
     {
-        $rules = app(EntryContentRules::class)->rules();
+        $rules = self::onFormFields(app(EntryContentRules::class)->rules());
 
         // A post's URL is its category slug + post slug, so a post must have a category.
         if ($this->type === 'post') {
@@ -1029,10 +1047,32 @@ final class Editor extends Component
     protected function messages(): array
     {
         return [
-            ...app(EntryContentRules::class)->messages(),
+            ...self::onFormFields(app(EntryContentRules::class)->messages()),
             'categoryId.required' => __('entries.category_required'),
             'categoryId.exists' => __('entries.category_invalid'),
         ];
+    }
+
+    /**
+     * The content rules (or their messages) keyed by this form's field names: the Google fields are
+     * columns `seo_title`/`seo_description` in the content shape and `seoTitle`/`seoDescription` here.
+     *
+     * @template TValue
+     *
+     * @param  array<string, TValue>  $byColumn
+     * @return array<string, TValue>
+     */
+    private static function onFormFields(array $byColumn): array
+    {
+        $fields = ['seo_title' => 'seoTitle', 'seo_description' => 'seoDescription'];
+        $out = [];
+        foreach ($byColumn as $key => $value) {
+            [$column, $rule] = array_pad(explode('.', $key, 2), 2, null);
+            $field = $fields[$column] ?? $column;
+            $out[$rule === null ? $field : $field.'.'.$rule] = $value;
+        }
+
+        return $out;
     }
 
     /**
@@ -1107,6 +1147,11 @@ final class Editor extends Component
     /** Validate + persist the entry and its translation (+ category for posts); returns it. */
     private function persist(): Entry
     {
+        // Google shows these on one line; a line break or control character never reaches the head.
+        $this->seoTitle = SeoFields::singleLine($this->seoTitle);
+        $this->seoDescription = SeoFields::singleLine($this->seoDescription);
+        $this->excerpt = trim($this->excerpt);
+
         $filled = $this->fillBlankSlug();
         try {
             $this->validate();
@@ -1155,6 +1200,9 @@ final class Editor extends Component
             'title' => $this->title,
             'slug' => $this->slug,
             'body' => ['blocks' => $this->blocks],
+            'excerpt' => $this->excerpt !== '' ? $this->excerpt : null,
+            'seo_title' => $this->seoTitle !== '' ? $this->seoTitle : null,
+            'seo_description' => $this->seoDescription !== '' ? $this->seoDescription : null,
             'status' => $this->translationStatus($entry, $translation),
         ])->save();
 

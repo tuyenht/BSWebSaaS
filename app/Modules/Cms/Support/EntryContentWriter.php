@@ -90,7 +90,10 @@ final readonly class EntryContentWriter
 
         if (($snapshot['v'] ?? null) !== RecordEntryRevision::FORMAT
             || ! is_string($title) || ! is_string($slug) || ! is_array($blocks) || ! is_array($meta)
-            || Validator::make(['title' => $title, 'slug' => $slug, 'blocks' => $blocks], $this->rules->rules())->fails()) {
+            || Validator::make([
+                'title' => $title, 'slug' => $slug, 'blocks' => $blocks,
+                'excerpt' => $strings['excerpt'], 'seo_title' => $strings['seo_title'], 'seo_description' => $strings['seo_description'],
+            ], $this->rules->rules())->fails()) {
             return null;
         }
 
