@@ -70,6 +70,7 @@ Prod is a separate git checkout, `/opt/bswebsaas/prod` (branch `main`), on the s
    - After such a migration, run `docker restart bsweb_prod_pgbouncer` right after step 5 — a few seconds without database connections.
    - The same applies to the shared dev database: `docker compose restart pgbouncer` after migrating from a worktree, before running tests.
 7. The delta changes `PermissionRegistry.php` (a new permission or role grant) → `docker exec bsweb_prod_app php artisan rbac:sync` right after the migrations. It is idempotent. Without it, a new permission does not exist on prod and every check for it is denied.
+8. The delta narrows what formatted text may hold or patches the sanitizer (`RichTextSanitizer.php`, or `ezyang/htmlpurifier` in `composer.lock`) → after step 5, `docker exec bsweb_prod_app php artisan cms:resanitize-bodies --dry-run` (prints per site how many bodies would change), then the same without `--dry-run`. Add `--site=<hostname>` for one site. It cleans stored page and post bodies and pending changes through the same cleaning every save uses, keeps their edit times and records no revision; it is idempotent (a second run changes 0). Then `docker exec bsweb_prod_app php artisan media:reconcile-content-usage`, so a picture the cleaning removed is no longer listed as used. Without it, the old markup stays stored until each body's next save (the storefront still checks it before printing).
 
 ## `.env` changes and the image
 
