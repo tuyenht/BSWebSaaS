@@ -455,7 +455,7 @@ it('restores a sub-item whose parent is in the trash, or gone for good, at the e
     });
 });
 
-it('refuses to add a sub-item under an item another editor has trashed, or to move a trashed item', function (): void {
+it('refuses to add a sub-item under an item another editor has trashed, or to move or save a trashed item', function (): void {
     $other = menuEditor(1);
 
     mtIn(1, function () use ($other): void {
@@ -471,6 +471,8 @@ it('refuses to add a sub-item under an item another editor has trashed, or to mo
         expect(mtRefusal(fn () => mtItem($menu, 'Con', $parent)))->toBe('parent_invalid')
             ->and(mtRefusal(fn () => app(MoveMenuItem::class)->handle(mtEditor(), $live, $parent, 0)))->toBe('parent_invalid')
             ->and(mtRefusal(fn () => app(MoveMenuItem::class)->handle(mtEditor(), $gone, null, 0)))->toBe('item_invalid')
+            ->and(mtRefusal(fn () => app(SaveMenuItem::class)->handle(mtEditor(), $menu, $gone, new MenuItemData(linkType: 'dynamic', dynamicKey: 'home', labels: ['vi' => 'Sửa muộn']))))->toBe('item_invalid')
+            ->and(MenuItem::withTrashed()->whereKey($gone->id)->first()?->translationFor('vi')?->label)->toBe('Đã xoá')
             ->and(mtTree($menu))->toBe(['Bên cạnh' => []])
             ->and(MenuItem::withTrashed()->count())->toBe(3);
     });

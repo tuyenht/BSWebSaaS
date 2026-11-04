@@ -60,6 +60,10 @@ final readonly class SaveMenuItem
 
         return DB::transaction(function () use ($menu, $item, $data, $target, $labels): MenuItem {
             $this->lockMenu($menu->id);
+            // Read under the menu lock: an item trashed (or deleted) since the screen loaded is gone.
+            if ($item !== null && ! MenuItem::query()->whereKey($item->id)->where('menu_id', $menu->id)->exists()) {
+                throw new MenuChangeRejectedException('item_invalid');
+            }
             $created = $item === null;
             $item ??= $this->newItem($menu, $data->parent);
 
