@@ -152,7 +152,10 @@ export function gapTarget(R, g, x0, x, step) {
 // line starts and when it empties; drain() resolves when it is empty.
 export function makeQueue({ max, onBusy = () => {} }) {
     const jobs = [];
-    let pump = null;
+    // `running` is set before run() starts and cleared in its own finally, so a job that throws
+    // before its first await (run() then ends synchronously) can never leave the line stuck.
+    let running = false;
+    let pump = Promise.resolve();
     const run = async () => {
         onBusy(true);
         try {
@@ -164,7 +167,7 @@ export function makeQueue({ max, onBusy = () => {} }) {
                 }
             }
         } finally {
-            pump = null;
+            running = false;
             onBusy(false);
         }
     };
@@ -174,16 +177,17 @@ export function makeQueue({ max, onBusy = () => {} }) {
                 return false;
             }
             jobs.push(job);
-            if (!pump) {
+            if (!running) {
+                running = true;
                 pump = run();
             }
             return true;
         },
         get idle() {
-            return !pump;
+            return !running;
         },
         drain() {
-            return pump || Promise.resolve();
+            return running ? pump : Promise.resolve();
         },
     };
 }

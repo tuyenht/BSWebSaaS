@@ -112,6 +112,23 @@ test('a job that throws does not stop the next one', async () => {
     assert.deepEqual(busy, [true, false]);
 });
 
+test('a job that throws before its first await does not freeze an idle queue', async () => {
+    const busy = [];
+    const q = makeQueue({ max: 10, onBusy: (on) => busy.push(on) });
+    const ran = [];
+    q.enqueue(() => {
+        throw new Error('bad position');
+    });
+    q.enqueue(() => ran.push('second'));
+    await q.drain();
+    assert.deepEqual(ran, ['second']);
+    assert.equal(q.idle, true);
+    assert.equal(busy.at(-1), false);
+    q.enqueue(() => ran.push('third'));
+    await q.drain();
+    assert.deepEqual(ran, ['second', 'third']);
+});
+
 test('a full queue refuses the job and says so', async () => {
     const q = makeQueue({ max: 2 });
     const ran = [];
