@@ -8,7 +8,7 @@ paths:
 
 - COUNCIL-class (CLAUDE.md §10.1): propose first.
 - Name by FK tier, `NNNN_01_01_000000_<name>.php` (see the directory) — never a `make:migration` timestamp. Run with `--database=pgsql_admin`.
-- Tenant tables, pivots included, carry `site_id` + RLS FORCE fail-closed; soft-deleting tables also filter `deleted_at IS NULL`. Global tables must be on the D6 list.
+- Tenant tables, pivots included, carry `site_id` + RLS FORCE fail-closed; on soft-deleting tables the scopes include `deleted_at IS NULL`; RLS stays on `site_id`. Global tables must be on the D6 list.
 - Expand-contract. `CREATE INDEX CONCURRENTLY` on existing tables (outside a transaction). Indexes lead with `site_id`.
   - Exception, foreign keys: deleting a parent row makes Postgres find its children with `WHERE <fk> = $1` (no `site_id`, RLS bypassed). A foreign key whose parent the app hard-deletes needs an index leading with the FK column, partial `WHERE <fk> IS NOT NULL` when nullable. A composite `(site_id, x)` key is served by `(site_id, x, …)` or an index led by `x`; any other `site_id`-led index still scans the whole site.
   - A key that needs no index (parent never hard-deleted, or a few child rows per site) goes on a list in `tests/Feature/Infrastructure/ForeignKeyIndexCoverageTest.php` with its reason; the test fails on any other uncovered foreign key. It cannot see delete paths: a hard delete added for a listed parent means indexing its children.

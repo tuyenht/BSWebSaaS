@@ -4,9 +4,11 @@ namespace App\Modules\Cms\Providers;
 
 use App\Modules\Cms\Components\EntryGridComponent;
 use App\Modules\Cms\Components\LatestPostsComponent;
+use App\Modules\Cms\Console\FillMissingUlids;
 use App\Modules\Cms\Console\FlushEntryViews;
 use App\Modules\Cms\Console\PruneEntryRevisions;
 use App\Modules\Cms\Console\PublishDueEntries;
+use App\Modules\Cms\Console\PurgeTrashedMenuItems;
 use App\Modules\Cms\Console\RebuildTaxonomyPaths;
 use App\Modules\Cms\Console\ResanitizePageBodies;
 use App\Modules\Cms\Console\SnapshotPublishedEntries;
@@ -85,6 +87,8 @@ final class CmsServiceProvider extends ServiceProvider
                 SnapshotPublishedEntries::class,
                 PruneEntryRevisions::class,
                 ResanitizePageBodies::class,
+                FillMissingUlids::class,
+                PurgeTrashedMenuItems::class,
             ]);
         }
     }

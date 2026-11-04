@@ -2,6 +2,7 @@
 
 use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Cms\Actions\Menus\DeleteMenuItem;
 use App\Modules\Cms\Actions\RecordEntryRevision;
 use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
 use App\Modules\Cms\Data\TaxonomyData;
@@ -10,6 +11,8 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\EntryRevision;
 use App\Modules\Cms\Models\EntryTranslation;
+use App\Modules\Cms\Models\MenuAssignment;
+use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
@@ -740,4 +743,45 @@ it('stops the whole load when a post is filed under a moving category after the 
         ->and($exit)->toBe(1)
         ->and($output)->toContain('plan changed, run the dry run again')->toContain('tax:post_cat/tin-tuc/ban-tin')
         ->and(cpSnapshot($this->siteId))->toBe($before);
+});
+
+it('replaces a menu with its trash on a forced re-apply, the trashed items kept in the backup', function (): void {
+    ContentPacks::load();
+    $editor = menuEditor($this->siteId);
+    $trashed = ContentPacks::in($this->siteId, function () use ($editor): int {
+        $menuId = MenuAssignment::query()->where('region_key', 'primary')->where('locale', 'vi')->value('menu_id');
+        $item = MenuItem::query()->where('menu_id', $menuId)->whereNull('parent_id')->orderBy('position')->firstOrFail();
+        app(DeleteMenuItem::class)->handle($editor, $item);
+
+        return $item->id;
+    });
+
+    [$exit, $output] = ContentPacks::load('demo-co', ['menu:primary']);
+    expect($exit)->toBe(0, $output);
+
+    $backup = collect(cpBackupItem(cpBackup($output), 'menu:primary')['rows']['items'])->firstWhere('id', $trashed);
+    expect($backup['deleted_at'] ?? null)->not->toBeNull();
+
+    ContentPacks::in($this->siteId, function (): void {
+        $menuId = MenuAssignment::query()->where('region_key', 'primary')->where('locale', 'vi')->value('menu_id');
+        expect(MenuItem::onlyTrashed()->count())->toBe(0)
+            ->and(MenuItem::query()->where('menu_id', $menuId)->whereNull('parent_id')->count())->toBe(5);
+    });
+});
+
+it('backs up the follow row a pack menu replaces, and leaves one target on the row', function (): void {
+    ContentPacks::load();
+    ContentPacks::in($this->siteId, fn () => MenuAssignment::query()->where('region_key', 'primary')->where('locale', 'vi')
+        ->update(['menu_id' => null, 'same_as_region' => 'topbar']));
+
+    [$exit, $output] = ContentPacks::load('demo-co', ['menu:primary']);
+    expect($exit)->toBe(0, $output);
+
+    $rows = cpBackupItem(cpBackup($output), 'menu:primary')['rows'];
+    expect(collect($rows['assignments'])->firstWhere('region_key', 'primary'))->toMatchArray(['locale' => 'vi', 'menu_id' => null, 'same_as_region' => 'topbar']);
+
+    ContentPacks::in($this->siteId, function (): void {
+        $row = MenuAssignment::query()->where('region_key', 'primary')->where('locale', 'vi')->firstOrFail();
+        expect($row->menu_id)->not->toBeNull()->and($row->same_as_region)->toBeNull();
+    });
 });

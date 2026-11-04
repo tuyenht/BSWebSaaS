@@ -525,3 +525,21 @@ it('re-seeding after promotion and a trash purge does not resurrect product-post
         expect(TaxonomyTranslation::query()->where('slug', 'du-an')->exists())->toBeTrue();
     });
 });
+
+it('neither duplicates nor brings back the menu items staff moved to the trash when run again', function (): void {
+    $site = seedPrecisionSite();
+
+    app(Tenancy::class)->enter($site->id, function (): void {
+        app(SeedAnVinhContent::class)->handle();
+        $total = MenuItem::withTrashed()->count();
+        $linked = MenuItem::query()->whereIn('link_type', ['taxonomy', 'entry'])->pluck('id')->all();
+        expect($linked)->not->toBeEmpty();
+        MenuItem::query()->whereKey($linked)->delete();   // into the trash
+
+        app(SeedAnVinhContent::class)->handle();
+
+        expect(MenuItem::withTrashed()->count())->toBe($total)
+            ->and(MenuItem::query()->whereIn('link_type', ['taxonomy', 'entry'])->count())->toBe(0)
+            ->and(MenuItem::onlyTrashed()->pluck('id')->sort()->values()->all())->toBe(collect($linked)->sort()->values()->all());
+    });
+});

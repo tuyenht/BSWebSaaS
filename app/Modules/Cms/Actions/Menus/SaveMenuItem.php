@@ -13,10 +13,13 @@ use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Navigation\MenuRules;
 use App\Modules\Cms\Navigation\MenuTargets;
 use App\Modules\Cms\Navigation\MenuTree;
+use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteLocale;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Add an item to a menu (at the end of its parent's children) or change what an item points at,
@@ -27,7 +30,8 @@ use Illuminate\Support\Facades\DB;
  *    keeps another site's rows out of reach;
  *  - url: a site-relative path, an anchor, or an http(s) / mailto / tel link (MenuRules::safeUrl);
  *  - dynamic: a computed link MenuRules knows (home).
- * A new item may not be the sixth level. Who may manage menus is the caller's check.
+ * A new item may not be the sixth level, and goes only under an item that is still in the menu (not
+ * one another editor has just moved to the trash). Only someone who may manage menus can save.
  */
 final readonly class SaveMenuItem
 {
@@ -41,10 +45,13 @@ final readonly class SaveMenuItem
     ) {}
 
     /**
+     * @throws AuthorizationException
      * @throws MenuChangeRejectedException
      */
-    public function handle(Menu $menu, ?MenuItem $item, MenuItemData $data): MenuItem
+    public function handle(User $actor, Menu $menu, ?MenuItem $item, MenuItemData $data): MenuItem
     {
+        Gate::forUser($actor)->authorize('menus.manage');
+
         if ($item !== null && $item->menu_id !== $menu->id) {
             throw new MenuChangeRejectedException('item_invalid');
         }
@@ -53,6 +60,10 @@ final readonly class SaveMenuItem
 
         return DB::transaction(function () use ($menu, $item, $data, $target, $labels): MenuItem {
             $this->lockMenu($menu->id);
+            // Read under the menu lock: an item trashed (or deleted) since the screen loaded is gone.
+            if ($item !== null && ! MenuItem::query()->whereKey($item->id)->where('menu_id', $menu->id)->exists()) {
+                throw new MenuChangeRejectedException('item_invalid');
+            }
             $created = $item === null;
             $item ??= $this->newItem($menu, $data->parent);
 
@@ -85,7 +96,8 @@ final readonly class SaveMenuItem
     private function newItem(Menu $menu, ?MenuItem $parent): MenuItem
     {
         if ($parent !== null) {
-            if ($parent->menu_id !== $menu->id) {
+            // Read under the menu lock: a parent trashed (or deleted) since the screen loaded is gone.
+            if ($parent->menu_id !== $menu->id || ! MenuItem::query()->whereKey($parent->id)->where('menu_id', $menu->id)->exists()) {
                 throw new MenuChangeRejectedException('parent_invalid');
             }
             if (MenuTree::of($menu->id)->depthOf($parent->id) + 1 >= MenuRules::MAX_DEPTH) {

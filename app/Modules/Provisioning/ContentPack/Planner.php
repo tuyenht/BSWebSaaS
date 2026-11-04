@@ -1107,7 +1107,8 @@ final class Planner
         $menuIds = [];
         foreach ($items as $item) {
             $assignment = $assignments->get($item->anchor());
-            if ($assignment instanceof MenuAssignment) {
+            // An area that follows another area (menu_id NULL) has no menu of its own to match.
+            if ($assignment instanceof MenuAssignment && $assignment->menu_id !== null) {
                 $menuIds[$item->key] = $assignment->menu_id;
                 $this->matched[$item->key] = $assignment->menu_id;
             }

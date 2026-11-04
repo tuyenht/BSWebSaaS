@@ -2,10 +2,13 @@
 
 namespace App\Modules\Cms\Models;
 
+use App\Modules\Shared\Concerns\HasUlidColumn;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
  * One menu entry (design.md §13). Tree via parent_id + position. link_type picks the
@@ -15,7 +18,13 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * Per-locale label in menu_item_translations (empty → routable's translated title).
  * RLS isolates by site.
  *
+ * A removed item waits in the trash (deleted_at) before it is purged; the trash is the
+ * SoftDeletes scope, RLS stays on site_id only, so the trash list and restore still see it.
+ * `ulid` is the key screens put into the page (D2); rows made before it existed are filled by
+ * `cms:fill-ulids`, so it can still be null until a later deploy makes it NOT NULL.
+ *
  * @property int $id
+ * @property string|null $ulid
  * @property int $site_id
  * @property int $menu_id
  * @property int|null $parent_id
@@ -26,10 +35,13 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * @property string|null $url
  * @property string|null $dynamic_key
  * @property array<string, mixed> $meta
+ * @property Carbon|null $deleted_at
  */
 class MenuItem extends Model
 {
     use BelongsToSite;
+    use HasUlidColumn;
+    use SoftDeletes;
 
     #[\Override]
     protected $guarded = [];

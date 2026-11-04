@@ -15,6 +15,8 @@ use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Navigation\MenuResolver;
+use App\Modules\Identity\Models\User;
+use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteLocale;
 use Illuminate\Support\Facades\DB;
@@ -28,9 +30,23 @@ use Illuminate\Support\Facades\DB;
  */
 
 beforeEach(function (): void {
+    truncateRbac();
     seedTenancy(); // sites 1 (a.test) / 2 (b.test), Vietnamese default
+    $this->artisan('rbac:sync')->assertSuccessful();
+    app(TeamContext::class)->forget();
     DB::connection('pgsql_admin')->statement('truncate audit_logs restart identity');
+    $this->editor = menuEditor(1);
 });
+
+/** Someone who may manage site 1's menus (made outside the site's context). */
+function menuManager(): User
+{
+    $user = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'menu-manager', ['menus.manage']));
+    app(TeamContext::class)->forget();
+
+    return $user->fresh() ?? $user;
+}
 
 /** Run inside site 1. */
 function inSiteOne(Closure $callback): mixed
@@ -57,7 +73,7 @@ function newMenu(string $name = 'Menu chính'): Menu
 
 function addItem(Menu $menu, MenuItemData $data): MenuItem
 {
-    return app(SaveMenuItem::class)->handle($menu, null, $data);
+    return app(SaveMenuItem::class)->handle(test()->editor, $menu, null, $data);
 }
 
 function homeLink(string $label = 'Trang chủ', ?MenuItem $parent = null): MenuItemData
@@ -132,7 +148,7 @@ it('keeps a label per editing language; an empty label falls back to the target 
 
         expect($item->translations()->orderBy('locale')->pluck('label', 'locale')->all())->toBe(['en' => 'Home', 'vi' => 'Trang chủ']);
 
-        app(SaveMenuItem::class)->handle($menu, $item, new MenuItemData(linkType: 'dynamic', dynamicKey: 'home', labels: ['vi' => 'Trang nhà', 'en' => '']));
+        app(SaveMenuItem::class)->handle(test()->editor, $menu, $item, new MenuItemData(linkType: 'dynamic', dynamicKey: 'home', labels: ['vi' => 'Trang nhà', 'en' => '']));
         expect($item->translations()->pluck('label', 'locale')->all())->toBe(['vi' => 'Trang nhà']);
 
         expect(menuRefusal(fn () => addItem($menu, homeLink(str_repeat('x', 256)))))->toBe('label_invalid')
@@ -144,7 +160,7 @@ it('turns opening in a new tab on and off', function (): void {
     inSiteOne(function (): void {
         $menu = newMenu();
         $item = addItem($menu, new MenuItemData(linkType: 'url', url: '/lien-he', newTab: true));
-        app(SaveMenuItem::class)->handle($menu, $item, new MenuItemData(linkType: 'url', url: '/lien-he', newTab: false));
+        app(SaveMenuItem::class)->handle(test()->editor, $menu, $item, new MenuItemData(linkType: 'url', url: '/lien-he', newTab: false));
 
         expect($item->refresh()->meta)->not->toHaveKey('target');
     });
@@ -157,11 +173,11 @@ it('moves an item within and across branches and renumbers the siblings', functi
         $b = addItem($menu, homeLink('B'));
         $c = addItem($menu, homeLink('C'));
 
-        app(MoveMenuItem::class)->handle($c, null, 0);
+        app(MoveMenuItem::class)->handle(test()->editor, $c, null, 0);
         expect($menu->items()->whereNull('parent_id')->orderBy('position')->get()->map(fn (MenuItem $i) => $i->translationFor('vi')?->label)->all())
             ->toBe(['C', 'A', 'B']);
 
-        app(MoveMenuItem::class)->handle($b, $a, 0);
+        app(MoveMenuItem::class)->handle(test()->editor, $b, $a, 0);
         expect($b->refresh()->parent_id)->toBe($a->id)->and($b->position)->toBe(0)
             ->and($menu->items()->whereNull('parent_id')->orderBy('position')->pluck('position')->all())->toBe([0, 1]);
     });
@@ -178,17 +194,17 @@ it('never lets the tree loop or grow past five levels', function (): void {
         $foreignParent = addItem($other, homeLink('X'));
 
         expect(menuRefusal(fn () => addItem($menu, homeLink('6', $level[4]))))->toBe('depth_exceeded')
-            ->and(menuRefusal(fn () => app(MoveMenuItem::class)->handle($level[0], $level[2], 0)))->toBe('parent_invalid')
-            ->and(menuRefusal(fn () => app(MoveMenuItem::class)->handle($level[1], $level[1], 0)))->toBe('parent_invalid')
-            ->and(menuRefusal(fn () => app(MoveMenuItem::class)->handle($level[1], $foreignParent, 0)))->toBe('parent_invalid')
+            ->and(menuRefusal(fn () => app(MoveMenuItem::class)->handle(test()->editor, $level[0], $level[2], 0)))->toBe('parent_invalid')
+            ->and(menuRefusal(fn () => app(MoveMenuItem::class)->handle(test()->editor, $level[1], $level[1], 0)))->toBe('parent_invalid')
+            ->and(menuRefusal(fn () => app(MoveMenuItem::class)->handle(test()->editor, $level[1], $foreignParent, 0)))->toBe('parent_invalid')
             ->and(menuRefusal(fn () => addItem($menu, homeLink('Y', $foreignParent))))->toBe('parent_invalid');
 
         // The branch under level 2 is four levels tall: it fits under a top-level item (levels 2–5)
         // but not under a second-level one (levels 3–6).
         $root = addItem($menu, homeLink('R'));
         $rootChild = addItem($menu, homeLink('R1', $root));
-        expect(menuRefusal(fn () => app(MoveMenuItem::class)->handle($level[1], $root, 1)))->toBeNull()
-            ->and(menuRefusal(fn () => app(MoveMenuItem::class)->handle($level[1], $rootChild, 0)))->toBe('depth_exceeded');
+        expect(menuRefusal(fn () => app(MoveMenuItem::class)->handle(test()->editor, $level[1], $root, 1)))->toBeNull()
+            ->and(menuRefusal(fn () => app(MoveMenuItem::class)->handle(test()->editor, $level[1], $rootChild, 0)))->toBe('depth_exceeded');
     });
 });
 
@@ -200,37 +216,41 @@ it('deletes an item together with its whole branch', function (): void {
         addItem($menu, homeLink('Cháu', $child));
         $sibling = addItem($menu, homeLink('Bên cạnh'));
 
-        expect(app(DeleteMenuItem::class)->handle($parent))->toBe(3)
+        expect(app(DeleteMenuItem::class)->handle(test()->editor, $parent))->toBe(3)
             ->and($menu->items()->pluck('id')->all())->toBe([$sibling->id])
             ->and($sibling->refresh()->position)->toBe(0);
     });
 });
 
 it('binds a menu to a region per language, and the website shows it', function (): void {
-    inSiteOne(function (): void {
+    $actor = menuManager();
+
+    inSiteOne(function () use ($actor): void {
         $menu = newMenu();
         addItem($menu, homeLink());
         $footer = newMenu('Menu chân trang');
 
-        app(AssignMenu::class)->handle('primary', 'vi', $menu);
+        app(AssignMenu::class)->handle($actor, 'primary', 'vi', $menu);
         expect(app(MenuResolver::class)->resolve('primary', 'vi', 'vi', '/')[0]['label'])->toBe('Trang chủ');
 
-        app(AssignMenu::class)->handle('primary', 'vi', $footer);
+        app(AssignMenu::class)->handle($actor, 'primary', 'vi', $footer);
         expect(MenuAssignment::query()->where('region_key', 'primary')->pluck('menu_id')->all())->toBe([$footer->id]);
 
-        app(AssignMenu::class)->handle('primary', 'vi', null);
+        app(AssignMenu::class)->handle($actor, 'primary', 'vi', null);
         expect(MenuAssignment::query()->count())->toBe(0);
 
-        expect(menuRefusal(fn () => app(AssignMenu::class)->handle('Primary Menu!', 'vi', $menu)))->toBe('region_invalid')
-            ->and(menuRefusal(fn () => app(AssignMenu::class)->handle('primary', 'en', $menu)))->toBe('locale_invalid');
+        expect(menuRefusal(fn () => app(AssignMenu::class)->handle($actor, 'Primary Menu!', 'vi', $menu)))->toBe('region_invalid')
+            ->and(menuRefusal(fn () => app(AssignMenu::class)->handle($actor, 'primary', 'en', $menu)))->toBe('locale_invalid');
     });
 });
 
 it('keeps a menu that is still shown unless the deletion is confirmed', function (): void {
-    inSiteOne(function (): void {
+    $actor = menuManager();
+
+    inSiteOne(function () use ($actor): void {
         $menu = newMenu();
         addItem($menu, homeLink());
-        app(AssignMenu::class)->handle('primary', 'vi', $menu);
+        app(AssignMenu::class)->handle($actor, 'primary', 'vi', $menu);
 
         expect(menuRefusal(fn () => app(DeleteMenu::class)->handle($menu)))->toBe('menu_in_use')
             ->and(Menu::query()->count())->toBe(1);
@@ -243,12 +263,14 @@ it('keeps a menu that is still shown unless the deletion is confirmed', function
 });
 
 it('records every change in the audit log', function (): void {
-    inSiteOne(function (): void {
+    $actor = menuManager();
+
+    inSiteOne(function () use ($actor): void {
         $menu = newMenu();
         $item = addItem($menu, homeLink());
-        app(MoveMenuItem::class)->handle($item, null, 0);
-        app(AssignMenu::class)->handle('primary', 'vi', $menu);
-        app(DeleteMenuItem::class)->handle($item);
+        app(MoveMenuItem::class)->handle(test()->editor, $item, null, 0);
+        app(AssignMenu::class)->handle($actor, 'primary', 'vi', $menu);
+        app(DeleteMenuItem::class)->handle(test()->editor, $item);
     });
 
     expect(AuditLog::query()->where('site_id', 1)->orderBy('id')->pluck('action')->all())->toBe([

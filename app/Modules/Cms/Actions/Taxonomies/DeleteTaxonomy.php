@@ -147,7 +147,8 @@ final readonly class DeleteTaxonomy
             }
 
             // Menu links follow the items: the person deleting chose where the category's content lives now.
-            $menuLinks = $targetId === null ? 0 : MenuItem::query()
+            // Links in the menu trash too, so a restored link never points at the deleted category.
+            $menuLinks = $targetId === null ? 0 : MenuItem::withTrashed()
                 ->where('routable_type', 'taxonomy')
                 ->whereIn('routable_id', $deleted)
                 ->update(['routable_id' => $targetId]);

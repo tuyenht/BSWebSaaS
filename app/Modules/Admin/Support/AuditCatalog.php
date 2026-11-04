@@ -35,8 +35,8 @@ final class AuditCatalog
             'entries.revision.restored',
         ],
         'menus' => [
-            'cms.menu.saved', 'cms.menu.assigned', 'cms.menu.deleted', 'cms.menu_item.saved', 'cms.menu_item.moved',
-            'cms.menu_item.deleted', 'cms.taxonomy.created', 'cms.taxonomy.updated', 'cms.taxonomy.moved',
+            'cms.menu.saved', 'cms.menu.assigned', 'cms.menu.followed', 'cms.menu.deleted', 'cms.menu_item.saved', 'cms.menu_item.moved',
+            'cms.menu_item.deleted', 'cms.menu_item.restored', 'cms.taxonomy.created', 'cms.taxonomy.updated', 'cms.taxonomy.moved',
             'cms.taxonomy.deleted',
         ],
         'domains' => [

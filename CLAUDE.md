@@ -52,7 +52,7 @@ Many fresh majors → AI often suggests wrong syntax: follow the pinned version'
 - **D11 time:** every time column is **`timestamptz`**, stored UTC, rendered in the site timezone.
 - **D12 VN collation:** compared/sorted/unique columns (email, slug, name) use `citext`/ICU `vi-VN`.
 - **D13 enums:** `status`/`kind`/`link_type` = **`varchar` + `CHECK`** (no native ENUM).
-- **D4 FK/soft delete:** children CASCADE with the parent; soft references SET NULL. Soft delete (`deleted_at`) only for entities with a trash — **RLS + scopes include `deleted_at IS NULL`**.
+- **D4 FK/soft delete:** children CASCADE with the parent; soft references SET NULL. Soft delete (`deleted_at`) only for entities with a trash — scopes include `deleted_at IS NULL`; RLS stays on `site_id`. <!-- owner signed this wording 04/11/2026 (K82) -->
 - **D3 polymorphic:** typed FKs for the content graph (entry↔taxonomy) + `routes`; polymorphic + observer cleanup for soft attachments (mediables/menu targets/reviews).
 - **D15 commerce:** `CHECK(stock ≥ 0)` + atomic decrement (never read-then-write) against oversell; idempotent payments.
 - **D7 naming:** snake_case; no SQL keywords (`order` → `sort_order`); FK `{entity}_id`; bools `is_/has_`.
