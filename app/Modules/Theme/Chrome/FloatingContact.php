@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Theme\Chrome;
 
 use App\Modules\Shared\Support\SafeLink;
+use App\Modules\Tenancy\Support\ContactPhone;
 use App\Modules\Theme\Theming\ReadableColor;
 
 /**
@@ -276,37 +277,38 @@ final class FloatingContact
     }
 
     /**
-     * A phone number as people type it, spaces, dots, dashes and brackets stripped: a Vietnamese
-     * mobile (0 + 3/5/7/8/9 + 8 digits, e.g. 0912 345 678) or landline (0 + 2 + 9 digits, e.g.
-     * 024 3826 1234, 0236 …), each also as +84 without the leading 0; with $hotline also a
-     * 1900/1800 number (+ 4 or 6 digits); with $abroad also a number abroad (+ and 8–15 digits,
-     * any country code but 84, which must be a Vietnamese number as above). The digits are what
-     * the link dials.
+     * A phone number as people type it, read by the same rules as a customer's contact phone
+     * (ContactPhone: a Vietnamese mobile 0 + 3/5/7/8/9 + 8 digits or landline 0 + 2 + 9 digits, also
+     * written +84 / 0084 / "+84 (0)", any spaces, dots, dashes and brackets); with $hotline also a
+     * 1900/1800 number (+ 4 or 6 digits); with $abroad also a number of another country. What the
+     * link dials: a home number typed with its leading 0 stays 0…, any other the +number.
      */
     private static function phone(string $value, bool $hotline, bool $abroad): ?string
     {
         $digits = self::digits($value);
+        if ($hotline && preg_match('/\A(?:1900|1800)(?:\d{4}|\d{6})\z/', $digits) === 1) {
+            return $digits;
+        }
+        $number = ContactPhone::normalize($value, '84');   // the button's rules are Vietnam's (see above)
+        if ($number === null || (! $abroad && ! str_starts_with($number, '+84'))) {
+            return null;
+        }
 
-        return preg_match('/\A(?:0|\+84)(?:[35789]\d{8}|2\d{9})\z/', $digits) === 1
-            || ($hotline && preg_match('/\A(?:1900|1800)(?:\d{4}|\d{6})\z/', $digits) === 1)
-            || ($abroad && preg_match('/\A\+(?!84)\d{8,15}\z/', $digits) === 1)
-            ? $digits : null;
+        return str_starts_with($number, '+84') && preg_match('/\A0[1-9]/', $digits) === 1 ? '0'.substr($number, 3) : $number;
     }
 
     /** A Vietnamese mobile number only (what Zalo is registered with). */
     private static function mobile(string $value): ?string
     {
-        $digits = self::digits($value);
+        $number = self::phone($value, false, false);
 
-        return preg_match('/\A(?:0|\+84)[35789]\d{8}\z/', $digits) === 1 ? $digits : null;
+        return $number !== null && preg_match('/\A(?:0|\+84)[35789]/', $number) === 1 ? $number : null;
     }
 
-    /** The number without spaces, dots, dashes and brackets; "+84 (0)9…" loses the trunk 0 (as SafeLink::tel). */
+    /** The typed number without any kind of space, dots, dashes and brackets. */
     private static function digits(string $value): string
     {
-        $value = (string) preg_replace('/\A(\s*\+\d{1,3})\s*\(\s*0\s*\)/', '$1', $value);
-
-        return (string) preg_replace('/[\s.\-()]/', '', $value);
+        return (string) preg_replace('/[\p{Z}\s.\-()]/u', '', $value);
     }
 
     /** 0912345678 / +84912345678 → 84912345678; any other +number → its digits. */

@@ -464,8 +464,9 @@ final class FloatingContactSettings extends Component
 
     private function indexOf(string $key): ?int
     {
+        // a row sent back as a non-array has no key of its own: never a target to write into
         foreach ($this->rows() as $i => $c) {
-            if ($c['key'] === $key && is_int($i)) {
+            if ($c['key'] === $key && is_int($i) && is_array($this->channels[$i] ?? null)) {
                 return $i;
             }
         }

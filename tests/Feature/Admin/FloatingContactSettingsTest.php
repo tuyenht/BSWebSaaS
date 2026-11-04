@@ -268,6 +268,8 @@ it('keeps working on the page after a value of the wrong type', function (): voi
             ->set('channels.0', 'x')
             ->call('addCustom')
             ->call('toggleChannel', 'zalo')
+            ->call('toggleChannel', '')
+            ->call('pickIcon', '', 'ri-global-line')
             ->call('move', 'zalo', 1)
             ->call('setTheme', 'horizontal')
             ->assertOk()
