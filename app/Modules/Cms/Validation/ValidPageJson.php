@@ -25,13 +25,19 @@ final readonly class ValidPageJson implements ValidationRule
     /** A page composes a bounded number of sections; reject pathological bodies. */
     private const int MAX_BLOCKS = 100;
 
-    /** Serialized body byte ceiling (~256KB) — keeps entry_translations.body + render sane. */
+    /**
+     * Serialized body byte ceiling (~256KB) — keeps entry_translations.body + render sane. Measured
+     * in UTF-8 bytes, letters and slashes as they are (close to what jsonb stores): escaped, each
+     * accented Vietnamese letter would count six bytes and a long article would be refused well under
+     * MAX_HTML_CHARS.
+     */
     private const int MAX_BYTES = 262_144;
 
     /**
      * Characters one formatted-text (`html`) prop may hold. Product descriptions have no cap of their
      * own to reuse, so this is named here: room for a long article with its markup (about 15,000
-     * words), well inside MAX_BYTES for mostly-ASCII markup; the whole-body ceiling still applies.
+     * words); the whole-body ceiling (MAX_BYTES, in UTF-8 bytes) still applies, so a text mostly of
+     * accented Vietnamese letters (two to three bytes each) meets that ceiling first.
      */
     public const int MAX_HTML_CHARS = 100_000;
 
@@ -51,7 +57,15 @@ final readonly class ValidPageJson implements ValidationRule
             return;
         }
 
-        if (strlen((string) json_encode($value)) > self::MAX_BYTES) {
+        $json = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if ($json === false) {
+            // Not valid UTF-8: it could never be stored (the body cast refuses it), so it is refused here.
+            $fail(__('entries.err_blocks_invalid'));
+
+            return;
+        }
+
+        if (strlen($json) > self::MAX_BYTES) {
             $fail(__('entries.err_body_too_large'));
 
             return;

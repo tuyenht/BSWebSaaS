@@ -134,6 +134,31 @@ it('rejects an oversized body', function (): void {
     expect(validateBlocks([['type' => 'hero', 'props' => ['heading' => str_repeat('x', 300_000)]]])->fails())->toBeTrue();
 });
 
+it('measures the body in UTF-8 bytes, so a long Vietnamese article fits', function (): void {
+    // 60,000 accented letters: 180 KB as UTF-8, 360 KB with every letter escaped to \uXXXX.
+    $article = '<p>'.str_repeat('ệ', 60_000).'</p>';
+
+    expect(strlen((string) json_encode($article)))->toBeGreaterThan(262_144)
+        ->and(validateBlocks([['type' => 'richtext_html', 'props' => ['html' => $article]]])->passes())->toBeTrue();
+});
+
+it('refuses a body over 256 KB of UTF-8 in plain words, even when each prop is within its own cap', function (): void {
+    // 90,000 letters: under the 100,000-character html cap, 270 KB as UTF-8.
+    $article = str_repeat('ệ', 90_000);
+    $validator = validateBlocks([['type' => 'richtext_html', 'props' => ['html' => $article]]]);
+
+    expect(mb_strlen($article))->toBeLessThan(ValidPageJson::MAX_HTML_CHARS)
+        ->and($validator->fails())->toBeTrue()
+        ->and($validator->errors()->first('blocks'))->toBe(__('entries.err_body_too_large'));
+});
+
+it('refuses a body that is not valid UTF-8 instead of letting it past the size check', function (): void {
+    $validator = validateBlocks([['type' => 'hero', 'props' => ['heading' => "Ti\xC3\x28u đề"]]]);
+
+    expect($validator->fails())->toBeTrue()
+        ->and($validator->errors()->first('blocks'))->toBe(__('entries.err_blocks_invalid'));
+});
+
 it('rejects a dangerous scheme in a typed-url prop regardless of its NAME (schema-driven)', function (): void {
     // §2 invariant: URL-safety must follow the schema's type:url, NOT a hand-maintained key
     // list. A url prop named 'link' (not in url/href/src/*_url) must STILL be sniffed.

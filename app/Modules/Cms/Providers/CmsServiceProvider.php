@@ -8,6 +8,7 @@ use App\Modules\Cms\Console\FlushEntryViews;
 use App\Modules\Cms\Console\PruneEntryRevisions;
 use App\Modules\Cms\Console\PublishDueEntries;
 use App\Modules\Cms\Console\RebuildTaxonomyPaths;
+use App\Modules\Cms\Console\ResanitizePageBodies;
 use App\Modules\Cms\Console\SnapshotPublishedEntries;
 use App\Modules\Cms\Listeners\ForgetMemberCategoryScopes;
 use App\Modules\Cms\Models\Entry;
@@ -83,6 +84,7 @@ final class CmsServiceProvider extends ServiceProvider
                 RebuildTaxonomyPaths::class,
                 SnapshotPublishedEntries::class,
                 PruneEntryRevisions::class,
+                ResanitizePageBodies::class,
             ]);
         }
     }
