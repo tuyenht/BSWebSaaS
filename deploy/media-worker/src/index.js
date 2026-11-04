@@ -75,12 +75,20 @@ async function serveRaw(request, env, key) {
   try {
     obj = await env.MEDIA.get(key, { range: request.headers, onlyIf: request.headers });
   } catch (err) {
-    if (!request.headers.has('Range')) throw err;
-    const meta = await env.MEDIA.head(key); // an unsatisfiable range: say how long the file is
-    if (!meta) return new Response('Not found', { status: 404 });
-    const headers = rawHeaders(meta);
-    headers.set('Content-Range', `bytes */${meta.size}`);
-    return new Response(null, { status: 416, headers });
+    // Only two ranged failures are answered here; anything else (an R2 fault) stays an error.
+    const range = (request.headers.get('Range') ?? '').trim();
+    if (range === '') throw err;
+    const single = /^bytes=(\d*)-(\d*)$/i.exec(range);
+    if (single) {
+      const meta = await env.MEDIA.head(key);
+      if (!meta) return new Response('Not found', { status: 404 });
+      if (single[1] === '' || Number(single[1]) < meta.size) throw err;
+      const headers = rawHeaders(meta); // starts past the end: say how long the file is
+      headers.set('Content-Range', `bytes */${meta.size}`);
+      return new Response(null, { status: 416, headers });
+    }
+    // several ranges or another unit, which this Worker does not serve: RFC 9110 lets it answer in full
+    obj = await env.MEDIA.get(key, { onlyIf: request.headers });
   }
   if (!obj) return new Response('Not found', { status: 404 });
 
