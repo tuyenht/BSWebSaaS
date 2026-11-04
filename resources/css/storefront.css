@@ -4316,8 +4316,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 /* ───── Floating contact (theme::partials.floating-contact) ──────────────── */
 /* Round buttons fixed in a corner or along the bottom, or a bottom bar on phones. Every target is
    at least 44 × 44 at every text size; fills come from the page (--fc-fill, contrast-fitted to the
-   white marks). The round buttons keep no room at the end of the page; the phone bar does (its
-   ghost copy, below). No script. */
+   white marks). An invisible copy after the footer keeps their room (below). No script. */
 .sf-fc {
     position: fixed;
     z-index: 40;
@@ -4474,6 +4473,39 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     }
 }
 
+/* The reserved room: the same buttons, invisible, in the page flow after the footer and in its
+   colour. The copy keeps the real list's max-height and wrapping, so it is exactly as tall as what
+   is drawn (plus the gap above and the offset below). The bottom row reserves it at every width; a
+   side stack below 90rem: measured, a stack at the default 20px offset still covers the 80rem
+   page's edge text up to 1355px, and at the largest offset (60px) up to 1435px. */
+.sf-fc-ghost {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0.625rem var(--fc-ox, 20px) calc(var(--fc-oy, 24px) + env(safe-area-inset-bottom, 0px));
+    background: var(--color-dark);
+}
+
+.sf-fc-ghost .sf-fc__list {
+    visibility: hidden;
+}
+
+.sf-fc-ghost .sf-fc__btn {
+    animation: none;
+    box-shadow: none;
+}
+
+/* The real row is centred on the screen and capped by its own max-width: no side padding here. */
+.sf-fc-ghost--row {
+    justify-content: center;
+    padding-inline: 0;
+}
+
+@media (min-width: 90rem) {
+    .sf-fc-ghost--side {
+        display: none;
+    }
+}
+
 /* Bottom bar (phones only): up to three equal buttons, the label under a small coloured disc. Its
    ghost copy stays in the page flow after the footer, invisible: exactly the bar's height and
    safe-area inset at every text size (a label may wrap), so the end of the page scrolls clear. */
@@ -4586,6 +4618,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 
 @media print {
     .sf-fc,
+    .sf-fc-ghost,
     .sf-fc-bar {
         display: none !important;
     }

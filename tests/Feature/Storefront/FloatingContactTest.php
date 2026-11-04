@@ -67,10 +67,10 @@ function flcConfig(array $channels, array $extra = []): array
     return $extra + ['enabled' => true, 'theme' => 'vertical', 'position' => 'right', 'offset_x' => 20, 'offset_y' => 24, 'channels' => $channels];
 }
 
-/** The floating-contact markup of a page (the nav and the phone bar's spacer). */
+/** The floating-contact markup of a page (the nav and its spacer). */
 function flcPart(string $html): string
 {
-    preg_match_all('~<div class="sf-fc-bar sf-fc-bar--ghost".*?</ul></div>|<nav class="sf-fc[ -].*?</nav>~s', $html, $m);
+    preg_match_all('~<div class="sf-fc-ghost.*?</div></div>|<div class="sf-fc-bar sf-fc-bar--ghost".*?</ul></div>|<nav class="sf-fc[ -].*?</nav>~s', $html, $m);
 
     return implode("\n", $m[0]);
 }
@@ -153,9 +153,19 @@ it('puts the buttons on the chosen side with the offsets, each named and drawn r
         ->toContain('aria-label="Chat ngay Zalo"')
         ->toContain('<span class="sf-fc__word" aria-hidden="true">Zalo</span>')
         ->toContain('href="sms:0912345678" aria-label="Nhắn tin SMS"')
-        // round buttons keep no room at the end of the page (no spacer of any kind)
-        ->and($part)->not->toContain('aria-hidden="true" style=')
-        ->and(flcPart($this->get('http://mau.platform.test/gioi-thieu')->getContent()))->not->toContain('sf-fc-bar--ghost');
+        // the spacer copies the buttons (same list classes), hidden from assistive tech
+        ->toContain('<div class="sf-fc-ghost sf-fc-ghost--side" aria-hidden="true" style="--fc-ox:40px;--fc-oy:100px"><div class="sf-fc__list sf-fc__list--left">')
+        ->and(substr_count($part, 'sf-fc__btn"></span>'))->toBe(3)
+        ->and($part)->not->toContain('sf-fc-bar--ghost');
+});
+
+it('reserves the bottom row’s room as a row', function (): void {
+    $siteId = flcSite();
+    flcSetting($siteId, flcConfig([['key' => 'phone', 'on' => true, 'value' => '0912345678']], ['position' => 'bottom']));
+
+    expect(flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent()))
+        ->toContain('<div class="sf-fc-ghost sf-fc-ghost--row" aria-hidden="true"')
+        ->toContain('<div class="sf-fc__list sf-fc__list--bottom"><span class="sf-fc__btn"></span></div>');
 });
 
 it('falls back to the default side and offsets on unknown or odd values', function (): void {
