@@ -20,7 +20,8 @@
   KHÔNG ép interface mọi cạnh nội bộ.
 - **`Shared/Support/`, `Shared/Concerns/`** = tiện ích thuần dùng chung (`Cast`, `TurnstileVerifier`,
   `RichTextSanitizer`, `VideoEmbed`, `HasUlidColumn`) — chỉ phụ thuộc Laravel/PHP, KHÔNG phụ thuộc
-  module nào.
+  module nào. Dịch vụ dùng chung cần đăng ký vào container (vd `RichTextSanitizer` một bản cho mỗi
+  worker) đăng ký ở `Shared/Providers/SharedServiceProvider`, không ở module dùng nó.
 
 ## Ranh giới được ép thế nào
 

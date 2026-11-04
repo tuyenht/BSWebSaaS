@@ -11,7 +11,6 @@ use App\Modules\Catalog\Policies\CatalogPolicy;
 use App\Modules\Catalog\Support\ProductRoutes;
 use App\Modules\Cms\Navigation\MenuTargets;
 use App\Modules\Cms\Routing\CategoryDependents;
-use App\Modules\Shared\Support\RichTextSanitizer;
 use App\Modules\Theme\Components\ComponentRegistry;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -19,19 +18,12 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 /**
- * Binds the catalog authorization policy (defense layer #2) and the rich-text sanitizer.
- * Every catalog write surface (admin CRUD, later commerce, the ETL) authorizes through the
- * policy and passes editor HTML through the sanitizer.
+ * Binds the catalog authorization policy (defense layer #2). Every catalog write surface (admin
+ * CRUD, later commerce, the ETL) authorizes through the policy and passes editor HTML through the
+ * rich-text sanitizer (bound by SharedServiceProvider).
  */
 final class CatalogServiceProvider extends ServiceProvider
 {
-    public function register(): void
-    {
-        // Stateless (config-only) — safe to share across Octane workers, and building
-        // HTMLPurifier once per worker instead of per save is the point.
-        $this->app->singleton(RichTextSanitizer::class);
-    }
-
     public function boot(): void
     {
         Gate::policy(Product::class, CatalogPolicy::class);
