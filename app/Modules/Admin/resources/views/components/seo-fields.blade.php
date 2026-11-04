@@ -45,7 +45,8 @@
         ],
     ];
     $bandIcons = ['empty' => 'ri-edit', 'short' => 'ri-arrow-up', 'near' => 'ri-arrow-right-up', 'good' => 'ri-check', 'long' => 'ri-error-warning', 'over' => 'ri-close-circle'];
-    $field = 'field block w-full rounded-md border border-border-input bg-surface-muted px-3 text-text placeholder:text-placeholder transition-colors focus:border-primary-text aria-invalid:border-danger-text';
+    // `field` (the shared size) is written on each control itself, so the size check sees it.
+    $field = 'block w-full rounded-md border border-border-input bg-surface-muted px-3 text-text placeholder:text-placeholder transition-colors focus:border-primary-text aria-invalid:border-danger-text';
     $label = 'inline-flex min-w-0 max-w-full flex-wrap items-center gap-x-1.5 gap-y-1 text-small font-semibold';
     $labelRow = 'mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1';
     $error = 'mt-1 text-small text-danger-text';
@@ -71,7 +72,7 @@
             <textarea id="{{ $id }}-excerpt" wire:model="{{ $excerpt }}" rows="3" maxlength="{{ SeoFields::hardCap('excerpt') }}" lang="{{ $locale }}"
                       placeholder="{{ __($kind === 'post' ? 'admin.seo.excerpt_placeholder_post' : 'admin.seo.excerpt_placeholder_page') }}"
                       aria-describedby="{{ $id }}-excerpt-c {{ $id }}-excerpt-h" @error($excerpt) aria-invalid="true" @enderror
-                      class="{{ $field }} resize-y py-2.5"></textarea>
+                      class="field {{ $field }} resize-y py-2.5"></textarea>
             <span class="seo-meter" :data-b="excerptMeter.band" aria-hidden="true">
                 <span class="seo-meter__zone" :style="{ left: excerptMeter.lo + '%', width: excerptMeter.zw + '%' }"></span>
                 <span class="seo-meter__fill" :style="{ width: excerptMeter.pct + '%' }"></span>
@@ -113,7 +114,7 @@
                 </div>
                 <input type="text" id="{{ $id }}-title" wire:model="{{ $titleModel }}" maxlength="{{ SeoFields::hardCap('seoTitle') }}" lang="{{ $locale }}"
                        placeholder="{{ __('admin.seo.title_placeholder') }}" aria-describedby="{{ $id }}-title-c" @error($titleModel) aria-invalid="true" @enderror
-                       class="{{ $field }}">
+                       class="field {{ $field }}">
                 <span class="seo-meter" :data-b="titleMeter.band" aria-hidden="true">
                     <span class="seo-meter__zone" :style="{ left: titleMeter.lo + '%', width: titleMeter.zw + '%' }"></span>
                     <span class="seo-meter__fill" :style="{ width: titleMeter.pct + '%' }"></span>
@@ -135,7 +136,7 @@
                 {{-- One line on Google: Enter adds no line break (a pasted one is removed on save). --}}
                 <textarea id="{{ $id }}-description" wire:model="{{ $descriptionModel }}" rows="2" maxlength="{{ SeoFields::hardCap('seoDesc') }}" lang="{{ $locale }}"
                           placeholder="{{ __('admin.seo.description_placeholder') }}" aria-describedby="{{ $id }}-description-c" @error($descriptionModel) aria-invalid="true" @enderror
-                          x-on:keydown.enter.prevent class="{{ $field }} resize-y py-2.5"></textarea>
+                          x-on:keydown.enter.prevent class="field {{ $field }} resize-y py-2.5"></textarea>
                 <span class="seo-meter" :data-b="descriptionMeter.band" aria-hidden="true">
                     <span class="seo-meter__zone" :style="{ left: descriptionMeter.lo + '%', width: descriptionMeter.zw + '%' }"></span>
                     <span class="seo-meter__fill" :style="{ width: descriptionMeter.pct + '%' }"></span>
