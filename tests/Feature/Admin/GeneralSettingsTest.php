@@ -243,6 +243,8 @@ it('shows the design’s message on the field when it is left', function (string
     'url scheme' => ['form.facebook', 'javascript:alert(1)', 'Đường dẫn phải bắt đầu bằng https:// và là một địa chỉ hợp lệ.'],
     'url ftp' => ['form.youtube', 'ftp://youtube.com/x', 'Đường dẫn phải bắt đầu bằng https:// và là một địa chỉ hợp lệ.'],
     'phone' => ['form.phone', '12345', 'Số điện thoại Việt Nam bắt đầu bằng 0 hoặc +84.'],
+    'phone of dots' => ['form.phone', '0.........', 'Số điện thoại Việt Nam bắt đầu bằng 0 hoặc +84.'],
+    'phone too few digits' => ['form.phone', '0 12 34 56', 'Số điện thoại Việt Nam bắt đầu bằng 0 hoặc +84.'],
     'email' => ['form.email', 'lienhe@', 'Địa chỉ email chưa đúng định dạng.'],
     'moit url required when on' => ['form.moitUrl', '', 'Dán liên kết trang xác nhận, ví dụ http://online.gov.vn/Home/WebDetails/12345.'],
     'zalo' => ['form.zalo', 'abc', 'Ghi số điện thoại di động dùng Zalo, mã Zalo OA (chỉ gồm số) hoặc liên kết https://zalo.me/….'],
@@ -305,6 +307,21 @@ it('refuses a ward of another province, checked on the server', function (): voi
     });
 
     expect(app(Tenancy::class)->enter(1, fn () => SiteProfile::query()->count()))->toBe(0);
+});
+
+it('refuses a retired ward, checked on the server', function (): void {
+    $admin = gsAdmin();
+    DB::connection('pgsql_admin')->table('wards')->where('code', 'Z102')->update(['valid_to' => '2025-07-01']);
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        gsValid(Livewire::actingAs($admin)->test(GeneralSettings::class))
+            ->set('form.provinceId', (string) gsUnit('provinces', 'Z1'))
+            ->assertDontSee('Xã Hai')
+            ->set('form.wardId', (string) gsUnit('wards', 'Z102'))
+            ->assertHasErrors(['form.wardId'])
+            ->call('save')->assertHasErrors(['form.wardId']);
+        expect(SiteProfile::query()->count())->toBe(0);
+    });
 });
 
 it('refuses a tampered draft: a value no control can produce', function (string $field, mixed $value): void {

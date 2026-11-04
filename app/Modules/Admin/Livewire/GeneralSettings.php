@@ -376,7 +376,7 @@ final class GeneralSettings extends Component
             'licenseDate' => $value === '' || self::isDate($value) ? null : __('admin.gs.err.licenseDate'),
             'moitUrl' => ($s['moitOn'] ?? false) !== true ? null
                 : ($value === '' ? __('admin.gs.req.moitUrl') : ($url($value) ? null : __('admin.gs.err.url'))),
-            'phone' => $value === '' || preg_match('/\A(0|\+84)[0-9\s.]{8,13}\z/', $value) === 1 ? null : __('admin.gs.err.phone'),
+            'phone' => $value === '' || self::isPhone($value) ? null : __('admin.gs.err.phone'),
             'email' => $value === '' || (preg_match('/\A[^\s@]+@[^\s@]+\.[a-z]{2,}\z/i', $value) === 1 && filter_var($value, FILTER_VALIDATE_EMAIL) !== false) ? null : __('admin.gs.err.email'),
             'facebook', 'youtube', 'tiktok' => $value === '' || $url($value) ? null : __('admin.gs.err.url'),
             'provinceId' => $value === '' || (ctype_digit($value) && Province::query()->whereNull('valid_to')->whereKey((int) $value)->exists()) ? null : __('admin.gs.err.provinceId'),
@@ -402,14 +402,21 @@ final class GeneralSettings extends Component
         if ($province === '' || ! ctype_digit($province)) {
             return Cast::string(__('admin.gs.err.wardFirst'));
         }
-        $owner = Province::query()->whereKey((int) $province)->first(['id', 'name']);
+        $owner = Province::query()->whereNull('valid_to')->whereKey((int) $province)->first(['id', 'name']);
         if ($owner === null) {
             return Cast::string(__('admin.gs.err.wardFirst'));
         }
 
-        return ctype_digit($ward) && Ward::query()->where('province_id', $owner->id)->whereKey((int) $ward)->exists()
+        return ctype_digit($ward) && Ward::query()->where('province_id', $owner->id)->whereNull('valid_to')->whereKey((int) $ward)->exists()
             ? null
             : Cast::string(__('admin.gs.err.wardId', ['province' => $owner->name]));
+    }
+
+    /** A Vietnamese number: 0 or +84 first, spaces and dots allowed, at least 8 digits once they are removed. */
+    private static function isPhone(string $value): bool
+    {
+        return preg_match('/\A(0|\+84)[0-9\s.]{8,13}\z/', $value) === 1
+            && strlen((string) preg_replace('/\D/', '', $value)) >= 8;
     }
 
     /** A real day written dd/mm/yyyy. */

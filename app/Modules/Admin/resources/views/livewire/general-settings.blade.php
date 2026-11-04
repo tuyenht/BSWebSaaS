@@ -146,7 +146,7 @@
                             @endif
 
                             <div @class(['flex min-w-0 flex-col gap-1.5', 'col-span-full' => $wide]) wire:key="gs-f-{{ $key }}-{{ $perLang ? $lang : 'shared' }}">
-                                <span class="flex min-h-11 flex-wrap items-center gap-x-[7px] gap-y-1 text-[calc(0.8125rem+var(--user-text-boost))] font-medium text-text-strong">
+                                <span class="flex min-h-control flex-wrap items-center gap-x-[7px] gap-y-1 text-[calc(0.8125rem+var(--user-text-boost))] font-medium text-text-strong">
                                     <label for="{{ $fid }}" class="cursor-pointer">{{ $label }}</label>
                                     @if ($perLang && $multi)
                                         <span class="inline-flex shrink-0 items-center rounded-sm bg-primary-soft px-1.5 py-px text-caption font-bold text-primary-text uppercase">{{ $lang }}</span>
@@ -157,7 +157,7 @@
                                         </span>
                                     @endif
                                     @if ($hint !== null)
-                                        <button type="button" class="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-text-muted hover:text-primary-text aria-expanded:text-primary-text"
+                                        <button type="button" class="hit-area inline-flex size-control shrink-0 items-center justify-center rounded-md text-text-muted hover:text-primary-text aria-expanded:text-primary-text"
                                                 x-on:click="info = info === '{{ $infoId }}' ? null : '{{ $infoId }}'" x-bind:aria-expanded="info === '{{ $infoId }}' ? 'true' : 'false'"
                                                 aria-controls="{{ $infoId }}" aria-label="{{ __('admin.gs.info_aria') }}">
                                             <x-bs-admin::icon name="ri-information" class="size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))]" />
