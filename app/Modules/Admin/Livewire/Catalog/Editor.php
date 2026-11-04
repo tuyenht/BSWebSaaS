@@ -3,6 +3,7 @@
 namespace App\Modules\Admin\Livewire\Catalog;
 
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
+use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Cms\Exceptions\RouteConflictException;
@@ -72,6 +73,10 @@ final class Editor extends Component
 
     public string $seoDescription = '';
 
+    /** Whether the site writes in more than one language (the per-language fields then carry its code). */
+    #[Locked]
+    public bool $multiLocale = false;
+
     /** Primary category id (product_cat vocabulary); optional until the P3 reconcile seeds them. */
     public ?int $categoryId = null;
 
@@ -94,6 +99,7 @@ final class Editor extends Component
     public function mount(?string $ulid = null): void
     {
         $this->locale = app(SiteLocale::class)->default();
+        $this->multiLocale = count(app(SiteLocale::class)->enabled()) > 1;
 
         if ($ulid === null) {
             $this->authorize('create', Product::class);
@@ -248,6 +254,8 @@ final class Editor extends Component
             'categoryId.exists' => __('catalog.category_invalid'),
             'imageMediaIds.*.exists' => __('catalog.gallery_invalid'),
             'imageMediaIds.*.integer' => __('catalog.gallery_invalid'),
+            'seoTitle.max' => __('catalog.seo_title_too_long'),
+            'seoDescription.max' => __('catalog.seo_description_too_long'),
         ];
     }
 
@@ -338,6 +346,10 @@ final class Editor extends Component
         $sanitizer = app(RichTextSanitizer::class);
         $this->description = $sanitizer->full($this->description);
         $this->summary = $sanitizer->basic($this->summary);
+
+        // Google shows these on one line; a line break or control character never reaches the head.
+        $this->seoTitle = SeoFields::singleLine($this->seoTitle);
+        $this->seoDescription = SeoFields::singleLine($this->seoDescription);
 
         // Gallery ids arrive from the wire payload — coerce + dedup before validating each
         // against the site's media (non-numeric junk becomes 0 and fails the exists rule).

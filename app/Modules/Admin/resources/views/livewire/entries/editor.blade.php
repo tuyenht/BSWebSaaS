@@ -11,12 +11,12 @@
     @endif
 
     <label>{{ __('entries.title_label') }}
-        <input type="text" wire:model="title" class="field">
+        <input type="text" wire:model="title" class="field block w-full">
     </label>
     @error('title') <p class="error">{{ $message }}</p> @enderror
 
     <label>{{ __('entries.slug_label') }}
-        <input type="text" wire:model="slug" class="field">
+        <input type="text" wire:model="slug" class="field block w-full">
     </label>
     @error('slug') <p class="error">{{ $message }}</p> @enderror
 
@@ -31,6 +31,8 @@
         </label>
         @error('categoryId') <p class="error">{{ $message }}</p> @enderror
     @endif
+
+    <x-bs-admin::seo-fields excerpt="excerpt" :kind="$type" :url="request()->getHost()" :locale="$locale" :multi-locale="$multiLocale" id="entry-seo" />
 
     @can('media.view')
         <section class="entry-cover">
