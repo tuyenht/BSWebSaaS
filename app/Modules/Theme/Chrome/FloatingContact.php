@@ -1,0 +1,293 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Theme\Chrome;
+
+use App\Modules\Shared\Support\SafeLink;
+use App\Modules\Theme\Theming\ReadableColor;
+
+/**
+ * The floating contact buttons (`storefront.floating_contact` site setting): the channels a site
+ * offers, how each value is checked, the link it becomes, and the plain shape the theme prints.
+ *
+ * Every link is built here from a checked value — a phone number becomes `tel:`/`sms:` or a
+ * zalo.me / wa.me link, a page name an m.me link, a web link passes SafeLink — so nothing typed in
+ * the panel reaches an href unchecked, and a stored value that no longer passes is simply not
+ * shown. The admin panel validates with the same functions. Plain links only: no third-party
+ * script is loaded. Pure: no query, no request state.
+ */
+final class FloatingContact
+{
+    public const array THEMES = ['vertical', 'horizontal'];
+
+    public const array POSITIONS = ['right', 'left', 'bottom'];
+
+    public const int MAX_OFFSET_X = 60;
+
+    public const int MAX_OFFSET_Y = 120;
+
+    public const int DEFAULT_OFFSET_X = 20;
+
+    public const int DEFAULT_OFFSET_Y = 24;
+
+    /** Most channels one site keeps (built-in and its own together). */
+    public const int MAX_CHANNELS = 20;
+
+    /** Longest channel name or hover label. */
+    public const int MAX_LABEL = 40;
+
+    /** Longest value (a link or an address). */
+    public const int MAX_VALUE = 500;
+
+    /** Buttons the phone bottom bar holds. */
+    public const int BAR_MAX = 3;
+
+    /** A channel of the site's own: `c` and a number. */
+    public const string CUSTOM_KEY = '/\Ac[1-9]\d{0,5}\z/';
+
+    /**
+     * The built-in channels, in the order a new site lists them: value type, icon, brand colour;
+     * `text` = a short word drawn in the round button instead of the icon; `pulse` = the ring that
+     * draws the eye to the call button.
+     *
+     * @var array<string, array{type: string, icon: string, color: string, text?: string, pulse?: bool}>
+     */
+    public const array CHANNELS = [
+        'phone' => ['type' => 'phone', 'icon' => 'ri-phone-line', 'color' => '#4caf50', 'pulse' => true],
+        'zalo' => ['type' => 'zalo', 'icon' => 'ri-chat-smile-2-line', 'color' => '#0084ff', 'text' => 'Zalo'],
+        'messenger' => ['type' => 'messenger', 'icon' => 'ri-messenger-line', 'color' => '#0078ff'],
+        'email' => ['type' => 'email', 'icon' => 'ri-mail-line', 'color' => '#ff4b4b'],
+        'sms' => ['type' => 'sms', 'icon' => 'ri-message-2-line', 'color' => '#e91e63', 'text' => 'SMS'],
+        'whatsapp' => ['type' => 'whatsapp', 'icon' => 'ri-whatsapp-line', 'color' => '#25d366'],
+        'telegram' => ['type' => 'telegram', 'icon' => 'ri-telegram-line', 'color' => '#229ed9'],
+        'viber' => ['type' => 'viber', 'icon' => 'ri-chat-1-line', 'color' => '#7360f2'],
+        'tiktok' => ['type' => 'url', 'icon' => 'ri-tiktok-line', 'color' => '#111111'],
+        'youtube' => ['type' => 'url', 'icon' => 'ri-youtube-line', 'color' => '#ff0000'],
+        'instagram' => ['type' => 'url', 'icon' => 'ri-instagram-line', 'color' => '#e1306c'],
+        'maps' => ['type' => 'url', 'icon' => 'ri-map-pin-line', 'color' => '#ea4335'],
+    ];
+
+    /** Channels every site keeps in its list (they can be switched off, not removed). */
+    public const array CORE = ['phone', 'zalo', 'messenger', 'email', 'sms'];
+
+    /** Channels added from "Chọn kênh có sẵn". */
+    public const array PRESETS = ['whatsapp', 'telegram', 'viber', 'tiktok', 'youtube', 'instagram', 'maps'];
+
+    /** Channels the phone bottom bar leaves out (they read as a chat window, not a quick tap). */
+    public const array BAR_HIDDEN = ['messenger', 'email'];
+
+    /** Colour of a channel of the site's own when none is chosen: a fixed hue, never the admin brand. */
+    public const string CUSTOM_COLOR = '#1e40af';
+
+    /** The stored value checked and tidied for its type, or null when it does not pass. */
+    public static function clean(string $type, mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+        $value = trim($value);
+        if ($value === '' || mb_strlen($value) > self::MAX_VALUE) {
+            return null;
+        }
+
+        return match ($type) {
+            'phone', 'sms', 'whatsapp', 'viber' => self::phone($value),
+            'zalo' => preg_match('~\A(?:https?://)?(?:www\.)?zalo\.me/(\d{6,20})/?\z~i', $value, $m) === 1 ? $m[1] : self::phone($value),
+            'messenger' => self::messenger($value),
+            'email' => filter_var($value, FILTER_VALIDATE_EMAIL) !== false ? $value : null,
+            'telegram' => self::telegram($value),
+            'url' => self::web($value),
+            'custom' => self::custom($value),
+            default => null,
+        };
+    }
+
+    /** The link a checked value opens (the value as clean() returns it). */
+    public static function href(string $type, string $clean): ?string
+    {
+        return match ($type) {
+            'phone' => 'tel:'.$clean,
+            'sms' => 'sms:'.$clean,
+            'zalo' => 'https://zalo.me/'.ltrim($clean, '+'),
+            'messenger' => 'https://m.me/'.$clean,
+            'email' => 'mailto:'.$clean,
+            'whatsapp' => 'https://wa.me/'.self::international($clean),
+            'telegram' => 'https://t.me/'.$clean,
+            'viber' => 'viber://chat?number=%2B'.self::international($clean),
+            'url', 'custom' => $clean,
+            default => null,
+        };
+    }
+
+    /** The value type of a channel key (a built-in channel, or one of the site's own). */
+    public static function typeOf(string $key): ?string
+    {
+        if (isset(self::CHANNELS[$key])) {
+            return self::CHANNELS[$key]['type'];
+        }
+
+        return preg_match(self::CUSTOM_KEY, $key) === 1 ? 'custom' : null;
+    }
+
+    /** A colour as stored (#rrggbb, lower case), else null. */
+    public static function color(mixed $value): ?string
+    {
+        return is_string($value) && preg_match('/\A#[0-9a-f]{6}\z/i', $value) === 1 ? strtolower($value) : null;
+    }
+
+    /**
+     * The setting in the shape the theme prints, for a page in $locale; null when it is off or
+     * has no channel to show. `label` is the hover label in the page's language (null = the
+     * channel's own default, which the theme words); custom channels fall back to their name.
+     *
+     * @param  mixed  $raw  the stored value (an array when set)
+     * @return array{theme: string, position: string, offset_x: int, offset_y: int, buttons: list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, pulse: bool}>, bar: list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, pulse: bool}>}|null
+     */
+    public static function for(mixed $raw, string $locale): ?array
+    {
+        if (! is_array($raw) || ($raw['enabled'] ?? false) !== true) {
+            return null;
+        }
+
+        $buttons = [];
+        $bar = [];
+        foreach (array_slice(is_array($raw['channels'] ?? null) ? array_values($raw['channels']) : [], 0, self::MAX_CHANNELS) as $channel) {
+            $button = is_array($channel) ? self::button($channel, $locale) : null;
+            if ($button === null) {
+                continue;
+            }
+            $buttons[] = $button;
+            if (! in_array($button['key'], self::BAR_HIDDEN, true) && count($bar) < self::BAR_MAX) {
+                $bar[] = $button;
+            }
+        }
+
+        $theme = in_array($raw['theme'] ?? null, self::THEMES, true) ? (string) $raw['theme'] : 'vertical';
+        if ($buttons === [] || ($theme === 'horizontal' && $bar === [])) {
+            return null;
+        }
+
+        return [
+            'theme' => $theme,
+            'position' => in_array($raw['position'] ?? null, self::POSITIONS, true) ? (string) $raw['position'] : 'right',
+            'offset_x' => self::offset($raw['offset_x'] ?? null, self::MAX_OFFSET_X, self::DEFAULT_OFFSET_X),
+            'offset_y' => self::offset($raw['offset_y'] ?? null, self::MAX_OFFSET_Y, self::DEFAULT_OFFSET_Y),
+            'buttons' => $buttons,
+            'bar' => $bar,
+        ];
+    }
+
+    /** An offset in px: an even whole number from 0 to $max, else the default. */
+    public static function offset(mixed $value, int $max, int $default): int
+    {
+        return is_int($value) && $value >= 0 && $value <= $max && $value % 2 === 0 ? $value : $default;
+    }
+
+    /**
+     * One shown button, or null when the channel is off, unknown or its value does not pass.
+     *
+     * @param  array<array-key, mixed>  $channel
+     * @return array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, pulse: bool}|null
+     */
+    private static function button(array $channel, string $locale): ?array
+    {
+        $key = is_string($channel['key'] ?? null) ? $channel['key'] : '';
+        $type = self::typeOf($key);
+        if ($type === null || ($channel['on'] ?? false) !== true) {
+            return null;
+        }
+        $clean = self::clean($type, $channel['value'] ?? null);
+        $href = $clean === null ? null : self::href($type, $clean);
+        if ($href === null) {
+            return null;
+        }
+
+        $meta = self::CHANNELS[$key] ?? null;
+        $iconCode = $meta['icon'] ?? (in_array($channel['icon'] ?? null, ContactIcons::CUSTOM, true) ? (string) $channel['icon'] : 'ri-global-line');
+        $text = $meta['text'] ?? null;
+        $color = self::color($channel['color'] ?? null) ?? ($meta['color'] ?? self::CUSTOM_COLOR);
+
+        $tips = is_array($channel['tips'] ?? null) ? $channel['tips'] : [];
+        $label = self::label($tips[$locale] ?? null);
+        if ($label === null && $meta === null) {
+            $label = self::label($channel['name'] ?? null);
+        }
+
+        return [
+            'key' => $key,
+            'href' => $href,
+            'label' => $label,
+            'icon' => ContactIcons::path($iconCode) ?? '',
+            'text' => $text,
+            // White marks on the fill: a word needs 4.5:1, a glyph 3:1 — the brand hue darkened just enough.
+            'fill' => ReadableColor::on($color, '#ffffff', $text !== null ? ReadableColor::AA_NORMAL_TEXT : 3.0) ?? $color,
+            'pulse' => ($meta['pulse'] ?? false) === true,
+        ];
+    }
+
+    private static function label(mixed $value): ?string
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        return mb_substr(trim($value), 0, self::MAX_LABEL);
+    }
+
+    /** A Vietnamese number: 0 and nine digits, or +84 and nine; spaces, dots and dashes ignored. */
+    private static function phone(string $value): ?string
+    {
+        $digits = (string) preg_replace('/[\s.\-()]/', '', $value);
+
+        return preg_match('/\A(?:0\d{9}|\+84\d{9})\z/', $digits) === 1 ? $digits : null;
+    }
+
+    /** 0912345678 / +84912345678 → 84912345678. */
+    private static function international(string $phone): string
+    {
+        return str_starts_with($phone, '+') ? substr($phone, 1) : '84'.substr($phone, 1);
+    }
+
+    /** A Facebook page name or id, or an m.me / facebook.com link to one. */
+    private static function messenger(string $value): ?string
+    {
+        $page = (string) preg_replace('~\A(?:https?://)?(?:www\.)?(?:m\.me|messenger\.com/t|facebook\.com|fb\.com)/~i', '', $value);
+        $page = rtrim($page, '/');
+
+        return preg_match('/\A[A-Za-z0-9][A-Za-z0-9.\-_]{0,99}\z/', $page) === 1 ? $page : null;
+    }
+
+    /** A Telegram username (5–32 letters, digits, _), with or without @ or a t.me link. */
+    private static function telegram(string $value): ?string
+    {
+        $user = (string) preg_replace('~\A(?:@|(?:https?://)?(?:www\.)?t\.me/)~i', '', $value);
+        $user = rtrim($user, '/');
+
+        return preg_match('/\A[A-Za-z][A-Za-z0-9_]{4,31}\z/', $user) === 1 ? $user : null;
+    }
+
+    /** An absolute web link (http/https with a host). */
+    private static function web(string $value): ?string
+    {
+        $href = SafeLink::href($value);
+
+        return $href !== null && ! str_starts_with($href, '/') ? $href : null;
+    }
+
+    /** A channel of the site's own: a web link or a path on the site, or tel: / sms: / mailto:. */
+    private static function custom(string $value): ?string
+    {
+        if (preg_match('/\A(tel|sms|mailto):(.*)\z/is', $value, $m) === 1) {
+            $scheme = strtolower($m[1]);
+            if ($scheme === 'mailto') {
+                return SafeLink::mailto($m[2]);
+            }
+            $tel = SafeLink::tel($m[2]);
+
+            return $tel === null ? null : $scheme.':'.substr($tel, 4);
+        }
+
+        return SafeLink::href($value);
+    }
+}

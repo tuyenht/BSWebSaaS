@@ -21,6 +21,7 @@ use App\Modules\Storefront\Support\ListPage;
 use App\Modules\Tenancy\Context\ContentSections;
 use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
+use App\Modules\Theme\Chrome\FloatingContact;
 use App\Modules\Theme\Chrome\StorefrontChrome;
 use App\Modules\Theme\Rendering\PageRenderer;
 use App\Modules\Theme\Rendering\TemplateResolver;
@@ -102,6 +103,8 @@ final readonly class StorefrontController
             'footerMenu' => $footer === null ? [] : ($menus[$footer['region']] ?? []),
             'header' => $header,
             'footer' => $footer,
+            // The floating contact buttons / phone bottom bar (null = off or no channel to show).
+            'floatingContact' => FloatingContact::for($this->settings->get('storefront', 'floating_contact'), $locale),
             'lang' => $locale,
             'hreflang' => $this->hreflangFor($resolved, $locale, $default, $path),
             // Business identity in the page's language (site_profiles + translations, the legacy

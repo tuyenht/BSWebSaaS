@@ -10,7 +10,8 @@
     // (at least 9.375rem each, so they follow the reader's text size). ← → ↑ ↓ move between the
     // cards that can be chosen; a click or Space/Enter chooses.
     //
-    // $options: list<array{value: string, label: string, sub?: string|null, tag?: string|null, checked?: bool, disabled?: bool}>
+    // $options: list<array{value: string, label: string, icon?: string|null, sub?: string|null, tag?: string|null, checked?: bool, disabled?: bool}>
+    // `icon` (an x-bs-admin::icon name) sits before the name, in the name's colour.
     // $pick: the host's public method that takes the chosen value (called with Js::from()).
     // $labelledby: the id of the group's visible label.
 @endphp
@@ -28,7 +29,14 @@
                     'cursor-pointer border-primary-text bg-[color-mix(in_srgb,var(--color-primary-text)_6%,var(--color-surface))] shadow-[inset_0_0_0_1px_var(--color-primary-text)]' => $on,
                     'cursor-not-allowed border-dashed border-border-input opacity-70' => $off,
                 ])>
-            <b class="font-semibold text-text-strong [overflow-wrap:anywhere]">{{ $o['label'] }}</b>
+            @if (($o['icon'] ?? null) !== null)
+                <span class="flex items-center gap-2 text-text-strong">
+                    <x-bs-admin::icon :name="$o['icon']" class="size-[min(1.5rem,calc(1.125rem+var(--user-text-boost)))] shrink-0" />
+                    <b class="font-semibold [overflow-wrap:anywhere]">{{ $o['label'] }}</b>
+                </span>
+            @else
+                <b class="font-semibold text-text-strong [overflow-wrap:anywhere]">{{ $o['label'] }}</b>
+            @endif
             @if (($o['sub'] ?? null) !== null)
                 <span class="text-small text-text-muted">{{ $o['sub'] }}</span>
             @endif

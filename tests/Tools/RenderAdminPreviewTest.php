@@ -33,6 +33,7 @@ use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
+use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -180,5 +181,23 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($open)->toContain('role="switch"');
     file_put_contents($dir.'/domains-add.html', str_replace('</body>', $open.'</body>', $page));
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 8);
+    // The floating contact buttons: round buttons with a channel of the site's own, then the phone
+    // bottom bar with the "Mua hàng" button (the site has two languages, so the language bar shows).
+    $channels = [
+        ['key' => 'phone', 'on' => true, 'value' => '0912345678', 'tips' => ['vi' => 'Gọi ngay']],
+        ['key' => 'zalo', 'on' => true, 'value' => '0912345678'],
+        ['key' => 'messenger', 'on' => true, 'value' => 'congtydemo'],
+        ['key' => 'email', 'on' => false, 'value' => ''],
+        ['key' => 'sms', 'on' => false, 'value' => ''],
+        ['key' => 'c1', 'on' => true, 'value' => '/lien-he', 'icon' => 'ri-chat-3-line', 'name' => 'Đặt lịch', 'tips' => []],
+    ];
+    foreach (['floating-contact' => ['theme' => 'vertical'], 'floating-contact-bar' => ['theme' => 'horizontal', 'buy' => ['enabled' => true, 'color' => '#f7b84b']]] as $name => $look) {
+        app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'storefront', 'key' => 'floating_contact'],
+            ['value' => $look + ['enabled' => true, 'position' => 'right', 'offset_x' => 20, 'offset_y' => 24, 'channels' => $channels]]));
+        $this->flushSession();
+        $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/floating-contact')->assertOk()->getContent();
+        file_put_contents($dir.'/'.$name.'.html', $html);
+    }
+
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 10);
 });
