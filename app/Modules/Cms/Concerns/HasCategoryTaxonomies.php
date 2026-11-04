@@ -8,6 +8,7 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\CategoryItemCounts;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\Pivot;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Database\Query\Builder;
 use InvalidArgumentException;
 
@@ -29,6 +30,12 @@ use InvalidArgumentException;
  * for every caller: a change of main category in assignCategories(), and the trash, restore and
  * permanent delete of an item through the model events below. A host whose rows do not all
  * count (Entry: posts only) narrows countsInCategoryTotals().
+ *
+ * Each of them first locks the item's row (FOR UPDATE, in the caller's transaction) and takes the
+ * item's trash state from that locked row, then reads its main category: two saves, trashes or
+ * restores of one item at once queue behind each other, so the second sees what the first wrote
+ * and never counts the same change twice. The row is locked before any category row (the counter
+ * updates come last), the order every other writer of an item keeps.
  */
 trait HasCategoryTaxonomies
 {
@@ -48,7 +55,7 @@ trait HasCategoryTaxonomies
         // is gone — a delete another listener cancels changes nothing, and deleting an item that
         // is already in the trash (a second trash, a purge) does not count it out twice.
         static::registerModelEvent('deleting', static function (self $item): void {
-            $item->mainLeftByDelete = ! $item->trashed() && $item->countsInCategoryTotals() ? $item->mainCategoryId() : null;
+            $item->mainLeftByDelete = $item->countsInCategoryTotals() && $item->lockLiveState() === true ? $item->mainCategoryId() : null;
         });
         static::registerModelEvent('deleted', static function (self $item): void {
             $main = $item->mainLeftByDelete;
@@ -58,13 +65,15 @@ trait HasCategoryTaxonomies
             }
         });
         // Only a restore out of the trash brings it back (restore() on a live row saves it again).
+        // Both the copy and the stored row must be in the trash: restore() writes only what it
+        // changed on the copy, so a copy that already looks live writes nothing.
         static::registerModelEvent('restoring', static function (self $item): void {
-            $item->restoringFromTrash = $item->trashed();
+            $item->restoringFromTrash = $item->trashed() && $item->countsInCategoryTotals() && $item->lockLiveState() === false;
         });
         static::registerModelEvent('restored', static function (self $item): void {
             $fromTrash = $item->restoringFromTrash;
             $item->restoringFromTrash = false;
-            $main = $fromTrash && $item->countsInCategoryTotals() ? $item->mainCategoryId() : null;
+            $main = $fromTrash ? $item->mainCategoryId() : null;
             if ($main !== null) {
                 app(CategoryItemCounts::class)->adjust([$main => 1]);
             }
@@ -85,12 +94,15 @@ trait HasCategoryTaxonomies
     /**
      * Replace the item's categories with $taxonomyIds, in order (index 0 = primary). Facet terms
      * ride along untouched: sync() diffs against EVERY pivot row, so a facet missing from the
-     * payload would be detached.
+     * payload would be detached. A category listed twice is filed once, at its first place.
      *
      * @param  list<int>  $taxonomyIds
      */
     public function assignCategories(array $taxonomyIds): void
     {
+        // [A, B, A] would give A two positions, the later one winning in the payload: A would
+        // leave position 0 while its count went up.
+        $taxonomyIds = array_values(array_unique($taxonomyIds));
         if (count($taxonomyIds) >= self::FACET_POSITION_BASE) {
             throw new InvalidArgumentException('Too many categories: pivot positions from '.self::FACET_POSITION_BASE.' up belong to facet terms.');
         }
@@ -99,6 +111,9 @@ trait HasCategoryTaxonomies
         foreach ($taxonomyIds as $position => $id) {
             $payload[$id] = ['position' => $position, 'site_id' => $this->site_id];
         }
+
+        // Before reading the old main category: see the class comment.
+        $counts = $this->exists && $this->countsInCategoryTotals() && $this->lockLiveState() === true;
 
         // The facet terms to keep and the main category now, in one read.
         $relation = $this->taxonomies();
@@ -122,7 +137,7 @@ trait HasCategoryTaxonomies
         // A loaded list is stale now, and the count events read the main category from it.
         $this->unsetRelation('taxonomies');
 
-        if ($this->exists && ! $this->trashed() && $this->countsInCategoryTotals()) {
+        if ($counts) {
             app(CategoryItemCounts::class)->moved($from, $taxonomyIds[0] ?? null);
         }
     }
@@ -151,6 +166,20 @@ trait HasCategoryTaxonomies
             ->value($relation->getRelatedPivotKeyName());
 
         return is_numeric($id) ? (int) $id : null;
+    }
+
+    /**
+     * Lock this item's row for the rest of the caller's transaction and tell whether it is out of
+     * the trash, as stored (null: the row is gone). The site scope stays on.
+     */
+    private function lockLiveState(): ?bool
+    {
+        $row = $this->newQueryWithoutScope(SoftDeletingScope::class)
+            ->whereKey($this->getKey())
+            ->lockForUpdate()
+            ->first([$this->getKeyName(), $this->getDeletedAtColumn()]);
+
+        return $row === null ? null : ! $row->trashed();
     }
 
     private static function pivotPosition(Taxonomy $taxonomy): ?int

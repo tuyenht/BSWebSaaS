@@ -23,7 +23,10 @@ use Throwable;
  * - Every change is relative and atomic in SQL (`items_count + n`, never read-then-write), in the
  *   caller's transaction and tenant context, with the site named explicitly.
  * - Several categories in one change are updated in id order, so two saves touching the same
- *   categories queue behind each other instead of deadlocking.
+ *   categories queue behind each other instead of deadlocking. A plain UPDATE of items_count (no
+ *   key column) takes FOR NO KEY UPDATE on the row, which does not conflict with the FOR KEY
+ *   SHARE that every insert into a pivot or `routes` takes on its category: filing an item never
+ *   waits for a counter change.
  * - A decrement never takes a counter below 0. It is clamped (GREATEST(…, 0)) instead of left to
  *   the CHECK (items_count >= 0), which would turn a counter that has already drifted (a write
  *   path that missed it) into a failed save for the person; `cms:reconcile-category-counts`

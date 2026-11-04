@@ -10,6 +10,7 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Re-count every category's items (CategoryItemCounts: the live posts and products whose main
@@ -19,16 +20,24 @@ use Illuminate\Support\Facades\Log;
  * to fill the existing rows.
  *
  * Site by site, inside each site's tenant context (RLS and the site scope pick the site's own
- * rows), like cms:fill-ulids. Each chunk of categories is its own short transaction, walked by id:
- * its rows are locked first (in id order, as every counter change takes them), then counted with
- * one grouped statement, so a save running meanwhile either lands before the count or adds its
- * change after the corrected number — never lost. Only rows that differ are written, so a second
- * run reports 0.
+ * rows), like cms:fill-ulids, walking each site's categories by id in chunks:
+ *
+ * - A chunk is counted WITHOUT locks (one grouped statement), so the saves running meanwhile never
+ *   wait for it.
+ * - Only the categories that look drifted are then corrected, in a short transaction of their own:
+ *   their rows are locked FOR NO KEY UPDATE in id order — the lock the counter's own UPDATE takes,
+ *   so a save that is filing an item under one of them (its pivot insert holds FOR KEY SHARE on
+ *   the category) neither deadlocks with it nor waits for more than this one step — then counted
+ *   again and written. A save that lands before the lock is in the new count; one after it adds
+ *   its change to the corrected number. Never lost. Only rows that differ are written, so a
+ *   second run reports 0.
+ * - A site that fails is logged (Log::error) and skipped; the other sites are still reconciled,
+ *   and the command then exits non-zero so the scheduler's failure hooks see it.
  */
 final class ReconcileCategoryCounts extends Command
 {
     #[\Override]
-    protected $signature = 'cms:reconcile-category-counts {--chunk=500 : Categories counted per transaction}';
+    protected $signature = 'cms:reconcile-category-counts {--chunk=500 : Categories counted per step}';
 
     #[\Override]
     protected $description = 'Re-count the posts and products of every category and correct the stored totals (safe to re-run)';
@@ -39,36 +48,77 @@ final class ReconcileCategoryCounts extends Command
         $sites = 0;
         $checked = 0;
         $corrected = 0;
+        $failed = 0;
 
         foreach ($tenancy->siteIds() as $siteId) {
             $sites++;
             $after = 0;
 
-            do {
-                [$read, $fixed, $after] = $tenancy->enter($siteId, fn (): array => $this->reconcileChunk($counts, $siteId, $after, $chunk));
-                $checked += $read;
-                $corrected += $fixed;
-            } while ($read === $chunk);
+            try {
+                do {
+                    [$read, $drifted, $after] = $tenancy->enter($siteId, fn (): array => $this->countChunk($counts, $after, $chunk));
+                    $checked += $read;
+                    if ($drifted !== []) {
+                        $corrected += $tenancy->enter($siteId, fn (): int => $this->correct($counts, $siteId, $drifted));
+                    }
+                } while ($read === $chunk);
+            } catch (Throwable $e) {
+                $failed++;
+                Log::error('Category item count reconcile failed for a site', ['site_id' => $siteId, 'error' => $e->getMessage()]);
+                $this->error("Site {$siteId}: {$e->getMessage()}");
+            }
         }
 
         $this->info("Checked {$checked} categor(ies) on {$sites} site(s); corrected {$corrected}.");
+        if ($failed > 0) {
+            $this->error("Failed on {$failed} site(s); see the log.");
+
+            return self::FAILURE;
+        }
 
         return self::SUCCESS;
     }
 
     /**
-     * Lock, count and correct the current site's next chunk of categories after id $after.
+     * Count the current site's next chunk of categories after id $after, without locks.
      *
-     * @return array{0: int, 1: int, 2: int} [categories read, corrected, last id read]
+     * @return array{0: int, 1: list<int>, 2: int} [categories read, ids that look drifted, last id read]
      */
-    private function reconcileChunk(CategoryItemCounts $counts, int $siteId, int $after, int $chunk): array
+    private function countChunk(CategoryItemCounts $counts, int $after, int $chunk): array
     {
         $stored = [];
-        foreach (Taxonomy::query()->where('id', '>', $after)->orderBy('id')->limit($chunk)->lockForUpdate()->get(['id', 'items_count']) as $taxonomy) {
+        foreach (Taxonomy::query()->where('id', '>', $after)->orderBy('id')->limit($chunk)->get(['id', 'items_count']) as $taxonomy) {
             $stored[$taxonomy->id] = $taxonomy->items_count;
         }
         if ($stored === []) {
-            return [0, 0, $after];
+            return [0, [], $after];
+        }
+
+        $actual = $counts->actual(array_keys($stored));
+        $drifted = [];
+        foreach ($stored as $id => $count) {
+            if (($actual[$id] ?? 0) !== $count) {
+                $drifted[] = $id;
+            }
+        }
+
+        return [count($stored), $drifted, (int) array_key_last($stored)];
+    }
+
+    /**
+     * Lock these categories of the current site, count them again and write the ones that still
+     * differ, logging each. Returns how many were corrected.
+     *
+     * @param  list<int>  $ids
+     */
+    private function correct(CategoryItemCounts $counts, int $siteId, array $ids): int
+    {
+        $stored = [];
+        foreach (Taxonomy::query()->whereKey($ids)->orderBy('id')->lock('for no key update')->get(['id', 'items_count']) as $taxonomy) {
+            $stored[$taxonomy->id] = $taxonomy->items_count;
+        }
+        if ($stored === []) {
+            return 0;   // deleted since the count
         }
 
         $actual = $counts->actual(array_keys($stored));
@@ -82,6 +132,6 @@ final class ReconcileCategoryCounts extends Command
         }
         $counts->correct($drift);
 
-        return [count($stored), count($drift), (int) array_key_last($stored)];
+        return count($drift);
     }
 }

@@ -327,6 +327,32 @@ it('drops the count change of a bulk row that rolled back', function (): void {
     expect(categoryCountDrift(1))->toBe([]);
 });
 
+it('keeps the counts of a bulk trash true when one row fails after its delete, through the post list', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.delete.any']);
+        $a = ccCategory('A');
+        $posts = [ccPost([$a]), ccPost([$a]), ccPost([$a])];
+        $failed = $posts[1];
+        // Runs after the counter's own listener has taken the row out of A: only the row's
+        // savepoint and its own batch can put that change back.
+        Entry::deleted(function (Entry $entry) use ($failed): void {
+            if ($entry->id === $failed->id) {
+                throw new RuntimeException('row failed after its delete');
+            }
+        });
+
+        Livewire::actingAs($editor->fresh())->test(EntryIndex::class)
+            ->set('selected', array_map(fn (Entry $post): string => $post->ulid, $posts))->call('bulkTrash');
+
+        expect(Entry::query()->whereKey($failed->id)->exists())->toBeTrue()
+            ->and(Entry::query()->whereKey([$posts[0]->id, $posts[2]->id])->exists())->toBeFalse()
+            ->and(ccCounts($a))->toBe([1]);
+    });
+    expect(categoryCountDrift(1))->toBe([]);
+});
+
 it('takes a product out of its count in the trash and back on restore, from the product list', function (): void {
     $manager = User::factory()->create();
 
@@ -426,4 +452,114 @@ it('runs the reconcile every night, never two at once', function (): void {
     expect($event)->not->toBeNull()
         ->and($event->expression)->toBe('15 20 * * *')
         ->and($event->withoutOverlapping)->toBeTrue();
+});
+
+it('files a category listed twice once, at its first place, and counts it once', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $a = ccCategory('A');
+        $b = ccCategory('B');
+
+        $post = ccPost([$a, $b, $a]);
+        expect($post->taxonomies()->pluck('entry_taxonomies.position', 'taxonomies.id')->map(fn ($p): int => (int) $p)->all())
+            ->toBe([$a->id => 0, $b->id => 1])
+            ->and(ccCounts($a, $b))->toBe([1, 0]);
+
+        $post->assignCategories([$b->id, $a->id, $b->id]);
+        expect(ccCounts($a, $b))->toBe([0, 1]);
+
+        $product = ccProduct([]);
+        $product->assignCategories([$a->id, $a->id]);
+        expect(ccCounts($a))->toBe([1]);
+    });
+    expect(categoryCountDrift(1))->toBe([]);
+});
+
+it('locks the item before it reads the old main category, so two saves at once queue', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $a = ccCategory('A');
+        $b = ccCategory('B');
+        $post = ccPost([$a]);
+
+        $sql = ccStatements(fn () => $post->assignCategories([$b->id]));
+        $lock = array_key_first(array_filter($sql, fn (string $s): bool => str_starts_with($s, 'select') && str_contains($s, 'from "entries"') && str_ends_with($s, 'for update')));
+        $read = array_key_first(array_filter($sql, fn (string $s): bool => str_contains($s, 'from "entry_taxonomies"')));
+
+        expect($lock)->not->toBeNull()->and($lock)->toBeLessThan($read);
+    });
+});
+
+it('takes the trash state from the locked row, so a stale copy of the item never counts twice', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $a = ccCategory('A');
+        $b = ccCategory('B');
+        $post = ccPost([$a]);
+        ccPost([$a]);
+        // Two requests that loaded the same live post.
+        $first = Entry::query()->findOrFail($post->id);
+        $second = Entry::query()->findOrFail($post->id);
+
+        $first->delete();
+        $second->delete();
+        expect(ccCounts($a))->toBe([1]);
+
+        // A save from a tab that still sees it live: the trashed post moves without counting.
+        $second->assignCategories([$b->id]);
+        expect(ccCounts($a, $b))->toBe([1, 0]);
+
+        $first = Entry::withTrashed()->findOrFail($post->id);
+        $second = Entry::withTrashed()->findOrFail($post->id);
+        $first->restore();
+        $second->restore();
+        expect(ccCounts($a, $b))->toBe([1, 1]);
+    });
+    expect(categoryCountDrift(1))->toBe([]);
+});
+
+it('counts without locks and corrects only the drifted categories under the counter\'s own lock', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $a = ccCategory('A');
+        ccCategory('B');
+        ccPost([$a]);
+        ccSetCount($a, 4);
+    });
+
+    $sql = ccStatements(fn () => $this->artisan('cms:reconcile-category-counts')->expectsOutputToContain('corrected 1')->assertSuccessful());
+    $locked = array_values(array_filter($sql, fn (string $s): bool => str_contains($s, 'from "taxonomies"') && str_contains($s, ' for ')));
+
+    expect($locked)->toHaveCount(1)
+        ->and($locked[0])->toEndWith('for no key update')
+        ->and(array_filter($sql, fn (string $s): bool => str_ends_with($s, 'for update')))->toBe([]);
+});
+
+it('reconciles the other sites when one fails, logs it, and exits non-zero', function (): void {
+    $one = app(Tenancy::class)->enter(1, function (): Taxonomy {
+        $category = ccCategory('A');
+        ccPost([$category]);
+        ccSetCount($category, 5);
+
+        return $category;
+    });
+    $two = app(Tenancy::class)->enter(2, function (): Taxonomy {
+        $category = ccCategory('A');
+        ccPost([$category]);
+        ccPost([$category]);
+        ccSetCount($category, 0);
+
+        return $category;
+    });
+    Log::spy();
+    Log::shouldReceive('warning')->andReturnUsing(function (string $message, array $context): void {
+        if ($context['site_id'] === 1) {
+            throw new RuntimeException('log store unavailable');
+        }
+    });
+
+    $this->artisan('cms:reconcile-category-counts')
+        ->expectsOutputToContain('on 2 site(s); corrected 1')
+        ->expectsOutputToContain('Failed on 1 site(s)')
+        ->assertFailed();
+
+    Log::shouldHaveReceived('error')->with('Category item count reconcile failed for a site', ['site_id' => 1, 'error' => 'log store unavailable'])->once();
+    app(Tenancy::class)->enter(1, fn () => expect(ccCounts($one))->toBe([5]));   // its correction rolled back
+    app(Tenancy::class)->enter(2, fn () => expect(ccCounts($two))->toBe([2]));
 });
