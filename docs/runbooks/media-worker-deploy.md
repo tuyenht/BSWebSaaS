@@ -57,6 +57,9 @@ but returns the raw master (no resize).
 curl -I https://files.baoson.net/sites/1/media/about-bao-on.jpg            # 200 raw master (via Worker)
 curl -I "https://files.baoson.net/sites/1/media/about-bao-on.jpg?w=640"    # 200 transformed (smaller)
 curl -I "https://files.baoson.net/sites/1/media/about-bao-on.jpg?w=999"    # 400 invalid width (whitelist)
+curl -s -r 0-1 -D - -o range.bin https://files.baoson.net/sites/1/media/about-bao-on.jpg
+#   206 + "Content-Range: bytes 0-1/<size>" + "Accept-Ranges: bytes" — a background video needs this
+#   (Safari/iOS plays a <video> only from ranged answers); a range past the end answers 416
 ```
 
 ## 6. Rollback

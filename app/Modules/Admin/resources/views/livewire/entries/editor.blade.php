@@ -115,6 +115,8 @@
                     <div class="block-props">
                         @foreach (($schemas[$block['type']] ?? []) as $prop => $spec)
                             @continue(($spec['group'] ?? null) === 'style')
+                            {{-- A background video is chosen in the page builder's video field (not built in this editor yet); its value is kept as saved. --}}
+                            @continue(($spec['type'] ?? null) === 'video')
                             @if (($spec['type'] ?? 'text') === 'list')
                                 <fieldset class="prop-list" wire:key="list-{{ $i }}-{{ $prop }}">
                                     <legend>{{ $prop }}</legend>

@@ -20,6 +20,16 @@ final class MediaUrlResolver
     }
 
     /**
+     * The address of the stored file itself, never a transform — for a file that is not a picture (a
+     * video). Every driver serves masters from the same plane the `static` driver uses: imgproxy only
+     * resizes pictures, and the Worker passes a request without ?w through as the raw master.
+     */
+    public function fileUrl(string $key): string
+    {
+        return $this->base('cloudflare').'/'.ltrim($key, '/');
+    }
+
+    /**
      * A `srcset` value for the key at the given widths: `{url} {w}w` per width the Worker allows,
      * never wider than the master (the smallest width is always kept, so a small master still gets
      * one candidate), with duplicate URLs dropped. Null when fewer than two distinct URLs remain —

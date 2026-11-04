@@ -17,7 +17,8 @@ use Illuminate\Database\Eloquent\Builder;
  * media used" is an indexed lookup, not a scan of every entry body — the anti-scan contract at tenant
  * scale (a media_id buried in blocks[].props can't be found by an indexed query otherwise).
  *
- * Reconciled on save: collects every media_id referenced by an image prop, or by a library picture
+ * Reconciled on save: collects every media_id referenced by an image or video prop (the hero's
+ * background video counts as used like a picture), or by a library picture
  * (`img[data-media-id]`) inside a formatted-text (`html`) prop, across ALL locale bodies, keeps those
  * that name this site's media, then prunes the entry's content rows and adds the missing
  * ones. It runs inside the request transaction (the save), so the usage index never drifts from the
@@ -88,7 +89,7 @@ final readonly class EntryBlockMediaReconciler
     }
 
     /**
-     * Every media_id referenced across all of the entry's locale block bodies: by an image prop, and
+     * Every media_id referenced across all of the entry's locale block bodies: by an image or video prop, and
      * by a library picture inside an html prop — so a picture used only inside formatted text still
      * counts as used (the library's "where used" list and its delete warning).
      *

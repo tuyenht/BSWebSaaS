@@ -174,6 +174,18 @@ final readonly class ThemeResolver
     }
 
     /**
+     * Whether the brand colour set ("Thương hiệu") carries white text, i.e. reads as a dark band — the
+     * same fill/text pairing schemes() prints, so what sits on the band (the hero video's control)
+     * takes the look that matches it. No query beyond the memoized settings.
+     */
+    public function brandSetIsDark(): bool
+    {
+        $tokens = $this->tokens();
+
+        return $this->fillWithText($tokens['primary'], $tokens['ink'])[1] === '#ffffff';
+    }
+
+    /**
      * The colour sets a section can pick (StyleProps::SCHEMES; "Bộ màu" in the editor), as roles
      * `sch-{set}-{role}`: bg, head, body, link, pri-bg / pri-fg / pri-hover (the main button), sec-fg (the
      * outlined button). Text is fitted to 4.5:1 on its background and the button fill to 3:1
