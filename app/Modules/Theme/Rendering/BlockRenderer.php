@@ -145,6 +145,19 @@ final readonly class BlockRenderer
      */
     public function render(array $body): string
     {
+        return $this->renderSections($body)['html'];
+    }
+
+    /**
+     * The page's sections, and whether one of them plays a background video — a hero whose video
+     * resolved to a video file of this site (a missing, deleted or foreign id renders the plain hero
+     * and does not count). The layout loads the background-video script only then.
+     *
+     * @param  array<string, mixed>  $body
+     * @return array{html: string, bgVideo: bool}
+     */
+    public function renderSections(array $body): array
+    {
         $blocks = is_array($body['blocks'] ?? null) ? $body['blocks'] : [];
 
         // Pass 1 — collect every media_id an image prop references across the whole page.
@@ -177,6 +190,7 @@ final readonly class BlockRenderer
         // the look wrapper when the block sets one (StyleProps).
         $html = '';
         $first = true;
+        $bgVideo = false;
         foreach ($blocks as $block) {
             if (! is_array($block)) {
                 continue;
@@ -198,9 +212,12 @@ final readonly class BlockRenderer
                 fn (string $html): string => $this->richHtml->render($html, $urls, $srcsets, $alts, $dims)['html'],
             );
 
+            $band = $this->videoBand($resolved);
+            $bgVideo = $bgVideo || $band !== [];
+
             /** @var view-string $view a theme section view (ComponentRegistry) */
             $view = $component->view();
-            $section = $this->views->make($view, $component->data($resolved) + ['srcsets' => $srcsets, 'alts' => $alts] + $this->videoBand($resolved))->render();
+            $section = $this->views->make($view, $component->data($resolved) + ['srcsets' => $srcsets, 'alts' => $alts] + $band)->render();
 
             $image = $resolved['bg_image'] ?? null;
             $wrapper = StyleProps::wrapper($props, $first, is_string($image) ? $image : null);
@@ -213,15 +230,18 @@ final readonly class BlockRenderer
             $first = false;
         }
 
-        return $html;
+        return ['html' => $html, 'bgVideo' => $bgVideo];
     }
 
     /**
      * For a block whose background video resolved (the hero): `videoBand`, whether the band it plays
-     * on reads dark or light, so its pause/play control takes the matching look. The hero paints its
-     * own dark band unless the look panel sets a colour set (StyleProps::wrapper); the light and soft
-     * sets are light, the brand set follows its text (ThemeResolver), the dark set and a photo band are
-     * dark. A block without a resolved video gets nothing (no extra work).
+     * on reads dark or light, so its pause/play control takes the matching look. A colour set chosen
+     * in the look panel is read through StyleProps::schemeOf, like every block: the light and soft
+     * sets are light, the brand set follows its text (ThemeResolver), the dark set is dark. Any other
+     * `bg` paints the hero's own dark band: a photo band, and also the older `surface` / `tint`
+     * values, which StyleProps::wrapper gives no colour class and the hero section does not paint
+     * (storefront.css `.hero` falls back to --color-dark). A block without a resolved video gets
+     * nothing (no extra work).
      *
      * @param  array<array-key, mixed>  $resolved
      * @return array{videoBand?: 'dark'|'light'}
@@ -232,7 +252,10 @@ final readonly class BlockRenderer
             return [];
         }
 
-        $dark = SectionProps::choice($resolved, 'bg', StyleProps::BG) !== 'scheme' || match (SectionProps::choice($resolved, 'scheme', StyleProps::SCHEMES)) {
+        $set = SectionProps::choice($resolved, 'bg', StyleProps::BG) === 'scheme'
+            ? StyleProps::schemeOf($resolved, 'hero')
+            : 'dark';
+        $dark = match ($set) {
             'light', 'soft' => false,
             'brand' => $this->theme->brandSetIsDark(),
             default => true,

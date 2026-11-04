@@ -108,6 +108,8 @@ final readonly class AddSecurityHeaders
      *   img-src      media planes      – the configured media hosts (media.cloudflare.base,
      *                                    media.imgproxy.base) — config, never a hardcoded brand
      *                data:             – inline SVG data URIs and favicons
+     *   media-src    media planes      – the same media hosts as img-src: the hero's background
+     *                                    video plays its file from the library (no data:, no wildcard)
      *   style-src    'unsafe-inline'   – Blade renders a <style>:root{} token block;
      *                                    no external stylesheet dependencies
      *   script-src   'self' + CF       – /build/* Vite assets + the Cloudflare Turnstile
@@ -125,9 +127,12 @@ final readonly class AddSecurityHeaders
      */
     private function storefrontCsp(): string
     {
+        $media = implode(' ', $this->mediaOrigins());
+
         return implode('; ', [
             "default-src 'self'",
-            trim("img-src 'self' ".implode(' ', $this->mediaOrigins()).' data:'),
+            trim("img-src 'self' ".$media.' data:'),
+            trim("media-src 'self' ".$media),
             "style-src 'self' 'unsafe-inline'",
             "script-src 'self' ".StorefrontChrome::textSizeBootHash().' https://challenges.cloudflare.com',
             'frame-src https://www.google.com https://challenges.cloudflare.com https://www.youtube-nocookie.com https://player.vimeo.com',

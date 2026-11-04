@@ -192,8 +192,10 @@ final readonly class ValidPageJson implements ValidationRule
         }
 
         if (($spec['type'] ?? null) === 'video') {
-            // Checked, with its own message, by videoPropsValid() before this walk.
-            return true;
+            // A media_id or null, like an image. At the top of a schema videoPropsValid() has already
+            // checked it with its own message, so this only decides a video prop deeper down (in a
+            // list), which that check does not walk.
+            return $value === null || (is_int($value) && $value > 0);
         }
 
         if (($spec['type'] ?? null) === 'list') {

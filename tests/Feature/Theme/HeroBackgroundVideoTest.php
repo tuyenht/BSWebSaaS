@@ -1,17 +1,24 @@
 <?php
 
+use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
+use App\Modules\Cms\Support\EntryContentWriter;
 use App\Modules\Cms\Validation\ValidPageJson;
+use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
+use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Components\ComponentRegistry;
+use App\Modules\Theme\Components\SectionComponent;
 use App\Modules\Theme\Rendering\BlockRenderer;
 use Illuminate\Foundation\Vite;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\HtmlString;
+use Livewire\Livewire;
 use Tests\Fixtures\StorefrontCards;
 
 /*
@@ -53,6 +60,21 @@ describe('validation', function (): void {
     it('accepts a hero without the prop at all', function (): void {
         expect(heroVideoErrors([]))->toBe([]);
     });
+
+    it('checks a video prop inside a list too, where the top-level video check does not walk', function (mixed $value, bool $passes): void {
+        app(ComponentRegistry::class)->register('video_rows', new SectionComponent('theme::noop', [
+            'rows' => ['type' => 'list', 'of' => ['clip' => ['type' => 'video']]],
+        ]));
+
+        $validator = Validator::make(['blocks' => [['type' => 'video_rows', 'props' => ['rows' => [['clip' => $value]]]]]], ['blocks' => [app(ValidPageJson::class)]]);
+
+        expect($validator->passes())->toBe($passes);
+    })->with([
+        'a media id' => [7, true],
+        'none' => [null, true],
+        'an address' => ['https://files.test/a.mp4', false],
+        'zero' => [0, false],
+    ]);
 
     it('refuses anything that is not a media id, in plain words', function (mixed $value): void {
         $errors = heroVideoErrors(['bg_video' => $value]);
@@ -165,8 +187,17 @@ describe('render', function (): void {
         'dark set' => [['bg' => 'scheme', 'scheme' => 'dark'], null, 'dark'],
         'dark brand set' => [['bg' => 'scheme', 'scheme' => 'brand'], '#1e3a8a', 'dark'],
         'light brand set' => [['bg' => 'scheme', 'scheme' => 'brand'], '#facc15', 'light'],
-        'an older band value' => [['bg' => 'surface'], null, 'dark'],
+        // The older values paint no colour set on a hero (no sf-s--sch-* class): its own dark band shows.
+        'an older surface band' => [['bg' => 'surface'], null, 'dark'],
+        'an older tint band' => [['bg' => 'tint'], null, 'dark'],
+        'a photo band' => [['bg' => 'image'], null, 'dark'],
     ]);
+
+    it('paints no colour set on a hero with an older band value, so its own dark band shows', function (string $bg): void {
+        $video = app(Tenancy::class)->enter($this->siteId, fn (): Media => heroVideoMedia('xuong-cu'));
+
+        expect(heroVideoRender(['bg_video' => $video->id, 'bg' => $bg]))->not->toContain('sf-s--sch-');
+    })->with(['surface', 'tint']);
 
     it('labels the control in the visitor language', function (string $locale, string $pause, string $play): void {
         app()->setLocale($locale);
@@ -258,6 +289,57 @@ describe('usage', function (): void {
             $entry->translations()->where('locale', 'vi')->update(['body' => ['blocks' => [['type' => 'hero', 'props' => ['image_url' => $image->id, 'bg_video' => null]]]]]);
             app(EntryBlockMediaReconciler::class)->reconcile($entry);
             expect($used())->toBe([$image->id]);
+        });
+    });
+});
+
+describe('editor', function (): void {
+    beforeEach(function (): void {
+        truncateRbac();
+        seedTenancy();
+        $this->artisan('rbac:sync')->assertSuccessful();
+        app(TeamContext::class)->forget();
+    });
+
+    it('keeps the stored video when the page is saved (the editor has no video field yet)', function (): void {
+        $editor = User::factory()->create();
+
+        app(Tenancy::class)->enter(1, function () use ($editor): void {
+            grantRole($editor, 'editor', ['entries.view', 'entries.create', 'entries.edit.any']);
+            $video = heroVideoMedia('xuong-cnc');
+            $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $editor->id]);
+            $entry->translations()->create(['locale' => 'vi', 'title' => 'Trang', 'slug' => 'trang', 'status' => 'draft',
+                'body' => ['blocks' => [['type' => 'hero', 'props' => ['heading' => 'Xưởng', 'bg_video' => $video->id]]]]]);
+
+            Livewire::actingAs($editor->fresh())->test(Editor::class, ['ulid' => $entry->ulid])
+                ->assertSet('blocks.0.props.bg_video', $video->id)
+                ->set('blocks.0.props.heading', 'Xưởng mới')
+                ->call('save')
+                ->assertHasNoErrors();
+
+            $props = $entry->translationFor('vi')?->body['blocks'][0]['props'] ?? [];
+            expect($props['heading'] ?? null)->toBe('Xưởng mới')
+                ->and($props['bg_video'] ?? null)->toBe($video->id);
+        });
+    });
+
+    it('clears a video that left the library when old content is written back, keeping the block', function (): void {
+        app(Tenancy::class)->enter(1, function (): void {
+            $kept = heroVideoMedia('con-lai');
+            $trashed = heroVideoMedia('da-xoa');
+            $trashed->delete();
+            $writer = app(EntryContentWriter::class);
+            $content = ['title' => 'Trang', 'slug' => 'trang', 'excerpt' => null, 'seo_title' => null, 'seo_description' => null,
+                'og_image_id' => null, 'template_override' => null, 'cover_media_id' => null, 'meta' => [], 'blocks' => [
+                    ['type' => 'hero', 'props' => ['heading' => 'Một', 'bg_video' => $kept->id]],
+                    ['type' => 'hero', 'props' => ['heading' => 'Hai', 'bg_video' => $trashed->id]],
+                ]];
+
+            [$clean, $dropped] = $writer->withoutMissingMedia($content);
+
+            expect($dropped)->toBe(1)
+                ->and($clean['blocks'][0]['props'])->toBe(['heading' => 'Một', 'bg_video' => $kept->id])
+                ->and($clean['blocks'][1]['props'])->toBe(['heading' => 'Hai', 'bg_video' => null]);
         });
     });
 });

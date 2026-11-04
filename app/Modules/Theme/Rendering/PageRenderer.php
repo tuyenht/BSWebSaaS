@@ -44,10 +44,10 @@ final readonly class PageRenderer
         // The count-up script loads only on a page with a stats block that holds a number.
         $extra += self::countsUp($body) ? ['statsScript' => true] : [];
         $tokens = $this->theme->cssVariables();
-        $sections = $this->blocks->render(self::withPageTitle($body, $title, $leadBlock));
-        // The background-video script loads only on a page where a hero's video resolved (the section
-        // prints its <video> only then — a missing or deleted video renders the plain hero).
-        $extra += str_contains($sections, ' data-sf-bgvideo') ? ['bgVideoScript' => true] : [];
+        ['html' => $sections, 'bgVideo' => $bgVideo] = $this->blocks->renderSections(self::withPageTitle($body, $title, $leadBlock));
+        // The background-video script loads only on a page where a hero's video resolved (a missing
+        // or deleted video renders the plain hero, with no script).
+        $extra += $bgVideo ? ['bgVideoScript' => true] : [];
 
         return $this->views->make($layout, [
             'title' => $title,

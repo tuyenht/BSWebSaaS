@@ -46,6 +46,9 @@ it('storefront response carries the allow-list Content-Security-Policy', functio
     expect($csp)
         ->toContain("default-src 'self'")
         ->toContain("img-src 'self' https://files.baoson.net data:")
+        // The hero's background video plays its library file from the same media host — exactly
+        // that host, never data: or a wildcard (without it the policy falls back to default-src).
+        ->toMatch('#(?:^|; )media-src \'self\' https://files\.baoson\.net(?:;|$)#')
         ->toContain("style-src 'self' 'unsafe-inline'")
         // Cloudflare Turnstile (lead-form anti-spam, §23/R20) loads a script + iframe from
         // challenges.cloudflare.com → both directives must allow that one trusted origin.
@@ -69,6 +72,7 @@ it('allows images from the configured media hosts, not a hardcoded one', functio
     $csp = (string) $this->get('http://a.test/')->assertOk()->headers->get('Content-Security-Policy', '');
 
     expect($csp)->toContain("img-src 'self' https://cdn.example.test https://img.example.test:8443 data:")
+        ->toMatch('#(?:^|; )media-src \'self\' https://cdn\.example\.test https://img\.example\.test:8443(?:;|$)#')
         ->not->toContain('files.baoson.net');
 });
 
