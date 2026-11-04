@@ -59,9 +59,14 @@ final class ComponentGallery extends Component
      * The tree sample's move: one record to `position` among the other children of `parent` (null:
      * the outer level). Null when done; otherwise the reason it is refused, in plain words — the
      * sample refuses what a real screen does: a locked record, a locked parent, a loop, a fourth level.
+     *
+     * Dev only, like the whole gallery: it moves an in-memory sample and checks no permission. A real
+     * screen's move action is an endpoint — it authorizes (the record's policy) and validates its
+     * three arguments before touching anything (.claude/rules/livewire.md).
      */
     public function moveTreeItem(string $key, ?string $parent, int $position): ?string
     {
+        abort_if(app()->isProduction(), 404);
         $byKey = array_column($this->treeNodes, null, 'key');
         $node = $byKey[$key] ?? null;
         if ($node === null || ($parent !== null && ! isset($byKey[$parent]))) {

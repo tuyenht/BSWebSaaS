@@ -186,10 +186,7 @@
                                 <x-bs-admin::list.actions :name="$tr['node']['label']">
                                     <x-bs-admin::button size="sm" variant="soft" color="primary"><x-bs-admin::icon name="ri-pencil" class="size-4" /> {{ __('entries.edit_action') }}</x-bs-admin::button>
                                     <x-slot:menu>
-                                        <x-bs-admin::list.menu-item icon="ri-arrow-up" x-on:click="moveUp({{ Js::from($tr['key']) }})">{{ __('admin.tree.move_up') }}</x-bs-admin::list.menu-item>
-                                        <x-bs-admin::list.menu-item icon="ri-arrow-down" x-on:click="moveDown({{ Js::from($tr['key']) }})">{{ __('admin.tree.move_down') }}</x-bs-admin::list.menu-item>
-                                        <x-bs-admin::list.menu-item icon="ri-indent-increase" x-on:click="indent({{ Js::from($tr['key']) }})">{{ __('admin.tree.move_in') }}</x-bs-admin::list.menu-item>
-                                        <x-bs-admin::list.menu-item icon="ri-indent-decrease" x-on:click="outdent({{ Js::from($tr['key']) }})">{{ __('admin.tree.move_out') }}</x-bs-admin::list.menu-item>
+                                        <x-bs-admin::tree.move-menu :row="$tr" />
                                     </x-slot:menu>
                                 </x-bs-admin::list.actions>
                             </x-slot:actions>

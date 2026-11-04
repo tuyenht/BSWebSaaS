@@ -12,7 +12,8 @@
     // position among the parent's other children) → null when done, or the reason it refuses —
     // and turns on dragging and the keyboard moves. Without `move` the tree is a still picture
     // (the gallery's states). `max-depth` greys a drop that would nest deeper; `noun` names a child
-    // ("mục con", "chuyên mục con"…) in the drop labels.
+    // ("mục con", "chuyên mục con"…) in the drop labels. The touch path for the moves is
+    // <x-bs-admin::tree.move-menu> in each row's ⋮ menu.
     $frozen = $move === null;
     $noun ??= __('admin.tree.noun');
     $config = [
@@ -44,6 +45,10 @@
             'noAbove' => __('admin.tree.no_above'),
             'atOuter' => __('admin.tree.at_outer'),
             'undone' => __('admin.tree.undone'),
+            'redone' => __('admin.tree.redone'),
+            'saving' => __('admin.tree.saving'),
+            'wait' => __('admin.tree.wait'),
+            'dragCancelled' => __('admin.tree.drag_cancelled'),
             'offline' => __('admin.tree.offline'),
         ],
     ];
@@ -51,14 +56,17 @@
 <div {{ $attributes->merge(['class' => 'tree-w']) }}
     @unless ($frozen) x-data="bsTree(@js($config))" x-on:keydown="keydown($event)" @endunless>
     <div role="treegrid" aria-label="{{ $label }}" class="tree"
-        @unless ($frozen) x-ref="grid" x-on:dragstart="dragStart($event)" x-on:dragover="dragOver($event)" x-on:drop.prevent="dragDone()" x-on:dragend="dragCancel()" @endunless>
+        @unless ($frozen) x-ref="grid" aria-busy="false" x-bind:aria-busy="busy ? 'true' : 'false'" x-on:focusin="focused($event)"
+            x-on:dragstart="dragStart($event)" x-on:dragover="dragOver($event)" x-on:drop.prevent="dragDone()" x-on:dragend="dragCancel()" @endunless>
         {{ $slot }}
         @unless ($frozen)
             <x-bs-admin::tree.placeholder x-ref="ph" hidden />
         @endunless
     </div>
     @unless ($frozen)
-        <div class="tree-sr" role="status" aria-live="assertive" x-ref="live"></div>
+        {{-- what a drag will do and done moves are read politely; only a refused move interrupts --}}
+        <div class="tree-sr" role="status" aria-live="polite" x-ref="live"></div>
+        <div class="tree-sr" aria-live="assertive" aria-atomic="true" x-ref="alert"></div>
         <div class="tree-msg" x-show="msg" x-cloak x-bind:data-bad="msgBad ? '1' : '0'"
             x-on:mouseenter="msgHold()" x-on:mouseleave="msgRun()" x-on:focusin="msgHold()" x-on:focusout="msgRun()">
             <x-bs-admin::icon name="ri-checkbox-circle" class="tree-msg-i tree-msg-ok" />

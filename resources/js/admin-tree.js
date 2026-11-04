@@ -1,400 +1,612 @@
 // The shared admin tree (<x-bs-admin::tree>, Alpine.data 'bsTree'): collapse and expand, drag and
 // drop under the one drag rule (admin-tree-dnd.js), the keyboard moves (Alt+↑/↓ move within the
-// group, Alt+→ into the record above, Alt+← out one level, Ctrl+Z undoes) and the arrow keys between
-// the names. The server draws every row; this object only reads them. A move is ONE call to the
-// screen's Livewire method — (record key, new parent key or null, position among the new parent's
-// other children) — which answers null when done or a plain-language reason when it refuses; after a
-// refusal (or a lost connection) the tree is read again from the server. Keys are whatever opaque
-// string the screen gave each row.
-import { createTreeDnd, fill } from './admin-tree-dnd.js';
+// group, Alt+→ into the record above, Alt+← out one level, Ctrl+Z undoes, Ctrl+Shift+Z redoes) and
+// the arrow keys between the names, which share ONE Tab stop (a roving tabindex). The server draws
+// every row; this object only reads them. A move is ONE call to the screen's Livewire method —
+// (record key, new parent key or null, position among the new parent's other children) — which
+// answers null when done or a plain-language reason when it refuses; after a refusal (or a lost
+// connection) the tree is read again from the server. Keys are whatever opaque string the screen
+// gave each row.
+//
+// Moves wait in line: while one call is out, the next move, undo or redo waits its turn and works
+// out its place from the tree as the server redrew it after the call before ("Đang lưu…" shows
+// meanwhile, and a new drag waits until the line is empty).
+import { createTreeDnd, dropPosition, fill, kidsOf, planMove } from './admin-tree-dnd.js';
 
 const UNDO_MS = 10000;
+const QUEUE_MAX = 10;
+// The row attributes the server's redraw can change; any change rebuilds the key → row index.
+const WATCH = ['data-k', 'data-parent', 'data-lv', 'data-kids', 'data-lock', 'data-name'];
+const ACT_FOCUSABLE = '.tree-c-act a[href], .tree-c-act button, .tree-c-act input, .tree-c-act select, .tree-c-act textarea';
+
+function setTab(el, value) {
+    if (el && el.getAttribute('tabindex') !== value) {
+        el.setAttribute('tabindex', value);
+    }
+}
 
 document.addEventListener('alpine:init', () => {
-    window.Alpine.data('bsTree', (cfg) => ({
-        collapsed: {},
-        msg: '',
-        msgBad: false,
-        msgUndo: false,
-        busy: false,
-        dragK: null,
-        hist: [],
+    window.Alpine.data('bsTree', (cfg) => {
+        // Kept outside Alpine's reactive state (a reactive proxy around DOM nodes and long lists would
+        // track every read): the key → row index, the history, the line of waiting moves.
+        const t = cfg.texts;
+        let ix = null;
+        let dnd = null;
+        let mo = null;
+        const hist = [];
+        const fut = [];
+        const queue = [];
+        let running = false;
+        let cur = null; // the key whose name holds the tree's one Tab stop
+        let dropEl = null; // the row painted as the drop target
 
-        init() {
-            this.t = cfg.texts;
-            this.dnd = createTreeDnd({
-                step: () => parseFloat(getComputedStyle(this.$refs.grid).getPropertyValue('--tree-step')) || 32,
-                name: (k) => this.nameOf(k),
-                check: (T, k) => this.allow(k, T.parent || null, T.lv),
-                say: (text) => this.say(text),
-                onTarget: (T) => this.showTarget(T),
-                onExpand: (k) => this.expand(k),
-                texts: this.t.drag,
-            });
-            this.onUndoKey = (e) => {
-                if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || (e.key !== 'z' && e.key !== 'Z')) {
-                    return;
+        return {
+            collapsed: {},
+            // Bumped whenever the rows change under Alpine (a move, a refresh, the server's redraw):
+            // hid() reads it, so every row works out again whether a collapsed parent hides it.
+            ver: 0,
+            msg: '',
+            msgBad: false,
+            msgUndo: false,
+            busy: false,
+            dragK: null,
+
+            init() {
+                dnd = createTreeDnd({
+                    step: () => parseFloat(getComputedStyle(this.$refs.grid).getPropertyValue('--tree-step')) || 32,
+                    name: (k) => this.nameOf(k),
+                    check: (T, k) => this.allow(k, T.parent || null, T.lv),
+                    say: (text) => this.say(text),
+                    onTarget: (T) => this.showTarget(T),
+                    onExpand: (k) => this.expand(k),
+                    texts: t.drag,
+                });
+                mo = new MutationObserver((records) => this.observed(records));
+                mo.observe(this.$refs.grid, { childList: true, subtree: true, attributes: true, attributeFilter: [...WATCH, 'tabindex'] });
+                this.$nextTick(() => this.rove(true));
+            },
+
+            destroy() {
+                if (mo) {
+                    mo.disconnect();
                 }
-                const a = document.activeElement;
-                if (a && a.closest && a.closest('input,textarea,select,[contenteditable="true"]')) {
-                    return;
+                clearTimeout(this.msgTimer);
+                if (dnd) {
+                    dnd.end();
                 }
-                if (!this.hist.length || !(this.$el.contains(a) || a === document.body || a === null)) {
-                    return;
+            },
+
+            // ---- reading the rows the server drew -------------------------------------------------
+            // One index per drawing of the rows: [{ k, parent, lv, i, el }] in order, and by key.
+            index() {
+                if (!ix) {
+                    const els = Array.from(this.$refs.grid.querySelectorAll(':scope > [data-tree-row]'));
+                    const by = new Map();
+                    const rows = els.map((el, i) => {
+                        const r = { k: el.dataset.k, parent: el.dataset.parent || null, lv: Number(el.dataset.lv), i, el };
+                        by.set(r.k, r);
+                        return r;
+                    });
+                    ix = { rows, by };
                 }
-                e.preventDefault();
-                this.undo();
-            };
-            document.addEventListener('keydown', this.onUndoKey);
-        },
-
-        destroy() {
-            document.removeEventListener('keydown', this.onUndoKey);
-            clearTimeout(this.msgTimer);
-            this.dnd.end();
-        },
-
-        // ---- reading the rows the server drew -------------------------------------------------
-        rowEls() {
-            return Array.from(this.$refs.grid.querySelectorAll(':scope > [data-tree-row]'));
-        },
-        row(k) {
-            return this.rowEls().find((el) => el.dataset.k === k) || null;
-        },
-        parentOf(k) {
-            const el = this.row(k);
-            return el && el.dataset.parent ? el.dataset.parent : null;
-        },
-        levelOf(k) {
-            const el = this.row(k);
-            return el ? Number(el.dataset.lv) : 1;
-        },
-        nameOf(k) {
-            const el = this.row(k);
-            return el ? el.dataset.name : String(k);
-        },
-        lockOf(k) {
-            const el = this.row(k);
-            return el && el.dataset.lock ? el.dataset.lock : null;
-        },
-        // The children of a parent (null = the outer level), in order, leaving one key out.
-        kids(parent, except = null) {
-            return this.rowEls()
-                .filter((el) => (el.dataset.parent || null) === parent && el.dataset.k !== except)
-                .map((el) => el.dataset.k);
-        },
-        // How many levels the record and everything under it take (1 for a record without children).
-        height(k) {
-            const els = this.rowEls();
-            const i = els.findIndex((el) => el.dataset.k === k);
-            if (i < 0) {
-                return 1;
-            }
-            const lv = Number(els[i].dataset.lv);
-            let max = lv;
-            for (let j = i + 1; j < els.length && Number(els[j].dataset.lv) > lv; j++) {
-                max = Math.max(max, Number(els[j].dataset.lv));
-            }
-            return max - lv + 1;
-        },
-        // The rows on screen, for the drag rule.
-        shown() {
-            return this.rowEls()
-                .filter((el) => !el.hidden)
-                .map((el) => ({ k: el.dataset.k, lv: Number(el.dataset.lv), parent: el.dataset.parent || null, fold: el.dataset.kids === '1' && !!this.collapsed[el.dataset.k] }));
-        },
-
-        // ---- collapse / expand ----------------------------------------------------------------
-        hid(el) {
-            let p = el.dataset.parent;
-            while (p) {
-                if (this.collapsed[p]) {
-                    return true;
+                return ix;
+            },
+            // The rows changed under us: read them again, and let every row re-check its collapse.
+            reindex() {
+                ix = null;
+                this.ver++;
+                this.rove(true);
+            },
+            observed(records) {
+                const grid = this.$refs.grid;
+                const ph = this.$refs.ph;
+                let rows = false;
+                let stops = false;
+                for (const r of records) {
+                    if (ph.contains(r.target)) {
+                        continue; // the placeholder's own label
+                    }
+                    if (r.type === 'attributes') {
+                        if (r.attributeName === 'tabindex') {
+                            stops = true;
+                        } else {
+                            rows = true;
+                        }
+                    } else if (r.target === grid) {
+                        const nodes = [...r.addedNodes, ...r.removedNodes];
+                        if (nodes.some((n) => n.nodeType === 1 && n !== ph)) {
+                            rows = true;
+                        }
+                    } else {
+                        stops = true; // a row's inside was redrawn (a new toggle, new buttons)
+                    }
                 }
-                const pe = this.row(p);
-                p = pe ? pe.dataset.parent : '';
-            }
-            return false;
-        },
-        isOpen(k) {
-            return !this.collapsed[k];
-        },
-        toggle(k) {
-            if (this.collapsed[k]) {
-                delete this.collapsed[k];
-            } else {
-                this.collapsed[k] = true;
-            }
-        },
-        expand(k) {
-            delete this.collapsed[k];
-        },
-
-        // ---- the rule shared by dragging and the keyboard -------------------------------------
-        // Null when the record may go under `parent` at `level`, else { ok: false, label, why }.
-        allow(k, parent, level) {
-            const lock = parent ? this.lockOf(parent) : null;
-            if (lock) {
-                const label = fill(this.t.lockedTarget, { name: this.nameOf(parent) });
-                return { ok: false, label, why: label + ': ' + lock + '.' };
-            }
-            const max = cfg.maxDepth;
-            const h = this.height(k);
-            if (max && level + h - 1 > max) {
-                const why = fill(this.t.tooDeepWhy, { max }) + (h > 1 ? ' ' + fill(this.t.tooDeepKids, { name: this.nameOf(k), n: h - 1 }) : '');
-                return { ok: false, label: fill(this.t.tooDeep, { max }), why };
-            }
-            return null;
-        },
-
-        // ---- dragging ---------------------------------------------------------------------------
-        dragStart(e) {
-            const el = e.target.closest ? e.target.closest('[data-tree-row]') : null;
-            if (!el || this.busy) {
-                e.preventDefault();
-                return;
-            }
-            const k = el.dataset.k;
-            if (this.lockOf(k)) {
-                e.preventDefault();
-                this.note(fill(this.t.lockedSelf, { name: this.nameOf(k), why: this.lockOf(k) }), true);
-                return;
-            }
-            // The placeholder takes the dragged row's height, so the rows below move by one row.
-            this.$refs.grid.style.setProperty('--tree-phh', Math.round(el.getBoundingClientRect().height) + 'px');
-            this.dragK = k;
-            el.setAttribute('data-drag', '1');
-            this.dnd.start(e, k, el);
-        },
-        dragOver(e) {
-            if (!this.dragK) {
-                return;
-            }
-            if (this.$refs.ph.contains(e.target)) {
-                this.dnd.overPh(e, this.shown());
-                return;
-            }
-            const el = e.target.closest ? e.target.closest('[data-tree-row]') : null;
-            if (el && !el.hidden) {
-                this.dnd.over(e, el, el.dataset.k, this.shown());
-            } else {
-                e.preventDefault();
-            }
-        },
-        showTarget(T) {
-            const ph = this.$refs.ph;
-            this.rowEls().forEach((el) => el.removeAttribute('data-drop'));
-            if (T.mode === 'in' && !T.self) {
-                const target = this.row(T.refK);
-                if (target) {
-                    target.setAttribute('data-drop', T.bad ? 'bad' : 'in');
+                if (rows) {
+                    this.reindex();
+                } else if (stops) {
+                    this.rove(true);
                 }
-            }
-            const at = this.row(T.ph.k);
-            if (!at) {
-                return;
-            }
-            ph.setAttribute('data-lv', String(Math.max(1, T.lv || 1)));
-            ph.setAttribute('data-bad', T.bad ? '1' : '0');
-            ph.querySelector('[data-tree-ph-text]').textContent = T.label;
-            at.parentNode.insertBefore(ph, T.ph.at === 'before' ? at : at.nextSibling);
-            ph.hidden = false;
-        },
-        dragDone() {
-            const T = this.dnd.end();
-            const k = this.dragK;
-            this.clearDrag();
-            if (!k || !T) {
-                return;
-            }
-            if (T.bad) {
-                this.note(fill(this.t.kept, { why: T.why || T.label }), true);
-                return;
-            }
-            const parent = T.parent || null;
-            const sib = this.kids(parent, k);
-            const pos = T.rel === 'child' ? 0 : T.rel === 'before' ? Math.max(0, sib.indexOf(T.refK)) : sib.indexOf(T.afterK) + 1;
-            const name = this.nameOf(k);
-            const text = T.rel === 'child'
-                ? fill(this.t.movedChild, { name, parent: this.nameOf(parent) })
-                : fill(T.rel === 'before' ? this.t.movedBefore : this.t.movedAfter, { name, ref: this.nameOf(T.refK) });
-            this.send(k, parent, pos, text);
-        },
-        // The drag ended without a drop on the tree (Esc, or let go elsewhere): nothing moves.
-        dragCancel() {
-            this.dnd.end();
-            if (this.dragK) {
-                this.clearDrag();
-            }
-        },
-        clearDrag() {
-            const ph = this.$refs.ph;
-            ph.hidden = true;
-            this.$refs.grid.appendChild(ph); // back at its place after the rows, as the server drew it
-            this.rowEls().forEach((el) => {
-                el.removeAttribute('data-drop');
-                el.removeAttribute('data-drag');
-            });
-            this.dragK = null;
-        },
-
-        // ---- the keyboard -----------------------------------------------------------------------
-        keydown(e) {
-            const el = e.target.closest ? e.target.closest('[data-tree-row]') : null;
-            if (!el || !this.$refs.grid.contains(el) || (e.target.closest && e.target.closest('input,textarea,select,[contenteditable="true"]'))) {
-                return;
-            }
-            const k = el.dataset.k;
-            if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
-                const act = { ArrowUp: 'moveUp', ArrowDown: 'moveDown', ArrowRight: 'indent', ArrowLeft: 'outdent' }[e.key];
-                if (act) {
-                    e.preventDefault();
-                    this[act](k);
+            },
+            rec(k) {
+                return this.index().by.get(k) || null;
+            },
+            row(k) {
+                const r = this.rec(k);
+                return r ? r.el : null;
+            },
+            parentOf(k) {
+                const r = this.rec(k);
+                return r ? r.parent : null;
+            },
+            levelOf(k) {
+                const r = this.rec(k);
+                return r ? r.lv : 1;
+            },
+            nameOf(k) {
+                const el = this.row(k);
+                return el ? el.dataset.name : String(k);
+            },
+            lockOf(k) {
+                const el = this.row(k);
+                return el && el.dataset.lock ? el.dataset.lock : null;
+            },
+            // The children of a parent (null = the outer level), in order, leaving one key out.
+            kids(parent, except = null) {
+                return kidsOf(this.index().rows, parent, except);
+            },
+            // How many levels the record and everything under it take (1 for a record without children).
+            height(k) {
+                const { rows } = this.index();
+                const r = this.rec(k);
+                if (!r) {
+                    return 1;
                 }
-                return;
-            }
-            if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || !e.target.matches('[data-tree-name]')) {
-                return;
-            }
-            const names = this.rowEls().filter((r) => !r.hidden);
-            const i = names.indexOf(el);
-            let to = null;
-            if (e.key === 'ArrowDown') {
-                to = names[i + 1];
-            } else if (e.key === 'ArrowUp') {
-                to = names[i - 1];
-            } else if (e.key === 'Home') {
-                to = names[0];
-            } else if (e.key === 'End') {
-                to = names[names.length - 1];
-            } else if (e.key === 'ArrowRight' && el.dataset.kids === '1') {
+                let max = r.lv;
+                for (let j = r.i + 1; j < rows.length && rows[j].lv > r.lv; j++) {
+                    max = Math.max(max, rows[j].lv);
+                }
+                return max - r.lv + 1;
+            },
+            // The rows on screen, for the drag rule.
+            shown() {
+                return this.index().rows
+                    .filter((r) => !r.el.hidden)
+                    .map((r) => ({ k: r.k, lv: r.lv, parent: r.parent, fold: r.el.dataset.kids === '1' && !!this.collapsed[r.k] }));
+            },
+
+            // ---- collapse / expand ----------------------------------------------------------------
+            hid(el) {
+                void this.ver;
+                const by = this.index().by;
+                // el may be a redraw's fresh copy, not in the index yet: start from its own attribute
+                let p = el.dataset.parent || null;
+                for (let n = 0; p && n < 64; n++) {
+                    if (this.collapsed[p]) {
+                        return true;
+                    }
+                    const r = by.get(p);
+                    p = r ? r.parent : null;
+                }
+                return false;
+            },
+            isOpen(k) {
+                return !this.collapsed[k];
+            },
+            toggle(k) {
                 if (this.collapsed[k]) {
-                    this.expand(k);
-                    e.preventDefault();
-                    return;
+                    delete this.collapsed[k];
+                } else {
+                    this.collapsed[k] = true;
                 }
-                to = names[i + 1];
-            } else if (e.key === 'ArrowLeft') {
-                if (el.dataset.kids === '1' && !this.collapsed[k]) {
-                    this.toggle(k);
-                    e.preventDefault();
-                    return;
-                }
-                to = el.dataset.parent ? this.row(el.dataset.parent) : null;
-            } else {
-                return;
-            }
-            e.preventDefault();
-            this.focusRow(to);
-        },
-        focusRow(el) {
-            const name = el ? el.querySelector('[data-tree-name]') : null;
-            if (name) {
-                name.focus();
-            }
-        },
-        refuseLocked(k) {
-            const lock = this.lockOf(k);
-            if (lock) {
-                this.note(fill(this.t.lockedSelf, { name: this.nameOf(k), why: lock }), true);
-            }
-            return !!lock;
-        },
-        moveUp(k) {
-            if (this.refuseLocked(k)) {
-                return;
-            }
-            const parent = this.parentOf(k);
-            const i = this.kids(parent).indexOf(k);
-            if (i <= 0) {
-                this.note(fill(this.t.atTop, { name: this.nameOf(k) }), false);
-                return;
-            }
-            this.send(k, parent, i - 1, fill(this.t.movedUp, { name: this.nameOf(k) }));
-        },
-        moveDown(k) {
-            if (this.refuseLocked(k)) {
-                return;
-            }
-            const parent = this.parentOf(k);
-            const sib = this.kids(parent);
-            const i = sib.indexOf(k);
-            if (i < 0 || i >= sib.length - 1) {
-                this.note(fill(this.t.atBottom, { name: this.nameOf(k) }), false);
-                return;
-            }
-            this.send(k, parent, i + 1, fill(this.t.movedDown, { name: this.nameOf(k) }));
-        },
-        indent(k) {
-            if (this.refuseLocked(k)) {
-                return;
-            }
-            const sib = this.kids(this.parentOf(k));
-            const i = sib.indexOf(k);
-            if (i <= 0) {
-                this.note(this.t.noAbove, false);
-                return;
-            }
-            const target = sib[i - 1];
-            const no = this.allow(k, target, this.levelOf(target) + 1);
-            if (no) {
-                this.note(fill(this.t.kept, { why: no.why }), true);
-                return;
-            }
-            this.send(k, target, this.kids(target, k).length, fill(this.t.movedIn, { name: this.nameOf(k), parent: this.nameOf(target) }));
-        },
-        outdent(k) {
-            if (this.refuseLocked(k)) {
-                return;
-            }
-            const parent = this.parentOf(k);
-            if (!parent) {
-                this.note(fill(this.t.atOuter, { name: this.nameOf(k) }), false);
-                return;
-            }
-            const up = this.parentOf(parent);
-            const no = this.allow(k, up, this.levelOf(parent));
-            if (no) {
-                this.note(fill(this.t.kept, { why: no.why }), true);
-                return;
-            }
-            this.send(k, up, this.kids(up, k).indexOf(parent) + 1, fill(this.t.movedOut, { name: this.nameOf(k) }));
-        },
+                this.$nextTick(() => this.rove());
+            },
+            expand(k) {
+                delete this.collapsed[k];
+            },
+            // The row's toggle: its label says what a press does now.
+            tg(el) {
+                this.toggle(el.closest('[data-tree-row]').dataset.k);
+            },
+            tgLabel(el) {
+                return this.isOpen(el.closest('[data-tree-row]').dataset.k) ? el.dataset.open : el.dataset.shut;
+            },
 
-        // ---- the one server call ----------------------------------------------------------------
-        async send(k, parent, pos, okText, record = true) {
-            const from = this.parentOf(k);
-            const fromPos = this.kids(from).indexOf(k);
-            if (from === parent && fromPos === pos) {
-                return;
-            }
-            this.busy = true;
-            let answer;
-            try {
-                answer = await this.$wire.$call(cfg.move, k, parent, pos);
-            } catch {
-                this.busy = false;
-                this.note(this.t.offline, true);
-                this.$wire.$refresh();
-                return;
-            }
-            this.busy = false;
-            if (typeof answer === 'string' && answer !== '') {
-                this.note(fill(this.t.kept, { why: answer }), true);
-                this.$wire.$refresh();
-                return;
-            }
-            if (record) {
-                this.hist.push({ k, parent: from, pos: fromPos });
-                if (this.hist.length > 50) {
-                    this.hist.shift();
+            // ---- one Tab stop: the name of the current row ---------------------------------------
+            // The current row's name is the tree's Tab stop and its own buttons follow it; every other
+            // name and row button leaves the Tab order (the arrow keys reach them). The toggles are for
+            // the pointer: ← and → on a name collapse and expand.
+            rove(full = false) {
+                const { rows, by } = this.index();
+                let r = cur ? by.get(cur) : null;
+                while (r && r.el.hidden) {
+                    r = r.parent ? by.get(r.parent) : null;
                 }
-            }
-            if (parent) {
-                this.expand(parent);
-            }
-            this.note(okText, false, record);
-            this.$nextTick(() => {
+                if (!r) {
+                    r = rows.find((x) => !x.el.hidden) || null;
+                }
+                const next = r ? r.k : null;
+                if (full) {
+                    rows.forEach((x) => this.stops(x.el, x.k === next));
+                } else {
+                    const old = cur ? by.get(cur) : null;
+                    if (old && old !== r) {
+                        this.stops(old.el, false);
+                    }
+                    if (r) {
+                        this.stops(r.el, true);
+                    }
+                }
+                cur = next;
+            },
+            stops(el, on) {
+                setTab(el.querySelector('[data-tree-name]'), on ? '0' : '-1');
+                const tg = el.querySelector('button.tree-tg');
+                setTab(tg, '-1');
+                el.querySelectorAll(ACT_FOCUSABLE).forEach((b) => {
+                    if (b.closest('[role="menu"]')) {
+                        return; // the ⋮ menu's items keep their own arrow-key order
+                    }
+                    if (on) {
+                        if (b.hasAttribute('data-tree-rv')) {
+                            b.removeAttribute('data-tree-rv');
+                            b.removeAttribute('tabindex');
+                        }
+                    } else if (b.getAttribute('tabindex') !== '-1') {
+                        b.setAttribute('data-tree-rv', '');
+                        b.setAttribute('tabindex', '-1');
+                    }
+                });
+            },
+            focused(e) {
+                const el = e.target.closest ? e.target.closest('[data-tree-row]') : null;
+                if (el && el.dataset.k !== cur && this.$refs.grid.contains(el)) {
+                    const old = cur;
+                    cur = el.dataset.k;
+                    const r = this.rec(old);
+                    if (r) {
+                        this.stops(r.el, false);
+                    }
+                    this.stops(el, true);
+                }
+            },
+
+            // ---- the rule shared by dragging and the keyboard -------------------------------------
+            // Null when the record may go under `parent` at `level`, else { ok: false, label, why }.
+            allow(k, parent, level) {
+                const lock = parent ? this.lockOf(parent) : null;
+                if (lock) {
+                    const label = fill(t.lockedTarget, { name: this.nameOf(parent) });
+                    return { ok: false, label, why: label + ': ' + lock + '.' };
+                }
+                const max = cfg.maxDepth;
+                const h = this.height(k);
+                if (max && level + h - 1 > max) {
+                    const why = fill(t.tooDeepWhy, { max }) + (h > 1 ? ' ' + fill(t.tooDeepKids, { name: this.nameOf(k), n: h - 1 }) : '');
+                    return { ok: false, label: fill(t.tooDeep, { max }), why };
+                }
+                return null;
+            },
+
+            // ---- dragging ---------------------------------------------------------------------------
+            dragStart(e) {
+                const el = e.target.closest ? e.target.closest('[data-tree-row]') : null;
+                if (!el) {
+                    e.preventDefault();
+                    return;
+                }
+                if (this.busy) {
+                    e.preventDefault();
+                    this.note(t.wait, false);
+                    return;
+                }
+                const k = el.dataset.k;
+                if (this.lockOf(k)) {
+                    e.preventDefault();
+                    this.note(fill(t.lockedSelf, { name: this.nameOf(k), why: this.lockOf(k) }), true);
+                    return;
+                }
+                // The placeholder takes the dragged row's height, so the rows below move by one row.
+                this.$refs.grid.style.setProperty('--tree-phh', Math.round(el.getBoundingClientRect().height) + 'px');
+                this.dragK = k;
+                el.setAttribute('data-drag', '1');
+                dnd.start(e, k, el);
+            },
+            dragOver(e) {
+                if (!this.dragK) {
+                    return;
+                }
+                if (this.$refs.ph.contains(e.target)) {
+                    dnd.overPh(e, this.shown());
+                    return;
+                }
+                const el = e.target.closest ? e.target.closest('[data-tree-row]') : null;
+                if (el && !el.hidden) {
+                    dnd.over(e, el, el.dataset.k, this.shown());
+                } else {
+                    e.preventDefault();
+                }
+            },
+            showTarget(T) {
+                const ph = this.$refs.ph;
+                if (dropEl) {
+                    dropEl.removeAttribute('data-drop');
+                    dropEl = null;
+                }
+                if (T.mode === 'in' && !T.self) {
+                    const target = this.row(T.refK);
+                    if (target) {
+                        target.setAttribute('data-drop', T.bad ? 'bad' : 'in');
+                        dropEl = target;
+                    }
+                }
+                const at = this.row(T.ph.k);
+                if (!at) {
+                    return;
+                }
+                ph.setAttribute('data-lv', String(Math.max(1, T.lv || 1)));
+                ph.setAttribute('data-bad', T.bad ? '1' : '0');
+                ph.querySelector('[data-tree-ph-text]').textContent = T.label;
+                at.parentNode.insertBefore(ph, T.ph.at === 'before' ? at : at.nextSibling);
+                ph.hidden = false;
+            },
+            dragDone() {
+                const T = dnd.end();
+                const k = this.dragK;
+                this.clearDrag();
+                if (!k || !T) {
+                    return;
+                }
+                if (T.bad) {
+                    this.note(fill(t.kept, { why: T.why || T.label }), true);
+                    return;
+                }
+                const parent = T.parent || null;
+                const name = this.nameOf(k);
+                const text = T.rel === 'child'
+                    ? fill(t.movedChild, { name, parent: this.nameOf(parent) })
+                    : fill(T.rel === 'before' ? t.movedBefore : t.movedAfter, { name, ref: this.nameOf(T.refK) });
+                // the place among the siblings is worked out when its turn comes
+                this.enqueue(() => this.call(k, parent, dropPosition(T, this.kids(parent, k)), text));
+            },
+            // The drag ended without a drop on the tree (Esc, or let go elsewhere): nothing moves.
+            dragCancel() {
+                dnd.end();
+                if (this.dragK) {
+                    this.clearDrag();
+                    this.say(t.dragCancelled);
+                }
+            },
+            clearDrag() {
+                const ph = this.$refs.ph;
+                ph.hidden = true;
+                ph.querySelector('[data-tree-ph-text]').textContent = '';
+                this.$refs.grid.appendChild(ph); // back at its place after the rows, as the server drew it
+                if (dropEl) {
+                    dropEl.removeAttribute('data-drop');
+                    dropEl = null;
+                }
+                const el = this.dragK ? this.row(this.dragK) : null;
+                if (el) {
+                    el.removeAttribute('data-drag');
+                }
+                this.dragK = null;
+            },
+
+            // ---- the keyboard -----------------------------------------------------------------------
+            keydown(e) {
+                const target = e.target;
+                if (target.closest && target.closest('input,textarea,select,[contenteditable="true"]')) {
+                    return;
+                }
+                // Ctrl+Z / Ctrl+Shift+Z: only the tree that holds the focus
+                if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'z' || e.key === 'Z')) {
+                    e.preventDefault();
+                    if (e.shiftKey) {
+                        this.redo();
+                    } else {
+                        this.undo();
+                    }
+                    return;
+                }
+                const el = target.closest ? target.closest('[data-tree-row]') : null;
+                if (!el || !this.$refs.grid.contains(el)) {
+                    return;
+                }
+                const k = el.dataset.k;
+                if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+                    const act = { ArrowUp: 'moveUp', ArrowDown: 'moveDown', ArrowRight: 'indent', ArrowLeft: 'outdent' }[e.key];
+                    if (act) {
+                        e.preventDefault();
+                        this.move(act, k);
+                    }
+                    return;
+                }
+                if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || !target.matches('[data-tree-name]')) {
+                    return;
+                }
+                const names = this.index().rows.filter((r) => !r.el.hidden).map((r) => r.el);
+                const i = names.indexOf(el);
+                let to = null;
+                if (e.key === 'ArrowDown') {
+                    to = names[i + 1];
+                } else if (e.key === 'ArrowUp') {
+                    to = names[i - 1];
+                } else if (e.key === 'Home') {
+                    to = names[0];
+                } else if (e.key === 'End') {
+                    to = names[names.length - 1];
+                } else if (e.key === 'ArrowRight' && el.dataset.kids === '1') {
+                    if (this.collapsed[k]) {
+                        this.expand(k);
+                        e.preventDefault();
+                        return;
+                    }
+                    to = names[i + 1];
+                } else if (e.key === 'ArrowLeft') {
+                    if (el.dataset.kids === '1' && !this.collapsed[k]) {
+                        this.toggle(k);
+                        e.preventDefault();
+                        return;
+                    }
+                    to = el.dataset.parent ? this.row(el.dataset.parent) : null;
+                } else {
+                    return;
+                }
+                e.preventDefault();
+                this.focusRow(to);
+            },
+            focusRow(el) {
+                const name = el ? el.querySelector('[data-tree-name]') : null;
+                if (name) {
+                    this.focused({ target: el });
+                    name.focus();
+                }
+            },
+            refuseLocked(k) {
+                const lock = this.lockOf(k);
+                if (lock) {
+                    this.note(fill(t.lockedSelf, { name: this.nameOf(k), why: lock }), true);
+                }
+                return !!lock;
+            },
+            // The keyboard and the ⋮ menu: each waits its turn, then reads the tree as it is by then.
+            move(act, k) {
+                this.enqueue(() => this.runMove(act, k));
+            },
+            moveUp(k) {
+                this.move('moveUp', k);
+            },
+            moveDown(k) {
+                this.move('moveDown', k);
+            },
+            indent(k) {
+                this.move('indent', k);
+            },
+            outdent(k) {
+                this.move('outdent', k);
+            },
+            // A ⋮ menu item (<x-bs-admin::tree.move-menu>): the move of its row, unless it is greyed.
+            go(act, el) {
+                const row = el.closest('[data-tree-row]');
+                if (row && el.getAttribute('aria-disabled') !== 'true') {
+                    this.move(act, row.dataset.k);
+                }
+            },
+            runMove(act, k) {
+                if (!this.rec(k) || this.refuseLocked(k)) {
+                    return null;
+                }
+                const plan = planMove(act, this.index().rows, k);
+                const name = this.nameOf(k);
+                if (plan.no) {
+                    if (plan.no !== 'gone') {
+                        this.note(fill(t[plan.no], { name }), false);
+                    }
+                    return null;
+                }
+                if (act === 'indent' || act === 'outdent') {
+                    const no = this.allow(k, plan.parent, plan.lv);
+                    if (no) {
+                        this.note(fill(t.kept, { why: no.why }), true);
+                        return null;
+                    }
+                }
+                const text = {
+                    moveUp: fill(t.movedUp, { name }),
+                    moveDown: fill(t.movedDown, { name }),
+                    indent: fill(t.movedIn, { name, parent: this.nameOf(plan.parent) }),
+                    outdent: fill(t.movedOut, { name }),
+                }[act];
+                return this.call(k, plan.parent, plan.pos, text);
+            },
+            undo() {
+                this.enqueue(() => {
+                    const last = hist.pop();
+                    return last && this.rec(last.k) ? this.call(last.k, last.parent, last.pos, t.undone, 'undo') : null;
+                });
+            },
+            redo() {
+                this.enqueue(() => {
+                    const next = fut.pop();
+                    return next && this.rec(next.k) ? this.call(next.k, next.parent, next.pos, t.redone, 'redo') : null;
+                });
+            },
+
+            // ---- the one server call, one at a time -----------------------------------------------------
+            enqueue(job) {
+                if (queue.length >= QUEUE_MAX) {
+                    return;
+                }
+                queue.push(job);
+                if (!running) {
+                    this.pump();
+                }
+            },
+            async pump() {
+                running = true;
+                this.busy = true;
+                try {
+                    while (queue.length) {
+                        try {
+                            await queue.shift()();
+                        } catch {
+                            // one failed move never blocks the ones after it
+                        }
+                    }
+                } finally {
+                    running = false;
+                    this.busy = false;
+                }
+            },
+            // kind: 'do' (a new move: clears the redo list) · 'undo' · 'redo'.
+            async call(k, parent, pos, okText, kind = 'do') {
+                const from = this.parentOf(k);
+                const fromPos = this.kids(from).indexOf(k);
+                if (from === parent && fromPos === pos) {
+                    return;
+                }
+                const moving = this.row(k);
+                if (moving) {
+                    moving.setAttribute('data-saving', '1');
+                }
+                this.saving();
+                let answer;
+                try {
+                    answer = await this.$wire.$call(cfg.move, k, parent, pos);
+                } catch {
+                    if (moving) {
+                        moving.removeAttribute('data-saving');
+                    }
+                    this.note(t.offline, true);
+                    await this.refresh();
+                    return;
+                }
+                if (moving) {
+                    moving.removeAttribute('data-saving');
+                }
+                this.reindex(); // the call resolves after the server's redraw: read the new order
+                if (typeof answer === 'string' && answer !== '') {
+                    this.note(fill(t.kept, { why: answer }), true);
+                    await this.refresh();
+                    return;
+                }
+                const back = { k, parent: from, pos: fromPos };
+                if (kind === 'undo') {
+                    fut.push(back);
+                } else {
+                    hist.push(back);
+                    if (hist.length > 50) {
+                        hist.shift();
+                    }
+                    if (kind === 'do') {
+                        fut.length = 0;
+                    }
+                }
+                if (parent) {
+                    this.expand(parent);
+                }
+                this.note(okText, false, kind !== 'undo');
+                await this.$nextTick();
                 const el = this.row(k);
                 if (!el) {
                     return;
@@ -404,54 +616,68 @@ document.addEventListener('alpine:init', () => {
                 if (this.$el.contains(document.activeElement) || document.activeElement === document.body) {
                     this.focusRow(el);
                 }
-            });
-        },
-        undo() {
-            const last = this.hist.pop();
-            if (last) {
-                this.send(last.k, last.parent, last.pos, this.t.undone, false);
-            }
-        },
+            },
+            async refresh() {
+                try {
+                    await this.$wire.$refresh();
+                } catch {
+                    // still offline: the rows stay as last drawn
+                }
+                this.reindex();
+            },
 
-        // ---- what the reader is told --------------------------------------------------------------
-        say(text) {
-            const live = this.$refs.live;
-            if (live.textContent !== text) {
-                live.textContent = text;
-            }
-        },
-        // A result line under the tree: a done move stays 10 s with "Hoàn tác" (the count stops while
-        // the pointer or the focus is on it); a refusal stays until closed.
-        note(text, bad, undo = false) {
-            clearTimeout(this.msgTimer);
-            this.msg = text;
-            this.msgBad = bad;
-            this.msgUndo = undo;
-            this.say(text);
-            if (!bad) {
-                this.msgLeft = undo ? UNDO_MS : UNDO_MS / 2;
-                this.msgRun();
-            }
-        },
-        msgRun() {
-            if (this.msgBad || !this.msg) {
-                return;
-            }
-            clearTimeout(this.msgTimer);
-            this.msgStart = Date.now();
-            this.msgTimer = setTimeout(() => this.msgClose(), this.msgLeft);
-        },
-        msgHold() {
-            if (this.msgBad || !this.msg) {
-                return;
-            }
-            clearTimeout(this.msgTimer);
-            this.msgLeft = Math.max(3000, this.msgLeft - (Date.now() - this.msgStart));
-        },
-        msgClose() {
-            clearTimeout(this.msgTimer);
-            this.msg = '';
-            this.msgUndo = false;
-        },
-    }));
+            // ---- what the reader is told --------------------------------------------------------------
+            // Polite for what a drag will do and for done moves; assertive only for a refused move.
+            say(text, loud = false) {
+                const on = loud ? this.$refs.alert : this.$refs.live;
+                const off = loud ? this.$refs.live : this.$refs.alert;
+                if (off.textContent) {
+                    off.textContent = '';
+                }
+                if (on.textContent !== text) {
+                    on.textContent = text;
+                }
+            },
+            // "Đang lưu…" while a call is out: the line shows it, the reader is told the result after.
+            saving() {
+                clearTimeout(this.msgTimer);
+                this.msg = t.saving;
+                this.msgBad = false;
+                this.msgUndo = false;
+            },
+            // A result line under the tree: a done move stays 10 s with "Hoàn tác" (the count stops while
+            // the pointer or the focus is on it); a refusal stays until closed.
+            note(text, bad, undo = false) {
+                clearTimeout(this.msgTimer);
+                this.msg = text;
+                this.msgBad = bad;
+                this.msgUndo = undo;
+                this.say(text, bad);
+                if (!bad) {
+                    this.msgLeft = undo ? UNDO_MS : UNDO_MS / 2;
+                    this.msgRun();
+                }
+            },
+            msgRun() {
+                if (this.msgBad || !this.msg) {
+                    return;
+                }
+                clearTimeout(this.msgTimer);
+                this.msgStart = Date.now();
+                this.msgTimer = setTimeout(() => this.msgClose(), this.msgLeft);
+            },
+            msgHold() {
+                if (this.msgBad || !this.msg) {
+                    return;
+                }
+                clearTimeout(this.msgTimer);
+                this.msgLeft = Math.max(3000, this.msgLeft - (Date.now() - this.msgStart));
+            },
+            msgClose() {
+                clearTimeout(this.msgTimer);
+                this.msg = '';
+                this.msgUndo = false;
+            },
+        };
+    });
 });

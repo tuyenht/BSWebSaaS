@@ -381,6 +381,15 @@
         background: var(--color-danger-text);
     }
 
+    /* A move is being saved: the next ones wait their turn ("Đang lưu…" on the result line). */
+    .tree[aria-busy="true"] {
+        cursor: progress;
+    }
+
+    .tree-r[data-saving="1"] {
+        background: var(--color-surface-hover);
+    }
+
     .tree-sr {
         position: absolute;
         width: 1px;

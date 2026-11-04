@@ -2,6 +2,8 @@
 
 namespace App\Modules\Admin\Support;
 
+use InvalidArgumentException;
+
 /**
  * The rows of the shared admin tree (<x-bs-admin::tree>), in the order they are drawn: a record,
  * then its children, each group in the order the screen gave it. Each row knows its level, its
@@ -10,8 +12,9 @@ namespace App\Modules\Admin\Support;
  *
  * A screen hands over its records as `key` (an opaque string it can resolve again, never a raw
  * id) + `parent` (the parent's key or null) + whatever else it draws; that record comes back as
- * `node`. A record whose parent is not in the list is drawn at the outer level, and a parent chain
- * that loops is cut where it would repeat, so a damaged tree still renders every record once.
+ * `node`; an empty key is refused (it would read as the outer level). A record whose parent is not
+ * in the list is drawn at the outer level, and so is every record of a parent chain that loops, each
+ * at its own place there — a damaged tree still renders every record once.
  */
 final class TreeRows
 {
@@ -25,23 +28,34 @@ final class TreeRows
     {
         $byKey = [];
         foreach ($nodes as $node) {
-            $byKey[$node['key']] ??= $node;
+            $key = $node['key'];
+            if ($key === '') {
+                throw new InvalidArgumentException('A tree record needs a non-empty key.');
+            }
+            $byKey[$key] ??= $node;
+        }
+
+        /** @var array<string, string> $parentOf each key's parent key; '' is the outer level */
+        $parentOf = [];
+        foreach ($byKey as $key => $node) {
+            $key = (string) $key; // a numeric-string key came back from the array as an int
+            $parent = $node['parent'];
+            $parentOf[$key] = $parent !== null && $parent !== $key && isset($byKey[$parent]) ? (string) $parent : '';
+        }
+        foreach (self::loops($parentOf) as $key) {
+            $parentOf[$key] = '';
         }
 
         /** @var array<string, list<string>> $children keyed by the parent's key; '' holds the outer level */
         $children = [];
-        foreach ($byKey as $key => $node) {
-            $key = (string) $key; // a numeric-string key came back from the array as an int
-            $parent = $node['parent'];
-            $children[$parent !== null && $parent !== $key && isset($byKey[$parent]) ? $parent : ''][] = $key;
+        foreach ($parentOf as $key => $parent) {
+            $children[$parent][] = (string) $key;
         }
 
         $rows = [];
-        $seen = [];
-        $walk = function (string $parentKey, int $level) use (&$walk, &$rows, &$seen, $children, $byKey): void {
-            $group = array_values(array_filter($children[$parentKey] ?? [], fn (string $key): bool => ! isset($seen[$key])));
+        $walk = function (string $parentKey, int $level) use (&$walk, &$rows, $children, $byKey): void {
+            $group = $children[$parentKey] ?? [];
             foreach ($group as $i => $key) {
-                $seen[$key] = true;
                 $rows[] = [
                     'node' => $byKey[$key],
                     'key' => $key,
@@ -57,14 +71,6 @@ final class TreeRows
         };
         $walk('', 1);
 
-        // Records caught in a parent loop never hang from the outer level: draw each at level 1.
-        foreach ($byKey as $key => $node) {
-            if (! isset($seen[$key])) {
-                $seen[$key] = true;
-                $rows[] = ['node' => $node, 'key' => (string) $key, 'parent' => null, 'level' => 1, 'kids' => 0, 'pos' => 1, 'size' => 1, 'guides' => []];
-            }
-        }
-
         $guides = self::guides(array_column($rows, 'level'));
         $drawn = [];
         foreach ($rows as $i => $row) {
@@ -73,6 +79,41 @@ final class TreeRows
         }
 
         return $drawn;
+    }
+
+    /**
+     * The records caught in a parent loop (a → b → a): following their parents comes back to
+     * themselves. Each is drawn at the outer level, at its own place among the records given there;
+     * what hangs under a loop stays under it. One pass: every key is walked up at most once.
+     *
+     * @param  array<string, string>  $parentOf
+     * @return list<string>
+     */
+    private static function loops(array $parentOf): array
+    {
+        $state = []; // key => 'ok' (reaches the outer level or a known record) | 'loop'
+        $loops = [];
+        foreach (array_keys($parentOf) as $start) {
+            $path = [];
+            $onPath = [];
+            $key = (string) $start;
+            while ($key !== '' && ! isset($state[$key]) && ! isset($onPath[$key])) {
+                $onPath[$key] = count($path);
+                $path[] = $key;
+                $key = $parentOf[$key];
+            }
+            if ($key !== '' && isset($onPath[$key])) {
+                foreach (array_slice($path, $onPath[$key]) as $member) {
+                    $state[$member] = 'loop';
+                    $loops[] = $member;
+                }
+            }
+            foreach ($path as $member) {
+                $state[$member] ??= 'ok';
+            }
+        }
+
+        return $loops;
     }
 
     /**

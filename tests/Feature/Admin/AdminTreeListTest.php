@@ -58,19 +58,26 @@ it('draws the guide lines: ├ before a later sibling, └ on the last, │ pass
         ->and($guides['a2'])->toBe([['d' => 1, 'k' => 'l']]);
 });
 
-it('still draws every record once when a parent is missing or the parents loop', function (): void {
+it('still draws every record once when a parent is missing or the parents loop, each loop member at its own outer place', function (): void {
     $rows = TreeRows::build([
         ['key' => 'x', 'parent' => 'gone'],
         ['key' => 'p', 'parent' => 'q'],
         ['key' => 'q', 'parent' => 'p'],
+        ['key' => 'u', 'parent' => 'q'],
         ['key' => '12', 'parent' => null],
         ['key' => '13', 'parent' => '12'],
     ]);
 
-    expect(array_column($rows, 'key'))->toBe(['x', '12', '13', 'p', 'q'])
-        ->and(array_column($rows, 'level'))->toBe([1, 1, 2, 1, 1])
-        ->and(array_column($rows, 'parent'))->toBe([null, null, '12', null, null]);
+    expect(array_column($rows, 'key'))->toBe(['x', 'p', 'q', 'u', '12', '13'])
+        ->and(array_column($rows, 'level'))->toBe([1, 1, 1, 2, 1, 2])
+        ->and(array_column($rows, 'parent'))->toBe([null, null, null, 'q', null, '12'])
+        ->and(array_column($rows, 'pos'))->toBe([1, 2, 3, 1, 4, 1])
+        ->and(array_column($rows, 'size'))->toBe([4, 4, 4, 1, 4, 1]);
 });
+
+it('refuses a record with an empty key, which would read as the outer level', function (): void {
+    TreeRows::build([['key' => 'a', 'parent' => null], ['key' => '', 'parent' => 'a']]);
+})->throws(InvalidArgumentException::class, 'A tree record needs a non-empty key.');
 
 it('draws a live tree as a named treegrid with its drag rule, live line and result line', function (): void {
     $html = (string) $this->blade(
@@ -86,7 +93,10 @@ it('draws a live tree as a named treegrid with its drag rule, live line and resu
     expect($html)->toMatch('/<div role="treegrid" aria-label="Trình đơn chính" class="tree"/')
         ->and($html)->toContain('x-on:drop.prevent="dragDone()"')
         ->and($html)->toContain('x-on:dragend="dragCancel()"')
-        ->and($html)->toContain('<div class="tree-sr" role="status" aria-live="assertive" x-ref="live"></div>')
+        // polite for a drag and a done move, assertive only for a refused one
+        ->and($html)->toContain('<div class="tree-sr" role="status" aria-live="polite" x-ref="live"></div>')
+        ->and($html)->toContain('<div class="tree-sr" aria-live="assertive" aria-atomic="true" x-ref="alert"></div>')
+        ->and($html)->toContain('aria-busy="false" x-bind:aria-busy="busy ? \'true\' : \'false\'" x-on:focusin="focused($event)"')
         // one hidden placeholder, moved between the rows while dragging
         ->and($html)->toMatch('/<div aria-hidden="true" data-lv="1" data-bad="0"(?=[^>]*\\bx-ref="ph")(?=[^>]*\\bclass="tree-ph")(?=[^>]*\\shidden\\b)[^>]*>/')
         // the move call, the depth cap and the words the live line reads, in the screen's own noun
@@ -103,7 +113,10 @@ it('draws a live tree as a named treegrid with its drag rule, live line and resu
         ->and($config['texts']['kept'])->toBe(':why Cây giữ nguyên.')
         ->and($config['texts']['movedChild'])->toBe('Đã chuyển «:name» thành chuyên mục con đầu tiên của «:parent».')
         ->and($config['texts']['movedUp'])->toBe('Đã chuyển «:name» lên.')
-        ->and($config['texts']['undone'])->toBe('Đã hoàn tác.');
+        ->and($config['texts']['undone'])->toBe('Đã hoàn tác.')
+        ->and($config['texts']['redone'])->toBe('Đã làm lại.')
+        ->and($config['texts']['saving'])->toBe('Đang lưu…')
+        ->and($config['texts']['dragCancelled'])->toBe('Đã hủy kéo — mục ở nguyên chỗ cũ.');
 });
 
 it('marks each row with its level, place, open state and opaque key, and draws its guide lines', function (): void {
@@ -113,9 +126,10 @@ it('marks each row with its level, place, open state and opaque key, and draws i
     );
 
     // a parent: expanded, with a toggle named for it
-    expect($html)->toMatch('/<div role="row" data-tree-row data-k="b1" data-parent="b" data-lv="2" data-name="B1"\s+aria-level="2" aria-posinset="1" aria-setsize="2"\s+data-kids="1" aria-expanded="true"\s+x-bind:aria-expanded="String\(isOpen\(\'b1\'\)\)"/')
+    expect($html)->toMatch('/<div role="row" data-tree-row data-k="b1" data-parent="b" data-lv="2" data-name="B1"\s+aria-level="2" aria-posinset="1" aria-setsize="2"\s+data-kids="1" aria-expanded="true"\s+x-bind:aria-expanded="String\(isOpen\(\$el\.dataset\.k\)\)"/')
         ->and($html)->toContain('aria-label="Thu gọn “B1”"')
-        ->and($html)->toContain('x-on:click="toggle(\'b1\')"')
+        ->and($html)->toContain('data-open="Thu gọn “B1”" data-shut="Mở “B1”"')
+        ->and($html)->toContain('x-bind:aria-label="tgLabel($el)" x-bind:title="tgLabel($el)" x-on:click="tg($el)"')
         // a leaf at level 3: no aria-expanded, a spacer instead of the toggle, draggable, hidden while its parent is collapsed
         ->and($html)->toMatch('/data-k="b1a" data-parent="b1" data-lv="3" data-name="B1a"\s+aria-level="3" aria-posinset="1" aria-setsize="1"\s+draggable="true"\s+x-bind:hidden="hid\(\$el\)"/')
         ->and($html)->toContain('<span class="tree-g" aria-hidden="true"><span class="tree-gl" data-d="1" data-k="v"></span><span class="tree-gl" data-d="2" data-k="l"></span></span>')
@@ -166,7 +180,8 @@ it('lists the keyboard moves under "Phím tắt"', function (): void {
         ->and($html)->toContain('<kbd>Alt</kbd> + <kbd>↑</kbd> / <kbd>↓</kbd></dt><dd>Chuyển lên / chuyển xuống trong nhóm</dd>')
         ->and($html)->toContain('<kbd>Alt</kbd> + <kbd>→</kbd></dt><dd>Thành mục con của mục ngay trên</dd>')
         ->and($html)->toContain('<kbd>Alt</kbd> + <kbd>←</kbd></dt><dd>Đưa ra ngoài một cấp</dd>')
-        ->and($html)->toContain('<kbd>Ctrl</kbd> + <kbd>Z</kbd></dt><dd>Hoàn tác lần chuyển vừa rồi</dd>');
+        ->and($html)->toContain('<kbd>Ctrl</kbd> + <kbd>Z</kbd></dt><dd>Hoàn tác lần chuyển vừa rồi</dd>')
+        ->and($html)->toContain('<kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd></dt><dd>Làm lại lần vừa hoàn tác</dd>');
 });
 
 it('sizes the tree from the shared tokens, 32 per level and 24 when narrow, never a hard 40 or 44', function (): void {
@@ -193,6 +208,92 @@ it('moves a gallery record to a place among its new siblings', function (): void
     $gallery->call('moveTreeItem', 'lien-he', 'gioi-thieu', 1)->assertReturned(null);
     $kids = array_values(array_filter(TreeRows::build($gallery->get('treeNodes')), fn (array $r): bool => $r['parent'] === 'gioi-thieu'));
     expect(array_column($kids, 'key'))->toBe(['lich-su', 'lien-he', 'doi-ngu']);
+});
+
+/** @return array{rows: list<array{k: string, parent: string|null, lv: int}>, moves: list<array{act: string, k: string, parent: string|null, pos: int, kids: list<string>}>, drops: list<array{k: string, pos: int, target: array{parent: string|null}, kids: list<string>}>} */
+function treeMoves(): array
+{
+    return json_decode((string) file_get_contents(__DIR__.'/../../Fixtures/tree-moves.json'), true);
+}
+
+/** @return list<string> */
+function galleryKids(mixed $nodes, ?string $parent): array
+{
+    return array_column(array_values(array_filter(TreeRows::build($nodes), fn (array $r): bool => $r['parent'] === $parent)), 'key');
+}
+
+it('shares its sample with the browser rule tests: the same records, parents and levels', function (): void {
+    $rows = TreeRows::build(Livewire::test(ComponentGallery::class)->get('treeNodes'));
+
+    expect(array_map(fn (array $r): array => ['k' => $r['key'], 'parent' => $r['parent'], 'lv' => $r['level']], $rows))->toBe(treeMoves()['rows']);
+});
+
+it('moves a record down inside its own parent', function (): void {
+    $gallery = Livewire::test(ComponentGallery::class);
+
+    $gallery->call('moveTreeItem', 'phay-5-truc', 'gia-cong-cnc', 1)->assertReturned(null);
+    expect(galleryKids($gallery->get('treeNodes'), 'gia-cong-cnc'))->toBe(['tien-cnc', 'phay-5-truc']);
+});
+
+it('applies each move at the parent and place the browser works out (up, down, in, out)', function (array $move): void {
+    $gallery = Livewire::test(ComponentGallery::class);
+
+    $gallery->call('moveTreeItem', $move['k'], $move['parent'], $move['pos'])->assertReturned(null);
+    expect(galleryKids($gallery->get('treeNodes'), $move['parent']))->toBe($move['kids']);
+})->with(fn (): array => array_combine(
+    array_map(fn (array $m): string => $m['act'].' '.$m['k'], treeMoves()['moves']),
+    array_map(fn (array $m): array => [$m], treeMoves()['moves']),
+));
+
+it('applies each drop at the place the browser works out (as a first child, after, before)', function (array $drop): void {
+    $gallery = Livewire::test(ComponentGallery::class);
+    $parent = $drop['target']['parent'];
+
+    $gallery->call('moveTreeItem', $drop['k'], $parent, $drop['pos'])->assertReturned(null);
+    expect(galleryKids($gallery->get('treeNodes'), $parent))->toBe($drop['kids']);
+})->with(fn (): array => array_combine(
+    array_map(fn (array $d): string => $d['k'].' '.$d['target']['rel'].' '.$d['target']['refK'], treeMoves()['drops']),
+    array_map(fn (array $d): array => [$d], treeMoves()['drops']),
+));
+
+it('offers the four moves in each row\'s menu, greyed with the reason where they cannot go, with their shortcut', function (): void {
+    $rows = array_column(TreeRows::build([
+        ['key' => 'a', 'parent' => null],
+        ['key' => 'a1', 'parent' => 'a'],
+        ['key' => 'a2', 'parent' => 'a'],
+        ['key' => 'a3', 'parent' => 'a'],
+    ]), null, 'key');
+    $menu = fn (string $key, ?string $locked = null): string => (string) $this->blade(
+        '<x-bs-admin::tree label="T" move="m"><x-bs-admin::tree.row :row="$row" name="N" :locked="$locked"><x-bs-admin::tree.name>N</x-bs-admin::tree.name>'
+        .'<x-slot:actions><x-bs-admin::list.actions name="N"><x-slot:menu><x-bs-admin::tree.move-menu :row="$row" /></x-slot:menu></x-bs-admin::list.actions></x-slot:actions></x-bs-admin::tree.row></x-bs-admin::tree>',
+        ['row' => $rows[$key], 'locked' => $locked],
+    );
+    $item = '/<button type="button" role="menuitem"\s+(aria-disabled="true"\s+)?class="list-mi" aria-keyshortcuts="%s"(?: title="([^"]*)")? x-on:click="go\(\'%s\', \$el\)">.*?<span>%s<\/span>\s*<span class="list-mi-k" aria-hidden="true">%s<\/span>/s';
+
+    // the first child: no up, nothing above to go into; out is open
+    $first = $menu('a1');
+    expect($first)->toMatch(sprintf($item, 'Alt\+ArrowUp', 'moveUp', 'Chuyển lên', 'Alt ↑'))
+        ->and($first)->toContain('title="Đã ở đầu nhóm"')
+        ->and($first)->toContain('<span class="list-mwhy">Đã ở đầu nhóm</span>')
+        ->and($first)->toContain('<span class="list-mwhy">Không có mục ngay trên để vào trong</span>')
+        ->and($first)->toMatch(sprintf(str_replace('(aria-disabled="true"\s+)?', '', $item), 'Alt\+ArrowDown', 'moveDown', 'Chuyển xuống', 'Alt ↓'))
+        ->and($first)->toMatch(sprintf(str_replace('(aria-disabled="true"\s+)?', '', $item), 'Alt\+ArrowLeft', 'outdent', 'Đưa ra ngoài', 'Alt ←'))
+        ->and(substr_count($first, 'aria-disabled="true"'))->toBe(2);
+
+    // a middle child: every move open
+    expect(substr_count($menu('a2'), 'aria-disabled="true"'))->toBe(0)
+        ->and($menu('a2'))->toMatch(sprintf(str_replace('(aria-disabled="true"\s+)?', '', $item), 'Alt\+ArrowRight', 'indent', 'Thành mục con', 'Alt →'));
+
+    // the last child cannot go down; the outer record cannot go out (nor up, nor in)
+    expect($menu('a3'))->toContain('<span class="list-mwhy">Đã ở cuối nhóm</span>')
+        ->and(substr_count($menu('a3'), 'aria-disabled="true"'))->toBe(1)
+        ->and($menu('a'))->toContain('<span class="list-mwhy">Đã ở cấp ngoài cùng</span>');
+
+    // a locked record: all four greyed, the lock's reason once
+    $locked = $menu('a2', 'Lê Hoàng Phúc đang sửa');
+    expect(substr_count($locked, 'aria-disabled="true"'))->toBe(4)
+        ->and(substr_count($locked, 'title="Lê Hoàng Phúc đang sửa"'))->toBe(5) // the four items + the grip
+        ->and(substr_count($locked, '<span class="list-mwhy">Lê Hoàng Phúc đang sửa</span>'))->toBe(1);
 });
 
 it('refuses a gallery move into a locked record, out of a locked one, into itself or past three levels', function (string $key, ?string $parent, string $why): void {
