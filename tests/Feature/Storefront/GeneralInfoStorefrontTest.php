@@ -495,3 +495,36 @@ it('takes the street out of an older address with a ward, district and province'
     'district in the address' => ['Số 1 Đường Thử, Phường Mẫu, Quận Mẫu, TP Thử Ba', 'Số 1 Đường Thử, Phường Mẫu, TP Thử Ba'],
     'without commas' => ['Số 1 Đường Thử Phường Mẫu Quận Mẫu TP Thử Ba', 'Số 1 Đường Thử, Phường Mẫu, TP Thử Ba'],
 ]);
+
+it('shows the full name typed on a first save when only the older brand setting held one', function (): void {
+    $siteId = gisSite();
+    gisBrand($siteId, ['name' => 'Cơ Khí Mẫu', 'legal_name' => 'Công ty TNHH Cơ Khí A']);
+
+    gisSave($siteId, ['legalName' => 'Công ty TNHH Cơ Khí B']);
+    $html = gisHome();
+
+    expect(gisFooter($html))->toContain('Công ty TNHH Cơ Khí B')->not->toContain('Cơ Khí A')
+        ->and(gisLd($html)['legalName'])->toBe('Công ty TNHH Cơ Khí B')
+        ->and(gisShownName($siteId))->toBeNull();
+});
+
+it('counts +84 as the leading 0 when telling the hotline from the phone', function (): void {
+    $siteId = gisSite();
+    gisRichFooter($siteId);
+    gisBrand($siteId, ['name' => 'Cơ Khí Mẫu', 'legal_name' => 'Công ty TNHH Cơ Khí Mẫu', 'phone' => '+84 915 668 383', 'hotline' => '0915668383']);
+
+    gisSave($siteId, ['phone' => '0902 222 333']);
+
+    expect(gisProfile($siteId))->toMatchArray(['phone' => '0902 222 333', 'hotline' => '0902 222 333'])
+        ->and(gisFooter(gisHome()))->not->toContain('0915668383');
+});
+
+it('keeps a street named after its ward when the address is written with commas', function (): void {
+    $siteId = gisSite();
+    gisBrand($siteId, ['name' => 'Cơ Khí Mẫu', 'legal_name' => 'Công ty TNHH Cơ Khí Mẫu', 'address' => '12 Đường Bến Nghé, TP Thử Ba',
+        'ward' => 'Bến Nghé', 'province' => 'TP Thử Ba']);
+
+    gisSave($siteId);
+
+    expect(gisProfile($siteId)['address_line'])->toBe('12 Đường Bến Nghé');
+});

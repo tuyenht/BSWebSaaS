@@ -145,6 +145,8 @@ final class GeneralSettingsStore
 
             $profile = SiteProfile::query()->firstOrNew();
             $fullLegalName = $text($profile->getAttribute('legal_name'));   // as stored, before this save
+            // The full name the form started from: the stored one, else the name the site shows (as load() does).
+            $startLegalName = $fullLegalName !== '' ? $fullLegalName : $text($shown['legal_name'] ?? null);
             $newLegalName = $orNull($shared['legalName'] ?? null);
             $provinceId = $orNull($shared['provinceId'] ?? null);
             $wardId = $orNull($shared['wardId'] ?? null);
@@ -176,7 +178,8 @@ final class GeneralSettingsStore
             // One number on the screen, compared by its digits ("0915 66 83 83" is "0915668383"). A
             // hotline of its own is kept; one that was the phone keeps its wording while the phone
             // stays the same number, and follows the phone once it changes.
-            $digits = static fn (?string $value): string => (string) preg_replace('/\D+/', '', (string) $value);
+            // "+84 915…" is "0915…": the country code counts as the leading 0, as the phone check does.
+            $digits = static fn (?string $value): string => (string) preg_replace('/\A84/', '0', (string) preg_replace('/\D+/', '', (string) $value));
             $shownPhone = $text($shown['phone'] ?? null);
             $shownHotline = $text($shown['hotline'] ?? null);
             $ownHotline = $shownPhone !== '' && $shownHotline !== '' && $digits($shownHotline) !== $digits($shownPhone);
@@ -199,9 +202,10 @@ final class GeneralSettingsStore
                 // The names are kept beside the ids: the storefront prints the address from them. A unit
                 // left as it was keeps the wording the site shows ("TP Hà Nội"; also without a catalog);
                 // one the user picks writes the catalog's name.
-                'province_id' => $province?->id,
+                // A unit left as it was keeps its stored id too, even one since retired from the catalog.
+                'province_id' => $province !== null ? $province->id : ($sameProvince ? $profile->getAttribute('province_id') : null),
                 'province' => $sameProvince ? $orNull($shown['province'] ?? null) : $province?->name,
-                'ward_id' => $ward?->id,
+                'ward_id' => $ward !== null ? $ward->id : ($sameWard ? $profile->getAttribute('ward_id') : null),
                 'ward' => $sameWard ? $orNull($shown['ward'] ?? null) : $ward?->name,
                 'social_links' => $links,
                 'business_hours' => $hours?->toArray(),
@@ -222,13 +226,13 @@ final class GeneralSettingsStore
                 // translation then follows the profile).
                 $brandLegalName = $text($brand['legal_name'] ?? null);
                 if ($locale === $default && $brandLegalName !== '') {
-                    $row->setAttribute('legal_name', $brandLegalName !== $text($newLegalName) ? $brandLegalName : null);
+                    $row->setAttribute('legal_name', $brandLegalName !== $startLegalName ? $brandLegalName : null);
                 }
                 $row->save();
             }
             // A new full name: every shown name was derived from the old one (the screen has no field
             // for it), so each language shows the new full name from now on.
-            if ($fullLegalName !== '' && $fullLegalName !== $text($newLegalName)) {
+            if ($startLegalName !== '' && $startLegalName !== $text($newLegalName)) {
                 SiteProfileTranslation::query()->where('site_profile_id', $profile->id)->update(['legal_name' => null]);
             }
 
@@ -303,16 +307,19 @@ final class GeneralSettingsStore
 
     /**
      * The street part of a one-line address: without the province, district and ward it ends with
-     * (in that order, with or without a comma before each), so the address composed from the
-     * parts does not repeat them ("Số 1, Xã A, Huyện B, TP C" → "Số 1"). '' when nothing is left.
+     * (in that order), so the address composed from the parts does not repeat them ("Số 1, Xã A,
+     * Huyện B, TP C" → "Số 1"). Each part is cut after a comma; only an address written without
+     * any comma is cut at a space, so a street named after its ward ("12 Đường Bến Nghé, …") keeps
+     * its name. '' when nothing is left.
      *
      * @param  list<string>  $parts  province, district, ward
      */
     private static function streetOf(string $address, array $parts): string
     {
+        $separator = str_contains($address, ',') ? '\s*,\s*' : '\s+';
         foreach ($parts as $part) {
             if ($part !== '') {
-                $address = trim((string) preg_replace('/(?:\A|\s*,\s*|\s+)'.preg_quote($part, '/').'\s*\z/iu', '', $address));
+                $address = trim((string) preg_replace('/(?:\A|'.$separator.')'.preg_quote($part, '/').'\s*\z/iu', '', $address));
             }
         }
 

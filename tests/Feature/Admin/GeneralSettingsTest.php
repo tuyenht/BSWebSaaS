@@ -212,7 +212,7 @@ it('loads a retired ward as not picked; an untouched save passes and keeps the a
 
         expect(app(SiteIdentity::class)->for('vi')['address'])->toBe($shown);
     });
-    expect(gsProfile())->toMatchArray(['ward' => 'Phường Cũ', 'ward_id' => null]);
+    expect(gsProfile())->toMatchArray(['ward' => 'Phường Cũ', 'ward_id' => $retired, 'province_id' => $one]);
 });
 
 it('keeps each language’s own text: English never overwrites Vietnamese, and an empty one falls back', function (): void {
