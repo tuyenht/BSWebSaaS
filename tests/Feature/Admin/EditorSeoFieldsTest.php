@@ -10,9 +10,13 @@ use App\Modules\Cms\Actions\RestoreEntryRevision;
 use App\Modules\Cms\Actions\SaveEntryDraft;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryRevision;
+use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\ContentSection;
+use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
@@ -39,6 +43,24 @@ function seoFieldsEditor(array $permissions = ['entries.view', 'entries.create',
     });
 
     return $user->fresh();
+}
+
+/** A post category with its vi and en link; returns it. */
+function seoFieldsPostCategory(string $vi, string $en): Taxonomy
+{
+    $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
+    $category->translations()->create(['locale' => 'vi', 'name' => $vi, 'slug' => $vi]);
+    $category->translations()->create(['locale' => 'en', 'name' => $en, 'slug' => $en]);
+
+    return $category->load('translations');
+}
+
+/** The address line of the Google preview as the server renders it (before the browser adds the slug). */
+function seoFieldsAddress(string $html): string
+{
+    preg_match('/x-text="previewAddress">([^<]*)</', $html, $match);
+
+    return html_entity_decode($match[1] ?? '', ENT_QUOTES);
 }
 
 /** A draft page "gioi-thieu" with its vi text and Google fields; returns it. */
@@ -168,6 +190,203 @@ it('strips line breaks and control characters from the Google title and descript
     });
 });
 
+it('removes invisible format characters from the Google title and description', function (): void {
+    $user = seoFieldsEditor();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $page = seoFieldsPage($user);
+
+        Livewire::actingAs($user)->test(EntryEditor::class, ['ulid' => $page->ulid])
+            ->set('seoTitle', "Giới\u{200B}thiệu \u{202E}An Vinh\u{202C}")
+            ->set('seoDescription', "\u{FEFF}Mô tả\u{200B} ngắn.")
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertSet('seoTitle', 'Giớithiệu An Vinh')
+            ->assertSet('seoDescription', 'Mô tả ngắn.');
+
+        expect($page->fresh()->translationFor('vi')->seo_title)->toBe('Giớithiệu An Vinh');
+    });
+});
+
+it('saves text with a NUL or another control character instead of failing', function (): void {
+    $user = seoFieldsEditor();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $page = seoFieldsPage($user);
+
+        Livewire::actingAs($user)->test(EntryEditor::class, ['ulid' => $page->ulid])
+            ->set('title', "Giới\0 thiệu\x07")
+            ->set('slug', "gioi-thieu\0")
+            ->set('excerpt', "Dòng một\0\r\nDòng\thai\x1B")
+            ->call('addBlock', 'richtext')
+            ->set('blocks.0.props.html', "<p>Đoạn\0 một</p>")
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertSet('title', 'Giới thiệu')
+            ->assertSet('excerpt', "Dòng một\nDòng\thai");
+
+        $vi = $page->fresh()->translationFor('vi');
+        expect($vi->title)->toBe('Giới thiệu')
+            ->and($vi->slug)->toBe('gioi-thieu')
+            ->and($vi->excerpt)->toBe("Dòng một\nDòng\thai")
+            ->and(json_encode($vi->body))->not->toContain('\u0000');
+    });
+});
+
+it('saves a product name, link and code with a NUL instead of failing', function (): void {
+    $user = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        grantRole($user, 'seo-cat-manager', ['catalog.view', 'catalog.manage']);
+
+        Livewire::actingAs($user->fresh())->test(ProductEditor::class)
+            ->set('name', "Đồ gá\0 hàn")->set('slug', "do-ga-han\0")->set('sku', "DG\0-01")
+            ->set('summary', "<p>Tóm\0 tắt</p>")
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $product = Product::query()->sole();
+        expect($product->sku)->toBe('DG-01')
+            ->and($product->translationFor('vi')->name)->toBe('Đồ gá hàn')
+            ->and($product->translationFor('vi')->slug)->toBe('do-ga-han');
+    });
+});
+
+it('shows the public address on the primary domain: category and slug for a post, with the language prefix', function (): void {
+    $user = seoFieldsEditor();
+    $admin = DB::connection('pgsql_admin');
+    $admin->table('domains')->where('hostname', 'a.test')->update(['is_primary' => false]);
+    $admin->table('domains')->insert(['site_id' => 1, 'hostname' => 'congty.example', 'kind' => 'custom', 'is_primary' => true, 'verified_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
+    $admin->table('site_locales')->insert(['site_id' => 1, 'locale' => 'en', 'is_default' => false, 'enabled' => true, 'created_at' => now(), 'updated_at' => now()]);
+
+    $post = app(Tenancy::class)->enter(1, function () use ($user): Entry {
+        $news = seoFieldsPostCategory('tin-tuc', 'news');
+        ContentSection::query()->create(['key' => 'posts', 'label' => 'Tin tức', 'entry_type' => 'post', 'taxonomy_id' => $news->id, 'permission_prefix' => 'entries', 'sort_order' => 1]);
+        SiteSetting::query()->create(['group_name' => 'permalinks', 'key' => 'posts', 'value' => ['pattern' => 'category']]);
+        $post = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $user->id, 'meta' => []]);
+        $post->translations()->create(['locale' => 'vi', 'title' => 'Bài mới', 'slug' => 'bai-moi', 'status' => 'draft', 'body' => ['blocks' => []]]);
+        $post->assignCategories([$news->id]);
+
+        return $post;
+    });
+
+    // Opened on the platform subdomain, the address is the primary domain's.
+    $vi = $this->actingAs($user)->get('http://a.test/admin/content/'.$post->ulid.'/edit')->assertOk();
+    $en = $this->actingAs($user)->get('http://a.test/admin/content/'.$post->ulid.'/edit?locale=en')->assertOk();
+
+    expect(seoFieldsAddress($vi->getContent()))->toBe('congty.example/tin-tuc/')
+        ->and(seoFieldsAddress($en->getContent()))->toBe('congty.example/en/news/');
+});
+
+it('follows the category picked on the screen and the home page, from the site address', function (): void {
+    $user = seoFieldsEditor();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $news = seoFieldsPostCategory('tin-tuc', 'news');
+        $events = seoFieldsPostCategory('su-kien', 'events');
+        ContentSection::query()->create(['key' => 'posts', 'label' => 'Tin tức', 'entry_type' => 'post', 'taxonomy_id' => $news->id, 'permission_prefix' => 'entries', 'sort_order' => 1]);
+        ContentSection::query()->create(['key' => 'events', 'label' => 'Sự kiện', 'entry_type' => 'post', 'taxonomy_id' => $events->id, 'permission_prefix' => 'entries', 'sort_order' => 2]);
+        SiteSetting::query()->create(['group_name' => 'permalinks', 'key' => 'posts', 'value' => ['pattern' => 'category']]);
+        SiteSetting::query()->create(['group_name' => 'permalinks', 'key' => 'events', 'value' => ['pattern' => 'base', 'base' => 'lich']]);
+
+        Livewire::actingAs($user)->test(EntryEditor::class, ['section' => 'posts'])
+            ->assertSet('address.base', 'localhost/tin-tuc/')
+            ->set('categoryId', $events->id)
+            ->assertSet('address.base', 'localhost/lich/')
+            ->set('categoryId', null)
+            ->assertSet('address.base', 'localhost/');
+
+        Livewire::actingAs($user)->test(EntryEditor::class)
+            ->assertSet('address', ['base' => 'localhost/', 'home' => 'localhost/', 'homeSlug' => 'home']);
+    });
+});
+
+it('shows a product address by the catalog preset, on the primary domain', function (): void {
+    $user = User::factory()->create();
+    $admin = DB::connection('pgsql_admin');
+    $admin->table('domains')->where('hostname', 'a.test')->update(['is_primary' => false]);
+    $admin->table('domains')->insert(['site_id' => 1, 'hostname' => 'congty.example', 'kind' => 'custom', 'is_primary' => true, 'verified_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        grantRole($user, 'seo-cat-manager', ['catalog.view', 'catalog.manage']);
+        SiteSetting::query()->create(['group_name' => 'permalinks', 'key' => 'products', 'value' => ['pattern' => 'base', 'base' => 'san-pham']]);
+    });
+
+    $html = $this->actingAs($user->fresh())->get('http://a.test/admin/catalog/create')->assertOk()->getContent();
+    expect(seoFieldsAddress($html))->toBe('congty.example/san-pham/');
+});
+
+it('follows the product category picked on the screen when the catalog address has the category', function (): void {
+    $user = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        grantRole($user, 'seo-cat-manager', ['catalog.view', 'catalog.manage']);
+        SiteSetting::query()->create(['group_name' => 'permalinks', 'key' => 'products', 'value' => ['pattern' => 'category']]);
+        $category = Taxonomy::query()->create(['vocabulary' => 'product_cat', 'position' => 0]);
+        $category->translations()->create(['locale' => 'vi', 'name' => 'Đồ gá', 'slug' => 'do-ga']);
+
+        Livewire::actingAs($user->fresh())->test(ProductEditor::class)
+            ->assertSet('address.base', 'localhost/')
+            ->set('categoryId', $category->id)
+            ->assertSet('address.base', 'localhost/do-ga/');
+    });
+});
+
+it('ties each error message to its field', function (): void {
+    $user = seoFieldsEditor();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $page = seoFieldsPage($user);
+        $html = Livewire::actingAs($user)->test(EntryEditor::class, ['ulid' => $page->ulid])
+            ->set('excerpt', str_repeat('a', 256))->set('seoTitle', str_repeat('a', 256))->set('seoDescription', str_repeat('a', 256))
+            ->call('save')
+            ->html();
+
+        foreach (['excerpt', 'title', 'description'] as $field) {
+            expect($html)->toMatch('/id="entry-seo-'.$field.'"[^>]*aria-describedby="[^"]*entry-seo-'.$field.'-e[^"]*"/s')
+                ->toContain('<p id="entry-seo-'.$field.'-e"');
+        }
+    });
+
+    $this->withViewErrors(['email' => 'Email chưa đúng.']);
+    $field = (string) $this->blade('<x-bs-admin::input name="email" label="Email" aria-describedby="email-hint" />');
+    $bound = (string) $this->blade('<x-bs-admin::input name="contact-email" wire:model="email" />');
+
+    expect($field)->toContain('aria-describedby="email-hint email-error"')
+        ->toContain('<p id="email-error" class="mt-1 text-sm text-danger-text">Email chưa đúng.</p>')
+        ->and($bound)->toContain('aria-invalid="true"')
+        ->toContain('aria-describedby="contact-email-error"')
+        ->toContain('<p id="contact-email-error"')
+        ->and((string) $this->blade('<x-bs-admin::input name="phone" />'))->not->toContain('aria-describedby')->not->toContain('<p ');
+});
+
+it('lets Enter confirm a word being composed in the Google description', function (): void {
+    $user = seoFieldsEditor();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $html = Livewire::actingAs($user)->test(EntryEditor::class, ['ulid' => seoFieldsPage($user)->ulid])->html();
+
+        expect($html)->toContain('x-on:keydown.enter="if (! $event.isComposing && $event.keyCode !== 229) $event.preventDefault()"')
+            ->not->toContain('keydown.enter.prevent');
+    });
+});
+
+it('shows the price before the Google part and the product code after it, as design 09 orders them', function (): void {
+    $user = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        grantRole($user, 'seo-cat-manager', ['catalog.view', 'catalog.manage']);
+        $html = Livewire::actingAs($user->fresh())->test(ProductEditor::class)->html();
+
+        $price = strpos($html, 'id="catalog-price"');
+        $seo = strpos($html, 'data-seo-fields');
+        $sku = strpos($html, 'id="catalog-sku"');
+        expect($price)->toBeInt()->and($seo)->toBeInt()->and($sku)->toBeInt()
+            ->and($price)->toBeLessThan($seo)
+            ->and($seo)->toBeLessThan($sku);
+    });
+});
+
 it('brings the fields back with a revision restore', function (): void {
     $user = seoFieldsEditor();
 
@@ -272,6 +491,8 @@ it('opens the editor and saves on the same number of queries with the fields set
         $page = seoFieldsPage($user);
         Livewire::actingAs($user)->test(EntryEditor::class, ['ulid' => $page->ulid]);   // warm up
 
+        // The permalink preset is remembered for one request; forget it so this open pays for it as a real one does.
+        app(PermalinkConfig::class)->flush();
         $open = countQueries(fn () => Livewire::actingAs($user)->test(EntryEditor::class, ['ulid' => $page->ulid]));
         $component = Livewire::actingAs($user)->test(EntryEditor::class, ['ulid' => $page->ulid]);
         $save = countQueries(fn () => $component->set('seoTitle', 'Tiêu đề mới')->call('save')->assertHasNoErrors());
@@ -308,6 +529,10 @@ it('saves the product Google fields through the shared part into the same column
     });
 });
 
-/** Measured on main before the fields were added (the same page, the same calls: open 2, save 5). */
-const SEO_FIELDS_OPEN_BUDGET = 2;
+/**
+ * Measured on main before the fields were added (the same page, the same calls: open 2, save 5).
+ * Opening is 3 since the Google preview shows the real public address: the page's permalink preset
+ * (one site_settings read) decides the path before the slug, and nothing else on the screen reads it.
+ */
+const SEO_FIELDS_OPEN_BUDGET = 3;
 const SEO_FIELDS_SAVE_BUDGET = 5;

@@ -22,7 +22,7 @@
 
     @if ($type === 'post')
         <label>{{ __('entries.category_label') }}
-            <select wire:model="categoryId" class="field">
+            <select wire:model.live="categoryId" class="field">
                 <option value="">{{ __('entries.category_placeholder') }}</option>
                 @foreach ($categories as $category)
                     <option value="{{ $category['id'] }}">{{ $category['name'] }}</option>
@@ -32,7 +32,7 @@
         @error('categoryId') <p class="error">{{ $message }}</p> @enderror
     @endif
 
-    <x-bs-admin::seo-fields excerpt="excerpt" :kind="$type" :url="request()->getHost()" :locale="$locale" :multi-locale="$multiLocale" id="entry-seo" />
+    <x-bs-admin::seo-fields excerpt="excerpt" :kind="$type" :address="$address" :locale="$locale" :multi-locale="$multiLocale" id="entry-seo" />
 
     @can('media.view')
         <section class="entry-cover">

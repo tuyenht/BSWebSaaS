@@ -5,10 +5,13 @@
     'descriptionModel' => 'seoDescription',
     // The page's own title: the preview shows it while the Google title is empty.
     'pageTitleModel' => 'title',
+    // The slug field: the preview's address ends with it as it is typed.
+    'slugModel' => 'slug',
     // post · page · product: picks the short description's hint and example.
     'kind' => 'page',
-    // The address line of the preview.
-    'url' => '',
+    // The preview's address around the slug (SeoFields::address): the site's primary domain, the
+    // language prefix and the path before the slug; `home` replaces it all for the home slug.
+    'address' => ['base' => '', 'home' => null, 'homeSlug' => 'home'],
     'locale' => 'vi',
     'multiLocale' => false,
     'id' => 'seo',
@@ -28,7 +31,8 @@
     $config = [
         'open' => $errors->hasAny($cardFields),
         'limits' => $limits,
-        'models' => ['excerpt' => $excerpt, 'title' => $titleModel, 'description' => $descriptionModel, 'pageTitle' => $pageTitleModel],
+        'models' => ['excerpt' => $excerpt, 'title' => $titleModel, 'description' => $descriptionModel, 'pageTitle' => $pageTitleModel, 'slug' => $slugModel],
+        'address' => $address,
         'words' => [
             'empty' => __('admin.seo.meter_empty'),
             'count' => __('admin.seo.meter_count'),
@@ -42,6 +46,7 @@
             ],
             'emptyTitle' => __('admin.seo.preview_title_empty'),
             'emptyDescription' => __('admin.seo.preview_description_empty'),
+            'emptySlug' => __('admin.seo.preview_slug_empty'),
         ],
     ];
     $bandIcons = ['empty' => 'ri-edit', 'short' => 'ri-arrow-up', 'near' => 'ri-arrow-right-up', 'good' => 'ri-check', 'long' => 'ri-error-warning', 'over' => 'ri-close-circle'];
@@ -71,14 +76,14 @@
             </div>
             <textarea id="{{ $id }}-excerpt" wire:model="{{ $excerpt }}" rows="3" maxlength="{{ SeoFields::hardCap('excerpt') }}" lang="{{ $locale }}"
                       placeholder="{{ __($kind === 'post' ? 'admin.seo.excerpt_placeholder_post' : 'admin.seo.excerpt_placeholder_page') }}"
-                      aria-describedby="{{ $id }}-excerpt-c {{ $id }}-excerpt-h" @error($excerpt) aria-invalid="true" @enderror
+                      aria-describedby="{{ $id }}-excerpt-c {{ $id }}-excerpt-h @error($excerpt) {{ $id }}-excerpt-e @enderror" @error($excerpt) aria-invalid="true" @enderror
                       class="field {{ $field }} resize-y py-2.5"></textarea>
             <span class="seo-meter" :data-b="excerptMeter.band" aria-hidden="true">
                 <span class="seo-meter__zone" :style="{ left: excerptMeter.lo + '%', width: excerptMeter.zw + '%' }"></span>
                 <span class="seo-meter__fill" :style="{ width: excerptMeter.pct + '%' }"></span>
                 <span class="seo-meter__tick" :style="{ left: excerptMeter.tick + '%' }"></span>
             </span>
-            @error($excerpt) <p class="{{ $error }}">{{ $message }}</p> @enderror
+            @error($excerpt) <p id="{{ $id }}-excerpt-e" class="{{ $error }}">{{ $message }}</p> @enderror
             <p id="{{ $id }}-excerpt-h" class="mt-1.5 text-caption text-text-muted">
                 {{ __($kind === 'post' ? 'admin.seo.excerpt_hint_post' : 'admin.seo.excerpt_hint_page', ['lo' => $excerptLimits['best'][0], 'hi' => $excerptLimits['best'][1], 'cap' => SeoFields::hardCap('excerpt')]) }}
             </p>
@@ -113,14 +118,14 @@
                     </span>
                 </div>
                 <input type="text" id="{{ $id }}-title" wire:model="{{ $titleModel }}" maxlength="{{ SeoFields::hardCap('seoTitle') }}" lang="{{ $locale }}"
-                       placeholder="{{ __('admin.seo.title_placeholder') }}" aria-describedby="{{ $id }}-title-c" @error($titleModel) aria-invalid="true" @enderror
+                       placeholder="{{ __('admin.seo.title_placeholder') }}" aria-describedby="{{ $id }}-title-c @error($titleModel) {{ $id }}-title-e @enderror" @error($titleModel) aria-invalid="true" @enderror
                        class="field {{ $field }}">
                 <span class="seo-meter" :data-b="titleMeter.band" aria-hidden="true">
                     <span class="seo-meter__zone" :style="{ left: titleMeter.lo + '%', width: titleMeter.zw + '%' }"></span>
                     <span class="seo-meter__fill" :style="{ width: titleMeter.pct + '%' }"></span>
                     <span class="seo-meter__tick" :style="{ left: titleMeter.tick + '%' }"></span>
                 </span>
-                @error($titleModel) <p class="{{ $error }}" x-init="open = true">{{ $message }}</p> @enderror
+                @error($titleModel) <p id="{{ $id }}-title-e" class="{{ $error }}" x-init="open = true">{{ $message }}</p> @enderror
             </div>
 
             <div>
@@ -133,16 +138,18 @@
                         <span x-text="descriptionMeter.text"></span>
                     </span>
                 </div>
-                {{-- One line on Google: Enter adds no line break (a pasted one is removed on save). --}}
+                {{-- One line on Google: Enter adds no line break (a pasted one is removed on save). An
+                     Enter that confirms a word being composed (Vietnamese, Japanese, Chinese input)
+                     is left to the input method. --}}
                 <textarea id="{{ $id }}-description" wire:model="{{ $descriptionModel }}" rows="2" maxlength="{{ SeoFields::hardCap('seoDesc') }}" lang="{{ $locale }}"
-                          placeholder="{{ __('admin.seo.description_placeholder') }}" aria-describedby="{{ $id }}-description-c" @error($descriptionModel) aria-invalid="true" @enderror
-                          x-on:keydown.enter.prevent class="field {{ $field }} resize-y py-2.5"></textarea>
+                          placeholder="{{ __('admin.seo.description_placeholder') }}" aria-describedby="{{ $id }}-description-c @error($descriptionModel) {{ $id }}-description-e @enderror" @error($descriptionModel) aria-invalid="true" @enderror
+                          x-on:keydown.enter="if (! $event.isComposing && $event.keyCode !== 229) $event.preventDefault()" class="field {{ $field }} resize-y py-2.5"></textarea>
                 <span class="seo-meter" :data-b="descriptionMeter.band" aria-hidden="true">
                     <span class="seo-meter__zone" :style="{ left: descriptionMeter.lo + '%', width: descriptionMeter.zw + '%' }"></span>
                     <span class="seo-meter__fill" :style="{ width: descriptionMeter.pct + '%' }"></span>
                     <span class="seo-meter__tick" :style="{ left: descriptionMeter.tick + '%' }"></span>
                 </span>
-                @error($descriptionModel) <p class="{{ $error }}" x-init="open = true">{{ $message }}</p> @enderror
+                @error($descriptionModel) <p id="{{ $id }}-description-e" class="{{ $error }}" x-init="open = true">{{ $message }}</p> @enderror
             </div>
 
             <div>
@@ -152,7 +159,7 @@
                         <span class="inline-flex size-[1.375rem] shrink-0 items-center justify-center rounded-full border border-border bg-bg">
                             <x-bs-admin::icon name="ri-global" class="size-(--icon-sm) text-text-muted" />
                         </span>
-                        <span class="min-w-0 text-caption text-text-muted [overflow-wrap:anywhere]">{{ $url }}</span>
+                        <span class="min-w-0 text-caption text-text-muted [overflow-wrap:anywhere]" x-text="previewAddress">{{ $address['base'] }}</span>
                     </div>
                     <p class="mb-1 text-lead leading-snug text-primary-text [overflow-wrap:anywhere]"><span x-text="previewTitle[0]"></span><span x-show="previewTitle[1] !== ''" x-cloak><span class="seo-cut">{{ __('admin.seo.cut_mark') }}</span><span class="seo-over" x-text="previewTitle[1]"></span></span></p>
                     <p class="text-small text-text [overflow-wrap:anywhere]"><span x-text="previewDescription[0]"></span><span x-show="previewDescription[1] !== ''" x-cloak><span class="seo-cut">{{ __('admin.seo.cut_mark') }}</span><span class="seo-over" x-text="previewDescription[1]"></span></span></p>

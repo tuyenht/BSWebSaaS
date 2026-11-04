@@ -14,6 +14,7 @@ use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Shared\Support\PlainText;
 use App\Modules\Shared\Support\RichTextSanitizer;
 use App\Modules\Shared\Support\Slugger;
 use App\Modules\Tenancy\Context\SiteLocale;
@@ -80,6 +81,19 @@ final class Editor extends Component
     /** Primary category id (product_cat vocabulary); optional until the P3 reconcile seeds them. */
     public ?int $categoryId = null;
 
+    /**
+     * The Google preview's address around the slug (SeoFields::address): built on mount and again
+     * when the category changes, finished in the browser as the slug is typed. Server data.
+     *
+     * @var array{base: string, home: string|null, homeSlug: string}
+     */
+    #[Locked]
+    public array $address = ['base' => '', 'home' => null, 'homeSlug' => PathBuilder::HOME_SLUG];
+
+    /** The site's primary domain, kept from the first request for the address above. */
+    #[Locked]
+    public string $addressHost = '';
+
     /** VND integer (D5); kept as a string for input round-tripping, cast on persist. */
     public ?string $price = null;
 
@@ -103,6 +117,7 @@ final class Editor extends Component
 
         if ($ulid === null) {
             $this->authorize('create', Product::class);
+            $this->address = $this->previewAddress(null);
 
             return;
         }
@@ -126,8 +141,16 @@ final class Editor extends Component
             $this->seoDescription = $translation->seo_description ?? '';
         }
 
-        $this->categoryId = $product->primaryCategory()?->id;
+        $category = $product->primaryCategory();
+        $this->categoryId = $category?->id;
+        $this->address = $this->previewAddress($category);
         $this->imageMediaIds = $this->normalizeIds($product->images()->pluck('media_id')->all());
+    }
+
+    /** The catalog's permalink preset may put the category in the address: the preview follows the pick. */
+    public function updatedCategoryId(): void
+    {
+        $this->address = $this->previewAddress($this->pickedCategory());
     }
 
     public function save(): void
@@ -295,11 +318,7 @@ final class Editor extends Component
             return false;
         }
 
-        $category = $this->categoryId !== null
-            ? Taxonomy::query()->with('translations')->find($this->categoryId)
-            : null;
-        $path = app(PathBuilder::class)->forProduct($category, 'x', $this->locale);
-        $prefix = str_ends_with($path, 'x') ? substr($path, 0, -1) : '/';
+        $prefix = $this->publicPathPrefix($this->pickedCategory());
 
         $this->slug = Slugger::fromTitle(
             $this->name,
@@ -328,6 +347,37 @@ final class Editor extends Component
         return $this->slug !== '';
     }
 
+    /** The picked primary category with its slugs, or null when none is picked. */
+    private function pickedCategory(): ?Taxonomy
+    {
+        return $this->categoryId !== null
+            ? Taxonomy::query()->with('translations')->find($this->categoryId)
+            : null;
+    }
+
+    /** The part of the public path before the slug, composed by PathBuilder as publishing will. */
+    private function publicPathPrefix(?Taxonomy $category): string
+    {
+        $path = app(PathBuilder::class)->forProduct($category, 'x', $this->locale);
+
+        return str_ends_with($path, 'x') ? substr($path, 0, -1) : '/';
+    }
+
+    /**
+     * The Google preview's address around the slug: the site's primary domain, the language prefix
+     * and the path before the slug.
+     *
+     * @return array{base: string, home: string|null, homeSlug: string}
+     */
+    private function previewAddress(?Taxonomy $category): array
+    {
+        if ($this->addressHost === '') {
+            $this->addressHost = SeoFields::publicHost();
+        }
+
+        return SeoFields::address($this->addressHost, $this->publicPathPrefix($category), $this->locale, false);
+    }
+
     /**
      * Validate + persist the product, its default-locale translation, category, gallery and — when
      * it is live — its public address; returns it. Runs inside save()'s transaction.
@@ -338,16 +388,20 @@ final class Editor extends Component
     {
         // A cleared input arrives as '' — store NULL: an '' sku would enter the partial
         // UNIQUE(site_id, sku) index and collide with the next skuless product.
+        $this->sku = $this->sku !== null ? PlainText::line($this->sku) : null;
         $this->sku = $this->sku === '' ? null : $this->sku;
         $this->price = $this->price === '' ? null : $this->price;
 
         // Editor HTML is sanitized BEFORE validation so length checks and what the admin sees
         // re-rendered are exactly what gets stored (junk-only input collapses to '').
         $sanitizer = app(RichTextSanitizer::class);
-        $this->description = $sanitizer->full($this->description);
-        $this->summary = $sanitizer->basic($this->summary);
+        $this->description = $sanitizer->full(PlainText::lines($this->description, trim: false));
+        $this->summary = $sanitizer->basic(PlainText::lines($this->summary, trim: false));
 
-        // Google shows these on one line; a line break or control character never reaches the head.
+        // No control character is stored (PostgreSQL refuses a NUL); Google shows its two fields on
+        // one line, so a line break or an invisible direction mark never reaches the head either.
+        $this->name = PlainText::line($this->name);
+        $this->slug = PlainText::line($this->slug);
         $this->seoTitle = SeoFields::singleLine($this->seoTitle);
         $this->seoDescription = SeoFields::singleLine($this->seoDescription);
 

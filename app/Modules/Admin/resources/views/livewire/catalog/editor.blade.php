@@ -1,7 +1,8 @@
 {{-- Velzon add-product layout (reference: apps-ecommerce-add-product) rebuilt from the admin
-     component library: main column = product info + detail rich text + gallery + the shared
-     "Hiện thế nào trên Google" card (x-bs-admin::seo-fields) + price/sku;
-     sidebar = publish status, category, short summary. The two [data-rich-editor] textareas
+     component library, in design 09's order: main column = product info + detail rich text +
+     gallery + price + the shared "Hiện thế nào trên Google" card (x-bs-admin::seo-fields);
+     sidebar = publish status, category, product code, short summary. Each kit field shows its
+     own error, tied to it. The two [data-rich-editor] textareas
      are mounted as Jodit islands (lazy chunk, see resources/js/app.js) inside wire:ignore so
      Livewire morphs never clobber the editor DOM; content syncs back DEFERRED via $wire.set. --}}
 <div class="catalog-editor" data-catalog-editor>
@@ -23,11 +24,9 @@
                 <div class="space-y-4">
                     <div>
                         <x-bs-admin::input :label="__('catalog.name_label')" name="catalog-name" wire:model="name" />
-                        @error('name') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <x-bs-admin::input :label="__('catalog.slug_label')" name="catalog-slug" wire:model="slug" />
-                        @error('slug') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label class="mb-1.5 block text-sm font-medium text-body-text" for="rich-editor-description">{{ __('catalog.description_label') }}</label>
@@ -75,21 +74,12 @@
                 </div>
             </x-bs-admin::card>
 
-            <x-bs-admin::seo-fields page-title-model="name" kind="product" :url="request()->getHost()" :locale="$locale" :multi-locale="$multiLocale" id="catalog-seo" />
-
-            <x-bs-admin::card :title="__('catalog.tab_general')">
-                <div class="space-y-4">
-                    <div>
-                        <x-bs-admin::input :label="__('catalog.price_label')" name="catalog-price" type="number" min="0" step="1" inputmode="numeric" wire:model="price" />
-                        <p class="mt-1 text-sm text-text-muted">{{ __('catalog.price_hint') }}</p>
-                        @error('price') <p class="mt-1 text-sm text-danger-text">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <x-bs-admin::input :label="__('catalog.sku_label')" name="catalog-sku" wire:model="sku" />
-                        @error('sku') <p class="mt-1 text-sm text-danger-text">{{ $message }}</p> @enderror
-                    </div>
-                </div>
+            <x-bs-admin::card :title="__('catalog.card_price')">
+                <x-bs-admin::input :label="__('catalog.price_label')" name="catalog-price" type="number" min="0" step="1" inputmode="numeric" wire:model="price" aria-describedby="catalog-price-h" />
+                <p id="catalog-price-h" class="mt-1 text-sm text-text-muted">{{ __('catalog.price_hint') }}</p>
             </x-bs-admin::card>
+
+            <x-bs-admin::seo-fields page-title-model="name" kind="product" :address="$address" :locale="$locale" :multi-locale="$multiLocale" id="catalog-seo" />
         </div>
 
         <div class="space-y-4">
@@ -105,7 +95,7 @@
             </x-bs-admin::card>
 
             <x-bs-admin::card :title="__('catalog.category_label')">
-                <select id="catalog-category" wire:model="categoryId" aria-label="{{ __('catalog.category_label') }}"
+                <select id="catalog-category" wire:model.live="categoryId" aria-label="{{ __('catalog.category_label') }}"
                         class="field block w-full rounded border border-border-strong bg-surface px-3 text-text transition-colors focus:border-primary-text">
                     <option value="">{{ __('catalog.category_placeholder') }}</option>
                     @foreach ($categories as $category)
@@ -113,6 +103,10 @@
                     @endforeach
                 </select>
                 @error('categoryId') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
+            </x-bs-admin::card>
+
+            <x-bs-admin::card :title="__('catalog.card_sku')">
+                <x-bs-admin::input :label="__('catalog.sku_label')" name="catalog-sku" wire:model="sku" />
             </x-bs-admin::card>
 
             <x-bs-admin::card :title="__('catalog.summary_label')">

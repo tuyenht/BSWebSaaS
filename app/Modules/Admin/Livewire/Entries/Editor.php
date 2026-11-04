@@ -24,6 +24,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaLibraryUrls;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Shared\Support\PlainText;
 use App\Modules\Shared\Support\Slugger;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Models\ContentSection;
@@ -120,6 +121,19 @@ final class Editor extends Component
     /** Primary category id (posts only; index 0 of entry_taxonomies drives the URL). */
     public ?int $categoryId = null;
 
+    /**
+     * The Google preview's address around the slug (SeoFields::address): built on mount and again
+     * when the category changes, finished in the browser as the slug is typed. Server data.
+     *
+     * @var array{base: string, home: string|null, homeSlug: string}
+     */
+    #[Locked]
+    public array $address = ['base' => '', 'home' => null, 'homeSlug' => PathBuilder::HOME_SLUG];
+
+    /** The site's primary domain, kept from the first request for the address above. */
+    #[Locked]
+    public string $addressHost = '';
+
     /** Featured/OG image — the picked media's storage_key, persisted to entry.meta['image_url']. */
     public string $coverImageKey = '';
 
@@ -195,6 +209,7 @@ final class Editor extends Component
             $this->categoryId = $this->type === 'post' && $contentSection instanceof ContentSection && $contentSection->taxonomy_id !== null
                 ? (int) $contentSection->taxonomy_id
                 : null;
+            $this->address = $this->previewAddress(new Entry(['type' => $this->type]));
 
             return;
         }
@@ -219,13 +234,36 @@ final class Editor extends Component
         $cover = data_get($entry->meta, 'image_url');
         $this->coverImageKey = is_string($cover) ? $cover : '';
 
-        if ($this->type === 'post') {
-            $this->categoryId = $entry->primaryCategory()?->id;
-        }
+        $category = $this->type === 'post' ? $entry->primaryCategory() : null;
+        $this->categoryId = $category?->id;
+        $this->address = $this->previewAddress($entry, $category);
 
         if ($this->governingWorkflow() !== null) {
             $this->loadTrail($entry->id);
         }
+    }
+
+    /** A post's category is part of its address: the preview follows the pick (posts only). */
+    public function updatedCategoryId(): void
+    {
+        if ($this->type === 'post') {
+            $this->address = $this->previewAddress();
+        }
+    }
+
+    /**
+     * The Google preview's address around the slug, composed as publishing will compose it: the
+     * site's primary domain, the language prefix and the path before the slug.
+     *
+     * @return array{base: string, home: string|null, homeSlug: string}
+     */
+    private function previewAddress(?Entry $entry = null, ?Taxonomy $category = null): array
+    {
+        if ($this->addressHost === '') {
+            $this->addressHost = SeoFields::publicHost();
+        }
+
+        return SeoFields::address($this->addressHost, $this->publicPathPrefix($entry, $category), $this->locale, $this->type === 'page');
     }
 
     /**
@@ -1120,14 +1158,15 @@ final class Editor extends Component
 
     /**
      * The part of the public path that comes before the slug, composed by PathBuilder for this
-     * entry and its picked category exactly as publishing will ('/' for a flat page).
+     * entry and its picked category exactly as publishing will ('/' for a flat page). The caller may
+     * hand in the entry and its picked category when it already holds them.
      */
-    private function publicPathPrefix(): string
+    private function publicPathPrefix(?Entry $entry = null, ?Taxonomy $category = null): string
     {
-        $entry = $this->ulid !== null ? $this->resolveOrFail($this->ulid) : new Entry(['type' => $this->type]);
+        $entry ??= $this->ulid !== null ? $this->resolveOrFail($this->ulid) : new Entry(['type' => $this->type]);
 
         if ($this->type === 'post') {
-            $category = $this->categoryId !== null
+            $category ??= $this->categoryId !== null
                 ? Taxonomy::query()->with('translations')->find($this->categoryId)
                 : null;
             $categories = new EloquentCollection;
@@ -1146,10 +1185,14 @@ final class Editor extends Component
     /** Validate + persist the entry and its translation (+ category for posts); returns it. */
     private function persist(): Entry
     {
-        // Google shows these on one line; a line break or control character never reaches the head.
+        // No control character is stored (PostgreSQL refuses a NUL); Google shows its two fields on
+        // one line, so a line break or an invisible direction mark never reaches the head either.
+        $this->title = PlainText::line($this->title);
+        $this->slug = PlainText::line($this->slug);
+        $this->excerpt = PlainText::lines($this->excerpt);
         $this->seoTitle = SeoFields::singleLine($this->seoTitle);
         $this->seoDescription = SeoFields::singleLine($this->seoDescription);
-        $this->excerpt = trim($this->excerpt);
+        $this->blocks = PlainText::linesIn($this->blocks);
 
         $filled = $this->fillBlankSlug();
         try {

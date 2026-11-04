@@ -107,6 +107,18 @@ document.addEventListener('alpine:init', () => {
             return this.split('seoTitle', this.value('title').trim() || this.value('pageTitle').trim() || config.words.emptyTitle);
         },
 
+        // The public address as publishing will compose it: the server sends everything before the
+        // slug (primary domain, language prefix, category or base path) and the slug ends it here.
+        get previewAddress() {
+            const address = config.address;
+            const slug = this.value('slug').trim().replace(/^\/+|\/+$/g, '');
+            if (address.home !== null && slug === address.homeSlug) {
+                return address.home;
+            }
+
+            return address.base + (slug || config.words.emptySlug);
+        },
+
         get previewDescription() {
             const own = this.value('description').trim() || this.value('excerpt').replace(/\s+/g, ' ').trim();
 
