@@ -15,6 +15,9 @@ use App\Modules\Tenancy\Context\SiteLocale;
  */
 final readonly class MediaLibraryUrls
 {
+    /** The video files the library accepts (Media::MIME_EXT_LABELS) that a <video> plays. */
+    public const array VIDEO_MIMES = ['video/mp4', 'video/webm'];
+
     public function __construct(private MediaUrlResolver $resolver) {}
 
     /**
@@ -32,11 +35,13 @@ final readonly class MediaLibraryUrls
      * than two distinct candidates has none (MediaUrlResolver::srcset). `alts` holds, per URL, the
      * library's alt text in the current locale (else the site's default locale); a picture with no
      * alt text is left out. `dims` holds, per URL, the master's stored [width, height] (for the
-     * intrinsic ratio of an <img>); a picture without both is left out. Same rows, no extra query.
+     * intrinsic ratio of an <img>); a picture without both is left out. `videos` holds, per media id
+     * of a video file (mp4 / webm), the file's own address (never a picture transform) and its type,
+     * for a <video> source. Same rows, no extra query.
      *
      * @param  array<array-key, mixed>  $ids
      * @param  list<int>  $srcsetWidths
-     * @return array{urls: array<int, string>, srcsets: array<string, string>, alts: array<string, string>, dims: array<string, array{0: int, 1: int}>}
+     * @return array{urls: array<int, string>, srcsets: array<string, string>, alts: array<string, string>, dims: array<string, array{0: int, 1: int}>, videos: array<int, array{url: string, type: string}>}
      */
     public function resolve(array $ids, ?int $width = null, array $srcsetWidths = []): array
     {
@@ -48,15 +53,19 @@ final readonly class MediaLibraryUrls
         }
 
         if ($wanted === []) {
-            return ['urls' => [], 'srcsets' => [], 'alts' => [], 'dims' => []];
+            return ['urls' => [], 'srcsets' => [], 'alts' => [], 'dims' => [], 'videos' => []];
         }
 
         $urls = [];
         $srcsets = [];
         $alts = [];
         $dims = [];
-        foreach (Media::query()->whereIn('id', array_keys($wanted))->get(['id', 'storage_key', 'width', 'height', 'alt']) as $media) {
+        $videos = [];
+        foreach (Media::query()->whereIn('id', array_keys($wanted))->get(['id', 'storage_key', 'mime', 'width', 'height', 'alt']) as $media) {
             $key = (string) $media->storage_key;
+            if (in_array($media->mime, self::VIDEO_MIMES, true)) {
+                $videos[(int) $media->id] = ['url' => $this->resolver->fileUrl($key), 'type' => $media->mime];
+            }
             $url = $this->resolver->url($key, $width);
             $urls[(int) $media->id] = $url;
             $srcset = $srcsetWidths !== [] ? $this->resolver->srcset($key, $srcsetWidths, $media->width) : null;
@@ -72,7 +81,7 @@ final readonly class MediaLibraryUrls
             }
         }
 
-        return ['urls' => $urls, 'srcsets' => $srcsets, 'alts' => $alts, 'dims' => $dims];
+        return ['urls' => $urls, 'srcsets' => $srcsets, 'alts' => $alts, 'dims' => $dims, 'videos' => $videos];
     }
 
     /**

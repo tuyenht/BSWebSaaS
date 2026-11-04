@@ -106,6 +106,12 @@ final readonly class ValidPageJson implements ValidationRule
                 return;
             }
 
+            if (! $this->videoPropsValid($block['props'], $schema)) {
+                $fail(__('entries.err_block_bg_video_invalid'));
+
+                return;
+            }
+
             if (! $this->urlPropsSafe($block['props'], $schema)) {
                 $fail(__('entries.err_block_link_invalid', ['type' => $type]));
 
@@ -185,6 +191,11 @@ final readonly class ValidPageJson implements ValidationRule
             return $value === null || (is_int($value) && $value > 0);
         }
 
+        if (($spec['type'] ?? null) === 'video') {
+            // Checked, with its own message, by videoPropsValid() before this walk.
+            return true;
+        }
+
         if (($spec['type'] ?? null) === 'list') {
             $of = $spec['of'] ?? null;
             if (! is_array($of) || ! is_array($value)) {
@@ -201,6 +212,30 @@ final readonly class ValidPageJson implements ValidationRule
         // htmlspecialchars() at render (TypeError → 500s the published page), so the boundary that
         // distrusts the wire payload rejects it here too. null = an absent prop, which is fine.
         return $value === null || is_scalar($value);
+    }
+
+    /**
+     * Every `video` prop (a background video from the library, declared at the top of a block's
+     * schema) holds null (none) or a media_id (positive int) — never an address, like an image prop.
+     * Whether the id names a video of this site is not decided here: the renderer resolves only this
+     * site's video files and renders the block without a video otherwise, and the usage index skips
+     * an id of another site — the same rule as an image id.
+     *
+     * @param  array<array-key, mixed>  $props
+     * @param  array<array-key, mixed>  $schema
+     */
+    private function videoPropsValid(array $props, array $schema): bool
+    {
+        foreach ($schema as $prop => $spec) {
+            if (is_array($spec) && ($spec['type'] ?? null) === 'video') {
+                $value = $props[$prop] ?? null;
+                if ($value !== null && ! (is_int($value) && $value > 0)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     /**

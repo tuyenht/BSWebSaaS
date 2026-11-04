@@ -88,3 +88,29 @@ it('clears only the image ids missing from the kept set, at any depth, leaving t
         ['image_url' => null, 'name' => 'C'],
     ]]);
 });
+
+// A video leaf (the hero's background video) is a media id too: counted and dropped like an image,
+// but resolved only to a video source — never to a picture address, and an image never to a video.
+$videoSchema = [
+    'image_url' => ['type' => 'image'],
+    'bg_video' => ['type' => 'video'],
+];
+
+it('collects and retains video ids like image ids', function () use ($videoSchema): void {
+    $props = ['image_url' => 3, 'bg_video' => 9];
+
+    expect(SchemaImages::ids($props, $videoSchema))->toBe([3, 9])
+        ->and(SchemaImages::retain($props, $videoSchema, [3]))->toBe(['image_url' => 3, 'bg_video' => null]);
+});
+
+it('resolves a video id only to a video source and an image id only to a picture URL', function () use ($videoSchema): void {
+    $props = ['image_url' => 3, 'bg_video' => 9];
+    $source = ['url' => 'https://files.test/v.mp4', 'type' => 'video/mp4'];
+
+    $images = SchemaImages::replace($props, $videoSchema, [3 => 'https://files.test/a.webp', 9 => 'https://files.test/v.mp4?w=1280']);
+    expect($images)->toBe(['image_url' => 'https://files.test/a.webp', 'bg_video' => 9]);
+
+    expect(SchemaImages::replaceVideos($images, $videoSchema, [9 => $source]))->toBe(['image_url' => 'https://files.test/a.webp', 'bg_video' => $source])
+        ->and(SchemaImages::replaceVideos(['bg_video' => 3], $videoSchema, [9 => $source]))->toBe(['bg_video' => null])
+        ->and(SchemaImages::replaceVideos(['bg_video' => 'https://evil.test/x.mp4'], $videoSchema, []))->toBe(['bg_video' => null]);
+});

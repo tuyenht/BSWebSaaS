@@ -30,6 +30,9 @@ final class ThemeServiceProvider extends ServiceProvider
             'heading' => ['type' => 'text'],
             'subheading' => ['type' => 'text'],
             'image_url' => ['type' => 'image'],
+            // A background video from the site's library (a media_id, like an image prop); image_url
+            // is then its poster. Played muted and looped, only when the visitor's settings allow it.
+            'bg_video' => ['type' => 'video'],
             'cta_label' => ['type' => 'text'],
             'cta_url' => ['type' => 'url'],
             'cta2_label' => ['type' => 'text'],

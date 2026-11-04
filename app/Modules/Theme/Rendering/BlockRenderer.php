@@ -6,7 +6,9 @@ use App\Modules\Media\Services\MediaLibraryUrls;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SchemaHtml;
 use App\Modules\Theme\Components\SchemaImages;
+use App\Modules\Theme\Components\SectionProps;
 use App\Modules\Theme\Components\StyleProps;
+use App\Modules\Theme\Theming\ThemeResolver;
 use Illuminate\Contracts\View\Factory as ViewFactory;
 
 /**
@@ -20,7 +22,9 @@ use Illuminate\Contracts\View\Factory as ViewFactory;
  * URLs in TWO passes — collect every id across the page, then one batched lookup — so a page with
  * N images costs one media query, not N (the anti-N+1 contract at tenant scale). The library
  * pictures inside formatted text (`html` props, `img[data-media-id]`) join the same lookup, and
- * each html prop is then prepared for printing by RichHtml (pictures, video façades).
+ * each html prop is then prepared for printing by RichHtml (pictures, video façades). Video props
+ * (the hero's background video) are media ids too and join the same lookup; each resolves to its
+ * file's source, or to nothing when it is not a video of this site.
  */
 final readonly class BlockRenderer
 {
@@ -43,6 +47,7 @@ final readonly class BlockRenderer
         private ComponentRegistry $registry,
         private MediaLibraryUrls $mediaUrls,
         private RichHtml $richHtml,
+        private ThemeResolver $theme,
     ) {}
 
     public function allows(string $type): bool
@@ -166,7 +171,7 @@ final readonly class BlockRenderer
         // One batched lookup for the whole page (site-scoped; unknown ids simply resolve to nothing).
         // The same rows give each URL its srcset (server-built from storage keys, never from props) and
         // its alt text from the library.
-        ['urls' => $urls, 'srcsets' => $srcsets, 'alts' => $alts, 'dims' => $dims] = $this->mediaUrls->resolve($ids, self::CONTENT_IMAGE_WIDTH, self::SRCSET_WIDTHS);
+        ['urls' => $urls, 'srcsets' => $srcsets, 'alts' => $alts, 'dims' => $dims, 'videos' => $videos] = $this->mediaUrls->resolve($ids, self::CONTENT_IMAGE_WIDTH, self::SRCSET_WIDTHS);
 
         // Pass 2 — render each block, swapping each image prop's media_id for its resolved URL, inside
         // the look wrapper when the block sets one (StyleProps).
@@ -188,14 +193,14 @@ final readonly class BlockRenderer
             $schema = $this->registry->schemaFor($type);
             /** @var array<string, mixed> $resolved */
             $resolved = SchemaHtml::map(
-                SchemaImages::replace($props, $schema, $urls),
+                SchemaImages::replaceVideos(SchemaImages::replace($props, $schema, $urls), $schema, $videos),
                 $schema,
                 fn (string $html): string => $this->richHtml->render($html, $urls, $srcsets, $alts, $dims)['html'],
             );
 
             /** @var view-string $view a theme section view (ComponentRegistry) */
             $view = $component->view();
-            $section = $this->views->make($view, $component->data($resolved) + ['srcsets' => $srcsets, 'alts' => $alts])->render();
+            $section = $this->views->make($view, $component->data($resolved) + ['srcsets' => $srcsets, 'alts' => $alts] + $this->videoBand($resolved))->render();
 
             $image = $resolved['bg_image'] ?? null;
             $wrapper = StyleProps::wrapper($props, $first, is_string($image) ? $image : null);
@@ -209,5 +214,30 @@ final readonly class BlockRenderer
         }
 
         return $html;
+    }
+
+    /**
+     * For a block whose background video resolved (the hero): `videoBand`, whether the band it plays
+     * on reads dark or light, so its pause/play control takes the matching look. The hero paints its
+     * own dark band unless the look panel sets a colour set (StyleProps::wrapper); the light and soft
+     * sets are light, the brand set follows its text (ThemeResolver), the dark set and a photo band are
+     * dark. A block without a resolved video gets nothing (no extra work).
+     *
+     * @param  array<array-key, mixed>  $resolved
+     * @return array{videoBand?: 'dark'|'light'}
+     */
+    private function videoBand(array $resolved): array
+    {
+        if (! is_array($resolved['bg_video'] ?? null)) {
+            return [];
+        }
+
+        $dark = SectionProps::choice($resolved, 'bg', StyleProps::BG) !== 'scheme' || match (SectionProps::choice($resolved, 'scheme', StyleProps::SCHEMES)) {
+            'light', 'soft' => false,
+            'brand' => $this->theme->brandSetIsDark(),
+            default => true,
+        };
+
+        return ['videoBand' => $dark ? 'dark' : 'light'];
     }
 }
