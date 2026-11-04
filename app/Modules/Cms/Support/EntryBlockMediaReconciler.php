@@ -7,7 +7,9 @@ use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Theme\Components\ComponentRegistry;
+use App\Modules\Theme\Components\SchemaHtml;
 use App\Modules\Theme\Components\SchemaImages;
+use App\Modules\Theme\Rendering\RichHtml;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -15,8 +17,9 @@ use Illuminate\Database\Eloquent\Builder;
  * media used" is an indexed lookup, not a scan of every entry body — the anti-scan contract at tenant
  * scale (a media_id buried in blocks[].props can't be found by an indexed query otherwise).
  *
- * Reconciled on save: collects every media_id referenced by an image prop across ALL locale bodies,
- * keeps those that name this site's media, then prunes the entry's content rows and adds the missing
+ * Reconciled on save: collects every media_id referenced by an image prop, or by a library picture
+ * (`img[data-media-id]`) inside a formatted-text (`html`) prop, across ALL locale bodies, keeps those
+ * that name this site's media, then prunes the entry's content rows and adds the missing
  * ones. It runs inside the request transaction (the save), so the usage index never drifts from the
  * content. Lives in Cms, which already depends on Media and Theme, so every Cms write path that changes
  * a body (the editor save, a revision restore) reconciles through this one class.
@@ -85,7 +88,9 @@ final readonly class EntryBlockMediaReconciler
     }
 
     /**
-     * Every media_id referenced by an image prop across all of the entry's locale block bodies.
+     * Every media_id referenced across all of the entry's locale block bodies: by an image prop, and
+     * by a library picture inside an html prop — so a picture used only inside formatted text still
+     * counts as used (the library's "where used" list and its delete warning).
      *
      * @return list<int>
      */
@@ -101,7 +106,11 @@ final readonly class EntryBlockMediaReconciler
                 $type = $block['type'] ?? null;
                 $props = is_array($block['props'] ?? null) ? $block['props'] : [];
                 if (is_string($type) && $this->registry->has($type)) {
-                    $ids = array_merge($ids, SchemaImages::ids($props, $this->registry->schemaFor($type)));
+                    $schema = $this->registry->schemaFor($type);
+                    $ids = array_merge($ids, SchemaImages::ids($props, $schema));
+                    foreach (SchemaHtml::values($props, $schema) as $html) {
+                        $ids = array_merge($ids, RichHtml::imageIds($html));
+                    }
                 }
             }
         }
