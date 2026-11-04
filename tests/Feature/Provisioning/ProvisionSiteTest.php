@@ -215,9 +215,10 @@ it('seeds a contact page routed at /lien-he so the homepage CTA resolves', funct
 it('neither duplicates nor brings back a menu item staff moved to the trash, and keeps a region that follows another', function (): void {
     $site = provisionAnVinh();
     $tenancy = app(Tenancy::class);
+    $editor = menuEditor($site->id);
 
-    $tenancy->enter($site->id, function (): void {
-        app(DeleteMenuItem::class)->handle(MenuItem::query()->where('dynamic_key', 'home')->firstOrFail());
+    $tenancy->enter($site->id, function () use ($editor): void {
+        app(DeleteMenuItem::class)->handle($editor, MenuItem::query()->where('dynamic_key', 'home')->firstOrFail());
         MenuAssignment::query()->create(['region_key' => 'handheld', 'locale' => 'vi', 'same_as_region' => 'primary']);
     });
 

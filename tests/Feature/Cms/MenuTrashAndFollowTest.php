@@ -3,6 +3,7 @@
 use App\Modules\Cms\Actions\Menus\AssignMenu;
 use App\Modules\Cms\Actions\Menus\DeleteMenuItem;
 use App\Modules\Cms\Actions\Menus\FollowMenuArea;
+use App\Modules\Cms\Actions\Menus\MoveMenuItem;
 use App\Modules\Cms\Actions\Menus\RestoreMenuItem;
 use App\Modules\Cms\Actions\Menus\SaveMenu;
 use App\Modules\Cms\Actions\Menus\SaveMenuItem;
@@ -15,6 +16,7 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Navigation\MenuResolver;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Debug\ExceptionHandler;
@@ -34,7 +36,14 @@ beforeEach(function (): void {
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
     DB::connection('pgsql_admin')->statement('truncate audit_logs restart identity');
+    $this->editors = [1 => menuEditor(1), 2 => menuEditor(2)];
 });
+
+/** Someone who may manage the menus of the site the test is in. */
+function mtEditor(): User
+{
+    return test()->editors[app(CurrentSite::class)->id()];
+}
 
 /** Run inside $site. */
 function mtIn(int $site, Closure $callback): mixed
@@ -73,7 +82,7 @@ function mtMenu(string $name = 'Menu chính', ?array $locales = null): Menu
 
 function mtItem(Menu $menu, string $label, ?MenuItem $parent = null, string $locale = 'vi'): MenuItem
 {
-    return app(SaveMenuItem::class)->handle($menu, null, new MenuItemData(linkType: 'dynamic', dynamicKey: 'home', labels: [$locale => $label], parent: $parent));
+    return app(SaveMenuItem::class)->handle(mtEditor(), $menu, null, new MenuItemData(linkType: 'dynamic', dynamicKey: 'home', labels: [$locale => $label], parent: $parent));
 }
 
 /** Labels of a menu's live tree, top level in order, each with its children: ['A' => ['A1' => []], …]. */
@@ -162,7 +171,7 @@ it('fills the missing row keys site by site, trashed items included, and reports
             $menu = mtMenu();
             $live = mtItem($menu, 'Còn');
             $trashed = mtItem($menu, 'Thùng rác');
-            app(DeleteMenuItem::class)->handle($trashed);
+            app(DeleteMenuItem::class)->handle(mtEditor(), $trashed);
 
             DB::table('taxonomies')->update(['ulid' => null, 'updated_at' => '2026-01-01 00:00:00+00']);
             DB::table('menu_items')->update(['ulid' => null, 'updated_at' => '2026-01-01 00:00:00+00']);
@@ -286,6 +295,35 @@ it('shows the followed area\'s menu in the same language before falling back to 
     });
 });
 
+it('shows the followed area\'s menu in the visitor\'s language when the follow is set in the default language only', function (): void {
+    DB::connection('pgsql_admin')->table('site_locales')->insert(['site_id' => 1, 'locale' => 'en', 'is_default' => false, 'enabled' => true, 'created_at' => now(), 'updated_at' => now()]);
+    $actor = mtUser(['menus.manage']);
+
+    mtIn(1, function () use ($actor): void {
+        $mainVi = mtMenu('Menu chính', ['vi']);
+        mtItem($mainVi, 'Trang chủ');
+        $mainEn = mtMenu('Main', ['en']);
+        mtItem($mainEn, 'Home', locale: 'en');
+        app(AssignMenu::class)->handle($actor, 'primary', 'vi', $mainVi);
+        app(AssignMenu::class)->handle($actor, 'primary', 'en', $mainEn);
+        app(FollowMenuArea::class)->handle($actor, 'handheld', 'vi', 'primary');
+
+        $resolver = app(MenuResolver::class);
+        $english = $resolver->resolveMany(['handheld', 'primary'], 'en', 'vi');
+        expect(array_column($english['handheld'], 'label'))->toBe(['Home'])
+            ->and(array_column($english['primary'], 'label'))->toBe(['Home'])
+            ->and(array_column($resolver->resolve('handheld', 'vi', 'vi'), 'label'))->toBe(['Trang chủ']);
+
+        // One query for both areas and the area followed, the follow included.
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+        $resolver->resolveMany(['handheld'], 'en', 'vi');
+        $assignmentQueries = array_filter(DB::getQueryLog(), fn (array $q): bool => str_contains($q['query'], 'menu_assignments'));
+        DB::disableQueryLog();
+        expect($assignmentQueries)->toHaveCount(1);
+    });
+});
+
 it('answers 403 to someone who may not manage menus, on both assignment paths', function (): void {
     $nobody = mtUser(['entries.view']);
 
@@ -309,6 +347,37 @@ it('answers 403 to someone who may not manage menus, on both assignment paths', 
     });
 });
 
+it('answers 403 to someone who may not manage menus, on every item write', function (): void {
+    $nobody = mtUser(['entries.view']);
+
+    mtIn(1, function () use ($nobody): void {
+        $menu = mtMenu();
+        $live = mtItem($menu, 'Còn');
+        $trashed = mtItem($menu, 'Thùng rác');
+        app(DeleteMenuItem::class)->handle(mtEditor(), $trashed);
+        $statuses = [];
+        foreach ([
+            fn () => app(SaveMenuItem::class)->handle($nobody, $menu, null, new MenuItemData(linkType: 'dynamic', dynamicKey: 'home', labels: ['vi' => 'Mới'])),
+            fn () => app(SaveMenuItem::class)->handle($nobody, $menu, $live, new MenuItemData(linkType: 'url', url: '/lien-he')),
+            fn () => app(MoveMenuItem::class)->handle($nobody, $live, null, 1),
+            fn () => app(DeleteMenuItem::class)->handle($nobody, $live),
+            fn () => app(RestoreMenuItem::class)->handle($nobody, $trashed),
+        ] as $write) {
+            try {
+                $write();
+                $statuses[] = 200;
+            } catch (AuthorizationException $e) {
+                $statuses[] = app(ExceptionHandler::class)->render(request(), $e)->getStatusCode();
+            }
+        }
+
+        expect($statuses)->toBe([403, 403, 403, 403, 403])
+            ->and(mtTree($menu))->toBe(['Còn' => []])
+            ->and($live->refresh()->link_type)->toBe('dynamic')
+            ->and(MenuItem::onlyTrashed()->pluck('id')->all())->toBe([$trashed->id]);
+    });
+});
+
 // ------------------------------------------------------------------ trash
 
 it('moves an item with its whole branch to the trash, and the website no longer shows them', function (): void {
@@ -322,7 +391,7 @@ it('moves an item with its whole branch to the trash, and the website no longer 
         mtItem($menu, 'Bên cạnh');
         app(AssignMenu::class)->handle($actor, 'primary', 'vi', $menu);
 
-        expect(app(DeleteMenuItem::class)->handle($parent))->toBe(3);
+        expect(app(DeleteMenuItem::class)->handle(mtEditor(), $parent))->toBe(3);
 
         $trashed = MenuItem::onlyTrashed()->get();
         expect($trashed)->toHaveCount(3)
@@ -342,14 +411,14 @@ it('restores an item with the branch removed with it, at its old place', functio
         mtItem($menu, 'Cháu', $child);
         mtItem($menu, 'Cuối');
 
-        app(DeleteMenuItem::class)->handle($parent);
+        app(DeleteMenuItem::class)->handle(mtEditor(), $parent);
         expect(mtTree($menu))->toBe(['Đầu' => [], 'Cuối' => []]);
 
-        expect(app(RestoreMenuItem::class)->handle($parent))->toBe(3)
+        expect(app(RestoreMenuItem::class)->handle(mtEditor(), $parent))->toBe(3)
             ->and(mtTree($menu))->toBe(['Đầu' => [], 'Cha' => ['Con' => ['Cháu' => []]], 'Cuối' => []])
             ->and(MenuItem::query()->where('menu_id', $menu->id)->whereNull('parent_id')->orderBy('position')->pluck('position')->all())->toBe([0, 1, 2])
             ->and(MenuItem::onlyTrashed()->count())->toBe(0)
-            ->and(mtRefusal(fn () => app(RestoreMenuItem::class)->handle($parent)))->toBe('item_invalid');
+            ->and(mtRefusal(fn () => app(RestoreMenuItem::class)->handle(mtEditor(), $parent)))->toBe('item_invalid');
     });
 });
 
@@ -362,27 +431,48 @@ it('restores a sub-item whose parent is in the trash, or gone for good, at the e
         mtItem($menu, 'Bên cạnh');
 
         // One sub-item removed on its own first, then the parent with what is left under it.
-        app(DeleteMenuItem::class)->handle($first);
+        app(DeleteMenuItem::class)->handle(mtEditor(), $first);
         MenuItem::onlyTrashed()->whereKey($first->id)->update(['deleted_at' => now()->subMinute()]);
-        app(DeleteMenuItem::class)->handle($parent);
+        app(DeleteMenuItem::class)->handle(mtEditor(), $parent);
 
-        expect(app(RestoreMenuItem::class)->handle($first))->toBe(1)
+        expect(app(RestoreMenuItem::class)->handle(mtEditor(), $first))->toBe(1)
             ->and(mtTree($menu))->toBe(['Bên cạnh' => [], 'Con 1' => []])
             ->and($first->refresh()->parent_id)->toBeNull();
 
         // The parent comes back with its own removal only; the sub-item restored earlier stays put.
-        expect(app(RestoreMenuItem::class)->handle($parent))->toBe(2)
+        expect(app(RestoreMenuItem::class)->handle(mtEditor(), $parent))->toBe(2)
             ->and(mtTree($menu))->toBe(['Cha' => ['Con 2' => []], 'Bên cạnh' => [], 'Con 1' => []]);
 
         // A parent deleted for good: its trashed sub-item comes back at the top level.
         $other = mtItem($menu, 'Cha khác');
         $orphan = mtItem($menu, 'Con mồ côi', $other);
-        app(DeleteMenuItem::class)->handle($orphan);
+        app(DeleteMenuItem::class)->handle(mtEditor(), $orphan);
         MenuItem::query()->whereKey($other->id)->forceDelete();
 
-        expect(app(RestoreMenuItem::class)->handle($orphan))->toBe(1)
+        expect(app(RestoreMenuItem::class)->handle(mtEditor(), $orphan))->toBe(1)
             ->and(array_keys(mtTree($menu)))->toEqualCanonicalizing(['Cha', 'Bên cạnh', 'Con 1', 'Con mồ côi'])
             ->and(MenuItem::query()->where('menu_id', $menu->id)->whereNull('parent_id')->orderBy('position')->pluck('position')->all())->toBe([0, 1, 2, 3]);
+    });
+});
+
+it('refuses to add a sub-item under an item another editor has trashed, or to move a trashed item', function (): void {
+    $other = menuEditor(1);
+
+    mtIn(1, function () use ($other): void {
+        $menu = mtMenu();
+        $parent = mtItem($menu, 'Cha');
+        $live = mtItem($menu, 'Bên cạnh');
+        $gone = mtItem($menu, 'Đã xoá');
+
+        // The screen still holds both items; another editor moves them to the trash meanwhile.
+        app(DeleteMenuItem::class)->handle($other, $parent);
+        app(DeleteMenuItem::class)->handle($other, $gone);
+
+        expect(mtRefusal(fn () => mtItem($menu, 'Con', $parent)))->toBe('parent_invalid')
+            ->and(mtRefusal(fn () => app(MoveMenuItem::class)->handle(mtEditor(), $live, $parent, 0)))->toBe('parent_invalid')
+            ->and(mtRefusal(fn () => app(MoveMenuItem::class)->handle(mtEditor(), $gone, null, 0)))->toBe('item_invalid')
+            ->and(mtTree($menu))->toBe(['Bên cạnh' => []])
+            ->and(MenuItem::withTrashed()->count())->toBe(3);
     });
 });
 
@@ -395,8 +485,8 @@ it('purges items trashed more than 30 days ago with their branch, keeps newer on
             $oldChild = mtItem($menu, 'Cũ con', $old);
             $recent = mtItem($menu, 'Mới');
             $live = mtItem($menu, 'Còn');
-            app(DeleteMenuItem::class)->handle($old);
-            app(DeleteMenuItem::class)->handle($recent);
+            app(DeleteMenuItem::class)->handle(mtEditor(), $old);
+            app(DeleteMenuItem::class)->handle(mtEditor(), $recent);
             MenuItem::onlyTrashed()->whereKey([$old->id, $oldChild->id])->update(['deleted_at' => now()->subDays(31)]);
             MenuItem::onlyTrashed()->whereKey($recent->id)->update(['deleted_at' => now()->subDays(29)]);
 
@@ -421,13 +511,13 @@ it('purges items trashed more than 30 days ago with their branch, keeps newer on
 it('never reaches another site\'s trash: restore from site A refuses site B\'s item', function (): void {
     $foreign = mtIn(2, function (): MenuItem {
         $item = mtItem(mtMenu(), 'Của B');
-        app(DeleteMenuItem::class)->handle($item);
+        app(DeleteMenuItem::class)->handle(mtEditor(), $item);
 
         return MenuItem::onlyTrashed()->findOrFail($item->id);
     });
 
     mtIn(1, function () use ($foreign): void {
-        expect(mtRefusal(fn () => app(RestoreMenuItem::class)->handle($foreign)))->toBe('item_invalid')
+        expect(mtRefusal(fn () => app(RestoreMenuItem::class)->handle(mtEditor(), $foreign)))->toBe('item_invalid')
             ->and(MenuItem::onlyTrashed()->count())->toBe(0);
     });
 

@@ -563,16 +563,18 @@ it('answers every address a deleted category leaves behind with a 301', function
 });
 
 it('points menu links at the category the items moved to, in the menu trash too, and leaves them when there is none', function (): void {
-    twSiteOne(function (): void {
+    $editor = menuEditor(1);
+
+    twSiteOne(function () use ($editor): void {
         $news = twCreate('Tin tức');
         $events = twCreate('Sự kiện', $news);
         $talks = twCreate('Hội thảo', $news);
         $jobs = twCreate('Tuyển dụng');
         $menu = app(SaveMenu::class)->handle(null, 'Menu chính');
-        $toEvents = app(SaveMenuItem::class)->handle($menu, null, new MenuItemData('taxonomy', $events->id));
-        $toJobs = app(SaveMenuItem::class)->handle($menu, null, new MenuItemData('taxonomy', $jobs->id));
-        $trashedToEvents = app(SaveMenuItem::class)->handle($menu, null, new MenuItemData('taxonomy', $events->id));
-        app(DeleteMenuItem::class)->handle($trashedToEvents);
+        $toEvents = app(SaveMenuItem::class)->handle($editor, $menu, null, new MenuItemData('taxonomy', $events->id));
+        $toJobs = app(SaveMenuItem::class)->handle($editor, $menu, null, new MenuItemData('taxonomy', $jobs->id));
+        $trashedToEvents = app(SaveMenuItem::class)->handle($editor, $menu, null, new MenuItemData('taxonomy', $events->id));
+        app(DeleteMenuItem::class)->handle($editor, $trashedToEvents);
 
         $result = app(DeleteTaxonomy::class)->handle($events, CategoryItemsOnDelete::Reassign, $talks);
         app(DeleteTaxonomy::class)->handle($jobs, CategoryItemsOnDelete::Detach);

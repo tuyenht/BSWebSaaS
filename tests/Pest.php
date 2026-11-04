@@ -5,6 +5,7 @@ use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Identity\Models\User;
 use App\Modules\Monitoring\Jobs\SendErrorNotice;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Rbac\Models\Permission;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\Tenancy;
@@ -111,6 +112,21 @@ function grantRole(User $user, string $name, array $permissions): void
     $role = Role::findOrCreate($name, PermissionRegistry::GUARD);
     $role->syncPermissions($permissions);
     $user->assignRole($role);
+}
+
+/**
+ * A new user who may manage $site's menus. Call OUTSIDE any site context: it enters the site
+ * itself (an inner Tenancy::enter would clear the outer one's site when it returns).
+ */
+function menuEditor(int $site): User
+{
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+    Permission::findOrCreate('menus.manage', PermissionRegistry::GUARD);
+    $user = User::factory()->create();
+    app(Tenancy::class)->enter($site, fn () => grantRole($user, 'menu-editor', ['menus.manage']));
+    app(TeamContext::class)->forget();
+
+    return $user->fresh() ?? $user;
 }
 
 /*

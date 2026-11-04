@@ -747,10 +747,11 @@ it('stops the whole load when a post is filed under a moving category after the 
 
 it('replaces a menu with its trash on a forced re-apply, the trashed items kept in the backup', function (): void {
     ContentPacks::load();
-    $trashed = ContentPacks::in($this->siteId, function (): int {
+    $editor = menuEditor($this->siteId);
+    $trashed = ContentPacks::in($this->siteId, function () use ($editor): int {
         $menuId = MenuAssignment::query()->where('region_key', 'primary')->where('locale', 'vi')->value('menu_id');
         $item = MenuItem::query()->where('menu_id', $menuId)->whereNull('parent_id')->orderBy('position')->firstOrFail();
-        app(DeleteMenuItem::class)->handle($item);
+        app(DeleteMenuItem::class)->handle($editor, $item);
 
         return $item->id;
     });

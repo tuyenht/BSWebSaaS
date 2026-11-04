@@ -954,3 +954,17 @@ it('counts a category picture as in use, in the detail list and in the used / un
             ->and($unused->pluck('id')->all())->toBe([$free->id]);
     });
 });
+
+it('names a use with no name in the asked language in plain words, never by its row number', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $picture = seedPickerMedia('cat', ['storage_key' => 's/library/cat.jpg']);
+        Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0, 'cover_media_id' => $picture->id])
+            ->translations()->create(['locale' => 'vi', 'name' => 'Tin tức', 'slug' => 'tin-tuc']);
+        Entry::query()->create(['type' => 'post', 'status' => 'draft', 'meta' => ['image_url' => 's/library/cat.jpg']]);
+
+        $labels = array_column(app(MediaUsageLocator::class)->usagesFor($picture, 'en'), 'label', 'kind');
+
+        expect($labels)->toBe(['post' => __('entries.untitled'), 'category' => __('catalog.untitled')])
+            ->and(implode(' ', $labels))->not->toContain('#');
+    });
+});

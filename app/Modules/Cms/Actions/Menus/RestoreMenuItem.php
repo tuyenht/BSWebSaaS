@@ -10,8 +10,11 @@ use App\Modules\Cms\Exceptions\MenuChangeRejectedException;
 use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Navigation\MenuRules;
 use App\Modules\Cms\Navigation\MenuTree;
+use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Support\Cast;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * "Khôi phục": bring an item back from the menu's trash with the branch that was removed with it
@@ -20,7 +23,7 @@ use Illuminate\Support\Facades\DB;
  * position; when the parent is in the trash too, or already deleted for good, or the tree there
  * would grow past MenuRules::MAX_DEPTH levels, it goes to the end of the top level of the same
  * menu instead, so it never becomes an item the tree cannot show. The siblings are renumbered. One transaction,
- * serialised with the other tree edits of the menu. Who may manage menus is the caller's check.
+ * serialised with the other tree edits of the menu. Only someone who may manage menus can restore.
  * Returns how many items came back.
  */
 final readonly class RestoreMenuItem
@@ -28,10 +31,13 @@ final readonly class RestoreMenuItem
     use EditsMenuTree;
 
     /**
+     * @throws AuthorizationException
      * @throws MenuChangeRejectedException
      */
-    public function handle(MenuItem $item): int
+    public function handle(User $actor, MenuItem $item): int
     {
+        Gate::forUser($actor)->authorize('menus.manage');
+
         return DB::transaction(function () use ($item): int {
             $this->lockMenu($item->menu_id);
 

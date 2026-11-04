@@ -85,13 +85,15 @@ final readonly class MenuResolver
     }
 
     /**
-     * The menu each region shows for the active locale, plus the locale it was found under. For
-     * each locale in turn — the active one, then the site's default, so an untranslated region is
-     * never a dead-end — a region shows its own menu, or, when it follows another region
-     * ("Dùng trình đơn chung"), that region's own menu in the SAME locale: the follow is read
-     * before the fallback to the default language. One hop only: a followed region that itself
-     * follows (or shows nothing) leaves the region to the next locale. One query for every region
-     * and every region they follow. A region with no menu in either locale is left out.
+     * The menu each region shows for the active locale, plus the locale it was found under. The
+     * region's own row is taken for the active locale, else the site's default, so an untranslated
+     * region is never a dead-end. A row with a menu shows that menu. A row that follows another
+     * region ("Dùng trình đơn chung") shows what the followed region shows to this visitor: its own
+     * menu in the active locale, else in the default one — so a follow set up in the default
+     * language still shows the followed region's menu in the visitor's language. One hop only: a
+     * followed row that itself follows is not walked. When the follow finds nothing, the region's
+     * row for the next locale is tried. One query for every region and every region they follow
+     * (in either locale). A region with no menu at all is left out.
      *
      * @param  list<string>  $regions
      * @return array<string, array{menu: int, locale: string}>
@@ -119,14 +121,21 @@ final readonly class MenuResolver
 
         $chosen = [];
         foreach ($regions as $region) {
-            foreach ($locales as $candidate) {
-                $row = $rows[$region][$candidate] ?? null;
-                if ($row !== null && $row->menu_id === null && $row->same_as_region !== null) {
-                    $row = $rows[$row->same_as_region][$candidate] ?? null;
-                }
-                if ($row !== null && $row->menu_id !== null) {
-                    $chosen[$region] = ['menu' => $row->menu_id, 'locale' => $candidate];
+            foreach ($locales as $own) {
+                $row = $rows[$region][$own] ?? null;
+                if ($row?->menu_id !== null) {
+                    $chosen[$region] = ['menu' => $row->menu_id, 'locale' => $own];
                     break;
+                }
+                if ($row?->same_as_region === null) {
+                    continue;
+                }
+                foreach ($locales as $candidate) {
+                    $followed = $rows[$row->same_as_region][$candidate] ?? null;
+                    if ($followed?->menu_id !== null) {
+                        $chosen[$region] = ['menu' => $followed->menu_id, 'locale' => $candidate];
+                        break 2;
+                    }
                 }
             }
         }

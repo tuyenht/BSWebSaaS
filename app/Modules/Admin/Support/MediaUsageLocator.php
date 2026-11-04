@@ -44,7 +44,7 @@ final class MediaUsageLocator
             $usages[] = [
                 'kind' => 'product',
                 'role' => 'gallery',
-                'label' => $translation !== null ? $translation->name : '#'.$product->id,
+                'label' => $translation !== null ? $translation->name : __('catalog.untitled'),
                 'url' => route('admin.catalog.edit', ['ulid' => $product->ulid]),
             ];
         }
@@ -60,7 +60,7 @@ final class MediaUsageLocator
             $usages[] = [
                 'kind' => 'category',
                 'role' => 'cover',
-                'label' => $translation !== null ? $translation->name : '#'.$category->id,
+                'label' => $translation !== null ? $translation->name : __('catalog.untitled'),
                 'url' => route('admin.taxonomies.index'),
             ];
         }
@@ -86,7 +86,7 @@ final class MediaUsageLocator
         return [
             'kind' => $entry->type === 'page' ? 'page' : 'post',
             'role' => $role,
-            'label' => $translation !== null ? $translation->title : '#'.$entry->id,
+            'label' => $translation !== null ? $translation->title : __('entries.untitled'),
             'url' => route('admin.entries.edit', ['ulid' => $entry->ulid]),
         ];
     }

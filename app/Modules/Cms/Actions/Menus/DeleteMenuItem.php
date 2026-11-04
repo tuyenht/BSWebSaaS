@@ -9,22 +9,30 @@ use App\Modules\Cms\Actions\Menus\Concerns\EditsMenuTree;
 use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Navigation\MenuRules;
 use App\Modules\Cms\Navigation\MenuTree;
+use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Support\Cast;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Remove an item together with its whole branch: they move to the menu's trash (deleted_at), all
  * with the same time, in one transaction. The children are not promoted to the top level. The
  * remaining siblings are renumbered. The trash keeps them MenuRules::TRASH_DAYS days, for
  * {@see RestoreMenuItem}, before `menus:purge-trash` deletes them for good. Returns how many
- * items were removed, so the screen can say so.
+ * items were removed, so the screen can say so. Only someone who may manage menus can remove.
  */
 final readonly class DeleteMenuItem
 {
     use EditsMenuTree;
 
-    public function handle(MenuItem $item): int
+    /**
+     * @throws AuthorizationException
+     */
+    public function handle(User $actor, MenuItem $item): int
     {
+        Gate::forUser($actor)->authorize('menus.manage');
+
         return DB::transaction(function () use ($item): int {
             $this->lockMenu($item->menu_id);
             $branch = MenuTree::of($item->menu_id)->branchOf($item->id);

@@ -18,8 +18,10 @@ use Illuminate\Console\Command;
  * Runs site by site inside Tenancy::enter, like media:purge-trash, so RLS and the model's scope
  * pick each site's own trash (a CLI has no site context otherwise). A site's purge is one
  * transaction; the label rows go with their items (foreign key cascade). Live items are never
- * touched: one under a purged item (which no delete leaves behind) would move to the top level
- * through the parent foreign key, not disappear.
+ * touched, and none sits under a trashed one: a delete takes the whole branch, adding or moving an
+ * item under a trashed one is refused, and a restore whose parent is in the trash goes to the top
+ * level. Should one be there anyway, it moves to the top level through the parent foreign key
+ * (SET NULL); it does not disappear.
  */
 final class PurgeTrashedMenuItems extends Command
 {
