@@ -17,6 +17,11 @@ Schedule::command('media:purge-trash')->daily()->withoutOverlapping();
 // each with its whole branch. Runs on the `scheduler` container (docker compose schedule:work).
 Schedule::command('menus:purge-trash')->daily()->withoutOverlapping();
 
+// Re-count every category's posts and products and correct a drifted total (logged per drift).
+// 20:15 UTC is 03:15 in Vietnam: the sites are quiet, and the purges (00:00 UTC) and the audit
+// month check (03:00 UTC) run hours apart from it.
+Schedule::command('cms:reconcile-category-counts')->dailyAt('20:15')->timezone('UTC')->withoutOverlapping();
+
 // Publish scheduled entries the moment their slot arrives (status=scheduled, published_at<=now).
 // Runs on the `scheduler` container (docker compose schedule:work).
 Schedule::command('entries:publish-due')->everyMinute()->withoutOverlapping();

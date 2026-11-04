@@ -168,6 +168,22 @@ it('does not bring back what staff deleted unless the item is forced, and then r
         ->and(EntryTranslation::query()->where('slug', 'thiet-ke-mau')->count())->toBe(1));
 });
 
+it('keeps the category totals through a load, a staff trash and a forced restore', function (): void {
+    $dichVu = fn (): int => ContentPacks::in($this->siteId, fn (): int => (int) Taxonomy::query()
+        ->whereKey(TaxonomyTranslation::query()->where('slug', 'dich-vu')->value('taxonomy_id'))->value('items_count'));
+
+    ContentPacks::load();
+    expect($dichVu())->toBe(1)->and(categoryCountDrift($this->siteId))->toBe([]);
+
+    ContentPacks::in($this->siteId, fn () => Entry::query()->whereKey(EntryTranslation::query()->where('slug', 'thiet-ke-mau')->value('entry_id'))->firstOrFail()->delete());
+    expect($dichVu())->toBe(0);
+
+    [$exit, $output] = ContentPacks::load('demo-co', ['post:thiet-ke-mau']);
+    expect($exit)->toBe(0, $output)
+        ->and($dichVu())->toBe(1)
+        ->and(categoryCountDrift($this->siteId))->toBe([]);
+});
+
 it('leaves a page with a pending draft alone', function (): void {
     ContentPacks::load();
     ContentPacks::in($this->siteId, fn () => EntryDraft::query()->create([

@@ -389,6 +389,9 @@ it('is idempotent (re-run does not duplicate)', function (): void {
         // Exactly 5 admin content sections: pages + posts + products + services + projects
         expect(ContentSection::query()->count())->toBe(5);
     });
+
+    // The category totals follow every seeded post.
+    expect(categoryCountDrift($site->id))->toBe([]);
 });
 
 it('repositions the tin-tuc menu item to position 8 (after all An Vinh sections)', function (): void {
@@ -524,6 +527,9 @@ it('re-seeding after promotion and a trash purge does not resurrect product-post
         // Other content seeded normally (the guard is products-only).
         expect(TaxonomyTranslation::query()->where('slug', 'du-an')->exists())->toBeTrue();
     });
+
+    // The category totals follow the promotion (posts trashed, products filed) and the re-seed.
+    expect(categoryCountDrift($site->id))->toBe([]);
 });
 
 it('neither duplicates nor brings back the menu items staff moved to the trash when run again', function (): void {

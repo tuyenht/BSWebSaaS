@@ -18,6 +18,7 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Cms\Support\CategoryItemCounts;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
 use App\Modules\Cms\Validation\EntryContentRules;
@@ -849,6 +850,9 @@ final class Index extends Component
      *   tab, or forged. A row the action refuses (AuthorizationException) is skipped too.
      * - Each row runs in its own savepoint, so a row that fails leaves nothing half-done; it is
      *   reported for the logs and counted, and the rest carry on.
+     * - The category totals the rows' changes move (trash, restore, purge) are gathered over the
+     *   run and written once per category at its end (CategoryItemCounts::batch); a row whose
+     *   savepoint rolled back drops its share.
      * - A deadlock or serialization failure is different. PostgreSQL has aborted the transaction,
      *   and Laravel rethrows it out of a nested transaction WITHOUT rolling back to the savepoint,
      *   so not one more statement could run. The whole run is rolled back to the savepoint taken
@@ -867,12 +871,15 @@ final class Index extends Component
         }
 
         $tally = [$doneKey => 0, $skippedKey => 0, 'entries.bulk_governed' => 0, 'entries.bulk_failed' => 0];
+        $counts = app(CategoryItemCounts::class);
 
         DB::beginTransaction();
         try {
-            foreach ($this->selectedEntries() as $entry) {
-                $tally[$this->bulkRow($entry, $eligible, $action, $doneKey, $skippedKey)]++;
-            }
+            $counts->batch(function () use (&$tally, $counts, $eligible, $action, $doneKey, $skippedKey): void {
+                foreach ($this->selectedEntries() as $entry) {
+                    $tally[$this->bulkRow($counts, $entry, $eligible, $action, $doneKey, $skippedKey)]++;
+                }
+            });
             DB::commit();
         } catch (Throwable $e) {
             DB::rollBack();
@@ -902,14 +909,14 @@ final class Index extends Component
      * @param  callable(Entry): bool  $action
      * @return string the tally key the row counts under
      */
-    private function bulkRow(Entry $entry, callable $eligible, callable $action, string $doneKey, string $skippedKey): string
+    private function bulkRow(CategoryItemCounts $counts, Entry $entry, callable $eligible, callable $action, string $doneKey, string $skippedKey): string
     {
         if (! $eligible($entry)) {
             return $skippedKey;
         }
 
         try {
-            return DB::transaction(fn (): bool => $action($entry)) ? $doneKey : $skippedKey;
+            return $counts->batch(fn (): bool => DB::transaction(fn (): bool => $action($entry))) ? $doneKey : $skippedKey;
         } catch (WorkflowGovernedException) {
             return 'entries.bulk_governed';   // left as is: only the editor's approval block may move it
         } catch (AuthorizationException) {
@@ -934,12 +941,11 @@ final class Index extends Component
      */
     private function selectedEntries(): EloquentCollection
     {
-        // For a member limited to some categories every rule reads the row's primary category:
-        // load it with the rows rather than once per row.
-        $limited = app(CategoryScopes::class)->isLimited($this->actingUser());
-
+        // The row's primary category is read by every rule for a member limited to some
+        // categories, and by the category totals a trash, restore or purge moves: load it with the
+        // rows (one query) rather than once per row.
         return Entry::withTrashed()->whereIn('ulid', $this->selected)->orderBy('id')->lockForUpdate()
-            ->when($limited, fn (Builder $rows) => $rows->with(self::primaryCategoryOnly()))
+            ->with(self::primaryCategoryOnly())
             ->get();
     }
 

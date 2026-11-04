@@ -73,7 +73,6 @@ it('writes the entry taxonomy pivot directly only in the known places', function
     $allowed = [
         'app/Modules/Cms/Concerns/HasCategoryTaxonomies.php',   // assignCategories() itself
         'app/Modules/Cms/Actions/DuplicateEntry.php',           // copies facet terms only (positions ≥ FACET_POSITION_BASE)
-        'app/Modules/Provisioning/Actions/SeedMeasurementSite.php', // product categories (product_taxonomies), not entries
     ];
 
     $offenders = [];

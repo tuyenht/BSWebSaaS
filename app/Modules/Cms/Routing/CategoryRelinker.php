@@ -6,6 +6,7 @@ namespace App\Modules\Cms\Routing;
 
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Support\CategoryItemCounts;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\PermalinkConfig;
@@ -20,7 +21,8 @@ use Illuminate\Support\Facades\DB;
  *    (pivot position 0) is in the changed branch — RouteSync moves each route and leaves a 301;
  *  - refile(): before categories are deleted, move their items onto another category (which takes
  *    the deleted one's rank) or detach them, renumber each item's categories 0..n-1 so position 0 is
- *    a primary again — facet terms from FACET_POSITION_BASE up are never touched — then re-sync.
+ *    a primary again — facet terms from FACET_POSITION_BASE up are never touched — then re-sync;
+ *    the categories' item totals follow every main category it changes (CategoryItemCounts).
  * Paths are re-synced only for kinds whose permalink preset can carry the change (follows()): on a
  * site where everything is flat, a category change touches no item route.
  *
@@ -42,6 +44,7 @@ final readonly class CategoryRelinker
         private SectionResolver $sections,
         private RouteSync $routes,
         private CurrentSite $site,
+        private CategoryItemCounts $counts,
     ) {}
 
     /**
@@ -95,6 +98,13 @@ final readonly class CategoryRelinker
             return ['items' => $items, 'routes' => $routes];
         }
 
+        // The totals move once, after every item has been locked (items, then categories: the order
+        // an editor save keeps), so a save cannot slip in between the two readings of an item. A
+        // delete that lifts sub-categories has already written those category rows: a save moving an
+        // item to or from one of them at that moment is a deadlock Postgres breaks by rolling one
+        // side back (an error to retry, never a wrong total).
+        $before = [];
+        $now = [];
         foreach ($this->kinds() as $kind) {
             $follows = $this->follows($kind['section'], [CategoryChange::Refiled]);
             $after = 0;
@@ -114,7 +124,18 @@ final readonly class CategoryRelinker
                 }
                 $after = max($chunk);
 
+                // The main category of an item can change here (moved onto the target, or the next
+                // one moving up): the totals follow the difference, read before and after. The item
+                // rows are locked first, so a save of one of them waits instead of being counted twice.
+                DB::table($kind['items'])
+                    ->where('site_id', $this->site->id())
+                    ->whereIn('id', $chunk)
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->pluck('id');
+                $before = self::sum($before, $this->counts->primaries($kind['pivot'], $chunk));
                 $this->rewrite($kind['pivot'], $kind['column'], $deleted, $targetId, $chunk);
+                $now = self::sum($now, $this->counts->primaries($kind['pivot'], $chunk));
                 $items += count($chunk);
 
                 if ($follows) {
@@ -122,8 +143,25 @@ final readonly class CategoryRelinker
                 }
             } while (count($chunk) === self::CHUNK);
         }
+        $this->counts->settle($before, $now);
 
         return ['items' => $items, 'routes' => $routes];
+    }
+
+    /**
+     * Two category → count maps added together.
+     *
+     * @param  array<int, int>  $into
+     * @param  array<int, int>  $add
+     * @return array<int, int>
+     */
+    private static function sum(array $into, array $add): array
+    {
+        foreach ($add as $id => $count) {
+            $into[$id] = ($into[$id] ?? 0) + $count;
+        }
+
+        return $into;
     }
 
     /**
@@ -178,12 +216,12 @@ final readonly class CategoryRelinker
      * Cms's own entries, then every registered kind. A null section means posts: their preset
      * depends on the section their primary category puts them in.
      *
-     * @return list<array{pivot: string, column: string, section: string|null, resync: Closure(list<int>): int}>
+     * @return list<array{pivot: string, column: string, section: string|null, resync: Closure(list<int>): int, items: string}>
      */
     private function kinds(): array
     {
         return [
-            ['pivot' => 'entry_taxonomies', 'column' => 'entry_id', 'section' => null, 'resync' => $this->resyncEntries(...)],
+            ['pivot' => 'entry_taxonomies', 'column' => 'entry_id', 'section' => null, 'resync' => $this->resyncEntries(...), 'items' => 'entries'],
             ...array_values($this->dependents->all()),
         ];
     }

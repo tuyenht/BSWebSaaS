@@ -44,6 +44,12 @@ class Entry extends Model
     #[\Override]
     protected $guarded = [];
 
+    /** Only posts count in their main category's total: the post list is where it is read. */
+    public function countsInCategoryTotals(): bool
+    {
+        return $this->type === 'post';
+    }
+
     /**
      * @return HasMany<EntryTranslation, $this>
      */

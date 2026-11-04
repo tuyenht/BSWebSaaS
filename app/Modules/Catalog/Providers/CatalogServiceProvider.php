@@ -72,6 +72,7 @@ final class CatalogServiceProvider extends ServiceProvider
             'products',
             /** @param list<int> $ids */
             static fn (array $ids): int => app(ProductRoutes::class)->resync($ids),
+            items: 'products',
         );
     }
 }

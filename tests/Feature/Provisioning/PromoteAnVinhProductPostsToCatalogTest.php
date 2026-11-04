@@ -173,6 +173,9 @@ it('is idempotent — a second run creates no duplicates', function (): void {
         expect(ProductTranslation::query()->count())->toBe(2);
         expect(SiteRoute::query()->where('path', 'like', '/san-pham/%')->count())->toBe(2);
     });
+
+    // The category totals moved with the posts into the trash and the products onto their categories.
+    expect(categoryCountDrift($site->id))->toBe([]);
 });
 
 it('updates an existing Product by slug instead of duplicating it', function (): void {
