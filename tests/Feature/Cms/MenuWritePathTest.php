@@ -15,6 +15,8 @@ use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Navigation\MenuResolver;
+use App\Modules\Identity\Models\User;
+use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteLocale;
 use Illuminate\Support\Facades\DB;
@@ -28,9 +30,22 @@ use Illuminate\Support\Facades\DB;
  */
 
 beforeEach(function (): void {
+    truncateRbac();
     seedTenancy(); // sites 1 (a.test) / 2 (b.test), Vietnamese default
+    $this->artisan('rbac:sync')->assertSuccessful();
+    app(TeamContext::class)->forget();
     DB::connection('pgsql_admin')->statement('truncate audit_logs restart identity');
 });
+
+/** Someone who may manage site 1's menus (made outside the site's context). */
+function menuManager(): User
+{
+    $user = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'menu-manager', ['menus.manage']));
+    app(TeamContext::class)->forget();
+
+    return $user->fresh() ?? $user;
+}
 
 /** Run inside site 1. */
 function inSiteOne(Closure $callback): mixed
@@ -207,30 +222,34 @@ it('deletes an item together with its whole branch', function (): void {
 });
 
 it('binds a menu to a region per language, and the website shows it', function (): void {
-    inSiteOne(function (): void {
+    $actor = menuManager();
+
+    inSiteOne(function () use ($actor): void {
         $menu = newMenu();
         addItem($menu, homeLink());
         $footer = newMenu('Menu chân trang');
 
-        app(AssignMenu::class)->handle('primary', 'vi', $menu);
+        app(AssignMenu::class)->handle($actor, 'primary', 'vi', $menu);
         expect(app(MenuResolver::class)->resolve('primary', 'vi', 'vi', '/')[0]['label'])->toBe('Trang chủ');
 
-        app(AssignMenu::class)->handle('primary', 'vi', $footer);
+        app(AssignMenu::class)->handle($actor, 'primary', 'vi', $footer);
         expect(MenuAssignment::query()->where('region_key', 'primary')->pluck('menu_id')->all())->toBe([$footer->id]);
 
-        app(AssignMenu::class)->handle('primary', 'vi', null);
+        app(AssignMenu::class)->handle($actor, 'primary', 'vi', null);
         expect(MenuAssignment::query()->count())->toBe(0);
 
-        expect(menuRefusal(fn () => app(AssignMenu::class)->handle('Primary Menu!', 'vi', $menu)))->toBe('region_invalid')
-            ->and(menuRefusal(fn () => app(AssignMenu::class)->handle('primary', 'en', $menu)))->toBe('locale_invalid');
+        expect(menuRefusal(fn () => app(AssignMenu::class)->handle($actor, 'Primary Menu!', 'vi', $menu)))->toBe('region_invalid')
+            ->and(menuRefusal(fn () => app(AssignMenu::class)->handle($actor, 'primary', 'en', $menu)))->toBe('locale_invalid');
     });
 });
 
 it('keeps a menu that is still shown unless the deletion is confirmed', function (): void {
-    inSiteOne(function (): void {
+    $actor = menuManager();
+
+    inSiteOne(function () use ($actor): void {
         $menu = newMenu();
         addItem($menu, homeLink());
-        app(AssignMenu::class)->handle('primary', 'vi', $menu);
+        app(AssignMenu::class)->handle($actor, 'primary', 'vi', $menu);
 
         expect(menuRefusal(fn () => app(DeleteMenu::class)->handle($menu)))->toBe('menu_in_use')
             ->and(Menu::query()->count())->toBe(1);
@@ -243,11 +262,13 @@ it('keeps a menu that is still shown unless the deletion is confirmed', function
 });
 
 it('records every change in the audit log', function (): void {
-    inSiteOne(function (): void {
+    $actor = menuManager();
+
+    inSiteOne(function () use ($actor): void {
         $menu = newMenu();
         $item = addItem($menu, homeLink());
         app(MoveMenuItem::class)->handle($item, null, 0);
-        app(AssignMenu::class)->handle('primary', 'vi', $menu);
+        app(AssignMenu::class)->handle($actor, 'primary', 'vi', $menu);
         app(DeleteMenuItem::class)->handle($item);
     });
 

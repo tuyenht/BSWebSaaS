@@ -28,4 +28,11 @@ class MenuAssignment extends Model
 
     #[\Override]
     protected $guarded = [];
+
+    /** @return array<string, string> */
+    #[\Override]
+    protected function casts(): array
+    {
+        return ['menu_id' => 'integer'];
+    }
 }

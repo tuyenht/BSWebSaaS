@@ -85,27 +85,48 @@ final readonly class MenuResolver
     }
 
     /**
-     * The menu bound to each region for the active locale, plus the locale it was found under —
-     * falling back to the site's default locale so an untranslated region is never a dead-end.
-     * One query for every region. A region with no menu in either locale is left out.
+     * The menu each region shows for the active locale, plus the locale it was found under. For
+     * each locale in turn — the active one, then the site's default, so an untranslated region is
+     * never a dead-end — a region shows its own menu, or, when it follows another region
+     * ("Dùng trình đơn chung"), that region's own menu in the SAME locale: the follow is read
+     * before the fallback to the default language. One hop only: a followed region that itself
+     * follows (or shows nothing) leaves the region to the next locale. One query for every region
+     * and every region they follow. A region with no menu in either locale is left out.
      *
      * @param  list<string>  $regions
      * @return array<string, array{menu: int, locale: string}>
      */
     private function menusFor(array $regions, string $locale, string $defaultLocale): array
     {
+        $locales = array_values(array_unique([$locale, $defaultLocale]));
         $assignments = MenuAssignment::query()
-            ->whereIn('region_key', $regions)
-            ->whereIn('locale', array_values(array_unique([$locale, $defaultLocale])))
+            ->whereIn('locale', $locales)
+            ->where(fn (Builder $query) => $query
+                ->whereIn('region_key', $regions)
+                ->orWhereIn('region_key', MenuAssignment::query()
+                    ->whereIn('region_key', $regions)
+                    ->whereIn('locale', $locales)
+                    ->whereNotNull('same_as_region')
+                    ->select('same_as_region')))
             ->orderBy('id')
-            ->get(['region_key', 'locale', 'menu_id']);
+            ->get(['region_key', 'locale', 'menu_id', 'same_as_region']);
+
+        /** @var array<string, array<string, MenuAssignment>> $rows region → locale → its row */
+        $rows = [];
+        foreach ($assignments as $assignment) {
+            $rows[$assignment->region_key][$assignment->locale] ??= $assignment;
+        }
 
         $chosen = [];
-        foreach ([$locale, $defaultLocale] as $candidate) {
-            foreach ($assignments as $assignment) {
-                $region = (string) $assignment->region_key;
-                if ($assignment->locale === $candidate && ! isset($chosen[$region])) {
-                    $chosen[$region] = ['menu' => (int) $assignment->menu_id, 'locale' => $candidate];
+        foreach ($regions as $region) {
+            foreach ($locales as $candidate) {
+                $row = $rows[$region][$candidate] ?? null;
+                if ($row !== null && $row->menu_id === null && $row->same_as_region !== null) {
+                    $row = $rows[$row->same_as_region][$candidate] ?? null;
+                }
+                if ($row !== null && $row->menu_id !== null) {
+                    $chosen[$region] = ['menu' => $row->menu_id, 'locale' => $candidate];
+                    break;
                 }
             }
         }
