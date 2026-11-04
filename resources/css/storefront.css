@@ -4316,8 +4316,8 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 /* ───── Floating contact (theme::partials.floating-contact) ──────────────── */
 /* Round buttons fixed in a corner or along the bottom, or a bottom bar on phones. Every target is
    at least 44 × 44 at every text size; fills come from the page (--fc-fill, contrast-fitted to the
-   white marks). A ghost copy after the footer reserves the buttons' room, so the end of the page
-   always scrolls clear of them. No script. */
+   white marks). The round buttons keep no room at the end of the page; the phone bar does (its
+   ghost copy, below). No script. */
 .sf-fc {
     position: fixed;
     z-index: 40;
@@ -4474,30 +4474,9 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     }
 }
 
-/* The reserved room: the same buttons, invisible, in the page flow after the footer and in its
-   colour, so the end of the page scrolls clear of them at every width and text size. */
-.sf-fc-ghost {
-    display: flex;
-    justify-content: flex-end;
-    padding: 0.625rem var(--fc-ox, 20px) calc(var(--fc-oy, 24px) + env(safe-area-inset-bottom, 0px));
-    background: var(--color-dark);
-}
-
-.sf-fc-ghost .sf-fc__list {
-    max-height: none;
-    visibility: hidden;
-}
-
-.sf-fc-ghost .sf-fc__list--bottom {
-    margin-inline: auto;
-}
-
-.sf-fc-ghost .sf-fc__btn {
-    animation: none;
-    box-shadow: none;
-}
-
-/* Bottom bar (phones only): up to three equal buttons, the label under a small coloured disc. */
+/* Bottom bar (phones only): up to three equal buttons, the label under a small coloured disc. Its
+   ghost copy stays in the page flow after the footer, invisible: exactly the bar's height and
+   safe-area inset at every text size (a label may wrap), so the end of the page scrolls clear. */
 .sf-fc-bar {
     display: none;
 }
@@ -4566,7 +4545,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     padding: 0 0.25rem;
     border-radius: 0.8125rem;
     background: var(--fc-fill, var(--color-dark));
-    color: #fff;
+    color: var(--fc-ink, #fff);
     box-shadow: 0 2px 5px -1px color-mix(in srgb, var(--fc-fill, var(--color-dark)) 67%, transparent);
 }
 
@@ -4607,7 +4586,6 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 
 @media print {
     .sf-fc,
-    .sf-fc-ghost,
     .sf-fc-bar {
         display: none !important;
     }

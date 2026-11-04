@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Livewire;
 
 use App\Modules\Admin\Support\SettingsRepository;
+use App\Modules\Catalog\Support\ProductIndexLink;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use Livewire\Attributes\Authorize;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /**
@@ -46,7 +48,14 @@ final class FloatingContactSettings extends Component
 
     public bool $buyOn = false;
 
-    public string $buyColor = '#ff7a46';
+    public string $buyColor = FloatingContact::BUY_COLOR;
+
+    /**
+     * Whether the site has a product list for "Mua hàng" to open: without one the switch is kept
+     * but the button is shown nowhere (the preview draws what the site draws).
+     */
+    #[Locked]
+    public bool $hasShop = false;
 
     /** @var list<array{key: string, on: bool, value: string, color: string, icon: string, name: string, tips: array<string, string>}> */
     public array $channels = [];
@@ -75,6 +84,7 @@ final class FloatingContactSettings extends Component
     public function mount(): void
     {
         $this->lang = app(SiteLocale::class)->default();
+        $this->hasShop = app(ProductIndexLink::class)->for($this->lang) !== null;
         $this->load(app(SettingsRepository::class)->get('storefront', 'floating_contact'));
         $this->savedSig = $this->signature();
     }
@@ -262,7 +272,7 @@ final class FloatingContactSettings extends Component
             'locales' => $locales,
             'publicLocales' => $siteLocale->public(),
             // The draft as the site would show it, in the language being edited.
-            'preview' => FloatingContact::for(['enabled' => true] + $this->stored(), $this->lang),
+            'preview' => FloatingContact::for(['enabled' => true] + $this->stored(), $this->lang, $this->hasShop ? '#' : null),
         ]);
         $view->title(__('admin.fc.title'));
 
@@ -283,19 +293,24 @@ final class FloatingContactSettings extends Component
             'offset_x' => $this->offsetX,
             'offset_y' => $this->offsetY,
             'buy' => ['enabled' => $this->buyOn, 'color' => $this->buyColor],
-            'channels' => array_map(function (array $c): array {
-                $row = ['key' => $c['key'], 'on' => $c['on'], 'value' => trim($c['value'])];
-                if ($c['color'] !== '') {
-                    $row['color'] = strtolower($c['color']);
+            // Cast, not trusted: a tampered request can put any type in a row, and the draft is
+            // fingerprinted on every render — save() then refuses it with the plain message.
+            'channels' => array_map(function (mixed $c): array {
+                $c = Cast::arr($c);
+                $key = Cast::string($c['key'] ?? null);
+                $row = ['key' => $key, 'on' => ($c['on'] ?? false) === true, 'value' => trim(Cast::string($c['value'] ?? null))];
+                $color = Cast::string($c['color'] ?? null);
+                if ($color !== '') {
+                    $row['color'] = strtolower($color);
                 }
-                if (FloatingContact::typeOf($c['key']) === 'custom') {
-                    $row['icon'] = $c['icon'];
-                    $row['name'] = trim($c['name']);
+                if (FloatingContact::typeOf($key) === 'custom') {
+                    $row['icon'] = Cast::string($c['icon'] ?? null);
+                    $row['name'] = trim(Cast::string($c['name'] ?? null));
                 }
-                $row['tips'] = array_filter(array_map('trim', $c['tips']), fn (string $t): bool => $t !== '');
+                $row['tips'] = array_filter(array_map(fn (mixed $t): string => trim(Cast::string($t)), Cast::arr($c['tips'] ?? null)), fn (string $t): bool => $t !== '');
 
                 return $row;
-            }, $this->channels),
+            }, $this->sent()),
         ];
     }
 
@@ -324,10 +339,11 @@ final class FloatingContactSettings extends Component
         $buy = Cast::arr($raw['buy'] ?? null);
         $this->buyOn = ($buy['enabled'] ?? false) === true;
         $color = Cast::string($buy['color'] ?? null);
-        $this->buyColor = in_array($color, self::BUY_SWATCHES, true) || FloatingContact::color($color) !== null ? $color : '#ff7a46';
+        $this->buyColor = in_array($color, self::BUY_SWATCHES, true) || FloatingContact::color($color) !== null ? $color : FloatingContact::BUY_COLOR;
 
         $this->channels = [];
         $seen = [];
+        $locales = $this->locales();
         foreach (array_slice(array_values(Cast::arr($raw['channels'] ?? null)), 0, FloatingContact::MAX_CHANNELS) as $c) {
             $c = Cast::arr($c);
             $key = Cast::string($c['key'] ?? null);
@@ -336,8 +352,10 @@ final class FloatingContactSettings extends Component
             }
             $seen[$key] = true;
             $tips = [];
+            // Labels of a language the site no longer has are dropped: they cannot be edited, and
+            // keeping them would make every save look tampered with.
             foreach (Cast::arr($c['tips'] ?? null) as $lc => $tip) {
-                if (is_string($tip)) {
+                if (is_string($tip) && in_array((string) $lc, $locales, true)) {
                     $tips[(string) $lc] = $tip;
                 }
             }
@@ -359,11 +377,16 @@ final class FloatingContactSettings extends Component
         }
     }
 
-    /** A first visit: off, the call, Zalo, Messenger and email channels ready, SMS off; the site's own phone and email filled in. */
+    /**
+     * A first visit: off, the call, Zalo, Messenger and email channels ready, SMS off; the site's
+     * own phone (a mobile, landline or hotline) fills the call channel, Zalo only when it is a
+     * mobile, and the site's email the email channel.
+     */
     private function loadDefaults(): void
     {
         $brand = app(SiteIdentity::class)->for(app(SiteLocale::class)->default()) ?? [];
         $phone = FloatingContact::clean('phone', Cast::string($brand['phone'] ?? null)) ?? '';
+        $zalo = FloatingContact::clean('zalo', Cast::string($brand['phone'] ?? null)) ?? '';
         $email = FloatingContact::clean('email', Cast::string($brand['email'] ?? null)) ?? '';
 
         $this->enabled = false;
@@ -372,12 +395,13 @@ final class FloatingContactSettings extends Component
         $this->offsetX = FloatingContact::DEFAULT_OFFSET_X;
         $this->offsetY = FloatingContact::DEFAULT_OFFSET_Y;
         $this->buyOn = false;
-        $this->buyColor = '#ff7a46';
+        $this->buyColor = FloatingContact::BUY_COLOR;
         $this->channels = [];
         foreach (FloatingContact::CORE as $key) {
             $row = $this->row($key, $key !== 'sms');
             $row['value'] = match ($key) {
-                'phone', 'zalo' => $phone,
+                'phone' => $phone,
+                'zalo' => $zalo,
                 'email' => $email,
                 default => '',
             };
@@ -412,7 +436,7 @@ final class FloatingContactSettings extends Component
 
     /**
      * Every problem of the draft, field → plain message. A channel that is switched on and has a
-     * value must pass its type's check; names and labels are capped; anything else (an unknown or
+     * value must pass its type's check; values (on or off), names and labels are capped; anything else (an unknown or
      * repeated channel, a value no control can produce) means the page was tampered with.
      *
      * @return array<string, string>
@@ -475,7 +499,9 @@ final class FloatingContactSettings extends Component
 
         $errors = [];
         $value = trim($c['value']);
-        if ($value !== '' && ($c['on'] ?? false) === true && FloatingContact::clean($type, $value) === null) {
+        if (mb_strlen($value) > FloatingContact::MAX_VALUE) {
+            $errors["channels.{$i}.value"] = __('admin.fc.err_long', ['max' => FloatingContact::MAX_VALUE]);
+        } elseif ($value !== '' && ($c['on'] ?? false) === true && FloatingContact::clean($type, $value) === null) {
             $errors["channels.{$i}.value"] = __('admin.fc.err_value', ['how' => __('admin.fc.how.'.$type)]);
         }
         if (is_string($c['color'] ?? null) && $c['color'] !== '' && FloatingContact::color($c['color']) === null) {

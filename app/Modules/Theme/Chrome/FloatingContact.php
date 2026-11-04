@@ -80,6 +80,9 @@ final class FloatingContact
     /** Colour of a channel of the site's own when none is chosen: a fixed hue, never the admin brand. */
     public const string CUSTOM_COLOR = '#1e40af';
 
+    /** Colour of the "Mua hàng" button when none (or a bad one) is stored. */
+    public const string BUY_COLOR = '#ff7a46';
+
     /** The stored value checked and tidied for its type, or null when it does not pass. */
     public static function clean(string $type, mixed $value): ?string
     {
@@ -92,8 +95,9 @@ final class FloatingContact
         }
 
         return match ($type) {
-            'phone', 'sms', 'whatsapp', 'viber' => self::phone($value),
-            'zalo' => preg_match('~\A(?:https?://)?(?:www\.)?zalo\.me/(\d{6,20})/?\z~i', $value, $m) === 1 ? $m[1] : self::phone($value),
+            'phone', 'sms' => self::phone($value, true, false),
+            'whatsapp', 'viber' => self::phone($value, false, true),
+            'zalo' => preg_match('~\A(?:https?://)?(?:www\.)?zalo\.me/(\d{6,20})/?\z~i', $value, $m) === 1 ? $m[1] : self::mobile($value),
             'messenger' => self::messenger($value),
             'email' => filter_var($value, FILTER_VALIDATE_EMAIL) !== false ? $value : null,
             'telegram' => self::telegram($value),
@@ -137,33 +141,51 @@ final class FloatingContact
     }
 
     /**
+     * Whether the stored setting would show the "Mua hàng" button (on, the phone bar, its switch
+     * on) — the only case where the caller needs to look up the site's product list.
+     */
+    public static function wantsShop(mixed $raw): bool
+    {
+        return is_array($raw) && ($raw['enabled'] ?? false) === true && ($raw['theme'] ?? null) === 'horizontal'
+            && is_array($raw['buy'] ?? null) && ($raw['buy']['enabled'] ?? false) === true;
+    }
+
+    /**
      * The setting in the shape the theme prints, for a page in $locale; null when it is off or
      * has no channel to show. `label` is the hover label in the page's language (null = the
      * channel's own default, which the theme words); custom channels fall back to their name.
+     * `buy` is the "Mua hàng" button at the end of the phone bar: only when its switch is on and
+     * the site has a product list to send people to ($shopHref); it then takes the third place.
      *
      * @param  mixed  $raw  the stored value (an array when set)
-     * @return array{theme: string, position: string, offset_x: int, offset_y: int, buttons: list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, pulse: bool}>, bar: list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, pulse: bool}>}|null
+     * @param  string|null  $shopHref  the site's product list, or null when it has none
+     * @return array{theme: string, position: string, offset_x: int, offset_y: int, buttons: list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, pulse: bool}>, bar: list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, pulse: bool}>, buy: array{href: string, fill: string, ink: string, icon: string}|null}|null
      */
-    public static function for(mixed $raw, string $locale): ?array
+    public static function for(mixed $raw, string $locale, ?string $shopHref = null): ?array
     {
         if (! is_array($raw) || ($raw['enabled'] ?? false) !== true) {
             return null;
         }
 
+        $theme = in_array($raw['theme'] ?? null, self::THEMES, true) ? (string) $raw['theme'] : 'vertical';
+        $buy = $shopHref !== null && self::wantsShop($raw) ? self::buy($raw['buy'], $shopHref) : null;
+        $barMax = $buy === null ? self::BAR_MAX : self::BAR_MAX - 1;
+
         $buttons = [];
         $bar = [];
+        $seen = [];
         foreach (array_slice(is_array($raw['channels'] ?? null) ? array_values($raw['channels']) : [], 0, self::MAX_CHANNELS) as $channel) {
             $button = is_array($channel) ? self::button($channel, $locale) : null;
-            if ($button === null) {
+            if ($button === null || isset($seen[$button['key']])) {
                 continue;
             }
+            $seen[$button['key']] = true;
             $buttons[] = $button;
-            if (! in_array($button['key'], self::BAR_HIDDEN, true) && count($bar) < self::BAR_MAX) {
+            if (! in_array($button['key'], self::BAR_HIDDEN, true) && count($bar) < $barMax) {
                 $bar[] = $button;
             }
         }
 
-        $theme = in_array($raw['theme'] ?? null, self::THEMES, true) ? (string) $raw['theme'] : 'vertical';
         if ($buttons === [] || ($theme === 'horizontal' && $bar === [])) {
             return null;
         }
@@ -175,7 +197,25 @@ final class FloatingContact
             'offset_y' => self::offset($raw['offset_y'] ?? null, self::MAX_OFFSET_Y, self::DEFAULT_OFFSET_Y),
             'buttons' => $buttons,
             'bar' => $bar,
+            'buy' => $buy,
         ];
+    }
+
+    /**
+     * The "Mua hàng" button: the site's brand fill with the brand's own readable ink, or a chosen
+     * colour darkened until the white bag reads on it at 3:1.
+     *
+     * @return array{href: string, fill: string, ink: string, icon: string}
+     */
+    private static function buy(mixed $buy, string $href): array
+    {
+        $color = is_array($buy) ? ($buy['color'] ?? null) : null;
+        if ($color === 'brand') {
+            return ['href' => $href, 'fill' => 'var(--color-primary)', 'ink' => 'var(--color-on-primary)', 'icon' => ContactIcons::path('ri-shopping-bag-fill') ?? ''];
+        }
+        $hex = self::color($color) ?? self::BUY_COLOR;
+
+        return ['href' => $href, 'fill' => ReadableColor::on($hex, '#ffffff', 3.0) ?? $hex, 'ink' => '#ffffff', 'icon' => ContactIcons::path('ri-shopping-bag-fill') ?? ''];
     }
 
     /** An offset in px: an even whole number from 0 to $max, else the default. */
@@ -235,15 +275,36 @@ final class FloatingContact
         return mb_substr(trim($value), 0, self::MAX_LABEL);
     }
 
-    /** A Vietnamese number: 0 and nine digits, or +84 and nine; spaces, dots and dashes ignored. */
-    private static function phone(string $value): ?string
+    /**
+     * A phone number as people type it, spaces, dots, dashes and brackets stripped: a Vietnamese
+     * mobile (0 + 9 digits, or +84 + 9) or landline (0 + 10 digits, e.g. 024 1234 5678, or +84 +
+     * 10); with $hotline also a 1900/1800 number (+ 4 or 6 digits); with $abroad also any
+     * international number (+ and 8–15 digits). The digits are what the link dials.
+     */
+    private static function phone(string $value, bool $hotline, bool $abroad): ?string
     {
-        $digits = (string) preg_replace('/[\s.\-()]/', '', $value);
+        $digits = self::digits($value);
+
+        return preg_match('/\A(?:0\d{9,10}|\+84\d{9,10})\z/', $digits) === 1
+            || ($hotline && preg_match('/\A(?:1900|1800)(?:\d{4}|\d{6})\z/', $digits) === 1)
+            || ($abroad && preg_match('/\A\+\d{8,15}\z/', $digits) === 1)
+            ? $digits : null;
+    }
+
+    /** A Vietnamese mobile number only (what Zalo is registered with). */
+    private static function mobile(string $value): ?string
+    {
+        $digits = self::digits($value);
 
         return preg_match('/\A(?:0\d{9}|\+84\d{9})\z/', $digits) === 1 ? $digits : null;
     }
 
-    /** 0912345678 / +84912345678 → 84912345678. */
+    private static function digits(string $value): string
+    {
+        return (string) preg_replace('/[\s.\-()]/', '', $value);
+    }
+
+    /** 0912345678 / +84912345678 → 84912345678; any other +number → its digits. */
     private static function international(string $phone): string
     {
         return str_starts_with($phone, '+') ? substr($phone, 1) : '84'.substr($phone, 1);

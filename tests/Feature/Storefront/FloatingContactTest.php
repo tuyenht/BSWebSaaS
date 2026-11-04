@@ -1,10 +1,14 @@
 <?php
 
+use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\SiteRoute;
+use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +23,7 @@ use Illuminate\Support\Facades\DB;
 
 beforeEach(function (): void {
     DB::connection('pgsql_admin')->statement(
-        'truncate tenant_probes, routes, entry_translations, entries,
+        'truncate tenant_probes, routes, product_translations, products, taxonomy_translations, taxonomies, entry_translations, entries,
          site_profile_translations, site_profiles, site_settings, site_locales,
          site_modules, content_sections, domains, sites, tenants, tenant_users, users
          restart identity cascade'
@@ -63,10 +67,10 @@ function flcConfig(array $channels, array $extra = []): array
     return $extra + ['enabled' => true, 'theme' => 'vertical', 'position' => 'right', 'offset_x' => 20, 'offset_y' => 24, 'channels' => $channels];
 }
 
-/** The floating-contact markup of a page (the nav and its phone spacer). */
+/** The floating-contact markup of a page (the nav and the phone bar's spacer). */
 function flcPart(string $html): string
 {
-    preg_match_all('~<div class="sf-fc-(?:ghost|bar sf-fc-bar--ghost)".*?</div></div>|<nav class="sf-fc[ -].*?</nav>~s', $html, $m);
+    preg_match_all('~<div class="sf-fc-bar sf-fc-bar--ghost".*?</ul></div>|<nav class="sf-fc[ -].*?</nav>~s', $html, $m);
 
     return implode("\n", $m[0]);
 }
@@ -100,6 +104,9 @@ it('links each channel exactly', function (string $key, string $value, string $h
 })->with([
     'phone with spaces' => ['phone', '0912 345 678', 'tel:0912345678'],
     'phone +84' => ['phone', '+84912345678', 'tel:+84912345678'],
+    'landline' => ['phone', '024 1234 5678', 'tel:02412345678'],
+    'hotline' => ['phone', '1900 1234', 'tel:19001234'],
+    'whatsapp abroad' => ['whatsapp', '+65 9123 4567', 'https://wa.me/6591234567'],
     'zalo number' => ['zalo', '0912345678', 'https://zalo.me/0912345678'],
     'zalo link' => ['zalo', 'https://zalo.me/0912345678', 'https://zalo.me/0912345678'],
     'messenger page' => ['messenger', 'm.me/trang.mau', 'https://m.me/trang.mau'],
@@ -146,9 +153,9 @@ it('puts the buttons on the chosen side with the offsets, each named and drawn r
         ->toContain('aria-label="Chat ngay Zalo"')
         ->toContain('<span class="sf-fc__word" aria-hidden="true">Zalo</span>')
         ->toContain('href="sms:0912345678" aria-label="Nhắn tin SMS"')
-        // the spacer copies the buttons, hidden from assistive tech
-        ->toContain('<div class="sf-fc-ghost" aria-hidden="true"')
-        ->and(substr_count($part, 'sf-fc__btn"></span>'))->toBe(3);
+        // round buttons keep no room at the end of the page (no spacer of any kind)
+        ->and($part)->not->toContain('aria-hidden="true" style=')
+        ->and(flcPart($this->get('http://mau.platform.test/gioi-thieu')->getContent()))->not->toContain('sf-fc-bar--ghost');
 });
 
 it('falls back to the default side and offsets on unknown or odd values', function (): void {
@@ -181,6 +188,71 @@ it('draws the phone bottom bar with at most three channels and without the chat-
         ->and(substr_count($bar[0] ?? '', '<a '))->toBe(3)
         ->and($html)->not->toContain('<nav class="sf-fc sf-fc--')
         ->toContain('sf-fc-bar sf-fc-bar--ghost');
+});
+
+/** A product list for the site at /san-pham: a products section on a category, one published product. */
+function flcShop(int $siteId): void
+{
+    app(Tenancy::class)->enter($siteId, function (): void {
+        $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
+        $category->translations()->create(['locale' => 'vi', 'name' => 'Sản phẩm', 'slug' => 'san-pham']);
+        ContentSection::query()->create(['key' => 'products', 'label' => 'Sản phẩm', 'entry_type' => 'post', 'taxonomy_id' => $category->id]);
+        app(RouteSync::class)->syncTaxonomy($category, 'vi', 'san-pham');
+        $product = Product::query()->create(['status' => 'published', 'published_at' => now()]);
+        $product->translations()->create(['locale' => 'vi', 'name' => 'Sản phẩm 1', 'slug' => 'sp-1']);
+    });
+}
+
+/** @return array<string, mixed> */
+function flcBarWithBuy(string $color = '#0ab39c'): array
+{
+    return flcConfig([
+        ['key' => 'phone', 'on' => true, 'value' => '0912345678'],
+        ['key' => 'zalo', 'on' => true, 'value' => '0912345678'],
+        ['key' => 'sms', 'on' => true, 'value' => '0912345678'],
+    ], ['theme' => 'horizontal', 'buy' => ['enabled' => true, 'color' => $color]]);
+}
+
+it('ends the phone bar with “Mua hàng” opening the product list, and keeps its room in the spacer', function (): void {
+    $siteId = flcSite();
+    flcShop($siteId);
+    flcSetting($siteId, flcBarWithBuy());
+
+    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
+    preg_match('~<nav class="sf-fc-bar".*?</nav>~s', $html, $bar);
+    preg_match('~<div class="sf-fc-bar sf-fc-bar--ghost".*?</ul></div>~s', $html, $ghost);
+
+    expect($bar[0] ?? '')->toContain('href="tel:0912345678"')->toContain('href="https://zalo.me/0912345678"')
+        ->not->toContain('sms:')
+        ->toContain('href="/san-pham" style="--fc-fill:')
+        ->toContain(';--fc-ink:#ffffff"')
+        ->toContain('<span class="sf-fc-bar__label">Mua hàng</span>')
+        ->and(substr_count($bar[0] ?? '', '<a '))->toBe(3)
+        ->and(substr_count($ghost[0] ?? '', '<li class="sf-fc-bar__item">'))->toBe(3)
+        ->and($ghost[0] ?? '')->toContain('Mua hàng');
+
+    // The product list itself is reachable at that address.
+    $this->get('http://mau.platform.test/san-pham')->assertOk()->assertSee('Sản phẩm 1');
+});
+
+it('uses the site’s brand fill and ink for a brand-coloured “Mua hàng”', function (): void {
+    $siteId = flcSite();
+    flcShop($siteId);
+    flcSetting($siteId, flcBarWithBuy('brand'));
+
+    expect($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent())
+        ->toContain('href="/san-pham" style="--fc-fill:var(--color-primary);--fc-ink:var(--color-on-primary)"');
+});
+
+it('shows no “Mua hàng” and three channels while the site has no product list', function (): void {
+    $siteId = flcSite();
+    flcSetting($siteId, flcBarWithBuy());
+
+    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
+    preg_match('~<nav class="sf-fc-bar".*?</nav>~s', $html, $bar);
+
+    expect($bar[0] ?? '')->toContain('href="sms:0912345678"')->not->toContain('Mua hàng')
+        ->and(substr_count($bar[0] ?? '', '<a '))->toBe(3);
 });
 
 it('prints the hover label of the page’s language and escapes every label', function (): void {

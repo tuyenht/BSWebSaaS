@@ -1,11 +1,16 @@
 <?php
 
 use App\Modules\Admin\Livewire\FloatingContactSettings;
+use App\Modules\Catalog\Models\Product;
+use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Chrome\FloatingContact;
 use Illuminate\Support\Facades\DB;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
@@ -38,6 +43,22 @@ function fcsStored(int $siteId = 1): ?array
 {
     return app(Tenancy::class)->enter($siteId, fn () => SiteSetting::query()
         ->where('group_name', 'storefront')->where('key', 'floating_contact')->first()?->value);
+}
+
+/** A product list for the site: the catalog module, a products section on a category with an address, one published product. */
+function fcsShop(int $siteId, bool $entitled = true): void
+{
+    if ($entitled) {
+        DB::connection('pgsql_admin')->table('site_modules')->insert(['site_id' => $siteId, 'module_key' => 'catalog', 'enabled' => true, 'created_at' => now(), 'updated_at' => now()]);
+    }
+    app(Tenancy::class)->enter($siteId, function (): void {
+        $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
+        $category->translations()->create(['locale' => 'vi', 'name' => 'Sản phẩm', 'slug' => 'san-pham']);
+        ContentSection::query()->create(['key' => 'products', 'label' => 'Sản phẩm', 'entry_type' => 'post', 'taxonomy_id' => $category->id]);
+        app(RouteSync::class)->syncTaxonomy($category, 'vi', 'san-pham');
+        $product = Product::query()->create(['status' => 'published', 'published_at' => now()]);
+        $product->translations()->create(['locale' => 'vi', 'name' => 'Sản phẩm 1', 'slug' => 'sp-1']);
+    });
 }
 
 /** The draft index of a channel. */
@@ -137,12 +158,16 @@ it('refuses every invalid value with its plain message and saves nothing', funct
 
     expect(fcsStored())->toBeNull();
 })->with([
-    'short phone' => ['phone', '091234', 'nhập 10 số bắt đầu bằng 0 (vd 0912345678) hoặc +84 rồi 9 số'],
-    'phone with letters' => ['phone', '09123abc78', 'nhập 10 số bắt đầu bằng 0 (vd 0912345678) hoặc +84 rồi 9 số'],
+    'short phone' => ['phone', '091234', 'nhập số di động (vd 0912 345 678), số bàn 11 số (vd 024 1234 5678) hoặc tổng đài 1900/1800'],
+    'phone with letters' => ['phone', '09123abc78', 'nhập số di động (vd 0912 345 678), số bàn 11 số (vd 024 1234 5678) hoặc tổng đài 1900/1800'],
     'zalo other site' => ['zalo', 'https://evil.test/0912345678', 'nhập số điện thoại Zalo (vd 0912345678) hoặc liên kết zalo.me/0912345678'],
     'messenger with spaces' => ['messenger', 'm.me/trang mau', 'nhập ID hoặc tên trang, hoặc liên kết m.me/ten-trang'],
     'email' => ['email', 'lienhe@', 'nhập dạng ten@congty.com'],
-    'sms' => ['sms', '12', 'nhập 10 số bắt đầu bằng 0 (vd 0912345678) hoặc +84 rồi 9 số'],
+    'landline too long' => ['phone', '024 1234 56789', 'nhập số di động (vd 0912 345 678), số bàn 11 số (vd 024 1234 5678) hoặc tổng đài 1900/1800'],
+    'hotline wrong length' => ['phone', '1900 12345', 'nhập số di động (vd 0912 345 678), số bàn 11 số (vd 024 1234 5678) hoặc tổng đài 1900/1800'],
+    'call abroad' => ['phone', '+65 9123 4567', 'nhập số di động (vd 0912 345 678), số bàn 11 số (vd 024 1234 5678) hoặc tổng đài 1900/1800'],
+    'whatsapp abroad too short' => ['whatsapp', '+1234567', 'nhập số di động (vd 0912 345 678), số bàn (vd 024 1234 5678) hoặc số nước ngoài bắt đầu bằng + (vd +65 9123 4567)'],
+    'sms' => ['sms', '12', 'nhập số di động (vd 0912 345 678), số bàn 11 số (vd 024 1234 5678) hoặc tổng đài 1900/1800'],
     'telegram too short' => ['telegram', '@ab', 'nhập @username (5–32 chữ cái, số hoặc dấu _) hoặc liên kết t.me/username'],
     'youtube javascript' => ['youtube', 'javascript:alert(1)', 'dán liên kết đầy đủ, bắt đầu bằng https://'],
     'maps data' => ['maps', 'data:text/html,x', 'dán liên kết đầy đủ, bắt đầu bằng https://'],
@@ -150,6 +175,154 @@ it('refuses every invalid value with its plain message and saves nothing', funct
     'custom javascript' => ['c1', 'javascript:alert(1)', 'dán liên kết https://, đường dẫn trong website (vd /lien-he), hoặc tel:, sms:, mailto:'],
     'custom bad tel' => ['c1', 'tel:abc', 'dán liên kết https://, đường dẫn trong website (vd /lien-he), hoặc tel:, sms:, mailto:'],
 ]);
+
+it('accepts landlines, hotlines and, for WhatsApp and Viber, numbers abroad', function (string $key, string $value, string $href): void {
+    $admin = fcsAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $key, $value): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class);
+        if (! in_array($key, ['phone', 'sms'], true)) {
+            $lw->call('addPreset', $key);
+        }
+        $i = fcsIndex($lw, $key);
+        $lw->set("channels.$i.on", true)
+            ->set("channels.$i.value", $value)
+            ->assertHasNoErrors()
+            ->call('toggleEnabled')
+            ->call('save')
+            ->assertHasNoErrors();
+    });
+
+    expect(collect(FloatingContact::for(fcsStored(), 'vi')['buttons'])->firstWhere('key', $key)['href'])->toBe($href);
+})->with([
+    'landline' => ['phone', '024 1234 5678', 'tel:02412345678'],
+    'hotline 1900' => ['phone', '1900 1234', 'tel:19001234'],
+    'hotline 1800 six digits' => ['phone', '1800.123.456', 'tel:1800123456'],
+    'sms landline' => ['sms', '028-3822-1234', 'sms:02838221234'],
+    'whatsapp abroad' => ['whatsapp', '+65 9123 4567', 'https://wa.me/6591234567'],
+    'viber abroad' => ['viber', '+1 (415) 555-0100', 'viber://chat?number=%2B14155550100'],
+]);
+
+it('fills the call channel with a landline site phone, and Zalo only with a mobile', function (): void {
+    $admin = fcsAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        SiteSetting::query()->create(['group_name' => 'general', 'key' => 'brand', 'value' => ['name' => 'A', 'phone' => '024 3826 1234']]);
+
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class);
+
+        expect($lw->get('channels')[fcsIndex($lw, 'phone')]['value'])->toBe('02438261234')
+            ->and($lw->get('channels')[fcsIndex($lw, 'zalo')]['value'])->toBe('');
+    });
+});
+
+it('caps a value even on a switched-off channel', function (): void {
+    $admin = fcsAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class);
+        $i = fcsIndex($lw, 'sms');   // off
+        $lw->assertSet("channels.$i.on", false)
+            ->set("channels.$i.value", str_repeat('9', FloatingContact::MAX_VALUE + 1))
+            ->assertHasErrors("channels.$i.value")
+            ->call('save')
+            ->assertHasErrors(["channels.$i.value"])
+            ->assertSee('Dài quá 500 ký tự — rút gọn lại.');
+    });
+
+    expect(fcsStored())->toBeNull();
+});
+
+it('answers a value of the wrong type with the plain message, not an error page', function (string $prop, mixed $value, string $field): void {
+    $admin = fcsAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $prop, $value, $field): void {
+        Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+            ->set($prop, $value)
+            ->assertOk()
+            ->call('save')
+            ->assertOk()
+            ->assertHasErrors($field)
+            ->assertSee('Cấu hình gửi lên không hợp lệ — tải lại trang rồi thử lại.');
+    });
+
+    expect(fcsStored())->toBeNull();
+})->with([
+    'value' => ['channels.0.value', ['x'], 'channels'],
+    'colour' => ['channels.0.color', ['x'], 'channels'],
+    'labels' => ['channels.0.tips', 'x', 'channels'],
+    'label' => ['channels.0.tips.vi', ['x'], 'channels.0.tips'],
+]);
+
+it('opens and saves after a language with hover labels was switched off', function (): void {
+    $admin = fcsAdmin();
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'floating_contact', 'value' => [
+        'enabled' => true, 'theme' => 'vertical', 'position' => 'right', 'offset_x' => 20, 'offset_y' => 24,
+        'channels' => [['key' => 'phone', 'on' => true, 'value' => '0912345678', 'tips' => ['vi' => 'Gọi ngay', 'en' => 'Call now']]],
+    ]]));
+
+    // en is not (or no longer) a site language: its label is dropped on load, not flagged on save.
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)->assertOk();
+        expect($lw->get('channels')[fcsIndex($lw, 'phone')]['tips'])->toBe(['vi' => 'Gọi ngay']);
+        $lw->call('save')->assertHasNoErrors()->assertSet('toast', 'Đã lưu cấu hình nút liên hệ');
+    });
+
+    expect(fcsStored()['channels'][0]['tips'])->toBe(['vi' => 'Gọi ngay']);
+});
+
+it('keeps the “Mua hàng” switch but shows the button nowhere while the site has no product list', function (): void {
+    $admin = fcsAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+            ->call('setTheme', 'horizontal')
+            ->call('toggleBuy')
+            ->assertSet('hasShop', false)
+            ->assertSee('Nút này hiện khi website có trang sản phẩm.');
+        $lw->set('channels.'.fcsIndex($lw, 'phone').'.value', '0912345678')
+            ->set('channels.'.fcsIndex($lw, 'zalo').'.value', '0912345678')
+            ->call('toggleChannel', 'sms');
+        $lw->set('channels.'.fcsIndex($lw, 'sms').'.value', '0912345678');
+
+        // The preview draws what the site draws: three channels, no buy button.
+        expect($lw->viewData('preview')['buy'])->toBeNull()
+            ->and(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo', 'sms']);
+        $lw->call('save')->assertHasNoErrors();
+    });
+
+    expect(fcsStored()['buy'])->toEqual(['enabled' => true, 'color' => '#ff7a46']);
+});
+
+it('shows “Mua hàng” in the preview, after two channels, when the site has a product list', function (): void {
+    $admin = fcsAdmin();
+    fcsShop(1);
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+            ->assertSet('hasShop', true)
+            ->assertDontSee('Nút này hiện khi website có trang sản phẩm.')
+            ->call('setTheme', 'horizontal')
+            ->call('toggleBuy')
+            ->call('setBuyColor', 'brand');
+        $lw->set('channels.'.fcsIndex($lw, 'phone').'.value', '0912345678')
+            ->set('channels.'.fcsIndex($lw, 'zalo').'.value', '0912345678')
+            ->call('toggleChannel', 'sms');
+        $lw->set('channels.'.fcsIndex($lw, 'sms').'.value', '0912345678');
+
+        expect($lw->viewData('preview')['buy'])->toMatchArray(['fill' => 'var(--color-primary)', 'ink' => 'var(--color-on-primary)'])
+            ->and(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo']);
+        $lw->assertSee('Mua hàng');
+    });
+});
+
+it('counts no product list on a site not entitled to products', function (): void {
+    $admin = fcsAdmin();
+    fcsShop(1, entitled: false);
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+        ->assertSet('hasShop', false));
+});
 
 it('lets a switched-off or empty channel through, as the page draws it', function (): void {
     $admin = fcsAdmin();

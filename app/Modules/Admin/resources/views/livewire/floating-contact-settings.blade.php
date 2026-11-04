@@ -27,7 +27,8 @@
     $defaultTip = static fn (array $c, string $lc): string => $isCustom($c['key'])
         ? (trim($c['name']) !== '' ? trim($c['name']) : __('storefront.fc_contact', [], $lc))
         : __('storefront.fc_'.$c['key'], [], $lc);
-    $colorOf = static fn (array $c): string => $c['color'] !== '' ? $c['color'] : (FloatingContact::CHANNELS[$c['key']]['color'] ?? FloatingContact::CUSTOM_COLOR);
+    // Only a checked colour is printed into a style (a tampered draft can hold anything).
+    $colorOf = static fn (array $c): string => FloatingContact::color($c['color']) ?? (FloatingContact::CHANNELS[$c['key']]['color'] ?? FloatingContact::CUSTOM_COLOR);
 
     // Channels switched on, and how many of them have a hover label in each language (the source
     // language counts every one: an empty label there shows the channel's own word).
@@ -72,12 +73,14 @@
     $hasPresets = array_values(array_filter(FloatingContact::PRESETS, fn (string $k): bool => collect($channels)->firstWhere('key', $k) === null));
     $full = count($channels) >= FloatingContact::MAX_CHANNELS;
 
-    // The preview: the draft as the site would show it in the language being edited, plus the
-    // "Mua hàng" button at the end of the bar when it is on (then two channels fit, not three).
+    // The preview: the draft as the site would show it in the language being edited, with the
+    // "Mua hàng" button at the end of the bar when it is on and the site has a product list (then
+    // two channels fit, not three) — the normalizer decides both, as on the site.
     $word = static fn (array $b): string => $b['label'] ?? (array_key_exists($b['key'], FloatingContact::CHANNELS) ? __('storefront.fc_'.$b['key'], [], $lang) : __('storefront.fc_contact', [], $lang));
     $pvButtons = $preview['buttons'] ?? [];
-    $pvBar = array_slice($preview['bar'] ?? [], 0, $buyOn ? 2 : 3);
-    $buyFill = $buyColor === 'brand' ? 'var(--color-primary)' : $buyColor;
+    $pvBar = $preview['bar'] ?? [];
+    $pvBuy = $preview['buy'] ?? null;
+    $buySafe = FloatingContact::color($buyColor) ?? FloatingContact::BUY_COLOR;
 @endphp
 <x-bs-admin::settings-shell active="floating">
     <div class="@container/fc flex flex-col gap-4" x-data x-on:fc-first-error.window="$nextTick(() => $el.querySelector('[aria-invalid=true]')?.focus())">
@@ -335,6 +338,11 @@
                                             @error("channels.$i.tips.$lang") <p class="text-caption text-danger-text">{{ $message }}</p> @enderror
                                             @error("channels.$i.tips") <p class="text-caption text-danger-text">{{ $message }}</p> @enderror
                                             @error("channels.$i.color") <p class="text-caption text-danger-text">{{ $message }}</p> @enderror
+                                        @else
+                                            {{-- A switched-off channel's fields are folded away, but what blocks the save still shows. --}}
+                                            @foreach (["channels.$i.value", "channels.$i.tips", "channels.$i.color"] as $offField)
+                                                @error($offField) <p class="text-caption text-danger-text">{{ $label }} — {{ $message }}</p> @enderror
+                                            @endforeach
                                         @endif
                                     </div>
                                 </div>
@@ -389,8 +397,13 @@
                                 <div class="min-w-0">
                                     <p id="fc-buy-l" class="{{ $name }}">{{ __('admin.fc.buy') }}</p>
                                     <p class="text-caption leading-normal text-text-muted">{{ __('admin.fc.buy_sub') }}</p>
+                                    @unless ($hasShop)
+                                        <p id="fc-buy-n" class="mt-1 flex items-start gap-1.5 text-caption leading-normal text-warning-text">
+                                            <x-bs-admin::icon name="ri-information" class="mt-px size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))] shrink-0" />{{ __('admin.fc.buy_no_shop') }}
+                                        </p>
+                                    @endunless
                                 </div>
-                                <button type="button" class="switch hit-area" role="switch" aria-checked="{{ $buyOn ? 'true' : 'false' }}" aria-labelledby="fc-buy-l" wire:click="toggleBuy"></button>
+                                <button type="button" class="switch hit-area" role="switch" aria-checked="{{ $buyOn ? 'true' : 'false' }}" aria-labelledby="fc-buy-l" @unless ($hasShop) aria-describedby="fc-buy-n" @endunless wire:click="toggleBuy"></button>
                             </div>
                             @if ($buyOn)
                                 <div class="border-t border-border-soft pt-3.5">
@@ -405,9 +418,9 @@
                                         @endforeach
                                         <label title="{{ __('admin.fc.buy_custom') }}" @class(['relative inline-flex size-[1.625rem] cursor-pointer items-center justify-center overflow-hidden rounded-[7px] focus-ring-within any-pointer-coarse:size-11',
                                                 'shadow-[0_0_0_2px_var(--color-surface),0_0_0_3px_var(--color-primary-text)]' => $customBuy, 'bg-[conic-gradient(#f06548,#f7b84b,#0ab39c,#299cdb,#6559cc,#f06548)]' => ! $customBuy])
-                                               @if ($customBuy) style="background: {{ $buyColor }}" @endif>
+                                               @if ($customBuy) style="background: {{ $buySafe }}" @endif>
                                             <x-bs-admin::icon name="ri-add" class="pointer-events-none size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))] text-white drop-shadow-[0_0_3px_rgb(0_0_0/0.6)]" />
-                                            <input type="color" value="{{ $customBuy ? $buyColor : '#ff7a46' }}" x-on:change="$wire.setBuyColor($event.target.value)" aria-label="{{ __('admin.fc.buy_custom') }}"
+                                            <input type="color" value="{{ $customBuy ? $buySafe : FloatingContact::BUY_COLOR }}" x-on:change="$wire.setBuyColor($event.target.value)" aria-label="{{ __('admin.fc.buy_custom') }}"
                                                    class="absolute inset-0 size-full cursor-pointer border-0 opacity-0">
                                         </label>
                                     </div>
@@ -485,9 +498,9 @@
                                                 <span class="max-w-full text-center text-caption leading-tight font-semibold text-text [overflow-wrap:anywhere]">{{ $word($b) }}</span>
                                             </span>
                                         @endforeach
-                                        @if ($buyOn)
+                                        @if ($pvBuy !== null)
                                             <span @class(['flex min-w-0 flex-1 flex-col items-center justify-center gap-[3px] px-0.5 py-1.5', 'border-l border-border-soft' => $pvBar !== []])>
-                                                <span class="flex min-h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full text-white" style="background: {{ $buyFill }}">
+                                                <span class="flex min-h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full" style="background: {{ $pvBuy['fill'] }}; color: {{ $pvBuy['ink'] }}">
                                                     <svg viewBox="0 0 24 24" fill="currentColor" class="size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))]"><path d="{{ $svg('ri-shopping-bag-fill') }}"/></svg>
                                                 </span>
                                                 <span class="max-w-full text-center text-caption leading-tight font-semibold text-text [overflow-wrap:anywhere]">{{ __('storefront.fc_buy', [], $lang) }}</span>
