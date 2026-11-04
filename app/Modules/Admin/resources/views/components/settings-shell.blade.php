@@ -22,6 +22,9 @@
         // super_admin). A normal member sees only the "My Account" group.
         $workspace = [];
         if (\Illuminate\Support\Facades\Gate::allows('settings.manage')) {
+            if (Route::has('admin.settings.general')) {
+                $workspace[] = ['key' => 'general', 'route' => 'admin.settings.general', 'label' => __('admin.gs.title')];
+            }
             if (Route::has('admin.settings.email')) {
                 $workspace[] = ['key' => 'email', 'route' => 'admin.settings.email', 'label' => __('admin.email_settings')];
             }

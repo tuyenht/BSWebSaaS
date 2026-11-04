@@ -234,8 +234,9 @@ it('draws every on/off switch of the admin with the one shared switch', function
         expect($source)->not->toMatch('/rounded-full[^"]*\bbg-white shadow\b/', $file->getFilename());
     }
     // workflow 1 (in its row loop), domains 1, the look panel 2 (one in a loop), the floating
-    // contact page 3 (the main switch, one per channel row, the buy button)
-    expect($found)->toBe(7);
+    // contact page 3 (the main switch, one per channel row, the buy button), the general settings
+    // page 1 (the Bộ Công Thương notice)
+    expect($found)->toBe(8);
 });
 
 it('sizes the image picker and theme panel buttons by the shared control tokens', function (string $view, string $marker, string $size): void {

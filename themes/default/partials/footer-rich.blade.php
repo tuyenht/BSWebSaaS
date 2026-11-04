@@ -1,12 +1,14 @@
 {{--
     Rich storefront footer (site setting `storefront.footer`, normalized into $footer). Business
-    identity (name, legal name, address, contact, licence, social links) comes from $brand
+    identity (name, tagline, legal name, address, contact, licence, opening hours, the Bộ Công Thương
+    notice link, social links) comes from $brand
     (SiteIdentity) — never duplicated in the setting; the link columns are the menu bound to the
     footer region ($footerMenu: top-level items are the headings, their children the links), so
     every link goes through the menu pipeline and follows slug changes. The setting holds only the
     rest: about text, factories, licence issuer, copyright start year and an optional credit.
     Every value is printed through {{ }}; names set in bold are split around a placeholder, never
-    printed raw.
+    printed raw. The tagline, opening hours and Bộ Công Thương lines start their directives at
+    column 0, so a site without those values keeps its footer byte for byte.
 --}}
 @php
     $sfSocials = \App\Modules\Theme\Chrome\StorefrontChrome::socials($brand['social_links'] ?? null);
@@ -18,16 +20,21 @@
     $sfIssued = null;
     if (is_string($brand['license_issued_at'] ?? null)) {
         $sfDate = \DateTimeImmutable::createFromFormat('!Y-m-d', substr($brand['license_issued_at'], 0, 10));
-        $sfIssued = $sfDate === false ? null : $sfDate->format('d/m/Y');
+        $sfIssued = $sfDate === false ? null : \App\Modules\Tenancy\Context\SiteTime::formatDay($sfDate, $brand['date_format'] ?? 'auto', app()->getLocale());
     }
+    // Who issued the licence: the profile's own text in this language, else the footer setting's.
+    $sfIssuer = ! empty($brand['license_text']) ? $brand['license_text'] : $footer['license_issuer'];
     $sfLicense = null;
     if (! empty($brand['license'])) {
         $sfLicense = match (true) {
-            $footer['license_issuer'] !== null && $sfIssued !== null => __('storefront.license_full', ['number' => $brand['license'], 'issuer' => $footer['license_issuer'], 'date' => $sfIssued]),
-            $footer['license_issuer'] !== null => __('storefront.license_no_date', ['number' => $brand['license'], 'issuer' => $footer['license_issuer']]),
+            $sfIssuer !== null && $sfIssued !== null => __('storefront.license_full', ['number' => $brand['license'], 'issuer' => $sfIssuer, 'date' => $sfIssued]),
+            $sfIssuer !== null => __('storefront.license_no_date', ['number' => $brand['license'], 'issuer' => $sfIssuer]),
             default => __('storefront.license', ['number' => $brand['license']]),
         };
     }
+    $sfHours = \App\Modules\Theme\Chrome\StorefrontChrome::hours($brand['business_hours'] ?? null, $brand['opening_hours'] ?? null);
+    $sfMoit = \App\Modules\Shared\Support\SafeLink::href($brand['moit_url'] ?? null);
+    $sfMoit = $sfMoit !== null && preg_match('~\Ahttps?://~i', $sfMoit) === 1 ? $sfMoit : null;
     $sfYear = (int) date('Y');
     $sfHolder = $footer['holder'] ?? $sfName;
     $sfMark = "\u{E000}";   // placeholder for a bold name inside a translated sentence
@@ -44,6 +51,9 @@
                     <img class="sf-footer__logo" src="{{ $brand['logo'] }}" alt="{{ $sfName ?? __('storefront.home') }}" width="156" height="40" loading="lazy">
                 </a>
             @endif
+@if (! empty($brand['tagline']))
+            <p class="sf-footer__tagline">{{ $brand['tagline'] }}</p>
+@endif
             @if ($footer['about'] !== null)
                 <p class="sf-footer__about">{{ $footer['about'] }}</p>
             @endif
@@ -80,7 +90,7 @@
         @endforeach
     </div>
 
-    @if ($sfLegal !== null || ! empty($brand['address']) || $sfLicense !== null || $footer['factories'] !== [])
+    @if ($sfLegal !== null || ! empty($brand['address']) || $sfLicense !== null || $sfHours !== null || $sfMoit !== null || $footer['factories'] !== [])
         <div class="sf-footer__company">
             <div class="sf-container">
                 <div class="sf-footer__legal">
@@ -94,6 +104,12 @@
                         @if ($sfLicense !== null)
                             <li class="sf-footer__fact">@include('theme::partials.sf-icon', ['name' => 'license', 'size' => 20])<span>{{ $sfLicense }}</span></li>
                         @endif
+@if ($sfHours !== null)
+                        <li class="sf-footer__fact">@include('theme::partials.sf-icon', ['name' => 'clock', 'size' => 20])<span>{{ __('storefront.hours_label') }}: {{ $sfHours }}</span></li>
+@endif
+@if ($sfMoit !== null)
+                        <li class="sf-footer__fact">@include('theme::partials.sf-icon', ['name' => 'verified', 'size' => 20])<a href="{{ $sfMoit }}" rel="noopener">{{ __('storefront.moit') }}<span class="sr-only"> {{ __('storefront.external') }}</span></a></li>
+@endif
                         @if ($footer['show_contact'] && ($sfTel !== null || $sfMail !== null))
                             <li class="sf-footer__fact sf-footer__fact--row">
                                 @if ($sfTel !== null)

@@ -2,13 +2,20 @@
     Storefront footer — contentinfo landmark. NAP, legal name, license and copyright read from
     $brand (SiteIdentity: the page's language), labels from the storefront translations, colors
     from the site's tokens (storefront.css) — nothing here names a tenant, a year or a language.
-    Sections are conditional so tenants without NAP data get a minimal but valid footer.
+    Sections are conditional so tenants without NAP data get a minimal but valid footer. The
+    tagline, opening hours and Bộ Công Thương lines start their directives at column 0, so a site
+    without those values keeps its footer byte for byte.
     A site with the `storefront.footer` setting gets the rich footer instead ($footer, normalized).
     The floating contact buttons follow it, once per page (every layout prints this footer).
 --}}
 @if (! empty($footer))
 @include('theme::partials.footer-rich')
 @else
+@php
+    $sfHours = \App\Modules\Theme\Chrome\StorefrontChrome::hours($brand['business_hours'] ?? null, $brand['opening_hours'] ?? null);
+    $sfMoit = \App\Modules\Shared\Support\SafeLink::href($brand['moit_url'] ?? null);
+    $sfMoit = $sfMoit !== null && preg_match('~\Ahttps?://~i', $sfMoit) === 1 ? $sfMoit : null;
+@endphp
 <footer class="site-footer" role="contentinfo">
     <div class="site-footer__inner">
         <div>
@@ -22,6 +29,9 @@
             @elseif (! empty($brand['name']))
                 <p class="site-footer__company">{{ $brand['name'] }}</p>
             @endif
+@if (! empty($brand['tagline']))
+            <p class="site-footer__tagline">{{ $brand['tagline'] }}</p>
+@endif
             @if (! empty($brand['address']) || ! empty($brand['phone']) || ! empty($brand['email']))
                 <address class="site-footer__nap" style="font-style:normal;">
                     @if (! empty($brand['address']))
@@ -38,6 +48,12 @@
             @if (! empty($brand['license']))
                 <p class="site-footer__license">{{ __('storefront.license', ['number' => $brand['license']]) }}</p>
             @endif
+@if ($sfHours !== null)
+            <p class="site-footer__license">{{ __('storefront.hours_label') }}: {{ $sfHours }}</p>
+@endif
+@if ($sfMoit !== null)
+            <p class="site-footer__license"><a class="site-footer__link" href="{{ $sfMoit }}" rel="noopener">{{ __('storefront.moit') }}<span class="sr-only"> {{ __('storefront.external') }}</span></a></p>
+@endif
         </div>
         <div>
             <p class="site-footer__heading">{{ __('storefront.nav_footer') }}</p>
