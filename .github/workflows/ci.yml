@@ -243,6 +243,9 @@ jobs:
       - name: Contrast tokens (WCAG AA)
         run: node scripts/contrast-check.mjs
 
+      - name: JS unit tests (tree drag rule)
+        run: node --test 'tests/js/*.test.mjs'
+
       # The storefront slider's behaviour (rotation, pause, keys, reduced motion) in jsdom.
       - name: Storefront slider behaviour
         run: node scripts/storefront/slider-check.mjs

@@ -633,6 +633,16 @@
         color: var(--color-text-muted);
     }
 
+    /* The item's keyboard shortcut ("Alt →"), at the end of the row. */
+    .list-mi-k {
+        flex: none;
+        margin-inline-start: auto;
+        padding-inline-start: 0.75rem;
+        font-size: var(--text-caption);
+        color: var(--color-text-muted);
+        white-space: nowrap;
+    }
+
     .list-mi[data-t='danger'],
     .list-mi[data-t='danger'] .list-mi-i {
         color: var(--color-danger-text);

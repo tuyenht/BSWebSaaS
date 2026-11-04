@@ -161,6 +161,58 @@
         </x-bs-admin::list>
     </x-bs-admin::card>
 
+    {{-- Shared tree: the one drag rule, guide lines, the keyboard moves; then every drag state drawn still --}}
+    @php
+        $treeRows = \App\Modules\Admin\Support\TreeRows::build($treeNodes);
+        $stillRows = \App\Modules\Admin\Support\TreeRows::build([
+            ['key' => 's-gioi-thieu', 'parent' => null, 'label' => 'Giới thiệu', 'state' => 'drop-in'],
+            ['key' => 's-lich-su', 'parent' => 's-gioi-thieu', 'label' => 'Lịch sử công ty', 'state' => null],
+            ['key' => 's-san-pham', 'parent' => null, 'label' => 'Sản phẩm', 'state' => 'dragging'],
+            ['key' => 's-cnc', 'parent' => 's-san-pham', 'label' => 'Gia công CNC', 'state' => null],
+            ['key' => 's-phay', 'parent' => 's-cnc', 'label' => 'Phay CNC 5 trục', 'state' => 'drop-bad'],
+            ['key' => 's-khuon', 'parent' => 's-san-pham', 'label' => 'Khuôn mẫu', 'state' => null, 'locked' => 'Lê Hoàng Phúc đang sửa'],
+        ]);
+        $noun = __('admin.tree.noun');
+    @endphp
+    <x-bs-admin::card title="Tree list">
+        <div class="space-y-6">
+            <div>
+                <p class="mb-2 text-small text-text-muted">Kéo một dòng: thả vào giữa tên để thành mục con đầu tiên, thả vào khe giữa hai dòng để nằm ngang hàng — kéo sang trái trong khe để ra ngoài một cấp. Tối đa 3 cấp; «Khuôn mẫu» đang khóa. Bấm Tab tới tên để thấy viền focus, rồi dùng phím tắt bên dưới.</p>
+                <x-bs-admin::tree label="Trình đơn mẫu" move="moveTreeItem" :max-depth="3">
+                    @foreach ($treeRows as $tr)
+                        <x-bs-admin::tree.row :row="$tr" :name="$tr['node']['label']" :locked="$tr['node']['locked']" wire:key="tree-{{ $tr['key'] }}">
+                            <x-bs-admin::tree.name>{{ $tr['node']['label'] }}</x-bs-admin::tree.name>
+                            <x-slot:actions>
+                                <x-bs-admin::list.actions :name="$tr['node']['label']">
+                                    <x-bs-admin::button size="sm" variant="soft" color="primary"><x-bs-admin::icon name="ri-pencil" class="size-4" /> {{ __('entries.edit_action') }}</x-bs-admin::button>
+                                    <x-slot:menu>
+                                        <x-bs-admin::tree.move-menu :row="$tr" />
+                                    </x-slot:menu>
+                                </x-bs-admin::list.actions>
+                            </x-slot:actions>
+                        </x-bs-admin::tree.row>
+                    @endforeach
+                </x-bs-admin::tree>
+                <x-bs-admin::tree.keys />
+            </div>
+            <div>
+                <p class="mb-2 text-small text-text-muted">Các trạng thái khi kéo, vẽ tĩnh: «Sản phẩm» đang được kéo (mờ); thả vào «Giới thiệu» được (viền xanh + dòng giữ chỗ); thả vào «Phay CNC 5 trục» bị chặn (viền đỏ + lý do); «Khuôn mẫu» đang khóa.</p>
+                <x-bs-admin::tree label="Các trạng thái khi kéo (mẫu tĩnh)">
+                    @foreach ($stillRows as $sr)
+                        <x-bs-admin::tree.row :row="$sr" :name="$sr['node']['label']" :locked="$sr['node']['locked'] ?? null" :state="$sr['node']['state']">
+                            <x-bs-admin::tree.name>{{ $sr['node']['label'] }}</x-bs-admin::tree.name>
+                        </x-bs-admin::tree.row>
+                        @if ($sr['key'] === 's-gioi-thieu')
+                            <x-bs-admin::tree.placeholder :level="2">{{ __('admin.tree.will_child', ['noun' => $noun, 'name' => 'Giới thiệu', 'level' => 2]) }}</x-bs-admin::tree.placeholder>
+                        @elseif ($sr['key'] === 's-phay')
+                            <x-bs-admin::tree.placeholder :level="4" bad>{{ __('admin.tree.too_deep', ['max' => 3]) }}</x-bs-admin::tree.placeholder>
+                        @endif
+                    @endforeach
+                </x-bs-admin::tree>
+            </div>
+        </div>
+    </x-bs-admin::card>
+
     {{-- Inputs --}}
     <x-bs-admin::card title="Inputs">
         <div class="grid gap-4 sm:grid-cols-2">
