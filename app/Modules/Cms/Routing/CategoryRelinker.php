@@ -6,6 +6,7 @@ namespace App\Modules\Cms\Routing;
 
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Support\CategoryItemCounts;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\PermalinkConfig;
@@ -20,7 +21,8 @@ use Illuminate\Support\Facades\DB;
  *    (pivot position 0) is in the changed branch — RouteSync moves each route and leaves a 301;
  *  - refile(): before categories are deleted, move their items onto another category (which takes
  *    the deleted one's rank) or detach them, renumber each item's categories 0..n-1 so position 0 is
- *    a primary again — facet terms from FACET_POSITION_BASE up are never touched — then re-sync.
+ *    a primary again — facet terms from FACET_POSITION_BASE up are never touched — then re-sync;
+ *    the categories' item totals follow every main category it changes (CategoryItemCounts).
  * Paths are re-synced only for kinds whose permalink preset can carry the change (follows()): on a
  * site where everything is flat, a category change touches no item route.
  *
@@ -42,6 +44,7 @@ final readonly class CategoryRelinker
         private SectionResolver $sections,
         private RouteSync $routes,
         private CurrentSite $site,
+        private CategoryItemCounts $counts,
     ) {}
 
     /**
@@ -114,7 +117,11 @@ final readonly class CategoryRelinker
                 }
                 $after = max($chunk);
 
+                // The main category of an item can change here (moved onto the target, or the next
+                // one moving up): the totals follow the difference, read before and after.
+                $before = $this->counts->primaries($kind['pivot'], $chunk);
                 $this->rewrite($kind['pivot'], $kind['column'], $deleted, $targetId, $chunk);
+                $this->counts->settle($before, $this->counts->primaries($kind['pivot'], $chunk));
                 $items += count($chunk);
 
                 if ($follows) {
@@ -178,12 +185,12 @@ final readonly class CategoryRelinker
      * Cms's own entries, then every registered kind. A null section means posts: their preset
      * depends on the section their primary category puts them in.
      *
-     * @return list<array{pivot: string, column: string, section: string|null, resync: Closure(list<int>): int}>
+     * @return list<array{pivot: string, column: string, section: string|null, resync: Closure(list<int>): int, items: string}>
      */
     private function kinds(): array
     {
         return [
-            ['pivot' => 'entry_taxonomies', 'column' => 'entry_id', 'section' => null, 'resync' => $this->resyncEntries(...)],
+            ['pivot' => 'entry_taxonomies', 'column' => 'entry_id', 'section' => null, 'resync' => $this->resyncEntries(...), 'items' => 'entries'],
             ...array_values($this->dependents->all()),
         ];
     }

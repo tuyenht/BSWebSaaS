@@ -10,6 +10,7 @@ use App\Modules\Cms\Console\PruneEntryRevisions;
 use App\Modules\Cms\Console\PublishDueEntries;
 use App\Modules\Cms\Console\PurgeTrashedMenuItems;
 use App\Modules\Cms\Console\RebuildTaxonomyPaths;
+use App\Modules\Cms\Console\ReconcileCategoryCounts;
 use App\Modules\Cms\Console\ResanitizePageBodies;
 use App\Modules\Cms\Console\SnapshotPublishedEntries;
 use App\Modules\Cms\Listeners\ForgetMemberCategoryScopes;
@@ -20,6 +21,7 @@ use App\Modules\Cms\Observers\EntryObserver;
 use App\Modules\Cms\Policies\EntryPolicy;
 use App\Modules\Cms\Routing\CategoryDependents;
 use App\Modules\Cms\Routing\SectionResolver;
+use App\Modules\Cms\Support\CategoryItemCounts;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Rbac\Events\SiteMembershipChanged;
 use App\Modules\Theme\Components\ComponentRegistry;
@@ -46,6 +48,10 @@ final class CmsServiceProvider extends ServiceProvider
         // CategoryScopes memoizes per request which categories a member may write in; scoped for the
         // same reason — a limit read in one request must never answer for another.
         $this->app->scoped(CategoryScopes::class);
+
+        // The category totals' open bulk batches belong to one request or job; scoped so a batch
+        // can never be carried into the next Octane operation.
+        $this->app->scoped(CategoryItemCounts::class);
 
         // Menu link kinds other modules register at boot (Catalog → `product`). Boot-time closures
         // only, no request state — shared across Octane requests like the ComponentRegistry.
@@ -89,6 +95,7 @@ final class CmsServiceProvider extends ServiceProvider
                 ResanitizePageBodies::class,
                 FillMissingUlids::class,
                 PurgeTrashedMenuItems::class,
+                ReconcileCategoryCounts::class,
             ]);
         }
     }

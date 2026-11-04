@@ -80,7 +80,8 @@ it('changes nothing when run again', function (): void {
     $this->artisan('site:seed-measurement', ['--host' => 'cwv.platform.test'])->assertSuccessful();
 
     expect(measurementCounts($siteId))->toBe($first)
-        ->and($this->get('http://cwv.platform.test/do-kiem')->getContent())->toBe($page);
+        ->and($this->get('http://cwv.platform.test/do-kiem')->getContent())->toBe($page)
+        ->and(categoryCountDrift($siteId))->toBe([]);   // the category totals follow every seeded post and product
 });
 
 it('writes nothing to another site', function (): void {

@@ -131,7 +131,7 @@ final readonly class SeedMeasurementSite
             }
             $product = Product::query()->create(['status' => 'published', 'published_at' => $at->subDays($n)]);
             $product->translations()->create(['locale' => $locale, 'name' => $name, 'slug' => $slug]);
-            $product->taxonomies()->attach($category->id, ['position' => 0, 'site_id' => $product->site_id]);
+            $product->assignCategories([$category->id]);   // the shared write path keeps the category totals
             $product->images()->create(['media_id' => $photos[$photo]->id, 'position' => 0]);
             try {
                 $this->routes->syncProduct($product->id, null, $locale, $slug);
