@@ -233,12 +233,15 @@ it('caps a value even on a switched-off channel', function (): void {
     expect(fcsStored())->toBeNull();
 });
 
-it('answers a value of the wrong type with the plain message, not an error page', function (string $prop, mixed $value, string $field): void {
+it('answers a value of the wrong type with the plain message, not an error page', function (string $prop, mixed $value, string $field, bool $custom = false): void {
     $admin = fcsAdmin();
 
-    app(Tenancy::class)->enter(1, function () use ($admin, $prop, $value, $field): void {
-        Livewire::actingAs($admin)->test(FloatingContactSettings::class)
-            ->set($prop, $value)
+    app(Tenancy::class)->enter(1, function () use ($admin, $prop, $value, $field, $custom): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class);
+        if ($custom) {
+            $lw->call('addCustom');   // c1, after the built-in five
+        }
+        $lw->set($prop, $value)
             ->assertOk()
             ->call('save')
             ->assertOk()
@@ -252,7 +255,27 @@ it('answers a value of the wrong type with the plain message, not an error page'
     'colour' => ['channels.0.color', ['x'], 'channels'],
     'labels' => ['channels.0.tips', 'x', 'channels'],
     'label' => ['channels.0.tips.vi', ['x'], 'channels.0.tips'],
+    'channel key' => ['channels.0.key', ['x'], 'channels'],
+    'a whole row as a string' => ['channels.0', 'x', 'channels'],
+    'name of a channel of the site’s own' => ['channels.5.name', ['x'], 'channels', true],
 ]);
+
+it('keeps working on the page after a value of the wrong type', function (): void {
+    $admin = fcsAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+            ->set('channels.0', 'x')
+            ->call('addCustom')
+            ->call('toggleChannel', 'zalo')
+            ->call('move', 'zalo', 1)
+            ->call('setTheme', 'horizontal')
+            ->assertOk()
+            ->assertSee('Zalo');
+    });
+
+    expect(fcsStored())->toBeNull();
+});
 
 it('opens and saves after a language with hover labels was switched off', function (): void {
     $admin = fcsAdmin();
@@ -420,6 +443,82 @@ it('keeps hover labels per language and names each language', function (): void 
 
     // JSONB keeps its own key order, so compare without it.
     expect(fcsStored()['channels'][0]['tips'])->toEqual(['vi' => 'Gọi ngay', 'en' => 'Call now']);
+});
+
+it('names every error that blocks the save on a switched-off channel', function (): void {
+    $admin = fcsAdmin();
+    DB::connection('pgsql_admin')->table('site_locales')->insert([
+        ['site_id' => 1, 'locale' => 'en', 'is_default' => false, 'enabled' => true, 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        app(SiteLocale::class)->forget();
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)->call('addCustom');
+        $i = fcsIndex($lw, 'c1');
+        $name = str_repeat('a', 41);
+        $lw->set("channels.$i.icon", 'ri-skull-line')
+            ->set("channels.$i.name", $name)
+            ->set("channels.$i.value", str_repeat('9', FloatingContact::MAX_VALUE + 1))
+            ->set("channels.$i.color", 'red;x')
+            ->set("channels.$i.tips.vi", str_repeat('b', 41))
+            ->set("channels.$i.tips.en", str_repeat('c', 41))
+            ->call('toggleChannel', 'c1')            // switched off: its fields fold away
+            ->assertSet("channels.$i.on", false)
+            ->call('save')
+            ->assertHasErrors(["channels.$i.icon", "channels.$i.name", "channels.$i.value", "channels.$i.color", "channels.$i.tips.vi", "channels.$i.tips.en"])
+            ->assertSee('Dài quá 40 ký tự — rút gọn lại.')    // the name, under its own field
+            ->assertSee($name.' · Biểu tượng: Chọn một biểu tượng trong danh sách', false)
+            ->assertSee($name.' · Thông tin liên hệ: Dài quá 500 ký tự — rút gọn lại.', false)
+            ->assertSee($name.' · Màu: Màu chưa hợp lệ — chọn lại bằng ô màu.', false)
+            ->assertSee($name.' · Nhãn khi di chuột (Tiếng Việt): Dài quá 40 ký tự — rút gọn lại.', false)
+            ->assertSee($name.' · Nhãn khi di chuột (English): Dài quá 40 ký tự — rút gọn lại.', false);
+
+        // Switched on, the label of the language not being edited is still named.
+        $lw->call('toggleChannel', 'c1')->call('save')
+            ->assertSee('Nhãn khi di chuột (English): Dài quá 40 ký tự — rút gọn lại.', false);
+    });
+
+    expect(fcsStored())->toBeNull();
+});
+
+it('opens a channel whose icon is no longer offered with the default icon, so it saves', function (): void {
+    $admin = fcsAdmin();
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'floating_contact', 'value' => [
+        'enabled' => true, 'theme' => 'vertical', 'position' => 'right', 'offset_x' => 20, 'offset_y' => 24,
+        'channels' => [['key' => 'c1', 'on' => false, 'value' => '/lien-he', 'icon' => 'ri-retired-line', 'name' => 'Đặt lịch', 'tips' => []]],
+    ]]));
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class);
+        expect($lw->get('channels')[fcsIndex($lw, 'c1')]['icon'])->toBe('ri-global-line');
+        $lw->call('save')->assertHasNoErrors()->assertSet('toast', 'Đã lưu cấu hình nút liên hệ');
+    });
+
+    expect(collect(fcsStored()['channels'])->firstWhere('key', 'c1')['icon'])->toBe('ri-global-line');
+});
+
+it('previews “Mua hàng” only in a language whose product list has an address', function (): void {
+    $admin = fcsAdmin();
+    fcsShop(1);   // the product list has a Vietnamese address only
+    DB::connection('pgsql_admin')->table('site_locales')->insert([
+        ['site_id' => 1, 'locale' => 'en', 'is_default' => false, 'enabled' => true, 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        app(SiteLocale::class)->forget();
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+            ->call('setTheme', 'horizontal')
+            ->call('toggleBuy');
+        $lw->set('channels.'.fcsIndex($lw, 'phone').'.value', '0912345678');
+        expect($lw->get('hasShop'))->toBeTrue()
+            ->and($lw->viewData('preview')['buy'])->not->toBeNull();
+
+        $lw->call('setLang', 'en')->assertSet('hasShop', false);
+        expect($lw->viewData('preview')['buy'])->toBeNull();
+
+        $lw->call('setLang', 'vi')->assertSet('hasShop', true)
+            ->set('lang', 'en')->assertSet('hasShop', false);   // the property set directly, too
+    });
 });
 
 it('words the page in the admin’s language', function (string $locale, string $title, string $save): void {

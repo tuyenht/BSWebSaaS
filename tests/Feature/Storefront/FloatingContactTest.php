@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Catalog\Support\ProductIndexLink;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
@@ -8,6 +9,7 @@ use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteSetting;
@@ -153,8 +155,9 @@ it('puts the buttons on the chosen side with the offsets, each named and drawn r
         ->toContain('aria-label="Chat ngay Zalo"')
         ->toContain('<span class="sf-fc__word" aria-hidden="true">Zalo</span>')
         ->toContain('href="sms:0912345678" aria-label="Nhắn tin SMS"')
-        // the spacer copies the buttons (same list classes), hidden from assistive tech
-        ->toContain('<div class="sf-fc-ghost sf-fc-ghost--side" aria-hidden="true" style="--fc-ox:40px;--fc-oy:100px"><div class="sf-fc__list sf-fc__list--left">')
+        // the spacer copies the buttons (same list classes), hidden from assistive tech; the count
+        // tells it on a wide screen whether the stack wraps to a second column
+        ->toContain('<div class="sf-fc-ghost sf-fc-ghost--side" aria-hidden="true" style="--fc-ox:40px;--fc-oy:100px;--fc-n:3"><div class="sf-fc__list sf-fc__list--left">')
         ->and(substr_count($part, 'sf-fc__btn"></span>'))->toBe(3)
         ->and($part)->not->toContain('sf-fc-bar--ghost');
 });
@@ -290,7 +293,7 @@ it('shows a site only its own buttons', function (): void {
         ->and($this->get('http://b.platform.test/gioi-thieu')->getContent())->toContain('tel:0922222222')->not->toContain('0911111111');
 });
 
-it('adds no query to a page', function (): void {
+it('adds no query to a page, and for “Mua hàng” only the product list lookup, once', function (): void {
     $siteId = flcSite();
     $this->get('http://mau.platform.test/gioi-thieu')->assertOk();
     DB::enableQueryLog();
@@ -307,4 +310,35 @@ it('adds no query to a page', function (): void {
 
     expect($html)->toContain('tel:0912345678')
         ->and($with)->toBe($without);
+
+    // The phone bar with "Mua hàng": the product list's address is looked up once per page —
+    // entitlement (2, remembered for the request), the products section, a published product and
+    // its address — and a category page reuses the section and the product check it reads anyway.
+    flcShop($siteId);
+    $count = function (string $path): int {
+        // What one request remembers starts empty, as on a fresh request.
+        app()->forgetInstance(ProductIndexLink::class);
+        app()->forgetInstance(Entitlement::class);
+        $this->get('http://mau.platform.test'.$path)->assertOk();
+        DB::flushQueryLog();
+        app()->forgetInstance(ProductIndexLink::class);
+        app()->forgetInstance(Entitlement::class);
+        $this->get('http://mau.platform.test'.$path)->assertOk();
+
+        return count(DB::getQueryLog());
+    };
+    DB::enableQueryLog();
+    $bar = flcConfig([['key' => 'phone', 'on' => true, 'value' => '0912345678']], ['theme' => 'horizontal']);
+    flcSetting($siteId, $bar);
+    $page = $count('/gioi-thieu');
+    $list = $count('/san-pham');
+    flcSetting($siteId, ['buy' => ['enabled' => true, 'color' => '#0ab39c']] + $bar);
+    $pageBuy = $count('/gioi-thieu');
+    $listBuy = $count('/san-pham');
+    $html = $this->get('http://mau.platform.test/gioi-thieu')->getContent();
+    DB::disableQueryLog();
+
+    expect($html)->toContain('href="/san-pham" style="--fc-fill:')
+        ->and($pageBuy - $page)->toBe(5)
+        ->and($listBuy - $list)->toBe(3);
 });

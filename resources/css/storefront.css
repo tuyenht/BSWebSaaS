@@ -4476,8 +4476,8 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 /* The reserved room: the same buttons, invisible, in the page flow after the footer and in its
    colour. The copy keeps the real list's max-height and wrapping, so it is exactly as tall as what
    is drawn (plus the gap above and the offset below). The bottom row reserves it at every width; a
-   side stack below 90rem: measured, a stack at the default 20px offset still covers the 80rem
-   page's edge text up to 1355px, and at the largest offset (60px) up to 1435px. */
+   one-column side stack below 90rem: measured, a stack at the default 20px offset still covers the
+   80rem page's edge text up to 1355px, and at the largest offset (60px) up to 1435px. */
 .sf-fc-ghost {
     display: flex;
     justify-content: flex-end;
@@ -4500,9 +4500,20 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     padding-inline: 0;
 }
 
+/* From 90rem a ONE-column side stack sits in the page margin and needs no room after the footer;
+   a stack that wraps into a second column (many channels on a short screen) reaches the page's
+   edge text, so it keeps its room at every width. Capping it to one column instead would push
+   buttons off the top of a short screen. Whether it wraps is the list's own sum — its buttons
+   (--fc-n, from the page) and gaps against its max-height (above): --fc-over > 0 means a second
+   column, and clamp(0px, --fc-over × 9999, room) turns that into a switch (0 or the full room)
+   without script. The 1px leans to keeping the room when a column only just fits. */
 @media (min-width: 90rem) {
     .sf-fc-ghost--side {
-        display: none;
+        --fc-over: calc(var(--fc-n, 0) * (max(50px, 3.125rem) + 0.75rem) - 0.75rem - (100dvh - var(--fc-oy, 24px) - 5rem) + 1px);
+        overflow: hidden;
+        max-height: clamp(0px, var(--fc-over) * 9999, 300vh);
+        padding-top: clamp(0px, var(--fc-over) * 9999, 0.625rem);
+        padding-bottom: clamp(0px, var(--fc-over) * 9999, calc(var(--fc-oy, 24px) + env(safe-area-inset-bottom, 0px)));
     }
 }
 

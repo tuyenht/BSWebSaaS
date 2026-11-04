@@ -19,7 +19,6 @@ use App\Modules\Cms\Support\EntryViewCounter;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\SafeLink;
 use App\Modules\Storefront\Support\ListPage;
-use App\Modules\Tenancy\Context\ContentSections;
 use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Theme\Chrome\FloatingContact;
@@ -51,7 +50,6 @@ final readonly class StorefrontController
         private MediaUrlResolver $media,
         private EntryViewCounter $views,
         private SiteIdentity $identity,
-        private ContentSections $sections,
         private StorefrontSettings $settings,
         private ListPage $lists,
         private TemplateResolver $templates,
@@ -253,8 +251,11 @@ final readonly class StorefrontController
         // working through the post→product migration (posts until products land, products after).
         // A category below the catalog root lists the products filed under it, on the same terms.
         $taxonomy = $resolved->taxonomy;
-        $catalogRoot = $this->sections->taxonomyIdOf('products');
-        $hasProducts = fn (): bool => Product::query()->where('status', 'published')->exists();
+        // Asked through ProductIndexLink, which remembers both for the request: a page showing the
+        // "Mua hàng" button has already read them.
+        $shop = app(ProductIndexLink::class);
+        $catalogRoot = $shop->catalogRoot();
+        $hasProducts = fn (): bool => $shop->hasPublishedProducts();
         if ($catalogRoot === $taxonomy->id && $hasProducts()) {
             return $this->renderProductIndex($resolved, $locale, $path, $chrome, false);
         }

@@ -51,8 +51,9 @@ final class FloatingContactSettings extends Component
     public string $buyColor = FloatingContact::BUY_COLOR;
 
     /**
-     * Whether the site has a product list for "Mua hàng" to open: without one the switch is kept
-     * but the button is shown nowhere (the preview draws what the site draws).
+     * Whether the site has a product list for "Mua hàng" to open in the language being previewed:
+     * without one the switch is kept but the button is shown nowhere on those pages (the preview
+     * draws what the site draws in that language). Worked out again when the language changes.
      */
     #[Locked]
     public bool $hasShop = false;
@@ -84,7 +85,7 @@ final class FloatingContactSettings extends Component
     public function mount(): void
     {
         $this->lang = app(SiteLocale::class)->default();
-        $this->hasShop = app(ProductIndexLink::class)->for($this->lang) !== null;
+        $this->hasShop = $this->shopIn($this->lang);
         $this->load(app(SettingsRepository::class)->get('storefront', 'floating_contact'));
         $this->savedSig = $this->signature();
     }
@@ -110,8 +111,9 @@ final class FloatingContactSettings extends Component
 
     public function setLang(string $locale): void
     {
-        if (in_array($locale, $this->locales(), true)) {
+        if (in_array($locale, $this->locales(), true) && $locale !== $this->lang) {
             $this->lang = $locale;
+            $this->hasShop = $this->shopIn($locale);
         }
     }
 
@@ -119,7 +121,7 @@ final class FloatingContactSettings extends Component
     {
         $i = $this->indexOf($key);
         if ($i !== null) {
-            $this->channels[$i]['on'] = ! $this->channels[$i]['on'];
+            $this->channels[$i]['on'] = ! $this->rows()[$i]['on'];
             $this->checkChannel($i);
         }
     }
@@ -181,7 +183,7 @@ final class FloatingContactSettings extends Component
         if (count($this->channels) >= FloatingContact::MAX_CHANNELS) {
             return;
         }
-        $used = array_map(fn (array $c): string => strtolower($c['color'] !== '' ? $c['color'] : (FloatingContact::CHANNELS[$c['key']]['color'] ?? '')), $this->channels);
+        $used = array_map(fn (array $c): string => $c['color'] !== '' ? $c['color'] : strtolower(FloatingContact::CHANNELS[$c['key']]['color'] ?? ''), $this->rows());
         $color = current(array_diff(self::CUSTOM_COLORS, $used)) ?: self::CUSTOM_COLORS[count($this->channels) % count(self::CUSTOM_COLORS)];
         $n = 1;
         while ($this->indexOf('c'.$n) !== null) {
@@ -216,6 +218,9 @@ final class FloatingContactSettings extends Component
     {
         if (preg_match('/\Achannels\.(\d+)\./', $name, $m) === 1) {
             $this->checkChannel((int) $m[1]);
+        }
+        if ($name === 'lang' && in_array($this->lang, $this->locales(), true)) {
+            $this->hasShop = $this->shopIn($this->lang);
         }
         $this->offsetX = FloatingContact::offset($this->offsetX, FloatingContact::MAX_OFFSET_X, FloatingContact::DEFAULT_OFFSET_X);
         $this->offsetY = FloatingContact::offset($this->offsetY, FloatingContact::MAX_OFFSET_Y, FloatingContact::DEFAULT_OFFSET_Y);
@@ -264,15 +269,22 @@ final class FloatingContactSettings extends Component
         $locales = $this->locales();
         if (! in_array($this->lang, $locales, true)) {
             $this->lang = $siteLocale->default();
+            $this->hasShop = $this->shopIn($this->lang);
         }
 
+        // One cast copy of the rows for the whole render: the view draws from it (never the raw
+        // property), and the fingerprint and the preview are built from the same copy.
+        $rows = $this->rows();
+        $stored = $this->shape($rows);
+
         $view = view('admin::livewire.floating-contact-settings', [
-            'dirty' => $this->signature() !== $this->savedSig,
+            'rows' => $rows,
+            'dirty' => md5((string) json_encode($stored)) !== $this->savedSig,
             'defaultLocale' => $siteLocale->default(),
             'locales' => $locales,
             'publicLocales' => $siteLocale->public(),
             // The draft as the site would show it, in the language being edited.
-            'preview' => FloatingContact::for(['enabled' => true] + $this->stored(), $this->lang, $this->hasShop ? '#' : null),
+            'preview' => FloatingContact::for(['enabled' => true] + $stored, $this->lang, $this->hasShop ? '#' : null),
         ]);
         $view->title(__('admin.fc.title'));
 
@@ -286,6 +298,15 @@ final class FloatingContactSettings extends Component
      */
     public function stored(): array
     {
+        return $this->shape($this->rows());
+    }
+
+    /**
+     * @param  array<int|string, array{key: string, on: bool, value: string, color: string, icon: string, name: string, tips: array<string, string>}>  $rows
+     * @return array<string, mixed>
+     */
+    private function shape(array $rows): array
+    {
         return [
             'enabled' => $this->enabled,
             'theme' => $this->theme,
@@ -293,25 +314,49 @@ final class FloatingContactSettings extends Component
             'offset_x' => $this->offsetX,
             'offset_y' => $this->offsetY,
             'buy' => ['enabled' => $this->buyOn, 'color' => $this->buyColor],
-            // Cast, not trusted: a tampered request can put any type in a row, and the draft is
-            // fingerprinted on every render — save() then refuses it with the plain message.
-            'channels' => array_map(function (mixed $c): array {
-                $c = Cast::arr($c);
-                $key = Cast::string($c['key'] ?? null);
-                $row = ['key' => $key, 'on' => ($c['on'] ?? false) === true, 'value' => trim(Cast::string($c['value'] ?? null))];
-                $color = Cast::string($c['color'] ?? null);
-                if ($color !== '') {
-                    $row['color'] = strtolower($color);
+            'channels' => array_map(function (array $c): array {
+                $row = ['key' => $c['key'], 'on' => $c['on'], 'value' => $c['value']];
+                if ($c['color'] !== '') {
+                    $row['color'] = $c['color'];
                 }
-                if (FloatingContact::typeOf($key) === 'custom') {
-                    $row['icon'] = Cast::string($c['icon'] ?? null);
-                    $row['name'] = trim(Cast::string($c['name'] ?? null));
+                if (FloatingContact::typeOf($c['key']) === 'custom') {
+                    $row['icon'] = $c['icon'];
+                    $row['name'] = $c['name'];
                 }
-                $row['tips'] = array_filter(array_map(fn (mixed $t): string => trim(Cast::string($t)), Cast::arr($c['tips'] ?? null)), fn (string $t): bool => $t !== '');
+                $row['tips'] = array_filter($c['tips'], fn (string $t): bool => $t !== '');
 
                 return $row;
-            }, $this->sent()),
+            }, $rows),
         ];
+    }
+
+    /**
+     * The channel rows cast to their shape, keyed as sent (so `channels.{i}` still names the row):
+     * a tampered request can put any type in a row, or a string for a whole row, and the draft is
+     * fingerprinted, previewed and drawn on every render — save() then refuses it with the plain
+     * message. Everything that reads a row goes through this copy, never the raw property.
+     *
+     * @return array<int|string, array{key: string, on: bool, value: string, color: string, icon: string, name: string, tips: array<string, string>}>
+     */
+    private function rows(): array
+    {
+        return array_map(function (mixed $c): array {
+            $c = Cast::arr($c);
+            $tips = [];
+            foreach (Cast::arr($c['tips'] ?? null) as $lc => $t) {
+                $tips[(string) $lc] = trim(Cast::string($t));
+            }
+
+            return [
+                'key' => Cast::string($c['key'] ?? null),
+                'on' => ($c['on'] ?? false) === true,
+                'value' => trim(Cast::string($c['value'] ?? null)),
+                'color' => strtolower(Cast::string($c['color'] ?? null)),
+                'icon' => Cast::string($c['icon'] ?? null),
+                'name' => trim(Cast::string($c['name'] ?? null)),
+                'tips' => $tips,
+            ];
+        }, $this->sent());
     }
 
     /** @return list<string> */
@@ -364,7 +409,9 @@ final class FloatingContactSettings extends Component
                 'on' => ($c['on'] ?? false) === true,
                 'value' => Cast::string($c['value'] ?? null),
                 'color' => FloatingContact::color($c['color'] ?? null) ?? '',
-                'icon' => Cast::string($c['icon'] ?? null, 'ri-global-line'),
+                // An icon no longer offered becomes the default one, which is what the site draws
+                // for it anyway: kept, it would block the save of a row that may be folded away.
+                'icon' => in_array($c['icon'] ?? null, ContactIcons::CUSTOM, true) ? Cast::string($c['icon']) : 'ri-global-line',
                 'name' => Cast::string($c['name'] ?? null),
                 'tips' => $tips,
             ];
@@ -417,8 +464,8 @@ final class FloatingContactSettings extends Component
 
     private function indexOf(string $key): ?int
     {
-        foreach ($this->channels as $i => $c) {
-            if ($c['key'] === $key) {
+        foreach ($this->rows() as $i => $c) {
+            if ($c['key'] === $key && is_int($i)) {
                 return $i;
             }
         }
@@ -524,6 +571,11 @@ final class FloatingContactSettings extends Component
         }
 
         return $errors;
+    }
+
+    private function shopIn(string $locale): bool
+    {
+        return app(ProductIndexLink::class)->for($locale) !== null;
     }
 
     private function signature(): string

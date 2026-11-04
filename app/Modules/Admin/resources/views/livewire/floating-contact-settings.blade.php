@@ -32,7 +32,7 @@
 
     // Channels switched on, and how many of them have a hover label in each language (the source
     // language counts every one: an empty label there shows the channel's own word).
-    $onChannels = array_values(array_filter($channels, fn (array $c): bool => $c['on']));
+    $onChannels = array_values(array_filter($rows, fn (array $c): bool => $c['on']));
     $filled = count($onChannels);
     $langInfo = [];
     foreach ($locales as $lc) {
@@ -67,11 +67,31 @@
     $noteTone = ['warning' => 'bg-warning-soft text-warning-text', 'src' => 'bg-primary-soft text-text', 'ok' => 'bg-success-soft text-success-text'][$note['tone']];
     $manyLangs = count($locales) > 5;
 
-    $phone = collect($channels)->firstWhere('key', 'phone');
+    // A channel's errors that no field on screen shows: on a switched-off row every field but the
+    // name is folded away; on a row switched on, only the labels of the other languages are.
+    $hiddenErrors = static function (int|string $i, bool $on) use ($errors, $lang): array {
+        $shown = $on ? ['value', 'icon', 'color', 'name', 'tips', 'tips.'.$lang] : ['name'];
+        $out = [];
+        foreach ($errors->getMessages() as $field => $messages) {
+            $rest = str_starts_with((string) $field, "channels.$i.") ? substr((string) $field, strlen("channels.$i.")) : null;
+            if ($rest !== null && ! in_array($rest, $shown, true) && isset($messages[0])) {
+                $out[$rest] = (string) $messages[0];
+            }
+        }
+
+        return $out;
+    };
+    $fieldName = static fn (string $field): string => match (true) {
+        str_starts_with($field, 'tips.') => __('admin.fc.f_tip_in', ['lang' => $nameOf(substr($field, 5))]),
+        in_array($field, ['value', 'icon', 'color', 'tips'], true) => __('admin.fc.f_'.$field),
+        default => __('admin.fc.f_value'),
+    };
+
+    $phone = collect($rows)->firstWhere('key', 'phone');
     $phoneWarn = ! ($phone !== null && $phone['on'] && FloatingContact::clean('phone', $phone['value']) !== null);
     $isVertical = $theme === 'vertical';
-    $hasPresets = array_values(array_filter(FloatingContact::PRESETS, fn (string $k): bool => collect($channels)->firstWhere('key', $k) === null));
-    $full = count($channels) >= FloatingContact::MAX_CHANNELS;
+    $hasPresets = array_values(array_filter(FloatingContact::PRESETS, fn (string $k): bool => collect($rows)->firstWhere('key', $k) === null));
+    $full = count($rows) >= FloatingContact::MAX_CHANNELS;
 
     // The preview: the draft as the site would show it in the language being edited, with the
     // "Mua hàng" button at the end of the bar when it is on and the site has a product list (then
@@ -239,7 +259,7 @@
 
                     <div class="flex flex-col gap-2.5 px-4 pt-3 pb-4">
                         <div class="flex flex-col gap-2.5" wire:sort="sortChannel">
-                            @foreach ($channels as $i => $c)
+                            @foreach ($rows as $i => $c)
                                 @php
                                     $key = $c['key'];
                                     $custom = $isCustom($key);
@@ -338,12 +358,12 @@
                                             @error("channels.$i.tips.$lang") <p class="text-caption text-danger-text">{{ $message }}</p> @enderror
                                             @error("channels.$i.tips") <p class="text-caption text-danger-text">{{ $message }}</p> @enderror
                                             @error("channels.$i.color") <p class="text-caption text-danger-text">{{ $message }}</p> @enderror
-                                        @else
-                                            {{-- A switched-off channel's fields are folded away, but what blocks the save still shows. --}}
-                                            @foreach (["channels.$i.value", "channels.$i.tips", "channels.$i.color"] as $offField)
-                                                @error($offField) <p class="text-caption text-danger-text">{{ $label }} — {{ $message }}</p> @enderror
-                                            @endforeach
                                         @endif
+                                        {{-- What blocks the save but has no field on screen (a switched-off channel's folded
+                                             fields, a hover label in another language) still shows, named in plain words. --}}
+                                        @foreach ($hiddenErrors($i, $c['on']) as $field => $message)
+                                            <p class="text-caption text-danger-text">{{ $c['on'] ? '' : $label.' · ' }}{{ $fieldName($field) }}: {{ $message }}</p>
+                                        @endforeach
                                     </div>
                                 </div>
                             @endforeach

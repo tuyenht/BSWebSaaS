@@ -277,17 +277,19 @@ final class FloatingContact
 
     /**
      * A phone number as people type it, spaces, dots, dashes and brackets stripped: a Vietnamese
-     * mobile (0 + 9 digits, or +84 + 9) or landline (0 + 10 digits, e.g. 024 1234 5678, or +84 +
-     * 10); with $hotline also a 1900/1800 number (+ 4 or 6 digits); with $abroad also any
-     * international number (+ and 8–15 digits). The digits are what the link dials.
+     * mobile (0 + 3/5/7/8/9 + 8 digits, e.g. 0912 345 678) or landline (0 + 2 + 9 digits, e.g.
+     * 024 3826 1234, 0236 …), each also as +84 without the leading 0; with $hotline also a
+     * 1900/1800 number (+ 4 or 6 digits); with $abroad also a number abroad (+ and 8–15 digits,
+     * any country code but 84, which must be a Vietnamese number as above). The digits are what
+     * the link dials.
      */
     private static function phone(string $value, bool $hotline, bool $abroad): ?string
     {
         $digits = self::digits($value);
 
-        return preg_match('/\A(?:0\d{9,10}|\+84\d{9,10})\z/', $digits) === 1
+        return preg_match('/\A(?:0|\+84)(?:[35789]\d{8}|2\d{9})\z/', $digits) === 1
             || ($hotline && preg_match('/\A(?:1900|1800)(?:\d{4}|\d{6})\z/', $digits) === 1)
-            || ($abroad && preg_match('/\A\+\d{8,15}\z/', $digits) === 1)
+            || ($abroad && preg_match('/\A\+(?!84)\d{8,15}\z/', $digits) === 1)
             ? $digits : null;
     }
 
@@ -296,11 +298,14 @@ final class FloatingContact
     {
         $digits = self::digits($value);
 
-        return preg_match('/\A(?:0\d{9}|\+84\d{9})\z/', $digits) === 1 ? $digits : null;
+        return preg_match('/\A(?:0|\+84)[35789]\d{8}\z/', $digits) === 1 ? $digits : null;
     }
 
+    /** The number without spaces, dots, dashes and brackets; "+84 (0)9…" loses the trunk 0 (as SafeLink::tel). */
     private static function digits(string $value): string
     {
+        $value = (string) preg_replace('/\A(\s*\+\d{1,3})\s*\(\s*0\s*\)/', '$1', $value);
+
         return (string) preg_replace('/[\s.\-()]/', '', $value);
     }
 
