@@ -177,7 +177,7 @@
     <x-bs-admin::card title="Tree list">
         <div class="space-y-6">
             <div>
-                <p class="mb-2 text-small text-body-muted">Kéo một dòng: thả vào giữa tên để thành mục con đầu tiên, thả vào khe giữa hai dòng để nằm ngang hàng — kéo sang trái trong khe để ra ngoài một cấp. Tối đa 3 cấp; «Khuôn mẫu» đang khóa. Bấm Tab tới tên để thấy viền focus, rồi dùng phím tắt bên dưới.</p>
+                <p class="mb-2 text-small text-text-muted">Kéo một dòng: thả vào giữa tên để thành mục con đầu tiên, thả vào khe giữa hai dòng để nằm ngang hàng — kéo sang trái trong khe để ra ngoài một cấp. Tối đa 3 cấp; «Khuôn mẫu» đang khóa. Bấm Tab tới tên để thấy viền focus, rồi dùng phím tắt bên dưới.</p>
                 <x-bs-admin::tree label="Trình đơn mẫu" move="moveTreeItem" :max-depth="3">
                     @foreach ($treeRows as $tr)
                         <x-bs-admin::tree.row :row="$tr" :name="$tr['node']['label']" :locked="$tr['node']['locked']" wire:key="tree-{{ $tr['key'] }}">
@@ -196,7 +196,7 @@
                 <x-bs-admin::tree.keys />
             </div>
             <div>
-                <p class="mb-2 text-small text-body-muted">Các trạng thái khi kéo, vẽ tĩnh: «Sản phẩm» đang được kéo (mờ); thả vào «Giới thiệu» được (viền xanh + dòng giữ chỗ); thả vào «Phay CNC 5 trục» bị chặn (viền đỏ + lý do); «Khuôn mẫu» đang khóa.</p>
+                <p class="mb-2 text-small text-text-muted">Các trạng thái khi kéo, vẽ tĩnh: «Sản phẩm» đang được kéo (mờ); thả vào «Giới thiệu» được (viền xanh + dòng giữ chỗ); thả vào «Phay CNC 5 trục» bị chặn (viền đỏ + lý do); «Khuôn mẫu» đang khóa.</p>
                 <x-bs-admin::tree label="Các trạng thái khi kéo (mẫu tĩnh)">
                     @foreach ($stillRows as $sr)
                         <x-bs-admin::tree.row :row="$sr" :name="$sr['node']['label']" :locked="$sr['node']['locked'] ?? null" :state="$sr['node']['state']">
