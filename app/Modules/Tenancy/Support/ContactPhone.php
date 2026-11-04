@@ -15,8 +15,11 @@ namespace App\Modules\Tenancy\Support;
  */
 final class ContactPhone
 {
-    /** The stored form of what was typed, or null when it is not a phone number. */
-    public static function normalize(string $typed): ?string
+    /**
+     * The stored form of what was typed, or null when it is not a phone number. $home is the
+     * country a leading 0 dials (digits only); null reads it from config.
+     */
+    public static function normalize(string $typed, ?string $home = null): ?string
     {
         // a copied number may carry no-break or other Unicode spaces; "(+84) 90…" brackets its code
         $typed = trim((string) preg_replace('/[\p{Z}\t]+/u', ' ', $typed));
@@ -28,7 +31,7 @@ final class ContactPhone
         }
 
         $digits = (string) preg_replace('/\D/', '', $typed);
-        $home = self::homeCode();
+        $home ??= self::homeCode();
         $number = match (true) {
             str_starts_with($typed, '+') => '+'.$digits,
             str_starts_with($digits, '00') => '+'.substr($digits, 2),

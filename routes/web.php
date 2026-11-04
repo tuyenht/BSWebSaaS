@@ -17,6 +17,7 @@ use App\Modules\Admin\Livewire\EmailSettings;
 use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
 use App\Modules\Admin\Livewire\Entries\ReviewInbox;
+use App\Modules\Admin\Livewire\FloatingContactSettings;
 use App\Modules\Admin\Livewire\ForgotPassword;
 use App\Modules\Admin\Livewire\Forms\Detail as FormsDetail;
 use App\Modules\Admin\Livewire\Forms\Inbox as FormsInbox;
@@ -207,6 +208,7 @@ Route::prefix(config('admin.prefix', 'admin'))
         Route::get('/settings/social', SocialSettings::class)->middleware('can:settings.manage')->name('admin.settings.social');
         Route::get('/settings/appearance', AppearanceSettings::class)->middleware('can:settings.manage')->name('admin.settings.appearance');
         Route::get('/settings/catalog', CatalogSettings::class)->middleware('can:settings.manage')->name('admin.settings.catalog');
+        Route::get('/settings/floating-contact', FloatingContactSettings::class)->middleware('can:settings.manage')->name('admin.settings.floating-contact');
         // The site's domain names: whoever holds domains.view may look, domains.manage may change.
         // The component checks both itself (no route gate: a viewer gets the no-permission card).
         Route::get('/settings/domains', DomainSettings::class)->name('admin.settings.domains');

@@ -1,10 +1,15 @@
 <?php
 
+use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
+use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\ContentSection;
+use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteSetting;
 
 /*
@@ -24,6 +29,36 @@ it('renders the storefront home within its query budget', function (): void {
     $count = countQueries(fn () => $this->get('http://a.test/')->assertOk());
 
     expect($count)->toBeLessThanOrEqual($budget);
+});
+
+it('renders the storefront home with the phone bar and its “Mua hàng” button within its query budget', function (): void {
+    // The home budget plus finding the product list once for the page: the site's modules (2), the
+    // products section, a published product and the list's address. The bar's own setting shares
+    // the one settings read the home already makes.
+    $budget = 16;
+
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteModule::query()->create(['module_key' => 'catalog', 'enabled' => true]);
+        $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
+        $category->translations()->create(['locale' => 'vi', 'name' => 'Sản phẩm', 'slug' => 'san-pham']);
+        ContentSection::query()->create(['key' => 'products', 'label' => 'Sản phẩm', 'entry_type' => 'post', 'taxonomy_id' => $category->id]);
+        app(RouteSync::class)->syncTaxonomy($category, 'vi', 'san-pham');
+        $product = Product::query()->create(['status' => 'published', 'published_at' => now()]);
+        $product->translations()->create(['locale' => 'vi', 'name' => 'Sản phẩm 1', 'slug' => 'sp-1']);
+        SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'floating_contact', 'value' => [
+            'enabled' => true, 'theme' => 'horizontal', 'position' => 'right', 'offset_x' => 20, 'offset_y' => 24,
+            'buy' => ['enabled' => true, 'color' => '#0ab39c'],
+            'channels' => [['key' => 'phone', 'on' => true, 'value' => '0912345678'], ['key' => 'zalo', 'on' => true, 'value' => '0912345678']],
+        ]]);
+    });
+
+    $html = '';
+    $count = countQueries(function () use (&$html): void {
+        $html = $this->get('http://a.test/')->assertOk()->getContent();
+    });
+
+    expect($html)->toContain('tel:0912345678')->toContain('href="/san-pham"')
+        ->and($count)->toBeLessThanOrEqual($budget);
 });
 
 it('renders the storefront home with the full chrome within its query budget', function (): void {

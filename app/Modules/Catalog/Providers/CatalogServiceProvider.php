@@ -8,6 +8,7 @@ use App\Modules\Catalog\Components\ProductGridComponent;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Catalog\Policies\CatalogPolicy;
+use App\Modules\Catalog\Support\ProductIndexLink;
 use App\Modules\Catalog\Support\ProductRoutes;
 use App\Modules\Cms\Navigation\MenuTargets;
 use App\Modules\Cms\Routing\CategoryDependents;
@@ -24,6 +25,12 @@ use Illuminate\Support\ServiceProvider;
  */
 final class CatalogServiceProvider extends ServiceProvider
 {
+    public function register(): void
+    {
+        // Remembers the product list's address for one request or job (flushed under Octane).
+        $this->app->scoped(ProductIndexLink::class);
+    }
+
     public function boot(): void
     {
         Gate::policy(Product::class, CatalogPolicy::class);

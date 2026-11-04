@@ -4,6 +4,7 @@
     from the site's tokens (storefront.css) — nothing here names a tenant, a year or a language.
     Sections are conditional so tenants without NAP data get a minimal but valid footer.
     A site with the `storefront.footer` setting gets the rich footer instead ($footer, normalized).
+    The floating contact buttons follow it, once per page (every layout prints this footer).
 --}}
 @if (! empty($footer))
 @include('theme::partials.footer-rich')
@@ -60,3 +61,4 @@
     </div>
 </footer>
 @endif
+@include('theme::partials.floating-contact')
