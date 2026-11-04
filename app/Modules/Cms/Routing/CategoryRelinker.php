@@ -99,7 +99,10 @@ final readonly class CategoryRelinker
         }
 
         // The totals move once, after every item has been locked (items, then categories: the order
-        // an editor save keeps), so a save cannot slip in between the two readings of an item.
+        // an editor save keeps), so a save cannot slip in between the two readings of an item. A
+        // delete that lifts sub-categories has already written those category rows: a save moving an
+        // item to or from one of them at that moment is a deadlock Postgres breaks by rolling one
+        // side back (an error to retry, never a wrong total).
         $before = [];
         $now = [];
         foreach ($this->kinds() as $kind) {
