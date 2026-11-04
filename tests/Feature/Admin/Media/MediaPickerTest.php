@@ -1,9 +1,11 @@
 <?php
 
 use App\Modules\Admin\Livewire\Catalog\Editor;
+use App\Modules\Admin\Support\MediaUsageLocator;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductImage;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\MediaFolder;
@@ -931,4 +933,24 @@ it('refuses a client-written URL preview, so closing the picker cannot delete an
     });
 
     Storage::disk('r2')->assertExists($foreign);
+});
+
+it('counts a category picture as in use, in the detail list and in the used / unused filter', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $picture = seedPickerMedia('cat', ['storage_key' => 's/library/cat.jpg']);
+        $free = seedPickerMedia('free', ['storage_key' => 's/library/free.jpg']);
+        Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0, 'cover_media_id' => $picture->id])
+            ->translations()->create(['locale' => 'vi', 'name' => 'Tin tức', 'slug' => 'tin-tuc']);
+        Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 1]);   // no picture: NOT IN still works
+
+        $locator = app(MediaUsageLocator::class);
+        $used = Media::query();
+        $locator->constrain($used, true);
+        $unused = Media::query();
+        $locator->constrain($unused, false);
+
+        expect($locator->usagesFor($picture, 'vi'))->toBe([['kind' => 'category', 'role' => 'cover', 'label' => 'Tin tức', 'url' => route('admin.taxonomies.index')]])
+            ->and($used->pluck('id')->all())->toBe([$picture->id])
+            ->and($unused->pluck('id')->all())->toBe([$free->id]);
+    });
 });
