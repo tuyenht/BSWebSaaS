@@ -315,14 +315,59 @@ it('writes the catalog’s names once another province and ward are picked', fun
         ->and(gisProfile($siteId))->toMatchArray(['province' => 'Tỉnh Thử Khác', 'ward' => 'Phường Thử Khác']);
 });
 
-it('never overwrites the company name a language already shows', function (): void {
+/** The company name a language holds as its shown name (the translation's legal_name). */
+function gisShownName(int $siteId, string $locale = 'vi'): ?string
+{
+    return app(Tenancy::class)->enter($siteId, fn () => SiteProfileTranslation::query()->where('locale', $locale)->value('legal_name'));
+}
+
+it('keeps the company name the site shows, over an older Vietnamese text that was not shown', function (): void {
     $siteId = gisAnVinh();
-    app(Tenancy::class)->enter($siteId, fn () => SiteProfileTranslation::query()->where('locale', 'vi')->update(['legal_name' => 'Cơ Khí An Vinh (tên hiện)']));
+    gisRichFooter($siteId);
+    app(Tenancy::class)->enter($siteId, fn () => SiteProfileTranslation::query()->where('locale', 'vi')->update(['legal_name' => 'Cơ Khí An Vinh (tên cũ)']));
+    $before = gisHome();
+    expect(gisFooter($before))->toContain('Công ty TNHH TM &amp; DV Thiết Kế Gia Công Cơ Khí An Vinh')->not->toContain('tên cũ');
 
     gisSave($siteId);
+    $after = gisHome();
 
-    expect(app(Tenancy::class)->enter($siteId, fn () => SiteProfileTranslation::query()->where('locale', 'vi')->value('legal_name')))->toBe('Cơ Khí An Vinh (tên hiện)')
-        ->and(gisFooter(gisHome()))->toContain('Cơ Khí An Vinh (tên hiện)')->not->toContain('TM &amp; DV');
+    expect(gisFooter($after))->toBe(gisFooter($before))
+        ->and(gisLd($after))->toBe(gisLd($before))
+        ->and(gisShownName($siteId))->toBe('Công ty TNHH TM & DV Thiết Kế Gia Công Cơ Khí An Vinh');
+});
+
+it('lets the shown name follow the full name when the older brand name is the full name', function (): void {
+    $siteId = gisAnVinh();
+    app(Tenancy::class)->enter($siteId, function (): void {
+        SiteProfile::query()->firstOrFail()->update(['legal_name' => 'Công ty TNHH TM & DV Thiết Kế Gia Công Cơ Khí An Vinh']);
+        SiteProfileTranslation::query()->where('locale', 'vi')->update(['legal_name' => 'Tên chưa từng hiện']);
+    });
+    $before = gisHome();
+
+    gisSave($siteId);
+    $after = gisHome();
+
+    expect(gisFooter($after))->toBe(gisFooter($before))
+        ->and(gisLd($after))->toBe(gisLd($before))
+        ->and(gisShownName($siteId))->toBeNull();
+});
+
+it('shows a new full name in every language once it is changed', function (): void {
+    $siteId = gisAnVinh();
+    gisRichFooter($siteId);
+    gisSave($siteId);   // the first save keeps An Vinh's shortened name
+    expect(gisShownName($siteId))->toBe('Công ty TNHH TM & DV Thiết Kế Gia Công Cơ Khí An Vinh');
+    app(Tenancy::class)->enter($siteId, fn () => SiteProfileTranslation::query()->create([
+        'site_profile_id' => SiteProfile::query()->firstOrFail()->id, 'locale' => 'en', 'legal_name' => 'An Vinh Mechanical Co., Ltd',
+    ]));
+
+    gisSave($siteId, ['legalName' => 'CÔNG TY TNHH CƠ KHÍ AN VINH MỚI']);
+    $html = gisHome();
+
+    expect(gisFooter($html))->toContain('CÔNG TY TNHH CƠ KHÍ AN VINH MỚI')->not->toContain('TM &amp; DV')
+        ->and(gisLd($html)['legalName'])->toBe('CÔNG TY TNHH CƠ KHÍ AN VINH MỚI')
+        ->and(gisShownName($siteId))->toBeNull()
+        ->and(gisShownName($siteId, 'en'))->toBeNull();
 });
 
 it('keeps a network the screen does not edit, from the brand setting too', function (): void {
@@ -339,6 +384,37 @@ it('keeps a network the screen does not edit, from the brand setting too', funct
     expect(gisFooter($after))->toBe(gisFooter($before))
         ->and(gisLd($after))->toBe(gisLd($before))
         ->and(gisProfile($siteId)['social_links'])->toMatchArray(['facebook' => 'https://facebook.com/comau', 'linkedin' => 'https://www.linkedin.com/company/comau']);
+});
+
+it('keeps the networks the site shows: the brand setting’s links replace the profile’s', function (): void {
+    $siteId = gisSite();
+    gisRichFooter($siteId);
+    app(Tenancy::class)->enter($siteId, fn () => SiteProfile::query()->firstOrCreate([], [])->update(['social_links' => ['instagram' => 'https://instagram.com/comau']]));
+    gisBrand($siteId, ['name' => 'Cơ Khí Mẫu', 'legal_name' => 'Công ty TNHH Cơ Khí Mẫu', 'address' => 'Số 1 Đường Thử, TP Hà Nội', 'phone' => '0901 234 567',
+        'social_links' => ['linkedin' => 'https://www.linkedin.com/company/comau', 'twitter' => '']]);
+    $before = gisHome();
+    expect(gisFooter($before))->not->toContain('instagram.com');
+
+    gisSave($siteId);
+    $after = gisHome();
+
+    expect(gisFooter($after))->toBe(gisFooter($before))
+        ->and(gisLd($after))->toBe(gisLd($before))
+        ->and(gisProfile($siteId)['social_links'])->toBe(['linkedin' => 'https://www.linkedin.com/company/comau']);
+});
+
+it('compares the hotline with the phone by its digits', function (): void {
+    $siteId = gisSite();
+    gisRichFooter($siteId);
+    gisBrand($siteId, ['name' => 'Cơ Khí Mẫu', 'legal_name' => 'Công ty TNHH Cơ Khí Mẫu', 'phone' => '0915 66 83 83', 'hotline' => '0915668383']);
+    $footer = gisFooter(gisHome());
+
+    gisSave($siteId);
+    expect(gisFooter(gisHome()))->toBe($footer);
+
+    gisSave($siteId, ['phone' => '0902 222 333']);
+    expect(gisProfile($siteId))->toMatchArray(['phone' => '0902 222 333', 'hotline' => '0902 222 333'])
+        ->and(gisFooter(gisHome()))->toContain('>0902 222 333<')->not->toContain('0915668383')->not->toContain('0915 66 83 83');
 });
 
 it('keeps a hotline of its own; one that was the phone follows it', function (): void {
@@ -377,4 +453,45 @@ it('keeps the street of a one-line address that has a province, without repeatin
 })->with([
     'province only' => [['province' => 'TP Thử Ba'], 'Số 1 Đường Thử, Xã Mẫu'],
     'ward and province' => [['ward' => 'Xã Mẫu', 'province' => 'TP Thử Ba'], 'Số 1 Đường Thử'],
+]);
+
+it('keeps a street the user cleared empty, and the address as it shows', function (array $parts, string $shown): void {
+    $siteId = gisSite();
+    gisBrand($siteId, ['name' => 'Cơ Khí Mẫu', 'legal_name' => 'Công ty TNHH Cơ Khí Mẫu', 'address' => 'Số 1 Đường Thử, '.$shown, ...$parts]);
+    gisSave($siteId);
+    gisSave($siteId, [], ['address_line' => '']);
+    $footer = gisFooter(gisHome());
+    expect($footer)->toContain(' '.$shown.'<br>')->not->toContain('Số 1 Đường Thử');
+
+    expect(app(Tenancy::class)->enter($siteId, fn () => app(GeneralSettingsStore::class)->load()['i18n']['vi']['address_line']))->toBe('');
+    gisSave($siteId);
+
+    expect(gisFooter(gisHome()))->toBe($footer)
+        ->and(gisProfile($siteId)['address_line'])->toBeNull();
+})->with([
+    'ward and province' => [['ward' => 'Xã Mẫu', 'province' => 'TP Thử Ba'], 'Xã Mẫu, TP Thử Ba'],
+    'province only' => [['province' => 'TP Thử Ba'], 'TP Thử Ba'],
+]);
+
+it('takes the street out of an older address with a ward, district and province', function (string $address, string $shownAfter): void {
+    $siteId = gisSite();
+    gisBrand($siteId, ['name' => 'Cơ Khí Mẫu', 'legal_name' => 'Công ty TNHH Cơ Khí Mẫu', 'address' => $address,
+        'ward' => 'Phường Mẫu', 'district' => 'Quận Mẫu', 'province' => 'TP Thử Ba']);
+    $footer = gisFooter(gisHome());
+    expect($footer)->toContain(' '.$address.'<br>');
+
+    gisSave($siteId);
+    $after = gisFooter(gisHome());
+
+    expect(gisProfile($siteId)['address_line'])->toBe('Số 1 Đường Thử')
+        ->and($after)->toContain(' '.$shownAfter.'<br>');
+    if ($shownAfter === $address) {
+        expect($after)->toBe($footer);
+    }
+})->with([
+    // the district kept beside an address that does not print it: nothing changes
+    'district not in the address' => ['Số 1 Đường Thử, Phường Mẫu, TP Thử Ba', 'Số 1 Đường Thử, Phường Mẫu, TP Thử Ba'],
+    // the composed address has no district level (abolished 2025): nothing repeats, the district drops
+    'district in the address' => ['Số 1 Đường Thử, Phường Mẫu, Quận Mẫu, TP Thử Ba', 'Số 1 Đường Thử, Phường Mẫu, TP Thử Ba'],
+    'without commas' => ['Số 1 Đường Thử Phường Mẫu Quận Mẫu TP Thử Ba', 'Số 1 Đường Thử, Phường Mẫu, TP Thử Ba'],
 ]);

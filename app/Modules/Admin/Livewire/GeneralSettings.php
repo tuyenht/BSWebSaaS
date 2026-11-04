@@ -412,11 +412,15 @@ final class GeneralSettings extends Component
             : Cast::string(__('admin.gs.err.wardId', ['province' => $owner->name]));
     }
 
-    /** A Vietnamese number: 0 or +84 first, spaces and dots allowed, at least 8 digits once they are removed. */
+    /**
+     * A Vietnamese number: 0 or +84 first, spaces and dots allowed, and at least 8 digits in its
+     * national form (a leading 84 counts as the 0 it stands for: "+84 123 456" is too short).
+     */
     private static function isPhone(string $value): bool
     {
-        return preg_match('/\A(0|\+84)[0-9\s.]{8,13}\z/', $value) === 1
-            && strlen((string) preg_replace('/\D/', '', $value)) >= 8;
+        $national = (string) preg_replace('/\A84/', '0', (string) preg_replace('/\D/', '', $value));
+
+        return preg_match('/\A(0|\+84)[0-9\s.]{8,13}\z/', $value) === 1 && strlen($national) >= 8;
     }
 
     /** A real day written dd/mm/yyyy. */

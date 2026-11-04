@@ -190,6 +190,31 @@ it('makes the profile the source on save: the NAP keys leave the brand setting, 
     });
 });
 
+it('loads a retired ward as not picked; an untouched save passes and keeps the address as shown', function (): void {
+    $admin = gsAdmin();
+    $one = gsUnit('provinces', 'Z1');
+    $retired = DB::connection('pgsql_admin')->table('wards')->insertGetId(
+        ['province_id' => $one, 'code' => 'Z103', 'name' => 'Phường Cũ', 'valid_from' => '2020-01-01', 'valid_to' => '2025-06-30'],
+    );
+    app(Tenancy::class)->enter(1, fn () => SiteProfile::query()->create([
+        'brand_name' => 'Cơ Khí Mẫu', 'legal_name' => 'CÔNG TY TNHH CƠ KHÍ MẪU', 'address_line' => 'Số 1 Đường Thử',
+        'province_id' => $one, 'province' => 'Thành phố Thử Một', 'ward_id' => $retired, 'ward' => 'Phường Cũ',
+    ]));
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $one): void {
+        $shown = app(SiteIdentity::class)->for('vi')['address'];
+        expect($shown)->toBe('Số 1 Đường Thử, Phường Cũ, Thành phố Thử Một');
+
+        Livewire::actingAs($admin)->test(GeneralSettings::class)
+            ->assertSet('form.provinceId', (string) $one)
+            ->assertSet('form.wardId', '')
+            ->call('save')->assertHasNoErrors()->assertSet('toast', 'Đã lưu thông tin chung');
+
+        expect(app(SiteIdentity::class)->for('vi')['address'])->toBe($shown);
+    });
+    expect(gsProfile())->toMatchArray(['ward' => 'Phường Cũ', 'ward_id' => null]);
+});
+
 it('keeps each language’s own text: English never overwrites Vietnamese, and an empty one falls back', function (): void {
     $admin = gsAdmin();
     app(Tenancy::class)->enter(1, function (): void {
@@ -245,6 +270,7 @@ it('shows the design’s message on the field when it is left', function (string
     'phone' => ['form.phone', '12345', 'Số điện thoại Việt Nam bắt đầu bằng 0 hoặc +84.'],
     'phone of dots' => ['form.phone', '0.........', 'Số điện thoại Việt Nam bắt đầu bằng 0 hoặc +84.'],
     'phone too few digits' => ['form.phone', '0 12 34 56', 'Số điện thoại Việt Nam bắt đầu bằng 0 hoặc +84.'],
+    'phone +84 too few digits' => ['form.phone', '+84 123 456', 'Số điện thoại Việt Nam bắt đầu bằng 0 hoặc +84.'],
     'email' => ['form.email', 'lienhe@', 'Địa chỉ email chưa đúng định dạng.'],
     'moit url required when on' => ['form.moitUrl', '', 'Dán liên kết trang xác nhận, ví dụ http://online.gov.vn/Home/WebDetails/12345.'],
     'zalo' => ['form.zalo', 'abc', 'Ghi số điện thoại di động dùng Zalo, mã Zalo OA (chỉ gồm số) hoặc liên kết https://zalo.me/….'],

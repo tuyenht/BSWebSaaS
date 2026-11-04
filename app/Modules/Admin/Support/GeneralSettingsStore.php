@@ -27,8 +27,8 @@ use Illuminate\Support\Facades\DB;
  * and takes the NAP keys out of general.brand (logo, favicon and share image stay), which makes the
  * profile the one source from that save on (design.md §14 contract step). The full legal name and
  * the representative are shared values written to site_profiles; the company name the site shows
- * per language (the translation's legal_name, which may be shortened) has no field here and is
- * only ever filled from the older brand name, never overwritten.
+ * per language (the translation's legal_name, which may be shortened) has no field here: it is
+ * filled from the older brand name, and cleared when the full name changes.
  *
  * Every read and write runs in the request's site context: rows are found and created through
  * BelongsToSite (the site id never comes from the browser), with RLS underneath.
@@ -77,11 +77,16 @@ final class GeneralSettingsStore
                     : $text($row instanceof SiteProfileTranslation ? $row->getAttribute($column) : null);
             }
         }
-        // A site that only ever had the address as one line keeps it in "Số nhà, đường", without the
-        // ward and province it ends with (those are printed after it): saving must not drop or
-        // repeat any part of the address the footer shows.
-        if ($i18n[$default]['address_line'] === '' && $text($shown['address'] ?? null) !== '') {
-            $i18n[$default]['address_line'] = self::streetOf($text($shown['address']), $text($shown['ward'] ?? null), $text($shown['province'] ?? null));
+        // A site that only ever had the address as one line (the older brand setting's `address`)
+        // keeps it in "Số nhà, đường", without the ward, district and province it ends with (those
+        // are printed after it): saving must not drop or repeat any part of the address the footer
+        // shows. Once saved, the shown address is composed from the parts, so it is never copied
+        // back: a street the user cleared stays empty.
+        $brand = SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->value('value');
+        if ($i18n[$default]['address_line'] === '' && is_array($brand) && $text($brand['address'] ?? null) !== '') {
+            $i18n[$default]['address_line'] = self::streetOf($text($shown['address'] ?? null), [
+                $text($shown['province'] ?? null), $text($shown['district'] ?? null), $text($shown['ward'] ?? null),
+            ]);
         }
 
         $hours = BusinessHours::from($shown['business_hours'] ?? null);
@@ -140,6 +145,7 @@ final class GeneralSettingsStore
 
             $profile = SiteProfile::query()->firstOrNew();
             $fullLegalName = $text($profile->getAttribute('legal_name'));   // as stored, before this save
+            $newLegalName = $orNull($shared['legalName'] ?? null);
             $provinceId = $orNull($shared['provinceId'] ?? null);
             $wardId = $orNull($shared['wardId'] ?? null);
             $province = $provinceId !== null ? Province::query()->whereNull('valid_to')->find(Cast::int($provinceId)) : null;
@@ -151,10 +157,11 @@ final class GeneralSettingsStore
             $sameProvince = ($provinceId ?? '') === $loadedProvinceId;
             $sameWard = $sameProvince && ($wardId ?? '') === $loadedWardId;
 
-            // A network this screen does not edit is kept: the one the site shows (the brand
-            // setting, in the default language) first, then the profile's.
+            // A network this screen does not edit is kept as the site shows it: in the default
+            // language the brand setting's links, when it has any, replace the profile's whole set.
+            $brandLinks = Cast::arr($brand['social_links'] ?? null);
             $links = [];
-            foreach (Cast::arr($brand['social_links'] ?? null) + Cast::arr($profile->getAttribute('social_links')) as $network => $url) {
+            foreach ($brandLinks !== [] ? $brandLinks : Cast::arr($profile->getAttribute('social_links')) as $network => $url) {
                 if (! in_array((string) $network, self::SOCIAL, true) && is_string($url) && $url !== '') {
                     $links[(string) $network] = $url;
                 }
@@ -166,15 +173,19 @@ final class GeneralSettingsStore
             }
             $hours = BusinessHours::of(Cast::string($shared['days'] ?? null), Cast::stringOrNull($shared['opens'] ?? null), Cast::stringOrNull($shared['closes'] ?? null));
             $phone = $orNull($shared['phone'] ?? null);
-            // One number on the screen. A hotline of its own (not the phone) is kept; one that was
-            // the phone follows it.
+            // One number on the screen, compared by its digits ("0915 66 83 83" is "0915668383"). A
+            // hotline of its own is kept; one that was the phone keeps its wording while the phone
+            // stays the same number, and follows the phone once it changes.
+            $digits = static fn (?string $value): string => (string) preg_replace('/\D+/', '', (string) $value);
             $shownPhone = $text($shown['phone'] ?? null);
             $shownHotline = $text($shown['hotline'] ?? null);
-            $hotline = $shownPhone !== '' && $shownHotline !== '' && $shownHotline !== $shownPhone ? $shownHotline : $phone;
+            $ownHotline = $shownPhone !== '' && $shownHotline !== '' && $digits($shownHotline) !== $digits($shownPhone);
+            $samePhone = $shownPhone !== '' && $shownHotline !== '' && $digits($phone) === $digits($shownPhone);
+            $hotline = $ownHotline || $samePhone ? $shownHotline : $phone;
 
             $profile->fill([
                 'brand_name' => $orNull($i18n[$default]['name'] ?? null),
-                'legal_name' => $orNull($shared['legalName'] ?? null),
+                'legal_name' => $newLegalName,
                 'tax_code' => $orNull($shared['taxCode'] ?? null),
                 'representative' => $orNull($shared['representative'] ?? null),
                 'business_license_no' => $orNull($shared['licenseNo'] ?? null),
@@ -205,15 +216,20 @@ final class GeneralSettingsStore
                 $row = SiteProfileTranslation::query()->firstOrNew(['site_profile_id' => $profile->id, 'locale' => $locale]);
                 $row->fill($values);
                 // The company name the site shows may be shortened (the translation's legal_name); the
-                // screen edits the full name of the licence (the profile's). An older brand name that
-                // differs from the full one is that shown name: it moves into the default language's
-                // translation, never over one already set.
+                // screen edits the full name of the licence (the profile's). In the default language
+                // the older brand name is what the site shows, ahead of any translation: it becomes
+                // that language's shown name, or none when it is the full name being saved (the
+                // translation then follows the profile).
                 $brandLegalName = $text($brand['legal_name'] ?? null);
-                if ($locale === $default && $brandLegalName !== '' && $fullLegalName !== '' && $brandLegalName !== $fullLegalName
-                    && $text($row->getAttribute('legal_name')) === '') {
-                    $row->setAttribute('legal_name', $brandLegalName);
+                if ($locale === $default && $brandLegalName !== '') {
+                    $row->setAttribute('legal_name', $brandLegalName !== $text($newLegalName) ? $brandLegalName : null);
                 }
                 $row->save();
+            }
+            // A new full name: every shown name was derived from the old one (the screen has no field
+            // for it), so each language shows the new full name from now on.
+            if ($fullLegalName !== '' && $fullLegalName !== $text($newLegalName)) {
+                SiteProfileTranslation::query()->where('site_profile_id', $profile->id)->update(['legal_name' => null]);
             }
 
             if ($brandRow !== null) {
@@ -258,10 +274,17 @@ final class GeneralSettingsStore
      */
     private function unitsOf(?SiteProfile $profile, string $province, string $ward): array
     {
+        // Only units in force: a retired one loads as not picked, and its wording is kept on save.
         $provinceId = is_numeric($profile?->getAttribute('province_id')) ? (int) $profile->getAttribute('province_id') : null;
         $wardId = is_numeric($profile?->getAttribute('ward_id')) ? (int) $profile->getAttribute('ward_id') : null;
         if ($provinceId !== null) {
-            return [(string) $provinceId, $wardId !== null ? (string) $wardId : ''];
+            if (! Province::query()->whereNull('valid_to')->whereKey($provinceId)->exists()) {
+                return ['', ''];
+            }
+            $wardInForce = $wardId !== null
+                && Ward::query()->where('province_id', $provinceId)->whereNull('valid_to')->whereKey($wardId)->exists();
+
+            return [(string) $provinceId, $wardInForce ? (string) $wardId : ''];
         }
         if ($province === '') {
             return ['', ''];
@@ -279,18 +302,17 @@ final class GeneralSettingsStore
     }
 
     /**
-     * The street part of a one-line address: without the ward and the province it ends with, so
-     * the address composed from the parts does not repeat them ("Số 1, Xã A, TP B" → "Số 1").
+     * The street part of a one-line address: without the province, district and ward it ends with
+     * (in that order, with or without a comma before each), so the address composed from the
+     * parts does not repeat them ("Số 1, Xã A, Huyện B, TP C" → "Số 1"). '' when nothing is left.
+     *
+     * @param  list<string>  $parts  province, district, ward
      */
-    private static function streetOf(string $address, string $ward, string $province): string
+    private static function streetOf(string $address, array $parts): string
     {
-        foreach ([$province, $ward] as $part) {
-            if ($part === '') {
-                continue;
-            }
-            $street = (string) preg_replace('/\s*,\s*'.preg_quote($part, '/').'\s*\z/iu', '', $address);
-            if ($street !== '') {
-                $address = $street;
+        foreach ($parts as $part) {
+            if ($part !== '') {
+                $address = trim((string) preg_replace('/(?:\A|\s*,\s*|\s+)'.preg_quote($part, '/').'\s*\z/iu', '', $address));
             }
         }
 
