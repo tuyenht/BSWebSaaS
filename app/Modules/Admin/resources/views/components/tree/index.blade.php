@@ -56,7 +56,7 @@
 <div {{ $attributes->merge(['class' => 'tree-w']) }}
     @unless ($frozen) x-data="bsTree(@js($config))" x-on:keydown="keydown($event)" @endunless>
     <div role="treegrid" aria-label="{{ $label }}" class="tree"
-        @unless ($frozen) x-ref="grid" aria-busy="false" x-bind:aria-busy="busy ? 'true' : 'false'" x-on:focusin="focused($event)"
+        @unless ($frozen) x-ref="grid" x-bind:data-busy="busy ? '1' : null" x-on:focusin="focused($event)"
             x-on:dragstart="dragStart($event)" x-on:dragover="dragOver($event)" x-on:drop.prevent="dragDone()" x-on:dragend="dragCancel()" @endunless>
         {{ $slot }}
         @unless ($frozen)

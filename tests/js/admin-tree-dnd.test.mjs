@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { cleanRows, dropPosition, fill, gapTarget, heightOf, kidsOf, planMove, zoneOf } from '../../resources/js/admin-tree-dnd.js';
+import { cleanRows, dropPosition, fill, gapTarget, heightOf, kidsOf, makeHistory, makeQueue, planMove, zoneOf } from '../../resources/js/admin-tree-dnd.js';
 
 const fx = JSON.parse(readFileSync(new URL('../Fixtures/tree-moves.json', import.meta.url), 'utf8'));
 const rows = fx.rows;
@@ -74,4 +74,99 @@ test('a placeholder is filled once, longest name first, so a value holding ":lev
     assert.equal(fill('«:name» · cấp :level', { name: 'Bước :level', level: 2 }), '«Bước :level» · cấp 2');
     assert.equal(fill(':names / :name', { name: 'A', names: 'B' }), 'B / A');
     assert.equal(fill('no values', {}), 'no values');
+});
+
+test('queued jobs run in order, one at a time', async () => {
+    const q = makeQueue({ max: 10 });
+    const log = [];
+    let live = 0;
+    let most = 0;
+    const job = (name, ms) => async () => {
+        live++;
+        most = Math.max(most, live);
+        log.push('start ' + name);
+        await new Promise((r) => setTimeout(r, ms));
+        log.push('end ' + name);
+        live--;
+    };
+    assert.equal(q.idle, true);
+    assert.equal(q.enqueue(job('a', 15)), true);
+    assert.equal(q.enqueue(job('b', 1)), true);
+    assert.equal(q.idle, false);
+    await q.drain();
+    assert.deepEqual(log, ['start a', 'end a', 'start b', 'end b']);
+    assert.equal(most, 1);
+    assert.equal(q.idle, true);
+});
+
+test('a job that throws does not stop the next one', async () => {
+    const busy = [];
+    const q = makeQueue({ max: 10, onBusy: (on) => busy.push(on) });
+    const ran = [];
+    q.enqueue(async () => {
+        throw new Error('lost connection');
+    });
+    q.enqueue(async () => ran.push('second'));
+    await q.drain();
+    assert.deepEqual(ran, ['second']);
+    assert.deepEqual(busy, [true, false]);
+});
+
+test('a full queue refuses the job and says so', async () => {
+    const q = makeQueue({ max: 2 });
+    const ran = [];
+    const mk = (n) => async () => {
+        await new Promise((r) => setTimeout(r, 2));
+        ran.push(n);
+    };
+    // the first job starts at once and leaves the line, so max waiting jobs fit behind it
+    assert.equal(q.enqueue(mk(1)), true);
+    assert.equal(q.enqueue(mk(2)), true);
+    assert.equal(q.enqueue(mk(3)), true);
+    assert.equal(q.enqueue(mk(4)), false);
+    await q.drain();
+    assert.deepEqual(ran, [1, 2, 3]);
+});
+
+test('an undo whose call was lost goes back on the undo list; a lost redo back on the redo list', () => {
+    const h = makeHistory();
+    const a = { k: 'a', parent: null, pos: 0 };
+    h.record(a, 'do');
+    const taken = h.takeUndo();
+    assert.deepEqual(taken, a);
+    assert.equal(h.undoSize, 0);
+    h.giveBack(taken, 'undo');
+    assert.deepEqual(h.takeUndo(), a); // the next Ctrl+Z undoes the same move
+
+    h.record(a, 'undo'); // a done undo is redoable
+    const again = h.takeRedo();
+    assert.equal(h.redoSize, 0);
+    h.giveBack(again, 'redo');
+    assert.equal(h.redoSize, 1);
+    assert.deepEqual(h.takeRedo(), a);
+});
+
+test('a new move clears the redo list, an undo or redo does not', () => {
+    const h = makeHistory();
+    h.record({ k: 'a' }, 'do');
+    h.record({ k: 'a' }, 'undo');
+    assert.equal(h.redoSize, 1);
+    h.record({ k: 'b' }, 'redo');
+    assert.equal(h.redoSize, 1);
+    h.record({ k: 'c' }, 'do');
+    assert.equal(h.redoSize, 0);
+});
+
+test('the history keeps the last 50 moves', () => {
+    const h = makeHistory({ max: 50 });
+    for (let i = 0; i < 60; i++) {
+        h.record({ k: 'k' + i }, 'do');
+    }
+    assert.equal(h.undoSize, 50);
+    assert.equal(h.takeUndo().k, 'k59');
+    for (let i = 0; i < 48; i++) {
+        h.takeUndo();
+    }
+    assert.equal(h.takeUndo().k, 'k10'); // the oldest 10 were dropped
+    assert.equal(h.takeUndo(), undefined);
 });

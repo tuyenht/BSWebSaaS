@@ -11,7 +11,7 @@
 // Moves wait in line: while one call is out, the next move, undo or redo waits its turn and works
 // out its place from the tree as the server redrew it after the call before ("Đang lưu…" shows
 // meanwhile, and a new drag waits until the line is empty).
-import { createTreeDnd, dropPosition, fill, kidsOf, planMove } from './admin-tree-dnd.js';
+import { createTreeDnd, dropPosition, fill, kidsOf, makeHistory, makeQueue, planMove } from './admin-tree-dnd.js';
 
 const UNDO_MS = 10000;
 const QUEUE_MAX = 10;
@@ -33,10 +33,8 @@ document.addEventListener('alpine:init', () => {
         let ix = null;
         let dnd = null;
         let mo = null;
-        const hist = [];
-        const fut = [];
-        const queue = [];
-        let running = false;
+        const history = makeHistory({ max: 50 });
+        let queue = null;
         let cur = null; // the key whose name holds the tree's one Tab stop
         let dropEl = null; // the row painted as the drop target
 
@@ -61,9 +59,10 @@ document.addEventListener('alpine:init', () => {
                     onExpand: (k) => this.expand(k),
                     texts: t.drag,
                 });
+                queue = makeQueue({ max: QUEUE_MAX, onBusy: (on) => (this.busy = on) });
                 mo = new MutationObserver((records) => this.observed(records));
                 mo.observe(this.$refs.grid, { childList: true, subtree: true, attributes: true, attributeFilter: [...WATCH, 'tabindex'] });
-                this.$nextTick(() => this.rove(true));
+                this.$nextTick(() => this.settle());
             },
 
             destroy() {
@@ -95,7 +94,14 @@ document.addEventListener('alpine:init', () => {
             reindex() {
                 ix = null;
                 this.ver++;
+                this.settle();
+            },
+            // The tab stops written again; the observer is not told about the tree's own writes.
+            settle() {
                 this.rove(true);
+                if (mo) {
+                    mo.takeRecords();
+                }
             },
             observed(records) {
                 const grid = this.$refs.grid;
@@ -124,7 +130,7 @@ document.addEventListener('alpine:init', () => {
                 if (rows) {
                     this.reindex();
                 } else if (stops) {
-                    this.rove(true);
+                    this.settle();
                 }
             },
             rec(k) {
@@ -521,41 +527,21 @@ document.addEventListener('alpine:init', () => {
             },
             undo() {
                 this.enqueue(() => {
-                    const last = hist.pop();
+                    const last = history.takeUndo();
                     return last && this.rec(last.k) ? this.call(last.k, last.parent, last.pos, t.undone, 'undo') : null;
                 });
             },
             redo() {
                 this.enqueue(() => {
-                    const next = fut.pop();
+                    const next = history.takeRedo();
                     return next && this.rec(next.k) ? this.call(next.k, next.parent, next.pos, t.redone, 'redo') : null;
                 });
             },
 
             // ---- the one server call, one at a time -----------------------------------------------------
             enqueue(job) {
-                if (queue.length >= QUEUE_MAX) {
-                    return;
-                }
-                queue.push(job);
-                if (!running) {
-                    this.pump();
-                }
-            },
-            async pump() {
-                running = true;
-                this.busy = true;
-                try {
-                    while (queue.length) {
-                        try {
-                            await queue.shift()();
-                        } catch {
-                            // one failed move never blocks the ones after it
-                        }
-                    }
-                } finally {
-                    running = false;
-                    this.busy = false;
+                if (!queue.enqueue(job)) {
+                    this.note(t.wait, false); // the line is full: say so instead of dropping the input
                 }
             },
             // kind: 'do' (a new move: clears the redo list) · 'undo' · 'redo'.
@@ -577,6 +563,7 @@ document.addEventListener('alpine:init', () => {
                     if (moving) {
                         moving.removeAttribute('data-saving');
                     }
+                    history.giveBack({ k, parent, pos }, kind); // a lost call keeps its undo / redo entry
                     this.note(t.offline, true);
                     await this.refresh();
                     return;
@@ -590,18 +577,7 @@ document.addEventListener('alpine:init', () => {
                     await this.refresh();
                     return;
                 }
-                const back = { k, parent: from, pos: fromPos };
-                if (kind === 'undo') {
-                    fut.push(back);
-                } else {
-                    hist.push(back);
-                    if (hist.length > 50) {
-                        hist.shift();
-                    }
-                    if (kind === 'do') {
-                        fut.length = 0;
-                    }
-                }
+                history.record({ k, parent: from, pos: fromPos }, kind);
                 if (parent) {
                     this.expand(parent);
                 }
@@ -675,6 +651,10 @@ document.addEventListener('alpine:init', () => {
             },
             msgClose() {
                 clearTimeout(this.msgTimer);
+                if (this.busy) {
+                    this.saving(); // a note ending while a call is out must not hide "Đang lưu…"
+                    return;
+                }
                 this.msg = '';
                 this.msgUndo = false;
             },

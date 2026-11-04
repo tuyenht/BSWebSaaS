@@ -382,7 +382,7 @@
     }
 
     /* A move is being saved: the next ones wait their turn ("Đang lưu…" on the result line). */
-    .tree[aria-busy="true"] {
+    .tree[data-busy="1"] {
         cursor: progress;
     }
 

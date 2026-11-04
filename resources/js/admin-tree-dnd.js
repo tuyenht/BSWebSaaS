@@ -145,6 +145,89 @@ export function gapTarget(R, g, x0, x, step) {
     return { mode: 'gap', rel: 'after', refK: A.k, parent: A.parent || null, afterK: A.k, lv: L, ph: { at: 'after', k: up.k } };
 }
 
+// ---- the line of waiting moves and the undo / redo lists (no DOM, no Livewire) -------------------
+
+// Jobs run one at a time, in order. enqueue() answers false when the line is full (the caller tells
+// the user to wait); a job that throws never stops the next one. onBusy(true|false) fires when the
+// line starts and when it empties; drain() resolves when it is empty.
+export function makeQueue({ max, onBusy = () => {} }) {
+    const jobs = [];
+    let pump = null;
+    const run = async () => {
+        onBusy(true);
+        try {
+            while (jobs.length) {
+                try {
+                    await jobs.shift()();
+                } catch {
+                    // one failed move never blocks the ones after it
+                }
+            }
+        } finally {
+            pump = null;
+            onBusy(false);
+        }
+    };
+    return {
+        enqueue(job) {
+            if (jobs.length >= max) {
+                return false;
+            }
+            jobs.push(job);
+            if (!pump) {
+                pump = run();
+            }
+            return true;
+        },
+        get idle() {
+            return !pump;
+        },
+        drain() {
+            return pump || Promise.resolve();
+        },
+    };
+}
+
+// kind: 'do' (a new move: clears the redo list) · 'undo' · 'redo'. An entry taken for an undo or
+// redo whose call was lost goes back where it came from with giveBack().
+export function makeHistory({ max = 50 } = {}) {
+    const hist = [];
+    const fut = [];
+    const keep = (list, entry) => {
+        list.push(entry);
+        if (list.length > max) {
+            list.shift();
+        }
+    };
+    return {
+        record(entry, kind) {
+            if (kind === 'undo') {
+                keep(fut, entry);
+                return;
+            }
+            keep(hist, entry);
+            if (kind === 'do') {
+                fut.length = 0;
+            }
+        },
+        takeUndo: () => hist.pop(),
+        takeRedo: () => fut.pop(),
+        giveBack(entry, kind) {
+            if (kind === 'undo') {
+                keep(hist, entry);
+            } else if (kind === 'redo') {
+                keep(fut, entry);
+            }
+        },
+        get undoSize() {
+            return hist.length;
+        },
+        get redoSize() {
+            return fut.length;
+        },
+    };
+}
+
 // ---- the browser part --------------------------------------------------------------------------
 function ensureLabel() {
     if (label && document.body.contains(label)) {

@@ -96,7 +96,7 @@ it('draws a live tree as a named treegrid with its drag rule, live line and resu
         // polite for a drag and a done move, assertive only for a refused one
         ->and($html)->toContain('<div class="tree-sr" role="status" aria-live="polite" x-ref="live"></div>')
         ->and($html)->toContain('<div class="tree-sr" aria-live="assertive" aria-atomic="true" x-ref="alert"></div>')
-        ->and($html)->toContain('aria-busy="false" x-bind:aria-busy="busy ? \'true\' : \'false\'" x-on:focusin="focused($event)"')
+        ->and($html)->toContain('x-bind:data-busy="busy ? \'1\' : null" x-on:focusin="focused($event)"')
         // one hidden placeholder, moved between the rows while dragging
         ->and($html)->toMatch('/<div aria-hidden="true" data-lv="1" data-bad="0"(?=[^>]*\\bx-ref="ph")(?=[^>]*\\bclass="tree-ph")(?=[^>]*\\shidden\\b)[^>]*>/')
         // the move call, the depth cap and the words the live line reads, in the screen's own noun
