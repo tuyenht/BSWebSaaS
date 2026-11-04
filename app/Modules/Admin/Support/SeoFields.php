@@ -49,7 +49,8 @@ final class SeoFields
      */
     public static function singleLine(string $value): string
     {
-        $value = preg_replace('/\p{Cf}+/u', '', $value) ?? $value;
+        // The joiners (U+200C, U+200D) stay: they hold emoji sequences and some scripts together.
+        $value = preg_replace('/(?![\x{200C}\x{200D}])\p{Cf}/u', '', $value) ?? $value;
 
         return trim(preg_replace('/[\p{Cc}\p{Zl}\p{Zp}\s]+/u', ' ', $value) ?? $value);
     }

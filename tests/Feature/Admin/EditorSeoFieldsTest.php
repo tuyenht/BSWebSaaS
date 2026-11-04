@@ -208,6 +208,12 @@ it('removes invisible format characters from the Google title and description', 
     });
 });
 
+it('keeps the joiners that hold an emoji family together in the Google title', function (): void {
+    $family = "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}";
+
+    expect(SeoFields::singleLine($family.' Gia đình'))->toBe($family.' Gia đình');
+});
+
 it('saves text with a NUL or another control character instead of failing', function (): void {
     $user = seoFieldsEditor();
 

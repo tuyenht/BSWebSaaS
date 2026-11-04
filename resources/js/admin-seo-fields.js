@@ -109,8 +109,10 @@ document.addEventListener('alpine:init', () => {
 
         // The public address as publishing will compose it: the server sends everything before the
         // slug (primary domain, language prefix, category or base path) and the slug ends it here.
+        // Read from the component ($wire.address), not the first render: picking another category
+        // changes the part before the slug on the server.
         get previewAddress() {
-            const address = config.address;
+            const address = this.$wire.address ?? config.address;
             const slug = this.value('slug').trim().replace(/^\/+|\/+$/g, '');
             if (address.home !== null && slug === address.homeSlug) {
                 return address.home;
