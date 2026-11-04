@@ -199,5 +199,17 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         file_put_contents($dir.'/'.$name.'.html', $html);
     }
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 10);
+    // "Thông tin chung" filled from the older brand setting, as a site has it before its first save
+    // (long names, so a clipped label or a sideways scroll shows up).
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'general', 'key' => 'brand'], ['value' => [
+        'name' => 'Công ty Demo', 'legal_name' => 'Công ty Trách nhiệm Hữu hạn Cơ khí Chính xác Demo Việt Nam',
+        'address' => 'Lô CN-07, Khu công nghiệp Phú Nghĩa, Chương Mỹ, Hà Nội', 'phone' => '0912 345 678',
+        'email' => 'lienhe@congtydemo.vn', 'tax_id' => '0109876543', 'license' => '0109876543',
+    ]]));
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/general')->assertOk()->getContent();
+    expect($html)->toContain('Tên pháp lý đầy đủ (theo giấy phép)', 'wire:model.live.blur="form.legalName"');   // the values ride in the Livewire snapshot
+    file_put_contents($dir.'/general.html', $html);
+
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 11);
 });

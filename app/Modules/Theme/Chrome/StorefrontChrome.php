@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Theme\Chrome;
 
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\SafeLink;
+use App\Modules\Tenancy\Support\BusinessHours;
 
 /**
  * The storefront header and footer settings (`storefront.header`, `storefront.footer`) turned
@@ -151,7 +153,8 @@ final class StorefrontChrome
 
     /**
      * The site's social profiles the footer can show: known networks with a safe web link, in the
-     * order of NETWORKS.
+     * order of NETWORKS. Zalo may be kept as a phone number or an Official Account id: it becomes
+     * its zalo.me link.
      *
      * @return list<array{network: string, label: string, url: string}>
      */
@@ -163,13 +166,55 @@ final class StorefrontChrome
 
         $socials = [];
         foreach (self::NETWORKS as $network => $label) {
-            $url = self::external($links[$network] ?? null);
+            $url = $network === 'zalo' ? self::zalo($links[$network] ?? null) : self::external($links[$network] ?? null);
             if ($url !== null) {
                 $socials[] = ['network' => $network, 'label' => $label, 'url' => $url];
             }
         }
 
         return $socials;
+    }
+
+    /**
+     * The opening hours as one line in the page's language — "Thứ 2 – Thứ 6, 08:00 – 17:00",
+     * "Theo lịch hẹn" — with the site's note after it; null when there is neither.
+     */
+    public static function hours(mixed $stored, mixed $note): ?string
+    {
+        $hours = BusinessHours::from($stored);
+        $line = match (true) {
+            $hours === null => null,
+            $hours->byAppointment() => Cast::string(__('storefront.days.appointment')),
+            default => Cast::string(__('storefront.hours_range', ['days' => Cast::string(__('storefront.days.'.$hours->days)), 'opens' => $hours->opens, 'closes' => $hours->closes])),
+        };
+        $note = is_string($note) && trim($note) !== '' ? trim($note) : null;
+
+        return match (true) {
+            $line !== null && $note !== null => Cast::string(__('storefront.hours_note', ['hours' => $line, 'note' => $note])),
+            default => $line ?? $note,
+        };
+    }
+
+    /**
+     * A Zalo contact as its link: a Vietnamese mobile number or a zalo.me link (the floating
+     * contact button's rule), or an Official Account id (digits, not a phone number) — null for
+     * anything else.
+     */
+    public static function zalo(mixed $value): ?string
+    {
+        if (! is_string($value) || ($value = trim($value)) === '') {
+            return null;
+        }
+        $clean = FloatingContact::clean('zalo', $value);
+        if ($clean !== null) {
+            return FloatingContact::href('zalo', $clean);
+        }
+
+        if (preg_match('~\Ahttps://(?:www\.)?zalo\.me/\S+\z~i', $value) === 1) {
+            return self::external($value);   // a group or other zalo.me page
+        }
+
+        return preg_match('/\A[1-9]\d{5,19}\z/', $value) === 1 ? 'https://zalo.me/'.$value : null;
     }
 
     /**

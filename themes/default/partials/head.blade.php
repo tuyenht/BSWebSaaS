@@ -95,12 +95,25 @@
             );
         }
 
+        // The site's own social profiles (site_profiles.social_links) — how search engines tie the
+        // Facebook page / YouTube channel to this business. Only web links; Zalo kept as a phone
+        // number or an Official Account id is given as its zalo.me link.
+        $orgSameAs = [];
+        foreach ((is_array($brand['social_links'] ?? null) ? $brand['social_links'] : []) as $orgNetwork => $orgLink) {
+            $orgLink = $orgNetwork === 'zalo' ? \App\Modules\Theme\Chrome\StorefrontChrome::zalo($orgLink) : $orgLink;
+            if (is_string($orgLink) && preg_match('~\Ahttps?://~i', $orgLink) === 1) {
+                $orgSameAs[] = $orgLink;
+            }
+        }
+        // Opening hours make the business a LocalBusiness (the type that carries them).
+        $orgHours = \App\Modules\Tenancy\Support\BusinessHours::from($brand['business_hours'] ?? null)?->openingHoursSpecification() ?? [];
+
         // Build inside @php so Blade does not scan '@context' / '@type' as directives.
         // JSON_HEX_TAG escapes < > — safe for inline <script>.
         $orgLd = array_filter(
             [
                 '@context'  => 'https://schema.org',
-                '@type'     => 'Organization',
+                '@type'     => $orgHours !== [] ? 'LocalBusiness' : 'Organization',
                 'name'      => $brand['name'],
                 'legalName' => ! empty($brand['legal_name']) ? $brand['legal_name'] : null,
                 'url'       => url('/'),
@@ -109,9 +122,8 @@
                 'email'     => ! empty($brand['email']) ? $brand['email'] : null,
                 'taxID'     => ! empty($brand['tax_id']) ? $brand['tax_id'] : null,
                 'address'   => $orgPostal ?: null,
-                // The site's own social profiles (site_profiles.social_links) — how search engines
-                // tie the Facebook page / YouTube channel to this business.
-                'sameAs'    => ! empty($brand['social_links']) && is_array($brand['social_links']) ? array_values($brand['social_links']) : null,
+                'sameAs'    => $orgSameAs,
+                'openingHoursSpecification' => $orgHours,
             ],
             fn ($v) => $v !== null && $v !== '' && $v !== [],
         );

@@ -235,7 +235,7 @@ final readonly class ListPage
 
     /**
      * Post cards. The label is the post's primary category (read with the rows as
-     * `primary_taxonomy_id`); dates, when asked, are the site's local day (one settings read).
+     * `primary_taxonomy_id`); dates, when asked, are the site's local day in the site's day format (one settings read).
      *
      * @param  iterable<Entry>  $posts
      * @param  array<int, string>  $labels
@@ -262,7 +262,7 @@ final readonly class ListPage
                 ...$this->photo($image, null),
                 'icon' => '',
                 'excerpt' => $translation->excerpt ?? '',
-                'date' => $published?->format('d/m/Y') ?? '',
+                'date' => $published !== null ? SiteTime::formatDay($published, $time->dateFormat(), $locale) : '',
                 'datetime' => $published?->format('Y-m-d') ?? '',
                 'label' => is_numeric($primary) ? ($labels[(int) $primary] ?? '') : '',
             ];

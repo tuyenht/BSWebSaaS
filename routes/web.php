@@ -21,6 +21,7 @@ use App\Modules\Admin\Livewire\FloatingContactSettings;
 use App\Modules\Admin\Livewire\ForgotPassword;
 use App\Modules\Admin\Livewire\Forms\Detail as FormsDetail;
 use App\Modules\Admin\Livewire\Forms\Inbox as FormsInbox;
+use App\Modules\Admin\Livewire\GeneralSettings;
 use App\Modules\Admin\Livewire\Login;
 use App\Modules\Admin\Livewire\LoginSecuritySettings;
 use App\Modules\Admin\Livewire\Media\Library as MediaLibrary;
@@ -204,6 +205,7 @@ Route::prefix(config('admin.prefix', 'admin'))
         // Site-wide settings — only roles with `settings.manage` (owner/admin/super_admin).
         // The Livewire components ALSO guard in boot() because the livewire/update endpoint
         // does not pass through this route middleware.
+        Route::get('/settings/general', GeneralSettings::class)->middleware('can:settings.manage')->name('admin.settings.general');
         Route::get('/settings/email', EmailSettings::class)->middleware('can:settings.manage')->name('admin.settings.email');
         Route::get('/settings/social', SocialSettings::class)->middleware('can:settings.manage')->name('admin.settings.social');
         Route::get('/settings/appearance', AppearanceSettings::class)->middleware('can:settings.manage')->name('admin.settings.appearance');

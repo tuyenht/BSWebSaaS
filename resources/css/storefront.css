@@ -1358,6 +1358,11 @@ main:has(.hero, .sf-slider) .page__title {
     color: color-mix(in srgb, var(--color-primary-on-dark) 80%, white);
 }
 
+.site-footer__tagline {
+    font-size: 0.875rem;
+    margin: 0 0 0.75rem;
+}
+
 .site-footer__license {
     font-size: 0.8125rem;
     color: color-mix(in srgb, var(--color-dark) 40%, white);
@@ -1969,6 +1974,12 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     height: 3rem;
     width: auto;
     margin-bottom: 1rem;
+}
+
+.sf-footer__tagline {
+    margin: 0 0 0.5rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
 }
 
 .sf-footer__about {
