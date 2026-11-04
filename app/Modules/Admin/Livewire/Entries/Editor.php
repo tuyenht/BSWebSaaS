@@ -1067,9 +1067,8 @@ final class Editor extends Component
         $fields = ['seo_title' => 'seoTitle', 'seo_description' => 'seoDescription'];
         $out = [];
         foreach ($byColumn as $key => $value) {
-            [$column, $rule] = array_pad(explode('.', $key, 2), 2, null);
-            $field = $fields[$column] ?? $column;
-            $out[$rule === null ? $field : $field.'.'.$rule] = $value;
+            $column = explode('.', $key, 2)[0];
+            $out[($fields[$column] ?? $column).substr($key, strlen($column))] = $value;
         }
 
         return $out;
