@@ -492,13 +492,15 @@ final readonly class ProvisionSite
             ['name' => 'Menu chính', 'locales' => null],
         );
 
-        $home = MenuItem::query()->firstOrCreate(
+        // A matching item staff moved to the trash stays there: a re-run neither duplicates it nor
+        // brings it back.
+        $home = MenuItem::withTrashed()->firstOrCreate(
             ['menu_id' => $menu->id, 'link_type' => 'dynamic', 'dynamic_key' => 'home'],
             ['position' => 0],
         );
         $home->translations()->firstOrCreate(['locale' => $locale], ['label' => 'Trang chủ']);
 
-        $newsItem = MenuItem::query()->firstOrCreate(
+        $newsItem = MenuItem::withTrashed()->firstOrCreate(
             ['menu_id' => $menu->id, 'link_type' => 'taxonomy', 'routable_type' => 'taxonomy', 'routable_id' => $news->id],
             ['position' => 1],
         );

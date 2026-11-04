@@ -7,14 +7,17 @@ namespace App\Modules\Cms\Actions\Menus;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Cms\Actions\Menus\Concerns\EditsMenuTree;
 use App\Modules\Cms\Models\MenuItem;
+use App\Modules\Cms\Navigation\MenuRules;
 use App\Modules\Cms\Navigation\MenuTree;
 use App\Modules\Shared\Support\Cast;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Delete an item together with its whole branch — the children are not promoted to the top level
- * (which is what the parent foreign key alone would do). The remaining siblings are renumbered.
- * Returns how many items were removed, so the screen can say so.
+ * Remove an item together with its whole branch: they move to the menu's trash (deleted_at), all
+ * with the same time, in one transaction. The children are not promoted to the top level. The
+ * remaining siblings are renumbered. The trash keeps them MenuRules::TRASH_DAYS days, for
+ * {@see RestoreMenuItem}, before `menus:purge-trash` deletes them for good. Returns how many
+ * items were removed, so the screen can say so.
  */
 final readonly class DeleteMenuItem
 {
@@ -27,13 +30,15 @@ final readonly class DeleteMenuItem
             $branch = MenuTree::of($item->menu_id)->branchOf($item->id);
             $parent = $item->fresh()?->parent_id;
 
+            // The soft-delete scope turns this into one UPDATE: every row gets the same deleted_at,
+            // which is how a restore knows the branch that went with the item.
             $deleted = Cast::int(MenuItem::query()->whereKey($branch)->delete());
             $this->renumber($item->menu_id, $parent);
 
             Audit::record('cms.menu_item.deleted', [
                 'auditable_type' => MenuItem::class,
                 'auditable_id' => $item->id,
-                'meta' => ['items' => $deleted],
+                'meta' => ['items' => $deleted, 'trash_days' => MenuRules::TRASH_DAYS],
             ]);
 
             return $deleted;

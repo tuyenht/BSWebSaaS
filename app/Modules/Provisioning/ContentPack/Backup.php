@@ -49,7 +49,7 @@ final readonly class Backup
         $items = [];
         $paths = [];
         foreach ($plan->writes() as $planned) {
-            $rows = $planned->recordId === null && ! in_array($planned->item->kind, ['setting', 'profile', 'redirect'], true)
+            $rows = $planned->recordId === null && ! in_array($planned->item->kind, ['setting', 'profile', 'redirect', 'menu'], true)
                 ? null
                 : $this->rows($planned, $planner);
             $items[] = [
@@ -159,7 +159,7 @@ final readonly class Backup
             'page', 'post' => $this->entryRows((int) $id),
             'product' => $this->productRows((int) $id),
             'taxonomy' => $this->taxonomyRows((int) $id, $planned->item->key, $planner),
-            'menu' => $this->menuRows((int) $id),
+            'menu' => $this->menuRows($id, $planned->item->anchor(), $planner->defaultLocale()),
             'setting' => $this->settingRows($planned->item->anchor()),
             'profile' => $this->profileRows(),
             'redirect' => $this->redirectRows($planned->item->anchor()),
@@ -215,15 +215,26 @@ final readonly class Backup
         ];
     }
 
-    /** @return array<string, mixed> */
-    private function menuRows(int $id): array
+    /**
+     * The menu, its tree and the region rows the apply writes. A new menu ($id null) has no rows of
+     * its own, but the region it is bound to may follow another region ("Dùng trình đơn chung"):
+     * the apply replaces that row with the new menu, so the row is kept here. The trashed items are
+     * kept too, since the apply replaces the whole tree, trash included.
+     *
+     * @return array<string, mixed>
+     */
+    private function menuRows(?int $id, string $region, string $locale): array
     {
-        $menu = Menu::query()->findOrFail($id);
+        $menu = $id === null ? null : Menu::query()->findOrFail($id);
 
         return [
-            'menu' => $menu->attributesToArray(),
-            'assignments' => MenuAssignment::query()->where('menu_id', $id)->get()->map(fn (Model $row): array => $row->attributesToArray())->all(),
-            'items' => MenuItem::query()->with('translations')->where('menu_id', $id)->orderBy('id')->get()
+            'menu' => $menu?->attributesToArray(),
+            'assignments' => MenuAssignment::query()
+                ->where(fn ($query) => $query
+                    ->where(fn ($bound) => $bound->where('region_key', $region)->where('locale', $locale))
+                    ->when($id !== null, fn ($query) => $query->orWhere('menu_id', $id)))
+                ->orderBy('id')->get()->map(fn (Model $row): array => $row->attributesToArray())->all(),
+            'items' => $id === null ? [] : MenuItem::withTrashed()->with('translations')->where('menu_id', $id)->orderBy('id')->get()
                 ->map(fn (MenuItem $row): array => $row->attributesToArray() + ['translations' => $row->translations->map(fn (Model $t): array => $t->attributesToArray())->all()])->all(),
         ];
     }

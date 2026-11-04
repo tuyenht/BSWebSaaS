@@ -8,6 +8,7 @@ use App\Modules\Cms\Console\FillMissingUlids;
 use App\Modules\Cms\Console\FlushEntryViews;
 use App\Modules\Cms\Console\PruneEntryRevisions;
 use App\Modules\Cms\Console\PublishDueEntries;
+use App\Modules\Cms\Console\PurgeTrashedMenuItems;
 use App\Modules\Cms\Console\RebuildTaxonomyPaths;
 use App\Modules\Cms\Console\ResanitizePageBodies;
 use App\Modules\Cms\Console\SnapshotPublishedEntries;
@@ -87,6 +88,7 @@ final class CmsServiceProvider extends ServiceProvider
                 PruneEntryRevisions::class,
                 ResanitizePageBodies::class,
                 FillMissingUlids::class,
+                PurgeTrashedMenuItems::class,
             ]);
         }
     }

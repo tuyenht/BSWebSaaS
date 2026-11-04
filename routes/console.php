@@ -13,6 +13,10 @@ Artisan::command('inspire', function () {
 // media.trash_retention_days). Runs on the `scheduler` container (docker compose schedule:work).
 Schedule::command('media:purge-trash')->daily()->withoutOverlapping();
 
+// Empty each site's menu trash of items removed more than 30 days ago (MenuRules::TRASH_DAYS),
+// each with its whole branch. Runs on the `scheduler` container (docker compose schedule:work).
+Schedule::command('menus:purge-trash')->daily()->withoutOverlapping();
+
 // Publish scheduled entries the moment their slot arrives (status=scheduled, published_at<=now).
 // Runs on the `scheduler` container (docker compose schedule:work).
 Schedule::command('entries:publish-due')->everyMinute()->withoutOverlapping();
