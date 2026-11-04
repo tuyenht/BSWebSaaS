@@ -234,6 +234,24 @@ it('puts the skip link first, aimed at the main content', function (string $path
     'category' => ['/tin-tuc', 'main'],
 ]);
 
+it('keeps the hidden skip link and the top bar from widening the page at 200% text', function (): void {
+    // A browser measures the page width; this pins the two rules that made a 320-390px page 410px wide
+    // at 200% text: a skip link clipped at full size, and top-bar items that could not wrap.
+    $css = (string) file_get_contents(resource_path('css/storefront.css'));
+    $rule = function (string $selector) use ($css): string {
+        expect(preg_match('/\n'.preg_quote($selector, '/').' \{([^}]*)\}/', $css, $m))->toBe(1, "rule {$selector} not found");
+
+        return $m[1];
+    };
+
+    expect($rule('.sf-skip'))->toContain('width: 1px;', 'height: 1px;', 'overflow: hidden;', 'white-space: nowrap;')
+        ->and($rule('.sf-skip:focus'))->toContain('max-width: calc(100% - 2rem);', 'white-space: normal;', 'overflow: visible;')
+        ->and($rule('.sf-topbar'))->toContain('min-height: var(--sf-topbar-h);')->not->toMatch('/(?<!-)height:/')
+        ->and($rule('.sf-topbar__inner'))->toContain('flex-wrap: wrap;')
+        ->and($rule('.sf-topbar__items'))->toContain('flex-wrap: wrap;')
+        ->and($rule(".sf-topbar__item,\n.sf-topbar__link"))->toContain('min-width: 0;')->not->toContain('nowrap');
+});
+
 it('renders the rich footer: factories, dated licence with its issuer, copyright range and credit', function (): void {
     $siteId = sfcSite();
     app(Tenancy::class)->enter($siteId, fn () => SiteProfile::query()->firstOrFail()->update([
