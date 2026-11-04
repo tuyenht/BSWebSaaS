@@ -152,7 +152,11 @@ trait HasCategoryTaxonomies
         return $this->taxonomies()->wherePivot('position', 0)->first();
     }
 
-    /** The main category's id, from the loaded list when there is one (a bulk action loads it with the rows). */
+    /**
+     * The main category's id, from the loaded list when there is one (a bulk action loads it with the
+     * rows). A caller that loads the list must do so after it has locked the rows, or this reads a
+     * main category another save has already changed.
+     */
     private function mainCategoryId(): ?int
     {
         if ($this->relationLoaded('taxonomies')) {

@@ -98,6 +98,10 @@ final readonly class CategoryRelinker
             return ['items' => $items, 'routes' => $routes];
         }
 
+        // The totals move once, after every item has been locked (items, then categories: the order
+        // an editor save keeps), so a save cannot slip in between the two readings of an item.
+        $before = [];
+        $now = [];
         foreach ($this->kinds() as $kind) {
             $follows = $this->follows($kind['section'], [CategoryChange::Refiled]);
             $after = 0;
@@ -118,10 +122,17 @@ final readonly class CategoryRelinker
                 $after = max($chunk);
 
                 // The main category of an item can change here (moved onto the target, or the next
-                // one moving up): the totals follow the difference, read before and after.
-                $before = $this->counts->primaries($kind['pivot'], $chunk);
+                // one moving up): the totals follow the difference, read before and after. The item
+                // rows are locked first, so a save of one of them waits instead of being counted twice.
+                DB::table($kind['items'])
+                    ->where('site_id', $this->site->id())
+                    ->whereIn('id', $chunk)
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->pluck('id');
+                $before = self::sum($before, $this->counts->primaries($kind['pivot'], $chunk));
                 $this->rewrite($kind['pivot'], $kind['column'], $deleted, $targetId, $chunk);
-                $this->counts->settle($before, $this->counts->primaries($kind['pivot'], $chunk));
+                $now = self::sum($now, $this->counts->primaries($kind['pivot'], $chunk));
                 $items += count($chunk);
 
                 if ($follows) {
@@ -129,8 +140,25 @@ final readonly class CategoryRelinker
                 }
             } while (count($chunk) === self::CHUNK);
         }
+        $this->counts->settle($before, $now);
 
         return ['items' => $items, 'routes' => $routes];
+    }
+
+    /**
+     * Two category → count maps added together.
+     *
+     * @param  array<int, int>  $into
+     * @param  array<int, int>  $add
+     * @return array<int, int>
+     */
+    private static function sum(array $into, array $add): array
+    {
+        foreach ($add as $id => $count) {
+            $into[$id] = ($into[$id] ?? 0) + $count;
+        }
+
+        return $into;
     }
 
     /**

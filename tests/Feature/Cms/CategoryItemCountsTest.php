@@ -212,6 +212,27 @@ it('keeps the counts through a rename and a move, and follows the items a delete
     expect(categoryCountDrift(1))->toBe([]);
 });
 
+it('locks the posts a category delete re-files before it reads them, and moves the counts once at the end', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $a = ccCategory('A');
+        $b = ccCategory('B');
+        ccPost([$a]);
+        ccPost([$a]);
+
+        $sql = ccStatements(fn () => app(DeleteTaxonomy::class)->handle($a, CategoryItemsOnDelete::Reassign, $b));
+        $lock = array_key_first(array_filter($sql, fn (string $s): bool => str_contains($s, 'from "entries"') && str_ends_with($s, 'for update')));
+        $read = array_key_first(array_filter($sql, fn (string $s): bool => str_contains($s, 'join entries as i')));   // the counter's reading of the main categories
+        $counts = array_keys(array_filter($sql, fn (string $s): bool => str_starts_with($s, 'update') && str_contains($s, 'items_count')));
+
+        expect($lock)->not->toBeNull()
+            ->and($lock)->toBeLessThan($read)
+            ->and($counts)->not->toBe([])
+            ->and(min($counts))->toBeGreaterThan($lock)
+            ->and(ccCounts($b))->toBe([2]);
+    });
+    expect(categoryCountDrift(1))->toBe([]);
+});
+
 it('follows the products a category delete re-files', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         $a = ccCategory('Đồ gá', 'product_cat');
@@ -559,7 +580,10 @@ it('reconciles the other sites when one fails, logs it, and exits non-zero', fun
         ->expectsOutputToContain('Failed on 1 site(s)')
         ->assertFailed();
 
-    Log::shouldHaveReceived('error')->with('Category item count reconcile failed for a site', ['site_id' => 1, 'error' => 'log store unavailable'])->once();
+    Log::shouldHaveReceived('error')->withArgs(fn (string $message, array $context): bool => $message === 'Category item count reconcile failed for a site'
+        && $context['site_id'] === 1
+        && $context['exception'] instanceof Throwable
+        && $context['exception']->getMessage() === 'log store unavailable')->once();
     app(Tenancy::class)->enter(1, fn () => expect(ccCounts($one))->toBe([5]));   // its correction rolled back
     app(Tenancy::class)->enter(2, fn () => expect(ccCounts($two))->toBe([2]));
 });

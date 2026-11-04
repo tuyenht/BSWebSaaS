@@ -64,7 +64,7 @@ final class ReconcileCategoryCounts extends Command
                 } while ($read === $chunk);
             } catch (Throwable $e) {
                 $failed++;
-                Log::error('Category item count reconcile failed for a site', ['site_id' => $siteId, 'error' => $e->getMessage()]);
+                Log::error('Category item count reconcile failed for a site', ['site_id' => $siteId, 'exception' => $e]);
                 $this->error("Site {$siteId}: {$e->getMessage()}");
             }
         }
