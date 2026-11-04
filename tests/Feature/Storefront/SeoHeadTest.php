@@ -205,3 +205,58 @@ it('inlines the text-size script only when the header offers the button, and eve
     }
     expect($inlineCount)->toBe(['without' => 0, 'with' => 1]);
 });
+
+/** The vi translation of the post "bai-seo", changed directly (as a save leaves it). */
+function seoPostTranslation(array $changes): void
+{
+    $site = Site::query()->firstWhere('name', 'An Vinh');
+    app(Tenancy::class)->enter($site->id, function () use ($changes): void {
+        Entry::query()->where('type', 'post')->sole()->translationFor('vi')->update($changes);
+    });
+}
+
+it('uses a post’s own Google title and description, escaped, at the same query count', function (): void {
+    seoProvision();
+    seoPublishPost('Bài SEO', 'bai-seo');
+    $this->get('http://anvinh.platform.test/tin-tuc/bai-seo')->assertOk();   // warm up
+    $before = countQueries(fn () => $this->get('http://anvinh.platform.test/tin-tuc/bai-seo')->assertOk());
+
+    seoPostTranslation([
+        'seo_title' => 'Tiêu đề Google <b>đậm</b>', 'seo_description' => 'Mô tả Google "riêng" & rõ.', 'excerpt' => 'Tóm tắt bài.',
+    ]);
+
+    $html = '';
+    $after = countQueries(function () use (&$html): void {
+        $html = $this->get('http://anvinh.platform.test/tin-tuc/bai-seo')->assertOk()->getContent();
+    });
+
+    expect($html)
+        ->toContain('<title>Tiêu đề Google &lt;b&gt;đậm&lt;/b&gt;</title>')
+        ->toContain('<meta name="description" content="Mô tả Google &quot;riêng&quot; &amp; rõ.">')
+        ->toContain('<meta property="og:description" content="Mô tả Google &quot;riêng&quot; &amp; rõ.">')
+        ->not->toContain('<b>đậm</b>')
+        ->and($after)->toBe($before);
+});
+
+it('falls back to the excerpt when a post has no Google description, then to the brand description', function (): void {
+    seoProvision();
+    seoPublishPost('Bài SEO', 'bai-seo');
+
+    seoPostTranslation(['seo_title' => '', 'seo_description' => null, 'excerpt' => "Tóm tắt\ncủa bài <viết>."]);
+    $html = $this->get('http://anvinh.platform.test/tin-tuc/bai-seo')->assertOk()->getContent();
+    expect($html)
+        ->toContain('<title>Bài SEO</title>')
+        ->toContain('<meta name="description" content="Tóm tắt của bài &lt;viết&gt;.">');
+
+    seoPostTranslation(['seo_description' => '', 'excerpt' => null]);
+    $site = Site::query()->firstWhere('name', 'An Vinh');
+    app(Tenancy::class)->enter($site->id, function (): void {
+        SiteSetting::query()->updateOrCreate(
+            ['group_name' => 'general', 'key' => 'brand'],
+            ['value' => ['name' => 'An Vinh', 'description' => 'Cơ khí chính xác An Vinh.']],
+        );
+    });
+    $html = $this->get('http://anvinh.platform.test/tin-tuc/bai-seo')->assertOk()->getContent();
+    expect($html)->not->toContain('Tóm tắt')
+        ->toContain('<meta name="description" content="Cơ khí chính xác An Vinh.">');
+});

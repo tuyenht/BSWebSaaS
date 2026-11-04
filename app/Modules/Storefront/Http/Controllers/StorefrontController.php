@@ -7,6 +7,7 @@ namespace App\Modules\Storefront\Http\Controllers;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Support\ProductIndexLink;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Navigation\MenuResolver;
@@ -225,10 +226,7 @@ final readonly class StorefrontController
             $entry->template_override,
             $content->translation->title,
             $content->translation->body,
-            [
-                'title' => $content->translation->seo_title,
-                'description' => $content->translation->seo_description,
-            ],
+            self::entrySeo($content->translation),
             $categoryTemplate,
             $extra,
         );
@@ -548,5 +546,23 @@ final readonly class StorefrontController
     private function homeCrumb(string $locale): array
     {
         return ['name' => __('storefront.home'), 'url' => url($this->paths->publicUrl('/', $locale))];
+    }
+
+    /**
+     * What a post or page tells search engines and link previews: its own Google title, else the
+     * page title (PageRenderer); its own Google description, else its short excerpt, else nothing,
+     * so the head falls back to the brand description. A blank value counts as none.
+     *
+     * @return array{title: string|null, description: string|null}
+     */
+    private static function entrySeo(EntryTranslation $translation): array
+    {
+        $filled = static fn (?string $value): ?string => $value !== null && trim($value) !== '' ? $value : null;
+
+        return [
+            'title' => $filled($translation->seo_title),
+            // The excerpt may hold line breaks (a news card shows it as is); a description is one line.
+            'description' => $filled($translation->seo_description) ?? $filled(str((string) $translation->excerpt)->squish()->toString()),
+        ];
     }
 }
