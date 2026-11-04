@@ -13,10 +13,14 @@ use Illuminate\Database\Eloquent\Model;
  * active locale via this table (falling back to the site's default locale). The menu is
  * guaranteed same-site by a composite FK. RLS isolates by site.
  *
+ * An area either shows a menu (menu_id) or follows another area of the same theme
+ * (same_as_region, e.g. the phone menu follows the main menu); a CHECK keeps exactly one set.
+ *
  * @property int $site_id
  * @property string $region_key
  * @property string $locale
- * @property int $menu_id
+ * @property int|null $menu_id
+ * @property string|null $same_as_region
  */
 class MenuAssignment extends Model
 {
