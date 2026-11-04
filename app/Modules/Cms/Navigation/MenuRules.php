@@ -13,8 +13,15 @@ final class MenuRules
     /** Levels a menu tree may have, the top level included. */
     public const int MAX_DEPTH = 5;
 
-    /** A theme region key: lower-case, e.g. primary, footer, mobile-bottom. */
+    /**
+     * A theme region key: lower-case, e.g. primary, footer, mobile-bottom. It caps both
+     * menu_assignments.region_key and same_as_region (the area followed), so neither can hold a
+     * value the other cannot.
+     */
     public const string REGION_PATTERN = '/\A[a-z][a-z0-9_-]{0,31}\z/';
+
+    /** Days a removed menu item waits in the trash before it is deleted for good. */
+    public const int TRASH_DAYS = 30;
 
     /** Computed links → the path they open. */
     public const array DYNAMIC = ['home' => '/'];

@@ -345,10 +345,13 @@ final class Applier
                 $handle = "{$region}-{$this->locale}-{$n}";
             }
             $menu = Menu::query()->create(['handle' => $handle, 'name' => Cast::string($planned->item->data['name'] ?? null, $region), 'locales' => null]);
-            MenuAssignment::query()->updateOrCreate(['region_key' => $region, 'locale' => $this->locale], ['menu_id' => $menu->id]);
+            // The region shows the pack's menu now, not another region's (one target per row).
+            MenuAssignment::query()->updateOrCreate(['region_key' => $region, 'locale' => $this->locale], ['menu_id' => $menu->id, 'same_as_region' => null]);
         } else {
             $menu = Menu::query()->findOrFail($planned->recordId);
-            MenuItem::query()->where('menu_id', $menu->id)->delete();
+            // The pack's tree replaces the whole menu, its trash included: a soft delete would fill the
+            // trash on every re-apply. forceDelete() skips the model's scopes, hence the explicit site.
+            MenuItem::query()->where('site_id', $menu->site_id)->where('menu_id', $menu->id)->forceDelete();
         }
 
         $this->menuNodes($menu, Cast::arr($planned->desired['items'] ?? null), null, $planner);

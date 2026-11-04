@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Audit\Models\AuditLog;
+use App\Modules\Cms\Actions\Menus\DeleteMenuItem;
 use App\Modules\Cms\Actions\Menus\SaveMenu;
 use App\Modules\Cms\Actions\Menus\SaveMenuItem;
 use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
@@ -13,6 +14,7 @@ use App\Modules\Cms\Enums\CategoryChildrenOnDelete;
 use App\Modules\Cms\Enums\CategoryItemsOnDelete;
 use App\Modules\Cms\Exceptions\TaxonomyChangeRejectedException;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
@@ -560,21 +562,26 @@ it('answers every address a deleted category leaves behind with a 301', function
     });
 });
 
-it('points menu links at the category the items moved to, and leaves them when there is none', function (): void {
-    twSiteOne(function (): void {
+it('points menu links at the category the items moved to, in the menu trash too, and leaves them when there is none', function (): void {
+    $editor = menuEditor(1);
+
+    twSiteOne(function () use ($editor): void {
         $news = twCreate('Tin tức');
         $events = twCreate('Sự kiện', $news);
         $talks = twCreate('Hội thảo', $news);
         $jobs = twCreate('Tuyển dụng');
         $menu = app(SaveMenu::class)->handle(null, 'Menu chính');
-        $toEvents = app(SaveMenuItem::class)->handle($menu, null, new MenuItemData('taxonomy', $events->id));
-        $toJobs = app(SaveMenuItem::class)->handle($menu, null, new MenuItemData('taxonomy', $jobs->id));
+        $toEvents = app(SaveMenuItem::class)->handle($editor, $menu, null, new MenuItemData('taxonomy', $events->id));
+        $toJobs = app(SaveMenuItem::class)->handle($editor, $menu, null, new MenuItemData('taxonomy', $jobs->id));
+        $trashedToEvents = app(SaveMenuItem::class)->handle($editor, $menu, null, new MenuItemData('taxonomy', $events->id));
+        app(DeleteMenuItem::class)->handle($editor, $trashedToEvents);
 
         $result = app(DeleteTaxonomy::class)->handle($events, CategoryItemsOnDelete::Reassign, $talks);
         app(DeleteTaxonomy::class)->handle($jobs, CategoryItemsOnDelete::Detach);
 
-        expect($result['menu_links'])->toBe(1)
+        expect($result['menu_links'])->toBe(2)
             ->and($toEvents->fresh()?->routable_id)->toBe($talks->id)
+            ->and(MenuItem::onlyTrashed()->findOrFail($trashedToEvents->id)->routable_id)->toBe($talks->id)
             ->and($toJobs->fresh()?->routable_id)->toBe($jobs->id);
     });
 });

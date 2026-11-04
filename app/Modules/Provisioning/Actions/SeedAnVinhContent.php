@@ -788,7 +788,8 @@ final readonly class SeedAnVinhContent
             return;
         }
 
-        $item = MenuItem::query()->firstOrCreate(
+        // withTrashed: an item staff moved to the trash is neither duplicated nor brought back.
+        $item = MenuItem::withTrashed()->firstOrCreate(
             ['menu_id' => $menu->id, 'link_type' => 'taxonomy', 'routable_type' => 'taxonomy', 'routable_id' => $category->id],
             ['position' => $position],
         );
@@ -803,7 +804,8 @@ final readonly class SeedAnVinhContent
             return;
         }
 
-        $item = MenuItem::query()->firstOrCreate(
+        // withTrashed: an item staff moved to the trash is neither duplicated nor brought back.
+        $item = MenuItem::withTrashed()->firstOrCreate(
             ['menu_id' => $menu->id, 'link_type' => 'entry', 'routable_type' => 'entry', 'routable_id' => $entryId],
             ['position' => $position],
         );
