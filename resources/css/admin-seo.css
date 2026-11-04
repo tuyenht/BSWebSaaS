@@ -1,0 +1,135 @@
+/*
+ | The shared "Hiện thế nào trên Google" part (<x-bs-admin::seo-fields>; design 07 #pe-seo, 09 .spe-seo):
+ | the length meter under a field and its count, and the "Google cắt từ đây" mark in the preview.
+ | The band (data-b: empty · short · near · good · long · over) is set by Alpine (bsSeoFields) and
+ | always comes with words and an icon, never colour alone. Every size and colour is a shared token.
+ */
+@layer components {
+    /* The bar: the best range drawn faint, the mark where Google cuts, the fill up to the length. */
+    .seo-meter {
+        position: relative;
+        display: block;
+        height: 0.25rem;
+        margin-top: 0.375rem;
+        overflow: hidden;
+        border-radius: 0.125rem;
+        background: var(--color-surface-hover);
+    }
+
+    .seo-meter__zone,
+    .seo-meter__tick,
+    .seo-meter__fill {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+    }
+
+    .seo-meter__zone {
+        background: color-mix(in srgb, var(--color-success-base) 22%, transparent);
+    }
+
+    .seo-meter__tick {
+        width: 2px;
+        background: var(--color-text-muted);
+    }
+
+    .seo-meter__fill {
+        left: 0;
+        border-radius: 0.125rem;
+        background: transparent;
+        transition: width var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard);
+    }
+
+    .seo-meter[data-b='short'] .seo-meter__fill,
+    .seo-meter[data-b='long'] .seo-meter__fill {
+        background: var(--color-warning-base);
+    }
+
+    .seo-meter[data-b='near'] .seo-meter__fill {
+        background: var(--color-info-base);
+    }
+
+    .seo-meter[data-b='good'] .seo-meter__fill {
+        background: var(--color-success-base);
+    }
+
+    .seo-meter[data-b='over'] .seo-meter__fill {
+        background: var(--color-danger-base);
+    }
+
+    /* The count beside a field's name: its words wrap, never clipped. */
+    .seo-count {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        max-width: 100%;
+        font-size: var(--text-small);
+        line-height: var(--text-small--line-height);
+        font-variant-numeric: tabular-nums;
+        overflow-wrap: anywhere;
+        color: var(--color-text-muted);
+    }
+
+    .seo-count[data-b='short'],
+    .seo-count[data-b='long'] {
+        color: var(--color-warning-text);
+    }
+
+    .seo-count[data-b='near'] {
+        color: var(--color-info-text);
+    }
+
+    .seo-count[data-b='good'] {
+        color: var(--color-success-text);
+    }
+
+    .seo-count[data-b='over'] {
+        color: var(--color-danger-text);
+        font-weight: 600;
+    }
+
+    .seo-count > svg {
+        flex: 0 0 auto;
+        width: var(--icon-sm);
+        height: var(--icon-sm);
+    }
+
+    /* "Google cắt từ đây": a thin bar and the words, then what Google leaves off, muted. */
+    .seo-cut {
+        display: inline-flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.25rem;
+        max-width: 100%;
+        margin: 0 0.25rem;
+        vertical-align: middle;
+        font-size: var(--text-caption);
+        font-weight: 400;
+        line-height: 1.3;
+        color: var(--color-text-muted);
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .seo-cut::before {
+        content: '';
+        display: inline-block;
+        flex: 0 0 2px;
+        width: 2px;
+        height: 1.2em;
+        border-radius: 1px;
+        background: var(--color-text-muted);
+    }
+
+    .seo-over {
+        color: var(--color-text-muted);
+    }
+
+    .seo-chev {
+        transition: transform var(--duration-base) var(--ease-standard);
+    }
+
+    .seo-chev[data-open='true'] {
+        transform: rotate(180deg);
+    }
+}

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire\Entries;
 
+use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\RecordEntryRevision;
@@ -23,6 +24,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaLibraryUrls;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Shared\Support\PlainText;
 use App\Modules\Shared\Support\Slugger;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Models\ContentSection;
@@ -103,8 +105,34 @@ final class Editor extends Component
 
     public string $slug = '';
 
+    /** The short excerpt of this language (news cards, category pages; the Google description's fallback). */
+    public string $excerpt = '';
+
+    /** The title Google shows for this language; empty = the page title. */
+    public string $seoTitle = '';
+
+    /** The description Google shows for this language; empty = the excerpt. */
+    public string $seoDescription = '';
+
+    /** Whether the site writes in more than one language (the per-language fields then carry its code). */
+    #[Locked]
+    public bool $multiLocale = false;
+
     /** Primary category id (posts only; index 0 of entry_taxonomies drives the URL). */
     public ?int $categoryId = null;
+
+    /**
+     * The Google preview's address around the slug (SeoFields::address): built on mount and again
+     * when the category changes, finished in the browser as the slug is typed. Server data.
+     *
+     * @var array{base: string, home: string|null, homeSlug: string}
+     */
+    #[Locked]
+    public array $address = ['base' => '', 'home' => null, 'homeSlug' => PathBuilder::HOME_SLUG];
+
+    /** The site's primary domain, kept from the first request for the address above. */
+    #[Locked]
+    public string $addressHost = '';
 
     /** Featured/OG image — the picked media's storage_key, persisted to entry.meta['image_url']. */
     public string $coverImageKey = '';
@@ -169,6 +197,7 @@ final class Editor extends Component
     public function mount(?string $ulid = null, ?string $section = null, ?string $locale = null): void
     {
         $this->locale = $this->resolveLocale(app(SiteLocale::class), $locale ?? request()->query('locale'));
+        $this->multiLocale = count(app(SiteLocale::class)->enabled()) > 1;
 
         if ($ulid === null) {
             $this->authorize('create', Entry::class);
@@ -180,6 +209,7 @@ final class Editor extends Component
             $this->categoryId = $this->type === 'post' && $contentSection instanceof ContentSection && $contentSection->taxonomy_id !== null
                 ? (int) $contentSection->taxonomy_id
                 : null;
+            $this->address = $this->previewAddress(new Entry(['type' => $this->type]));
 
             return;
         }
@@ -196,18 +226,44 @@ final class Editor extends Component
             $this->title = $translation->title;
             $this->slug = $translation->slug;
             $this->blocks = $this->normalizeBlocks($translation->body['blocks'] ?? []);
+            $this->excerpt = $translation->excerpt ?? '';
+            $this->seoTitle = $translation->seo_title ?? '';
+            $this->seoDescription = $translation->seo_description ?? '';
         }
 
         $cover = data_get($entry->meta, 'image_url');
         $this->coverImageKey = is_string($cover) ? $cover : '';
 
-        if ($this->type === 'post') {
-            $this->categoryId = $entry->primaryCategory()?->id;
-        }
+        $category = $this->type === 'post' ? $entry->primaryCategory() : null;
+        $this->categoryId = $category?->id;
+        $this->address = $this->previewAddress($entry, $category);
 
         if ($this->governingWorkflow() !== null) {
             $this->loadTrail($entry->id);
         }
+    }
+
+    /** A post's category is part of its address: the preview follows the pick (posts only). */
+    public function updatedCategoryId(): void
+    {
+        if ($this->type === 'post') {
+            $this->address = $this->previewAddress();
+        }
+    }
+
+    /**
+     * The Google preview's address around the slug, composed as publishing will compose it: the
+     * site's primary domain, the language prefix and the path before the slug.
+     *
+     * @return array{base: string, home: string|null, homeSlug: string}
+     */
+    private function previewAddress(?Entry $entry = null, ?Taxonomy $category = null): array
+    {
+        if ($this->addressHost === '') {
+            $this->addressHost = SeoFields::publicHost();
+        }
+
+        return SeoFields::address($this->addressHost, $this->publicPathPrefix($entry, $category), $this->locale, $this->type === 'page');
     }
 
     /**
@@ -963,7 +1019,7 @@ final class Editor extends Component
      */
     protected function rules(): array
     {
-        $rules = app(EntryContentRules::class)->rules();
+        $rules = self::onFormFields(app(EntryContentRules::class)->rules());
 
         // A post's URL is its category slug + post slug, so a post must have a category.
         if ($this->type === 'post') {
@@ -1029,10 +1085,31 @@ final class Editor extends Component
     protected function messages(): array
     {
         return [
-            ...app(EntryContentRules::class)->messages(),
+            ...self::onFormFields(app(EntryContentRules::class)->messages()),
             'categoryId.required' => __('entries.category_required'),
             'categoryId.exists' => __('entries.category_invalid'),
         ];
+    }
+
+    /**
+     * The content rules (or their messages) keyed by this form's field names: the Google fields are
+     * columns `seo_title`/`seo_description` in the content shape and `seoTitle`/`seoDescription` here.
+     *
+     * @template TValue
+     *
+     * @param  array<string, TValue>  $byColumn
+     * @return array<string, TValue>
+     */
+    private static function onFormFields(array $byColumn): array
+    {
+        $fields = ['seo_title' => 'seoTitle', 'seo_description' => 'seoDescription'];
+        $out = [];
+        foreach ($byColumn as $key => $value) {
+            $column = explode('.', $key, 2)[0];
+            $out[($fields[$column] ?? $column).substr($key, strlen($column))] = $value;
+        }
+
+        return $out;
     }
 
     /**
@@ -1081,14 +1158,15 @@ final class Editor extends Component
 
     /**
      * The part of the public path that comes before the slug, composed by PathBuilder for this
-     * entry and its picked category exactly as publishing will ('/' for a flat page).
+     * entry and its picked category exactly as publishing will ('/' for a flat page). The caller may
+     * hand in the entry and its picked category when it already holds them.
      */
-    private function publicPathPrefix(): string
+    private function publicPathPrefix(?Entry $entry = null, ?Taxonomy $category = null): string
     {
-        $entry = $this->ulid !== null ? $this->resolveOrFail($this->ulid) : new Entry(['type' => $this->type]);
+        $entry ??= $this->ulid !== null ? $this->resolveOrFail($this->ulid) : new Entry(['type' => $this->type]);
 
         if ($this->type === 'post') {
-            $category = $this->categoryId !== null
+            $category ??= $this->categoryId !== null
                 ? Taxonomy::query()->with('translations')->find($this->categoryId)
                 : null;
             $categories = new EloquentCollection;
@@ -1107,6 +1185,15 @@ final class Editor extends Component
     /** Validate + persist the entry and its translation (+ category for posts); returns it. */
     private function persist(): Entry
     {
+        // No control character is stored (PostgreSQL refuses a NUL); Google shows its two fields on
+        // one line, so a line break or an invisible direction mark never reaches the head either.
+        $this->title = PlainText::line($this->title);
+        $this->slug = PlainText::line($this->slug);
+        $this->excerpt = PlainText::lines($this->excerpt);
+        $this->seoTitle = SeoFields::singleLine($this->seoTitle);
+        $this->seoDescription = SeoFields::singleLine($this->seoDescription);
+        $this->blocks = PlainText::linesIn($this->blocks);
+
         $filled = $this->fillBlankSlug();
         try {
             $this->validate();
@@ -1155,6 +1242,9 @@ final class Editor extends Component
             'title' => $this->title,
             'slug' => $this->slug,
             'body' => ['blocks' => $this->blocks],
+            'excerpt' => $this->excerpt !== '' ? $this->excerpt : null,
+            'seo_title' => $this->seoTitle !== '' ? $this->seoTitle : null,
+            'seo_description' => $this->seoDescription !== '' ? $this->seoDescription : null,
             'status' => $this->translationStatus($entry, $translation),
         ])->save();
 

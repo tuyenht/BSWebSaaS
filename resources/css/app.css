@@ -15,6 +15,9 @@
 /* The shared admin tree (<x-bs-admin::tree>): guide lines, the drop placeholder, the drag label. */
 @import './admin-tree.css';
 
+/* The shared "Hiện thế nào trên Google" part (<x-bs-admin::seo-fields>): length meters, the cut mark. */
+@import './admin-seo.css';
+
 /* Scan module Blade + bundled theme Blade + framework/runtime views so utility classes aren't purged. */
 @source '../../app/Modules/**/*.blade.php';
 @source '../../themes/**/*.blade.php';

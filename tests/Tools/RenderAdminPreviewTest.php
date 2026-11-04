@@ -25,6 +25,7 @@ use App\Modules\Admin\Livewire\Platform\Audit\CleanupDialog;
 use App\Modules\Admin\Livewire\Settings\Domains as DomainSettings;
 use App\Modules\Admin\Livewire\WorkflowSettings;
 use App\Modules\Audit\Models\AuditLog;
+use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Identity\Models\User;
@@ -33,6 +34,7 @@ use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
+use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -211,5 +213,36 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('Tên pháp lý đầy đủ (theo giấy phép)', 'wire:model.live.blur="form.legalName"');   // the values ride in the Livewire snapshot
     file_put_contents($dir.'/general.html', $html);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 11);
+    // The post editor with its short description and Google title and description filled, long
+    // enough that the meters show their bands and the Google preview shows where it cuts the text.
+    $post = app(Tenancy::class)->enter(1, function () use ($owner): Entry {
+        $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $owner->id]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'Khánh thành nhà xưởng gia công cơ khí chính xác mới tại Khu công nghiệp Phú Nghĩa', 'slug' => 'khanh-thanh-nha-xuong', 'status' => 'draft',
+            'excerpt' => 'Nhà xưởng mới rộng 5.000 m² với dây chuyền CNC 5 trục giúp rút ngắn thời gian giao hàng còn một nửa cho khách hàng trong nước và xuất khẩu.',
+            'seo_title' => 'Khánh thành nhà xưởng cơ khí chính xác mới tại Phú Nghĩa, Hà Nội năm 2026',
+            'seo_description' => 'Nhà xưởng mới rộng 5.000 m² với dây chuyền CNC 5 trục, rút ngắn thời gian giao hàng còn một nửa cho khách hàng trong nước và xuất khẩu sang Nhật Bản, Hàn Quốc.',
+            'body' => ['blocks' => []]]);
+
+        return $entry;
+    });
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$post->ulid.'/edit')->assertOk()->getContent();
+    expect($html)->toContain('data-seo-fields', 'wire:model="excerpt"');
+    file_put_contents($dir.'/post-editor.html', $html);
+
+    // The product editor with the same shared Google part (no short description: a product has
+    // none). The catalog is switched on only now, so the screens above keep their menus.
+    $product = app(Tenancy::class)->enter(1, function (): Product {
+        SiteModule::query()->updateOrCreate(['module_key' => 'catalog'], ['enabled' => true]);
+        $product = Product::query()->create(['status' => 'draft', 'sku' => 'DG-CNC-001', 'price' => 12500000]);
+        $product->translations()->create(['locale' => 'vi', 'name' => 'Đồ gá kẹp phôi CNC 5 trục', 'slug' => 'do-ga-kep-phoi-cnc-5-truc',
+            'seo_title' => 'Đồ gá kẹp phôi CNC 5 trục', 'seo_description' => '']);
+
+        return $product;
+    });
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/catalog/'.$product->ulid.'/edit')->assertOk()->getContent();
+    expect($html)->toContain('data-seo-fields')->not->toContain('wire:model="excerpt"');
+    file_put_contents($dir.'/product-editor.html', $html);
+
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 13);
 });
