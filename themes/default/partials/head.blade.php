@@ -31,12 +31,12 @@
         : data_get($brand ?? null, 'description', '');
 
     // Per-entry ogImage (set by StorefrontController for posts with a featured image) takes
-    // priority over the site-wide brand og_image. Falls back to brand when not set.
+    // priority over the site-wide brand og_image; a site without a share image shares its logo.
     /** @var string|null $ogImage */
     $passedOgImage = $ogImage ?? null;
     $effectiveOgImage = ! empty($passedOgImage)
         ? $passedOgImage
-        : data_get($brand ?? null, 'og_image', '');
+        : (data_get($brand ?? null, 'og_image') ?: data_get($brand ?? null, 'logo', ''));
 @endphp
 @if (! empty($effectiveDescription))
     <meta name="description" content="{{ $effectiveDescription }}">

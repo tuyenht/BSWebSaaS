@@ -25,6 +25,9 @@
             if (Route::has('admin.settings.general')) {
                 $workspace[] = ['key' => 'general', 'route' => 'admin.settings.general', 'label' => __('admin.gs.title')];
             }
+            if (Route::has('admin.settings.seo')) {
+                $workspace[] = ['key' => 'seo', 'route' => 'admin.settings.seo', 'label' => __('admin.seoset.title')];
+            }
             if (Route::has('admin.settings.email')) {
                 $workspace[] = ['key' => 'email', 'route' => 'admin.settings.email', 'label' => __('admin.email_settings')];
             }
@@ -64,8 +67,9 @@
     <h1 class="mb-5 text-lg font-semibold text-heading">{{ \App\Modules\Admin\Support\AdminPlane::isPlatform() ? __('admin.settings_system') : __('admin.settings') }}</h1>
 
     <div class="grid gap-6 lg:grid-cols-[210px_1fr]">
-        {{-- Section nav: vertical on desktop, horizontally scrollable on mobile. min-w-0 lets the
-             grid column shrink to the screen so the strip scrolls inside itself, not the page. --}}
+        {{-- Section nav: vertical on desktop (a long name wraps inside the column), horizontally
+             scrollable on mobile. min-w-0 lets the grid column shrink to the screen so the strip
+             scrolls inside itself, not the page. --}}
         <nav class="min-w-0 lg:sticky lg:top-20 lg:self-start">
             <div class="-mx-1 flex gap-1 overflow-x-auto pb-1 lg:mx-0 lg:flex-col lg:gap-0.5 lg:overflow-visible lg:pb-0">
                 @foreach ($nav as $group)
@@ -73,7 +77,7 @@
                     @foreach ($group['items'] as $item)
                         <a href="{{ route($item['route']) }}" wire:navigate
                            @class([
-                               'shrink-0 whitespace-nowrap rounded px-3 py-2 text-sm font-medium transition-colors',
+                               'shrink-0 whitespace-nowrap rounded px-3 py-2 text-sm font-medium transition-colors lg:whitespace-normal',
                                'bg-admin-primary/10 text-accent' => $active === $item['key'],
                                'text-body-muted hover:bg-surface-hover' => $active !== $item['key'],
                            ])>{{ $item['label'] }}</a>

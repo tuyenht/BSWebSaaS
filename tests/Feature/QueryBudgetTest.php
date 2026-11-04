@@ -31,6 +31,17 @@ it('renders the storefront home within its query budget', function (): void {
     expect($count)->toBeLessThanOrEqual($budget);
 });
 
+it('renders the storefront home with the site’s search settings within the same budget', function (): void {
+    $budget = 11; // the search settings ride the one site-settings query the page already makes
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->create(['group_name' => 'seo', 'key' => 'config', 'value' => [
+        'titles' => ['vi' => 'Mặc định'], 'descriptions' => ['vi' => 'Mô tả'], 'template' => '%tieu-de% | %ten-website%', 'indexable' => false,
+    ]]));
+
+    $count = countQueries(fn () => $this->get('http://a.test/')->assertOk()->assertSee('noindex, nofollow', false));
+
+    expect($count)->toBeLessThanOrEqual($budget);
+});
+
 it('renders the storefront home with the phone bar and its “Mua hàng” button within its query budget', function (): void {
     // The home budget plus finding the product list once for the page: the site's modules (2), the
     // products section, a published product and the list's address. The bar's own setting shares
