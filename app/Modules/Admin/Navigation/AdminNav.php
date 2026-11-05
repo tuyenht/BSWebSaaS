@@ -248,6 +248,7 @@ final class AdminNav
                     ['settings.appearance', 'admin.appearance', 'admin.settings.appearance'],
                     ['settings.catalog', 'admin.catalog_settings', 'admin.settings.catalog'],
                     ['settings.floating-contact', 'admin.fc.title', 'admin.settings.floating-contact'],
+                    ['settings.integrations', 'admin.int.title', 'admin.settings.integrations'],
                 ] as [$sKey, $sLabelKey, $sRoute]) {
                     $settingsChildren[] = new NavItem(
                         key: $sKey,

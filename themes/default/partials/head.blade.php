@@ -21,6 +21,9 @@
 @if (! empty($robots))
 <meta name="robots" content="{{ $robots }}">
 @endif
+@foreach (($verification ?? []) as $verify)
+<meta name="{{ $verify['name'] }}" content="{{ $verify['content'] }}">
+@endforeach
 @php
     // Brand description fallback: category-list and other pages without a per-page description
     // (seoDescription = null/empty) fall back to the tenant's brand short description so the

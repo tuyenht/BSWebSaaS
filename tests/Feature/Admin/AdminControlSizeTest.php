@@ -236,8 +236,9 @@ it('draws every on/off switch of the admin with the one shared switch', function
     // workflow 1 (in its row loop), domains 1, the look panel 2 (one in a loop), the floating
     // contact page 3 (the main switch, one per channel row, the buy button), the general settings
     // page 1 (the Bộ Công Thương notice), the search settings page 1 (in its field loop: Google, sitemap),
-    // the menus screen 3 (auto-add, the large panel, one per display option in a loop)
-    expect($found)->toBe(12);
+    // the menus screen 3 (auto-add, the large panel, one per display option in a loop), the
+    // integrations page 1 (one per provider, in a loop)
+    expect($found)->toBe(13);
 });
 
 it('sizes the image picker and theme panel buttons by the shared control tokens', function (string $view, string $marker, string $size): void {
