@@ -5,6 +5,7 @@
     'returnTo' => null,
     'closeLabel' => null,
     'busy' => null,
+    'state' => null,
 ])
 @php
     // A details panel (canvas .nk-drw): from the right edge on wider screens, from the bottom below 600px, over a dimmed
@@ -17,14 +18,29 @@
     // old element does not), or to the page heading when that element is not on the page (opened from a link). $close is printed into JS: a fixed method name, never input.
     // $busy (optional, a fixed method name too): while the host's call to it runs, the panel is aria-busy, ✕ is aria-disabled
     // and nothing closes the panel (an irreversible step must not be left half-seen).
+    //
+    // A screen that keeps its state in the browser passes `state` (an Alpine expression: the panel is
+    // drawn while it is set) and `close` as the Alpine call that asks to close it (the screen may
+    // ask first); a `heading` slot replaces the title when it is drawn from that state. Focus goes
+    // back to the element that had it when the panel opened, once the panel is gone.
+    $alpine = $state !== null;
     $tid = 'drw-'.\Illuminate\Support\Str::random(6);
     $closeLabel ??= __('admin.dismiss');
+    $hideBody = $alpine
+        ? $close.';'
+        : 'const back = this.back; $wire.$call('.\Illuminate\Support\Js::from($close)->toHtml().').then(() => { let to = back && document.getElementById(back); if (! to) { to = document.querySelector(\'h1\'); to?.setAttribute(\'tabindex\', \'-1\'); } to?.focus(); });';
+    $opener = $alpine ? ' this.opener = document.activeElement;' : '';
+    $giveBack = $alpine ? ' const o = this.opener; setTimeout(() => { if (o && o.isConnected) o.focus(); }, 0);' : '';
 @endphp
+@if ($alpine)
+<template x-if="{{ $state }}">
+@endif
 <div x-data="{
          back: @js($returnTo),
-         init() { document.body.style.overflow = 'hidden'; this.$nextTick(() => this.$refs.x.focus()); },
-         destroy() { document.body.style.overflow = ''; },
-         hide() { if (this.$refs.panel.hasAttribute('aria-busy')) return; const back = this.back; $wire.$call(@js($close)).then(() => { let to = back && document.getElementById(back); if (! to) { to = document.querySelector('h1'); to?.setAttribute('tabindex', '-1'); } to?.focus(); }); },
+         opener: null,
+         init() { {!! $opener !!} document.body.style.overflow = 'hidden'; this.$nextTick(() => this.$refs.x.focus()); },
+         destroy() { document.body.style.overflow = ''; {!! $giveBack !!} },
+         hide() { if (this.$refs.panel.hasAttribute('aria-busy')) return; {!! $hideBody !!} },
          trap(e) { const f = [...this.$refs.panel.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select,textarea,[tabindex]:not([tabindex=\'-1\'])')].filter((el) => el.getClientRects().length); if (! f.length) return; const first = f[0], last = f[f.length - 1]; const a = document.activeElement; if (a === this.$refs.panel || ! this.$refs.panel.contains(a)) { e.preventDefault(); (e.shiftKey ? last : first).focus(); } else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (! e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); } },
      }"
      @keydown.escape.window.prevent.stop="hide()"
@@ -36,7 +52,7 @@
          class="fixed inset-x-0 bottom-0 z-60 flex max-h-[92dvh] flex-col rounded-t-xl bg-surface text-body text-text shadow-lg @container min-[600px]:inset-y-0 min-[600px]:start-auto min-[600px]:end-0 min-[600px]:max-h-none min-[600px]:w-[min(30rem,100vw)] min-[600px]:rounded-none">
         <div class="flex shrink-0 items-start gap-3 border-b border-border py-3 pe-2 ps-5">
             <div class="min-w-0 flex-1 pt-1">
-                <h2 id="{{ $tid }}" class="m-0 text-[calc(1.125rem+var(--user-text-boost))] font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ $title }}</h2>
+                <h2 id="{{ $tid }}" class="m-0 text-[calc(1.125rem+var(--user-text-boost))] font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ $heading ?? $title }}</h2>
                 @if ($subtitle)
                     <p id="{{ $tid }}-s" class="m-0 mt-1 text-small text-text-muted [overflow-wrap:anywhere]">{{ $subtitle }}</p>
                 @endif
@@ -53,3 +69,6 @@
         @endisset
     </div>
 </div>
+@if ($alpine)
+</template>
+@endif

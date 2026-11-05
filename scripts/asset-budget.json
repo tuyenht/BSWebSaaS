@@ -2,14 +2,14 @@
   "entries": {
     "resources/css/app.css": {
       "js": 0,
-      "css": 33774
+      "css": 34123
     },
     "resources/css/storefront.css": {
       "js": 0,
       "css": 12632
     },
     "resources/js/app.js": {
-      "js": 19238,
+      "js": 19555,
       "css": 0
     },
     "resources/js/sections.js": {
@@ -40,6 +40,10 @@
   "lazy": {
     "npm:sweetalert2/dist/sweetalert2.all.js": {
       "js": 39910,
+      "css": 0
+    },
+    "resources/js/admin-categories.js": {
+      "js": 25455,
       "css": 0
     },
     "resources/js/admin-rich-editor.js": {

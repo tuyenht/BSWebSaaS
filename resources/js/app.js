@@ -23,6 +23,9 @@ import './admin-menus.js';
 // The shared "Hiện thế nào trên Google" part: length meters + Google preview (Alpine.data 'bsSeoFields').
 import './admin-seo-fields.js';
 
+// The one lazy loader for screen-only Alpine parts too big for this file (the Chuyên mục screen…).
+import './admin-lazy.js';
+
 let uploader = null;
 
 function teardown() {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Livewire\Categories;
 
+use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Admin\Support\Categories\CategoryDeletePreview;
 use App\Modules\Admin\Support\Categories\CategoryMoveTargets;
 use App\Modules\Admin\Support\Categories\CategoryScreen;
@@ -20,19 +21,27 @@ use App\Modules\Cms\Enums\CategoryChildrenOnDelete;
 use App\Modules\Cms\Enums\CategoryItemsOnDelete;
 use App\Modules\Cms\Exceptions\TaxonomyChangeRejectedException;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\SectionResolver;
+use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Taxonomy\TaxonomyRules;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Identity\Models\User;
+use App\Modules\Media\Models\Media;
+use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
+use App\Modules\Tenancy\Context\SiteLocale;
 use Closure;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\View as Views;
 use Illuminate\Support\Str;
+use Illuminate\View\FileViewFinder;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\Renderless;
 use Livewire\Component;
 
 /**
@@ -58,6 +67,8 @@ use Livewire\Component;
 #[Layout('admin::layouts.app')]
 final class Index extends Component
 {
+    use WithMediaLibraryPicker;
+
     /** The fields "save" accepts in its data, each a language → text map. */
     private const array TEXT_MAPS = ['names', 'slugs', 'descriptions', 'seoTitles', 'seoDescriptions'];
 
@@ -67,6 +78,27 @@ final class Index extends Component
     /** The section the page was opened on, for its title; every method names its own section. */
     #[Locked]
     public string $section = '';
+
+    /**
+     * The drawer's language in view, mirrored for the shared Google preview (<x-bs-admin::seo-fields>
+     * reads its fields from the component): the name, the slug and the two Google fields. The
+     * drawer itself sends every language to save(); nothing is ever saved from these.
+     */
+    public string $seoName = '';
+
+    public string $seoSlug = '';
+
+    public string $seoTitle = '';
+
+    public string $seoDescription = '';
+
+    /**
+     * Where the Google preview's address starts for the drawer's language (SeoFields::address),
+     * set by the drawer as the language changes.
+     *
+     * @var array{base: string, home: string|null, homeSlug: string}
+     */
+    public array $address = ['base' => '', 'home' => null, 'homeSlug' => 'home'];
 
     public function boot(): void
     {
@@ -85,6 +117,7 @@ final class Index extends Component
      *
      * @return array<string, mixed>
      */
+    #[Renderless]
     public function load(mixed $section): array
     {
         Gate::authorize('viewAny', Taxonomy::class);
@@ -191,6 +224,7 @@ final class Index extends Component
      *
      * @return array<string, mixed>
      */
+    #[Renderless]
     public function moveTargets(mixed $section, mixed $key, mixed $query = ''): array
     {
         if (! $this->isUlid($key) || ! is_string($query) || mb_strlen($query) > TaxonomyRules::NAME_MAX) {
@@ -205,21 +239,25 @@ final class Index extends Component
 
     /**
      * What the delete or merge dialog shows (CategoryDeletePreview). $children: lift | delete;
-     * $target: where the items would go (a key) or null; $merge: the merge dialog.
+     * $target: where the items would go (a key) or null; $merge: the merge dialog; $items: reassign
+     * | detach — "Bỏ gắn" sends the items nowhere, so it is previewed as no target, as delete() does.
      *
      * @return array<string, mixed>
      */
-    public function deletePreview(mixed $section, mixed $key, mixed $children = 'lift', mixed $target = null, mixed $merge = false): array
+    #[Renderless]
+    public function deletePreview(mixed $section, mixed $key, mixed $children = 'lift', mixed $target = null, mixed $merge = false, mixed $items = 'reassign'): array
     {
         $childrenOnDelete = is_string($children) ? CategoryChildrenOnDelete::tryFrom($children) : null;
-        if (! $this->isUlid($key) || $childrenOnDelete === null || ($target !== null && ! $this->isUlid($target)) || ! is_bool($merge)) {
+        $itemsOnDelete = is_string($items) ? CategoryItemsOnDelete::tryFrom($items) : null;
+        if (! $this->isUlid($key) || $childrenOnDelete === null || ($target !== null && ! $this->isUlid($target)) || ! is_bool($merge)
+            || $itemsOnDelete === null || ($merge && $itemsOnDelete === CategoryItemsOnDelete::Detach)) {
             return $this->invalid();
         }
         Gate::authorize('viewAny', Taxonomy::class);
 
-        return $this->inSection($section, function (array $found) use ($key, $childrenOnDelete, $target, $merge): array {
+        return $this->inSection($section, function (array $found) use ($key, $childrenOnDelete, $target, $merge, $itemsOnDelete): array {
             $category = $this->category($found, $key);
-            $into = $target === null ? null : $this->place($found, $target, 'target_invalid');
+            $into = $target === null || $itemsOnDelete === CategoryItemsOnDelete::Detach ? null : $this->place($found, $target, 'target_invalid');
 
             return ['ok' => true, ...app(CategoryDeletePreview::class)->for($found, $category, $this->actor(), $childrenOnDelete, $merge, $into)];
         });
@@ -279,6 +317,7 @@ final class Index extends Component
      *
      * @return array<string, mixed>
      */
+    #[Renderless]
     public function search(mixed $section, mixed $query): array
     {
         if (! is_string($query) || mb_strlen($query) > TaxonomyRules::NAME_MAX) {
@@ -289,13 +328,91 @@ final class Index extends Component
         return $this->inSection($section, fn (array $found): array => ['ok' => true, 'keys' => app(CategoryScreen::class)->search($found, $query)]);
     }
 
-    /** A stub until the board is ported: the title and the empty state. */
+    /**
+     * The screen as CategoryScreen::load draws it — the server draws the tree's rows, each carrying
+     * its category for the drawer — or the state that stands in for it: `locked` (the product
+     * catalogue is not part of the plan) or `noperm` (no such section for this person). Also the
+     * website's address (the slug prefix, "Sao chép đường dẫn"), the theme's layouts for the
+     * template choices, the viewer's role and limits for the role note, and the list it came from.
+     */
     public function render(): View
     {
         Gate::authorize('viewAny', Taxonomy::class);
         $found = $this->visibleSection($this->section);
+        $state = $found !== null ? 'data' : ($this->section === CategorySections::CATALOG ? 'locked' : 'noperm');
+        $locales = app(SiteLocale::class);
+        $main = $locales->default();
+        $actor = $this->actor();
+        $limits = app(CategoryScopes::class)->rootIds($actor);
+        $host = SeoFields::publicHost();
+        $bases = [];
+        foreach ($locales->enabled() as $locale) {
+            $bases[$locale] = SeoFields::address($host, '/', $locale, false)['base'];
+        }
+        $role = $actor->roles->sortByDesc('level')->first()?->getAttribute('name');
 
-        return view('admin::livewire.categories.index', ['label' => $found['label'] ?? '']);
+        return view('admin::livewire.categories.index', [
+            'state' => $state,
+            'screen' => $found === null ? null : app(CategoryScreen::class)->load($found, $actor),
+            'products' => $found !== null && $found['root'] === null,
+            'label' => $found['label'] ?? '',
+            'bases' => $bases,
+            'layouts' => $this->layouts(),
+            'role' => is_string($role) && $role !== '' ? Str::headline($role) : null,
+            'limitNames' => $limits === null ? null : $this->namesOf($limits, $main),
+            'listUrl' => $found !== null && $found['root'] === null ? route('admin.catalog.index') : route('admin.entries.index'),
+            'canManage' => Gate::allows('manage', Taxonomy::class),
+        ]);
+    }
+
+    /** The picked cover goes back to the drawer: its key for save() and a small picture. */
+    protected function addGalleryImage(int $mediaId): void
+    {
+        $media = Media::query()->whereKey($mediaId)->first(['id', 'storage_key', 'mime']);
+        $this->showImagePicker = false;
+        if ($media === null || ! str_starts_with((string) $media->mime, 'image/')) {
+            return;
+        }
+        $this->dispatch('category-cover-picked', key: $media->storage_key, url: app(MediaUrlResolver::class)->url($media->storage_key, 400));
+    }
+
+    /**
+     * The layouts of the active theme a category may take (TaxonomyRules::template), by name.
+     *
+     * @return list<string>
+     */
+    private function layouts(): array
+    {
+        $names = [];
+        $finder = Views::getFinder();
+        $dirs = $finder instanceof FileViewFinder ? ($finder->getHints()['theme'] ?? []) : [];
+        foreach ($dirs as $dir) {
+            foreach (glob(rtrim(Cast::string($dir), '/').'/layouts/*.blade.php') ?: [] as $file) {
+                $name = basename($file, '.blade.php');
+                if (TaxonomyRules::template($name)) {
+                    $names[] = $name;
+                }
+            }
+        }
+        sort($names);
+
+        return array_values(array_unique($names));
+    }
+
+    /**
+     * The main-language names of the categories a limited member works in, for the role note.
+     *
+     * @param  list<int>  $ids
+     * @return list<string>
+     */
+    private function namesOf(array $ids, string $main): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        return array_values(array_map(Cast::string(...), TaxonomyTranslation::query()
+            ->whereIn('taxonomy_id', $ids)->where('locale', $main)->orderBy('name')->pluck('name')->all()));
     }
 
     /**

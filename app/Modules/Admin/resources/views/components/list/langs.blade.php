@@ -4,6 +4,7 @@
     'source' => null,
     'name' => '',
     'href' => null,
+    'run' => null,
     'why' => null,
     'show' => 'true',
 ])
@@ -18,9 +19,11 @@
     // chips; the note stays). With more than four locales the chips give way to one summary button,
     // shown with the column choice like the chips, which opens a menu of the versions; the note
     // still shows whenever something is missing. A single-language site shows nothing.
+    // A screen that edits in place passes `run` instead of `href`: a closure taking the locale and
+    // giving the Alpine call that opens that version, so each chip (and menu row) is a button.
     $locales = array_values($locales);
     $has = array_values($has);
-    $canEdit = $href instanceof \Closure;
+    $canEdit = $href instanceof \Closure || $run instanceof \Closure;
     // Short name ("Anh"), the name inside a sentence ("tiếng Anh") and on its own ("Tiếng Anh");
     // a locale without a short name reads as its upper-case code.
     $short = fn (string $lc): string => \Illuminate\Support\Facades\Lang::has('entries.lang_short_'.$lc) ? __('entries.lang_short_'.$lc) : strtoupper($lc);
@@ -91,7 +94,12 @@
                             x-on:keydown.tab="open = false">
                             @foreach ($locales as $lc)
                                 @php $s = $state($lc); @endphp
-                                @if ($canEdit)
+                                @if ($run instanceof \Closure)
+                                    <button type="button" role="menuitem" class="list-mi" x-on:click="close(false); {{ $run($lc) }}">
+                                        <span class="list-mi-tx">{{ $langName($lc) }} <span class="list-mi-st">{{ $stText($lc) }}</span></span>
+                                        <span class="list-mi-act">{{ $s === 'empty' ? __('entries.add_translation') : __('entries.edit_action') }}</span>
+                                    </button>
+                                @elseif ($canEdit)
                                     <a href="{{ $href($lc) }}" wire:navigate role="menuitem" class="list-mi" x-on:click="close(false)">
                                         <span class="list-mi-tx">{{ $langName($lc) }} <span class="list-mi-st">{{ $stText($lc) }}</span></span>
                                         <span class="list-mi-act">{{ $s === 'empty' ? __('entries.add_translation') : __('entries.edit_action') }}</span>
@@ -124,8 +132,13 @@
                                     : __($s === 'src' ? 'entries.lc_edit_source' : 'entries.lc_edit', ['lang' => $lang]);
                                 $aria = __('entries.lc_named', ['label' => $s === 'empty' ? __($isSrc($lc) ? 'entries.lc_add_source' : 'entries.lc_add', ['lang' => $lang]) : $tip, 'title' => $name]);
                             @endphp
-                            <a href="{{ $href($lc) }}" wire:navigate class="list-lc" data-s="{{ $s }}" @if ($s === 'empty') data-add @endif
-                                title="{{ $tip }}" aria-label="{{ $aria }}">{{ $short($lc) }}@if ($isSrc($lc))<x-bs-admin::icon name="ri-star-fill" class="size-[calc(0.75rem+var(--user-text-boost))] shrink-0 list-lc-star" />@endif</a>
+                            @if ($run instanceof \Closure)
+                                <button type="button" x-on:click="{{ $run($lc) }}" class="list-lc" data-s="{{ $s }}" @if ($s === 'empty') data-add @endif
+                                    title="{{ $tip }}" aria-label="{{ $aria }}">{{ $short($lc) }}@if ($isSrc($lc))<x-bs-admin::icon name="ri-star-fill" class="size-[calc(0.75rem+var(--user-text-boost))] shrink-0 list-lc-star" />@endif</button>
+                            @else
+                                <a href="{{ $href($lc) }}" wire:navigate class="list-lc" data-s="{{ $s }}" @if ($s === 'empty') data-add @endif
+                                    title="{{ $tip }}" aria-label="{{ $aria }}">{{ $short($lc) }}@if ($isSrc($lc))<x-bs-admin::icon name="ri-star-fill" class="size-[calc(0.75rem+var(--user-text-boost))] shrink-0 list-lc-star" />@endif</a>
+                            @endif
                         @else
                             @php
                                 $what = $s === 'empty'

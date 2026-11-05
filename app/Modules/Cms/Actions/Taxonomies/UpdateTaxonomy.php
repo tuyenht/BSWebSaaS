@@ -54,8 +54,8 @@ final readonly class UpdateTaxonomy
     public function handle(Taxonomy $taxonomy, TaxonomyData $data): Taxonomy
     {
         $this->authorizeManage();
-        $listTemplate = $this->template($data->listTemplate);
-        $detailTemplate = $this->template($data->detailTemplate);
+        $listTemplate = $this->keptOrChecked($data->listTemplate, $taxonomy->list_template);
+        $detailTemplate = $this->keptOrChecked($data->detailTemplate, $taxonomy->detail_template);
 
         return DB::transaction(function () use ($taxonomy, $data, $listTemplate, $detailTemplate): Taxonomy {
             $this->lockTree($this->site->id());
@@ -89,5 +89,16 @@ final readonly class UpdateTaxonomy
 
             return $taxonomy;
         });
+    }
+
+    /**
+     * The category's own template, when the save keeps it, is taken as it is: a theme that dropped
+     * that layout must not stop the category from being saved. Any other value is checked.
+     *
+     * @throws TaxonomyChangeRejectedException template_invalid
+     */
+    private function keptOrChecked(?string $template, ?string $stored): ?string
+    {
+        return $stored !== null && $template === $stored ? $stored : $this->template($template);
     }
 }
