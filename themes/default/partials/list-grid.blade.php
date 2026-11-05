@@ -44,7 +44,7 @@
 @if (count($sfCards) > 0)
             <ul class="sf-grid {{ $sfGrid }}">
 @foreach ($sfCards as $index => $card)
-                <li>@include('theme::partials.sf-card', ['card' => $card, 'kind' => $sfKind, 'level' => 'h2', 'sizes' => $sfSizes, 'priority' => $index === 0 ? 'high' : 'lazy'])</li>
+                <li>@include('theme::partials.sf-card', ['card' => $card, 'kind' => $sfKind, 'level' => 'h2', 'sizes' => $sfSizes, 'priority' => ($index === 0 && empty($band['image'])) ? 'high' : 'lazy'])</li>
 @endforeach
             </ul>
 @if (! empty($pagination['prevUrl']) || ! empty($pagination['nextUrl']) || ! empty($pagination['firstUrl']))

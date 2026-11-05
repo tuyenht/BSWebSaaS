@@ -172,6 +172,38 @@ it('prints the list band with its cover photo, description and trail, and the pl
         ->not->toContain('fetchpriority="high"');
 });
 
+it('marks one image high priority on a covered list with cards, so the cover wins and no card competes', function (): void {
+    $site = StorefrontCards::site();
+    app(Tenancy::class)->enter($site, function (): void {
+        $photo = StorefrontCards::media('xuong-co-khi');
+        $category = StorefrontCards::category('Ấn phẩm số hóa', 'an-pham-so-hoa', listTemplate: 'grid-news');
+        $category->update(['cover_media_id' => $photo->id]);
+        foreach ([['Đề án mùa hè', 'de-an-mua-he'], ['Ống thép cỡ nhỏ', 'ong-thep-co-nho']] as [$title, $slug]) {
+            StorefrontCards::post($category, $title, $slug, null, ['image_url' => $photo->storage_key]);
+        }
+    });
+
+    $html = $this->get(BC_HOST.'/an-pham-so-hoa')->assertOk()->getContent();
+
+    expect(substr_count($html, 'fetchpriority="high"'))->toBe(1)
+        ->and($html)->toContain('class="sf-card');
+});
+
+it('keeps a post cover from competing with a hero that opens the body', function (): void {
+    $site = StorefrontCards::site();
+    app(Tenancy::class)->enter($site, function (): void {
+        $photo = StorefrontCards::media('ong-thep');
+        $category = StorefrontCards::category('Ấn phẩm số hóa', 'an-pham-so-hoa');
+        $post = StorefrontCards::post($category, 'Đề án mùa hè', 'de-an-mua-he', null, ['image_url' => $photo->storage_key]);
+        $post->translations()->update(['body' => ['blocks' => [['type' => 'hero', 'props' => ['heading' => 'Ống thép cỡ nhỏ', 'image_url' => $photo->id]]]]]);
+    });
+
+    $html = $this->get(BC_HOST.'/an-pham-so-hoa/de-an-mua-he')->assertOk()->getContent();
+
+    expect(substr_count($html, 'fetchpriority="high"'))->toBe(1)
+        ->and($html)->toContain('class="post-cover__img"');
+});
+
 it('links the next older post as previous and the next newer one as next, and none past either end', function (): void {
     ['posts' => $posts] = bcNews();
 

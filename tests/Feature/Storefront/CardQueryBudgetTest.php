@@ -112,6 +112,7 @@ it('lists a category within its budget on each layout', function (string $path, 
     'titles layout: the COUNT is gone' => ['/tin-tuc', null, null, 18],
     'news cards, a parent with chips: chips and the site timezone' => ['/tin-tuc', 'grid-news', null, 22],
     'product cards, a child category: the products check, chips, photos, categories and the parent category in the trail' => ['/do-ga', null, 'grid-product', 26],
+    'a product page in a child category: its category trail, the parent category and the photos (measured 19, cold)' => ['/san-pham-1', null, null, 19],
 ]);
 
 it('keeps card list pages independent of the number of rows and child categories', function (string $path, ?string $news, ?string $catalog): void {

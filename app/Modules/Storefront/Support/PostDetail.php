@@ -79,6 +79,8 @@ final readonly class PostDetail
         $query = $this->inCategory($post, $category, $locale, 'related')
             ->orderByRaw('entries.published_at DESC NULLS LAST, entries.id DESC')
             ->limit(self::RELATED);
+        // Publishing always stamps published_at (PublishEntry), so a published post has one; a post
+        // without it (a draft preview) simply has no previous/next and shows related posts only.
         $publishedAt = $post->getRawOriginal('published_at');
         if ($publishedAt !== null) {
             $query->unionAll($this->inCategory($post, $category, $locale, 'previous')
@@ -123,7 +125,9 @@ final readonly class PostDetail
     private function inCategory(Entry $post, Taxonomy $category, string $locale, string $slot): Builder
     {
         return Entry::query()
-            ->select(['entries.id', 'entries.site_id', 'entries.type', 'entries.published_at', 'entries.meta'])
+            ->select(['entries.id', 'entries.site_id', 'entries.type', 'entries.published_at'])
+            // Cards read only the image link from meta; do not carry the rest of the document.
+            ->selectRaw("jsonb_build_object('image_url', entries.meta->'image_url') as meta")
             // Which part of the union a row came from; $slot is one of this class's three literals.
             ->selectRaw("'{$slot}'::text as slot")
             ->join('entry_taxonomies', fn (JoinClause $join) => $join->on('entry_taxonomies.entry_id', '=', 'entries.id')

@@ -10,6 +10,8 @@
     $sfPost = is_array($post ?? null) ? $post : [];
     $sfCover = is_array($sfPost['cover'] ?? null) ? $sfPost['cover'] : null;
     $sfOwnBand = ($leadBlock ?? null) !== 'page_header';
+    // A hero or about section opening the body already prints the page's one high-priority image.
+    $sfCoverPriority = in_array($leadBlock ?? null, ['hero', 'about'], true) ? 'eager' : 'high';
     $sfRelated = $related ?? [];
     $sfAllUrl = isset($category) ? \App\Modules\Shared\Support\SafeLink::href($category['url'] ?? null) : null;
 @endphp
@@ -35,7 +37,7 @@
                     </div>
 @if ($sfCover !== null)
                     <div class="post-band__media">
-                        @include('theme::partials.sf-img', ['src' => $sfCover['src'], 'srcset' => $sfCover['srcset'], 'sizes' => '(min-width:80rem) 31rem, (min-width:1024px) 40vw, calc(100vw - 2rem)', 'alt' => $sfCover['alt'], 'w' => $sfCover['width'], 'h' => $sfCover['height'], 'priority' => 'high', 'class' => 'post-band__img'])
+                        @include('theme::partials.sf-img', ['src' => $sfCover['src'], 'srcset' => $sfCover['srcset'], 'sizes' => '(min-width:80rem) 31rem, (min-width:1024px) 40vw, calc(100vw - 2rem)', 'alt' => $sfCover['alt'], 'w' => $sfCover['width'], 'h' => $sfCover['height'], 'priority' => $sfCoverPriority, 'class' => 'post-band__img'])
                     </div>
 @endif
                 </div>

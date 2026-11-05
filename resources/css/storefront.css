@@ -1230,8 +1230,10 @@ main:has(.hero, .sf-slider) .page__title {
     font-weight: 400;
 }
 
-.sf-crumbs--dark .sf-crumbs__link:hover {
-    color: var(--color-primary);
+.sf-crumbs--dark .sf-crumbs__link:hover,
+.sf-crumbs--dark .sf-crumbs__link:focus-visible {
+    color: var(--color-surface);
+    text-decoration: underline;
 }
 
 .sf-crumbs--dark .sf-crumbs__current {
