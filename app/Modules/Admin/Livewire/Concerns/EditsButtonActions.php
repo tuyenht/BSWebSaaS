@@ -16,6 +16,7 @@ use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Theme\Components\ButtonLink;
 use App\Modules\Theme\Components\ComponentRegistry;
 use Illuminate\Support\Facades\Gate;
+use Livewire\Attributes\Locked;
 
 /**
  * The page editor's "Khi bấm nút" control for every block button (ButtonLink): pick what the button
@@ -42,12 +43,21 @@ trait EditsButtonActions
     /** @var array<string, string> what is typed in a button's page search */
     public array $buttonQueries = [];
 
+    /**
+     * @var array<string, array{q: string, rows: list<array{ulid: string, title: string, meta: string, icon: string}>}>
+     *                                                                                                                  a button's page search results, kept with the text they were found for: the search runs
+     *                                                                                                                  again only when that text changes, not on every redraw
+     */
+    #[Locked]
+    public array $buttonResults = [];
+
     public bool $showButtonFilePicker = false;
 
     public string $buttonFilePath = '';
 
     public function toggleButtonKinds(string $path): void
     {
+        $this->authorizeEditing();
         if ($this->buttonPath($path)) {
             $this->buttonOpen = $this->buttonOpen === $path ? null : $path;
         }
@@ -55,6 +65,7 @@ trait EditsButtonActions
 
     public function setButtonKind(string $path, string $kind): void
     {
+        $this->authorizeEditing();
         if (! $this->buttonPath($path) || ! in_array($kind, ButtonLink::KINDS, true)) {
             return;
         }
@@ -77,6 +88,7 @@ trait EditsButtonActions
     /** A typed field of the current kind (url, phone, email, subject), saved and checked when left. */
     public function setButtonField(string $path, string $field, string $value): void
     {
+        $this->authorizeEditing();
         if (! $this->buttonPath($path)) {
             return;
         }
@@ -96,6 +108,7 @@ trait EditsButtonActions
 
     public function toggleButtonBlank(string $path): void
     {
+        $this->authorizeEditing();
         $do = $this->buttonPath($path) ? $this->carried(ButtonActions::current($this->blocks, $path)['value']) : null;
         if ($do !== null && $do['k'] === 'url') {
             $do['blank'] = ($do['blank'] ?? true) === false;
@@ -106,6 +119,7 @@ trait EditsButtonActions
     /** The field was left without a change: its problem shows from now on. */
     public function touchButton(string $path): void
     {
+        $this->authorizeEditing();
         if ($this->buttonPath($path)) {
             $this->buttonTouched[ButtonActions::fid($path)] = true;
         }
@@ -113,7 +127,8 @@ trait EditsButtonActions
 
     public function pickButtonPage(string $path, string $ulid): void
     {
-        if (! $this->buttonPath($path) || ! Entry::query()->where('ulid', $ulid)->whereIn('type', ['page', 'post'])->exists()) {
+        $this->authorizeEditing();
+        if (! $this->buttonPath($path) || ! Entry::query()->where('ulid', $ulid)->whereIn('type', ['page', 'post'])->where('status', 'published')->exists()) {
             return;
         }
         $this->putButton($path, ['k' => 'page', 'page' => $ulid]);
@@ -125,6 +140,7 @@ trait EditsButtonActions
 
     public function searchButtonPage(string $path): void
     {
+        $this->authorizeEditing();
         if ($this->buttonPath($path)) {
             $this->buttonSearching[ButtonActions::fid($path)] = true;
             $this->focusButton($path, 'q');
@@ -133,6 +149,7 @@ trait EditsButtonActions
 
     public function keepButtonPage(string $path): void
     {
+        $this->authorizeEditing();
         if ($this->buttonPath($path)) {
             unset($this->buttonSearching[ButtonActions::fid($path)]);
             $this->focusButton($path, 'pg');
@@ -141,6 +158,7 @@ trait EditsButtonActions
 
     public function pickButtonAnchor(string $path, string $anchor): void
     {
+        $this->authorizeEditing();
         $do = $this->buttonPath($path) ? $this->carried(ButtonActions::current($this->blocks, $path)['value']) : null;
         if ($do !== null && $do['k'] === 'anchor' && ButtonLink::anchor($anchor) !== null) {
             $this->putButton($path, ['k' => 'anchor', 'anchor' => $anchor]);
@@ -151,6 +169,7 @@ trait EditsButtonActions
     /** "Lấy số của website": the phone of Cài đặt › Thông tin chung. */
     public function useSitePhone(string $path): void
     {
+        $this->authorizeEditing();
         $do = $this->buttonPath($path) ? $this->carried(ButtonActions::current($this->blocks, $path)['value']) : null;
         $phone = $this->sitePhone();
         if ($do !== null && in_array($do['k'], ['tel', 'zalo'], true) && $phone !== '') {
@@ -161,6 +180,7 @@ trait EditsButtonActions
 
     public function openButtonFilePicker(string $path): void
     {
+        $this->authorizeEditing();
         abort_unless(Gate::allows('media.view'), 403);
         if ($this->buttonPath($path)) {
             $this->buttonFilePath = $path;
@@ -170,6 +190,7 @@ trait EditsButtonActions
 
     public function closeButtonFilePicker(): void
     {
+        $this->authorizeEditing();
         $this->showButtonFilePicker = false;
         $path = $this->buttonFilePath;
         $this->buttonFilePath = '';
@@ -181,6 +202,7 @@ trait EditsButtonActions
     /** A document of THIS site's library (site-scoped lookup), never a key taken as given. */
     public function pickButtonFile(string $key): void
     {
+        $this->authorizeEditing();
         abort_unless(Gate::allows('media.view'), 403);
         $path = $this->buttonFilePath;
         if ($this->buttonPath($path) && Media::query()->where('storage_key', $key)->whereIn('mime', ButtonLink::DOCUMENT_MIMES)->exists()) {
@@ -192,6 +214,7 @@ trait EditsButtonActions
 
     public function clearButtonFile(string $path): void
     {
+        $this->authorizeEditing();
         if ($this->buttonPath($path)) {
             $this->putButton($path, ['k' => 'file']);
             $this->buttonTouched[ButtonActions::fid($path)] = true;
@@ -209,17 +232,36 @@ trait EditsButtonActions
         $panel = app(ButtonActions::class);
         $current = $this->showButtonFilePicker && $this->buttonFilePath !== '' ? ButtonActions::current($this->blocks, $this->buttonFilePath)['value'] : [];
 
+        $buttons = $panel->views($this->blocks, $schemas, [
+            'open' => $this->buttonOpen,
+            'touched' => $this->buttonTouched,
+            'searching' => $this->buttonSearching,
+            'queries' => $this->buttonQueries,
+            'results' => $this->buttonResults,
+        ], $this->locale, fn (): string => $this->sitePhone());
+
+        // Keep each open search's results for the next redraw; a closed search drops its own.
+        $results = [];
+        foreach ($buttons as $view) {
+            if (($view['searching'] ?? false) === true && is_array($view['results'] ?? null)) {
+                /** @var list<array{ulid: string, title: string, meta: string, icon: string}> $rows ButtonActions::search() */
+                $rows = $view['results'];
+                $results[Cast::string($view['fid'])] = ['q' => Cast::string($view['query']), 'rows' => $rows];
+            }
+        }
+        $this->buttonResults = $results;
+
         return [
-            'buttons' => $panel->views($this->blocks, $schemas, [
-                'open' => $this->buttonOpen,
-                'touched' => $this->buttonTouched,
-                'searching' => $this->buttonSearching,
-                'queries' => $this->buttonQueries,
-            ], $this->locale, fn (): string => $this->sitePhone()),
+            'buttons' => $buttons,
             'documents' => $this->showButtonFilePicker && Gate::allows('media.view') ? $panel->documents() : [],
             'fileCurrent' => Cast::string($current['file'] ?? ''),
         ];
     }
+
+    /**
+     * Each call re-checks the gate the save path uses (livewire/update skips the route middleware).
+     */
+    abstract private function authorizeEditing(): void;
 
     /** Whether $path names a button link of its block's schema (top level or in a list item). */
     private function buttonPath(string $path): bool

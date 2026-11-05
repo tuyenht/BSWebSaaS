@@ -8,6 +8,8 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteSetting;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
 /*
@@ -63,7 +65,7 @@ it('draws the control in place of the bare address field, for every button of th
     });
 });
 
-it('opens the list of the seven kinds, the current one checked, with no form kind', function (): void {
+it('opens the list of the seven kinds, the current one checked; the form kind is not offered until forms ship', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         $c = Livewire::actingAs(actionEditor())->test(Editor::class)
             ->set('blocks', [['type' => 'cta', 'props' => ['button_label' => 'Báo giá', 'button_url_do' => ['k' => 'tel', 'phone' => '0915668383']]]])
@@ -143,7 +145,7 @@ it('sorts an older address into its kind with the note, and keeps it until chang
 });
 
 it('finds a page or post by name, ignoring marks, and takes only one of this site', function (): void {
-    $foreign = app(Tenancy::class)->enter(2, fn (): string => (string) actionPage('Liên hệ khác', '/lien-he')->ulid);
+    $foreign = app(Tenancy::class)->enter(2, fn (): string => (string) actionPage('Ở mục Liên hệ', '/lien-he')->ulid);
 
     app(Tenancy::class)->enter(1, function () use ($foreign): void {
         $page = actionPage('Liên hệ', '/lien-he');
@@ -154,6 +156,7 @@ it('finds a page or post by name, ignoring marks, and takes only one of this sit
             ->assertSee('Tìm trang hoặc bài viết theo tên')
             ->set('buttonQueries.0-props-button_url', 'lien he')
             ->assertSee('Trang · /lien-he')
+            ->assertDontSee('Ở mục Liên hệ')
             ->assertDontSee('Tin công ty')
             ->set('buttonQueries.0-props-button_url', 'không có')
             ->assertSee('Không thấy trang hay bài viết nào có tên “không có”. Thử gõ ngắn hơn, ví dụ “liên hệ”.')
@@ -200,7 +203,7 @@ it('lists the parts with an anchor, or says how to add one', function (): void {
 });
 
 it("picks a document of this site's library in the file dialog, never another site's", function (): void {
-    app(Tenancy::class)->enter(2, fn () => actionDoc('b/library/ho-so-bbbbbbbbbbbb.pdf'));
+    app(Tenancy::class)->enter(2, fn () => actionDoc('b/library/ho-so-bbbbbbbbbbbb.pdf', 'Ấn phẩm bên ấy'));
 
     app(Tenancy::class)->enter(1, function (): void {
         $doc = actionDoc('a/library/ho-so-aaaaaaaaaaaa.pdf');
@@ -213,6 +216,7 @@ it("picks a document of this site's library in the file dialog, never another si
             ->assertSee('Chọn tệp cho khách tải')
             ->assertSee('Hồ sơ năng lực.pdf')
             ->assertSee('PDF · 2,4 MB')
+            ->assertDontSee('Ấn phẩm bên ấy')
             ->call('pickButtonFile', 'b/library/ho-so-bbbbbbbbbbbb.pdf')
             ->assertSet('blocks.0.props.button_url_do', ['k' => 'file'])
             ->call('openButtonFilePicker', '0.props.button_url')
@@ -271,3 +275,151 @@ it('saves the typed value with the page', function (): void {
         expect($body['blocks'][0]['props']['button_url_do'])->toBe(['k' => 'page', 'page' => $page->ulid]);
     });
 });
+
+it('refuses every button call to a member who may not edit the page', function (string $method, array $args): void {
+    app(Tenancy::class)->enter(1, function () use ($method, $args): void {
+        $page = actionPage('Ảnh hồ sơ', '/anh-ho-so');
+        $c = Livewire::actingAs(actionEditor())->test(Editor::class, ['ulid' => $page->ulid])
+            ->set('blocks', [['type' => 'cta', 'props' => ['button_label' => 'Ấn gọi cô Hà', 'button_url_do' => ['k' => 'tel', 'phone' => '0915668383']]]]);
+
+        $viewer = User::factory()->create();
+        grantRole($viewer, 'viewer', ['media.view']);
+        $viewer = $viewer->fresh();
+        Livewire::actingAs($viewer);
+        $this->actingAs($viewer);
+
+        $c->call($method, ...$args)->assertForbidden();
+    });
+})->with([
+    'toggleButtonKinds' => ['toggleButtonKinds', ['0.props.button_url']],
+    'setButtonKind' => ['setButtonKind', ['0.props.button_url', 'url']],
+    'setButtonField' => ['setButtonField', ['0.props.button_url', 'phone', '0912345678']],
+    'toggleButtonBlank' => ['toggleButtonBlank', ['0.props.button_url']],
+    'touchButton' => ['touchButton', ['0.props.button_url']],
+    'pickButtonPage' => ['pickButtonPage', ['0.props.button_url', '01J0000000000000000000000A']],
+    'searchButtonPage' => ['searchButtonPage', ['0.props.button_url']],
+    'keepButtonPage' => ['keepButtonPage', ['0.props.button_url']],
+    'pickButtonAnchor' => ['pickButtonAnchor', ['0.props.button_url', 'hoi-dap']],
+    'useSitePhone' => ['useSitePhone', ['0.props.button_url']],
+    'openButtonFilePicker' => ['openButtonFilePicker', ['0.props.button_url']],
+    'closeButtonFilePicker' => ['closeButtonFilePicker', []],
+    'pickButtonFile' => ['pickButtonFile', ['a/library/ho-so-aaaaaaaaaaaa.pdf']],
+    'clearButtonFile' => ['clearButtonFile', ['0.props.button_url']],
+]);
+
+it('says what is wrong with a Zalo number or link, an internal address or an email', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        Livewire::actingAs(actionEditor())->test(Editor::class)
+            ->set('blocks', [['type' => 'cta', 'props' => ['button_label' => 'A']]])
+            ->call('setButtonKind', '0.props.button_url', 'zalo')
+            ->call('setButtonField', '0.props.button_url', 'phone', 'zalo.me/abc')
+            ->assertSee('Liên kết Zalo chưa đúng: cần có dạng https://zalo.me/0915668383.')
+            ->call('setButtonField', '0.props.button_url', 'phone', '0915')
+            ->assertSee('Số Zalo chưa đúng: cần 10 chữ số, bắt đầu bằng 0, ví dụ 0915 668 383. Hoặc dán liên kết zalo.me của bạn.')
+            ->call('setButtonKind', '0.props.button_url', 'url')
+            ->call('setButtonField', '0.props.button_url', 'url', '/lien-he')
+            ->assertSee('Đây là một trang trong website của bạn. Hãy chọn kiểu “Mở trang trong website” để nút không bị hỏng khi trang đổi địa chỉ.')
+            ->call('setButtonKind', '0.props.button_url', 'mail')
+            ->call('setButtonField', '0.props.button_url', 'email', 'lienhe@')
+            ->assertSee('Email chưa đúng: cần có dạng ten@tencongty.vn.')
+            ->call('setButtonField', '0.props.button_url', 'email', 'x?cc=evil@b.com')
+            ->assertSee('Email chưa đúng: cần có dạng ten@tencongty.vn.');
+    });
+});
+
+it("takes the site's number for a phone button, and says when it is in use", function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteSetting::query()->updateOrCreate(['group_name' => 'general', 'key' => 'brand'], ['value' => ['name' => 'Ấn phẩm mẫu số', 'phone' => '0915668383']]);
+
+        Livewire::actingAs(actionEditor())->test(Editor::class)
+            ->set('blocks', [['type' => 'cta', 'props' => ['button_label' => 'Ấn gọi cô Hà', 'button_url_do' => ['k' => 'tel']]]])
+            ->assertSee('Lấy số của website: 0915 668 383')
+            ->assertDontSee('Đang dùng số của website')
+            ->call('useSitePhone', '0.props.button_url')
+            ->assertSet('blocks.0.props.button_url_do', ['k' => 'tel', 'phone' => '0915668383'])
+            ->assertSee('Đang dùng số của website (Cài đặt › Thông tin chung).');
+    });
+});
+
+it('says at once when the chosen file or part has gone', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $doc = actionDoc('a/library/ho-so-aaaaaaaaaaaa.pdf');
+        $doc->delete();
+
+        Livewire::actingAs(actionEditor())->test(Editor::class)
+            ->set('blocks', [
+                ['type' => 'cta', 'props' => ['button_label' => 'Ấn tải hồ sơ', 'button_url_do' => ['k' => 'file', 'file' => $doc->storage_key]]],
+                ['type' => 'cta', 'props' => ['button_label' => 'Đọc câu hỏi đáp nhé', 'button_url_do' => ['k' => 'anchor', 'anchor' => 'hoi-dap']]],
+            ])
+            ->assertSee('Tệp đã chọn không còn trong thư viện. Hãy chọn tệp khác.')
+            ->assertSee('Phần có Neo liên kết “hoi-dap” không còn trên trang này (Neo liên kết đã đổi hoặc phần đã bị xóa). Hãy chọn lại một phần khác.');
+    });
+});
+
+it('opens the editor on the same number of queries however many buttons of each kind the page holds', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $user = actionEditor();
+        $pages = [actionPage('Ấn liên hệ', '/lien-he'), actionPage('Ảnh hồ sơ', '/anh-ho-so')];
+        $docs = [actionDoc('a/library/ho-so-aaaaaaaaaaaa.pdf'), actionDoc('a/library/ho-so-cccccccccccc.pdf')];
+        SiteSetting::query()->updateOrCreate(['group_name' => 'general', 'key' => 'brand'], ['value' => ['name' => 'Ấn phẩm mẫu số', 'phone' => '0915668383']]);
+
+        $edited = static function (int $copies) use ($pages, $docs): Entry {
+            $blocks = [['type' => 'faq', 'props' => ['heading' => 'Ừ hỏi đáp đó', 'anchor_id' => 'hoi-dap']]];
+            for ($i = 0; $i < $copies; $i++) {
+                $page = $pages[$i % 2];
+                $doc = $docs[$i % 2];
+                foreach ([
+                    ['k' => 'page', 'page' => $page->ulid], ['k' => 'page'], ['k' => 'url', 'url' => 'https://facebook.com/tencongty'],
+                    ['k' => 'anchor', 'anchor' => 'hoi-dap'], ['k' => 'tel', 'phone' => '0915668383'], ['k' => 'zalo', 'phone' => '0915668383'],
+                    ['k' => 'mail', 'email' => 'lienhe@tencongty.vn'], ['k' => 'file', 'file' => $doc->storage_key],
+                ] as $do) {
+                    $blocks[] = ['type' => 'cta', 'props' => ['button_label' => 'Ấn thử nhé', 'button_url_do' => $do]];
+                }
+                $blocks[] = ['type' => 'hero', 'props' => ['cta_label' => 'Ấn liên hệ', 'cta_url' => $i % 2 === 0 ? '/lien-he' : '/anh-ho-so']];
+            }
+            $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'meta' => []]);
+            $entry->translations()->create(['locale' => 'vi', 'title' => 'Ảnh trang chủ', 'slug' => 'trang-chu-'.$copies, 'status' => 'draft', 'body' => ['blocks' => $blocks]]);
+
+            return $entry;
+        };
+        $none = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'meta' => []]);
+        $none->translations()->create(['locale' => 'vi', 'title' => 'Ảnh để trống ở đó', 'slug' => 'trang-trong', 'status' => 'draft', 'body' => ['blocks' => [['type' => 'faq', 'props' => ['heading' => 'Ừ hỏi đáp đó']]]]]);
+        $one = $edited(1);
+        $two = $edited(2);
+
+        Livewire::actingAs($user)->test(Editor::class, ['ulid' => $none->ulid]);   // warm up
+        $open = static fn (Entry $entry): int => countQueries(fn () => Livewire::actingAs($user)->test(Editor::class, ['ulid' => $entry->ulid]));
+        $base = $open($none);
+        $withOne = $open($one);
+        $withTwo = $open($two);
+
+        expect($withTwo)->toBe($withOne)
+            ->and($withOne - $base)->toBeLessThanOrEqual(BUTTON_ACTIONS_OPEN_EXTRA);
+    });
+});
+
+it('searches pages only when the search text changes, not on every redraw', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        actionPage('Ấn liên hệ', '/lien-he');
+        $c = Livewire::actingAs(actionEditor())->test(Editor::class)
+            ->set('blocks', [['type' => 'cta', 'props' => ['button_label' => 'Ấn thử nhé', 'button_url_do' => ['k' => 'page']]]]);
+
+        $searches = static function (Closure $redraw): int {
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $redraw();
+            $n = count(array_filter(DB::getQueryLog(), static fn (array $q): bool => str_contains($q['query'], "entries.type = 'page' desc")));
+            DB::disableQueryLog();
+
+            return $n;
+        };
+
+        expect($searches(fn () => $c->set('title', 'Ảnh trang chủ')))->toBe(0)
+            ->and($searches(fn () => $c->call('touchButton', '0.props.button_url')))->toBe(0)
+            ->and($searches(fn () => $c->set('buttonQueries.0-props-button_url', 'liên hệ')))->toBe(1)
+            ->and($c->html())->toContain('Trang · /lien-he');
+    });
+});
+
+/** Opening the editor with buttons of every kind: pages by ulid and by older address, files, one search, the site's phone. */
+const BUTTON_ACTIONS_OPEN_EXTRA = 5;

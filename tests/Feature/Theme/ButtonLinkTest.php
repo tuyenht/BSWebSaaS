@@ -90,6 +90,9 @@ describe('saving', function (): void {
         'html in a phone' => [['k' => 'tel', 'phone' => '<b>0915668383</b>']],
         'html in a zalo' => [['k' => 'zalo', 'phone' => '<script>1</script>']],
         'bad email' => [['k' => 'mail', 'email' => 'lienhe@']],
+        'a header in the address, ?' => [['k' => 'mail', 'email' => 'x?cc=evil@b.com']],
+        'a header in the address, &' => [['k' => 'mail', 'email' => 'a&cc=x@b.com']],
+        'a header in the address, %' => [['k' => 'mail', 'email' => 'a%0D%0Abcc=x@b.com']],
         'control in subject' => [['k' => 'mail', 'email' => 'a@b.vn', 'subject' => "a\nBcc: x@y.z"]],
         'long subject' => [['k' => 'mail', 'email' => 'a@b.vn', 'subject' => str_repeat('a', ButtonLink::SUBJECT_MAX + 1)]],
         'bad page ulid' => [['k' => 'page', 'page' => 'not-a-ulid']],
@@ -300,4 +303,75 @@ it("counts a button's file as in use in the library", function (): void {
         expect(app(MediaUsageLocator::class)->usagesFor($doc, 'vi'))->toHaveCount(1)
             ->and(app(MediaUsageLocator::class)->usagesFor($doc, 'vi')[0]['role'])->toBe('content');
     });
+});
+
+describe('older plain addresses and mail headers', function (): void {
+    it('never lets a mail address carry extra header fields, typed or older, saved or drawn', function (): void {
+        foreach (['x?cc=evil@b.com', 'a&cc=x@b.com', 'a%0D%0Abcc=x@b.com', "a\r\nbcc=x@b.com"] as $email) {
+            expect(ButtonLink::mail($email, null))->toBeNull()
+                ->and(buttonHtml(['button_label' => 'Ấn gửi thư', 'button_url_do' => ['k' => 'mail', 'email' => $email]]))->not->toContain('mailto:');
+        }
+
+        foreach (['mailto:x%3Fbcc%3Devil@b.com', 'mailto:x%26cc%3Devil@b.com', 'mailto:a%250D%250Abcc=x@b.com'] as $legacy) {
+            expect(buttonErrors(['button_label' => 'Ấn gửi thư', 'button_url' => $legacy]))->not->toBe([])
+                ->and(buttonHtml(['button_label' => 'Ấn gửi thư', 'button_url' => $legacy]))->not->toContain('mailto:');
+        }
+
+        // an older link keeps its address and its subject (encoded), never a cc or bcc it carried
+        $html = buttonHtml(['button_label' => 'Ấn gửi thư', 'button_url' => 'mailto:a@b.vn?subject=Hỏi giá&cc=evil@x.com&bcc=evil@x.com']);
+        expect($html)->toContain('href="mailto:a@b.vn?subject=H%E1%BB%8Fi%20gi%C3%A1"')->not->toContain('evil@x.com');
+    });
+
+    it('still draws every older plain address the templates printed, in every button template', function (Closure $props, string $type, string $class, string $value): void {
+        $html = buttonHtml($props($value), $type);
+
+        expect($html)->toContain($class)->toContain('href="'.$value.'"');
+    })->with([
+        'hero' => [fn (string $v): array => ['heading' => 'Ảnh mẫu', 'cta_label' => 'Ấn liên hệ', 'cta_url' => $v], 'hero', 'hero__cta'],
+        'hero, second button' => [fn (string $v): array => ['heading' => 'Ảnh mẫu', 'cta2_label' => 'Ấn liên hệ', 'cta2_url' => $v], 'hero', 'hero__cta--secondary'],
+        'hero slider' => [fn (string $v): array => ['slides' => [['heading' => 'Ảnh mẫu']], 'cta_label' => 'Ấn liên hệ', 'cta_url' => $v], 'hero_slider', 'sf-slide__cta'],
+        'about' => [fn (string $v): array => ['heading' => 'Ảnh mẫu', 'cta_label' => 'Ấn liên hệ', 'cta_url' => $v], 'about', 'about__cta'],
+        'cta' => [fn (string $v): array => ['heading' => 'Ảnh mẫu', 'button_label' => 'Ấn liên hệ', 'button_url' => $v], 'cta', 'cta__button'],
+        'cta, rounded look' => [fn (string $v): array => ['heading' => 'Ảnh mẫu', 'variant' => 'rounded', 'button_label' => 'Ấn liên hệ', 'button_url' => $v], 'cta', 'cta__button--pill'],
+        'partners' => [fn (string $v): array => ['logos' => [['image_url' => 'https://cdn.example.com/logo.png', 'name' => 'Ấn phẩm hồ sơ', 'url' => $v]]], 'partners', 'partners__link'],
+        'pricing' => [fn (string $v): array => ['plans' => [['name' => 'Ấn phẩm cơ sở', 'cta_label' => 'Ấn liên hệ', 'cta_url' => $v], ['name' => 'Ấn phẩm đầy đủ']]], 'pricing', 'sf-plan__cta'],
+        'quick links' => [fn (string $v): array => ['items' => [['icon' => 'link', 'label' => 'Ấn liên hệ', 'url' => $v]]], 'quick_links', 'sf-qlinks__tile'],
+    ])->with([
+        'relative path' => 'lien-he',
+        'site path' => '/lien-he',
+        'www without a scheme' => 'www.example.com',
+        'zalo.me without a scheme' => 'zalo.me/0915668383',
+        'sms:' => 'sms:0915668383',
+        'anchor with capitals' => '#Top',
+        'bare #' => '#',
+    ]);
+
+    it('saves those older plain addresses unchanged', function (): void {
+        foreach (['lien-he', '/lien-he', 'www.example.com', 'zalo.me/0915668383', 'sms:0915668383', '#Top', '#'] as $value) {
+            expect(buttonErrors(['heading' => 'Ảnh mẫu', 'button_label' => 'Ấn liên hệ', 'button_url' => $value]))->toBe([]);
+        }
+    });
+
+    it('draws no link for an older address that is unsafe, in every button template', function (string $value): void {
+        foreach ([
+            'hero' => ['heading' => 'Ảnh mẫu', 'cta_label' => 'Ấn liên hệ', 'cta_url' => $value],
+            'hero_slider' => ['slides' => [['heading' => 'Ảnh mẫu']], 'cta_label' => 'Ấn liên hệ', 'cta_url' => $value],
+            'about' => ['heading' => 'Ảnh mẫu', 'cta_label' => 'Ấn liên hệ', 'cta_url' => $value],
+            'cta' => ['heading' => 'Ảnh mẫu', 'button_label' => 'Ấn liên hệ', 'button_url' => $value],
+            'partners' => ['logos' => [['image_url' => 'https://cdn.example.com/logo.png', 'name' => 'Ấn phẩm hồ sơ', 'url' => $value]]],
+            'pricing' => ['plans' => [['name' => 'Ấn phẩm cơ sở', 'cta_label' => 'Ấn liên hệ', 'cta_url' => $value], ['name' => 'Ấn phẩm đầy đủ']]],
+            'quick_links' => ['items' => [['icon' => 'link', 'label' => 'Ấn liên hệ', 'url' => $value]]],
+        ] as $type => $props) {
+            expect(buttonHtml($props, $type))->not->toContain('evil.example')->not->toContain('href="#"');
+        }
+        expect(buttonHtml(['heading' => 'Ảnh mẫu', 'variant' => 'rounded', 'button_label' => 'Ấn liên hệ', 'button_url' => $value]))->not->toContain('evil.example');
+    })->with([
+        'protocol relative //' => '//evil.example/a',
+        'backslash /\\' => '/\\evil.example/a',
+        'two backslashes' => '\\\\evil.example/a',
+        'javascript:' => 'javascript:location="//evil.example"',
+        'mixed case vbscript:' => 'VbScript:evil.example',
+        'data:' => 'data:text/html,evil.example',
+        'a tab inside the scheme' => "java\tscript:alert('evil.example')",
+    ]);
 });

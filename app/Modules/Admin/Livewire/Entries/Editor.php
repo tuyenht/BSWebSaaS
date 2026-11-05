@@ -1322,6 +1322,19 @@ final class Editor extends Component
         return array_values($categories);
     }
 
+    /**
+     * The gate of the save path, for an endpoint that changes the page being edited: `create` for a
+     * page not saved yet, else `update` on the entry.
+     */
+    private function authorizeEditing(): void
+    {
+        if ($this->ulid === null) {
+            $this->authorize('create', Entry::class);
+        } else {
+            $this->authorize('update', $this->resolveOrFail($this->ulid));
+        }
+    }
+
     private function resolveOrFail(string $ulid): Entry
     {
         return Entry::query()->where('ulid', $ulid)->firstOrFail();

@@ -156,8 +156,10 @@ final class ButtonLink
     }
 
     /**
-     * An older plain address: a web or site address, `#anchor`, `tel:` or `mailto:`, each through
-     * the same checks as the typed kinds; null for anything else.
+     * An older plain address, drawn as the templates drew it before typed values: anything
+     * SafeLink::plain lets through (a relative path, `www.…`, `#anchor`, `sms:`…). A `tel:` is
+     * rebuilt from its digits when it has them; a `mailto:` keeps only a valid address (no `?`, `&`,
+     * `%` before the `@`) and its subject, or gives no link.
      */
     public static function legacy(mixed $raw): ?string
     {
@@ -167,11 +169,11 @@ final class ButtonLink
         $value = trim($raw);
         $lower = strtolower($value);
 
-        if ($value[0] === '#') {
-            return self::anchor(substr($value, 1));
-        }
         if (str_starts_with($lower, 'tel:')) {
-            return SafeLink::tel(rawurldecode(substr($value, 4)));
+            $tel = SafeLink::tel(rawurldecode(substr($value, 4)));
+            if ($tel !== null) {
+                return $tel;
+            }
         }
         if (str_starts_with($lower, 'mailto:')) {
             [$address, $query] = array_pad(explode('?', substr($value, 7), 2), 2, '');
@@ -180,7 +182,7 @@ final class ButtonLink
             return self::mail(rawurldecode($address), is_string($fields['subject'] ?? null) ? $fields['subject'] : null);
         }
 
-        return SafeLink::href($value);
+        return SafeLink::plain($value);
     }
 
     /**

@@ -212,7 +212,8 @@ final readonly class ValidPageJson implements ValidationRule
 
     /**
      * A button link: its typed value, when set, well formed (ButtonLink::problem); an older plain
-     * address never one a browser reads as another host.
+     * address, when filled, one the storefront draws (ButtonLink::legacy: never another host, a
+     * script scheme, a control character or a mailto: carrying extra header fields).
      */
     private function buttonSafe(mixed $legacy, mixed $do): bool
     {
@@ -220,9 +221,7 @@ final readonly class ValidPageJson implements ValidationRule
             return false;
         }
 
-        $normalized = is_string($legacy) ? (string) preg_replace('/[\s\x00-\x1F]+/', '', $legacy) : '';
-
-        return ! str_starts_with($normalized, '//') && ! str_starts_with($normalized, '/\\');
+        return ! is_string($legacy) || trim($legacy) === '' || ButtonLink::legacy($legacy) !== null;
     }
 
     /** Check one value against its schema spec — `url` leaves are scheme-checked; lists recurse. */

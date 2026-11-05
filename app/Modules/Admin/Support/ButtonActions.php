@@ -110,7 +110,7 @@ final class ButtonActions
      *
      * @param  array<array-key, mixed>  $blocks
      * @param  array<string, array<array-key, mixed>>  $schemas
-     * @param  array{open: ?string, touched: array<string, bool>, searching: array<string, bool>, queries: array<string, string>}  $state
+     * @param  array{open: ?string, touched: array<string, bool>, searching: array<string, bool>, queries: array<string, string>, results: array<string, array{q: string, rows: list<array{ulid: string, title: string, meta: string, icon: string}>}>}  $state  `results`: a search's rows from an earlier redraw, reused while its text is unchanged
      * @param  \Closure(): string  $sitePhone  read only when a phone or Zalo button is shown
      * @return array<string, array<string, mixed>>
      */
@@ -167,9 +167,9 @@ final class ButtonActions
                 $view['searching'] = $ref === null || ($state['searching'][$fid] ?? false);
                 if ($view['searching']) {
                     $query = mb_substr(trim($state['queries'][$fid] ?? ''), 0, 100);
-                    $searches[$query] ??= $this->search($query, $locale);
+                    $kept = $state['results'][$fid] ?? null;
                     $view['query'] = $query;
-                    $view['results'] = $searches[$query];
+                    $view['results'] = $kept !== null && $kept['q'] === $query ? $kept['rows'] : ($searches[$query] ??= $this->search($query, $locale));
                 }
             }
             if ($kind === 'anchor') {
