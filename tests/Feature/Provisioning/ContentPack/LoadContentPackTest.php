@@ -8,6 +8,7 @@ use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
+use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Provisioning\ContentPack\Ledger;
 use App\Modules\Provisioning\ContentPack\PackReader;
@@ -222,4 +223,19 @@ it('records one audit row per apply with the pack, its fingerprint and the total
     expect($meta)->toMatchArray(['pack' => 'demo-co', 'version' => 1])
         ->and($meta['fingerprint'])->toMatch('/^[0-9a-f]{12}$/')
         ->and($meta['totals'])->toHaveKey('create');
+});
+
+it('writes a category\'s post layout and then sees it as unchanged', function (): void {
+    ContentPacks::item($this->folder, 'taxonomies.json', 'tax:post_cat/tin-tuc', fn (array $item): array => $item + ['detail_template' => 'project']);
+
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output);
+    ContentPacks::in($this->siteId, function (): void {
+        $category = Taxonomy::query()->findOrFail(TaxonomyTranslation::query()->where('slug', 'tin-tuc')->value('taxonomy_id'));
+        expect($category->detail_template)->toBe('project')
+            ->and($category->list_template)->toBe('grid-news');
+    });
+
+    [, $again] = ContentPacks::run();
+    expect(ContentPacks::verdict($again, 'tax:post_cat/tin-tuc'))->toBe('unchanged');
 });

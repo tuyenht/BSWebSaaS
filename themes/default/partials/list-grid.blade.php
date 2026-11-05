@@ -1,7 +1,8 @@
 {{--
     A category list page as a card grid (layouts grid-product / grid-project / grid-news). The
-    category title band carries the page's single h1 (no photo: a solid band), so card titles are
-    h2. Chips link to the child categories' own pages. The first card's photo is the likely LCP
+    category title band carries the page's single h1, the breadcrumb, the category's description and
+    its cover photo (the page's main image: eager, high priority, srcset; no cover: the solid band),
+    so card titles are h2. Chips link to the child categories' own pages. The first card's photo is the likely LCP
     image (high priority); the rest load lazily, so on a phone, where the grid is one column, the
     photos below the fold do not compete with it (on a wide screen the browser still fetches the
     ones in view at once). `cards` and `chips` are
@@ -26,7 +27,10 @@
     <a class="sf-skip" href="#noi-dung">{{ __('storefront.skip_to_content') }}</a>
     @include('theme::partials.header', ['menu' => $menu ?? [], 'brand' => $brand ?? null])
     <main class="sf-list sf-list--{{ $sfKind }}" id="noi-dung" tabindex="-1">
-        @include('theme::sections.page_header', ['props' => ['title' => $title, '_lead' => true]])
+        @include('theme::sections.page_header', [
+            'props' => ['title' => $title, 'subtitle' => $band['subtitle'] ?? '', 'image_url' => $band['image'] ?? null, '_lead' => true, '_crumbs' => $breadcrumb ?? []],
+            'listSrcset' => $band['srcset'] ?? null,
+        ])
         <div class="sf-container sf-list__body">
 @if ($sfChips !== [])
             <nav class="sf-chips" aria-label="{{ __('storefront.filter_categories') }}">

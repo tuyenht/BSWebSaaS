@@ -753,62 +753,6 @@ main:has(.hero, .sf-slider) .page__title {
     font-style: italic;
 }
 
-/* ───── Post layout ──────────────────────────────────────────────────────── */
-.post {
-    max-width: 48rem;
-    margin-inline: auto;
-    padding: 2rem 1.5rem 4rem;
-}
-
-@media (min-width: 1024px) {
-    .post {
-        padding: 3rem 2rem 5rem;
-    }
-}
-
-.post__breadcrumb {
-    font-size: 0.875rem;
-    color: color-mix(in srgb, var(--color-text) 80%, white);
-    margin-bottom: 1rem;
-}
-
-.post__breadcrumb a {
-    color: var(--color-primary-text);
-    font-weight: 600;
-    transition: color 0.2s;
-}
-
-.post__breadcrumb a:hover {
-    color: color-mix(in srgb, var(--color-primary-text) 85%, black);
-}
-
-.post__title {
-    font-size: clamp(1.5rem, 3vw, 2.25rem);
-    font-weight: 800;
-    color: var(--color-text-strong);
-    margin: 0 0 2rem;
-}
-
-.post__body {
-    color: var(--color-text);
-}
-
-.post__body section {
-    margin-bottom: 1rem;
-}
-
-.post__body h2 {
-    font-size: 1.375rem;
-    font-weight: 700;
-    color: var(--color-text-strong);
-    margin: 1.75rem 0 0.625rem;
-}
-
-.post__body p {
-    line-height: 1.75;
-    margin-bottom: 0.875rem;
-}
-
 /* ───── Contact section ──────────────────────────────────────────────────── */
 .contact {
     max-width: 80rem;
@@ -1225,6 +1169,504 @@ main:has(.hero, .sf-slider) .page__title {
 
 .sf-prose .sf-video {
     margin-block: var(--space-m, 1.5rem);
+}
+
+/* ───── Breadcrumb (theme::partials.sf-breadcrumb) ───────────────────────── */
+/* "Home / … / this page": wraps onto more lines, never clips. On the page the links take the
+   readable brand colour; on a dark band or a photo (`--dark`) the band's light text colour. The
+   page itself is the last level, bold, not a link. Links reach 44px on touch. */
+.sf-crumbs {
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: color-mix(in srgb, var(--color-text) 80%, white);
+}
+
+.sf-crumbs__list {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.sf-crumbs__item {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.sf-crumbs__item + .sf-crumbs__item::before {
+    content: "/";
+    content: "/" / "";
+    margin-inline: 0.5rem;
+}
+
+.sf-crumbs__link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.5rem;
+    color: var(--color-primary-text);
+    font-weight: 600;
+    transition: color 0.2s;
+}
+
+.sf-crumbs__link:hover {
+    color: color-mix(in srgb, var(--color-primary-text) 85%, black);
+}
+
+.sf-crumbs__current {
+    color: var(--color-text-strong);
+    font-weight: 600;
+}
+
+.sf-crumbs--dark {
+    color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white));
+}
+
+.sf-crumbs--dark .sf-crumbs__link {
+    color: inherit;
+    font-weight: 400;
+}
+
+.sf-crumbs--dark .sf-crumbs__link:hover {
+    color: var(--color-primary);
+}
+
+.sf-crumbs--dark .sf-crumbs__current {
+    color: var(--color-surface);
+}
+
+/* On a photo (the title band) every level is white: over a white photo behind the 55% overlay it
+   still reads 4.76:1, where the light grey would not. */
+.page-band .sf-crumbs--dark,
+.page-band .sf-crumbs--dark .sf-crumbs__current {
+    color: inherit;
+}
+
+.page-band__crumbs {
+    margin-bottom: 0.75rem;
+}
+
+.page-band__crumbs .sf-crumbs__list {
+    justify-content: center;
+}
+
+.category__crumbs,
+.product__crumbs {
+    margin-bottom: 1rem;
+}
+
+.page__crumbs {
+    max-width: 80rem;
+    margin-inline: auto;
+    padding: 1.5rem 1.5rem 0;
+}
+
+.page__crumbs + .page__title {
+    padding-top: 0.75rem;
+}
+
+@media (min-width: 1024px) {
+    .page__crumbs {
+        padding: 2rem 2rem 0;
+    }
+}
+
+@media (any-pointer: coarse) {
+    .sf-crumbs__link {
+        min-height: 2.75rem;
+    }
+}
+
+/* ───── Post layouts (post, project) ─────────────────────────────────────── */
+/* The band: the page's h1 on the dark surface with a faint cross-hatch, the breadcrumb, the main
+   category, the excerpt and the dates. Text on it uses the on-dark roles (≥ 7:1 on --color-dark). */
+.post-band {
+    position: relative;
+    overflow: hidden;
+    padding: 2.5rem 1rem 3rem;
+    background: var(--color-dark);
+    color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white));
+    text-align: center;
+}
+
+.post-band::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0.08;
+    background-image:
+        repeating-linear-gradient(45deg, currentColor 0 1px, transparent 1px 22px),
+        repeating-linear-gradient(-45deg, currentColor 0 1px, transparent 1px 22px);
+    pointer-events: none;
+}
+
+.post-band__inner {
+    position: relative;
+    max-width: 56rem;
+    margin-inline: auto;
+}
+
+.post-band__crumbs .sf-crumbs__list {
+    justify-content: center;
+}
+
+.post-band__chip {
+    display: inline-block;
+    margin-top: 1.5rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.25rem;
+    background: color-mix(in srgb, var(--color-primary) 18%, var(--color-surface));
+    color: var(--color-text-strong);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.post-band__title {
+    margin-top: 1rem;
+    color: var(--color-surface);
+    font-size: 1.875rem;
+    font-weight: 800;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.post-band__excerpt {
+    margin-top: 1rem;
+    font-size: 1.125rem;
+    line-height: 1.6;
+}
+
+.post-band__meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem 1.25rem;
+    margin-top: 1.5rem;
+    color: var(--color-on-dark-muted, color-mix(in srgb, var(--color-dark) 45%, white));
+    font-size: 0.875rem;
+}
+
+@media (min-width: 768px) {
+    .post-band__title {
+        font-size: 2.25rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .post-band {
+        padding: 3rem 2rem 3.5rem;
+    }
+
+    .post-band__title {
+        font-size: 2.6rem;
+    }
+}
+
+/* Project: text on the left, the cover photo on the right from 1024px. */
+.post-band--split {
+    text-align: left;
+}
+
+.post-band--split .post-band__inner {
+    display: grid;
+    gap: 2rem;
+    max-width: 80rem;
+    align-items: center;
+}
+
+.post-band--split .post-band__crumbs .sf-crumbs__list,
+.post-band--split .post-band__meta {
+    justify-content: flex-start;
+}
+
+.post-band--split .post-band__title {
+    margin-top: 1.25rem;
+    line-height: 1.18;
+}
+
+.post-band--split .post-band__excerpt {
+    max-width: 42rem;
+    margin-top: 1.5rem;
+}
+
+.post-band__text,
+.post-band__media {
+    min-width: 0;
+}
+
+.post-band__img {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+    border-radius: 1rem;
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.35), 0 0 0 1px color-mix(in srgb, var(--color-surface) 10%, transparent);
+}
+
+@media (min-width: 1024px) {
+    .post-band--split {
+        padding-block: 4rem;
+    }
+
+    .post-band--split .post-band__inner {
+        grid-template-columns: 7fr 5fr;
+        gap: 3rem;
+    }
+
+    .post-band--split .post-band__title {
+        font-size: 3rem;
+    }
+
+    .post-band__img {
+        aspect-ratio: 4 / 3;
+    }
+}
+
+/* The cover photo under the news band: the page width, rounded at the bottom. */
+.post-cover {
+    max-width: 80rem;
+    margin: 0 auto;
+    padding-inline: 1rem;
+}
+
+.post-cover__img {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 7 / 5;
+    object-fit: cover;
+    border-radius: 0 0 0.5rem 0.5rem;
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}
+
+.post-cover__caption {
+    margin-top: 0.5rem;
+    color: color-mix(in srgb, var(--color-text) 80%, white);
+    font-size: 0.8125rem;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+
+@media (min-width: 640px) {
+    .post-cover {
+        padding-inline: 1.5rem;
+    }
+}
+
+@media (min-width: 768px) {
+    .post-cover__img {
+        aspect-ratio: 3 / 1;
+    }
+}
+
+/* One prose look for every post body: the blocks inside (text, formatted text) give up their own
+   column and spacing and share this one; headings carry a brand rule, list markers the brand. */
+.sf-prose--article {
+    font-size: 1.0625rem;
+    line-height: 1.8;
+    color: var(--color-text);
+}
+
+.sf-prose--article .richtext,
+.sf-prose--article .sf-prose {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+}
+
+.sf-prose--article :is(p, ul, ol, blockquote, figure, table) {
+    margin: 0 0 1.15em;
+}
+
+.sf-prose--article .richtext p {
+    color: inherit;
+    line-height: inherit;
+}
+
+.sf-prose--article h2 {
+    margin: 2em 0 0.75em;
+    padding-bottom: 0.4rem;
+    border-bottom: 2px solid var(--color-primary);
+    color: var(--color-text-strong);
+    font-size: 1.6rem;
+    line-height: 1.3;
+    font-weight: 700;
+}
+
+.sf-prose--article h3 {
+    margin: 1.6em 0 0.6em;
+    color: var(--color-text-strong);
+    font-size: 1.25rem;
+    line-height: 1.4;
+}
+
+.sf-prose--article > :first-child,
+.sf-prose--article > :first-child > :first-child {
+    margin-top: 0;
+}
+
+.sf-prose--article li + li {
+    margin-top: 0.35em;
+}
+
+.sf-prose--article li::marker {
+    color: var(--color-primary-text);
+}
+
+.sf-prose--article a {
+    text-underline-offset: 3px;
+}
+
+.sf-prose--article strong {
+    color: var(--color-text-strong);
+}
+
+.sf-prose--article blockquote {
+    padding: 1rem 1.25rem;
+    border-left: 4px solid var(--color-primary);
+    border-radius: 0 0.5rem 0.5rem 0;
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+    color: var(--color-text-strong);
+}
+
+.sf-prose--article figure img {
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 25px -10px rgb(0 0 0 / 0.3);
+}
+
+.sf-prose--article figcaption {
+    margin-top: 0.6rem;
+    color: color-mix(in srgb, var(--color-text) 80%, white);
+    font-size: 0.875rem;
+}
+
+/* Previous / next: two plain links, older on the left, newer on the right. */
+.post-nav {
+    display: grid;
+    gap: 1rem;
+    max-width: 48rem;
+    margin: 0 auto 3rem;
+    padding-inline: 1.5rem;
+}
+
+.post-nav__link {
+    display: block;
+    padding: 1.25rem;
+    border: 1px solid color-mix(in srgb, var(--color-text) 25%, transparent);
+    border-radius: 0.5rem;
+    transition: border-color 0.2s;
+}
+
+.post-nav__link:hover {
+    border-color: var(--color-primary);
+}
+
+.post-nav__label {
+    display: block;
+    color: color-mix(in srgb, var(--color-text) 80%, white);
+    font-size: 0.8125rem;
+}
+
+.post-nav__title {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--color-text-strong);
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.post-nav__link:hover .post-nav__title {
+    color: var(--color-primary-text);
+}
+
+@media (min-width: 640px) {
+    .post-nav {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .post-nav__link--next {
+        grid-column: 2;
+        text-align: right;
+    }
+}
+
+@media (min-width: 1024px) {
+    .post-nav {
+        padding-inline: 2rem;
+    }
+}
+
+/* Related posts / other projects of the same category. */
+.post-related {
+    padding-block: 4rem;
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+}
+
+.post-related .sf-section-head {
+    margin-bottom: 2.5rem;
+}
+
+.post-related__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.post-related__rule {
+    display: block;
+    width: 2.5rem;
+    height: 0.25rem;
+    border-radius: 9999px;
+    background: var(--color-primary);
+}
+
+.post-related__title {
+    margin-top: 1rem;
+    color: var(--color-text-strong);
+    font-size: 1.5rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.post-related__all {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-height: 2.5rem;
+    color: var(--color-primary-text);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.post-related__all:hover {
+    color: color-mix(in srgb, var(--color-primary-text) 85%, black);
+}
+
+@media (min-width: 640px) {
+    .post-related__title {
+        font-size: 1.875rem;
+    }
+}
+
+@media (any-pointer: coarse) {
+    .post-related__all {
+        min-height: 2.75rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sf-crumbs__link,
+    .post-nav__link {
+        transition: none;
+    }
 }
 
 /* ───── Latest posts section ─────────────────────────────────────────────── */
@@ -2366,8 +2808,16 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 }
 
 .page-band__subtitle {
+    max-width: 48rem;
+    margin-inline: auto;
     color: var(--sch-body, var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white)));
     font-size: 1.125rem;
+}
+
+/* Over a photo the subtitle is white like the title: the light grey reads under 4.5:1 over a light
+   photo behind the overlay. */
+.page-band:has(> .page-band__bg) .page-band__subtitle {
+    color: var(--sch-body, currentColor);
 }
 
 /* Touch screens: every control of the rich chrome reaches 44px. */

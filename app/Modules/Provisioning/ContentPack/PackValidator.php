@@ -428,9 +428,11 @@ final readonly class PackValidator
         if (! is_int($position) || $position < 0) {
             $errors[] = "{$item->key}: position must be a whole number from 0.";
         }
-        $template = $item->data['list_template'] ?? null;
-        if ($template !== null && (! is_string($template) || ! TaxonomyRules::template($template))) {
-            $errors[] = "{$item->key}: list_template is not a layout name.";
+        foreach (['list_template', 'detail_template'] as $field) {
+            $template = $item->data[$field] ?? null;
+            if ($template !== null && (! is_string($template) || ! TaxonomyRules::template($template))) {
+                $errors[] = "{$item->key}: {$field} is not a layout name.";
+            }
         }
     }
 

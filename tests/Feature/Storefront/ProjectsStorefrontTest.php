@@ -86,7 +86,7 @@ it('renders a project detail with breadcrumb JSON-LD', function (): void {
 
     expect($html)
         ->toContain('<title>Dây chuyền lắp ráp tự động</title>')
-        ->toContain('class="post__breadcrumb"')
+        ->toContain('<nav class="sf-crumbs')
         ->toContain('href="/du-an"')
         ->toContain('"@type":"BreadcrumbList"')
         ->toContain('"name":"Dự án"');
@@ -114,7 +114,7 @@ it('renders a service detail page with breadcrumb', function (): void {
 
     expect($html)
         ->toContain('<title>Thiết kế Jig &amp; Đồ gá</title>')
-        ->toContain('class="post__breadcrumb"')
+        ->toContain('<nav class="sf-crumbs')
         ->toContain('href="/dich-vu"')
         ->toContain('"@type":"BreadcrumbList"')
         ->toContain('"name":"Dịch vụ"');
@@ -138,7 +138,7 @@ it('renders a product detail page with breadcrumb', function (): void {
 
     expect($html)
         ->toContain('<title>Trục máy CNC</title>')
-        ->toContain('class="post__breadcrumb"')
+        ->toContain('<nav class="sf-crumbs')
         ->toContain('href="/san-pham"')
         ->toContain('"name":"Sản phẩm"');
 });

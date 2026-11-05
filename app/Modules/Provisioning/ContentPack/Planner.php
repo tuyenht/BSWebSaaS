@@ -65,7 +65,7 @@ final class Planner
     /** @var list<string> */
     private array $locales = [];
 
-    /** @var array<int, array{vocabulary: string, parent_id: int|null, position: int, list_template: string|null, tr: array<string, array{name: string, slug: string}>}> */
+    /** @var array<int, array{vocabulary: string, parent_id: int|null, position: int, list_template: string|null, detail_template: string|null, tr: array<string, array{name: string, slug: string}>}> */
     private array $taxonomies = [];
 
     /** @var array<int, string> taxonomy id → its key (the pack item's when matched, else derived) */
@@ -480,7 +480,7 @@ final class Planner
 
     private function loadTaxonomies(): void
     {
-        $rows = $this->locked(Taxonomy::query())->get(['id', 'vocabulary', 'parent_id', 'position', 'list_template']);
+        $rows = $this->locked(Taxonomy::query())->get(['id', 'vocabulary', 'parent_id', 'position', 'list_template', 'detail_template']);
         // Every language, not only the pack's: a category write re-syncs the posts and products under
         // it in every language they are routed in, and their addresses there carry these slugs.
         $translations = $this->locked(TaxonomyTranslation::query())->get(['taxonomy_id', 'locale', 'name', 'slug']);
@@ -491,6 +491,7 @@ final class Planner
                 'parent_id' => $row->parent_id,
                 'position' => $row->position,
                 'list_template' => $row->list_template,
+                'detail_template' => $row->detail_template,
                 'tr' => [],
             ];
         }
@@ -612,6 +613,7 @@ final class Planner
             'parent' => $row['parent_id'] === null ? null : $this->taxonomyKey($row['parent_id']),
             'position' => $row['position'],
             'list_template' => $row['list_template'],
+            'detail_template' => $row['detail_template'],
             'translations' => $translations,
         ];
     }
@@ -640,6 +642,7 @@ final class Planner
             'parent' => Cast::stringOrNull($item->data['parent'] ?? null),
             'position' => array_key_exists('position', $item->data) ? Cast::int($item->data['position']) : Cast::int($current['position'] ?? null),
             'list_template' => array_key_exists('list_template', $item->data) ? Cast::stringOrNull($item->data['list_template']) : Cast::stringOrNull($current['list_template'] ?? null),
+            'detail_template' => array_key_exists('detail_template', $item->data) ? Cast::stringOrNull($item->data['detail_template']) : Cast::stringOrNull($current['detail_template'] ?? null),
             'translations' => $translations,
         ];
     }

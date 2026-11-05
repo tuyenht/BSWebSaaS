@@ -117,6 +117,12 @@ it('refuses a setting or profile link that leaves the site or is not a web link'
     'the trade ministry link' => ['settings.json', 'profile', fn (array $item): array => ['fields' => $item['fields'] + ['moit_url' => '//evil.example']] + $item, "profile: 'moit_url' has a value of the wrong shape"],
 ]);
 
+it('refuses a list or post layout that is not a layout of the theme', function (string $field): void {
+    ContentPacks::item($this->folder, 'taxonomies.json', 'tax:post_cat/tin-tuc', fn (array $item): array => [...$item, $field => 'khong-co']);
+
+    expect(implode("\n", cpProblems()))->toContain("tax:post_cat/tin-tuc: {$field} is not a layout name.");
+})->with(['list_template', 'detail_template']);
+
 it('writes only the setting groups the loader is meant for', function (string $key): void {
     ContentPacks::edit($this->folder, 'settings.json', fn (array $data): array => ['items' => [...$data['items'], ['key' => $key, 'value' => ['pattern' => 'flat']]]]);
 
