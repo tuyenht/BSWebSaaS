@@ -120,13 +120,13 @@ it('renders features as top-rule cards with their glyphs', function (): void {
 it('puts the form beside an allowed map, and ignores a map on another host', function (): void {
     $html = variantPage([['type' => 'form', 'props' => ['form_key' => 'contact', 'description' => 'Chúng tôi trả lời trong ngày.', 'map_embed' => 'https://www.google.com/maps/embed?pb=2']]]);
 
-    expect($html)->toContain('<section class="lead-form lead-form--map">')
+    expect($html)->toContain('<section class="lead-form lead-form--map" id="lf-contact">')
         ->and($html)->toContain('<p class="lead-form__description">Chúng tôi trả lời trong ngày.</p>')
         ->and($html)->toContain('<iframe class="lead-form__map" src="https://www.google.com/maps/embed?pb=2" title="Bản đồ"');
 
     StorefrontCards::reset();
     $foreign = variantPage([['type' => 'form', 'props' => ['form_key' => 'contact', 'map_embed' => 'https://evil.example/embed']]]);
-    expect($foreign)->toContain('<section class="lead-form">')->and($foreign)->not->toContain('evil.example');
+    expect($foreign)->toContain('<section class="lead-form" id="lf-contact">')->and($foreign)->not->toContain('evil.example');
 });
 
 it('renders project cards on a dark band and news cards with the local date', function (): void {
