@@ -18,10 +18,13 @@ use App\Modules\Cms\Actions\Menus\SaveMenu;
 use App\Modules\Cms\Actions\Menus\SetMenuAutoAdd;
 use App\Modules\Cms\Exceptions\MenuChangeRejectedException;
 use App\Modules\Cms\Models\Menu;
+use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Navigation\MenuLimits;
 use App\Modules\Cms\Navigation\MenuVersion;
+use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Identity\Models\User;
+use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Theme\Theming\MenuAreas;
 use Closure;
@@ -44,6 +47,9 @@ use Livewire\Component;
 #[Layout('admin::layouts.app')]
 final class Index extends Component
 {
+    /** The website icons that suit a menu item, in the order the picker shows them. */
+    public const array ICONS = ['phone', 'email', 'address', 'map', 'clock', 'building', 'license', 'verified', 'link', 'play', 'quote', 'facebook', 'zalo', 'youtube', 'tiktok', 'linkedin', 'x'];
+
     public function boot(): void
     {
         // The livewire/update endpoint bypasses route middleware: re-check on every request.
@@ -51,7 +57,8 @@ final class Index extends Component
     }
 
     /**
-     * Everything the screen draws (MenuScreen::load), with the menu $menu open, or none.
+     * Everything the screen draws (MenuScreen::load), with the menu $menu open; with null, the
+     * menu the screen opens on first (the one the first area shows, else the oldest, else none).
      *
      * @return array<string, mixed>
      */
@@ -61,7 +68,7 @@ final class Index extends Component
         if ($menu !== null && ! $this->isUlid($menu)) {
             return $this->invalid();
         }
-        $found = $menu === null ? null : $this->menu($menu);
+        $found = $menu === null ? $this->firstMenu(app(SiteLocale::class)->default()) : $this->menu($menu);
         if ($menu !== null && $found === null) {
             return $this->refused('item_invalid');
         }
@@ -163,15 +170,20 @@ final class Index extends Component
     }
 
     /**
+     * Rename a menu. $version: the token the screen holds when the menu is the one open with a
+     * draft (a menu changed since is refused, draft_stale, so the screen never takes a newer token
+     * over a draft built on an older one); null for a menu that is not open.
+     *
      * @return array<string, mixed>
      */
-    public function renameMenu(mixed $menu, mixed $name): array
+    public function renameMenu(mixed $menu, mixed $name, mixed $version = null): array
     {
-        if (! $this->isUlid($menu) || ! is_string($name)) {
+        if (! $this->isUlid($menu) || ! is_string($name) || ($version !== null && ! is_string($version))) {
             return $this->invalid();
         }
 
-        return $this->onMenu($menu, 'update', function (Menu $found) use ($name): array {
+        return $this->onMenu($menu, 'update', function (Menu $found) use ($name, $version): array {
+            $this->ensureVersion($found, $version);
             $saved = app(SaveMenu::class)->handle($found, $name, $found->locales);
 
             return ['ok' => true, 'version' => $this->version($saved)];
@@ -258,17 +270,18 @@ final class Index extends Component
     }
 
     /**
-     * "Tự thêm trang mới" on or off for a menu.
+     * "Tự thêm trang mới" on or off for a menu. $version as for renameMenu().
      *
      * @return array<string, mixed>
      */
-    public function setAutoAdd(mixed $menu, mixed $on): array
+    public function setAutoAdd(mixed $menu, mixed $on, mixed $version = null): array
     {
-        if (! $this->isUlid($menu) || ! is_bool($on)) {
+        if (! $this->isUlid($menu) || ! is_bool($on) || ($version !== null && ! is_string($version))) {
             return $this->invalid();
         }
 
-        return $this->onMenu($menu, 'update', function (Menu $found, User $actor) use ($on): array {
+        return $this->onMenu($menu, 'update', function (Menu $found, User $actor) use ($on, $version): array {
+            $this->ensureVersion($found, $version);
             app(SetMenuAutoAdd::class)->handle($actor, $found, $on);
 
             return ['ok' => true, 'version' => $this->version($found)];
@@ -315,9 +328,51 @@ final class Index extends Component
         return ['ok' => true, 'issues' => app(MenuSelfCheck::class)->check($found)];
     }
 
+    /**
+     * The first paint carries what load() would answer for the menu that opens first (no round
+     * trip before the screen shows), the website's address for "Xem trên website", the edit
+     * screens a source opens in, the site's name for the preview and the icons an item may take.
+     */
     public function render(): View
     {
-        return view('admin::livewire.menus.index');
+        Gate::authorize('viewAny', Menu::class);
+        $main = app(SiteLocale::class)->default();
+
+        return view('admin::livewire.menus.index', [
+            'initial' => ['ok' => true, ...app(MenuScreen::class)->load($this->firstMenu($main))],
+            'main' => $main,
+            'siteUrl' => app(PathBuilder::class)->publicUrl('/', $main),
+            'edit' => [
+                'entry' => route('admin.entries.edit', ['ulid' => '__REF__']),
+                'product' => route('admin.catalog.edit', ['ulid' => '__REF__']),
+            ],
+            'siteName' => $this->siteName($main),
+            'icons' => array_map(fn (string $name): array => ['name' => $name, 'label' => __('menus.icon_'.$name)], self::ICONS),
+        ]);
+    }
+
+    /** The website's name for the preview's home item, in the main language. */
+    private function siteName(string $main): string
+    {
+        $name = app(SiteIdentity::class)->for($main)['name'] ?? null;
+
+        return is_string($name) && $name !== '' ? $name : config()->string('app.name');
+    }
+
+    /**
+     * The menu the screen opens on: the one the website shows in its first area (in the theme's
+     * order) for the main language, else the oldest menu, else none.
+     */
+    private function firstMenu(string $main): ?Menu
+    {
+        $shown = MenuAssignment::query()->where('locale', $main)->whereNotNull('menu_id')->pluck('menu_id', 'region_key');
+        foreach (array_keys(MenuAreas::all()) as $area) {
+            if (isset($shown[$area])) {
+                return Menu::query()->whereKey($shown[$area])->first();
+            }
+        }
+
+        return Menu::query()->orderBy('id')->first();
     }
 
     /**
@@ -377,6 +432,19 @@ final class Index extends Component
     private function menu(string $ulid): ?Menu
     {
         return Menu::query()->where('ulid', $ulid)->first(['id', 'ulid', 'site_id', 'handle', 'name', 'locales', 'meta']);
+    }
+
+    /**
+     * A change made while the screen holds a draft of the menu: refused when the menu changed since
+     * the screen read it (draft_stale).
+     *
+     * @throws MenuChangeRejectedException
+     */
+    private function ensureVersion(Menu $menu, ?string $version): void
+    {
+        if ($version !== null && ! hash_equals($this->version($menu), $version)) {
+            throw new MenuChangeRejectedException('draft_stale');
+        }
     }
 
     private function version(Menu $menu): string

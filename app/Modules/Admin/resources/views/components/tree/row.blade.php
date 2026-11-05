@@ -3,26 +3,67 @@
 ])
 @props([
     'row',
-    'name',
+    'name' => '',
     'locked' => null,
     'state' => null,
+    'dragOff' => null,
 ])
 @php
     // One record of the shared tree: `row` is one entry of TreeRows::build(), `name` the record's
     // plain name (the drop labels and the toggle say it). The default slot holds the name
-    // (<x-bs-admin::tree.name>) and anything drawn beside it; `actions` is the cell of row buttons.
+    // (<x-bs-admin::tree.name>) and anything drawn beside it; `actions` is the cell of row buttons;
+    // `below` is a full-width part under the row (an inline editor), outside the keyboard moves.
     // `locked` is the reason the record cannot be moved or take children now (someone is editing
     // it…): the row shows it beside the name, the grip greys out and a drop on it is refused.
     // `state` draws a drag state in place, for the gallery: dragging · drop-in · drop-bad.
     // The Alpine expressions read the key from the row itself, so every row shares them (Alpine
     // compiles each distinct expression once — a key inside it would cost one per row).
+    //
+    // A tree the browser draws (<x-bs-admin::tree local>, inside <template x-for="r in …">) gives
+    // `row` as the loop variable's name instead: an object with the same fields as a TreeRows entry
+    // — k (key), parent, lv (level), kids (count), pos, size, guides [{d, k}] and name — so the
+    // row looks and behaves the same; `drag-off` is an expression that stops dragging the row
+    // (while its editor is open, or while the list is filtered).
     $frozen = $move === null;
-    $key = $row['key'];
-    $hasKids = $row['kids'] > 0;
-    $drop = ['drop-in' => 'in', 'drop-bad' => 'bad'][$state] ?? null;
-    $collapse = __('admin.tree.collapse', ['name' => $name]);
-    $expand = __('admin.tree.expand', ['name' => $name]);
+    $client = is_string($row);
+    if ($client) {
+        $r = $row;
+        $collapseTpl = __('admin.tree.collapse');
+        $expandTpl = __('admin.tree.expand');
+    } else {
+        $key = $row['key'];
+        $hasKids = $row['kids'] > 0;
+        $drop = ['drop-in' => 'in', 'drop-bad' => 'bad'][$state] ?? null;
+        $collapse = __('admin.tree.collapse', ['name' => $name]);
+        $expand = __('admin.tree.expand', ['name' => $name]);
+    }
 @endphp
+@if ($client)
+<div role="row" data-tree-row x-bind:data-k="{{ $r }}.k" x-bind:data-parent="{{ $r }}.parent || ''" x-bind:data-lv="{{ $r }}.lv" x-bind:data-name="{{ $r }}.name"
+    x-bind:aria-level="{{ $r }}.lv" x-bind:aria-posinset="{{ $r }}.pos" x-bind:aria-setsize="{{ $r }}.size"
+    x-bind:data-kids="{{ $r }}.kids ? '1' : null" x-bind:aria-expanded="{{ $r }}.kids ? String(isOpen({{ $r }}.k)) : null"
+    x-bind:draggable="{{ $dragOff ? '('.$dragOff.') ? \'false\' : \'true\'' : "'true'" }}" x-bind:hidden="hid($el)"
+    {{ $attributes->merge(['class' => 'tree-r']) }}>
+    <span class="tree-g" aria-hidden="true" x-show="{{ $r }}.guides.length"><template x-for="g in {{ $r }}.guides" :key="g.d + g.k"><span class="tree-gl" x-bind:data-d="g.d" x-bind:data-k="g.k"></span></template></span>
+    <span class="tree-grip" aria-hidden="true" title="{{ __('admin.tree.grip_tip') }}"><x-bs-admin::icon name="ri-draggable" class="tree-grip-i" /></span>
+    <div role="gridcell" class="tree-c tree-c-main">
+        <template x-if="{{ $r }}.kids">
+            <button type="button" class="tree-tg" x-bind:data-open="@js($collapseTpl).replace(':name', {{ $r }}.name)" x-bind:data-shut="@js($expandTpl).replace(':name', {{ $r }}.name)"
+                x-bind:aria-label="tgLabel($el)" x-bind:title="tgLabel($el)" x-on:click="tg($el)"><x-bs-admin::icon name="ri-arrow-down-s" class="tree-tg-i" /></button>
+        </template>
+        <template x-if="!{{ $r }}.kids"><span class="tree-tg0" aria-hidden="true"></span></template>
+        <div class="tree-main">
+            {{ $slot }}
+        </div>
+    </div>
+    @isset($actions)
+        <div role="gridcell" class="tree-c tree-c-act">{{ $actions }}</div>
+    @endisset
+    @isset($below)
+        <div role="gridcell" class="tree-c tree-c-x" data-tree-x>{{ $below }}</div>
+    @endisset
+</div>
+@else
 <div role="row" data-tree-row data-k="{{ $key }}" data-parent="{{ $row['parent'] }}" data-lv="{{ $row['level'] }}" data-name="{{ $name }}"
     aria-level="{{ $row['level'] }}" aria-posinset="{{ $row['pos'] }}" aria-setsize="{{ $row['size'] }}"
     @if ($hasKids) data-kids="1" aria-expanded="true" @unless ($frozen) x-bind:aria-expanded="String(isOpen($el.dataset.k))" @endunless @endif
@@ -54,4 +95,8 @@
     @isset($actions)
         <div role="gridcell" class="tree-c tree-c-act">{{ $actions }}</div>
     @endisset
+    @isset($below)
+        <div role="gridcell" class="tree-c tree-c-x" data-tree-x>{{ $below }}</div>
+    @endisset
 </div>
+@endif

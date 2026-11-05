@@ -298,6 +298,16 @@
         margin-left: auto;
     }
 
+    /* A full-width part under a row (an inline editor): on its own line, from the row's left edge. */
+    .tree-c-x {
+        flex: 1 0 100%;
+        min-width: 0;
+        margin-left: calc(-1 * var(--tree-x0));
+        margin-right: -0.75rem;
+        margin-bottom: calc(-1 * var(--tree-py));
+        cursor: auto;
+    }
+
     /* ---- the drop placeholder ---------------------------------------------------------- */
     .tree-ph {
         --tree-lv: 1;

@@ -15,6 +15,7 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Theme\Chrome\StorefrontIcons;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
@@ -265,6 +266,25 @@ it('saves a draft, copies, renames, assigns and restores through the screen', fu
         ->and(MenuAssignment::query()->where('region_key', 'handheld')->value('same_as_region'))->toBe('primary'));
 });
 
+it('refuses a rename or an auto-add switch made on a draft older than the menu, and opens the first menu again after a delete', function (): void {
+    [$menu, $other] = msIn(1, fn (): array => [app(SaveMenu::class)->handle(null, 'ồ Menu chính ạ'), app(SaveMenu::class)->handle(null, 'ồ Menu phụ ạ')]);
+    $held = msCall($this->editor, 'load', $menu->ulid)['menu']['version'];
+
+    $renamed = msCall($this->editor, 'renameMenu', $menu->ulid, 'ồ Menu đầu trang ạ', $held);
+    expect($renamed['ok'])->toBeTrue()->and($renamed['version'])->toBeString()->not->toBe($held);
+
+    expect(msCall($this->editor, 'renameMenu', $menu->ulid, 'ồ Tên khác ạ', $held))->toMatchArray(['ok' => false, 'reason' => 'draft_stale'])
+        ->and(msCall($this->editor, 'setAutoAdd', $menu->ulid, true, $held))->toMatchArray(['ok' => false, 'reason' => 'draft_stale'])
+        ->and(msCall($this->editor, 'setAutoAdd', $menu->ulid, true, $renamed['version']))->toMatchArray(['ok' => true])
+        ->and(msCall($this->editor, 'renameMenu', $other->ulid, 'ồ Menu cuối trang ạ'))->toMatchArray(['ok' => true])
+        ->and(msCall($this->editor, 'renameMenu', $menu->ulid, 'ồ X ạ', ['v']))->toMatchArray(['ok' => false, 'reason' => 'input_invalid']);
+
+    msIn(1, fn () => expect(Menu::query()->where('ulid', $menu->ulid)->value('name'))->toBe('ồ Menu đầu trang ạ'));
+
+    expect(msCall($this->editor, 'deleteMenu', $menu->ulid))->toMatchArray(['ok' => true])
+        ->and(msCall($this->editor, 'load', null)['menu']['key'])->toBe($other->ulid);
+});
+
 it('refuses bad arguments and never finds another site\'s menu', function (): void {
     $foreign = msIn(2, fn () => app(SaveMenu::class)->handle(null, 'Menu B'));
     msIn(1, fn () => app(SaveMenu::class)->handle(null, 'Menu chính'));
@@ -308,4 +328,88 @@ it('shows a live row whose parent is in the trash at the top level, so the menu 
         expect($saved['version'])->toBeString()
             ->and(MenuItem::query()->whereKey($child->id)->value('parent_id'))->toBeNull();
     });
+});
+
+/** What the page's first paint carries (render()'s 'initial'), as $user in site 1. */
+function msInitial(User $user): array
+{
+    $out = [];
+    msIn(1, function () use ($user, &$out): void {
+        $out = Livewire::actingAs($user->fresh())->test(MenusIndex::class)->viewData('initial');
+    });
+
+    return is_array($out) ? $out : [];
+}
+
+it('draws the screen with the menu it opens on, its labels as text only and no raw ids', function (): void {
+    $menu = msIn(1, function (): Menu {
+        $menu = msBigMenu(6);
+        $first = MenuItem::query()->where('menu_id', $menu->id)->orderBy('id')->firstOrFail();
+        $first->translations()->where('locale', 'vi')->update(['label' => '<b>ồ Giới thiệu ạ</b>']);
+
+        return $menu;
+    });
+
+    $html = $this->actingAs($this->editor->fresh())->get('http://a.test/admin/menus')->assertOk()
+        ->assertSee(__('menus.ui_intro'))->assertSee(__('menus.ui_add'))->assertSee(__('menus.ui_preview'))
+        ->assertSee($menu->ulid)
+        ->assertDontSee('<b>ồ Giới thiệu ạ</b>', false)
+        ->getContent();
+    // The label reaches the page only inside the screen's data, with its markup escaped.
+    expect($html)->toContain('u003Cb')
+        ->and($html)->not->toContain('x-html');
+
+    $initial = msInitial($this->editor);
+    expect($initial['ok'])->toBeTrue()
+        ->and($initial['menu']['key'])->toBe($menu->ulid)
+        ->and(count($initial['menu']['items']))->toBe(5)
+        ->and(msKeys($initial))->not->toContain('id')->not->toContain('menu_id')->not->toContain('parent_id');
+});
+
+it('opens on the menu the first area shows, else the oldest menu, else on no menu', function (): void {
+    expect(msInitial($this->editor)['menu'])->toBeNull()
+        ->and(msInitial($this->editor)['menus'])->toBe([]);
+
+    [$old, $shown] = msIn(1, function (): array {
+        $old = app(SaveMenu::class)->handle(null, 'ồ Menu cũ ạ');
+        $shown = app(SaveMenu::class)->handle(null, 'ồ Menu đầu trang ạ');
+
+        return [$old, $shown];
+    });
+    expect(msInitial($this->editor)['menu']['key'])->toBe($old->ulid);
+
+    msIn(1, fn () => MenuAssignment::query()->create(['region_key' => 'footer', 'locale' => 'vi', 'menu_id' => $old->id]));
+    msIn(1, fn () => MenuAssignment::query()->create(['region_key' => 'primary', 'locale' => 'vi', 'menu_id' => $shown->id]));
+    expect(msInitial($this->editor)['menu']['key'])->toBe($shown->ulid);
+
+    $this->actingAs($this->editor->fresh())->get('http://a.test/admin/menus')->assertOk()
+        ->assertSee(__('menus.ui_no_menu_title'))->assertSee('ồ Menu đầu trang ạ');
+});
+
+it('gives the screen the icons, the source edit screens and the site address it draws with', function (): void {
+    $data = msIn(1, function (): array {
+        $page = Livewire::actingAs($this->editor->fresh())->test(MenusIndex::class);
+
+        return array_combine($keys = ['icons', 'edit', 'siteUrl', 'main', 'siteName'], array_map(fn (string $key): mixed => $page->viewData($key), $keys));
+    });
+
+    expect(array_keys(StorefrontIcons::GLYPHS))->toContain(...MenusIndex::ICONS)
+        ->and(array_column($data['icons'], 'name'))->toBe(MenusIndex::ICONS)
+        ->and($data['icons'][0]['label'])->toBe(__('menus.icon_phone'))
+        ->and($data['edit']['entry'])->toEndWith('/admin/content/__REF__/edit')
+        ->and($data['edit']['product'])->toEndWith('/admin/catalog/__REF__/edit')
+        ->and($data['siteUrl'])->toBe('/')
+        ->and($data['main'])->toBe('vi')
+        ->and($data['siteName'])->not->toBe('');
+});
+
+it('wires every call the screen script makes to a public method of the component', function (): void {
+    $script = (string) file_get_contents(resource_path('js/admin-menus.js'));
+    preg_match_all('/\$wire\.([a-zA-Z]+)\(/', $script, $found);
+    $calls = array_values(array_unique($found[1]));
+
+    expect($calls)->toContain('load', 'saveDraft', 'assign', 'follow', 'createMenu', 'renameMenu', 'copyMenu', 'copyItem', 'deleteMenu', 'restore', 'setAutoAdd', 'search', 'selfCheck');
+    foreach ($calls as $method) {
+        expect((new ReflectionMethod(MenusIndex::class, $method))->isPublic())->toBeTrue();
+    }
 });

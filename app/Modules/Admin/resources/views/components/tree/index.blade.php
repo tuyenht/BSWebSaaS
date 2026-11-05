@@ -3,6 +3,7 @@
     'move' => null,
     'maxDepth' => null,
     'noun' => null,
+    'local' => false,
 ])
 @php
     // The shared admin tree (stylesheet resources/css/admin-tree.css, behaviour resources/js/admin-tree.js):
@@ -14,10 +15,17 @@
     // (the gallery's states). `max-depth` greys a drop that would nest deeper; `noun` names a child
     // ("mục con", "chuyên mục con"…) in the drop labels. The touch path for the moves is
     // <x-bs-admin::tree.move-menu> in each row's ⋮ menu.
+    // `local` is for a screen that edits its tree in the browser and saves it later (the rows drawn by
+    // Alpine, <x-bs-admin::tree.row> with a `row` expression): `move` then names the enclosing Alpine
+    // component's method — the same (key, parent, position) → null or the reason — and undo / redo
+    // (Ctrl+Z, the result line's "Hoàn tác") call that component's own undo() and redo(), so one
+    // history covers every change on the screen. The host may bind `data-max-depth` on the tree when
+    // its limit changes while the page is open.
     $frozen = $move === null;
     $noun ??= __('admin.tree.noun');
     $config = [
         'move' => $move,
+        'local' => (bool) $local,
         'maxDepth' => $maxDepth,
         'texts' => [
             'drag' => [

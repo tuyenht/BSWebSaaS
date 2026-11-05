@@ -27,7 +27,11 @@ use App\Modules\Admin\Livewire\Settings\Domains as DomainSettings;
 use App\Modules\Admin\Livewire\WorkflowSettings;
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Cms\Actions\Menus\SaveMenu;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\Menu;
+use App\Modules\Cms\Models\MenuAssignment;
+use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\Actions\ProvisionSite;
@@ -49,6 +53,7 @@ const ADMIN_PREVIEW_SCREENS = [
     'list' => '/admin/content',
     'form' => '/admin/settings/email',
     'gallery' => '/admin/_gallery',
+    'menus' => '/admin/menus',
 ];
 
 const ADMIN_PREVIEW_HOST = 'preview.platform.test';
@@ -84,13 +89,38 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     // A few entries in mixed states so the list screen shows real rows, not an empty state; the site
     // has two languages and one page is translated, so the rows show both language-chip states.
     app(Tenancy::class)->enter(1, function () use ($owner): void {
+        $pages = [];
         foreach ([['Trang chủ', 'trang-chu', 'published'], ['Giới thiệu', 'gioi-thieu', 'published'], ['Liên hệ', 'lien-he', 'draft'], ['Tuyển dụng', 'tuyen-dung', 'scheduled']] as [$title, $slug, $status]) {
             $entry = Entry::query()->create(['type' => 'page', 'status' => $status, 'author_id' => $owner->id]);
             $entry->translations()->create(['locale' => 'vi', 'title' => $title, 'slug' => $slug, 'status' => 'draft', 'body' => ['blocks' => []]]);
+            $pages[$slug] = $entry;
             if ($slug === 'gioi-thieu') {
                 $entry->translations()->create(['locale' => 'en', 'title' => 'About us', 'slug' => 'about-us', 'status' => 'draft', 'body' => ['blocks' => []]]);
             }
         }
+
+        // The Trình đơn screen: a main menu in the header (nested, a link with a badge, a page not
+        // published yet) and a footer menu, so the tree, the areas and the preview show real rows.
+        $menu = app(SaveMenu::class)->handle(null, 'Menu chính');
+        $footer = app(SaveMenu::class)->handle(null, 'Menu chân trang');
+        MenuAssignment::query()->updateOrCreate(['region_key' => 'primary', 'locale' => 'vi'], ['menu_id' => $menu->id, 'same_as_region' => null]);
+        MenuAssignment::query()->updateOrCreate(['region_key' => 'footer', 'locale' => 'vi'], ['menu_id' => $footer->id, 'same_as_region' => null]);
+        $add = function (Menu $in, ?MenuItem $parent, array $link, string $label = '', array $meta = []) use (&$position): MenuItem {
+            $item = MenuItem::query()->create(['menu_id' => $in->id, 'parent_id' => $parent?->id, 'position' => $position++, 'meta' => $meta, ...$link]);
+            if ($label !== '') {
+                $item->translations()->create(['locale' => 'vi', 'label' => $label]);
+            }
+
+            return $item;
+        };
+        $position = 0;
+        $entry = fn (string $slug): array => ['link_type' => 'entry', 'routable_type' => 'entry', 'routable_id' => $pages[$slug]->id];
+        $add($menu, null, ['link_type' => 'dynamic', 'dynamic_key' => 'home']);
+        $about = $add($menu, null, $entry('gioi-thieu'), 'Về chúng tôi');
+        $add($menu, $about, $entry('tuyen-dung'));
+        $add($menu, $about, $entry('lien-he'), 'Liên hệ');
+        $add($menu, null, ['link_type' => 'url', 'url' => '/bang-gia'], 'Bảng giá', ['badge' => ['kind' => 'new']]);
+        $add($footer, null, $entry('lien-he'), 'Liên hệ');
     });
 
     $dir = env('ADMIN_PREVIEW_DIR', storage_path('app/admin-preview'));
