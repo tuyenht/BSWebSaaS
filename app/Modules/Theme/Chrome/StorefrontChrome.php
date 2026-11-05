@@ -7,6 +7,7 @@ namespace App\Modules\Theme\Chrome;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\SafeLink;
 use App\Modules\Tenancy\Support\BusinessHours;
+use Illuminate\Support\HtmlString;
 
 /**
  * The storefront header and footer settings (`storefront.header`, `storefront.footer`) turned
@@ -251,6 +252,51 @@ final class StorefrontChrome
         }
 
         return false;
+    }
+
+    /**
+     * The classes a menu item adds to its list row: " sf-only-desk" / " sf-only-mob" for an item
+     * shown only on a computer or only on a phone ("Hiện trên"), else nothing.
+     *
+     * @param  array<mixed>  $item  a resolved menu node
+     */
+    public static function menuItemClass(array $item): string
+    {
+        return match ($item['device'] ?? 'all') {
+            'desktop' => ' sf-only-desk',
+            'phone' => ' sf-only-mob',
+            default => '',
+        };
+    }
+
+    /**
+     * One menu item's text, for every menu the theme draws: the optional icon (only names of the
+     * website's own set reach a node), the label, a badge ("Mới", "Hot"…, which the resolver drops
+     * once past its end date) and, where the area shows one ($withDesc), the short description.
+     * Every value is escaped; the description is plain text. An item with none of these is its
+     * bare label, exactly as before they existed.
+     *
+     * @param  array<mixed>  $item  a resolved menu node
+     */
+    public static function menuLabel(array $item, bool $withDesc = false): HtmlString
+    {
+        $label = e(is_string($item['label'] ?? null) ? $item['label'] : '');
+        $icon = is_string($item['icon'] ?? null) && StorefrontIcons::has($item['icon']) ? $item['icon'] : null;
+        $badge = is_string($item['badge'] ?? null) ? $item['badge'] : null;
+        $desc = $withDesc && is_string($item['description'] ?? null) && $item['description'] !== '' ? $item['description'] : null;
+        if ($icon === null && $badge === null && $desc === null) {
+            return new HtmlString($label);
+        }
+
+        $html = $icon === null ? '' : trim(view('theme::partials.sf-icon', ['name' => $icon, 'size' => 16])->render());
+        $html .= $desc === null
+            ? '<span>'.$label.'</span>'
+            : '<span class="sf-menu__text"><span>'.$label.'</span><span class="sf-menu__desc">'.e($desc).'</span></span>';
+        if ($badge !== null) {
+            $html .= '<span class="sf-menu__badge">'.e(__('storefront.menu_badge_'.$badge)).'</span>';
+        }
+
+        return new HtmlString($html);
     }
 
     /** Whether any item of a menu tree has children (it then needs the disclosure script). */

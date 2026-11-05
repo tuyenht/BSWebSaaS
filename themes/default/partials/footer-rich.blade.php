@@ -68,7 +68,7 @@
             @endif
         </div>
         @foreach (($footerMenu ?? []) as $column)
-            <div class="sf-footer__column">
+            <div class="sf-footer__column{{ \App\Modules\Theme\Chrome\StorefrontChrome::menuItemClass($column) }}">
                 <h2 class="sf-footer__heading">
                     @if ($column['url'] !== '#')
                         <a href="{{ $column['url'] }}">{{ $column['label'] }}</a>
@@ -80,8 +80,8 @@
                     <ul class="sf-footer__links">
                         @foreach ($column['children'] as $link)
                             @continue($link['url'] === '#')
-                            <li>
-                                <a class="sf-footer__link" href="{{ $link['url'] }}" @if (! empty($link['active'])) aria-current="page" @endif @foreach (($link['attrs'] ?? []) as $attr => $value) {{ $attr }}="{{ $value }}" @endforeach>{{ $link['label'] }}</a>
+                            <li class="{{ trim(\App\Modules\Theme\Chrome\StorefrontChrome::menuItemClass($link)) }}">
+                                <a class="sf-footer__link" href="{{ $link['url'] }}" @if (! empty($link['active'])) aria-current="page" @endif @foreach (($link['attrs'] ?? []) as $attr => $value) {{ $attr }}="{{ $value }}" @endforeach>{{ \App\Modules\Theme\Chrome\StorefrontChrome::menuLabel($link) }}</a>
                             </li>
                         @endforeach
                     </ul>

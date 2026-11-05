@@ -7,6 +7,9 @@ namespace App\Modules\Cms\Actions\Menus;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Cms\Exceptions\MenuChangeRejectedException;
 use App\Modules\Cms\Models\Menu;
+use App\Modules\Identity\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Delete a menu with its items and assignments (foreign keys cascade). A menu the website still
@@ -16,10 +19,13 @@ use App\Modules\Cms\Models\Menu;
 final readonly class DeleteMenu
 {
     /**
+     * @throws AuthorizationException
      * @throws MenuChangeRejectedException
      */
-    public function handle(Menu $menu, bool $evenIfAssigned = false): void
+    public function handle(User $actor, Menu $menu, bool $evenIfAssigned = false): void
     {
+        Gate::forUser($actor)->authorize('delete', $menu);
+
         if (! $evenIfAssigned && $menu->assignments()->exists()) {
             throw new MenuChangeRejectedException('menu_in_use');
         }

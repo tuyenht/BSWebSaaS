@@ -2,6 +2,7 @@
 
 namespace App\Modules\Cms\Observers;
 
+use App\Modules\Cms\Events\EntryPublished;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Media\Models\Mediable;
 
@@ -13,9 +14,26 @@ use App\Modules\Media\Models\Mediable;
  *
  * A soft delete deliberately KEEPS the rows: a trashed entry still reserves its media, so the media
  * isn't reported unused and deleted out from under a restore; restoring + the next save re-reconciles.
+ *
+ * It also announces an entry going public (EntryPublished), whichever path published it, so a
+ * listener such as "Tự thêm trang mới" never depends on one action remembering to tell it.
  */
 final class EntryObserver
 {
+    public function created(Entry $entry): void
+    {
+        if ($entry->status === 'published') {
+            event(new EntryPublished($entry->id, $entry->type));
+        }
+    }
+
+    public function updated(Entry $entry): void
+    {
+        if ($entry->wasChanged('status') && $entry->status === 'published') {
+            event(new EntryPublished($entry->id, $entry->type));
+        }
+    }
+
     public function forceDeleted(Entry $entry): void
     {
         Mediable::query()

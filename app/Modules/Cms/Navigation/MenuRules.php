@@ -23,8 +23,27 @@ final class MenuRules
     /** Days a removed menu item waits in the trash before it is deleted for good. */
     public const int TRASH_DAYS = 30;
 
-    /** Computed links → the path they open. */
-    public const array DYNAMIC = ['home' => '/'];
+    /** Live items one menu may hold: far above any real menu, low enough that one draft stays one quick save. */
+    public const int ITEMS_MAX = 2000;
+
+    /**
+     * Special links ("Liên kết đặc biệt", link_type 'dynamic') → the fixed site path they open, or
+     * null when {@see SpecialLinks} works the address out from what the site has (its phone, email,
+     * address, or a page a module provides). 'group' is a label that goes nowhere ('#').
+     */
+    public const array DYNAMIC = [
+        'home' => '/',
+        'search' => null,
+        'cart' => null,
+        'account' => null,
+        'login' => null,
+        'call' => null,
+        'zalo' => null,
+        'mail' => null,
+        'map' => null,
+        'sitemap' => null,
+        'group' => '#',
+    ];
 
     /**
      * The link when it is safe to show, else null: site-relative paths and anchors, and absolute

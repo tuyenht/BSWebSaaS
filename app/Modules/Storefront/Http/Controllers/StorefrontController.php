@@ -94,16 +94,23 @@ final readonly class StorefrontController
         $floating = $this->settings->get('storefront', 'floating_contact');
         $shopHref = FloatingContact::wantsShop($floating) ? app(ProductIndexLink::class)->for($locale) : null;
 
+        // Business identity in the page's language (site_profiles + translations, the legacy
+        // general.brand setting keeping precedence in the default language — SiteIdentity). The
+        // menu's special links (call, Zalo, email, map) read their addresses from it too.
+        $brand = $this->identity->for($locale);
+
         // Page chrome for the active locale: header nav (active-state matches the prefixed request
-        // path; a missing per-locale assignment falls back to the default-locale menu) and, for
-        // the rich footer, its link columns — both regions resolved together — the <html lang>,
-        // and the hreflang alternates.
+        // path; a missing per-locale assignment falls back to the default-locale menu), the phone
+        // menu panel and, for the rich footer, its link columns — all regions resolved together —
+        // the <html lang>, and the hreflang alternates. The phone panel shows its own menu, else
+        // the main one (whether it follows the main menu or was never set up).
         $menus = $this->nav->resolveMany(
-            $footer === null ? ['primary'] : ['primary', $footer['region']],
-            $locale, $default, $requestPath,
+            $footer === null ? ['primary', 'handheld'] : ['primary', 'handheld', $footer['region']],
+            $locale, $default, $requestPath, $brand ?? [],
         );
         $chrome = [
             'menu' => $menus['primary'] ?? [],
+            'mobileMenu' => ($menus['handheld'] ?? []) !== [] ? $menus['handheld'] : ($menus['primary'] ?? []),
             'footerMenu' => $footer === null ? [] : ($menus[$footer['region']] ?? []),
             'header' => $header,
             'footer' => $footer,
@@ -111,9 +118,7 @@ final readonly class StorefrontController
             'floatingContact' => FloatingContact::for($floating, $locale, $shopHref),
             'lang' => $locale,
             'hreflang' => $this->hreflangFor($resolved, $locale, $default, $path),
-            // Business identity in the page's language (site_profiles + translations, the legacy
-            // general.brand setting keeping precedence in the default language — SiteIdentity).
-            'brand' => $this->identity->for($locale),
+            'brand' => $brand,
             // The logo and footer home links stay in the page's language (/en for an English page).
             'homeUrl' => $this->paths->publicUrl('/', $locale),
         ];

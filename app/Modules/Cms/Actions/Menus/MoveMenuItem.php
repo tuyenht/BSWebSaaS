@@ -7,6 +7,7 @@ namespace App\Modules\Cms\Actions\Menus;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Cms\Actions\Menus\Concerns\EditsMenuTree;
 use App\Modules\Cms\Exceptions\MenuChangeRejectedException;
+use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Navigation\MenuRules;
 use App\Modules\Cms\Navigation\MenuTree;
@@ -33,7 +34,7 @@ final readonly class MoveMenuItem
      */
     public function handle(User $actor, MenuItem $item, ?MenuItem $parent, int $position): void
     {
-        Gate::forUser($actor)->authorize('menus.manage');
+        Gate::forUser($actor)->authorize('manage', Menu::class);
 
         if ($parent !== null && ($parent->menu_id !== $item->menu_id || $parent->id === $item->id)) {
             throw new MenuChangeRejectedException('parent_invalid');

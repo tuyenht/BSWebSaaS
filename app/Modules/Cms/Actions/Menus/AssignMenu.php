@@ -32,7 +32,7 @@ final readonly class AssignMenu
      */
     public function handle(User $actor, string $region, string $locale, ?Menu $menu): void
     {
-        Gate::forUser($actor)->authorize('menus.manage');
+        Gate::forUser($actor)->authorize('manage', Menu::class);
 
         if (preg_match(MenuRules::REGION_PATTERN, $region) !== 1) {
             throw new MenuChangeRejectedException('region_invalid');

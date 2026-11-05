@@ -7,6 +7,7 @@ namespace App\Modules\Cms\Actions\Menus;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Cms\Actions\Menus\Concerns\EditsMenuTree;
 use App\Modules\Cms\Exceptions\MenuChangeRejectedException;
+use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Navigation\MenuRules;
 use App\Modules\Cms\Navigation\MenuTree;
@@ -36,7 +37,7 @@ final readonly class RestoreMenuItem
      */
     public function handle(User $actor, MenuItem $item): int
     {
-        Gate::forUser($actor)->authorize('menus.manage');
+        Gate::forUser($actor)->authorize('manage', Menu::class);
 
         return DB::transaction(function () use ($item): int {
             $this->lockMenu($item->menu_id);
@@ -56,6 +57,7 @@ final readonly class RestoreMenuItem
                 $parentId = null;
             }
 
+            $this->ensureRoom($trashed->menu_id, count($branch));   // coming back counts like being added
             $restored = Cast::int(MenuItem::onlyTrashed()->whereKey(array_keys($branch))->update(['deleted_at' => null]));
 
             $siblings = array_map(static fn (mixed $id): int => Cast::int($id), MenuItem::query()

@@ -133,7 +133,7 @@ it('refuses a link that goes nowhere or somewhere unsafe', function (MenuItemDat
     'script link' => [new MenuItemData(linkType: 'url', url: 'javascript:alert(1)'), 'url_invalid'],
     'data link' => [new MenuItemData(linkType: 'url', url: 'data:text/html,hi'), 'url_invalid'],
     'empty link' => [new MenuItemData(linkType: 'url', url: '  '), 'url_invalid'],
-    'unknown computed link' => [new MenuItemData(linkType: 'dynamic', dynamicKey: 'cart'), 'target_invalid'],
+    'unknown computed link' => [new MenuItemData(linkType: 'dynamic', dynamicKey: 'wishlist'), 'target_invalid'],
     'unknown kind' => [new MenuItemData(linkType: 'banner', targetId: 1), 'target_invalid'],
     'missing page' => [new MenuItemData(linkType: 'entry', targetId: 999999), 'target_invalid'],
     'missing product' => [new MenuItemData(linkType: 'product', targetId: 999999), 'target_invalid'],
@@ -252,10 +252,10 @@ it('keeps a menu that is still shown unless the deletion is confirmed', function
         addItem($menu, homeLink());
         app(AssignMenu::class)->handle($actor, 'primary', 'vi', $menu);
 
-        expect(menuRefusal(fn () => app(DeleteMenu::class)->handle($menu)))->toBe('menu_in_use')
+        expect(menuRefusal(fn () => app(DeleteMenu::class)->handle(test()->editor, $menu)))->toBe('menu_in_use')
             ->and(Menu::query()->count())->toBe(1);
 
-        app(DeleteMenu::class)->handle($menu, evenIfAssigned: true);
+        app(DeleteMenu::class)->handle(test()->editor, $menu, evenIfAssigned: true);
         expect(Menu::query()->count())->toBe(0)
             ->and(MenuItem::query()->count())->toBe(0)
             ->and(MenuAssignment::query()->count())->toBe(0);

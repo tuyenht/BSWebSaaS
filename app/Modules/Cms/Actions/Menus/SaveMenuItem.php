@@ -50,7 +50,7 @@ final readonly class SaveMenuItem
      */
     public function handle(User $actor, Menu $menu, ?MenuItem $item, MenuItemData $data): MenuItem
     {
-        Gate::forUser($actor)->authorize('menus.manage');
+        Gate::forUser($actor)->authorize('manage', Menu::class);
 
         if ($item !== null && $item->menu_id !== $menu->id) {
             throw new MenuChangeRejectedException('item_invalid');
@@ -65,6 +65,9 @@ final readonly class SaveMenuItem
                 throw new MenuChangeRejectedException('item_invalid');
             }
             $created = $item === null;
+            if ($created) {
+                $this->ensureRoom($menu->id, 1);
+            }
             $item ??= $this->newItem($menu, $data->parent);
 
             $meta = $item->meta ?? [];
