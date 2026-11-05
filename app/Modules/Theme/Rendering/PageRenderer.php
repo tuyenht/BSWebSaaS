@@ -3,8 +3,10 @@
 namespace App\Modules\Theme\Rendering;
 
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\VideoEmbed;
 use App\Modules\Theme\Components\SectionProps;
+use App\Modules\Theme\Theming\SiteSeo;
 use App\Modules\Theme\Theming\ThemeResolver;
 use Illuminate\Contracts\View\Factory as ViewFactory;
 
@@ -12,7 +14,8 @@ use Illuminate\Contracts\View\Factory as ViewFactory;
  * Renders resolved content to a full SSR HTML page on the SHARED master template:
  * pick the layout (TemplateResolver), render the Page-JSON blocks (BlockRenderer),
  * apply per-site design tokens (ThemeResolver), wrap in the layout. Takes primitives,
- * not Cms models, so the Theme module stays independent of Cms.
+ * not Cms models, so the Theme module stays independent of Cms. The <title>, the description and
+ * the meta robots follow the site's search settings (SiteSeo): head().
  */
 final readonly class PageRenderer
 {
@@ -23,11 +26,12 @@ final readonly class PageRenderer
         private ThemeResolver $theme,
         private MediaUrlResolver $media,
         private VideoFacades $videos,
+        private SiteSeo $seo,
     ) {}
 
     /**
      * @param  array<string, mixed>  $body  the Page-JSON body
-     * @param  array{title?: string|null, description?: string|null}  $seo
+     * @param  array{title?: string|null, description?: string|null, home?: bool}  $seo  `home`: the site's home page
      * @param  string|null  $categoryTemplate  per-category layout name (override → category → type)
      * @param  array<string, mixed>  $extra  extra layout vars (e.g. a post's category breadcrumb)
      */
@@ -49,15 +53,39 @@ final readonly class PageRenderer
         // or deleted video renders the plain hero, with no script).
         $extra += $bgVideo ? ['bgVideoScript' => true] : [];
 
-        return $this->views->make($layout, [
+        return $this->views->make($layout, $this->head($seo, $title, $extra) + [
             'title' => $title,
-            'seoTitle' => $seo['title'] ?? $title,
-            'seoDescription' => $seo['description'] ?? null,
             'tokens' => $tokens,
             'sections' => $sections,
             // A page_header band leading the page renders the h1 itself; the layout then skips its own.
             'leadBlock' => $leadBlock,
         ] + $extra)->render();
+    }
+
+    /**
+     * The head's search lines for a page (SiteSeo): the <title> (its own Google title, the site's
+     * default title on the home page, else the title template), the description (its own, else the
+     * site's default in the page's language; the head falls back to the brand description), and
+     * `noindex, nofollow` on every page while the site is hidden from search engines (over any
+     * robots line the page asked for). The page's language and the site's name come from the
+     * chrome the controller already resolved: no query here.
+     *
+     * @param  array{title?: string|null, description?: string|null, home?: bool}  $seo
+     * @param  array<string, mixed>  $extra
+     * @return array{seoTitle: string, seoDescription: string|null, robots?: string}
+     */
+    private function head(array $seo, string $title, array $extra): array
+    {
+        $locale = Cast::string($extra['lang'] ?? null, app()->getLocale());
+        $head = [
+            'seoTitle' => $this->seo->title($seo['title'] ?? null, $title, $seo['home'] ?? false, $locale, Cast::string(data_get($extra, 'brand.name'))),
+            'seoDescription' => $this->seo->description($seo['description'] ?? null, $locale),
+        ];
+        if (! $this->seo->indexable()) {
+            $head['robots'] = SiteSeo::HIDDEN;
+        }
+
+        return $head;
     }
 
     /**
@@ -189,10 +217,8 @@ final readonly class PageRenderer
         /** @var view-string $layout a theme layout name (TemplateResolver) */
         $layout = $this->templates->layoutFor('category', null, $listTemplate);
 
-        return $this->views->make($layout, [
+        return $this->views->make($layout, $this->head($seo, $title, $extra) + [
             'title' => $title,
-            'seoTitle' => $seo['title'] ?? $title,
-            'seoDescription' => $seo['description'] ?? null,
             'tokens' => $this->theme->cssVariables(),
             'posts' => $posts,
             'pagination' => $pagination,
@@ -216,10 +242,8 @@ final readonly class PageRenderer
         // Videos stored in the description render as the click-to-load façade (VideoFacades).
         ['html' => $descriptionHtml, 'videos' => $videos] = $this->videos->render($descriptionHtml);
 
-        return $this->views->make($layout, [
+        return $this->views->make($layout, $this->head($seo, $name, $extra) + [
             'title' => $name,
-            'seoTitle' => $seo['title'] ?? $name,
-            'seoDescription' => $seo['description'] ?? null,
             'tokens' => $this->theme->cssVariables(),
             'description' => $descriptionHtml,
             'images' => $images,

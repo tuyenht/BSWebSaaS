@@ -226,7 +226,7 @@ final readonly class StorefrontController
             $entry->template_override,
             $content->translation->title,
             $content->translation->body,
-            self::entrySeo($content->translation),
+            self::entrySeo($content->translation) + ['home' => $path === '/'],
             $categoryTemplate,
             $extra,
         );
@@ -387,7 +387,7 @@ final readonly class StorefrontController
             $resolved->translation->name,
             $titles,
             $this->lists->links(request()->url(), $position, $more, $lastUlid),
-            ['title' => $resolved->translation->name],
+            [],   // a category has no Google title of its own: its name, through the site's title template
             $extra,
         );
 
@@ -549,9 +549,10 @@ final readonly class StorefrontController
     }
 
     /**
-     * What a post or page tells search engines and link previews: its own Google title, else the
-     * page title (PageRenderer); its own Google description, else its short excerpt, else nothing,
-     * so the head falls back to the brand description. A blank value counts as none.
+     * What a post or page tells search engines and link previews: its own Google title, else what
+     * the site's search settings make of the page title (PageRenderer); its own Google description,
+     * else its short excerpt, else nothing, so the head falls back to the site's default description
+     * and then the brand description. A blank value counts as none.
      *
      * @return array{title: string|null, description: string|null}
      */

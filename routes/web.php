@@ -32,6 +32,7 @@ use App\Modules\Admin\Livewire\Platform\Sites\Index as SiteIndex;
 use App\Modules\Admin\Livewire\Platform\Tenants\Detail;
 use App\Modules\Admin\Livewire\Platform\Tenants\Index;
 use App\Modules\Admin\Livewire\ResetPassword;
+use App\Modules\Admin\Livewire\SeoSettings;
 use App\Modules\Admin\Livewire\Settings;
 use App\Modules\Admin\Livewire\Settings\Domains as DomainSettings;
 use App\Modules\Admin\Livewire\SocialSettings;
@@ -49,6 +50,7 @@ use App\Modules\Storefront\Http\Controllers\StorefrontController;
 use App\Modules\Tenancy\Http\Controllers\CaddyAskController;
 use App\Modules\Tenancy\Http\Middleware\ServeOnPrimaryDomain;
 use App\Modules\Tenancy\Http\Middleware\SetCurrentSite;
+use App\Modules\Theme\Theming\SiteSeo;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -206,6 +208,7 @@ Route::prefix(config('admin.prefix', 'admin'))
         // The Livewire components ALSO guard in boot() because the livewire/update endpoint
         // does not pass through this route middleware.
         Route::get('/settings/general', GeneralSettings::class)->middleware('can:settings.manage')->name('admin.settings.general');
+        Route::get('/settings/seo', SeoSettings::class)->middleware('can:settings.manage')->name('admin.settings.seo');
         Route::get('/settings/email', EmailSettings::class)->middleware('can:settings.manage')->name('admin.settings.email');
         Route::get('/settings/social', SocialSettings::class)->middleware('can:settings.manage')->name('admin.settings.social');
         Route::get('/settings/appearance', AppearanceSettings::class)->middleware('can:settings.manage')->name('admin.settings.appearance');
@@ -318,10 +321,13 @@ Route::get('/sitemap-{page}.xml', [SitemapController::class, 'page'])
     ->where('page', '[1-9][0-9]{0,5}')
     ->middleware([ServeOnPrimaryDomain::class, SetCurrentSite::class, 'site.active']);
 
-Route::get('/robots.txt', function (Request $request) {
+// The body follows the site's search settings (SiteSeo): hidden from Google = everything
+// disallowed; otherwise the custom text or the safe default, with the Sitemap: line while the
+// sitemap is served. Plain text, never sniffed as anything else.
+Route::get('/robots.txt', function (Request $request, SiteSeo $seo) {
     $sitemap = $request->getScheme().'://'.$request->getHost().'/sitemap.xml';
 
-    return response("User-agent: *\nDisallow:\nSitemap: {$sitemap}", 200, ['Content-Type' => 'text/plain']);
+    return response($seo->robotsTxt($sitemap), 200, ['Content-Type' => 'text/plain; charset=utf-8', 'X-Content-Type-Options' => 'nosniff']);
 })->middleware([ServeOnPrimaryDomain::class, SetCurrentSite::class, 'site.active']);
 
 // ── Storefront plane — public, tenant context. A fallback so it never shadows a

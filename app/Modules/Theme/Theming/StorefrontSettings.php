@@ -8,9 +8,10 @@ use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Models\SiteSetting;
 
 /**
- * The site settings a storefront page reads — the `theme` group (design tokens) and the
- * `storefront` group (header, footer) — loaded in ONE query and memoized per site for the
- * request, so the tokens, the header and the footer share a single read. Registered scoped
+ * The site settings a storefront page reads — the `theme` group (design tokens), the
+ * `storefront` group (header, footer) and the `seo` group (SiteSeo) — loaded in ONE query and
+ * memoized per site for the request, so the tokens, the header, the footer and the page's search
+ * settings share a single read. Registered scoped
  * (ThemeServiceProvider), so the memo is flushed between Octane requests; it is keyed by site
  * as well, and dropped whenever a setting is saved, so a write in the same request is seen.
  * No site context → no query, no values.
@@ -18,7 +19,7 @@ use App\Modules\Tenancy\Models\SiteSetting;
 final class StorefrontSettings
 {
     /** @var list<string> */
-    private const array GROUPS = ['theme', 'storefront'];
+    private const array GROUPS = ['theme', 'storefront', 'seo'];
 
     /** @var array<int, array<string, array<string, mixed>>> site id → group → key → value */
     private array $memo = [];

@@ -39,10 +39,11 @@ document.addEventListener('alpine:init', () => {
             writeOpen(this.open);
         },
 
+        // A field's value by its Livewire name; $get also reads a dotted path (i18n.vi.title).
         value(key) {
             const model = config.models[key];
 
-            return model ? String(this.$wire[model] ?? '') : '';
+            return model ? String(this.$wire.$get(model) ?? '') : '';
         },
 
         // The band of a length (empty · short · near · good · long · over), its plain words and the
@@ -110,9 +111,10 @@ document.addEventListener('alpine:init', () => {
         // The public address as publishing will compose it: the server sends everything before the
         // slug (primary domain, language prefix, category or base path) and the slug ends it here.
         // Read from the component ($wire.address), not the first render: picking another category
-        // changes the part before the slug on the server.
+        // changes the part before the slug on the server. A screen without that property keeps the
+        // address it was rendered with.
         get previewAddress() {
-            const address = this.$wire.address ?? config.address;
+            const address = this.$wire.$get('address') ?? config.address;
             const slug = this.value('slug').trim().replace(/^\/+|\/+$/g, '');
             if (address.home !== null && slug === address.homeSlug) {
                 return address.home;

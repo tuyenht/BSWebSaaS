@@ -6,6 +6,7 @@ use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SectionComponent;
 use App\Modules\Theme\Components\SectionProps;
+use App\Modules\Theme\Theming\SiteSeo;
 use App\Modules\Theme\Theming\StorefrontSettings;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -220,6 +221,7 @@ final class ThemeServiceProvider extends ServiceProvider
 
         // Per request (Octane-safe): one settings read shared by the tokens, header and footer.
         $this->app->scoped(StorefrontSettings::class);
+        $this->app->scoped(SiteSeo::class);
     }
 
     public function boot(): void
@@ -228,9 +230,13 @@ final class ThemeServiceProvider extends ServiceProvider
 
         // A setting written in this request is read fresh by the next render in it.
         // app(), not $this->app: under Octane each request runs in a clone of the booted app.
-        $forget = function (): void {
+        // The search settings are also kept in the shared cache (SiteSeo): a write drops that copy.
+        $forget = function (SiteSetting $setting): void {
             if (app()->resolved(StorefrontSettings::class)) {
                 app(StorefrontSettings::class)->forget();
+            }
+            if ($setting->group_name === 'seo') {
+                app(SiteSeo::class)->forget((int) $setting->site_id);
             }
         };
         SiteSetting::saved($forget);

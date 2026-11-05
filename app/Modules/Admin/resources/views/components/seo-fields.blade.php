@@ -28,27 +28,11 @@
     $limits = SeoFields::LIMITS;
     $excerptLimits = $limits['excerpt'];
     $cardFields = array_values(array_filter([$titleModel, $descriptionModel]));
-    $config = [
-        'open' => $errors->hasAny($cardFields),
-        'limits' => $limits,
-        'models' => ['excerpt' => $excerpt, 'title' => $titleModel, 'description' => $descriptionModel, 'pageTitle' => $pageTitleModel, 'slug' => $slugModel],
-        'address' => $address,
-        'words' => [
-            'empty' => __('admin.seo.meter_empty'),
-            'count' => __('admin.seo.meter_count'),
-            'countNote' => __('admin.seo.meter_count_note'),
-            'over' => __('admin.seo.meter_over'),
-            'notes' => ['short' => __('admin.seo.note_short'), 'near' => __('admin.seo.note_near'), 'good' => __('admin.seo.note_good'), 'over' => __('admin.seo.note_over')],
-            'cut' => [
-                'excerpt' => __('admin.seo.cut_excerpt'),
-                'seoTitle' => __('admin.seo.cut_title'),
-                'seoDesc' => __('admin.seo.cut_description', ['display' => $limits['seoDesc']['display']]),
-            ],
-            'emptyTitle' => __('admin.seo.preview_title_empty'),
-            'emptyDescription' => __('admin.seo.preview_description_empty'),
-            'emptySlug' => __('admin.seo.preview_slug_empty'),
-        ],
-    ];
+    $config = SeoFields::clientConfig(
+        ['excerpt' => $excerpt, 'title' => $titleModel, 'description' => $descriptionModel, 'pageTitle' => $pageTitleModel, 'slug' => $slugModel],
+        $address,
+        $errors->hasAny($cardFields),
+    );
     $bandIcons = ['empty' => 'ri-edit', 'short' => 'ri-arrow-up', 'near' => 'ri-arrow-right-up', 'good' => 'ri-check', 'long' => 'ri-error-warning', 'over' => 'ri-close-circle'];
     // `field` (the shared size) is written on each control itself, so the size check sees it.
     $field = 'block w-full rounded-md border border-border-input bg-surface-muted px-3 text-text placeholder:text-placeholder transition-colors focus:border-primary-text aria-invalid:border-danger-text';
@@ -152,19 +136,7 @@
                 @error($descriptionModel) <p id="{{ $id }}-description-e" class="{{ $error }}" x-init="open = true">{{ $message }}</p> @enderror
             </div>
 
-            <div>
-                <h3 class="mb-2 text-caption font-semibold tracking-wide text-text-muted uppercase">{{ __('admin.seo.preview_heading') }}</h3>
-                <div role="group" aria-label="{{ __('admin.seo.preview_label') }}" class="rounded-md border border-border bg-surface-muted px-3.5 py-3" lang="{{ $locale }}">
-                    <div class="mb-1 flex min-w-0 items-center gap-2">
-                        <span class="inline-flex size-[1.375rem] shrink-0 items-center justify-center rounded-full border border-border bg-bg">
-                            <x-bs-admin::icon name="ri-global" class="size-(--icon-sm) text-text-muted" />
-                        </span>
-                        <span class="min-w-0 text-caption text-text-muted [overflow-wrap:anywhere]" x-text="previewAddress">{{ $address['base'] }}</span>
-                    </div>
-                    <p class="mb-1 text-lead leading-snug text-primary-text [overflow-wrap:anywhere]"><span x-text="previewTitle[0]"></span><span x-show="previewTitle[1] !== ''" x-cloak><span class="seo-cut">{{ __('admin.seo.cut_mark') }}</span><span class="seo-over" x-text="previewTitle[1]"></span></span></p>
-                    <p class="text-small text-text [overflow-wrap:anywhere]"><span x-text="previewDescription[0]"></span><span x-show="previewDescription[1] !== ''" x-cloak><span class="seo-cut">{{ __('admin.seo.cut_mark') }}</span><span class="seo-over" x-text="previewDescription[1]"></span></span></p>
-                </div>
-            </div>
+            <x-bs-admin::seo-preview :address="$address['base']" :locale="$locale" />
         </div>
     </section>
 </div>

@@ -6,6 +6,7 @@ namespace App\Modules\Storefront\Http\Controllers;
 
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Storefront\Support\SitemapRoutes;
+use App\Modules\Theme\Theming\SiteSeo;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -24,6 +25,9 @@ use Symfony\Component\HttpFoundation\Response;
  * This request is its own hot path — queries here are not subject to the per-page hot-path
  * Query Budget, but N+1 is still avoided: one query per file, the checks being correlated
  * subqueries rather than id lists loaded into PHP.
+ *
+ * A site whose search settings hide it from Google, or turn the sitemap off, has none: every
+ * sitemap address answers 404 (SiteSeo, read without a new query).
  */
 final readonly class SitemapController
 {
@@ -32,10 +36,12 @@ final readonly class SitemapController
     public function __construct(
         private PathBuilder $paths,
         private SitemapRoutes $routes,
+        private SiteSeo $seo,
     ) {}
 
     public function __invoke(Request $request): Response
     {
+        abort_unless($this->seo->sitemapOn(), 404);
         $max = $this->routes->maxUrls();
         $plan = $this->routes->cachedPlan();
 
@@ -68,6 +74,7 @@ final readonly class SitemapController
 
     public function page(Request $request, string $page): Response
     {
+        abort_unless($this->seo->sitemapOn(), 404);
         $plan = $this->routes->plan();
         $n = (int) $page;
 

@@ -42,6 +42,43 @@ final class SeoFields
     }
 
     /**
+     * What the browser half of the part needs (Alpine.data 'bsSeoFields', admin-seo-fields.js): the
+     * limits, the Livewire names of the fields it reads (a dotted path such as `i18n.vi.title` works),
+     * the preview's address and the words of its meters and empty states. `$words` replaces some of
+     * them for a screen that previews something else (the site's home page in the settings).
+     *
+     * @param  array{excerpt?: string|null, title: string|null, description: string|null, pageTitle?: string|null, slug?: string|null}  $models
+     * @param  array{base: string, home: string|null, homeSlug: string}  $address
+     * @param  array<string, string>  $words
+     * @return array<string, mixed>
+     */
+    public static function clientConfig(array $models, array $address, bool $open = false, array $words = []): array
+    {
+        return [
+            'open' => $open,
+            'limits' => self::LIMITS,
+            'models' => ['excerpt' => $models['excerpt'] ?? null, 'title' => $models['title'], 'description' => $models['description'],
+                'pageTitle' => $models['pageTitle'] ?? null, 'slug' => $models['slug'] ?? null],
+            'address' => $address,
+            'words' => $words + [
+                'empty' => __('admin.seo.meter_empty'),
+                'count' => __('admin.seo.meter_count'),
+                'countNote' => __('admin.seo.meter_count_note'),
+                'over' => __('admin.seo.meter_over'),
+                'notes' => ['short' => __('admin.seo.note_short'), 'near' => __('admin.seo.note_near'), 'good' => __('admin.seo.note_good'), 'over' => __('admin.seo.note_over')],
+                'cut' => [
+                    'excerpt' => __('admin.seo.cut_excerpt'),
+                    'seoTitle' => __('admin.seo.cut_title'),
+                    'seoDesc' => __('admin.seo.cut_description', ['display' => self::LIMITS['seoDesc']['display']]),
+                ],
+                'emptyTitle' => __('admin.seo.preview_title_empty'),
+                'emptyDescription' => __('admin.seo.preview_description_empty'),
+                'emptySlug' => __('admin.seo.preview_slug_empty'),
+            ],
+        ];
+    }
+
+    /**
      * A Google title or description as one line: invisible format characters (zero-width spaces,
      * right-to-left overrides) are removed, every run of line breaks, tabs, other control characters
      * and spaces becomes one space, and the ends are trimmed. Google shows these fields on one line,

@@ -22,6 +22,7 @@
  */
 
 use App\Modules\Admin\Livewire\Platform\Audit\CleanupDialog;
+use App\Modules\Admin\Livewire\SeoSettings;
 use App\Modules\Admin\Livewire\Settings\Domains as DomainSettings;
 use App\Modules\Admin\Livewire\WorkflowSettings;
 use App\Modules\Audit\Models\AuditLog;
@@ -213,6 +214,22 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('Tên pháp lý đầy đủ (theo giấy phép)', 'wire:model.live.blur="form.legalName"');   // the values ride in the Livewire snapshot
     file_put_contents($dir.'/general.html', $html);
 
+    // "Hiện trên Google & mạng xã hội" with long default texts and a custom robots.txt (the Google
+    // preview shows where it cuts), and again with the "hide from Google" question open.
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'seo', 'key' => 'config'], ['value' => [
+        'titles' => ['vi' => 'Công ty Demo — gia công cơ khí chính xác CNC 5 trục cho ngành ô tô, điện tử và khuôn mẫu'],
+        'descriptions' => ['vi' => 'Gia công CNC 5 trục, tiện, phay, mài chính xác đến 0,005 mm cho khách hàng trong nước và xuất khẩu sang Nhật Bản, Hàn Quốc, châu Âu. Giao hàng đúng hẹn, báo giá trong 24 giờ.'],
+        'template' => '%tieu-de% | %ten-website%', 'robots' => "User-agent: *\nDisallow: /gio-hang\nDisallow: /tim-kiem",
+    ]]));
+    $this->flushSession();
+    $page = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/seo')->assertOk()->getContent();
+    expect($page)->toContain('wire:model.live.blur="form.template"', 'bsSeoFields(');
+    file_put_contents($dir.'/seo.html', $page);
+    $open = app(Tenancy::class)->enter(1, fn (): string => Livewire::actingAs($owner)->test(SeoSettings::class)
+        ->call('toggleIndexable')->assertSet('confirmHide', true)->html());
+    expect($open)->toContain('role="alertdialog"', 'Google sẽ gỡ website');
+    file_put_contents($dir.'/seo-hide.html', str_replace('</body>', $open.'</body>', $page));
+
     // The post editor with its short description and Google title and description filled, long
     // enough that the meters show their bands and the Google preview shows where it cuts the text.
     $post = app(Tenancy::class)->enter(1, function () use ($owner): Entry {
@@ -244,5 +261,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('data-seo-fields')->not->toContain('wire:model="excerpt"');
     file_put_contents($dir.'/product-editor.html', $html);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 13);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 15);
 });
