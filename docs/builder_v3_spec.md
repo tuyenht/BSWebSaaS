@@ -37,6 +37,11 @@ per‑site** — KHÔNG chạy code khách, exportable, an toàn, đa‑locale.
   từ schema (text→input, textarea→textarea, url→input+scheme‑guard, image→MediaPicker, list→repeater, int→number,
   html→rich mini‑editor).
 - Thêm block mới = **[COUNCIL]** đăng ký component + §E7 + Blade partial + phủ ValidPageJson + test.
+- **Nút bấm (06/11/2026):** prop `url` có cờ `action` (= prop nhãn của nút) là liên kết của một nút. Giá trị có kiểu
+  nằm ở `<prop>_do` = `{k, …}`, `k` ∈ `page` (ulid của trang/bài, đường dẫn lấy lúc render qua PathBuilder) · `url`
+  (http/https + `blank`) · `anchor` · `tel` · `zalo` · `mail` (+ `subject`) · `file` (storage key tài liệu của thư viện).
+  `ButtonLink` kiểm khi ghi (trong ValidPageJson) và resolve khi render; giá trị không resolve được → không vẽ liên kết.
+  Chuỗi URL cũ trong chính prop vẫn chạy; khi sửa nút, editor ghi `_do` và xoá chuỗi cũ.
 
 ## 3. Block `richtext_html` [COUNCIL] — mảnh enabling "một body/hai editor"
 - prop `html` = rich HTML, **sanitize‑khi‑ghi** bằng `RichTextSanitizer` (tái dùng profile của product description).

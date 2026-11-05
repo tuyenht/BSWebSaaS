@@ -6,6 +6,7 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Theme\Components\ButtonLink;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SchemaHtml;
 use App\Modules\Theme\Components\SchemaImages;
@@ -19,7 +20,8 @@ use Illuminate\Database\Eloquent\Builder;
  *
  * Reconciled on save: collects every media_id referenced by an image or video prop (the hero's
  * background video counts as used like a picture), or by a library picture
- * (`img[data-media-id]`) inside a formatted-text (`html`) prop, across ALL locale bodies, keeps those
+ * (`img[data-media-id]`) inside a formatted-text (`html`) prop, or by a "Tải tệp" button (its library
+ * file named by storage key, ButtonLink), across ALL locale bodies, keeps those
  * that name this site's media, then prunes the entry's content rows and adds the missing
  * ones. It runs inside the request transaction (the save), so the usage index never drifts from the
  * content. Lives in Cms, which already depends on Media and Theme, so every Cms write path that changes
@@ -31,7 +33,8 @@ final readonly class EntryBlockMediaReconciler
 
     public function reconcile(Entry $entry): void
     {
-        $mediaIds = $this->visibleMediaIds($this->blockMediaIds($entry));
+        [$ids, $keys] = $this->blockMedia($entry);
+        $mediaIds = $this->visibleMediaIds($ids, $keys);
 
         $rows = fn (): Builder => Mediable::query()
             ->where('mediable_type', 'entry')
@@ -72,20 +75,24 @@ final readonly class EntryBlockMediaReconciler
      * skipped alike. One query (RLS + the site scope).
      *
      * @param  list<int>  $ids
+     * @param  list<string>  $keys  storage keys (a button's file)
      * @return list<int>
      */
-    private function visibleMediaIds(array $ids): array
+    private function visibleMediaIds(array $ids, array $keys = []): array
     {
-        if ($ids === []) {
+        if ($ids === [] && $keys === []) {
             return [];
         }
 
         $visible = [];
-        foreach (Media::withTrashed()->whereIn('id', $ids)->pluck('id') as $id) {
+        $found = Media::withTrashed()
+            ->where(fn (Builder $query) => $query->whereIn('id', $ids)->orWhereIn('storage_key', $keys))
+            ->pluck('id');
+        foreach ($found as $id) {
             $visible[] = Cast::int($id);
         }
 
-        return $visible;
+        return array_values(array_unique($visible));
     }
 
     /**
@@ -93,11 +100,12 @@ final readonly class EntryBlockMediaReconciler
      * by a library picture inside an html prop — so a picture used only inside formatted text still
      * counts as used (the library's "where used" list and its delete warning).
      *
-     * @return list<int>
+     * @return array{0: list<int>, 1: list<string>} media ids, and the storage keys button files name
      */
-    private function blockMediaIds(Entry $entry): array
+    private function blockMedia(Entry $entry): array
     {
         $ids = [];
+        $keys = [];
         foreach ($entry->translations()->get() as $translation) {
             $blocks = is_array($translation->body['blocks'] ?? null) ? $translation->body['blocks'] : [];
             foreach ($blocks as $block) {
@@ -112,10 +120,11 @@ final readonly class EntryBlockMediaReconciler
                     foreach (SchemaHtml::values($props, $schema) as $html) {
                         $ids = array_merge($ids, RichHtml::imageIds($html));
                     }
+                    $keys = array_merge($keys, ButtonLink::refs($props, $schema)['files']);
                 }
             }
         }
 
-        return array_values(array_unique($ids));
+        return [array_values(array_unique($ids)), array_values(array_unique($keys))];
     }
 }

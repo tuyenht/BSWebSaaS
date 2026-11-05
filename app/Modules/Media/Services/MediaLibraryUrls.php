@@ -85,6 +85,31 @@ final readonly class MediaLibraryUrls
     }
 
     /**
+     * Storage key => the file's own address, for the keys that name a file of this site (not in the
+     * Trash) whose type is one of $mimes — what a "Tải tệp" block button links to. One query; an
+     * unknown, foreign or trashed key resolves to nothing.
+     *
+     * @param  list<string>  $keys
+     * @param  list<string>  $mimes
+     * @return array<string, string>
+     */
+    public function fileUrls(array $keys, array $mimes): array
+    {
+        if ($keys === []) {
+            return [];
+        }
+
+        $urls = [];
+        foreach (Media::query()->whereIn('storage_key', $keys)->whereIn('mime', $mimes)->pluck('storage_key') as $key) {
+            if (is_string($key)) {
+                $urls[$key] = $this->resolver->fileUrl($key);
+            }
+        }
+
+        return $urls;
+    }
+
+    /**
      * The alt text for the current locale, else the site's default locale, else ''.
      *
      * @param  array<string, string>  $alt  per-locale alt texts of one picture

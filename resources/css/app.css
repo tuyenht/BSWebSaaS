@@ -721,3 +721,270 @@ button:not(:disabled) {
     gap: 0.25rem;
 }
 
+
+/* The editor's "Khi bấm nút" control for a block button: the current kind in one button that opens
+   the list of kinds, then the field of that kind (page card or search, address, part, number,
+   email, file). Long names and addresses wrap, never clipped. */
+.btn-act {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 0;
+}
+.btn-act__title,
+.btn-act__lbl {
+    font-size: var(--text-caption);
+    font-weight: 600;
+    color: var(--color-text-muted);
+}
+.btn-act__cur {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    width: 100%;
+    min-height: var(--spacing-control);
+    padding: 0.375rem 0.75rem;
+    border: 1px solid var(--color-border-input);
+    border-radius: 0.375rem;
+    background: var(--color-surface);
+    font-size: calc(0.8125rem + var(--user-text-boost));
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--color-text-strong);
+    text-align: start;
+    cursor: pointer;
+}
+.btn-act__cur:hover {
+    border-color: var(--color-primary-text);
+}
+.btn-act__glyph,
+.btn-act__ck {
+    flex-shrink: 0;
+    width: calc(1.125rem + var(--user-text-boost) * 0.5);
+    height: calc(1.125rem + var(--user-text-boost) * 0.5);
+    color: var(--color-primary-text);
+}
+.btn-act__ct,
+.btn-act__kt {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.btn-act__kt {
+    display: flex;
+    flex-direction: column;
+    gap: 0.0625rem;
+}
+.btn-act__chg {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.125rem;
+    font-weight: 500;
+    color: var(--color-primary-text);
+}
+.btn-act__chg-ic,
+.btn-act__btn-ic,
+.btn-act__err-ic,
+.btn-act__mig-ic,
+.btn-act__empty-ic {
+    flex-shrink: 0;
+    width: calc(1rem + var(--user-text-boost) * 0.5);
+    height: calc(1rem + var(--user-text-boost) * 0.5);
+}
+.btn-act__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    padding: 0.25rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    background: var(--color-surface);
+}
+.btn-act__mi {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+    width: 100%;
+    min-height: var(--spacing-menu-row);
+    padding: 0.5rem 0.625rem;
+    border-radius: 0.25rem;
+    font-size: calc(0.8125rem + var(--user-text-boost));
+    line-height: 1.4;
+    color: var(--color-text-strong);
+    text-align: start;
+    cursor: pointer;
+}
+.btn-act__mi:hover {
+    background: var(--color-surface-hover);
+}
+.btn-act__mi[aria-checked='true'] {
+    background: color-mix(in srgb, var(--color-primary-text) 8%, var(--color-surface));
+    font-weight: 600;
+}
+.btn-act__mi > .btn-act__glyph {
+    margin-top: 0.0625rem;
+}
+.btn-act__meta {
+    font-size: var(--text-caption);
+    font-weight: 400;
+    line-height: 1.4;
+    color: var(--color-text-muted);
+}
+.btn-act__name {
+    font-size: calc(0.8125rem + var(--user-text-boost));
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--color-text-strong);
+}
+.btn-act__card {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5625rem;
+    background: var(--color-surface-muted);
+}
+.btn-act__ic {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.375rem;
+    background: color-mix(in srgb, var(--color-primary-text) 10%, var(--color-surface));
+    color: var(--color-primary-text);
+}
+.btn-act__ic-glyph {
+    width: calc(1.25rem + var(--user-text-boost) * 0.5);
+    height: calc(1.25rem + var(--user-text-boost) * 0.5);
+}
+.btn-act__hint {
+    margin: 0;
+    font-size: var(--text-caption);
+    line-height: 1.5;
+    color: var(--color-text-muted);
+}
+.btn-act__mig {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.375rem;
+}
+.btn-act__mig-ic {
+    margin-top: 0.125rem;
+    color: var(--color-primary-text);
+}
+.btn-act__err {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.25rem;
+    margin: 0;
+    font-size: var(--text-caption);
+    font-weight: 600;
+    line-height: 1.45;
+    color: var(--color-danger-text);
+}
+.btn-act__err-ic {
+    margin-top: 0.0625rem;
+}
+.btn-act__in--bad {
+    border-color: var(--color-danger-text);
+}
+.btn-act__row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.btn-act__empty {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border: 2px dashed var(--color-border-input);
+    border-radius: 0.5625rem;
+    font-size: var(--text-caption);
+    line-height: 1.45;
+    color: var(--color-text-muted);
+}
+.btn-act__empty b {
+    color: var(--color-text);
+}
+.btn-act__tgt {
+    font-size: calc(0.8125rem + var(--user-text-boost));
+    color: var(--color-text);
+}
+.btn-act__cur:focus-visible,
+.btn-act__mi:focus-visible,
+.btn-act__doc:focus-visible {
+    outline: 3px solid var(--color-primary-text);
+    outline-offset: 2px;
+}
+@media (any-pointer: coarse) {
+    .btn-act__cur,
+    .btn-act__mi {
+        min-height: var(--spacing-hit);
+    }
+}
+
+/* The file dialog: one row per document of the library, the current one marked. */
+.btn-act__docs {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.btn-act__doc {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: var(--spacing-menu-row);
+    padding: 0.5rem;
+    border: 1px solid var(--color-border-input);
+    border-radius: 0.625rem;
+    background: var(--color-surface);
+    text-align: start;
+    cursor: pointer;
+}
+.btn-act__doc:hover {
+    background: var(--color-surface-hover);
+}
+.btn-act__doc[aria-pressed='true'] {
+    border-color: var(--color-primary-text);
+    box-shadow: inset 0 0 0 1px var(--color-primary-text);
+    background: color-mix(in srgb, var(--color-primary-text) 6%, var(--color-surface));
+}
+.btn-act__doc-cur {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.25rem;
+    font-size: var(--text-caption);
+    font-weight: 600;
+    color: var(--color-primary-text);
+}
+.btn-act__lib {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: var(--spacing-control);
+    font-weight: 600;
+    color: var(--color-primary-text);
+    text-decoration: underline;
+    text-underline-offset: 0.1875rem;
+    overflow-wrap: anywhere;
+}
+.btn-act__docs-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.375rem;
+    padding: 1rem;
+    border: 2px dashed var(--color-border-input);
+    border-radius: 0.625rem;
+    font-size: calc(0.8125rem + var(--user-text-boost));
+    line-height: 1.5;
+    color: var(--color-text);
+}

@@ -22,7 +22,8 @@ final class ThemeServiceProvider extends ServiceProvider
     /**
      * Static, content-only components shipped by the theme, each with its §E7 prop
      * schema (typed props → drives the editor, repeater, defaults and validation).
-     * The keys are the section types; adding one here extends render + edit + validate.
+     * The keys are the section types; adding one here extends render + edit + validate. A url prop
+     * with `action` is a button link (ButtonLink): its value names the prop holding the button's label.
      *
      * @var array<string, array<string, array<string, mixed>>>
      */
@@ -35,9 +36,9 @@ final class ThemeServiceProvider extends ServiceProvider
             // is then its poster. Played muted and looped, only when the visitor's settings allow it.
             'bg_video' => ['type' => 'video'],
             'cta_label' => ['type' => 'text'],
-            'cta_url' => ['type' => 'url'],
+            'cta_url' => ['type' => 'url', 'action' => 'cta_label'],
             'cta2_label' => ['type' => 'text'],
-            'cta2_url' => ['type' => 'url'],
+            'cta2_url' => ['type' => 'url', 'action' => 'cta2_label'],
         ],
         'richtext' => [
             'heading' => ['type' => 'text'],
@@ -59,20 +60,20 @@ final class ThemeServiceProvider extends ServiceProvider
             'paragraphs' => ['type' => 'list', 'of' => ['type' => 'textarea']],
             'image_url' => ['type' => 'image'],
             'cta_label' => ['type' => 'text'],
-            'cta_url' => ['type' => 'url'],
+            'cta_url' => ['type' => 'url', 'action' => 'cta_label'],
         ],
         'partners' => [
             'heading' => ['type' => 'text'],
             'logos' => ['type' => 'list', 'of' => [
                 'image_url' => ['type' => 'image'],
                 'name' => ['type' => 'text'],
-                'url' => ['type' => 'url'],
+                'url' => ['type' => 'url', 'action' => 'name'],
             ]],
         ],
         'cta' => [
             'heading' => ['type' => 'text'],
             'button_label' => ['type' => 'text'],
-            'button_url' => ['type' => 'url'],
+            'button_url' => ['type' => 'url', 'action' => 'button_label'],
             'text' => ['type' => 'textarea'],
             'variant' => ['type' => 'enum', 'options' => SectionProps::CTA_VARIANTS, 'default' => 'default'],
         ],
@@ -106,9 +107,9 @@ final class ThemeServiceProvider extends ServiceProvider
                 'subheading' => ['type' => 'textarea'],
             ]],
             'cta_label' => ['type' => 'text'],
-            'cta_url' => ['type' => 'url'],
+            'cta_url' => ['type' => 'url', 'action' => 'cta_label'],
             'cta2_label' => ['type' => 'text'],
-            'cta2_url' => ['type' => 'url'],
+            'cta2_url' => ['type' => 'url', 'action' => 'cta2_label'],
             'autoplay' => ['type' => 'int', 'default' => 0],
             'overlay' => ['type' => 'int', 'default' => 60],
         ],
@@ -128,7 +129,7 @@ final class ThemeServiceProvider extends ServiceProvider
             'items' => ['type' => 'list', 'max' => SectionProps::MAX_ITEMS, 'of' => [
                 'icon' => ['type' => 'enum', 'options' => SectionProps::QUICK_LINK_ICONS, 'default' => 'link'],
                 'label' => ['type' => 'text'],
-                'url' => ['type' => 'url'],
+                'url' => ['type' => 'url', 'action' => 'label'],
             ]],
             'variant' => ['type' => 'enum', 'options' => SectionProps::QUICK_LINK_VARIANTS, 'default' => 'grid-2x2'],
         ],
@@ -183,7 +184,7 @@ final class ThemeServiceProvider extends ServiceProvider
                 'unit' => ['type' => 'text'],
                 'features' => ['type' => 'textarea', 'max_lines' => SectionProps::MAX_ITEMS],
                 'cta_label' => ['type' => 'text'],
-                'cta_url' => ['type' => 'url'],
+                'cta_url' => ['type' => 'url', 'action' => 'cta_label'],
             ]],
         ],
         // value is a whole number counted up on scroll; the suffix ("+", "%") is trimmed to 8 characters at render.

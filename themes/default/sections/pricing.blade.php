@@ -23,7 +23,7 @@
     $price = \App\Modules\Theme\Components\SectionProps::price($item['price'] ?? null);
     $unit = \App\Modules\Theme\Components\SectionProps::text($item, 'unit');
     $features = \App\Modules\Theme\Components\SectionProps::lines($item['features'] ?? null);
-    $href = \App\Modules\Shared\Support\SafeLink::href($item['cta_url'] ?? null);
+    $href = \App\Modules\Theme\Components\ButtonLink::of($item, 'cta_url');
     $label = \App\Modules\Theme\Components\SectionProps::text($item, 'cta_label');
 @endphp
 <li class="sf-plan{{ $featured ? ' sf-plan--featured' : '' }}">
@@ -37,7 +37,7 @@
 </ul>
 @endif
 @if ($href !== null && $label !== '')
-<a class="sf-view-all__link sf-plan__cta{{ $featured ? ' sf-plan__cta--filled' : ' sf-plan__cta--outline' }}" href="{{ $href }}">{{ $label }}</a>
+<a class="sf-view-all__link sf-plan__cta{{ $featured ? ' sf-plan__cta--filled' : ' sf-plan__cta--outline' }}" href="{{ $href['href'] }}"@if ($href['blank']) target="_blank" rel="noopener"@elseif ($href['download']) download=""@endif>{{ $label }}@if ($href['blank'])<span class="sr-only"> {{ __('storefront.new_tab') }}</span>@endif</a>
 @endif
 </li>
 @endforeach

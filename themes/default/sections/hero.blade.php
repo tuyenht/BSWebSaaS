@@ -17,6 +17,8 @@
 --}}
 @php
     $bgVideo = is_array($props['bg_video'] ?? null) ? $props['bg_video'] : null;
+    $cta1 = \App\Modules\Theme\Components\ButtonLink::of($props, 'cta_url');
+    $cta2 = \App\Modules\Theme\Components\ButtonLink::of($props, 'cta2_url');
 @endphp
 <section class="hero{{ $bgVideo !== null ? ' hero--video' : '' }}">
     @if (! empty($props['image_url']))
@@ -38,11 +40,11 @@
         @if (! empty($props['subheading']))
             <p class="hero__subheading">{{ $props['subheading'] }}</p>
         @endif
-        @if (! empty($props['cta_label']))
-            <a class="hero__cta" href="{{ $props['cta_url'] ?? '#' }}">{{ $props['cta_label'] }}</a>
+        @if (! empty($props['cta_label']) && $cta1 !== null)
+            <a class="hero__cta" href="{{ $cta1['href'] }}"@if ($cta1['blank']) target="_blank" rel="noopener"@elseif ($cta1['download']) download=""@endif>{{ $props['cta_label'] }}@if ($cta1['blank'])<span class="sr-only"> {{ __('storefront.new_tab') }}</span>@endif</a>
         @endif
-        @if (! empty($props['cta2_label']))
-            <a class="hero__cta hero__cta--secondary" href="{{ $props['cta2_url'] ?? '#' }}">{{ $props['cta2_label'] }}</a>
+        @if (! empty($props['cta2_label']) && $cta2 !== null)
+            <a class="hero__cta hero__cta--secondary" href="{{ $cta2['href'] }}"@if ($cta2['blank']) target="_blank" rel="noopener"@elseif ($cta2['download']) download=""@endif>{{ $props['cta2_label'] }}@if ($cta2['blank'])<span class="sr-only"> {{ __('storefront.new_tab') }}</span>@endif</a>
         @endif
     </div>
 @if ($bgVideo !== null)

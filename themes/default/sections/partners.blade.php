@@ -10,10 +10,10 @@
                  Item skipped if it has no image. Linked only when it has BOTH a url and a name —
                  the name is the link's accessible text (alt), so a linked logo is never name-less. --}}
             <li class="partners__item">
-                @if (! empty($item['url']) && ! empty($item['name']))
-                    <a class="partners__link" href="{{ $item['url'] }}">
+                @if (($link = \App\Modules\Theme\Components\ButtonLink::of($item, 'url')) !== null && ! empty($item['name']))
+                    <a class="partners__link" href="{{ $link['href'] }}"@if ($link['blank']) target="_blank" rel="noopener"@elseif ($link['download']) download=""@endif>
                         <img class="partners__logo" src="{{ $item['image_url'] }}" alt="{{ $item['name'] ?? '' }}" width="160" height="80" loading="lazy">
-                    </a>
+                    @if ($link['blank'])<span class="sr-only"> {{ __('storefront.new_tab') }}</span>@endif</a>
                 @else
                     <img class="partners__logo" src="{{ $item['image_url'] }}" alt="{{ $item['name'] ?? '' }}" width="160" height="80" loading="lazy">
                 @endif

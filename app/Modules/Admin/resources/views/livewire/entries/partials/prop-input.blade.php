@@ -1,5 +1,11 @@
 {{-- One labelled input for a typed prop (§E7): text | textarea | url | int | image | enum (a choice
-     from `options`, labelled entries.opt_{prop}_{value}). --}}
+     from `options`, labelled entries.opt_{prop}_{value}). A url the schema marks as a button's
+     link draws the button-action control instead. --}}
+@php $buttonView = $fieldType === 'url' ? (($buttons ?? [])[\Illuminate\Support\Str::after($model, 'blocks.')] ?? null) : null; @endphp
+@if ($buttonView !== null)
+    {{-- A block button: what it does when pressed (kind + its value), not a bare address. --}}
+    @include('admin::livewire.entries.partials.button-action', ['button' => $buttonView])
+@else
 <label>{{ $fieldLabel }}
     @switch($fieldType)
         @case('textarea')
@@ -34,3 +40,4 @@
             <input type="text" wire:model="{{ $model }}" class="field">
     @endswitch
 </label>
+@endif
