@@ -56,9 +56,9 @@
         <button type="button" role="menuitem" aria-haspopup="dialog"
                 @click="userOpen = false; $refs.userButton.focus(); $store.adminTheme.open = true"
                 class="flex min-h-menu-row w-full items-center gap-2.5 px-4 py-2 text-body text-text transition-colors hover:bg-surface-hover any-pointer-coarse:min-h-menu-row-touch">
-            <x-bs-admin::icon name="ri-palette" class="size-4 text-body-muted" />
+            <x-bs-admin::icon name="ri-palette" class="size-4 text-text-muted" />
             {{ __('admin.appearance') }}
-            <span class="ms-auto text-caption text-body-muted"
+            <span class="ms-auto text-caption text-text-muted"
                   x-text="$store.adminTheme.state.scheme === 'dark' ? @js(__('admin.theme_dark')) : @js(__('admin.theme_light'))">{{ __('admin.theme_light') }}</span>
         </button>
 
