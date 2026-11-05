@@ -65,6 +65,9 @@ final readonly class SaveMenuItem
                 throw new MenuChangeRejectedException('item_invalid');
             }
             $created = $item === null;
+            if ($created) {
+                $this->ensureRoom($menu->id, 1);
+            }
             $item ??= $this->newItem($menu, $data->parent);
 
             $meta = $item->meta ?? [];

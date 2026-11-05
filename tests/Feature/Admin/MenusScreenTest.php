@@ -5,6 +5,7 @@ use App\Modules\Admin\Support\Menus\MenuScreen;
 use App\Modules\Admin\Support\Menus\MenuSelfCheck;
 use App\Modules\Admin\Support\Menus\MenuSourceSearch;
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Cms\Actions\Menus\ApplyMenuDraft;
 use App\Modules\Cms\Actions\Menus\SaveMenu;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Menu;
@@ -288,5 +289,23 @@ it('is closed to someone who may not manage menus, on the page and on every call
 
     msIn(1, function () use ($member): void {
         Livewire::actingAs($member->fresh())->test(MenusIndex::class)->assertForbidden();
+    });
+});
+
+it('shows a live row whose parent is in the trash at the top level, so the menu can still be saved', function (): void {
+    msIn(1, function (): void {
+        $menu = app(SaveMenu::class)->handle(null, 'ồ Menu chính ộ');
+        $parent = MenuItem::query()->create(['menu_id' => $menu->id, 'parent_id' => null, 'position' => 0, 'link_type' => 'dynamic', 'dynamic_key' => 'home', 'meta' => []]);
+        $child = MenuItem::query()->create(['menu_id' => $menu->id, 'parent_id' => $parent->id, 'position' => 0, 'link_type' => 'url', 'url' => '/lien-he', 'meta' => []]);
+        MenuItem::query()->whereKey($parent->id)->delete();   // older data: only the parent went to the trash
+
+        $loaded = app(MenuScreen::class)->load($menu)['menu'];
+        expect(array_map(fn (array $row): array => [$row['key'], $row['parent']], $loaded['items']))->toBe([[$child->ulid, null]]);
+
+        $saved = app(ApplyMenuDraft::class)->handle(test()->editor, $menu, [
+            'version' => $loaded['version'], 'tree' => [['key' => $child->ulid, 'parent' => null]], 'creates' => [], 'updates' => [], 'removes' => [],
+        ]);
+        expect($saved['version'])->toBeString()
+            ->and(MenuItem::query()->whereKey($child->id)->value('parent_id'))->toBeNull();
     });
 });

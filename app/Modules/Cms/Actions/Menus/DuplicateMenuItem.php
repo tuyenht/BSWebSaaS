@@ -54,6 +54,7 @@ final readonly class DuplicateMenuItem
             }
 
             $branch = MenuTree::of($menu->id)->branchOf($original->id);
+            $this->ensureRoom($menu->id, count($branch));
             $copies = $this->copyItems($menu->id, $items->whereIn('id', $branch)->values(), [$original->id => $original->parent_id], [$original->id => $original->position + 1], markRoots: true);
             $copyId = $copies[$original->id];
 

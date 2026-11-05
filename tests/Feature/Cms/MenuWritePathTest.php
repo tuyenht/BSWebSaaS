@@ -252,10 +252,10 @@ it('keeps a menu that is still shown unless the deletion is confirmed', function
         addItem($menu, homeLink());
         app(AssignMenu::class)->handle($actor, 'primary', 'vi', $menu);
 
-        expect(menuRefusal(fn () => app(DeleteMenu::class)->handle($menu)))->toBe('menu_in_use')
+        expect(menuRefusal(fn () => app(DeleteMenu::class)->handle(test()->editor, $menu)))->toBe('menu_in_use')
             ->and(Menu::query()->count())->toBe(1);
 
-        app(DeleteMenu::class)->handle($menu, evenIfAssigned: true);
+        app(DeleteMenu::class)->handle(test()->editor, $menu, evenIfAssigned: true);
         expect(Menu::query()->count())->toBe(0)
             ->and(MenuItem::query()->count())->toBe(0)
             ->and(MenuAssignment::query()->count())->toBe(0);

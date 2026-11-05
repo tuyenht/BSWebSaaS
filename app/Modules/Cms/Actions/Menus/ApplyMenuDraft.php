@@ -58,7 +58,7 @@ final readonly class ApplyMenuDraft
     private const int TEXT_MAX = 255;
 
     /** Rows a draft may name: far above any menu a visitor can use, low enough to bound one save. */
-    public const int ITEMS_MAX = 2000;
+    public const int ITEMS_MAX = MenuRules::ITEMS_MAX;
 
     private const string NEW_KEY = '/\Anew:[A-Za-z0-9_-]{1,40}\z/';
 
@@ -146,7 +146,7 @@ final readonly class ApplyMenuDraft
                     $moves[] = [$item->id, $parent, $place[$ulid]['position']];
                 }
             }
-            $this->moveAll($moves);
+            $this->moveAll($menu, $moves);
 
             // Target and display options of edited rows; mega dropped where it can no longer open.
             foreach ($live as $ulid => $item) {
@@ -210,8 +210,11 @@ final readonly class ApplyMenuDraft
      */
     private function treeOf(mixed $tree): array
     {
-        if (! is_array($tree) || ! array_is_list($tree) || count($tree) > self::ITEMS_MAX) {
+        if (! is_array($tree) || ! array_is_list($tree)) {
             throw new MenuChangeRejectedException('item_invalid');
+        }
+        if (count($tree) > self::ITEMS_MAX) {
+            throw new MenuChangeRejectedException('menu_full');
         }
         $out = [];
         foreach ($tree as $node) {
@@ -482,15 +485,15 @@ final readonly class ApplyMenuDraft
     /**
      * @param  list<array{0: int, 1: int|null, 2: int}>  $moves  id, parent id, position
      */
-    private function moveAll(array $moves): void
+    private function moveAll(Menu $menu, array $moves): void
     {
         foreach (array_chunk($moves, 500) as $chunk) {
             $values = implode(', ', array_fill(0, count($chunk), '(?::bigint, ?::bigint, ?::int)'));
             DB::update(
                 "update menu_items set parent_id = v.parent_id, position = v.position, updated_at = now()
                  from (values {$values}) as v(id, parent_id, position)
-                 where menu_items.id = v.id",
-                array_merge(...array_map(fn (array $move): array => [$move[0], $move[1], $move[2]], $chunk)),
+                 where menu_items.id = v.id and menu_items.site_id = ? and menu_items.menu_id = ?",
+                [...array_merge(...array_map(fn (array $move): array => [$move[0], $move[1], $move[2]], $chunk)), $menu->site_id, $menu->id],
             );
         }
     }

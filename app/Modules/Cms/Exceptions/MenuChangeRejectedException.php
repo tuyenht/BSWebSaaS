@@ -14,7 +14,8 @@ use DomainException;
  * theme does not let this area show that one's menu) · same_chain (the area followed follows another
  * itself, or another area follows this one: one hop only) · draft_stale (the menu changed since the
  * screen read it: someone else saved, restored or added an item) · option_invalid (a display option
- * of an item, e.g. an icon not in the website's set or a badge with a bad end date).
+ * of an item, e.g. an icon not in the website's set or a badge with a bad end date) · menu_full (the
+ * menu already holds MenuRules::ITEMS_MAX live items).
  */
 final class MenuChangeRejectedException extends DomainException
 {

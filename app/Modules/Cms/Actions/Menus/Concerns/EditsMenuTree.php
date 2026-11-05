@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Cms\Actions\Menus\Concerns;
 
+use App\Modules\Cms\Exceptions\MenuChangeRejectedException;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuItem;
+use App\Modules\Cms\Navigation\MenuRules;
 use App\Modules\Shared\Support\Cast;
 
 /**
@@ -17,6 +19,19 @@ trait EditsMenuTree
     private function lockMenu(int $menuId): void
     {
         Menu::query()->whereKey($menuId)->lockForUpdate()->value('id');
+    }
+
+    /** Refuse a change that would take the menu past its item cap (call it under the menu lock). */
+    private function ensureRoom(int $menuId, int $adding): void
+    {
+        if (! $this->hasRoom($menuId, $adding)) {
+            throw new MenuChangeRejectedException('menu_full');
+        }
+    }
+
+    private function hasRoom(int $menuId, int $adding): bool
+    {
+        return MenuItem::query()->where('menu_id', $menuId)->count() + $adding <= MenuRules::ITEMS_MAX;
     }
 
     /**

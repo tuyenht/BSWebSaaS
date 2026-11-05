@@ -28,15 +28,14 @@ final class AddPublishedPageToMenu
             return;
         }
 
-        $menus = Menu::query()->orderBy('id')->get(['id', 'handle', 'meta'])
-            ->filter(fn (Menu $menu): bool => ($menu->meta['auto_add_pages'] ?? false) === true);
+        $menus = Menu::query()->whereRaw("(meta->>'auto_add_pages')::boolean is true")->orderBy('id')->get(['id', 'handle']);
 
         foreach ($menus as $menu) {
             $this->lockMenu($menu->id);
             $held = MenuItem::withTrashed()->where('menu_id', $menu->id)
                 ->where('routable_type', 'entry')->where('routable_id', $event->entryId)->exists();
-            if ($held) {
-                continue;
+            if ($held || ! $this->hasRoom($menu->id, 1)) {
+                continue;   // already there (or removed by an editor), or the menu is full
             }
             $last = MenuItem::query()->where('menu_id', $menu->id)->whereNull('parent_id')->max('position');
             $item = MenuItem::query()->create([

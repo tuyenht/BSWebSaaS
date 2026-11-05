@@ -370,3 +370,36 @@ it('refuses the draft of someone who may not manage menus', function (): void {
             ->and(mdTree($menu))->toBe(['Trang chủ' => []]);
     });
 });
+
+it('names a tree past the item cap as a full menu, not a broken request', function (): void {
+    mdIn(1, function (): void {
+        $menu = mdMenu();
+        $state = mdState($menu);
+        $tree = array_map(fn (int $i): array => ['key' => 'new:'.$i, 'parent' => null], range(0, ApplyMenuDraft::ITEMS_MAX));
+
+        expect(mdRefusal(fn () => mdSave($menu, ['version' => $state['version'], 'tree' => $tree, 'creates' => [], 'updates' => [], 'removes' => []])))->toBe('menu_full');
+    });
+});
+
+it('moves rows only inside their own menu and site, even through the batched update', function (): void {
+    [$otherMenu, $otherRow] = mdIn(2, function (): array {
+        $menu = mdMenu('ồ Menu B ộ');
+
+        return [$menu, mdRow($menu, 'ồ B1 ộ')];
+    });
+
+    mdIn(1, function (): void {
+        $menu = mdMenu();
+        $a = mdRow($menu, 'ồ A ộ');
+        $b = mdRow($menu, 'ồ B ộ');
+        $state = mdState($menu);
+
+        mdSave($menu, ['version' => $state['version'], 'tree' => [['key' => $b->ulid, 'parent' => null], ['key' => $a->ulid, 'parent' => $b->ulid]], 'creates' => [], 'updates' => [], 'removes' => []]);
+
+        expect(mdTree($menu))->toBe(['ồ B ộ' => ['ồ A ộ' => []]]);
+    });
+
+    mdIn(2, function () use ($otherRow): void {
+        expect(MenuItem::query()->whereKey($otherRow->id)->first(['parent_id', 'position'])?->only(['parent_id', 'position']))->toBe(['parent_id' => null, 'position' => 0]);
+    });
+});

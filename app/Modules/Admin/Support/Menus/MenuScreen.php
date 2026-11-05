@@ -239,9 +239,13 @@ final readonly class MenuScreen
      */
     private function displayOrder(Collection $items): array
     {
+        // A live row whose parent is not live (in the trash, from older data) is drawn at the top
+        // level: every live row must reach the screen, since a draft has to name each one.
+        $live = $items->pluck('id')->flip();
         $children = [];
         foreach ($items->sortBy([['position', 'asc'], ['id', 'asc']]) as $item) {
-            $children[$item->parent_id ?? 0][] = $item;
+            $parent = $item->parent_id !== null && $live->has($item->parent_id) ? $item->parent_id : 0;
+            $children[$parent][] = $item;
         }
         $out = [];
         $walk = function (int $parent) use (&$walk, &$out, $children): void {

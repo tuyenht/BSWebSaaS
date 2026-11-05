@@ -1831,6 +1831,7 @@
     "menus.reason_same_invalid": "Vị trí này không dùng chung trình đơn với vị trí khác được — chọn một trình đơn riêng.",
     "menus.reason_same_chain": "Vị trí được theo đang theo vị trí khác (hoặc đang được theo) — gán trình đơn riêng cho một trong hai trước.",
     "menus.reason_draft_stale": "Trình đơn vừa được sửa ở nơi khác sau khi bạn mở (tab khác hoặc người khác) — tải lại trang rồi sửa lại.",
+    "menus.reason_menu_full": "Trình đơn đã có 2.000 mục, mức tối đa — gỡ bớt mục không dùng rồi thử lại.",
     "menus.reason_option_invalid": "Một tùy chọn hiển thị của mục chưa hợp lệ (biểu tượng, mô tả, nhãn, bảng lớn hoặc thiết bị) — xem lại rồi thử lại.",
     "menus.reason_input_invalid": "Yêu cầu chưa đầy đủ — tải lại trang rồi thử lại.",
     "storefront.home": "Trang chủ",

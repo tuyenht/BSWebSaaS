@@ -228,8 +228,8 @@ final class Index extends Component
             return $this->invalid();
         }
 
-        return $this->onMenu($menu, 'delete', function (Menu $found) use ($evenIfAssigned): array {
-            app(DeleteMenu::class)->handle($found, $evenIfAssigned);
+        return $this->onMenu($menu, 'delete', function (Menu $found, User $actor) use ($evenIfAssigned): array {
+            app(DeleteMenu::class)->handle($actor, $found, $evenIfAssigned);
 
             return ['ok' => true];
         });

@@ -23,6 +23,9 @@ final class MenuRules
     /** Days a removed menu item waits in the trash before it is deleted for good. */
     public const int TRASH_DAYS = 30;
 
+    /** Live items one menu may hold: far above any real menu, low enough that one draft stays one quick save. */
+    public const int ITEMS_MAX = 2000;
+
     /**
      * Special links ("Liên kết đặc biệt", link_type 'dynamic') → the fixed site path they open, or
      * null when {@see SpecialLinks} works the address out from what the site has (its phone, email,

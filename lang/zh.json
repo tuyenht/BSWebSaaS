@@ -1831,6 +1831,7 @@
     "menus.reason_same_invalid": "此位置不能与其他位置共用菜单 — 请为它选择单独的菜单。",
     "menus.reason_same_chain": "要跟随的位置已在跟随其他位置（或正被跟随）— 请先为其中一个指定单独的菜单。",
     "menus.reason_draft_stale": "在您打开后，此菜单已在其他地方（其他标签页或其他人）被修改 — 请重新加载页面后再修改。",
+    "menus.reason_menu_full": "此菜单已有 2,000 个项目，已达上限 — 请先移除不用的项目，再试一次。",
     "menus.reason_option_invalid": "项目的某个显示选项无效（图标、描述、标记、大面板或设备）— 请检查后重试。",
     "menus.reason_input_invalid": "请求不完整 — 请重新加载页面后重试。",
     "storefront.home": "首页",

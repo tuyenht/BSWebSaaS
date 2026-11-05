@@ -1831,6 +1831,7 @@
     "menus.reason_same_invalid": "This area can't share another area's menu — choose a menu of its own.",
     "menus.reason_same_chain": "The area it would follow already follows another one (or is followed itself) — give one of them a menu of its own first.",
     "menus.reason_draft_stale": "Someone changed this menu after you opened it (in another tab or by another person) — reload the page, then make your changes again.",
+    "menus.reason_menu_full": "This menu already has 2,000 items, the most it can hold — remove items you no longer use, then try again.",
     "menus.reason_option_invalid": "One of the item's display options is not valid (icon, description, badge, large panel or device) — check them and try again.",
     "menus.reason_input_invalid": "The request was not complete — reload the page and try again.",
     "storefront.home": "Home",

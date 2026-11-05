@@ -4,16 +4,22 @@ use App\Modules\Cms\Actions\Menus\DeleteMenuItem;
 use App\Modules\Cms\Actions\Menus\DuplicateMenu;
 use App\Modules\Cms\Actions\Menus\DuplicateMenuItem;
 use App\Modules\Cms\Actions\Menus\SaveMenu;
+use App\Modules\Cms\Actions\Menus\SaveMenuItem;
 use App\Modules\Cms\Actions\Menus\SetMenuAutoAdd;
+use App\Modules\Cms\Data\MenuItemData;
+use App\Modules\Cms\Exceptions\MenuChangeRejectedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
+use App\Modules\Cms\Navigation\MenuRules;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /*
  * "Nhân bản" of a whole menu and of one item with its branch, and "Tự thêm trang mới": a page
@@ -175,5 +181,53 @@ it('never brings back a page an editor removed from the menu', function (): void
         mcPage();
         expect(mcLinked($menu))->toBe([])
             ->and($menu->fresh()?->meta ?? [])->not->toHaveKey('auto_add_pages');
+    });
+});
+
+/** Fill a menu with plain top-level rows up to $count, in one insert. */
+function mcFill(Menu $menu, int $count): void
+{
+    $site = app(CurrentSite::class)->id();
+    $start = MenuItem::query()->where('menu_id', $menu->id)->count();
+    MenuItem::query()->insert(array_map(fn (int $i): array => [
+        'site_id' => $site, 'menu_id' => $menu->id, 'parent_id' => null, 'position' => $start + $i,
+        'link_type' => 'url', 'url' => '/m-'.$i, 'meta' => '{}', 'ulid' => (string) Str::ulid(),
+        'created_at' => now(), 'updated_at' => now(),
+    ], range(0, $count - 1)));
+}
+
+it('keeps a menu within its item cap on every path that adds rows, with its own reason', function (): void {
+    mcIn(function (): void {
+        $menu = app(SaveMenu::class)->handle(null, 'ồ Menu đầy ộ');
+        $branch = mcRow($menu, 'ồ Nhóm ộ');
+        mcRow($menu, 'ồ Con ộ', $branch);
+        mcFill($menu, MenuRules::ITEMS_MAX - 3);   // one row left
+
+        // Copying a two-row branch would pass the cap.
+        $refused = null;
+        try {
+            app(DuplicateMenuItem::class)->handle($this->editor, $menu, $branch);
+        } catch (MenuChangeRejectedException $e) {
+            $refused = $e->reason;
+        }
+        expect($refused)->toBe('menu_full');
+
+        // One more row fits; the next is refused.
+        $add = fn () => app(SaveMenuItem::class)->handle($this->editor, $menu, null,
+            new MenuItemData(linkType: 'dynamic', dynamicKey: 'home', labels: ['vi' => 'ồ Thêm ộ']));
+        $add();
+        $refused = null;
+        try {
+            $add();
+        } catch (MenuChangeRejectedException $e) {
+            $refused = $e->reason;
+        }
+        expect($refused)->toBe('menu_full')
+            ->and(MenuItem::query()->where('menu_id', $menu->id)->count())->toBe(MenuRules::ITEMS_MAX);
+
+        // A full menu that asked for new pages simply does not take one.
+        app(SetMenuAutoAdd::class)->handle($this->editor, $menu, true);
+        $page = mcPage();
+        expect(MenuItem::query()->where('menu_id', $menu->id)->where('routable_id', $page->id)->exists())->toBeFalse();
     });
 });
