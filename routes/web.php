@@ -10,6 +10,7 @@ use App\Modules\Admin\Livewire\AppearanceSettings;
 use App\Modules\Admin\Livewire\Catalog\Editor as CatalogEditor;
 use App\Modules\Admin\Livewire\Catalog\Index as CatalogIndex;
 use App\Modules\Admin\Livewire\CatalogSettings;
+use App\Modules\Admin\Livewire\Categories\Index as CategoriesIndex;
 use App\Modules\Admin\Livewire\ComponentGallery;
 use App\Modules\Admin\Livewire\Dashboard;
 use App\Modules\Admin\Livewire\EmailOtpChallenge;
@@ -26,7 +27,6 @@ use App\Modules\Admin\Livewire\Login;
 use App\Modules\Admin\Livewire\LoginSecuritySettings;
 use App\Modules\Admin\Livewire\Media\Library as MediaLibrary;
 use App\Modules\Admin\Livewire\Menus\Index as MenusIndex;
-use App\Modules\Admin\Livewire\Placeholder;
 use App\Modules\Admin\Livewire\Platform\Audit\Index as AuditIndex;
 use App\Modules\Admin\Livewire\Platform\Sites\Detail as SiteDetail;
 use App\Modules\Admin\Livewire\Platform\Sites\Index as SiteIndex;
@@ -245,10 +245,8 @@ Route::prefix(config('admin.prefix', 'admin'))
         Route::get('/content/create', Editor::class)->middleware('can:entries.create')->name('admin.entries.create');
         Route::get('/content/{ulid}/edit', Editor::class)->name('admin.entries.edit');
 
-        // Placeholder page — the nav link is live but the real UI isn't built yet (taxonomies).
-        // Still gated at the route by the module's own ability, so only permitted roles reach the
-        // stub — no dead-end, defence-in-depth intact.
-        Route::get('/taxonomies', Placeholder::class)->middleware('can:taxonomies.manage')->name('admin.taxonomies.index');
+        // Chuyên mục (?section=…): the component re-checks taxonomies.manage on every request (boot) and per method.
+        Route::get('/taxonomies', CategoriesIndex::class)->middleware('can:taxonomies.manage')->name('admin.taxonomies.index');
         // Trình đơn: the component re-checks menus.manage on every request (boot) and per method.
         Route::get('/menus', MenusIndex::class)->middleware('can:menus.manage')->name('admin.menus.index');
 

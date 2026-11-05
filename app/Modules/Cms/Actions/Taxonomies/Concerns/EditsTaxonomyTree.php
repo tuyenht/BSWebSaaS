@@ -12,7 +12,12 @@ use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Taxonomy\TaxonomyRules;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
+use App\Modules\Identity\Models\User;
+use App\Modules\Media\Models\Media;
 use App\Modules\Shared\Support\Cast;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Shared steps of the actions that change a site's categories. Callers run inside a transaction and
@@ -20,6 +25,23 @@ use App\Modules\Shared\Support\Cast;
  */
 trait EditsTaxonomyTree
 {
+    /**
+     * Who may change categories at all: the signed-in person needs `taxonomies.manage`
+     * (TaxonomyPolicy::manage; super_admin passes through Gate::before). With nobody signed in —
+     * the console, provisioning — there is nobody to ask, the same rule the category limits follow
+     * (CategoryLimitGuard). A member limited to some categories is then held inside them by
+     * CategoryLimitGuard, which names the reason (outside_category_limits).
+     *
+     * @throws AuthorizationException
+     */
+    private function authorizeManage(): void
+    {
+        $user = Auth::user();
+        if ($user instanceof User) {
+            Gate::forUser($user)->authorize('manage', Taxonomy::class);
+        }
+    }
+
     /**
      * Serialise category edits per site: two editors moving or deleting categories at once must not
      * interleave their depth, loop and sibling-order checks.
@@ -79,19 +101,26 @@ trait EditsTaxonomyTree
      * The per-language name and slug to save: each language one the site writes in, each name
      * valid, each slug valid — a slug not given keeps the current one, or is made from the name for
      * a language the category is not written in yet. A current slug is kept as it is even when older
-     * than today's slug rules, so renaming a category never forces its address to change.
+     * than today's slug rules, so renaming a category never forces its address to change. A
+     * description or Google title/description given for a language is cleaned and checked
+     * (description_invalid, seo_invalid) and saved, '' clearing it; one not given is left as it is.
      *
      * @param  array<string, TaxonomyTranslation>  $existing  locale → current translation
      * @param  list<string>  $enabled  the languages the site writes in
-     * @return array<string, array{name: string, slug: string}>
+     * @return array<string, array{name: string, slug: string, description?: string|null, seo_title?: string|null, seo_description?: string|null}>
      *
      * @throws TaxonomyChangeRejectedException
      */
     private function translations(TaxonomyData $data, array $existing, array $enabled): array
     {
         $clean = [];
+        $locales = array_unique([
+            ...array_keys($data->names), ...array_keys($data->slugs), ...array_keys($data->descriptions),
+            ...array_keys($data->seoTitles), ...array_keys($data->seoDescriptions),
+        ]);
 
-        foreach (array_unique([...array_keys($data->names), ...array_keys($data->slugs)]) as $locale) {
+        foreach ($locales as $locale) {
+            $locale = (string) $locale;
             if (! in_array($locale, $enabled, true)) {
                 throw new TaxonomyChangeRejectedException('locale_invalid');
             }
@@ -109,9 +138,44 @@ trait EditsTaxonomyTree
             }
 
             $clean[$locale] = ['name' => $name, 'slug' => $slug];
+
+            if (array_key_exists($locale, $data->descriptions)) {
+                $description = TaxonomyRules::description($data->descriptions[$locale])
+                    ?? throw new TaxonomyChangeRejectedException('description_invalid');
+                $clean[$locale]['description'] = $description === '' ? null : $description;
+            }
+            foreach (['seo_title' => $data->seoTitles, 'seo_description' => $data->seoDescriptions] as $column => $values) {
+                if (array_key_exists($locale, $values)) {
+                    $text = TaxonomyRules::seoText($values[$locale]) ?? throw new TaxonomyChangeRejectedException('seo_invalid');
+                    $clean[$locale][$column] = $text === '' ? null : $text;
+                }
+            }
         }
 
         return $clean;
+    }
+
+    /**
+     * The picture to save: $current when the data leaves it alone (null), none for '', else the
+     * media named by its key — looked up through the site's scope (BelongsToSite, RLS underneath),
+     * so another site's key, a file in the trash or a file that is not a picture is refused
+     * (cover_invalid). The browser never names a media row by id.
+     *
+     * @throws TaxonomyChangeRejectedException
+     */
+    private function cover(?string $key, ?int $current): ?int
+    {
+        if ($key === null) {
+            return $current;
+        }
+        $key = trim($key);
+        if ($key === '') {
+            return null;
+        }
+
+        $id = Media::query()->where('storage_key', $key)->where('mime', 'like', 'image/%')->orderBy('id')->value('id');
+
+        return $id === null ? throw new TaxonomyChangeRejectedException('cover_invalid') : Cast::int($id);
     }
 
     /**
@@ -134,7 +198,7 @@ trait EditsTaxonomyTree
      * 301 when the slug changed. Another category using the slug in that language, or anything else
      * already at the path, is refused as slug_taken. Returns the languages whose slug changed.
      *
-     * @param  array<string, array{name: string, slug: string}>  $translations
+     * @param  array<string, array{name: string, slug: string, description?: string|null, seo_title?: string|null, seo_description?: string|null}>  $translations
      * @return array<string, string> locale → new slug
      *
      * @throws TaxonomyChangeRejectedException

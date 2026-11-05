@@ -349,6 +349,29 @@ final class CategoryScopes
     }
 
     /**
+     * Every member limited on this site, with the categories their limits name and the highest
+     * role level each holds here: for a screen that weighs many moves at once (the "Chuyển tới"
+     * targets), which then applies membersReachChangedBy()'s rule to each candidate itself. Two
+     * queries, whatever the number of candidates.
+     *
+     * @return list<array{id: int, name: string, level: int, roots: list<int>}>
+     */
+    public function siteLimits(): array
+    {
+        $roots = [];
+        foreach (DB::table('member_category_scopes')->where('site_id', $this->site->id())->orderBy('user_id')->orderBy('taxonomy_id')->get(['user_id', 'taxonomy_id']) as $row) {
+            $roots[Cast::int($row->user_id)][] = Cast::int($row->taxonomy_id);
+        }
+
+        $limits = [];
+        foreach ($this->membersWithLevels(fn (Builder $members) => $members->whereKey(array_keys($roots)), $roots !== []) as $member) {
+            $limits[] = [...$member, 'roots' => $roots[$member['id']] ?? []];
+        }
+
+        return $limits;
+    }
+
+    /**
      * Serialise every change to these members' limits (see lockMember()), in id order so two
      * callers never wait on each other in a circle.
      *

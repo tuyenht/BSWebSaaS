@@ -23,6 +23,17 @@ final class TaxonomyRules
 
     public const int SLUG_MAX = 200;
 
+    /**
+     * A category's description is a short plain-text introduction shown above its list (a few
+     * sentences; the design's field is a 3-row textarea). The column is `text`, so the cap is ours:
+     * it keeps the category page's header and the Categories screen's payload (every row carries
+     * its descriptions) small, and long-form writing belongs in a post or a page.
+     */
+    public const int DESCRIPTION_MAX = 1000;
+
+    /** The Google title and description columns are varchar(255), as on posts (EntryContentRules). */
+    public const int SEO_MAX = 255;
+
     /** The same shape the entry and product editors accept: lower-case words joined by hyphens. */
     public const string SLUG_PATTERN = '/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/';
 
@@ -38,6 +49,40 @@ final class TaxonomyRules
         $name = trim($name);
 
         return $name === '' || mb_strlen($name) > self::NAME_MAX ? null : $name;
+    }
+
+    /**
+     * The description to store — plain text with line breaks kept (as \n), invisible format and
+     * control characters removed, the ends trimmed, at most DESCRIPTION_MAX characters; '' when
+     * nothing is left (the description is cleared). Null when it is not acceptable (too long, or
+     * not valid UTF-8).
+     */
+    public static function description(string $text): ?string
+    {
+        $text = str_replace(["\r\n", "\r"], "\n", $text);
+        // The joiners (U+200C, U+200D) stay: they hold emoji sequences and some scripts together.
+        $clean = preg_replace('/(?![\x{200C}\x{200D}])\p{Cf}|[^\P{Cc}\n\t]/u', '', $text);
+        if ($clean === null) {
+            return null;
+        }
+        $clean = trim($clean);
+
+        return mb_strlen($clean) > self::DESCRIPTION_MAX ? null : $clean;
+    }
+
+    /**
+     * A Google title or description to store — one line, the ends trimmed, at most SEO_MAX
+     * characters; '' when empty (cleared). Null when it is not acceptable: longer, not valid UTF-8,
+     * or holding a line break or another control character (the screen sends it as one line).
+     */
+    public static function seoText(string $text): ?string
+    {
+        if (preg_match('/[\p{Cc}\p{Zl}\p{Zp}]/u', $text) !== 0) {
+            return null;
+        }
+        $text = trim($text);
+
+        return mb_strlen($text) > self::SEO_MAX ? null : $text;
     }
 
     /** The slug to store — trimmed, SLUG_PATTERN, at most SLUG_MAX characters — or null. */

@@ -37,7 +37,8 @@ use Illuminate\Support\Facades\Gate;
  */
 final readonly class CategoryLimitGuard
 {
-    private const string VOCABULARY = 'post_cat';
+    /** The vocabulary member limits apply to: post categories. */
+    public const string VOCABULARY = 'post_cat';
 
     public function __construct(
         private CategoryScopes $scopes,

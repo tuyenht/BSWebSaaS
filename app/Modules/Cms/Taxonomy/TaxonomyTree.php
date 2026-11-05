@@ -91,6 +91,22 @@ final class TaxonomyTree
         return max($branch) + 1;
     }
 
+    /**
+     * A token for the shape of one vocabulary's tree — every category's parent and position — that
+     * changes whenever a category of it is added, moved, reordered or deleted (not when one is
+     * renamed). A screen keeps it to tell that the tree is still the one it showed: an undo of a
+     * move is refused once anything moved since. One query, whatever the size of the tree.
+     */
+    public static function version(string $vocabulary): string
+    {
+        $version = Taxonomy::query()
+            ->where('vocabulary', $vocabulary)
+            ->selectRaw("md5(coalesce(string_agg(id::text || ':' || coalesce(parent_id::text, '') || ':' || position::text, ',' ORDER BY id), '')) AS version")
+            ->value('version');
+
+        return Cast::string($version);
+    }
+
     private static function parentOf(int $id): ?int
     {
         $parent = Taxonomy::query()->whereKey($id)->value('parent_id');

@@ -26,6 +26,7 @@ use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -58,7 +59,8 @@ use Illuminate\Support\Facades\DB;
  * the target category when there is one; with no target they stay, and the website stops showing
  * a link whose target is gone.
  *
- * Who may manage categories (`taxonomies.manage`) is the caller's check; a member limited to some
+ * Who may manage categories (`taxonomies.manage`) is checked through TaxonomyPolicy for the person
+ * signed in; a member limited to some
  * categories stays inside them (CategoryLimitGuard, outside_category_limits). Runs inside the tenant
  * context. Returns the counts the screen reports.
  */
@@ -80,6 +82,7 @@ final readonly class DeleteTaxonomy
     /**
      * @return array{categories: int, items: int, routes_moved: int, redirects: int, menu_links: int}
      *
+     * @throws AuthorizationException
      * @throws TaxonomyChangeRejectedException
      */
     public function handle(
@@ -89,6 +92,8 @@ final readonly class DeleteTaxonomy
         ?CategoryChildrenOnDelete $children = null,
         bool $evenIfSectionChanges = false,
     ): array {
+        $this->authorizeManage();
+
         return DB::transaction(function () use ($taxonomy, $items, $target, $children, $evenIfSectionChanges): array {
             $this->lockTree($this->site->id());
             $taxonomy = $this->reload($taxonomy, 'taxonomy_invalid');

@@ -17,6 +17,7 @@ use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -26,7 +27,8 @@ use Illuminate\Support\Facades\DB;
  * page at `/{slug}`. The tree may not grow past TaxonomyRules::MAX_DEPTH levels, and the structural
  * `path` is written with the row.
  *
- * Who may manage categories (`taxonomies.manage`) is the caller's check; a member limited to some
+ * Who may manage categories (`taxonomies.manage`) is checked through TaxonomyPolicy for the person
+ * signed in; the picture is named by its media key (cover_invalid when it is not this site's). A member limited to some
  * categories stays inside them (CategoryLimitGuard, outside_category_limits). Runs inside the tenant
  * context.
  */
@@ -43,10 +45,12 @@ final readonly class CreateTaxonomy
     ) {}
 
     /**
+     * @throws AuthorizationException
      * @throws TaxonomyChangeRejectedException
      */
     public function handle(string $vocabulary, ?Taxonomy $parent, TaxonomyData $data): Taxonomy
     {
+        $this->authorizeManage();
         if (preg_match(TaxonomyRules::VOCABULARY_PATTERN, $vocabulary) !== 1) {
             throw new TaxonomyChangeRejectedException('vocabulary_invalid');
         }
@@ -57,7 +61,7 @@ final readonly class CreateTaxonomy
         $listTemplate = $this->template($data->listTemplate);
         $detailTemplate = $this->template($data->detailTemplate);
 
-        return DB::transaction(function () use ($vocabulary, $parent, $translations, $listTemplate, $detailTemplate): Taxonomy {
+        return DB::transaction(function () use ($vocabulary, $parent, $translations, $listTemplate, $detailTemplate, $data): Taxonomy {
             $this->lockTree($this->site->id());
 
             $parentId = null;
@@ -84,6 +88,7 @@ final readonly class CreateTaxonomy
                 'position' => $last === null ? 0 : Cast::int($last) + 1,
                 'list_template' => $listTemplate,
                 'detail_template' => $detailTemplate,
+                'cover_media_id' => $this->cover($data->cover, null),
             ]);
 
             $this->paths->refreshBranch($taxonomy->id);
