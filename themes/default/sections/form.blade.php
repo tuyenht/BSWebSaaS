@@ -16,20 +16,30 @@
 @php
     $sfMap = \App\Modules\Shared\Support\SafeLink::href($props['map_embed'] ?? null, config('cms.map_hosts'));
     $sfFormKey = basename((string) $action);
-    // The same form may sit twice on a page: the later copies get a numbered id (per request, so
-    // nothing leaks between requests under Octane) and only the first one shows the send's outcome.
+    // The same form may sit twice on a page: only the first copy shows the send's outcome. Ids are
+    // registered per request (nothing leaks between requests under Octane): the key reduced to
+    // [a-z0-9_] (runs of anything else become one "_", so "__" and "-" never occur inside it), and
+    // "--n" when that base is already taken by a copy or by another key reducing to the same text.
     $sfNth = (int) request()->attributes->get('lead_form_seen.'.$sfFormKey, 0);
-    request()->attributes->set('lead_form_seen.'.$sfFormKey, $sfNth + 1);
-    // Ids: the key reduced to [a-z0-9_], then "--n" for a copy and "__field" for a field, so no two
-    // forms or fields can meet on one id whatever their keys hold.
-    $sfFormId = 'lf-'.preg_replace('/[^a-z0-9]+/', '_', strtolower($sfFormKey)).($sfNth > 0 ? '--'.($sfNth + 1) : '');
-    // A send's outcome (errors, typed values, thank-you) belongs to the form it came from only. A
-    // failed send that names no form (a page loaded before the hidden field existed) goes to the
-    // page's first form, so what the visitor typed is never lost.
-    $sfFirstOnPage = ! request()->attributes->has('lead_form_first');
-    request()->attributes->set('lead_form_first', true);
-    $sfMine = $sfNth === 0 && $sfFormKey !== ''
-        && (old('lead_form') === $sfFormKey || (old('lead_form') === null && $errors->any() && $sfFirstOnPage));
+    if ($sfFormKey !== '') {
+        request()->attributes->set('lead_form_seen.'.$sfFormKey, $sfNth + 1);
+    }
+    $sfBase = 'lf-'.trim((string) preg_replace('/[^a-z0-9]+/', '_', mb_strtolower($sfFormKey)), '_');
+    $sfTaken = (int) request()->attributes->get('lead_form_ids.'.$sfBase, 0);
+    request()->attributes->set('lead_form_ids.'.$sfBase, $sfTaken + 1);
+    $sfFormId = $sfBase.($sfTaken > 0 ? '--'.($sfTaken + 1) : '');
+    // Field ids inside the form: "__" + the field key reduced the same way ("--n" on a clash), and the
+    // error, hint and alert ids add "--error", "--hint", "--alert", which no reduced key can hold.
+    $sfFieldIds = [];
+    foreach ($fields as $sfField) {
+        $sfF = trim((string) preg_replace('/[^a-z0-9]+/', '_', mb_strtolower($sfField['key'])), '_');
+        $sfF = in_array($sfF, $sfFieldIds, true) ? $sfF.'--'.(count($sfFieldIds) + 1) : $sfF;
+        $sfFieldIds[$sfField['key']] = $sfF;
+    }
+    $sfFid = fn (string $key): string => $sfFormId.'__'.($sfFieldIds[$key] ?? 'x');
+    // A send's outcome (errors, typed values, thank-you) belongs to the form it came from only: the
+    // server names the posted form in the flashed input (StoreLeadRequest), so nothing is guessed.
+    $sfMine = $sfNth === 0 && $sfFormKey !== '' && old('lead_form') === $sfFormKey;
     $sfErr = $sfMine ? $errors : new \Illuminate\Support\MessageBag();
     $sfOld = fn (string $name) => $sfMine ? old($name) : null;
     $sfSent = $sfNth === 0 && session('form_success_key') === $sfFormKey ? session('form_success') : null;
@@ -50,7 +60,7 @@
     $sfErrorAt = [];
     foreach ($sfKeys as $sfKey) {
         if ($sfErr->has($sfKey)) {
-            $sfErrorAt[$sfKey] = $sfFormId.'__'.$sfKey.'-error';
+            $sfErrorAt[$sfKey] = $sfFid($sfKey).'--error';
         }
     }
     $sfQuiet = null;
@@ -105,7 +115,6 @@
                  (the POST URL carries no locale prefix). The server accepts only a public locale. --}}
             <input type="hidden" name="locale" value="{{ $locale ?? '' }}">
             {{-- Names this form, so a failed send comes back to it and not to another form on the page. --}}
-            <input type="hidden" name="lead_form" value="{{ $sfFormKey }}">
             {{-- Honeypot: a real field name bots tend to fill, hidden from humans + the a11y tree.
                  A non-empty value flags the submission as spam server-side (SubmitForm). --}}
             <div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden">
@@ -116,10 +125,10 @@
 
             @foreach ($fields as $sfIndex => $field)
                 @php
-                    $sfId = $sfFormId.'__'.$field['key'];
+                    $sfId = $sfFid($field['key']);
                     $sfBad = isset($sfErrorAt[$field['key']]);
                     $sfHint = $sfOneOfHint === $field['key'];
-                    $sfDescribed = trim(($sfHint ? $sfId.'-hint ' : '').($sfErrorAt[$field['key']] ?? ''));
+                    $sfDescribed = trim(($sfHint ? $sfId.'--hint ' : '').($sfErrorAt[$field['key']] ?? ''));
                 @endphp
                 @if ($field['type'] === 'checkbox')
                     {{-- The box precedes its sentence and the whole label is clickable (large tap target). --}}
@@ -132,7 +141,7 @@
                             <span>{{ $field['label'] }}@if ($field['key'] === 'consent' && $sfPolicy !== null) <a class="lead-form__policy" href="{{ $sfPolicy }}" target="_blank" rel="noopener">{{ __('forms.privacy_link') }}<span class="sr-only"> {{ __('forms.opens_in_new_tab') }}</span></a>@endif @if ($field['is_required'])<span class="lead-form__required" aria-hidden="true">*</span>@endif</span>
                         </label>
                         @if ($sfBad)
-                            <p class="lead-form__field-error" id="{{ $sfId }}-error">{{ $sfErr->first($field['key']) }}</p>
+                            <p class="lead-form__field-error" id="{{ $sfId }}--error">{{ $sfErr->first($field['key']) }}</p>
                         @endif
                     </div>
                     @continue
@@ -165,17 +174,17 @@
                                @if ($sfFirstBad === $field['key']) autofocus @endif>
                     @endif
                     @if ($sfHint)
-                        <p class="lead-form__hint" id="{{ $sfId }}-hint">{{ __('forms.hint_contact_one_of') }}</p>
+                        <p class="lead-form__hint" id="{{ $sfId }}--hint">{{ __('forms.hint_contact_one_of') }}</p>
                     @endif
                     @if ($sfBad && $sfQuiet !== $field['key'])
-                        <p class="lead-form__field-error" id="{{ $sfId }}-error">{{ $sfErr->first($field['key']) }}</p>
+                        <p class="lead-form__field-error" id="{{ $sfId }}--error">{{ $sfErr->first($field['key']) }}</p>
                     @endif
                 </div>
             @endforeach
 
             @if ($sfAlert !== '')
                 {{-- The one summary of a failed send; it leads to the first field to fix. --}}
-                <p class="lead-form__alert" id="{{ $sfFormId }}-alert" role="alert">@if ($sfFirstBad !== null)<a href="#{{ $sfFormId }}__{{ $sfFirstBad }}">{{ $sfAlert }}</a>@else{{ $sfAlert }}@endif</p>
+                <p class="lead-form__alert" id="{{ $sfFormId }}--alert" role="alert">@if ($sfFirstBad !== null)<a href="#{{ $sfFid($sfFirstBad) }}">{{ $sfAlert }}</a>@else{{ $sfAlert }}@endif</p>
             @endif
 
             @if (! empty($turnstileSiteKey))
@@ -184,7 +193,7 @@
             @endif
 
             <div class="lead-form__actions">
-                <button type="submit" class="lead-form__submit" @if ($sfAlert !== '' && $sfFirstBad === null) aria-describedby="{{ $sfFormId }}-alert" autofocus @endif>{{ __('forms.submit_button') }}</button>
+                <button type="submit" class="lead-form__submit" @if ($sfAlert !== '' && $sfFirstBad === null) aria-describedby="{{ $sfFormId }}--alert" autofocus @endif>{{ __('forms.submit_button') }}</button>
                 <p class="lead-form__note">{{ $sfNoteBefore }}<span class="lead-form__required">*</span>{{ $sfNoteAfter }}</p>
             </div>
         </form>

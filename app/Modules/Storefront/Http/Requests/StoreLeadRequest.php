@@ -35,6 +35,11 @@ final class StoreLeadRequest extends FormRequest
         $requested = $this->input('locale');
 
         app()->setLocale(is_string($requested) && $locales->isPublic($requested) ? $requested : $locales->default());
+
+        // The posted form's key rides along in the flashed input, so the page shows a failed send on
+        // that form only. Set on the application request: the error redirect and the controller's
+        // withInput() flash that one, not this copy. Never a stored field (not in rules()).
+        request()->merge(['lead_form' => (string) $this->route('key')]);
     }
 
     /**

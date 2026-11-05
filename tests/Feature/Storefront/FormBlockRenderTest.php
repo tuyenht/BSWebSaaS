@@ -204,7 +204,7 @@ it('keeps what was typed after a failed send, says what is wrong and focuses the
     $this->from('http://a.test/lien-he')->post('http://a.test/forms/contact', [
         'phone' => '0912 345 678',
         'message' => 'Ống thép cần cắt gấp, giao ở Đà Nẵng nhé',
-        'locale' => 'vi', 'lead_form' => 'contact',
+        'locale' => 'vi',
     ])->assertRedirect('http://a.test/lien-he');
 
     $section = leadFormSection($this->get('http://a.test/lien-he')->assertOk()->getContent());
@@ -212,10 +212,10 @@ it('keeps what was typed after a failed send, says what is wrong and focuses the
     expect($section)
         ->toContain('>Ống thép cần cắt gấp, giao ở Đà Nẵng nhé</textarea>')
         ->toContain('value="0912 345 678"')
-        ->toMatch('/<input id="lf-contact__name"[^>]*aria-invalid="true"[^>]*aria-describedby="lf-contact__name-error"[^>]*autofocus\s*>/')
-        ->toContain('<p class="lead-form__field-error" id="lf-contact__name-error">Vui lòng nhập họ tên.</p>')
-        ->toContain('<p class="lead-form__field-error" id="lf-contact__consent-error">')
-        ->toContain('<p class="lead-form__alert" id="lf-contact-alert" role="alert"><a href="#lf-contact__name">Vui lòng nhập họ tên.</a></p>')
+        ->toMatch('/<input id="lf-contact__name"[^>]*aria-invalid="true"[^>]*aria-describedby="lf-contact__name--error"[^>]*autofocus\s*>/')
+        ->toContain('<p class="lead-form__field-error" id="lf-contact__name--error">Vui lòng nhập họ tên.</p>')
+        ->toContain('<p class="lead-form__field-error" id="lf-contact__consent--error">')
+        ->toContain('<p class="lead-form__alert" id="lf-contact--alert" role="alert"><a href="#lf-contact__name">Vui lòng nhập họ tên.</a></p>')
         ->and(substr_count($section, 'role="alert"'))->toBe(1)
         ->and($section)
         ->toContain('Trường có dấu <span class="lead-form__required">*</span> là bắt buộc.')
@@ -227,15 +227,15 @@ it('tells the phone-or-email rule once, under the hint, and points both fields a
     seedContactPageWithForm();
 
     $this->from('http://a.test/lien-he')->post('http://a.test/forms/contact', [
-        'name' => 'Nguyễn Văn Ánh', 'message' => 'Ống thép cần cắt gấp, giao ở Đà Nẵng nhé', 'locale' => 'vi', 'lead_form' => 'contact',
+        'name' => 'Nguyễn Văn Ánh', 'message' => 'Ống thép cần cắt gấp, giao ở Đà Nẵng nhé', 'locale' => 'vi',
     ])->assertRedirect();
 
     $section = leadFormSection($this->get('http://a.test/lien-he')->getContent());
 
     expect(substr_count($section, 'Vui lòng để lại email hoặc số điện thoại để chúng tôi liên hệ.'))->toBe(2) // under the field + the alert
-        ->and($section)->toContain('<p class="lead-form__hint" id="lf-contact__phone-hint">Để lại điện thoại hoặc email – ít nhất một.</p>')
-        ->toMatch('/<input id="lf-contact__email"[^>]*aria-describedby="lf-contact__phone-error"[^>]*autofocus\s*>/')
-        ->toMatch('/<input id="lf-contact__phone"[^>]*aria-describedby="lf-contact__phone-hint lf-contact__phone-error"/')
+        ->and($section)->toContain('<p class="lead-form__hint" id="lf-contact__phone--hint">Để lại điện thoại hoặc email – ít nhất một.</p>')
+        ->toMatch('/<input id="lf-contact__email"[^>]*aria-describedby="lf-contact__phone--error"[^>]*autofocus\s*>/')
+        ->toMatch('/<input id="lf-contact__phone"[^>]*aria-describedby="lf-contact__phone--hint lf-contact__phone--error"/')
         ->toContain('value="Nguyễn Văn Ánh"');
 });
 
@@ -248,13 +248,13 @@ it('moves the focus to the button when the send fails as a whole', function (): 
     }
 
     $this->from('http://a.test/lien-he')->post('http://a.test/forms/contact', [
-        'name' => 'Nguyễn Văn Ánh', 'phone' => '0912 345 678', 'message' => 'Ống thép cần cắt gấp, giao ở Đà Nẵng nhé', 'locale' => 'vi', 'lead_form' => 'contact',
+        'name' => 'Nguyễn Văn Ánh', 'phone' => '0912 345 678', 'message' => 'Ống thép cần cắt gấp, giao ở Đà Nẵng nhé', 'locale' => 'vi',
     ])->assertRedirect();
 
     $section = leadFormSection($this->get('http://a.test/lien-he')->getContent());
 
-    expect($section)->toContain('<p class="lead-form__alert" id="lf-contact-alert" role="alert">Bạn đã gửi quá nhiều lần.')
-        ->toMatch('/<button type="submit" class="lead-form__submit"\s+aria-describedby="lf-contact-alert"\s+autofocus\s*>/')
+    expect($section)->toContain('<p class="lead-form__alert" id="lf-contact--alert" role="alert">Bạn đã gửi quá nhiều lần.')
+        ->toMatch('/<button type="submit" class="lead-form__submit"\s+aria-describedby="lf-contact--alert"\s+autofocus\s*>/')
         ->toContain('value="Nguyễn Văn Ánh"')
         ->not->toContain('aria-invalid');
 });
@@ -298,7 +298,7 @@ it('shows the thank-you card only on the form that was sent', function (): void 
     seedTwoFormsPage();
 
     $this->from('http://a.test/dat-hang')->post('http://a.test/forms/quote', [
-        'name' => 'Nguyễn Văn Ánh', 'phone' => '0912 345 678', 'message' => 'Ống thép cần cắt gấp, giao ở Đà Nẵng nhé', 'locale' => 'vi', 'lead_form' => 'quote',
+        'name' => 'Nguyễn Văn Ánh', 'phone' => '0912 345 678', 'message' => 'Ống thép cần cắt gấp, giao ở Đà Nẵng nhé', 'locale' => 'vi',
     ])->assertRedirect('http://a.test/dat-hang');
 
     $html = $this->get('http://a.test/dat-hang')->assertOk()->getContent();
@@ -313,7 +313,7 @@ it('shows a failed send only on the form it came from, with one alert and one fo
     seedTwoFormsPage();
 
     $this->from('http://a.test/dat-hang')->post('http://a.test/forms/quote', [
-        'phone' => '0912 345 678', 'message' => 'Ống thép cần cắt gấp, giao ở Đà Nẵng nhé', 'locale' => 'vi', 'lead_form' => 'quote',
+        'phone' => '0912 345 678', 'message' => 'Ống thép cần cắt gấp, giao ở Đà Nẵng nhé', 'locale' => 'vi',
     ])->assertRedirect();
 
     $html = $this->get('http://a.test/dat-hang')->assertOk()->getContent();
@@ -321,40 +321,50 @@ it('shows a failed send only on the form it came from, with one alert and one fo
     expect(substr_count($html, 'role="alert"'))->toBe(1)
         ->and(substr_count($html, 'autofocus'))->toBe(1)
         ->and(substr_count($html, 'aria-invalid'))->toBe(1)
-        ->and(leadFormById($html, 'lf-quote'))->toContain('id="lf-quote__name-error"')->toContain('href="#lf-quote__name"')
+        ->and(leadFormById($html, 'lf-quote'))->toContain('id="lf-quote__name--error"')->toContain('href="#lf-quote__name"')
         ->and(leadFormById($html, 'lf-contact'))->not->toContain('role="alert"')->not->toContain('value="0912 345 678"')
         ->and(duplicateIds($html))->toBe([]);
 });
 
-it('shows a failed send that names no form on the page’s first form, keeping what was typed', function (): void {
+it('shows a failed send on the form that was posted, named by the server, keeping what was typed', function (): void {
     Cache::flush();
     seedTwoFormsPage();
 
-    $this->from('http://a.test/dat-hang')->post('http://a.test/forms/contact', [
+    // No form name in the post (a page built before the field existed, or another client).
+    $this->from('http://a.test/dat-hang')->post('http://a.test/forms/quote', [
         'phone' => '0912 345 678', 'message' => 'Ống thép cần cắt gấp, giao ở Đà Nẵng nhé', 'locale' => 'vi',
     ])->assertRedirect();
 
     $html = $this->get('http://a.test/dat-hang')->assertOk()->getContent();
 
     expect(substr_count($html, 'role="alert"'))->toBe(1)
-        ->and(leadFormById($html, 'lf-contact'))->toContain('role="alert"')->toContain('value="0912 345 678"')
-        ->and(leadFormById($html, 'lf-quote'))->not->toContain('role="alert"');
+        ->and(leadFormById($html, 'lf-quote'))->toContain('role="alert"')->toContain('value="0912 345 678"')
+        ->and(leadFormById($html, 'lf-contact'))->not->toContain('role="alert"')->not->toContain('value="0912 345 678"');
 });
 
-it('builds ids that cannot meet, whatever the form keys hold', function (): void {
+it('never repeats an id, also for keys that reduce to the same text or field keys ending like a suffix', function (): void {
     Cache::flush();
     seedTwoFormsPage([
         ['type' => 'form', 'props' => ['form_key' => 'contact']],
         ['type' => 'form', 'props' => ['form_key' => 'contact']],
         ['type' => 'form', 'props' => ['form_key' => 'quote']],
+        ['type' => 'form', 'props' => ['form_key' => 'Quote']],
     ]);
+    app(Tenancy::class)->enter(1, function (): void {
+        Form::query()->create(['key' => 'Quote', 'name' => ['vi' => 'Đặt hàng nhanh'], 'status' => 'active'])->fields()->createMany([
+            ['key' => 'name', 'type' => 'text', 'label' => ['vi' => 'Họ tên'], 'is_required' => true, 'sort_order' => 1],
+            ['key' => 'name-error', 'type' => 'text', 'label' => ['vi' => 'Ghi chú'], 'is_required' => false, 'sort_order' => 2],
+            ['key' => 'Name', 'type' => 'text', 'label' => ['vi' => 'Tên khác'], 'is_required' => false, 'sort_order' => 3],
+            ['key' => 'message', 'type' => 'textarea', 'label' => ['vi' => 'Nội dung'], 'is_required' => true, 'sort_order' => 4],
+        ]);
+    });
 
     $html = $this->get('http://a.test/dat-hang')->assertOk()->getContent();
+    preg_match_all('/\bid="(lf-[^"]*)"/', $html, $m);
 
-    expect($html)->toContain('id="lf-contact--2"')
+    expect($html)->toContain('id="lf-contact--2"')->toContain('id="lf-quote--2"')
         ->and(duplicateIds($html))->toBe([])
-        ->and(preg_match_all('/\bid="(lf-[^"]*)"/', $html, $m))->toBeGreaterThan(0)
-        ->and(array_filter($m[1], fn (string $id): bool => preg_match('/^lf-[a-z0-9_-]+$/', $id) !== 1))->toBe([]);
+        ->and(array_filter($m[1], fn (string $id): bool => preg_match('/^lf-[a-z0-9_]+(--[0-9]+)?(__[a-z0-9_]+(--[0-9a-z]+)*)?(--[a-z]+)?$/', $id) !== 1))->toBe([]);
 });
 
 it('keeps every id on the page unique, also when the same form is placed twice', function (): void {
@@ -374,7 +384,7 @@ it('shows a failed send on the first copy only when the same form is placed twic
     Cache::flush();
     seedTwoFormsPage([['type' => 'form', 'props' => ['form_key' => 'contact']], ['type' => 'form', 'props' => ['form_key' => 'contact']]]);
 
-    $this->from('http://a.test/dat-hang')->post('http://a.test/forms/contact', ['locale' => 'vi', 'lead_form' => 'contact'])->assertRedirect();
+    $this->from('http://a.test/dat-hang')->post('http://a.test/forms/contact', ['locale' => 'vi'])->assertRedirect();
     $html = $this->get('http://a.test/dat-hang')->assertOk()->getContent();
 
     expect(substr_count($html, 'role="alert"'))->toBe(1)
