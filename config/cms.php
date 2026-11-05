@@ -27,4 +27,9 @@ return [
     // link passes the link check.
     'map_hosts' => array_values(array_filter(array_map('trim', explode(',', (string) env('CMS_MAP_HOSTS', ''))))),
 
+    // The slugs a site's privacy-policy page may have in its default language. The consent sentence
+    // of a lead form links to the first published page found under one of them, and has no link
+    // while the site has none. The site template creates the page under the first slug.
+    'privacy_page_slugs' => ['chinh-sach-bao-mat', 'privacy-policy'],
+
 ];

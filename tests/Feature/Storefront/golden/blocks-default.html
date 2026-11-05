@@ -177,12 +177,10 @@
                             </li>
             </ul>
 </section>
-<section class="lead-form">
+<section class="lead-form" id="lf-contact">
                     <h2 class="lead-form__heading">Liên hệ</h2>
         
-        
-        
-        <form class="lead-form__form" method="POST" action="/forms/contact">
+                <form class="lead-form__form" method="POST" action="/forms/contact" novalidate>
             
             <input type="hidden" name="locale" value="vi">
             
@@ -192,41 +190,48 @@
                 </label>
             </div>
 
-                                                            <div class="lead-form__field">
+                                                                            <div class="lead-form__field lead-form__field--half">
                     <label for="lead-name">
-                        Họ tên<span class="lead-form__required" aria-hidden="true">*</span>                    </label>
+                        Họ tên <span class="lead-form__required" aria-hidden="true">*</span>                    </label>
                                             <input id="lead-name" type="text" name="name"
-                               value=""  required >
-                                                        </div>
-                                                            <div class="lead-form__field">
+                               value=""  required                                 autocomplete="name"                                                                                              >
+                                                                            </div>
+                                                                            <div class="lead-form__field lead-form__field--half">
                     <label for="lead-email">
                         Email                    </label>
                                             <input id="lead-email" type="email" name="email"
-                               value="" >
-                                                        </div>
-                                                            <div class="lead-form__field">
+                               value=""                                 autocomplete="email"                                                                                              >
+                                                                            </div>
+                                                                            <div class="lead-form__field">
                     <label for="lead-phone">
                         Điện thoại                    </label>
                                             <input id="lead-phone" type="tel" name="phone"
-                               value="" >
+                               value=""                                 autocomplete="tel"                                                                aria-describedby="lead-phone-hint"                                >
+                                                                <p class="lead-form__hint" id="lead-phone-hint">Để lại điện thoại hoặc email – ít nhất một.</p>
                                                         </div>
-                                                            <div class="lead-form__field">
+                                                                            <div class="lead-form__field">
                     <label for="lead-message">
-                        Nội dung<span class="lead-form__required" aria-hidden="true">*</span>                    </label>
-                                            <textarea id="lead-message" name="message" rows="5"
-                                   required ></textarea>
-                                                        </div>
-                                                
+                        Nội dung <span class="lead-form__required" aria-hidden="true">*</span>                    </label>
+                                            <textarea id="lead-message" name="message" rows="4"
+                                   required                                                                                                       ></textarea>
+                                                                            </div>
+                                                                
                     <div class="lead-form__field lead-form__field--checkbox">
-                        <input id="lead-consent" type="checkbox" name="consent" value="1"
-                                 required >
-                        <label for="lead-consent">Tôi đồng ý để website lưu các thông tin trên và dùng chúng để liên hệ lại với tôi.<span class="lead-form__required" aria-hidden="true">*</span></label>
+                        <label class="lead-form__check" for="lead-consent">
+                            <input id="lead-consent" type="checkbox" name="consent" value="1"
+                                     required                                                                       >
+                            <span>Tôi đồng ý để website lưu các thông tin trên và dùng chúng để liên hệ lại với tôi. <span class="lead-form__required" aria-hidden="true">*</span></span>
+                        </label>
                                             </div>
                     
             
-            <button type="submit" class="lead-form__submit">Gửi liên hệ</button>
+            
+            <div class="lead-form__actions">
+                <button type="submit" class="lead-form__submit" >Gửi liên hệ</button>
+                <p class="lead-form__note">Trường có dấu <span class="lead-form__required">*</span> là bắt buộc.</p>
+            </div>
         </form>
-    </section>
+            </section>
 <section class="page-band">
             <img class="page-band__bg"
              src="https://files.test/s/library/band-65f15ce8fee2.webp?w=1280"
