@@ -28,7 +28,7 @@ final class AddPublishedPageToMenu
             return;
         }
 
-        $menus = Menu::query()->whereRaw("(meta->>'auto_add_pages')::boolean is true")->orderBy('id')->get(['id', 'handle']);
+        $menus = Menu::query()->whereRaw("meta->'auto_add_pages' = 'true'::jsonb")->orderBy('id')->get(['id', 'handle']);
 
         foreach ($menus as $menu) {
             $this->lockMenu($menu->id);

@@ -3,6 +3,7 @@
 use App\Modules\Cms\Actions\Menus\DeleteMenuItem;
 use App\Modules\Cms\Actions\Menus\DuplicateMenu;
 use App\Modules\Cms\Actions\Menus\DuplicateMenuItem;
+use App\Modules\Cms\Actions\Menus\RestoreMenuItem;
 use App\Modules\Cms\Actions\Menus\SaveMenu;
 use App\Modules\Cms\Actions\Menus\SaveMenuItem;
 use App\Modules\Cms\Actions\Menus\SetMenuAutoAdd;
@@ -224,6 +225,17 @@ it('keeps a menu within its item cap on every path that adds rows, with its own 
         }
         expect($refused)->toBe('menu_full')
             ->and(MenuItem::query()->where('menu_id', $menu->id)->count())->toBe(MenuRules::ITEMS_MAX);
+
+        // Rows coming back from the trash count too (the menu is full again once this one is removed).
+        $removed = mcRow($menu, 'ồ Đã gỡ ộ');
+        app(DeleteMenuItem::class)->handle($this->editor, $removed);
+        $refused = null;
+        try {
+            app(RestoreMenuItem::class)->handle($this->editor, $removed);
+        } catch (MenuChangeRejectedException $e) {
+            $refused = $e->reason;
+        }
+        expect($refused)->toBe('menu_full');
 
         // A full menu that asked for new pages simply does not take one.
         app(SetMenuAutoAdd::class)->handle($this->editor, $menu, true);

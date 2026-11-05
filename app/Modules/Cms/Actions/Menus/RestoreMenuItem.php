@@ -57,6 +57,7 @@ final readonly class RestoreMenuItem
                 $parentId = null;
             }
 
+            $this->ensureRoom($trashed->menu_id, count($branch));   // coming back counts like being added
             $restored = Cast::int(MenuItem::onlyTrashed()->whereKey(array_keys($branch))->update(['deleted_at' => null]));
 
             $siblings = array_map(static fn (mixed $id): int => Cast::int($id), MenuItem::query()
