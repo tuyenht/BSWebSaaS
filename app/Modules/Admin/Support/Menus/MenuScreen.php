@@ -26,7 +26,7 @@ use Illuminate\Support\Str;
  * edited — its version token, limits, items (in display order, the same {key, parent} shape a
  * draft's tree takes), the source behind each item and its trash. Everything is keyed by ulid,
  * never by id. A fixed number of queries whatever the menu's size (Query Budget): the menus, the
- * assignments, the items, their labels, the trash, two per kind of source, the site's details.
+ * assignments, the items, their labels, the trash, a few per kind of source (pages and posts also their redirects), the site's details.
  */
 final readonly class MenuScreen
 {

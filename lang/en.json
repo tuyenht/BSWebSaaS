@@ -2136,6 +2136,7 @@
     "menus.ui_restored": "Restored “:name” — it sits at the end of the menu.",
     "menus.ui_goneTitle": "Remove :n items that are gone?",
     "menus.ui_goneBody": "Remove :n items: :list from the menu? They stay in the trash for 30 days. They point at deleted content, so visitors never saw them anyway; items pointing at unpublished content stay as they are.",
+    "menus.ui_goneKids": "The :k items under them leave the menu with them.",
     "menus.ui_goneOk": "Remove :n items",
     "menus.ui_goneRemoved": "Removed :n items that were gone — they stay in the trash for 30 days.",
     "menus.ui_fixed": "Link fixed by itself",

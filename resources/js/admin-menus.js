@@ -670,9 +670,10 @@ if (typeof document !== 'undefined') document.addEventListener('alpine:init', ()
                 const n = keys.length;
                 const names = keys.map((k) => this.name(this.item(k)));
                 const list = names.slice(0, 3).join(', ') + (names.length > 3 ? ', …' : '');
+                const gone = new Set(keys.flatMap((k) => this.block(k).map((x) => x.key)));
+                const kids = gone.size - n; // live rows under a gone item leave with it, as remove() does
                 const run = () => {
                     this.change(() => {
-                        const gone = new Set(keys.flatMap((k) => this.block(k).map((x) => x.key)));
                         this.items = this.items.filter((x) => !gone.has(x.key));
                     }, false);
                     if (this.sel && !this.item(this.sel)) {
@@ -680,7 +681,7 @@ if (typeof document !== 'undefined') document.addEventListener('alpine:init', ()
                     }
                     this.notify(fill(t.goneRemoved, { n }), true);
                 };
-                this.ask = { title: fill(t.goneTitle, { n }), body: fill(t.goneBody, { n, list }), ok: fill(t.goneOk, { n }), danger: true, run };
+                this.ask = { title: fill(t.goneTitle, { n }), body: fill(t.goneBody, { n, list }) + (kids ? ' ' + fill(t.goneKids, { k: kids }) : ''), ok: fill(t.goneOk, { n }), danger: true, run };
             },
             toggleHide(k) {
                 const it = this.item(k);

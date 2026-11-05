@@ -2136,6 +2136,7 @@
     "menus.ui_restored": "Đã khôi phục “:name” — nằm ở cuối trình đơn.",
     "menus.ui_goneTitle": "Gỡ :n mục không còn?",
     "menus.ui_goneBody": "Gỡ :n mục: :list khỏi trình đơn? Vào Thùng rác 30 ngày. Các mục này trỏ tới nội dung đã xóa nên khách vốn không thấy; mục trỏ tới nội dung chưa đăng vẫn giữ nguyên.",
+    "menus.ui_goneKids": "Cùng :k mục con bên dưới chúng cũng rời trình đơn.",
     "menus.ui_goneOk": "Gỡ :n mục",
     "menus.ui_goneRemoved": "Đã gỡ :n mục không còn — giữ trong Thùng rác 30 ngày.",
     "menus.ui_fixed": "Đã tự sửa đường dẫn",

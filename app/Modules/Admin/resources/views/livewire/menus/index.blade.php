@@ -20,7 +20,7 @@
         'leaveSave', 'leaveDrop', 'renamed', 'newMenuName', 'menuCopied', 'delTitle', 'delBodyUsed', 'delBody',
         'delOk', 'menuDeleted', 'removeKidsTitle', 'removeKidsBody', 'removeKidsOk', 'langsToast', 'areaNone', 'areaMain', 'areaSame', 'areasSet', 'areaSaved', 'codeCopied',
         'checkOk', 'checkTips', 'checkBad', 'checkAndTips', 'trashKids', 'trashDays', 'restoreNeedsSave', 'restored',
-        'iconHits', 'descTaken', 'goneTitle', 'goneBody', 'goneOk', 'goneRemoved',
+        'iconHits', 'descTaken', 'goneTitle', 'goneBody', 'goneKids', 'goneOk', 'goneRemoved',
     ])->mapWithKeys(fn (string $k): array => [$k => $u($k)])->all();
     $texts += [
         'undone' => __('admin.tree.undone'),

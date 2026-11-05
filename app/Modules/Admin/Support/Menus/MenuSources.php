@@ -74,7 +74,7 @@ final class MenuSources
                 'ref' => null, 'title' => null, 'slug' => null, 'state' => 'gone', 'untranslated' => [], 'summary' => [], 'moved' => false,
             ];
             $moved = $movedAt[$item->routable_id] ?? null;
-            $source['moved'] = $source['state'] !== 'gone' && $item->link_type === 'entry' && $moved !== null
+            $source['moved'] = $source['state'] === 'live' && $item->link_type === 'entry' && $moved !== null
                 && $item->created_at !== null && $moved->greaterThan($item->created_at);
             $out[$item->id] = $source;
         }
