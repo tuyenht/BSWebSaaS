@@ -1,14 +1,14 @@
 // The Trình đơn screen (Alpine.data 'bsMenus'): the menu being edited is a draft kept here until
-// "Lưu" sends it whole ($wire.saveDraft); undo / redo, the moves (buttons, Alt + arrows, drag under
-// the shared drag rule of admin-tree-dnd.js, "Chuyển đến…"), the add panel, the inline editor and
-// the "Khách sẽ thấy" preview all work on that draft. Menus, areas and "Tự thêm trang mới" are
-// saved at once by their own calls. Every key is the ulid the server gave (or "new:…" for a row
-// not saved yet); labels and descriptions are shown as text only (x-text), never as HTML.
-import { createTreeDnd, dropPosition, fill, kidsOf, planMove } from './admin-tree-dnd.js';
+// "Lưu" sends it whole ($wire.saveDraft). The item tree is the shared tree (<x-bs-admin::tree
+// local>, admin-tree.js): it drags, moves by keyboard and by the ⋮ menu, and hands each move to
+// treeMove() here; undo / redo (one history, makeHistory) cover every change to the draft. The
+// add panel, the inline editor, "Chuyển đến…" and the "Khách sẽ thấy" preview work on the same
+// draft. Menus, areas and "Tự thêm trang mới" are saved at once by their own calls. Every key is
+// the ulid the server gave (or "new:…" for a row not saved yet); labels and descriptions are shown
+// as text only (x-text), never as HTML.
+import { fill, kidsOf, makeHistory, treeGuides } from './admin-tree-dnd.js';
 
 const HIST_MAX = 50;
-const TOAST_MS = 6000;
-const TOAST_UNDO_MS = 10000;
 const ISSUES_SHOWN = 3;
 const BADGES = ['new', 'hot', 'sale', 'soon'];
 
@@ -47,21 +47,97 @@ export function normUrl(raw, t) {
     return { ok: false, msg: t.urlBad };
 }
 
-document.addEventListener('alpine:init', () => {
+// What "Lưu" sends (ApplyMenuDraft): items = the draft in display order, saved = key → the saved
+// row's signature ([parent, link, labels, options] as JSON), version = the token the draft was
+// built on. Every live row is named once in `tree`; a removed row and the rows under it are in
+// `removes`; a label cleared in a language is sent as '' so the server clears it; a row not saved
+// yet keeps its "new:…" key.
+export function buildDraft(items, saved, version) {
+    const here = new Set(items.map((it) => it.key));
+    const creates = [];
+    const updates = [];
+    items.forEach((it) => {
+        const labels = { ...it.labels };
+        if (!(it.key in saved)) {
+            creates.push({ key: it.key, link: it.link, labels, options: it.options });
+            return;
+        }
+        const [, link, oldLabels, options] = JSON.parse(saved[it.key]);
+        const up = { key: it.key };
+        if (JSON.stringify(link) !== JSON.stringify(it.link)) {
+            up.link = it.link;
+        }
+        if (JSON.stringify(oldLabels) !== JSON.stringify(it.labels)) {
+            Object.keys(oldLabels).forEach((l) => {
+                if (!(l in labels)) {
+                    labels[l] = '';
+                }
+            });
+            up.labels = labels;
+        }
+        if (JSON.stringify(options) !== JSON.stringify(it.options)) {
+            up.options = it.options;
+        }
+        if (Object.keys(up).length > 1) {
+            updates.push(up);
+        }
+    });
+    return {
+        version,
+        tree: items.map((it) => ({ key: it.key, parent: it.parent || null })),
+        creates,
+        updates,
+        removes: Object.keys(saved).filter((k) => !here.has(k)),
+    };
+}
+
+// The rows the shared tree draws from the draft: each with its level, its place among its siblings
+// and its guide lines (the fields of a TreeRows entry). While a filter is on, the matches stand flat,
+// in order, and cannot be moved.
+export function treeRowsOf(items, flat = false) {
+    const dep = {};
+    const size = {};
+    const pos = {};
+    items.forEach((it) => {
+        const p = it.parent || '';
+        dep[it.key] = it.parent && dep[it.parent] !== undefined ? dep[it.parent] + 1 : 0;
+        size[p] = (size[p] || 0) + 1;
+        pos[it.key] = size[p];
+    });
+    const kids = {};
+    items.forEach((it) => {
+        if (it.parent) {
+            kids[it.parent] = (kids[it.parent] || 0) + 1;
+        }
+    });
+    if (flat) {
+        return items.map((it, i) => ({ it, k: it.key, parent: null, lv: 1, kids: 0, pos: i + 1, size: items.length, guides: [] }));
+    }
+    const guides = treeGuides(items.map((it) => dep[it.key] + 1));
+    return items.map((it, i) => ({
+        it,
+        k: it.key,
+        parent: it.parent || null,
+        lv: dep[it.key] + 1,
+        kids: kids[it.key] || 0,
+        pos: pos[it.key],
+        size: size[it.parent || ''],
+        guides: guides[i],
+    }));
+}
+
+if (typeof document !== 'undefined') document.addEventListener('alpine:init', () => {
     window.Alpine.data('bsMenus', (cfg) => {
         const t = cfg.texts;
-        // Outside Alpine's reactive state: the drag engine, the history lists, timers.
-        let dnd = null;
-        let past = [];
-        let future = [];
-        let toastTimer = null;
+        // Outside Alpine's reactive state: the history, timers.
+        let history = makeHistory({ max: HIST_MAX });
         let searchTimer = null;
         let seq = 0;
-        let lastFocus = null;
+        let toastSeq = 0;
 
         return {
             screen: 'loading', // loading · error · data
-            saving: false,
+            saveBusy: false,
             saveErr: false,
             d: null, // the load() answer without the open menu
             menu: null, // the open menu: {key, name, autoAdd, version, limits, trash}
@@ -72,11 +148,9 @@ document.addEventListener('alpine:init', () => {
             futN: 0,
             loc: cfg.main,
             sel: null,
-            rowMenu: null,
-            menuMore: null,
             renaming: null,
             renameVal: '',
-            fold: {},
+            treeOn: 0, // bumped when the tree starts: what reads the tree's folding reads it again
             q: '',
             filter: 'all',
             trashOpen: false,
@@ -97,23 +171,12 @@ document.addEventListener('alpine:init', () => {
             newUrl: '',
             iconOpen: false,
             iconQ: '',
-            dragK: null,
-            drop: null,
             mv: null,
             ask: null,
             toast: null,
             live: '',
 
             init() {
-                dnd = createTreeDnd({
-                    step: () => 22,
-                    name: (k) => this.name(this.item(k)),
-                    check: (T, k) => this.allow(k, T.lv),
-                    say: (text) => { this.live = text; },
-                    onTarget: (T) => { this.drop = { k: T.ph.k, at: T.ph.at, lv: T.lv || 1, bad: !!T.bad, label: T.label, refK: T.mode === 'in' ? T.refK : null }; },
-                    onExpand: (k) => { this.fold[k] = false; },
-                    texts: t.drag,
-                });
                 this.take(cfg.initial);
                 window.addEventListener('beforeunload', (e) => {
                     if (this.dirty().n) {
@@ -140,11 +203,8 @@ document.addEventListener('alpine:init', () => {
             },
             open(menu) {
                 this.sel = null;
-                this.rowMenu = null;
                 this.trashOpen = false;
-                this.fold = {};
-                past = [];
-                future = [];
+                history = makeHistory({ max: HIST_MAX });
                 this.histN = 0;
                 this.futN = 0;
                 if (!menu) {
@@ -165,7 +225,8 @@ document.addEventListener('alpine:init', () => {
                 this.saved = JSON.stringify(map);
                 this.savedOrder = this.order();
             },
-            async reload(key = this.menu ? this.menu.key : null) {
+            // null opens the menu the screen opens on first (the server picks it, as on the first draw).
+            async reload(key = this.menu?.key ?? null) {
                 this.screen = this.d ? this.screen : 'loading';
                 try {
                     const res = await this.$wire.load(key);
@@ -240,7 +301,7 @@ document.addEventListener('alpine:init', () => {
                 this.items.forEach((it) => { dep[it.key] = it.parent && dep[it.parent] !== undefined ? dep[it.parent] + 1 : 0; });
                 return dep;
             },
-            kids(k) {
+            childrenOf(k) {
                 return this.items.filter((it) => (it.parent || null) === k);
             },
             hasKids(k) {
@@ -259,7 +320,7 @@ document.addEventListener('alpine:init', () => {
                 }
                 return this.items.slice(i, j);
             },
-            height(k) {
+            spanOf(k) {
                 const dep = this.depthMap();
                 return this.block(k).reduce((h, it) => Math.max(h, dep[it.key] - dep[k] + 1), 1);
             },
@@ -299,44 +360,33 @@ document.addEventListener('alpine:init', () => {
             },
             rows() {
                 const dep = this.depthMap();
-                const q = fold(this.q.trim());
-                if (this.filtering) {
-                    return this.items.filter((it) => {
-                        if (q && !fold(this.name(it)).includes(q)) {
-                            return false;
-                        }
-                        if (this.filter === 'issue') {
-                            return this.needsLook(it, dep);
-                        }
-                        if (this.filter === 'hidden') {
-                            return it.options.hidden;
-                        }
-                        if (this.filter === 'untr') {
-                            return this.untranslated(it);
-                        }
-                        return true;
-                    }).map((it) => this.row(it, dep, 0));
+                if (!this.filtering) {
+                    return treeRowsOf(this.items).map((r) => this.rowOf(r, dep));
                 }
-                const out = [];
-                const hidden = {};
-                this.items.forEach((it) => {
-                    if (it.parent && (hidden[it.parent] || this.fold[it.parent])) {
-                        hidden[it.key] = true;
-                        return;
+                const q = fold(this.q.trim());
+                const hits = this.items.filter((it) => {
+                    if (q && !fold(this.name(it)).includes(q)) {
+                        return false;
                     }
-                    out.push(this.row(it, dep, dep[it.key]));
+                    if (this.filter === 'issue') {
+                        return this.needsLook(it, dep);
+                    }
+                    if (this.filter === 'hidden') {
+                        return it.options.hidden;
+                    }
+                    if (this.filter === 'untr') {
+                        return this.untranslated(it);
+                    }
+                    return true;
                 });
-                return out;
+                return treeRowsOf(hits, true).map((r) => this.rowOf(r, dep));
             },
-            row(it, dep, indent) {
+            rowOf(r, dep) {
+                const it = r.it;
                 const state = this.srcState(it);
                 return {
-                    it,
-                    k: it.key,
-                    indent,
-                    lv: dep[it.key] + 1,
+                    ...r,
                     name: this.name(it),
-                    kids: this.hasKids(it.key),
                     state,
                     stateLabel: state ? t.state[state] : '',
                     untr: it.source && it.source.untranslated && it.source.untranslated.length > 0,
@@ -408,15 +458,14 @@ document.addEventListener('alpine:init', () => {
                 return JSON.stringify(this.items);
             },
             change(fn, keepSel = true) {
+                if (this.saveBusy) {
+                    return; // the editing area is inert while "Lưu" runs; nothing slips in
+                }
                 const before = this.snap();
                 fn();
                 if (this.snap() !== before) {
-                    past.push(before);
-                    if (past.length > HIST_MAX) {
-                        past.shift();
-                    }
-                    future = [];
-                    this.histN = past.length;
+                    history.record(before, 'do');
+                    this.histN = history.undoSize;
                     this.futN = 0;
                 }
                 if (!keepSel && this.sel && !this.item(this.sel)) {
@@ -424,52 +473,48 @@ document.addEventListener('alpine:init', () => {
                 }
             },
             undo() {
-                if (!past.length) {
+                const prev = this.saveBusy ? null : history.takeUndo();
+                if (!prev) {
                     return;
                 }
                 const k = this.focusedRow();
-                future.push(this.snap());
-                this.items = JSON.parse(past.pop());
+                history.record(this.snap(), 'undo');
+                this.items = JSON.parse(prev);
                 this.after(t.undone, k);
             },
             redo() {
-                if (!future.length) {
+                const next = this.saveBusy ? null : history.takeRedo();
+                if (!next) {
                     return;
                 }
                 const k = this.focusedRow();
-                past.push(this.snap());
-                this.items = JSON.parse(future.pop());
+                history.record(this.snap(), 'redo');
+                this.items = JSON.parse(next);
                 this.after(t.redone, k);
             },
             after(text, k = null) {
-                this.histN = past.length;
-                this.futN = future.length;
+                this.histN = history.undoSize;
+                this.futN = history.redoSize;
                 if (this.sel && !this.item(this.sel)) {
                     this.sel = null;
                 }
                 this.live = text;
                 this.toastClose();
                 if (k && this.item(k)) {
-                    this.focusRow(k, true);
+                    this.focusItem(k, true);
                 }
             },
             // The row holding the keyboard focus, if any.
             focusedRow() {
-                const row = document.activeElement && document.activeElement.closest('[data-mn-row]');
-                return row ? row.getAttribute('data-mn-row') : null;
+                const row = document.activeElement && document.activeElement.closest('#mn-tree [data-tree-row]');
+                return row ? row.dataset.k : null;
             },
             reset() {
                 this.ask = {
                     title: t.resetTitle,
                     body: fill(t.resetBody, { what: this.dirty().text }),
                     ok: t.resetOk,
-                    run: () => {
-                        const saved = JSON.parse(this.saved);
-                        this.change(() => {
-                            this.items = this.items.filter((it) => it.key in saved);
-                        });
-                        this.reload();
-                    },
+                    run: () => this.reload(), // the saved menu again, with a fresh history
                 };
             },
 
@@ -504,7 +549,7 @@ document.addEventListener('alpine:init', () => {
                 if (r.ok) {
                     this.setUrl(k, r.url);
                 } else {
-                    this.say(r.msg, false);
+                    this.fail(r.msg);
                 }
             },
             setBadge(k, kind) {
@@ -527,7 +572,6 @@ document.addEventListener('alpine:init', () => {
             },
             pick(k) {
                 this.sel = this.sel === k ? null : k;
-                this.rowMenu = null;
                 this.iconOpen = false;
                 if (this.sel) {
                     this.$nextTick(() => {
@@ -541,7 +585,7 @@ document.addEventListener('alpine:init', () => {
             closeEditor() {
                 const k = this.sel;
                 this.sel = null;
-                this.focusRow(k);
+                this.focusItem(k);
             },
             labelErr(it) {
                 return this.onMain && !this.label(it) && !this.fallbackName(it);
@@ -569,9 +613,8 @@ document.addEventListener('alpine:init', () => {
                     if (this.sel === k) {
                         this.sel = null;
                     }
-                    this.say(fill(n ? t.removedKids : t.removed, { name, n }), true);
+                    this.notify(fill(n ? t.removedKids : t.removed, { name, n }), true);
                 };
-                this.rowMenu = null;
                 if (n) {
                     this.ask = { title: fill(t.removeKidsTitle, { n }), body: fill(t.removeKidsBody, { name, n }), ok: t.removeKidsOk, danger: true, run };
                 } else {
@@ -581,8 +624,7 @@ document.addEventListener('alpine:init', () => {
             toggleHide(k) {
                 const it = this.item(k);
                 this.setOpt(k, 'hidden', !it.options.hidden);
-                this.rowMenu = null;
-                this.say(fill(it.options.hidden ? t.hiddenNow : t.shownNow, { name: this.name(it) }), true);
+                this.notify(fill(it.options.hidden ? t.hiddenNow : t.shownNow, { name: this.name(it) }), true);
             },
             revert(k) {
                 const saved = JSON.parse(this.saved);
@@ -591,27 +633,25 @@ document.addEventListener('alpine:init', () => {
                 }
                 const [, link, labels, options] = JSON.parse(saved[k]);
                 this.set(k, (it) => { it.link = link; it.labels = labels; it.options = options; });
-                this.rowMenu = null;
             },
             async copy(k) {
-                this.rowMenu = null;
                 const it = this.item(k);
                 if (this.dirty().n) {
                     // copying works on the saved menu: a draft with changes is refused (draft_stale)
-                    this.say(t.copyNeedsSave, false);
+                    this.fail(t.copyNeedsSave);
                     return;
                 }
-                const res = await this.call(() => this.$wire.copyItem(this.menu.key, k, this.menu.version));
+                const res = await this.server(() => this.$wire.copyItem(this.menu.key, k, this.menu.version));
                 if (res) {
                     await this.reload();
-                    this.say(fill(t.copied, { name: this.name(it) }));
-                    this.focusRow(res.item);
+                    this.notify(fill(t.copied, { name: this.name(it) }));
+                    this.focusItem(res.item);
                 }
             },
 
             // ---- moves --------------------------------------------------------------------------
-            allow(k, lv) {
-                const h = this.height(k);
+            canPlace(k, lv) {
+                const h = this.spanOf(k);
                 if (lv + h - 1 > this.maxDepth) {
                     return { ok: false, label: fill(t.tooDeep, { max: this.maxDepth }), why: fill(t.tooDeep, { max: this.maxDepth }) };
                 }
@@ -639,41 +679,25 @@ document.addEventListener('alpine:init', () => {
                 rest.splice(at, 0, ...blockRows);
                 this.items = rest;
             },
-            move(act, k) {
+            // The shared tree's move (drag, Alt + arrows, the ⋮ menu): null when done, else the reason.
+            treeMove(k, parent, pos) {
                 if (this.filtering) {
-                    this.say(t.noMoveFiltered, false);
-                    return;
+                    return t.noMoveFiltered;
                 }
-                const plan = planMove(act, this.treeRows(), k);
-                if (plan.no) {
-                    this.say(fill(t.no[plan.no] || '', { name: this.name(this.item(k)) }), false);
-                    return;
+                if (!this.item(k)) {
+                    return t.no.gone;
                 }
-                const why = this.allow(k, plan.lv);
+                const why = this.canPlace(k, parent ? this.depthMap()[parent] + 2 : 1);
                 if (why) {
-                    this.say(why.why, false);
-                    return;
+                    return why.why;
                 }
-                this.change(() => this.place(k, plan.parent, plan.pos));
-                if (plan.target) {
-                    this.fold[plan.target] = false;
-                }
-                this.rowMenu = null;
-                const it = this.item(k);
-                this.live = fill(t.movedLive, { name: this.name(it), lv: plan.lv });
-                this.focusRow(k, true);
-            },
-            rowKey(e, k) {
-                if (!e.altKey || this.filtering) {
-                    return;
-                }
-                const act = { ArrowUp: 'moveUp', ArrowDown: 'moveDown', ArrowRight: 'indent', ArrowLeft: 'outdent' }[e.key];
-                if (act) {
-                    e.preventDefault();
-                    this.move(act, k);
-                }
+                this.change(() => this.place(k, parent, pos));
+                return null;
             },
             keys(e) {
+                if (e.defaultPrevented) {
+                    return; // the tree took it (its own Ctrl+Z, Esc during a drag)
+                }
                 const tag = (e.target.tagName || '').toLowerCase();
                 const typing = tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable;
                 if ((e.ctrlKey || e.metaKey) && !typing && e.key.toLowerCase() === 'z') {
@@ -691,141 +715,64 @@ document.addEventListener('alpine:init', () => {
                 }
             },
             escape() {
-                if (this.ask) {
-                    this.askClose();
-                } else if (this.mv) {
-                    this.mvClose();
-                } else if (this.iconOpen) {
+                if (this.ask || this.mv) {
+                    return; // the dialog closes itself
+                }
+                if (this.iconOpen) {
                     this.iconOpen = false;
-                } else if (this.rowMenu) {
-                    const k = this.rowMenu;
-                    this.rowMenu = null;
-                    this.focusMore(k);
-                } else if (this.menuMore) {
-                    const k = this.menuMore;
-                    this.menuMore = null;
-                    const b = document.querySelector('[data-mn-mm="' + k + '"]');
-                    if (b) {
-                        b.focus();
-                    }
                 } else if (this.renaming) {
                     this.renaming = null;
                 } else if (this.sel) {
                     this.closeEditor();
                 }
             },
-            focusRow(k, keepButton = false) {
+            focusItem(k, keepButton = false) {
                 if (!k) {
                     return;
                 }
                 this.$nextTick(() => {
-                    const row = document.querySelector('[data-mn-row="' + k + '"]');
+                    const row = document.querySelector('#mn-tree [data-tree-row][data-k="' + k + '"]');
                     if (!row) {
                         return;
                     }
                     row.scrollIntoView({ block: 'nearest' });
-                    const active = document.activeElement;
-                    if (keepButton && row.contains(active)) {
+                    if (keepButton && row.contains(document.activeElement)) {
                         return;
                     }
-                    const b = row.querySelector('[data-mn-name]');
+                    const b = row.querySelector('[data-tree-name]');
                     if (b) {
                         b.focus();
                     }
                 });
             },
-            focusMore(k) {
-                this.$nextTick(() => {
-                    const b = document.querySelector('[data-mn-more="' + k + '"]');
-                    if (b) {
-                        b.focus();
-                    }
-                });
+            // The shared tree's own state (its folding), or null before it is drawn.
+            tree() {
+                // null until the tree's own x-data has started (before that $data is this screen's)
+                const el = document.getElementById('mn-tree');
+                const tr = el ? window.Alpine.$data(el) : null;
+                return tr && typeof tr.openTo === 'function' ? tr : null;
             },
-            toggleFold(k) {
-                this.fold[k] = !this.fold[k];
-            },
-            get anyFolded() {
-                return Object.keys(this.fold).some((k) => this.fold[k]);
-            },
-            foldAll() {
-                if (this.anyFolded) {
-                    this.fold = {};
-                } else {
-                    const f = {};
-                    this.items.forEach((it) => { if (this.hasKids(it.key)) { f[it.key] = true; } });
-                    this.fold = f;
+            openItem(k) {
+                const tr = this.tree();
+                if (tr && k) {
+                    tr.expand(k);
                 }
             },
-
-            // dragging, under the shared drop rule
-            dragStart(e, k) {
-                if (this.filtering) {
-                    e.preventDefault();
-                    this.say(t.noMoveFiltered, false);
-                    return;
-                }
-                this.dragK = k;
-                this.rowMenu = null;
-                dnd.start(e, k, e.target.closest('[data-mn-row]'));
+            get anyShut() {
+                void this.treeOn;
+                const tr = this.tree();
+                return tr ? tr.anyFolded() : false;
             },
-            dragOver(e, k) {
-                if (!this.dragK) {
-                    return;
+            foldRows() {
+                const tr = this.tree();
+                if (tr) {
+                    tr.foldAll(!tr.anyFolded());
                 }
-                const el = e.target.closest('[data-mn-row]');
-                dnd.over(e, el, k, this.shownRows());
-            },
-            dragOverPh(e) {
-                if (this.dragK) {
-                    dnd.overPh(e, this.shownRows());
-                }
-            },
-            shownRows() {
-                return this.rows().map((r) => ({ k: r.k, lv: r.lv, parent: r.it.parent || null, fold: r.kids && !!this.fold[r.k] }));
-            },
-            dragDrop(e) {
-                e.preventDefault();
-                const T = dnd.end();
-                const k = this.dragK;
-                this.dragEnd();
-                if (!k || !T) {
-                    return;
-                }
-                if (T.bad) {
-                    this.say(fill(t.kept, { why: T.why || T.label }), false);
-                    return;
-                }
-                const parent = T.parent || null;
-                const sib = kidsOf(this.treeRows(), parent, k);
-                this.change(() => this.place(k, parent, dropPosition(T, sib)));
-                if (parent) {
-                    this.fold[parent] = false;
-                }
-                this.live = T.label;
-            },
-            dragEnd() {
-                if (this.dragK) {
-                    dnd.end();
-                }
-                this.dragK = null;
-                this.drop = null;
-            },
-            get dragHint() {
-                if (!this.dragK) {
-                    return '';
-                }
-                if (this.drop) {
-                    return this.drop.label + (this.drop.bad ? t.dragBad : '');
-                }
-                const n = this.block(this.dragK).length - 1;
-                return fill(n ? t.dragHintKids : t.dragHint, { name: this.name(this.item(this.dragK)), n });
             },
 
             // "Chuyển đến…"
             mvOpen(k) {
-                this.rowMenu = null;
-                this.mv = { k, q: '', pick: null, from: k };
+                this.mv = { k, q: '', pick: null };
                 this.$nextTick(() => {
                     const el = document.getElementById('mn-mv-q');
                     if (el) {
@@ -840,7 +787,7 @@ document.addEventListener('alpine:init', () => {
                 const k = this.mv.k;
                 const dep = this.depthMap();
                 const inside = new Set(this.block(k).map((x) => x.key));
-                const h = this.height(k);
+                const h = this.spanOf(k);
                 const q = fold(this.mv.q.trim());
                 const out = [{ key: '@top', name: t.mvTop, sub: this.item(k).parent ? t.mvTopSub : t.mvHere, lv: 0, dis: !this.item(k).parent }];
                 this.items.forEach((it) => {
@@ -853,7 +800,7 @@ document.addEventListener('alpine:init', () => {
                     out.push({
                         key: it.key,
                         name: this.name(it),
-                        sub: here ? t.mvHere : (tooDeep ? fill(t.tooDeep, { max: this.maxDepth }) : fill(t.mvSub, { n: this.kids(it.key).length })),
+                        sub: here ? t.mvHere : (tooDeep ? fill(t.tooDeep, { max: this.maxDepth }) : fill(t.mvSub, { n: this.childrenOf(it.key).length })),
                         lv: dep[it.key] + 1,
                         dis: tooDeep || here,
                     });
@@ -873,19 +820,13 @@ document.addEventListener('alpine:init', () => {
                 }
                 const parent = pick === '@top' ? null : pick;
                 this.change(() => this.place(k, parent, kidsOf(this.treeRows(), parent, k).length));
-                if (parent) {
-                    this.fold[parent] = false;
-                }
+                this.openItem(parent);
                 this.mv = null;
-                this.say(fill(t.movedTo, { name: this.name(this.item(k)) }));
-                this.focusRow(k);
+                this.notify(fill(t.movedTo, { name: this.name(this.item(k)) }));
+                this.focusItem(k);
             },
             mvClose() {
-                const k = this.mv ? this.mv.from : null;
-                this.mv = null;
-                if (k) {
-                    this.focusMore(k);
-                }
+                this.mv = null; // the dialog puts the focus back on the ⋮ it was opened from
             },
 
             // ---- adding -------------------------------------------------------------------------
@@ -955,8 +896,8 @@ document.addEventListener('alpine:init', () => {
             },
             addRows(list) {
                 const parent = this.addParent;
-                if (parent && this.allow(list[0].key, (this.depthMap()[parent] || 0) + 2)) {
-                    this.say(fill(t.tooDeep, { max: this.maxDepth }), false);
+                if (parent && (this.depthMap()[parent] || 0) + 2 > this.maxDepth) {
+                    this.fail(fill(t.tooDeep, { max: this.maxDepth }));
                     return null;
                 }
                 const made = list.map((r) => ({ key: 'new:' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7), parent, link: r.link, labels: r.labels || {}, options: emptyOptions(), source: r.kind ? { kind: r.kind, ref: r.link.ref, title: r.title, slug: null, state: r.draft ? 'unpublished' : 'live', untranslated: [] } : null }));
@@ -966,9 +907,7 @@ document.addEventListener('alpine:init', () => {
                         this.place(it.key, parent, Number.MAX_SAFE_INTEGER);
                     });
                 });
-                if (parent) {
-                    this.fold[parent] = false;
-                }
+                this.openItem(parent);
                 return made;
             },
             addPicked() {
@@ -984,8 +923,8 @@ document.addEventListener('alpine:init', () => {
                 const made = this.addRows(list);
                 if (made) {
                     this.picked = {};
-                    this.say(fill(t.added, { n: made.length }));
-                    this.focusRow(made[made.length - 1].key);
+                    this.notify(fill(t.added, { n: made.length }));
+                    this.focusItem(made[made.length - 1].key);
                 }
             },
             get url() {
@@ -1000,91 +939,61 @@ document.addEventListener('alpine:init', () => {
                 if (made) {
                     this.newLabel = '';
                     this.newUrl = '';
-                    this.say(fill(t.added, { n: 1 }));
-                    this.focusRow(made[0].key);
+                    this.notify(fill(t.added, { n: 1 }));
+                    this.focusItem(made[0].key);
                 }
             },
 
             // ---- saving -------------------------------------------------------------------------
             draft() {
-                const saved = JSON.parse(this.saved);
-                const here = new Set(this.items.map((it) => it.key));
-                const creates = [];
-                const updates = [];
-                this.items.forEach((it) => {
-                    const labels = { ...it.labels };
-                    if (!(it.key in saved)) {
-                        creates.push({ key: it.key, link: it.link, labels, options: it.options });
-                        return;
-                    }
-                    const [, link, oldLabels, options] = JSON.parse(saved[it.key]);
-                    const up = { key: it.key };
-                    if (JSON.stringify(link) !== JSON.stringify(it.link)) {
-                        up.link = it.link;
-                    }
-                    if (JSON.stringify(oldLabels) !== JSON.stringify(it.labels)) {
-                        Object.keys(oldLabels).forEach((l) => { if (!(l in labels)) { labels[l] = ''; } });
-                        up.labels = labels;
-                    }
-                    if (JSON.stringify(options) !== JSON.stringify(it.options)) {
-                        up.options = it.options;
-                    }
-                    if (Object.keys(up).length > 1) {
-                        updates.push(up);
-                    }
-                });
-                return {
-                    version: this.menu.version,
-                    tree: this.items.map((it) => ({ key: it.key, parent: it.parent || null })),
-                    creates,
-                    updates,
-                    removes: Object.keys(saved).filter((k) => !here.has(k)),
-                };
+                return buildDraft(this.items, JSON.parse(this.saved), this.menu.version);
             },
             async save() {
-                if (!this.menu || this.saving || !this.dirty().n) {
+                if (!this.menu || this.saveBusy || !this.dirty().n) {
                     return;
                 }
                 const bad = this.items.find((it) => this.labelErr(it));
                 if (bad) {
                     this.sel = bad.key;
-                    this.say(t.needName, false);
-                    this.focusRow(bad.key);
+                    this.fail(t.needName);
+                    this.focusItem(bad.key);
                     return;
                 }
-                this.saving = true;
+                this.saveBusy = true;
                 this.saveErr = false;
                 try {
                     const res = await this.$wire.saveDraft(this.menu.key, this.draft());
                     if (!res.ok) {
-                        this.say(res.message, false);
-                        if (res.reason === 'draft_stale') {
-                            this.ask = { title: t.staleTitle, body: t.staleBody, ok: t.staleOk, run: () => this.reload() };
-                        }
+                        this.refused(res);
                         return;
                     }
-                    past = [];
-                    future = [];
                     await this.reload();
-                    this.say(t.saved);
+                    this.notify(t.saved);
                 } catch {
                     this.saveErr = true;
                 } finally {
-                    this.saving = false;
+                    this.saveBusy = false;
                 }
             },
             // A call that changes the site at once: the answer, or null after a refusal (said in the toast).
-            async call(fn) {
+            async server(fn) {
                 try {
                     const res = await fn();
                     if (!res.ok) {
-                        this.say(res.message, false);
+                        this.refused(res);
                         return null;
                     }
                     return res;
                 } catch {
-                    this.say(t.netErr, false);
+                    this.fail(t.netErr);
                     return null;
+                }
+            },
+            // A refusal stays on screen; a menu changed elsewhere since it was read asks to load it again.
+            refused(res) {
+                this.fail(res.message);
+                if (res.reason === 'draft_stale') {
+                    this.ask = { title: t.staleTitle, body: t.staleBody, ok: t.staleOk, run: () => this.reload() };
                 }
             },
             // Leaving the open menu with unsaved rows asks first.
@@ -1129,7 +1038,6 @@ document.addEventListener('alpine:init', () => {
                 this.guard(() => this.reload(key));
             },
             startRename(m) {
-                this.menuMore = null;
                 this.renaming = m.key;
                 this.renameVal = m.name;
                 this.$nextTick(() => {
@@ -1148,37 +1056,39 @@ document.addEventListener('alpine:init', () => {
                 if (!m || !name || name === m.name) {
                     return;
                 }
-                const res = await this.call(() => this.$wire.renameMenu(k, name));
+                const open = this.menu && this.menu.key === k;
+                // the open menu's token goes along: a menu changed elsewhere since is refused, so the
+                // newer token is only taken when it follows the one the draft was built on
+                const res = await this.server(() => this.$wire.renameMenu(k, name, open ? this.menu.version : null));
                 if (res) {
                     m.name = name;
-                    if (this.menu && this.menu.key === k) {
+                    if (open) {
                         this.menu.name = name;
                         this.menu.version = res.version;
                     }
-                    this.say(t.renamed);
+                    this.notify(t.renamed);
                 }
             },
-            async newMenu() {
-                const res = await this.call(() => this.$wire.createMenu(t.newMenuName));
-                if (res) {
-                    this.guard(async () => {
+            // Both open the new menu: the open draft is asked about first, before anything is made.
+            newMenu() {
+                this.guard(async () => {
+                    const res = await this.server(() => this.$wire.createMenu(t.newMenuName));
+                    if (res) {
                         await this.reload(res.menu);
                         this.startRename(this.d.menus.find((x) => x.key === res.menu) || { key: res.menu, name: t.newMenuName });
-                    });
-                }
+                    }
+                });
             },
-            async dupMenu(m) {
-                this.menuMore = null;
-                const res = await this.call(() => this.$wire.copyMenu(m.key));
-                if (res) {
-                    this.guard(async () => {
+            dupMenu(m) {
+                this.guard(async () => {
+                    const res = await this.server(() => this.$wire.copyMenu(m.key));
+                    if (res) {
                         await this.reload(res.menu);
-                        this.say(fill(t.menuCopied, { name: m.name }));
-                    });
-                }
+                        this.notify(fill(t.menuCopied, { name: m.name }));
+                    }
+                });
             },
             delMenu(m) {
-                this.menuMore = null;
                 const used = m.use.length > 0;
                 this.ask = {
                     title: fill(t.delTitle, { name: m.name }),
@@ -1186,21 +1096,38 @@ document.addEventListener('alpine:init', () => {
                     ok: t.delOk,
                     danger: true,
                     run: async () => {
-                        const res = await this.call(() => this.$wire.deleteMenu(m.key, used));
-                        if (res) {
-                            const open = this.menu && this.menu.key === m.key;
-                            await this.reload(open ? null : this.menu.key);
-                            this.say(fill(t.menuDeleted, { name: m.name }));
+                        const res = await this.server(() => this.$wire.deleteMenu(m.key, used));
+                        if (!res) {
+                            return;
                         }
+                        if (this.menu?.key === m.key) {
+                            await this.reload(null); // its draft went with it; open the first menu
+                        } else if (this.dirty().n) {
+                            this.dropMenu(m.key); // keep the open draft and its undo: take the row out here
+                        } else {
+                            await this.reload(this.menu?.key ?? null);
+                        }
+                        this.notify(fill(t.menuDeleted, { name: m.name }));
                     },
                 };
+            },
+            // A deleted menu leaves the list and every area that showed it, without reloading the draft.
+            dropMenu(key) {
+                this.d.menus = this.d.menus.filter((x) => x.key !== key);
+                this.d.areas.forEach((a) => {
+                    Object.keys(a.shows).forEach((loc) => {
+                        if (a.shows[loc] && a.shows[loc].menu === key) {
+                            a.shows[loc] = {};
+                        }
+                    });
+                });
             },
             async setAutoAdd() {
                 if (!this.menu) {
                     return;
                 }
                 const on = !this.menu.autoAdd;
-                const res = await this.call(() => this.$wire.setAutoAdd(this.menu.key, on));
+                const res = await this.server(() => this.$wire.setAutoAdd(this.menu.key, on, this.menu.version));
                 if (res) {
                     this.menu.autoAdd = on;
                     this.menu.version = res.version;
@@ -1235,12 +1162,12 @@ document.addEventListener('alpine:init', () => {
                 return fill(t.areasSet, { on: as.filter((a) => this.areaValue(a, cfg.main)).length, all: as.length });
             },
             async setArea(a, loc, v) {
-                const res = await this.call(() => (v === '@same'
+                const res = await this.server(() => (v === '@same'
                     ? this.$wire.follow(a.key, loc)
                     : (v ? this.$wire.assign(a.key, loc, v) : this.$wire.clearArea(a.key, loc))));
                 if (res) {
                     a.shows[loc] = v === '@same' ? { follows: a.canSame } : (v ? { menu: v } : {});
-                    this.say(t.areaSaved);
+                    this.notify(t.areaSaved);
                     this.check();
                     if (this.menu) {
                         // the area's depth limit may have changed for the open menu
@@ -1256,9 +1183,9 @@ document.addEventListener('alpine:init', () => {
             copyCode(text) {
                 try {
                     navigator.clipboard.writeText(text);
-                    this.say(fill(t.codeCopied, { code: text }));
+                    this.notify(fill(t.codeCopied, { code: text }));
                 } catch {
-                    this.say(text);
+                    this.notify(text);
                 }
             },
 
@@ -1270,7 +1197,6 @@ document.addEventListener('alpine:init', () => {
             pickLoc(code) {
                 this.loc = code;
                 this.sel = null;
-                this.rowMenu = null;
                 if (this.filter === 'untr' && code === cfg.main) {
                     this.filter = 'all';
                 }
@@ -1294,12 +1220,13 @@ document.addEventListener('alpine:init', () => {
             goIssue(q) {
                 this.filter = 'all';
                 this.q = '';
-                let p = this.item(q.item);
-                while (p && p.parent) {
-                    this.fold[p.parent] = false;
-                    p = this.item(p.parent);
-                }
-                this.focusRow(q.item);
+                this.$nextTick(() => {
+                    const tr = this.tree();
+                    if (tr) {
+                        tr.openTo(q.item);
+                    }
+                    this.focusItem(q.item);
+                });
             },
 
             // ---- preview ------------------------------------------------------------------------
@@ -1307,7 +1234,7 @@ document.addEventListener('alpine:init', () => {
                 return this.items.filter((it) => !it.parent && !it.options.hidden && it.options.device !== 'phone' && !this.srcState(it));
             },
             pvKids(k, phone = false) {
-                return this.kids(k).filter((it) => !it.options.hidden && it.options.device !== (phone ? 'desktop' : 'phone') && !this.srcState(it));
+                return this.childrenOf(k).filter((it) => !it.options.hidden && it.options.device !== (phone ? 'desktop' : 'phone') && !this.srcState(it));
             },
             pvMobile() {
                 const out = [];
@@ -1354,13 +1281,13 @@ document.addEventListener('alpine:init', () => {
             },
             async restore(r) {
                 if (this.dirty().n) {
-                    this.say(t.restoreNeedsSave, false);
+                    this.fail(t.restoreNeedsSave);
                     return;
                 }
-                const res = await this.call(() => this.$wire.restore(this.menu.key, r.key));
+                const res = await this.server(() => this.$wire.restore(this.menu.key, r.key));
                 if (res) {
                     await this.reload();
-                    this.say(fill(t.restored, { name: r.label }));
+                    this.notify(fill(t.restored, { name: r.label }));
                 }
             },
 
@@ -1380,54 +1307,25 @@ document.addEventListener('alpine:init', () => {
                 }
             },
             askClose() {
-                this.ask = null;
-                const back = this._askFrom;
-                this._askFrom = null;
-                // After the dialog's focus trap has let go (it hands focus back to where it opened).
-                setTimeout(() => {
-                    if (back && document.contains(back)) {
-                        back.focus();
-                    }
-                });
+                this.ask = null; // the dialog hands the focus back to where it was opened from
             },
-            // Where focus should come back to after a dialog: a "⋯" menu's item → that menu's button.
-            opener(el) {
-                const list = el.closest('[role="menu"]');
-                return list && list.parentElement ? list.parentElement.querySelector('[data-mn-more], [data-mn-mm]') : el;
+            // A message at the bottom (the shared toast): a done change, with "Hoàn tác" when `undo`;
+            // it hides by itself. fail() is a refusal or an error: it stays until closed.
+            notify(text, undo = false) {
+                this.toast = { text, tone: 'success', undo: !!undo, seq: ++toastSeq };
             },
-            noteFocus(el) {
-                lastFocus = this.opener(el);
-            },
-            askOpened() {
-                // Focus comes back where it was; a "⋯" menu has closed by now, so to its button.
-                const from = document.activeElement;
-                this._askFrom = from && from !== document.body ? this.opener(from) : lastFocus;
-                this.$nextTick(() => {
-                    const b = document.getElementById('mn-ask-cancel');
-                    if (b) {
-                        b.focus();
-                    }
-                });
-            },
-            say(text, undo = false) {
-                clearTimeout(toastTimer);
-                this.toast = { text, undo };
-                this.live = text;
-                toastTimer = setTimeout(() => this.toastClose(), undo ? TOAST_UNDO_MS : TOAST_MS);
-            },
-            toastHold() {
-                clearTimeout(toastTimer);
-            },
-            toastGo() {
-                if (this.toast) {
-                    toastTimer = setTimeout(() => this.toastClose(), TOAST_MS);
+            fail(text) {
+                if (text) {
+                    this.toast = { text, tone: 'error', undo: false, seq: ++toastSeq };
                 }
             },
-            toastClose() {
-                clearTimeout(toastTimer);
-                this.toast = null;
+            toastClose(n) {
+                if (this.toast && (n === undefined || this.toast.seq === n)) {
+                    this.toast = null;
+                }
             },
             toastUndo() {
+                this.toastClose();
                 this.undo();
             },
         };

@@ -147,6 +147,35 @@ export function gapTarget(R, g, x0, x, step) {
 
 // ---- the line of waiting moves and the undo / redo lists (no DOM, no Livewire) -------------------
 
+// The guide lines of each row from the rows' levels in drawing order — the browser's twin of
+// TreeRows::guides() (PHP), for a tree the browser draws: [{ d, k }] per row, k = v (a line passing
+// by) · t (├) · l (└) · down (the start of the line under a parent).
+export function treeGuides(levels) {
+    const open = [];
+    const out = [];
+    for (let i = levels.length - 1; i >= 0; i--) {
+        const level = levels[i];
+        const guides = [];
+        if (level > 1) {
+            for (let d = 1; d <= level - 2; d++) {
+                if (open[d + 1]) {
+                    guides.push({ d, k: 'v' });
+                }
+            }
+            guides.push({ d: level - 1, k: open[level] ? 't' : 'l' });
+        }
+        if (i + 1 < levels.length && levels[i + 1] > level) {
+            guides.push({ d: level, k: 'down' });
+        }
+        out[i] = guides;
+        open[level] = true;
+        for (let deeper = level + 1; deeper < open.length; deeper++) {
+            open[deeper] = false;
+        }
+    }
+    return out;
+}
+
 // Jobs run one at a time, in order. enqueue() answers false when the line is full (the caller tells
 // the user to wait); a job that throws never stops the next one. onBusy(true|false) fires when the
 // line starts and when it empties; drain() resolves when it is empty.

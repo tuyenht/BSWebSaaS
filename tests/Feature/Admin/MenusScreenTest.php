@@ -266,6 +266,25 @@ it('saves a draft, copies, renames, assigns and restores through the screen', fu
         ->and(MenuAssignment::query()->where('region_key', 'handheld')->value('same_as_region'))->toBe('primary'));
 });
 
+it('refuses a rename or an auto-add switch made on a draft older than the menu, and opens the first menu again after a delete', function (): void {
+    [$menu, $other] = msIn(1, fn (): array => [app(SaveMenu::class)->handle(null, 'ồ Menu chính ạ'), app(SaveMenu::class)->handle(null, 'ồ Menu phụ ạ')]);
+    $held = msCall($this->editor, 'load', $menu->ulid)['menu']['version'];
+
+    $renamed = msCall($this->editor, 'renameMenu', $menu->ulid, 'ồ Menu đầu trang ạ', $held);
+    expect($renamed['ok'])->toBeTrue()->and($renamed['version'])->toBeString()->not->toBe($held);
+
+    expect(msCall($this->editor, 'renameMenu', $menu->ulid, 'ồ Tên khác ạ', $held))->toMatchArray(['ok' => false, 'reason' => 'draft_stale'])
+        ->and(msCall($this->editor, 'setAutoAdd', $menu->ulid, true, $held))->toMatchArray(['ok' => false, 'reason' => 'draft_stale'])
+        ->and(msCall($this->editor, 'setAutoAdd', $menu->ulid, true, $renamed['version']))->toMatchArray(['ok' => true])
+        ->and(msCall($this->editor, 'renameMenu', $other->ulid, 'ồ Menu cuối trang ạ'))->toMatchArray(['ok' => true])
+        ->and(msCall($this->editor, 'renameMenu', $menu->ulid, 'ồ X ạ', ['v']))->toMatchArray(['ok' => false, 'reason' => 'input_invalid']);
+
+    msIn(1, fn () => expect(Menu::query()->where('ulid', $menu->ulid)->value('name'))->toBe('ồ Menu đầu trang ạ'));
+
+    expect(msCall($this->editor, 'deleteMenu', $menu->ulid))->toMatchArray(['ok' => true])
+        ->and(msCall($this->editor, 'load', null)['menu']['key'])->toBe($other->ulid);
+});
+
 it('refuses bad arguments and never finds another site\'s menu', function (): void {
     $foreign = msIn(2, fn () => app(SaveMenu::class)->handle(null, 'Menu B'));
     msIn(1, fn () => app(SaveMenu::class)->handle(null, 'Menu chính'));

@@ -11,6 +11,10 @@
 // Moves wait in line: while one call is out, the next move, undo or redo waits its turn and works
 // out its place from the tree as the server redrew it after the call before ("Đang lưu…" shows
 // meanwhile, and a new drag waits until the line is empty).
+//
+// A local tree (cfg.local: a screen that keeps a draft in the browser and draws the rows with
+// Alpine) hands each move to a method of the enclosing Alpine component instead of the server, and
+// its undo / redo to that component's undo() / redo(): the screen keeps the one history.
 import { createTreeDnd, dropPosition, fill, kidsOf, makeHistory, makeQueue, planMove } from './admin-tree-dnd.js';
 
 const UNDO_MS = 10000;
@@ -30,6 +34,7 @@ document.addEventListener('alpine:init', () => {
         // Kept outside Alpine's reactive state (a reactive proxy around DOM nodes and long lists would
         // track every read): the key → row index, the history, the line of waiting moves.
         const t = cfg.texts;
+        const local = !!cfg.local;
         let ix = null;
         let dnd = null;
         let mo = null;
@@ -73,6 +78,44 @@ document.addEventListener('alpine:init', () => {
                 if (dnd) {
                     dnd.end();
                 }
+            },
+
+            // A method of the enclosing Alpine component (a local tree), called in that component's scope.
+            host(name, params = []) {
+                return window.Alpine.evaluate(this.$root.parentElement, name, { params });
+            },
+            depthLimit() {
+                return Number(this.$root.dataset.maxDepth) || cfg.maxDepth;
+            },
+            // For the screen around the tree (Alpine.$data of the tree's element): is any parent
+            // collapsed; collapse every parent, or open them all; open the parents above a record.
+            anyFolded() {
+                return Object.keys(this.collapsed).length > 0;
+            },
+            foldAll(shut) {
+                const next = {};
+                if (shut) {
+                    this.index().rows.forEach((r) => {
+                        if (r.el.dataset.kids === '1') {
+                            next[r.k] = true;
+                        }
+                    });
+                }
+                this.collapsed = next;
+                this.$nextTick(() => this.rove());
+            },
+            openTo(k) {
+                let p = this.parentOf(k);
+                for (let n = 0; p && n < 64; n++) {
+                    this.expand(p);
+                    p = this.parentOf(p);
+                }
+            },
+            // A ⋮ menu move that cannot be used where the record stands now (first in its group…).
+            blocked(act, el) {
+                void this.ver;
+                const row = el.closest('[data-tree-row]');
+                return !row || !!planMove(act, this.index().rows, row.dataset.k).no;
             },
 
             // ---- reading the rows the server drew -------------------------------------------------
@@ -284,7 +327,7 @@ document.addEventListener('alpine:init', () => {
                     const label = fill(t.lockedTarget, { name: this.nameOf(parent) });
                     return { ok: false, label, why: label + ': ' + lock + '.' };
                 }
-                const max = cfg.maxDepth;
+                const max = this.depthLimit();
                 const h = this.height(k);
                 if (max && level + h - 1 > max) {
                     const why = fill(t.tooDeepWhy, { max }) + (h > 1 ? ' ' + fill(t.tooDeepKids, { name: this.nameOf(k), n: h - 1 }) : '');
@@ -401,8 +444,8 @@ document.addEventListener('alpine:init', () => {
             // ---- the keyboard -----------------------------------------------------------------------
             keydown(e) {
                 const target = e.target;
-                if (target.closest && target.closest('input,textarea,select,[contenteditable="true"]')) {
-                    return;
+                if (target.closest && target.closest('input,textarea,select,[contenteditable="true"],[data-tree-x]')) {
+                    return; // typing, or a row's own editor under it
                 }
                 // Ctrl+Z / Ctrl+Shift+Z: only the tree that holds the focus
                 if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'z' || e.key === 'Z')) {
@@ -526,12 +569,20 @@ document.addEventListener('alpine:init', () => {
                 return this.call(k, plan.parent, plan.pos, text);
             },
             undo() {
+                if (local) {
+                    this.enqueue(() => this.host('undo'));
+                    return;
+                }
                 this.enqueue(() => {
                     const last = history.takeUndo();
                     return last && this.rec(last.k) ? this.call(last.k, last.parent, last.pos, t.undone, 'undo') : null;
                 });
             },
             redo() {
+                if (local) {
+                    this.enqueue(() => this.host('redo'));
+                    return;
+                }
                 this.enqueue(() => {
                     const next = history.takeRedo();
                     return next && this.rec(next.k) ? this.call(next.k, next.parent, next.pos, t.redone, 'redo') : null;
@@ -558,14 +609,19 @@ document.addEventListener('alpine:init', () => {
                 this.saving();
                 let answer;
                 try {
-                    answer = await this.$wire.$call(cfg.move, k, parent, pos);
+                    answer = local ? this.host(cfg.move, [k, parent, pos]) : await this.$wire.$call(cfg.move, k, parent, pos);
+                    if (local) {
+                        await this.$nextTick(); // Alpine draws the moved rows first
+                    }
                 } catch {
                     if (moving) {
                         moving.removeAttribute('data-saving');
                     }
                     history.giveBack({ k, parent, pos }, kind); // a lost call keeps its undo / redo entry
                     this.note(t.offline, true);
-                    await this.refresh();
+                    if (!local) {
+                        await this.refresh();
+                    }
                     return;
                 }
                 if (moving) {
@@ -574,10 +630,14 @@ document.addEventListener('alpine:init', () => {
                 this.reindex(); // the call resolves after the server's redraw: read the new order
                 if (typeof answer === 'string' && answer !== '') {
                     this.note(fill(t.kept, { why: answer }), true);
-                    await this.refresh();
+                    if (!local) {
+                        await this.refresh();
+                    }
                     return;
                 }
-                history.record({ k, parent: from, pos: fromPos }, kind);
+                if (!local) {
+                    history.record({ k, parent: from, pos: fromPos }, kind);
+                }
                 if (parent) {
                     this.expand(parent);
                 }

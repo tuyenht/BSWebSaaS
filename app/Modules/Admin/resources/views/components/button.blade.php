@@ -22,7 +22,8 @@
     // running out of the button; `icon` makes a square button for a lone icon with an aria-label.
     // A link opens in place through wire:navigate; `:navigate="false"` keeps it a plain link (a
     // page on the public website in a new tab).
-    $base = 'hit-area inline-flex items-center justify-center gap-2 rounded font-medium leading-tight text-center transition-colors disabled:opacity-60 disabled:pointer-events-none';
+    // A toggle (aria-pressed) shows its on state: the accent edge and ink on a soft accent fill, bold.
+    $base = 'hit-area inline-flex items-center justify-center gap-2 rounded font-medium leading-tight text-center transition-colors disabled:opacity-60 disabled:pointer-events-none aria-pressed:border-primary-text aria-pressed:bg-primary-soft aria-pressed:font-semibold aria-pressed:text-primary-text';
 
     $sizes = $icon ? [
         'sm' => 'size-control-row shrink-0 text-caption',

@@ -1,9 +1,11 @@
 @props([
     'title' => null,
+    'flush' => false,
 ])
 @php
     // Mirrors Velzon .card (shadow-card + 1px border + header border-bottom, title 16px).
     // Deviation: radius rounded-md (6px) to match the dashboard screenshot; base token is 4px.
+    // `flush` drops the body's padding, for a body made of edge-to-edge rows.
 @endphp
 <div {{ $attributes->merge(['class' => 'rounded-md border border-border bg-surface shadow-card']) }}>
     @isset($header)
@@ -16,7 +18,7 @@
         </div>
     @endisset
 
-    <div class="p-4">
+    <div @class(['p-4' => ! $flush])>
         {{ $slot }}
     </div>
 

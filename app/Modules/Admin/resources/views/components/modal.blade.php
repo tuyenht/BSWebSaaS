@@ -3,6 +3,8 @@
     'subtitle' => null,
     'size' => 'md',
     'model' => null,
+    'state' => null,
+    'close' => null,
     'closeLabel' => null,
 ])
 @php
@@ -17,19 +19,30 @@
     // scrolling between a fixed header and footer; below 600px a sheet from the bottom, full width,
     // its footer buttons stacked full width. `subtitle` is one line under the title; `closeLabel`
     // names the ✕ ("Đóng hộp Đổi gói").
+    //
+    // A screen that keeps its state in the browser passes `state` (an Alpine expression: the dialog
+    // is open while it is set) and `close` (the Alpine call that clears it) instead of `model`: the
+    // same form dialog, the opener taken and focused again the same way. A `heading` slot replaces
+    // the title when it is drawn from that state.
     $sizes = ['sm' => 'max-w-sm', 'md' => 'max-w-lg', 'lg' => 'max-w-2xl', 'wide' => 'max-w-160'];
     $box = $sizes[$size] ?? $sizes['md'];
     $sheetBoxes = ['sm' => 'min-[600px]:max-w-sm', 'md' => 'min-[600px]:max-w-lg', 'lg' => 'min-[600px]:max-w-2xl', 'wide' => 'min-[600px]:max-w-160'];
     $sheetBox = $sheetBoxes[$size] ?? $sheetBoxes['md'];
-    $tid = $model ? 'modal-title-'.substr(md5($model), 0, 8) : 'modal-title-'.\Illuminate\Support\Str::random(6);
-    $state = $model
+    $tid = ($model ?? $state) !== null ? 'modal-title-'.substr(md5((string) ($model ?? $state)), 0, 8) : 'modal-title-'.\Illuminate\Support\Str::random(6);
+    $alpine = $state !== null;
+    $watchOpener = " init() { this.\$watch('open', (v) => { if (v) { this.opener = document.activeElement; return; }"
+        ." const back = this.opener; this.opener = null; this.\$nextTick(() => { if (back && back.isConnected) back.focus(); }); }); } }";
+    $state = $alpine
+        ? '{ get open() { return !!('.$state.'); }, opener: null, hide() { '.$close.'; },'.$watchOpener
+        : ($model
         // the server may open it too, so the opener is taken whenever `open` turns true, and focus goes
         // back to it on close while it is still on the page (a row menu's item is gone by then, but the
         // menu puts focus on its ⋮ before the dialog opens, so the ⋮ is what is kept)
         ? "{ open: \$wire.entangle('".$model."').live, opener: null, show() { this.open = true; }, hide() { this.open = false; },"
             ." init() { this.\$watch('open', (v) => { if (v) { this.opener = document.activeElement; return; }"
             ." const back = this.opener; this.opener = null; this.\$nextTick(() => { if (back && back.isConnected) back.focus(); }); }); } }"
-        : '{ open: false, opener: null, show() { this.opener = document.activeElement; this.open = true; }, hide() { this.open = false; this.opener?.focus(); } }';
+        : '{ open: false, opener: null, show() { this.opener = document.activeElement; this.open = true; }, hide() { this.open = false; this.opener?.focus(); } }');
+    $form = $model !== null || $alpine;
 @endphp
 <div x-data="{{ $state }}"
      x-effect="document.body.style.overflow = open ? 'hidden' : ''"
@@ -39,7 +52,7 @@
         <div @click="show()" class="inline-flex cursor-pointer">{{ $trigger }}</div>
     @endisset
 
-    @if ($model)
+    @if ($form)
         <div x-show="open" x-cloak class="fixed inset-0 z-90 flex items-end justify-center min-[600px]:items-center min-[600px]:p-4">
             <div x-show="open" x-transition.opacity @click="hide()" class="absolute inset-0 bg-gray-900/45"></div>
 
@@ -48,7 +61,7 @@
                  class="relative flex max-h-[92dvh] w-full flex-col rounded-t-xl bg-surface shadow-lg min-[600px]:max-h-[calc(100dvh-2rem)] {{ $sheetBox }} min-[600px]:rounded-md">
                 <div class="flex items-start gap-3 border-b border-border px-5 py-4">
                     <div class="min-w-0 flex-1">
-                        <h2 id="{{ $tid }}" class="m-0 text-[calc(1.125rem+var(--user-text-boost))] font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ $title }}</h2>
+                        <h2 id="{{ $tid }}" class="m-0 text-[calc(1.125rem+var(--user-text-boost))] font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ $heading ?? $title }}</h2>
                         @if ($subtitle)
                             <p class="m-0 mt-1 text-small text-text-muted [overflow-wrap:anywhere]">{{ $subtitle }}</p>
                         @endif

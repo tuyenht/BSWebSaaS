@@ -57,7 +57,8 @@ final class Index extends Component
     }
 
     /**
-     * Everything the screen draws (MenuScreen::load), with the menu $menu open, or none.
+     * Everything the screen draws (MenuScreen::load), with the menu $menu open; with null, the
+     * menu the screen opens on first (the one the first area shows, else the oldest, else none).
      *
      * @return array<string, mixed>
      */
@@ -67,7 +68,7 @@ final class Index extends Component
         if ($menu !== null && ! $this->isUlid($menu)) {
             return $this->invalid();
         }
-        $found = $menu === null ? null : $this->menu($menu);
+        $found = $menu === null ? $this->firstMenu(app(SiteLocale::class)->default()) : $this->menu($menu);
         if ($menu !== null && $found === null) {
             return $this->refused('item_invalid');
         }
@@ -169,15 +170,20 @@ final class Index extends Component
     }
 
     /**
+     * Rename a menu. $version: the token the screen holds when the menu is the one open with a
+     * draft (a menu changed since is refused, draft_stale, so the screen never takes a newer token
+     * over a draft built on an older one); null for a menu that is not open.
+     *
      * @return array<string, mixed>
      */
-    public function renameMenu(mixed $menu, mixed $name): array
+    public function renameMenu(mixed $menu, mixed $name, mixed $version = null): array
     {
-        if (! $this->isUlid($menu) || ! is_string($name)) {
+        if (! $this->isUlid($menu) || ! is_string($name) || ($version !== null && ! is_string($version))) {
             return $this->invalid();
         }
 
-        return $this->onMenu($menu, 'update', function (Menu $found) use ($name): array {
+        return $this->onMenu($menu, 'update', function (Menu $found) use ($name, $version): array {
+            $this->ensureVersion($found, $version);
             $saved = app(SaveMenu::class)->handle($found, $name, $found->locales);
 
             return ['ok' => true, 'version' => $this->version($saved)];
@@ -264,17 +270,18 @@ final class Index extends Component
     }
 
     /**
-     * "Tự thêm trang mới" on or off for a menu.
+     * "Tự thêm trang mới" on or off for a menu. $version as for renameMenu().
      *
      * @return array<string, mixed>
      */
-    public function setAutoAdd(mixed $menu, mixed $on): array
+    public function setAutoAdd(mixed $menu, mixed $on, mixed $version = null): array
     {
-        if (! $this->isUlid($menu) || ! is_bool($on)) {
+        if (! $this->isUlid($menu) || ! is_bool($on) || ($version !== null && ! is_string($version))) {
             return $this->invalid();
         }
 
-        return $this->onMenu($menu, 'update', function (Menu $found, User $actor) use ($on): array {
+        return $this->onMenu($menu, 'update', function (Menu $found, User $actor) use ($on, $version): array {
+            $this->ensureVersion($found, $version);
             app(SetMenuAutoAdd::class)->handle($actor, $found, $on);
 
             return ['ok' => true, 'version' => $this->version($found)];
@@ -425,6 +432,19 @@ final class Index extends Component
     private function menu(string $ulid): ?Menu
     {
         return Menu::query()->where('ulid', $ulid)->first(['id', 'ulid', 'site_id', 'handle', 'name', 'locales', 'meta']);
+    }
+
+    /**
+     * A change made while the screen holds a draft of the menu: refused when the menu changed since
+     * the screen read it (draft_stale).
+     *
+     * @throws MenuChangeRejectedException
+     */
+    private function ensureVersion(Menu $menu, ?string $version): void
+    {
+        if ($version !== null && ! hash_equals($this->version($menu), $version)) {
+            throw new MenuChangeRejectedException('draft_stale');
+        }
     }
 
     private function version(Menu $menu): string

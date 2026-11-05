@@ -1,27 +1,29 @@
 {{--
     Trình đơn (design 11). Everything on the page is drawn by the screen's Alpine part 'bsMenus'
     (resources/js/admin-menus.js) from what MenuScreen loads; every change goes through the
-    component's methods ($wire.saveDraft, assign, …). Labels, descriptions and self-check messages
-    are editor text and are only ever shown as text (x-text), never as HTML.
+    component's methods ($wire.saveDraft, assign, …). Built on the shared admin parts: the item
+    tree is <x-bs-admin::tree local> (the draft stays in the browser until "Lưu"), the buttons,
+    cards, ⋮ menus, dialogs and the message line are the shared components. Labels, descriptions
+    and self-check messages are editor text and are only ever shown as text (x-text), never as HTML.
 --}}
 @php
     $u = fn (string $key, array $r = []): string => __('menus.ui_'.$key, $r);
+    // A text as a JavaScript literal, for Alpine expressions inside component tags.
+    $j = fn (string $text): string => \Illuminate\Support\Js::from($text)->toHtml();
     $texts = collect([
         'noName', 'fAll', 'fAllTip', 'fIssue', 'fIssueTip', 'fHidden', 'fHiddenTip', 'fUntr', 'fUntrTip',
         'dEdited', 'dAdded', 'dRemoved', 'dOrder', 'saveN', 'save', 'resetTitle', 'resetBody', 'resetOk',
         'removed', 'removedKids', 'hiddenNow', 'shownNow', 'copyNeedsSave', 'copied', 'noMoveFiltered',
-        'movedLive', 'dragBad', 'dragHint', 'dragHintKids', 'mvTop', 'mvTopSub', 'mvHere', 'mvSub', 'mvPick',
+        'mvTop', 'mvTopSub', 'mvHere', 'mvSub', 'mvPick',
         'mvGoTop', 'mvGo', 'movedTo', 'specialMissing', 'added', 'urlBad', 'urlMail', 'urlTel', 'urlHttps',
         'needName', 'staleTitle', 'staleBody', 'staleOk', 'saved', 'netErr', 'leaveTitle', 'leaveBody',
         'leaveSave', 'leaveDrop', 'renamed', 'newMenuName', 'menuCopied', 'delTitle', 'delBodyUsed', 'delBody',
         'delOk', 'menuDeleted', 'removeKidsTitle', 'removeKidsBody', 'removeKidsOk', 'langsToast', 'areaNone', 'areaMain', 'areaSame', 'areasSet', 'areaSaved', 'codeCopied',
         'checkOk', 'checkTips', 'checkBad', 'checkAndTips', 'trashKids', 'trashDays', 'restoreNeedsSave', 'restored',
     ])->mapWithKeys(fn (string $k): array => [$k => $u($k)])->all();
-    $noun = __('admin.tree.noun');
     $texts += [
         'undone' => __('admin.tree.undone'),
         'redone' => __('admin.tree.redone'),
-        'kept' => __('admin.tree.kept'),
         'tooDeep' => __('admin.tree.too_deep'),
         'kinds' => [
             'page' => __('menus.kind_page'), 'post' => __('menus.kind_post'), 'category' => __('menus.kind_category'),
@@ -30,35 +32,17 @@
         ],
         'state' => ['unpublished' => $u('state_unpublished'), 'trashed' => $u('state_trashed'), 'gone' => $u('state_gone')],
         'badges' => ['new' => $u('badge_new'), 'hot' => $u('badge_hot'), 'sale' => $u('badge_sale'), 'soon' => $u('badge_soon')],
-        'no' => [
-            'atTop' => __('admin.tree.at_top'), 'atBottom' => __('admin.tree.at_bottom'),
-            'noAbove' => __('admin.tree.no_above'), 'atOuter' => __('admin.tree.at_outer'), 'gone' => __('admin.tree.gone'),
-        ],
-        'drag' => [
-            'start' => __('admin.tree.drag_start', ['noun' => $noun]),
-            'child' => __('admin.tree.will_child', ['noun' => $noun]),
-            'before' => __('admin.tree.will_before'),
-            'after' => __('admin.tree.will_after'),
-            'self' => __('admin.tree.no_self', ['noun' => $noun]),
-        ],
+        'no' => ['gone' => __('admin.tree.gone')],
     ];
     $config = ['initial' => $initial, 'main' => $main, 'icons' => $icons, 'texts' => $texts, 'edit' => $edit];
 
-    // The board's shared control looks (one place on this screen; the sizes are the shared tokens).
-    $card = 'rounded-md border border-border bg-surface shadow-card';
-    $head = 'hit-area flex w-full items-center gap-2 border-b border-border px-4 py-3 text-left';
+    // The few looks this screen shares between its own parts (sizes and colours are the shared tokens).
+    $head = 'hit-area -mx-4 -my-3 flex min-w-0 flex-1 items-center gap-2 px-4 py-3 text-left';
     $title = 'min-w-0 text-body font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]';
-    $btn = 'hit-area inline-flex min-h-control-row items-center justify-center gap-1.5 rounded border border-border-strong bg-surface px-2.5 py-1 text-caption font-medium text-text hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-55';
-    $pri = 'hit-area inline-flex min-h-control items-center justify-center gap-1.5 rounded bg-primary px-3.5 py-1.5 text-body font-semibold text-on-primary shadow-sm hover:brightness-95 disabled:cursor-not-allowed disabled:bg-border-strong disabled:text-text-muted disabled:shadow-none';
-    $hit = 'hit-area inline-grid size-control-row shrink-0 place-items-center rounded text-text-muted hover:bg-surface-hover hover:text-primary-text disabled:cursor-not-allowed disabled:opacity-30';
-    $tab = 'hit-area inline-flex min-h-control-row items-center gap-1.5 rounded-full border border-border-strong bg-surface px-3 text-caption font-medium text-text hover:bg-surface-hover';
-    $tabOn = '!border-primary-text !bg-primary-soft font-semibold !text-primary-text';
-    $chip = 'inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-caption font-semibold leading-tight';
-    $chipGrey = $chip.' border border-border bg-surface-hover text-text-muted';
-    $menuItem = 'hit-area flex min-h-menu-row w-full items-center gap-2.5 px-3 text-left text-small text-text hover:bg-surface-hover hover:text-primary-text disabled:cursor-not-allowed disabled:opacity-45';
+    $chipHide = '@max-[32.5rem]:hidden';
 @endphp
 
-<div class="@container" x-data="bsMenus(@js($config))" x-on:keydown.window="keys($event)" x-on:focusin="noteFocus($event.target)" x-on:click.window="rowMenu = null; menuMore = null">
+<div class="@container" x-data="bsMenus(@js($config))" x-on:keydown.window="keys($event)">
     {{-- The website icons, drawn once and reused by name (<use>). --}}
     <svg class="hidden" aria-hidden="true">
         @foreach ($icons as $icon)
@@ -73,26 +57,21 @@
     </svg>
 
     <div class="mx-auto flex w-full max-w-[1400px] flex-col gap-4">
-        {{-- Title row --}}
-        <div class="flex flex-wrap items-start gap-4">
-            <div class="flex min-w-0 flex-[1_1_320px] flex-col gap-1">
-                <span class="text-caption text-text-muted">{{ $u('crumb') }}</span>
-                <h1 class="text-title font-semibold leading-snug text-text-strong">{{ __('menus.title') }}</h1>
-                <p class="text-small leading-relaxed text-text-muted">{{ $u('intro') }}</p>
-            </div>
-            <div class="mt-0 flex max-w-full flex-wrap gap-2 @min-[37.5rem]:mt-5">
-                <a href="{{ $siteUrl }}" target="_blank" rel="noopener" class="{{ $btn }} min-h-control text-small">
+        <x-bs-admin::page-header :title="__('menus.title')" :subtitle="$u('intro')" class="!mb-0">
+            <x-slot:breadcrumbs>{{ $u('crumb') }}</x-slot:breadcrumbs>
+            <x-slot:actions>
+                <x-bs-admin::button variant="outline" color="secondary" :href="$siteUrl" :navigate="false" target="_blank" rel="noopener">
                     <x-bs-admin::icon name="ri-external-link" class="size-4" />{{ $u('open_site') }}
-                </a>
-                <button type="button" class="{{ $pri }}" x-on:click="save()" x-bind:disabled="!dirty().n || saving || screen !== 'data'"
-                        x-bind:title="dirty().n ? dirty().text : @js($u('nothing_to_save'))">
-                    <x-bs-admin::icon name="ri-save-3" class="size-4" /><span x-text="saving ? @js($u('saving')) : saveLabel">{{ $u('save') }}</span>
-                </button>
-            </div>
-        </div>
+                </x-bs-admin::button>
+                <x-bs-admin::button x-on:click="save()" x-bind:disabled="!dirty().n || saveBusy || screen !== 'data'"
+                    x-bind:title="dirty().n ? dirty().text : {{ $j($u('nothing_to_save')) }}">
+                    <x-bs-admin::icon name="ri-save-3" class="size-4" /><span x-text="saveBusy ? {{ $j($u('saving')) }} : saveLabel">{{ $u('save') }}</span>
+                </x-bs-admin::button>
+            </x-slot:actions>
+        </x-bs-admin::page-header>
 
         {{-- Loading --}}
-        <section class="{{ $card }}" aria-busy="true" aria-label="{{ $u('loading') }}" x-show="screen === 'loading'">
+        <x-bs-admin::card flush aria-busy="true" aria-label="{{ $u('loading') }}" x-show="screen === 'loading'">
             <div class="flex flex-wrap items-center gap-2 border-b border-border px-3.5 py-2.5">
                 <span class="h-[38px] max-w-[360px] flex-[1_1_190px] animate-pulse rounded bg-surface-hover"></span>
                 @foreach (range(1, 3) as $i)
@@ -107,27 +86,33 @@
                 </div>
             @endforeach
             <p role="status" class="border-t border-border-soft px-3.5 py-2.5 text-caption text-text-muted">{{ $u('loading_text') }}</p>
-        </section>
+        </x-bs-admin::card>
 
         {{-- Could not load --}}
-        <section class="{{ $card }} flex flex-col items-center gap-2.5 px-5 py-8 text-center" x-cloak x-show="screen === 'error'">
-            <x-bs-admin::icon name="ri-wifi-off" class="size-6 text-danger-text" />
-            <h2 class="text-body font-semibold text-text-strong">{{ $u('error_title') }}</h2>
-            <p role="alert" class="max-w-[420px] text-small leading-relaxed text-text">{{ $u('error_text') }}</p>
-            <button type="button" class="{{ $pri }}" x-on:click="reload()"><x-bs-admin::icon name="ri-refresh" class="size-4" />{{ $u('retry') }}</button>
-        </section>
+        <x-bs-admin::card x-cloak x-show="screen === 'error'">
+            <div class="flex flex-col items-center gap-2.5 px-1 py-4 text-center">
+                <x-bs-admin::icon name="ri-wifi-off" class="size-6 text-danger-text" />
+                <h2 class="text-body font-semibold text-text-strong">{{ $u('error_title') }}</h2>
+                <p role="alert" class="max-w-[420px] text-small leading-relaxed text-text">{{ $u('error_text') }}</p>
+                <x-bs-admin::button x-on:click="reload()"><x-bs-admin::icon name="ri-refresh" class="size-4" />{{ $u('retry') }}</x-bs-admin::button>
+            </div>
+        </x-bs-admin::card>
 
         <template x-if="screen === 'data'">
         <div class="flex flex-col gap-4">
             {{-- Saving failed --}}
-            <div x-show="saveErr" role="alert" class="flex flex-wrap items-center gap-2.5 rounded-md border border-danger-text/30 bg-danger-soft px-4 py-3 text-small text-danger-text">
-                <x-bs-admin::icon name="ri-error-warning" class="size-4 shrink-0" />
-                <span class="min-w-0 flex-[1_1_240px]">{{ $u('save_error') }}</span>
-                <button type="button" class="{{ $btn }}" x-on:click="save()"><x-bs-admin::icon name="ri-refresh" class="size-4" />{{ $u('retry') }}</button>
-            </div>
+            <x-bs-admin::alert color="danger" icon="ri-error-warning" x-show="saveErr">
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <span class="min-w-0 flex-[1_1_240px]">{{ $u('save_error') }}</span>
+                    <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="save()"><x-bs-admin::icon name="ri-refresh" class="size-4" />{{ $u('retry') }}</x-bs-admin::button>
+                </div>
+            </x-bs-admin::alert>
+
+            {{-- Everything that edits; inert with a busy look while "Lưu" runs, so nothing typed then is lost --}}
+            <div class="flex flex-col gap-4 transition-opacity" x-bind:inert="saveBusy" x-bind:aria-busy="saveBusy ? 'true' : 'false'" x-bind:class="saveBusy && 'opacity-60'">
 
             {{-- Language being edited --}}
-            <div class="{{ $card }}" x-show="multi">
+            <x-bs-admin::card flush x-show="multi">
                 <div class="flex flex-wrap items-center gap-2.5 px-3 py-2">
                     <span title="{{ $u('lang_tip') }}" class="shrink-0 text-text-muted"><x-bs-admin::icon name="ri-translate-2" class="size-5" /></span>
                     <label class="flex min-w-0 flex-auto items-center gap-1.5 @min-[35.0625rem]:hidden">
@@ -136,17 +121,17 @@
                             <template x-for="l in d.locales" :key="l.code"><option :value="l.code" x-text="l.name + (l.main ? ' ★' : '')"></option></template>
                         </select>
                     </label>
-                    <button type="button" class="{{ $btn }} min-h-control @min-[35.0625rem]:hidden" x-on:click="say(@js($u('langsToast')).replace(':n', d.locales.length))" title="{{ $u('langs_tip') }}" aria-label="{{ $u('langs_tip') }}">
+                    <x-bs-admin::button variant="outline" color="secondary" class="@min-[35.0625rem]:hidden" x-on:click="notify({{ $j($u('langsToast')) }}.replace(':n', d.locales.length))" title="{{ $u('langs_tip') }}" aria-label="{{ $u('langs_tip') }}">
                         <x-bs-admin::icon name="ri-list-check-2" class="size-4" /><span class="@max-[23.75rem]:hidden">{{ $u('langs') }}</span>
-                    </button>
-                    <div class="hidden min-w-0 flex-wrap items-center gap-1.5 @min-[35.0625rem]:flex">
+                    </x-bs-admin::button>
+                    <div class="hidden min-w-0 flex-wrap items-center gap-1.5 @min-[35.0625rem]:flex" role="group" aria-label="{{ $u('lang_pick') }}">
                         <template x-for="l in d.locales" :key="l.code">
-                            <button type="button" class="{{ $tab }} min-h-control" :class="loc === l.code && @js($tabOn)" x-on:click="pickLoc(l.code)"
-                                    :aria-pressed="loc === l.code" :title="langStat(l.code).done + '/' + langStat(l.code).total + ' ' + @js($u('labels_done'))">
-                                <span class="size-2 rounded-full" :class="langStat(l.code).done === langStat(l.code).total ? 'bg-success' : 'bg-warning'" aria-hidden="true"></span>
+                            <x-bs-admin::button variant="outline" color="secondary" x-on:click="pickLoc(l.code)" x-bind:aria-pressed="loc === l.code"
+                                x-bind:title="langStat(l.code).done + '/' + langStat(l.code).total + ' ' + {{ $j($u('labels_done')) }}">
+                                <span class="size-2 rounded-full" x-bind:class="langStat(l.code).done === langStat(l.code).total ? 'bg-success' : 'bg-warning'" aria-hidden="true"></span>
                                 <span x-text="l.name"></span>
                                 <template x-if="l.main"><span class="text-warning-text" aria-label="{{ $u('lang_main') }}"><x-bs-admin::icon name="ri-star-fill" class="size-3.5" /></span></template>
-                            </button>
+                            </x-bs-admin::button>
                         </template>
                     </div>
                     <span class="ml-auto hidden items-center gap-1.5 whitespace-nowrap text-caption text-text-muted @min-[52.5625rem]:inline-flex">
@@ -156,55 +141,61 @@
                         <span x-text="langStat(loc).done + '/' + langStat(loc).total + ' ' + @js($u('labels_done'))"></span>
                     </span>
                 </div>
-                <div class="flex items-start gap-2 border-t border-border-soft px-3.5 py-2 text-caption leading-relaxed"
-                     :class="onMain ? 'bg-surface-muted text-text-muted' : (langStat(loc).done === langStat(loc).total ? 'bg-success-soft text-success-text' : 'bg-warning-soft text-warning-text')">
-                    <x-bs-admin::icon name="ri-information" class="mt-0.5 size-4 shrink-0" />
-                    <span x-text="onMain ? @js($u('note_main')) : (langStat(loc).done === langStat(loc).total ? @js($u('note_full')) : @js($u('note_part')).replace(':n', langStat(loc).total - langStat(loc).done)).replace(':lang', locName(loc))"></span>
+                <div class="border-t border-border-soft">
+                    @foreach (['info' => 'onMain', 'success' => '!onMain && langStat(loc).done === langStat(loc).total', 'warning' => '!onMain && langStat(loc).done !== langStat(loc).total'] as $tone => $when)
+                        <x-bs-admin::alert :color="$tone" icon="ri-information" class="!rounded-none !py-2 text-caption leading-relaxed" x-show="{{ $when }}">
+                            <span x-text="(onMain ? @js($u('note_main')) : (langStat(loc).done === langStat(loc).total ? @js($u('note_full')) : @js($u('note_part')).replace(':n', langStat(loc).total - langStat(loc).done))).replace(':lang', locName(loc))"></span>
+                        </x-bs-admin::alert>
+                    @endforeach
                 </div>
-            </div>
+            </x-bs-admin::card>
 
             {{-- Self-check --}}
-            <div class="{{ $card }}">
-                <button type="button" class="{{ $head }}" x-on:click="fold2.check = !fold2.check" :aria-expanded="!fold2.check">
-                    <x-bs-admin::icon name="ri-arrow-down-s" class="size-4 shrink-0 text-text-muted transition-transform" x-bind:class="fold2.check && '-rotate-90'" />
-                    <span class="shrink-0" :class="issues.some(q => q.level !== 'tip') ? 'text-warning-text' : (issues.length ? 'text-info-text' : 'text-success-text')">
-                        <x-bs-admin::icon name="ri-shield-check" class="size-4" />
-                    </span>
-                    <span class="{{ $title }}" x-text="checkTitle"></span>
-                    <span class="ml-auto hidden text-right text-caption text-text-muted @min-[38.8125rem]:inline">{{ $u('check_sub') }}</span>
-                    <span class="ml-auto shrink-0 px-1 text-small font-semibold text-primary-text underline @min-[38.8125rem]:ml-3" x-text="fold2.check ? @js($u('see')) : @js($u('less'))">{{ $u('see') }}</span>
-                </button>
+            <x-bs-admin::card flush>
+                <x-slot:header>
+                    <button type="button" class="{{ $head }}" x-on:click="fold2.check = !fold2.check" :aria-expanded="!fold2.check">
+                        <x-bs-admin::icon name="ri-arrow-down-s" class="size-4 shrink-0 text-text-muted transition-transform" x-bind:class="fold2.check && '-rotate-90'" />
+                        <span class="shrink-0" :class="issues.some(q => q.level !== 'tip') ? 'text-warning-text' : (issues.length ? 'text-info-text' : 'text-success-text')">
+                            <x-bs-admin::icon name="ri-shield-check" class="size-4" />
+                        </span>
+                        <span class="{{ $title }}" x-text="checkTitle"></span>
+                        <span class="ml-auto hidden text-right text-caption text-text-muted @min-[38.8125rem]:inline">{{ $u('check_sub') }}</span>
+                        <span class="ml-auto shrink-0 px-1 text-small font-semibold text-primary-text underline @min-[38.8125rem]:ml-3" x-text="fold2.check ? @js($u('see')) : @js($u('less'))">{{ $u('see') }}</span>
+                    </button>
+                </x-slot:header>
                 <div x-show="!fold2.check">
                     <p x-show="!issues.length" class="px-4 py-3 text-small leading-relaxed text-text-muted">{{ $u('check_none') }}</p>
                     <template x-for="(q, i) in shownIssues()" :key="i">
-                        <div class="flex flex-wrap items-center gap-2.5 border-t border-border-soft px-4 py-2.5">
+                        <div class="flex flex-wrap items-center gap-2.5 border-t border-border-soft px-4 py-2.5 first:border-t-0">
                             <span class="shrink-0" :class="q.level === 'tip' ? 'text-info-text' : 'text-warning-text'"><x-bs-admin::icon name="ri-error-warning" class="size-4" /></span>
                             <span class="min-w-0 flex-[1_1_260px] text-small leading-relaxed text-text" x-text="q.message"></span>
                             <template x-if="q.item && item(q.item)">
                                 <span class="flex flex-wrap gap-2">
-                                    <button type="button" class="{{ $btn }}" x-on:click="goIssue(q)"><x-bs-admin::icon name="ri-focus-3" class="size-4" />{{ $u('see_item') }}</button>
-                                    <button type="button" class="{{ $btn }}" x-on:click="remove(q.item)"><x-bs-admin::icon name="ri-delete-bin" class="size-4" />{{ $u('remove') }}</button>
+                                    <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="goIssue(q)"><x-bs-admin::icon name="ri-focus-3" class="size-4" />{{ $u('see_item') }}</x-bs-admin::button>
+                                    <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="remove(q.item)"><x-bs-admin::icon name="ri-delete-bin" class="size-4" />{{ $u('remove') }}</x-bs-admin::button>
                                 </span>
                             </template>
                         </div>
                     </template>
-                    <div x-show="issues.length > {{ 3 }}" class="border-t border-border-soft px-4 py-2">
-                        <button type="button" class="{{ $btn }}" x-on:click="issuesAll = !issuesAll">
-                            <span x-text="issuesAll ? @js($u('less')) : @js($u('more')).replace(':n', issues.length - 3)"></span>
-                        </button>
+                    <div x-show="issues.length > 3" class="border-t border-border-soft px-4 py-2">
+                        <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="issuesAll = !issuesAll">
+                            <span x-text="issuesAll ? {{ $j($u('less')) }} : {{ $j($u('more')) }}.replace(':n', issues.length - 3)"></span>
+                        </x-bs-admin::button>
                     </div>
                 </div>
-            </div>
+            </x-bs-admin::card>
 
             <div class="grid grid-cols-[262px_minmax(0,1fr)_288px] items-start gap-4 @max-[75.625rem]:grid-cols-[262px_minmax(0,1fr)] @max-[53.75rem]:flex @max-[53.75rem]:flex-col @max-[53.75rem]:items-stretch">
                 {{-- Left column: menus, areas, what the system does --}}
                 <div class="flex flex-col gap-4 @max-[53.75rem]:contents">
-                    <div class="{{ $card }} @max-[53.75rem]:order-1">
-                        <button type="button" class="{{ $head }}" x-on:click="fold2.menus = !fold2.menus" :aria-expanded="!fold2.menus">
-                            <x-bs-admin::icon name="ri-arrow-down-s" class="size-4 shrink-0 text-text-muted transition-transform" x-bind:class="fold2.menus && '-rotate-90'" />
-                            <span class="{{ $title }}">{{ __('menus.title') }}</span>
-                            <span class="ml-auto text-caption text-text-muted" x-text="@js($u('menu_count')).replace(':n', d.menus.length)"></span>
-                        </button>
+                    <x-bs-admin::card flush class="@max-[53.75rem]:order-1">
+                        <x-slot:header>
+                            <button type="button" class="{{ $head }}" x-on:click="fold2.menus = !fold2.menus" :aria-expanded="!fold2.menus">
+                                <x-bs-admin::icon name="ri-arrow-down-s" class="size-4 shrink-0 text-text-muted transition-transform" x-bind:class="fold2.menus && '-rotate-90'" />
+                                <span class="{{ $title }}">{{ __('menus.title') }}</span>
+                                <span class="ml-auto text-caption text-text-muted" x-text="@js($u('menu_count')).replace(':n', d.menus.length)"></span>
+                            </button>
+                        </x-slot:header>
                         <div x-show="!fold2.menus">
                             <template x-for="m in menuRows()" :key="m.key">
                                 <div class="relative flex cursor-pointer flex-col gap-1 border-t border-border-soft px-3 py-2.5 first:border-t-0 hover:bg-surface-muted"
@@ -212,29 +203,31 @@
                                     <div class="flex items-start gap-2">
                                         <button type="button" class="hit-area min-h-6 min-w-0 flex-auto text-left text-small font-semibold leading-snug [overflow-wrap:anywhere]"
                                                 :class="m.on ? 'text-primary-text' : 'text-text-strong'" :aria-current="m.on && 'true'" x-text="m.name"></button>
-                                        <span class="relative @min-[53.8125rem]:hidden" x-on:click.stop>
-                                            <button type="button" class="{{ $hit }}" :data-mn-mm="m.key" aria-haspopup="menu" :aria-expanded="menuMore === m.key"
-                                                    :aria-label="@js($u('menu_actions')).replace(':name', m.name)" title="{{ $u('more_actions') }}" x-on:click="menuMore = menuMore === m.key ? null : m.key">
-                                                <x-bs-admin::icon name="ri-more-2-fill" class="size-4" />
-                                            </button>
-                                            <div x-show="menuMore === m.key" role="menu" class="absolute right-0 top-full z-30 mt-1 w-60 rounded-md border border-border bg-surface py-1 shadow-lg">
-                                                <div class="px-3 pb-1 pt-1.5 text-caption font-semibold text-text-muted [overflow-wrap:anywhere]" aria-hidden="true" x-text="m.name"></div>
-                                                <button type="button" role="menuitem" class="{{ $menuItem }}" x-on:click="startRename(m)"><x-bs-admin::icon name="ri-edit" class="size-4" />{{ $u('rename') }}</button>
-                                                <button type="button" role="menuitem" class="{{ $menuItem }}" x-on:click="dupMenu(m)"><x-bs-admin::icon name="ri-file-copy" class="size-4" />{{ $u('dup_menu') }}</button>
-                                                <button type="button" role="menuitem" class="{{ $menuItem }} !text-danger-text" x-on:click="delMenu(m)" x-bind:disabled="m.use.length > 0" :title="m.use.length ? @js($u('del_used')).replace(':name', m.name).replace(':where', m.use.join(', ')) : ''"><x-bs-admin::icon name="ri-delete-bin" class="size-4" />{{ $u('del_menu') }}</button>
-                                            </div>
+                                        <span x-on:click.stop class="@min-[53.8125rem]:hidden">
+                                            <x-bs-admin::list.actions name="" name-bind="m.name" :title="$u('more_actions')">
+                                                <x-slot:menu>
+                                                    <x-bs-admin::list.menu-item icon="ri-edit" x-on:click="startRename(m)">{{ $u('rename') }}</x-bs-admin::list.menu-item>
+                                                    <x-bs-admin::list.menu-item icon="ri-file-copy" x-on:click="dupMenu(m)">{{ $u('dup_menu') }}</x-bs-admin::list.menu-item>
+                                                    <x-bs-admin::list.menu-sep />
+                                                    <x-bs-admin::list.menu-item icon="ri-delete-bin" danger x-on:click="m.use.length || delMenu(m)" x-bind:aria-disabled="m.use.length ? 'true' : null">{{ $u('del_menu') }}</x-bs-admin::list.menu-item>
+                                                    <span class="list-mwhy" x-show="m.use.length" x-text="{{ $j($u('del_used')) }}.replace(':name', m.name).replace(':where', m.use.join(', '))"></span>
+                                                </x-slot:menu>
+                                            </x-bs-admin::list.actions>
                                         </span>
                                     </div>
                                     <div class="flex items-center gap-1">
                                         <span class="min-w-0 flex-auto text-caption text-text-muted" x-text="m.on ? @js($u('items_n')).replace(':n', items.length) : ''"></span>
                                         <span class="hidden items-center gap-2 @min-[53.8125rem]:flex" x-on:click.stop>
-                                            <button type="button" class="{{ $hit }}" x-on:click="startRename(m)" title="{{ $u('rename_tip') }}" aria-label="{{ $u('rename_tip') }}"><x-bs-admin::icon name="ri-edit" class="size-4" /></button>
-                                            <button type="button" class="{{ $hit }}" x-on:click="dupMenu(m)" :title="@js($u('dup_tip')).replace(':name', m.name)" :aria-label="@js($u('dup_tip')).replace(':name', m.name)"><x-bs-admin::icon name="ri-file-copy" class="size-4" /></button>
-                                            <button type="button" class="{{ $hit }}" x-on:click="delMenu(m)" x-bind:disabled="m.use.length > 0" :title="m.use.length ? @js($u('del_used')).replace(':name', m.name).replace(':where', m.use.join(', ')) : @js($u('del_tip')).replace(':name', m.name)" :aria-label="@js($u('del_tip')).replace(':name', m.name)"><x-bs-admin::icon name="ri-delete-bin" class="size-4" /></button>
+                                            <x-bs-admin::button size="sm" variant="ghost" color="primary" icon x-on:click="startRename(m)" title="{{ $u('rename_tip') }}" aria-label="{{ $u('rename_tip') }}"><x-bs-admin::icon name="ri-edit" class="size-4" /></x-bs-admin::button>
+                                            <x-bs-admin::button size="sm" variant="ghost" color="primary" icon x-on:click="dupMenu(m)" x-bind:title="{{ $j($u('dup_tip')) }}.replace(':name', m.name)" x-bind:aria-label="{{ $j($u('dup_tip')) }}.replace(':name', m.name)"><x-bs-admin::icon name="ri-file-copy" class="size-4" /></x-bs-admin::button>
+                                            <x-bs-admin::button size="sm" variant="ghost" color="danger" icon x-on:click="delMenu(m)" x-bind:disabled="m.use.length > 0"
+                                                x-bind:title="m.use.length ? {{ $j($u('del_used')) }}.replace(':name', m.name).replace(':where', m.use.join(', ')) : {{ $j($u('del_tip')) }}.replace(':name', m.name)" x-bind:aria-label="{{ $j($u('del_tip')) }}.replace(':name', m.name)"><x-bs-admin::icon name="ri-delete-bin" class="size-4" /></x-bs-admin::button>
                                         </span>
                                     </div>
                                     <template x-if="renaming === m.key">
-                                        <input id="mn-rename" class="field w-full rounded border border-border-input bg-surface px-3 text-text-strong disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-muted" x-model="renameVal" x-on:click.stop x-on:keydown.enter.prevent="doneRename()" x-on:blur="doneRename()" placeholder="{{ $u('menu_name') }}" aria-label="{{ $u('menu_name') }}" maxlength="120" />
+                                        <div x-on:click.stop>
+                                            <x-bs-admin::input id="mn-rename" x-model="renameVal" x-on:keydown.enter.prevent="doneRename()" x-on:blur="doneRename()" placeholder="{{ $u('menu_name') }}" aria-label="{{ $u('menu_name') }}" maxlength="120" />
+                                        </div>
                                     </template>
                                     <span class="flex items-start gap-1.5 text-caption leading-normal" :class="m.use.length ? 'text-success-text' : 'text-warning-text'">
                                         <span class="mt-0.5 shrink-0"><x-bs-admin::icon name="ri-checkbox-circle" class="size-3.5" /></span>
@@ -243,17 +236,19 @@
                                 </div>
                             </template>
                             <div class="border-t border-border-soft px-3 py-2.5">
-                                <button type="button" class="{{ $btn }} w-full min-h-control" x-on:click="newMenu()"><x-bs-admin::icon name="ri-add" class="size-4" />{{ $u('new_menu') }}</button>
+                                <x-bs-admin::button variant="outline" color="secondary" class="w-full" x-on:click="newMenu()"><x-bs-admin::icon name="ri-add" class="size-4" />{{ $u('new_menu') }}</x-bs-admin::button>
                             </div>
                         </div>
-                    </div>
+                    </x-bs-admin::card>
 
-                    <div class="{{ $card }} @max-[53.75rem]:order-3">
-                        <button type="button" class="{{ $head }}" x-on:click="fold2.areas = !fold2.areas" :aria-expanded="!fold2.areas">
-                            <x-bs-admin::icon name="ri-arrow-down-s" class="size-4 shrink-0 text-text-muted transition-transform" x-bind:class="fold2.areas && '-rotate-90'" />
-                            <span class="{{ $title }}">{{ $u('areas') }}</span>
-                            <span class="ml-auto text-right text-caption text-text-muted" x-text="areasSet"></span>
-                        </button>
+                    <x-bs-admin::card flush class="@max-[53.75rem]:order-3">
+                        <x-slot:header>
+                            <button type="button" class="{{ $head }}" x-on:click="fold2.areas = !fold2.areas" :aria-expanded="!fold2.areas">
+                                <x-bs-admin::icon name="ri-arrow-down-s" class="size-4 shrink-0 text-text-muted transition-transform" x-bind:class="fold2.areas && '-rotate-90'" />
+                                <span class="{{ $title }}">{{ $u('areas') }}</span>
+                                <span class="ml-auto text-right text-caption text-text-muted" x-text="areasSet"></span>
+                            </button>
+                        </x-slot:header>
                         <div x-show="!fold2.areas">
                             <p class="border-b border-border-soft px-3.5 py-2.5 text-caption leading-relaxed text-text-muted" x-text="multi ? @js($u('areas_intro_multi')) : @js($u('areas_intro'))"></p>
                             <template x-for="a in areaRows()" :key="a.key">
@@ -265,8 +260,9 @@
                                             <span class="min-w-0 [overflow-wrap:anywhere]" x-text="a.label"></span>
                                         </span>
                                         <template x-if="devOn">
-                                            <button type="button" class="hit-area flex max-w-full items-center gap-1 self-start rounded border border-border bg-surface-muted px-1.5 font-mono text-caption text-text-muted"
-                                                    x-on:click="copyCode(a.key)" :title="@js($u('copy_code'))"><span x-text="a.key"></span><x-bs-admin::icon name="ri-file-copy" class="size-3.5" /></button>
+                                            <x-bs-admin::button size="sm" variant="outline" color="secondary" class="self-start font-mono" x-on:click="copyCode(a.key)" title="{{ $u('copy_code') }}">
+                                                <span x-text="a.key"></span><x-bs-admin::icon name="ri-file-copy" class="size-3.5" />
+                                            </x-bs-admin::button>
                                         </template>
                                         <label>
                                             <span class="sr-only" x-text="a.label"></span>
@@ -296,21 +292,24 @@
                                 </div>
                             </template>
                             <div class="flex flex-col gap-2 border-t border-border-soft px-3 pb-3 pt-2">
-                                <button type="button" class="{{ $btn }} w-full" x-show="d.areas.some(a => a.advanced)" x-on:click="advOn = !advOn" x-text="advOn ? @js($u('adv_hide')) : @js($u('adv_show'))"></button>
-                                <button type="button" class="{{ $btn }} w-full" x-on:click="devOn = !devOn" title="{{ $u('dev_tip') }}">
-                                    <x-bs-admin::icon name="ri-code-s-slash" class="size-4" /><span x-text="devOn ? @js($u('dev_hide')) : @js($u('dev_show'))"></span>
-                                </button>
+                                <x-bs-admin::button size="sm" variant="outline" color="secondary" class="w-full" x-show="d.areas.some(a => a.advanced)" x-on:click="advOn = !advOn"
+                                    ><span x-text="advOn ? {{ $j($u('adv_hide')) }} : {{ $j($u('adv_show')) }}">{{ $u('adv_show') }}</span></x-bs-admin::button>
+                                <x-bs-admin::button size="sm" variant="outline" color="secondary" class="w-full" x-on:click="devOn = !devOn" title="{{ $u('dev_tip') }}">
+                                    <x-bs-admin::icon name="ri-code-s-slash" class="size-4" /><span x-text="devOn ? {{ $j($u('dev_hide')) }} : {{ $j($u('dev_show')) }}"></span>
+                                </x-bs-admin::button>
                                 <p x-show="devOn" class="text-caption leading-relaxed text-text-muted">{{ $u('dev_foot') }}</p>
                             </div>
                         </div>
-                    </div>
+                    </x-bs-admin::card>
 
-                    <div class="{{ $card }} @max-[53.75rem]:order-3" x-show="menu">
-                        <button type="button" class="{{ $head }}" x-on:click="fold2.auto = !fold2.auto" :aria-expanded="!fold2.auto">
-                            <x-bs-admin::icon name="ri-arrow-down-s" class="size-4 shrink-0 text-text-muted transition-transform" x-bind:class="fold2.auto && '-rotate-90'" />
-                            <span class="{{ $title }}">{{ $u('auto') }}</span>
-                            <span class="ml-auto shrink-0 text-caption text-text-muted" x-text="@js($u('auto_n')).replace(':n', menu && menu.autoAdd ? 4 : 3)"></span>
-                        </button>
+                    <x-bs-admin::card flush class="@max-[53.75rem]:order-3" x-show="menu">
+                        <x-slot:header>
+                            <button type="button" class="{{ $head }}" x-on:click="fold2.auto = !fold2.auto" :aria-expanded="!fold2.auto">
+                                <x-bs-admin::icon name="ri-arrow-down-s" class="size-4 shrink-0 text-text-muted transition-transform" x-bind:class="fold2.auto && '-rotate-90'" />
+                                <span class="{{ $title }}">{{ $u('auto') }}</span>
+                                <span class="ml-auto shrink-0 text-caption text-text-muted" x-text="@js($u('auto_n')).replace(':n', menu && menu.autoAdd ? 4 : 3)"></span>
+                            </button>
+                        </x-slot:header>
                         <div x-show="!fold2.auto" class="flex flex-col gap-1 px-3 pb-3 pt-2">
                             <button type="button" role="switch" class="switch-row" :aria-checked="!!(menu && menu.autoAdd)" x-on:click="setAutoAdd()">
                                 <span class="text-small text-text-strong">{{ $u('auto_add') }}</span>
@@ -334,43 +333,50 @@
                                 @endforeach
                             </span>
                         </div>
-                    </div>
+                    </x-bs-admin::card>
                 </div>
 
                 {{-- Middle column: the tree and the preview --}}
                 <div class="flex min-w-0 flex-col gap-4 @max-[53.75rem]:order-2">
                     <template x-if="!menu">
-                        <div class="{{ $card }} flex flex-col items-center gap-2 px-5 py-9 text-center">
-                            <span class="text-text-faint"><x-bs-admin::icon name="ri-node-tree" class="size-7" /></span>
-                            <span class="text-small font-semibold text-text">{{ $u('no_menu_title') }}</span>
-                            <span class="max-w-[340px] text-caption leading-relaxed text-text-muted">{{ $u('no_menu_text') }}</span>
-                            <button type="button" class="{{ $btn }} min-h-control" x-on:click="newMenu()"><x-bs-admin::icon name="ri-add" class="size-4" />{{ $u('new_menu') }}</button>
-                        </div>
+                        <x-bs-admin::card>
+                            <div class="flex flex-col items-center gap-2 px-1 py-5 text-center">
+                                <span class="text-text-faint"><x-bs-admin::icon name="ri-node-tree" class="size-7" /></span>
+                                <span class="text-small font-semibold text-text">{{ $u('no_menu_title') }}</span>
+                                <span class="max-w-[340px] text-caption leading-relaxed text-text-muted">{{ $u('no_menu_text') }}</span>
+                                <x-bs-admin::button variant="outline" color="secondary" x-on:click="newMenu()"><x-bs-admin::icon name="ri-add" class="size-4" />{{ $u('new_menu') }}</x-bs-admin::button>
+                            </div>
+                        </x-bs-admin::card>
                     </template>
                     <template x-if="menu">
-                    <div class="{{ $card }}" x-on:dragend="dragEnd()">
-                        <div class="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
-                            <span class="{{ $title }}" x-text="menu.name"></span>
-                            <span class="{{ $chipGrey }}" x-text="@js($u('items_n')).replace(':n', items.length)"></span>
-                            <span class="{{ $chipGrey }}" :title="@js($u('depth_tip')).replace(':n', maxDepth)"><x-bs-admin::icon name="ri-node-tree" class="size-3.5" /><span x-text="@js($u('depth_n')).replace(':n', maxDepth)"></span></span>
-                            <span class="ml-auto flex shrink-0 items-center gap-1.5">
-                                <button type="button" class="{{ $btn }}" x-show="menu.trash.length" x-on:click="trashOpen = !trashOpen" title="{{ $u('trash_tip') }}" :aria-label="@js($u('trash_aria')).replace(':n', menu.trash.length)" :aria-expanded="trashOpen">
-                                    <x-bs-admin::icon name="ri-delete-bin" class="size-4" /><span class="@max-[23.75rem]:hidden">{{ $u('trash') }}</span><span x-text="menu.trash.length"></span>
-                                </button>
-                                <button type="button" class="{{ $hit }}" x-on:click="undo()" x-bind:disabled="!histN" :title="histN ? @js($u('undo_tip')) : @js($u('undo_none'))" :aria-label="histN ? @js($u('undo_tip')) : @js($u('undo_none'))"><x-bs-admin::icon name="ri-arrow-go-back" class="size-4" /></button>
-                                <button type="button" class="{{ $hit }}" x-on:click="redo()" x-bind:disabled="!futN" :title="futN ? @js($u('redo_tip')) : @js($u('redo_none'))" :aria-label="futN ? @js($u('redo_tip')) : @js($u('redo_none'))"><x-bs-admin::icon name="ri-arrow-go-forward" class="size-4" /></button>
-                                <button type="button" class="{{ $btn }} @max-[37.4375rem]:hidden" x-on:click="foldAll()" :title="(anyFolded ? @js($u('open_all')) : @js($u('close_all'))) + ' — ' + @js($u('fold_tip'))">
-                                    <x-bs-admin::icon name="ri-node-tree" class="size-4" /><span x-text="anyFolded ? @js($u('open_all')) : @js($u('close_all'))"></span>
-                                </button>
-                            </span>
-                        </div>
+                    <x-bs-admin::card flush>
+                        <x-slot:header>
+                            <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                                <span class="{{ $title }}" x-text="menu.name"></span>
+                                <x-bs-admin::badge soft pill color="secondary"><span x-text="@js($u('items_n')).replace(':n', items.length)"></span></x-bs-admin::badge>
+                                <x-bs-admin::badge soft pill color="secondary" x-bind:title="{{ $j($u('depth_tip')) }}.replace(':n', maxDepth)"><x-bs-admin::icon name="ri-node-tree" class="size-3.5" /><span x-text="@js($u('depth_n')).replace(':n', maxDepth)"></span></x-bs-admin::badge>
+                                <span class="ml-auto flex shrink-0 items-center gap-1.5">
+                                    <x-bs-admin::button size="sm" variant="outline" color="secondary" x-show="menu.trash.length" x-on:click="trashOpen = !trashOpen" title="{{ $u('trash_tip') }}"
+                                        x-bind:aria-label="{{ $j($u('trash_aria')) }}.replace(':n', menu.trash.length)" x-bind:aria-expanded="trashOpen">
+                                        <x-bs-admin::icon name="ri-delete-bin" class="size-4" /><span class="@max-[23.75rem]:hidden">{{ $u('trash') }}</span><span x-text="menu.trash.length"></span>
+                                    </x-bs-admin::button>
+                                    <x-bs-admin::button size="sm" variant="ghost" color="primary" icon x-on:click="undo()" x-bind:disabled="!histN"
+                                        x-bind:title="histN ? {{ $j($u('undo_tip')) }} : {{ $j($u('undo_none')) }}" x-bind:aria-label="histN ? {{ $j($u('undo_tip')) }} : {{ $j($u('undo_none')) }}"><x-bs-admin::icon name="ri-arrow-go-back" class="size-4" /></x-bs-admin::button>
+                                    <x-bs-admin::button size="sm" variant="ghost" color="primary" icon x-on:click="redo()" x-bind:disabled="!futN"
+                                        x-bind:title="futN ? {{ $j($u('redo_tip')) }} : {{ $j($u('redo_none')) }}" x-bind:aria-label="futN ? {{ $j($u('redo_tip')) }} : {{ $j($u('redo_none')) }}"><x-bs-admin::icon name="ri-arrow-go-forward" class="size-4" /></x-bs-admin::button>
+                                    <x-bs-admin::button size="sm" variant="outline" color="secondary" class="@max-[37.4375rem]:hidden" x-on:click="foldRows()" x-bind:title="(anyShut ? {{ $j($u('open_all')) }} : {{ $j($u('close_all')) }}) + ' — ' + {{ $j($u('fold_tip')) }}">
+                                        <x-bs-admin::icon name="ri-node-tree" class="size-4" /><span x-text="anyShut ? {{ $j($u('open_all')) }} : {{ $j($u('close_all')) }}">{{ $u('close_all') }}</span>
+                                    </x-bs-admin::button>
+                                </span>
+                            </div>
+                        </x-slot:header>
 
                         {{-- Trash --}}
                         <div x-show="trashOpen" class="border-b border-border bg-surface-muted">
                             <div class="flex items-center gap-2 px-3.5 pb-1.5 pt-2.5">
                                 <span class="text-text-muted"><x-bs-admin::icon name="ri-delete-bin" class="size-4" /></span>
                                 <span class="flex-auto text-caption leading-normal text-text-muted">{{ $u('trash_note') }}</span>
-                                <button type="button" class="{{ $hit }}" x-on:click="trashOpen = false" title="{{ $u('trash_close') }}" aria-label="{{ $u('trash_close') }}"><x-bs-admin::icon name="ri-close" class="size-4" /></button>
+                                <x-bs-admin::button size="sm" variant="ghost" color="primary" icon x-on:click="trashOpen = false" title="{{ $u('trash_close') }}" aria-label="{{ $u('trash_close') }}"><x-bs-admin::icon name="ri-close" class="size-4" /></x-bs-admin::button>
                             </div>
                             <template x-for="r in menu.trash" :key="r.key">
                                 <div class="flex items-center gap-2 border-t border-border-soft px-3.5 py-2">
@@ -378,25 +384,24 @@
                                         <span class="text-small leading-snug text-text-strong [overflow-wrap:anywhere]" x-text="r.label || @js($u('noName'))"></span>
                                         <span class="text-caption text-text-muted" x-text="trashMeta(r)"></span>
                                     </span>
-                                    <button type="button" class="{{ $btn }}" x-on:click="restore(r)"><x-bs-admin::icon name="ri-arrow-go-back" class="size-4" />{{ $u('restore') }}</button>
+                                    <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="restore(r)"><x-bs-admin::icon name="ri-arrow-go-back" class="size-4" />{{ $u('restore') }}</x-bs-admin::button>
                                 </div>
                             </template>
                         </div>
 
                         {{-- Search and filters --}}
                         <div class="flex flex-wrap items-center gap-2 border-b border-border px-3.5 py-2.5">
-                            <label class="flex min-w-0 flex-[1_1_190px] items-center gap-2 rounded border border-border-input bg-surface px-2.5 focus-ring-within focus-within:border-primary-text">
-                                <span class="text-text-muted"><x-bs-admin::icon name="ri-search" class="size-4" /></span>
-                                <input type="search" x-model="q" aria-label="{{ $u('tree_search') }}" placeholder="{{ $u('tree_search_ph') }}" class="min-h-control min-w-0 flex-auto border-0 bg-transparent text-body text-text-strong" />
-                            </label>
-                            <span class="hidden flex-wrap gap-2 @min-[37.5rem]:flex">
+                            <div class="min-w-0 flex-[1_1_190px]">
+                                <x-bs-admin::search :label="$u('tree_search')" :placeholder="$u('tree_search_ph')" x-model="q" />
+                            </div>
+                            <span class="hidden flex-wrap gap-2 @min-[37.5rem]:flex" role="group" aria-label="{{ $u('filter') }}">
                                 <template x-for="f in filters()" :key="f.k">
-                                    <button type="button" class="{{ $tab }}" :class="filter === f.k && @js($tabOn)" :aria-pressed="filter === f.k" :title="f.title" x-on:click="filter = f.k; sel = null">
+                                    <x-bs-admin::button size="sm" variant="outline" color="secondary" x-bind:aria-pressed="filter === f.k" x-bind:title="f.title" x-on:click="filter = f.k; sel = null">
                                         @foreach (['all' => 'ri-list-check-2', 'issue' => 'ri-information', 'hidden' => 'ri-eye-off', 'untr' => 'ri-translate-2'] as $fk => $fic)
                                             <span x-show="f.k === '{{ $fk }}'"><x-bs-admin::icon :name="$fic" class="size-4" /></span>
                                         @endforeach
                                         <span x-text="f.l + ' ' + f.n"></span>
-                                    </button>
+                                    </x-bs-admin::button>
                                 </template>
                             </span>
                             <label class="@min-[37.5rem]:hidden">
@@ -405,122 +410,100 @@
                                     <template x-for="f in filters()" :key="f.k"><option :value="f.k" x-text="f.l + ' ' + f.n" :selected="filter === f.k"></option></template>
                                 </select>
                             </label>
-                            <button type="button" class="{{ $btn }} min-h-control @min-[37.5rem]:hidden" x-on:click="foldAll()" title="{{ $u('fold_tip') }}">
-                                <x-bs-admin::icon name="ri-node-tree" class="size-4" /><span x-text="anyFolded ? @js($u('open_all')) : @js($u('close_all'))"></span>
-                            </button>
+                            <x-bs-admin::button variant="outline" color="secondary" class="@min-[37.5rem]:hidden" x-on:click="foldRows()" title="{{ $u('fold_tip') }}">
+                                <x-bs-admin::icon name="ri-node-tree" class="size-4" /><span x-text="anyShut ? {{ $j($u('open_all')) }} : {{ $j($u('close_all')) }}">{{ $u('close_all') }}</span>
+                            </x-bs-admin::button>
                         </div>
                         <div x-show="filtering" class="flex flex-wrap items-center gap-2 border-b border-border bg-surface-muted px-3.5 py-2">
                             <span class="text-text-muted"><x-bs-admin::icon name="ri-filter-3" class="size-4" /></span>
                             <span class="min-w-0 flex-[1_1_220px] text-caption leading-normal text-text-muted" x-text="@js($u('filter_note')).replace(':n', rows().length)"></span>
-                            <button type="button" class="{{ $btn }}" x-on:click="q = ''; filter = 'all'">{{ $u('clear_filter') }}</button>
+                            <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="q = ''; filter = 'all'">{{ $u('clear_filter') }}</x-bs-admin::button>
                         </div>
-                        <div x-show="dragK" class="sticky top-0 z-[15] flex items-center gap-2 border-b border-primary-text/20 bg-primary-soft px-3.5 py-2 text-caption leading-normal text-primary-text">
-                            <x-bs-admin::icon name="ri-drag-move-2" class="size-4 shrink-0" /><span x-text="dragHint"></span>
-                        </div>
-
                         <div x-show="!rows().length" class="flex flex-col items-center gap-2 px-5 py-9 text-center">
                             <span class="text-text-faint"><x-bs-admin::icon name="ri-node-tree" class="size-7" /></span>
                             <span class="text-small font-semibold text-text" x-text="filtering ? @js($u('empty_filter_title')) : @js($u('empty_title'))"></span>
                             <span class="max-w-[340px] text-caption leading-relaxed text-text-muted" x-text="filtering ? @js($u('empty_filter_text')) : @js($u('empty_text'))"></span>
                         </div>
 
-                        {{-- The rows --}}
-                        <div role="list" aria-label="{{ $u('tree_label') }}">
+                        {{-- The rows: the shared tree, drawn from the draft --}}
+                        <x-bs-admin::tree id="mn-tree" local move="treeMove" :label="$u('tree_label')" x-bind:data-max-depth="maxDepth" x-init="treeOn++">
                             <template x-for="r in rows()" :key="r.k">
-                                <div role="listitem" class="border-t border-border-soft first:border-t-0">
-                                    <div x-show="drop && drop.k === r.k && drop.at === 'before'" role="presentation" x-on:dragover="dragOverPh($event)" x-on:drop="dragDrop($event)"
-                                         class="mx-3.5 my-1 flex items-center gap-2 rounded border-[1.5px] border-dashed px-3 py-2 text-caption"
-                                         :class="drop && drop.bad ? 'border-danger-text text-danger-text' : 'border-primary-text bg-primary-soft text-primary-text'"
-                                         :style="drop && 'margin-left:' + (14 + (drop.lv - 1) * 22) + 'px'"><span x-text="drop && drop.label"></span></div>
-                                    <div class="relative flex items-center gap-1.5 py-1.5 pl-1.5 pr-2.5 hover:bg-surface-muted"
-                                         :class="[sel === r.k && 'bg-primary-soft', drop && drop.refK === r.k && (drop.bad ? 'ring-2 ring-inset ring-danger-text' : 'ring-2 ring-inset ring-primary-text'), dragK === r.k && 'opacity-50']"
-                                         :data-mn-row="r.k" :draggable="!filtering" x-on:dragstart="dragStart($event, r.k)" x-on:dragover="dragOver($event, r.k)" x-on:drop="dragDrop($event)"
-                                         x-on:keydown="rowKey($event, r.k)">
-                                        <span class="shrink-0" :style="'width:' + (r.indent * 22) + 'px'"></span>
-                                        <span x-show="!filtering" class="hidden shrink-0 cursor-grab text-text-faint [@media(hover:hover)_and_(pointer:fine)]:inline-flex" title="{{ __('admin.tree.grip_tip') }}"><x-bs-admin::icon name="ri-draggable" class="size-4" /></span>
-                                        <button type="button" x-show="r.kids" class="{{ $hit }} !w-6" x-on:click="toggleFold(r.k)" :aria-expanded="!fold[r.k]"
-                                                :title="(fold[r.k] ? @js(__('admin.tree.expand')) : @js(__('admin.tree.collapse'))).replace(':name', r.name)" :aria-label="(fold[r.k] ? @js(__('admin.tree.expand')) : @js(__('admin.tree.collapse'))).replace(':name', r.name)">
-                                            <x-bs-admin::icon name="ri-arrow-down-s" class="size-4 transition-transform" x-bind:class="fold[r.k] && '-rotate-90'" />
-                                        </button>
-                                        <span x-show="!r.kids" class="w-6 shrink-0"></span>
-                                        <span class="shrink-0 text-text-muted">
-                                            <template x-if="r.it.options.icon"><svg class="size-4" aria-hidden="true"><use :href="'#mn-ic-' + r.it.options.icon"></use></svg></template>
-                                            <template x-if="!r.it.options.icon"><span>
-                                                <span x-show="kind(r.it) === 'url'"><x-bs-admin::icon name="ri-links" class="size-4" /></span>
-                                                <span x-show="kind(r.it) === 'special'"><x-bs-admin::icon name="ri-star" class="size-4" /></span>
-                                                <span x-show="kind(r.it) === 'category'"><x-bs-admin::icon name="ri-price-tag-3" class="size-4" /></span>
-                                                <span x-show="kind(r.it) === 'product'"><x-bs-admin::icon name="ri-box-3" class="size-4" /></span>
-                                                <span x-show="kind(r.it) === 'page' || kind(r.it) === 'post'"><x-bs-admin::icon name="ri-file-text" class="size-4" /></span>
-                                            </span></template>
-                                        </span>
-                                        <button type="button" data-mn-name class="hit-area flex min-h-control-row min-w-0 flex-[1_1_0%] flex-wrap items-center gap-1.5 text-left hover:text-primary-text" x-on:click="pick(r.k)" :aria-expanded="sel === r.k" title="{{ $u('edit_tip') }}">
-                                            <span class="min-w-0 text-small leading-snug [overflow-wrap:anywhere]" :class="r.it.options.hidden ? 'text-text-muted line-through' : (r.lv === 1 ? 'font-semibold text-text-strong' : 'text-text')" x-text="r.name"></span>
-                                            <span x-show="filtering && r.it.parent" class="text-caption text-text-muted [overflow-wrap:anywhere]" x-text="r.it.parent ? '← ' + name(item(r.it.parent)) : ''"></span>
-                                            <span x-show="r.unsaved" class="{{ $chip }} bg-warning-soft text-warning-text" title="{{ $u('unsaved_tip') }}"><span class="size-1.5 rounded-full bg-current"></span><span class="@max-[32.5rem]:hidden">{{ $u('unsaved') }}</span></span>
-                                            <span x-show="r.it.options.hidden" class="{{ $chip }} bg-surface-hover text-text-muted" title="{{ $u('hidden_tip') }}"><x-bs-admin::icon name="ri-eye-off" class="size-3.5" /><span class="@max-[32.5rem]:hidden">{{ $u('hidden') }}</span></span>
-                                            <span x-show="r.it.options.cta" class="{{ $chip }} bg-primary-soft text-primary-text" title="{{ $u('cta_tip') }}"><x-bs-admin::icon name="ri-cursor" class="size-3.5" /><span class="@max-[32.5rem]:hidden">{{ $u('cta') }}</span></span>
-                                            <span x-show="r.it.options.badge" class="{{ $chip }} bg-danger text-white" x-text="badgeText(r.it)"></span>
-                                            <span x-show="r.deep" class="{{ $chip }} bg-danger-soft text-danger-text" :title="@js($u('deep_tip')).replace(':n', maxDepth)"><x-bs-admin::icon name="ri-node-tree" class="size-3.5" /><span class="@max-[32.5rem]:hidden">{{ $u('deep') }}</span></span>
-                                            <span x-show="r.it.options.mega" class="{{ $chip }} bg-primary-soft text-primary-text" :title="@js($u('mega_tip'))"><x-bs-admin::icon name="ri-layout-grid" class="size-3.5" /><span class="@max-[32.5rem]:hidden" x-text="r.it.options.mega ? @js($u('mega_n')).replace(':n', r.it.options.mega.columns) : ''"></span></span>
-                                            <span x-show="desc(r.it)" class="{{ $chipGrey }}" :title="desc(r.it)"><x-bs-admin::icon name="ri-text" class="size-3.5" /><span class="@max-[32.5rem]:hidden">{{ $u('has_desc') }}</span></span>
-                                            <span x-show="r.it.options.device !== 'all'" class="{{ $chipGrey }}"><x-bs-admin::icon name="ri-device" class="size-3.5" /><span class="@max-[32.5rem]:hidden" x-text="r.it.options.device === 'desktop' ? @js($u('only_pc')) : @js($u('only_phone'))"></span></span>
-                                            <span x-show="r.state === 'unpublished' || (r.untr && !r.state)" class="{{ $chip }} bg-warning-soft text-warning-text" :title="r.state ? r.stateLabel : @js($u('untr_tip'))"><x-bs-admin::icon name="ri-eye-off" class="size-3.5" /><span class="@max-[32.5rem]:hidden" x-text="r.state ? r.stateLabel : @js($u('untr'))"></span></span>
-                                            <span x-show="r.state === 'trashed' || r.state === 'gone'" class="{{ $chip }} bg-danger-soft text-danger-text" :title="r.stateLabel"><x-bs-admin::icon name="ri-error-warning" class="size-3.5" /><span class="@max-[32.5rem]:hidden" x-text="r.stateLabel"></span></span>
-                                        </button>
-                                        <span class="ml-auto shrink-0 whitespace-nowrap text-caption text-text-muted @max-[26.875rem]:hidden" x-text="r.src"></span>
-                                        <span class="flex shrink-0 items-center gap-1 @min-[26.9375rem]:ml-0 @max-[26.875rem]:ml-auto">
-                                            <button type="button" class="{{ $hit }}" x-on:click="move('moveUp', r.k)" x-bind:disabled="filtering" :title="@js(__('admin.tree.move_up')) + ' (Alt ↑)'" :aria-label="@js(__('admin.tree.move_up')) + ' — ' + r.name"><x-bs-admin::icon name="ri-arrow-up-s" class="size-5" /></button>
-                                            <button type="button" class="{{ $hit }}" x-on:click="move('moveDown', r.k)" x-bind:disabled="filtering" :title="@js(__('admin.tree.move_down')) + ' (Alt ↓)'" :aria-label="@js(__('admin.tree.move_down')) + ' — ' + r.name"><x-bs-admin::icon name="ri-arrow-down-s" class="size-5" /></button>
-                                            <span class="relative" x-on:click.stop>
-                                                <button type="button" class="{{ $hit }}" :data-mn-more="r.k" x-on:click="rowMenu = rowMenu === r.k ? null : r.k" title="{{ $u('more_actions') }}"
-                                                        :aria-label="@js($u('item_actions')).replace(':name', r.name)" aria-haspopup="menu" :aria-expanded="rowMenu === r.k"><x-bs-admin::icon name="ri-more-2-fill" class="size-4" /></button>
-                                                <template x-if="rowMenu === r.k">
-                                                    <div role="menu" :aria-label="@js($u('item_actions')).replace(':name', r.name)" class="absolute right-0 top-full z-30 mt-1 w-64 rounded-md border border-border bg-surface py-1 shadow-lg">
-                                                        <div class="px-3 pb-1 pt-1.5 text-caption font-semibold text-text-muted [overflow-wrap:anywhere] @min-[48rem]:hidden" aria-hidden="true" x-text="r.name"></div>
-                                                        <button type="button" role="menuitem" class="{{ $menuItem }}" x-on:click="pick(r.k)"><x-bs-admin::icon name="ri-pencil" class="size-4" />{{ $u('edit') }}</button>
-                                                        <template x-if="srcEdit(r.it)"><a role="menuitem" class="{{ $menuItem }}" :href="srcEdit(r.it)"><x-bs-admin::icon name="ri-external-link" class="size-4" /><span x-text="@js($u('src_open')).replace(':kind', kindName(r.it).toLowerCase())"></span></a></template>
-                                                        <button type="button" role="menuitem" class="{{ $menuItem }}" x-on:click="toggleHide(r.k)"><x-bs-admin::icon name="ri-eye-off" class="size-4" /><span x-text="r.it.options.hidden ? @js($u('show')) : @js($u('hide'))"></span></button>
-                                                        <div class="my-1 h-px bg-border"></div>
-                                                        <button type="button" role="menuitem" class="{{ $menuItem }}" x-on:click="move('indent', r.k)" x-bind:disabled="filtering"><x-bs-admin::icon name="ri-indent-increase" class="size-4" />{{ $u('indent') }}<span class="ml-auto text-caption text-text-muted">Alt →</span></button>
-                                                        <button type="button" role="menuitem" class="{{ $menuItem }}" x-on:click="move('outdent', r.k)" x-bind:disabled="filtering || !r.it.parent"><x-bs-admin::icon name="ri-indent-decrease" class="size-4" />{{ $u('outdent') }}<span class="ml-auto text-caption text-text-muted">Alt ←</span></button>
-                                                        <button type="button" role="menuitem" class="{{ $menuItem }}" x-on:click="mvOpen(r.k)" x-bind:disabled="filtering"><x-bs-admin::icon name="ri-drag-move-2" class="size-4" />{{ $u('move_to') }}</button>
-                                                        <button type="button" role="menuitem" class="{{ $menuItem }}" x-on:click="copy(r.k)" x-bind:disabled="r.k.startsWith('new:')"><x-bs-admin::icon name="ri-file-copy" class="size-4" />{{ $u('dup') }}</button>
-                                                        <div class="my-1 h-px bg-border"></div>
-                                                        <button type="button" role="menuitem" class="{{ $menuItem }}" x-on:click="revert(r.k)" x-bind:disabled="!r.unsaved || r.k.startsWith('new:')"><x-bs-admin::icon name="ri-history" class="size-4" />{{ $u('revert') }}</button>
-                                                        <div class="my-1 h-px bg-border"></div>
-                                                        <button type="button" role="menuitem" class="{{ $menuItem }} !text-danger-text" x-on:click="remove(r.k)"><x-bs-admin::icon name="ri-delete-bin" class="size-4" />{{ $u('remove') }}</button>
-                                                    </div>
+                                <x-bs-admin::tree.row row="r" drag-off="filtering || sel === r.k" x-bind:class="sel === r.k && '!bg-primary-soft'">
+                                    <span class="flex min-w-0 items-center gap-2">
+                                    <span class="shrink-0 self-center text-text-muted">
+                                        <template x-if="r.it.options.icon"><svg class="size-4" aria-hidden="true"><use :href="'#mn-ic-' + r.it.options.icon"></use></svg></template>
+                                        <template x-if="!r.it.options.icon"><span>
+                                            <span x-show="kind(r.it) === 'url'"><x-bs-admin::icon name="ri-links" class="size-4" /></span>
+                                            <span x-show="kind(r.it) === 'special'"><x-bs-admin::icon name="ri-star" class="size-4" /></span>
+                                            <span x-show="kind(r.it) === 'category'"><x-bs-admin::icon name="ri-price-tag-3" class="size-4" /></span>
+                                            <span x-show="kind(r.it) === 'product'"><x-bs-admin::icon name="ri-box-3" class="size-4" /></span>
+                                            <span x-show="kind(r.it) === 'page' || kind(r.it) === 'post'"><x-bs-admin::icon name="ri-file-text" class="size-4" /></span>
+                                        </span></template>
+                                    </span>
+                                    <x-bs-admin::tree.name x-on:click="pick(r.k)" x-bind:aria-expanded="sel === r.k" title="{{ $u('edit_tip') }}"
+                                        x-bind:class="r.it.options.hidden ? '!font-normal !text-text-muted line-through' : (r.lv === 1 ? '' : '!font-normal !text-text')" x-text="r.name"></x-bs-admin::tree.name>
+                                    </span>
+                                    <span class="flex min-w-0 flex-wrap items-center gap-1.5 self-center">
+                                        <span x-show="filtering && r.it.parent" class="text-caption text-text-muted [overflow-wrap:anywhere]" x-text="r.it.parent ? '← ' + name(item(r.it.parent)) : ''"></span>
+                                        <x-bs-admin::badge soft pill color="warning" x-show="r.unsaved" title="{{ $u('unsaved_tip') }}"><span class="size-1.5 rounded-full bg-current"></span><span class="{{ $chipHide }}">{{ $u('unsaved') }}</span></x-bs-admin::badge>
+                                        <x-bs-admin::badge soft pill color="secondary" x-show="r.it.options.hidden" title="{{ $u('hidden_tip') }}"><x-bs-admin::icon name="ri-eye-off" class="size-3.5" /><span class="{{ $chipHide }}">{{ $u('hidden') }}</span></x-bs-admin::badge>
+                                        <x-bs-admin::badge soft pill color="primary" x-show="r.it.options.cta" title="{{ $u('cta_tip') }}"><x-bs-admin::icon name="ri-cursor" class="size-3.5" /><span class="{{ $chipHide }}">{{ $u('cta') }}</span></x-bs-admin::badge>
+                                        <x-bs-admin::badge pill color="danger" x-show="r.it.options.badge"><span x-text="badgeText(r.it)"></span></x-bs-admin::badge>
+                                        <x-bs-admin::badge soft pill color="danger" x-show="r.deep" x-bind:title="{{ $j($u('deep_tip')) }}.replace(':n', maxDepth)"><x-bs-admin::icon name="ri-node-tree" class="size-3.5" /><span class="{{ $chipHide }}">{{ $u('deep') }}</span></x-bs-admin::badge>
+                                        <x-bs-admin::badge soft pill color="primary" x-show="r.it.options.mega" title="{{ $u('mega_tip') }}"><x-bs-admin::icon name="ri-layout-grid" class="size-3.5" /><span class="{{ $chipHide }}" x-text="r.it.options.mega ? {{ $j($u('mega_n')) }}.replace(':n', r.it.options.mega.columns) : ''"></span></x-bs-admin::badge>
+                                        <x-bs-admin::badge soft pill color="secondary" x-show="desc(r.it)" x-bind:title="desc(r.it)"><x-bs-admin::icon name="ri-text" class="size-3.5" /><span class="{{ $chipHide }}">{{ $u('has_desc') }}</span></x-bs-admin::badge>
+                                        <x-bs-admin::badge soft pill color="secondary" x-show="r.it.options.device !== 'all'"><x-bs-admin::icon name="ri-device" class="size-3.5" /><span class="{{ $chipHide }}" x-text="r.it.options.device === 'desktop' ? {{ $j($u('only_pc')) }} : {{ $j($u('only_phone')) }}"></span></x-bs-admin::badge>
+                                        <x-bs-admin::badge soft pill color="warning" x-show="r.state === 'unpublished' || (r.untr && !r.state)" x-bind:title="r.state ? r.stateLabel : {{ $j($u('untr_tip')) }}"><x-bs-admin::icon name="ri-eye-off" class="size-3.5" /><span class="{{ $chipHide }}" x-text="r.state ? r.stateLabel : {{ $j($u('untr')) }}"></span></x-bs-admin::badge>
+                                        <x-bs-admin::badge soft pill color="danger" x-show="r.state === 'trashed' || r.state === 'gone'" x-bind:title="r.stateLabel"><x-bs-admin::icon name="ri-error-warning" class="size-3.5" /><span class="{{ $chipHide }}" x-text="r.stateLabel"></span></x-bs-admin::badge>
+                                    </span>
+                                    <x-slot:actions>
+                                        <span class="whitespace-nowrap text-caption text-text-muted @max-[26.875rem]:hidden" x-text="r.src"></span>
+                                        <x-bs-admin::button size="sm" variant="ghost" color="primary" icon x-on:click="moveUp(r.k)" x-bind:disabled="filtering"
+                                            x-bind:title="{{ $j(__('admin.tree.move_up').' (Alt ↑)') }}" x-bind:aria-label="{{ $j(__('admin.tree.move_up')) }} + ' — ' + r.name"><x-bs-admin::icon name="ri-arrow-up-s" class="size-5" /></x-bs-admin::button>
+                                        <x-bs-admin::button size="sm" variant="ghost" color="primary" icon x-on:click="moveDown(r.k)" x-bind:disabled="filtering"
+                                            x-bind:title="{{ $j(__('admin.tree.move_down').' (Alt ↓)') }}" x-bind:aria-label="{{ $j(__('admin.tree.move_down')) }} + ' — ' + r.name"><x-bs-admin::icon name="ri-arrow-down-s" class="size-5" /></x-bs-admin::button>
+                                        <x-bs-admin::list.actions name="" name-bind="r.name" :title="$u('more_actions')">
+                                            <x-slot:menu>
+                                                <x-bs-admin::list.menu-item icon="ri-pencil" x-on:click="pick(r.k)">{{ $u('edit') }}</x-bs-admin::list.menu-item>
+                                                <template x-if="srcEdit(r.it)">
+                                                    <a role="menuitem" class="list-mi" x-bind:href="srcEdit(r.it)"><x-bs-admin::icon name="ri-external-link" class="list-mi-i" /><span x-text="{{ $j($u('src_open')) }}.replace(':kind', kindName(r.it).toLowerCase())"></span></a>
                                                 </template>
-                                            </span>
-                                        </span>
-                                    </div>
-                                    <div x-show="drop && drop.k === r.k && drop.at === 'after'" role="presentation" x-on:dragover="dragOverPh($event)" x-on:drop="dragDrop($event)"
-                                         class="mx-3.5 my-1 flex items-center gap-2 rounded border-[1.5px] border-dashed px-3 py-2 text-caption"
-                                         :class="drop && drop.bad ? 'border-danger-text text-danger-text' : 'border-primary-text bg-primary-soft text-primary-text'"
-                                         :style="drop && 'margin-left:' + (14 + (drop.lv - 1) * 22) + 'px'"><span x-text="drop && drop.label"></span></div>
+                                                <x-bs-admin::list.menu-item icon="ri-eye-off" x-on:click="toggleHide(r.k)"><span x-text="r.it.options.hidden ? {{ $j($u('show')) }} : {{ $j($u('hide')) }}"></span></x-bs-admin::list.menu-item>
+                                                <x-bs-admin::list.menu-sep />
+                                                <x-bs-admin::tree.move-menu row="r" />
+                                                <x-bs-admin::list.menu-item icon="ri-drag-move-2" x-on:click="mvOpen(r.k)" x-bind:aria-disabled="filtering ? 'true' : null">{{ $u('move_to') }}</x-bs-admin::list.menu-item>
+                                                <x-bs-admin::list.menu-item icon="ri-file-copy" x-on:click="r.k.startsWith('new:') || copy(r.k)" x-bind:aria-disabled="r.k.startsWith('new:') ? 'true' : null">{{ $u('dup') }}</x-bs-admin::list.menu-item>
+                                                <x-bs-admin::list.menu-sep />
+                                                <x-bs-admin::list.menu-item icon="ri-history" x-on:click="(r.unsaved && !r.k.startsWith('new:')) && revert(r.k)" x-bind:aria-disabled="!r.unsaved || r.k.startsWith('new:') ? 'true' : null">{{ $u('revert') }}</x-bs-admin::list.menu-item>
+                                                <x-bs-admin::list.menu-sep />
+                                                <x-bs-admin::list.menu-item icon="ri-delete-bin" danger x-on:click="remove(r.k)">{{ $u('remove') }}</x-bs-admin::list.menu-item>
+                                            </x-slot:menu>
+                                        </x-bs-admin::list.actions>
+                                    </x-slot:actions>
 
                                     {{-- The inline editor --}}
+                                    <x-slot:below>
                                     <template x-if="sel === r.k">
                                         <div class="border-t border-border bg-surface-muted px-4 pb-4 pt-3.5">
                                             <div class="grid grid-cols-2 gap-3.5 @max-[37.5rem]:grid-cols-1">
                                                 <label class="flex min-w-0 flex-col gap-1.5">
-                                                    <span class="flex items-center gap-1.5 text-caption font-semibold text-text">{{ $u('f_label') }}<span class="{{ $chipGrey }}" x-text="loc.toUpperCase()"></span></span>
-                                                    <input id="mn-ed-label" class="field w-full rounded border border-border-input bg-surface px-3 text-text-strong disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-muted" maxlength="120" :value="label(r.it)" x-on:change="setLabel(r.k, $event.target.value)"
-                                                           :placeholder="onMain ? fallbackName(r.it) : (label(r.it, @js($main)) || fallbackName(r.it))" :aria-invalid="labelErr(r.it)" aria-describedby="mn-lbl-hint" />
+                                                    <span class="flex items-center gap-1.5 text-caption font-semibold text-text">{{ $u('f_label') }}<x-bs-admin::badge soft pill color="secondary"><span x-text="loc.toUpperCase()"></span></x-bs-admin::badge></span>
+                                                    <x-bs-admin::input id="mn-ed-label" maxlength="120" x-bind:value="label(r.it)" x-on:change="setLabel(r.k, $event.target.value)"
+                                                        x-bind:placeholder="onMain ? fallbackName(r.it) : (label(r.it, {{ $j($main) }}) || fallbackName(r.it))" x-bind:aria-invalid="labelErr(r.it)" aria-describedby="mn-lbl-hint" />
                                                     <span id="mn-lbl-hint" class="text-caption leading-normal" :class="labelErr(r.it) ? 'font-semibold text-danger-text' : 'text-text-muted'"
                                                           x-text="labelErr(r.it) ? @js($u('f_label_err')) : (onMain ? @js($u('f_label_hint')) : @js($u('f_label_src')).replace(':text', label(r.it, @js($main)) || fallbackName(r.it)))"></span>
                                                 </label>
                                                 <label class="flex min-w-0 flex-col gap-1.5">
-                                                    <span class="flex items-center gap-1.5 text-caption font-semibold text-text">{{ $u('f_url') }}<span x-show="!onMain" class="{{ $chipGrey }}"><x-bs-admin::icon name="ri-lock" class="size-3" />{{ $u('shared') }}</span></span>
-                                                    <input class="field w-full rounded border border-border-input bg-surface px-3 text-text-strong disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-muted" :value="r.it.link.type === 'url' ? r.it.link.url : srcText(r.it)" x-bind:disabled="!onMain || r.it.link.type !== 'url'"
-                                                           x-on:change="editUrl(r.k, $event.target.value)" placeholder="/lien-he" />
+                                                    <span class="flex items-center gap-1.5 text-caption font-semibold text-text">{{ $u('f_url') }}<x-bs-admin::badge soft pill color="secondary" x-show="!onMain"><x-bs-admin::icon name="ri-lock" class="size-3" />{{ $u('shared') }}</x-bs-admin::badge></span>
+                                                    <x-bs-admin::input x-bind:value="r.it.link.type === 'url' ? r.it.link.url : srcText(r.it)" x-bind:disabled="!onMain || r.it.link.type !== 'url'"
+                                                        x-on:change="editUrl(r.k, $event.target.value)" placeholder="/lien-he" />
                                                     <span class="text-caption leading-normal text-text-muted"
                                                           x-text="!onMain ? @js($u('f_url_shared')).replace(':lang', locName(@js($main))) : (r.it.link.type === 'url' ? @js($u('f_url_hint')) : @js($u('f_url_auto')).replace(':kind', kindName(r.it).toLowerCase()))"></span>
                                                 </label>
                                             </div>
                                             <div class="mt-3.5 grid grid-cols-2 gap-3.5 @max-[37.5rem]:grid-cols-1">
                                                 <label class="flex min-w-0 flex-col gap-1.5">
-                                                    <span class="flex items-center gap-1.5 text-caption font-semibold text-text">{{ $u('f_desc') }}<span class="{{ $chipGrey }}" x-text="loc.toUpperCase()"></span>
+                                                    <span class="flex items-center gap-1.5 text-caption font-semibold text-text">{{ $u('f_desc') }}<x-bs-admin::badge soft pill color="secondary"><span x-text="loc.toUpperCase()"></span></x-bs-admin::badge>
                                                         <span class="ml-auto font-normal" :class="desc(r.it).length > descMax(r.it) ? 'text-warning-text' : 'text-text-muted'" x-text="desc(r.it).length + '/' + descMax(r.it)"></span></span>
                                                     <textarea rows="3" maxlength="500" class="field w-full rounded border border-border-input bg-surface px-3 text-text-strong disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-muted leading-relaxed" :value="desc(r.it)" x-on:change="setDesc(r.k, $event.target.value.trim())"
                                                               :placeholder="@js($u('f_desc_ph'))"></textarea>
@@ -529,24 +512,23 @@
                                                 </label>
                                                 <div class="flex min-w-0 flex-col gap-1.5">
                                                     <span class="flex items-center gap-1.5 text-caption font-semibold text-text">{{ $u('f_icon') }}<span class="font-normal text-text-muted">{{ $u('optional') }}</span></span>
-                                                    <span class="relative flex flex-wrap items-center gap-2">
-                                                        <button type="button" class="{{ $btn }} min-h-control" x-on:click.stop="iconOpen = !iconOpen" :aria-expanded="iconOpen">
+                                                    <span class="relative flex flex-wrap items-center gap-2" x-on:click.outside="iconOpen = false">
+                                                        <x-bs-admin::button variant="outline" color="secondary" x-on:click.stop="iconOpen = !iconOpen" x-bind:aria-expanded="iconOpen">
                                                             <template x-if="r.it.options.icon"><svg class="size-5" aria-hidden="true"><use :href="'#mn-ic-' + r.it.options.icon"></use></svg></template>
-                                                            <span x-text="r.it.options.icon ? @js($u('icon_change')) : @js($u('icon_pick'))"></span><x-bs-admin::icon name="ri-arrow-down-s" class="size-4" />
-                                                        </button>
-                                                        <div x-show="iconOpen" x-on:click.stop class="absolute right-0 top-full z-30 mt-1.5 box-border w-[min(308px,calc(100vw-32px))] rounded-md border border-border bg-surface p-2.5 shadow-lg">
-                                                            <input type="search" class="field w-full rounded border border-border-input bg-surface px-3 text-text-strong disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-muted" x-model="iconQ" placeholder="{{ $u('icon_search') }}" aria-label="{{ $u('icon_search') }}" />
+                                                            <span x-text="r.it.options.icon ? {{ $j($u('icon_change')) }} : {{ $j($u('icon_pick')) }}"></span><x-bs-admin::icon name="ri-arrow-down-s" class="size-4" />
+                                                        </x-bs-admin::button>
+                                                        <div x-show="iconOpen" x-on:click.stop class="absolute right-0 top-full z-30 mt-1.5 box-border w-[min(308px,calc(100vw-32px))] rounded-md border border-border bg-surface p-2.5 shadow-card">
+                                                            <x-bs-admin::search :label="$u('icon_search')" x-model="iconQ" />
                                                             <div class="mt-2 flex max-h-[230px] flex-wrap gap-1.5 overflow-auto">
                                                                 <template x-for="ic in iconRows()" :key="ic.name">
-                                                                    <button type="button" class="hit-area grid size-control place-items-center rounded border text-text hover:bg-surface-hover"
-                                                                            :class="r.it.options.icon === ic.name ? 'border-primary-text bg-primary-soft text-primary-text' : 'border-border'" :title="ic.label" :aria-label="ic.label" :aria-pressed="r.it.options.icon === ic.name"
-                                                                            x-on:click="setIcon(r.k, ic.name)"><svg class="size-5" aria-hidden="true"><use :href="'#mn-ic-' + ic.name"></use></svg></button>
+                                                                    <x-bs-admin::button variant="outline" color="secondary" icon x-bind:title="ic.label" x-bind:aria-label="ic.label" x-bind:aria-pressed="r.it.options.icon === ic.name"
+                                                                        x-on:click="setIcon(r.k, ic.name)"><svg class="size-5" aria-hidden="true"><use :href="'#mn-ic-' + ic.name"></use></svg></x-bs-admin::button>
                                                                 </template>
                                                                 <p x-show="!iconRows().length" class="w-full px-1 py-3.5 text-center text-caption leading-relaxed text-text-muted">{{ $u('icon_none_found') }}</p>
                                                             </div>
                                                             <div class="mt-2 flex items-center gap-2 border-t border-border-soft pt-2">
                                                                 <span class="flex-auto text-caption text-text-muted" x-text="@js($u('icon_count')).replace(':n', iconRows().length)"></span>
-                                                                <button type="button" x-show="r.it.options.icon" class="{{ $btn }}" x-on:click="setIcon(r.k, null)"><x-bs-admin::icon name="ri-close" class="size-4" />{{ $u('icon_clear') }}</button>
+                                                                <x-bs-admin::button size="sm" variant="outline" color="secondary" x-show="r.it.options.icon" x-on:click="setIcon(r.k, null)"><x-bs-admin::icon name="ri-close" class="size-4" />{{ $u('icon_clear') }}</x-bs-admin::button>
                                                             </div>
                                                         </div>
                                                     </span>
@@ -596,147 +578,148 @@
                                             <div class="mt-3 flex flex-wrap items-center gap-2.5" role="group" aria-label="{{ $u('f_device') }}">
                                                 <span class="text-caption font-semibold text-text">{{ $u('f_device') }}</span>
                                                 @foreach (['all' => ['ri-device', 'dev_all'], 'desktop' => ['ri-computer', 'only_pc'], 'phone' => ['ri-smartphone', 'only_phone']] as $dv => [$ic, $lbl])
-                                                    <button type="button" class="{{ $tab }}" x-bind:class="r.it.options.device === '{{ $dv }}' && @js($tabOn)" x-bind:aria-pressed="r.it.options.device === '{{ $dv }}'" x-on:click="setOpt(r.k, 'device', '{{ $dv }}')">
-                                                        <x-bs-admin::icon :name="$ic" class="size-4" />{{ $u($lbl) }}</button>
+                                                    <x-bs-admin::button size="sm" variant="outline" color="secondary" x-bind:aria-pressed="r.it.options.device === '{{ $dv }}'" x-on:click="setOpt(r.k, 'device', '{{ $dv }}')">
+                                                        <x-bs-admin::icon :name="$ic" class="size-4" />{{ $u($lbl) }}</x-bs-admin::button>
                                                 @endforeach
                                             </div>
                                             <div class="mt-3.5 flex flex-wrap items-center gap-2 border-t border-border pt-3">
                                                 <span class="min-w-0 flex-[1_1_220px] text-caption leading-relaxed text-text-muted" x-text="@js($u('ed_foot')).replace(':kind', kindName(r.it))"></span>
-                                                <button type="button" class="{{ $btn }} min-h-control" x-on:click="closeEditor()">{{ $u('done') }}</button>
+                                                <x-bs-admin::button variant="outline" color="secondary" x-on:click="closeEditor()">{{ $u('done') }}</x-bs-admin::button>
                                             </div>
                                         </div>
                                     </template>
-                                </div>
+                                    </x-slot:below>
+                                </x-bs-admin::tree.row>
                             </template>
-                        </div>
+                        </x-bs-admin::tree>
 
-                        <div x-show="items.some(it => depthMap()[it.key] + 1 >= maxDepth)" class="flex items-center gap-2 border-t border-border px-3.5 py-2.5 text-caption leading-relaxed"
-                             :class="items.some(it => depthMap()[it.key] + 1 > maxDepth) ? 'bg-danger-soft text-danger-text' : 'bg-warning-soft text-warning-text'">
-                            <x-bs-admin::icon name="ri-information" class="size-4 shrink-0" />
-                            <span x-text="items.some(it => depthMap()[it.key] + 1 > maxDepth) ? @js($u('depth_over')).replace(':n', maxDepth) : (menu.limits.mega ? @js($u('depth_at_mega')) : @js($u('depth_at'))).replace(':n', maxDepth)"></span>
-                        </div>
-                        <div class="flex items-center gap-2 border-t border-border px-3.5 py-2">
+                        <x-bs-admin::alert color="danger" icon="ri-information" class="!rounded-none border-t border-border text-caption leading-relaxed" x-show="items.some(it => depthMap()[it.key] + 1 > maxDepth)">
+                            <span x-text="{{ $j($u('depth_over')) }}.replace(':n', maxDepth)"></span>
+                        </x-bs-admin::alert>
+                        <x-bs-admin::alert color="warning" icon="ri-information" class="!rounded-none border-t border-border text-caption leading-relaxed"
+                            x-show="!items.some(it => depthMap()[it.key] + 1 > maxDepth) && items.some(it => depthMap()[it.key] + 1 >= maxDepth)">
+                            <span x-text="(menu.limits.mega ? {{ $j($u('depth_at_mega')) }} : {{ $j($u('depth_at')) }}).replace(':n', maxDepth)"></span>
+                        </x-bs-admin::alert>
+                        <div class="flex flex-wrap items-center gap-2 border-t border-border px-3.5 py-2">
                             <span class="shrink-0 text-text-faint"><x-bs-admin::icon name="ri-keyboard" class="size-4" /></span>
-                            <span class="text-caption leading-relaxed text-text-muted">{{ $u('keys_note') }}</span>
+                            <span class="min-w-0 flex-[1_1_220px] text-caption leading-relaxed text-text-muted">{{ $u('keys_note') }}</span>
+                            <x-bs-admin::tree.keys class="w-full" />
                         </div>
-                    </div>
+                    </x-bs-admin::card>
                     </template>
 
                     {{-- What visitors will see --}}
-                    <div class="{{ $card }}" x-show="menu">
-                        <div class="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
+                    <x-bs-admin::card x-show="menu">
+                        <x-slot:header>
+                            <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2">
                             <span class="{{ $title }}">{{ $u('preview') }}</span>
                             <span class="ml-auto flex flex-wrap items-center gap-1.5" role="group" aria-label="{{ $u('preview') }}">
                                 @foreach (['pc' => ['ri-computer', 'pv_pc', 'pv_pc_tip'], 'mb' => ['ri-smartphone', 'pv_mb', 'pv_mb_tip']] as $dv => [$ic, $lbl, $tip])
-                                    <button type="button" class="{{ $tab }}" x-bind:class="device === '{{ $dv }}' && @js($tabOn)" x-bind:aria-pressed="device === '{{ $dv }}'" title="{{ $u($tip) }}" x-on:click="device = '{{ $dv }}'; pvOpen = null">
-                                        <x-bs-admin::icon :name="$ic" class="size-4" />{{ $u($lbl) }}</button>
+                                    <x-bs-admin::button size="sm" variant="outline" color="secondary" x-bind:aria-pressed="device === '{{ $dv }}'" title="{{ $u($tip) }}" x-on:click="device = '{{ $dv }}'; pvOpen = null">
+                                        <x-bs-admin::icon :name="$ic" class="size-4" />{{ $u($lbl) }}</x-bs-admin::button>
                                 @endforeach
                             </span>
-                        </div>
-                        <div class="p-4">
-                            {{-- The preview draws the website's look: light, fixed colours on purpose. --}}
-                            <div x-show="device === 'pc'">
-                                <div class="relative flex flex-wrap items-center gap-1.5 rounded-md border border-border bg-surface px-3.5 py-3" x-on:click.outside="pvOpen = null">
-                                    <span class="mr-2 text-small font-bold text-text-strong">{{ $siteName }}</span>
-                                    <template x-for="it in pvTop()" :key="it.key">
-                                        <span :class="it.options.mega ? '' : 'relative'">
-                                            <button type="button" class="hit-area inline-flex min-h-control-row items-center gap-1 rounded px-2 text-small"
-                                                    :class="it.options.cta ? 'bg-primary font-semibold text-on-primary' : (pvOpen === it.key ? 'bg-surface-hover text-primary-text' : 'text-text hover:text-primary-text')"
-                                                    :aria-expanded="hasKids(it.key) ? pvOpen === it.key : null" x-on:click="pvOpen = pvOpen === it.key ? null : it.key">
-                                                <template x-if="it.options.icon"><svg class="size-4" aria-hidden="true"><use :href="'#mn-ic-' + it.options.icon"></use></svg></template>
-                                                <span x-text="name(it)"></span>
-                                                <span x-show="it.options.badge" class="rounded-full bg-danger px-1.5 text-caption font-bold text-on-primary" x-text="badgeText(it)"></span>
-                                                <span x-show="pvKids(it.key).length"><x-bs-admin::icon name="ri-arrow-down-s" class="size-4" /></span>
-                                            </button>
-                                            <template x-if="pvOpen === it.key && pvKids(it.key).length && !it.options.mega">
-                                                <span class="absolute left-0 top-full z-10 flex min-w-[186px] flex-col rounded-md border border-border bg-surface py-1 shadow-lg">
-                                                    <template x-for="k in pvKids(it.key)" :key="k.key">
-                                                        <span class="flex flex-col gap-0.5 px-3 py-2">
-                                                            <span class="whitespace-nowrap text-small text-text" x-text="name(k)"></span>
-                                                            <span x-show="desc(k)" class="max-w-[230px] text-caption leading-normal text-text-muted" x-text="desc(k)"></span>
-                                                        </span>
-                                                    </template>
-                                                </span>
-                                            </template>
-                                            <template x-if="pvOpen === it.key && pvKids(it.key).length && it.options.mega">
-                                                <span class="absolute inset-x-0 top-full z-10 mt-1.5 grid gap-[18px] rounded-md border border-border bg-surface p-[18px] shadow-lg"
-                                                      :style="'grid-template-columns:' + (desc(it) ? 'minmax(0,1.1fr) ' : '') + 'repeat(' + it.options.mega.columns + ',minmax(0,1fr))'">
-                                                    <template x-if="desc(it)">
-                                                        <span class="flex flex-col gap-2 border-r border-border pr-[18px]">
-                                                            <span class="text-body font-bold text-text-strong" x-text="name(it)"></span>
-                                                            <span class="text-caption leading-relaxed text-text" x-text="desc(it)"></span>
-                                                        </span>
-                                                    </template>
-                                                    <template x-for="(col, ci) in pvCols(it)" :key="ci">
-                                                        <span class="flex flex-col gap-3.5">
-                                                            <template x-for="k in col" :key="k.key">
-                                                                <span class="flex flex-col gap-0.5">
-                                                                    <span class="text-small font-semibold text-text-strong" x-text="name(k)"></span>
-                                                                    <span x-show="desc(k)" class="text-caption leading-normal text-text-muted" x-text="desc(k)"></span>
-                                                                </span>
-                                                            </template>
-                                                        </span>
-                                                    </template>
-                                                </span>
-                                            </template>
-                                        </span>
-                                    </template>
-                                </div>
-                                <p x-show="pvCrowded()" class="mt-2.5 flex items-center gap-2 text-caption leading-relaxed text-warning-text">
-                                    <x-bs-admin::icon name="ri-error-warning" class="size-4 shrink-0" />{{ $u('crowded') }}
-                                </p>
                             </div>
-                            <div x-show="device === 'mb'" class="mx-auto w-full max-w-[300px] overflow-hidden rounded-lg border border-border bg-surface">
-                                <div class="flex items-center gap-2 border-b border-border px-3 py-2.5"><x-bs-admin::icon name="menu" class="size-4 text-text" /><span class="text-small font-bold text-text-strong">{{ $siteName }}</span></div>
-                                <template x-for="p in pvMobile()" :key="p.k">
-                                    <div class="flex items-center border-t border-border-soft py-2.5 pr-3 text-small first:border-t-0" :class="p.d ? 'pl-7 text-text-muted' : 'pl-3 font-semibold text-text-strong'">
-                                        <span x-text="p.name"></span>
-                                        <span x-show="p.kids && !p.d" class="ml-auto text-text-faint"><x-bs-admin::icon name="ri-arrow-right-s" class="size-4" /></span>
-                                    </div>
+                        </x-slot:header>
+                        {{-- The preview draws the website's look: light, fixed colours on purpose. --}}
+                        <div x-show="device === 'pc'">
+                            <div class="relative flex flex-wrap items-center gap-1.5 rounded-md border border-border bg-surface px-3.5 py-3" x-on:click.outside="pvOpen = null">
+                                <span class="mr-2 text-small font-bold text-text-strong">{{ $siteName }}</span>
+                                <template x-for="it in pvTop()" :key="it.key">
+                                    <span :class="it.options.mega ? '' : 'relative'">
+                                        <button type="button" class="hit-area inline-flex min-h-control-row items-center gap-1 rounded px-2 text-small"
+                                                :class="it.options.cta ? 'bg-primary font-semibold text-on-primary' : (pvOpen === it.key ? 'bg-surface-hover text-primary-text' : 'text-text hover:text-primary-text')"
+                                                :aria-expanded="hasKids(it.key) ? pvOpen === it.key : null" x-on:click="pvOpen = pvOpen === it.key ? null : it.key">
+                                            <template x-if="it.options.icon"><svg class="size-4" aria-hidden="true"><use :href="'#mn-ic-' + it.options.icon"></use></svg></template>
+                                            <span x-text="name(it)"></span>
+                                            <span x-show="it.options.badge" class="rounded-full bg-danger px-1.5 text-caption font-bold text-on-primary" x-text="badgeText(it)"></span>
+                                            <span x-show="pvKids(it.key).length"><x-bs-admin::icon name="ri-arrow-down-s" class="size-4" /></span>
+                                        </button>
+                                        <template x-if="pvOpen === it.key && pvKids(it.key).length && !it.options.mega">
+                                            <span class="absolute left-0 top-full z-10 flex min-w-[186px] flex-col rounded-md border border-border bg-surface py-1 shadow-lg">
+                                                <template x-for="k in pvKids(it.key)" :key="k.key">
+                                                    <span class="flex flex-col gap-0.5 px-3 py-2">
+                                                        <span class="whitespace-nowrap text-small text-text" x-text="name(k)"></span>
+                                                        <span x-show="desc(k)" class="max-w-[230px] text-caption leading-normal text-text-muted" x-text="desc(k)"></span>
+                                                    </span>
+                                                </template>
+                                            </span>
+                                        </template>
+                                        <template x-if="pvOpen === it.key && pvKids(it.key).length && it.options.mega">
+                                            <span class="absolute inset-x-0 top-full z-10 mt-1.5 grid gap-[18px] rounded-md border border-border bg-surface p-[18px] shadow-lg"
+                                                  :style="'grid-template-columns:' + (desc(it) ? 'minmax(0,1.1fr) ' : '') + 'repeat(' + it.options.mega.columns + ',minmax(0,1fr))'">
+                                                <template x-if="desc(it)">
+                                                    <span class="flex flex-col gap-2 border-r border-border pr-[18px]">
+                                                        <span class="text-body font-bold text-text-strong" x-text="name(it)"></span>
+                                                        <span class="text-caption leading-relaxed text-text" x-text="desc(it)"></span>
+                                                    </span>
+                                                </template>
+                                                <template x-for="(col, ci) in pvCols(it)" :key="ci">
+                                                    <span class="flex flex-col gap-3.5">
+                                                        <template x-for="k in col" :key="k.key">
+                                                            <span class="flex flex-col gap-0.5">
+                                                                <span class="text-small font-semibold text-text-strong" x-text="name(k)"></span>
+                                                                <span x-show="desc(k)" class="text-caption leading-normal text-text-muted" x-text="desc(k)"></span>
+                                                            </span>
+                                                        </template>
+                                                    </span>
+                                                </template>
+                                            </span>
+                                        </template>
+                                    </span>
                                 </template>
                             </div>
+                            <p x-show="pvCrowded()" class="mt-2.5 flex items-center gap-2 text-caption leading-relaxed text-warning-text">
+                                <x-bs-admin::icon name="ri-error-warning" class="size-4 shrink-0" />{{ $u('crowded') }}
+                            </p>
                         </div>
-                    </div>
+                        <div x-show="device === 'mb'" class="mx-auto w-full max-w-[300px] overflow-hidden rounded-lg border border-border bg-surface">
+                            <div class="flex items-center gap-2 border-b border-border px-3 py-2.5"><x-bs-admin::icon name="menu" class="size-4 text-text" /><span class="text-small font-bold text-text-strong">{{ $siteName }}</span></div>
+                            <template x-for="p in pvMobile()" :key="p.k">
+                                <div class="flex items-center border-t border-border-soft py-2.5 pr-3 text-small first:border-t-0" :class="p.d ? 'pl-7 text-text-muted' : 'pl-3 font-semibold text-text-strong'">
+                                    <span x-text="p.name"></span>
+                                    <span x-show="p.kids && !p.d" class="ml-auto text-text-faint"><x-bs-admin::icon name="ri-arrow-right-s" class="size-4" /></span>
+                                </div>
+                            </template>
+                        </div>
+                    </x-bs-admin::card>
                 </div>
 
                 {{-- Right column: add to the menu --}}
                 <div class="flex flex-col gap-4 @max-[75.625rem]:col-start-2 @max-[53.75rem]:order-4" x-show="menu">
-                    <div class="{{ $card }}">
-                        <button type="button" class="{{ $head }}" x-on:click="fold2.add = !fold2.add" :aria-expanded="!fold2.add">
-                            <x-bs-admin::icon name="ri-arrow-down-s" class="size-4 shrink-0 text-text-muted transition-transform" x-bind:class="fold2.add && '-rotate-90'" />
-                            <span class="{{ $title }}">{{ $u('add') }}</span>
-                        </button>
+                    <x-bs-admin::card flush>
+                        <x-slot:header>
+                            <button type="button" class="{{ $head }}" x-on:click="fold2.add = !fold2.add" :aria-expanded="!fold2.add">
+                                <x-bs-admin::icon name="ri-arrow-down-s" class="size-4 shrink-0 text-text-muted transition-transform" x-bind:class="fold2.add && '-rotate-90'" />
+                                <span class="{{ $title }}">{{ $u('add') }}</span>
+                            </button>
+                        </x-slot:header>
                         <div x-show="!fold2.add">
                             <div class="flex flex-wrap gap-1.5 px-3 py-2.5" role="group" aria-label="{{ $u('add') }}">
                                 @foreach (['page' => 'tab_page', 'category' => 'tab_category', 'product' => 'tab_product', 'special' => 'tab_special', 'url' => 'tab_url'] as $k => $lbl)
-                                    <button type="button" class="{{ $tab }}" x-bind:class="tab === '{{ $k }}' && @js($tabOn)" x-bind:aria-pressed="tab === '{{ $k }}'" x-on:click="setTab('{{ $k }}')">{{ $u($lbl) }}</button>
+                                    <x-bs-admin::button size="sm" variant="outline" color="secondary" x-bind:aria-pressed="tab === '{{ $k }}'" x-on:click="setTab('{{ $k }}')">{{ $u($lbl) }}</x-bs-admin::button>
                                 @endforeach
                             </div>
                             <div x-show="sel" class="flex flex-wrap items-center gap-1.5 px-3 pb-2.5">
                                 <span class="text-caption text-text-muted">{{ $u('add_to') }}</span>
-                                <button type="button" class="{{ $tab }}" :class="addTo !== 'sel' && @js($tabOn)" :aria-pressed="addTo !== 'sel'" x-on:click="addTo = 'end'">{{ $u('add_end') }}</button>
-                                <button type="button" class="{{ $tab }}" :class="addTo === 'sel' && @js($tabOn)" :aria-pressed="addTo === 'sel'" title="{{ $u('add_in_tip') }}" x-on:click="addTo = 'sel'"
-                                        x-text="@js($u('add_in')).replace(':name', sel ? name(item(sel)) : '')"></button>
+                                <x-bs-admin::button size="sm" variant="outline" color="secondary" x-bind:aria-pressed="addTo !== 'sel'" x-on:click="addTo = 'end'">{{ $u('add_end') }}</x-bs-admin::button>
+                                <x-bs-admin::button size="sm" variant="outline" color="secondary" x-bind:aria-pressed="addTo === 'sel'" title="{{ $u('add_in_tip') }}" x-on:click="addTo = 'sel'"
+                                    ><span x-text="{{ $j($u('add_in')) }}.replace(':name', sel ? name(item(sel)) : '')"></span></x-bs-admin::button>
                             </div>
 
                             <div x-show="tab === 'url'" class="flex flex-col gap-2.5 px-3 pb-3.5 pt-1">
-                                <label class="flex min-w-0 flex-col gap-1.5"><span class="text-caption font-semibold text-text">{{ $u('f_label') }}</span>
-                                    <input class="field w-full rounded border border-border-input bg-surface px-3 text-text-strong disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-muted" x-model="newLabel" maxlength="120" placeholder="{{ $u('new_label_ph') }}" /></label>
-                                <label class="flex min-w-0 flex-col gap-1.5"><span class="text-caption font-semibold text-text">{{ $u('f_address') }}</span>
-                                    <input class="field w-full rounded border border-border-input bg-surface px-3 text-text-strong disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-muted" x-model="newUrl" inputmode="url" autocomplete="url" placeholder="{{ $u('new_url_ph') }}" aria-describedby="mn-url-hint" /></label>
+                                <x-bs-admin::input id="mn-new-label" :label="$u('f_label')" x-model="newLabel" maxlength="120" placeholder="{{ $u('new_label_ph') }}" />
+                                <x-bs-admin::input id="mn-new-url" :label="$u('f_address')" x-model="newUrl" inputmode="url" autocomplete="url" placeholder="{{ $u('new_url_ph') }}" aria-describedby="mn-url-hint" />
                                 <span id="mn-url-hint" class="text-caption leading-normal" :class="newUrl.trim() && !url.ok ? 'text-danger-text' : 'text-text-muted'"
                                       x-text="!newUrl.trim() ? @js($u('url_empty')) : (url.ok ? @js($u('url_will')).replace(':url', url.url) + (url.note ? ' — ' + url.note : '') : url.msg)"></span>
-                                <button type="button" class="{{ $btn }} min-h-control" x-on:click="addUrl()" x-bind:disabled="!newLabel.trim() || !url.ok"><x-bs-admin::icon name="ri-add" class="size-4" />{{ $u('add_link') }}</button>
+                                <x-bs-admin::button variant="outline" color="secondary" x-on:click="addUrl()" x-bind:disabled="!newLabel.trim() || !url.ok"><x-bs-admin::icon name="ri-add" class="size-4" />{{ $u('add_link') }}</x-bs-admin::button>
                             </div>
 
                             <div x-show="tab !== 'url'">
                                 <div class="px-3 pb-2.5">
-                                    <label class="flex items-center gap-2 rounded border border-border-input bg-surface px-2.5 focus-ring-within focus-within:border-primary-text">
-                                        <span class="text-text-muted"><x-bs-admin::icon name="ri-search" class="size-4" /></span>
-                                        <input type="search" x-model="search" x-on:input="findSoon()" class="min-h-control min-w-0 flex-auto border-0 bg-transparent text-body text-text-strong"
-                                               :aria-label="@js(['page' => $u('find_page'), 'category' => $u('find_category'), 'product' => $u('find_product'), 'special' => $u('find_special')])[tab]"
-                                               :placeholder="@js(['page' => $u('find_page'), 'category' => $u('find_category'), 'product' => $u('find_product'), 'special' => $u('find_special')])[tab]" />
-                                    </label>
+                                    <x-bs-admin::search :label="$u('find_page')" x-model="search" x-on:input="findSoon()"
+                                        x-bind:aria-label="{{ \Illuminate\Support\Js::from(['page' => $u('find_page'), 'category' => $u('find_category'), 'product' => $u('find_product'), 'special' => $u('find_special')])->toHtml() }}[tab]"
+                                        x-bind:placeholder="{{ \Illuminate\Support\Js::from(['page' => $u('find_page'), 'category' => $u('find_category'), 'product' => $u('find_product'), 'special' => $u('find_special')])->toHtml() }}[tab]" />
                                 </div>
                                 <div class="max-h-[300px] overflow-auto border-t border-border" :aria-busy="searching">
                                     <template x-for="s in srcRows()" :key="s.key">
@@ -747,22 +730,23 @@
                                                 <span class="text-small leading-snug [overflow-wrap:anywhere]" :class="s.used ? 'text-text-muted' : 'text-text-strong'" x-text="s.title"></span>
                                                 <span class="text-caption leading-snug text-text-muted [overflow-wrap:anywhere]" x-text="s.meta"></span>
                                             </span>
-                                            <span x-show="s.used" class="{{ $chipGrey }}">{{ $u('already') }}</span>
-                                            <span x-show="s.draft" class="{{ $chip }} bg-warning-soft text-warning-text">{{ $u('unpublished') }}</span>
+                                            <x-bs-admin::badge soft pill color="secondary" x-show="s.used">{{ $u('already') }}</x-bs-admin::badge>
+                                            <x-bs-admin::badge soft pill color="warning" x-show="s.draft">{{ $u('unpublished') }}</x-bs-admin::badge>
                                         </button>
                                     </template>
                                     <p x-show="!srcRows().length && !searching" class="px-3.5 py-5 text-center text-caption leading-relaxed text-text-muted">{{ $u('no_match') }}</p>
                                     <p x-show="searching && !srcRows().length" role="status" class="px-3.5 py-5 text-center text-caption text-text-muted">{{ $u('searching') }}</p>
                                 </div>
                                 <div class="border-t border-border px-3 py-2.5">
-                                    <button type="button" class="{{ $btn }} min-h-control w-full" x-on:click="addPicked()" x-bind:disabled="!pickedN">
-                                        <x-bs-admin::icon name="ri-add" class="size-4" /><span x-text="pickedN ? @js($u('add_n')).replace(':n', pickedN) : @js($u('pick_first'))"></span>
-                                    </button>
+                                    <x-bs-admin::button variant="outline" color="secondary" class="w-full" x-on:click="addPicked()" x-bind:disabled="!pickedN">
+                                        <x-bs-admin::icon name="ri-add" class="size-4" /><span x-text="pickedN ? {{ $j($u('add_n')) }}.replace(':n', pickedN) : {{ $j($u('pick_first')) }}"></span>
+                                    </x-bs-admin::button>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </x-bs-admin::card>
                 </div>
+            </div>
             </div>
         </div>
         </template>
@@ -773,67 +757,47 @@
         <span class="shrink-0 text-warning-text"><x-bs-admin::icon name="ri-error-warning" class="size-4" /></span>
         <span class="text-small leading-relaxed text-text" x-text="@js($u('unsaved_bar')).replace(':what', dirty().text)"></span>
         <span class="flex-auto"></span>
-        <button type="button" class="{{ $btn }} min-h-control" x-on:click="reset()" title="{{ $u('reset_tip') }}"><x-bs-admin::icon name="ri-arrow-go-back" class="size-4" />{{ $u('reset') }}</button>
-        <button type="button" class="{{ $pri }}" x-on:click="save()" x-bind:disabled="saving"><x-bs-admin::icon name="ri-save-3" class="size-4" /><span x-text="saving ? @js($u('saving')) : @js($u('save'))">{{ $u('save') }}</span></button>
+        <x-bs-admin::button variant="outline" color="secondary" x-on:click="reset()" x-bind:disabled="saveBusy" title="{{ $u('reset_tip') }}"><x-bs-admin::icon name="ri-arrow-go-back" class="size-4" />{{ $u('reset') }}</x-bs-admin::button>
+        <x-bs-admin::button x-on:click="save()" x-bind:disabled="saveBusy"><x-bs-admin::icon name="ri-save-3" class="size-4" /><span x-text="saveBusy ? {{ $j($u('saving')) }} : {{ $j($u('save')) }}">{{ $u('save') }}</span></x-bs-admin::button>
     </div>
 
     {{-- Ask before acting --}}
-    <template x-if="ask">
-        <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/45 p-5" x-on:click.self="askClose()" x-init="askOpened()">
-            <div class="{{ $card }} max-h-[calc(100dvh-40px)] w-full max-w-[470px] overflow-auto shadow-xl" role="dialog" aria-modal="true" aria-labelledby="mn-ask-t" aria-describedby="mn-ask-d" x-trap.noscroll="ask">
-                <div class="border-b border-border px-4 py-3"><h2 id="mn-ask-t" class="{{ $title }}" x-text="ask.title"></h2></div>
-                <p id="mn-ask-d" class="p-4 text-small leading-relaxed text-text" x-text="ask.body"></p>
-                <div class="flex flex-wrap justify-end gap-2 border-t border-border px-4 py-3">
-                    <button type="button" id="mn-ask-cancel" class="{{ $btn }} min-h-control" x-on:click="askClose()">{{ $u('cancel') }}</button>
-                    <button type="button" x-show="ask.alt" class="{{ $btn }} min-h-control" x-on:click="askAlt()" x-text="ask.alt"></button>
-                    <button type="button" class="{{ $pri }}" :class="ask.danger && '!bg-danger !text-white'" x-on:click="askOk()" x-text="ask.ok"></button>
-                </div>
-            </div>
-        </div>
-    </template>
+    <x-bs-admin::confirm-dialog state="ask" confirm="askOk()" cancel="askClose()">
+        <x-bs-admin::confirm-line><span x-text="ask && ask.body"></span></x-bs-admin::confirm-line>
+        <x-slot:alt>
+            <x-bs-admin::button variant="outline" color="secondary" x-show="ask && ask.alt" x-on:click="askAlt()"><span x-text="ask && ask.alt">{{ $u('leaveDrop') }}</span></x-bs-admin::button>
+        </x-slot:alt>
+    </x-bs-admin::confirm-dialog>
 
     {{-- "Chuyển đến…" --}}
-    <template x-if="mv">
-        <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/45 p-5 @max-[37.5rem]:items-end @max-[37.5rem]:p-0" x-on:click.self="mvClose()">
-            <div class="{{ $card }} flex max-h-[calc(100dvh-40px)] w-[min(520px,100%)] flex-col shadow-xl @max-[37.5rem]:rounded-b-none" role="dialog" aria-modal="true" aria-labelledby="mn-mv-t" x-trap.noscroll="mv">
-                <div class="flex items-center gap-2 border-b border-border px-4 py-3">
-                    <h2 id="mn-mv-t" class="{{ $title }} flex-1" x-text="@js($u('mv_title')).replace(':name', name(item(mv.k)))"></h2>
-                    <button type="button" class="{{ $hit }} size-hit" x-on:click="mvClose()" aria-label="{{ $u('close') }}" title="{{ $u('close') }}"><x-bs-admin::icon name="ri-close" class="size-5" /></button>
-                </div>
-                <div class="flex min-h-0 flex-col gap-2.5 overflow-hidden p-4">
-                    <label class="flex items-center gap-2 rounded border border-border-input bg-surface px-2.5 focus-ring-within focus-within:border-primary-text">
-                        <span class="text-text-muted"><x-bs-admin::icon name="ri-search" class="size-4" /></span>
-                        <input type="search" id="mn-mv-q" x-model="mv.q" aria-label="{{ $u('mv_search') }}" placeholder="{{ $u('mv_search') }}" class="min-h-control min-w-0 flex-auto border-0 bg-transparent text-body" />
-                    </label>
-                    <p class="text-caption leading-relaxed text-text-muted" x-text="@js($u('mv_hint')).replace(':n', maxDepth)"></p>
-                    <div role="radiogroup" aria-label="{{ $u('mv_where') }}" class="flex max-h-[min(46dvh,360px)] flex-col gap-1.5 overflow-y-auto">
-                        <template x-for="o in mvOptions()" :key="o.key">
-                            <label class="flex cursor-pointer items-start gap-2.5 rounded border border-border px-3 py-2 has-[:checked]:border-primary-text has-[:checked]:bg-primary-soft has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60"
-                                   :style="'margin-left:' + (o.lv * 14) + 'px'">
-                                <input type="radio" name="mn-mv" class="mt-1" :checked="mv.pick === o.key" x-bind:disabled="o.dis" x-on:change="mv.pick = o.key" />
-                                <span class="flex min-w-0 flex-col gap-0.5">
-                                    <span class="text-small font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]" x-text="o.name"></span>
-                                    <span class="text-caption leading-normal text-text-muted" x-text="o.sub"></span>
-                                </span>
-                            </label>
-                        </template>
-                        <p x-show="!mvOptions().length" class="text-caption text-text-muted" x-text="@js($u('mv_none')).replace(':q', mv.q)"></p>
-                    </div>
-                </div>
-                <div class="flex flex-wrap justify-end gap-2 border-t border-border px-4 py-3">
-                    <button type="button" class="{{ $btn }} min-h-control" x-on:click="mvClose()">{{ $u('cancel') }}</button>
-                    <button type="button" class="{{ $pri }} max-w-full" x-bind:disabled="!mv.pick" x-on:click="mvGo()"><span class="[overflow-wrap:anywhere]" x-text="mvBtn"></span></button>
+    <x-bs-admin::modal state="mv" close="mvClose()" :close-label="$u('close')">
+        <x-slot:heading><span x-text="mv ? {{ $j($u('mv_title')) }}.replace(':name', name(item(mv.k))) : ''"></span></x-slot:heading>
+        <template x-if="mv">
+            <div class="flex min-h-0 flex-col gap-2.5">
+                <x-bs-admin::search :label="$u('mv_search')" id="mn-mv-q" x-model="mv.q" autofocus />
+                <p class="text-caption leading-relaxed text-text-muted" x-text="@js($u('mv_hint')).replace(':n', maxDepth)"></p>
+                <div role="radiogroup" aria-label="{{ $u('mv_where') }}" class="flex max-h-[min(46dvh,360px)] flex-col gap-1.5 overflow-y-auto">
+                    <template x-for="o in mvOptions()" :key="o.key">
+                        <label class="flex cursor-pointer items-start gap-2.5 rounded border border-border px-3 py-2 has-[:checked]:border-primary-text has-[:checked]:bg-primary-soft has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60"
+                               :style="'margin-left:' + (o.lv * 14) + 'px'">
+                            <input type="radio" name="mn-mv" class="mt-1" :checked="mv.pick === o.key" x-bind:disabled="o.dis" x-on:change="mv.pick = o.key" />
+                            <span class="flex min-w-0 flex-col gap-0.5">
+                                <span class="text-small font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]" x-text="o.name"></span>
+                                <span class="text-caption leading-normal text-text-muted" x-text="o.sub"></span>
+                            </span>
+                        </label>
+                    </template>
+                    <p x-show="!mvOptions().length" class="text-caption text-text-muted" x-text="@js($u('mv_none')).replace(':q', mv.q)"></p>
                 </div>
             </div>
-        </div>
-    </template>
+        </template>
+        <x-slot:footer>
+            <x-bs-admin::button variant="outline" color="secondary" x-on:click="mvClose()">{{ $u('cancel') }}</x-bs-admin::button>
+            <x-bs-admin::button class="max-w-full" x-bind:disabled="!mv || !mv.pick" x-on:click="mvGo()"><span class="[overflow-wrap:anywhere]" x-text="mvBtn">{{ $u('mvPick') }}</span></x-bs-admin::button>
+        </x-slot:footer>
+    </x-bs-admin::modal>
 
-    {{-- Messages --}}
-    <div x-cloak x-show="toast" role="status" aria-live="polite" x-on:mouseenter="toastHold()" x-on:mouseleave="toastGo()" x-on:focusin="toastHold()" x-on:focusout="toastGo()"
-         class="fixed bottom-[max(calc(26px+env(safe-area-inset-bottom,0px)),88px)] left-1/2 z-[80] flex max-w-[min(560px,calc(100vw-32px))] -translate-x-1/2 items-center gap-3 rounded-md bg-text-strong px-4 py-3 text-surface shadow-xl">
-        <span class="text-small leading-relaxed" x-text="toast && toast.text"></span>
-        <button type="button" x-show="toast && toast.undo" class="hit-area min-h-control-row shrink-0 whitespace-nowrap rounded border border-current px-3 text-caption font-semibold" x-on:click="toastUndo()">{{ $u('undo') }}</button>
-        <button type="button" class="hit-area inline-grid size-control-row shrink-0 place-items-center rounded" x-on:click="toastClose()" aria-label="{{ $u('close') }}" title="{{ $u('close') }}"><x-bs-admin::icon name="ri-close" class="size-4" /></button>
-    </div>
+    {{-- Messages: the shared toast; a refusal or an error stays until closed --}}
+    <x-bs-admin::toast state="toast" dismiss="toastClose" undo="toastUndo" raised />
     <span class="sr-only" role="status" aria-live="polite" x-text="live"></span>
 </div>
