@@ -109,6 +109,22 @@ export function goneKeysOf(items) {
     return items.filter((it) => it.source && it.source.state === 'gone').map((it) => it.key);
 }
 
+// Every row "Gỡ N mục không còn" takes: the gone rows and every row under one of them (those leave
+// with their parent, as remove() does), each once, in order.
+export function goneSpanOf(items) {
+    const gone = new Set(goneKeysOf(items));
+    const parentOf = Object.fromEntries(items.map((it) => [it.key, it.parent]));
+    const under = (k) => {
+        for (let p = parentOf[k]; p; p = parentOf[p]) {
+            if (gone.has(p)) {
+                return true;
+            }
+        }
+        return false;
+    };
+    return items.filter((it) => gone.has(it.key) || under(it.key)).map((it) => it.key);
+}
+
 // The rows the shared tree draws from the draft: each with its level, its place among its siblings
 // and its guide lines (the fields of a TreeRows entry). While a filter is on, the matches stand flat,
 // in order, and cannot be moved.
@@ -670,8 +686,8 @@ if (typeof document !== 'undefined') document.addEventListener('alpine:init', ()
                 const n = keys.length;
                 const names = keys.map((k) => this.name(this.item(k)));
                 const list = names.slice(0, 3).join(', ') + (names.length > 3 ? ', …' : '');
-                const gone = new Set(keys.flatMap((k) => this.block(k).map((x) => x.key)));
-                const kids = gone.size - n; // live rows under a gone item leave with it, as remove() does
+                const gone = new Set(goneSpanOf(this.items));
+                const kids = gone.size - n; // the rows under a gone row leave with it, as remove() does
                 const run = () => {
                     this.change(() => {
                         this.items = this.items.filter((x) => !gone.has(x.key));

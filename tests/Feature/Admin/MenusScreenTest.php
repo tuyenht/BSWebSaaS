@@ -418,18 +418,24 @@ it('carries each source\'s own short text per language as plain text within the 
 });
 
 it('says a page moved after its item was added, so the link followed by itself', function (): void {
-    [$menu, $moved, $before, $category] = msIn(1, function (): array {
+    [$menu, $moved, $before, $category, $draft, $binned] = msIn(1, function (): array {
         $menu = app(SaveMenu::class)->handle(null, 'Menu chính');
         $moved = msPage('Đã dời');
         $before = msPage('Dời trước');
         $category = msCategory('Chuyên mục');
+        $draft = msPage('Ảnh nháp dời ở', 'draft');
+        $binned = msPage('Ống trong thùng rác ở');
         Redirect::query()->create(['locale' => 'vi', 'from_path' => '/cu-truoc', 'to_path' => '/moi-truoc', 'entry_id' => $before->id, 'created_at' => now()->subDays(2), 'updated_at' => now()->subDays(2)]);
-        foreach ([['entry', $moved->id], ['entry', $before->id], ['taxonomy', $category->id]] as [$type, $id]) {
+        foreach ([['entry', $moved->id], ['entry', $before->id], ['taxonomy', $category->id], ['entry', $draft->id], ['entry', $binned->id]] as [$type, $id]) {
             msLink($menu, $type, $id)->forceFill(['created_at' => now()->subDay()])->save();
         }
         Redirect::query()->create(['locale' => 'vi', 'from_path' => '/cu', 'to_path' => '/moi', 'entry_id' => $moved->id]);
+        // moved too, but not live: the row draws no chip, so the count must not take them
+        Redirect::query()->create(['locale' => 'vi', 'from_path' => '/nhap-cu', 'to_path' => '/nhap-moi', 'entry_id' => $draft->id]);
+        Redirect::query()->create(['locale' => 'vi', 'from_path' => '/rac-cu', 'to_path' => '/rac-moi', 'entry_id' => $binned->id]);
+        $binned->delete();
 
-        return [$menu, $moved, $before, $category];
+        return [$menu, $moved, $before, $category, $draft, $binned];
     });
     msIn(2, fn () => Redirect::query()->create(['locale' => 'vi', 'from_path' => '/b', 'to_path' => '/c', 'entry_id' => $before->id]));
 
@@ -437,7 +443,9 @@ it('says a page moved after its item was added, so the link followed by itself',
 
     expect($sources[$moved->ulid]['moved'])->toBeTrue()
         ->and($sources[$before->ulid]['moved'])->toBeFalse()
-        ->and($sources[$category->ulid]['moved'])->toBeFalse();
+        ->and($sources[$category->ulid]['moved'])->toBeFalse()
+        ->and($sources[$draft->ulid]['moved'])->toBeFalse()
+        ->and($sources[$binned->ulid]['moved'])->toBeFalse();
 });
 
 it('gives the screen the icons, the source edit screens and the site address it draws with', function (): void {

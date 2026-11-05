@@ -2,7 +2,7 @@
 // (resources/js/admin-menus.js), without a browser: `node --test tests/js/admin-menus.test.mjs`.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildDraft, goneKeysOf, iconGroupsOf, treeRowsOf } from '../../resources/js/admin-menus.js';
+import { buildDraft, goneKeysOf, goneSpanOf, iconGroupsOf, treeRowsOf } from '../../resources/js/admin-menus.js';
 
 const opts = (more = {}) => ({ hidden: false, new_tab: false, icon: null, description: {}, cta: false, mega: null, badge: null, device: 'all', ...more });
 const row = (key, parent, labels, more = {}) => ({ key, parent, link: { type: 'url', url: '/' + key }, labels, options: opts(more) });
@@ -119,4 +119,20 @@ test('only rows whose source is gone for good are offered for the bulk removal',
         { ...row('g2', 'l1', {}), source: src('gone') },
     ];
     assert.deepEqual(goneKeysOf(items), ['g1', 'g2']);
+});
+
+test('a bulk remove of gone rows takes the rows under them once, nested gone rows included', () => {
+    const src = (state) => ({ kind: 'page', state });
+    const items = [
+        { key: 'g1', parent: null, source: src('gone') },
+        { key: 'a', parent: 'g1', source: src('live') },
+        { key: 'g2', parent: 'a', source: src('gone') },
+        { key: 'b', parent: 'g2', source: src('trashed') },
+        { key: 'l1', parent: null, source: src('live') },
+        { key: 'c', parent: 'l1', source: src('unpublished') },
+        { key: 'g3', parent: 'l1', source: src('gone') },
+    ];
+    const span = goneSpanOf(items);
+    assert.deepEqual(span, ['g1', 'a', 'g2', 'b', 'g3']);
+    assert.equal(span.length - goneKeysOf(items).length, 2); // a and b ride along; l1 and c stay
 });
