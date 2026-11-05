@@ -47,8 +47,17 @@ use Livewire\Component;
 #[Layout('admin::layouts.app')]
 final class Index extends Component
 {
-    /** The website icons that suit a menu item, in the order the picker shows them. */
-    public const array ICONS = ['phone', 'email', 'address', 'map', 'clock', 'building', 'license', 'verified', 'link', 'play', 'quote', 'facebook', 'zalo', 'youtube', 'tiktok', 'linkedin', 'x'];
+    /**
+     * The website icons that suit a menu item, in the groups and order the picker shows them
+     * (group names: menus.icon_group_*). Each name is one of StorefrontIcons, listed once.
+     */
+    public const array ICON_GROUPS = [
+        'common' => ['phone', 'email', 'address', 'map', 'building'],
+        'content' => ['play'],
+        'company' => ['verified', 'license', 'quote'],
+        'contact' => ['clock', 'facebook', 'zalo', 'youtube', 'tiktok', 'linkedin', 'x'],
+        'other' => ['link'],
+    ];
 
     public function boot(): void
     {
@@ -347,7 +356,10 @@ final class Index extends Component
                 'product' => route('admin.catalog.edit', ['ulid' => '__REF__']),
             ],
             'siteName' => $this->siteName($main),
-            'icons' => array_map(fn (string $name): array => ['name' => $name, 'label' => __('menus.icon_'.$name)], self::ICONS),
+            'icons' => array_map(fn (string $group): array => [
+                'group' => __('menus.icon_group_'.$group),
+                'icons' => array_map(fn (string $name): array => ['name' => $name, 'label' => __('menus.icon_'.$name)], self::ICON_GROUPS[$group]),
+            ], array_keys(self::ICON_GROUPS)),
         ]);
     }
 

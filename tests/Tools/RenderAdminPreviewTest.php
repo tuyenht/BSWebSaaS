@@ -32,6 +32,7 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
+use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\Actions\ProvisionSite;
@@ -121,6 +122,13 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         $add($menu, $about, $entry('lien-he'), 'Liên hệ');
         $add($menu, null, ['link_type' => 'url', 'url' => '/bang-gia'], 'Bảng giá', ['badge' => ['kind' => 'new']]);
         $add($footer, null, $entry('lien-he'), 'Liên hệ');
+        // A page that moved after it was linked ("Đã tự sửa đường dẫn"), a page with its own short
+        // text ("Lấy từ mô tả trang") and two links whose pages are gone ("Gỡ 2 mục không còn").
+        Redirect::query()->create(['locale' => 'vi', 'from_path' => '/ve-chung-toi', 'to_path' => '/gioi-thieu', 'entry_id' => $pages['gioi-thieu']->id,
+            'created_at' => now()->addMinute(), 'updated_at' => now()->addMinute()]);
+        $pages['tuyen-dung']->translations()->where('locale', 'vi')->update(['excerpt' => 'Việc làm kỹ thuật cơ khí chính xác, đào tạo nghề tại xưởng']);
+        $add($menu, null, ['link_type' => 'entry', 'routable_type' => 'entry', 'routable_id' => 999998], 'Khuyến mãi cũ');
+        $add($menu, null, ['link_type' => 'entry', 'routable_type' => 'entry', 'routable_id' => 999999], 'Tin cũ');
     });
 
     $dir = env('ADMIN_PREVIEW_DIR', storage_path('app/admin-preview'));

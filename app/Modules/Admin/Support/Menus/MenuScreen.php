@@ -26,7 +26,7 @@ use Illuminate\Support\Str;
  * edited — its version token, limits, items (in display order, the same {key, parent} shape a
  * draft's tree takes), the source behind each item and its trash. Everything is keyed by ulid,
  * never by id. A fixed number of queries whatever the menu's size (Query Budget): the menus, the
- * assignments, the items, their labels, the trash, two per kind of source, the site's details.
+ * assignments, the items, their labels, the trash, a few per kind of source (pages and posts also their redirects), the site's details.
  */
 final readonly class MenuScreen
 {
@@ -165,7 +165,7 @@ final readonly class MenuScreen
         [$items, $labels] = $this->drafts->read($menu->id);
         $trash = MenuItem::onlyTrashed()->where('menu_id', $menu->id)
             ->orderByDesc('deleted_at')->orderByDesc('id')->limit(self::TRASH_LIMIT)
-            ->get(['id', 'ulid', 'parent_id', 'link_type', 'routable_id', 'dynamic_key', 'url', 'deleted_at']);
+            ->get(['id', 'ulid', 'parent_id', 'link_type', 'routable_id', 'dynamic_key', 'url', 'deleted_at', 'created_at']);
         if ($items->concat($trash)->contains(fn (MenuItem $item): bool => $item->ulid === null)) {
             $this->fillUlids($items->concat($trash));
         }
@@ -219,7 +219,7 @@ final readonly class MenuScreen
     }
 
     /**
-     * @param  array{kind: string, ref: string|null, title: string|null, slug: string|null, state: string, untranslated: list<string>}|null  $source
+     * @param  array{kind: string, ref: string|null, title: string|null, slug: string|null, state: string, untranslated: list<string>, summary: array<string, string>, moved: bool}|null  $source
      * @return array<string, string|null>
      */
     private function link(MenuItem $item, ?array $source): array
@@ -265,7 +265,7 @@ final readonly class MenuScreen
      *
      * @param  Collection<int, MenuItem>  $trash
      * @param  array<int, string>  $labelOf  item id → its label in the main language
-     * @param  array<int, array{kind: string, ref: string|null, title: string|null, slug: string|null, state: string, untranslated: list<string>}>  $sources
+     * @param  array<int, array{kind: string, ref: string|null, title: string|null, slug: string|null, state: string, untranslated: list<string>, summary: array<string, string>, moved: bool}>  $sources
      * @return list<array{key: string|null, label: string, removedAt: string|null, count: int}>
      */
     private function trashRows(Collection $trash, array $labelOf, array $sources): array

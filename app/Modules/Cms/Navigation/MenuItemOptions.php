@@ -225,9 +225,7 @@ final class MenuItemOptions
             if (! is_string($text) || mb_check_encoding($text, 'UTF-8') === false) {
                 throw new MenuChangeRejectedException('option_invalid');
             }
-            $text = html_entity_decode(strip_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-            $text = (string) preg_replace('/[\p{Cc}\p{Z}\s]+/u', ' ', $text);
-            $text = (string) preg_replace('/^ +| +$/u', '', $text);
+            $text = self::flat($text);
             if ($text === '') {
                 continue;
             }
@@ -238,6 +236,31 @@ final class MenuItemOptions
         }
 
         return $clean;
+    }
+
+    /**
+     * A source's own text (a page's excerpt, a category's description, a product's summary) as an
+     * item description could hold it: plain text, at most DESCRIPTION_MAX letters; null when empty.
+     * The screen offers it as "Lấy từ mô tả trang".
+     */
+    public static function suggestedDescription(?string $text): ?string
+    {
+        if ($text === null || mb_check_encoding($text, 'UTF-8') === false) {
+            return null;
+        }
+        $text = mb_substr(self::flat($text), 0, self::DESCRIPTION_MAX);
+        $text = (string) preg_replace('/ +$/u', '', $text);
+
+        return $text === '' ? null : $text;
+    }
+
+    /** Tags removed, entities read, runs of white space and control characters made one space, ends trimmed. */
+    private static function flat(string $text): string
+    {
+        $text = html_entity_decode(strip_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = (string) preg_replace('/[\p{Cc}\p{Z}\s]+/u', ' ', $text);
+
+        return (string) preg_replace('/^ +| +$/u', '', $text);
     }
 
     /**

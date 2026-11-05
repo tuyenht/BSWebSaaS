@@ -2,7 +2,7 @@
 // (resources/js/admin-menus.js), without a browser: `node --test tests/js/admin-menus.test.mjs`.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildDraft, treeRowsOf } from '../../resources/js/admin-menus.js';
+import { buildDraft, goneKeysOf, goneSpanOf, iconGroupsOf, treeRowsOf } from '../../resources/js/admin-menus.js';
 
 const opts = (more = {}) => ({ hidden: false, new_tab: false, icon: null, description: {}, cta: false, mega: null, badge: null, device: 'all', ...more });
 const row = (key, parent, labels, more = {}) => ({ key, parent, link: { type: 'url', url: '/' + key }, labels, options: opts(more) });
@@ -92,4 +92,47 @@ test('while a filter is on the matches stand flat and in order', () => {
         ['01A1', null, 1, 1, 2, 0, 0],
         ['01A21', null, 1, 2, 2, 0, 0],
     ]);
+});
+
+const groups = [
+    { group: 'Hay dùng', icons: [{ name: 'phone', label: 'Điện thoại' }, { name: 'address', label: 'Địa chỉ' }] },
+    { group: 'Nội dung', icons: [] },
+    { group: 'Liên hệ', icons: [{ name: 'zalo', label: 'Zalo' }, { name: 'clock', label: 'Giờ mở cửa' }] },
+];
+
+test('the icon picker shows every group with icons, or one group of the matches', () => {
+    assert.deepEqual(iconGroupsOf(groups, '  ', ':n khớp').map((g) => g.group), ['Hay dùng', 'Liên hệ']);
+    const hit = iconGroupsOf(groups, 'DIA CHI', ':n khớp');
+    assert.deepEqual(hit, [{ group: '1 khớp', icons: [{ name: 'address', label: 'Địa chỉ' }] }]);
+    assert.deepEqual(iconGroupsOf(groups, 'o', ':n khớp')[0].icons.map((ic) => ic.name), ['phone', 'zalo', 'clock']);
+    assert.deepEqual(iconGroupsOf(groups, 'không có', ':n khớp'), []);
+});
+
+test('only rows whose source is gone for good are offered for the bulk removal', () => {
+    const src = (state) => ({ kind: 'page', ref: 'r', title: 't', slug: null, state, untranslated: [] });
+    const items = [
+        { ...row('g1', null, {}), source: src('gone') },
+        { ...row('t1', null, {}), source: src('trashed') },
+        { ...row('u1', null, {}), source: src('unpublished') },
+        { ...row('l1', null, {}), source: src('live') },
+        row('url', null, {}),
+        { ...row('g2', 'l1', {}), source: src('gone') },
+    ];
+    assert.deepEqual(goneKeysOf(items), ['g1', 'g2']);
+});
+
+test('a bulk remove of gone rows takes the rows under them once, nested gone rows included', () => {
+    const src = (state) => ({ kind: 'page', state });
+    const items = [
+        { key: 'g1', parent: null, source: src('gone') },
+        { key: 'a', parent: 'g1', source: src('live') },
+        { key: 'g2', parent: 'a', source: src('gone') },
+        { key: 'b', parent: 'g2', source: src('trashed') },
+        { key: 'l1', parent: null, source: src('live') },
+        { key: 'c', parent: 'l1', source: src('unpublished') },
+        { key: 'g3', parent: 'l1', source: src('gone') },
+    ];
+    const span = goneSpanOf(items);
+    assert.deepEqual(span, ['g1', 'a', 'g2', 'b', 'g3']);
+    assert.equal(span.length - goneKeysOf(items).length, 2); // a and b ride along; l1 and c stay
 });
