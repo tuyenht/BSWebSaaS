@@ -6,6 +6,7 @@ use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Chrome\SiteVerification;
+use Livewire\Attributes\Authorize;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
@@ -229,6 +230,7 @@ it('does not let the browser set the toast or the saved signature', function (st
     'toastTone' => ['toastTone', 'error'],
     'toastSeq' => ['toastSeq', 9],
     'savedSig' => ['savedSig', 'x'],
+    'on' => ['on.google', true],
 ])->throws(CannotUpdateLockedPropertyException::class);
 
 it('refuses toggle, save, reset and dismiss once the permission is gone after mount', function (string $action, array $args): void {
@@ -268,8 +270,37 @@ it('refuses a pasted tag that belongs to another provider', function (string $pr
     'google tag in facebook' => ['facebook', '<meta name="google-site-verification" content="abcdef1234567890abcdef12" />'],
 ]);
 
+it('re-checks a code typed while the provider was off when it is switched on', function (): void {
+    $admin = intAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        Livewire::actingAs($admin)->test(IntegrationsSettings::class)
+            ->set('tokens.google', '<meta name="msvalidate.01" content="ABCDEF1234567890ABCDEF" />')
+            ->assertHasNoErrors()
+            ->call('toggle', 'google')
+            ->assertHasErrors('tokens.google')
+            ->assertSee('Thẻ này không phải của ');
+    });
+});
+
+it('resets a nested token key instead of failing', function (): void {
+    $admin = intAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        Livewire::actingAs($admin)->test(IntegrationsSettings::class)
+            ->set('tokens.yandex.x', 'v')
+            ->assertOk()->assertSet('tokens', ['google' => '', 'bing' => '', 'facebook' => '']);
+    });
+});
+
+it('puts settings.manage on every action, not only in boot()', function (string $method): void {
+    $attrs = (new ReflectionMethod(IntegrationsSettings::class, $method))->getAttributes(Authorize::class);
+    expect($attrs)->toHaveCount(1)->and($attrs[0]->getArguments()[0])->toBe('settings.manage');
+})->with(['toggle', 'save', 'resetChanges', 'dismissToast']);
+
 it('accepts a pasted tag that names its own provider', function (): void {
     expect(SiteVerification::foreign('bing', '<meta name="msvalidate.01" content="ABCDEF1234567890" />'))->toBeFalse()
         ->and(SiteVerification::foreign('bing', 'ABCDEF1234567890'))->toBeFalse()
-        ->and(SiteVerification::foreign('google', '<meta name="msvalidate.01" content="x">'))->toBeTrue();
+        ->and(SiteVerification::foreign('google', '<meta name="msvalidate.01" content="x">'))->toBeTrue()
+        ->and(SiteVerification::foreign('google', '<meta data-name="google-site-verification" name="msvalidate.01" content="x">'))->toBeTrue();
 });

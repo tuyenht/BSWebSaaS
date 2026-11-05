@@ -40,7 +40,7 @@ final class SiteVerification
     public static function foreign(string $provider, string $raw): bool
     {
         $rule = self::PROVIDERS[$provider] ?? null;
-        if ($rule === null || preg_match('/\bname\s*=\s*["\']([^"\']+)["\']/i', $raw, $m) !== 1) {
+        if ($rule === null || preg_match('/(?<![\w-])name\s*=\s*["\']([^"\']+)["\']/i', $raw, $m) !== 1) {
             return false;
         }
 

@@ -23,7 +23,8 @@ use Livewire\Component;
 #[Layout('admin::layouts.app')]
 final class IntegrationsSettings extends Component
 {
-    /** @var array<string, bool> provider → switched on */
+    /** @var array<string, bool> provider → switched on; changed only through toggle() */
+    #[Locked]
     public array $on = [];
 
     /** @var array<string, string> provider → the code as typed */
@@ -58,7 +59,8 @@ final class IntegrationsSettings extends Component
     {
         if (isset(SiteVerification::PROVIDERS[$provider])) {
             $this->on[$provider] = ! ($this->on[$provider] ?? false);
-            $this->resetErrorBag('tokens.'.$provider);
+            // Switching on re-checks the code already typed, so a stale field never shows as valid.
+            $this->check($provider);
         }
     }
 
@@ -72,6 +74,18 @@ final class IntegrationsSettings extends Component
                 $kept[$known] = is_string($this->tokens[$known] ?? null) ? $this->tokens[$known] : '';
             }
             $this->tokens = $kept;
+
+            return;
+        }
+
+        if (str_contains($provider, '.')) {
+            // A nested key (tokens.google.x): reset the provider's code, drop an unknown one.
+            $provider = strstr($provider, '.', true);
+            if (isset(SiteVerification::PROVIDERS[$provider])) {
+                $this->tokens[$provider] = '';
+            } else {
+                unset($this->tokens[$provider]);
+            }
 
             return;
         }
