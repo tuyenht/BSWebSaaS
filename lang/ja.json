@@ -3003,6 +3003,7 @@
     "admin.int.status_wait": "コードを入力すると有効になります",
     "admin.int.bad_format": "形式が正しくありません。:fieldは次のような形です：:example",
     "admin.int.detected": "自動で認識しました：:code",
+    "admin.int.wrong_tag": "このタグは :name のものではありません。:name の確認用タグを貼り付けてください。",
     "admin.int.save": "設定を保存",
     "admin.int.discard": "変更を破棄",
     "admin.int.dirty": "未保存の変更があります",

@@ -3003,6 +3003,7 @@
     "admin.int.status_wait": "Enter the code to activate",
     "admin.int.bad_format": "Not the right format. The :field looks like: :example",
     "admin.int.detected": "Code picked out: :code",
+    "admin.int.wrong_tag": "This tag is not for :name. Paste the verification tag that belongs to :name.",
     "admin.int.save": "Save settings",
     "admin.int.discard": "Discard changes",
     "admin.int.dirty": "Unsaved changes",

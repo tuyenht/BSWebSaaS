@@ -33,6 +33,20 @@ final class SiteVerification
         return $raw;
     }
 
+    /**
+     * Whether a pasted whole meta tag names another provider's meta (a Bing tag pasted into the
+     * Google field). A bare code, or a tag with no name attribute, is not foreign.
+     */
+    public static function foreign(string $provider, string $raw): bool
+    {
+        $rule = self::PROVIDERS[$provider] ?? null;
+        if ($rule === null || preg_match('/\bname\s*=\s*["\']([^"\']+)["\']/i', $raw, $m) !== 1) {
+            return false;
+        }
+
+        return strcasecmp(trim($m[1]), $rule['meta']) !== 0;
+    }
+
     public static function valid(string $provider, string $token): bool
     {
         $rule = self::PROVIDERS[$provider] ?? null;

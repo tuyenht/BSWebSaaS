@@ -8,11 +8,11 @@
     $small = 'size-[min(1.5rem,calc(0.75rem+var(--user-text-boost)))] shrink-0';
     $providers = [
         'google' => ['icon' => 'ri-google', 'color' => '#4285f4', 'open' => 'https://search.google.com/search-console', 'create' => 'https://search.google.com/search-console',
-            'learn' => 'https://support.google.com/webmasters/answer/9008080', 'ph' => 'abc123…'],
+            'learn' => 'https://support.google.com/webmasters/answer/9008080'],
         'bing' => ['icon' => 'ri-microsoft', 'color' => 'var(--color-success-text)', 'open' => 'https://www.bing.com/webmasters', 'create' => 'https://www.bing.com/webmasters',
-            'learn' => 'https://www.bing.com/webmasters/help/getting-started-checklist-15b8e2a4', 'ph' => 'abc123…'],
-        'facebook' => ['icon' => 'ri-global', 'color' => '#0866ff', 'open' => 'https://business.facebook.com/settings/owned-domains', 'create' => '',
-            'learn' => 'https://www.facebook.com/business/help/286768115176155', 'ph' => 'abc123def456…'],
+            'learn' => 'https://www.bing.com/webmasters/help/getting-started-checklist-15b8e2a4'],
+        'facebook' => ['icon' => 'ri-meta-fill', 'color' => '#0866ff', 'open' => 'https://business.facebook.com/settings/owned-domains', 'create' => '',
+            'learn' => 'https://www.facebook.com/business/help/286768115176155'],
     ];
     $onCount = count(array_filter($on));
     $needCount = 0;
@@ -28,7 +28,7 @@
         <div class="overflow-hidden rounded-md border border-border-strong bg-surface shadow-card">
             <div class="flex flex-wrap items-center gap-2.5 border-b border-border-soft bg-surface-muted px-4 py-3.5">
                 <span class="inline-flex size-[1.875rem] shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary-text">
-                    <x-bs-admin::icon name="ri-shield-check" class="{{ $glyph }}" />
+                    <x-bs-admin::icon name="ri-verified-badge-line" class="{{ $glyph }}" />
                 </span>
                 <div class="min-w-0 flex-1 basis-32">
                     <h2 class="text-[calc(0.84375rem+var(--user-text-boost))] font-semibold break-words text-text-strong">{{ __('admin.int.group') }}</h2>
@@ -66,7 +66,7 @@
                                     @if ($isOn && $code === '')
                                         <span class="{{ $badge }} bg-danger-soft text-danger-text" title="{{ __('admin.int.need_badge_title') }}"><x-bs-admin::icon name="ri-error-warning" class="{{ $small }}" />{{ __('admin.int.need_badge') }}</span>
                                     @endif
-                                    <span class="{{ $badge }} bg-surface-muted text-text-muted" title="{{ __('admin.int.meta_title') }}"><x-bs-admin::icon name="ri-code-s-slash" class="{{ $small }}" />{{ __('admin.int.meta_badge') }}</span>
+                                    <span class="{{ $badge }} bg-surface-muted text-text-muted" title="{{ __('admin.int.meta_title') }}"><x-bs-admin::icon name="ri-code-line" class="{{ $small }}" />{{ __('admin.int.meta_badge') }}</span>
                                 </div>
                                 <p class="mt-0.5 text-caption leading-normal break-words text-text-muted">{{ __('admin.int.p.'.$key.'.note') }}</p>
                                 <div x-show="info" x-cloak class="mt-2 rounded-md bg-info-soft px-3 py-2 text-caption leading-relaxed text-text">
@@ -83,14 +83,14 @@
                                 <div class="max-w-xl">
                                     <label for="int-token-{{ $key }}" class="mb-1.5 block text-[calc(0.78125rem+var(--user-text-boost))] font-semibold text-text">{{ $fieldLabel }}</label>
                                     <x-bs-admin::input id="int-token-{{ $key }}" wire:model.blur="tokens.{{ $key }}" autocomplete="off" autocapitalize="off" spellcheck="false"
-                                                       placeholder="{{ $p['ph'] }}" aria-label="{{ __('admin.int.field_aria', ['field' => $fieldLabel, 'name' => $name]) }}" />
+                                                       placeholder="{{ __('admin.int.p.'.$key.'.ph') }}" aria-label="{{ __('admin.int.field_aria', ['field' => $fieldLabel, 'name' => $name]) }}" />
                                 </div>
                                 <div class="flex flex-wrap items-center gap-2.5">
                                     @if ($connected)
                                         <span class="{{ $badge }} bg-success-soft text-success-text"><x-bs-admin::icon name="ri-checkbox-circle" class="{{ $small }}" />{{ __('admin.int.valid') }}</span>
                                     @endif
                                     <button type="button" class="hit-area inline-flex items-center gap-1.5 rounded text-caption font-semibold text-primary-text" x-on:click="guide = ! guide" x-bind:aria-expanded="guide.toString()">
-                                        <x-bs-admin::icon name="ri-question" class="{{ $small }}" />{{ __('admin.int.how') }}
+                                        <x-bs-admin::icon name="ri-questionnaire-line" class="{{ $small }}" />{{ __('admin.int.how') }}
                                     </button>
                                 </div>
                                 <div x-show="guide" x-cloak class="rounded-md border border-border bg-surface-muted px-3 py-2.5">

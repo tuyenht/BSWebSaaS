@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use Livewire\Attributes\Authorize;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /**
@@ -28,12 +29,16 @@ final class IntegrationsSettings extends Component
     /** @var array<string, string> provider → the code as typed */
     public array $tokens = [];
 
+    #[Locked]
     public string $savedSig = '';
 
+    #[Locked]
     public string $toast = '';
 
+    #[Locked]
     public string $toastTone = 'success';
 
+    #[Locked]
     public int $toastSeq = 0;
 
     public function boot(): void
@@ -58,15 +63,39 @@ final class IntegrationsSettings extends Component
     }
 
     /** A code was typed or pasted: reduce a pasted tag to its code, then check it. */
-    public function updatedTokens(mixed $value, string $provider): void
+    public function updatedTokens(mixed $value, ?string $provider = null): void
     {
+        if ($provider === null) {
+            // The whole array was replaced: keep only known providers' string codes.
+            $kept = [];
+            foreach (array_keys(SiteVerification::PROVIDERS) as $known) {
+                $kept[$known] = is_string($this->tokens[$known] ?? null) ? $this->tokens[$known] : '';
+            }
+            $this->tokens = $kept;
+
+            return;
+        }
+
         if (! isset(SiteVerification::PROVIDERS[$provider])) {
             unset($this->tokens[$provider]);
 
             return;
         }
 
-        $typed = is_string($value) ? $value : '';
+        if (! is_string($value)) {
+            $this->tokens[$provider] = '';
+
+            return;
+        }
+
+        $typed = $value;
+        if (SiteVerification::foreign($provider, $typed)) {
+            $this->tokens[$provider] = $typed;   // what was pasted stays; the field says why it is refused
+            $this->check($provider);
+
+            return;
+        }
+
         $code = SiteVerification::extract($typed);
         if ($code !== trim($typed)) {
             $this->notify(__('admin.int.detected', ['code' => $code]));
@@ -110,6 +139,7 @@ final class IntegrationsSettings extends Component
         $this->notify(__('admin.int.toast_reset'));
     }
 
+    #[Authorize('settings.manage')]
     public function dismissToast(?int $seq = null): void
     {
         if ($seq === null || $seq === $this->toastSeq) {
@@ -130,8 +160,15 @@ final class IntegrationsSettings extends Component
     /** Whether a provider's code is fine to save; a bad one on a switched-on provider gets a message on its field. */
     private function check(string $provider): bool
     {
-        $code = SiteVerification::extract($this->tokens[$provider] ?? '');
+        $raw = (string) ($this->tokens[$provider] ?? '');
+        $code = SiteVerification::extract($raw);
         $this->resetErrorBag('tokens.'.$provider);
+
+        if (($this->on[$provider] ?? false) && SiteVerification::foreign($provider, $raw)) {
+            $this->addError('tokens.'.$provider, __('admin.int.wrong_tag', ['name' => __('admin.int.p.'.$provider.'.name')]));
+
+            return false;
+        }
 
         if (! ($this->on[$provider] ?? false) || $code === '' || SiteVerification::valid($provider, $code)) {
             return true;
@@ -155,7 +192,8 @@ final class IntegrationsSettings extends Component
     {
         $out = [];
         foreach (array_keys(SiteVerification::PROVIDERS) as $provider) {
-            $code = SiteVerification::extract($this->tokens[$provider] ?? '');
+            $raw = (string) ($this->tokens[$provider] ?? '');
+            $code = SiteVerification::foreign($provider, $raw) ? '' : SiteVerification::extract($raw);
             $out[$provider] = [
                 'on' => (bool) ($this->on[$provider] ?? false),
                 'token' => SiteVerification::valid($provider, $code) ? $code : '',

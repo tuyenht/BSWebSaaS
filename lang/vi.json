@@ -3003,6 +3003,7 @@
     "admin.int.status_wait": "Nhập thông tin để kích hoạt",
     "admin.int.bad_format": "Chưa đúng định dạng — :field có dạng: :example",
     "admin.int.detected": "Đã tự nhận diện: :code",
+    "admin.int.wrong_tag": "Thẻ này không phải của :name. Hãy dán đúng thẻ xác minh của :name.",
     "admin.int.save": "Lưu cấu hình",
     "admin.int.discard": "Bỏ thay đổi",
     "admin.int.dirty": "Thay đổi chưa lưu",

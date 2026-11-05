@@ -3003,6 +3003,7 @@
     "admin.int.status_wait": "填写验证码后生效",
     "admin.int.bad_format": "格式不正确，:field的格式如：:example",
     "admin.int.detected": "已自动识别：:code",
+    "admin.int.wrong_tag": "此标签不属于 :name。请粘贴 :name 的验证标签。",
     "admin.int.save": "保存设置",
     "admin.int.discard": "放弃更改",
     "admin.int.dirty": "有未保存的更改",
