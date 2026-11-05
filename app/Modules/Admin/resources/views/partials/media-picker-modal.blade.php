@@ -5,7 +5,7 @@
      $pickedIds (optional, from the host view) still marks already-attached gallery items. --}}
 @php($mp = $this->mediaPickerState())
 @if ($showImagePicker && ($mp['open'] ?? false))
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+    <div class="fixed inset-0 z-90 flex items-center justify-center bg-black/50 p-4"
          role="dialog" aria-modal="true" aria-label="{{ __('media.picker_title') }}"
          x-data x-on:keydown.escape.window="$wire.closeImagePicker()"
          wire:click.self="closeImagePicker">

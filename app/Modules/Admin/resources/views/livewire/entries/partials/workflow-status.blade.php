@@ -215,7 +215,7 @@
 
     {{-- Note + hand-off modal, one per transition that requires a reason --}}
     @foreach ($noteActions as $action)
-        <div x-cloak x-show="modal === @js($action['key'])" class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" wire:key="wf-modal-{{ $action['key'] }}">
+        <div x-cloak x-show="modal === @js($action['key'])" class="fixed inset-0 z-90 flex items-center justify-center p-4" role="dialog" aria-modal="true" wire:key="wf-modal-{{ $action['key'] }}">
             <div class="absolute inset-0 bg-gray-900/50" x-on:click="close()"></div>
             <div class="relative flex max-h-[calc(100vh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-md bg-surface shadow-[0_5px_20px_rgba(56,65,74,.28)]">
                 <div class="flex items-center gap-2 border-b border-border-soft px-4 py-3.5">

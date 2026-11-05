@@ -7,6 +7,7 @@
 // the ulid the server gave (or "new:…" for a row not saved yet); labels and descriptions are shown
 // as text only (x-text), never as HTML.
 import { fill, kidsOf, makeHistory, treeGuides } from './admin-tree-dnd.js';
+import { guardLeave } from './admin-leave.js';
 
 const HIST_MAX = 50;
 const ISSUES_SHOWN = 3;
@@ -168,6 +169,7 @@ if (typeof document !== 'undefined') document.addEventListener('alpine:init', ()
         let searchTimer = null;
         let seq = 0;
         let toastSeq = 0;
+        let offLeave = null; // takes the leave guard off when the screen goes
 
         return {
             screen: 'loading', // loading · error · data
@@ -212,12 +214,12 @@ if (typeof document !== 'undefined') document.addEventListener('alpine:init', ()
 
             init() {
                 this.take(cfg.initial);
-                window.addEventListener('beforeunload', (e) => {
-                    if (this.dirty().n) {
-                        e.preventDefault();
-                        e.returnValue = '';
-                    }
-                });
+                offLeave = guardLeave({ dirty: () => this.dirty().n > 0 });
+            },
+            destroy() {
+                if (offLeave) {
+                    offLeave();
+                }
             },
 
             // ---- loading ------------------------------------------------------------------------

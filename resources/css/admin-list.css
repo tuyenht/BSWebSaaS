@@ -331,6 +331,13 @@
         margin-block: 0.25rem;
     }
 
+    /* Too wide for its line, the group wraps inside itself beside its dot, so the dot never stands
+       alone on a line of its own. */
+    .list-m[data-for='langs'] {
+        display: flex;
+        align-items: center;
+    }
+
     /* On touch the 44 hit areas of neighbouring chips do not overlap: a chip is at least its hit
        size less the gap, so even the narrowest name ("Ý") leaves its neighbour's area alone. */
     @media (any-pointer: coarse) {

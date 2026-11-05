@@ -29,9 +29,10 @@
         border-top: 1px solid var(--color-border);
     }
 
+    /* narrower than 600: 24 per level, or the screen's own step (<x-bs-admin::tree narrow-step>) */
     @container tree (max-width: 37.4375rem) {
         .tree {
-            --tree-step: 24px;
+            --tree-step: var(--tree-step-narrow, 24px);
         }
     }
 
@@ -99,6 +100,15 @@
         from {
             background: color-mix(in srgb, var(--color-primary-text) 16%, var(--color-surface));
         }
+    }
+
+    /* a host's filtered view (bsTree `only`): the matching records flat, without folds or guides */
+    .tree-w[data-flat] .tree-r {
+        --tree-lv: 1;
+    }
+
+    .tree-w[data-flat] :is(.tree-g, .tree-tg) {
+        display: none;
     }
 
     /* ---- guide lines -------------------------------------------------------------------- */
@@ -296,6 +306,46 @@
         gap: 0.5rem;
         min-height: var(--tree-tg);
         margin-left: auto;
+    }
+
+    /* The record's second line: under the name, inside the name's column. */
+    .tree-sub {
+        flex: 1 0 100%;
+        min-width: 0;
+    }
+
+    /* A narrow tree draws a row with a second line as a card: toggle · name · actions on the first
+       line, the second line across the whole row below them, from the name's left edge. */
+    @container tree (max-width: 37.4375rem) {
+        .tree-r:has(.tree-sub) > .tree-c-main,
+        .tree-r:has(.tree-sub) .tree-main {
+            display: contents;
+        }
+
+        .tree-r:has(.tree-sub) :is(.tree-tg, .tree-tg0) {
+            margin-left: calc((var(--tree-lv) - 1) * var(--tree-step));
+        }
+
+        .tree-r:has(.tree-sub) .tree-main > :not(.tree-sub) {
+            flex: 1 1 0;
+            min-width: 0;
+            min-height: var(--tree-tg);
+        }
+
+        .tree-r:has(.tree-sub) > .tree-c-act {
+            order: 1;
+        }
+
+        .tree-r:has(.tree-sub) .tree-sub {
+            order: 2;
+            padding-left: calc(var(--tree-grip) + var(--tree-grip-gap, 0.5rem) + (var(--tree-lv) - 1) * var(--tree-step) + var(--tree-tg) + 0.5rem);
+        }
+    }
+
+    @media (any-pointer: coarse) {
+        .tree-r {
+            --tree-grip-gap: 0px;
+        }
     }
 
     /* A full-width part under a row (an inline editor): on its own line, from the row's left edge. */

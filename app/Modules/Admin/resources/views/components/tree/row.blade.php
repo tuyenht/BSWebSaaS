@@ -13,6 +13,8 @@
     // plain name (the drop labels and the toggle say it). The default slot holds the name
     // (<x-bs-admin::tree.name>) and anything drawn beside it; `actions` is the cell of row buttons;
     // `below` is a full-width part under the row (an inline editor), outside the keyboard moves.
+    // `sub` is the record's second line (its path, counts, languages): under the name, and on a
+    // narrow tree (below 600px) across the whole row under the name and the actions, as a card.
     // `locked` is the reason the record cannot be moved or take children now (someone is editing
     // it…): the row shows it beside the name, the grip greys out and a drop on it is refused.
     // `state` draws a drag state in place, for the gallery: dragging · drop-in · drop-bad.
@@ -23,7 +25,9 @@
     // `row` as the loop variable's name instead: an object with the same fields as a TreeRows entry
     // — k (key), parent, lv (level), kids (count), pos, size, guides [{d, k}] and name — so the
     // row looks and behaves the same; `drag-off` is an expression that stops dragging the row
-    // (while its editor is open, or while the list is filtered).
+    // (while its editor is open, or while the list is filtered). A server-drawn row takes `drag-off`
+    // as true when it is never dragged nor moved by the keys, yet still takes children (a fixed
+    // first-level record): its grip greys out with `drag-off` as its tip when that is text.
     $frozen = $move === null;
     $client = is_string($row);
     if ($client) {
@@ -34,6 +38,7 @@
         $key = $row['key'];
         $hasKids = $row['kids'] > 0;
         $drop = ['drop-in' => 'in', 'drop-bad' => 'bad'][$state] ?? null;
+        $fixed = $dragOff === true || (is_string($dragOff) && $dragOff !== '');
         $collapse = __('admin.tree.collapse', ['name' => $name]);
         $expand = __('admin.tree.expand', ['name' => $name]);
     }
@@ -54,6 +59,7 @@
         <template x-if="!{{ $r }}.kids"><span class="tree-tg0" aria-hidden="true"></span></template>
         <div class="tree-main">
             {{ $slot }}
+            @isset($sub)<div class="tree-sub">{{ $sub }}</div>@endisset
         </div>
     </div>
     @isset($actions)
@@ -70,12 +76,13 @@
     @if ($locked !== null) data-lock="{{ $locked }}" @endif
     @if ($state === 'dragging') data-drag="1" @endif
     @if ($drop) data-drop="{{ $drop }}" @endif
-    @unless ($frozen) draggable="{{ $locked === null ? 'true' : 'false' }}" x-bind:hidden="hid($el)" @endunless
+    @if ($fixed) data-fixed="1" @endif
+    @unless ($frozen) draggable="{{ $locked === null && ! $fixed ? 'true' : 'false' }}" x-bind:hidden="hid($el)" @endunless
     {{ $attributes->merge(['class' => 'tree-r']) }}>
     @if ($row['guides'] !== [])
         <span class="tree-g" aria-hidden="true">@foreach ($row['guides'] as $g)<span class="tree-gl" data-d="{{ $g['d'] }}" data-k="{{ $g['k'] }}"></span>@endforeach</span>
     @endif
-    <span class="tree-grip" aria-hidden="true" @if ($locked !== null) data-off="1" @endif title="{{ $locked ?? __('admin.tree.grip_tip') }}"><x-bs-admin::icon name="ri-draggable" class="tree-grip-i" /></span>
+    <span class="tree-grip" aria-hidden="true" @if ($locked !== null || $fixed) data-off="1" @endif title="{{ $locked ?? (is_string($dragOff) && $fixed ? $dragOff : __('admin.tree.grip_tip')) }}"><x-bs-admin::icon name="ri-draggable" class="tree-grip-i" /></span>
     <div role="gridcell" class="tree-c tree-c-main">
         @if ($hasKids && ! $frozen)
             <button type="button" class="tree-tg" aria-label="{{ $collapse }}" title="{{ $collapse }}" data-open="{{ $collapse }}" data-shut="{{ $expand }}"
@@ -90,6 +97,7 @@
             @if ($locked !== null)
                 <span class="tree-lk"><x-bs-admin::icon name="ri-lock" class="tree-lk-i" /><span>{{ $locked }}</span></span>
             @endif
+            @isset($sub)<div class="tree-sub">{{ $sub }}</div>@endisset
         </div>
     </div>
     @isset($actions)

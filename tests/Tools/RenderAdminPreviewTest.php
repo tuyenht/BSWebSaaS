@@ -28,6 +28,8 @@ use App\Modules\Admin\Livewire\WorkflowSettings;
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Actions\Menus\SaveMenu;
+use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
+use App\Modules\Cms\Data\TaxonomyData;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuAssignment;
@@ -284,6 +286,24 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('data-seo-fields', 'wire:model="excerpt"');
     file_put_contents($dir.'/post-editor.html', $html);
 
+    // "Chuyên mục" of the news section: a small tree as deep as it may go (three levels), one category translated,
+    // long enough names that a clipped name or a sideways scroll shows up.
+    app(Tenancy::class)->enter(1, function (): void {
+        $root = Taxonomy::query()->whereKey(ContentSection::query()->where('key', 'posts')->value('taxonomy_id'))->firstOrFail();
+        $make = fn (string $name, ?Taxonomy $parent, array $names = []): Taxonomy => app(CreateTaxonomy::class)
+            ->handle('post_cat', $parent, new TaxonomyData(names: ['vi' => $name] + $names));
+        $company = $make('Tin công ty', $root, ['en' => 'Company news']);
+        $make('Sự kiện và hội chợ triển lãm ngành cơ khí chính xác', $company);
+        $make('Hội chợ Mechanical Expo', $company);
+        $know = $make('Kiến thức', $root);
+        $make('Gia công CNC', $know);
+        $make('Khuyến mãi', $root);
+    });
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/taxonomies?section=posts')->assertOk()->getContent();
+    expect($html)->toContain('data-bs-lazy="bsCategories"', 'Gia công CNC');
+    file_put_contents($dir.'/categories.html', $html);
+
     // The product editor with the same shared Google part (no short description: a product has
     // none). The catalog is switched on only now, so the screens above keep their menus.
     $product = app(Tenancy::class)->enter(1, function (): Product {
@@ -299,5 +319,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('data-seo-fields')->not->toContain('wire:model="excerpt"');
     file_put_contents($dir.'/product-editor.html', $html);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 15);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 16);
 });

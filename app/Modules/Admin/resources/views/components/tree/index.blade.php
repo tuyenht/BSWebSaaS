@@ -4,11 +4,14 @@
     'maxDepth' => null,
     'noun' => null,
     'local' => false,
+    'host' => false,
+    'narrowStep' => null,
 ])
 @php
     // The shared admin tree (stylesheet resources/css/admin-tree.css, behaviour resources/js/admin-tree.js):
     // a treegrid of <x-bs-admin::tree.row> drawn by the server from App\Modules\Admin\Support\TreeRows,
-    // with guide lines (├ └ │) in the indent, 32px per level, 24 when the tree is narrower than 600.
+    // with guide lines (├ └ │) in the indent, 32px per level, 24 when the tree is narrower than 600 —
+    // or `narrow-step` there (a CSS length, a fixed value from the screen's design, never input).
     // `move` names the screen's Livewire method that moves one record — (key, parent key or null,
     // position among the parent's other children) → null when done, or the reason it refuses —
     // and turns on dragging and the keyboard moves. Without `move` the tree is a still picture
@@ -21,11 +24,19 @@
     // (Ctrl+Z, the result line's "Hoàn tác") call that component's own undo() and redo(), so one
     // history covers every change on the screen. The host may bind `data-max-depth` on the tree when
     // its limit changes while the page is open.
+    // `host` is for a screen whose rows the server draws but which makes each change itself (asks
+    // first, calls its own endpoint, tells the person, keeps its own undo): `move` then names the
+    // enclosing Alpine component's method — (key, parent, position, done-text), possibly async →
+    // null when done, the reason when refused, false when the person cancelled — and undo / redo
+    // call that component's undo() and redo(), as for a local tree. Such a screen may filter the rows
+    // by setting the tree's `only` ({ key: true } for the records to show): they are then shown flat,
+    // without guide lines or folds, until it is set back to null.
     $frozen = $move === null;
     $noun ??= __('admin.tree.noun');
     $config = [
         'move' => $move,
         'local' => (bool) $local,
+        'host' => (bool) $host,
         'maxDepth' => $maxDepth,
         'texts' => [
             'drag' => [
@@ -62,8 +73,8 @@
     ];
 @endphp
 <div {{ $attributes->merge(['class' => 'tree-w']) }}
-    @unless ($frozen) x-data="bsTree(@js($config))" x-on:keydown="keydown($event)" @endunless>
-    <div role="treegrid" aria-label="{{ $label }}" class="tree"
+    @unless ($frozen) x-data="bsTree(@js($config))" x-on:keydown="keydown($event)" x-bind:data-flat="only ? '1' : null" @endunless>
+    <div role="treegrid" aria-label="{{ $label }}" class="tree" @if ($narrowStep !== null) style="--tree-step-narrow: {{ $narrowStep }}" @endif
         @unless ($frozen) x-ref="grid" x-bind:data-busy="busy ? '1' : null" x-on:focusin="focused($event)"
             x-on:dragstart="dragStart($event)" x-on:dragover="dragOver($event)" x-on:drop.prevent="dragDone()" x-on:dragend="dragCancel()" @endunless>
         {{ $slot }}

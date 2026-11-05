@@ -2,14 +2,14 @@
   "entries": {
     "resources/css/app.css": {
       "js": 0,
-      "css": 33774
+      "css": 34123
     },
     "resources/css/storefront.css": {
       "js": 0,
       "css": 12632
     },
     "resources/js/app.js": {
-      "js": 19238,
+      "js": 20351,
       "css": 0
     },
     "resources/js/sections.js": {
@@ -39,19 +39,23 @@
   },
   "lazy": {
     "npm:sweetalert2/dist/sweetalert2.all.js": {
-      "js": 39910,
+      "js": 41022,
+      "css": 0
+    },
+    "resources/js/admin-categories.js": {
+      "js": 26801,
       "css": 0
     },
     "resources/js/admin-rich-editor.js": {
-      "js": 219883,
+      "js": 220996,
       "css": 36159
     },
     "resources/js/media-picker-uploader.js": {
-      "js": 50796,
+      "js": 51908,
       "css": 920
     },
     "resources/js/media-uppy.js": {
-      "js": 103260,
+      "js": 104370,
       "css": 10606
     }
   }

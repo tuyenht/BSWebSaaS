@@ -336,7 +336,7 @@ it('keeps a limited member inside their categories', function (): void {
 it('refuses the screen and every endpoint to someone who may not manage categories', function (): void {
     $writer = cxUser(['entries.view', 'entries.create']);
 
-    $this->actingAs($this->editor->fresh())->get('http://a.test/admin/taxonomies?section=tin-tuc')->assertOk()->assertSee(__('categories.empty_title'));
+    $this->actingAs($this->editor->fresh())->get('http://a.test/admin/taxonomies?section=tin-tuc')->assertOk()->assertSee(__('categories.ui_empty_title'));
     $this->actingAs($writer->fresh())->get('http://a.test/admin/taxonomies?section=tin-tuc')->assertForbidden();
 
     cxIn(1, function () use ($writer): void {
@@ -572,4 +572,128 @@ it('keeps the templates a save leaves out, as it keeps the other fields', functi
 
     expect(cxCall($this->editor, 'save', 'tin-tuc', $category->ulid, null, ['listTemplate' => null])['ok'])->toBeTrue();
     cxIn(1, fn () => expect($category->fresh())->list_template->toBeNull()->detail_template->toBe('post'));
+});
+
+it('saves a category whose own template the theme no longer has, and still checks a new one', function (): void {
+    $category = cxIn(1, function (): Taxonomy {
+        $category = cxCreate('Tin', $this->root, extra: ['listTemplate' => 'category']);
+        $category->forceFill(['list_template' => 'gone-layout', 'detail_template' => 'gone-post'])->save();   // the theme dropped both layouts since
+
+        return $category;
+    });
+
+    expect(cxCall($this->editor, 'save', 'tin-tuc', $category->ulid, null, ['names' => ['vi' => 'ấn phẩm mới ạ']])['ok'])->toBeTrue()
+        ->and(cxCall($this->editor, 'save', 'tin-tuc', $category->ulid, null, ['listTemplate' => 'gone-layout'])['ok'])->toBeTrue()
+        ->and(cxCall($this->editor, 'save', 'tin-tuc', $category->ulid, null, ['listTemplate' => 'other-missing']))->toMatchArray(['ok' => false, 'reason' => 'template_invalid']);
+    cxIn(1, fn () => expect($category->fresh())->list_template->toBe('gone-layout')->detail_template->toBe('gone-post'));
+});
+
+it('previews "Bỏ gắn" as the delete does it: no target, so no menu link follows', function (): void {
+    [$source, $target] = cxIn(1, function (): array {
+        $source = cxCreate('Tin cũ', $this->root);
+        $target = cxCreate('Tin mới', $this->root);
+        $menu = app(SaveMenu::class)->handle(null, 'Menu chính');
+        MenuItem::query()->create(['menu_id' => $menu->id, 'position' => 0, 'link_type' => 'taxonomy', 'routable_type' => 'taxonomy', 'routable_id' => $source->id]);
+
+        return [$source, $target];
+    });
+
+    expect(cxCall($this->editor, 'deletePreview', 'tin-tuc', $source->ulid, 'lift', $target->ulid, false, 'reassign')['menuLinks'])->toBe(1)
+        ->and(cxCall($this->editor, 'deletePreview', 'tin-tuc', $source->ulid, 'lift', $target->ulid, false, 'detach')['menuLinks'])->toBe(0)
+        ->and(cxCall($this->editor, 'deletePreview', 'tin-tuc', $source->ulid, 'lift', null, false, 'nowhere'))->toMatchArray(['ok' => false, 'reason' => 'input_invalid'])
+        ->and(cxCall($this->editor, 'deletePreview', 'tin-tuc', $source->ulid, 'lift', $target->ulid, true, 'detach'))->toMatchArray(['ok' => false, 'reason' => 'input_invalid']);
+
+    expect(cxCall($this->editor, 'delete', 'tin-tuc', $source->ulid, null, 'detach', $target->ulid))->toMatchArray(['ok' => true, 'menu_links' => 0]);
+});
+
+it('draws the screen: the header, the theme\'s templates and each row carrying its category by key, names as text only', function (): void {
+    [$book, $app] = cxIn(1, fn (): array => [cxCreate('Ấn <b>phẩm</b> mới', $this->root), cxCreate('Ứng dụng số', $this->root)]);
+
+    $html = $this->actingAs($this->editor->fresh())->get('http://a.test/admin/taxonomies?section=tin-tuc')->assertOk()
+        ->assertSee(__('categories.title', ['section' => 'Tin tức']))
+        ->assertSee(__('categories.ui_add'))
+        ->assertSee('data-bs-lazy="bsCategories"', false)
+        ->assertSee('Ấn <b>phẩm</b> mới')                // escaped, never markup
+        ->assertDontSee('Ấn <b>phẩm</b> mới', false)
+        ->assertSee('Ứng dụng số')
+        ->assertSee(__('categories.ui_layout_category'))
+        ->assertDontSee(__('categories.ui_empty_title'))
+        ->getContent();
+
+    expect($html)->toContain($book->ulid)->toContain($app->ulid)
+        ->not->toMatch('/&quot;(id|parent_id|taxonomy_id|cover_media_id)&quot;:\d/');
+});
+
+it('tells a member which categories they work in, and stands in a notice for a section they cannot open', function (): void {
+    $member = cxUser(['taxonomies.manage', 'entries.view']);
+    cxIn(1, function () use ($member): void {
+        $wood = cxCreate('Đồ gỗ', $this->root);
+        cxCreate('Ống thép', $this->root);
+        MemberCategoryScope::query()->create(['user_id' => $member->id, 'taxonomy_id' => $wood->id]);
+        $projects = cxCreate('Dự án');
+        ContentSection::query()->create(['key' => 'du-an', 'label' => 'Dự án', 'entry_type' => 'post', 'taxonomy_id' => $projects->id, 'permission_prefix' => 'forms', 'sort_order' => 3]);
+    });
+
+    $this->actingAs($member->fresh())->get('http://a.test/admin/taxonomies?section=tin-tuc')->assertOk()
+        ->assertSee(__('categories.ui_role_text_limited', ['list' => 'Đồ gỗ']));
+    $this->actingAs($this->editor->fresh())->get('http://a.test/admin/taxonomies?section=du-an')->assertOk()
+        ->assertSee(__('categories.ui_noperm_title'))
+        ->assertDontSee('data-bs-lazy="bsCategories"', false);
+    $this->actingAs($this->editor->fresh())->get('http://a.test/admin/taxonomies?section=catalog')->assertOk()
+        ->assertSee(__('categories.ui_locked_text'));
+});
+
+it('hands a picture picked for the cover to the drawer by its key, and ignores a file that is not a picture', function (): void {
+    $editor = cxUser(['taxonomies.manage', 'entries.view', 'media.view']);
+    cxIn(1, function () use ($editor): void {
+        $picture = cxPicture('s/library/anh-bia-dep.jpg');
+        $paper = Media::query()->create([
+            'collection' => 'library', 'slug' => 'tai-lieu', 'hash' => hash('sha256', 'tài liệu'), 'storage_key' => 's/library/tai-lieu.pdf',
+            'disk' => 'r2', 'original_filename' => 'tai-lieu.pdf', 'mime' => 'application/pdf', 'size' => 1024,
+        ]);
+
+        Livewire::actingAs($editor->fresh())->withQueryParams(['section' => 'tin-tuc'])->test(CategoriesIndex::class)
+            ->call('openImagePicker', 'gallery')
+            ->call('pickImage', $picture->id)
+            ->assertSet('showImagePicker', false)
+            ->assertDispatched('category-cover-picked', fn (string $name, array $params): bool => $params['key'] === $picture->storage_key && is_string($params['url']) && $params['url'] !== '');
+
+        Livewire::actingAs($editor->fresh())->withQueryParams(['section' => 'tin-tuc'])->test(CategoriesIndex::class)
+            ->call('openImagePicker', 'gallery')
+            ->call('pickImage', $paper->id)
+            ->assertNotDispatched('category-cover-picked');
+    });
+});
+
+it('offers examples to start from that suit the section, and none for a section of the website\'s own', function (): void {
+    cxIn(1, function (): void {
+        $services = cxCreate('Dịch vụ');
+        ContentSection::query()->create(['key' => 'services', 'label' => 'Dịch vụ', 'entry_type' => 'post', 'taxonomy_id' => $services->id, 'permission_prefix' => 'entries', 'sort_order' => 2]);
+    });
+
+    $this->actingAs($this->editor->fresh())->get('http://a.test/admin/taxonomies?section=services')->assertOk()
+        ->assertSee(__('categories.ui_examples'))
+        ->assertSee([__('categories.ui_ex_s1'), __('categories.ui_ex_s2'), __('categories.ui_ex_s3')])
+        ->assertDontSee(__('categories.ui_ex_n3'));
+    $this->actingAs($this->editor->fresh())->get('http://a.test/admin/taxonomies?section=tin-tuc')->assertOk()
+        ->assertSee(__('categories.ui_empty_title'))
+        ->assertDontSee(__('categories.ui_examples'));
+});
+
+it('opens the section\'s own list from the count and the breadcrumb, and indents a narrow tree by the board\'s step', function (): void {
+    cxIn(1, fn (): bool => cxCreate('Tin công ty', $this->root)->forceFill(['items_count' => 3])->save());
+
+    $html = $this->actingAs($this->editor->fresh())->get('http://a.test/admin/taxonomies?section=tin-tuc')->assertOk()->getContent();
+
+    expect($html)->toContain('href="'.route('admin.entries.index', ['section' => 'tin-tuc']).'"')
+        ->toContain('--tree-step-narrow: 1.25rem');
+});
+
+it('points "Liên hệ hỗ trợ" on a locked section at the support mailbox', function (): void {
+    config(['support.mailbox' => 'ho-tro@platform.test']);
+
+    $this->actingAs($this->editor->fresh())->get('http://a.test/admin/taxonomies?section=catalog')->assertOk()
+        ->assertSee(__('categories.ui_locked_text'))
+        ->assertSee(__('categories.ui_support'))
+        ->assertSee('href="mailto:ho-tro@platform.test"', false);
 });

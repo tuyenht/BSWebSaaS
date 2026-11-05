@@ -15,6 +15,14 @@
 // A local tree (cfg.local: a screen that keeps a draft in the browser and draws the rows with
 // Alpine) hands each move to a method of the enclosing Alpine component instead of the server, and
 // its undo / redo to that component's undo() / redo(): the screen keeps the one history.
+//
+// A hosted tree (cfg.host: the server draws the rows, but the screen around the tree makes each
+// change itself) hands each move the same way to the enclosing Alpine component's method — which
+// may be async (it may ask the person first, then call the server) and gets the done-text as a
+// fourth argument — and undo / redo to that component. The component answers null when the move
+// is done, a reason when it was refused or false when the person cancelled; it tells the person
+// itself (the tree's result line stays quiet) and keeps the history; the tree reads the server's
+// redraw and keeps the focus on the moved row.
 import { createTreeDnd, dropPosition, fill, kidsOf, makeHistory, makeQueue, planMove } from './admin-tree-dnd.js';
 
 const UNDO_MS = 10000;
@@ -35,6 +43,7 @@ document.addEventListener('alpine:init', () => {
         // track every read): the key → row index, the history, the line of waiting moves.
         const t = cfg.texts;
         const local = !!cfg.local;
+        const hosted = local || !!cfg.host;
         let ix = null;
         let dnd = null;
         let mo = null;
@@ -48,6 +57,8 @@ document.addEventListener('alpine:init', () => {
             // Bumped whenever the rows change under Alpine (a move, a refresh, the server's redraw):
             // hid() reads it, so every row works out again whether a collapsed parent hides it.
             ver: 0,
+            // A host's filtered view: { key: true } for the records to show, flat (no folds), or null.
+            only: null,
             msg: '',
             msgBad: false,
             msgUndo: false,
@@ -80,9 +91,11 @@ document.addEventListener('alpine:init', () => {
                 }
             },
 
-            // A method of the enclosing Alpine component (a local tree), called in that component's scope.
+            // A method of the enclosing Alpine component (a local or hosted tree), called on that
+            // component's data so its answer comes back as it is — a hosted move's promise included
+            // (Alpine.evaluate hands back only a value that is there at once, so an async answer was lost).
             host(name, params = []) {
-                return window.Alpine.evaluate(this.$root.parentElement, name, { params });
+                return window.Alpine.$data(this.$root.parentElement)[name](...params);
             },
             depthLimit() {
                 return Number(this.$root.dataset.maxDepth) || cfg.maxDepth;
@@ -226,6 +239,9 @@ document.addEventListener('alpine:init', () => {
             // ---- collapse / expand ----------------------------------------------------------------
             hid(el) {
                 void this.ver;
+                if (this.only) {
+                    return !this.only[el.dataset.k];
+                }
                 const by = this.index().by;
                 // el may be a redraw's fresh copy, not in the index yet: start from its own attribute
                 let p = el.dataset.parent || null;
@@ -512,7 +528,9 @@ document.addEventListener('alpine:init', () => {
                 }
             },
             refuseLocked(k) {
-                const lock = this.lockOf(k);
+                // a fixed record (data-fixed: it takes children but never moves) refuses with its grip's tip
+                const el = this.row(k);
+                const lock = this.lockOf(k) || (el && el.dataset.fixed ? el.querySelector('.tree-grip')?.title || null : null);
                 if (lock) {
                     this.note(fill(t.lockedSelf, { name: this.nameOf(k), why: lock }), true);
                 }
@@ -569,7 +587,7 @@ document.addEventListener('alpine:init', () => {
                 return this.call(k, plan.parent, plan.pos, text);
             },
             undo() {
-                if (local) {
+                if (hosted) {
                     this.enqueue(() => this.host('undo'));
                     return;
                 }
@@ -579,7 +597,7 @@ document.addEventListener('alpine:init', () => {
                 });
             },
             redo() {
-                if (local) {
+                if (hosted) {
                     this.enqueue(() => this.host('redo'));
                     return;
                 }
@@ -609,7 +627,8 @@ document.addEventListener('alpine:init', () => {
                 this.saving();
                 let answer;
                 try {
-                    answer = local ? this.host(cfg.move, [k, parent, pos]) : await this.$wire.$call(cfg.move, k, parent, pos);
+                    answer = local ? this.host(cfg.move, [k, parent, pos])
+                        : hosted ? await this.host(cfg.move, [k, parent, pos, okText]) : await this.$wire.$call(cfg.move, k, parent, pos);
                     if (local) {
                         await this.$nextTick(); // Alpine draws the moved rows first
                     }
@@ -628,6 +647,13 @@ document.addEventListener('alpine:init', () => {
                     moving.removeAttribute('data-saving');
                 }
                 this.reindex(); // the call resolves after the server's redraw: read the new order
+                const quiet = hosted && !local; // a hosted tree's screen told the person itself
+                if (quiet) {
+                    this.msg = '';
+                    if (answer !== null && answer !== undefined) {
+                        return; // refused or cancelled: the rows stay as the server drew them
+                    }
+                }
                 if (typeof answer === 'string' && answer !== '') {
                     this.note(fill(t.kept, { why: answer }), true);
                     if (!local) {
@@ -635,13 +661,15 @@ document.addEventListener('alpine:init', () => {
                     }
                     return;
                 }
-                if (!local) {
+                if (!hosted) {
                     history.record({ k, parent: from, pos: fromPos }, kind);
                 }
                 if (parent) {
                     this.expand(parent);
                 }
-                this.note(okText, false, kind !== 'undo');
+                if (!quiet) {
+                    this.note(okText, false, kind !== 'undo');
+                }
                 await this.$nextTick();
                 const el = this.row(k);
                 if (!el) {

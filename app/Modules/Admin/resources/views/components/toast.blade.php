@@ -6,6 +6,7 @@
     'seq' => null,
     'state' => null,
     'raised' => false,
+    'action' => null,
 ])
 @php
     // A short message at the bottom of the screen (design 03 .kh-toast, 21 .tm-tst), read out
@@ -22,6 +23,8 @@
     // message { text, tone, undo, seq } (seq: a number new for each message). The same look and the
     // same timing — an error stays until closed — with `dismiss` (called with the seq) and `undo`
     // naming the Alpine methods. `raised` lifts it above a bar stuck to the bottom of the screen.
+    // `action` (state only) names the Alpine method behind one more button, shown when the message
+    // carries its label as `act` ("Thử lại", "Tải lại", "Mở …"); a message with one stays 10 seconds.
     $icon = ['error' => 'ri-error-warning', 'info' => 'ri-information'][$tone] ?? 'ri-check';
     $wait = $undo ? 10000 : 6000;
     $call = $dismiss.'('.($seq !== null ? (int) $seq : '').')';
@@ -33,12 +36,15 @@
      class="pointer-events-none fixed {{ $bottom }} left-1/2 z-95 w-[min(35rem,calc(100vw-1.5rem))] -translate-x-1/2">
     @if ($state !== null)
         <template x-for="s in (({{ $state }}) && ({{ $state }}).text ? [{{ $state }}] : [])" :key="s.seq">
-            <div x-data="{ timer: null, init() { if (s.tone !== 'error') { this.timer = setTimeout(() => {{ $dismiss }}(s.seq), s.undo ? 10000 : 6000); } }, destroy() { clearTimeout(this.timer); } }"
+            <div x-data="{ timer: null, init() { if (s.tone !== 'error') { this.timer = setTimeout(() => {{ $dismiss }}(s.seq), s.undo || s.act ? 10000 : 6000); } }, destroy() { clearTimeout(this.timer); } }"
                  x-bind:data-tone="s.tone" class="{{ $box }}">
                 <span x-show="s.tone === 'error'"><x-bs-admin::icon name="ri-error-warning" class="size-5 shrink-0" /></span>
                 <span x-show="s.tone === 'info'"><x-bs-admin::icon name="ri-information" class="size-5 shrink-0" /></span>
                 <span x-show="s.tone !== 'error' && s.tone !== 'info'"><x-bs-admin::icon name="ri-check" class="size-5 shrink-0" /></span>
                 <span class="min-w-0 flex-[1_1_13.75rem] [overflow-wrap:anywhere]" x-text="s.text"></span>
+                @if ($action)
+                    <button type="button" x-show="s.act" x-on:click="{{ $action }}()" class="{{ $btn }}" x-text="s.act"></button>
+                @endif
                 @if ($undo)
                     <button type="button" x-show="s.undo" x-on:click="{{ $undo }}()" class="{{ $btn }}">{{ __('admin.undo') }}</button>
                 @endif
