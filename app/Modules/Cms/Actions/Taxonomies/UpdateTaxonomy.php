@@ -18,6 +18,7 @@ use App\Modules\Cms\Taxonomy\CategoryLimitGuard;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -25,9 +26,12 @@ use Illuminate\Support\Facades\DB;
  * what it has; a new slug moves the category page with a 301 from the old address, and — where the
  * site's permalink presets put categories in addresses — every post and product filed under the
  * category or below it follows, each with its own 301 (CategoryRelinker), in the same transaction.
- * The templates are set to exactly what the data says (null = the theme's default layout).
+ * The templates are set to exactly what the data says (null = the theme's default layout); the
+ * description and Google title/description change per language like the names, and the picture
+ * only when the data names one (TaxonomyData).
  *
- * Who may manage categories (`taxonomies.manage`) is the caller's check; a member limited to some
+ * Who may manage categories (`taxonomies.manage`) is checked through TaxonomyPolicy for the person
+ * signed in; a member limited to some
  * categories stays inside them (CategoryLimitGuard, outside_category_limits). Runs inside the tenant
  * context.
  */
@@ -44,10 +48,12 @@ final readonly class UpdateTaxonomy
     ) {}
 
     /**
+     * @throws AuthorizationException
      * @throws TaxonomyChangeRejectedException
      */
     public function handle(Taxonomy $taxonomy, TaxonomyData $data): Taxonomy
     {
+        $this->authorizeManage();
         $listTemplate = $this->template($data->listTemplate);
         $detailTemplate = $this->template($data->detailTemplate);
 
@@ -61,7 +67,11 @@ final readonly class UpdateTaxonomy
             $translations = $this->translations($data, $existing, $this->siteLocales->enabled());
 
             $changed = $this->saveTranslations($taxonomy, $translations, $this->routes);
-            $taxonomy->forceFill(['list_template' => $listTemplate, 'detail_template' => $detailTemplate])->save();
+            $taxonomy->forceFill([
+                'list_template' => $listTemplate,
+                'detail_template' => $detailTemplate,
+                'cover_media_id' => $this->cover($data->cover, $taxonomy->cover_media_id),
+            ])->save();
 
             try {
                 $routesMoved = $changed === []

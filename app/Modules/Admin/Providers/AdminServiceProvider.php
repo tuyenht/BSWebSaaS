@@ -11,6 +11,7 @@ use App\Modules\Admin\Livewire\AppearanceSettings;
 use App\Modules\Admin\Livewire\Catalog\Editor as CatalogEditor;
 use App\Modules\Admin\Livewire\Catalog\Index as CatalogIndex;
 use App\Modules\Admin\Livewire\CatalogSettings;
+use App\Modules\Admin\Livewire\Categories\Index as CategoriesIndex;
 use App\Modules\Admin\Livewire\ComponentGallery;
 use App\Modules\Admin\Livewire\Dashboard;
 use App\Modules\Admin\Livewire\EmailOtpChallenge;
@@ -107,6 +108,7 @@ final class AdminServiceProvider extends ServiceProvider
         Livewire::component('admin.entries.editor', Editor::class);
         Livewire::component('admin.users.index', UsersIndex::class);
         Livewire::component('admin.menus.index', MenusIndex::class);
+        Livewire::component('admin.categories.index', CategoriesIndex::class);
         Livewire::component('admin.platform.tenants.index', PlatformTenantsIndex::class);
         Livewire::component('admin.platform.tenants.detail', PlatformTenantsDetail::class);
         Livewire::component('admin.platform.tenants.change-plan-dialog', PlatformChangePlanDialog::class);

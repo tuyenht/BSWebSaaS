@@ -19,6 +19,7 @@ use App\Modules\Cms\Taxonomy\TaxonomyRules;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -41,7 +42,8 @@ use Illuminate\Support\Facades\DB;
  *
  * A move that takes the branch into or out of a limited member's reach changes that member's
  * limits, so it needs someone who could set them by hand (changes_member_limits,
- * CategoryLimitGuard::reach). Who may manage categories (`taxonomies.manage`) is the caller's check; a member limited to some
+ * CategoryLimitGuard::reach). Who may manage categories (`taxonomies.manage`) is checked through
+ * TaxonomyPolicy for the person signed in; a member limited to some
  * categories stays inside them (CategoryLimitGuard, outside_category_limits). Runs inside the tenant
  * context.
  */
@@ -59,10 +61,12 @@ final readonly class MoveTaxonomy
     ) {}
 
     /**
+     * @throws AuthorizationException
      * @throws TaxonomyChangeRejectedException
      */
     public function handle(Taxonomy $taxonomy, ?Taxonomy $parent, int $position, bool $evenIfSectionChanges = false): void
     {
+        $this->authorizeManage();
         DB::transaction(function () use ($taxonomy, $parent, $position, $evenIfSectionChanges): void {
             $this->lockTree($this->site->id());
             $taxonomy = $this->reload($taxonomy, 'taxonomy_invalid');

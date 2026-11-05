@@ -24,6 +24,7 @@ use App\Modules\Cms\Navigation\SpecialLinks;
 use App\Modules\Cms\Observers\EntryObserver;
 use App\Modules\Cms\Policies\EntryPolicy;
 use App\Modules\Cms\Policies\MenuPolicy;
+use App\Modules\Cms\Policies\TaxonomyPolicy;
 use App\Modules\Cms\Routing\CategoryDependents;
 use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Cms\Support\CategoryItemCounts;
@@ -87,6 +88,7 @@ final class CmsServiceProvider extends ServiceProvider
 
         Gate::policy(Entry::class, EntryPolicy::class);
         Gate::policy(Menu::class, MenuPolicy::class);
+        Gate::policy(Taxonomy::class, TaxonomyPolicy::class);
 
         // Purging an entry drops its block image usage rows (polymorphic, no FK cascade).
         Entry::observe(EntryObserver::class);
