@@ -2,6 +2,8 @@
 
 namespace App\Modules\Admin\Support;
 
+use Illuminate\Support\Str;
+
 /**
  * Discovers the locales available to the admin UI from the translation files on disk
  * (lang/{code}.json). Dropping a new {code}.json file makes that language appear in the
@@ -57,7 +59,8 @@ final class Locales
         if (class_exists(\Locale::class)) {
             $native = \Locale::getDisplayLanguage($code, $code);
             if (is_string($native) && $native !== $code) {
-                return ucfirst($native);
+                // Letter-wise: ucfirst() leaves a non-ASCII first letter ("čeština", "ελληνικά") lowercase.
+                return Str::ucfirst($native);
             }
         }
 
