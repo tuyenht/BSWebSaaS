@@ -48,7 +48,9 @@ it('wires the user menu to real routes and keeps notifications an honest placeho
         ->assertSee('notifOpen', false)                                       // notifications button present
         ->assertDontSee('topbar-badge', false)                                // NO Velzon fake unread-count badge
         ->assertSee("adminTheme.set('scheme'", false)                         // light/dark toggle shares the Customizer store
-        ->assertSee('requestFullscreen', false);                              // fullscreen toggle present
+        ->assertSee('requestFullscreen', false)                               // fullscreen toggle present
+        ->assertSee('$store.adminTheme.open = true', false)                   // "Giao diện" opens the Customizer
+        ->assertDontSee('customizer-gear', false);                            // the floating launcher is gone
 });
 
 it('renders the sidebar logo at the reference sizes (48px full, 22px collapsed mark)', function (): void {
@@ -213,10 +215,15 @@ it('sizes the shell text by the text roles and gives its small links a 44px hit 
         ->and(platformShellClasses($name->nextElementSibling ?? $name))->toContain('text-caption')
         ->and(array_merge(...shellClassesOf($dom, 'header.admin-topbar span')))->not->toContain('text-[13px]', 'text-[11px]');
 
-    // the round theme launcher keeps its whole 48px square tappable through a transparent ::after
-    $launcher = platformShellOne($dom, 'button[aria-label="'.__('admin.customize_theme').'"].fixed');
-    expect(platformShellClasses($launcher))->toContain('fixed', 'rounded-full', 'after:absolute', 'after:inset-0')
-        ->not->toContain('hit-area', 'relative');
+    // the Customizer opens from the user menu's "Giao diện" item; no floating launcher sits on the pages' save bars
+    $items = array_values(array_filter(
+        iterator_to_array($dom->querySelectorAll('div[role="menu"] button[role="menuitem"]')),
+        fn (Element $b): bool => str_starts_with(trim(preg_replace('/\s+/', ' ', (string) $b->textContent)), __('admin.appearance')),
+    ));
+    expect($items)->toHaveCount(1)
+        ->and((string) $items[0]->getAttribute('@click'))->toContain('$store.adminTheme.open = true')
+        ->and(platformShellClasses($items[0]))->toContain('min-h-menu-row', 'any-pointer-coarse:min-h-menu-row-touch')
+        ->and($dom->querySelectorAll('button.fixed[aria-label="'.__('admin.customize_theme').'"]')->length)->toBe(0);
 });
 
 it('gives the platform console logo and footer link a 44px hit area and caption-size footer text', function (): void {
