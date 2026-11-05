@@ -91,6 +91,24 @@ export function buildDraft(items, saved, version) {
     };
 }
 
+// The icon picker's groups ({group, icons: [{name, label}]}) for what is typed: every group with
+// icons when nothing is, else one group of the matches, named by `hits` (":n biểu tượng khớp"),
+// or none. A match is a label or a name that holds the typed words, accents and case ignored.
+export function iconGroupsOf(groups, q, hits) {
+    const qq = fold(String(q || '').trim());
+    if (!qq) {
+        return groups.filter((g) => g.icons.length);
+    }
+    const found = groups.flatMap((g) => g.icons).filter((ic) => fold(ic.label).includes(qq) || ic.name.includes(qq));
+    return found.length ? [{ group: fill(hits, { n: found.length }), icons: found }] : [];
+}
+
+// The rows that point at something no longer there (the source was deleted for good), in order.
+// A source in the trash or not published yet is not one: it can come back.
+export function goneKeysOf(items) {
+    return items.filter((it) => it.source && it.source.state === 'gone').map((it) => it.key);
+}
+
 // The rows the shared tree draws from the draft: each with its level, its place among its siblings
 // and its guide lines (the fields of a TreeRows entry). While a filter is on, the matches stand flat,
 // in order, and cannot be moved.
@@ -538,6 +556,18 @@ if (typeof document !== 'undefined') document.addEventListener('alpine:init', ()
             setDesc(k, v) {
                 this.set(k, (it) => { it.options = { ...it.options, description: { ...it.options.description, [this.loc]: v } }; });
             },
+            // The source's own short text in this language, offered while the item has none.
+            descSrc(it) {
+                return it.source && it.source.summary && !this.desc(it) ? it.source.summary[this.loc] || '' : '';
+            },
+            descFromSource(k) {
+                const it = this.item(k);
+                const text = it ? this.descSrc(it) : '';
+                if (text) {
+                    this.setDesc(k, text);
+                    this.notify(fill(t.descTaken, { name: it.source.title || this.name(it) }), true);
+                }
+            },
             setUrl(k, v) {
                 this.set(k, (it) => { it.link = { type: 'url', url: v.trim() }; });
             },
@@ -622,6 +652,35 @@ if (typeof document !== 'undefined') document.addEventListener('alpine:init', ()
                 } else {
                     run();
                 }
+            },
+            // Links that followed a page to its new address by themselves ("Đã tự sửa N liên kết").
+            get fixedN() {
+                return this.items.filter((it) => it.source && it.source.moved).length;
+            },
+            // "Gỡ N mục không còn": every row whose source is gone, at once, after a confirm that names
+            // them; like remove(), they leave the draft and go to the trash on "Lưu".
+            get goneKeys() {
+                return goneKeysOf(this.items);
+            },
+            removeGone() {
+                const keys = this.goneKeys;
+                if (keys.length < 2) {
+                    return;
+                }
+                const n = keys.length;
+                const names = keys.map((k) => this.name(this.item(k)));
+                const list = names.slice(0, 3).join(', ') + (names.length > 3 ? ', …' : '');
+                const run = () => {
+                    this.change(() => {
+                        const gone = new Set(keys.flatMap((k) => this.block(k).map((x) => x.key)));
+                        this.items = this.items.filter((x) => !gone.has(x.key));
+                    }, false);
+                    if (this.sel && !this.item(this.sel)) {
+                        this.sel = null;
+                    }
+                    this.notify(fill(t.goneRemoved, { n }), true);
+                };
+                this.ask = { title: fill(t.goneTitle, { n }), body: fill(t.goneBody, { n, list }), ok: fill(t.goneOk, { n }), danger: true, run };
             },
             toggleHide(k) {
                 const it = this.item(k);
@@ -876,7 +935,7 @@ if (typeof document !== 'undefined') document.addEventListener('alpine:init', ()
                         .filter((s) => !q || fold(s.label).includes(q))
                         .map((s) => ({ key: 'special:' + s.key, link: { type: 'special', key: s.key }, title: s.label, meta: s.available ? s.help : t.specialMissing, used: this.inDraft({ type: 'special', key: s.key }), draft: false }));
                 }
-                return this.results.map((r) => ({ key: r.key, link: r.link, title: r.title, kind: r.kind, meta: t.kinds[r.kind] || '', used: this.inDraft(r.link), draft: !r.published }));
+                return this.results.map((r) => ({ key: r.key, link: r.link, title: r.title, kind: r.kind, meta: t.kinds[r.kind] || '', used: this.inDraft(r.link), draft: !r.published, summary: r.summary || null }));
             },
             togglePick(r) {
                 if (r.used) {
@@ -902,7 +961,7 @@ if (typeof document !== 'undefined') document.addEventListener('alpine:init', ()
                     this.fail(fill(t.tooDeep, { max: this.maxDepth }));
                     return null;
                 }
-                const made = list.map((r) => ({ key: 'new:' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7), parent, link: r.link, labels: r.labels || {}, options: emptyOptions(), source: r.kind ? { kind: r.kind, ref: r.link.ref, title: r.title, slug: null, state: r.draft ? 'unpublished' : 'live', untranslated: [] } : null }));
+                const made = list.map((r) => ({ key: 'new:' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7), parent, link: r.link, labels: r.labels || {}, options: emptyOptions(), source: r.source || null }));
                 this.change(() => {
                     made.forEach((it) => {
                         this.items.push({ ...it, parent: null });
@@ -917,7 +976,8 @@ if (typeof document !== 'undefined') document.addEventListener('alpine:init', ()
                     key: r.key,
                     link: r.link,
                     labels: {},
-                    source: r.link.type === 'special' ? null : { kind: this.tab === 'page' ? 'page' : (this.tab === 'category' ? 'category' : 'product'), ref: r.link.ref, title: r.title, slug: null, state: r.draft ? 'unpublished' : 'live', untranslated: [] },
+                    // The search names the kind and carries the short text in the main language.
+                    source: r.link.type === 'special' ? null : { kind: r.kind || (this.tab === 'category' ? 'category' : (this.tab === 'product' ? 'product' : 'page')), ref: r.link.ref, title: r.title, slug: null, state: r.draft ? 'unpublished' : 'live', untranslated: [], summary: r.summary ? { [cfg.main]: r.summary } : {}, moved: false },
                 }));
                 if (!list.length || !this.menu) {
                     return;
@@ -1267,9 +1327,11 @@ if (typeof document !== 'undefined') document.addEventListener('alpine:init', ()
             },
 
             // ---- icons --------------------------------------------------------------------------
-            iconRows() {
-                const q = fold(this.iconQ.trim());
-                return cfg.icons.filter((ic) => !q || fold(ic.label).includes(q) || ic.name.includes(q));
+            iconGroups() {
+                return iconGroupsOf(cfg.icons, this.iconQ, t.iconHits);
+            },
+            get iconTotal() {
+                return cfg.icons.reduce((n, g) => n + g.icons.length, 0);
             },
             setIcon(k, name) {
                 this.setOpt(k, 'icon', name);

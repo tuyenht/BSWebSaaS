@@ -189,7 +189,8 @@ final readonly class ApplyMenuDraft
     }
 
     /**
-     * The menu's live items and their labels, as MenuVersion hashes them.
+     * The menu's live items and their labels, as MenuVersion hashes them (created_at only tells the
+     * screen whether a page moved after the item was added).
      *
      * @return array{0: Collection<int, MenuItem>, 1: Collection<int, MenuItemTranslation>}
      */
@@ -197,7 +198,7 @@ final readonly class ApplyMenuDraft
     {
         $items = MenuItem::query()->where('menu_id', $menuId)
             ->orderBy('id')
-            ->get(['id', 'ulid', 'menu_id', 'parent_id', 'position', 'link_type', 'routable_type', 'routable_id', 'url', 'dynamic_key', 'meta']);
+            ->get(['id', 'ulid', 'menu_id', 'parent_id', 'position', 'link_type', 'routable_type', 'routable_id', 'url', 'dynamic_key', 'meta', 'created_at']);
         $labels = MenuItemTranslation::query()
             ->whereIn('menu_item_id', MenuItem::query()->select('id')->where('menu_id', $menuId))
             ->get(['menu_item_id', 'locale', 'label']);

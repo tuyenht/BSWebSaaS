@@ -8,6 +8,7 @@ use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\TaxonomyTranslation;
+use App\Modules\Cms\Navigation\MenuItemOptions;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\VietnameseFold;
 use Illuminate\Database\Eloquent\Builder;
@@ -22,7 +23,9 @@ use Illuminate\Database\Eloquent\Model;
  *
  * Each result: key "<type>:<ulid>" and link {type, ref} (what a draft's `link` takes), the title,
  * the kind (page|post|category|product), whether visitors can open it (published), and whether
- * the menu already links to it (inMenu). Never an id. Categories are those of posts and products
+ * the menu already links to it (inMenu), and its own short text in that language (summary: the
+ * excerpt, description or product summary, else the Google description; plain text, capped like an
+ * item description) for "Lấy từ mô tả trang". Never an id. Categories are those of posts and products
  * (tags are not menu targets); items in the trash are left out.
  */
 final class MenuSourceSearch
@@ -35,14 +38,14 @@ final class MenuSourceSearch
     public const array KINDS = ['page', 'post', 'category', 'product'];
 
     /**
-     * @return list<array{key: string, link: array{type: string, ref: string}, title: string, kind: string, published: bool, inMenu: bool}>
+     * @return list<array{key: string, link: array{type: string, ref: string}, title: string, kind: string, published: bool, inMenu: bool, summary: string|null}>
      */
     public function search(string $query, ?string $kind, ?int $menuId, string $locale): array
     {
         $needle = VietnameseFold::text(trim(mb_substr(trim($query), 0, self::QUERY_MAX)));
         $like = $needle === '' ? null : VietnameseFold::like($needle);
 
-        $found = [];   // list of [link type, target id, ulid, title, kind, published]
+        $found = [];   // list of [link type, target id, ulid, title, kind, published, summary]
         foreach ($kind === null ? self::KINDS : [$kind] as $wanted) {
             foreach ($this->rows($wanted, $like, $locale) as $row) {
                 $found[] = $row;
@@ -74,11 +77,12 @@ final class MenuSourceSearch
             'kind' => $row[4],
             'published' => $row[5],
             'inMenu' => isset($inMenu[$row[0]][$row[1]]),
+            'summary' => $row[6],
         ], $found);
     }
 
     /**
-     * @return list<array{0: string, 1: int, 2: string, 3: string, 4: string, 5: bool}>
+     * @return list<array{0: string, 1: int, 2: string, 3: string, 4: string, 5: bool, 6: string|null}>
      */
     private function rows(string $kind, ?string $like, string $locale): array
     {
@@ -87,21 +91,24 @@ final class MenuSourceSearch
                 EntryTranslation::query()->join('entries', 'entries.id', '=', 'entry_translations.entry_id')
                     ->where('entries.type', $kind)->whereNull('entries.deleted_at')
                     ->where('entry_translations.locale', $locale)
-                    ->select(['entries.id as target_id', 'entries.ulid as target_ulid', 'entries.status as target_status', 'entry_translations.title as target_title']),
+                    ->select(['entries.id as target_id', 'entries.ulid as target_ulid', 'entries.status as target_status', 'entry_translations.title as target_title',
+                        'entry_translations.excerpt as target_summary', 'entry_translations.seo_description as target_seo']),
                 'entry_translations.title', 'entry', 'published',
             ],
             'category' => [
                 TaxonomyTranslation::query()->join('taxonomies', 'taxonomies.id', '=', 'taxonomy_translations.taxonomy_id')
                     ->whereIn('taxonomies.vocabulary', ['post_cat', 'product_cat'])->whereNotNull('taxonomies.ulid')
                     ->where('taxonomy_translations.locale', $locale)
-                    ->select(['taxonomies.id as target_id', 'taxonomies.ulid as target_ulid', 'taxonomy_translations.name as target_title']),
+                    ->select(['taxonomies.id as target_id', 'taxonomies.ulid as target_ulid', 'taxonomy_translations.name as target_title',
+                        'taxonomy_translations.description as target_summary', 'taxonomy_translations.seo_description as target_seo']),
                 'taxonomy_translations.name', 'taxonomy', null,
             ],
             default => [
                 ProductTranslation::query()->join('products', 'products.id', '=', 'product_translations.product_id')
                     ->whereNull('products.deleted_at')
                     ->where('product_translations.locale', $locale)
-                    ->select(['products.id as target_id', 'products.ulid as target_ulid', 'products.status as target_status', 'product_translations.name as target_title']),
+                    ->select(['products.id as target_id', 'products.ulid as target_ulid', 'products.status as target_status', 'product_translations.name as target_title',
+                        'product_translations.summary as target_summary', 'product_translations.seo_description as target_seo']),
                 'product_translations.name', 'product', 'published',
             ],
         };
@@ -113,6 +120,8 @@ final class MenuSourceSearch
 
         $out = [];
         foreach ($rows as $row) {
+            $summary = $row->getAttribute('target_summary');
+            $seo = $row->getAttribute('target_seo');
             $out[] = [
                 $type,
                 Cast::int($row->getAttribute('target_id')),
@@ -120,6 +129,8 @@ final class MenuSourceSearch
                 Cast::string($row->getAttribute('target_title')),
                 $kind,
                 $published === null || $row->getAttribute('target_status') === $published,
+                MenuItemOptions::suggestedDescription(is_string($summary) ? $summary : null)
+                    ?? MenuItemOptions::suggestedDescription(is_string($seo) ? $seo : null),
             ];
         }
 

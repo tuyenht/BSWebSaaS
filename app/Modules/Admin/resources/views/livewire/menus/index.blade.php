@@ -20,6 +20,7 @@
         'leaveSave', 'leaveDrop', 'renamed', 'newMenuName', 'menuCopied', 'delTitle', 'delBodyUsed', 'delBody',
         'delOk', 'menuDeleted', 'removeKidsTitle', 'removeKidsBody', 'removeKidsOk', 'langsToast', 'areaNone', 'areaMain', 'areaSame', 'areasSet', 'areaSaved', 'codeCopied',
         'checkOk', 'checkTips', 'checkBad', 'checkAndTips', 'trashKids', 'trashDays', 'restoreNeedsSave', 'restored',
+        'iconHits', 'descTaken', 'goneTitle', 'goneBody', 'goneOk', 'goneRemoved',
     ])->mapWithKeys(fn (string $k): array => [$k => $u($k)])->all();
     $texts += [
         'undone' => __('admin.tree.undone'),
@@ -45,7 +46,7 @@
 <div class="@container" x-data="bsMenus(@js($config))" x-on:keydown.window="keys($event)">
     {{-- The website icons, drawn once and reused by name (<use>). --}}
     <svg class="hidden" aria-hidden="true">
-        @foreach ($icons as $icon)
+        @foreach (array_merge(...array_column($icons, 'icons')) as $icon)
             <symbol id="mn-ic-{{ $icon['name'] }}" viewBox="0 0 24 24">
                 @if (\App\Modules\Theme\Chrome\StorefrontIcons::GLYPHS[$icon['name']][0] === 'f')
                     <g fill="currentColor">{!! \App\Modules\Theme\Chrome\StorefrontIcons::GLYPHS[$icon['name']][1] !!}</g>
@@ -326,7 +327,7 @@
                                             @elseif ($count === 'trash')
                                                 <span class="text-text-muted" x-text="menu && menu.trash.length ? @js($u('auto_trash_n')).replace(':n', menu.trash.length) : @js($u('auto_trash_0'))"></span>
                                             @else
-                                                <span class="text-text-muted">{{ $u('auto_fix_sub') }}</span>
+                                                <span class="text-text-muted" x-text="fixedN ? @js($u('auto_fix_n')).replace(':n', fixedN) : @js($u('auto_fix_0'))"></span>
                                             @endif
                                         </span>
                                     </span>
@@ -417,6 +418,9 @@
                         <div x-show="filtering" class="flex flex-wrap items-center gap-2 border-b border-border bg-surface-muted px-3.5 py-2">
                             <span class="text-text-muted"><x-bs-admin::icon name="ri-filter-3" class="size-4" /></span>
                             <span class="min-w-0 flex-[1_1_220px] text-caption leading-normal text-text-muted" x-text="@js($u('filter_note')).replace(':n', rows().length)"></span>
+                            <x-bs-admin::button size="sm" variant="outline" color="secondary" x-show="filter === 'issue' && goneKeys.length >= 2" x-on:click="removeGone()" title="{{ $u('gone_bulk_tip') }}">
+                                <x-bs-admin::icon name="ri-delete-bin" class="size-4" /><span x-text="@js($u('gone_bulk')).replace(':n', goneKeys.length)"></span>
+                            </x-bs-admin::button>
                             <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="q = ''; filter = 'all'">{{ $u('clear_filter') }}</x-bs-admin::button>
                         </div>
                         <div x-show="!rows().length" class="flex flex-col items-center gap-2 px-5 py-9 text-center">
@@ -453,6 +457,7 @@
                                         <x-bs-admin::badge soft pill color="primary" x-show="r.it.options.mega" title="{{ $u('mega_tip') }}"><x-bs-admin::icon name="ri-layout-grid" class="size-3.5" /><span class="{{ $chipHide }}" x-text="r.it.options.mega ? {{ $j($u('mega_n')) }}.replace(':n', r.it.options.mega.columns) : ''"></span></x-bs-admin::badge>
                                         <x-bs-admin::badge soft pill color="secondary" x-show="desc(r.it)" x-bind:title="desc(r.it)"><x-bs-admin::icon name="ri-text" class="size-3.5" /><span class="{{ $chipHide }}">{{ $u('has_desc') }}</span></x-bs-admin::badge>
                                         <x-bs-admin::badge soft pill color="secondary" x-show="r.it.options.device !== 'all'"><x-bs-admin::icon name="ri-device" class="size-3.5" /><span class="{{ $chipHide }}" x-text="r.it.options.device === 'desktop' ? {{ $j($u('only_pc')) }} : {{ $j($u('only_phone')) }}"></span></x-bs-admin::badge>
+                                        <x-bs-admin::badge soft pill color="success" x-show="r.it.source && r.it.source.moved && !r.state" title="{{ $u('fixed_tip') }}"><x-bs-admin::icon name="ri-check" class="size-3.5" /><span class="{{ $chipHide }}">{{ $u('fixed') }}</span></x-bs-admin::badge>
                                         <x-bs-admin::badge soft pill color="warning" x-show="r.state === 'unpublished' || (r.untr && !r.state)" x-bind:title="r.state ? r.stateLabel : {{ $j($u('untr_tip')) }}"><x-bs-admin::icon name="ri-eye-off" class="size-3.5" /><span class="{{ $chipHide }}" x-text="r.state ? r.stateLabel : {{ $j($u('untr')) }}"></span></x-bs-admin::badge>
                                         <x-bs-admin::badge soft pill color="danger" x-show="r.state === 'trashed' || r.state === 'gone'" x-bind:title="r.stateLabel"><x-bs-admin::icon name="ri-error-warning" class="size-3.5" /><span class="{{ $chipHide }}" x-text="r.stateLabel"></span></x-bs-admin::badge>
                                     </span>
@@ -502,14 +507,19 @@
                                                 </label>
                                             </div>
                                             <div class="mt-3.5 grid grid-cols-2 gap-3.5 @max-[37.5rem]:grid-cols-1">
-                                                <label class="flex min-w-0 flex-col gap-1.5">
-                                                    <span class="flex items-center gap-1.5 text-caption font-semibold text-text">{{ $u('f_desc') }}<x-bs-admin::badge soft pill color="secondary"><span x-text="loc.toUpperCase()"></span></x-bs-admin::badge>
-                                                        <span class="ml-auto font-normal" :class="desc(r.it).length > descMax(r.it) ? 'text-warning-text' : 'text-text-muted'" x-text="desc(r.it).length + '/' + descMax(r.it)"></span></span>
-                                                    <textarea rows="3" maxlength="500" class="field w-full rounded border border-border-input bg-surface px-3 text-text-strong disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-muted leading-relaxed" :value="desc(r.it)" x-on:change="setDesc(r.k, $event.target.value.trim())"
-                                                              :placeholder="@js($u('f_desc_ph'))"></textarea>
-                                                    <span class="text-caption leading-normal text-text-muted"
-                                                          x-text="desc(r.it).length > descMax(r.it) ? @js($u('f_desc_long')).replace(':n', descMax(r.it)) : (r.it.options.mega ? @js($u('f_desc_mega')) : @js($u('f_desc_hint')))"></span>
-                                                </label>
+                                                <div class="flex min-w-0 flex-col gap-1.5">
+                                                    <label class="flex min-w-0 flex-col gap-1.5">
+                                                        <span class="flex items-center gap-1.5 text-caption font-semibold text-text">{{ $u('f_desc') }}<x-bs-admin::badge soft pill color="secondary"><span x-text="loc.toUpperCase()"></span></x-bs-admin::badge>
+                                                            <span class="ml-auto font-normal" :class="desc(r.it).length > descMax(r.it) ? 'text-warning-text' : 'text-text-muted'" x-text="desc(r.it).length + '/' + descMax(r.it)"></span></span>
+                                                        <textarea rows="3" maxlength="500" class="field w-full rounded border border-border-input bg-surface px-3 text-text-strong disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-muted leading-relaxed" :value="desc(r.it)" x-on:change="setDesc(r.k, $event.target.value.trim())"
+                                                                  :placeholder="@js($u('f_desc_ph'))"></textarea>
+                                                    </label>
+                                                    <span class="flex flex-wrap items-center gap-2">
+                                                        <span class="min-w-0 flex-[1_1_160px] text-caption leading-normal text-text-muted"
+                                                              x-text="desc(r.it).length > descMax(r.it) ? @js($u('f_desc_long')).replace(':n', descMax(r.it)) : (r.it.options.mega ? @js($u('f_desc_mega')) : @js($u('f_desc_hint')))"></span>
+                                                        <x-bs-admin::button size="sm" variant="outline" color="secondary" x-show="descSrc(r.it)" x-on:click="descFromSource(r.k)" title="{{ $u('desc_src_tip') }}"><x-bs-admin::icon name="ri-magic" class="size-4" />{{ $u('desc_src') }}</x-bs-admin::button>
+                                                    </span>
+                                                </div>
                                                 <div class="flex min-w-0 flex-col gap-1.5">
                                                     <span class="flex items-center gap-1.5 text-caption font-semibold text-text">{{ $u('f_icon') }}<span class="font-normal text-text-muted">{{ $u('optional') }}</span></span>
                                                     <span class="relative flex flex-wrap items-center gap-2" x-on:click.outside="iconOpen = false">
@@ -519,15 +529,22 @@
                                                         </x-bs-admin::button>
                                                         <div x-show="iconOpen" x-on:click.stop class="absolute right-0 top-full z-30 mt-1.5 box-border w-[min(308px,calc(100vw-32px))] rounded-md border border-border bg-surface p-2.5 shadow-card">
                                                             <x-bs-admin::search :label="$u('icon_search')" x-model="iconQ" />
-                                                            <div class="mt-2 flex max-h-[230px] flex-wrap gap-1.5 overflow-auto">
-                                                                <template x-for="ic in iconRows()" :key="ic.name">
-                                                                    <x-bs-admin::button variant="outline" color="secondary" icon x-bind:title="ic.label" x-bind:aria-label="ic.label" x-bind:aria-pressed="r.it.options.icon === ic.name"
-                                                                        x-on:click="setIcon(r.k, ic.name)"><svg class="size-5" aria-hidden="true"><use :href="'#mn-ic-' + ic.name"></use></svg></x-bs-admin::button>
+                                                            <div class="mt-2 flex max-h-[230px] flex-col gap-2 overflow-auto">
+                                                                <template x-for="ig in iconGroups()" :key="ig.group">
+                                                                    <div class="flex flex-col gap-1.5" role="group" :aria-label="ig.group">
+                                                                        <span class="text-caption font-bold uppercase tracking-[.06em] text-text-muted" x-text="ig.group"></span>
+                                                                        <span class="flex flex-wrap gap-1.5">
+                                                                            <template x-for="ic in ig.icons" :key="ic.name">
+                                                                                <x-bs-admin::button variant="outline" color="secondary" icon x-bind:title="ic.label" x-bind:aria-label="ic.label" x-bind:aria-pressed="r.it.options.icon === ic.name"
+                                                                                    x-on:click="setIcon(r.k, ic.name)"><svg class="size-5" aria-hidden="true"><use :href="'#mn-ic-' + ic.name"></use></svg></x-bs-admin::button>
+                                                                            </template>
+                                                                        </span>
+                                                                    </div>
                                                                 </template>
-                                                                <p x-show="!iconRows().length" class="w-full px-1 py-3.5 text-center text-caption leading-relaxed text-text-muted">{{ $u('icon_none_found') }}</p>
+                                                                <p x-show="!iconGroups().length" class="w-full px-1 py-3.5 text-center text-caption leading-relaxed text-text-muted">{{ $u('icon_none_found') }}</p>
                                                             </div>
                                                             <div class="mt-2 flex items-center gap-2 border-t border-border-soft pt-2">
-                                                                <span class="flex-auto text-caption text-text-muted" x-text="@js($u('icon_count')).replace(':n', iconRows().length)"></span>
+                                                                <span class="flex-auto text-caption text-text-muted" x-text="@js($u('icon_count')).replace(':n', iconTotal)"></span>
                                                                 <x-bs-admin::button size="sm" variant="outline" color="secondary" x-show="r.it.options.icon" x-on:click="setIcon(r.k, null)"><x-bs-admin::icon name="ri-close" class="size-4" />{{ $u('icon_clear') }}</x-bs-admin::button>
                                                             </div>
                                                         </div>

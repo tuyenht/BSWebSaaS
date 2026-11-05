@@ -11,7 +11,9 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
+use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Navigation\MenuItemOptions;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
@@ -386,6 +388,58 @@ it('opens on the menu the first area shows, else the oldest menu, else on no men
         ->assertSee(__('menus.ui_no_menu_title'))->assertSee('ồ Menu đầu trang ạ');
 });
 
+it('carries each source\'s own short text per language as plain text within the description ceiling', function (): void {
+    [$menu, $page, $category, $product] = msIn(1, function (): array {
+        $menu = app(SaveMenu::class)->handle(null, 'Menu chính');
+        $page = msPage('Năng lực');
+        $page->translations()->where('locale', 'vi')->update(['excerpt' => "<p>Dây chuyền <b>CNC</b>\n 5 trục &amp; hơn</p>", 'seo_description' => 'Mô tả Google']);
+        $category = msCategory('Gia công');
+        $category->translations()->where('locale', 'vi')->update(['description' => str_repeat('ạ', 600)]);
+        $product = msProduct('Máy phay');
+        $product->translations()->where('locale', 'vi')->update(['seo_description' => 'Máy phay đứng']);
+        foreach ([['entry', $page->id], ['taxonomy', $category->id], ['product', $product->id]] as [$type, $id]) {
+            msLink($menu, $type, $id);
+        }
+        msLink($menu, 'entry', msPage('Không mô tả')->id);
+
+        return [$menu, $page, $category, $product];
+    });
+
+    $sources = collect(msCall($this->editor, 'load', $menu->ulid)['menu']['items'])->pluck('source')->keyBy('ref');
+
+    expect($sources[$page->ulid]['summary'])->toBe(['vi' => 'Dây chuyền CNC 5 trục & hơn'])
+        ->and($sources[$category->ulid]['summary']['vi'])->toBe(str_repeat('ạ', MenuItemOptions::DESCRIPTION_MAX))
+        ->and($sources[$product->ulid]['summary'])->toBe(['vi' => 'Máy phay đứng'])
+        ->and($sources->firstWhere('title', 'Không mô tả')['summary'])->toBe([]);
+
+    $found = msCall($this->editor, 'search', 'nang luc', 'page', $menu->ulid)['results'];
+    expect($found[0]['summary'])->toBe('Dây chuyền CNC 5 trục & hơn')
+        ->and(msCall($this->editor, 'search', 'may phay', 'product', $menu->ulid)['results'][0]['summary'])->toBe('Máy phay đứng');
+});
+
+it('says a page moved after its item was added, so the link followed by itself', function (): void {
+    [$menu, $moved, $before, $category] = msIn(1, function (): array {
+        $menu = app(SaveMenu::class)->handle(null, 'Menu chính');
+        $moved = msPage('Đã dời');
+        $before = msPage('Dời trước');
+        $category = msCategory('Chuyên mục');
+        Redirect::query()->create(['locale' => 'vi', 'from_path' => '/cu-truoc', 'to_path' => '/moi-truoc', 'entry_id' => $before->id, 'created_at' => now()->subDays(2), 'updated_at' => now()->subDays(2)]);
+        foreach ([['entry', $moved->id], ['entry', $before->id], ['taxonomy', $category->id]] as [$type, $id]) {
+            msLink($menu, $type, $id)->forceFill(['created_at' => now()->subDay()])->save();
+        }
+        Redirect::query()->create(['locale' => 'vi', 'from_path' => '/cu', 'to_path' => '/moi', 'entry_id' => $moved->id]);
+
+        return [$menu, $moved, $before, $category];
+    });
+    msIn(2, fn () => Redirect::query()->create(['locale' => 'vi', 'from_path' => '/b', 'to_path' => '/c', 'entry_id' => $before->id]));
+
+    $sources = collect(msCall($this->editor, 'load', $menu->ulid)['menu']['items'])->pluck('source')->keyBy('ref');
+
+    expect($sources[$moved->ulid]['moved'])->toBeTrue()
+        ->and($sources[$before->ulid]['moved'])->toBeFalse()
+        ->and($sources[$category->ulid]['moved'])->toBeFalse();
+});
+
 it('gives the screen the icons, the source edit screens and the site address it draws with', function (): void {
     $data = msIn(1, function (): array {
         $page = Livewire::actingAs($this->editor->fresh())->test(MenusIndex::class);
@@ -393,9 +447,12 @@ it('gives the screen the icons, the source edit screens and the site address it 
         return array_combine($keys = ['icons', 'edit', 'siteUrl', 'main', 'siteName'], array_map(fn (string $key): mixed => $page->viewData($key), $keys));
     });
 
-    expect(array_keys(StorefrontIcons::GLYPHS))->toContain(...MenusIndex::ICONS)
-        ->and(array_column($data['icons'], 'name'))->toBe(MenusIndex::ICONS)
-        ->and($data['icons'][0]['label'])->toBe(__('menus.icon_phone'))
+    $names = array_merge(...array_values(MenusIndex::ICON_GROUPS));
+    expect(array_keys(StorefrontIcons::GLYPHS))->toContain(...$names)
+        ->and(array_unique($names))->toBe($names)
+        ->and(array_column($data['icons'], 'group'))->toBe(array_map(fn (string $g): string => __('menus.icon_group_'.$g), array_keys(MenusIndex::ICON_GROUPS)))
+        ->and(array_column($data['icons'][0]['icons'], 'name'))->toBe(MenusIndex::ICON_GROUPS['common'])
+        ->and($data['icons'][0]['icons'][0]['label'])->toBe(__('menus.icon_phone'))
         ->and($data['edit']['entry'])->toEndWith('/admin/content/__REF__/edit')
         ->and($data['edit']['product'])->toEndWith('/admin/catalog/__REF__/edit')
         ->and($data['siteUrl'])->toBe('/')
