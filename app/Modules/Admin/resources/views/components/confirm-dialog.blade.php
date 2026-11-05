@@ -63,8 +63,12 @@
                 @if ($alpine)
                     <x-bs-admin::button variant="outline" color="secondary" autofocus x-on:click="{{ $cancel }}">{{ __('admin.cancel') }}</x-bs-admin::button>
                     {{ $alt ?? '' }}
-                    <x-bs-admin::button x-on:click="{{ $confirm }}" x-bind:class="({{ $state }})?.danger && '!bg-danger'">
-                        <span x-show="({{ $state }})?.danger"><x-bs-admin::icon name="ri-delete-bin" class="size-[calc(1rem+var(--user-text-boost))]" /></span>
+                    {{-- two buttons, so a danger confirm keeps the danger colours for hover and press too --}}
+                    <x-bs-admin::button x-show="!({{ $state }})?.danger" x-on:click="{{ $confirm }}">
+                        <span x-text="({{ $state }})?.ok || @js(__('admin.confirm'))">{{ __('admin.confirm') }}</span>
+                    </x-bs-admin::button>
+                    <x-bs-admin::button color="danger" x-show="({{ $state }})?.danger" x-cloak x-on:click="{{ $confirm }}">
+                        <x-bs-admin::icon name="ri-delete-bin" class="size-[calc(1rem+var(--user-text-boost))]" />
                         <span x-text="({{ $state }})?.ok || @js(__('admin.confirm'))">{{ __('admin.confirm') }}</span>
                     </x-bs-admin::button>
                 @else

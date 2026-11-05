@@ -467,6 +467,7 @@ if (typeof document !== 'undefined') document.addEventListener('alpine:init', ()
                     history.record(before, 'do');
                     this.histN = history.undoSize;
                     this.futN = 0;
+                    this.dropUndoOffers();
                 }
                 if (!keepSel && this.sel && !this.item(this.sel)) {
                     this.sel = null;
@@ -500,6 +501,7 @@ if (typeof document !== 'undefined') document.addEventListener('alpine:init', ()
                 }
                 this.live = text;
                 this.toastClose();
+                this.dropUndoOffers();
                 if (k && this.item(k)) {
                     this.focusItem(k, true);
                 }
@@ -1322,6 +1324,17 @@ if (typeof document !== 'undefined') document.addEventListener('alpine:init', ()
             toastClose(n) {
                 if (this.toast && (n === undefined || this.toast.seq === n)) {
                     this.toast = null;
+                }
+            },
+            // A "Hoàn tác" offer (the toast's, the tree's result line) undoes the newest change; once
+            // another change or an undo has happened it would undo something else, so it goes.
+            dropUndoOffers() {
+                if (this.toast && this.toast.undo) {
+                    this.toast = null;
+                }
+                const tr = this.tree();
+                if (tr) {
+                    tr.msgUndo = false;
                 }
             },
             toastUndo() {
