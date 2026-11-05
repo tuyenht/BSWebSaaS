@@ -1,7 +1,7 @@
 {{-- Video-embed dialog (WithMediaLibraryPicker trait): paste a youtube/vimeo URL (any common
      shape) + optional autoplay — the server builds the canonical responsive embed. --}}
 @if ($showVideoDialog)
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="{{ __('catalog.video_title') }}">
+    <div class="fixed inset-0 z-90 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="{{ __('catalog.video_title') }}">
         <div class="w-full max-w-md rounded-md border border-border bg-surface p-4 shadow-card">
             <div class="mb-3 flex items-center justify-between gap-3">
                 <h5 class="text-[1rem] font-semibold text-body-text">{{ __('catalog.video_title') }}</h5>

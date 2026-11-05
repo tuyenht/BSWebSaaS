@@ -664,3 +664,36 @@ it('hands a picture picked for the cover to the drawer by its key, and ignores a
             ->assertNotDispatched('category-cover-picked');
     });
 });
+
+it('offers examples to start from that suit the section, and none for a section of the website\'s own', function (): void {
+    cxIn(1, function (): void {
+        $services = cxCreate('Dịch vụ');
+        ContentSection::query()->create(['key' => 'services', 'label' => 'Dịch vụ', 'entry_type' => 'post', 'taxonomy_id' => $services->id, 'permission_prefix' => 'entries', 'sort_order' => 2]);
+    });
+
+    $this->actingAs($this->editor->fresh())->get('http://a.test/admin/taxonomies?section=services')->assertOk()
+        ->assertSee(__('categories.ui_examples'))
+        ->assertSee([__('categories.ui_ex_s1'), __('categories.ui_ex_s2'), __('categories.ui_ex_s3')])
+        ->assertDontSee(__('categories.ui_ex_n3'));
+    $this->actingAs($this->editor->fresh())->get('http://a.test/admin/taxonomies?section=tin-tuc')->assertOk()
+        ->assertSee(__('categories.ui_empty_title'))
+        ->assertDontSee(__('categories.ui_examples'));
+});
+
+it('opens the section\'s own list from the count and the breadcrumb, and indents a narrow tree by the board\'s step', function (): void {
+    cxIn(1, fn (): bool => cxCreate('Tin công ty', $this->root)->forceFill(['items_count' => 3])->save());
+
+    $html = $this->actingAs($this->editor->fresh())->get('http://a.test/admin/taxonomies?section=tin-tuc')->assertOk()->getContent();
+
+    expect($html)->toContain('href="'.route('admin.entries.index', ['section' => 'tin-tuc']).'"')
+        ->toContain('--tree-step-narrow: 1.25rem');
+});
+
+it('points "Liên hệ hỗ trợ" on a locked section at the support mailbox', function (): void {
+    config(['support.mailbox' => 'ho-tro@platform.test']);
+
+    $this->actingAs($this->editor->fresh())->get('http://a.test/admin/taxonomies?section=catalog')->assertOk()
+        ->assertSee(__('categories.ui_locked_text'))
+        ->assertSee(__('categories.ui_support'))
+        ->assertSee('href="mailto:ho-tro@platform.test"', false);
+});

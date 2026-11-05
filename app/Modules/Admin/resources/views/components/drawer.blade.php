@@ -12,6 +12,8 @@
     // page. The host renders it only while it is open (Livewire state, so a reload or a link keeps it) and names its
     // public method that closes it.
     //
+    // Layers: the panel sits under every dialog (z-90: modal, confirm-dialog, the media picker), so a dialog opened from
+    // the panel shows over it; while such a dialog is open, Esc and Tab are that dialog's, not the panel's.
     // Keyboard: focus goes to ✕ on opening and stays inside (Tab wraps, and brings back focus that left the panel, as a
     // click on plain text does); Esc anywhere, ✕, the footer's own close button or a tap on the dimmed page close it,
     // and focus returns to the element whose id is $returnTo (the row that opened it — it survives the re-render, the
@@ -40,10 +42,11 @@
          opener: null,
          init() { {!! $opener !!} document.body.style.overflow = 'hidden'; this.$nextTick(() => this.$refs.x.focus()); },
          destroy() { document.body.style.overflow = ''; {!! $giveBack !!} },
+         above() { return [...document.querySelectorAll('[role=dialog][aria-modal=true]')].some((d) => d !== this.$refs.panel && d.getClientRects().length > 0); },
          hide() { if (this.$refs.panel.hasAttribute('aria-busy')) return; {!! $hideBody !!} },
-         trap(e) { const f = [...this.$refs.panel.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select,textarea,[tabindex]:not([tabindex=\'-1\'])')].filter((el) => el.getClientRects().length); if (! f.length) return; const first = f[0], last = f[f.length - 1]; const a = document.activeElement; if (a === this.$refs.panel || ! this.$refs.panel.contains(a)) { e.preventDefault(); (e.shiftKey ? last : first).focus(); } else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (! e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); } },
+         trap(e) { if (this.above()) return; const f = [...this.$refs.panel.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select,textarea,[tabindex]:not([tabindex=\'-1\'])')].filter((el) => el.getClientRects().length); if (! f.length) return; const first = f[0], last = f[f.length - 1]; const a = document.activeElement; if (a === this.$refs.panel || ! this.$refs.panel.contains(a)) { e.preventDefault(); (e.shiftKey ? last : first).focus(); } else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (! e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); } },
      }"
-     @keydown.escape.window.prevent.stop="hide()"
+     @keydown.escape.window.prevent.stop="above() || hide()"
      @keydown.tab.window="trap($event)"
      {{ $attributes }}>
     <div @click="hide()" class="fixed inset-0 z-60 bg-[rgb(15_18_30/0.45)]" aria-hidden="true"></div>

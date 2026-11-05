@@ -22,6 +22,11 @@
                 @if ($state === 'locked')
                     <h2 class="text-h3 font-semibold text-text-strong">{{ __('admin.catalog') }}</h2>
                     <p class="text-body text-text-muted">{{ $u('locked_text') }}</p>
+                    @if ($supportMail !== '')
+                        <x-bs-admin::button :href="'mailto:'.$supportMail">
+                            <x-bs-admin::icon name="ri-customer-service-2" class="size-4" /> {{ $u('support') }}
+                        </x-bs-admin::button>
+                    @endif
                 @else
                     <h2 class="text-h3 font-semibold text-text-strong">{{ $u('noperm_title') }}</h2>
                     <p class="text-body text-text-muted">{{ $role ? $u('noperm_text', ['role' => $role]) : $u('noperm_text_plain') }}</p>
@@ -51,20 +56,24 @@
             'delMoveItems', 'delDetachItems', 'pickTarget', 'cxLeaveTitle', 'cxLeaveLine', 'merged', 'deletedKids', 'deleted',
             'movedItems', 'movedItemsTo', 'detachedItems', 'tooDeepAdd', 'editTitle', 'addChildTitle', 'addTitle', 'lineSrc',
             'lineFull', 'lineEmpty', 'slugPage', 'slugAuto', 'slugKeep', 'slugWarn', 'outerOpt', 'unsavedTitle', 'unsavedText',
-            'unsavedDrop', 'unsavedSave', 'saved', 'added', 'copied', 'example',
+            'unsavedDrop', 'unsavedSave', 'saved', 'added', 'copied', 'example', 'tplGone', 'lockedOpt', 'onSave', 'saveMove',
+            'cxSaveTitle', 'save',
         ])->mapWithKeys(fn (string $k): array => [$k => $u(\Illuminate\Support\Str::snake($k))])->all();
         $config = [
             'section' => $screen['section']['key'], 'label' => $label, 'main' => $main, 'locales' => $locales, 'langNames' => $langNames,
-            'bases' => $bases, 'products' => $products, 'canManage' => $canManage, 'limits' => $screen['limits'], 'texts' => $texts,
+            'bases' => $bases, 'layouts' => $layouts, 'products' => $products, 'canManage' => $canManage, 'limits' => $screen['limits'], 'texts' => $texts,
         ];
-        $examples = $products ? ['ex_p1', 'ex_p2', 'ex_p3'] : ['ex_n1', 'ex_n2', 'ex_n3'];
+        // a few names to start from, for the standard sections (a section of the website's own has none)
+        $exampleSet = ['posts' => 'n', 'services' => 's', 'projects' => 'j', 'catalog' => 'p'][$screen['section']['key']] ?? null;
+        $examples = $exampleSet === null ? [] : array_map(fn (int $i): string => 'ex_'.$exampleSet.$i, [1, 2, 3]);
+        $namePh = $u($examples[0] ?? ($products ? 'ex_p1' : 'ex_n1'));
         $roleText = $limitNames !== null ? $u('role_text_limited', ['list' => implode(', ', $limitNames)]) : $u('role_text');
         $off = $canManage ? null : 'true';
         $col = 'shrink-0 text-small text-text-muted';
         $tplCol = $col.' w-[calc(11.25rem+var(--user-text-boost)*10)] @max-[63.99rem]:hidden';
         $cntCol = $col.' flex w-[calc(6rem+var(--user-text-boost)*4)] justify-end @max-[47.99rem]:hidden';
     @endphp
-    <div x-ignore wire:ignore.self data-bs-lazy="bsCategories" x-data="bsCategories(@js($config))"
+    <div x-ignore wire:ignore.self data-bs-lazy="bsCategories" x-data="bsCategories(@js($config))" x-on:category-cover-picked.window="coverPicked($event.detail)"
         class="mx-auto flex w-full max-w-[1400px] flex-col gap-4">
         <x-bs-admin::page-header :title="__('categories.title', ['section' => $label])" :subtitle="$products ? $u('desc_products') : $u('desc_posts', ['section' => $lowerLabel])" class="!mb-0">
             <x-slot:breadcrumbs><a href="{{ $listUrl }}" wire:navigate class="underline-offset-2 hover:underline">{{ $label }}</a> › {{ $u('crumb') }}</x-slot:breadcrumbs>
@@ -75,19 +84,21 @@
             </x-slot:actions>
         </x-bs-admin::page-header>
 
-        {{-- shown until the screen's part has started (one more download for this screen only) --}}
-        <div x-data="{ failed: false }" x-on:bs-lazy-failed.window="failed = true" x-show="false">
+        {{-- shown until the screen's part has started (one more download for this screen only); the
+             shared loader marks the root when the download is lost, and the CSS swaps the two blocks --}}
+        <div x-show="false">
             <x-bs-admin::card>
-                <div x-show="!failed" aria-busy="true" class="flex flex-col gap-3">
+                <div data-bs-lazy-wait aria-busy="true" class="flex flex-col gap-3">
                     @foreach ([['', 'max-w-70'], ['ms-6', 'max-w-55'], ['ms-12', 'max-w-45'], ['ms-6', 'max-w-60']] as [$indent, $width])
                         <div class="flex items-center gap-3"><span class="size-5 rounded bg-surface-muted {{ $indent }}"></span><span class="h-4 flex-1 rounded bg-surface-muted {{ $width }}"></span></div>
                     @endforeach
                     <p class="text-small text-text-muted">{{ $u('loading') }}</p>
                 </div>
-                <div x-show="failed" x-cloak class="mx-auto flex max-w-xl flex-col items-center gap-3 py-8 text-center">
+                <div data-bs-lazy-error class="mx-auto flex max-w-xl flex-col items-center gap-3 py-8 text-center">
+                    <span class="inline-flex size-12 items-center justify-center rounded-full bg-danger-soft text-danger-text"><x-bs-admin::icon name="ri-wifi-off" class="size-6" /></span>
                     <h2 class="text-h3 font-semibold text-text-strong">{{ $u('error_title') }}</h2>
                     <p role="alert" class="text-body text-text-muted">{{ $u('error_text') }}</p>
-                    <x-bs-admin::button x-on:click="failed = false; document.dispatchEvent(new CustomEvent('bs-lazy-retry'))"><x-bs-admin::icon name="ri-refresh" class="size-4" /> {{ $u('retry') }}</x-bs-admin::button>
+                    <x-bs-admin::button data-bs-lazy-retry><x-bs-admin::icon name="ri-refresh" class="size-4" /> {{ $u('retry') }}</x-bs-admin::button>
                 </div>
             </x-bs-admin::card>
         </div>
@@ -99,7 +110,7 @@
                     <h2 class="text-h3 font-semibold text-text-strong">{{ $u('empty_title') }}</h2>
                     <p class="text-body text-text-muted">{{ $products ? $u('empty_text_products') : $u('empty_text', ['section' => $lowerLabel]) }}</p>
                     <x-bs-admin::button x-on:click="openAdd(null)" aria-disabled="{{ $off }}"><x-bs-admin::icon name="ri-add" class="size-4" /> {{ $u('empty_title') }}</x-bs-admin::button>
-                    @if ($canManage)
+                    @if ($canManage && $examples !== [])
                         <p class="text-small text-text-muted">{{ $u('examples') }}</p>
                         <div class="flex flex-wrap justify-center gap-2">
                             @foreach ($examples as $ex)
@@ -127,7 +138,7 @@
                 <section aria-label="{{ $u('tree_card') }}">
                     {{-- tools --}}
                     <div class="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
-                        <span class="text-small font-semibold text-text-strong whitespace-nowrap @max-[56.24rem]:hidden" x-text="{{ $j($u('total')) }}.replace(':n', counts.total)">{{ $u('total', ['n' => $total]) }}</span>
+                        <span class="text-small font-semibold text-text-strong whitespace-nowrap @max-[56.24rem]:hidden" x-text="fill({{ $j($u('total')) }}, { n: counts.total })">{{ $u('total', ['n' => $total]) }}</span>
                         <div class="min-w-48 flex-[1_1_16rem]">
                             <x-bs-admin::search :label="$u('search_label')" :placeholder="$u('search_ph', ['n' => $total])" x-model="q" data-cm-q />
                         </div>
@@ -135,7 +146,7 @@
                             <x-bs-admin::icon name="ri-filter-3" class="size-4" /> <span x-text="fOpen || chip !== 'all' ? {{ $j($u('chips_off')) }} : {{ $j($u('chips')) }}">{{ $u('chips') }}</span>
                         </x-bs-admin::button>
                         <div x-show="fOpen || chip !== 'all'" role="group" aria-label="{{ $u('chips_group') }}" class="flex basis-full flex-wrap gap-2 @min-[56.25rem]:order-none">
-                            <span class="basis-full text-small font-semibold text-text-strong @min-[56.25rem]:hidden" x-text="{{ $j($u('total')) }}.replace(':n', counts.total)">{{ $u('total', ['n' => $total]) }}</span>
+                            <span class="basis-full text-small font-semibold text-text-strong @min-[56.25rem]:hidden" x-text="fill({{ $j($u('total')) }}, { n: counts.total })">{{ $u('total', ['n' => $total]) }}</span>
                             @foreach (array_filter(['all' => ['ri-list-check', $u('chip_all')], 'empty' => ['ri-inbox', $products ? $u('no_products') : $u('no_posts')], 'tr' => $multi ? ['ri-translate-2', $u('chip_tr')] : null]) as $id => [$icon, $text])
                                 <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="chip = '{{ $id }}'" x-bind:aria-pressed="(chip === '{{ $id }}').toString()">
                                     <x-bs-admin::icon :name="$icon" class="size-4" /> {{ $text }}
@@ -161,11 +172,11 @@
                     {{-- the filter's note, or nothing matches --}}
                     <div x-show="filtering && shown > 0" class="flex flex-wrap items-center gap-2 border-b border-border bg-surface-muted px-4 py-2 text-small text-text">
                         <x-bs-admin::icon name="ri-filter-3" class="size-4 shrink-0" />
-                        <span class="min-w-0 flex-1" x-text="{{ $j($u('filter_note')) }}.replace(':shown', shown).replace(':total', counts.total)"></span>
+                        <span class="min-w-0 flex-1" x-text="fill({{ $j($u('filter_note')) }}, { shown, total: counts.total })"></span>
                         <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="clearFilter()"><x-bs-admin::icon name="ri-close" class="size-4" /> {{ $u('clear_filter') }}</x-bs-admin::button>
                     </div>
                     <div x-show="filtering && shown === 0" class="flex flex-col items-center gap-3 px-4 py-6 text-center">
-                        <p class="text-body text-text-muted [overflow-wrap:anywhere]" x-text="q.trim() ? {{ $j($u('no_match')) }}.replace(':q', q.trim()) + (chip !== 'all' ? {{ $j($u('no_match_chip')) }} : '.') : {{ $j($u('no_match_filter')) }}"></p>
+                        <p class="text-body text-text-muted [overflow-wrap:anywhere]" x-text="q.trim() ? fill({{ $j($u('no_match')) }}, { q: q.trim() }) + (chip !== 'all' ? {{ $j($u('no_match_chip')) }} : '.') : {{ $j($u('no_match_filter')) }}"></p>
                         <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="clearFilter()"><x-bs-admin::icon name="ri-close" class="size-4" /> {{ $u('clear_filter') }}</x-bs-admin::button>
                     </div>
 
@@ -178,7 +189,7 @@
                         <span class="w-[calc(13rem+var(--user-text-boost)*8)] shrink-0 text-right">{{ $u('col_act') }}</span>
                     </div>
 
-                    <x-bs-admin::tree host move="treeMove" :label="$u('tree_label', ['section' => $lowerLabel])" :max-depth="$depth" :noun="$u('tree_noun')">
+                    <x-bs-admin::tree host move="treeMove" narrow-step="1.25rem" :label="$u('tree_label', ['section' => $lowerLabel])" :max-depth="$depth" :noun="$u('tree_noun')">
                         @foreach ($rows as $r)
                             @php
                                 $n = $r['node'];
@@ -315,7 +326,7 @@
                 <div class="flex flex-col gap-1.5">
                     <label for="cm-name" class="text-small font-semibold text-text-strong">{{ $u('f_name') }} <span class="text-danger-text" aria-hidden="true">*</span>@if ($multi) <span class="text-caption text-text-muted" x-text="cur.toUpperCase()"></span>@endif</label>
                     <x-bs-admin::input id="cm-name" maxlength="{{ $screen['limits']['name'] }}" aria-required="true" aria-describedby="cm-name-m" x-model="fName"
-                        x-bind:dir="'ltr'" x-on:blur="pan && cur === {{ $j($main) }} && (pan.touched = true)" x-bind:aria-invalid="pan && nameBad ? 'true' : null" placeholder="{{ $u($examples[0]) }}" />
+                        x-bind:dir="'ltr'" x-on:blur="pan && cur === {{ $j($main) }} && (pan.touched = true)" x-bind:aria-invalid="pan && nameBad ? 'true' : null" placeholder="{{ $namePh }}" />
                     <p id="cm-name-m" x-show="pan && nameBad" role="alert" class="text-small text-danger-text">{{ __('categories.reason_name_invalid') }}</p>
                     <p x-show="!(pan && nameBad)" class="text-small text-text-muted">{{ $u('f_name_hint') }}</p>
                 </div>
@@ -323,7 +334,7 @@
                 <div class="flex flex-col gap-1.5">
                     <label for="cm-slug" class="text-small font-semibold text-text-strong">{{ $u('f_slug') }}@if ($multi) <span class="text-caption text-text-muted" x-text="cur.toUpperCase()"></span>@endif</label>
                     <div class="flex min-w-0 items-stretch overflow-hidden rounded border border-border-input bg-surface-muted focus-ring-within">
-                        <span class="flex max-w-[50%] items-center truncate border-r border-border-input px-2 font-mono text-caption text-text-muted" x-text="(@js($bases)[cur] || '')" x-bind:title="(@js($bases)[cur] || '')"></span>
+                        <span class="flex min-w-0 max-w-[50%] items-center border-r border-border-input px-2 font-mono text-caption text-text-muted [overflow-wrap:anywhere]" x-text="(@js($bases)[cur] || '')" x-bind:title="(@js($bases)[cur] || '')"></span>
                         <input id="cm-slug" type="text" dir="ltr" inputmode="url" autocapitalize="off" spellcheck="false" maxlength="{{ $screen['limits']['slug'] }}" placeholder="tin-cong-ty"
                             x-model="fSlug" aria-describedby="cm-slug-m" x-bind:aria-invalid="pan && slugBad ? 'true' : null"
                             class="field min-w-0 flex-1 border-0 bg-transparent px-2 font-mono" />
@@ -344,10 +355,20 @@
                     </template>
                     <template x-if="pan && !isRootNode">
                         <div class="flex flex-col gap-1.5">
-                            <select id="cm-parent" x-model="pan.d.parent" class="field w-full rounded border border-border-input bg-surface-muted px-3">
-                                <template x-for="o in parents" :key="o.key"><option x-bind:value="o.key" x-text="o.label" x-bind:selected="o.key === pan.d.parent"></option></template>
+                            <select id="cm-parent" x-model="pan.d.parent" x-on:change="pan.confirmed = false" class="field w-full rounded border border-border-input bg-surface-muted px-3">
+                                <template x-for="g in parentGroups" :key="g.label">
+                                    <optgroup x-bind:label="g.label">
+                                        <template x-for="o in g.options" :key="o.key"><option x-bind:value="o.key" x-text="o.label" x-bind:disabled="o.off" x-bind:selected="o.key === pan.d.parent"></option></template>
+                                    </optgroup>
+                                </template>
                             </select>
                             <p class="text-small text-text-muted">{{ $u('parent_hint', ['n' => $depth]) }}</p>
+                            <template x-if="panCx">
+                                <x-bs-admin::alert color="warning">
+                                    <span role="alert"><b>{{ $u('on_save') }}</b>
+                                        <ul class="ms-4 list-disc"><template x-for="ln in panCxLines"><li x-text="ln"></li></template></ul></span>
+                                </x-bs-admin::alert>
+                            </template>
                         </div>
                     </template>
                 </div>
@@ -363,6 +384,7 @@
                             <label for="cm-{{ $field }}" class="text-small font-semibold text-text-strong">{{ $text }}</label>
                             <select id="cm-{{ $field }}" x-model="pan.d.{{ $field }}" class="field w-full rounded border border-border-input bg-surface-muted px-3">
                                 <option value="">{{ $u('tpl_default_opt') }}</option>
+                                <template x-if="goneTpl('{{ $field }}')"><option x-bind:value="goneTpl('{{ $field }}')" x-bind:selected="pan.d.{{ $field }} === goneTpl('{{ $field }}')" x-text="fill({{ $j($u('tpl_gone')) }}, { name: goneTpl('{{ $field }}') })"></option></template>
                                 @foreach ($layouts as $layout)
                                     <option value="{{ $layout }}">{{ $layoutName($layout) }}</option>
                                 @endforeach
@@ -392,14 +414,14 @@
                 <x-bs-admin::button variant="outline" color="secondary" x-on:click="panClose()">{{ __('admin.cancel') }}</x-bs-admin::button>
                 <span x-show="pan && pan.mode === 'add'"><x-bs-admin::button variant="outline" color="secondary" x-on:click="save(true)" x-bind:aria-disabled="pan && pan.saving ? 'true' : null"><x-bs-admin::icon name="ri-add" class="size-4" /> {{ $u('save_new') }}</x-bs-admin::button></span>
                 <x-bs-admin::button x-on:click="save()" x-bind:aria-disabled="pan && pan.saving ? 'true' : null">
-                    <x-bs-admin::icon name="ri-save-3" class="size-4" /> <span x-text="pan && pan.saving ? {{ $j($u('saving')) }} : {{ $j($u('save')) }}">{{ $u('save') }}</span>
+                    <x-bs-admin::icon name="ri-save-3" class="size-4" /> <span x-text="pan && pan.saving ? {{ $j($u('saving')) }} : (pan ? saveText : {{ $j($u('save')) }})">{{ $u('save') }}</span>
                 </x-bs-admin::button>
             </x-slot:footer>
         </x-bs-admin::drawer>
 
         {{-- "Chuyển đến…" --}}
         <x-bs-admin::modal state="mv" close="mvClose()">
-            <x-slot:heading><span x-text="mv ? {{ $j($u('mv_title')) }}.replace(':name', mv.name) : ''"></span></x-slot:heading>
+            <x-slot:heading><span x-text="mv ? fill({{ $j($u('mv_title')) }}, { name: mv.name }) : ''"></span></x-slot:heading>
             <div class="flex flex-col gap-3">
                 <x-bs-admin::search :label="$u('mv_search')" :placeholder="$u('ex_n2')" id="cm-mv-q" x-bind:value="mv ? mv.q : ''" x-on:input="if (mv) { mv.q = $event.target.value; mvQuery(); }" />
                 <p class="text-small text-text-muted">{{ $u('mv_hint', ['n' => $depth]) }}</p>
@@ -412,12 +434,12 @@
                                 <label class="flex min-h-hit cursor-pointer items-start gap-3 rounded border border-border px-3 py-2 has-[:checked]:border-primary-text has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-70"
                                     x-bind:style="'padding-left:' + (12 + Math.max(0, o.level - 1) * 16) + 'px'">
                                     <input type="radio" name="cm-mv" class="mt-1" x-bind:disabled="!o.ok" x-bind:checked="mv.to && mv.to.key === o.key" x-on:change="mvPick(o, g)" />
-                                    <span class="flex min-w-0 flex-col"><span class="font-semibold text-text-strong [overflow-wrap:anywhere]" x-text="o.key === null ? {{ $j($u('mv_top')) }} : (o.root ? {{ $j($u('mv_under')) }}.replace(':section', g.label) : o.name)"></span><span class="text-small text-text-muted" x-text="mvSub(o)"></span></span>
+                                    <span class="flex min-w-0 flex-col"><span class="font-semibold text-text-strong [overflow-wrap:anywhere]" x-text="o.key === null ? {{ $j($u('mv_top')) }} : (o.root ? fill({{ $j($u('mv_under')) }}, { section: g.label }) : o.name)"></span><span class="text-small text-text-muted" x-text="mvSub(o)"></span></span>
                                 </label>
                             </template>
                         </div>
                     </template>
-                    <p x-show="mv && mv.groups && !mv.groups.some((g) => g.options.length)" class="text-small text-text-muted" x-text="mv ? {{ $j($u('mv_none')) }}.replace(':q', mv.q) : ''"></p>
+                    <p x-show="mv && mv.groups && !mv.groups.some((g) => g.options.length)" class="text-small text-text-muted" x-text="mv ? fill({{ $j($u('mv_none')) }}, { q: mv.q }) : ''"></p>
                 </div>
                 <template x-if="mv && mv.err"><x-bs-admin::alert color="danger"><span role="alert" x-text="mv.err"></span></x-bs-admin::alert></template>
             </div>
@@ -435,41 +457,41 @@
                         <p x-text="delLead"></p>
                         <template x-if="!del.merge && del.p && del.p.children > 0">
                             <fieldset class="flex flex-col gap-2 rounded border border-border p-3">
-                                <legend class="px-1 text-small font-semibold text-text-strong" x-text="{{ $j($u('n_kids')) }}.replace(':n', del.p.children)"></legend>
-                                <label class="flex min-h-hit items-start gap-3"><input type="radio" name="cm-dk" class="mt-1" x-bind:checked="del.children === 'lift'" x-on:change="delPick('children', 'lift')" /><span>{{ $u('kids_up') }}<span class="block text-small text-text-muted" x-text="{{ $j($u('kids_up_sub')) }}.replace(':parent', del.parentName ? '&quot;' + del.parentName + '&quot;' : {{ $j($u('outer')) }}).replace(':noun', {{ $j($products ? $u('noun_products_cap') : $u('noun_posts_cap')) }})"></span></span></label>
-                                <label class="flex min-h-hit items-start gap-3"><input type="radio" name="cm-dk" class="mt-1" x-bind:checked="del.children === 'delete'" x-on:change="delPick('children', 'delete')" /><span>{{ $u('kids_del') }}<span class="block text-small text-text-muted" x-text="{{ $j($u('kids_del_sub')) }}.replace(':n', Math.max(0, branch(del.k).length - 1)).replace(':noun', {{ $j($noun) }})"></span></span></label>
+                                <legend class="px-1 text-small font-semibold text-text-strong" x-text="fill({{ $j($u('n_kids')) }}, { n: del.p.children })"></legend>
+                                <label class="flex min-h-hit items-start gap-3"><input type="radio" name="cm-dk" class="mt-1" x-bind:checked="del.children === 'lift'" x-on:change="delPick('children', 'lift')" /><span>{{ $u('kids_up') }}<span class="block text-small text-text-muted" x-text="fill({{ $j($u('kids_up_sub')) }}, { parent: del.parentName ? '&quot;' + del.parentName + '&quot;' : {{ $j($u('outer')) }}, noun: {{ $j($products ? $u('noun_products_cap') : $u('noun_posts_cap')) }} })"></span></span></label>
+                                <label class="flex min-h-hit items-start gap-3"><input type="radio" name="cm-dk" class="mt-1" x-bind:checked="del.children === 'delete'" x-on:change="delPick('children', 'delete')" /><span>{{ $u('kids_del') }}<span class="block text-small text-text-muted" x-text="fill({{ $j($u('kids_del_sub')) }}, { n: Math.max(0, branch(del.k).length - 1), noun: {{ $j($noun) }} })"></span></span></label>
                             </fieldset>
                         </template>
                         <template x-if="del.p && (del.p.items > 0 || del.merge)">
                             <fieldset class="flex flex-col gap-2 rounded border border-border p-3">
                                 <legend class="px-1 text-small font-semibold text-text-strong" x-text="del.merge ? {{ $j($u('merge_into')) }} : del.p.items + ' ' + {{ $j($noun) }} + {{ $j(' '.$u('attached')) }}"></legend>
-                                <label class="flex min-h-hit items-start gap-3"><input type="radio" name="cm-di" class="mt-1" x-bind:checked="delMove" x-on:change="delPick('items', 'reassign')" /><span>{{ $u('items_move') }}<span class="block text-small text-text-muted" x-text="del.merge ? {{ $j($u('items_move_merge')) }}.replace(':name', del.name) : {{ $j($u('items_move_sub')) }}"></span></span></label>
+                                <label class="flex min-h-hit items-start gap-3"><input type="radio" name="cm-di" class="mt-1" x-bind:checked="delMove" x-on:change="delPick('items', 'reassign')" /><span>{{ $u('items_move') }}<span class="block text-small text-text-muted" x-text="del.merge ? fill({{ $j($u('items_move_merge')) }}, { name: del.name }) : {{ $j($u('items_move_sub')) }}"></span></span></label>
                                 <div x-show="delMove" class="ps-7">
                                     <select id="cm-dt" x-model="del.target" x-on:change="delLoad()" aria-label="{{ $u('items_move') }}" class="field w-full rounded border border-border-input bg-surface-muted px-3">
                                         <option value="">{{ $u('pick_cat') }}</option>
                                         <template x-for="g in del.p.targets" :key="g.section || 'top'">
                                             <optgroup x-bind:label="g.label">
                                                 <template x-for="o in g.options" :key="o.key"><option x-bind:value="o.key" x-bind:disabled="!o.ok" x-bind:selected="o.key === del.target"
-                                                    x-text="(o.root ? {{ $j($u('mv_under')) }}.replace(':section', g.label) : '  '.repeat(Math.max(0, o.level - 1)) + (o.level > 1 ? '└ ' : '') + o.name) + (o.ok ? '' : ' — ' + {{ $j($u('locked_opt')) }})"></option></template>
+                                                    x-text="(o.root ? fill({{ $j($u('mv_under')) }}, { section: g.label }) : '  '.repeat(Math.max(0, o.level - 1)) + (o.level > 1 ? '└ ' : '') + o.name) + (o.ok ? '' : ' — ' + {{ $j($u('locked_opt')) }})"></option></template>
                                             </optgroup>
                                         </template>
                                     </select>
                                 </div>
                                 <template x-if="!del.merge">
                                     <label class="flex min-h-hit items-start gap-3" x-bind:class="del.p.governed || del.p.limitedMembers.length ? 'opacity-70' : ''"><input type="radio" name="cm-di" class="mt-1" x-bind:checked="!delMove" x-bind:disabled="del.p.governed || del.p.limitedMembers.length > 0" x-on:change="delPick('items', 'detach')" /><span>{{ $u('items_detach') }}<span class="block text-small text-text-muted"
-                                        x-text="del.p.limitedMembers.length ? {{ $j($u('detach_scoped')) }}.replace(':n', del.p.limitedMembers.length) : del.p.governed ? {{ $j($u('detach_gov', ['section' => $label])) }} : {{ $j($products ? $u('detach_sub_products') : $u('detach_sub_posts')) }}"></span></span></label>
+                                        x-text="del.p.limitedMembers.length ? fill({{ $j($u('detach_scoped')) }}, { n: del.p.limitedMembers.length }) : del.p.governed ? {{ $j($u('detach_gov', ['section' => $label])) }} : {{ $j($products ? $u('detach_sub_products') : $u('detach_sub_posts')) }}"></span></span></label>
                                 </template>
                                 <p x-show="del.p.governed" role="note" class="text-small text-text-muted">{{ __('categories.reason_workflow_governed') }}</p>
                             </fieldset>
                         </template>
                         <template x-if="del.p && del.p.limitedMembers.length">
-                            <p role="note" class="text-small text-text-muted" x-text="del.target ? {{ $j($u('scope_follow')) }}.replace(':n', del.p.limitedMembers.length).replace(':name', delTargetName) : {{ $j($u('scope_pick')) }}.replace(':n', del.p.limitedMembers.length)"></p>
+                            <p role="note" class="text-small text-text-muted" x-text="del.target ? fill({{ $j($u('scope_follow')) }}, { n: del.p.limitedMembers.length, name: delTargetName }) : fill({{ $j($u('scope_pick')) }}, { n: del.p.limitedMembers.length })"></p>
                         </template>
                         <template x-if="del.merge && del.p && del.p.children > 0">
-                            <x-bs-admin::alert color="info"><span x-text="{{ $j($u('merge_kids')) }}.replace(':n', del.p.children).replace(':parent', del.parentName ? {{ $j($u('under_q')) }}.replace(':name', del.parentName) : {{ $j($u('outer')) }}).replace(':name', delTargetName || '…')"></span></x-bs-admin::alert>
+                            <x-bs-admin::alert color="info"><span x-text="fill({{ $j($u('merge_kids')) }}, { n: del.p.children, parent: del.parentName ? fill({{ $j($u('under_q')) }}, { name: del.parentName }) : {{ $j($u('outer')) }}, name: delTargetName || '…' })"></span></x-bs-admin::alert>
                         </template>
                         <template x-if="del.p && del.p.sectionChange">
-                            <x-bs-admin::alert color="warning"><span role="alert" x-text="{{ $j($u('cx_leave_line')) }}.replace(':n', del.p.leavingItems).replace(':from', {{ $j($label) }})"></span></x-bs-admin::alert>
+                            <x-bs-admin::alert color="warning"><span role="alert" x-text="fill({{ $j($u('cx_leave_line')) }}, { n: del.p.leavingItems, from: {{ $j($label) }} })"></span></x-bs-admin::alert>
                         </template>
                         <x-bs-admin::alert color="info">
                             <b>{{ $u('after') }}</b>

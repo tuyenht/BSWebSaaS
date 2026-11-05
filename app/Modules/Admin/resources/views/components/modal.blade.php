@@ -77,7 +77,7 @@
             </div>
         </div>
     @else
-        <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div x-show="open" x-cloak class="fixed inset-0 z-90 flex items-center justify-center p-4">
             <div x-show="open" x-transition.opacity @click="hide()" class="absolute inset-0 bg-gray-900/50"></div>
 
             <div x-show="open" x-transition

@@ -509,6 +509,13 @@
     display: none !important;
 }
 
+/* A screen part that loads later (admin-lazy.js) and so runs no Alpine until it starts: its
+   waiting block shows until then, its error block ("Thử lại") only once the download was lost. */
+[data-bs-lazy]:not([data-bs-lazy-failed]) [data-bs-lazy-error],
+[data-bs-lazy][data-bs-lazy-failed] [data-bs-lazy-wait] {
+    display: none !important;
+}
+
 /* Keyboard focus — one indicator for every control in the admin shells: the focus-ring tokens
    (admin-chrome.css) as a 2px outline 2px off the element, >= 3:1 on the page, the card and, via
    the zone re-point, the sidebar. In the base layer on purpose: a component that draws its own

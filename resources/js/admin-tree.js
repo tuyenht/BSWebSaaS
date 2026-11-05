@@ -91,9 +91,11 @@ document.addEventListener('alpine:init', () => {
                 }
             },
 
-            // A method of the enclosing Alpine component (a local tree), called in that component's scope.
+            // A method of the enclosing Alpine component (a local or hosted tree), called on that
+            // component's data so its answer comes back as it is — a hosted move's promise included
+            // (Alpine.evaluate hands back only a value that is there at once, so an async answer was lost).
             host(name, params = []) {
-                return window.Alpine.evaluate(this.$root.parentElement, name, { params });
+                return window.Alpine.$data(this.$root.parentElement)[name](...params);
             },
             depthLimit() {
                 return Number(this.$root.dataset.maxDepth) || cfg.maxDepth;

@@ -360,7 +360,9 @@ final class Index extends Component
             'layouts' => $this->layouts(),
             'role' => is_string($role) && $role !== '' ? Str::headline($role) : null,
             'limitNames' => $limits === null ? null : $this->namesOf($limits, $main),
-            'listUrl' => $found !== null && $found['root'] === null ? route('admin.catalog.index') : route('admin.entries.index'),
+            'listUrl' => $found !== null && $found['root'] === null ? route('admin.catalog.index') : route('admin.entries.index', $found !== null ? ['section' => $found['key']] : []),
+            // "Liên hệ hỗ trợ" on the locked state: the platform's support mailbox
+            'supportMail' => $state === 'locked' ? (Cast::string(config('support.mailbox')) ?: Cast::string(config('mail.from.address'))) : '',
             'canManage' => Gate::allows('manage', Taxonomy::class),
         ]);
     }

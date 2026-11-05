@@ -6,6 +6,7 @@
 // copy-link dialog and the message with its "Hoàn tác". A call resolves after the server's redraw,
 // so the rows are read again from the page after each one. Names, paths and descriptions are only
 // ever shown as text.
+import { guardLeave } from './admin-leave.js';
 import { fill, makeHistory } from './admin-tree-dnd.js';
 
 // Lower case without Vietnamese marks, one character per character of an NFC text (so a position in
@@ -23,7 +24,9 @@ window.Alpine.data('bsCategories', (cfg) => {
     const history = makeHistory({ max: 20 }); // the server's undo tokens, newest last
     let cache = null; // the rows' categories, read again after each redraw
     let actRun = null; // what the message's extra button does
-    let timer = null;
+    let searchTimer = null; // the server's search, a moment after the typing stops
+    let mvTimer = null; // "Chuyển đến…"'s search, the same way
+    let offLeave = null;
     let askRun = null;
     let askAlt = null;
 
@@ -45,8 +48,28 @@ window.Alpine.data('bsCategories', (cfg) => {
         init() {
             this.$watch('q', () => this.search());
             this.$watch('chip', () => this.applyFilter());
-            this.$el.addEventListener('category-cover-picked', (e) => this.coverPicked(e.detail));
-            window.addEventListener('category-cover-picked', (e) => this.coverPicked(e.detail));
+            // unsaved work in the drawer: closing the tab asks the browser's question, a link inside
+            // the admin asks the screen's own (leave without saving, or save)
+            offLeave = guardLeave({ dirty: () => this.panDirty, ask: (go) => this.askUnsaved(go) });
+        },
+        destroy() {
+            clearTimeout(searchTimer);
+            clearTimeout(mvTimer);
+            if (offLeave) {
+                offLeave();
+            }
+        },
+
+        // A sentence with its :names filled in, for the markup (one pass: a name or a search that
+        // holds "$&" or ":name" stays as typed).
+        fill(text, values) {
+            return fill(text, values);
+        },
+        // The template a category keeps that the theme no longer has (shown as its own choice in
+        // the drawer, so it can be seen and cleared), or null.
+        goneTpl(field) {
+            const v = this.pan && this.pan.node ? this.pan.node[field] : null;
+            return v && !(cfg.layouts || []).includes(v) ? v : null;
         },
 
         // ---- the rows as the server drew them ---------------------------------------------------
@@ -146,7 +169,7 @@ window.Alpine.data('bsCategories', (cfg) => {
             return this.all().filter((n) => fold([...Object.values(n.names), ...Object.values(n.slugs), ...n.trail].join('\n')).includes(needle)).map((n) => n.key);
         },
         search() {
-            clearTimeout(timer);
+            clearTimeout(searchTimer);
             const q = this.q.trim();
             this.hits = q ? this.localHits(q) : null;
             this.applyFilter();
@@ -154,7 +177,7 @@ window.Alpine.data('bsCategories', (cfg) => {
                 return;
             }
             // the server also matches the names of the parents in every language
-            timer = setTimeout(async () => {
+            searchTimer = setTimeout(async () => {
                 try {
                     const r = await this.$wire.search(cfg.section, q);
                     if (r.ok && q === this.q.trim()) {
@@ -343,8 +366,8 @@ window.Alpine.data('bsCategories', (cfg) => {
             }
         },
         mvQuery() {
-            clearTimeout(timer);
-            timer = setTimeout(() => this.mvLoad(), 250);
+            clearTimeout(mvTimer);
+            mvTimer = setTimeout(() => this.mvLoad(), 250);
         },
         mvPick(o, g) {
             if (o.ok) {
@@ -646,6 +669,7 @@ window.Alpine.data('bsCategories', (cfg) => {
             this.pullSeo();
             this.pan.base = JSON.stringify(this.pan.d);
             this.$nextTick(() => document.getElementById('cm-name')?.focus());
+            this.parentsLoad();
         },
         get panTitle() {
             const P = this.pan;
@@ -757,7 +781,61 @@ window.Alpine.data('bsCategories', (cfg) => {
         get isRootNode() {
             return !!(this.pan && this.pan.node && this.pan.node.locked);
         },
-        // Where the category may go: every place in this section with room for its branch.
+        // The parent choices of a saved category: every place it may go, grouped by section, as the
+        // server reads them ("Chuyển đến…"'s list). Until they come (or offline) the places in
+        // this section stay; a new category always starts in this section.
+        async parentsLoad() {
+            const P = this.pan;
+            if (!P || P.mode !== 'edit' || this.isRootNode) {
+                return;
+            }
+            try {
+                const r = await this.$wire.moveTargets(cfg.section, P.key, '');
+                if (this.pan === P && r.ok) {
+                    P.tgtItems = r.items;
+                    P.tgt = r.groups;
+                }
+            } catch {
+                // offline: the places in this section stay
+            }
+        },
+        get parentGroups() {
+            const P = this.pan;
+            if (P.tgt) {
+                return P.tgt.map((g) => ({
+                    label: g.label,
+                    options: g.options.filter((o) => o.reason !== 'depth_exceeded').map((o) => {
+                        const off = !o.ok && !o.current;
+                        const label = o.key === null ? t.outerOpt : o.root ? fill(t.mvUnder, { section: g.label }) : '  '.repeat(Math.max(0, o.level - 1)) + (o.level > 1 ? '└ ' : '') + o.name;
+                        return { key: o.key === null ? '' : o.key, label: label + (off ? ' — ' + t.lockedOpt : ''), off, confirm: !!o.confirm, section: g.label };
+                    }),
+                })).filter((g) => g.options.length);
+            }
+            return [{ label: cfg.label, options: this.parents }];
+        },
+        // The parent picked moves the category's posts to another section: what Save will do.
+        get panCx() {
+            const P = this.pan;
+            if (!P || !P.tgt || !P.tgtItems || (P.d.parent || '') === (P.node.parent || '')) {
+                return null;
+            }
+            for (const g of P.tgt) {
+                const o = g.options.find((x) => (x.key === null ? '' : x.key) === (P.d.parent || ''));
+                if (o) {
+                    return o.confirm ? { n: P.tgtItems, section: g.label } : null;
+                }
+            }
+            return null;
+        },
+        get panCxLines() {
+            const c = this.panCx;
+            return c ? [fill(t.cxLine, { n: c.n, from: cfg.label, section: c.section })] : [];
+        },
+        get saveText() {
+            const c = this.panCx;
+            return c ? fill(t.saveMove, { n: c.n }) : t.save;
+        },
+        // Where the category may go in this section: every place with room for its branch.
         get parents() {
             void this.ver;
             const P = this.pan;
@@ -784,12 +862,17 @@ window.Alpine.data('bsCategories', (cfg) => {
                 return;
             }
             if (this.panDirty) {
-                this.askOpen({ title: t.unsavedTitle, lead: t.unsavedText, ok: t.unsavedDrop, alt: t.unsavedSave, danger: true }, () => {
-                    this.pan = null;
-                }, () => this.save());
+                this.askUnsaved(() => {});
                 return;
             }
             this.pan = null;
+        },
+        // The unsaved-changes question: leave the drawer without saving (then go()), or save.
+        askUnsaved(go) {
+            this.askOpen({ title: t.unsavedTitle, lead: t.unsavedText, ok: t.unsavedDrop, alt: t.unsavedSave, danger: true }, () => {
+                this.pan = null;
+                go();
+            }, () => this.save());
         },
         pickCover() {
             this.$wire.openImagePicker('gallery');
@@ -816,6 +899,15 @@ window.Alpine.data('bsCategories', (cfg) => {
                 P.lang = cfg.main;
                 this.pushSeo();
                 this.$nextTick(() => document.getElementById('cm-name')?.focus());
+                return;
+            }
+            const cx = P.mode === 'edit' ? this.panCx : null;
+            if (cx && !P.confirmed) {
+                // the posts change section: say so and ask first, as "Chuyển đến…" does
+                this.askOpen({ title: fill(t.cxSaveTitle, { section: cx.section }), lead: t.onSave, lines: this.panCxLines, ok: fill(t.saveMove, { n: cx.n }) }, () => {
+                    P.confirmed = true;
+                    this.save(again);
+                });
                 return;
             }
             const langs = cfg.locales.filter((c) => (d.names[c] || '').trim());
@@ -849,7 +941,7 @@ window.Alpine.data('bsCategories', (cfg) => {
                 const pos = this.kidsOf(d.parent || null).filter((c) => c.key !== P.key).length;
                 this.pan = null;
                 await this.$nextTick();
-                const moved = await this.doMove(P.key, d.parent || null, pos, false);
+                const moved = await this.doMove(P.key, d.parent || null, pos, !!P.confirmed);
                 if (moved === null) {
                     this.say(fill(t.saved, { name }), 'success', { undo: true });
                 }

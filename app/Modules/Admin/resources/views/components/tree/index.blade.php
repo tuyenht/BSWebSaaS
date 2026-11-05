@@ -5,11 +5,13 @@
     'noun' => null,
     'local' => false,
     'host' => false,
+    'narrowStep' => null,
 ])
 @php
     // The shared admin tree (stylesheet resources/css/admin-tree.css, behaviour resources/js/admin-tree.js):
     // a treegrid of <x-bs-admin::tree.row> drawn by the server from App\Modules\Admin\Support\TreeRows,
-    // with guide lines (├ └ │) in the indent, 32px per level, 24 when the tree is narrower than 600.
+    // with guide lines (├ └ │) in the indent, 32px per level, 24 when the tree is narrower than 600 —
+    // or `narrow-step` there (a CSS length, a fixed value from the screen's design, never input).
     // `move` names the screen's Livewire method that moves one record — (key, parent key or null,
     // position among the parent's other children) → null when done, or the reason it refuses —
     // and turns on dragging and the keyboard moves. Without `move` the tree is a still picture
@@ -72,7 +74,7 @@
 @endphp
 <div {{ $attributes->merge(['class' => 'tree-w']) }}
     @unless ($frozen) x-data="bsTree(@js($config))" x-on:keydown="keydown($event)" x-bind:data-flat="only ? '1' : null" @endunless>
-    <div role="treegrid" aria-label="{{ $label }}" class="tree"
+    <div role="treegrid" aria-label="{{ $label }}" class="tree" @if ($narrowStep !== null) style="--tree-step-narrow: {{ $narrowStep }}" @endif
         @unless ($frozen) x-ref="grid" x-bind:data-busy="busy ? '1' : null" x-on:focusin="focused($event)"
             x-on:dragstart="dragStart($event)" x-on:dragover="dragOver($event)" x-on:drop.prevent="dragDone()" x-on:dragend="dragCancel()" @endunless>
         {{ $slot }}

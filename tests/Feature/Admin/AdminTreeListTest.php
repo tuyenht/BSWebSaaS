@@ -184,13 +184,13 @@ it('lists the keyboard moves under "Phím tắt"', function (): void {
         ->and($html)->toContain('<kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd></dt><dd>Làm lại lần vừa hoàn tác</dd>');
 });
 
-it('sizes the tree from the shared tokens, 32 per level and 24 when narrow, never a hard 40 or 44', function (): void {
+it('sizes the tree from the shared tokens, 32 per level and 24 when narrow (unless the screen sets its own narrow step), never a hard 40 or 44', function (): void {
     $css = treeCss();
 
     expect($css)->toContain('--tree-tg: var(--spacing-control);')
         ->and($css)->toContain('--tree-tg: var(--spacing-hit);')
         ->and($css)->toContain('--tree-step: 32px;')
-        ->and($css)->toMatch('/@container tree \(max-width: 37\.4375rem\) \{\s*\.tree \{\s*--tree-step: 24px;/')
+        ->and($css)->toMatch('/@container tree \(max-width: 37\.4375rem\) \{\s*\.tree \{\s*--tree-step: var\(--tree-step-narrow, 24px\);/')
         ->and($css)->not->toMatch('/\b4[04]px\b/')
         ->and($css)->not->toContain('text-overflow: ellipsis');
 });
