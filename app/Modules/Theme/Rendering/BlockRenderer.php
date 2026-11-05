@@ -3,6 +3,8 @@
 namespace App\Modules\Theme\Rendering;
 
 use App\Modules\Media\Services\MediaLibraryUrls;
+use App\Modules\Shared\Contracts\PageLinks;
+use App\Modules\Theme\Components\ButtonLink;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SchemaHtml;
 use App\Modules\Theme\Components\SchemaImages;
@@ -24,7 +26,10 @@ use Illuminate\Contracts\View\Factory as ViewFactory;
  * pictures inside formatted text (`html` props, `img[data-media-id]`) join the same lookup, and
  * each html prop is then prepared for printing by RichHtml (pictures, video façades). Video props
  * (the hero's background video) are media ids too and join the same lookup; each resolves to its
- * file's source, or to nothing when it is not a video of this site.
+ * file's source, or to nothing when it is not a video of this site. Button links (ButtonLink) that
+ * open a page or a library file are resolved the same way: every page ulid and file key on the page,
+ * then one lookup each (none when the page has no such button), and each button gets its current
+ * address or none.
  */
 final readonly class BlockRenderer
 {
@@ -48,6 +53,7 @@ final readonly class BlockRenderer
         private MediaLibraryUrls $mediaUrls,
         private RichHtml $richHtml,
         private ThemeResolver $theme,
+        private PageLinks $pageLinks,
     ) {}
 
     public function allows(string $type): bool
@@ -162,6 +168,8 @@ final readonly class BlockRenderer
 
         // Pass 1 — collect every media_id an image prop references across the whole page.
         $ids = [];
+        $pageRefs = [];
+        $fileRefs = [];
         foreach ($blocks as $block) {
             if (! is_array($block)) {
                 continue;
@@ -179,7 +187,12 @@ final readonly class BlockRenderer
             foreach (SchemaHtml::values($props, $schema) as $html) {
                 $ids = array_merge($ids, RichHtml::imageIds($html));
             }
+            $refs = ButtonLink::refs($props, $schema);
+            $pageRefs = array_merge($pageRefs, $refs['pages']);
+            $fileRefs = array_merge($fileRefs, $refs['files']);
         }
+        $pages = $this->pageLinks->paths(array_values(array_unique($pageRefs)), app()->getLocale());
+        $files = $this->mediaUrls->fileUrls(array_values(array_unique($fileRefs)), ButtonLink::DOCUMENT_MIMES);
 
         // One batched lookup for the whole page (site-scoped; unknown ids simply resolve to nothing).
         // The same rows give each URL its srcset (server-built from storage keys, never from props) and
@@ -207,7 +220,7 @@ final readonly class BlockRenderer
             $schema = $this->registry->schemaFor($type);
             /** @var array<string, mixed> $resolved */
             $resolved = SchemaHtml::map(
-                SchemaImages::replaceVideos(SchemaImages::replace($props, $schema, $urls), $schema, $videos),
+                ButtonLink::resolve(SchemaImages::replaceVideos(SchemaImages::replace($props, $schema, $urls), $schema, $videos), $schema, $pages, $files),
                 $schema,
                 fn (string $html): string => $this->richHtml->render($html, $urls, $srcsets, $alts, $dims)['html'],
             );

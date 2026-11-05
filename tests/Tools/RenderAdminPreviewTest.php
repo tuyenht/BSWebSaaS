@@ -143,11 +143,14 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     }
 
     // The page editor with blocks carrying looks, so the "Trình bày" panel under each block shows its
-    // chosen, joined and split states.
+    // chosen, joined and split states; its buttons show "Khi bấm nút" with an older address sorted
+    // into a kind, a new button searching for its page, an unsafe link's problem and a call.
     $page = app(Tenancy::class)->enter(1, function () use ($owner): Entry {
         $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $owner->id]);
         $entry->translations()->create(['locale' => 'vi', 'title' => 'Dịch vụ', 'slug' => 'dich-vu', 'status' => 'draft', 'body' => ['blocks' => [
-            ['type' => 'hero', 'props' => ['heading' => 'Gia công cơ khí chính xác', 'motion' => 'fade']],
+            ['type' => 'hero', 'props' => ['heading' => 'Gia công cơ khí chính xác', 'motion' => 'fade', 'cta_label' => 'Nhận báo giá', 'cta_url' => '#nang-luc', 'cta2_label' => 'Xem dịch vụ']],
+            ['type' => 'cta', 'props' => ['heading' => 'Liên hệ', 'button_label' => 'Gửi yêu cầu', 'button_url_do' => ['k' => 'url', 'url' => 'javascript:alert(1)', 'blank' => true]]],
+            ['type' => 'quick_links', 'props' => ['items' => [['icon' => 'phone', 'label' => 'Gọi ngay', 'url_do' => ['k' => 'tel', 'phone' => '0915 668 383']]]]],
             ['type' => 'richtext', 'props' => ['heading' => 'Năng lực', 'scheme' => 'brand', 'bg' => 'scheme', 'spacing_top' => 'l', 'spacing_bottom' => 'l', 'corner' => 'soft', 'anchor_id' => 'nang-luc']],
             ['type' => 'richtext', 'props' => ['heading' => 'Quy trình', 'scheme' => 'brand', 'bg' => 'scheme', 'spacing_top' => 's', 'spacing_bottom' => 'xl', 'motion' => 'rise']],
         ]]]);

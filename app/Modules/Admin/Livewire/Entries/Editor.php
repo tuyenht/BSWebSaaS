@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire\Entries;
 
+use App\Modules\Admin\Livewire\Concerns\EditsButtonActions;
 use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Actions\PublishEntry;
@@ -74,6 +75,7 @@ use Livewire\Component;
 final class Editor extends Component
 {
     use AuthorizesRequests;
+    use EditsButtonActions;
 
     /** How many trail rows the block shows before "Xem thêm" (design: 3, +3 per load). */
     private const int TRAIL_PAGE = 3;
@@ -918,8 +920,11 @@ final class Editor extends Component
         $urls = app(MediaUrlResolver::class);
         $schemas = $this->schemas();
         $workflow = $this->governingWorkflow();
+        $buttonPanel = $this->buttonPanel($schemas);
 
         return view('admin::livewire.entries.editor', [
+            'buttons' => $buttonPanel['buttons'],
+            'buttonPanel' => $buttonPanel,
             'availableTypes' => app(ComponentRegistry::class)->listedTypes(),
             'schemas' => $schemas,
             'categories' => $this->type === 'post' ? $this->availableCategories() : [],

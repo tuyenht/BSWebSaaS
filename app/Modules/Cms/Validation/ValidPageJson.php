@@ -2,7 +2,10 @@
 
 namespace App\Modules\Cms\Validation;
 
+use App\Modules\Cms\Models\Entry;
+use App\Modules\Media\Models\Media;
 use App\Modules\Shared\Support\VideoEmbed;
+use App\Modules\Theme\Components\ButtonLink;
 use App\Modules\Theme\Components\ComponentRegistry;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -18,7 +21,10 @@ use Illuminate\Contracts\Validation\ValidationRule;
  * (no javascript:/data:/vbscript: — stored-XSS guard, since url props render into href/src).
  * URL-safety is SCHEMA-DRIVEN (by declared type, not prop name), so it cannot drift from the
  * sinks. A url prop the schema marks `video` must also be a YouTube/Vimeo address VideoEmbed
- * recognises. The body is also capped in count + size (storefront DoS / CWV guard).
+ * recognises. The body is also capped in count + size (storefront DoS / CWV guard). A url prop the
+ * schema marks `action` is a button link: its typed value (`<prop>_do`, ButtonLink) must be well
+ * formed, an older plain address in it may not point at another host (`//`, `/\`), and the pages and
+ * library files the body's buttons name must be this site's (one query each, only when named).
  */
 final readonly class ValidPageJson implements ValidationRule
 {
@@ -137,6 +143,44 @@ final readonly class ValidPageJson implements ValidationRule
                 return;
             }
         }
+
+        $missing = $this->missingButtonTarget($value);
+        if ($missing !== null) {
+            $fail($missing);
+        }
+    }
+
+    /**
+     * The message for a button that names a page or a library file this site does not have (another
+     * site's, or one deleted for good), or null. The Trash counts as kept: a restored page or file
+     * works again. Documents only for a file. Site-scoped queries (BelongsToSite + RLS).
+     *
+     * @param  array<array-key, mixed>  $blocks
+     */
+    private function missingButtonTarget(array $blocks): ?string
+    {
+        $pages = [];
+        $files = [];
+        foreach ($blocks as $block) {
+            $type = is_array($block) ? ($block['type'] ?? null) : null;
+            if (! is_string($type) || ! is_array($block['props'] ?? null)) {
+                continue;
+            }
+            $refs = ButtonLink::refs($block['props'], $this->registry->schemaFor($type));
+            $pages = array_merge($pages, $refs['pages']);
+            $files = array_merge($files, $refs['files']);
+        }
+        $pages = array_values(array_unique($pages));
+        $files = array_values(array_unique($files));
+
+        if ($pages !== [] && Entry::withTrashed()->whereIn('ulid', $pages)->count() < count($pages)) {
+            return __('entries.err_block_button_page_missing');
+        }
+        if ($files !== [] && Media::withTrashed()->whereIn('storage_key', $files)->whereIn('mime', ButtonLink::DOCUMENT_MIMES)->count() < count($files)) {
+            return __('entries.err_block_button_file_missing');
+        }
+
+        return null;
     }
 
     /**
@@ -157,9 +201,28 @@ final readonly class ValidPageJson implements ValidationRule
             if (! $this->valueSafeForSpec($value, $spec)) {
                 return false;
             }
+
+            if (ButtonLink::labelProp($spec) !== null && ! $this->buttonSafe($value, is_array($data) ? ($data[$prop.ButtonLink::SUFFIX] ?? null) : null)) {
+                return false;
+            }
         }
 
         return true;
+    }
+
+    /**
+     * A button link: its typed value, when set, well formed (ButtonLink::problem); an older plain
+     * address never one a browser reads as another host.
+     */
+    private function buttonSafe(mixed $legacy, mixed $do): bool
+    {
+        if ($do !== null && ButtonLink::problem($do) !== null) {
+            return false;
+        }
+
+        $normalized = is_string($legacy) ? (string) preg_replace('/[\s\x00-\x1F]+/', '', $legacy) : '';
+
+        return ! str_starts_with($normalized, '//') && ! str_starts_with($normalized, '/\\');
     }
 
     /** Check one value against its schema spec — `url` leaves are scheme-checked; lists recurse. */

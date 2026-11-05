@@ -12,8 +12,8 @@
         @foreach ((array) ($props['paragraphs'] ?? []) as $paragraph)
             <p class="about__paragraph">{{ $paragraph }}</p>
         @endforeach
-        @if (! empty($props['cta_label']) && ! empty($props['cta_url']))
-            <a class="about__cta" href="{{ $props['cta_url'] }}">{{ $props['cta_label'] }}</a>
+        @if (! empty($props['cta_label']) && ($cta = \App\Modules\Theme\Components\ButtonLink::of($props, 'cta_url')) !== null)
+            <a class="about__cta" href="{{ $cta['href'] }}"@if ($cta['blank']) target="_blank" rel="noopener"@elseif ($cta['download']) download=""@endif>{{ $props['cta_label'] }}@if ($cta['blank'])<span class="sr-only"> {{ __('storefront.new_tab') }}</span>@endif</a>
         @endif
     </div>
     @if (! empty($props['image_url']))

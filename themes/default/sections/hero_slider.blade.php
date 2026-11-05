@@ -35,8 +35,8 @@
     $sfAutoplay = \App\Modules\Theme\Components\SectionProps::clampInt($props, 'autoplay', 0, 15, 0);
     $sfInterval = $sfCount > 1 && $sfAutoplay > 0 ? max(5, $sfAutoplay) * 1000 : 0;
     $sfOverlay = \App\Modules\Theme\Components\SectionProps::clampInt($props, 'overlay', 55, 80, 60);
-    $sfCta1 = \App\Modules\Shared\Support\SafeLink::href($props['cta_url'] ?? null);
-    $sfCta2 = \App\Modules\Shared\Support\SafeLink::href($props['cta2_url'] ?? null);
+    $sfCta1 = \App\Modules\Theme\Components\ButtonLink::of($props, 'cta_url');
+    $sfCta2 = \App\Modules\Theme\Components\ButtonLink::of($props, 'cta2_url');
     $sfCta1Label = \App\Modules\Theme\Components\SectionProps::text($props, 'cta_label');
     $sfCta2Label = \App\Modules\Theme\Components\SectionProps::text($props, 'cta2_label');
 @endphp
@@ -82,10 +82,10 @@
 @if (($sfCta1 !== null && $sfCta1Label !== '') || ($sfCta2 !== null && $sfCta2Label !== ''))
                 <div class="sf-slide__ctas">
 @if ($sfCta1 !== null && $sfCta1Label !== '')
-                    <a class="sf-slide__cta" href="{{ $sfCta1 }}">{{ $sfCta1Label }}</a>
+                    <a class="sf-slide__cta" href="{{ $sfCta1['href'] }}"@if ($sfCta1['blank']) target="_blank" rel="noopener"@elseif ($sfCta1['download']) download=""@endif>{{ $sfCta1Label }}@if ($sfCta1['blank'])<span class="sr-only"> {{ __('storefront.new_tab') }}</span>@endif</a>
 @endif
 @if ($sfCta2 !== null && $sfCta2Label !== '')
-                    <a class="sf-slide__cta sf-slide__cta--accent" href="{{ $sfCta2 }}">{{ $sfCta2Label }}</a>
+                    <a class="sf-slide__cta sf-slide__cta--accent" href="{{ $sfCta2['href'] }}"@if ($sfCta2['blank']) target="_blank" rel="noopener"@elseif ($sfCta2['download']) download=""@endif>{{ $sfCta2Label }}@if ($sfCta2['blank'])<span class="sr-only"> {{ __('storefront.new_tab') }}</span>@endif</a>
 @endif
                 </div>
 @endif

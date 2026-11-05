@@ -28,7 +28,7 @@ final class MediaUsageLocator
     /**
      * Every place this media is used, tagged by role for the grouped detail panel: `gallery` (a
      * product image list), `cover` (an entry's featured/OG image, or a category's picture), `content`
-     * (a block image inside an entry body). An entry that uses the media in two roles appears once
+     * (a block image, or a block button's file to download, inside an entry body). An entry that uses the media in two roles appears once
      * per role.
      *
      * @return list<array{kind: string, role: string, label: string, url: string}>
@@ -65,7 +65,7 @@ final class MediaUsageLocator
             ];
         }
 
-        // Content — a block image (media_id materialized into mediables on save).
+        // Content — a block image or a button's file (materialized into mediables on save).
         $blockEntryIds = Mediable::query()
             ->where('media_id', $media->id)->where('mediable_type', 'entry')->where('collection', 'content')
             ->pluck('mediable_id')->unique();

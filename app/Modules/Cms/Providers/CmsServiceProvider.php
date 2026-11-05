@@ -26,10 +26,12 @@ use App\Modules\Cms\Policies\EntryPolicy;
 use App\Modules\Cms\Policies\MenuPolicy;
 use App\Modules\Cms\Policies\TaxonomyPolicy;
 use App\Modules\Cms\Routing\CategoryDependents;
+use App\Modules\Cms\Routing\EntryPageLinks;
 use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Cms\Support\CategoryItemCounts;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Rbac\Events\SiteMembershipChanged;
+use App\Modules\Shared\Contracts\PageLinks;
 use App\Modules\Theme\Components\ComponentRegistry;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Event;
@@ -70,6 +72,10 @@ final class CmsServiceProvider extends ServiceProvider
         // Item kinds other modules file under categories (Catalog → `product`), re-routed when a
         // category changes. Boot-time closures only, no request state — same as MenuTargets.
         $this->app->singleton(CategoryDependents::class);
+
+        // The current address of a page a block button opens (the Theme renders it through the contract).
+        // Built per resolve: PathBuilder holds the request-scoped SectionResolver, so it is never kept across requests.
+        $this->app->bind(PageLinks::class, EntryPageLinks::class);
     }
 
     public function boot(): void

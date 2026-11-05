@@ -8,7 +8,7 @@
     $variant = \App\Modules\Theme\Components\SectionProps::choice($props, 'variant', \App\Modules\Theme\Components\SectionProps::QUICK_LINK_VARIANTS);
     $tiles = [];
     foreach (\App\Modules\Theme\Components\SectionProps::items($props, 'items') as $item) {
-        $href = \App\Modules\Shared\Support\SafeLink::href($item['url'] ?? null);
+        $href = \App\Modules\Theme\Components\ButtonLink::of($item, 'url');
         $label = \App\Modules\Theme\Components\SectionProps::text($item, 'label');
         if ($href !== null && $label !== '') {
             $tiles[] = ['href' => $href, 'label' => $label, 'icon' => \App\Modules\Theme\Components\SectionProps::choice($item, 'icon', \App\Modules\Theme\Components\SectionProps::QUICK_LINK_ICONS)];
@@ -20,7 +20,7 @@
 @include('theme::partials.sf-section-head', ['heading' => $heading])
 <ul class="sf-qlinks__list sf-qlinks__list--{{ $variant }} sf-qlinks__list--n{{ min(count($tiles), 4) }}">
 @foreach ($tiles as $tile)
-<li><a class="sf-qlinks__tile" href="{{ $tile['href'] }}"><span class="sf-qlinks__icon">@include('theme::partials.sf-icon', ['name' => $tile['icon'], 'size' => $variant === 'pill' ? 20 : 24])</span><span class="sf-qlinks__label">{{ $tile['label'] }}</span></a></li>
+<li><a class="sf-qlinks__tile" href="{{ $tile['href']['href'] }}"@if ($tile['href']['blank']) target="_blank" rel="noopener"@elseif ($tile['href']['download']) download=""@endif><span class="sf-qlinks__icon">@include('theme::partials.sf-icon', ['name' => $tile['icon'], 'size' => $variant === 'pill' ? 20 : 24])</span><span class="sf-qlinks__label">{{ $tile['label'] }}</span>@if ($tile['href']['blank'])<span class="sr-only"> {{ __('storefront.new_tab') }}</span>@endif</a></li>
 @endforeach
 </ul>
 @endcomponent
