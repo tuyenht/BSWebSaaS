@@ -18,10 +18,13 @@ use App\Modules\Cms\Actions\Menus\SaveMenu;
 use App\Modules\Cms\Actions\Menus\SetMenuAutoAdd;
 use App\Modules\Cms\Exceptions\MenuChangeRejectedException;
 use App\Modules\Cms\Models\Menu;
+use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Navigation\MenuLimits;
 use App\Modules\Cms\Navigation\MenuVersion;
+use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Identity\Models\User;
+use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Theme\Theming\MenuAreas;
 use Closure;
@@ -44,6 +47,9 @@ use Livewire\Component;
 #[Layout('admin::layouts.app')]
 final class Index extends Component
 {
+    /** The website icons that suit a menu item, in the order the picker shows them. */
+    public const array ICONS = ['phone', 'email', 'address', 'map', 'clock', 'building', 'license', 'verified', 'link', 'play', 'quote', 'facebook', 'zalo', 'youtube', 'tiktok', 'linkedin', 'x'];
+
     public function boot(): void
     {
         // The livewire/update endpoint bypasses route middleware: re-check on every request.
@@ -315,9 +321,51 @@ final class Index extends Component
         return ['ok' => true, 'issues' => app(MenuSelfCheck::class)->check($found)];
     }
 
+    /**
+     * The first paint carries what load() would answer for the menu that opens first (no round
+     * trip before the screen shows), the website's address for "Xem trên website", the edit
+     * screens a source opens in, the site's name for the preview and the icons an item may take.
+     */
     public function render(): View
     {
-        return view('admin::livewire.menus.index');
+        Gate::authorize('viewAny', Menu::class);
+        $main = app(SiteLocale::class)->default();
+
+        return view('admin::livewire.menus.index', [
+            'initial' => ['ok' => true, ...app(MenuScreen::class)->load($this->firstMenu($main))],
+            'main' => $main,
+            'siteUrl' => app(PathBuilder::class)->publicUrl('/', $main),
+            'edit' => [
+                'entry' => route('admin.entries.edit', ['ulid' => '__REF__']),
+                'product' => route('admin.catalog.edit', ['ulid' => '__REF__']),
+            ],
+            'siteName' => $this->siteName($main),
+            'icons' => array_map(fn (string $name): array => ['name' => $name, 'label' => __('menus.icon_'.$name)], self::ICONS),
+        ]);
+    }
+
+    /** The website's name for the preview's home item, in the main language. */
+    private function siteName(string $main): string
+    {
+        $name = app(SiteIdentity::class)->for($main)['name'] ?? null;
+
+        return is_string($name) && $name !== '' ? $name : config()->string('app.name');
+    }
+
+    /**
+     * The menu the screen opens on: the one the website shows in its first area (in the theme's
+     * order) for the main language, else the oldest menu, else none.
+     */
+    private function firstMenu(string $main): ?Menu
+    {
+        $shown = MenuAssignment::query()->where('locale', $main)->whereNotNull('menu_id')->pluck('menu_id', 'region_key');
+        foreach (array_keys(MenuAreas::all()) as $area) {
+            if (isset($shown[$area])) {
+                return Menu::query()->whereKey($shown[$area])->first();
+            }
+        }
+
+        return Menu::query()->orderBy('id')->first();
     }
 
     /**
