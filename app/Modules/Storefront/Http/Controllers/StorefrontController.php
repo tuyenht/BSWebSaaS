@@ -23,6 +23,7 @@ use App\Modules\Storefront\Support\ListPage;
 use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Theme\Chrome\FloatingContact;
+use App\Modules\Theme\Chrome\SiteVerification;
 use App\Modules\Theme\Chrome\StorefrontChrome;
 use App\Modules\Theme\Rendering\PageRenderer;
 use App\Modules\Theme\Rendering\TemplateResolver;
@@ -119,6 +120,8 @@ final readonly class StorefrontController
             'lang' => $locale,
             'hreflang' => $this->hreflangFor($resolved, $locale, $default, $path),
             'brand' => $brand,
+            // Site-ownership meta tags (Google, Bing, Facebook), read with the other storefront settings.
+            'verification' => SiteVerification::tags($this->settings->get('storefront', 'verification')),
             // The logo and footer home links stay in the page's language (/en for an English page).
             'homeUrl' => $this->paths->publicUrl('/', $locale),
         ];

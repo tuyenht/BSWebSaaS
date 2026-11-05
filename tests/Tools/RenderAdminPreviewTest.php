@@ -242,6 +242,17 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         file_put_contents($dir.'/'.$name.'.html', $html);
     }
 
+    // "Tích hợp & Theo dõi": Google verified, Bing switched on but empty, Facebook off.
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'storefront', 'key' => 'verification'], ['value' => [
+        'google' => ['on' => true, 'token' => 'abcDEF1234567890abcdEF-_xyz'],
+        'bing' => ['on' => true, 'token' => ''],
+        'facebook' => ['on' => false, 'token' => ''],
+    ]]));
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/integrations')->assertOk()->getContent();
+    expect($html)->toContain('Xác minh &amp; Công cụ', 'wire:model.blur="tokens.google"');
+    file_put_contents($dir.'/integrations.html', $html);
+
     // "Thông tin chung" filled from the older brand setting, as a site has it before its first save
     // (long names, so a clipped label or a sideways scroll shows up).
     app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'general', 'key' => 'brand'], ['value' => [
@@ -319,5 +330,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('data-seo-fields')->not->toContain('wire:model="excerpt"');
     file_put_contents($dir.'/product-editor.html', $html);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 16);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 17);
 });
