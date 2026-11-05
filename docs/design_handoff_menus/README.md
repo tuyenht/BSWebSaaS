@@ -1,5 +1,7 @@
 # Trình đơn — thiết kế đã duyệt + việc backend làm theo
 
+> **Hết hiệu lực về thiết kế (05/11/2026).** Thiết kế của màn này là bảng "Trình đơn" trên canvas thiết kế của owner (link trong skill `bs-design-canvas`, bản sao `plans/design-canvas/admin/project/11-trinh-don.dc.html`). Bản export và link publish ghi dưới đây là bản cũ: không port theo chúng.
+
 - **Thiết kế:** `docs/design-source/Trình đơn.dc.html` (bản export dự án Claude Design 18/09/2026, owner gửi
   17–18/09 và 23/09). Bản owner publish https://claude.ai/artifact/72uxdN6nMYG1RJhthnjV7F trùng khớp bản này.
 - **Còn chờ thiết kế (lượt D1-2):** chọn trình đơn theo từng ngôn ngữ ở mỗi vị trí; nhãn trạng thái cho mục trỏ
