@@ -79,13 +79,9 @@ final class IntegrationsSettings extends Component
         }
 
         if (str_contains($provider, '.')) {
-            // A nested key (tokens.google.x): reset the provider's code, drop an unknown one.
-            $provider = strstr($provider, '.', true);
-            if (isset(SiteVerification::PROVIDERS[$provider])) {
-                $this->tokens[$provider] = '';
-            } else {
-                unset($this->tokens[$provider]);
-            }
+            // A nested key under an unknown name (tokens.x.y) arrives as an array: drop it. Under a
+            // known provider the value is a string and Livewire refuses the update before this hook.
+            unset($this->tokens[strstr($provider, '.', true)]);
 
             return;
         }

@@ -26,7 +26,7 @@ final class SiteVerification
     public static function extract(string $raw): string
     {
         $raw = trim($raw);
-        if (preg_match('/content\s*=\s*["\']([^"\']+)["\']/i', $raw, $m) === 1) {
+        if (preg_match('/(?<![\w-])content\s*=\s*["\']([^"\']+)["\']/i', $raw, $m) === 1) {
             return trim($m[1]);
         }
 

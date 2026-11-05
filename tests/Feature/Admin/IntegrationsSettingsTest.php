@@ -283,7 +283,7 @@ it('re-checks a code typed while the provider was off when it is switched on', f
     });
 });
 
-it('resets a nested token key instead of failing', function (): void {
+it('drops a nested token key under an unknown name', function (): void {
     $admin = intAdmin();
 
     app(Tenancy::class)->enter(1, function () use ($admin): void {
@@ -291,6 +291,17 @@ it('resets a nested token key instead of failing', function (): void {
             ->set('tokens.yandex.x', 'v')
             ->assertOk()->assertSet('tokens', ['google' => '', 'bing' => '', 'facebook' => '']);
     });
+});
+
+it('refuses a nested token key under a known provider and keeps nothing', function (): void {
+    $admin = intAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        expect(fn () => Livewire::actingAs($admin)->test(IntegrationsSettings::class)->set('tokens.google.x', 'v'))
+            ->toThrow(Exception::class);
+    });
+
+    expect(intStored())->toBeNull();
 });
 
 it('puts settings.manage on every action, not only in boot()', function (string $method): void {

@@ -14,6 +14,7 @@ it('takes the content value out of a pasted meta tag and trims plain text', func
     'plain code' => ['  abcDEF1234567890abcdEF-_xyz  ', 'abcDEF1234567890abcdEF-_xyz'],
     'whole tag' => ['<meta name="google-site-verification" content="abcDEF1234567890abcdEF-_xyz" />', 'abcDEF1234567890abcdEF-_xyz'],
     'single quotes and spaces' => ["<meta name='msvalidate.01' content = 'ABCDEF1234567890' >", 'ABCDEF1234567890'],
+    'data-content before content' => ['<meta data-content="AAAA" name="google-site-verification" content="abcDEF1234567890abcdEF-_xyz">', 'abcDEF1234567890abcdEF-_xyz'],
     'empty' => ['   ', ''],
 ]);
 
