@@ -88,6 +88,17 @@ it('builds the title: own title, the home default, the template elsewhere, none 
     expect($this->get('http://a.test/gioi-thieu')->getContent())->toContain('<title>Giới thiệu</title>');
 });
 
+it('trims a dangling separator without breaking the letters next to it', function (): void {
+    ssBrand('');
+    ssPage('/ban-do', 'Bản đồ');
+    ssPage('/uu-dai', '“Ưu đãi”');
+    ssSet(['template' => '%tieu-de% · %ten-website%']);
+
+    // "ồ" ends in a byte that "–" also holds, and "“" starts with one: a byte trim cut them in half.
+    expect($this->get('http://a.test/ban-do')->getContent())->toContain('<title>Bản đồ</title>')
+        ->and($this->get('http://a.test/uu-dai')->getContent())->toContain('<title>“Ưu đãi”</title>');
+});
+
 it('escapes a hostile template and page title', function (): void {
     ssPage('/gioi-thieu', '<img src=x onerror=alert(2)>');
     ssSet(['template' => '<script>alert(1)</script> %tieu-de% "%ten-website%"']);
@@ -137,6 +148,21 @@ it('turns the sitemap off: a 404 and no Sitemap line', function (): void {
     $this->get('http://a.test/sitemap.xml')->assertNotFound();
     $this->get('http://a.test/robots.txt')->assertOk()->assertContent("User-agent: *\nDisallow:");
     expect($this->get('http://a.test/')->getContent())->not->toContain('name="robots"');
+});
+
+it('drops the custom Sitemap line while the sitemap is off, so robots.txt never points at a 404', function (): void {
+    ssSet(['robots' => "User-agent: *\nSitemap: http://a.test/sitemap.xml\nDisallow: /gio-hang", 'sitemap' => false]);
+
+    $this->get('http://a.test/robots.txt')->assertOk()->assertContent("User-agent: *\nDisallow: /gio-hang");
+});
+
+it('renders a page from its own settings read, not the shared copy robots.txt uses', function (): void {
+    ssSet(['indexable' => true]);
+    // A stale shared copy (a reader that raced a write) must not reach the page's head.
+    Cache::put('site-seo:v1:1', ['indexable' => false], 300);
+
+    expect($this->get('http://a.test/')->getContent())->not->toContain('name="robots"');
+    $this->get('http://a.test/robots.txt')->assertContent("User-agent: *\nDisallow: /");
 });
 
 it('serves a custom robots.txt as plain text, adds the sitemap line it lacks, and yields to Google off', function (): void {

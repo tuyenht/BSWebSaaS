@@ -2289,6 +2289,7 @@
     "admin.seoset.share_image_from_site": "这是网站当前使用的分享图片或标志。",
     "admin.seoset.regen": "重建",
     "admin.seoset.regen_wait": "您刚刚重建了站点地图——请在 :minutes 分钟后再试。",
+    "admin.seoset.regen_hidden": "网站目前对 Google 隐藏——请先开启“让 Google 找到网站”并保存。",
     "admin.seoset.regen_off": "站点地图已关闭——请先开启“自动生成 sitemap.xml”并保存。",
     "admin.seoset.regen_done": "站点地图已刷新——Google 下次读取时会看到最新的页面列表。",
     "admin.seoset.regen_fresh": "站点地图已是最新——每次 Google 读取时都会重新生成，无需重建。",

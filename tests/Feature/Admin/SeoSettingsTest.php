@@ -205,6 +205,29 @@ it('rebuilds a cached sitemap plan, says plainly when there is nothing to rebuil
     });
 });
 
+it('names the real reason a rebuild is refused, and a refused try does not use up the window', function (): void {
+    $admin = seoAdmin();
+    $store = fn (array $value) => app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(
+        ['group_name' => 'seo', 'key' => 'config'], ['value' => $value],
+    ));
+
+    $store(['indexable' => false]);
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $lw = Livewire::actingAs($admin)->test(SeoSettings::class);
+        foreach (range(1, 4) as $try) {
+            $lw->call('regenerateSitemap')->assertSet('toastTone', 'error')->assertSee('Website đang ẩn với Google');
+        }
+    });
+
+    $store(['sitemap' => false]);
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(SeoSettings::class)
+        ->call('regenerateSitemap')->assertSet('toastTone', 'error')->assertSee('Sitemap đang tắt'));
+
+    $store([]);
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(SeoSettings::class)
+        ->call('regenerateSitemap')->assertSet('toastTone', 'success'));
+});
+
 it('gates the page — settings.manage on the route, in boot() and on every action', function (string $action): void {
     $admin = seoAdmin();
     $editor = User::factory()->create();

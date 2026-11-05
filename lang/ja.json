@@ -2289,6 +2289,7 @@
     "admin.seoset.share_image_from_site": "ウェブサイトで現在使っている共有画像またはロゴです。",
     "admin.seoset.regen": "作り直す",
     "admin.seoset.regen_wait": "サイトマップを作り直したばかりです。:minutes 分後にもう一度お試しください。",
+    "admin.seoset.regen_hidden": "ウェブサイトは Google から非表示です。先に「Google にウェブサイトを見つけてもらう」をオンにして保存してください。",
     "admin.seoset.regen_off": "サイトマップはオフです。先に「sitemap.xml を自動で作成」をオンにして保存してください。",
     "admin.seoset.regen_done": "サイトマップを更新しました。次に Google が読むとき、最新のページ一覧が表示されます。",
     "admin.seoset.regen_fresh": "サイトマップはすでに最新です。Google が読むたびに作り直されるので、作り直す必要はありません。",

@@ -2289,6 +2289,7 @@
     "admin.seoset.share_image_from_site": "This is the share image or logo the website uses now.",
     "admin.seoset.regen": "Rebuild",
     "admin.seoset.regen_wait": "You just rebuilt the sitemap — try again in :minutes minutes.",
+    "admin.seoset.regen_hidden": "The website is hidden from Google — turn on “Let Google find the website” and save first.",
     "admin.seoset.regen_off": "The sitemap is off — turn on “Make sitemap.xml automatically” and save first.",
     "admin.seoset.regen_done": "Sitemap refreshed — the next time Google reads it, it gets the latest list of pages.",
     "admin.seoset.regen_fresh": "The sitemap is already up to date — it is rebuilt every time Google reads it, nothing to redo.",

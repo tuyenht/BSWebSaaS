@@ -146,13 +146,18 @@ final class SeoSettings extends Component
 
             return;
         }
-        RateLimiter::hit($key, self::REGENERATE_WINDOW);
+        // A refused try (the site hidden, the sitemap off) does not use up the window.
+        if (! $this->saved['shared']['indexable']) {
+            $this->notify(__('admin.seoset.regen_hidden'), 'error');
 
-        if (! ($this->saved['shared']['indexable'] && $this->saved['shared']['sitemap'])) {
+            return;
+        }
+        if (! $this->saved['shared']['sitemap']) {
             $this->notify(__('admin.seoset.regen_off'), 'error');
 
             return;
         }
+        RateLimiter::hit($key, self::REGENERATE_WINDOW);
         $this->notify(app(SitemapRoutes::class)->forgetPlan() ? __('admin.seoset.regen_done') : __('admin.seoset.regen_fresh'));
     }
 

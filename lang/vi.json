@@ -2289,6 +2289,7 @@
     "admin.seoset.share_image_from_site": "Đây là ảnh chia sẻ hoặc logo website đang dùng.",
     "admin.seoset.regen": "Tạo lại",
     "admin.seoset.regen_wait": "Bạn vừa tạo lại sitemap — thử lại sau :minutes phút.",
+    "admin.seoset.regen_hidden": "Website đang ẩn với Google — bật “Cho Google tìm thấy website” và bấm Lưu trước.",
     "admin.seoset.regen_off": "Sitemap đang tắt — bật “Tạo sitemap.xml tự động” và bấm Lưu trước.",
     "admin.seoset.regen_done": "Đã làm mới sitemap — lần tới Google đọc sẽ thấy danh sách trang mới nhất.",
     "admin.seoset.regen_fresh": "Sitemap đã mới nhất — hệ thống lập lại danh sách trang mỗi lần Google đọc, không cần tạo lại.",

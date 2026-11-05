@@ -47,6 +47,9 @@ final class SiteSeo
     /** @var array<int, array{titles: array<string, string>, descriptions: array<string, string>, template: string, indexable: bool, sitemap: bool, robots: string}> */
     private array $memo = [];
 
+    /** @var array<int, array{titles: array<string, string>, descriptions: array<string, string>, template: string, indexable: bool, sitemap: bool, robots: string}> */
+    private array $pageMemo = [];
+
     public function __construct(
         private readonly CurrentSite $current,
         private readonly StorefrontSettings $settings,
@@ -68,9 +71,24 @@ final class SiteSeo
         return $this->memo[$siteId] ??= $this->load($siteId);
     }
 
+    /**
+     * The settings a page reads: from the page's own site-settings query (StorefrontSettings,
+     * fresh in this request), never from the shared copy that only /robots.txt and /sitemap.xml need.
+     *
+     * @return array{titles: array<string, string>, descriptions: array<string, string>, template: string, indexable: bool, sitemap: bool, robots: string}
+     */
+    private function page(): array
+    {
+        if (! $this->current->hasId()) {
+            return self::normalize(null);
+        }
+
+        return $this->pageMemo[$this->current->id()] ??= self::normalize($this->settings->get('seo', 'config'));
+    }
+
     public function indexable(): bool
     {
-        return $this->settings()['indexable'];
+        return $this->page()['indexable'];
     }
 
     /** Whether /sitemap.xml is served: only while Google may find the site and the sitemap is on. */
@@ -92,7 +110,7 @@ final class SiteSeo
         if ($own !== null && trim($own) !== '') {
             return $own;
         }
-        $settings = $this->settings();
+        $settings = $this->page();
         $default = $settings['titles'][$locale] ?? '';
         if ($home && $default !== '') {
             return $default;
@@ -103,7 +121,8 @@ final class SiteSeo
         // strtr replaces each placeholder once: a page title holding "%ten-website%" stays text.
         $title = strtr($settings['template'], ['%tieu-de%' => $pageTitle, '%ten-website%' => $siteName]);
         // An empty part leaves its separator dangling at an end ("Giới thiệu | ").
-        $title = trim($title, " \t|-–—·:,");
+        // A pattern, not trim(): trim() strips bytes, and "–—·" share bytes with "ồ", "“" and CJK.
+        $title = Cast::string(preg_replace('/^[\s|\-–—·:,]+|[\s|\-–—·:,]+$/u', '', $title));
 
         return $title !== '' ? $title : $pageTitle;
     }
@@ -114,7 +133,7 @@ final class SiteSeo
         if ($own !== null && trim($own) !== '') {
             return $own;
         }
-        $default = $this->settings()['descriptions'][$locale] ?? '';
+        $default = $this->page()['descriptions'][$locale] ?? '';
 
         return $default !== '' ? $default : null;
     }
@@ -131,7 +150,11 @@ final class SiteSeo
             return "User-agent: *\nDisallow: /";
         }
         $body = $settings['robots'] !== '' ? $settings['robots'] : "User-agent: *\nDisallow:";
-        if ($settings['sitemap'] && preg_match('/^\s*sitemap\s*:/im', $body) !== 1) {
+        if (! $settings['sitemap']) {
+            // The sitemap is off: a Sitemap line in the custom text would point at a 404.
+            return trim(Cast::string(preg_replace('/^[ \t]*sitemap[ \t]*:.*(\n|$)/imu', '', $body)));
+        }
+        if (preg_match('/^\s*sitemap\s*:/im', $body) !== 1) {
             $body .= "\nSitemap: {$sitemapUrl}";
         }
 
@@ -142,12 +165,14 @@ final class SiteSeo
     public function forgetMemo(): void
     {
         $this->memo = [];
+        $this->pageMemo = [];
     }
 
     /** Drop the site's shared copy once the write is committed (at once outside a transaction). */
     public function forget(int $siteId): void
     {
         $this->memo = [];
+        $this->pageMemo = [];
         DB::afterCommit(function () use ($siteId): void {
             try {
                 $this->cache->forget(self::KEY.$siteId);
