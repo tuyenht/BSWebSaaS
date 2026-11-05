@@ -20,9 +20,16 @@
     // nothing leaks between requests under Octane) and only the first one shows the send's outcome.
     $sfNth = (int) request()->attributes->get('lead_form_seen.'.$sfFormKey, 0);
     request()->attributes->set('lead_form_seen.'.$sfFormKey, $sfNth + 1);
-    $sfFormId = 'lf-'.$sfFormKey.($sfNth > 0 ? '-'.($sfNth + 1) : '');
-    // A send's outcome (errors, typed values, thank-you) belongs to the form it came from only.
-    $sfMine = $sfNth === 0 && $sfFormKey !== '' && old('lead_form') === $sfFormKey;
+    // Ids: the key reduced to [a-z0-9_], then "--n" for a copy and "__field" for a field, so no two
+    // forms or fields can meet on one id whatever their keys hold.
+    $sfFormId = 'lf-'.preg_replace('/[^a-z0-9]+/', '_', strtolower($sfFormKey)).($sfNth > 0 ? '--'.($sfNth + 1) : '');
+    // A send's outcome (errors, typed values, thank-you) belongs to the form it came from only. A
+    // failed send that names no form (a page loaded before the hidden field existed) goes to the
+    // page's first form, so what the visitor typed is never lost.
+    $sfFirstOnPage = ! request()->attributes->has('lead_form_first');
+    request()->attributes->set('lead_form_first', true);
+    $sfMine = $sfNth === 0 && $sfFormKey !== ''
+        && (old('lead_form') === $sfFormKey || (old('lead_form') === null && $errors->any() && $sfFirstOnPage));
     $sfErr = $sfMine ? $errors : new \Illuminate\Support\MessageBag();
     $sfOld = fn (string $name) => $sfMine ? old($name) : null;
     $sfSent = $sfNth === 0 && session('form_success_key') === $sfFormKey ? session('form_success') : null;
@@ -43,7 +50,7 @@
     $sfErrorAt = [];
     foreach ($sfKeys as $sfKey) {
         if ($sfErr->has($sfKey)) {
-            $sfErrorAt[$sfKey] = $sfFormId.'-'.$sfKey.'-error';
+            $sfErrorAt[$sfKey] = $sfFormId.'__'.$sfKey.'-error';
         }
     }
     $sfQuiet = null;
@@ -109,7 +116,7 @@
 
             @foreach ($fields as $sfIndex => $field)
                 @php
-                    $sfId = $sfFormId.'-'.$field['key'];
+                    $sfId = $sfFormId.'__'.$field['key'];
                     $sfBad = isset($sfErrorAt[$field['key']]);
                     $sfHint = $sfOneOfHint === $field['key'];
                     $sfDescribed = trim(($sfHint ? $sfId.'-hint ' : '').($sfErrorAt[$field['key']] ?? ''));
@@ -168,7 +175,7 @@
 
             @if ($sfAlert !== '')
                 {{-- The one summary of a failed send; it leads to the first field to fix. --}}
-                <p class="lead-form__alert" id="{{ $sfFormId }}-alert" role="alert">@if ($sfFirstBad !== null)<a href="#{{ $sfFormId }}-{{ $sfFirstBad }}">{{ $sfAlert }}</a>@else{{ $sfAlert }}@endif</p>
+                <p class="lead-form__alert" id="{{ $sfFormId }}-alert" role="alert">@if ($sfFirstBad !== null)<a href="#{{ $sfFormId }}__{{ $sfFirstBad }}">{{ $sfAlert }}</a>@else{{ $sfAlert }}@endif</p>
             @endif
 
             @if (! empty($turnstileSiteKey))
