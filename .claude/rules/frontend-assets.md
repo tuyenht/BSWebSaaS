@@ -19,6 +19,9 @@ Goal: one copy of each pattern, and a page downloads only what it uses. The CI `
 - **No per-screen `<style>` or `<script>` in Blade.** Classes and tokens go in the shared CSS. Behaviour goes in a registered Alpine data object (`Alpine.data('bsX', …)` in its module), not a long inline `x-data="{…}"`.
   - Allowed exceptions, already in place: the theme boot before first paint, the per-site brand tokens, Turnstile, and the storefront head, header and form partials.
 - **Heavy code loads only where a screen needs it.** A library over about 10 KB gzipped, used by some screens only (editor, uploader, charts, dialogs), is reached with `await import('./x.js')` on first use, as `app.js` does for the rich editor, Uppy and SweetAlert2. Never import it statically from `app.js`.
+- **A small screen-only Alpine module stays in `app.js`.** Measured 05/11, gzipped: `app.js` 11.3 KB = shared core about 3.7 KB + tree 5.2 KB + approval workflow 1.8 KB + SEO part 0.6 KB. The admin navigates without full reloads, so `app.js` is fetched once per visit, while a split chunk costs the screen that needs it one more round trip (about 50–150 ms on a phone network) to save a few KB elsewhere.
+  - Split a screen-only module into a lazy chunk once it passes about 10 KB gzipped, or once `app.js` passes 20 KB.
+  - When that day comes, build one shared lazy loader for Alpine parts. Never add a loader per screen.
 - **Storefront:**
   - the base `storefront.js` stays tiny;
   - each section's script is its own Vite entry (`sf-<section>.js`), loaded only by a page that renders that section;

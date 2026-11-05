@@ -48,9 +48,10 @@ const initialFiles = (key, seen = new Set()) => {
 const total = (files) => [...files].reduce((sum, f) => sum + gz(f), 0);
 
 // A package chunk is named without its version, and a shared chunk (`_name-<hash>.js`) without its hash, so a
-// dependency bump or a rebuild keeps the budget line.
+// dependency bump or a rebuild keeps the budget line. A worktree whose `node_modules` is a link to another tree
+// sees the package under `../../<tree>/node_modules/…`; that prefix is dropped too.
 const label = (key) => key
-  .replace(/^node_modules\/\.pnpm\/[^/]+\/node_modules\//, 'npm:')
+  .replace(/^(?:\.\.\/)*(?:[^/]+\/)*?node_modules\/\.pnpm\/[^/]+\/node_modules\//, 'npm:')
   .replace(/^(_.+)-[\w-]{8}(\.\w+)$/, '$1$2');
 
 const current = { entries: {}, lazy: {} };
