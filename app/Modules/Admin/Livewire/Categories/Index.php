@@ -25,8 +25,10 @@ use App\Modules\Cms\Taxonomy\TaxonomyRules;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Tenancy\Context\CurrentSite;
 use Closure;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
@@ -46,6 +48,12 @@ use Livewire\Component;
  * authorizes through TaxonomyPolicy and validates every argument. A member limited to some
  * categories is refused outside them with outside_category_limits (the policy's per-category
  * abilities, and CategoryLimitGuard inside the write path).
+ *
+ * A section is only open to someone who may see its content (`{prefix}.view`, as the admin menu
+ * shows it), else section_invalid; a parent, a target or the place an undo goes back to must lie in
+ * the same section or in another one the person may see (section_invalid too). Every method that
+ * changes the tree takes the tree lock (TaxonomyTree::lock) before it reads anything, so what it
+ * checks and what it reports back (the old place of a move, the tree version) is what it changed.
  */
 #[Layout('admin::layouts.app')]
 final class Index extends Component
@@ -88,8 +96,9 @@ final class Index extends Component
      * "Lưu": a new category when $key is null — under $parent (a key), or for post categories
      * under the section's root when $parent is null — else the category $key. $data is the whole
      * drawer: names, slugs, descriptions, seoTitles, seoDescriptions (language → text),
-     * listTemplate, detailTemplate (a layout name or null for the theme's default) and cover (a
-     * media key, '' for none, null to keep). Returns the category's key and the new tree version.
+     * listTemplate, detailTemplate (a layout name or null for the theme's default; left out, the
+     * category keeps its own) and cover (a media key, '' for none, null to keep). Returns the
+     * category's key and the new tree version.
      *
      * @return array<string, mixed>
      */
@@ -100,19 +109,19 @@ final class Index extends Component
             return $this->invalid();
         }
 
-        return $this->inSection($section, function (array $found) use ($key, $parent, $fields): array {
+        return $this->inSection($section, function (array $found) use ($key, $parent, $fields, $data): array {
             if ($key === null) {
                 Gate::authorize('create', Taxonomy::class);
-                $under = $parent === null ? $this->root($found) : ($this->ofVocabulary($found, $parent) ?? throw new TaxonomyChangeRejectedException('parent_invalid'));
+                $under = $parent === null ? $this->root($found) : $this->place($found, $parent, 'parent_invalid');
                 $saved = app(CreateTaxonomy::class)->handle($found['vocabulary'], $under, $fields);
             } else {
                 $category = $this->category($found, $key);
                 $this->ensure('update', $category);
-                $saved = app(UpdateTaxonomy::class)->handle($category, $fields);
+                $saved = app(UpdateTaxonomy::class)->handle($category, $this->keepTemplates($fields, is_array($data) ? $data : [], $category));
             }
 
             return ['ok' => true, 'key' => $saved->ulid, 'version' => TaxonomyTree::version($found['vocabulary'])];
-        });
+        }, write: true);
     }
 
     /**
@@ -133,11 +142,12 @@ final class Index extends Component
         return $this->inSection($section, function (array $found) use ($key, $parent, $position, $confirm): array {
             $category = $this->category($found, $key);
             $this->ensureMovable($category);
-            $under = $parent === null ? null : ($this->ofVocabulary($found, $parent) ?? throw new TaxonomyChangeRejectedException('parent_invalid'));
+            $under = $parent === null ? null : $this->place($found, $parent, 'parent_invalid');
             if ($under === null && $found['root'] !== null) {
                 throw new TaxonomyChangeRejectedException('parent_invalid'); // a post category always sits under its section's root
             }
 
+            // Read under the tree lock inSection took, so it is the place this move takes it from.
             $oldParent = $category->parent_id === null ? null : Taxonomy::query()->whereKey($category->parent_id)->value('ulid');
             $oldPosition = $this->positionOf($category);
             app(MoveTaxonomy::class)->handle($category, $under, $position, $confirm);
@@ -147,7 +157,7 @@ final class Index extends Component
             return ['ok' => true, 'version' => $version, 'undo' => $undoable ? [
                 'key' => $key, 'parent' => is_string($oldParent) ? $oldParent : null, 'position' => $oldPosition, 'version' => $version,
             ] : null];
-        });
+        }, write: true);
     }
 
     /**
@@ -159,7 +169,7 @@ final class Index extends Component
     public function undoMove(mixed $section, mixed $undo): array
     {
         if (! is_array($undo) || ! $this->isUlid($undo['key'] ?? null) || (($undo['parent'] ?? null) !== null && ! $this->isUlid($undo['parent']))
-            || ! is_int($undo['position'] ?? null) || $undo['position'] < 0 || ! is_string($undo['version'] ?? null) || preg_match('/\A[0-9a-f]{32}\z/', $undo['version']) !== 1) {
+            || ! is_int($undo['position'] ?? null) || $undo['position'] < 0 || ! is_string($undo['version'] ?? null) || preg_match('/\A[0-9a-f]{64}\z/', $undo['version']) !== 1) {
             return $this->invalid();
         }
 
@@ -167,12 +177,12 @@ final class Index extends Component
             /** @var array{key: string, parent: string|null, position: int, version: string} $undo */
             $category = $this->category($found, $undo['key']);
             $this->ensureMovable($category);
-            // The old parent may be of another vocabulary (an old import): looked up through the site's scope.
-            $parent = $undo['parent'] === null ? null : (Taxonomy::query()->where('ulid', $undo['parent'])->first() ?? throw new TaxonomyChangeRejectedException('parent_invalid'));
+            // A move only ever reparents within one vocabulary (vocabulary_mismatch), so the way back does too.
+            $parent = $undo['parent'] === null ? null : $this->place($found, $undo['parent'], 'parent_invalid');
             app(UndoTaxonomyMove::class)->handle($category, $parent, $undo['position'], $undo['version']);
 
             return ['ok' => true, 'version' => TaxonomyTree::version($found['vocabulary'])];
-        });
+        }, write: true);
     }
 
     /**
@@ -209,7 +219,7 @@ final class Index extends Component
 
         return $this->inSection($section, function (array $found) use ($key, $childrenOnDelete, $target, $merge): array {
             $category = $this->category($found, $key);
-            $into = $target === null ? null : ($this->ofVocabulary($found, $target) ?? throw new TaxonomyChangeRejectedException('target_invalid'));
+            $into = $target === null ? null : $this->place($found, $target, 'target_invalid');
 
             return ['ok' => true, ...app(CategoryDeletePreview::class)->for($found, $category, $this->actor(), $childrenOnDelete, $merge, $into)];
         });
@@ -234,11 +244,11 @@ final class Index extends Component
         return $this->inSection($section, function (array $found) use ($key, $childrenOnDelete, $itemsOnDelete, $target, $confirm): array {
             $category = $this->category($found, $key);
             $this->ensure('delete', $category);
-            $into = $target === null ? null : ($this->ofVocabulary($found, $target) ?? throw new TaxonomyChangeRejectedException('target_invalid'));
+            $into = $target === null ? null : $this->place($found, $target, 'target_invalid');
             $counts = app(DeleteTaxonomy::class)->handle($category, $itemsOnDelete, $into, $childrenOnDelete, $confirm);
 
             return ['ok' => true, ...$counts, 'version' => TaxonomyTree::version($found['vocabulary'])];
-        });
+        }, write: true);
     }
 
     /**
@@ -256,11 +266,11 @@ final class Index extends Component
         return $this->inSection($section, function (array $found) use ($key, $target, $confirm): array {
             $category = $this->category($found, $key);
             $this->ensure('delete', $category);
-            $into = $this->ofVocabulary($found, $target) ?? throw new TaxonomyChangeRejectedException('target_invalid');
+            $into = $this->place($found, $target, 'target_invalid');
             $counts = app(MergeTaxonomy::class)->handle($category, $into, $confirm);
 
             return ['ok' => true, ...$counts, 'version' => TaxonomyTree::version($found['vocabulary'])];
-        });
+        }, write: true);
     }
 
     /**
@@ -283,29 +293,85 @@ final class Index extends Component
     public function render(): View
     {
         Gate::authorize('viewAny', Taxonomy::class);
-        $found = app(CategorySections::class)->find($this->section);
+        $found = $this->visibleSection($this->section);
 
         return view('admin::livewire.categories.index', ['label' => $found['label'] ?? '']);
     }
 
     /**
-     * Resolve the section, run $run and turn a refusal into its reason.
+     * Resolve the section the person may see, run $run — for a change ($write), inside one
+     * transaction that takes the tree lock first — and turn a refusal into its reason.
      *
      * @param  Closure(array{key: string, label: string, vocabulary: string, root: int|null, prefix: string}): array<string, mixed>  $run
      * @return array<string, mixed>
      */
-    private function inSection(mixed $section, Closure $run): array
+    private function inSection(mixed $section, Closure $run, bool $write = false): array
     {
-        $found = is_string($section) ? app(CategorySections::class)->find($section) : null;
+        $found = is_string($section) ? $this->visibleSection($section) : null;
         if ($found === null) {
             return $this->refused('section_invalid');
         }
 
         try {
-            return $run($found);
+            if (! $write) {
+                return $run($found);
+            }
+
+            return DB::transaction(function () use ($run, $found): array {
+                TaxonomyTree::lock(app(CurrentSite::class)->id());
+
+                return $run($found);
+            });
         } catch (TaxonomyChangeRejectedException $refusal) {
             return $this->refused($refusal->reason);
         }
+    }
+
+    /**
+     * The section with this key, when the person may see its content — the ability the admin menu
+     * shows it by (`{prefix}.view`) — else null.
+     *
+     * @return array{key: string, label: string, vocabulary: string, root: int|null, prefix: string}|null
+     */
+    private function visibleSection(string $key): ?array
+    {
+        $found = app(CategorySections::class)->find($key);
+
+        return $found !== null && Gate::allows($found['prefix'].'.view') ? $found : null;
+    }
+
+    /**
+     * A parent or target named by the screen: a category of the section's vocabulary ($reason
+     * when there is none), lying in this section or in another post section the person may see
+     * (section_invalid otherwise — also for a post category that belongs to no section).
+     *
+     * @param  array{key: string, label: string, vocabulary: string, root: int|null, prefix: string}  $section
+     *
+     * @throws TaxonomyChangeRejectedException
+     */
+    private function place(array $section, string $ulid, string $reason): Taxonomy
+    {
+        $category = $this->ofVocabulary($section, $ulid) ?? throw new TaxonomyChangeRejectedException($reason);
+        if ($section['root'] === null) {
+            return $category; // product categories: the whole vocabulary is the one section
+        }
+
+        $roots = [];
+        foreach (app(CategorySections::class)->postSections() as $post) {
+            $roots[$post['root']] = $post;
+        }
+        foreach ([$category->id, ...array_reverse(TaxonomyTree::ancestorsOf($category->id))] as $at) {
+            if (isset($roots[$at])) {
+                $owner = $roots[$at];
+                if ($owner['key'] === $section['key'] || Gate::allows($owner['prefix'].'.view')) {
+                    return $category;
+                }
+
+                break;
+            }
+        }
+
+        throw new TaxonomyChangeRejectedException('section_invalid');
     }
 
     /**
@@ -425,6 +491,26 @@ final class Index extends Component
             seoTitles: $maps['seoTitles'],
             seoDescriptions: $maps['seoDescriptions'],
             cover: is_string($data['cover'] ?? null) ? $data['cover'] : null,
+        );
+    }
+
+    /**
+     * A save that leaves a template out keeps the category's current one, as it keeps a language
+     * left out of the names or the descriptions; null still means the theme's default.
+     *
+     * @param  array<mixed>  $data
+     */
+    private function keepTemplates(TaxonomyData $fields, array $data, Taxonomy $category): TaxonomyData
+    {
+        return new TaxonomyData(
+            names: $fields->names,
+            slugs: $fields->slugs,
+            listTemplate: array_key_exists('listTemplate', $data) ? $fields->listTemplate : $category->list_template,
+            detailTemplate: array_key_exists('detailTemplate', $data) ? $fields->detailTemplate : $category->detail_template,
+            descriptions: $fields->descriptions,
+            seoTitles: $fields->seoTitles,
+            seoDescriptions: $fields->seoDescriptions,
+            cover: $fields->cover,
         );
     }
 

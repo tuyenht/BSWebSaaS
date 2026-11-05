@@ -71,13 +71,18 @@ final class TaxonomyRules
     }
 
     /**
-     * A Google title or description to store — one line, the ends trimmed, at most SEO_MAX
-     * characters; '' when empty (cleared). Null when it is not acceptable: longer, not valid UTF-8,
-     * or holding a line break or another control character (the screen sends it as one line).
+     * A Google title or description to store — one line, invisible format characters removed (as
+     * in description(), the joiners kept), the ends trimmed, at most SEO_MAX characters; '' when
+     * empty (cleared). Null when it is not acceptable: longer, not valid UTF-8, or holding a line
+     * break or another control character (the screen sends it as one line).
      */
     public static function seoText(string $text): ?string
     {
         if (preg_match('/[\p{Cc}\p{Zl}\p{Zp}]/u', $text) !== 0) {
+            return null;
+        }
+        $text = preg_replace('/(?![\x{200C}\x{200D}])\p{Cf}/u', '', $text);
+        if ($text === null) {
             return null;
         }
         $text = trim($text);

@@ -273,3 +273,28 @@ it('changes the tree version on a move, an addition or a delete but not on a ren
         expect(TaxonomyTree::version('post_cat'))->not->toBe($added);
     });
 });
+
+it('signs the tree version so it cannot be guessed back to the categories\' ids', function (): void {
+    tdIn(1, function (): void {
+        $a = tdCreate('A');
+        tdCreate('B', $a);
+        $plain = DB::selectOne("select md5(coalesce(string_agg(id::text || ':' || coalesce(parent_id::text, '') || ':' || position::text, ',' ORDER BY id), '')) as digest from taxonomies where vocabulary = 'post_cat'")->digest;
+
+        $version = TaxonomyTree::version('post_cat');
+        expect($version)->toMatch('/\A[0-9a-f]{64}\z/')
+            ->and($version)->not->toContain($plain)
+            ->and($version)->not->toBe(TaxonomyTree::version('product_cat'));
+    });
+});
+
+it('removes invisible format characters from a Google title or description, keeping the joiners', function (): void {
+    expect(TaxonomyRules::seoText("Tin\u{200B} tức\u{FEFF}\u{2060}"))->toBe('Tin tức')
+        ->and(TaxonomyRules::seoText("\u{200E}Ưu đãi\u{202E}"))->toBe('Ưu đãi')
+        ->and(TaxonomyRules::seoText("👩\u{200D}💻 Lập trình"))->toBe("👩\u{200D}💻 Lập trình")
+        ->and(TaxonomyRules::seoText("Hai\ndòng"))->toBeNull();
+
+    tdIn(1, function (): void {
+        $category = tdCreate('Một', extra: ['seoTitles' => ['vi' => "Tiêu\u{200B} đề"]]);
+        expect(tdTranslation($category)?->seo_title)->toBe('Tiêu đề');
+    });
+});

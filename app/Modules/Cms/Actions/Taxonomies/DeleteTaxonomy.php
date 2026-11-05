@@ -224,9 +224,12 @@ final readonly class DeleteTaxonomy
      * branch — whose limits a delete would have to move: for the dialog to name before deleting.
      *
      * @return list<array{id: int, name: string}>
+     *
+     * @throws AuthorizationException
      */
     public function limitedMembers(Taxonomy $taxonomy, ?CategoryChildrenOnDelete $children = null): array
     {
+        $this->authorizeManage();
         $deleted = $children === CategoryChildrenOnDelete::Delete ? array_keys(TaxonomyTree::branchOf($taxonomy->id)) : [$taxonomy->id];
 
         return array_map(

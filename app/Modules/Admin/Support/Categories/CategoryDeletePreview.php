@@ -23,7 +23,8 @@ use Illuminate\Support\Facades\Gate;
  *  - items: the items whose main category goes (items_count — the kept counter, no live count);
  *  - leavingItems: of those, the ones that end up in another section (or in none) with the chosen
  *    target, which the person confirms (sectionChange);
- *  - menuLinks: the menu links to the categories that go;
+ *  - menuLinks: the menu links (in the menu trash too) that follow the items onto $target —
+ *    none without a target, as DeleteTaxonomy moves them only then;
  *  - limitedMembers: the names of the members whose limits name a category that goes;
  *  - locked: a section is built on one of them (never deleted); allowed: TaxonomyPolicy delete;
  *    governed: the section runs an approval workflow, so its posts may not leave it;
@@ -106,7 +107,8 @@ final readonly class CategoryDeletePreview
             'items' => $items,
             'leavingItems' => $leaving,
             'sectionChange' => $leaving > 0,
-            'menuLinks' => MenuItem::query()->where('routable_type', 'taxonomy')->whereIn('routable_id', $gone)->count(),
+            // Exactly what the delete moves: only onto a target, and the links in the menu trash too.
+            'menuLinks' => $target === null ? 0 : MenuItem::withTrashed()->where('routable_type', 'taxonomy')->whereIn('routable_id', $gone)->count(),
             'limitedMembers' => array_column($members, 'name'),
             'locked' => $this->sections->boundAmong($gone) !== [],
             'allowed' => Gate::forUser($viewer)->allows('delete', $taxonomy),

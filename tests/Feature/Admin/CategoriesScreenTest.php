@@ -5,13 +5,16 @@ use App\Modules\Admin\Support\Categories\CategoryDeletePreview;
 use App\Modules\Admin\Support\Categories\CategoryMoveTargets;
 use App\Modules\Admin\Support\Categories\CategoryScreen;
 use App\Modules\Admin\Support\Categories\CategorySections;
+use App\Modules\Cms\Actions\Menus\SaveMenu;
 use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
 use App\Modules\Cms\Data\TaxonomyData;
 use App\Modules\Cms\Enums\CategoryChildrenOnDelete;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\MemberCategoryScope;
+use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\CategoryScopes;
+use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
@@ -212,7 +215,7 @@ it('never finds another site\'s category or picture, nor a category of another s
     expect(cxCall($this->editor, 'save', 'tin-tuc', $foreign->ulid, null, ['names' => ['vi' => 'Chiếm']]))->toMatchArray(['ok' => false, 'reason' => 'taxonomy_invalid'])
         ->and(cxCall($this->editor, 'save', 'tin-tuc', null, $foreign->ulid, ['names' => ['vi' => 'Con']]))->toMatchArray(['ok' => false, 'reason' => 'parent_invalid'])
         ->and(cxCall($this->editor, 'move', 'tin-tuc', $mine->ulid, $foreign->ulid, 0))->toMatchArray(['ok' => false, 'reason' => 'parent_invalid'])
-        ->and(cxCall($this->editor, 'merge', 'tin-tuc', $mine->ulid, $foreign->ulid))->toMatchArray(['ok' => false])
+        ->and(cxCall($this->editor, 'merge', 'tin-tuc', $mine->ulid, $foreign->ulid))->toMatchArray(['ok' => false, 'reason' => 'target_invalid'])
         ->and(cxCall($this->editor, 'deletePreview', 'tin-tuc', $foreign->ulid))->toMatchArray(['ok' => false, 'reason' => 'taxonomy_invalid'])
         ->and(cxCall($this->editor, 'delete', 'tin-tuc', $elsewhere->ulid))->toMatchArray(['ok' => false, 'reason' => 'taxonomy_invalid'])
         ->and(cxCall($this->editor, 'save', 'tin-tuc', $mine->ulid, null, ['cover' => 's/library/anh-site-b.jpg']))->toMatchArray(['ok' => false, 'reason' => 'cover_invalid']);
@@ -341,7 +344,7 @@ it('refuses the screen and every endpoint to someone who may not manage categori
     });
 });
 
-it('loads the screen, previews a delete and lists move targets in the same number of queries for 10 categories as for 200', function (): void {
+it('loads the screen, previews a delete and lists move targets in the same number of queries for 10 categories as for 200', function (bool $limited): void {
     $build = function (Taxonomy $root, string $label, int $count): void {
         $parents = [$root];
         for ($n = 1; $n <= $count; $n++) {
@@ -365,8 +368,21 @@ it('loads the screen, previews a delete and lists move targets in the same numbe
         $build($large, 'Lớn', 200);
     });
 
-    $counts = cxIn(1, function (): array {
-        $viewer = $this->editor->fresh();
+    $viewer = $limited ? cxUser(['taxonomies.manage', 'entries.view']) : $this->editor;
+    if ($limited) {
+        cxIn(1, function () use ($viewer): void {
+            // Limited to the first category under each root: some rows inside the limits, most outside.
+            foreach (['nho', 'lon'] as $key) {
+                $root = app(CategorySections::class)->find($key)['root'];
+                $first = Taxonomy::query()->where('parent_id', $root)->orderBy('position')->firstOrFail();
+                MemberCategoryScope::query()->create(['user_id' => $viewer->id, 'taxonomy_id' => $first->id]);
+            }
+            app(CategoryScopes::class)->forget();
+        });
+    }
+
+    $counts = cxIn(1, function () use ($viewer, $limited): array {
+        $viewer = $viewer->fresh();
         $screen = app(CategoryScreen::class);
         $sections = app(CategorySections::class);
         $small = $sections->find('nho');
@@ -374,7 +390,9 @@ it('loads the screen, previews a delete and lists move targets in the same numbe
         $screen->load($small, $viewer); // warm the per-request memos (sections, permissions)
         $rows = count($screen->load($large, $viewer)['rows']);
 
-        $first = fn (array $section): Taxonomy => Taxonomy::query()->where('parent_id', $section['root'])->orderBy('position')->firstOrFail();
+        $under = fn (int $parent): Taxonomy => Taxonomy::query()->where('parent_id', $parent)->orderBy('position')->firstOrFail();
+        // A limited member previews and moves a category inside the limits, below the one they name.
+        $first = fn (array $section): Taxonomy => $limited ? $under($under($section['root'])->id) : $under($section['root']);
         [$smallFirst, $largeFirst] = [$first($small), $first($large)];
         $preview = app(CategoryDeletePreview::class);
         $targets = app(CategoryMoveTargets::class);
@@ -393,4 +411,165 @@ it('loads the screen, previews a delete and lists move targets in the same numbe
         ->and($counts['load'][1])->toBe($counts['load'][0])->toBeLessThanOrEqual(8)
         ->and($counts['preview'][1])->toBe($counts['preview'][0])
         ->and($counts['targets'][1])->toBe($counts['targets'][0]);
+})->with(['a member with every category' => [false], 'a member limited to some categories' => [true]]);
+
+it('takes the tree lock before it reads anything a change depends on', function (): void {
+    [$a, $b, $moved] = cxIn(1, function (): array {
+        $a = cxCreate('Ẩm thực', $this->root);
+        $b = cxCreate('Bóng đá', $this->root);
+
+        return [$a, $b, cxCreate('Giữa', $a)];
+    });
+    $version = cxCall($this->editor, 'load', 'tin-tuc')['version'];
+    $log = [];
+    DB::listen(function ($query) use (&$log): void {
+        $log[] = $query->sql;
+    });
+
+    foreach ([
+        ['move', 'tin-tuc', $moved->ulid, $b->ulid, 0],
+        ['undoMove', 'tin-tuc', ['key' => $moved->ulid, 'parent' => $a->ulid, 'position' => 0, 'version' => $version]],
+        ['save', 'tin-tuc', $moved->ulid, null, ['names' => ['vi' => 'Giữa ạ']]],
+        ['save', 'tin-tuc', null, $a->ulid, ['names' => ['vi' => 'Mới']]],
+        ['merge', 'tin-tuc', $moved->ulid, $a->ulid],
+        ['delete', 'tin-tuc', $b->ulid],
+    ] as $call) {
+        $method = array_shift($call);
+        $log = [];
+        cxCall($this->editor, $method, ...$call);
+        $lock = array_key_first(array_filter($log, static fn (string $sql): bool => str_contains($sql, 'pg_advisory_xact_lock')));
+        $read = array_key_first(array_filter($log, static fn (string $sql): bool => str_contains($sql, 'from "taxonomies"')));
+
+        expect($lock)->not->toBeNull("{$method} takes the tree lock")
+            ->and($read)->not->toBeNull()
+            ->and($lock < $read)->toBeTrue("{$method} reads a category before the tree lock");
+    }
+});
+
+it('reports the place a move came from as it was under the lock', function (): void {
+    [$a, $b, $moved] = cxIn(1, function (): array {
+        $a = cxCreate('Ẩm thực', $this->root);
+        $b = cxCreate('Bóng đá', $this->root);
+        cxCreate('Đầu', $b);
+
+        return [$a, $b, cxCreate('Giữa', $b)];
+    });
+
+    $move = cxCall($this->editor, 'move', 'tin-tuc', $moved->ulid, $a->ulid, 0);
+    expect($move['undo'])->toMatchArray(['parent' => $b->ulid, 'position' => 1])
+        ->and($move['version'])->toBe(cxIn(1, fn () => TaxonomyTree::version('post_cat')));
+});
+
+it('keeps a section, and every parent or target, closed to someone who may not see its content', function (): void {
+    $version = str_repeat('a', 64);
+    [$mine, $project, $orphan] = cxIn(1, function (): array {
+        $projects = cxCreate('Dự án');
+        // A section whose content needs forms.view, which the editor does not hold.
+        ContentSection::query()->create(['key' => 'du-an', 'label' => 'Dự án', 'entry_type' => 'post', 'taxonomy_id' => $projects->id, 'permission_prefix' => 'forms', 'sort_order' => 3]);
+
+        return [cxCreate('Tin công ty', $this->root), cxCreate('Công trình', $projects), cxCreate('Không thuộc mục nào')];
+    });
+
+    foreach ([
+        ['load', 'du-an'],
+        ['save', 'du-an', null, null, ['names' => ['vi' => 'Mới']]],
+        ['save', 'du-an', $project->ulid, null, ['names' => ['vi' => 'Đổi']]],
+        ['move', 'du-an', $project->ulid, $project->ulid, 0],
+        ['undoMove', 'du-an', ['key' => $project->ulid, 'parent' => null, 'position' => 0, 'version' => $version]],
+        ['moveTargets', 'du-an', $project->ulid],
+        ['deletePreview', 'du-an', $project->ulid],
+        ['delete', 'du-an', $project->ulid],
+        ['merge', 'du-an', $project->ulid, $mine->ulid],
+        ['search', 'du-an', 'công'],
+        // From a section the editor may see, a parent or target in the closed section, or in none:
+        ['save', 'tin-tuc', null, $project->ulid, ['names' => ['vi' => 'Con']]],
+        ['save', 'tin-tuc', null, $orphan->ulid, ['names' => ['vi' => 'Con']]],
+        ['move', 'tin-tuc', $mine->ulid, $project->ulid, 0],
+        ['move', 'tin-tuc', $mine->ulid, $orphan->ulid, 0],
+        ['undoMove', 'tin-tuc', ['key' => $mine->ulid, 'parent' => $project->ulid, 'position' => 0, 'version' => $version]],
+        ['deletePreview', 'tin-tuc', $mine->ulid, 'lift', $project->ulid],
+        ['delete', 'tin-tuc', $mine->ulid, null, 'reassign', $project->ulid],
+        ['merge', 'tin-tuc', $mine->ulid, $project->ulid],
+    ] as $call) {
+        $method = array_shift($call);
+        expect(cxCall($this->editor, $method, ...$call))->toMatchArray(['ok' => false, 'reason' => 'section_invalid'], $method.' '.json_encode($call));
+    }
+    cxIn(1, fn () => expect($mine->fresh()?->parent_id)->toBe($this->root->id)->and(Taxonomy::query()->whereKey($project->id)->exists())->toBeTrue());
+
+    // Someone who may see both sections moves between them.
+    $both = cxUser(['taxonomies.manage', 'entries.view', 'forms.view']);
+    expect(cxCall($both, 'load', 'du-an')['ok'])->toBeTrue()
+        ->and(cxCall($both, 'move', 'tin-tuc', $mine->ulid, $project->ulid, 0)['ok'])->toBeTrue();
+});
+
+it('keeps a limited member inside their categories on every other endpoint', function (): void {
+    $member = cxUser(['taxonomies.manage', 'entries.view']);
+    [$mine, $child, $other] = cxIn(1, function () use ($member): array {
+        $mine = cxCreate('Của tôi', $this->root);
+        $child = cxCreate('Con của tôi', $mine);
+        cxCreate('Con thứ hai', $mine);
+        $other = cxCreate('Của người khác', $this->root);
+        MemberCategoryScope::query()->create(['user_id' => $member->id, 'taxonomy_id' => $mine->id]);
+        app(CategoryScopes::class)->forget();
+
+        return [$mine, $child, $other];
+    });
+    $version = cxCall($member, 'load', 'tin-tuc')['version'];
+
+    expect(cxCall($member, 'save', 'tin-tuc', null, $other->ulid, ['names' => ['vi' => 'Con lạ']]))->toMatchArray(['ok' => false, 'reason' => 'outside_category_limits'])
+        ->and(cxCall($member, 'merge', 'tin-tuc', $child->ulid, $other->ulid))->toMatchArray(['ok' => false, 'reason' => 'outside_category_limits'])
+        ->and(cxCall($member, 'undoMove', 'tin-tuc', ['key' => $child->ulid, 'parent' => $other->ulid, 'position' => 0, 'version' => $version]))->toMatchArray(['ok' => false, 'reason' => 'outside_category_limits'])
+        ->and(cxCall($member, 'moveTargets', 'tin-tuc', $other->ulid))->toMatchArray(['ok' => false, 'reason' => 'outside_category_limits']);
+    cxIn(1, fn () => expect($child->fresh()?->parent_id)->toBe($mine->id)->and(Taxonomy::query()->where('parent_id', $other->id)->exists())->toBeFalse());
+
+    $options = [];
+    foreach (cxCall($member, 'moveTargets', 'tin-tuc', $child->ulid)['groups'] as $group) {
+        foreach ($group['options'] as $option) {
+            $options[$option['name']] = $option;
+        }
+    }
+    expect($options['Của người khác'])->toMatchArray(['ok' => false, 'reason' => 'outside_category_limits']);
+
+    $outside = cxCall($member, 'deletePreview', 'tin-tuc', $other->ulid);
+    $inside = cxCall($member, 'deletePreview', 'tin-tuc', $child->ulid, 'lift', null, true);
+    $targets = [];
+    foreach ($inside['targets'] as $group) {
+        foreach ($group['options'] as $option) {
+            $targets[$option['name']] = $option;
+        }
+    }
+    expect($outside)->toMatchArray(['ok' => true, 'allowed' => false])
+        ->and($inside)->toMatchArray(['ok' => true, 'allowed' => true])
+        ->and($targets['Của người khác'])->toMatchArray(['ok' => false, 'reason' => 'outside_category_limits'])
+        ->and($targets['Con thứ hai'])->toMatchArray(['ok' => true]);
+});
+
+it('counts in the delete preview exactly the menu links the delete moves', function (): void {
+    [$source, $target] = cxIn(1, function (): array {
+        $source = cxCreate('Tin cũ', $this->root);
+        $target = cxCreate('Tin mới', $this->root);
+        $menu = app(SaveMenu::class)->handle(null, 'Menu chính');
+        foreach (range(0, 1) as $position) {
+            MenuItem::query()->create(['menu_id' => $menu->id, 'position' => $position, 'link_type' => 'taxonomy', 'routable_type' => 'taxonomy', 'routable_id' => $source->id]);
+        }
+        MenuItem::query()->where('position', 1)->firstOrFail()->delete();   // one link in the menu trash
+
+        return [$source, $target];
+    });
+
+    expect(cxCall($this->editor, 'deletePreview', 'tin-tuc', $source->ulid)['menuLinks'])->toBe(0)   // no target: the delete moves none
+        ->and(cxCall($this->editor, 'deletePreview', 'tin-tuc', $source->ulid, 'lift', $target->ulid)['menuLinks'])->toBe(2);
+
+    $deleted = cxCall($this->editor, 'delete', 'tin-tuc', $source->ulid, null, 'reassign', $target->ulid);
+    expect($deleted)->toMatchArray(['ok' => true, 'menu_links' => 2]);
+});
+
+it('keeps the templates a save leaves out, as it keeps the other fields', function (): void {
+    $category = cxIn(1, fn () => cxCreate('Tin', $this->root, extra: ['listTemplate' => 'category', 'detailTemplate' => 'post']));
+
+    expect(cxCall($this->editor, 'save', 'tin-tuc', $category->ulid, null, ['names' => ['vi' => 'Tin ạ']])['ok'])->toBeTrue();
+    cxIn(1, fn () => expect($category->fresh())->list_template->toBe('category')->detail_template->toBe('post'));
+
+    expect(cxCall($this->editor, 'save', 'tin-tuc', $category->ulid, null, ['listTemplate' => null])['ok'])->toBeTrue();
+    cxIn(1, fn () => expect($category->fresh())->list_template->toBeNull()->detail_template->toBe('post'));
 });

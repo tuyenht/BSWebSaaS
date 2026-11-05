@@ -96,15 +96,18 @@ final class TaxonomyTree
      * changes whenever a category of it is added, moved, reordered or deleted (not when one is
      * renamed). A screen keeps it to tell that the tree is still the one it showed: an undo of a
      * move is refused once anything moved since. One query, whatever the size of the tree.
+     *
+     * The digest of the ids, parents and positions is signed with the app key before it leaves
+     * the server: a plain hash of a small tree could be guessed back to its database ids.
      */
     public static function version(string $vocabulary): string
     {
-        $version = Taxonomy::query()
+        $digest = Taxonomy::query()
             ->where('vocabulary', $vocabulary)
             ->selectRaw("md5(coalesce(string_agg(id::text || ':' || coalesce(parent_id::text, '') || ':' || position::text, ',' ORDER BY id), '')) AS version")
             ->value('version');
 
-        return Cast::string($version);
+        return hash_hmac('sha256', 'taxonomy-tree|'.$vocabulary.'|'.Cast::string($digest), Cast::string(config('app.key')));
     }
 
     private static function parentOf(int $id): ?int
