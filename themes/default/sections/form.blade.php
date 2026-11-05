@@ -58,7 +58,7 @@
             $sfPending = null;
         }
     }
-    $sfNote = str_replace('__MARK__', '<span class="lead-form__required">*</span>', e(__('forms.required_note', ['mark' => '__MARK__'])));
+    [$sfNoteBefore, $sfNoteAfter] = array_pad(explode('__MARK__', __('forms.required_note', ['mark' => '__MARK__']), 2), 2, '');
 @endphp
 @if (! empty($action))
 @if ($sfMap !== null)
@@ -165,7 +165,7 @@
 
             <div class="lead-form__actions">
                 <button type="submit" class="lead-form__submit" @if ($sfAlert !== '' && $sfFirstBad === null) autofocus @endif>{{ __('forms.submit_button') }}</button>
-                <p class="lead-form__note">{!! $sfNote !!}</p>
+                <p class="lead-form__note">{{ $sfNoteBefore }}<span class="lead-form__required">*</span>{{ $sfNoteAfter }}</p>
             </div>
         </form>
         @endif
