@@ -53,7 +53,7 @@
 
         {{-- The look of the admin for this user: opens the Customizer panel. Focus goes back to the
              user button first, so closing the panel returns it there (the menu item is hidden by then). --}}
-        <button type="button" role="menuitem"
+        <button type="button" role="menuitem" aria-haspopup="dialog"
                 @click="userOpen = false; $refs.userButton.focus(); $store.adminTheme.open = true"
                 class="flex min-h-menu-row w-full items-center gap-2.5 px-4 py-2 text-body text-text transition-colors hover:bg-surface-hover any-pointer-coarse:min-h-menu-row-touch">
             <x-bs-admin::icon name="ri-palette" class="size-4 text-body-muted" />
