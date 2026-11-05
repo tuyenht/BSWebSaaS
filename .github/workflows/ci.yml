@@ -238,6 +238,11 @@ jobs:
       - name: Build assets (Vite + Tailwind 4)
         run: pnpm run build
 
+      # What each page downloads, gzipped, against scripts/asset-budget.json: an entry or a lazy chunk that grows more
+      # than 3% over its line, or a new one with no line, fails. Record an intended change with --update. Pure Node.
+      - name: Asset size budget
+        run: node scripts/asset-budget.mjs
+
       # Gate the admin design tokens at WCAG AA: reads the token values straight from the CSS and
       # fails if any checked text/border/focus pair drops below its threshold. Pure Node, no deps.
       - name: Contrast tokens (WCAG AA)
