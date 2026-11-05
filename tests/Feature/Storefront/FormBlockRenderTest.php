@@ -3,8 +3,11 @@
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Forms\Models\Form;
+use App\Modules\Storefront\Support\PrivacyPolicyLink;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteLocale;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 
 /*
@@ -115,8 +118,8 @@ it('renders a required consent checkbox tied to its label', function (): void {
     $html = $this->get('http://a.test/lien-he')->assertOk()->getContent();
 
     expect($html)
-        ->toContain('<label class="lead-form__check" for="lead-consent">')
-        ->toContain('<input id="lead-consent" type="checkbox" name="consent" value="1"')
+        ->toContain('<label class="lead-form__check" for="lf-contact-consent">')
+        ->toContain('<input id="lf-contact-consent" type="checkbox" name="consent" value="1"')
         ->toContain('<span>Tôi đồng ý để website lưu thông tin.');
 });
 
@@ -179,7 +182,7 @@ it('shows no policy link while the site has no published privacy page', function
 it('replaces the form with the thank-you card and a way back to an empty form after a send', function (): void {
     seedContactPageWithForm();
 
-    $html = $this->withSession(['form_success' => 'Đã nhận yêu cầu của bạn, xin cảm ơn ạ'])
+    $html = $this->withSession(['form_success' => 'Đã nhận yêu cầu của bạn, xin cảm ơn ạ', 'form_success_key' => 'contact'])
         ->get('http://a.test/lien-he')->assertOk()->getContent();
 
     expect($html)
@@ -201,7 +204,7 @@ it('keeps what was typed after a failed send, says what is wrong and focuses the
     $this->from('http://a.test/lien-he')->post('http://a.test/forms/contact', [
         'phone' => '0912 345 678',
         'message' => 'Ống thép cần cắt gấp, giao ở Đà Nẵng nhé',
-        'locale' => 'vi',
+        'locale' => 'vi', 'lead_form' => 'contact',
     ])->assertRedirect('http://a.test/lien-he');
 
     $section = leadFormSection($this->get('http://a.test/lien-he')->assertOk()->getContent());
@@ -209,10 +212,10 @@ it('keeps what was typed after a failed send, says what is wrong and focuses the
     expect($section)
         ->toContain('>Ống thép cần cắt gấp, giao ở Đà Nẵng nhé</textarea>')
         ->toContain('value="0912 345 678"')
-        ->toMatch('/<input id="lead-name"[^>]*aria-invalid="true"[^>]*aria-describedby="lead-name-error"[^>]*autofocus\s*>/')
-        ->toContain('<p class="lead-form__field-error" id="lead-name-error">Vui lòng nhập họ tên.</p>')
-        ->toContain('<p class="lead-form__field-error" id="lead-consent-error">')
-        ->toContain('<p class="lead-form__alert" role="alert"><a href="#lead-name">Vui lòng nhập họ tên.</a></p>')
+        ->toMatch('/<input id="lf-contact-name"[^>]*aria-invalid="true"[^>]*aria-describedby="lf-contact-name-error"[^>]*autofocus\s*>/')
+        ->toContain('<p class="lead-form__field-error" id="lf-contact-name-error">Vui lòng nhập họ tên.</p>')
+        ->toContain('<p class="lead-form__field-error" id="lf-contact-consent-error">')
+        ->toContain('<p class="lead-form__alert" id="lf-contact-alert" role="alert"><a href="#lf-contact-name">Vui lòng nhập họ tên.</a></p>')
         ->and(substr_count($section, 'role="alert"'))->toBe(1)
         ->and($section)
         ->toContain('Trường có dấu <span class="lead-form__required">*</span> là bắt buộc.')
@@ -224,15 +227,15 @@ it('tells the phone-or-email rule once, under the hint, and points both fields a
     seedContactPageWithForm();
 
     $this->from('http://a.test/lien-he')->post('http://a.test/forms/contact', [
-        'name' => 'Nguyễn Văn Ánh', 'message' => 'Ống thép cần cắt gấp, giao ở Đà Nẵng nhé', 'locale' => 'vi',
+        'name' => 'Nguyễn Văn Ánh', 'message' => 'Ống thép cần cắt gấp, giao ở Đà Nẵng nhé', 'locale' => 'vi', 'lead_form' => 'contact',
     ])->assertRedirect();
 
     $section = leadFormSection($this->get('http://a.test/lien-he')->getContent());
 
     expect(substr_count($section, 'Vui lòng để lại email hoặc số điện thoại để chúng tôi liên hệ.'))->toBe(2) // under the field + the alert
-        ->and($section)->toContain('<p class="lead-form__hint" id="lead-phone-hint">Để lại điện thoại hoặc email – ít nhất một.</p>')
-        ->toMatch('/<input id="lead-email"[^>]*aria-describedby="lead-phone-error"[^>]*autofocus\s*>/')
-        ->toMatch('/<input id="lead-phone"[^>]*aria-describedby="lead-phone-hint lead-phone-error"/')
+        ->and($section)->toContain('<p class="lead-form__hint" id="lf-contact-phone-hint">Để lại điện thoại hoặc email – ít nhất một.</p>')
+        ->toMatch('/<input id="lf-contact-email"[^>]*aria-describedby="lf-contact-phone-error"[^>]*autofocus\s*>/')
+        ->toMatch('/<input id="lf-contact-phone"[^>]*aria-describedby="lf-contact-phone-hint lf-contact-phone-error"/')
         ->toContain('value="Nguyễn Văn Ánh"');
 });
 
@@ -245,13 +248,196 @@ it('moves the focus to the button when the send fails as a whole', function (): 
     }
 
     $this->from('http://a.test/lien-he')->post('http://a.test/forms/contact', [
-        'name' => 'Nguyễn Văn Ánh', 'phone' => '0912 345 678', 'message' => 'Ống thép cần cắt gấp, giao ở Đà Nẵng nhé', 'locale' => 'vi',
+        'name' => 'Nguyễn Văn Ánh', 'phone' => '0912 345 678', 'message' => 'Ống thép cần cắt gấp, giao ở Đà Nẵng nhé', 'locale' => 'vi', 'lead_form' => 'contact',
     ])->assertRedirect();
 
     $section = leadFormSection($this->get('http://a.test/lien-he')->getContent());
 
-    expect($section)->toContain('<p class="lead-form__alert" role="alert">Bạn đã gửi quá nhiều lần.')
-        ->toMatch('/<button type="submit" class="lead-form__submit"\s+autofocus\s*>/')
+    expect($section)->toContain('<p class="lead-form__alert" id="lf-contact-alert" role="alert">Bạn đã gửi quá nhiều lần.')
+        ->toMatch('/<button type="submit" class="lead-form__submit"\s+aria-describedby="lf-contact-alert"\s+autofocus\s*>/')
         ->toContain('value="Nguyễn Văn Ánh"')
         ->not->toContain('aria-invalid');
+});
+
+/** A second form ("quote") and a page that carries the given form blocks (default: contact, then quote). */
+function seedTwoFormsPage(?array $blocks = null): void
+{
+    $blocks ??= [['type' => 'form', 'props' => ['form_key' => 'contact']], ['type' => 'form', 'props' => ['form_key' => 'quote']]];
+    seedContactPageWithForm();
+    app(Tenancy::class)->enter(1, function () use ($blocks): void {
+        Form::query()->create(['key' => 'quote', 'name' => ['vi' => 'Đặt hàng nhanh'], 'status' => 'active'])->fields()->createMany([
+            ['key' => 'name', 'type' => 'text', 'label' => ['vi' => 'Họ tên'], 'is_required' => true, 'sort_order' => 1],
+            ['key' => 'phone', 'type' => 'tel', 'label' => ['vi' => 'Điện thoại'], 'is_required' => true, 'sort_order' => 2],
+            ['key' => 'message', 'type' => 'textarea', 'label' => ['vi' => 'Nội dung'], 'is_required' => true, 'sort_order' => 3],
+        ]);
+        $page = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()]);
+        $page->translations()->create(['locale' => 'vi', 'title' => 'Đặt hàng', 'slug' => 'dat-hang', 'status' => 'published', 'body' => ['blocks' => $blocks]]);
+        SiteRoute::query()->create(['locale' => 'vi', 'path' => '/dat-hang', 'entry_id' => $page->id]);
+    });
+}
+
+/** @return list<string> the ids that occur more than once on the page */
+function duplicateIds(string $html): array
+{
+    preg_match_all('/\sid="([^"]*)"/', $html, $found);
+
+    return array_keys(array_filter(array_count_values($found[1]), fn (int $n): bool => $n > 1));
+}
+
+/** The lead form section with the given id. */
+function leadFormById(string $html, string $id): string
+{
+    $start = strpos($html, 'id="'.$id.'"');
+    expect($start)->not->toBeFalse();
+
+    return substr($html, $start, strpos($html, '</section>', $start) - $start);
+}
+
+it('shows the thank-you card only on the form that was sent', function (): void {
+    Cache::flush();
+    seedTwoFormsPage();
+
+    $this->from('http://a.test/dat-hang')->post('http://a.test/forms/quote', [
+        'name' => 'Nguyễn Văn Ánh', 'phone' => '0912 345 678', 'message' => 'Ống thép cần cắt gấp, giao ở Đà Nẵng nhé', 'locale' => 'vi', 'lead_form' => 'quote',
+    ])->assertRedirect('http://a.test/dat-hang');
+
+    $html = $this->get('http://a.test/dat-hang')->assertOk()->getContent();
+
+    expect(substr_count($html, 'class="lead-form__sent" '))->toBe(1)
+        ->and(leadFormById($html, 'lf-quote'))->toContain('lead-form__sent')->not->toContain('<form')
+        ->and(leadFormById($html, 'lf-contact'))->toContain('<form class="lead-form__form"')->not->toContain('lead-form__sent');
+});
+
+it('shows a failed send only on the form it came from, with one alert and one focus', function (): void {
+    Cache::flush();
+    seedTwoFormsPage();
+
+    $this->from('http://a.test/dat-hang')->post('http://a.test/forms/quote', [
+        'phone' => '0912 345 678', 'message' => 'Ống thép cần cắt gấp, giao ở Đà Nẵng nhé', 'locale' => 'vi', 'lead_form' => 'quote',
+    ])->assertRedirect();
+
+    $html = $this->get('http://a.test/dat-hang')->assertOk()->getContent();
+
+    expect(substr_count($html, 'role="alert"'))->toBe(1)
+        ->and(substr_count($html, 'autofocus'))->toBe(1)
+        ->and(substr_count($html, 'aria-invalid'))->toBe(1)
+        ->and(leadFormById($html, 'lf-quote'))->toContain('id="lf-quote-name-error"')->toContain('href="#lf-quote-name"')
+        ->and(leadFormById($html, 'lf-contact'))->not->toContain('role="alert"')->not->toContain('value="0912 345 678"')
+        ->and(duplicateIds($html))->toBe([]);
+});
+
+it('keeps every id on the page unique, also when the same form is placed twice', function (): void {
+    seedTwoFormsPage([
+        ['type' => 'form', 'props' => ['form_key' => 'contact']],
+        ['type' => 'form', 'props' => ['form_key' => 'quote']],
+        ['type' => 'form', 'props' => ['form_key' => 'contact']],
+    ]);
+
+    $html = $this->get('http://a.test/dat-hang')->assertOk()->getContent();
+
+    expect($html)->toContain('id="lf-contact"')->toContain('id="lf-contact-2"')->toContain('id="lf-contact-2-name"')->toContain('id="lf-quote-name"')
+        ->and(duplicateIds($html))->toBe([]);
+});
+
+it('shows a failed send on the first copy only when the same form is placed twice', function (): void {
+    Cache::flush();
+    seedTwoFormsPage([['type' => 'form', 'props' => ['form_key' => 'contact']], ['type' => 'form', 'props' => ['form_key' => 'contact']]]);
+
+    $this->from('http://a.test/dat-hang')->post('http://a.test/forms/contact', ['locale' => 'vi', 'lead_form' => 'contact'])->assertRedirect();
+    $html = $this->get('http://a.test/dat-hang')->assertOk()->getContent();
+
+    expect(substr_count($html, 'role="alert"'))->toBe(1)
+        ->and(substr_count($html, 'autofocus'))->toBe(1)
+        ->and(duplicateIds($html))->toBe([]);
+});
+
+/** The privacy link for $locale, resolved fresh inside site $site. */
+function policyUrl(string $locale, int $site = 1): ?string
+{
+    app()->forgetScopedInstances();
+
+    return app(Tenancy::class)->enter($site, fn (): ?string => app(PrivacyPolicyLink::class)->url($locale));
+}
+
+/**
+ * A published privacy page with one [locale, slug, route path or null] row per translation.
+ *
+ * @param  list<array{string, string, ?string}>  $translations
+ */
+function seedPolicyPage(array $translations, int $site = 1): void
+{
+    app(Tenancy::class)->enter($site, function () use ($translations): void {
+        $entry = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()]);
+        foreach ($translations as [$locale, $slug, $route]) {
+            $entry->translations()->create(['locale' => $locale, 'title' => 'Chính sách bảo mật', 'slug' => $slug, 'status' => 'published', 'body' => ['blocks' => []]]);
+            if ($route !== null) {
+                SiteRoute::query()->create(['locale' => $locale, 'path' => $route, 'entry_id' => $entry->id]);
+            }
+        }
+    });
+}
+
+function addEnglish(): void
+{
+    app(Tenancy::class)->enter(1, fn () => SiteLocale::query()->create(['locale' => 'en', 'is_default' => false, 'enabled' => true, 'is_public' => true]));
+}
+
+it('points a visitor in another language at that language\'s privacy page', function (): void {
+    seedContactPageWithForm();
+    addEnglish();
+    seedPolicyPage([['vi', 'chinh-sach-bao-mat', '/chinh-sach-bao-mat'], ['en', 'privacy-policy', '/privacy-policy']]);
+
+    expect(policyUrl('en'))->toBe('/en/privacy-policy')
+        ->and(policyUrl('vi'))->toBe('/chinh-sach-bao-mat');
+});
+
+it('falls back to the default-language privacy page when the visitor\'s language has none', function (): void {
+    seedContactPageWithForm();
+    addEnglish();
+    seedPolicyPage([['vi', 'chinh-sach-bao-mat', '/chinh-sach-bao-mat']]);
+
+    expect(policyUrl('en'))->toBe('/chinh-sach-bao-mat');
+});
+
+it('finds the privacy page by the slug it has in the site\'s new default language', function (): void {
+    seedContactPageWithForm();
+    addEnglish();
+    seedPolicyPage([['vi', 'rieng-tu', '/rieng-tu'], ['en', 'privacy-policy', '/privacy-policy']]);
+
+    expect(policyUrl('vi'))->toBeNull(); // the default is vi and no vi slug is a policy slug
+
+    $admin = DB::connection('pgsql_admin');
+    $admin->table('site_locales')->where('site_id', 1)->update(['is_default' => false]);
+    $admin->table('site_locales')->where('site_id', 1)->where('locale', 'en')->update(['is_default' => true]);
+
+    expect(policyUrl('en'))->toBe('/privacy-policy');
+});
+
+it('never shows another site\'s privacy page', function (): void {
+    seedContactPageWithForm();
+    seedPolicyPage([['vi', 'chinh-sach-bao-mat', '/chinh-sach-bao-mat']], site: 2);
+
+    expect(policyUrl('vi', 1))->toBeNull()
+        ->and(policyUrl('vi', 2))->toBe('/chinh-sach-bao-mat');
+});
+
+it('composes the privacy page path when it has no stored route', function (): void {
+    seedContactPageWithForm();
+    seedPolicyPage([['vi', 'chinh-sach-bao-mat', null]]);
+
+    expect(policyUrl('vi'))->toBe('/chinh-sach-bao-mat');
+});
+
+it('renders a page with a consent form within its query budget', function (): void {
+    seedConsentAndPolicy('chinh-sach-bao-mat');
+    $this->get('http://a.test/lien-he')->assertOk(); // warm the per-site reads that outlive a request
+    app()->forgetScopedInstances();
+
+    $html = '';
+    $count = countQueries(function () use (&$html): void {
+        $html = $this->get('http://a.test/lien-he')->assertOk()->getContent();
+    });
+
+    expect($html)->toContain('lead-form__policy')
+        ->and($count)->toBe(13);
 });

@@ -3178,6 +3178,13 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     background: var(--lf-submit-hover);
 }
 
+@media (prefers-reduced-motion: reduce) {
+    .lead-form__field :is(input, textarea),
+    .lead-form__submit {
+        transition: none;
+    }
+}
+
 .lead-form__note {
     margin-top: 0.5rem;
     color: var(--lf-muted);

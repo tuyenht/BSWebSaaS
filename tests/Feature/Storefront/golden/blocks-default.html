@@ -184,6 +184,8 @@
             
             <input type="hidden" name="locale" value="vi">
             
+            <input type="hidden" name="lead_form" value="contact">
+            
             <div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden">
                 <label>Website
                     <input type="text" name="company_website" tabindex="-1" autocomplete="off" value="">
@@ -191,34 +193,34 @@
             </div>
 
                                                                             <div class="lead-form__field lead-form__field--half">
-                    <label for="lead-name">
+                    <label for="lf-contact-name">
                         Họ tên <span class="lead-form__required" aria-hidden="true">*</span>                    </label>
-                                            <input id="lead-name" type="text" name="name"
+                                            <input id="lf-contact-name" type="text" name="name"
                                value=""  required                                 autocomplete="name"                                                                                              >
                                                                             </div>
                                                                             <div class="lead-form__field lead-form__field--half">
-                    <label for="lead-email">
+                    <label for="lf-contact-email">
                         Email                    </label>
-                                            <input id="lead-email" type="email" name="email"
+                                            <input id="lf-contact-email" type="email" name="email"
                                value=""                                 autocomplete="email"                                                                                              >
                                                                             </div>
                                                                             <div class="lead-form__field">
-                    <label for="lead-phone">
+                    <label for="lf-contact-phone">
                         Điện thoại                    </label>
-                                            <input id="lead-phone" type="tel" name="phone"
-                               value=""                                 autocomplete="tel"                                                                aria-describedby="lead-phone-hint"                                >
-                                                                <p class="lead-form__hint" id="lead-phone-hint">Để lại điện thoại hoặc email – ít nhất một.</p>
+                                            <input id="lf-contact-phone" type="tel" name="phone"
+                               value=""                                 autocomplete="tel"                                                                aria-describedby="lf-contact-phone-hint"                                >
+                                                                <p class="lead-form__hint" id="lf-contact-phone-hint">Để lại điện thoại hoặc email – ít nhất một.</p>
                                                         </div>
                                                                             <div class="lead-form__field">
-                    <label for="lead-message">
+                    <label for="lf-contact-message">
                         Nội dung <span class="lead-form__required" aria-hidden="true">*</span>                    </label>
-                                            <textarea id="lead-message" name="message" rows="4"
+                                            <textarea id="lf-contact-message" name="message" rows="4"
                                    required                                                                                                       ></textarea>
                                                                             </div>
                                                                 
                     <div class="lead-form__field lead-form__field--checkbox">
-                        <label class="lead-form__check" for="lead-consent">
-                            <input id="lead-consent" type="checkbox" name="consent" value="1"
+                        <label class="lead-form__check" for="lf-contact-consent">
+                            <input id="lf-contact-consent" type="checkbox" name="consent" value="1"
                                      required                                                                       >
                             <span>Tôi đồng ý để website lưu các thông tin trên và dùng chúng để liên hệ lại với tôi. <span class="lead-form__required" aria-hidden="true">*</span></span>
                         </label>

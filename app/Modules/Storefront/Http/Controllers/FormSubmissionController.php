@@ -56,6 +56,6 @@ final readonly class FormSubmissionController
 
         $confirmation = $form->successMessageFor(app()->getLocale()) ?? (string) __('forms.submit_success');
 
-        return back()->with('form_success', $confirmation);
+        return back()->with('form_success', $confirmation)->with('form_success_key', $form->key);
     }
 }
