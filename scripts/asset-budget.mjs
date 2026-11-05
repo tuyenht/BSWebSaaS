@@ -2,7 +2,7 @@
 //
 // Reads the Vite manifest of a finished build (public/build/manifest.json). For every entry it adds up what a page
 // using that entry loads at once (the entry file, its static imports, their CSS); every chunk that is loaded later
-// (a dynamic import) is measured on its own. A number may grow up to TOLERANCE over its budget; beyond that, or for an
+// (a dynamic import) is measured with its own static imports, even those the entry already loaded (it errs high). A number may grow up to TOLERANCE over its budget; beyond that, or for an
 // entry or chunk the budget does not list yet, the check fails and says how to record the new numbers on purpose:
 //   node scripts/asset-budget.mjs            check (CI, after `pnpm run build`)
 //   node scripts/asset-budget.mjs --update   write the current numbers as the budget (commit the JSON with the change)
@@ -47,8 +47,11 @@ const initialFiles = (key, seen = new Set()) => {
 };
 const total = (files) => [...files].reduce((sum, f) => sum + gz(f), 0);
 
-// A package chunk is named without its version, so a dependency bump keeps its budget line.
-const label = (key) => key.replace(/^node_modules\/\.pnpm\/[^/]+\/node_modules\//, 'npm:');
+// A package chunk is named without its version, and a shared chunk (`_name-<hash>.js`) without its hash, so a
+// dependency bump or a rebuild keeps the budget line.
+const label = (key) => key
+  .replace(/^node_modules\/\.pnpm\/[^/]+\/node_modules\//, 'npm:')
+  .replace(/^(_.+)-[\w-]{8}(\.\w+)$/, '$1$2');
 
 const current = { entries: {}, lazy: {} };
 const lazyKeys = new Set();
@@ -92,7 +95,7 @@ for (const group of ['entries', 'lazy']) {
 }
 for (const group of ['entries', 'lazy']) {
   for (const key of Object.keys(budget[group] ?? {})) {
-    if (!(key in current[group])) rows.push(`gone           ${key} (no longer built: drop it with --update)`);
+    if (!(key in current[group])) problems.push(`${key} is in the budget but no longer built: drop its line with --update.`);
   }
 }
 console.log('Gzipped size per page entry (loaded at once) and per lazy chunk (loaded when a screen needs it):');
