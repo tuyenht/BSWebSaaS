@@ -2,28 +2,29 @@
      The tree is depth-bounded by the resolver, so this self-include always terminates. A top-level
      item with children is a disclosure: a parent with no page of its own (#) is a button, one with
      a page keeps its link plus a toggle button. Its panel opens on hover, on focus, and on click,
-     Enter or Space (storefront.js keeps aria-expanded true). --}}
+     Enter or Space (storefront.js keeps aria-expanded true). Icon, badge and "Hiện trên" come
+     from the item's options, as in the rich header (StorefrontChrome::menuLabel / menuItemClass). --}}
 <ul class="site-nav__list site-nav__list--level-{{ $level }}"@isset($panelId) id="{{ $panelId }}"@endisset>
     @foreach ($items as $item)
 @if ($level === 0 && ! empty($item['children']))
         @php($panel = 'sm-'.$loop->index)
-        <li class="site-nav__item site-nav__item--parent{{ \App\Modules\Theme\Chrome\StorefrontChrome::inTrail($item) ? ' is-trail' : '' }}" data-disclosure>
+        <li class="site-nav__item site-nav__item--parent{{ \App\Modules\Theme\Chrome\StorefrontChrome::inTrail($item) ? ' is-trail' : '' }}{{ \App\Modules\Theme\Chrome\StorefrontChrome::menuItemClass($item) }}" data-disclosure>
             @if ($item['url'] === '#')
-                <button type="button" class="site-nav__link site-nav__toggle" aria-expanded="false" aria-controls="{{ $panel }}">{{ $item['label'] }}@include('theme::partials.sf-icon', ['name' => 'chevron', 'size' => 16])</button>
+                <button type="button" class="site-nav__link site-nav__toggle" aria-expanded="false" aria-controls="{{ $panel }}">{{ \App\Modules\Theme\Chrome\StorefrontChrome::menuLabel($item) }}@include('theme::partials.sf-icon', ['name' => 'chevron', 'size' => 16])</button>
             @else
                 <a class="site-nav__link" href="{{ $item['url'] }}"
                     @if (! empty($item['active'])) aria-current="page" @endif
                     @foreach (($item['attrs'] ?? []) as $attr => $value) {{ $attr }}="{{ $value }}" @endforeach
-                >{{ $item['label'] }}</a><button type="button" class="site-nav__toggle site-nav__toggle--split" aria-expanded="false" aria-controls="{{ $panel }}" aria-label="{{ __('storefront.submenu_toggle', ['label' => $item['label']]) }}">@include('theme::partials.sf-icon', ['name' => 'chevron', 'size' => 16])</button>
+                >{{ \App\Modules\Theme\Chrome\StorefrontChrome::menuLabel($item) }}</a><button type="button" class="site-nav__toggle site-nav__toggle--split" aria-expanded="false" aria-controls="{{ $panel }}" aria-label="{{ __('storefront.submenu_toggle', ['label' => $item['label']]) }}">@include('theme::partials.sf-icon', ['name' => 'chevron', 'size' => 16])</button>
             @endif
             @include('theme::partials.menu-list', ['items' => $item['children'], 'level' => 1, 'panelId' => $panel])
         </li>
 @else
-        <li class="site-nav__item">
+        <li class="site-nav__item{{ \App\Modules\Theme\Chrome\StorefrontChrome::menuItemClass($item) }}">
             <a class="site-nav__link" href="{{ $item['url'] }}"
                 @if (! empty($item['active'])) aria-current="page" @endif
                 @foreach (($item['attrs'] ?? []) as $attr => $value) {{ $attr }}="{{ $value }}" @endforeach
-            >{{ $item['label'] }}</a>
+            >{{ \App\Modules\Theme\Chrome\StorefrontChrome::menuLabel($item) }}</a>
             @if (! empty($item['children']))
                 @include('theme::partials.menu-list', ['items' => $item['children'], 'level' => $level + 1, 'panelId' => null])
             @endif

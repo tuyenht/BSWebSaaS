@@ -133,7 +133,7 @@ it('refuses a link that goes nowhere or somewhere unsafe', function (MenuItemDat
     'script link' => [new MenuItemData(linkType: 'url', url: 'javascript:alert(1)'), 'url_invalid'],
     'data link' => [new MenuItemData(linkType: 'url', url: 'data:text/html,hi'), 'url_invalid'],
     'empty link' => [new MenuItemData(linkType: 'url', url: '  '), 'url_invalid'],
-    'unknown computed link' => [new MenuItemData(linkType: 'dynamic', dynamicKey: 'cart'), 'target_invalid'],
+    'unknown computed link' => [new MenuItemData(linkType: 'dynamic', dynamicKey: 'wishlist'), 'target_invalid'],
     'unknown kind' => [new MenuItemData(linkType: 'banner', targetId: 1), 'target_invalid'],
     'missing page' => [new MenuItemData(linkType: 'entry', targetId: 999999), 'target_invalid'],
     'missing product' => [new MenuItemData(linkType: 'product', targetId: 999999), 'target_invalid'],

@@ -9,6 +9,7 @@ use App\Modules\Cms\Models\MenuItemTranslation;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\PathBuilder;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -22,6 +23,12 @@ use Illuminate\Support\Collection;
  * by other modules (Catalog's `product`) come in through {@see MenuTargets}, so Cms imports
  * none of them. Returns nested arrays (NOT Cms models) so the Theme module stays
  * Cms-agnostic. Every query is RLS-scoped to the current site.
+ *
+ * An item the editor hid (meta.hidden) is left out with everything under it. A special link
+ * (MenuRules::DYNAMIC) leads where SpecialLinks says from the site's own details ($contact); one
+ * with nothing behind it is left out like an unpublished page. Each node also carries the item's
+ * display options for this language and this moment (MenuItemOptions::forRender): icon,
+ * description, button style, large-panel columns, a badge not past its end date, device.
  */
 final readonly class MenuResolver
 {
@@ -29,14 +36,16 @@ final readonly class MenuResolver
     public function __construct(
         private PathBuilder $paths,
         private MenuTargets $targets,
+        private SpecialLinks $specials,
     ) {}
 
     /**
-     * @return list<array<string, mixed>> nodes: {label, url, active, attrs, children}
+     * @param  array<string, mixed>  $contact  the site's details in the page's language (SiteIdentity::for), for the special links
+     * @return list<array<string, mixed>> nodes: {label, url, active, attrs, icon, description, cta, mega, badge, device, children}
      */
-    public function resolve(string $region, string $locale, string $defaultLocale, string $currentPath = '/'): array
+    public function resolve(string $region, string $locale, string $defaultLocale, string $currentPath = '/', array $contact = []): array
     {
-        return $this->resolveMany([$region], $locale, $defaultLocale, $currentPath)[$region] ?? [];
+        return $this->resolveMany([$region], $locale, $defaultLocale, $currentPath, $contact)[$region] ?? [];
     }
 
     /**
@@ -45,9 +54,10 @@ final readonly class MenuResolver
      * batched per language — so a second region costs no extra round trips for its lookups.
      *
      * @param  list<string>  $regions
+     * @param  array<string, mixed>  $contact  the site's details in the page's language, for the special links
      * @return array<string, list<array<string, mixed>>> region → its tree (empty when no menu is bound)
      */
-    public function resolveMany(array $regions, string $locale, string $defaultLocale, string $currentPath = '/'): array
+    public function resolveMany(array $regions, string $locale, string $defaultLocale, string $currentPath = '/', array $contact = []): array
     {
         $regions = array_values(array_unique($regions));
         $trees = array_fill_keys($regions, []);
@@ -72,13 +82,14 @@ final readonly class MenuResolver
         foreach (array_unique(array_column($chosen, 'locale')) as $effective) {
             $menuIds = array_column(array_filter($chosen, fn (array $pick): bool => $pick['locale'] === $effective), 'menu');
             $subset = $items->whereIn('menu_id', $menuIds);
-            $lookups[$effective] = [$this->resolveUrls($subset, $effective), $this->resolveFallbackTitles($subset, $effective)];
+            $lookups[$effective] = [$this->resolveUrls($subset, $effective, $contact), $this->resolveFallbackTitles($subset, $effective)];
         }
 
+        $now = CarbonImmutable::now();
         foreach ($chosen as $region => $pick) {
             [$urls, $titles] = $lookups[$pick['locale']];
             $menuItems = $items->where('menu_id', $pick['menu'])->values();
-            $trees[$region] = $this->buildTree($menuItems, null, $pick['locale'], $currentPath, $urls, $titles, 0);
+            $trees[$region] = $this->buildTree($menuItems, null, $pick['locale'], $currentPath, $urls, $titles, 0, $now);
         }
 
         return $trees;
@@ -145,9 +156,10 @@ final readonly class MenuResolver
 
     /**
      * @param  Collection<int, MenuItem>  $items
+     * @param  array<string, mixed>  $contact
      * @return array<int, string|null> itemId → resolved URL (null = unresolved/orphan/unreachable)
      */
-    private function resolveUrls(Collection $items, string $locale): array
+    private function resolveUrls(Collection $items, string $locale, array $contact): array
     {
         $targets = [];   // link type → target ids
         foreach ($items as $item) {
@@ -162,7 +174,7 @@ final readonly class MenuResolver
         foreach ($items as $item) {
             $urls[$item->id] = match (true) {
                 $item->link_type === 'url' => $this->sanitizeUrl($item->url),   // external link — never locale-prefixed
-                $item->link_type === 'dynamic' => $this->internalUrl($this->resolveDynamic($item->dynamic_key), $locale),
+                $item->link_type === 'dynamic' => $this->specialUrl($item->dynamic_key, $locale, $contact),
                 $item->routable_id !== null => $this->internalUrl($paths[$item->link_type][$item->routable_id] ?? null, $locale),
                 default => null,
             };
@@ -337,7 +349,7 @@ final readonly class MenuResolver
      * @param  array<int, string>  $titles
      * @return list<array<string, mixed>>
      */
-    private function buildTree(Collection $items, ?int $parentId, string $locale, string $currentPath, array $urls, array $titles, int $depth): array
+    private function buildTree(Collection $items, ?int $parentId, string $locale, string $currentPath, array $urls, array $titles, int $depth, CarbonImmutable $now): array
     {
         if ($depth >= MenuRules::MAX_DEPTH) {
             return [];
@@ -345,8 +357,8 @@ final readonly class MenuResolver
 
         $nodes = [];
         foreach ($items as $item) {
-            if ($item->parent_id !== $parentId) {
-                continue;
+            if ($item->parent_id !== $parentId || ($item->meta['hidden'] ?? false) === true) {
+                continue;   // another branch, or hidden by the editor with everything under it
             }
 
             $url = $urls[$item->id] ?? null;
@@ -364,7 +376,8 @@ final readonly class MenuResolver
                 'url' => $url,
                 'active' => $url === $currentPath,
                 'attrs' => $this->attrs($item),
-                'children' => $this->buildTree($items, $item->id, $locale, $currentPath, $urls, $titles, $depth + 1),
+                ...MenuItemOptions::forRender($item->meta ?? [], $locale, $now),
+                'children' => $this->buildTree($items, $item->id, $locale, $currentPath, $urls, $titles, $depth + 1, $now),
             ];
         }
 
@@ -404,8 +417,16 @@ final readonly class MenuResolver
         return MenuRules::safeUrl($url);
     }
 
-    private function resolveDynamic(?string $key): ?string
+    /**
+     * @param  array<string, mixed>  $contact
+     */
+    private function specialUrl(?string $key, string $locale, array $contact): ?string
     {
-        return $key === null ? null : (MenuRules::DYNAMIC[$key] ?? null);
+        $link = $key === null ? null : $this->specials->resolve($key, $contact);
+        if ($link === null) {
+            return null;
+        }
+
+        return $link['internal'] ? $this->internalUrl($link['href'], $locale) : $link['href'];
     }
 }

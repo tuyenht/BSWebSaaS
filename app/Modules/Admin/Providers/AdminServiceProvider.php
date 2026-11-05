@@ -20,6 +20,7 @@ use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
 use App\Modules\Admin\Livewire\ForgotPassword;
 use App\Modules\Admin\Livewire\Login;
 use App\Modules\Admin\Livewire\LoginSecuritySettings;
+use App\Modules\Admin\Livewire\Menus\Index as MenusIndex;
 use App\Modules\Admin\Livewire\Placeholder;
 use App\Modules\Admin\Livewire\Platform\Audit\CleanupDialog as PlatformAuditCleanupDialog;
 use App\Modules\Admin\Livewire\Platform\Audit\Index as PlatformAuditIndex;
@@ -105,6 +106,7 @@ final class AdminServiceProvider extends ServiceProvider
         Livewire::component('admin.entries.index', EntriesIndex::class);
         Livewire::component('admin.entries.editor', Editor::class);
         Livewire::component('admin.users.index', UsersIndex::class);
+        Livewire::component('admin.menus.index', MenusIndex::class);
         Livewire::component('admin.platform.tenants.index', PlatformTenantsIndex::class);
         Livewire::component('admin.platform.tenants.detail', PlatformTenantsDetail::class);
         Livewire::component('admin.platform.tenants.change-plan-dialog', PlatformChangePlanDialog::class);

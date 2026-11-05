@@ -6,6 +6,7 @@ namespace App\Modules\Cms\Actions\Menus;
 
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Cms\Exceptions\MenuChangeRejectedException;
+use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Navigation\MenuRules;
 use App\Modules\Identity\Models\User;
@@ -35,7 +36,7 @@ final readonly class FollowMenuArea
      */
     public function handle(User $actor, string $region, string $locale, string $followed): void
     {
-        Gate::forUser($actor)->authorize('menus.manage');
+        Gate::forUser($actor)->authorize('manage', Menu::class);
 
         if (preg_match(MenuRules::REGION_PATTERN, $region) !== 1 || preg_match(MenuRules::REGION_PATTERN, $followed) !== 1) {
             throw new MenuChangeRejectedException('region_invalid');

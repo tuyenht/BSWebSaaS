@@ -1,7 +1,8 @@
 {{--
     Rich storefront header (site setting `storefront.header`, normalized into $header): an optional
     top bar (contact items, language switch, text-size button below lg) that scrolls away, then the main bar
-    — logo, the desktop menu from lg, the menu button and its panel below lg — which stays at the
+    — logo, the desktop menu from lg, the menu button and its panel below lg (the phone menu when the
+    site set one, else the main menu) — which stays at the
     top. One <header> landmark holds both; it sticks with the top bar's height scrolled off, so no
     script runs on scroll and nothing shifts. Every value is Blade-escaped; links come validated.
 --}}
@@ -54,19 +55,22 @@
                     <img class="sf-bar__logo" src="{{ $brand['logo'] }}" alt="{{ $brand['name'] ?? __('storefront.home') }}" width="156" height="40">
                 </a>
             @endif
+            @php($drawerMenu = ! empty($mobileMenu) ? $mobileMenu : ($menu ?? []))
             @if (! empty($menu))
                 <nav class="sf-nav sf-nav--desk" aria-label="{{ __('storefront.nav_main') }}">
                     @include('theme::partials.nav-disclosure', ['items' => $menu, 'depth' => 0, 'idPrefix' => 'dsm'])
                 </nav>
+            @endif
+            @if (! empty($drawerMenu))
                 <button type="button" class="sf-burger" aria-expanded="false" aria-controls="mobile-menu" data-menu-toggle
                     aria-label="{{ __('storefront.menu_open') }}" data-label-open="{{ __('storefront.menu_open') }}" data-label-close="{{ __('storefront.menu_close') }}">
                     <span class="sf-burger__open">@include('theme::partials.sf-icon', ['name' => 'menu', 'size' => 24])</span><span class="sf-burger__close">@include('theme::partials.sf-icon', ['name' => 'close', 'size' => 24])</span>
                 </button>
             @endif
         </div>
-        @if (! empty($menu))
+        @if (! empty($drawerMenu))
             <nav id="mobile-menu" class="sf-nav sf-nav--mob" aria-label="{{ __('storefront.nav_main') }}" hidden>
-                @include('theme::partials.nav-disclosure', ['items' => $menu, 'depth' => 0, 'idPrefix' => 'msm'])
+                @include('theme::partials.nav-disclosure', ['items' => $drawerMenu, 'depth' => 0, 'idPrefix' => 'msm'])
             </nav>
         @endif
     </div>

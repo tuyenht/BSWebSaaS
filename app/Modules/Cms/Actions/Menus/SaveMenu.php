@@ -19,7 +19,7 @@ use App\Modules\Tenancy\Context\SiteLocale;
  */
 final readonly class SaveMenu
 {
-    private const int NAME_MAX = 120;
+    public const int NAME_MAX = 120;
 
     public function __construct(private SiteLocale $siteLocales) {}
 

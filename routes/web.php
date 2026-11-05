@@ -25,6 +25,7 @@ use App\Modules\Admin\Livewire\GeneralSettings;
 use App\Modules\Admin\Livewire\Login;
 use App\Modules\Admin\Livewire\LoginSecuritySettings;
 use App\Modules\Admin\Livewire\Media\Library as MediaLibrary;
+use App\Modules\Admin\Livewire\Menus\Index as MenusIndex;
 use App\Modules\Admin\Livewire\Placeholder;
 use App\Modules\Admin\Livewire\Platform\Audit\Index as AuditIndex;
 use App\Modules\Admin\Livewire\Platform\Sites\Detail as SiteDetail;
@@ -244,11 +245,12 @@ Route::prefix(config('admin.prefix', 'admin'))
         Route::get('/content/create', Editor::class)->middleware('can:entries.create')->name('admin.entries.create');
         Route::get('/content/{ulid}/edit', Editor::class)->name('admin.entries.edit');
 
-        // Placeholder pages — the nav link is live but the real UI isn't built yet (taxonomies,
-        // menu builder). Still gated at the route by the module's own ability, so only permitted
-        // roles reach the stub — no dead-end, defence-in-depth intact.
+        // Placeholder page — the nav link is live but the real UI isn't built yet (taxonomies).
+        // Still gated at the route by the module's own ability, so only permitted roles reach the
+        // stub — no dead-end, defence-in-depth intact.
         Route::get('/taxonomies', Placeholder::class)->middleware('can:taxonomies.manage')->name('admin.taxonomies.index');
-        Route::get('/menus', Placeholder::class)->middleware('can:menus.manage')->name('admin.menus.index');
+        // Trình đơn: the component re-checks menus.manage on every request (boot) and per method.
+        Route::get('/menus', MenusIndex::class)->middleware('can:menus.manage')->name('admin.menus.index');
 
         // Lead inbox (contacts module). Read gated by forms.view; status changes inside the
         // Detail component re-gate on forms.manage (the livewire/update endpoint bypasses this
