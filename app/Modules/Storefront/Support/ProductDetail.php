@@ -5,13 +5,12 @@ declare(strict_types=1);
 namespace App\Modules\Storefront\Support;
 
 use App\Modules\Catalog\Models\Product;
-use App\Modules\Cms\Models\SiteRoute;
+use App\Modules\Catalog\Support\ContactPageSetting;
 use App\Modules\Cms\Models\Taxonomy;
-use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Shared\Contracts\PageLinks;
 use App\Modules\Theme\Chrome\StorefrontChrome;
 use App\Modules\Theme\Components\ButtonLink;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Query\JoinClause;
@@ -38,7 +37,8 @@ final readonly class ProductDetail
     public function __construct(
         private MediaUrlResolver $media,
         private ListPage $lists,
-        private PathBuilder $paths,
+        private PageLinks $pages,
+        private ContactPageSetting $contactPage,
     ) {}
 
     /**
@@ -71,24 +71,22 @@ final readonly class ProductDetail
     }
 
     /**
-     * The address of the current site's published contact page in this language (the page the
-     * site is set up with at /lien-he), built like every storefront link; null when the site has
-     * none, so the quote button is left out. Reachable as the menu decides it: the page published
-     * and its translation in this language published. Only this site's routes can match (tenant scope).
+     * The address of the current site's contact page in this language, built like every storefront
+     * link: the page the site's `catalog` / `contact_page` setting names, by its entry, so a renamed
+     * slug or a language with a slug of its own still finds it. Null when the setting is empty or
+     * the page is not reachable here (not published, its translation in this language not
+     * published, or trashed), so the quote button is left out.
      */
     public function quoteLink(string $locale): ?string
     {
-        $path = SiteRoute::query()
-            ->where('locale', $locale)
-            ->where('path', '/lien-he')
-            ->whereHas('entry', fn (Builder $entry) => $entry
-                ->where('status', 'published')
-                ->whereHas('translations', fn (Builder $translation) => $translation
-                    ->where('locale', $locale)
-                    ->where('status', 'published')))
-            ->value('path');
+        $ulid = $this->contactPage->ulid();
+        if ($ulid === null) {
+            return null;
+        }
 
-        return is_string($path) && $path !== '' ? $this->paths->publicUrl($path, $locale) : null;
+        $path = $this->pages->paths([$ulid], $locale)[$ulid] ?? null;
+
+        return is_string($path) && $path !== '' ? $path : null;
     }
 
     /**

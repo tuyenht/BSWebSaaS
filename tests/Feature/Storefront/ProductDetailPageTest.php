@@ -1,9 +1,13 @@
 <?php
 
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Storefront\Support\ProductDetail;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteLocale;
+use App\Modules\Tenancy\Models\SiteProfile;
+use App\Modules\Tenancy\Models\SiteSetting;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Vite;
 use Illuminate\Support\HtmlString;
@@ -238,4 +242,76 @@ it('never uses another site’s contact page for the quote button', function ():
     expect(productHtml())->not->toContain('product__quote')
         ->and(productHtml('khac.platform.test'))->toContain('product__quote');
     expect($mine->site_id)->not->toBe($other->site_id);
+});
+
+/** The contact page entry of the product's site. */
+function contactEntry(Product $product): Entry
+{
+    return app(Tenancy::class)->enter($product->site_id, fn (): Entry => SiteRoute::query()->where('path', '/lien-he')->firstOrFail()->entry);
+}
+
+it('follows the contact page through a renamed slug, by the page and not by the path', function (): void {
+    $product = productSite();
+    app(Tenancy::class)->enter($product->site_id, function (): void {
+        $entry = SiteRoute::query()->where('path', '/lien-he')->firstOrFail()->entry;
+        $entry->translations()->update(['slug' => 'kết-nối']);
+        SiteRoute::query()->where('entry_id', $entry->id)->update(['path' => '/ket-noi']);
+    });
+
+    $html = productHtml();
+
+    expect($html)->toContain('<a class="product__quote" href="/ket-noi">Yêu cầu báo giá</a>');
+});
+
+it('gives a language with its own slug the prefixed path of that language', function (): void {
+    $product = productSite();
+    $link = app(Tenancy::class)->enter($product->site_id, function (): ?string {
+        SiteLocale::query()->firstOrCreate(['locale' => 'en'], ['is_default' => false, 'enabled' => true]);
+        $entry = SiteRoute::query()->where('path', '/lien-he')->firstOrFail()->entry;
+        $entry->translations()->create(['locale' => 'en', 'title' => 'Contact', 'slug' => 'contact', 'status' => 'published', 'body' => ['blocks' => []]]);
+        SiteRoute::query()->create(['locale' => 'en', 'path' => '/contact', 'entry_id' => $entry->id]);
+
+        return app(ProductDetail::class)->quoteLink('en');
+    });
+
+    expect($link)->toBe('/en/contact');
+
+    $none = app(Tenancy::class)->enter($product->site_id, function (): ?string {
+        $entry = SiteRoute::query()->where('path', '/contact')->firstOrFail()->entry;
+        $entry->translations()->where('locale', 'en')->update(['status' => 'draft']);
+
+        return app(ProductDetail::class)->quoteLink('en');
+    });
+    expect($none)->toBeNull();
+});
+
+it('leaves the quote button out when the site has no contact page setting', function (): void {
+    $product = productSite();
+    app(Tenancy::class)->enter($product->site_id, fn () => SiteSetting::query()->where('group_name', 'catalog')->where('key', 'contact_page')->delete());
+
+    expect(productHtml())->not->toContain('product__quote');
+});
+
+it('never follows a setting that names another site’s page', function (): void {
+    $mine = productSite();
+    $other = productSite('Xưởng Khác', 'khac.platform.test', 'Khác ');
+    $theirs = contactEntry($other)->ulid;
+    app(Tenancy::class)->enter($mine->site_id, fn () => SiteSetting::query()->where('key', 'contact_page')->update(['value' => ['entry' => $theirs]]));
+
+    expect(productHtml())->not->toContain('product__quote')
+        ->and(productHtml('khac.platform.test'))->toContain('product__quote');
+});
+
+it('prints no empty actions row in a box that only holds the Zalo contact', function (): void {
+    $product = productSite();
+    app(Tenancy::class)->enter($product->site_id, function (): void {
+        SiteSetting::query()->where('key', 'contact_page')->delete();
+        SiteProfile::query()->firstOrFail()->update(['social_links' => ['zalo' => '0915668383']]);
+    });
+
+    $html = productHtml();
+
+    expect($html)->toContain('product__zalo')
+        ->and($html)->not->toContain('product__actions')
+        ->and($html)->not->toContain('product__quote');
 });

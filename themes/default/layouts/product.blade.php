@@ -79,6 +79,7 @@
 @if ($sfContact !== null || ($sfInfo['quote'] ?? null) !== null)
                     <div class="product__contact">
                         <p class="product__price">{{ __('storefront.price_on_request') }}</p>
+@if (($sfInfo['quote'] ?? null) !== null || ($sfContact !== null && $sfContact['call'] !== null))
                         <div class="product__actions">
 @if (($sfInfo['quote'] ?? null) !== null)
                             <a class="product__quote" href="{{ $sfInfo['quote'] }}">{{ __('storefront.request_quote') }}</a>
@@ -87,6 +88,7 @@
                             <a class="product__call" href="{{ $sfContact['call'] }}">{{ __('storefront.call_number', ['phone' => $sfContact['number']]) }}</a>
 @endif
                         </div>
+@endif
 @if ($sfContact !== null && $sfContact['zalo'] !== null)
                         <a class="product__zalo" href="{{ $sfContact['zalo'] }}" target="_blank" rel="noopener">{{ __('storefront.zalo_message') }}</a>
 @endif
