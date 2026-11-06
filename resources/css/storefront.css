@@ -6157,6 +6157,203 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     }
 }
 
+/* ───── List rail: a list block with the display group ──────────────────────
+   One flex list serves the grid, the slider and a phone's swipe row. --sf-c is how many items fit
+   across (a fraction shows the next one peeking); fewer items than that sit centred. A slider, and
+   a swipe row on a phone, scroll sideways with snapping; the script adds the arrows and, for a
+   slider, the rotation. Without the script the row still scrolls and nothing is hidden. */
+.sf-rail {
+    position: relative;
+}
+
+.sf-rail__list {
+    --sf-gap: 1.5rem;
+    --sf-c: 3;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--sf-gap);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.sf-rail__list--c2 { --sf-c: 2; }
+.sf-rail__list--c3 { --sf-c: 3; }
+.sf-rail__list--c4 { --sf-c: 4; }
+.sf-rail__list--c6 { --sf-c: 6; }
+
+.sf-rail__list > li {
+    display: flex;
+    flex: 0 0 calc((100% - var(--sf-gap) * (var(--sf-c) - 1)) / var(--sf-c));
+    min-width: 0;
+    scroll-snap-align: start;
+}
+
+/* A card that is the item's only child fills it; an item built of several parts (a team member's
+   photo and name) keeps its own layout. */
+.sf-rail__list > li > :only-child {
+    flex: 1;
+    min-width: 0;
+}
+
+.sf-rail__list--slider {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+}
+
+/* The scrollbar is hidden only where the script's arrows stand in for it: with the arrows turned off,
+   or with scripting off, the row keeps its native scrollbar so a mouse can still move it. */
+@media (scripting: enabled) {
+    .sf-rail:not([data-arrows="none"]) .sf-rail__list {
+        scrollbar-width: none;
+    }
+}
+
+/* Tablet: two across (card kinds); partner logos keep three, as many as on a phone. The phone rules
+   below come last and cover every width under 640px. */
+@media (min-width: 640px) and (max-width: 1023px) {
+    .sf-rail__list { --sf-c: 2; }
+    .partners .sf-rail__list { --sf-c: 3; }
+}
+
+@media (max-width: 639px) {
+    .sf-rail__list { --sf-gap: 1rem; }
+    .sf-rail__list--m-swipe { --sf-c: 1.25; }
+    .sf-rail__list--m-two { --sf-c: 2; }
+    .sf-rail__list--m-one { --sf-c: 1; }
+    .sf-rail__list--m-slider { --sf-c: 3; }
+
+    .sf-rail__list--m-swipe,
+    .sf-rail__list--m-slider {
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+    }
+
+    /* Few logos sit centred; many scroll from the start. */
+    .sf-rail__list--m-slider {
+        justify-content: safe center;
+    }
+}
+
+.sf-rail__list:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 4px;
+}
+
+.sf-rail__controls {
+    display: contents;
+}
+
+.sf-rail__controls[hidden],
+.sf-rail__btn[hidden] {
+    display: none;
+}
+
+/* A 44px hit area, transparent; the visible disc inside it is 36px. */
+.sf-rail__btn {
+    position: relative;
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-text-strong, #111);
+    cursor: pointer;
+}
+
+.sf-rail__btn::before {
+    content: "";
+    position: absolute;
+    inset: 0.25rem;
+    border-radius: 9999px;
+    background: #fff;
+    box-shadow: 0 1px 6px rgb(0 0 0 / 0.25);
+    transition: background 0.2s;
+}
+
+.sf-rail__btn > svg {
+    position: relative;
+}
+
+.sf-rail__btn:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 0;
+}
+
+.sf-rail__prev,
+.sf-rail__next {
+    position: absolute;
+    top: 50%;
+    translate: 0 -50%;
+    z-index: 1;
+}
+
+.sf-rail__prev { left: -0.5rem; }
+.sf-rail__next { right: -0.5rem; }
+
+.sf-rail__bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-height: 2.75rem;
+    margin-top: 0.5rem;
+}
+
+/* The bar keeps its room only on the widths where the list rotates. */
+.sf-rail__bar--phone {
+    display: none;
+}
+
+@media (max-width: 639px) {
+    .sf-rail__bar--phone {
+        display: flex;
+    }
+
+    .sf-rail__bar--wide {
+        display: none;
+    }
+}
+
+/* Nothing rotates under reduced motion or without scripting, so nothing needs the room. */
+@media (prefers-reduced-motion: reduce), (scripting: none) {
+    .sf-rail .sf-rail__bar {
+        display: none;
+    }
+}
+
+.sf-rail__pause .sf-slider__icon-play,
+.sf-rail__pause.is-paused .sf-slider__icon-pause {
+    display: none;
+}
+
+.sf-rail__pause.is-paused .sf-slider__icon-play {
+    display: block;
+}
+
+@media (hover: hover) {
+    .sf-rail__btn:hover::before {
+        background: #f1f5f9;
+    }
+}
+
+.partners .sf-rail__list > li {
+    align-items: center;
+    justify-content: center;
+}
+
+.partners .sf-rail__list > li > * {
+    flex: 0 1 auto;
+}
+
 /* ───── 404 page (theme::layouts.not-found) ─────────────────────────────── */
 /*
  * The site's 404 page between its own header and footer: a big "404" (decoration, its middle digit

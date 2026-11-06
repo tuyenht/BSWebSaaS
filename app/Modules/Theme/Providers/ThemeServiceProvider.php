@@ -69,7 +69,7 @@ final class ThemeServiceProvider extends ServiceProvider
                 'name' => ['type' => 'text'],
                 'url' => ['type' => 'url', 'action' => 'name'],
             ]],
-        ],
+        ] + SectionProps::LIST_DISPLAY,
         'cta' => [
             'heading' => ['type' => 'text'],
             'button_label' => ['type' => 'text'],
@@ -158,7 +158,7 @@ final class ThemeServiceProvider extends ServiceProvider
                 'avatar' => ['type' => 'image'],
             ]],
             'variant' => ['type' => 'enum', 'options' => SectionProps::TESTIMONIAL_VARIANTS, 'default' => 'grid-2'],
-        ],
+        ] + SectionProps::LIST_DISPLAY,
         'team' => [
             'heading' => ['type' => 'text'],
             'members' => ['type' => 'list', 'max' => SectionProps::MAX_ITEMS, 'of' => [
@@ -167,7 +167,7 @@ final class ThemeServiceProvider extends ServiceProvider
                 'photo' => ['type' => 'image'],
             ]],
             'variant' => ['type' => 'enum', 'options' => SectionProps::TEAM_VARIANTS, 'default' => 'grid-3'],
-        ],
+        ] + SectionProps::LIST_DISPLAY,
         'process' => [
             'heading' => ['type' => 'text'],
             'steps' => ['type' => 'list', 'min' => 3, 'min_of' => 'title', 'max' => 6, 'of' => [
