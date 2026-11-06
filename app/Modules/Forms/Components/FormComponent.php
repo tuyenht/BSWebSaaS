@@ -4,6 +4,7 @@ namespace App\Modules\Forms\Components;
 
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormField;
+use App\Modules\Forms\Support\FormFieldTypes;
 use App\Modules\Shared\Contracts\Component;
 use App\Modules\Shared\Support\Cast;
 
@@ -56,7 +57,8 @@ final class FormComponent implements Component
             'action' => $form !== null ? '/forms/'.$form->key : null,
             'locale' => $locale,
             'heading' => $form !== null ? $this->localized($form->name, $locale) : '',
-            'fields' => $form?->fields->map(fn (FormField $field): array => [
+            // Only fields a visitor can answer: the lead request validates and keeps exactly these.
+            'fields' => $form?->fields->filter(FormFieldTypes::isCollectable(...))->values()->map(fn (FormField $field): array => [
                 'key' => $field->key,
                 'type' => $field->type,
                 'label' => $this->localized($field->label, $locale),
