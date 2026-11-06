@@ -8,6 +8,7 @@ use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Contracts\Component;
 use App\Modules\Tenancy\Context\SiteTime;
+use App\Modules\Theme\Components\ListDisplay;
 use App\Modules\Theme\Components\SectionProps;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -46,13 +47,13 @@ final readonly class EntryGridComponent implements Component
         return [
             'heading' => ['type' => 'text'],
             'taxonomy_slug' => ['type' => 'text'],
-            'limit' => ['type' => 'int', 'default' => 6],
+            'limit' => ['type' => 'int', 'default' => 6, 'min' => ListDisplay::LIMIT_MIN, 'max' => ListDisplay::LIMIT_MAX],
             'variant' => ['type' => 'enum', 'options' => SectionProps::ENTRY_GRID_VARIANTS, 'default' => 'list'],
             'description' => ['type' => 'textarea'],
             'link_label' => ['type' => 'text'],
             'view_all_label' => ['type' => 'text'],
             'view_all_url' => ['type' => 'url'],
-        ];
+        ] + SectionProps::LIST_DISPLAY;
     }
 
     /**
@@ -64,7 +65,7 @@ final readonly class EntryGridComponent implements Component
         // Coerce like LatestPostsComponent: Livewire number inputs hydrate as strings; clamp
         // 1..50 so a careless/forged limit can't issue an unbounded query.
         $rawLimit = $props['limit'] ?? 6;
-        $limit = is_numeric($rawLimit) ? min(50, max(1, (int) $rawLimit)) : 6;
+        $limit = is_numeric($rawLimit) ? min(ListDisplay::LIMIT_MAX, max(ListDisplay::LIMIT_MIN, (int) $rawLimit)) : 6;
         $locale = is_string($props['locale'] ?? null) ? $props['locale'] : 'vi';
         $slug = is_string($props['taxonomy_slug'] ?? null) ? $props['taxonomy_slug'] : '';
         $variant = SectionProps::choice($props, 'variant', SectionProps::ENTRY_GRID_VARIANTS);
@@ -77,7 +78,7 @@ final readonly class EntryGridComponent implements Component
             : null;
 
         if ($taxonomyTranslation === null) {
-            return ['props' => $props, 'items' => [], 'variant' => $variant];
+            return ['props' => $props, 'items' => [], 'variant' => $variant, 'display' => null];
         }
 
         $taxonomyId = $taxonomyTranslation->taxonomy_id;
@@ -89,11 +90,21 @@ final readonly class EntryGridComponent implements Component
             ->with(['translations', 'routes', 'sectors.translations'])
             ->orderByDesc('published_at')
             ->orderByDesc('id')
-            ->limit($limit)
+            // A block with the display group reads one row more than it shows: that row is how "view
+            // all" learns there is more, with no COUNT(*).
+            ->limit($limit + (ListDisplay::applies($props) ? 1 : 0))
             ->get();
 
+        $kind = ['icon-cards' => 'icon', 'project-cards' => 'project', 'news-cards' => 'news'][$variant] ?? null;
+        $display = $kind !== null ? ListDisplay::plan($kind, $props, $items->count(), $limit) : null;
+        if ($display !== null) {
+            $items = $items->take($display['shown']);
+        } elseif ($items->count() > $limit) {
+            $items = $items->take($limit);
+        }
+
         if ($variant !== 'list') {
-            return ['props' => $props, 'items' => $this->cards($items, $locale, $variant), 'variant' => $variant];
+            return ['props' => $props, 'items' => $this->cards($items, $locale, $variant), 'variant' => $variant, 'display' => $display];
         }
 
         $items = $items
@@ -115,7 +126,7 @@ final readonly class EntryGridComponent implements Component
             })
             ->all();
 
-        return ['props' => $props, 'items' => $items, 'variant' => $variant];
+        return ['props' => $props, 'items' => $items, 'variant' => $variant, 'display' => null];
     }
 
     /**

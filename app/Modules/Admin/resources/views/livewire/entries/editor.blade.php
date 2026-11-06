@@ -146,7 +146,7 @@
                     </header>
                     <div class="block-props">
                         @foreach (($schemas[$block['type']] ?? []) as $prop => $spec)
-                            @continue(($spec['group'] ?? null) === 'style')
+                            @continue(in_array($spec['group'] ?? null, ['style', 'display'], true))
                             {{-- A background video is chosen in the page builder's video field (not built in this editor yet); its value is kept as saved. --}}
                             @continue(($spec['type'] ?? null) === 'video')
                             @if (($spec['type'] ?? 'text') === 'list')
@@ -169,7 +169,7 @@
                                     <button type="button" wire:click="addItem({{ $i }}, '{{ $prop }}')">{{ __('entries.add_item') }}</button>
                                 </fieldset>
                             @else
-                                @include('admin::livewire.entries.partials.prop-input', ['fieldType' => $spec['type'] ?? 'text', 'model' => "blocks.$i.props.$prop", 'fieldLabel' => $prop, 'value' => $block['props'][$prop] ?? null, 'imageUrls' => $blockImageUrls, 'options' => $spec['options'] ?? []])
+                                @include('admin::livewire.entries.partials.prop-input', ['fieldType' => $spec['type'] ?? 'text', 'model' => "blocks.$i.props.$prop", 'fieldLabel' => $prop, 'value' => $block['props'][$prop] ?? null, 'imageUrls' => $blockImageUrls, 'options' => $spec['options'] ?? [], 'min' => $spec['min'] ?? null, 'max' => $spec['max'] ?? null])
                             @endif
                         @endforeach
                     </div>

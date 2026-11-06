@@ -5,6 +5,7 @@ namespace App\Modules\Theme\Rendering;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\VideoEmbed;
+use App\Modules\Theme\Components\ListDisplay;
 use App\Modules\Theme\Components\SectionProps;
 use App\Modules\Theme\Theming\SiteSeo;
 use App\Modules\Theme\Theming\ThemeResolver;
@@ -41,6 +42,8 @@ final readonly class PageRenderer
         $layout = $this->templates->layoutFor($type, $templateOverride, $categoryTemplate);
         $leadBlock = $this->blocks->leadType($body);
         $extra += in_array('hero_slider', $this->blocks->types($body), true) ? self::sliderHints($body, $leadBlock, $this->media) : [];
+        // The slider script also drives the list rows (a list block that carries the display group).
+        $extra += self::hasRails($body) ? ['sliderScript' => true] : [];
         // The scroll-in motion script loads only on a page with a block that moves.
         $extra += $this->blocks->moves($body) ? ['sectionsScript' => true] : [];
         // The click-to-load video script loads only on a page with a video it can play.
@@ -97,6 +100,24 @@ final readonly class PageRenderer
         }
 
         return $head;
+    }
+
+    /**
+     * Whether a list block on the page carries the display group (a block saved before it has no
+     * `layout` key and draws as it always did, with no script). Pure: no query.
+     *
+     * @param  array<string, mixed>  $body
+     */
+    private static function hasRails(array $body): bool
+    {
+        foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
+            if (is_array($block) && in_array($block['type'] ?? null, ['entry_grid', 'product_grid', 'partners', 'testimonial', 'team'], true)
+                && is_array($block['props'] ?? null) && ListDisplay::applies($block['props'])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

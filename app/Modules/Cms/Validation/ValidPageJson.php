@@ -395,6 +395,10 @@ final readonly class ValidPageJson implements ValidationRule
 
             if ($kind === 'int' && (isset($spec['min']) || isset($spec['max'])) && $value !== null && $value !== '') {
                 $number = is_int($value) ? $value : (is_string($value) && preg_match('/\A-?\d{1,15}\z/', $value) === 1 ? (int) $value : null);
+                if ($number !== null && is_int($spec['min'] ?? null) && is_int($spec['max'] ?? null)
+                    && ($number < $spec['min'] || $number > $spec['max'])) {
+                    return __('entries.err_block_number_range', ['type' => $type, 'min' => $spec['min'], 'max' => $spec['max']]);
+                }
                 if ($number === null || $number < ($spec['min'] ?? PHP_INT_MIN) || $number > ($spec['max'] ?? PHP_INT_MAX)) {
                     return __('entries.err_block_number_invalid', ['type' => $type]);
                 }

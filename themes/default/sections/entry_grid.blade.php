@@ -14,8 +14,12 @@
     'heading' => \App\Modules\Theme\Components\SectionProps::text($props, 'heading'),
     'description' => \App\Modules\Theme\Components\SectionProps::text($props, 'description'),
 ])
+@php($sfDisplay = $display ?? null)
 @if (count($items) > 0)
-<ul class="sf-grid {{ $sfGrid }}">
+@if ($sfDisplay !== null)
+@include('theme::partials.sf-rail-open', ['display' => $sfDisplay, 'label' => \App\Modules\Theme\Components\SectionProps::text($props, 'heading', __('storefront.list_rail'))])
+@endif
+<ul class="{{ $sfDisplay['class'] ?? 'sf-grid '.$sfGrid }}"@if ($sfDisplay['scrolls'] ?? false) tabindex="0"@endif>
 @foreach ($items as $card)
 <li>@include('theme::partials.sf-card', [
     'card' => $card,
@@ -26,10 +30,13 @@
 ])</li>
 @endforeach
 </ul>
+@if ($sfDisplay !== null)
+@include('theme::partials.sf-rail-close', ['display' => $sfDisplay])
+@endif
 @else
 <p class="sf-empty">{{ __('storefront.no_content') }}</p>
 @endif
-@include('theme::partials.sf-view-all', ['label' => \App\Modules\Theme\Components\SectionProps::text($props, 'view_all_label'), 'url' => $props['view_all_url'] ?? null])
+@include('theme::partials.sf-view-all', ['label' => \App\Modules\Theme\Components\SectionProps::text($props, 'view_all_label'), 'url' => $props['view_all_url'] ?? null, 'show' => $sfDisplay['view_all'] ?? true])
 @endcomponent
 @else
 <section class="entry-grid">
@@ -40,8 +47,12 @@
     {{-- $items are SERVER-resolved cards (EntryGridComponent::data), not author Page-JSON props —
          hence a data var ($card), like latest_posts' $post. url = a stored route path; image = a
          site meta field. Neither is author-injected Page-JSON, so they are not type:url props. --}}
+@php($sfDisplay = $display ?? null)
     @if (count($items) > 0)
-        <ul class="entry-grid__list">
+@if ($sfDisplay !== null)
+@include('theme::partials.sf-rail-open', ['display' => $sfDisplay, 'label' => \App\Modules\Theme\Components\SectionProps::text($props, 'heading', __('storefront.list_rail'))])
+@endif
+        <ul class="{{ $sfDisplay['class'] ?? 'entry-grid__list' }}"@if ($sfDisplay['scrolls'] ?? false) tabindex="0"@endif>
             @foreach ($items as $card)
                 <li class="entry-grid__card">
                     @if (! empty($card['image']))
@@ -70,8 +81,15 @@
                 </li>
             @endforeach
         </ul>
+@if ($sfDisplay !== null)
+@include('theme::partials.sf-rail-close', ['display' => $sfDisplay])
+@endif
     @else
         <p class="entry-grid__empty">{{ __('storefront.no_content') }}</p>
     @endif
+@if ($sfDisplay !== null)
+{{-- "View all" only for a block that carries the display group; one saved before it never showed it. --}}
+@include('theme::partials.sf-view-all', ['label' => \App\Modules\Theme\Components\SectionProps::text($props, 'view_all_label'), 'url' => $props['view_all_url'] ?? null, 'show' => $sfDisplay['view_all']])
+@endif
 </section>
 @endif
