@@ -29,6 +29,9 @@ final class SectionProps
      */
     public const array ENTRY_GRID_TABS = ['off', 'auto', 'filter'];
 
+    /** The looks that can carry tabs: the card looks (the plain list and the rows have no tab panel). */
+    public const array TAB_VARIANTS = ['icon-cards', 'project-cards', 'news-cards'];
+
     /** The most tabs a block draws, and the fewest it needs (below that the list is drawn plain). */
     public const int TABS_MAX = 3;
 

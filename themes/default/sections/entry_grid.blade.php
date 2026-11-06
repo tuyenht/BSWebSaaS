@@ -74,12 +74,14 @@
      shows the tab bar and switches panels (the ARIA tabs pattern). The cards are the card look's. --}}
 @php
     $sfKind = ['icon-cards' => 'icon', 'project-cards' => 'project', 'news-cards' => 'news'][$variant] ?? 'news';
-    $sfGrid = ['icon' => 'sf-grid--4', 'project' => 'sf-grid--4s', 'news' => 'sf-grid--4s'][$sfKind];
-    $sfSizes = '(min-width:1360px) 298px, (min-width:1024px) calc((100vw - 10.5rem)/4), (min-width:640px) calc((100vw - 5rem)/2), calc(100vw - 2rem)';
+    $sfSizes = '(min-width:1360px) 408px, (min-width:1024px) calc((100vw - 8.5rem)/3), (min-width:640px) calc((100vw - 5rem)/2), calc(100vw - 2rem)';
     $sfBg = \App\Modules\Theme\Components\SectionProps::choice($props, 'bg', \App\Modules\Theme\Components\SectionProps::BG);
-    $sfTabsNo = request()->attributes->get('sf_tabs_count', 0) + 1;
-    request()->attributes->set('sf_tabs_count', $sfTabsNo);
     $sfLinkLabel = \App\Modules\Theme\Components\SectionProps::text($props, 'link_label', __('storefront.view_detail'));
+    // The heading order never skips a level: a block with a heading has its h2, then the panel h3 and the card h4;
+    // a block without one starts at the panel h2 and its cards are h3.
+    $sfHasHead = \App\Modules\Theme\Components\SectionProps::text($props, 'heading') !== '';
+    $sfTitleTag = $sfHasHead ? 'h3' : 'h2';
+    $sfCardLevel = $sfHasHead ? 'h4' : 'h3';
 @endphp
 @component('theme::partials.sf-band', ['bg' => $sfBg, 'class' => 'sf-cards sf-cards--'.$sfKind])
 @include('theme::partials.sf-section-head', [
@@ -87,29 +89,39 @@
     'description' => \App\Modules\Theme\Components\SectionProps::text($props, 'description'),
 ])
 <div class="sf-tabs" data-sf-tabs>
-<div class="sf-tabs__bar" role="tablist" aria-label="{{ \App\Modules\Theme\Components\SectionProps::text($props, 'heading', __('storefront.tabs_label')) }}" hidden>
+<div class="sf-tabs__bar" data-label="{{ \App\Modules\Theme\Components\SectionProps::text($props, 'heading', __('storefront.tabs_label')) }}" hidden>
 @foreach ($tabs as $sfTab)
-<button type="button" class="sf-tabs__tab" role="tab" id="sf-tab-{{ $sfTabsNo }}-{{ $loop->iteration }}" aria-controls="sf-tabpanel-{{ $sfTabsNo }}-{{ $loop->iteration }}" aria-selected="{{ $loop->first ? 'true' : 'false' }}"@if (! $loop->first) tabindex="-1"@endif data-sf-tab>{{ $sfTab['name'] }}</button>
+<button type="button" class="sf-tabs__tab" data-sf-tab>{{ $sfTab['name'] }}</button>
 @endforeach
 </div>
 @foreach ($tabs as $sfTab)
-<div class="sf-tabs__panel" role="tabpanel" id="sf-tabpanel-{{ $sfTabsNo }}-{{ $loop->iteration }}" aria-labelledby="sf-tab-{{ $sfTabsNo }}-{{ $loop->iteration }}" data-sf-tabpanel>
-<h3 class="sf-tabs__title">{{ $sfTab['name'] }}</h3>
-<ul class="sf-grid {{ $sfGrid }}">
+<div class="sf-tabs__panel" data-sf-tabpanel>
+<{{ $sfTitleTag }} class="sf-tabs__title">{{ $sfTab['name'] }}</{{ $sfTitleTag }}>
+@php
+    $sfDisplay = $sfTab['display'];
+@endphp
+@if ($sfDisplay !== null)
+@include('theme::partials.sf-rail-open', ['display' => $sfDisplay, 'label' => $sfTab['name']])
+@endif
+<ul class="{{ $sfDisplay['class'] ?? 'sf-grid sf-grid--3s' }}"@if ($sfDisplay['scrolls'] ?? false) tabindex="0"@endif>
 @foreach ($sfTab['items'] as $card)
 <li>@include('theme::partials.sf-card', [
     'card' => $card,
     'kind' => $sfKind,
-    'level' => 'h4',
+    'level' => $sfCardLevel,
     'sizes' => $sfSizes,
     'linkLabel' => $sfLinkLabel,
 ])</li>
 @endforeach
 </ul>
-@include('theme::partials.sf-view-all', ['label' => \App\Modules\Theme\Components\SectionProps::text($props, 'view_all_label'), 'url' => $props['view_all_url'] ?? null, 'show' => $sfTab['view_all']])
+@if ($sfDisplay !== null)
+@include('theme::partials.sf-rail-close', ['display' => $sfDisplay])
+@endif
 </div>
 @endforeach
 </div>
+{{-- One "view all" after the panels (the board has a single block link), with or without the script. --}}
+@include('theme::partials.sf-view-all', ['label' => \App\Modules\Theme\Components\SectionProps::text($props, 'view_all_label'), 'url' => $props['view_all_url'] ?? null, 'show' => collect($tabs)->contains(fn (array $sfT): bool => $sfT['view_all'])])
 @endcomponent
 @elseif (in_array($variant ?? 'list', ['icon-cards', 'project-cards', 'news-cards', 'overlay'], true))
 {{-- A card look (opt-in through `variant`, SectionProps): the shared band, head, card and

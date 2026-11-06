@@ -178,24 +178,48 @@ describe('tabs on the page', function (): void {
         ]]);
     }
 
-    it('prints every panel on the server with the tab bar hidden, headings and linked ids', function (): void {
+    it('prints every panel on the server as plain content, with one view-all after them', function (): void {
         app(Tenancy::class)->enter(1, function (): void {
             tabsSeed(['a', 'b'], ['a' => 2, 'b' => 4]);
-            request()->attributes->remove('sf_tabs_count');
 
             $html = tabsRender();
 
-            expect($html)->toContain('<div class="sf-tabs__bar" role="tablist" aria-label="Tin tức Ấ" hidden>')
-                ->toContain('<button type="button" class="sf-tabs__tab" role="tab" id="sf-tab-1-1" aria-controls="sf-tabpanel-1-1" aria-selected="true" data-sf-tab>Ấ a Ế</button>')
-                ->toContain('aria-selected="false" tabindex="-1" data-sf-tab>Ấ b Ế</button>')
-                ->toContain('id="sf-tabpanel-1-2" aria-labelledby="sf-tab-1-2"')
+            expect($html)->toContain('<div class="sf-tabs__bar" data-label="Tin tức Ấ" hidden>')
+                ->toContain('<button type="button" class="sf-tabs__tab" data-sf-tab>Ấ a Ế</button>')
                 ->toContain('<h3 class="sf-tabs__title">Ấ b Ế</h3>')
                 ->toContain('Ấ bài b published 3 Ế')
-                // the second block on the page gets its own ids
-                ->toContain('id="sf-tab-2-1"')
-                // card titles sit one level under the tab heading
-                ->toContain('<h4 class="sf-card__title">')
-                // only the tab with more than three posts offers "view all"
+                // no element points at hidden content before the script runs
+                ->not->toContain('role="tab"')->not->toContain('role="tabpanel"')
+                ->not->toContain('aria-labelledby')->not->toContain('aria-controls')
+                // the plan's grid class, three across from lg, as the plain card branch does
+                ->toContain('<ul class="sf-rail__list sf-rail__list--grid sf-rail__list--c3')
+                // exactly one "view all", after the last panel
+                ->and(substr_count($html, 'sf-view-all__link'))->toBe(1);
+            expect(substr_count(substr($html, 0, (int) strpos($html, 'sf-view-all__link')), 'data-sf-tabpanel'))->toBe(2);
+        });
+    });
+
+    it('keeps the heading order without a gap: the section h2, the panel h3, the card h4', function (): void {
+        app(Tenancy::class)->enter(1, function (): void {
+            tabsSeed(['a', 'b'], ['a' => 1, 'b' => 1]);
+
+            preg_match_all('/<h([1-6])[\s>]/', tabsRender(), $found);
+            $levels = array_map('intval', $found[1]);
+            $previous = 1; // the page's h1
+            foreach ($levels as $level) {
+                expect($level - $previous)->toBeLessThanOrEqual(1);
+                $previous = $level;
+            }
+            expect(array_slice($levels, 0, 3))->toBe([2, 3, 4]);
+        });
+    });
+
+    it('draws the default grid three across when the block has no display group', function (): void {
+        app(Tenancy::class)->enter(1, function (): void {
+            tabsSeed(['a', 'b'], ['a' => 1, 'b' => 1]);
+            $html = app(BlockRenderer::class)->render(['blocks' => [['type' => 'entry_grid', 'props' => ['taxonomy_slug' => 'tin-tuc', 'limit' => 3, 'variant' => 'news-cards', 'tabs' => 'auto', 'view_all_label' => 'Xem', 'view_all_url' => '/tin-tuc']]]]);
+
+            expect($html)->toContain('<ul class="sf-grid sf-grid--3s">')->not->toContain('sf-grid--4s')
                 ->and(substr_count($html, 'sf-view-all__link'))->toBe(1);
         });
     });
@@ -229,6 +253,12 @@ describe('tabs on the page', function (): void {
 
             expect(str_contains($html, 'resources/js/sf-tabs.js'))->toBe($loads);
         })->with([['auto', true], ['filter', true], ['off', false], ['bogus', false]]);
+
+        it('does not load the tab script on a look that draws no tabs', function (): void {
+            app(Tenancy::class)->enter($this->siteId, fn () => StorefrontCards::page('/tin', 'Tin', [['type' => 'entry_grid', 'props' => ['taxonomy_slug' => 'tin-tuc', 'variant' => 'list', 'tabs' => 'auto']]]));
+
+            expect(str_contains($this->get('http://mau.platform.test/tin')->assertOk()->getContent(), 'resources/js/sf-tabs.js'))->toBeFalse();
+        });
     });
 });
 

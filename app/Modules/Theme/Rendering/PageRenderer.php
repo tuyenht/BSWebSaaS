@@ -106,7 +106,8 @@ final readonly class PageRenderer
     }
 
     /**
-     * Whether an article list on the page asks for tabs (a card look with `tabs` other than `off`).
+     * Whether an article list on the page asks for tabs (a card look with `tabs` other than `off`; the
+     * plain list and the rows never draw tabs, so they do not load the script).
      * Pure: no query.
      *
      * @param  array<string, mixed>  $body
@@ -115,7 +116,7 @@ final readonly class PageRenderer
     {
         foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
             $props = is_array($block) && ($block['type'] ?? null) === 'entry_grid' && is_array($block['props'] ?? null) ? $block['props'] : null;
-            if ($props !== null && in_array($props['tabs'] ?? 'off', ['auto', 'filter'], true)) {
+            if ($props !== null && in_array($props['variant'] ?? 'list', SectionProps::TAB_VARIANTS, true) && in_array($props['tabs'] ?? 'off', ['auto', 'filter'], true)) {
                 return true;
             }
         }

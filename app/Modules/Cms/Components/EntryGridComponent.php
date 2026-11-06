@@ -33,9 +33,6 @@ final readonly class EntryGridComponent implements Component
     /** The widths a card photo offers through srcset. */
     public const array CARD_SRCSET_WIDTHS = [320, 640, 960, 1280];
 
-    /** The looks that can carry tabs: the card looks (the plain list and the rows have no tab panel). */
-    private const array TAB_VARIANTS = ['icon-cards', 'project-cards', 'news-cards'];
-
     /** How many sub-categories the tab read looks at. */
     private const int TAB_CHILDREN_READ = 12;
 
@@ -93,7 +90,7 @@ final readonly class EntryGridComponent implements Component
         $taxonomyId = $taxonomyTranslation->taxonomy_id;
 
         // Tabs: one per published sub-category, drawn only on the card looks and only from two up.
-        $tabs = SectionProps::choice($props, 'tabs', SectionProps::ENTRY_GRID_TABS) !== 'off' && in_array($variant, self::TAB_VARIANTS, true)
+        $tabs = SectionProps::choice($props, 'tabs', SectionProps::ENTRY_GRID_TABS) !== 'off' && in_array($variant, SectionProps::TAB_VARIANTS, true)
             ? $this->tabs($taxonomyId, $locale, $limit, $props, $variant)
             : null;
         if ($tabs !== null) {
@@ -157,11 +154,13 @@ final readonly class EntryGridComponent implements Component
      * sub-categories (with their names in the page language), the ranked posts of all of them
      * (ROW_NUMBER per sub-category, one row more than shown so a tab learns it has more without a
      * COUNT), and the posts themselves with their eager loads. "Has posts" is read from the ranked
-     * rows, not from a category counter (which counts drafts). Null when fewer than two sub-categories
+     * rows, not from a category counter (which counts drafts). Only the first TAB_CHILDREN_READ (12)
+     * sub-categories, in their own order, are looked at: a sub-category after the 12th never gets a tab,
+     * even when the earlier ones have no posts. Null when fewer than two sub-categories
      * have posts: the block is then drawn as a plain list. The `filter` choice draws like `auto` here.
      *
      * @param  array<string, mixed>  $props
-     * @return list<array{name: string, items: list<array<string, mixed>>, view_all: bool}>|null
+     * @return list<array{name: string, items: list<array<string, mixed>>, view_all: bool, display: array<string, mixed>|null}>|null
      */
     private function tabs(int $taxonomyId, string $locale, int $limit, array $props, string $variant): ?array
     {
@@ -200,6 +199,7 @@ final readonly class EntryGridComponent implements Component
                 'name' => $child->name,
                 'items' => $this->cards(array_filter(array_map(fn (int $id): ?Entry => $entries->get($id), array_slice($ids, 0, $limit))), $locale, $variant),
                 'view_all' => $display['view_all'] ?? true,
+                'display' => $display,
             ];
         }
 

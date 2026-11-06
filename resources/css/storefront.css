@@ -7100,7 +7100,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 }
 
 /* News tabs of an article list. Without JavaScript the bar stays hidden and every panel stacks under
-   its heading; sf-tabs.js marks the block ready, which hides the headings and all panels but one. */
+   its heading; sf-tabs.js marks the block ready, which hides the headings visually (they stay for screen readers) and all panels but one. */
 .sf-tabs__bar {
     display: flex;
     flex-wrap: wrap;
@@ -7111,7 +7111,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     margin: 0 auto 3rem;
     padding: 0.5rem;
     border-radius: 2rem;
-    background: var(--color-surface-tint, #e2e8f0);
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
 }
 
 .sf-tabs__bar[hidden] {
@@ -7138,8 +7138,8 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 
 .sf-tabs__tab[aria-selected="true"] {
     background: var(--color-dark);
-    color: var(--color-on-dark, #fff);
-    box-shadow: 0 1px 3px rgb(0 0 0 / 0.2);
+    color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white));
+    box-shadow: 0 1px 3px color-mix(in srgb, var(--color-dark) 30%, transparent);
 }
 
 .sf-tabs__tab:focus-visible {
@@ -7159,7 +7159,15 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 }
 
 .sf-tabs[data-ready] .sf-tabs__title {
-    display: none;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 
 .sf-tabs__panel[hidden] {
@@ -7167,7 +7175,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 }
 
 .sf-band--dark .sf-tabs__title {
-    color: var(--sch-head, #fff);
+    color: var(--sch-head, var(--color-on-dark, white));
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -6,7 +6,7 @@
     },
     "resources/css/storefront.css": {
       "js": 0,
-      "css": 18097
+      "css": 18119
     },
     "resources/js/app.js": {
       "js": 20351,
@@ -33,7 +33,7 @@
       "css": 0
     },
     "resources/js/sf-tabs.js": {
-      "js": 401,
+      "js": 498,
       "css": 0
     },
     "resources/js/sf-video.js": {

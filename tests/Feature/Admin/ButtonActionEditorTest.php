@@ -440,3 +440,13 @@ it('keeps the search of one button apart from the second button of the same bloc
         expect($c->get('buttonQueries'))->toHaveKey('0-props-button_url')->not->toHaveKey('0-props-button2_url');
     });
 });
+
+it('ties the notice of a gone product to its field in plain text, not as an alert', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        Livewire::actingAs(actionEditor())->test(Editor::class)
+            ->set('blocks', [['type' => 'product_grid', 'props' => ['source' => 'picked', 'product_keys' => ['01ARZ3NDEKTSV4RRFFQ69G5FAV']]]])
+            ->assertSeeHtml('aria-describedby="gone-0-0"')
+            ->assertSeeHtml('<span class="error" id="gone-0-0">')
+            ->assertDontSeeHtml('role="alert"');
+    });
+});
