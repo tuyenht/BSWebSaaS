@@ -6,7 +6,7 @@
     },
     "resources/css/storefront.css": {
       "js": 0,
-      "css": 14573
+      "css": 15524
     },
     "resources/js/app.js": {
       "js": 20351,
@@ -18,6 +18,10 @@
     },
     "resources/js/sf-bgvideo.js": {
       "js": 504,
+      "css": 0
+    },
+    "resources/js/sf-gallery.js": {
+      "js": 395,
       "css": 0
     },
     "resources/js/sf-slider.js": {

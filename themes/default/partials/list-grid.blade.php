@@ -3,18 +3,23 @@
     category title band carries the page's single h1, the breadcrumb, the category's description and
     its cover photo (the page's main image: eager, high priority, srcset; no cover: the solid band),
     so card titles are h2. Chips link to the child categories' own pages. The first card's photo is the likely LCP
-    image (high priority); the rest load lazily, so on a phone, where the grid is one column, the
-    photos below the fold do not compete with it (on a wide screen the browser still fetches the
-    ones in view at once). `cards` and `chips` are
-    built by the controller from stored routes; no id reaches the markup.
+    image (high priority); the rest load lazily, so on a phone the photos below the fold do not
+    compete with it (on a wide screen the browser still fetches the ones in view at once). Products
+    stand two to a row on a phone; news and project cards there are compact rows. On the first page
+    of a news list with more than three posts, the newest is the wide featured card above the grid.
+    `cards` and `chips` are built by the controller from stored routes; no id reaches the markup.
 --}}
 @php
     $sfKind = in_array($kind ?? 'news', ['product', 'project', 'news'], true) ? $kind : 'news';
-    $sfGrid = $sfKind === 'product' ? 'sf-grid--3s' : 'sf-grid--3m';
+    $sfGrid = $sfKind === 'product' ? 'sf-grid--3p' : 'sf-grid--3m';
     $sfSizes = $sfKind === 'product'
-        ? '(min-width:1360px) 408px, (min-width:1024px) calc((100vw - 8.5rem)/3), (min-width:640px) calc((100vw - 5rem)/2), calc(100vw - 2rem)'
+        ? '(min-width:1360px) 408px, (min-width:1024px) calc((100vw - 8.5rem)/3), (min-width:640px) calc((100vw - 5rem)/2), calc((100vw - 2.75rem)/2)'
         : '(min-width:1360px) 408px, (min-width:1024px) calc((100vw - 8.5rem)/3), (min-width:768px) calc((100vw - 5rem)/2), calc(100vw - 2rem)';
     $sfCards = $cards ?? [];
+    // Page 1 only (no "previous" or "first page" link): a later page is a plain grid.
+    $sfFeatured = $sfKind === 'news' && count($sfCards) > 3 && empty($pagination['prevUrl']) && empty($pagination['firstUrl'])
+        ? array_shift($sfCards) : null;
+    $sfLead = $sfFeatured !== null || ! empty($band['image']);
     $sfChips = $chips ?? [];
     $sfAll = collect($sfChips)->first();
 @endphp
@@ -41,10 +46,13 @@
                 </ul>
             </nav>
 @endif
+@if ($sfFeatured !== null)
+            @include('theme::partials.sf-card', ['card' => $sfFeatured, 'kind' => 'news', 'level' => 'h2', 'featured' => true, 'sizes' => '(min-width:1360px) 640px, (min-width:1024px) calc((100vw - 4rem)/2), calc(100vw - 2rem)', 'priority' => empty($band['image']) ? 'high' : 'lazy'])
+@endif
 @if (count($sfCards) > 0)
             <ul class="sf-grid {{ $sfGrid }}">
 @foreach ($sfCards as $index => $card)
-                <li>@include('theme::partials.sf-card', ['card' => $card, 'kind' => $sfKind, 'level' => 'h2', 'sizes' => $sfSizes, 'priority' => ($index === 0 && empty($band['image'])) ? 'high' : 'lazy'])</li>
+                <li>@include('theme::partials.sf-card', ['card' => $card, 'kind' => $sfKind, 'level' => 'h2', 'list' => true, 'sizes' => $sfSizes, 'priority' => ($index === 0 && ! $sfLead) ? 'high' : 'lazy'])</li>
 @endforeach
             </ul>
 @if (! empty($pagination['prevUrl']) || ! empty($pagination['nextUrl']) || ! empty($pagination['firstUrl']))

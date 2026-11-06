@@ -9,7 +9,8 @@
     storefront CSP allows by its hash (no request, nothing else inline runs). The header script (submenus, menu panel, text size)
     loads only where there is something for it to do, the slider script only on a page with a
     slider to rotate (plus a preconnect to the media host when the slider leads the page), the
-    background-video script only on a page whose hero has a video, and a
+    background-video script only on a page whose hero has a video, the photo switcher only on a
+    product page with more than one photo, and a
     robots line only where a page asks for one. These lines sit in column 0 so a site
     without them renders the same bytes as before.
 --}}
@@ -194,4 +195,7 @@
 @endif
 @if (! empty($bgVideoScript))
 @vite(['resources/js/sf-bgvideo.js'])
+@endif
+@if (! empty($galleryScript))
+@vite(['resources/js/sf-gallery.js'])
 @endif

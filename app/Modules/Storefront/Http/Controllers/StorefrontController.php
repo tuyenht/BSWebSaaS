@@ -23,6 +23,7 @@ use App\Modules\Shared\Support\SafeLink;
 use App\Modules\Storefront\Support\Breadcrumbs;
 use App\Modules\Storefront\Support\ListPage;
 use App\Modules\Storefront\Support\PostDetail;
+use App\Modules\Storefront\Support\ProductDetail;
 use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Theme\Chrome\FloatingContact;
@@ -62,6 +63,7 @@ final readonly class StorefrontController
         private TemplateResolver $templates,
         private Breadcrumbs $crumbs,
         private PostDetail $posts,
+        private ProductDetail $products,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -422,7 +424,8 @@ final readonly class StorefrontController
      * Render a catalog product detail page. The product is loaded HERE (the storefront may depend on
      * Catalog; Cms routing must not) and visibility is enforced at load — an unpublished/soft-deleted
      * product, or one with no translation for the locale, 404s. Name + description HTML + gallery are
-     * handed to the Theme as primitives.
+     * handed to the Theme as primitives, with the main category's name, the summary, the contact
+     * box's links and the other products of the same category.
      *
      * @param  array<string, mixed>  $chrome  page chrome (menu, lang, hreflang)
      */
@@ -456,16 +459,18 @@ final readonly class StorefrontController
             $this->crumbs->crumb($translation->name, $this->paths->publicUrl($path, $locale)),
         ];
 
-        $images = [];
-        foreach ($product->images as $image) {
-            $key = $image->media?->storage_key;
-            if (is_string($key) && $key !== '') {
-                $images[] = ['url' => $this->media->url($key, 1280), 'alt' => $translation->name];
-            }
-        }
+        $images = $this->products->photos($product, $translation->name);
         if ($images !== []) {
             $extra['ogImage'] = $images[0]['url'];
         }
+        // The thumbnails work as plain links; the switcher script only swaps them in place.
+        $extra['galleryScript'] = count($images) > 1;
+        $extra['product'] = [
+            'group' => $category?->translationFor($locale)->name ?? '',
+            'summary' => trim((string) $translation->summary),
+            'contact' => ProductDetail::contact(is_array($chrome['brand'] ?? null) ? $chrome['brand'] : null),
+        ];
+        $extra['related'] = $category !== null ? $this->products->related($product, $category, $locale) : [];
 
         // Product JSON-LD (brochure mode: no offers/price — this catalog sells nothing online).
         // Description must be plain text, so the sanitized HTML body is stripped; the dedicated

@@ -158,3 +158,52 @@ it('never shows another site’s categories or products', function (): void {
     expect($html)->not->toContain('Chỉ ở site khác')->not->toContain('Sản phẩm site khác')
         ->and(cardPage('/do-ga', 'khac.platform.test'))->toContain('Sản phẩm site khác')->toContain('Chỉ ở site khác');
 });
+
+it('gives each list card kind its footer: “Đọc thêm” news, “Xem dự án” projects, “Chi tiết” products', function (): void {
+    cardSite();
+    $news = cardPage('/tin-tuc');
+    $products = cardPage('/san-pham');
+
+    expect($news)->toContain('<span class="sf-card__more sf-card__row-hide" aria-hidden="true">Đọc thêm')
+        ->not->toContain('Xem dự án')
+        ->and($products)->toContain('<span class="sf-card__foot" aria-hidden="true"><span class="sf-card__more">Chi tiết')
+        ->and(substr_count($products, 'class="sf-card__foot"'))->toBe(3)
+        ->and($products)->toContain('class="sf-grid sf-grid--3p"');
+
+    app(Tenancy::class)->enter(1, fn () => StorefrontCards::news()->update(['list_template' => 'grid-project']));
+    $projects = cardPage('/tin-tuc');
+    expect($projects)->toContain('Xem dự án <span class="sf-card__arrow">→</span>')
+        ->and($projects)->toContain('<span class="sf-card__tag sf-card__row-hide">Tin nội bộ</span>')
+        ->and($projects)->toContain('sf-card sf-card--project sf-card--list sf-card--row')
+        ->and($projects)->not->toContain('sf-card--featured');
+});
+
+it('leads page 1 of a news list with one featured card, then compact rows; a later page is a plain grid', function (): void {
+    cardSite();
+    $html = cardPage('/tin-tuc');
+
+    expect(substr_count($html, 'sf-card--featured'))->toBe(1)
+        ->and($html)->toMatch('#<article class="sf-card sf-card--news sf-card--featured">.*?<h2 class="sf-card__title"><a class="sf-card__link" href="/tin-noi-bo/hop-toan-xuong">Họp toàn xưởng</a></h2>#s')
+        ->and($html)->toContain('<span class="sf-card__flag">Nổi bật</span>')
+        ->and($html)->toContain('Đọc bài viết <span class="sf-card__arrow">→</span>')
+        ->and(substr_count($html, 'sf-card sf-card--news sf-card--list sf-card--row'))->toBe(5)
+        ->and(substr_count($html, 'fetchpriority="high"'))->toBe(1);
+
+    // Three posts or fewer: no featured card.
+    $few = cardPage('/tin-noi-bo');
+    expect($few)->not->toContain('sf-card--featured');
+});
+
+it('keeps the block card looks free of the list footers', function (): void {
+    cardSite();
+    app(Tenancy::class)->enter(1, fn () => StorefrontCards::page('/khoi', 'Khối', [
+        ['type' => 'product_grid', 'props' => ['variant' => 'overlay', 'limit' => 6]],
+        ['type' => 'entry_grid', 'props' => ['taxonomy_slug' => 'tin-tuc', 'variant' => 'news-cards', 'limit' => 6]],
+    ]));
+    $html = cardPage('/khoi');
+
+    expect($html)->toContain('sf-card--product-overlay')
+        ->not->toContain('sf-card__foot')
+        ->not->toContain('sf-card--list')
+        ->not->toContain('sf-card--featured');
+});
