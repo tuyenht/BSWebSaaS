@@ -9,8 +9,6 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteProfileTranslation;
 use App\Modules\Tenancy\Models\SiteSetting;
-use App\Modules\Tenancy\Support\SiteWriteLock;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -27,9 +25,10 @@ use Illuminate\Support\Facades\Gate;
  * image since deleted, or of another site, stays empty). The screen keeps the payload on the
  * server side of the component (a locked property), never takes it from a request argument.
  *
- * Both run behind the settings permission, in one transaction, through the models, so every write
- * stamps who made it (RecordsWhoSaved) and the storefront caches that listen to settings saves are
- * cleared.
+ * Both run behind the settings permission, in one transaction (SettingsWrite: the site's settings
+ * lock first, waited for a few seconds at most, else a busy refusal), through the models, so every
+ * write stamps who made it (RecordsWhoSaved) and the storefront caches that listen to settings
+ * saves are cleared.
  *
  * @phpstan-type UndoPayload array{section: string, settings: array<string, array<array-key, mixed>|null>, profile: array<string, mixed>, translations: array<string, array<string, mixed>>, brand: array<string, mixed>}
  */
@@ -45,8 +44,7 @@ final class ResetSettingsSection
         Gate::authorize('settings.manage');
         $definition = SettingsSections::get($section);
 
-        return DB::transaction(function () use ($section, $definition): array {
-            SiteWriteLock::take();   // first: one row that always exists, in every writer the same order
+        return SettingsWrite::run($section, function () use ($section, $definition): array {
             $undo = ['section' => $section, 'settings' => [], 'profile' => [], 'translations' => [], 'brand' => []];
             // The brand row is written back whole: lock it first, then read it (below), so a save
             // running at the same time waits instead of being undone.
@@ -112,8 +110,7 @@ final class ResetSettingsSection
         $texts = is_array($undo['translations'] ?? null) ? $undo['translations'] : [];
         $brandValues = is_array($undo['brand'] ?? null) ? $undo['brand'] : [];
 
-        DB::transaction(function () use ($definition, $settings, $columns, $texts, $brandValues): void {
-            SiteWriteLock::take();   // first: one row that always exists, in every writer the same order
+        SettingsWrite::run($section, function () use ($definition, $settings, $columns, $texts, $brandValues): void {
             // The brand row is written back whole: lock it first, then read it (below).
             $restore = array_intersect_key($brandValues, array_flip($definition['brand_keys']));
             $brandRow = $restore !== []
@@ -176,7 +173,11 @@ final class ResetSettingsSection
         return is_int($value) ? Media::query()->whereKey($value)->value('storage_key') : null;
     }
 
-    /** A media key comes back as the id of this site's picture with that key (none if it is gone). */
+    /**
+     * A media key comes back as the id of this site's picture with that key (none if it is gone).
+     * Its row is locked FOR KEY SHARE, as in SetBrandImages: a purge that came first leaves the
+     * image empty, one that comes later waits for the undo and the foreign key then clears it.
+     */
     private function inbound(string $column, mixed $value): mixed
     {
         if (! in_array($column, SettingsSections::MEDIA_COLUMNS, true)) {
@@ -186,7 +187,7 @@ final class ResetSettingsSection
             return null;
         }
 
-        $id = Media::query()->where('storage_key', $value)->where('mime', 'like', 'image/%')->orderBy('id')->value('id');
+        $id = Media::query()->where('storage_key', $value)->where('mime', 'like', 'image/%')->orderBy('id')->lock('for key share')->value('id');
 
         return is_numeric($id) ? (int) $id : null;
     }

@@ -2652,6 +2652,7 @@
     "admin.gs.toast_saved": "基本信息已保存",
     "admin.gs.toast_invalid": "还有 :count 项无效——修正后再次点击保存",
     "admin.gs.toast_reset": "已放弃更改",
+    "admin.settings.busy": "其他人正在保存网站设置，请几分钟后再试。",
     "admin.seo.card_title": "在 Google 上如何显示",
     "admin.seo.card_hint": "在 Google 上显示的标题和描述",
     "admin.seo.title_label": "在 Google 上显示的标题",

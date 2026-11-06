@@ -2652,6 +2652,7 @@
     "admin.gs.toast_saved": "General information saved",
     "admin.gs.toast_invalid": ":count fields are not valid — fix them and press Save again",
     "admin.gs.toast_reset": "Changes discarded",
+    "admin.settings.busy": "Someone else is saving the website's settings. Please try again in a few minutes.",
     "admin.seo.card_title": "How it shows on Google",
     "admin.seo.card_hint": "The title and description shown on Google",
     "admin.seo.title_label": "Title shown on Google",

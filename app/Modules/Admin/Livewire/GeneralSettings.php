@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Livewire;
 
 use App\Modules\Admin\Support\GeneralSettingsStore;
+use App\Modules\Admin\Support\Settings\SettingsChangeRejected;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
@@ -152,7 +153,17 @@ final class GeneralSettings extends Component
         $shared = $this->sharedDraft();
         $date = DateTimeImmutable::createFromFormat('!d/m/Y', Cast::string($shared['licenseDate']));
         $shared['licenseDate'] = $date === false ? '' : $date->format('Y-m-d');
-        app(GeneralSettingsStore::class)->save($this->i18nDraft(), $shared);
+        try {
+            app(GeneralSettingsStore::class)->save($this->i18nDraft(), $shared);
+        } catch (SettingsChangeRejected $e) {
+            if ($e->reason !== 'busy') {
+                throw $e;
+            }
+            // Nothing was written; the form keeps what the member typed, so Lưu lại later works.
+            $this->notify(__('admin.settings.busy'), 'error');
+
+            return;
+        }
         app(SiteTime::class)->forget();
 
         $this->apply(app(GeneralSettingsStore::class)->load());

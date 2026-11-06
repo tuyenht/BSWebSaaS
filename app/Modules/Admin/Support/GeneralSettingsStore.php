@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Support;
 
+use App\Modules\Admin\Support\Settings\SettingsChangeRejected;
+use App\Modules\Admin\Support\Settings\SettingsWrite;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
@@ -14,9 +16,7 @@ use App\Modules\Tenancy\Models\SiteProfileTranslation;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Tenancy\Models\Ward;
 use App\Modules\Tenancy\Support\BusinessHours;
-use App\Modules\Tenancy\Support\SiteWriteLock;
 use DateTimeImmutable;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Reads and writes what the "Thông tin chung" settings screen edits: the site's business identity
@@ -132,14 +132,15 @@ final class GeneralSettingsStore
      *
      * @param  array<string, array<string, string>>  $i18n
      * @param  array<string, mixed>  $shared
+     *
+     * @throws SettingsChangeRejected busy: another save of the site's settings held the lock too long
      */
     public function save(array $i18n, array $shared): void
     {
         $default = app(SiteLocale::class)->default();
         $orNull = static fn (mixed $value): ?string => is_string($value) && trim($value) !== '' ? trim($value) : null;
 
-        DB::transaction(function () use ($i18n, $shared, $default, $orNull): void {
-            SiteWriteLock::take();   // first: one row that always exists, in every writer the same order
+        SettingsWrite::run('general', function () use ($i18n, $shared, $default, $orNull): void {
             // The brand row is written back whole: lock it before anything reads it (the shown
             // identity below includes it), so a brand image save at the same time waits instead of
             // being undone.
