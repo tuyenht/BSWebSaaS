@@ -42,6 +42,7 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\Query\JoinClause;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Public storefront: resolve (locale, path) → published content within the current site
@@ -52,6 +53,9 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final readonly class StorefrontController
 {
+    /** The most links the 404 page suggests from the main menu. */
+    private const int SUGGESTIONS_MAX = 6;
+
     public function __construct(
         private RouteResolver $resolver,
         private PageRenderer $renderer,
@@ -73,11 +77,22 @@ final readonly class StorefrontController
     public function __invoke(Request $request): Response
     {
         $requestPath = strtolower('/'.ltrim($request->path(), '/'));
+
+        // A path with a dot in it (`/wp-login.php`, `/.env`, `/.git/config`, also `/wp-login%2ephp`)
+        // is never a page of the site: every slug is lower-case words joined by hyphens, and the
+        // sitemap and robots files have routes of their own. These are scanners, so the only thing
+        // looked up for them is a stored redirect (checked with the same call as any other path);
+        // without one they get the plain 404 before any content, settings or menus are read.
+        $dotted = str_contains(rawurldecode($requestPath), '.');
+
         $default = $this->locale->default();
 
         [$locale, $path, $redirectTo] = $this->localeContext($requestPath, $default);
 
         if ($redirectTo !== null) {
+            // A default-locale prefix before a dotted path (`/vi//evil.example/x`) is refused, never rewritten.
+            abort_if($dotted, 404);
+
             return redirect()->to($redirectTo, 301);
         }
 
@@ -86,19 +101,55 @@ final readonly class StorefrontController
         // without this a vi site would show English UI strings.
         app()->setLocale($locale);
 
+        if ($dotted) {
+            $redirect = $this->resolver->redirect($locale, $path);
+            abort_unless($redirect instanceof Redirect && SafeLink::isSitePath($redirect->to_path), 404);
+
+            return redirect()->to($redirect->to_path, $redirect->status_code);
+        }
+
         $resolved = $this->resolver->resolve($locale, $path);
 
         if ($resolved === null) {
             $redirect = $this->resolver->redirect($locale, $path);
             // A stored target that is not a path on this site (`//host`, `/\host`, a full link) is
             // never followed: a redirect row must not become a way off the site.
-            abort_if(! $redirect instanceof Redirect || ! SafeLink::isSitePath($redirect->to_path), 404);
+            if ($redirect instanceof Redirect && SafeLink::isSitePath($redirect->to_path)) {
+                return redirect()->to($redirect->to_path, $redirect->status_code);
+            }
 
-            return redirect()->to($redirect->to_path, $redirect->status_code);
+            return $this->notFound($this->chrome($locale, $default, $requestPath, null, $path));
         }
 
-        // The optional rich header/footer (site settings, normalized; null = the classic one). Read
-        // through the same one-query settings reader the design tokens use.
+        $chrome = $this->chrome($locale, $default, $requestPath, $resolved, $path);
+
+        // Every "not here" past this point — an unpublished product, a product without this
+        // language, a list page number or anchor that does not exist — answers with the same 404
+        // page in the site's own header and footer. Only the 404 is caught: a 403 or 419 stays itself.
+        try {
+            if ($resolved instanceof ResolvedProduct) {
+                return $this->renderProduct($resolved, $locale, $path, $chrome);
+            }
+
+            return $resolved instanceof ResolvedCategory
+                ? $this->renderCategory($resolved, $locale, $path, $chrome)
+                : $this->renderEntry($resolved, $locale, $path, $chrome);
+        } catch (NotFoundHttpException) {
+            return $this->notFound($chrome);
+        }
+    }
+
+    /**
+     * The page chrome for the active locale, read inside the site's own context like every page:
+     * the optional rich header/footer (site settings, normalized; null = the classic one, read
+     * through the same one-query settings reader the design tokens use), the floating contact
+     * buttons, the business identity, the menus, the <html lang> and the hreflang alternates
+     * (none for a page that was not found).
+     *
+     * @return array<string, mixed>
+     */
+    private function chrome(string $locale, string $default, string $requestPath, ResolvedContent|ResolvedCategory|ResolvedProduct|null $resolved, string $path): array
+    {
         /** @var list<string> $mapHosts */
         $mapHosts = config('cms.map_hosts', []);
         $header = StorefrontChrome::header($this->settings->get('storefront', 'header'), $locale, $default);
@@ -114,16 +165,16 @@ final readonly class StorefrontController
         // images' addresses come from their media ids (BrandImages: one query, none when unset).
         $brand = $this->brandImages->apply($this->identity->for($locale));
 
-        // Page chrome for the active locale: header nav (active-state matches the prefixed request
-        // path; a missing per-locale assignment falls back to the default-locale menu), the phone
-        // menu panel and, for the rich footer, its link columns — all regions resolved together —
-        // the <html lang>, and the hreflang alternates. The phone panel shows its own menu, else
-        // the main one (whether it follows the main menu or was never set up).
+        // Header nav (active-state matches the prefixed request path; a missing per-locale
+        // assignment falls back to the default-locale menu), the phone menu panel and, for the rich
+        // footer, its link columns — all regions resolved together. The phone panel shows its own
+        // menu, else the main one (whether it follows the main menu or was never set up).
         $menus = $this->nav->resolveMany(
             $footer === null ? ['primary', 'handheld'] : ['primary', 'handheld', $footer['region']],
             $locale, $default, $requestPath, $brand ?? [],
         );
-        $chrome = [
+
+        return [
             'menu' => $menus['primary'] ?? [],
             'mobileMenu' => ($menus['handheld'] ?? []) !== [] ? $menus['handheld'] : ($menus['primary'] ?? []),
             'footerMenu' => $footer === null ? [] : ($menus[$footer['region']] ?? []),
@@ -132,21 +183,62 @@ final readonly class StorefrontController
             // null = off or no channel to show.
             'floatingContact' => FloatingContact::for($floating, $locale, $shopHref),
             'lang' => $locale,
-            'hreflang' => $this->hreflangFor($resolved, $locale, $default, $path),
+            'hreflang' => $resolved === null ? [] : $this->hreflangFor($resolved, $locale, $default, $path),
             'brand' => $brand,
             // Site-ownership meta tags (Google, Bing, Facebook), read with the other storefront settings.
             'verification' => SiteVerification::tags($this->settings->get('storefront', 'verification')),
             // The logo and footer home links stay in the page's language (/en for an English page).
             'homeUrl' => $this->paths->publicUrl('/', $locale),
         ];
+    }
 
-        if ($resolved instanceof ResolvedProduct) {
-            return $this->renderProduct($resolved, $locale, $path, $chrome);
+    /**
+     * The site's 404 page: its own header, footer and menus around the "not here" message, a way
+     * home, a way to the site's contact page (when the site names one) and the first links of its
+     * main menu. A real 404 status (never a page that answers 200) and kept out of search engines;
+     * no canonical, share tags or alternates, since there is no page to point at.
+     *
+     * @param  array<string, mixed>  $chrome
+     */
+    private function notFound(array $chrome): Response
+    {
+        $locale = is_string($chrome['lang'] ?? null) ? $chrome['lang'] : $this->locale->default();
+        $extra = $chrome;
+        $extra['hreflang'] = [];
+        $extra['robots'] = 'noindex';
+        $extra['contactUrl'] = $this->products->quoteLink($locale, ContactPageSetting::ulid($this->settings->get(ContactPageSetting::GROUP, ContactPageSetting::KEY)));
+        $extra['suggestions'] = self::suggestions(
+            is_array($chrome['menu'] ?? null) ? $chrome['menu'] : [],
+            is_string($chrome['homeUrl'] ?? null) ? $chrome['homeUrl'] : '/',
+        );
+
+        return response($this->renderer->renderNotFound(__('storefront.not_found.title'), $extra), 404);
+    }
+
+    /**
+     * The 404 page's "you may be looking for" links: the top level of the main menu already loaded
+     * for the header (no query), keeping only the links to a page of this site and leaving out the
+     * home page (the page has its own button for it), at most six. Empty when the menu is.
+     *
+     * @param  list<mixed>|array<mixed>  $menu  the resolved primary menu tree
+     * @return list<array{label: string, url: string}>
+     */
+    private static function suggestions(array $menu, string $homeUrl): array
+    {
+        $links = [];
+        foreach ($menu as $item) {
+            $url = is_array($item) ? ($item['url'] ?? null) : null;
+            $label = is_array($item) ? ($item['label'] ?? null) : null;
+            if (! is_string($url) || ! is_string($label) || trim($label) === '' || $url === $homeUrl || ! SafeLink::isSitePath($url)) {
+                continue;
+            }
+            $links[] = ['label' => $label, 'url' => $url];
+            if (count($links) === self::SUGGESTIONS_MAX) {
+                break;
+            }
         }
 
-        return $resolved instanceof ResolvedCategory
-            ? $this->renderCategory($resolved, $locale, $path, $chrome)
-            : $this->renderEntry($resolved, $locale, $path, $chrome);
+        return $links;
     }
 
     /**

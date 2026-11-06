@@ -284,4 +284,22 @@ final readonly class PageRenderer
             'images' => $images,
         ] + ($videos > 0 ? ['videoScript' => true] : []) + $extra)->render();
     }
+
+    /**
+     * Render the site's 404 page on its own layout (theme::layouts.not-found), in the same header,
+     * footer and tokens as every page. The <title> runs through the site's title template like any
+     * inner page, and the head carries whatever robots line the caller set (the controller asks
+     * for `noindex`; a site hidden from search engines keeps its own, stricter one).
+     *
+     * @param  array<string, mixed>  $extra  the page chrome, the contact page's address and the suggested links
+     */
+    public function renderNotFound(string $title, array $extra = []): string
+    {
+        return $this->views->make('theme::layouts.not-found', $this->head([], $title, $extra) + [
+            'title' => $title,
+            'tokens' => $this->theme->cssVariables(),
+            // The head leaves out the share tags and the JSON-LD: there is no page to describe.
+            'notFound' => true,
+        ] + $extra)->render();
+    }
 }
