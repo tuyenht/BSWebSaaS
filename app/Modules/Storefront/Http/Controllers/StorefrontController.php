@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Storefront\Http\Controllers;
 
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Catalog\Support\ContactPageSetting;
 use App\Modules\Catalog\Support\ProductIndexLink;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
@@ -476,7 +477,7 @@ final readonly class StorefrontController
             'summary' => trim((string) $translation->summary),
             'featured' => $product->is_featured,
             'bestseller' => $product->is_bestseller,
-            'quote' => $this->products->quoteLink($locale),
+            'quote' => $this->products->quoteLink($locale, ContactPageSetting::ulid($this->settings->get(ContactPageSetting::GROUP, ContactPageSetting::KEY))),
             'contact' => ProductDetail::contact(is_array($chrome['brand'] ?? null) ? $chrome['brand'] : null),
         ];
         $extra['related'] = $category !== null ? $this->products->related($product, $category, $locale) : [];

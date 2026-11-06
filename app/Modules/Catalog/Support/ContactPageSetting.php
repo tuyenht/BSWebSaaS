@@ -4,27 +4,24 @@ declare(strict_types=1);
 
 namespace App\Modules\Catalog\Support;
 
-use App\Modules\Tenancy\Context\SiteSettings;
-
 /**
- * Which page of the current site is its contact page, for the product page's quote button: the
- * page's entry ulid, kept in the site setting `catalog` / `contact_page` as {"entry": "<ulid>"}.
- * The page is named by its entry, never by its path, so renaming its slug or giving another
- * language its own slug does not lose it. Reads go through SiteSettings, so only this site's row
- * is ever seen.
+ * Which page of a site is its contact page, for the product page's quote button: the page's entry
+ * ulid, kept in the site setting `catalog` / `contact_page` as {"entry": "<ulid>"}. The page is
+ * named by its entry, never by its path, so renaming its slug or giving another language its own
+ * slug does not lose it. The storefront reads the value with its other settings
+ * (StorefrontSettings, one query for the page); this class only names the setting and reads the
+ * ulid out of the stored value.
  */
-final readonly class ContactPageSetting
+final class ContactPageSetting
 {
     public const string GROUP = 'catalog';
 
     public const string KEY = 'contact_page';
 
-    public function __construct(private SiteSettings $settings) {}
-
-    /** The contact page's entry ulid, or null when the site has none set. */
-    public function ulid(): ?string
+    /** The contact page's entry ulid out of the stored value, or null when there is none. */
+    public static function ulid(mixed $value): ?string
     {
-        $entry = $this->settings->value(self::GROUP, self::KEY)['entry'] ?? null;
+        $entry = is_array($value) ? ($value['entry'] ?? null) : null;
 
         return is_string($entry) && $entry !== '' ? $entry : null;
     }

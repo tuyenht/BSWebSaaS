@@ -7,6 +7,7 @@ namespace App\Modules\Provisioning\Console;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Provisioning\Actions\LinkContactPage;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteLocale;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
@@ -15,8 +16,9 @@ use Throwable;
 /**
  * Records, for sites made before the contact page was a setting, which page is their contact page:
  * the published page whose route in the site's default language is /lien-he. It writes only where
- * the setting is missing and never replaces one that is set, so a second run changes nothing. A
- * site with no such page is reported and left alone. Each site runs inside its own tenant context;
+ * the setting is missing, or names a page that no longer exists on the site (a trashed page still
+ * counts as existing); it never replaces one that points at a live page, so a second run changes
+ * nothing. A site with no such page is reported and left alone. Each site runs inside its own tenant context;
  * a failure on one is reported and the walk goes on. Give --site (the site's id) for one site.
  */
 final class LinkContactPageCommand extends Command
@@ -36,7 +38,12 @@ final class LinkContactPageCommand extends Command
             return self::FAILURE;
         }
 
-        $lines = [];
+        if ($only !== null && ! Site::query()->whereKey((int) $only)->exists()) {
+            $this->error("No site with id {$only}.");
+
+            return self::FAILURE;
+        }
+
         $failed = 0;
         $ids = $only !== null ? [(int) $only] : $tenancy->siteIds();
 
@@ -47,10 +54,8 @@ final class LinkContactPageCommand extends Command
                 $failed++;
                 $result = 'failed: '.$e->getMessage();
             }
-            $lines[] = [(string) $siteId, $result];
+            $this->line("site {$siteId}: {$result}");
         }
-
-        $this->table(['Site', 'Result'], $lines);
 
         return $failed === 0 ? self::SUCCESS : self::FAILURE;
     }
@@ -69,6 +74,10 @@ final class LinkContactPageCommand extends Command
             return 'no contact page';
         }
 
-        return $link->handle($ulid) ? 'linked' : 'already set';
+        return match ($link->handle($ulid)) {
+            LinkContactPage::LINKED => 'linked',
+            LinkContactPage::RELINKED => 'relinked (old page gone)',
+            default => 'already set',
+        };
     }
 }

@@ -69,9 +69,9 @@ it('renders a published product detail page at its base-pinned route within budg
             ->toContain('property="og:type" content="product"');
     });
 
-    // Product load (+ eager translations & images.media), route resolve, nav, brand, the contact page
-    // setting and then the page's route for the quote button — no N+1.
-    expect($count)->toBeLessThanOrEqual(18);
+    // Product load (+ eager translations & images.media), route resolve, nav, brand, the contact page's
+    // route for the quote button (its setting rides the storefront settings read) — no N+1.
+    expect($count)->toBeLessThanOrEqual(17);
 });
 
 it('404s a product route whose product is not published (visibility enforced at load)', function (): void {

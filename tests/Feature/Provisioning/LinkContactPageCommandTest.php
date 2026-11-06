@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
@@ -71,11 +72,16 @@ it('fills a missing value with the page at /lien-he', function (): void {
 
 it('leaves an existing value alone', function (): void {
     $id = contactSite('Liên Hệ Một', 'mot.platform.test');
-    app(Tenancy::class)->enter($id, fn () => SiteSetting::query()->where('key', 'contact_page')->update(['value' => ['entry' => 'giữ-nguyên']]));
+    $other = app(Tenancy::class)->enter($id, function (): string {
+        $entry = Entry::query()->create(['type' => 'page', 'status' => 'published', 'author_id' => null, 'published_at' => now()]);
+        SiteSetting::query()->where('key', 'contact_page')->update(['value' => ['entry' => $entry->ulid]]);
+
+        return $entry->ulid;
+    });
 
     $this->artisan('site:link-contact-page')->assertSuccessful();
 
-    expect(contactSetting($id))->toBe(['entry' => 'giữ-nguyên']);
+    expect(contactSetting($id))->toBe(['entry' => $other]);
 });
 
 it('writes nothing when the site has no contact page or only a draft of it', function (): void {
@@ -106,4 +112,38 @@ it('works one site at a time, writing to the chosen site only', function (): voi
 
     expect(contactSetting($two))->toBe(['entry' => contactUlid($two)])
         ->and(contactSetting($two)['entry'])->not->toBe(contactSetting($one)['entry']);
+});
+
+it('relinks a setting whose page is gone for good, and says so', function (): void {
+    $id = contactSite('Liên Hệ Một', 'mot.platform.test');
+    app(Tenancy::class)->enter($id, fn () => SiteSetting::query()->where('key', 'contact_page')->update(['value' => ['entry' => '01JZZZZZZZZZZZZZZZZZZZZZZZ']]));
+
+    $this->artisan('site:link-contact-page', ['--site' => (string) $id])
+        ->expectsOutputToContain('relinked (old page gone)')
+        ->assertSuccessful();
+
+    expect(contactSetting($id))->toBe(['entry' => contactUlid($id)]);
+});
+
+it('keeps a setting whose page is in the trash', function (): void {
+    $id = contactSite('Liên Hệ Một', 'mot.platform.test');
+    $old = contactUlid($id);
+    app(Tenancy::class)->enter($id, function (): void {
+        $other = Entry::query()->create(['type' => 'page', 'status' => 'published', 'author_id' => null, 'published_at' => now()]);
+        $other->delete();
+        SiteSetting::query()->where('key', 'contact_page')->update(['value' => ['entry' => $other->ulid]]);
+    });
+    $trashed = contactSetting($id);
+
+    $this->artisan('site:link-contact-page', ['--site' => (string) $id])->assertSuccessful();
+
+    expect(contactSetting($id))->toBe($trashed)->and($trashed['entry'])->not->toBe($old);
+});
+
+it('stops with an error for a site id that does not exist', function (): void {
+    contactSite('Liên Hệ Một', 'mot.platform.test');
+
+    $this->artisan('site:link-contact-page', ['--site' => '999999'])
+        ->expectsOutputToContain('No site with id 999999.')
+        ->assertFailed();
 });

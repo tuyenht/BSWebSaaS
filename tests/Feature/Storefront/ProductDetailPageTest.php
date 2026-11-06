@@ -3,6 +3,7 @@
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\SiteRoute;
+use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Storefront\Support\ProductDetail;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteLocale;
@@ -254,8 +255,8 @@ it('follows the contact page through a renamed slug, by the page and not by the 
     $product = productSite();
     app(Tenancy::class)->enter($product->site_id, function (): void {
         $entry = SiteRoute::query()->where('path', '/lien-he')->firstOrFail()->entry;
-        $entry->translations()->update(['slug' => 'kết-nối']);
-        SiteRoute::query()->where('entry_id', $entry->id)->update(['path' => '/ket-noi']);
+        $entry->translations()->update(['slug' => 'ket-noi']);
+        app(RouteSync::class)->sync($entry, 'vi', 'ket-noi');
     });
 
     $html = productHtml();
@@ -271,7 +272,7 @@ it('gives a language with its own slug the prefixed path of that language', func
         $entry->translations()->create(['locale' => 'en', 'title' => 'Contact', 'slug' => 'contact', 'status' => 'published', 'body' => ['blocks' => []]]);
         SiteRoute::query()->create(['locale' => 'en', 'path' => '/contact', 'entry_id' => $entry->id]);
 
-        return app(ProductDetail::class)->quoteLink('en');
+        return app(ProductDetail::class)->quoteLink('en', $entry->ulid);
     });
 
     expect($link)->toBe('/en/contact');
@@ -280,7 +281,7 @@ it('gives a language with its own slug the prefixed path of that language', func
         $entry = SiteRoute::query()->where('path', '/contact')->firstOrFail()->entry;
         $entry->translations()->where('locale', 'en')->update(['status' => 'draft']);
 
-        return app(ProductDetail::class)->quoteLink('en');
+        return app(ProductDetail::class)->quoteLink('en', $entry->ulid);
     });
     expect($none)->toBeNull();
 });
@@ -314,4 +315,11 @@ it('prints no empty actions row in a box that only holds the Zalo contact', func
     expect($html)->toContain('product__zalo')
         ->and($html)->not->toContain('product__actions')
         ->and($html)->not->toContain('product__quote');
+});
+
+it('leaves the quote button out when the contact page is in the trash', function (): void {
+    $product = productSite();
+    app(Tenancy::class)->enter($product->site_id, fn () => contactEntry($product)->delete());
+
+    expect(productHtml())->not->toContain('product__quote');
 });
