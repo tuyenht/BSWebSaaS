@@ -372,7 +372,7 @@ it('locks the site row first and the brand row before reading it, in every save 
     $locksFirst = function (array $queries): void {
         $brand = array_values(array_filter($queries, fn (array $query): bool => str_contains($query['query'], '"site_settings"') && in_array('brand', $query['bindings'], true)));
         expect($queries)->not->toBeEmpty()
-            ->and($queries[0]['query'])->toStartWith('select "id" from "sites"')->toEndWith('for update')
+            ->and($queries[0]['query'])->toStartWith('select "id" from "sites"')->toEndWith('for no key update')
             ->and($brand)->not->toBeEmpty()
             ->and($brand[0]['query'])->toEndWith('for update');
     };
