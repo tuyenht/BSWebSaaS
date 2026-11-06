@@ -14,7 +14,10 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Theme\Components\ListDisplay;
 use App\Modules\Theme\Components\SectionProps;
+use App\Modules\Theme\Components\StyleProps;
 use App\Modules\Theme\Rendering\BlockRenderer;
+use App\Modules\Theme\Theming\ReadableColor;
+use App\Modules\Theme\Theming\ThemeResolver;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\View;
@@ -389,8 +392,25 @@ describe('zigzag view all', function (): void {
             $base = ['taxonomy_slug' => 'nang-luc', 'locale' => 'vi', 'variant' => 'zigzag'];
 
             // Without the group the block keeps its old reading: no extra row, no plan, the button shows.
-            $old = $component->data($base + ['limit' => 2]);
+            $limits = static function (Closure $read): array {
+                DB::flushQueryLog();
+                DB::enableQueryLog();
+                $read();
+                $sql = array_column(DB::getQueryLog(), 'query');
+                DB::disableQueryLog();
+
+                return array_values(array_filter($sql, static fn (string $q): bool => str_starts_with($q, 'select * from "entries"')));
+            };
+
+            $oldReads = $limits(function () use ($component, $base, &$old): void {
+                $old = $component->data($base + ['limit' => 2]);
+            });
             expect($old['display'])->toBeNull()->and($old['items'])->toHaveCount(2);
+
+            // The extra row is read only with the display group: one entries query, limit 3 against limit 2.
+            $groupReads = $limits(fn () => $component->data($base + ['limit' => 2, 'layout' => 'auto', 'view_all' => 'auto']));
+            expect($oldReads)->toHaveCount(1)->and($oldReads[0])->toContain('limit 2')->not->toContain('limit 3')
+                ->and($groupReads)->toHaveCount(1)->and($groupReads[0])->toContain('limit 3');
 
             $auto = $component->data($base + ['limit' => 2, 'layout' => 'auto', 'view_all' => 'auto']);
             $all = $component->data($base + ['limit' => 3, 'layout' => 'auto', 'view_all' => 'auto']);
@@ -471,5 +491,127 @@ describe('about links through the block renderer', function (): void {
                 ->and(substr_count($four, '<a class="about__link'))->toBe(4)
                 ->and($fourQueries)->toBe($oneQueries);
         });
+    });
+});
+
+/** Provisions a site with three published posts in the category `nang-luc`; run inside Tenancy::enter. */
+function zigzagSeedPosts(string $name, string $slugPrefix = 'bai'): void
+{
+    $owner = User::query()->firstWhere('email', 'owner@'.$name.'.test');
+    $cat = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 1]);
+    $cat->translations()->create(['locale' => 'vi', 'name' => 'Năng lực', 'slug' => 'nang-luc']);
+    foreach ([1, 2, 3] as $i) {
+        $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $owner->id, 'meta' => []]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => "Ấ bài {$i} Ế", 'slug' => $i === 1 && $slugPrefix === 'noi-dung' ? 'noi-dung' : "{$slugPrefix}-{$i}", 'status' => 'draft', 'excerpt' => "Ấ tóm tắt {$i} Ế", 'body' => ['blocks' => []]]);
+        $entry->assignCategories([$cat->id]);
+        app(PublishEntry::class)->handle($entry->fresh(), 'vi', $owner->fresh());
+    }
+}
+
+function zigzagProvision(string $name): Site
+{
+    DB::connection('pgsql_admin')->statement(
+        'truncate tenant_probes, routes, entry_translations, entries,
+         site_profile_translations, site_profiles, site_settings, site_locales,
+         site_modules, content_sections, domains, sites, tenants, tenant_users, users
+         restart identity cascade'
+    );
+    truncateRbac();
+    app(ProvisionSite::class)->handle(new ProvisionSiteData(
+        tenantName: $name, siteName: $name, hostname: $name.'.platform.test',
+        ownerEmail: 'owner@'.$name.'.test', ownerName: 'Owner', ownerPassword: 'a-strong-password',
+    ));
+
+    return Site::query()->firstWhere('name', $name);
+}
+
+describe('zigzag through the block renderer', function (): void {
+    /** @param  array<string, mixed>  $look */
+    function zigzagPage(array $look): string
+    {
+        app()->setLocale('vi');
+
+        return app(BlockRenderer::class)->render(['blocks' => [['type' => 'entry_grid', 'props' => [
+            'taxonomy_slug' => 'nang-luc', 'variant' => 'zigzag', 'link_label' => 'Xem chi tiết năng lực',
+        ] + $look]]]);
+    }
+
+    it('draws the rows in the dark colour set and in the photo look with the button rules that keep it readable', function (): void {
+        $site = zigzagProvision('zigdark');
+        $css = (string) file_get_contents(resource_path('css/storefront.css'));
+
+        app(Tenancy::class)->enter($site->id, function (): void {
+            zigzagSeedPosts('zigdark');
+
+            $dark = zigzagPage(['bg' => 'scheme', 'scheme' => 'dark']);
+            $photo = zigzagPage(['bg' => 'image', 'bg_image' => 'https://f/nen.webp']);
+
+            expect($dark)->toContain('sf-s sf-s--sch-dark')->toContain('class="sf-zigzag__more"')->toContain('sf-zigzag__row')
+                ->and($photo)->toContain('sf-s--image')->toContain('class="sf-zigzag__more"')->toContain('sf-zigzag__row');
+        });
+
+        // The button, its focus ring and its hover repaint on every dark ground, not only on the dark band.
+        $grounds = '(?=[^{]*\.sf-s--sch-dark)(?=[^{]*\.sf-s--image)(?=[^{]*\.sf-band--dark)';
+        foreach (['', ':focus-visible', ':hover'] as $state) {
+            expect(preg_match('~'.$grounds.'[^{]*\.sf-zigzag__more'.preg_quote($state, '~').' \{([^}]*)\}~', $css, $rule))->toBe(1, 'dark ground rule for '.$state);
+            expect($rule[1])->toMatch($state === ':focus-visible' ? '~outline-color: var\(--sch-head~' : '~background: var\(--sch-pri-(bg|hover)~');
+        }
+        expect($css)->toMatch('~\.sf-s--image \{[^}]*--sch-pri-bg: #fff;[^}]*--sch-pri-fg: var\(--color-dark\)~s');
+        // Title and excerpt read the colour roles of the wrapper, so they follow the set and the photo.
+        expect($css)->toMatch('~\.sf-zigzag__title \{[^}]*color: var\(--sch-head~')
+            ->toMatch('~\.sf-zigzag__excerpt \{[^}]*color: var\(--sch-body~');
+    });
+
+    it('keeps the button text at 4.5:1 on its fill and the fill at 3:1 on the dark ground and on the photo', function (): void {
+        $v = app(ThemeResolver::class)->cssVariables();
+
+        expect(ReadableColor::ratio($v['sch-dark-pri-fg'], $v['sch-dark-pri-bg']))->toBeGreaterThanOrEqual(4.5)
+            ->and(ReadableColor::ratio($v['sch-dark-pri-bg'], $v['sch-dark-bg']))->toBeGreaterThanOrEqual(3.0)
+            ->and(ReadableColor::ratio($v['sch-dark-pri-bg'], $v['sch-dark-bg']))->not->toBeNull()
+            ->and(ReadableColor::ratio($v['color-dark'], '#ffffff'))->toBeGreaterThanOrEqual(4.5)
+            ->and(ReadableColor::ratio('#ffffff', $v['color-dark']))->toBeGreaterThanOrEqual(3.0);
+    });
+});
+
+describe('zigzag row ids', function (): void {
+    it('numbers a slug that the layout or a section anchor already uses', function (): void {
+        $cards = zigzagCards(2);
+        $cards[0]['url'] = '/noi-dung';
+        $cards[1]['url'] = '/mobile-menu';
+        $html = zigzagHtml($cards);
+
+        foreach (StyleProps::LAYOUT_IDS as $taken) {
+            expect($html)->not->toContain('id="'.$taken.'"');
+        }
+        expect($html)->toContain('id="noi-dung-2"')->toContain('id="mobile-menu-2"');
+    });
+
+    it('numbers a row slug that equals the anchor of a section on the same page', function (): void {
+        $site = zigzagProvision('zigid');
+
+        app(Tenancy::class)->enter($site->id, function (): void {
+            zigzagSeedPosts('zigid');
+            app()->setLocale('vi');
+            request()->attributes->remove('sf_zigzag_ids');
+
+            $html = app(BlockRenderer::class)->render(['blocks' => [
+                ['type' => 'entry_grid', 'props' => ['taxonomy_slug' => 'nang-luc', 'variant' => 'zigzag', 'bg' => 'none', 'anchor_id' => 'bai-2']],
+            ]]);
+
+            expect(substr_count($html, 'id="bai-2"'))->toBe(1)
+                ->and($html)->toContain('id="bai-2-2"');
+            request()->attributes->remove('sf_zigzag_ids');
+        });
+    });
+});
+
+describe('zigzag stylesheet', function (): void {
+    it('stacks the number above the title in a row without media and ports the board title size', function (): void {
+        $css = (string) file_get_contents(resource_path('css/storefront.css'));
+
+        expect(preg_match('~\.sf-zigzag__no--inline \{([^}]*)\}~', $css, $badge))->toBe(1)
+            ->and($badge[1])->toMatch('~display: (table|block)~')->not->toContain('inline-block')
+            ->and($css)->toMatch('~\.sf-zigzag__title \{[^}]*font-size: 1\.5rem~')
+            ->toMatch('~@media \(min-width: 640px\) \{\s*\.sf-zigzag__title \{\s*font-size: 1\.875rem~');
     });
 });

@@ -6986,7 +6986,8 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 
 .sf-zigzag__no--inline {
     position: static;
-    display: inline-block;
+    /* A block-level pill that is only as wide as its number, so the title always starts below it. */
+    display: table;
     margin-bottom: 0.75rem;
 }
 
@@ -7001,7 +7002,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     padding-bottom: 0.5rem;
     border-bottom: 2px solid var(--sch-rule, var(--color-primary));
     color: var(--sch-head, var(--color-text-strong));
-    font-size: clamp(1.25rem, 2.5vw, 1.875rem);
+    font-size: 1.5rem;
     font-weight: 700;
     line-height: 1.25;
     overflow-wrap: anywhere;
@@ -7040,14 +7041,14 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     outline-offset: 2px;
 }
 
-/* On a dark band the dark button would vanish: it takes the block's primary pair instead. */
-.sf-band--dark .sf-zigzag__more {
+/* On any dark ground the dark button would vanish: it takes the block's primary pair instead. */
+:is(.sf-band--dark, .sf-s--sch-dark, .sf-s--sch-brand, .sf-s--image) .sf-zigzag__more {
     background: var(--sch-pri-bg, var(--color-primary));
     color: var(--sch-pri-fg, var(--color-on-primary));
 }
 
-.sf-band--dark .sf-zigzag__more:focus-visible {
-    outline-color: var(--color-on-dark, #fff);
+:is(.sf-band--dark, .sf-s--sch-dark, .sf-s--sch-brand, .sf-s--image) .sf-zigzag__more:focus-visible {
+    outline-color: var(--sch-head, var(--color-on-dark, #fff));
 }
 
 @media (hover: hover) {
@@ -7055,12 +7056,16 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
         background: color-mix(in srgb, var(--color-dark) 85%, white);
     }
 
-    .sf-band--dark .sf-zigzag__more:hover {
+    :is(.sf-band--dark, .sf-s--sch-dark, .sf-s--sch-brand, .sf-s--image) .sf-zigzag__more:hover {
         background: var(--sch-pri-hover, var(--color-primary-hover));
     }
 }
 
 @media (min-width: 640px) {
+    .sf-zigzag__title {
+        font-size: 1.875rem;
+    }
+
     .sf-zigzag__list {
         gap: 5rem;
     }

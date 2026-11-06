@@ -7,7 +7,8 @@
     'description' => \App\Modules\Theme\Components\SectionProps::text($props, 'description'),
 ])
 @php
-    $sfZSeen = request()->attributes->get('sf_zigzag_ids', []);
+    // Ids already taken on the page: the layout's own and the anchors of the page's sections (BlockRenderer).
+    $sfZSeen = request()->attributes->get('sf_zigzag_ids', []) + array_fill_keys(\App\Modules\Theme\Components\StyleProps::LAYOUT_IDS, true);
 @endphp
 @if (count($items) > 0)
 <ol class="sf-zigzag__list">
