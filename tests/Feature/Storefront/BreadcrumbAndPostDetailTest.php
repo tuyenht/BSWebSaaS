@@ -216,12 +216,14 @@ it('keeps one high-priority image whichever body section prints one, and the cov
 
     $html = $this->get(BC_HOST.'/an-pham-so-hoa/de-an-mua-he')->assertOk()->getContent();
 
-    expect(substr_count($html, 'fetchpriority="high"'))->toBe(1)
+    expect(preg_match_all('#<img\b[^>]*\sfetchpriority="high"#', $html))->toBe(1)
         ->and(preg_match('#<img class="post-cover__img"[^>]*fetchpriority="high"#', $html))->toBe($coverHigh);
 })->with([
     'a hero after a text block' => [[['type' => 'richtext', 'props' => ['heading' => 'Ống thép cỡ nhỏ']], ['type' => 'hero', 'props' => ['heading' => 'Ống thép cỡ nhỏ', 'image_url' => 'PHOTO']]], 0],
     'a first block with a background photo' => [[['type' => 'richtext', 'props' => ['heading' => 'Ống thép cỡ nhỏ', 'bg' => 'image', 'bg_image' => 'PHOTO']]], 0],
     'a hero with no photo' => [[['type' => 'hero', 'props' => ['heading' => 'Ống thép cỡ nhỏ']]], 1],
+    'an about block after a text block' => [[['type' => 'richtext', 'props' => ['heading' => 'Ống thép cỡ nhỏ']], ['type' => 'about', 'props' => ['heading' => 'Ống thép cỡ nhỏ', 'image_url' => 'PHOTO']]], 0],
+    'rich text that writes the attribute as words' => [[['type' => 'richtext_html', 'props' => ['html' => '<p>Thêm fetchpriority="high" vào ảnh đầu trang</p>']]], 1],
 ]);
 
 it('links the next older post as previous and the next newer one as next, and none past either end', function (): void {

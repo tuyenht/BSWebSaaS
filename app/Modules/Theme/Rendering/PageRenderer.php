@@ -67,8 +67,9 @@ final readonly class PageRenderer
             'leadBlock' => $leadBlock,
             // Whether a section already printed a high-priority image (a hero, about, slider or a
             // first block's background, wherever it sits): a post's cover then stays at 'eager', so
-            // the page asks for one high-priority image, not two.
-            'bodyHighImage' => str_contains($sections, 'fetchpriority="high"'),
+            // the page asks for one high-priority image, not two. Matched on the tag: text (a post
+            // about the attribute itself) cannot hold a raw "<", Blade and the purifier escape it.
+            'bodyHighImage' => preg_match('~<img\b[^>]*\sfetchpriority="high"~', $sections) === 1,
         ] + $extra)->render();
     }
 
