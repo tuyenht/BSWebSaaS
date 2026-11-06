@@ -9,6 +9,7 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteProfileTranslation;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Tenancy\Support\SiteWriteLock;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
@@ -45,6 +46,7 @@ final class ResetSettingsSection
         $definition = SettingsSections::get($section);
 
         return DB::transaction(function () use ($section, $definition): array {
+            SiteWriteLock::take();   // first: one row that always exists, in every writer the same order
             $undo = ['section' => $section, 'settings' => [], 'profile' => [], 'translations' => [], 'brand' => []];
             // The brand row is written back whole: lock it first, then read it (below), so a save
             // running at the same time waits instead of being undone.
@@ -111,6 +113,7 @@ final class ResetSettingsSection
         $brandValues = is_array($undo['brand'] ?? null) ? $undo['brand'] : [];
 
         DB::transaction(function () use ($definition, $settings, $columns, $texts, $brandValues): void {
+            SiteWriteLock::take();   // first: one row that always exists, in every writer the same order
             // The brand row is written back whole: lock it first, then read it (below).
             $restore = array_intersect_key($brandValues, array_flip($definition['brand_keys']));
             $brandRow = $restore !== []

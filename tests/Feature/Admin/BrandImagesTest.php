@@ -77,11 +77,12 @@ function brandHome(): string
 }
 
 /**
- * The queries a call runs that name the general.brand row, in the order they ran.
+ * The queries a call runs on the site row and the settings rows (site_settings, site_profiles,
+ * site_profile_translations), in the order they ran.
  *
- * @return list<string>
+ * @return list<array{query: string, bindings: array<int, mixed>}>
  */
-function brandRowQueries(Closure $call): array
+function settingsRowQueries(Closure $call): array
 {
     DB::flushQueryLog();
     DB::enableQueryLog();
@@ -92,10 +93,9 @@ function brandRowQueries(Closure $call): array
         DB::disableQueryLog();
         DB::flushQueryLog();
     }
+    $named = array_filter($log, fn (array $query): bool => preg_match('/"(sites|site_settings|site_profiles|site_profile_translations)"/', $query['query']) === 1);
 
-    $named = array_filter($log, fn (array $query): bool => str_contains($query['query'], 'site_settings') && in_array('brand', $query['bindings'], true));
-
-    return array_values(array_map(fn (array $query): string => $query['query'], $named));
+    return array_values(array_map(fn (array $query): array => ['query' => $query['query'], 'bindings' => $query['bindings']], $named));
 }
 
 it('keeps every page byte for byte when the fill command records the ids of the old brand URLs', function (): void {
@@ -362,27 +362,33 @@ it('shows the old brand URLs on a page in another language too', function (): vo
         ->toContain('<link rel="icon" href="https://old.test/fav.png"');
 });
 
-it('locks the brand row before reading it, in every save that writes it back', function (): void {
+it('locks the site row first and the brand row before reading it, in every save that writes it back', function (): void {
     $logo = brandMedia(1, 'logo');
     $this->actingAs(brandAdmin());
     brandSetting(1, ['name' => 'Ở xưởng Bảo Hà', 'logo' => 'https://old.test/logo.png', 'favicon' => 'https://old.test/fav.png']);
-    // The row is written back whole: a plain read first would let a save running at the same time
-    // be undone by this one. Postgres takes the row lock with the FOR UPDATE read itself.
-    $locksFirst = fn (array $queries) => expect($queries)->not->toBeEmpty()
-        ->and($queries[0])->toEndWith('for update');
+    // Every writer of these rows locks the site row first, so concurrent saves queue in one order
+    // (no deadlock), on a row that always exists. The brand row is written back whole: a plain read
+    // of it would let a save running at the same time be undone, so it too is read FOR UPDATE.
+    $locksFirst = function (array $queries): void {
+        $brand = array_values(array_filter($queries, fn (array $query): bool => str_contains($query['query'], '"site_settings"') && in_array('brand', $query['bindings'], true)));
+        expect($queries)->not->toBeEmpty()
+            ->and($queries[0]['query'])->toStartWith('select "id" from "sites"')->toEndWith('for update')
+            ->and($brand)->not->toBeEmpty()
+            ->and($brand[0]['query'])->toEndWith('for update');
+    };
 
     app(Tenancy::class)->enter(1, function () use ($logo, $locksFirst): void {
-        $locksFirst(brandRowQueries(fn () => app(SetBrandImages::class)->handle(['logo' => $logo->storage_key])));
+        $locksFirst(settingsRowQueries(fn () => app(SetBrandImages::class)->handle(['logo' => $logo->storage_key])));
 
         $store = app(GeneralSettingsStore::class);
         ['i18n' => $i18n, 'shared' => $shared] = $store->load();
-        $locksFirst(brandRowQueries(fn () => $store->save($i18n, $shared)));
+        $locksFirst(settingsRowQueries(fn () => $store->save($i18n, $shared)));
 
         $undo = [];
-        $locksFirst(brandRowQueries(function () use (&$undo): void {
+        $locksFirst(settingsRowQueries(function () use (&$undo): void {
             $undo = app(ResetSettingsSection::class)->reset('brand_images');
         }));
         expect($undo['brand'])->toBe(['favicon' => 'https://old.test/fav.png']);   // so undo writes the row back too
-        $locksFirst(brandRowQueries(fn () => app(ResetSettingsSection::class)->undo($undo)));
+        $locksFirst(settingsRowQueries(fn () => app(ResetSettingsSection::class)->undo($undo)));
     });
 });

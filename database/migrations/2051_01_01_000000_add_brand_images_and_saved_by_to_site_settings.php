@@ -27,7 +27,7 @@ use Illuminate\Support\Facades\DB;
  *
  * Locks: every storefront request reads site_profiles, so no step holds its lock while it waits for
  * another table's. Each step is its own short transaction that gives up after 5s rather than queue
- * requests behind it: first the new columns of a table (with the check above), committed at once;
+ * requests behind it: first the new columns of a table, committed at once; then the check above;
  * then each FK on its own, added NOT VALID (it locks the table and the one it points at, media or
  * users, and scans nothing); last each FK is validated outside any transaction, in its own
  * statement, so the scan of existing rows holds no lock that blocks reads or writes. Every step is
@@ -60,15 +60,17 @@ return new class extends Migration
         }
 
         // The columns first, committed at once: this step locks site_profiles alone.
-        $this->briefly(function (): void {
-            DB::statement(<<<'SQL'
-                ALTER TABLE site_profiles
-                    ADD COLUMN IF NOT EXISTS logo_dark_media_id bigint NULL,
-                    ADD COLUMN IF NOT EXISTS og_image_media_id bigint NULL,
-                    ADD COLUMN IF NOT EXISTS updated_by bigint NULL
-                SQL);
+        $this->briefly(fn () => DB::statement(<<<'SQL'
+            ALTER TABLE site_profiles
+                ADD COLUMN IF NOT EXISTS logo_dark_media_id bigint NULL,
+                ADD COLUMN IF NOT EXISTS og_image_media_id bigint NULL,
+                ADD COLUMN IF NOT EXISTS updated_by bigint NULL
+            SQL));
 
-            // Only ids of this site's own media stay (the columns were never written; this is a check).
+        // Then the check, once that ALTER has committed: only ids of this site's own media stay (the
+        // columns were never written). Row locks on site_profiles and a plain read of media, so
+        // storefront reads go on meanwhile.
+        $this->briefly(function (): void {
             foreach (['logo_media_id', 'favicon_media_id'] as $column) {
                 DB::statement(<<<SQL
                     UPDATE site_profiles AS p SET {$column} = NULL
@@ -101,23 +103,22 @@ return new class extends Migration
             return;
         }
 
-        $this->briefly(function (): void {
-            DB::statement('ALTER TABLE site_settings DROP CONSTRAINT IF EXISTS '.self::SAVED_BY_FKS['site_settings']);
-            DB::statement('ALTER TABLE site_settings DROP COLUMN IF EXISTS updated_by');
-        });
+        // Each constraint in its own short step (it locks its table and the one it points at), then
+        // each table's columns in one more step that locks that table alone.
+        foreach (self::SAVED_BY_FKS as $table => $name) {
+            $this->briefly(fn () => DB::statement("ALTER TABLE {$table} DROP CONSTRAINT IF EXISTS {$name}"));
+        }
+        foreach (self::IMAGE_FKS as $name) {
+            $this->briefly(fn () => DB::statement('ALTER TABLE site_profiles DROP CONSTRAINT IF EXISTS '.$name));
+        }
 
-        $this->briefly(function (): void {
-            DB::statement('ALTER TABLE site_profiles DROP CONSTRAINT IF EXISTS '.self::SAVED_BY_FKS['site_profiles']);
-            foreach (self::IMAGE_FKS as $name) {
-                DB::statement('ALTER TABLE site_profiles DROP CONSTRAINT IF EXISTS '.$name);
-            }
-            DB::statement(<<<'SQL'
-                ALTER TABLE site_profiles
-                    DROP COLUMN IF EXISTS updated_by,
-                    DROP COLUMN IF EXISTS og_image_media_id,
-                    DROP COLUMN IF EXISTS logo_dark_media_id
-                SQL);
-        });
+        $this->briefly(fn () => DB::statement('ALTER TABLE site_settings DROP COLUMN IF EXISTS updated_by'));
+        $this->briefly(fn () => DB::statement(<<<'SQL'
+            ALTER TABLE site_profiles
+                DROP COLUMN IF EXISTS updated_by,
+                DROP COLUMN IF EXISTS og_image_media_id,
+                DROP COLUMN IF EXISTS logo_dark_media_id
+            SQL));
     }
 
     /** One short transaction that gives up on a table lock after 5s instead of queueing requests. */

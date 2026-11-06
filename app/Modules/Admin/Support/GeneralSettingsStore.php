@@ -14,6 +14,7 @@ use App\Modules\Tenancy\Models\SiteProfileTranslation;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Tenancy\Models\Ward;
 use App\Modules\Tenancy\Support\BusinessHours;
+use App\Modules\Tenancy\Support\SiteWriteLock;
 use DateTimeImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -138,6 +139,7 @@ final class GeneralSettingsStore
         $orNull = static fn (mixed $value): ?string => is_string($value) && trim($value) !== '' ? trim($value) : null;
 
         DB::transaction(function () use ($i18n, $shared, $default, $orNull): void {
+            SiteWriteLock::take();   // first: one row that always exists, in every writer the same order
             // The brand row is written back whole: lock it before anything reads it (the shown
             // identity below includes it), so a brand image save at the same time waits instead of
             // being undone.

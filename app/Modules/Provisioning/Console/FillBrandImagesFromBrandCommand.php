@@ -10,6 +10,7 @@ use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Tenancy\Support\SiteWriteLock;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -83,6 +84,7 @@ final class FillBrandImagesFromBrandCommand extends Command
      */
     private function fillSite(bool $apply, MediaUrlResolver $urls, CurrentSite $current): array
     {
+        SiteWriteLock::take();   // first, as every writer of the profile and settings rows does
         $brand = SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->value('value');
         if (! is_array($brand)) {
             return [];

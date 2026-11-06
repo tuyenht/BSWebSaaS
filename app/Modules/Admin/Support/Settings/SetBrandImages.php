@@ -8,6 +8,7 @@ use App\Modules\Media\Models\Media;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Tenancy\Support\SiteWriteLock;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
@@ -72,6 +73,7 @@ final class SetBrandImages
         }
 
         DB::transaction(function () use ($ids): void {
+            SiteWriteLock::take();   // first: one row that always exists, in every writer the same order
             // The brand row is written back whole: lock it first, then read it, so a save running
             // at the same time (here, the general section, a reset) waits instead of being undone.
             $brandRow = SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->lockForUpdate()->first();
