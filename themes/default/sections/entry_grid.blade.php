@@ -17,9 +17,9 @@
 @php($sfDisplay = $display ?? null)
 @if (count($items) > 0)
 @if ($sfDisplay !== null)
-@include('theme::partials.sf-rail-open', ['display' => $sfDisplay, 'label' => \App\Modules\Theme\Components\SectionProps::text($props, 'heading')])
+@include('theme::partials.sf-rail-open', ['display' => $sfDisplay, 'label' => \App\Modules\Theme\Components\SectionProps::text($props, 'heading', __('storefront.list_rail'))])
 @endif
-<ul class="{{ $sfDisplay['class'] ?? 'sf-grid '.$sfGrid }}"@if ($sfDisplay['scrolls'] ?? false) tabindex="0" aria-label="{{ is_string($props['heading'] ?? null) && $props['heading'] !== '' ? $props['heading'] : __('storefront.list_rail') }}"@endif>
+<ul class="{{ $sfDisplay['class'] ?? 'sf-grid '.$sfGrid }}"@if ($sfDisplay['scrolls'] ?? false) tabindex="0"@endif>
 @foreach ($items as $card)
 <li>@include('theme::partials.sf-card', [
     'card' => $card,
@@ -50,9 +50,9 @@
 @php($sfDisplay = $display ?? null)
     @if (count($items) > 0)
 @if ($sfDisplay !== null)
-@include('theme::partials.sf-rail-open', ['display' => $sfDisplay, 'label' => (string) ($props['heading'] ?? '')])
+@include('theme::partials.sf-rail-open', ['display' => $sfDisplay, 'label' => \App\Modules\Theme\Components\SectionProps::text($props, 'heading', __('storefront.list_rail'))])
 @endif
-        <ul class="{{ $sfDisplay['class'] ?? 'entry-grid__list' }}"@if ($sfDisplay['scrolls'] ?? false) tabindex="0" aria-label="{{ is_string($props['heading'] ?? null) && $props['heading'] !== '' ? $props['heading'] : __('storefront.list_rail') }}"@endif>
+        <ul class="{{ $sfDisplay['class'] ?? 'entry-grid__list' }}"@if ($sfDisplay['scrolls'] ?? false) tabindex="0"@endif>
             @foreach ($items as $card)
                 <li class="entry-grid__card">
                     @if (! empty($card['image']))

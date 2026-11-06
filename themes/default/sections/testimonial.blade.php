@@ -19,9 +19,9 @@
 @component('theme::partials.sf-band', ['bg' => \App\Modules\Theme\Components\SectionProps::choice($props, 'bg', \App\Modules\Theme\Components\SectionProps::BG), 'class' => 'sf-quotes'])
 @include('theme::partials.sf-section-head', ['heading' => $heading])
 @if ($sfDisplay !== null)
-@include('theme::partials.sf-rail-open', ['display' => $sfDisplay, 'label' => $heading])
+@include('theme::partials.sf-rail-open', ['display' => $sfDisplay, 'label' => \App\Modules\Theme\Components\SectionProps::text($props, 'heading', __('storefront.list_rail'))])
 @endif
-<ul class="{{ $sfDisplay['class'] ?? 'sf-quotes__list sf-quotes__list--'.$variant.' sf-quotes__list--n'.min(count($quotes), $variant === 'grid-3' ? 3 : 2) }}"@if ($sfDisplay['scrolls'] ?? false) tabindex="0" aria-label="{{ is_string($props['heading'] ?? null) && $props['heading'] !== '' ? $props['heading'] : __('storefront.list_rail') }}"@endif>
+<ul class="{{ $sfDisplay['class'] ?? 'sf-quotes__list sf-quotes__list--'.$variant.' sf-quotes__list--n'.min(count($quotes), $variant === 'grid-3' ? 3 : 2) }}"@if ($sfDisplay['scrolls'] ?? false) tabindex="0"@endif>
 @foreach ($quotes as $item)
 @php
     $name = \App\Modules\Theme\Components\SectionProps::text($item, 'name');

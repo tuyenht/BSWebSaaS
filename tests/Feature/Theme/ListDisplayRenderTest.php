@@ -220,6 +220,18 @@ it('validates the group in the page JSON', function (): void {
         ->and($check(['columns' => '5']))->toBeFalse();
 });
 
+it('tells the editor the range when a list limit is out of it, not to type a whole number', function (int|string $limit): void {
+    seedTenancy();
+    app()->setLocale('vi');
+    $validator = Validator::make(
+        ['blocks' => [['type' => 'entry_grid', 'props' => ['limit' => $limit]]]],
+        ['blocks' => [app(ValidPageJson::class)]],
+    );
+
+    expect($validator->fails())->toBeTrue()
+        ->and($validator->errors()->first())->toContain('từ 1 đến 50')->and($validator->errors()->first())->not->toContain('1500000');
+})->with([0, 51]);
+
 it('takes a list limit of 1 to 50 when saving and refuses the rest', function (string $type, int|string $limit, bool $accepted): void {
     seedTenancy();
     $valid = ! Validator::make(
@@ -243,9 +255,21 @@ it('announces only a slider as a carousel, in the page language, and gives a scr
     $grid = railView('team', ['props' => ['layout' => 'grid', 'members' => members(3)]]);
 
     expect($slider)->toContain('role="group" aria-roledescription="băng chuyền" aria-label="Đối tác ạ"')
-        ->and($slider)->toMatch('/<ul class="sf-rail__list sf-rail__list--slider[^"]*" tabindex="0" aria-label="Đối tác ạ">/')
+        ->and($slider)->toMatch('/<ul class="sf-rail__list sf-rail__list--slider[^"]*" tabindex="0">/')
+        ->and(substr_count($slider, 'aria-label="Đối tác ạ"'))->toBe(1)
         ->and($grid)->toContain('data-sf-rail')->and($grid)->not->toContain('aria-roledescription')->and($grid)->not->toContain('role="group"')
         ->and($grid)->not->toContain('tabindex');
+});
+
+it('announces a list that rotates only on a phone, and names every rail even when its heading is blank', function (): void {
+    $phoneOnly = railView('partners', ['props' => ['layout' => 'grid', 'heading' => '   ', 'logos' => logos(5)]]);
+    $team = railView('team', ['props' => ['layout' => 'slider', 'heading' => '  ', 'members' => members(9)]]);
+    $cards = railView('entry_grid', ['props' => ['layout' => 'slider', 'heading' => ' ', 'limit' => 9], 'items' => railCards(9), 'variant' => 'grid', 'display' => ListDisplay::plan('news', ['layout' => 'slider'], 9, 9)]);
+
+    expect($phoneOnly)->toContain('role="group" aria-roledescription="băng chuyền" aria-label="Danh sách"')
+        ->and($phoneOnly)->toMatch('/<ul class="sf-rail__list sf-rail__list--grid[^"]*" tabindex="0">/')
+        ->and($team)->toContain('aria-label="Danh sách"')->and($team)->not->toContain('aria-label=""')
+        ->and($cards)->toContain('aria-label="Danh sách"')->and($cards)->not->toContain('aria-label=""');
 });
 
 it('keeps the Pause bar visible at its final size in the server markup and only for the widths that rotate', function (): void {
@@ -275,7 +299,7 @@ it('shows the arrows only on a row that can scroll, and the title tooltips on ev
     $js = (string) file_get_contents(base_path('resources/js/sf-slider.js'));
     $html = railView('partners', ['props' => ['layout' => 'auto', 'logos' => logos(8)]]);
 
-    expect($js)->toContain("overflows() && (mode === 'always' || (mode === 'auto' && mouse.matches))")
+    expect($js)->toContain("overflows() && mode !== 'none'")->and($js)->not->toContain('hover: hover')
         ->and($js)->toContain('pause.title = pause.getAttribute')
         ->and(substr_count($html, 'title="'))->toBe(3);
 });

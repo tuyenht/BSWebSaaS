@@ -169,7 +169,7 @@
                                     <button type="button" wire:click="addItem({{ $i }}, '{{ $prop }}')">{{ __('entries.add_item') }}</button>
                                 </fieldset>
                             @else
-                                @include('admin::livewire.entries.partials.prop-input', ['fieldType' => $spec['type'] ?? 'text', 'model' => "blocks.$i.props.$prop", 'fieldLabel' => $prop, 'value' => $block['props'][$prop] ?? null, 'imageUrls' => $blockImageUrls, 'options' => $spec['options'] ?? []])
+                                @include('admin::livewire.entries.partials.prop-input', ['fieldType' => $spec['type'] ?? 'text', 'model' => "blocks.$i.props.$prop", 'fieldLabel' => $prop, 'value' => $block['props'][$prop] ?? null, 'imageUrls' => $blockImageUrls, 'options' => $spec['options'] ?? [], 'min' => $spec['min'] ?? null, 'max' => $spec['max'] ?? null])
                             @endif
                         @endforeach
                     </div>

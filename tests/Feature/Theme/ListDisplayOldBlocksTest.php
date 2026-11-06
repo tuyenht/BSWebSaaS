@@ -5,7 +5,8 @@ use Illuminate\Support\Facades\View;
 /*
  * A list block saved before the display group (no `layout` key) draws the element tree it always did.
  * Each expected tree below was checked equal, byte for byte, against the output of the templates as
- * they were before the group existed; the tree is what stays locked here.
+ * they were before the group existed; the tree is what stays locked here. The golden files hold the
+ * full rendered bytes, captured from the templates before the group existed.
  */
 
 /** The element tree of some HTML: one line per element, indented by depth, tag and classes only. */
@@ -302,4 +303,13 @@ it('draws a block saved before the display group with the element tree it always
     [$view, $data] = oldBlockCases()[$name];
 
     expect(oldBlockTree(View::make('theme::sections.'.$view, $data)->render()))->toBe(oldBlockTrees()[$name]);
+})->with(array_keys(oldBlockCases()));
+
+it('draws a block saved before the display group as the exact bytes it always drew', function (string $name): void {
+    app()->setLocale('vi');
+    [$view, $data] = oldBlockCases()[$name];
+    $file = __DIR__.'/golden/old-block-'.str_replace(' ', '-', $name).'.html';
+    $html = View::make('theme::sections.'.$view, $data)->render();
+
+    expect($html)->toBe(file_get_contents($file));
 })->with(array_keys(oldBlockCases()));

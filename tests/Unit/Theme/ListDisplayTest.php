@@ -144,5 +144,8 @@ it('keeps the Pause bar only on the widths where the list rotates', function ():
     $always = ListDisplay::plan('news', ['layout' => 'slider', 'mobile' => 'two'], 9, 50);
     $none = ListDisplay::plan('news', ['layout' => 'grid'], 9, 50);
 
-    expect($wideOnly['bar'])->toBe('wide')->and($always['bar'])->toBe('')->and($none['interval'])->toBe(0)->and($none['scrolls'])->toBeFalse();
+    $fewLogos = ListDisplay::plan('partners', ['layout' => 'slider', 'columns' => '2'], 3, PHP_INT_MAX);
+
+    expect($fewLogos)->toMatchArray(['interval' => 3000, 'bar' => 'wide'])
+        ->and($wideOnly['bar'])->toBe('wide')->and($always['bar'])->toBe('')->and($none['interval'])->toBe(0)->and($none['scrolls'])->toBeFalse();
 });

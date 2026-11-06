@@ -13,9 +13,9 @@
         <h2 class="partners__heading">{{ $props['heading'] }}</h2>
     @endif
 @if ($sfDisplay !== null)
-@include('theme::partials.sf-rail-open', ['display' => $sfDisplay, 'label' => (string) ($props['heading'] ?? '')])
+@include('theme::partials.sf-rail-open', ['display' => $sfDisplay, 'label' => \App\Modules\Theme\Components\SectionProps::text($props, 'heading', __('storefront.list_rail'))])
 @endif
-    <ul class="{{ $sfDisplay['class'] ?? 'partners__list' }}"@if ($sfDisplay['scrolls'] ?? false) tabindex="0" aria-label="{{ is_string($props['heading'] ?? null) && $props['heading'] !== '' ? $props['heading'] : __('storefront.list_rail') }}"@endif>
+    <ul class="{{ $sfDisplay['class'] ?? 'partners__list' }}"@if ($sfDisplay['scrolls'] ?? false) tabindex="0"@endif>
         @foreach ($sfLogos as $item)
             @php($item = (array) $item)
             @continue(empty($item['image_url']))

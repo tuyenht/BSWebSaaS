@@ -21,9 +21,9 @@
 @component('theme::partials.sf-band', ['bg' => \App\Modules\Theme\Components\SectionProps::choice($props, 'bg', \App\Modules\Theme\Components\SectionProps::BG), 'class' => 'sf-team'])
 @include('theme::partials.sf-section-head', ['heading' => $heading])
 @if ($sfDisplay !== null)
-@include('theme::partials.sf-rail-open', ['display' => $sfDisplay, 'label' => $heading])
+@include('theme::partials.sf-rail-open', ['display' => $sfDisplay, 'label' => \App\Modules\Theme\Components\SectionProps::text($props, 'heading', __('storefront.list_rail'))])
 @endif
-<ul class="{{ $sfDisplay['class'] ?? 'sf-team__list sf-team__list--'.$variant.' sf-team__list--n'.min(count($members), $variant === 'grid-4' ? 4 : 3) }}"@if ($sfDisplay['scrolls'] ?? false) tabindex="0" aria-label="{{ is_string($props['heading'] ?? null) && $props['heading'] !== '' ? $props['heading'] : __('storefront.list_rail') }}"@endif>
+<ul class="{{ $sfDisplay['class'] ?? 'sf-team__list sf-team__list--'.$variant.' sf-team__list--n'.min(count($members), $variant === 'grid-4' ? 4 : 3) }}"@if ($sfDisplay['scrolls'] ?? false) tabindex="0"@endif>
 @foreach ($members as $item)
 @php($role = \App\Modules\Theme\Components\SectionProps::text($item, 'role'))
 <li class="sf-member">

@@ -1534,6 +1534,7 @@
     "entries.err_block_list_max": "ブロック :type の項目が多すぎます。最大 :max 件までにしてください。",
     "entries.err_block_list_min": "ブロック :type には少なくとも :min 件の項目が必要です。項目を追加するか、ブロックを削除してください。",
     "entries.err_block_number_invalid": "ブロック :type に正しくない数値があります。整数のみ入力してください（例: 1500000）。",
+    "entries.err_block_number_range": "ブロック :type の数値が範囲外です。:min から :max までの数を入力してください。",
     "entries.err_block_lines_max": "ブロック :type の行数が多すぎます。1 行に 1 項目で、最大 :max 行までにしてください。",
     "entries.err_block_html_invalid": "書式付きテキストを読み取れませんでした。もう一度入力してください。",
     "entries.err_block_html_too_long": "書式付きテキストが長すぎます。:max 文字以内にするか、2 つのブロックに分けてください。",

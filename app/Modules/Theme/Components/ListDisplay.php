@@ -36,8 +36,8 @@ final class ListDisplay
      * `arrows` = the arrows' own default.
      */
     public const array AUTO = [
-        'product-overlay' => ['columns' => 3, 'fit' => 6, 'seconds' => 5, 'arrows' => 'auto'],
-        'product' => ['columns' => 4, 'fit' => 8, 'seconds' => 5, 'arrows' => 'auto'],
+        'product-overlay' => ['columns' => 3, 'seconds' => 5, 'arrows' => 'auto'],
+        'product' => ['columns' => 4, 'seconds' => 5, 'arrows' => 'auto'],
         'icon' => ['columns' => 4, 'fit' => PHP_INT_MAX, 'seconds' => 5, 'arrows' => 'auto'],
         'project' => ['columns' => 4, 'fit' => 4, 'seconds' => 5, 'arrows' => 'always'],
         'news' => ['columns' => 3, 'fit' => PHP_INT_MAX, 'seconds' => 5, 'arrows' => 'auto'],
@@ -75,7 +75,7 @@ final class ListDisplay
         $columns = $columns === 'auto' ? $auto['columns'] : (int) $columns;
 
         // A product grid holds two rows of whatever columns it resolved to before it becomes a slider.
-        $fit = in_array($kind, ['product', 'product-overlay'], true) ? 2 * $columns : $auto['fit'];
+        $fit = $auto['fit'] ?? 2 * $columns;
         $layout = SectionProps::choice($props, 'layout', SectionProps::LIST_DISPLAY['layout']['options']);
         if ($layout === 'auto') {
             $layout = $count > $fit ? 'slider' : 'grid';
@@ -105,7 +105,7 @@ final class ListDisplay
         $phoneRotates = $mobile === 'slider' && $shown > self::PHONE_LOGOS;
         // Where the Pause button's room is kept: always, or only on the widths where the list rotates.
         $bar = match (true) {
-            $wideRotates && $mobile === 'swipe' => 'wide',
+            $wideRotates && ($mobile === 'swipe' || ($mobile === 'slider' && ! $phoneRotates)) => 'wide',
             $wideRotates => '',
             $phoneRotates => 'phone',
             default => '',
@@ -122,7 +122,7 @@ final class ListDisplay
             'arrows' => $arrows,
             'view_all' => $viewAll === 'show' || ($viewAll === 'auto' && $more),
             'shown' => $shown,
-            'scrolls' => $layout === 'slider',
+            'scrolls' => $layout === 'slider' || $mobile === 'slider',
             'bar' => $bar,
             'class' => sprintf('sf-rail__list sf-rail__list--%s sf-rail__list--c%d sf-rail__list--m-%s', $layout, $columns, $mobile),
         ];

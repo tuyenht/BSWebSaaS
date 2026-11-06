@@ -1534,6 +1534,7 @@
     "entries.err_block_list_max": "Block :type has too many items. Keep at most :max.",
     "entries.err_block_list_min": "Block :type needs at least :min items. Add more or remove the block.",
     "entries.err_block_number_invalid": "Block :type has a number that is not valid. Type whole numbers only, for example 1500000.",
+    "entries.err_block_number_range": "Block :type has a number out of range: it must be from :min to :max.",
     "entries.err_block_lines_max": "Block :type has too many lines. Keep at most :max lines, one per line.",
     "entries.err_block_html_invalid": "The formatted text could not be read. Type it again in the text editor.",
     "entries.err_block_html_too_long": "The formatted text is too long: keep it to at most :max characters, or split it into two blocks.",

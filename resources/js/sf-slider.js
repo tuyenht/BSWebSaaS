@@ -113,13 +113,12 @@ document.querySelectorAll('[data-sf-slider]').forEach(init);
 
 // List rail: a row of cards that scrolls sideways (a slider, or a swipe row on a phone). The server
 // renders the row and the controls (hidden); this reveals the arrows where the row overflows (never
-// on a row that cannot scroll; `auto` leaves them to touch screens' own swiping, `always` shows them
-// there too) and, for a slider, rotates it: never faster than the server's interval
+// on a row that cannot scroll; `auto` and `always` show them wherever the row overflows, on every
+// device, touch included; `none` never) and, for a slider, rotates it: never faster than the server's interval
 // (3 s or more), never on a phone's swipe row, never under reduced motion, stopped while the pointer
 // or focus is inside, held 10 s after a touch or drag, and stopped for good by the Pause button
 // until the visitor presses Play.
 const phone = window.matchMedia('(max-width: 639px)');
-const mouse = window.matchMedia('(hover: hover) and (pointer: fine)');
 const HOLD = 10000;
 
 function initRail(root) {
@@ -167,7 +166,7 @@ function initRail(root) {
         }
     };
     const sync = () => {
-        const show = overflows() && (mode === 'always' || (mode === 'auto' && mouse.matches));
+        const show = overflows() && mode !== 'none';
         if (prev) {
             prev.hidden = !show;
         }
@@ -238,7 +237,6 @@ function initRail(root) {
     document.addEventListener('visibilitychange', schedule);
     window.addEventListener('resize', sync);
     phone.addEventListener?.('change', sync);
-    mouse.addEventListener?.('change', sync);
     reduce.addEventListener?.('change', sync);
     label();
     sync();
