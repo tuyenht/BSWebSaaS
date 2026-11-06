@@ -2209,6 +2209,7 @@
     "storefront.credit": "网站设计: :name",
     "storefront.external": "(打开外部网站)",
     "storefront.slider": "精选图片",
+    "storefront.list_rail": "列表",
     "storefront.slide_of": "第 :n 张，共 :total 张",
     "storefront.slide_prev": "上一张",
     "storefront.slide_next": "下一张",

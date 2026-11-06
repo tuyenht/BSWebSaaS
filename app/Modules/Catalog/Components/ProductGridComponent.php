@@ -8,6 +8,7 @@ use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Contracts\Component;
+use App\Modules\Theme\Components\ListDisplay;
 use App\Modules\Theme\Components\SectionProps;
 use Illuminate\Support\Collection;
 
@@ -49,7 +50,7 @@ final readonly class ProductGridComponent implements Component
             'description' => ['type' => 'textarea'],
             'view_all_label' => ['type' => 'text'],
             'view_all_url' => ['type' => 'url'],
-        ];
+        ] + SectionProps::LIST_DISPLAY;
     }
 
     /**
@@ -70,8 +71,17 @@ final readonly class ProductGridComponent implements Component
             ->with($variant === 'overlay' ? ['translations', 'images.media', 'taxonomies.translations'] : ['translations', 'images.media'])
             ->orderByDesc('published_at')
             ->orderByDesc('id')
-            ->limit($limit)
+            // One row more than shown when the block carries the display group: it tells "view all"
+            // there is more, with no COUNT(*).
+            ->limit($limit + (ListDisplay::applies($props) ? 1 : 0))
             ->get();
+
+        $display = ListDisplay::plan($variant === 'overlay' ? 'product-overlay' : 'product', $props, $products->count(), $limit);
+        if ($display !== null) {
+            $products = $products->take($display['shown']);
+        } elseif ($products->count() > $limit) {
+            $products = $products->take($limit);
+        }
 
         // Stored routes in one batched lookup (no N+1) — the grid links exactly where the resolver serves.
         $paths = SiteRoute::query()
@@ -80,7 +90,7 @@ final readonly class ProductGridComponent implements Component
             ->pluck('path', 'product_id');
 
         if ($variant === 'overlay') {
-            return ['props' => $props, 'items' => $this->cards($products, $locale, $paths), 'variant' => $variant];
+            return ['props' => $props, 'items' => $this->cards($products, $locale, $paths), 'variant' => $variant, 'display' => $display];
         }
 
         $items = $products->map(function (Product $product) use ($locale, $paths): array {
@@ -97,7 +107,7 @@ final readonly class ProductGridComponent implements Component
             ];
         })->all();
 
-        return ['props' => $props, 'items' => $items, 'variant' => $variant];
+        return ['props' => $props, 'items' => $items, 'variant' => $variant, 'display' => $display];
     }
 
     /**

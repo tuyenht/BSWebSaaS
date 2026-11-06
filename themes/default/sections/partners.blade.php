@@ -1,9 +1,22 @@
+@php
+    // A block with the display group (a new one) draws a rail; a block saved before it keeps the plain list.
+    $sfLogos = array_values((array) ($props['logos'] ?? []));
+    $sfDisplay = null;
+    if (\App\Modules\Theme\Components\ListDisplay::applies($props)) {
+        $sfLogos = array_values(array_filter($sfLogos, static fn (mixed $logo): bool => ! empty(((array) $logo)['image_url'])));
+        $sfDisplay = \App\Modules\Theme\Components\ListDisplay::plan('partners', $props, count($sfLogos), PHP_INT_MAX);
+        $sfLogos = array_slice($sfLogos, 0, $sfDisplay['shown'] ?? count($sfLogos));
+    }
+@endphp
 <section class="partners">
     @if (! empty($props['heading']))
         <h2 class="partners__heading">{{ $props['heading'] }}</h2>
     @endif
-    <ul class="partners__list">
-        @foreach ((array) ($props['logos'] ?? []) as $item)
+@if ($sfDisplay !== null)
+@include('theme::partials.sf-rail-open', ['display' => $sfDisplay, 'label' => (string) ($props['heading'] ?? '')])
+@endif
+    <ul class="{{ $sfDisplay['class'] ?? 'partners__list' }}">
+        @foreach ($sfLogos as $item)
             @php($item = (array) $item)
             @continue(empty($item['image_url']))
             {{-- Logo = pre-optimized image (Option C R2); width/height reserve space (no CLS).
@@ -20,4 +33,7 @@
             </li>
         @endforeach
     </ul>
+@if ($sfDisplay !== null)
+@include('theme::partials.sf-rail-close', ['display' => $sfDisplay])
+@endif
 </section>
