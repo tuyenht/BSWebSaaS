@@ -103,8 +103,9 @@ return new class extends Migration
             return;
         }
 
-        // Each constraint in its own short step (it locks its table and the one it points at), then
-        // each table's columns in one more step that locks that table alone.
+        // Each constraint in its own short step, then each table's columns in one more step that locks
+        // that table alone. Dropping a foreign key also drops its triggers on the table it points at,
+        // which locks media and users against every read for that step: roll back at low traffic.
         foreach (self::SAVED_BY_FKS as $table => $name) {
             $this->briefly(fn () => DB::statement("ALTER TABLE {$table} DROP CONSTRAINT IF EXISTS {$name}"));
         }
