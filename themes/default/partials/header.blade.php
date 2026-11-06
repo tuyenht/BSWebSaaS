@@ -9,8 +9,9 @@
 @elseif (! empty($menu) || ! empty($brand['logo']))
     <header class="site-header">
         @if (! empty($brand['logo']))
-            {{-- Brand logo = a server-resolved media URL from the tenant's 'brand' site setting
-                 (not author Page-JSON), linked home. width/height reserve space (no CLS). --}}
+            {{-- Brand logo = a server-resolved media URL (Storefront BrandImages: the site
+                 profile's logo, or the older brand setting's URL until it is first saved; not
+                 author Page-JSON), linked home. width/height reserve space (no CLS). --}}
             <a class="site-header__brand" href="{{ $homeUrl ?? '/' }}" aria-label="{{ $brand['name'] ?? __('storefront.home') }}">
                 <img class="site-header__logo" src="{{ $brand['logo'] }}" alt="{{ $brand['name'] ?? '' }}" width="156" height="40">
             </a>

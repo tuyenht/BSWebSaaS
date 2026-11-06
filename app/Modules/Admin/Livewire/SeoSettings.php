@@ -8,6 +8,7 @@ use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\PlainText;
+use App\Modules\Storefront\Support\BrandImages;
 use App\Modules\Storefront\Support\SitemapRoutes;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteIdentity;
@@ -247,8 +248,8 @@ final class SeoSettings extends Component
         $host = SeoFields::publicHost();
         $home = SeoFields::address($host, '/', $this->lang, true)['home'] ?? $host;
         // The share preview shows the image a shared link carries today: the share image, else the logo.
-        $brand = app(SiteIdentity::class)->for($this->lang) ?? [];
-        $shareImage = Cast::string($brand['og_image'] ?? null) ?: Cast::string($brand['logo'] ?? null);
+        $images = app(BrandImages::class)->for(app(SiteIdentity::class)->for($this->lang));
+        $shareImage = $images['og_image'] ?? $images['logo'] ?? '';
 
         $view = view('admin::livewire.seo-settings', [
             'groupErrors' => $groupErrors,

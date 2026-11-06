@@ -7,9 +7,11 @@ use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Media\Models\Media;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteModule;
+use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
 
 /*
@@ -38,6 +40,45 @@ it('renders the storefront home with the site’s search settings within the sam
     ]]));
 
     $count = countQueries(fn () => $this->get('http://a.test/')->assertOk()->assertSee('noindex, nofollow', false));
+
+    expect($count)->toBeLessThanOrEqual($budget);
+});
+
+it('renders the storefront home with its brand images set within the budget plus one', function (): void {
+    // The four brand images resolve in ONE media query (Storefront BrandImages); with none set the
+    // home stays at its own budget (the first test), so this is the home budget + 1.
+    $budget = 12;
+    $keys = app(Tenancy::class)->enter(1, function (): array {
+        $keys = [];
+        foreach (['logo', 'logo-dark', 'favicon', 'share'] as $slug) {
+            $hash = hash('sha256', $slug);
+            $keys[] = Media::query()->create([
+                'collection' => 'brand', 'slug' => $slug, 'hash' => $hash, 'storage_key' => "s/brand/{$slug}-".substr($hash, 0, 12).'.png',
+                'mime' => 'image/png', 'size' => 1_000, 'width' => 320, 'height' => 80,
+            ])->id;
+        }
+        SiteProfile::query()->create(['brand_name' => 'An Vinh', 'logo_media_id' => $keys[0], 'logo_dark_media_id' => $keys[1], 'favicon_media_id' => $keys[2], 'og_image_media_id' => $keys[3]]);
+
+        return $keys;
+    });
+
+    $html = '';
+    $count = countQueries(function () use (&$html): void {
+        $html = $this->get('http://a.test/')->assertOk()->getContent();
+    });
+
+    expect($html)->toContain('s/brand/favicon-')->toContain('s/brand/share-')
+        ->and($keys)->toHaveCount(4)
+        ->and($count)->toBeLessThanOrEqual($budget);
+});
+
+it('renders the storefront home with only the older brand URLs within the home budget', function (): void {
+    $budget = 11; // no media id set: the brand images cost no query
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->create(['group_name' => 'general', 'key' => 'brand', 'value' => [
+        'name' => 'An Vinh', 'logo' => 'https://files.baoson.net/s/brand/logo.png', 'favicon' => 'https://files.baoson.net/s/brand/logo.png?w=64',
+    ]]));
+
+    $count = countQueries(fn () => $this->get('http://a.test/')->assertOk()->assertSee('s/brand/logo.png?w=64', false));
 
     expect($count)->toBeLessThanOrEqual($budget);
 });

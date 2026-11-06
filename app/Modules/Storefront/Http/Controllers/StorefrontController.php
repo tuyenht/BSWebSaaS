@@ -20,6 +20,7 @@ use App\Modules\Cms\Support\EntryViewCounter;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\SafeLink;
+use App\Modules\Storefront\Support\BrandImages;
 use App\Modules\Storefront\Support\Breadcrumbs;
 use App\Modules\Storefront\Support\ListPage;
 use App\Modules\Storefront\Support\PostDetail;
@@ -57,6 +58,7 @@ final readonly class StorefrontController
         private MediaUrlResolver $media,
         private EntryViewCounter $views,
         private SiteIdentity $identity,
+        private BrandImages $brandImages,
         private StorefrontSettings $settings,
         private ListPage $lists,
         private TemplateResolver $templates,
@@ -104,8 +106,9 @@ final readonly class StorefrontController
 
         // Business identity in the page's language (site_profiles + translations, the legacy
         // general.brand setting keeping precedence in the default language — SiteIdentity). The
-        // menu's special links (call, Zalo, email, map) read their addresses from it too.
-        $brand = $this->identity->for($locale);
+        // menu's special links (call, Zalo, email, map) read their addresses from it too. The brand
+        // images' addresses come from their media ids (BrandImages: one query, none when unset).
+        $brand = $this->brandImages->apply($this->identity->for($locale));
 
         // Page chrome for the active locale: header nav (active-state matches the prefixed request
         // path; a missing per-locale assignment falls back to the default-locale menu), the phone

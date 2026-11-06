@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Tenancy\Context;
 
+use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Support\BusinessHours;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Query\JoinClause;
@@ -22,8 +23,14 @@ use Illuminate\Support\Facades\DB;
  * wins, then the default-language values. Saving the "Thông tin chung" settings screen writes
  * site_profiles and removes the NAP keys from general.brand (Admin\Support\GeneralSettingsStore),
  * so from that save on the profile is the only source of every field it holds — a value cleared
- * there stays cleared. Logo, favicon and share image stay in general.brand: they are resolved
- * media URLs, and Tenancy cannot resolve media.
+ * there stays cleared.
+ *
+ * Brand images (logo, logo on a dark background, favicon, share image) are media ids on the
+ * profile, returned as `media_ids` (slot → id, only the slots that are set). Tenancy cannot turn an
+ * id into an address (that is Media's job), so the storefront's BrandImages reader does it, in one
+ * query for the four. The older URL strings general.brand still holds for logo, favicon and share
+ * image come back apart, as `legacy_images` (slot → URL), never as top-level keys: the reader
+ * shows them until that image is first saved on the settings screen, which removes them.
  *
  * `license` is the business licence number, `license_text` the authority that issued it (per
  * language); `business_hours` is the checked BusinessHours shape; `date_format` is how the site
@@ -79,6 +86,7 @@ final readonly class SiteIdentity
                 'p.brand_name', 'p.legal_name', 'p.tax_code', 'p.business_license_no', 'p.representative',
                 'p.email', 'p.phone', 'p.hotline', 'p.address_line', 'p.ward', 'p.province',
                 'p.social_links', 'p.license_issued_at', 'p.moit_registered', 'p.moit_url', 'p.business_hours',
+                'p.logo_media_id', 'p.logo_dark_media_id', 'p.favicon_media_id', 'p.og_image_media_id',
                 't.locale as t_locale', 't.brand_name as t_brand_name', 't.legal_name as t_legal_name',
                 't.tagline as t_tagline', 't.short_description as t_description', 't.address_line as t_address_line',
                 't.representative as t_representative', 't.opening_hours_text as t_opening_hours',
@@ -102,6 +110,15 @@ final readonly class SiteIdentity
         // Each source is filtered BEFORE merging: a blank translation column must never erase a
         // value the profile holds.
         $brand = $this->decode($first['brand_setting'] ?? null);
+        $legacyImages = $this->filled(array_intersect_key($brand, SiteProfile::IMAGE_COLUMNS));
+        $legacyImages = array_filter($legacyImages, is_string(...));
+        $brand = array_diff_key($brand, SiteProfile::IMAGE_COLUMNS);
+        $mediaIds = [];
+        foreach (SiteProfile::IMAGE_COLUMNS as $slot => $column) {
+            if (is_numeric($first[$column] ?? null)) {
+                $mediaIds[$slot] = (int) $first[$column];
+            }
+        }
         $identity = [...$this->filled($this->shared($first)), ...$this->filled($this->localized($byLocale[$default] ?? []))];
 
         if ($locale === $default) {
@@ -116,6 +133,8 @@ final readonly class SiteIdentity
         }
 
         $identity['address'] ??= $this->address($identity);
+        $identity['media_ids'] = $mediaIds === [] ? null : $mediaIds;
+        $identity['legacy_images'] = $legacyImages === [] ? null : $legacyImages;
         $identity = array_filter($identity, fn (mixed $value): bool => $value !== null);
         if ($identity === []) {
             return null;

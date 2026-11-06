@@ -16,7 +16,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ $seoTitle }}</title>
-{{-- Tenant favicon from the brand setting; the platform file is only the no-brand fallback. --}}
+{{-- Tenant favicon (Storefront BrandImages); the platform file is only the no-brand fallback. --}}
 <link rel="icon" href="{{ data_get($brand ?? null, 'favicon') ?: '/favicon.ico' }}" sizes="any">
 @if (! empty($robots))
 <meta name="robots" content="{{ $robots }}">

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Provisioning\Providers;
 
+use App\Modules\Provisioning\Console\FillBrandImagesFromBrandCommand;
 use App\Modules\Provisioning\Console\ImportAdminUnitsCommand;
 use App\Modules\Provisioning\Console\LoadContentPackCommand;
 use App\Modules\Provisioning\Console\PlatformPlanCommand;
@@ -34,6 +35,7 @@ final class ProvisioningServiceProvider extends ServiceProvider
                 PromoteAnVinhProductPostsToCatalogCommand::class,
                 ReflowSitePermalinksCommand::class,
                 SyncSiteProfilesFromBrandCommand::class,
+                FillBrandImagesFromBrandCommand::class,
                 ImportAdminUnitsCommand::class,
                 SyncProductRoutesCommand::class,
                 SiteLocaleCommand::class,

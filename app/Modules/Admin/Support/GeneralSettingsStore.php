@@ -211,6 +211,7 @@ final class GeneralSettingsStore
                 'business_hours' => $hours?->toArray(),
             ]);
             $profile->save();
+            $textChanged = false;
 
             foreach ($this->locales() as $locale) {
                 $values = [];
@@ -229,11 +230,17 @@ final class GeneralSettingsStore
                     $row->setAttribute('legal_name', $brandLegalName !== $startLegalName ? $brandLegalName : null);
                 }
                 $row->save();
+                $textChanged = $textChanged || $row->wasChanged() || $row->wasRecentlyCreated;
             }
             // A new full name: every shown name was derived from the old one (the screen has no field
             // for it), so each language shows the new full name from now on.
             if ($startLegalName !== '' && $startLegalName !== $text($newLegalName)) {
-                SiteProfileTranslation::query()->where('site_profile_id', $profile->id)->update(['legal_name' => null]);
+                $textChanged = SiteProfileTranslation::query()->where('site_profile_id', $profile->id)->update(['legal_name' => null]) > 0 || $textChanged;
+            }
+            // A save that changed only one language's text still writes the profile row: the
+            // section's "last saved" line (time and who, RecordsWhoSaved) is read from it.
+            if ($textChanged && ! $profile->wasChanged() && ! $profile->wasRecentlyCreated) {
+                $profile->touch();
             }
 
             if ($brandRow !== null) {
