@@ -8,6 +8,7 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
+use App\Modules\Tenancy\Models\SiteProfile;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
@@ -15,8 +16,9 @@ use Illuminate\Support\Facades\DB;
  * Finds which content uses a media master, and constrains the library grid to used/unused. Media
  * usage is NOT centralised in `mediables` yet (no producer writes it), so this reads the real
  * relations directly: a product's gallery (product_images.media_id), an entry's cover image
- * (entry.meta['image_url'] = the media's storage_key) and a category's picture
- * (taxonomies.cover_media_id). Rich-text body images (a URL in the HTML, no media_id) are
+ * (entry.meta['image_url'] = the media's storage_key), a category's picture
+ * (taxonomies.cover_media_id) and the site's four brand images (site_profiles: logo, logo on a dark
+ * background, favicon, share image; role `brand`, kind `site`). Rich-text body images (a URL in the HTML, no media_id) are
  * intentionally out of scope here — they can't be resolved back to a master.
  *
  * Lives in Admin (not Media) on purpose: it reaches into Catalog + Cms, and Catalog already depends
@@ -65,6 +67,19 @@ final class MediaUsageLocator
             ];
         }
 
+        // Brand — the site's logo, logo on a dark background, favicon or share image (one entry per slot).
+        $profile = SiteProfile::query()->first(array_values(SiteProfile::IMAGE_COLUMNS));
+        foreach (SiteProfile::IMAGE_COLUMNS as $column) {
+            if ($profile !== null && $profile->getAttribute($column) === $media->id) {
+                $usages[] = [
+                    'kind' => 'site',
+                    'role' => 'brand',
+                    'label' => __('admin.appearance'),
+                    'url' => route('admin.settings.appearance'),
+                ];
+            }
+        }
+
         // Content — a block image or a button's file (materialized into mediables on save).
         $blockEntryIds = Mediable::query()
             ->where('media_id', $media->id)->where('mediable_type', 'entry')->where('collection', 'content')
@@ -93,7 +108,7 @@ final class MediaUsageLocator
 
     /**
      * Constrain a media query to used (true) / unused (false): used = in a product gallery, an entry
-     * cover, an entry body or a category's picture. The sub-selects are themselves site-scoped, so
+     * cover, an entry body, a category's picture or one of the site's brand images. The sub-selects are themselves site-scoped, so
      * this never leaks across tenants.
      *
      * @param  Builder<Media>  $query
@@ -105,13 +120,20 @@ final class MediaUsageLocator
         $blockMediaIds = Mediable::query()->where('collection', 'content')->select('media_id');
         // NOT IN with a NULL in the list matches nothing, so categories without a picture stay out.
         $categoryMediaIds = Taxonomy::query()->whereNotNull('cover_media_id')->select('cover_media_id');
+        // The four brand image columns of the site's profile, as one list of ids (no NULLs).
+        $brandColumns = array_values(SiteProfile::IMAGE_COLUMNS);
+        $brandMediaIds = SiteProfile::query()->whereNotNull($brandColumns[0])->select($brandColumns[0]);
+        foreach (array_slice($brandColumns, 1) as $column) {
+            $brandMediaIds->unionAll(SiteProfile::query()->whereNotNull($column)->select($column));
+        }
 
         if ($used) {
-            $query->where(function (Builder $q) use ($galleryMediaIds, $coverKeys, $blockMediaIds, $categoryMediaIds): void {
+            $query->where(function (Builder $q) use ($galleryMediaIds, $coverKeys, $blockMediaIds, $categoryMediaIds, $brandMediaIds): void {
                 $q->whereIn('id', $galleryMediaIds)
                     ->orWhereIn('storage_key', $coverKeys)
                     ->orWhereIn('id', $blockMediaIds)
-                    ->orWhereIn('id', $categoryMediaIds);
+                    ->orWhereIn('id', $categoryMediaIds)
+                    ->orWhereIn('id', $brandMediaIds);
             });
 
             return;
@@ -120,6 +142,7 @@ final class MediaUsageLocator
         $query->whereNotIn('id', $galleryMediaIds)
             ->whereNotIn('storage_key', $coverKeys)
             ->whereNotIn('id', $blockMediaIds)
-            ->whereNotIn('id', $categoryMediaIds);
+            ->whereNotIn('id', $categoryMediaIds)
+            ->whereNotIn('id', $brandMediaIds);
     }
 }

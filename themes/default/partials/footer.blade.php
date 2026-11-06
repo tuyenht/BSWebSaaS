@@ -7,6 +7,8 @@
     without those values keeps its footer byte for byte.
     A site with the `storefront.footer` setting gets the rich footer instead ($footer, normalized).
     The floating contact buttons follow it, once per page (every layout prints this footer).
+    The footer is dark, so it shows the logo for a dark background (BrandImages: the normal logo
+    when the site has none).
 --}}
 @if (! empty($footer))
 @include('theme::partials.footer-rich')
@@ -19,9 +21,9 @@
 <footer class="site-footer" role="contentinfo">
     <div class="site-footer__inner">
         <div>
-            @if (! empty($brand['logo']))
+            @if (! empty($brand['logo_dark'] ?? $brand['logo'] ?? null))
                 <a href="{{ $homeUrl ?? '/' }}" aria-label="{{ $brand['name'] ?? __('storefront.home') }}">
-                    <img src="{{ $brand['logo'] }}" alt="{{ $brand['name'] ?? '' }}" width="140" height="36" loading="lazy" style="height:2.25rem;width:auto;margin-bottom:1rem;">
+                    <img src="{{ $brand['logo_dark'] ?? $brand['logo'] }}" alt="{{ $brand['name'] ?? '' }}" width="140" height="36" loading="lazy" style="height:2.25rem;width:auto;margin-bottom:1rem;">
                 </a>
             @endif
             @if (! empty($brand['legal_name']))

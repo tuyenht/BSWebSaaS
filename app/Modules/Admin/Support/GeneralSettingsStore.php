@@ -14,6 +14,7 @@ use App\Modules\Tenancy\Models\SiteProfileTranslation;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Tenancy\Models\Ward;
 use App\Modules\Tenancy\Support\BusinessHours;
+use App\Modules\Tenancy\Support\SiteWriteLock;
 use DateTimeImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -138,9 +139,13 @@ final class GeneralSettingsStore
         $orNull = static fn (mixed $value): ?string => is_string($value) && trim($value) !== '' ? trim($value) : null;
 
         DB::transaction(function () use ($i18n, $shared, $default, $orNull): void {
+            SiteWriteLock::take();   // first: one row that always exists, in every writer the same order
+            // The brand row is written back whole: lock it before anything reads it (the shown
+            // identity below includes it), so a brand image save at the same time waits instead of
+            // being undone.
+            $brandRow = SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->lockForUpdate()->first();
             $text = static fn (mixed $value): string => is_scalar($value) ? trim((string) $value) : '';
             $shown = app(SiteIdentity::class)->for($default) ?? [];   // read before anything is written
-            $brandRow = SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->first();
             $brand = is_array($brandRow?->value) ? $brandRow->value : [];
 
             $profile = SiteProfile::query()->firstOrNew();
@@ -211,6 +216,7 @@ final class GeneralSettingsStore
                 'business_hours' => $hours?->toArray(),
             ]);
             $profile->save();
+            $textChanged = false;
 
             foreach ($this->locales() as $locale) {
                 $values = [];
@@ -229,11 +235,17 @@ final class GeneralSettingsStore
                     $row->setAttribute('legal_name', $brandLegalName !== $startLegalName ? $brandLegalName : null);
                 }
                 $row->save();
+                $textChanged = $textChanged || $row->wasChanged() || $row->wasRecentlyCreated;
             }
             // A new full name: every shown name was derived from the old one (the screen has no field
             // for it), so each language shows the new full name from now on.
             if ($startLegalName !== '' && $startLegalName !== $text($newLegalName)) {
-                SiteProfileTranslation::query()->where('site_profile_id', $profile->id)->update(['legal_name' => null]);
+                $textChanged = SiteProfileTranslation::query()->where('site_profile_id', $profile->id)->update(['legal_name' => null]) > 0 || $textChanged;
+            }
+            // A save that changed only one language's text still writes the profile row: the
+            // section's "last saved" line (time and who, RecordsWhoSaved) is read from it.
+            if ($textChanged && ! $profile->wasChanged() && ! $profile->wasRecentlyCreated) {
+                $profile->touch();
             }
 
             if ($brandRow !== null) {

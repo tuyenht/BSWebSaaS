@@ -28,6 +28,7 @@ it('gives every foreign key an index that its parent-delete lookup can use', fun
             'entries.assigned_to', 'entries.author_id', 'entry_drafts.assigned_to',
             'entry_drafts.created_by', 'entry_drafts.updated_by', 'entry_revisions.created_by',
             'invitations.accepted_user_id', 'invitations.invited_by', 'site_notifications.user_id',
+            'site_profiles.updated_by', 'site_settings.updated_by',
             'tenant_history.actor_user_id', 'tenant_users.user_id', 'workflow_log.actor_id',
             'workflow_log.assigned_to',
         ],

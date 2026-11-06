@@ -8,7 +8,8 @@
     rest: about text, factories, licence issuer, copyright start year and an optional credit.
     Every value is printed through {{ }}; names set in bold are split around a placeholder, never
     printed raw. The tagline, opening hours and Bộ Công Thương lines start their directives at
-    column 0, so a site without those values keeps its footer byte for byte.
+    column 0, so a site without those values keeps its footer byte for byte. The footer is dark, so
+    it shows the logo for a dark background (BrandImages: the normal logo when the site has none).
 --}}
 @php
     $sfSocials = \App\Modules\Theme\Chrome\StorefrontChrome::socials($brand['social_links'] ?? null);
@@ -46,9 +47,9 @@
 <footer class="sf-footer" role="contentinfo">
     <div class="sf-container sf-footer__top">
         <div class="sf-footer__brand">
-            @if (! empty($brand['logo']))
+            @if (! empty($brand['logo_dark'] ?? $brand['logo'] ?? null))
                 <a class="sf-footer__logo-link" href="{{ $homeUrl ?? '/' }}">
-                    <img class="sf-footer__logo" src="{{ $brand['logo'] }}" alt="{{ $sfName ?? __('storefront.home') }}" width="156" height="40" loading="lazy">
+                    <img class="sf-footer__logo" src="{{ $brand['logo_dark'] ?? $brand['logo'] }}" alt="{{ $sfName ?? __('storefront.home') }}" width="156" height="40" loading="lazy">
                 </a>
             @endif
 @if (! empty($brand['tagline']))

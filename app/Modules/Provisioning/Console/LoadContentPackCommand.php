@@ -22,6 +22,7 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\Site;
+use App\Modules\Tenancy\Support\SiteWriteLock;
 use Illuminate\Console\Command;
 use Symfony\Component\Console\Output\OutputInterface;
 use Throwable;
@@ -140,6 +141,8 @@ final class LoadContentPackCommand extends Command
         try {
             $written = $tenancy->enter($siteId, function () use ($planner, $pack, $site, $host, $forced, $expected, $siteId, $backupFile): int {
                 TaxonomyTree::lock($siteId);
+                // Same order as every settings and profile save, so a staff save cannot deadlock with it.
+                SiteWriteLock::take();
                 // Re-planned with the rows it rests on locked, so nothing changes under the write.
                 $plan = $planner->plan($pack, $site->ulid, $site->name, $host, $forced, lock: true);
                 if (! hash_equals($plan->fingerprint, $expected)) {
