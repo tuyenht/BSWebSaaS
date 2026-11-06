@@ -17,6 +17,7 @@ use App\Modules\Cms\Routing\ResolvedContent;
 use App\Modules\Cms\Routing\ResolvedProduct;
 use App\Modules\Cms\Routing\RouteResolver;
 use App\Modules\Cms\Support\EntryViewCounter;
+use App\Modules\Cms\Taxonomy\TaxonomyRules;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\SafeLink;
@@ -225,7 +226,9 @@ final readonly class StorefrontController
         // module stays Cms-agnostic.
         if ($entry->type === 'post') {
             $category = $entry->primaryCategory();
-            $categoryTemplate = $category?->detail_template;
+            $stored = $category?->detail_template;
+            // A layout stored before the post-layout rule existed (or written around it) falls back like null.
+            $categoryTemplate = $stored !== null && TaxonomyRules::postDetailTemplate($stored) ? $stored : null;
             $extra['post'] = $this->posts->band($entry, $content->translation, $locale);
 
             $categoryTranslation = $category?->translationFor($locale);

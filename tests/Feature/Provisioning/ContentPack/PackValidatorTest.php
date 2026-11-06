@@ -140,3 +140,14 @@ it('refuses null for a localized profile field (leaving the field out keeps the 
 
     expect(implode("\n", cpProblems()))->toContain('profile: tagline must be a language map');
 });
+
+it('lets a product category of a pack take any theme layout as its detail layout', function (string $layout): void {
+    ContentPacks::edit($this->folder, 'taxonomies.json', function (array $data) use ($layout): array {
+        $copy = collect($data['items'])->firstWhere('key', 'tax:post_cat/tin-tuc');
+        $data['items'][] = [...$copy, 'key' => 'tax:product_cat/tin-tuc', 'detail_template' => $layout];
+
+        return $data;
+    });
+
+    expect(implode("\n", cpProblems()))->not->toContain('detail_template');
+})->with(['product', 'category']);

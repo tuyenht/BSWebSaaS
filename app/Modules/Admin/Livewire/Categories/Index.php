@@ -358,6 +358,7 @@ final class Index extends Component
             'label' => $found['label'] ?? '',
             'bases' => $bases,
             'layouts' => $this->layouts(),
+            'detailLayouts' => $this->layouts($found === null || $found['root'] !== null),
             'role' => is_string($role) && $role !== '' ? Str::headline($role) : null,
             'limitNames' => $limits === null ? null : $this->namesOf($limits, $main),
             'listUrl' => $found !== null && $found['root'] === null ? route('admin.catalog.index') : route('admin.entries.index', $found !== null ? ['section' => $found['key']] : []),
@@ -383,7 +384,7 @@ final class Index extends Component
      *
      * @return list<string>
      */
-    private function layouts(): array
+    private function layouts(bool $postDetail = false): array
     {
         $names = [];
         $finder = Views::getFinder();
@@ -391,7 +392,7 @@ final class Index extends Component
         foreach ($dirs as $dir) {
             foreach (glob(rtrim(Cast::string($dir), '/').'/layouts/*.blade.php') ?: [] as $file) {
                 $name = basename($file, '.blade.php');
-                if (TaxonomyRules::template($name)) {
+                if ($postDetail ? TaxonomyRules::postDetailTemplate($name) : TaxonomyRules::template($name)) {
                     $names[] = $name;
                 }
             }

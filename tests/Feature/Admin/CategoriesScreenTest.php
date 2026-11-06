@@ -697,3 +697,28 @@ it('points "Liên hệ hỗ trợ" on a locked section at the support mailbox', 
         ->assertSee(__('categories.ui_support'))
         ->assertSee('href="mailto:ho-tro@platform.test"', false);
 });
+
+it('offers only the layouts that can render a post as the detail layout of a post section', function (): void {
+    $html = $this->actingAs($this->editor->fresh())->get('http://a.test/admin/taxonomies?section=tin-tuc')->assertOk()->getContent();
+
+    $html = str_replace(['\\u0022', '&quot;'], '"', $html);
+    preg_match('/"detailLayouts":(\[[^\]]*\])/', $html, $found);
+    $detail = json_decode($found[1] ?? '[]', true);
+
+    expect($detail)->toBe(['post', 'project'])
+        ->and($html)->toContain('"layouts":["category"');
+});
+
+it('offers a product section every layout as the detail layout', function (): void {
+    cxIn(1, fn () => SiteModule::create(['module_key' => 'catalog', 'enabled' => true]));
+    app()->forgetScopedInstances();
+
+    $shopper = cxUser(['catalog.view', 'taxonomies.manage']);
+    $html = $this->actingAs($shopper)->get('http://a.test/admin/taxonomies?section=catalog')->assertOk()->getContent();
+
+    $html = str_replace(['\\u0022', '&quot;'], '"', $html);
+    preg_match('/"detailLayouts":(\[[^\]]*\])/', $html, $found);
+    $detail = json_decode($found[1] ?? '[]', true);
+
+    expect($detail)->toContain('product')->toContain('category')->toContain('post');
+});

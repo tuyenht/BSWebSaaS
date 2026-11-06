@@ -666,3 +666,50 @@ it('keeps paths right when an older parent has none yet', function (): void {
         expect(twPath($child))->toBe("{$legacy->id}.{$child->id}");
     });
 });
+
+it('refuses a layout that cannot render a post as the detail layout of a post category', function (string $layout): void {
+    twSiteOne(function () use ($layout): void {
+        $news = twCreate('Tin tức');
+        $create = fn () => app(CreateTaxonomy::class)->handle('post_cat', null, new TaxonomyData(names: ['vi' => 'Sự kiện ạ'], detailTemplate: $layout));
+        $update = fn () => app(UpdateTaxonomy::class)->handle($news, new TaxonomyData(detailTemplate: $layout));
+
+        expect(twRefusal($create))->toBe('template_invalid')
+            ->and(twRefusal($update))->toBe('template_invalid')
+            ->and($news->fresh()->detail_template)->toBeNull();
+    });
+})->with(['category', 'product', 'grid-news']);
+
+it('accepts the post and project layouts as the detail layout of a post category', function (string $layout): void {
+    twSiteOne(function () use ($layout): void {
+        $created = app(CreateTaxonomy::class)->handle('post_cat', null, new TaxonomyData(names: ['vi' => 'Dự án ạ'], detailTemplate: $layout));
+        $updated = app(UpdateTaxonomy::class)->handle(twCreate('Tin tức'), new TaxonomyData(detailTemplate: $layout));
+
+        expect($created->detail_template)->toBe($layout)->and($updated->detail_template)->toBe($layout);
+    });
+})->with(['post', 'project']);
+
+it('keeps an old detail layout that is no longer allowed while the other fields are saved', function (): void {
+    twSiteOne(function (): void {
+        $news = twCreate('Tin tức');
+        $news->forceFill(['detail_template' => 'category'])->save();
+
+        $saved = app(UpdateTaxonomy::class)->handle($news, new TaxonomyData(names: ['vi' => 'Tin mới ạ'], detailTemplate: 'category'));
+
+        expect($saved->detail_template)->toBe('category')
+            ->and($saved->translationFor('vi')?->name)->toBe('Tin mới ạ')
+            ->and(twRefusal(fn () => app(UpdateTaxonomy::class)->handle($news, new TaxonomyData(detailTemplate: 'product'))))->toBe('template_invalid');
+    });
+});
+
+it('lets a product category take any theme layout as its detail layout', function (): void {
+    twSiteOne(function (): void {
+        $shelf = app(CreateTaxonomy::class)->handle('product_cat', null, new TaxonomyData(names: ['vi' => 'Vòng bi'], detailTemplate: 'product'));
+        expect($shelf->detail_template)->toBe('product');
+
+        $updated = app(UpdateTaxonomy::class)->handle($shelf, new TaxonomyData(names: ['vi' => 'Vòng bi'], detailTemplate: 'category'));
+        expect($updated->detail_template)->toBe('category');
+
+        $news = twCreate('Tin tức');
+        expect(twRefusal(fn () => app(UpdateTaxonomy::class)->handle($news, new TaxonomyData(names: ['vi' => 'Tin tức'], detailTemplate: 'product'))))->toBe('template_invalid');
+    });
+});

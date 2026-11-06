@@ -432,9 +432,10 @@ final readonly class PackValidator
             $template = $item->data[$field] ?? null;
             if ($template !== null && (! is_string($template) || ! TaxonomyRules::template($template))) {
                 $errors[] = "{$item->key}: {$field} is not a layout name.";
-            } elseif ($field === 'detail_template' && is_string($template) && ! in_array($template, ['post', 'project'], true)) {
+            } elseif ($field === 'detail_template' && $chain['vocabulary'] !== 'product_cat' && is_string($template) && ! TaxonomyRules::postDetailTemplate($template)) {
                 // Only the post route reads it, and only these layouts render a post (the list layouts expect
-                // a page of cards; the product layout expects a product).
+                // a page of cards; the product layout expects a product). A product category's detail layout
+                // is read nowhere today, so it keeps any theme layout (same as CreateTaxonomy/UpdateTaxonomy).
                 $errors[] = "{$item->key}: detail_template must be a post layout (post or project).";
             }
         }
