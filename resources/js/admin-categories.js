@@ -69,7 +69,8 @@ window.Alpine.data('bsCategories', (cfg) => {
         // the drawer, so it can be seen and cleared), or null.
         goneTpl(field) {
             const v = this.pan && this.pan.node ? this.pan.node[field] : null;
-            return v && !(cfg.layouts || []).includes(v) ? v : null;
+            const list = field === 'detailTemplate' ? cfg.detailLayouts || cfg.layouts : cfg.layouts;
+            return v && !(list || []).includes(v) ? v : null;
         },
 
         // ---- the rows as the server drew them ---------------------------------------------------
