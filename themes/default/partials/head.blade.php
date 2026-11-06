@@ -201,3 +201,6 @@
 @if (! empty($galleryScript))
 @vite(['resources/js/sf-gallery.js'])
 @endif
+@if (! empty($tabsScript))
+@vite(['resources/js/sf-tabs.js'])
+@endif

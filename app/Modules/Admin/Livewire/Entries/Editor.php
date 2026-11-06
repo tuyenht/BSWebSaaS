@@ -4,6 +4,7 @@ namespace App\Modules\Admin\Livewire\Entries;
 
 use App\Modules\Admin\Livewire\Concerns\EditsButtonActions;
 use App\Modules\Admin\Support\SeoFields;
+use App\Modules\Catalog\Components\ProductGridComponent;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\RecordEntryRevision;
@@ -25,6 +26,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaLibraryUrls;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\PlainText;
 use App\Modules\Shared\Support\Slugger;
 use App\Modules\Tenancy\Context\SiteLocale;
@@ -931,6 +933,7 @@ final class Editor extends Component
             'urls' => $urls,
             'coverUrl' => $this->coverImageKey !== '' ? $urls->url($this->coverImageKey, 640) : null,
             'blockImageUrls' => $this->resolveBlockImageUrls($schemas),
+            'goneProducts' => $this->goneProductKeys(),
             'looks' => $this->looks(),
             'schemeColours' => $this->schemeColours(),
             'pickerMedia' => $this->showMediaPicker || $this->showBlockImagePicker
@@ -996,6 +999,25 @@ final class Editor extends Component
         }
 
         return $colours;
+    }
+
+    /**
+     * The hand-picked product keys of the product grids in the body that name no published product of
+     * this site (deleted, unpublished or another site's), upper case: the list shows them as gone. One query.
+     *
+     * @return list<string>
+     */
+    private function goneProductKeys(): array
+    {
+        $keys = [];
+        foreach ($this->blocks as $block) {
+            $props = Cast::arr($block['props'] ?? null);
+            if (($block['type'] ?? null) === 'product_grid' && ($props['source'] ?? null) === 'picked') {
+                $keys = array_merge($keys, Cast::arr($props['product_keys'] ?? null));
+            }
+        }
+
+        return ProductGridComponent::goneKeys($keys);
     }
 
     /**

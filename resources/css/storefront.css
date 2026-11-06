@@ -7098,3 +7098,80 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
         gap: 4rem;
     }
 }
+
+/* News tabs of an article list. Without JavaScript the bar stays hidden and every panel stacks under
+   its heading; sf-tabs.js marks the block ready, which hides the headings and all panels but one. */
+.sf-tabs__bar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+    width: fit-content;
+    max-width: 100%;
+    margin: 0 auto 3rem;
+    padding: 0.5rem;
+    border-radius: 2rem;
+    background: var(--color-surface-tint, #e2e8f0);
+}
+
+.sf-tabs__bar[hidden] {
+    display: none;
+}
+
+.sf-tabs__tab {
+    min-height: 2.75rem;
+    padding: 0.5rem 1.5rem;
+    border: 0;
+    border-radius: 2rem;
+    background: transparent;
+    color: var(--color-text);
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.3s, color 0.3s;
+}
+
+.sf-tabs__tab:hover {
+    background: color-mix(in srgb, var(--color-dark) 12%, transparent);
+}
+
+.sf-tabs__tab[aria-selected="true"] {
+    background: var(--color-dark);
+    color: var(--color-on-dark, #fff);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.2);
+}
+
+.sf-tabs__tab:focus-visible {
+    outline: 2px solid var(--color-primary-text);
+    outline-offset: 2px;
+}
+
+.sf-tabs__title {
+    margin: 2rem 0 1.5rem;
+    color: var(--sch-head, var(--color-text-strong));
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.sf-tabs__bar + .sf-tabs__panel .sf-tabs__title {
+    margin-top: 0;
+}
+
+.sf-tabs[data-ready] .sf-tabs__title {
+    display: none;
+}
+
+.sf-tabs__panel[hidden] {
+    display: none;
+}
+
+.sf-band--dark .sf-tabs__title {
+    color: var(--sch-head, #fff);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sf-tabs__tab {
+        transition: none;
+    }
+}

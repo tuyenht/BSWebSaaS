@@ -161,6 +161,9 @@
                                                     @include('admin::livewire.entries.partials.prop-input', ['fieldType' => $fieldSpec['type'] ?? 'text', 'model' => "blocks.$i.props.$prop.$j.$field", 'fieldLabel' => $field, 'value' => $item[$field] ?? null, 'imageUrls' => $blockImageUrls, 'options' => $fieldSpec['options'] ?? []])
                                                 @endforeach
                                             @endif
+                                            @if ($prop === 'product_keys' && is_string($item) && in_array(strtoupper($item), $goneProducts, true))
+                                                <span class="error" role="alert">{{ __('entries.product_pick_gone') }}</span>
+                                            @endif
                                             <button type="button" wire:click="moveItemUp({{ $i }}, '{{ $prop }}', {{ $j }})" aria-label="{{ __('entries.move_up') }}">↑</button>
                                             <button type="button" wire:click="moveItemDown({{ $i }}, '{{ $prop }}', {{ $j }})" aria-label="{{ __('entries.move_down') }}">↓</button>
                                             <button type="button" wire:click="removeItem({{ $i }}, '{{ $prop }}', {{ $j }})">{{ __('entries.remove_item') }}</button>

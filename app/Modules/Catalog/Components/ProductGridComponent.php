@@ -8,8 +8,10 @@ use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Contracts\Component;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Theme\Components\ListDisplay;
 use App\Modules\Theme\Components\SectionProps;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
@@ -47,6 +49,12 @@ final readonly class ProductGridComponent implements Component
             'heading' => ['type' => 'text'],
             'limit' => ['type' => 'int', 'default' => 6, 'min' => ListDisplay::LIMIT_MIN, 'max' => ListDisplay::LIMIT_MAX],
             'variant' => ['type' => 'enum', 'options' => SectionProps::PRODUCT_GRID_VARIANTS, 'default' => 'grid'],
+            'source' => ['type' => 'enum', 'options' => SectionProps::PRODUCT_SOURCES, 'default' => 'latest'],
+            'sort' => ['type' => 'enum', 'options' => SectionProps::PRODUCT_SORTS, 'default' => 'newest'],
+            // The category's ulid (never its id): renaming the category or its path keeps the block right.
+            'taxonomy_key' => ['type' => 'text', 'pattern' => SectionProps::ULID_PATTERN],
+            // The hand-picked products' ulids, in the order to show them.
+            'product_keys' => ['type' => 'list', 'of' => ['type' => 'text', 'pattern' => SectionProps::ULID_PATTERN], 'max' => SectionProps::PRODUCT_PICK_MAX],
             'description' => ['type' => 'textarea'],
             'view_all_label' => ['type' => 'text'],
             'view_all_url' => ['type' => 'url'],
@@ -66,15 +74,24 @@ final readonly class ProductGridComponent implements Component
         $locale = is_string($props['locale'] ?? null) ? $props['locale'] : 'vi';
         $variant = SectionProps::choice($props, 'variant', SectionProps::PRODUCT_GRID_VARIANTS);
 
-        $products = Product::query()
-            ->where('status', 'published')
+        $source = SectionProps::choice($props, 'source', SectionProps::PRODUCT_SOURCES);
+        $keys = $source === 'picked' ? self::keys($props['product_keys'] ?? null) : [];
+        // A hand-picked list shows every product on it (at most the pick limit): its length is the count.
+        if ($source === 'picked') {
+            $limit = max(1, count($keys));
+        }
+
+        $products = $this->products($props, $source, $keys)
             ->with($variant === 'overlay' ? ['translations', 'images.media', 'taxonomies.translations'] : ['translations', 'images.media'])
-            ->orderByDesc('published_at')
-            ->orderByDesc('id')
             // One row more than shown when the block carries the display group: it tells "view all"
-            // there is more, with no COUNT(*).
-            ->limit($limit + (ListDisplay::applies($props) ? 1 : 0))
+            // there is more, with no COUNT(*). A picked list has no "more".
+            ->limit($limit + ($source !== 'picked' && ListDisplay::applies($props) ? 1 : 0))
             ->get();
+        if ($source === 'picked') {
+            // The list's own order; a product that is gone or not published is not in the result.
+            $order = array_flip($keys);
+            $products = $products->sortBy(fn (Product $product): int => $order[$product->ulid] ?? PHP_INT_MAX)->values();
+        }
 
         $display = ListDisplay::plan($variant === 'overlay' ? 'product-overlay' : 'product', $props, $products->count(), $limit);
         if ($display !== null) {
@@ -108,6 +125,68 @@ final readonly class ProductGridComponent implements Component
         })->all();
 
         return ['props' => $props, 'items' => $items, 'variant' => $variant, 'display' => $display];
+    }
+
+    /**
+     * The picked keys that name no published product of this site (gone, in the trash, a draft, or
+     * another site's), upper case. One query; the editor marks them.
+     *
+     * @return list<string>
+     */
+    public static function goneKeys(mixed $keys): array
+    {
+        $keys = self::keys($keys);
+        if ($keys === []) {
+            return [];
+        }
+        $found = Product::query()->where('status', 'published')->whereIn('ulid', $keys)->pluck('ulid')->all();
+
+        return array_values(array_diff($keys, Cast::strings($found)));
+    }
+
+    /**
+     * The valid ulids of a saved list, upper case (as stored), no repeats, at most the pick limit, in order.
+     *
+     * @return list<string>
+     */
+    private static function keys(mixed $value): array
+    {
+        $keys = [];
+        foreach (is_array($value) ? $value : [] as $item) {
+            if (is_string($item) && preg_match(SectionProps::ULID_PATTERN, $item) === 1) {
+                $keys[strtoupper($item)] = true;
+            }
+        }
+
+        return array_slice(array_keys($keys), 0, SectionProps::PRODUCT_PICK_MAX);
+    }
+
+    /**
+     * The published products of the block's source, in the block's order (a picked list is put in
+     * its own order after the read). All through BelongsToSite, so another site's ulid finds nothing.
+     *
+     * @param  array<string, mixed>  $props
+     * @param  list<string>  $keys
+     * @return Builder<Product>
+     */
+    private function products(array $props, string $source, array $keys): Builder
+    {
+        $query = Product::query()->where('status', 'published');
+
+        if ($source === 'picked') {
+            return $query->whereIn('ulid', $keys);
+        }
+
+        if ($source === 'category') {
+            $key = $props['taxonomy_key'] ?? null;
+            $key = is_string($key) && preg_match(SectionProps::ULID_PATTERN, $key) === 1 ? strtoupper($key) : null;
+            // No (or a malformed) category: nothing, not the newest products under a wrong heading.
+            $query = $key === null ? $query->whereRaw('false') : $query->whereHas('taxonomies', fn (Builder $category) => $category->where('taxonomies.ulid', $key));
+        }
+
+        return SectionProps::choice($props, 'sort', SectionProps::PRODUCT_SORTS) === 'oldest'
+            ? $query->orderBy('published_at')->orderBy('id')
+            : $query->orderByDesc('published_at')->orderByDesc('id');
     }
 
     /**

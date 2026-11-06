@@ -50,6 +50,9 @@ final readonly class PageRenderer
         $extra += self::playsVideo($body) || $this->blocks->playsRichVideo($body) ? ['videoScript' => true] : [];
         // The count-up script loads only on a page with a stats block that holds a number.
         $extra += self::countsUp($body) ? ['statsScript' => true] : [];
+        // The tab script loads only on a page with an article list that asks for tabs (it draws them
+        // from two sub-categories up; the script is a few hundred bytes).
+        $extra += self::hasTabs($body) ? ['tabsScript' => true] : [];
         // A page led by a hero shows no breadcrumb (the hero is its opening), so its head lists none
         // either: the JSON-LD trail and the visible one always match.
         if ($type === 'page' && in_array($leadBlock, ['hero', 'hero_slider'], true)) {
@@ -100,6 +103,24 @@ final readonly class PageRenderer
         }
 
         return $head;
+    }
+
+    /**
+     * Whether an article list on the page asks for tabs (a card look with `tabs` other than `off`).
+     * Pure: no query.
+     *
+     * @param  array<string, mixed>  $body
+     */
+    private static function hasTabs(array $body): bool
+    {
+        foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
+            $props = is_array($block) && ($block['type'] ?? null) === 'entry_grid' && is_array($block['props'] ?? null) ? $block['props'] : null;
+            if ($props !== null && in_array($props['tabs'] ?? 'off', ['auto', 'filter'], true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

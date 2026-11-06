@@ -4,7 +4,7 @@
     icon = a glyph key, excerpt, date + datetime, label); no id ever reaches the markup.
     The title link is the card's one link and is stretched over the whole card; "view details" /
     "read more" are visual text only (aria-hidden). Titles and labels wrap, never clip; only an
-    excerpt may be cut at four lines. `level` is h3 inside a block and h2 on a list page.
+    excerpt may be cut at four lines. `level` is h3 inside a block (h4 under a tab's heading) and h2 on a list page.
     `priority` (high / eager / lazy) and `sizes` go to the photo.
     `list` (a list page's card): a project gets its category tag on the photo and "view project",
     a product its "details" footer, and news and project cards turn into a compact row on a phone
@@ -14,7 +14,7 @@
 @php
     $sfKind = in_array($kind ?? 'news', ['icon', 'product', 'product-overlay', 'project', 'news'], true) ? $kind : 'news';
     $sfUrl = \App\Modules\Shared\Support\SafeLink::href($card['url'] ?? null);
-    $sfLevel = ($level ?? 'h3') === 'h2' ? 'h2' : 'h3';
+    $sfLevel = in_array($level ?? 'h3', ['h2', 'h4'], true) ? $level : 'h3';
     $sfTitle = (string) ($card['title'] ?? '');
     $sfExcerpt = (string) ($card['excerpt'] ?? '');
     $sfLabel = (string) ($card['label'] ?? '');
