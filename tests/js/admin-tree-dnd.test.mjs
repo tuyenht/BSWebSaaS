@@ -187,3 +187,13 @@ test('the history keeps the last 50 moves', () => {
     assert.equal(h.takeUndo().k, 'k10'); // the oldest 10 were dropped
     assert.equal(h.takeUndo(), undefined);
 });
+
+test('a gap names the row edge its insertion line sits on, whatever level the pointer picks', () => {
+    const R = [{ k: 'a', lv: 1, parent: null }, { k: 'a1', lv: 2, parent: 'a' }, { k: 'b', lv: 1, parent: null }];
+    assert.deepEqual(gapTarget(R, -1, 100, 100, 32).ph, { at: 'before', k: 'a' });
+    assert.deepEqual(gapTarget(R, 0, 100, 100, 32).ph, { at: 'after', k: 'a' });
+    const deep = gapTarget(R, 1, 100, 100, 32);
+    const out = gapTarget(R, 1, 100, 68, 32);
+    assert.deepEqual([deep.lv, out.lv], [2, 1]);
+    assert.deepEqual([deep.ph, out.ph], [{ at: 'after', k: 'a1' }, { at: 'after', k: 'a1' }], 'one edge, a different indent');
+});

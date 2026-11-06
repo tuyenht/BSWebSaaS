@@ -1,6 +1,7 @@
 // The one drag rule of every admin tree (pages, categories, menus, product categories), ported from
 // the design's tree-dnd.js. It only works out WHERE a drop would land and says it (the floating label
-// by the pointer and the screen-reader line); the tree draws its own placeholder from the result.
+// by the pointer and the screen-reader line) and draws the thin insertion line of a gap; the tree
+// highlights the row a drop would go into. No element is ever put between the rows, so they never move.
 //
 // The rule:
 //   · the middle half of a row (its name) → the row's FIRST child (a collapsed parent opens after 0.6 s);
@@ -16,6 +17,8 @@
 //             bad, label, why, key }.
 
 let label = null;
+let line = null;
+let lineKey = '';
 let labelW = 240;
 let active = null;
 
@@ -272,7 +275,40 @@ function ensureLabel() {
     document.body.appendChild(label);
 }
 
+function ensureLine() {
+    if (line && document.body.contains(line)) {
+        return;
+    }
+    line = document.createElement('div');
+    line.className = 'tree-il';
+    line.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(line);
+    lineKey = '';
+}
+
+// The insertion line of a gap: spec = { x, y, w } in viewport pixels, or null for none. Written only
+// when it changes; it takes no pointer events, so it never changes what the pointer is over.
+function drawLine(spec, bad) {
+    if (!line) {
+        return;
+    }
+    const key = spec ? [Math.round(spec.x), Math.round(spec.y), Math.round(spec.w), bad ? 1 : 0].join('|') : '';
+    if (key === lineKey) {
+        return;
+    }
+    lineKey = key;
+    if (!spec) {
+        line.removeAttribute('data-on');
+        return;
+    }
+    line.style.transform = 'translate(' + Math.round(spec.x) + 'px,' + Math.round(spec.y) + 'px)';
+    line.style.width = Math.round(spec.w) + 'px';
+    line.setAttribute('data-bad', bad ? '1' : '0');
+    line.setAttribute('data-on', '1');
+}
+
 function hideLabel() {
+    drawLine(null);
     if (label) {
         label.removeAttribute('data-on');
         label.style.transform = '';
@@ -314,6 +350,7 @@ const onDocDragover = (e) => {
         }
         label.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(e.clientY + 18) + 'px)';
     }
+    c.paint();
     const sc = c.sc;
     if (!sc) {
         return;
@@ -333,7 +370,8 @@ if (typeof document !== 'undefined') {
 
 class TreeDnd {
     // o: { step() px per level, name(k), check(T, dragKey) → {ok:false,label,why}|null, say(text),
-    //      onTarget(T), onExpand(k), texts: {start, child, before, after, self} }
+    //      onTarget(T), onExpand(k), place(T) → { x, y, w } | null (where the line of a gap goes, in
+    //      viewport pixels), texts: {start, child, before, after, self} }
     constructor(o) {
         this.o = o;
         this.T = null;
@@ -343,6 +381,7 @@ class TreeDnd {
 
     start(e, k, rowEl) {
         ensureLabel();
+        ensureLine();
         this.k = k;
         this.T = null;
         this.gap = null;
@@ -410,28 +449,11 @@ class TreeDnd {
         return this.emit(this.gapT(R, zone === 'above' ? i - 1 : i, e.clientX));
     }
 
-    // Over the placeholder itself: stay in the gap it stands for, the level still following x.
-    overPh(e, rows) {
-        if (this.k == null) {
-            return null;
-        }
-        e.preventDefault();
-        try {
-            e.dataTransfer.dropEffect = 'move';
-        } catch {
-            // read-only in some browsers
-        }
-        if (!this.gap) {
-            return this.T;
-        }
-        const R = this.clean(rows).R;
-        let g = R.findIndex((r) => r.k === this.gap.u);
-        if (this.gap.u == null) {
-            g = -1;
-        } else if (g < 0) {
-            return this.T;
-        }
-        return this.emit(this.gapT(R, g, e.clientX));
+    // Draws (or hides) the line for the current target: only a gap has one.
+    paint() {
+        const T = this.T;
+        const spec = T && T.mode === 'gap' && this.o.place ? this.o.place(T) : null;
+        drawLine(spec, T && T.bad);
     }
 
     dwell(row) {

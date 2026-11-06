@@ -358,14 +358,14 @@
         cursor: auto;
     }
 
-    /* ---- the drop placeholder ---------------------------------------------------------- */
+    /* ---- the drop placeholder, as the server draws a state of the tree (never shown while dragging) ---------------------------------------------------------- */
     .tree-ph {
         --tree-lv: 1;
         display: flex;
         align-items: center;
         gap: 0.5rem;
         box-sizing: border-box;
-        min-height: var(--tree-phh, calc(var(--tree-tg) + 2 * var(--tree-py)));
+        min-height: calc(var(--tree-tg) + 2 * var(--tree-py));
         margin: 2px 0.75rem 2px calc(var(--tree-x0) + var(--tree-grip) + (var(--tree-lv) - 1) * var(--tree-step));
         padding: 0.375rem 0.75rem;
         border: 2px dashed var(--color-primary-text);
@@ -410,6 +410,41 @@
 
     .tree-ph > span {
         min-width: 0;
+    }
+
+    /* ---- the insertion line of a gap (the drag rule puts it on <body>) ---------------------- */
+    .tree-il {
+        --tree-ilw: var(--focus-ring-width, 2px);
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 399;
+        visibility: hidden;
+        height: var(--tree-ilw);
+        margin-top: calc(var(--tree-ilw) / -2);
+        border-radius: var(--tree-ilw);
+        background: var(--color-accent);
+        pointer-events: none;
+    }
+
+    .tree-il::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 50%;
+        width: calc(var(--tree-ilw) * 4);
+        height: calc(var(--tree-ilw) * 4);
+        border-radius: 50%;
+        background: inherit;
+        transform: translate(-50%, -50%);
+    }
+
+    .tree-il[data-on="1"] {
+        visibility: visible;
+    }
+
+    .tree-il[data-bad="1"] {
+        background: var(--color-danger-text);
     }
 
     /* The label that follows the pointer while dragging (the drag rule puts it on <body>). */
