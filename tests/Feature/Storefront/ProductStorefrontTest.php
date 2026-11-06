@@ -69,8 +69,8 @@ it('renders a published product detail page at its base-pinned route within budg
             ->toContain('property="og:type" content="product"');
     });
 
-    // Product load (+ eager translations & images.media), route resolve, nav, brand, the contact page
-    // for the quote button — no N+1.
+    // Product load (+ eager translations & images.media), route resolve, nav, brand, the contact page's
+    // route for the quote button (its setting rides the storefront settings read) — no N+1.
     expect($count)->toBeLessThanOrEqual(17);
 });
 

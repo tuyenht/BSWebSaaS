@@ -6,6 +6,7 @@ namespace App\Modules\Provisioning\Providers;
 
 use App\Modules\Provisioning\Console\FillBrandImagesFromBrandCommand;
 use App\Modules\Provisioning\Console\ImportAdminUnitsCommand;
+use App\Modules\Provisioning\Console\LinkContactPageCommand;
 use App\Modules\Provisioning\Console\LoadContentPackCommand;
 use App\Modules\Provisioning\Console\PlatformPlanCommand;
 use App\Modules\Provisioning\Console\PromoteAnVinhProductPostsToCatalogCommand;
@@ -39,6 +40,7 @@ final class ProvisioningServiceProvider extends ServiceProvider
                 ImportAdminUnitsCommand::class,
                 SyncProductRoutesCommand::class,
                 SiteLocaleCommand::class,
+                LinkContactPageCommand::class,
                 SiteFeatureCommand::class,
                 PlatformPlanCommand::class,
                 SiteDomainCommand::class,
