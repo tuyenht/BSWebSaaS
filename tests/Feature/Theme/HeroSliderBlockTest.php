@@ -18,7 +18,7 @@ function heroSlider(array $slides, array $props = [], array $srcsets = []): stri
 {
     app()->setLocale('vi');
 
-    return View::make('theme::sections.hero_slider', ['props' => ['slides' => $slides] + $props, 'srcsets' => $srcsets])->render();
+    return View::make('theme::sections.hero_slider', ['props' => ['slides' => $slides, '_high' => true] + $props, 'srcsets' => $srcsets])->render();
 }
 
 function threeSlides(): array

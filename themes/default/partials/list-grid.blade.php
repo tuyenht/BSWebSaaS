@@ -36,7 +36,7 @@
     @include('theme::partials.header', ['menu' => $menu ?? [], 'brand' => $brand ?? null])
     <main class="sf-list sf-list--{{ $sfKind }}" id="noi-dung" tabindex="-1">
         @include('theme::sections.page_header', [
-            'props' => ['title' => $title, 'subtitle' => $band['subtitle'] ?? '', 'image_url' => $band['image'] ?? null, '_lead' => true, '_crumbs' => $breadcrumb ?? []],
+            'props' => ['title' => $title, 'subtitle' => $band['subtitle'] ?? '', 'image_url' => $band['image'] ?? null, '_lead' => true, '_high' => true, '_crumbs' => $breadcrumb ?? []],
             'listSrcset' => $band['srcset'] ?? null,
         ])
         <div class="sf-container sf-list__body">

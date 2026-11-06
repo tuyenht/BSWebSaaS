@@ -87,3 +87,47 @@ it('renders every existing block, a band-led page, the lists and the home page b
     'the product index' => ['/san-pham', 'product-index-default.html'],
     'the home page' => ['/', 'home.html'],
 ]);
+
+/** The number of images that ask for high priority (the attribute on an img tag, never the bare text). */
+function highImages(string $html): int
+{
+    return (int) preg_match_all('#<img\b[^>]*\sfetchpriority="high"#', $html);
+}
+
+it('prints exactly one high-priority image on the page of every default block', function (): void {
+    unchangedSite();
+
+    $html = test()->get('http://mau.platform.test/khoi')->assertOk()->getContent();
+
+    expect(highImages($html))->toBe(1)
+        ->and(preg_match('#<img class="hero__bg"[^>]*fetchpriority="high"#', $html))->toBe(1);
+});
+
+it('gives the one high-priority image to the first block only, whatever follows', function (array $order, int $high, ?string $class): void {
+    $siteId = StorefrontCards::site();
+    app(Tenancy::class)->enter($siteId, function () use ($order): void {
+        $photo = StorefrontCards::media('anh');
+        $blocks = array_map(fn (string $type): array => match ($type) {
+            'hero' => ['type' => 'hero', 'props' => ['heading' => 'Ống thép cỡ nhỏ', 'image_url' => $photo->id]],
+            'about' => ['type' => 'about', 'props' => ['heading' => 'Ống thép cỡ nhỏ', 'image_url' => $photo->id]],
+            'band' => ['type' => 'page_header', 'props' => ['title' => 'Dải tiêu đề', 'image_url' => $photo->id]],
+            'slider' => ['type' => 'hero_slider', 'props' => ['slides' => [['image_url' => $photo->id, 'heading' => 'Ống thép cỡ nhỏ'], ['image_url' => $photo->id, 'heading' => 'Ống đồng nhỏ']]]],
+            default => ['type' => 'richtext', 'props' => ['heading' => 'Ống thép cỡ nhỏ']],
+        }, $order);
+        StorefrontCards::page('/khoi', 'Các khối', $blocks);
+    });
+
+    $html = test()->get('http://mau.platform.test/khoi')->assertOk()->getContent();
+
+    expect(highImages($html))->toBe($high);
+    if ($class !== null) {
+        expect(preg_match('#<img class="'.$class.'"[^>]*\sfetchpriority="high"#', $html))->toBe(1);
+    }
+})->with([
+    'a hero then an about block' => [['hero', 'about'], 1, 'hero__bg'],
+    'an about block then a hero' => [['about', 'hero'], 1, 'about__image'],
+    'a title band then a hero' => [['band', 'hero'], 1, 'page-band__bg'],
+    'a hero then a title band' => [['hero', 'band'], 1, 'hero__bg'],
+    'a slider that is not first' => [['text', 'slider'], 0, null],
+    'a slider that is first' => [['slider'], 1, null],
+]);

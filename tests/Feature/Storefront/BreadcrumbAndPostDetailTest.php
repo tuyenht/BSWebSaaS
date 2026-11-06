@@ -219,10 +219,12 @@ it('keeps one high-priority image whichever body section prints one, and the cov
     expect(preg_match_all('#<img\b[^>]*\sfetchpriority="high"#', $html))->toBe(1)
         ->and(preg_match('#<img class="post-cover__img"[^>]*fetchpriority="high"#', $html))->toBe($coverHigh);
 })->with([
-    'a hero after a text block' => [[['type' => 'richtext', 'props' => ['heading' => 'Ống thép cỡ nhỏ']], ['type' => 'hero', 'props' => ['heading' => 'Ống thép cỡ nhỏ', 'image_url' => 'PHOTO']]], 0],
+    'a hero after a text block' => [[['type' => 'richtext', 'props' => ['heading' => 'Ống thép cỡ nhỏ']], ['type' => 'hero', 'props' => ['heading' => 'Ống thép cỡ nhỏ', 'image_url' => 'PHOTO']]], 1],
     'a first block with a background photo' => [[['type' => 'richtext', 'props' => ['heading' => 'Ống thép cỡ nhỏ', 'bg' => 'image', 'bg_image' => 'PHOTO']]], 0],
+    'a hero then an about block' => [[['type' => 'hero', 'props' => ['heading' => 'Ống thép cỡ nhỏ', 'image_url' => 'PHOTO']], ['type' => 'about', 'props' => ['heading' => 'Ống thép cỡ nhỏ', 'image_url' => 'PHOTO']]], 0],
+    'a slider after a text block' => [[['type' => 'richtext', 'props' => ['heading' => 'Ống thép cỡ nhỏ']], ['type' => 'hero_slider', 'props' => ['slides' => [['image_url' => 'PHOTO', 'heading' => 'Ống thép cỡ nhỏ']]]]], 1],
     'a hero with no photo' => [[['type' => 'hero', 'props' => ['heading' => 'Ống thép cỡ nhỏ']]], 1],
-    'an about block after a text block' => [[['type' => 'richtext', 'props' => ['heading' => 'Ống thép cỡ nhỏ']], ['type' => 'about', 'props' => ['heading' => 'Ống thép cỡ nhỏ', 'image_url' => 'PHOTO']]], 0],
+    'an about block after a text block' => [[['type' => 'richtext', 'props' => ['heading' => 'Ống thép cỡ nhỏ']], ['type' => 'about', 'props' => ['heading' => 'Ống thép cỡ nhỏ', 'image_url' => 'PHOTO']]], 1],
     'rich text that writes the attribute as words' => [[['type' => 'richtext_html', 'props' => ['html' => '<p>Thêm fetchpriority="high" vào ảnh đầu trang</p>']]], 1],
 ]);
 

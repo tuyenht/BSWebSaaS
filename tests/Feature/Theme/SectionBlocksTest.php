@@ -201,7 +201,7 @@ it('scans bundled theme blades for Tailwind classes so storefront utilities are 
 
 it('renders the page title band with an eager, decorative LCP image and a clamped overlay', function (int $overlay, string $opacity): void {
     $html = View::make('theme::sections.page_header', ['props' => [
-        'title' => 'Giới thiệu', 'subtitle' => 'Về chúng tôi', 'image_url' => 'https://files.baoson.net/band.jpg', 'overlay' => $overlay, '_lead' => true,
+        'title' => 'Giới thiệu', 'subtitle' => 'Về chúng tôi', 'image_url' => 'https://files.baoson.net/band.jpg', 'overlay' => $overlay, '_lead' => true, '_high' => true,
     ]])->render();
 
     expect($html)

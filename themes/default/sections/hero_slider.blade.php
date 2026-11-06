@@ -68,7 +68,7 @@
         <div class="sf-slide{{ $sfIndex === 0 ? ' is-active' : '' }}" role="group" aria-roledescription="slide" aria-label="{{ __('storefront.slide_of', ['n' => $sfIndex + 1, 'total' => $sfCount]) }}">
 @if ($sfSlide['image'] !== null)
             <div class="sf-slide__media"@if ($sfIndex > 0) hidden @endif>
-                @include('theme::partials.sf-img', ['src' => $sfSlide['image'], 'srcset' => $sfSlide['srcset'], 'sizes' => '100vw', 'w' => 1600, 'h' => 900, 'priority' => $sfIndex === 0 ? 'high' : 'lazy', 'class' => 'sf-slide__img'])
+                @include('theme::partials.sf-img', ['src' => $sfSlide['image'], 'srcset' => $sfSlide['srcset'], 'sizes' => '100vw', 'w' => 1600, 'h' => 900, 'priority' => $sfIndex === 0 && ! empty($props['_high']) ? 'high' : 'lazy', 'class' => 'sf-slide__img'])
             </div>
             <div class="sf-slide__overlay" style="opacity:{{ $sfOverlay / 100 }}"></div>
 @endif
