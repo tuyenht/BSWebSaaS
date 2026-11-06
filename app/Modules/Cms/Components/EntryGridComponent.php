@@ -96,7 +96,12 @@ final readonly class EntryGridComponent implements Component
             ->get();
 
         $kind = ['icon-cards' => 'icon', 'project-cards' => 'project', 'news-cards' => 'news'][$variant] ?? null;
-        $display = $kind !== null ? ListDisplay::plan($kind, $props, $items->count(), $limit) : null;
+        // The alternating rows are always one column of rows, so only the "view all" part of the group counts.
+        $display = match (true) {
+            $kind !== null => ListDisplay::plan($kind, $props, $items->count(), $limit),
+            $variant === 'zigzag' && ListDisplay::applies($props) => ListDisplay::plan('news', ['layout' => 'grid'] + $props, $items->count(), $limit),
+            default => null,
+        };
         if ($display !== null) {
             $items = $items->take($display['shown']);
         } elseif ($items->count() > $limit) {

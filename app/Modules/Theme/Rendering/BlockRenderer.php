@@ -168,6 +168,7 @@ final readonly class BlockRenderer
 
         // Pass 1 — collect every media_id an image prop references across the whole page.
         $ids = [];
+        $anchors = [];
         $pageRefs = [];
         $fileRefs = [];
         foreach ($blocks as $block) {
@@ -187,10 +188,16 @@ final readonly class BlockRenderer
             foreach (SchemaHtml::values($props, $schema) as $html) {
                 $ids = array_merge($ids, RichHtml::imageIds($html));
             }
+            $anchor = $props['anchor_id'] ?? null;
+            if (is_string($anchor) && preg_match(StyleProps::ANCHOR_PATTERN, $anchor) === 1) {
+                $anchors[$anchor] = true;
+            }
             $refs = ButtonLink::refs($props, $schema);
             $pageRefs = array_merge($pageRefs, $refs['pages']);
             $fileRefs = array_merge($fileRefs, $refs['files']);
         }
+        // The anchors of this page's sections are taken ids: a row of a list block must not repeat one.
+        request()->attributes->set('sf_zigzag_ids', $anchors + (array) request()->attributes->get('sf_zigzag_ids', []));
         $pages = $this->pageLinks->paths(array_values(array_unique($pageRefs)), app()->getLocale());
         $files = $this->mediaUrls->fileUrls(array_values(array_unique($fileRefs)), ButtonLink::DOCUMENT_MIMES);
 

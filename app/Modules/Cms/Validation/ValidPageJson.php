@@ -142,6 +142,12 @@ final readonly class ValidPageJson implements ValidationRule
 
                 return;
             }
+
+            if (! $this->zaloRecognised($block['props'], $schema)) {
+                $fail(__('entries.err_block_zalo_invalid'));
+
+                return;
+            }
         }
 
         $missing = $this->missingButtonTarget($value);
@@ -506,6 +512,46 @@ final readonly class ValidPageJson implements ValidationRule
             $scalarOf = isset($of['type']) && is_string($of['type']);
             foreach ($value as $item) {
                 if (! ($scalarOf ? $this->videosRecognised(['item' => $item], ['item' => $of]) : $this->videosRecognised($item, $of))) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Every url prop the schema marks `zalo` (at any depth, through list `of`) holds null, a blank
+     * string (unset) or a phone number or zalo.me link by the floating Zalo button's own rule
+     * (ButtonLink::zalo), so there is one rule for Zalo, not two.
+     */
+    private function zaloRecognised(mixed $data, mixed $schema): bool
+    {
+        if (! is_array($schema)) {
+            return true;
+        }
+
+        foreach ($schema as $prop => $spec) {
+            if (! is_array($spec)) {
+                continue;
+            }
+            $value = is_array($data) ? ($data[$prop] ?? null) : null;
+
+            if (($spec['zalo'] ?? false) === true) {
+                if (is_string($value) && trim($value) !== '' && ButtonLink::zalo($value) === null) {
+                    return false;
+                }
+
+                continue;
+            }
+
+            $of = $spec['of'] ?? null;
+            if (($spec['type'] ?? null) !== 'list' || ! is_array($of) || ! is_array($value)) {
+                continue;
+            }
+            $scalarOf = isset($of['type']) && is_string($of['type']);
+            foreach ($value as $item) {
+                if (! ($scalarOf ? $this->zaloRecognised(['item' => $item], ['item' => $of]) : $this->zaloRecognised($item, $of))) {
                     return false;
                 }
             }

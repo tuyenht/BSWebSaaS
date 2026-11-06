@@ -1,4 +1,74 @@
-@if (in_array($variant ?? 'list', ['icon-cards', 'project-cards', 'news-cards', 'overlay'], true))
+@if (($variant ?? 'list') === 'zigzag')
+{{-- One row per item, the photo alternating left and right; the "01…" number comes from the order (nothing stored).
+     The link is the row's button (`link_label`). Rows stack on a phone, photo first. --}}
+@component('theme::partials.sf-band', ['bg' => \App\Modules\Theme\Components\SectionProps::choice($props, 'bg', \App\Modules\Theme\Components\SectionProps::BG), 'class' => 'sf-zigzag'])
+@include('theme::partials.sf-section-head', [
+    'heading' => \App\Modules\Theme\Components\SectionProps::text($props, 'heading'),
+    'description' => \App\Modules\Theme\Components\SectionProps::text($props, 'description'),
+])
+@php
+    // Ids already taken on the page: the layout's own and the anchors of the page's sections (BlockRenderer).
+    $sfZSeen = request()->attributes->get('sf_zigzag_ids', []) + array_fill_keys(\App\Modules\Theme\Components\StyleProps::LAYOUT_IDS, true);
+@endphp
+@if (count($items) > 0)
+<ol class="sf-zigzag__list">
+@foreach ($items as $card)
+@php
+    $sfZUrl = \App\Modules\Shared\Support\SafeLink::href($card['url'] ?? null);
+    $sfZHasImage = \App\Modules\Shared\Support\SafeLink::href($card['image'] ?? null) !== null;
+    $sfZHasMedia = $sfZHasImage || ($card['icon'] ?? '') !== '';
+    $sfZNo = sprintf('%02d', $loop->iteration);
+    // The row's anchor is the entry's slug (the last segment of its public path), made unique on the page.
+    $sfZId = preg_replace('/[^\p{L}\p{N}_-]/u', '', basename((string) parse_url((string) ($card['url'] ?? ''), PHP_URL_PATH)));
+    if ($sfZId !== '' && $sfZId !== null) {
+        $sfZBase = $sfZId;
+        for ($sfZN = 2; isset($sfZSeen[$sfZId]); $sfZN++) {
+            $sfZId = $sfZBase.'-'.$sfZN;
+        }
+        $sfZSeen[$sfZId] = true;
+    }
+    $sfZHasId = $sfZId !== '' && $sfZId !== null;
+    $sfZClass = 'sf-zigzag__row'.($loop->even ? ' sf-zigzag__row--flip' : '').($sfZHasMedia ? '' : ' sf-zigzag__row--text');
+@endphp
+@if ($sfZHasId)
+<li id="{{ $sfZId }}" class="{{ $sfZClass }}">
+@else
+<li class="{{ $sfZClass }}">
+@endif
+@if ($sfZHasMedia)
+<div class="sf-zigzag__media">
+@if ($sfZHasImage)
+@include('theme::partials.sf-img', ['src' => $card['image'], 'srcset' => $card['srcset'] ?? null, 'sizes' => '(min-width:1024px) 560px, (min-width:768px) 45vw, calc(100vw - 2rem)', 'w' => 960, 'h' => 600, 'priority' => 'lazy', 'class' => 'sf-zigzag__img'])
+@else
+@include('theme::partials.icon', ['name' => $card['icon'], 'stroke' => 1.5, 'wrap' => 'sf-zigzag__glyph'])
+@endif
+<span class="sf-zigzag__no" aria-hidden="true">{{ $sfZNo }}</span>
+</div>
+@endif
+<div class="sf-zigzag__text">
+@if (! $sfZHasMedia)
+<span class="sf-zigzag__no sf-zigzag__no--inline" aria-hidden="true">{{ $sfZNo }}</span>
+@endif
+<h3 class="sf-zigzag__title">{{ $card['title'] ?? '' }}</h3>
+@if (($card['excerpt'] ?? '') !== '')
+<p class="sf-zigzag__excerpt">{{ $card['excerpt'] }}</p>
+@endif
+@if ($sfZUrl !== null)
+<a class="sf-zigzag__more" href="{{ $sfZUrl }}">{{ \App\Modules\Theme\Components\SectionProps::text($props, 'link_label', __('storefront.view_detail')) }}<span class="sr-only">: {{ $card['title'] ?? '' }}</span></a>
+@endif
+</div>
+</li>
+@endforeach
+</ol>
+@php
+    request()->attributes->set('sf_zigzag_ids', $sfZSeen);
+@endphp
+@else
+<p class="sf-empty">{{ __('storefront.no_content') }}</p>
+@endif
+@include('theme::partials.sf-view-all', ['label' => \App\Modules\Theme\Components\SectionProps::text($props, 'view_all_label'), 'url' => $props['view_all_url'] ?? null, 'show' => ($display ?? null)['view_all'] ?? true])
+@endcomponent
+@elseif (in_array($variant ?? 'list', ['icon-cards', 'project-cards', 'news-cards', 'overlay'], true))
 {{-- A card look (opt-in through `variant`, SectionProps): the shared band, head, card and
      "view all" partials. The default look below is the original markup, untouched. --}}
 @php

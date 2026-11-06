@@ -2,6 +2,7 @@
 {{-- The card look (opt-in): one card per contact way, then the map. Card titles are h3, so a
      block without its own heading prints a visually hidden h2 above them. --}}
 @php($sfMap = \App\Modules\Shared\Support\SafeLink::href($props['map_embed'] ?? null, config('cms.map_hosts')))
+@php($sfZalo = is_string($props['zalo'] ?? null) ? \App\Modules\Theme\Components\ButtonLink::zalo($props['zalo']) : null)
 <section class="contact contact--cards">
 @if (! empty($props['heading']))
     <h2 class="contact__heading">{{ $props['heading'] }}</h2>
@@ -15,6 +16,14 @@
             <div>
                 <h3 class="sf-contact-card__title">{{ \App\Modules\Theme\Components\SectionProps::text($props, 'phone_label', __('storefront.contact_phone')) }}</h3>
                 <a class="sf-contact-card__value" href="{{ 'tel:'.$props['phone'] }}">{{ $props['phone'] }}</a>
+            </div>
+        </li>
+@endif@if ($sfZalo !== null)
+        <li class="sf-contact-card">
+            <span class="sf-contact-card__icon sf-contact-card__icon--zalo" aria-hidden="true">Zalo</span>
+            <div>
+                <h3 class="sf-contact-card__title">Zalo</h3>
+                <a class="sf-contact-card__value" href="{{ $sfZalo }}" target="_blank" rel="noopener">{{ \App\Modules\Theme\Components\SectionProps::text($props, 'zalo_label', $props['zalo']) }}<span class="sr-only"> {{ __('storefront.new_tab') }}</span></a>
             </div>
         </li>
 @endif
@@ -53,6 +62,8 @@
         {{-- tel: built as a concat INSIDE {{ }} so the drift sentinel still sees $props['phone']
              (type:url) — a "tel:{{ … }}" prefix outside the braces would evade it. --}}
         <a class="contact__phone" href="{{ 'tel:'.$props['phone'] }}">{{ $props['phone'] }}</a>
+    @endif@if (is_string($props['zalo'] ?? null) && ($sfZalo = \App\Modules\Theme\Components\ButtonLink::zalo($props['zalo'])) !== null)
+        <a class="contact__zalo" href="{{ $sfZalo }}" target="_blank" rel="noopener">{{ \App\Modules\Theme\Components\SectionProps::text($props, 'zalo_label', 'Zalo') }}<span class="sr-only"> {{ __('storefront.new_tab') }}</span></a>
     @endif
     @if (! empty($props['email']))
         <a class="contact__email" href="{{ 'mailto:'.$props['email'] }}">{{ $props['email'] }}</a>

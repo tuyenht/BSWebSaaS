@@ -6757,3 +6757,344 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
         transition: none;
     }
 }
+
+/* ───── About: letter look, shortcut tiles, photo focus ─────────────────── */
+.about__image--top {
+    object-position: top;
+}
+
+.about__image--bottom {
+    object-position: bottom;
+}
+
+.about__paragraph--greeting {
+    font-weight: 700;
+    color: var(--sch-head, var(--color-text-strong));
+}
+
+.about--letter .about__heading {
+    display: block;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--sch-rule, var(--color-primary));
+}
+
+.about--letter .about__paragraph {
+    margin-bottom: 1.5rem;
+}
+
+.about__signature {
+    margin-top: 0;
+    padding-top: 1rem;
+    border-top: 1px solid color-mix(in srgb, var(--color-text) 20%, transparent);
+}
+
+.about__signer,
+.about__signer-role {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.about__signer {
+    font-weight: 700;
+    color: var(--sch-head, var(--color-text-strong));
+}
+
+.about__signer-role {
+    font-size: 0.875rem;
+    color: var(--sch-body, color-mix(in srgb, var(--color-text) 80%, white));
+}
+
+/* Letter: the text first on a phone, the photo beside it on a wide screen, as tall as the text up to 42rem. */
+.about--letter .about__body {
+    order: 0;
+}
+
+.about--letter .about__image {
+    order: 1;
+    aspect-ratio: 4 / 3;
+}
+
+@media (min-width: 768px) {
+    .about--letter {
+        align-items: stretch;
+    }
+
+    .about--letter .about__image {
+        order: -1;
+        align-self: start;
+        position: sticky;
+        top: 7.5rem;
+        height: 100%;
+        min-height: 20rem;
+        max-height: 42rem;
+        aspect-ratio: auto;
+    }
+}
+
+.about__links {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.about__links > li {
+    min-width: 0;
+}
+
+.about__link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    height: 100%;
+    min-height: 2.75rem;
+    padding: 0.75rem;
+    border: 1px solid transparent;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 2px 0 color-mix(in srgb, var(--color-dark) 8%, transparent);
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+    color: var(--color-text-strong);
+    text-align: center;
+    text-decoration: none;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.about__link-icon {
+    display: inline-flex;
+    color: color-mix(in srgb, var(--color-text) 85%, white);
+    transition: color 0.2s;
+}
+
+.about__link--primary .about__link-icon {
+    color: inherit;
+}
+
+.about__link--primary {
+    background: var(--sch-pri-bg, var(--color-primary));
+    color: var(--sch-pri-fg, var(--color-on-primary));
+}
+
+.about__link-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.about__link:focus-visible {
+    outline: 2px solid var(--color-primary-text);
+    outline-offset: 2px;
+}
+
+@media (hover: hover) {
+    .about__link:hover {
+        border-color: var(--color-primary);
+    }
+
+    .about__link:not(.about__link--primary):hover .about__link-icon {
+        color: var(--color-primary-text);
+    }
+
+    .about__link--primary:hover {
+        background: var(--sch-pri-hover, var(--color-primary-hover));
+    }
+}
+
+/* ───── Contact: Zalo ────────────────────────────────────────────────────── */
+.sf-contact-card__icon--zalo {
+    background: #0068ff;
+    font-size: 0.75rem;
+    font-weight: 800;
+}
+
+.contact__zalo {
+    display: inline-block;
+    font-size: 1.0625rem;
+    font-weight: 700;
+    color: var(--sch-link, var(--color-primary-text));
+    margin: 0 1.5rem 0.5rem 0;
+}
+
+.contact__zalo:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+}
+
+/* ───── Article list: alternating rows ──────────────────────────────────── */
+.sf-zigzag__list {
+    display: grid;
+    gap: 3rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.sf-zigzag__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2.5rem;
+    align-items: center;
+}
+
+.sf-zigzag__media {
+    position: relative;
+    min-width: 0;
+    overflow: hidden;
+    border-radius: 0.5rem;
+    height: 12rem;
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+    box-shadow: 0 25px 50px -12px color-mix(in srgb, var(--color-dark) 25%, transparent);
+}
+
+.sf-zigzag__img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.sf-zigzag__glyph {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    color: var(--color-primary-text);
+}
+
+.sf-zigzag__glyph svg {
+    width: 4rem;
+    height: 4rem;
+}
+
+.sf-zigzag__no {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--color-dark) 80%, transparent);
+    color: var(--color-primary-on-dark, var(--color-on-dark, #fff));
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.sf-zigzag__no--inline {
+    position: static;
+    /* A block-level pill that is only as wide as its number, so the title always starts below it. */
+    display: table;
+    margin-bottom: 0.75rem;
+}
+
+.sf-zigzag__text {
+    min-width: 0;
+}
+
+.sf-zigzag__title {
+    display: inline-block;
+    max-width: 100%;
+    margin: 0 0 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--sch-rule, var(--color-primary));
+    color: var(--sch-head, var(--color-text-strong));
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.sf-zigzag__excerpt {
+    margin: 0 0 2rem;
+    color: var(--sch-body, var(--color-text));
+    font-size: 1.125rem;
+    line-height: 1.7;
+}
+
+.sf-band--dark .sf-zigzag__title {
+    color: var(--sch-head, var(--color-surface));
+}
+
+.sf-band--dark .sf-zigzag__excerpt {
+    color: var(--sch-body, var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white)));
+}
+
+.sf-zigzag__more {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.375rem;
+    background: var(--color-dark);
+    color: var(--color-on-dark, #fff);
+    font-weight: 700;
+    text-decoration: none;
+    transition: background 0.3s;
+}
+
+.sf-zigzag__more:focus-visible {
+    outline: 2px solid var(--color-primary-text);
+    outline-offset: 2px;
+}
+
+/* On any dark ground the dark button would vanish: it takes the block's primary pair instead. */
+:is(.sf-band--dark, .sf-s--sch-dark, .sf-s--sch-brand, .sf-s--image) .sf-zigzag__more {
+    background: var(--sch-pri-bg, var(--color-primary));
+    color: var(--sch-pri-fg, var(--color-on-primary));
+}
+
+:is(.sf-band--dark, .sf-s--sch-dark, .sf-s--sch-brand, .sf-s--image) .sf-zigzag__more:focus-visible {
+    outline-color: var(--sch-head, var(--color-on-dark, #fff));
+}
+
+@media (hover: hover) {
+    .sf-zigzag__more:hover {
+        background: color-mix(in srgb, var(--color-dark) 85%, white);
+    }
+
+    :is(.sf-band--dark, .sf-s--sch-dark, .sf-s--sch-brand, .sf-s--image) .sf-zigzag__more:hover {
+        background: var(--sch-pri-hover, var(--color-primary-hover));
+    }
+}
+
+@media (min-width: 640px) {
+    .sf-zigzag__title {
+        font-size: 1.875rem;
+    }
+
+    .sf-zigzag__list {
+        gap: 5rem;
+    }
+
+    .sf-zigzag__media {
+        height: 16rem;
+    }
+}
+
+@media (min-width: 768px) {
+    .sf-zigzag__media {
+        height: 20rem;
+    }
+
+    .sf-zigzag__row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .sf-zigzag__row--flip .sf-zigzag__media {
+        order: 2;
+    }
+
+    .sf-zigzag__row--text {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (min-width: 1024px) {
+    .sf-zigzag__row {
+        gap: 4rem;
+    }
+}
