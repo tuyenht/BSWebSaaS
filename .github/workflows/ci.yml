@@ -205,10 +205,11 @@ jobs:
         run: php artisan lang:check
 
       # One process runs every suite, and its memory grows with the test count and the code the
-      # arch rules parse (it died at 256M near 1190 tests, and peaked at 530M near 2880). The limit
-      # is raised for this step only; composer qa matches it.
+      # arch rules parse (it died at 256M near 1190 tests, peaked at 530M near 2880, and at 762M
+      # near 4480, where CI died at 768M). The limit is raised for this step only; composer qa
+      # matches it.
       - name: Pest (unit · feature · arch · query-budget)
-        run: php -d memory_limit=768M vendor/bin/pest
+        run: php -d memory_limit=1G vendor/bin/pest
 
   frontend:
     name: Frontend build (Vite + Tailwind)
