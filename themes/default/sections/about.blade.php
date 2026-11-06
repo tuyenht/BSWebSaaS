@@ -23,7 +23,6 @@
              alt="{{ $props['heading'] ?? '' }}"
              width="640"
              height="480"
-             loading="eager"
-             fetchpriority="high">
+             loading="{{ ! empty($props['_high']) ? 'eager' : 'lazy' }}"{!! ! empty($props['_high']) ? "\n             fetchpriority=\"high\"" : '' !!}>
     @endif
 </section>

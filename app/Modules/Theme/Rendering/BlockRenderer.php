@@ -230,10 +230,13 @@ final readonly class BlockRenderer
 
             /** @var view-string $view a theme section view (ComponentRegistry) */
             $view = $component->view();
-            $section = $this->views->make($view, $component->data($resolved) + ['srcsets' => $srcsets, 'alts' => $alts] + $band)->render();
-
             $image = $resolved['bg_image'] ?? null;
             $wrapper = StyleProps::wrapper($props, $first, is_string($image) ? $image : null);
+            // The page's one high-priority image: only the first block may claim it, and a first block
+            // with a background photo has already claimed it through the sf-section wrapper.
+            $resolved['_high'] = $first && ($wrapper === null || $wrapper['image'] === null);
+            $section = $this->views->make($view, $component->data($resolved) + ['srcsets' => $srcsets, 'alts' => $alts] + $band)->render();
+
             $html .= $wrapper === null ? $section : $this->views->make('theme::partials.sf-section', [
                 'wrapper' => $wrapper,
                 'section' => $section,

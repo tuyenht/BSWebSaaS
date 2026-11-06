@@ -27,8 +27,7 @@
              alt=""
              width="1600"
              height="400"
-             loading="eager"
-             fetchpriority="high">
+             loading="{{ ! empty($props['_high']) ? 'eager' : 'lazy' }}"{!! ! empty($props['_high']) ? "\n             fetchpriority=\"high\"" : '' !!}>
         <div class="page-band__overlay" style="opacity:{{ $overlay / 100 }}"></div>
     @endif
     <div class="page-band__content">

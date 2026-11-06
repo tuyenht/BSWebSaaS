@@ -78,6 +78,12 @@ it('loads the first photo with high priority and the rest lazily', function (): 
     }
 });
 
+it('leads each list page with exactly one high-priority image', function (string $path): void {
+    cardSite();
+
+    expect(preg_match_all('#<img\b[^>]*\sfetchpriority="high"#', cardPage($path)))->toBe(1);
+})->with(['/tin-tuc', '/san-pham']);
+
 it('frames photos by kind: 8:5 for news and projects, 4:3 for products', function (): void {
     cardSite();
     expect(cardPage('/tin-tuc'))->toContain('sf-card--news')->toContain('sf-card__frame--8x5')->not->toContain('sf-card__frame--4x3')
