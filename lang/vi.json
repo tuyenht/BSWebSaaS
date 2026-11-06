@@ -2652,6 +2652,7 @@
     "admin.gs.toast_saved": "Đã lưu thông tin chung",
     "admin.gs.toast_invalid": "Còn :count mục chưa hợp lệ — sửa rồi bấm Lưu lại",
     "admin.gs.toast_reset": "Đã bỏ thay đổi",
+    "admin.settings.busy": "Đang có người khác lưu cài đặt của website, vui lòng thử lại sau ít phút.",
     "admin.seo.card_title": "Hiện thế nào trên Google",
     "admin.seo.card_hint": "Tiêu đề và mô tả hiện trên Google",
     "admin.seo.title_label": "Tiêu đề hiện trên Google",

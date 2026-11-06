@@ -2652,6 +2652,7 @@
     "admin.gs.toast_saved": "基本情報を保存しました",
     "admin.gs.toast_invalid": ":count 件の項目が無効です — 修正してからもう一度保存してください",
     "admin.gs.toast_reset": "変更を破棄しました",
+    "admin.settings.busy": "他の人がウェブサイトの設定を保存しています。数分後にもう一度お試しください。",
     "admin.seo.card_title": "Google での表示",
     "admin.seo.card_hint": "Google に表示されるタイトルと説明文",
     "admin.seo.title_label": "Google に表示するタイトル",

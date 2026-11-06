@@ -8,8 +8,6 @@ use App\Modules\Media\Models\Media;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
-use App\Modules\Tenancy\Support\SiteWriteLock;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -24,8 +22,9 @@ use Illuminate\Support\Facades\Gate;
  * from that setting, so from then on the id is the one source (an image removed here stays
  * removed). Slots the call does not name keep what they have, URL included.
  *
- * Behind the settings permission. One transaction; the profile row is written in every save that
- * changes something (RecordsWhoSaved stamps who), so the section's "last saved" line follows.
+ * Behind the settings permission. One transaction (SettingsWrite: the site's settings lock first,
+ * waited for a few seconds at most, else a busy refusal); the profile row is written in every save
+ * that changes something (RecordsWhoSaved stamps who), so the section's "last saved" line follows.
  */
 final class SetBrandImages
 {
@@ -58,22 +57,28 @@ final class SetBrandImages
             }
         }
 
-        if ($wanted !== []) {
-            $found = Media::query()
-                ->whereIn('storage_key', array_values(array_unique($wanted)))
-                ->where('mime', 'like', 'image/%')
-                ->orderBy('id')
-                ->get(['id', 'storage_key'])
-                ->unique('storage_key')
-                ->pluck('id', 'storage_key');
-            foreach ($wanted as $slot => $key) {
-                $id = $found->get($key);
-                $ids[$slot] = $id === null ? throw new SettingsChangeRejected('image_invalid', $slot) : Cast::int($id);
+        SettingsWrite::run('brand_images', function () use ($ids, $wanted): void {
+            // The images are looked up with the site's lock held, and their rows locked FOR KEY
+            // SHARE: the lock the foreign key check of the write takes anyway, taken here instead,
+            // before the check. A purge that removed a picture first is seen here (image_invalid,
+            // nothing written); one that comes after waits for this save, and the foreign key then
+            // clears the image. Moving a picture to the trash, renaming it or filing it elsewhere
+            // takes a weaker row lock and is not held up.
+            if ($wanted !== []) {
+                $found = Media::query()
+                    ->whereIn('storage_key', array_values(array_unique($wanted)))
+                    ->where('mime', 'like', 'image/%')
+                    ->orderBy('id')
+                    ->lock('for key share')
+                    ->get(['id', 'storage_key'])
+                    ->unique('storage_key')
+                    ->pluck('id', 'storage_key');
+                foreach ($wanted as $slot => $key) {
+                    $id = $found->get($key);
+                    $ids[$slot] = $id === null ? throw new SettingsChangeRejected('image_invalid', $slot) : Cast::int($id);
+                }
             }
-        }
 
-        DB::transaction(function () use ($ids): void {
-            SiteWriteLock::take();   // first: one row that always exists, in every writer the same order
             // The brand row is written back whole: lock it first, then read it, so a save running
             // at the same time (here, the general section, a reset) waits instead of being undone.
             $brandRow = SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->lockForUpdate()->first();
