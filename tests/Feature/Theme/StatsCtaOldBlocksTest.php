@@ -18,6 +18,17 @@ function statsCtaOldCases(): array
             ['label' => 'Chỉ chữ'],
             ['value' => 98, 'suffix' => '%', 'label' => 'Hài lòng'],
         ]]]],
+        'stats five items' => ['stats', ['props' => ['heading' => 'Năm số', 'items' => [
+            ['value' => 2000, 'suffix' => '+', 'label' => 'Công trình'],
+            ['value' => 15, 'label' => 'Năm kinh nghiệm'],
+            ['value' => 3, 'label' => 'Nhà máy'],
+            ['value' => 4300, 'suffix' => ' m²', 'label' => 'Nhà xưởng'],
+            ['value' => 98, 'suffix' => '%', 'label' => 'Hài lòng'],
+        ]]]],
+        'stats eight items' => ['stats', ['props' => ['items' => [
+            ['value' => 1, 'label' => 'Một'], ['value' => 2, 'label' => 'Hai'], ['value' => 3, 'label' => 'Ba'], ['value' => 4, 'label' => 'Bốn'],
+            ['value' => 5, 'label' => 'Năm'], ['value' => 6, 'label' => 'Sáu'], ['value' => 7, 'label' => 'Bảy'], ['value' => 8, 'suffix' => '+', 'label' => 'Tám'],
+        ]]]],
         'stats dark band' => ['stats', ['props' => ['bg' => 'dark', 'items' => [['value' => 3, 'label' => 'Nhà máy'], ['value' => 4300, 'suffix' => ' m²', 'label' => 'Nhà xưởng']]]]],
         'cta' => ['cta', ['props' => ['heading' => 'Cần báo giá?', 'text' => 'Gửi bản vẽ.', 'button_label' => 'Liên hệ', 'button_url' => '/lien-he']]],
         'cta rounded' => ['cta', ['props' => ['heading' => 'Cần báo giá?', 'text' => 'Gửi bản vẽ.', 'button_label' => 'Liên hệ', 'button_url' => '/lien-he', 'variant' => 'rounded']]],

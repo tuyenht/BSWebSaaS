@@ -41,8 +41,8 @@ beforeEach(function (): void {
 
 it('adds the look props to every block type and lets no block declare a reserved name itself', function (): void {
     $registry = app(ComponentRegistry::class);
-    // The two photo blocks had their own `overlay` (how dark their photo is) first; it keeps that meaning. The cta declares `extra_style` for its pattern.
-    $own = ['page_header' => ['overlay'], 'hero_slider' => ['overlay'], 'cta' => ['extra_style']];
+    // The two photo blocks had their own `overlay` (how dark their photo is) first; it keeps that meaning.
+    $own = ['page_header' => ['overlay'], 'hero_slider' => ['overlay']];
 
     foreach ($registry->types() as $type) {
         expect(array_values(array_diff(array_intersect(array_keys($registry->get($type)->schema()), StyleProps::RESERVED), $own[$type] ?? [])))->toBe([], "{$type} declares a reserved look prop")

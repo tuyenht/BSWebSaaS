@@ -5711,57 +5711,114 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     .sf-stats__list--4 { --stats: 4; }
 }
 
-/* Stats with 5 to 8 numbers: two across on a phone, three (5, 6) or four (7, 8) on a wide screen; a short last row sits centred. */
-.sf-stats__list--5,
-.sf-stats__list--6,
-.sf-stats__list--7,
-.sf-stats__list--8 {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
+/* Stats with 5 to 8 numbers share the --4 class (the markup of a saved block never changes); the
+   rows are laid out on twelve columns. A phone: two across, an odd last number across the full row.
+   A wide screen: 5 = three then two wider; 6 = three and three; 7 = four then three wider; 8 = four and four. */
+.sf-stats__list--4:has(> :nth-child(5)) {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
 }
 
-.sf-stats__list--5 > .sf-stat,
-.sf-stats__list--6 > .sf-stat,
-.sf-stats__list--7 > .sf-stat,
-.sf-stats__list--8 > .sf-stat {
-    flex: 0 0 calc((100% - 1.5rem) / 2);
+.sf-stats__list--4:has(> :nth-child(5)) > .sf-stat {
+    grid-column: span 6;
+}
+
+.sf-stats__list--4:has(> :nth-child(5)):not(:has(> :nth-child(6))) > .sf-stat:last-child,
+.sf-stats__list--4:has(> :nth-child(7)):not(:has(> :nth-child(8))) > .sf-stat:last-child {
+    grid-column: span 12;
 }
 
 @media (min-width: 40rem) {
-    .sf-stats__list--5 > .sf-stat,
-    .sf-stats__list--6 > .sf-stat {
-        flex-basis: calc((100% - 3rem) / 3);
+    .sf-stats__list--4:has(> :nth-child(5)):not(:has(> :nth-child(7))) > .sf-stat {
+        grid-column: span 4;
     }
 
-    .sf-stats__list--7 > .sf-stat,
-    .sf-stats__list--8 > .sf-stat {
-        flex-basis: calc((100% - 4.5rem) / 4);
+    .sf-stats__list--4:has(> :nth-child(7)) > .sf-stat {
+        grid-column: span 3;
+    }
+
+    .sf-stats__list--4:has(> :nth-child(5)):not(:has(> :nth-child(6))) > .sf-stat:nth-child(n+4) {
+        grid-column: span 6;
+    }
+
+    .sf-stats__list--4:has(> :nth-child(7)):not(:has(> :nth-child(8))) > .sf-stat:nth-child(n+5) {
+        grid-column: span 4;
     }
 }
 
-/* Stats, floating look: the band rises over the section above it as a card. */
+/* Stats, floating look: one white card that rises over the section above it, items split by 1px
+   lines. The band keeps no top padding, so the card's top edge overlaps that section; every colour
+   inside the card is set here, whatever the band's own background or colour set is (a dark band or a
+   dark / brand / photo set would otherwise give light text on the white card). */
 .sf-band.sf-stats--floating {
     position: relative;
     z-index: 1;
     margin-top: -2.5rem;
+    padding-block: 0 3rem;
     padding-inline: 1rem;
     background: transparent;
 }
 
 .sf-stats--floating > .sf-container {
-    padding-block: 1.5rem;
-    border-radius: 0.5rem;
+    --sch-head: var(--color-text-strong);
+    --sch-body: var(--color-text);
+    max-width: 64rem;
+    overflow: hidden;
+    border-radius: 1rem;
     background: var(--color-surface);
     box-shadow: 0 10px 30px rgb(0 0 0 / 0.12);
+    color: var(--color-text);
+}
+
+.sf-stats--floating .sf-section-head {
+    margin-block: 0;
+    padding: 1.5rem 1rem;
+}
+
+.sf-stats--floating .sf-section-head__title,
+.sf-stats--floating .sf-stat__value {
+    color: var(--color-text-strong);
+}
+
+.sf-stats--floating .sf-section-head__text,
+.sf-stats--floating .sf-stat__label {
+    color: var(--color-text);
+}
+
+.sf-stats--floating .sf-stats__list {
+    gap: 1px;
+    background: color-mix(in srgb, var(--color-text) 15%, var(--color-surface));
+}
+
+.sf-stats--floating .sf-stat {
+    justify-content: center;
+    padding: 1.125rem 0.5rem;
+    background: var(--color-surface);
+}
+
+@media (min-width: 40rem) {
+    .sf-stats--floating .sf-stat {
+        padding: 1.5rem 1rem;
+    }
 }
 
 /* CTA: a second, outlined button, the stats beside the text and the cross pattern. */
 .cta__actions {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: 1rem;
     justify-content: center;
+    text-align: center;
+}
+
+@media (min-width: 40rem) {
+    .cta__actions {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+}
+
+.cta--rounded .cta__actions {
+    margin-top: 2rem;
 }
 
 .cta__button.cta__button--outline {
@@ -5776,7 +5833,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 }
 
 .cta__actions > .cta__button.cta__button--pill {
-    margin-top: 2rem;
+    margin-top: 0;
 }
 
 .cta.cta--side {
@@ -5809,6 +5866,15 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     gap: 0.75rem;
 }
 
+/* One or two stats fill the row: as many columns as items, no empty cells. */
+.cta__stats.sf-stats__list:not(:has(> :nth-child(3))) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.cta__stats.sf-stats__list:not(:has(> :nth-child(2))) {
+    grid-template-columns: minmax(0, 1fr);
+}
+
 .cta__stats .sf-stat {
     justify-content: center;
     padding: 0.75rem;
@@ -5819,6 +5885,14 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 .cta__stats .sf-stat__value {
     color: var(--color-text-strong);
     font-size: 1.5rem;
+}
+
+.cta__stats .sf-stat__suffix {
+    color: var(--color-text-strong);
+}
+
+.cta__stats .sf-stat__label {
+    color: var(--color-text);
 }
 
 @media (min-width: 64rem) {

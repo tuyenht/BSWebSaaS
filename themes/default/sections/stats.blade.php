@@ -6,14 +6,13 @@
 --}}
 @php
     $heading = \App\Modules\Theme\Components\SectionProps::text($props, 'heading');
-    // A `years` stat prints this year minus its start year: a future page cache must not span 1 January.
-    $stats = \App\Modules\Theme\Components\SectionProps::statEntries($props, 'items', \App\Modules\Theme\Components\SectionProps::STATS_MAX_ITEMS, \App\Modules\Theme\Components\SectionProps::currentYear());
+    $stats = \App\Modules\Theme\Components\SectionProps::statEntries($props, 'items', \App\Modules\Theme\Components\SectionProps::STATS_MAX_ITEMS);
     $floating = \App\Modules\Theme\Components\SectionProps::choice($props, 'variant', \App\Modules\Theme\Components\SectionProps::STATS_VARIANTS) === 'floating';
 @endphp
 @if ($stats !== [])
 @component('theme::partials.sf-band', ['bg' => \App\Modules\Theme\Components\SectionProps::choice($props, 'bg', \App\Modules\Theme\Components\SectionProps::BG), 'class' => $floating ? 'sf-stats sf-stats--floating' : 'sf-stats'])
 @include('theme::partials.sf-section-head', ['heading' => $heading])
-<ul class="sf-stats__list sf-stats__list--{{ count($stats) }}">
+<ul class="sf-stats__list sf-stats__list--{{ min(count($stats), 4) }}">
 @include('theme::partials.sf-stat-items', ['stats' => $stats])
 </ul>
 @endcomponent

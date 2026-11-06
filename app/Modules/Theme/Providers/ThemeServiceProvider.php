@@ -6,7 +6,6 @@ use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SectionComponent;
 use App\Modules\Theme\Components\SectionProps;
-use App\Modules\Theme\Components\StyleProps;
 use App\Modules\Theme\Theming\SiteSeo;
 use App\Modules\Theme\Theming\StorefrontSettings;
 use Illuminate\Support\Facades\View;
@@ -82,8 +81,6 @@ final class ThemeServiceProvider extends ServiceProvider
             // Up to three stats beside the text, with the default look only (the rounded band ignores them).
             'side' => ['type' => 'enum', 'options' => SectionProps::CTA_SIDES, 'default' => 'none'],
             'side_items' => ['type' => 'list', 'max' => SectionProps::CTA_SIDE_MAX_ITEMS, 'of' => SectionProps::STAT_ITEM],
-            // A pattern behind the band, from StyleProps::EXTRA_STYLES (the wrapper prints its class).
-            'extra_style' => ['type' => 'enum', 'options' => StyleProps::EXTRA_STYLES, 'default' => 'none'],
         ],
         'contact' => [
             'heading' => ['type' => 'text'],

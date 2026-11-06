@@ -2,7 +2,11 @@
 
 use App\Modules\Cms\Validation\ValidPageJson;
 use App\Modules\Media\Models\Media;
+use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Components\ComponentRegistry;
+use App\Modules\Theme\Components\StyleProps;
 use App\Modules\Theme\Rendering\BlockRenderer;
 use App\Modules\Theme\Rendering\PageRenderer;
 use Illuminate\Support\Carbon;
@@ -48,6 +52,22 @@ describe('stats kinds', function (): void {
         expect(kindsStats(['items' => [['kind' => 'years', 'value' => 2014, 'label' => 'Năm']]]))->toContain('<span>12</span>');
     });
 
+    it('counts the new year from the site\'s own timezone setting, not from UTC', function (): void {
+        seedTenancy();
+        // 20:00 UTC on 31 December is 1 January 05:00 in Tokyo, but still 31 December in New York.
+        Carbon::setTestNow('2026-12-31 20:00:00 UTC');
+        $years = ['items' => [['kind' => 'years', 'value' => 2014, 'label' => 'Năm']]];
+
+        foreach (['Asia/Tokyo' => '<span>13</span>', 'America/New_York' => '<span>12</span>'] as $zone => $expected) {
+            app(Tenancy::class)->enter(1, function () use ($zone, $years, $expected): void {
+                SiteSetting::query()->updateOrCreate(['group_name' => 'general', 'key' => 'timezone'], ['value' => ['tz' => $zone]]);
+                app()->forgetInstance(SiteTime::class);
+
+                expect(kindsStats($years))->toContain($expected);
+            });
+        }
+    });
+
     it('prints a year as it is, without a thousands separator or a count-up', function (): void {
         Carbon::setTestNow('2026-06-01 00:00:00 UTC');
         $html = kindsStats(['items' => [['kind' => 'year', 'value' => 2019, 'suffix' => 'm²', 'label' => 'Năm thành lập']]]);
@@ -85,11 +105,11 @@ describe('stats kinds', function (): void {
         expect($html)->toContain('<span data-count="2000">2.000</span>')->toContain('<span class="sf-stat__suffix">+</span>');
     })->with(['unknown' => ['decade'], 'empty' => [''], 'not a string' => [7], 'null' => [null]]);
 
-    it('names the column count up to eight items', function (int $count): void {
+    it('names the column count by the items shown, up to four, so a saved block of five to eight keeps its markup', function (int $count, int $named): void {
         $html = kindsStats(['items' => array_fill(0, $count, ['value' => 3, 'label' => 'x'])]);
 
-        expect($html)->toContain("sf-stats__list--{$count}");
-    })->with([1, 4, 5, 8]);
+        expect($html)->toContain("sf-stats__list--{$named}\"")->and(substr_count($html, '<li'))->toBe($count);
+    })->with([[1, 1], [4, 4], [5, 4], [8, 4]]);
 
     it('draws the floating look only when asked for it, and any other value is the plain band', function (): void {
         expect(kindsStats(['variant' => 'floating', 'items' => [['value' => 1]]]))->toContain('class="sf-band sf-band--none sf-stats sf-stats--floating"')
@@ -159,23 +179,27 @@ describe('cta second button and pattern', function (): void {
     ]);
 
     it('prints the pattern class of a listed look and ignores an unlisted one', function (): void {
-        expect(kindsCta(['heading' => 'Hồ sơ', 'extra_style' => 'pattern-cross']))->toContain('class="sf-s sf-s--x-pattern-cross"')
-            ->and(kindsCta(['heading' => 'Hồ sơ', 'extra_style' => 'none']))->not->toContain('sf-s')
-            ->and(kindsCta(['heading' => 'Hồ sơ', 'extra_style' => 'glitter']))->not->toContain('sf-s')->not->toContain('glitter')
-            ->and(kindsCta(['heading' => 'Hồ sơ', 'extra_style' => ['pattern-cross']]))->not->toContain('sf-s');
+        expect(kindsCta(['heading' => 'Hồ sơ', 'extra_style' => ['pattern-cross']]))->toContain('class="sf-s sf-s--x-pattern-cross"')
+            ->and(kindsCta(['heading' => 'Hồ sơ', 'extra_style' => []]))->not->toContain('sf-s')
+            ->and(kindsCta(['heading' => 'Hồ sơ', 'extra_style' => ['glitter']]))->not->toContain('sf-s')->not->toContain('glitter')
+            ->and(kindsCta(['heading' => 'Hồ sơ', 'extra_style' => ['glitter', 'pattern-cross']]))->toContain('class="sf-s sf-s--x-pattern-cross"')->not->toContain('glitter')
+            ->and(kindsCta(['heading' => 'Hồ sơ', 'extra_style' => 'pattern-cross']))->not->toContain('sf-s')
+            ->and(kindsCta(['heading' => 'Hồ sơ', 'extra_style' => 'none']))->not->toContain('sf-s');
     });
 
-    it('prints the pattern only on a block that declares the look', function (): void {
-        $html = app(BlockRenderer::class)->render(['blocks' => [['type' => 'richtext', 'props' => ['heading' => 'Một', 'extra_style' => 'pattern-cross']]]]);
+    it('declares the look once for every block, as a list of the registered values', function (): void {
+        $schema = StyleProps::SCHEMA['extra_style'];
 
-        expect($html)->not->toContain('pattern-cross');
+        expect($schema['type'])->toBe('list')->and($schema['of']['type'])->toBe('enum')
+            ->and($schema['of']['options'])->toBe(array_keys(StyleProps::EXTRA_STYLES))
+            ->and(array_keys(app(ComponentRegistry::class)->schemaFor('cta')))->toContain('extra_style');
     });
 
     it('refuses an unlisted pattern when saving, in every language', function (string $locale): void {
-        $errors = kindsErrors(['heading' => 'Hồ sơ', 'extra_style' => 'glitter'], 'cta', $locale);
+        $errors = kindsErrors(['heading' => 'Hồ sơ', 'extra_style' => ['glitter']], 'cta', $locale);
 
         expect($errors)->toHaveCount(1)->and($errors[0])->not->toContain('entries.')
-            ->and(kindsErrors(['heading' => 'Hồ sơ', 'extra_style' => 'pattern-cross', 'button2_label' => 'Gọi', 'button2_url_do' => ['k' => 'tel', 'phone' => '0915668383']], 'cta', $locale))->toBe([]);
+            ->and(kindsErrors(['heading' => 'Hồ sơ', 'extra_style' => ['pattern-cross'], 'button2_label' => 'Gọi', 'button2_url_do' => ['k' => 'tel', 'phone' => '0915668383']], 'cta', $locale))->toBe([]);
     })->with(['vi', 'en', 'ja', 'zh']);
 
     it('refuses a second-button action that is not valid', function (): void {
@@ -209,7 +233,7 @@ describe('cta stats beside the text', function (): void {
     });
 
     it('draws the second button and the pattern with the stats too', function (): void {
-        $html = kindsCta(kindsSide(['button2_label' => 'Gọi', 'button2_url_do' => ['k' => 'tel', 'phone' => '0915668383'], 'extra_style' => 'pattern-cross']));
+        $html = kindsCta(kindsSide(['button2_label' => 'Gọi', 'button2_url_do' => ['k' => 'tel', 'phone' => '0915668383'], 'extra_style' => ['pattern-cross']]));
 
         expect($html)->toContain('class="sf-s sf-s--x-pattern-cross"')->toContain('cta__button cta__button--outline" href="tel:0915668383"')->toContain('cta--side');
     });
@@ -242,5 +266,68 @@ describe('cta stats beside the text', function (): void {
         $badKind = kindsErrors(kindsSide(['side_items' => [['kind' => 'decade', 'value' => 1]]]), 'cta', $locale);
         expect($unknown)->toHaveCount(1)->and($badKind)->toHaveCount(1)
             ->and(kindsErrors(kindsSide(), 'cta', $locale))->toBe([]);
+    })->with(['vi', 'en', 'ja', 'zh']);
+});
+
+describe('stats floating card', function (): void {
+    beforeEach(fn () => seedTenancy());
+
+    /** The declarations of the first rule in the storefront stylesheet whose selector is exactly $selector. */
+    function kindsRule(string $selector): string
+    {
+        $css = (string) file_get_contents(base_path('resources/css/storefront.css'));
+        preg_match('/^'.preg_quote($selector, '/').' \{([^}]*)\}/m', $css, $match);
+
+        return $match[1] ?? '';
+    }
+
+    it('draws the floating card over a dark band or a dark colour set, with the card\'s own colours', function (): void {
+        $items = [['value' => 3, 'label' => 'Nhà máy'], ['value' => 4300, 'label' => 'Nhà xưởng']];
+
+        $darkBand = app(BlockRenderer::class)->render(['blocks' => [['type' => 'stats', 'props' => ['variant' => 'floating', 'bg' => 'dark', 'items' => $items]]]]);
+        $darkSet = app(BlockRenderer::class)->render(['blocks' => [['type' => 'stats', 'props' => ['variant' => 'floating', 'bg' => 'scheme', 'scheme' => 'dark', 'items' => $items]]]]);
+
+        expect($darkBand)->toContain('sf-band--dark sf-stats sf-stats--floating')
+            ->and($darkSet)->toContain('sf-s--sch-dark')->toContain('sf-stats--floating');
+
+        // The card is white, so whatever the band or set gives is reset inside it.
+        $card = kindsRule('.sf-stats--floating > .sf-container');
+        expect($card)->toContain('background: var(--color-surface)')->toContain('--sch-head: var(--color-text-strong)')
+            ->toContain('--sch-body: var(--color-text)')->toContain('color: var(--color-text)')
+            ->and((string) file_get_contents(base_path('resources/css/storefront.css')))
+            ->toContain(".sf-stats--floating .sf-section-head__title,\n.sf-stats--floating .sf-stat__value {\n    color: var(--color-text-strong);")
+            ->toContain(".sf-stats--floating .sf-section-head__text,\n.sf-stats--floating .sf-stat__label {\n    color: var(--color-text);");
+    });
+
+    it('lets the card overlap the block above it instead of keeping the band\'s top padding', function (): void {
+        $band = kindsRule('.sf-band.sf-stats--floating');
+
+        expect($band)->toContain('margin-top: -2.5rem')->toContain('padding-block: 0 3rem')->toContain('background: transparent');
+    });
+});
+
+describe('choices in the editor', function (): void {
+    it('has a plain-language label in every language for each choice of the stats and cta blocks', function (string $locale): void {
+        $registry = app(ComponentRegistry::class);
+        $labels = json_decode((string) file_get_contents(base_path("lang/{$locale}.json")), true, flags: JSON_THROW_ON_ERROR);
+        $missing = [];
+
+        $walk = function (array $schema) use (&$walk, &$missing, $labels): void {
+            foreach ($schema as $prop => $spec) {
+                if (($spec['type'] ?? null) === 'enum') {
+                    foreach ($spec['options'] as $option) {
+                        isset($labels["entries.opt_{$prop}_{$option}"]) || $missing[] = "{$prop}.{$option}";
+                    }
+                }
+                if (($spec['type'] ?? null) === 'list') {
+                    isset($spec['of']['options']) && $walk([$prop => $spec['of']]);
+                    ! isset($spec['of']['type']) && $walk($spec['of']);
+                }
+            }
+        };
+        $walk(array_diff_key($registry->schemaFor('stats'), StyleProps::SCHEMA) + ['extra_style' => StyleProps::SCHEMA['extra_style']]);
+        $walk(array_diff_key($registry->schemaFor('cta'), StyleProps::SCHEMA));
+
+        expect($missing)->toBe([]);
     })->with(['vi', 'en', 'ja', 'zh']);
 });

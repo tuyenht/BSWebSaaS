@@ -161,22 +161,25 @@ final class SectionProps
     /**
      * The stats to draw from a list prop, in order, each as {value, number, suffix, label, count}:
      * `number` prints the value with thousands separators and counts up (`count`); `years` prints
-     * $year minus the start year and `year` the year itself, both plain and with the unit locked.
-     * An item with an unknown kind is a number; a year outside 1900…$year, or an item with neither
-     * a number nor a label, is left out.
+     * this year minus the start year and `year` the year itself, both plain and with the unit locked.
+     * This year is read (a settings query on a first use) only when an item is a year kind, so a block
+     * of plain numbers costs nothing extra. An item with an unknown kind is a number; a year outside
+     * 1900…this year, or an item with neither a number nor a label, is left out.
      *
      * @param  array<array-key, mixed>  $props
      * @return list<array{value: int|null, number: string, suffix: string, label: string, count: bool}>
      */
-    public static function statEntries(array $props, string $key, int $max, int $year): array
+    public static function statEntries(array $props, string $key, int $max): array
     {
         $stats = [];
+        $year = null;
         foreach (self::items($props, $key, $max) as $item) {
             $kind = self::choice($item, 'kind', self::STAT_KINDS);
             $value = self::statNumber($item['value'] ?? null);
             $label = self::text($item, 'label');
 
             if ($kind !== 'number') {
+                $year ??= self::currentYear();
                 if ($value === null || $value < self::STAT_YEAR_MIN || $value > $year) {
                     continue;
                 }

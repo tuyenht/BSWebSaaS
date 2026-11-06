@@ -5,7 +5,7 @@
     $rounded = \App\Modules\Theme\Components\SectionProps::choice($props, 'variant', \App\Modules\Theme\Components\SectionProps::CTA_VARIANTS) === 'rounded';
     // The stats beside the text exist with the default look only; the rounded band ignores them.
     $side = ! $rounded && \App\Modules\Theme\Components\SectionProps::choice($props, 'side', \App\Modules\Theme\Components\SectionProps::CTA_SIDES) === 'stats'
-        ? \App\Modules\Theme\Components\SectionProps::statEntries($props, 'side_items', \App\Modules\Theme\Components\SectionProps::CTA_SIDE_MAX_ITEMS, \App\Modules\Theme\Components\SectionProps::currentYear())
+        ? \App\Modules\Theme\Components\SectionProps::statEntries($props, 'side_items', \App\Modules\Theme\Components\SectionProps::CTA_SIDE_MAX_ITEMS)
         : [];
 @endphp
 @if ($rounded)

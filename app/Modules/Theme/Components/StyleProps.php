@@ -43,14 +43,11 @@ final class StyleProps
     public const array MOTION = ['none', 'fade', 'rise'];
 
     /**
-     * The extra looks a block may add on top (the reserved prop `extra_style`), registered by the theme.
-     * A block opts in by declaring the prop in its own schema (EXTRA_STYLE_TYPES); the wrapper prints
-     * the class of a listed value only. Append-only.
+     * The extra looks a block may add on top (the reserved prop `extra_style`, a list), registered by the
+     * theme: each saved value maps to the class the wrapper prints. A value that is not a key here is
+     * refused at save and ignored at render; the saved value is never put in the markup. Append-only.
      */
-    public const array EXTRA_STYLES = ['none', 'pattern-cross'];
-
-    /** The block types whose schema declares `extra_style`. */
-    public const array EXTRA_STYLE_TYPES = ['cta'];
+    public const array EXTRA_STYLES = ['pattern-cross' => 'sf-s--x-pattern-cross'];
 
     public const string ANCHOR_PATTERN = '/^[a-z0-9-]{1,64}$/D';
 
@@ -86,6 +83,7 @@ final class StyleProps
         'hide_on' => ['type' => 'enum', 'options' => self::HIDE_ON, 'default' => 'none', 'group' => 'style'],
         'anchor_id' => ['type' => 'text', 'pattern' => self::ANCHOR_PATTERN, 'group' => 'style'],
         'motion' => ['type' => 'enum', 'options' => self::MOTION, 'default' => 'none', 'group' => 'style'],
+        'extra_style' => ['type' => 'list', 'of' => ['type' => 'enum', 'options' => ['pattern-cross']], 'group' => 'style'],
     ];
 
     /**
@@ -105,10 +103,10 @@ final class StyleProps
      * exactly as before). $imageUrl is `bg_image` already resolved by BlockRenderer; the first block
      * never moves, so the page's main content paints at once.
      *
-     * @param  array<array-key, mixed>  $props  $type is the block's type, which decides whether `extra_style` counts
+     * @param  array<array-key, mixed>  $props
      * @return array{classes: list<string>, id: string|null, image: string|null}|null
      */
-    public static function wrapper(array $props, bool $first, ?string $imageUrl, ?string $type = null): ?array
+    public static function wrapper(array $props, bool $first, ?string $imageUrl): ?array
     {
         $classes = [];
         $bg = SectionProps::choice($props, 'bg', self::BG);
@@ -140,10 +138,10 @@ final class StyleProps
             $classes[] = "sf-s--m-{$motion}";
         }
 
-        if ($type !== null && in_array($type, self::EXTRA_STYLE_TYPES, true)) {
-            $extra = SectionProps::choice($props, 'extra_style', self::EXTRA_STYLES);
-            if ($extra !== self::EXTRA_STYLES[0]) {
-                $classes[] = "sf-s--x-{$extra}";
+        $extra = $props['extra_style'] ?? null;
+        foreach (self::EXTRA_STYLES as $value => $class) {
+            if (is_array($extra) && in_array($value, $extra, true)) {
+                $classes[] = $class;
             }
         }
 

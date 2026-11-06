@@ -14,6 +14,7 @@ use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
+use Illuminate\Support\Facades\View;
 
 /*
  * Query Budget guardrail (CLAUDE.md §6): assert a hard ceiling of DB queries per
@@ -205,4 +206,17 @@ it('renders the site’s 404 page within the same query budget when the site nam
 
     expect($html)->toContain('sf-404__btn--contact')->toContain('href="/lien-he"')
         ->and($count)->toBeLessThanOrEqual($budget);
+});
+
+it('renders a stats block of plain numbers with no query of its own, and a years item with the one settings read', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $numbers = fn () => View::make('theme::sections.stats', ['props' => ['items' => [['value' => 3, 'label' => 'Nhà máy'], ['value' => 4300, 'label' => 'Nhà xưởng']]]])->render();
+        $years = fn () => View::make('theme::sections.stats', ['props' => ['items' => [['kind' => 'years', 'value' => 2014, 'label' => 'Năm'], ['kind' => 'year', 'value' => 2019, 'label' => 'Thành lập']]]])->render();
+        $side = fn () => View::make('theme::sections.cta', ['props' => ['side' => 'stats', 'side_items' => [['value' => 3, 'label' => 'Nhà máy']]]])->render();
+
+        expect(countQueries($numbers))->toBe(0)
+            ->and(countQueries($side))->toBe(0)
+            ->and(countQueries($years))->toBe(1)
+            ->and(countQueries($years))->toBe(0);
+    });
 });
