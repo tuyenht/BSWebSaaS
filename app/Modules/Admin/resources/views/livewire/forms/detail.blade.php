@@ -28,8 +28,8 @@
         <dl class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
             @foreach ($answers as $answer)
                 <div @class(['sm:col-span-2' => $answer['wide'] || $answer['key'] === 'message'])>
-                    <dt class="text-body-muted">{{ $answer['label'] }}</dt>
-                    <dd @class(['whitespace-pre-line text-heading', 'font-medium' => ! $answer['ticked']])>{{ $answer['value'] }}</dd>
+                    <dt class="text-text-muted">{{ $answer['label'] }}</dt>
+                    <dd @class(['whitespace-pre-line text-text-strong', 'font-medium' => ! $answer['ticked']])>{{ $answer['value'] }}</dd>
                 </div>
             @endforeach
         </dl>
