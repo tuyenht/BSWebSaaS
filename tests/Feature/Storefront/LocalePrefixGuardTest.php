@@ -115,5 +115,14 @@ it('never turns a default-locale prefix into a redirect off the site', function 
     $res = $this->get('http://anvinh.platform.test'.$path)->assertStatus(301);
 
     expect((string) $res->headers->get('Location'))->toStartWith('http://anvinh.platform.test/')
-        ->and(redirectPath($res))->toBe('/evil.example/x');
+        ->and(redirectPath($res))->toBe('/evil/x');
+})->with(['/vi//evil/x', '/vi///evil/x']);
+
+it('answers a default-locale prefix before a dotted host with a plain 404, never a redirect', function (string $path): void {
+    provision('An Vinh', 'anvinh.platform.test', 'owner@anvinh.test');
+
+    // A path with a dot is a scanner's (no slug has one): it is refused before any redirect is built.
+    $res = $this->get('http://anvinh.platform.test'.$path)->assertNotFound();
+
+    expect($res->headers->get('Location'))->toBeNull();
 })->with(['/vi//evil.example/x', '/vi///evil.example/x']);
