@@ -286,7 +286,7 @@ describe('on a page', function (): void {
 
         $html = $this->get('http://mau.platform.test'.$path)->assertOk()->getContent();
 
-        expect($html)->toContain('<div class="product__body"><p>Mô tả</p>')
+        expect($html)->toContain('<div class="product__body sf-prose"><p>Mô tả</p>')
             ->and($html)->toContain('data-src="https://www.youtube-nocookie.com/embed/SxwkhMy4Ywo?rel=0&amp;autoplay=1"')
             ->and($html)->toContain('<script type="module" src="/resources/js/sf-video.js"></script>');
         expectNothingFetchedFromTheVideoHost($html);

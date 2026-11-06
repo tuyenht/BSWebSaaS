@@ -51,7 +51,7 @@ it('seeds the measurement page and the news card grid', function (): void {
         ->and(substr_count($page, '<h1'))->toBe(1);
 
     $news = $this->get('http://cwv.platform.test'.SeedMeasurementSite::NEWS_PATH)->assertOk()->getContent();
-    expect(substr_count($news, '<article class="sf-card sf-card--news">'))->toBeGreaterThanOrEqual(6)
+    expect(substr_count($news, '<article class="sf-card sf-card--news '))->toBeGreaterThanOrEqual(6)
         ->and($news)->toContain('<a class="sf-chips__chip" href="/tin-cong-ty">Tin công ty</a>')
         ->and($news)->toContain('<a class="sf-chips__chip" href="/tin-nganh">Tin ngành</a>');
     $this->get('http://cwv.platform.test/tin-cong-ty')->assertOk();
