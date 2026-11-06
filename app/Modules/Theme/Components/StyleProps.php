@@ -42,6 +42,13 @@ final class StyleProps
 
     public const array MOTION = ['none', 'fade', 'rise'];
 
+    /**
+     * The extra looks a block may add on top (the reserved prop `extra_style`, a list), registered by the
+     * theme: each saved value maps to the class the wrapper prints. A value that is not a key here is
+     * refused at save and ignored at render; the saved value is never put in the markup. Append-only.
+     */
+    public const array EXTRA_STYLES = ['pattern-cross' => 'sf-s--x-pattern-cross'];
+
     public const string ANCHOR_PATTERN = '/^[a-z0-9-]{1,64}$/D';
 
     /** Ids the storefront layout already uses (the skip link's target, the phone menu): never an anchor. */
@@ -76,11 +83,12 @@ final class StyleProps
         'hide_on' => ['type' => 'enum', 'options' => self::HIDE_ON, 'default' => 'none', 'group' => 'style'],
         'anchor_id' => ['type' => 'text', 'pattern' => self::ANCHOR_PATTERN, 'group' => 'style'],
         'motion' => ['type' => 'enum', 'options' => self::MOTION, 'default' => 'none', 'group' => 'style'],
+        'extra_style' => ['type' => 'list', 'of' => ['type' => 'enum', 'options' => ['pattern-cross']], 'group' => 'style'],
     ];
 
     /**
      * Names a block's own schema may never declare: the props above, the ones reserved for later
-     * (overlay_tone, divider_top/bottom, border, motion_stagger, extra_style) and the editor's own
+     * (overlay_tone, divider_top/bottom, border, motion_stagger) and the editor's own
      * state (ink, spacing_split). page_header and hero_slider had their own `overlay` (how dark their
      * photo is, a number) before; schemaFor() keeps theirs, and the wrapper photo is not offered there.
      */
@@ -128,6 +136,13 @@ final class StyleProps
         $motion = $first ? 'none' : SectionProps::choice($props, 'motion', self::MOTION);
         if ($motion !== 'none') {
             $classes[] = "sf-s--m-{$motion}";
+        }
+
+        $extra = $props['extra_style'] ?? null;
+        foreach (self::EXTRA_STYLES as $value => $class) {
+            if (is_array($extra) && in_array($value, $extra, true)) {
+                $classes[] = $class;
+            }
         }
 
         $anchor = $props['anchor_id'] ?? null;

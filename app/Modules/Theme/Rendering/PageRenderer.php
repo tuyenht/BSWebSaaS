@@ -176,17 +176,24 @@ final readonly class PageRenderer
     }
 
     /**
-     * Whether a stats block on the page holds at least one usable number (the only thing the count-up
-     * script animates). Pure: no query.
+     * Whether a stats block (or the stats beside a call to action) on the page holds at least one
+     * counted number, the only thing the count-up script animates: a year is printed as is. Pure: no query.
      *
      * @param  array<string, mixed>  $body
      */
     private static function countsUp(array $body): bool
     {
         foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
-            $props = is_array($block) && ($block['type'] ?? null) === 'stats' ? ($block['props'] ?? null) : null;
-            foreach (is_array($props) ? SectionProps::items($props, 'items', SectionProps::STATS_MAX_ITEMS) : [] as $item) {
-                if (SectionProps::statNumber($item['value'] ?? null) !== null) {
+            $type = is_array($block) ? ($block['type'] ?? null) : null;
+            $props = is_array($block) && is_array($block['props'] ?? null) ? $block['props'] : [];
+            $key = match (true) {
+                $type === 'stats' => 'items',
+                $type === 'cta' && ($props['side'] ?? null) === 'stats' && ($props['variant'] ?? null) !== 'rounded' => 'side_items',
+                default => null,
+            };
+            $max = $type === 'stats' ? SectionProps::STATS_MAX_ITEMS : SectionProps::CTA_SIDE_MAX_ITEMS;
+            foreach ($key === null ? [] : SectionProps::items($props, $key, $max) as $item) {
+                if (SectionProps::choice($item, 'kind', SectionProps::STAT_KINDS) === 'number' && SectionProps::statNumber($item['value'] ?? null) !== null) {
                     return true;
                 }
             }

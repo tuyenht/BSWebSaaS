@@ -152,7 +152,8 @@ it('finds a page or post by name, ignoring marks, and takes only one of this sit
         actionPage('Tin công ty', '/tin-cong-ty', 'post');
 
         Livewire::actingAs(actionEditor())->test(Editor::class)
-            ->set('blocks', [['type' => 'cta', 'props' => ['button_label' => 'A', 'button_url_do' => ['k' => 'page']]]])
+            // The second button is set to a phone call: an unset page button opens its own search, which lists the posts too.
+            ->set('blocks', [['type' => 'cta', 'props' => ['button_label' => 'A', 'button_url_do' => ['k' => 'page'], 'button2_label' => 'B', 'button2_url_do' => ['k' => 'tel']]]])
             ->assertSee('Tìm trang hoặc bài viết theo tên')
             ->set('buttonQueries.0-props-button_url', 'lien he')
             ->assertSee('Trang · /lien-he')
@@ -423,3 +424,19 @@ it('searches pages only when the search text changes, not on every redraw', func
 
 /** Opening the editor with buttons of every kind: pages by ulid and by older address, files, one search, the site's phone. */
 const BUTTON_ACTIONS_OPEN_EXTRA = 5;
+
+it('keeps the search of one button apart from the second button of the same block', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        actionPage('Liên hệ', '/lien-he');
+
+        $c = Livewire::actingAs(actionEditor())->test(Editor::class)
+            ->set('blocks', [['type' => 'cta', 'props' => [
+                'button_label' => 'A', 'button_url_do' => ['k' => 'page'],
+                'button2_label' => 'B', 'button2_url_do' => ['k' => 'page'],
+            ]]])
+            ->set('buttonQueries.0-props-button_url', 'lien he')
+            ->assertSee('Trang · /lien-he');
+
+        expect($c->get('buttonQueries'))->toHaveKey('0-props-button_url')->not->toHaveKey('0-props-button2_url');
+    });
+});
