@@ -190,7 +190,7 @@ trait EditsTaxonomyTree
             return null;
         }
 
-        $allowed = $postDetail ? TaxonomyRules::detailTemplate($template) : TaxonomyRules::template($template);
+        $allowed = $postDetail ? TaxonomyRules::postDetailTemplate($template) : TaxonomyRules::template($template);
 
         return $allowed ? $template : throw new TaxonomyChangeRejectedException('template_invalid');
     }

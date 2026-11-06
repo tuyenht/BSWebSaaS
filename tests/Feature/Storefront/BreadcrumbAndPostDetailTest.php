@@ -333,3 +333,12 @@ it('reads a post page in a fixed number of queries, however many posts its categ
     expect($many)->toBe($few)
         ->and($few)->toBeLessThanOrEqual(17); // measured: the parent category's name, then previous, next and related in one read with their titles and addresses
 });
+
+it('shows a post on the default post layout when its category holds a layout that cannot render a post', function (string $stored): void {
+    bcNews($stored);   // written straight to the row, around the write actions
+
+    $html = $this->get(BC_HOST.'/uoc-tinh-gia-ca/ong-thep-co-nho')->assertOk()->getContent();
+
+    expect($html)->toContain('<header class="post-band')
+        ->and(substr_count($html, '<h1'))->toBe(1);
+})->with(['category', 'product']);

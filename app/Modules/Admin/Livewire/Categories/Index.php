@@ -392,7 +392,7 @@ final class Index extends Component
         foreach ($dirs as $dir) {
             foreach (glob(rtrim(Cast::string($dir), '/').'/layouts/*.blade.php') ?: [] as $file) {
                 $name = basename($file, '.blade.php');
-                if ($postDetail ? TaxonomyRules::detailTemplate($name) : TaxonomyRules::template($name)) {
+                if ($postDetail ? TaxonomyRules::postDetailTemplate($name) : TaxonomyRules::template($name)) {
                     $names[] = $name;
                 }
             }

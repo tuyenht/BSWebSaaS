@@ -700,3 +700,16 @@ it('keeps an old detail layout that is no longer allowed while the other fields 
             ->and(twRefusal(fn () => app(UpdateTaxonomy::class)->handle($news, new TaxonomyData(detailTemplate: 'product'))))->toBe('template_invalid');
     });
 });
+
+it('lets a product category take any theme layout as its detail layout', function (): void {
+    twSiteOne(function (): void {
+        $shelf = app(CreateTaxonomy::class)->handle('product_cat', null, new TaxonomyData(names: ['vi' => 'Vòng bi'], detailTemplate: 'product'));
+        expect($shelf->detail_template)->toBe('product');
+
+        $updated = app(UpdateTaxonomy::class)->handle($shelf, new TaxonomyData(names: ['vi' => 'Vòng bi'], detailTemplate: 'category'));
+        expect($updated->detail_template)->toBe('category');
+
+        $news = twCreate('Tin tức');
+        expect(twRefusal(fn () => app(UpdateTaxonomy::class)->handle($news, new TaxonomyData(names: ['vi' => 'Tin tức'], detailTemplate: 'product'))))->toBe('template_invalid');
+    });
+});
