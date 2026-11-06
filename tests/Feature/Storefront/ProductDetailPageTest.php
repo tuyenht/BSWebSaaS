@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Storefront\Support\ProductDetail;
 use App\Modules\Tenancy\Context\Tenancy;
 use Carbon\CarbonImmutable;
@@ -168,4 +169,66 @@ it('orders an undated product first among the related ones, the same as in the l
     preg_match_all('#href="([^"]+)"#', $related[0] ?? '', $hrefs);
 
     expect($hrefs[1][0] ?? null)->toBe('/mau-chua-ngay');
+});
+
+/** The badges' labels as printed in the main image's stage. */
+function productBadges(string $html): array
+{
+    preg_match('#<ul class="product__badges">(.*?)</ul>#s', $html, $list);
+    preg_match_all('#<li class="product__badge">([^<]+)</li>#', $list[1] ?? '', $labels);
+
+    return $labels[1];
+}
+
+it('prints a badge on the main photo for each switch that is on, and none when both are off', function (bool $featured, bool $bestseller, array $expected): void {
+    $product = productSite();
+    app(Tenancy::class)->enter($product->site_id, fn () => $product->update(['is_featured' => $featured, 'is_bestseller' => $bestseller]));
+    $html = productHtml();
+
+    expect(productBadges($html))->toBe($expected);
+    if ($expected === []) {
+        expect($html)->not->toContain('product__badges');
+    }
+    // The badge text sits beside the photo link, never inside its accessible name.
+    preg_match('#<a class="product__main".*?</a>#s', $html, $link);
+    expect($link[0] ?? '')->not->toContain('product__badge');
+})->with([
+    'both on' => [true, true, ['Nổi bật', 'Bán chạy']],
+    'featured only' => [true, false, ['Nổi bật']],
+    'bestseller only' => [false, true, ['Bán chạy']],
+    'neither' => [false, false, []],
+]);
+
+it('adds the quote button first in the contact box when the site has a contact page, built through its path', function (): void {
+    productSite();
+    $html = productHtml();
+
+    expect($html)->toContain('<a class="product__quote" href="/lien-he">Yêu cầu báo giá</a>')
+        ->and(substr_count($html, 'product__quote"'))->toBe(1)
+        ->and($html)->not->toMatch('#/lien-he/[0-9]#')
+        ->and(strpos($html, 'product__quote"'))->toBeLessThan(strpos($html, 'product__zalo') ?: PHP_INT_MAX);
+    preg_match_all('#<img\b[^>]*\sfetchpriority="high"#', $html, $high);
+    expect($high[0])->toHaveCount(1);
+});
+
+it('leaves the quote button out when the site has no published contact page', function (): void {
+    $product = productSite();
+    app(Tenancy::class)->enter($product->site_id, function (): void {
+        $entry = SiteRoute::query()->where('path', '/lien-he')->firstOrFail()->entry;
+        $entry->update(['status' => 'draft']);
+    });
+    expect(productHtml())->not->toContain('product__quote');
+
+    app(Tenancy::class)->enter($product->site_id, fn () => SiteRoute::query()->where('path', '/lien-he')->delete());
+    expect(productHtml())->not->toContain('product__quote');
+});
+
+it('never uses another site’s contact page for the quote button', function (): void {
+    $mine = productSite();
+    $other = productSite('Xưởng Khác', 'khac.platform.test', 'Khác ');
+    app(Tenancy::class)->enter($mine->site_id, fn () => SiteRoute::query()->where('path', '/lien-he')->delete());
+
+    expect(productHtml())->not->toContain('product__quote')
+        ->and(productHtml('khac.platform.test'))->toContain('product__quote');
+    expect($mine->site_id)->not->toBe($other->site_id);
 });

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Storefront\Support;
 
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Theme\Chrome\StorefrontChrome;
 use App\Modules\Theme\Components\ButtonLink;
@@ -35,6 +37,7 @@ final readonly class ProductDetail
     public function __construct(
         private MediaUrlResolver $media,
         private ListPage $lists,
+        private PathBuilder $paths,
     ) {}
 
     /**
@@ -64,6 +67,22 @@ final readonly class ProductDetail
         }
 
         return $photos;
+    }
+
+    /**
+     * The address of the current site's published contact page in this language (the page the
+     * site is set up with at /lien-he), built like every storefront link; null when the site has
+     * none, so the quote button is left out. Only this site's routes can match (tenant scope).
+     */
+    public function quoteLink(string $locale): ?string
+    {
+        $path = SiteRoute::query()
+            ->where('locale', $locale)
+            ->where('path', '/lien-he')
+            ->whereHas('entry', fn ($query) => $query->where('status', 'published'))
+            ->value('path');
+
+        return is_string($path) && $path !== '' ? $this->paths->publicUrl($path, $locale) : null;
     }
 
     /**

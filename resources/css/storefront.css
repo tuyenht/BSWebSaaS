@@ -3055,6 +3055,32 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     object-fit: cover;
 }
 
+.product__badges {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    right: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    pointer-events: none;
+}
+
+.product__badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
 .product__count {
     position: absolute;
     right: 1rem;
@@ -3159,7 +3185,31 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     font-size: 0.875rem;
 }
 
+.product__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.product__quote {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    min-height: 2.75rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 9999px;
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+    font-weight: 700;
+    text-align: center;
+    overflow-wrap: anywhere;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    transition: background 0.3s;
+}
+
 .product__call {
+    flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -3187,6 +3237,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     text-align: center;
 }
 
+.product__quote:focus-visible,
 .product__call:focus-visible,
 .product__zalo:focus-visible {
     outline: 2px solid var(--color-primary-text);
@@ -3220,6 +3271,12 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     }
 }
 
+@media (min-width: 640px) {
+    .product__actions {
+        flex-direction: row;
+    }
+}
+
 @media (min-width: 1024px) {
     .product__top {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3230,6 +3287,10 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 @media (hover: hover) {
     .product__thumb:hover {
         opacity: 1;
+    }
+
+    .product__quote:hover {
+        background: var(--color-primary-hover);
     }
 
     .product__call:hover {
@@ -3243,6 +3304,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 
 @media (prefers-reduced-motion: reduce) {
     .product__thumb,
+    .product__quote,
     .product__call {
         transition: none;
     }
