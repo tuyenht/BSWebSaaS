@@ -110,3 +110,39 @@ it('draws at most 24 items in a slider and says there is more when it cut some',
         ->and($grid['shown'])->toBe(31)->and($grid['view_all'])->toBeFalse()
         ->and(ListDisplay::LIMIT_MAX)->toBe(50);
 });
+
+it('holds two rows of the resolved columns in a product grid before it becomes a slider', function (string $kind, array $props, int $count, string $layout): void {
+    expect(ListDisplay::plan($kind, ['layout' => 'auto'] + $props, $count, 50)['layout'])->toBe($layout);
+})->with([
+    'overlay, auto columns, six' => ['product-overlay', [], 6, 'grid'],
+    'overlay, auto columns, seven' => ['product-overlay', [], 7, 'slider'],
+    'overlay, two columns, four' => ['product-overlay', ['columns' => '2'], 4, 'grid'],
+    'overlay, two columns, five' => ['product-overlay', ['columns' => '2'], 5, 'slider'],
+    'product, three columns, six' => ['product', ['columns' => '3'], 6, 'grid'],
+    'product, three columns, seven' => ['product', ['columns' => '3'], 7, 'slider'],
+    'product, four columns, eight' => ['product', ['columns' => '4'], 8, 'grid'],
+]);
+
+it('makes partner logos a rotating three-logo slider on a phone, even when the wide layout is a grid', function (): void {
+    $grid = ListDisplay::plan('partners', ['layout' => 'auto'], 5, PHP_INT_MAX);
+    $slider = ListDisplay::plan('partners', ['layout' => 'auto'], 8, PHP_INT_MAX);
+    $three = ListDisplay::plan('partners', ['layout' => 'auto'], 3, PHP_INT_MAX);
+    $off = ListDisplay::plan('partners', ['layout' => 'auto', 'autoplay' => 'off'], 5, PHP_INT_MAX);
+    $swipe = ListDisplay::plan('partners', ['layout' => 'auto', 'mobile' => 'swipe'], 5, PHP_INT_MAX);
+
+    expect($grid)->toMatchArray(['layout' => 'grid', 'mobile' => 'slider', 'interval' => 3000, 'bar' => 'phone'])
+        ->and($grid['class'])->toContain('sf-rail__list--m-slider')
+        ->and($slider)->toMatchArray(['layout' => 'slider', 'mobile' => 'slider', 'interval' => 3000, 'bar' => '', 'scrolls' => true])
+        ->and($three['interval'])->toBe(0)
+        ->and($off['interval'])->toBe(0)
+        ->and($swipe['mobile'])->toBe('swipe')->and($swipe['interval'])->toBe(0)
+        ->and(ListDisplay::plan('news', ['layout' => 'auto'], 9, 50)['mobile'])->toBe('swipe');
+});
+
+it('keeps the Pause bar only on the widths where the list rotates', function (): void {
+    $wideOnly = ListDisplay::plan('news', ['layout' => 'slider'], 9, 50);
+    $always = ListDisplay::plan('news', ['layout' => 'slider', 'mobile' => 'two'], 9, 50);
+    $none = ListDisplay::plan('news', ['layout' => 'grid'], 9, 50);
+
+    expect($wideOnly['bar'])->toBe('wide')->and($always['bar'])->toBe('')->and($none['interval'])->toBe(0)->and($none['scrolls'])->toBeFalse();
+});

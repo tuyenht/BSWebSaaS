@@ -6190,7 +6190,9 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     scroll-snap-align: start;
 }
 
-.sf-rail__list > li > * {
+/* A card that is the item's only child fills it; an item built of several parts (a team member's
+   photo and name) keeps its own layout. */
+.sf-rail__list > li > :only-child {
     flex: 1;
     min-width: 0;
 }
@@ -6200,18 +6202,21 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     justify-content: flex-start;
     overflow-x: auto;
     scroll-snap-type: x mandatory;
-    scrollbar-width: none;
 }
 
-.sf-rail__list--slider::-webkit-scrollbar {
-    display: none;
-}
-
-@media (max-width: 1023px) {
-    .sf-rail__list,
-    .sf-rail__list[class] {
-        --sf-c: 2;
+/* The scrollbar is hidden only where the script's arrows stand in for it: with the arrows turned off,
+   or with scripting off, the row keeps its native scrollbar so a mouse can still move it. */
+@media (scripting: enabled) {
+    .sf-rail:not([data-arrows="none"]) .sf-rail__list {
+        scrollbar-width: none;
     }
+}
+
+/* Tablet: two across (card kinds); partner logos keep three, as many as on a phone. The phone rules
+   below come last and cover every width under 640px. */
+@media (min-width: 640px) and (max-width: 1023px) {
+    .sf-rail__list { --sf-c: 2; }
+    .partners .sf-rail__list { --sf-c: 3; }
 }
 
 @media (max-width: 639px) {
@@ -6219,17 +6224,19 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     .sf-rail__list--m-swipe { --sf-c: 1.25; }
     .sf-rail__list--m-two { --sf-c: 2; }
     .sf-rail__list--m-one { --sf-c: 1; }
+    .sf-rail__list--m-slider { --sf-c: 3; }
 
-    .sf-rail__list--m-swipe {
+    .sf-rail__list--m-swipe,
+    .sf-rail__list--m-slider {
         flex-wrap: nowrap;
         justify-content: flex-start;
         overflow-x: auto;
         scroll-snap-type: x mandatory;
-        scrollbar-width: none;
     }
 
-    .sf-rail__list--m-swipe::-webkit-scrollbar {
-        display: none;
+    /* Few logos sit centred; many scroll from the start. */
+    .sf-rail__list--m-slider {
+        justify-content: safe center;
     }
 }
 
@@ -6295,8 +6302,32 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 
 .sf-rail__bar {
     display: flex;
+    align-items: center;
     justify-content: flex-end;
+    min-height: 2.75rem;
     margin-top: 0.5rem;
+}
+
+/* The bar keeps its room only on the widths where the list rotates. */
+.sf-rail__bar--phone {
+    display: none;
+}
+
+@media (max-width: 639px) {
+    .sf-rail__bar--phone {
+        display: flex;
+    }
+
+    .sf-rail__bar--wide {
+        display: none;
+    }
+}
+
+/* Nothing rotates under reduced motion or without scripting, so nothing needs the room. */
+@media (prefers-reduced-motion: reduce), (scripting: none) {
+    .sf-rail .sf-rail__bar {
+        display: none;
+    }
 }
 
 .sf-rail__pause .sf-slider__icon-play,

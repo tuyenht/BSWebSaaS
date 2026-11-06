@@ -3,6 +3,7 @@
 use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Catalog\Components\ProductGridComponent;
 use App\Modules\Cms\Components\EntryGridComponent;
+use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Validation\ValidPageJson;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
@@ -82,13 +83,13 @@ it('draws an entry or product list saved before the group with its own grid clas
 it('draws a new list block as a rail with the controls hidden for the script', function (string $view, array $props, string $class): void {
     $html = railView($view, ['props' => ['layout' => 'auto'] + $props]);
 
-    expect($html)->toContain('data-sf-rail')->and($html)->toContain('role="group" aria-roledescription="carousel"')
-        ->and($html)->toContain('<div class="sf-rail__controls" hidden>')
+    expect($html)->toContain('data-sf-rail')->and($html)->toContain('<div class="sf-rail__controls">')
         ->and($html)->toContain($class)
-        ->and($html)->toContain('data-sf-rail-prev hidden aria-label="Ảnh trước"')
-        ->and($html)->toContain('data-sf-rail-next hidden aria-label="Ảnh tiếp theo"');
+        ->and($html)->toContain('data-sf-rail-prev hidden aria-label="Xem mục trước" title="Xem mục trước"')
+        ->and($html)->toContain('data-sf-rail-next hidden aria-label="Xem mục tiếp theo" title="Xem mục tiếp theo"')
+        ->and($html)->not->toContain('Ảnh trước');
 })->with([
-    'partners' => ['partners', ['logos' => logos(8)], 'sf-rail__list sf-rail__list--slider sf-rail__list--c6 sf-rail__list--m-swipe'],
+    'partners' => ['partners', ['logos' => logos(8)], 'sf-rail__list sf-rail__list--slider sf-rail__list--c6 sf-rail__list--m-slider'],
     'testimonial' => ['testimonial', ['items' => quotes(5)], 'sf-rail__list sf-rail__list--slider sf-rail__list--c3'],
     'team' => ['team', ['members' => members(7)], 'sf-rail__list sf-rail__list--grid sf-rail__list--c4 sf-rail__list--m-swipe'],
 ]);
@@ -98,8 +99,8 @@ it('gives a rotating rail a Pause button with both labels, and a still one none'
     $still = railView('team', ['props' => ['layout' => 'auto', 'members' => members(7)]]);
     $off = railView('partners', ['props' => ['layout' => 'auto', 'autoplay' => 'off', 'logos' => logos(8)]]);
 
-    expect($rotating)->toContain('data-sf-rail-pause hidden aria-label="Dừng tự chuyển ảnh"')
-        ->and($rotating)->toContain('data-label-play="Tự chuyển ảnh tiếp"')
+    expect($rotating)->toContain('data-sf-rail-pause hidden aria-label="Dừng tự chuyển" title="Dừng tự chuyển"')
+        ->and($rotating)->toContain('data-label-play="Tiếp tục tự chuyển"')
         ->and($rotating)->toContain('data-interval="3000"')
         ->and($still)->not->toContain('data-sf-rail-pause')->and($still)->toContain('data-interval="0"')
         ->and($off)->not->toContain('data-sf-rail-pause');
@@ -219,6 +220,81 @@ it('validates the group in the page JSON', function (): void {
         ->and($check(['columns' => '5']))->toBeFalse();
 });
 
+it('takes a list limit of 1 to 50 when saving and refuses the rest', function (string $type, int|string $limit, bool $accepted): void {
+    seedTenancy();
+    $valid = ! Validator::make(
+        ['blocks' => [['type' => $type, 'props' => ['limit' => $limit]]]],
+        ['blocks' => [app(ValidPageJson::class)]],
+    )->fails();
+
+    expect($valid)->toBe($accepted);
+})->with([
+    'entries, 1' => ['entry_grid', 1, true],
+    'entries, 50' => ['entry_grid', 50, true],
+    'entries, 0' => ['entry_grid', 0, false],
+    'entries, 51' => ['entry_grid', 51, false],
+    'products, "12"' => ['product_grid', '12', true],
+    'products, 51' => ['product_grid', 51, false],
+    'products, "abc"' => ['product_grid', 'abc', false],
+]);
+
+it('announces only a slider as a carousel, in the page language, and gives a scrolling row a keyboard stop', function (): void {
+    $slider = railView('partners', ['props' => ['layout' => 'slider', 'heading' => 'Đối tác ạ', 'logos' => logos(8)]]);
+    $grid = railView('team', ['props' => ['layout' => 'grid', 'members' => members(3)]]);
+
+    expect($slider)->toContain('role="group" aria-roledescription="băng chuyền" aria-label="Đối tác ạ"')
+        ->and($slider)->toMatch('/<ul class="sf-rail__list sf-rail__list--slider[^"]*" tabindex="0" aria-label="Đối tác ạ">/')
+        ->and($grid)->toContain('data-sf-rail')->and($grid)->not->toContain('aria-roledescription')->and($grid)->not->toContain('role="group"')
+        ->and($grid)->not->toContain('tabindex');
+});
+
+it('keeps the Pause bar visible at its final size in the server markup and only for the widths that rotate', function (): void {
+    $css = (string) file_get_contents(base_path('resources/css/storefront.css'));
+    $phone = railView('partners', ['props' => ['layout' => 'grid', 'logos' => logos(5)]]);
+    $wide = railView('team', ['props' => ['layout' => 'slider', 'members' => members(9)]]);
+
+    expect($phone)->toContain('<div class="sf-rail__controls">')->and($phone)->toContain('<div class="sf-rail__bar sf-rail__bar--phone">')
+        ->and($wide)->toContain('<div class="sf-rail__bar sf-rail__bar--wide">')
+        ->and($css)->toMatch('/\.sf-rail__bar \{[^}]*min-height: 2\.75rem;/s')
+        ->and($css)->toMatch('/prefers-reduced-motion: reduce\), \(scripting: none\) \{\s*\.sf-rail \.sf-rail__bar \{\s*display: none;/s');
+});
+
+it('lets the phone rules win under 640px, caps the tablet at two (three logos for partners) and keeps the scrollbar when it is the only way to scroll', function (): void {
+    $css = (string) file_get_contents(base_path('resources/css/storefront.css'));
+    $tablet = strpos($css, '@media (min-width: 640px) and (max-width: 1023px) {', (int) strpos($css, '.sf-rail {'));
+    $phone = strpos($css, '@media (max-width: 639px) {', (int) $tablet);
+
+    expect($css)->not->toContain('.sf-rail__list[class]')->and($css)->not->toContain('.sf-rail__list::-webkit-scrollbar')
+        ->and($tablet)->toBeInt()->and($phone)->toBeGreaterThan($tablet)
+        ->and($css)->toMatch('/\.partners \.sf-rail__list \{ --sf-c: 3; \}/')
+        ->and($css)->toContain('.sf-rail__list > li > :only-child')
+        ->and($css)->toMatch('/@media \(scripting: enabled\) \{\s*\.sf-rail:not\(\[data-arrows="none"\]\) \.sf-rail__list \{\s*scrollbar-width: none;/s');
+});
+
+it('shows the arrows only on a row that can scroll, and the title tooltips on every rail button', function (): void {
+    $js = (string) file_get_contents(base_path('resources/js/sf-slider.js'));
+    $html = railView('partners', ['props' => ['layout' => 'auto', 'logos' => logos(8)]]);
+
+    expect($js)->toContain("overflows() && (mode === 'always' || (mode === 'auto' && mouse.matches))")
+        ->and($js)->toContain('pause.title = pause.getAttribute')
+        ->and(substr_count($html, 'title="'))->toBe(3);
+});
+
+it('shows "view all" under the plain product grid only when the block carries the group', function (): void {
+    $props = ['view_all_label' => 'Xem tất cả sản phẩm', 'view_all_url' => '/san-pham'];
+    $cards = array_map(fn (int $i): array => ['title' => "Sản phẩm {$i} ạ", 'url' => "/sp-{$i}", 'image' => ''], range(1, 9));
+    $more = ListDisplay::plan('product', ['layout' => 'auto'] + $props + ['limit' => 8], 9, 8);
+    $hidden = ListDisplay::plan('product', ['layout' => 'auto', 'view_all' => 'hide'] + $props + ['limit' => 8], 9, 8);
+
+    $shown = railView('entry_grid', ['props' => ['layout' => 'auto'] + $props, 'items' => array_slice($cards, 0, 8), 'variant' => 'grid', 'display' => $more]);
+    $off = railView('entry_grid', ['props' => ['layout' => 'auto', 'view_all' => 'hide'] + $props, 'items' => array_slice($cards, 0, 8), 'variant' => 'grid', 'display' => $hidden]);
+    $old = railView('entry_grid', ['props' => $props, 'items' => $cards, 'variant' => 'grid', 'display' => null]);
+
+    expect($shown)->toContain('>Xem tất cả sản phẩm</a>')->and($shown)->toContain('sf-rail__list sf-rail__list--grid')
+        ->and($off)->not->toContain('Xem tất cả sản phẩm')
+        ->and($old)->not->toContain('Xem tất cả sản phẩm')->and($old)->not->toContain('sf-rail');
+});
+
 describe('on a page', function (): void {
     beforeEach(function (): void {
         StorefrontCards::reset();
@@ -275,4 +351,61 @@ describe('the builder', function (): void {
             expect($old->get('blocks')[0]['props'])->toBe(['heading' => 'Khối cũ ạ']);
         });
     })->with(['entry_grid', 'product_grid', 'partners', 'testimonial', 'team']);
+});
+
+describe('the builder saving a list block', function (): void {
+    beforeEach(function (): void {
+        truncateRbac();
+        seedTenancy();
+        $this->artisan('rbac:sync')->assertSuccessful();
+        app(TeamContext::class)->forget();
+    });
+
+    /** @param list<array<string, mixed>> $blocks */
+    function railEntry(User $editor, array $blocks): Entry
+    {
+        $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $editor->id]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'Trang', 'slug' => 'trang', 'status' => 'draft', 'body' => ['blocks' => $blocks]]);
+
+        return $entry;
+    }
+
+    it('stores the defaults of a block added now through a real save', function (string $type): void {
+        app(Tenancy::class)->enter(1, function () use ($type): void {
+            $editor = User::factory()->create();
+            grantRole($editor, 'editor', ['entries.view', 'entries.create', 'entries.edit.any']);
+            $entry = railEntry($editor, []);
+
+            Livewire::actingAs($editor->fresh())->test(Editor::class, ['ulid' => $entry->ulid])
+                ->call('addBlock', $type)->call('save')->assertHasNoErrors();
+
+            $props = $entry->translationFor('vi')?->body['blocks'][0]['props'] ?? [];
+            foreach (array_keys(SectionProps::LIST_DISPLAY) as $prop) {
+                expect($props[$prop] ?? null)->toBe('auto');
+            }
+        });
+    })->with(['entry_grid', 'product_grid', 'partners', 'testimonial', 'team']);
+
+    it('pulls a stored limit outside 1 to 50 into range when the block loads, so saving again never fails', function (): void {
+        app(Tenancy::class)->enter(1, function (): void {
+            $editor = User::factory()->create();
+            grantRole($editor, 'editor', ['entries.view', 'entries.create', 'entries.edit.any']);
+            $entry = railEntry($editor, [
+                ['type' => 'entry_grid', 'props' => ['limit' => 99]],
+                ['type' => 'product_grid', 'props' => ['limit' => 0]],
+                ['type' => 'product_grid', 'props' => ['limit' => 'abc']],
+                ['type' => 'entry_grid', 'props' => ['limit' => '12']],
+                ['type' => 'entry_grid', 'props' => ['heading' => 'Không có hạn mức ạ']],
+            ]);
+
+            $component = Livewire::actingAs($editor->fresh())->test(Editor::class, ['ulid' => $entry->ulid])
+                ->assertSet('blocks.0.props.limit', 50)->assertSet('blocks.1.props.limit', 1)->assertSet('blocks.2.props.limit', 6)
+                ->assertSet('blocks.3.props.limit', 12);
+            expect($component->get('blocks')[4]['props'])->toBe(['heading' => 'Không có hạn mức ạ']);
+
+            $component->call('save')->assertHasNoErrors();
+            $saved = $entry->translationFor('vi')?->body['blocks'] ?? [];
+            expect(array_column(array_column($saved, 'props'), 'limit'))->toBe([50, 1, 6, 12]);
+        });
+    });
 });

@@ -21,7 +21,7 @@
 @if ($sfDisplay !== null)
 @include('theme::partials.sf-rail-open', ['display' => $sfDisplay, 'label' => $heading])
 @endif
-<ul class="{{ $sfDisplay['class'] ?? 'sf-quotes__list sf-quotes__list--'.$variant.' sf-quotes__list--n'.min(count($quotes), $variant === 'grid-3' ? 3 : 2) }}">
+<ul class="{{ $sfDisplay['class'] ?? 'sf-quotes__list sf-quotes__list--'.$variant.' sf-quotes__list--n'.min(count($quotes), $variant === 'grid-3' ? 3 : 2) }}"@if ($sfDisplay['scrolls'] ?? false) tabindex="0" aria-label="{{ is_string($props['heading'] ?? null) && $props['heading'] !== '' ? $props['heading'] : __('storefront.list_rail') }}"@endif>
 @foreach ($quotes as $item)
 @php
     $name = \App\Modules\Theme\Components\SectionProps::text($item, 'name');

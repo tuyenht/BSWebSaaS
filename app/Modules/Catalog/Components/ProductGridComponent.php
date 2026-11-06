@@ -45,7 +45,7 @@ final readonly class ProductGridComponent implements Component
         // `locale` is server-resolved (site default), not author-set → not in the schema.
         return [
             'heading' => ['type' => 'text'],
-            'limit' => ['type' => 'int', 'default' => 6],
+            'limit' => ['type' => 'int', 'default' => 6, 'min' => ListDisplay::LIMIT_MIN, 'max' => ListDisplay::LIMIT_MAX],
             'variant' => ['type' => 'enum', 'options' => SectionProps::PRODUCT_GRID_VARIANTS, 'default' => 'grid'],
             'description' => ['type' => 'textarea'],
             'view_all_label' => ['type' => 'text'],
@@ -62,7 +62,7 @@ final readonly class ProductGridComponent implements Component
         // Coerce like EntryGridComponent: number inputs hydrate as strings; clamp 1..50 so a
         // careless/forged limit can't issue an unbounded query.
         $rawLimit = $props['limit'] ?? 6;
-        $limit = is_numeric($rawLimit) ? min(50, max(1, (int) $rawLimit)) : 6;
+        $limit = is_numeric($rawLimit) ? min(ListDisplay::LIMIT_MAX, max(ListDisplay::LIMIT_MIN, (int) $rawLimit)) : 6;
         $locale = is_string($props['locale'] ?? null) ? $props['locale'] : 'vi';
         $variant = SectionProps::choice($props, 'variant', SectionProps::PRODUCT_GRID_VARIANTS);
 

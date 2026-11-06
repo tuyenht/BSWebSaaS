@@ -23,7 +23,7 @@
 @if ($sfDisplay !== null)
 @include('theme::partials.sf-rail-open', ['display' => $sfDisplay, 'label' => $heading])
 @endif
-<ul class="{{ $sfDisplay['class'] ?? 'sf-team__list sf-team__list--'.$variant.' sf-team__list--n'.min(count($members), $variant === 'grid-4' ? 4 : 3) }}">
+<ul class="{{ $sfDisplay['class'] ?? 'sf-team__list sf-team__list--'.$variant.' sf-team__list--n'.min(count($members), $variant === 'grid-4' ? 4 : 3) }}"@if ($sfDisplay['scrolls'] ?? false) tabindex="0" aria-label="{{ is_string($props['heading'] ?? null) && $props['heading'] !== '' ? $props['heading'] : __('storefront.list_rail') }}"@endif>
 @foreach ($members as $item)
 @php($role = \App\Modules\Theme\Components\SectionProps::text($item, 'role'))
 <li class="sf-member">

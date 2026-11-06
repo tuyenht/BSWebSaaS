@@ -15,7 +15,7 @@
 @if ($sfDisplay !== null)
 @include('theme::partials.sf-rail-open', ['display' => $sfDisplay, 'label' => (string) ($props['heading'] ?? '')])
 @endif
-    <ul class="{{ $sfDisplay['class'] ?? 'partners__list' }}">
+    <ul class="{{ $sfDisplay['class'] ?? 'partners__list' }}"@if ($sfDisplay['scrolls'] ?? false) tabindex="0" aria-label="{{ is_string($props['heading'] ?? null) && $props['heading'] !== '' ? $props['heading'] : __('storefront.list_rail') }}"@endif>
         @foreach ($sfLogos as $item)
             @php($item = (array) $item)
             @continue(empty($item['image_url']))

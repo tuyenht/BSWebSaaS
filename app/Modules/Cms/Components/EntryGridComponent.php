@@ -47,7 +47,7 @@ final readonly class EntryGridComponent implements Component
         return [
             'heading' => ['type' => 'text'],
             'taxonomy_slug' => ['type' => 'text'],
-            'limit' => ['type' => 'int', 'default' => 6],
+            'limit' => ['type' => 'int', 'default' => 6, 'min' => ListDisplay::LIMIT_MIN, 'max' => ListDisplay::LIMIT_MAX],
             'variant' => ['type' => 'enum', 'options' => SectionProps::ENTRY_GRID_VARIANTS, 'default' => 'list'],
             'description' => ['type' => 'textarea'],
             'link_label' => ['type' => 'text'],
@@ -65,7 +65,7 @@ final readonly class EntryGridComponent implements Component
         // Coerce like LatestPostsComponent: Livewire number inputs hydrate as strings; clamp
         // 1..50 so a careless/forged limit can't issue an unbounded query.
         $rawLimit = $props['limit'] ?? 6;
-        $limit = is_numeric($rawLimit) ? min(50, max(1, (int) $rawLimit)) : 6;
+        $limit = is_numeric($rawLimit) ? min(ListDisplay::LIMIT_MAX, max(ListDisplay::LIMIT_MIN, (int) $rawLimit)) : 6;
         $locale = is_string($props['locale'] ?? null) ? $props['locale'] : 'vi';
         $slug = is_string($props['taxonomy_slug'] ?? null) ? $props['taxonomy_slug'] : '';
         $variant = SectionProps::choice($props, 'variant', SectionProps::ENTRY_GRID_VARIANTS);

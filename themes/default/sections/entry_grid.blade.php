@@ -19,7 +19,7 @@
 @if ($sfDisplay !== null)
 @include('theme::partials.sf-rail-open', ['display' => $sfDisplay, 'label' => \App\Modules\Theme\Components\SectionProps::text($props, 'heading')])
 @endif
-<ul class="{{ $sfDisplay['class'] ?? 'sf-grid '.$sfGrid }}">
+<ul class="{{ $sfDisplay['class'] ?? 'sf-grid '.$sfGrid }}"@if ($sfDisplay['scrolls'] ?? false) tabindex="0" aria-label="{{ is_string($props['heading'] ?? null) && $props['heading'] !== '' ? $props['heading'] : __('storefront.list_rail') }}"@endif>
 @foreach ($items as $card)
 <li>@include('theme::partials.sf-card', [
     'card' => $card,
@@ -52,7 +52,7 @@
 @if ($sfDisplay !== null)
 @include('theme::partials.sf-rail-open', ['display' => $sfDisplay, 'label' => (string) ($props['heading'] ?? '')])
 @endif
-        <ul class="{{ $sfDisplay['class'] ?? 'entry-grid__list' }}">
+        <ul class="{{ $sfDisplay['class'] ?? 'entry-grid__list' }}"@if ($sfDisplay['scrolls'] ?? false) tabindex="0" aria-label="{{ is_string($props['heading'] ?? null) && $props['heading'] !== '' ? $props['heading'] : __('storefront.list_rail') }}"@endif>
             @foreach ($items as $card)
                 <li class="entry-grid__card">
                     @if (! empty($card['image']))
@@ -87,5 +87,9 @@
     @else
         <p class="entry-grid__empty">{{ __('storefront.no_content') }}</p>
     @endif
+@if ($sfDisplay !== null)
+{{-- "View all" only for a block that carries the display group; one saved before it never showed it. --}}
+@include('theme::partials.sf-view-all', ['label' => \App\Modules\Theme\Components\SectionProps::text($props, 'view_all_label'), 'url' => $props['view_all_url'] ?? null, 'show' => $sfDisplay['view_all']])
+@endif
 </section>
 @endif
