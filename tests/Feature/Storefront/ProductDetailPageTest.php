@@ -219,6 +219,13 @@ it('leaves the quote button out when the site has no published contact page', fu
     });
     expect(productHtml())->not->toContain('product__quote');
 
+    app(Tenancy::class)->enter($product->site_id, function (): void {
+        $entry = SiteRoute::query()->where('path', '/lien-he')->firstOrFail()->entry;
+        $entry->update(['status' => 'published']);
+        $entry->translations()->update(['status' => 'draft']);
+    });
+    expect(productHtml())->not->toContain('product__quote');
+
     app(Tenancy::class)->enter($product->site_id, fn () => SiteRoute::query()->where('path', '/lien-he')->delete());
     expect(productHtml())->not->toContain('product__quote');
 });

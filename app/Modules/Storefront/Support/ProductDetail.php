@@ -11,6 +11,7 @@ use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Theme\Chrome\StorefrontChrome;
 use App\Modules\Theme\Components\ButtonLink;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Query\JoinClause;
@@ -72,14 +73,19 @@ final readonly class ProductDetail
     /**
      * The address of the current site's published contact page in this language (the page the
      * site is set up with at /lien-he), built like every storefront link; null when the site has
-     * none, so the quote button is left out. Only this site's routes can match (tenant scope).
+     * none, so the quote button is left out. Reachable as the menu decides it: the page published
+     * and its translation in this language published. Only this site's routes can match (tenant scope).
      */
     public function quoteLink(string $locale): ?string
     {
         $path = SiteRoute::query()
             ->where('locale', $locale)
             ->where('path', '/lien-he')
-            ->whereHas('entry', fn ($query) => $query->where('status', 'published'))
+            ->whereHas('entry', fn (Builder $entry) => $entry
+                ->where('status', 'published')
+                ->whereHas('translations', fn (Builder $translation) => $translation
+                    ->where('locale', $locale)
+                    ->where('status', 'published')))
             ->value('path');
 
         return is_string($path) && $path !== '' ? $this->paths->publicUrl($path, $locale) : null;
