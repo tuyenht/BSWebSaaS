@@ -6,6 +6,7 @@ use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SectionComponent;
 use App\Modules\Theme\Components\SectionProps;
+use App\Modules\Theme\Components\StyleProps;
 use App\Modules\Theme\Theming\SiteSeo;
 use App\Modules\Theme\Theming\StorefrontSettings;
 use Illuminate\Support\Facades\View;
@@ -76,6 +77,13 @@ final class ThemeServiceProvider extends ServiceProvider
             'button_url' => ['type' => 'url', 'action' => 'button_label'],
             'text' => ['type' => 'textarea'],
             'variant' => ['type' => 'enum', 'options' => SectionProps::CTA_VARIANTS, 'default' => 'default'],
+            'button2_label' => ['type' => 'text'],
+            'button2_url' => ['type' => 'url', 'action' => 'button2_label'],
+            // Up to three stats beside the text, with the default look only (the rounded band ignores them).
+            'side' => ['type' => 'enum', 'options' => SectionProps::CTA_SIDES, 'default' => 'none'],
+            'side_items' => ['type' => 'list', 'max' => SectionProps::CTA_SIDE_MAX_ITEMS, 'of' => SectionProps::STAT_ITEM],
+            // A pattern behind the band, from StyleProps::EXTRA_STYLES (the wrapper prints its class).
+            'extra_style' => ['type' => 'enum', 'options' => StyleProps::EXTRA_STYLES, 'default' => 'none'],
         ],
         'contact' => [
             'heading' => ['type' => 'text'],
@@ -190,11 +198,8 @@ final class ThemeServiceProvider extends ServiceProvider
         // value is a whole number counted up on scroll; the suffix ("+", "%") is trimmed to 8 characters at render.
         'stats' => [
             'heading' => ['type' => 'text'],
-            'items' => ['type' => 'list', 'max' => SectionProps::STATS_MAX_ITEMS, 'of' => [
-                'value' => ['type' => 'int', 'min' => 0, 'max' => 999_999_999_999],
-                'suffix' => ['type' => 'text'],
-                'label' => ['type' => 'text'],
-            ]],
+            'items' => ['type' => 'list', 'max' => SectionProps::STATS_MAX_ITEMS, 'of' => SectionProps::STAT_ITEM],
+            'variant' => ['type' => 'enum', 'options' => SectionProps::STATS_VARIANTS, 'default' => 'default'],
         ],
         // Formatted text ("Văn bản có định dạng", ADR-19): `html` is the one prop type printed without
         // escaping, allowed on this block only. Every write runs it through RichTextSanitizer::cms (the

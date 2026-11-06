@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Theme\Components;
 
+use App\Modules\Tenancy\Context\SiteTime;
+use Carbon\CarbonImmutable;
+
 /**
  * Reads the choice props of a section at render time (pure, no query). An `enum` prop picks one look
  * from a fixed list: ValidPageJson refuses any other value at save, and here a stored value that is
@@ -22,6 +25,17 @@ final class SectionProps
     public const array PRODUCT_GRID_VARIANTS = ['grid', 'overlay'];
 
     public const array CTA_VARIANTS = ['default', 'rounded'];
+
+    /** The block beside a call to action: nothing (today's look) or up to three stats (default variant only). */
+    public const array CTA_SIDES = ['none', 'stats'];
+
+    public const int CTA_SIDE_MAX_ITEMS = 3;
+
+    /** Stats look: the plain band, or a card floating up over the band above it. */
+    public const array STATS_VARIANTS = ['default', 'floating'];
+
+    /** What a stat's value means: a counted number, years since a start year, or a year printed as is. Append-only. */
+    public const array STAT_KINDS = ['number', 'years', 'year'];
 
     public const array CONTACT_VARIANTS = ['list', 'cards'];
 
@@ -119,6 +133,71 @@ final class SectionProps
         $value = $props[$key] ?? null;
 
         return is_scalar($value) && trim((string) $value) !== '' ? (string) $value : $fallback;
+    }
+
+    /**
+     * The fields of one stat (a stats block's item and a call to action's side item share them).
+     * `value` of the `years` kind is the start year, of the `year` kind the year itself.
+     */
+    public const array STAT_ITEM = [
+        'kind' => ['type' => 'enum', 'options' => self::STAT_KINDS, 'default' => 'number'],
+        'value' => ['type' => 'int', 'min' => 0, 'max' => 999_999_999_999],
+        'suffix' => ['type' => 'text'],
+        'label' => ['type' => 'text'],
+    ];
+
+    /** The earliest year a `year` / `years` stat accepts. */
+    public const int STAT_YEAR_MIN = 1900;
+
+    /**
+     * The current year in the site's timezone. A page cache added later must not keep a page across
+     * 1 January, because a `years` stat prints this year minus its start year.
+     */
+    public static function currentYear(): int
+    {
+        return (int) CarbonImmutable::now(app(SiteTime::class)->zone())->format('Y');
+    }
+
+    /**
+     * The stats to draw from a list prop, in order, each as {value, number, suffix, label, count}:
+     * `number` prints the value with thousands separators and counts up (`count`); `years` prints
+     * $year minus the start year and `year` the year itself, both plain and with the unit locked.
+     * An item with an unknown kind is a number; a year outside 1900…$year, or an item with neither
+     * a number nor a label, is left out.
+     *
+     * @param  array<array-key, mixed>  $props
+     * @return list<array{value: int|null, number: string, suffix: string, label: string, count: bool}>
+     */
+    public static function statEntries(array $props, string $key, int $max, int $year): array
+    {
+        $stats = [];
+        foreach (self::items($props, $key, $max) as $item) {
+            $kind = self::choice($item, 'kind', self::STAT_KINDS);
+            $value = self::statNumber($item['value'] ?? null);
+            $label = self::text($item, 'label');
+
+            if ($kind !== 'number') {
+                if ($value === null || $value < self::STAT_YEAR_MIN || $value > $year) {
+                    continue;
+                }
+                $stats[] = ['value' => $value, 'number' => (string) ($kind === 'years' ? $year - $value : $value), 'suffix' => '', 'label' => $label, 'count' => false];
+
+                continue;
+            }
+
+            if ($value === null && $label === '') {
+                continue;
+            }
+            $stats[] = [
+                'value' => $value,
+                'number' => $value === null ? '' : number_format($value, 0, ',', '.'),
+                'suffix' => $value === null ? '' : mb_substr(self::text($item, 'suffix'), 0, 8),
+                'label' => $label,
+                'count' => $value !== null,
+            ];
+        }
+
+        return $stats;
     }
 
     /** The most numbers a stats block shows. */

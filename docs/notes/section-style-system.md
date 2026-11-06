@@ -124,6 +124,8 @@ Cơ chế: `list(enum)` — chỉ nhận key đã đăng ký trong theme (`Style
 | `pattern-dots` | họa tiết chấm mờ nền | CSS thuần từ token |
 | `pattern-grid` | họa tiết lưới mờ nền | CSS thuần từ token |
 
+**Đã dựng (một giá trị):** `pattern-cross` — họa tiết chữ thập mờ (CSS thuần, `currentColor` ở độ mờ 10%) sau dải kêu gọi hành động. Cách làm hiện tại: `StyleProps::EXTRA_STYLES` là danh sách cho phép (`none`, `pattern-cross`); khối nào muốn dùng thì khai prop `extra_style` trong schema riêng của mình và có tên trong `StyleProps::EXTRA_STYLE_TYPES` (hiện chỉ `cta`), nên `ValidPageJson` từ chối giá trị lạ lúc lưu; `StyleProps::wrapper()` in lớp `sf-s--x-<giá trị>` cho giá trị có trong danh sách và bỏ qua giá trị lạ lúc vẽ. Thêm một hiệu ứng nữa = thêm vào danh sách + CSS + 1 test; mở cho khối khác = thêm tên khối vào `EXTRA_STYLE_TYPES` và khai prop.
+
 Thêm/bớt hiệu ứng = 1 entry registry + CSS + 1 test (append-only như mọi enum). Hoãn build tới Đợt 2 vì: cần theme utility layer (1a) ổn định trước + tránh chồng lấn `corner/shadow` ngày đầu (§24).
 
 ---

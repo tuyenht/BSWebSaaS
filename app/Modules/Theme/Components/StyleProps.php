@@ -42,6 +42,16 @@ final class StyleProps
 
     public const array MOTION = ['none', 'fade', 'rise'];
 
+    /**
+     * The extra looks a block may add on top (the reserved prop `extra_style`), registered by the theme.
+     * A block opts in by declaring the prop in its own schema (EXTRA_STYLE_TYPES); the wrapper prints
+     * the class of a listed value only. Append-only.
+     */
+    public const array EXTRA_STYLES = ['none', 'pattern-cross'];
+
+    /** The block types whose schema declares `extra_style`. */
+    public const array EXTRA_STYLE_TYPES = ['cta'];
+
     public const string ANCHOR_PATTERN = '/^[a-z0-9-]{1,64}$/D';
 
     /** Ids the storefront layout already uses (the skip link's target, the phone menu): never an anchor. */
@@ -95,10 +105,10 @@ final class StyleProps
      * exactly as before). $imageUrl is `bg_image` already resolved by BlockRenderer; the first block
      * never moves, so the page's main content paints at once.
      *
-     * @param  array<array-key, mixed>  $props
+     * @param  array<array-key, mixed>  $props  $type is the block's type, which decides whether `extra_style` counts
      * @return array{classes: list<string>, id: string|null, image: string|null}|null
      */
-    public static function wrapper(array $props, bool $first, ?string $imageUrl): ?array
+    public static function wrapper(array $props, bool $first, ?string $imageUrl, ?string $type = null): ?array
     {
         $classes = [];
         $bg = SectionProps::choice($props, 'bg', self::BG);
@@ -128,6 +138,13 @@ final class StyleProps
         $motion = $first ? 'none' : SectionProps::choice($props, 'motion', self::MOTION);
         if ($motion !== 'none') {
             $classes[] = "sf-s--m-{$motion}";
+        }
+
+        if ($type !== null && in_array($type, self::EXTRA_STYLE_TYPES, true)) {
+            $extra = SectionProps::choice($props, 'extra_style', self::EXTRA_STYLES);
+            if ($extra !== self::EXTRA_STYLES[0]) {
+                $classes[] = "sf-s--x-{$extra}";
+            }
         }
 
         $anchor = $props['anchor_id'] ?? null;

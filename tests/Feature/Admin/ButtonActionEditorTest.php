@@ -152,23 +152,23 @@ it('finds a page or post by name, ignoring marks, and takes only one of this sit
         actionPage('Tin công ty', '/tin-cong-ty', 'post');
 
         Livewire::actingAs(actionEditor())->test(Editor::class)
-            ->set('blocks', [['type' => 'cta', 'props' => ['button_label' => 'A', 'button_url_do' => ['k' => 'page']]]])
+            ->set('blocks', [['type' => 'about', 'props' => ['cta_label' => 'A', 'cta_url_do' => ['k' => 'page']]]])
             ->assertSee('Tìm trang hoặc bài viết theo tên')
-            ->set('buttonQueries.0-props-button_url', 'lien he')
+            ->set('buttonQueries.0-props-cta_url', 'lien he')
             ->assertSee('Trang · /lien-he')
             ->assertDontSee('Ở mục Liên hệ')
             ->assertDontSee('Tin công ty')
-            ->set('buttonQueries.0-props-button_url', 'không có')
+            ->set('buttonQueries.0-props-cta_url', 'không có')
             ->assertSee('Không thấy trang hay bài viết nào có tên “không có”. Thử gõ ngắn hơn, ví dụ “liên hệ”.')
-            ->call('pickButtonPage', '0.props.button_url', $foreign)
-            ->assertSet('blocks.0.props.button_url_do', ['k' => 'page'])
-            ->call('pickButtonPage', '0.props.button_url', $page->ulid)
-            ->assertSet('blocks.0.props.button_url_do', ['k' => 'page', 'page' => $page->ulid])
+            ->call('pickButtonPage', '0.props.cta_url', $foreign)
+            ->assertSet('blocks.0.props.cta_url_do', ['k' => 'page'])
+            ->call('pickButtonPage', '0.props.cta_url', $page->ulid)
+            ->assertSet('blocks.0.props.cta_url_do', ['k' => 'page', 'page' => $page->ulid])
             ->assertSee('Chọn trang khác')
-            ->call('searchButtonPage', '0.props.button_url')
+            ->call('searchButtonPage', '0.props.cta_url')
             ->assertSee('Giữ trang đang chọn')
             ->assertSee('Địa chỉ trang tự cập nhật khi trang đổi tên, nút không bị hỏng.')
-            ->call('keepButtonPage', '0.props.button_url')
+            ->call('keepButtonPage', '0.props.cta_url')
             ->assertDontSee('Giữ trang đang chọn');
     });
 });

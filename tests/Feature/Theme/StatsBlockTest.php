@@ -90,11 +90,11 @@ describe('render', function (): void {
             ->and(substr_count($html, '<li'))->toBe(2);
     });
 
-    it('caps at eight items and four columns, and escapes text', function (): void {
+    it('caps at eight items, names the column count by the items shown, and escapes text', function (): void {
         $html = statsBlock(['heading' => '<b>Số liệu</b>', 'items' => array_fill(0, 10, ['value' => 3, 'label' => '<i>x</i>'])]);
 
         expect(substr_count($html, '<li'))->toBe(8)
-            ->and($html)->toContain('sf-stats__list--4')
+            ->and($html)->toContain('sf-stats__list--8')
             ->and($html)->toContain('&lt;b&gt;Số liệu&lt;/b&gt;')->not->toContain('<b>Số liệu')
             ->and($html)->toContain('&lt;i&gt;x&lt;/i&gt;');
     });

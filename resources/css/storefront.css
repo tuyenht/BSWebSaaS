@@ -5711,6 +5711,157 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     .sf-stats__list--4 { --stats: 4; }
 }
 
+/* Stats with 5 to 8 numbers: two across on a phone, three (5, 6) or four (7, 8) on a wide screen; a short last row sits centred. */
+.sf-stats__list--5,
+.sf-stats__list--6,
+.sf-stats__list--7,
+.sf-stats__list--8 {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.sf-stats__list--5 > .sf-stat,
+.sf-stats__list--6 > .sf-stat,
+.sf-stats__list--7 > .sf-stat,
+.sf-stats__list--8 > .sf-stat {
+    flex: 0 0 calc((100% - 1.5rem) / 2);
+}
+
+@media (min-width: 40rem) {
+    .sf-stats__list--5 > .sf-stat,
+    .sf-stats__list--6 > .sf-stat {
+        flex-basis: calc((100% - 3rem) / 3);
+    }
+
+    .sf-stats__list--7 > .sf-stat,
+    .sf-stats__list--8 > .sf-stat {
+        flex-basis: calc((100% - 4.5rem) / 4);
+    }
+}
+
+/* Stats, floating look: the band rises over the section above it as a card. */
+.sf-band.sf-stats--floating {
+    position: relative;
+    z-index: 1;
+    margin-top: -2.5rem;
+    padding-inline: 1rem;
+    background: transparent;
+}
+
+.sf-stats--floating > .sf-container {
+    padding-block: 1.5rem;
+    border-radius: 0.5rem;
+    background: var(--color-surface);
+    box-shadow: 0 10px 30px rgb(0 0 0 / 0.12);
+}
+
+/* CTA: a second, outlined button, the stats beside the text and the cross pattern. */
+.cta__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.cta__button.cta__button--outline {
+    background: transparent;
+    border: 1px solid currentColor;
+    color: var(--sch-head, var(--color-surface));
+}
+
+.cta__button.cta__button--outline:hover {
+    background: transparent;
+    border-color: var(--sch-pri-bg, var(--color-primary));
+}
+
+.cta__actions > .cta__button.cta__button--pill {
+    margin-top: 2rem;
+}
+
+.cta.cta--side {
+    padding: 2rem 0;
+    background: transparent;
+    text-align: left;
+}
+
+.cta__split {
+    display: grid;
+    gap: 2rem;
+}
+
+.cta__panel {
+    padding: 2rem;
+    border-radius: 0.5rem;
+    background: var(--sch-bg, var(--color-dark));
+}
+
+.cta__panel .cta__text {
+    margin-inline: 0;
+}
+
+.cta__panel .cta__actions {
+    justify-content: flex-start;
+}
+
+.cta__stats.sf-stats__list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.cta__stats .sf-stat {
+    justify-content: center;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+}
+
+.cta__stats .sf-stat__value {
+    color: var(--color-text-strong);
+    font-size: 1.5rem;
+}
+
+@media (min-width: 64rem) {
+    .cta__split {
+        grid-template-columns: 3fr 2fr;
+        align-items: stretch;
+    }
+
+    .cta__panel {
+        padding: 2.5rem;
+    }
+
+    .cta__stats.sf-stats__list {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .cta__stats .sf-stat__value {
+        font-size: 1.875rem;
+    }
+}
+
+.sf-s--x-pattern-cross :is(.cta:not(.cta--side), .cta__panel) {
+    position: relative;
+    overflow: hidden;
+}
+
+.sf-s--x-pattern-cross :is(.cta:not(.cta--side), .cta__panel)::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0.1;
+    background-image:
+        repeating-linear-gradient(45deg, currentColor 0 1px, transparent 1px 22px),
+        repeating-linear-gradient(-45deg, currentColor 0 1px, transparent 1px 22px);
+    color: var(--sch-head, var(--color-surface));
+    pointer-events: none;
+}
+
+.sf-s--x-pattern-cross :is(.cta:not(.cta--side), .cta__panel) > * {
+    position: relative;
+}
+
 /* ───── Floating contact (theme::partials.floating-contact) ──────────────── */
 /* Round buttons fixed in a corner or along the bottom, or a bottom bar on phones. Every target is
    at least 44 × 44 at every text size; fills come from the page (--fc-fill, contrast-fitted to the
