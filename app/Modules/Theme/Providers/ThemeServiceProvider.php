@@ -61,6 +61,14 @@ final class ThemeServiceProvider extends ServiceProvider
             'image_url' => ['type' => 'image'],
             'cta_label' => ['type' => 'text'],
             'cta_url' => ['type' => 'url', 'action' => 'cta_label'],
+            'variant' => ['type' => 'enum', 'options' => SectionProps::ABOUT_VARIANTS, 'default' => 'default'],
+            'image_focus' => ['type' => 'enum', 'options' => SectionProps::ABOUT_IMAGE_FOCUS, 'default' => 'center'],
+            // Shortcut tiles under the text, typed buttons like the quick links.
+            'links' => ['type' => 'list', 'max' => SectionProps::ABOUT_LINKS_MAX_ITEMS, 'of' => [
+                'icon' => ['type' => 'enum', 'options' => SectionProps::QUICK_LINK_ICONS, 'default' => 'link'],
+                'label' => ['type' => 'text'],
+                'url' => ['type' => 'url', 'action' => 'label'],
+            ]],
         ],
         'partners' => [
             'heading' => ['type' => 'text'],
@@ -92,6 +100,9 @@ final class ThemeServiceProvider extends ServiceProvider
             'phone_label' => ['type' => 'text'],
             'email_label' => ['type' => 'text'],
             'address_label' => ['type' => 'text'],
+            // A phone number or a zalo.me link (the floating Zalo button's own rule); the cell is titled "Zalo".
+            'zalo' => ['type' => 'url', 'zalo' => true],
+            'zalo_label' => ['type' => 'text'],
         ],
         // The title band of an inner page: it carries the page's single h1 (the layout skips its
         // own when this block leads the page). Title defaults to the page title; overlay is the

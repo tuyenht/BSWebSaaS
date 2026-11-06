@@ -20,7 +20,17 @@ final class SectionProps
     /** The band behind a section: the page, the card surface, a light tint or the dark colour. */
     public const array BG = ['none', 'surface', 'tint', 'dark'];
 
-    public const array ENTRY_GRID_VARIANTS = ['list', 'icon-cards', 'project-cards', 'news-cards'];
+    /** The look of an article list; `zigzag` is a row per item with the photo alternating left and right. Append-only. */
+    public const array ENTRY_GRID_VARIANTS = ['list', 'icon-cards', 'project-cards', 'news-cards', 'zigzag'];
+
+    /** About: the plain text beside a photo, or a letter (greeting in bold, the last two paragraphs the signature). Append-only. */
+    public const array ABOUT_VARIANTS = ['default', 'letter'];
+
+    /** Where the about photo is cropped when the frame is shorter than the picture. Append-only. */
+    public const array ABOUT_IMAGE_FOCUS = ['center', 'top', 'bottom'];
+
+    /** How many shortcut tiles an about block holds. */
+    public const int ABOUT_LINKS_MAX_ITEMS = 4;
 
     public const array PRODUCT_GRID_VARIANTS = ['grid', 'overlay'];
 
