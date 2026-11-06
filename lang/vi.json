@@ -1534,7 +1534,7 @@
     "entries.err_block_list_max": "Khối :type có quá nhiều mục. Chỉ giữ tối đa :max mục.",
     "entries.err_block_list_min": "Khối :type cần ít nhất :min mục. Hãy thêm mục hoặc xoá khối này.",
     "entries.err_block_number_invalid": "Khối :type có một số chưa đúng. Chỉ nhập số nguyên, ví dụ 1500000.",
-    "entries.err_block_number_range": "Khối :type có một số ngoài phạm vi: số mục phải từ :min đến :max.",
+    "entries.err_block_number_range": "Khối :type có một số ngoài phạm vi: số này phải từ :min đến :max.",
     "entries.err_block_lines_max": "Khối :type có quá nhiều dòng. Chỉ giữ tối đa :max dòng, mỗi ý một dòng.",
     "entries.err_block_html_invalid": "Không đọc được phần văn bản có định dạng. Hãy soạn lại đoạn văn bản này.",
     "entries.err_block_html_too_long": "Phần văn bản có định dạng quá dài: tối đa :max ký tự. Hãy rút gọn hoặc chia thành hai khối.",
