@@ -399,7 +399,7 @@ describe('zigzag view all', function (): void {
                 $sql = array_column(DB::getQueryLog(), 'query');
                 DB::disableQueryLog();
 
-                return array_values(array_filter($sql, static fn (string $q): bool => str_starts_with($q, 'select * from "entries"')));
+                return array_values(array_filter($sql, static fn (string $q): bool => str_contains($q, 'from "entries"')));
             };
 
             $oldReads = $limits(function () use ($component, $base, &$old): void {
@@ -409,8 +409,8 @@ describe('zigzag view all', function (): void {
 
             // The extra row is read only with the display group: one entries query, limit 3 against limit 2.
             $groupReads = $limits(fn () => $component->data($base + ['limit' => 2, 'layout' => 'auto', 'view_all' => 'auto']));
-            expect($oldReads)->toHaveCount(1)->and($oldReads[0])->toContain('limit 2')->not->toContain('limit 3')
-                ->and($groupReads)->toHaveCount(1)->and($groupReads[0])->toContain('limit 3');
+            expect($oldReads)->toHaveCount(1)->and($oldReads[0])->toMatch('~\\blimit 2\\b~')->not->toMatch('~\\blimit 3\\b~')
+                ->and($groupReads)->toHaveCount(1)->and($groupReads[0])->toMatch('~\\blimit 3\\b~');
 
             $auto = $component->data($base + ['limit' => 2, 'layout' => 'auto', 'view_all' => 'auto']);
             $all = $component->data($base + ['limit' => 3, 'layout' => 'auto', 'view_all' => 'auto']);
@@ -551,7 +551,7 @@ describe('zigzag through the block renderer', function (): void {
         });
 
         // The button, its focus ring and its hover repaint on every dark ground, not only on the dark band.
-        $grounds = '(?=[^{]*\.sf-s--sch-dark)(?=[^{]*\.sf-s--image)(?=[^{]*\.sf-band--dark)';
+        $grounds = '(?=[^{]*\.sf-s--sch-dark)(?=[^{]*\.sf-s--sch-brand)(?=[^{]*\.sf-s--image)(?=[^{]*\.sf-band--dark)';
         foreach (['', ':focus-visible', ':hover'] as $state) {
             expect(preg_match('~'.$grounds.'[^{]*\.sf-zigzag__more'.preg_quote($state, '~').' \{([^}]*)\}~', $css, $rule))->toBe(1, 'dark ground rule for '.$state);
             expect($rule[1])->toMatch($state === ':focus-visible' ? '~outline-color: var\(--sch-head~' : '~background: var\(--sch-pri-(bg|hover)~');
@@ -562,14 +562,18 @@ describe('zigzag through the block renderer', function (): void {
             ->toMatch('~\.sf-zigzag__excerpt \{[^}]*color: var\(--sch-body~');
     });
 
-    it('keeps the button text at 4.5:1 on its fill and the fill at 3:1 on the dark ground and on the photo', function (): void {
+    it('keeps the button text at 4.5:1 on its fill and the fill at 3:1 on the dark and brand sets and on the photo', function (): void {
         $v = app(ThemeResolver::class)->cssVariables();
 
-        expect(ReadableColor::ratio($v['sch-dark-pri-fg'], $v['sch-dark-pri-bg']))->toBeGreaterThanOrEqual(4.5)
-            ->and(ReadableColor::ratio($v['sch-dark-pri-bg'], $v['sch-dark-bg']))->toBeGreaterThanOrEqual(3.0)
-            ->and(ReadableColor::ratio($v['sch-dark-pri-bg'], $v['sch-dark-bg']))->not->toBeNull()
-            ->and(ReadableColor::ratio($v['color-dark'], '#ffffff'))->toBeGreaterThanOrEqual(4.5)
-            ->and(ReadableColor::ratio('#ffffff', $v['color-dark']))->toBeGreaterThanOrEqual(3.0);
+        foreach (['dark', 'brand'] as $set) {
+            expect(ReadableColor::ratio($v["sch-{$set}-pri-fg"], $v["sch-{$set}-pri-bg"]))->toBeGreaterThanOrEqual(4.5, $set)
+                ->and(ReadableColor::ratio($v["sch-{$set}-pri-bg"], $v["sch-{$set}-bg"]))->toBeGreaterThanOrEqual(3.0, $set);
+        }
+
+        // The photo: a white fill with dark text, over the lightest ground the overlay allows
+        // (a white photo under the least overlay, 62% of rgb(9 14 26)), worked out here as #676a71.
+        expect(ReadableColor::ratio($v['color-dark'], '#ffffff'))->toBeGreaterThanOrEqual(4.5)
+            ->and(ReadableColor::ratio('#ffffff', '#676a71'))->toBeGreaterThanOrEqual(3.0);
     });
 });
 
