@@ -5,6 +5,7 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
+use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\RouteSync;
@@ -158,7 +159,8 @@ it('gives scanner paths the plain 404 before reading any of the site’s pages, 
     DB::enableQueryLog();
     try {
         $html = $this->get('http://a.test'.$path)->assertNotFound()->getContent();
-        $sql = implode("\n", array_column(DB::getQueryLog(), 'query'));
+        $queries = array_column(DB::getQueryLog(), 'query');
+        $sql = implode("\n", $queries);
     } finally {
         DB::disableQueryLog();
         DB::flushQueryLog();
@@ -166,11 +168,30 @@ it('gives scanner paths the plain 404 before reading any of the site’s pages, 
 
     expect($html)->toContain('class="error-page"')->not->toContain('sf-404')
         ->and($sql)->not->toContain('"routes"')
-        ->and($sql)->not->toContain('"redirects"')
+        ->and(count(array_filter($queries, fn (string $query): bool => str_contains($query, '"redirects"'))))->toBe(1)
         ->and($sql)->not->toContain('"site_settings"')
-        ->and($sql)->not->toContain('"site_locales"')
         ->and($sql)->not->toContain('"menu_assignments"');
-})->with(['/wp-login.php', '/.env', '/.git/config', '/wp-content/config.php.bak', '/xmlrpc.php']);
+})->with(['/wp-login.php', '/.env', '/.git/config', '/wp-content/config.php.bak', '/xmlrpc.php', '/wp-login%2ephp', '/%2eenv', '/WP-LOGIN%2EPHP']);
+
+it('follows a stored redirect for a path with a dot, with its status and target', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $entry = Entry::query()->firstOrFail();
+        Redirect::query()->create(['locale' => 'vi', 'from_path' => '/brochure.pdf', 'to_path' => '/tai-lieu', 'entry_id' => $entry->id, 'status_code' => 301]);
+        Redirect::query()->create(['locale' => 'vi', 'from_path' => '/cu.html', 'to_path' => '/moi', 'entry_id' => $entry->id, 'status_code' => 302]);
+    });
+
+    $this->get('http://a.test/brochure.pdf')->assertStatus(301)->assertRedirect('http://a.test/tai-lieu');
+    $this->get('http://a.test/cu.html')->assertStatus(302)->assertRedirect('http://a.test/moi');
+});
+
+it('never follows a stored redirect that leaves the site, even for a path with a dot', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $entry = Entry::query()->firstOrFail();
+        Redirect::query()->create(['locale' => 'vi', 'from_path' => '/ra.php', 'to_path' => '//evil.example/x', 'entry_id' => $entry->id, 'status_code' => 301]);
+    });
+
+    $this->get('http://a.test/ra.php')->assertNotFound();
+});
 
 it('keeps the plain 404 with no site’s data on an unknown host', function (): void {
     $html = $this->get('http://chua-co-website.test/khong-co-trang-nay')->assertNotFound()->getContent();

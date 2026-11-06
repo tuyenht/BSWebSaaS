@@ -5,6 +5,7 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
+use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Media\Models\Media;
@@ -183,5 +184,25 @@ it('renders the site’s 404 page with the full chrome within its query budget',
     });
 
     expect($html)->toContain('sf-404')->toContain('sf-header')->toContain('sf-footer')->toContain('Mục 3')
+        ->and($count)->toBeLessThanOrEqual($budget);
+});
+
+it('renders the site’s 404 page within the same query budget when the site names a contact page', function (): void {
+    // The contact page is one more read of the site's settings plus its route lookup.
+    $budget = 15;
+
+    app(Tenancy::class)->enter(1, function (): void {
+        $page = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()]);
+        $page->translations()->create(['locale' => 'vi', 'title' => 'Liên hệ', 'slug' => 'lien-he', 'status' => 'published', 'body' => ['blocks' => []]]);
+        SiteRoute::query()->create(['locale' => 'vi', 'path' => '/lien-he', 'entry_id' => $page->id]);
+        SiteSetting::query()->create(['group_name' => 'catalog', 'key' => 'contact_page', 'value' => ['entry' => $page->ulid]]);
+    });
+
+    $html = '';
+    $count = countQueries(function () use (&$html): void {
+        $html = $this->get('http://a.test/khong-co-trang-nay')->assertNotFound()->getContent();
+    });
+
+    expect($html)->toContain('sf-404__btn--contact')->toContain('href="/lien-he"')
         ->and($count)->toBeLessThanOrEqual($budget);
 });

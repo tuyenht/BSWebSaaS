@@ -78,17 +78,21 @@ final readonly class StorefrontController
     {
         $requestPath = strtolower('/'.ltrim($request->path(), '/'));
 
-        // A path with a dot in it (`/wp-login.php`, `/.env`, `/.git/config`) is never a page of the
-        // site: every slug is lower-case words joined by hyphens, and the sitemap and robots files
-        // have routes of their own. These are scanners, so they get the plain 404 before any of the
-        // site's content, settings or menus is read.
-        abort_if(str_contains($requestPath, '.'), 404);
+        // A path with a dot in it (`/wp-login.php`, `/.env`, `/.git/config`, also `/wp-login%2ephp`)
+        // is never a page of the site: every slug is lower-case words joined by hyphens, and the
+        // sitemap and robots files have routes of their own. These are scanners, so the only thing
+        // looked up for them is a stored redirect (checked with the same call as any other path);
+        // without one they get the plain 404 before any content, settings or menus are read.
+        $dotted = str_contains(rawurldecode($requestPath), '.');
 
         $default = $this->locale->default();
 
         [$locale, $path, $redirectTo] = $this->localeContext($requestPath, $default);
 
         if ($redirectTo !== null) {
+            // A default-locale prefix before a dotted path (`/vi//evil.example/x`) is refused, never rewritten.
+            abort_if($dotted, 404);
+
             return redirect()->to($redirectTo, 301);
         }
 
@@ -96,6 +100,13 @@ final readonly class StorefrontController
         // content locale — storefront routes carry no SetLocale, and app.locale defaults to 'en', so
         // without this a vi site would show English UI strings.
         app()->setLocale($locale);
+
+        if ($dotted) {
+            $redirect = $this->resolver->redirect($locale, $path);
+            abort_unless($redirect instanceof Redirect && SafeLink::isSitePath($redirect->to_path), 404);
+
+            return redirect()->to($redirect->to_path, $redirect->status_code);
+        }
 
         $resolved = $this->resolver->resolve($locale, $path);
 
