@@ -183,14 +183,16 @@ trait EditsTaxonomyTree
      *
      * @throws TaxonomyChangeRejectedException
      */
-    private function template(?string $template): ?string
+    private function template(?string $template, bool $postDetail = false): ?string
     {
         $template = trim((string) $template);
         if ($template === '') {
             return null;
         }
 
-        return TaxonomyRules::template($template) ? $template : throw new TaxonomyChangeRejectedException('template_invalid');
+        $allowed = $postDetail ? TaxonomyRules::detailTemplate($template) : TaxonomyRules::template($template);
+
+        return $allowed ? $template : throw new TaxonomyChangeRejectedException('template_invalid');
     }
 
     /**

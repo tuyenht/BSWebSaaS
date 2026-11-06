@@ -59,7 +59,7 @@ final readonly class CreateTaxonomy
             throw new TaxonomyChangeRejectedException('name_invalid');
         }
         $listTemplate = $this->template($data->listTemplate);
-        $detailTemplate = $this->template($data->detailTemplate);
+        $detailTemplate = $this->template($data->detailTemplate, $vocabulary !== 'product_cat');
 
         return DB::transaction(function () use ($vocabulary, $parent, $translations, $listTemplate, $detailTemplate, $data): Taxonomy {
             $this->lockTree($this->site->id());

@@ -112,4 +112,13 @@ final class TaxonomyRules
     {
         return preg_match(self::TEMPLATE_PATTERN, $template) === 1 && View::exists('theme::layouts.'.$template);
     }
+
+    /** Only these layouts render a post: the list layouts expect a page of cards and the product layout a product. */
+    public const array POST_DETAIL_TEMPLATES = ['post', 'project'];
+
+    /** Whether a post category may take this layout for its posts' detail page (it must also exist in the theme). */
+    public static function detailTemplate(string $template): bool
+    {
+        return in_array($template, self::POST_DETAIL_TEMPLATES, true) && self::template($template);
+    }
 }
