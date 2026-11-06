@@ -474,6 +474,9 @@ final readonly class StorefrontController
         $extra['product'] = [
             'group' => $category?->translationFor($locale)->name ?? '',
             'summary' => trim((string) $translation->summary),
+            'featured' => $product->is_featured,
+            'bestseller' => $product->is_bestseller,
+            'quote' => $this->products->quoteLink($locale),
             'contact' => ProductDetail::contact(is_array($chrome['brand'] ?? null) ? $chrome['brand'] : null),
         ];
         $extra['related'] = $category !== null ? $this->products->related($product, $category, $locale) : [];
