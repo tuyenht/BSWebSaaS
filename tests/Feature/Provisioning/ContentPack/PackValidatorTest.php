@@ -123,11 +123,11 @@ it('refuses a list or post layout that is not a layout of the theme', function (
     expect(implode("\n", cpProblems()))->toContain("tax:post_cat/tin-tuc: {$field} is not a layout name.");
 })->with(['list_template', 'detail_template']);
 
-it('refuses a list layout as the detail layout of a category', function (): void {
-    ContentPacks::item($this->folder, 'taxonomies.json', 'tax:post_cat/tin-tuc', fn (array $item): array => [...$item, 'detail_template' => 'category']);
+it('refuses a layout that cannot render a post as the detail layout of a category', function (string $layout): void {
+    ContentPacks::item($this->folder, 'taxonomies.json', 'tax:post_cat/tin-tuc', fn (array $item): array => [...$item, 'detail_template' => $layout]);
 
-    expect(implode("\n", cpProblems()))->toContain('tax:post_cat/tin-tuc: detail_template must be a detail layout (post, project or product).');
-});
+    expect(implode("\n", cpProblems()))->toContain('tax:post_cat/tin-tuc: detail_template must be a post layout (post or project).');
+})->with(['category', 'product']);
 
 it('writes only the setting groups the loader is meant for', function (string $key): void {
     ContentPacks::edit($this->folder, 'settings.json', fn (array $data): array => ['items' => [...$data['items'], ['key' => $key, 'value' => ['pattern' => 'flat']]]]);

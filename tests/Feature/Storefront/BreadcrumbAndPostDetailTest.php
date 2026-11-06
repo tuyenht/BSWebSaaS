@@ -204,6 +204,26 @@ it('keeps a post cover from competing with a hero that opens the body', function
         ->and($html)->toContain('class="post-cover__img"');
 });
 
+it('keeps one high-priority image whichever body section prints one, and the cover takes it when none does', function (array $blocks, int $coverHigh): void {
+    $site = StorefrontCards::site();
+    app(Tenancy::class)->enter($site, function () use ($blocks): void {
+        $photo = StorefrontCards::media('ong-thep');
+        $category = StorefrontCards::category('Ấn phẩm số hóa', 'an-pham-so-hoa');
+        $post = StorefrontCards::post($category, 'Đề án mùa hè', 'de-an-mua-he', null, ['image_url' => $photo->storage_key]);
+        $withPhoto = array_map(fn (array $block): array => ['type' => $block['type'], 'props' => array_map(fn (mixed $value): mixed => $value === 'PHOTO' ? $photo->id : $value, $block['props'])], $blocks);
+        $post->translations()->update(['body' => ['blocks' => $withPhoto]]);
+    });
+
+    $html = $this->get(BC_HOST.'/an-pham-so-hoa/de-an-mua-he')->assertOk()->getContent();
+
+    expect(substr_count($html, 'fetchpriority="high"'))->toBe(1)
+        ->and(preg_match('#<img class="post-cover__img"[^>]*fetchpriority="high"#', $html))->toBe($coverHigh);
+})->with([
+    'a hero after a text block' => [[['type' => 'richtext', 'props' => ['heading' => 'Ống thép cỡ nhỏ']], ['type' => 'hero', 'props' => ['heading' => 'Ống thép cỡ nhỏ', 'image_url' => 'PHOTO']]], 0],
+    'a first block with a background photo' => [[['type' => 'richtext', 'props' => ['heading' => 'Ống thép cỡ nhỏ', 'bg' => 'image', 'bg_image' => 'PHOTO']]], 0],
+    'a hero with no photo' => [[['type' => 'hero', 'props' => ['heading' => 'Ống thép cỡ nhỏ']]], 1],
+]);
+
 it('links the next older post as previous and the next newer one as next, and none past either end', function (): void {
     ['posts' => $posts] = bcNews();
 

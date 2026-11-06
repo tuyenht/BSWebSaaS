@@ -432,9 +432,10 @@ final readonly class PackValidator
             $template = $item->data[$field] ?? null;
             if ($template !== null && (! is_string($template) || ! TaxonomyRules::template($template))) {
                 $errors[] = "{$item->key}: {$field} is not a layout name.";
-            } elseif ($field === 'detail_template' && is_string($template) && ! in_array($template, ['post', 'project', 'product'], true)) {
-                // The list layouts expect a page of cards, not one record.
-                $errors[] = "{$item->key}: detail_template must be a detail layout (post, project or product).";
+            } elseif ($field === 'detail_template' && is_string($template) && ! in_array($template, ['post', 'project'], true)) {
+                // Only the post route reads it, and only these layouts render a post (the list layouts expect
+                // a page of cards; the product layout expects a product).
+                $errors[] = "{$item->key}: detail_template must be a post layout (post or project).";
             }
         }
     }

@@ -65,6 +65,10 @@ final readonly class PageRenderer
             'sections' => $sections,
             // A page_header band leading the page renders the h1 itself; the layout then skips its own.
             'leadBlock' => $leadBlock,
+            // Whether a section already printed a high-priority image (a hero, about, slider or a
+            // first block's background, wherever it sits): a post's cover then stays at 'eager', so
+            // the page asks for one high-priority image, not two.
+            'bodyHighImage' => str_contains($sections, 'fetchpriority="high"'),
         ] + $extra)->render();
     }
 

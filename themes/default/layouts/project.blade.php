@@ -10,8 +10,8 @@
     $sfPost = is_array($post ?? null) ? $post : [];
     $sfCover = is_array($sfPost['cover'] ?? null) ? $sfPost['cover'] : null;
     $sfOwnBand = ($leadBlock ?? null) !== 'page_header';
-    // A hero or about section opening the body already prints the page's one high-priority image.
-    $sfCoverPriority = in_array($leadBlock ?? null, ['hero', 'about'], true) ? 'eager' : 'high';
+    // A body section that already prints a high-priority image keeps the page at one.
+    $sfCoverPriority = ($bodyHighImage ?? false) ? 'eager' : 'high';
     $sfRelated = $related ?? [];
     $sfAllUrl = isset($category) ? \App\Modules\Shared\Support\SafeLink::href($category['url'] ?? null) : null;
 @endphp
