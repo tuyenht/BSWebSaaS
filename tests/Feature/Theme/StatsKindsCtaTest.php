@@ -291,12 +291,30 @@ describe('stats floating card', function (): void {
             ->and($darkSet)->toContain('sf-s--sch-dark')->toContain('sf-stats--floating');
 
         // The card is white, so whatever the band or set gives is reset inside it.
-        $card = kindsRule('.sf-stats--floating > .sf-container');
+        $card = kindsRule('.sf-band.sf-stats--floating > .sf-container');
         expect($card)->toContain('background: var(--color-surface)')->toContain('--sch-head: var(--color-text-strong)')
             ->toContain('--sch-body: var(--color-text)')->toContain('color: var(--color-text)')
             ->and((string) file_get_contents(base_path('resources/css/storefront.css')))
-            ->toContain(".sf-stats--floating .sf-section-head__title,\n.sf-stats--floating .sf-stat__value {\n    color: var(--color-text-strong);")
-            ->toContain(".sf-stats--floating .sf-section-head__text,\n.sf-stats--floating .sf-stat__label {\n    color: var(--color-text);");
+            ->toContain(".sf-band.sf-stats--floating .sf-section-head__title,\n.sf-band.sf-stats--floating .sf-stat__value {\n    color: var(--color-text-strong);")
+            ->toContain(".sf-band.sf-stats--floating .sf-section-head__text,\n.sf-band.sf-stats--floating .sf-stat__label {\n    color: var(--color-text);");
+    });
+
+    it('keeps the card\'s selectors above the dark band rules and the width choices, edge to edge', function (): void {
+        $css = (string) file_get_contents(base_path('resources/css/storefront.css'));
+        $card = kindsRule('.sf-band.sf-stats--floating > .sf-container');
+
+        // Three classes (0,3,0) beat `.sf-band--dark .sf-stat__value` (0,2,0) whatever the source order.
+        expect($card)->toContain('padding-inline: 0')->toContain('max-width: 64rem')
+            ->and($css)->toContain(".sf-s--w-narrow .sf-band.sf-stats--floating > .sf-container {\n    max-width: 48rem;")
+            ->toContain(".sf-s--w-full .sf-band.sf-stats--floating > .sf-container {\n    max-width: none;")
+            ->not->toMatch('/^\.sf-stats--floating [^{]*(sf-stat__value|sf-section-head__title)/m');
+    });
+
+    it('lays the floating card out two by two for 2 and 4 items and three across for 3, as the board', function (): void {
+        $css = (string) file_get_contents(base_path('resources/css/storefront.css'));
+
+        expect($css)->toContain(".sf-stats--floating .sf-stats__list--2,\n.sf-stats--floating .sf-stats__list--4:not(:has(> :nth-child(5))) {\n    grid-template-columns: repeat(2, minmax(0, 1fr));")
+            ->toContain(".sf-stats--floating .sf-stats__list--3 {\n    grid-template-columns: repeat(3, minmax(0, 1fr));");
     });
 
     it('lets the card overlap the block above it instead of keeping the band\'s top padding', function (): void {

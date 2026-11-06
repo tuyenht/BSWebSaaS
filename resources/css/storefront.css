@@ -5758,10 +5758,11 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     background: transparent;
 }
 
-.sf-stats--floating > .sf-container {
+.sf-band.sf-stats--floating > .sf-container {
     --sch-head: var(--color-text-strong);
     --sch-body: var(--color-text);
     max-width: 64rem;
+    padding-inline: 0;
     overflow: hidden;
     border-radius: 1rem;
     background: var(--color-surface);
@@ -5769,24 +5770,43 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     color: var(--color-text);
 }
 
-.sf-stats--floating .sf-section-head {
+/* The editor's width choice still works on the card (the default stays 64rem). */
+.sf-s--w-narrow .sf-band.sf-stats--floating > .sf-container {
+    max-width: 48rem;
+}
+
+.sf-s--w-full .sf-band.sf-stats--floating > .sf-container {
+    max-width: none;
+}
+
+.sf-band.sf-stats--floating .sf-section-head {
     margin-block: 0;
     padding: 1.5rem 1rem;
 }
 
-.sf-stats--floating .sf-section-head__title,
-.sf-stats--floating .sf-stat__value {
+.sf-band.sf-stats--floating .sf-section-head__title,
+.sf-band.sf-stats--floating .sf-stat__value {
     color: var(--color-text-strong);
 }
 
-.sf-stats--floating .sf-section-head__text,
-.sf-stats--floating .sf-stat__label {
+.sf-band.sf-stats--floating .sf-section-head__text,
+.sf-band.sf-stats--floating .sf-stat__label {
     color: var(--color-text);
 }
 
 .sf-stats--floating .sf-stats__list {
     gap: 1px;
     background: color-mix(in srgb, var(--color-text) 15%, var(--color-surface));
+}
+
+/* A phone, as the board draws it: 1 to 3 items in one row, 4 items two by two (5 to 8 keep their own layout). */
+.sf-stats--floating .sf-stats__list--2,
+.sf-stats--floating .sf-stats__list--4:not(:has(> :nth-child(5))) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.sf-stats--floating .sf-stats__list--3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .sf-stats--floating .sf-stat {
@@ -5798,6 +5818,10 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 @media (min-width: 40rem) {
     .sf-stats--floating .sf-stat {
         padding: 1.5rem 1rem;
+    }
+
+    .sf-stats--floating .sf-stats__list--4:not(:has(> :nth-child(5))) {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 }
 

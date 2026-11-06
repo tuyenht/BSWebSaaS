@@ -88,7 +88,7 @@ final class StyleProps
 
     /**
      * Names a block's own schema may never declare: the props above, the ones reserved for later
-     * (overlay_tone, divider_top/bottom, border, motion_stagger, extra_style) and the editor's own
+     * (overlay_tone, divider_top/bottom, border, motion_stagger) and the editor's own
      * state (ink, spacing_split). page_header and hero_slider had their own `overlay` (how dark their
      * photo is, a number) before; schemaFor() keeps theirs, and the wrapper photo is not offered there.
      */
