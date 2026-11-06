@@ -138,9 +138,12 @@ final class GeneralSettingsStore
         $orNull = static fn (mixed $value): ?string => is_string($value) && trim($value) !== '' ? trim($value) : null;
 
         DB::transaction(function () use ($i18n, $shared, $default, $orNull): void {
+            // The brand row is written back whole: lock it before anything reads it (the shown
+            // identity below includes it), so a brand image save at the same time waits instead of
+            // being undone.
+            $brandRow = SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->lockForUpdate()->first();
             $text = static fn (mixed $value): string => is_scalar($value) ? trim((string) $value) : '';
             $shown = app(SiteIdentity::class)->for($default) ?? [];   // read before anything is written
-            $brandRow = SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->first();
             $brand = is_array($brandRow?->value) ? $brandRow->value : [];
 
             $profile = SiteProfile::query()->firstOrNew();

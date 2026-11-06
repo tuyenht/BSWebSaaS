@@ -46,6 +46,11 @@ final class ResetSettingsSection
 
         return DB::transaction(function () use ($section, $definition): array {
             $undo = ['section' => $section, 'settings' => [], 'profile' => [], 'translations' => [], 'brand' => []];
+            // The brand row is written back whole: lock it first, then read it (below), so a save
+            // running at the same time waits instead of being undone.
+            $brandRow = $definition['brand_keys'] !== []
+                ? SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->lockForUpdate()->first()
+                : null;
 
             foreach ($definition['settings'] as [$group, $key]) {
                 $row = SiteSetting::query()->where('group_name', $group)->where('key', $key)->first();
@@ -73,8 +78,7 @@ final class ResetSettingsSection
             }
 
             if ($definition['brand_keys'] !== []) {
-                $brandRow = SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->first();
-                $brand = is_array($brandRow?->value) ? $brandRow->value : [];
+                $brand = Cast::arr($brandRow?->value);
                 $undo['brand'] = array_intersect_key($brand, array_flip($definition['brand_keys']));
                 if ($brandRow !== null && $undo['brand'] !== []) {
                     $brandRow->value = array_diff_key($brand, $undo['brand']);
@@ -107,6 +111,12 @@ final class ResetSettingsSection
         $brandValues = is_array($undo['brand'] ?? null) ? $undo['brand'] : [];
 
         DB::transaction(function () use ($definition, $settings, $columns, $texts, $brandValues): void {
+            // The brand row is written back whole: lock it first, then read it (below).
+            $restore = array_intersect_key($brandValues, array_flip($definition['brand_keys']));
+            $brandRow = $restore !== []
+                ? SiteSetting::query()->lockForUpdate()->firstOrNew(['group_name' => 'general', 'key' => 'brand'])
+                : null;
+
             foreach ($definition['settings'] as [$group, $key]) {
                 if (! array_key_exists("{$group}.{$key}", $settings)) {
                     continue;
@@ -146,9 +156,7 @@ final class ResetSettingsSection
                 }
             }
 
-            $restore = array_intersect_key($brandValues, array_flip($definition['brand_keys']));
-            if ($restore !== []) {
-                $brandRow = SiteSetting::query()->firstOrNew(['group_name' => 'general', 'key' => 'brand']);
+            if ($brandRow !== null) {
                 $brandRow->value = [...Cast::arr($brandRow->getAttribute('value')), ...$restore];
                 $brandRow->save();
             }

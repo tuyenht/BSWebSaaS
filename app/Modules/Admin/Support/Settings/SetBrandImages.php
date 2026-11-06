@@ -72,16 +72,20 @@ final class SetBrandImages
         }
 
         DB::transaction(function () use ($ids): void {
+            // The brand row is written back whole: lock it first, then read it, so a save running
+            // at the same time (here, the general section, a reset) waits instead of being undone.
+            $brandRow = SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->lockForUpdate()->first();
+
             $profile = SiteProfile::query()->firstOrNew();
             foreach ($ids as $slot => $id) {
                 $profile->setAttribute(SiteProfile::IMAGE_COLUMNS[$slot], $id);
             }
 
-            $brandRow = SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->first();
-            $legacy = array_intersect(array_keys($ids), self::LEGACY_SLOTS);
+            $brand = Cast::arr($brandRow?->value);   // a value that is not a list of keys holds no URL
+            $legacy = array_flip(array_intersect(array_keys($ids), self::LEGACY_SLOTS));
             $legacyRemoved = false;
-            if ($brandRow !== null && array_intersect_key($brandRow->value, array_flip($legacy)) !== []) {
-                $brandRow->value = array_diff_key($brandRow->value, array_flip($legacy));
+            if ($brandRow !== null && array_intersect_key($brand, $legacy) !== []) {
+                $brandRow->value = array_diff_key($brand, $legacy);
                 $brandRow->save();
                 $legacyRemoved = true;
             }

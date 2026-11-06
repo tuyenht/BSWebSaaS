@@ -1,15 +1,20 @@
 <?php
 
+use App\Modules\Admin\Support\GeneralSettingsStore;
 use App\Modules\Admin\Support\MediaUsageLocator;
 use App\Modules\Admin\Support\Settings\ResetSettingsSection;
 use App\Modules\Admin\Support\Settings\SetBrandImages;
 use App\Modules\Admin\Support\Settings\SettingsChangeRejected;
 use App\Modules\Admin\Support\Settings\SettingsStamp;
 use App\Modules\Admin\Support\SettingsRepository;
+use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Storefront\Support\BrandImages;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -69,6 +74,28 @@ function brandProfile(int $siteId = 1): array
 function brandHome(): string
 {
     return (string) test()->get('http://a.test/')->assertOk()->getContent();
+}
+
+/**
+ * The queries a call runs that name the general.brand row, in the order they ran.
+ *
+ * @return list<string>
+ */
+function brandRowQueries(Closure $call): array
+{
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+    try {
+        $call();
+        $log = DB::getQueryLog();
+    } finally {
+        DB::disableQueryLog();
+        DB::flushQueryLog();
+    }
+
+    $named = array_filter($log, fn (array $query): bool => str_contains($query['query'], 'site_settings') && in_array('brand', $query['bindings'], true));
+
+    return array_values(array_map(fn (array $query): string => $query['query'], $named));
 }
 
 it('keeps every page byte for byte when the fill command records the ids of the old brand URLs', function (): void {
@@ -297,4 +324,65 @@ it('clears an image when its picture is purged, through the foreign key', functi
     app(Tenancy::class)->enter(1, fn () => Media::query()->whereKey($logo->id)->first()->forceDelete());
 
     expect(brandProfile()['logo_media_id'])->toBeNull()->and(brandProfile()['logo_dark_media_id'])->toBeNull();
+});
+
+it('shows nothing for a profile image that names another site\'s picture', function (): void {
+    $mine = brandMedia(1, 'logo');
+    $theirs = brandMedia(2, 'theirs');
+    app(Tenancy::class)->enter(1, fn () => SiteProfile::query()->create(['brand_name' => 'Ở xưởng Bảo Hà']));
+    // The FK cannot tell sites apart: an id written past the settings screen may name any media row.
+    DB::connection('pgsql_admin')->table('site_profiles')->where('site_id', 1)
+        ->update(['logo_media_id' => $theirs->id, 'favicon_media_id' => $mine->id]);
+
+    $images = app(Tenancy::class)->enter(1, fn () => app(BrandImages::class)->for(['media_ids' => ['logo' => $theirs->id, 'favicon' => $mine->id]]));
+    expect($images['logo'])->toBeNull()
+        ->and($images['logo_dark'])->toBeNull()
+        ->and($images['favicon'])->toContain($mine->storage_key);
+
+    $html = brandHome();
+    expect($html)->not->toContain($theirs->storage_key)
+        ->not->toContain('sf-bar__logo')
+        ->toContain($mine->storage_key);
+});
+
+it('shows the old brand URLs on a page in another language too', function (): void {
+    brandSetting(1, ['name' => 'Ở xưởng Bảo Hà', 'logo' => 'https://old.test/logo.png', 'favicon' => 'https://old.test/fav.png']);
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteLocale::query()->create(['locale' => 'en', 'is_default' => false, 'enabled' => true, 'is_public' => true]);
+        $entry = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()]);
+        $body = fn (string $heading): array => ['blocks' => [['type' => 'hero', 'props' => ['heading' => $heading]]]];
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'Ở đây có cà phê', 'slug' => 'o-day', 'status' => 'published', 'body' => $body('Ở đây có cà phê')]);
+        $entry->translations()->create(['locale' => 'en', 'title' => 'About', 'slug' => 'about', 'status' => 'published', 'body' => $body('About')]);
+        SiteRoute::query()->create(['locale' => 'vi', 'path' => '/o-day', 'entry_id' => $entry->id]);
+        SiteRoute::query()->create(['locale' => 'en', 'path' => '/about', 'entry_id' => $entry->id]);
+    });
+
+    expect($this->get('http://a.test/en/about')->assertOk()->getContent())
+        ->toContain('src="https://old.test/logo.png"')
+        ->toContain('<link rel="icon" href="https://old.test/fav.png"');
+});
+
+it('locks the brand row before reading it, in every save that writes it back', function (): void {
+    $logo = brandMedia(1, 'logo');
+    $this->actingAs(brandAdmin());
+    brandSetting(1, ['name' => 'Ở xưởng Bảo Hà', 'logo' => 'https://old.test/logo.png', 'favicon' => 'https://old.test/fav.png']);
+    // The row is written back whole: a plain read first would let a save running at the same time
+    // be undone by this one. Postgres takes the row lock with the FOR UPDATE read itself.
+    $locksFirst = fn (array $queries) => expect($queries)->not->toBeEmpty()
+        ->and($queries[0])->toEndWith('for update');
+
+    app(Tenancy::class)->enter(1, function () use ($logo, $locksFirst): void {
+        $locksFirst(brandRowQueries(fn () => app(SetBrandImages::class)->handle(['logo' => $logo->storage_key])));
+
+        $store = app(GeneralSettingsStore::class);
+        ['i18n' => $i18n, 'shared' => $shared] = $store->load();
+        $locksFirst(brandRowQueries(fn () => $store->save($i18n, $shared)));
+
+        $undo = [];
+        $locksFirst(brandRowQueries(function () use (&$undo): void {
+            $undo = app(ResetSettingsSection::class)->reset('brand_images');
+        }));
+        expect($undo['brand'])->toBe(['favicon' => 'https://old.test/fav.png']);   // so undo writes the row back too
+        $locksFirst(brandRowQueries(fn () => app(ResetSettingsSection::class)->undo($undo)));
+    });
 });

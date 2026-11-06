@@ -25,8 +25,11 @@ use Illuminate\Support\Facades\DB;
  * Grants: the app role's rights are on whole tables (0000_01_01_000100), and a column added to a
  * table carries them, so app_user reads and writes the new columns with nothing granted here.
  *
- * Locks: each table changes in its own short transaction, which gives up after 5s rather than queue
- * requests behind it. The FKs are added NOT VALID and validated afterwards, each in its own
+ * Locks: every storefront request reads site_profiles, so no step holds its lock while it waits for
+ * another table's. Each step is its own short transaction that gives up after 5s rather than queue
+ * requests behind it: first the new columns of a table (with the check above), committed at once;
+ * then each FK on its own, added NOT VALID (it locks the table and the one it points at, media or
+ * users, and scans nothing); last each FK is validated outside any transaction, in its own
  * statement, so the scan of existing rows holds no lock that blocks reads or writes. Every step is
  * guarded (IF NOT EXISTS, a catalog check per constraint), so a run that stops half way can be
  * repeated. down() drops what up() added (the two old image columns stay, without their FKs).
@@ -56,6 +59,7 @@ return new class extends Migration
             return;
         }
 
+        // The columns first, committed at once: this step locks site_profiles alone.
         $this->briefly(function (): void {
             DB::statement(<<<'SQL'
                 ALTER TABLE site_profiles
@@ -72,17 +76,16 @@ return new class extends Migration
                       AND NOT EXISTS (SELECT 1 FROM media m WHERE m.id = p.{$column} AND m.site_id = p.site_id)
                     SQL);
             }
-
-            foreach (self::IMAGE_FKS as $column => $name) {
-                $this->addConstraint('site_profiles', $name, "FOREIGN KEY ({$column}) REFERENCES media (id) ON DELETE SET NULL");
-            }
-            $this->addConstraint('site_profiles', self::SAVED_BY_FKS['site_profiles'], 'FOREIGN KEY (updated_by) REFERENCES users (id) ON DELETE SET NULL');
         });
+        $this->briefly(fn () => DB::statement('ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS updated_by bigint NULL'));
 
-        $this->briefly(function (): void {
-            DB::statement('ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS updated_by bigint NULL');
-            $this->addConstraint('site_settings', self::SAVED_BY_FKS['site_settings'], 'FOREIGN KEY (updated_by) REFERENCES users (id) ON DELETE SET NULL');
-        });
+        // Then each FK in its own step: it waits for its two tables only, and for 5s at most.
+        foreach (self::IMAGE_FKS as $column => $name) {
+            $this->briefly(fn () => $this->addConstraint('site_profiles', $name, "FOREIGN KEY ({$column}) REFERENCES media (id) ON DELETE SET NULL"));
+        }
+        foreach (self::SAVED_BY_FKS as $table => $name) {
+            $this->briefly(fn () => $this->addConstraint($table, $name, 'FOREIGN KEY (updated_by) REFERENCES users (id) ON DELETE SET NULL'));
+        }
 
         foreach (self::IMAGE_FKS as $name) {
             DB::statement('ALTER TABLE site_profiles VALIDATE CONSTRAINT '.$name);
