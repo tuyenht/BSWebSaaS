@@ -6,6 +6,9 @@
     'heading' => \App\Modules\Theme\Components\SectionProps::text($props, 'heading'),
     'description' => \App\Modules\Theme\Components\SectionProps::text($props, 'description'),
 ])
+@php
+    $sfZSeen = request()->attributes->get('sf_zigzag_ids', []);
+@endphp
 @if (count($items) > 0)
 <ol class="sf-zigzag__list">
 @foreach ($items as $card)
@@ -14,8 +17,23 @@
     $sfZHasImage = \App\Modules\Shared\Support\SafeLink::href($card['image'] ?? null) !== null;
     $sfZHasMedia = $sfZHasImage || ($card['icon'] ?? '') !== '';
     $sfZNo = sprintf('%02d', $loop->iteration);
+    // The row's anchor is the entry's slug (the last segment of its public path), made unique on the page.
+    $sfZId = preg_replace('/[^\p{L}\p{N}_-]/u', '', basename((string) parse_url((string) ($card['url'] ?? ''), PHP_URL_PATH)));
+    if ($sfZId !== '' && $sfZId !== null) {
+        $sfZBase = $sfZId;
+        for ($sfZN = 2; isset($sfZSeen[$sfZId]); $sfZN++) {
+            $sfZId = $sfZBase.'-'.$sfZN;
+        }
+        $sfZSeen[$sfZId] = true;
+    }
+    $sfZHasId = $sfZId !== '' && $sfZId !== null;
+    $sfZClass = 'sf-zigzag__row'.($loop->even ? ' sf-zigzag__row--flip' : '').($sfZHasMedia ? '' : ' sf-zigzag__row--text');
 @endphp
-<li class="sf-zigzag__row{{ $loop->even ? ' sf-zigzag__row--flip' : '' }}{{ $sfZHasMedia ? '' : ' sf-zigzag__row--text' }}">
+@if ($sfZHasId)
+<li id="{{ $sfZId }}" class="{{ $sfZClass }}">
+@else
+<li class="{{ $sfZClass }}">
+@endif
 @if ($sfZHasMedia)
 <div class="sf-zigzag__media">
 @if ($sfZHasImage)
@@ -41,10 +59,13 @@
 </li>
 @endforeach
 </ol>
+@php
+    request()->attributes->set('sf_zigzag_ids', $sfZSeen);
+@endphp
 @else
 <p class="sf-empty">{{ __('storefront.no_content') }}</p>
 @endif
-@include('theme::partials.sf-view-all', ['label' => \App\Modules\Theme\Components\SectionProps::text($props, 'view_all_label'), 'url' => $props['view_all_url'] ?? null, 'show' => true])
+@include('theme::partials.sf-view-all', ['label' => \App\Modules\Theme\Components\SectionProps::text($props, 'view_all_label'), 'url' => $props['view_all_url'] ?? null, 'show' => ($display ?? null)['view_all'] ?? true])
 @endcomponent
 @elseif (in_array($variant ?? 'list', ['icon-cards', 'project-cards', 'news-cards', 'overlay'], true))
 {{-- A card look (opt-in through `variant`, SectionProps): the shared band, head, card and

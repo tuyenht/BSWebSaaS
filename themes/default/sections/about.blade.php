@@ -11,7 +11,7 @@
 @php
     $sfLetter = \App\Modules\Theme\Components\SectionProps::choice($props, 'variant', \App\Modules\Theme\Components\SectionProps::ABOUT_VARIANTS) === 'letter';
     $sfFocus = ['top' => ' about__image--top', 'bottom' => ' about__image--bottom'][\App\Modules\Theme\Components\SectionProps::choice($props, 'image_focus', \App\Modules\Theme\Components\SectionProps::ABOUT_IMAGE_FOCUS)] ?? '';
-    $sfParagraphs = array_values(array_filter((array) ($props['paragraphs'] ?? []), 'is_string'));
+    $sfParagraphs = array_values(array_filter((array) ($props['paragraphs'] ?? []), fn ($sfP) => is_string($sfP) && trim($sfP) !== ''));
     $sfSigned = $sfLetter && count($sfParagraphs) >= 3;
     $sfBody = $sfSigned ? array_slice($sfParagraphs, 0, -2) : $sfParagraphs;
     $sfSignature = $sfSigned ? array_slice($sfParagraphs, -2) : [];

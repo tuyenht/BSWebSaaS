@@ -6772,8 +6772,19 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     color: var(--sch-head, var(--color-text-strong));
 }
 
+.about--letter .about__heading {
+    display: block;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--sch-rule, var(--color-primary));
+}
+
+.about--letter .about__paragraph {
+    margin-bottom: 1.5rem;
+}
+
 .about__signature {
-    margin-top: 1.5rem;
+    margin-top: 0;
     padding-top: 1rem;
     border-top: 1px solid color-mix(in srgb, var(--color-text) 20%, transparent);
 }
@@ -6813,8 +6824,9 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
         order: -1;
         align-self: start;
         position: sticky;
-        top: 5rem;
+        top: 7.5rem;
         height: 100%;
+        min-height: 20rem;
         max-height: 42rem;
         aspect-ratio: auto;
     }
@@ -6844,11 +6856,22 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     padding: 0.75rem;
     border: 1px solid transparent;
     border-radius: 0.5rem;
+    box-shadow: 0 1px 2px 0 color-mix(in srgb, var(--color-dark) 8%, transparent);
     background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
     color: var(--color-text-strong);
     text-align: center;
     text-decoration: none;
     transition: background 0.2s, border-color 0.2s;
+}
+
+.about__link-icon {
+    display: inline-flex;
+    color: color-mix(in srgb, var(--color-text) 85%, white);
+    transition: color 0.2s;
+}
+
+.about__link--primary .about__link-icon {
+    color: inherit;
 }
 
 .about__link--primary {
@@ -6871,6 +6894,10 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 @media (hover: hover) {
     .about__link:hover {
         border-color: var(--color-primary);
+    }
+
+    .about__link:not(.about__link--primary):hover .about__link-icon {
+        color: var(--color-primary-text);
     }
 
     .about__link--primary:hover {
@@ -6901,7 +6928,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 /* ───── Article list: alternating rows ──────────────────────────────────── */
 .sf-zigzag__list {
     display: grid;
-    gap: 2.5rem;
+    gap: 3rem;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -6910,7 +6937,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 .sf-zigzag__row {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: 1.5rem;
+    gap: 2.5rem;
     align-items: center;
 }
 
@@ -6919,9 +6946,9 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     min-width: 0;
     overflow: hidden;
     border-radius: 0.5rem;
-    aspect-ratio: 8 / 5;
+    height: 12rem;
     background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
-    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.12), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    box-shadow: 0 25px 50px -12px color-mix(in srgb, var(--color-dark) 25%, transparent);
 }
 
 .sf-zigzag__img {
@@ -6951,8 +6978,8 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     left: 1rem;
     padding: 0.25rem 0.75rem;
     border-radius: 9999px;
-    background: var(--color-dark, #0f172a);
-    color: #fbbf24;
+    background: color-mix(in srgb, var(--color-dark) 80%, transparent);
+    color: var(--color-primary-on-dark, var(--color-on-dark, #fff));
     font-size: 0.75rem;
     font-weight: 700;
 }
@@ -6968,8 +6995,12 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 }
 
 .sf-zigzag__title {
+    display: inline-block;
+    max-width: 100%;
     margin: 0 0 1rem;
-    color: var(--color-text-strong);
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--sch-rule, var(--color-primary));
+    color: var(--sch-head, var(--color-text-strong));
     font-size: clamp(1.25rem, 2.5vw, 1.875rem);
     font-weight: 700;
     line-height: 1.25;
@@ -6977,23 +7008,31 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 }
 
 .sf-zigzag__excerpt {
-    margin: 0 0 1.5rem;
-    color: var(--color-text);
-    font-size: 1.0625rem;
+    margin: 0 0 2rem;
+    color: var(--sch-body, var(--color-text));
+    font-size: 1.125rem;
     line-height: 1.7;
+}
+
+.sf-band--dark .sf-zigzag__title {
+    color: var(--sch-head, var(--color-surface));
+}
+
+.sf-band--dark .sf-zigzag__excerpt {
+    color: var(--sch-body, var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white)));
 }
 
 .sf-zigzag__more {
     display: inline-flex;
     align-items: center;
     min-height: 2.75rem;
-    padding: 0.5rem 1.5rem;
+    padding: 0.75rem 1.5rem;
     border-radius: 0.375rem;
-    background: var(--sch-pri-bg, var(--color-primary));
-    color: var(--sch-pri-fg, var(--color-on-primary));
+    background: var(--color-dark);
+    color: var(--color-on-dark, #fff);
     font-weight: 700;
     text-decoration: none;
-    transition: background 0.2s;
+    transition: background 0.3s;
 }
 
 .sf-zigzag__more:focus-visible {
@@ -7001,20 +7040,43 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     outline-offset: 2px;
 }
 
+/* On a dark band the dark button would vanish: it takes the block's primary pair instead. */
+.sf-band--dark .sf-zigzag__more {
+    background: var(--sch-pri-bg, var(--color-primary));
+    color: var(--sch-pri-fg, var(--color-on-primary));
+}
+
+.sf-band--dark .sf-zigzag__more:focus-visible {
+    outline-color: var(--color-on-dark, #fff);
+}
+
 @media (hover: hover) {
     .sf-zigzag__more:hover {
+        background: color-mix(in srgb, var(--color-dark) 85%, white);
+    }
+
+    .sf-band--dark .sf-zigzag__more:hover {
         background: var(--sch-pri-hover, var(--color-primary-hover));
     }
 }
 
-@media (min-width: 768px) {
+@media (min-width: 640px) {
     .sf-zigzag__list {
-        gap: 4rem;
+        gap: 5rem;
+    }
+
+    .sf-zigzag__media {
+        height: 16rem;
+    }
+}
+
+@media (min-width: 768px) {
+    .sf-zigzag__media {
+        height: 20rem;
     }
 
     .sf-zigzag__row {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 3rem;
     }
 
     .sf-zigzag__row--flip .sf-zigzag__media {
@@ -7023,5 +7085,11 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 
     .sf-zigzag__row--text {
         grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (min-width: 1024px) {
+    .sf-zigzag__row {
+        gap: 4rem;
     }
 }
