@@ -17,9 +17,12 @@ use App\Modules\Cms\Routing\ResolvedContent;
 use App\Modules\Cms\Routing\ResolvedProduct;
 use App\Modules\Cms\Routing\RouteResolver;
 use App\Modules\Cms\Support\EntryViewCounter;
+use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\SafeLink;
+use App\Modules\Storefront\Support\Breadcrumbs;
 use App\Modules\Storefront\Support\ListPage;
+use App\Modules\Storefront\Support\PostDetail;
 use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Theme\Chrome\FloatingContact;
@@ -29,6 +32,8 @@ use App\Modules\Theme\Rendering\PageRenderer;
 use App\Modules\Theme\Rendering\TemplateResolver;
 use App\Modules\Theme\Theming\StorefrontSettings;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\Query\JoinClause;
 use Illuminate\Http\Request;
@@ -55,6 +60,8 @@ final readonly class StorefrontController
         private StorefrontSettings $settings,
         private ListPage $lists,
         private TemplateResolver $templates,
+        private Breadcrumbs $crumbs,
+        private PostDetail $posts,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -205,28 +212,35 @@ final readonly class StorefrontController
             $extra['ogImage'] = $this->media->url($metaImageKey, 1280);
         }
 
+        // The breadcrumb trail (Home → … → self) feeds both the head's BreadcrumbList JSON-LD and
+        // the on-page breadcrumb, so the two always match. The home page has none.
+        $self = $this->crumbs->crumb($content->translation->title, $this->paths->publicUrl($path, $locale));
+
         // A post is shown under its primary category: the category drives its layout
-        // (detail_template) and a breadcrumb back to the category list. Pages skip this.
-        // The Cms lookup lives here so the Theme module stays Cms-agnostic.
+        // (detail_template), its breadcrumb (the category and the ones above it) and the previous,
+        // next and related posts. The band reads its dates, excerpt and cover photo. Pages get
+        // their parent pages as breadcrumb levels instead. The Cms lookups live here so the Theme
+        // module stays Cms-agnostic.
         if ($entry->type === 'post') {
             $category = $entry->primaryCategory();
             $categoryTemplate = $category?->detail_template;
+            $extra['post'] = $this->posts->band($entry, $content->translation, $locale);
 
             $categoryTranslation = $category?->translationFor($locale);
-            if ($categoryTranslation !== null) {
-                $categoryUrl = $this->paths->publicUrl('/'.trim($categoryTranslation->slug, '/'), $locale);
+            if ($category !== null && $categoryTranslation !== null) {
                 $extra['category'] = [
                     'name' => $categoryTranslation->name,
-                    'url' => $categoryUrl,
+                    'url' => $this->paths->publicUrl($this->paths->forTaxonomy($categoryTranslation->slug), $locale),
                 ];
-                // BreadcrumbList trail (Home → category → self) for the shared head's JSON-LD;
-                // mirrors the on-page post breadcrumb.
                 $extra['breadcrumb'] = [
-                    $this->homeCrumb($locale),
-                    ['name' => $categoryTranslation->name, 'url' => url($categoryUrl)],
-                    ['name' => $content->translation->title, 'url' => $canonical],
+                    $this->crumbs->home($locale),
+                    ...$this->crumbs->category($category, $locale, $categoryTranslation->name, $categoryTranslation->slug),
+                    $self,
                 ];
+                $extra += $this->posts->siblings($entry, $category, $locale, true);
             }
+        } elseif ($path !== '/') {
+            $extra['breadcrumb'] = [$this->crumbs->home($locale), ...$this->crumbs->parentPages($entry, $locale), $self];
         }
 
         $html = $this->renderer->render(
@@ -294,6 +308,7 @@ final readonly class StorefrontController
             ['chips' => $chips, 'labels' => $labels] = $this->lists->chips($taxonomy, $locale);
             $extra['cards'] = $this->lists->postCards($rows, $locale, $labels, $taxonomy->list_template === 'grid-news');
             $extra['chips'] = $chips;
+            $extra['band'] = $this->listBand($resolved);
         } else {
             foreach ($rows as $post) {
                 $translation = $post->translationFor($locale);
@@ -349,6 +364,7 @@ final readonly class StorefrontController
             $extra['cards'] = $this->lists->productCards($rows, $locale);
             $extra['chips'] = $this->lists->chips($taxonomy, $locale)['chips'];
             $extra['emptyKey'] = 'storefront.no_products';
+            $extra['band'] = $this->listBand($resolved);
         } else {
             foreach ($rows as $product) {
                 $translation = $product->translationFor($locale);
@@ -385,10 +401,10 @@ final readonly class StorefrontController
         }
         $extra['canonical'] = $canonical;
         $extra['ogType'] = 'website';
-        $extra['breadcrumb'] = [
-            $this->homeCrumb($locale),
-            ['name' => $resolved->translation->name, 'url' => $canonical],
-        ];
+        // Home → the categories above → this one (its own entry keeps the page's canonical address).
+        $trail = $this->crumbs->category($resolved->taxonomy, $locale, $resolved->translation->name, $resolved->translation->slug);
+        $trail[count($trail) - 1]['url'] = $canonical;
+        $extra['breadcrumb'] = [$this->crumbs->home($locale), ...$trail];
 
         $html = $this->renderer->renderCategory(
             $resolved->taxonomy->list_template,
@@ -415,7 +431,13 @@ final readonly class StorefrontController
         $product = Product::query()
             ->whereKey($resolved->productId)
             ->where('status', 'published')
-            ->with(['translations', 'images.media'])
+            ->with([
+                'translations',
+                'images.media',
+                // The main category (and its name) for the breadcrumb.
+                'taxonomies' => fn (BelongsToMany $query) => $query->wherePivot('position', 0),
+                'taxonomies.translations' => fn (Relation $query) => $query->where('locale', $locale),
+            ])
             ->first();
 
         abort_if($product === null, 404);
@@ -427,9 +449,11 @@ final readonly class StorefrontController
         $extra = $chrome;
         $extra['canonical'] = $canonical;
         $extra['ogType'] = 'product';
+        $category = $product->primaryCategory();
         $extra['breadcrumb'] = [
-            $this->homeCrumb($locale),
-            ['name' => $translation->name, 'url' => $canonical],
+            $this->crumbs->home($locale),
+            ...($category !== null ? $this->crumbs->category($category, $locale) : []),
+            $this->crumbs->crumb($translation->name, $this->paths->publicUrl($path, $locale)),
         ];
 
         $images = [];
@@ -547,13 +571,30 @@ final readonly class StorefrontController
     }
 
     /**
-     * The Home crumb shared by every breadcrumb trail — an absolute, locale-correct URL.
+     * The band of a card list page: the category's description under its name and its cover photo
+     * (one read, only when it has one) behind them, with a srcset for the page's main image. No
+     * cover, or a cover that is gone, means the plain band.
      *
-     * @return array{name: string, url: string}
+     * @return array{subtitle: string, image: string|null, srcset: string|null}
      */
-    private function homeCrumb(string $locale): array
+    private function listBand(ResolvedCategory $resolved): array
     {
-        return ['name' => __('storefront.home'), 'url' => url($this->paths->publicUrl('/', $locale))];
+        $image = null;
+        $srcset = null;
+        $coverId = $resolved->taxonomy->cover_media_id;
+        if ($coverId !== null) {
+            $cover = Media::query()->whereKey($coverId)->first(['id', 'storage_key', 'width']);
+            if ($cover !== null && $cover->storage_key !== '') {
+                $image = $this->media->url($cover->storage_key, 1280);
+                $srcset = $this->media->srcset($cover->storage_key, [640, 960, 1280, 1920], $cover->width);
+            }
+        }
+
+        return [
+            'subtitle' => trim((string) $resolved->translation->description),
+            'image' => $image,
+            'srcset' => $srcset,
+        ];
     }
 
     /**

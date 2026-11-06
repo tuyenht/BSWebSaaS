@@ -96,10 +96,10 @@ it('emits canonical + OG article + BreadcrumbList on a post, no extra queries', 
             ->toContain('"name":"Bài viết đầu tiên"')
             ->toContain('"name":"Tin tức"')          // category crumb
             ->toContain('<title>Bài viết đầu tiên</title>')  // no regression
-            ->toContain('class="post__breadcrumb"');         // existing HTML breadcrumb kept
+            ->toContain('<nav class="sf-crumbs sf-crumbs--dark post-band__crumbs"');  // the visible trail
     });
 
-    expect($count)->toBeLessThanOrEqual(16);   // SEO reuses resolved data → no new queries
+    expect($count)->toBeLessThanOrEqual(18);   // SEO reuses resolved data → no new queries (+2: previous, next, related)
 });
 
 it('emits canonical + OG website + BreadcrumbList on a category list', function (): void {

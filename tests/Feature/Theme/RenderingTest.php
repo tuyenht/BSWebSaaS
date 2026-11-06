@@ -50,7 +50,7 @@ it('renders a post on the post layout (title heading + blocks)', function (): vo
     ], ['description' => 'SEO bài 1']);
 
     expect($html)->toContain('<title>Bài 1</title>')
-        ->toContain('class="post__title">Bài 1')
+        ->toContain('class="post-band__title">Bài 1')
         ->toContain('Mở đầu')
         ->toContain('Đoạn 1');
 });

@@ -47,8 +47,14 @@ final readonly class PageRenderer
         $extra += self::playsVideo($body) || $this->blocks->playsRichVideo($body) ? ['videoScript' => true] : [];
         // The count-up script loads only on a page with a stats block that holds a number.
         $extra += self::countsUp($body) ? ['statsScript' => true] : [];
+        // A page led by a hero shows no breadcrumb (the hero is its opening), so its head lists none
+        // either: the JSON-LD trail and the visible one always match.
+        if ($type === 'page' && in_array($leadBlock, ['hero', 'hero_slider'], true)) {
+            unset($extra['breadcrumb']);
+        }
+        $crumbs = is_array($extra['breadcrumb'] ?? null) ? array_values($extra['breadcrumb']) : [];
         $tokens = $this->theme->cssVariables();
-        ['html' => $sections, 'bgVideo' => $bgVideo] = $this->blocks->renderSections(self::withPageTitle($body, $title, $leadBlock));
+        ['html' => $sections, 'bgVideo' => $bgVideo] = $this->blocks->renderSections(self::withPageTitle($body, $title, $leadBlock, $crumbs));
         // The background-video script loads only on a page where a hero's video resolved (a missing
         // or deleted video renders the plain hero, with no script).
         $extra += $bgVideo ? ['bgVideoScript' => true] : [];
@@ -59,6 +65,11 @@ final readonly class PageRenderer
             'sections' => $sections,
             // A page_header band leading the page renders the h1 itself; the layout then skips its own.
             'leadBlock' => $leadBlock,
+            // Whether a section already printed a high-priority image (a hero, about, slider or a
+            // first block's background, wherever it sits): a post's cover then stays at 'eager', so
+            // the page asks for one high-priority image, not two. Matched on the tag: text (a post
+            // about the attribute itself) cannot hold a raw "<", Blade and the purifier escape it.
+            'bodyHighImage' => preg_match('~<img\b[^>]*\sfetchpriority="high"~', $sections) === 1,
         ] + $extra)->render();
     }
 
@@ -165,13 +176,15 @@ final readonly class PageRenderer
 
     /**
      * Prepare the page_header blocks: one without its own title shows the page title, and only
-     * the band that leads the page is marked as the page's h1 (`_lead`, always set here so a
-     * stored value never counts) — any later band is an h2.
+     * the band that leads the page is marked as the page's h1 (`_lead`) and carries the page's
+     * breadcrumb (`_crumbs`) — any later band is an h2 without one. Both are always set here, so
+     * a stored value never counts.
      *
      * @param  array<string, mixed>  $body
+     * @param  list<mixed>  $crumbs  the page's breadcrumb trail (Home → … → this page)
      * @return array<string, mixed>
      */
-    private static function withPageTitle(array $body, string $title, ?string $leadType): array
+    private static function withPageTitle(array $body, string $title, ?string $leadType, array $crumbs = []): array
     {
         if ($leadType === null || ! is_array($body['blocks'] ?? null)) {
             return $body;
@@ -194,6 +207,7 @@ final readonly class PageRenderer
                 $props['title'] = $title;
             }
             $props['_lead'] = $isLead;
+            $props['_crumbs'] = $isLead ? $crumbs : [];
             $block['props'] = $props;
             $blocks[$index] = $block;
         }

@@ -153,6 +153,7 @@ final class Applier
             'parent_id' => $parentKey === null ? null : $this->id($parentKey),
             'position' => Cast::int($desired['position'] ?? null),
             'list_template' => Cast::stringOrNull($desired['list_template'] ?? null),
+            'detail_template' => Cast::stringOrNull($desired['detail_template'] ?? null),
         ];
 
         if ($planned->recordId === null) {

@@ -113,15 +113,16 @@ it('renders a published post at its category path within budget', function (): v
         $html = $this->get('http://anvinh.platform.test/tin-tuc/bai-viet-dau-tien')->assertOk()->getContent();
 
         expect($html)->toContain('<title>Bài viết đầu tiên</title>')
-            ->toContain('class="post__title">Bài viết đầu tiên')
+            ->toContain('class="post-band__title">Bài viết đầu tiên')
             ->toContain('Chào')
             ->toContain('Nội dung bài viết')
-            ->toContain('class="post__breadcrumb"')
+            ->toContain('<nav class="sf-crumbs sf-crumbs--dark post-band__crumbs"')
             ->toContain('href="/tin-tuc"');
     });
 
-    // Home budget (10) + category lookup (2) + the resolved nav menu (4).
-    expect($count)->toBeLessThanOrEqual(16);
+    // Home budget (10) + category lookup (2) + the resolved nav menu (4) + the previous, next and
+    // related posts of its category (one read) with their titles and addresses (two).
+    expect($count)->toBeLessThanOrEqual(18);
 });
 
 it('renders a category list page of its published posts within budget', function (): void {

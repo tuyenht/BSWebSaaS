@@ -39,7 +39,8 @@
    "name": {
     "vi": "Dự án"
    },
-   "list_template": "grid-project"
+   "list_template": "grid-project",
+   "detail_template": "project"
   },
   {
    "key": "tax:post_cat/tin-tuc",
