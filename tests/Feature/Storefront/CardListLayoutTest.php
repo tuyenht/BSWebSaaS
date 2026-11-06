@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Tenancy\Context\Tenancy;
 use Carbon\CarbonImmutable;
@@ -187,7 +188,7 @@ it('leads page 1 of a news list with one featured card, then compact rows; a lat
         ->and($html)->toContain('<span class="sf-card__flag">Nổi bật</span>')
         ->and($html)->toContain('Đọc bài viết <span class="sf-card__arrow">→</span>')
         ->and(substr_count($html, 'sf-card sf-card--news sf-card--list sf-card--row'))->toBe(5)
-        ->and(substr_count($html, 'fetchpriority="high"'))->toBe(1);
+        ->and(preg_match_all('#<img\b[^>]*\sfetchpriority="high"#', $html))->toBe(1);
 
     // Three posts or fewer: no featured card.
     $few = cardPage('/tin-noi-bo');
@@ -206,4 +207,24 @@ it('keeps the block card looks free of the list footers', function (): void {
         ->not->toContain('sf-card__foot')
         ->not->toContain('sf-card--list')
         ->not->toContain('sf-card--featured');
+});
+
+it('gives the one high-priority photo to the first grid card with a photo when the featured card has none and the list has no cover', function (): void {
+    cardSite();
+    app(Tenancy::class)->enter(1, fn () => Entry::query()->whereHas('translations', fn ($q) => $q->where('slug', 'hop-toan-xuong'))->update(['meta' => []]));
+    $html = cardPage('/tin-tuc');
+
+    expect($html)->toContain('sf-card--featured')
+        ->and(preg_match_all('#<img\b[^>]*\sfetchpriority="high"#', $html))->toBe(1);
+});
+
+it('keeps exactly one high-priority photo when the list cover and a featured card both have photos', function (): void {
+    cardSite();
+    app(Tenancy::class)->enter(1, function (): void {
+        StorefrontCards::news()->update(['cover_media_id' => StorefrontCards::media('bia-tin-tuc', 1600, 600)->id]);
+    });
+    $html = cardPage('/tin-tuc');
+
+    expect($html)->toContain('sf-card--featured')->toContain('page-band__bg')
+        ->and(preg_match_all('#<img\b[^>]*\sfetchpriority="high"#', $html))->toBe(1);
 });

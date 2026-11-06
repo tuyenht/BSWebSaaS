@@ -4,6 +4,8 @@ use App\Modules\Catalog\Models\Product;
 use App\Modules\Storefront\Support\ProductDetail;
 use App\Modules\Tenancy\Context\Tenancy;
 use Carbon\CarbonImmutable;
+use Illuminate\Foundation\Vite;
+use Illuminate\Support\HtmlString;
 use Tests\Fixtures\StorefrontCards;
 
 /*
@@ -88,7 +90,7 @@ it('links each thumbnail and the main photo to the real photo, in gallery order,
     expect($links[1])->toHaveCount(3)
         ->and(array_unique($links[1]))->toHaveCount(3)
         ->and($main[1])->toBe($links[1][0])
-        ->and($html)->toContain('<span class="product__count" data-sf-gallery-count>1 / 3</span>')
+        ->and($html)->toContain('<span class="product__count" aria-live="polite" data-sf-gallery-count>1 / 3</span>')
         ->and(substr_count($html, 'data-sf-gallery-step'))->toBe(2);
     foreach ($links[1] as $index => $link) {
         expect($link)->toStartWith('https://files.test/')->toContain('anh-'.['mot', 'hai', 'ba'][$index]);
@@ -132,4 +134,38 @@ it('builds the contact box from the hotline (else the phone) and the Zalo contac
         ->and((string) (ProductDetail::contact(['social_links' => ['zalo' => '0915668383']])['zalo'] ?? ''))->toContain('zalo.me/')
         ->and(ProductDetail::contact(['name' => 'Ấn phẩm cơ khí']))->toBeNull()
         ->and(ProductDetail::contact(null))->toBeNull();
+});
+
+it('loads the gallery script with three photos, not with one, and renders a product with no photo', function (): void {
+    // Print each Vite entry as a module script so the head's choices are visible.
+    $this->swap(Vite::class, new class extends Vite
+    {
+        public function __invoke($entrypoints, $buildDirectory = null): HtmlString
+        {
+            return new HtmlString(collect((array) $entrypoints)->map(fn (string $entry): string => '<script type="module" src="/'.$entry.'"></script>')->implode(''));
+        }
+    });
+    $product = productSite();
+    expect(productHtml())->toContain('<script type="module" src="/resources/js/sf-gallery.js"></script>');
+
+    app(Tenancy::class)->enter(1, fn () => $product->images()->where('position', '>', 0)->delete());
+    expect(productHtml())->not->toContain('resources/js/sf-gallery.js');
+
+    app(Tenancy::class)->enter(1, fn () => $product->images()->delete());
+    $html = productHtml();
+    expect($html)->not->toContain('resources/js/sf-gallery.js')->not->toContain('product__image')
+        ->not->toContain('product__main')->not->toContain('product__gallery')
+        ->toContain('<h1 class="product__title">Đồ gá kiểm độ</h1>');
+});
+
+it('orders an undated product first among the related ones, the same as in the list', function (): void {
+    $product = productSite();
+    app(Tenancy::class)->enter(1, function () use ($product): void {
+        $undated = StorefrontCards::product('Mẫu chưa ngày', 'mau-chua-ngay', $product->primaryCategory());
+        Product::query()->whereKey($undated->id)->update(['published_at' => null]);
+    });
+    preg_match('#<section class="post-related post-related--plain".*?</section>#s', productHtml(), $related);
+    preg_match_all('#href="([^"]+)"#', $related[0] ?? '', $hrefs);
+
+    expect($hrefs[1][0] ?? null)->toBe('/mau-chua-ngay');
 });

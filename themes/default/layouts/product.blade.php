@@ -40,7 +40,7 @@
                             @include('theme::partials.sf-img', ['src' => $sfPhotos[0]['url'], 'srcset' => $sfPhotos[0]['srcset'], 'sizes' => '(min-width:80rem) 36.5rem, (min-width:1024px) calc((100vw - 5.5rem)/2), calc(100vw - 2rem)', 'alt' => $sfPhotos[0]['alt'], 'w' => $sfPhotos[0]['width'], 'h' => $sfPhotos[0]['height'], 'priority' => 'high', 'class' => 'product__image'])
                         </a>
 @if ($sfCount > 1)
-                        <span class="product__count" data-sf-gallery-count>1 / {{ $sfCount }}</span>
+                        <span class="product__count" aria-live="polite" data-sf-gallery-count>1 / {{ $sfCount }}</span>
                         <button type="button" class="sf-slider__btn product__nav product__nav--prev" data-sf-gallery-step="-1" aria-label="{{ __('storefront.prev_photo') }}" hidden>
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 19l-7-7 7-7"/></svg>
                         </button>

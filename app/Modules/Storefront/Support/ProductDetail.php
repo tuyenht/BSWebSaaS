@@ -106,7 +106,7 @@ final readonly class ProductDetail
             ->where('products.status', 'published')
             ->where('products.id', '!=', $product->id)
             ->whereHas('translations', fn ($query) => $query->where('locale', $locale))
-            ->orderByRaw('products.published_at DESC NULLS LAST, products.id DESC')
+            ->orderByRaw('products.published_at DESC NULLS FIRST, products.id DESC')
             ->limit(self::RELATED)
             ->with([
                 'translations' => fn (Relation $query) => $query->where('locale', $locale)

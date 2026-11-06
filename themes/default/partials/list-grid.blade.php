@@ -19,7 +19,10 @@
     // Page 1 only (no "previous" or "first page" link): a later page is a plain grid.
     $sfFeatured = $sfKind === 'news' && count($sfCards) > 3 && empty($pagination['prevUrl']) && empty($pagination['firstUrl'])
         ? array_shift($sfCards) : null;
-    $sfLead = $sfFeatured !== null || ! empty($band['image']);
+    // The lead is the page's one high-priority photo: the band cover, else the featured card, but only
+    // when that card has a photo; otherwise the first grid card that has one takes the role.
+    $sfLead = ! empty($band['image']) || ($sfFeatured !== null && ! empty($sfFeatured['image']));
+    $sfFirstPhoto = $sfLead ? null : array_key_first(array_filter($sfCards, fn (array $c): bool => ! empty($c['image'])));
     $sfChips = $chips ?? [];
     $sfAll = collect($sfChips)->first();
 @endphp
@@ -47,12 +50,12 @@
             </nav>
 @endif
 @if ($sfFeatured !== null)
-            @include('theme::partials.sf-card', ['card' => $sfFeatured, 'kind' => 'news', 'level' => 'h2', 'featured' => true, 'sizes' => '(min-width:1360px) 640px, (min-width:1024px) calc((100vw - 4rem)/2), calc(100vw - 2rem)', 'priority' => empty($band['image']) ? 'high' : 'lazy'])
+            @include('theme::partials.sf-card', ['card' => $sfFeatured, 'kind' => 'news', 'level' => 'h2', 'featured' => true, 'sizes' => '(min-width:1360px) 640px, (min-width:1024px) calc((100vw - 4rem)/2), calc(100vw - 2rem)', 'priority' => (empty($band['image']) && ! empty($sfFeatured['image'])) ? 'high' : 'lazy'])
 @endif
 @if (count($sfCards) > 0)
             <ul class="sf-grid {{ $sfGrid }}">
 @foreach ($sfCards as $index => $card)
-                <li>@include('theme::partials.sf-card', ['card' => $card, 'kind' => $sfKind, 'level' => 'h2', 'list' => true, 'sizes' => $sfSizes, 'priority' => ($index === 0 && ! $sfLead) ? 'high' : 'lazy'])</li>
+                <li>@include('theme::partials.sf-card', ['card' => $card, 'kind' => $sfKind, 'level' => 'h2', 'list' => true, 'sizes' => $sfSizes, 'priority' => $index === $sfFirstPhoto ? 'high' : 'lazy'])</li>
 @endforeach
             </ul>
 @if (! empty($pagination['prevUrl']) || ! empty($pagination['nextUrl']) || ! empty($pagination['firstUrl']))
