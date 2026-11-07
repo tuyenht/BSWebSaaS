@@ -12,6 +12,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteSetting;
+use Illuminate\Support\Str;
 
 /*
  * Query Budget (CLAUDE.md §6) for the admin list screens. The storefront hot routes are already
@@ -167,7 +168,9 @@ it('keeps the catalog list flat for a member who manages products, with every ro
 
     $seed(1, 30);
     $this->actingAs($manager)->get($url)->assertOk(); // the permission and settings caches fill on the first request
-    $count = countQueries(fn () => $this->actingAs($manager)->get($url)->assertOk()->assertSee(__('catalog.menu_trash'))->assertSee(__('catalog.status_menu_label'))->assertSee('data-row-view', false));
+    $count = countQueries(fn () => $this->actingAs($manager)->get($url)->assertOk()->assertSee(__('catalog.menu_trash'))->assertSee(__('catalog.status_menu_label'))
+        // a row's Xem button: its name starts with every seeded product's name (the page script also mentions data-row-view)
+        ->assertSee('aria-label="'.e(Str::before(__('catalog.view_named', ['name' => '|']), '|')).'Sản phẩm ', false));
 
     $seed(31, 60);
     $this->actingAs($manager)->get($url)->assertOk();
