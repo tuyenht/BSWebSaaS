@@ -58,7 +58,7 @@ it('offers each state the other two moves with their hints, and a static pill to
             ->assertSee(__('catalog.move_published'))->assertSee(__('catalog.move_published_hint'))
             ->assertSee(__('catalog.move_archived'))->assertSee(__('catalog.move_archived_hint'))
             ->assertDontSee(__('catalog.move_draft_hint'));
-        expect($draft->html())->toContain('aria-haspopup="true"');
+        expect($draft->html())->toContain('aria-haspopup="menu"')->toContain('role="menu"')->toContain(__('catalog.status_pill_name', ['status' => __('catalog.tab_draft')]));
 
         Livewire::actingAs($viewer->fresh())->test(Index::class)
             ->assertDontSee(__('catalog.move_published_hint'))
@@ -148,14 +148,14 @@ it('puts a label on and takes it off, each with an undo', function (): void {
 
     app(Tenancy::class)->enter(1, function () use ($manager): void {
         $product = rowProduct();
-        $test = Livewire::actingAs($manager)->test(Index::class)->call('toggleFlag', $product->ulid, 'featured');
+        $test = Livewire::actingAs($manager)->test(Index::class)->call('toggleFlag', $product->ulid, 'featured', true);
         expect($product->fresh()->is_featured)->toBeTrue()
             ->and($test->get('toastMsg'))->toBe(__('catalog.toast_flag_on', ['label' => __('catalog.tag_featured'), 'name' => 'Đồ gá hàn']));
 
         $test->call('undoLast');
         expect($product->fresh()->is_featured)->toBeFalse();
 
-        $test->call('toggleFlag', $product->ulid, 'best')->call('toggleFlag', $product->ulid, 'best');
+        $test->call('toggleFlag', $product->ulid, 'best', true)->call('toggleFlag', $product->ulid, 'best', false);
         expect($product->fresh()->is_bestseller)->toBeFalse()
             ->and($test->get('toastMsg'))->toBe(__('catalog.toast_flag_off', ['label' => __('catalog.tag_best'), 'name' => 'Đồ gá hàn']));
         $test->call('undoLast');
@@ -190,13 +190,13 @@ it('says why an undo cannot be done when the product is gone, never doing nothin
 
     app(Tenancy::class)->enter(1, function () use ($manager): void {
         $product = rowProduct();
-        $test = Livewire::actingAs($manager)->test(Index::class)->call('toggleFlag', $product->ulid, 'featured');
+        $test = Livewire::actingAs($manager)->test(Index::class)->call('toggleFlag', $product->ulid, 'featured', true);
         $product->forceDelete();
         $test->call('undoLast');
         expect($test->get('toastTone'))->toBe('error')
             ->and($test->get('toastMsg'))->toBe(__('catalog.undo_gone'));
 
-        $other = rowProduct('Hai', 'hai');
+        $other = rowProduct('Đồ ép nhựa', 'do-ep-nhua');
         $test->call('trash', $other->ulid);
         $other->forceDelete();
         $test->call('undoLast');
@@ -217,12 +217,12 @@ it('refuses a status or label change on a product in the Trash and on a value th
         $test->call('setStatus', $product->ulid, 'published');
         expect(Product::onlyTrashed()->find($product->id)?->status)->toBe('draft')
             ->and($test->get('toastMsg'))->toBe(__('catalog.row_gone'));
-        $test->call('toggleFlag', $product->ulid, 'featured');
+        $test->call('toggleFlag', $product->ulid, 'featured', true);
         expect(Product::onlyTrashed()->find($product->id)?->is_featured)->toBeFalse();
 
-        $live = rowProduct('Hai', 'hai');
+        $live = rowProduct('Đồ ép nhựa', 'do-ep-nhua');
         Livewire::actingAs($manager)->test(Index::class)->call('setStatus', $live->ulid, 'deleted')->assertStatus(422);
-        Livewire::actingAs($manager)->test(Index::class)->call('toggleFlag', $live->ulid, 'is_hidden')->assertStatus(422);
+        Livewire::actingAs($manager)->test(Index::class)->call('toggleFlag', $live->ulid, 'is_hidden', true)->assertStatus(422);
         expect($live->fresh()->status)->toBe('draft');
     });
 });
@@ -242,7 +242,7 @@ it('refuses every row action to a viewer and a user without a role, and never re
 
         $as = fn () => Livewire::actingAs($viewer->fresh())->test(Index::class);
         $as()->call('setStatus', $product->ulid, 'published')->assertForbidden();
-        $as()->call('toggleFlag', $product->ulid, 'featured')->assertForbidden();
+        $as()->call('toggleFlag', $product->ulid, 'featured', true)->assertForbidden();
         $as()->call('trash', $product->ulid)->assertForbidden();
         expect($product->fresh()->status)->toBe('draft')->and($product->fresh()->is_featured)->toBeFalse();
 
@@ -287,5 +287,114 @@ it('tells a Trash row\'s name what to do instead of opening an editor', function
         $test = Livewire::actingAs($manager)->test(Index::class)->set('tab', 'trash')->assertSeeHtml('wire:click="trashedNote"')
             ->call('trashedNote');
         expect($test->get('toastMsg'))->toBe(__('catalog.trash_note'));
+    });
+});
+
+it('draws the Xem button on a published row only, with the website link and its address line in the menu for when the button is hidden', function (): void {
+    $manager = rowManager();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        $live = rowProduct('Đang bán', 'dang-ban', 'published');
+        $live->forceFill(['status' => 'published'])->save();
+        rowProduct('Chưa đăng', 'chua-dang');
+
+        $html = Livewire::actingAs($manager)->test(Index::class)->html();
+
+        expect(substr_count($html, 'x-show="xvVis"'))->toBe(1)
+            ->and($html)->toContain(__('catalog.view_named', ['name' => 'Đang bán']))
+            ->and($html)->not->toContain(__('catalog.view_named', ['name' => 'Chưa đăng']))
+            ->and(substr_count($html, 'x-show="! xvVis"'))->toBe(2)
+            ->and($html)->toContain('dang-ban</span>')
+            // the copy item sits in the menu of every product that has an address, for the narrow card
+            ->and(substr_count($html, __('catalog.copy_path')))->toBe(2);
+    });
+});
+
+it('does nothing and says so when a status or a label is already what the member asked for', function (): void {
+    $manager = rowManager();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        $product = rowProduct('Đồ gá hàn', 'do-ga-han');
+        $test = Livewire::actingAs($manager)->test(Index::class)->call('setStatus', $product->ulid, 'draft');
+        expect($test->get('toastMsg'))->toBe(__('catalog.status_unchanged', ['name' => 'Đồ gá hàn']))
+            ->and($test->get('toastTone'))->toBe('info')
+            ->and($test->get('undoOp'))->toBeNull();
+
+        $product->forceFill(['is_featured' => true])->save();
+        $test->call('toggleFlag', $product->ulid, 'featured', true);
+        expect($product->fresh()->is_featured)->toBeTrue()
+            ->and($test->get('toastMsg'))->toBe(__('catalog.toast_flag_on', ['label' => __('catalog.tag_featured'), 'name' => 'Đồ gá hàn']))
+            ->and($test->get('undoOp'))->toBeNull();
+
+        $test->call('toggleFlag', $product->ulid, 'best', false);
+        expect($product->fresh()->is_bestseller)->toBeFalse()
+            ->and($test->get('toastMsg'))->toBe(__('catalog.toast_flag_off', ['label' => __('catalog.tag_best'), 'name' => 'Đồ gá hàn']))
+            ->and($test->get('undoOp'))->toBeNull();
+    });
+});
+
+it('says the address is taken when an undo of a status change would publish onto another page\'s address', function (): void {
+    $manager = rowManager();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        $product = rowProduct('Giới thiệu sản phẩm', 'gioi-thieu-sp');
+        $test = Livewire::actingAs($manager)->test(Index::class)->call('setStatus', $product->ulid, 'published')->call('setStatus', $product->ulid, 'archived');
+        SiteRoute::query()->where('product_id', $product->id)->delete();
+        $page = Entry::query()->create(['type' => 'page', 'status' => 'published', 'author_id' => $manager->id]);
+        $page->translations()->create(['locale' => 'vi', 'title' => 'Trang trùng', 'slug' => 'gioi-thieu-sp', 'status' => 'published', 'body' => ['blocks' => []]]);
+        app(RouteSync::class)->sync($page->fresh(), 'vi', 'gioi-thieu-sp');
+
+        $test->call('undoLast');
+        expect($product->fresh()->status)->toBe('archived')
+            ->and($test->get('toastTone'))->toBe('error')
+            ->and($test->get('toastMsg'))->toBe(__('catalog.undo_conflict'))
+            ->and($test->get('undoOp'))->toBeNull();
+    });
+});
+
+it('says the product is gone when an undo comes after the product went to the Trash', function (): void {
+    $manager = rowManager();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        $product = rowProduct('Đồ gá hàn', 'do-ga-han');
+        $test = Livewire::actingAs($manager)->test(Index::class)->call('setStatus', $product->ulid, 'archived');
+        $product->delete();
+        $test->call('undoLast');
+        expect(Product::onlyTrashed()->find($product->id)?->status)->toBe('archived')
+            ->and($test->get('toastTone'))->toBe('error')
+            ->and($test->get('toastMsg'))->toBe(__('catalog.undo_gone'));
+
+        $flag = rowProduct('Đồ ép nhựa', 'do-ep-nhua');
+        $test->call('toggleFlag', $flag->ulid, 'best', true);
+        $flag->delete();
+        $test->call('undoLast');
+        expect(Product::onlyTrashed()->find($flag->id)?->is_bestseller)->toBeTrue()
+            ->and($test->get('toastMsg'))->toBe(__('catalog.undo_gone'));
+    });
+});
+
+it('refuses a guest every new row method, even on a screen that was already open', function (): void {
+    $manager = rowManager();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        $product = rowProduct('Đồ gá hàn', 'do-ga-han');
+        $product->delete();
+        $live = rowProduct('Đồ ép nhựa', 'do-ep-nhua');
+
+        $guest = function () use ($manager, $live) {
+            $test = Livewire::actingAs($manager)->test(Index::class)->call('toggleFlag', $live->ulid, 'best', true);
+            auth()->guard()->logout();
+
+            return $test;
+        };
+
+        $guest()->call('setStatus', $live->ulid, 'published')->assertForbidden();
+        $guest()->call('toggleFlag', $live->ulid, 'featured', true)->assertForbidden();
+        $guest()->call('trash', $live->ulid)->assertForbidden();
+        $guest()->call('restore', $product->ulid)->assertForbidden();
+        $guest()->call('undoLast')->assertForbidden();
+        $guest()->call('trashedNote')->assertForbidden();
+        expect($live->fresh()->status)->toBe('draft')->and($live->fresh()->is_featured)->toBeFalse()
+            ->and(Product::onlyTrashed()->find($product->id))->not->toBeNull();
     });
 });

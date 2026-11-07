@@ -1178,8 +1178,6 @@
     "catalog.video_invalid": "有効な YouTube または Vimeo のリンクのみ使えます。",
     "catalog.trash_tab": "ゴミ箱",
     "catalog.back_to_list": "← 商品一覧",
-    "catalog.trash_action": "削除",
-    "catalog.trash_confirm": "この商品をゴミ箱に移動しますか？後で復元できます。",
     "catalog.restore_action": "復元",
     "catalog.force_delete_action": "完全に削除",
     "catalog.force_delete_confirm": "この商品を完全に削除しますか？翻訳と添付画像も一緒に削除され、元に戻せません。SKU と URL は再び使えるようになります。",
@@ -3369,5 +3367,9 @@
     "catalog.toast_undone": "元に戻しました。",
     "catalog.row_gone": "この商品は一覧にありません。削除されたか、他の人が変更した可能性があります。一覧を再読み込みしてください。",
     "catalog.undo_gone": "元に戻せませんでした。商品は削除されたか、すでにありません。",
-    "catalog.undo_conflict": "元に戻せませんでした。商品のアドレスは別のページまたはカテゴリで使われています。"
+    "catalog.undo_conflict": "元に戻せませんでした。商品のアドレスは別のページまたはカテゴリで使われています。",
+    "catalog.status_unchanged": "「:name」はすでにこの状態です。変更はありません。",
+    "catalog.status_pill_name": "状態：:status — 押して変更",
+    "catalog.view_action": "見る",
+    "catalog.view_named": "「:name」をサイトで見る"
 }

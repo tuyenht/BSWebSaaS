@@ -1178,8 +1178,6 @@
     "catalog.video_invalid": "Chỉ nhận liên kết YouTube hoặc Vimeo hợp lệ.",
     "catalog.trash_tab": "Thùng rác",
     "catalog.back_to_list": "← Danh sách sản phẩm",
-    "catalog.trash_action": "Xóa",
-    "catalog.trash_confirm": "Chuyển sản phẩm vào thùng rác? Bạn có thể khôi phục lại sau.",
     "catalog.restore_action": "Khôi phục",
     "catalog.force_delete_action": "Xóa vĩnh viễn",
     "catalog.force_delete_confirm": "Xóa vĩnh viễn sản phẩm này? Bản dịch và ảnh gán kèm sẽ bị xóa theo, KHÔNG thể hoàn tác. Mã SKU và đường dẫn sẽ được giải phóng.",
@@ -3369,5 +3367,9 @@
     "catalog.toast_undone": "Đã hoàn tác.",
     "catalog.row_gone": "Sản phẩm này không còn trong danh sách — có thể đã bị xóa hoặc người khác vừa đổi nó. Hãy tải lại danh sách.",
     "catalog.undo_gone": "Không hoàn tác được: sản phẩm đã bị xóa hoặc không còn ở đó nữa.",
-    "catalog.undo_conflict": "Không hoàn tác được: đường dẫn của sản phẩm đã được trang hoặc chuyên mục khác dùng."
+    "catalog.undo_conflict": "Không hoàn tác được: đường dẫn của sản phẩm đã được trang hoặc chuyên mục khác dùng.",
+    "catalog.status_unchanged": "“:name” đã ở trạng thái này rồi, không có gì để đổi.",
+    "catalog.status_pill_name": "Trạng thái: :status — bấm để đổi",
+    "catalog.view_action": "Xem",
+    "catalog.view_named": "Xem “:name” trên website"
 }

@@ -438,7 +438,12 @@ final class Index extends Component
         $this->guardWrite('update');
         abort_unless(in_array($status, ChangeProductStatus::STATUSES, true), 422);
         $product = $this->live($ulid);
-        if ($product === null || $product->status === $status) {
+        if ($product === null) {
+            return;
+        }
+        if ($product->status === $status) {
+            $this->say(__('catalog.status_unchanged', ['name' => $this->nameOf($product)]), 'info');
+
             return;
         }
         $before = $product->status;
@@ -452,8 +457,8 @@ final class Index extends Component
         $this->say(__('catalog.toast_status_'.$status, ['name' => $this->nameOf($product)]), 'success', ['kind' => 'status', 'ulid' => $ulid, 'status' => $before]);
     }
 
-    /** Put a label ("Nổi bật" / "Bán chạy") on a product or take it off. */
-    public function toggleFlag(string $ulid, string $flag): void
+    /** Put a label ("Nổi bật" / "Bán chạy") on a product or take it off: `$on` is the state the member asked for, so a second click on a stale menu changes nothing. */
+    public function toggleFlag(string $ulid, string $flag, bool $on): void
     {
         $this->guardWrite('update');
         abort_unless(isset(self::FLAGS[$flag]), 422);
@@ -463,12 +468,14 @@ final class Index extends Component
         }
         $column = self::FLAGS[$flag];
         $was = (bool) $product->getAttribute($column);
-        $product->forceFill([$column => ! $was])->save();
-        $this->say(
-            __($was ? 'catalog.toast_flag_off' : 'catalog.toast_flag_on', ['label' => __('catalog.tag_'.$flag), 'name' => $this->nameOf($product)]),
-            'success',
-            ['kind' => 'flag', 'ulid' => $ulid, 'flag' => $flag, 'was' => $was],
-        );
+        $message = __($on ? 'catalog.toast_flag_on' : 'catalog.toast_flag_off', ['label' => __('catalog.tag_'.$flag), 'name' => $this->nameOf($product)]);
+        if ($was === $on) {
+            $this->say($message);
+
+            return;
+        }
+        $product->forceFill([$column => $on])->save();
+        $this->say($message, 'success', ['kind' => 'flag', 'ulid' => $ulid, 'flag' => $flag, 'was' => $was]);
     }
 
     /** "Hoàn tác" on the message: the opposite write, authorized and looked up again; a reason on screen when it cannot be done. */

@@ -159,11 +159,16 @@
         <div class="@container/lt min-w-0"
              x-data="{
                  mode: 'cols',
+                 xv: false,
+                 lowH: false,
                  fold: '',
                  seen: '',
                  ro: null,
                  destroy() { this.ro?.disconnect(); },
-                 size(force = false) { const w = this.$refs.rows?.clientWidth ?? 0, rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16, boost = window.bsListFold.boostPx(), key = w + ':' + boost; if (! force && key === this.seen) { return; } this.seen = key; this.mode = w < 37.5 * rem ? 'card' : (w < 56.25 * rem ? 'line' : 'cols'); this.foldCols(rem, boost); },
+                 size(force = false) { const w = this.$refs.rows?.clientWidth ?? 0, rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16, boost = window.bsListFold.boostPx(), low = window.matchMedia('(max-height:500px)').matches, key = w + ':' + boost + ':' + low; if (! force && key === this.seen) { return; } this.seen = key; this.lowH = low; this.mode = w < 37.5 * rem ? 'card' : (w < 56.25 * rem ? 'line' : 'cols'); this.foldCols(rem, boost); this.fitXv(rem, boost); },
+                 {{-- the row's "Xem" button shows from 600 on: always on a card line, and in the table only while the name column keeps 340px (+6px per pixel of text boost) after the button takes its room; a short landscape screen has none --}}
+                 fitXv(rem, boost) { const main = this.$refs.rows?.querySelector('.list-rows .list-hd .list-c-main'); this.xv = this.mode === 'cols' && !! main && main.getBoundingClientRect().width - 6 * rem >= 340 + 6 * boost; },
+                 get xvVis() { return ! this.lowH && (this.mode === 'line' || (this.mode === 'cols' && this.xv)); },
                  {{-- as the table narrows or the text grows, the label, category, stock and price columns fold into the line under the name (in that order) until the name keeps the shared minimum; one pass: clear the fold, read every width, write the fold once --}}
                  foldCols(rem, boost) {
                      const list = this.$refs.rows?.querySelector('.list-rows'), head = list?.querySelector('.list-hd'), main = head?.querySelector('.list-c-main');
@@ -352,18 +357,19 @@
                         <x-bs-admin::list.cell col="st">
                             <div class="list-stw">
                                 @if ($canManage && ! $trashed)
-                                    <div x-data="{ open: false }" x-on:click.outside="open = false" x-on:keydown.escape="if (open) { open = false; $refs.pill.focus() }" class="relative inline-block">
-                                        <x-bs-admin::status-pill button x-ref="pill" :status="$product->status" x-on:click="open = ! open" x-bind:aria-expanded="open.toString()" aria-haspopup="true" title="{{ __('catalog.status_menu_label') }}">{{ $statusText($product->status) }}<span class="sr-only"> · {{ __('catalog.status_menu_label') }}</span></x-bs-admin::status-pill>
-                                        <div x-show="open" x-cloak x-transition class="absolute left-0 z-30 mt-1 w-64 rounded-lg border border-border bg-surface p-1 shadow-lg">
+                                    <div x-data="{ open: false, up: false, close(back) { this.open = false; if (back) { this.$refs.pill.focus() } } }" x-on:click.outside="open = false" x-on:keydown.escape="if (open) { $event.stopPropagation(); close(true) }" class="relative inline-block">
+                                        <x-bs-admin::status-pill button x-ref="pill" :status="$product->status" aria-haspopup="menu" x-bind:aria-expanded="open.toString()" aria-label="{{ __('catalog.status_pill_name', ['status' => $statusText($product->status)]) }}" title="{{ __('catalog.status_menu_label') }}"
+                                            x-on:click="up = window.innerHeight - $el.getBoundingClientRect().bottom < 240; open = ! open; open && $nextTick(() => $focus.within($refs.menu).first())">{{ $statusText($product->status) }}</x-bs-admin::status-pill>
+                                        <x-bs-admin::list.menu class="absolute left-0 z-30 mt-1 w-64 rounded-lg border border-border bg-surface p-1 shadow-lg" x-bind:class="up && 'bottom-full mb-1 mt-0'" :label="__('catalog.status_menu_label')">
                                             @foreach ($statusMoves[$product->status] as $move)
-                                                <button type="button" x-on:click="$wire.setStatus({{ Js::from($product->ulid) }}, {{ Js::from($move) }}); open = false" class="list-mi rounded">
+                                                <button type="button" role="menuitem" x-on:click="$wire.setStatus({{ Js::from($product->ulid) }}, {{ Js::from($move) }})" class="list-mi rounded">
                                                     <span class="flex min-w-0 flex-col text-left">
                                                         <span class="font-medium">{{ __('catalog.move_'.$move) }}</span>
                                                         <span class="text-caption text-text-muted">{{ __('catalog.move_'.$move.'_hint') }}</span>
                                                     </span>
                                                 </button>
                                             @endforeach
-                                        </div>
+                                        </x-bs-admin::list.menu>
                                     </div>
                                 @else
                                     <x-bs-admin::status-pill :status="$product->status">{{ $statusText($product->status) }}</x-bs-admin::status-pill>
@@ -380,6 +386,7 @@
                         <x-bs-admin::list.cell col="act">
                             @php
                                 $live = ! $trashed && $product->status === 'published' && $fullUrl !== null;
+                                $shownUrl = $fullUrl === null ? '' : (string) preg_replace('#^https?://#', '', $fullUrl);
                             @endphp
                             @if ($canManage || $live)
                                 <x-bs-admin::list.actions :name="$name">
@@ -392,18 +399,27 @@
                                                 x-on:click="$bsConfirm({ icon: 'trash-danger', text: {{ Js::from(__('catalog.force_delete_confirm')) }}, confirm: {{ Js::from(__('catalog.force_delete_action')) }}, cancel: {{ Js::from(__('admin.cancel')) }} }).then(ok => ok && $wire.forceDelete({{ Js::from($product->ulid) }}))">{{ __('catalog.force_delete_action') }}</x-bs-admin::list.menu-item>
                                         </x-slot:menu>
                                     @elseif ($canManage)
+                                        @if ($live)
+                                            <x-bs-admin::button size="sm" variant="soft" color="primary" :href="$fullUrl" :navigate="false" target="_blank" rel="noopener" x-show="xvVis" x-cloak
+                                                :aria-label="__('catalog.view_named', ['name' => $name])">
+                                                <x-bs-admin::icon name="ri-external-link" class="size-4" /> {{ __('catalog.view_action') }}
+                                            </x-bs-admin::button>
+                                        @endif
                                         <x-bs-admin::button size="sm" variant="soft" color="primary" :href="route('admin.catalog.edit', ['ulid' => $product->ulid])"
                                             :aria-label="__('catalog.edit_named', ['name' => $name])">
                                             <x-bs-admin::icon name="ri-pencil" class="size-4" /> {{ __('catalog.edit_action') }}
                                         </x-bs-admin::button>
                                         <x-slot:menu>
                                             @if ($live)
-                                                <x-bs-admin::list.menu-item icon="ri-external-link" :href="$fullUrl" target="_blank" rel="noopener">{{ __('catalog.view_on_site') }}</x-bs-admin::list.menu-item>
-                                                <x-bs-admin::list.menu-item icon="ri-file-copy" x-show="mode === 'card'" x-on:click="copy({{ Js::from($fullUrl) }})">{{ __('catalog.copy_path') }}</x-bs-admin::list.menu-item>
+                                                <x-bs-admin::list.menu-item icon="ri-external-link" :href="$fullUrl" target="_blank" rel="noopener" x-show="! xvVis">{{ __('catalog.view_on_site') }}</x-bs-admin::list.menu-item>
+                                                <span class="list-mwhy" x-show="! xvVis">{{ $shownUrl }}</span>
                                             @endif
-                                            <x-bs-admin::list.menu-sep />
-                                            <x-bs-admin::list.menu-item icon="ri-star" wire:click="toggleFlag('{{ $product->ulid }}', 'featured')">{{ __($product->is_featured ? 'catalog.flag_remove_featured' : 'catalog.flag_add_featured') }}</x-bs-admin::list.menu-item>
-                                            <x-bs-admin::list.menu-item icon="ri-fire" wire:click="toggleFlag('{{ $product->ulid }}', 'best')">{{ __($product->is_bestseller ? 'catalog.flag_remove_best' : 'catalog.flag_add_best') }}</x-bs-admin::list.menu-item>
+                                            @if ($fullUrl !== null)
+                                                <x-bs-admin::list.menu-item icon="ri-file-copy" x-show="mode === 'card'" x-on:click="copy({{ Js::from($fullUrl) }})">{{ __('catalog.copy_path') }}</x-bs-admin::list.menu-item>
+                                                <x-bs-admin::list.menu-sep x-show="mode === 'card'{{ $live ? ' || ! xvVis' : '' }}" />
+                                            @endif
+                                            <x-bs-admin::list.menu-item icon="ri-star" wire:click="toggleFlag('{{ $product->ulid }}', 'featured', {{ $product->is_featured ? 'false' : 'true' }})">{{ __($product->is_featured ? 'catalog.flag_remove_featured' : 'catalog.flag_add_featured') }}</x-bs-admin::list.menu-item>
+                                            <x-bs-admin::list.menu-item icon="ri-fire" wire:click="toggleFlag('{{ $product->ulid }}', 'best', {{ $product->is_bestseller ? 'false' : 'true' }})">{{ __($product->is_bestseller ? 'catalog.flag_remove_best' : 'catalog.flag_add_best') }}</x-bs-admin::list.menu-item>
                                             <x-bs-admin::list.menu-sep />
                                             <x-bs-admin::list.menu-item icon="ri-delete-bin" danger
                                                 wire:click="trash('{{ $product->ulid }}')">{{ __('catalog.menu_trash') }}</x-bs-admin::list.menu-item>
@@ -412,6 +428,7 @@
                                     @else
                                         <x-slot:menu>
                                             <x-bs-admin::list.menu-item icon="ri-external-link" :href="$fullUrl" target="_blank" rel="noopener">{{ __('catalog.view_on_site') }}</x-bs-admin::list.menu-item>
+                                            <span class="list-mwhy">{{ $shownUrl }}</span>
                                         </x-slot:menu>
                                     @endif
                                 </x-bs-admin::list.actions>

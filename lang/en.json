@@ -1178,8 +1178,6 @@
     "catalog.video_invalid": "Only valid YouTube or Vimeo links are accepted.",
     "catalog.trash_tab": "Trash",
     "catalog.back_to_list": "← Product list",
-    "catalog.trash_action": "Delete",
-    "catalog.trash_confirm": "Move this product to the trash? You can restore it later.",
     "catalog.restore_action": "Restore",
     "catalog.force_delete_action": "Delete forever",
     "catalog.force_delete_confirm": "Permanently delete this product? Its translations and attached images are removed too — this CANNOT be undone. The SKU and slug become available again.",
@@ -3369,5 +3367,9 @@
     "catalog.toast_undone": "Undone.",
     "catalog.row_gone": "This product is no longer in the list — it may have been deleted or just changed by someone else. Reload the list.",
     "catalog.undo_gone": "Could not undo: the product was deleted or is no longer there.",
-    "catalog.undo_conflict": "Could not undo: the product's address is now used by another page or category."
+    "catalog.undo_conflict": "Could not undo: the product's address is now used by another page or category.",
+    "catalog.status_unchanged": "“:name” is already in this status, so nothing was changed.",
+    "catalog.status_pill_name": "Status: :status — press to change",
+    "catalog.view_action": "View",
+    "catalog.view_named": "View “:name” on the website"
 }
