@@ -415,6 +415,8 @@ final readonly class PageRenderer
         $extra = $this->withSlots($extra);
         // Videos stored in the description render as the click-to-load façade (VideoFacades).
         ['html' => $descriptionHtml, 'videos' => $videos] = $this->videos->render($descriptionHtml);
+        // A specification table gets the same narrow-column layout as one in a post body.
+        $descriptionHtml = ProseTables::apply($descriptionHtml);
 
         return $this->views->make($layout, $this->head($seo, $name, $extra) + [
             'title' => $name,
