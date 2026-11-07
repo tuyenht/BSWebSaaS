@@ -31,7 +31,7 @@
                         class="field w-full rounded border border-border bg-surface-muted px-3 text-text transition-colors focus:border-primary-text focus:bg-surface">
                     <option value="">{{ __('admin.select_role') }}</option>
                     @foreach ($assignableRoles as $role)
-                        <option value="{{ $role->name }}">{{ $role->name }}</option>
+                        <option value="{{ $role->name }}">{{ \App\Modules\Rbac\Support\RoleLabel::for($role) }}</option>
                     @endforeach
                 </select>
                 @error('inviteRole') <p class="mt-1 text-xs text-admin-danger-text">{{ $message }}</p> @enderror
@@ -62,7 +62,7 @@
                         <td class="px-4 py-3">
                             <div class="flex flex-wrap gap-1">
                                 @foreach ($member->roles as $role)
-                                    <span class="inline-block rounded bg-admin-primary/10 px-2 py-0.5 text-xs font-medium text-accent">{{ $role->name }}</span>
+                                    <span class="inline-block rounded bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary-text">{{ \App\Modules\Rbac\Support\RoleLabel::for($role) }}</span>
                                 @endforeach
                             </div>
                         </td>
@@ -73,7 +73,7 @@
                                             class="field field-row rounded border border-border bg-surface px-2 text-text focus:border-primary-text">
                                         <option value="">{{ __('admin.change_role') }}</option>
                                         @foreach ($assignableRoles as $role)
-                                            <option value="{{ $role->name }}">{{ $role->name }}</option>
+                                            <option value="{{ $role->name }}">{{ \App\Modules\Rbac\Support\RoleLabel::for($role) }}</option>
                                         @endforeach
                                     </select>
                                 @endif

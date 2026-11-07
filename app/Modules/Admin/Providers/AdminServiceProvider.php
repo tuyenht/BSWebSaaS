@@ -43,6 +43,7 @@ use App\Modules\Admin\Theme\AdminBrandColor;
 use App\Modules\Admin\Theme\AdminChromeResolver;
 use App\Modules\Cms\Support\BlockMediaUsage;
 use App\Modules\Identity\Models\User;
+use App\Modules\Rbac\Support\RoleLabel;
 use App\Modules\Shared\Contracts\TenantMailConfigurator;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Events\DomainNeedsAttention;
@@ -60,7 +61,6 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Symfony\Component\Mailer\Transport\Smtp\Auth\XOAuth2Authenticator;
 use Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport;
@@ -189,12 +189,10 @@ final class AdminServiceProvider extends ServiceProvider
             // :root tokens the layout prints in its head.
             $view->with('brandTokens', AdminBrandColor::cssVariables(config('admin.brand.color')));
 
-            // Primary-role label (highest level) for the topbar user area. Role slugs have no
-            // display map, so headline() renders "super_admin" → "Super Admin". Roles are
-            // team-scoped (current site, or platform team 0) and already warmed by the nav build.
-            $primaryRole = $user ? $user->roles->sortByDesc('level')->first() : null;
-            $roleName = $primaryRole?->getAttribute('name');
-            $view->with('roleLabel', is_string($roleName) && $roleName !== '' ? Str::headline($roleName) : null);
+            // Primary-role label (highest level) for the topbar user area, in the reader's
+            // language. Roles are team-scoped (current site, or platform team 0) and already
+            // warmed by the nav build.
+            $view->with('roleLabel', $user ? RoleLabel::topOf($user) : null);
         });
 
         // Livewire's AJAX update endpoint must run inside the tenant context so component
