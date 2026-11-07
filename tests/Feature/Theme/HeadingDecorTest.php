@@ -342,6 +342,21 @@ describe('a page that draws its heads before the tokens', function (): void {
 
         expect(View::getShared())->not->toHaveKey('sfHeadingDecor');
     });
+
+    it('drops the decoration the tokens used when the request ends', function (): void {
+        decorSet(1, ['style' => 'laurel']);
+        decorSet(2, ['style' => 'gear']);
+        $used = app(Tenancy::class)->enter(1, function (): HeadingDecor {
+            app(ThemeResolver::class)->cssVariables();
+
+            return app(HeadingDecor::class);
+        });
+
+        app()->forgetScopedInstances();
+
+        expect(app(HeadingDecor::class))->not->toBe($used)
+            ->and(decorFaq(2))->toContain('sf-decor--gear')->not->toContain('sf-decor--laurel');
+    });
 });
 
 describe('saving a mask', function (): void {
@@ -474,6 +489,7 @@ describe('queries', function (): void {
         $one = $count(1);
         $five = $count(5);
 
-        expect($one - $plain)->toBeLessThanOrEqual(1)->and($five)->toBe($one);
+        expect($one - $plain)->toBeLessThanOrEqual(1)->and($five)->toBe($one)
+            ->and(decorBlocks(1, [['type' => 'faq', 'props' => ['heading' => DECOR_HEADING, 'items' => [['q' => 'Ổn không ạ', 'a' => 'Đáp ạ']]]]]))->toContain('sf-decor--mask');
     });
 });
