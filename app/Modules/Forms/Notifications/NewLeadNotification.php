@@ -4,6 +4,7 @@ namespace App\Modules\Forms\Notifications;
 
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
+use App\Modules\Forms\Support\LeadAnswers;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\MailText;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -12,7 +13,7 @@ use Illuminate\Notifications\Notification;
 /**
  * Notifies the form's recipients (forms.notify_emails) that a new lead arrived. Sent via the
  * resolved tenant mailer (SubmitForm applies it before dispatch) in the site's locale. The
- * lead's fields are rendered from the typed columns + the submission data; spam is never sent.
+ * lead's answers are listed under the form's field labels (LeadAnswers); spam is never sent.
  */
 final class NewLeadNotification extends Notification
 {
@@ -45,9 +46,10 @@ final class NewLeadNotification extends Notification
             $mail->replyTo($email, Cast::string($this->submission->name));
         }
 
-        foreach ($this->leadLines() as $label => $value) {
-            // What a visitor typed is shown as typed — never as a link, an image or a heading.
-            $mail->line("**{$label}:** ".MailText::plain($value));
+        foreach ($this->leadLines() as $line) {
+            // What a visitor typed is shown as typed — never as a link, an image or a heading; a site's
+            // field label is the site's own text, so it is kept plain too.
+            $mail->line('**'.MailText::plain($line['label']).':** '.MailText::plain($line['value']));
         }
 
         return $mail->line(__('forms.lead_email_outro'));
@@ -64,22 +66,19 @@ final class NewLeadNotification extends Notification
     }
 
     /**
-     * Label → value for the fields a recipient cares about, skipping empties.
+     * Label → value for every answer the visitor gave, in the form's order, skipping empties. A
+     * ticked consent box is evidence kept on the lead's page, not something to act on, so it is left
+     * out of the email.
      *
-     * @return array<string, string>
+     * @return list<array{label: string, value: string}>
      */
     private function leadLines(): array
     {
-        $data = Cast::arr($this->submission->data);
-        $lines = [];
+        $answers = LeadAnswers::for($this->form, Cast::arr($this->submission->data), app()->getLocale());
 
-        foreach (['name', 'email', 'phone', 'message'] as $key) {
-            $value = $data[$key] ?? null;
-            if (is_string($value) && $value !== '') {
-                $lines[Cast::string(__("forms.lead_field_{$key}"))] = $value;
-            }
-        }
-
-        return $lines;
+        return array_values(array_map(
+            static fn (array $answer): array => ['label' => $answer['label'], 'value' => $answer['value']],
+            array_filter($answers, static fn (array $answer): bool => ! $answer['ticked']),
+        ));
     }
 }

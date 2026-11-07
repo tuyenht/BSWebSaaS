@@ -36,6 +36,8 @@ use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Forms\Models\Form;
+use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
@@ -159,6 +161,31 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     });
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$page->ulid.'/edit')->assertOk()->getContent();
     file_put_contents($dir.'/editor.html', $html);
+
+    // Khách liên hệ: the inbox and one quote lead, whose answers sit under the form's labels and
+    // whose ticked consent box shows the sentence stored with the lead.
+    $lead = app(Tenancy::class)->enter(1, function (): FormSubmission {
+        $form = Form::query()->create(['key' => 'bao-gia', 'name' => ['vi' => 'Báo giá'], 'status' => 'active']);
+        $form->fields()->createMany([
+            ['key' => 'name', 'type' => 'text', 'label' => ['vi' => 'Họ tên'], 'is_required' => true, 'sort_order' => 1],
+            ['key' => 'phone', 'type' => 'tel', 'label' => ['vi' => 'Số điện thoại'], 'sort_order' => 2],
+            ['key' => 'company', 'type' => 'text', 'label' => ['vi' => 'Công ty'], 'sort_order' => 3],
+            ['key' => 'service', 'type' => 'select', 'label' => ['vi' => 'Nhu cầu'], 'sort_order' => 4,
+                'options' => ['choices' => [['value' => 'cnc', 'label' => ['vi' => 'Gia công CNC']]]]],
+            ['key' => 'details', 'type' => 'textarea', 'label' => ['vi' => 'Nội dung cần báo giá'], 'sort_order' => 5],
+            ['key' => 'consent', 'type' => 'checkbox', 'label' => ['vi' => 'Tôi đồng ý cho website lưu thông tin liên hệ.'], 'is_required' => true, 'sort_order' => 6],
+        ]);
+        $form->submissions()->create(['data' => ['name' => 'Trần Minh Khoa', 'phone' => '0903 112 233'], 'name' => 'Trần Minh Khoa', 'phone' => '0903 112 233', 'status' => 'new']);
+
+        return $form->submissions()->create(['status' => 'read', 'name' => 'Phạm Thị Lan', 'phone' => '0915 668 383', 'source_url' => 'https://'.ADMIN_PREVIEW_HOST.'/lien-he', 'data' => [
+            'name' => 'Phạm Thị Lan', 'phone' => '0915 668 383', 'company' => 'Công ty TNHH Cơ khí Bình Minh', 'service' => 'cnc',
+            'details' => "Trục inox 304, 40 cái.\nCần giao trong tháng 12.", 'consent' => 'Tôi đồng ý cho website lưu thông tin liên hệ.',
+        ]]);
+    });
+    foreach (['leads' => '/admin/forms', 'lead-detail' => '/admin/forms/'.$lead->ulid] as $name => $path) {
+        $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.$path)->assertOk()->getContent();
+        file_put_contents($dir.'/'.$name.'.html', $html);
+    }
 
     // The platform Audit log, as a support operator, with a member's row and a support sign-in row.
     DB::connection('pgsql_admin')->statement('truncate audit_logs restart identity cascade');
@@ -345,5 +372,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('Mũi khoan thép gió HSS', 'Dao phay ngón');
     file_put_contents($dir.'/product-list.html', $html);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 18);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 20);
 });
