@@ -3228,5 +3228,5 @@
     "layout_slots.err_slot_invalid": "This place for blocks does not exist. Reload the page and try again.",
     "layout_slots.err_locale_invalid": "This language is not turned on for the website. Turn the language on first, or remove its content.",
     "layout_slots.err_too_many": "This place holds at most :max blocks. Remove some blocks.",
-    "layout_slots.err_type_slot": "The “Recent posts” block can only go in a post’s side column or at the end of a post. Move it there or remove it."
+    "layout_slots.err_type_slot": "The “:block” block can only go in a post’s side column or at the end of a post. Move it there or remove it."
 }

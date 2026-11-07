@@ -76,7 +76,7 @@ it('draws a post and a product with no slot set byte for byte as before', functi
 ]);
 
 /**
- * The news branch (root "Tin tức", child "Bản tin nội bộ") with a post being read, six others in the root,
+ * The news branch (a root and a child "Bản tin nội bộ") with a post being read, six others in the root,
  * three in the child, and a recruitment branch whose posts must never show; a catalog with two products.
  *
  * @return array{read: Entry, news: Taxonomy, inner: Taxonomy, jobs: Taxonomy}
@@ -308,12 +308,12 @@ it('hides the empty lines of the consult box and takes hotline and email from th
 });
 
 it('makes anchors for the formatted-text headings from two up, unique and Vietnamese-safe, and leaves a body with fewer untouched', function (): void {
-    $two = '<section class="sf-prose">'."\n".'<h2>Đồ gá kiểm</h2><p>x</p><h2>Lớp phủ PVD</h2><h3>Con</h3><h2>Đồ gá kiểm</h2>'."\n".'</section>';
+    $two = '<section class="sf-prose">'."\n".'<h2>Đồ gá kiểm</h2><p>x</p><h2>Lớp phủ bề mặt</h2><h3>Con</h3><h2>Đồ gá kiểm</h2>'."\n".'</section>';
     $toc = ArticleToc::of($two);
 
     expect($toc['items'])->toBe([
         ['id' => 'muc-do-ga-kiem', 'label' => 'Đồ gá kiểm'],
-        ['id' => 'muc-lop-phu-pvd', 'label' => 'Lớp phủ PVD'],
+        ['id' => 'muc-lop-phu-be-mat', 'label' => 'Lớp phủ bề mặt'],
         ['id' => 'muc-do-ga-kiem-2', 'label' => 'Đồ gá kiểm'],
     ])->and($toc['html'])->toContain('<h2 id="muc-do-ga-kiem">Đồ gá kiểm</h2>')->toContain('<h2 id="muc-do-ga-kiem-2">')->toContain('<h3>Con</h3>');
 
@@ -334,10 +334,10 @@ it('never makes an anchor equal to an id the page already uses', function (): vo
 
 it('draws the table of contents in the side column from the body headings, on desktop only', function (): void {
     app()->setLocale('vi');
-    $toc = [['id' => 'nhom-thep', 'label' => 'Ba nhóm thép'], ['id' => 'lop-phu', 'label' => 'Lớp phủ PVD']];
+    $toc = [['id' => 'nhom-thep', 'label' => 'Bản tin nhóm thép'], ['id' => 'lop-phu', 'label' => 'Lớp phủ bề mặt']];
     $draw = fn (array $toc, string $aside): string => view('theme::partials.post-aside', ['toc' => $toc, 'html' => $aside])->render();
 
-    expect($draw($toc, ''))->toContain('post-aside post-aside--toc-only')->toContain('href="#nhom-thep"')->toContain('Ba nhóm thép')->toContain('Mục lục')
+    expect($draw($toc, ''))->toContain('post-aside post-aside--toc-only')->toContain('href="#nhom-thep"')->toContain('Bản tin nhóm thép')->toContain('Mục lục')
         ->and($draw($toc, '<p>khối</p>'))->not->toContain('toc-only')->toContain('<p>khối</p>')
         ->and($draw([], '<p>khối</p>'))->not->toContain('post-toc');
 });
@@ -356,11 +356,11 @@ function slotsBody(int $siteId, Entry $read, string $html): void
 it('builds both tables of contents of a post from its stored formatted text, with working anchors', function (): void {
     $site = slotsSite();
     $id = slotsSiteId();
-    slotsBody($id, $site['read'], '<p>Mở đầu</p><h2>Nhóm thép</h2><p>a</p><h2>Lớp phủ PVD</h2><p>b</p><h2>Nhóm thép</h2><p>c</p>');
+    slotsBody($id, $site['read'], '<p>Mở đầu</p><h2>Nhóm thép</h2><p>a</p><h2>Lớp phủ bề mặt</h2><p>b</p><h2>Nhóm thép</h2><p>c</p>');
 
     $html = slotsHtml('/tin-tuc/ong-dang-doc');
 
-    expect($html)->toContain('<h2 id="muc-nhom-thep">Nhóm thép</h2>')->toContain('<h2 id="muc-lop-phu-pvd">')->toContain('<h2 id="muc-nhom-thep-2">')
+    expect($html)->toContain('<h2 id="muc-nhom-thep">Nhóm thép</h2>')->toContain('<h2 id="muc-lop-phu-be-mat">')->toContain('<h2 id="muc-nhom-thep-2">')
         ->toContain('<aside class="post-aside post-aside--toc-only"')
         ->toContain('<a class="post-toc__link" href="#muc-nhom-thep-2">Nhóm thép</a>')
         // the phone's disclosure carries the same entries
@@ -369,7 +369,7 @@ it('builds both tables of contents of a post from its stored formatted text, wit
     preg_match('#<nav class="post-toc".*?</nav>#s', $html, $desktop);
     preg_match_all('#href="\#(muc-[a-z0-9-]+)"#', $phone[0] ?? '', $phoneLinks);
     preg_match_all('#href="\#(muc-[a-z0-9-]+)"#', $desktop[0] ?? '', $desktopLinks);
-    expect($phoneLinks[1])->toBe(['muc-nhom-thep', 'muc-lop-phu-pvd', 'muc-nhom-thep-2'])->and($desktopLinks[1])->toBe($phoneLinks[1]);
+    expect($phoneLinks[1])->toBe(['muc-nhom-thep', 'muc-lop-phu-be-mat', 'muc-nhom-thep-2'])->and($desktopLinks[1])->toBe($phoneLinks[1]);
     // every link lands on exactly one heading
     foreach ($phoneLinks[1] as $anchor) {
         expect(substr_count($html, 'id="'.$anchor.'"'))->toBe(1);
@@ -463,7 +463,7 @@ it('loads the slider script for a rotating slider in a list or product slot', fu
     $id = slotsSiteId();
     $slide = fn (string $heading): array => ['heading' => $heading, 'image_url' => ''];
 
-    slotsDefault($id, $slot, [['type' => 'hero_slider', 'props' => ['slides' => [$slide('Tấm một'), $slide('Tấm hai')]]]]);
+    slotsDefault($id, $slot, [['type' => 'hero_slider', 'props' => ['slides' => [$slide('Tấm một'), $slide('Tấm đầu tiên')]]]]);
     expect(slotsHtml($path))->toContain('<script type="module" src="/resources/js/sf-slider.js"></script>');
 
     slotsDefault($id, $slot, [['type' => 'hero_slider', 'props' => ['slides' => [$slide('Tấm duy nhất')]]]]);

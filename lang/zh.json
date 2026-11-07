@@ -3228,5 +3228,5 @@
     "layout_slots.err_slot_invalid": "没有这个区块位置。请刷新页面后重试。",
     "layout_slots.err_locale_invalid": "网站尚未启用此语言。请先启用该语言，或删除该语言的内容。",
     "layout_slots.err_too_many": "此处最多只能放 :max 个区块。请删除一些区块。",
-    "layout_slots.err_type_slot": "“最新文章”区块只能放在文章的侧栏或文章末尾。请移到那里，或删除该区块。"
+    "layout_slots.err_type_slot": "“:block”区块只能放在文章的侧栏或文章末尾。请移到那里，或删除该区块。"
 }

@@ -3228,5 +3228,5 @@
     "layout_slots.err_slot_invalid": "Không có chỗ đặt khối này. Hãy tải lại trang rồi thử lại.",
     "layout_slots.err_locale_invalid": "Ngôn ngữ này chưa bật cho website. Hãy bật ngôn ngữ trước, hoặc bỏ nội dung của ngôn ngữ đó.",
     "layout_slots.err_too_many": "Chỗ này chỉ chứa tối đa :max khối. Hãy bỏ bớt khối.",
-    "layout_slots.err_type_slot": "Khối “Bài viết mới” chỉ đặt được ở cột bên hoặc cuối bài viết. Hãy chuyển khối sang đó hoặc bỏ khối."
+    "layout_slots.err_type_slot": "Khối “:block” chỉ đặt được ở cột bên hoặc cuối bài viết. Hãy chuyển khối sang đó hoặc bỏ khối."
 }

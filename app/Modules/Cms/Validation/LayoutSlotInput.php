@@ -93,7 +93,7 @@ final readonly class LayoutSlotInput
             foreach ($blocks as $block) {
                 $type = is_array($block) ? ($block['type'] ?? null) : null;
                 if (is_string($type) && ! LayoutSlots::accepts($slot, $type)) {
-                    throw new LayoutBlocksRejectedException('blocks_invalid', $slot, $locale, __('layout_slots.err_type_slot'));
+                    throw new LayoutBlocksRejectedException('blocks_invalid', $slot, $locale, __('layout_slots.err_type_slot', ['block' => __('storefront.'.$type)]));
                 }
             }
 
