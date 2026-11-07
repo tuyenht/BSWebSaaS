@@ -482,3 +482,101 @@ it('reads one page of rows with only the first picture of each product', functio
             ->and($rows->first()->images->first()->media->storage_key)->toBe('s/library/anh-0.png');
     });
 });
+
+it('shows a member without catalog.view the no-permission card and no rows, and writes stay refused', function (): void {
+    $member = User::factory()->create();
+    $manager = User::factory()->create();
+    $ulid = null;
+
+    app(Tenancy::class)->enter(1, function () use ($member, $manager, &$ulid): void {
+        grantRole($member, 'no-catalog', ['entries.view']);
+        grantRole($manager, 'cat-manager', ['catalog.view', 'catalog.manage']);
+        listSeed();
+        $ulid = Product::query()->where('sku', 'DP-1')->firstOrFail()->ulid;
+
+        Livewire::actingAs($member->fresh())->test(Index::class)
+            ->assertOk()
+            ->assertSee(__('catalog.noperm_title'))
+            ->assertSee(__('catalog.noperm_text', ['role' => 'No Catalog']))
+            ->assertSee(__('catalog.noperm_back'))
+            ->assertSeeHtml('data-state="noperm"')
+            ->assertSeeHtml('role="status"')
+            ->assertDontSee('Mũi khoan thép gió dài')
+            ->call('trash', $ulid)->assertForbidden();
+    });
+    expect(Product::withoutGlobalScopes()->where('ulid', $ulid)->whereNotNull('deleted_at')->exists())->toBeFalse();
+});
+
+it('draws the status header as the "updated" sort button, and the Trash heading on the Trash tab', function (): void {
+    $manager = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        grantRole($manager, 'cat-manager', ['catalog.view', 'catalog.manage']);
+        listSeed();
+
+        $find = '/aria-sort="(\w+)"[^>]*>\s*<button[^>]*wire:click="sortBy\(\'updated\'\)"[^>]*>\s*([^<]+?)\s*</';
+
+        $test = Livewire::actingAs($manager->fresh())->test(Index::class);
+        preg_match($find, $test->html(), $m);
+        expect($m)->not->toBeEmpty()->and($m[1])->toBe('descending')->and($m[2])->toBe(__('catalog.status_label'));
+
+        $test->call('setSort', 'name');
+        preg_match($find, $test->html(), $m);
+        expect($m[1])->toBe('none');
+
+        $test->call('setTab', 'trash')->call('setSort', 'updated');
+        preg_match($find, $test->html(), $m);
+        expect($m[1])->toBe('descending')->and($m[2])->toBe(__('catalog.trash_tab'));
+        $test->assertSet('sortKey', '');
+    });
+});
+
+it('offers the Cột and Hiện trên thẻ menus from the saved choice, with only the columns drawn today', function (): void {
+    $viewer = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($viewer): void {
+        grantRole($viewer, 'cat-viewer', ['catalog.view']);
+        listSeed();
+
+        $test = Livewire::actingAs($viewer->fresh())->test(Index::class)
+            ->assertSeeHtml('id="catalog-cols"')
+            ->assertSee(__('entries.cols_required'))->assertSee(__('entries.cols_optional'))
+            ->assertSee(__('catalog.col_opt_cat'))
+            ->assertSeeHtml('wire:model.live="cols"')
+            ->assertSeeHtml('value="cat"')
+            ->assertDontSeeHtml('value="price"')->assertDontSeeHtml('value="stock"')->assertDontSeeHtml('value="badge"')
+            ->assertSee(__('entries.f_card'))->assertSee(__('catalog.card_opt_sku'))->assertSee(__('catalog.card_opt_cat'))
+            ->assertSeeHtml('get vCat()')->assertSeeHtml('x-show="vSku"');
+
+        $test->set('cols', [])->set('card', ['sku']);
+        expect($viewer->fresh()->preferences['lists']['catalog'])->toEqual(['cols' => [], 'card' => ['sku']]);
+        Livewire::actingAs($viewer->fresh())->test(Index::class)->assertSet('cols', [])->assertSet('card', ['sku']);
+    });
+});
+
+it('gives the empty, error and no-permission cards their role, and the search its name, hint and clear button', function (): void {
+    $manager = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        grantRole($manager, 'cat-manager', ['catalog.view', 'catalog.manage']);
+
+        Livewire::actingAs($manager->fresh())->test(Index::class)->assertSeeHtml('role="status" data-state="empty"');
+
+        listSeed();
+        $test = Livewire::actingAs($manager->fresh())->test(Index::class)
+            ->assertSeeHtml('aria-label="'.e(__('catalog.search_label')).'"')
+            ->assertSeeHtml('placeholder="'.e(__('catalog.search_hint')).'"')
+            ->assertDontSeeHtml('aria-label="'.e(__('catalog.search_clear')).'"');
+        $test->set('search', 'dao')->assertSeeHtml('aria-label="'.e(__('catalog.search_clear')).'"')
+            ->set('search', '')->assertDontSeeHtml('aria-label="'.e(__('catalog.search_clear')).'"');
+
+        $fail = true;
+        DB::beforeExecuting(function (string $query) use (&$fail): void {
+            if ($fail && str_contains($query, 'distinct on (product_id)')) {
+                throw new QueryException('pgsql', $query, [], new RuntimeException('server busy'));
+            }
+        });
+        Livewire::actingAs($manager->fresh())->test(Index::class)->assertSeeHtml('role="alert" data-state="error"');
+        $fail = false;
+    });
+});

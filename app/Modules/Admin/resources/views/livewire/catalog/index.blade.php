@@ -26,10 +26,14 @@
             'sheet' => true, 'class' => 'min-[900px]:hidden',
             'options' => array_map(fn (array $g): array => ['value' => $g['key'], 'label' => $g['label'], 'count' => $g['count'], 'divider' => $g['trash'] ?? false], $groups)],
     ];
+    // a view choice, not a filter: only while the rows are cards (the list narrower than 37.5rem)
+    $cardLabels = ['sku' => __('catalog.card_opt_sku'), 'cat' => __('catalog.card_opt_cat')];
+    $sections[] = ['key' => 'card', 'label' => __('entries.f_card'), 'model' => 'card', 'multiple' => true, 'value' => $card, 'sheet' => true, 'class' => '@min-[37.5rem]/lt:hidden', 'on' => false,
+        'options' => array_map(fn (string $k): array => ['value' => $k, 'label' => $cardLabels[$k]], $cardOptions)];
 
     $trashSort = $tab === 'trash';
     $sortLabel = fn (string $key): string => $key === 'updated' && $trashSort ? __('catalog.sort_updated_trash') : __('catalog.sort_'.$key);
-    $sortIcons = ['updated' => 'ri-history', 'name' => 'ri-sort-alphabet-asc', 'price_asc' => 'ri-sort-number-asc', 'price_desc' => 'ri-sort-number-desc', 'stock_asc' => 'ri-stack'];
+    $sortIcons = ['updated' => 'ri-time', 'name' => 'ri-sort-alphabet-asc', 'price_asc' => 'ri-sort-number-asc', 'price_desc' => 'ri-sort-number-desc', 'stock_asc' => 'ri-stack'];
     $sortOptions = [];
     foreach ($sorts as $key) {
         $sortOptions[] = ['key' => $key, 'label' => $sortLabel($key), 'icon' => $sortIcons[$key]];
@@ -72,16 +76,16 @@
     </header>
 
     @if ($failed)
-        <div class="min-w-0 rounded-md border border-border bg-surface p-6 text-center shadow-card" role="alert" data-state="error">
+        <x-bs-admin::card flush role="alert" data-state="error" class="min-w-0 p-6 text-center">
             <x-bs-admin::icon name="ri-wifi-off" class="mx-auto size-8 text-text-muted" />
             <h2 class="m-0 mt-2 text-[calc(1.125rem+var(--user-text-boost))] font-semibold text-text-strong">{{ __('catalog.error_title') }}</h2>
             <p class="m-0 mt-1 text-body text-text-muted">{{ __('catalog.error_text') }}</p>
             <x-bs-admin::button color="primary" class="mt-4" wire:click="$refresh">
                 <x-bs-admin::icon name="ri-refresh" class="size-4" /> {{ __('catalog.error_retry') }}
             </x-bs-admin::button>
-        </div>
+        </x-bs-admin::card>
     @elseif ($counts['all'] === 0 && (! $canManage || $counts['trash'] === 0))
-        <div class="min-w-0 rounded-md border border-border bg-surface p-6 text-center shadow-card" data-state="empty">
+        <x-bs-admin::card flush role="status" data-state="empty" class="min-w-0 p-6 text-center">
             <x-bs-admin::icon name="ri-box-3" class="mx-auto size-8 text-text-muted" />
             <h2 class="m-0 mt-2 text-[calc(1.125rem+var(--user-text-boost))] font-semibold text-text-strong">{{ __('catalog.empty_title') }}</h2>
             <p class="m-0 mt-1 text-body text-text-muted">{{ $canManage ? __('catalog.empty_text_manage') : __('catalog.empty_text_view') }}</p>
@@ -90,20 +94,64 @@
                     <x-bs-admin::icon name="ri-add" class="size-4" /> {{ __('catalog.empty_add_first') }}
                 </x-bs-admin::button>
             @endif
-        </div>
+        </x-bs-admin::card>
     @else
     <div class="min-w-0 min-[600px]:rounded-md min-[600px]:border min-[600px]:border-border min-[600px]:bg-surface min-[600px]:pb-4 min-[600px]:shadow-card">
         <x-bs-admin::group-row :groups="$groups" :active="$tab" model="tab" :label="__('catalog.groups_label')" />
 
-        <div class="@container/lt min-w-0">
+        {{-- What shows on each product follows the list's own width: below 600 the member's card choice, 600–899
+             every detail, from 900 their column choice (both kept in their own preferences). --}}
+        <div class="@container/lt min-w-0"
+             x-data="{
+                 mode: 'cols',
+                 size() { const w = this.$refs.rows?.clientWidth ?? 0, rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16; this.mode = w < 37.5 * rem ? 'card' : (w < 56.25 * rem ? 'line' : 'cols'); },
+                 show(k) { return this.mode === 'line' || (this.mode === 'cols' ? this.$wire.cols : this.$wire.card).includes(k); },
+                 get vSku() { return this.mode !== 'card' || this.$wire.card.includes('sku'); },
+                 get vCat() { return this.show('cat'); },
+             }"
+             x-init="size(); new ResizeObserver(() => size()).observe($el)">
             <div class="flex flex-col gap-3 pb-3 min-[600px]:px-4 min-[600px]:pt-4 min-[900px]:pt-3 @min-[56.25rem]/lt:flex-row @min-[56.25rem]/lt:flex-wrap @min-[56.25rem]/lt:items-center">
                 <div class="min-w-0 text-body @min-[56.25rem]/lt:min-w-[19em] @min-[56.25rem]/lt:max-w-[30em] @min-[56.25rem]/lt:flex-[999_1_19em] @min-[56.25rem]/lt:[&:has(+[data-below='1'])]:max-w-none">
-                    <x-bs-admin::search id="catalog-search" :label="__('catalog.search_placeholder')" wire:model.live.debounce.300ms="search" />
+                    <x-bs-admin::search id="catalog-search" :label="__('catalog.search_label')" :placeholder="__('catalog.search_hint')"
+                        :clear-label="__('catalog.search_clear')" clear-action="$set('search', '')" :clear-on="trim($search) !== ''" wire:model.live.debounce.300ms="search" />
                 </div>
                 <x-bs-admin::tool-row class="@min-[56.25rem]/lt:min-w-0 @min-[56.25rem]/lt:flex-[1_1_auto] @min-[56.25rem]/lt:flex-wrap @min-[56.25rem]/lt:gap-3">
                     <x-bs-admin::filter-panel class="ms-auto flex-nowrap @min-[56.25rem]/lt:ms-0 @min-[56.25rem]/lt:min-w-0 @min-[56.25rem]/lt:shrink @min-[56.25rem]/lt:flex-wrap" :sections="$sections"
                         :active="0" :active-narrow="$tab !== 'all' ? 1 : 0" :results="__('catalog.show_n', ['n' => $fmt($matchCount), 'unit' => $noun])" />
                     <x-bs-admin::sort-menu class="@min-[56.25rem]/lt:ms-auto" :options="$sortOptions" :active="$sortOn" :lit="! $sortIsDefault" set="setSort" />
+                    {{-- Opening moves focus to the first choice; Esc puts it back on the button; leaving it (Tab, a click away) closes it. --}}
+                    <div class="relative hidden shrink-0 @min-[56.25rem]/lt:block"
+                         x-data="{
+                             open: false,
+                             show() { this.open = true; this.whenShown(() => this.$refs.colsPanel.querySelector('input:not([disabled])')?.focus()); },
+                             hide(back = true) { if (! this.open) return; this.open = false; if (back) this.$refs.cols.focus(); },
+                             whenShown(fn, tries = 20) { this.$refs.colsPanel.getClientRects().length || ! tries ? fn() : setTimeout(() => this.whenShown(fn, tries - 1), 16); },
+                         }"
+                         @click.outside="hide(false)" @keydown.escape.prevent.stop="hide()"
+                         @focusout="if ($event.relatedTarget && ! $root.contains($event.relatedTarget)) hide(false)">
+                        <button type="button" x-ref="cols" @click="open ? hide() : show()" :aria-expanded="open ? 'true' : 'false'" aria-controls="catalog-cols"
+                            class="hit-area inline-flex min-h-control items-center gap-1.5 rounded-full border border-transparent bg-primary/7 px-3.5 text-body font-medium text-text transition-colors hover:bg-primary/12">
+                            <x-bs-admin::icon name="ri-layout-column" class="size-4 text-text-muted" /> {{ __('entries.cols_button') }}
+                            <x-bs-admin::icon name="chevron-down" class="size-4 text-text-muted transition-transform" ::class="open && 'rotate-180'" />
+                        </button>
+                        <div x-show="open" x-cloak x-transition x-ref="colsPanel" id="catalog-cols" role="group" aria-label="{{ __('entries.cols_button') }}"
+                            class="absolute end-0 top-full z-60 mt-1.5 w-60 rounded-md border border-border bg-surface p-1.5 shadow-lg">
+                            <p class="m-0 px-2 pb-1 pt-1.5 text-caption font-semibold text-text-muted">{{ __('entries.cols_required') }}</p>
+                            @foreach ([__('catalog.col_product'), __('catalog.status_label'), __('admin.actions')] as $locked)
+                                <label class="flex min-h-menu-row cursor-not-allowed items-center gap-2.5 rounded px-2 text-body text-text-muted any-pointer-coarse:min-h-menu-row-touch">
+                                    <input type="checkbox" checked disabled class="size-4 rounded border-border-strong">
+                                    {{ $locked }}
+                                </label>
+                            @endforeach
+                            <p class="m-0 px-2 pb-1 pt-2 text-caption font-semibold text-text-muted">{{ __('entries.cols_optional') }}</p>
+                            @foreach ($colOptions as $key)
+                                <label class="flex min-h-menu-row cursor-pointer items-center gap-2.5 rounded px-2 text-body text-text hover:bg-surface-hover any-pointer-coarse:min-h-menu-row-touch">
+                                    <input type="checkbox" value="{{ $key }}" wire:model.live="cols" class="size-4 shrink-0 accent-primary-text">
+                                    {{ __('catalog.col_opt_'.$key) }}
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
                 </x-bs-admin::tool-row>
             </div>
 
@@ -111,14 +159,16 @@
                 :summary="$filtering ? __('catalog.match_of', ['n' => $fmt($matchCount), 'm' => $fmt($counts[$tab] ?? 0), 'unit' => $noun]) : null"
                 :chips="$chips" :clear="$filtering ? 'clearAllFilters' : null" />
 
-            <div class="min-w-0 max-[599.98px]:rounded-md max-[599.98px]:border max-[599.98px]:border-border max-[599.98px]:bg-surface max-[599.98px]:[&_.list-g]:border-t-0">
+            <div x-ref="rows" class="min-w-0 max-[599.98px]:rounded-md max-[599.98px]:border max-[599.98px]:border-border max-[599.98px]:bg-surface max-[599.98px]:[&_.list-g]:border-t-0">
             <x-bs-admin::list :label="__('catalog.list_label')">
 
                 <x-bs-admin::list.head>
                     <x-bs-admin::list.cell head col="main" :sort="$ariaSort('name')">
                         <x-bs-admin::list.sort :active="$sortOn === 'name'" dir="asc" wire:click="sortBy('name')">{{ __('catalog.col_product') }}</x-bs-admin::list.sort>
                     </x-bs-admin::list.cell>
-                    <x-bs-admin::list.cell head col="st">{{ __('catalog.status_label') }}</x-bs-admin::list.cell>
+                    <x-bs-admin::list.cell head col="st" :sort="$ariaSort('updated')">
+                        <x-bs-admin::list.sort :active="$sortOn === 'updated'" dir="desc" wire:click="sortBy('updated')">{{ $trashSort ? __('catalog.trash_tab') : __('catalog.status_label') }}</x-bs-admin::list.sort>
+                    </x-bs-admin::list.cell>
                     <x-bs-admin::list.cell head col="act">{{ __('admin.actions') }}</x-bs-admin::list.cell>
                 </x-bs-admin::list.head>
 
@@ -146,10 +196,10 @@
                                     <x-bs-admin::list.name :href="$canManage && ! $trashed ? route('admin.catalog.edit', ['ulid' => $product->ulid]) : null">{{ $name }}</x-bs-admin::list.name>
                                     <x-bs-admin::list.meta>
                                         @if ($product->sku !== null)
-                                            <span class="list-m" data-for="sku">{{ __('catalog.sku_meta', ['sku' => $product->sku]) }}</span>
+                                            <span class="list-m" data-for="sku" x-show="vSku">{{ __('catalog.sku_meta', ['sku' => $product->sku]) }}</span>
                                         @endif
                                         @if ($categoryName !== null)
-                                            <span class="list-m" data-for="cat">{{ $categoryName }}</span>
+                                            <span class="list-m" data-for="cat" x-show="vCat">{{ $categoryName }}</span>
                                         @endif
                                         @if ($whenText)
                                             <span class="list-m" data-for="when">{{ $whenText }}</span>

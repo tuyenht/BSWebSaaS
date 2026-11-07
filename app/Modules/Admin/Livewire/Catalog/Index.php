@@ -23,6 +23,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -33,7 +34,7 @@ use Livewire\Component;
  * a name / SKU search, a sort menu and numbered pages, all read in SQL by ProductListQuery — one
  * page of rows at a time, at a flat query budget (enforced by a Query-Budget test). Numbered pages
  * reach the first 10,000 rows; past them the pager goes on with an encrypted cursor, and counts stop
- * at "hơn 10.000". Read access is gated by CatalogPolicy::viewAny; every mutation (trash, restore,
+ * at "hơn 10.000". A member without catalog.view (CatalogPolicy::viewAny) gets a card saying so, never rows; every mutation (trash, restore,
  * force-delete) re-authorizes through the policy because the livewire/update endpoint bypasses route
  * middleware. A trashed product keeps its sku/slug reserved until permanently deleted. The Trash is
  * a status group (?tab=trash); the old ?trash=1 link opens it too.
@@ -56,6 +57,12 @@ final class Index extends Component
 
     /** Optional columns of a wide list ("Cột"), and the ones on until the member says otherwise. */
     private const array COLS = ['cat', 'price', 'stock', 'badge'];
+
+    /** The optional columns whose cells are drawn today; price, stock and label stay out of the menu until theirs are. */
+    private const array COL_OPTIONS = ['cat'];
+
+    /** The card details drawn today (the others stay out of the menu until theirs are). */
+    private const array CARD_OPTIONS = ['sku', 'cat'];
 
     /** What a phone card may add ("Hiện trên thẻ"), all off until the member turns them on. */
     private const array CARD = ['sku', 'cat', 'slug', 'tr'];
@@ -89,12 +96,6 @@ final class Index extends Component
     public array $card = [];
 
     private ?bool $brochure = null;
-
-    /** Every request of this screen is refused once the member may no longer see products. */
-    public function boot(): void
-    {
-        $this->authorize('viewAny', Product::class);
-    }
 
     public function mount(): void
     {
@@ -256,6 +257,11 @@ final class Index extends Component
 
     public function render(): View
     {
+        // A member without catalog.view gets a card saying so and no rows: nothing below is read for them.
+        if (! Gate::allows('viewAny', Product::class)) {
+            return view('admin::livewire.catalog.noperm', ['role' => $this->roleName()]);
+        }
+
         $this->clean();
         // The list's statements are planned for this website's own numbers: PgBouncer keeps prepared
         // statements, and a plan made once for every website assumes a website of average size.
@@ -300,6 +306,8 @@ final class Index extends Component
             'canManage' => $canManage,
             'sortOn' => $sortOn,
             'sortIsDefault' => $sortOn === 'updated',
+            'colOptions' => self::COL_OPTIONS,
+            'cardOptions' => self::CARD_OPTIONS,
             'sorts' => $this->sortKeys(),
             'urls' => app(MediaUrlResolver::class),
             'siteTime' => app(SiteTime::class),
@@ -546,6 +554,14 @@ final class Index extends Component
     private static function known(array $values, array $known): array
     {
         return array_values(array_intersect($known, array_filter($values, 'is_string')));
+    }
+
+    /** The member's highest role, named for the no-permission card; null when they hold none. */
+    private function roleName(): ?string
+    {
+        $name = $this->actingUser()->roles->sortByDesc('level')->first()?->getAttribute('name');
+
+        return is_string($name) && $name !== '' ? Str::headline($name) : null;
     }
 
     private function actingUser(): User

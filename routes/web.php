@@ -238,7 +238,8 @@ Route::prefix(config('admin.prefix', 'admin'))
         // Content CRUD (W4 + post collections). One section-driven set of routes for
         // every entry type (?section=… picks the type); addressed by ulid (D2).
         Route::get('/content', EntriesIndex::class)->middleware('can:entries.view')->name('admin.entries.index');
-        Route::get('/catalog', CatalogIndex::class)->middleware('can:catalog.view')->name('admin.catalog.index');
+        // no `can:` here: a member without catalog.view sees the screen's own no-permission card
+        Route::get('/catalog', CatalogIndex::class)->name('admin.catalog.index');
         Route::get('/catalog/create', CatalogEditor::class)->middleware('can:catalog.manage')->name('admin.catalog.create');
         Route::get('/catalog/{ulid}/edit', CatalogEditor::class)->middleware('can:catalog.manage')->name('admin.catalog.edit');
         // Review inbox — for people who APPROVE: gated on the review ability, never on edit
