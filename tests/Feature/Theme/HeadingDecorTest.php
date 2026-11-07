@@ -48,7 +48,7 @@ function decorFaq(int $siteId, array $props = []): string
 {
     app()->setLocale('vi');
 
-    return app(Tenancy::class)->enter($siteId, fn (): string => View::make('theme::sections.faq', ['props' => ['heading' => DECOR_HEADING, 'items' => [['q' => 'Hỏi gì?', 'a' => 'Đáp ạ']]] + $props])->render());
+    return app(Tenancy::class)->enter($siteId, fn (): string => View::make('theme::sections.faq', ['props' => ['heading' => DECOR_HEADING, 'items' => [['q' => 'Ổn không ạ', 'a' => 'Đáp ạ']]] + $props])->render());
 }
 
 /** @param  list<array<string, mixed>>  $blocks */
@@ -84,25 +84,25 @@ describe('with nothing set', function (): void {
     it('renders every head exactly as before', function (): void {
         app()->setLocale('vi');
         $golden = fn (string $name): string => file_get_contents(__DIR__.'/../../Fixtures/heading-decor/'.$name.'.html');
-        $steps = [['title' => 'Một', 'text' => 'Hai'], ['title' => 'Ba', 'text' => 'Bốn'], ['title' => 'Năm', 'text' => 'Sáu']];
+        $steps = [['title' => 'Đầu tiên ạ', 'text' => 'Ổn định ạ'], ['title' => 'Đường đi ạ', 'text' => 'Ấm áp ạ'], ['title' => 'Ước mơ ạ', 'text' => 'Ứng dụng ạ']];
 
-        expect(View::make('theme::sections.faq', ['props' => ['heading' => 'Ưu điểm nổi bật ạ', 'items' => [['q' => 'Hỏi gì?', 'a' => 'Đáp ạ']]]])->render())->toBe($golden('faq'))
-            ->and(View::make('theme::sections.features', ['props' => ['heading' => 'Đẳng cấp nhé', 'description' => 'Mô tả ngắn ạ', 'items' => [['title' => 'Một', 'text' => 'Hai']]]])->render())->toBe($golden('features'))
-            ->and(View::make('theme::sections.stats', ['props' => ['heading' => 'Con số ấn tượng ạ', 'items' => [['value' => 12, 'label' => 'Năm']]]])->render())->toBe($golden('stats'))
-            ->and(View::make('theme::sections.process', ['props' => ['heading' => 'Quy trình ạ', 'steps' => $steps]])->render())->toBe($golden('process'))
+        expect(View::make('theme::sections.faq', ['props' => ['heading' => 'Ưu điểm nổi bật ạ', 'items' => [['q' => 'Ổn không ạ', 'a' => 'Đáp ạ']]]])->render())->toBe($golden('faq'))
+            ->and(View::make('theme::sections.features', ['props' => ['heading' => 'Đẳng cấp nhé', 'description' => 'Đoạn mô tả ngắn ạ', 'items' => [['title' => 'Đầu tiên ạ', 'text' => 'Ổn định ạ']]]])->render())->toBe($golden('features'))
+            ->and(View::make('theme::sections.stats', ['props' => ['heading' => 'Đếm số ấn tượng ạ', 'items' => [['value' => 12, 'label' => 'Ấn tượng ạ']]]])->render())->toBe($golden('stats'))
+            ->and(View::make('theme::sections.process', ['props' => ['heading' => 'Đúng quy trình ạ', 'steps' => $steps]])->render())->toBe($golden('process'))
             ->and(View::make('theme::sections.process', ['props' => ['steps' => $steps]])->render())->toBe($golden('process_bare'));
     });
 
     it('renders the related lists of a post and a product exactly as before', function (): void {
         app()->setLocale('vi');
-        $cards = [['title' => 'Bài liên quan ạ', 'url' => '/bai-1', 'excerpt' => '', 'label' => '']];
+        $cards = [['title' => 'Đọc bài liên quan ạ', 'url' => '/bai-1', 'excerpt' => '', 'label' => '']];
         // The head now comes from the shared partial, whose own lines are indented for the sections; only the
         // white space between tags differs from the old hand-copied markup, so that is what is left out.
         $related = static fn (string $html): string => preg_replace('~>\s+<~', '><', preg_match('~<section class="post-related.*?</section>~s', $html, $m) === 1 ? $m[0] : '');
         $golden = static fn (string $name): string => preg_replace('~>\s+<~', '><', file_get_contents(__DIR__.'/../../Fixtures/heading-decor/'.$name.'.html'));
 
-        $post = app(PageRenderer::class)->render('post', null, 'Bài 1', ['blocks' => []], [], null, ['related' => $cards]);
-        $product = app(PageRenderer::class)->renderProduct('Sản phẩm ạ', '<p>Mô tả</p>', [], [], ['related' => $cards]);
+        $post = app(PageRenderer::class)->render('post', null, 'Đầu bài ạ', ['blocks' => []], [], null, ['related' => $cards]);
+        $product = app(PageRenderer::class)->renderProduct('Ống sản phẩm ạ', '<p>Ổn mô tả ạ</p>', [], [], ['related' => $cards]);
 
         expect($related($post))->toBe($golden('post_related'))
             ->and($related($product))->toBe($golden('product_related'));
@@ -154,11 +154,11 @@ describe('the block choice', function (): void {
 
     it('draws the post and product related lists through the same head', function (): void {
         decorSet(1, ['style' => 'wave']);
-        $cards = [['title' => 'Bài liên quan ạ', 'url' => '/bai-1', 'excerpt' => '', 'label' => '']];
+        $cards = [['title' => 'Đọc bài liên quan ạ', 'url' => '/bai-1', 'excerpt' => '', 'label' => '']];
 
         [$post, $product] = app(Tenancy::class)->enter(1, fn (): array => [
-            app(PageRenderer::class)->render('post', null, 'Bài 1', ['blocks' => []], [], null, ['related' => $cards]),
-            app(PageRenderer::class)->renderProduct('Sản phẩm ạ', '<p>Mô tả</p>', [], [], ['related' => $cards]),
+            app(PageRenderer::class)->render('post', null, 'Đầu bài ạ', ['blocks' => []], [], null, ['related' => $cards]),
+            app(PageRenderer::class)->renderProduct('Ống sản phẩm ạ', '<p>Ổn mô tả ạ</p>', [], [], ['related' => $cards]),
         ]);
 
         expect($post)->toContain('<h2 class="sf-section-head__title" id="bai-viet-lien-quan">')->toContain('sf-decor sf-decor--wave')
@@ -225,7 +225,7 @@ describe('colours', function (): void {
         foreach (['red', '#12', 'url(x)', '#fff;}</style><script>', 'var(--x)', "#ff0000\n;color:red", 7] as $bad) {
             decorSet(1, ['style' => 'wave', 'color' => 'custom', 'custom_color' => $bad, 'gradient' => true, 'custom_color_2' => $bad]);
             $variables = app(Tenancy::class)->enter(1, fn () => app(ThemeResolver::class)->cssVariables());
-            $page = app(Tenancy::class)->enter(1, fn () => app(PageRenderer::class)->render('page', null, 'Trang', ['blocks' => []]));
+            $page = app(Tenancy::class)->enter(1, fn () => app(PageRenderer::class)->render('page', null, 'Đầu trang ạ', ['blocks' => []]));
 
             expect($variables)->not->toHaveKey('sf-decor-c')->not->toHaveKey('sf-decor-c2')
                 ->and($page)->not->toContain('--sf-decor-c')->not->toContain('<script>');
@@ -323,12 +323,59 @@ describe('the mask picture', function (): void {
     });
 });
 
+describe('a page that draws its heads before the tokens', function (): void {
+    it('gives each site its own decoration, never the one drawn before', function (): void {
+        decorSet(1, ['style' => 'laurel']);
+        decorSet(2, ['style' => 'gear']);
+
+        expect(decorFaq(1))->toContain('sf-decor--laurel')->not->toContain('sf-decor--gear')
+            ->and(decorFaq(2))->toContain('sf-decor--gear')->not->toContain('sf-decor--laurel')
+            ->and(decorFaq(1))->toContain('sf-decor--laurel');
+
+        decorSet(2, ['style' => 'none']);
+        expect(decorFaq(2))->not->toContain('sf-decor')->not->toContain('sf-section-head__rule');
+    });
+
+    it('does not keep the view factory holding a site\'s decoration', function (): void {
+        decorSet(1, ['style' => 'laurel']);
+        app(Tenancy::class)->enter(1, fn () => app(ThemeResolver::class)->cssVariables());
+
+        expect(View::getShared())->not->toHaveKey('sfHeadingDecor');
+    });
+});
+
+describe('saving a mask', function (): void {
+    it('needs no shape, and a shape saved after it replaces the mask', function (): void {
+        $mine = decorPng(1, 'vien-rieng');
+        $this->actingAs(decorAdmin());
+        $save = fn (array $input) => app(Tenancy::class)->enter(1, fn () => app(SetHeadingDecor::class)->handle($input));
+        $stored = fn (): array => app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->where('key', 'heading_decor')->first()->value);
+
+        $save(['mask_media' => $mine->storage_key]);
+        expect($stored()['style'])->toBe('')->and($stored()['mask_media'])->toBe($mine->storage_key)
+            ->and(decorFaq(1))->toContain('class="sf-decor sf-decor--mask"')->not->toContain('sf-section-head__rule');
+
+        $save(['style' => 'wave']);
+        expect($stored()['mask_media'])->toBe('')
+            ->and(decorFaq(1))->toContain('class="sf-decor sf-decor--wave"')->not->toContain('sf-decor--mask');
+    });
+
+    it('wins over a saved shape when both are set', function (): void {
+        $mine = decorPng(1, 'vien-rieng');
+        $this->actingAs(decorAdmin());
+        app(Tenancy::class)->enter(1, fn () => app(SetHeadingDecor::class)->handle(['style' => 'wave', 'mask_media' => $mine->storage_key]));
+
+        expect(decorFaq(1))->toContain('class="sf-decor sf-decor--mask"')->not->toContain('sf-decor--wave')
+            ->and(decorFaq(1, ['heading_decor' => 'gear']))->toContain('sf-decor--gear');
+    });
+});
+
 describe('the ground', function (): void {
     it('puts the decoration on the set\'s own colour on a dark or brand ground, even with a custom colour and a gradient', function (): void {
         decorSet(1, ['style' => 'wave', 'color' => 'custom', 'custom_color' => '#ff0000', 'gradient' => true, 'custom_color_2' => '#00ff00']);
 
         foreach (['dark', 'brand'] as $scheme) {
-            $html = decorBlocks(1, [['type' => 'faq', 'props' => ['heading' => DECOR_HEADING, 'items' => [['q' => 'Hỏi gì?', 'a' => 'Đáp ạ']], 'bg' => 'scheme', 'scheme' => $scheme]]]);
+            $html = decorBlocks(1, [['type' => 'faq', 'props' => ['heading' => DECOR_HEADING, 'items' => [['q' => 'Ổn không ạ', 'a' => 'Đáp ạ']], 'bg' => 'scheme', 'scheme' => $scheme]]]);
             expect($html)->toContain('sf-s--sch-'.$scheme)->toContain('class="sf-decor sf-decor--wave sf-decor--grad"');
         }
 
@@ -384,9 +431,9 @@ describe('the setting', function (): void {
 describe('queries', function (): void {
     it('reads no more for a page with decorated headings than for one without', function (): void {
         $blocks = [
-            ['type' => 'faq', 'props' => ['heading' => DECOR_HEADING, 'items' => [['q' => 'Hỏi gì?', 'a' => 'Đáp ạ']]]],
-            ['type' => 'faq', 'props' => ['heading' => DECOR_HEADING, 'items' => [['q' => 'Hỏi gì?', 'a' => 'Đáp ạ']], 'heading_decor' => 'zigzag']],
-            ['type' => 'features', 'props' => ['heading' => DECOR_HEADING, 'items' => [['title' => 'Một', 'text' => 'Hai']]]],
+            ['type' => 'faq', 'props' => ['heading' => DECOR_HEADING, 'items' => [['q' => 'Ổn không ạ', 'a' => 'Đáp ạ']]]],
+            ['type' => 'faq', 'props' => ['heading' => DECOR_HEADING, 'items' => [['q' => 'Ổn không ạ', 'a' => 'Đáp ạ']], 'heading_decor' => 'zigzag']],
+            ['type' => 'features', 'props' => ['heading' => DECOR_HEADING, 'items' => [['title' => 'Đầu tiên ạ', 'text' => 'Ổn định ạ']]]],
         ];
         $queries = function () use ($blocks): int {
             app(StorefrontSettings::class)->forget();
@@ -404,5 +451,29 @@ describe('queries', function (): void {
         $decorated = $queries();
 
         expect($decorated)->toBe($plain);
+    });
+
+    it('adds at most one media read for a mask, however many heads the page has', function (): void {
+        $png = decorPng(1, 'vien-truy-van');
+        $count = function (int $heads): int {
+            $blocks = array_fill(0, $heads, ['type' => 'faq', 'props' => ['heading' => DECOR_HEADING, 'items' => [['q' => 'Ổn không ạ', 'a' => 'Đáp ạ']]]]);
+            app(StorefrontSettings::class)->forget();
+            app()->forgetInstance(HeadingDecor::class);   // a request starts without the last one's mask lookup
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            decorBlocks(1, $blocks);
+            $total = count(DB::getQueryLog());
+            DB::disableQueryLog();
+
+            return $total;
+        };
+
+        decorSet(1, ['style' => 'wave']);
+        $plain = $count(1);
+        decorSet(1, ['mask_media' => $png->storage_key]);
+        $one = $count(1);
+        $five = $count(5);
+
+        expect($one - $plain)->toBeLessThanOrEqual(1)->and($five)->toBe($one);
     });
 });

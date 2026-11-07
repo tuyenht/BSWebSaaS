@@ -6,7 +6,7 @@
     with neither set it is the short rule headings always had.
 --}}
 @if (($heading ?? '') !== '' || ($description ?? '') !== '')
-@php($sfDecor = ($sfHeadingDecor ?? app(\App\Modules\Theme\Theming\HeadingDecor::class))->classes($props['heading_decor'] ?? null))
+@php($sfDecor = app(\App\Modules\Theme\Theming\HeadingDecor::class)->classes($props['heading_decor'] ?? null))
 <div class="sf-section-head">
 @if (($heading ?? '') !== '')
     <h2 class="sf-section-head__title"@if (($headId ?? '') !== '') id="{{ $headId }}"@endif>{{ $heading }}</h2>

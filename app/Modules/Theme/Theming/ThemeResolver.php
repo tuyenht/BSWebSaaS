@@ -106,8 +106,8 @@ final readonly class ThemeResolver
      */
     public function cssVariables(): array
     {
-        // The page's headings draw their decoration from the same settings read as these tokens.
-        view()->share('sfHeadingDecor', $this->headingDecor);
+        // HeadingDecor is registered scoped: this puts the instance the tokens just used in its place, so the headings drawn next share its settings read and are dropped with the request.
+        app()->instance(HeadingDecor::class, $this->headingDecor);
         $variables = $this->tokens();
         $page = $variables['page'] ?? ReadableColor::mix($variables['surface'], $variables['ink'], self::PAGE_SURFACE_SHARE);
         $backgrounds = $page === null ? [$variables['surface']] : [$variables['surface'], $page];

@@ -15,7 +15,8 @@ use Illuminate\Support\Facades\Gate;
  * not one of the platform's, a colour that is not a hex value or a palette step, a width or weight
  * that is not listed, or a mask picture that is not a PNG of this site's library (looked up by media
  * key through the site's scope, so another site's file or one in the trash is refused) throws a
- * SettingsChangeRejected and nothing is written. An empty input removes the setting, which brings back
+ * SettingsChangeRejected and nothing is written. The shape may be left out (a mask picture alone is a
+ * valid setting); a save replaces the whole setting, so a shape saved after a mask leaves no mask. An empty input removes the setting, which brings back
  * the short rule headings have always had.
  *
  * Behind the settings permission, in the site's settings transaction (SettingsWrite).
@@ -72,7 +73,7 @@ final class SetHeadingDecor
         }
 
         $value = [
-            'style' => $this->listed($input, 'style', HeadingDecor::SITE_STYLES, ''),
+            'style' => $this->style($input),
             'color' => $this->listed($input, 'color', HeadingDecor::COLORS, 'accent'),
             'custom_color' => $this->hex($input, 'custom_color'),
             'gradient' => $this->flag($input, 'gradient'),
@@ -92,6 +93,19 @@ final class SetHeadingDecor
         }
 
         return $value;
+    }
+
+    /**
+     * The shape is optional: left out (or empty) it keeps the plain rule headings always had, and a mask
+     * picture, when one is set, is what gets drawn.
+     *
+     * @param  array<string, mixed>  $input
+     */
+    private function style(array $input): string
+    {
+        $given = $input['style'] ?? '';
+
+        return $given === '' ? '' : $this->listed($input, 'style', HeadingDecor::SITE_STYLES, '');
     }
 
     /**
