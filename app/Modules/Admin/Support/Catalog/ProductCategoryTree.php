@@ -102,6 +102,46 @@ final class ProductCategoryTree
         }
     }
 
+    /**
+     * Every category as a choice for ONE main category: parents before children, with its own
+     * counter (the products whose main category it is, not the subtree), its depth and the names
+     * of the categories above it (for a search result that leaves the indent behind).
+     *
+     * @return list<array{ulid: string, label: string, depth: int, count: int, path: string}>
+     */
+    public function choices(): array
+    {
+        $out = [];
+        $this->walkChoices(0, 0, $out);
+
+        return $out;
+    }
+
+    /**
+     * @param  list<array{ulid: string, label: string, depth: int, count: int, path: string}>  $out
+     * @param  array<int, true>  $seen
+     */
+    private function walkChoices(int $parent, int $depth, array &$out, array $seen = []): void
+    {
+        foreach ($this->children[$parent] ?? [] as $id) {
+            if (isset($seen[$id])) {
+                continue;
+            }
+            $node = $this->nodes[$id];
+            if ($node['ulid'] !== null) {
+                $above = $node['parent'] === null ? null : $this->pathOf($node['parent']);
+                $out[] = ['ulid' => $node['ulid'], 'label' => $node['name'], 'depth' => min(2, $depth), 'count' => $node['own'], 'path' => $above === null ? '' : $above.' › '];
+            }
+            $this->walkChoices($id, $depth + 1, $out, $seen + [$id => true]);
+        }
+    }
+
+    /** The key of a category by its id (null: not in the read, or not given a key yet). */
+    public function ulidOf(int $id): ?string
+    {
+        return $this->nodes[$id]['ulid'] ?? null;
+    }
+
     /** The counter of a category and everything under it. */
     private function total(int $id): int
     {
