@@ -7,11 +7,15 @@ use App\Modules\Admin\Support\Catalog\ProductListFilter;
 use App\Modules\Admin\Support\Catalog\ProductListQuery;
 use App\Modules\Admin\Support\Entries\ListCursor;
 use App\Modules\Admin\Support\SeoFields;
+use App\Modules\Catalog\Actions\ChangeProductSlug;
 use App\Modules\Catalog\Actions\ChangeProductStatus;
+use App\Modules\Catalog\Actions\RenameProduct;
+use App\Modules\Catalog\Exceptions\ProductEditRefused;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductImage;
 use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Catalog\Support\CatalogMode;
+use App\Modules\Catalog\Support\UniqueViolation;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Taxonomy\TaxonomyRules;
@@ -31,6 +35,7 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\QueryException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -453,8 +458,92 @@ final class Index extends Component
             $this->say(__('catalog.status_route_conflict'), 'error');
 
             return;
+        } catch (UniqueConstraintViolationException $e) {
+            UniqueViolation::refusal($e);
+            $this->say(__('catalog.status_route_conflict'), 'error');
+
+            return;
         }
         $this->say(__('catalog.toast_status_'.$status, ['name' => $this->nameOf($product)]), 'success', ['kind' => 'status', 'ulid' => $ulid, 'status' => $before]);
+    }
+
+    /**
+     * Quick rename from the row: the default language's name, under the editor's name rule. The row
+     * shows the answer: `ok`, the stored `name`, and on a refusal its plain `error` and whether the
+     * field `keep`s open with what was typed (an empty name only says so and puts the old name back).
+     *
+     * @return array{ok: bool, keep: bool, name: string, error: string}
+     */
+    public function saveName(string $ulid, string $value): array
+    {
+        $this->guardWrite('update');
+        $product = $this->live($ulid);
+        if ($product === null) {
+            return ['ok' => false, 'keep' => false, 'name' => '', 'error' => ''];
+        }
+        $locale = app(SiteLocale::class)->default();
+        $before = $this->nameOf($product);
+        $value = mb_substr($value, 0, 5000);
+
+        try {
+            $name = app(RenameProduct::class)->handle($product, $value, $locale);
+        } catch (ProductEditRefused $refused) {
+            if (RenameProduct::tidy($value) === '') {
+                $this->say($refused->getMessage(), 'info');
+
+                return ['ok' => false, 'keep' => false, 'name' => $before, 'error' => ''];
+            }
+
+            return ['ok' => false, 'keep' => true, 'name' => $before, 'error' => $refused->getMessage()];
+        }
+
+        if ($name !== $before) {
+            $this->say(__('catalog.toast_renamed'), 'success', ['kind' => 'name', 'ulid' => $ulid, 'name' => $before]);
+        }
+
+        return ['ok' => true, 'keep' => false, 'name' => $name, 'error' => ''];
+    }
+
+    /**
+     * Quick address change from the row, through the same Action as every other screen. The answer
+     * is `ok`, the stored `slug`, and on a refusal its plain `error` (the field stays open with what
+     * was typed).
+     *
+     * @return array{ok: bool, keep: bool, slug: string, error: string}
+     */
+    public function saveSlug(string $ulid, string $value): array
+    {
+        $this->guardWrite('update');
+        $product = $this->live($ulid);
+        if ($product === null) {
+            return ['ok' => false, 'keep' => false, 'slug' => '', 'error' => ''];
+        }
+        $locale = app(SiteLocale::class)->default();
+        $value = mb_substr($value, 0, 5000);
+
+        try {
+            $change = app(ChangeProductSlug::class)->handle($product, $value, $locale);
+        } catch (ProductEditRefused $refused) {
+            // the field shows the address as it was cleaned (what the member typed, made plain), not the raw text
+            try {
+                $cleaned = app(ChangeProductSlug::class)->clean($value, $locale);
+            } catch (ProductEditRefused) {
+                $cleaned = '';
+            }
+
+            return ['ok' => false, 'keep' => true, 'slug' => $cleaned, 'error' => $refused->getMessage()];
+        }
+
+        if ($change['changed']) {
+            $path = app(PathBuilder::class)->forProduct($product->primaryCategory(), $change['slug'], $locale);
+            $this->say(
+                __('catalog.toast_slug_changed', ['path' => $path]).($change['redirected'] ? ' '.__('catalog.toast_slug_redirect') : ''),
+                'success',
+                ['kind' => 'slug', 'ulid' => $ulid, 'slug' => $change['old']],
+            );
+        }
+
+        return ['ok' => true, 'keep' => false, 'slug' => $change['slug'], 'error' => ''];
     }
 
     /** Put a label ("Nổi bật" / "Bán chạy") on a product or take it off: `$on` is the state the member asked for, so a second click on a stale menu changes nothing. */
@@ -516,6 +605,37 @@ final class Index extends Component
                     }
                 } catch (RouteConflictException) {
                     $this->say(__('catalog.undo_conflict'), 'error');
+
+                    return;
+                } catch (UniqueConstraintViolationException $e) {
+                    UniqueViolation::refusal($e);
+                    $this->say(__('catalog.undo_conflict'), 'error');
+
+                    return;
+                }
+                break;
+            case 'name':
+                $this->guardWrite('update');
+                $product = $this->live($ulid, quiet: true);
+                try {
+                    if ($product !== null) {
+                        app(RenameProduct::class)->handle($product, Cast::string($op['name'] ?? ''), app(SiteLocale::class)->default());
+                    }
+                } catch (ProductEditRefused) {
+                    $this->say(__('catalog.undo_gone'), 'error');
+
+                    return;
+                }
+                break;
+            case 'slug':
+                $this->guardWrite('update');
+                $product = $this->live($ulid, quiet: true);
+                try {
+                    if ($product !== null) {
+                        app(ChangeProductSlug::class)->handle($product, Cast::string($op['slug'] ?? ''), app(SiteLocale::class)->default());
+                    }
+                } catch (ProductEditRefused) {
+                    $this->say(__('catalog.undo_slug_taken'), 'error');
 
                     return;
                 }

@@ -4,9 +4,14 @@ namespace App\Modules\Admin\Livewire\Catalog;
 
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Admin\Support\SeoFields;
+use App\Modules\Catalog\Actions\ChangeProductSlug;
 use App\Modules\Catalog\Actions\ChangeProductStatus;
+use App\Modules\Catalog\Actions\RenameProduct;
+use App\Modules\Catalog\Exceptions\ProductEditRefused;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
+use App\Modules\Catalog\Support\AppRoutePaths;
+use App\Modules\Catalog\Support\UniqueViolation;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
@@ -18,6 +23,7 @@ use App\Modules\Shared\Support\PlainText;
 use App\Modules\Shared\Support\RichTextSanitizer;
 use App\Modules\Shared\Support\Slugger;
 use App\Modules\Tenancy\Context\SiteLocale;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -156,16 +162,24 @@ final class Editor extends Component
     public function save(): void
     {
         $wasNew = $this->ulid === null;
+        $slugWasBlank = trim($this->slug) === '';
 
         try {
             $product = DB::transaction(fn (): Product => $this->persist());
-        } catch (RouteConflictException) {
+        } catch (RouteConflictException|UniqueConstraintViolationException $e) {
             if ($wasNew) {
                 // Rolled back: the form is still a create form.
                 $this->ulid = null;
                 $this->productId = null;
             }
-            $this->addError('slug', __('catalog.slug_conflict'));
+            // A link made for a save that failed must not stay behind: it would pin the old name.
+            if ($slugWasBlank) {
+                $this->slug = '';
+            }
+            $refusal = $e instanceof UniqueConstraintViolationException
+                ? UniqueViolation::refusal($e)
+                : new ProductEditRefused(__('catalog.slug_conflict'), 'slug');
+            $this->addError($refusal->field ?? 'slug', $refusal->getMessage());
 
             return;
         }
@@ -247,7 +261,7 @@ final class Editor extends Component
         }
 
         return [
-            'name' => ['required', 'string', 'max:200'],
+            'name' => ['required', 'string', $this->nameIsValid(...)],
             'slug' => ['required', 'string', 'max:200', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $this->slugIsFree(...)],
             'description' => ['nullable', 'string'],
             'summary' => ['nullable', 'string'],
@@ -283,6 +297,24 @@ final class Editor extends Component
     }
 
     /**
+     * The name rule of the products list, in one place (RenameProduct): at most its length, one line.
+     *
+     * @param  \Closure(string): mixed  $fail
+     */
+    private function nameIsValid(string $attribute, mixed $value, \Closure $fail): void
+    {
+        if (! is_string($value)) {
+            return;
+        }
+
+        try {
+            app(RenameProduct::class)->clean($value);
+        } catch (ProductEditRefused $refused) {
+            $fail($refused->getMessage());
+        }
+    }
+
+    /**
      * No other product of this site holds the slug in this language. Rule::unique would send
      * `slug = ?`, a citext comparison RLS keeps out of the index (no citext operator is leakproof),
      * so it read every product link of the language; as text against the lower-cased value it is
@@ -296,14 +328,19 @@ final class Editor extends Component
             return;
         }
 
-        $taken = ProductTranslation::query()
-            ->where('locale', $this->locale)
-            ->whereRaw('slug::text = ?', [mb_strtolower($value)])
-            ->when($this->productId !== null, fn ($q) => $q->where('product_id', '!=', $this->productId))
-            ->exists();
+        $action = app(ChangeProductSlug::class);
 
-        if ($taken) {
+        // Another product keeps its own message; any other holder (category, page, the application's
+        // own path) is said in the words every screen uses.
+        if ($action->otherProduct($value, $this->locale, $this->productId) !== null) {
             $fail(__('catalog.slug_taken'));
+
+            return;
+        }
+
+        $why = $action->refusal($value, $this->locale, $this->productId, $this->pickedCategory());
+        if ($why !== null) {
+            $fail($why);
         }
     }
 
@@ -341,10 +378,30 @@ final class Editor extends Component
                     $base,
                     $prefix,
                 ),
+                // a flat address is one path segment: the application's own paths (login, admin…) answer first
+                ...($prefix === '/' ? $this->appOwned($base) : []),
             ],
         );
 
         return $this->slug !== '';
+    }
+
+    /**
+     * Of `$base` and its numbered copies, those the application itself answers on.
+     *
+     * @return list<string>
+     */
+    private function appOwned(string $base): array
+    {
+        $paths = app(AppRoutePaths::class);
+        $owned = [];
+        foreach ([$base, ...array_map(fn (int $n): string => $base.'-'.$n, range(2, Slugger::PROBE))] as $candidate) {
+            if ($paths->owns($candidate)) {
+                $owned[] = $candidate;
+            }
+        }
+
+        return $owned;
     }
 
     /** The picked primary category with its slugs, or null when none is picked. */
@@ -400,7 +457,8 @@ final class Editor extends Component
 
         // No control character is stored (PostgreSQL refuses a NUL); Google shows its two fields on
         // one line, so a line break or an invisible direction mark never reaches the head either.
-        $this->name = PlainText::line($this->name);
+        // Stored exactly as the name rule measured it: the list trims the same spaces.
+        $this->name = RenameProduct::tidy($this->name);
         $this->slug = PlainText::line($this->slug);
         $this->seoTitle = SeoFields::singleLine($this->seoTitle);
         $this->seoDescription = SeoFields::singleLine($this->seoDescription);
@@ -410,6 +468,8 @@ final class Editor extends Component
         $this->imageMediaIds = $this->normalizeIds($this->imageMediaIds);
 
         $filled = $this->fillBlankSlug();
+        // Two saves of the same address wait for each other: the second sees the first one's row.
+        app(ChangeProductSlug::class)->lock($this->slug, $this->locale);
         try {
             $this->validate();
         } catch (ValidationException $e) {

@@ -2,6 +2,8 @@
 
 use App\Modules\Admin\Livewire\Catalog\Editor;
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
+use App\Modules\Cms\Data\TaxonomyData;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
@@ -624,5 +626,108 @@ it('refuses a link another product holds in this language, with the same message
             ->assertHasNoErrors();
 
         expect(Product::query()->count())->toBe(4);
+    });
+});
+
+it('refuses a draft link that a category route already owns, in the category\'s words', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage']);
+        $category = app(CreateTaxonomy::class)
+            ->handle('product_cat', null, new TaxonomyData(names: ['vi' => 'Đồ cắt'], slugs: ['vi' => 'dao-cat']));
+        expect($category->id)->toBeInt();
+
+        $test = Livewire::actingAs($editor->fresh())->test(Editor::class)
+            ->set('name', 'Đĩa cắt')->set('slug', 'dao-cat')->set('status', 'draft')->call('save')
+            ->assertHasErrors(['slug']);
+
+        expect($test->errors()->get('slug'))->toBe([__('catalog.slug_owner_category', ['slug' => 'dao-cat', 'name' => 'Đồ cắt'])])
+            ->and(Product::query()->count())->toBe(0);
+    });
+});
+
+it('gives a new product named like an application path a free address instead of an error', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage']);
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('name', 'Login')
+            ->set('slug', '')
+            ->set('status', 'published')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        expect(Product::query()->first()?->translationFor('vi')?->slug)->toBe('login-2');
+    });
+});
+
+it('shows the SKU message on the SKU field when the SKU is taken by a request that won the race', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage']);
+
+        $armed = true;
+        DB::beforeExecuting(function (string $query) use (&$armed): void {
+            if ($armed && str_starts_with($query, 'insert into "products"')) {
+                $armed = false;
+                Product::query()->create(['status' => 'draft', 'sku' => 'RACE-1']);
+            }
+        });
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('name', 'Đồ gá hàn khung')
+            ->set('slug', 'do-ga-han-khung')
+            ->set('sku', 'RACE-1')
+            ->call('save')
+            ->assertHasErrors(['sku' => __('catalog.sku_taken')])
+            ->assertHasNoErrors(['slug']);
+    });
+});
+
+it('drops the address it made from the name when the save loses a SKU race', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage']);
+
+        $armed = true;
+        DB::beforeExecuting(function (string $query) use (&$armed): void {
+            if ($armed && str_starts_with($query, 'insert into "products"')) {
+                $armed = false;
+                Product::query()->create(['status' => 'draft', 'sku' => 'RACE-2']);
+            }
+        });
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('name', 'Đồ gá hàn khung')
+            ->set('slug', '')
+            ->set('sku', 'RACE-2')
+            ->call('save')
+            ->assertHasErrors(['sku' => __('catalog.sku_taken')])
+            ->assertSet('slug', '');
+    });
+});
+
+it('stores the name trimmed of every kind of space, so padding never pushes it past the column', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage']);
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('name', "\u{00A0}\u{200B}Đồ gá kẹp".str_repeat("\u{00A0}", 300))
+            ->set('slug', 'do-ga-kep')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        expect(Product::query()->first()?->translationFor('vi')?->name)->toBe('Đồ gá kẹp');
     });
 });

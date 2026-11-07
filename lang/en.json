@@ -3371,5 +3371,21 @@
     "catalog.status_unchanged": "“:name” is already in this status, so nothing was changed.",
     "catalog.status_pill_name": "Status: :status — press to change",
     "catalog.view_action": "View",
-    "catalog.view_named": "View “:name” on the website"
+    "catalog.view_named": "View “:name” on the website",
+    "catalog.name_required": "The name cannot be empty — the old name is kept.",
+    "catalog.name_too_long": "The name can be at most :max characters — please shorten it.",
+    "catalog.slug_invalid": "The address needs at least one letter or digit, for example “end-mill-d10”.",
+    "catalog.slug_owner_product": "The address “:slug” is already used by the product “:name”. Add a few words to make it different.",
+    "catalog.slug_owner_product_trash": "The address “:slug” is already used by the product “:name” in the Trash. Add a few words to make it different.",
+    "catalog.slug_owner_category": "The address “:slug” belongs to the category “:name”. Add a few words to make it different, for example “:slug-cnc”.",
+    "catalog.slug_owner_page": "The address “:slug” matches a page that already exists on the website. Add a few words to make it different, for example “:slug-cnc”.",
+    "catalog.toast_renamed": "The product name was changed.",
+    "catalog.toast_slug_changed": "The address was changed to :path.",
+    "catalog.toast_slug_redirect": "The old address now redirects to the new one.",
+    "catalog.undo_slug_taken": "Could not undo: the old address is now used by another product or page.",
+    "catalog.quick_edit_named": "Quick edit the name of :name",
+    "catalog.name_input_label": "New product name",
+    "catalog.slug_input_label": "New address",
+    "catalog.slug_edit_hint": "Press to edit the address — :url",
+    "catalog.slug_edit_action": "Edit address"
 }

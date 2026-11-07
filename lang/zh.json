@@ -3371,5 +3371,21 @@
     "catalog.status_unchanged": "“:name”已经是这个状态，无需更改。",
     "catalog.status_pill_name": "状态：:status — 点按更改",
     "catalog.view_action": "查看",
-    "catalog.view_named": "在网站上查看“:name”"
+    "catalog.view_named": "在网站上查看“:name”",
+    "catalog.name_required": "名称不能为空，保留原名称。",
+    "catalog.name_too_long": "名称最多 :max 个字符，请缩短。",
+    "catalog.slug_invalid": "地址至少需要一个字母或数字，例如“end-mill-d10”。",
+    "catalog.slug_owner_product": "地址“:slug”已被产品“:name”使用，请再加几个字以示区别。",
+    "catalog.slug_owner_product_trash": "地址“:slug”已被回收站中的产品“:name”使用，请再加几个字以示区别。",
+    "catalog.slug_owner_category": "地址“:slug”属于分类“:name”，请再加几个字，例如“:slug-cnc”。",
+    "catalog.slug_owner_page": "地址“:slug”与网站现有页面重复，请再加几个字，例如“:slug-cnc”。",
+    "catalog.toast_renamed": "已修改产品名称。",
+    "catalog.toast_slug_changed": "地址已改为 :path。",
+    "catalog.toast_slug_redirect": "旧地址会自动跳转到新地址。",
+    "catalog.undo_slug_taken": "无法撤销：旧地址已被其他产品或页面使用。",
+    "catalog.quick_edit_named": "快速修改 :name 的名称",
+    "catalog.name_input_label": "新的产品名称",
+    "catalog.slug_input_label": "新的地址",
+    "catalog.slug_edit_hint": "点击修改地址 — :url",
+    "catalog.slug_edit_action": "修改地址"
 }
