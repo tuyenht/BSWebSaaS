@@ -164,10 +164,12 @@
                  fold: '',
                  seen: '',
                  ro: null,
-                 destroy() { this.ro?.disconnect(); },
+                 lowMq: null,
+                 onLow: null,
+                 destroy() { this.ro?.disconnect(); this.lowMq?.removeEventListener('change', this.onLow); },
                  size(force = false) { const w = this.$refs.rows?.clientWidth ?? 0, rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16, boost = window.bsListFold.boostPx(), low = window.matchMedia('(max-height:500px)').matches, key = w + ':' + boost + ':' + low; if (! force && key === this.seen) { return; } this.seen = key; this.lowH = low; this.mode = w < 37.5 * rem ? 'card' : (w < 56.25 * rem ? 'line' : 'cols'); this.foldCols(rem, boost); this.fitXv(rem, boost); },
-                 {{-- the row's "Xem" button shows from 600 on: always on a card line, and in the table only while the name column keeps 340px (+6px per pixel of text boost) after the button takes its room; a short landscape screen has none --}}
-                 fitXv(rem, boost) { const main = this.$refs.rows?.querySelector('.list-rows .list-hd .list-c-main'); this.xv = this.mode === 'cols' && !! main && main.getBoundingClientRect().width - 6 * rem >= 340 + 6 * boost; },
+                 {{-- the row's "Xem" button shows from 600 on: always on a card line, and in the table only while the name column keeps 340px (+6px per pixel of text boost) after the button takes its room, measured as if the button were not there so showing it cannot flip the decision; a short landscape screen has none --}}
+                 fitXv(rem, boost) { const main = this.$refs.rows?.querySelector('.list-rows .list-hd .list-c-main'); let back = 0; this.$refs.rows?.querySelectorAll('[data-row-view]').forEach((b) => { if (b.getClientRects().length) { back = Math.max(back, b.getBoundingClientRect().width + (parseFloat(getComputedStyle(b.parentElement).columnGap) || 0)); } }); this.xv = this.mode === 'cols' && !! main && main.getBoundingClientRect().width + back - 6 * rem >= 340 + 6 * boost; },
                  get xvVis() { return ! this.lowH && (this.mode === 'line' || (this.mode === 'cols' && this.xv)); },
                  {{-- as the table narrows or the text grows, the label, category, stock and price columns fold into the line under the name (in that order) until the name keeps the shared minimum; one pass: clear the fold, read every width, write the fold once --}}
                  foldCols(rem, boost) {
@@ -193,7 +195,7 @@
                  hidden() { const off = {{ Js::from($hiddenAlways) }}; return (this.mode === 'cols' ? ['cat', 'price', 'stock', 'badge'].filter(k => ! this.$wire.cols.includes(k)) : []).concat(off).join(' '); },
                  copy(url) { (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(() => window.bsToast({ text: {{ Js::from(__('catalog.copied')) }}.replace(':url', url) }), () => {}); },
              }"
-             x-init="size(true); ro = new ResizeObserver(() => size()); ro.observe($el); $watch('$wire.cols', () => $nextTick(() => size(true))); $wire.$hook('commit', ({ succeed }) => succeed(() => $nextTick(() => size(true))))">
+             x-init="size(true); ro = new ResizeObserver(() => size()); ro.observe($el); lowMq = window.matchMedia('(max-height:500px)'); onLow = () => size(true); lowMq.addEventListener('change', onLow); $watch('$wire.cols', () => $nextTick(() => size(true))); $wire.$hook('commit', ({ succeed }) => succeed(() => $nextTick(() => size(true))))">
             <div class="flex flex-col gap-3 pb-3 min-[600px]:px-4 min-[600px]:pt-4 min-[900px]:pt-3 @min-[56.25rem]/lt:flex-row @min-[56.25rem]/lt:flex-wrap @min-[56.25rem]/lt:items-center">
                 <div class="min-w-0 text-body @min-[56.25rem]/lt:min-w-[19em] @min-[56.25rem]/lt:max-w-[30em] @min-[56.25rem]/lt:flex-[999_1_19em] @min-[56.25rem]/lt:[&:has(+[data-below='1'])]:max-w-none">
                     <x-bs-admin::search id="catalog-search" :label="__('catalog.search_label')" :placeholder="__('catalog.search_hint')"
@@ -401,7 +403,7 @@
                                     @elseif ($canManage)
                                         @if ($live)
                                             <x-bs-admin::button size="sm" variant="soft" color="primary" :href="$fullUrl" :navigate="false" target="_blank" rel="noopener" x-show="xvVis" x-cloak
-                                                :aria-label="__('catalog.view_named', ['name' => $name])">
+                                                :aria-label="__('catalog.view_named', ['name' => $name])" :title="__('catalog.view_named', ['name' => $name])" data-row-view>
                                                 <x-bs-admin::icon name="ri-external-link" class="size-4" /> {{ __('catalog.view_action') }}
                                             </x-bs-admin::button>
                                         @endif

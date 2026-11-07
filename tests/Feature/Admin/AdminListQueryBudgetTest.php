@@ -167,7 +167,7 @@ it('keeps the catalog list flat for a member who manages products, with every ro
 
     $seed(1, 30);
     $this->actingAs($manager)->get($url)->assertOk(); // the permission and settings caches fill on the first request
-    $count = countQueries(fn () => $this->actingAs($manager)->get($url)->assertOk()->assertSee(__('catalog.menu_trash'))->assertSee(__('catalog.status_menu_label')));
+    $count = countQueries(fn () => $this->actingAs($manager)->get($url)->assertOk()->assertSee(__('catalog.menu_trash'))->assertSee(__('catalog.status_menu_label'))->assertSee('data-row-view', false));
 
     $seed(31, 60);
     $this->actingAs($manager)->get($url)->assertOk();
