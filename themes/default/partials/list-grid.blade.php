@@ -80,6 +80,9 @@
             </div>
 @endif
         </div>
+@if (trim((string) (($slotHtml ?? [])['after_list'] ?? '')) !== '')
+        <div class="slot-band">{!! $slotHtml['after_list'] !!}</div>
+@endif
     </main>
     @include('theme::partials.footer', ['menu' => $menu ?? [], 'brand' => $brand ?? null])
 </body>
