@@ -64,7 +64,7 @@ final readonly class ThemeResolver
         'body' => '#333333',
     ];
 
-    public function __construct(private StorefrontSettings $settings) {}
+    public function __construct(private StorefrontSettings $settings, private HeadingDecor $headingDecor) {}
 
     /**
      * @return array<string, string>
@@ -106,6 +106,8 @@ final readonly class ThemeResolver
      */
     public function cssVariables(): array
     {
+        // The page's headings draw their decoration from the same settings read as these tokens.
+        view()->share('sfHeadingDecor', $this->headingDecor);
         $variables = $this->tokens();
         $page = $variables['page'] ?? ReadableColor::mix($variables['surface'], $variables['ink'], self::PAGE_SURFACE_SHARE);
         $backgrounds = $page === null ? [$variables['surface']] : [$variables['surface'], $page];
@@ -132,7 +134,7 @@ final readonly class ThemeResolver
         // roles above, a same-named key in settings never wins. A non-hex brand yields no palette.
         // The colour-set roles (sch-*) are derived too: a stored one would recolour every block.
         foreach (array_keys($variables) as $key) {
-            if (str_starts_with($key, 'brand-') || str_starts_with($key, 'color-brand-') || str_starts_with($key, 'sch-')) {
+            if (str_starts_with($key, 'brand-') || str_starts_with($key, 'color-brand-') || str_starts_with($key, 'sch-') || str_starts_with($key, 'sf-decor-')) {
                 unset($variables[$key]);
             }
         }
@@ -141,7 +143,8 @@ final readonly class ThemeResolver
             $variables["color-brand-{$step}"] = $color;
         }
 
-        return array_merge($variables, $this->scales($variables['density'] ?? 'normal'), $this->schemes($variables));
+        // The heading decoration's own variables (colour, mask picture) come from its setting, never from a token.
+        return array_merge($variables, $this->scales($variables['density'] ?? 'normal'), $this->schemes($variables), $this->headingDecor->variables());
     }
 
     /**

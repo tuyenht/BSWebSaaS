@@ -90,7 +90,7 @@ final class CmsServiceProvider extends ServiceProvider
 
         $registry = $this->app->make(ComponentRegistry::class);
         $registry->register('latest_posts', new LatestPostsComponent);
-        $registry->register('entry_grid', $this->app->make(EntryGridComponent::class));
+        $registry->register('entry_grid', $this->app->make(EntryGridComponent::class), headed: true);
 
         Gate::policy(Entry::class, EntryPolicy::class);
         Gate::policy(Menu::class, MenuPolicy::class);

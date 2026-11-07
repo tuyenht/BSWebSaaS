@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Theme\Components;
 
+use App\Modules\Theme\Theming\HeadingDecor;
+
 /**
  * The look of a section — the "Trình bày" props every block type shares (docs/notes/section-style-system.md
  * §2, v2.16). They are merged into each type's schema at ComponentRegistry::schemaFor(), so ValidPageJson
@@ -84,18 +86,22 @@ final class StyleProps
         'anchor_id' => ['type' => 'text', 'pattern' => self::ANCHOR_PATTERN, 'group' => 'style'],
         'motion' => ['type' => 'enum', 'options' => self::MOTION, 'default' => 'none', 'group' => 'style'],
         'extra_style' => ['type' => 'list', 'of' => ['type' => 'enum', 'options' => ['pattern-cross']], 'group' => 'style'],
+        // Only on a block that draws a section heading (ComponentRegistry::schemaFor); the block editor
+        // lists it with the block's own props, in its own group.
+        'heading_decor' => ['type' => 'enum', 'options' => HeadingDecor::BLOCK_CHOICES, 'default' => 'inherit', 'group' => 'heading'],
     ];
 
     /**
      * Names a block's own schema may never declare: the props above, the ones reserved for later
      * (overlay_tone, divider_top/bottom, border, motion_stagger) and the editor's own
-     * state (ink, spacing_split). page_header and hero_slider had their own `overlay` (how dark their
+     * state (ink, spacing_split), and heading_decor (the decoration under a section heading, only on a block
+     * that has one). page_header and hero_slider had their own `overlay` (how dark their
      * photo is, a number) before; schemaFor() keeps theirs, and the wrapper photo is not offered there.
      */
     public const array RESERVED = [
         'scheme', 'bg', 'bg_image', 'overlay', 'spacing_top', 'spacing_bottom', 'width', 'align', 'corner',
         'shadow', 'hide_on', 'anchor_id', 'motion', 'overlay_tone', 'divider_top', 'divider_bottom', 'border',
-        'motion_stagger', 'extra_style', 'ink', 'spacing_split',
+        'motion_stagger', 'extra_style', 'ink', 'spacing_split', 'heading_decor',
     ];
 
     /**
