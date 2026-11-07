@@ -119,39 +119,9 @@
                     <x-bs-admin::filter-panel class="ms-auto flex-nowrap @min-[56.25rem]/lt:ms-0 @min-[56.25rem]/lt:min-w-0 @min-[56.25rem]/lt:shrink @min-[56.25rem]/lt:flex-wrap" :sections="$sections"
                         :active="0" :active-narrow="$tab !== 'all' ? 1 : 0" :results="__('catalog.show_n', ['n' => $fmt($matchCount), 'unit' => $noun])" />
                     <x-bs-admin::sort-menu class="@min-[56.25rem]/lt:ms-auto" :options="$sortOptions" :active="$sortOn" :lit="! $sortIsDefault" set="setSort" />
-                    {{-- Opening moves focus to the first choice; Esc puts it back on the button; leaving it (Tab, a click away) closes it. --}}
-                    <div class="relative hidden shrink-0 @min-[56.25rem]/lt:block"
-                         x-data="{
-                             open: false,
-                             show() { this.open = true; this.whenShown(() => this.$refs.colsPanel.querySelector('input:not([disabled])')?.focus()); },
-                             hide(back = true) { if (! this.open) return; this.open = false; if (back) this.$refs.cols.focus(); },
-                             whenShown(fn, tries = 20) { this.$refs.colsPanel.getClientRects().length || ! tries ? fn() : setTimeout(() => this.whenShown(fn, tries - 1), 16); },
-                         }"
-                         @click.outside="hide(false)" @keydown.escape.prevent.stop="hide()"
-                         @focusout="if ($event.relatedTarget && ! $root.contains($event.relatedTarget)) hide(false)">
-                        <button type="button" x-ref="cols" @click="open ? hide() : show()" :aria-expanded="open ? 'true' : 'false'" aria-controls="catalog-cols"
-                            class="hit-area inline-flex min-h-control items-center gap-1.5 rounded-full border border-transparent bg-primary/7 px-3.5 text-body font-medium text-text transition-colors hover:bg-primary/12">
-                            <x-bs-admin::icon name="ri-layout-column" class="size-4 text-text-muted" /> {{ __('entries.cols_button') }}
-                            <x-bs-admin::icon name="chevron-down" class="size-4 text-text-muted transition-transform" ::class="open && 'rotate-180'" />
-                        </button>
-                        <div x-show="open" x-cloak x-transition x-ref="colsPanel" id="catalog-cols" role="group" aria-label="{{ __('entries.cols_button') }}"
-                            class="absolute end-0 top-full z-60 mt-1.5 w-60 rounded-md border border-border bg-surface p-1.5 shadow-lg">
-                            <p class="m-0 px-2 pb-1 pt-1.5 text-caption font-semibold text-text-muted">{{ __('entries.cols_required') }}</p>
-                            @foreach ([__('catalog.col_product'), __('catalog.status_label'), __('admin.actions')] as $locked)
-                                <label class="flex min-h-menu-row cursor-not-allowed items-center gap-2.5 rounded px-2 text-body text-text-muted any-pointer-coarse:min-h-menu-row-touch">
-                                    <input type="checkbox" checked disabled class="size-4 rounded border-border-strong">
-                                    {{ $locked }}
-                                </label>
-                            @endforeach
-                            <p class="m-0 px-2 pb-1 pt-2 text-caption font-semibold text-text-muted">{{ __('entries.cols_optional') }}</p>
-                            @foreach ($colOptions as $key)
-                                <label class="flex min-h-menu-row cursor-pointer items-center gap-2.5 rounded px-2 text-body text-text hover:bg-surface-hover any-pointer-coarse:min-h-menu-row-touch">
-                                    <input type="checkbox" value="{{ $key }}" wire:model.live="cols" class="size-4 shrink-0 accent-primary-text">
-                                    {{ __('catalog.col_opt_'.$key) }}
-                                </label>
-                            @endforeach
-                        </div>
-                    </div>
+                    <x-bs-admin::cols-menu class="hidden @min-[56.25rem]/lt:block" id="catalog-cols" :selected="$cols"
+                        :options="collect($colOptions)->mapWithKeys(fn (string $k): array => [$k => __('catalog.col_opt_'.$k)])->all()"
+                        :locked="[__('catalog.col_product'), __('catalog.status_label'), __('admin.actions')]" />
                 </x-bs-admin::tool-row>
             </div>
 

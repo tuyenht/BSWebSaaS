@@ -8,6 +8,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteModule;
 
 /*
  * Query Budget (CLAUDE.md §6) for the admin list screens. The storefront hot routes are already
@@ -107,6 +108,7 @@ it('keeps the catalog list flat with a search, a sort and a second page, whateve
     $seed = function (int $from, int $to) use ($viewer): void {
         app(Tenancy::class)->enter(1, function () use ($from, $to, $viewer): void {
             grantRole($viewer, 'cat-viewer', ['catalog.view']);
+            SiteModule::query()->firstOrCreate(['module_key' => 'catalog'], ['enabled' => true]);
             $category = Taxonomy::query()->firstOrCreate(['vocabulary' => 'product_cat', 'position' => 0]);
             $category->translations()->firstOrCreate(['locale' => 'vi'], ['name' => 'Đồ gá', 'slug' => 'do-ga']);
 

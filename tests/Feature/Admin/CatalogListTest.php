@@ -6,7 +6,9 @@ use App\Modules\Catalog\Models\Product;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Rbac\Models\Role;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +26,11 @@ beforeEach(function (): void {
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
+    // both websites' plans include the catalog (a test that needs it off takes it away)
+    DB::connection('pgsql_admin')->table('site_modules')->insert([
+        ['site_id' => 1, 'module_key' => 'catalog', 'enabled' => true, 'created_at' => now(), 'updated_at' => now()],
+        ['site_id' => 2, 'module_key' => 'catalog', 'enabled' => true, 'created_at' => now(), 'updated_at' => now()],
+    ]);
 });
 
 /** A product with an optional name in the default language; its edit time is fixed so ties are real. */
@@ -483,28 +490,157 @@ it('reads one page of rows with only the first picture of each product', functio
     });
 });
 
-it('shows a member without catalog.view the no-permission card and no rows, and writes stay refused', function (): void {
+it('shows a member without catalog.view the no-permission card naming their role, and no rows', function (): void {
     $member = User::factory()->create();
-    $manager = User::factory()->create();
-    $ulid = null;
 
-    app(Tenancy::class)->enter(1, function () use ($member, $manager, &$ulid): void {
-        grantRole($member, 'no-catalog', ['entries.view']);
-        grantRole($manager, 'cat-manager', ['catalog.view', 'catalog.manage']);
+    app(Tenancy::class)->enter(1, function () use ($member): void {
+        // a built-in role is named as people read it, never by its technical name
+        grantRole($member, 'contributor', ['entries.view', 'entries.create']);
+        Role::query()->where('name', 'contributor')->update(['is_system' => true, 'level' => 20]);
         listSeed();
-        $ulid = Product::query()->where('sku', 'DP-1')->firstOrFail()->ulid;
+        app()->setLocale('vi');
 
         Livewire::actingAs($member->fresh())->test(Index::class)
             ->assertOk()
             ->assertSee(__('catalog.noperm_title'))
-            ->assertSee(__('catalog.noperm_text', ['role' => 'No Catalog']))
+            ->assertSee(__('catalog.noperm_text', ['role' => 'Cộng tác viên']))
+            ->assertDontSee('Contributor')
             ->assertSee(__('catalog.noperm_back'))
             ->assertSeeHtml('data-state="noperm"')
             ->assertSeeHtml('role="status"')
             ->assertDontSee('Mũi khoan thép gió dài')
-            ->call('trash', $ulid)->assertForbidden();
+            ->assertDontSee(__('catalog.tab_all'));
     });
-    expect(Product::withoutGlobalScopes()->where('ulid', $ulid)->whereNotNull('deleted_at')->exists())->toBeFalse();
+});
+
+it('refuses a member without the permission every write the same way, whether the product exists or not', function (string $method): void {
+    $member = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($member, $method): void {
+        grantRole($member, 'no-catalog', ['entries.view']);
+        listSeed();
+        $real = Product::query()->where('sku', 'DP-1')->firstOrFail();
+        if ($method !== 'trash') {
+            $real->delete();
+        }
+        // a refused call leaves no snapshot behind: each one starts from a page of its own
+        foreach ([$real->ulid, '01JZZZZZZZZZZZZZZZZZZZZZZZ', 'not-a-ulid'] as $key) {
+            Livewire::actingAs($member->fresh())->test(Index::class)->call($method, $key)->assertForbidden();
+        }
+
+        $row = Product::withTrashed()->whereKey($real->id)->first();
+        expect($row)->not->toBeNull()
+            ->and($row?->trashed())->toBe($method !== 'trash');
+    });
+})->with(['trash', 'restore', 'forceDelete']);
+
+it('refuses a signed-out browser replaying the list, its reads and its writes, with 403', function (): void {
+    $manager = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        grantRole($manager, 'cat-manager', ['catalog.view', 'catalog.manage']);
+        listSeed();
+        $ulid = Product::query()->where('sku', 'DP-1')->firstOrFail()->ulid;
+
+        // a guest opening the screen at all
+        Livewire::test(Index::class)->assertForbidden();
+
+        // a snapshot taken while signed in, sent again after signing out
+        $make = fn () => Livewire::actingAs($manager->fresh())->test(Index::class)->assertSee('Dao phay');
+        $out = function (): void {
+            auth()->guard('web')->logout();
+            app('auth')->forgetGuards();
+        };
+
+        $page = $make();
+        $out();
+        $page->set('search', 'Dao')->assertForbidden();
+
+        foreach (['trash' => $ulid, 'restore' => '01JZZZZZZZZZZZZZZZZZZZZZZZ', 'forceDelete' => $ulid] as $method => $key) {
+            $page = $make();
+            $out();
+            $page->call($method, $key)->assertForbidden();
+        }
+
+        $page = $make();
+        $out();
+        $page->set('cols', [])->assertForbidden();
+
+        expect(Product::query()->where('ulid', $ulid)->exists())->toBeTrue();
+    });
+});
+
+it('lets a member who is not on this website through nowhere, even with a snapshot', function (): void {
+    $manager = User::factory()->create();
+    $stranger = User::factory()->create();
+
+    app(Tenancy::class)->enter(2, fn () => grantRole($stranger, 'cat-manager-b', ['catalog.view', 'catalog.manage']));
+    app(TeamContext::class)->forget();
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $stranger): void {
+        grantRole($manager, 'cat-manager', ['catalog.view', 'catalog.manage']);
+        listSeed();
+        $ulid = Product::query()->where('sku', 'DP-1')->firstOrFail()->ulid;
+
+        Livewire::actingAs($stranger->fresh())->test(Index::class)->assertForbidden();
+
+        $page = Livewire::actingAs($manager->fresh())->test(Index::class);
+        $this->actingAs($stranger->fresh());
+        $page->call('trash', $ulid)->assertForbidden();
+
+        expect(Product::query()->where('ulid', $ulid)->exists())->toBeTrue();
+    });
+});
+
+it('shows the plan card before any permission question when the plan has no catalog, and refuses every write', function (): void {
+    $manager = User::factory()->create();
+    $member = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $member): void {
+        grantRole($manager, 'cat-manager', ['catalog.view', 'catalog.manage']);
+        grantRole($member, 'no-catalog', ['entries.view']);
+        listSeed();
+        $ulid = Product::query()->where('sku', 'DP-1')->firstOrFail()->ulid;
+        $page = Livewire::actingAs($manager->fresh())->test(Index::class)->assertSee('Dao phay');
+
+        DB::connection('pgsql_admin')->table('site_modules')->where('site_id', 1)->delete();
+        app()->forgetInstance(Entitlement::class);
+
+        foreach ([$manager, $member] as $who) {
+            Livewire::actingAs($who->fresh())->test(Index::class)
+                ->assertOk()
+                ->assertSeeHtml('data-state="plan"')
+                ->assertSee(__('catalog.plan_title'))
+                ->assertSee(__('catalog.plan_text'))
+                ->assertDontSee(__('catalog.noperm_title'))
+                ->assertDontSee('Dao phay')
+                ->assertDontSee(__('catalog.tab_all'));
+        }
+
+        $this->actingAs($manager->fresh());
+        app()->forgetInstance(Entitlement::class);
+        $page->call('trash', $ulid)->assertForbidden();
+        foreach (['trash', 'restore', 'forceDelete'] as $method) {
+            Livewire::actingAs($manager->fresh())->test(Index::class)->call($method, $ulid)->assertForbidden();
+        }
+        Livewire::actingAs($manager->fresh())->test(Index::class)->set('cols', [])->assertForbidden();
+
+        expect(Product::withTrashed()->where('ulid', $ulid)->whereNull('deleted_at')->exists())->toBeTrue();
+    });
+});
+
+it('points "Liên hệ hỗ trợ" on the plan card at the support mailbox', function (): void {
+    config(['support.mailbox' => 'ho-tro@platform.test']);
+    $manager = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        grantRole($manager, 'cat-manager', ['catalog.view', 'catalog.manage']);
+        DB::connection('pgsql_admin')->table('site_modules')->where('site_id', 1)->delete();
+
+        Livewire::actingAs($manager->fresh())->test(Index::class)
+            ->assertSee(__('catalog.plan_support'))
+            ->assertSeeHtml('href="mailto:ho-tro@platform.test"');
+    });
 });
 
 it('draws the status header as the "updated" sort button, and the Trash heading on the Trash tab', function (): void {
@@ -540,7 +676,7 @@ it('offers the Cột and Hiện trên thẻ menus from the saved choice, with on
 
         $test = Livewire::actingAs($viewer->fresh())->test(Index::class)
             ->assertSeeHtml('id="catalog-cols"')
-            ->assertSee(__('entries.cols_required'))->assertSee(__('entries.cols_optional'))
+            ->assertSee(__('admin.list.cols_required'))->assertSee(__('admin.list.cols_optional'))
             ->assertSee(__('catalog.col_opt_cat'))
             ->assertSeeHtml('wire:model.live="cols"')
             ->assertSeeHtml('value="cat"')

@@ -10,20 +10,21 @@ use App\Modules\Catalog\Support\CatalogMode;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Rbac\Support\PlatformAccess;
+use App\Modules\Rbac\Support\RoleLabel;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
+use App\Modules\Tenancy\Entitlement\Entitlement;
 use Closure;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\QueryException;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -34,10 +35,13 @@ use Livewire\Component;
  * a name / SKU search, a sort menu and numbered pages, all read in SQL by ProductListQuery — one
  * page of rows at a time, at a flat query budget (enforced by a Query-Budget test). Numbered pages
  * reach the first 10,000 rows; past them the pager goes on with an encrypted cursor, and counts stop
- * at "hơn 10.000". A member without catalog.view (CatalogPolicy::viewAny) gets a card saying so, never rows; every mutation (trash, restore,
- * force-delete) re-authorizes through the policy because the livewire/update endpoint bypasses route
- * middleware. A trashed product keeps its sku/slug reserved until permanently deleted. The Trash is
- * a status group (?tab=trash); the old ?trash=1 link opens it too.
+ * at "hơn 10.000". A site whose plan has no catalog gets the plan card; a member without catalog.view
+ * (CatalogPolicy::viewAny) gets the no-permission card; neither ever sees rows. The livewire/update
+ * endpoint skips the admin route's middleware, so boot() asks again on every request for a signed-in
+ * member of this site, and every write (trash, restore, force-delete, the view choices) checks the
+ * plan and then the policy at class level before it looks a product up — refused the same way
+ * whether that product exists or not. A trashed product keeps its sku/slug reserved until
+ * permanently deleted. The Trash is a status group (?tab=trash); the old ?trash=1 link opens it too.
  *
  * What each member chooses to show on the list (Cột on a wide list, Hiện trên thẻ on phone cards) is
  * kept in their own users.preferences, under the list's key.
@@ -45,8 +49,6 @@ use Livewire\Component;
 #[Layout('admin::layouts.app')]
 final class Index extends Component
 {
-    use AuthorizesRequests;
-
     /** Every status group a member may pick. */
     private const array TABS = ['all', ...ProductListQuery::STATUS_TABS, 'trash'];
 
@@ -97,6 +99,17 @@ final class Index extends Component
 
     private ?bool $brochure = null;
 
+    /**
+     * Every request, the first load and each livewire/update alike: only a signed-in member of this
+     * site (or a platform operator) gets past here. The update endpoint carries no auth or
+     * tenant.member middleware, so a replayed snapshot from a signed-out browser stops at 403.
+     */
+    public function boot(): void
+    {
+        $user = Auth::user();
+        abort_unless($user instanceof User && ($user->roles->isNotEmpty() || app(PlatformAccess::class)->isSuperAdmin($user)), 403);
+    }
+
     public function mount(): void
     {
         // the Trash used to be ?trash=1: old links open its group
@@ -132,6 +145,7 @@ final class Index extends Component
     /** "Cột" changed: kept for this member only. */
     public function updatedCols(): void
     {
+        $this->guardWrite('viewAny');
         $this->cols = self::known($this->cols, self::COLS);
         $this->saveView();
     }
@@ -139,6 +153,7 @@ final class Index extends Component
     /** "Hiện trên thẻ" changed: kept for this member only. */
     public function updatedCard(): void
     {
+        $this->guardWrite('viewAny');
         $this->card = self::known($this->card, self::CARD);
         $this->saveView();
     }
@@ -236,30 +251,31 @@ final class Index extends Component
     /** Soft-delete: the product moves to the Trash, keeping its translations/images/sku. */
     public function trash(string $ulid): void
     {
-        $product = Product::query()->where('ulid', $ulid)->firstOrFail();
-        $this->authorize('delete', $product);
-        $product->delete();
+        $this->guardWrite('delete');
+        Product::query()->where('ulid', $ulid)->firstOrFail()->delete();
     }
 
     public function restore(string $ulid): void
     {
-        $product = Product::withTrashed()->where('ulid', $ulid)->firstOrFail();
-        $this->authorize('restore', $product);
-        $product->restore();
+        $this->guardWrite('restore');
+        Product::withTrashed()->where('ulid', $ulid)->firstOrFail()->restore();
     }
 
     public function forceDelete(string $ulid): void
     {
-        $product = Product::withTrashed()->where('ulid', $ulid)->firstOrFail();
-        $this->authorize('forceDelete', $product);
-        $product->forceDelete(); // FK cascade removes translations/images; frees sku + slug
+        $this->guardWrite('forceDelete');
+        // FK cascade removes translations/images; frees sku + slug
+        Product::withTrashed()->where('ulid', $ulid)->firstOrFail()->forceDelete();
     }
 
     public function render(): View
     {
-        // A member without catalog.view gets a card saying so and no rows: nothing below is read for them.
+        // The plan first, then the permission (as the design orders them): either card, and nothing below is read.
+        if (! $this->entitled()) {
+            return view('admin::livewire.catalog.plan', ['supportMail' => Cast::string(config('support.mailbox')) ?: Cast::string(config('mail.from.address'))]);
+        }
         if (! Gate::allows('viewAny', Product::class)) {
-            return view('admin::livewire.catalog.noperm', ['role' => $this->roleName()]);
+            return view('admin::livewire.catalog.noperm', ['role' => RoleLabel::topOf($this->actingUser())]);
         }
 
         $this->clean();
@@ -556,12 +572,21 @@ final class Index extends Component
         return array_values(array_intersect($known, array_filter($values, 'is_string')));
     }
 
-    /** The member's highest role, named for the no-permission card; null when they hold none. */
-    private function roleName(): ?string
+    /** Whether this site's plan includes the catalog (read once per request). */
+    private function entitled(): bool
     {
-        $name = $this->actingUser()->roles->sortByDesc('level')->first()?->getAttribute('name');
+        return in_array('catalog', app(Entitlement::class)->entitledModuleKeys(), true);
+    }
 
-        return is_string($name) && $name !== '' ? Str::headline($name) : null;
+    /**
+     * A write from the browser: refused unless the plan has the catalog and the policy allows
+     * $ability on products at all. Asked before any product is looked up, so the answer (403) is
+     * the same for a product that exists and one that does not.
+     */
+    private function guardWrite(string $ability): void
+    {
+        abort_unless($this->entitled(), 403);
+        Gate::authorize($ability, Product::class);
     }
 
     private function actingUser(): User

@@ -22,6 +22,11 @@ beforeEach(function (): void {
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
+    // both websites' plans include the catalog (a test that needs it off takes it away)
+    DB::connection('pgsql_admin')->table('site_modules')->insert([
+        ['site_id' => 1, 'module_key' => 'catalog', 'enabled' => true, 'created_at' => now(), 'updated_at' => now()],
+        ['site_id' => 2, 'module_key' => 'catalog', 'enabled' => true, 'created_at' => now(), 'updated_at' => now()],
+    ]);
 });
 
 /** Seed a product (+vi translation) in the CURRENT site context. */
