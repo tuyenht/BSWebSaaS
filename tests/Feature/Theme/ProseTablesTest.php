@@ -181,6 +181,25 @@ it('gives every header row its scope and names the cells by the last one', funct
         ->and($html)->toContain('<td data-label="a">x</td><td data-label="b">x</td>');
 });
 
+it('names a table by a heading before it, never by one inside an earlier table', function (): void {
+    $html = laidOut('<table><tbody><tr><td><h3>Ghi chú</h3></td><td>x</td></tr></tbody></table><p>p</p><table><thead><tr><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th></tr></thead><tbody>'.rowsOf(2, 5).'</tbody></table>');
+
+    expect($html)->not->toContain('aria-label="Ghi chú"')->toContain('aria-label="'.__('storefront.table_named', ['name' => 'A']).'"');
+});
+
+it('leaves the scope off a header that spans its whole row', function (): void {
+    $html = laidOut('<table><thead><tr><th>Máy</th><th>B</th><th>C</th></tr></thead><tbody><tr><th colspan="3">Nhóm 1</th></tr><tr><th>Phay</th><td>1</td><td>2</td></tr></tbody></table>');
+
+    expect($html)->toContain('<th colspan="3">Nhóm 1</th>')->toContain('<th scope="row">Phay</th>');
+});
+
+it('changes nothing on a second pass, even when a name holds a ">"', function (): void {
+    $twice = laidOut('<h2>Áp suất &gt; 5 bar</h2><table><thead><tr><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th></tr></thead><tbody>'.rowsOf(3, 5).'</tbody></table><table><thead><tr><th>&gt;5</th><th>B</th><th>C</th><th>D</th><th>E</th></tr></thead><tbody>'.rowsOf(3, 5).'</tbody></table>');
+
+    expect(laidOut($twice))->toBe($twice)
+        ->and(substr_count($twice, '<div class="sf-table'))->toBe(2);
+});
+
 it('changes nothing on a second pass', function (): void {
     $once = laidOut('<h2>Máy</h2><table><thead><tr><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th></tr></thead><tbody>'.rowsOf(3, 5).'</tbody></table><table><tbody>'.rowsOf(2, 2).'</tbody></table>');
 

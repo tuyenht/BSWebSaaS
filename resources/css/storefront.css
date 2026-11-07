@@ -1159,7 +1159,7 @@ main:has(.hero, .sf-slider) .page__title {
     min-width: calc(var(--sf-cols, 4) * 5.5rem + 2.5rem);
 }
 
-.sf-table--scroll:not(.sf-table--merged) > table > thead > tr:first-child > :first-child,
+.sf-table--scroll:not(.sf-table--merged) > table > thead > tr > :first-child,
 .sf-table--scroll:not(.sf-table--merged) > table > tbody > tr > :first-child {
     position: sticky;
     left: 0;
@@ -1168,7 +1168,7 @@ main:has(.hero, .sf-slider) .page__title {
     box-shadow: inset -1px 0 var(--sf-table-line);
 }
 
-.sf-table--scroll:not(.sf-table--merged) > table > thead > tr:first-child > :first-child {
+.sf-table--scroll:not(.sf-table--merged) > table > thead > tr > :first-child {
     background: var(--color-dark);
     box-shadow: inset -1px 0 var(--color-dark-line, var(--color-dark));
 }
@@ -1215,7 +1215,7 @@ main:has(.hero, .sf-slider) .page__title {
 @media print {
     .sf-table { overflow: visible; border: 0; background: none; }
     .sf-table--scroll > table { min-width: 0; }
-    .sf-table--scroll > table > thead > tr:first-child > :first-child,
+    .sf-table--scroll > table > thead > tr > :first-child,
     .sf-table--scroll > table > tbody > tr > :first-child { position: static; }
 }
 

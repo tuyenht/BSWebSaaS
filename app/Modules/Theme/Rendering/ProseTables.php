@@ -46,7 +46,8 @@ final class ProseTables
     /** Elements whose edges separate words: `Đơn<br>giá` reads "Đơn giá", not "Đơngiá". */
     private const array BREAKS = ['br', 'p', 'div', 'li', 'ul', 'ol', 'h2', 'h3', 'h4', 'h5', 'blockquote', 'figure', 'figcaption', 'table', 'tr', 'td', 'th'];
 
-    private const string WRAPPED = '~<div class="sf-table[ "][^>]*>\s*$~';
+    /** The wrapper this pass writes, ending right before the table (a quoted value may hold a `>`). */
+    private const string WRAPPED = '~<div class="sf-table(?: [^"]*)?"(?:[^>"]|"[^"]*")*>\s*$~';
 
     public static function apply(string $html): string
     {
@@ -68,6 +69,9 @@ final class ProseTables
             foreach ($headings as $heading) {
                 if ($heading[0][1] >= $start) {
                     break;
+                }
+                if (self::inside($heading[0][1], $tables)) {
+                    continue; // a heading in an earlier table's cell names that table's content, not this one
                 }
                 $name = self::text(html_entity_decode(strip_tags((string) preg_replace('~<(?:br|/?(?:p|div|li))\b[^>]*>~i', ' ', $heading[1][0])), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
             }
@@ -103,6 +107,18 @@ final class ProseTables
         }
 
         return $found;
+    }
+
+    /** @param  list<array{0: int, 1: int}>  $tables */
+    private static function inside(int $offset, array $tables): bool
+    {
+        foreach ($tables as [$start, $end]) {
+            if ($offset >= $start && $offset < $end) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static function table(string $fragment, ?string $heading): string
@@ -154,7 +170,11 @@ final class ProseTables
 
         $body = array_values(array_filter($rows, static fn (Element $row): bool => $row->parentElement?->localName !== 'thead'));
         foreach ($body as $row) {
-            foreach (self::cellsOf($row) as $cell) {
+            $cells = self::cellsOf($row);
+            if (count($cells) === 1) {
+                continue; // a header across the whole row heads a group of rows, not this row
+            }
+            foreach ($cells as $cell) {
                 if ($cell->localName === 'th' && ! $cell->hasAttribute('scope')) {
                     $cell->setAttribute('scope', 'row');
                 }
