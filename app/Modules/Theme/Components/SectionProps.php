@@ -195,15 +195,18 @@ final class SectionProps
     }
 
     /**
-     * The stats to draw from a list prop, in order, each as {value, number, suffix, label, count}:
+     * The stats to draw from a list prop, in order, each as {value, number, suffix, label, count, length}:
      * `number` prints the value with thousands separators and counts up (`count`); `years` prints
      * this year minus the start year and `year` the year itself, both plain and with the unit locked.
+     * A unit that starts with a letter (m², tấn) gets a no-break space before it, in place of any space
+     * typed before it; `+`, `%` and other signs stay against the number. `length` is how wide the number and its unit print, in digits
+     * (a unit character counts 0.6, 5 at the least): the view shrinks a long number to fit its cell.
      * This year is read (a settings query on a first use) only when an item is a year kind, so a block
      * of plain numbers costs nothing extra. An item with an unknown kind is a number; a year outside
      * 1900…this year, or an item with neither a number nor a label, is left out.
      *
      * @param  array<array-key, mixed>  $props
-     * @return list<array{value: int|null, number: string, suffix: string, label: string, count: bool}>
+     * @return list<array{value: int|null, number: string, suffix: string, label: string, count: bool, length: int}>
      */
     public static function statEntries(array $props, string $key, int $max): array
     {
@@ -219,7 +222,8 @@ final class SectionProps
                 if ($value === null || $value < self::STAT_YEAR_MIN || $value > $year) {
                     continue;
                 }
-                $stats[] = ['value' => $value, 'number' => (string) ($kind === 'years' ? $year - $value : $value), 'suffix' => '', 'label' => $label, 'count' => false];
+                $number = (string) ($kind === 'years' ? $year - $value : $value);
+                $stats[] = ['value' => $value, 'number' => $number, 'suffix' => '', 'label' => $label, 'count' => false, 'length' => self::statLength($number, '')];
 
                 continue;
             }
@@ -227,16 +231,26 @@ final class SectionProps
             if ($value === null && $label === '') {
                 continue;
             }
+            $number = $value === null ? '' : number_format($value, 0, ',', '.');
+            // the editor's own space before a unit (" m²", saved by older blocks) gives way to the rule's
+            $suffix = $value === null ? '' : mb_substr((string) preg_replace('/\A[\s\x{00A0}]+/u', '', self::text($item, 'suffix')), 0, 8);
+            $suffix = preg_match('/\A\p{L}/u', $suffix) === 1 ? "\u{00A0}".$suffix : $suffix;
             $stats[] = [
                 'value' => $value,
-                'number' => $value === null ? '' : number_format($value, 0, ',', '.'),
-                'suffix' => $value === null ? '' : mb_substr(self::text($item, 'suffix'), 0, 8),
+                'number' => $number,
+                'suffix' => $suffix,
                 'label' => $label,
                 'count' => $value !== null,
+                'length' => self::statLength($number, $suffix),
             ];
         }
 
         return $stats;
+    }
+
+    private static function statLength(string $number, string $suffix): int
+    {
+        return max(5, (int) ceil(mb_strlen($number) + 0.6 * mb_strlen($suffix)));
     }
 
     /** The most numbers a stats block shows. */

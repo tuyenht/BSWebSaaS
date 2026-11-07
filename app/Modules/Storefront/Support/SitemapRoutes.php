@@ -61,6 +61,13 @@ final readonly class SitemapRoutes
      * the whole result set client-side, so this saves the models, not the transfer. lastmod goes
      * through the model's own datetime cast, so the output format is the model's.
      *
+     * lastmod is when the page last changed (Google trusts it only while it stays accurate): the
+     * later of the route's own change (its path) and the page's text in that language, the
+     * translation an edit or a publish rewrites (the date the post page shows as "Updated"). A
+     * category list changes whenever a post joins it, which no column records, so its route
+     * carries no lastmod rather than a stale one. Each lookup is one probe of the translation's
+     * unique (owner, locale) index.
+     *
      * @param  array{0: string, 1: int}|null  $from
      * @param  array{0: string, 1: int}|null  $to
      * @return list<array{path: string, locale: string, lastmod: string|null}>
@@ -75,7 +82,11 @@ final readonly class SitemapRoutes
             ->orderBy('routes.path')
             ->orderBy('routes.id')
             ->limit($limit)
-            ->select(['routes.path', 'routes.locale', 'routes.updated_at'])
+            ->select(['routes.path', 'routes.locale'])
+            ->selectRaw('case when routes.taxonomy_id is null then greatest(routes.updated_at,
+                (select t.updated_at from entry_translations t where t.site_id = routes.site_id and t.entry_id = routes.entry_id and t.locale = routes.locale),
+                (select t.updated_at from product_translations t where t.site_id = routes.site_id and t.product_id = routes.product_id and t.locale = routes.locale)
+            ) end as updated_at')
             ->toBase()
             ->cursor();
 
