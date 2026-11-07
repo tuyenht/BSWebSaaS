@@ -313,7 +313,7 @@ it('reads the category chain of a full-path address in a fixed number of queries
         $shown = $rows();
     });
 
-    // the chain adds, for the two levels above the main category, one query for the parents and one for their names, for the whole page
+    // the chain adds two queries per level above the main category (the parents, then their names): two levels, four queries, for the whole page
     expect($shown)->toBe(10)->and($more)->toBe($count)->and($count)->toBe(20);
 });
 

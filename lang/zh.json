@@ -3319,7 +3319,7 @@
     "catalog.col_opt_badge": "标签",
     "catalog.card_opt_slug": "路径",
     "catalog.card_opt_tr": "翻译",
-    "catalog.lc_why_default_only": "编辑器目前只能打开商品的主语言",
+    "catalog.lc_why_default_only": "目前只能编辑源语言版本",
     "catalog.price_ask": "联系报价",
     "catalog.price_ask_tip": "尚未填写价格 — 网站显示“联系报价”按钮",
     "catalog.price_sale_tip": "促销价至 :date — 原价 :price",

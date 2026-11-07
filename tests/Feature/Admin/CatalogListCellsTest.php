@@ -192,9 +192,15 @@ it('draws the address with the whole category chain when the website uses catego
         $leaf = cellCategory('Máy tiện đứng', $mid);
         $product = cellProduct('Tiện đứng lớn', [], $leaf);
 
+        DB::flushQueryLog();
+        DB::enableQueryLog();
         $html = Livewire::actingAs(cellManager())->test(Index::class)->html();
+        $lazy = collect(DB::getQueryLog())->filter(fn (array $q): bool => str_contains((string) $q['query'], '"taxonomies"') && str_contains((string) $q['query'], 'limit 1'));
+        DB::disableQueryLog();
+        DB::flushQueryLog();
 
-        expect($html)->toContain('>/c-'.$root->id.'/c-'.$mid->id.'/c-'.$leaf->id.'/sp-'.$product->id.'<');
+        expect($html)->toContain('>/c-'.$root->id.'/c-'.$mid->id.'/c-'.$leaf->id.'/sp-'.$product->id.'<')
+            ->and($lazy)->toHaveCount(0);
     });
 });
 

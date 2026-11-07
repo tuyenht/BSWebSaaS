@@ -1385,9 +1385,9 @@
             --list-w-badge: 7.75rem;
         }
 
-        /* the price track takes the widest price the page shows (never below its floor), so "1.090.000.000 ₫" never spills into the stock */
+        /* the price track takes the widest price the page shows (never below its floor), so "1.090.000.000 ₫" never spills into the stock; the other side columns shrink to their content, up to their default width */
         .list-rows[data-kind='catalog'][data-kind] .list-g {
-            grid-template-columns: [chk] 3.5rem [main] minmax(0, 1fr) [cat] var(--list-w-cat) [price] minmax(var(--list-w-price), max-content) [stock] var(--list-w-stock) [badge] var(--list-w-badge) [st] 11.5rem [act] auto [end];
+            grid-template-columns: [chk] 3.5rem [main] minmax(0, 1fr) [cat] fit-content(var(--list-w-cat)) [price] minmax(var(--list-w-price), max-content) [stock] fit-content(var(--list-w-stock)) [badge] fit-content(var(--list-w-badge)) [st] 11.5rem [act] auto [end];
         }
 
         .list-rows[data-kind='catalog'] .list-c-cat {

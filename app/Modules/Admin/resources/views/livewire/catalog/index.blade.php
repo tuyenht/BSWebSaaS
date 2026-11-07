@@ -158,22 +158,22 @@
              x-data="{
                  mode: 'cols',
                  fold: '',
-                 size() { const w = this.$refs.rows?.clientWidth ?? 0, rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16; this.mode = w < 37.5 * rem ? 'card' : (w < 56.25 * rem ? 'line' : 'cols'); this.foldCols(rem); },
-                 {{-- as the table narrows or the text grows, the label, category, stock and price columns fold into the line under the name (in that order) until the name keeps its room --}}
-                 foldCols(rem) {
+                 seen: '',
+                 ro: null,
+                 destroy() { this.ro?.disconnect(); },
+                 size(force = false) { const w = this.$refs.rows?.clientWidth ?? 0, rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16, boost = window.bsListFold.boostPx(), key = w + ':' + boost; if (! force && key === this.seen) { return; } this.seen = key; this.mode = w < 37.5 * rem ? 'card' : (w < 56.25 * rem ? 'line' : 'cols'); this.foldCols(rem, boost); },
+                 {{-- as the table narrows or the text grows, the label, category, stock and price columns fold into the line under the name (in that order) until the name keeps the shared minimum; one pass: clear the fold, read every width, write the fold once --}}
+                 foldCols(rem, boost) {
                      const list = this.$refs.rows?.querySelector('.list-rows'), head = list?.querySelector('.list-hd'), main = head?.querySelector('.list-c-main');
                      if (! list || ! main) { return; }
-                     const out = [];
-                     list.removeAttribute('data-fold');
+                     let out = [];
                      if (this.mode === 'cols') {
-                         for (const k of ['badge', 'cat', 'stock', 'price']) {
-                             if (main.getBoundingClientRect().width - 3.75 * rem >= 10 * rem) { break; }
-                             if (! head.querySelector('.list-c-' + k)?.getClientRects().length) { continue; }
-                             out.push(k);
-                             list.setAttribute('data-fold', out.join(' '));
-                         }
+                         list.removeAttribute('data-fold');
+                         const cols = ['badge', 'cat', 'stock', 'price'].map((k) => [k, head.querySelector('.list-c-' + k)?.getBoundingClientRect().width ?? 0]);
+                         out = window.bsListFold.nameFold(main.getBoundingClientRect().width - 3.75 * rem, cols, boost);
                      }
                      this.fold = out.join(' ');
+                     this.fold === '' ? list.removeAttribute('data-fold') : list.setAttribute('data-fold', this.fold);
                  },
                  show(k) { return this.mode === 'line' || (this.mode === 'cols' ? this.$wire.cols : this.$wire.card).includes(k); },
                  get vSku() { return this.mode !== 'card' || this.$wire.card.includes('sku'); },
@@ -186,7 +186,7 @@
                  hidden() { const off = {{ Js::from($hiddenAlways) }}; return (this.mode === 'cols' ? ['cat', 'price', 'stock', 'badge'].filter(k => ! this.$wire.cols.includes(k)) : []).concat(off).join(' '); },
                  copy(url) { (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(() => window.bsToast({ text: {{ Js::from(__('catalog.copied')) }}.replace(':url', url) }), () => {}); },
              }"
-             x-init="size(); new ResizeObserver(() => size()).observe($el); $watch('$wire.cols', () => $nextTick(() => size()))">
+             x-init="size(true); ro = new ResizeObserver(() => size()); ro.observe($el); $watch('$wire.cols', () => $nextTick(() => size(true))); $wire.$hook('commit', ({ succeed }) => succeed(() => $nextTick(() => size(true))))">
             <div class="flex flex-col gap-3 pb-3 min-[600px]:px-4 min-[600px]:pt-4 min-[900px]:pt-3 @min-[56.25rem]/lt:flex-row @min-[56.25rem]/lt:flex-wrap @min-[56.25rem]/lt:items-center">
                 <div class="min-w-0 text-body @min-[56.25rem]/lt:min-w-[19em] @min-[56.25rem]/lt:max-w-[30em] @min-[56.25rem]/lt:flex-[999_1_19em] @min-[56.25rem]/lt:[&:has(+[data-below='1'])]:max-w-none">
                     <x-bs-admin::search id="catalog-search" :label="__('catalog.search_label')" :placeholder="__('catalog.search_hint')"

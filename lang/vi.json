@@ -3319,7 +3319,7 @@
     "catalog.col_opt_badge": "Nhãn",
     "catalog.card_opt_slug": "Đường dẫn",
     "catalog.card_opt_tr": "Bản dịch",
-    "catalog.lc_why_default_only": "Trình sửa hiện chỉ mở ngôn ngữ chính của sản phẩm",
+    "catalog.lc_why_default_only": "Hiện chỉ sửa được bản nguồn",
     "catalog.price_ask": "Liên hệ báo giá",
     "catalog.price_ask_tip": "Chưa nhập giá — website hiện nút “Liên hệ báo giá”",
     "catalog.price_sale_tip": "Giá khuyến mãi tới :date — giá gốc :price",

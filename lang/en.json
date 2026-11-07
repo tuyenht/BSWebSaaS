@@ -3319,7 +3319,7 @@
     "catalog.col_opt_badge": "Labels",
     "catalog.card_opt_slug": "Path",
     "catalog.card_opt_tr": "Translations",
-    "catalog.lc_why_default_only": "The editor opens only the main language of a product for now",
+    "catalog.lc_why_default_only": "Only the source version can be edited for now",
     "catalog.price_ask": "Request a quote",
     "catalog.price_ask_tip": "No price entered — the website shows the “Request a quote” button",
     "catalog.price_sale_tip": "Sale price until :date — regular price :price",
