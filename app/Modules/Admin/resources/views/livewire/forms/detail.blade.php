@@ -26,13 +26,11 @@
         </div>
 
         <dl class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-            @foreach ($submission->data as $key => $value)
-                @if (is_scalar($value) && (string) $value !== '')
-                    <div @class(['sm:col-span-2' => $key === 'message'])>
-                        <dt class="text-body-muted">{{ $key }}</dt>
-                        <dd class="whitespace-pre-line font-medium text-heading">{{ $value }}</dd>
-                    </div>
-                @endif
+            @foreach ($answers as $answer)
+                <div @class(['sm:col-span-2' => $answer['wide'] || $answer['key'] === 'message'])>
+                    <dt class="text-text-muted">{{ $answer['label'] }}</dt>
+                    <dd @class(['whitespace-pre-line text-text-strong', 'font-medium' => ! $answer['ticked']])>{{ $answer['value'] }}</dd>
+                </div>
             @endforeach
         </dl>
 
