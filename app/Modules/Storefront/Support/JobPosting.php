@@ -109,7 +109,7 @@ final readonly class JobPosting
                 default => [],
             };
             foreach ($candidates as $candidate) {
-                $plain = str($this->text($candidate))->stripTags()->squish()->limit(300)->toString();
+                $plain = str(html_entity_decode(strip_tags($this->text($candidate)), ENT_QUOTES | ENT_HTML5, 'UTF-8'))->squish()->limit(300)->toString();
                 if ($plain !== '') {
                     return $plain;
                 }

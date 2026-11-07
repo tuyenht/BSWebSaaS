@@ -99,10 +99,10 @@ it('describes a job post with no excerpt by the first paragraph of its body, not
     $siteId = jobSite();
     app(Tenancy::class)->enter($siteId, function (): void {
         $translation = EntryTranslation::query()->where('slug', 'tho-tien-cnc')->firstOrFail();
-        $translation->forceFill(['excerpt' => null, 'body' => ['blocks' => [['type' => 'richtext_html', 'props' => ['html' => '<h2>Mô tả</h2><p>Tuyển thợ <b>tiện</b> CNC   có tay nghề.</p><p>Hai.</p>']]]]])->save();
+        $translation->forceFill(['excerpt' => null, 'body' => ['blocks' => [['type' => 'richtext_html', 'props' => ['html' => '<h2>Mô tả</h2><p>Tuyển thợ <b>tiện</b> &amp; phay CNC   có tay nghề.</p><p>Hai.</p>']]]]])->save();
     });
 
-    expect(jobLd(jobPage('/ha-noi/tho-tien-cnc'))['description'])->toBe('Tuyển thợ tiện CNC có tay nghề.');
+    expect(jobLd(jobPage('/ha-noi/tho-tien-cnc'))['description'])->toBe('Tuyển thợ tiện & phay CNC có tay nghề.');
 });
 
 it('prints no JobPosting data when the post has neither an excerpt nor a body paragraph', function (): void {
