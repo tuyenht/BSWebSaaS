@@ -360,5 +360,17 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('data-seo-fields')->not->toContain('wire:model="excerpt"');
     file_put_contents($dir.'/product-editor.html', $html);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 19);
+    // The products list: long names, a product with no picture, one in the Trash group's neighbour statuses.
+    app(Tenancy::class)->enter(1, function (): void {
+        $made = Product::query()->create(['status' => 'published', 'sku' => 'MK-HSS-10', 'price' => 480000]);
+        $made->translations()->create(['locale' => 'vi', 'name' => 'Mũi khoan thép gió dài HSS đường kính 10 mm, chuôi trụ, mài chính xác cho gia công cơ khí', 'slug' => 'mui-khoan-hss-10']);
+        $archived = Product::query()->create(['status' => 'archived', 'sku' => null]);
+        $archived->translations()->create(['locale' => 'vi', 'name' => 'Bộ dao phay ngón', 'slug' => 'bo-dao-phay-ngon']);
+    });
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/catalog')->assertOk()->getContent();
+    expect($html)->toContain('Mũi khoan thép gió dài', 'Bộ dao phay ngón');
+    file_put_contents($dir.'/product-list.html', $html);
+
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 20);
 });

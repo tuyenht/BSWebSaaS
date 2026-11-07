@@ -17,6 +17,7 @@ use App\Modules\Cms\Support\EntryCategoryWriter;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteModule;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
@@ -379,6 +380,7 @@ it('takes a product out of its count in the trash and back on restore, from the 
 
     app(Tenancy::class)->enter(1, function () use ($manager): void {
         grantRole($manager, 'cat-manager', ['catalog.view', 'catalog.manage']);
+        SiteModule::query()->create(['module_key' => 'catalog', 'enabled' => true]);
         $a = ccCategory('Đồ gá', 'product_cat');
         $b = ccCategory('Khuôn', 'product_cat');
         $product = ccProduct([$a]);

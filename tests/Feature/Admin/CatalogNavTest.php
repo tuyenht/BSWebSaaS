@@ -71,7 +71,7 @@ it('filters the legacy products content_section so it does not double-surface', 
         ->and(collect($items)->firstWhere('key', 'catalog'))->not->toBeNull(); // catalog leaf present
 });
 
-it('gates the catalog index route — 200 with catalog.view, 403 without', function (): void {
+it('opens the catalog index route to a member with catalog.view and shows one without it the no-permission card', function (): void {
     $viewer = User::factory()->create();
     $noperm = User::factory()->create();
     app(Tenancy::class)->enter(1, function () use ($viewer, $noperm): void {
@@ -80,5 +80,8 @@ it('gates the catalog index route — 200 with catalog.view, 403 without', funct
     });
 
     $this->actingAs($viewer->fresh())->get('http://anvinh.platform.test/admin/catalog')->assertOk();
-    $this->actingAs($noperm->fresh())->get('http://anvinh.platform.test/admin/catalog')->assertForbidden();
+    $this->actingAs($noperm->fresh())->get('http://anvinh.platform.test/admin/catalog')
+        ->assertOk()->assertSee(__('catalog.noperm_title'))->assertDontSee(__('catalog.create_new'));
+    auth()->logout();
+    $this->get('http://anvinh.platform.test/admin/catalog')->assertRedirect();
 });
