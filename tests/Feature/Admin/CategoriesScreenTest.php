@@ -18,6 +18,7 @@ use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Rbac\Models\Role;
 use App\Modules\Tenancy\Context\SiteLocale as SiteLocaleContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
@@ -644,6 +645,25 @@ it('tells a member which categories they work in, and stands in a notice for a s
         ->assertDontSee('data-bs-lazy="bsCategories"', false);
     $this->actingAs($this->editor->fresh())->get('http://a.test/admin/taxonomies?section=catalog')->assertOk()
         ->assertSee(__('categories.ui_locked_text'));
+});
+
+it('names the member\'s role in plain words on the no-permission notice', function (): void {
+    $member = User::factory()->create();
+    $custom = User::factory()->create();
+    cxIn(1, function () use ($member, $custom): void {
+        grantRole($member, 'contributor', ['taxonomies.manage', 'entries.view']);
+        Role::query()->where('name', 'contributor')->update(['is_system' => true]);
+        grantRole($custom, 'Kế toán bếp', ['taxonomies.manage', 'entries.view']);
+        $projects = cxCreate('Dự án');
+        ContentSection::query()->create(['key' => 'du-an', 'label' => 'Dự án', 'entry_type' => 'post', 'taxonomy_id' => $projects->id, 'permission_prefix' => 'forms', 'sort_order' => 3]);
+    });
+    app(TeamContext::class)->forget();
+
+    $this->actingAs($member->fresh())->get('http://a.test/admin/taxonomies?section=du-an')->assertOk()
+        ->assertSee(__('categories.ui_noperm_text', ['role' => __('rbac.role.contributor')]))
+        ->assertDontSee('"Contributor"', false);
+    $this->actingAs($custom->fresh())->get('http://a.test/admin/taxonomies?section=du-an')->assertOk()
+        ->assertSee(__('categories.ui_noperm_text', ['role' => 'Kế toán bếp']));
 });
 
 it('hands a picture picked for the cover to the drawer by its key, and ignores a file that is not a picture', function (): void {

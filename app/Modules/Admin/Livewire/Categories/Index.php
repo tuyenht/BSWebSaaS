@@ -38,6 +38,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\View as Views;
+use App\Modules\Rbac\Support\RoleLabel;
 use Illuminate\Support\Str;
 use Illuminate\View\FileViewFinder;
 use Livewire\Attributes\Layout;
@@ -350,8 +351,6 @@ final class Index extends Component
         foreach ($locales->enabled() as $locale) {
             $bases[$locale] = SeoFields::address($host, '/', $locale, false)['base'];
         }
-        $role = $actor->roles->sortByDesc('level')->first()?->getAttribute('name');
-
         return view('admin::livewire.categories.index', [
             'state' => $state,
             'screen' => $found === null ? null : app(CategoryScreen::class)->load($found, $actor),
@@ -360,7 +359,7 @@ final class Index extends Component
             'bases' => $bases,
             'layouts' => TemplateCatalog::names(TemplateCatalog::ROLE_LIST, $found !== null && $found['root'] === null ? TemplateCatalog::KIND_PRODUCT : TemplateCatalog::KIND_POST),
             'detailLayouts' => $this->detailLayouts($found === null || $found['root'] !== null),
-            'role' => is_string($role) && $role !== '' ? Str::headline($role) : null,
+            'role' => RoleLabel::topOf($actor),
             'limitNames' => $limits === null ? null : $this->namesOf($limits, $main),
             'listUrl' => $found !== null && $found['root'] === null ? route('admin.catalog.index') : route('admin.entries.index', $found !== null ? ['section' => $found['key']] : []),
             // "Liên hệ hỗ trợ" on the locked state: the platform's support mailbox

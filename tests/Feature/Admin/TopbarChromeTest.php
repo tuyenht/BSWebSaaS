@@ -3,6 +3,7 @@
 use App\Modules\Admin\Navigation\PlatformNav;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
 use Dom\Element;
@@ -27,12 +28,17 @@ beforeEach(function (): void {
 
 it('shows the user name, primary-role label, and a real-flag language switcher', function (): void {
     $user = User::factory()->create(['name' => 'Topbar Tester']);
-    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        grantRole($user, 'editor', ['entries.view']);
+        // A provisioned site's built-in roles are system roles, shown by their translated name.
+        Role::query()->where('name', 'editor')->update(['is_system' => true]);
+    });
 
     $this->actingAs($user->fresh())->get('http://a.test/admin/content')
         ->assertOk()
         ->assertSee('Topbar Tester', false)          // user area shows the name
-        ->assertSee('Editor', false)                 // Str::headline('editor') — primary-role label
+        ->assertSee(__('rbac.role.editor'), false)   // primary-role label in the reader's language
+        ->assertDontSee('>Editor<', false)
         ->assertSee('langOpen', false)               // language switcher rendered
         ->assertSee('images/admin/flags/', false);   // a vendored flag image, not an emoji
 });
@@ -73,7 +79,7 @@ it('gives the platform console the shared tools but omits tenant account links',
         ->assertOk()
         ->assertSee('langOpen', false)                                            // shared topbar tools present
         ->assertSee("adminTheme.set('scheme'", false)
-        ->assertSee('Super Admin', false)                                         // operator's primary-role label
+        ->assertSee(__('rbac.role.super_admin'), false)                           // operator's primary-role label
         ->assertSee(route('platform.logout', absolute: false), false)            // platform sign-out
         ->assertDontSee(route('admin.settings.security', absolute: false), false); // no tenant account link on the operator plane
 });
