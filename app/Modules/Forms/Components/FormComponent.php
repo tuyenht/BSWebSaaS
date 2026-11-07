@@ -63,6 +63,7 @@ final class FormComponent implements Component
                 'type' => $field->type,
                 'label' => $this->localized($field->label, $locale),
                 'is_required' => $field->is_required,
+                'choices' => FormFieldTypes::isChoice($field->type) ? FormFieldTypes::choiceLabels($field, $locale) : [],
             ])->all() ?? [],
             'turnstileSiteKey' => Cast::string(config('services.turnstile.site_key')),
         ];

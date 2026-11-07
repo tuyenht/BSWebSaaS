@@ -738,6 +738,7 @@
     "forms.submit_button": "发送",
     "forms.success_title": "发送成功",
     "forms.send_another": "再发送一条留言",
+    "forms.select_placeholder": "— 请选择 —",
     "forms.required_note": "带 :mark 的为必填项。",
     "forms.privacy_link": "查看隐私政策",
     "forms.opens_in_new_tab": "（在新标签页中打开）",

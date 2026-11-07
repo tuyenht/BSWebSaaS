@@ -738,6 +738,7 @@
     "forms.submit_button": "Send message",
     "forms.success_title": "Sent successfully",
     "forms.send_another": "Send another message",
+    "forms.select_placeholder": "— Choose —",
     "forms.required_note": "Fields marked :mark are required.",
     "forms.privacy_link": "Read the privacy policy",
     "forms.opens_in_new_tab": "(opens in a new tab)",
