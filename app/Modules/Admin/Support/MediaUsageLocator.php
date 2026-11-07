@@ -108,9 +108,10 @@ final readonly class MediaUsageLocator
         }
         if ($owners['taxonomy'] !== []) {
             $categories = Taxonomy::query()->with('translations')->whereIn('id', array_unique($owners['taxonomy']))->orderBy('id')->get();
+            $roots = $this->rootsOf($categories->all());
             foreach ($categories as $category) {
                 $translation = $category->translationFor($locale);
-                $section = $this->sectionOf($category);
+                $section = $this->sectionOf($category, $roots);
                 $usages[] = [
                     'kind' => 'category',
                     'role' => 'content',
@@ -124,17 +125,40 @@ final readonly class MediaUsageLocator
     }
 
     /**
+     * The root of each post category without a query per level: the first label of the stored
+     * ltree path (ids from the root down), else the parent chain for a row that carries no path.
+     *
+     * @param  array<int, Taxonomy>  $categories
+     * @return array<int, int> category id → root id
+     */
+    private function rootsOf(array $categories): array
+    {
+        $roots = [];
+        foreach ($categories as $category) {
+            if ($category->vocabulary === CategorySections::PRODUCT_VOCABULARY) {
+                continue;
+            }
+            $first = $category->path !== null && $category->path !== '' ? explode('.', $category->path)[0] : '';
+            $roots[$category->id] = ctype_digit($first) ? (int) $first : (TaxonomyTree::ancestorsOf($category->id)[0] ?? $category->id);
+        }
+
+        return $roots;
+    }
+
+    /**
      * The key of the Chuyên mục screen section a category is edited in (CategorySections): the
      * catalog for a product category, else the post section built on the category's root. Null when
      * no section shows it (the screen then opens on its default).
+     *
+     * @param  array<int, int>  $roots  category id → its root id, from rootsOf()
      */
-    private function sectionOf(Taxonomy $category): ?string
+    private function sectionOf(Taxonomy $category, array $roots): ?string
     {
         if ($category->vocabulary === CategorySections::PRODUCT_VOCABULARY) {
             return CategorySections::CATALOG;
         }
 
-        $root = TaxonomyTree::ancestorsOf($category->id)[0] ?? $category->id;
+        $root = $roots[$category->id] ?? $category->id;
         foreach ($this->sections->postSections() as $section) {
             if ($section['root'] === $root) {
                 return $section['key'];

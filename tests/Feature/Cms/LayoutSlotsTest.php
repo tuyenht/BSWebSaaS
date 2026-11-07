@@ -11,6 +11,7 @@ use App\Modules\Cms\Data\TaxonomyData;
 use App\Modules\Cms\Exceptions\LayoutBlocksRejectedException;
 use App\Modules\Cms\Exceptions\TaxonomyChangeRejectedException;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\MemberCategoryScope;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\LayoutSlotBlocks;
 use App\Modules\Identity\Models\User;
@@ -19,6 +20,7 @@ use App\Modules\Media\Models\Mediable;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Rendering\LayoutSlots;
 use App\Modules\Theme\Theming\StorefrontSettings;
@@ -263,6 +265,24 @@ describe('saving', function (): void {
             ->toThrow(AuthorizationException::class);
         expect(app(Tenancy::class)->enter(1, fn () => Taxonomy::query()->whereKey($category->id)->value('meta')))->not->toHaveKey('layout_blocks');
     });
+    it('refuses a category override to a member limited to other categories, and allows their own', function (): void {
+        $own = lsCategory(1, 'Đồ gá cơ khí');
+        $other = lsCategory(1, 'Ứng dụng thực tế');
+        $member = User::factory()->create();
+        app(Tenancy::class)->enter(1, function () use ($member, $own): void {
+            grantRole($member, 'category-editor', ['settings.manage', 'taxonomies.manage']);
+            MemberCategoryScope::query()->create(['user_id' => $member->id, 'taxonomy_id' => $own->id]);
+        });
+        app(TeamContext::class)->forget();
+        $this->actingAs($member->fresh());
+
+        expect(fn () => app(Tenancy::class)->enter(1, fn () => app(SetCategoryLayoutBlocks::class)->handle($other, ['post_aside' => lsCta('Ưu đãi ở')])))
+            ->toThrow(AuthorizationException::class);
+        expect(app(Tenancy::class)->enter(1, fn () => Taxonomy::query()->whereKey($other->id)->value('meta')))->not->toHaveKey('layout_blocks');
+
+        app(Tenancy::class)->enter(1, fn () => app(SetCategoryLayoutBlocks::class)->handle($own, ['post_aside' => lsCta('Ưu đãi riêng ở')]));
+        expect(app(Tenancy::class)->enter(1, fn () => Taxonomy::query()->whereKey($own->id)->value('meta')))->toHaveKey('layout_blocks');
+    });
 });
 
 describe('reading', function (): void {
@@ -408,6 +428,36 @@ describe('media in use', function (): void {
 
             return $query->whereKey($picture->id)->exists();
         }))->toBeFalse();
+    });
+
+    it('links a post category to the section built on its root, at any depth, in a fixed number of queries', function (): void {
+        $picture = lsPicture(1, 'anh-bia');
+        $this->actingAs(lsSettingsAdmin());
+
+        [$usages, $few, $many] = app(Tenancy::class)->enter(1, function () use ($picture): array {
+            $create = fn (string $name, ?Taxonomy $parent): Taxonomy => app(CreateTaxonomy::class)->handle('post_cat', $parent, new TaxonomyData(names: ['vi' => $name]));
+            $root = $create('Tin tức', null);
+            $second = $create('Dự án', $create('Công trình', $root));
+            ContentSection::query()->create(['key' => 'news', 'label' => 'Tin tức', 'entry_type' => 'post', 'taxonomy_id' => $root->id, 'permission_prefix' => 'entries', 'sort_order' => 1]);
+            $level3 = $second;
+            app(SetCategoryLayoutBlocks::class)->handle($level3, ['post_aside' => lsHero($picture->id)]);
+            $locator = app(MediaUsageLocator::class);
+            $usages = $locator->usagesFor($picture, 'vi');
+            $few = countQueries(fn () => $locator->usagesFor($picture, 'vi'));
+
+            // More categories using the file at the same depth: the query count does not move.
+            $parent = Taxonomy::query()->whereKey($level3->parent_id)->firstOrFail();
+            foreach (['Mục cùng cấp một', 'Mục cùng cấp hai', 'Mục cùng cấp ba'] as $name) {
+                app(SetCategoryLayoutBlocks::class)->handle($create($name, $parent), ['post_aside' => lsHero($picture->id)]);
+            }
+            $many = countQueries(fn () => $locator->usagesFor($picture, 'vi'));
+
+            return [$usages, $few, $many];
+        });
+
+        expect($usages)->toBe([
+            ['kind' => 'category', 'role' => 'content', 'label' => 'Dự án · Cột phải / Kêu gọi cuối trang', 'url' => route('admin.taxonomies.index', ['section' => 'news'])],
+        ])->and($many)->toBe($few);
     });
 
     it('rebuilds the rows with the reconcile command and drops the stale ones', function (): void {
