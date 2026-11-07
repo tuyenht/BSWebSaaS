@@ -34,11 +34,11 @@ it('shows the user name, primary-role label, and a real-flag language switcher',
         Role::query()->where('name', 'editor')->update(['is_system' => true]);
     });
 
-    $this->actingAs($user->fresh())->get('http://a.test/admin/content')
+    $this->actingAs($user->fresh())->withSession(['locale' => 'vi'])->get('http://a.test/admin/content')
         ->assertOk()
         ->assertSee('Topbar Tester', false)          // user area shows the name
-        ->assertSee(__('rbac.role.editor'), false)   // primary-role label in the reader's language
-        ->assertDontSee('>Editor<', false)
+        ->assertSee('>Biên tập</span>', false)       // primary-role label in the reader's language
+        ->assertDontSee('>Editor</span>', false)
         ->assertSee('langOpen', false)               // language switcher rendered
         ->assertSee('images/admin/flags/', false);   // a vendored flag image, not an emoji
 });
@@ -79,7 +79,8 @@ it('gives the platform console the shared tools but omits tenant account links',
         ->assertOk()
         ->assertSee('langOpen', false)                                            // shared topbar tools present
         ->assertSee("adminTheme.set('scheme'", false)
-        ->assertSee(__('rbac.role.super_admin'), false)                           // operator's primary-role label
+        ->assertSee('>Quản trị nền tảng</span>', false)                           // operator's primary-role label
+        ->assertDontSee('Super Admin', false)
         ->assertSee(route('platform.logout', absolute: false), false)            // platform sign-out
         ->assertDontSee(route('admin.settings.security', absolute: false), false); // no tenant account link on the operator plane
 });

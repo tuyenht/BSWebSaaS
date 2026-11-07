@@ -659,9 +659,9 @@ it('names the member\'s role in plain words on the no-permission notice', functi
     });
     app(TeamContext::class)->forget();
 
-    $this->actingAs($member->fresh())->get('http://a.test/admin/taxonomies?section=du-an')->assertOk()
-        ->assertSee(__('categories.ui_noperm_text', ['role' => __('rbac.role.contributor')]))
-        ->assertDontSee('"Contributor"', false);
+    $this->actingAs($member->fresh())->withSession(['locale' => 'vi'])->get('http://a.test/admin/taxonomies?section=du-an')->assertOk()
+        ->assertSee(__('categories.ui_noperm_text', ['role' => 'Cộng tác viên'], 'vi'))
+        ->assertDontSee('Contributor');
     $this->actingAs($custom->fresh())->get('http://a.test/admin/taxonomies?section=du-an')->assertOk()
         ->assertSee(__('categories.ui_noperm_text', ['role' => 'Kế toán bếp']));
 });
