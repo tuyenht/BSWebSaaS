@@ -5827,6 +5827,11 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     list-style: none;
 }
 
+/* The stats block's list is the width a long number shrinks to fit (`--stat-across` items to a row). */
+.sf-stats .sf-stats__list {
+    container-type: inline-size;
+}
+
 .sf-stat {
     display: flex;
     flex-direction: column;
@@ -5845,6 +5850,14 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     overflow-wrap: anywhere;
 }
 
+/* A long number shrinks to fit its cell, so it stays on one line: the cell's width (less its padding)
+   over the number's length (`--stat-len`, set by the view: the number's characters and 0.6 per unit
+   character) in digit widths; never above the usual size, never below 1rem. Only a number too long
+   even at 1rem still wraps (overflow-wrap above), never past its cell. */
+.sf-stats .sf-stat__value {
+    font-size: max(1rem, min(2.375rem, calc((100cqi / var(--stat-across, 1) - 2rem) / (var(--stat-len, 5) * 0.62))));
+}
+
 .sf-band--dark .sf-stat__value {
     color: var(--color-surface);
 }
@@ -5855,20 +5868,28 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     overflow-wrap: anywhere;
 }
 
+/* Two or three numbers share one row on every screen, four go two by two on a phone (the board's
+   rule: no number alone on a row of a phone when it has a neighbour). */
+.sf-stats__list--2,
+.sf-stats__list--3,
+.sf-stats__list--4:not(:has(> :nth-child(5))) {
+    --stat-across: var(--stats, 2);
+    grid-template-columns: repeat(var(--stats, 2), minmax(0, 1fr));
+}
+
+.sf-stats__list--3 { --stats: 3; }
+
 @media (min-width: 40rem) {
-    .sf-stats__list--2,
-    .sf-stats__list--3,
-    .sf-stats__list--4 {
-        grid-template-columns: repeat(var(--stats, 2), minmax(0, 1fr));
+    .sf-stats__list--4:not(:has(> :nth-child(5))) {
+        --stats: 4;
     }
-    .sf-stats__list--3 { --stats: 3; }
-    .sf-stats__list--4 { --stats: 4; }
 }
 
 /* Stats with 5 to 8 numbers share the --4 class (the markup of a saved block never changes); the
    rows are laid out on twelve columns. A phone: two across, an odd last number across the full row.
    A wide screen: 5 = three then two wider; 6 = three and three; 7 = four then three wider; 8 = four and four. */
 .sf-stats__list--4:has(> :nth-child(5)) {
+    --stat-across: 2;
     grid-template-columns: repeat(12, minmax(0, 1fr));
 }
 
@@ -5882,6 +5903,14 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 }
 
 @media (min-width: 40rem) {
+    .sf-stats__list--4:has(> :nth-child(5)):not(:has(> :nth-child(7))) {
+        --stat-across: 3;
+    }
+
+    .sf-stats__list--4:has(> :nth-child(7)) {
+        --stat-across: 4;
+    }
+
     .sf-stats__list--4:has(> :nth-child(5)):not(:has(> :nth-child(7))) > .sf-stat {
         grid-column: span 4;
     }
@@ -5953,16 +5982,6 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     background: color-mix(in srgb, var(--color-text) 15%, var(--color-surface));
 }
 
-/* A phone, as the board draws it: 1 to 3 items in one row, 4 items two by two (5 to 8 keep their own layout). */
-.sf-stats--floating .sf-stats__list--2,
-.sf-stats--floating .sf-stats__list--4:not(:has(> :nth-child(5))) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.sf-stats--floating .sf-stats__list--3 {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
 .sf-stats--floating .sf-stat {
     justify-content: center;
     padding: 1.125rem 0.5rem;
@@ -5972,10 +5991,6 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 @media (min-width: 40rem) {
     .sf-stats--floating .sf-stat {
         padding: 1.5rem 1rem;
-    }
-
-    .sf-stats--floating .sf-stats__list--4:not(:has(> :nth-child(5))) {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 }
 
