@@ -13,9 +13,9 @@ use Illuminate\Support\Facades\Validator;
 /**
  * The one check both block-slot stores run before they write (the site's default and a category's
  * own choice): every slot named is one of LayoutSlots, every language key is one of the site's
- * languages, and each language's `{"blocks": […]}` passes the same check as a page body
- * (ValidPageJson, in the current site's context, so a button to another site's page or file is
- * refused) within the slot's own block limit. What passes comes back cleaned the way a page body is
+ * languages, and each language's `{"blocks": […]}` passes the same check as a page body, plus the
+ * block types only a slot may hold (ValidPageJson::forSlots), in the current site's context, so a
+ * button to another site's page or file is refused, within the slot's own block limit. What passes comes back cleaned the way a page body is
  * stored (every formatted-text prop through the sanitizer, SanitizedPageBody) and reduced to
  * `{locale: {"blocks": […]}}` — nothing else the caller sent is kept.
  *
@@ -85,7 +85,7 @@ final readonly class LayoutSlotInput
                 throw new LayoutBlocksRejectedException('blocks_too_many', $slot, $locale, __('layout_slots.err_too_many', ['max' => $max]));
             }
 
-            $validator = Validator::make(['blocks' => $blocks], ['blocks' => [$this->pageJson]]);
+            $validator = Validator::make(['blocks' => $blocks], ['blocks' => [$this->pageJson->forSlots()]]);
             if ($validator->fails()) {
                 throw new LayoutBlocksRejectedException('blocks_invalid', $slot, $locale, (string) $validator->errors()->first('blocks'));
             }

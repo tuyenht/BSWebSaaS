@@ -4,7 +4,9 @@
     the cover photo below it is the page's main image (eager, high priority, srcset) with the
     library caption under it. The body is one shared prose column (.sf-prose--article). Previous
     and next are plain links within the main category (older, newer); up to three related posts
-    from it follow as news cards. A post whose body opens with a title band gets its h1 and
+    from it follow as news cards. A side column (the table of contents on a wide screen, and the
+    blocks of the `post_aside` slot) sits beside the body and the links when either has something;
+    with neither, the body keeps its single column. The `after_post` slot's blocks close the page. A post whose body opens with a title band gets its h1 and
     breadcrumb from that band instead. Everything comes server-built from the controller; no id
     reaches the markup.
 --}}
@@ -17,6 +19,10 @@
     $sfPrev = $previous ?? null;
     $sfNext = $next ?? null;
     $sfRelated = $related ?? [];
+    $sfToc = $toc ?? [];
+    $sfAside = trim((string) (($slotHtml ?? [])['post_aside'] ?? ''));
+    $sfCols = $sfAside !== '' || $sfToc !== [];
+    $sfAfter = trim((string) (($slotHtml ?? [])['after_post'] ?? ''));
 @endphp
 <!doctype html>
 <html lang="{{ $lang ?? 'vi' }}">
@@ -60,6 +66,10 @@
 @endif
             {{-- $sections is pre-rendered, per-block Blade-escaped HTML (BlockRenderer). Post
                  bodies reuse the block-list Page-JSON (D1), so they render exactly like a page. --}}
+@if ($sfCols)
+            <div class="post-columns sf-container">
+                <div class="post-columns__main">
+@endif
             <div class="post__body sf-prose sf-prose--article">{!! $sections !!}</div>
 @if ($sfPrev !== null || $sfNext !== null)
             <nav class="post-nav" aria-label="{{ __('storefront.post_nav') }}">
@@ -70,6 +80,11 @@
                 <a class="post-nav__link post-nav__link--next" href="{{ $sfNext['url'] }}"><span class="post-nav__label">{{ __('storefront.next_post') }}</span><span class="post-nav__title">{{ $sfNext['title'] }}</span></a>
 @endif
             </nav>
+@endif
+@if ($sfCols)
+                </div>
+                @include('theme::partials.post-aside', ['toc' => $sfToc, 'html' => $sfAside])
+            </div>
 @endif
         </article>
 @if ($sfRelated !== [])
@@ -83,6 +98,9 @@
                 </ul>
             </div>
         </section>
+@endif
+@if ($sfAfter !== '')
+        <div class="slot-band">{!! $sfAfter !!}</div>
 @endif
     </main>
     @include('theme::partials.footer', ['menu' => $menu ?? [], 'brand' => $brand ?? null])

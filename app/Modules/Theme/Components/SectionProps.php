@@ -73,7 +73,7 @@ final class SectionProps
     /** What a stat's value means: a counted number, years since a start year, or a year printed as is. Append-only. */
     public const array STAT_KINDS = ['number', 'years', 'year'];
 
-    public const array CONTACT_VARIANTS = ['list', 'cards'];
+    public const array CONTACT_VARIANTS = ['list', 'cards', 'aside'];
 
     public const array FEATURES_VARIANTS = ['default', 'top-rule'];
 

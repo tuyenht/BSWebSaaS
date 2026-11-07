@@ -41,18 +41,23 @@ final readonly class PageRenderer
         /** @var view-string $layout a theme layout name (TemplateResolver) */
         $layout = $this->templates->layoutFor($type, $templateOverride, $categoryTemplate);
         $leadBlock = $this->blocks->leadType($body);
-        $extra += in_array('hero_slider', $this->blocks->types($body), true) ? self::sliderHints($body, $leadBlock, $this->media) : [];
+        // The blocks of the slots around the page (LayoutSlots) are drawn with the body; the scripts
+        // they need load like the body's own.
+        $slots = self::slots($extra);
+        unset($extra['slotBlocks'], $extra['slotContext']);
+        $scripts = $slots['blocks'] === [] ? $body : ['blocks' => [...array_values(is_array($body['blocks'] ?? null) ? $body['blocks'] : []), ...self::slotBlockList($slots['blocks'])]];
+        $extra += in_array('hero_slider', $this->blocks->types($scripts), true) ? self::sliderHints($scripts, $leadBlock, $this->media) : [];
         // The slider script also drives the list rows (a list block that carries the display group).
-        $extra += self::hasRails($body) ? ['sliderScript' => true] : [];
+        $extra += self::hasRails($scripts) ? ['sliderScript' => true] : [];
         // The scroll-in motion script loads only on a page with a block that moves.
-        $extra += $this->blocks->moves($body) ? ['sectionsScript' => true] : [];
+        $extra += $this->blocks->moves($scripts) ? ['sectionsScript' => true] : [];
         // The click-to-load video script loads only on a page with a video it can play.
-        $extra += self::playsVideo($body) || $this->blocks->playsRichVideo($body) ? ['videoScript' => true] : [];
+        $extra += self::playsVideo($scripts) || $this->blocks->playsRichVideo($scripts) ? ['videoScript' => true] : [];
         // The count-up script loads only on a page with a stats block that holds a number.
-        $extra += self::countsUp($body) ? ['statsScript' => true] : [];
+        $extra += self::countsUp($scripts) ? ['statsScript' => true] : [];
         // The tab script loads only on a page with an article list that asks for tabs (it draws them
         // from two sub-categories up; the script is a few hundred bytes).
-        $extra += self::hasTabs($body) ? ['tabsScript' => true] : [];
+        $extra += self::hasTabs($scripts) ? ['tabsScript' => true] : [];
         // A page led by a hero shows no breadcrumb (the hero is its opening), so its head lists none
         // either: the JSON-LD trail and the visible one always match.
         if ($type === 'page' && in_array($leadBlock, ['hero', 'hero_slider'], true)) {
@@ -60,7 +65,11 @@ final readonly class PageRenderer
         }
         $crumbs = is_array($extra['breadcrumb'] ?? null) ? array_values($extra['breadcrumb']) : [];
         $tokens = $this->theme->cssVariables();
-        ['html' => $sections, 'bgVideo' => $bgVideo] = $this->blocks->renderSections(self::withPageTitle($body, $title, $leadBlock, $crumbs));
+        // One pass over the body and the slots: pages and files are looked up once per kind.
+        $drawn = $this->blocks->renderBodies([self::withPageTitle($body, $title, $leadBlock, $crumbs), ...self::slotBodies($slots['blocks'])], $slots['context']);
+        ['html' => $sections, 'bgVideo' => $bgVideo] = $drawn[0];
+        $extra['slotHtml'] = self::slotHtml($slots['blocks'], array_slice($drawn, 1));
+        $bgVideo = $bgVideo || array_filter(array_slice($drawn, 1), fn (array $one): bool => $one['bgVideo']) !== [];
         // The background-video script loads only on a page where a hero's video resolved (a missing
         // or deleted video renders the plain hero, with no script).
         $extra += $bgVideo ? ['bgVideoScript' => true] : [];
@@ -76,7 +85,99 @@ final readonly class PageRenderer
             // the page asks for one high-priority image, not two. Matched on the tag: text (a post
             // about the attribute itself) cannot hold a raw "<", Blade and the purifier escape it.
             'bodyHighImage' => preg_match('~<img\b[^>]*\sfetchpriority="high"~', $sections) === 1,
+            // The h2 headings of the body that carry an id, for a post's table of contents.
+            'toc' => $type === 'post' ? ArticleToc::of($sections) : [],
         ] + $extra)->render();
+    }
+
+    /**
+     * The slot blocks and the page data they draw, as the controller handed them in `$extra`.
+     *
+     * @param  array<string, mixed>  $extra
+     * @return array{blocks: array<string, list<array<array-key, mixed>>>, context: array<array-key, mixed>}
+     */
+    private static function slots(array $extra): array
+    {
+        $blocks = [];
+        foreach (is_array($extra['slotBlocks'] ?? null) ? $extra['slotBlocks'] : [] as $slot => $list) {
+            $kept = array_values(array_filter(is_array($list) ? $list : [], 'is_array'));
+            if (is_string($slot) && $kept !== []) {
+                $blocks[$slot] = $kept;
+            }
+        }
+
+        return ['blocks' => $blocks, 'context' => is_array($extra['slotContext'] ?? null) ? $extra['slotContext'] : []];
+    }
+
+    /**
+     * @param  array<string, list<array<array-key, mixed>>>  $blocks
+     * @return list<mixed>
+     */
+    private static function slotBlockList(array $blocks): array
+    {
+        return array_merge([], ...array_values($blocks));
+    }
+
+    /**
+     * @param  array<string, list<array<array-key, mixed>>>  $blocks
+     * @return list<array{blocks: list<array<array-key, mixed>>}>
+     */
+    private static function slotBodies(array $blocks): array
+    {
+        return array_map(fn (array $list): array => ['blocks' => $list], array_values($blocks));
+    }
+
+    /**
+     * @param  array<string, list<array<array-key, mixed>>>  $blocks
+     * @param  list<array{html: string, bgVideo: bool}>  $drawn
+     * @return array<string, string> slot → its HTML (only the slots that drew something)
+     */
+    private static function slotHtml(array $blocks, array $drawn): array
+    {
+        $html = [];
+        foreach (array_keys($blocks) as $index => $slot) {
+            if (trim($drawn[$index]['html']) !== '') {
+                $html[$slot] = $drawn[$index]['html'];
+            }
+        }
+
+        return $html;
+    }
+
+    /**
+     * Draw the slots of a page that has no body of its own (a list, a product): the slot HTML and
+     * the scripts its blocks need, added to the layout's variables. Takes `slotBlocks` and
+     * `slotContext` out of $extra; with no slot blocks it changes nothing else.
+     *
+     * @param  array<string, mixed>  $extra
+     * @return array<string, mixed>
+     */
+    private function withSlots(array $extra): array
+    {
+        $slots = self::slots($extra);
+        unset($extra['slotBlocks'], $extra['slotContext']);
+        if ($slots['blocks'] === []) {
+            return $extra;
+        }
+
+        $scripts = ['blocks' => self::slotBlockList($slots['blocks'])];
+        $drawn = $this->blocks->renderBodies(self::slotBodies($slots['blocks']), $slots['context'], false);
+        $extra['slotHtml'] = self::slotHtml($slots['blocks'], $drawn);
+        $flags = [
+            'sliderScript' => self::hasRails($scripts),
+            'sectionsScript' => $this->blocks->moves($scripts),
+            'videoScript' => self::playsVideo($scripts) || $this->blocks->playsRichVideo($scripts),
+            'statsScript' => self::countsUp($scripts),
+            'tabsScript' => self::hasTabs($scripts),
+            'bgVideoScript' => array_filter($drawn, fn (array $one): bool => $one['bgVideo']) !== [],
+        ];
+        foreach ($flags as $key => $on) {
+            if ($on) {
+                $extra[$key] = true;
+            }
+        }
+
+        return $extra;
     }
 
     /**
@@ -280,6 +381,7 @@ final readonly class PageRenderer
     {
         /** @var view-string $layout a theme layout name (TemplateResolver) */
         $layout = $this->templates->layoutFor('category', null, $listTemplate);
+        $extra = $this->withSlots($extra);
 
         return $this->views->make($layout, $this->head($seo, $title, $extra) + [
             'title' => $title,
@@ -303,6 +405,7 @@ final readonly class PageRenderer
     {
         /** @var view-string $layout a theme layout name (TemplateResolver) */
         $layout = $this->templates->layoutFor('product');
+        $extra = $this->withSlots($extra);
         // Videos stored in the description render as the click-to-load façade (VideoFacades).
         ['html' => $descriptionHtml, 'videos' => $videos] = $this->videos->render($descriptionHtml);
 

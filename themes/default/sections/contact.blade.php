@@ -1,4 +1,38 @@
-@if (\App\Modules\Theme\Components\SectionProps::choice($props, 'variant', \App\Modules\Theme\Components\SectionProps::CONTACT_VARIANTS) === 'cards')
+@if (\App\Modules\Theme\Components\SectionProps::choice($props, 'variant', \App\Modules\Theme\Components\SectionProps::CONTACT_VARIANTS) === 'aside')
+{{-- The consult box of a side column (opt-in): a small line, a heading, a line of text, one button, then the
+     hotline and the email. In a block slot the hotline and the email come from the site's contact settings
+     ($sfSlot['contact']); a line that is empty there is hidden. Elsewhere they are the block's own. --}}
+@php
+    $sfButton = \App\Modules\Theme\Components\ButtonLink::of($props, 'button_url');
+    $sfOwn = [
+        'phone' => (string) ($props['phone'] ?? ''),
+        'call' => is_string($props['phone'] ?? null) ? \App\Modules\Theme\Components\ButtonLink::tel($props['phone']) : null,
+        'email' => (string) ($props['email'] ?? ''),
+        'mail' => \App\Modules\Shared\Support\SafeLink::mailto($props['email'] ?? null),
+    ];
+    $sfLines = is_array($sfSlot['contact'] ?? null) ? $sfSlot['contact'] : $sfOwn;
+@endphp
+<section class="slot-consult">
+@if (! empty($props['eyebrow']))
+    <p class="slot-consult__eyebrow">{{ $props['eyebrow'] }}</p>
+@endif
+@if (! empty($props['heading']))
+    <h2 class="slot-consult__title">{{ $props['heading'] }}</h2>
+@endif
+@if (! empty($props['text']))
+    <p class="slot-consult__text">{{ $props['text'] }}</p>
+@endif
+@if (! empty($props['button_label']) && $sfButton !== null)
+    <a class="slot-consult__button" href="{{ $sfButton['href'] }}"@if ($sfButton['blank']) target="_blank" rel="noopener"@elseif ($sfButton['download']) download=""@endif>{{ $props['button_label'] }}@if ($sfButton['blank'])<span class="sr-only"> {{ __('storefront.new_tab') }}</span>@endif</a>
+@endif
+@if (($sfLines['call'] ?? null) !== null)
+    <a class="slot-consult__call" href="{{ $sfLines['call'] }}">{{ __('storefront.hotline_number', ['phone' => $sfLines['phone']]) }}</a>
+@endif
+@if (($sfLines['mail'] ?? null) !== null)
+    <p class="slot-consult__mail">{{ __('storefront.contact_email') }}: <a class="slot-consult__mail-link" href="{{ $sfLines['mail'] }}">{{ $sfLines['email'] }}</a></p>
+@endif
+</section>
+@elseif (\App\Modules\Theme\Components\SectionProps::choice($props, 'variant', \App\Modules\Theme\Components\SectionProps::CONTACT_VARIANTS) === 'cards')
 {{-- The card look (opt-in): one card per contact way, then the map. Card titles are h3, so a
      block without its own heading prints a visually hidden h2 above them. --}}
 @php($sfMap = \App\Modules\Shared\Support\SafeLink::href($props['map_embed'] ?? null, config('cms.map_hosts')))

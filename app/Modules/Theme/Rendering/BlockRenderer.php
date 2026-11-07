@@ -164,37 +164,54 @@ final readonly class BlockRenderer
      */
     public function renderSections(array $body): array
     {
-        $blocks = is_array($body['blocks'] ?? null) ? $body['blocks'] : [];
+        return $this->renderBodies([$body])[0];
+    }
 
+    /**
+     * Several block lists drawn in ONE pass: the media ids, page links and library files of all of
+     * them are collected first and looked up once per kind, so the blocks of a post's body and of
+     * the slots around it cost no more lookups than the body alone. Only the first block of the
+     * first list may lead the page ($leads false: no block does, for a page that has no body of its
+     * own). $context is the page's data a slot block draws (SlotContext), handed to every view as
+     * `$sfSlot`; the result lists one `{html, bgVideo}` per body, in order.
+     *
+     * @param  list<array<string, mixed>>  $bodies
+     * @param  array<array-key, mixed>  $context
+     * @return list<array{html: string, bgVideo: bool}>
+     */
+    public function renderBodies(array $bodies, array $context = [], bool $leads = true): array
+    {
         // Pass 1 — collect every media_id an image prop references across the whole page.
         $ids = [];
         $anchors = [];
         $pageRefs = [];
         $fileRefs = [];
-        foreach ($blocks as $block) {
-            if (! is_array($block)) {
-                continue;
-            }
+        foreach ($bodies as $body) {
+            foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
+                if (! is_array($block)) {
+                    continue;
+                }
 
-            $type = $block['type'] ?? null;
-            if (! is_string($type) || ! $this->registry->has($type)) {
-                continue;
-            }
+                $type = $block['type'] ?? null;
+                if (! is_string($type) || ! $this->registry->has($type)) {
+                    continue;
+                }
 
-            /** @var array<string, mixed> $props */
-            $props = is_array($block['props'] ?? null) ? $block['props'] : [];
-            $schema = $this->registry->schemaFor($type);
-            $ids = array_merge($ids, SchemaImages::ids($props, $schema));
-            foreach (SchemaHtml::values($props, $schema) as $html) {
-                $ids = array_merge($ids, RichHtml::imageIds($html));
+                /** @var array<string, mixed> $props */
+                $props = is_array($block['props'] ?? null) ? $block['props'] : [];
+                $schema = $this->registry->schemaFor($type);
+                $ids = array_merge($ids, SchemaImages::ids($props, $schema));
+                foreach (SchemaHtml::values($props, $schema) as $html) {
+                    $ids = array_merge($ids, RichHtml::imageIds($html));
+                }
+                $anchor = $props['anchor_id'] ?? null;
+                if (is_string($anchor) && preg_match(StyleProps::ANCHOR_PATTERN, $anchor) === 1) {
+                    $anchors[$anchor] = true;
+                }
+                $refs = ButtonLink::refs($props, $schema);
+                $pageRefs = array_merge($pageRefs, $refs['pages']);
+                $fileRefs = array_merge($fileRefs, $refs['files']);
             }
-            $anchor = $props['anchor_id'] ?? null;
-            if (is_string($anchor) && preg_match(StyleProps::ANCHOR_PATTERN, $anchor) === 1) {
-                $anchors[$anchor] = true;
-            }
-            $refs = ButtonLink::refs($props, $schema);
-            $pageRefs = array_merge($pageRefs, $refs['pages']);
-            $fileRefs = array_merge($fileRefs, $refs['files']);
         }
         // The anchors of this page's sections are taken ids: a row of a list block must not repeat one.
         request()->attributes->set('sf_zigzag_ids', $anchors + (array) request()->attributes->get('sf_zigzag_ids', []));
@@ -208,52 +225,56 @@ final readonly class BlockRenderer
 
         // Pass 2 — render each block, swapping each image prop's media_id for its resolved URL, inside
         // the look wrapper when the block sets one (StyleProps).
-        $html = '';
-        $first = true;
-        $bgVideo = false;
-        foreach ($blocks as $block) {
-            if (! is_array($block)) {
-                continue;
+        $out = [];
+        foreach ($bodies as $position => $body) {
+            $html = '';
+            $first = $leads && $position === 0;
+            $bgVideo = false;
+            foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
+                if (! is_array($block)) {
+                    continue;
+                }
+
+                $type = $block['type'] ?? null;
+                if (! is_string($type) || ! $this->registry->has($type)) {
+                    continue; // allow-list gate
+                }
+
+                /** @var array<string, mixed> $props */
+                $props = is_array($block['props'] ?? null) ? $block['props'] : [];
+                $component = $this->registry->get($type);
+                $schema = $this->registry->schemaFor($type);
+                /** @var array<string, mixed> $resolved */
+                $resolved = SchemaHtml::map(
+                    ButtonLink::resolve(SchemaImages::replaceVideos(SchemaImages::replace($props, $schema, $urls), $schema, $videos), $schema, $pages, $files),
+                    $schema,
+                    fn (string $html): string => $this->richHtml->render($html, $urls, $srcsets, $alts, $dims)['html'],
+                );
+
+                $band = $this->videoBand($resolved);
+                $bgVideo = $bgVideo || $band !== [];
+
+                /** @var view-string $view a theme section view (ComponentRegistry) */
+                $view = $component->view();
+                $image = $resolved['bg_image'] ?? null;
+                $wrapper = StyleProps::wrapper($props, $first, is_string($image) ? $image : null);
+                // The page's one high-priority image: only the first block may claim it, and a first block
+                // with a background photo has already claimed it through the sf-section wrapper.
+                $resolved['_high'] = $first && ($wrapper === null || $wrapper['image'] === null);
+                $section = $this->views->make($view, $component->data($resolved) + ['srcsets' => $srcsets, 'alts' => $alts, 'sfSlot' => $context] + $band)->render();
+
+                $html .= $wrapper === null ? $section : $this->views->make('theme::partials.sf-section', [
+                    'wrapper' => $wrapper,
+                    'section' => $section,
+                    'srcset' => $wrapper['image'] !== null ? ($srcsets[$wrapper['image']] ?? null) : null,
+                    'eager' => $first,
+                ])->render();
+                $first = false;
             }
-
-            $type = $block['type'] ?? null;
-            if (! is_string($type) || ! $this->registry->has($type)) {
-                continue; // allow-list gate
-            }
-
-            /** @var array<string, mixed> $props */
-            $props = is_array($block['props'] ?? null) ? $block['props'] : [];
-            $component = $this->registry->get($type);
-            $schema = $this->registry->schemaFor($type);
-            /** @var array<string, mixed> $resolved */
-            $resolved = SchemaHtml::map(
-                ButtonLink::resolve(SchemaImages::replaceVideos(SchemaImages::replace($props, $schema, $urls), $schema, $videos), $schema, $pages, $files),
-                $schema,
-                fn (string $html): string => $this->richHtml->render($html, $urls, $srcsets, $alts, $dims)['html'],
-            );
-
-            $band = $this->videoBand($resolved);
-            $bgVideo = $bgVideo || $band !== [];
-
-            /** @var view-string $view a theme section view (ComponentRegistry) */
-            $view = $component->view();
-            $image = $resolved['bg_image'] ?? null;
-            $wrapper = StyleProps::wrapper($props, $first, is_string($image) ? $image : null);
-            // The page's one high-priority image: only the first block may claim it, and a first block
-            // with a background photo has already claimed it through the sf-section wrapper.
-            $resolved['_high'] = $first && ($wrapper === null || $wrapper['image'] === null);
-            $section = $this->views->make($view, $component->data($resolved) + ['srcsets' => $srcsets, 'alts' => $alts] + $band)->render();
-
-            $html .= $wrapper === null ? $section : $this->views->make('theme::partials.sf-section', [
-                'wrapper' => $wrapper,
-                'section' => $section,
-                'srcset' => $wrapper['image'] !== null ? ($srcsets[$wrapper['image']] ?? null) : null,
-                'eager' => $first,
-            ])->render();
-            $first = false;
+            $out[] = ['html' => $html, 'bgVideo' => $bgVideo];
         }
 
-        return ['html' => $html, 'bgVideo' => $bgVideo];
+        return $out;
     }
 
     /**
