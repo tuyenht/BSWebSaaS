@@ -29,6 +29,7 @@ use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Rbac\Support\RoleLabel;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
@@ -38,7 +39,6 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\View as Views;
-use App\Modules\Rbac\Support\RoleLabel;
 use Illuminate\Support\Str;
 use Illuminate\View\FileViewFinder;
 use Livewire\Attributes\Layout;
@@ -351,6 +351,7 @@ final class Index extends Component
         foreach ($locales->enabled() as $locale) {
             $bases[$locale] = SeoFields::address($host, '/', $locale, false)['base'];
         }
+
         return view('admin::livewire.categories.index', [
             'state' => $state,
             'screen' => $found === null ? null : app(CategoryScreen::class)->load($found, $actor),

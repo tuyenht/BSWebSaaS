@@ -62,7 +62,7 @@
                         <td class="px-4 py-3">
                             <div class="flex flex-wrap gap-1">
                                 @foreach ($member->roles as $role)
-                                    <span class="inline-block rounded bg-admin-primary/10 px-2 py-0.5 text-xs font-medium text-accent">{{ \App\Modules\Rbac\Support\RoleLabel::for($role) }}</span>
+                                    <span class="inline-block rounded bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary-text">{{ \App\Modules\Rbac\Support\RoleLabel::for($role) }}</span>
                                 @endforeach
                             </div>
                         </td>
