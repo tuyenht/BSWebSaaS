@@ -95,9 +95,9 @@ it('BreadcrumbList JSON-LD is valid decodable JSON on a post page', function ():
 
     $html = $this->get('http://anvinh.platform.test/tin-tuc/bai-kiem-tra-json-ld')->assertOk()->getContent();
 
-    // Extract the first application/ld+json script block.
+    // Extract the BreadcrumbList block (the post also carries its Article data).
     $matched = preg_match(
-        '/<script type="application\/ld\+json">(.*?)<\/script>/s',
+        '/<script type="application\/ld\+json">(\{"@context":"https:\/\/schema.org","@type":"BreadcrumbList".*?)<\/script>/s',
         (string) $html,
         $m,
     );
