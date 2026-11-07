@@ -3219,6 +3219,8 @@
     "entries.err_block_button_page_missing": "某个按钮指向不在本网站的页面。请重新为按钮选择页面。",
     "entries.err_block_button_file_missing": "某个按钮指向不在本网站媒体库中的文件。请重新为按钮选择文件。",
     "storefront.new_tab": "(在新标签页打开)",
+    "storefront.table": "表格",
+    "storefront.table_named": "表格：:name",
     "layout_slots.err_slot_invalid": "没有这个区块位置。请刷新页面后重试。",
     "layout_slots.err_locale_invalid": "网站尚未启用此语言。请先启用该语言，或删除该语言的内容。",
     "layout_slots.err_too_many": "此处最多只能放 :max 个区块。请删除一些区块。"

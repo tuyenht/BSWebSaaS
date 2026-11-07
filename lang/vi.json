@@ -3219,6 +3219,8 @@
     "entries.err_block_button_page_missing": "Một nút trỏ tới trang không có trong website này. Hãy chọn lại trang cho nút.",
     "entries.err_block_button_file_missing": "Một nút trỏ tới tệp không có trong thư viện của website này. Hãy chọn lại tệp cho nút.",
     "storefront.new_tab": "(mở thẻ mới)",
+    "storefront.table": "Bảng dữ liệu",
+    "storefront.table_named": "Bảng :name",
     "layout_slots.err_slot_invalid": "Không có chỗ đặt khối này. Hãy tải lại trang rồi thử lại.",
     "layout_slots.err_locale_invalid": "Ngôn ngữ này chưa bật cho website. Hãy bật ngôn ngữ trước, hoặc bỏ nội dung của ngôn ngữ đó.",
     "layout_slots.err_too_many": "Chỗ này chỉ chứa tối đa :max khối. Hãy bỏ bớt khối."

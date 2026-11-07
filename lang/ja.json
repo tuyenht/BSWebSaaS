@@ -3219,6 +3219,8 @@
     "entries.err_block_button_page_missing": "ボタンがこのサイトにないページを指しています。ボタンのページを選び直してください。",
     "entries.err_block_button_file_missing": "ボタンがこのサイトのライブラリにないファイルを指しています。ボタンのファイルを選び直してください。",
     "storefront.new_tab": "(新しいタブで開く)",
+    "storefront.table": "表",
+    "storefront.table_named": "表: :name",
     "layout_slots.err_slot_invalid": "このブロックの配置場所はありません。ページを再読み込みしてもう一度お試しください。",
     "layout_slots.err_locale_invalid": "この言語はサイトで有効になっていません。先に言語を有効にするか、その言語の内容を削除してください。",
     "layout_slots.err_too_many": "ここに置けるブロックは最大 :max 個です。ブロックを減らしてください。"
