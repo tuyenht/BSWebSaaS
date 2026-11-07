@@ -7138,7 +7138,8 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 
 .sf-tabs__tab[aria-selected="true"] {
     background: var(--color-dark);
-    color: var(--color-on-dark, var(--color-surface));
+    /* The dark set's heading colour is checked against this same ink, so a light ink stays readable. */
+    color: var(--color-on-dark, var(--sch-dark-head, var(--color-surface)));
     box-shadow: 0 1px 3px color-mix(in srgb, var(--color-dark) 30%, transparent);
 }
 

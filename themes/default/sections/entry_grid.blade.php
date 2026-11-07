@@ -75,6 +75,7 @@
 @php
     $sfKind = ['icon-cards' => 'icon', 'project-cards' => 'project', 'news-cards' => 'news'][$variant] ?? 'news';
     // Without a display group each look keeps its own default grid (ListDisplay::AUTO's columns); the sizes follow it.
+    // News tabs draw 3 across like the board; the plain news branch below stays 4 so old blocks keep their look.
     $sfTabGrid = ['icon' => 'sf-grid--4', 'project' => 'sf-grid--4s', 'news' => 'sf-grid--3s'][$sfKind];
     $sfSizes = $sfKind === 'news'
         ? '(min-width:1360px) 408px, (min-width:1024px) calc((100vw - 8.5rem)/3), (min-width:640px) calc((100vw - 5rem)/2), calc(100vw - 2rem)'
