@@ -299,7 +299,7 @@ jobs:
       - name: Pest (unit · feature · arch · query-budget) shard ${{ matrix.shard }}/4
         run: php -d memory_limit=1G vendor/bin/pest --shard=${{ matrix.shard }}/4
 
-  # The check name that existed before the split. Branch protection and the deploy scripts read it:
+  # The check name that existed before the split; branch protection may require it (deploy scripts read the run conclusion):
   # it is green only when the static job and every Pest shard are green. It skips under the same
   # condition the jobs above skip (documents only).
   guardrails:
