@@ -1,7 +1,9 @@
 <?php
 
+use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteProfile;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Tests\Fixtures\StorefrontCards;
@@ -18,18 +20,29 @@ beforeEach(function (): void {
     StorefrontCards::pinMediaConfig();
 });
 
-/** Job categories under "Tuyển dụng", one place that follows its parent, and a plain news category. */
-function jobSite(): int
+/**
+ * Job categories under "Đội ngũ", one place that follows its parent (and, with $deep, a third level
+ * that follows it too), a plain news category, and the business address the JobPosting data needs.
+ */
+function jobSite(bool $deep = false): int
 {
     $siteId = StorefrontCards::site();
-    app(Tenancy::class)->enter($siteId, function (): void {
-        $jobs = StorefrontCards::category('Tuyển dụng', 'tin-tuyen-dung', null, 'grid-job');
+    app(Tenancy::class)->enter($siteId, function () use ($deep): void {
+        $jobs = StorefrontCards::category('Đội ngũ', 'tin-tuyen-dung', null, 'grid-job');
         $jobs->forceFill(['detail_template' => 'job'])->save();
-        $place = StorefrontCards::category('Hà Nội', 'ha-noi', $jobs, '@parent', 1);
+        $place = StorefrontCards::category('Ứng viên mới', 'ha-noi', $jobs, '@parent', 1);
         $place->forceFill(['detail_template' => '@parent'])->save();
+        $leaf = $place;
+        if ($deep) {
+            $leaf = StorefrontCards::category('Đội thợ mới', 'thach-that', $place, '@parent', 1);
+            $leaf->forceFill(['detail_template' => '@parent'])->save();
+        }
         $at = CarbonImmutable::parse('2026-10-01 08:00', 'UTC');
-        StorefrontCards::post($place, 'Thợ tiện CNC', 'tho-tien-cnc', $at, [], 'Vận hành máy tiện CNC.');
+        StorefrontCards::post($leaf, 'Thợ tiện CNC', 'tho-tien-cnc', $at, [], 'Vận hành máy tiện CNC.');
         StorefrontCards::post(StorefrontCards::news(), 'Tin ngày', 'tin-ngay', $at, [], 'Một tin.');
+        SiteProfile::query()->updateOrCreate([], [
+            'brand_name' => 'Cơ khí Mẫu', 'address_line' => 'Thôn Xuân Sơn', 'ward' => 'Xã Trung Giã', 'province' => 'TP Hà Nội',
+        ]);
     });
 
     return $siteId;
@@ -55,6 +68,55 @@ it('prints JobPosting data for a post on a job layout, with no deadline until po
         ->toContain('"title":"Thợ tiện CNC"')
         ->not->toContain('validThrough');
 });
+
+/** The JobPosting object printed in the page head, or null when the page carries none. */
+function jobLd(string $html): ?array
+{
+    preg_match_all('~<script type="application/ld\+json">(.*?)</script>~s', $html, $found);
+    foreach ($found[1] as $json) {
+        $data = json_decode($json, true);
+        if (is_array($data) && ($data['@type'] ?? null) === 'JobPosting') {
+            return $data;
+        }
+    }
+
+    return null;
+}
+
+it('prints the employer, the workplace address and the excerpt in the JobPosting data', function (): void {
+    jobSite();
+    $ld = jobLd(jobPage('/ha-noi/tho-tien-cnc'));
+
+    expect($ld['hiringOrganization'])->toBe(['@type' => 'Organization', 'name' => 'Cơ khí Mẫu'])
+        ->and($ld['jobLocation'])->toBe(['@type' => 'Place', 'address' => [
+            '@type' => 'PostalAddress', 'streetAddress' => 'Thôn Xuân Sơn', 'addressLocality' => 'Xã Trung Giã',
+            'addressRegion' => 'TP Hà Nội', 'addressCountry' => 'VN',
+        ]])
+        ->and($ld['description'])->toBe('Vận hành máy tiện CNC.');
+});
+
+it('describes a job post with no excerpt by the first paragraph of its body, not its title', function (): void {
+    $siteId = jobSite();
+    app(Tenancy::class)->enter($siteId, function (): void {
+        $translation = EntryTranslation::query()->where('slug', 'tho-tien-cnc')->firstOrFail();
+        $translation->forceFill(['excerpt' => null, 'body' => ['blocks' => [['type' => 'html', 'props' => ['html' => '<h2>Mô tả</h2><p>Tuyển thợ <b>tiện</b> CNC   có tay nghề.</p><p>Hai.</p>']]]]])->save();
+    });
+
+    expect(jobLd(jobPage('/ha-noi/tho-tien-cnc'))['description'])->toBe('Tuyển thợ tiện CNC có tay nghề.');
+});
+
+it('prints no JobPosting data when the site states no address or no organization name', function (array $profile): void {
+    $siteId = jobSite();
+    app(Tenancy::class)->enter($siteId, function () use ($profile): void {
+        SiteProfile::query()->update($profile);
+    });
+    $html = jobPage('/ha-noi/tho-tien-cnc');
+
+    expect(jobLd($html))->toBeNull()->and($html)->not->toContain('"@type":"JobPosting"');
+})->with([
+    'no address' => [['address_line' => null, 'ward' => null, 'province' => null]],
+    'no organization name' => [['brand_name' => null]],
+]);
 
 it('prints no JobPosting data for a post on the standard layout', function (): void {
     jobSite();
@@ -133,33 +195,33 @@ it('renders the default for an own layout of the wrong role stored on a post or 
     test()->get('http://mau.platform.test/gioi-thieu')->assertOk();
 });
 
-it('reads the parent chain once for a page that follows its parent and not at all otherwise', function (): void {
-    $siteId = jobSite();
+it('reads the parent chain once for a page that follows a three-level chain and not at all otherwise', function (): void {
+    $siteId = jobSite(deep: true);
     $count = fn (string $path): int => countQueries(fn () => test()->get('http://mau.platform.test'.$path)->assertOk());
     // Per-site reads that outlive a request are loaded by a first visit.
-    $count('/ha-noi');
+    $count('/thach-that');
     app()->forgetScopedInstances();
-    $following = $count('/ha-noi');
+    $following = $count('/thach-that');
     app(Tenancy::class)->enter($siteId, function (): void {
         Taxonomy::query()->where('list_template', '@parent')->update(['list_template' => 'grid-job']);
     });
     app()->forgetScopedInstances();
-    $plain = $count('/ha-noi');
+    $plain = $count('/thach-that');
 
     expect($following - $plain)->toBeLessThanOrEqual(1);
 });
 
-it('reads the parent chain once for a post that follows its parent', function (): void {
-    $siteId = jobSite();
+it('reads the parent chain once for a post that follows a three-level chain', function (): void {
+    $siteId = jobSite(deep: true);
     $count = fn (string $path): int => countQueries(fn () => test()->get('http://mau.platform.test'.$path)->assertOk());
-    $count('/ha-noi/tho-tien-cnc');
+    $count('/thach-that/tho-tien-cnc');
     app()->forgetScopedInstances();
-    $following = $count('/ha-noi/tho-tien-cnc');
+    $following = $count('/thach-that/tho-tien-cnc');
     app(Tenancy::class)->enter($siteId, function (): void {
         Taxonomy::query()->where('detail_template', '@parent')->update(['detail_template' => 'job']);
     });
     app()->forgetScopedInstances();
-    $plain = $count('/ha-noi/tho-tien-cnc');
+    $plain = $count('/thach-that/tho-tien-cnc');
 
     expect($following - $plain)->toBeLessThanOrEqual(1);
 });

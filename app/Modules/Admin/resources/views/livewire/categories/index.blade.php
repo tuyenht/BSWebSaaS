@@ -385,6 +385,7 @@
                             <select id="cm-{{ $field }}" x-model="pan.d.{{ $field }}" class="field w-full rounded border border-border-input bg-surface-muted px-3">
                                 <option value="">{{ $u('tpl_default_opt') }}</option>
                                 <template x-if="goneTpl('{{ $field }}')"><option x-bind:value="goneTpl('{{ $field }}')" x-bind:selected="pan.d.{{ $field }} === goneTpl('{{ $field }}')" x-text="fill({{ $j($u('tpl_gone')) }}, { name: goneTpl('{{ $field }}') })"></option></template>
+                                <template x-if="pan && pan.node && pan.node['{{ $field }}'] === '@@parent'"><option value="@@parent" x-bind:selected="pan.d.{{ $field }} === '@@parent'">{{ $layoutName(\App\Modules\Theme\Rendering\TemplateCatalog::PARENT) }}</option></template>
                                 @foreach ($field === 'detailTemplate' ? $detailLayouts : $layouts as $layout)
                                     <option value="{{ $layout }}">{{ $layoutName($layout) }}</option>
                                 @endforeach

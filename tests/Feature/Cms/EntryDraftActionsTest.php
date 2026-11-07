@@ -719,3 +719,42 @@ it('approves a two-language change within its query budget', function (): void {
         expect($queries)->toBeLessThanOrEqual(40);
     });
 });
+
+it('keeps saving and publishing a post that stores a layout of another role, and renders the default', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        [$author, $publisher] = changeCast();
+        $entry = changeLivePost($author, changeNewsCategory());
+        $entry->forceFill(['template_override' => 'grid-news'])->save();   // a list layout stored on a post
+        $entry = $entry->fresh();
+
+        $change = app(SaveEntryDraft::class)->handle($entry, $author, 'vi', ['title' => 'Ứng viên mới']);
+        app(ApplyEntryDraft::class)->handle($entry, $publisher, $change->version());
+
+        expect($entry->fresh()->translationFor('vi')->title)->toBe('Ứng viên mới')
+            ->and($entry->fresh()->template_override)->toBe('grid-news');
+    });
+
+    $this->get('http://a.test/ban-tin-vi')->assertOk()->assertSee('Ứng viên mới');
+});
+
+it('refuses a new layout of the wrong role when a change is saved or applied, and only that', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        [$author, $publisher] = changeCast();
+        $page = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now(), 'author_id' => $author->id, 'meta' => []]);
+        $page->translations()->create(['locale' => 'vi', 'title' => 'Đội ngũ', 'slug' => 'doi-ngu', 'status' => 'published', 'body' => ['blocks' => []]]);
+        app(RouteSync::class)->sync($page->fresh(), 'vi', 'doi-ngu');
+        $page = $page->fresh();
+
+        // Saved: a post layout on a page.
+        expect(changeRejection(fn () => app(SaveEntryDraft::class)->handle($page, $publisher, 'vi', [], ['template_override' => 'job'])))->toBe('content_invalid');
+
+        // Applied: the same value found in a change that was stored before the rule.
+        $change = EntryDraft::query()->create(['entry_id' => $page->id, 'content' => [
+            'v' => RecordEntryRevision::FORMAT,
+            'shared' => ['template_override' => 'job', 'cover_media_id' => null, 'meta' => [], 'primary_category_id' => null],
+            'locales' => ['vi' => ['title' => 'Ứng viên mới', 'slug' => 'doi-ngu', 'body' => ['blocks' => []], 'excerpt' => null, 'seo_title' => null, 'seo_description' => null, 'og_image_id' => null]],
+        ]]);
+        expect(changeRejection(fn () => app(ApplyEntryDraft::class)->handle($page, $publisher, $change->version())))->toBe('content_invalid')
+            ->and($page->fresh()->translationFor('vi')->title)->toBe('Đội ngũ');
+    });
+});

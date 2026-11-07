@@ -334,11 +334,13 @@ final readonly class StorefrontController
             // A post on a job layout carries its deadline state and the JobPosting data for the head.
             $own = $entry->template_override;
             $postTemplate = $own !== null && TemplateCatalog::fits($own, TemplateCatalog::ROLE_POST) ? $own : $categoryTemplate;
-            $brandName = data_get($chrome, 'brand.name');
-            $job = $this->jobs->forPost($entry, $content->translation, $postTemplate, $canonical, is_string($brandName) ? $brandName : null);
+            $brand = data_get($chrome, 'brand');
+            $job = $this->jobs->forPost($entry, $content->translation, $postTemplate, $canonical, is_array($brand) ? $brand : null);
             if ($job !== null) {
                 $extra['deadline'] = $job['state'];
-                $extra['jobLd'] = $job['ld'];
+                if ($job['ld'] !== null) {
+                    $extra['jobLd'] = $job['ld'];
+                }
             }
 
             $categoryTranslation = $category?->translationFor($locale);

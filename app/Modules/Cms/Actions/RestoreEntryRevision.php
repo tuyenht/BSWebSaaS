@@ -66,7 +66,7 @@ final readonly class RestoreEntryRevision
             throw new RevisionRestoreRejectedException('locale_disabled');
         }
 
-        $content = $this->writer->read($revision->snapshot, $entry->type)
+        $content = $this->writer->read($revision->snapshot, $entry->type, null, true)
             ?? throw new RevisionRestoreRejectedException('snapshot_incompatible');
         [$content, $dropped] = $this->writer->withoutMissingMedia($content);
 

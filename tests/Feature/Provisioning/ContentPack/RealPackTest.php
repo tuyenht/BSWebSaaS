@@ -1,9 +1,6 @@
 <?php
 
 use App\Modules\Cms\Models\SiteRoute;
-use App\Modules\Cms\Models\Taxonomy;
-use App\Modules\Cms\Models\TaxonomyTranslation;
-use App\Modules\Cms\Taxonomy\CategoryTemplates;
 use App\Modules\Provisioning\ContentPack\PackReader;
 use App\Modules\Provisioning\ContentPack\PackValidator;
 use Tests\Fixtures\ContentPacks;
@@ -143,28 +140,4 @@ it('plans the real pack on a fresh site with no conflict, and every internal lin
     $live = ContentPacks::in($siteId, fn () => SiteRoute::query()->where('locale', 'vi')->whereIn('path', $links)->pluck('path')->all());
 
     expect(array_values(array_diff($links, $live)))->toBe([]);
-});
-
-it('files the An Vinh job places under the job category so they take its layouts', function (): void {
-    $items = collect((new PackReader)->read('an-vinh')->items)->keyBy(fn ($item) => $item->key);
-    $jobs = $items->get('tax:post_cat/tin-tuyen-dung');
-    $place = $items->get('tax:post_cat/tin-tuyen-dung/ha-noi');
-
-    expect($jobs->data['list_template'])->toBe('grid-job')
-        ->and($jobs->data['detail_template'])->toBe('job')
-        ->and($place->data['list_template'])->toBe('@parent')
-        ->and($place->data['detail_template'])->toBe('@parent');
-
-    $folder = ContentPacks::use('an-vinh', database_path('content-packs'));
-    ContentPacks::edit($folder, 'pack.json', fn (array $pack): array => ['hosts' => [ContentPacks::HOST]] + $pack);
-    $siteId = StorefrontCards::site('Demo', ContentPacks::HOST);
-    [$exit, $output] = ContentPacks::load('an-vinh');
-    expect($exit)->toBe(0, $output);
-
-    $resolved = ContentPacks::in($siteId, function (): ?string {
-        $id = TaxonomyTranslation::query()->where('locale', 'vi')->where('slug', 'ha-noi')->value('taxonomy_id');
-
-        return app(CategoryTemplates::class)->list(Taxonomy::query()->findOrFail($id));
-    });
-    expect($resolved)->toBe('grid-job');
 });

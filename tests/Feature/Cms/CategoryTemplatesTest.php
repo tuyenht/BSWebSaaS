@@ -28,7 +28,7 @@ function ctSite(Closure $callback): mixed
 /** A category row with the given stored layouts (written as stored, not through the write path). */
 function ctCategory(string $slug, ?Taxonomy $parent = null, ?string $list = null, ?string $detail = null, string $vocabulary = 'post_cat'): Taxonomy
 {
-    $category = StorefrontCards::category('Nhóm '.$slug, $slug, $parent, $list);
+    $category = StorefrontCards::category('Ưu tiên ốc', $slug, $parent, $list);
     $category->forceFill(['detail_template' => $detail, 'vocabulary' => $vocabulary])->save();
 
     return $category->fresh() ?? $category;
@@ -114,21 +114,59 @@ it('never accepts the reserved value as a layout file name', function (): void {
 });
 
 it('reads the chain from this site only, even when a parent id points into another site', function (): void {
-    $other = StorefrontCards::site('Xưởng Khác', 'khac.platform.test');
+    $other = StorefrontCards::site('Ánh sáng ấy', 'khac.platform.test');
     $foreign = app(Tenancy::class)->enter($other, fn (): Taxonomy => ctCategory('goc-khac', null, 'grid-job', 'job'));
     $mine = ctSite(fn (): Taxonomy => ctCategory('nhom-cua-toi', null, '@parent', '@parent'));
     // Corrupt on purpose: the parent id names the other site's category (the privileged connection skips RLS).
     DB::connection('pgsql_admin')->table('taxonomies')->where('id', $mine->id)->update(['parent_id' => $foreign->id]);
 
-    $resolved = ctSite(function () use ($mine): array {
+    $log = [];
+    $resolved = ctSite(function () use ($mine, &$log): array {
         $fresh = Taxonomy::query()->findOrFail($mine->id);
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $result = [app(CategoryTemplates::class)->list($fresh), app(CategoryTemplates::class)->detail($fresh)];
+        $log = DB::getQueryLog();
+        DB::disableQueryLog();
 
-        return [app(CategoryTemplates::class)->list($fresh), app(CategoryTemplates::class)->detail($fresh)];
+        return $result;
     });
     $theirs = app(Tenancy::class)->enter($other, fn (): ?string => app(CategoryTemplates::class)->list(Taxonomy::query()->findOrFail($foreign->id)));
 
+    // The row security alone would hide the other site's rows; the query itself must also name the site
+    // on the anchor and on the recursive step, so a connection that skips it still reads only this site.
+    $chains = array_values(array_filter($log, fn (array $entry): bool => str_contains((string) $entry['query'], 'WITH RECURSIVE')));
+    expect($chains)->not->toBeEmpty();
+    foreach ($chains as $entry) {
+        expect(preg_match_all('/\bt\.site_id = \?/', (string) $entry['query']))->toBe(1)
+            ->and(preg_match_all('/\bup\.site_id = \?/', (string) $entry['query']))->toBe(1)
+            ->and(array_values(array_filter($entry['bindings'], fn (mixed $binding): bool => $binding === test()->siteId)))->toHaveCount(2);
+    }
+
     expect($resolved)->toBe([null, null])
         ->and($theirs)->toBe('grid-job');
+});
+
+it('ends a parent loop at the depth cap and falls back to the default', function (): void {
+    [$a, $b] = ctSite(fn (): array => [ctCategory('vong-a', null, '@parent', '@parent'), ctCategory('vong-b', null, '@parent', '@parent')]);
+    // Corrupt on purpose: two categories that are each other's parent (the privileged connection skips the write rules).
+    DB::connection('pgsql_admin')->table('taxonomies')->where('id', $a->id)->update(['parent_id' => $b->id]);
+    DB::connection('pgsql_admin')->table('taxonomies')->where('id', $b->id)->update(['parent_id' => $a->id]);
+
+    $log = [];
+    $resolved = ctSite(function () use ($a, &$log): array {
+        $fresh = Taxonomy::query()->findOrFail($a->id);
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $result = [app(CategoryTemplates::class)->list($fresh), app(CategoryTemplates::class)->detail($fresh), app(CategoryTemplates::class)->jobListTarget($fresh)->id];
+        $log = DB::getQueryLog();
+        DB::disableQueryLog();
+
+        return $result;
+    });
+
+    expect($resolved)->toBe([null, null, $a->id])
+        ->and(count($log))->toBe(3);
 });
 
 it('points the open-positions link at the nearest category above that lists jobs, else at the post category', function (): void {

@@ -26,7 +26,7 @@ beforeEach(function (): void {
     app(TeamContext::class)->forget();
 });
 
-function trMake(string $vocabulary, ?string $list, ?string $detail, ?Taxonomy $parent = null, string $name = 'Nhóm mới'): Taxonomy
+function trMake(string $vocabulary, ?string $list, ?string $detail, ?Taxonomy $parent = null, string $name = 'Ứng viên mới'): Taxonomy
 {
     return app(CreateTaxonomy::class)->handle($vocabulary, $parent, new TaxonomyData(names: ['vi' => $name], listTemplate: $list, detailTemplate: $detail));
 }
@@ -44,7 +44,7 @@ function trRefusal(Closure $change): ?string
 
 it('creates a category with a layout set, a job pair or the follow-the-parent value', function (string $vocabulary, ?string $list, ?string $detail): void {
     app(Tenancy::class)->enter(1, function () use ($vocabulary, $list, $detail): void {
-        $parent = trMake($vocabulary, null, null, null, 'Cha');
+        $parent = trMake($vocabulary, null, null, null, 'Ông nội');
         $child = trMake($vocabulary, $list, $detail, $parent);
 
         expect($child->list_template)->toBe($list)->and($child->detail_template)->toBe($detail);
@@ -71,7 +71,7 @@ it('refuses a layout of the wrong role or kind on create', function (string $voc
 it('refuses a layout of the wrong role or kind on update and still keeps one that is already stored', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         $category = trMake('post_cat', 'grid-news', 'post');
-        $update = fn (?string $list, ?string $detail): Taxonomy => app(UpdateTaxonomy::class)->handle($category->fresh(), new TaxonomyData(names: ['vi' => 'Nhóm mới'], listTemplate: $list, detailTemplate: $detail));
+        $update = fn (?string $list, ?string $detail): Taxonomy => app(UpdateTaxonomy::class)->handle($category->fresh(), new TaxonomyData(names: ['vi' => 'Ứng viên mới'], listTemplate: $list, detailTemplate: $detail));
 
         expect(trRefusal(fn () => $update('post', null)))->toBe('template_invalid')
             ->and(trRefusal(fn () => $update(null, 'grid-news')))->toBe('template_invalid')
@@ -87,7 +87,7 @@ it('refuses a layout of the wrong role or kind on update and still keeps one tha
 it('refuses an own layout of the wrong role when snapshot content is read for a draft or a restore', function (string $type, ?string $layout, bool $accepted): void {
     app(Tenancy::class)->enter(1, function () use ($type, $layout, $accepted): void {
         $entry = Entry::query()->create(['type' => $type, 'status' => 'draft']);
-        $entry->translations()->create(['locale' => 'vi', 'title' => 'Bài', 'slug' => 'bai', 'status' => 'draft', 'body' => ['blocks' => []]]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'Ôn tập bài', 'slug' => 'bai', 'status' => 'draft', 'body' => ['blocks' => []]]);
         $snapshot = RecordEntryRevision::snapshot($entry->fresh(), $entry->translationFor('vi')) + [];
         $snapshot['template_override'] = $layout;
         $read = app(EntryContentWriter::class)->read($snapshot, $type);
@@ -104,6 +104,21 @@ it('refuses an own layout of the wrong role when snapshot content is read for a 
     'none' => ['page', null, true],
 ]);
 
+it('accepts the own layout an entry already stores, reads a restore of a misfit as none, and still refuses a new misfit', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft']);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'Ôn tập bài', 'slug' => 'bai', 'status' => 'draft', 'body' => ['blocks' => []]]);
+        $snapshot = ['template_override' => 'job'] + RecordEntryRevision::snapshot($entry->fresh(), $entry->translationFor('vi'));
+        $writer = app(EntryContentWriter::class);
+
+        expect($writer->read($snapshot, 'page'))->toBeNull()
+            ->and($writer->read($snapshot, 'page', 'grid-news'))->toBeNull()
+            ->and($writer->read($snapshot, 'page', 'job')['template_override'] ?? null)->toBe('job')
+            ->and($writer->read($snapshot, 'page', null, true))->toMatchArray(['template_override' => null, 'title' => 'Ôn tập bài'])
+            ->and($writer->read(['template_override' => 'khong-co'] + $snapshot, 'page', null, true))->toMatchArray(['template_override' => null]);
+    });
+});
+
 it('does not carry an own layout of the wrong role into a copy', function (): void {
     $editor = User::factory()->create();
 
@@ -112,7 +127,7 @@ it('does not carry an own layout of the wrong role into a copy', function (): vo
         $good = Entry::query()->create(['type' => 'post', 'status' => 'published', 'template_override' => 'job']);
         $bad = Entry::query()->create(['type' => 'post', 'status' => 'published', 'template_override' => 'grid-news']);
         foreach ([$good, $bad] as $n => $entry) {
-            $entry->translations()->create(['locale' => 'vi', 'title' => 'Tin '.$n, 'slug' => 'tin-'.$n, 'status' => 'published', 'body' => ['blocks' => []]]);
+            $entry->translations()->create(['locale' => 'vi', 'title' => ['Ánh sáng ẩn', 'Đội ngũ mới'][$n], 'slug' => 'tin-'.$n, 'status' => 'published', 'body' => ['blocks' => []]]);
         }
 
         $copyGood = app(DuplicateEntry::class)->handle($good->fresh(), $editor->fresh());

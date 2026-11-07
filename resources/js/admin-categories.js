@@ -66,11 +66,12 @@ window.Alpine.data('bsCategories', (cfg) => {
             return fill(text, values);
         },
         // The template a category keeps that the theme no longer has (shown as its own choice in
-        // the drawer, so it can be seen and cleared), or null.
+        // the drawer, so it can be seen and cleared), or null. The reserved follow-the-parent value is
+        // not a missing layout: the drawer keeps it as its own option with the tree column's label.
         goneTpl(field) {
             const v = this.pan && this.pan.node ? this.pan.node[field] : null;
             const list = field === 'detailTemplate' ? cfg.detailLayouts || cfg.layouts : cfg.layouts;
-            return v && !(list || []).includes(v) ? v : null;
+            return v && v !== '@parent' && !(list || []).includes(v) ? v : null;
         },
 
         // ---- the rows as the server drew them ---------------------------------------------------

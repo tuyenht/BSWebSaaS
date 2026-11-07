@@ -397,3 +397,19 @@ it('cannot restore another site\'s revision: the entry is not found and nothing 
     });
     expect(AuditLog::query()->where('action', RestoreEntryRevision::AUDIT_ACTION)->exists())->toBeFalse();
 });
+
+it('restores an old snapshot whose own layout no longer fits the entry as the default layout', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish']);
+        [$page, $v1] = restorablePage($editor->fresh());
+        $v1->update(['snapshot' => ['template_override' => 'job'] + $v1->snapshot]);   // a post layout recorded on a page
+        $page->forceFill(['template_override' => 'page'])->save();
+
+        app(RestoreEntryRevision::class)->handle($v1->fresh(), $editor->fresh());
+
+        expect($page->fresh()->template_override)->toBeNull()
+            ->and($page->fresh()->translationFor('vi')->title)->toBe('Bản đầu');
+    });
+});
