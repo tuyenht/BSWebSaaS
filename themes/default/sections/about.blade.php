@@ -32,8 +32,8 @@
 @endphp
 <section class="about{{ $sfLetter ? ' about--letter' : '' }}{{ $sfWhole ? ' about--whole' : '' }}">
     <div class="about__body">
-        @if (! empty($props['heading']))
-            <h2 class="about__heading">{{ $props['heading'] }}</h2>
+        @if (($sfHeading = \App\Modules\Theme\Components\SectionProps::text($props, 'heading')) !== '')
+            <h2 class="about__heading">{{ $sfHeading }}</h2>
         @endif
         @foreach ($sfLetter ? $sfBody : (array) ($props['paragraphs'] ?? []) as $sfIndex => $paragraph)
             <p class="about__paragraph{{ $sfLetter && $sfIndex === 0 ? ' about__paragraph--greeting' : '' }}">{{ $paragraph }}</p>
@@ -57,7 +57,7 @@
         <div class="about__media{{ $sfWhole ? ' about__media--whole' : '' }}">
             <img class="about__image{{ $sfWhole ? '' : $sfFocus }}"
                  src="{{ $sfSrc }}"
-                 alt="{{ \App\Modules\Theme\Components\SectionProps::text($props, 'heading') }}"
+                 alt="{{ $sfHeading }}"
                  width="{{ $sfSize[0] ?? 640 }}"
                  height="{{ $sfSize[1] ?? 480 }}"
                  loading="{{ ! empty($props['_high']) ? 'eager' : 'lazy' }}"@if (! empty($props['_high'])) fetchpriority="high"@endif>
