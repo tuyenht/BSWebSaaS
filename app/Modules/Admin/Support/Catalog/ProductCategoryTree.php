@@ -30,7 +30,11 @@ final class ProductCategoryTree
     /** @var array<string, int> ulid → id */
     private array $byUlid = [];
 
-    /** Read the tree: one statement. */
+    /**
+     * Read the tree: one statement, at most LIMIT categories in menu order. Past that limit the later
+     * categories are not read: they are not offered in the filter, their products cannot be filtered by
+     * them, and their children (read, if within the limit) are listed at the top.
+     */
     public static function load(int $siteId, string $locale): self
     {
         $rows = Taxonomy::query()

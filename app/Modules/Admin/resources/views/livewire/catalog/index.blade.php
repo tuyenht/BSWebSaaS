@@ -145,7 +145,7 @@
                 </div>
                 <x-bs-admin::tool-row class="@min-[56.25rem]/lt:min-w-0 @min-[56.25rem]/lt:flex-[1_1_auto] @min-[56.25rem]/lt:flex-wrap @min-[56.25rem]/lt:gap-3">
                     <x-bs-admin::filter-panel class="ms-auto flex-nowrap @min-[56.25rem]/lt:ms-0 @min-[56.25rem]/lt:min-w-0 @min-[56.25rem]/lt:shrink @min-[56.25rem]/lt:flex-wrap" :sections="$sections"
-                        :active="$filterCount" :active-narrow="$filterCountNarrow" clear="clearAllFilters" :results="__('catalog.show_n', ['n' => $fmt($matchCount), 'unit' => $noun])" />
+                        :active="$filterCount" :active-narrow="$filterCountNarrow" clear="clearAllFilters" :clear-closes="true" :results="__('catalog.show_n', ['n' => $fmt($matchCount), 'unit' => $noun])" />
                     <x-bs-admin::sort-menu class="@min-[56.25rem]/lt:ms-auto" :options="$sortOptions" :active="$sortOn" :lit="! $sortIsDefault" set="setSort" />
                     <x-bs-admin::cols-menu class="hidden @min-[56.25rem]/lt:block" id="catalog-cols" :selected="$cols"
                         :options="collect($colOptions)->mapWithKeys(fn (string $k): array => [$k => __('catalog.col_opt_'.$k)])->all()"

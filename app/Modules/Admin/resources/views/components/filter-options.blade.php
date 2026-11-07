@@ -48,8 +48,10 @@
     </label>
 @endforeach
 @if ($section['more'] ?? null)
-    <button type="button" wire:click="{{ $section['more']['call'] }}"
-            class="hit-area mx-4 mb-1 mt-0.5 inline-flex min-h-control items-center self-start text-body font-medium text-primary-text underline any-pointer-coarse:min-h-hit">{{ $section['more']['label'] }}</button>
+    <button type="button" aria-expanded="false" wire:click="{{ $section['more']['call'] }}"
+            class="flex min-h-menu-row w-full cursor-pointer items-center gap-2.5 ps-4 pe-4 text-start text-body text-text hover:bg-surface-hover any-pointer-coarse:min-h-menu-row-touch">
+        <i class="ri-arrow-down-s-line text-lg text-text-muted" aria-hidden="true"></i><span class="min-w-0">{{ $section['more']['label'] }}</span>
+    </button>
 @endif
 @if ($section['range'] ?? null)
     <div class="grid grid-cols-2 gap-2 px-4 pb-2 pt-1">

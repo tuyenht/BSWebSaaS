@@ -86,9 +86,9 @@ it('filters by a category and everything under it, by the main category only', f
         $manager = filterManager();
         $tools = filterCategory('Dụng cụ cắt');
         $milling = filterCategory('Dao phay', $tools);
-        $drills = filterCategory('Mũi khoan', $tools, 1);
+        $drills = filterCategory('Mũi khoét', $tools, 1);
         $jigs = filterCategory('Đồ gá', position: 1);
-        filterProduct('Dao phay ngón', category: $milling);
+        filterProduct('Đầu phay ngón', category: $milling);
         filterProduct('Mũi khoan thép', category: $drills);
         filterProduct('Đồ gá kẹp', category: $jigs);
         $both = filterProduct('Bộ dụng cụ', category: $jigs);
@@ -101,7 +101,7 @@ it('filters by a category and everything under it, by the main category only', f
         // ticking the parent shows its children ticked, and its subtree is listed
         $page->set('catF', [$tools->ulid]);
         expect($page->get('catF'))->toEqualCanonicalizing([$tools->ulid, $milling->ulid, $drills->ulid])
-            ->and(filterNames($page))->toBe(['Dao phay ngón', 'Mũi khoan thép']);
+            ->and(filterNames($page))->toBe(['Mũi khoan thép', 'Đầu phay ngón']);
 
         // unticking one child unticks the parent too; the other child stays
         $page->set('catF', [$tools->ulid, $drills->ulid]);
@@ -110,7 +110,7 @@ it('filters by a category and everything under it, by the main category only', f
 
         // the second category does not count: the product's main one is Đồ gá
         $page->set('catF', [$milling->ulid]);
-        expect(filterNames($page))->toBe(['Dao phay ngón']);
+        expect(filterNames($page))->toBe(['Đầu phay ngón']);
         $page->set('catF', [$jigs->ulid]);
         expect(filterNames($page))->toBe(['Bộ dụng cụ', 'Đồ gá kẹp']);
 
@@ -125,7 +125,7 @@ it('counts a category with the counter of itself and everything under it, whatev
         $manager = filterManager();
         $tools = filterCategory('Dụng cụ cắt');
         $milling = filterCategory('Dao phay', $tools);
-        $drills = filterCategory('Mũi khoan', $tools, 1);
+        $drills = filterCategory('Mũi khoét', $tools, 1);
         filterProduct('A', ['is_featured' => true], $milling);
         filterProduct('B', category: $milling, status: 'draft');
         filterProduct('C', category: $drills);
@@ -205,7 +205,7 @@ it('puts the same numbers beside the values whatever else is filtered', function
     });
 });
 
-it('offers the sale filter only while some product is on sale or the filter is on, with one EXISTS and no count', function (): void {
+it('offers the sale filter only while some product is on sale or the filter is on, with the number on sale beside it', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         $manager = filterManager();
         filterSelling();
@@ -219,26 +219,39 @@ it('offers the sale filter only while some product is on sale or the filter is o
         expect($kept->viewData('facets')['sale'])->toHaveCount(1)->and(filterNames($kept))->toBe([]);
 
         filterProduct('Giảm', ['price' => 100, 'sale_price' => 60]);
-        expect(Livewire::actingAs($manager)->test(Index::class)->viewData('facets')['sale'])->toHaveCount(1);
+        $offered = Livewire::actingAs($manager)->test(Index::class)->viewData('facets')['sale'];
+        expect($offered)->toHaveCount(1)->and($offered[0]['count'])->toBe(1);
     });
 });
 
-it('reads the value counts in one statement and stops at the cap', function (): void {
+it('counts each filter value on its own up to the cap, in one statement, even past the cap in products', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         filterSelling();
         foreach (range(1, 5) as $i) {
-            filterProduct("SP {$i}", ['is_featured' => true, 'stock' => $i]);
+            filterProduct("Nổi bật {$i}", ['is_featured' => true, 'stock' => $i]);
         }
+        foreach (range(1, 3) as $i) {
+            filterProduct("Trơn {$i}");
+        }
+        filterProduct('Bán chạy một', ['is_bestseller' => true, 'stock' => 0]);
+        filterProduct('Giảm giá một', ['is_bestseller' => true, 'price' => 100, 'sale_price' => 60]);
+
         $statements = 0;
         DB::listen(function () use (&$statements): void {
             $statements++;
         });
+        // 10 live products, the cap is 3: a value past the cap reads cap + 1 ("hơn"), a value under it is exact
         $counts = (new ProductListQuery(1, 'all', '', 'vi', 3))->valueCounts(['vi', 'en'], true);
 
         expect($statements)->toBe(1)
-            ->and($counts['tags']['featured'])->toBe(4) // cap + 1: the view reads "hơn"
+            ->and($counts['tags'])->toBe(['featured' => 4, 'best' => 2])
+            ->and($counts['stock'])->toBe(['in' => 4, 'out' => 1, 'none' => 4])
             ->and($counts['trans'])->toBe(['full' => 0, 'partial' => 0, 'none' => 4])
-            ->and($counts['saleAny'])->toBeFalse();
+            ->and($counts['sale'])->toBe(1);
+
+        // with the real cap every number is exact
+        $exact = (new ProductListQuery(1, 'all', '', 'vi'))->valueCounts(['vi', 'en'], true);
+        expect($exact['tags'])->toBe(['featured' => 5, 'best' => 2])->and($exact['trans']['none'])->toBe(10);
     });
 });
 
@@ -299,7 +312,7 @@ it('leaves the stock and sale filters out of a brochure site and refuses their v
 it('shows a long category list short, with its own search box, and the rest on request', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         $manager = filterManager();
-        $names = ['Dao phay', 'Mũi khoan', 'Đồ gá', 'Ép nhựa', 'Ốc vít', 'Thước cặp', 'Búa', 'Kìm', 'Cưa', 'Đục', 'Giũa', 'Mỏ lết', 'Tua vít', 'Khoan tay', 'Máy mài', 'Bàn kẹp'];
+        $names = ['Dao phay', 'Mũi khoét', 'Đồ gá', 'Ép nhựa', 'Ốc vít', 'Thước cặp', 'Búa', 'Kìm', 'Cưa', 'Đục', 'Giũa', 'Mỏ lết', 'Tuốc nơ vít', 'Khoan tay', 'Máy mài', 'Bàn kẹp'];
         $categories = [];
         foreach ($names as $i => $name) {
             $categories[$name] = filterCategory($name, position: $i);
@@ -330,7 +343,7 @@ it('draws a chip with its icon and full name for each chosen value, and Bỏ l�
         filterEnglish();
         $tools = filterCategory('Dụng cụ cắt');
         $milling = filterCategory('Dao phay', $tools);
-        filterProduct('Dao phay ngón', ['is_featured' => true, 'stock' => 0, 'price' => 100, 'sale_price' => 50], $milling);
+        filterProduct('Đầu phay ngón', ['is_featured' => true, 'stock' => 0, 'price' => 100, 'sale_price' => 50], $milling);
         filterProduct('Khác');
 
         $page = Livewire::actingAs($manager)->test(Index::class)->set('sortKey', 'name');

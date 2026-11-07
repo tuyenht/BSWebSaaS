@@ -565,7 +565,7 @@ final class Index extends Component
      * Each filter's options with the general number beside it (not changed by the other filters or the
      * group), and which are on. A filter nothing can be chosen in is left out unless it is on.
      *
-     * @param  array{tags: array<string, int>, stock: array<string, int>, trans: array<string, int>, saleAny: bool}  $values
+     * @param  array{tags: array<string, int>, stock: array<string, int>, trans: array<string, int>, sale: int}  $values
      * @return array<string, list<array{value: string, label: string, count?: int|string, depth?: int, active: bool}>>
      */
     private function facets(ProductCategoryTree $tree, array $values, bool $multilingual, bool $selling, int $cap): array
@@ -589,8 +589,8 @@ final class Index extends Component
                 $facets['stock'][] = ['value' => $kind, 'label' => __('catalog.stock_'.$kind), 'count' => $count($values['stock'][$kind] ?? 0), 'active' => in_array($kind, $this->stockF, true)];
             }
             // offered only while some product is on sale, or the filter is on already
-            if ($values['saleAny'] || $this->saleF !== []) {
-                $facets['sale'][] = ['value' => 'on', 'label' => __('catalog.sale_on'), 'active' => $this->saleF !== []];
+            if ($values['sale'] > 0 || $this->saleF !== []) {
+                $facets['sale'][] = ['value' => 'on', 'label' => __('catalog.sale_on'), 'count' => $count($values['sale']), 'active' => $this->saleF !== []];
             }
         }
 

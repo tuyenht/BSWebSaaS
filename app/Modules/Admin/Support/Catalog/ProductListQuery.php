@@ -168,50 +168,49 @@ final class ProductListQuery
     }
 
     /**
-     * The general numbers beside the filter values, in one statement over the live products (up to
-     * cap + 1 of them, so a big website reads "hơn 10.000"): not changed by any other filter or the
-     * group. Also whether any product is on sale at all (an EXISTS that stops at the first one).
+     * The general numbers beside the filter values, in one statement: each value has its own count that
+     * stops at cap + 1 (so a big website reads "hơn 10.000" for that value only), not changed by any
+     * other filter or the group.
      *
      * @param  list<string>  $locales  the site's languages; fewer than two leave out the translation states
-     * @return array{tags: array<string, int>, stock: array<string, int>, trans: array<string, int>, saleAny: bool}
+     * @return array{tags: array<string, int>, stock: array<string, int>, trans: array<string, int>, sale: int}
      */
     public function valueCounts(array $locales, bool $selling): array
     {
         $n = count($locales);
-        $withTrans = $n >= 2;
-        $inner = Product::query()->toBase()->select(['products.is_featured', 'products.is_bestseller', 'products.stock'])->limit($this->cap + 1);
-        if ($withTrans) {
-            $inner->selectRaw(self::HAVE.' as have', [$this->siteId, self::pgArray($locales)]);
-        }
-        $inner->orders = null;
-
-        $parts = [
-            'count(*) filter (where live.is_featured) as t_featured',
-            'count(*) filter (where live.is_bestseller) as t_best',
+        /** @var array<string, Builder<Product>> $wanted */
+        $wanted = [
+            't_featured' => Product::query()->where('products.is_featured', true),
+            't_best' => Product::query()->where('products.is_bestseller', true),
         ];
         if ($selling) {
-            $parts[] = 'count(*) filter (where live.stock > 0) as s_in';
-            $parts[] = 'count(*) filter (where live.stock = 0) as s_out';
-            $parts[] = 'count(*) filter (where live.stock is null) as s_none';
+            $wanted['s_in'] = Product::query()->where('products.stock', '>', 0);
+            $wanted['s_out'] = Product::query()->where('products.stock', 0);
+            $wanted['s_none'] = Product::query()->whereNull('products.stock');
+            $wanted['sale'] = Product::query()->whereRaw(self::ON_SALE_GROUP);
         }
-        if ($withTrans) {
-            $parts[] = "count(*) filter (where live.have >= {$n}) as r_full";
-            $parts[] = "count(*) filter (where live.have > 1 and live.have < {$n}) as r_partial";
-            $parts[] = 'count(*) filter (where live.have <= 1) as r_none';
+        if ($n >= 2) {
+            $have = [$this->siteId, self::pgArray($locales)];
+            $wanted['r_full'] = Product::query()->whereRaw(self::HAVE.' >= ?', [...$have, $n]);
+            $wanted['r_partial'] = Product::query()->whereRaw(self::HAVE.' > 1 and '.self::HAVE.' < ?', [...$have, ...$have, $n]);
+            $wanted['r_none'] = Product::query()->whereRaw(self::HAVE.' <= 1', $have);
         }
+
+        $select = [];
         $bindings = [];
-        $sql = 'select '.implode(', ', $parts);
-        if ($selling) {
-            $sql .= ', exists(select 1 from products where products.site_id = ? and products.deleted_at is null and ('.self::ON_SALE.')) as sale_any';
-            $bindings[] = $this->siteId;
+        foreach ($wanted as $key => $query) {
+            [$sql, $values] = $this->boundedSql($query);
+            $select[] = "{$sql} as {$key}";
+            $bindings = [...$bindings, ...$values];
         }
-        $row = (array) DB::selectOne($sql.' from ('.$inner->toSql().') as live', [...$bindings, ...$inner->getBindings()]);
+        $row = (array) DB::selectOne('select '.implode(', ', $select), $bindings);
+        $get = fn (string $key): int => Cast::int($row[$key] ?? 0);
 
         return [
-            'tags' => ['featured' => Cast::int($row['t_featured'] ?? 0), 'best' => Cast::int($row['t_best'] ?? 0)],
-            'stock' => $selling ? ['in' => Cast::int($row['s_in'] ?? 0), 'out' => Cast::int($row['s_out'] ?? 0), 'none' => Cast::int($row['s_none'] ?? 0)] : [],
-            'trans' => $withTrans ? ['full' => Cast::int($row['r_full'] ?? 0), 'partial' => Cast::int($row['r_partial'] ?? 0), 'none' => Cast::int($row['r_none'] ?? 0)] : [],
-            'saleAny' => $selling && Cast::bool($row['sale_any'] ?? false),
+            'tags' => ['featured' => $get('t_featured'), 'best' => $get('t_best')],
+            'stock' => $selling ? ['in' => $get('s_in'), 'out' => $get('s_out'), 'none' => $get('s_none')] : [],
+            'trans' => $n >= 2 ? ['full' => $get('r_full'), 'partial' => $get('r_partial'), 'none' => $get('r_none')] : [],
+            'sale' => $selling ? $get('sale') : 0,
         ];
     }
 

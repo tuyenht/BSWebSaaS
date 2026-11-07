@@ -4,6 +4,7 @@
     'activeNarrow' => null,
     'results' => null,
     'clear' => null,
+    'clearCloses' => false,
     'label' => null,
 ])
 @php
@@ -33,6 +34,7 @@
     //            and is named by the count of its width; its tint follows $active.
     // $results: the footer button text, e.g. "Xem 12 dòng" — filters apply as they change, so it only closes the sheet.
     // $clear: the host's public method that resets every filter (shown when $active > 0).
+    // $clearCloses: also close the sheet on [Bỏ lọc] (off by default; the lists whose board closes it turn it on).
     //
     // Keyboard: opening focuses the first option; Esc or a click outside closes and focus returns to the button; Tab
     // stays inside the sheet.
@@ -223,7 +225,11 @@
             </div>
             <div class="flex shrink-0 flex-wrap justify-end gap-3 border-t border-border px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
                 @if ($clear && max($active, $narrow) > 0)
-                    <x-bs-admin::button variant="outline" color="secondary" class="min-w-0 flex-1" wire:click="{{ $clear }}" @click="hide()">{{ __('admin.list.clear_filters') }}</x-bs-admin::button>
+                    @if ($clearCloses)
+                        <x-bs-admin::button variant="outline" color="secondary" class="min-w-0 flex-1" wire:click="{{ $clear }}" @click="hide()">{{ __('admin.list.clear_filters') }}</x-bs-admin::button>
+                    @else
+                        <x-bs-admin::button variant="outline" color="secondary" class="min-w-0 flex-1" wire:click="{{ $clear }}">{{ __('admin.list.clear_filters') }}</x-bs-admin::button>
+                    @endif
                 @endif
                 <x-bs-admin::button class="min-w-0 flex-1" @click="hide()">{{ $results ?? __('admin.list.close_filters') }}</x-bs-admin::button>
             </div>
