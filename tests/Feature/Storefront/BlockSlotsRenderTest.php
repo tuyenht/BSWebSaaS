@@ -58,13 +58,15 @@ function slotsFresh(): void
     }
 }
 
-/** A page with the current year masked (the footer prints it). */
+/** A page with the year masked: the footer prints the machine clock's year, the content dates the test clock's. */
 function slotsHtml(string $path, string $host = 'mau.platform.test'): string
 {
-    return str_replace(date('Y'), '{year}', test()->get('http://'.$host.$path)->assertOk()->getContent());
+    return str_replace(array_unique([date('Y'), now()->format('Y')]), '{year}', test()->get('http://'.$host.$path)->assertOk()->getContent());
 }
 
 it('draws a post and a product with no slot set byte for byte as before', function (string $path, string $golden): void {
+    // The post prints its last update, which is the moment it was saved.
+    test()->travelTo(CarbonImmutable::parse('2026-11-07 03:00', 'UTC'));
     slotsGoldenSite();
     // A Livewire component rendered earlier in the run makes the next full page carry its assets once; let that page go first.
     test()->get('http://mau.platform.test/');
