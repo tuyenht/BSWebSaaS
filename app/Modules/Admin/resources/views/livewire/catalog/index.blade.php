@@ -258,8 +258,8 @@
                         $quickEdit = $canManage && ! $trashed && $t !== null;
                         $slugLeaf = $t?->slug;
                         $slugPrefix = ($path !== null && $slugLeaf) ? \Illuminate\Support\Str::beforeLast($path, $slugLeaf) : '/';
-                        // the row is drawn anew when its name or address changes, so the open-edit state never holds the old text
-                        $rowKey = 'product-'.$product->ulid.'-'.substr(md5($name.'|'.($slugLeaf ?? '')), 0, 8);
+                        // the row keeps its identity (and what is typed in it); its fields follow data-name / data-slug when they are not open
+                        $rowKey = 'product-'.$product->ulid;
                         $rowX = $quickEdit ? strtr(<<<'JS'
 {
                                 ulid: @ULID@,
@@ -267,6 +267,8 @@
                                 slugEditing: false, slugValue: @SLUG@, slugOrig: @SLUG@, slugErr: '',
                                 cancel: false, byKey: false, busy: false, from: '.list-qe',
                                 init() {
+                                    const follow = () => { const d = this.$el.dataset; if (! this.editing && d.name !== undefined) { this.value = this.orig = d.name } if (! this.slugEditing && d.slug !== undefined) { this.slugValue = this.slugOrig = d.slug } }
+                                    new MutationObserver(follow).observe(this.$el, { attributes: true, attributeFilter: ['data-name', 'data-slug'] })
                                     this.$el.addEventListener('list-quick-edit', () => { this.from = '.list-qe'; this.editing = true; this.cancel = false; this.err = '' })
                                     this.$el.addEventListener('list-slug-edit', () => { this.from = '.list-more [aria-haspopup]'; this.slugEditing = true; this.cancel = false; this.slugErr = ''; this.$nextTick(() => { this.$refs.slugInput.focus(); this.$refs.slugInput.select() }) })
                                 },
@@ -316,7 +318,7 @@ JS, ['@ULID@' => (string) Js::from($product->ulid), '@NAME@' => (string) Js::fro
                         $whenTitle = $stampText === null ? null : ($trashed ? __('catalog.trashed_at_title', ['date' => $stampText]) : __('catalog.updated_full', ['date' => $stampText]));
                         $whenCard = $trashed || $stamp === null ? $whenText : $editedShort($stamp);
                     @endphp
-                    <x-bs-admin::list.row wire:key="{{ $rowKey }}" data-row-ulid="{{ $product->ulid }}" x-data="{{ $rowX }}">
+                    <x-bs-admin::list.row wire:key="{{ $rowKey }}" data-row-ulid="{{ $product->ulid }}" :data-name="$quickEdit ? $name : null" :data-slug="$quickEdit ? ($slugLeaf ?? '') : null" x-data="{{ $rowX }}">
                         <x-bs-admin::list.cell col="main">
                             <div class="flex items-start gap-3">
                                 @if ($thumbnail !== null)

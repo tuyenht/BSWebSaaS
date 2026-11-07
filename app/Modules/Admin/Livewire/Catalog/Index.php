@@ -15,6 +15,7 @@ use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductImage;
 use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Catalog\Support\CatalogMode;
+use App\Modules\Catalog\Support\UniqueViolation;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Taxonomy\TaxonomyRules;
@@ -24,7 +25,6 @@ use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Rbac\Support\RoleLabel;
 use App\Modules\Shared\Support\Cast;
-use App\Modules\Shared\Support\PlainText;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\SiteLocale;
@@ -35,6 +35,7 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\QueryException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -457,6 +458,11 @@ final class Index extends Component
             $this->say(__('catalog.status_route_conflict'), 'error');
 
             return;
+        } catch (UniqueConstraintViolationException $e) {
+            UniqueViolation::refusal($e);
+            $this->say(__('catalog.status_route_conflict'), 'error');
+
+            return;
         }
         $this->say(__('catalog.toast_status_'.$status, ['name' => $this->nameOf($product)]), 'success', ['kind' => 'status', 'ulid' => $ulid, 'status' => $before]);
     }
@@ -482,7 +488,7 @@ final class Index extends Component
         try {
             $name = app(RenameProduct::class)->handle($product, $value, $locale);
         } catch (ProductEditRefused $refused) {
-            if (trim(PlainText::line($value)) === '') {
+            if (RenameProduct::tidy($value) === '') {
                 $this->say($refused->getMessage(), 'info');
 
                 return ['ok' => false, 'keep' => false, 'name' => $before, 'error' => ''];
@@ -513,9 +519,10 @@ final class Index extends Component
             return ['ok' => false, 'keep' => false, 'slug' => '', 'error' => ''];
         }
         $locale = app(SiteLocale::class)->default();
+        $value = mb_substr($value, 0, 5000);
 
         try {
-            $change = app(ChangeProductSlug::class)->handle($product, mb_substr($value, 0, 5000), $locale);
+            $change = app(ChangeProductSlug::class)->handle($product, $value, $locale);
         } catch (ProductEditRefused $refused) {
             // the field shows the address as it was cleaned (what the member typed, made plain), not the raw text
             try {
@@ -597,6 +604,11 @@ final class Index extends Component
                         app(ChangeProductStatus::class)->handle($product, $status);
                     }
                 } catch (RouteConflictException) {
+                    $this->say(__('catalog.undo_conflict'), 'error');
+
+                    return;
+                } catch (UniqueConstraintViolationException $e) {
+                    UniqueViolation::refusal($e);
                     $this->say(__('catalog.undo_conflict'), 'error');
 
                     return;

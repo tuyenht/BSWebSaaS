@@ -5,6 +5,7 @@ use App\Modules\Catalog\Actions\ChangeProductSlug;
 use App\Modules\Catalog\Actions\RenameProduct;
 use App\Modules\Catalog\Exceptions\ProductEditRefused;
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Catalog\Support\UniqueViolation;
 use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
 use App\Modules\Cms\Data\TaxonomyData;
 use App\Modules\Cms\Models\Entry;
@@ -14,6 +15,7 @@ use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
@@ -396,5 +398,63 @@ it('cannot undo an address change once the product went to the Trash', function 
         $test->call('undoLast');
         expect($test->get('toastMsg'))->toBe(__('catalog.undo_gone'))
             ->and(Product::onlyTrashed()->find($product->id)->translations()->value('slug'))->toBe('dao-phay-moi');
+    });
+});
+
+function qeViolation(string $index): UniqueConstraintViolationException
+{
+    return new UniqueConstraintViolationException('pgsql', 'insert into x', [], new PDOException('SQLSTATE[23505]: Unique violation: 7 ERROR:  duplicate key value violates unique constraint "'.$index.'"'));
+}
+
+it('maps a unique violation by the index that was violated and rethrows any other', function (): void {
+    $route = UniqueViolation::refusal(qeViolation('routes_site_id_locale_path_unique'));
+    $redirect = UniqueViolation::refusal(qeViolation('redirects_site_id_locale_from_path_unique'));
+    $sku = UniqueViolation::refusal(qeViolation('products_site_sku_unique'));
+
+    expect($route->getMessage())->toBe(__('catalog.slug_conflict'))->and($route->field)->toBe('slug')
+        ->and($redirect->getMessage())->toBe(__('catalog.slug_conflict'))
+        ->and($sku->getMessage())->toBe(__('catalog.sku_taken'))->and($sku->field)->toBe('sku');
+
+    expect(fn () => UniqueViolation::refusal(qeViolation('users_email_unique')))->toThrow(UniqueConstraintViolationException::class);
+});
+
+it('says the address is taken when a route is written by another request while publishing from the list, and saves nothing', function (): void {
+    $manager = qeManager();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        $product = qeProduct('Đĩa phay mặt', 'dao-phay-mat', 'draft');
+        $other = qeProduct('Sản phẩm khác', 'san-pham-khac', 'published');
+
+        $armed = true;
+        DB::beforeExecuting(function (string $query) use (&$armed, $other): void {
+            if ($armed && str_starts_with($query, 'insert into "routes"')) {
+                $armed = false;
+                SiteRoute::query()->create(['locale' => 'vi', 'path' => '/dao-phay-mat', 'product_id' => $other->id]);
+            }
+        });
+
+        $test = Livewire::actingAs($manager)->test(Index::class)->call('setStatus', $product->ulid, 'published');
+
+        expect($test->get('toastMsg'))->toBe(__('catalog.status_route_conflict'))
+            ->and($product->fresh()->status)->toBe('draft');
+    });
+});
+
+it('trims every kind of space and zero-width mark from a name and refuses a name made only of them', function (): void {
+    $manager = qeManager();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        $product = qeProduct();
+        $test = Livewire::actingAs($manager)->test(Index::class);
+
+        foreach (["\u{00A0}\u{00A0}", "\u{200B}\u{FEFF}\u{200D}", " \u{00A0}\u{200B} "] as $blank) {
+            $test->call('saveName', $product->ulid, $blank)
+                ->assertReturned(fn (array $r): bool => $r['ok'] === false && $r['keep'] === false && $r['name'] === 'Đĩa phay mặt');
+            expect($test->get('toastMsg'))->toBe(__('catalog.name_required'));
+        }
+
+        $test->call('saveName', $product->ulid, "\u{00A0}\u{200B}Đĩa phay ngón\u{FEFF}\u{00A0}")
+            ->assertReturned(fn (array $r): bool => $r['ok'] === true && $r['name'] === 'Đĩa phay ngón');
+        expect(app(RenameProduct::class)->clean("\u{00A0}x\u{200B}"))->toBe('x');
     });
 });

@@ -10,6 +10,8 @@ use App\Modules\Catalog\Actions\RenameProduct;
 use App\Modules\Catalog\Exceptions\ProductEditRefused;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
+use App\Modules\Catalog\Support\AppRoutePaths;
+use App\Modules\Catalog\Support\UniqueViolation;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
@@ -163,13 +165,16 @@ final class Editor extends Component
 
         try {
             $product = DB::transaction(fn (): Product => $this->persist());
-        } catch (RouteConflictException|UniqueConstraintViolationException) {
+        } catch (RouteConflictException|UniqueConstraintViolationException $e) {
             if ($wasNew) {
                 // Rolled back: the form is still a create form.
                 $this->ulid = null;
                 $this->productId = null;
             }
-            $this->addError('slug', __('catalog.slug_conflict'));
+            $refusal = $e instanceof UniqueConstraintViolationException
+                ? UniqueViolation::refusal($e)
+                : new ProductEditRefused(__('catalog.slug_conflict'), 'slug');
+            $this->addError($refusal->field ?? 'slug', $refusal->getMessage());
 
             return;
         }
@@ -368,10 +373,30 @@ final class Editor extends Component
                     $base,
                     $prefix,
                 ),
+                // a flat address is one path segment: the application's own paths (login, admin…) answer first
+                ...($prefix === '/' ? $this->appOwned($base) : []),
             ],
         );
 
         return $this->slug !== '';
+    }
+
+    /**
+     * Of `$base` and its numbered copies, those the application itself answers on.
+     *
+     * @return list<string>
+     */
+    private function appOwned(string $base): array
+    {
+        $paths = app(AppRoutePaths::class);
+        $owned = [];
+        foreach ([$base, ...array_map(fn (int $n): string => $base.'-'.$n, range(2, Slugger::PROBE))] as $candidate) {
+            if ($paths->owns($candidate)) {
+                $owned[] = $candidate;
+            }
+        }
+
+        return $owned;
     }
 
     /** The picked primary category with its slugs, or null when none is picked. */

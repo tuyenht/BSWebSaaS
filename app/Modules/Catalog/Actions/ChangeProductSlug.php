@@ -8,6 +8,7 @@ use App\Modules\Catalog\Exceptions\ProductEditRefused;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Catalog\Support\AppRoutePaths;
+use App\Modules\Catalog\Support\UniqueViolation;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
@@ -151,8 +152,10 @@ final class ChangeProductSlug
             $before = SiteRoute::query()->where('product_id', $product->id)->where('locale', $locale)->value('path');
             try {
                 $after = app(RouteSync::class)->syncProduct($product->id, $category, $locale, $slug);
-            } catch (RouteConflictException|UniqueConstraintViolationException) {
+            } catch (RouteConflictException) {
                 throw new ProductEditRefused(__('catalog.slug_conflict'));
+            } catch (UniqueConstraintViolationException $e) {
+                throw UniqueViolation::refusal($e);
             }
             $redirected = is_string($before) && $before !== $after
                 && Redirect::query()->where('locale', $locale)->where('from_path', $before)->where('to_path', $after)->exists();

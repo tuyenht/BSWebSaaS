@@ -646,3 +646,46 @@ it('refuses a draft link that a category route already owns, in the category\'s 
             ->and(Product::query()->count())->toBe(0);
     });
 });
+
+it('gives a new product named like an application path a free address instead of an error', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage']);
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('name', 'Login')
+            ->set('slug', '')
+            ->set('status', 'published')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        expect(Product::query()->first()?->translationFor('vi')?->slug)->toBe('login-2');
+    });
+});
+
+it('shows the SKU message on the SKU field when the SKU is taken by a request that won the race', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage']);
+
+        $armed = true;
+        DB::beforeExecuting(function (string $query) use (&$armed): void {
+            if ($armed && str_starts_with($query, 'insert into "products"')) {
+                $armed = false;
+                Product::query()->create(['status' => 'draft', 'sku' => 'RACE-1']);
+            }
+        });
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('name', 'Đồ gá hàn khung')
+            ->set('slug', 'do-ga-han-khung')
+            ->set('sku', 'RACE-1')
+            ->call('save')
+            ->assertHasErrors(['sku' => __('catalog.sku_taken')])
+            ->assertHasNoErrors(['slug']);
+    });
+});

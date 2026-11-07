@@ -25,7 +25,7 @@ final class RenameProduct
      */
     public function clean(string $input): string
     {
-        $name = PlainText::line($input);
+        $name = self::tidy($input);
 
         if ($name === '') {
             throw new ProductEditRefused(__('catalog.name_required'));
@@ -35,6 +35,15 @@ final class RenameProduct
         }
 
         return $name;
+    }
+
+    /**
+     * The one-line name with every kind of space and zero-width mark trimmed from both ends (the
+     * browser's trim() strips them too), so a name that only looks empty is empty here as well.
+     */
+    public static function tidy(string $input): string
+    {
+        return preg_replace('/^[\p{Z}\x{200B}-\x{200D}\x{FEFF}]+|[\p{Z}\x{200B}-\x{200D}\x{FEFF}]+$/u', '', PlainText::line($input)) ?? '';
     }
 
     /**
