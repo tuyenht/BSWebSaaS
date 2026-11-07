@@ -85,11 +85,13 @@ it('rejects a non-array block entry', function (): void {
 it('stays in lockstep with the renderer allow-list (DRY)', function (): void {
     $registry = app(ComponentRegistry::class);
 
-    // Every type the renderer can dispatch also validates …
+    // Every type the renderer can dispatch also validates (a type only a block slot may hold validates through the slot guard) …
     foreach ($registry->types() as $type) {
-        expect(validateBlocks([['type' => $type, 'props' => []]])->passes())
+        $guard = $registry->slotOnly($type) ? app(ValidPageJson::class)->forSlots() : app(ValidPageJson::class);
+        expect(Validator::make(['blocks' => [['type' => $type, 'props' => []]]], ['blocks' => [$guard]])->passes())
             ->toBeTrue("registered type '{$type}' should validate");
     }
+    expect(validateBlocks([['type' => 'recent_posts', 'props' => []]])->fails())->toBeTrue();
 
     // … and a type it cannot dispatch is rejected — one source of truth.
     expect(validateBlocks([['type' => 'definitely_not_registered', 'props' => []]])->fails())->toBeTrue();

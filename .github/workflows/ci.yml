@@ -110,12 +110,12 @@ jobs:
           echo "${verdict}"
           echo "${verdict}" >> "${GITHUB_STEP_SUMMARY}"
 
-  guardrails:
-    name: Guardrails (pint · phpstan · pest · migrate)
+  static:
+    name: Static checks (pint · phpstan · lang)
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 15
 
     services:
       postgres:
@@ -204,11 +204,120 @@ jobs:
       - name: Translations (same keys in every language)
         run: php artisan lang:check
 
-      # One process runs every suite, and its memory grows with the test count and the code the
-      # arch rules parse (it died at 256M near 1190 tests, peaked at 530M near 2880 and died at 768M
-      # near 4540). The limit is raised for this step only; composer qa matches it.
-      - name: Pest (unit · feature · arch · query-budget)
-        run: php -d memory_limit=1G vendor/bin/pest
+  pest:
+    name: Pest shard ${{ matrix.shard }}/4
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    strategy:
+      # One red shard must not hide the others.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_DB: bswebsaas
+          POSTGRES_USER: bsweb
+          POSTGRES_PASSWORD: secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U bsweb -d bswebsaas"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+      valkey:
+        image: valkey/valkey:8.1-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+
+    env:
+      # CI talks to Postgres directly (no PgBouncer). RUNTIME/tests connect as the
+      # restricted app_user so RLS is enforced; migrations use the privileged role.
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: bswebsaas
+      DB_USERNAME: app_user
+      DB_PASSWORD: app_secret
+      DB_ADMIN_HOST: 127.0.0.1
+      DB_ADMIN_PORT: 5432
+      DB_ADMIN_USERNAME: bsweb
+      DB_ADMIN_PASSWORD: secret
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: 6379
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
+      SESSION_DRIVER: redis
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup PHP 8.5
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: pdo_pgsql, pgsql, redis, intl, zip, bcmath, gd, pcntl, sodium, pdo_sqlite, sqlite3
+          # Mirror docker/frankenphp/conf.d/app.ini so the runtime matches dev/prod: the browser-upload
+          # ceiling stays at/above the 10MB media cap (UploadMediaTest guards this — stock 2M/8M fall below).
+          ini-values: upload_max_filesize=12M, post_max_size=16M, memory_limit=256M
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v6
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Migrate (PostgreSQL + extensions + restricted app role)
+        run: php artisan migrate --database=pgsql_admin --force
+
+      # The suite is split by test count into four shards that run side by side, each on its own
+      # database. One process used to run every suite and reached the job's 30-minute limit. Its
+      # memory grows with the test count and the code the arch rules parse (it died at 256M near
+      # 1190 tests, peaked at 530M near 2880 and died at 768M near 4540), so the limit stays raised.
+      - name: Pest (unit · feature · arch · query-budget) shard ${{ matrix.shard }}/4
+        run: php -d memory_limit=1G vendor/bin/pest --shard=${{ matrix.shard }}/4
+
+  # The check name that existed before the split; branch protection may require it (deploy scripts read the run conclusion):
+  # it is green only when the static job and every Pest shard are green. It skips under the same
+  # condition the jobs above skip (documents only).
+  guardrails:
+    name: Guardrails (pint · phpstan · pest · migrate)
+    needs: [changes, static, pest]
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Every part succeeded
+        shell: bash
+        env:
+          STATIC: ${{ needs.static.result }}
+          PEST: ${{ needs.pest.result }}
+        run: |
+          echo "static=${STATIC} pest=${PEST}"
+          [ "${STATIC}" = success ] && [ "${PEST}" = success ]
 
   frontend:
     name: Frontend build (Vite + Tailwind)
@@ -314,7 +423,7 @@ jobs:
       CACHE_STORE: redis
       QUEUE_CONNECTION: redis
       SESSION_DRIVER: redis
-      # phpunit.xml sets these for the Pest run in `guardrails`; this job calls `artisan`
+      # phpunit.xml sets these for the Pest run in `pest`; this job calls `artisan`
       # commands directly (no Pest), so the fail-closed guards (PepperedArgon2IdHasher,
       # SecretCipher) need their own values here. Same test-only strings phpunit.xml uses,
       # not secrets.

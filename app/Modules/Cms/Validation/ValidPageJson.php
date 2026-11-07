@@ -47,7 +47,13 @@ final readonly class ValidPageJson implements ValidationRule
      */
     public const int MAX_HTML_CHARS = 100_000;
 
-    public function __construct(private ComponentRegistry $registry) {}
+    public function __construct(private ComponentRegistry $registry, private bool $slots = false) {}
+
+    /** The same guard for a block slot, which also accepts the types only a slot may hold. */
+    public function forSlots(): self
+    {
+        return new self($this->registry, true);
+    }
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
@@ -87,7 +93,7 @@ final readonly class ValidPageJson implements ValidationRule
             }
 
             $type = $block['type'] ?? null;
-            if (! is_string($type) || ! $this->registry->has($type)) {
+            if (! is_string($type) || ! $this->registry->has($type) || (! $this->slots && $this->registry->slotOnly($type))) {
                 $shown = is_string($type) ? $type : '?';
                 $fail(__('entries.err_block_unsupported', ['type' => $shown]));
 

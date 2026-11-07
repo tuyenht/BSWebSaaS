@@ -2305,6 +2305,12 @@
     "storefront.prev_post": "← Bài trước",
     "storefront.next_post": "Bài sau →",
     "storefront.related_posts": "Bài viết liên quan",
+    "storefront.post_aside": "Cột bên của bài viết",
+    "storefront.toc": "Mục lục",
+    "storefront.toc_article": "Mục lục bài viết",
+    "storefront.recent_posts": "Bài viết mới",
+    "storefront.categories": "Chuyên mục",
+    "storefront.hotline_number": "Hotline :phone",
     "storefront.other_projects": "Dự án khác",
     "storefront.view_project": "Xem dự án",
     "storefront.product_details": "Chi tiết",
@@ -3234,5 +3240,6 @@
     "storefront.new_tab": "(mở thẻ mới)",
     "layout_slots.err_slot_invalid": "Không có chỗ đặt khối này. Hãy tải lại trang rồi thử lại.",
     "layout_slots.err_locale_invalid": "Ngôn ngữ này chưa bật cho website. Hãy bật ngôn ngữ trước, hoặc bỏ nội dung của ngôn ngữ đó.",
-    "layout_slots.err_too_many": "Chỗ này chỉ chứa tối đa :max khối. Hãy bỏ bớt khối."
+    "layout_slots.err_too_many": "Chỗ này chỉ chứa tối đa :max khối. Hãy bỏ bớt khối.",
+    "layout_slots.err_type_slot": "Khối “:block” chỉ đặt được ở cột bên hoặc cuối bài viết. Hãy chuyển khối sang đó hoặc bỏ khối."
 }
