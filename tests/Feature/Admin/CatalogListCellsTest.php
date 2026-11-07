@@ -151,14 +151,14 @@ it('draws the label chips and a dash for a product with none', function (): void
 it('names the main category, gives its whole path in a title, and says so when there is none', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         $root = cellCategory('Máy công cụ');
-        $child = cellCategory('Máy tiện CNC', $root);
+        $child = cellCategory('Máy tiện đứng', $root);
         cellProduct('Có chuyên mục', [], $child);
         cellProduct('Không chuyên mục');
 
         $html = Livewire::actingAs(cellManager())->test(Index::class)->html();
 
-        expect($html)->toContain('title="Máy công cụ › Máy tiện CNC"')
-            ->and($html)->toContain('>Máy tiện CNC<')
+        expect($html)->toContain('title="Máy công cụ › Máy tiện đứng"')
+            ->and($html)->toContain('>Máy tiện đứng<')
             ->and($html)->toContain(__('catalog.cat_none'));
     });
 });
@@ -198,9 +198,9 @@ it('shows no language chips and no missing-translation note on a website with on
 it('shows a chip per language and the missing-translation note on a website with two languages', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         SiteLocale::query()->create(['locale' => 'en', 'is_default' => false, 'enabled' => true]);
-        $both = cellProduct('Đủ hai');
+        $both = cellProduct('Đủ hai thứ');
         $both->translations()->create(['locale' => 'en', 'name' => 'Both', 'slug' => 'both']);
-        cellProduct('Thiếu tiếng Anh');
+        cellProduct('Thiếu bản dịch');
 
         $page = Livewire::actingAs(cellManager())->test(Index::class);
         $html = $page->html();
@@ -272,8 +272,8 @@ it('words a Trash row by the day it went to the Trash', function (): void {
 
 it('words a row edited today or yesterday in the short form of a card', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
-        $today = cellProduct('Hôm nay');
-        $yesterday = cellProduct('Hôm qua');
+        $today = cellProduct('Hôm nay đã sửa');
+        $yesterday = cellProduct('Hôm qua đã sửa');
         $zone = app(SiteTime::class);
         Product::query()->whereKey($yesterday->id)->toBase()->update(['updated_at' => $zone->now()->subDay()->setTime(8, 15)->utc()->toDateTimeString().'+00']);
 
