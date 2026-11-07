@@ -7,6 +7,7 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteModule;
@@ -161,9 +162,9 @@ it('keeps the catalog list flat with every filter on and a second page, whatever
 
             foreach (range($from, $to) as $i) {
                 $child = Taxonomy::query()->create(['vocabulary' => 'product_cat', 'parent_id' => $root->id, 'position' => $i]);
-                $child->translations()->create(['locale' => 'vi', 'name' => "Nhóm {$i}", 'slug' => "nhom-{$i}"]);
+                $child->translations()->create(['locale' => 'vi', 'name' => "Nhóm {$i} máy", 'slug' => "nhom-{$i}"]);
                 $product = Product::query()->create(['status' => 'published', 'sku' => "SKU-{$i}", 'price' => 1000, 'sale_price' => 500, 'stock' => 5, 'is_featured' => true]);
-                $product->translations()->create(['locale' => 'vi', 'name' => "Sản phẩm {$i}", 'slug' => "sp-{$i}"]);
+                $product->translations()->create(['locale' => 'vi', 'name' => "Sản phẩm {$i} đẹp", 'slug' => "sp-{$i}"]);
                 $product->assignCategories([$child->id]);
                 $media = Media::query()->create([
                     'collection' => 'library', 'slug' => "anh-{$i}", 'hash' => hash('sha256', "img-{$i}"),
@@ -200,6 +201,120 @@ it('keeps the catalog list flat with every filter on and a second page, whatever
 
     // twice the products and categories must not add a single query, and the page still shows 10 rows
     expect($rendered)->toBe(10)->and($more)->toBe($count)->and($count)->toBe(18);
+});
+
+it('keeps the catalog list flat with every cell and column drawn, on a second page, whatever the number of rows', function (): void {
+    $viewer = User::factory()->create();
+
+    $seed = function (int $from, int $to) use ($viewer): void {
+        app(Tenancy::class)->enter(1, function () use ($from, $to, $viewer): void {
+            grantRole($viewer, 'cat-viewer', ['catalog.view', 'catalog.manage']);
+            SiteModule::query()->firstOrCreate(['module_key' => 'catalog'], ['enabled' => true]);
+            SiteSetting::query()->firstOrCreate(['group_name' => 'catalog', 'key' => 'mode'], ['value' => ['value' => 'commerce']]);
+            SiteLocale::query()->firstOrCreate(['locale' => 'en'], ['is_default' => false, 'enabled' => true]);
+            $root = Taxonomy::query()->firstOrCreate(['vocabulary' => 'product_cat', 'position' => 0]);
+            $root->translations()->firstOrCreate(['locale' => 'vi'], ['name' => 'Gốc', 'slug' => 'goc']);
+
+            foreach (range($from, $to) as $i) {
+                $child = Taxonomy::query()->create(['vocabulary' => 'product_cat', 'parent_id' => $root->id, 'position' => $i]);
+                $child->translations()->create(['locale' => 'vi', 'name' => "Nhóm {$i} máy", 'slug' => "nhom-{$i}"]);
+                $product = Product::query()->create([
+                    'status' => 'published', 'sku' => "SKU-{$i}", 'price' => 1000000 + $i, 'sale_price' => 900000, 'sale_ends_at' => '2099-01-01 00:00:00+00',
+                    'stock' => $i % 7, 'is_featured' => $i % 2 === 0, 'is_bestseller' => $i % 3 === 0,
+                ]);
+                $product->translations()->create(['locale' => 'vi', 'name' => "Sản phẩm {$i} đẹp", 'slug' => "sp-{$i}"]);
+                if ($i % 2 === 0) {
+                    $product->translations()->create(['locale' => 'en', 'name' => "Product {$i}", 'slug' => "product-{$i}"]);
+                }
+                $product->assignCategories([$child->id]);
+                foreach ([0, 1] as $n) {
+                    $media = Media::query()->create([
+                        'collection' => 'library', 'slug' => "anh-{$i}-{$n}", 'hash' => hash('sha256', "img-{$i}-{$n}"),
+                        'storage_key' => "s/library/anh-{$i}-{$n}.png", 'disk' => 'r2', 'mime' => 'image/png', 'size' => 1024,
+                    ]);
+                    $product->images()->create(['media_id' => $media->id, 'position' => $n]);
+                }
+            }
+        });
+    };
+    $url = 'http://a.test/admin/catalog?per_page=10&page=2';
+    $rows = function () use ($viewer, $url): int {
+        $html = $this->actingAs($viewer)->get($url)->assertOk()->getContent();
+
+        return count(array_unique(preg_match_all('/Sản phẩm \d+/u', (string) $html, $found) ? $found[0] : []));
+    };
+
+    $seed(1, 30);
+    $this->actingAs($viewer)->get($url)->assertOk(); // the permission and settings caches fill on the first request
+    $shown = 0;
+    $count = countQueries(function () use ($rows, &$shown): void {
+        $shown = $rows();
+    });
+    expect($shown)->toBe(10);
+
+    $seed(31, 60);
+    $this->actingAs($viewer)->get($url)->assertOk(); // granting the role again clears the permission cache
+    $more = countQueries(function () use ($rows, &$shown): void {
+        $shown = $rows();
+    });
+
+    // twice the rows: not one more query, and the page still shows 10 rows
+    expect($shown)->toBe(10)->and($more)->toBe($count)->and($count)->toBe(17);
+
+    // past the cap the value counts are skipped and the page costs exactly one statement less
+    config(['admin.catalog_list_cap' => 20]);
+    $this->actingAs($viewer)->get($url)->assertOk();
+    $past = countQueries(fn () => $this->actingAs($viewer)->get($url)->assertOk());
+    expect($past)->toBe(16);
+});
+
+it('reads the category chain of a full-path address in a fixed number of queries, with a three-level tree, whatever the number of rows', function (): void {
+    $viewer = User::factory()->create();
+
+    $seed = function (int $from, int $to) use ($viewer): void {
+        app(Tenancy::class)->enter(1, function () use ($from, $to, $viewer): void {
+            grantRole($viewer, 'cat-viewer', ['catalog.view', 'catalog.manage']);
+            SiteModule::query()->firstOrCreate(['module_key' => 'catalog'], ['enabled' => true]);
+            SiteSetting::query()->firstOrCreate(['group_name' => 'catalog', 'key' => 'mode'], ['value' => ['value' => 'commerce']]);
+            SiteSetting::query()->firstOrCreate(['group_name' => 'permalinks', 'key' => 'products'], ['value' => ['pattern' => 'category_path']]);
+            app(PermalinkConfig::class)->flush();
+            $root = Taxonomy::query()->firstOrCreate(['vocabulary' => 'product_cat', 'position' => 0]);
+            $root->translations()->firstOrCreate(['locale' => 'vi'], ['name' => 'Gốc', 'slug' => 'goc']);
+            $mid = Taxonomy::query()->firstOrCreate(['vocabulary' => 'product_cat', 'parent_id' => $root->id, 'position' => 0]);
+            $mid->translations()->firstOrCreate(['locale' => 'vi'], ['name' => 'Giữa', 'slug' => 'giua']);
+
+            foreach (range($from, $to) as $i) {
+                $leaf = Taxonomy::query()->create(['vocabulary' => 'product_cat', 'parent_id' => $mid->id, 'position' => $i]);
+                $leaf->translations()->create(['locale' => 'vi', 'name' => "Nhóm {$i} máy", 'slug' => "nhom-{$i}"]);
+                $product = Product::query()->create(['status' => 'published', 'sku' => "SKU-{$i}", 'price' => 1000, 'stock' => 5]);
+                $product->translations()->create(['locale' => 'vi', 'name' => "Sản phẩm {$i} đẹp", 'slug' => "sp-{$i}"]);
+                $product->assignCategories([$leaf->id]);
+            }
+        });
+    };
+    $url = 'http://a.test/admin/catalog?per_page=10';
+    $rows = function () use ($viewer, $url): int {
+        $html = $this->actingAs($viewer)->get($url)->assertOk()->getContent();
+
+        return count(array_unique(preg_match_all('/Sản phẩm \d+/u', (string) $html, $found) ? $found[0] : []));
+    };
+
+    $seed(1, 30);
+    $this->actingAs($viewer)->get($url)->assertOk(); // the permission and settings caches fill on the first request
+    $shown = 0;
+    $count = countQueries(function () use ($rows, &$shown): void {
+        $shown = $rows();
+    });
+    expect($shown)->toBe(10);
+
+    $seed(31, 60);
+    $this->actingAs($viewer)->get($url)->assertOk();
+    $more = countQueries(function () use ($rows, &$shown): void {
+        $shown = $rows();
+    });
+
+    // the chain adds two queries per level above the main category (the parents, then their names): two levels, four queries, for the whole page
+    expect($shown)->toBe(10)->and($more)->toBe($count)->and($count)->toBe(20);
 });
 
 it('pages the Trash of products by cursor on the deletion time, forward and back, meeting each row once', function (): void {

@@ -51,7 +51,7 @@
         ];
     }
     // a view choice, not a filter: only while the rows are cards (the list narrower than 37.5rem)
-    $cardLabels = ['sku' => __('catalog.card_opt_sku'), 'cat' => __('catalog.card_opt_cat')];
+    $cardLabels = ['sku' => __('catalog.card_opt_sku'), 'cat' => __('catalog.card_opt_cat'), 'slug' => __('catalog.card_opt_slug'), 'tr' => __('catalog.card_opt_tr')];
     $sections[] = ['key' => 'card', 'label' => __('entries.f_card'), 'model' => 'card', 'multiple' => true, 'value' => $card, 'sheet' => true, 'class' => '@min-[37.5rem]/lt:hidden', 'on' => false,
         'options' => array_map(fn (string $k): array => ['value' => $k, 'label' => $cardLabels[$k]], $cardOptions)];
 
@@ -79,6 +79,31 @@
     $ariaSort = fn (string $key): string => $sortOn !== $key ? 'none' : (\App\Modules\Admin\Support\Catalog\ProductListQuery::SORTS[$key] === 'asc' ? 'ascending' : 'descending');
     $title = __('catalog.title');
     $statusText = fn (string $status): string => __('catalog.tab_'.$status);
+
+    // Row cells. A price keeps its "₫" on the number's line (a no-break space); a time is the site's own clock.
+    $money = fn (int $n): string => number_format($n, 0, ',', '.')."\u{00A0}₫";
+    $clock = fn (?\DateTimeInterface $at): ?string => $at === null ? null : $siteTime->forDisplay($at)?->format('d/m/Y H:i');
+    $nowAt = $siteTime->now();
+    // the card's short form of the last edit: today, yesterday, this year without the year, otherwise the day
+    $editedShort = function (\DateTimeInterface $at) use ($siteTime, $nowAt): string {
+        $t = $siteTime->forDisplay($at);
+        if ($t === null) {
+            return '';
+        }
+        $days = (int) round($t->startOfDay()->diffInDays($nowAt->startOfDay()));
+
+        return match (true) {
+            $days === 0 => __('catalog.edited_today', ['time' => $t->format('H:i')]),
+            $days === 1 => __('catalog.edited_yesterday', ['time' => $t->format('H:i')]),
+            $t->year === $nowAt->year => __('catalog.edited_year', ['day' => $t->format('d/m'), 'time' => $t->format('H:i')]),
+            default => __('catalog.edited_other', ['date' => $t->format('d/m/Y')]),
+        };
+    };
+    $hiddenAlways = $selling ? [] : ['price', 'stock'];
+    // what the table hides at first paint (the saved columns, and price and stock on a brochure website); Alpine keeps it in step
+    $hideNow = implode(' ', array_values(array_unique([...array_diff(['cat', 'price', 'stock', 'badge'], $cols), ...$hiddenAlways])));
+    $priceNext = match ($sortOn) { 'price_asc' => 'price_desc', 'price_desc' => 'updated', default => 'price_asc' };
+    $ariaPrice = $sortOn === 'price_asc' ? 'ascending' : ($sortOn === 'price_desc' ? 'descending' : 'none');
 @endphp
 <div class="catalog-index flex flex-col gap-3">
 
@@ -132,12 +157,36 @@
         <div class="@container/lt min-w-0"
              x-data="{
                  mode: 'cols',
-                 size() { const w = this.$refs.rows?.clientWidth ?? 0, rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16; this.mode = w < 37.5 * rem ? 'card' : (w < 56.25 * rem ? 'line' : 'cols'); },
+                 fold: '',
+                 seen: '',
+                 ro: null,
+                 destroy() { this.ro?.disconnect(); },
+                 size(force = false) { const w = this.$refs.rows?.clientWidth ?? 0, rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16, boost = window.bsListFold.boostPx(), key = w + ':' + boost; if (! force && key === this.seen) { return; } this.seen = key; this.mode = w < 37.5 * rem ? 'card' : (w < 56.25 * rem ? 'line' : 'cols'); this.foldCols(rem, boost); },
+                 {{-- as the table narrows or the text grows, the label, category, stock and price columns fold into the line under the name (in that order) until the name keeps the shared minimum; one pass: clear the fold, read every width, write the fold once --}}
+                 foldCols(rem, boost) {
+                     const list = this.$refs.rows?.querySelector('.list-rows'), head = list?.querySelector('.list-hd'), main = head?.querySelector('.list-c-main');
+                     if (! list || ! main) { return; }
+                     let out = [];
+                     if (this.mode === 'cols') {
+                         list.removeAttribute('data-fold');
+                         const cols = ['badge', 'cat', 'stock', 'price'].map((k) => [k, head.querySelector('.list-c-' + k)?.getBoundingClientRect().width ?? 0]);
+                         out = window.bsListFold.nameFold(main.getBoundingClientRect().width - 3.75 * rem, cols, boost);
+                     }
+                     this.fold = out.join(' ');
+                     this.fold === '' ? list.removeAttribute('data-fold') : list.setAttribute('data-fold', this.fold);
+                 },
                  show(k) { return this.mode === 'line' || (this.mode === 'cols' ? this.$wire.cols : this.$wire.card).includes(k); },
                  get vSku() { return this.mode !== 'card' || this.$wire.card.includes('sku'); },
                  get vCat() { return this.show('cat'); },
+                 get vSlug() { return this.mode !== 'card' || this.$wire.card.includes('slug'); },
+                 get vLangs() { return this.mode !== 'card' || this.$wire.card.includes('tr'); },
+                 get vPrice() { return this.$wire.cols.includes('price'); },
+                 get vQty() { return this.$wire.cols.includes('stock'); },
+                 get vBadge() { return this.$wire.cols.includes('badge'); },
+                 hidden() { const off = {{ Js::from($hiddenAlways) }}; return (this.mode === 'cols' ? ['cat', 'price', 'stock', 'badge'].filter(k => ! this.$wire.cols.includes(k)) : []).concat(off).join(' '); },
+                 copy(url) { (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(() => window.bsToast({ text: {{ Js::from(__('catalog.copied')) }}.replace(':url', url) }), () => {}); },
              }"
-             x-init="size(); new ResizeObserver(() => size()).observe($el)">
+             x-init="size(true); ro = new ResizeObserver(() => size()); ro.observe($el); $watch('$wire.cols', () => $nextTick(() => size(true))); $wire.$hook('commit', ({ succeed }) => succeed(() => $nextTick(() => size(true))))">
             <div class="flex flex-col gap-3 pb-3 min-[600px]:px-4 min-[600px]:pt-4 min-[900px]:pt-3 @min-[56.25rem]/lt:flex-row @min-[56.25rem]/lt:flex-wrap @min-[56.25rem]/lt:items-center">
                 <div class="min-w-0 text-body @min-[56.25rem]/lt:min-w-[19em] @min-[56.25rem]/lt:max-w-[30em] @min-[56.25rem]/lt:flex-[999_1_19em] @min-[56.25rem]/lt:[&:has(+[data-below='1'])]:max-w-none">
                     <x-bs-admin::search id="catalog-search" :label="__('catalog.search_label')" :placeholder="__('catalog.search_hint')"
@@ -158,12 +207,22 @@
                 :chips="$chips" :clear="$filtering ? 'clearAllFilters' : null" />
 
             <div x-ref="rows" class="min-w-0 max-[599.98px]:rounded-md max-[599.98px]:border max-[599.98px]:border-border max-[599.98px]:bg-surface max-[599.98px]:[&_.list-g]:border-t-0">
-            <x-bs-admin::list :label="__('catalog.list_label')">
+            <x-bs-admin::list :label="__('catalog.list_label')" kind="catalog" :data-hide="$hideNow" x-bind:data-hide="hidden()" x-bind:data-fold="fold">
 
                 <x-bs-admin::list.head>
                     <x-bs-admin::list.cell head col="main" :sort="$ariaSort('name')">
                         <x-bs-admin::list.sort :active="$sortOn === 'name'" dir="asc" wire:click="sortBy('name')">{{ __('catalog.col_product') }}</x-bs-admin::list.sort>
                     </x-bs-admin::list.cell>
+                    <x-bs-admin::list.cell head col="cat">{{ __('catalog.col_opt_cat') }}</x-bs-admin::list.cell>
+                    @if ($selling)
+                        <x-bs-admin::list.cell head col="price" :sort="$ariaPrice">
+                            <x-bs-admin::list.sort :active="in_array($sortOn, ['price_asc', 'price_desc'], true)" :dir="$sortOn === 'price_desc' ? 'desc' : 'asc'" wire:click="setSort('{{ $priceNext }}')">{{ __('catalog.col_price') }}</x-bs-admin::list.sort>
+                        </x-bs-admin::list.cell>
+                        <x-bs-admin::list.cell head col="stock" :sort="$ariaSort('stock_asc')">
+                            <x-bs-admin::list.sort :active="$sortOn === 'stock_asc'" dir="asc" wire:click="sortBy('stock_asc')">{{ __('catalog.col_opt_stock') }}</x-bs-admin::list.sort>
+                        </x-bs-admin::list.cell>
+                    @endif
+                    <x-bs-admin::list.cell head col="badge">{{ __('catalog.col_opt_badge') }}</x-bs-admin::list.cell>
                     <x-bs-admin::list.cell head col="st" :sort="$ariaSort('updated')">
                         <x-bs-admin::list.sort :active="$sortOn === 'updated'" dir="desc" wire:click="sortBy('updated')">{{ $trashSort ? __('catalog.trash_tab') : __('catalog.status_label') }}</x-bs-admin::list.sort>
                     </x-bs-admin::list.cell>
@@ -175,36 +234,117 @@
                         $t = $product->translations->firstWhere('locale', $locale);
                         $name = $t?->name ?? __('catalog.untitled');
                         $thumbnail = $product->images->first()?->media;
-                        $categoryName = $product->primaryCategory()?->translations->firstWhere('locale', $locale)?->name;
+                        $primary = $product->primaryCategory();
+                        $categoryName = $primary?->translations->firstWhere('locale', $locale)?->name;
+                        $categoryPath = $primary === null ? null : ($tree?->pathOf($primary->id) ?? $categoryName);
                         $trashed = $product->trashed();
-                        $when = $siteTime->forDisplay($product->updated_at);
-                        $whenText = $when ? __('catalog.updated_at', ['date' => $when->locale(app()->getLocale())->isoFormat('D MMM, Y')]) : null;
+                        $langHas = $product->translations->pluck('locale')->all();
+                        // the editor opens the default language only: every other chip says so; a viewer or a trashed row, why not
+                        $langWhy = fn (string $lc): string => $trashed ? __('entries.lc_why_trashed') : (! $canManage ? __('entries.lc_why_view_only', ['noun' => $noun]) : __('catalog.lc_why_default_only'));
+                        $imageCount = $num((int) $product->getAttribute('images_n'));
+                        // the address PathBuilder composes for this product (the site's permalink preset), in the default language
+                        $path = $t?->slug ? $paths->publicUrl($paths->forProduct($primary, $t->slug, $locale), $locale) : null;
+                        $fullUrl = $path === null ? null : $publicHost.$path;
+                        // price: the sale state comes from SQL (on_sale), the old price shows struck through beside it
+                        $onSale = (bool) $product->getAttribute('on_sale');
+                        $noPrice = $product->price === null;
+                        $priceText = $noPrice ? __('catalog.price_ask') : $money($onSale ? (int) $product->sale_price : (int) $product->price);
+                        $oldText = $onSale ? $money((int) $product->price) : null;
+                        $saleEnd = $clock($product->sale_ends_at);
+                        $priceTip = $onSale
+                            ? ($saleEnd !== null ? __('catalog.price_sale_tip', ['date' => $saleEnd, 'price' => $oldText]) : __('catalog.price_sale_tip_open', ['price' => $oldText]))
+                            : ($noPrice ? __('catalog.price_ask_tip') : null);
+                        $stockKind = $product->stock === null ? 'none' : ($product->stock === 0 ? 'out' : ($product->stock <= 5 ? 'low' : 'in'));
+                        $stockText = $stockKind === 'none' ? __('catalog.stock_none') : ($stockKind === 'out' ? __('catalog.stock_out') : __('catalog.stock_left', ['n' => $num((int) $product->stock)]));
+                        $stockIcon = ['out' => 'ri-close-circle', 'low' => 'ri-error-warning', 'in' => 'ri-checkbox-circle', 'none' => 'ri-subtract'][$stockKind];
+                        $tags = array_values(array_filter([
+                            $product->is_featured ? ['k' => 'featured', 'l' => __('catalog.tag_featured'), 'icon' => 'ri-star'] : null,
+                            $product->is_bestseller ? ['k' => 'best', 'l' => __('catalog.tag_best'), 'icon' => 'ri-fire'] : null,
+                        ]));
+                        // the last edit (a trashed row: the day it went to the Trash)
+                        $stamp = $trashed ? $product->deleted_at : $product->updated_at;
+                        $stampText = $clock($stamp);
+                        $whenText = $stampText === null ? null : ($trashed ? __('catalog.trashed_at', ['date' => $stampText]) : __('catalog.updated_at', ['date' => $stampText]));
+                        $whenTitle = $stampText === null ? null : ($trashed ? __('catalog.trashed_at_title', ['date' => $stampText]) : __('catalog.updated_full', ['date' => $stampText]));
+                        $whenCard = $trashed || $stamp === null ? $whenText : $editedShort($stamp);
                     @endphp
                     <x-bs-admin::list.row wire:key="product-{{ $product->ulid }}">
                         <x-bs-admin::list.cell col="main">
                             <div class="flex items-start gap-3">
                                 @if ($thumbnail !== null)
-                                    <img src="{{ $urls->url($thumbnail->storage_key, 96) }}" alt="" loading="lazy" class="size-12 shrink-0 rounded border border-border object-cover">
+                                    <img src="{{ $urls->url($thumbnail->storage_key, 96) }}" alt="" title="{{ __('catalog.thumb_n', ['n' => $imageCount]) }}" loading="lazy" class="size-12 shrink-0 rounded border border-border object-cover">
                                 @else
-                                    <span class="flex size-12 shrink-0 items-center justify-center rounded border border-border bg-surface-muted text-placeholder" aria-hidden="true">
+                                    <span class="flex size-12 shrink-0 items-center justify-center rounded border border-border bg-surface-muted text-placeholder" title="{{ __('catalog.thumb_none') }}" aria-hidden="true">
                                         <x-bs-admin::icon name="image" class="size-5" />
                                     </span>
                                 @endif
                                 <div class="min-w-0 flex-1">
                                     <x-bs-admin::list.name :href="$canManage && ! $trashed ? route('admin.catalog.edit', ['ulid' => $product->ulid]) : null">{{ $name }}</x-bs-admin::list.name>
                                     <x-bs-admin::list.meta>
-                                        @if ($product->sku !== null)
-                                            <span class="list-m" data-for="sku" x-show="vSku">{{ __('catalog.sku_meta', ['sku' => $product->sku]) }}</span>
+                                        <span class="list-m" data-for="sku" x-show="vSku" title="{{ __('catalog.sku_title') }}">
+                                            @if ($product->sku !== null){{ __('catalog.sku_meta', ['sku' => $product->sku]) }}@else<span class="text-text-muted">{{ __('catalog.sku_none') }}</span>@endif
+                                        </span>
+                                        @if ($path !== null)
+                                            <span class="list-m inline-flex items-center gap-1" data-for="slug" x-show="vSlug">
+                                                <span class="font-mono [overflow-wrap:anywhere]" title="{{ $path }}">{{ $path }}</span>
+                                                @unless ($trashed)
+                                                    <button type="button" class="list-cpy" title="{{ __('catalog.copy_slug') }}" aria-label="{{ __('catalog.copy_slug_aria', ['url' => $fullUrl]) }}"
+                                                        x-on:click="copy({{ Js::from($fullUrl) }})">
+                                                        <x-bs-admin::icon name="ri-file-copy" class="size-[calc(1rem+var(--user-text-boost))]" />
+                                                    </button>
+                                                @endunless
+                                            </span>
                                         @endif
-                                        @if ($categoryName !== null)
-                                            <span class="list-m" data-for="cat" x-show="vCat">{{ $categoryName }}</span>
+                                        <x-bs-admin::list.langs :locales="$locales" :source="$locale" :name="$name" show="vLangs"
+                                            :has="$langHas" :only="[$locale]" :note="! $trashed"
+                                            :href="$canManage && ! $trashed ? fn (string $lc): string => route('admin.catalog.edit', ['ulid' => $product->ulid]) : null"
+                                            :why="$langWhy" />
+                                        @if ($selling)
+                                            <span class="list-m" data-for="price" x-show="vPrice">{{ $priceText }}@if ($oldText !== null) <span class="list-old">{{ __('catalog.price_old_card', ['price' => $oldText]) }}</span>@endif</span>
+                                            <span class="list-m" data-for="stock" x-show="vQty">{{ $stockText }}</span>
                                         @endif
-                                        @if ($whenText)
-                                            <span class="list-m" data-for="when">{{ $whenText }}</span>
+                                        <span class="list-m" data-for="cat" x-show="vCat">{{ $categoryName ?? __('catalog.cat_none') }}</span>
+                                        @if ($tags !== [])
+                                            <span class="list-m" data-for="badge" x-show="vBadge">{{ collect($tags)->pluck('l')->implode(', ') }}</span>
                                         @endif
+                                        @if ($whenCard)
+                                            <span class="list-m" data-for="when">{{ $whenCard }}</span>
+                                        @endif
+                                        <x-bs-admin::list.langs part="note" :locales="$locales" :source="$locale" :name="$name" :has="$langHas" :note="! $trashed" />
                                     </x-bs-admin::list.meta>
                                 </div>
                             </div>
+                            {{-- below 400 the language chips and the missing-language note move under the picture, full width --}}
+                            @if (count($locales) > 1)
+                                <div class="list-langs2">
+                                    <x-bs-admin::list.langs :locales="$locales" :source="$locale" :name="$name" show="vLangs"
+                                        :has="$langHas" :only="[$locale]" :note="! $trashed"
+                                        :href="$canManage && ! $trashed ? fn (string $lc): string => route('admin.catalog.edit', ['ulid' => $product->ulid]) : null"
+                                        :why="$langWhy" />
+                                </div>
+                            @endif
+                        </x-bs-admin::list.cell>
+
+                        <x-bs-admin::list.cell col="cat">
+                            <span class="list-ell" title="{{ $categoryPath ?? '' }}">{{ $categoryName ?? __('catalog.cat_none') }}</span>
+                        </x-bs-admin::list.cell>
+                        @if ($selling)
+                            <x-bs-admin::list.cell col="price" :title="$priceTip">
+                                <span class="sp-pr" data-k="{{ $noPrice ? 'ask' : 'v' }}">{{ $priceText }}</span>
+                                @if ($oldText !== null)<span class="sp-old">{{ $oldText }}</span>@endif
+                            </x-bs-admin::list.cell>
+                            <x-bs-admin::list.cell col="stock">
+                                <span class="sp-stk" data-k="{{ $stockKind }}"><x-bs-admin::icon :name="$stockIcon" class="size-[calc(1rem+var(--user-text-boost))] shrink-0" />{{ $stockText }}</span>
+                            </x-bs-admin::list.cell>
+                        @endif
+                        <x-bs-admin::list.cell col="badge">
+                            <span class="sp-tags">
+                                @forelse ($tags as $tag)
+                                    <span class="sp-tag" data-k="{{ $tag['k'] }}"><x-bs-admin::icon :name="$tag['icon']" class="size-[calc(0.75rem+var(--user-text-boost))] shrink-0" />{{ $tag['l'] }}</span>
+                                @empty
+                                    <span class="sp-none">—</span>
+                                @endforelse
+                            </span>
                         </x-bs-admin::list.cell>
 
                         <x-bs-admin::list.cell col="st">
@@ -212,7 +352,7 @@
                                 <x-bs-admin::status-pill :status="$product->status">{{ $statusText($product->status) }}</x-bs-admin::status-pill>
                             </div>
                             @if ($whenText)
-                                <div class="list-st-meta" title="{{ $when->locale(app()->getLocale())->isoFormat('LLL') }}">
+                                <div class="list-st-meta" title="{{ $whenTitle }}">
                                     <x-bs-admin::icon name="ri-history" class="size-3 shrink-0" />
                                     <span>{{ $whenText }}</span>
                                 </div>

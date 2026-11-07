@@ -202,6 +202,25 @@ final class ProductCategoryTree
     }
 
     /**
+     * The names of a category and everything above it, top first, joined by " › " (null when the
+     * category is not in the read). Read from the tree already in memory: no query, whatever the number of rows.
+     */
+    public function pathOf(int $id): ?string
+    {
+        if (! isset($this->nodes[$id])) {
+            return null;
+        }
+        $names = [];
+        $at = $id;
+        for ($guard = 0; $at !== null && isset($this->nodes[$at]) && $guard < 64; $guard++) {
+            array_unshift($names, $this->nodes[$at]['name']);
+            $at = $this->nodes[$at]['parent'];
+        }
+
+        return implode(' › ', $names);
+    }
+
+    /**
      * Of the chosen categories, those whose parent is not chosen as well: what a chip is made for.
      *
      * @param  list<string>  $ulids
