@@ -114,8 +114,15 @@ final readonly class SaveEntryDraft
             );
 
             $sharedNow['primary_category_id'] = $this->category($entry, $actor, $sharedNow['primary_category_id'] ?? null);
-            $readable = $this->writer->read(['v' => RecordEntryRevision::FORMAT] + $sharedNow + $textNow, $entry->type, $this->storedTemplate($entry))
+            // A layout of the wrong role is refused only when this request sent it. One carried over from
+            // the open change or the live post (a restore can leave the old value behind) is dropped to
+            // none, or no later save or publish of that post could ever succeed.
+            $sentLayout = array_key_exists('template_override', $shared);
+            $readable = $this->writer->read(['v' => RecordEntryRevision::FORMAT] + $sharedNow + $textNow, $entry->type, $this->storedTemplate($entry), ! $sentLayout)
                 ?? throw new EntryDraftRejectedException('content_invalid');
+            if (! $sentLayout) {
+                $sharedNow['template_override'] = $readable['template_override'];
+            }
             // Stored as the editor stores a body: each block's type and props, nothing else.
             $textNow['body'] = ['blocks' => $readable['blocks']];
 

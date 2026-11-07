@@ -5,6 +5,7 @@ use App\Modules\Cms\Actions\ApplyEntryDraft;
 use App\Modules\Cms\Actions\ApplyEntryDraftTransition;
 use App\Modules\Cms\Actions\DiscardEntryDraft;
 use App\Modules\Cms\Actions\RecordEntryRevision;
+use App\Modules\Cms\Actions\RestoreEntryRevision;
 use App\Modules\Cms\Actions\SaveEntryDraft;
 use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Exceptions\EntryDraftRejectedException;
@@ -735,6 +736,33 @@ it('keeps saving and publishing a post that stores a layout of another role, and
     });
 
     $this->get('http://a.test/ban-tin-vi')->assertOk()->assertSee('Ứng viên mới');
+});
+
+it('lets a post be saved and published again after a restore left an open change carrying its old wrong-role layout', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        [$author, $publisher] = changeCast();
+        $entry = changeLivePost($author, changeNewsCategory());
+        $revision = EntryRevision::query()->where('entry_id', $entry->id)->where('locale', 'vi')->sole();
+        $entry->forceFill(['template_override' => 'grid-news'])->save();   // a list layout stored on a post
+        $entry = $entry->fresh();
+
+        // The open change copies the live layout it was started from.
+        app(SaveEntryDraft::class)->handle($entry, $author, 'vi', ['title' => 'Bản nháp']);
+        expect(changeOf($entry)->content['shared']['template_override'])->toBe('grid-news');
+
+        // The restore writes the old content back, which has no layout: the live one becomes none.
+        app(RestoreEntryRevision::class)->handle($revision, $publisher);
+        $entry = $entry->fresh();
+        expect($entry->template_override)->toBeNull();
+
+        $change = app(SaveEntryDraft::class)->handle($entry, $author, 'vi', ['title' => 'Bản nháp hai']);
+        expect($change->content['shared']['template_override'])->toBeNull();
+
+        app(ApplyEntryDraft::class)->handle($entry, $publisher, $change->version());
+
+        expect($entry->fresh()->translationFor('vi')->title)->toBe('Bản nháp hai')
+            ->and($entry->fresh()->template_override)->toBeNull();
+    });
 });
 
 it('refuses a new layout of the wrong role when a change is saved or applied, and only that', function (): void {

@@ -47,13 +47,18 @@ final readonly class JobPosting
             $description = $this->firstParagraph($translation->body);
         }
 
+        // Google requires the description: without one the page carries no JobPosting at all.
+        if ($description === '') {
+            return ['state' => $state, 'ld' => null];
+        }
+
         return [
             'state' => $state,
             'ld' => array_filter([
                 '@context' => 'https://schema.org',
                 '@type' => 'JobPosting',
                 'title' => $translation->title,
-                'description' => $description !== '' ? $description : null,
+                'description' => $description,
                 'datePosted' => $post->published_at?->toIso8601String(),
                 'validThrough' => $deadline?->endOfDay()->toIso8601String(),
                 'url' => $url,
@@ -89,7 +94,7 @@ final readonly class JobPosting
 
     /**
      * The first non-empty paragraph of the body as plain text of at most 300 characters: a
-     * formatted body (one `html` block) gives its first <p>, a text block its first paragraph.
+     * formatted body (one `richtext_html` block) gives its first <p>, a text block its first paragraph.
      */
     private function firstParagraph(mixed $body): string
     {
@@ -100,7 +105,7 @@ final readonly class JobPosting
             }
             $candidates = match ($block['type'] ?? null) {
                 'richtext' => is_array($block['props']['paragraphs'] ?? null) ? $block['props']['paragraphs'] : [],
-                'html' => preg_match_all('~<p\b[^>]*>(.*?)</p>~is', $this->text($block['props']['html'] ?? null), $found) > 0 ? $found[1] : [],
+                'richtext_html' => preg_match_all('~<p\b[^>]*>(.*?)</p>~is', $this->text($block['props']['html'] ?? null), $found) > 0 ? $found[1] : [],
                 default => [],
             };
             foreach ($candidates as $candidate) {

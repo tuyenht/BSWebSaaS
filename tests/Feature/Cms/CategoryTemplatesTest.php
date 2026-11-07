@@ -140,7 +140,8 @@ it('reads the chain from this site only, even when a parent id points into anoth
     foreach ($chains as $entry) {
         expect(preg_match_all('/\bt\.site_id = \?/', (string) $entry['query']))->toBe(1)
             ->and(preg_match_all('/\bup\.site_id = \?/', (string) $entry['query']))->toBe(1)
-            ->and(array_values(array_filter($entry['bindings'], fn (mixed $binding): bool => $binding === test()->siteId)))->toHaveCount(2);
+            ->and($entry['bindings'][0])->toBe(test()->siteId)
+            ->and($entry['bindings'][2])->toBe(test()->siteId);
     }
 
     expect($resolved)->toBe([null, null])
