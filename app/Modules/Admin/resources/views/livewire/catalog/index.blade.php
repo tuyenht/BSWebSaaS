@@ -258,36 +258,38 @@
                         $quickEdit = $canManage && ! $trashed && $t !== null;
                         $slugLeaf = $t?->slug;
                         $slugPrefix = ($path !== null && $slugLeaf) ? \Illuminate\Support\Str::beforeLast($path, $slugLeaf) : '/';
+                        // the row is drawn anew when its name or address changes, so the open-edit state never holds the old text
+                        $rowKey = 'product-'.$product->ulid.'-'.substr(md5($name.'|'.($slugLeaf ?? '')), 0, 8);
                         $rowX = $quickEdit ? strtr(<<<'JS'
 {
                                 ulid: @ULID@,
                                 editing: false, value: @NAME@, orig: @NAME@, err: '',
                                 slugEditing: false, slugValue: @SLUG@, slugOrig: @SLUG@, slugErr: '',
-                                cancel: false, byKey: false, busy: false,
+                                cancel: false, byKey: false, busy: false, from: '.list-qe',
                                 init() {
-                                    this.$el.addEventListener('list-quick-edit', () => { this.editing = true; this.cancel = false; this.err = '' })
-                                    this.$el.addEventListener('list-slug-edit', () => { this.slugEditing = true; this.cancel = false; this.slugErr = ''; this.$nextTick(() => { this.$refs.slugInput.focus(); this.$refs.slugInput.select() }) })
+                                    this.$el.addEventListener('list-quick-edit', () => { this.from = '.list-qe'; this.editing = true; this.cancel = false; this.err = '' })
+                                    this.$el.addEventListener('list-slug-edit', () => { this.from = '.list-more [aria-haspopup]'; this.slugEditing = true; this.cancel = false; this.slugErr = ''; this.$nextTick(() => { this.$refs.slugInput.focus(); this.$refs.slugInput.select() }) })
                                 },
-                                back(sel) { if (this.byKey) { this.$nextTick(() => this.$root.querySelector(sel)?.focus()) } this.byKey = false },
+                                back() { if (this.byKey) { const ulid = this.ulid, from = this.from; this.$nextTick(() => { const row = document.querySelector('[data-row-ulid=' + JSON.stringify(ulid) + ']'); const shown = (el) => el && el.getClientRects().length > 0; const to = [from, '.list-name', '.list-qe'].map((q) => row?.querySelector(q)).find(shown); to?.focus() }) } this.byKey = false },
                                 async saveName() {
                                     if (this.busy) { return }
-                                    if (this.cancel || this.value.trim() === this.orig) { this.value = this.orig; this.err = ''; this.editing = false; this.cancel = false; this.back('.list-qe'); return }
+                                    if (this.cancel || this.value.trim() === this.orig) { this.value = this.orig; this.err = ''; this.editing = false; this.cancel = false; this.back(); return }
                                     this.busy = true
                                     const r = await $wire.saveName(this.ulid, this.value)
                                     this.busy = false
-                                    if (r.ok) { this.orig = this.value = r.name; this.err = ''; this.editing = false; this.back('.list-qe'); return }
+                                    if (r.ok) { this.orig = this.value = r.name; this.err = ''; this.editing = false; this.back(); return }
                                     if (r.keep) { this.err = r.error; this.$nextTick(() => this.$refs.nameInput.focus()); return }
-                                    this.value = r.name || this.orig; this.err = ''; this.editing = false; this.back('.list-qe')
+                                    this.value = r.name || this.orig; this.err = ''; this.editing = false; this.back()
                                 },
                                 async saveSlug() {
                                     if (this.busy) { return }
-                                    if (this.cancel || this.slugValue.trim() === this.slugOrig) { this.slugValue = this.slugOrig; this.slugErr = ''; this.slugEditing = false; this.cancel = false; this.back('.list-slug-btn'); return }
+                                    if (this.cancel || this.slugValue.trim() === this.slugOrig) { this.slugValue = this.slugOrig; this.slugErr = ''; this.slugEditing = false; this.cancel = false; this.back(); return }
                                     this.busy = true
                                     const r = await $wire.saveSlug(this.ulid, this.slugValue)
                                     this.busy = false
-                                    if (r.ok) { this.slugOrig = this.slugValue = r.slug; this.slugErr = ''; this.slugEditing = false; this.back('.list-slug-btn'); return }
-                                    if (r.keep) { this.slugErr = r.error; this.$nextTick(() => this.$refs.slugInput.focus()); return }
-                                    this.slugValue = this.slugOrig; this.slugErr = ''; this.slugEditing = false
+                                    if (r.ok) { this.slugOrig = this.slugValue = r.slug; this.slugErr = ''; this.slugEditing = false; this.back(); return }
+                                    if (r.keep) { this.slugErr = r.error; if (r.slug) { this.slugValue = r.slug } this.$nextTick(() => this.$refs.slugInput.focus()); return }
+                                    this.slugValue = this.slugOrig; this.slugErr = ''; this.slugEditing = false; this.back()
                                 }
                             }
 JS, ['@ULID@' => (string) Js::from($product->ulid), '@NAME@' => (string) Js::from($name), '@SLUG@' => (string) Js::from($slugLeaf ?? '')]) : '{}';
@@ -314,7 +316,7 @@ JS, ['@ULID@' => (string) Js::from($product->ulid), '@NAME@' => (string) Js::fro
                         $whenTitle = $stampText === null ? null : ($trashed ? __('catalog.trashed_at_title', ['date' => $stampText]) : __('catalog.updated_full', ['date' => $stampText]));
                         $whenCard = $trashed || $stamp === null ? $whenText : $editedShort($stamp);
                     @endphp
-                    <x-bs-admin::list.row wire:key="product-{{ $product->ulid }}" x-data="{{ $rowX }}">
+                    <x-bs-admin::list.row wire:key="{{ $rowKey }}" data-row-ulid="{{ $product->ulid }}" x-data="{{ $rowX }}">
                         <x-bs-admin::list.cell col="main">
                             <div class="flex items-start gap-3">
                                 @if ($thumbnail !== null)
@@ -346,7 +348,7 @@ JS, ['@ULID@' => (string) Js::from($product->ulid), '@NAME@' => (string) Js::fro
                                             <span class="list-m inline-flex items-center gap-1" data-for="slug" x-show="vSlug{{ $quickEdit ? ' && ! slugEditing' : '' }}">
                                                 @if ($quickEdit)
                                                     <button type="button" class="list-path list-slug-btn font-mono [overflow-wrap:anywhere]" title="{{ __('catalog.slug_edit_hint', ['url' => $fullUrl]) }}"
-                                                        x-on:click="slugEditing = true; cancel = false; slugErr = ''; $nextTick(() => { $refs.slugInput.focus(); $refs.slugInput.select() })">{{ $path }}</button>
+                                                        x-on:click="from = '.list-slug-btn'; slugEditing = true; cancel = false; slugErr = ''; $nextTick(() => { $refs.slugInput.focus(); $refs.slugInput.select() })">{{ $path }}</button>
                                                 @else
                                                     <span class="font-mono [overflow-wrap:anywhere]" title="{{ $path }}">{{ $path }}</span>
                                                 @endif

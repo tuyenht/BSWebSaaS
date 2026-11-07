@@ -304,7 +304,14 @@ it('refuses a product in the Trash and draws the quick edits only for a manager 
 
         $static = Livewire::actingAs($viewer->fresh())->test(Index::class)->html();
         expect($static)->not->toContain(__('catalog.name_input_label'))->not->toContain(__('catalog.slug_edit_action'));
-        expect($live->fresh())->not->toBeNull();
+        expect(Product::onlyTrashed()->find($trashed->id)->translations()->value('name'))->toBe('Đã xóa');
+
+        // the Trash view draws its rows without any quick edit control
+        $trash = Livewire::actingAs($manager)->test(Index::class)->set('tab', 'trash')->html();
+        expect($trash)->toContain('Đã xóa')
+            ->not->toContain(__('catalog.name_input_label'))->not->toContain(__('catalog.slug_input_label'))->not->toContain(__('catalog.slug_edit_action'))
+            ->not->toContain(e(__('catalog.quick_edit_named', ['name' => 'Đã xóa'])));
+        expect($live->fresh()->translations()->value('name'))->toBe('Đĩa phay mặt');
     });
 });
 
@@ -318,5 +325,76 @@ it('applies the name rule and the address rule the same way outside the list', f
         expect(app(ChangeProductSlug::class)->clean('Ổ trục Đặc biệt', 'vi'))->toBe('o-truc-dac-biet')
             ->and(app(ChangeProductSlug::class)->otherProduct('DAO-PHAY-MAT', 'vi', $product->id))->toBeNull()
             ->and(app(ChangeProductSlug::class)->otherProduct('DAO-PHAY-MAT', 'vi', null))->not->toBeNull();
+    });
+});
+
+it('refuses an address the application itself answers on, with the reserved-path words', function (): void {
+    $manager = qeManager();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        $product = qeProduct();
+
+        Livewire::actingAs($manager)->test(Index::class)->call('saveSlug', $product->ulid, 'Login')
+            ->assertReturned(fn (array $r): bool => $r['ok'] === false && $r['keep'] === true && $r['slug'] === 'login' && $r['error'] === __('catalog.slug_owner_page', ['slug' => 'login']));
+        expect(qeSlugOf($product))->toBe('dao-phay-mat');
+    });
+});
+
+it('turns a route written by another request at the last instant into the plain conflict message', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $product = qeProduct('Đĩa phay mặt', 'dao-phay-mat', 'published');
+        app(RouteSync::class)->syncProduct($product->id, null, 'vi', 'dao-phay-mat');
+        $other = qeProduct('Sản phẩm khác', 'san-pham-khac', 'published');
+
+        // the check has passed; before the route moves, another request takes the same path
+        $armed = true;
+        DB::beforeExecuting(function (string $query) use (&$armed, $other): void {
+            if ($armed && str_starts_with($query, 'update "routes"')) {
+                $armed = false;
+                SiteRoute::query()->create(['locale' => 'vi', 'path' => '/dao-phay-cnc', 'product_id' => $other->id]);
+            }
+        });
+
+        $refused = null;
+        try {
+            app(ChangeProductSlug::class)->handle($product, 'dao-phay-cnc', 'vi');
+        } catch (ProductEditRefused $e) {
+            $refused = $e->getMessage();
+        }
+
+        expect($refused)->toBe(__('catalog.slug_conflict'))
+            ->and(qeSlugOf($product))->toBe('dao-phay-mat')
+            ->and(SiteRoute::query()->where('product_id', $product->id)->value('path'))->toBe('/dao-phay-mat');
+    });
+});
+
+it('shows the cleaned address on a refusal and treats a name of control characters only as empty', function (): void {
+    $manager = qeManager();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        $product = qeProduct();
+        qeProduct('Mũi khoan thép gió', 'mui-khoan');
+        $test = Livewire::actingAs($manager)->test(Index::class);
+
+        $test->call('saveSlug', $product->ulid, '  Mũi Khoan ')
+            ->assertReturned(fn (array $r): bool => $r['ok'] === false && $r['keep'] === true && $r['slug'] === 'mui-khoan');
+
+        $test->call('saveName', $product->ulid, "\u{0001}\u{0007} ")
+            ->assertReturned(fn (array $r): bool => $r['ok'] === false && $r['keep'] === false && $r['name'] === 'Đĩa phay mặt');
+        expect($test->get('toastMsg'))->toBe(__('catalog.name_required'));
+    });
+});
+
+it('cannot undo an address change once the product went to the Trash', function (): void {
+    $manager = qeManager();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        $product = qeProduct();
+        $test = Livewire::actingAs($manager)->test(Index::class)->call('saveSlug', $product->ulid, 'dao-phay-moi');
+        $product->delete();
+
+        $test->call('undoLast');
+        expect($test->get('toastMsg'))->toBe(__('catalog.undo_gone'))
+            ->and(Product::onlyTrashed()->find($product->id)->translations()->value('slug'))->toBe('dao-phay-moi');
     });
 });

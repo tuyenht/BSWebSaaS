@@ -7,6 +7,7 @@ namespace App\Modules\Catalog\Actions;
 use App\Modules\Catalog\Exceptions\ProductEditRefused;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
+use App\Modules\Catalog\Support\AppRoutePaths;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
@@ -16,6 +17,8 @@ use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Shared\Support\PlainText;
 use App\Modules\Shared\Support\Slugger;
+use App\Modules\Tenancy\Context\CurrentSite;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -77,6 +80,12 @@ final class ChangeProductSlug
         }
 
         $path = app(PathBuilder::class)->forProduct($category, $slug, $locale);
+
+        // A flat address is one path segment: the application's own paths (login, admin…) answer first.
+        if ($path === '/'.$slug && app(AppRoutePaths::class)->owns($slug)) {
+            return __('catalog.slug_owner_page', ['slug' => $slug]);
+        }
+
         $route = app(RouteSync::class)->foreignRoute($locale, $path, 'product_id', $ownId ?? 0);
         if (! $route instanceof SiteRoute) {
             return null;
@@ -91,6 +100,16 @@ final class ChangeProductSlug
 
         // a page of the website, or another product's path
         return __('catalog.slug_owner_page', ['slug' => $slug]);
+    }
+
+    /**
+     * Serialize every claim on one address of one language until the surrounding transaction ends,
+     * so two requests cannot both pass the "is it free" check for the same address. Call it inside
+     * the transaction, before the check.
+     */
+    public function lock(string $slug, string $locale): void
+    {
+        DB::select('select pg_advisory_xact_lock(hashtextextended(?, 0))', ['product_slug:'.app(CurrentSite::class)->id().':'.$locale.':'.mb_strtolower($slug)]);
     }
 
     /**
@@ -116,6 +135,7 @@ final class ChangeProductSlug
 
         $redirected = false;
         DB::transaction(function () use ($product, $translation, $slug, $locale, &$redirected): void {
+            $this->lock($slug, $locale);
             $category = $product->primaryCategory();
             $why = $this->refusal($slug, $locale, $product->id, $category);
             if ($why !== null) {
@@ -131,7 +151,7 @@ final class ChangeProductSlug
             $before = SiteRoute::query()->where('product_id', $product->id)->where('locale', $locale)->value('path');
             try {
                 $after = app(RouteSync::class)->syncProduct($product->id, $category, $locale, $slug);
-            } catch (RouteConflictException) {
+            } catch (RouteConflictException|UniqueConstraintViolationException) {
                 throw new ProductEditRefused(__('catalog.slug_conflict'));
             }
             $redirected = is_string($before) && $before !== $after

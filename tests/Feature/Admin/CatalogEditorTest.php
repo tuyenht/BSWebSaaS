@@ -2,6 +2,8 @@
 
 use App\Modules\Admin\Livewire\Catalog\Editor;
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
+use App\Modules\Cms\Data\TaxonomyData;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
@@ -624,5 +626,23 @@ it('refuses a link another product holds in this language, with the same message
             ->assertHasNoErrors();
 
         expect(Product::query()->count())->toBe(4);
+    });
+});
+
+it('refuses a draft link that a category route already owns, in the category\'s words', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage']);
+        $category = app(CreateTaxonomy::class)
+            ->handle('product_cat', null, new TaxonomyData(names: ['vi' => 'Đồ cắt'], slugs: ['vi' => 'dao-cat']));
+        expect($category->id)->toBeInt();
+
+        $test = Livewire::actingAs($editor->fresh())->test(Editor::class)
+            ->set('name', 'Dao cắt')->set('slug', 'dao-cat')->set('status', 'draft')->call('save')
+            ->assertHasErrors(['slug']);
+
+        expect($test->errors()->get('slug'))->toBe([__('catalog.slug_owner_category', ['slug' => 'dao-cat', 'name' => 'Đồ cắt'])])
+            ->and(Product::query()->count())->toBe(0);
     });
 });

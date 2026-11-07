@@ -24,6 +24,7 @@ use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Rbac\Support\RoleLabel;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Shared\Support\PlainText;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\SiteLocale;
@@ -481,7 +482,7 @@ final class Index extends Component
         try {
             $name = app(RenameProduct::class)->handle($product, $value, $locale);
         } catch (ProductEditRefused $refused) {
-            if (trim($value) === '') {
+            if (trim(PlainText::line($value)) === '') {
                 $this->say($refused->getMessage(), 'info');
 
                 return ['ok' => false, 'keep' => false, 'name' => $before, 'error' => ''];
@@ -516,7 +517,14 @@ final class Index extends Component
         try {
             $change = app(ChangeProductSlug::class)->handle($product, mb_substr($value, 0, 5000), $locale);
         } catch (ProductEditRefused $refused) {
-            return ['ok' => false, 'keep' => true, 'slug' => '', 'error' => $refused->getMessage()];
+            // the field shows the address as it was cleaned (what the member typed, made plain), not the raw text
+            try {
+                $cleaned = app(ChangeProductSlug::class)->clean($value, $locale);
+            } catch (ProductEditRefused) {
+                $cleaned = '';
+            }
+
+            return ['ok' => false, 'keep' => true, 'slug' => $cleaned, 'error' => $refused->getMessage()];
         }
 
         if ($change['changed']) {

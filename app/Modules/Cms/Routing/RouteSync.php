@@ -192,6 +192,7 @@ final readonly class RouteSync
             ->where(function (Builder $query) use ($ownColumn, $ownId): void {
                 $query->whereNull($ownColumn)->orWhere($ownColumn, '!=', $ownId);
             })
+            ->select(['id', 'taxonomy_id'])
             ->first();
     }
 

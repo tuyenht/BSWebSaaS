@@ -6,6 +6,8 @@ use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Catalog\Actions\ChangeProductSlug;
 use App\Modules\Catalog\Actions\ChangeProductStatus;
+use App\Modules\Catalog\Actions\RenameProduct;
+use App\Modules\Catalog\Exceptions\ProductEditRefused;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Cms\Exceptions\RouteConflictException;
@@ -19,6 +21,7 @@ use App\Modules\Shared\Support\PlainText;
 use App\Modules\Shared\Support\RichTextSanitizer;
 use App\Modules\Shared\Support\Slugger;
 use App\Modules\Tenancy\Context\SiteLocale;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -160,7 +163,7 @@ final class Editor extends Component
 
         try {
             $product = DB::transaction(fn (): Product => $this->persist());
-        } catch (RouteConflictException) {
+        } catch (RouteConflictException|UniqueConstraintViolationException) {
             if ($wasNew) {
                 // Rolled back: the form is still a create form.
                 $this->ulid = null;
@@ -248,7 +251,7 @@ final class Editor extends Component
         }
 
         return [
-            'name' => ['required', 'string', 'max:200'],
+            'name' => ['required', 'string', $this->nameIsValid(...)],
             'slug' => ['required', 'string', 'max:200', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $this->slugIsFree(...)],
             'description' => ['nullable', 'string'],
             'summary' => ['nullable', 'string'],
@@ -284,6 +287,24 @@ final class Editor extends Component
     }
 
     /**
+     * The name rule of the products list, in one place (RenameProduct): at most its length, one line.
+     *
+     * @param  \Closure(string): mixed  $fail
+     */
+    private function nameIsValid(string $attribute, mixed $value, \Closure $fail): void
+    {
+        if (! is_string($value)) {
+            return;
+        }
+
+        try {
+            app(RenameProduct::class)->clean($value);
+        } catch (ProductEditRefused $refused) {
+            $fail($refused->getMessage());
+        }
+    }
+
+    /**
      * No other product of this site holds the slug in this language. Rule::unique would send
      * `slug = ?`, a citext comparison RLS keeps out of the index (no citext operator is leakproof),
      * so it read every product link of the language; as text against the lower-cased value it is
@@ -297,10 +318,19 @@ final class Editor extends Component
             return;
         }
 
-        $taken = app(ChangeProductSlug::class)->otherProduct($value, $this->locale, $this->productId) !== null;
+        $action = app(ChangeProductSlug::class);
 
-        if ($taken) {
+        // Another product keeps its own message; any other holder (category, page, the application's
+        // own path) is said in the words every screen uses.
+        if ($action->otherProduct($value, $this->locale, $this->productId) !== null) {
             $fail(__('catalog.slug_taken'));
+
+            return;
+        }
+
+        $why = $action->refusal($value, $this->locale, $this->productId, $this->pickedCategory());
+        if ($why !== null) {
+            $fail($why);
         }
     }
 
@@ -407,6 +437,8 @@ final class Editor extends Component
         $this->imageMediaIds = $this->normalizeIds($this->imageMediaIds);
 
         $filled = $this->fillBlankSlug();
+        // Two saves of the same address wait for each other: the second sees the first one's row.
+        app(ChangeProductSlug::class)->lock($this->slug, $this->locale);
         try {
             $this->validate();
         } catch (ValidationException $e) {
