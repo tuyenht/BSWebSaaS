@@ -12,6 +12,7 @@ use App\Modules\Shared\Support\RichTextSanitizer;
 use App\Modules\Shared\Support\SafeLink;
 use App\Modules\Theme\Chrome\StorefrontChrome;
 use App\Modules\Theme\Components\ComponentRegistry;
+use App\Modules\Theme\Rendering\TemplateCatalog;
 use App\Modules\Theme\Theming\ThemeResolver;
 use Illuminate\Support\Facades\Validator;
 
@@ -430,13 +431,19 @@ final readonly class PackValidator
         }
         foreach (['list_template', 'detail_template'] as $field) {
             $template = $item->data[$field] ?? null;
-            if ($template !== null && (! is_string($template) || ! TaxonomyRules::template($template))) {
+            if ($template === null || $template === TemplateCatalog::PARENT) {
+                continue;
+            }
+            $postDetail = $field === 'detail_template' && $chain['vocabulary'] !== 'product_cat';
+            if (! is_string($template) || ! TaxonomyRules::template($template)) {
                 $errors[] = "{$item->key}: {$field} is not a layout name.";
-            } elseif ($field === 'detail_template' && $chain['vocabulary'] !== 'product_cat' && is_string($template) && ! TaxonomyRules::postDetailTemplate($template)) {
-                // Only the post route reads it, and only these layouts render a post (the list layouts expect
+            } elseif ($field === 'list_template' && ! TaxonomyRules::listTemplate($template, $chain['vocabulary'])) {
+                $errors[] = "{$item->key}: list_template must be a list layout that fits this kind of category ({$template} does not), or @parent.";
+            } elseif ($postDetail && ! TaxonomyRules::postDetailTemplate($template)) {
+                // Only the post route reads it, and only post layouts render a post (the list layouts expect
                 // a page of cards; the product layout expects a product). A product category's detail layout
                 // is read nowhere today, so it keeps any theme layout (same as CreateTaxonomy/UpdateTaxonomy).
-                $errors[] = "{$item->key}: detail_template must be a post layout (post or project).";
+                $errors[] = "{$item->key}: detail_template must be a post layout, or @parent.";
             }
         }
     }

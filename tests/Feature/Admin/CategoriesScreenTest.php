@@ -705,7 +705,7 @@ it('offers only the layouts that can render a post as the detail layout of a pos
     preg_match('/"detailLayouts":(\[[^\]]*\])/', $html, $found);
     $detail = json_decode($found[1] ?? '[]', true);
 
-    expect($detail)->toBe(['post', 'project'])
+    expect($detail)->toBe(['job', 'post', 'project'])
         ->and($html)->toContain('"layouts":["category"');
 });
 

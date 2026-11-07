@@ -114,7 +114,7 @@ final readonly class SaveEntryDraft
             );
 
             $sharedNow['primary_category_id'] = $this->category($entry, $actor, $sharedNow['primary_category_id'] ?? null);
-            $readable = $this->writer->read(['v' => RecordEntryRevision::FORMAT] + $sharedNow + $textNow)
+            $readable = $this->writer->read(['v' => RecordEntryRevision::FORMAT] + $sharedNow + $textNow, $entry->type)
                 ?? throw new EntryDraftRejectedException('content_invalid');
             // Stored as the editor stores a body: each block's type and props, nothing else.
             $textNow['body'] = ['blocks' => $readable['blocks']];

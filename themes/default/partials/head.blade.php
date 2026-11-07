@@ -147,6 +147,13 @@
     @endphp
     <script type="application/ld+json">{!! $productJson !!}</script>
 @endif
+@if (! empty($jobLd))
+    @php
+        // JobPosting for a post on a job layout (built by StorefrontController::render), printed like the product's.
+        $jobJson = json_encode($jobLd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG);
+    @endphp
+    <script type="application/ld+json">{!! $jobJson !!}</script>
+@endif
 
 @if (! empty($breadcrumb))
     @php

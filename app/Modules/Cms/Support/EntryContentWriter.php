@@ -13,8 +13,8 @@ use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Media\Models\Media;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SchemaImages;
+use App\Modules\Theme\Rendering\TemplateCatalog;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\View;
 
 /**
  * Writes one language's content, in the shape RecordEntryRevision::snapshot takes it, onto an entry
@@ -55,7 +55,7 @@ final readonly class EntryContentWriter
      * @param  array<array-key, mixed>  $snapshot
      * @return EntryContent|null
      */
-    public function read(array $snapshot): ?array
+    public function read(array $snapshot, ?string $entryType = null): ?array
     {
         $body = $snapshot['body'] ?? null;
         $blocks = is_array($body) ? ($body['blocks'] ?? []) : null;
@@ -74,9 +74,10 @@ final readonly class EntryContentWriter
             $strings[$key] = $value;
         }
 
-        // A template names a layout view: one that does not exist would break the live page.
+        // A template names a layout the theme lists for this kind of page: one that does not exist
+        // would break the live page, and one of another role (a list layout on a post) renders wrongly.
         $template = $strings['template_override'];
-        if ($template !== null && (preg_match('/^[a-z0-9_-]+$/', $template) !== 1 || ! View::exists("theme::layouts.{$template}"))) {
+        if ($template !== null && ! $this->templateFits($template, $entryType)) {
             return null;
         }
 
@@ -117,6 +118,21 @@ final readonly class EntryContentWriter
             'cover_media_id' => $ids['cover_media_id'],
             'meta' => $meta,
         ];
+    }
+
+    /**
+     * Whether an entry's own layout is acceptable: in the theme's template list and, when the entry's
+     * type is known, of that type's role (a post takes post layouts, a page takes page layouts).
+     */
+    private function templateFits(string $template, ?string $entryType): bool
+    {
+        if ($entryType === null) {
+            return in_array($template, TemplateCatalog::names(TemplateCatalog::ROLE_POST), true)
+                || in_array($template, TemplateCatalog::names(TemplateCatalog::ROLE_PAGE), true);
+        }
+        $role = TemplateCatalog::roleOfEntry($entryType);
+
+        return $role !== null && TemplateCatalog::fits($template, $role);
     }
 
     /**

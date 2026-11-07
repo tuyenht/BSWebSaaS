@@ -76,6 +76,24 @@
    "was": [
     "dich-vu"
    ]
+  },
+  {
+   "key": "tax:post_cat/tin-tuyen-dung",
+   "name": {
+    "vi": "Tuyển dụng"
+   },
+   "list_template": "grid-job",
+   "detail_template": "job"
+  },
+  {
+   "key": "tax:post_cat/tin-tuyen-dung/ha-noi",
+   "parent": "tax:post_cat/tin-tuyen-dung",
+   "name": {
+    "vi": "Việc làm tại Hà Nội"
+   },
+   "list_template": "@parent",
+   "detail_template": "@parent",
+   "position": 1
   }
  ]
 }

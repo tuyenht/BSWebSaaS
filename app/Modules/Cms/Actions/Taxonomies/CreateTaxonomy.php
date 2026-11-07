@@ -58,8 +58,8 @@ final readonly class CreateTaxonomy
         if (! isset($translations[$this->siteLocales->default()])) {
             throw new TaxonomyChangeRejectedException('name_invalid');
         }
-        $listTemplate = $this->template($data->listTemplate);
-        $detailTemplate = $this->template($data->detailTemplate, $vocabulary !== 'product_cat');
+        $listTemplate = $this->listTemplate($data->listTemplate, $vocabulary);
+        $detailTemplate = $this->detailTemplate($data->detailTemplate, $vocabulary);
 
         return DB::transaction(function () use ($vocabulary, $parent, $translations, $listTemplate, $detailTemplate, $data): Taxonomy {
             $this->lockTree($this->site->id());

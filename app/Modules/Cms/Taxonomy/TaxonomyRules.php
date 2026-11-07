@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Cms\Taxonomy;
 
 use App\Modules\Shared\Support\Slugger;
+use App\Modules\Theme\Rendering\TemplateCatalog;
 use Illuminate\Support\Facades\View;
 
 /**
@@ -40,7 +41,7 @@ final class TaxonomyRules
     /** A vocabulary key: post_cat, product_cat, sector, tag… */
     public const string VOCABULARY_PATTERN = '/\A[a-z][a-z0-9_]{0,31}\z/';
 
-    /** A theme layout name (theme::layouts.{name}); never a path. */
+    /** A theme layout name (theme::layouts.{name}); never a path, and never the reserved TemplateCatalog::PARENT. */
     public const string TEMPLATE_PATTERN = '/\A[a-z0-9][a-z0-9_-]{0,63}\z/';
 
     /** The name to store — trimmed, 1–NAME_MAX characters — or null when it is not acceptable. */
@@ -110,18 +111,26 @@ final class TaxonomyRules
      */
     public static function template(string $template): bool
     {
-        return preg_match(self::TEMPLATE_PATTERN, $template) === 1 && View::exists('theme::layouts.'.$template);
+        return $template !== TemplateCatalog::PARENT && preg_match(self::TEMPLATE_PATTERN, $template) === 1 && View::exists('theme::layouts.'.$template);
     }
 
-    /** Only these layouts render a post: the list layouts expect a page of cards and the product layout a product. */
-    public const array POST_DETAIL_TEMPLATES = ['post', 'project'];
+    /**
+     * Whether a category of this vocabulary may take this layout for its list page: it must be a
+     * list layout of the theme's template list that fits the kind of category.
+     */
+    public static function listTemplate(string $template, string $vocabulary): bool
+    {
+        return TemplateCatalog::fits($template, TemplateCatalog::ROLE_LIST, TemplateCatalog::kindOf($vocabulary));
+    }
 
     /**
-     * Whether a post category may take this layout for its posts' detail page (it must also exist in the theme).
-     * Product categories are not bound by it: their detail layout is read nowhere today, so the callers skip this rule for them.
+     * Whether a post category may take this layout for its posts' detail page: only post layouts
+     * render a post (the list layouts expect a page of cards and the product layout a product).
+     * Product categories are not bound by it: their detail layout is read nowhere today, so the
+     * callers skip this rule for them.
      */
     public static function postDetailTemplate(string $template): bool
     {
-        return in_array($template, self::POST_DETAIL_TEMPLATES, true) && self::template($template);
+        return TemplateCatalog::fits($template, TemplateCatalog::ROLE_POST, TemplateCatalog::KIND_POST);
     }
 }

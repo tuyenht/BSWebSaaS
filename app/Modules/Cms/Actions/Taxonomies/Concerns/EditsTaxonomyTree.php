@@ -15,6 +15,7 @@ use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Theme\Rendering\TemplateCatalog;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -179,18 +180,35 @@ trait EditsTaxonomyTree
     }
 
     /**
-     * A theme layout name, null for the theme's default.
+     * The list layout to save: a list layout of the theme that fits this kind of category,
+     * TemplateCatalog::PARENT (follow the category above), or null for the theme's default.
      *
      * @throws TaxonomyChangeRejectedException
      */
-    private function template(?string $template, bool $postDetail = false): ?string
+    private function listTemplate(?string $template, string $vocabulary): ?string
     {
         $template = trim((string) $template);
-        if ($template === '') {
-            return null;
+        if ($template === '' || $template === TemplateCatalog::PARENT) {
+            return $template === '' ? null : $template;
         }
 
-        $allowed = $postDetail ? TaxonomyRules::postDetailTemplate($template) : TaxonomyRules::template($template);
+        return TaxonomyRules::listTemplate($template, $vocabulary) ? $template : throw new TaxonomyChangeRejectedException('template_invalid');
+    }
+
+    /**
+     * The detail layout to save: for a post category a post layout of the theme, for a product
+     * category any theme layout (read nowhere today), TemplateCatalog::PARENT, or null.
+     *
+     * @throws TaxonomyChangeRejectedException
+     */
+    private function detailTemplate(?string $template, string $vocabulary): ?string
+    {
+        $template = trim((string) $template);
+        if ($template === '' || $template === TemplateCatalog::PARENT) {
+            return $template === '' ? null : $template;
+        }
+
+        $allowed = $vocabulary === 'product_cat' ? TaxonomyRules::template($template) : TaxonomyRules::postDetailTemplate($template);
 
         return $allowed ? $template : throw new TaxonomyChangeRejectedException('template_invalid');
     }
