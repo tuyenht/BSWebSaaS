@@ -312,6 +312,20 @@ test('dragging a record over its own child marks that row refused, draws no line
     assert.equal(rowOf(grid, 'a1').hasAttribute('data-drop'), false);
 });
 
+test('a refused row loses its red mark when the pointer moves on and when the drag is cancelled', () => {
+    const { tree, grid } = mount([['a', null], ['a1', 'a'], ['b', null]], { async treeMove() { return null; } });
+    stack(grid);
+    tree.dragStart(ev(rowOf(grid, 'a'), 0, 0.5));
+    hover(tree, rowOf(grid, 'a1'), 100, 0.5);
+    assert.equal(rowOf(grid, 'a1').getAttribute('data-drop'), 'bad');
+    hover(tree, rowOf(grid, 'b'), 100, 0.9);
+    assert.equal(rowOf(grid, 'a1').hasAttribute('data-drop'), false, 'cleared on the next target');
+    hover(tree, rowOf(grid, 'a1'), 100, 0.5);
+    tree.dragCancel();
+    assert.equal(rowOf(grid, 'a1').hasAttribute('data-drop'), false, 'cleared on cancel');
+    assert.equal(lineAt().on, false);
+});
+
 test('the line starts where the name of the target level begins', () => {
     const { tree, grid } = mount([['a', null], ['a1', 'a'], ['a2', 'a1'], ['c', null]], { async treeMove() { return null; } });
     rowOf(grid, 'a2').dataset.lv = '3';

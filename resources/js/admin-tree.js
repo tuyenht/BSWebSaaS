@@ -393,7 +393,8 @@ document.addEventListener('alpine:init', () => {
                 }
             },
             // The row a drop would go into is highlighted, red when refused (dragging a record over
-            // its own child included); a gap has its line instead, drawn by the drag rule; nothing is put between the rows, so they stay where they are.
+            // its own child included); a gap has its line instead, drawn by the drag rule; nothing is
+            // put between the rows, so they stay where they are.
             showTarget(T) {
                 if (dropEl) {
                     dropEl.removeAttribute('data-drop');
