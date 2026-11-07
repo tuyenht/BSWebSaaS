@@ -291,3 +291,38 @@ it('never starts the status line with a separator', function (): void {
 
     expect($html)->not->toContain('<span aria-hidden="true">·</span>');
 });
+
+it('indents an option under its parent and offers the rest of a long list on one button', function (): void {
+    $sections = [['key' => 'cat', 'label' => 'Chuyên mục', 'model' => 'catF', 'multiple' => true, 'value' => [], 'options' => [
+        ['value' => 'a', 'label' => 'Dụng cụ', 'depth' => 0],
+        ['value' => 'b', 'label' => 'Dao phay', 'depth' => 1],
+        ['value' => 'c', 'label' => 'Dao cạo', 'depth' => 2],
+    ], 'more' => ['label' => 'Xem thêm 7 chuyên mục', 'call' => "showMore('cat')"]]];
+    $html = (string) $this->blade('<x-bs-admin::filter-panel :sections="$sections" />', ['sections' => $sections]);
+
+    expect($html)->toMatch('/ps-4[^>]*>\s*<input type="checkbox"[^>]*value="a"/')
+        ->and($html)->toMatch('/ps-8[^>]*>\s*<input type="checkbox"[^>]*value="b"/')
+        ->and($html)->toMatch('/ps-12[^>]*>\s*<input type="checkbox"[^>]*value="c"/')
+        ->and($html)->toContain('wire:click="showMore(&#039;cat&#039;)"')->and($html)->toContain('Xem thêm 7 chuyên mục');
+});
+
+it('adds a footer with Bỏ chọn to the section panel only when the section names a reset', function (): void {
+    $make = fn (array $extra): string => (string) $this->blade('<x-bs-admin::filter-panel :sections="$sections" results="Xem 4 sản phẩm" />', ['sections' => [
+        ['key' => 'tag', 'label' => 'Nhãn', 'model' => 'tagF', 'multiple' => true, 'value' => ['featured'], 'options' => [['value' => 'featured', 'label' => 'Nổi bật']]] + $extra,
+    ]]);
+
+    $with = $make(['reset' => "resetFilterGroup('tag')"]);
+    expect($with)->toContain('wire:click="resetFilterGroup(&#039;tag&#039;)"')->and($with)->toContain(__('admin.list.reset_section'))
+        ->and(substr_count($with, 'Xem 4 sản phẩm'))->toBe(2); // the section panel's footer and the sheet's
+    expect(substr_count($make([]), 'Xem 4 sản phẩm'))->toBe(1);
+});
+
+it('puts an icon and a full name on a filter chip when it has them, and names it by its label when not', function (): void {
+    $html = (string) $this->blade('<x-bs-admin::filter-status :chips="$chips" />', ['chips' => [
+        ['label' => 'Nhãn: Nổi bật', 'remove' => 'x', 'icon' => 'ri-price-tag-3', 'aria' => 'Bỏ lọc nhãn “Nổi bật”'],
+        ['label' => 'Tìm: “dao”', 'remove' => 'y'],
+    ]]);
+
+    expect($html)->toContain('aria-label="Bỏ lọc nhãn “Nổi bật”"')->and($html)->toContain('<svg')
+        ->and($html)->toContain(e(__('admin.list.remove_filter', ['name' => 'Tìm: “dao”'])));
+});

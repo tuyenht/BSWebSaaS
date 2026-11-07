@@ -43,14 +43,20 @@ final class ProductListQuery
     private const string NAME_COLLATION = '"vi-VN-x-icu"';
 
     /**
-     * The price a row shows: the sale price while a sale is on (a lower price than the regular one,
-     * inside its dates, an open end counting as always), else the regular price.
+     * A sale is on: a lower price than the regular one, inside its dates, an open end counting as always.
      */
-    private const string SHOWN_PRICE = 'case when products.sale_price is not null and products.price is not null'
+    private const string ON_SALE = 'products.sale_price is not null and products.price is not null'
         .' and products.sale_price < products.price'
         .' and (products.sale_starts_at is null or products.sale_starts_at <= now())'
-        .' and (products.sale_ends_at is null or products.sale_ends_at >= now())'
-        .' then products.sale_price else products.price end';
+        .' and (products.sale_ends_at is null or products.sale_ends_at >= now())';
+
+    private const string ON_SALE_GROUP = '('.self::ON_SALE.')';
+
+    /** How many of the site's languages a product has a translation row in (two bindings: site, languages). */
+    private const string HAVE = '(select count(*) from product_translations tr where tr.site_id = ? and tr.product_id = products.id and tr.locale = any(?::text[]))';
+
+    /** The price a row shows: the sale price while a sale is on, else the regular price. */
+    private const string SHOWN_PRICE = 'case when '.self::ON_SALE.' then products.sale_price else products.price end';
 
     public function __construct(
         private readonly int $siteId,
@@ -58,16 +64,18 @@ final class ProductListQuery
         private readonly string $search,
         private readonly string $locale,
         private readonly int $cap = self::CAP,
+        private readonly ProductListFilter $filter = new ProductListFilter,
     ) {}
 
     /**
-     * The status group and the search.
+     * The status group, the filters and the search.
      *
      * @return Builder<Product>
      */
     public function filtered(): Builder
     {
         $query = $this->scoped($this->tab);
+        $this->applyFilters($query);
         $term = trim($this->search);
         if ($term === '') {
             return $query;
@@ -85,6 +93,132 @@ final class ProductListQuery
                 ->offset(0)));
 
         return $query;
+    }
+
+    /**
+     * The filter groups, all of which must hold; inside a group any value does. Every test reads a
+     * real column (or the product's own rows in a pivot or translation table), never the meta.
+     *
+     * @param  Builder<Product>  $query
+     */
+    private function applyFilters(Builder $query): void
+    {
+        $f = $this->filter;
+        if ($f->categoryIds !== []) {
+            // the main category (position 0) is one of the chosen ones or sits under one of them
+            $query->whereExists(fn (QueryBuilder $filed) => $filed->selectRaw('1')->from('product_taxonomies as pc')
+                ->where('pc.site_id', $this->siteId)
+                ->whereColumn('pc.product_id', 'products.id')
+                ->where('pc.position', 0)
+                ->whereRaw('pc.taxonomy_id = any(?::bigint[])', [self::pgArray($f->categoryIds)]));
+        }
+        if ($f->trans !== [] && count($f->locales) >= 2) {
+            $this->whereTransStates($query, $f->trans, $f->locales);
+        }
+        if ($f->tags !== []) {
+            $query->where(function (Builder $either) use ($f): void {
+                foreach ($f->tags as $tag) {
+                    $either->orWhere($tag === 'featured' ? 'products.is_featured' : 'products.is_bestseller', true);
+                }
+            });
+        }
+        if ($f->stock !== []) {
+            $query->where(function (Builder $either) use ($f): void {
+                foreach ($f->stock as $kind) {
+                    match ($kind) {
+                        'in' => $either->orWhere('products.stock', '>', 0),
+                        'out' => $either->orWhere('products.stock', 0),
+                        default => $either->orWhereNull('products.stock'),
+                    };
+                }
+            });
+        }
+        if ($f->sale) {
+            $query->whereRaw(self::ON_SALE_GROUP);
+        }
+    }
+
+    /**
+     * A product's translation state among the site's languages: every one (full), some (partial),
+     * only one or none (none) — counted per row in the database, by which languages have a row.
+     *
+     * @param  Builder<Product>  $query
+     * @param  list<string>  $states
+     * @param  list<string>  $locales
+     */
+    private function whereTransStates(Builder $query, array $states, array $locales): void
+    {
+        $n = count($locales);
+        $allowed = [];
+        foreach ($states as $state) {
+            $allowed = [...$allowed, ...match ($state) {
+                'full' => [$n],
+                'none' => [0, 1],
+                default => $n > 2 ? range(2, $n - 1) : [],
+            }];
+        }
+        if ($allowed === []) {
+            $query->whereRaw('false');
+
+            return;
+        }
+
+        $query->whereRaw('least('.self::HAVE.', ?) = any(?::int[])',
+            [$this->siteId, self::pgArray($locales), $n, self::pgArray(array_values(array_unique($allowed)))]);
+    }
+
+    /**
+     * The general numbers beside the filter values, in one statement over the live products (up to
+     * cap + 1 of them, so a big website reads "hơn 10.000"): not changed by any other filter or the
+     * group. Also whether any product is on sale at all (an EXISTS that stops at the first one).
+     *
+     * @param  list<string>  $locales  the site's languages; fewer than two leave out the translation states
+     * @return array{tags: array<string, int>, stock: array<string, int>, trans: array<string, int>, saleAny: bool}
+     */
+    public function valueCounts(array $locales, bool $selling): array
+    {
+        $n = count($locales);
+        $withTrans = $n >= 2;
+        $inner = Product::query()->toBase()->select(['products.is_featured', 'products.is_bestseller', 'products.stock'])->limit($this->cap + 1);
+        if ($withTrans) {
+            $inner->selectRaw(self::HAVE.' as have', [$this->siteId, self::pgArray($locales)]);
+        }
+        $inner->orders = null;
+
+        $parts = [
+            'count(*) filter (where live.is_featured) as t_featured',
+            'count(*) filter (where live.is_bestseller) as t_best',
+        ];
+        if ($selling) {
+            $parts[] = 'count(*) filter (where live.stock > 0) as s_in';
+            $parts[] = 'count(*) filter (where live.stock = 0) as s_out';
+            $parts[] = 'count(*) filter (where live.stock is null) as s_none';
+        }
+        if ($withTrans) {
+            $parts[] = "count(*) filter (where live.have >= {$n}) as r_full";
+            $parts[] = "count(*) filter (where live.have > 1 and live.have < {$n}) as r_partial";
+            $parts[] = 'count(*) filter (where live.have <= 1) as r_none';
+        }
+        $bindings = [];
+        $sql = 'select '.implode(', ', $parts);
+        if ($selling) {
+            $sql .= ', exists(select 1 from products where products.site_id = ? and products.deleted_at is null and ('.self::ON_SALE.')) as sale_any';
+            $bindings[] = $this->siteId;
+        }
+        $row = (array) DB::selectOne($sql.' from ('.$inner->toSql().') as live', [...$bindings, ...$inner->getBindings()]);
+
+        return [
+            'tags' => ['featured' => Cast::int($row['t_featured'] ?? 0), 'best' => Cast::int($row['t_best'] ?? 0)],
+            'stock' => $selling ? ['in' => Cast::int($row['s_in'] ?? 0), 'out' => Cast::int($row['s_out'] ?? 0), 'none' => Cast::int($row['s_none'] ?? 0)] : [],
+            'trans' => $withTrans ? ['full' => Cast::int($row['r_full'] ?? 0), 'partial' => Cast::int($row['r_partial'] ?? 0), 'none' => Cast::int($row['r_none'] ?? 0)] : [],
+            'saleAny' => $selling && Cast::bool($row['sale_any'] ?? false),
+        ];
+    }
+
+    /** @param  list<int|string>  $values */
+    private static function pgArray(array $values): string
+    {
+        return '{'.implode(',', array_map(fn (int|string $v): string => is_int($v) ? (string) $v : '"'.addcslashes($v, '"\\').'"', $values)).'}';
     }
 
     /**

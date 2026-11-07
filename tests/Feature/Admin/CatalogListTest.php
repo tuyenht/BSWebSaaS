@@ -346,7 +346,7 @@ it('keeps the columns and cards a member chooses in their own preferences, never
             ->set('card', ['slug', 'nonsense', 'sku']);
 
         $saved = $lan->fresh()->preferences;
-        expect($saved['lists']['catalog'])->toEqual(['cols' => ['cat', 'price'], 'card' => ['sku', 'slug']])
+        expect($saved['lists']['catalog'])->toEqual(['cols' => ['cat', 'price'], 'card' => ['sku', 'slug'], 'cat' => [], 'tr' => [], 'tag' => [], 'stock' => []])
             ->and($saved['theme'])->toBe(['scheme' => 'dark']) // what else the member saved is kept
             ->and($an->fresh()->preferences['lists'] ?? null)->toBeNull();
 
@@ -685,7 +685,7 @@ it('offers the Cột and Hiện trên thẻ menus from the saved choice, with on
             ->assertSeeHtml('get vCat()')->assertSeeHtml('x-show="vSku"');
 
         $test->set('cols', [])->set('card', ['sku']);
-        expect($viewer->fresh()->preferences['lists']['catalog'])->toEqual(['cols' => [], 'card' => ['sku']]);
+        expect($viewer->fresh()->preferences['lists']['catalog'])->toEqual(['cols' => [], 'card' => ['sku'], 'cat' => [], 'tr' => [], 'tag' => [], 'stock' => []]);
         Livewire::actingAs($viewer->fresh())->test(Index::class)->assertSet('cols', [])->assertSet('card', ['sku']);
     });
 });
