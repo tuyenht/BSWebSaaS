@@ -51,6 +51,7 @@ document.addEventListener('alpine:init', () => {
         let queue = null;
         let cur = null; // the key whose name holds the tree's one Tab stop
         let dropEl = null; // the row painted as the drop target
+        let lineBase = null; // the dragged row's name offset and level, for the insertion line
 
         return {
             collapsed: {},
@@ -72,6 +73,7 @@ document.addEventListener('alpine:init', () => {
                     check: (T, k) => this.allow(k, T.parent || null, T.lv),
                     say: (text) => this.say(text),
                     onTarget: (T) => this.showTarget(T),
+                    place: (T) => this.linePlace(T),
                     onExpand: (k) => this.expand(k),
                     texts: t.drag,
                 });
@@ -370,18 +372,17 @@ document.addEventListener('alpine:init', () => {
                     this.note(fill(t.lockedSelf, { name: this.nameOf(k), why: this.lockOf(k) }), true);
                     return;
                 }
-                // The placeholder takes the dragged row's height, so the rows below move by one row.
-                this.$refs.grid.style.setProperty('--tree-phh', Math.round(el.getBoundingClientRect().height) + 'px');
+                // Where a name starts inside the dragged row, and its level: the insertion line of a
+                // gap starts at the name of the level the drop would take.
+                const nameEl = el.querySelector('.tree-nm') || el.querySelector('.tree-tg, .tree-tg0');
+                const rc = el.getBoundingClientRect();
+                lineBase = { nb: nameEl ? nameEl.getBoundingClientRect().left - rc.left : 8, lv: Number(el.dataset.lv) || 1 };
                 this.dragK = k;
                 el.setAttribute('data-drag', '1');
                 dnd.start(e, k, el);
             },
             dragOver(e) {
                 if (!this.dragK) {
-                    return;
-                }
-                if (this.$refs.ph.contains(e.target)) {
-                    dnd.overPh(e, this.shown());
                     return;
                 }
                 const el = e.target.closest ? e.target.closest('[data-tree-row]') : null;
@@ -391,28 +392,33 @@ document.addEventListener('alpine:init', () => {
                     e.preventDefault();
                 }
             },
+            // The row a drop would go into is highlighted, red when refused (dragging a record over
+            // its own child included); a gap has its line instead, drawn by the drag rule; nothing is
+            // put between the rows, so they stay where they are.
             showTarget(T) {
-                const ph = this.$refs.ph;
                 if (dropEl) {
                     dropEl.removeAttribute('data-drop');
                     dropEl = null;
                 }
-                if (T.mode === 'in' && !T.self) {
+                if (T.mode === 'in') {
                     const target = this.row(T.refK);
                     if (target) {
                         target.setAttribute('data-drop', T.bad ? 'bad' : 'in');
                         dropEl = target;
                     }
                 }
+            },
+            // Where the line of a gap goes, in viewport pixels: at the edge of the row it follows,
+            // starting at the name of the level the drop would take and running to the row's end.
+            linePlace(T) {
                 const at = this.row(T.ph.k);
-                if (!at) {
-                    return;
+                if (!at || !lineBase) {
+                    return null;
                 }
-                ph.setAttribute('data-lv', String(Math.max(1, T.lv || 1)));
-                ph.setAttribute('data-bad', T.bad ? '1' : '0');
-                ph.querySelector('[data-tree-ph-text]').textContent = T.label;
-                at.parentNode.insertBefore(ph, T.ph.at === 'before' ? at : at.nextSibling);
-                ph.hidden = false;
+                const rc = at.getBoundingClientRect();
+                const step = parseFloat(getComputedStyle(this.$refs.grid).getPropertyValue('--tree-step')) || 32;
+                const x = rc.left + lineBase.nb + ((T.lv || lineBase.lv) - lineBase.lv) * step;
+                return { x, y: T.ph.at === 'before' ? rc.top : rc.bottom, w: Math.max(step, rc.right - 8 - x) };
             },
             dragDone() {
                 const T = dnd.end();
@@ -442,10 +448,7 @@ document.addEventListener('alpine:init', () => {
                 }
             },
             clearDrag() {
-                const ph = this.$refs.ph;
-                ph.hidden = true;
-                ph.querySelector('[data-tree-ph-text]').textContent = '';
-                this.$refs.grid.appendChild(ph); // back at its place after the rows, as the server drew it
+                lineBase = null;
                 if (dropEl) {
                     dropEl.removeAttribute('data-drop');
                     dropEl = null;
