@@ -798,8 +798,8 @@ it('hides a success message after 6 seconds, an undo after 10, and keeps an erro
     $screen = dsScreen(dsMember(1, 'owner'));
 
     $seq = dsIn(1, fn () => $screen->call('copied', 'target', 'cho.vn'))->get('toastSeq');
-    dsIn(1, fn () => $screen->call('$refresh'))->assertSeeHtml('dismissToast('.$seq.'), 6000) }, destroy() { clearTimeout(this.timer) }');
-    dsIn(1, fn () => $screen->call('switchSpelling', 'tencongty.vn'))->assertSeeHtml('), 10000) }');
+    dsIn(1, fn () => $screen->call('$refresh'))->assertSeeHtml('this.$wire.dismissToast('.$seq.')')->assertSeeHtml('init() { this.arm(6000) }');
+    dsIn(1, fn () => $screen->call('switchSpelling', 'tencongty.vn'))->assertSeeHtml('init() { this.arm(10000) }');
     dsIn(1, fn () => $screen->call('check', 'cho.vn'))->assertSet('toastTone', 'error')->assertDontSeeHtml('setTimeout(');
 
     // The same words again are a new message, with a timer of their own.

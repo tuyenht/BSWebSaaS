@@ -4,6 +4,7 @@ namespace App\Modules\Admin\Livewire\Catalog;
 
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Admin\Support\SeoFields;
+use App\Modules\Catalog\Actions\ChangeProductStatus;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Cms\Exceptions\RouteConflictException;
@@ -11,7 +12,6 @@ use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\PathBuilder;
-use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\PlainText;
@@ -454,14 +454,9 @@ final class Editor extends Component
         $this->syncImages($product);
 
         if ($product->status === 'published') {
-            // First time live: the storefront lists order by this date.
-            if ($product->published_at === null) {
-                $product->forceFill(['published_at' => now()])->save();
-            }
-
             // Drafts and archived products keep whatever address they had — the storefront renders
             // only published ones, so their route rows are harmless and keep old links stable.
-            app(RouteSync::class)->syncProduct($product->id, $product->primaryCategory(), $this->locale, $this->slug);
+            app(ChangeProductStatus::class)->publishEffects($product, $this->locale, $this->slug);
         }
 
         return $product;

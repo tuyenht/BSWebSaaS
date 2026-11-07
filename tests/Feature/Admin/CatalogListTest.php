@@ -368,7 +368,7 @@ it('shows a member who may only view no write control', function (): void {
             ->assertDontSee(__('catalog.create_new'))
             ->assertDontSee(__('catalog.trash_tab'))
             ->assertDontSee(__('catalog.edit_action'))
-            ->assertDontSee(__('catalog.trash_action'));
+            ->assertDontSee(__('catalog.menu_trash'));
 
         // the Trash is for who manages: asking for it shows the whole list instead
         Livewire::withQueryParams(['trash' => '1'])->actingAs($viewer->fresh())->test(Index::class)
@@ -387,7 +387,7 @@ it('lists a manager the add button, the Trash group and the row actions', functi
             ->assertSee(__('catalog.create_new'))
             ->assertSee(__('catalog.trash_tab'))
             ->assertSee(__('catalog.edit_action'))
-            ->assertSee(__('catalog.trash_action'));
+            ->assertSee(__('catalog.menu_trash'));
     });
 });
 
