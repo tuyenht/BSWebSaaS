@@ -45,7 +45,7 @@ function listSeed(): void
     listProduct('Dao phay', 'DP-1', 250000, 0, 'published', '2026-11-01 08:00:00+00');
     listProduct('Ép nhựa', null, 250000, null, 'draft', '2026-11-01 08:00:00+00');
     listProduct('Ốc vít', 'OV-1', null, 12, 'archived', '2026-10-30 08:00:00+00');
-    listProduct('Mũi khoan', 'MK-1', 900000, 3, 'draft', '2026-10-31 08:00:00+00');
+    listProduct('Mũi khoan thép gió dài', 'MK-1', 900000, 3, 'draft', '2026-10-31 08:00:00+00');
     listProduct(null, 'ZZ-1', 100000, 7, 'published', '2026-10-29 08:00:00+00');
     listProduct('Thước cặp', 'TC-1', 250000, null, 'published', '2026-10-31 08:00:00+00');
     listProduct('Búa', 'BU-1', null, null, 'draft', '2026-10-28 08:00:00+00');
@@ -106,7 +106,7 @@ it('orders by last edit newest first, name A to Z in the Vietnamese alphabet, pr
         $updated = Product::query()->orderByDesc('updated_at')->orderByDesc('id')->pluck('id')->all();
         expect(listIds($list, 'updated'))->toBe($updated);
 
-        expect($byName(listIds($list, 'name')))->toBe(['Búa', 'Dao phay', 'Đồ gá', 'Ép nhựa', 'Mũi khoan', 'Ốc vít', 'Thước cặp', null]);
+        expect($byName(listIds($list, 'name')))->toBe(['Búa', 'Dao phay', 'Đồ gá', 'Ép nhựa', 'Mũi khoan thép gió dài', 'Ốc vít', 'Thước cặp', null]);
 
         $all = Product::query()->orderBy('id')->get();
         $expect = function (string $column, string $dir) use ($all): array {
@@ -116,6 +116,60 @@ it('orders by last edit newest first, name A to Z in the Vietnamese alphabet, pr
         expect(listIds($list, 'price_asc'))->toBe($expect('price', 'asc'))
             ->and(listIds($list, 'price_desc'))->toBe($expect('price', 'desc'))
             ->and(listIds($list, 'stock_asc'))->toBe($expect('stock', 'asc'));
+    });
+});
+
+it('orders names by the Vietnamese alphabet, D before Đ, and pages across them by cursor', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        foreach (['Đồ gá', 'Đai ốc', 'Dũa tròn', 'Dao phay', 'Búa tạ'] as $name) {
+            listProduct($name, null, null, null, 'draft', '2026-11-01 08:00:00+00');
+        }
+        $list = listQuery();
+        $names = fn ($rows): array => $rows->map(fn (Product $p): ?string => $p->translations()->first()?->name)->all();
+
+        // the default collation would put Đ last by code point and Dũa before Dao; vi-VN keeps D, then Đ
+        expect($names($list->rows('name', 0, 10)))->toBe(['Búa tạ', 'Dao phay', 'Dũa tròn', 'Đai ốc', 'Đồ gá']);
+
+        $page = $list->rows('name', 0, 3);
+        $next = $list->rows('name', 0, 3, ['v' => $page->last()->getAttribute('__sv'), 'id' => $page->last()->id]);
+        expect($names($next))->toBe(['Đai ốc', 'Đồ gá']);
+
+        $back = $list->rows('name', 0, 3, ['v' => $next->first()->getAttribute('__sv'), 'id' => $next->first()->id], before: true);
+        expect($names($back))->toBe(['Búa tạ', 'Dao phay', 'Dũa tròn']);
+    });
+});
+
+it('sorts by the price a row shows: a sale that is on counts, an expired or future one does not', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $sale = function (Product $product, int $price, ?string $from, ?string $to): void {
+            // on the request's own connection: the product is not committed yet for any other
+            Product::query()->whereKey($product->id)->toBase()->update(
+                ['sale_price' => $price, 'sale_starts_at' => $from, 'sale_ends_at' => $to]);
+        };
+        $cheapOnSale = listProduct('Mũi khoan thép gió', 'A', 1000000, 1, 'published', '2026-11-01 08:00:00+00');
+        $sale($cheapOnSale, 300000, '2020-01-01 00:00:00+00', null);
+        $plain = listProduct('Dụng cụ phay đứng', 'B', 500000, 1, 'published', '2026-11-01 08:00:00+00');
+        $expired = listProduct('Ốc vít bằng thép', 'C', 400000, 1, 'published', '2026-11-01 08:00:00+00');
+        $sale($expired, 100000, '2020-01-01 00:00:00+00', '2021-01-01 00:00:00+00');
+        $future = listProduct('Thước cặp điện tử', 'D', 450000, 1, 'published', '2026-11-01 08:00:00+00');
+        $sale($future, 100000, '2999-01-01 00:00:00+00', null);
+        $higher = listProduct('Búa nhổ đinh', 'E', 200000, 1, 'published', '2026-11-01 08:00:00+00');
+        $sale($higher, 900000, null, null); // a "sale" above the regular price is no sale
+        $list = listQuery();
+
+        expect($list->rows('price_asc', 0, 10)->modelKeys())->toBe([$higher->id, $cheapOnSale->id, $expired->id, $future->id, $plain->id])
+            ->and($list->rows('price_desc', 0, 10)->modelKeys())->toBe([$plain->id, $future->id, $expired->id, $cheapOnSale->id, $higher->id]);
+
+        // keyset paging over the shown price, forward and back, meets each row once
+        foreach (['price_asc', 'price_desc'] as $sort) {
+            $whole = $list->rows($sort, 0, 10)->modelKeys();
+            $one = $list->rows($sort, 0, 2);
+            $two = $list->rows($sort, 0, 2, ['v' => $one->last()->getAttribute('__sv'), 'id' => $one->last()->id]);
+            $back = $list->rows($sort, 0, 2, ['v' => $two->first()->getAttribute('__sv'), 'id' => $two->first()->id], before: true);
+            $three = $list->rows($sort, 0, 2, ['v' => $two->last()->getAttribute('__sv'), 'id' => $two->last()->id]);
+            expect([...$one->modelKeys(), ...$two->modelKeys(), ...$three->modelKeys()])->toBe($whole)
+                ->and($back->modelKeys())->toBe($one->modelKeys());
+        }
     });
 });
 
@@ -225,8 +279,9 @@ it('searches by name or SKU, ignoring case, and keeps the Trash apart', function
         Product::query()->where('sku', 'DP-1')->firstOrFail()->delete();
 
         $test = Livewire::actingAs($manager->fresh())->test(Index::class)
-            ->set('search', 'ĐỒ GÁ')->assertSee('Đồ gá')->assertDontSee('Mũi khoan')
-            ->set('search', 'mk-1')->assertSee('Mũi khoan')->assertDontSee('Đồ gá')
+            ->set('search', 'ĐỒ GÁ')->assertSee('Đồ gá')->assertDontSee('Mũi khoan thép gió dài')
+            ->set('search', 'do ga')->assertSee('Đồ gá')->assertDontSee('Mũi khoan thép gió dài')
+            ->set('search', 'mk-1')->assertSee('Mũi khoan thép gió dài')->assertDontSee('Đồ gá')
             ->set('search', 'dao phay')->assertDontSee('Dao phay')
             ->call('setTab', 'trash')->assertSee('Dao phay')
             ->set('search', '%')->assertDontSee('Dao phay'); // a percent sign is text, not a wildcard
@@ -243,7 +298,7 @@ it('opens the Trash group from the old trash link', function (): void {
         Product::query()->where('sku', 'DP-1')->firstOrFail()->delete();
 
         Livewire::withQueryParams(['trash' => '1'])->actingAs($manager->fresh())->test(Index::class)
-            ->assertSet('tab', 'trash')->assertSee('Dao phay')->assertDontSee('Mũi khoan');
+            ->assertSet('tab', 'trash')->assertSee('Dao phay')->assertDontSee('Mũi khoan thép gió dài');
         Livewire::withQueryParams(['tab' => 'trash'])->actingAs($manager->fresh())->test(Index::class)
             ->assertSet('tab', 'trash')->assertSee('Dao phay');
     });
@@ -302,7 +357,7 @@ it('shows a member who may only view no write control', function (): void {
         Product::query()->where('sku', 'DP-1')->firstOrFail()->delete();
 
         Livewire::actingAs($viewer->fresh())->test(Index::class)
-            ->assertSee('Mũi khoan')
+            ->assertSee('Mũi khoan thép gió dài')
             ->assertDontSee(__('catalog.create_new'))
             ->assertDontSee(__('catalog.trash_tab'))
             ->assertDontSee(__('catalog.edit_action'))
@@ -401,10 +456,10 @@ it('draws the error state with a retry when the list cannot be read, and recover
         });
 
         $test = Livewire::actingAs($manager->fresh())->test(Index::class)
-            ->assertSee(__('catalog.error_title'))->assertSee(__('catalog.error_retry'))->assertDontSee('Mũi khoan');
+            ->assertSee(__('catalog.error_title'))->assertSee(__('catalog.error_retry'))->assertDontSee('Mũi khoan thép gió dài');
 
         $fail = false;
-        $test->call('$refresh')->assertDontSee(__('catalog.error_title'))->assertSee('Mũi khoan');
+        $test->call('$refresh')->assertDontSee(__('catalog.error_title'))->assertSee('Mũi khoan thép gió dài');
     });
 });
 

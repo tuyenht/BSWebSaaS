@@ -4,6 +4,7 @@ namespace App\Modules\Admin\Support\Catalog;
 
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Shared\Support\VietnameseFold;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -41,6 +42,16 @@ final class ProductListQuery
     /** The order of names: Vietnamese alphabet, case and accents in their places. */
     private const string NAME_COLLATION = '"vi-VN-x-icu"';
 
+    /**
+     * The price a row shows: the sale price while a sale is on (a lower price than the regular one,
+     * inside its dates, an open end counting as always), else the regular price.
+     */
+    private const string SHOWN_PRICE = 'case when products.sale_price is not null and products.price is not null'
+        .' and products.sale_price < products.price'
+        .' and (products.sale_starts_at is null or products.sale_starts_at <= now())'
+        .' and (products.sale_ends_at is null or products.sale_ends_at >= now())'
+        .' then products.sale_price else products.price end';
+
     public function __construct(
         private readonly int $siteId,
         private readonly string $tab,
@@ -62,14 +73,15 @@ final class ProductListQuery
             return $query;
         }
 
-        $like = '%'.addcslashes($term, '\\%_').'%';
-        // no index can serve an ILIKE under RLS: the list walks its rows in the order shown and stops once
+        // accents and case are ignored on both sides: the needle is folded here, the columns by the same letter table in SQL
+        $like = VietnameseFold::like(VietnameseFold::text($term));
+        // no index can serve a LIKE under RLS: the list walks its rows in the order shown and stops once
         // the page is full; `offset 0` keeps the name test a probe per row
-        $query->where(fn (Builder $either) => $either->where('products.sku', 'ilike', $like)
+        $query->where(fn (Builder $either) => $either->whereRaw(VietnameseFold::sql('products.sku').' like ?', [$like])
             ->orWhereExists(fn (QueryBuilder $text) => $text->selectRaw('1')->from('product_translations as st')
                 ->where('st.site_id', $this->siteId)
                 ->whereColumn('st.product_id', 'products.id')
-                ->where('st.name', 'ilike', $like)
+                ->whereRaw(VietnameseFold::sql('st.name').' like ?', [$like])
                 ->offset(0)));
 
         return $query;
@@ -219,7 +231,7 @@ final class ProductListQuery
     {
         return match ($key) {
             'name' => ['nt.name collate '.self::NAME_COLLATION, 'nt.name', 'text'],
-            'price_asc', 'price_desc' => ['products.price', 'products.price', 'bigint'],
+            'price_asc', 'price_desc' => [self::SHOWN_PRICE, self::SHOWN_PRICE, 'bigint'],
             'stock_asc' => ['products.stock', 'products.stock', 'integer'],
             // the Trash lists what was removed last first
             default => $this->tab === 'trash'

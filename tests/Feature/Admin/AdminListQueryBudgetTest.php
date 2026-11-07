@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Admin\Support\Catalog\ProductListQuery;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
@@ -137,7 +138,41 @@ it('keeps the catalog list flat with a search, a sort and a second page, whateve
     $more = countQueries(fn () => $this->actingAs($viewer)->get($url)->assertOk());
 
     // 10 rows on the page either way: twice the products must not add a single query
-    expect($more)->toBe($count)->and($count)->toBeLessThanOrEqual(24);
+    expect($more)->toBe($count)->and($count)->toBe(16);
+});
+
+it('pages the Trash of products by cursor on the deletion time, forward and back, meeting each row once', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        foreach (range(1, 7) as $i) {
+            $product = Product::query()->create(['status' => 'published', 'sku' => "TR-{$i}"]);
+            $product->translations()->create(['locale' => 'vi', 'name' => "Hàng đã xoá {$i}", 'slug' => "da-xoa-{$i}"]);
+            $product->delete();
+            // spread the deletion times, with a tie on the last pair so the id breaks it
+            Product::withTrashed()->whereKey($product->id)->toBase()
+                ->update(['deleted_at' => '2026-11-0'.min($i, 6).' 08:00:00+00']);
+        }
+        $list = new ProductListQuery(1, 'trash', '', 'vi');
+        $whole = $list->rows('updated', 0, 20)->modelKeys();
+        expect($whole)->toHaveCount(7)->and(array_unique($whole))->toHaveCount(7);
+
+        $forward = [];
+        $anchor = null;
+        do {
+            $rows = $list->rows('updated', 0, 3, $anchor);
+            $forward = [...$forward, ...$rows->modelKeys()];
+            $anchor = $rows->isEmpty() ? null : ['v' => $rows->last()->getAttribute('__sv'), 'id' => $rows->last()->id];
+        } while ($anchor !== null);
+        expect($forward)->toBe($whole);
+
+        $backward = [];
+        $rows = $list->rows('updated', 4, 3);
+        $backward = $rows->modelKeys();
+        while ($rows->isNotEmpty()) {
+            $rows = $list->rows('updated', 0, 3, ['v' => $rows->first()->getAttribute('__sv'), 'id' => $rows->first()->id], before: true);
+            $backward = [...$rows->modelKeys(), ...$backward];
+        }
+        expect($backward)->toBe($whole);
+    });
 });
 
 it('lists admin members on a flat query budget (no N+1 across rows)', function (): void {
