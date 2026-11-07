@@ -3319,6 +3319,7 @@
     "catalog.col_opt_badge": "ラベル",
     "catalog.card_opt_slug": "パス",
     "catalog.card_opt_tr": "翻訳",
+    "catalog.lc_why_default_only": "現在、エディターは商品の主言語のみ開けます",
     "catalog.price_ask": "見積もり依頼",
     "catalog.price_ask_tip": "価格が未入力です。サイトには「見積もり依頼」ボタンが表示されます",
     "catalog.price_sale_tip": "セール価格（:date まで）— 通常価格 :price",

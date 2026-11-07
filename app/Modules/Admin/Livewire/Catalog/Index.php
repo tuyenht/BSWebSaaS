@@ -11,6 +11,7 @@ use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductImage;
 use App\Modules\Catalog\Support\CatalogMode;
 use App\Modules\Cms\Routing\PathBuilder;
+use App\Modules\Cms\Taxonomy\TaxonomyRules;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
@@ -18,10 +19,14 @@ use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Rbac\Support\RoleLabel;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
+use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Entitlement\Entitlement;
+use Closure;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -778,9 +783,7 @@ final class Index extends Component
 
         $rows->load([
             'translations:id,product_id,locale,name,slug',
-            // the main category with its names and the chain above it: the title of the category cell and the
-            // address (PathBuilder follows the loaded parents), each in one query for the whole page
-            ...PathBuilder::primaryCategoryRelations(),
+            ...self::categoryRelations(app(PermalinkConfig::class)->pattern('products', 'products') === 'category_path'),
         ]);
 
         // only the first picture of each product (by position), not its whole gallery
@@ -798,6 +801,36 @@ final class Index extends Component
             $product->setRelation('images', new EloquentCollection($image === null ? [] : [$image]));
             $product->setAttribute('images_n', $image?->getAttribute('n') ?? 0);
         }
+    }
+
+    /**
+     * The main category (pivot position 0) with the names and slugs the address reads, one query each for the
+     * whole page. The title of the category cell comes from the category tree already in memory. The chain
+     * of parents is read only when the address is the full category path, and then with the columns it needs.
+     *
+     * @return array<int|string, string|Closure(Relation<*, *, *>): void>
+     */
+    private static function categoryRelations(bool $withChain): array
+    {
+        $names = ':id,taxonomy_id,locale,name,slug';
+        $relations = ['taxonomies' => static function (Relation $primary) use ($withChain): void {
+            if ($primary instanceof BelongsToMany) {
+                $primary->wherePivot('position', 0)->select($withChain ? ['taxonomies.id', 'taxonomies.parent_id'] : ['taxonomies.id']);
+            }
+        }, 'taxonomies.translations'.$names];
+
+        if ($withChain) {
+            $chain = 'taxonomies';
+            for ($level = 2; $level <= TaxonomyRules::MAX_DEPTH; $level++) {
+                $chain .= '.parent';
+                $relations[$chain] = static function (Relation $parent): void {
+                    $parent->select(['taxonomies.id', 'taxonomies.parent_id']);
+                };
+                $relations[] = $chain.'.translations'.$names;
+            }
+        }
+
+        return $relations;
     }
 
     /**

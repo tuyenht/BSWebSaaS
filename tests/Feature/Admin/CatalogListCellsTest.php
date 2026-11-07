@@ -6,6 +6,7 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteLocale;
@@ -65,6 +66,16 @@ function cellManager(): User
     return $manager->fresh();
 }
 
+/** The part of the page that draws one product's row. */
+function cellRowOf(string $html, Product $product): string
+{
+    $at = strpos($html, 'wire:key="product-'.$product->ulid.'"');
+    expect($at)->not->toBeFalse();
+    $next = strpos($html, 'wire:key="product-', (int) $at + 10);
+
+    return substr($html, (int) $at, $next === false ? null : $next - (int) $at);
+}
+
 /** A price as the list prints it: dot thousands, the sign on the number's line. */
 function cellMoney(int $n): string
 {
@@ -92,6 +103,7 @@ it('words a sale with no end date plainly, and shows the regular price when the 
         cellProduct('Mở', ['price' => 500000, 'sale_price' => 400000]);
         cellProduct('Hết hạn', ['price' => 700000, 'sale_price' => 600000, 'sale_ends_at' => '2020-01-01 00:00:00+00']);
         cellProduct('Không rẻ hơn', ['price' => 300000, 'sale_price' => 300000]);
+        $later = cellProduct('Chưa tới ngày', ['price' => 900000, 'sale_price' => 700000, 'sale_starts_at' => '2099-01-01 00:00:00+00']);
 
         $page = Livewire::actingAs(cellManager())->test(Index::class);
 
@@ -102,6 +114,9 @@ it('words a sale with no end date plainly, and shows the regular price when the 
             ->assertDontSeeHtml('<span class="sp-old">'.cellMoney(300000).'</span>');
         // one old price on the whole page: only the sale that is on
         expect(substr_count($page->html(), 'class="sp-old"'))->toBe(1);
+        // a sale that has not started yet is no sale: the regular price, no old price
+        expect(cellRowOf($page->html(), $later))->toContain('<span class="sp-pr" data-k="v">'.cellMoney(900000).'</span>')
+            ->not->toContain('sp-old')->not->toContain(cellMoney(700000));
     });
 });
 
@@ -119,23 +134,27 @@ it('asks for a quote when a product has no price', function (): void {
 it('draws a stock chip of each kind: out, low, in and not tracked', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         cellSelling();
-        cellProduct('Hết', ['stock' => 0]);
-        cellProduct('Sắp hết', ['stock' => 5]);
-        cellProduct('Còn nhiều', ['stock' => 1234]);
-        cellProduct('Không đếm');
+        $out = cellProduct('Hết', ['stock' => 0]);
+        $low = cellProduct('Sắp hết', ['stock' => 5]);
+        $edge = cellProduct('Vừa đủ', ['stock' => 6]);
+        $many = cellProduct('Còn nhiều', ['stock' => 1234]);
+        $none = cellProduct('Không đếm');
 
         $html = Livewire::actingAs(cellManager())->test(Index::class)->html();
+        $row = fn (Product $product): string => cellRowOf($html, $product);
 
-        expect($html)->toContain('data-k="out"')->toContain(__('catalog.stock_out'))
-            ->and($html)->toContain('data-k="low"')->toContain(__('catalog.stock_left', ['n' => '5']))
-            ->and($html)->toContain('data-k="in"')->toContain(__('catalog.stock_left', ['n' => Number::format(1234)]))
-            ->and($html)->toContain('data-k="none"')->toContain(__('catalog.stock_none'));
+        expect($row($out))->toContain('data-k="out"')->toContain(__('catalog.stock_out'))
+            ->and($row($low))->toContain('data-k="low"')->toContain(__('catalog.stock_left', ['n' => '5']))
+            // six is already enough
+            ->and($row($edge))->toContain('data-k="in"')->not->toContain('data-k="low"')->toContain(__('catalog.stock_left', ['n' => '6']))
+            ->and($row($many))->toContain('data-k="in"')->toContain(__('catalog.stock_left', ['n' => Number::format(1234)]))
+            ->and($row($none))->toContain('data-k="none"')->toContain(__('catalog.stock_none'));
     });
 });
 
 it('draws the label chips and a dash for a product with none', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
-        cellProduct('Cả hai', ['is_featured' => true, 'is_bestseller' => true]);
+        cellProduct('Cả hai nhãn', ['is_featured' => true, 'is_bestseller' => true]);
         cellProduct('Trơn');
 
         $html = Livewire::actingAs(cellManager())->test(Index::class)->html();
@@ -151,15 +170,31 @@ it('draws the label chips and a dash for a product with none', function (): void
 it('names the main category, gives its whole path in a title, and says so when there is none', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         $root = cellCategory('Máy công cụ');
-        $child = cellCategory('Máy tiện đứng', $root);
+        $mid = cellCategory('Máy tiện', $root);
+        $child = cellCategory('Máy tiện đứng', $mid);
         cellProduct('Có chuyên mục', [], $child);
         cellProduct('Không chuyên mục');
 
         $html = Livewire::actingAs(cellManager())->test(Index::class)->html();
 
-        expect($html)->toContain('title="Máy công cụ › Máy tiện đứng"')
+        expect($html)->toContain('title="Máy công cụ › Máy tiện › Máy tiện đứng"')
             ->and($html)->toContain('>Máy tiện đứng<')
             ->and($html)->toContain(__('catalog.cat_none'));
+    });
+});
+
+it('draws the address with the whole category chain when the website uses category paths', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteSetting::query()->create(['group_name' => 'permalinks', 'key' => 'products', 'value' => ['pattern' => 'category_path']]);
+        app(PermalinkConfig::class)->flush();
+        $root = cellCategory('Máy công cụ');
+        $mid = cellCategory('Máy tiện', $root);
+        $leaf = cellCategory('Máy tiện đứng', $mid);
+        $product = cellProduct('Tiện đứng lớn', [], $leaf);
+
+        $html = Livewire::actingAs(cellManager())->test(Index::class)->html();
+
+        expect($html)->toContain('>/c-'.$root->id.'/c-'.$mid->id.'/c-'.$leaf->id.'/sp-'.$product->id.'<');
     });
 });
 
@@ -205,10 +240,34 @@ it('shows a chip per language and the missing-translation note on a website with
         $page = Livewire::actingAs(cellManager())->test(Index::class);
         $html = $page->html();
 
-        expect(substr_count($html, 'class="list-lc"'))->toBe(4)
-            ->and(substr_count($html, 'list-lmiss"'))->toBe(1)
+        // each product draws its chips twice (the line under the name and, on a narrow card, a row under the picture);
+        // only the main-language chip opens the editor, the other says why it does not
+        preg_match_all('/<a href="[^"]+" wire:navigate class="list-lc"/', $html, $links);
+        expect($links[0])->toHaveCount(4)
+            ->and(substr_count($html, '<button type="button" class="list-lc"'))->toBe(4)
+            ->and($html)->toContain(__('catalog.lc_why_default_only'))
+            ->and(substr_count($html, 'data-for="lmiss"'))->toBe(1)
             ->and($html)->toContain(__('entries.lc_missing_note', ['names' => __('entries.lang_short_en')]))
             ->and($page->viewData('cardOptions'))->toBe(['sku', 'cat', 'slug', 'tr']);
+    });
+});
+
+it('gives a member who may only view no language link, and a Trash row no missing-translation note', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteLocale::query()->create(['locale' => 'en', 'is_default' => false, 'enabled' => true]);
+        cellProduct('Chỉ xem được');
+        $gone = cellProduct('Đã vào thùng');
+        $gone->delete();
+
+        $viewer = User::factory()->create();
+        grantRole($viewer, 'cat-viewer', ['catalog.view']);
+        $html = Livewire::actingAs($viewer->fresh())->test(Index::class)->html();
+        expect($html)->not->toContain('wire:navigate class="list-lc"')
+            ->and($html)->toContain(__('entries.lc_why_view_only', ['noun' => __('catalog.noun')]));
+
+        $trash = Livewire::actingAs(cellManager())->test(Index::class)->set('tab', 'trash')->html();
+        expect($trash)->toContain('list-lc"')->not->toContain('list-lmiss')->not->toContain('data-for="lmiss"')
+            ->and($trash)->toContain(__('entries.lc_why_trashed'));
     });
 });
 

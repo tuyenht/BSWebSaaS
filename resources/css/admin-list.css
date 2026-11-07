@@ -1260,20 +1260,20 @@
        the list narrows the label column folds back into the line below 80rem and the category
        column below 68.75rem. `data-hide` (space-separated keys: cat price stock badge) turns a
        column off, its head, its cells and its track together (a track of 0 takes no room). */
-    .list-c-cat,
-    .list-c-price,
-    .list-c-stock,
-    .list-c-badge {
+    .list-rows[data-kind='catalog'] .list-c-cat,
+    .list-rows[data-kind='catalog'] .list-c-price,
+    .list-rows[data-kind='catalog'] .list-c-stock,
+    .list-rows[data-kind='catalog'] .list-c-badge {
         display: none;
     }
 
-    .list-m[data-for='price'] {
+    .list-rows[data-kind='catalog'] .list-m[data-for='price'] {
         font-weight: 700;
         color: var(--color-text-strong);
         font-variant-numeric: tabular-nums;
     }
 
-    .list-old {
+    .list-rows[data-kind='catalog'] .list-old {
         display: inline-block;
         max-width: 100%;
         font-weight: 400;
@@ -1281,11 +1281,11 @@
         font-variant-numeric: tabular-nums;
     }
 
-    .list-m[data-for='slug'] .list-cpy {
+    .list-rows[data-kind='catalog'] .list-m[data-for='slug'] .list-cpy {
         display: none;
     }
 
-    .list-cpy {
+    .list-rows[data-kind='catalog'] .list-cpy {
         align-items: center;
         justify-content: center;
         min-width: var(--spacing-hit);
@@ -1297,12 +1297,12 @@
         color: var(--color-text-muted);
     }
 
-    .list-cpy:hover {
+    .list-rows[data-kind='catalog'] .list-cpy:hover {
         background: var(--color-surface-hover);
         color: var(--color-primary-text);
     }
 
-    .list-ell {
+    .list-rows[data-kind='catalog'] .list-ell {
         overflow-wrap: anywhere;
     }
 
@@ -1372,7 +1372,7 @@
     /* The copy button of the path line: on the one-record-per-line layout only (below 600 the row's
        menu carries it; the table keeps the path as text). */
     @container list (37.5rem <= width < 56.25rem) {
-        .list-m[data-for='slug'] .list-cpy {
+        .list-rows[data-kind='catalog'] .list-m[data-for='slug'] .list-cpy {
             display: inline-flex;
         }
     }
@@ -1385,35 +1385,36 @@
             --list-w-badge: 7.75rem;
         }
 
+        /* the price track takes the widest price the page shows (never below its floor), so "1.090.000.000 ₫" never spills into the stock */
         .list-rows[data-kind='catalog'][data-kind] .list-g {
-            grid-template-columns: [chk] 3.5rem [main] minmax(0, 1fr) [cat] var(--list-w-cat) [price] var(--list-w-price) [stock] var(--list-w-stock) [badge] var(--list-w-badge) [st] 10.75rem [act] auto [end];
+            grid-template-columns: [chk] 3.5rem [main] minmax(0, 1fr) [cat] var(--list-w-cat) [price] minmax(var(--list-w-price), max-content) [stock] var(--list-w-stock) [badge] var(--list-w-badge) [st] 11.5rem [act] auto [end];
         }
 
-        .list-c-cat {
+        .list-rows[data-kind='catalog'] .list-c-cat {
             display: block;
             grid-column: cat;
         }
 
-        .list-c-price {
+        .list-rows[data-kind='catalog'] .list-c-price {
             display: block;
             grid-column: price;
             text-align: right;
         }
 
-        .list-c-stock {
+        .list-rows[data-kind='catalog'] .list-c-stock {
             display: block;
             grid-column: stock;
         }
 
-        .list-c-badge {
+        .list-rows[data-kind='catalog'] .list-c-badge {
             display: block;
             grid-column: badge;
         }
 
-        .list-m[data-for='price'],
-        .list-m[data-for='stock'],
-        .list-m[data-for='cat'],
-        .list-m[data-for='badge'] {
+        .list-rows[data-kind='catalog'] .list-m[data-for='price'],
+        .list-rows[data-kind='catalog'] .list-m[data-for='stock'],
+        .list-rows[data-kind='catalog'] .list-m[data-for='cat'],
+        .list-rows[data-kind='catalog'] .list-m[data-for='badge'] {
             display: none;
         }
 
@@ -1450,7 +1451,7 @@
             display: none;
         }
 
-        .list-m[data-for='badge'] {
+        .list-rows[data-kind='catalog'] .list-m[data-for='badge'] {
             display: inline;
         }
     }
@@ -1464,8 +1465,83 @@
             display: none;
         }
 
-        .list-m[data-for='cat'] {
+        .list-rows[data-kind='catalog'] .list-m[data-for='cat'] {
             display: inline;
+        }
+    }
+
+    /* The page script folds more columns into the line under the name when the text is large or the list narrow
+       (`data-fold`, in the order label, category, stock, price). */
+    @container list (width >= 56.25rem) {
+        .list-rows[data-kind='catalog'][data-fold~='badge'] .list-g {
+            --list-w-badge: 0px;
+        }
+
+        .list-rows[data-kind='catalog'][data-fold~='cat'] .list-g {
+            --list-w-cat: 0px;
+        }
+
+        .list-rows[data-kind='catalog'][data-fold~='stock'] .list-g {
+            --list-w-stock: 0px;
+        }
+
+        .list-rows[data-kind='catalog'][data-fold~='price'] .list-g {
+            --list-w-price: 0px;
+        }
+
+        .list-rows[data-kind='catalog'][data-fold~='badge'] .list-c-badge,
+        .list-rows[data-kind='catalog'][data-fold~='cat'] .list-c-cat,
+        .list-rows[data-kind='catalog'][data-fold~='stock'] .list-c-stock,
+        .list-rows[data-kind='catalog'][data-fold~='price'] .list-c-price {
+            display: none;
+        }
+
+        .list-rows[data-kind='catalog'][data-fold~='badge'] .list-m[data-for='badge'],
+        .list-rows[data-kind='catalog'][data-fold~='cat'] .list-m[data-for='cat'],
+        .list-rows[data-kind='catalog'][data-fold~='stock'] .list-m[data-for='stock'],
+        .list-rows[data-kind='catalog'][data-fold~='price'] .list-m[data-for='price'] {
+            display: inline;
+        }
+    }
+
+    /* Languages on the card: the chips lead the detail line and the "Chưa dịch" note is its last item (below 600);
+       below 400 both move to a row of their own under the picture, full width. A record in the Trash has no note. */
+    .list-rows[data-kind='catalog'] .list-langs2,
+    .list-rows[data-kind='catalog'] .list-m[data-for='lmiss'] {
+        display: none;
+    }
+
+    @container list (width < 56.25rem) {
+        .list-rows[data-kind='catalog'] .list-meta > .list-m[data-for='langs'] {
+            order: -1;
+        }
+    }
+
+    @container list (width < 37.5rem) {
+        .list-rows[data-kind='catalog'] .list-m[data-for='lmiss'] {
+            display: flex;
+            order: 5;
+        }
+
+        .list-rows[data-kind='catalog'] .list-meta > .list-m[data-for='langs'] .list-lmiss {
+            display: none;
+        }
+    }
+
+    @container list (width < 25rem) {
+        .list-rows[data-kind='catalog'] .list-meta > .list-m[data-for='langs'],
+        .list-rows[data-kind='catalog'] .list-m[data-for='lmiss'] {
+            display: none;
+        }
+
+        .list-rows[data-kind='catalog'] .list-langs2 {
+            display: block;
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+
+        .list-rows[data-kind='catalog'] .list-langs2 .list-m[data-for='langs']::before {
+            content: none;
         }
     }
 }

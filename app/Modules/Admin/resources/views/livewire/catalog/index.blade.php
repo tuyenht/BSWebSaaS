@@ -100,6 +100,8 @@
         };
     };
     $hiddenAlways = $selling ? [] : ['price', 'stock'];
+    // what the table hides at first paint (the saved columns, and price and stock on a brochure website); Alpine keeps it in step
+    $hideNow = implode(' ', array_values(array_unique([...array_diff(['cat', 'price', 'stock', 'badge'], $cols), ...$hiddenAlways])));
     $priceNext = match ($sortOn) { 'price_asc' => 'price_desc', 'price_desc' => 'updated', default => 'price_asc' };
     $ariaPrice = $sortOn === 'price_asc' ? 'ascending' : ($sortOn === 'price_desc' ? 'descending' : 'none');
 @endphp
@@ -155,7 +157,24 @@
         <div class="@container/lt min-w-0"
              x-data="{
                  mode: 'cols',
-                 size() { const w = this.$refs.rows?.clientWidth ?? 0, rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16; this.mode = w < 37.5 * rem ? 'card' : (w < 56.25 * rem ? 'line' : 'cols'); },
+                 fold: '',
+                 size() { const w = this.$refs.rows?.clientWidth ?? 0, rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16; this.mode = w < 37.5 * rem ? 'card' : (w < 56.25 * rem ? 'line' : 'cols'); this.foldCols(rem); },
+                 {{-- as the table narrows or the text grows, the label, category, stock and price columns fold into the line under the name (in that order) until the name keeps its room --}}
+                 foldCols(rem) {
+                     const list = this.$refs.rows?.querySelector('.list-rows'), head = list?.querySelector('.list-hd'), main = head?.querySelector('.list-c-main');
+                     if (! list || ! main) { return; }
+                     const out = [];
+                     list.removeAttribute('data-fold');
+                     if (this.mode === 'cols') {
+                         for (const k of ['badge', 'cat', 'stock', 'price']) {
+                             if (main.getBoundingClientRect().width - 3.75 * rem >= 10 * rem) { break; }
+                             if (! head.querySelector('.list-c-' + k)?.getClientRects().length) { continue; }
+                             out.push(k);
+                             list.setAttribute('data-fold', out.join(' '));
+                         }
+                     }
+                     this.fold = out.join(' ');
+                 },
                  show(k) { return this.mode === 'line' || (this.mode === 'cols' ? this.$wire.cols : this.$wire.card).includes(k); },
                  get vSku() { return this.mode !== 'card' || this.$wire.card.includes('sku'); },
                  get vCat() { return this.show('cat'); },
@@ -167,7 +186,7 @@
                  hidden() { const off = {{ Js::from($hiddenAlways) }}; return (this.mode === 'cols' ? ['cat', 'price', 'stock', 'badge'].filter(k => ! this.$wire.cols.includes(k)) : []).concat(off).join(' '); },
                  copy(url) { (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(() => window.bsToast({ text: {{ Js::from(__('catalog.copied')) }}.replace(':url', url) }), () => {}); },
              }"
-             x-init="size(); new ResizeObserver(() => size()).observe($el)">
+             x-init="size(); new ResizeObserver(() => size()).observe($el); $watch('$wire.cols', () => $nextTick(() => size()))">
             <div class="flex flex-col gap-3 pb-3 min-[600px]:px-4 min-[600px]:pt-4 min-[900px]:pt-3 @min-[56.25rem]/lt:flex-row @min-[56.25rem]/lt:flex-wrap @min-[56.25rem]/lt:items-center">
                 <div class="min-w-0 text-body @min-[56.25rem]/lt:min-w-[19em] @min-[56.25rem]/lt:max-w-[30em] @min-[56.25rem]/lt:flex-[999_1_19em] @min-[56.25rem]/lt:[&:has(+[data-below='1'])]:max-w-none">
                     <x-bs-admin::search id="catalog-search" :label="__('catalog.search_label')" :placeholder="__('catalog.search_hint')"
@@ -188,7 +207,7 @@
                 :chips="$chips" :clear="$filtering ? 'clearAllFilters' : null" />
 
             <div x-ref="rows" class="min-w-0 max-[599.98px]:rounded-md max-[599.98px]:border max-[599.98px]:border-border max-[599.98px]:bg-surface max-[599.98px]:[&_.list-g]:border-t-0">
-            <x-bs-admin::list :label="__('catalog.list_label')" kind="catalog" x-bind:data-hide="hidden()">
+            <x-bs-admin::list :label="__('catalog.list_label')" kind="catalog" :data-hide="$hideNow" x-bind:data-hide="hidden()" x-bind:data-fold="fold">
 
                 <x-bs-admin::list.head>
                     <x-bs-admin::list.cell head col="main" :sort="$ariaSort('name')">
@@ -219,6 +238,9 @@
                         $categoryName = $primary?->translations->firstWhere('locale', $locale)?->name;
                         $categoryPath = $primary === null ? null : ($tree?->pathOf($primary->id) ?? $categoryName);
                         $trashed = $product->trashed();
+                        $langHas = $product->translations->pluck('locale')->all();
+                        // the editor opens the default language only: every other chip says so; a viewer or a trashed row, why not
+                        $langWhy = fn (string $lc): string => $trashed ? __('entries.lc_why_trashed') : (! $canManage ? __('entries.lc_why_view_only', ['noun' => $noun]) : __('catalog.lc_why_default_only'));
                         $imageCount = $num((int) $product->getAttribute('images_n'));
                         // the address PathBuilder composes for this product (the site's permalink preset), in the default language
                         $path = $t?->slug ? $paths->publicUrl($paths->forProduct($primary, $t->slug, $locale), $locale) : null;
@@ -274,9 +296,9 @@
                                             </span>
                                         @endif
                                         <x-bs-admin::list.langs :locales="$locales" :source="$locale" :name="$name" show="vLangs"
-                                            :has="$product->translations->pluck('locale')->all()"
+                                            :has="$langHas" :only="[$locale]" :note="! $trashed"
                                             :href="$canManage && ! $trashed ? fn (string $lc): string => route('admin.catalog.edit', ['ulid' => $product->ulid]) : null"
-                                            :why="$trashed ? __('entries.lc_why_trashed') : __('entries.lc_why_view_only', ['noun' => $noun])" />
+                                            :why="$langWhy" />
                                         @if ($selling)
                                             <span class="list-m" data-for="price" x-show="vPrice">{{ $priceText }}@if ($oldText !== null) <span class="list-old">{{ __('catalog.price_old_card', ['price' => $oldText]) }}</span>@endif</span>
                                             <span class="list-m" data-for="stock" x-show="vQty">{{ $stockText }}</span>
@@ -288,9 +310,19 @@
                                         @if ($whenCard)
                                             <span class="list-m" data-for="when">{{ $whenCard }}</span>
                                         @endif
+                                        <x-bs-admin::list.langs part="note" :locales="$locales" :source="$locale" :name="$name" :has="$langHas" :note="! $trashed" />
                                     </x-bs-admin::list.meta>
                                 </div>
                             </div>
+                            {{-- below 400 the language chips and the missing-language note move under the picture, full width --}}
+                            @if (count($locales) > 1)
+                                <div class="list-langs2">
+                                    <x-bs-admin::list.langs :locales="$locales" :source="$locale" :name="$name" show="vLangs"
+                                        :has="$langHas" :only="[$locale]" :note="! $trashed"
+                                        :href="$canManage && ! $trashed ? fn (string $lc): string => route('admin.catalog.edit', ['ulid' => $product->ulid]) : null"
+                                        :why="$langWhy" />
+                                </div>
+                            @endif
                         </x-bs-admin::list.cell>
 
                         <x-bs-admin::list.cell col="cat">
