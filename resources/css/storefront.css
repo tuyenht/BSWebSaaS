@@ -561,15 +561,68 @@ main:has(.hero, .sf-slider) .page__title {
     background: var(--sch-pri-hover, var(--color-primary-hover));
 }
 
-.about__image {
-    width: 100%;
-    height: auto;
-    max-height: 30rem;
-    object-fit: cover;
+/* The photo's frame: 4:3 on a phone; from 768px as tall as the text beside it (20rem up to 42rem), staying in
+   view while a long text scrolls. The photo fills it, cut to fit (the focus picks the part kept). */
+.about__media {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
     border-radius: 0.5rem;
     box-shadow:
         0 20px 25px -5px rgba(0, 0, 0, 0.12),
         0 8px 10px -6px rgba(0, 0, 0, 0.08);
+}
+
+.about__image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+@media (min-width: 768px) {
+    .about:not(.about--whole) {
+        align-items: stretch;
+    }
+
+    .about__media:not(.about__media--whole) {
+        align-self: start;
+        position: sticky;
+        top: 7.5rem;
+        height: 100%;
+        min-height: 20rem;
+        max-height: 42rem;
+        aspect-ratio: auto;
+    }
+}
+
+/* A portrait photo (a certificate) is shown whole, never cut, in a white frame; the text takes three fifths. */
+.about__media--whole {
+    justify-self: center;
+    width: 100%;
+    max-width: 28rem;
+    padding: 0.5rem;
+    aspect-ratio: auto;
+    background: var(--color-surface, #fff);
+    border: 1px solid color-mix(in srgb, var(--color-text) 15%, transparent);
+}
+
+.about__media--whole .about__image {
+    position: static;
+    height: auto;
+    object-fit: contain;
+    border-radius: 0.375rem;
+}
+
+@media (min-width: 768px) {
+    .about--whole {
+        grid-template-columns: 3fr 2fr;
+    }
+
+    .about--letter.about--whole {
+        grid-template-columns: 2fr 3fr;
+    }
 }
 
 /* ───── Entry grid ───────────────────────────────────────────────────────── */
@@ -7002,30 +7055,18 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     color: var(--sch-body, color-mix(in srgb, var(--color-text) 80%, white));
 }
 
-/* Letter: the text first on a phone, the photo beside it on a wide screen, as tall as the text up to 42rem. */
+/* Letter: the text first on a phone, the photo on the left on a wide screen (its frame: .about__media). */
 .about--letter .about__body {
     order: 0;
 }
 
-.about--letter .about__image {
+.about--letter .about__media {
     order: 1;
-    aspect-ratio: 4 / 3;
 }
 
 @media (min-width: 768px) {
-    .about--letter {
-        align-items: stretch;
-    }
-
-    .about--letter .about__image {
+    .about--letter .about__media {
         order: -1;
-        align-self: start;
-        position: sticky;
-        top: 7.5rem;
-        height: 100%;
-        min-height: 20rem;
-        max-height: 42rem;
-        aspect-ratio: auto;
     }
 }
 
