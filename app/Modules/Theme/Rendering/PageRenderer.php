@@ -73,6 +73,12 @@ final readonly class PageRenderer
         // The background-video script loads only on a page where a hero's video resolved (a missing
         // or deleted video renders the plain hero, with no script).
         $extra += $bgVideo ? ['bgVideoScript' => true] : [];
+        // The post layout's table of contents: anchors are made here for the formatted-text headings (two or more).
+        $toc = ['html' => $sections, 'items' => []];
+        if ($layout === 'theme::layouts.post') {
+            $toc = ArticleToc::of($sections, array_map('strval', array_keys((array) request()->attributes->get('sf_zigzag_ids', []))));
+            $sections = $toc['html'];
+        }
 
         return $this->views->make($layout, $this->head($seo, $title, $extra) + [
             'title' => $title,
@@ -85,8 +91,8 @@ final readonly class PageRenderer
             // the page asks for one high-priority image, not two. Matched on the tag: text (a post
             // about the attribute itself) cannot hold a raw "<", Blade and the purifier escape it.
             'bodyHighImage' => preg_match('~<img\b[^>]*\sfetchpriority="high"~', $sections) === 1,
-            // The h2 headings of the body that carry an id, for a post's table of contents.
-            'toc' => $type === 'post' ? ArticleToc::of($sections) : [],
+            // The headings of the body's formatted text, for a post's table of contents (two or more).
+            'toc' => $toc['items'],
         ] + $extra)->render();
     }
 
@@ -164,7 +170,8 @@ final readonly class PageRenderer
         $drawn = $this->blocks->renderBodies(self::slotBodies($slots['blocks']), $slots['context'], false);
         $extra['slotHtml'] = self::slotHtml($slots['blocks'], $drawn);
         $flags = [
-            'sliderScript' => self::hasRails($scripts),
+            // A slider with two or more slides rotates, and a list block's rows slide: the same checks as a body's.
+            'sliderScript' => self::hasRails($scripts) || (in_array('hero_slider', $this->blocks->types($scripts), true) && (self::sliderHints($scripts, null, $this->media)['sliderScript'] ?? false)),
             'sectionsScript' => $this->blocks->moves($scripts),
             'videoScript' => self::playsVideo($scripts) || $this->blocks->playsRichVideo($scripts),
             'statsScript' => self::countsUp($scripts),

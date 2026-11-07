@@ -90,6 +90,13 @@ final readonly class LayoutSlotInput
                 throw new LayoutBlocksRejectedException('blocks_invalid', $slot, $locale, (string) $validator->errors()->first('blocks'));
             }
 
+            foreach ($blocks as $block) {
+                $type = is_array($block) ? ($block['type'] ?? null) : null;
+                if (is_string($type) && ! LayoutSlots::accepts($slot, $type)) {
+                    throw new LayoutBlocksRejectedException('blocks_invalid', $slot, $locale, __('layout_slots.err_type_slot'));
+                }
+            }
+
             $clean = SanitizedPageBody::cleanBody(['blocks' => $blocks])['blocks'];
             $checked[$locale] = ['blocks' => is_array($clean) ? array_values($clean) : []];
         }

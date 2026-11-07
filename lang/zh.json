@@ -1562,7 +1562,6 @@
     "entries.opt_variant_overlay": "图片叠加文字",
     "entries.opt_variant_rounded": "圆角按钮",
     "entries.opt_variant_cards": "卡片样式",
-    "entries.opt_variant_aside": "咨询框(侧栏)",
     "entries.opt_variant_top-rule": "顶部线条卡片",
     "entries.opt_kind_number": "数字",
     "entries.opt_kind_years": "自某年起的年数",
@@ -2295,6 +2294,7 @@
     "storefront.related_posts": "相关文章",
     "storefront.post_aside": "文章侧栏",
     "storefront.toc": "目录",
+    "storefront.toc_article": "文章目录",
     "storefront.recent_posts": "最新文章",
     "storefront.categories": "分类",
     "storefront.hotline_number": "热线 :phone",
@@ -3227,5 +3227,6 @@
     "storefront.new_tab": "(在新标签页打开)",
     "layout_slots.err_slot_invalid": "没有这个区块位置。请刷新页面后重试。",
     "layout_slots.err_locale_invalid": "网站尚未启用此语言。请先启用该语言，或删除该语言的内容。",
-    "layout_slots.err_too_many": "此处最多只能放 :max 个区块。请删除一些区块。"
+    "layout_slots.err_too_many": "此处最多只能放 :max 个区块。请删除一些区块。",
+    "layout_slots.err_type_slot": "“最新文章”区块只能放在文章的侧栏或文章末尾。请移到那里，或删除该区块。"
 }

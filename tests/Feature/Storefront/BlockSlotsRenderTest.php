@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Cms\Exceptions\LayoutBlocksRejectedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
@@ -9,13 +10,12 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
-use App\Modules\Theme\Components\ComponentRegistry;
-use App\Modules\Theme\Components\SectionComponent;
 use App\Modules\Theme\Rendering\ArticleToc;
 use Carbon\CarbonImmutable;
+use Illuminate\Foundation\Vite;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\View;
+use Illuminate\Support\HtmlString;
 use Tests\Fixtures\StorefrontCards;
 
 /*
@@ -76,7 +76,7 @@ it('draws a post and a product with no slot set byte for byte as before', functi
 ]);
 
 /**
- * The news branch (root "Tin tức", child "Tin nội bộ") with a post being read, six others in the root,
+ * The news branch (root "Tin tức", child "Bản tin nội bộ") with a post being read, six others in the root,
  * three in the child, and a recruitment branch whose posts must never show; a catalog with two products.
  *
  * @return array{read: Entry, news: Taxonomy, inner: Taxonomy, jobs: Taxonomy}
@@ -89,15 +89,15 @@ function slotsSite(string $name = 'Xưởng Mẫu', string $host = 'mau.platform
         $photo = StorefrontCards::media('anh-'.md5($prefix), 960, 720);
         $at = fn (int $day): CarbonImmutable => CarbonImmutable::parse('2026-09-01 08:00', 'UTC')->addDays($day);
         $news = StorefrontCards::news();
-        $inner = StorefrontCards::category('Tin nội bộ', 'tin-noi-bo', $news, null, 1);
+        $inner = StorefrontCards::category('Bản tin nội bộ', 'tin-noi-bo', $news, null, 1);
         $jobs = StorefrontCards::category('Tuyển dụng', 'tuyen-dung', null, null, 5);
 
         $read = StorefrontCards::post($news, $prefix.'Ống đang đọc', 'ong-dang-doc', $at(10), ['image_url' => $photo->storage_key]);
         foreach (range(1, 6) as $n) {
-            StorefrontCards::post($news, "{$prefix}Tin gốc {$n}", "tin-goc-{$n}", $at($n), ['image_url' => $photo->storage_key]);
+            StorefrontCards::post($news, "{$prefix}Bản tin gốc số {$n} mới", "tin-goc-{$n}", $at($n), ['image_url' => $photo->storage_key]);
         }
         foreach (range(1, 3) as $n) {
-            StorefrontCards::post($inner, "{$prefix}Tin con {$n}", "tin-con-{$n}", $at(10 + $n), ['image_url' => $photo->storage_key]);
+            StorefrontCards::post($inner, "{$prefix}Bản tin con số {$n} mới", "tin-con-{$n}", $at(10 + $n), ['image_url' => $photo->storage_key]);
         }
         StorefrontCards::post($jobs, $prefix.'Việc làm kỹ sư', 'viec-lam-ky-su', $at(30));
 
@@ -164,15 +164,15 @@ it('draws the blocks of the end-of-page bands on a post, a list and a product, a
 it('lets the category override the site default, hides the slot on "none" and falls back to the default language', function (): void {
     $site = slotsSite();
     $id = slotsSiteId();
-    slotsDefault($id, 'after_post', [slotsCta('Mặc định của website')]);
+    slotsDefault($id, 'after_post', [slotsCta('Mặc định của toàn bộ')]);
 
-    expect(slotsHtml('/tin-tuc/ong-dang-doc'))->toContain('Mặc định của website');
+    expect(slotsHtml('/tin-tuc/ong-dang-doc'))->toContain('Mặc định của toàn bộ');
 
     slotsCategory($id, $site['news'], ['after_post' => ['vi' => ['blocks' => [slotsCta('Riêng cho chuyên mục')]]]]);
-    expect(slotsHtml('/tin-tuc/ong-dang-doc'))->toContain('Riêng cho chuyên mục')->not->toContain('Mặc định của website');
+    expect(slotsHtml('/tin-tuc/ong-dang-doc'))->toContain('Riêng cho chuyên mục')->not->toContain('Mặc định của toàn bộ');
 
     slotsCategory($id, $site['news'], ['after_post' => 'none']);
-    expect(slotsHtml('/tin-tuc/ong-dang-doc'))->not->toContain('Riêng cho chuyên mục')->not->toContain('Mặc định của website')->not->toContain('slot-band');
+    expect(slotsHtml('/tin-tuc/ong-dang-doc'))->not->toContain('Riêng cho chuyên mục')->not->toContain('Mặc định của toàn bộ')->not->toContain('slot-band');
 
     // An English page of the same post takes the default language's blocks when it has none of its own.
     slotsCategory($id, $site['news'], []);
@@ -181,10 +181,10 @@ it('lets the category override the site default, hides the slot on "none" and fa
         $site['read']->translations()->create(['locale' => 'en', 'title' => 'The pipe being read', 'slug' => 'pipe-read', 'status' => 'published', 'body' => ['blocks' => []]]);
         SiteRoute::query()->create(['locale' => 'en', 'path' => '/news/pipe-read', 'entry_id' => $site['read']->id]);
     });
-    expect(slotsHtml('/en/news/pipe-read'))->toContain('Mặc định của website');
+    expect(slotsHtml('/en/news/pipe-read'))->toContain('Mặc định của toàn bộ');
 
     slotsDefault($id, 'after_post', [slotsCta('The English band')], 'en');
-    expect(slotsHtml('/en/news/pipe-read'))->toContain('The English band')->not->toContain('Mặc định của website');
+    expect(slotsHtml('/en/news/pipe-read'))->toContain('The English band')->not->toContain('Mặc định của toàn bộ');
 });
 
 it('keeps the post one column with no side blocks and fewer than two headings, and makes two columns with a slot', function (): void {
@@ -209,11 +209,11 @@ it('lists the newest posts of the root branch in the side column, never the one 
 
     expect($recent)->toContain('Bài mới đăng')
         // the newest four of the root branch that are not the related three: the child category's posts and the older root ones
-        ->and($recent)->toContain('Tin con 3')->toContain('Tin con 2')->toContain('Tin con 1')
+        ->and($recent)->toContain('Bản tin con số 3 mới')->toContain('Bản tin con số 2 mới')->toContain('Bản tin con số 1 mới')
         ->and($recent)->not->toContain('Ống đang đọc')
         ->and($recent)->not->toContain('Việc làm kỹ sư');
-    // The related posts (the three newest of the same category, "Tin gốc 6, 5, 4") are in the page's related section, not twice.
-    foreach (['Tin gốc 6', 'Tin gốc 5', 'Tin gốc 4'] as $related) {
+    // The related posts (the three newest of the same category: the root's sixth, fifth and fourth) are in the page's related section, not twice.
+    foreach (['Bản tin gốc số 6 mới', 'Bản tin gốc số 5 mới', 'Bản tin gốc số 4 mới'] as $related) {
         expect($recent)->not->toContain($related);
     }
     expect(substr_count($recent, '<li>'))->toBe(4);
@@ -229,7 +229,7 @@ it('stays in the root branch when the post is in a child category', function ():
     $recent = $match[0] ?? '';
 
     // The root's own posts count too (the whole branch), the other branch's never.
-    expect($recent)->toContain('Ống đang đọc')->not->toContain('Việc làm kỹ sư')->not->toContain('Tin con 1');
+    expect($recent)->toContain('Ống đang đọc')->not->toContain('Việc làm kỹ sư')->not->toContain('Bản tin con số 1 mới');
     expect($site['jobs']->id)->not->toBe($site['news']->id);
 });
 
@@ -267,8 +267,8 @@ it('never shows another site\'s posts in the recent list, with two sites interle
     foreach (range(1, 2) as $_) {
         $mine = slotsHtml('/tin-tuc/ong-dang-doc', 'mau.platform.test');
         $theirs = slotsHtml('/tin-tuc/ong-dang-doc', 'khac.platform.test');
-        expect($mine)->toContain('Tin con 3')->not->toContain('Khác Tin')
-            ->and($theirs)->toContain('Khác Tin con 3')->not->toContain('>Tin con 3<');
+        expect($mine)->toContain('Bản tin con số 3 mới')->not->toContain('Khác Bản')
+            ->and($theirs)->toContain('Khác Bản tin con số 3 mới')->not->toContain('>Bản tin con số 3 mới<');
     }
 });
 
@@ -281,7 +281,7 @@ it('draws the categories of the root branch with no counts', function (): void {
     preg_match('#<section class="slot-categories".*?</section>#s', $html, $match);
     $list = $match[0] ?? '';
 
-    expect($list)->toContain('Chuyên mục')->toContain('Tin nội bộ')->toContain('href="/tin-noi-bo"')
+    expect($list)->toContain('Chuyên mục')->toContain('Bản tin nội bộ')->toContain('href="/tin-noi-bo"')
         ->and($list)->not->toContain('Tuyển dụng')
         ->and($list)->not->toMatch('#<span[^>]*>\s*\d+\s*</span>#');
 });
@@ -289,7 +289,7 @@ it('draws the categories of the root branch with no counts', function (): void {
 it('hides the empty lines of the consult box and takes hotline and email from the site settings', function (): void {
     slotsSite();
     $id = slotsSiteId();
-    $consult = ['type' => 'contact', 'props' => ['variant' => 'aside', 'eyebrow' => 'Tư vấn kỹ thuật', 'heading' => 'Cần tư vấn hoặc báo giá?', 'text' => 'Gửi bản vẽ để nhận báo giá.', 'button_label' => 'Gửi yêu cầu', 'button_url' => '/lien-he']];
+    $consult = ['type' => 'consult', 'props' => ['eyebrow' => 'Tư vấn kỹ thuật', 'heading' => 'Cần tư vấn hoặc báo giá?', 'text' => 'Gửi bản vẽ để nhận báo giá.', 'button_label' => 'Gửi yêu cầu', 'button_url' => '/lien-he']];
     slotsDefault($id, 'post_aside', [$consult]);
 
     $setProfile = fn (array $values) => app(Tenancy::class)->enter($id, function () use ($values): void {
@@ -307,13 +307,29 @@ it('hides the empty lines of the consult box and takes hotline and email from th
     expect($none)->toContain('Cần tư vấn hoặc báo giá?')->not->toContain('slot-consult__call')->not->toContain('slot-consult__mail');
 });
 
-it('lists the headings that carry an id as the table of contents, and none under two', function (): void {
-    $html = '<h2 id="nhom-thep">1. Ba nhóm thép</h2><p>x</p><h2>Không id</h2><h2 class="a" id="lop-phu">3. Lớp phủ &amp; xử lý</h2><h3 id="con">Con</h3>';
+it('makes anchors for the formatted-text headings from two up, unique and Vietnamese-safe, and leaves a body with fewer untouched', function (): void {
+    $two = '<section class="sf-prose">'."\n".'<h2>Đồ gá kiểm</h2><p>x</p><h2>Lớp phủ PVD</h2><h3>Con</h3><h2>Đồ gá kiểm</h2>'."\n".'</section>';
+    $toc = ArticleToc::of($two);
 
-    expect(ArticleToc::of($html))->toBe([['id' => 'nhom-thep', 'label' => '1. Ba nhóm thép'], ['id' => 'lop-phu', 'label' => '3. Lớp phủ & xử lý']])
-        ->and(ArticleToc::of('<h2 id="mot">Một</h2><h2>Hai</h2>'))->toBe([])
-        ->and(ArticleToc::of('<p>Không có tiêu đề</p>'))->toBe([])
-        ->and(ArticleToc::of('<h2 id="a">A</h2><h2 id="a">B</h2>'))->toBe([]);
+    expect($toc['items'])->toBe([
+        ['id' => 'muc-do-ga-kiem', 'label' => 'Đồ gá kiểm'],
+        ['id' => 'muc-lop-phu-pvd', 'label' => 'Lớp phủ PVD'],
+        ['id' => 'muc-do-ga-kiem-2', 'label' => 'Đồ gá kiểm'],
+    ])->and($toc['html'])->toContain('<h2 id="muc-do-ga-kiem">Đồ gá kiểm</h2>')->toContain('<h2 id="muc-do-ga-kiem-2">')->toContain('<h3>Con</h3>');
+
+    $one = '<section class="sf-prose"><h2>Một đề mục</h2></section>';
+    $outside = '<h2>Tiêu đề khối</h2><section class="richtext"><h2>Khác</h2></section><section class="sf-prose"><h2>Chỉ một</h2></section>';
+    expect(ArticleToc::of($one))->toBe(['html' => $one, 'items' => []])
+        ->and(ArticleToc::of($outside))->toBe(['html' => $outside, 'items' => []])
+        ->and(ArticleToc::of('<p>Không có tiêu đề</p>')['items'])->toBe([]);
+});
+
+it('never makes an anchor equal to an id the page already uses', function (): void {
+    $html = '<section class="sf-prose"><h2>Liên quan</h2><h2>Liên quan</h2></section>';
+
+    $toc = ArticleToc::of($html, ['muc-lien-quan', 'muc-lien-quan-2']);
+
+    expect(array_column($toc['items'], 'id'))->toBe(['muc-lien-quan-3', 'muc-lien-quan-4']);
 });
 
 it('draws the table of contents in the side column from the body headings, on desktop only', function (): void {
@@ -326,39 +342,150 @@ it('draws the table of contents in the side column from the body headings, on de
         ->and($draw([], '<p>khối</p>'))->not->toContain('post-toc');
 });
 
-it('builds the table of contents of a post from the h2 headings with an id in its drawn body', function (): void {
+/** Store a post's body the way the editor does: one formatted-text block. */
+function slotsBody(int $siteId, Entry $read, string $html): void
+{
+    app(Tenancy::class)->enter($siteId, function () use ($read, $html): void {
+        $translation = $read->translations()->firstOrFail();
+        $translation->body = ['blocks' => [['type' => 'richtext_html', 'props' => ['html' => $html]]]];
+        $translation->save();
+    });
+    slotsFresh();
+}
+
+it('builds both tables of contents of a post from its stored formatted text, with working anchors', function (): void {
     $site = slotsSite();
     $id = slotsSiteId();
-    // A block whose view prints headings with ids (the sanitizer for formatted text strips ids, so a probe view stands in).
-    $dir = sys_get_temp_dir().'/slot-toc-'.uniqid();
-    mkdir($dir);
-    file_put_contents($dir.'/probe.blade.php', '<h2 id="nhom-thep">1. Ba nhóm thép</h2><p>a</p><h2 id="lop-phu">2. Lớp phủ PVD</h2>');
-    View::addNamespace('probe', $dir);
-    app(ComponentRegistry::class)->register('toc_probe', new SectionComponent('probe::probe', []));
-    app(Tenancy::class)->enter($id, fn () => $site['read']->translations()->update(['body' => ['blocks' => [['type' => 'toc_probe', 'props' => []]]]]));
+    slotsBody($id, $site['read'], '<p>Mở đầu</p><h2>Nhóm thép</h2><p>a</p><h2>Lớp phủ PVD</h2><p>b</p><h2>Nhóm thép</h2><p>c</p>');
 
     $html = slotsHtml('/tin-tuc/ong-dang-doc');
 
-    expect($html)->toContain('post-columns')->toContain('<aside class="post-aside post-aside--toc-only"')
-        ->toContain('<a class="post-toc__link" href="#nhom-thep">1. Ba nhóm thép</a>')->toContain('href="#lop-phu"');
-
-    file_put_contents($dir.'/single.blade.php', '<h2 id="nhom-thep">Chỉ một đề mục</h2>');
-    app(ComponentRegistry::class)->register('toc_single', new SectionComponent('probe::single', []));
-    app(Tenancy::class)->enter($id, fn () => $site['read']->translations()->update(['body' => ['blocks' => [['type' => 'toc_single', 'props' => []]]]]));
-    expect(slotsHtml('/tin-tuc/ong-dang-doc'))->not->toContain('post-columns')->not->toContain('post-toc');
+    expect($html)->toContain('<h2 id="muc-nhom-thep">Nhóm thép</h2>')->toContain('<h2 id="muc-lop-phu-pvd">')->toContain('<h2 id="muc-nhom-thep-2">')
+        ->toContain('<aside class="post-aside post-aside--toc-only"')
+        ->toContain('<a class="post-toc__link" href="#muc-nhom-thep-2">Nhóm thép</a>')
+        // the phone's disclosure carries the same entries
+        ->toContain('<details class="post-toc-phone">')->toContain('Mục lục bài viết');
+    preg_match('#<details class="post-toc-phone">.*?</details>#s', $html, $phone);
+    preg_match('#<nav class="post-toc".*?</nav>#s', $html, $desktop);
+    preg_match_all('#href="\#(muc-[a-z0-9-]+)"#', $phone[0] ?? '', $phoneLinks);
+    preg_match_all('#href="\#(muc-[a-z0-9-]+)"#', $desktop[0] ?? '', $desktopLinks);
+    expect($phoneLinks[1])->toBe(['muc-nhom-thep', 'muc-lop-phu-pvd', 'muc-nhom-thep-2'])->and($desktopLinks[1])->toBe($phoneLinks[1]);
+    // every link lands on exactly one heading
+    foreach ($phoneLinks[1] as $anchor) {
+        expect(substr_count($html, 'id="'.$anchor.'"'))->toBe(1);
+    }
 });
 
-it('keeps the slot-only blocks out of a page body and accepts them in a slot', function (): void {
+it('leaves a post with one heading byte for byte as the body was stored, with no contents', function (): void {
+    $site = slotsSite();
+    $id = slotsSiteId();
+    slotsBody($id, $site['read'], '<h2>Chỉ một đề mục</h2><p>Nội dung</p>');
+
+    $html = slotsHtml('/tin-tuc/ong-dang-doc');
+
+    expect($html)->toContain("<section class=\"sf-prose\">\n<h2>Chỉ một đề mục</h2><p>Nội dung</p>\n</section>")
+        ->not->toContain('id="muc-')->not->toContain('post-toc')->not->toContain('post-columns');
+});
+
+it('keeps the slot-only blocks out of a page body and accepts them in a slot', function (string $type): void {
     slotsSite();
-    $body = [['type' => 'recent_posts', 'props' => []]];
+    $body = [['type' => $type, 'props' => []]];
     $page = Validator::make(['blocks' => $body], ['blocks' => [app(ValidPageJson::class)]]);
     $slot = Validator::make(['blocks' => $body], ['blocks' => [app(ValidPageJson::class)->forSlots()]]);
 
     expect($page->fails())->toBeTrue()->and($slot->fails())->toBeFalse();
-    app(Tenancy::class)->enter(slotsSiteId(), function () use ($body): void {
+    app(Tenancy::class)->enter(slotsSiteId(), function () use ($body, $type): void {
         $checked = app(LayoutSlotInput::class)->check(['post_aside' => ['vi' => ['blocks' => $body]]], false);
-        expect($checked['post_aside']['vi']['blocks'][0]['type'])->toBe('recent_posts');
+        expect($checked['post_aside']['vi']['blocks'][0]['type'])->toBe($type);
     });
+})->with(['recent_posts', 'category_list', 'consult']);
+
+it('accepts the recent-posts block in the post slots only', function (): void {
+    app()->setLocale('vi');
+    slotsSite();
+    $blocks = ['vi' => ['blocks' => [['type' => 'recent_posts', 'props' => []]]]];
+
+    app(Tenancy::class)->enter(slotsSiteId(), function () use ($blocks): void {
+        $input = app(LayoutSlotInput::class);
+        foreach (['post_aside', 'after_post'] as $slot) {
+            expect($input->check([$slot => $blocks], false)[$slot]['vi']['blocks'][0]['type'])->toBe('recent_posts');
+        }
+        foreach (['after_list', 'after_product'] as $slot) {
+            expect(fn () => $input->check([$slot => $blocks], false))->toThrow(LayoutBlocksRejectedException::class, 'chỉ đặt được ở cột bên hoặc cuối bài viết');
+        }
+        // A block that reads no post goes in any slot.
+        expect($input->check(['after_list' => ['vi' => ['blocks' => [slotsCta('Báo giá cuối danh sách')]]]], false))->toHaveKey('after_list');
+    });
+});
+
+it('draws the end-of-list band on every grid list template, and nothing when the band is empty', function (string $template): void {
+    slotsSite();
+    $id = slotsSiteId();
+    app(Tenancy::class)->enter($id, fn () => StorefrontCards::category('Ấn phẩm số hóa', 'an-pham-so-hoa', listTemplate: $template));
+
+    expect(slotsHtml('/an-pham-so-hoa'))->not->toContain('slot-band');
+
+    slotsDefault($id, 'after_list', [slotsCta('Báo giá cuối danh sách')]);
+
+    expect(slotsHtml('/an-pham-so-hoa'))->toContain('<div class="slot-band">')->toContain('Báo giá cuối danh sách');
+})->with(['grid-news', 'grid-product', 'grid-project', 'grid-job']);
+
+it('gives a block in the post body its own contact lines, not the site\'s that a slot block shows', function (): void {
+    $site = slotsSite();
+    $id = slotsSiteId();
+    app(Tenancy::class)->enter($id, function () use ($site): void {
+        SiteProfile::query()->update(['hotline' => '0915 66 83 83', 'email' => 'quybv@ckanvinh.vn']);
+        $translation = $site['read']->translations()->firstOrFail();
+        $translation->body = ['blocks' => [['type' => 'contact', 'props' => ['heading' => 'Liên hệ riêng', 'phone' => '0901 234 567', 'email' => 'rieng@xuong.vn']]]];
+        $translation->save();
+    });
+    slotsDefault($id, 'post_aside', [['type' => 'consult', 'props' => ['heading' => 'Cần tư vấn?']]]);
+
+    $html = slotsHtml('/tin-tuc/ong-dang-doc');
+    preg_match('#<section class="slot-consult">.*?</section>#s', $html, $aside);
+    // The post's own body: from its column to the side column (the footer prints the site's lines too).
+    $from = strpos($html, 'post__body');
+    $body = substr($html, $from, strpos($html, '<aside', $from) - $from);
+
+    expect($body)->toContain('0901 234 567')->toContain('rieng@xuong.vn')->not->toContain('quybv@ckanvinh.vn')->not->toContain('0915 66 83 83')
+        ->and($aside[0] ?? '')->toContain('quybv@ckanvinh.vn')->not->toContain('rieng@xuong.vn');
+});
+
+it('loads the slider script for a rotating slider in a list or product slot', function (string $path, string $slot): void {
+    $this->swap(Vite::class, new class extends Vite
+    {
+        public function __invoke($entrypoints, $buildDirectory = null): HtmlString
+        {
+            return new HtmlString(collect((array) $entrypoints)->map(fn (string $entry): string => '<script type="module" src="/'.$entry.'"></script>')->implode(''));
+        }
+    });
+    slotsSite();
+    $id = slotsSiteId();
+    $slide = fn (string $heading): array => ['heading' => $heading, 'image_url' => ''];
+
+    slotsDefault($id, $slot, [['type' => 'hero_slider', 'props' => ['slides' => [$slide('Tấm một'), $slide('Tấm hai')]]]]);
+    expect(slotsHtml($path))->toContain('<script type="module" src="/resources/js/sf-slider.js"></script>');
+
+    slotsDefault($id, $slot, [['type' => 'hero_slider', 'props' => ['slides' => [$slide('Tấm duy nhất')]]]]);
+    expect(slotsHtml($path))->not->toContain('sf-slider.js');
+})->with([
+    'a product' => ['/do-ga-kiem', 'after_product'],
+    'a list' => ['/tin-tuc', 'after_list'],
+]);
+
+it('gives every drawing of the recent-posts and category blocks its own heading id', function (): void {
+    slotsSite();
+    $id = slotsSiteId();
+    slotsDefault($id, 'post_aside', [['type' => 'recent_posts', 'props' => []], ['type' => 'category_list', 'props' => []]]);
+    slotsDefault($id, 'after_post', [['type' => 'recent_posts', 'props' => []], ['type' => 'category_list', 'props' => []]]);
+
+    $html = slotsHtml('/tin-tuc/ong-dang-doc');
+    preg_match_all('#<section class="slot-(?:recent|categories)" aria-labelledby="([^"]+)">\s*<h2 class="slot-title" id="([^"]+)"#', $html, $found, PREG_SET_ORDER);
+
+    expect($found)->toHaveCount(4);
+    foreach ($found as $one) {
+        expect($one[1])->toBe($one[2])->and(substr_count($html, 'id="'.$one[2].'"'))->toBe(1);
+    }
 });
 
 it('draws a slot\'s pages and files in the page\'s one lookup per kind, whatever the number of blocks', function (): void {
@@ -387,7 +514,7 @@ it('draws a slot\'s pages and files in the page\'s one lookup per kind, whatever
     expect($many)->toBe($one);
 });
 
-it('stays within the query budget of the page with a filled slot, per page kind', function (string $path, array $slots, int $extra): void {
+it('adds exactly the expected queries to a page for its filled slots, and stays under the page\'s ceiling', function (string $path, array $slots, int $delta, int $ceiling): void {
     slotsSite();
     $id = slotsSiteId();
     $measure = function (string $path): int {
@@ -406,11 +533,13 @@ it('stays within the query budget of the page with a filled slot, per page kind'
     foreach ($slots as $slot => $blocks) {
         slotsDefault($id, $slot, $blocks);
     }
+    $with = $measure($path);
 
-    expect($measure($path))->toBeLessThanOrEqual($base + $extra);
+    expect($with - $base)->toBe($delta)->and($with)->toBeLessThanOrEqual($ceiling);
 })->with([
-    // Pages and files are looked up once per kind when the slot's buttons name any; "category_list" reads names and routes.
-    'a post' => ['/tin-tuc/ong-dang-doc', ['post_aside' => [['type' => 'recent_posts', 'props' => []], ['type' => 'category_list', 'props' => []], ['type' => 'contact', 'props' => ['variant' => 'aside', 'button_label' => 'Gửi', 'button_url' => '/lien-he']]], 'after_post' => [['type' => 'cta', 'props' => ['heading' => 'Báo giá', 'button_label' => 'Gửi', 'button_url' => '/lien-he']]]], 3],
-    'a product' => ['/do-ga-kiem', ['after_product' => [['type' => 'cta', 'props' => ['heading' => 'Báo giá', 'button_label' => 'Gửi', 'button_url' => '/lien-he']]]], 1],
-    'a category list' => ['/tin-tuc', ['after_list' => [['type' => 'cta', 'props' => ['heading' => 'Báo giá', 'button_label' => 'Gửi', 'button_url' => '/lien-he']]]], 1],
+    // The slot settings are read in one go; pages and files named by buttons are looked up once per kind;
+    // "category_list" reads the branch and the names of its categories.
+    'a post' => ['/tin-tuc/ong-dang-doc', ['post_aside' => [['type' => 'recent_posts', 'props' => []], ['type' => 'category_list', 'props' => []], ['type' => 'consult', 'props' => ['button_label' => 'Gửi', 'button_url' => '/lien-he']]], 'after_post' => [['type' => 'cta', 'props' => ['heading' => 'Báo giá', 'button_label' => 'Gửi', 'button_url' => '/lien-he']]]], 2, 22],
+    'a product' => ['/do-ga-kiem', ['after_product' => [['type' => 'cta', 'props' => ['heading' => 'Báo giá', 'button_label' => 'Gửi', 'button_url' => '/lien-he']]]], 0, 23],
+    'a category list' => ['/tin-tuc', ['after_list' => [['type' => 'cta', 'props' => ['heading' => 'Báo giá', 'button_label' => 'Gửi', 'button_url' => '/lien-he']]]], 0, 17],
 ]);

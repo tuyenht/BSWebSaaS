@@ -170,16 +170,17 @@ final readonly class BlockRenderer
     /**
      * Several block lists drawn in ONE pass: the media ids, page links and library files of all of
      * them are collected first and looked up once per kind, so the blocks of a post's body and of
-     * the slots around it cost no more lookups than the body alone. Only the first block of the
-     * first list may lead the page ($leads false: no block does, for a page that has no body of its
-     * own). $context is the page's data a slot block draws (SlotContext), handed to every view as
+     * the slots around it cost no more lookups than the body alone. With $ownBody the first list is
+     * the page's own body: its first block may lead the page and its blocks get no slot data
+     * ($ownBody false: every list is a slot's, for a page that has no body of its own). $context is
+     * the page's data a slot block draws (SlotContext), handed to the views of the slots' blocks as
      * `$sfSlot`; the result lists one `{html, bgVideo}` per body, in order.
      *
      * @param  list<array<string, mixed>>  $bodies
      * @param  array<array-key, mixed>  $context
      * @return list<array{html: string, bgVideo: bool}>
      */
-    public function renderBodies(array $bodies, array $context = [], bool $leads = true): array
+    public function renderBodies(array $bodies, array $context = [], bool $ownBody = true): array
     {
         // Pass 1 — collect every media_id an image prop references across the whole page.
         $ids = [];
@@ -228,7 +229,8 @@ final readonly class BlockRenderer
         $out = [];
         foreach ($bodies as $position => $body) {
             $html = '';
-            $first = $leads && $position === 0;
+            $isOwn = $ownBody && $position === 0;
+            $first = $isOwn;
             $bgVideo = false;
             foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
                 if (! is_array($block)) {
@@ -261,7 +263,7 @@ final readonly class BlockRenderer
                 // The page's one high-priority image: only the first block may claim it, and a first block
                 // with a background photo has already claimed it through the sf-section wrapper.
                 $resolved['_high'] = $first && ($wrapper === null || $wrapper['image'] === null);
-                $section = $this->views->make($view, $component->data($resolved) + ['srcsets' => $srcsets, 'alts' => $alts, 'sfSlot' => $context] + $band)->render();
+                $section = $this->views->make($view, $component->data($resolved) + ['srcsets' => $srcsets, 'alts' => $alts, 'sfSlot' => $isOwn ? [] : $context] + $band)->render();
 
                 $html .= $wrapper === null ? $section : $this->views->make('theme::partials.sf-section', [
                     'wrapper' => $wrapper,

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Storefront\Support;
 
-use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Support\LayoutSlotBlocks;
@@ -17,7 +16,7 @@ use Illuminate\Database\Eloquent\Builder;
  * What the block slots around a page need from the page: the blocks each slot holds for this page's
  * main category and language (LayoutSlotBlocks), and the data the slot-only blocks draw — the
  * newest posts of the post's root branch (read with the related posts, never separately), the
- * categories of that branch (one read, only when a block asks for them) and the site's hotline and
+ * categories of that branch (two reads, only when a block asks for them) and the site's hotline and
  * email from its identity. Holds no state; every method reads only what it is handed or the
  * current site's rows.
  */
@@ -31,6 +30,9 @@ final readonly class SlotContext
 
     /** The slot of a product page. */
     public const array PRODUCT_SLOTS = ['after_product'];
+
+    /** The most categories the category list shows (a branch is a handful; the cap bounds a bad tree). */
+    public const int CATEGORY_CAP = 50;
 
     public function __construct(
         private LayoutSlotBlocks $slots,
@@ -119,8 +121,9 @@ final readonly class SlotContext
 
     /**
      * The categories below the root of $category's branch (the root itself when it has none), the
-     * shallowest first, each with its address in the page's language. Two reads (names, routes); a
-     * category without a name or a route in the language is left out.
+     * shallowest first, each with its address in the page's language, built from its slug the way
+     * the breadcrumb builds it. Two reads (the branch, then the names and slugs of the language),
+     * at most CATEGORY_CAP rows; a category without a name in the language is left out.
      *
      * @return list<array{name: string, url: string, current: bool}>
      */
@@ -130,24 +133,24 @@ final readonly class SlotContext
         $rootId = ctype_digit($first) ? (int) $first : $category->id;
 
         $rows = Taxonomy::query()
+            ->select(['taxonomies.id', 'taxonomies.path', 'taxonomies.position'])
             ->where('vocabulary', $category->vocabulary)
             ->where(fn (Builder $branch) => $branch
                 ->whereKey($rootId)
                 ->orWhereRaw('taxonomies.path <@ (select root.path from taxonomies root where root.id = ?)', [$rootId]))
-            ->with(['translations' => fn ($query) => $query->where('locale', $locale)])
+            ->with(['translations' => fn ($query) => $query->where('locale', $locale)->select(['taxonomy_id', 'locale', 'name', 'slug'])])
             ->orderByRaw('nlevel(taxonomies.path), taxonomies.position, taxonomies.id')
+            ->limit(self::CATEGORY_CAP + 1)
             ->get();
         if ($rows->count() > 1) {
             $rows = $rows->reject(fn (Taxonomy $row): bool => $row->id === $rootId);
         }
 
-        $routes = SiteRoute::query()->whereIn('taxonomy_id', $rows->pluck('id'))->where('locale', $locale)->pluck('path', 'taxonomy_id');
         $items = [];
-        foreach ($rows as $row) {
-            $name = $row->translationFor($locale)?->name;
-            $path = $routes->get($row->id);
-            if (is_string($name) && $name !== '' && is_string($path)) {
-                $items[] = ['name' => $name, 'url' => $this->paths->publicUrl($path, $locale), 'current' => $row->id === $category->id];
+        foreach ($rows->take(self::CATEGORY_CAP) as $row) {
+            $translation = $row->translationFor($locale);
+            if ($translation !== null && $translation->name !== '' && $translation->slug !== '') {
+                $items[] = ['name' => $translation->name, 'url' => $this->paths->publicUrl($this->paths->forTaxonomy($translation->slug), $locale), 'current' => $row->id === $category->id];
             }
         }
 

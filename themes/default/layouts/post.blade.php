@@ -69,6 +69,16 @@
 @if ($sfCols)
             <div class="post-columns sf-container">
                 <div class="post-columns__main">
+@if ($sfToc !== [])
+                    <details class="post-toc-phone">
+                        <summary class="post-toc-phone__summary">{{ __('storefront.toc_article') }}</summary>
+                        <ol class="post-toc-phone__list">
+@foreach ($sfToc as $item)
+                            <li><a class="post-toc__link" href="#{{ $item['id'] }}">{{ $item['label'] }}</a></li>
+@endforeach
+                        </ol>
+                    </details>
+@endif
 @endif
             <div class="post__body sf-prose sf-prose--article">{!! $sections !!}</div>
 @if ($sfPrev !== null || $sfNext !== null)

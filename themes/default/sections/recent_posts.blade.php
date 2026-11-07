@@ -4,13 +4,23 @@
     page (`$sfSlot['recent']`, PostDetail); nothing is drawn without any. Titles wrap (two lines),
     never cut by an ellipsis in the markup.
 --}}
-@php($sfRecent = is_array($sfSlot['recent'] ?? null) ? $sfSlot['recent'] : [])
+@php
+    $sfRecent = is_array($sfSlot['recent'] ?? null) ? $sfSlot['recent'] : [];
+@endphp
 @if ($sfRecent !== [])
-<section class="slot-recent" aria-labelledby="slot-recent-title">
-    <h2 class="slot-title" id="slot-recent-title">{{ ($props['heading'] ?? '') !== '' ? $props['heading'] : __('storefront.recent_posts') }}</h2>
+@php
+    // Each drawing gets its own heading id, so the block twice on one page never repeats one.
+    $sfSlotN = (int) request()->attributes->get('sf_slot_heading', 0) + 1;
+    request()->attributes->set('sf_slot_heading', $sfSlotN);
+    $sfTitleId = 'slot-recent-title-'.$sfSlotN;
+@endphp
+<section class="slot-recent" aria-labelledby="{{ $sfTitleId }}">
+    <h2 class="slot-title" id="{{ $sfTitleId }}">{{ ($props['heading'] ?? '') !== '' ? $props['heading'] : __('storefront.recent_posts') }}</h2>
     <ul class="slot-recent__list">
 @foreach ($sfRecent as $sfPost)
-@php($sfHref = \App\Modules\Shared\Support\SafeLink::href($sfPost['url'] ?? null))
+@php
+    $sfHref = \App\Modules\Shared\Support\SafeLink::href($sfPost['url'] ?? null);
+@endphp
         <li>
             <a class="slot-recent__item" @if ($sfHref !== null) href="{{ $sfHref }}"@endif>
 @if (($sfPost['image'] ?? '') !== '')
