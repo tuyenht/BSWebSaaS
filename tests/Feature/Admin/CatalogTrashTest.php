@@ -52,7 +52,7 @@ it('trashes a product out of the main list and restores it from the trash view',
         // The trash view lists it; restore brings it back.
         Livewire::actingAs($manager->fresh())
             ->test(Index::class)
-            ->set('showTrash', true)
+            ->set('tab', 'trash')
             ->assertSee('Đồ gá')
             ->call('restore', $product->ulid)
             ->assertDontSee('Đồ gá');
@@ -77,7 +77,7 @@ it('force-deletes a trashed product, cascading its translations and gallery rows
 
         Livewire::actingAs($manager->fresh())
             ->test(Index::class)
-            ->set('showTrash', true)
+            ->set('tab', 'trash')
             ->call('forceDelete', $product->ulid);
 
         expect(Product::withTrashed()->count())->toBe(0)

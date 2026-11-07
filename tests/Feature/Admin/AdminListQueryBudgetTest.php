@@ -100,6 +100,46 @@ it('lists admin catalog on a flat query budget (no N+1 across rows)', function (
     expect($count)->toBeLessThanOrEqual(26);
 });
 
+it('keeps the catalog list flat with a search, a sort and a second page, whatever the number of rows', function (): void {
+    $viewer = User::factory()->create();
+
+    $seed = function (int $from, int $to) use ($viewer): void {
+        app(Tenancy::class)->enter(1, function () use ($from, $to, $viewer): void {
+            grantRole($viewer, 'cat-viewer', ['catalog.view']);
+            $category = Taxonomy::query()->firstOrCreate(['vocabulary' => 'product_cat', 'position' => 0]);
+            $category->translations()->firstOrCreate(['locale' => 'vi'], ['name' => 'Đồ gá', 'slug' => 'do-ga']);
+
+            foreach (range($from, $to) as $i) {
+                $media = Media::query()->create([
+                    'collection' => 'library', 'slug' => "anh-{$i}", 'hash' => hash('sha256', "img-{$i}"),
+                    'storage_key' => "s/library/anh-{$i}.png", 'disk' => 'r2', 'mime' => 'image/png', 'size' => 1024,
+                ]);
+                $product = Product::query()->create(['status' => 'published', 'sku' => "SKU-{$i}", 'price' => 1000000 + $i]);
+                $product->translations()->create(['locale' => 'vi', 'name' => "Sản phẩm {$i}", 'slug' => "sp-{$i}"]);
+                $product->assignCategories([$category->id]);
+                $second = Media::query()->create([
+                    'collection' => 'library', 'slug' => "anh-{$i}-b", 'hash' => hash('sha256', "img-{$i}-b"),
+                    'storage_key' => "s/library/anh-{$i}-b.png", 'disk' => 'r2', 'mime' => 'image/png', 'size' => 1024,
+                ]);
+                $product->images()->create(['media_id' => $media->id, 'position' => 0]);
+                $product->images()->create(['media_id' => $second->id, 'position' => 1]);
+            }
+        });
+    };
+    $url = 'http://a.test/admin/catalog?q=Sản&sort=name&tab=published&per_page=10&page=2';
+
+    $seed(1, 30);
+    $this->actingAs($viewer)->get($url)->assertOk(); // the permission and settings caches fill on the first request
+    $count = countQueries(fn () => $this->actingAs($viewer)->get($url)->assertOk()->assertSee('Sản phẩm'));
+
+    $seed(31, 60);
+    $this->actingAs($viewer)->get($url)->assertOk(); // granting the role again clears the permission cache
+    $more = countQueries(fn () => $this->actingAs($viewer)->get($url)->assertOk());
+
+    // 10 rows on the page either way: twice the products must not add a single query
+    expect($more)->toBe($count)->and($count)->toBeLessThanOrEqual(24);
+});
+
 it('lists admin members on a flat query budget (no N+1 across rows)', function (): void {
     $admin = User::factory()->create();
 
