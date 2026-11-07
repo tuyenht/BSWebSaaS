@@ -2,10 +2,12 @@
 
 namespace App\Modules\Admin\Support;
 
+use App\Modules\Admin\Support\Categories\CategorySections;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductImage;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
 use App\Modules\Tenancy\Models\SiteProfile;
@@ -25,12 +27,15 @@ use Illuminate\Support\Facades\DB;
  * on Media — putting this in Media would make the module graph cyclic. All queries are site-scoped
  * (BelongsToSite + RLS), so a resolver call only ever sees the current tenant's content.
  */
-final class MediaUsageLocator
+final readonly class MediaUsageLocator
 {
+    public function __construct(private CategorySections $sections) {}
+
     /**
      * Every place this media is used, tagged by role for the grouped detail panel: `gallery` (a
      * product image list), `cover` (an entry's featured/OG image, or a category's picture), `content`
-     * (a block image, or a block button's file to download, inside an entry body). An entry that uses the media in two roles appears once
+     * (a block image, or a block button's file to download, inside an entry body, the site's block
+     * slots or a category's own slot blocks). An entry that uses the media in two roles appears once
      * per role.
      *
      * @return list<array{kind: string, role: string, label: string, url: string}>
@@ -80,15 +85,87 @@ final class MediaUsageLocator
             }
         }
 
-        // Content — a block image or a button's file (materialized into mediables on save).
-        $blockEntryIds = Mediable::query()
-            ->where('media_id', $media->id)->where('mediable_type', 'entry')->where('collection', 'content')
-            ->pluck('mediable_id')->unique();
-        foreach (Entry::query()->with('translations')->whereIn('id', $blockEntryIds)->get() as $entry) {
+        // Content — a block image or a button's file (materialized into mediables on save): in an
+        // entry body, in the site's block slots (around posts, lists and products) or in a
+        // category's own blocks for those slots.
+        $owners = ['entry' => [], 'site_setting' => [], 'taxonomy' => []];
+        $rows = Mediable::query()
+            ->where('media_id', $media->id)->where('collection', 'content')->whereIn('mediable_type', array_keys($owners))
+            ->get(['mediable_type', 'mediable_id']);
+        foreach ($rows as $row) {
+            $owners[$row->mediable_type][] = $row->mediable_id;
+        }
+        foreach (Entry::query()->with('translations')->whereIn('id', array_unique($owners['entry']))->get() as $entry) {
             $usages[] = $this->entryUsage($entry, 'content', $locale);
+        }
+        if ($owners['site_setting'] !== []) {
+            $usages[] = [
+                'kind' => 'site',
+                'role' => 'content',
+                'label' => __('media.usage_layout_slots'),
+                'url' => route('admin.settings.appearance'),
+            ];
+        }
+        if ($owners['taxonomy'] !== []) {
+            $categories = Taxonomy::query()->with('translations')->whereIn('id', array_unique($owners['taxonomy']))->orderBy('id')->get();
+            $roots = $this->rootsOf($categories->all());
+            foreach ($categories as $category) {
+                $translation = $category->translationFor($locale);
+                $section = $this->sectionOf($category, $roots);
+                $usages[] = [
+                    'kind' => 'category',
+                    'role' => 'content',
+                    'label' => __('media.usage_layout_slots_of', ['name' => $translation !== null ? $translation->name : __('catalog.untitled')]),
+                    'url' => route('admin.taxonomies.index', $section === null ? [] : ['section' => $section]),
+                ];
+            }
         }
 
         return $usages;
+    }
+
+    /**
+     * The root of each post category without a query per level: the first label of the stored
+     * ltree path (ids from the root down), else the parent chain for a row that carries no path.
+     *
+     * @param  array<int, Taxonomy>  $categories
+     * @return array<int, int> category id → root id
+     */
+    private function rootsOf(array $categories): array
+    {
+        $roots = [];
+        foreach ($categories as $category) {
+            if ($category->vocabulary === CategorySections::PRODUCT_VOCABULARY) {
+                continue;
+            }
+            $first = $category->path !== null && $category->path !== '' ? explode('.', $category->path)[0] : '';
+            $roots[$category->id] = ctype_digit($first) ? (int) $first : (TaxonomyTree::ancestorsOf($category->id)[0] ?? $category->id);
+        }
+
+        return $roots;
+    }
+
+    /**
+     * The key of the Chuyên mục screen section a category is edited in (CategorySections): the
+     * catalog for a product category, else the post section built on the category's root. Null when
+     * no section shows it (the screen then opens on its default).
+     *
+     * @param  array<int, int>  $roots  category id → its root id, from rootsOf()
+     */
+    private function sectionOf(Taxonomy $category, array $roots): ?string
+    {
+        if ($category->vocabulary === CategorySections::PRODUCT_VOCABULARY) {
+            return CategorySections::CATALOG;
+        }
+
+        $root = $roots[$category->id] ?? $category->id;
+        foreach ($this->sections->postSections() as $section) {
+            if ($section['root'] === $root) {
+                return $section['key'];
+            }
+        }
+
+        return null;
     }
 
     /**

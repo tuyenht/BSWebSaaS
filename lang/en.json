@@ -880,6 +880,9 @@
     "media.picker_kind_post": "Post",
     "media.picker_kind_page": "Page",
     "media.picker_kind_category": "Category",
+    "media.picker_kind_site": "Website",
+    "media.usage_layout_slots": "Side column / End-of-page call to action",
+    "media.usage_layout_slots_of": ":name · Side column / End-of-page call to action",
     "media.picker_trash": "Trash",
     "media.picker_trash_restore": "Restore",
     "media.picker_trash_purge": "Delete permanently",
@@ -3211,5 +3214,8 @@
     "entries.btn_err_file_gone": "The chosen file is no longer in the library. Choose another file.",
     "entries.err_block_button_page_missing": "A button points to a page that is not on this website. Choose the button’s page again.",
     "entries.err_block_button_file_missing": "A button points to a file that is not in this website’s library. Choose the button’s file again.",
-    "storefront.new_tab": "(opens in a new tab)"
+    "storefront.new_tab": "(opens in a new tab)",
+    "layout_slots.err_slot_invalid": "This place for blocks does not exist. Reload the page and try again.",
+    "layout_slots.err_locale_invalid": "This language is not turned on for the website. Turn the language on first, or remove its content.",
+    "layout_slots.err_too_many": "This place holds at most :max blocks. Remove some blocks."
 }

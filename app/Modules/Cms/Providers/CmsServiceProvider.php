@@ -22,6 +22,7 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Navigation\MenuTargets;
 use App\Modules\Cms\Navigation\SpecialLinks;
 use App\Modules\Cms\Observers\EntryObserver;
+use App\Modules\Cms\Observers\TaxonomyObserver;
 use App\Modules\Cms\Policies\EntryPolicy;
 use App\Modules\Cms\Policies\MenuPolicy;
 use App\Modules\Cms\Policies\TaxonomyPolicy;
@@ -30,6 +31,7 @@ use App\Modules\Cms\Routing\EntryPageLinks;
 use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Cms\Support\CategoryItemCounts;
 use App\Modules\Cms\Support\CategoryScopes;
+use App\Modules\Cms\Support\LayoutSlotBlocks;
 use App\Modules\Rbac\Events\SiteMembershipChanged;
 use App\Modules\Shared\Contracts\PageLinks;
 use App\Modules\Theme\Components\ComponentRegistry;
@@ -60,6 +62,10 @@ final class CmsServiceProvider extends ServiceProvider
         // The category totals' open bulk batches belong to one request or job; scoped so a batch
         // can never be carried into the next Octane operation.
         $this->app->scoped(CategoryItemCounts::class);
+
+        // The blocks of the slots around posts, lists and products: reads the request's settings memo
+        // and the request's locales, so it is scoped with them and never outlives a request.
+        $this->app->scoped(LayoutSlotBlocks::class);
 
         // Menu link kinds other modules register at boot (Catalog → `product`). Boot-time closures
         // only, no request state — shared across Octane requests like the ComponentRegistry.
@@ -98,6 +104,8 @@ final class CmsServiceProvider extends ServiceProvider
 
         // Purging an entry drops its block image usage rows (polymorphic, no FK cascade).
         Entry::observe(EntryObserver::class);
+        // Deleting a category drops its block slots' usage rows (polymorphic, no FK cascade).
+        Taxonomy::observe(TaxonomyObserver::class);
 
         // A member's category limits on a site follow their roles there (left the site, or never limited).
         Event::listen(SiteMembershipChanged::class, ForgetMemberCategoryScopes::class);

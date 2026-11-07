@@ -13,7 +13,9 @@ use App\Modules\Tenancy\Domains\CaddyOnDemandProvisioner;
 use App\Modules\Tenancy\Domains\DnsLookup;
 use App\Modules\Tenancy\Domains\SystemDnsLookup;
 use App\Modules\Tenancy\Entitlement\Entitlement;
+use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Database\Connection;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
@@ -54,6 +56,10 @@ final class TenancyServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->warnWhenAdminCredentialsLoaded();
+
+        // A settings row can own rows of the library's "in use" index (mediables, D3): a stable alias
+        // in storage instead of the class name, like the content owners ('entry', 'taxonomy').
+        Relation::morphMap(['site_setting' => SiteSetting::class]);
 
         if (config('tenancy.assert', 'strict') === 'off') {
             return;
