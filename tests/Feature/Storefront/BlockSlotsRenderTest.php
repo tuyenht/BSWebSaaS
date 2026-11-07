@@ -29,6 +29,9 @@ use Tests\Fixtures\StorefrontCards;
  */
 
 beforeEach(function (): void {
+    // The post page prints its "Cập nhật" date (the row's updated_at), so the golden page holds the
+    // day it was captured: pin the clock to that day of the current year (the year is masked).
+    $this->travelTo(now()->setDate((int) date('Y'), 11, 7)->setTime(5, 0));
     StorefrontCards::reset();
     StorefrontCards::pinMediaConfig();
 });
