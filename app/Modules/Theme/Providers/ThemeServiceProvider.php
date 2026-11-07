@@ -105,6 +105,22 @@ final class ThemeServiceProvider extends ServiceProvider
             'zalo' => ['type' => 'url', 'zalo' => true],
             'zalo_label' => ['type' => 'text'],
         ],
+        // Block-slot blocks (LayoutSlots): they draw data of the page around them, so only a slot holds them.
+        'recent_posts' => [
+            'heading' => ['type' => 'text'],
+        ],
+        'category_list' => [
+            'heading' => ['type' => 'text'],
+        ],
+        // The consult box of a side column: a small line, a heading, a line of text and one button; the hotline and
+        // the email come from the site's contact settings.
+        'consult' => [
+            'eyebrow' => ['type' => 'text'],
+            'heading' => ['type' => 'text'],
+            'text' => ['type' => 'textarea'],
+            'button_label' => ['type' => 'text'],
+            'button_url' => ['type' => 'url', 'action' => 'button_label'],
+        ],
         // The title band of an inner page: it carries the page's single h1 (the layout skips its
         // own when this block leads the page). Title defaults to the page title; overlay is the
         // darkening over the photo in percent, kept within 55–80 so white text stays readable.
@@ -221,6 +237,9 @@ final class ThemeServiceProvider extends ServiceProvider
     /** Types that render and validate but stay out of the builder's add list until their editor field exists. */
     private const array UNLISTED = ['richtext_html'];
 
+    /** Types only a block slot may hold (a page body is refused them): they draw data of the page they sit on. */
+    private const array SLOT_ONLY = ['recent_posts', 'category_list', 'consult'];
+
     /** Types whose view draws a section heading (theme::partials.sf-section-head): they take `heading_decor`. */
     private const array HEADED = ['features', 'process', 'pricing', 'testimonial', 'stats', 'gallery', 'quick_links', 'team', 'video', 'faq'];
 
@@ -231,7 +250,7 @@ final class ThemeServiceProvider extends ServiceProvider
             $registry = new ComponentRegistry;
 
             foreach (self::SECTION_SCHEMAS as $type => $schema) {
-                $registry->register($type, new SectionComponent("theme::sections.{$type}", $schema), ! in_array($type, self::UNLISTED, true), in_array($type, self::HEADED, true));
+                $registry->register($type, new SectionComponent("theme::sections.{$type}", $schema), ! in_array($type, self::UNLISTED, true) && ! in_array($type, self::SLOT_ONLY, true), in_array($type, self::HEADED, true), in_array($type, self::SLOT_ONLY, true));
             }
 
             return $registry;

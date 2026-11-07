@@ -35,6 +35,9 @@
         @else
             <p class="category__empty">{{ __('storefront.no_posts') }}</p>
         @endif
+@if (trim((string) (($slotHtml ?? [])['after_list'] ?? '')) !== '')
+        <div class="slot-band">{!! $slotHtml['after_list'] !!}</div>
+@endif
     </main>
     @include('theme::partials.footer', ['menu' => $menu ?? [], 'brand' => $brand ?? null])
 </body>

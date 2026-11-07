@@ -2347,6 +2347,12 @@
     "storefront.prev_post": "← 前の記事",
     "storefront.next_post": "次の記事 →",
     "storefront.related_posts": "関連記事",
+    "storefront.post_aside": "記事のサイドカラム",
+    "storefront.toc": "目次",
+    "storefront.toc_article": "記事の目次",
+    "storefront.recent_posts": "新着記事",
+    "storefront.categories": "カテゴリー",
+    "storefront.hotline_number": "ホットライン :phone",
     "storefront.other_projects": "その他のプロジェクト",
     "storefront.view_project": "プロジェクトを見る",
     "storefront.product_details": "詳細",
@@ -3276,5 +3282,6 @@
     "storefront.new_tab": "(新しいタブで開く)",
     "layout_slots.err_slot_invalid": "このブロックの配置場所はありません。ページを再読み込みしてもう一度お試しください。",
     "layout_slots.err_locale_invalid": "この言語はサイトで有効になっていません。先に言語を有効にするか、その言語の内容を削除してください。",
-    "layout_slots.err_too_many": "ここに置けるブロックは最大 :max 個です。ブロックを減らしてください。"
+    "layout_slots.err_too_many": "ここに置けるブロックは最大 :max 個です。ブロックを減らしてください。",
+    "layout_slots.err_type_slot": "「:block」ブロックは、記事のサイド欄か記事の末尾にのみ置けます。そこへ移すか、ブロックを削除してください。"
 }

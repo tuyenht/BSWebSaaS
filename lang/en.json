@@ -2347,6 +2347,12 @@
     "storefront.prev_post": "← Previous post",
     "storefront.next_post": "Next post →",
     "storefront.related_posts": "Related posts",
+    "storefront.post_aside": "Post side column",
+    "storefront.toc": "Contents",
+    "storefront.toc_article": "Contents of this article",
+    "storefront.recent_posts": "Recent posts",
+    "storefront.categories": "Categories",
+    "storefront.hotline_number": "Hotline :phone",
     "storefront.other_projects": "Other projects",
     "storefront.view_project": "View project",
     "storefront.product_details": "Details",
@@ -3276,5 +3282,6 @@
     "storefront.new_tab": "(opens in a new tab)",
     "layout_slots.err_slot_invalid": "This place for blocks does not exist. Reload the page and try again.",
     "layout_slots.err_locale_invalid": "This language is not turned on for the website. Turn the language on first, or remove its content.",
-    "layout_slots.err_too_many": "This place holds at most :max blocks. Remove some blocks."
+    "layout_slots.err_too_many": "This place holds at most :max blocks. Remove some blocks.",
+    "layout_slots.err_type_slot": "The “:block” block can only go in a post’s side column or at the end of a post. Move it there or remove it."
 }
