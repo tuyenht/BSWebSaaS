@@ -423,7 +423,7 @@
         height: var(--tree-ilw);
         margin-top: calc(var(--tree-ilw) / -2);
         border-radius: var(--tree-ilw);
-        background: var(--color-accent);
+        background: var(--color-primary-text);
         pointer-events: none;
     }
 
