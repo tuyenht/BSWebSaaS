@@ -110,10 +110,7 @@
 @if ($sfRelated !== [])
         <section class="post-related post-related--plain" aria-labelledby="san-pham-cung-nhom">
             <div class="sf-container">
-                <div class="sf-section-head">
-                    <h2 class="sf-section-head__title" id="san-pham-cung-nhom">{{ __('storefront.related_products') }}</h2>
-                    <span class="sf-section-head__rule" aria-hidden="true"></span>
-                </div>
+                @include('theme::partials.sf-section-head', ['heading' => __('storefront.related_products'), 'description' => '', 'headId' => 'san-pham-cung-nhom'])
                 <ul class="sf-grid sf-grid--4s">
 @foreach ($sfRelated as $card)
                     <li>@include('theme::partials.sf-card', ['card' => $card, 'kind' => 'product', 'level' => 'h3', 'sizes' => '(min-width:1360px) 298px, (min-width:1024px) calc((100vw - 10.5rem)/4), (min-width:640px) calc((100vw - 5rem)/2), calc(100vw - 2rem)'])</li>

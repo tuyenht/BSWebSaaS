@@ -6,6 +6,7 @@ use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SectionComponent;
 use App\Modules\Theme\Components\SectionProps;
+use App\Modules\Theme\Theming\HeadingDecor;
 use App\Modules\Theme\Theming\SiteSeo;
 use App\Modules\Theme\Theming\StorefrontSettings;
 use Illuminate\Support\Facades\View;
@@ -220,6 +221,9 @@ final class ThemeServiceProvider extends ServiceProvider
     /** Types that render and validate but stay out of the builder's add list until their editor field exists. */
     private const array UNLISTED = ['richtext_html'];
 
+    /** Types whose view draws a section heading (theme::partials.sf-section-head): they take `heading_decor`. */
+    private const array HEADED = ['features', 'process', 'pricing', 'testimonial', 'stats', 'gallery', 'quick_links', 'team', 'video', 'faq'];
+
     #[\Override]
     public function register(): void
     {
@@ -227,7 +231,7 @@ final class ThemeServiceProvider extends ServiceProvider
             $registry = new ComponentRegistry;
 
             foreach (self::SECTION_SCHEMAS as $type => $schema) {
-                $registry->register($type, new SectionComponent("theme::sections.{$type}", $schema), ! in_array($type, self::UNLISTED, true));
+                $registry->register($type, new SectionComponent("theme::sections.{$type}", $schema), ! in_array($type, self::UNLISTED, true), in_array($type, self::HEADED, true));
             }
 
             return $registry;
@@ -235,6 +239,7 @@ final class ThemeServiceProvider extends ServiceProvider
 
         // Per request (Octane-safe): one settings read shared by the tokens, header and footer.
         $this->app->scoped(StorefrontSettings::class);
+        $this->app->scoped(HeadingDecor::class);
         $this->app->scoped(SiteSeo::class);
     }
 
