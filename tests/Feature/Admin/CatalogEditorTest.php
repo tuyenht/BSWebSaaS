@@ -639,7 +639,7 @@ it('refuses a draft link that a category route already owns, in the category\'s 
         expect($category->id)->toBeInt();
 
         $test = Livewire::actingAs($editor->fresh())->test(Editor::class)
-            ->set('name', 'Dao cắt')->set('slug', 'dao-cat')->set('status', 'draft')->call('save')
+            ->set('name', 'Đĩa cắt')->set('slug', 'dao-cat')->set('status', 'draft')->call('save')
             ->assertHasErrors(['slug']);
 
         expect($test->errors()->get('slug'))->toBe([__('catalog.slug_owner_category', ['slug' => 'dao-cat', 'name' => 'Đồ cắt'])])

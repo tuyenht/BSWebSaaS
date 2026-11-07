@@ -373,11 +373,11 @@ it('shows the cleaned address on a refusal and treats a name of control characte
 
     app(Tenancy::class)->enter(1, function () use ($manager): void {
         $product = qeProduct();
-        qeProduct('Mũi khoan thép gió', 'mui-khoan');
+        qeProduct('Mũi khoét thép gió', 'mui-khoet');
         $test = Livewire::actingAs($manager)->test(Index::class);
 
-        $test->call('saveSlug', $product->ulid, '  Mũi Khoan ')
-            ->assertReturned(fn (array $r): bool => $r['ok'] === false && $r['keep'] === true && $r['slug'] === 'mui-khoan');
+        $test->call('saveSlug', $product->ulid, '  Mũi Khoét ')
+            ->assertReturned(fn (array $r): bool => $r['ok'] === false && $r['keep'] === true && $r['slug'] === 'mui-khoet');
 
         $test->call('saveName', $product->ulid, "\u{0001}\u{0007} ")
             ->assertReturned(fn (array $r): bool => $r['ok'] === false && $r['keep'] === false && $r['name'] === 'Đĩa phay mặt');
