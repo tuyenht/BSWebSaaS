@@ -12,7 +12,8 @@
     // inside it, never the buttons. Long text wraps, never clips.
     //
     // $group: the chosen group's label, or null for "all". $summary: e.g. "1 website".
-    // $chips: list<array{label: string, remove: string}> — remove is the host's Livewire call.
+    // $chips: list<array{label: string, remove: string, icon?: string, aria?: string}> — remove is the host's Livewire call;
+    //         icon sits before the label; aria names the ✕ in full ("Bỏ lọc chuyên mục “Dao phay”"), else the label names it.
     // $clear: the host's public method that resets the group and every condition.
     // remove and $clear are printed into wire:click as they are: build them in PHP from fixed method
     // names and Js::from() arguments, never from user input.
@@ -37,9 +38,13 @@
         @endif
         @foreach ($chips as $chip)
             <span class="inline-flex min-h-8 min-w-0 max-w-full items-center gap-1 rounded-full border border-border-input bg-surface ps-2.5 text-small">
+                @if ($chip['icon'] ?? null)
+                    <x-bs-admin::icon :name="$chip['icon']" class="size-3.5 shrink-0 text-text-muted" />
+                @endif
                 <span class="min-w-0">{{ $chip['label'] }}</span>
+                @php $removeName = $chip['aria'] ?? __('admin.list.remove_filter', ['name' => $chip['label']]); @endphp
                 <button type="button" wire:click="{{ $chip['remove'] }}"
-                        aria-label="{{ __('admin.list.remove_filter', ['name' => $chip['label']]) }}" title="{{ __('admin.list.remove_filter', ['name' => $chip['label']]) }}"
+                        aria-label="{{ $removeName }}" title="{{ $removeName }}"
                         class="hit-area inline-flex size-8 shrink-0 items-center justify-center rounded-full text-text-muted hover:text-text-strong">
                     <x-bs-admin::icon name="ri-close" class="size-3.5" />
                 </button>

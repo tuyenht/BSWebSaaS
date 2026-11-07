@@ -26,6 +26,30 @@
             'sheet' => true, 'class' => 'min-[900px]:hidden',
             'options' => array_map(fn (array $g): array => ['value' => $g['key'], 'label' => $g['label'], 'count' => $g['count'], 'divider' => $g['trash'] ?? false], $groups)],
     ];
+    // The filters, in the design's order: category, translations, labels, stock, sale. A long one shows its first
+    // choices with "Xem thêm", and past fifteen choices has its own search box. A filter nothing can be chosen
+    // in is left out unless it is on.
+    $filterDefs = [
+        'cat' => ['label' => __('catalog.f_cat'), 'icon' => 'ri-folder-3', 'model' => 'catF', 'value' => $catF],
+        'trans' => ['label' => __('entries.f_trans'), 'icon' => 'ri-translate-2', 'model' => 'transF', 'value' => $transF],
+        'tag' => ['label' => __('catalog.f_tag'), 'icon' => 'ri-price-tag-3', 'model' => 'tagF', 'value' => $tagF],
+        'stock' => ['label' => __('catalog.f_stock'), 'icon' => 'ri-stack', 'model' => 'stockF', 'value' => $stockF],
+        'sale' => ['label' => __('catalog.f_sale'), 'icon' => 'ri-price-tag-2', 'model' => 'saleF', 'value' => $saleF],
+    ];
+    foreach ($filterDefs as $key => $def) {
+        $options = $facets[$key] ?? [];
+        if ($options === []) {
+            continue;
+        }
+        $fit = \App\Modules\Admin\Support\LongFilterSection::fit($options, $moreF[$key] ?? false, $qF[$key] ?? '');
+        $what = mb_strtolower($def['label']);
+        $sections[] = $def + [
+            'key' => $key, 'multiple' => true, 'reset' => 'resetFilterGroup('.Js::from($key).')',
+            'options' => $fit['options'],
+            'search' => $fit['searchable'] ? ['model' => 'qF.'.$key, 'label' => __('admin.list.search_in', ['what' => $what]), 'placeholder' => __('admin.list.search_in', ['what' => $what])] : null,
+            'more' => $fit['hidden'] > 0 ? ['label' => __('admin.list.show_more', ['n' => $fit['hidden'], 'what' => $what]), 'call' => 'showMore('.Js::from($key).')'] : null,
+        ];
+    }
     // a view choice, not a filter: only while the rows are cards (the list narrower than 37.5rem)
     $cardLabels = ['sku' => __('catalog.card_opt_sku'), 'cat' => __('catalog.card_opt_cat')];
     $sections[] = ['key' => 'card', 'label' => __('entries.f_card'), 'model' => 'card', 'multiple' => true, 'value' => $card, 'sheet' => true, 'class' => '@min-[37.5rem]/lt:hidden', 'on' => false,
@@ -40,13 +64,17 @@
     }
 
     // The active-filter line: "Group · N trong M sản phẩm · Bỏ lọc", then a chip per condition (and the sort, when changed).
-    $filtering = $tab !== 'all' || trim($search) !== '';
+    $filtering = $tab !== 'all' || $filterCount > 0 || trim($search) !== '';
     $chips = [];
     if (trim($search) !== '') {
         $chips[] = ['label' => __('catalog.chip_search', ['q' => trim($search)]), 'remove' => '$set(\'search\', \'\')'];
     }
+    foreach ($filterChips as $chip) {
+        $chips[] = $chip;
+    }
     if (! $sortIsDefault) {
-        $chips[] = ['label' => $sortLabel($sortOn), 'remove' => 'resetSort'];
+        $chips[] = ['label' => $sortLabel($sortOn), 'icon' => 'ri-arrow-up-down', 'remove' => 'resetSort',
+            'aria' => __('catalog.chip_sort_aria', ['name' => $sortLabel($sortOn), 'default' => $sortLabel('updated')])];
     }
     $ariaSort = fn (string $key): string => $sortOn !== $key ? 'none' : (\App\Modules\Admin\Support\Catalog\ProductListQuery::SORTS[$key] === 'asc' ? 'ascending' : 'descending');
     $title = __('catalog.title');
@@ -117,7 +145,7 @@
                 </div>
                 <x-bs-admin::tool-row class="@min-[56.25rem]/lt:min-w-0 @min-[56.25rem]/lt:flex-[1_1_auto] @min-[56.25rem]/lt:flex-wrap @min-[56.25rem]/lt:gap-3">
                     <x-bs-admin::filter-panel class="ms-auto flex-nowrap @min-[56.25rem]/lt:ms-0 @min-[56.25rem]/lt:min-w-0 @min-[56.25rem]/lt:shrink @min-[56.25rem]/lt:flex-wrap" :sections="$sections"
-                        :active="0" :active-narrow="$tab !== 'all' ? 1 : 0" :results="__('catalog.show_n', ['n' => $fmt($matchCount), 'unit' => $noun])" />
+                        :active="$filterCount" :active-narrow="$filterCountNarrow" clear="clearAllFilters" :clear-closes="true" :results="__('catalog.show_n', ['n' => $fmt($matchCount), 'unit' => $noun])" />
                     <x-bs-admin::sort-menu class="@min-[56.25rem]/lt:ms-auto" :options="$sortOptions" :active="$sortOn" :lit="! $sortIsDefault" set="setSort" />
                     <x-bs-admin::cols-menu class="hidden @min-[56.25rem]/lt:block" id="catalog-cols" :selected="$cols"
                         :options="collect($colOptions)->mapWithKeys(fn (string $k): array => [$k => __('catalog.col_opt_'.$k)])->all()"

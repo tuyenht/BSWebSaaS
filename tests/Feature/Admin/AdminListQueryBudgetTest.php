@@ -8,7 +8,9 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteModule;
+use App\Modules\Tenancy\Models\SiteSetting;
 
 /*
  * Query Budget (CLAUDE.md §6) for the admin list screens. The storefront hot routes are already
@@ -140,7 +142,64 @@ it('keeps the catalog list flat with a search, a sort and a second page, whateve
     $more = countQueries(fn () => $this->actingAs($viewer)->get($url)->assertOk());
 
     // 10 rows on the page either way: twice the products must not add a single query
-    expect($more)->toBe($count)->and($count)->toBe(16);
+    expect($more)->toBe($count)->and($count)->toBe(18);
+});
+
+it('keeps the catalog list flat with every filter on and a second page, whatever the number of rows and categories', function (): void {
+    $viewer = User::factory()->create();
+
+    $seed = function (int $from, int $to) use ($viewer): array {
+        $keys = [];
+        app(Tenancy::class)->enter(1, function () use ($from, $to, $viewer, &$keys): void {
+            grantRole($viewer, 'cat-viewer', ['catalog.view']);
+            SiteModule::query()->firstOrCreate(['module_key' => 'catalog'], ['enabled' => true]);
+            SiteSetting::query()->firstOrCreate(['group_name' => 'catalog', 'key' => 'mode'], ['value' => ['value' => 'commerce']]);
+            SiteLocale::query()->firstOrCreate(['locale' => 'en'], ['is_default' => false, 'enabled' => true]);
+            $root = Taxonomy::query()->firstOrCreate(['vocabulary' => 'product_cat', 'position' => 0]);
+            $root->translations()->firstOrCreate(['locale' => 'vi'], ['name' => 'Gốc', 'slug' => 'goc']);
+            $keys[] = $root->ulid;
+
+            foreach (range($from, $to) as $i) {
+                $child = Taxonomy::query()->create(['vocabulary' => 'product_cat', 'parent_id' => $root->id, 'position' => $i]);
+                $child->translations()->create(['locale' => 'vi', 'name' => "Nhóm {$i}", 'slug' => "nhom-{$i}"]);
+                $product = Product::query()->create(['status' => 'published', 'sku' => "SKU-{$i}", 'price' => 1000, 'sale_price' => 500, 'stock' => 5, 'is_featured' => true]);
+                $product->translations()->create(['locale' => 'vi', 'name' => "Sản phẩm {$i}", 'slug' => "sp-{$i}"]);
+                $product->assignCategories([$child->id]);
+                $media = Media::query()->create([
+                    'collection' => 'library', 'slug' => "anh-{$i}", 'hash' => hash('sha256', "img-{$i}"),
+                    'storage_key' => "s/library/anh-{$i}.png", 'disk' => 'r2', 'mime' => 'image/png', 'size' => 1024,
+                ]);
+                $second = Media::query()->create([
+                    'collection' => 'library', 'slug' => "anh-{$i}-b", 'hash' => hash('sha256', "img-{$i}-b"),
+                    'storage_key' => "s/library/anh-{$i}-b.png", 'disk' => 'r2', 'mime' => 'image/png', 'size' => 1024,
+                ]);
+                $product->images()->create(['media_id' => $media->id, 'position' => 0]);
+                $product->images()->create(['media_id' => $second->id, 'position' => 1]);
+            }
+        });
+
+        return $keys;
+    };
+    $keys = $seed(1, 30);
+    $url = 'http://a.test/admin/catalog?cat[]='.$keys[0].'&tr[]=none&tag[]=featured&stock[]=in&sale[]=on&per_page=10&page=2';
+
+    $this->actingAs($viewer)->get($url)->assertOk(); // the permission and settings caches fill on the first request
+    $rendered = 0;
+    $count = countQueries(function () use ($viewer, $url, &$rendered): void {
+        $html = $this->actingAs($viewer)->get($url)->assertOk()->getContent();
+        $rendered = count(array_unique(preg_match_all('/Sản phẩm \d+/u', (string) $html, $found) ? $found[0] : []));
+    });
+    expect($rendered)->toBe(10);
+
+    $seed(31, 60);
+    $this->actingAs($viewer)->get($url)->assertOk();
+    $more = countQueries(function () use ($viewer, $url, &$rendered): void {
+        $html = $this->actingAs($viewer)->get($url)->assertOk()->getContent();
+        $rendered = count(array_unique(preg_match_all('/Sản phẩm \d+/u', (string) $html, $found) ? $found[0] : []));
+    });
+
+    // twice the products and categories must not add a single query, and the page still shows 10 rows
+    expect($rendered)->toBe(10)->and($more)->toBe($count)->and($count)->toBe(18);
 });
 
 it('pages the Trash of products by cursor on the deletion time, forward and back, meeting each row once', function (): void {

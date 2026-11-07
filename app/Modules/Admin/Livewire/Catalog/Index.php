@@ -2,6 +2,8 @@
 
 namespace App\Modules\Admin\Livewire\Catalog;
 
+use App\Modules\Admin\Support\Catalog\ProductCategoryTree;
+use App\Modules\Admin\Support\Catalog\ProductListFilter;
 use App\Modules\Admin\Support\Catalog\ProductListQuery;
 use App\Modules\Admin\Support\Entries\ListCursor;
 use App\Modules\Catalog\Models\Product;
@@ -25,6 +27,8 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Js;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -43,8 +47,16 @@ use Livewire\Component;
  * whether that product exists or not. A trashed product keeps its sku/slug reserved until
  * permanently deleted. The Trash is a status group (?tab=trash); the old ?trash=1 link opens it too.
  *
- * What each member chooses to show on the list (Cột on a wide list, Hiện trên thẻ on phone cards) is
- * kept in their own users.preferences, under the list's key.
+ * Filters: Chuyên mục (a category and everything under it, by the product's main category), Bản dịch
+ * (only on a site with two or more languages), Nhãn, and — where products are sold — Tồn kho and
+ * Khuyến mãi. Values inside one filter are alternatives, the filters together all have to hold. The
+ * numbers beside the values are the general ones (not changed by the other filters); a brochure site
+ * has no stock or sale filter and refuses their values. Filter values travel in the URL (`cat`, `tr`,
+ * `tag`, `stock`, `sale`); a visit with none of them applies the member's last choice.
+ *
+ * What each member chooses to show on the list (Cột on a wide list, Hiện trên thẻ on phone cards) and
+ * the filters they last used (except the sale one) are kept in their own users.preferences, under the
+ * list's key.
  */
 #[Layout('admin::layouts.app')]
 final class Index extends Component
@@ -97,7 +109,44 @@ final class Index extends Component
     /** @var list<string> what this member adds to a phone card ("Hiện trên thẻ"); kept in their own preferences. */
     public array $card = [];
 
+    /** @var list<string> product categories (their ulids), a parent standing for everything under it */
+    #[Url(as: 'cat')]
+    public array $catF = [];
+
+    /** @var list<string> translation states: full / partial / none */
+    #[Url(as: 'tr')]
+    public array $transF = [];
+
+    /** @var list<string> labels: featured / best */
+    #[Url(as: 'tag')]
+    public array $tagF = [];
+
+    /** @var list<string> stock kinds: in / out / none (selling sites only) */
+    #[Url(as: 'stock')]
+    public array $stockF = [];
+
+    /** @var list<string> ['on'] while only products on sale show (selling sites only; not remembered) */
+    #[Url(as: 'sale')]
+    public array $saleF = [];
+
+    /** @var array<string, bool> the filters whose whole list the member opened ("Xem thêm …") */
+    public array $moreF = [];
+
+    /** @var array<string, string> the words typed in a long filter's own search box */
+    public array $qF = [];
+
+    /** The filter properties, with the group name the view and the chips use for each. */
+    private const array FILTERS = ['cat' => 'catF', 'trans' => 'transF', 'tag' => 'tagF', 'stock' => 'stockF', 'sale' => 'saleF'];
+
+    /** The URL parameters of the filters: a visit with none of them applies the remembered ones. */
+    private const array FILTER_PARAMS = ['cat', 'tr', 'tag', 'stock', 'sale'];
+
     private ?bool $brochure = null;
+
+    private ?ProductCategoryTree $tree = null;
+
+    /** @var list<string> the category choice before a change from the browser (to tell what was ticked or unticked) */
+    private array $catBefore = [];
 
     /**
      * Every request, the first load and each livewire/update alike: only a signed-in member of this
@@ -125,6 +174,13 @@ final class Index extends Component
         $view = Cast::arr($lists[self::VIEW_KEY] ?? null);
         $this->cols = isset($view['cols']) ? self::known(Cast::arr($view['cols']), self::COLS) : self::COLS;
         $this->card = self::known(Cast::arr($view['card'] ?? null), self::CARD);
+        // the last filters, unless this visit brings its own (the link wins)
+        if (collect(self::FILTER_PARAMS)->every(fn (string $key): bool => request()->query($key) === null)) {
+            $this->catF = Cast::strings($view['cat'] ?? null);
+            $this->transF = Cast::strings($view['tr'] ?? null);
+            $this->tagF = Cast::strings($view['tag'] ?? null);
+            $this->stockF = Cast::strings($view['stock'] ?? null);
+        }
         $this->clean();
     }
 
@@ -133,12 +189,74 @@ final class Index extends Component
         $this->restart(); // a new term must not strand the user on a stale page number
     }
 
+    /** A category is about to change from the browser: remember what was chosen, to see which one was ticked or unticked. */
+    public function updating(string $property): void
+    {
+        if (Str::before($property, '.') === 'catF') {
+            $this->catBefore = $this->catF;
+        }
+    }
+
     /** A property changed from the browser: keep only values the screen knows, then return to page 1. */
     public function updated(string $property): void
     {
-        if (in_array($property, ['tab', 'sortKey'], true)) {
+        $name = Str::before($property, '.');
+        if (in_array($name, ['tab', 'sortKey'], true)) {
             $this->clean();
             $this->restart();
+        }
+        if (in_array($name, self::FILTERS, true)) {
+            $this->guardWrite('viewAny');
+            if ($name === 'catF') {
+                $this->settleCategories($this->catBefore);
+            }
+            $this->clean();
+            $this->restart();
+            $this->saveView();
+        }
+        if ($name === 'qF') {
+            $this->clean();
+        }
+    }
+
+    /** A filter value ticked or unticked from a chip's ✕ (fixed names from the view, any other value is ignored). */
+    public function toggleFilterValue(string $group, string $value): void
+    {
+        $this->guardWrite('viewAny');
+        if (! array_key_exists($group, self::FILTERS)) {
+            return;
+        }
+        $property = self::FILTERS[$group];
+        /** @var list<string> $now */
+        $now = $this->{$property};
+        if ($group === 'cat') {
+            $before = $now;
+            $this->catF = in_array($value, $now, true) ? array_values(array_diff($now, [$value])) : [...$now, $value];
+            $this->settleCategories($before);
+        } elseif (in_array($value, $this->knownValues($group), true)) {
+            $this->{$property} = in_array($value, $now, true) ? array_values(array_diff($now, [$value])) : [...$now, $value];
+        }
+        $this->clean();
+        $this->restart();
+        $this->saveView();
+    }
+
+    /** "Bỏ chọn" of one filter. */
+    public function resetFilterGroup(string $group): void
+    {
+        $this->guardWrite('viewAny');
+        if (array_key_exists($group, self::FILTERS)) {
+            $this->{self::FILTERS[$group]} = [];
+            $this->restart();
+            $this->saveView();
+        }
+    }
+
+    /** "Xem thêm …" of a long filter: its whole list. */
+    public function showMore(string $group): void
+    {
+        if (array_key_exists($group, self::FILTERS)) {
+            $this->moreF[$group] = true;
         }
     }
 
@@ -182,12 +300,18 @@ final class Index extends Component
         $this->setSort($this->sorting() === $key ? 'updated' : $key);
     }
 
-    /** "Bỏ lọc": the search and the status group, back to all; the sort stays. */
+    /** "Bỏ lọc": every filter, the search and the status group (back to all); the sort stays. */
     public function clearAllFilters(): void
     {
+        $this->guardWrite('viewAny');
         $this->search = '';
         $this->tab = 'all';
+        foreach (self::FILTERS as $property) {
+            $this->{$property} = [];
+        }
+        $this->moreF = $this->qF = [];
         $this->restart();
+        $this->saveView();
     }
 
     /** Back to the default sort (the sort chip's ✕). */
@@ -286,29 +410,37 @@ final class Index extends Component
             DB::statement('SET LOCAL plan_cache_mode = force_custom_plan');
         }
 
-        $locale = app(SiteLocale::class)->default();
+        $siteLocale = app(SiteLocale::class);
+        $locale = $siteLocale->default();
+        $locales = $siteLocale->enabled();
+        $selling = ! $this->brochure();
         $cap = max(1, Cast::int(config('admin.catalog_list_cap', ProductListQuery::CAP)));
         $sortOn = $this->sorting();
         $canManage = Gate::allows('create', Product::class);
 
         try {
             // a savepoint inside the request's tenancy transaction: a failed read leaves it usable for the page
-            $read = DB::transaction(function () use ($locale, $cap, $sortOn): array {
-                $list = new ProductListQuery(app(CurrentSite::class)->id(), $this->tab, $this->search, $locale, $cap);
+            $read = DB::transaction(function () use ($locale, $locales, $selling, $cap, $sortOn): array {
+                $tree = $this->categoryTree();
+                $this->catF = $tree->known($this->catF);
+                $filter = new ProductListFilter($tree->idsUnder($this->catF), $this->transF, $locales, $this->tagF, $this->stockF, $this->saleF !== []);
+                $list = new ProductListQuery(app(CurrentSite::class)->id(), $this->tab, $this->search, $locale, $cap, $filter);
                 $tally = $list->tabCounts();
                 $counts = [];
                 foreach (self::TABS as $tab) {
                     $counts[$tab] = $tally[$tab] ?? 0;
                 }
-                $page = $this->readPage($list, $sortOn, trim($this->search) === '' ? $counts[$this->tab] : null, $cap);
+                // a website past the cap shows its values with no number: a count per value of a list that large would walk it again and again
+                $facets = $this->facets($tree, ($tally['all'] ?? 0) <= $cap ? $list->valueCounts($locales, $selling) : null, count($locales) >= 2, $selling, $cap);
+                $page = $this->readPage($list, $sortOn, trim($this->search) === '' && ! $filter->any() ? $counts[$this->tab] : null, $cap);
                 $this->loadRows($page['rows']);
 
-                return $page + ['counts' => $counts];
+                return $page + ['counts' => $counts, 'facets' => $facets, 'chips' => $this->filterChips($tree, $facets), 'filterCount' => $this->filterCount($tree)];
             });
         } catch (QueryException $e) {
             report($e);
             $read = ['rows' => new EloquentCollection, 'total' => 0, 'pager' => $this->pager(1, 0, 0, null, null, $cap, false),
-                'counts' => array_fill_keys(self::TABS, 0), 'failed' => true];
+                'counts' => array_fill_keys(self::TABS, 0), 'facets' => [], 'chips' => [], 'filterCount' => 0, 'failed' => true];
         }
 
         return view('admin::livewire.catalog.index', [
@@ -316,6 +448,17 @@ final class Index extends Component
             'pager' => $read['pager'],
             'matchCount' => $read['total'],
             'counts' => $read['counts'],
+            'facets' => $read['facets'],
+            'filterChips' => $read['chips'],
+            'filterCount' => $read['filterCount'],
+            'filterCountNarrow' => $read['filterCount'] + ($this->tab !== 'all' ? 1 : 0),
+            'moreF' => $this->moreF,
+            'qF' => $this->qF,
+            'catF' => $this->catF,
+            'transF' => $this->transF,
+            'tagF' => $this->tagF,
+            'stockF' => $this->stockF,
+            'saleF' => $this->saleF,
             'failed' => $read['failed'] ?? false,
             'cap' => $cap,
             'locale' => $locale,
@@ -363,6 +506,136 @@ final class Index extends Component
         if ($this->sortKey !== '' && ! in_array($this->sortKey, $this->sortKeys(), true)) {
             $this->sortKey = '';
         }
+
+        // filters: only values this screen knows, once each; the categories are checked against the tree when it is read.
+        // A site with one language has no translation filter, a brochure site no stock or sale filter.
+        $this->catF = array_values(array_unique(array_filter($this->catF, 'is_string')));
+        $this->transF = count(app(SiteLocale::class)->enabled()) >= 2 ? self::known($this->transF, ProductListFilter::TRANS) : [];
+        $this->tagF = self::known($this->tagF, ProductListFilter::TAGS);
+        $selling = ! $this->brochure();
+        $this->stockF = $selling ? self::known($this->stockF, ProductListFilter::STOCK) : [];
+        $this->saleF = $selling && in_array('on', $this->saleF, true) ? ['on'] : [];
+        $this->moreF = array_filter(array_intersect_key($this->moreF, self::FILTERS), fn (mixed $open): bool => $open === true);
+        $this->qF = array_map(fn (mixed $words): string => mb_substr(Cast::string($words), 0, 100), array_intersect_key($this->qF, self::FILTERS));
+    }
+
+    /** The product categories, read once per request. */
+    private function categoryTree(): ProductCategoryTree
+    {
+        return $this->tree ??= ProductCategoryTree::load(app(CurrentSite::class)->id(), app(SiteLocale::class)->default());
+    }
+
+    /**
+     * A category ticked brings everything under it; one unticked takes everything under it and above it
+     * (a parent cannot stay ticked with a child gone). Compares the choice with what it was.
+     *
+     * @param  list<string>  $before
+     */
+    private function settleCategories(array $before): void
+    {
+        $tree = $this->categoryTree();
+        $now = $tree->known($this->catF);
+        $before = $tree->known($before);
+        $set = $now;
+        foreach (array_diff($now, $before) as $added) {
+            $set = [...$set, ...$tree->keysUnder($added)];
+        }
+        foreach (array_diff($before, $now) as $removed) {
+            $set = array_diff($set, $tree->keysUnder($removed), $tree->keysAbove($removed));
+        }
+        $this->catF = array_values(array_unique($set));
+    }
+
+    /**
+     * The values a plain filter group knows.
+     *
+     * @return list<string>
+     */
+    private function knownValues(string $group): array
+    {
+        return match ($group) {
+            'trans' => ProductListFilter::TRANS,
+            'tag' => ProductListFilter::TAGS,
+            'stock' => ProductListFilter::STOCK,
+            'sale' => ['on'],
+            default => [],
+        };
+    }
+
+    /**
+     * Each filter's options with the general number beside it (not changed by the other filters or the
+     * group), and which are on. A filter nothing can be chosen in is left out unless it is on.
+     *
+     * @param  array{tags: array<string, int>, stock: array<string, int>, trans: array<string, int>, sale: int}|null  $values  null: the website is past the cap, the values carry no number
+     * @return array<string, list<array{value: string, label: string, count?: int|string, depth?: int, active: bool}>>
+     */
+    private function facets(ProductCategoryTree $tree, ?array $values, bool $multilingual, bool $selling, int $cap): array
+    {
+        $count = fn (int $n): int|string => $n > $cap ? Cast::string(__('catalog.count_over')) : $n;
+        $number = fn (int $n): array => $values === null ? [] : ['count' => $count($n)];
+        $facets = ['cat' => [], 'trans' => [], 'tag' => [], 'stock' => [], 'sale' => []];
+        foreach ($tree->options() as $option) {
+            $facets['cat'][] = ['value' => $option['ulid'], 'label' => $option['label'], 'count' => $count($option['count']), 'depth' => $option['depth'],
+                'active' => in_array($option['ulid'], $this->catF, true)];
+        }
+        if ($multilingual) {
+            foreach (ProductListFilter::TRANS as $state) {
+                $facets['trans'][] = ['value' => $state, 'label' => __('entries.trans_'.$state), ...$number($values['trans'][$state] ?? 0), 'active' => in_array($state, $this->transF, true)];
+            }
+        }
+        foreach (ProductListFilter::TAGS as $tag) {
+            $facets['tag'][] = ['value' => $tag, 'label' => __('catalog.tag_'.$tag), ...$number($values['tags'][$tag] ?? 0), 'active' => in_array($tag, $this->tagF, true)];
+        }
+        if ($selling) {
+            foreach (ProductListFilter::STOCK as $kind) {
+                $facets['stock'][] = ['value' => $kind, 'label' => __('catalog.stock_'.$kind), ...$number($values['stock'][$kind] ?? 0), 'active' => in_array($kind, $this->stockF, true)];
+            }
+            // offered only while some product is on sale, or the filter is on already
+            if ($values === null || $values['sale'] > 0 || $this->saleF !== []) {
+                $facets['sale'][] = ['value' => 'on', 'label' => __('catalog.sale_on'), ...$number($values['sale'] ?? 0), 'active' => $this->saleF !== []];
+            }
+        }
+
+        return $facets;
+    }
+
+    /**
+     * One chip per chosen value (a chosen category with its parent also chosen is covered by the parent's chip).
+     * Each removes itself through toggleFilterValue / resetFilterGroup with fixed group names and a quoted value.
+     *
+     * @param  array<string, list<array{value: string, label: string, active: bool}>>  $facets
+     * @return list<array{label: string, icon: string, aria: string, remove: string}>
+     */
+    private function filterChips(ProductCategoryTree $tree, array $facets): array
+    {
+        $chips = [];
+        $make = function (string $group, string $nameKey, string $icon, string $ariaKey, string $value, string $name) use (&$chips): void {
+            $chips[] = ['label' => __('catalog.chip_f', ['group' => __($nameKey), 'value' => $name]), 'icon' => $icon, 'aria' => __($ariaKey, ['name' => $name]),
+                'remove' => 'toggleFilterValue('.Js::from($group).', '.Js::from($value).')'];
+        };
+        foreach ($tree->topmost($this->catF) as $category) {
+            $make('cat', 'catalog.f_cat', 'ri-folder-3', 'catalog.chip_cat_aria', $category['ulid'], $category['label']);
+        }
+        foreach (['trans' => ['entries.f_trans', 'ri-translate-2', 'catalog.chip_trans_aria'], 'tag' => ['catalog.f_tag', 'ri-price-tag-3', 'catalog.chip_tag_aria'],
+            'stock' => ['catalog.f_stock', 'ri-stack', 'catalog.chip_stock_aria']] as $group => [$nameKey, $icon, $ariaKey]) {
+            foreach ($facets[$group] ?? [] as $option) {
+                if ($option['active']) {
+                    $make($group, $nameKey, $icon, $ariaKey, $option['value'], $option['label']);
+                }
+            }
+        }
+        if ($this->saleF !== []) {
+            $chips[] = ['label' => __('catalog.chip_f', ['group' => __('catalog.f_sale'), 'value' => __('catalog.sale_on')]), 'icon' => 'ri-price-tag-2',
+                'aria' => __('catalog.chip_sale_aria'), 'remove' => 'resetFilterGroup('.Js::from('sale').')'];
+        }
+
+        return $chips;
+    }
+
+    /** How many conditions are on (the Lọc badge): each chosen value, a chosen category counted by its chip. */
+    private function filterCount(ProductCategoryTree $tree): int
+    {
+        return count($tree->topmost($this->catF)) + count($this->transF) + count($this->tagF) + count($this->stockF) + ($this->saleF !== [] ? 1 : 0);
     }
 
     /**
@@ -480,10 +753,10 @@ final class Index extends Component
             'current' => $current, 'last' => $last, 'cells' => $cells, 'prev' => $prev, 'next' => $next];
     }
 
-    /** Names the view of the list a page cursor belongs to: the group, the search, the sort and the page size. */
+    /** Names the view of the list a page cursor belongs to: the group, the search, the filters, the sort and the page size. */
     private function fingerprint(): string
     {
-        return hash('xxh128', json_encode([$this->tab, trim($this->search), $this->sorting(), $this->perPage], JSON_THROW_ON_ERROR));
+        return hash('xxh128', json_encode([$this->tab, trim($this->search), $this->sorting(), $this->perPage, $this->catF, $this->transF, $this->tagF, $this->stockF, $this->saleF], JSON_THROW_ON_ERROR));
     }
 
     /**
@@ -535,7 +808,7 @@ final class Index extends Component
     }
 
     /**
-     * Keep this member's Cột / Hiện trên thẻ choice in their own preferences, nobody else's. One UPDATE
+     * Keep this member's Cột / Hiện trên thẻ choice and their last filters (not the sale one) in their own preferences, nobody else's. One UPDATE
      * writes just this list's entry inside preferences.lists, so whatever else was saved since the screen
      * opened (the theme, another list's choice, from another tab) is kept rather than overwritten.
      */
@@ -556,7 +829,7 @@ final class Index extends Component
                 true
             ) where id = ?
             SQL,
-            [self::VIEW_KEY, json_encode(['cols' => $this->cols, 'card' => $this->card], JSON_THROW_ON_ERROR), $user->getKey()],
+            [self::VIEW_KEY, json_encode(['cols' => $this->cols, 'card' => $this->card, 'cat' => $this->catF, 'tr' => $this->transF, 'tag' => $this->tagF, 'stock' => $this->stockF], JSON_THROW_ON_ERROR), $user->getKey()],
         );
     }
 
