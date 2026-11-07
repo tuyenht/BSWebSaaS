@@ -620,6 +620,9 @@ it('draws the screen: the header, the theme\'s templates and each row carrying i
         ->assertDontSee(__('categories.ui_empty_title'))
         ->getContent();
 
+    // A stored follow-the-parent value is kept in the drawer under the tree column's label, never as a missing layout.
+    expect($html)->toContain('<option value="@parent"')->toContain(__('categories.ui_layout_@parent'));
+
     expect($html)->toContain($book->ulid)->toContain($app->ulid)
         ->not->toMatch('/&quot;(id|parent_id|taxonomy_id|cover_media_id)&quot;:\d/');
 });
@@ -705,7 +708,7 @@ it('offers only the layouts that can render a post as the detail layout of a pos
     preg_match('/"detailLayouts":(\[[^\]]*\])/', $html, $found);
     $detail = json_decode($found[1] ?? '[]', true);
 
-    expect($detail)->toBe(['post', 'project'])
+    expect($detail)->toBe(['job', 'post', 'project'])
         ->and($html)->toContain('"layouts":["category"');
 });
 

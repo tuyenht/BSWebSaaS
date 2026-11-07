@@ -13,8 +13,8 @@ use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Media\Models\Media;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SchemaImages;
+use App\Modules\Theme\Rendering\TemplateCatalog;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\View;
 
 /**
  * Writes one language's content, in the shape RecordEntryRevision::snapshot takes it, onto an entry
@@ -50,12 +50,14 @@ final readonly class EntryContentWriter
      * The snapshot as content that may be written today, or null when it cannot be. Its format
      * version must be one this code reads, every field must have its type and fit its column, a
      * template must name a layout the theme has, and the title, slug and blocks must pass the rules
-     * an editor save passes (title/slug ≤ 200).
+     * an editor save passes (title/slug ≤ 200). A layout the entry already stores is accepted as it is
+     * ($keptTemplate): the editor has no field to change it, so refusing it would block every save.
+     * With $dropMisfit a layout that does not fit is read as null (a restore of an old snapshot).
      *
      * @param  array<array-key, mixed>  $snapshot
      * @return EntryContent|null
      */
-    public function read(array $snapshot): ?array
+    public function read(array $snapshot, string $entryType, ?string $keptTemplate = null, bool $dropMisfit = false): ?array
     {
         $body = $snapshot['body'] ?? null;
         $blocks = is_array($body) ? ($body['blocks'] ?? []) : null;
@@ -74,10 +76,14 @@ final readonly class EntryContentWriter
             $strings[$key] = $value;
         }
 
-        // A template names a layout view: one that does not exist would break the live page.
+        // A template names a layout the theme lists for this kind of page: one that does not exist
+        // would break the live page, and one of another role (a list layout on a post) renders wrongly.
         $template = $strings['template_override'];
-        if ($template !== null && (preg_match('/^[a-z0-9_-]+$/', $template) !== 1 || ! View::exists("theme::layouts.{$template}"))) {
-            return null;
+        if ($template !== null && $template !== $keptTemplate && ! $this->templateFits($template, $entryType)) {
+            if (! $dropMisfit) {
+                return null;
+            }
+            $strings['template_override'] = null;
         }
 
         foreach (['og_image_id', 'cover_media_id'] as $key) {
@@ -117,6 +123,17 @@ final readonly class EntryContentWriter
             'cover_media_id' => $ids['cover_media_id'],
             'meta' => $meta,
         ];
+    }
+
+    /**
+     * Whether an entry's own layout is acceptable: in the theme's template list and of the entry type's
+     * role (a post takes post layouts, a page takes page layouts).
+     */
+    private function templateFits(string $template, string $entryType): bool
+    {
+        $role = TemplateCatalog::roleOfEntry($entryType);
+
+        return $role !== null && TemplateCatalog::fits($template, $role);
     }
 
     /**

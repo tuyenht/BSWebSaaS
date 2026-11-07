@@ -12,9 +12,6 @@ namespace App\Modules\Theme\Rendering;
  */
 final class TemplateResolver
 {
-    /** The list layouts that show cards (the controller loads card data only for these). */
-    public const array CARD_LIST_TEMPLATES = ['grid-product', 'grid-project', 'grid-news'];
-
     /**
      * Whether a category's list layout shows titles (the default list) or cards. Pure.
      *
@@ -22,16 +19,26 @@ final class TemplateResolver
      */
     public function listShape(?string $listTemplate): string
     {
-        return in_array($listTemplate, self::CARD_LIST_TEMPLATES, true) ? 'cards' : 'titles';
+        return TemplateCatalog::cards($listTemplate) !== null ? 'cards' : 'titles';
     }
 
+    /**
+     * The layout to render. A name that is not in the theme's template list for the page's role,
+     * or that the theme no longer has, is ignored — the page falls back to the default of its type
+     * and never errors.
+     */
     public function layoutFor(string $type, ?string $override = null, ?string $categoryTemplate = null): string
     {
-        if ($override !== null && $override !== '') {
+        $role = match ($type) {
+            'category' => TemplateCatalog::ROLE_LIST,
+            default => TemplateCatalog::roleOfEntry($type),
+        };
+
+        if ($role !== null && $override !== null && $override !== '' && $type !== 'category' && TemplateCatalog::fits($override, $role)) {
             return "theme::layouts.{$override}";
         }
 
-        if ($categoryTemplate !== null && $categoryTemplate !== '') {
+        if ($role !== null && $categoryTemplate !== null && $categoryTemplate !== '' && TemplateCatalog::fits($categoryTemplate, $role)) {
             return "theme::layouts.{$categoryTemplate}";
         }
 

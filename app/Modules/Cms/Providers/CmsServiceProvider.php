@@ -4,6 +4,7 @@ namespace App\Modules\Cms\Providers;
 
 use App\Modules\Cms\Components\EntryGridComponent;
 use App\Modules\Cms\Components\LatestPostsComponent;
+use App\Modules\Cms\Console\CountWrongTemplates;
 use App\Modules\Cms\Console\FillMissingUlids;
 use App\Modules\Cms\Console\FlushEntryViews;
 use App\Modules\Cms\Console\PruneEntryRevisions;
@@ -124,6 +125,7 @@ final class CmsServiceProvider extends ServiceProvider
                 ResanitizePageBodies::class,
                 FillMissingUlids::class,
                 PurgeTrashedMenuItems::class,
+                CountWrongTemplates::class,
                 ReconcileCategoryCounts::class,
             ]);
         }

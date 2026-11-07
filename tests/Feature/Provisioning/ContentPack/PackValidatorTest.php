@@ -126,8 +126,23 @@ it('refuses a list or post layout that is not a layout of the theme', function (
 it('refuses a layout that cannot render a post as the detail layout of a category', function (string $layout): void {
     ContentPacks::item($this->folder, 'taxonomies.json', 'tax:post_cat/tin-tuc', fn (array $item): array => [...$item, 'detail_template' => $layout]);
 
-    expect(implode("\n", cpProblems()))->toContain('tax:post_cat/tin-tuc: detail_template must be a post layout (post or project).');
+    expect(implode("\n", cpProblems()))->toContain('tax:post_cat/tin-tuc: detail_template must be a post layout, or @parent.');
 })->with(['category', 'product']);
+
+it('accepts the follow-the-parent value and the job pair as category layouts', function (): void {
+    ContentPacks::edit($this->folder, 'taxonomies.json', fn (array $data): array => ['items' => [...$data['items'],
+        ['key' => 'tax:post_cat/tuyen-dung', 'name' => ['vi' => 'Tuyển dụng'], 'list_template' => 'grid-job', 'detail_template' => 'job'],
+        ['key' => 'tax:post_cat/tuyen-dung/ha-noi', 'parent' => 'tax:post_cat/tuyen-dung', 'name' => ['vi' => 'Hà Nội'], 'list_template' => '@parent', 'detail_template' => '@parent'],
+    ]]);
+
+    expect(cpProblems())->toBe([]);
+});
+
+it('refuses a list layout that does not fit the kind of category', function (): void {
+    ContentPacks::item($this->folder, 'taxonomies.json', 'tax:post_cat/tin-tuc', fn (array $item): array => [...$item, 'list_template' => 'job']);
+
+    expect(implode("\n", cpProblems()))->toContain('tax:post_cat/tin-tuc: list_template must be a list layout');
+});
 
 it('writes only the setting groups the loader is meant for', function (string $key): void {
     ContentPacks::edit($this->folder, 'settings.json', fn (array $data): array => ['items' => [...$data['items'], ['key' => $key, 'value' => ['pattern' => 'flat']]]]);

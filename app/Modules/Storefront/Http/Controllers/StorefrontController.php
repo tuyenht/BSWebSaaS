@@ -18,12 +18,13 @@ use App\Modules\Cms\Routing\ResolvedContent;
 use App\Modules\Cms\Routing\ResolvedProduct;
 use App\Modules\Cms\Routing\RouteResolver;
 use App\Modules\Cms\Support\EntryViewCounter;
-use App\Modules\Cms\Taxonomy\TaxonomyRules;
+use App\Modules\Cms\Taxonomy\CategoryTemplates;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\SafeLink;
 use App\Modules\Storefront\Support\BrandImages;
 use App\Modules\Storefront\Support\Breadcrumbs;
+use App\Modules\Storefront\Support\JobPosting;
 use App\Modules\Storefront\Support\ListPage;
 use App\Modules\Storefront\Support\PostDetail;
 use App\Modules\Storefront\Support\ProductDetail;
@@ -33,6 +34,7 @@ use App\Modules\Theme\Chrome\FloatingContact;
 use App\Modules\Theme\Chrome\SiteVerification;
 use App\Modules\Theme\Chrome\StorefrontChrome;
 use App\Modules\Theme\Rendering\PageRenderer;
+use App\Modules\Theme\Rendering\TemplateCatalog;
 use App\Modules\Theme\Rendering\TemplateResolver;
 use App\Modules\Theme\Theming\StorefrontSettings;
 use Illuminate\Database\Eloquent\Builder;
@@ -72,6 +74,8 @@ final readonly class StorefrontController
         private Breadcrumbs $crumbs,
         private PostDetail $posts,
         private ProductDetail $products,
+        private CategoryTemplates $categoryTemplates,
+        private JobPosting $jobs,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -322,10 +326,22 @@ final readonly class StorefrontController
         // module stays Cms-agnostic.
         if ($entry->type === 'post') {
             $category = $entry->primaryCategory();
-            $stored = $category?->detail_template;
-            // A layout stored before the post-layout rule existed (or written around it) falls back like null.
-            $categoryTemplate = $stored !== null && TaxonomyRules::postDetailTemplate($stored) ? $stored : null;
+            // The category's own layout, or the one of the category above when it follows its parent;
+            // a layout of the wrong role, or one the theme lacks, falls back like null.
+            $categoryTemplate = $category !== null ? $this->categoryTemplates->detail($category) : null;
             $extra['post'] = $this->posts->band($entry, $content->translation, $locale);
+
+            // A post on a job layout carries its deadline state and the JobPosting data for the head.
+            $own = $entry->template_override;
+            $postTemplate = $own !== null && TemplateCatalog::fits($own, TemplateCatalog::ROLE_POST) ? $own : $categoryTemplate;
+            $brand = data_get($chrome, 'brand');
+            $job = $this->jobs->forPost($entry, $content->translation, $postTemplate, $canonical, is_array($brand) ? $brand : null);
+            if ($job !== null) {
+                $extra['deadline'] = $job['state'];
+                if ($job['ld'] !== null) {
+                    $extra['jobLd'] = $job['ld'];
+                }
+            }
 
             $categoryTranslation = $category?->translationFor($locale);
             if ($category !== null && $categoryTranslation !== null) {
@@ -372,20 +388,22 @@ final readonly class StorefrontController
         // working through the post→product migration (posts until products land, products after).
         // A category below the catalog root lists the products filed under it, on the same terms.
         $taxonomy = $resolved->taxonomy;
+        // The real list layout, with "follow the parent" already turned into a layout name or null.
+        $listTemplate = $this->categoryTemplates->list($taxonomy);
         // Asked through ProductIndexLink, which remembers both for the request: a page showing the
         // "Mua hàng" button has already read them.
         $shop = app(ProductIndexLink::class);
         $catalogRoot = $shop->catalogRoot();
         $hasProducts = fn (): bool => $shop->hasPublishedProducts();
         if ($catalogRoot === $taxonomy->id && $hasProducts()) {
-            return $this->renderProductIndex($resolved, $locale, $path, $chrome, false);
+            return $this->renderProductIndex($resolved, $locale, $path, $chrome, false, $listTemplate);
         }
         if ($catalogRoot !== null && $this->lists->isUnder($taxonomy, $catalogRoot) && $hasProducts()) {
-            return $this->renderProductIndex($resolved, $locale, $path, $chrome, true);
+            return $this->renderProductIndex($resolved, $locale, $path, $chrome, true, $listTemplate);
         }
 
         $position = $this->lists->position(request());
-        $cards = $this->templates->listShape($taxonomy->list_template) === 'cards';
+        $cards = $this->templates->listShape($listTemplate) === 'cards';
 
         if ($cards) {
             // Posts whose PRIMARY category (pivot position 0) is this one or any below it.
@@ -407,7 +425,7 @@ final readonly class StorefrontController
         $extra = $chrome;
         if ($cards) {
             ['chips' => $chips, 'labels' => $labels] = $this->lists->chips($taxonomy, $locale);
-            $extra['cards'] = $this->lists->postCards($rows, $locale, $labels, $taxonomy->list_template === 'grid-news');
+            $extra['cards'] = $this->lists->postCards($rows, $locale, $labels, TemplateCatalog::cards($listTemplate) === 'news');
             $extra['chips'] = $chips;
             $extra['band'] = $this->listBand($resolved);
         } else {
@@ -430,7 +448,7 @@ final readonly class StorefrontController
             }
         }
 
-        return $this->listResponse($resolved, $locale, $path, $position, $more, ListPage::ulidOf($rows->last()), $posts, $extra);
+        return $this->listResponse($resolved, $locale, $path, $position, $more, ListPage::ulidOf($rows->last()), $posts, $extra, $listTemplate);
     }
 
     /**
@@ -441,11 +459,11 @@ final readonly class StorefrontController
      *
      * @param  array<string, mixed>  $chrome  page chrome (menu, lang, hreflang)
      */
-    private function renderProductIndex(ResolvedCategory $resolved, string $locale, string $path, array $chrome, bool $filtered): Response
+    private function renderProductIndex(ResolvedCategory $resolved, string $locale, string $path, array $chrome, bool $filtered, ?string $listTemplate): Response
     {
         $taxonomy = $resolved->taxonomy;
         $position = $this->lists->position(request());
-        $cards = $this->templates->listShape($taxonomy->list_template) === 'cards';
+        $cards = $this->templates->listShape($listTemplate) === 'cards';
 
         $query = Product::query()
             ->where('status', 'published')
@@ -477,7 +495,7 @@ final readonly class StorefrontController
             }
         }
 
-        return $this->listResponse($resolved, $locale, $path, $position, $more, ListPage::ulidOf($rows->last()), $products, $extra);
+        return $this->listResponse($resolved, $locale, $path, $position, $more, ListPage::ulidOf($rows->last()), $products, $extra, $listTemplate);
     }
 
     /**
@@ -488,7 +506,7 @@ final readonly class StorefrontController
      * @param  list<array{title: string, url: string}>  $titles
      * @param  array<string, mixed>  $extra
      */
-    private function listResponse(ResolvedCategory $resolved, string $locale, string $path, array $position, bool $more, ?string $lastUlid, array $titles, array $extra): Response
+    private function listResponse(ResolvedCategory $resolved, string $locale, string $path, array $position, bool $more, ?string $lastUlid, array $titles, array $extra, ?string $listTemplate): Response
     {
         // Each paginated page self-canonicals (with ?page=N) — rel=prev/next signals the series;
         // canonicaling page-N→page-1 would drop the deeper pages from the index.
@@ -508,7 +526,7 @@ final readonly class StorefrontController
         $extra['breadcrumb'] = [$this->crumbs->home($locale), ...$trail];
 
         $html = $this->renderer->renderCategory(
-            $resolved->taxonomy->list_template,
+            $listTemplate,
             $resolved->translation->name,
             $titles,
             $this->lists->links(request()->url(), $position, $more, $lastUlid),
