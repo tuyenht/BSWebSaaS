@@ -317,6 +317,7 @@ describe('the builder', function (): void {
         $registry = app(ComponentRegistry::class);
         expect($registry->has('richtext_html'))->toBeTrue()
             ->and($registry->listedTypes())->not->toContain('richtext_html')
-            ->and(count($registry->listedTypes()))->toBe(count($registry->types()) - 1);
+            // the formatted-text block and the three blocks only a block slot may hold stay out of the list
+            ->and(count($registry->listedTypes()))->toBe(count($registry->types()) - 4);
     });
 });

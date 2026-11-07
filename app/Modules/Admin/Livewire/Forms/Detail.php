@@ -3,6 +3,8 @@
 namespace App\Modules\Admin\Livewire\Forms;
 
 use App\Modules\Forms\Models\FormSubmission;
+use App\Modules\Forms\Support\LeadAnswers;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteTime;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
@@ -27,7 +29,7 @@ final class Detail extends Component
 
     public function mount(string $ulid): void
     {
-        $this->submission = FormSubmission::query()->where('ulid', $ulid)->firstOrFail();
+        $this->submission = FormSubmission::query()->where('ulid', $ulid)->with('form.fields')->firstOrFail();
 
         // Inbox UX: opening a new lead marks it read — but only for a manager (a read-only
         // viewer must not mutate state).
@@ -52,6 +54,8 @@ final class Detail extends Component
     {
         $view = view('admin::livewire.forms.detail', [
             'submission' => $this->submission,
+            // Each answer under the label the visitor read; a ticked box as the sentence they agreed to.
+            'answers' => LeadAnswers::for($this->submission->form, Cast::arr($this->submission->data), app()->getLocale()),
             'siteTime' => app(SiteTime::class),
         ]);
         $view->title(__('forms.lead_title'));

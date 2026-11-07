@@ -47,7 +47,8 @@ final readonly class SubmitForm
         $submission = $form->submissions()->create([
             'data' => $data,
             'name' => $this->cap($data['name'] ?? null, 255),
-            'email' => $this->cap($data['email'] ?? null, 255),
+            // Reply-To uses this column: only an address that is one (a site may key a plain text field "email").
+            'email' => filter_var($data['email'] ?? null, FILTER_VALIDATE_EMAIL) !== false ? $this->cap($data['email'], 255) : null,
             'phone' => $this->cap($data['phone'] ?? null, 32),
             'source_url' => $this->cap($meta['source_url'] ?? null, 255),
             'ip_address' => $ip,
@@ -72,15 +73,16 @@ final readonly class SubmitForm
 
     /**
      * A ticked checkbox is kept as the sentence the visitor agreed to, in the language they read
-     * it in — the evidence of consent; the submission's created_at says when.
+     * it in — the evidence of consent; the submission's created_at says when. Reads the form's
+     * fields as loaded (the lead request loads them with the form), so no second lookup.
      *
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
     private function recordConsent(Form $form, array $data): array
     {
-        foreach ($form->fields()->where('type', 'checkbox')->get() as $field) {
-            if (! empty($data[$field->key])) {
+        foreach ($form->fields as $field) {
+            if ($field->type === 'checkbox' && ! empty($data[$field->key])) {
                 $labels = Cast::arr($field->label);
                 $data[$field->key] = Cast::string($labels[app()->getLocale()] ?? $labels['vi'] ?? null) ?: true;
             }

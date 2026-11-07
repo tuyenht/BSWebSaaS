@@ -93,7 +93,7 @@ Every table/list/query. Target 10,000+ **sites** × 100M+ rows; the isolation ke
 ## 6. Guardrails — two tiers, both mandatory (they differ in where they are enforced)
 
 **Tier 1 · CI (`.github/workflows/ci.yml`, blocks merge):**
-- `guardrails`: migrate real PostgreSQL (app_user + pgsql_admin) · `pint --test` · Larastan max · `lang:check` (every `lang/*.json` has exactly `en.json`'s keys) · Pest suites Unit, Feature (incl. Query Budget: max queries per hot route), Arch, Concurrency.
+- `guardrails` (the merge gate; its work runs in a `static` job and four Pest shards, each on its own PostgreSQL): migrate real PostgreSQL (app_user + pgsql_admin) · `pint --test` · Larastan max · `lang:check` (every `lang/*.json` has exactly `en.json`'s keys) · Pest suites Unit, Feature (incl. Query Budget: max queries per hot route), Arch, Concurrency.
 - `frontend`: Vite + Tailwind build · `scripts/asset-budget.mjs` (gzipped size of each page entry and lazy chunk ≤ its line in `scripts/asset-budget.json` + 3%) · `scripts/contrast-check.mjs` (admin token pairs ≥ WCAG AA).
 - `cwv`: Lighthouse on `/`, `/lien-he`, `/tin-tuc` of a measurement site — LCP ≤ 1.5s + JS ≤ 30KB (median of 3; the overall score only warns) + axe WCAG 2A/AA with 0 violations; then the admin screens are rendered without login and scanned by axe in jsdom (structural; known debt in `scripts/admin-preview/axe-allowlist.json`, any new violation fails).
 - Arch tests: every tenant model uses BelongsToSite · Entry actions through EntryPolicy (+ admin entry components authorize) · workflow transitions only through the engine · acyclic module boundaries (Tenancy is the base).

@@ -28,6 +28,7 @@ use App\Modules\Storefront\Support\JobPosting;
 use App\Modules\Storefront\Support\ListPage;
 use App\Modules\Storefront\Support\PostDetail;
 use App\Modules\Storefront\Support\ProductDetail;
+use App\Modules\Storefront\Support\SlotContext;
 use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Theme\Chrome\FloatingContact;
@@ -76,6 +77,7 @@ final readonly class StorefrontController
         private ProductDetail $products,
         private CategoryTemplates $categoryTemplates,
         private JobPosting $jobs,
+        private SlotContext $slots,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -343,6 +345,13 @@ final readonly class StorefrontController
                 }
             }
 
+            // The blocks of the side column and of the band below the post; the newest posts of the
+            // category's root branch are read with the related posts only when a block asks for them.
+            $slotBlocks = $this->slots->blocks(SlotContext::POST_SLOTS, $locale, $category);
+            $extra['slotBlocks'] = $slotBlocks;
+            $withRecent = SlotContext::has($slotBlocks, 'recent_posts');
+            $brandData = is_array($brand) ? $brand : null;
+
             $categoryTranslation = $category?->translationFor($locale);
             if ($category !== null && $categoryTranslation !== null) {
                 $extra['category'] = [
@@ -354,8 +363,10 @@ final readonly class StorefrontController
                     ...$this->crumbs->category($category, $locale, $categoryTranslation->name, $categoryTranslation->slug),
                     $self,
                 ];
-                $extra += $this->posts->siblings($entry, $category, $locale, true);
+                $extra += $this->posts->siblings($entry, $category, $locale, true, $withRecent);
             }
+            $extra['slotContext'] = $this->slots->context($slotBlocks, $category, $locale, $brandData, is_array($extra['recent'] ?? null) ? $extra['recent'] : []);
+            unset($extra['recent']);
         } elseif ($path !== '/') {
             $extra['breadcrumb'] = [$this->crumbs->home($locale), ...$this->crumbs->parentPages($entry, $locale), $self];
         }
@@ -524,6 +535,9 @@ final readonly class StorefrontController
         $trail = $this->crumbs->category($resolved->taxonomy, $locale, $resolved->translation->name, $resolved->translation->slug);
         $trail[count($trail) - 1]['url'] = $canonical;
         $extra['breadcrumb'] = [$this->crumbs->home($locale), ...$trail];
+        // The band below the list (the list's own category speaks first, then the site's default).
+        $extra['slotBlocks'] = $this->slots->blocks(SlotContext::LIST_SLOTS, $locale, $resolved->taxonomy);
+        $extra['slotContext'] = $this->slots->context($extra['slotBlocks'], $resolved->taxonomy, $locale, is_array($extra['brand'] ?? null) ? $extra['brand'] : null);
 
         $html = $this->renderer->renderCategory(
             $listTemplate,
@@ -591,6 +605,8 @@ final readonly class StorefrontController
             'contact' => ProductDetail::contact(is_array($chrome['brand'] ?? null) ? $chrome['brand'] : null),
         ];
         $extra['related'] = $category !== null ? $this->products->related($product, $category, $locale) : [];
+        $extra['slotBlocks'] = $this->slots->blocks(SlotContext::PRODUCT_SLOTS, $locale, $category);
+        $extra['slotContext'] = $this->slots->context($extra['slotBlocks'], $category, $locale, is_array($chrome['brand'] ?? null) ? $chrome['brand'] : null);
 
         // Product JSON-LD (brochure mode: no offers/price — this catalog sells nothing online).
         // Description must be plain text, so the sanitized HTML body is stripped; the dedicated
