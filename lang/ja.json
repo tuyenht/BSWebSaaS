@@ -738,6 +738,7 @@
     "forms.submit_button": "送信する",
     "forms.success_title": "送信しました",
     "forms.send_another": "別のお問い合わせを送る",
+    "forms.select_placeholder": "— 選択してください —",
     "forms.required_note": ":mark の付いた項目は必須です。",
     "forms.privacy_link": "プライバシーポリシーを見る",
     "forms.opens_in_new_tab": "（新しいタブで開きます）",

@@ -32,13 +32,12 @@ final class FormFieldTypes
     public const array TYPES = [...self::STORED_TYPES, 'number', 'date', 'radio', 'checkboxes'];
 
     /**
-     * Types the storefront form block can draw today. A choice field needs its choices drawn, which
-     * the block does not do yet: until it does, such a field is neither shown nor collected, so a
-     * visitor is never asked to type a hidden value.
+     * Types the storefront form block can draw today. Any other type is neither shown nor collected,
+     * so a visitor is never asked for an answer they cannot give.
      *
      * @var list<string>
      */
-    public const array DRAWN_TYPES = ['text', 'email', 'tel', 'textarea', 'checkbox'];
+    public const array DRAWN_TYPES = ['text', 'email', 'tel', 'textarea', 'select', 'checkbox'];
 
     /** @var list<string> Types the visitor picks from the field's choices. */
     public const array CHOICE_TYPES = ['select', 'radio', 'checkboxes'];
@@ -181,6 +180,22 @@ final class FormFieldTypes
         }
 
         return array_values($choices);
+    }
+
+    /**
+     * What a visitor reads for each choice, keyed by its value: the label in their language, else in
+     * Vietnamese, else the value itself, so a choice is never shown blank.
+     *
+     * @return array<string, string>
+     */
+    public static function choiceLabels(FormField $field, string $locale): array
+    {
+        $labels = [];
+        foreach (self::choices($field) as $choice) {
+            $labels[$choice['value']] = ($choice['label'][$locale] ?? '') ?: (($choice['label']['vi'] ?? '') ?: $choice['value']);
+        }
+
+        return $labels;
     }
 
     /** @param array<mixed> $validation */

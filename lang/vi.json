@@ -738,6 +738,7 @@
     "forms.submit_button": "Gửi liên hệ",
     "forms.success_title": "Đã gửi thành công",
     "forms.send_another": "Gửi liên hệ khác",
+    "forms.select_placeholder": "— Chọn —",
     "forms.required_note": "Trường có dấu :mark là bắt buộc.",
     "forms.privacy_link": "Xem chính sách bảo mật",
     "forms.opens_in_new_tab": "(mở trong thẻ mới)",
