@@ -88,12 +88,69 @@ it('renders the partners block as a logo grid, linking a logo only when it has b
     expect(substr_count($html, '<a '))->toBe(1);
 });
 
-it('skips a partner logo that has no image_url (no empty <img>)', function (): void {
-    $props = ['logos' => [['name' => 'Không ảnh', 'url' => '/x']]];
+it('shows the name of a partner that has no logo yet, and skips one with neither', function (): void {
+    $props = ['logos' => [
+        ['name' => 'Không ảnh', 'url' => '/x'],
+        ['name' => '  '],
+        ['url' => '/y'],
+        ['name' => 'Công ty TNHH Cơ khí Chính xác Mẫu'],
+    ]];
 
     $html = View::make('theme::sections.partners', ['props' => $props])->render();
 
-    expect($html)->not->toContain('<img')->not->toContain('src=""');
+    // no empty <img>: the name stands in the frame, still linked (it is the link's own text)
+    expect($html)->not->toContain('<img')->not->toContain('src=""')
+        ->toContain('<span class="partners__name">Không ảnh</span>')
+        ->toContain('href="/x"')->not->toContain('href="/y"');
+    // a full company name is set smaller, so a narrow frame stays a few lines tall
+    expect($html)->toContain('<span class="partners__name partners__name--long">Công ty TNHH Cơ khí Chính xác Mẫu</span>');
+    expect(substr_count($html, '<li class="partners__item">'))->toBe(2);
+});
+
+it('links a partner only by a real name and shows nothing for a logo that is not a file path', function (): void {
+    $props = ['logos' => [
+        ['image_url' => 'https://cdn.example/blank.png', 'name' => '  ', 'url' => '/blank'],
+        ['image_url' => 'https://cdn.example/odd.png', 'name' => ['x'], 'url' => '/odd'],
+        ['image_url' => ['x']],
+        ['image_url' => true],
+    ]];
+
+    $html = View::make('theme::sections.partners', ['props' => $props])->render();
+
+    // a blank or odd name never makes a name-less link, and never breaks the page
+    expect($html)->toContain('src="https://cdn.example/blank.png" alt=""')
+        ->toContain('src="https://cdn.example/odd.png" alt=""')
+        ->not->toContain('<a ')->not->toContain('partners__name');
+    expect(substr_count($html, '<li class="partners__item">'))->toBe(2);
+});
+
+it('draws a partner with only a name inside the slider rail too', function (): void {
+    $props = ['layout' => 'slider', 'logos' => [
+        ['image_url' => 'https://cdn.example/a.png', 'name' => 'Có ảnh'],
+        ['name' => 'Chỉ có tên', 'url' => 'https://ten.example'],
+    ]];
+
+    $html = View::make('theme::sections.partners', ['props' => $props])->render();
+
+    expect($html)->toContain('sf-rail__list')
+        ->toContain('href="https://ten.example"')
+        ->toContain('<span class="partners__name">Chỉ có tên</span>');
+});
+
+it('draws a library logo at its own proportions, and a logo of unknown size at a stand-in box', function (): void {
+    $props = ['logos' => [
+        ['image_url' => 'https://cdn.example/wide.png', 'name' => 'Rộng'],
+        ['image_url' => 'https://cdn.example/other.png', 'name' => 'Ngoài thư viện'],
+        ['image_url' => 'https://cdn.example/broken.png', 'name' => 'Hỏng'],
+    ]];
+    $dims = ['https://cdn.example/wide.png' => [600, 150], 'https://cdn.example/broken.png' => [0, 0]];
+
+    $html = View::make('theme::sections.partners', ['props' => $props, 'dims' => $dims])->render();
+
+    // the library's size reserves the space (no layout shift); the ratio sizes the logo's height
+    expect($html)->toContain('src="https://cdn.example/wide.png" alt="Rộng" width="600" height="150" style="--logo-r: 4"')
+        ->toContain('src="https://cdn.example/other.png" alt="Ngoài thư viện" width="160" height="80" loading="lazy"')
+        ->toContain('src="https://cdn.example/broken.png" alt="Hỏng" width="160" height="80" loading="lazy"');
 });
 
 it('renders a hero second CTA when cta2 props are set', function (): void {
