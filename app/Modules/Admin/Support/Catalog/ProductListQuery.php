@@ -32,7 +32,7 @@ final class ProductListQuery
     public const int CAP = 10_000;
 
     /** What a row of the list reads (no meta). */
-    public const array COLUMNS = ['id', 'ulid', 'site_id', 'sku', 'price', 'sale_price', 'stock', 'is_featured', 'is_bestseller',
+    public const array COLUMNS = ['id', 'ulid', 'site_id', 'sku', 'price', 'sale_price', 'sale_ends_at', 'stock', 'is_featured', 'is_bestseller',
         'status', 'published_at', 'created_at', 'updated_at', 'deleted_at'];
 
     /** The status groups that map to one status; "all" is every live row and "trash" every deleted one. */
@@ -310,7 +310,8 @@ final class ProductListQuery
 
         $query = $this->filtered()
             ->select(array_map(fn (string $column): string => 'products.'.$column, self::COLUMNS))
-            ->selectRaw("({$value})::text as __sv");
+            ->selectRaw("({$value})::text as __sv")
+            ->selectRaw('('.self::ON_SALE.') as on_sale'); // the sale state is the one the filter and the sort use, never re-worked in PHP
         if ($key === 'name') {
             $query->leftJoin('product_translations as nt', fn (JoinClause $title) => $title->on('nt.product_id', '=', 'products.id')
                 ->where('nt.site_id', '=', $this->siteId)

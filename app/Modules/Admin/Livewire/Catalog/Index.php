@@ -6,9 +6,11 @@ use App\Modules\Admin\Support\Catalog\ProductCategoryTree;
 use App\Modules\Admin\Support\Catalog\ProductListFilter;
 use App\Modules\Admin\Support\Catalog\ProductListQuery;
 use App\Modules\Admin\Support\Entries\ListCursor;
+use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductImage;
 use App\Modules\Catalog\Support\CatalogMode;
+use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
@@ -19,10 +21,7 @@ use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Entitlement\Entitlement;
-use Closure;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -72,11 +71,11 @@ final class Index extends Component
     /** Optional columns of a wide list ("Cột"), and the ones on until the member says otherwise. */
     private const array COLS = ['cat', 'price', 'stock', 'badge'];
 
-    /** The optional columns whose cells are drawn today; price, stock and label stay out of the menu until theirs are. */
-    private const array COL_OPTIONS = ['cat'];
+    /** What the "Cột" menu offers; a brochure website has no price or stock, so no such entry either. */
+    private const array COL_OPTIONS = ['cat', 'price', 'stock', 'badge'];
 
-    /** The card details drawn today (the others stay out of the menu until theirs are). */
-    private const array CARD_OPTIONS = ['sku', 'cat'];
+    /** What the "Hiện trên thẻ" menu offers; the translation chips only on a website with two or more languages. */
+    private const array CARD_OPTIONS = ['sku', 'cat', 'slug', 'tr'];
 
     /** What a phone card may add ("Hiện trên thẻ"), all off until the member turns them on. */
     private const array CARD = ['sku', 'cat', 'slug', 'tr'];
@@ -435,7 +434,7 @@ final class Index extends Component
                 $page = $this->readPage($list, $sortOn, trim($this->search) === '' && ! $filter->any() ? $counts[$this->tab] : null, $cap);
                 $this->loadRows($page['rows']);
 
-                return $page + ['counts' => $counts, 'facets' => $facets, 'chips' => $this->filterChips($tree, $facets), 'filterCount' => $this->filterCount($tree)];
+                return $page + ['tree' => $tree, 'counts' => $counts, 'facets' => $facets, 'chips' => $this->filterChips($tree, $facets), 'filterCount' => $this->filterCount($tree)];
             });
         } catch (QueryException $e) {
             report($e);
@@ -465,8 +464,13 @@ final class Index extends Component
             'canManage' => $canManage,
             'sortOn' => $sortOn,
             'sortIsDefault' => $sortOn === 'updated',
-            'colOptions' => self::COL_OPTIONS,
-            'cardOptions' => self::CARD_OPTIONS,
+            'colOptions' => $selling ? self::COL_OPTIONS : array_values(array_diff(self::COL_OPTIONS, ['price', 'stock'])),
+            'cardOptions' => count($locales) >= 2 ? self::CARD_OPTIONS : array_values(array_diff(self::CARD_OPTIONS, ['tr'])),
+            'selling' => $selling,
+            'locales' => $locales,
+            'paths' => app(PathBuilder::class),
+            'publicHost' => SeoFields::publicHost(),
+            'tree' => $read['tree'] ?? null,
             'sorts' => $this->sortKeys(),
             'urls' => app(MediaUrlResolver::class),
             'siteTime' => app(SiteTime::class),
@@ -590,7 +594,8 @@ final class Index extends Component
             foreach (ProductListFilter::STOCK as $kind) {
                 $facets['stock'][] = ['value' => $kind, 'label' => __('catalog.stock_'.$kind), ...$number($values['stock'][$kind] ?? 0), 'active' => in_array($kind, $this->stockF, true)];
             }
-            // offered only while some product is on sale, or the filter is on already
+            // offered only while some product is on sale, or the filter is on already; past the cap there are no numbers
+            // to tell (finding out would walk the list), so it is always offered
             if ($values === null || $values['sale'] > 0 || $this->saleF !== []) {
                 $facets['sale'][] = ['value' => 'on', 'label' => __('catalog.sale_on'), ...$number($values['sale'] ?? 0), 'active' => $this->saleF !== []];
             }
@@ -773,13 +778,14 @@ final class Index extends Component
 
         $rows->load([
             'translations:id,product_id,locale,name,slug',
-            ...self::primaryCategoryOnly(),
-            'taxonomies.translations:id,taxonomy_id,locale,name,slug',
+            // the main category with its names and the chain above it: the title of the category cell and the
+            // address (PathBuilder follows the loaded parents), each in one query for the whole page
+            ...PathBuilder::primaryCategoryRelations(),
         ]);
 
         // only the first picture of each product (by position), not its whole gallery
         $firsts = ProductImage::query()
-            ->selectRaw('distinct on (product_id) id, product_id, media_id, position')
+            ->selectRaw('distinct on (product_id) id, product_id, media_id, position, count(*) over (partition by product_id) as n')
             ->whereIn('product_id', $rows->modelKeys())
             ->orderBy('product_id')->orderBy('position')->orderBy('id')
             ->get()->keyBy('product_id');
@@ -790,21 +796,8 @@ final class Index extends Component
             $image = $firsts->get($product->id);
             $image?->setRelation('media', $media->get($image->media_id));
             $product->setRelation('images', new EloquentCollection($image === null ? [] : [$image]));
+            $product->setAttribute('images_n', $image?->getAttribute('n') ?? 0);
         }
-    }
-
-    /**
-     * The main category only (pivot position 0), with the one column its name needs.
-     *
-     * @return array<string, Closure(Relation<*, *, *>): void>
-     */
-    private static function primaryCategoryOnly(): array
-    {
-        return ['taxonomies' => static function (Relation $primary): void {
-            if ($primary instanceof BelongsToMany) {
-                $primary->wherePivot('position', 0)->select(['taxonomies.id']);
-            }
-        }];
     }
 
     /**

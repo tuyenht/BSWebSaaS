@@ -1253,4 +1253,219 @@
         color: var(--color-text-muted);
         cursor: not-allowed;
     }
+    /* ── The product list (list kind="catalog"): category, price, stock and label cells ─────────
+       Below 900 the cells are not drawn and the same facts stand in the name's meta line (price
+       and stock, category, labels as a comma list); the "(gốc … ₫)" of a sale is one block that
+       wraps whole. From 900 a table: the four columns join the grid and the meta pieces leave; as
+       the list narrows the label column folds back into the line below 80rem and the category
+       column below 68.75rem. `data-hide` (space-separated keys: cat price stock badge) turns a
+       column off, its head, its cells and its track together (a track of 0 takes no room). */
+    .list-c-cat,
+    .list-c-price,
+    .list-c-stock,
+    .list-c-badge {
+        display: none;
+    }
+
+    .list-m[data-for='price'] {
+        font-weight: 700;
+        color: var(--color-text-strong);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .list-old {
+        display: inline-block;
+        max-width: 100%;
+        font-weight: 400;
+        color: var(--color-text-muted);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .list-m[data-for='slug'] .list-cpy {
+        display: none;
+    }
+
+    .list-cpy {
+        align-items: center;
+        justify-content: center;
+        min-width: var(--spacing-hit);
+        min-height: var(--spacing-hit);
+        padding: 0;
+        border: 0;
+        border-radius: 0.25rem;
+        background: transparent;
+        color: var(--color-text-muted);
+    }
+
+    .list-cpy:hover {
+        background: var(--color-surface-hover);
+        color: var(--color-primary-text);
+    }
+
+    .list-ell {
+        overflow-wrap: anywhere;
+    }
+
+    .sp-pr {
+        display: block;
+        font-weight: 700;
+        color: var(--color-text-strong);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    .sp-pr[data-k='ask'] {
+        font-weight: 500;
+        color: var(--color-text-muted);
+    }
+
+    .sp-old {
+        display: block;
+        color: var(--color-text-muted);
+        text-decoration: line-through;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    .sp-stk {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .sp-stk[data-k='out'] {
+        color: var(--color-danger-text);
+        font-weight: 600;
+    }
+
+    .sp-stk[data-k='low'] {
+        color: var(--color-warning-text);
+        font-weight: 600;
+    }
+
+    .sp-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+
+    .sp-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        min-height: 1.375rem;
+        padding: 0 0.5rem;
+        border-radius: 0.6875rem;
+        font-weight: 600;
+        white-space: nowrap;
+        color: var(--color-warning-text);
+        background: color-mix(in srgb, var(--color-warning-text) 14%, var(--color-surface));
+    }
+
+    .sp-tag[data-k='best'] {
+        color: var(--color-primary-text);
+        background: color-mix(in srgb, var(--color-primary-text) 8%, var(--color-surface));
+    }
+
+    /* The copy button of the path line: on the one-record-per-line layout only (below 600 the row's
+       menu carries it; the table keeps the path as text). */
+    @container list (37.5rem <= width < 56.25rem) {
+        .list-m[data-for='slug'] .list-cpy {
+            display: inline-flex;
+        }
+    }
+
+    @container list (width >= 56.25rem) {
+        .list-rows[data-kind='catalog'] .list-g {
+            --list-w-cat: 9.375rem;
+            --list-w-price: 9.75rem;
+            --list-w-stock: calc(8.75rem + 8 * var(--user-text-boost));
+            --list-w-badge: 7.75rem;
+        }
+
+        .list-rows[data-kind='catalog'][data-kind] .list-g {
+            grid-template-columns: [chk] 3.5rem [main] minmax(0, 1fr) [cat] var(--list-w-cat) [price] var(--list-w-price) [stock] var(--list-w-stock) [badge] var(--list-w-badge) [st] 10.75rem [act] auto [end];
+        }
+
+        .list-c-cat {
+            display: block;
+            grid-column: cat;
+        }
+
+        .list-c-price {
+            display: block;
+            grid-column: price;
+            text-align: right;
+        }
+
+        .list-c-stock {
+            display: block;
+            grid-column: stock;
+        }
+
+        .list-c-badge {
+            display: block;
+            grid-column: badge;
+        }
+
+        .list-m[data-for='price'],
+        .list-m[data-for='stock'],
+        .list-m[data-for='cat'],
+        .list-m[data-for='badge'] {
+            display: none;
+        }
+
+        .list-rows[data-kind='catalog'][data-hide~='cat'] .list-g {
+            --list-w-cat: 0px;
+        }
+
+        .list-rows[data-kind='catalog'][data-hide~='price'] .list-g {
+            --list-w-price: 0px;
+        }
+
+        .list-rows[data-kind='catalog'][data-hide~='stock'] .list-g {
+            --list-w-stock: 0px;
+        }
+
+        .list-rows[data-kind='catalog'][data-hide~='badge'] .list-g {
+            --list-w-badge: 0px;
+        }
+
+        .list-rows[data-kind='catalog'][data-hide~='cat'] .list-c-cat,
+        .list-rows[data-kind='catalog'][data-hide~='price'] .list-c-price,
+        .list-rows[data-kind='catalog'][data-hide~='stock'] .list-c-stock,
+        .list-rows[data-kind='catalog'][data-hide~='badge'] .list-c-badge {
+            display: none;
+        }
+    }
+
+    @container list (56.25rem <= width < 80rem) {
+        .list-rows[data-kind='catalog'] .list-g {
+            --list-w-badge: 0px;
+        }
+
+        .list-rows[data-kind='catalog'] .list-c-badge {
+            display: none;
+        }
+
+        .list-m[data-for='badge'] {
+            display: inline;
+        }
+    }
+
+    @container list (56.25rem <= width < 68.75rem) {
+        .list-rows[data-kind='catalog'] .list-g {
+            --list-w-cat: 0px;
+        }
+
+        .list-rows[data-kind='catalog'] .list-c-cat {
+            display: none;
+        }
+
+        .list-m[data-for='cat'] {
+            display: inline;
+        }
+    }
 }

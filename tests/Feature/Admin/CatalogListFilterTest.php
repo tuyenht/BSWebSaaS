@@ -279,7 +279,14 @@ it('shows the value counts only while the whole site is within the cap, and runs
         expect($over)->toBe(0)
             ->and($overFacets['tag'])->not->toBe([])
             ->and(collect($overFacets['tag'])->every(fn (array $o): bool => ! array_key_exists('count', $o)))->toBeTrue()
-            ->and(collect($overFacets['stock'])->every(fn (array $o): bool => ! array_key_exists('count', $o)))->toBeTrue();
+            ->and(collect($overFacets['stock'])->every(fn (array $o): bool => ! array_key_exists('count', $o)))->toBeTrue()
+            // past the cap the sale filter is always offered: telling whether any product is on sale would walk the list
+            ->and($overFacets['sale'])->toHaveCount(1);
+
+        // exactly as many products as the cap is still within it: the numbers show and their statement runs
+        [$equal, $equalFacets] = $countStatements(5);
+        expect($equal)->toBe(1)
+            ->and(collect($equalFacets['tag'])->firstWhere('value', 'featured')['count'])->toBe(4);
 
         [$under, $underFacets] = $countStatements(100);
         expect($under)->toBe(1)
@@ -297,6 +304,8 @@ it('counts no product as partly translated on a site with exactly two languages,
         $two = (new ProductListQuery(1, 'all', '', 'vi'))->valueCounts(['vi', 'en'], false);
 
         expect($two['trans']['partial'])->toBe(0)
+            // the full-translation statement did run and was seen, so the missing partial one is real
+            ->and(collect($sql)->contains(fn (string $q): bool => str_contains($q, ' as r_full')))->toBeTrue()
             ->and(collect($sql)->contains(fn (string $q): bool => str_contains($q, ' as r_partial')))->toBeFalse();
     });
 });

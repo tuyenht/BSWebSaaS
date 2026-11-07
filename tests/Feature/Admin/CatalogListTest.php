@@ -667,7 +667,7 @@ it('draws the status header as the "updated" sort button, and the Trash heading 
     });
 });
 
-it('offers the Cột and Hiện trên thẻ menus from the saved choice, with only the columns drawn today', function (): void {
+it('offers the Cột and Hiện trên thẻ menus from the saved choice, with every detail the design lists', function (): void {
     $viewer = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($viewer): void {
@@ -680,8 +680,12 @@ it('offers the Cột and Hiện trên thẻ menus from the saved choice, with on
             ->assertSee(__('catalog.col_opt_cat'))
             ->assertSeeHtml('wire:model.live="cols"')
             ->assertSeeHtml('value="cat"')
-            ->assertDontSeeHtml('value="price"')->assertDontSeeHtml('value="stock"')->assertDontSeeHtml('value="badge"')
-            ->assertSee(__('entries.f_card'))->assertSee(__('catalog.card_opt_sku'))->assertSee(__('catalog.card_opt_cat'))
+            ->assertSeeHtml('value="badge"')
+            // a website with no price shows neither the price nor the stock entry
+            ->assertDontSeeHtml('value="price"')->assertDontSeeHtml('value="stock"')
+            ->assertSee(__('entries.f_card'))->assertSee(__('catalog.card_opt_sku'))->assertSee(__('catalog.card_opt_cat'))->assertSee(__('catalog.card_opt_slug'))
+            // one language: no translation chips to choose
+            ->assertDontSee(__('catalog.card_opt_tr'))
             ->assertSeeHtml('get vCat()')->assertSeeHtml('x-show="vSku"');
 
         $test->set('cols', [])->set('card', ['sku']);
