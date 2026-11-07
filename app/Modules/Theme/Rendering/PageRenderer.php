@@ -5,6 +5,7 @@ namespace App\Modules\Theme\Rendering;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\VideoEmbed;
+use App\Modules\Theme\Components\ListDisplay;
 use App\Modules\Theme\Components\SectionProps;
 use App\Modules\Theme\Theming\SiteSeo;
 use App\Modules\Theme\Theming\ThemeResolver;
@@ -41,12 +42,17 @@ final readonly class PageRenderer
         $layout = $this->templates->layoutFor($type, $templateOverride, $categoryTemplate);
         $leadBlock = $this->blocks->leadType($body);
         $extra += in_array('hero_slider', $this->blocks->types($body), true) ? self::sliderHints($body, $leadBlock, $this->media) : [];
+        // The slider script also drives the list rows (a list block that carries the display group).
+        $extra += self::hasRails($body) ? ['sliderScript' => true] : [];
         // The scroll-in motion script loads only on a page with a block that moves.
         $extra += $this->blocks->moves($body) ? ['sectionsScript' => true] : [];
         // The click-to-load video script loads only on a page with a video it can play.
         $extra += self::playsVideo($body) || $this->blocks->playsRichVideo($body) ? ['videoScript' => true] : [];
         // The count-up script loads only on a page with a stats block that holds a number.
         $extra += self::countsUp($body) ? ['statsScript' => true] : [];
+        // The tab script loads only on a page with an article list that asks for tabs (it draws them
+        // from two sub-categories up; the script is a few hundred bytes).
+        $extra += self::hasTabs($body) ? ['tabsScript' => true] : [];
         // A page led by a hero shows no breadcrumb (the hero is its opening), so its head lists none
         // either: the JSON-LD trail and the visible one always match.
         if ($type === 'page' && in_array($leadBlock, ['hero', 'hero_slider'], true)) {
@@ -97,6 +103,43 @@ final readonly class PageRenderer
         }
 
         return $head;
+    }
+
+    /**
+     * Whether an article list on the page asks for tabs (a card look with `tabs` other than `off`; the
+     * plain list and the rows never draw tabs, so they do not load the script).
+     * Pure: no query.
+     *
+     * @param  array<string, mixed>  $body
+     */
+    private static function hasTabs(array $body): bool
+    {
+        foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
+            $props = is_array($block) && ($block['type'] ?? null) === 'entry_grid' && is_array($block['props'] ?? null) ? $block['props'] : null;
+            if ($props !== null && in_array($props['variant'] ?? 'list', SectionProps::TAB_VARIANTS, true) && in_array($props['tabs'] ?? 'off', ['auto', 'filter'], true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether a list block on the page carries the display group (a block saved before it has no
+     * `layout` key and draws as it always did, with no script). Pure: no query.
+     *
+     * @param  array<string, mixed>  $body
+     */
+    private static function hasRails(array $body): bool
+    {
+        foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
+            if (is_array($block) && in_array($block['type'] ?? null, ['entry_grid', 'product_grid', 'partners', 'testimonial', 'team'], true)
+                && is_array($block['props'] ?? null) && ListDisplay::applies($block['props'])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -155,17 +198,24 @@ final readonly class PageRenderer
     }
 
     /**
-     * Whether a stats block on the page holds at least one usable number (the only thing the count-up
-     * script animates). Pure: no query.
+     * Whether a stats block (or the stats beside a call to action) on the page holds at least one
+     * counted number, the only thing the count-up script animates: a year is printed as is. Pure: no query.
      *
      * @param  array<string, mixed>  $body
      */
     private static function countsUp(array $body): bool
     {
         foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
-            $props = is_array($block) && ($block['type'] ?? null) === 'stats' ? ($block['props'] ?? null) : null;
-            foreach (is_array($props) ? SectionProps::items($props, 'items', SectionProps::STATS_MAX_ITEMS) : [] as $item) {
-                if (SectionProps::statNumber($item['value'] ?? null) !== null) {
+            $type = is_array($block) ? ($block['type'] ?? null) : null;
+            $props = is_array($block) && is_array($block['props'] ?? null) ? $block['props'] : [];
+            $key = match (true) {
+                $type === 'stats' => 'items',
+                $type === 'cta' && ($props['side'] ?? null) === 'stats' && ($props['variant'] ?? null) !== 'rounded' => 'side_items',
+                default => null,
+            };
+            $max = $type === 'stats' ? SectionProps::STATS_MAX_ITEMS : SectionProps::CTA_SIDE_MAX_ITEMS;
+            foreach ($key === null ? [] : SectionProps::items($props, $key, $max) as $item) {
+                if (SectionProps::choice($item, 'kind', SectionProps::STAT_KINDS) === 'number' && SectionProps::statNumber($item['value'] ?? null) !== null) {
                     return true;
                 }
             }
@@ -262,5 +312,23 @@ final readonly class PageRenderer
             'description' => $descriptionHtml,
             'images' => $images,
         ] + ($videos > 0 ? ['videoScript' => true] : []) + $extra)->render();
+    }
+
+    /**
+     * Render the site's 404 page on its own layout (theme::layouts.not-found), in the same header,
+     * footer and tokens as every page. The <title> runs through the site's title template like any
+     * inner page, and the head carries whatever robots line the caller set (the controller asks
+     * for `noindex`; a site hidden from search engines keeps its own, stricter one).
+     *
+     * @param  array<string, mixed>  $extra  the page chrome, the contact page's address and the suggested links
+     */
+    public function renderNotFound(string $title, array $extra = []): string
+    {
+        return $this->views->make('theme::layouts.not-found', $this->head([], $title, $extra) + [
+            'title' => $title,
+            'tokens' => $this->theme->cssVariables(),
+            // The head leaves out the share tags and the JSON-LD: there is no page to describe.
+            'notFound' => true,
+        ] + $extra)->render();
     }
 }

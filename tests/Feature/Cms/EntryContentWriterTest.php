@@ -34,7 +34,7 @@ it('reads the snapshot shape the revision recorder writes, unchanged', function 
         $page = writerPage();
         $snapshot = RecordEntryRevision::snapshot($page, $page->translationFor('vi'));
 
-        expect(app(EntryContentWriter::class)->read($snapshot))->toBe([
+        expect(app(EntryContentWriter::class)->read($snapshot, 'page'))->toBe([
             'title' => 'Trang',
             'slug' => 'trang',
             'blocks' => [['type' => 'hero', 'props' => ['heading' => 'Tiêu đề']]],
@@ -54,7 +54,7 @@ it('reads content that cannot be written today as null', function (array $change
         $page = writerPage();
         $snapshot = array_replace(RecordEntryRevision::snapshot($page, $page->translationFor('vi')), $change);
 
-        expect(app(EntryContentWriter::class)->read($snapshot))->toBeNull();
+        expect(app(EntryContentWriter::class)->read($snapshot, 'page'))->toBeNull();
     });
 })->with([
     'an unknown format' => [['v' => 99]],
@@ -68,7 +68,7 @@ it('writes one language, reports whether the shared fields changed, and records 
         $page = writerPage();
         $page->translations()->create(['locale' => 'en', 'title' => 'Page', 'slug' => 'page', 'status' => 'draft', 'body' => ['blocks' => []]]);
         $writer = app(EntryContentWriter::class);
-        $content = $writer->read(RecordEntryRevision::snapshot($page, $page->translationFor('vi')));
+        $content = $writer->read(RecordEntryRevision::snapshot($page, $page->translationFor('vi')), 'page');
         expect($content)->not->toBeNull();
 
         $same = $writer->write($page, 'vi', [...$content, 'title' => 'Trang mới']);

@@ -549,3 +549,17 @@ it('neither duplicates nor brings back the menu items staff moved to the trash w
             ->and(MenuItem::onlyTrashed()->pluck('id')->sort()->values()->all())->toBe(collect($linked)->sort()->values()->all());
     });
 });
+
+it('records the contact page it fills as the site\'s contact page setting', function (): void {
+    $site = seedPrecisionSite();
+
+    app(Tenancy::class)->enter($site->id, function (): void {
+        SiteSetting::query()->where('group_name', 'catalog')->where('key', 'contact_page')->delete();
+
+        app(SeedAnVinhContent::class)->handle();
+
+        $ulid = SiteRoute::query()->where('path', '/lien-he')->firstOrFail()->entry->ulid;
+        $value = SiteSetting::query()->where('group_name', 'catalog')->where('key', 'contact_page')->value('value');
+        expect($value)->toBe(['entry' => $ulid]);
+    });
+});

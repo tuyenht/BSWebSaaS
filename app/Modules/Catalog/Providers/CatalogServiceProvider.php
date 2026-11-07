@@ -37,7 +37,7 @@ final class CatalogServiceProvider extends ServiceProvider
 
         // Register the catalog's data-bound grid into the shared Section Library, so a page (e.g. the
         // An Vinh home) can compose a `product_grid` block alongside Cms's `entry_grid`.
-        $this->app->make(ComponentRegistry::class)->register('product_grid', $this->app->make(ProductGridComponent::class));
+        $this->app->make(ComponentRegistry::class)->register('product_grid', $this->app->make(ProductGridComponent::class), headed: true);
 
         // Menus can link to a product (design.md §13). The morph alias keeps menu_items storing
         // 'product' instead of a class name; MenuTargets tells Cms's menu which product routes a

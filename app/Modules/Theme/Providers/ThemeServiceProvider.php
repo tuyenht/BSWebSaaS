@@ -6,6 +6,7 @@ use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SectionComponent;
 use App\Modules\Theme\Components\SectionProps;
+use App\Modules\Theme\Theming\HeadingDecor;
 use App\Modules\Theme\Theming\SiteSeo;
 use App\Modules\Theme\Theming\StorefrontSettings;
 use Illuminate\Support\Facades\View;
@@ -61,6 +62,14 @@ final class ThemeServiceProvider extends ServiceProvider
             'image_url' => ['type' => 'image'],
             'cta_label' => ['type' => 'text'],
             'cta_url' => ['type' => 'url', 'action' => 'cta_label'],
+            'variant' => ['type' => 'enum', 'options' => SectionProps::ABOUT_VARIANTS, 'default' => 'default'],
+            'image_focus' => ['type' => 'enum', 'options' => SectionProps::ABOUT_IMAGE_FOCUS, 'default' => 'center'],
+            // Shortcut tiles under the text, typed buttons like the quick links.
+            'links' => ['type' => 'list', 'max' => SectionProps::ABOUT_LINKS_MAX_ITEMS, 'of' => [
+                'icon' => ['type' => 'enum', 'options' => SectionProps::QUICK_LINK_ICONS, 'default' => 'link'],
+                'label' => ['type' => 'text'],
+                'url' => ['type' => 'url', 'action' => 'label'],
+            ]],
         ],
         'partners' => [
             'heading' => ['type' => 'text'],
@@ -69,13 +78,18 @@ final class ThemeServiceProvider extends ServiceProvider
                 'name' => ['type' => 'text'],
                 'url' => ['type' => 'url', 'action' => 'name'],
             ]],
-        ],
+        ] + SectionProps::LIST_DISPLAY,
         'cta' => [
             'heading' => ['type' => 'text'],
             'button_label' => ['type' => 'text'],
             'button_url' => ['type' => 'url', 'action' => 'button_label'],
             'text' => ['type' => 'textarea'],
             'variant' => ['type' => 'enum', 'options' => SectionProps::CTA_VARIANTS, 'default' => 'default'],
+            'button2_label' => ['type' => 'text'],
+            'button2_url' => ['type' => 'url', 'action' => 'button2_label'],
+            // Up to three stats beside the text, with the default look only (the rounded band ignores them).
+            'side' => ['type' => 'enum', 'options' => SectionProps::CTA_SIDES, 'default' => 'none'],
+            'side_items' => ['type' => 'list', 'max' => SectionProps::CTA_SIDE_MAX_ITEMS, 'of' => SectionProps::STAT_ITEM],
         ],
         'contact' => [
             'heading' => ['type' => 'text'],
@@ -87,6 +101,9 @@ final class ThemeServiceProvider extends ServiceProvider
             'phone_label' => ['type' => 'text'],
             'email_label' => ['type' => 'text'],
             'address_label' => ['type' => 'text'],
+            // A phone number or a zalo.me link (the floating Zalo button's own rule); the cell is titled "Zalo".
+            'zalo' => ['type' => 'url', 'zalo' => true],
+            'zalo_label' => ['type' => 'text'],
         ],
         // The title band of an inner page: it carries the page's single h1 (the layout skips its
         // own when this block leads the page). Title defaults to the page title; overlay is the
@@ -158,7 +175,7 @@ final class ThemeServiceProvider extends ServiceProvider
                 'avatar' => ['type' => 'image'],
             ]],
             'variant' => ['type' => 'enum', 'options' => SectionProps::TESTIMONIAL_VARIANTS, 'default' => 'grid-2'],
-        ],
+        ] + SectionProps::LIST_DISPLAY,
         'team' => [
             'heading' => ['type' => 'text'],
             'members' => ['type' => 'list', 'max' => SectionProps::MAX_ITEMS, 'of' => [
@@ -167,7 +184,7 @@ final class ThemeServiceProvider extends ServiceProvider
                 'photo' => ['type' => 'image'],
             ]],
             'variant' => ['type' => 'enum', 'options' => SectionProps::TEAM_VARIANTS, 'default' => 'grid-3'],
-        ],
+        ] + SectionProps::LIST_DISPLAY,
         'process' => [
             'heading' => ['type' => 'text'],
             'steps' => ['type' => 'list', 'min' => 3, 'min_of' => 'title', 'max' => 6, 'of' => [
@@ -190,11 +207,8 @@ final class ThemeServiceProvider extends ServiceProvider
         // value is a whole number counted up on scroll; the suffix ("+", "%") is trimmed to 8 characters at render.
         'stats' => [
             'heading' => ['type' => 'text'],
-            'items' => ['type' => 'list', 'max' => SectionProps::STATS_MAX_ITEMS, 'of' => [
-                'value' => ['type' => 'int', 'min' => 0, 'max' => 999_999_999_999],
-                'suffix' => ['type' => 'text'],
-                'label' => ['type' => 'text'],
-            ]],
+            'items' => ['type' => 'list', 'max' => SectionProps::STATS_MAX_ITEMS, 'of' => SectionProps::STAT_ITEM],
+            'variant' => ['type' => 'enum', 'options' => SectionProps::STATS_VARIANTS, 'default' => 'default'],
         ],
         // Formatted text ("Văn bản có định dạng", ADR-19): `html` is the one prop type printed without
         // escaping, allowed on this block only. Every write runs it through RichTextSanitizer::cms (the
@@ -207,6 +221,9 @@ final class ThemeServiceProvider extends ServiceProvider
     /** Types that render and validate but stay out of the builder's add list until their editor field exists. */
     private const array UNLISTED = ['richtext_html'];
 
+    /** Types whose view draws a section heading (theme::partials.sf-section-head): they take `heading_decor`. */
+    private const array HEADED = ['features', 'process', 'pricing', 'testimonial', 'stats', 'gallery', 'quick_links', 'team', 'video', 'faq'];
+
     #[\Override]
     public function register(): void
     {
@@ -214,7 +231,7 @@ final class ThemeServiceProvider extends ServiceProvider
             $registry = new ComponentRegistry;
 
             foreach (self::SECTION_SCHEMAS as $type => $schema) {
-                $registry->register($type, new SectionComponent("theme::sections.{$type}", $schema), ! in_array($type, self::UNLISTED, true));
+                $registry->register($type, new SectionComponent("theme::sections.{$type}", $schema), ! in_array($type, self::UNLISTED, true), in_array($type, self::HEADED, true));
             }
 
             return $registry;
@@ -222,6 +239,7 @@ final class ThemeServiceProvider extends ServiceProvider
 
         // Per request (Octane-safe): one settings read shared by the tokens, header and footer.
         $this->app->scoped(StorefrontSettings::class);
+        $this->app->scoped(HeadingDecor::class);
         $this->app->scoped(SiteSeo::class);
     }
 

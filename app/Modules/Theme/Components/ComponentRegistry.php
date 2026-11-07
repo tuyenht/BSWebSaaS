@@ -17,14 +17,23 @@ final class ComponentRegistry
     /** @var array<string, true> types that render and validate but are not offered in the builder's add list */
     private array $unlisted = [];
 
+    /** @var array<string, true> types that draw a section heading, so take the `heading_decor` prop */
+    private array $headed = [];
+
     /**
      * $listed false keeps a type out of the builder's add list while it still renders and
      * validates — for a block whose editor field is not built yet, so existing bodies holding it
-     * keep working and nobody is handed a half-built field.
+     * keep working and nobody is handed a half-built field. $headed marks a block whose view draws
+     * a section heading (theme::partials.sf-section-head): only those take the heading decoration.
      */
-    public function register(string $type, Component $component, bool $listed = true): void
+    public function register(string $type, Component $component, bool $listed = true, bool $headed = false): void
     {
         $this->components[$type] = $component;
+        if ($headed) {
+            $this->headed[$type] = true;
+        } else {
+            unset($this->headed[$type]);
+        }
         if ($listed) {
             unset($this->unlisted[$type]);
         } else {
@@ -43,7 +52,7 @@ final class ComponentRegistry
     }
 
     /**
-     * A type's full §E7 schema: its own props plus the look props every block shares (StyleProps).
+     * A type's full §E7 schema: its own props plus the look props every block shares (StyleProps; the heading decoration only for a block that has a heading).
      * Validation, rendering, the media index and the editor read a block's props through here, so
      * the look props are checked and resolved like any other prop.
      *
@@ -51,7 +60,12 @@ final class ComponentRegistry
      */
     public function schemaFor(string $type): array
     {
-        return $this->components[$type]->schema() + StyleProps::SCHEMA;
+        $schema = $this->components[$type]->schema() + StyleProps::SCHEMA;
+        if (! isset($this->headed[$type])) {
+            unset($schema['heading_decor']);
+        }
+
+        return $schema;
     }
 
     /**

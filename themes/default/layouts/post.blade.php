@@ -75,10 +75,7 @@
 @if ($sfRelated !== [])
         <section class="post-related" aria-labelledby="bai-viet-lien-quan">
             <div class="sf-container">
-                <div class="sf-section-head">
-                    <h2 class="sf-section-head__title" id="bai-viet-lien-quan">{{ __('storefront.related_posts') }}</h2>
-                    <span class="sf-section-head__rule" aria-hidden="true"></span>
-                </div>
+                @include('theme::partials.sf-section-head', ['heading' => __('storefront.related_posts'), 'description' => '', 'headId' => 'bai-viet-lien-quan'])
                 <ul class="sf-grid sf-grid--3m">
 @foreach ($sfRelated as $card)
                     <li>@include('theme::partials.sf-card', ['card' => ['excerpt' => '', 'label' => ''] + $card, 'kind' => 'news', 'level' => 'h3'])</li>

@@ -112,7 +112,7 @@ it('lists a category within its budget on each layout', function (string $path, 
     'titles layout: the COUNT is gone' => ['/tin-tuc', null, null, 18],
     'news cards, a parent with chips: chips and the site timezone' => ['/tin-tuc', 'grid-news', null, 22],
     'product cards, a child category: the products check, chips, photos, categories and the parent category in the trail' => ['/do-ga', null, 'grid-product', 26],
-    'a product page in a child category: its category trail, the parent category, the photos and the look for products of its group (none here)' => ['/san-pham-1', null, null, 20],
+    'a product page in a child category: its category trail, the parent category, the photos and the look for products of its group (none here), and the route of the contact page for the quote button' => ['/san-pham-1', null, null, 21],
 ]);
 
 it('reads the products of the same group in a fixed number of reads, however many there are', function (): void {
@@ -123,7 +123,7 @@ it('reads the products of the same group in a fixed number of reads, however man
     // The look itself is one read; finding rows adds their translations, photos and photo files.
     expect($two - $none)->toBe(3)
         ->and(budgetCount('/san-pham-1', 14, 1))->toBe($two)
-        ->and(budgetCount('/san-pham-1', 6, 1, warm: false))->toBeLessThanOrEqual(23);
+        ->and(budgetCount('/san-pham-1', 6, 1, warm: false))->toBeLessThanOrEqual(24);
 });
 
 it('keeps card list pages independent of the number of rows and child categories', function (string $path, ?string $news, ?string $catalog): void {

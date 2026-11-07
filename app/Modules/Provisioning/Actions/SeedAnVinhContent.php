@@ -487,6 +487,10 @@ final readonly class SeedAnVinhContent
 
         $entryId = $this->upsertPage($locale, 'Liên hệ', 'lien-he', '/lien-he', 'Liên hệ Cơ Khí Chính Xác An Vinh — hotline 0915 66 83 83, email quybv@ckanvinh.vn, hệ thống 3 nhà máy tại Hà Nội.', $blocks);
         $this->addMenuEntryItem($locale, $entryId, 'Liên hệ', 7);
+        $contactUlid = Entry::query()->whereKey($entryId)->value('ulid');
+        if (is_string($contactUlid)) {
+            app(LinkContactPage::class)->handle($contactUlid);
+        }
 
         // Seed the lead-capture form (self-sufficient: anvinh:seed-content alone wires the An Vinh
         // contact form, so the deploy needs no interactive site:provision re-run). Route leads to

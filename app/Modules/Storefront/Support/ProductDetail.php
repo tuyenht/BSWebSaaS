@@ -7,6 +7,7 @@ namespace App\Modules\Storefront\Support;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Shared\Contracts\PageLinks;
 use App\Modules\Theme\Chrome\StorefrontChrome;
 use App\Modules\Theme\Components\ButtonLink;
 use Illuminate\Database\Eloquent\Collection;
@@ -35,6 +36,7 @@ final readonly class ProductDetail
     public function __construct(
         private MediaUrlResolver $media,
         private ListPage $lists,
+        private PageLinks $pages,
     ) {}
 
     /**
@@ -64,6 +66,25 @@ final readonly class ProductDetail
         }
 
         return $photos;
+    }
+
+    /**
+     * The address of the current site's contact page in this language, built like every storefront
+     * link: the page named by the site's `catalog` / `contact_page` setting (its ulid, read with the
+     * storefront's other settings), by its entry, so a renamed
+     * slug or a language with a slug of its own still finds it. Null when the setting is empty or
+     * the page is not reachable here (not published, its translation in this language not
+     * published, or trashed), so the quote button is left out.
+     */
+    public function quoteLink(string $locale, ?string $ulid): ?string
+    {
+        if ($ulid === null) {
+            return null;
+        }
+
+        $path = $this->pages->paths([$ulid], $locale)[$ulid] ?? null;
+
+        return is_string($path) && $path !== '' ? $path : null;
     }
 
     /**

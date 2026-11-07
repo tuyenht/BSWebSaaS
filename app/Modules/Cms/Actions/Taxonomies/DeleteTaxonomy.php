@@ -19,6 +19,7 @@ use App\Modules\Cms\Routing\CategoryChange;
 use App\Modules\Cms\Routing\CategoryRelinker;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Routing\SectionResolver;
+use App\Modules\Cms\Support\BlockMediaUsage;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Cms\Taxonomy\CategoryLimitGuard;
@@ -77,6 +78,7 @@ final readonly class DeleteTaxonomy
         private CurrentSite $site,
         private CategoryScopes $scopes,
         private CategoryLimitGuard $limits,
+        private BlockMediaUsage $usage,
     ) {}
 
     /**
@@ -164,6 +166,9 @@ final readonly class DeleteTaxonomy
 
             // The category rows go last; their translations, routes and (now empty) pivot rows cascade.
             $count = Cast::int(Taxonomy::query()->whereKey($deleted)->delete());
+            // Their block slots' "in use" rows in the library are polymorphic (no foreign key): dropped
+            // here, after the rows, so a slot save that held a category row has committed and is seen.
+            $this->usage->forget('taxonomy', $deleted);
 
             Audit::record('cms.taxonomy.deleted', [
                 'auditable_type' => Taxonomy::class,

@@ -1,8 +1,14 @@
 <?php
 
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\SiteRoute;
+use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Storefront\Support\ProductDetail;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteLocale;
+use App\Modules\Tenancy\Models\SiteProfile;
+use App\Modules\Tenancy\Models\SiteSetting;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Vite;
 use Illuminate\Support\HtmlString;
@@ -168,4 +174,152 @@ it('orders an undated product first among the related ones, the same as in the l
     preg_match_all('#href="([^"]+)"#', $related[0] ?? '', $hrefs);
 
     expect($hrefs[1][0] ?? null)->toBe('/mau-chua-ngay');
+});
+
+/** The badges' labels as printed in the main image's stage. */
+function productBadges(string $html): array
+{
+    preg_match('#<ul class="product__badges">(.*?)</ul>#s', $html, $list);
+    preg_match_all('#<li class="product__badge">([^<]+)</li>#', $list[1] ?? '', $labels);
+
+    return $labels[1];
+}
+
+it('prints a badge on the main photo for each switch that is on, and none when both are off', function (bool $featured, bool $bestseller, array $expected): void {
+    $product = productSite();
+    app(Tenancy::class)->enter($product->site_id, fn () => $product->update(['is_featured' => $featured, 'is_bestseller' => $bestseller]));
+    $html = productHtml();
+
+    expect(productBadges($html))->toBe($expected);
+    if ($expected === []) {
+        expect($html)->not->toContain('product__badges');
+    }
+    // The badge text sits beside the photo link, never inside its accessible name.
+    preg_match('#<a class="product__main".*?</a>#s', $html, $link);
+    expect($link[0] ?? '')->not->toContain('product__badge');
+})->with([
+    'both on' => [true, true, ['Nổi bật', 'Bán chạy']],
+    'featured only' => [true, false, ['Nổi bật']],
+    'bestseller only' => [false, true, ['Bán chạy']],
+    'neither' => [false, false, []],
+]);
+
+it('adds the quote button first in the contact box when the site has a contact page, built through its path', function (): void {
+    productSite();
+    $html = productHtml();
+
+    expect($html)->toContain('<a class="product__quote" href="/lien-he">Yêu cầu báo giá</a>')
+        ->and(substr_count($html, 'product__quote"'))->toBe(1)
+        ->and($html)->not->toMatch('#/lien-he/[0-9]#')
+        ->and(strpos($html, 'product__quote"'))->toBeLessThan(strpos($html, 'product__zalo') ?: PHP_INT_MAX);
+    preg_match_all('#<img\b[^>]*\sfetchpriority="high"#', $html, $high);
+    expect($high[0])->toHaveCount(1);
+});
+
+it('leaves the quote button out when the site has no published contact page', function (): void {
+    $product = productSite();
+    app(Tenancy::class)->enter($product->site_id, function (): void {
+        $entry = SiteRoute::query()->where('path', '/lien-he')->firstOrFail()->entry;
+        $entry->update(['status' => 'draft']);
+    });
+    expect(productHtml())->not->toContain('product__quote');
+
+    app(Tenancy::class)->enter($product->site_id, function (): void {
+        $entry = SiteRoute::query()->where('path', '/lien-he')->firstOrFail()->entry;
+        $entry->update(['status' => 'published']);
+        $entry->translations()->update(['status' => 'draft']);
+    });
+    expect(productHtml())->not->toContain('product__quote');
+
+    app(Tenancy::class)->enter($product->site_id, fn () => SiteRoute::query()->where('path', '/lien-he')->delete());
+    expect(productHtml())->not->toContain('product__quote');
+});
+
+it('never uses another site’s contact page for the quote button', function (): void {
+    $mine = productSite();
+    $other = productSite('Xưởng Khác', 'khac.platform.test', 'Khác ');
+    app(Tenancy::class)->enter($mine->site_id, fn () => SiteRoute::query()->where('path', '/lien-he')->delete());
+
+    expect(productHtml())->not->toContain('product__quote')
+        ->and(productHtml('khac.platform.test'))->toContain('product__quote');
+    expect($mine->site_id)->not->toBe($other->site_id);
+});
+
+/** The contact page entry of the product's site. */
+function contactEntry(Product $product): Entry
+{
+    return app(Tenancy::class)->enter($product->site_id, fn (): Entry => SiteRoute::query()->where('path', '/lien-he')->firstOrFail()->entry);
+}
+
+it('follows the contact page through a renamed slug, by the page and not by the path', function (): void {
+    $product = productSite();
+    app(Tenancy::class)->enter($product->site_id, function (): void {
+        $entry = SiteRoute::query()->where('path', '/lien-he')->firstOrFail()->entry;
+        $entry->translations()->update(['slug' => 'ket-noi']);
+        app(RouteSync::class)->sync($entry, 'vi', 'ket-noi');
+    });
+
+    $html = productHtml();
+
+    expect($html)->toContain('<a class="product__quote" href="/ket-noi">Yêu cầu báo giá</a>');
+});
+
+it('gives a language with its own slug the prefixed path of that language', function (): void {
+    $product = productSite();
+    $link = app(Tenancy::class)->enter($product->site_id, function (): ?string {
+        SiteLocale::query()->firstOrCreate(['locale' => 'en'], ['is_default' => false, 'enabled' => true]);
+        $entry = SiteRoute::query()->where('path', '/lien-he')->firstOrFail()->entry;
+        $entry->translations()->create(['locale' => 'en', 'title' => 'Contact', 'slug' => 'contact', 'status' => 'published', 'body' => ['blocks' => []]]);
+        SiteRoute::query()->create(['locale' => 'en', 'path' => '/contact', 'entry_id' => $entry->id]);
+
+        return app(ProductDetail::class)->quoteLink('en', $entry->ulid);
+    });
+
+    expect($link)->toBe('/en/contact');
+
+    $none = app(Tenancy::class)->enter($product->site_id, function (): ?string {
+        $entry = SiteRoute::query()->where('path', '/contact')->firstOrFail()->entry;
+        $entry->translations()->where('locale', 'en')->update(['status' => 'draft']);
+
+        return app(ProductDetail::class)->quoteLink('en', $entry->ulid);
+    });
+    expect($none)->toBeNull();
+});
+
+it('leaves the quote button out when the site has no contact page setting', function (): void {
+    $product = productSite();
+    app(Tenancy::class)->enter($product->site_id, fn () => SiteSetting::query()->where('group_name', 'catalog')->where('key', 'contact_page')->delete());
+
+    expect(productHtml())->not->toContain('product__quote');
+});
+
+it('never follows a setting that names another site’s page', function (): void {
+    $mine = productSite();
+    $other = productSite('Xưởng Khác', 'khac.platform.test', 'Khác ');
+    $theirs = contactEntry($other)->ulid;
+    app(Tenancy::class)->enter($mine->site_id, fn () => SiteSetting::query()->where('key', 'contact_page')->update(['value' => ['entry' => $theirs]]));
+
+    expect(productHtml())->not->toContain('product__quote')
+        ->and(productHtml('khac.platform.test'))->toContain('product__quote');
+});
+
+it('prints no empty actions row in a box that only holds the Zalo contact', function (): void {
+    $product = productSite();
+    app(Tenancy::class)->enter($product->site_id, function (): void {
+        SiteSetting::query()->where('key', 'contact_page')->delete();
+        SiteProfile::query()->firstOrFail()->update(['social_links' => ['zalo' => '0915668383']]);
+    });
+
+    $html = productHtml();
+
+    expect($html)->toContain('product__zalo')
+        ->and($html)->not->toContain('product__actions')
+        ->and($html)->not->toContain('product__quote');
+});
+
+it('leaves the quote button out when the contact page is in the trash', function (): void {
+    $product = productSite();
+    app(Tenancy::class)->enter($product->site_id, fn () => contactEntry($product)->delete());
+
+    expect(productHtml())->not->toContain('product__quote');
 });

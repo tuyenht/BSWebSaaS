@@ -5,6 +5,7 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
+use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Media\Models\Media;
@@ -13,6 +14,7 @@ use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
+use Illuminate\Support\Facades\View;
 
 /*
  * Query Budget guardrail (CLAUDE.md §6): assert a hard ceiling of DB queries per
@@ -149,4 +151,72 @@ it('renders the storefront home with the full chrome within its query budget', f
 
     expect($html)->toContain('sf-header')->toContain('sf-footer')->toContain('Mục 3')
         ->and($count)->toBeLessThanOrEqual($budget);
+});
+
+it('renders the site’s 404 page with the full chrome within its query budget', function (): void {
+    // The page resolve misses (the route, then the redirect check), then the same chrome as the
+    // home: one settings read, the brand, the menus' three reads. The contact page costs nothing
+    // while the site names none, and the suggested links come from the menu already loaded.
+    $budget = 13;
+
+    app(Tenancy::class)->enter(1, function (): void {
+        foreach ([
+            ['storefront', 'header', ['top_bar' => ['items' => [['kind' => 'phone', 'text' => '0901 234 567', 'value' => '0901234567']]], 'text_size' => true]],
+            ['storefront', 'footer', ['about' => 'Giới thiệu.']],
+        ] as [$group, $key, $value]) {
+            SiteSetting::query()->create(['group_name' => $group, 'key' => $key, 'value' => $value]);
+        }
+
+        $home = Entry::query()->firstOrFail();
+        foreach (['primary' => 'Chính', 'footer' => 'Chân trang'] as $region => $name) {
+            $menu = Menu::query()->create(['name' => $name, 'handle' => $region]);
+            foreach (range(1, 3) as $position) {
+                $item = MenuItem::query()->create(['menu_id' => $menu->id, 'link_type' => 'entry',
+                    'routable_type' => 'entry', 'routable_id' => $home->id, 'position' => $position]);
+                $item->translations()->create(['locale' => 'vi', 'label' => "Mục {$position}"]);
+            }
+            MenuAssignment::query()->create(['region_key' => $region, 'locale' => 'vi', 'menu_id' => $menu->id]);
+        }
+    });
+
+    $html = '';
+    $count = countQueries(function () use (&$html): void {
+        $html = $this->get('http://a.test/khong-co-trang-nay')->assertNotFound()->getContent();
+    });
+
+    expect($html)->toContain('sf-404')->toContain('sf-header')->toContain('sf-footer')->toContain('Mục 3')
+        ->and($count)->toBeLessThanOrEqual($budget);
+});
+
+it('renders the site’s 404 page within the same query budget when the site names a contact page', function (): void {
+    // The contact page is one more read of the site's settings plus its route lookup.
+    $budget = 15;
+
+    app(Tenancy::class)->enter(1, function (): void {
+        $page = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()]);
+        $page->translations()->create(['locale' => 'vi', 'title' => 'Liên hệ', 'slug' => 'lien-he', 'status' => 'published', 'body' => ['blocks' => []]]);
+        SiteRoute::query()->create(['locale' => 'vi', 'path' => '/lien-he', 'entry_id' => $page->id]);
+        SiteSetting::query()->create(['group_name' => 'catalog', 'key' => 'contact_page', 'value' => ['entry' => $page->ulid]]);
+    });
+
+    $html = '';
+    $count = countQueries(function () use (&$html): void {
+        $html = $this->get('http://a.test/khong-co-trang-nay')->assertNotFound()->getContent();
+    });
+
+    expect($html)->toContain('sf-404__btn--contact')->toContain('href="/lien-he"')
+        ->and($count)->toBeLessThanOrEqual($budget);
+});
+
+it('renders a stats block of plain numbers with no query of its own, and a years item with the one settings read', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $numbers = fn () => View::make('theme::sections.stats', ['props' => ['items' => [['value' => 3, 'label' => 'Nhà máy'], ['value' => 4300, 'label' => 'Nhà xưởng']]]])->render();
+        $years = fn () => View::make('theme::sections.stats', ['props' => ['items' => [['kind' => 'years', 'value' => 2014, 'label' => 'Năm'], ['kind' => 'year', 'value' => 2019, 'label' => 'Thành lập']]]])->render();
+        $side = fn () => View::make('theme::sections.cta', ['props' => ['side' => 'stats', 'side_items' => [['value' => 3, 'label' => 'Nhà máy']]]])->render();
+
+        expect(countQueries($numbers))->toBe(0)
+            ->and(countQueries($side))->toBe(0)
+            ->and(countQueries($years))->toBe(1)
+            ->and(countQueries($years))->toBe(0);
+    });
 });

@@ -39,6 +39,16 @@
                         <a class="product__main" href="{{ $sfPhotos[0]['url'] }}" data-sf-gallery-main>
                             @include('theme::partials.sf-img', ['src' => $sfPhotos[0]['url'], 'srcset' => $sfPhotos[0]['srcset'], 'sizes' => '(min-width:80rem) 36.5rem, (min-width:1024px) calc((100vw - 5.5rem)/2), calc(100vw - 2rem)', 'alt' => $sfPhotos[0]['alt'], 'w' => $sfPhotos[0]['width'], 'h' => $sfPhotos[0]['height'], 'priority' => 'high', 'class' => 'product__image'])
                         </a>
+@if (($sfInfo['featured'] ?? false) || ($sfInfo['bestseller'] ?? false))
+                        <ul class="product__badges">
+@if ($sfInfo['featured'] ?? false)
+                            <li class="product__badge">{{ __('storefront.badge_featured') }}</li>
+@endif
+@if ($sfInfo['bestseller'] ?? false)
+                            <li class="product__badge">{{ __('storefront.badge_bestseller') }}</li>
+@endif
+                        </ul>
+@endif
 @if ($sfCount > 1)
                         <span class="product__count" aria-live="polite" data-sf-gallery-count>1 / {{ $sfCount }}</span>
                         <button type="button" class="sf-slider__btn product__nav product__nav--prev" data-sf-gallery-step="-1" aria-label="{{ __('storefront.prev_photo') }}" hidden>
@@ -66,13 +76,20 @@
 @if (($sfInfo['summary'] ?? '') !== '')
                     <p class="product__summary">{{ $sfInfo['summary'] }}</p>
 @endif
-@if ($sfContact !== null)
+@if ($sfContact !== null || ($sfInfo['quote'] ?? null) !== null)
                     <div class="product__contact">
                         <p class="product__price">{{ __('storefront.price_on_request') }}</p>
-@if ($sfContact['call'] !== null)
-                        <a class="product__call" href="{{ $sfContact['call'] }}">{{ __('storefront.call_number', ['phone' => $sfContact['number']]) }}</a>
+@if (($sfInfo['quote'] ?? null) !== null || ($sfContact !== null && $sfContact['call'] !== null))
+                        <div class="product__actions">
+@if (($sfInfo['quote'] ?? null) !== null)
+                            <a class="product__quote" href="{{ $sfInfo['quote'] }}">{{ __('storefront.request_quote') }}</a>
 @endif
-@if ($sfContact['zalo'] !== null)
+@if ($sfContact !== null && $sfContact['call'] !== null)
+                            <a class="product__call" href="{{ $sfContact['call'] }}">{{ __('storefront.call_number', ['phone' => $sfContact['number']]) }}</a>
+@endif
+                        </div>
+@endif
+@if ($sfContact !== null && $sfContact['zalo'] !== null)
                         <a class="product__zalo" href="{{ $sfContact['zalo'] }}" target="_blank" rel="noopener">{{ __('storefront.zalo_message') }}</a>
 @endif
                     </div>
@@ -93,10 +110,7 @@
 @if ($sfRelated !== [])
         <section class="post-related post-related--plain" aria-labelledby="san-pham-cung-nhom">
             <div class="sf-container">
-                <div class="sf-section-head">
-                    <h2 class="sf-section-head__title" id="san-pham-cung-nhom">{{ __('storefront.related_products') }}</h2>
-                    <span class="sf-section-head__rule" aria-hidden="true"></span>
-                </div>
+                @include('theme::partials.sf-section-head', ['heading' => __('storefront.related_products'), 'description' => '', 'headId' => 'san-pham-cung-nhom'])
                 <ul class="sf-grid sf-grid--4s">
 @foreach ($sfRelated as $card)
                     <li>@include('theme::partials.sf-card', ['card' => $card, 'kind' => 'product', 'level' => 'h3', 'sizes' => '(min-width:1360px) 298px, (min-width:1024px) calc((100vw - 10.5rem)/4), (min-width:640px) calc((100vw - 5rem)/2), calc(100vw - 2rem)'])</li>

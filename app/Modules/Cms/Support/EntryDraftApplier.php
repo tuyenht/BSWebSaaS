@@ -99,6 +99,10 @@ final readonly class EntryDraftApplier
 
             $content = $this->writer->read(
                 ['v' => RecordEntryRevision::FORMAT] + $snapshotShared + array_intersect_key($text, array_flip(EntryDraft::LOCALE_FIELDS)),
+                $entry->type,
+                is_string($entry->template_override) ? $entry->template_override : null,
+                // A stored change is never this request's input: a layout that no longer fits is dropped, not refused.
+                true,
             );
 
             if ($content === null) {

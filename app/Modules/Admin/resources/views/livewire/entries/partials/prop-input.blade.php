@@ -12,7 +12,7 @@
             <textarea wire:model="{{ $model }}"></textarea>
             @break
         @case('int')
-            <input type="number" wire:model="{{ $model }}" class="field">
+            <input type="number" wire:model="{{ $model }}" class="field"@if (is_int($min ?? null)) min="{{ $min }}"@endif @if (is_int($max ?? null)) max="{{ $max }}"@endif>
             @break
         @case('enum')
             <select wire:model="{{ $model }}" class="field">
@@ -37,7 +37,7 @@
             </span>
             @break
         @default
-            <input type="text" wire:model="{{ $model }}" class="field">
+            <input type="text" wire:model="{{ $model }}" class="field"@if (! empty($describedBy)) aria-describedby="{{ $describedBy }}"@endif>
     @endswitch
 </label>
 @endif

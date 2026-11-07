@@ -32,6 +32,7 @@ use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
+use App\Modules\Theme\Rendering\TemplateCatalog;
 use Closure;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
@@ -357,8 +358,8 @@ final class Index extends Component
             'products' => $found !== null && $found['root'] === null,
             'label' => $found['label'] ?? '',
             'bases' => $bases,
-            'layouts' => $this->layouts(),
-            'detailLayouts' => $this->layouts($found === null || $found['root'] !== null),
+            'layouts' => TemplateCatalog::names(TemplateCatalog::ROLE_LIST, $found !== null && $found['root'] === null ? TemplateCatalog::KIND_PRODUCT : TemplateCatalog::KIND_POST),
+            'detailLayouts' => $this->detailLayouts($found === null || $found['root'] !== null),
             'role' => is_string($role) && $role !== '' ? Str::headline($role) : null,
             'limitNames' => $limits === null ? null : $this->namesOf($limits, $main),
             'listUrl' => $found !== null && $found['root'] === null ? route('admin.catalog.index') : route('admin.entries.index', $found !== null ? ['section' => $found['key']] : []),
@@ -380,19 +381,25 @@ final class Index extends Component
     }
 
     /**
-     * The layouts of the active theme a category may take (TaxonomyRules::template), by name.
+     * The detail layouts a category may take: the post layouts of the theme's template list for a
+     * post category; for a product category (whose detail layout is read nowhere today) any layout
+     * of the active theme except the reserved ones.
      *
      * @return list<string>
      */
-    private function layouts(bool $postDetail = false): array
+    private function detailLayouts(bool $postDetail): array
     {
+        if ($postDetail) {
+            return TemplateCatalog::names(TemplateCatalog::ROLE_POST, TemplateCatalog::KIND_POST);
+        }
+
         $names = [];
         $finder = Views::getFinder();
         $dirs = $finder instanceof FileViewFinder ? ($finder->getHints()['theme'] ?? []) : [];
         foreach ($dirs as $dir) {
             foreach (glob(rtrim(Cast::string($dir), '/').'/layouts/*.blade.php') ?: [] as $file) {
                 $name = basename($file, '.blade.php');
-                if ($postDetail ? TaxonomyRules::postDetailTemplate($name) : TaxonomyRules::template($name)) {
+                if ($name !== 'not-found' && TaxonomyRules::template($name)) {
                     $names[] = $name;
                 }
             }

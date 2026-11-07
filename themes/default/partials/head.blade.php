@@ -11,7 +11,7 @@
     slider to rotate (plus a preconnect to the media host when the slider leads the page), the
     background-video script only on a page whose hero has a video, the photo switcher only on a
     product page with more than one photo, and a
-    robots line only where a page asks for one. These lines sit in column 0 so a site
+    robots line only where a page asks for one (the 404 page prints no share tags or JSON-LD). These lines sit in column 0 so a site
     without them renders the same bytes as before.
 --}}
 <meta charset="utf-8">
@@ -49,7 +49,8 @@
     <link rel="canonical" href="{{ $canonical }}">
 @endif
 
-{{-- Open Graph — title/description/type/url/locale/image. --}}
+{{-- Open Graph — title/description/type/url/locale/image. A 404 page has nothing to share or describe. --}}
+@if (empty($notFound))
 <meta property="og:title" content="{{ $seoTitle }}">
 @if (! empty($effectiveDescription))
     <meta property="og:description" content="{{ $effectiveDescription }}">
@@ -62,6 +63,7 @@
 @if (! empty($effectiveOgImage))
     <meta property="og:image" content="{{ $effectiveOgImage }}">
 @endif
+@endif
 
 @if (! empty($pagination['prevUrl']))
     <link rel="prev" href="{{ $pagination['prevUrl'] }}">
@@ -73,7 +75,7 @@
     <link rel="alternate" hreflang="{{ $alt['hreflang'] }}" href="{{ $alt['href'] }}">
 @endforeach
 
-@if (! empty(data_get($brand ?? null, 'name')))
+@if (empty($notFound) && ! empty(data_get($brand ?? null, 'name')))
     @php
         // Organization JSON-LD — reads from $brand (already loaded by StorefrontController::brand();
         // no additional DB query here). Null/empty fields are omitted; the whole block is suppressed
@@ -145,6 +147,13 @@
     @endphp
     <script type="application/ld+json">{!! $productJson !!}</script>
 @endif
+@if (! empty($jobLd))
+    @php
+        // JobPosting for a post on a job layout (built by StorefrontController::render), printed like the product's.
+        $jobJson = json_encode($jobLd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG);
+    @endphp
+    <script type="application/ld+json">{!! $jobJson !!}</script>
+@endif
 
 @if (! empty($breadcrumb))
     @php
@@ -198,4 +207,7 @@
 @endif
 @if (! empty($galleryScript))
 @vite(['resources/js/sf-gallery.js'])
+@endif
+@if (! empty($tabsScript))
+@vite(['resources/js/sf-tabs.js'])
 @endif

@@ -399,7 +399,12 @@ final readonly class ProvisionSite
      */
     private function seedContactPage(ProvisionSiteData $data, User $owner): void
     {
-        if (SiteRoute::query()->where('path', '/lien-he')->exists()) {
+        $existing = SiteRoute::query()->where('path', '/lien-he')->with('entry:id,ulid')->first();
+        if ($existing !== null) {
+            if ($existing->entry !== null) {
+                app(LinkContactPage::class)->handle($existing->entry->ulid);
+            }
+
             return;
         }
 
@@ -429,6 +434,8 @@ final readonly class ProvisionSite
             'path' => '/lien-he',
             'entry_id' => $entry->id,
         ]);
+
+        app(LinkContactPage::class)->handle($entry->ulid);
     }
 
     /**

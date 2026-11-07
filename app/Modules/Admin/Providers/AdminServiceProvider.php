@@ -41,10 +41,13 @@ use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Admin\Support\TenantMailer;
 use App\Modules\Admin\Theme\AdminBrandColor;
 use App\Modules\Admin\Theme\AdminChromeResolver;
+use App\Modules\Cms\Support\BlockMediaUsage;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Contracts\TenantMailConfigurator;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Events\DomainNeedsAttention;
+use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Rendering\LayoutSlots;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Mail\Events\MessageSending;
@@ -84,6 +87,15 @@ final class AdminServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([ReconcileContentUsage::class]);
         }
+
+        // The block slots setting owns "in use" rows in the library (polymorphic, no FK cascade): a
+        // deleted row takes them with it. app(), not $this->app: under Octane each request runs in a
+        // clone of the booted app.
+        SiteSetting::deleted(function (SiteSetting $setting): void {
+            if ($setting->group_name === LayoutSlots::SETTING_GROUP && $setting->key === LayoutSlots::SETTING_KEY) {
+                app(BlockMediaUsage::class)->forget('site_setting', [Cast::int($setting->getKey())]);
+            }
+        });
 
         // Admin UI primitives as anonymous Blade components: <x-bs-admin::icon />, etc.
         Blade::anonymousComponentPath($this->app->basePath('app/Modules/Admin/resources/views/components'), 'bs-admin');

@@ -54,8 +54,8 @@ final readonly class UpdateTaxonomy
     public function handle(Taxonomy $taxonomy, TaxonomyData $data): Taxonomy
     {
         $this->authorizeManage();
-        $listTemplate = $this->keptOrChecked($data->listTemplate, $taxonomy->list_template);
-        $detailTemplate = $this->keptOrChecked($data->detailTemplate, $taxonomy->detail_template, $taxonomy->vocabulary !== 'product_cat');
+        $listTemplate = $this->keptOrChecked($data->listTemplate, $taxonomy->list_template, $taxonomy->vocabulary, false);
+        $detailTemplate = $this->keptOrChecked($data->detailTemplate, $taxonomy->detail_template, $taxonomy->vocabulary, true);
 
         return DB::transaction(function () use ($taxonomy, $data, $listTemplate, $detailTemplate): Taxonomy {
             $this->lockTree($this->site->id());
@@ -97,8 +97,12 @@ final readonly class UpdateTaxonomy
      *
      * @throws TaxonomyChangeRejectedException template_invalid
      */
-    private function keptOrChecked(?string $template, ?string $stored, bool $postDetail = false): ?string
+    private function keptOrChecked(?string $template, ?string $stored, string $vocabulary, bool $detail): ?string
     {
-        return $stored !== null && $template === $stored ? $stored : $this->template($template, $postDetail);
+        if ($stored !== null && $template === $stored) {
+            return $stored;
+        }
+
+        return $detail ? $this->detailTemplate($template, $vocabulary) : $this->listTemplate($template, $vocabulary);
     }
 }

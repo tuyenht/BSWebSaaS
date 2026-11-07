@@ -124,6 +124,8 @@ Cơ chế: `list(enum)` — chỉ nhận key đã đăng ký trong theme (`Style
 | `pattern-dots` | họa tiết chấm mờ nền | CSS thuần từ token |
 | `pattern-grid` | họa tiết lưới mờ nền | CSS thuần từ token |
 
+**Đã dựng (một giá trị):** `pattern-cross` — họa tiết chữ thập mờ (CSS thuần, `currentColor` ở độ mờ 10%) sau dải kêu gọi hành động. `extra_style` là prop dành riêng ở mọi khối, đúng hợp đồng ở bảng trên (`list(enum)`, mặc định `[]`), khai một lần trong `StyleProps::SCHEMA`. `StyleProps::EXTRA_STYLES` là bảng tra giá trị → lớp (`pattern-cross` → `sf-s--x-pattern-cross`): `ValidPageJson` từ chối giá trị lạ lúc lưu; `StyleProps::wrapper()` chỉ in lớp của giá trị có trong bảng, bỏ qua giá trị lạ hoặc giá trị không phải danh sách lúc vẽ, và không bao giờ nối giá trị đã lưu vào markup. Thêm một hiệu ứng nữa = thêm vào bảng tra + `options` trong `SCHEMA` + CSS + 1 test (chỉ thêm, không đổi tên).
+
 Thêm/bớt hiệu ứng = 1 entry registry + CSS + 1 test (append-only như mọi enum). Hoãn build tới Đợt 2 vì: cần theme utility layer (1a) ổn định trước + tránh chồng lấn `corner/shadow` ngày đầu (§24).
 
 ---

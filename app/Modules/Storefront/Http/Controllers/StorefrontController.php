@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Storefront\Http\Controllers;
 
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Catalog\Support\ContactPageSetting;
 use App\Modules\Catalog\Support\ProductIndexLink;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
@@ -17,12 +18,13 @@ use App\Modules\Cms\Routing\ResolvedContent;
 use App\Modules\Cms\Routing\ResolvedProduct;
 use App\Modules\Cms\Routing\RouteResolver;
 use App\Modules\Cms\Support\EntryViewCounter;
-use App\Modules\Cms\Taxonomy\TaxonomyRules;
+use App\Modules\Cms\Taxonomy\CategoryTemplates;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\SafeLink;
 use App\Modules\Storefront\Support\BrandImages;
 use App\Modules\Storefront\Support\Breadcrumbs;
+use App\Modules\Storefront\Support\JobPosting;
 use App\Modules\Storefront\Support\ListPage;
 use App\Modules\Storefront\Support\PostDetail;
 use App\Modules\Storefront\Support\ProductDetail;
@@ -32,6 +34,7 @@ use App\Modules\Theme\Chrome\FloatingContact;
 use App\Modules\Theme\Chrome\SiteVerification;
 use App\Modules\Theme\Chrome\StorefrontChrome;
 use App\Modules\Theme\Rendering\PageRenderer;
+use App\Modules\Theme\Rendering\TemplateCatalog;
 use App\Modules\Theme\Rendering\TemplateResolver;
 use App\Modules\Theme\Theming\StorefrontSettings;
 use Illuminate\Database\Eloquent\Builder;
@@ -41,6 +44,7 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\Query\JoinClause;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Public storefront: resolve (locale, path) → published content within the current site
@@ -51,6 +55,9 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final readonly class StorefrontController
 {
+    /** The most links the 404 page suggests from the main menu. */
+    private const int SUGGESTIONS_MAX = 6;
+
     public function __construct(
         private RouteResolver $resolver,
         private PageRenderer $renderer,
@@ -67,16 +74,29 @@ final readonly class StorefrontController
         private Breadcrumbs $crumbs,
         private PostDetail $posts,
         private ProductDetail $products,
+        private CategoryTemplates $categoryTemplates,
+        private JobPosting $jobs,
     ) {}
 
     public function __invoke(Request $request): Response
     {
         $requestPath = strtolower('/'.ltrim($request->path(), '/'));
+
+        // A path with a dot in it (`/wp-login.php`, `/.env`, `/.git/config`, also `/wp-login%2ephp`)
+        // is never a page of the site: every slug is lower-case words joined by hyphens, and the
+        // sitemap and robots files have routes of their own. These are scanners, so the only thing
+        // looked up for them is a stored redirect (checked with the same call as any other path);
+        // without one they get the plain 404 before any content, settings or menus are read.
+        $dotted = str_contains(rawurldecode($requestPath), '.');
+
         $default = $this->locale->default();
 
         [$locale, $path, $redirectTo] = $this->localeContext($requestPath, $default);
 
         if ($redirectTo !== null) {
+            // A default-locale prefix before a dotted path (`/vi//evil.example/x`) is refused, never rewritten.
+            abort_if($dotted, 404);
+
             return redirect()->to($redirectTo, 301);
         }
 
@@ -85,19 +105,55 @@ final readonly class StorefrontController
         // without this a vi site would show English UI strings.
         app()->setLocale($locale);
 
+        if ($dotted) {
+            $redirect = $this->resolver->redirect($locale, $path);
+            abort_unless($redirect instanceof Redirect && SafeLink::isSitePath($redirect->to_path), 404);
+
+            return redirect()->to($redirect->to_path, $redirect->status_code);
+        }
+
         $resolved = $this->resolver->resolve($locale, $path);
 
         if ($resolved === null) {
             $redirect = $this->resolver->redirect($locale, $path);
             // A stored target that is not a path on this site (`//host`, `/\host`, a full link) is
             // never followed: a redirect row must not become a way off the site.
-            abort_if(! $redirect instanceof Redirect || ! SafeLink::isSitePath($redirect->to_path), 404);
+            if ($redirect instanceof Redirect && SafeLink::isSitePath($redirect->to_path)) {
+                return redirect()->to($redirect->to_path, $redirect->status_code);
+            }
 
-            return redirect()->to($redirect->to_path, $redirect->status_code);
+            return $this->notFound($this->chrome($locale, $default, $requestPath, null, $path));
         }
 
-        // The optional rich header/footer (site settings, normalized; null = the classic one). Read
-        // through the same one-query settings reader the design tokens use.
+        $chrome = $this->chrome($locale, $default, $requestPath, $resolved, $path);
+
+        // Every "not here" past this point — an unpublished product, a product without this
+        // language, a list page number or anchor that does not exist — answers with the same 404
+        // page in the site's own header and footer. Only the 404 is caught: a 403 or 419 stays itself.
+        try {
+            if ($resolved instanceof ResolvedProduct) {
+                return $this->renderProduct($resolved, $locale, $path, $chrome);
+            }
+
+            return $resolved instanceof ResolvedCategory
+                ? $this->renderCategory($resolved, $locale, $path, $chrome)
+                : $this->renderEntry($resolved, $locale, $path, $chrome);
+        } catch (NotFoundHttpException) {
+            return $this->notFound($chrome);
+        }
+    }
+
+    /**
+     * The page chrome for the active locale, read inside the site's own context like every page:
+     * the optional rich header/footer (site settings, normalized; null = the classic one, read
+     * through the same one-query settings reader the design tokens use), the floating contact
+     * buttons, the business identity, the menus, the <html lang> and the hreflang alternates
+     * (none for a page that was not found).
+     *
+     * @return array<string, mixed>
+     */
+    private function chrome(string $locale, string $default, string $requestPath, ResolvedContent|ResolvedCategory|ResolvedProduct|null $resolved, string $path): array
+    {
         /** @var list<string> $mapHosts */
         $mapHosts = config('cms.map_hosts', []);
         $header = StorefrontChrome::header($this->settings->get('storefront', 'header'), $locale, $default);
@@ -113,16 +169,16 @@ final readonly class StorefrontController
         // images' addresses come from their media ids (BrandImages: one query, none when unset).
         $brand = $this->brandImages->apply($this->identity->for($locale));
 
-        // Page chrome for the active locale: header nav (active-state matches the prefixed request
-        // path; a missing per-locale assignment falls back to the default-locale menu), the phone
-        // menu panel and, for the rich footer, its link columns — all regions resolved together —
-        // the <html lang>, and the hreflang alternates. The phone panel shows its own menu, else
-        // the main one (whether it follows the main menu or was never set up).
+        // Header nav (active-state matches the prefixed request path; a missing per-locale
+        // assignment falls back to the default-locale menu), the phone menu panel and, for the rich
+        // footer, its link columns — all regions resolved together. The phone panel shows its own
+        // menu, else the main one (whether it follows the main menu or was never set up).
         $menus = $this->nav->resolveMany(
             $footer === null ? ['primary', 'handheld'] : ['primary', 'handheld', $footer['region']],
             $locale, $default, $requestPath, $brand ?? [],
         );
-        $chrome = [
+
+        return [
             'menu' => $menus['primary'] ?? [],
             'mobileMenu' => ($menus['handheld'] ?? []) !== [] ? $menus['handheld'] : ($menus['primary'] ?? []),
             'footerMenu' => $footer === null ? [] : ($menus[$footer['region']] ?? []),
@@ -131,21 +187,62 @@ final readonly class StorefrontController
             // null = off or no channel to show.
             'floatingContact' => FloatingContact::for($floating, $locale, $shopHref),
             'lang' => $locale,
-            'hreflang' => $this->hreflangFor($resolved, $locale, $default, $path),
+            'hreflang' => $resolved === null ? [] : $this->hreflangFor($resolved, $locale, $default, $path),
             'brand' => $brand,
             // Site-ownership meta tags (Google, Bing, Facebook), read with the other storefront settings.
             'verification' => SiteVerification::tags($this->settings->get('storefront', 'verification')),
             // The logo and footer home links stay in the page's language (/en for an English page).
             'homeUrl' => $this->paths->publicUrl('/', $locale),
         ];
+    }
 
-        if ($resolved instanceof ResolvedProduct) {
-            return $this->renderProduct($resolved, $locale, $path, $chrome);
+    /**
+     * The site's 404 page: its own header, footer and menus around the "not here" message, a way
+     * home, a way to the site's contact page (when the site names one) and the first links of its
+     * main menu. A real 404 status (never a page that answers 200) and kept out of search engines;
+     * no canonical, share tags or alternates, since there is no page to point at.
+     *
+     * @param  array<string, mixed>  $chrome
+     */
+    private function notFound(array $chrome): Response
+    {
+        $locale = is_string($chrome['lang'] ?? null) ? $chrome['lang'] : $this->locale->default();
+        $extra = $chrome;
+        $extra['hreflang'] = [];
+        $extra['robots'] = 'noindex';
+        $extra['contactUrl'] = $this->products->quoteLink($locale, ContactPageSetting::ulid($this->settings->get(ContactPageSetting::GROUP, ContactPageSetting::KEY)));
+        $extra['suggestions'] = self::suggestions(
+            is_array($chrome['menu'] ?? null) ? $chrome['menu'] : [],
+            is_string($chrome['homeUrl'] ?? null) ? $chrome['homeUrl'] : '/',
+        );
+
+        return response($this->renderer->renderNotFound(__('storefront.not_found.title'), $extra), 404);
+    }
+
+    /**
+     * The 404 page's "you may be looking for" links: the top level of the main menu already loaded
+     * for the header (no query), keeping only the links to a page of this site and leaving out the
+     * home page (the page has its own button for it), at most six. Empty when the menu is.
+     *
+     * @param  list<mixed>|array<mixed>  $menu  the resolved primary menu tree
+     * @return list<array{label: string, url: string}>
+     */
+    private static function suggestions(array $menu, string $homeUrl): array
+    {
+        $links = [];
+        foreach ($menu as $item) {
+            $url = is_array($item) ? ($item['url'] ?? null) : null;
+            $label = is_array($item) ? ($item['label'] ?? null) : null;
+            if (! is_string($url) || ! is_string($label) || trim($label) === '' || $url === $homeUrl || ! SafeLink::isSitePath($url)) {
+                continue;
+            }
+            $links[] = ['label' => $label, 'url' => $url];
+            if (count($links) === self::SUGGESTIONS_MAX) {
+                break;
+            }
         }
 
-        return $resolved instanceof ResolvedCategory
-            ? $this->renderCategory($resolved, $locale, $path, $chrome)
-            : $this->renderEntry($resolved, $locale, $path, $chrome);
+        return $links;
     }
 
     /**
@@ -229,10 +326,22 @@ final readonly class StorefrontController
         // module stays Cms-agnostic.
         if ($entry->type === 'post') {
             $category = $entry->primaryCategory();
-            $stored = $category?->detail_template;
-            // A layout stored before the post-layout rule existed (or written around it) falls back like null.
-            $categoryTemplate = $stored !== null && TaxonomyRules::postDetailTemplate($stored) ? $stored : null;
+            // The category's own layout, or the one of the category above when it follows its parent;
+            // a layout of the wrong role, or one the theme lacks, falls back like null.
+            $categoryTemplate = $category !== null ? $this->categoryTemplates->detail($category) : null;
             $extra['post'] = $this->posts->band($entry, $content->translation, $locale);
+
+            // A post on a job layout carries its deadline state and the JobPosting data for the head.
+            $own = $entry->template_override;
+            $postTemplate = $own !== null && TemplateCatalog::fits($own, TemplateCatalog::ROLE_POST) ? $own : $categoryTemplate;
+            $brand = data_get($chrome, 'brand');
+            $job = $this->jobs->forPost($entry, $content->translation, $postTemplate, $canonical, is_array($brand) ? $brand : null);
+            if ($job !== null) {
+                $extra['deadline'] = $job['state'];
+                if ($job['ld'] !== null) {
+                    $extra['jobLd'] = $job['ld'];
+                }
+            }
 
             $categoryTranslation = $category?->translationFor($locale);
             if ($category !== null && $categoryTranslation !== null) {
@@ -279,20 +388,22 @@ final readonly class StorefrontController
         // working through the post→product migration (posts until products land, products after).
         // A category below the catalog root lists the products filed under it, on the same terms.
         $taxonomy = $resolved->taxonomy;
+        // The real list layout, with "follow the parent" already turned into a layout name or null.
+        $listTemplate = $this->categoryTemplates->list($taxonomy);
         // Asked through ProductIndexLink, which remembers both for the request: a page showing the
         // "Mua hàng" button has already read them.
         $shop = app(ProductIndexLink::class);
         $catalogRoot = $shop->catalogRoot();
         $hasProducts = fn (): bool => $shop->hasPublishedProducts();
         if ($catalogRoot === $taxonomy->id && $hasProducts()) {
-            return $this->renderProductIndex($resolved, $locale, $path, $chrome, false);
+            return $this->renderProductIndex($resolved, $locale, $path, $chrome, false, $listTemplate);
         }
         if ($catalogRoot !== null && $this->lists->isUnder($taxonomy, $catalogRoot) && $hasProducts()) {
-            return $this->renderProductIndex($resolved, $locale, $path, $chrome, true);
+            return $this->renderProductIndex($resolved, $locale, $path, $chrome, true, $listTemplate);
         }
 
         $position = $this->lists->position(request());
-        $cards = $this->templates->listShape($taxonomy->list_template) === 'cards';
+        $cards = $this->templates->listShape($listTemplate) === 'cards';
 
         if ($cards) {
             // Posts whose PRIMARY category (pivot position 0) is this one or any below it.
@@ -314,7 +425,7 @@ final readonly class StorefrontController
         $extra = $chrome;
         if ($cards) {
             ['chips' => $chips, 'labels' => $labels] = $this->lists->chips($taxonomy, $locale);
-            $extra['cards'] = $this->lists->postCards($rows, $locale, $labels, $taxonomy->list_template === 'grid-news');
+            $extra['cards'] = $this->lists->postCards($rows, $locale, $labels, TemplateCatalog::cards($listTemplate) === 'news');
             $extra['chips'] = $chips;
             $extra['band'] = $this->listBand($resolved);
         } else {
@@ -337,7 +448,7 @@ final readonly class StorefrontController
             }
         }
 
-        return $this->listResponse($resolved, $locale, $path, $position, $more, ListPage::ulidOf($rows->last()), $posts, $extra);
+        return $this->listResponse($resolved, $locale, $path, $position, $more, ListPage::ulidOf($rows->last()), $posts, $extra, $listTemplate);
     }
 
     /**
@@ -348,11 +459,11 @@ final readonly class StorefrontController
      *
      * @param  array<string, mixed>  $chrome  page chrome (menu, lang, hreflang)
      */
-    private function renderProductIndex(ResolvedCategory $resolved, string $locale, string $path, array $chrome, bool $filtered): Response
+    private function renderProductIndex(ResolvedCategory $resolved, string $locale, string $path, array $chrome, bool $filtered, ?string $listTemplate): Response
     {
         $taxonomy = $resolved->taxonomy;
         $position = $this->lists->position(request());
-        $cards = $this->templates->listShape($taxonomy->list_template) === 'cards';
+        $cards = $this->templates->listShape($listTemplate) === 'cards';
 
         $query = Product::query()
             ->where('status', 'published')
@@ -384,7 +495,7 @@ final readonly class StorefrontController
             }
         }
 
-        return $this->listResponse($resolved, $locale, $path, $position, $more, ListPage::ulidOf($rows->last()), $products, $extra);
+        return $this->listResponse($resolved, $locale, $path, $position, $more, ListPage::ulidOf($rows->last()), $products, $extra, $listTemplate);
     }
 
     /**
@@ -395,7 +506,7 @@ final readonly class StorefrontController
      * @param  list<array{title: string, url: string}>  $titles
      * @param  array<string, mixed>  $extra
      */
-    private function listResponse(ResolvedCategory $resolved, string $locale, string $path, array $position, bool $more, ?string $lastUlid, array $titles, array $extra): Response
+    private function listResponse(ResolvedCategory $resolved, string $locale, string $path, array $position, bool $more, ?string $lastUlid, array $titles, array $extra, ?string $listTemplate): Response
     {
         // Each paginated page self-canonicals (with ?page=N) — rel=prev/next signals the series;
         // canonicaling page-N→page-1 would drop the deeper pages from the index.
@@ -415,7 +526,7 @@ final readonly class StorefrontController
         $extra['breadcrumb'] = [$this->crumbs->home($locale), ...$trail];
 
         $html = $this->renderer->renderCategory(
-            $resolved->taxonomy->list_template,
+            $listTemplate,
             $resolved->translation->name,
             $titles,
             $this->lists->links(request()->url(), $position, $more, $lastUlid),
@@ -474,6 +585,9 @@ final readonly class StorefrontController
         $extra['product'] = [
             'group' => $category?->translationFor($locale)->name ?? '',
             'summary' => trim((string) $translation->summary),
+            'featured' => $product->is_featured,
+            'bestseller' => $product->is_bestseller,
+            'quote' => $this->products->quoteLink($locale, ContactPageSetting::ulid($this->settings->get(ContactPageSetting::GROUP, ContactPageSetting::KEY))),
             'contact' => ProductDetail::contact(is_array($chrome['brand'] ?? null) ? $chrome['brand'] : null),
         ];
         $extra['related'] = $category !== null ? $this->products->related($product, $category, $locale) : [];
