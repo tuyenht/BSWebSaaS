@@ -22,6 +22,11 @@ beforeEach(function (): void {
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
+    // both websites' plans include the catalog (a test that needs it off takes it away)
+    DB::connection('pgsql_admin')->table('site_modules')->insert([
+        ['site_id' => 1, 'module_key' => 'catalog', 'enabled' => true, 'created_at' => now(), 'updated_at' => now()],
+        ['site_id' => 2, 'module_key' => 'catalog', 'enabled' => true, 'created_at' => now(), 'updated_at' => now()],
+    ]);
 });
 
 /** Seed a product (+vi translation) in the CURRENT site context. */
@@ -52,7 +57,7 @@ it('trashes a product out of the main list and restores it from the trash view',
         // The trash view lists it; restore brings it back.
         Livewire::actingAs($manager->fresh())
             ->test(Index::class)
-            ->set('showTrash', true)
+            ->set('tab', 'trash')
             ->assertSee('Đồ gá')
             ->call('restore', $product->ulid)
             ->assertDontSee('Đồ gá');
@@ -77,7 +82,7 @@ it('force-deletes a trashed product, cascading its translations and gallery rows
 
         Livewire::actingAs($manager->fresh())
             ->test(Index::class)
-            ->set('showTrash', true)
+            ->set('tab', 'trash')
             ->call('forceDelete', $product->ulid);
 
         expect(Product::withTrashed()->count())->toBe(0)

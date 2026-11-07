@@ -46,4 +46,8 @@ return [
         'name' => env('SUPER_ADMIN_NAME', 'Bảo Sơn Operator'),
         'password' => env('SUPER_ADMIN_PASSWORD', ''),
     ],
+
+    // The products list counts and pages by number this far (rows); past it the pager follows a cursor
+    // and counts read "hơn 10.000". Lowered only to test the keyset path.
+    'catalog_list_cap' => 10_000,
 ];

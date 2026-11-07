@@ -107,6 +107,18 @@ it('drops a choice without a value and a value listed twice', function (): void 
 
 it('shows only the types the storefront form block can draw', function (): void {
     expect(FormFieldTypes::isCollectable(typedField('text')))->toBeTrue()
-        ->and(FormFieldTypes::isCollectable(typedField('select', PICKS)))->toBeFalse()
+        ->and(FormFieldTypes::isCollectable(typedField('select', PICKS)))->toBeTrue()
+        ->and(FormFieldTypes::isCollectable(typedField('select')))->toBeFalse()
+        ->and(FormFieldTypes::isCollectable(typedField('radio', PICKS)))->toBeFalse()
         ->and(FormFieldTypes::isCollectable(typedField('number')))->toBeFalse();
+});
+
+it('reads each choice in the visitor\'s language, else Vietnamese, else its value', function (): void {
+    $field = typedField('select', ['options' => ['choices' => [
+        ['value' => 'cnc', 'label' => ['vi' => 'Gia công CNC', 'en' => 'CNC machining']],
+        ['value' => 'mold', 'label' => ['vi' => 'Khuôn mẫu']],
+        ['value' => 'laser', 'label' => ['vi' => '']],
+    ]]]);
+
+    expect(FormFieldTypes::choiceLabels($field, 'en'))->toBe(['cnc' => 'CNC machining', 'mold' => 'Khuôn mẫu', 'laser' => 'laser']);
 });
