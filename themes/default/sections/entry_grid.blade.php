@@ -74,7 +74,11 @@
      shows the tab bar and switches panels (the ARIA tabs pattern). The cards are the card look's. --}}
 @php
     $sfKind = ['icon-cards' => 'icon', 'project-cards' => 'project', 'news-cards' => 'news'][$variant] ?? 'news';
-    $sfSizes = '(min-width:1360px) 408px, (min-width:1024px) calc((100vw - 8.5rem)/3), (min-width:640px) calc((100vw - 5rem)/2), calc(100vw - 2rem)';
+    // Without a display group each look keeps its own default grid (ListDisplay::AUTO's columns); the sizes follow it.
+    $sfTabGrid = ['icon' => 'sf-grid--4', 'project' => 'sf-grid--4s', 'news' => 'sf-grid--3s'][$sfKind];
+    $sfSizes = $sfKind === 'news'
+        ? '(min-width:1360px) 408px, (min-width:1024px) calc((100vw - 8.5rem)/3), (min-width:640px) calc((100vw - 5rem)/2), calc(100vw - 2rem)'
+        : '(min-width:1360px) 298px, (min-width:1024px) calc((100vw - 10.5rem)/4), (min-width:640px) calc((100vw - 5rem)/2), calc(100vw - 2rem)';
     $sfBg = \App\Modules\Theme\Components\SectionProps::choice($props, 'bg', \App\Modules\Theme\Components\SectionProps::BG);
     $sfLinkLabel = \App\Modules\Theme\Components\SectionProps::text($props, 'link_label', __('storefront.view_detail'));
     // The heading order never skips a level: a block with a heading has its h2, then the panel h3 and the card h4;
@@ -103,7 +107,7 @@
 @if ($sfDisplay !== null)
 @include('theme::partials.sf-rail-open', ['display' => $sfDisplay, 'label' => $sfTab['name']])
 @endif
-<ul class="{{ $sfDisplay['class'] ?? 'sf-grid sf-grid--3s' }}"@if ($sfDisplay['scrolls'] ?? false) tabindex="0"@endif>
+<ul class="{{ $sfDisplay['class'] ?? 'sf-grid '.$sfTabGrid }}"@if ($sfDisplay['scrolls'] ?? false) tabindex="0"@endif>
 @foreach ($sfTab['items'] as $card)
 <li>@include('theme::partials.sf-card', [
     'card' => $card,

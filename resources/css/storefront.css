@@ -7138,7 +7138,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 
 .sf-tabs__tab[aria-selected="true"] {
     background: var(--color-dark);
-    color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white));
+    color: var(--color-on-dark, var(--color-surface));
     box-shadow: 0 1px 3px color-mix(in srgb, var(--color-dark) 30%, transparent);
 }
 
@@ -7175,7 +7175,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 }
 
 .sf-band--dark .sf-tabs__title {
-    color: var(--sch-head, var(--color-on-dark, white));
+    color: var(--sch-head, var(--color-on-dark, var(--color-surface)));
 }
 
 @media (prefers-reduced-motion: reduce) {

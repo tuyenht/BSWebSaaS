@@ -7,12 +7,12 @@ let blockNo = 0;
 for (const root of document.querySelectorAll('[data-sf-tabs]')) {
     const tabs = [...root.querySelectorAll('[data-sf-tab]')];
     const panels = [...root.querySelectorAll('[data-sf-tabpanel]')];
-    if (tabs.length < 2 || tabs.length !== panels.length) {
+    const bar = root.querySelector('.sf-tabs__bar');
+    if (!bar || tabs.length < 2 || tabs.length !== panels.length) {
         continue;
     }
 
     blockNo += 1;
-    const bar = root.querySelector('.sf-tabs__bar');
     bar.setAttribute('role', 'tablist');
     if (bar.dataset.label) {
         bar.setAttribute('aria-label', bar.dataset.label);

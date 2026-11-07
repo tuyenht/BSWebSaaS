@@ -224,6 +224,19 @@ describe('tabs on the page', function (): void {
         });
     });
 
+    it('keeps each look\'s own default grid when the block has no display group', function (string $variant, string $grid): void {
+        app(Tenancy::class)->enter(1, function () use ($variant, $grid): void {
+            tabsSeed(['a', 'b'], ['a' => 1, 'b' => 1]);
+            $html = app(BlockRenderer::class)->render(['blocks' => [['type' => 'entry_grid', 'props' => ['taxonomy_slug' => 'tin-tuc', 'limit' => 3, 'variant' => $variant, 'tabs' => 'auto']]]]);
+
+            expect($html)->toContain('<ul class="sf-grid '.$grid.'">');
+        });
+    })->with([
+        'icon' => ['icon-cards', 'sf-grid--4'],
+        'project' => ['project-cards', 'sf-grid--4s'],
+        'news' => ['news-cards', 'sf-grid--3s'],
+    ]);
+
     it('escapes a hostile category name', function (): void {
         app(Tenancy::class)->enter(1, function (): void {
             $ids = tabsSeed(['a', 'b'], ['a' => 1, 'b' => 1]);
