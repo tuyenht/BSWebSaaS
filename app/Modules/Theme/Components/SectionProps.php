@@ -23,6 +23,32 @@ final class SectionProps
     /** The look of an article list; `zigzag` is a row per item with the photo alternating left and right. Append-only. */
     public const array ENTRY_GRID_VARIANTS = ['list', 'icon-cards', 'project-cards', 'news-cards', 'zigzag'];
 
+    /**
+     * News tabs of an article list: none (today's look), one tab per published sub-category, or the
+     * same tabs with the filter behaviour (it draws like `auto` until the jobs part is built). Append-only.
+     */
+    public const array ENTRY_GRID_TABS = ['off', 'auto', 'filter'];
+
+    /** The looks that can carry tabs: the card looks (the plain list and the rows have no tab panel). */
+    public const array TAB_VARIANTS = ['icon-cards', 'project-cards', 'news-cards'];
+
+    /** The most tabs a block draws, and the fewest it needs (below that the list is drawn plain). */
+    public const int TABS_MAX = 3;
+
+    public const int TABS_MIN = 2;
+
+    /** Where a product grid takes its products from: the newest, one category or a hand-picked list. Append-only. */
+    public const array PRODUCT_SOURCES = ['latest', 'category', 'picked'];
+
+    /** The order of the newest/category sources. Append-only. */
+    public const array PRODUCT_SORTS = ['newest', 'oldest'];
+
+    /** The most products a hand-picked list holds. */
+    public const int PRODUCT_PICK_MAX = 24;
+
+    /** A ulid as the screens print it (26 characters of Crockford base32), either case. */
+    public const string ULID_PATTERN = '/^[0-9A-HJKMNP-TV-Z]{26}$/i';
+
     /** About: the plain text beside a photo, or a letter (greeting in bold, the last two paragraphs the signature). Append-only. */
     public const array ABOUT_VARIANTS = ['default', 'letter'];
 

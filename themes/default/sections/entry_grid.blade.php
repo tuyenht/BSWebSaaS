@@ -68,6 +68,66 @@
 @endif
 @include('theme::partials.sf-view-all', ['label' => \App\Modules\Theme\Components\SectionProps::text($props, 'view_all_label'), 'url' => $props['view_all_url'] ?? null, 'show' => ($display ?? null)['view_all'] ?? true])
 @endcomponent
+@elseif (! empty($tabs))
+{{-- Tabs by sub-category: every panel is drawn here, on the server, so a search engine reads them all.
+     Without JavaScript the panels stack, each under its own heading; sf-tabs.js hides the headings,
+     shows the tab bar and switches panels (the ARIA tabs pattern). The cards are the card look's. --}}
+@php
+    $sfKind = ['icon-cards' => 'icon', 'project-cards' => 'project', 'news-cards' => 'news'][$variant] ?? 'news';
+    // Without a display group each look keeps its own default grid (ListDisplay::AUTO's columns); the sizes follow it.
+    // News tabs draw 3 across like the board; the plain news branch below stays 4 so old blocks keep their look.
+    $sfTabGrid = ['icon' => 'sf-grid--4', 'project' => 'sf-grid--4s', 'news' => 'sf-grid--3s'][$sfKind];
+    $sfSizes = $sfKind === 'news'
+        ? '(min-width:1360px) 408px, (min-width:1024px) calc((100vw - 8.5rem)/3), (min-width:640px) calc((100vw - 5rem)/2), calc(100vw - 2rem)'
+        : '(min-width:1360px) 298px, (min-width:1024px) calc((100vw - 10.5rem)/4), (min-width:640px) calc((100vw - 5rem)/2), calc(100vw - 2rem)';
+    $sfBg = \App\Modules\Theme\Components\SectionProps::choice($props, 'bg', \App\Modules\Theme\Components\SectionProps::BG);
+    $sfLinkLabel = \App\Modules\Theme\Components\SectionProps::text($props, 'link_label', __('storefront.view_detail'));
+    // The heading order never skips a level: a block with a heading has its h2, then the panel h3 and the card h4;
+    // a block without one starts at the panel h2 and its cards are h3.
+    $sfHasHead = \App\Modules\Theme\Components\SectionProps::text($props, 'heading') !== '';
+    $sfTitleTag = $sfHasHead ? 'h3' : 'h2';
+    $sfCardLevel = $sfHasHead ? 'h4' : 'h3';
+@endphp
+@component('theme::partials.sf-band', ['bg' => $sfBg, 'class' => 'sf-cards sf-cards--'.$sfKind])
+@include('theme::partials.sf-section-head', [
+    'heading' => \App\Modules\Theme\Components\SectionProps::text($props, 'heading'),
+    'description' => \App\Modules\Theme\Components\SectionProps::text($props, 'description'),
+])
+<div class="sf-tabs" data-sf-tabs>
+<div class="sf-tabs__bar" data-label="{{ \App\Modules\Theme\Components\SectionProps::text($props, 'heading', __('storefront.tabs_label')) }}" hidden>
+@foreach ($tabs as $sfTab)
+<button type="button" class="sf-tabs__tab" data-sf-tab>{{ $sfTab['name'] }}</button>
+@endforeach
+</div>
+@foreach ($tabs as $sfTab)
+<div class="sf-tabs__panel" data-sf-tabpanel>
+<{{ $sfTitleTag }} class="sf-tabs__title">{{ $sfTab['name'] }}</{{ $sfTitleTag }}>
+@php
+    $sfDisplay = $sfTab['display'];
+@endphp
+@if ($sfDisplay !== null)
+@include('theme::partials.sf-rail-open', ['display' => $sfDisplay, 'label' => $sfTab['name']])
+@endif
+<ul class="{{ $sfDisplay['class'] ?? 'sf-grid '.$sfTabGrid }}"@if ($sfDisplay['scrolls'] ?? false) tabindex="0"@endif>
+@foreach ($sfTab['items'] as $card)
+<li>@include('theme::partials.sf-card', [
+    'card' => $card,
+    'kind' => $sfKind,
+    'level' => $sfCardLevel,
+    'sizes' => $sfSizes,
+    'linkLabel' => $sfLinkLabel,
+])</li>
+@endforeach
+</ul>
+@if ($sfDisplay !== null)
+@include('theme::partials.sf-rail-close', ['display' => $sfDisplay])
+@endif
+</div>
+@endforeach
+</div>
+{{-- One "view all" after the panels (the board has a single block link), with or without the script. --}}
+@include('theme::partials.sf-view-all', ['label' => \App\Modules\Theme\Components\SectionProps::text($props, 'view_all_label'), 'url' => $props['view_all_url'] ?? null, 'show' => collect($tabs)->contains(fn (array $sfT): bool => $sfT['view_all'])])
+@endcomponent
 @elseif (in_array($variant ?? 'list', ['icon-cards', 'project-cards', 'news-cards', 'overlay'], true))
 {{-- A card look (opt-in through `variant`, SectionProps): the shared band, head, card and
      "view all" partials. The default look below is the original markup, untouched. --}}

@@ -37,7 +37,7 @@
             </span>
             @break
         @default
-            <input type="text" wire:model="{{ $model }}" class="field">
+            <input type="text" wire:model="{{ $model }}" class="field"@if (! empty($describedBy)) aria-describedby="{{ $describedBy }}"@endif>
     @endswitch
 </label>
 @endif
