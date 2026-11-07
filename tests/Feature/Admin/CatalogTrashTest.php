@@ -49,7 +49,7 @@ it('trashes a product out of the main list and restores it from the trash view',
             ->test(Index::class)
             ->assertSee('Đồ gá')
             ->call('trash', $product->ulid)
-            ->assertDontSee('Đồ gá'); // gone from the main list re-render
+            ->assertViewHas('rows', fn ($rows): bool => $rows->isEmpty()); // gone from the main list re-render (the message still names it)
 
         expect(Product::withTrashed()->find($product->id)?->trashed())->toBeTrue()
             ->and(Product::query()->count())->toBe(0); // scope hides it (D4b)
@@ -60,7 +60,7 @@ it('trashes a product out of the main list and restores it from the trash view',
             ->set('tab', 'trash')
             ->assertSee('Đồ gá')
             ->call('restore', $product->ulid)
-            ->assertDontSee('Đồ gá');
+            ->assertViewHas('rows', fn ($rows): bool => $rows->isEmpty()); // the trash view no longer holds it
 
         expect(Product::query()->count())->toBe(1);
     });

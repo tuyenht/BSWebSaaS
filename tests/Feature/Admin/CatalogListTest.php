@@ -387,7 +387,7 @@ it('lists a manager the add button, the Trash group and the row actions', functi
             ->assertSee(__('catalog.create_new'))
             ->assertSee(__('catalog.trash_tab'))
             ->assertSee(__('catalog.edit_action'))
-            ->assertSee(__('catalog.trash_action'));
+            ->assertSee(__('catalog.menu_trash'));
     });
 });
 

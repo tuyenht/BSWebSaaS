@@ -53,7 +53,10 @@
         </template>
     @elseif ($message !== '')
         <div wire:key="toast-{{ md5($tone.$message.($undo ?? '').'|'.($seq ?? '')) }}"
-             @if ($tone !== 'error') x-data="{ timer: null, init() { this.timer = setTimeout(() => this.$wire.{{ $call }}, {{ $wait }}) }, destroy() { clearTimeout(this.timer) } }" @endif
+             @if ($tone !== 'error')
+                 x-data="{ timer: null, end: 0, left: {{ $wait }}, arm(ms) { this.end = Date.now() + ms; this.timer = setTimeout(() => this.$wire.{{ $call }}, ms) }, hold() { if (this.timer === null) { return } clearTimeout(this.timer); this.timer = null; this.left = Math.max(0, this.end - Date.now()) }, release() { if (this.timer === null) { this.arm(Math.max(this.left, 3000)) } }, init() { this.arm({{ $wait }}) }, destroy() { clearTimeout(this.timer) } }"
+                 x-on:mouseenter="hold()" x-on:mouseleave="release()" x-on:focusin="hold()" x-on:focusout="release()"
+             @endif
              data-tone="{{ $tone }}"
              class="{{ $box }}">
             <x-bs-admin::icon :name="$icon" class="size-5 shrink-0" />
