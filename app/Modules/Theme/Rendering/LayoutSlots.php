@@ -31,6 +31,12 @@ final class LayoutSlots
     /** The slots that hold at most so many blocks (a product's tabs: three). */
     public const array MAX_BLOCKS = ['product_tabs' => 3];
 
+    /**
+     * The block types that read the post around them and so belong only in some slots (a type not
+     * listed goes in any slot): type → the slots that take it.
+     */
+    public const array TYPE_SLOTS = ['recent_posts' => ['post_aside', 'after_post']];
+
     /** A category's value that hides the slot in every language. */
     public const string NONE = 'none';
 
@@ -45,6 +51,12 @@ final class LayoutSlots
     public static function has(string $slot): bool
     {
         return in_array($slot, self::SLOTS, true);
+    }
+
+    /** Whether a block of $type may sit in $slot. */
+    public static function accepts(string $slot, string $type): bool
+    {
+        return ! isset(self::TYPE_SLOTS[$type]) || in_array($slot, self::TYPE_SLOTS[$type], true);
     }
 
     public static function maxBlocks(string $slot): ?int
