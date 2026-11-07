@@ -430,7 +430,8 @@ final class Index extends Component
                 foreach (self::TABS as $tab) {
                     $counts[$tab] = $tally[$tab] ?? 0;
                 }
-                $facets = $this->facets($tree, $list->valueCounts($locales, $selling), count($locales) >= 2, $selling, $cap);
+                // a website past the cap shows its values with no number: a count per value of a list that large would walk it again and again
+                $facets = $this->facets($tree, ($tally['all'] ?? 0) <= $cap ? $list->valueCounts($locales, $selling) : null, count($locales) >= 2, $selling, $cap);
                 $page = $this->readPage($list, $sortOn, trim($this->search) === '' && ! $filter->any() ? $counts[$this->tab] : null, $cap);
                 $this->loadRows($page['rows']);
 
@@ -565,12 +566,13 @@ final class Index extends Component
      * Each filter's options with the general number beside it (not changed by the other filters or the
      * group), and which are on. A filter nothing can be chosen in is left out unless it is on.
      *
-     * @param  array{tags: array<string, int>, stock: array<string, int>, trans: array<string, int>, sale: int}  $values
+     * @param  array{tags: array<string, int>, stock: array<string, int>, trans: array<string, int>, sale: int}|null  $values  null: the website is past the cap, the values carry no number
      * @return array<string, list<array{value: string, label: string, count?: int|string, depth?: int, active: bool}>>
      */
-    private function facets(ProductCategoryTree $tree, array $values, bool $multilingual, bool $selling, int $cap): array
+    private function facets(ProductCategoryTree $tree, ?array $values, bool $multilingual, bool $selling, int $cap): array
     {
         $count = fn (int $n): int|string => $n > $cap ? Cast::string(__('catalog.count_over')) : $n;
+        $number = fn (int $n): array => $values === null ? [] : ['count' => $count($n)];
         $facets = ['cat' => [], 'trans' => [], 'tag' => [], 'stock' => [], 'sale' => []];
         foreach ($tree->options() as $option) {
             $facets['cat'][] = ['value' => $option['ulid'], 'label' => $option['label'], 'count' => $count($option['count']), 'depth' => $option['depth'],
@@ -578,19 +580,19 @@ final class Index extends Component
         }
         if ($multilingual) {
             foreach (ProductListFilter::TRANS as $state) {
-                $facets['trans'][] = ['value' => $state, 'label' => __('entries.trans_'.$state), 'count' => $count($values['trans'][$state] ?? 0), 'active' => in_array($state, $this->transF, true)];
+                $facets['trans'][] = ['value' => $state, 'label' => __('entries.trans_'.$state), ...$number($values['trans'][$state] ?? 0), 'active' => in_array($state, $this->transF, true)];
             }
         }
         foreach (ProductListFilter::TAGS as $tag) {
-            $facets['tag'][] = ['value' => $tag, 'label' => __('catalog.tag_'.$tag), 'count' => $count($values['tags'][$tag] ?? 0), 'active' => in_array($tag, $this->tagF, true)];
+            $facets['tag'][] = ['value' => $tag, 'label' => __('catalog.tag_'.$tag), ...$number($values['tags'][$tag] ?? 0), 'active' => in_array($tag, $this->tagF, true)];
         }
         if ($selling) {
             foreach (ProductListFilter::STOCK as $kind) {
-                $facets['stock'][] = ['value' => $kind, 'label' => __('catalog.stock_'.$kind), 'count' => $count($values['stock'][$kind] ?? 0), 'active' => in_array($kind, $this->stockF, true)];
+                $facets['stock'][] = ['value' => $kind, 'label' => __('catalog.stock_'.$kind), ...$number($values['stock'][$kind] ?? 0), 'active' => in_array($kind, $this->stockF, true)];
             }
             // offered only while some product is on sale, or the filter is on already
-            if ($values['sale'] > 0 || $this->saleF !== []) {
-                $facets['sale'][] = ['value' => 'on', 'label' => __('catalog.sale_on'), 'count' => $count($values['sale']), 'active' => $this->saleF !== []];
+            if ($values === null || $values['sale'] > 0 || $this->saleF !== []) {
+                $facets['sale'][] = ['value' => 'on', 'label' => __('catalog.sale_on'), ...$number($values['sale'] ?? 0), 'active' => $this->saleF !== []];
             }
         }
 

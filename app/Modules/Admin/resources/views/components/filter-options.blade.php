@@ -50,7 +50,7 @@
 @if ($section['more'] ?? null)
     <button type="button" aria-expanded="false" wire:click="{{ $section['more']['call'] }}"
             class="flex min-h-menu-row w-full cursor-pointer items-center gap-2.5 ps-4 pe-4 text-start text-body text-text hover:bg-surface-hover any-pointer-coarse:min-h-menu-row-touch">
-        <i class="ri-arrow-down-s-line text-lg text-text-muted" aria-hidden="true"></i><span class="min-w-0">{{ $section['more']['label'] }}</span>
+        <i class="ri-arrow-down-s-line text-lg text-primary-text" aria-hidden="true"></i><span class="min-w-0 font-semibold text-primary-text">{{ $section['more']['label'] }}</span>
     </button>
 @endif
 @if ($section['range'] ?? null)

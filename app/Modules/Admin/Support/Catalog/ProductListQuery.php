@@ -19,6 +19,8 @@ use Illuminate\Support\Facades\DB;
  *   tenancy transaction (RLS as app_user).
  * - Counts are bounded: they stop at cap + 1 rows, so "more than 10,000" costs at most 10,001 rows
  *   whatever the size of the website. The group counts are one statement.
+ * - The numbers beside the filter values (valueCounts) are read only while the whole list is within
+ *   the cap; past it the values show no number and the statement is not run.
  * - Every order ends with the row's id as the tie-break, and a row with no sort value (no price, no
  *   stock tracking, no name in the default language) comes after the others, whichever way the
  *   order runs. A page cursor names the last row of a page (its sort value and id), so keyset paging
@@ -169,8 +171,8 @@ final class ProductListQuery
 
     /**
      * The general numbers beside the filter values, in one statement: each value has its own count that
-     * stops at cap + 1 (so a big website reads "hơn 10.000" for that value only), not changed by any
-     * other filter or the group.
+     * stops at cap + 1, not changed by any other filter or the group. The caller runs this only while the
+     * site's whole list is within the cap; past it the values carry no number.
      *
      * @param  list<string>  $locales  the site's languages; fewer than two leave out the translation states
      * @return array{tags: array<string, int>, stock: array<string, int>, trans: array<string, int>, sale: int}
@@ -192,7 +194,10 @@ final class ProductListQuery
         if ($n >= 2) {
             $have = [$this->siteId, self::pgArray($locales)];
             $wanted['r_full'] = Product::query()->whereRaw(self::HAVE.' >= ?', [...$have, $n]);
-            $wanted['r_partial'] = Product::query()->whereRaw(self::HAVE.' > 1 and '.self::HAVE.' < ?', [...$have, ...$have, $n]);
+            // with exactly two languages no product can have some but not all of them and more than one
+            if ($n > 2) {
+                $wanted['r_partial'] = Product::query()->whereRaw(self::HAVE.' > 1 and '.self::HAVE.' < ?', [...$have, ...$have, $n]);
+            }
             $wanted['r_none'] = Product::query()->whereRaw(self::HAVE.' <= 1', $have);
         }
 
@@ -209,7 +214,7 @@ final class ProductListQuery
         return [
             'tags' => ['featured' => $get('t_featured'), 'best' => $get('t_best')],
             'stock' => $selling ? ['in' => $get('s_in'), 'out' => $get('s_out'), 'none' => $get('s_none')] : [],
-            'trans' => $n >= 2 ? ['full' => $get('r_full'), 'partial' => $get('r_partial'), 'none' => $get('r_none')] : [],
+            'trans' => $n >= 2 ? ['full' => $get('r_full'), 'partial' => $n > 2 ? $get('r_partial') : 0, 'none' => $get('r_none')] : [],
             'sale' => $selling ? $get('sale') : 0,
         ];
     }

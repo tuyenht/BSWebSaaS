@@ -228,10 +228,10 @@ it('counts each filter value on its own up to the cap, in one statement, even pa
     app(Tenancy::class)->enter(1, function (): void {
         filterSelling();
         foreach (range(1, 5) as $i) {
-            filterProduct("Nổi bật {$i}", ['is_featured' => true, 'stock' => $i]);
+            filterProduct("Nổi bật số {$i} mới", ['is_featured' => true, 'stock' => $i]);
         }
         foreach (range(1, 3) as $i) {
-            filterProduct("Trơn {$i}");
+            filterProduct("Trơn số {$i} mới");
         }
         filterProduct('Bán chạy một', ['is_bestseller' => true, 'stock' => 0]);
         filterProduct('Giảm giá một', ['is_bestseller' => true, 'price' => 100, 'sale_price' => 60]);
@@ -252,6 +252,52 @@ it('counts each filter value on its own up to the cap, in one statement, even pa
         // with the real cap every number is exact
         $exact = (new ProductListQuery(1, 'all', '', 'vi'))->valueCounts(['vi', 'en'], true);
         expect($exact['tags'])->toBe(['featured' => 5, 'best' => 2])->and($exact['trans']['none'])->toBe(10);
+    });
+});
+
+it('shows the value counts only while the whole site is within the cap, and runs their statement only then', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $manager = filterManager();
+        filterSelling();
+        foreach (range(1, 4) as $i) {
+            filterProduct("Nổi bật số {$i} mới", ['is_featured' => true, 'stock' => $i]);
+        }
+        filterProduct('Trơn số một mới');
+
+        $countStatements = function (int $cap) use ($manager): array {
+            config(['admin.catalog_list_cap' => $cap]);
+            $valueStatements = 0;
+            DB::listen(function ($query) use (&$valueStatements): void {
+                $valueStatements += str_contains($query->sql, ' as t_featured') ? 1 : 0;
+            });
+            $facets = Livewire::actingAs($manager)->test(Index::class)->viewData('facets');
+
+            return [$valueStatements, $facets];
+        };
+
+        [$over, $overFacets] = $countStatements(3);
+        expect($over)->toBe(0)
+            ->and($overFacets['tag'])->not->toBe([])
+            ->and(collect($overFacets['tag'])->every(fn (array $o): bool => ! array_key_exists('count', $o)))->toBeTrue()
+            ->and(collect($overFacets['stock'])->every(fn (array $o): bool => ! array_key_exists('count', $o)))->toBeTrue();
+
+        [$under, $underFacets] = $countStatements(100);
+        expect($under)->toBe(1)
+            ->and(collect($underFacets['tag'])->firstWhere('value', 'featured')['count'])->toBe(4);
+    });
+});
+
+it('counts no product as partly translated on a site with exactly two languages, without asking the database', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        filterProduct('Một số mới');
+        $sql = [];
+        DB::listen(function ($query) use (&$sql): void {
+            $sql[] = $query->sql;
+        });
+        $two = (new ProductListQuery(1, 'all', '', 'vi'))->valueCounts(['vi', 'en'], false);
+
+        expect($two['trans']['partial'])->toBe(0)
+            ->and(collect($sql)->contains(fn (string $q): bool => str_contains($q, ' as r_partial')))->toBeFalse();
     });
 });
 
