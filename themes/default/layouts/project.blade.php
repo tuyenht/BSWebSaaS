@@ -3,6 +3,8 @@
     breadcrumb, the page's single h1 and the excerpt on the left and the cover photo on the right
     (the page's main image: eager, high priority, srcset); the body is the shared prose column; up to
     three other projects of the same category follow as project cards, with a link to the whole list.
+    The blocks of the `post_aside` slot make a side column beside the body (none: one column), those
+    of `after_post` close the page.
     A post whose body opens with a title band gets its h1 and breadcrumb from that band instead.
     Everything comes server-built from the controller; no id reaches the markup.
 --}}
@@ -13,6 +15,11 @@
     // A body section that already prints a high-priority image keeps the page at one.
     $sfCoverPriority = ($bodyHighImage ?? false) ? 'eager' : 'high';
     $sfRelated = $related ?? [];
+    // The project board shows the consult box alone in its side column: no table of contents.
+    $sfToc = [];
+    $sfAside = trim((string) (($slotHtml ?? [])['post_aside'] ?? ''));
+    $sfCols = $sfAside !== '' || $sfToc !== [];
+    $sfAfter = trim((string) (($slotHtml ?? [])['after_post'] ?? ''));
     $sfAllUrl = isset($category) ? \App\Modules\Shared\Support\SafeLink::href($category['url'] ?? null) : null;
 @endphp
 <!doctype html>
@@ -44,7 +51,16 @@
             </header>
 @endif
             {{-- $sections is pre-rendered, per-block Blade-escaped HTML (BlockRenderer). --}}
+@if ($sfCols)
+            <div class="post-columns sf-container">
+                <div class="post-columns__main">
+@endif
             <div class="post__body sf-prose sf-prose--article">{!! $sections !!}</div>
+@if ($sfCols)
+                </div>
+                @include('theme::partials.post-aside', ['toc' => $sfToc, 'html' => $sfAside])
+            </div>
+@endif
         </article>
 @if ($sfRelated !== [])
         <section class="post-related post-related--project" aria-labelledby="du-an-khac">
@@ -65,6 +81,9 @@
                 </ul>
             </div>
         </section>
+@endif
+@if ($sfAfter !== '')
+        <div class="slot-band">{!! $sfAfter !!}</div>
 @endif
     </main>
     @include('theme::partials.footer', ['menu' => $menu ?? [], 'brand' => $brand ?? null])
