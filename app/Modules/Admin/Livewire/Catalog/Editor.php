@@ -4,6 +4,7 @@ namespace App\Modules\Admin\Livewire\Catalog;
 
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Admin\Support\SeoFields;
+use App\Modules\Catalog\Actions\ChangeProductSlug;
 use App\Modules\Catalog\Actions\ChangeProductStatus;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
@@ -296,11 +297,7 @@ final class Editor extends Component
             return;
         }
 
-        $taken = ProductTranslation::query()
-            ->where('locale', $this->locale)
-            ->whereRaw('slug::text = ?', [mb_strtolower($value)])
-            ->when($this->productId !== null, fn ($q) => $q->where('product_id', '!=', $this->productId))
-            ->exists();
+        $taken = app(ChangeProductSlug::class)->otherProduct($value, $this->locale, $this->productId) !== null;
 
         if ($taken) {
             $fail(__('catalog.slug_taken'));

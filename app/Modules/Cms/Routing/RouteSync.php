@@ -178,22 +178,29 @@ final readonly class RouteSync
     }
 
     /**
-     * A path is owned by exactly one target; reject a clash with a DIFFERENT target — a
-     * different row in the same column, or (A2) the other kind of target at the same path.
-     * The other target type leaves THIS column NULL, which a bare `!=` would silently miss
-     * (`NULL != id` is unknown), so the NULL is matched explicitly.
+     * The route that already holds $path in $locale for a DIFFERENT target than the caller's own
+     * (null when the path is free for it). A path is owned by exactly one target: a different row
+     * in the same column, or (A2) the other kind of target at the same path. The other target type
+     * leaves THIS column NULL, which a bare `!=` would silently miss (`NULL != id` is unknown), so
+     * the NULL is matched explicitly. The one rule behind every "is this address free" answer.
      */
-    private function assertPathAvailable(string $locale, string $path, string $ownColumn, int $ownId): void
+    public function foreignRoute(string $locale, string $path, string $ownColumn, int $ownId): ?SiteRoute
     {
-        $taken = SiteRoute::query()
+        return SiteRoute::query()
             ->where('locale', $locale)
             ->where('path', $path)
             ->where(function (Builder $query) use ($ownColumn, $ownId): void {
                 $query->whereNull($ownColumn)->orWhere($ownColumn, '!=', $ownId);
             })
-            ->exists();
+            ->first();
+    }
 
-        if ($taken) {
+    /**
+     * @throws RouteConflictException the path belongs to a different target
+     */
+    private function assertPathAvailable(string $locale, string $path, string $ownColumn, int $ownId): void
+    {
+        if ($this->foreignRoute($locale, $path, $ownColumn, $ownId) !== null) {
             throw new RouteConflictException($path);
         }
     }

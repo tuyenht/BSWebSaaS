@@ -3371,5 +3371,21 @@
     "catalog.status_unchanged": "「:name」はすでにこの状態です。変更はありません。",
     "catalog.status_pill_name": "状態：:status — 押して変更",
     "catalog.view_action": "見る",
-    "catalog.view_named": "「:name」をサイトで見る"
+    "catalog.view_named": "「:name」をサイトで見る",
+    "catalog.name_required": "名前は空にできません。元の名前のままにします。",
+    "catalog.name_too_long": "名前は :max 文字以内で入力してください。",
+    "catalog.slug_invalid": "アドレスには文字か数字を1つ以上入れてください。例：「end-mill-d10」",
+    "catalog.slug_owner_product": "アドレス「:slug」は商品「:name」で使われています。少し言葉を足して変えてください。",
+    "catalog.slug_owner_product_trash": "アドレス「:slug」はごみ箱の商品「:name」で使われています。少し言葉を足して変えてください。",
+    "catalog.slug_owner_category": "アドレス「:slug」はカテゴリー「:name」のものです。少し言葉を足してください。例：「:slug-cnc」",
+    "catalog.slug_owner_page": "アドレス「:slug」はサイトに既にあるページと重なっています。少し言葉を足してください。例：「:slug-cnc」",
+    "catalog.toast_renamed": "商品名を変更しました。",
+    "catalog.toast_slug_changed": "アドレスを :path に変更しました。",
+    "catalog.toast_slug_redirect": "古いアドレスは新しいアドレスに自動で転送されます。",
+    "catalog.undo_slug_taken": "元に戻せませんでした。古いアドレスは別の商品またはページで使われています。",
+    "catalog.quick_edit_named": "「:name」の名前をすばやく編集",
+    "catalog.name_input_label": "新しい商品名",
+    "catalog.slug_input_label": "新しいアドレス",
+    "catalog.slug_edit_hint": "押してアドレスを編集 — :url",
+    "catalog.slug_edit_action": "アドレスを編集"
 }
