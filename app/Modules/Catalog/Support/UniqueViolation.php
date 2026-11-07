@@ -19,15 +19,14 @@ final class UniqueViolation
      */
     public static function refusal(UniqueConstraintViolationException $e): ProductEditRefused
     {
-        $text = $e->getMessage();
-        for ($previous = $e->getPrevious(); $previous !== null; $previous = $previous->getPrevious()) {
-            $text .= ' '.$previous->getMessage();
-        }
+        // The index is named in PostgreSQL's first line, before the key values and the SQL that
+        // carry what the member typed: only that name is read, never the rest of the text.
+        $index = preg_match('/unique constraint "([^"]+)"/', $e->getPrevious()?->getMessage() ?? $e->getMessage(), $m) === 1 ? $m[1] : null;
 
-        if (str_contains($text, 'routes_site_id_locale_path_unique') || str_contains($text, 'redirects_site_id_locale_from_path_unique')) {
+        if (in_array($index, ['routes_site_id_locale_path_unique', 'redirects_site_id_locale_from_path_unique'], true)) {
             return new ProductEditRefused(__('catalog.slug_conflict'), 'slug');
         }
-        if (str_contains($text, 'products_site_sku_unique')) {
+        if ($index === 'products_site_sku_unique') {
             return new ProductEditRefused(__('catalog.sku_taken'), 'sku');
         }
 

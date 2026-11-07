@@ -162,6 +162,7 @@ final class Editor extends Component
     public function save(): void
     {
         $wasNew = $this->ulid === null;
+        $slugWasBlank = trim($this->slug) === '';
 
         try {
             $product = DB::transaction(fn (): Product => $this->persist());
@@ -170,6 +171,10 @@ final class Editor extends Component
                 // Rolled back: the form is still a create form.
                 $this->ulid = null;
                 $this->productId = null;
+            }
+            // A link made for a save that failed must not stay behind: it would pin the old name.
+            if ($slugWasBlank) {
+                $this->slug = '';
             }
             $refusal = $e instanceof UniqueConstraintViolationException
                 ? UniqueViolation::refusal($e)
@@ -452,7 +457,8 @@ final class Editor extends Component
 
         // No control character is stored (PostgreSQL refuses a NUL); Google shows its two fields on
         // one line, so a line break or an invisible direction mark never reaches the head either.
-        $this->name = PlainText::line($this->name);
+        // Stored exactly as the name rule measured it: the list trims the same spaces.
+        $this->name = RenameProduct::tidy($this->name);
         $this->slug = PlainText::line($this->slug);
         $this->seoTitle = SeoFields::singleLine($this->seoTitle);
         $this->seoDescription = SeoFields::singleLine($this->seoDescription);

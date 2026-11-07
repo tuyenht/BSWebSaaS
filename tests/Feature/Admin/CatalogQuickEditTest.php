@@ -301,6 +301,12 @@ it('refuses a product in the Trash and draws the quick edits only for a manager 
         expect(Product::onlyTrashed()->find($trashed->id)->translations()->value('slug'))->toBe('da-xoa');
 
         $html = Livewire::actingAs($manager)->test(Index::class)->html();
+        // the row's x-data names only the product (a changed x-data makes Alpine rebuild the row and
+        // drop what is being typed); the name and the address travel in data-name / data-slug
+        expect(preg_match('/<div role="row"[^>]*data-row-ulid="'.$live->ulid.'"[^>]*>/', $html, $row))->toBe(1)
+            ->and($row[0])->toContain('data-name="Đĩa phay mặt"')->toContain('data-slug="dao-phay-mat"')
+            ->and(preg_match('/x-data="([^"]*)"/', $row[0], $data))->toBe(1)
+            ->and($data[1])->not->toContain('Đĩa phay mặt')->not->toContain('dao-phay-mat');
         expect($html)->toContain(__('catalog.name_input_label'))->toContain(__('catalog.slug_input_label'))->toContain(__('catalog.slug_edit_action'))
             ->toContain('saveName(this.ulid')->toContain(e(__('catalog.quick_edit_named', ['name' => 'Đĩa phay mặt'])));
 
@@ -416,6 +422,10 @@ it('maps a unique violation by the index that was violated and rethrows any othe
         ->and($sku->getMessage())->toBe(__('catalog.sku_taken'))->and($sku->field)->toBe('sku');
 
     expect(fn () => UniqueViolation::refusal(qeViolation('users_email_unique')))->toThrow(UniqueConstraintViolationException::class);
+
+    // the key values and the SQL carry what was typed: an index name typed there is never read
+    expect(fn () => UniqueViolation::refusal(qeViolation('users_email_unique"'."\nDETAIL:  Key (path)=(products_site_sku_unique) already exists.")))
+        ->toThrow(UniqueConstraintViolationException::class);
 });
 
 it('says the address is taken when a route is written by another request while publishing from the list, and saves nothing', function (): void {

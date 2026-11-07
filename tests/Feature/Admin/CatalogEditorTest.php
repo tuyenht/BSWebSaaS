@@ -689,3 +689,45 @@ it('shows the SKU message on the SKU field when the SKU is taken by a request th
             ->assertHasNoErrors(['slug']);
     });
 });
+
+it('drops the address it made from the name when the save loses a SKU race', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage']);
+
+        $armed = true;
+        DB::beforeExecuting(function (string $query) use (&$armed): void {
+            if ($armed && str_starts_with($query, 'insert into "products"')) {
+                $armed = false;
+                Product::query()->create(['status' => 'draft', 'sku' => 'RACE-2']);
+            }
+        });
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('name', 'Đồ gá hàn khung')
+            ->set('slug', '')
+            ->set('sku', 'RACE-2')
+            ->call('save')
+            ->assertHasErrors(['sku' => __('catalog.sku_taken')])
+            ->assertSet('slug', '');
+    });
+});
+
+it('stores the name trimmed of every kind of space, so padding never pushes it past the column', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage']);
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('name', "\u{00A0}\u{200B}Đồ gá kẹp".str_repeat("\u{00A0}", 300))
+            ->set('slug', 'do-ga-kep')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        expect(Product::query()->first()?->translationFor('vi')?->name)->toBe('Đồ gá kẹp');
+    });
+});

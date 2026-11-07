@@ -258,16 +258,18 @@
                         $quickEdit = $canManage && ! $trashed && $t !== null;
                         $slugLeaf = $t?->slug;
                         $slugPrefix = ($path !== null && $slugLeaf) ? \Illuminate\Support\Str::beforeLast($path, $slugLeaf) : '/';
-                        // the row keeps its identity (and what is typed in it); its fields follow data-name / data-slug when they are not open
+                        // the row keeps its identity (and what is typed in it): x-data names only the product, so a morph
+                        // never rebuilds it; the fields start from data-name / data-slug and follow them when not open
                         $rowKey = 'product-'.$product->ulid;
                         $rowX = $quickEdit ? strtr(<<<'JS'
 {
                                 ulid: @ULID@,
-                                editing: false, value: @NAME@, orig: @NAME@, err: '',
-                                slugEditing: false, slugValue: @SLUG@, slugOrig: @SLUG@, slugErr: '',
+                                editing: false, value: '', orig: '', err: '',
+                                slugEditing: false, slugValue: '', slugOrig: '', slugErr: '',
                                 cancel: false, byKey: false, busy: false, from: '.list-qe',
                                 init() {
                                     const follow = () => { const d = this.$el.dataset; if (! this.editing && d.name !== undefined) { this.value = this.orig = d.name } if (! this.slugEditing && d.slug !== undefined) { this.slugValue = this.slugOrig = d.slug } }
+                                    follow()
                                     new MutationObserver(follow).observe(this.$el, { attributes: true, attributeFilter: ['data-name', 'data-slug'] })
                                     this.$el.addEventListener('list-quick-edit', () => { this.from = '.list-qe'; this.editing = true; this.cancel = false; this.err = '' })
                                     this.$el.addEventListener('list-slug-edit', () => { this.from = '.list-more [aria-haspopup]'; this.slugEditing = true; this.cancel = false; this.slugErr = ''; this.$nextTick(() => { this.$refs.slugInput.focus(); this.$refs.slugInput.select() }) })
@@ -294,7 +296,7 @@
                                     this.slugValue = this.slugOrig; this.slugErr = ''; this.slugEditing = false; this.back()
                                 }
                             }
-JS, ['@ULID@' => (string) Js::from($product->ulid), '@NAME@' => (string) Js::from($name), '@SLUG@' => (string) Js::from($slugLeaf ?? '')]) : '{}';
+JS, ['@ULID@' => (string) Js::from($product->ulid)]) : '{}';
                         // price: the sale state comes from SQL (on_sale), the old price shows struck through beside it
                         $onSale = (bool) $product->getAttribute('on_sale');
                         $noPrice = $product->price === null;
