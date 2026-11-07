@@ -35,7 +35,7 @@ beforeEach(function (): void {
     ]);
 });
 
-function qeProduct(string $name = 'Dao phay mặt', string $slug = 'dao-phay-mat', string $status = 'draft'): Product
+function qeProduct(string $name = 'Đĩa phay mặt', string $slug = 'dao-phay-mat', string $status = 'draft'): Product
 {
     $product = Product::query()->create(['status' => $status]);
     $product->translations()->create(['locale' => 'vi', 'name' => $name, 'slug' => $slug]);
@@ -65,17 +65,17 @@ it('renames a product and puts the old name back on undo', function (): void {
         $this->travel(5)->minutes();
 
         $test = Livewire::actingAs($manager)->test(Index::class)
-            ->call('saveName', $product->ulid, "  Dao phay ngón\tĐường kính 10  ")
-            ->assertReturned(fn (array $r): bool => $r['ok'] === true && $r['name'] === 'Dao phay ngón Đường kính 10');
+            ->call('saveName', $product->ulid, "  Đĩa phay ngón\tĐường kính mười  ")
+            ->assertReturned(fn (array $r): bool => $r['ok'] === true && $r['name'] === 'Đĩa phay ngón Đường kính mười');
 
-        expect($product->translations()->value('name'))->toBe('Dao phay ngón Đường kính 10')
+        expect($product->translations()->value('name'))->toBe('Đĩa phay ngón Đường kính mười')
             ->and(qeSlugOf($product))->toBe('dao-phay-mat')
             ->and($product->fresh()->updated_at->gt($before))->toBeTrue()
             ->and($test->get('toastMsg'))->toBe(__('catalog.toast_renamed'))
             ->and($test->get('undoOp'))->not->toBeNull();
 
         $test->call('undoLast');
-        expect($product->translations()->value('name'))->toBe('Dao phay mặt')
+        expect($product->translations()->value('name'))->toBe('Đĩa phay mặt')
             ->and($test->get('toastMsg'))->toBe(__('catalog.toast_undone'));
     });
 });
@@ -88,7 +88,7 @@ it('keeps the old name for an empty name and keeps what was typed for a name tha
         $test = Livewire::actingAs($manager)->test(Index::class);
 
         $test->call('saveName', $product->ulid, "  \t ")
-            ->assertReturned(fn (array $r): bool => $r['ok'] === false && $r['keep'] === false && $r['name'] === 'Dao phay mặt');
+            ->assertReturned(fn (array $r): bool => $r['ok'] === false && $r['keep'] === false && $r['name'] === 'Đĩa phay mặt');
         expect($test->get('toastMsg'))->toBe(__('catalog.name_required'));
 
         $long = str_repeat('Ư', 201);
@@ -107,14 +107,14 @@ it('turns a typed address into a plain Vietnamese one and says nothing changed w
     app(Tenancy::class)->enter(1, function () use ($manager): void {
         $product = qeProduct();
         $test = Livewire::actingAs($manager)->test(Index::class)
-            ->call('saveSlug', $product->ulid, '  Dao Phay Ngón Đường Kính 10  ')
-            ->assertReturned(fn (array $r): bool => $r['ok'] === true && $r['slug'] === 'dao-phay-ngon-duong-kinh-10');
+            ->call('saveSlug', $product->ulid, '  Đĩa Phay Ngón Đường Kính Mười  ')
+            ->assertReturned(fn (array $r): bool => $r['ok'] === true && $r['slug'] === 'dia-phay-ngon-duong-kinh-muoi');
 
-        expect(qeSlugOf($product))->toBe('dao-phay-ngon-duong-kinh-10')
-            ->and($test->get('toastMsg'))->toBe(__('catalog.toast_slug_changed', ['path' => '/dao-phay-ngon-duong-kinh-10']))
+        expect(qeSlugOf($product))->toBe('dia-phay-ngon-duong-kinh-muoi')
+            ->and($test->get('toastMsg'))->toBe(__('catalog.toast_slug_changed', ['path' => '/dia-phay-ngon-duong-kinh-muoi']))
             ->and(SiteRoute::query()->where('product_id', $product->id)->exists())->toBeFalse();
 
-        $test->call('saveSlug', $product->ulid, 'dao-phay-ngon-duong-kinh-10');
+        $test->call('saveSlug', $product->ulid, 'dia-phay-ngon-duong-kinh-muoi');
         expect($test->get('undoOp'))->toBe(['kind' => 'slug', 'ulid' => $product->ulid, 'slug' => 'dao-phay-mat']);
     });
 });
@@ -161,14 +161,14 @@ it('refuses an address that a category or a page of the website already owns', f
         $page->translations()->create(['locale' => 'vi', 'title' => 'Giới thiệu', 'slug' => 'gioi-thieu', 'status' => 'published', 'body' => ['blocks' => []]]);
         app(RouteSync::class)->sync($page->fresh(), 'vi', 'gioi-thieu');
 
-        $category = app(CreateTaxonomy::class)->handle('product_cat', null, new TaxonomyData(names: ['vi' => 'Dao cắt'], slugs: ['vi' => 'dao-cat']));
+        $category = app(CreateTaxonomy::class)->handle('product_cat', null, new TaxonomyData(names: ['vi' => 'Đồ cắt'], slugs: ['vi' => 'dao-cat']));
         expect(SiteRoute::query()->where('taxonomy_id', $category->id)->value('path'))->toBe('/dao-cat');
 
         $test = Livewire::actingAs($manager)->test(Index::class);
         $test->call('saveSlug', $product->ulid, 'Giới thiệu')
             ->assertReturned(fn (array $r): bool => $r['ok'] === false && $r['keep'] === true && $r['error'] === __('catalog.slug_owner_page', ['slug' => 'gioi-thieu']));
         $test->call('saveSlug', $product->ulid, 'dao-cat')
-            ->assertReturned(fn (array $r): bool => $r['ok'] === false && $r['error'] === __('catalog.slug_owner_category', ['slug' => 'dao-cat', 'name' => 'Dao cắt']));
+            ->assertReturned(fn (array $r): bool => $r['ok'] === false && $r['error'] === __('catalog.slug_owner_category', ['slug' => 'dao-cat', 'name' => 'Đồ cắt']));
         expect(qeSlugOf($product))->toBe('dao-phay-mat');
     });
 });
@@ -177,7 +177,7 @@ it('moves a live product to its new address, redirects the old one and says so, 
     $manager = qeManager();
 
     app(Tenancy::class)->enter(1, function () use ($manager): void {
-        $product = qeProduct('Dao phay mặt', 'dao-phay-mat', 'published');
+        $product = qeProduct('Đĩa phay mặt', 'dao-phay-mat', 'published');
         app(RouteSync::class)->syncProduct($product->id, null, 'vi', 'dao-phay-mat');
 
         $test = Livewire::actingAs($manager)->test(Index::class)->call('saveSlug', $product->ulid, 'dao-phay-cnc');
@@ -196,7 +196,7 @@ it('moves a live product to its new address, redirects the old one and says so, 
 
 it('saves nothing when the route turns out to be taken at the last moment', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
-        $product = qeProduct('Dao phay mặt', 'dao-phay-mat', 'published');
+        $product = qeProduct('Đĩa phay mặt', 'dao-phay-mat', 'published');
         app(RouteSync::class)->syncProduct($product->id, null, 'vi', 'dao-phay-mat');
 
         // the address looks free when it is checked; another request takes it before the route moves
@@ -259,7 +259,7 @@ it('refuses a viewer, a user with no role and a guest, and never reaches another
         $as = fn () => Livewire::actingAs($viewer->fresh())->test(Index::class);
         $as()->call('saveName', $product->ulid, 'Tên mới')->assertForbidden();
         $as()->call('saveSlug', $product->ulid, 'ten-moi')->assertForbidden();
-        expect($product->translations()->value('name'))->toBe('Dao phay mặt')->and(qeSlugOf($product))->toBe('dao-phay-mat');
+        expect($product->translations()->value('name'))->toBe('Đĩa phay mặt')->and(qeSlugOf($product))->toBe('dao-phay-mat');
 
         $mine = Livewire::actingAs($manager)->test(Index::class);
         $mine->call('saveName', $foreign->ulid, 'Chiếm tên');
@@ -268,14 +268,14 @@ it('refuses a viewer, a user with no role and a guest, and never reaches another
         expect($mine->get('toastMsg'))->toBe(__('catalog.row_gone'));
 
         $guest = function () use ($manager, $product) {
-            $test = Livewire::actingAs($manager)->test(Index::class)->call('saveName', $product->ulid, 'Dao phay mặt');
+            $test = Livewire::actingAs($manager)->test(Index::class)->call('saveName', $product->ulid, 'Đĩa phay mặt');
             auth()->guard()->logout();
 
             return $test;
         };
         $guest()->call('saveName', $product->ulid, 'Tên mới')->assertForbidden();
         $guest()->call('saveSlug', $product->ulid, 'ten-moi')->assertForbidden();
-        expect($product->translations()->value('name'))->toBe('Dao phay mặt')->and(qeSlugOf($product))->toBe('dao-phay-mat');
+        expect($product->translations()->value('name'))->toBe('Đĩa phay mặt')->and(qeSlugOf($product))->toBe('dao-phay-mat');
     });
 
     expect(DB::connection('pgsql_admin')->table('product_translations')->where('product_id', $foreign->id)->value('name'))->toBe('Của site khác');
@@ -300,7 +300,7 @@ it('refuses a product in the Trash and draws the quick edits only for a manager 
 
         $html = Livewire::actingAs($manager)->test(Index::class)->html();
         expect($html)->toContain(__('catalog.name_input_label'))->toContain(__('catalog.slug_input_label'))->toContain(__('catalog.slug_edit_action'))
-            ->toContain('saveName(this.ulid')->toContain(e(__('catalog.quick_edit_named', ['name' => 'Dao phay mặt'])));
+            ->toContain('saveName(this.ulid')->toContain(e(__('catalog.quick_edit_named', ['name' => 'Đĩa phay mặt'])));
 
         $static = Livewire::actingAs($viewer->fresh())->test(Index::class)->html();
         expect($static)->not->toContain(__('catalog.name_input_label'))->not->toContain(__('catalog.slug_edit_action'));
@@ -313,7 +313,7 @@ it('applies the name rule and the address rule the same way outside the list', f
         $product = qeProduct();
         $rename = app(RenameProduct::class);
 
-        expect($rename->clean("  Ổ trục\nquay "))->toBe('Ổ trục quay')
+        expect($rename->clean("  Ổ trục\nquạt "))->toBe('Ổ trục quạt')
             ->and(fn () => $rename->clean(''))->toThrow(ProductEditRefused::class, __('catalog.name_required'));
         expect(app(ChangeProductSlug::class)->clean('Ổ trục Đặc biệt', 'vi'))->toBe('o-truc-dac-biet')
             ->and(app(ChangeProductSlug::class)->otherProduct('DAO-PHAY-MAT', 'vi', $product->id))->toBeNull()
