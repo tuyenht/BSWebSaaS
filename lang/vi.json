@@ -880,6 +880,9 @@
     "media.picker_kind_post": "Bài viết",
     "media.picker_kind_page": "Trang",
     "media.picker_kind_category": "Chuyên mục",
+    "media.picker_kind_site": "Website",
+    "media.usage_layout_slots": "Cột phải / Kêu gọi cuối trang",
+    "media.usage_layout_slots_of": ":name · Cột phải / Kêu gọi cuối trang",
     "media.picker_trash": "Thùng rác",
     "media.picker_trash_restore": "Khôi phục",
     "media.picker_trash_purge": "Xóa vĩnh viễn",
@@ -3189,5 +3192,8 @@
     "entries.btn_err_file_gone": "Tệp đã chọn không còn trong thư viện. Hãy chọn tệp khác.",
     "entries.err_block_button_page_missing": "Một nút trỏ tới trang không có trong website này. Hãy chọn lại trang cho nút.",
     "entries.err_block_button_file_missing": "Một nút trỏ tới tệp không có trong thư viện của website này. Hãy chọn lại tệp cho nút.",
-    "storefront.new_tab": "(mở thẻ mới)"
+    "storefront.new_tab": "(mở thẻ mới)",
+    "layout_slots.err_slot_invalid": "Không có chỗ đặt khối này. Hãy tải lại trang rồi thử lại.",
+    "layout_slots.err_locale_invalid": "Ngôn ngữ này chưa bật cho website. Hãy bật ngôn ngữ trước, hoặc bỏ nội dung của ngôn ngữ đó.",
+    "layout_slots.err_too_many": "Chỗ này chỉ chứa tối đa :max khối. Hãy bỏ bớt khối."
 }

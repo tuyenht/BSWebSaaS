@@ -9,8 +9,9 @@ use Throwable;
 
 /**
  * A settings write refused for a reason the screen can say in plain words: `reason` is a short
- * code (image_invalid, slot_invalid, section_invalid, busy), `field` the slot or section it is
- * about. busy: another save of the site's settings held the lock longer than the screen waits
+ * code (image_invalid, slot_invalid, section_invalid, busy; for the block slots also
+ * locale_invalid, blocks_invalid and blocks_too_many, whose plain-language text is the previous
+ * exception's message), `field` the slot or section it is about. busy: another save of the site's settings held the lock longer than the screen waits
  * (SettingsWrite) — nothing was written, and trying again later works.
  */
 final class SettingsChangeRejected extends RuntimeException
