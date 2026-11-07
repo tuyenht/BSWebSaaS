@@ -4478,7 +4478,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     overflow-wrap: anywhere;
 }
 
-.lead-form__field :is(input, textarea) {
+.lead-form__field :is(input, textarea, select) {
     display: block;
     width: 100%;
     min-height: 2.75rem;
@@ -4499,12 +4499,12 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     resize: vertical;
 }
 
-.lead-form__field :is(input, textarea)[aria-invalid="true"] {
+.lead-form__field :is(input, textarea, select)[aria-invalid="true"] {
     border-color: var(--lf-bad);
 }
 
 /* The ring sits outside the border; the transparent outline is what forced-colours mode shows. */
-.lead-form__field :is(input, textarea):focus {
+.lead-form__field :is(input, textarea, select):focus {
     border-color: var(--lf-focus);
     outline: 2px solid transparent;
     box-shadow: 0 0 0 2px var(--lf-focus);
@@ -4608,7 +4608,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .lead-form__field :is(input, textarea),
+    .lead-form__field :is(input, textarea, select),
     .lead-form__submit {
         transition: none;
     }
