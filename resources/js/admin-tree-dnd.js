@@ -350,9 +350,9 @@ const onDocDragover = (e) => {
         }
         label.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(e.clientY + 18) + 'px)';
     }
-    c.paint();
     const sc = c.sc;
     if (!sc) {
+        c.paint();
         return;
     }
     const whole = sc === document.scrollingElement || sc === document.documentElement;
@@ -363,6 +363,7 @@ const onDocDragover = (e) => {
     } else if (e.clientY > bot - 64) {
         sc.scrollTop += 14;
     }
+    c.paint();
 };
 if (typeof document !== 'undefined') {
     document.addEventListener('dragover', onDocDragover);

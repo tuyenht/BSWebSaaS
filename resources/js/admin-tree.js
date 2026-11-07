@@ -374,9 +374,9 @@ document.addEventListener('alpine:init', () => {
                 }
                 // Where a name starts inside the dragged row, and its level: the insertion line of a
                 // gap starts at the name of the level the drop would take.
-                const toggle = el.querySelector('.tree-tg, .tree-tg0');
+                const nameEl = el.querySelector('.tree-nm') || el.querySelector('.tree-tg, .tree-tg0');
                 const rc = el.getBoundingClientRect();
-                lineBase = { nb: toggle ? toggle.getBoundingClientRect().left - rc.left : 8, lv: Number(el.dataset.lv) || 1 };
+                lineBase = { nb: nameEl ? nameEl.getBoundingClientRect().left - rc.left : 8, lv: Number(el.dataset.lv) || 1 };
                 this.dragK = k;
                 el.setAttribute('data-drag', '1');
                 dnd.start(e, k, el);
@@ -392,14 +392,14 @@ document.addEventListener('alpine:init', () => {
                     e.preventDefault();
                 }
             },
-            // The row a drop would go into is highlighted (a gap has its line instead, drawn by the
-            // drag rule); nothing is put between the rows, so they stay where they are.
+            // The row a drop would go into is highlighted, red when refused (dragging a record over
+            // its own child included); a gap has its line instead, drawn by the drag rule; nothing is put between the rows, so they stay where they are.
             showTarget(T) {
                 if (dropEl) {
                     dropEl.removeAttribute('data-drop');
                     dropEl = null;
                 }
-                if (T.mode === 'in' && !T.self) {
+                if (T.mode === 'in') {
                     const target = this.row(T.refK);
                     if (target) {
                         target.setAttribute('data-drop', T.bad ? 'bad' : 'in');

@@ -165,7 +165,7 @@ test('undo goes to the host and waits for it too', async () => {
 
 // ---- dragging: the insertion line of a gap, the highlight of a row, no element between the rows ----
 // Every row is 40px high and 400px wide, stacked from the top; a name starts 24px into its row.
-function stack(grid, { nb = 24 } = {}) {
+function stack(grid, { nb = 24, nm = null } = {}) {
     [...grid.children].forEach((el, i) => {
         const left = 10;
         el.getBoundingClientRect = () => ({ left, right: left + 400, top: i * 40, bottom: i * 40 + 40, width: 400, height: 40 });
@@ -173,6 +173,12 @@ function stack(grid, { nb = 24 } = {}) {
         tg.className = 'tree-tg0';
         tg.getBoundingClientRect = () => ({ left: left + nb, right: left + nb + 20, top: i * 40, bottom: i * 40 + 40, width: 20, height: 40 });
         el.prepend(tg);
+        if (nm !== null) {
+            const n = document.createElement('span');
+            n.className = 'tree-nm';
+            n.getBoundingClientRect = () => ({ left: left + nm, right: left + nm + 100, top: i * 40, bottom: i * 40 + 40, width: 100, height: 40 });
+            el.append(n);
+        }
     });
 }
 const ev = (el, x, yFrac) => {
@@ -288,4 +294,33 @@ test('Alt+arrow still moves a row and Ctrl+Z still undoes', async () => {
     tree.keydown(key({ key: 'z', ctrlKey: true }));
     await until(() => seen.length === 2 && !tree.busy);
     assert.deepEqual(seen[1], ['undo']);
+});
+
+test('dragging a record over its own child marks that row refused, draws no line and sends nothing', async () => {
+    const moves = [];
+    const { tree, grid } = mount([['a', null], ['a1', 'a'], ['b', null]], { async treeMove(k, p, pos) { moves.push([k, p, pos]); return null; } });
+    stack(grid);
+    tree.dragStart(ev(rowOf(grid, 'a'), 0, 0.5));
+    hover(tree, rowOf(grid, 'a1'), 100, 0.5);
+    assert.equal(rowOf(grid, 'a1').getAttribute('data-drop'), 'bad');
+    assert.equal(lineAt().on, false, 'no line');
+    assert.equal(document.querySelector('.tree-dl').getAttribute('data-bad'), '1');
+    assert.equal(document.querySelector('.tree-dl').textContent, 'self');
+    tree.dragDone();
+    await tick();
+    assert.deepEqual(moves, [], 'nothing is sent');
+    assert.equal(rowOf(grid, 'a1').hasAttribute('data-drop'), false);
+});
+
+test('the line starts where the name of the target level begins', () => {
+    const { tree, grid } = mount([['a', null], ['a1', 'a'], ['a2', 'a1'], ['c', null]], { async treeMove() { return null; } });
+    rowOf(grid, 'a2').dataset.lv = '3';
+    stack(grid, { nb: 24, nm: 60 }); // the toggle is at 24, the name text at 60
+    tree.dragStart(ev(rowOf(grid, 'c'), 0, 0.5));
+    const nameLeft = 10 + 60;
+    hover(tree, rowOf(grid, 'a2'), 300, 0.9); // the gap under "a2": its own level (3) by default
+    assert.equal(lineAt().x, nameLeft + 64, 'level 3: the name of two steps in');
+    hover(tree, rowOf(grid, 'a2'), 300 - 32, 0.9);
+    assert.equal(lineAt().x, nameLeft + 32, 'level 2: the name of one step in');
+    tree.dragCancel();
 });
