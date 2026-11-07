@@ -765,7 +765,7 @@ it('lets a post be saved and published again after a restore left an open change
     });
 });
 
-it('refuses a new layout of the wrong role when a change is saved or applied, and only that', function (): void {
+it('refuses a new layout of the wrong role when a change is saved, and drops one found in a stored change', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         [$author, $publisher] = changeCast();
         $page = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now(), 'author_id' => $author->id, 'meta' => []]);
@@ -782,7 +782,9 @@ it('refuses a new layout of the wrong role when a change is saved or applied, an
             'shared' => ['template_override' => 'job', 'cover_media_id' => null, 'meta' => [], 'primary_category_id' => null],
             'locales' => ['vi' => ['title' => 'Ứng viên mới', 'slug' => 'doi-ngu', 'body' => ['blocks' => []], 'excerpt' => null, 'seo_title' => null, 'seo_description' => null, 'og_image_id' => null]],
         ]]);
-        expect(changeRejection(fn () => app(ApplyEntryDraft::class)->handle($page, $publisher, $change->version())))->toBe('content_invalid')
-            ->and($page->fresh()->translationFor('vi')->title)->toBe('Đội ngũ');
+        app(ApplyEntryDraft::class)->handle($page, $publisher, $change->version());
+
+        expect($page->fresh()->template_override)->toBeNull()
+            ->and($page->fresh()->translationFor('vi')->title)->toBe('Ứng viên mới');
     });
 });
