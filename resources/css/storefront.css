@@ -615,6 +615,35 @@ main:has(.hero, .sf-slider) .page__title {
     border-radius: 0.375rem;
 }
 
+/* A portrait photo opens larger (sf-viewer.js; the plain link without it). */
+.about__zoom {
+    display: block;
+    border-radius: 0.375rem;
+    color: inherit;
+    text-decoration: none;
+    cursor: zoom-in;
+}
+
+.about__zoom:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 4px;
+}
+
+.about__zoom-hint {
+    display: block;
+    margin-top: 0.5rem;
+    color: var(--color-text);
+    font-size: 0.75rem;
+    text-align: center;
+}
+
+@media (hover: hover) {
+    .about__zoom:hover .about__zoom-hint {
+        color: var(--color-text-strong);
+        text-decoration: underline;
+    }
+}
+
 @media (min-width: 768px) {
     .about--whole {
         grid-template-columns: 3fr 2fr;
@@ -5822,6 +5851,160 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     color: var(--color-text);
     font-size: 0.875rem;
     overflow-wrap: anywhere;
+}
+
+/* A gallery picture is a link that opens the photo viewer (sf-viewer.js). */
+.sf-gallery__zoom {
+    display: block;
+    overflow: hidden;
+    border-radius: 0.5rem;
+    cursor: zoom-in;
+}
+
+.sf-gallery__zoom:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .sf-gallery__img {
+        transition: scale 0.5s;
+    }
+
+    .sf-gallery__zoom:hover .sf-gallery__img {
+        scale: 1.05;
+    }
+}
+
+/* The photo viewer: a modal dialog over the whole screen, the photo whole and as large as fits. */
+html:has(.sf-viewer[open]) {
+    overflow: hidden;
+}
+
+.sf-viewer {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    padding: 4rem 1rem 1rem;
+    border: 0;
+    background: rgb(0 0 0 / 0.9);
+    color: #fff;
+    touch-action: pan-y pinch-zoom;
+}
+
+.sf-viewer[open] {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sf-viewer::backdrop {
+    background: transparent;
+}
+
+.sf-viewer__figure {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+}
+
+.sf-viewer__img {
+    min-height: 0;
+    max-width: 100%;
+    max-height: 80vh;
+    max-height: 80dvh;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 0.5rem;
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.5);
+}
+
+.sf-viewer__caption {
+    max-width: 48rem;
+    margin-top: 1rem;
+    font-weight: 600;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+
+.sf-viewer__count {
+    color: #cbd5e1;
+    font-weight: 400;
+    white-space: nowrap;
+}
+
+.sf-viewer__nav,
+.sf-viewer__close {
+    position: absolute;
+    display: grid;
+    place-items: center;
+    width: 3rem;
+    height: 3rem;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.sf-viewer__nav {
+    top: 50%;
+    translate: 0 -50%;
+    background: rgb(255 255 255 / 0.15);
+    color: #fff;
+}
+
+.sf-viewer__prev {
+    left: 0.75rem;
+}
+
+.sf-viewer__next {
+    right: 0.75rem;
+}
+
+.sf-viewer--one .sf-viewer__nav {
+    display: none;
+}
+
+.sf-viewer__close {
+    top: 1rem;
+    right: 1rem;
+    width: 2.75rem;
+    height: 2.75rem;
+    background: #fff;
+    color: #0f172a;
+    font-size: 1.5rem;
+    line-height: 1;
+}
+
+.sf-viewer__nav:focus-visible,
+.sf-viewer__close:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+
+@media (hover: hover) {
+    .sf-viewer__nav:hover {
+        background: rgb(255 255 255 / 0.3);
+    }
+}
+
+@media (min-width: 768px) {
+    .sf-viewer__prev {
+        left: 2rem;
+    }
+
+    .sf-viewer__next {
+        right: 2rem;
+    }
 }
 
 /* FAQ: native details; the chevron turns when open. */

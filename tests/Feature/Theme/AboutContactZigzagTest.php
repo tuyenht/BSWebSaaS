@@ -168,6 +168,24 @@ describe('about photo frame', function (): void {
             ->toMatch('~alt=""\s+width="600"\s+height="848"\s+loading="eager" fetchpriority="high"~');
     });
 
+    it('links a portrait photo to itself for the photo viewer, with the tap-to-enlarge line', function () use ($render): void {
+        app()->setLocale('vi');
+        $html = $render(['image_url' => 'https://f/cert.webp', 'heading' => 'Chứng nhận'], ['https://f/cert.webp' => [600, 848]]);
+
+        expect($html)->toMatch('~<a class="about__zoom" href="https://f/cert.webp" data-sf-zoom="single">\s*<img class="about__image"[^>]*>\s*<span class="about__zoom-hint">Nhấn để xem ảnh lớn</span></a>~');
+    });
+
+    it('never links a landscape photo, or a portrait one whose path is not a safe link', function (array $props, array $dims) use ($render): void {
+        $html = $render($props, $dims);
+
+        expect($html)->toContain('<img class="about__image')->not->toContain('data-sf-zoom')->not->toContain('about__zoom');
+    })->with([
+        'landscape' => [['image_url' => 'https://f/wide.webp'], ['https://f/wide.webp' => [1600, 900]]],
+        'size unknown' => [['image_url' => 'https://f/cert.webp'], []],
+        'script link' => [['image_url' => 'javascript:alert(1)'], ['javascript:alert(1)' => [600, 848]]],
+        'protocol-relative' => [['image_url' => '//evil.test/c.webp'], ['//evil.test/c.webp' => [600, 848]]],
+    ]);
+
     it('draws no frame for an image path that is not text', function () use ($render): void {
         expect($render(['heading' => 'H', 'image_url' => ['x']], []))->not->toContain('about__media')->not->toContain('<img');
     });

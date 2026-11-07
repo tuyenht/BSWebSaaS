@@ -3,8 +3,10 @@
 use App\Modules\Cms\Validation\ValidPageJson;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Theme\Components\SectionProps;
+use Illuminate\Foundation\Vite;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\HtmlString;
 use Tests\Fixtures\StorefrontCards;
 
 /*
@@ -218,6 +220,22 @@ describe('gallery', function (): void {
 
     it('prints no caption element when the caption is empty', function (): void {
         expect(staticBlock('gallery', ['images' => [['image' => 'https://files.test/a.webp', 'caption' => '  ']]]))->not->toContain('figcaption');
+    });
+
+    it('links every picture to itself for the photo viewer, named by its caption, its alt text or neither', function (): void {
+        $a = 'https://files.test/a.webp?w=1280';
+        $b = 'https://files.test/b.webp';
+        $c = 'https://files.test/c.webp';
+        $html = staticBlock('gallery', ['images' => [
+            ['image' => $a, 'caption' => 'Xưởng "A" <b>'],
+            ['image' => $b],
+            ['image' => $c],
+        ]], [], [$b => 'Máy phay']);
+
+        expect($html)->toContain('<a class="sf-gallery__zoom" href="https://files.test/a.webp?w=1280" data-sf-zoom="gallery" aria-label="Xem ảnh lớn: Xưởng &quot;A&quot; &lt;b&gt;">')
+            ->and($html)->toContain('<a class="sf-gallery__zoom" href="https://files.test/b.webp" data-sf-zoom="gallery" aria-label="Xem ảnh lớn: Máy phay">')
+            ->and($html)->toContain('<a class="sf-gallery__zoom" href="https://files.test/c.webp" data-sf-zoom="gallery" aria-label="Xem ảnh lớn">')
+            ->and(preg_match_all('#<a class="sf-gallery__zoom"[^>]*>\s*<img class="sf-gallery__img"[^>]*>\s*</a>#', $html))->toBe(3);
     });
 });
 
@@ -442,6 +460,25 @@ describe('on a page', function (): void {
         expect($html)->toContain('alt="Máy phay &lt;CNC&gt;"')
             ->and($html)->not->toContain('Bị bỏ')
             ->and(preg_match_all('#class="sf-gallery__img"[^>]* alt="" #', $html))->toBe(3);
+    });
+
+    it('loads the photo viewer and its translated frame only on a page with a gallery picture', function (): void {
+        $this->swap(Vite::class, new class extends Vite
+        {
+            public function __invoke($entrypoints, $buildDirectory = null): HtmlString
+            {
+                return new HtmlString(collect((array) $entrypoints)->map(fn (string $entry): string => '<script type="module" src="/'.$entry.'"></script>')->implode(''));
+            }
+        });
+        $with = staticPage('/anh', [['type' => 'gallery', 'props' => ['images' => [['image' => '@pic', 'caption' => 'Một']]]]]);
+        $without = staticPage('/chu', [['type' => 'richtext', 'props' => ['heading' => 'Một', 'paragraphs' => ['Bài nhắc tới <a data-sf-zoom="gallery"> bằng chữ.']]]]);
+        $empty = staticPage('/rong', [['type' => 'gallery', 'props' => ['images' => [['image' => null, 'caption' => 'Mất ảnh']]]]]);
+
+        expect($with)->toContain('<script type="module" src="/resources/js/sf-viewer.js"></script>')
+            ->and($with)->toContain('<template id="sf-viewer"><dialog class="sf-viewer" aria-label="Xem ảnh">')
+            ->and($with)->toContain('aria-label="Ảnh trước"')->and($with)->toContain('aria-label="Ảnh sau"')->and($with)->toContain('aria-label="Đóng"')
+            ->and($without)->not->toContain('sf-viewer')
+            ->and($empty)->not->toContain('sf-viewer');
     });
 
     it('resolves every picture of the page in the one media lookup', function (): void {

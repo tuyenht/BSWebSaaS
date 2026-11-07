@@ -2,7 +2,9 @@
     About section. The about__image is the above-fold LCP candidate on inner pages (gioi-thieu,
     home scroll-area): as the page's first image it gets loading="eager" and fetchpriority="high".
     Its frame (about__media) reserves the space of a cut-to-fit photo; a portrait photo shown whole
-    reserves it by its stored width/height (no CLS). alt is the section heading.
+    reserves it by its stored width/height (no CLS). alt is the section heading. A portrait photo
+    links to itself with a "tap to enlarge" line: the photo viewer (sf-viewer.js) opens it, or the
+    plain link does without script.
 
     The letter look: the first paragraph is the greeting (bold) and, from three paragraphs up, the last
     two are the signature (name, then title); the author types plain paragraphs only. Every saved text
@@ -29,6 +31,8 @@
     $sfSize = $sfSrc !== null ? (($dims ?? [])[$sfSrc] ?? null) : null;
     $sfSize = is_array($sfSize) && ($sfSize[0] ?? 0) > 0 && ($sfSize[1] ?? 0) > 0 ? $sfSize : null;
     $sfWhole = $sfSize !== null && $sfSize[1] > $sfSize[0];
+    // A portrait photo opens larger: a link to itself (a safe link only), with a tap-to-enlarge line.
+    $sfZoom = $sfWhole ? \App\Modules\Shared\Support\SafeLink::href($sfSrc) : null;
 @endphp
 <section class="about{{ $sfLetter ? ' about--letter' : '' }}{{ $sfWhole ? ' about--whole' : '' }}">
     <div class="about__body">
@@ -55,12 +59,12 @@
              the text scrolls); a portrait one is shown whole in a white frame. loading="eager" +
              fetchpriority="high" when it is the page's first image (LCP). --}}
         <div class="about__media{{ $sfWhole ? ' about__media--whole' : '' }}">
-            <img class="about__image{{ $sfWhole ? '' : $sfFocus }}"
+            @if ($sfZoom !== null)<a class="about__zoom" href="{{ $sfZoom }}" data-sf-zoom="single">@endif<img class="about__image{{ $sfWhole ? '' : $sfFocus }}"
                  src="{{ $sfSrc }}"
                  alt="{{ $sfHeading }}"
                  width="{{ $sfSize[0] ?? 640 }}"
                  height="{{ $sfSize[1] ?? 480 }}"
                  loading="{{ ! empty($props['_high']) ? 'eager' : 'lazy' }}"@if (! empty($props['_high'])) fetchpriority="high"@endif>
-        </div>
+@if ($sfZoom !== null)<span class="about__zoom-hint">{{ __('storefront.zoom_hint') }}</span></a>@endif        </div>
     @endif
 </section>
