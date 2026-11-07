@@ -405,7 +405,6 @@ final class Index extends Component
     {
         $this->page = 1;
         $this->cursor = '';
-        $this->selected = [];
     }
 
     /**
@@ -801,13 +800,11 @@ final class Index extends Component
         $this->guardWrite('restore');
         $done = 0;
         $undo = [];
-        $last = null;
-        if (! $this->atomic(function () use (&$done, &$undo, &$last): void {
+        if (! $this->atomic(function () use (&$done, &$undo): void {
             foreach ($this->pickRows($this->selected, true) as $product) {
                 $undo[$product->ulid] = $product->status;
                 $product->restore();
                 $product->forceFill(['status' => 'draft'])->save();
-                $last = $product;
                 $done++;
             }
         })) {
@@ -820,7 +817,7 @@ final class Index extends Component
         }
         $this->selected = [];
         $this->say(
-            $done === 1 && $last !== null ? __('catalog.toast_restored', ['name' => $this->loadedName($last)]) : __('catalog.bulk_restored', ['count' => $done]),
+            __('catalog.bulk_restored', ['count' => $done]),
             'success',
             ['kind' => 'bulk_retrash', 'items' => $undo],
         );
@@ -859,8 +856,7 @@ final class Index extends Component
     {
         $this->guardWrite('update');
         $wanted = $ulid !== null ? [$ulid] : $this->selected;
-        $found = Product::query()->whereIn('ulid', array_slice(array_values(array_unique(array_filter($wanted, 'is_string'))), 0, self::SELECT_MAX))
-            ->orderBy('id')->pluck('ulid')->all();
+        $found = $this->pickRows($wanted, false, 'none')->pluck('ulid')->all();
         if ($found === []) {
             $this->catOpen = false;
             $this->catTargets = [];
@@ -895,12 +891,8 @@ final class Index extends Component
         }
 
         $result = null;
-        $names = [];
-        if (! $this->atomic(function () use ($targets, $category, &$result, &$names): void {
+        if (! $this->atomic(function () use ($targets, $category, &$result): void {
             $rows = $this->pickRows($targets, false, 'all');
-            foreach ($rows as $product) {
-                $names[$product->ulid] = $this->loadedName($product);
-            }
             $result = app(ChangeProductMainCategory::class)->handle($rows, $category);
         })) {
             return;
@@ -982,9 +974,6 @@ final class Index extends Component
         $parts = [$done === 1 && $last !== null
             ? __('catalog.toast_status_'.$to, ['name' => $this->loadedName($last)])
             : __('catalog.bulk_status_'.$to, ['count' => $done])];
-        if ($skipped > 0) {
-            $parts[] = __('catalog.bulk_skipped', ['label' => $label, 'count' => $skipped, 'why' => $why]);
-        }
         if ($failed > 0) {
             $parts[] = __('catalog.bulk_failed_route', ['count' => $failed]);
         }
@@ -1009,7 +998,7 @@ final class Index extends Component
             switch ($kind) {
                 case 'bulk_status':
                     $this->guardWrite('update');
-                    foreach ($this->pickRows($ulids, false) as $product) {
+                    foreach ($this->pickRows($ulids, false, inView: false) as $product) {
                         $status = Cast::string($items[$product->ulid] ?? '');
                         abort_unless(in_array($status, ChangeProductStatus::STATUSES, true), 422);
                         try {
@@ -1025,14 +1014,14 @@ final class Index extends Component
                     break;
                 case 'bulk_untrash':
                     $this->guardWrite('restore');
-                    foreach ($this->pickRows($ulids, true) as $product) {
+                    foreach ($this->pickRows($ulids, true, inView: false) as $product) {
                         $product->restore();
                         $back++;
                     }
                     break;
                 case 'bulk_retrash':
                     $this->guardWrite('delete');
-                    foreach ($this->pickRows($ulids, false) as $product) {
+                    foreach ($this->pickRows($ulids, false, inView: false) as $product) {
                         $status = Cast::string($items[$product->ulid] ?? '');
                         abort_unless(in_array($status, ChangeProductStatus::STATUSES, true), 422);
                         $product->forceFill(['status' => $status])->save();
@@ -1070,9 +1059,10 @@ final class Index extends Component
         }
         $taxonomies = $wanted === [] ? collect() : Taxonomy::query()->where('vocabulary', 'product_cat')->whereIn('ulid', array_values(array_unique($wanted)))
             ->with('translations')->get()->keyBy('ulid');
-        $rows = $this->pickRows($ulids, false, 'all');
+        $rows = $this->pickRows($ulids, false, 'all', inView: false);
         $action = app(ChangeProductMainCategory::class);
         $routes = $action->routePaths(array_values($rows->modelKeys()));
+        $counts = app(CategoryItemCounts::class);
         foreach ($rows as $product) {
             $ids = [];
             foreach (Cast::strings($items[$product->ulid] ?? null) as $key) {
@@ -1083,7 +1073,7 @@ final class Index extends Component
             }
             $main = $ids === [] ? null : $taxonomies->firstWhere('id', $ids[0]);
             try {
-                DB::transaction(fn (): bool => $action->file($product, $ids, $main instanceof Taxonomy ? $main : null, $routes[$product->id] ?? []));
+                $counts->batch(fn (): bool => DB::transaction(fn (): bool => $action->file($product, $ids, $main instanceof Taxonomy ? $main : null, $routes[$product->id] ?? [])));
                 $back++;
             } catch (RouteConflictException) {
                 $blocked++;
@@ -1123,14 +1113,14 @@ final class Index extends Component
 
     /**
      * The products named by $ulids that are really there: this website's, live (or in the Trash when
-     * $trashed), at most one page of them, locked in id order so two overlapping runs queue instead of
+     * $trashed), at most one page of them (`$inView`: and in what the screen shows now), locked in id order so two overlapping runs queue instead of
      * deadlocking. What is not there is dropped without a word. `$with`: the main category (the totals and
      * the address read it), every category, or nothing.
      *
      * @param  list<string>  $ulids
      * @return EloquentCollection<int, Product>
      */
-    private function pickRows(array $ulids, bool $trashed, string $with = 'primary'): EloquentCollection
+    private function pickRows(array $ulids, bool $trashed, string $with = 'primary', bool $inView = true): EloquentCollection
     {
         $ulids = array_slice(array_values(array_unique(array_filter($ulids, 'is_string'))), 0, self::SELECT_MAX);
         if ($ulids === []) {
@@ -1148,8 +1138,19 @@ final class Index extends Component
             };
         }
 
-        return ($trashed ? Product::onlyTrashed() : Product::query())
-            ->whereIn('ulid', $ulids)->orderBy('id')->lockForUpdate()
+        if ($inView) {
+            // only what the screen shows now: the status group, the filters and the search all hold
+            if (($this->tab === 'trash') !== $trashed) {
+                return new EloquentCollection;
+            }
+            $tree = $this->categoryTree();
+            $this->catF = $tree->known($this->catF);
+            $base = $this->listQuery($this->listFilter($tree))->filtered();
+        } else {
+            $base = $trashed ? Product::onlyTrashed() : Product::query();
+        }
+
+        return $base->whereIn('products.ulid', $ulids)->orderBy('products.id')->lockForUpdate()
             ->with($relations)->get();
     }
 
@@ -1205,11 +1206,11 @@ final class Index extends Component
 
         try {
             // a savepoint inside the request's tenancy transaction: a failed read leaves it usable for the page
-            $read = DB::transaction(function () use ($locale, $locales, $selling, $cap, $sortOn): array {
+            $read = DB::transaction(function () use ($locales, $selling, $cap, $sortOn): array {
                 $tree = $this->categoryTree();
                 $this->catF = $tree->known($this->catF);
-                $filter = new ProductListFilter($tree->idsUnder($this->catF), $this->transF, $locales, $this->tagF, $this->stockF, $this->saleF !== []);
-                $list = new ProductListQuery(app(CurrentSite::class)->id(), $this->tab, $this->search, $locale, $cap, $filter);
+                $filter = $this->listFilter($tree);
+                $list = $this->listQuery($filter);
                 $tally = $list->tabCounts();
                 $counts = [];
                 foreach (self::TABS as $tab) {
@@ -1219,8 +1220,9 @@ final class Index extends Component
                 $facets = $this->facets($tree, ($tally['all'] ?? 0) <= $cap ? $list->valueCounts($locales, $selling) : null, count($locales) >= 2, $selling, $cap);
                 $page = $this->readPage($list, $sortOn, trim($this->search) === '' && ! $filter->any() ? $counts[$this->tab] : null, $cap);
                 $this->loadRows($page['rows']);
+                $picked = $this->pruneSelection($list);
 
-                return $page + ['tree' => $tree, 'counts' => $counts, 'facets' => $facets, 'chips' => $this->filterChips($tree, $facets), 'filterCount' => $this->filterCount($tree)];
+                return $page + ['picked' => $picked, 'tree' => $tree, 'counts' => $counts, 'facets' => $facets, 'chips' => $this->filterChips($tree, $facets), 'filterCount' => $this->filterCount($tree)];
             });
         } catch (QueryException $e) {
             report($e);
@@ -1232,7 +1234,8 @@ final class Index extends Component
 
         return view('admin::livewire.catalog.index', [
             'rows' => $read['rows'],
-            'selected' => $this->selected,
+            'selected' => array_keys($read['picked'] ?? []),
+            'selectedStatus' => $read['picked'] ?? [],
             'may' => $canManage ? ['update' => Gate::allows('update', Product::class), 'delete' => Gate::allows('delete', Product::class),
                 'restore' => Gate::allows('restore', Product::class), 'forceDelete' => Gate::allows('forceDelete', Product::class)] : [],
             'catDialog' => $dialog,
@@ -1342,6 +1345,42 @@ final class Index extends Component
     }
 
     /** The product categories, read once per request. */
+    private function listFilter(ProductCategoryTree $tree): ProductListFilter
+    {
+        return new ProductListFilter($tree->idsUnder($this->catF), $this->transF, app(SiteLocale::class)->enabled(), $this->tagF, $this->stockF, $this->saleF !== []);
+    }
+
+    private function listQuery(ProductListFilter $filter): ProductListQuery
+    {
+        $cap = max(1, Cast::int(config('admin.catalog_list_cap', ProductListQuery::CAP)));
+
+        return new ProductListQuery(app(CurrentSite::class)->id(), $this->tab, $this->search, app(SiteLocale::class)->default(), $cap, $filter);
+    }
+
+    /**
+     * The ticked products that are still in what the screen shows (status group, filters and search):
+     * the selection is cut down to them, and their status is returned (ulid => status, in ticked order).
+     * The bar's counts and every bulk action read this same set.
+     *
+     * @return array<string, string>
+     */
+    private function pruneSelection(ProductListQuery $list): array
+    {
+        if ($this->selected === []) {
+            return [];
+        }
+        $found = $list->filtered()->whereIn('products.ulid', $this->selected)->pluck('products.status', 'products.ulid')->all();
+        $kept = [];
+        foreach ($this->selected as $ulid) {
+            if (isset($found[$ulid])) {
+                $kept[$ulid] = Cast::string($found[$ulid]);
+            }
+        }
+        $this->selected = array_keys($kept);
+
+        return $kept;
+    }
+
     private function categoryTree(): ProductCategoryTree
     {
         return $this->tree ??= ProductCategoryTree::load(app(CurrentSite::class)->id(), app(SiteLocale::class)->default());

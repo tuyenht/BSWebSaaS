@@ -109,11 +109,12 @@
 
     // Selection (a member who manages products only): the ticked rows of THIS page, the header box, and the bar's actions.
     $pageUlids = $rows->pluck('ulid')->all();
-    $picked = $canManage ? array_values(array_intersect($pageUlids, $selected)) : [];
+    // the ticked rows that are still in what is shown (any page: a sort keeps them); the server cut the list down already
+    $picked = $canManage ? array_map('strval', $selected) : [];
     $pickedN = count($picked);
     $pickedRows = $rows->filter(fn ($r): bool => in_array($r->ulid, $picked, true));
-    $pageAllOn = $pageUlids !== [] && $pickedN === count($pageUlids);
-    $allState = $pageAllOn ? true : ($pickedN > 0 ? 'mixed' : false);
+    $pageAllOn = $pageUlids !== [] && count(array_intersect($pageUlids, $picked)) === count($pageUlids);
+    $allState = $pageAllOn ? true : (array_intersect($pageUlids, $picked) !== [] ? 'mixed' : false);
     $multiPage = $pager['last'] === null || $pager['last'] > 1;
     $selLabel = __($pageAllOn ? ($multiPage ? 'catalog.bulk_unsel_page' : 'catalog.bulk_unsel_all') : ($multiPage ? 'catalog.bulk_sel_page' : 'catalog.bulk_sel_all'));
     $selAria = __($multiPage ? 'catalog.bulk_sel_aria_page' : 'catalog.bulk_sel_aria_all', ['label' => $selLabel, 'n' => $num(count($pageUlids)), 'total' => $fmt($matchCount)]);
@@ -121,7 +122,7 @@
     $bulk = [];
     $bulkSkip = null;
     if ($pickedN > 0) {
-        $nLive = $pickedRows->where('status', 'published')->count();
+        $nLive = count(array_filter($selectedStatus, fn ($st): bool => $st === 'published'));
         $mk = function (string $labelKey, string $icon, string $call, int $ok, ?string $why = null, string $color = 'primary') use ($pickedN, $num): array {
             $name = __($labelKey);
             $title = $ok > 0
@@ -135,7 +136,7 @@
                 $bulk[] = ['title' => __('catalog.bulk_title_restore')] + $mk('catalog.bulk_restore', 'ri-arrow-go-back', 'bulkRestore', $pickedN);
             }
             if ($may['forceDelete'] ?? false) {
-                $purgeName = $pickedN === 1 ? ($pickedRows->first()?->translations->firstWhere('locale', $locale)?->name ?? __('catalog.untitled')) : null;
+                $purgeName = $pickedN === 1 && $pickedRows->isNotEmpty() ? ($pickedRows->first()?->translations->firstWhere('locale', $locale)?->name ?? __('catalog.untitled')) : null;
                 $purge = $mk('catalog.bulk_purge', 'ri-delete-bin', 'bulkForceDelete', $pickedN, null, 'danger');
                 $purge['title'] = __('catalog.bulk_title_purge');
                 $purge['confirm'] = [

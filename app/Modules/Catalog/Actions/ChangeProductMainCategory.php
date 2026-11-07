@@ -10,10 +10,12 @@ use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Cms\Support\CategoryItemCounts;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 
 /**
  * The one way the MAIN category of products changes from the products list (one row or a selection).
@@ -24,7 +26,8 @@ use Illuminate\Support\Facades\DB;
  * moves its public address with the category (the permalink presets that put the category in it):
  * the route is re-composed, and the old address gets a 301 to the new one. Each product runs in its
  * own savepoint, so one that cannot move (its new address belongs to a page or another category)
- * leaves nothing half-done and the rest carry on. The caller locks the products first (id order).
+ * leaves nothing half-done (the category totals included: each runs in its own count batch inside the
+ * savepoint, so a rolled-back product leaves no total changed) and the rest carry on. The caller locks the products first (id order).
  */
 final class ChangeProductMainCategory
 {
@@ -36,7 +39,11 @@ final class ChangeProductMainCategory
      */
     public function handle(EloquentCollection $products, Taxonomy $to): array
     {
+        if ($to->vocabulary !== 'product_cat') {
+            throw new InvalidArgumentException('The main category of a product is a product category.');
+        }
         $routes = $this->routePaths(array_values($products->modelKeys()));
+        $counts = app(CategoryItemCounts::class);
         $tally = ['moved' => 0, 'same' => 0, 'redirected' => 0, 'failed' => 0, 'before' => []];
 
         foreach ($products as $product) {
@@ -50,7 +57,7 @@ final class ChangeProductMainCategory
             $was = $this->categoryUlids($product, $now);   // before the change: it drops the loaded list
 
             try {
-                $redirected = DB::transaction(fn (): bool => $this->file($product, $list, $to, $routes[$product->id] ?? []));
+                $redirected = $counts->batch(fn (): bool => DB::transaction(fn (): bool => $this->file($product, $list, $to, $routes[$product->id] ?? [])));
             } catch (RouteConflictException) {
                 $tally['failed']++;
 

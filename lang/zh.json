@@ -3441,7 +3441,7 @@
     "catalog.cat_note_pub": "已发布的 :count 个商品: 旧地址自动转到新地址。",
     "catalog.cat_ok": "更改分类",
     "catalog.cat_ok_n": "更改分类 (:count)",
-    "catalog.cat_close": "关闭更改分类窗口",
+    "catalog.cat_close": "关闭",
     "catalog.menu_category": "更改分类…",
     "catalog.purge_title_one": "永久删除“:name”？",
     "catalog.purge_title_many": "永久删除 :count 个商品？",

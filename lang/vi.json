@@ -3441,7 +3441,7 @@
     "catalog.cat_note_pub": ":count sản phẩm đang đăng: địa chỉ cũ tự chuyển sang địa chỉ mới.",
     "catalog.cat_ok": "Đổi chuyên mục",
     "catalog.cat_ok_n": "Đổi chuyên mục (:count)",
-    "catalog.cat_close": "Đóng hộp Đổi chuyên mục",
+    "catalog.cat_close": "Đóng",
     "catalog.menu_category": "Đổi chuyên mục…",
     "catalog.purge_title_one": "Xóa vĩnh viễn “:name”?",
     "catalog.purge_title_many": "Xóa vĩnh viễn :count sản phẩm?",

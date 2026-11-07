@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Livewire\Catalog\Index;
+use App\Modules\Catalog\Actions\ChangeProductMainCategory;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
 use App\Modules\Cms\Data\TaxonomyData;
@@ -11,10 +12,14 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Rbac\Models\Role;
+use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteSetting;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
+use Spatie\Permission\PermissionRegistrar;
 
 /*
  * The products list's selection and bulk bar: ticking rows, the bar's actions (Đăng, Gỡ khỏi website,
@@ -83,7 +88,7 @@ it('ticks rows and the whole page, unticks them again, and drops the ticks when 
         $test->call('toggleSelect', [$a->ulid, $b->ulid, $c->ulid])->assertSet('selected', []);
 
         $test->call('toggleSelect', [$a->ulid])->set('search', 'khuôn')->assertSet('selected', []);
-        $test->set('search', '')->call('toggleSelect', [$a->ulid])->call('setTab', 'draft')->assertSet('selected', []);
+        $test->set('search', '')->call('toggleSelect', [$a->ulid])->call('setTab', 'published')->assertSet('selected', []);
         $test->call('toggleSelect', [$a->ulid])->call('gotoPage', 1)->assertSet('selected', []);
         $test->call('toggleSelect', [$a->ulid])->call('clearSelection')->assertSet('selected', []);
     });
@@ -93,8 +98,8 @@ it('keeps at most one page of ticks', function (): void {
     $manager = bulkManager();
 
     app(Tenancy::class)->enter(1, function () use ($manager): void {
-        $fake = array_map(fn (int $i): string => sprintf('01J%023d', $i), range(1, 60));
-        $test = Livewire::actingAs($manager)->test(Index::class)->call('toggleSelect', $fake);
+        $ulids = array_map(fn (int $i): string => bulkProduct("Sản phẩm {$i}", "sp-{$i}")->ulid, range(1, 52));
+        $test = Livewire::actingAs($manager)->test(Index::class)->call('toggleSelect', $ulids);
 
         expect($test->get('selected'))->toHaveCount(50);
     });
@@ -160,9 +165,8 @@ it('publishes the products that are not live, counts the ones it leaves, and und
 
         $test = Livewire::actingAs($manager)->test(Index::class)->call('toggleSelect', [$a->ulid, $b->ulid, $c->ulid])->call('bulkPublish');
 
-        $label = __('catalog.bulk_publish');
-        expect($test->get('toastMsg'))->toBe(__('catalog.bulk_status_published', ['count' => 2]).' '
-            .__('catalog.bulk_skipped', ['label' => $label, 'count' => 1, 'why' => __('catalog.bulk_why_published', ['count' => 1])]))
+        // the skipped one is told in the bar, not in the message
+        expect($test->get('toastMsg'))->toBe(__('catalog.bulk_status_published', ['count' => 2]))
             ->and($a->fresh()->status)->toBe('published')->and($a->fresh()->published_at)->not->toBeNull()
             ->and($b->fresh()->status)->toBe('published')
             ->and(SiteRoute::query()->whereIn('product_id', [$a->id, $b->id])->pluck('path')->sort()->values()->all())->toBe(['/do-ga-han', '/khuon-duc'])
@@ -184,8 +188,7 @@ it('takes the live products off the website, leaves the others alone, and says s
 
         $test = Livewire::actingAs($manager)->test(Index::class)->call('toggleSelect', [$a->ulid, $b->ulid, $c->ulid])->call('bulkArchive');
 
-        expect($test->get('toastMsg'))->toBe(__('catalog.bulk_status_archived', ['count' => 2]).' '
-            .__('catalog.bulk_skipped', ['label' => __('catalog.bulk_archive'), 'count' => 1, 'why' => __('catalog.bulk_why_unpublished', ['count' => 1])]))
+        expect($test->get('toastMsg'))->toBe(__('catalog.bulk_status_archived', ['count' => 2]))
             ->and($a->fresh()->status)->toBe('archived')->and($b->fresh()->status)->toBe('draft')->and($c->fresh()->status)->toBe('archived');
 
         $test->call('undoLast');
@@ -394,18 +397,84 @@ it('refuses every bulk write to a viewer, a member of another website and a sign
 
 it('asks for the undo again: a viewer cannot replay one', function (): void {
     $manager = bulkManager();
-    $viewer = User::factory()->create();
 
-    app(Tenancy::class)->enter(1, function () use ($manager, $viewer): void {
-        grantRole($viewer, 'cat-viewer', ['catalog.view']);
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
         $a = bulkProduct('Đồ gá hàn', 'do-ga-han');
         $test = Livewire::actingAs($manager)->test(Index::class)->call('toggleSelect', [$a->ulid])->call('bulkTrash');
-        $undo = $test->get('undoOp');
+        expect($test->get('undoOp')['kind'])->toBe('bulk_untrash')->and(Product::onlyTrashed()->count())->toBe(1);
 
-        $other = Livewire::actingAs($viewer->fresh())->test(Index::class);
-        expect($undo['kind'])->toBe('bulk_untrash');
-        $other->call('undoLast')->assertSuccessful();
+        // the same open screen, the member's right taken away meanwhile
+        Role::findByName('cat-manager', PermissionRegistry::GUARD)->syncPermissions(['catalog.view']);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $test->call('undoLast')->assertForbidden();
         expect(Product::onlyTrashed()->count())->toBe(1);
+    });
+});
+
+it('acts only on ticked rows that are still in the group, filters and search on screen', function (): void {
+    $manager = bulkManager();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        $a = bulkProduct('Đồ gá hàn', 'do-ga-han');
+        $b = bulkProduct('Khuôn đúc', 'khuon-duc');
+        $c = bulkProduct('Mũi khoan thép', 'mui-khoan-thep');
+
+        // on the Draft group: tick A and B, publish them (they leave the group), tick C, move to the Trash: only C goes
+        $test = Livewire::actingAs($manager)->test(Index::class)->call('setTab', 'draft')->call('toggleSelect', [$a->ulid, $b->ulid])->call('bulkPublish');
+        expect($test->get('selected'))->toBe([]);
+        $test->call('toggleSelect', [$c->ulid])->call('bulkTrash');
+        expect($test->get('toastMsg'))->toBe(__('catalog.toast_trashed', ['name' => 'Mũi khoan thép']))
+            ->and($a->fresh()->status)->toBe('published')->and($b->fresh()->status)->toBe('published')
+            ->and(Product::query()->count())->toBe(2);
+
+        // a row that leaves the group between the tick and the click (someone else published it) is left alone
+        $d = bulkProduct('Bàn kẹp', 'ban-kep');
+        $e = bulkProduct('Dưỡng đo', 'duong-do');
+        $race = Livewire::actingAs($manager)->test(Index::class)->call('setTab', 'draft')->call('toggleSelect', [$d->ulid, $e->ulid]);
+        $d->forceFill(['status' => 'archived'])->save();
+        $race->call('bulkTrash');
+        expect($race->get('toastMsg'))->toBe(__('catalog.toast_trashed', ['name' => 'Dưỡng đo']))
+            ->and(Product::query()->where('ulid', $d->ulid)->exists())->toBeTrue();
+
+        // a search that no longer matches takes the tick away; a sort keeps it
+        $f = bulkProduct('Cữ chặn', 'cu-chan');
+        $kept = Livewire::actingAs($manager)->test(Index::class)->call('toggleSelect', [$f->ulid])->call('setSort', 'name');
+        expect($kept->get('selected'))->toBe([$f->ulid]);
+        $kept->set('search', 'khuôn')->assertSet('selected', []);
+    });
+});
+
+it('leaves the category totals alone when a product cannot move to an address that is taken', function (): void {
+    $manager = bulkManager();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        SiteSetting::query()->updateOrCreate(['group_name' => 'permalinks', 'key' => 'products'], ['value' => ['pattern' => 'category']]);
+        $from = bulkCategory('Đồ gá');
+        $to = bulkCategory('Khuôn mẫu');
+        $toSlug = $to->translations()->where('locale', 'vi')->value('slug');
+        $clash = bulkProduct('Đồ gá hàn', 'do-ga-han', 'published', $from);
+        app(RouteSync::class)->syncProduct($clash->id, $from, 'vi', 'do-ga-han');
+        $page = Entry::query()->create(['type' => 'page', 'status' => 'published', 'author_id' => $manager->id]);
+        $page->translations()->create(['locale' => 'vi', 'title' => 'Đồ gá', 'slug' => 'do-ga-han', 'status' => 'published', 'body' => ['blocks' => []]]);
+        SiteRoute::query()->create(['locale' => 'vi', 'path' => "/{$toSlug}/do-ga-han", 'entry_id' => $page->id]);
+        expect(bulkItems($from))->toBe(1)->and(bulkItems($to))->toBe(0);
+
+        $test = Livewire::actingAs($manager)->test(Index::class)->call('toggleSelect', [$clash->ulid])->call('openCategory')->call('changeCategory', $to->ulid);
+
+        expect($test->get('toastMsg'))->toBe(__('catalog.bulk_cat_failed', ['count' => 1]))
+            ->and($clash->fresh()->primaryCategory()?->id)->toBe($from->id)
+            ->and(bulkItems($from))->toBe(1)->and(bulkItems($to))->toBe(0);
+    });
+});
+
+it('refuses a category that is not a product category', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $post = app(CreateTaxonomy::class)->handle('post_cat', null, new TaxonomyData(names: ['vi' => 'Bài viết mới']));
+        $a = bulkProduct('Đồ gá hàn', 'do-ga-han');
+
+        expect(fn () => app(ChangeProductMainCategory::class)->handle(new EloquentCollection([$a->load(['taxonomies', 'translations'])]), $post))
+            ->toThrow(InvalidArgumentException::class);
     });
 });
 
@@ -418,11 +487,17 @@ it('keeps its query count flat for any number of ticked rows', function (): void
         $make = function (int $n, string $status) use ($category): array {
             return array_map(fn (int $i): string => bulkProduct("Sản phẩm {$status} {$i} đẹp", "sp-{$status}-{$i}", $status, $category)->ulid, range(1, $n));
         };
-        $run = function (string $method, array $ulids, array $args = [], string $tab = 'all') use ($manager): int {
+        // ticks the rows, makes the steps in $before, then counts only the one call that follows
+        $measure = function (string $method, array $ulids, array $args = [], string $tab = 'all', array $before = []) use ($manager): int {
             $test = Livewire::actingAs($manager)->test(Index::class)->set('tab', $tab)->call('toggleSelect', $ulids);
+            foreach ($before as [$step, $stepArgs]) {
+                $test->call($step, ...$stepArgs);
+            }
 
             return countQueries(fn () => $test->call($method, ...$args));
         };
+        $run = fn (string $method, array $ulids, array $args = [], string $tab = 'all'): int => $measure($method, $ulids, $args, $tab);
+        $dialog = [['openCategory', []]];
 
         $trash2 = $run('bulkTrash', $make(2, 'draft'));
         $trash6 = $run('bulkTrash', $make(6, 'draft'));
@@ -430,7 +505,10 @@ it('keeps its query count flat for any number of ticked rows', function (): void
         $archive6 = $run('bulkArchive', $make(6, 'published'));
         $publish2 = $run('bulkPublish', $make(2, 'archived'));
         $publish6 = $run('bulkPublish', $make(6, 'archived'));
-        $move2 = $run('changeCategory', $make(2, 'draft'), [$other->ulid]);
+        $open2 = $run('openCategory', $make(2, 'draft'));
+        $open6 = $run('openCategory', $make(6, 'draft'));
+        $move2 = $measure('changeCategory', $make(2, 'draft'), [$other->ulid], 'all', $dialog);
+        $move6 = $measure('changeCategory', $make(6, 'draft'), [$other->ulid], 'all', $dialog);
 
         $drafts = $make(8, 'draft');
         Product::query()->whereIn('ulid', $drafts)->get()->each->delete();
@@ -442,13 +520,31 @@ it('keeps its query count flat for any number of ticked rows', function (): void
         $purge2 = $run('bulkForceDelete', array_slice($drafts, 0, 2), [], 'trash');
         $purge6 = $run('bulkForceDelete', array_slice($drafts, 2, 6), [], 'trash');
 
-        // fixed set-up statements plus a constant few per row (its lock and its write, and for a published row its route sync):
-        // never a lookup of a category, a name or a route per row
+        // the undo of a status change, of a move to the Trash and of a category change
+        $undoStatus2 = $measure('undoLast', $make(2, 'published'), [], 'all', [['bulkArchive', []]]);
+        $undoStatus6 = $measure('undoLast', $make(6, 'published'), [], 'all', [['bulkArchive', []]]);
+        $undoTrash2 = $measure('undoLast', $make(2, 'draft'), [], 'all', [['bulkTrash', []]]);
+        $undoTrash6 = $measure('undoLast', $make(6, 'draft'), [], 'all', [['bulkTrash', []]]);
+        $undoMove2 = $measure('undoLast', $make(2, 'draft'), [], 'all', [...$dialog, ['changeCategory', [$other->ulid]]]);
+        $undoMove6 = $measure('undoLast', $make(6, 'draft'), [], 'all', [...$dialog, ['changeCategory', [$other->ulid]]]);
+
+        // published products move their address with the category: the route is composed and the old one redirected
+        SiteSetting::query()->updateOrCreate(['group_name' => 'permalinks', 'key' => 'products'], ['value' => ['pattern' => 'category']]);
+        $moveLive2 = $measure('changeCategory', $make(2, 'published'), [$other->ulid], 'all', $dialog);
+        $moveLive6 = $measure('changeCategory', $make(6, 'published'), [$other->ulid], 'all', $dialog);
+
+        // fixed set-up statements plus a constant few per row (its lock and its write, and for a moved or published row its
+        // route sync): never a lookup of a category, a name or a route per row; opening the dialog reads no row per ticked row
         expect([$trash2, $trash6])->toBe([15, 23])
             ->and([$restore2, $restore6])->toBe([19, 27])
             ->and([$purge2, $purge6])->toBe([16, 24])
-            ->and([$archive2, $archive6])->toBe([16, 20])
-            ->and([$publish2, $publish6])->toBe([26, 46])
-            ->and($move2)->toBe(12);
+            ->and([$archive2, $archive6])->toBe([17, 21])
+            ->and([$publish2, $publish6])->toBe([25, 41])
+            ->and([$open2, $open6])->toBe([16, 16])
+            ->and([$move2, $move6])->toBe([31, 55])
+            ->and([$moveLive2, $moveLive6])->toBe([31, 59])
+            ->and([$undoStatus2, $undoStatus6])->toBe([23, 35])
+            ->and([$undoTrash2, $undoTrash6])->toBe([19, 27])
+            ->and([$undoMove2, $undoMove6])->toBe([29, 55]);
     });
 });

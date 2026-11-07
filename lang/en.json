@@ -3441,7 +3441,7 @@
     "catalog.cat_note_pub": ":count products are published: the old address redirects to the new one.",
     "catalog.cat_ok": "Change category",
     "catalog.cat_ok_n": "Change category (:count)",
-    "catalog.cat_close": "Close the Change category box",
+    "catalog.cat_close": "Close",
     "catalog.menu_category": "Change category…",
     "catalog.purge_title_one": "Permanently delete “:name”?",
     "catalog.purge_title_many": "Permanently delete :count products?",

@@ -3441,7 +3441,7 @@
     "catalog.cat_note_pub": "公開中の :count 件: 古いアドレスは新しいアドレスへ自動で転送されます。",
     "catalog.cat_ok": "カテゴリを変更",
     "catalog.cat_ok_n": "カテゴリを変更 (:count)",
-    "catalog.cat_close": "カテゴリ変更のウィンドウを閉じる",
+    "catalog.cat_close": "閉じる",
     "catalog.menu_category": "カテゴリを変更…",
     "catalog.purge_title_one": "「:name」を完全に削除しますか？",
     "catalog.purge_title_many": ":count 件の商品を完全に削除しますか？",
