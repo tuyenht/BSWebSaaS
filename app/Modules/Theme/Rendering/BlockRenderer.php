@@ -263,7 +263,7 @@ final readonly class BlockRenderer
                 // The page's one high-priority image: only the first block may claim it, and a first block
                 // with a background photo has already claimed it through the sf-section wrapper.
                 $resolved['_high'] = $first && ($wrapper === null || $wrapper['image'] === null);
-                $section = $this->views->make($view, $component->data($resolved) + ['srcsets' => $srcsets, 'alts' => $alts, 'sfSlot' => $isOwn ? [] : $context] + $band)->render();
+                $section = $this->views->make($view, $component->data($resolved) + ['srcsets' => $srcsets, 'alts' => $alts, 'dims' => $dims, 'sfSlot' => $isOwn ? [] : $context] + $band)->render();
 
                 $html .= $wrapper === null ? $section : $this->views->make('theme::partials.sf-section', [
                     'wrapper' => $wrapper,
