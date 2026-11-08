@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Livewire\Catalog\Editor;
+use App\Modules\Catalog\Actions\ChangeProductStatus;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductImage;
 use App\Modules\Catalog\Models\ProductTranslation;
@@ -116,6 +117,26 @@ it('leaves the mark for a new address and writes nothing for a save that changes
 
         $translation->refresh()->fill(['name' => $translation->name, 'description' => $translation->description]);
         expect(countQueries(fn () => $translation->save()))->toBe(0);
+    });
+});
+
+it('leaves the mark through publish, archive, unpublish, republish, the trash and a restore', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        [$product, $translation] = markProduct('do-ga-trang-thai');
+        pinProductMarks();
+
+        $status = app(ChangeProductStatus::class);
+        $status->handle($product->fresh(), 'published');
+        $status->handle($product->fresh(), 'archived');
+        $status->handle($product->fresh(), 'draft');
+        $status->handle($product->fresh(), 'published');
+        $product->fresh()->delete();
+        Product::withTrashed()->findOrFail($product->id)->restore();
+
+        $stored = Product::query()->findOrFail($product->id);
+        expect($stored->status)->toBe('published')
+            ->and($stored->published_at)->not->toBeNull()
+            ->and(productMarkOf($translation->id))->toBe(PRODUCT_MARK_OLD_ISO);
     });
 });
 

@@ -14,10 +14,13 @@ use App\Modules\Shared\Support\Cast;
  * mark that follows it: the pictures are part of the product page's main content (its photos, the
  * Product `image`), so the page's content changes when a picture it shows is added, removed or moved.
  *
- * Every writer of a gallery goes through sync() (the product editor, the content-pack applier, the
- * An Vinh promotion). A picture whose file is in the media trash is not shown (the Media scope leaves
- * it out), so it does not count: keeping or dropping one changes nothing on the page. The file going
- * into or out of the trash does (mediaChanged(), called by Catalog's listener on Media's events).
+ * Every writer that changes the gallery of an existing product goes through sync() (the product
+ * editor, the content-pack applier, the An Vinh promotion). The one other writer, the measurement-site
+ * seeder, gives a product it has just created its first picture with images()->create(): that
+ * product's languages are new rows, marked when they were created. A picture whose file is in the
+ * media trash is not shown (the Media scope leaves it out), so it does not count: keeping or dropping
+ * one changes nothing on the page. The file going into or out of the trash does (mediaChanged(),
+ * called by Catalog's listener on Media's events).
  */
 final class ProductGallery
 {

@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\RecordEntryRevision;
 use App\Modules\Cms\Actions\RestoreEntryRevision;
@@ -18,6 +19,7 @@ use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Livewire\Livewire;
 
 /*
  * The hidden content mark of a post or page language (entry_translations.content_changed_at): it moves
@@ -390,3 +392,42 @@ it('marks only rows of the current site', function (): void {
     });
     app(Tenancy::class)->enter(2, fn () => expect(markOf($otherText->id))->toBe(CONTENT_MARK_OLD_ISO));
 });
+
+it('leaves the mark when the editor saves only a new address over a body it holds in another key order', function (array $stored, bool $rebuilt): void {
+    $actor = markPublisher();
+
+    app(Tenancy::class)->enter(1, function () use ($actor, $stored, $rebuilt): void {
+        [$page, $translation] = markPost('trang-thu-tu-khoa', type: 'page');
+        // Stored past the model: PostgreSQL keeps the object's keys in its own order (limit before heading).
+        DB::table('entry_translations')->where('id', $translation->id)->update(['body' => json_encode(['blocks' => [['type' => 'entry_grid', 'props' => $stored]]])]);
+        pinMarks();
+
+        // The editor holds the block in the order it built it (a block added and saved in the same session).
+        $props = ['heading' => 'Tin mới về phố', 'limit' => 6, 'variant' => 'list'];
+        $editor = Livewire::actingAs($actor)->test(Editor::class, ['ulid' => $page->ulid]);
+        if ($rebuilt) {
+            $editor->set('blocks', [['type' => 'entry_grid', 'props' => $props]]);
+        }
+        $editor->set('slug', 'trang-dia-chi-moi')->call('save')->assertHasNoErrors();
+
+        $row = DB::table('entry_translations')->where('id', $translation->id)->first(['slug', 'body']);
+        expect(markOf($translation->id))->toBe(CONTENT_MARK_OLD_ISO)
+            ->and($row?->slug)->toBe('trang-dia-chi-moi')
+            ->and(json_decode((string) $row?->body, true)['blocks'][0]['props'] ?? null)->toMatchArray($stored)
+            ->and(json_decode((string) $row?->body, true)['blocks'][0]['props']['limit'] ?? null)->toBe($stored['limit']);   // the body was not written
+
+        // Saved again with nothing changed: nothing is written, not even the row's updated_at.
+        pinMarks();
+        Livewire::actingAs($actor)->test(Editor::class, ['ulid' => $page->ulid])->call('save')->assertHasNoErrors();
+        expect(markOf($translation->id))->toBe(CONTENT_MARK_OLD_ISO)
+            ->and((string) DB::table('entry_translations')->where('id', $translation->id)->value('updated_at'))->toStartWith('2026-01-02');
+
+        // A real change to the block still moves it.
+        Livewire::actingAs($actor)->test(Editor::class, ['ulid' => $page->ulid])
+            ->set('blocks.0.props.heading', 'Tin khác về phố')->call('save')->assertHasNoErrors();
+        expect(markOf($translation->id))->not->toBe(CONTENT_MARK_OLD_ISO);
+    });
+})->with([
+    'the same values' => [['heading' => 'Tin mới về phố', 'limit' => 6, 'variant' => 'list'], true],
+    'a number stored as text' => [['heading' => 'Tin mới về phố', 'limit' => '6', 'variant' => 'list'], false],
+]);

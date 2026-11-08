@@ -344,8 +344,9 @@ final readonly class PromoteAnVinhProductPostsToCatalog
 
         $media = $this->ensureMedia->handle($key);
 
-        // The cover goes first; pictures the product already had keep their order after it.
-        $others = array_map(static fn (mixed $id): int => Cast::int($id), $product->images()->where('media_id', '!=', $media->id)->pluck('media_id')->all());
+        // The cover goes first; pictures the product already had keep their order after it (position,
+        // then id: the order sync() compares in, so an unchanged gallery writes nothing).
+        $others = array_map(static fn (mixed $id): int => Cast::int($id), $product->images()->where('media_id', '!=', $media->id)->orderBy('id')->pluck('media_id')->all());
         app(ProductGallery::class)->sync($product, [$media->id, ...array_values($others)]);
     }
 
