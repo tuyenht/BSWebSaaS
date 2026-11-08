@@ -282,7 +282,7 @@
             @if ($tab === 'trash')
                 <div class="mb-3 flex items-start gap-2.5 rounded-md border border-border bg-surface-muted px-3 py-2 text-caption text-text min-[600px]:mx-4">
                     <x-bs-admin::icon name="ri-time" class="mt-px size-[min(1.5rem,calc(1rem+var(--user-text-boost)))] shrink-0 text-info-text" />
-                    <span class="min-w-0 flex-1">{{ __('catalog.trash_auto_note') }}</span>
+                    <span class="min-w-0 flex-1">{{ __('catalog.trash_auto_note', ['days' => \App\Modules\Catalog\Support\ProductTrash::DAYS]) }}</span>
                 </div>
             @endif
 

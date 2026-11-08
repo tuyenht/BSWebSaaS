@@ -1176,7 +1176,7 @@ final class Index extends Component
     {
         $this->guardWrite('forceDelete');
         // FK cascade removes translations/images; frees sku + slug
-        app(ForceDeleteProducts::class)->handle([Product::withTrashed()->where('ulid', $ulid)->firstOrFail()]);
+        app(ForceDeleteProducts::class)->handle([Product::onlyTrashed()->where('ulid', $ulid)->lockForUpdate()->firstOrFail()]);
         $this->toastMsg = '';
         $this->undoOp = null;
     }
