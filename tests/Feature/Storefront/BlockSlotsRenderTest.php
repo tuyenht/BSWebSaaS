@@ -30,8 +30,8 @@ use Tests\Fixtures\StorefrontCards;
 
 beforeEach(function (): void {
     // The post page prints its "Cập nhật" date (the row's updated_at), so the golden page holds the
-    // day it was captured: pin the clock to that day of the current year (the year is masked).
-    $this->travelTo(now()->setDate((int) date('Y'), 11, 7)->setTime(5, 0));
+    // day it was captured: pin the clock to that moment. The content's fixed dates share its year.
+    $this->travelTo(CarbonImmutable::parse('2026-11-07 05:00', 'UTC'));
     StorefrontCards::reset();
     StorefrontCards::pinMediaConfig();
 });
@@ -64,10 +64,10 @@ function slotsFresh(): void
     }
 }
 
-/** A page with the current year masked (the footer prints it). */
+/** A page with the year masked: the footer prints the machine clock's year, the content dates the test clock's. */
 function slotsHtml(string $path, string $host = 'mau.platform.test'): string
 {
-    return str_replace(date('Y'), '{year}', test()->get('http://'.$host.$path)->assertOk()->getContent());
+    return str_replace(array_unique([date('Y'), now()->format('Y')]), '{year}', test()->get('http://'.$host.$path)->assertOk()->getContent());
 }
 
 it('draws a post and a product with no slot set byte for byte as before', function (string $path, string $golden): void {
