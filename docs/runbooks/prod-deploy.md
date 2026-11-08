@@ -88,6 +88,7 @@ From this deploy on, the admin products list searches the word table `product_se
    rm -r /tmp/mig-2054
    ```
    - The old code never reads the table, and no existing column changes, so this step needs no PgBouncer restart.
+   - Adding the foreign keys briefly locks `sites` and `products` against writes; the migration gives up after 5 s (`lock_timeout`) if a long transaction holds them. Run it again.
    - Laravel records the file under its name, so Deploy step 2 after the merge finds it done.
    - From here a product saved by a worker on the new code (after the merge below) gets its words; one saved by a worker on the old code does not (step 4 heals it).
 2. Switch the code: Deploy step 1 (merge, `composer install`), step 2 (any other migration; 2054 is done), step 3 (front-end build). The image stays `bsweb/app:prod` and is not rebuilt.

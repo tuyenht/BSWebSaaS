@@ -24,7 +24,9 @@ use Illuminate\Support\Facades\DB;
  *  - word: `text COLLATE "C"`, never empty, at most 64 characters (ProductSearchWords::MAX_LENGTH).
  *  - RLS + FORCE, fail closed, like every website table.
  *
- * A new, empty table: no lock on any existing table, no column change (PgBouncer needs no restart).
+ * A new, empty table, no column change (PgBouncer needs no restart). Adding the two foreign keys takes a brief
+ * SHARE ROW EXCLUSIVE lock on sites and products; lock_timeout keeps it from queueing every product write
+ * behind a long transaction (the migration fails after 5s and is run again).
  * Fill it with `php artisan catalog:search-words` after the code switch, before the Octane reload (runbook). down() drops it; no source
  * data is lost (the words are made from the names and SKUs).
  */
@@ -32,6 +34,7 @@ return new class extends Migration
 {
     public function up(): void
     {
+        DB::statement("SET LOCAL lock_timeout = '5s'");
         DB::statement(<<<'SQL'
             CREATE TABLE product_search_words (
                 site_id    bigint NOT NULL REFERENCES sites (id) ON DELETE CASCADE,
