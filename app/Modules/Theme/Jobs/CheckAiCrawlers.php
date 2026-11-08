@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Theme\Jobs;
 
-use App\Modules\Tenancy\Jobs\WithinSite;
 use App\Modules\Theme\Theming\AiCrawlerCheck;
 use DateTimeInterface;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -14,9 +13,11 @@ use Throwable;
 
 /**
  * Runs the AI crawler check for one site off the request (the screen never waits), on the default
- * queue, in the site's tenant context (WithinSite). The platform-wide limit (LIMITER, registered by
- * ThemeServiceProvider) comes first: a check over it goes back to the queue before any tenant
- * transaction opens. One real failure ends it; the owner can check again from the screen.
+ * queue. The platform-wide limit (LIMITER, registered by ThemeServiceProvider) comes first: a check
+ * over it goes back to the queue. The site is read in a short tenant step of its own
+ * (AiCrawlerCheck::run enters and commits it), never around the outbound requests — so this job
+ * takes no WithinSite middleware, which would hold one transaction across them. One real failure
+ * ends it; the owner can check again from the screen.
  */
 final class CheckAiCrawlers implements ShouldQueue
 {
@@ -47,7 +48,7 @@ final class CheckAiCrawlers implements ShouldQueue
     /** @return list<object> */
     public function middleware(): array
     {
-        return [new RateLimited(self::LIMITER), new WithinSite($this->siteId)];
+        return [new RateLimited(self::LIMITER)];
     }
 
     public function handle(AiCrawlerCheck $check): void

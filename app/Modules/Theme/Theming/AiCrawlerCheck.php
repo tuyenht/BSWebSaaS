@@ -8,6 +8,7 @@ use App\Modules\Shared\Http\SafeHttp;
 use App\Modules\Shared\Http\SafeHttpException;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteResolver;
+use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Http\Client\Response;
 use Throwable;
@@ -35,8 +36,9 @@ use Throwable;
  *   6. the address cannot be reached (unchecked); 7. a redirect to another host (unchecked).
  *
  * The result is kept 24 hours in the shared cache under the site id AND the host checked, so a new
- * primary address starts afresh and two sites never share one. Run by CheckAiCrawlers, in the
- * site's tenant context.
+ * primary address starts afresh and two sites never share one; saving the search settings drops it.
+ * Run by CheckAiCrawlers: the site is read in a short tenant step, the requests run with no
+ * transaction open.
  */
 final readonly class AiCrawlerCheck
 {
@@ -61,6 +63,7 @@ final readonly class AiCrawlerCheck
     public function __construct(
         private SiteResolver $sites,
         private SiteSeo $seo,
+        private Tenancy $tenancy,
         private SafeHttp $http,
         private Cache $cache,
     ) {}
@@ -131,24 +134,24 @@ final readonly class AiCrawlerCheck
     }
 
     /**
-     * Check the site (the current tenant context must be this site) and keep the result.
+     * Check the site and keep the result, in three steps so no database transaction (nor a pooled
+     * server connection) is held while the site is called: a short tenant step reads what the check
+     * needs (prepare) and commits; the requests run outside any transaction; the result goes to the
+     * cache. Call it outside a tenant context.
      *
      * @return array{host: string, checked_at: int, level: string, findings: list<array{level: string, code: string, params: array<string, mixed>}>}|null null while the site has no address
      */
     public function run(int $siteId): ?array
     {
         try {
-            $host = $this->host($siteId);
-            if ($host === null) {
+            $input = $this->tenancy->enter($siteId, fn (): ?AiCheckInput => $this->prepare($siteId));
+            if ($input === null) {
                 return null;
             }
 
-            $findings = $this->ownRobots();
-            $resolved = $this->sites->resolve($host);
-            $platformNoindex = $resolved !== null && $resolved->isPlatformSubdomain && Cast::bool(config('tenancy.noindex_platform_subdomains'));
-
+            $findings = $input->findings;
             try {
-                $this->probe($host, $platformNoindex, $findings);
+                $this->probe($input, $findings);
             } catch (SafeHttpException $e) {
                 $findings[] = self::finding('unchecked', match ($e->reason) {
                     'host_unresolvable', 'fetch_unreachable' => 'not_pointing',
@@ -159,12 +162,46 @@ final readonly class AiCrawlerCheck
                 }, $e->host !== null ? ['host' => $e->host] : []);
             }
 
-            $result = ['host' => $host, 'checked_at' => now()->getTimestamp(), 'level' => self::overall($findings), 'findings' => $findings];
-            $this->cache->put(self::key($siteId, $host), $result, self::TTL);
+            $result = ['host' => $input->host, 'checked_at' => now()->getTimestamp(), 'level' => self::overall($findings), 'findings' => $findings];
+            $this->cache->put(self::key($siteId, $input->host), $result, self::TTL);
 
             return $result;
         } finally {
             $this->clearRunning($siteId);
+        }
+    }
+
+    /**
+     * The tenant step: what the check needs from the site (the current context must be this site).
+     * Null while the site has no address.
+     */
+    public function prepare(int $siteId): ?AiCheckInput
+    {
+        $host = $this->host($siteId);
+        if ($host === null) {
+            return null;
+        }
+        $settings = $this->seo->settings();
+        $resolved = $this->sites->resolve($host);
+
+        return new AiCheckInput(
+            siteId: $siteId,
+            host: $host,
+            expectedRobots: $this->seo->robotsTxt('https://'.$host.'/sitemap.xml'),
+            indexable: $settings['indexable'],
+            sitemap: $settings['sitemap'],
+            platformNoindex: $resolved !== null && $resolved->isPlatformSubdomain && Cast::bool(config('tenancy.noindex_platform_subdomains')),
+            findings: $this->ownRobots(),
+        );
+    }
+
+    /** Drop the kept result for this site and host (its search settings changed). */
+    public function forget(int $siteId, string $host): void
+    {
+        try {
+            $this->cache->forget(self::key($siteId, $host));
+        } catch (Throwable $e) {
+            report($e);
         }
     }
 
@@ -228,9 +265,9 @@ final readonly class AiCrawlerCheck
      *
      * @throws SafeHttpException
      */
-    private function probe(string $host, bool $platformNoindex, array &$findings): void
+    private function probe(AiCheckInput $input, array &$findings): void
     {
-        $base = 'https://'.$host;
+        $base = 'https://'.$input->host;
         $browser = Cast::string(config('seo.ai_crawlers.browser'));
 
         $home = $this->fetch($base.'/', $browser);
@@ -252,7 +289,7 @@ final readonly class AiCrawlerCheck
             if ($more) {
                 $findings[] = self::finding('unchecked', 'robots_too_long');
             } else {
-                array_push($findings, ...$this->compareRobots($text, $this->seo->robotsTxt($base.'/sitemap.xml')));
+                array_push($findings, ...$this->compareRobots($text, $input->expectedRobots));
             }
         }
 
@@ -286,7 +323,7 @@ final readonly class AiCrawlerCheck
             $findings[] = self::finding('info', 'bot_odd', ['bots' => $odd]);
         }
         if ($noindex) {
-            $findings[] = $platformNoindex ? self::finding('info', 'platform_hidden') : self::finding('warning', 'noindex_header');
+            $findings[] = $input->platformNoindex ? self::finding('info', 'platform_hidden') : self::finding('warning', 'noindex_header');
         }
     }
 

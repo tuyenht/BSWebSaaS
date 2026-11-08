@@ -254,6 +254,12 @@ final class SeoSettings extends Component
             'robots' => $shared['robots'],
         ]);
 
+        // What the AI check looked at changed: its kept result no longer holds — check again.
+        $was = $this->saved['shared'];
+        if ($was['indexable'] !== $shared['indexable'] || $was['sitemap'] !== $shared['sitemap'] || $was['robots'] !== $shared['robots']) {
+            $this->forgetAiCheck();
+        }
+
         $this->apply($this->load());
         $this->notify(__('admin.seoset.toast_saved'));
     }
@@ -336,6 +342,17 @@ final class SeoSettings extends Component
         }
 
         return $this->aiHost;
+    }
+
+    /** Drop the site's kept AI check result and start a new one (it runs once the save commits). */
+    private function forgetAiCheck(): void
+    {
+        $siteId = self::siteIdOrZero();
+        $host = $this->aiHost($siteId);
+        if ($host !== null) {
+            app(AiCrawlerCheck::class)->forget($siteId, $host);
+            $this->checkAiCrawlersIfStale();
+        }
     }
 
     /** Opening the page: start a check when none is kept for the site's address (they last a day). */

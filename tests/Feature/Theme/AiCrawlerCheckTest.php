@@ -302,3 +302,16 @@ it('runs inside the site’s own tenant context', function (): void {
     expect(aiCodes(aiRun(2)))->toBe(['info:hidden'])
         ->and(aiCodes(aiRun(1)))->toBe(['warning:proxy_blocks']);
 });
+
+it('holds no database transaction while it calls the site', function (): void {
+    $levels = [];
+    Http::fake(function (Request $request) use (&$levels) {
+        $levels[] = DB::connection()->transactionLevel();
+
+        return Http::response("User-agent: *\nDisallow:", 200);
+    });
+
+    expect(aiRun()['level'])->toBe('ok')
+        ->and($levels)->toHaveCount(6)
+        ->and(array_unique($levels))->toBe([0]);
+});

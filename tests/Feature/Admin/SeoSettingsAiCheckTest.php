@@ -4,6 +4,8 @@ use App\Modules\Admin\Livewire\SeoSettings;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Shared\Http\SafeHttp;
+use App\Modules\Tenancy\Actions\SetPrimaryDomain;
+use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Theme\Jobs\CheckAiCrawlers;
 use App\Modules\Theme\Theming\AiCrawlerCheck;
@@ -74,7 +76,7 @@ it('starts a check when the page opens without a kept result, and not again whil
 
 it('does not start a check when a fresh result is kept, and starts one once it is a day old', function (): void {
     seoAiFakeRefusal();
-    app(Tenancy::class)->enter(1, fn () => app(AiCrawlerCheck::class)->run(1));
+    app(AiCrawlerCheck::class)->run(1);
     Queue::fake();
     $admin = seoAiAdmin();
 
@@ -186,4 +188,39 @@ it('needs settings.manage to see the result or check again', function (): void {
 
     // Only the allowed open queued a check; the refused calls queued nothing.
     Queue::assertPushed(CheckAiCrawlers::class, 1);
+});
+
+it('drops the kept result and checks again once robots.txt or a search switch is saved — not for a title', function (string $field, mixed $value): void {
+    seoAiFakeRefusal();
+    app(AiCrawlerCheck::class)->run(1);
+    Queue::fake();
+    $admin = seoAiAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        Livewire::actingAs($admin)->test(SeoSettings::class)->set('i18n.vi.title', 'Cơ khí An Vinh — chính xác')->call('save')->assertHasNoErrors();
+    });
+    expect(app(AiCrawlerCheck::class)->result(1, 'a.test'))->not->toBeNull();
+    Queue::assertNothingPushed();
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $field, $value): void {
+        Livewire::actingAs($admin)->test(SeoSettings::class)->set($field, $value)->call('save')->assertHasNoErrors();
+    });
+    expect(app(AiCrawlerCheck::class)->result(1, 'a.test'))->toBeNull();
+    Queue::assertPushed(CheckAiCrawlers::class, 1);
+})->with([
+    'robots.txt' => ['form.robots', "User-agent: GPTBot\nDisallow: /riêng-tư-đ"],
+    'Cho Google tìm thấy' => ['form.indexable', false],
+    'sitemap' => ['form.sitemap', false],
+]);
+
+it('starts afresh when the primary address changes: the kept result is under the old host', function (): void {
+    seoAiFakeRefusal();
+    DB::connection('pgsql_admin')->table('domains')->insert(['site_id' => 1, 'hostname' => 'anvinh.test', 'kind' => 'custom', 'is_primary' => false, 'verified_at' => now(), 'ssl_status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+    app(AiCrawlerCheck::class)->run(1);
+    expect(app(AiCrawlerCheck::class)->result(1, 'a.test'))->not->toBeNull();
+
+    app(Tenancy::class)->enter(1, fn () => app(SetPrimaryDomain::class)->handle('anvinh.test'));
+
+    expect(app(SiteResolver::class)->primaryHostFor(1))->toBe('anvinh.test')
+        ->and(app(AiCrawlerCheck::class)->result(1, 'anvinh.test'))->toBeNull();
 });
