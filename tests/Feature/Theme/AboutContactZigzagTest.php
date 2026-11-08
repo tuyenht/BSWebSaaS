@@ -130,6 +130,49 @@ describe('about links', function (): void {
     });
 });
 
+describe('about photo frame', function (): void {
+    /** @param  array<string, mixed>  $props @param  array<string, array{0: int, 1: int}>  $dims */
+    $render = fn (array $props, array $dims): string => View::make('theme::sections.about', ['props' => $props, 'dims' => $dims])->render();
+
+    it('fills a frame with a landscape photo at its stored size, keeping the chosen focus', function () use ($render): void {
+        $html = $render(['image_url' => 'https://f/wide.webp', 'heading' => 'Xưởng', 'image_focus' => 'top'], ['https://f/wide.webp' => [1600, 900]]);
+
+        expect($html)->toContain('<section class="about">')
+            ->toContain('<div class="about__media">')
+            ->toMatch('~<img class="about__image about__image--top"\s+src="https://f/wide.webp"\s+alt="Xưởng"\s+width="1600"\s+height="900"~');
+    });
+
+    it('shows a portrait photo whole in its own frame, with no focus cut', function () use ($render): void {
+        $html = $render(['image_url' => 'https://f/cert.webp', 'heading' => 'Chứng nhận', 'image_focus' => 'top'], ['https://f/cert.webp' => [600, 848]]);
+
+        expect($html)->toContain('<section class="about about--whole">')
+            ->toContain('<div class="about__media about__media--whole">')
+            ->toMatch('~<img class="about__image"\s+src="https://f/cert.webp"\s+alt="Chứng nhận"\s+width="600"\s+height="848"~');
+    });
+
+    it('keeps the 4:3 stand-in size for a photo the library does not know or sizes as zero', function (array $dims) use ($render): void {
+        $html = $render(['image_url' => 'https://f/other.webp'], $dims);
+
+        expect($html)->toContain('<section class="about">')->toMatch('~width="640"\s+height="480"~')->not->toContain('about--whole');
+    })->with([
+        'unknown' => [[]],
+        'zero by zero' => [['https://f/other.webp' => [0, 0]]],
+        'zero high' => [['https://f/other.webp' => [600, 0]]],
+    ]);
+
+    it('puts a portrait photo whole on the left of a letter, still the page\'s first image', function () use ($render): void {
+        $html = $render(['variant' => 'letter', 'image_url' => 'https://f/cert.webp', 'heading' => ['x'], '_high' => true], ['https://f/cert.webp' => [600, 848]]);
+
+        expect($html)->toContain('<section class="about about--letter about--whole">')
+            ->toContain('<div class="about__media about__media--whole">')
+            ->toMatch('~alt=""\s+width="600"\s+height="848"\s+loading="eager" fetchpriority="high"~');
+    });
+
+    it('draws no frame for an image path that is not text', function () use ($render): void {
+        expect($render(['heading' => 'H', 'image_url' => ['x']], []))->not->toContain('about__media')->not->toContain('<img');
+    });
+});
+
 describe('about image focus', function (): void {
     it('maps the focus to a fixed class and falls back to the centre for anything else', function (): void {
         $base = ['image_url' => 'https://f/a.webp', 'heading' => 'H'];

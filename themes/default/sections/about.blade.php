@@ -1,8 +1,8 @@
 {{--
     About section. The about__image is the above-fold LCP candidate on inner pages (gioi-thieu,
-    home scroll-area) so it uses loading="eager" and fetchpriority="high" — the browser fetches
-    it at the highest priority without waiting for lazy thresholds. width/height reserve space
-    (no CLS). alt is the section heading (meaningful descriptive text, not empty).
+    home scroll-area): as the page's first image it gets loading="eager" and fetchpriority="high".
+    Its frame (about__media) reserves the space of a cut-to-fit photo; a portrait photo shown whole
+    reserves it by its stored width/height (no CLS). alt is the section heading.
 
     The letter look: the first paragraph is the greeting (bold) and, from three paragraphs up, the last
     two are the signature (name, then title); the author types plain paragraphs only. Every saved text
@@ -24,11 +24,16 @@
         }
     }
     $sfTiles = array_slice($sfTiles, 0, \App\Modules\Theme\Components\SectionProps::ABOUT_LINKS_MAX_ITEMS);
+    // The photo's stored size (media library) reserves its space; a portrait one (a certificate) is shown whole.
+    $sfSrc = is_string($props['image_url'] ?? null) && $props['image_url'] !== '' ? $props['image_url'] : null;
+    $sfSize = $sfSrc !== null ? (($dims ?? [])[$sfSrc] ?? null) : null;
+    $sfSize = is_array($sfSize) && ($sfSize[0] ?? 0) > 0 && ($sfSize[1] ?? 0) > 0 ? $sfSize : null;
+    $sfWhole = $sfSize !== null && $sfSize[1] > $sfSize[0];
 @endphp
-<section class="about{{ $sfLetter ? ' about--letter' : '' }}">
+<section class="about{{ $sfLetter ? ' about--letter' : '' }}{{ $sfWhole ? ' about--whole' : '' }}">
     <div class="about__body">
-        @if (! empty($props['heading']))
-            <h2 class="about__heading">{{ $props['heading'] }}</h2>
+        @if (($sfHeading = \App\Modules\Theme\Components\SectionProps::text($props, 'heading')) !== '')
+            <h2 class="about__heading">{{ $sfHeading }}</h2>
         @endif
         @foreach ($sfLetter ? $sfBody : (array) ($props['paragraphs'] ?? []) as $sfIndex => $paragraph)
             <p class="about__paragraph{{ $sfLetter && $sfIndex === 0 ? ' about__paragraph--greeting' : '' }}">{{ $paragraph }}</p>
@@ -45,13 +50,17 @@
             </ul>
         @endif
     </div>
-    @if (! empty($props['image_url']))
-        {{-- Option C image URL; loading="eager" + fetchpriority="high" for LCP. --}}
-        <img class="about__image{{ $sfFocus }}"
-             src="{{ $props['image_url'] }}"
-             alt="{{ $props['heading'] ?? '' }}"
-             width="640"
-             height="480"
-             loading="{{ ! empty($props['_high']) ? 'eager' : 'lazy' }}"@if (! empty($props['_high'])) fetchpriority="high"@endif>
+    @if ($sfSrc !== null)
+        {{-- A landscape photo fills a frame as tall as the text (cut to fit, 20–42rem, it stays in view while
+             the text scrolls); a portrait one is shown whole in a white frame. loading="eager" +
+             fetchpriority="high" when it is the page's first image (LCP). --}}
+        <div class="about__media{{ $sfWhole ? ' about__media--whole' : '' }}">
+            <img class="about__image{{ $sfWhole ? '' : $sfFocus }}"
+                 src="{{ $sfSrc }}"
+                 alt="{{ $sfHeading }}"
+                 width="{{ $sfSize[0] ?? 640 }}"
+                 height="{{ $sfSize[1] ?? 480 }}"
+                 loading="{{ ! empty($props['_high']) ? 'eager' : 'lazy' }}"@if (! empty($props['_high'])) fetchpriority="high"@endif>
+        </div>
     @endif
 </section>
