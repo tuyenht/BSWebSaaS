@@ -215,7 +215,7 @@
 
         {{-- What shows on each product follows the list's own width: below 600 the member's card choice, 600–899
              every detail, from 900 their column choice (both kept in their own preferences). --}}
-        <div class="@container/lt min-w-0"
+        <div class="@container/lt flex min-w-0 flex-col"
              x-data="{
                  mode: 'cols',
                  xv: false,
@@ -290,7 +290,7 @@
                 </x-bs-admin::list.bulk>
             @endif
 
-            <div x-ref="rows" class="min-w-0 max-[599.98px]:rounded-md max-[599.98px]:border max-[599.98px]:border-border max-[599.98px]:bg-surface max-[599.98px]:[&_.list-g]:border-t-0">
+            <div x-ref="rows" class="min-w-0 @max-[56.25rem]/lt:order-3 max-[599.98px]:rounded-md max-[599.98px]:border max-[599.98px]:border-border max-[599.98px]:bg-surface max-[599.98px]:[&_.list-g]:border-t-0">
             <x-bs-admin::list :label="__('catalog.list_label')" kind="catalog" :data-hide="$hideNow" x-bind:data-hide="hidden()" x-bind:data-fold="fold">
 
                 <x-bs-admin::list.head>
@@ -617,7 +617,7 @@ JS, ['@ULID@' => (string) Js::from($product->ulid)]) : '{}';
             </x-bs-admin::list>
             </div>
 
-            <div class="mt-4 flex flex-wrap items-center justify-between gap-3 min-[600px]:px-4">
+            <div class="mt-4 flex flex-wrap items-center justify-between gap-3 @max-[56.25rem]/lt:order-5 min-[600px]:px-4">
                 <span class="text-caption text-text-muted">
                     {{ __('catalog.footer_showing', ['first' => $num($pager['from']), 'last' => $num($pager['to']), 'total' => $fmt($pager['total'])]) }}
                 </span>

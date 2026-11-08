@@ -25,7 +25,7 @@
             <div role="radiogroup" aria-label="{{ __('catalog.cat_group') }}" class="max-h-[min(20rem,50dvh)] overflow-auto rounded border border-border [scrollbar-gutter:stable]">
                 <template x-for="c in shown" :key="c.ulid">
                     <button type="button" role="radio" x-bind:aria-checked="(pick === c.ulid).toString()" x-on:click="pick = c.ulid"
-                        class="group flex min-h-menu-row w-full items-center gap-3 px-3 py-1.5 text-left text-body hover:bg-surface-hover"
+                        class="group flex min-h-menu-row any-pointer-coarse:min-h-menu-row-touch w-full items-center gap-3 px-3 py-1.5 text-left text-body hover:bg-surface-hover"
                         x-bind:style="'padding-inline-start:' + (0.75 + c.depth * 1.25) + 'rem'">
                         <span aria-hidden="true" class="inline-flex size-[1.125rem] shrink-0 rounded-full border border-border-input bg-surface group-aria-checked:border-[6px] group-aria-checked:border-primary-text"></span>
                         <span class="min-w-0 flex-1 [overflow-wrap:anywhere]">
