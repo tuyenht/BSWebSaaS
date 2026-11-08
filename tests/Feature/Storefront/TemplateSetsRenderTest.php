@@ -66,7 +66,8 @@ it('prints JobPosting data for a post on a job layout, with no deadline until po
 
     expect($html)->toContain('"@type":"JobPosting"')
         ->toContain('"title":"Thợ tiện CNC"')
-        ->not->toContain('validThrough');
+        ->not->toContain('validThrough')
+        ->not->toContain('"@type":"Article"');
 });
 
 /** The JobPosting object printed in the page head, or null when the page carries none. */

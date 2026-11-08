@@ -21,6 +21,7 @@
  * render with the real compiled CSS/JS, so build the front end first (pnpm run build).
  */
 
+use App\Modules\Admin\Livewire\Catalog\Index;
 use App\Modules\Admin\Livewire\Platform\Audit\CleanupDialog;
 use App\Modules\Admin\Livewire\SeoSettings;
 use App\Modules\Admin\Livewire\Settings\Domains as DomainSettings;
@@ -404,5 +405,52 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('Mũi khoan thép gió dài', 'Bộ dao phay ngón', 'list-langs2');
     file_put_contents($dir.'/product-list.html', $html);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 20);
+    // The same list with 3 rows ticked (the sticky bar and its one skip sentence), and with the "Đổi chuyên mục chính"
+    // dialog open for 2 products over about 15 categories (one of them three levels deep). The component is rendered
+    // by the Livewire test harness and put in place of the list's own root, so the page keeps its real shell.
+    $ulids = app(Tenancy::class)->enter(1, function (): array {
+        $cat = fn (string $name, ?Taxonomy $parent): Taxonomy => app(CreateTaxonomy::class)
+            ->handle('product_cat', $parent, new TaxonomyData(names: ['vi' => $name, 'en' => $name]));
+        $machines = Taxonomy::query()->where('vocabulary', 'product_cat')->whereHas('translations', fn ($q) => $q->where('name', 'Máy gia công'))->firstOrFail();
+        $names = ['Phụ kiện máy', 'Đồ gá và kẹp', 'Dụng cụ đo kiểm', 'Vật tư tiêu hao', 'Dầu và chất làm mát', 'Thiết bị an toàn lao động',
+            'Máy tiện CNC', 'Máy mài', 'Máy cắt dây', 'Máy khoan đứng'];
+        foreach ($names as $name) {
+            $cat($name, str_starts_with($name, 'Máy') ? $machines : null);
+        }
+
+        return Product::query()->whereIn('sku', ['MK-HSS-10', 'DT-01', 'DG-CNC-002'])->orderBy('sku')->pluck('ulid')->all();
+    });
+    expect($ulids)->toHaveCount(3);
+    $mount = fn () => Livewire::actingAs($owner)->test(Index::class);
+    // the harness leaves the snapshot off the root once an action ran; put it back so the browser can boot the component
+    $withSnapshot = function ($test): string {
+        $snapshot = (fn () => $this->lastState->getSnapshot())->call($test);
+
+        return (string) preg_replace('/^<div wire:id="([^"]+)"/', '<div wire:snapshot="'.e(is_string($snapshot) ? $snapshot : json_encode($snapshot)).'" wire:effects="[]" wire:id="$1"', $test->html(), 1);
+    };
+    $swap = function (string $page, string $component): string {
+        // the list's own root: the div that carries its snapshot, up to the div that closes it
+        expect(preg_match('/<div wire:snapshot="[^"]*admin\\.catalog\\.index/', $page, $m, PREG_OFFSET_CAPTURE))->toBe(1);
+        $from = $m[0][1];
+        preg_match_all('#<div\b|</div>#', $page, $tags, PREG_OFFSET_CAPTURE, $from);
+        $depth = 0;
+        $to = null;
+        foreach ($tags[0] as [$tag, $at]) {
+            $depth += $tag === '</div>' ? -1 : 1;
+            if ($depth === 0) {
+                $to = $at + 6;
+                break;
+            }
+        }
+        expect($to)->not->toBeNull();
+
+        return substr($page, 0, $from).$component.substr($page, $to);
+    };
+    $ticked = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($mount()->call('toggleSelect', $ulids)));
+    expect($ticked)->toContain('role="region"', 'Bỏ chọn');
+    file_put_contents($dir.'/product-list-selected.html', $swap($html, $ticked));
+    $dialog = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($mount()->call('toggleSelect', [$ulids[0], $ulids[1]])->call('openCategory')));
+    file_put_contents($dir.'/product-list-category.html', $swap($html, $dialog));
+
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 22);
 });

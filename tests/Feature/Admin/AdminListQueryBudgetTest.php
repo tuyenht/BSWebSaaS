@@ -12,6 +12,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteSetting;
+use Illuminate\Support\Str;
 
 /*
  * Query Budget (CLAUDE.md §6) for the admin list screens. The storefront hot routes are already
@@ -144,6 +145,39 @@ it('keeps the catalog list flat with a search, a sort and a second page, whateve
 
     // 10 rows on the page either way: twice the products must not add a single query
     expect($more)->toBe($count)->and($count)->toBe(18);
+});
+
+it('keeps the catalog list flat for a member who manages products, with every row menu drawn, on a second page, whatever the number of rows', function (): void {
+    $manager = User::factory()->create();
+
+    $seed = function (int $from, int $to) use ($manager): void {
+        app(Tenancy::class)->enter(1, function () use ($from, $to, $manager): void {
+            grantRole($manager, 'cat-manager', ['catalog.view', 'catalog.manage']);
+            SiteModule::query()->firstOrCreate(['module_key' => 'catalog'], ['enabled' => true]);
+            $category = Taxonomy::query()->firstOrCreate(['vocabulary' => 'product_cat', 'position' => 0]);
+            $category->translations()->firstOrCreate(['locale' => 'vi'], ['name' => 'Đồ gá', 'slug' => 'do-ga']);
+
+            foreach (range($from, $to) as $i) {
+                $product = Product::query()->create(['status' => 'published', 'sku' => "SKU-{$i}", 'price' => 1000000 + $i, 'is_featured' => $i % 2 === 0]);
+                $product->translations()->create(['locale' => 'vi', 'name' => "Sản phẩm {$i} đẹp", 'slug' => "sp-{$i}"]);
+                $product->assignCategories([$category->id]);
+            }
+        });
+    };
+    $url = 'http://a.test/admin/catalog?q=Sản&sort=name&tab=published&per_page=10&page=2';
+
+    $seed(1, 30);
+    $this->actingAs($manager)->get($url)->assertOk(); // the permission and settings caches fill on the first request
+    $count = countQueries(fn () => $this->actingAs($manager)->get($url)->assertOk()->assertSee(__('catalog.menu_trash'))->assertSee(__('catalog.status_menu_label'))->assertSee(__('catalog.slug_edit_action'))
+        // a row's Xem button: its name starts with every seeded product's name (the page script also mentions data-row-view)
+        ->assertSee('aria-label="'.e(Str::before(__('catalog.view_named', ['name' => '|']), '|')).'Sản phẩm ', false));
+
+    $seed(31, 60);
+    $this->actingAs($manager)->get($url)->assertOk();
+    $more = countQueries(fn () => $this->actingAs($manager)->get($url)->assertOk());
+
+    // the status menu, the labels, the Trash, the quick edits and the Xem button are decided from the rows already loaded: twice the products adds no query
+    expect($more)->toBe($count)->and($count)->toBe(17);
 });
 
 it('keeps the catalog list flat with every filter on and a second page, whatever the number of rows and categories', function (): void {
