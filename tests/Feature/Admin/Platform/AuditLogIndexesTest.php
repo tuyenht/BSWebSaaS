@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Livewire\Platform\Audit\Index;
+use App\Modules\Admin\Livewire\Platform\Sites\Index as SitesIndex;
 use App\Modules\Admin\Support\Customers\CustomerDirectory;
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Identity\Models\User;
@@ -270,4 +271,27 @@ it('matches the website name search to its trigram index', function (): void {
         ->whereRaw(VietnameseFold::sql('name').' LIKE ?', [VietnameseFold::like(VietnameseFold::text('An Vinh'))]);
 
     expect(auditPlannedIndexes($sites->toSql(), $sites->getBindings()))->toBe(['sites_name_fold_trgm_index']);
+});
+
+it('plans the website list search on the website name trigram index', function (): void {
+    $operator = auditIndexOperator();
+    $sent = null;
+    DB::listen(function (QueryExecuted $query) use (&$sent): void {
+        // the count the pager sends first: it carries the name condition and no order that could sway the planner
+        if ($sent === null && str_contains($query->sql, 'count(*)') && str_contains($query->sql, 'from "sites"') && str_contains($query->sql, 'translate(')) {
+            $sent = ['sql' => $query->sql, 'bindings' => $query->connection->prepareBindings($query->bindings)];
+        }
+    });
+
+    Livewire::withQueryParams(['q' => 'Hồ Chí Minh'])->actingAs($operator)->test(SitesIndex::class)->assertOk();
+
+    expect($sent)->not->toBeNull('The screen sent no counted search query.')
+        ->and($sent['sql'])->toContain(VietnameseFold::sql('name').' like ?')
+        ->and($sent['sql'])->toContain(' and "sites"."deleted_at" is null');
+
+    // with a handful of websites the planner reads the live-websites index for the trash test
+    // whatever the name index; so the screen's own name condition is planned without it
+    $planned = str_replace(' and "sites"."deleted_at" is null', '', $sent['sql']);
+
+    expect(auditPlannedIndexes($planned, $sent['bindings']))->toBe(['sites_name_fold_trgm_index']);
 });

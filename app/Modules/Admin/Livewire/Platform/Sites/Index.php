@@ -4,6 +4,7 @@ namespace App\Modules\Admin\Livewire\Platform\Sites;
 
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Support\PlatformAccess;
+use App\Modules\Shared\Support\VietnameseFold;
 use App\Modules\Tenancy\Models\Site;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
@@ -53,8 +54,10 @@ final class Index extends Component
     {
         $query = Site::query()->with(['domains', 'tenant', 'siteType']);
 
-        if ($this->search !== '') {
-            $query->where('name', 'ilike', '%'.$this->search.'%');
+        $term = trim($this->search);
+        if ($term !== '') {
+            // accents and case are ignored; written as the trigram index on sites.name is, so it can serve the search
+            $query->whereRaw(VietnameseFold::sql('name').' like ?', [VietnameseFold::like(VietnameseFold::text($term))]);
         }
 
         if ($this->status !== '') {
