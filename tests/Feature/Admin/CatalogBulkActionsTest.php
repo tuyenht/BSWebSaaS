@@ -337,6 +337,40 @@ it('changes the main category of drafts and live products, redirects only the ad
     });
 });
 
+it('marks the content of the products whose main category it changes, in one statement, and again on the undo', function (): void {
+    $manager = bulkManager();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        $from = bulkCategory('Đồ gá');
+        $to = bulkCategory('Khuôn mẫu');
+        $moved = bulkProduct('Đồ gá hàn', 'do-ga-han', 'draft', $from);
+        $also = bulkProduct('Khuôn đúc', 'khuon-duc', 'draft', $from);
+        $already = bulkProduct('Mũi khoan thép', 'mui-khoan-thep', 'draft', $to);
+        $old = '2026-01-02 03:04:05+00';
+        $pin = fn () => DB::table('product_translations')->update(['content_changed_at' => $old, 'updated_at' => $old]);
+        $marked = fn (Product $product): bool => ! str_starts_with((string) DB::table('product_translations')->where('product_id', $product->id)->value('content_changed_at'), '2026-01-02');
+        $pin();
+
+        $marks = [];
+        DB::listen(function ($query) use (&$marks): void {
+            if (str_contains($query->sql, 'content_changed_at')) {
+                $marks[] = $query->sql;
+            }
+        });
+        $test = Livewire::actingAs($manager)->test(Index::class)
+            ->call('toggleSelect', [$moved->ulid, $also->ulid, $already->ulid])->call('openCategory')->call('changeCategory', $to->ulid);
+        expect($marked($moved))->toBeTrue()->and($marked($also))->toBeTrue()->and($marked($already))->toBeFalse()
+            ->and($marks)->toHaveCount(1);
+
+        $pin();
+        $marks = [];
+        $test->call('undoLast');
+        expect($moved->fresh()->primaryCategory()?->id)->toBe($from->id)
+            ->and($marked($moved))->toBeTrue()->and($marked($also))->toBeTrue()->and($marked($already))->toBeFalse()
+            ->and($marks)->toHaveCount(1);
+    });
+});
+
 it('says nothing changed when the products already have that main category, and changes one row from its menu', function (): void {
     $manager = bulkManager();
 
@@ -612,17 +646,18 @@ it('keeps its query count flat for any number of ticked rows', function (): void
         $moveLive10 = $measure('changeCategory', $routed(10), [$other->ulid], 'all', $dialog);
 
         // fixed set-up statements plus a constant few per row (its lock and its write, and for a moved or published row its
-        // route sync): never a lookup of a category, a name or a route per row; opening the dialog reads no row per ticked row
+        // route sync): never a lookup of a category, a name or a route per row; opening the dialog reads no row per ticked row.
+        // A category change also marks the content of every product it moved, in one statement for them all.
         expect([$trash2, $trash6])->toBe([15, 23])
             ->and([$restore2, $restore6])->toBe([19, 27])
             ->and([$purge2, $purge6])->toBe([17, 25])
             ->and([$archive2, $archive6])->toBe([17, 21])
             ->and([$publish2, $publish6])->toBe([25, 45])
             ->and([$open2, $open6])->toBe([16, 16])
-            ->and([$move2, $move6, $move10])->toBe([31, 55, 79])
-            ->and([$moveLive2, $moveLive6, $moveLive10])->toBe([35, 67, 99])
+            ->and([$move2, $move6, $move10])->toBe([32, 56, 80])
+            ->and([$moveLive2, $moveLive6, $moveLive10])->toBe([36, 68, 100])
             ->and([$undoStatus2, $undoStatus6])->toBe([23, 39])
             ->and([$undoTrash2, $undoTrash6])->toBe([19, 27])
-            ->and([$undoMove2, $undoMove6, $undoMove10])->toBe([31, 55, 79]);
+            ->and([$undoMove2, $undoMove6, $undoMove10])->toBe([32, 56, 80]);
     });
 });

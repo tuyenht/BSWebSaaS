@@ -105,9 +105,13 @@ trait HasCategoryTaxonomies
      * ride along untouched: sync() diffs against EVERY pivot row, so a facet missing from the
      * payload would be detached. A category listed twice is filed once, at its first place.
      *
+     * Returns whether the main category of a stored item changed. Such a change marks the item's
+     * content as changed, unless $markContent is false: a bulk caller then marks all the items it
+     * moved in one statement (markContentChanged()), in the same transaction.
+     *
      * @param  list<int>  $taxonomyIds
      */
-    public function assignCategories(array $taxonomyIds): void
+    public function assignCategories(array $taxonomyIds, bool $markContent = true): bool
     {
         // [A, B, A] would give A two positions, the later one winning in the payload: A would
         // leave position 0 while its count went up.
@@ -150,9 +154,12 @@ trait HasCategoryTaxonomies
             app(CategoryItemCounts::class)->moved($from, $taxonomyIds[0] ?? null);
         }
         // Only the main category is on the page (the breadcrumb); the others are not.
-        if ($this->exists && $from !== ($taxonomyIds[0] ?? null)) {
+        $mainChanged = $this->exists && $from !== ($taxonomyIds[0] ?? null);
+        if ($mainChanged && $markContent) {
             static::markContentChanged([Cast::int($this->getKey())]);
         }
+
+        return $mainChanged;
     }
 
     /** The primary category — the taxonomy at pivot position 0 — or null when there is none. */

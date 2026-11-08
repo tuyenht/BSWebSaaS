@@ -28,6 +28,8 @@ use InvalidArgumentException;
  * own savepoint, so one that cannot move (its new address belongs to a page or another category)
  * leaves nothing half-done (the category totals included: each runs in its own count batch inside the
  * savepoint, so a rolled-back product leaves no total changed) and the rest carry on. The caller locks the products first (id order).
+ * The products whose main category really moved get their content mark in one statement at the end,
+ * in the caller's transaction (markMoved()): never one write per product.
  */
 final class ChangeProductMainCategory
 {
@@ -45,6 +47,7 @@ final class ChangeProductMainCategory
         $routes = $this->routePaths(array_values($products->modelKeys()));
         $counts = app(CategoryItemCounts::class);
         $tally = ['moved' => 0, 'same' => 0, 'redirected' => 0, 'failed' => 0, 'before' => []];
+        $marked = [];
 
         foreach ($products as $product) {
             $now = $this->categoryIds($product);
@@ -57,7 +60,7 @@ final class ChangeProductMainCategory
             $was = $this->categoryUlids($product, $now);   // before the change: it drops the loaded list
 
             try {
-                $redirected = $counts->batch(fn (): bool => DB::transaction(fn (): bool => $this->file($product, $list, $to, $routes[$product->id] ?? [])));
+                $filed = $counts->batch(fn (): array => DB::transaction(fn (): array => $this->file($product, $list, $to, $routes[$product->id] ?? [])));
             } catch (RouteConflictException) {
                 $tally['failed']++;
 
@@ -70,26 +73,44 @@ final class ChangeProductMainCategory
             }
 
             $tally['moved']++;
-            $tally['redirected'] += $redirected ? 1 : 0;
+            $tally['redirected'] += $filed['redirected'] ? 1 : 0;
             $tally['before'][$product->ulid] = $was;
+            if ($filed['mainChanged']) {
+                $marked[] = $product->id;
+            }
         }
+        $this->markMoved($marked);
 
         return $tally;
     }
 
     /**
+     * Mark the content of the products filed with file() whose main category changed, in one
+     * statement in the caller's transaction (the page's breadcrumb shows the main category).
+     *
+     * @param  list<int>  $productIds
+     */
+    public function markMoved(array $productIds): void
+    {
+        Product::markContentChanged($productIds);
+    }
+
+    /**
      * File the product under $ids (main first) and, when it is published, move its address along.
-     * Returns whether a published product's address moved (its old one now redirects).
+     * Returns whether a published product's address moved (its old one now redirects) and whether its
+     * main category changed. It leaves the content mark to the caller: markMoved() once for all the
+     * products it filed.
      *
      * @param  list<int>  $ids
      * @param  array<string, string>  $before  the product's route path per language, before the change
+     * @return array{redirected: bool, mainChanged: bool}
      */
-    public function file(Product $product, array $ids, ?Taxonomy $main, array $before): bool
+    public function file(Product $product, array $ids, ?Taxonomy $main, array $before): array
     {
-        $product->assignCategories($ids);
+        $mainChanged = $product->assignCategories($ids, markContent: false);
         $product->touch();
         if ($product->status !== 'published') {
-            return false;
+            return ['redirected' => false, 'mainChanged' => $mainChanged];
         }
 
         $moved = false;
@@ -98,7 +119,7 @@ final class ChangeProductMainCategory
             $moved = $moved || (isset($before[$translation->locale]) && $before[$translation->locale] !== $after);
         }
 
-        return $moved;
+        return ['redirected' => $moved, 'mainChanged' => $mainChanged];
     }
 
     /**

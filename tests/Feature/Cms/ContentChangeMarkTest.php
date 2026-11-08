@@ -84,13 +84,17 @@ function markOf(int $id, string $table = 'entry_translations'): ?string
     return $value === null ? null : CarbonImmutable::parse((string) $value)->utc()->toIso8601String();
 }
 
-/** An editor who may edit and publish any entry. */
+/**
+ * An editor who may edit and publish any entry of site 1. Call OUTSIDE any site context: a role is
+ * granted per site (team = site), so it enters the site itself, like menuEditor().
+ */
 function markPublisher(): User
 {
     $user = User::factory()->create();
-    grantRole($user, 'editor', ['entries.edit.any', 'entries.publish']);
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.edit.any', 'entries.publish']));
+    app(TeamContext::class)->forget();
 
-    return $user->fresh();
+    return $user->fresh() ?? $user;
 }
 
 it('starts a new language with a mark', function (): void {
