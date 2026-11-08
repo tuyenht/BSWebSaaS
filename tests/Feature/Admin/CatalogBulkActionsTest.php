@@ -541,8 +541,13 @@ it('keeps its query count flat for any number of ticked rows', function (): void
     app(Tenancy::class)->enter(1, function () use ($manager): void {
         $category = bulkCategory('Đồ gá');
         $other = bulkCategory('Khuôn mẫu');
-        $make = function (int $n, string $status) use ($category): array {
-            return array_map(fn (int $i): string => bulkProduct("Sản phẩm {$status} {$i} đẹp", "sp-{$status}-{$i}", $status, $category)->ulid, range(1, $n));
+        // every batch gets its own names and addresses, as real products have: a repeated address
+        // would let one batch's route writes meet another batch's rows
+        $batch = 0;
+        $make = function (int $n, string $status) use ($category, &$batch): array {
+            $batch++;
+
+            return array_map(fn (int $i): string => bulkProduct("Sản phẩm {$status} {$batch}-{$i} đẹp", "sp-{$status}-{$batch}-{$i}", $status, $category)->ulid, range(1, $n));
         };
         // ticks the rows, makes the steps in $before, then counts only the one call that follows
         $measure = function (string $method, array $ulids, array $args = [], string $tab = 'all', array $before = []) use ($manager): int {
@@ -550,6 +555,10 @@ it('keeps its query count flat for any number of ticked rows', function (): void
             foreach ($before as [$step, $stepArgs]) {
                 $test->call($step, ...$stepArgs);
             }
+
+            // a row touched again within the same second is not written again (updated_at unchanged), so
+            // the count would depend on the clock: the measured call always runs in a later second
+            $this->travel(2)->seconds();
 
             return countQueries(fn () => $test->call($method, ...$args));
         };
@@ -608,17 +617,12 @@ it('keeps its query count flat for any number of ticked rows', function (): void
             ->and([$restore2, $restore6])->toBe([19, 27])
             ->and([$purge2, $purge6])->toBe([16, 24])
             ->and([$archive2, $archive6])->toBe([17, 21])
-            ->and([$publish2, $publish6])->toBe([25, 41])
+            ->and([$publish2, $publish6])->toBe([25, 45])
             ->and([$open2, $open6])->toBe([16, 16])
             ->and([$move2, $move6, $move10])->toBe([31, 55, 79])
             ->and([$moveLive2, $moveLive6, $moveLive10])->toBe([35, 67, 99])
-            ->and([$undoStatus2, $undoStatus6])->toBe([23, 35])
-            ->and([$undoTrash2, $undoTrash6])->toBe([19, 27]);
-
-        // the undo of a category change varies by a few statements from run to run (29-31, 49-55, 69-79 for 2, 6 and 10 rows),
-        // so it is bounded, not pinned: a flat set-up plus at most 8 statements per extra row, never a lookup per category or name
-        expect($undoMove2)->toBeLessThanOrEqual(34)
-            ->and($undoMove6 - $undoMove2)->toBeLessThanOrEqual(4 * 8)
-            ->and($undoMove10 - $undoMove6)->toBeLessThanOrEqual(4 * 8);
+            ->and([$undoStatus2, $undoStatus6])->toBe([23, 39])
+            ->and([$undoTrash2, $undoTrash6])->toBe([19, 27])
+            ->and([$undoMove2, $undoMove6, $undoMove10])->toBe([31, 55, 79]);
     });
 });
