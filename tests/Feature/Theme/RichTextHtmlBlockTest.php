@@ -80,10 +80,13 @@ describe('on a page', function (): void {
             ->and($page)->not->toContain('sf-video.js');
     });
 
-    it('lets a keyboard reach a table, so a wide one can be scrolled', function (): void {
-        $prose = proseOf(richPage('/bang', fn (): array => [richBlock('<table><tbody><tr><td>Máy</td><td>4</td></tr></tbody></table>')]));
+    it('fits a narrow table and lets a keyboard reach a wide one, so it can be scrolled', function (): void {
+        $wide = '<h2>Máy móc</h2><table><tbody>'.str_repeat('<tr>'.str_repeat('<td>x</td>', 6).'</tr>', 2).'</tbody></table>';
+        $prose = proseOf(richPage('/bang', fn (): array => [richBlock('<table><tbody><tr><td>Máy</td><td>4</td></tr></tbody></table>'.$wide)]));
 
-        expect($prose)->toBe('<table tabindex="0"><tbody><tr><td>Máy</td><td>4</td></tr></tbody></table>');
+        expect($prose)->toStartWith('<div class="sf-table sf-table--kv sf-cols-2"><table><tbody><tr><td>Máy</td><td>4</td></tr></tbody></table></div>')
+            ->and($prose)->toContain('<h2>Máy móc</h2><div class="sf-table sf-table--scroll sf-cols-6" role="region" aria-label="Máy móc" tabindex="0"><table>')
+            ->and(substr_count($prose, 'tabindex="0"'))->toBe(1);
     });
 
     it('defaults a picture to full width, centred, with the library alt text escaped', function (): void {

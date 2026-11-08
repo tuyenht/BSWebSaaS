@@ -1056,18 +1056,167 @@ main:has(.hero, .sf-slider) .page__title {
     font-style: italic;
 }
 
-.sf-prose table {
-    display: block;
-    max-width: 100%;
+/* Tables (ProseTables wraps each one when the page is printed): always the column's full width,
+   never wider than the page. `kv` (two columns) and `stack` fit; `stack` turns each row into a card
+   on a narrow column (the column's width decides, not the screen's); `scroll` scrolls inside its
+   frame, with a shadow at the edge that still has content and its first column kept in view
+   (not when cells are merged: a merged cell would pin the wrong column). */
+.sf-table {
+    --sf-table-line: color-mix(in srgb, var(--color-text) 18%, transparent);
+    --sch-head: var(--color-text-strong);
+    --sch-body: var(--color-text);
+    --sch-link: var(--color-primary-text);
+    color: var(--color-text);
+    margin-top: 1.15em;
+    border: 1px solid var(--sf-table-line);
+    border-radius: 0.75rem;
     overflow-x: auto;
-    border-collapse: collapse;
+    overscroll-behavior-x: contain;
+    background:
+        linear-gradient(90deg, var(--color-surface) 30%, transparent) 0 / 2.5rem 100% no-repeat local,
+        linear-gradient(270deg, var(--color-surface) 30%, transparent) 100% / 2.5rem 100% no-repeat local,
+        radial-gradient(farthest-side at 0 50%, color-mix(in srgb, var(--color-dark) 22%, transparent), transparent) 0 / 0.875rem 100% no-repeat scroll,
+        radial-gradient(farthest-side at 100% 50%, color-mix(in srgb, var(--color-dark) 22%, transparent), transparent) 100% / 0.875rem 100% no-repeat scroll,
+        var(--color-surface);
 }
 
-.sf-prose :is(th, td) {
-    border: 1px solid color-mix(in srgb, var(--color-text) 35%, transparent);
-    padding: 0.5rem 0.75rem;
+.sf-table[tabindex]:focus-visible {
+    outline: 2px solid var(--color-primary-text);
+    outline-offset: 2px;
+}
+
+.sf-table > table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin: 0;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Every rule reaches only the table's own cells (child chains), never a table nested in a cell. */
+.sf-table > table > * > tr > :is(th, td) {
+    padding: 0.65rem 0.85rem;
     text-align: left;
     vertical-align: top;
+    overflow-wrap: break-word;
+}
+
+.sf-table > table > thead > tr > th {
+    background: var(--color-dark);
+    color: var(--color-on-dark, var(--color-surface));
+    font-weight: 600;
+}
+
+.sf-table > table > :is(tbody, tfoot) > tr > :is(th, td) {
+    border-top: 1px solid var(--sf-table-line);
+}
+
+.sf-table > table > tbody:first-child > tr:first-child > :is(th, td),
+.sf-table > table > thead + tbody > tr:first-child > :is(th, td) {
+    border-top: 0;
+}
+
+.sf-table > table > tbody > tr:nth-child(2n) > :is(th, td) {
+    background: color-mix(in srgb, var(--color-dark) 3%, transparent);
+}
+
+.sf-table img {
+    max-width: 100%;
+    height: auto;
+}
+
+.sf-table:is(.sf-table--kv, .sf-table--stack) > table > * > tr > :is(th, td) {
+    overflow-wrap: anywhere;
+}
+
+/* A row header: the first column of a key-value or word-led table, or a header cell in the body. */
+.sf-table > table > tbody > tr > th,
+.sf-table:is(.sf-table--kv, .sf-table--rowhead) > table > tbody > tr > :first-child {
+    color: var(--color-text-strong);
+    font-weight: 600;
+}
+
+.sf-table--kv > table > tbody > tr > :first-child {
+    width: 40%;
+}
+
+.sf-cols-1 { --sf-cols: 1; }
+.sf-cols-2 { --sf-cols: 2; }
+.sf-cols-3 { --sf-cols: 3; }
+.sf-cols-4 { --sf-cols: 4; }
+.sf-cols-5 { --sf-cols: 5; }
+.sf-cols-6 { --sf-cols: 6; }
+.sf-cols-7 { --sf-cols: 7; }
+.sf-cols-8 { --sf-cols: 8; }
+.sf-cols-9 { --sf-cols: 9; }
+.sf-cols-10 { --sf-cols: 10; }
+.sf-cols-11 { --sf-cols: 11; }
+.sf-cols-12 { --sf-cols: 12; }
+
+.sf-table--scroll > table {
+    min-width: calc(var(--sf-cols, 4) * 5.5rem + 2.5rem);
+}
+
+.sf-table--scroll:not(.sf-table--merged) > table > thead > tr > :first-child,
+.sf-table--scroll:not(.sf-table--merged) > table > tbody > tr > :first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--color-surface);
+    box-shadow: inset -1px 0 var(--sf-table-line);
+}
+
+.sf-table--scroll:not(.sf-table--merged) > table > thead > tr > :first-child {
+    background: var(--color-dark);
+    box-shadow: inset -1px 0 var(--color-dark-line, var(--color-dark));
+}
+
+.sf-table--scroll:not(.sf-table--merged) > table > tbody > tr:nth-child(2n) > :first-child {
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+}
+
+.sf-table--scroll > table > tbody > tr > :first-child {
+    min-width: 8.5rem;
+}
+
+@container prose (max-width: 29.99rem) {
+    .sf-table > table > * > tr > :is(th, td) {
+        padding: 0.55rem 0.7rem;
+    }
+
+    .sf-table > table {
+        font-size: 0.875rem;
+    }
+}
+
+/* The card layout, by the column's width (every supported browser has container queries, as the
+   picture rules above already assume). */
+@container prose (max-width: 29.99rem) {
+    .sf-table--stack { border: 0; border-radius: 0; background: none; overflow: visible; }
+    .sf-table--stack > table,
+    .sf-table--stack > table > tbody,
+    .sf-table--stack > table > tbody > tr,
+    .sf-table--stack > table > tbody > tr > :is(th, td) { display: block; width: 100%; min-width: 0; }
+    .sf-table--stack > table > thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .sf-table--stack > table > tbody > tr { border: 1px solid var(--sf-table-line); border-radius: 0.75rem; overflow: hidden; background: var(--color-surface); }
+    .sf-table--stack > table > tbody > tr + tr { margin-top: 0.75rem; }
+    .sf-table--stack > table > tbody > tr:nth-child(2n) > :is(th, td) { background: none; }
+    .sf-table--stack > table > tbody > tr > :is(th, td) { border-top: 1px solid var(--sf-table-line); padding: 0.6rem 0.9rem; }
+    .sf-table--stack > table > tbody > tr > td { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 0.75rem; }
+    .sf-table--stack > table > tbody > tr > :first-child { border-top: 0; }
+    .sf-table--stack > table > tbody > tr > td::before { content: attr(data-label); font-size: 0.8125rem; font-weight: 600; color: var(--color-text); }
+    .sf-table--stack > table > tbody > tr > th,
+    .sf-table--stack.sf-table--rowhead > table > tbody > tr > :first-child { display: block; background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark))); color: var(--color-text-strong); font-weight: 700; }
+    .sf-table--stack.sf-table--rowhead > table > tbody > tr > :first-child::before { content: none; }
+}
+
+@media print {
+    .sf-table { overflow: visible; border: 0; background: none; }
+    .sf-table--scroll > table { min-width: 0; }
+    .sf-table--scroll > table > thead > tr > :first-child,
+    .sf-table--scroll > table > tbody > tr > :first-child { position: static; }
 }
 
 .sf-prose hr {

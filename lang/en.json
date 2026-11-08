@@ -3289,6 +3289,8 @@
     "entries.err_block_button_page_missing": "A button points to a page that is not on this website. Choose the button’s page again.",
     "entries.err_block_button_file_missing": "A button points to a file that is not in this website’s library. Choose the button’s file again.",
     "storefront.new_tab": "(opens in a new tab)",
+    "storefront.table": "Table",
+    "storefront.table_named": "Table: :name",
     "layout_slots.err_slot_invalid": "This place for blocks does not exist. Reload the page and try again.",
     "layout_slots.err_locale_invalid": "This language is not turned on for the website. Turn the language on first, or remove its content.",
     "layout_slots.err_too_many": "This place holds at most :max blocks. Remove some blocks.",
