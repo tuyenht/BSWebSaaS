@@ -13,7 +13,7 @@ use Throwable;
 
 /**
  * What a site tells search engines (the `seo` site setting, key `config`, written by the admin
- * "Hiện trên Google & mạng xã hội" panel): per language a default Google title and description;
+ * "Google & mạng xã hội" panel): per language a default Google title and description;
  * one title template for the pages without their own title; whether Google may find the site,
  * whether the sitemap is made, and an optional custom robots.txt.
  *

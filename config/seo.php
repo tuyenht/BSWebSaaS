@@ -2,7 +2,7 @@
 
 /*
 |--------------------------------------------------------------------------
-| AI crawler check (admin "Hiện trên Google & mạng xã hội")
+| AI crawler check (admin "Google & mạng xã hội")
 |--------------------------------------------------------------------------
 |
 | The bots the check knows, in three groups:
