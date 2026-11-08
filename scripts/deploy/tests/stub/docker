@@ -17,6 +17,7 @@ answer_sql() {
         *"idle in transaction%' AND xact_start"*) cat "$FAKE/idle" 2>/dev/null || echo 0 ;;
         *"pg_stat_activity"*) echo 0 ;;
         *"FAKE_ONEOFF"*) cat "$FAKE/oneoff-count" ;;
+        *"FAKE_PAGES"*) cat "$FAKE/pages" 2>/dev/null || true ;;
         *) echo "stub docker: SQL no answer: $s" >&2; exit 3 ;;
     esac
 }
@@ -69,6 +70,8 @@ compose_migrate() { # docker compose --profile ops run --rm --no-deps [-v DIR:/d
                 [ ! -e "$FAKE/fail-$m" ] || { echo "SQLSTATE[42P01]: boom"; exit 1; }
                 echo "$m" >> "$FAKE/migrations.txt"; echo "MIGRATED $m" >> "$FAKE/calls.log"
                 [ ! -f "$FAKE/catalog-add-$m" ] || cat "$FAKE/catalog-add-$m" >> "$FAKE/catalog.txt"
+                if [ -f "$FAKE/catalog-del-$m" ]; then grep -vxF -f "$FAKE/catalog-del-$m" "$FAKE/catalog.txt" > "$FAKE/catalog.tmp"; mv "$FAKE/catalog.tmp" "$FAKE/catalog.txt"; fi
+                [ ! -d "$FAKE/after-$m" ] || cp "$FAKE/after-$m"/* "$FAKE"/   # e.g. a page code that changes with this migration
                 echo "  $m ...... DONE"
             done ;;
         *) echo "stub docker: migrate no answer: $cmd" >&2; exit 3 ;;

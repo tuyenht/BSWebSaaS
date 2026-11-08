@@ -88,6 +88,17 @@ art() { docker exec "${PREFIX}app" php artisan "$@"; }
 code() { docker exec "${PREFIX}app" curl -s -m 10 -o /dev/null -w "$2" -H "Host: $HOST" "http://localhost:80$1"; }
 page() { docker exec "${PREFIX}app" curl -s -m 10 -H "Host: $HOST" "http://localhost:80$1"; }
 has() { local h; h=$(page "$1") || die "không gọi được trang $1"; printf '%s\n' "$h" | grep -cF -- "$2" || true; }
+first_open() { # first_open <sql>: the first path the query returns that answers 200 now (none: nothing printed)
+    local cands p x
+    cands=$(q "$1")
+    while read -r p; do
+        [ -n "$p" ] || continue
+        [[ "$p" =~ ^/[A-Za-z0-9/_.~%-]*$ ]] || { note "bỏ qua một đường dẫn có ký tự lạ" >&2; continue; }
+        x=$(code "$p" '%{http_code}')
+        if [ "$x" = 200 ]; then printf '%s\n' "$p"; return 0; fi
+        note "$p trả $x, thử đường dẫn khác" >&2
+    done <<< "$cands"
+}
 q() { # read-only SQL as the DB owner over the container's local socket; one value per line
     docker exec -e Q="$1" "${PREFIX}pg" sh -c 'psql -U "$POSTGRES_USER" -d bswebsaas -X -q -tA -v ON_ERROR_STOP=1 -c "SET default_transaction_read_only = on" -c "$Q"'
 }
@@ -130,6 +141,7 @@ wait_up() { # postgres answers, the app runs PHP, the home page serves through P
 class_of() {
     local s=$1 p=$2
     case "$p" in
+        *[[:cntrl:]]*) echo unknown ;;   # a tab or newline in a name would break the class table
         database/migrations/*.php) if [ "$s" = A ]; then echo migration; else echo migration-edit; fi ;;
         database/content-packs/*) echo content-pack ;;
         database/seeders/*|database/factories/*) echo code ;;
@@ -144,7 +156,8 @@ class_of() {
         config/horizon.php) echo queue ;;
         config/*.php|bootstrap/app.php|bootstrap/providers.php) echo config ;;
         .env.example) echo env-doc ;;
-        docker/*|deploy/*|docker-compose*.yml|Dockerfile*|*/Dockerfile*|Caddyfile*|artisan|public/index.php|.dockerignore) echo server ;;
+        docker/*|deploy/*|docker-compose*.yml|Dockerfile*|*/Dockerfile*|Caddyfile*|artisan|.dockerignore) echo server ;;
+        public/*.php|public/*.phtml|public/*.phar|public/.htaccess|public/*/.htaccess) echo server ;;   # served or run by the web server
         app/*/PermissionRegistry.php) echo permission ;;
         app/*/RichTextSanitizer.php) echo sanitizer ;;
         app/*/resources/views/*|themes/*) echo view ;;
@@ -164,8 +177,8 @@ kind_of() {
     esac
 }
 classify() { # classify <git dir> <old> <new>: "class<TAB>status<TAB>path" per changed path (renames = delete + add)
-    local s p
-    git -C "$1" diff --no-renames --name-status "$2" "$3" | while IFS=$'\t' read -r s p; do
+    local s p   # -z + quotePath=false: a non-ASCII name arrives as itself, not as "Bi\341\273\203u"
+    git -C "$1" -c core.quotePath=false diff -z --no-renames --name-status "$2" "$3" | while IFS= read -r -d '' s && IFS= read -r -d '' p; do
         printf '%s\t%s\t%s\n' "$(class_of "$s" "$p")" "$s" "$p"
     done
 }
@@ -176,11 +189,15 @@ mig_scan() { # mig_scan <git dir> <commit> <name>: the file without its down() b
         /^[[:space:]]*(\*|\/\*|\/\/|#)/ { next }
         !skip { print }'
 }
+# nonadd = drops, renames, type or NOT NULL changes, and every data write: raw SQL (UPDATE with or without an
+# alias, DELETE, INSERT), the query builder (DB::table(…)->update(…), insert, upsert…), Eloquent statics, PDO
+MIG_NONADD='->change\(|->drop[A-Za-z]*\(|Schema::drop|rename|nullable\(false\)|SET NOT NULL|DROP (TABLE|COLUMN|INDEX|CONSTRAINT|VIEW|TYPE)|ALTER COLUMN|TRUNCATE|DELETE FROM|INSERT INTO|UPDATE[[:space:]]+[^[:space:](]+([[:space:]]+(AS[[:space:]]+)?[A-Za-z_][A-Za-z0-9_]*)?[[:space:]]+SET[[:space:]]|DB::(table|select|insert|update|delete|statement|unprepared|connection)\b|->(update|delete|insert|insertGetId|insertOrIgnore|insertUsing|upsert|updateOrInsert|increment|decrement|forceDelete|save|exec)\(|getPdo'
+MIG_ELOQUENT='::(create|insert|upsert|firstOrCreate|updateOrCreate|forceCreate|query|where)\('   # Model::create(…) & co.; Schema::create is removed first
 mig_flags() { # mig_flags <git dir> <commit> <name> → space list of: raw nonadd table concurrent
     local t f=
     t=$(mig_scan "$@")
     printf '%s' "$t" | grep -qE 'DB::(statement|unprepared|raw)|->(statement|unprepared)\(' && f="$f raw"
-    printf '%s' "$t" | grep -qiE -e '->change\(|->drop[A-Za-z]*\(|Schema::drop|rename|nullable\(false\)|SET NOT NULL|DROP (TABLE|COLUMN|INDEX|CONSTRAINT|VIEW|TYPE)|ALTER COLUMN|TRUNCATE|DELETE FROM|UPDATE [a-z_]+ SET' && f="$f nonadd"
+    { printf '%s' "$t" | grep -qiE -e "$MIG_NONADD" || printf '%s' "$t" | sed -E 's/Schema::(create|table|hasTable|hasColumn|hasColumns|hasIndex|getColumnType|getColumns|getIndexes|getForeignKeys|getTables|withoutForeignKeyConstraints|disableForeignKeyConstraints|enableForeignKeyConstraints)\(//g' | grep -qE "$MIG_ELOQUENT"; } && f="$f nonadd"
     printf '%s' "$t" | grep -qE 'Schema::(table|create|rename|drop)|ALTER TABLE' && f="$f table"
     case "$f" in *raw*) case "$f" in *table*) ;; *) f="$f table" ;; esac ;; esac   # raw SQL: assume it touches a table
     printf '%s' "$t" | grep -qE '\$withinTransaction[[:space:]]*=[[:space:]]*false' && f="$f concurrent"
@@ -242,7 +259,23 @@ analyse() {
     if [ "${RESANITIZE:-dry-run}" = apply ]; then case " $CLASSES " in *" sanitizer "*) ;; *) die "RESANITIZE=apply nhưng bộ lọc nội dung không đổi" ;; esac; fi
     case " $CLASSES " in *" content-pack "*) note "gói nội dung đổi: chỉ báo, bản này không nạp gói" ;; esac
     for k in "${ONEOFFS[@]}"; do declare -F "oneoff_$k" >/dev/null || die "thiếu hàm oneoff_$k trong tệp khai báo"; done
+    for x in "${SCHEMA_REMOVED_OK[@]}"; do
+        [[ "$x" =~ ^(col|idx|con)\|[^[:space:]]+$ ]] || die "SCHEMA_REMOVED_OK: dòng '$x' không theo dạng col|…, idx|… hoặc con|… của bản chụp cấu trúc bảng"
+    done
+    note "cấu trúc bảng được phép bớt/đổi (SCHEMA_REMOVED_OK, so đúng từng dòng ở bước 4): ${SCHEMA_REMOVED_OK[*]:-không dòng nào}"
     VITE=$(vite_inputs "$g" "$TARGET" | joinw)
+    for x in "${BUILD_DYNAMIC[@]}"; do
+        git -C "$g" cat-file -e "$TARGET:$x" 2>/dev/null || die "BUILD_DYNAMIC: không có tệp $x ở ${TARGET:0:8}"
+    done
+    for x in "${BUILD_MARKERS[@]}"; do   # "<vite input> <string>": a string this range adds to resources/
+        n=${x%% *} m=${x#* }
+        [ -n "$m" ] && [ "$m" != "$x" ] || die "BUILD_MARKERS: '$x' cần dạng '<input của vite> <chuỗi>'"
+        case " $VITE " in *" $n "*) ;; *) die "BUILD_MARKERS: $n không phải input của vite.config.js" ;; esac
+        git -C "$g" grep -qF -- "$m" "$TARGET" -- resources || die "BUILD_MARKERS: '$m' không có trong resources/ ở ${TARGET:0:8}"
+        if git -C "$g" grep -qF -- "$m" "$OLD" -- resources; then die "BUILD_MARKERS: '$m' đã có ở ${OLD:0:7}: không chứng minh được bản build mới"; fi
+    done
+    [ "${#BUILD_DYNAMIC[@]}" = 0 ] && [ "${#BUILD_MARKERS[@]}" = 0 ] || note "bản build: phần tải sau ${BUILD_DYNAMIC[*]:-không}; chuỗi mới: ${#BUILD_MARKERS[@]}"
+    if declare -F release_git >/dev/null; then release_git "$g"; fi   # the release's own git checks (plan and step 1)
 }
 
 # ---------------------------------------------------------------- state
@@ -313,22 +346,30 @@ CATALOG_SQL="SELECT 'col|'||c.relname||'|'||a.attname||'|'||format_type(a.atttyp
     FROM pg_constraint k JOIN pg_class t ON t.oid = k.conrelid JOIN pg_namespace n ON n.oid = t.relnamespace
     WHERE n.nspname = 'public' AND NOT t.relispartition
   ORDER BY 1"
-catalog() { q "$CATALOG_SQL" > "$STATE/$1"; [ -s "$STATE/$1" ] || die "không đọc được cấu trúc bảng"; }
+catalog() { # sorted here, in byte order: comm and the exact SCHEMA_REMOVED_OK compare must not follow the DB collation
+    q "$CATALOG_SQL" | LC_ALL=C sort > "$STATE/$1"; [ -s "$STATE/$1" ] || die "không đọc được cấu trúc bảng"
+}
 catalog_delta() { # print what step 4 changed; every NEW index must be valid and every NEW foreign key validated
-    local added removed bad
-    added=$(comm -13 "$STATE/catalog-before" "$STATE/catalog-after")
-    removed=$(comm -23 "$STATE/catalog-before" "$STATE/catalog-after")
+    local added removed bad want
+    added=$(LC_ALL=C comm -13 "$STATE/catalog-before" "$STATE/catalog-after")
+    removed=$(LC_ALL=C comm -23 "$STATE/catalog-before" "$STATE/catalog-after")
     echo "Cấu trúc bảng thêm ($(printf '%s' "$added" | grep -c . || true) dòng):"; printf '%s\n' "$added" | sed '/^$/d; s/^/     + /'
     if [ -n "$removed" ]; then echo "Cấu trúc bảng bớt/đổi:"; printf '%s\n' "$removed" | sed 's/^/     - /'; fi
     bad=$(printf '%s\n' "$added" | grep -E '^idx\|.*\|INVALID$|^con\|[^|]*\|[^|]*\|f\|NOT-VALID$' || true)
     [ -z "$bad" ] || { printf '%s\n' "$bad" | sed 's/^/     LỖI /'; die "chỉ mục mới chưa hợp lệ hoặc khóa ngoại mới chưa VALIDATE"; }
-    if [ -n "$removed" ] && [ "${#MIG_OK[@]}" = 0 ]; then die "migration bớt hoặc đổi cấu trúc nhưng tệp khai báo không ghi migration nào được duyệt"; fi
-    echo "OK   chỉ mục mới hợp lệ, khóa ngoại mới đã VALIDATE"
+    # a dropped or changed column, index or constraint passes only when the release lists exactly those lines
+    want=$(printf '%s\n' "${SCHEMA_REMOVED_OK[@]}" | sed '/^$/d' | LC_ALL=C sort)
+    if [ "$removed" != "$want" ]; then
+        { LC_ALL=C comm -23 <(printf '%s\n' "$want" | sed '/^$/d') <(printf '%s\n' "$removed" | sed '/^$/d') | sed 's/^/     khai báo mà không bớt\/đổi: /'
+          LC_ALL=C comm -13 <(printf '%s\n' "$want" | sed '/^$/d') <(printf '%s\n' "$removed" | sed '/^$/d') | sed 's/^/     bớt\/đổi mà không khai báo: /'; } || true
+        die "cấu trúc bảng bớt/đổi khác đúng danh sách SCHEMA_REMOVED_OK của tệp khai báo"
+    fi
+    echo "OK   chỉ mục mới hợp lệ, khóa ngoại mới đã VALIDATE, bớt/đổi đúng SCHEMA_REMOVED_OK (${#SCHEMA_REMOVED_OK[@]} dòng)"
 }
 
 # ---------------------------------------------------------------- steps
 s0() {
-    local head x p runs
+    local head x p runs pages
     for x in docker git gh jq pnpm gzip flock sha256sum; do command -v "$x" >/dev/null || die "máy chưa có lệnh $x"; done
     [ -z "$(git -C "$PROD" status --porcelain --untracked-files=no)" ] || die "cây prod có tệp sửa tay"
     head=$(git -C "$PROD" rev-parse HEAD); echo "Prod đang ở $head"
@@ -344,6 +385,15 @@ s0() {
         art --version > "$STATE/laravel-version"; echo "Laravel: $(cat "$STATE/laravel-version")"
         : > "$STATE/pages-before"
         for p in "${PAGES[@]}"; do x=$(code "$p" '%{http_code}'); [ "$x" != 000 ] || die "trang $p không trả lời"; printf '%s %s\n' "$p" "$x" >> "$STATE/pages-before"; done
+        if declare -F release_pages >/dev/null; then   # pages found in the DB now (a post, a product): 200 before, re-checked in steps 4 and 8
+            pages=$(release_pages)
+            for p in $pages; do
+                [[ "$p" =~ ^/[A-Za-z0-9/_.~%-]*$ ]] || die "release_pages trả đường dẫn lạ"
+                awk -v p="$p" '$1==p {f=1} END {exit !f}' "$STATE/pages-before" && continue
+                expect "trang $p (release_pages) trước khi triển khai" "$(code "$p" '%{http_code}')" "200"
+                printf '%s 200\n' "$p" >> "$STATE/pages-before"
+            done
+        fi
         cat "$STATE/pages-before"
         for p in / /admin/login; do expect "trang $p trước khi triển khai" "$(awk -v p="$p" '$1==p {print $2}' "$STATE/pages-before")" "200"; done
         docker exec "${PREFIX}scheduler" php artisan schedule:list | sched_names > "$STATE/schedule-before"
@@ -423,9 +473,9 @@ s3() {
     date '+%F %T' > "$STATE/s3-ok"
 }
 s4() {
-    local m r head
+    local m r head x p want
     rm -f "$STATE/s4-ok"
-    need_state s3-ok 3
+    need_state s3-ok 3; need_state pages-before 0
     head=$(git -C "$PROD" rev-parse HEAD)
     if [ "${#MIGRATIONS[@]}" = 0 ]; then date +%s > "$STATE/s4-ok"; echo "Không có migration."; return 0; fi
     if [ "$head" = "$TARGET" ]; then
@@ -438,6 +488,7 @@ s4() {
     for m in "${MIGRATIONS[@]}"; do
         r=$(pgb_needed "$m")
         if [ -s "$STATE/mig-$m" ]; then echo "Bỏ qua $m: đã chạy lúc $(cat "$STATE/mig-$m")"; continue; fi
+        [ -s "$STATE/catalog-pre-$m" ] || catalog "catalog-pre-$m"   # kept across a resume: a cut-off attempt may have committed a step
         stage "$m"
         pending ops_mig --path=/deploy-migrations --realpath
         if [ -z "$PENDING" ]; then
@@ -452,14 +503,23 @@ s4() {
             pending ops_mig --path=/deploy-migrations --realpath
             expect "$m còn chờ" "${PENDING:-không}" "không"
         fi
+        if [ "$r" = 0 ]; then   # no PgBouncer restart after this file: its columns must not have changed
+            catalog "catalog-post-$m"
+            x=$(diff <(grep '^col|' "$STATE/catalog-pre-$m") <(grep '^col|' "$STATE/catalog-post-$m") || true)
+            if [ -n "$x" ]; then
+                printf '%s\n' "$x" | sed -n 's/^< /     - /p; s/^> /     + /p'
+                SCHEMA=plans   # the stop restarts PgBouncer: the old code must not keep plans of the old columns
+                die "$m đổi cột của bảng nhưng không khởi động lại PgBouncer sau nó${PGB_SKIP[$m]:+ (PGB_SKIP: ${PGB_SKIP[$m]})}: tệp khai báo sai, nhắn AI"
+            fi
+        fi
         date '+%F %T' > "$STATE/mig-$m"
     done
     rm -rf "$MIGDIR"
     catalog catalog-after
     catalog_delta
     if declare -F release_schema >/dev/null; then release_schema; fi
-    wait_up   # the OLD code on the new schema: the rollback verdict, live
-    expect "trang /admin/login (code cũ trên cấu trúc bảng mới)" "$(code /admin/login '%{http_code}')" "200"
+    wait_up   # the OLD code on the new schema: the rollback verdict, live, on every page of step 0 (a post and a product read the translation tables)
+    while read -r p want; do expect "trang $p (code cũ trên cấu trúc bảng mới; trước: $want)" "$(code "$p" '%{http_code}')" "$want"; done < "$STATE/pages-before"
     SCHEMA=
     date +%s > "$STATE/s4-ok"
 }
@@ -482,13 +542,19 @@ build() {
     popd >/dev/null
 }
 s6() {
-    local m x
+    local m x f
     MIXED=1
     RESUME=5; expect "commit prod" "$(git -C "$PROD" rev-parse HEAD)" "$TARGET"; RESUME=
     need_state s4-ok 4
     build
     m=$PROD/public/build/manifest.json
     for x in $(vite_inputs "$PROD" HEAD); do expect "bản build có $x" "$(jq -r --arg k "$x" 'has($k)' "$m")" "true"; done
+    for x in "${BUILD_DYNAMIC[@]}"; do expect "bản build có phần tải sau $x" "$(jq -r --arg k "$x" '.[$k].isDynamicEntry // false' "$m")" "true"; done
+    for x in "${BUILD_MARKERS[@]}"; do   # the strings this range adds land in the built file of their entry
+        f=$PROD/public/build/$(jq -er --arg k "${x%% *}" '.[$k].file' "$m")
+        grep -qF -- "${x#* }" "$f" || die "bản build: ${x%% *} ($f) chưa có chuỗi mới '${x#* }'"
+        echo "OK   bản build: ${x%% *} có '${x#* }'"
+    done
 }
 reload() {
     date -u +%FT%TZ > "$STATE/t7"
@@ -499,13 +565,14 @@ reload() {
     if restart_needed; then pgb_drop; fi
     wait_up
 }
-oneoff() { # oneoff <name>: preview → apply → re-preview must be 0; a mark stops a resume from applying twice
+oneoff() { # oneoff <name>: preview → apply <preview count> → re-preview must be 0 → verify; a mark stops a resume from applying twice
     local k=$1 n
     if [ -s "$STATE/oneoff-$k" ]; then echo "Bỏ qua $k: đã chạy lúc $(cat "$STATE/oneoff-$k")"; return 0; fi
     n=$("oneoff_$k" preview | tail -n 1); [[ "$n" =~ ^[0-9]+$ ]] || die "$k (xem trước) không in số dòng sẽ đổi"
     echo "$k: xem trước sẽ đổi $n"
-    if [ "$n" != 0 ]; then "oneoff_$k" apply; fi
+    if [ "$n" != 0 ]; then "oneoff_$k" apply "$n"; fi   # apply may check that it changed exactly n
     expect "$k xem lại sau khi chạy (còn đổi)" "$("oneoff_$k" preview | tail -n 1)" "0"
+    "oneoff_$k" verify   # the end state, also when a resume finds nothing left to apply
     date '+%F %T' > "$STATE/oneoff-$k"
 }
 s7() {
@@ -588,6 +655,7 @@ rollback() { # CODE only: the schema stays (expand-only migrations; step 4 prove
 # ---------------------------------------------------------------- modes
 load_release() { # data + one-off functions only; arrays default to empty
     DECLARED=() MIGRATIONS=() SCHEDULE_ADDED=() SCHEDULE_REMOVED=() ENV_DEFAULT_OK=() ONEOFFS=() PAGES=(/ /admin/login)
+    SCHEMA_REMOVED_OK=() BUILD_DYNAMIC=() BUILD_MARKERS=()
     declare -gA MIG_OK=() PGB_SKIP=()
     RESANITIZE=dry-run HOST= OLD= TARGET=
     # shellcheck disable=SC1090
@@ -614,20 +682,27 @@ mode_plan() { # git only, on the dev repo; prod is never touched (docker/gh/ssh/
     git -C "$dev" merge-base --is-ancestor "$commit" origin/main 2>/dev/null || echo "LƯU Ý commit bộ khung chưa nằm trên origin/main: chưa dùng cho prod"
     analyse "$dev"
     echo "Các bước:"
-    note "0 kiểm tra (CI đầy đủ, container, ổ đĩa, ảnh trước: ${#PAGES[@]} trang, lịch chạy$(declare -F release_before >/dev/null && echo ', release_before'))"
+    note "0 kiểm tra (CI đầy đủ, container, ổ đĩa, ảnh trước: ${#PAGES[@]} trang$(declare -F release_pages >/dev/null && echo ' + release_pages'), lịch chạy$(declare -F release_before >/dev/null && echo ', release_before'))"
     note "1 so thay đổi trên prod (như trên) + khóa .env mới: ${NEW_ENV:-không có}"
     note "2 sao lưu DB"
     if [ "${#MIGRATIONS[@]}" -gt 0 ]; then
         note "3 kiểm chỉ đọc: chờ = ${#MIGRATIONS[@]} tệp mới, idle in transaction, chụp cấu trúc bảng"
-        note "4 migrate từng tệp (code cũ vẫn phục vụ), rồi so cấu trúc bảng, trang chủ + đăng nhập 200 trên code cũ"
+        note "4 migrate từng tệp (code cũ vẫn phục vụ; tệp không khởi động lại PgBouncer không được đổi cột), rồi so cấu trúc bảng (bớt/đổi = đúng SCHEMA_REMOVED_OK), mọi trang của bước 0 như trước trên code cũ"
     else note "3–4 không có migration (chỉ kiểm không còn chờ)"; fi
     note "5 đổi code + composer install · 6 pnpm install + build ($(wc -w <<< "$VITE") input)"
     note "7 view:clear, optimize, octane:reload, khởi động lại horizon + scheduler$(restart_needed_plan && echo ', PgBouncer')$(case " $CLASSES " in *" permission "*) echo ', rbac:sync' ;; esac)$(case " $CLASSES " in *" sanitizer "*) echo ", resanitize ${RESANITIZE}" ;; esac)${ONEOFFS[*]:+, một lần: ${ONEOFFS[*]}}"
     note "8 kiểm sau: trang như trước, CSS mới, lịch chạy (+${SCHEDULE_ADDED[*]:-} −${SCHEDULE_REMOVED[*]:-}), mật khẩu superuser, cached plan"
     echo "Dòng anh chạy (giữ nguyên; muốn chạy tiếp từ một bước thì thêm số bước trước dấu ;):"
     local envp=; [ "$dev" = /opt/bswebsaas/dev ] || envp="DEPLOY_DEV_REPO=$dev "
-    printf "  ! tmux new-session -d -s deploy '%sbash -c \"\$(git -C %s show %s:scripts/deploy/launch.sh)\" launch %s %s %s %s; exec bash'\n" "$envp" "$dev" "$commit" "$commit" "$blob" "$(readlink -f "$rel")" "$relsha"
+    # an unreadable launcher must stop the line, not run an empty "bash -c" that exits 0
+    printf "  ! tmux new-session -d -s deploy '%sbash -c \"\$(git -C %s show %s:scripts/deploy/launch.sh || echo \"echo DỪNG: không đọc được launch.sh ở commit %s >&2; exit 1\")\" launch %s %s %s %s; exec bash'\n" "$envp" "$dev" "$commit" "${commit:0:8}" "$commit" "$blob" "$(readlink -f "$rel")" "$relsha"
     echo "Lùi code: cùng dòng, thêm \"rollback\". Sao lưu lại: thêm \"dump\"."
+}
+mode_flags() { # flags <git dir> <commit>: "name<TAB>flags" for every migration of that commit (review, tests)
+    local m
+    git -C "$1" -c core.quotePath=false ls-tree --name-only "$2" database/migrations/ | sed -nE 's#^database/migrations/(.+)\.php$#\1#p' | while read -r m; do
+        printf '%s\t%s\n' "$m" "$(mig_flags "$1" "$2" "$m")"
+    done
 }
 restart_needed_plan() { local m; for m in "${MIGRATIONS[@]}"; do [ -z "${PGB_SKIP[$m]:-}" ] && case " ${FLAGS[$m]} " in *" table "*) return 0 ;; esac; done; return 1; }
 mode_run() {
@@ -684,8 +759,9 @@ main() {
     case "${1:-}" in
         plan) [ -n "${2:-}" ] || die "cần tệp khai báo"; mode_plan "$2" "${3:-}" ;;
         classify) classify "$2" "$3" "$4" ;;
+        flags) mode_flags "$2" "$3" ;;
         run) shift; mode_run "$@" ;;
-        *) echo "dùng: deploy.sh plan <tệp khai báo> [commit] | classify <git dir> <old> <new>  (run chỉ qua launch.sh)" >&2; exit 2 ;;
+        *) echo "dùng: deploy.sh plan <tệp khai báo> [commit] | classify <git dir> <old> <new> | flags <git dir> <commit>  (run chỉ qua launch.sh)" >&2; exit 2 ;;
     esac
 }
 main "$@"; exit

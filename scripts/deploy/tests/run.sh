@@ -54,9 +54,58 @@ Schedule::command('audit:months')->daily();
 Schedule::command('products:purge-trash')->daily();"
 w app/Modules/Shared/Support/RichTextSanitizer.php '<?php // v2'
 w themes/default/x.blade.php 'x'; w lang/vi.json '{}'; w tests/Unit/FooTest.php '<?php'; w docs/a.md 'a'
-w resources/css/storefront.css 'a{color:red}'
+w resources/css/storefront.css 'a{color:red} .sf-newclass{}'
+w resources/js/app.js "x(); bsNewThing(); const lazy = () => import('./lazy.js');"
+w resources/js/lazy.js 'lazy()'
 git -C "$SRC" add -A && gitc -m full
 FULL=$(git -C "$SRC" rev-parse HEAD)
+# migration shapes for the flag patterns, among them the two real files the first review found unflagged
+branch t-flags
+w database/migrations/3000_01_01_000000_builder_update.php "<?php
+return new class extends Migration {
+    public function up(): void {
+        Schema::create('site_types', function (Blueprint \$t) { \$t->id(); });
+        DB::table('sites')->whereNull('site_type_id')->update(['site_type_id' => 1]);
+    }
+};"
+w database/migrations/3000_01_01_000100_aliased_update.php "<?php
+return new class extends Migration {
+    public function up(): void {
+        foreach (['logo', 'favicon'] as \$column) {
+            run_sql(<<<SQL
+                    UPDATE site_profiles AS p SET {\$column} = NULL
+                    WHERE NOT EXISTS (SELECT 1 FROM media m WHERE m.id = p.{\$column})
+                SQL);
+        }
+    }
+};"
+w database/migrations/3000_01_01_000200_alias_without_as.php "<?php
+return new class extends Migration {
+    public function up(): void { run_sql('update site_profiles p set x = null'); }
+};"
+w database/migrations/3000_01_01_000300_add_only.php "<?php
+return new class extends Migration {
+    public function up(): void {
+        Schema::table('sites', function (Blueprint \$t) {
+            \$t->foreignId('owner_id')->nullable()->constrained('users')->nullOnDelete()->onUpdate('cascade');
+            \$t->timestamp('seen_at')->nullable()->useCurrentOnUpdate();
+        });
+    }
+    public function down(): void { DB::table('sites')->update(['x' => 1]); }
+};"
+w database/migrations/3000_01_01_000400_eloquent.php "<?php
+return new class extends Migration {
+    public function up(): void { Schema::create('things', fn (\$t) => \$t->id()); Role::create(['name' => 'x']); }
+};"
+w database/migrations/3000_01_01_000500_pdo.php "<?php
+return new class extends Migration {
+    public function up(): void { \$this->conn()->getPdo()->exec('delete from things'); }
+};"
+w database/migrations/3000_01_01_000600_insert_using.php "<?php
+return new class extends Migration {
+    public function up(): void { \$q->from('a')->insertUsing(['x'], \$sub); }
+};"
+git -C "$SRC" add -A && gitc -m flags; FLAGSC=$(git -C "$SRC" rev-parse HEAD)
 branch t-unknown; w weird/thing.txt x; w app/Modules/X/Foo.php '<?php // 2'; git -C "$SRC" add -A && gitc -m unknown; UNKNOWN=$(git -C "$SRC" rev-parse HEAD)
 branch t-sched; w routes/console.php "<?php
 Schedule::command('audit:months')->daily();
@@ -66,6 +115,7 @@ branch t-kinds
 for p in database/content-packs/p/pages.json package.json resources/js/app.js routes/web.php config/octane.php \
     docker-compose.prod.yml deploy/Caddyfile app/Modules/Rbac/Registry/PermissionRegistry.php themes/default/y.blade.php \
     lang/en.json scripts/backup-prod-db.sh scripts/other.mjs tests/Unit/BarTest.php docs/b.md weird/thing.txt; do w "$p" changed; done
+w "docs/Biểu mẫu.dc.html" x; w public/x.php '<?php'; w public/.htaccess x; w public/vendor/.htaccess x; w public/robots.txt x
 w composer.lock '{"packages":[{"name":"laravel/framework","version":"v13.2.0"}]}'
 w database/migrations/0001_01_01_000000_base.php '<?php // edited'
 git -C "$SRC" rm -q database/migrations/0002_01_01_000000_more.php
@@ -77,6 +127,12 @@ mkdir -p "$SRC/scripts/deploy" && cp "$HERE/../deploy.sh" "$HERE/../launch.sh" "
 git -C "$SRC" add -A && gitc -m engine
 ECOMMIT=$(git -C "$SRC" rev-parse HEAD) EBLOB=$(git -C "$SRC" rev-parse HEAD:scripts/deploy/deploy.sh)
 git clone -q --bare "$SRC" "$ORIGIN"
+# the engine commit is merged: origin/main of the dev repo contains it (launch.sh refuses any other commit)
+git -C "$ORIGIN" update-ref refs/heads/main "$ECOMMIT"
+git -C "$SRC" remote add origin "$ORIGIN" && git -C "$SRC" fetch -q origin
+# the same engine blob on a commit that never reached origin/main
+git -C "$SRC" checkout -q -b engine-unmerged engine; w scripts/deploy/x.txt x; git -C "$SRC" add -A && gitc -m unmerged
+UNMERGED=$(git -C "$SRC" rev-parse HEAD); git -C "$SRC" checkout -q engine
 
 # ---------------------------------------------------------------- one fake prod per scenario
 N=0
@@ -91,6 +147,7 @@ fresh() { # fresh <target>: a new fake prod at OLD, its fake DB files, profile a
     echo 'col|sites|extra|text|null' > "$FAKE/catalog-add-2100_01_01_000000_add_col"
     echo 'idx|sites|sites_extra_idx|valid' > "$FAKE/catalog-add-2100_01_01_000100_add_idx"
     echo 1 > "$FAKE/oneoff-count"
+    printf '/bai-1\n/bai-2\n' > "$FAKE/pages"; echo 404 > "$FAKE/code_bai-1"   # release_pages keeps the first that opens
     cat > "$S/profile" <<EOF
 PROD=$PROD PREFIX=fake_deploy_ COMPOSE_PROJECT=fake-deploy BK=$S/bk SECRETS=$S/secret.env DEPLOY_RUNS=$RUNS
 REPO=t/t IMAGE=fake:img MIN_DISK_GB=0 LOCK_RETRY_SLEEP=0 STUB_BIN=$STUB
@@ -108,7 +165,14 @@ declare -gA MIG_OK=([2100_01_01_000100_add_idx]="index only, CONCURRENTLY")
 declare -gA PGB_SKIP=([2100_01_01_000100_add_idx]="index only")
 SCHEDULE_ADDED=(products:purge-trash)
 ONEOFFS=(sample)
-oneoff_sample() { case "$1" in preview) q "SELECT FAKE_ONEOFF" ;; apply) art fake:oneoff; echo 0 > "$FAKE/oneoff-count" ;; esac; }
+oneoff_sample() { case "$1" in
+    preview) q "SELECT FAKE_ONEOFF" ;;
+    apply) [ "$2" = 1 ] || die "apply got '$2', not the preview count"; art fake:oneoff; echo 0 > "$FAKE/oneoff-count" ;;
+    verify) touch "$FAKE/verified" ;;
+esac; }
+release_pages() { local p; p=$(first_open "SELECT FAKE_PAGES"); [ -n "$p" ] || die "no page opens"; echo "$p"; }
+BUILD_DYNAMIC=(resources/js/lazy.js)
+BUILD_MARKERS=("resources/js/app.js bsNewThing" "resources/css/storefront.css sf-newclass")
 EOF
         fi
         printf '%s\n' "$@"
@@ -144,12 +208,29 @@ ops-script A scripts/backup-prod-db.sh
 tooling A scripts/other.mjs
 tooling A tests/Unit/BarTest.php
 tooling A docs/b.md
+tooling A docs/Biểu mẫu.dc.html
+server A public/x.php
+server A public/.htaccess
+server A public/vendor/.htaccess
+public A public/robots.txt
 unknown A weird/thing.txt"
 GOT=$(bash "$SRC/scripts/deploy/deploy.sh" classify "$SRC" "$OLD" "$KINDS" | tr '\t' ' ' | sort)
 ok '[ "$GOT" = "$(printf "%s\n" "$EXP" | sort)" ]' "path → class table ($(printf '%s\n' "$EXP" | wc -l) kinds incl. unknown, edited and deleted migration)"
 [ "$GOT" = "$(printf '%s\n' "$EXP" | sort)" ] || diff <(printf '%s\n' "$EXP" | sort) <(printf '%s\n' "$GOT")
 GOT=$(bash "$SRC/scripts/deploy/deploy.sh" classify "$SRC" "$OLD" "$FULL" | cut -f1 | sort -u | tr '\n' ' ')
 ok '[ "$GOT" = "assets migration sanitizer schedule text tooling view " ]' "full range classes: $GOT"
+
+echo "== migration flags: data writes are non-additive"
+GOT=$(bash "$SRC/scripts/deploy/deploy.sh" flags "$SRC" "$FLAGSC" | grep '^3000_' | tr '\t' ' ')
+EXP="3000_01_01_000000_builder_update nonadd table
+3000_01_01_000100_aliased_update nonadd
+3000_01_01_000200_alias_without_as nonadd
+3000_01_01_000300_add_only table
+3000_01_01_000400_eloquent nonadd table
+3000_01_01_000500_pdo nonadd
+3000_01_01_000600_insert_using nonadd"
+ok '[ "$GOT" = "$EXP" ]' "builder update (0008 shape), aliased UPDATE (2051 shape), alias without AS, Eloquent create, PDO exec, insertUsing → nonadd; onUpdate/nullOnDelete/useCurrentOnUpdate and a write in down() stay additive"
+[ "$GOT" = "$EXP" ] || diff <(printf '%s\n' "$EXP") <(printf '%s\n' "$GOT")
 
 echo "== plan: git only, flags, hash line"
 fresh "$FULL"; : > "$FAKE/calls.log"
@@ -159,7 +240,7 @@ PLAN=$S/plan.txt
 ok '[ "$RC" = 0 ]' "plan exits 0"
 ok '[ ! -s "$FAKE/calls.log" ]' "plan called no docker, gh or pnpm"
 ok 'grep -q "2100_01_01_000000_add_col: \[table\] PgBouncer: restart" "$PLAN"' "add_col flagged table only (down() and comments ignored), restart"
-ok 'grep -q "add_idx: \[raw table concurrent\] PgBouncer: no-restart (PGB_SKIP: index only)" "$PLAN"' "add_idx raw + concurrent, restart narrowed"
+ok 'grep -q "add_idx: \[raw nonadd table concurrent\] PgBouncer: no-restart (PGB_SKIP: index only)" "$PLAN"' "add_idx raw + concurrent, restart narrowed"
 ok 'grep -qF "launch $ECOMMIT $EBLOB $REL $(sha256sum "$REL" | cut -d" " -f1)" "$PLAN"' "the owner line carries commit, engine blob and release sha256"
 release 'unset "MIG_OK[2100_01_01_000100_add_idx]"'
 ( export PATH="$STUB:$PATH" FAKE; bash "$SRC/scripts/deploy/deploy.sh" plan "$REL" ) > "$PLAN" 2>&1; RC=$?
@@ -167,6 +248,22 @@ ok '[ "$RC" = 1 ] && grep -q "MIG_OK" "$PLAN"' "raw SQL migration without a revi
 release 'docker() { echo LEAK; }; gh run list'
 ( export PATH="$STUB:$PATH" FAKE; bash "$SRC/scripts/deploy/deploy.sh" plan "$REL" ) > "$PLAN" 2>&1; RC=$?
 ok '[ "$RC" = 1 ] && grep -q "không được gọi gh" "$PLAN" && [ ! -s "$FAKE/calls.log" ]' "plan mode blocks gh even from the release file"
+release 'SCHEMA_REMOVED_OK=("sites extra")'
+( export PATH="$STUB:$PATH" FAKE; bash "$SRC/scripts/deploy/deploy.sh" plan "$REL" ) > "$PLAN" 2>&1; RC=$?
+ok '[ "$RC" = 1 ] && grep -q "SCHEMA_REMOVED_OK: dòng" "$PLAN"' "a SCHEMA_REMOVED_OK line not in snapshot form stops the plan"
+release 'BUILD_MARKERS=("resources/js/app.js notInTheSource")'
+( export PATH="$STUB:$PATH" FAKE; bash "$SRC/scripts/deploy/deploy.sh" plan "$REL" ) > "$PLAN" 2>&1; RC=$?
+ok '[ "$RC" = 1 ] && grep -q "không có trong resources/" "$PLAN"' "a build marker missing from resources/ at TARGET stops the plan"
+release 'BUILD_MARKERS=("resources/js/app.js x()")'
+( export PATH="$STUB:$PATH" FAKE; bash "$SRC/scripts/deploy/deploy.sh" plan "$REL" ) > "$PLAN" 2>&1; RC=$?
+ok '[ "$RC" = 1 ] && grep -q "đã có ở" "$PLAN"' "a build marker already at OLD (proves nothing) stops the plan"
+release
+( export PATH="$STUB:$PATH" FAKE; bash "$SRC/scripts/deploy/deploy.sh" plan "$REL" ) > "$PLAN" 2>&1
+INNER=$(sed -n "s/^  ! tmux new-session -d -s deploy '\(.*\); exec bash'\$/\1/p" "$PLAN")
+BADC=$(printf '%040d' 7)
+( export DEPLOY_PROFILE=$S/profile DEPLOY_RUNS_DIR=$S/runs FAKE PATH="$STUB:$PATH"
+  bash -c "${INNER//show $ECOMMIT:/show $BADC:}" ) > "$S/line.txt" 2>&1; RC=$?
+ok '[ -n "$INNER" ] && [ "$RC" != 0 ] && grep -q "DỪNG: không đọc được launch.sh" "$S/line.txt" && [ ! -s "$FAKE/calls.log" ]' "the owner line with an unreadable launcher stops (rc $RC), no empty bash -c"
 
 echo "== launcher: pinned hashes"
 fresh "$FULL"
@@ -175,6 +272,8 @@ ok '[ "$RC" != 0 ] && says "khác blob đã duyệt" && head_is "$OLD"' "wrong e
 LSHA=$(printf '%064d' 0) launch
 ok '[ "$RC" != 0 ] && says "khác mã kiểm đã duyệt" && head_is "$OLD"' "wrong release sha256 refuses"
 ok '[ ! -s "$FAKE/calls.log" ]' "no stub call before the hash checks pass"
+LBLOB_COMMIT=$UNMERGED launch
+ok '[ "$RC" != 0 ] && says "chưa nằm trên origin/main" && head_is "$OLD" && [ ! -s "$FAKE/calls.log" ]' "an engine commit not on origin/main is refused (same engine blob)"
 
 echo "== full run on the fake prod"
 fresh "$FULL"; launch
@@ -191,6 +290,10 @@ ok 'says "OK   lịch chạy thêm = products:purge-trash"' "schedule diff equal
 ok 'says "0 would change on 1 site(s)." && [ "$(calls "cms:resanitize-bodies --dry-run")" -ge 1 ] && [ "$(calls "cms:resanitize-bodies$")" = 0 ]' "sanitizer: dry run only"
 ok '[ "$(cat "$FAKE/oneoff-count")" = 0 ] && says "OK   sample xem lại sau khi chạy (còn đổi) = 0"' "one-off: preview → apply → re-preview 0"
 ok 'says "chỉ mục mới hợp lệ" && says "+ idx|sites|sites_extra_idx|valid"' "schema delta printed and checked"
+ok '[ -e "$FAKE/verified" ]' "one-off: apply got the preview count, verify ran"
+PB=$RUNS/${OLD:0:7}-${FULL:0:8}/pages-before
+ok 'grep -qx "/bai-2 200" "$PB" && ! grep -q "^/bai-1 " "$PB" && says "OK   trang /bai-2 (code cũ trên cấu trúc bảng mới; trước: 200) = 200"' "release_pages: the first page that opens is kept and re-checked on the old code in step 4"
+ok 'says "OK   bản build có phần tải sau resources/js/lazy.js = true" && says "OK   bản build: resources/js/app.js có '"'"'bsNewThing'"'"'" && says "OK   bản build: resources/css/storefront.css có '"'"'sf-newclass'"'"'"' "build: lazy chunk and the new strings checked"
 LOGF=$(ls "$RUNS"/*-run-*.log | head -1)
 ok '[ "$(stat -c %a "$LOGF")" = 600 ] && [ "$(stat -c %a "$RUNS/${OLD:0:7}-${FULL:0:8}")" = 700 ]' "log 0600, state 0700"
 ok '! grep -q "secret-not-printed" "$LOGF"' "no .env value in the log"
@@ -226,6 +329,54 @@ ok '[ "$RC" = 0 ] && head_is "$FULL" && [ "$(calls "MIGRATED")" = 2 ]' "resume a
 echo "== invalid new index stops before the code moves"
 fresh "$FULL"; echo 'idx|sites|sites_extra_idx|INVALID' > "$FAKE/catalog-add-2100_01_01_000100_add_idx"; launch
 ok '[ "$RC" = 1 ] && says "chỉ mục mới chưa hợp lệ" && head_is "$OLD"' "INVALID index → stop in step 4, code untouched"
+
+echo "== step 4 on the old code: every page of step 0, the exact removal list, no column change without a restart"
+fresh "$FULL"; mkdir -p "$FAKE/after-2100_01_01_000000_add_col"; echo 500 > "$FAKE/after-2100_01_01_000000_add_col/code_bai-2"; launch
+ok '[ "$RC" = 1 ] && says "DỪNG (bước 4)" && says "trang /bai-2 (code cũ trên cấu trúc bảng mới; trước: 200): được '"'"'500'"'"'" && head_is "$OLD"' "a post that breaks on the old code after the migrations stops in step 4, code untouched"
+fresh "$FULL"; echo 'idx|sites|sites_pkey|valid' > "$FAKE/catalog-del-2100_01_01_000000_add_col"; launch
+ok '[ "$RC" = 1 ] && says "bớt/đổi mà không khai báo: idx|sites|sites_pkey|valid" && says "SCHEMA_REMOVED_OK" && head_is "$OLD"' "a dropped index stops although MIG_OK names another file"
+fresh "$FULL"; echo 'idx|sites|sites_pkey|valid' > "$FAKE/catalog-del-2100_01_01_000000_add_col"; release 'SCHEMA_REMOVED_OK=("idx|sites|sites_pkey|valid")'; launch
+ok '[ "$RC" = 0 ] && says "bớt/đổi đúng SCHEMA_REMOVED_OK (1 dòng)"' "the same drop listed exactly passes"
+fresh "$FULL"; echo 'idx|sites|sites_pkey|valid' > "$FAKE/catalog-del-2100_01_01_000000_add_col"; release 'SCHEMA_REMOVED_OK=("idx|sites|sites_pkey|valid" "col|sites|id|bigint|notnull")'; launch
+ok '[ "$RC" = 1 ] && says "khai báo mà không bớt/đổi: col|sites|id|bigint|notnull"' "a listed line that did not go stops (exact compare)"
+fresh "$FULL"; echo 'col|sites|extra2|text|null' >> "$FAKE/catalog-add-2100_01_01_000100_add_idx"; launch
+ok '[ "$RC" = 1 ] && says "đổi cột của bảng nhưng không khởi động lại PgBouncer" && says "PGB_SKIP: index only" && says "+ col|sites|extra2|text|null" && head_is "$OLD"' "PGB_SKIP on a file that changed a column is refused"
+ok '[ "$(calls "restart -t 2 fake_deploy_pgbouncer")" = 2 ]' "the refusal restarts PgBouncer (after add_col, at the stop)"
+fresh "$FULL"; touch "$FAKE/build-empty"; launch
+ok '[ "$RC" = 1 ] && says "DỪNG (bước 6)" && says "chưa có chuỗi mới '"'"'bsNewThing'"'"'"' "a build without the new strings stops in step 6"
+
+echo "== the worked release file's own checks (sourced with stub helpers)"
+REAL=$HERE/../releases/534b709-6e4febb6.sh
+TOP=$(git -C "$HERE" rev-parse --show-toplevel)
+rel_unit() { # rel_unit <snippet>: the real release file with stub die/expect/note, then the snippet; output in $OUT
+    OUT=$ROOT/rel-$RANDOM.txt
+    ( set -Eeuo pipefail
+      die() { echo "DIE: $*"; exit 1; }
+      expect() { if [ "$2" = "$3" ]; then echo "OK   $1 = $2"; else die "$1: được '$2', cần '$3'"; fi; }
+      note() { :; }
+      # shellcheck disable=SC1090
+      . "$REAL"
+      eval "$1" ) > "$OUT" 2>&1
+    RC=$?
+}
+rel_unit 'date() { echo 2026-12-09; }; trash_deadline'
+ok '[ "$RC" = 1 ] && says "DIE: hôm nay 2026-12-09"' "deploy on the trash deadline (2026-12-09) stops"
+rel_unit 'date() { echo 2026-12-08; }; trash_deadline'
+ok '[ "$RC" = 0 ]' "the day before the deadline passes"
+rel_unit "date() { echo 2026-11-20; }; git() { echo \"    public const string SINCE = '2026-11-10';\"; }; release_git x"
+ok '[ "$RC" = 1 ] && says "ProductTrash::SINCE"' "a ProductTrash::SINCE other than 2026-11-09 stops"
+rel_unit "date() { echo 2026-11-20; }; release_git '$TOP'"
+ok '[ "$RC" = 0 ] && says "= 2026-11-09"' "ProductTrash::SINCE at the real TARGET is 2026-11-09"
+rel_unit "art() { printf '| logo | filled | /a.png | k1 |\n| favicon | not found | /b.png | |\n'; }; oneoff_fill_brand apply 2"
+ok '[ "$RC" = 1 ] && says "bằng số xem trước"' "brand fill: filled ≠ would fill stops"
+rel_unit "art() { printf '| logo | filled | /a.png | k1 |\n'; }; oneoff_fill_brand apply 1"
+ok '[ "$RC" = 0 ]' "brand fill: filled = would fill passes"
+rel_unit 'q() { case "$1" in *contact_page*) echo 01AAA ;; *) echo 01BBB ;; esac; }; oneoff_link_contact verify'
+ok '[ "$RC" = 1 ] && says "catalog/contact_page"' "contact page: a recorded ulid other than the /lien-he page stops"
+rel_unit 'q() { echo 01AAA; }; oneoff_link_contact verify'
+ok '[ "$RC" = 0 ]' "contact page: the /lien-he ulid recorded passes"
+rel_unit "q() { printf '%s\n' \"\$1\" > '$ROOT/layout.sql'; echo '0|1'; }; release_rollback"
+ok '[ "$RC" = 0 ] && says "LƯU Ý" && grep -q "list_template <> '"''"'" "$ROOT/layout.sql" && grep -q "detail_template <> '"''"'" "$ROOT/layout.sql" && grep -q "template_override <> '"''"'" "$ROOT/layout.sql"' "rollback warning counts list/detail layouts and entry overrides, empty values excluded"
 
 echo "== unknown kind, undeclared class, env key"
 fresh "$UNKNOWN"; launch

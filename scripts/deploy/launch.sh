@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Deploy launcher. The owner's tmux line reads THIS file out of a pinned commit (never from a working tree):
-#   bash -c "$(git -C /opt/bswebsaas/dev show <commit>:scripts/deploy/launch.sh)" launch <commit> <engine blob> <release file> <release sha256> [step|dump|rollback]
-# It copies the engine of that commit into a private folder, checks the copy's blob hash and the release
-# file's sha256 against the values written in the line, then runs the copy. Any mismatch refuses to start.
+#   bash -c "$(git -C /opt/bswebsaas/dev show <commit>:scripts/deploy/launch.sh || echo "echo DỪNG: … >&2; exit 1")" launch <commit> <engine blob> <release file> <release sha256> [step|dump|rollback]
+# It refuses a commit that is not on origin/main, copies the engine of that commit into a private folder,
+# checks the copy's blob hash and the release file's sha256 against the values written in the line, then
+# runs the copy. Any mismatch refuses to start.
 set -Eeuo pipefail
 die() { printf '!!!!! DỪNG: %s\n' "$*" >&2; exit 1; }
 [ "$#" -ge 4 ] || die "cần: <commit> <blob bộ khung> <tệp khai báo> <sha256 tệp khai báo> [bước]"
@@ -13,6 +14,10 @@ runs=${DEPLOY_RUNS_DIR:-/opt/bswebsaas/dev/plans/reports/deploy-runs}
 [[ "$blob" =~ ^[0-9a-f]{40}$ ]] || die "blob bộ khung phải đủ 40 ký tự"
 [[ "$relsha" =~ ^[0-9a-f]{64}$ ]] || die "sha256 tệp khai báo phải đủ 64 ký tự"
 [ -f "$rel" ] || die "không thấy tệp khai báo $rel"
+git -C "$dev" cat-file -e "$commit^{commit}" 2>/dev/null || die "không thấy commit $commit trong $dev"
+# only a reviewed, merged engine runs on prod: the pinned commit must be on origin/main
+git -C "$dev" merge-base --is-ancestor "$commit" origin/main \
+    || die "commit ${commit:0:8} chưa nằm trên origin/main (chưa merge, hoặc máy dev chưa git fetch): không chạy"
 ( umask 077 && mkdir -p "$runs/bin" ) && chmod 700 "$runs" "$runs/bin"
 eng=$runs/bin/deploy-$blob.sh
 git -C "$dev" show "$commit:scripts/deploy/deploy.sh" > "$eng.tmp" || die "không đọc được bộ khung ở commit $commit"
