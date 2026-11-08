@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Livewire\SeoSettings;
+use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\SiteLocale;
@@ -200,6 +201,24 @@ it('names the fields as the home page title and the template, with buttons that 
     expect($page)->toContain('data-template-insert', "insert('%tieu-de%')", "insert('%ten-website%')", "\$wire.\$set('form.template', next)",
         'aria-label="Chèn tên trang vào mẫu tiêu đề trang con"', '>+ Tên trang<',
         'aria-label="Chèn tên website vào mẫu tiêu đề trang con"', '>+ Tên website<');
+});
+
+it('checks a template the insert buttons push past the limit, as if typed and left, and never saves it', function (): void {
+    $admin = seoAdmin();
+    $cap = SeoFields::hardCap('seoTitle');
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $cap): void {
+        // What a button sends: the text so far, one space, the placeholder.
+        Livewire::actingAs($admin)->test(SeoSettings::class)
+            ->set('form.template', str_repeat('a', $cap - 5).' %ten-website%')
+            ->assertHasErrors(['form.template'])
+            ->call('save')
+            ->assertHasErrors(['form.template'])
+            ->set('form.template', 'Trang %tieu-de%')
+            ->assertHasNoErrors();
+    });
+
+    expect(seoStored())->toBeNull();   // the refused save wrote nothing
 });
 
 it('keeps the template read-only without its buttons on a language other than the source', function (): void {
