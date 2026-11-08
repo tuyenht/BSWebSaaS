@@ -253,6 +253,52 @@ it('previews a draft that has no page in the default language through the first 
     expect($html)->toContain('href="http://a.test/admin/catalog/'.$ulid.'/preview?locale=en"');
 });
 
+it('offers no preview on a published row that has no page in the default language', function (): void {
+    $ulid = previewProduct(status: 'published');
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteLocale::query()->create(['locale' => 'en', 'is_default' => false, 'enabled' => true, 'is_public' => false]);
+        $product = Product::query()->firstOrFail();
+        $product->translations()->where('locale', 'vi')->delete();
+        $product->translations()->create(['locale' => 'en', 'name' => 'Inspection jig VF7', 'slug' => 'inspection-jig-vf7']);
+    });
+    $manager = previewMember(['catalog.view', 'catalog.manage']);
+
+    $html = (string) $this->actingAs($manager)->get('http://a.test/admin/catalog')->assertOk()->getContent();
+
+    expect($html)->not->toContain('/admin/catalog/'.$ulid.'/preview');
+});
+
+it('previews a draft through the first enabled language it has, skipping a disabled one', function (): void {
+    $ulid = previewProduct();
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteLocale::query()->create(['locale' => 'en', 'is_default' => false, 'enabled' => false, 'is_public' => false]);
+        SiteLocale::query()->create(['locale' => 'ja', 'is_default' => false, 'enabled' => true, 'is_public' => false]);
+        $product = Product::query()->firstOrFail();
+        $product->translations()->where('locale', 'vi')->delete();
+        $product->translations()->create(['locale' => 'en', 'name' => 'Inspection jig VF7', 'slug' => 'inspection-jig-vf7']);
+        $product->translations()->create(['locale' => 'ja', 'name' => 'Jig', 'slug' => 'jig-ja']);
+    });
+    $manager = previewMember(['catalog.view', 'catalog.manage']);
+
+    $html = (string) $this->actingAs($manager)->get('http://a.test/admin/catalog')->assertOk()->getContent();
+    expect($html)->toContain('/admin/catalog/'.$ulid.'/preview?locale=ja')->not->toContain('locale=en');
+});
+
+it('offers no preview on a draft whose languages are all disabled', function (): void {
+    $ulid = previewProduct();
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteLocale::query()->create(['locale' => 'en', 'is_default' => false, 'enabled' => false, 'is_public' => false]);
+        $product = Product::query()->firstOrFail();
+        $product->translations()->where('locale', 'vi')->delete();
+        $product->translations()->create(['locale' => 'en', 'name' => 'Inspection jig VF7', 'slug' => 'inspection-jig-vf7']);
+    });
+    $manager = previewMember(['catalog.view', 'catalog.manage']);
+
+    $html = (string) $this->actingAs($manager)->get('http://a.test/admin/catalog')->assertOk()->getContent();
+
+    expect($html)->not->toContain('/admin/catalog/'.$ulid.'/preview');
+});
+
 it('draws the last breadcrumb level of a preview as plain text, with no link to the unpublished address', function (): void {
     $ulid = previewProduct();
     $manager = previewMember(['catalog.view', 'catalog.manage']);
