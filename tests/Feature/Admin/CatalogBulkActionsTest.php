@@ -353,7 +353,8 @@ it('marks the content of the products whose main category it changes, in one sta
 
         $marks = [];
         DB::listen(function ($query) use (&$marks): void {
-            if (str_contains($query->sql, 'content_changed_at')) {
+            // the writes of the mark only (the checks below read it too)
+            if (str_starts_with($query->sql, 'update') && str_contains($query->sql, 'content_changed_at')) {
                 $marks[] = $query->sql;
             }
         });
