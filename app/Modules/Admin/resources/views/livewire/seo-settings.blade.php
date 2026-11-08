@@ -142,8 +142,8 @@
                                 <x-bs-admin::job-card class="col-span-full" :tone="$aiCard['tone']" :icon="$aiCard['icon']" :spin="$aiCard['busy']" wire:key="seo-f-{{ $key }}" data-ai-check>
                                     <div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-body leading-[1.45] font-semibold text-text-strong">
                                         <span>{{ __('admin.seoset.f.'.$key) }}</span>
-                                        <span @class(['text-admin-success-text' => $aiCard['tone'] === 'done', 'text-admin-info-text' => $aiCard['tone'] === 'info',
-                                            'text-admin-warning-text' => $aiCard['tone'] === 'warn'])>{{ $aiCard['status'] }}</span>
+                                        <span @class(['text-success-text' => $aiCard['tone'] === 'done', 'text-info-text' => $aiCard['tone'] === 'info',
+                                            'text-warning-text' => $aiCard['tone'] === 'warn'])>{{ $aiCard['status'] }}</span>
                                     </div>
                                     @foreach ($aiCard['lines'] as $line)
                                         <p class="mt-0.5 text-small leading-normal text-pretty text-text-muted">{{ $line['message'] }}</p>

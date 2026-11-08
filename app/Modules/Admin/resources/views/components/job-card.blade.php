@@ -11,9 +11,9 @@
     // colour alone; `spin` turns the icon while work runs (not when motion is reduced).
     // Tones: wait (running) and nochk (not checked) are neutral, done green, info blue, warn amber.
     $ring = [
-        'done' => 'bg-[color-mix(in_srgb,var(--color-admin-success)_12%,var(--color-surface))] text-admin-success-text',
-        'info' => 'bg-[color-mix(in_srgb,var(--color-admin-info)_12%,var(--color-surface))] text-admin-info-text',
-        'warn' => 'bg-[color-mix(in_srgb,var(--color-admin-warning)_18%,var(--color-surface))] text-admin-warning-text',
+        'done' => 'bg-[color-mix(in_srgb,var(--color-success-base)_12%,var(--color-surface))] text-success-text',
+        'info' => 'bg-[color-mix(in_srgb,var(--color-info-base)_12%,var(--color-surface))] text-info-text',
+        'warn' => 'bg-[color-mix(in_srgb,var(--color-warning-base)_18%,var(--color-surface))] text-warning-text',
     ][$tone] ?? 'bg-surface-hover text-text';
 @endphp
 <div {{ $attributes->class('relative grid grid-cols-[2.25rem_minmax(0,1fr)] items-start gap-x-3 gap-y-2.5 overflow-hidden rounded-md border border-border px-3.5 pt-3.5 pb-4 @min-[40.0625rem]:grid-cols-[2.25rem_minmax(0,1fr)_auto] @min-[40.0625rem]:items-center') }}>
