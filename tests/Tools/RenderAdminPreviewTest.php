@@ -43,11 +43,17 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Rbac\Support\PlatformAccess;
+use App\Modules\Shared\Http\SafeHttp;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Theming\AiCrawlerCheck;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -303,14 +309,45 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         'descriptions' => ['vi' => 'Gia công CNC 5 trục, tiện, phay, mài chính xác đến 0,005 mm cho khách hàng trong nước và xuất khẩu sang Nhật Bản, Hàn Quốc, châu Âu. Giao hàng đúng hẹn, báo giá trong 24 giờ.'],
         'template' => '%tieu-de% | %ten-website%', 'robots' => "User-agent: *\nDisallow: /gio-hang\nDisallow: /tim-kiem",
     ]]));
+    // Its AI bot card reads a kept check: no request leaves the machine (the site answers through
+    // Http::fake, the check is queued nowhere). This text blocks some pages for every bot, so the
+    // card says so and the note under robots.txt names them.
+    Queue::fake();
+    app()->instance(SafeHttp::class, new SafeHttp(static fn (string $host): array => ['93.184.216.34']));
+    $served = "User-agent: *\nDisallow:";
+    Http::fake(static function (Request $request) use (&$served) {
+        return str_ends_with($request->url(), '/robots.txt') ? Http::response($served, 200) : Http::response('<!doctype html><title>Trang chủ</title>', 200);
+    });
+    app(AiCrawlerCheck::class)->run(1);
     $this->flushSession();
     $page = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/seo')->assertOk()->getContent();
-    expect($page)->toContain('wire:model.live.blur="form.template"', 'bsSeoFields(');
+    expect($page)->toContain('wire:model.live.blur="form.template"', 'bsSeoFields(', 'data-ai-check', 'data-robots-note');
     file_put_contents($dir.'/seo.html', $page);
     $open = app(Tenancy::class)->enter(1, fn (): string => Livewire::actingAs($owner)->test(SeoSettings::class)
         ->call('toggleIndexable')->assertSet('confirmHide', true)->html());
     expect($open)->toContain('role="alertdialog"', 'Google sẽ gỡ website');
     file_put_contents($dir.'/seo-hide.html', str_replace('</body>', $open.'</body>', $page));
+
+    // The card in its other states, the robots.txt text cleared: all clear; a check under way; and
+    // a service in front adding a block, just checked (the button waits for the minute).
+    app(Tenancy::class)->enter(1, function (): void {
+        $seo = SiteSetting::query()->where('group_name', 'seo')->where('key', 'config')->firstOrFail();
+        $seo->update(['value' => ['robots' => ''] + (array) $seo->value]);
+    });
+    $aiShot = function (string $name, string $expect) use ($owner, $dir): void {
+        $this->flushSession();
+        $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/seo')->assertOk()->getContent();
+        expect($html)->toContain($expect)->not->toContain('data-robots-note');
+        file_put_contents($dir.'/'.$name.'.html', $html);
+    };
+    $aiShot('seo-ai-ok', 'data-tone="done"');
+    app(AiCrawlerCheck::class)->markRunning(1);
+    $aiShot('seo-ai-busy', 'data-tone="wait"');
+    app(AiCrawlerCheck::class)->clearRunning(1);
+    $served = "User-agent: *\nDisallow:\n\nUser-agent: GPTBot\nDisallow: /\n\nUser-agent: ClaudeBot\nDisallow: /";
+    app(AiCrawlerCheck::class)->run(1);
+    RateLimiter::hit('seo-ai-check:1', 60);
+    $aiShot('seo-ai-warn', 'Mỗi phút chỉ kiểm được 1 lần.');
 
     // The post editor with its short description and Google title and description filled, long
     // enough that the meters show their bands and the Google preview shows where it cuts the text.
@@ -452,5 +489,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $dialog = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($mount()->call('toggleSelect', [$ulids[0], $ulids[1]])->call('openCategory')));
     file_put_contents($dir.'/product-list-category.html', $swap($html, $dialog));
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 22);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 25);
 });

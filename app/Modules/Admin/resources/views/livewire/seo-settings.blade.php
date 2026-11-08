@@ -10,7 +10,9 @@
     // the language code; on another language than the source the shared fields are read-only and
     // marked "Chung". A field's explanation opens in place under its name with the (i) button. The
     // previews (Google, and a link shared on Facebook or Zalo) follow the fields as they are typed,
-    // in the browser (bsSeoFields, the editors' preview part): no request per keystroke.
+    // in the browser (bsSeoFields, the editors' preview part): no request per keystroke. In "Cho
+    // Google tìm thấy", a card says whether AI bots can read the website ($aiCard, from the kept
+    // check and the draft); while a check runs it asks again every few seconds, and only then.
     $glyph = 'size-[min(1.5rem,calc(1rem+var(--user-text-boost)))] shrink-0';
     $localeNames = (array) config('locales.labels');
     $nameOf = static fn (string $lc): string => (string) ($localeNames[$lc] ?? strtoupper($lc));
@@ -82,7 +84,7 @@
         <div class="flex flex-col gap-3">
             @foreach (SeoSettings::GROUPS as $group => $fields)
                 @php
-                    $visible = array_values(array_filter($fields, fn (array $f): bool => ! in_array($f[1], ['note', 'preview'], true) && $shown($f[0])));
+                    $visible = array_values(array_filter($fields, fn (array $f): bool => ! in_array($f[1], ['note', 'preview', 'aibot'], true) && $shown($f[0])));
                     $bodyId = 'seo-g-'.$group;
                 @endphp
                 <div class="overflow-hidden rounded-[9px] border bg-surface"
@@ -127,6 +129,52 @@
                                         <span class="min-w-0">{{ __('admin.seoset.'.$key) }}</span>
                                     @endif
                                 </p>
+                                @continue
+                            @endif
+
+                            @if ($kind === 'aibot')
+                                {{-- Can AI bots read the website? The words change in place (job-card's live region);
+                                     "Kiểm tra lại" stays reachable while it waits, saying why (aria-disabled + the line). --}}
+                                @php
+                                    $limitId = $fid.'-limit';
+                                    $waiting = $aiCard['busy'] || $aiCard['limited'];
+                                @endphp
+                                <x-bs-admin::job-card class="col-span-full" :tone="$aiCard['tone']" :icon="$aiCard['icon']" :spin="$aiCard['busy']" wire:key="seo-f-{{ $key }}" data-ai-check>
+                                    <div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-body leading-[1.45] font-semibold text-text-strong">
+                                        <span>{{ __('admin.seoset.f.'.$key) }}</span>
+                                        <span @class(['text-admin-success-text' => $aiCard['tone'] === 'done', 'text-admin-info-text' => $aiCard['tone'] === 'info',
+                                            'text-admin-warning-text' => $aiCard['tone'] === 'warn'])>{{ $aiCard['status'] }}</span>
+                                    </div>
+                                    @foreach ($aiCard['lines'] as $line)
+                                        <p class="mt-0.5 text-small leading-normal text-pretty text-text-muted">{{ $line['message'] }}</p>
+                                        @if ($line['fix'] !== null)
+                                            <p class="mt-0.5 text-small leading-normal text-pretty text-text">{{ $line['fix'] }}</p>
+                                        @endif
+                                    @endforeach
+                                    @if ($aiCard['at'] !== null)
+                                        <p class="mt-0.5 text-small leading-normal text-text-muted">{{ $aiCard['at'] }}</p>
+                                    @endif
+                                    @if ($aiCard['limited'])
+                                        <p id="{{ $limitId }}" class="mt-0.5 text-small leading-normal text-pretty text-text-muted">{{ $aiCard['limit'] }}</p>
+                                    @endif
+                                    <x-slot:actions>
+                                        <x-bs-admin::button variant="outline" color="secondary" wire:click="recheck" class="aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+                                            :aria-disabled="$waiting ? 'true' : 'false'" :aria-describedby="$aiCard['limited'] ? $limitId : null">
+                                            @if ($aiCard['busy'])
+                                                <x-bs-admin::icon name="ri-loader-4" :class="$glyph.' animate-spin motion-reduce:animate-none'" /><span>{{ __('admin.seoset.ai.running') }}</span>
+                                            @else
+                                                <span wire:loading.remove wire:target="recheck" class="inline-flex items-center gap-2"><x-bs-admin::icon name="ri-refresh" :class="$glyph" /><span>{{ __('admin.seoset.ai.recheck') }}</span></span>
+                                                <span wire:loading.inline-flex wire:target="recheck" class="items-center gap-2"><x-bs-admin::icon name="ri-loader-4" :class="$glyph.' animate-spin motion-reduce:animate-none'" /><span>{{ __('admin.seoset.ai.running') }}</span></span>
+                                            @endif
+                                        </x-bs-admin::button>
+                                    </x-slot:actions>
+                                </x-bs-admin::job-card>
+                                {{-- Asks again while the check runs; once the minute is over, once more so the button is free again. --}}
+                                @if ($aiCard['busy'])
+                                    <span hidden wire:key="seo-ai-poll" wire:poll.3s></span>
+                                @elseif ($aiCard['limited'])
+                                    <span hidden wire:key="seo-ai-free-{{ $aiCard['unlockIn'] }}" wire:poll.{{ $aiCard['unlockIn'] + 1 }}s></span>
+                                @endif
                                 @continue
                             @endif
 
@@ -239,6 +287,12 @@
                                     </span>
                                 @enderror
                             </div>
+                            @if ($key === 'robots' && $robotsNote !== null)
+                                <p class="{{ $noteBox }}" role="note" data-robots-note>
+                                    <x-bs-admin::icon name="ri-information" class="mt-px size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))] shrink-0" />
+                                    <span class="min-w-0">{{ $robotsNote }}</span>
+                                </p>
+                            @endif
                         @endforeach
                     </div>
                 </div>
