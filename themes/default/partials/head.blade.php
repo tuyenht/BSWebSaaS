@@ -13,6 +13,8 @@
     product page with more than one photo, and a
     robots line only where a page asks for one (the 404 page prints no share tags or JSON-LD). These lines sit in column 0 so a site
     without them renders the same bytes as before.
+    The admin's preview of a page ($preview) prints no share tags and no JSON-LD (its caller sets no canonical
+    or alternates either), and opens every link outside the preview frame (<base target="_blank">).
 --}}
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -21,6 +23,9 @@
 <link rel="icon" href="{{ data_get($brand ?? null, 'favicon') ?: '/favicon.ico' }}" sizes="any">
 @if (! empty($robots))
 <meta name="robots" content="{{ $robots }}">
+@endif
+@if (! empty($preview))
+<base target="_blank">
 @endif
 @foreach (($verification ?? []) as $verify)
 <meta name="{{ $verify['name'] }}" content="{{ $verify['content'] }}">
@@ -49,8 +54,8 @@
     <link rel="canonical" href="{{ $canonical }}">
 @endif
 
-{{-- Open Graph — title/description/type/url/locale/image. A 404 page has nothing to share or describe. --}}
-@if (empty($notFound))
+{{-- Open Graph — title/description/type/url/locale/image. A 404 page and a preview have nothing to share or describe. --}}
+@if (empty($notFound) && empty($preview))
 <meta property="og:title" content="{{ $seoTitle }}">
 @if (! empty($effectiveDescription))
     <meta property="og:description" content="{{ $effectiveDescription }}">
@@ -75,7 +80,7 @@
     <link rel="alternate" hreflang="{{ $alt['hreflang'] }}" href="{{ $alt['href'] }}">
 @endforeach
 
-@if (empty($notFound) && ! empty(data_get($brand ?? null, 'name')))
+@if (empty($notFound) && empty($preview) && ! empty(data_get($brand ?? null, 'name')))
     @php
         // Organization JSON-LD — reads from $brand (already loaded by StorefrontController::brand();
         // no additional DB query here). Null/empty fields are omitted; the whole block is suppressed
@@ -169,7 +174,7 @@
     <script type="application/ld+json">{!! $websiteJson !!}</script>
 @endif
 
-@if (! empty($breadcrumb))
+@if (! empty($breadcrumb) && empty($preview))
     @php
         // Build inside @php so Blade does not scan '@context' / '@type' as directives.
         // JSON_HEX_TAG escapes < and > to < / > — safe for inline <script>.

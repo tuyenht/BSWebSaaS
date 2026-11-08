@@ -12,6 +12,7 @@
     message, what was typed comes back, and the first bad field (else the button) takes the focus.
     Every id is prefixed with the form's own id, so two forms on a page never clash and only the
     form that was sent shows the outcome. Text and phone fields pair up two per row from sm; a field without a partner takes the full row.
+    In the admin's preview of a page the form is drawn switched off: no address, a disabled button, no outcome.
 --}}
 @php
     $sfMap = \App\Modules\Shared\Support\SafeLink::href($props['map_embed'] ?? null, config('cms.map_hosts'));
@@ -39,10 +40,12 @@
     $sfFid = fn (string $key): string => $sfFormId.'__'.($sfFieldIds[$key] ?? 'x');
     // A send's outcome (errors, typed values, thank-you) belongs to the form it came from only: the
     // server names the posted form in the flashed input (StoreLeadRequest), so nothing is guessed.
-    $sfMine = $sfNth === 0 && $sfFormKey !== '' && old('lead_form') === $sfFormKey;
+    // The admin's preview draws the form switched off: no address, a disabled button, no outcome.
+    $sfPreview = ! empty($preview);
+    $sfMine = ! $sfPreview && $sfNth === 0 && $sfFormKey !== '' && old('lead_form') === $sfFormKey;
     $sfErr = $sfMine ? $errors : new \Illuminate\Support\MessageBag();
     $sfOld = fn (string $name) => $sfMine ? old($name) : null;
-    $sfSent = $sfNth === 0 && session('form_success_key') === $sfFormKey ? session('form_success') : null;
+    $sfSent = ! $sfPreview && $sfNth === 0 && session('form_success_key') === $sfFormKey ? session('form_success') : null;
     $sfFirstBad = null;
     foreach ($fields as $sfField) {
         if ($sfErr->has($sfField['key'])) {
@@ -110,7 +113,7 @@
                 <a class="lead-form__again" href="{{ request()->getPathInfo() }}#{{ $sfFormId }}">{{ __('forms.send_another') }}</a>
             </div>
         @else
-        <form class="lead-form__form" method="POST" action="{{ $action }}" novalidate>
+        <form class="lead-form__form"@if (! $sfPreview) method="POST" action="{{ $action }}"@endif novalidate>
             {{-- The language the visitor is reading, so errors and the thank-you come back in it
                  (the POST URL carries no locale prefix). The server accepts only a public locale. --}}
             <input type="hidden" name="locale" value="{{ $locale ?? '' }}">
@@ -205,7 +208,7 @@
             @endif
 
             <div class="lead-form__actions">
-                <button type="submit" class="lead-form__submit" @if ($sfAlert !== '' && $sfFirstBad === null) aria-describedby="{{ $sfFormId }}--alert" autofocus @endif>{{ __('forms.submit_button') }}</button>
+                <button type="submit" class="lead-form__submit" @if ($sfPreview)disabled @elseif ($sfAlert !== '' && $sfFirstBad === null) aria-describedby="{{ $sfFormId }}--alert" autofocus @endif>{{ __('forms.submit_button') }}</button>
                 <p class="lead-form__note">{{ $sfNoteBefore }}<span class="lead-form__required">*</span>{{ $sfNoteAfter }}</p>
             </div>
         </form>
