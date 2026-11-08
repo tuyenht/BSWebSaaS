@@ -69,7 +69,7 @@ describe('render', function (): void {
     it('prints the final formatted number, the suffix and a hidden copy for screen readers', function (): void {
         $html = statsBlock(['items' => [['value' => 2000, 'suffix' => '+', 'label' => 'Công trình']]]);
 
-        expect($html)->toContain('<span class="sf-stat__value" aria-hidden="true"><span data-count="2000">2.000</span><span class="sf-stat__suffix">+</span></span>')
+        expect($html)->toContain('<span class="sf-stat__value" aria-hidden="true" style="--stat-len: 6"><span data-count="2000">2.000</span><span class="sf-stat__suffix">+</span></span>')
             ->and($html)->toContain('<span class="sr-only">2.000+</span>')
             ->and($html)->toContain('<span class="sf-stat__label">Công trình</span>')
             ->and($html)->toContain('sf-stats__list--1');
@@ -79,6 +79,44 @@ describe('render', function (): void {
         $html = statsBlock(['items' => [['value' => '1234567', 'suffix' => 'abcdefghijkl', 'label' => 'X']]]);
 
         expect($html)->toContain('data-count="1234567">1.234.567</span>')->toContain('abcdefgh</span>')->not->toContain('abcdefghi');
+    });
+
+    it('spaces a unit that starts with a letter from its number, and keeps signs against it', function (): void {
+        $html = statsBlock(['items' => [
+            ['value' => 4300, 'suffix' => ' m²', 'label' => 'Nhà xưởng'],
+            ['value' => 12, 'suffix' => 'tấn', 'label' => 'Tải'],
+            ['value' => 50, 'suffix' => '+', 'label' => 'Kỹ sư'],
+            ['value' => 98, 'suffix' => '%', 'label' => 'Đúng hẹn'],
+        ]]);
+
+        expect($html)->toContain("<span class=\"sf-stat__suffix\">\u{00A0}m²</span>")
+            ->and($html)->toContain("<span class=\"sr-only\">4.300\u{00A0}m²</span>")
+            ->and($html)->toContain("<span class=\"sf-stat__suffix\">\u{00A0}tấn</span>")
+            ->and($html)->toContain('<span class="sr-only">50+</span>')
+            ->and($html)->toContain('<span class="sr-only">98%</span>');
+    });
+
+    it('keeps one no-break space before a unit typed with its own, and no unit when only spaces were typed', function (): void {
+        $html = statsBlock(['items' => [
+            ['value' => 12, 'suffix' => "\u{00A0} tấn", 'label' => 'Tải'],
+            ['value' => 7, 'suffix' => '   ', 'label' => 'Máy'],
+        ]]);
+
+        expect($html)->toContain("<span class=\"sf-stat__suffix\">\u{00A0}tấn</span>")
+            ->and($html)->toContain('<span data-count="7">7</span></span>')
+            ->and($html)->toContain('<span class="sr-only">7</span>');
+    });
+
+    it('gives a long number its printed length so it can shrink to fit, and a short one nothing', function (): void {
+        $html = statsBlock(['items' => [
+            ['value' => 1250000, 'suffix' => '+', 'label' => 'Chi tiết'],
+            ['value' => 999999999999, 'suffix' => 'sản phẩm', 'label' => 'Dài'],
+            ['value' => 15, 'suffix' => '+', 'label' => 'Năm'],
+        ]]);
+
+        expect($html)->toContain('style="--stat-len: 10"><span data-count="1250000">1.250.000</span>')
+            ->and($html)->toContain('style="--stat-len: 21"><span data-count="999999999999">999.999.999.999</span>')
+            ->and($html)->toContain('<span class="sf-stat__value" aria-hidden="true"><span data-count="15">15</span>');
     });
 
     it('skips items with neither a number nor a label, and renders nothing when none is left', function (): void {

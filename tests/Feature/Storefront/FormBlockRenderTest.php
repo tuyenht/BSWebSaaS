@@ -482,3 +482,61 @@ it('renders a page with a consent form within its query budget', function (): vo
     expect($html)->toContain('lead-form__policy')
         ->and($count)->toBe(13);
 });
+
+/**
+ * The contact page with a form whose service field is a select.
+ *
+ * @param  array<string, mixed>  $service  overrides for the select field
+ */
+function seedSelectFormPage(array $service = []): void
+{
+    app(Tenancy::class)->enter(1, function () use ($service): void {
+        Form::query()->create(['key' => 'contact', 'name' => ['vi' => 'Báo giá'], 'status' => 'active'])->fields()->createMany([
+            ['key' => 'name', 'type' => 'text', 'label' => ['vi' => 'Họ tên'], 'is_required' => true, 'sort_order' => 1],
+            ['key' => 'service', 'type' => 'select', 'label' => ['vi' => 'Bạn cần tư vấn về', 'en' => 'You need help with'], 'is_required' => true, 'sort_order' => 2,
+                'options' => ['choices' => [
+                    ['value' => 'jig', 'label' => ['vi' => 'Thiết kế Jig & Đồ gá', 'en' => 'Jig & fixture design']],
+                    ['value' => 'mold', 'label' => ['vi' => 'Khuôn mẫu']],
+                ]], ...$service],
+        ]);
+        $entry = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'Liên hệ', 'slug' => 'lien-he', 'status' => 'published',
+            'body' => ['blocks' => [['type' => 'form', 'props' => ['form_key' => 'contact']]]]]);
+        SiteRoute::query()->create(['locale' => 'vi', 'path' => '/lien-he', 'entry_id' => $entry->id]);
+    });
+}
+
+it('draws a select field as a labelled list of its choices on a full row, starting with an empty pick', function (): void {
+    seedSelectFormPage();
+
+    $section = leadFormSection($this->get('http://a.test/lien-he')->assertOk()->getContent());
+
+    expect($section)
+        ->toMatch('/<div class="lead-form__field">\s*<label for="lf-contact__service">/')
+        ->toMatch('/<select id="lf-contact__service" name="service"\s+required\s*>\s*<option value="">— Chọn —<\/option>\s*<option value="jig"\s*>Thiết kế Jig &amp; Đồ gá<\/option>\s*<option value="mold"\s*>Khuôn mẫu<\/option>\s*<\/select>/')
+        ->not->toContain('name="service" type=');
+});
+
+it('keeps the picked choice after a failed send and points a missing choice at its message', function (): void {
+    Cache::flush(); // the per-IP send limit
+    seedSelectFormPage();
+
+    $this->from('http://a.test/lien-he')->post('http://a.test/forms/contact', ['service' => 'mold', 'locale' => 'vi'])
+        ->assertRedirect('http://a.test/lien-he');
+    expect(leadFormSection($this->get('http://a.test/lien-he')->getContent()))
+        ->toMatch('/<option value="mold"\s+selected\s*>Khuôn mẫu<\/option>/');
+
+    $this->from('http://a.test/lien-he')->post('http://a.test/forms/contact', ['name' => 'A', 'service' => '', 'locale' => 'vi']);
+    expect(leadFormSection($this->get('http://a.test/lien-he')->getContent()))
+        ->toMatch('/<select id="lf-contact__service" name="service"\s+required\s+aria-invalid="true"\s+aria-describedby="lf-contact__service--error"\s+autofocus\s*>/')
+        ->toContain('<p class="lead-form__field-error" id="lf-contact__service--error">Vui lòng chọn Bạn cần tư vấn về.</p>');
+});
+
+it('offers an optional select\'s empty pick as a real answer and draws no required mark', function (): void {
+    seedSelectFormPage(['is_required' => false]);
+
+    $section = leadFormSection($this->get('http://a.test/lien-he')->assertOk()->getContent());
+
+    expect($section)->toMatch('/<select id="lf-contact__service" name="service"\s*>\s*<option value="">— Chọn —<\/option>/')
+        ->and(substr_count($section, 'lead-form__required" aria-hidden="true"'))->toBe(1);
+});

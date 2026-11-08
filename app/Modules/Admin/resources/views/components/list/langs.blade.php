@@ -7,6 +7,9 @@
     'run' => null,
     'why' => null,
     'show' => 'true',
+    'only' => null,
+    'note' => true,
+    'part' => 'all',
 ])
 @php
     // A record's language versions in its meta line, as one piece: the "Chưa dịch: Anh" note (shown
@@ -21,9 +24,16 @@
     // still shows whenever something is missing. A single-language site shows nothing.
     // A screen that edits in place passes `run` instead of `href`: a closure taking the locale and
     // giving the Alpine call that opens that version, so each chip (and menu row) is a button.
+    // `note` false leaves the "Chưa dịch" note out (a record in the Trash); `part="note"` draws that note alone,
+    // as its own last item of the meta line (the card), the other call drawing the chips and the note in front of them.
+    // A screen whose editor opens only some versions passes `only` (the locales that open) and `why` as a
+    // closure taking the locale: every other chip is a locked one with that locale's reason, never a link.
     $locales = array_values($locales);
     $has = array_values($has);
-    $canEdit = $href instanceof \Closure || $run instanceof \Closure;
+    $canAny = $href instanceof \Closure || $run instanceof \Closure;
+    $canEdit = fn (string $lc): bool => $canAny && ($only === null || in_array($lc, $only, true));
+    $whyFor = fn (string $lc): ?string => $why instanceof \Closure ? $why($lc) : $why;
+    $anyLocked = collect($locales)->contains(fn (string $lc): bool => ! $canEdit($lc));
     // Short name ("Anh"), the name inside a sentence ("tiếng Anh") and on its own ("Tiếng Anh");
     // a locale without a short name reads as its upper-case code.
     $short = fn (string $lc): string => \Illuminate\Support\Facades\Lang::has('entries.lang_short_'.$lc) ? __('entries.lang_short_'.$lc) : strtoupper($lc);
@@ -55,10 +65,20 @@
     };
     $Js = \Illuminate\Support\Js::class;
 @endphp
-@if (count($locales) > 1)
+@if (count($locales) > 1 && $part === 'note')
+    @if ($missing !== [] && $note)
+        @php $tailLabel = __('entries.lc_missing', ['lang' => $list(array_map($langLow, $missing))]); @endphp
+        <span class="list-m" data-for="lmiss">
+            <span class="list-lmiss" role="note" title="{{ $tailLabel }}" aria-label="{{ $tailLabel }}">
+                <x-bs-admin::icon name="ri-translate-2" class="size-[calc(0.875rem+var(--user-text-boost))] shrink-0 list-lmiss-i" />
+                <span>{{ __('entries.lc_missing_note', ['names' => implode(', ', array_map($short, $missing))]) }}</span>
+            </span>
+        </span>
+    @endif
+@elseif (count($locales) > 1)
     <span class="list-m" data-for="langs"@if ($missing === []) x-show="{{ $show }}"@endif>
         <span class="list-lcs">
-            @if ($missing !== [])
+            @if ($missing !== [] && $note)
                 @php $missLabel = __('entries.lc_missing', ['lang' => $list(array_map($langLow, $missing))]); @endphp
                 <span class="list-lmiss" role="note" title="{{ $missLabel }}" aria-label="{{ $missLabel }}">
                     <x-bs-admin::icon name="ri-translate-2" class="size-[calc(0.875rem+var(--user-text-boost))] shrink-0 list-lmiss-i" />
@@ -94,12 +114,12 @@
                             x-on:keydown.tab="open = false">
                             @foreach ($locales as $lc)
                                 @php $s = $state($lc); @endphp
-                                @if ($run instanceof \Closure)
+                                @if ($run instanceof \Closure && $canEdit($lc))
                                     <button type="button" role="menuitem" class="list-mi" x-on:click="close(false); {{ $run($lc) }}">
                                         <span class="list-mi-tx">{{ $langName($lc) }} <span class="list-mi-st">{{ $stText($lc) }}</span></span>
                                         <span class="list-mi-act">{{ $s === 'empty' ? __('entries.add_translation') : __('entries.edit_action') }}</span>
                                     </button>
-                                @elseif ($canEdit)
+                                @elseif ($canEdit($lc))
                                     <a href="{{ $href($lc) }}" wire:navigate role="menuitem" class="list-mi" x-on:click="close(false)">
                                         <span class="list-mi-tx">{{ $langName($lc) }} <span class="list-mi-st">{{ $stText($lc) }}</span></span>
                                         <span class="list-mi-act">{{ $s === 'empty' ? __('entries.add_translation') : __('entries.edit_action') }}</span>
@@ -111,21 +131,21 @@
                                 @endif
                             @endforeach
                         </div>
-                        @if (! $canEdit && $why)
-                            <p class="list-lmw"><x-bs-admin::icon name="ri-lock" class="size-[calc(0.875rem+var(--user-text-boost))] shrink-0 list-lmw-i" /> {{ $why }}</p>
-                        @endif
+                        @foreach (collect($locales)->reject($canEdit)->map($whyFor)->filter()->unique() as $lockedWhy)
+                            <p class="list-lmw"><x-bs-admin::icon name="ri-lock" class="size-[calc(0.875rem+var(--user-text-boost))] shrink-0 list-lmw-i" /> {{ $lockedWhy }}</p>
+                        @endforeach
                     </div>
                 </span>
             @else
                 <span class="list-lcg" x-bind:data-off="({{ $show }}) ? null : ''"
-                    @unless ($canEdit) x-data="{ pop: null }" x-on:click.outside="pop = null" x-on:keydown.tab="pop = null"
-                        x-on:keydown.escape.stop="if (pop) { const c = pop; pop = null; $refs['lc_' + c].focus() }" @endunless>
+                    @if ($anyLocked) x-data="{ pop: null }" x-on:click.outside="pop = null" x-on:keydown.tab="pop = null"
+                        x-on:keydown.escape.stop="if (pop) { const c = pop; pop = null; $refs['lc_' + c].focus() }" @endif>
                     @foreach ($locales as $lc)
                         @php
                             $s = $state($lc);
                             $lang = $langLow($lc);
                         @endphp
-                        @if ($canEdit)
+                        @if ($canEdit($lc))
                             @php
                                 $tip = $s === 'empty'
                                     ? __($isSrc($lc) ? 'entries.lc_add_tip_source' : 'entries.lc_add_tip', ['lang' => $lang])
@@ -144,7 +164,7 @@
                                 $what = $s === 'empty'
                                     ? __($isSrc($lc) ? 'entries.lc_missing_source' : 'entries.lc_missing', ['lang' => $lang])
                                     : __($s === 'src' ? 'entries.lc_has_source' : 'entries.lc_has', ['lang' => $langName($lc)]);
-                                $label = __('entries.lc_reason', ['state' => $what, 'why' => $why]);
+                                $label = __('entries.lc_reason', ['state' => $what, 'why' => $whyFor($lc)]);
                             @endphp
                             <button type="button" class="list-lc" data-s="{{ $s }}" x-ref="lc_{{ $lc }}"
                                 title="{{ $label }}" aria-label="{{ $label }}" aria-expanded="false"
@@ -153,20 +173,20 @@
                         @endif
                     @endforeach
 
-                    @unless ($canEdit)
-                        @foreach ($locales as $lc)
+                    @if ($anyLocked)
+                        @foreach (collect($locales)->reject($canEdit) as $lc)
                             @php
                                 $head = $isSrc($lc) ? __('entries.lc_pop_source', ['lang' => $langName($lc)]) : $langName($lc);
                             @endphp
                             <span class="list-menu list-pop" role="group" aria-label="{{ $head }}" x-show="pop === {{ $Js::from($lc) }}" x-cloak>
                                 <span class="list-pop-h">{{ $head }}</span>
                                 <span class="list-pop-t">{{ __('entries.lc_state_'.$stKey($lc)) }}</span>
-                                @if ($why)
-                                    <span class="list-pop-w"><x-bs-admin::icon name="ri-lock" class="size-[calc(0.875rem+var(--user-text-boost))] shrink-0 list-lmw-i" /> {{ $why }}</span>
+                                @if ($whyFor($lc))
+                                    <span class="list-pop-w"><x-bs-admin::icon name="ri-lock" class="size-[calc(0.875rem+var(--user-text-boost))] shrink-0 list-lmw-i" /> {{ $whyFor($lc) }}</span>
                                 @endif
                             </span>
                         @endforeach
-                    @endunless
+                    @endif
                 </span>
             @endif
         </span>

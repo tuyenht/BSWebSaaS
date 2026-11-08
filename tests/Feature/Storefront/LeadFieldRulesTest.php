@@ -105,14 +105,22 @@ it('caps a text answer at its column limit', function (): void {
         ->assertSessionHasErrors(['details' => 'Details quá dài (tối đa 5000 ký tự).']);
 });
 
-it('neither shows nor requires a select while the form block cannot draw its choices yet', function (): void {
-    // The block draws a select as a text box today: asking for a choice the visitor cannot see
-    // would make the form impossible to send. Once the block draws choices this flips.
+it('shows a select with its choices and keeps the one picked', function (): void {
     lrForm('quote', [lrField('name', 'text', true), lrField('service', 'select', true, ['options' => LR_SERVICE_CHOICES])]);
 
-    expect(lrShown('quote'))->toBe(['name']);
-    test()->post('http://a.test/forms/quote', ['name' => 'A', 'service' => 'Gia công CNC'])->assertSessionHasNoErrors();
-    expect(lrLead()?->data)->toBe(['name' => 'A']);
+    expect(lrShown('quote'))->toBe(['name', 'service']);
+    test()->post('http://a.test/forms/quote', ['name' => 'A', 'service' => 'mold'])->assertSessionHasNoErrors();
+    expect(lrLead()?->data)->toBe(['name' => 'A', 'service' => 'mold']);
+});
+
+it('asks for a required choice and refuses one the select does not offer', function (): void {
+    lrForm('quote', [lrField('name', 'text', true), lrField('service', 'select', true, ['options' => LR_SERVICE_CHOICES])]);
+
+    test()->post('http://a.test/forms/quote', ['name' => 'A', 'service' => ''])
+        ->assertSessionHasErrors(['service' => 'Vui lòng chọn Service.']);
+    test()->post('http://a.test/forms/quote', ['name' => 'A', 'service' => 'Gia công CNC'])
+        ->assertSessionHasErrors(['service' => __('forms.err_choice_invalid')]);
+    expect(lrLead())->toBeNull();
 });
 
 it('refuses a list where the form asks for one answer', function (): void {

@@ -10,9 +10,12 @@
     // where the header row (and its select-all box) is hidden. `data-hide="au"` drops the author
     // column and its name in the row's meta line too. `kind="facts"` is a list of records with no
     // select box and short fact columns (f1–f3): a card below 600, a table with a header from 768.
+    // `kind="catalog"` is the product list: the table gains the category, price, stock and label columns
+    // (cat, price, stock, badge), which `data-hide` (space-separated keys) turns off one by one and the
+    // list's width folds into the meta line (label below 80rem, category below 68.75rem).
     // Sizes live in the stylesheet only.
 @endphp
-<div @if ($kind === 'facts') data-kind="facts" @endif {{ $attributes->merge(['class' => 'list-rows']) }}>
+<div @if (in_array($kind, ['facts', 'catalog'], true)) data-kind="{{ $kind }}" @endif {{ $attributes->merge(['class' => 'list-rows']) }}>
     @isset($select)
         <div class="list-selbar">{{ $select }}</div>
     @endisset

@@ -4,6 +4,7 @@
     'activeNarrow' => null,
     'results' => null,
     'clear' => null,
+    'clearCloses' => false,
     'label' => null,
 ])
 @php
@@ -19,18 +20,21 @@
     //
     // $sections: list<array{key: string, label: string, model: string, multiple?: bool, icon?: string|null,
     //            value?: string|list<string>|null, default?: string|null,
-    //            sheet?: bool, class?: string, options: list<array{value: string, label: string, count?: int|string|null}>}> (a text count is shown as given)
+    //            sheet?: bool, class?: string, reset?: string, options: list<array{value: string, label: string, count?: int|string|null}>}> (a text count is shown as given)
     //            value is the host property's current value, so every re-render says what is chosen; a one-choice section
     //            filters when its value differs from default (its first option unless given).
     //            sheet: the section lives in the Filter sheet only, never as a button of its own (the status groups,
     //            which have their own row from 900px; "Hiện trên thẻ"). class: added to the section and its jump
     //            button in the sheet, to show it only at some widths (the groups: `min-[900px]:hidden`).
+    //            reset: the host's public method that clears this section alone. It adds a footer to the section's own panel
+    //            from 1024px: [Bỏ chọn] [$results], so the panel closes with the count of what it found.
     // $active: how many conditions are on (shown on the Lọc button and in its name).
     // $activeNarrow: the count below 900px when it differs — a list whose status groups have their own row from 900
     //            and live in the sheet below adds a chosen group there only (canvas fN / fNm). The button shows
     //            and is named by the count of its width; its tint follows $active.
     // $results: the footer button text, e.g. "Xem 12 dòng" — filters apply as they change, so it only closes the sheet.
     // $clear: the host's public method that resets every filter (shown when $active > 0).
+    // $clearCloses: also close the sheet on [Bỏ lọc] (off by default; the lists whose board closes it turn it on).
     //
     // Keyboard: opening focuses the first option; Esc or a click outside closes and focus returns to the button; Tab
     // stays inside the sheet.
@@ -113,6 +117,12 @@
                 <div class="min-h-0 overflow-y-auto overscroll-contain">
                     <x-bs-admin::filter-options :section="$section" :name="'lfs-'.$uid.'-'.$section['key']" />
                 </div>
+                @if ($section['reset'] ?? null)
+                    <div class="flex shrink-0 items-center justify-end gap-2 border-t border-border px-3 pb-1 pt-2">
+                        <x-bs-admin::button size="sm" variant="ghost" color="secondary" wire:click="{{ $section['reset'] }}" :disabled="! $section['on']">{{ __('admin.list.reset_section') }}</x-bs-admin::button>
+                        <x-bs-admin::button size="sm" @click="hide()">{{ $results ?? __('admin.list.close_filters') }}</x-bs-admin::button>
+                    </div>
+                @endif
             </div>
         </div>
     @endforeach
@@ -215,7 +225,11 @@
             </div>
             <div class="flex shrink-0 flex-wrap justify-end gap-3 border-t border-border px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
                 @if ($clear && max($active, $narrow) > 0)
-                    <x-bs-admin::button variant="outline" color="secondary" class="min-w-0 flex-1" wire:click="{{ $clear }}">{{ __('admin.list.clear_filters') }}</x-bs-admin::button>
+                    @if ($clearCloses)
+                        <x-bs-admin::button variant="outline" color="secondary" class="min-w-0 flex-1" wire:click="{{ $clear }}" @click="hide()">{{ __('admin.list.clear_filters') }}</x-bs-admin::button>
+                    @else
+                        <x-bs-admin::button variant="outline" color="secondary" class="min-w-0 flex-1" wire:click="{{ $clear }}">{{ __('admin.list.clear_filters') }}</x-bs-admin::button>
+                    @endif
                 @endif
                 <x-bs-admin::button class="min-w-0 flex-1" @click="hide()">{{ $results ?? __('admin.list.close_filters') }}</x-bs-admin::button>
             </div>

@@ -154,6 +154,20 @@
     @endphp
     <script type="application/ld+json">{!! $jobJson !!}</script>
 @endif
+@if (! empty($articleLd))
+    @php
+        // Article for any other post (built by StorefrontController::render via ArticleData), printed like the product's.
+        $articleJson = json_encode($articleLd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG);
+    @endphp
+    <script type="application/ld+json">{!! $articleJson !!}</script>
+@endif
+@if (! empty($websiteLd))
+    @php
+        // WebSite on the home page (built by StorefrontController::render): the site's name in search results.
+        $websiteJson = json_encode($websiteLd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG);
+    @endphp
+    <script type="application/ld+json">{!! $websiteJson !!}</script>
+@endif
 
 @if (! empty($breadcrumb))
     @php

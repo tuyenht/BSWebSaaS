@@ -32,17 +32,12 @@
             @if ($title)
                 <div x-show="open" x-cloak class="list-sheet-bg" x-on:click="close(true)"></div>
             @endif
-            <div x-ref="menu" x-show="open" x-cloak role="menu" aria-label="{{ $title ?? __('admin.list.more_for', ['name' => $name]) }}" class="list-menu"
-                @if ($boundLabel && ! $title) x-bind:aria-label="{{ $boundLabel }}" @endif
-                @if ($title) data-sheet @endif x-bind:data-up="up ? 'true' : null"
-                x-on:keydown.down.prevent="$focus.within($refs.menu).wrap().next()" x-on:keydown.up.prevent="$focus.within($refs.menu).wrap().prev()"
-                x-on:keydown.home.prevent="$focus.within($refs.menu).first()" x-on:keydown.end.prevent="$focus.within($refs.menu).last()"
-                x-on:keydown.tab="open = false" x-on:click.capture="$event.target.closest('[role=menuitem]') && close(true)">
+            <x-bs-admin::list.menu class="list-menu" :label="$title ?? __('admin.list.more_for', ['name' => $name])" :bind-label="$boundLabel" :sheet="(bool) $title">
                 @if ($title)
                     <div class="list-mh" @if ($nameBind) x-text="{{ $nameBind }}" @endif>{{ $title }}</div>
                 @endif
                 {{ $menu }}
-            </div>
+            </x-bs-admin::list.menu>
         </div>
     @endif
 </div>

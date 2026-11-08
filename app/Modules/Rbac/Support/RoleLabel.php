@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Rbac\Support;
 
+use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Models\Role;
 
 /**
@@ -16,6 +17,17 @@ final class RoleLabel
     public static function for(Role $role): string
     {
         return self::forName($role->name, $role->is_system);
+    }
+
+    /**
+     * The member's highest role on the current site, as people read it (the no-permission cards
+     * name it); null when they hold none.
+     */
+    public static function topOf(User $user): ?string
+    {
+        $role = $user->roles->sortByDesc('level')->first();
+
+        return $role instanceof Role && $role->name !== '' ? self::for($role) : null;
     }
 
     /** For callers that carry a role as plain data (a queued mail renders it in its own locale). */
