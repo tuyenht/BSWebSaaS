@@ -79,6 +79,8 @@
     $ariaSort = fn (string $key): string => $sortOn !== $key ? 'none' : (\App\Modules\Admin\Support\Catalog\ProductListQuery::SORTS[$key] === 'asc' ? 'ascending' : 'descending');
     $title = __('catalog.title');
     $statusText = fn (string $status): string => __('catalog.tab_'.$status);
+    // what the status menu offers from each state (the ones the row is not already in)
+    $statusMoves = ['published' => ['archived', 'draft'], 'draft' => ['published', 'archived'], 'archived' => ['published', 'draft']];
 
     // Row cells. A price keeps its "₫" on the number's line (a no-break space); a time is the site's own clock.
     $money = fn (int $n): string => number_format($n, 0, ',', '.')."\u{00A0}₫";
@@ -157,11 +159,18 @@
         <div class="@container/lt min-w-0"
              x-data="{
                  mode: 'cols',
+                 xv: false,
+                 lowH: false,
                  fold: '',
                  seen: '',
                  ro: null,
-                 destroy() { this.ro?.disconnect(); },
-                 size(force = false) { const w = this.$refs.rows?.clientWidth ?? 0, rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16, boost = window.bsListFold.boostPx(), key = w + ':' + boost; if (! force && key === this.seen) { return; } this.seen = key; this.mode = w < 37.5 * rem ? 'card' : (w < 56.25 * rem ? 'line' : 'cols'); this.foldCols(rem, boost); },
+                 lowMq: null,
+                 onLow: null,
+                 destroy() { this.ro?.disconnect(); this.lowMq?.removeEventListener('change', this.onLow); },
+                 size(force = false) { const w = this.$refs.rows?.clientWidth ?? 0, rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16, boost = window.bsListFold.boostPx(), low = window.matchMedia('(max-height:500px)').matches, key = w + ':' + boost + ':' + low; if (! force && key === this.seen) { return; } this.seen = key; this.lowH = low; this.mode = w < 37.5 * rem ? 'card' : (w < 56.25 * rem ? 'line' : 'cols'); this.foldCols(rem, boost); this.fitXv(rem, boost); },
+                 {{-- the row's "Xem" button shows from 600 on: always on a card line, and in the table only while the name column keeps 340px (+6px per pixel of text boost) after the button takes its room, measured as if the button were not there so showing it cannot flip the decision; a short landscape screen has none --}}
+                 fitXv(rem, boost) { const main = this.$refs.rows?.querySelector('.list-rows .list-hd .list-c-main'); let back = 0; this.$refs.rows?.querySelectorAll('[data-row-view]').forEach((b) => { if (b.getClientRects().length) { back = Math.max(back, b.getBoundingClientRect().width + (parseFloat(getComputedStyle(b.parentElement).columnGap) || 0)); } }); this.xv = this.mode === 'cols' && !! main && main.getBoundingClientRect().width + back - 6 * rem >= 340 + 6 * boost; },
+                 get xvVis() { return ! this.lowH && (this.mode === 'line' || (this.mode === 'cols' && this.xv)); },
                  {{-- as the table narrows or the text grows, the label, category, stock and price columns fold into the line under the name (in that order) until the name keeps the shared minimum; one pass: clear the fold, read every width, write the fold once --}}
                  foldCols(rem, boost) {
                      const list = this.$refs.rows?.querySelector('.list-rows'), head = list?.querySelector('.list-hd'), main = head?.querySelector('.list-c-main');
@@ -186,7 +195,7 @@
                  hidden() { const off = {{ Js::from($hiddenAlways) }}; return (this.mode === 'cols' ? ['cat', 'price', 'stock', 'badge'].filter(k => ! this.$wire.cols.includes(k)) : []).concat(off).join(' '); },
                  copy(url) { (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(() => window.bsToast({ text: {{ Js::from(__('catalog.copied')) }}.replace(':url', url) }), () => {}); },
              }"
-             x-init="size(true); ro = new ResizeObserver(() => size()); ro.observe($el); $watch('$wire.cols', () => $nextTick(() => size(true))); $wire.$hook('commit', ({ succeed }) => succeed(() => $nextTick(() => size(true))))">
+             x-init="size(true); ro = new ResizeObserver(() => size()); ro.observe($el); lowMq = window.matchMedia('(max-height:500px)'); onLow = () => size(true); lowMq.addEventListener('change', onLow); $watch('$wire.cols', () => $nextTick(() => size(true))); $wire.$hook('commit', ({ succeed }) => succeed(() => $nextTick(() => size(true))))">
             <div class="flex flex-col gap-3 pb-3 min-[600px]:px-4 min-[600px]:pt-4 min-[900px]:pt-3 @min-[56.25rem]/lt:flex-row @min-[56.25rem]/lt:flex-wrap @min-[56.25rem]/lt:items-center">
                 <div class="min-w-0 text-body @min-[56.25rem]/lt:min-w-[19em] @min-[56.25rem]/lt:max-w-[30em] @min-[56.25rem]/lt:flex-[999_1_19em] @min-[56.25rem]/lt:[&:has(+[data-below='1'])]:max-w-none">
                     <x-bs-admin::search id="catalog-search" :label="__('catalog.search_label')" :placeholder="__('catalog.search_hint')"
@@ -245,6 +254,49 @@
                         // the address PathBuilder composes for this product (the site's permalink preset), in the default language
                         $path = $t?->slug ? $paths->publicUrl($paths->forProduct($primary, $t->slug, $locale), $locale) : null;
                         $fullUrl = $path === null ? null : $publicHost.$path;
+                        // the quick edits: name and address of the default language, a live row of a member who manages products
+                        $quickEdit = $canManage && ! $trashed && $t !== null;
+                        $slugLeaf = $t?->slug;
+                        $slugPrefix = ($path !== null && $slugLeaf) ? \Illuminate\Support\Str::beforeLast($path, $slugLeaf) : '/';
+                        // the row keeps its identity (and what is typed in it): x-data names only the product, so a morph
+                        // never rebuilds it; the fields start from data-name / data-slug and follow them when not open
+                        $rowKey = 'product-'.$product->ulid;
+                        $rowX = $quickEdit ? strtr(<<<'JS'
+{
+                                ulid: @ULID@,
+                                editing: false, value: '', orig: '', err: '',
+                                slugEditing: false, slugValue: '', slugOrig: '', slugErr: '',
+                                cancel: false, byKey: false, busy: false, from: '.list-qe',
+                                init() {
+                                    const follow = () => { const d = this.$el.dataset; if (! this.editing && d.name !== undefined) { this.value = this.orig = d.name } if (! this.slugEditing && d.slug !== undefined) { this.slugValue = this.slugOrig = d.slug } }
+                                    follow()
+                                    new MutationObserver(follow).observe(this.$el, { attributes: true, attributeFilter: ['data-name', 'data-slug'] })
+                                    this.$el.addEventListener('list-quick-edit', () => { this.from = '.list-qe'; this.editing = true; this.cancel = false; this.err = '' })
+                                    this.$el.addEventListener('list-slug-edit', () => { this.from = '.list-more [aria-haspopup]'; this.slugEditing = true; this.cancel = false; this.slugErr = ''; this.$nextTick(() => { this.$refs.slugInput.focus(); this.$refs.slugInput.select() }) })
+                                },
+                                back() { if (this.byKey) { const ulid = this.ulid, from = this.from; this.$nextTick(() => { const row = document.querySelector('[data-row-ulid=' + JSON.stringify(ulid) + ']'); const shown = (el) => el && el.getClientRects().length > 0; const to = [from, '.list-name', '.list-qe'].map((q) => row?.querySelector(q)).find(shown); to?.focus() }) } this.byKey = false },
+                                async saveName() {
+                                    if (this.busy) { return }
+                                    if (this.cancel || this.value.trim() === this.orig) { this.value = this.orig; this.err = ''; this.editing = false; this.cancel = false; this.back(); return }
+                                    this.busy = true
+                                    const r = await $wire.saveName(this.ulid, this.value)
+                                    this.busy = false
+                                    if (r.ok) { this.orig = this.value = r.name; this.err = ''; this.editing = false; this.back(); return }
+                                    if (r.keep) { this.err = r.error; this.$nextTick(() => this.$refs.nameInput.focus()); return }
+                                    this.value = r.name || this.orig; this.err = ''; this.editing = false; this.back()
+                                },
+                                async saveSlug() {
+                                    if (this.busy) { return }
+                                    if (this.cancel || this.slugValue.trim() === this.slugOrig) { this.slugValue = this.slugOrig; this.slugErr = ''; this.slugEditing = false; this.cancel = false; this.back(); return }
+                                    this.busy = true
+                                    const r = await $wire.saveSlug(this.ulid, this.slugValue)
+                                    this.busy = false
+                                    if (r.ok) { this.slugOrig = this.slugValue = r.slug; this.slugErr = ''; this.slugEditing = false; this.back(); return }
+                                    if (r.keep) { this.slugErr = r.error; if (r.slug) { this.slugValue = r.slug } this.$nextTick(() => this.$refs.slugInput.focus()); return }
+                                    this.slugValue = this.slugOrig; this.slugErr = ''; this.slugEditing = false; this.back()
+                                }
+                            }
+JS, ['@ULID@' => (string) Js::from($product->ulid)]) : '{}';
                         // price: the sale state comes from SQL (on_sale), the old price shows struck through beside it
                         $onSale = (bool) $product->getAttribute('on_sale');
                         $noPrice = $product->price === null;
@@ -268,7 +320,7 @@
                         $whenTitle = $stampText === null ? null : ($trashed ? __('catalog.trashed_at_title', ['date' => $stampText]) : __('catalog.updated_full', ['date' => $stampText]));
                         $whenCard = $trashed || $stamp === null ? $whenText : $editedShort($stamp);
                     @endphp
-                    <x-bs-admin::list.row wire:key="product-{{ $product->ulid }}">
+                    <x-bs-admin::list.row wire:key="{{ $rowKey }}" data-row-ulid="{{ $product->ulid }}" :data-name="$quickEdit ? $name : null" :data-slug="$quickEdit ? ($slugLeaf ?? '') : null" x-data="{{ $rowX }}">
                         <x-bs-admin::list.cell col="main">
                             <div class="flex items-start gap-3">
                                 @if ($thumbnail !== null)
@@ -279,20 +331,50 @@
                                     </span>
                                 @endif
                                 <div class="min-w-0 flex-1">
-                                    <x-bs-admin::list.name :href="$canManage && ! $trashed ? route('admin.catalog.edit', ['ulid' => $product->ulid]) : null">{{ $name }}</x-bs-admin::list.name>
+                                    <div @if ($quickEdit) x-show="! editing" @endif>
+                                    <x-bs-admin::list.name :href="$canManage && ! $trashed ? route('admin.catalog.edit', ['ulid' => $product->ulid]) : null" :act="$canManage && $trashed ? 'trashedNote' : null"
+                                            :quick-edit="$quickEdit ? __('catalog.quick_edit_named', ['name' => $name]) : null">{{ $name }}</x-bs-admin::list.name>
+                                    </div>
+                                    @if ($quickEdit)
+                                        <input type="text" x-ref="nameInput" x-show="editing" x-cloak x-model="value" class="list-in" maxlength="1000"
+                                            aria-label="{{ __('catalog.name_input_label') }}" x-bind:aria-invalid="err !== ''"
+                                            x-effect="if (editing) { $nextTick(() => { $refs.nameInput.focus(); $refs.nameInput.select() }) }"
+                                            @keydown.enter.prevent="cancel = false; byKey = true; $el.blur()"
+                                            @keydown.escape.prevent.stop="cancel = true; byKey = true; $el.blur()"
+                                            @blur="saveName()">
+                                        <p x-show="editing && err !== ''" x-cloak role="alert" class="mt-1 flex items-start gap-1 text-caption text-danger-text"><x-bs-admin::icon name="ri-error-warning" class="mt-0.5 size-3.5 shrink-0" /><span x-text="err"></span></p>
+                                    @endif
                                     <x-bs-admin::list.meta>
                                         <span class="list-m" data-for="sku" x-show="vSku" title="{{ __('catalog.sku_title') }}">
                                             @if ($product->sku !== null){{ __('catalog.sku_meta', ['sku' => $product->sku]) }}@else<span class="text-text-muted">{{ __('catalog.sku_none') }}</span>@endif
                                         </span>
                                         @if ($path !== null)
-                                            <span class="list-m inline-flex items-center gap-1" data-for="slug" x-show="vSlug">
-                                                <span class="font-mono [overflow-wrap:anywhere]" title="{{ $path }}">{{ $path }}</span>
+                                            <span class="list-m inline-flex items-center gap-1" data-for="slug" x-show="vSlug{{ $quickEdit ? ' && ! slugEditing' : '' }}">
+                                                @if ($quickEdit)
+                                                    <button type="button" class="list-path list-slug-btn font-mono [overflow-wrap:anywhere]" title="{{ __('catalog.slug_edit_hint', ['url' => $fullUrl]) }}"
+                                                        x-on:click="from = '.list-slug-btn'; slugEditing = true; cancel = false; slugErr = ''; $nextTick(() => { $refs.slugInput.focus(); $refs.slugInput.select() })">{{ $path }}</button>
+                                                @else
+                                                    <span class="font-mono [overflow-wrap:anywhere]" title="{{ $path }}">{{ $path }}</span>
+                                                @endif
                                                 @unless ($trashed)
                                                     <button type="button" class="list-cpy" title="{{ __('catalog.copy_slug') }}" aria-label="{{ __('catalog.copy_slug_aria', ['url' => $fullUrl]) }}"
                                                         x-on:click="copy({{ Js::from($fullUrl) }})">
                                                         <x-bs-admin::icon name="ri-file-copy" class="size-[calc(1rem+var(--user-text-boost))]" />
                                                     </button>
                                                 @endunless
+                                            </span>
+                                        @endif
+                                        @if ($quickEdit && $path !== null)
+                                            <span class="list-m w-full" x-show="slugEditing" x-cloak>
+                                                <span class="inline-flex w-full items-center gap-0.5 font-mono text-caption">
+                                                    <span class="whitespace-nowrap text-placeholder">{{ $slugPrefix }}</span>
+                                                    <input type="text" x-ref="slugInput" x-model="slugValue" maxlength="1000" aria-label="{{ __('catalog.slug_input_label') }}" x-bind:aria-invalid="slugErr !== ''"
+                                                        @keydown.enter.prevent="cancel = false; byKey = true; $el.blur()"
+                                                        @keydown.escape.prevent.stop="cancel = true; byKey = true; $el.blur()"
+                                                        @blur="saveSlug()"
+                                                        class="min-h-tap-cell min-w-0 flex-1 rounded border border-primary-text bg-surface px-1">
+                                                </span>
+                                                <span x-show="slugErr !== ''" role="alert" class="mt-1 flex items-start gap-1 font-sans text-caption text-danger-text"><x-bs-admin::icon name="ri-error-warning" class="mt-0.5 size-3.5 shrink-0" /><span x-text="slugErr"></span></span>
                                             </span>
                                         @endif
                                         <x-bs-admin::list.langs :locales="$locales" :source="$locale" :name="$name" show="vLangs"
@@ -349,7 +431,24 @@
 
                         <x-bs-admin::list.cell col="st">
                             <div class="list-stw">
-                                <x-bs-admin::status-pill :status="$product->status">{{ $statusText($product->status) }}</x-bs-admin::status-pill>
+                                @if ($canManage && ! $trashed)
+                                    <div x-data="{ open: false, up: false, close(back) { this.open = false; if (back) { this.$refs.pill.focus() } } }" x-on:click.outside="open = false" x-on:keydown.escape="if (open) { $event.stopPropagation(); close(true) }" class="relative inline-block">
+                                        <x-bs-admin::status-pill button x-ref="pill" :status="$product->status" aria-haspopup="menu" x-bind:aria-expanded="open.toString()" aria-label="{{ __('catalog.status_pill_name', ['status' => $statusText($product->status)]) }}" title="{{ __('catalog.status_menu_label') }}"
+                                            x-on:click="up = window.innerHeight - $el.getBoundingClientRect().bottom < 240; open = ! open; open && $nextTick(() => $focus.within($refs.menu).first())">{{ $statusText($product->status) }}</x-bs-admin::status-pill>
+                                        <x-bs-admin::list.menu class="absolute left-0 z-30 mt-1 w-64 rounded-lg border border-border bg-surface p-1 shadow-lg" x-bind:class="up && 'bottom-full mb-1 mt-0'" :label="__('catalog.status_menu_label')">
+                                            @foreach ($statusMoves[$product->status] as $move)
+                                                <button type="button" role="menuitem" x-on:click="$wire.setStatus({{ Js::from($product->ulid) }}, {{ Js::from($move) }})" class="list-mi rounded">
+                                                    <span class="flex min-w-0 flex-col text-left">
+                                                        <span class="font-medium">{{ __('catalog.move_'.$move) }}</span>
+                                                        <span class="text-caption text-text-muted">{{ __('catalog.move_'.$move.'_hint') }}</span>
+                                                    </span>
+                                                </button>
+                                            @endforeach
+                                        </x-bs-admin::list.menu>
+                                    </div>
+                                @else
+                                    <x-bs-admin::status-pill :status="$product->status">{{ $statusText($product->status) }}</x-bs-admin::status-pill>
+                                @endif
                             </div>
                             @if ($whenText)
                                 <div class="list-st-meta" title="{{ $whenTitle }}">
@@ -360,9 +459,13 @@
                         </x-bs-admin::list.cell>
 
                         <x-bs-admin::list.cell col="act">
-                            @if ($canManage)
+                            @php
+                                $live = ! $trashed && $product->status === 'published' && $fullUrl !== null;
+                                $shownUrl = $fullUrl === null ? '' : (string) preg_replace('#^https?://#', '', $fullUrl);
+                            @endphp
+                            @if ($canManage || $live)
                                 <x-bs-admin::list.actions :name="$name">
-                                    @if ($trashed)
+                                    @if ($canManage && $trashed)
                                         <x-bs-admin::button size="sm" variant="soft" color="primary" wire:click="restore('{{ $product->ulid }}')">
                                             <x-bs-admin::icon name="ri-arrow-go-back" class="size-4" /> {{ __('catalog.restore_action') }}
                                         </x-bs-admin::button>
@@ -370,14 +473,40 @@
                                             <x-bs-admin::list.menu-item icon="ri-delete-bin" danger
                                                 x-on:click="$bsConfirm({ icon: 'trash-danger', text: {{ Js::from(__('catalog.force_delete_confirm')) }}, confirm: {{ Js::from(__('catalog.force_delete_action')) }}, cancel: {{ Js::from(__('admin.cancel')) }} }).then(ok => ok && $wire.forceDelete({{ Js::from($product->ulid) }}))">{{ __('catalog.force_delete_action') }}</x-bs-admin::list.menu-item>
                                         </x-slot:menu>
-                                    @else
+                                    @elseif ($canManage)
+                                        @if ($live)
+                                            <x-bs-admin::button size="sm" variant="soft" color="primary" :href="$fullUrl" :navigate="false" target="_blank" rel="noopener" x-show="xvVis" x-cloak
+                                                :aria-label="__('catalog.view_named', ['name' => $name])" :title="__('catalog.view_named', ['name' => $name])" data-row-view>
+                                                <x-bs-admin::icon name="ri-external-link" class="size-4" /> {{ __('catalog.view_action') }}
+                                            </x-bs-admin::button>
+                                        @endif
                                         <x-bs-admin::button size="sm" variant="soft" color="primary" :href="route('admin.catalog.edit', ['ulid' => $product->ulid])"
                                             :aria-label="__('catalog.edit_named', ['name' => $name])">
                                             <x-bs-admin::icon name="ri-pencil" class="size-4" /> {{ __('catalog.edit_action') }}
                                         </x-bs-admin::button>
                                         <x-slot:menu>
+                                            @if ($live)
+                                                <x-bs-admin::list.menu-item icon="ri-external-link" :href="$fullUrl" target="_blank" rel="noopener" x-show="! xvVis">{{ __('catalog.view_on_site') }}</x-bs-admin::list.menu-item>
+                                                <span class="list-mwhy" x-show="! xvVis">{{ $shownUrl }}</span>
+                                            @endif
+                                            @if ($quickEdit && $path !== null)
+                                                <x-bs-admin::list.menu-item icon="ri-link" x-on:click="$dispatch('list-slug-edit')">{{ __('catalog.slug_edit_action') }}</x-bs-admin::list.menu-item>
+                                            @endif
+                                            @if ($fullUrl !== null)
+                                                <x-bs-admin::list.menu-item icon="ri-file-copy" x-show="mode === 'card'" x-on:click="copy({{ Js::from($fullUrl) }})">{{ __('catalog.copy_path') }}</x-bs-admin::list.menu-item>
+                                                <x-bs-admin::list.menu-sep x-show="mode === 'card'{{ $live ? ' || ! xvVis' : '' }}" />
+                                            @endif
+                                            <x-bs-admin::list.menu-item icon="ri-star" wire:click="toggleFlag('{{ $product->ulid }}', 'featured', {{ $product->is_featured ? 'false' : 'true' }})">{{ __($product->is_featured ? 'catalog.flag_remove_featured' : 'catalog.flag_add_featured') }}</x-bs-admin::list.menu-item>
+                                            <x-bs-admin::list.menu-item icon="ri-fire" wire:click="toggleFlag('{{ $product->ulid }}', 'best', {{ $product->is_bestseller ? 'false' : 'true' }})">{{ __($product->is_bestseller ? 'catalog.flag_remove_best' : 'catalog.flag_add_best') }}</x-bs-admin::list.menu-item>
+                                            <x-bs-admin::list.menu-sep />
                                             <x-bs-admin::list.menu-item icon="ri-delete-bin" danger
-                                                x-on:click="$bsConfirm({ icon: 'trash', text: {{ Js::from(__('catalog.trash_confirm')) }}, confirm: {{ Js::from(__('catalog.trash_action')) }}, cancel: {{ Js::from(__('admin.cancel')) }} }).then(ok => ok && $wire.trash({{ Js::from($product->ulid) }}))">{{ __('catalog.trash_action') }}</x-bs-admin::list.menu-item>
+                                                wire:click="trash('{{ $product->ulid }}')">{{ __('catalog.menu_trash') }}</x-bs-admin::list.menu-item>
+                                            <span class="list-mwhy">{{ __('catalog.menu_trash_hint') }}</span>
+                                        </x-slot:menu>
+                                    @else
+                                        <x-slot:menu>
+                                            <x-bs-admin::list.menu-item icon="ri-external-link" :href="$fullUrl" target="_blank" rel="noopener">{{ __('catalog.view_on_site') }}</x-bs-admin::list.menu-item>
+                                            <span class="list-mwhy">{{ $shownUrl }}</span>
                                         </x-slot:menu>
                                     @endif
                                 </x-bs-admin::list.actions>
@@ -448,4 +577,5 @@
         </div>
     </div>
     @endif
+    <x-bs-admin::toast :message="$toastMsg" :tone="$toastTone" :seq="$toastSeq" dismiss="closeToast" :undo="$undoOp !== null ? 'undoLast' : null" />
 </div>

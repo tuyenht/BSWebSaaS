@@ -8,6 +8,7 @@ use App\Modules\Catalog\Components\ProductGridComponent;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Catalog\Policies\CatalogPolicy;
+use App\Modules\Catalog\Support\AppRoutePaths;
 use App\Modules\Catalog\Support\ProductIndexLink;
 use App\Modules\Catalog\Support\ProductRoutes;
 use App\Modules\Cms\Navigation\MenuTargets;
@@ -29,6 +30,8 @@ final class CatalogServiceProvider extends ServiceProvider
     {
         // Remembers the product list's address for one request or job (flushed under Octane).
         $this->app->scoped(ProductIndexLink::class);
+        // The first path segments the application answers on itself, read from the router once per request.
+        $this->app->scoped(AppRoutePaths::class);
     }
 
     public function boot(): void
