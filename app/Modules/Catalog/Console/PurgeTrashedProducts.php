@@ -11,8 +11,8 @@ use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Console\Command;
 
 /**
- * Delete for good the products that have sat in the Trash longer than ProductTrash::DAYS days, oldest
- * first, through the same action as the Trash's "Xóa vĩnh viễn". Runs site by site inside
+ * Delete for good the products that have sat in the Trash longer than ProductTrash::DAYS days, in
+ * id order (the order the bulk actions lock in, so the two never deadlock), through the same action as the Trash's "Xóa vĩnh viễn". Runs site by site inside
  * Tenancy::eachSite so RLS and the model's scope pick each site's own Trash. Tenancy::enter wraps each
  * site in one transaction, so a chunk is a savepoint, not a transaction of its own; a failure stops the
  * run, like the menu and media purges. Each chunk's SELECT locks its rows, so a restore either commits
@@ -45,7 +45,7 @@ final class PurgeTrashedProducts extends Command
                 $chunk = Product::onlyTrashed()
                     ->where('site_id', $siteId)
                     ->where('deleted_at', '<', $cutoff)
-                    ->orderBy('deleted_at')->orderBy('id')
+                    ->orderBy('id')
                     ->limit(self::CHUNK)
                     ->lockForUpdate()
                     ->get(['id', 'site_id', 'ulid', 'deleted_at']);

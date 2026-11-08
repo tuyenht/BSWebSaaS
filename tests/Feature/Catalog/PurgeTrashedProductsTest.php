@@ -171,6 +171,23 @@ it('locks the rows it picks, so a product restored first is never deleted', func
     });
 });
 
+it('locks the rows it picks in id order, the order the bulk actions lock in', function (): void {
+    $this->travelTo(Carbon::parse('2027-01-15 10:00:00', 'UTC'));
+    app(Tenancy::class)->enter(1, function (): void {
+        purgeProduct('Cũ hơn', 'cu-hon', now()->subDays(50));
+        purgeProduct('Mới hơn', 'moi-hon', now()->subDays(40));
+    });
+
+    DB::connection()->enableQueryLog();
+    $this->artisan('products:purge-trash')->expectsOutputToContain('Purged 2 product(s)')->assertSuccessful();
+    $selects = collect(DB::connection()->getQueryLog())->pluck('query')->map(fn (string $q): string => strtolower($q))
+        ->filter(fn (string $q): bool => str_contains($q, '"products"') && str_starts_with($q, 'select') && str_contains($q, 'for update') && str_contains($q, '"deleted_at" <'));
+    DB::connection()->disableQueryLog();
+
+    expect($selects)->not->toBeEmpty()
+        ->and($selects->every(fn (string $q): bool => preg_match('/order by "(products".")?id" asc\s+limit/', $q) === 1))->toBeTrue();
+});
+
 it('does not purge products trashed before the grace date until it has run out', function (): void {
     $since = Carbon::parse(ProductTrash::SINCE, 'UTC');
     $this->travelTo($since->copy()->addHours(2));
@@ -197,6 +214,12 @@ it('counts the days left from the grace date for what was already in the Trash',
         ->and(ProductTrash::daysLeft($since->copy()->subDays(60), $since->copy()->addDay()))->toBe(29)
         ->and(ProductTrash::daysLeft($since->copy()->addDay(), $since->copy()->addDays(2)))->toBe(29)
         ->and(ProductTrash::daysLeft($since->copy()->addDay(), $since->copy()->addDays(31)))->toBe(0);
+});
+
+it('never counts more than 30 days left when read before the grace date', function (): void {
+    $since = Carbon::parse(ProductTrash::SINCE, 'UTC');
+
+    expect(ProductTrash::daysLeft($since->copy()->subDays(60), $since->copy()->subDays(3)))->toBe(30);
 });
 
 it('shows "30 days left" on the grace date for a product trashed long before it', function (): void {

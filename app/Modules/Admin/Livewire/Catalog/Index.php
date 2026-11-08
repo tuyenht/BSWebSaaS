@@ -452,7 +452,7 @@ final class Index extends Component
     public function restore(string $ulid): void
     {
         $this->guardWrite('restore');
-        $product = Product::onlyTrashed()->where('ulid', $ulid)->first();
+        $product = Product::onlyTrashed()->where('ulid', $ulid)->lockForUpdate()->first();
         if ($product === null) {
             $this->say(__('catalog.row_gone'), 'error');
 
