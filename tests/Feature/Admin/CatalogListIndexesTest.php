@@ -129,7 +129,9 @@ it('plans the first page of each group on its index', function (array $params, s
 it('plans a cursor page deep in the list with the cursor as a range of the index', function (string $tab, string $index): void {
     app(Tenancy::class)->enter(1, function () use ($tab, $index): void {
         $list = new ProductListQuery(1, $tab, '', 'vi');
-        $at = $list->rows('updated', $tab === 'trash' ? 150 : 1500, 1)->first();
+        $at = $list->rows('updated', match ($tab) {
+            'trash' => 150, 'draft' => 500, default => 1500
+        }, 1)->first();
         $sent = [];
         DB::listen(function (QueryExecuted $query) use (&$sent): void {
             $sent[] = ['sql' => $query->sql, 'bindings' => $query->connection->prepareBindings($query->bindings)];
@@ -147,6 +149,7 @@ it('plans a cursor page deep in the list with the cursor as a range of the index
     });
 })->with([
     'Tất cả' => ['all', 'products_live_updated_idx'],
+    'Nháp' => ['draft', 'products_live_status_idx'],
     'Thùng rác' => ['trash', 'products_trash_idx'],
 ]);
 

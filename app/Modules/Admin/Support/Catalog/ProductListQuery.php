@@ -340,7 +340,8 @@ final class ProductListQuery
                 break;
             }
         }
-        $rows = new EloquentCollection($found);
+        // each part reads its own snapshot: a row whose value is cleared between the two is found twice, kept once
+        $rows = (new EloquentCollection($found))->unique('id')->values();
 
         return $before ? $rows->reverse()->values() : $rows;
     }
