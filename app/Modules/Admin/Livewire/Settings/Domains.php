@@ -10,6 +10,7 @@ use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Notifications\Models\SiteNotification;
 use App\Modules\Notifications\Support\NotificationFeed;
 use App\Modules\Rbac\Support\PlatformAccess;
+use App\Modules\Rbac\Support\RoleLabel;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\Tenancy;
@@ -926,10 +927,7 @@ final class Domains extends Component
             return '';
         }
 
-        $name = Cast::string($user->roles->sortByDesc('level')->first()?->getAttribute('name'));
-        $key = 'rbac.role.'.$name;
-
-        return $name === '' ? '' : (__($key) === $key ? $name : __($key));
+        return RoleLabel::topOf($user) ?? '';
     }
 
     // ── Words ────────────────────────────────────────────────────────────────

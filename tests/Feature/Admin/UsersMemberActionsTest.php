@@ -108,6 +108,18 @@ it('removes a real member but leaves a non-member untouched with a plain-languag
         ->and(usersPageRoles(2, $outsider))->toBe(['viewer']);
 });
 
+it('names roles in plain words in the member badges and the role pickers, keeping the role key as the value', function (): void {
+    $owner = usersPageMember(1, 'owner');
+    usersPageMember(1, 'viewer');
+    app()->setLocale('vi');
+
+    $html = app(Tenancy::class)->enter(1, fn (): string => Livewire::actingAs($owner->fresh())->test(Index::class)->html());
+
+    expect($html)->toContain('>Chỉ xem</span>')
+        ->toContain('<option value="viewer">Chỉ xem</option>')
+        ->not->toContain('>viewer<');
+});
+
 it('never prints a member bigint id into the page — actions and keys carry the ulid', function (): void {
     $owner = usersPageMember(1, 'owner');
     $member = usersPageMember(1, 'viewer');

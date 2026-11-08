@@ -26,6 +26,9 @@ import './admin-seo-fields.js';
 // The one lazy loader for screen-only Alpine parts too big for this file (the Chuyên mục screen…).
 import './admin-lazy.js';
 
+// The shared name-column rule of table-style lists (window.bsListFold): side columns fold under the name.
+import './admin-list-fold.js';
+
 let uploader = null;
 
 function teardown() {
