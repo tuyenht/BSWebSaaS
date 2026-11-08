@@ -2,13 +2,17 @@
 
 namespace App\Modules\Theme\Providers;
 
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SectionComponent;
 use App\Modules\Theme\Components\SectionProps;
+use App\Modules\Theme\Jobs\CheckAiCrawlers;
 use App\Modules\Theme\Theming\HeadingDecor;
 use App\Modules\Theme\Theming\SiteSeo;
 use App\Modules\Theme\Theming\StorefrontSettings;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -279,6 +283,10 @@ final class ThemeServiceProvider extends ServiceProvider
         };
         SiteSetting::saved($forget);
         SiteSetting::deleted($forget);
+
+        // The AI crawler check: at most this many runs a minute across the whole platform (each is
+        // six outbound requests); the rest wait in the queue.
+        RateLimiter::for(CheckAiCrawlers::LIMITER, static fn (): Limit => Limit::perMinute(max(1, Cast::int(config('seo.ai_crawlers.platform_per_minute'), 30))));
     }
 
     private function activeThemePath(): string

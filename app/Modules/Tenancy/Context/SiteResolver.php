@@ -72,6 +72,26 @@ final readonly class SiteResolver
         return $resolved;
     }
 
+    /**
+     * The address a site's public pages are served on right now: the primary host its platform
+     * subdomain resolves to (the address ServeOnPrimaryDomain sends every other host to) — through
+     * resolve(), so it follows the same rule and cache. Null while the site has no verified host.
+     */
+    public function primaryHostFor(int $siteId): ?string
+    {
+        $host = Domain::query()
+            ->where('site_id', $siteId)
+            ->whereNotNull('verified_at')
+            ->orderByRaw("case when kind = 'subdomain' then 0 else 1 end")
+            ->orderByDesc('is_primary')
+            ->orderBy('id')
+            ->value('hostname');
+
+        $resolved = is_string($host) ? $this->resolve($host) : null;
+
+        return $resolved !== null && $resolved->siteId === $siteId ? $resolved->primaryHost : null;
+    }
+
     /** Drop what is remembered about these hosts — call after any write to `domains`. */
     public function forget(string ...$hosts): void
     {

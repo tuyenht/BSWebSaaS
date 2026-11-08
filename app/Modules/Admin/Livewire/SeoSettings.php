@@ -13,8 +13,12 @@ use App\Modules\Storefront\Support\SitemapRoutes;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
+use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Entitlement\Entitlement;
+use App\Modules\Theme\Jobs\CheckAiCrawlers;
+use App\Modules\Theme\Theming\AiCrawlerCheck;
 use App\Modules\Theme\Theming\SiteSeo;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
@@ -34,6 +38,10 @@ use Livewire\Component;
  * (SiteSeo). The page edits a draft and saves it in one step, like "Thông tin chung": a field is
  * checked when it is left and every field again on save. Turning Google off asks first. Every
  * request is settings.manage-gated (boot) and so is every action.
+ *
+ * It also says whether AI bots reach the website (AiCrawlerCheck, run off the request by
+ * CheckAiCrawlers): opening the page starts a check when the kept result is missing or older than
+ * a day, and "Kiểm tra lại" starts one at most once a minute per site.
  */
 #[Layout('admin::layouts.app')]
 final class SeoSettings extends Component
@@ -42,6 +50,12 @@ final class SeoSettings extends Component
     public const int REGENERATE_TRIES = 3;
 
     public const int REGENERATE_WINDOW = 600;
+
+    /** "Kiểm tra lại" (the AI crawler check): once per site in this many seconds. */
+    public const int RECHECK_WINDOW = 60;
+
+    /** The AI check's findings that come with a way to fix them (`admin.seoset.ai.fix.<code>`). */
+    private const array AI_FIXES = ['hidden', 'own_blocks', 'own_partial', 'proxy_blocks', 'cloudflare_challenge', 'bot_refused', 'platform_hidden', 'noindex_header', 'not_pointing', 'redirect_off_host'];
 
     /**
      * The groups of the page and the fields of each, in order: [key, kind, per-language].
@@ -81,6 +95,9 @@ final class SeoSettings extends Component
 
     public int $toastSeq = 0;
 
+    /** The address the AI check looks at, read once per request ('' = not read yet). */
+    private ?string $aiHost = '';
+
     public function boot(): void
     {
         // Defense-in-depth: the livewire/update endpoint bypasses route middleware, so
@@ -92,6 +109,7 @@ final class SeoSettings extends Component
     {
         $this->lang = app(SiteLocale::class)->default();
         $this->apply($this->load());
+        $this->checkAiCrawlersIfStale();
     }
 
     #[Authorize('settings.manage')]
@@ -160,6 +178,33 @@ final class SeoSettings extends Component
         }
         RateLimiter::hit($key, self::REGENERATE_WINDOW);
         $this->notify(app(SitemapRoutes::class)->forgetPlan() ? __('admin.seoset.regen_done') : __('admin.seoset.regen_fresh'));
+    }
+
+    /**
+     * "Kiểm tra lại": check again whether AI bots reach the website, off the request. Once a
+     * minute per site; the result shows when the check ends.
+     */
+    #[Authorize('settings.manage')]
+    public function recheck(): void
+    {
+        $siteId = app(CurrentSite::class)->id();
+        $key = 'seo-ai-check:'.$siteId;
+        if (RateLimiter::tooManyAttempts($key, 1)) {
+            $this->notify(__('admin.seoset.ai.wait', ['seconds' => max(1, RateLimiter::availableIn($key))]), 'error');
+
+            return;
+        }
+        RateLimiter::hit($key, self::RECHECK_WINDOW);
+
+        $check = app(AiCrawlerCheck::class);
+        if ($this->aiHost($siteId) === null) {
+            $this->notify(__('admin.seoset.ai.not_ready'), 'error');
+
+            return;
+        }
+        $check->markRunning($siteId);
+        CheckAiCrawlers::dispatch($siteId);
+        $this->notify(__('admin.seoset.ai.started'));
     }
 
     /** A field was left: check it now, so the error shows at once. */
@@ -269,10 +314,113 @@ final class SeoSettings extends Component
             // The sentence is true only while the platform keeps its subdomains out of search engines.
             'platformHidden' => Cast::bool(config('tenancy.noindex_platform_subdomains')),
             'domainsLink' => $this->domainsLink(),
+            'aiCheck' => $this->aiCheck(),
         ]);
         $view->title(__('admin.seoset.title'));
 
         return $view;
+    }
+
+    private static function siteIdOrZero(): int
+    {
+        $current = app(CurrentSite::class);
+
+        return $current->hasId() ? $current->id() : 0;
+    }
+
+    /** Null without a site context (nothing to check then). */
+    private function aiHost(int $siteId): ?string
+    {
+        if ($this->aiHost === '') {
+            $this->aiHost = $siteId > 0 ? app(AiCrawlerCheck::class)->host($siteId) : null;
+        }
+
+        return $this->aiHost;
+    }
+
+    /** Opening the page: start a check when none is kept for the site's address (they last a day). */
+    private function checkAiCrawlersIfStale(): void
+    {
+        $siteId = self::siteIdOrZero();
+        $check = app(AiCrawlerCheck::class);
+        $host = $this->aiHost($siteId);
+        if ($host === null || $check->result($siteId, $host) !== null) {
+            return;
+        }
+        if ($check->markRunning($siteId)) {
+            CheckAiCrawlers::dispatch($siteId);
+        }
+    }
+
+    /**
+     * The AI crawler check as the status line shows it: whether a check is under way, the overall
+     * level (`ok`, `info`, `warning`, `unchecked`; null before the first result) with its words,
+     * when it was checked (site time), the address checked, and each finding in plain words with
+     * its fix.
+     *
+     * @return array{running: bool, level: string|null, label: string, checkedAt: string|null, host: string|null, findings: list<array{level: string, message: string, fix: string|null}>}
+     */
+    private function aiCheck(): array
+    {
+        $siteId = self::siteIdOrZero();
+        $check = app(AiCrawlerCheck::class);
+        $host = $this->aiHost($siteId);
+        if ($host === null) {
+            return ['running' => false, 'level' => 'unchecked', 'label' => Cast::string(__('admin.seoset.ai.level.unchecked')), 'checkedAt' => null, 'host' => null,
+                'findings' => [['level' => 'unchecked', 'message' => Cast::string(__('admin.seoset.ai.not_ready')), 'fix' => null]]];
+        }
+
+        $running = $check->isRunning($siteId);
+        $result = $check->result($siteId, $host);
+        if ($result === null) {
+            return ['running' => $running, 'level' => null, 'label' => Cast::string(__($running ? 'admin.seoset.ai.running' : 'admin.seoset.ai.never')), 'checkedAt' => null, 'host' => $host, 'findings' => []];
+        }
+
+        $time = app(SiteTime::class);
+        $at = CarbonImmutable::createFromTimestampUTC($result['checked_at']);
+        $findings = [];
+        foreach ($result['findings'] as $finding) {
+            $findings[] = [
+                'level' => $finding['level'],
+                'message' => Cast::string(__('admin.seoset.ai.'.$finding['code'], self::aiParams($finding['params']))),
+                'fix' => in_array($finding['code'], self::AI_FIXES, true) ? Cast::string(__('admin.seoset.ai.fix.'.$finding['code'])) : null,
+            ];
+        }
+        if ($findings === []) {
+            $findings[] = ['level' => 'ok', 'message' => Cast::string(__('admin.seoset.ai.all_clear')), 'fix' => null];
+        }
+
+        return [
+            'running' => $running,
+            'level' => $result['level'],
+            'label' => Cast::string(__('admin.seoset.ai.level.'.$result['level'])),
+            'checkedAt' => $time->day($at, app()->getLocale()).' '.$time->forDisplay($at)?->format('H:i'),
+            'host' => $host,
+            'findings' => $findings,
+        ];
+    }
+
+    /**
+     * A finding's placeholders in words: bot lists joined (a refused bot with its status code),
+     * Content-Signal values joined, a status code and a host as they are.
+     *
+     * @param  array<string, mixed>  $params
+     * @return array<string, string>
+     */
+    private static function aiParams(array $params): array
+    {
+        $words = [];
+        foreach (Cast::strings($params['bots'] ?? null) as $bot) {
+            $at = strrpos($bot, ':');
+            $words[] = $at === false ? $bot : Cast::string(__('admin.seoset.ai.bot_status', ['bot' => substr($bot, 0, $at), 'status' => substr($bot, $at + 1)]));
+        }
+
+        return [
+            'bots' => implode(', ', $words),
+            'signals' => implode('; ', Cast::strings($params['signals'] ?? null)),
+            'status' => (string) Cast::int($params['status'] ?? null),
+            'host' => Cast::string($params['host'] ?? null),
+        ];
     }
 
     /** The domains page, when this person can open it there (otherwise the note stays plain text). */
