@@ -30,8 +30,8 @@ use Tests\Fixtures\StorefrontCards;
 
 beforeEach(function (): void {
     // The post page prints its "Cập nhật" date (the row's updated_at), so the golden page holds the
-    // day it was captured: pin the clock to that day of the current year (the year is masked).
-    $this->travelTo(now()->setDate((int) date('Y'), 11, 7)->setTime(5, 0));
+    // day it was captured: pin the clock to that moment. The content's fixed dates share its year.
+    $this->travelTo(CarbonImmutable::parse('2026-11-07 05:00', 'UTC'));
     StorefrontCards::reset();
     StorefrontCards::pinMediaConfig();
 });
@@ -71,8 +71,6 @@ function slotsHtml(string $path, string $host = 'mau.platform.test'): string
 }
 
 it('draws a post and a product with no slot set byte for byte as before', function (string $path, string $golden): void {
-    // The post prints its last update, which is the moment it was saved.
-    test()->travelTo(CarbonImmutable::parse('2026-11-07 03:00', 'UTC'));
     slotsGoldenSite();
     // A Livewire component rendered earlier in the run makes the next full page carry its assets once; let that page go first.
     test()->get('http://mau.platform.test/');
