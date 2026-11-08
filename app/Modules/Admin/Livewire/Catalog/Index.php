@@ -10,6 +10,7 @@ use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Catalog\Actions\ChangeProductMainCategory;
 use App\Modules\Catalog\Actions\ChangeProductSlug;
 use App\Modules\Catalog\Actions\ChangeProductStatus;
+use App\Modules\Catalog\Actions\ForceDeleteProducts;
 use App\Modules\Catalog\Actions\RenameProduct;
 use App\Modules\Catalog\Exceptions\ProductEditRefused;
 use App\Modules\Catalog\Models\Product;
@@ -833,11 +834,11 @@ final class Index extends Component
         $name = '';
         if (! $this->atomic(function () use (&$done, &$name): void {
             // FK cascade removes translations, images and routes; the sku and the address are free again
-            foreach ($this->pickRows($this->selected, true, 'none') as $product) {
+            $picked = $this->pickRows($this->selected, true, 'none');
+            foreach ($picked as $product) {
                 $name = $this->loadedName($product);
-                $product->forceDelete();
-                $done++;
             }
+            $done = app(ForceDeleteProducts::class)->handle($picked);
         })) {
             return;
         }
@@ -1175,7 +1176,7 @@ final class Index extends Component
     {
         $this->guardWrite('forceDelete');
         // FK cascade removes translations/images; frees sku + slug
-        Product::withTrashed()->where('ulid', $ulid)->firstOrFail()->forceDelete();
+        app(ForceDeleteProducts::class)->handle([Product::withTrashed()->where('ulid', $ulid)->firstOrFail()]);
         $this->toastMsg = '';
         $this->undoOp = null;
     }

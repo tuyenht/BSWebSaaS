@@ -279,6 +279,13 @@
                 :summary="$filtering ? __('catalog.match_of', ['n' => $fmt($matchCount), 'm' => $fmt($counts[$tab] ?? 0), 'unit' => $noun]) : null"
                 :chips="$chips" :clear="$filtering ? 'clearAllFilters' : null" />
 
+            @if ($tab === 'trash')
+                <div class="mb-3 flex items-start gap-2.5 rounded-md border border-border bg-surface-muted px-3 py-2 text-caption text-text min-[600px]:mx-4">
+                    <x-bs-admin::icon name="ri-time" class="mt-px size-[min(1.5rem,calc(1rem+var(--user-text-boost)))] shrink-0 text-info-text" />
+                    <span class="min-w-0 flex-1">{{ __('catalog.trash_auto_note') }}</span>
+                </div>
+            @endif
+
             @if ($pickedN > 0 && $bulk !== [])
                 <x-bs-admin::list.bulk :label="__('catalog.bulk_region')" :status="__('catalog.bulk_selected', ['count' => $num($pickedN)])" :clear-label="__('catalog.bulk_clear')" :skip="$bulkSkip">
                     @foreach ($bulk as $action)
@@ -398,7 +405,7 @@ JS, ['@ULID@' => (string) Js::from($product->ulid)]) : '{}';
                         // the last edit (a trashed row: the day it went to the Trash)
                         $stamp = $trashed ? $product->deleted_at : $product->updated_at;
                         $stampText = $clock($stamp);
-                        $whenText = $stampText === null ? null : ($trashed ? __('catalog.trashed_at', ['date' => $stampText]) : __('catalog.updated_at', ['date' => $stampText]));
+                        $whenText = $stampText === null ? null : ($trashed ? __('catalog.trash_days_left', ['n' => \App\Modules\Catalog\Support\ProductTrash::daysLeft($stamp, $nowAt)]) : __('catalog.updated_at', ['date' => $stampText]));
                         $whenTitle = $stampText === null ? null : ($trashed ? __('catalog.trashed_at_title', ['date' => $stampText]) : __('catalog.updated_full', ['date' => $stampText]));
                         $whenCard = $trashed || $stamp === null ? $whenText : $editedShort($stamp);
                     @endphp
