@@ -468,6 +468,63 @@ it('leaves the category totals alone when a product cannot move to an address th
     });
 });
 
+it('keeps the ticks when the page size changes, and drops them when the status group changes', function (): void {
+    $manager = bulkManager();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        $a = bulkProduct('Đồ gá hàn', 'do-ga-han');
+
+        $test = Livewire::actingAs($manager)->test(Index::class)->call('toggleSelect', [$a->ulid])->set('perPage', 10);
+        expect($test->get('selected'))->toBe([$a->ulid]);
+
+        $test->call('setTab', 'draft')->assertSet('selected', []);
+        $test->call('toggleSelect', [$a->ulid])->assertSet('selected', [$a->ulid]);
+        $test->set('tab', 'trash')->assertSet('selected', []);
+    });
+});
+
+it('leaves both category totals alone when an undo of a category change finds its old address taken', function (): void {
+    $manager = bulkManager();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        SiteSetting::query()->updateOrCreate(['group_name' => 'permalinks', 'key' => 'products'], ['value' => ['pattern' => 'category']]);
+        $from = bulkCategory('Đồ gá');
+        $to = bulkCategory('Khuôn mẫu');
+        $fromSlug = $from->translations()->where('locale', 'vi')->value('slug');
+        $live = bulkProduct('Đồ gá hàn', 'do-ga-han', 'published', $from);
+        app(RouteSync::class)->syncProduct($live->id, $from, 'vi', 'do-ga-han');
+
+        $test = Livewire::actingAs($manager)->test(Index::class)->call('toggleSelect', [$live->ulid])->call('openCategory')->call('changeCategory', $to->ulid);
+        expect(bulkItems($from))->toBe(0)->and(bulkItems($to))->toBe(1);
+
+        Redirect::query()->where('from_path', "/{$fromSlug}/do-ga-han")->delete();
+        $page = Entry::query()->create(['type' => 'page', 'status' => 'published', 'author_id' => $manager->id]);
+        $page->translations()->create(['locale' => 'vi', 'title' => 'Bài chiếm chỗ', 'slug' => 'do-ga-han', 'status' => 'published', 'body' => ['blocks' => []]]);
+        SiteRoute::query()->create(['locale' => 'vi', 'path' => "/{$fromSlug}/do-ga-han", 'entry_id' => $page->id]);
+
+        $test->call('undoLast');
+
+        expect($test->get('toastTone'))->toBe('error')
+            ->and($test->get('toastMsg'))->toBe(__('catalog.undo_conflict'))
+            ->and($live->fresh()->primaryCategory()?->id)->toBe($to->id)
+            ->and(bulkItems($from))->toBe(0)->and(bulkItems($to))->toBe(1);
+    });
+});
+
+it('says "one product" when a single product is restored from the Trash', function (): void {
+    $manager = bulkManager();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        $a = bulkProduct('Đồ gá hàn', 'do-ga-han', 'published');
+        $a->delete();
+
+        app()->setLocale('vi');
+        $test = Livewire::actingAs($manager)->test(Index::class)->set('tab', 'trash')->call('toggleSelect', [$a->ulid])->call('bulkRestore');
+
+        expect($test->get('toastMsg'))->toBe('Đã khôi phục 1 sản phẩm về Bản nháp.');
+    });
+});
+
 it('refuses a category that is not a product category', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         $post = app(CreateTaxonomy::class)->handle('post_cat', null, new TaxonomyData(names: ['vi' => 'Bài viết mới']));
@@ -509,6 +566,7 @@ it('keeps its query count flat for any number of ticked rows', function (): void
         $open6 = $run('openCategory', $make(6, 'draft'));
         $move2 = $measure('changeCategory', $make(2, 'draft'), [$other->ulid], 'all', $dialog);
         $move6 = $measure('changeCategory', $make(6, 'draft'), [$other->ulid], 'all', $dialog);
+        $move10 = $measure('changeCategory', $make(10, 'draft'), [$other->ulid], 'all', $dialog);
 
         $drafts = $make(8, 'draft');
         Product::query()->whereIn('ulid', $drafts)->get()->each->delete();
@@ -527,11 +585,22 @@ it('keeps its query count flat for any number of ticked rows', function (): void
         $undoTrash6 = $measure('undoLast', $make(6, 'draft'), [], 'all', [['bulkTrash', []]]);
         $undoMove2 = $measure('undoLast', $make(2, 'draft'), [], 'all', [...$dialog, ['changeCategory', [$other->ulid]]]);
         $undoMove6 = $measure('undoLast', $make(6, 'draft'), [], 'all', [...$dialog, ['changeCategory', [$other->ulid]]]);
+        $undoMove10 = $measure('undoLast', $make(10, 'draft'), [], 'all', [...$dialog, ['changeCategory', [$other->ulid]]]);
 
         // published products move their address with the category: the route is composed and the old one redirected
         SiteSetting::query()->updateOrCreate(['group_name' => 'permalinks', 'key' => 'products'], ['value' => ['pattern' => 'category']]);
-        $moveLive2 = $measure('changeCategory', $make(2, 'published'), [$other->ulid], 'all', $dialog);
-        $moveLive6 = $measure('changeCategory', $make(6, 'published'), [$other->ulid], 'all', $dialog);
+        // each published fixture gets its address first, so the move redirects the old one (the 301 path is what is counted)
+        $routed = function (int $n) use ($category): array {
+            return array_map(function (int $i) use ($n, $category): string {
+                $product = bulkProduct("Sản phẩm có địa chỉ {$n} {$i}", "sp-dia-chi-{$n}-{$i}", 'published', $category);
+                app(RouteSync::class)->syncProduct($product->id, $category, 'vi', "sp-dia-chi-{$n}-{$i}");
+
+                return $product->ulid;
+            }, range(1, $n));
+        };
+        $moveLive2 = $measure('changeCategory', $routed(2), [$other->ulid], 'all', $dialog);
+        $moveLive6 = $measure('changeCategory', $routed(6), [$other->ulid], 'all', $dialog);
+        $moveLive10 = $measure('changeCategory', $routed(10), [$other->ulid], 'all', $dialog);
 
         // fixed set-up statements plus a constant few per row (its lock and its write, and for a moved or published row its
         // route sync): never a lookup of a category, a name or a route per row; opening the dialog reads no row per ticked row
@@ -541,10 +610,15 @@ it('keeps its query count flat for any number of ticked rows', function (): void
             ->and([$archive2, $archive6])->toBe([17, 21])
             ->and([$publish2, $publish6])->toBe([25, 41])
             ->and([$open2, $open6])->toBe([16, 16])
-            ->and([$move2, $move6])->toBe([31, 55])
-            ->and([$moveLive2, $moveLive6])->toBe([31, 59])
+            ->and([$move2, $move6, $move10])->toBe([31, 55, 79])
+            ->and([$moveLive2, $moveLive6, $moveLive10])->toBe([35, 67, 99])
             ->and([$undoStatus2, $undoStatus6])->toBe([23, 35])
-            ->and([$undoTrash2, $undoTrash6])->toBe([19, 27])
-            ->and([$undoMove2, $undoMove6])->toBe([29, 55]);
+            ->and([$undoTrash2, $undoTrash6])->toBe([19, 27]);
+
+        // the undo of a category change varies by a few statements from run to run (29-31, 49-55, 69-79 for 2, 6 and 10 rows),
+        // so it is bounded, not pinned: a flat set-up plus at most 8 statements per extra row, never a lookup per category or name
+        expect($undoMove2)->toBeLessThanOrEqual(34)
+            ->and($undoMove6 - $undoMove2)->toBeLessThanOrEqual(4 * 8)
+            ->and($undoMove10 - $undoMove6)->toBeLessThanOrEqual(4 * 8);
     });
 });

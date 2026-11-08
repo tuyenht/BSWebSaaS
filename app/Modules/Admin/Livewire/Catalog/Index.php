@@ -264,6 +264,9 @@ final class Index extends Component
             $this->clean();
             $this->restart();
         }
+        if ($name === 'tab') {
+            $this->selected = []; // a new status group starts with nothing ticked
+        }
         if (in_array($name, self::FILTERS, true)) {
             $this->guardWrite('viewAny');
             if ($name === 'catF') {
@@ -338,6 +341,7 @@ final class Index extends Component
     public function setTab(string $tab): void
     {
         $this->tab = in_array($tab, self::TABS, true) ? $tab : 'all';
+        $this->selected = [];
         $this->clean();
         $this->restart();
     }
@@ -1344,7 +1348,6 @@ final class Index extends Component
         $this->qF = array_map(fn (mixed $words): string => mb_substr(Cast::string($words), 0, 100), array_intersect_key($this->qF, self::FILTERS));
     }
 
-    /** The product categories, read once per request. */
     private function listFilter(ProductCategoryTree $tree): ProductListFilter
     {
         return new ProductListFilter($tree->idsUnder($this->catF), $this->transF, app(SiteLocale::class)->enabled(), $this->tagF, $this->stockF, $this->saleF !== []);
@@ -1381,6 +1384,7 @@ final class Index extends Component
         return $kept;
     }
 
+    /** The product categories, read once per request. */
     private function categoryTree(): ProductCategoryTree
     {
         return $this->tree ??= ProductCategoryTree::load(app(CurrentSite::class)->id(), app(SiteLocale::class)->default());
