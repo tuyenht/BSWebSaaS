@@ -46,7 +46,7 @@ second preview must print 0. A mark makes sure a resume never applies twice.
 ## Tests
 
 `bash scripts/deploy/tests/run.sh [empty dir]` builds a fake prod: a synthetic git history and its clone,
-stub `docker`/`gh`/`pnpm` under `tests/stub`, and the container prefix `fake_k90_`. Through the real
+stub `docker`/`gh`/`pnpm` under `tests/stub`, and the container prefix `fake_deploy_`. Through the real
 launcher it then runs: every class, the plan guard, the hash checks, a full run, a lock-timeout retry, a
 failed migration, resumes, an invalid index, an unknown path, an undeclared schedule, a missing env key, the
 CI, dump and lock guards, and the profile guards. A test profile may never use the prod prefix, the prod

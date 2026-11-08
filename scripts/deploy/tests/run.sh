@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Deploy engine tests on a fake prod: a synthetic git history, a clone of it as "prod", stub docker / gh /
-# pnpm (tests/stub) that answer from files, the test prefix fake_k90_ and the real launcher + engine taken
+# pnpm (tests/stub) that answer from files, the test prefix fake_deploy_ and the real launcher + engine taken
 # from a commit. Nothing here reaches a container, GitHub or the real prod checkout.
 #   bash scripts/deploy/tests/run.sh [empty work dir]      (exit 0 = every check passed)
 set -uo pipefail
@@ -92,7 +92,7 @@ fresh() { # fresh <target>: a new fake prod at OLD, its fake DB files, profile a
     echo 'idx|sites|sites_extra_idx|valid' > "$FAKE/catalog-add-2100_01_01_000100_add_idx"
     echo 1 > "$FAKE/oneoff-count"
     cat > "$S/profile" <<EOF
-PROD=$PROD PREFIX=fake_k90_ COMPOSE_PROJECT=fake-k90 BK=$S/bk SECRETS=$S/secret.env DEPLOY_RUNS=$RUNS
+PROD=$PROD PREFIX=fake_deploy_ COMPOSE_PROJECT=fake-deploy BK=$S/bk SECRETS=$S/secret.env DEPLOY_RUNS=$RUNS
 REPO=t/t IMAGE=fake:img MIN_DISK_GB=0 LOCK_RETRY_SLEEP=0 STUB_BIN=$STUB
 EOF
     release
@@ -182,9 +182,9 @@ ok '[ "$RC" = 0 ] && says "===== XONG"' "deploy ends XONG (rc $RC)"
 [ "$RC" = 0 ] || tail -25 "$OUT"
 ok 'head_is "$FULL"' "prod HEAD is TARGET"
 ok 'grep -qx 2100_01_01_000100_add_idx "$FAKE/migrations.txt" && grep -qx 2100_01_01_000000_add_col "$FAKE/migrations.txt"' "both migrations recorded"
-A=$(line_of "MIGRATED 2100_01_01_000000_add_col"); R=$(line_of "restart -t 2 fake_k90_pgbouncer"); B=$(line_of "MIGRATED 2100_01_01_000100_add_idx")
+A=$(line_of "MIGRATED 2100_01_01_000000_add_col"); R=$(line_of "restart -t 2 fake_deploy_pgbouncer"); B=$(line_of "MIGRATED 2100_01_01_000100_add_idx")
 ok '[ -n "$A" ] && [ -n "$R" ] && [ -n "$B" ] && [ "$A" -lt "$R" ] && [ "$R" -lt "$B" ]' "PgBouncer restarted right after the column migration, before the index one ($A < $R < $B)"
-ok '[ "$(calls "restart -t 2 fake_k90_pgbouncer")" = 2 ]' "two PgBouncer restarts in all (after add_col, at the reload)"
+ok '[ "$(calls "restart -t 2 fake_deploy_pgbouncer")" = 2 ]' "two PgBouncer restarts in all (after add_col, at the reload)"
 M=$(line_of "MIGRATED 2100_01_01_000100_add_idx"); G=$(line_of "pnpm run build")
 ok '[ "$M" -lt "$G" ]' "migrations ran before the code build"
 ok 'says "OK   lịch chạy thêm = products:purge-trash"' "schedule diff equals the declared job"
@@ -207,12 +207,12 @@ ok '[ "$(calls "MIGRATED")" = 2 ]' "rollback ran no migration"
 echo "== lock timeout: retried, PgBouncer restarted after every attempt"
 fresh "$FULL"; echo 1 > "$FAKE/lockfail-2100_01_01_000000_add_col"; launch
 ok '[ "$RC" = 0 ] && says "Chưa lấy được khóa bảng (lần 1)"' "one lock timeout, then success"
-ok '[ "$(calls "restart -t 2 fake_k90_pgbouncer")" = 3 ]' "three restarts (failed attempt, good attempt, reload)"
+ok '[ "$(calls "restart -t 2 fake_deploy_pgbouncer")" = 3 ]' "three restarts (failed attempt, good attempt, reload)"
 
 echo "== failed column migration: PgBouncer restarted, code untouched"
 fresh "$FULL"; touch "$FAKE/fail-2100_01_01_000000_add_col"; launch
 ok '[ "$RC" = 1 ] && says "DỪNG (bước 4)" && head_is "$OLD"' "stop in step 4, prod still on OLD"
-ok '[ "$(calls "restart -t 2 fake_k90_pgbouncer")" -ge 1 ]' "PgBouncer restarted after the failed attempt"
+ok '[ "$(calls "restart -t 2 fake_deploy_pgbouncer")" -ge 1 ]' "PgBouncer restarted after the failed attempt"
 rm -f "$FAKE/fail-2100_01_01_000000_add_col"; launch 4
 ok '[ "$RC" = 0 ] && head_is "$FULL"' "resume at step 4 finishes"
 ok '[ "$(calls "MIGRATED 2100_01_01_000000_add_col")" = 1 ]' "each migration ran once"
@@ -248,7 +248,7 @@ fresh "$FULL"; flock "$RUNS/.lock" sleep 5 & LP=$!; sleep 0.5; launch; wait "$LP
 ok '[ "$RC" = 1 ] && says "một lần deploy khác đang chạy"' "a second deploy at the same time is refused"
 
 echo "== profile guards (never the prod prefix, path or real docker)"
-fresh "$FULL"; sed -i 's/PREFIX=fake_k90_/PREFIX=bsweb_prod_/' "$S/profile"; launch
+fresh "$FULL"; sed -i 's/PREFIX=fake_deploy_/PREFIX=bsweb_prod_/' "$S/profile"; launch
 ok '[ "$RC" = 1 ] && says "tiền tố container của prod"' "test profile with the prod prefix refused"
 fresh "$FULL"; sed -i "s#^PROD=[^ ]*#PROD=/opt/bswebsaas/prod/x#" "$S/profile"; launch
 ok '[ "$RC" = 1 ] && says "trỏ vào thư mục prod"' "test profile pointing into the prod folder refused"
