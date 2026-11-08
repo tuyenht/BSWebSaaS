@@ -11,6 +11,7 @@ use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteSetting;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Number;
 use Livewire\Livewire;
@@ -322,7 +323,8 @@ it('prints the last edit in the website clock with the full time in a title, and
     });
 });
 
-it('words a Trash row by the day it went to the Trash', function (): void {
+it('words a Trash row by the days left and titles it with the day it went to the Trash', function (): void {
+    $this->travelTo(Carbon::parse('2026-11-08 10:00:00', 'UTC'));
     app(Tenancy::class)->enter(1, function (): void {
         $gone = cellProduct('Đã xoá');
         $gone->delete();
@@ -330,7 +332,7 @@ it('words a Trash row by the day it went to the Trash', function (): void {
 
         $html = Livewire::actingAs(cellManager())->test(Index::class)->set('tab', 'trash')->html();
 
-        expect($html)->toContain(__('catalog.trashed_at', ['date' => '02/10/2026 00:30']))
+        expect($html)->toContain(__('catalog.trash_days_left', ['n' => 0]))
             ->and($html)->toContain('title="'.e(__('catalog.trashed_at_title', ['date' => '02/10/2026 00:30'])).'"');
     });
 });

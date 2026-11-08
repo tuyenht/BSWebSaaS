@@ -32,7 +32,7 @@ final class AuditCatalog
         ],
         'content' => [
             'entries.status.changed', 'entries.change.applied', 'entries.change.discarded', 'entries.change.folded',
-            'entries.revision.restored',
+            'entries.revision.restored', 'catalog.product.purged',
         ],
         'menus' => [
             'cms.menu.saved', 'cms.menu.assigned', 'cms.menu.followed', 'cms.menu.deleted', 'cms.menu_item.saved', 'cms.menu_item.moved',

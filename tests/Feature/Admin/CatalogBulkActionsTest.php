@@ -615,7 +615,7 @@ it('keeps its query count flat for any number of ticked rows', function (): void
         // route sync): never a lookup of a category, a name or a route per row; opening the dialog reads no row per ticked row
         expect([$trash2, $trash6])->toBe([15, 23])
             ->and([$restore2, $restore6])->toBe([19, 27])
-            ->and([$purge2, $purge6])->toBe([16, 24])
+            ->and([$purge2, $purge6])->toBe([17, 25])
             ->and([$archive2, $archive6])->toBe([17, 21])
             ->and([$publish2, $publish6])->toBe([25, 45])
             ->and([$open2, $open6])->toBe([16, 16])
