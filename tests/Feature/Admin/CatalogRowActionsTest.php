@@ -226,6 +226,29 @@ it('locks the trashed row on a restore and says the product is gone when it was 
     });
 });
 
+it('locks the trashed row on the single undo of a trash and says the product is gone when it was deleted for good meanwhile', function (): void {
+    $manager = rowManager();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        $product = rowProduct();
+        $test = Livewire::actingAs($manager)->test(Index::class)->call('trash', $product->ulid);
+
+        DB::connection()->enableQueryLog();
+        $test->call('undoLast');
+        $queries = collect(DB::connection()->getQueryLog())->pluck('query')->map(fn (string $q): string => strtolower($q));
+        DB::connection()->disableQueryLog();
+
+        expect($queries->contains(fn (string $q): bool => str_starts_with($q, 'select') && str_contains($q, '"products"') && str_contains($q, '"deleted_at" is not null') && str_contains($q, 'for update')))->toBeTrue();
+
+        $other = rowProduct('Đồ ép nhựa', 'do-ep-nhua');
+        $test->call('trash', $other->ulid);
+        $other->forceDelete();
+        $test->call('undoLast');
+        expect($test->get('toastTone'))->toBe('error')
+            ->and($test->get('toastMsg'))->toBe(__('catalog.undo_gone'));
+    });
+});
+
 it('refuses a status or label change on a product in the Trash and on a value the menu never sends', function (): void {
     $manager = rowManager();
 

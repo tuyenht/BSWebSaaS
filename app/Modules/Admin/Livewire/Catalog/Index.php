@@ -608,7 +608,7 @@ final class Index extends Component
         switch ($op['kind'] ?? null) {
             case 'untrash':
                 $this->guardWrite('restore');
-                $product = Product::onlyTrashed()->where('ulid', $ulid)->first();
+                $product = Product::onlyTrashed()->where('ulid', $ulid)->lockForUpdate()->first();
                 $product?->restore();
                 break;
             case 'retrash':
