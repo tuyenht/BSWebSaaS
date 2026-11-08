@@ -53,7 +53,9 @@ function previewProduct(int $site = 1, string $status = 'draft', string $name = 
             'summary' => 'Đồ gá kiểm tra cụm bảng điều khiển.', 'description' => '<p>Kiểm tra kích thước từng chi tiết.</p>',
         ]);
         $product->taxonomies()->attach($category->id, ['site_id' => $product->site_id, 'position' => 0]);
-        app(RouteSync::class)->syncProduct($product->id, null, 'vi', $slug);
+        if ($status === 'published') {
+            app(RouteSync::class)->syncProduct($product->id, null, 'vi', $slug);
+        }
 
         return $product->ulid;
     });
@@ -234,4 +236,29 @@ it('offers the preview on a draft row of the product list, and the website link 
         ->toContain('aria-label="Xem trước: Đồ gá kiểm định"')
         ->toContain('>Xem trước</span>')
         ->not->toContain('/admin/catalog/'.$live.'/preview');
+});
+
+it('previews a draft that has no page in the default language through the first language it has', function (): void {
+    $ulid = previewProduct();
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteLocale::query()->create(['locale' => 'en', 'is_default' => false, 'enabled' => true, 'is_public' => false]);
+        $product = Product::query()->firstOrFail();
+        $product->translations()->where('locale', 'vi')->delete();
+        $product->translations()->create(['locale' => 'en', 'name' => 'Inspection jig VF7', 'slug' => 'inspection-jig-vf7']);
+    });
+    $manager = previewMember(['catalog.view', 'catalog.manage']);
+
+    $html = (string) $this->actingAs($manager)->get('http://a.test/admin/catalog')->assertOk()->getContent();
+
+    expect($html)->toContain('href="http://a.test/admin/catalog/'.$ulid.'/preview?locale=en"');
+});
+
+it('draws the last breadcrumb level of a preview as plain text, with no link to the unpublished address', function (): void {
+    $ulid = previewProduct();
+    $manager = previewMember(['catalog.view', 'catalog.manage']);
+
+    $html = (string) $this->actingAs($manager)->get("http://a.test/admin/catalog/{$ulid}/preview")->assertOk()->getContent();
+
+    expect($html)->toContain('<span class="sf-crumbs__current" aria-current="page">Đồ gá kiểm định</span>')
+        ->not->toContain('href="/do-ga/do-ga-kiem-dinh"');
 });

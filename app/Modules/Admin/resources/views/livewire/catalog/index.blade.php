@@ -556,7 +556,11 @@ JS, ['@ULID@' => (string) Js::from($product->ulid)]) : '{}';
                             @php
                                 $live = ! $trashed && $product->status === 'published' && $fullUrl !== null;
                                 // not on the website yet: whoever manages products opens its real page in a preview tab instead
-                                $previewUrl = $canManage && ! $trashed && ! $live && $fullUrl !== null ? route('admin.catalog.preview', ['ulid' => $product->ulid]) : null;
+                                // a product with no page in the default language opens in the first language it has
+                                $previewLocale = $t !== null ? null : $product->translations->first()?->locale;
+                                $previewUrl = $canManage && ! $trashed && ! $live && ($t !== null || $previewLocale !== null)
+                                    ? route('admin.catalog.preview', array_filter(['ulid' => $product->ulid, 'locale' => $previewLocale]))
+                                    : null;
                                 $shownUrl = $fullUrl === null ? '' : (string) preg_replace('#^https?://#', '', $fullUrl);
                             @endphp
                             @if ($canManage || $live)
