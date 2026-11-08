@@ -6,6 +6,7 @@ namespace App\Modules\Cms\Concerns;
 
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\CategoryItemCounts;
+use App\Modules\Shared\Support\Cast;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
@@ -24,7 +25,8 @@ use InvalidArgumentException;
  *
  * The host provides taxonomies() ordered by pivot position with `position` on the pivot, plus the
  * `site_id` every pivot row is stamped with (the pivots are RLS-protected; sync() won't fill it).
- * It uses SoftDeletes.
+ * It uses SoftDeletes, and marks its translations' content as changed (markContentChanged()) when
+ * its main category changes: the page shows that one in its breadcrumb.
  *
  * The main category's total (`taxonomies.items_count`, CategoryItemCounts) follows the item here,
  * for every caller: a change of main category in assignCategories(), and the trash, restore and
@@ -92,13 +94,24 @@ trait HasCategoryTaxonomies
     abstract public function taxonomies(): BelongsToMany;
 
     /**
+     * Mark that the main content of these items changed, in every language.
+     *
+     * @param  list<int>  $ids
+     */
+    abstract public static function markContentChanged(array $ids): void;
+
+    /**
      * Replace the item's categories with $taxonomyIds, in order (index 0 = primary). Facet terms
      * ride along untouched: sync() diffs against EVERY pivot row, so a facet missing from the
      * payload would be detached. A category listed twice is filed once, at its first place.
      *
+     * Returns whether the main category of a stored item changed. Such a change marks the item's
+     * content as changed, unless $markContent is false: a bulk caller then marks all the items it
+     * moved in one statement (markContentChanged()), in the same transaction.
+     *
      * @param  list<int>  $taxonomyIds
      */
-    public function assignCategories(array $taxonomyIds): void
+    public function assignCategories(array $taxonomyIds, bool $markContent = true): bool
     {
         // [A, B, A] would give A two positions, the later one winning in the payload: A would
         // leave position 0 while its count went up.
@@ -140,6 +153,13 @@ trait HasCategoryTaxonomies
         if ($counts) {
             app(CategoryItemCounts::class)->moved($from, $taxonomyIds[0] ?? null);
         }
+        // Only the main category is on the page (the breadcrumb); the others are not.
+        $mainChanged = $this->exists && $from !== ($taxonomyIds[0] ?? null);
+        if ($mainChanged && $markContent) {
+            static::markContentChanged([Cast::int($this->getKey())]);
+        }
+
+        return $mainChanged;
     }
 
     /** The primary category — the taxonomy at pivot position 0 — or null when there is none. */

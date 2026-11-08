@@ -11,6 +11,7 @@ use App\Modules\Catalog\Exceptions\ProductEditRefused;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Catalog\Support\AppRoutePaths;
+use App\Modules\Catalog\Support\ProductGallery;
 use App\Modules\Catalog\Support\UniqueViolation;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\SiteRoute;
@@ -511,7 +512,7 @@ final class Editor extends Component
         );
 
         $product->assignCategories($this->categoryId !== null ? [$this->categoryId] : []);
-        $this->syncImages($product);
+        app(ProductGallery::class)->sync($product, $this->imageMediaIds);
 
         if ($product->status === 'published') {
             // Drafts and archived products keep whatever address they had — the storefront renders
@@ -520,29 +521,6 @@ final class Editor extends Component
         }
 
         return $product;
-    }
-
-    /**
-     * Sync product_images to the ordered id list (position = index). updateOrCreate rides the
-     * UNIQUE(product_id, media_id) index instead of tripping it; BelongsToSite stamps site_id
-     * on the created rows.
-     */
-    private function syncImages(Product $product): void
-    {
-        if ($this->imageMediaIds === []) {
-            $product->images()->delete();
-
-            return;
-        }
-
-        $product->images()->whereNotIn('media_id', $this->imageMediaIds)->delete();
-
-        foreach ($this->imageMediaIds as $position => $mediaId) {
-            $product->images()->updateOrCreate(
-                ['media_id' => $mediaId],
-                ['position' => $position],
-            );
-        }
     }
 
     /**

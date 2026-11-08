@@ -1066,6 +1066,7 @@ final class Index extends Component
         $action = app(ChangeProductMainCategory::class);
         $routes = $action->routePaths(array_values($rows->modelKeys()));
         $counts = app(CategoryItemCounts::class);
+        $marked = [];
         foreach ($rows as $product) {
             $ids = [];
             foreach (Cast::strings($items[$product->ulid] ?? null) as $key) {
@@ -1076,8 +1077,11 @@ final class Index extends Component
             }
             $main = $ids === [] ? null : $taxonomies->firstWhere('id', $ids[0]);
             try {
-                $counts->batch(fn (): bool => DB::transaction(fn (): bool => $action->file($product, $ids, $main instanceof Taxonomy ? $main : null, $routes[$product->id] ?? [])));
+                $filed = $counts->batch(fn (): array => DB::transaction(fn (): array => $action->file($product, $ids, $main instanceof Taxonomy ? $main : null, $routes[$product->id] ?? [])));
                 $back++;
+                if ($filed['mainChanged']) {
+                    $marked[] = $product->id;
+                }
             } catch (RouteConflictException) {
                 $blocked++;
             } catch (UniqueConstraintViolationException $e) {
@@ -1085,6 +1089,7 @@ final class Index extends Component
                 $blocked++;
             }
         }
+        $action->markMoved($marked);
     }
 
     /**

@@ -50,8 +50,8 @@ function slotsGoldenSite(): void
         StorefrontCards::catalog($catalog);
         StorefrontCards::product('Đồ gá kiểm', 'do-ga-kiem', $catalog, $photo, CarbonImmutable::parse('2026-10-02 08:00', 'UTC'), 'Đồ gá kiểm tra.');
         StorefrontCards::product('Khuôn dập', 'khuon-dap', $catalog, $photo, CarbonImmutable::parse('2026-10-01 08:00', 'UTC'));
-        // The post shows when its text last changed: pinned to the day the page was captured, not the day the test runs.
-        EntryTranslation::query()->update(['updated_at' => '2026-11-07 10:00:00+00']);
+        // The post shows when its content last changed: pinned to the day the page was captured, not the day the test runs.
+        EntryTranslation::query()->update(['updated_at' => '2026-11-07 10:00:00+00', 'content_changed_at' => '2026-11-07 10:00:00+00']);
     });
 }
 

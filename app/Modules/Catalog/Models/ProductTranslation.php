@@ -2,9 +2,11 @@
 
 namespace App\Modules\Catalog\Models;
 
+use App\Modules\Cms\Concerns\TracksContentChange;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * Per-locale product content — name/slug + sanitized rich HTML (description = detail/specs,
@@ -19,13 +21,21 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $summary
  * @property string|null $seo_title
  * @property string|null $seo_description
+ * @property Carbon|null $content_changed_at when the page's main content last changed (TracksContentChange)
  */
 class ProductTranslation extends Model
 {
     use BelongsToSite;
+    use TracksContentChange;
 
     #[\Override]
     protected $guarded = [];
+
+    /** The columns the product page shows as its main content: name, summary, description, Google's title and description. */
+    public function contentFields(): array
+    {
+        return ['name', 'summary', 'description', 'seo_title', 'seo_description'];
+    }
 
     /**
      * @return BelongsTo<Product, $this>

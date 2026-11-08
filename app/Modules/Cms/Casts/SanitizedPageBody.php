@@ -60,10 +60,55 @@ final readonly class SanitizedPageBody implements CastsAttributes, ComparesCasta
         return json_encode($decoded, JSON_THROW_ON_ERROR);
     }
 
-    /** Same rule as the `array` cast: equal when the stored JSON decodes to the same value. */
+    /**
+     * Equal when the two bodies show the same page, so a save that keeps the body writes no body and
+     * leaves its content mark (TracksContentChange). The column is jsonb: PostgreSQL hands an object's
+     * keys back in its own order, while the editor writes them in the order it built them, so the
+     * keys of an object are compared in any order (a list keeps its order: it is the order on the
+     * page). The editor also turns a stored "6" for a number prop into 6; a number and a string
+     * that spells exactly that number count as the same value. Nothing else is equated.
+     */
     public function compare(Model $model, string $key, mixed $firstValue, mixed $secondValue): bool
     {
-        return self::decode($firstValue) === self::decode($secondValue);
+        return self::same(self::decode($firstValue), self::decode($secondValue));
+    }
+
+    /** One decoded JSON value against another, by the rule of compare(). */
+    private static function same(mixed $a, mixed $b): bool
+    {
+        if (is_array($a) && is_array($b)) {
+            if (count($a) !== count($b) || array_is_list($a) !== array_is_list($b)) {
+                return false;
+            }
+            if (array_is_list($a)) {
+                foreach ($a as $i => $value) {
+                    if (! self::same($value, $b[$i])) {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+            foreach ($a as $k => $value) {
+                if (! array_key_exists($k, $b) || ! self::same($value, $b[$k])) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        if ($a === $b) {
+            return true;
+        }
+
+        return self::spells($a, $b) || self::spells($b, $a);
+    }
+
+    /** Whether $text is exactly how PHP writes the number $number ("6" for 6, "1.5" for 1.5). */
+    private static function spells(mixed $number, mixed $text): bool
+    {
+        return (is_int($number) || is_float($number)) && is_string($text) && $text === (string) $number;
     }
 
     /**

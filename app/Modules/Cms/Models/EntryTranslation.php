@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Modules\Cms\Models;
 
 use App\Modules\Cms\Casts\SanitizedPageBody;
+use App\Modules\Cms\Concerns\TracksContentChange;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 /**
  * Per-locale content. body = Page-JSON ({"blocks":[…]}) for a page or a post; a
@@ -24,13 +26,21 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $seo_description
  * @property int|null $og_image_id
  * @property string $status
+ * @property Carbon|null $content_changed_at when the page's main content last changed (TracksContentChange)
  */
 class EntryTranslation extends Model
 {
     use BelongsToSite;
+    use TracksContentChange;
 
     #[\Override]
     protected $guarded = [];
+
+    /** The columns a post or page shows as its main content: heading, text, summary, Google's title and description. */
+    public function contentFields(): array
+    {
+        return ['title', 'body', 'excerpt', 'seo_title', 'seo_description'];
+    }
 
     /**
      * A JSON-path write (`body->blocks`) goes round the cast's set(), so the whole body is cleaned

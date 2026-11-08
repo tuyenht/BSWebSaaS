@@ -6,6 +6,7 @@ namespace App\Modules\Provisioning\Actions;
 
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
+use App\Modules\Catalog\Support\ProductGallery;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Redirect;
@@ -14,6 +15,7 @@ use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Media\Services\EnsureMediaFromKey;
 use App\Modules\Provisioning\Exceptions\DryRunRollback;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\ConcurrencyError;
 use App\Modules\Shared\Support\RichTextSanitizer;
 use App\Modules\Tenancy\Models\ContentSection;
@@ -342,7 +344,10 @@ final readonly class PromoteAnVinhProductPostsToCatalog
 
         $media = $this->ensureMedia->handle($key);
 
-        $product->images()->updateOrCreate(['media_id' => $media->id], ['position' => 0]);
+        // The cover goes first; pictures the product already had keep their order after it (position,
+        // then id: the order sync() compares in, so an unchanged gallery writes nothing).
+        $others = array_map(static fn (mixed $id): int => Cast::int($id), $product->images()->where('media_id', '!=', $media->id)->orderBy('id')->pluck('media_id')->all());
+        app(ProductGallery::class)->sync($product, [$media->id, ...array_values($others)]);
     }
 
     /**
