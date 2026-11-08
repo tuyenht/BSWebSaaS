@@ -875,21 +875,64 @@ main:has(.hero, .sf-slider) .page__title {
     align-items: center;
 }
 
+/* Every partner sits in a frame of one height, so logos and names line up (a long name grows it). */
 .partners__item {
+    display: flex;
     flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 5rem;
+    padding: 0.75rem 0.5rem;
 }
 
+/* A logo's height follows its ratio (--logo-r = width / height, printed from the library): 3.25rem
+   over its square root, between 1.625rem and 3.25rem, so a square and a long logo weigh the same. */
 .partners__logo {
-    height: 3.5rem;
+    display: block;
     width: auto;
+    max-width: 100%;
+    height: 2.25rem;
+    height: clamp(1.625rem, calc(3.25rem / sqrt(var(--logo-r, 2.5))), 3.25rem);
     object-fit: contain;
     filter: grayscale(1) opacity(0.6);
     transition: filter 0.25s;
 }
 
-.partners__logo:hover,
-.partners__link:hover .partners__logo {
-    filter: grayscale(0) opacity(1);
+/* A partner with no logo yet: its name, in the band's own text colour (never greyed below 4.5:1), never cut.
+   A long name (a full company name) is set smaller, so a narrow frame on a phone stays a few lines tall. */
+.partners__name {
+    max-width: 100%;
+    color: var(--sch-body, var(--color-text));
+    font-size: clamp(1rem, 0.75rem + 1vw, 1.25rem);
+    font-weight: 800;
+    line-height: 1.25;
+    text-align: center;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
+}
+
+.partners__name--long {
+    font-size: clamp(0.8125rem, 0.7rem + 0.5vw, 1rem);
+    font-weight: 700;
+}
+
+/* A keyboard user sees the linked logo in colour too, inside the focus ring. */
+.partners__link:focus-visible {
+    outline: 2px solid var(--sch-pri, var(--color-primary));
+    outline-offset: 4px;
+}
+
+.partners__link:focus-visible .partners__logo {
+    filter: none;
+}
+
+@media (hover: hover) {
+    .partners__logo:hover,
+    .partners__link:hover .partners__logo {
+        filter: none;
+    }
 }
 
 /* ───── Features section ─────────────────────────────────────────────────── */
