@@ -7,10 +7,11 @@ namespace Tests\Fixtures;
  * statement by statement from PHP tokens: query-builder inserts/updates on the tables (DB::table, raw
  * SQL, a model's or a relation's bulk update/insert/upsert, toBase()/getQuery()/newQuery()/toQuery(),
  * the table name read from the model), raw attributes and JSON-path keys; optionally bulk deletes and
- * quiet saves. A builder kept in a variable counts as the builder for the rest of its function, a bulk
- * update whose column is not a literal counts as a write of the columns, and raw SQL whose table is
- * computed counts as a write to the tables in a file that names them. An update called on one model
- * (after first…/find…/create…) is the instance update, which does go through the model.
+ * quiet saves. A builder kept in a variable (of the models, a relation, or DB::table() of the tables)
+ * counts as the builder for the rest of its function, a bulk update whose column is not a literal
+ * counts as a write of the columns, and raw SQL whose table is computed counts as a write to the
+ * tables in a file that names them. An update called on one model (after first…/find…/create…) is
+ * the instance update, which does go through the model.
  *
  * A coarse tripwire (a closure inside a call stays in its statement; its own body is read as statements
  * of its own): it sees the literal spellings only. Each chokepoint test that uses it proves it catches
@@ -55,8 +56,10 @@ final class ModelWriteBypasses
         $bulkWrite = '~->(?:update|insert\w*|upsert|updateOrInsert|updateFrom|increment|decrement)\(~';
         // a call that returns one model: an update right after it is that model's own (through the cast)
         $instanceUpdate = '~(?:->|::)(?:first\w*|find\w*|sole|create\w*|make|updateOrCreate|fresh)(\((?:[^()]++|(?1))*\))\??->update\(~';
+        // a query builder on the tables themselves: DB::table('…'), ->from('…'), ->into('…')
+        $onTable = '~(?:table|from|into)\([\'"](?:public\.)?'.$tables.'\b~';
         // the last call of a right-hand side that still holds a builder (not a model, rows or a value)
-        $builderEnd = '~(?:->|::)(?:query|newQuery|toQuery|toBase|getQuery|'.$spec->relations.'|where\w*|orWhere\w*|orderBy\w*|latest|oldest|limit|take|skip|offset|with\w*|join\w*|select\w*|has|doesntHave|lockForUpdate|sharedLock)(\((?:[^()]++|(?1))*\))$~';
+        $builderEnd = '~(?:->|::)(?:query|table|from|newQuery|toQuery|toBase|getQuery|'.$spec->relations.'|where\w*|orWhere\w*|orderBy\w*|latest|oldest|limit|take|skip|offset|with\w*|join\w*|select\w*|has|doesntHave|lockForUpdate|sharedLock)(\((?:[^()]++|(?1))*\))$~';
         // SQL handed to the connection: DB::…, or a connection's own update/insert given a string
         $rawCall = '~\bDB::(?:update|insert|statement|unprepared|affectingStatement)\(|->(?:statement|unprepared|affectingStatement)\(|->(?:update|insert)\((?:[\'"]|<<<)~';
         // a write keyword not followed by a written table name: the table is computed (sprintf, a variable…)
@@ -68,7 +71,7 @@ final class ModelWriteBypasses
         /** @var array<string, true> $builders variables holding a builder of the two tables, in the current function */
         $builders = [];
         $violations = [];
-        $check = function (string $code, string $strings, int $line) use (&$violations, &$builders, $spec, $tables, $columns, $anchor, $bulkInsert, $bulkWrite, $instanceUpdate, $builderEnd, $rawCall, $computedTable, $bodyColumn, $namesTheTables): void {
+        $check = function (string $code, string $strings, int $line) use (&$violations, &$builders, $spec, $tables, $columns, $anchor, $onTable, $bulkInsert, $bulkWrite, $instanceUpdate, $builderEnd, $rawCall, $computedTable, $bodyColumn, $namesTheTables): void {
             if ($code === '') {
                 return;
             }
@@ -91,7 +94,7 @@ final class ModelWriteBypasses
                     && (! $spec->columnAware || preg_match($bodyColumn, $strings) === 1),
                 'raw SQL write to a computed table' => $namesTheTables && preg_match($rawCall, $code) === 1
                     && ($strings === '' || (preg_match($computedTable, $strings) === 1 && preg_match($bodyColumn, $strings) === 1)),
-                'query-builder write on the table' => preg_match('~(?:table|from|into)\([\'"](?:public\.)?'.$tables.'\b~', $code) === 1 && preg_match($bulkWrite, $code) === 1 && $namesColumns,
+                'query-builder write on the table' => preg_match($onTable, $code) === 1 && preg_match($bulkWrite, $code) === 1 && $namesColumns,
                 'bulk insert/upsert on the model' => $anchored && preg_match($bulkInsert, $code) === 1,
                 'bulk update of the column on the model' => $anchored && $bulkUpdate && preg_match('~'.$columns.'~', $code) === 1,
                 'bulk update of a computed column on the model' => $anchored && $computedKey,
@@ -110,7 +113,7 @@ final class ModelWriteBypasses
 
             // `$q = <builder of the two tables>` makes $q one for the statements after it
             if (preg_match('~^\$(\w+)=(?![=>])(.+)$~s', $code, $assignment) === 1) {
-                if ($anchored && preg_match($builderEnd, $assignment[2]) === 1) {
+                if (($anchored || preg_match($onTable, $assignment[2]) === 1) && preg_match($builderEnd, $assignment[2]) === 1) {
                     $builders[$assignment[1]] = true;
                 } else {
                     unset($builders[$assignment[1]]);

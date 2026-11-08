@@ -73,6 +73,21 @@ Prod is a separate git checkout, `/opt/bswebsaas/prod` (branch `main`), on the s
 8. The delta narrows what formatted text may hold or patches the sanitizer (`RichTextSanitizer.php`, or `ezyang/htmlpurifier` in `composer.lock`) → after step 5, `docker exec bsweb_prod_app php artisan cms:resanitize-bodies --dry-run` (prints per site how many bodies would change), then the same without `--dry-run`. Add `--site=<hostname>` for one site. It cleans stored page and post bodies and pending changes through the same cleaning every save uses, keeps their edit times and records no revision; it is idempotent (a second run changes 0) and keeps an editor's save made while it runs. A row it cannot clean is named (site, column, row id) and skipped; the others are still cleaned and the command ends with an error, so look at those rows and run it again. Then `docker exec bsweb_prod_app php artisan media:reconcile-content-usage`, so a picture the cleaning removed is no longer listed as used. Without it, the old markup stays stored until each body's next save (the storefront still checks it before printing).
 9. The delta adds the product page's quote button (the `catalog` / `contact_page` setting) → after step 5, `docker exec bsweb_prod_app php artisan site:link-contact-page` once; add `--site=<id>` for one site. It records each existing site's contact page (the published page whose path in the default language, `vi` if none is set, is `/lien-he`) and relinks a setting whose page is gone; it never replaces one that points at a live page, and a second run changes nothing. Without it the button is missing on every site made before the deploy. A site whose contact page was renamed gets no link and needs the page chosen by hand.
 
+### The deploy that carries migration 2054 (the product search words)
+
+From this deploy on, the admin products list searches the word table `product_search_words`, and a product with no rows there is not found. The migration creates the table empty, and there is no switch that keeps the old search on, so the table must be filled before the new code serves. Run these steps in this order:
+
+1. Migrate 2054 while the old code still serves: Deploy step 1 (merge, `composer install`), then step 2 (migrations). Until the reload in step 4 below, the running workers keep the old code. The table is new and empty, the old code never reads it, and no existing column changes, so this step needs no PgBouncer restart.
+2. Build the rest of the new code: Deploy step 3 (front-end build). Prod mounts the checkout at `/app`, so the new code is the checkout at the target commit. The image stays `bsweb/app:prod` and is not rebuilt.
+3. Before traffic switches, fill the table in a one-off container that runs the new code. In `/opt/bswebsaas/prod`, run `docker compose run --rm --no-deps app php artisan catalog:search-words`.
+   - It works site by site, as the app user under each site's tenant context, and checks every product (the Trash too).
+   - It must exit 0 and print `Checked N product(s) on M site(s); corrected K.`, where N is the number of products on prod and K the number of those with a name or a SKU. A site that fails is named, and the command exits 1; stop and look at it.
+   - Measured: 2.4 ms a product (200,000 products in 485 s). A re-run must print `corrected 0.`
+4. Switch: Deploy steps 4–5 (caches, `octane:reload`, restart horizon). From here the list searches the words.
+5. Products saved by the old workers between step 3 and the reload got no words. The nightly `catalog:search-words --recent=500 --rolling=10000` (20:45 UTC) writes them again: they are among the 500 edited last. To heal them at once, run `docker exec bsweb_prod_app php artisan catalog:search-words --recent=500` right after the reload.
+
+Rollback: the old code ignores the table, so the table can stay. `down()` drops it, and the source data is not touched.
+
 ## `.env` changes and the image
 
 - The containers get `.env` through `env_file` **when they are created**. Laravel never overrides a variable the process already has, so after an `.env` edit `optimize` re-caches the old value (26/09: the Cloudflare token replaced in `.env` is still the old one inside `bsweb_prod_app`). Only a recreate (`docker compose up -d app horizon scheduler` in `/opt/bswebsaas/prod`) applies it — a few seconds of downtime.

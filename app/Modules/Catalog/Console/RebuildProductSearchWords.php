@@ -10,6 +10,7 @@ use App\Modules\Catalog\Support\ProductSearchWords;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -18,10 +19,15 @@ use Throwable;
  * make today, with the very same splitting, and write again the products that differ. Safe to re-run:
  * a product whose words are right is not written, so a second run corrects 0.
  *
- * - Without --recent: every product of each site (the Trash too), by id in chunks. Run once after the
- *   deploy that adds the table, before anyone searches, and whenever the splitting changes.
- * - With --recent=N: only the N products of each site edited last (the list's own index), which is
- *   where a write path that missed the words would show first. Scheduled nightly.
+ * - Without --recent or --rolling: every product of each site (the Trash too), by id in chunks. Run
+ *   once after the migration that adds the table, before the new code serves (docs/runbooks/
+ *   prod-deploy.md), and whenever the splitting changes.
+ * - With --recent=N: the N products of each site edited last (the list's own index), which is where a
+ *   write path that missed the words would show first.
+ * - With --rolling=N: the next N products of each site by id after where the previous run stopped
+ *   (kept in the cache store per site; it starts again from the first product after the last one), so
+ *   successive runs check every product, also the ones nobody edits: a write that skips the models
+ *   usually leaves the edit time alone. Scheduled nightly together with --recent.
  *
  * Site by site in each site's tenant context, like cms:reconcile-category-counts: a chunk is compared
  * without locks, then each product that looks wrong is written again through ProductSearchWords::sync,
@@ -36,6 +42,7 @@ final class RebuildProductSearchWords extends Command
     protected $signature = 'catalog:search-words
         {--site= : Only this site (its id); default every site}
         {--recent= : Only the N products of each site edited last}
+        {--rolling= : Also the next N products of each site after where the last run stopped}
         {--chunk=500 : Products compared per step}';
 
     #[\Override]
@@ -45,6 +52,7 @@ final class RebuildProductSearchWords extends Command
     {
         $chunk = max(1, Cast::int($this->option('chunk'), 500));
         $recent = $this->option('recent') !== null ? max(1, Cast::int($this->option('recent'), 1)) : null;
+        $rolling = $this->option('rolling') !== null ? max(1, Cast::int($this->option('rolling'), 1)) : null;
         $only = $this->option('site');
         $siteIds = $only !== null ? [Cast::int($only)] : $tenancy->siteIds();
         $sites = 0;
@@ -57,9 +65,8 @@ final class RebuildProductSearchWords extends Command
             $drifted = [];
 
             try {
-                $after = 0;
-                do {
-                    [$read, $wrong, $after] = $tenancy->enter($siteId, fn (): array => $this->compare($siteId, $after, $recent ?? $chunk, $recent !== null));
+                $step = function (int $after, int $limit, bool $byEdit) use ($tenancy, $siteId, &$checked, &$drifted): array {
+                    [$read, $wrong, $last] = $tenancy->enter($siteId, fn (): array => $this->compare($siteId, $after, $limit, $byEdit));
                     $checked += $read;
                     if ($wrong !== []) {
                         $tenancy->enter($siteId, function () use ($siteId, $wrong): void {
@@ -69,7 +76,22 @@ final class RebuildProductSearchWords extends Command
                         });
                         $drifted += $wrong;
                     }
-                } while ($recent === null && $read === $chunk);
+
+                    return [$read, $last];
+                };
+
+                if ($recent === null && $rolling === null) {
+                    $after = 0;
+                    do {
+                        [$read, $after] = $step($after, $chunk, false);
+                    } while ($read === $chunk);
+                }
+                if ($recent !== null) {
+                    $step(0, $recent, true);
+                }
+                if ($rolling !== null) {
+                    $this->roll($siteId, $rolling, $chunk, $step);
+                }
             } catch (Throwable $e) {
                 $failed++;
                 Log::error('Product search words check failed for a site', ['site_id' => $siteId, 'exception' => $e]);
@@ -92,6 +114,42 @@ final class RebuildProductSearchWords extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Check the next $count products of $siteId after the stored cursor, $chunk at a time, and move the
+     * cursor on; at the end of the products the cursor goes back to the start for the next run.
+     *
+     * @param  callable(int, int, bool): array{0: int, 1: int}  $step  [products read, last id read]
+     */
+    private function roll(int $siteId, int $count, int $chunk, callable $step): void
+    {
+        $key = self::cursorKey($siteId);
+        $after = Cast::int(Cache::get($key), 0);
+        while ($count > 0) {
+            $limit = min($chunk, $count);
+            [$read, $last] = $step($after, $limit, false);
+            $count -= $read;
+            if ($read < $limit) {
+                $last = 0;   // past the last product: the next run starts from the first one
+                if ($after > 0 && $read === 0) {
+                    $after = 0;   // nothing after the cursor at all: start again now
+
+                    continue;
+                }
+            }
+            $after = $last;
+            if ($last === 0) {
+                break;
+            }
+        }
+        Cache::forever($key, $after);
+    }
+
+    /** Where the rolling check of a site stopped: the last product id it read (0: the start). */
+    public static function cursorKey(int $siteId): string
+    {
+        return "catalog:search-words:rolling:{$siteId}";
     }
 
     /**

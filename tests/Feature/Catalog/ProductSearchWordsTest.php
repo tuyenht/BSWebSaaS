@@ -2,6 +2,7 @@
 
 use App\Modules\Admin\Livewire\Catalog\Editor;
 use App\Modules\Admin\Support\Catalog\ProductListQuery;
+use App\Modules\Catalog\Actions\ChangeProductSlug;
 use App\Modules\Catalog\Actions\RenameProduct;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Support\ProductSearchWords;
@@ -278,5 +279,109 @@ it('checks only the products edited last with --recent', function (): void {
 
     app(Tenancy::class)->enter(1, function () use ($old, $recent): void {
         expect(storedWords($recent))->toContain('moi')->and(storedWords($old))->toBe([]);
+    });
+});
+
+it('fills the words of every product of a website whose word table is empty, the Trash too', function (): void {
+    $names = ['Vòng bi cầu', 'Ổ trục côn', 'Bạc đạn kim', 'Gối đỡ', 'Puly đai'];
+    $products = app(Tenancy::class)->enter(1, function () use ($names): array {
+        $made = [];
+        foreach ($names as $n => $name) {
+            $made[] = wordsProduct($name, 'PB-'.$n);
+        }
+        $made[4]->delete();
+
+        return $made;
+    });
+    // the table as the migration leaves it: no words yet for products made on the old code
+    DB::connection('pgsql_admin')->table('product_search_words')->where('site_id', 1)->delete();
+
+    $this->artisan('catalog:search-words', ['--site' => 1, '--chunk' => 2])
+        ->expectsOutputToContain('Checked 5 product(s) on 1 site(s); corrected 5.')->assertSuccessful();
+
+    app(Tenancy::class)->enter(1, function () use ($products, $names): void {
+        foreach ($products as $n => $product) {
+            expect(storedWords($product))->toBe(ProductSearchWords::of('PB-'.$n, [$names[$n]]));
+        }
+        expect(wordsFound('o truc'))->toBe(['Ổ trục côn'])
+            ->and(wordsFound('pb-3'))->toBe(['Gối đỡ'])
+            ->and(wordsFound('puly', 'trash'))->toBe(['Puly đai']);
+    });
+    expectProductSearchWordsCurrent(1);
+});
+
+it('checks every product in turn with --rolling, from where the last run stopped, and starts again after the last', function (): void {
+    $products = app(Tenancy::class)->enter(1, function (): array {
+        $made = [];
+        foreach (['Ống thép', 'Ống đồng', 'Ống nhựa', 'Ống inox', 'Ống nhôm', 'Ống mới'] as $n => $name) {
+            $made[] = wordsProduct($name, 'ON-'.$n);
+        }
+        // nobody edited the first five for a long time: --recent never reaches them
+        Product::query()->whereKey(array_map(fn (Product $p): int => $p->id, array_slice($made, 0, 5)))->toBase()->update(['updated_at' => now()->subYear()]);
+
+        return $made;
+    });
+    $admin = DB::connection('pgsql_admin');
+    $run = fn () => $this->artisan('catalog:search-words', ['--site' => 1, '--recent' => 1, '--rolling' => 2]);
+
+    $run()->expectsOutputToContain('Checked 3 product(s) on 1 site(s); corrected 0.')->assertSuccessful();   // the newest, then the 1st and 2nd
+    // a write that skipped the models on two old products: one the cursor passed, one ahead of it
+    $admin->table('product_search_words')->whereIn('product_id', [$products[0]->id, $products[3]->id])->delete();
+
+    $run()->expectsOutputToContain('corrected 1.')->assertSuccessful();   // the 3rd and 4th
+    $run()->expectsOutputToContain('corrected 0.')->assertSuccessful();   // the 5th and 6th
+    Log::spy();
+    $run()->expectsOutputToContain('corrected 1.')->assertSuccessful();   // nothing after the 6th: from the 1st again
+
+    Log::shouldHaveReceived('warning')->once()->withArgs(fn (string $message, array $context): bool => $context['site_id'] === 1
+        && $context['products'] === 1 && $context['sample'] === [$products[0]->ulid]);
+    app(Tenancy::class)->enter(1, function () use ($products): void {
+        expect(storedWords($products[0]))->toContain('ong', 'thep', 'on0')
+            ->and(storedWords($products[3]))->toContain('ong', 'inox', 'on3');
+    });
+});
+
+/**
+ * The tables a write first takes a row lock on, in order: P for the product row (its update, or the
+ * FOR NO KEY UPDATE lock), T for one of its translations.
+ *
+ * @return list<string>
+ */
+function productLockOrder(Closure $write): array
+{
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+    try {
+        $write();
+        $order = [];
+        foreach (DB::getQueryLog() as $query) {
+            $sql = strtolower($query['query']);
+            if (preg_match('/^(?:update|insert into|delete from) "product_translations"/', $sql) === 1) {
+                $order[] = 'T';
+            } elseif (preg_match('/^update "products"|^select .* from products where .* for no key update$/', $sql) === 1) {
+                $order[] = 'P';
+            }
+        }
+
+        return array_values(array_unique($order));
+    } finally {
+        DB::disableQueryLog();
+        DB::flushQueryLog();
+    }
+}
+
+it('locks the product row before its translation in every write of a name or an address', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-lock-manager', ['catalog.view', 'catalog.manage']);
+        $product = wordsProduct('Bàn ren', 'BR-1', 'draft');
+
+        expect(productLockOrder(fn () => app(RenameProduct::class)->handle($product, 'Bàn ren tay', 'vi')))->toBe(['P', 'T'])
+            ->and(productLockOrder(fn () => app(ChangeProductSlug::class)->handle($product, 'ban-ren-tay', 'vi')))->toBe(['P', 'T'])
+            // only the name changes: the product's own update writes nothing
+            ->and(productLockOrder(fn () => Livewire::actingAs($editor->fresh())->test(Editor::class, ['ulid' => $product->ulid])
+                ->set('name', 'Bàn ren máy')->call('save')->assertHasNoErrors()))->toBe(['P', 'T'])
+            ->and(storedWords($product))->toContain('may')->not->toContain('tay');
     });
 });

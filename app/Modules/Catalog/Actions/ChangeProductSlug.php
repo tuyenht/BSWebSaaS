@@ -8,6 +8,7 @@ use App\Modules\Catalog\Exceptions\ProductEditRefused;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Catalog\Support\AppRoutePaths;
+use App\Modules\Catalog\Support\ProductSearchWords;
 use App\Modules\Catalog\Support\UniqueViolation;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Redirect;
@@ -137,6 +138,8 @@ final class ChangeProductSlug
         $redirected = false;
         DB::transaction(function () use ($product, $translation, $slug, $locale, &$redirected): void {
             $this->lock($slug, $locale);
+            // the product row before its translation, like every write of a name or a SKU
+            ProductSearchWords::lock($product->site_id, $product->id);
             $category = $product->primaryCategory();
             $why = $this->refusal($slug, $locale, $product->id, $category);
             if ($why !== null) {

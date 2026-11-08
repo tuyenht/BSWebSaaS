@@ -126,16 +126,26 @@ final class ProductSearchWords
     }
 
     /**
+     * Lock one product row of $siteId in the caller's transaction (FOR NO KEY UPDATE, the lock its own
+     * updates take); false when it does not exist. Every path that writes a product's name or SKU takes
+     * it before it writes a translation, so they all lock the product first and its translations after:
+     * two saves of one product wait for each other instead of deadlocking.
+     */
+    public static function lock(int $siteId, int $productId): bool
+    {
+        return self::lockedRow($siteId, $productId) !== null;
+    }
+
+    /**
      * Write the words of one product of $siteId again from its stored SKU and names, in the caller's
-     * transaction: the product row is locked first (FOR NO KEY UPDATE, the lock its own updates take), so
-     * two saves of the same product write one after the other, and the names are read after the lock,
-     * so the later save sees the earlier one's name. Three statements; a product that no longer exists
-     * keeps no words.
+     * transaction: the product row is locked first (lock()), so two saves of the same product write one
+     * after the other, and the names are read after the lock, so the later save sees the earlier one's
+     * name. Three statements; a product that no longer exists keeps no words.
      */
     public static function sync(int $siteId, int $productId): void
     {
-        $product = DB::selectOne('select sku from products where site_id = ? and id = ? for no key update', [$siteId, $productId]);
-        if (! is_object($product)) {
+        $product = self::lockedRow($siteId, $productId);
+        if ($product === null) {
             DB::delete('delete from product_search_words where site_id = ? and product_id = ?', [$siteId, $productId]);
 
             return;
@@ -200,6 +210,14 @@ final class ProductSearchWords
         }
 
         return $cut ? array_map(fn (string $word): string => mb_substr($word, 0, self::MAX_LENGTH), $parts) : $parts;
+    }
+
+    /** The locked product row (its SKU), or null when it does not exist. */
+    private static function lockedRow(int $siteId, int $productId): ?object
+    {
+        $row = DB::selectOne('select sku from products where site_id = ? and id = ? for no key update', [$siteId, $productId]);
+
+        return is_object($row) ? $row : null;
     }
 
     /** @param  list<string>  $values */
