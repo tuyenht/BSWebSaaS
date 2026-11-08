@@ -1,0 +1,260 @@
+#!/usr/bin/env bash
+# Deploy engine tests on a fake prod: a synthetic git history, a clone of it as "prod", stub docker / gh /
+# pnpm (tests/stub) that answer from files, the test prefix fake_k90_ and the real launcher + engine taken
+# from a commit. Nothing here reaches a container, GitHub or the real prod checkout.
+#   bash scripts/deploy/tests/run.sh [empty work dir]      (exit 0 = every check passed)
+set -uo pipefail
+HERE=$(cd "$(dirname "$0")" && pwd)
+ROOT=${1:-$(mktemp -d)}
+mkdir -p "$ROOT"; [ -z "$(ls -A "$ROOT")" ] || { echo "work dir $ROOT is not empty" >&2; exit 2; }
+PASS=0 FAIL=0
+ok() { if eval "$1"; then PASS=$((PASS + 1)); echo "  ok   $2"; else FAIL=$((FAIL + 1)); echo "  FAIL $2   [$1]"; fi; }
+quiet() { "$@" >/dev/null 2>&1; }
+gitc() { git -C "$SRC" -c user.name=t -c user.email=t@t commit -q "$@"; }
+
+# ---------------------------------------------------------------- synthetic history + engine commit
+SRC=$ROOT/src ORIGIN=$ROOT/origin.git STUB=$ROOT/stub
+mkdir -p "$STUB" && cp "$HERE"/stub/* "$STUB"/ && chmod +x "$STUB"/*
+git init -q -b main "$SRC"
+w() { mkdir -p "$(dirname "$SRC/$1")"; printf '%s\n' "$2" > "$SRC/$1"; }
+w composer.json '{"name":"t/t"}'
+w composer.lock '{"packages":[{"name":"laravel/framework","version":"v13.1.0"},{"name":"ezyang/htmlpurifier","version":"v4.18.0"}]}'
+w package.json '{"name":"t"}'
+w vite.config.js "export default { plugins: [laravel({ input: ['resources/css/storefront.css', 'resources/js/app.js'] })] };"
+w resources/css/storefront.css 'a{}'
+w resources/js/app.js 'x()'
+w config/app.php "<?php return ['name' => env('APP_NAME', 'x')];"
+w .env.example 'APP_NAME=x'
+w routes/console.php "<?php
+Schedule::command('audit:months')->daily();"
+w routes/web.php '<?php'
+w app/Modules/X/Foo.php '<?php'
+w app/Modules/Shared/Support/RichTextSanitizer.php '<?php // v1'
+w database/migrations/0001_01_01_000000_base.php "<?php Schema::create('sites', fn (\$t) => \$t->id());"
+w database/migrations/0002_01_01_000000_more.php "<?php Schema::create('more', fn (\$t) => \$t->id());"
+git -C "$SRC" add -A && gitc -m old
+OLD=$(git -C "$SRC" rev-parse HEAD)
+branch() { git -C "$SRC" checkout -q -B "$1" "$OLD"; }
+# the full scenario: two migrations, a new nightly job, the sanitizer, views, text, tests, docs
+branch t-full
+w database/migrations/2100_01_01_000000_add_col.php "<?php
+return new class extends Migration {
+    /** a comment that says rename and DROP COLUMN must not count */
+    public function up(): void { Schema::table('sites', fn (\$t) => \$t->text('extra')->nullable()); }
+    public function down(): void { Schema::table('sites', fn (\$t) => \$t->dropColumn('extra')); }
+};"
+w database/migrations/2100_01_01_000100_add_idx.php "<?php
+return new class extends Migration {
+    public \$withinTransaction = false;
+    public function up(): void { DB::statement('CREATE INDEX CONCURRENTLY IF NOT EXISTS sites_extra_idx ON sites (extra)'); }
+    public function down(): void { DB::statement('DROP INDEX CONCURRENTLY IF EXISTS sites_extra_idx'); }
+};"
+w routes/console.php "<?php
+Schedule::command('audit:months')->daily();
+Schedule::command('products:purge-trash')->daily();"
+w app/Modules/Shared/Support/RichTextSanitizer.php '<?php // v2'
+w themes/default/x.blade.php 'x'; w lang/vi.json '{}'; w tests/Unit/FooTest.php '<?php'; w docs/a.md 'a'
+w resources/css/storefront.css 'a{color:red}'
+git -C "$SRC" add -A && gitc -m full
+FULL=$(git -C "$SRC" rev-parse HEAD)
+branch t-unknown; w weird/thing.txt x; w app/Modules/X/Foo.php '<?php // 2'; git -C "$SRC" add -A && gitc -m unknown; UNKNOWN=$(git -C "$SRC" rev-parse HEAD)
+branch t-sched; w routes/console.php "<?php
+Schedule::command('audit:months')->daily();
+Schedule::command('x:new')->daily();"; git -C "$SRC" add -A && gitc -m sched; SCHED=$(git -C "$SRC" rev-parse HEAD)
+branch t-env; w config/app.php "<?php return ['name' => env('APP_NAME', 'x'), 'k' => env('NEW_KEY', 'd')];"; git -C "$SRC" add -A && gitc -m env; ENVK=$(git -C "$SRC" rev-parse HEAD)
+branch t-kinds
+for p in database/content-packs/p/pages.json package.json resources/js/app.js routes/web.php config/octane.php \
+    docker-compose.prod.yml deploy/Caddyfile app/Modules/Rbac/Registry/PermissionRegistry.php themes/default/y.blade.php \
+    lang/en.json scripts/backup-prod-db.sh scripts/other.mjs tests/Unit/BarTest.php docs/b.md weird/thing.txt; do w "$p" changed; done
+w composer.lock '{"packages":[{"name":"laravel/framework","version":"v13.2.0"}]}'
+w database/migrations/0001_01_01_000000_base.php '<?php // edited'
+git -C "$SRC" rm -q database/migrations/0002_01_01_000000_more.php
+w database/migrations/2200_01_01_000000_x.php '<?php'
+git -C "$SRC" add -A && gitc -m kinds; KINDS=$(git -C "$SRC" rev-parse HEAD)
+# the engine under test, committed on its own branch (the tmux line pins this commit)
+branch engine
+mkdir -p "$SRC/scripts/deploy" && cp "$HERE/../deploy.sh" "$HERE/../launch.sh" "$SRC/scripts/deploy/"
+git -C "$SRC" add -A && gitc -m engine
+ECOMMIT=$(git -C "$SRC" rev-parse HEAD) EBLOB=$(git -C "$SRC" rev-parse HEAD:scripts/deploy/deploy.sh)
+git clone -q --bare "$SRC" "$ORIGIN"
+
+# ---------------------------------------------------------------- one fake prod per scenario
+N=0
+fresh() { # fresh <target>: a new fake prod at OLD, its fake DB files, profile and runs folder
+    N=$((N + 1)); S=$ROOT/s$N; FAKE=$S/fake PROD=$S/prod RUNS=$S/runs TGT=$1
+    mkdir -p "$FAKE" "$S/bk" "$RUNS"
+    git clone -q "$ORIGIN" "$PROD" && git -C "$PROD" checkout -q -B main "$OLD"
+    printf 'APP_NAME=x\nAPP_KEY=secret-not-printed\n' > "$PROD/.env"
+    printf 'DB_ADMIN_PASSWORD=x\n' > "$S/secret.env"
+    ls "$PROD/database/migrations" | sed 's/\.php$//' > "$FAKE/migrations.txt"
+    printf '%s\n' 'col|sites|id|bigint|notnull' 'idx|sites|sites_pkey|valid' 'con|sites|sites_pkey|p|validated' > "$FAKE/catalog.txt"
+    echo 'col|sites|extra|text|null' > "$FAKE/catalog-add-2100_01_01_000000_add_col"
+    echo 'idx|sites|sites_extra_idx|valid' > "$FAKE/catalog-add-2100_01_01_000100_add_idx"
+    echo 1 > "$FAKE/oneoff-count"
+    cat > "$S/profile" <<EOF
+PROD=$PROD PREFIX=fake_k90_ COMPOSE_PROJECT=fake-k90 BK=$S/bk SECRETS=$S/secret.env DEPLOY_RUNS=$RUNS
+REPO=t/t IMAGE=fake:img MIN_DISK_GB=0 LOCK_RETRY_SLEEP=0 STUB_BIN=$STUB
+EOF
+    release
+}
+release() { # release [extra lines]: the release file of the scenario
+    REL=$S/release.sh
+    {
+        printf 'OLD=%s\nTARGET=%s\nHOST=fake.test\nPAGES=(/ /lien-he /admin/login)\n' "$OLD" "$TGT"
+        if [ "$TGT" = "$FULL" ]; then cat <<'EOF'
+DECLARED=(migration schedule sanitizer)
+MIGRATIONS=(2100_01_01_000000_add_col 2100_01_01_000100_add_idx)
+declare -gA MIG_OK=([2100_01_01_000100_add_idx]="index only, CONCURRENTLY")
+declare -gA PGB_SKIP=([2100_01_01_000100_add_idx]="index only")
+SCHEDULE_ADDED=(products:purge-trash)
+ONEOFFS=(sample)
+oneoff_sample() { case "$1" in preview) q "SELECT FAKE_ONEOFF" ;; apply) art fake:oneoff; echo 0 > "$FAKE/oneoff-count" ;; esac; }
+EOF
+        fi
+        printf '%s\n' "$@"
+    } > "$REL"
+}
+launch() { # launch [step]: the owner's line, exactly as plan prints it, with the test profile; output in $OUT
+    OUT=$S/out-$RANDOM.txt
+    ( export DEPLOY_PROFILE=$S/profile DEPLOY_DEV_REPO=$SRC DEPLOY_RUNS_DIR=$RUNS FAKE FAKE_PROD=$PROD PATH="$STUB:$PATH"
+      bash -c "$(git -C "$SRC" show "$ECOMMIT:scripts/deploy/launch.sh")" launch "${LBLOB_COMMIT:-$ECOMMIT}" "${LBLOB:-$EBLOB}" "$REL" "${LSHA:-$(sha256sum "$REL" | cut -d' ' -f1)}" "$@" ) > "$OUT" 2>&1
+    RC=$?
+}
+head_is() { [ "$(git -C "$PROD" rev-parse HEAD)" = "$1" ]; }
+calls() { grep -c -- "$1" "$FAKE/calls.log" 2>/dev/null || true; }
+line_of() { grep -n -- "$1" "$FAKE/calls.log" | sed -n "${2:-1}p" | cut -d: -f1; }
+says() { grep -qF -- "$1" "$OUT"; }
+
+echo "== classify: every kind"
+EXP="migration A database/migrations/2200_01_01_000000_x.php
+migration-edit M database/migrations/0001_01_01_000000_base.php
+migration-edit D database/migrations/0002_01_01_000000_more.php
+content-pack A database/content-packs/p/pages.json
+composer-lock M composer.lock
+npm M package.json
+assets M resources/js/app.js
+routes M routes/web.php
+server A config/octane.php
+server A docker-compose.prod.yml
+server A deploy/Caddyfile
+permission A app/Modules/Rbac/Registry/PermissionRegistry.php
+view A themes/default/y.blade.php
+text A lang/en.json
+ops-script A scripts/backup-prod-db.sh
+tooling A scripts/other.mjs
+tooling A tests/Unit/BarTest.php
+tooling A docs/b.md
+unknown A weird/thing.txt"
+GOT=$(bash "$SRC/scripts/deploy/deploy.sh" classify "$SRC" "$OLD" "$KINDS" | tr '\t' ' ' | sort)
+ok '[ "$GOT" = "$(printf "%s\n" "$EXP" | sort)" ]' "path → class table ($(printf '%s\n' "$EXP" | wc -l) kinds incl. unknown, edited and deleted migration)"
+[ "$GOT" = "$(printf '%s\n' "$EXP" | sort)" ] || diff <(printf '%s\n' "$EXP" | sort) <(printf '%s\n' "$GOT")
+GOT=$(bash "$SRC/scripts/deploy/deploy.sh" classify "$SRC" "$OLD" "$FULL" | cut -f1 | sort -u | tr '\n' ' ')
+ok '[ "$GOT" = "assets migration sanitizer schedule text tooling view " ]' "full range classes: $GOT"
+
+echo "== plan: git only, flags, hash line"
+fresh "$FULL"; : > "$FAKE/calls.log"
+git -C "$SRC" checkout -q engine
+PLAN=$S/plan.txt
+( export PATH="$STUB:$PATH" FAKE; bash "$SRC/scripts/deploy/deploy.sh" plan "$REL" ) > "$PLAN" 2>&1; RC=$?
+ok '[ "$RC" = 0 ]' "plan exits 0"
+ok '[ ! -s "$FAKE/calls.log" ]' "plan called no docker, gh or pnpm"
+ok 'grep -q "2100_01_01_000000_add_col: \[table\] PgBouncer: restart" "$PLAN"' "add_col flagged table only (down() and comments ignored), restart"
+ok 'grep -q "add_idx: \[raw table concurrent\] PgBouncer: no-restart (PGB_SKIP: index only)" "$PLAN"' "add_idx raw + concurrent, restart narrowed"
+ok 'grep -qF "launch $ECOMMIT $EBLOB $REL $(sha256sum "$REL" | cut -d" " -f1)" "$PLAN"' "the owner line carries commit, engine blob and release sha256"
+release 'unset "MIG_OK[2100_01_01_000100_add_idx]"'
+( export PATH="$STUB:$PATH" FAKE; bash "$SRC/scripts/deploy/deploy.sh" plan "$REL" ) > "$PLAN" 2>&1; RC=$?
+ok '[ "$RC" = 1 ] && grep -q "MIG_OK" "$PLAN"' "raw SQL migration without a reviewed reason stops"
+release 'docker() { echo LEAK; }; gh run list'
+( export PATH="$STUB:$PATH" FAKE; bash "$SRC/scripts/deploy/deploy.sh" plan "$REL" ) > "$PLAN" 2>&1; RC=$?
+ok '[ "$RC" = 1 ] && grep -q "không được gọi gh" "$PLAN" && [ ! -s "$FAKE/calls.log" ]' "plan mode blocks gh even from the release file"
+
+echo "== launcher: pinned hashes"
+fresh "$FULL"
+LBLOB=0123456789012345678901234567890123456789 launch
+ok '[ "$RC" != 0 ] && says "khác blob đã duyệt" && head_is "$OLD"' "wrong engine blob refuses before anything runs"
+LSHA=$(printf '%064d' 0) launch
+ok '[ "$RC" != 0 ] && says "khác mã kiểm đã duyệt" && head_is "$OLD"' "wrong release sha256 refuses"
+ok '[ ! -s "$FAKE/calls.log" ]' "no stub call before the hash checks pass"
+
+echo "== full run on the fake prod"
+fresh "$FULL"; launch
+ok '[ "$RC" = 0 ] && says "===== XONG"' "deploy ends XONG (rc $RC)"
+[ "$RC" = 0 ] || tail -25 "$OUT"
+ok 'head_is "$FULL"' "prod HEAD is TARGET"
+ok 'grep -qx 2100_01_01_000100_add_idx "$FAKE/migrations.txt" && grep -qx 2100_01_01_000000_add_col "$FAKE/migrations.txt"' "both migrations recorded"
+A=$(line_of "MIGRATED 2100_01_01_000000_add_col"); R=$(line_of "restart -t 2 fake_k90_pgbouncer"); B=$(line_of "MIGRATED 2100_01_01_000100_add_idx")
+ok '[ -n "$A" ] && [ -n "$R" ] && [ -n "$B" ] && [ "$A" -lt "$R" ] && [ "$R" -lt "$B" ]' "PgBouncer restarted right after the column migration, before the index one ($A < $R < $B)"
+ok '[ "$(calls "restart -t 2 fake_k90_pgbouncer")" = 2 ]' "two PgBouncer restarts in all (after add_col, at the reload)"
+M=$(line_of "MIGRATED 2100_01_01_000100_add_idx"); G=$(line_of "pnpm run build")
+ok '[ "$M" -lt "$G" ]' "migrations ran before the code build"
+ok 'says "OK   lịch chạy thêm = products:purge-trash"' "schedule diff equals the declared job"
+ok 'says "0 would change on 1 site(s)." && [ "$(calls "cms:resanitize-bodies --dry-run")" -ge 1 ] && [ "$(calls "cms:resanitize-bodies$")" = 0 ]' "sanitizer: dry run only"
+ok '[ "$(cat "$FAKE/oneoff-count")" = 0 ] && says "OK   sample xem lại sau khi chạy (còn đổi) = 0"' "one-off: preview → apply → re-preview 0"
+ok 'says "chỉ mục mới hợp lệ" && says "+ idx|sites|sites_extra_idx|valid"' "schema delta printed and checked"
+LOGF=$(ls "$RUNS"/*-run-*.log | head -1)
+ok '[ "$(stat -c %a "$LOGF")" = 600 ] && [ "$(stat -c %a "$RUNS/${OLD:0:7}-${FULL:0:8}")" = 700 ]' "log 0600, state 0700"
+ok '! grep -q "secret-not-printed" "$LOGF"' "no .env value in the log"
+DUMPS=$(ls "$S/bk" | wc -l)
+ok '[ "$DUMPS" = 1 ] && [ "$(stat -c %a "$S/bk/$(ls "$S/bk")")" = 600 ]' "one 0600 dump"
+echo "== same deploy: resume refuses another release file, rollback reads the record"
+release '# edited after the review'
+launch 8
+ok '[ "$RC" = 1 ] && says "khác bản ghi lần đầu"' "a resume with a changed release file is refused"
+release; launch rollback
+ok '[ "$RC" = 0 ] && head_is "$OLD"' "rollback puts the code back on OLD"
+ok '[ "$(calls "MIGRATED")" = 2 ]' "rollback ran no migration"
+
+echo "== lock timeout: retried, PgBouncer restarted after every attempt"
+fresh "$FULL"; echo 1 > "$FAKE/lockfail-2100_01_01_000000_add_col"; launch
+ok '[ "$RC" = 0 ] && says "Chưa lấy được khóa bảng (lần 1)"' "one lock timeout, then success"
+ok '[ "$(calls "restart -t 2 fake_k90_pgbouncer")" = 3 ]' "three restarts (failed attempt, good attempt, reload)"
+
+echo "== failed column migration: PgBouncer restarted, code untouched"
+fresh "$FULL"; touch "$FAKE/fail-2100_01_01_000000_add_col"; launch
+ok '[ "$RC" = 1 ] && says "DỪNG (bước 4)" && head_is "$OLD"' "stop in step 4, prod still on OLD"
+ok '[ "$(calls "restart -t 2 fake_k90_pgbouncer")" -ge 1 ]' "PgBouncer restarted after the failed attempt"
+rm -f "$FAKE/fail-2100_01_01_000000_add_col"; launch 4
+ok '[ "$RC" = 0 ] && head_is "$FULL"' "resume at step 4 finishes"
+ok '[ "$(calls "MIGRATED 2100_01_01_000000_add_col")" = 1 ]' "each migration ran once"
+
+echo "== stop in step 6, resume at 6"
+fresh "$FULL"; touch "$FAKE/fail-build-once"; launch
+ok '[ "$RC" = 1 ] && says "DỪNG (bước 6)" && says "Code trên đĩa đã đổi"' "build failure stops with the half-updated warning"
+launch 6
+ok '[ "$RC" = 0 ] && head_is "$FULL" && [ "$(calls "MIGRATED")" = 2 ]' "resume at 6 finishes without re-running migrations"
+
+echo "== invalid new index stops before the code moves"
+fresh "$FULL"; echo 'idx|sites|sites_extra_idx|INVALID' > "$FAKE/catalog-add-2100_01_01_000100_add_idx"; launch
+ok '[ "$RC" = 1 ] && says "chỉ mục mới chưa hợp lệ" && head_is "$OLD"' "INVALID index → stop in step 4, code untouched"
+
+echo "== unknown kind, undeclared class, env key"
+fresh "$UNKNOWN"; launch
+ok '[ "$RC" = 1 ] && says "DỪNG (bước 1)" && says "weird/thing.txt" && head_is "$OLD" && [ "$(calls "pg_dump")" = 0 ]' "unknown path stops in step 1, before any dump or write"
+fresh "$SCHED"; launch
+ok '[ "$RC" = 1 ] && says "nhóm cần khai báo: thấy '"'"'schedule'"'"'"' "an undeclared schedule change stops"
+fresh "$SCHED"; release 'DECLARED=(schedule)' 'SCHEDULE_ADDED=(x:new)'; launch
+ok '[ "$RC" = 0 ] && says "OK   lịch chạy thêm = x:new"' "declared schedule change passes and is checked after the reload"
+fresh "$ENVK"; launch
+ok '[ "$RC" = 1 ] && says "thiếu khóa mới: NEW_KEY"' "a new env key missing on prod stops"
+fresh "$ENVK"; release 'ENV_DEFAULT_OK=(NEW_KEY)'; launch
+ok '[ "$RC" = 0 ]' "the same key allowed to default passes"
+
+echo "== step 0 guards"
+fresh "$FULL"; echo '[{"event":"pull_request","status":"completed","conclusion":"success"}]' > "$FAKE/ci.json"; launch
+ok '[ "$RC" = 1 ] && says "CI đầy đủ" && head_is "$OLD"' "no full CI run on TARGET stops"
+fresh "$FULL"; touch "$FAKE/bad-dump"; launch
+ok '[ "$RC" = 1 ] && says "DỪNG (bước 2)"' "a broken dump stops in step 2"
+fresh "$FULL"; flock "$RUNS/.lock" sleep 5 & LP=$!; sleep 0.5; launch; wait "$LP"
+ok '[ "$RC" = 1 ] && says "một lần deploy khác đang chạy"' "a second deploy at the same time is refused"
+
+echo "== profile guards (never the prod prefix, path or real docker)"
+fresh "$FULL"; sed -i 's/PREFIX=fake_k90_/PREFIX=bsweb_prod_/' "$S/profile"; launch
+ok '[ "$RC" = 1 ] && says "tiền tố container của prod"' "test profile with the prod prefix refused"
+fresh "$FULL"; sed -i "s#^PROD=[^ ]*#PROD=/opt/bswebsaas/prod/x#" "$S/profile"; launch
+ok '[ "$RC" = 1 ] && says "trỏ vào thư mục prod"' "test profile pointing into the prod folder refused"
+fresh "$FULL"; sed -i "s#STUB_BIN=.*#STUB_BIN=$ROOT/elsewhere#" "$S/profile"; launch
+ok '[ "$RC" = 1 ] && says "lệnh docker giả" && [ ! -s "$FAKE/calls.log" ]' "test profile without the stub docker refused"
+
+echo
+echo "passed $PASS, failed $FAIL   (work dir $ROOT)"
+[ "$FAIL" = 0 ]

@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+# Fake docker for the deploy engine tests: answers from files under $FAKE, never calls the real docker.
+# Every call is appended to $FAKE/calls.log.
+set -u
+printf '%s\n' "docker $*" >> "$FAKE/calls.log"
+mig_table() { sort -u "$FAKE/migrations.txt"; }
+answer_sql() {
+    local s=$1
+    case "$s" in
+        *"max(migration)"*) mig_table | tail -n 1 ;;
+        *"FROM migrations WHERE migration IN"*)
+            local n=0 m
+            for m in $(printf '%s' "$s" | grep -oE "'[0-9]{4}_[0-9_a-z]+'" | tr -d "'"); do grep -qxF "$m" "$FAKE/migrations.txt" && n=$((n + 1)); done
+            echo "$n" ;;
+        *"'col|'"*) sort "$FAKE/catalog.txt" ;;
+        *"relkind = 'p'"*) echo 0 ;;
+        *"idle in transaction%' AND xact_start"*) cat "$FAKE/idle" 2>/dev/null || echo 0 ;;
+        *"pg_stat_activity"*) echo 0 ;;
+        *"FAKE_ONEOFF"*) cat "$FAKE/oneoff-count" ;;
+        *) echo "stub docker: SQL no answer: $s" >&2; exit 3 ;;
+    esac
+}
+artisan() {
+    case "$1" in
+        --version) echo "Laravel Framework 13.1.0" ;;
+        view:clear|optimize|octane:reload|rbac:sync|media:reconcile-content-usage|fake:oneoff) echo "ok $1" ;;
+        schedule:list) grep -oE "Schedule::command\('[^']+'" "$FAKE_PROD/routes/console.php" | sed -E "s/^Schedule::command\('//; s/'$//" \
+            | while read -r c; do printf '  0 0 * * *  php artisan %s ........ Next Due: 1 hour from now\n' "$c"; done ;;
+        cms:resanitize-bodies) echo "site 1: 0 would change"; echo "0 would change on 1 site(s)." ;;
+        *) echo "stub docker: artisan no answer: $*" >&2; exit 3 ;;
+    esac
+}
+curl_sim() {
+    local w= url= a p
+    while [ "$#" -gt 0 ]; do
+        case "$1" in -w) w=$2; shift ;; -o|-H|-m) shift ;; http*) url=$1 ;; esac
+        shift
+    done
+    p=${url#http://localhost:80}
+    if [ -n "$w" ]; then
+        a=$(cat "$FAKE/code${p//\//_}" 2>/dev/null || true)
+        case "$p" in /khong-co*) a=${a:-404} ;; esac
+        [ "$(cat "$FAKE/down" 2>/dev/null)" = 1 ] && a=502
+        echo "${a:-200}"
+    else
+        local css=
+        [ -f "$FAKE_PROD/public/build/manifest.json" ] && css=$(jq -r '."resources/css/storefront.css".file' "$FAKE_PROD/public/build/manifest.json")
+        printf '<html><link rel="stylesheet" href="/build/%s"><body>page %s</body></html>\n' "$css" "$p"
+    fi
+}
+compose_migrate() { # docker compose --profile ops run --rm --no-deps [-v DIR:/deploy-migrations:ro] migrate php artisan …
+    local mdir= path= cmd= f m n
+    while [ "$#" -gt 0 ]; do
+        case "$1" in -v) mdir=${2%%:*}; shift ;; migrate) shift; break ;; esac
+        shift
+    done
+    [ "$1 $2" = "php artisan" ] || { echo "stub docker: compose no answer: $*" >&2; exit 3; }
+    cmd=$3; shift 3
+    for a in "$@"; do case "$a" in --path=*) path=1 ;; esac; done
+    if [ -n "$path" ]; then f=$(find "$mdir" -maxdepth 1 -name '*.php' -printf '%f\n' | sed 's/\.php$//' | sort)
+    else f=$(find "$PWD/database/migrations" -maxdepth 1 -name '*.php' -printf '%f\n' | sed 's/\.php$//' | sort); fi
+    case "$cmd" in
+        migrate:status) for m in $f; do if grep -qxF "$m" "$FAKE/migrations.txt"; then echo "  $m .... [1] Ran"; else echo "  $m .... Pending"; fi; done ;;
+        migrate)
+            for m in $f; do
+                grep -qxF "$m" "$FAKE/migrations.txt" && continue
+                n=$(cat "$FAKE/lockfail-$m" 2>/dev/null || echo 0)
+                if [ "$n" -gt 0 ]; then echo $((n - 1)) > "$FAKE/lockfail-$m"; echo "SQLSTATE[55P03]: Lock not available: 7 ERROR: canceling statement due to lock timeout"; exit 1; fi
+                [ ! -e "$FAKE/fail-$m" ] || { echo "SQLSTATE[42P01]: boom"; exit 1; }
+                echo "$m" >> "$FAKE/migrations.txt"; echo "MIGRATED $m" >> "$FAKE/calls.log"
+                [ ! -f "$FAKE/catalog-add-$m" ] || cat "$FAKE/catalog-add-$m" >> "$FAKE/catalog.txt"
+                echo "  $m ...... DONE"
+            done ;;
+        *) echo "stub docker: migrate no answer: $cmd" >&2; exit 3 ;;
+    esac
+}
+case "$1" in
+    image) exit 0 ;;
+    inspect) echo true ;;
+    ps) exit 0 ;;
+    restart) [ ! -e "$FAKE/fail-restart" ] || exit 1; exit 0 ;;
+    logs) n=${*: -1}; cat "$FAKE/logs-$n" 2>/dev/null; exit 0 ;;
+    compose) shift; compose_migrate "$@" ;;
+    exec)
+        shift; q=
+        while [ "$#" -gt 0 ]; do case "$1" in -e) case "$2" in Q=*) q=${2#Q=} ;; esac; shift 2 ;; -T|-i) shift ;; *) break ;; esac; done
+        name=$1; shift
+        case "$name:$1" in
+            *pg:pg_isready) exit 0 ;;
+            *pg:sh) case "$*" in
+                *pg_dump*) [ ! -e "$FAKE/bad-dump" ] || { echo "CREATE TABLE public.migrations ("; exit 0; }
+                    printf -- '--\nCREATE TABLE public.migrations (\n);\nCREATE TABLE public.sites (\n);\nCOPY public.migrations (id) FROM stdin;\n\\.\nCOPY public.sites (id) FROM stdin;\n\\.\n%s\n-- PostgreSQL database dump complete\n\n' "$(head -c 30000 /dev/urandom | base64 -w 0)" ;;
+                *psql*) answer_sql "$q" ;;
+                *) echo "stub docker: pg no answer: $*" >&2; exit 3 ;;
+            esac ;;
+            *:php) if [ "$2" = artisan ]; then shift 2; artisan "$@"
+                   elif [ "$2" = -r ]; then case "$3" in *"echo 1"*) echo 1 ;; *config.php*) echo unset ;; *) exit 3 ;; esac
+                   else exit 3; fi ;;
+            *:curl) shift; curl_sim "$@" ;;
+            *:composer) echo "Nothing to install, update or remove" ;;
+            *:sh) echo "env= dotenv-lines=0" ;;
+            *) echo "stub docker: exec no answer: $name $*" >&2; exit 3 ;;
+        esac ;;
+    *) echo "stub docker: no answer: $*" >&2; exit 3 ;;
+esac
