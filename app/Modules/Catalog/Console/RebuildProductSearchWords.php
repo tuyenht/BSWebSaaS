@@ -20,8 +20,8 @@ use Throwable;
  * a product whose words are right is not written, so a second run corrects 0.
  *
  * - Without --recent or --rolling: every product of each site (the Trash too), by id in chunks. Run
- *   once after the migration that adds the table, before the new code serves (docs/runbooks/
- *   prod-deploy.md), and whenever the splitting changes.
+ *   once right after the code switch of the deploy that adds the table, before the reload (docs/
+ *   runbooks/prod-deploy.md), and whenever the splitting changes.
  * - With --recent=N: the N products of each site edited last (the list's own index), which is where a
  *   write path that missed the words would show first.
  * - With --rolling=N: the next N products of each site by id after where the previous run stopped
@@ -118,7 +118,9 @@ final class RebuildProductSearchWords extends Command
 
     /**
      * Check the next $count products of $siteId after the stored cursor, $chunk at a time, and move the
-     * cursor on; at the end of the products the cursor goes back to the start for the next run.
+     * cursor on; at the end of the products the cursor goes back to the start for the next run. It
+     * starts again from the first product in this same run only when the stored cursor was already past
+     * the last one, so a run never checks a product twice.
      *
      * @param  callable(int, int, bool): array{0: int, 1: int}  $step  [products read, last id read]
      */
@@ -126,22 +128,23 @@ final class RebuildProductSearchWords extends Command
     {
         $key = self::cursorKey($siteId);
         $after = Cast::int(Cache::get($key), 0);
+        $readThisRun = 0;
         while ($count > 0) {
             $limit = min($chunk, $count);
             [$read, $last] = $step($after, $limit, false);
             $count -= $read;
+            $readThisRun += $read;
             if ($read < $limit) {
-                $last = 0;   // past the last product: the next run starts from the first one
-                if ($after > 0 && $read === 0) {
-                    $after = 0;   // nothing after the cursor at all: start again now
+                if ($read === 0 && $readThisRun === 0 && $after > 0) {
+                    $after = 0;   // the stored cursor was past the last product: start again now
 
                     continue;
                 }
-            }
-            $after = $last;
-            if ($last === 0) {
+                $after = 0;   // past the last product: the next run starts from the first one
+
                 break;
             }
+            $after = $last;
         }
         Cache::forever($key, $after);
     }

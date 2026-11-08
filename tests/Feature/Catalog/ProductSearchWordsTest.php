@@ -4,12 +4,14 @@ use App\Modules\Admin\Livewire\Catalog\Editor;
 use App\Modules\Admin\Support\Catalog\ProductListQuery;
 use App\Modules\Catalog\Actions\ChangeProductSlug;
 use App\Modules\Catalog\Actions\RenameProduct;
+use App\Modules\Catalog\Console\RebuildProductSearchWords;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Support\ProductSearchWords;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Livewire\Livewire;
@@ -339,6 +341,34 @@ it('checks every product in turn with --rolling, from where the last run stopped
         expect(storedWords($products[0]))->toContain('ong', 'thep', 'on0')
             ->and(storedWords($products[3]))->toContain('ong', 'inox', 'on3');
     });
+});
+
+it('checks each product once per --rolling run when the products fill whole chunks and are fewer than the run', function (): void {
+    $products = app(Tenancy::class)->enter(1, function (): array {
+        $made = [];
+        foreach (['Van bi', 'Van cổng', 'Van cầu', 'Van một chiều'] as $n => $name) {
+            $made[] = wordsProduct($name, 'VB-'.$n);
+        }
+
+        return $made;
+    });
+    $admin = DB::connection('pgsql_admin');
+    $key = RebuildProductSearchWords::cursorKey(1);
+    $run = fn (int $rolling) => $this->artisan('catalog:search-words', ['--site' => 1, '--rolling' => $rolling, '--chunk' => 2]);
+
+    // from the start: two whole chunks, then nothing after the last product, so the run stops there
+    $admin->table('product_search_words')->where('product_id', $products[1]->id)->delete();
+    $run(10)->expectsOutputToContain('Checked 4 product(s) on 1 site(s); corrected 1.')->assertSuccessful();
+    expect(Cache::get($key))->toBe(0);
+
+    // a run that ends exactly on the last product leaves the cursor there
+    $run(4)->expectsOutputToContain('Checked 4 product(s) on 1 site(s); corrected 0.')->assertSuccessful();
+    expect(Cache::get($key))->toBe($products[3]->id);
+
+    // the next run finds nothing after it, starts again from the first one and still checks each once
+    $admin->table('product_search_words')->where('product_id', $products[2]->id)->delete();
+    $run(10)->expectsOutputToContain('Checked 4 product(s) on 1 site(s); corrected 1.')->assertSuccessful();
+    expect(Cache::get($key))->toBe(0);
 });
 
 /**

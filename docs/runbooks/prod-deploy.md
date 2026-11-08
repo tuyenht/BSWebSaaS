@@ -75,16 +75,29 @@ Prod is a separate git checkout, `/opt/bswebsaas/prod` (branch `main`), on the s
 
 ### The deploy that carries migration 2054 (the product search words)
 
-From this deploy on, the admin products list searches the word table `product_search_words`, and a product with no rows there is not found. The migration creates the table empty, and there is no switch that keeps the old search on, so the table must be filled before the new code serves. Run these steps in this order:
+From this deploy on, the admin products list searches the word table `product_search_words`, and a product with no rows there is not found. The migration creates the table empty, and there is no switch that keeps the old search on, so the table is filled right after the code switch and before the reload. Prod mounts the checkout at `/app` and starts Octane with `--max-requests=500`: a worker that has served 500 requests restarts and loads whatever code is on disk, so from the merge on some workers already run the new code (Deploy step 5). Run these steps in this order, back to back:
 
-1. Migrate 2054 while the old code still serves: Deploy step 1 (merge, `composer install`), then step 2 (migrations). Until the reload in step 4 below, the running workers keep the old code. The table is new and empty, the old code never reads it, and no existing column changes, so this step needs no PgBouncer restart.
-2. Build the rest of the new code: Deploy step 3 (front-end build). Prod mounts the checkout at `/app`, so the new code is the checkout at the target commit. The image stays `bsweb/app:prod` and is not rebuilt.
-3. Before traffic switches, fill the table in a one-off container that runs the new code. In `/opt/bswebsaas/prod`, run `docker compose run --rm --no-deps app php artisan catalog:search-words`.
+1. Migrate 2054 BEFORE the code switch, while the checkout is still at the old commit (as the deploy scripts do: the target's migration file goes into a folder mounted into the `migrate` one-off container).
+   ```bash
+   mkdir -m 700 /tmp/mig-2054
+   git -C /opt/bswebsaas/prod fetch origin
+   git -C /opt/bswebsaas/prod show <sha>:database/migrations/2054_01_01_000000_create_product_search_words_table.php \
+     > /tmp/mig-2054/2054_01_01_000000_create_product_search_words_table.php
+   docker compose --project-directory /opt/bswebsaas/prod --profile ops run --rm --no-deps -v /tmp/mig-2054:/deploy-migrations:ro \
+     migrate php artisan migrate --database=pgsql_admin --force --path=/deploy-migrations --realpath
+   rm -r /tmp/mig-2054
+   ```
+   - The old code never reads the table, and no existing column changes, so this step needs no PgBouncer restart.
+   - Laravel records the file under its name, so Deploy step 2 after the merge finds it done.
+   - From here a product saved by a worker on the new code (after the merge below) gets its words; one saved by a worker on the old code does not (step 4 heals it).
+2. Switch the code: Deploy step 1 (merge, `composer install`), step 2 (any other migration; 2054 is done), step 3 (front-end build). The image stays `bsweb/app:prod` and is not rebuilt.
+3. Fill the table at once, after `optimize` and BEFORE `octane:reload`: Deploy step 4 (`view:clear`, `optimize`), then `docker exec bsweb_prod_app php artisan catalog:search-words`. A fresh `artisan` process loads the new code and the new cached config from disk; the running workers keep serving while it runs. Its writes are harmless to the old code, which ignores the table.
    - It works site by site, as the app user under each site's tenant context, and checks every product (the Trash too).
-   - It must exit 0 and print `Checked N product(s) on M site(s); corrected K.`, where N is the number of products on prod and K the number of those with a name or a SKU. A site that fails is named, and the command exits 1; stop and look at it.
+   - It must exit 0 and print `Checked N product(s) on M site(s); corrected K.`, where N is the number of products on prod and K the number of those with a name or a SKU. A site that fails is named, and the command exits 1; stop and look at it before the reload.
    - Measured: 2.4 ms a product (200,000 products in 485 s). A re-run must print `corrected 0.`
-4. Switch: Deploy steps 4–5 (caches, `octane:reload`, restart horizon). From here the list searches the words.
-5. Products saved by the old workers between step 3 and the reload got no words. The nightly `catalog:search-words --recent=500 --rolling=10000` (20:45 UTC) writes them again: they are among the 500 edited last. To heal them at once, run `docker exec bsweb_prod_app php artisan catalog:search-words --recent=500` right after the reload.
+4. Reload: Deploy step 5 (`octane:reload`, restart horizon). From here every worker searches the words. Then heal the products saved by workers on the old code between step 1 and the reload, which got no words: `docker exec bsweb_prod_app php artisan catalog:search-words --recent=500` (they are among the 500 edited last). The nightly `catalog:search-words --recent=500 --rolling=10000` (20:45 UTC) does the same if this is skipped.
+
+The short window: from the merge in step 2 until the fill in step 3 ends, a worker that has restarted after its 500 requests already runs the new search, so the admin products search on it may show "nothing found" for products whose words are not written yet. It lasts about the build plus the fill (2.4 ms a product); no product is lost or changed, and the storefront is not affected.
 
 Rollback: the old code ignores the table, so the table can stay. `down()` drops it, and the source data is not touched.
 
