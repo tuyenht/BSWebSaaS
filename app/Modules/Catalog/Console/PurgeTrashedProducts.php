@@ -15,9 +15,9 @@ use Illuminate\Console\Command;
  * id order (the order the bulk actions lock in, so the two never deadlock), through the same action
  * as the Trash's "Xóa vĩnh viễn". Runs site by site inside Tenancy::eachSite so RLS and the model's
  * scope pick each site's own Trash. Tenancy::enter wraps each site in one transaction, so a chunk is
- * a savepoint, not a transaction of its own; a failure stops the run, like the menu and media purges. Each chunk's SELECT locks its rows, so a restore either commits
- * before the read (the row is not picked) or waits until the chunk is done. Live products are never
- * touched. Scheduled daily.
+ * a savepoint, not a transaction of its own; a failure stops the run, like the menu and media purges.
+ * Each chunk's SELECT locks its rows, so a restore either commits before the read (the row is not
+ * picked) or waits until the chunk is done. Live products are never touched. Scheduled daily.
  */
 final class PurgeTrashedProducts extends Command
 {
