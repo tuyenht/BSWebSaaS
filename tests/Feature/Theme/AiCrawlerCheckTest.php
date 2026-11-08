@@ -6,6 +6,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Jobs\CheckAiCrawlers;
 use App\Modules\Theme\Theming\AiCrawlerCheck;
+use App\Modules\Theme\Theming\RobotsTxt;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
@@ -109,6 +110,17 @@ it('names the bots the site’s own robots.txt text blocks, fully or in part, as
         ->and($result['level'])->toBe('info')
         ->and($result['findings'][0]['params']['bots'])->toBe(['GPTBot', 'Google-Extended'])
         ->and($result['findings'][1]['params']['bots'])->toBe(['CCBot']);
+});
+
+it('says it cannot judge the site’s own robots.txt text when it is past the judging bounds, never ok', function (): void {
+    $own = "User-agent: *\nDisallow: /\nDisallow: /".str_repeat('a', RobotsTxt::MAX_PATH + 8)."\n";
+    aiSeo(['robots' => $own]);
+    aiFakeSite(robots: [200, $own]);
+
+    $result = aiRun();
+
+    expect(aiCodes($result))->toBe(['unchecked:robots_too_complex'])
+        ->and($result['level'])->not->toBe('ok');
 });
 
 it('warns when the robots.txt served adds a block on AI bots the site never wrote', function (): void {

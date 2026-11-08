@@ -226,8 +226,7 @@ final readonly class AiCrawlerCheck
 
     /**
      * Checks 1 and 2, from the settings alone (read in the tenant step, judged after it). A text
-     * past the judging bounds gives nothing here: the platform's robots.txt holds it, so check 3
-     * says it could not be judged.
+     * past the judging bounds says it could not be judged, never "ổn".
      *
      * @return list<array{level: string, code: string, params: array<string, mixed>}>
      */
@@ -240,9 +239,14 @@ final readonly class AiCrawlerCheck
             return [];
         }
 
+        $verdicts = RobotsTxt::parse($input->ownRobots)->verdicts(self::bots());
+        if ($verdicts === null) {
+            return [self::finding('unchecked', 'robots_too_complex')];
+        }
+
         $blocked = [];
         $partial = [];
-        foreach (RobotsTxt::parse($input->ownRobots)->verdicts(self::bots()) ?? [] as $bot => $verdict) {
+        foreach ($verdicts as $bot => $verdict) {
             match ($verdict) {
                 'blocked' => $blocked[] = $bot,
                 'partial' => $partial[] = $bot,

@@ -169,8 +169,9 @@ final readonly class RobotsTxt
     }
 
     /**
-     * Judged on the root, a path below it and each path a rule names (the first MAX_PROBES in
-     * all); it stops once it has seen both an open and a closed path. Null once the budget is spent.
+     * Judged on the root, a path below it and each path a rule names; it stops once it has seen
+     * both an open and a closed path. Null once the budget is spent, or when the rules name more
+     * than MAX_PROBES paths and the ones tried do not already show `partial`.
      *
      * @param  list<Rule>  $rules
      * @return 'blocked'|'partial'|'allowed'|null
@@ -178,8 +179,13 @@ final readonly class RobotsTxt
     private static function judge(array $rules, int &$budget): ?string
     {
         $paths = ['/' => true, self::PROBE => true];
+        $cut = false;
         foreach ($rules as $rule) {
+            if (isset($paths[$rule['probe']])) {
+                continue;
+            }
             if (count($paths) >= self::MAX_PROBES) {
+                $cut = true;
                 break;
             }
             $paths[$rule['probe']] = true;
@@ -197,6 +203,11 @@ final readonly class RobotsTxt
             if ($open > 0 && $closed > 0) {
                 return 'partial';
             }
+        }
+
+        // A path left untried could still be the open (or closed) one: not judged.
+        if ($cut) {
+            return null;
         }
 
         return $closed === 0 ? 'allowed' : 'blocked';

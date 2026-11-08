@@ -170,6 +170,16 @@ it('does not judge a file with more rules, or a longer rule, than it keeps', fun
         ->and(RobotsTxt::parse("User-agent: *\n".str_repeat("Disallow: /a\n", RobotsTxt::MAX_RULES))->verdict('GPTBot'))->toBe('partial');
 });
 
+it('does not judge when the rules name more paths than it tries, unless those already show a part blocked', function (): void {
+    $allows = '';
+    for ($i = 0; $i < RobotsTxt::MAX_PROBES + 20; $i++) {
+        $allows .= "Allow: /p{$i}\n";
+    }
+
+    expect(RobotsTxt::parse("User-agent: *\n{$allows}Disallow: /private\n")->verdict('GPTBot'))->toBeNull()
+        ->and(RobotsTxt::parse("User-agent: *\nDisallow: /\n{$allows}Allow: /late\n")->verdict('GPTBot'))->toBe('partial');
+});
+
 it('matches a pattern full of * without backtracking, and still gives the right answer', function (): void {
     $robots = RobotsTxt::parse("User-agent: *\nDisallow: /".str_repeat('a*', 40)."b\nDisallow: /x*y*z\$");
 
