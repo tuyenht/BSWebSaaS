@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\DB;
  *  - RLS + FORCE, fail closed, like every website table.
  *
  * A new, empty table: no lock on any existing table, no column change (PgBouncer needs no restart).
- * Fill it with `php artisan catalog:search-words` right after migrating. down() drops it; no source
+ * Fill it with `php artisan catalog:search-words` after the code switch, before the Octane reload (runbook). down() drops it; no source
  * data is lost (the words are made from the names and SKUs).
  */
 return new class extends Migration

@@ -83,8 +83,8 @@ From this deploy on, the admin products list searches the word table `product_se
    git -C /opt/bswebsaas/prod fetch origin
    git -C /opt/bswebsaas/prod show <sha>:database/migrations/2054_01_01_000000_create_product_search_words_table.php \
      > /tmp/mig-2054/2054_01_01_000000_create_product_search_words_table.php
-   docker compose --project-directory /opt/bswebsaas/prod --profile ops run --rm --no-deps -v /tmp/mig-2054:/deploy-migrations:ro \
-     migrate php artisan migrate --database=pgsql_admin --force --path=/deploy-migrations --realpath
+   ( cd /opt/bswebsaas/prod && docker compose --profile ops run --rm --no-deps -v /tmp/mig-2054:/deploy-migrations:ro \
+     migrate php artisan migrate --database=pgsql_admin --force --path=/deploy-migrations --realpath )
    rm -r /tmp/mig-2054
    ```
    - The old code never reads the table, and no existing column changes, so this step needs no PgBouncer restart.
