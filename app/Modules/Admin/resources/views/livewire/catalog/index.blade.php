@@ -106,6 +106,65 @@
     $hideNow = implode(' ', array_values(array_unique([...array_diff(['cat', 'price', 'stock', 'badge'], $cols), ...$hiddenAlways])));
     $priceNext = match ($sortOn) { 'price_asc' => 'price_desc', 'price_desc' => 'updated', default => 'price_asc' };
     $ariaPrice = $sortOn === 'price_asc' ? 'ascending' : ($sortOn === 'price_desc' ? 'descending' : 'none');
+
+    // Selection (a member who manages products only): the ticked rows of THIS page, the header box, and the bar's actions.
+    $pageUlids = $rows->pluck('ulid')->all();
+    // the ticked rows that are still in what is shown (any page: a sort keeps them); the server cut the list down already
+    $picked = $canManage ? array_map('strval', $selected) : [];
+    $pickedN = count($picked);
+    $pickedRows = $rows->filter(fn ($r): bool => in_array($r->ulid, $picked, true));
+    $pageAllOn = $pageUlids !== [] && count(array_intersect($pageUlids, $picked)) === count($pageUlids);
+    $allState = $pageAllOn ? true : (array_intersect($pageUlids, $picked) !== [] ? 'mixed' : false);
+    $multiPage = $pager['last'] === null || $pager['last'] > 1;
+    $selLabel = __($pageAllOn ? ($multiPage ? 'catalog.bulk_unsel_page' : 'catalog.bulk_unsel_all') : ($multiPage ? 'catalog.bulk_sel_page' : 'catalog.bulk_sel_all'));
+    $selAria = __($multiPage ? 'catalog.bulk_sel_aria_page' : 'catalog.bulk_sel_aria_all', ['label' => $selLabel, 'n' => $num(count($pageUlids)), 'total' => $fmt($matchCount)]);
+    $selectCall = 'toggleSelect(['.collect($pageUlids)->map(fn (string $u): string => "'".$u."'")->implode(',').'])';
+    $bulk = [];
+    $bulkSkip = null;
+    if ($pickedN > 0) {
+        $nLive = count(array_filter($selectedStatus, fn ($st): bool => $st === 'published'));
+        $mk = function (string $labelKey, string $icon, string $call, int $ok, ?string $why = null, string $color = 'primary') use ($pickedN, $num): array {
+            $name = __($labelKey);
+            $title = $ok > 0
+                ? ($why !== null ? __('catalog.bulk_title_skip', ['label' => $name, 'count' => $ok, 'skipped' => $pickedN - $ok]) : __('catalog.bulk_title_do', ['label' => $name, 'count' => $ok]))
+                : __('catalog.bulk_title_none', ['why' => $why ?? '']);
+
+            return ['label' => __('catalog.bulk_label_n', ['label' => $name, 'count' => $num($ok)]), 'name' => $name, 'icon' => $icon, 'call' => $call, 'ok' => $ok, 'why' => $why, 'title' => $title, 'color' => $color, 'click' => '$wire.'.$call.'()'];
+        };
+        if ($tab === 'trash') {
+            if ($may['restore'] ?? false) {
+                $bulk[] = ['title' => __('catalog.bulk_title_restore')] + $mk('catalog.bulk_restore', 'ri-arrow-go-back', 'bulkRestore', $pickedN);
+            }
+            if ($may['forceDelete'] ?? false) {
+                $purgeName = $pickedN === 1 && $pickedRows->isNotEmpty() ? ($pickedRows->first()?->translations->firstWhere('locale', $locale)?->name ?? __('catalog.untitled')) : null;
+                $purge = $mk('catalog.bulk_purge', 'ri-delete-bin', 'bulkForceDelete', $pickedN, null, 'danger');
+                $purge['title'] = __('catalog.bulk_title_purge');
+                $purge['confirm'] = [
+                    'title' => $purgeName !== null ? __('catalog.purge_title_one', ['name' => $purgeName]) : __('catalog.purge_title_many', ['count' => $num($pickedN)]),
+                    'text' => __($pickedN === 1 ? 'catalog.purge_text_one' : 'catalog.purge_text_many', ['count' => $num($pickedN)]),
+                    'ok' => $pickedN === 1 ? __('catalog.force_delete_action') : __('catalog.purge_ok_many', ['count' => $num($pickedN)]),
+                ];
+                $purge['click'] = '$bsConfirm({ icon: '.Js::from('trash-danger').', title: '.Js::from($purge['confirm']['title']).', text: '.Js::from($purge['confirm']['text']).', confirm: '.Js::from($purge['confirm']['ok']).', cancel: '.Js::from(__('admin.cancel')).' }).then(ok => ok && $wire.bulkForceDelete())';
+                $bulk[] = $purge;
+            }
+        } else {
+            if ($may['update'] ?? false) {
+                $bulk[] = $mk('catalog.bulk_publish', 'ri-global', 'bulkPublish', $pickedN - $nLive, $nLive > 0 ? __('catalog.bulk_why_published', ['count' => $nLive]) : null);
+                $bulk[] = $mk('catalog.bulk_archive', 'ri-archive', 'bulkArchive', $nLive, $pickedN - $nLive > 0 ? __('catalog.bulk_why_unpublished', ['count' => $pickedN - $nLive]) : null);
+                $bulk[] = $mk('catalog.bulk_category', 'ri-folder-transfer', 'openCategory', $pickedN);
+            }
+            if ($may['delete'] ?? false) {
+                $bulk[] = $mk('catalog.bulk_trash', 'ri-delete-bin', 'bulkTrash', $pickedN, null, 'danger');
+            }
+            // the line under the bar names only the first action that leaves rows out
+            foreach ($bulk as $action) {
+                if ($action['why'] !== null) {
+                    $bulkSkip = __('catalog.bulk_skipped', ['label' => $action['name'], 'count' => $num($pickedN - $action['ok']), 'why' => $action['why']]);
+                    break;
+                }
+            }
+        }
+    }
 @endphp
 <div class="catalog-index flex flex-col gap-3">
 
@@ -156,7 +215,7 @@
 
         {{-- What shows on each product follows the list's own width: below 600 the member's card choice, 600–899
              every detail, from 900 their column choice (both kept in their own preferences). --}}
-        <div class="@container/lt min-w-0"
+        <div class="@container/lt flex min-w-0 flex-col"
              x-data="{
                  mode: 'cols',
                  xv: false,
@@ -202,6 +261,11 @@
                         :clear-label="__('catalog.search_clear')" clear-action="$set('search', '')" :clear-on="trim($search) !== ''" wire:model.live.debounce.300ms="search" />
                 </div>
                 <x-bs-admin::tool-row class="@min-[56.25rem]/lt:min-w-0 @min-[56.25rem]/lt:flex-[1_1_auto] @min-[56.25rem]/lt:flex-wrap @min-[56.25rem]/lt:gap-3">
+                    @if ($canManage && $pageUlids !== [])
+                        <div class="min-w-0 @min-[56.25rem]/lt:hidden">
+                            <x-bs-admin::list.check :checked="$allState" :label="$selLabel" :aria-label="$selAria" visible wire:click="{{ $selectCall }}" />
+                        </div>
+                    @endif
                     <x-bs-admin::filter-panel class="ms-auto flex-nowrap @min-[56.25rem]/lt:ms-0 @min-[56.25rem]/lt:min-w-0 @min-[56.25rem]/lt:shrink @min-[56.25rem]/lt:flex-wrap" :sections="$sections"
                         :active="$filterCount" :active-narrow="$filterCountNarrow" clear="clearAllFilters" :clear-closes="true" :results="__('catalog.show_n', ['n' => $fmt($matchCount), 'unit' => $noun])" />
                     <x-bs-admin::sort-menu class="@min-[56.25rem]/lt:ms-auto" :options="$sortOptions" :active="$sortOn" :lit="! $sortIsDefault" set="setSort" />
@@ -215,10 +279,28 @@
                 :summary="$filtering ? __('catalog.match_of', ['n' => $fmt($matchCount), 'm' => $fmt($counts[$tab] ?? 0), 'unit' => $noun]) : null"
                 :chips="$chips" :clear="$filtering ? 'clearAllFilters' : null" />
 
-            <div x-ref="rows" class="min-w-0 max-[599.98px]:rounded-md max-[599.98px]:border max-[599.98px]:border-border max-[599.98px]:bg-surface max-[599.98px]:[&_.list-g]:border-t-0">
+            @if ($pickedN > 0 && $bulk !== [])
+                <x-bs-admin::list.bulk :label="__('catalog.bulk_region')" :status="__('catalog.bulk_selected', ['count' => $num($pickedN)])" :clear-label="__('catalog.bulk_clear')" :skip="$bulkSkip">
+                    @foreach ($bulk as $action)
+                        <x-bs-admin::button size="sm" variant="soft" :color="$action['color']" :title="$action['title']" aria-disabled="{{ $action['ok'] > 0 ? 'false' : 'true' }}"
+                            class="aria-disabled:opacity-60" x-on:click="{{ $action['click'] }}">
+                            <x-bs-admin::icon :name="$action['icon']" class="size-4" /> {{ $action['label'] }}
+                        </x-bs-admin::button>
+                    @endforeach
+                </x-bs-admin::list.bulk>
+            @endif
+
+            <div x-ref="rows" class="min-w-0 @max-[56.25rem]/lt:order-3 max-[599.98px]:rounded-md max-[599.98px]:border max-[599.98px]:border-border max-[599.98px]:bg-surface max-[599.98px]:[&_.list-g]:border-t-0">
             <x-bs-admin::list :label="__('catalog.list_label')" kind="catalog" :data-hide="$hideNow" x-bind:data-hide="hidden()" x-bind:data-fold="fold">
 
                 <x-bs-admin::list.head>
+                    @if ($canManage)
+                        <x-bs-admin::list.cell head col="chk">
+                            @if ($pageUlids !== [])
+                                <x-bs-admin::list.check :checked="$allState" :label="__('catalog.bulk_sel_header', ['n' => $num(count($pageUlids))])" wire:click="{{ $selectCall }}" />
+                            @endif
+                        </x-bs-admin::list.cell>
+                    @endif
                     <x-bs-admin::list.cell head col="main" :sort="$ariaSort('name')">
                         <x-bs-admin::list.sort :active="$sortOn === 'name'" dir="asc" wire:click="sortBy('name')">{{ __('catalog.col_product') }}</x-bs-admin::list.sort>
                     </x-bs-admin::list.cell>
@@ -320,7 +402,12 @@ JS, ['@ULID@' => (string) Js::from($product->ulid)]) : '{}';
                         $whenTitle = $stampText === null ? null : ($trashed ? __('catalog.trashed_at_title', ['date' => $stampText]) : __('catalog.updated_full', ['date' => $stampText]));
                         $whenCard = $trashed || $stamp === null ? $whenText : $editedShort($stamp);
                     @endphp
-                    <x-bs-admin::list.row wire:key="{{ $rowKey }}" data-row-ulid="{{ $product->ulid }}" :data-name="$quickEdit ? $name : null" :data-slug="$quickEdit ? ($slugLeaf ?? '') : null" x-data="{{ $rowX }}">
+                    <x-bs-admin::list.row wire:key="{{ $rowKey }}" data-row-ulid="{{ $product->ulid }}" :selected="in_array($product->ulid, $picked, true)" :data-name="$quickEdit ? $name : null" :data-slug="$quickEdit ? ($slugLeaf ?? '') : null" x-data="{{ $rowX }}">
+                        @if ($canManage)
+                            <x-bs-admin::list.cell col="chk">
+                                <x-bs-admin::list.check :checked="in_array($product->ulid, $picked, true)" :label="__('catalog.bulk_sel_named', ['name' => $name])" wire:click="toggleSelect(['{{ $product->ulid }}'])" />
+                            </x-bs-admin::list.cell>
+                        @endif
                         <x-bs-admin::list.cell col="main">
                             <div class="flex items-start gap-3">
                                 @if ($thumbnail !== null)
@@ -498,6 +585,7 @@ JS, ['@ULID@' => (string) Js::from($product->ulid)]) : '{}';
                                             @endif
                                             <x-bs-admin::list.menu-item icon="ri-star" wire:click="toggleFlag('{{ $product->ulid }}', 'featured', {{ $product->is_featured ? 'false' : 'true' }})">{{ __($product->is_featured ? 'catalog.flag_remove_featured' : 'catalog.flag_add_featured') }}</x-bs-admin::list.menu-item>
                                             <x-bs-admin::list.menu-item icon="ri-fire" wire:click="toggleFlag('{{ $product->ulid }}', 'best', {{ $product->is_bestseller ? 'false' : 'true' }})">{{ __($product->is_bestseller ? 'catalog.flag_remove_best' : 'catalog.flag_add_best') }}</x-bs-admin::list.menu-item>
+                                            <x-bs-admin::list.menu-item icon="ri-folder-transfer" wire:click="openCategory('{{ $product->ulid }}')">{{ __('catalog.menu_category') }}</x-bs-admin::list.menu-item>
                                             <x-bs-admin::list.menu-sep />
                                             <x-bs-admin::list.menu-item icon="ri-delete-bin" danger
                                                 wire:click="trash('{{ $product->ulid }}')">{{ __('catalog.menu_trash') }}</x-bs-admin::list.menu-item>
@@ -529,7 +617,7 @@ JS, ['@ULID@' => (string) Js::from($product->ulid)]) : '{}';
             </x-bs-admin::list>
             </div>
 
-            <div class="mt-4 flex flex-wrap items-center justify-between gap-3 min-[600px]:px-4">
+            <div class="mt-4 flex flex-wrap items-center justify-between gap-3 @max-[56.25rem]/lt:order-5 min-[600px]:px-4">
                 <span class="text-caption text-text-muted">
                     {{ __('catalog.footer_showing', ['first' => $num($pager['from']), 'last' => $num($pager['to']), 'total' => $fmt($pager['total'])]) }}
                 </span>
@@ -577,5 +665,8 @@ JS, ['@ULID@' => (string) Js::from($product->ulid)]) : '{}';
         </div>
     </div>
     @endif
-    <x-bs-admin::toast :message="$toastMsg" :tone="$toastTone" :seq="$toastSeq" dismiss="closeToast" :undo="$undoOp !== null ? 'undoLast' : null" />
+    @if ($canManage)
+        @include('admin::livewire.catalog.category-dialog')
+    @endif
+    <x-bs-admin::toast :message="$toastMsg" :tone="$toastTone" :seq="$toastSeq" dismiss="closeToast" :undo="$undoOp !== null ? 'undoLast' : null" :raised="$pickedN > 0 && $bulk !== []" />
 </div>

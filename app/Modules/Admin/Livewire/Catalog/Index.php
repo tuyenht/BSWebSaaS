@@ -7,6 +7,7 @@ use App\Modules\Admin\Support\Catalog\ProductListFilter;
 use App\Modules\Admin\Support\Catalog\ProductListQuery;
 use App\Modules\Admin\Support\Entries\ListCursor;
 use App\Modules\Admin\Support\SeoFields;
+use App\Modules\Catalog\Actions\ChangeProductMainCategory;
 use App\Modules\Catalog\Actions\ChangeProductSlug;
 use App\Modules\Catalog\Actions\ChangeProductStatus;
 use App\Modules\Catalog\Actions\RenameProduct;
@@ -17,7 +18,9 @@ use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Catalog\Support\CatalogMode;
 use App\Modules\Catalog\Support\UniqueViolation;
 use App\Modules\Cms\Exceptions\RouteConflictException;
+use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\PathBuilder;
+use App\Modules\Cms\Support\CategoryItemCounts;
 use App\Modules\Cms\Taxonomy\TaxonomyRules;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
@@ -25,6 +28,7 @@ use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Rbac\Support\RoleLabel;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Shared\Support\ConcurrencyError;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\SiteLocale;
@@ -46,6 +50,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Throwable;
 
 /**
  * The products list (site-scoped by BelongsToSite + RLS): status groups with counts and the Trash,
@@ -157,6 +162,23 @@ final class Index extends Component
     /** The label columns a row can switch, by the name the menu sends. */
     private const array FLAGS = ['featured' => 'is_featured', 'best' => 'is_bestseller'];
 
+    /** The most rows one bulk action takes: the largest page. */
+    private const int SELECT_MAX = 50;
+
+    /**
+     * @var list<string> the products ticked on this page (their ulids). Only the server writes it; every bulk
+     *                   action looks the rows up again, in this website and in the group on screen, and drops what is not there.
+     */
+    #[Locked]
+    public array $selected = [];
+
+    /** Whether the "Đổi chuyên mục chính" dialog is open (the dialog's own close sets it back). */
+    public bool $catOpen = false;
+
+    /** @var list<string> the products the open dialog changes the category of; only the server writes it */
+    #[Locked]
+    public array $catTargets = [];
+
     /** The message at the bottom of the screen (empty: none). Only the server writes it. */
     #[Locked]
     public string $toastMsg = '';
@@ -242,6 +264,9 @@ final class Index extends Component
             $this->clean();
             $this->restart();
         }
+        if ($name === 'tab') {
+            $this->selected = []; // a new status group starts with nothing ticked
+        }
         if (in_array($name, self::FILTERS, true)) {
             $this->guardWrite('viewAny');
             if ($name === 'catF') {
@@ -316,6 +341,7 @@ final class Index extends Component
     public function setTab(string $tab): void
     {
         $this->tab = in_array($tab, self::TABS, true) ? $tab : 'all';
+        $this->selected = [];
         $this->clean();
         $this->restart();
     }
@@ -647,6 +673,13 @@ final class Index extends Component
                 $product = $this->live($ulid, quiet: true);
                 $product?->forceFill([self::FLAGS[$flag] => (bool) ($op['was'] ?? false)])->save();
                 break;
+            case 'bulk_status':
+            case 'bulk_untrash':
+            case 'bulk_retrash':
+            case 'bulk_category':
+                $this->undoBulk($op);
+
+                return;
             default:
                 return;
         }
@@ -699,6 +732,445 @@ final class Index extends Component
         return $translation instanceof ProductTranslation ? $translation->name : __('catalog.untitled');
     }
 
+    /**
+     * The check boxes: a row's own box, the header box and the phone's "Chọn cả trang" all send the
+     * ulids they stand for. All of them already ticked → they are unticked, else they are added.
+     * Capped at the largest page; nothing is trusted until a bulk action looks the rows up again.
+     *
+     * @param  list<string>  $ulids
+     */
+    public function toggleSelect(array $ulids): void
+    {
+        $this->guardWrite('create');
+        $ulids = array_slice(array_values(array_unique(array_filter($ulids, 'is_string'))), 0, self::SELECT_MAX);
+        $allIn = $ulids !== [] && array_diff($ulids, $this->selected) === [];
+        $next = $allIn ? array_diff($this->selected, $ulids) : [...$this->selected, ...$ulids];
+        $this->selected = array_slice(array_values(array_unique($next)), 0, self::SELECT_MAX);
+    }
+
+    /** "Bỏ chọn". */
+    public function clearSelection(): void
+    {
+        $this->selected = [];
+    }
+
+    /** "Đăng (N)": the ticked products that are not published go live. */
+    public function bulkPublish(): void
+    {
+        $this->bulkStatus('published');
+    }
+
+    /** "Gỡ khỏi website (N)": the ticked products that are published are taken off the website (archived). */
+    public function bulkArchive(): void
+    {
+        $this->bulkStatus('archived');
+    }
+
+    /** "Chuyển vào Thùng rác (N)". */
+    public function bulkTrash(): void
+    {
+        $this->guardWrite('delete');
+        $done = 0;
+        $undo = [];
+        $last = null;
+        if (! $this->atomic(function () use (&$done, &$undo, &$last): void {
+            foreach ($this->pickRows($this->selected, false) as $product) {
+                $product->delete();
+                $undo[] = $product->ulid;
+                $last = $product;
+                $done++;
+            }
+        })) {
+            return;
+        }
+        if ($done === 0) {
+            $this->staleSelection();
+
+            return;
+        }
+        $this->selected = [];
+        $this->say(
+            $done === 1 && $last !== null ? __('catalog.toast_trashed', ['name' => $this->loadedName($last)]) : __('catalog.bulk_trashed', ['count' => $done]),
+            'success',
+            ['kind' => 'bulk_untrash', 'items' => $undo],
+        );
+    }
+
+    /** "Khôi phục (N)" on the Trash: back as drafts. */
+    public function bulkRestore(): void
+    {
+        $this->guardWrite('restore');
+        $done = 0;
+        $undo = [];
+        if (! $this->atomic(function () use (&$done, &$undo): void {
+            foreach ($this->pickRows($this->selected, true) as $product) {
+                $undo[$product->ulid] = $product->status;
+                $product->restore();
+                $product->forceFill(['status' => 'draft'])->save();
+                $done++;
+            }
+        })) {
+            return;
+        }
+        if ($done === 0) {
+            $this->staleSelection();
+
+            return;
+        }
+        $this->selected = [];
+        $this->say(
+            __('catalog.bulk_restored', ['count' => $done]),
+            'success',
+            ['kind' => 'bulk_retrash', 'items' => $undo],
+        );
+    }
+
+    /** "Xóa vĩnh viễn (N)" on the Trash, after the member confirmed; no undo. */
+    public function bulkForceDelete(): void
+    {
+        $this->guardWrite('forceDelete');
+        $done = 0;
+        $name = '';
+        if (! $this->atomic(function () use (&$done, &$name): void {
+            // FK cascade removes translations, images and routes; the sku and the address are free again
+            foreach ($this->pickRows($this->selected, true, 'none') as $product) {
+                $name = $this->loadedName($product);
+                $product->forceDelete();
+                $done++;
+            }
+        })) {
+            return;
+        }
+        if ($done === 0) {
+            $this->staleSelection();
+
+            return;
+        }
+        $this->selected = [];
+        $this->say($done === 1 ? __('catalog.bulk_purged_one', ['name' => $name]) : __('catalog.bulk_purged', ['count' => $done]));
+    }
+
+    /**
+     * The "Đổi chuyên mục…" dialog: for one row (its ⋯ menu) or for the ticked ones. Opens only for
+     * live products of this website that are still there.
+     */
+    public function openCategory(?string $ulid = null): void
+    {
+        $this->guardWrite('update');
+        $wanted = $ulid !== null ? [$ulid] : $this->selected;
+        $found = $this->pickRows($wanted, false, 'none')->pluck('ulid')->all();
+        if ($found === []) {
+            $this->catOpen = false;
+            $this->catTargets = [];
+            $this->staleSelection();
+
+            return;
+        }
+        $this->catTargets = Cast::strings($found);
+        $this->catOpen = true;
+    }
+
+    /** The dialog was closed (✕, Hủy, Esc or the backdrop). */
+    public function updatedCatOpen(): void
+    {
+        if (! $this->catOpen) {
+            $this->catTargets = [];
+        }
+    }
+
+    /** "Đổi chuyên mục": the main category of the dialog's products becomes the one picked. */
+    public function changeCategory(string $categoryUlid): void
+    {
+        $this->guardWrite('update');
+        $targets = $this->catTargets;
+        $this->catOpen = false;
+        $this->catTargets = [];
+        $category = Taxonomy::query()->where('vocabulary', 'product_cat')->where('ulid', $categoryUlid)->with('translations')->first();
+        if ($category === null) {
+            $this->say(__('catalog.bulk_cat_gone'), 'error');
+
+            return;
+        }
+
+        $result = null;
+        if (! $this->atomic(function () use ($targets, $category, &$result): void {
+            $rows = $this->pickRows($targets, false, 'all');
+            $result = app(ChangeProductMainCategory::class)->handle($rows, $category);
+        })) {
+            return;
+        }
+        if ($result === null || $result['moved'] + $result['same'] + $result['failed'] === 0) {
+            $this->staleSelection();
+
+            return;
+        }
+
+        $name = Cast::string($category->translations->where('locale', app(SiteLocale::class)->default())->pluck('name')->first(), __('catalog.unnamed'));
+        if ($result['moved'] === 0 && $result['failed'] === 0) {
+            $this->say(__('catalog.bulk_cat_same', ['category' => $name]), 'info');
+
+            return;
+        }
+        $parts = [];
+        if ($result['moved'] > 0) {
+            $parts[] = __('catalog.bulk_cat_done', ['count' => $result['moved'], 'category' => $name]);
+            if ($result['redirected'] > 0) {
+                $parts[] = __('catalog.bulk_cat_redirect', ['count' => $result['redirected']]);
+            }
+        }
+        if ($result['failed'] > 0) {
+            $parts[] = __('catalog.bulk_cat_failed', ['count' => $result['failed']]);
+        }
+        $this->say(implode(' ', $parts), $result['moved'] > 0 ? 'success' : 'error', $result['moved'] > 0 ? ['kind' => 'bulk_category', 'items' => $result['before']] : null);
+    }
+
+    /** One status change for the ticked products: those it applies to are changed, the others are counted and left as they are. */
+    private function bulkStatus(string $to): void
+    {
+        $this->guardWrite('update');
+        $label = __($to === 'published' ? 'catalog.bulk_publish' : 'catalog.bulk_archive');
+        $done = $skipped = $failed = 0;
+        $undo = [];
+        $last = null;
+        if (! $this->atomic(function () use ($to, &$done, &$skipped, &$failed, &$undo, &$last): void {
+            foreach ($this->pickRows($this->selected, false) as $product) {
+                // "Đăng" is for what is not live yet; "Gỡ khỏi website" only for what is live
+                if (($to === 'published') === ($product->status === 'published')) {
+                    $skipped++;
+
+                    continue;
+                }
+                $before = $product->status;
+                try {
+                    app(ChangeProductStatus::class)->handle($product, $to);
+                } catch (RouteConflictException) {
+                    $failed++;
+
+                    continue;
+                } catch (UniqueConstraintViolationException $e) {
+                    UniqueViolation::refusal($e);
+                    $failed++;
+
+                    continue;
+                }
+                $undo[$product->ulid] = $before;
+                $last = $product;
+                $done++;
+            }
+        })) {
+            return;
+        }
+
+        $why = __($to === 'published' ? 'catalog.bulk_why_published' : 'catalog.bulk_why_unpublished', ['count' => $skipped]);
+        if ($done === 0) {
+            if ($failed > 0) {
+                $this->say(__('catalog.bulk_failed_route', ['count' => $failed]), 'error');
+            } elseif ($skipped > 0) {
+                $this->say(__('catalog.bulk_none_can', ['label' => $label, 'why' => $why]), 'info');
+            } else {
+                $this->staleSelection();
+            }
+
+            return;
+        }
+        $parts = [$done === 1 && $last !== null
+            ? __('catalog.toast_status_'.$to, ['name' => $this->loadedName($last)])
+            : __('catalog.bulk_status_'.$to, ['count' => $done])];
+        if ($failed > 0) {
+            $parts[] = __('catalog.bulk_failed_route', ['count' => $failed]);
+        }
+        $this->say(implode(' ', $parts), 'success', ['kind' => 'bulk_status', 'items' => $undo]);
+    }
+
+    /**
+     * Put the bulk undo back: the same Actions as the change itself, each product looked up again and
+     * the member's right asked again. A product that is gone, or whose address is now taken, stays as it is.
+     *
+     * @param  array<string, mixed>  $op
+     */
+    private function undoBulk(array $op): void
+    {
+        $items = Cast::arr($op['items'] ?? null);
+        $kind = Cast::string($op['kind'] ?? '');
+        $back = 0;
+        $blocked = 0;
+        $ulids = array_values(array_map(static fn (mixed $ulid): string => Cast::string($ulid), $kind === 'bulk_untrash' ? $items : array_keys($items)));
+
+        if (! $this->atomic(function () use ($kind, $items, $ulids, &$back, &$blocked): void {
+            switch ($kind) {
+                case 'bulk_status':
+                    $this->guardWrite('update');
+                    foreach ($this->pickRows($ulids, false, inView: false) as $product) {
+                        $status = Cast::string($items[$product->ulid] ?? '');
+                        abort_unless(in_array($status, ChangeProductStatus::STATUSES, true), 422);
+                        try {
+                            app(ChangeProductStatus::class)->handle($product, $status);
+                            $back++;
+                        } catch (RouteConflictException) {
+                            $blocked++;
+                        } catch (UniqueConstraintViolationException $e) {
+                            UniqueViolation::refusal($e);
+                            $blocked++;
+                        }
+                    }
+                    break;
+                case 'bulk_untrash':
+                    $this->guardWrite('restore');
+                    foreach ($this->pickRows($ulids, true, inView: false) as $product) {
+                        $product->restore();
+                        $back++;
+                    }
+                    break;
+                case 'bulk_retrash':
+                    $this->guardWrite('delete');
+                    foreach ($this->pickRows($ulids, false, inView: false) as $product) {
+                        $status = Cast::string($items[$product->ulid] ?? '');
+                        abort_unless(in_array($status, ChangeProductStatus::STATUSES, true), 422);
+                        $product->forceFill(['status' => $status])->save();
+                        $product->delete();
+                        $back++;
+                    }
+                    break;
+                case 'bulk_category':
+                    $this->guardWrite('update');
+                    $this->undoCategories($items, $ulids, $back, $blocked);
+                    break;
+            }
+        })) {
+            return;
+        }
+
+        if ($back === 0) {
+            $this->say(__($blocked > 0 ? 'catalog.undo_conflict' : 'catalog.undo_gone'), 'error');
+
+            return;
+        }
+        $left = count($ulids) - $back;
+        $this->say($left > 0 ? __('catalog.undo_partial', ['count' => $back, 'left' => $left]) : __('catalog.toast_undone'), 'success');
+    }
+
+    /**
+     * @param  array<string, mixed>  $items  product ulid → its category ulids, main first
+     * @param  list<string>  $ulids
+     */
+    private function undoCategories(array $items, array $ulids, int &$back, int &$blocked): void
+    {
+        $wanted = [];
+        foreach ($items as $list) {
+            array_push($wanted, ...Cast::strings($list));
+        }
+        $taxonomies = $wanted === [] ? collect() : Taxonomy::query()->where('vocabulary', 'product_cat')->whereIn('ulid', array_values(array_unique($wanted)))
+            ->with('translations')->get()->keyBy('ulid');
+        $rows = $this->pickRows($ulids, false, 'all', inView: false);
+        $action = app(ChangeProductMainCategory::class);
+        $routes = $action->routePaths(array_values($rows->modelKeys()));
+        $counts = app(CategoryItemCounts::class);
+        foreach ($rows as $product) {
+            $ids = [];
+            foreach (Cast::strings($items[$product->ulid] ?? null) as $key) {
+                $found = $taxonomies->get($key);
+                if ($found instanceof Taxonomy) {
+                    $ids[] = $found->id;
+                }
+            }
+            $main = $ids === [] ? null : $taxonomies->firstWhere('id', $ids[0]);
+            try {
+                $counts->batch(fn (): bool => DB::transaction(fn (): bool => $action->file($product, $ids, $main instanceof Taxonomy ? $main : null, $routes[$product->id] ?? [])));
+                $back++;
+            } catch (RouteConflictException) {
+                $blocked++;
+            } catch (UniqueConstraintViolationException $e) {
+                UniqueViolation::refusal($e);
+                $blocked++;
+            }
+        }
+    }
+
+    /**
+     * Run a bulk change as one unit inside the request's transaction, with the category totals it moves
+     * written once per category at the end. A deadlock or serialization failure rolls the whole unit back
+     * (the transaction is aborted, nothing more could run in it), keeps the selection and asks the member
+     * to try again; any other failure goes on up. Returns whether the unit ran.
+     *
+     * @param  Closure(): void  $work
+     */
+    private function atomic(Closure $work): bool
+    {
+        DB::beginTransaction();
+        try {
+            app(CategoryItemCounts::class)->batch($work);
+            DB::commit();
+        } catch (Throwable $e) {
+            DB::rollBack();
+            if (! ConcurrencyError::is($e)) {
+                throw $e;
+            }
+            $this->say(__('catalog.bulk_conflict'), 'error');
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * The products named by $ulids that are really there: this website's, live (or in the Trash when
+     * $trashed), at most one page of them (`$inView`: and in what the screen shows now), locked in id order so two overlapping runs queue instead of
+     * deadlocking. What is not there is dropped without a word. `$with`: the main category (the totals and
+     * the address read it), every category, or nothing.
+     *
+     * @param  list<string>  $ulids
+     * @return EloquentCollection<int, Product>
+     */
+    private function pickRows(array $ulids, bool $trashed, string $with = 'primary', bool $inView = true): EloquentCollection
+    {
+        $ulids = array_slice(array_values(array_unique(array_filter($ulids, 'is_string'))), 0, self::SELECT_MAX);
+        if ($ulids === []) {
+            return new EloquentCollection;
+        }
+
+        $relations = ['translations:id,product_id,locale,name,slug'];
+        if ($with === 'primary') {
+            $relations = [...$relations, ...self::categoryRelations(app(PermalinkConfig::class)->pattern('products', 'products') === 'category_path')];
+        } elseif ($with === 'all') {
+            $relations['taxonomies'] = static function (Relation $categories): void {
+                if ($categories instanceof BelongsToMany) {
+                    $categories->select(['taxonomies.id', 'taxonomies.ulid']);
+                }
+            };
+        }
+
+        if ($inView) {
+            // only what the screen shows now: the status group, the filters and the search all hold
+            if (($this->tab === 'trash') !== $trashed) {
+                return new EloquentCollection;
+            }
+            $tree = $this->categoryTree();
+            $this->catF = $tree->known($this->catF);
+            $base = $this->listQuery($this->listFilter($tree))->filtered();
+        } else {
+            $base = $trashed ? Product::onlyTrashed() : Product::query();
+        }
+
+        return $base->whereIn('products.ulid', $ulids)->orderBy('products.id')->lockForUpdate()
+            ->with($relations)->get();
+    }
+
+    /** The ticked products are gone or were changed by someone else: say so (the selection is dropped). */
+    private function staleSelection(): void
+    {
+        $this->selected = [];
+        $this->say(__('catalog.row_gone'), 'error');
+    }
+
+    /** The default-language name of a product whose translations are loaded (no query). */
+    private function loadedName(Product $product): string
+    {
+        $translation = $product->translations->firstWhere('locale', app(SiteLocale::class)->default());
+
+        return $translation instanceof ProductTranslation ? $translation->name : __('catalog.untitled');
+    }
+
     public function forceDelete(string $ulid): void
     {
         $this->guardWrite('forceDelete');
@@ -736,11 +1208,11 @@ final class Index extends Component
 
         try {
             // a savepoint inside the request's tenancy transaction: a failed read leaves it usable for the page
-            $read = DB::transaction(function () use ($locale, $locales, $selling, $cap, $sortOn): array {
+            $read = DB::transaction(function () use ($locales, $selling, $cap, $sortOn): array {
                 $tree = $this->categoryTree();
                 $this->catF = $tree->known($this->catF);
-                $filter = new ProductListFilter($tree->idsUnder($this->catF), $this->transF, $locales, $this->tagF, $this->stockF, $this->saleF !== []);
-                $list = new ProductListQuery(app(CurrentSite::class)->id(), $this->tab, $this->search, $locale, $cap, $filter);
+                $filter = $this->listFilter($tree);
+                $list = $this->listQuery($filter);
                 $tally = $list->tabCounts();
                 $counts = [];
                 foreach (self::TABS as $tab) {
@@ -750,8 +1222,9 @@ final class Index extends Component
                 $facets = $this->facets($tree, ($tally['all'] ?? 0) <= $cap ? $list->valueCounts($locales, $selling) : null, count($locales) >= 2, $selling, $cap);
                 $page = $this->readPage($list, $sortOn, trim($this->search) === '' && ! $filter->any() ? $counts[$this->tab] : null, $cap);
                 $this->loadRows($page['rows']);
+                $picked = $this->pruneSelection($list);
 
-                return $page + ['tree' => $tree, 'counts' => $counts, 'facets' => $facets, 'chips' => $this->filterChips($tree, $facets), 'filterCount' => $this->filterCount($tree)];
+                return $page + ['picked' => $picked, 'tree' => $tree, 'counts' => $counts, 'facets' => $facets, 'chips' => $this->filterChips($tree, $facets), 'filterCount' => $this->filterCount($tree)];
             });
         } catch (QueryException $e) {
             report($e);
@@ -759,8 +1232,15 @@ final class Index extends Component
                 'counts' => array_fill_keys(self::TABS, 0), 'facets' => [], 'chips' => [], 'filterCount' => 0, 'failed' => true];
         }
 
+        $dialog = $this->catOpen && $this->catTargets !== [] && isset($read['tree']) ? $this->categoryDialog($read['tree']) : null;
+
         return view('admin::livewire.catalog.index', [
             'rows' => $read['rows'],
+            'selected' => array_keys($read['picked'] ?? []),
+            'selectedStatus' => $read['picked'] ?? [],
+            'may' => $canManage ? ['update' => Gate::allows('update', Product::class), 'delete' => Gate::allows('delete', Product::class),
+                'restore' => Gate::allows('restore', Product::class), 'forceDelete' => Gate::allows('forceDelete', Product::class)] : [],
+            'catDialog' => $dialog,
             'pager' => $read['pager'],
             'matchCount' => $read['total'],
             'counts' => $read['counts'],
@@ -792,6 +1272,32 @@ final class Index extends Component
             'urls' => app(MediaUrlResolver::class),
             'siteTime' => app(SiteTime::class),
         ]);
+    }
+
+    /**
+     * What the "Đổi chuyên mục chính" dialog shows: how many products, the name and the current main category
+     * of a single one, how many are published (their address may move), and the categories to choose from.
+     * Read only while the dialog is open.
+     *
+     * @return array{count: int, name: string|null, pick: string|null, published: int, moves: bool, choices: list<array{ulid: string, label: string, depth: int, count: int, path: string}>}
+     */
+    private function categoryDialog(ProductCategoryTree $tree): array
+    {
+        $products = Product::query()->whereIn('ulid', $this->catTargets)->orderBy('id')
+            ->with(['translations:id,product_id,locale,name', 'taxonomies' => static function (BelongsToMany $primary): void {
+                $primary->wherePivot('position', 0)->select(['taxonomies.id']);
+            }])->get(['id', 'ulid', 'status']);
+        $one = $products->count() === 1 ? $products->first() : null;
+        $mainId = $one?->primaryCategory()?->id;
+
+        return [
+            'count' => $products->count(),
+            'name' => $one !== null ? $this->loadedName($one) : null,
+            'pick' => $mainId !== null ? $tree->ulidOf($mainId) : null,
+            'published' => $products->where('status', 'published')->count(),
+            'moves' => in_array(app(PermalinkConfig::class)->pattern('products', 'products'), ['category', 'category_path'], true),
+            'choices' => $tree->choices(),
+        ];
     }
 
     /**
@@ -838,6 +1344,42 @@ final class Index extends Component
         $this->saleF = $selling && in_array('on', $this->saleF, true) ? ['on'] : [];
         $this->moreF = array_filter(array_intersect_key($this->moreF, self::FILTERS), fn (mixed $open): bool => $open === true);
         $this->qF = array_map(fn (mixed $words): string => mb_substr(Cast::string($words), 0, 100), array_intersect_key($this->qF, self::FILTERS));
+    }
+
+    private function listFilter(ProductCategoryTree $tree): ProductListFilter
+    {
+        return new ProductListFilter($tree->idsUnder($this->catF), $this->transF, app(SiteLocale::class)->enabled(), $this->tagF, $this->stockF, $this->saleF !== []);
+    }
+
+    private function listQuery(ProductListFilter $filter): ProductListQuery
+    {
+        $cap = max(1, Cast::int(config('admin.catalog_list_cap', ProductListQuery::CAP)));
+
+        return new ProductListQuery(app(CurrentSite::class)->id(), $this->tab, $this->search, app(SiteLocale::class)->default(), $cap, $filter);
+    }
+
+    /**
+     * The ticked products that are still in what the screen shows (status group, filters and search):
+     * the selection is cut down to them, and their status is returned (ulid => status, in ticked order).
+     * The bar's counts and every bulk action read this same set.
+     *
+     * @return array<string, string>
+     */
+    private function pruneSelection(ProductListQuery $list): array
+    {
+        if ($this->selected === []) {
+            return [];
+        }
+        $found = $list->filtered()->whereIn('products.ulid', $this->selected)->pluck('products.status', 'products.ulid')->all();
+        $kept = [];
+        foreach ($this->selected as $ulid) {
+            if (isset($found[$ulid])) {
+                $kept[$ulid] = Cast::string($found[$ulid]);
+            }
+        }
+        $this->selected = array_keys($kept);
+
+        return $kept;
     }
 
     /** The product categories, read once per request. */

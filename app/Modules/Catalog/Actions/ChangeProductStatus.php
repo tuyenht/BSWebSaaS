@@ -59,7 +59,9 @@ final class ChangeProductStatus
             return;
         }
 
-        foreach ($product->translations()->get(['locale', 'slug']) as $translation) {
+        // a caller that already loaded the translations (the bulk run) is not read again
+        $translations = $product->relationLoaded('translations') ? $product->translations : $product->translations()->get(['locale', 'slug']);
+        foreach ($translations as $translation) {
             $sync->syncProduct($product->id, $category, $translation->locale, $translation->slug);
         }
     }

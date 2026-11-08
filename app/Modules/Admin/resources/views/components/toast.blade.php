@@ -22,13 +22,14 @@
     // A screen that keeps its state in the browser passes `state`: an Alpine expression for its
     // message { text, tone, undo, seq } (seq: a number new for each message). The same look and the
     // same timing — an error stays until closed — with `dismiss` (called with the seq) and `undo`
-    // naming the Alpine methods. `raised` lifts it above a bar stuck to the bottom of the screen.
+    // naming the Alpine methods. `raised` lifts it above a bar stuck to the bottom of the screen
+    // (the bar's height when it sets --bulk-bar-h, else 5.5rem).
     // `action` (state only) names the Alpine method behind one more button, shown when the message
     // carries its label as `act` ("Thử lại", "Tải lại", "Mở …"); a message with one stays 10 seconds.
     $icon = ['error' => 'ri-error-warning', 'info' => 'ri-information'][$tone] ?? 'ri-check';
     $wait = $undo ? 10000 : 6000;
     $call = $dismiss.'('.($seq !== null ? (int) $seq : '').')';
-    $bottom = $raised ? 'bottom-[max(5.5rem,env(safe-area-inset-bottom))]' : 'bottom-[max(1rem,env(safe-area-inset-bottom))]';
+    $bottom = $raised ? 'bottom-[max(5.5rem,calc(var(--bulk-bar-h,0px)+0.5rem),env(safe-area-inset-bottom))]' : 'bottom-[max(1rem,env(safe-area-inset-bottom))]';
     $box = 'pointer-events-auto flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md bg-text-strong px-4 py-3 text-body text-surface shadow-lg';
     $btn = 'hit-area inline-flex min-h-control items-center whitespace-nowrap rounded border border-current px-3 font-semibold any-pointer-coarse:min-h-hit';
 @endphp
