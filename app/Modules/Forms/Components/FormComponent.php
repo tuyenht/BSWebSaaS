@@ -7,12 +7,14 @@ use App\Modules\Forms\Models\FormField;
 use App\Modules\Forms\Support\FormFieldTypes;
 use App\Modules\Shared\Contracts\Component;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Shared\Support\PreviewMode;
 
 /**
  * Data-bound page component: embeds a lead-capture form (resolved by key within the current site,
  * RLS) into a Page-JSON page — e.g. the contact / quote form on /lien-he alongside the NAP block.
  * The view renders the form's fields, a hidden honeypot, and (only when configured) the Turnstile
- * widget; the success / error state is read from the session by the view. Fail-safe: an
+ * widget; the success / error state is read from the session by the view. In the admin's preview of a
+ * page (PreviewMode) the form is drawn switched off: no address to send to, no Turnstile, no outcome. Fail-safe: an
  * unknown/inactive form_key yields a null action so the view renders nothing (the block-type
  * allow-list already gates rendering).
  */
@@ -51,6 +53,7 @@ final class FormComponent implements Component
             ->first();
 
         $locale = app()->getLocale();
+        $preview = PreviewMode::on();
 
         return [
             'props' => $props,
@@ -65,7 +68,8 @@ final class FormComponent implements Component
                 'is_required' => $field->is_required,
                 'choices' => FormFieldTypes::isChoice($field->type) ? FormFieldTypes::choiceLabels($field, $locale) : [],
             ])->all() ?? [],
-            'turnstileSiteKey' => Cast::string(config('services.turnstile.site_key')),
+            'turnstileSiteKey' => $preview ? '' : Cast::string(config('services.turnstile.site_key')),
+            'preview' => $preview,
         ];
     }
 

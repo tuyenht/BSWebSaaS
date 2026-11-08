@@ -8,6 +8,8 @@
     they work without script; the switcher script (loaded only with more than one photo) swaps the
     main photo in place, shows the arrows and keeps the "1 / 4" count. Everything comes server-built
     from the controller; no id reaches the markup.
+    The admin's preview ($preview) adds one line above the header saying it is a preview; its skip link
+    stays in the frame while every other link opens outside it (the head's <base target="_blank">).
 --}}
 @php
     $sfPhotos = $images ?? [];
@@ -23,7 +25,10 @@
 @include('theme::partials.head')
 </head>
 <body>
-    <a class="sf-skip" href="#noi-dung">{{ __('storefront.skip_to_content') }}</a>
+    <a class="sf-skip" href="#noi-dung"@if (! empty($preview)) target="_self"@endif>{{ __('storefront.skip_to_content') }}</a>
+@if (! empty($preview))
+    <p class="sf-preview" role="note">{{ __(! empty($previewLive) ? 'storefront.preview_band_live' : 'storefront.preview_band') }}</p>
+@endif
     @include('theme::partials.header', ['menu' => $menu ?? [], 'brand' => $brand ?? null])
     <main class="product-page" id="noi-dung" tabindex="-1">
         <article class="product">

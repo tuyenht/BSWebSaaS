@@ -332,20 +332,25 @@ it('tells a Trash row\'s name what to do instead of opening an editor', function
     });
 });
 
-it('draws the Xem button on a published row only, with the website link and its address line in the menu for when the button is hidden', function (): void {
+it('draws the Xem button as the website link on a published row and as the preview on a draft, each repeated in the menu for when the button is hidden', function (): void {
     $manager = rowManager();
 
     app(Tenancy::class)->enter(1, function () use ($manager): void {
         $live = rowProduct('Đang bán', 'dang-ban', 'published');
         $live->forceFill(['status' => 'published'])->save();
-        rowProduct('Chưa đăng', 'chua-dang');
+        $draft = rowProduct('Chưa đăng', 'chua-dang');
 
         $html = Livewire::actingAs($manager)->test(Index::class)->html();
 
-        expect(substr_count($html, 'x-show="xvVis"'))->toBe(1)
+        expect(substr_count($html, 'x-show="xvVis"'))->toBe(2)
             ->and($html)->toContain(__('catalog.view_named', ['name' => 'Đang bán']))
             ->and($html)->not->toContain(__('catalog.view_named', ['name' => 'Chưa đăng']))
-            ->and(substr_count($html, 'x-show="! xvVis"'))->toBe(2)
+            ->and($html)->toContain(__('catalog.preview_named', ['name' => 'Chưa đăng']))
+            ->and($html)->not->toContain(__('catalog.preview_named', ['name' => 'Đang bán']))
+            ->and(substr_count($html, route('admin.catalog.preview', ['ulid' => $draft->ulid])))->toBe(2)
+            ->and($html)->not->toContain(route('admin.catalog.preview', ['ulid' => $live->ulid]))
+            // the website link with its address line, and the preview item
+            ->and(substr_count($html, 'x-show="! xvVis"'))->toBe(3)
             ->and($html)->toContain('dang-ban</span>')
             // the copy item sits in the menu of every product that has an address, for the narrow card
             ->and(substr_count($html, __('catalog.copy_path')))->toBe(2);
