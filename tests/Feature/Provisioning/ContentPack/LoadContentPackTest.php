@@ -86,6 +86,7 @@ it('creates every item on the first apply and records the read-back hash of each
                 ->and($ledger['items'][$item->item->key]['ref'])->not->toMatch('/^\d+$/');
         }
     });
+    expectProductSearchWordsCurrent($this->siteId);
 });
 
 it('is idempotent: the second dry run is all unchanged and the second apply writes nothing', function (): void {

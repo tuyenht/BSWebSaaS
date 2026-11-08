@@ -25,6 +25,11 @@ Schedule::command('products:purge-trash')->daily()->withoutOverlapping();
 // month check (03:00 UTC) run hours apart from it.
 Schedule::command('cms:reconcile-category-counts')->dailyAt('20:15')->timezone('UTC')->withoutOverlapping();
 
+// Check the search words of the 500 products each site edited last against their names and SKU, and
+// write again the ones that differ (one warning per site that had any: a write path missed them).
+// 20:45 UTC is 03:45 in Vietnam, after the category re-count.
+Schedule::command('catalog:search-words --recent=500')->dailyAt('20:45')->timezone('UTC')->withoutOverlapping();
+
 // Publish scheduled entries the moment their slot arrives (status=scheduled, published_at<=now).
 // Runs on the `scheduler` container (docker compose schedule:work).
 Schedule::command('entries:publish-due')->everyMinute()->withoutOverlapping();

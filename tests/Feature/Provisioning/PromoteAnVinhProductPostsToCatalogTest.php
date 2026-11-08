@@ -121,6 +121,7 @@ it('promotes product-posts to Product rows at the identical route, with no redir
     $summary = app(Tenancy::class)->enter($site->id, fn (): array => app(PromoteAnVinhProductPostsToCatalog::class)->handle());
 
     expect($summary)->toHaveCount(2);
+    expectProductSearchWordsCurrent($site->id);
     foreach ($summary as $row) {
         expect($row['action'])->toBe('created');
         expect($row['productUrl'])->toStartWith('/san-pham/');
