@@ -296,6 +296,11 @@ final class ProductListQuery
      * cursor: the sort value and id of the row the page follows). With $before, the rows that come
      * before the anchor are read, nearest first, and turned round into list order.
      *
+     * A cursor page is read in at most two parts, each a plain range in the list's order: the rows
+     * with a sort value, then (only when the first part did not fill the page) the rows without one.
+     * One condition for both ("past the anchor, or no value") is not a range, so an index on the
+     * order could only be walked from its end and filtered row by row.
+     *
      * Each row carries `__sv`, its sort value as text, from which the next cursor is made.
      *
      * @param  array{v: string|null, id: int}|null  $anchor
@@ -305,7 +310,7 @@ final class ProductListQuery
     {
         $key = array_key_exists($key, self::SORTS) ? $key : 'updated';
         $dir = self::SORTS[$key];
-        [$order, $value, $cast] = $this->sortExpression($key);
+        [$order, $value, $cast, $nullable] = $this->sortExpression($key);
         $reading = $before ? ($dir === 'asc' ? 'desc' : 'asc') : $dir;
 
         $query = $this->filtered()
@@ -318,64 +323,75 @@ final class ProductListQuery
                 ->where('nt.locale', '=', $this->locale));
         }
 
-        if ($anchor !== null) {
-            [$sql, $values] = $this->afterAnchor($order, $value, $cast, $dir, $before, $anchor);
-            $query->whereRaw($sql, $values);
-            $offset = 0;
-        }
-
         // spelled out: a missing value comes last in list order, so first when the list is read backwards
         $nulls = $before ? 'nulls first' : 'nulls last';
-        $query->orderByRaw("{$order} {$reading} {$nulls}, products.id {$reading}")->offset($offset)->limit($limit);
+        $query->orderByRaw("{$order} {$reading} {$nulls}, products.id {$reading}");
 
-        $rows = $query->get();
+        if ($anchor === null) {
+            return $query->offset($offset)->limit($limit)->get();
+        }
+
+        /** @var list<Product> $found */
+        $found = [];
+        foreach ($this->afterAnchor($value, $cast, $order, $dir, $nullable, $before, $anchor) as [$sql, $values]) {
+            $part = (clone $query)->whereRaw($sql, $values)->limit($limit - count($found))->get();
+            $found = [...$found, ...$part->all()];
+            if (count($found) >= $limit) {
+                break;
+            }
+        }
+        $rows = new EloquentCollection($found);
 
         return $before ? $rows->reverse()->values() : $rows;
     }
 
     /**
-     * What continues the list after (or, with $before, ahead of) the anchor row.
+     * The parts that continue the list after (or, with $before, ahead of) the anchor row, in reading
+     * order: [condition, bindings] each.
      *
-     * @param  literal-string  $order
      * @param  literal-string  $value
      * @param  literal-string  $cast
+     * @param  literal-string  $order
      * @param  'asc'|'desc'  $dir
      * @param  array{v: string|null, id: int}  $anchor
-     * @return array{0: literal-string, 1: list<mixed>}
+     * @return list<array{0: literal-string, 1: list<mixed>}>
      */
-    private function afterAnchor(string $order, string $value, string $cast, string $dir, bool $before, array $anchor): array
+    private function afterAnchor(string $value, string $cast, string $order, string $dir, bool $nullable, bool $before, array $anchor): array
     {
         $forward = $dir === 'desc' ? '<' : '>';
         $op = $before ? ($forward === '<' ? '>' : '<') : $forward;
 
         if ($anchor['v'] === null) {
-            // the rows with no value close the list, by id: after one, only later ids of them; before one,
-            // every row with a value and the earlier ids of them
-            return $before
-                ? ["({$value} is not null or products.id {$op} ?)", [$anchor['id']]]
-                : ["({$value} is null and products.id {$op} ?)", [$anchor['id']]];
+            // the rows with no value close the list, by id: after one, only later ids of them; before
+            // one, the earlier ids of them nearest first, then every row with a value
+            $rest = ["({$value} is null and products.id {$op} ?)", [$anchor['id']]];
+
+            return $before ? [$rest, ["{$value} is not null", []]] : [$rest];
         }
 
-        $row = "(({$order}, products.id) {$op} (?::{$cast}, ?))";
+        // a row with no value never passes the row comparison, so the rows with a value are one range
+        $row = ["(({$order}, products.id) {$op} (?::{$cast}, ?))", [$anchor['v'], $anchor['id']]];
 
-        return [$before ? $row : "({$row} or {$value} is null)", [$anchor['v'], $anchor['id']]];
+        // after a row with a value come the rest of them, then the rows with none; ahead of it, only rows with a value
+        return $before || ! $nullable ? [$row] : [$row, ["{$value} is null", []]];
     }
 
     /**
-     * [order expression, value expression, cast of the value]
+     * [order expression, value expression, cast of the value, whether a row may have no value]
      *
-     * @return array{0: literal-string, 1: literal-string, 2: literal-string}
+     * @return array{0: literal-string, 1: literal-string, 2: literal-string, 3: bool}
      */
     private function sortExpression(string $key): array
     {
         return match ($key) {
-            'name' => ['nt.name collate '.self::NAME_COLLATION, 'nt.name', 'text'],
-            'price_asc', 'price_desc' => [self::SHOWN_PRICE, self::SHOWN_PRICE, 'bigint'],
-            'stock_asc' => ['products.stock', 'products.stock', 'integer'],
-            // the Trash lists what was removed last first
+            'name' => ['nt.name collate '.self::NAME_COLLATION, 'nt.name', 'text', true],
+            'price_asc', 'price_desc' => [self::SHOWN_PRICE, self::SHOWN_PRICE, 'bigint', true],
+            'stock_asc' => ['products.stock', 'products.stock', 'integer', true],
+            // the Trash lists what was removed last first; a row is in the Trash because it has a deletion time.
+            // The edit time is a nullable column: a row written outside Eloquent may have none.
             default => $this->tab === 'trash'
-                ? ['products.deleted_at', 'products.deleted_at', 'timestamptz']
-                : ['products.updated_at', 'products.updated_at', 'timestamptz'],
+                ? ['products.deleted_at', 'products.deleted_at', 'timestamptz', false]
+                : ['products.updated_at', 'products.updated_at', 'timestamptz', true],
         };
     }
 }

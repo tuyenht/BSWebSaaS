@@ -40,7 +40,8 @@ function listProduct(?string $name, ?string $sku, ?int $price, ?int $stock, stri
     if ($name !== null) {
         $product->translations()->create(['locale' => 'vi', 'name' => $name, 'slug' => 'sp-'.$product->id]);
     }
-    DB::connection('pgsql_admin')->table('products')->where('id', $product->id)->update(['updated_at' => $editedAt]);
+    // in the site's own transaction (a second connection would not see the uncommitted row), and past Eloquent's timestamps
+    Product::query()->whereKey($product->id)->toBase()->update(['updated_at' => $editedAt]);
 
     return $product;
 }
@@ -215,6 +216,41 @@ it('meets every row once, in one order, by offset and by cursor forward and back
         expect($backward)->toBe($whole);
     });
 })->with(['updated', 'name', 'price_asc', 'price_desc', 'stock_asc']);
+
+it('pages by last edit past products with no edit time, by cursor both ways, exactly as by offset', function (string $tab): void {
+    app(Tenancy::class)->enter(1, function () use ($tab): void {
+        listSeed();
+        // written outside Eloquent: no edit time; they close the list by id, whichever group
+        foreach (['Ống đồng', 'Bạc đạn', 'Phôi thép'] as $i => $name) {
+            $product = listProduct($name, null, null, null, $i === 1 ? 'published' : 'draft', '2026-11-01 08:00:00+00');
+            Product::query()->whereKey($product->id)->toBase()->update(['updated_at' => null]);
+        }
+        $list = listQuery($tab);
+        $whole = listIds($list, 'updated');
+        expect($whole)->toHaveCount($tab === 'all' ? 11 : 5)
+            ->and(array_slice($whole, -($tab === 'all' ? 3 : 2)))->toBe(Product::query()->whereNull('updated_at')
+            ->when($tab !== 'all', fn ($q) => $q->where('status', $tab))->orderByDesc('id')->pluck('id')->all());
+
+        foreach ([1, 2, 3] as $size) {
+            $forward = [];
+            $anchor = null;
+            do {
+                $rows = $list->rows('updated', 0, $size, $anchor);
+                $forward = [...$forward, ...$rows->modelKeys()];
+                $anchor = $rows->isEmpty() ? null : ['v' => $rows->last()->getAttribute('__sv'), 'id' => $rows->last()->id];
+            } while ($anchor !== null);
+            expect($forward)->toBe($whole);
+
+            $backward = $list->rows('updated', count($whole) - $size, $size)->modelKeys();
+            $rows = $list->rows('updated', count($whole) - $size, $size);
+            while ($rows->isNotEmpty()) {
+                $rows = $list->rows('updated', 0, $size, ['v' => $rows->first()->getAttribute('__sv'), 'id' => $rows->first()->id], before: true);
+                $backward = [...$rows->modelKeys(), ...$backward];
+            }
+            expect($backward)->toBe($whole);
+        }
+    });
+})->with(['all', 'draft']);
 
 it('keeps paging from a row deleted after its page was shown', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
