@@ -29,6 +29,7 @@ use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Rbac\Support\RoleLabel;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
@@ -350,7 +351,6 @@ final class Index extends Component
         foreach ($locales->enabled() as $locale) {
             $bases[$locale] = SeoFields::address($host, '/', $locale, false)['base'];
         }
-        $role = $actor->roles->sortByDesc('level')->first()?->getAttribute('name');
 
         return view('admin::livewire.categories.index', [
             'state' => $state,
@@ -360,7 +360,7 @@ final class Index extends Component
             'bases' => $bases,
             'layouts' => TemplateCatalog::names(TemplateCatalog::ROLE_LIST, $found !== null && $found['root'] === null ? TemplateCatalog::KIND_PRODUCT : TemplateCatalog::KIND_POST),
             'detailLayouts' => $this->detailLayouts($found === null || $found['root'] !== null),
-            'role' => is_string($role) && $role !== '' ? Str::headline($role) : null,
+            'role' => RoleLabel::topOf($actor),
             'limitNames' => $limits === null ? null : $this->namesOf($limits, $main),
             'listUrl' => $found !== null && $found['root'] === null ? route('admin.catalog.index') : route('admin.entries.index', $found !== null ? ['section' => $found['key']] : []),
             // "Liên hệ hỗ trợ" on the locked state: the platform's support mailbox

@@ -62,10 +62,7 @@ final class LeadAnswers
         }
 
         if (FormFieldTypes::isChoice($field->type)) {
-            $labels = [];
-            foreach (FormFieldTypes::choices($field) as $choice) {
-                $labels[$choice['value']] = ($choice['label'][$locale] ?? '') ?: (($choice['label']['vi'] ?? '') ?: $choice['value']);
-            }
+            $labels = FormFieldTypes::choiceLabels($field, $locale);
             $picked = is_array($value) ? $value : [$value];
             $value = array_map(static fn (mixed $one): string => $labels[self::plain($one)] ?? self::plain($one), $picked);
         }

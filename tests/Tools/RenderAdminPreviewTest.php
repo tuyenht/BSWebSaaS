@@ -21,6 +21,7 @@
  * render with the real compiled CSS/JS, so build the front end first (pnpm run build).
  */
 
+use App\Modules\Admin\Livewire\Catalog\Index;
 use App\Modules\Admin\Livewire\Platform\Audit\CleanupDialog;
 use App\Modules\Admin\Livewire\SeoSettings;
 use App\Modules\Admin\Livewire\Settings\Domains as DomainSettings;
@@ -360,5 +361,96 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('data-seo-fields')->not->toContain('wire:model="excerpt"');
     file_put_contents($dir.'/product-editor.html', $html);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 19);
+    // The products list on a selling site, with a realistic set: two languages, short and very long names, every
+    // price shape (none, plain, one thousand million, on sale with an end date), every stock kind, labels, a
+    // three-level category and some products without the English translation. GET-only, like the other screens.
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteSetting::query()->updateOrCreate(['group_name' => 'catalog', 'key' => 'mode'], ['value' => ['value' => 'commerce']]);
+        $cat = fn (string $name, ?Taxonomy $parent, string $en): Taxonomy => app(CreateTaxonomy::class)
+            ->handle('product_cat', $parent, new TaxonomyData(names: ['vi' => $name, 'en' => $en]));
+        $machines = $cat('Máy gia công', null, 'Machines');
+        $milling = $cat('Máy phay', $machines, 'Milling');
+        $fiveAxis = $cat('Máy phay CNC năm trục liên động', $milling, 'Five-axis CNC milling');
+        $tools = $cat('Dụng cụ cắt', null, 'Cutting tools');
+
+        $long = 'Mũi khoan thép gió dài HSS đường kính 10 mm, chuôi trụ, mài chính xác, phủ titan nitrua cho gia công cơ khí chính xác';
+        $rows = [
+            ['Mũi khoan HSS 10', 'mui-khoan-hss-10', 'MK-HSS-10', 480000, null, null, 6, [], $tools, true],
+            [$long, 'mui-khoan-hss-dai', 'MK-HSS-DAI', 1090000000, null, null, 1234, ['featured'], $fiveAxis, true],
+            ['Bộ dao phay ngón', 'bo-dao-phay-ngon', null, null, null, null, null, [], null, true],
+            ['Đồ gá kẹp phôi CNC 5 trục', 'do-ga-kep-phoi', 'DG-CNC-002', 12500000, 9900000, '2026-12-31 16:59:00', 3, ['best'], $milling, true],
+            ['Dao tiện ngoài', 'dao-tien-ngoai', 'DT-01', 250000, null, null, 0, ['featured', 'best'], $tools, false],
+            ['Ê tô máy phay', 'e-to-may-phay', 'ET-02', 3200000, 2800000, null, 6, [], $machines, false],
+            ['Mũi taro M8', 'mui-taro-m8', 'MT-08', 95000, null, null, 1234, [], $tools, true],
+            ['Máy phay CNC năm trục liên động độ chính xác cao', 'may-phay-5-truc', 'MP-5T', 850000000, null, null, 3, ['featured'], $fiveAxis, true],
+            ['Đầu kẹp dao ER32', 'dau-kep-er32', 'ER-32', 180000, null, null, null, [], $tools, false],
+            ['Dầu cắt gọt tổng hợp 20 lít', 'dau-cat-got', 'DC-20', 1450000, null, null, 0, [], null, true],
+            ['Thước cặp điện tử 150 mm', 'thuoc-cap', 'TC-150', 790000, 690000, '2026-11-30 16:59:00', 6, ['best'], $tools, false],
+            ['Phôi thép S45C', 'phoi-thep', 'S45C', 42000, null, null, 1234, [], null, true],
+        ];
+        foreach ($rows as [$name, $slug, $sku, $price, $sale, $saleEnd, $stock, $tags, $category, $hasEn]) {
+            $product = Product::query()->create(['status' => $stock === 0 ? 'archived' : 'published', 'sku' => $sku, 'price' => $price, 'stock' => $stock,
+                'sale_price' => $sale, 'sale_ends_at' => $saleEnd, 'is_featured' => in_array('featured', $tags, true), 'is_bestseller' => in_array('best', $tags, true)]);
+            $product->translations()->create(['locale' => 'vi', 'name' => $name, 'slug' => $slug]);
+            if ($hasEn) {
+                $product->translations()->create(['locale' => 'en', 'name' => 'Product '.$slug, 'slug' => 'en-'.$slug]);
+            }
+            if ($category !== null) {
+                $product->assignCategories([$category->id]);
+            }
+        }
+    });
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/catalog')->assertOk()->getContent();
+    expect($html)->toContain('Mũi khoan thép gió dài', 'Bộ dao phay ngón', 'list-langs2');
+    file_put_contents($dir.'/product-list.html', $html);
+
+    // The same list with 3 rows ticked (the sticky bar and its one skip sentence), and with the "Đổi chuyên mục chính"
+    // dialog open for 2 products over about 15 categories (one of them three levels deep). The component is rendered
+    // by the Livewire test harness and put in place of the list's own root, so the page keeps its real shell.
+    $ulids = app(Tenancy::class)->enter(1, function (): array {
+        $cat = fn (string $name, ?Taxonomy $parent): Taxonomy => app(CreateTaxonomy::class)
+            ->handle('product_cat', $parent, new TaxonomyData(names: ['vi' => $name, 'en' => $name]));
+        $machines = Taxonomy::query()->where('vocabulary', 'product_cat')->whereHas('translations', fn ($q) => $q->where('name', 'Máy gia công'))->firstOrFail();
+        $names = ['Phụ kiện máy', 'Đồ gá và kẹp', 'Dụng cụ đo kiểm', 'Vật tư tiêu hao', 'Dầu và chất làm mát', 'Thiết bị an toàn lao động',
+            'Máy tiện CNC', 'Máy mài', 'Máy cắt dây', 'Máy khoan đứng'];
+        foreach ($names as $name) {
+            $cat($name, str_starts_with($name, 'Máy') ? $machines : null);
+        }
+
+        return Product::query()->whereIn('sku', ['MK-HSS-10', 'DT-01', 'DG-CNC-002'])->orderBy('sku')->pluck('ulid')->all();
+    });
+    expect($ulids)->toHaveCount(3);
+    $mount = fn () => Livewire::actingAs($owner)->test(Index::class);
+    // the harness leaves the snapshot off the root once an action ran; put it back so the browser can boot the component
+    $withSnapshot = function ($test): string {
+        $snapshot = (fn () => $this->lastState->getSnapshot())->call($test);
+
+        return (string) preg_replace('/^<div wire:id="([^"]+)"/', '<div wire:snapshot="'.e(is_string($snapshot) ? $snapshot : json_encode($snapshot)).'" wire:effects="[]" wire:id="$1"', $test->html(), 1);
+    };
+    $swap = function (string $page, string $component): string {
+        // the list's own root: the div that carries its snapshot, up to the div that closes it
+        expect(preg_match('/<div wire:snapshot="[^"]*admin\\.catalog\\.index/', $page, $m, PREG_OFFSET_CAPTURE))->toBe(1);
+        $from = $m[0][1];
+        preg_match_all('#<div\b|</div>#', $page, $tags, PREG_OFFSET_CAPTURE, $from);
+        $depth = 0;
+        $to = null;
+        foreach ($tags[0] as [$tag, $at]) {
+            $depth += $tag === '</div>' ? -1 : 1;
+            if ($depth === 0) {
+                $to = $at + 6;
+                break;
+            }
+        }
+        expect($to)->not->toBeNull();
+
+        return substr($page, 0, $from).$component.substr($page, $to);
+    };
+    $ticked = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($mount()->call('toggleSelect', $ulids)));
+    expect($ticked)->toContain('role="region"', 'Bỏ chọn');
+    file_put_contents($dir.'/product-list-selected.html', $swap($html, $ticked));
+    $dialog = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($mount()->call('toggleSelect', [$ulids[0], $ulids[1]])->call('openCategory')));
+    file_put_contents($dir.'/product-list-category.html', $swap($html, $dialog));
+
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 22);
 });

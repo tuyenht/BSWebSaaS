@@ -158,15 +158,43 @@ it('renders a small site byte for byte as before the index existed', function ()
         ownerEmail: 'owner@other.test', ownerName: 'Owner', ownerPassword: 'a-strong-password',
     ));
     DB::connection('pgsql_admin')->statement("update routes set updated_at = '2026-01-02 03:04:05+00'");
+    DB::connection('pgsql_admin')->statement("update entry_translations set updated_at = '2026-01-02 03:04:05+00'");
 
-    // Golden output of the pre-index controller (81a0d4d) for the same fixture.
+    // Golden output of the pre-index controller (81a0d4d) for the same fixture, except that the
+    // category list now carries no lastmod (nothing records when a post joins it).
     expect($this->get('http://other.platform.test/sitemap.xml')->assertOk()->getContent())->toBe(
         '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
         .'<url><loc>http://other.platform.test/</loc><lastmod>2026-01-02T03:04:05+00:00</lastmod></url>'
         .'<url><loc>http://other.platform.test/lien-he</loc><lastmod>2026-01-02T03:04:05+00:00</lastmod></url>'
-        .'<url><loc>http://other.platform.test/tin-tuc</loc><lastmod>2026-01-02T03:04:05+00:00</lastmod></url>'
+        .'<url><loc>http://other.platform.test/tin-tuc</loc></url>'
         .'</urlset>'
     );
+});
+
+it('dates a page and a product by the last change of their text in that language, not by their route', function (): void {
+    app(ProvisionSite::class)->handle(new ProvisionSiteData(
+        tenantName: 'Other Co', siteName: 'Other Co', hostname: 'other.platform.test',
+        ownerEmail: 'owner@other.test', ownerName: 'Owner', ownerPassword: 'a-strong-password',
+    ));
+    $site = Site::query()->firstWhere('name', 'Other Co');
+    app(Tenancy::class)->enter($site->id, function (): void {
+        $product = Product::query()->create(['status' => 'published']);
+        $product->translations()->create(['locale' => 'vi', 'name' => 'Trục CNC', 'slug' => 'truc-cnc']);
+        app(RouteSync::class)->syncProduct($product->id, null, 'vi', 'truc-cnc');
+    });
+    $admin = DB::connection('pgsql_admin');
+    $admin->statement("update routes set updated_at = '2026-01-02 03:04:05+00'");
+    $admin->statement("update entry_translations set updated_at = '2026-01-02 03:04:05+00'");
+    // The contact page's text was edited later; the product's text too, before its route moved.
+    $admin->statement("update entry_translations set updated_at = '2026-03-04 05:06:07+00' where slug = 'lien-he'");
+    $admin->statement("update product_translations set updated_at = '2025-12-01 00:00:00+00'");
+
+    $xml = $this->get('http://other.platform.test/sitemap.xml')->assertOk()->getContent();
+
+    expect($xml)
+        ->toContain('<url><loc>http://other.platform.test/</loc><lastmod>2026-01-02T03:04:05+00:00</lastmod></url>')
+        ->toContain('<url><loc>http://other.platform.test/lien-he</loc><lastmod>2026-03-04T05:06:07+00:00</lastmod></url>')
+        ->toContain('/truc-cnc</loc><lastmod>2026-01-02T03:04:05+00:00</lastmod></url>');
 });
 
 it('keeps a site at or under the limit on a single urlset with no pages', function (): void {

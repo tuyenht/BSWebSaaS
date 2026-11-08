@@ -22,6 +22,7 @@ use App\Modules\Cms\Taxonomy\CategoryTemplates;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\SafeLink;
+use App\Modules\Storefront\Support\ArticleData;
 use App\Modules\Storefront\Support\BrandImages;
 use App\Modules\Storefront\Support\Breadcrumbs;
 use App\Modules\Storefront\Support\JobPosting;
@@ -343,6 +344,11 @@ final readonly class StorefrontController
                 if ($job['ld'] !== null) {
                     $extra['jobLd'] = $job['ld'];
                 }
+            } else {
+                $extra['articleLd'] = ArticleData::ld(
+                    $entry, $content->translation, $canonical, url($this->paths->publicUrl('/', $locale)), $locale,
+                    is_string($extra['ogImage'] ?? null) ? $extra['ogImage'] : null, is_array($brand) ? $brand : null,
+                );
             }
 
             // The blocks of the side column and of the band below the post; the newest posts of the
@@ -369,6 +375,12 @@ final readonly class StorefrontController
             unset($extra['recent']);
         } elseif ($path !== '/') {
             $extra['breadcrumb'] = [$this->crumbs->home($locale), ...$this->crumbs->parentPages($entry, $locale), $self];
+        }
+
+        // The home page names the website itself: the name search results show for the site.
+        $brandName = data_get($chrome, 'brand.name');
+        if ($path === '/' && is_string($brandName) && trim($brandName) !== '') {
+            $extra['websiteLd'] = ['@context' => 'https://schema.org', '@type' => 'WebSite', 'name' => trim($brandName), 'url' => $canonical, 'inLanguage' => $locale];
         }
 
         $html = $this->renderer->render(

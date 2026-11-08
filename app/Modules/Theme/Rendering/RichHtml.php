@@ -20,8 +20,8 @@ use App\Modules\Shared\Support\RichTextSanitizer;
  *    library row, lazy loading, the library alt text when the editor gave none; the id itself
  *    is never printed. A picture whose id does not resolve in this site is dropped, and a figure
  *    left with no picture goes too.
- * 3. Tables become focusable, so a keyboard can scroll a wide one.
- * 4. Video frames become the click-to-load façade (VideoFacades).
+ * 3. Video frames become the click-to-load façade (VideoFacades).
+ * 4. Tables get their layout for narrow columns (ProseTables).
  */
 final readonly class RichHtml
 {
@@ -121,10 +121,10 @@ final readonly class RichHtml
             $html = self::pictures($html, $urls, $srcsets, $alts, $dims);
         }
 
-        // A wide table scrolls inside itself; a keyboard user reaches it to scroll it.
-        $html = (string) preg_replace('~<table\b~', '<table tabindex="0"', $html);
+        $out = $this->videos->render($html);
+        $out['html'] = ProseTables::apply($out['html']);
 
-        return $this->videos->render($html);
+        return $out;
     }
 
     /**

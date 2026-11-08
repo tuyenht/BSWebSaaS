@@ -528,10 +528,12 @@
 }
 
 /* The sticky topbar would hide whatever focus or an in-page link scrolls to the top edge
-   (WCAG 2.4.11) — keep its height clear. Zero specificity: a topbar that scrolls away resets
+   (WCAG 2.4.11) — keep its height clear, and at the bottom the height of a list's selection bar while
+   it sticks there (--bulk-bar-h, set by the bar). Zero specificity: a topbar that scrolls away resets
    it (admin-chrome.css). */
 :where(:root:has(> body.admin-shell)) {
     scroll-padding-top: var(--topbar-height);
+    scroll-padding-bottom: var(--bulk-bar-h, 0px);
 }
 
 /* Every admin form field draws its edge in the input-border role. Views style fields inline with

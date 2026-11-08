@@ -71,6 +71,24 @@ it('keeps the article structure', function (): void {
     expect(cmsClean($html))->toBe($html);
 });
 
+it('keeps merged cells and header scopes, in the CMS and the product profile', function (): void {
+    $html = '<table><thead><tr><th scope="col" colspan="2">Thông số</th></tr></thead>'
+        .'<tbody><tr><th scope="row" rowspan="2">Dung sai</th><td>±0.01 mm</td></tr><tr><td>±0.005 mm</td></tr></tbody></table>';
+
+    expect(cmsClean($html))->toBe($html)
+        ->and((new RichTextSanitizer)->full($html))->toBe($html);
+});
+
+it('drops a span or scope that is not a positive whole number or a known scope', function (string $cell, string $clean): void {
+    expect(cmsClean("<table><tbody><tr>{$cell}</tr></tbody></table>"))->toBe("<table><tbody><tr>{$clean}</tr></tbody></table>");
+})->with([
+    'zero' => ['<td colspan="0">a</td>', '<td>a</td>'],
+    'negative' => ['<td rowspan="-2">a</td>', '<td>a</td>'],
+    'words' => ['<td colspan="two">a</td>', '<td>a</td>'],
+    'unknown scope' => ['<th scope="all">a</th>', '<th>a</th>'],
+    'scope on a data cell' => ['<td scope="row">a</td>', '<td>a</td>'],
+]);
+
 it('drops h1 and h6 to their text (the page owns its h1)', function (): void {
     expect(cmsClean('<h1>Tiêu đề</h1><h6>Nhỏ</h6>'))->toBe('Tiêu đềNhỏ');
 });

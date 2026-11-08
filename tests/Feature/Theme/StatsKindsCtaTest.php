@@ -310,11 +310,13 @@ describe('stats floating card', function (): void {
             ->not->toMatch('/^\.sf-stats--floating [^{]*(sf-stat__value|sf-section-head__title)/m');
     });
 
-    it('lays the floating card out two by two for 2 and 4 items and three across for 3, as the board', function (): void {
+    it('lays 2 items two across, 3 three across and 4 two by two on a phone, in every look, as the board', function (): void {
         $css = (string) file_get_contents(base_path('resources/css/storefront.css'));
 
-        expect($css)->toContain(".sf-stats--floating .sf-stats__list--2,\n.sf-stats--floating .sf-stats__list--4:not(:has(> :nth-child(5))) {\n    grid-template-columns: repeat(2, minmax(0, 1fr));")
-            ->toContain(".sf-stats--floating .sf-stats__list--3 {\n    grid-template-columns: repeat(3, minmax(0, 1fr));");
+        expect($css)->toContain(".sf-stats__list--2,\n.sf-stats__list--3,\n.sf-stats__list--4:not(:has(> :nth-child(5))) {\n    --stat-across: var(--stats, 2);\n    grid-template-columns: repeat(var(--stats, 2), minmax(0, 1fr));")
+            ->toContain('.sf-stats__list--3 { --stats: 3; }')
+            ->toContain("@media (min-width: 40rem) {\n    .sf-stats__list--4:not(:has(> :nth-child(5))) {\n        --stats: 4;")
+            ->not->toContain('.sf-stats--floating .sf-stats__list--2');
     });
 
     it('lets the card overlap the block above it instead of keeping the band\'s top padding', function (): void {

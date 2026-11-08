@@ -1,1 +1,1 @@
-<div role="separator" class="list-msep"></div>
+<div role="separator" {{ $attributes->merge(['class' => 'list-msep']) }}></div>
