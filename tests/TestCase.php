@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests;
 
+use App\Modules\Shared\Http\SafeHttp;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\Cache;
 use PDO;
@@ -34,6 +35,11 @@ abstract class TestCase extends BaseTestCase
         // counters (login brute-force, OTP send caps, presign throttle) would accumulate across
         // the suite and trip on shared keys (e.g. per-IP). Flush per test to keep them isolated.
         Cache::flush();
+
+        // No test asks real DNS through the outbound guard (a page that starts a background check
+        // would otherwise reach out from the sync queue): every host resolves to nothing unless a
+        // test binds its own answers.
+        $this->app->instance(SafeHttp::class, new SafeHttp(static fn (string $host): array => []));
     }
 
     /**
