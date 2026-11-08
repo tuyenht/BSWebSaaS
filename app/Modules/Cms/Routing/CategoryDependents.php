@@ -12,7 +12,8 @@ use InvalidArgumentException;
  * can carry their primary category — the `category` / `category_path` permalink presets. The owning
  * module registers the kind at boot: the pivot that files it under categories (the same shape and
  * rules as entry_taxonomies, HasCategoryTaxonomies), which permalink section composes its paths,
- * how to re-sync the public paths of a list of its items, and the item table (its rows carry
+ * how to re-sync the public paths of a list of its items, how to mark that their content changed
+ * (a re-filing that changes an item's main category changes its breadcrumb), and the item table (its rows carry
  * `site_id` and the soft-delete `deleted_at`, so the category totals, CategoryItemCounts, can count
  * the live ones). A category rename, move or deletion
  * (Cms\Actions\Taxonomies, via CategoryRelinker) then re-files and re-routes those items exactly
@@ -26,7 +27,7 @@ final class CategoryDependents
     private const string IDENTIFIER = '/\A[a-z][a-z0-9_]*\z/';
 
     /**
-     * @var array<string, array{pivot: string, column: string, section: string, resync: Closure(list<int>): int, items: string}>
+     * @var array<string, array{pivot: string, column: string, section: string, resync: Closure(list<int>): int, items: string, changed: Closure(list<int>): void}>
      */
     private array $kinds = [];
 
@@ -37,8 +38,9 @@ final class CategoryDependents
      * @param  string  $section  the PermalinkConfig section (and type) that composes the kind's paths
      * @param  Closure(list<int>): int  $resync  re-syncs the public paths of these items; returns routes moved
      * @param  string  $items  the item table, e.g. 'products' (with `site_id` and `deleted_at`)
+     * @param  Closure(list<int>): void  $changed  marks that these items' main content changed
      */
-    public function register(string $kind, string $pivot, string $column, string $section, Closure $resync, string $items): void
+    public function register(string $kind, string $pivot, string $column, string $section, Closure $resync, string $items, Closure $changed): void
     {
         // The tables and column are interpolated into the re-filing and counting SQL, so only plain identifiers.
         foreach ([$pivot, $column, $items] as $identifier) {
@@ -47,11 +49,11 @@ final class CategoryDependents
             }
         }
 
-        $this->kinds[$kind] = ['pivot' => $pivot, 'column' => $column, 'section' => $section, 'resync' => $resync, 'items' => $items];
+        $this->kinds[$kind] = ['pivot' => $pivot, 'column' => $column, 'section' => $section, 'resync' => $resync, 'items' => $items, 'changed' => $changed];
     }
 
     /**
-     * @return array<string, array{pivot: string, column: string, section: string, resync: Closure(list<int>): int, items: string}>
+     * @return array<string, array{pivot: string, column: string, section: string, resync: Closure(list<int>): int, items: string, changed: Closure(list<int>): void}>
      */
     public function all(): array
     {

@@ -289,7 +289,7 @@ it('prints the news post band with its category, dates, excerpt and cover captio
         $photo->update(['alt' => ['vi' => 'Ống thép xếp trong kho cũ'], 'title' => ['vi' => 'Ảnh: kho thép mới mở']]);
         $category = StorefrontCards::category('Ấn phẩm số hóa', 'an-pham-so-hoa');
         $post = StorefrontCards::post($category, 'Đề án mùa hè', 'de-an-mua-he', CarbonImmutable::parse('2026-09-01 08:00:00', 'UTC'), ['image_url' => $photo->storage_key], 'Ước tính chi phí cả năm đó');
-        $post->translations()->update(['updated_at' => CarbonImmutable::parse('2026-09-05 08:00:00', 'UTC')]);
+        $post->translations()->update(['updated_at' => CarbonImmutable::parse('2026-09-05 08:00:00', 'UTC'), 'content_changed_at' => CarbonImmutable::parse('2026-09-05 08:00:00', 'UTC')]);
     });
 
     $html = $this->get(BC_HOST.'/an-pham-so-hoa/de-an-mua-he')->assertOk()->getContent();

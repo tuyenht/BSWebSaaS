@@ -23,7 +23,7 @@ function articleSite(bool $brand = true): int
     $siteId = StorefrontCards::site();
     app(Tenancy::class)->enter($siteId, function () use ($brand): void {
         $post = StorefrontCards::post(StorefrontCards::news(), 'Gia công CNC chính xác', 'gia-cong-cnc', CarbonImmutable::parse('2026-10-01 08:00', 'UTC'), [], "Phay, tiện\n chính xác.");
-        EntryTranslation::query()->where('entry_id', $post->id)->update(['updated_at' => '2026-10-05 09:30:00+00']);
+        EntryTranslation::query()->where('entry_id', $post->id)->update(['updated_at' => '2026-10-05 09:30:00+00', 'content_changed_at' => '2026-10-05 09:30:00+00']);
         if ($brand) {
             SiteProfile::query()->updateOrCreate([], ['brand_name' => 'Cơ khí Mẫu']);
         }
@@ -70,7 +70,7 @@ it('never dates the change before the publish, and prefers the Google descriptio
     $siteId = articleSite();
     app(Tenancy::class)->enter($siteId, function (): void {
         EntryTranslation::query()->where('slug', 'gia-cong-cnc')->update([
-            'updated_at' => '2026-09-20 00:00:00+00', 'seo_description' => 'Mô tả cho Google.',
+            'updated_at' => '2026-09-20 00:00:00+00', 'content_changed_at' => '2026-09-20 00:00:00+00', 'seo_description' => 'Mô tả cho Google.',
         ]);
     });
 

@@ -12,7 +12,8 @@ use App\Modules\Cms\Models\EntryTranslation;
  * engines and AI answer engines read for the headline, the dates and who stands behind the text.
  *
  * The dates are the ones the post shows: published is the post's publish time, modified is the last
- * write of its text in this language (never earlier than published). The site's business is both the
+ * change of its main content in this language (never earlier than published; contentDate()), the
+ * date its "Cập nhật" line shows. The site's business is both the
  * author and the publisher, so no staff member's name leaves the admin; without a business name the
  * two are left out. A job post carries `JobPosting` instead (JobPosting), never both.
  */
@@ -26,10 +27,7 @@ final class ArticleData
     public static function ld(Entry $post, EntryTranslation $translation, string $url, string $home, string $locale, ?string $image, ?array $brand): array
     {
         $published = $post->published_at;
-        $modified = $translation->updated_at;
-        if ($published !== null && ($modified === null || $modified->lessThan($published))) {
-            $modified = $published;
-        }
+        $modified = $translation->contentDate($published);
 
         $description = self::text($translation->seo_description);
         if ($description === '') {

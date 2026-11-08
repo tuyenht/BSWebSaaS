@@ -10,10 +10,12 @@ use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Catalog\Policies\CatalogPolicy;
 use App\Modules\Catalog\Support\AppRoutePaths;
+use App\Modules\Catalog\Support\ProductGallery;
 use App\Modules\Catalog\Support\ProductIndexLink;
 use App\Modules\Catalog\Support\ProductRoutes;
 use App\Modules\Cms\Navigation\MenuTargets;
 use App\Modules\Cms\Routing\CategoryDependents;
+use App\Modules\Media\Models\Media;
 use App\Modules\Theme\Components\ComponentRegistry;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -81,6 +83,20 @@ final class CatalogServiceProvider extends ServiceProvider
             /** @param list<int> $ids */
             static fn (array $ids): int => app(ProductRoutes::class)->resync($ids),
             items: 'products',
+            /** @param list<int> $ids */
+            changed: static fn (array $ids) => Product::markContentChanged($ids),
         );
+
+        // A gallery picture whose file goes into the media trash leaves the product page at once (the
+        // Media scope hides it) and comes back on restore: the page's content changed both times. A
+        // file deleted for good while still live goes too (one already in the trash went with it).
+        // Media never depends on Catalog: Catalog listens.
+        Media::softDeleted(static fn (Media $media) => app(ProductGallery::class)->mediaChanged($media));
+        Media::restored(static fn (Media $media) => app(ProductGallery::class)->mediaChanged($media));
+        Media::forceDeleting(static function (Media $media): void {
+            if (! $media->trashed()) {
+                app(ProductGallery::class)->mediaChanged($media);
+            }
+        });
     }
 }

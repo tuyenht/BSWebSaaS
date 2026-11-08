@@ -56,9 +56,10 @@ final readonly class PostDetail
     public function band(Entry $post, EntryTranslation $translation, string $locale): array
     {
         $published = $this->time->forDisplay($post->published_at);
-        $edited = $this->time->forDisplay($translation->updated_at);
+        // The same content date as the Article's dateModified (contentDate()).
+        $edited = $this->time->forDisplay($translation->contentDate($post->published_at));
         $format = $this->time->dateFormat();
-        // "Updated" shows only when the text changed on a later day than it went out.
+        // "Updated" shows only when the content changed on a later day than it went out.
         $later = $published !== null && $edited !== null && $edited->format('Y-m-d') > $published->format('Y-m-d');
 
         return [

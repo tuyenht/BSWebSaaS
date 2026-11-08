@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Provisioning\ContentPack;
 
 use App\Modules\Catalog\Models\Product;
-use App\Modules\Catalog\Models\ProductImage;
+use App\Modules\Catalog\Support\ProductGallery;
 use App\Modules\Cms\Actions\RecordEntryRevision;
 use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Models\Entry;
@@ -304,13 +304,14 @@ final class Applier
 
         $images = Cast::strings($desired['images'] ?? []);
         if ($images !== Cast::strings($planned->current['images'] ?? [])) {
-            ProductImage::query()->where('product_id', $product->id)->delete();
             $media = Media::query()->whereIn('storage_key', $images)->pluck('id', 'storage_key');
-            foreach ($images as $position => $key) {
+            $ids = [];
+            foreach ($images as $key) {
                 if (isset($media[$key])) {
-                    ProductImage::query()->create(['product_id' => $product->id, 'media_id' => Cast::int($media[$key]), 'position' => $position]);
+                    $ids[] = Cast::int($media[$key]);
                 }
             }
+            app(ProductGallery::class)->sync($product, $ids);
         }
 
         foreach (Cast::arr($desired['translations'] ?? null) as $locale => $row) {

@@ -40,6 +40,19 @@ class Product extends Model
     protected $guarded = [];
 
     /**
+     * Mark that the main content of these products changed, in every language (TracksContentChange),
+     * in one statement in the caller's transaction. The site scope and RLS keep it to this site.
+     *
+     * @param  list<int>  $ids
+     */
+    public static function markContentChanged(array $ids): void
+    {
+        if ($ids !== []) {
+            ProductTranslation::query()->whereIn('product_id', $ids)->update(['content_changed_at' => now()]);
+        }
+    }
+
+    /**
      * @return HasMany<ProductTranslation, $this>
      */
     public function translations(): HasMany
