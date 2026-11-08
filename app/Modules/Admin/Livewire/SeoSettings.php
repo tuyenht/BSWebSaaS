@@ -9,7 +9,6 @@ use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\PlainText;
 use App\Modules\Storefront\Support\BrandImages;
-use App\Modules\Storefront\Support\SitemapRoutes;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
@@ -33,13 +32,14 @@ use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /**
- * "Hiện trên Google & mạng xã hội": per language the site's default Google title and description,
- * one title template for the pages without their own title, whether Google may find the site,
- * whether the sitemap is made, and a custom robots.txt. One `site_settings` row (group `seo`, key
- * `config`, the shape SiteSeo reads), written through SettingsRepository; the storefront follows it
- * (SiteSeo). The page edits a draft and saves it in one step, like "Thông tin chung": a field is
- * checked when it is left and every field again on save. Turning Google off asks first. Every
- * request is settings.manage-gated (boot) and so is every action.
+ * "Google & mạng xã hội": per language the site's home page title and default description, one
+ * title template for the other pages without their own title, whether Google may find the site,
+ * whether the sitemap is made, and a custom robots.txt. The share image is only shown here: it is
+ * set with the logo under "Giao diện website", which the page links to. One `site_settings` row
+ * (group `seo`, key `config`, the shape SiteSeo reads), written through SettingsRepository; the
+ * storefront follows it (SiteSeo). The page edits a draft and saves it in one step, like "Thông
+ * tin chung": a field is checked when it is left and every field again on save. Turning Google
+ * off asks first. Every request is settings.manage-gated (boot) and so is every action.
  *
  * It also says whether AI bots reach the website (AiCrawlerCheck, run off the request by
  * CheckAiCrawlers): opening the page starts a check when the kept result is missing or older than
@@ -48,11 +48,6 @@ use Livewire\Component;
 #[Layout('admin::layouts.app')]
 final class SeoSettings extends Component
 {
-    /** "Tạo lại sitemap": this many times per site in WINDOW seconds. */
-    public const int REGENERATE_TRIES = 3;
-
-    public const int REGENERATE_WINDOW = 600;
-
     /** "Kiểm tra lại" (the AI crawler check): once per site in this many seconds. */
     public const int RECHECK_WINDOW = 60;
 
@@ -61,14 +56,15 @@ final class SeoSettings extends Component
 
     /**
      * The groups of the page and the fields of each, in order: [key, kind, per-language].
-     * Kinds: text, textarea, preview, toggle, note, aibot (the AI bot check card), action, code.
+     * Kinds: text, textarea, preview, toggle, note, aibot (the AI bot check card), action (a row
+     * with a button), code.
      *
      * @var array<string, list<array{string, string, bool}>>
      */
     public const array GROUPS = [
-        'google' => [['title', 'text', true], ['template', 'text', false], ['description', 'textarea', true], ['preview', 'preview', false]],
+        'google' => [['title', 'text', true], ['template', 'text', false], ['description', 'textarea', true], ['share_image', 'action', false], ['preview', 'preview', false]],
         'index' => [['indexable', 'toggle', false], ['domain_note', 'note', false], ['ai_check', 'aibot', false], ['verify_note', 'note', false]],
-        'advanced' => [['sitemap', 'toggle', false], ['regenerate', 'action', false], ['robots', 'code', false]],
+        'advanced' => [['sitemap', 'toggle', false], ['robots', 'code', false]],
     ];
 
     /** @var array<string, array{title: string, description: string}> per-language values */
@@ -151,35 +147,6 @@ final class SeoSettings extends Component
     public function toggleSitemap(): void
     {
         $this->form['sitemap'] = ! $this->sharedDraft()['sitemap'];
-    }
-
-    /**
-     * "Tạo lại sitemap ngay": a big site's sitemap is split along a cached page plan, which is
-     * dropped so the next read lists the site as it is now. A site that fits in one file is read
-     * on every request: nothing to redo, and the message says so. A few times per site per window.
-     */
-    #[Authorize('settings.manage')]
-    public function regenerateSitemap(): void
-    {
-        $key = 'seo-sitemap:'.app(CurrentSite::class)->id();
-        if (RateLimiter::tooManyAttempts($key, self::REGENERATE_TRIES)) {
-            $this->notify(__('admin.seoset.regen_wait', ['minutes' => max(1, (int) ceil(RateLimiter::availableIn($key) / 60))]), 'error');
-
-            return;
-        }
-        // A refused try (the site hidden, the sitemap off) does not use up the window.
-        if (! $this->saved['shared']['indexable']) {
-            $this->notify(__('admin.seoset.regen_hidden'), 'error');
-
-            return;
-        }
-        if (! $this->saved['shared']['sitemap']) {
-            $this->notify(__('admin.seoset.regen_off'), 'error');
-
-            return;
-        }
-        RateLimiter::hit($key, self::REGENERATE_WINDOW);
-        $this->notify(app(SitemapRoutes::class)->forgetPlan() ? __('admin.seoset.regen_done') : __('admin.seoset.regen_fresh'));
     }
 
     /**
@@ -327,6 +294,8 @@ final class SeoSettings extends Component
             // The sentence is true only while the platform keeps its subdomains out of search engines.
             'platformHidden' => Cast::bool(config('tenancy.noindex_platform_subdomains')),
             'domainsLink' => $this->domainsLink(),
+            // The share image is set with the logo on the appearance page (same settings.manage gate).
+            'appearanceLink' => Route::has('admin.settings.appearance') ? route('admin.settings.appearance') : null,
             'aiCheck' => $aiCheck,
             'aiCard' => $this->aiCard($aiCheck, $blocking),
             // Under the robots.txt box: what the text as typed blocks, and how to undo it.

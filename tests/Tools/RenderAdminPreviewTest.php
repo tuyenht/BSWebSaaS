@@ -302,7 +302,7 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('Tên pháp lý đầy đủ (theo giấy phép)', 'wire:model.live.blur="form.legalName"');   // the values ride in the Livewire snapshot
     file_put_contents($dir.'/general.html', $html);
 
-    // "Hiện trên Google & mạng xã hội" with long default texts and a custom robots.txt (the Google
+    // "Google & mạng xã hội" with long default texts and a custom robots.txt (the Google
     // preview shows where it cuts), and again with the "hide from Google" question open.
     app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'seo', 'key' => 'config'], ['value' => [
         'titles' => ['vi' => 'Công ty Demo — gia công cơ khí chính xác CNC 5 trục cho ngành ô tô, điện tử và khuôn mẫu'],
@@ -321,7 +321,7 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     app(AiCrawlerCheck::class)->run(1);
     $this->flushSession();
     $page = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/seo')->assertOk()->getContent();
-    expect($page)->toContain('wire:model.live.blur="form.template"', 'bsSeoFields(', 'data-ai-check', 'data-robots-note');
+    expect($page)->toContain('wire:model.live.blur="form.template"', 'data-template-insert', 'data-share-change', 'bsSeoFields(', 'data-ai-check', 'data-robots-note');
     file_put_contents($dir.'/seo.html', $page);
     $open = app(Tenancy::class)->enter(1, fn (): string => Livewire::actingAs($owner)->test(SeoSettings::class)
         ->call('toggleIndexable')->assertSet('confirmHide', true)->html());

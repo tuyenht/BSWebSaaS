@@ -4,7 +4,7 @@
     use App\Modules\Theme\Theming\SiteSeo;
     use Illuminate\Support\Js;
 
-    // "Hiện trên Google & mạng xã hội" (design: settings section `seo`), in the frame "Thông tin
+    // "Google & mạng xã hội" (design: settings section `seo`), in the frame "Thông tin
     // chung" uses: the language bar on a site with more than one language, one card per group (one
     // open at a time, the first by default) and the page's own save bar. Per-language fields carry
     // the language code; on another language than the source the shared fields are read-only and
@@ -13,6 +13,8 @@
     // in the browser (bsSeoFields, the editors' preview part): no request per keystroke. In "Cho
     // Google tìm thấy", a card says whether AI bots can read the website ($aiCard, from the kept
     // check and the draft); while a check runs it asks again every few seconds, and only then.
+    // The title template's "+ Tên trang" / "+ Tên website" buttons add their placeholder at the
+    // end of the draft in the browser and send it like a typed and left field.
     $glyph = 'size-[min(1.5rem,calc(1rem+var(--user-text-boost)))] shrink-0';
     $localeNames = (array) config('locales.labels');
     $nameOf = static fn (string $lc): string => (string) ($localeNames[$lc] ?? strtoupper($lc));
@@ -20,6 +22,9 @@
     $onSource = $lang === $defaultLocale;
     $lockShared = $multi && ! $onSource;
     $limits = SeoFields::LIMITS;
+
+    // Placeholders the title template's buttons add: [placeholder, label key, accessible-name key].
+    $inserts = [['%tieu-de%', 'admin.seoset.ins.page', 'admin.seoset.ins.page_aria'], ['%ten-website%', 'admin.seoset.ins.site', 'admin.seoset.ins.site_aria']];
 
     $hintOf = static fn (string $key): ?string => match ($key) {
         'title' => __('admin.seoset.hint.title', ['n' => $limits['seoTitle']['display']]),
@@ -36,7 +41,6 @@
     // A field is shown when the one it depends on is on (the design's `when`).
     $shown = static fn (string $key): bool => match ($key) {
         'sitemap' => $form['indexable'],
-        'regenerate' => $form['indexable'] && $form['sitemap'],
         default => true,
     };
     $groupKeys = array_keys(SeoSettings::GROUPS);
@@ -226,14 +230,17 @@
                             @endif
 
                             @if ($kind === 'action')
+                                {{-- The share image: set with the logo on the appearance page, which "Đổi ảnh" opens. --}}
                                 <div class="{{ $mutedCard }} flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5 px-[15px] py-[13px]" wire:key="seo-f-{{ $key }}">
                                     <div class="flex min-w-0 flex-col gap-0.5">
                                         <span class="{{ $label }}">{{ __('admin.seoset.f.'.$key) }}</span>
-                                        <span class="text-caption leading-normal text-text-muted">{{ __('admin.seoset.hint.regenerate') }}</span>
+                                        <span class="text-caption leading-normal text-text-muted">{{ __('admin.seoset.hint.'.$key) }}</span>
                                     </div>
-                                    <x-bs-admin::button variant="outline" color="secondary" wire:click="regenerateSitemap" wire:loading.attr="disabled" wire:target="regenerateSitemap" :disabled="$locked">
-                                        <x-bs-admin::icon name="ri-refresh" :class="$glyph" /><span>{{ __('admin.seoset.regen') }}</span>
-                                    </x-bs-admin::button>
+                                    @if ($appearanceLink !== null)
+                                        <x-bs-admin::button variant="outline" color="secondary" :href="$appearanceLink" data-share-change>
+                                            <x-bs-admin::icon name="ri-image-edit" :class="$glyph" /><span>{{ __('admin.seoset.share_change') }}</span>
+                                        </x-bs-admin::button>
+                                    @endif
                                 </div>
                                 @continue
                             @endif
@@ -265,6 +272,15 @@
                                     <input id="{{ $fid }}" type="text" wire:model.live.blur="{{ $bag }}" placeholder="{{ $ph }}" maxlength="{{ $caps[$key] }}" @if ($locked) readonly @endif
                                            @if ($perLang) lang="{{ $lang }}" @endif aria-invalid="{{ $bad ? 'true' : 'false' }}" @if ($describedBy !== '') aria-describedby="{{ $describedBy }}" @endif
                                            class="field w-full min-w-0 rounded-md border bg-surface px-2.5 text-text placeholder:text-placeholder {{ $bad ? 'border-danger-text' : 'border-border-input' }} {{ $locked ? $readOnly : '' }}">
+                                    @if ($key === 'template' && ! $locked)
+                                        {{-- Adds the placeholder at the end, one space apart unless the text already ends in one. --}}
+                                        <div class="flex flex-wrap gap-2" data-template-insert
+                                             x-data="{ insert(token) { const field = document.getElementById({{ Js::from($fid) }}); const text = field.value; const next = text + (text !== '' && ! /\s$/.test(text) ? ' ' : '') + token; field.value = next; $wire.$set({{ Js::from($bag) }}, next) } }">
+                                            @foreach ($inserts as [$token, $insLabel, $insAria])
+                                                <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="insert({{ Js::from($token) }})" :aria-label="__($insAria)">{{ __($insLabel) }}</x-bs-admin::button>
+                                            @endforeach
+                                        </div>
+                                    @endif
                                 @else
                                     {{-- The description is one line on Google: Enter adds no line break (a pasted one is removed on save);
                                          an Enter confirming a word being composed is left to the input method. robots.txt keeps its lines. --}}

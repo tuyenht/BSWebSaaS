@@ -7,14 +7,12 @@ use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteLocale as SiteLocaleModel;
 use App\Modules\Tenancy\Models\SiteSetting;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 
 /*
- * "Hiện trên Google & mạng xã hội" settings: per language the site's default Google title and
+ * "Google & mạng xã hội" settings: per language the site's home page title and default
  * description, a shared title template, the "let Google find the website" and sitemap switches and
  * a custom robots.txt, all in one site_settings row (group seo, key config). Fields are checked when
  * left and again on save; turning Google off asks first. settings.manage-gated (route, boot() and
@@ -27,7 +25,6 @@ beforeEach(function (): void {
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
     app()->setLocale('vi');
-    RateLimiter::clear('seo-sitemap:1');
 });
 
 afterEach(function (): void {
@@ -188,44 +185,61 @@ it('shows the platform-subdomain sentence only while the platform hides its subd
     });
 });
 
-it('rebuilds a cached sitemap plan, says plainly when there is nothing to rebuild, and limits the tries', function (): void {
+it('names the fields as the home page title and the template, with buttons that add its placeholders', function (): void {
     $admin = seoAdmin();
-    $key = 'sitemap-plan:v1:1:'.max(1, min(50000, (int) config('cms.sitemap.max_urls', 50000)));
 
-    app(Tenancy::class)->enter(1, function () use ($admin, $key): void {
-        $lw = Livewire::actingAs($admin)->test(SeoSettings::class);
-        $lw->call('regenerateSitemap')->assertSet('toastTone', 'success')->assertSee('Sitemap đã mới nhất');
+    $page = $this->actingAs($admin)->get('http://a.test/admin/settings/seo')->assertOk()
+        ->assertSee('<title>Google &amp; mạng xã hội', false)
+        ->assertDontSee('Hiện trên Google &amp; mạng xã hội', false)
+        ->assertSee('Tiêu đề trang chủ')
+        ->assertDontSee('Tiêu đề mặc định')
+        ->assertSee('Dòng chữ lớn màu xanh khi trang chủ hiện trên Google. Nên dưới 60 ký tự. Bỏ trống thì dùng mẫu tiêu đề.')
+        ->assertSee('Áp cho các trang còn lại chưa đặt tiêu đề riêng. Bấm nút để chèn: %tieu-de% sẽ thành tên trang, %ten-website% thành tên website.')
+        ->getContent();
 
-        Cache::put($key, [['/a', 1], ['/m', 9]], 600);
-        $lw->call('regenerateSitemap')->assertSee('Đã làm mới sitemap');
-        expect(Cache::get($key))->toBeNull();
+    expect($page)->toContain('data-template-insert', "insert('%tieu-de%')", "insert('%ten-website%')", "\$wire.\$set('form.template', next)",
+        'aria-label="Chèn tên trang vào mẫu tiêu đề trang con"', '>+ Tên trang<',
+        'aria-label="Chèn tên website vào mẫu tiêu đề trang con"', '>+ Tên website<');
+});
 
-        $lw->call('regenerateSitemap')->assertSet('toastTone', 'success');                     // three tries per ten minutes
-        $lw->call('regenerateSitemap')->assertSet('toastTone', 'error')->assertSee('Bạn vừa tạo lại sitemap');
+it('keeps the template read-only without its buttons on a language other than the source', function (): void {
+    $admin = seoAdmin();
+    seoEnglish();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        Livewire::actingAs($admin)->test(SeoSettings::class)
+            ->assertSeeHtml('data-template-insert')
+            ->call('setLang', 'en')
+            ->assertDontSeeHtml('data-template-insert')
+            ->assertDontSee('Chèn tên trang vào mẫu tiêu đề trang con');
     });
 });
 
-it('names the real reason a rebuild is refused, and a refused try does not use up the window', function (): void {
+it('has no "rebuild the sitemap" action: the sitemap follows the pages by itself', function (): void {
     $admin = seoAdmin();
-    $store = fn (array $value) => app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(
-        ['group_name' => 'seo', 'key' => 'config'], ['value' => $value],
-    ));
 
-    $store(['indexable' => false]);
     app(Tenancy::class)->enter(1, function () use ($admin): void {
-        $lw = Livewire::actingAs($admin)->test(SeoSettings::class);
-        foreach (range(1, 4) as $try) {
-            $lw->call('regenerateSitemap')->assertSet('toastTone', 'error')->assertSee('Website đang ẩn với Google');
-        }
+        Livewire::actingAs($admin)->test(SeoSettings::class)
+            ->assertSee('Tạo sitemap.xml tự động')
+            ->assertDontSee('Tạo lại sitemap ngay')
+            ->assertDontSeeHtml('regenerateSitemap');
     });
 
-    $store(['sitemap' => false]);
-    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(SeoSettings::class)
-        ->call('regenerateSitemap')->assertSet('toastTone', 'error')->assertSee('Sitemap đang tắt'));
+    expect(method_exists(SeoSettings::class, 'regenerateSitemap'))->toBeFalse();
+});
 
-    $store([]);
-    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(SeoSettings::class)
-        ->call('regenerateSitemap')->assertSet('toastTone', 'success'));
+it('shows the share image and sends "Đổi ảnh" to the appearance settings, where it is set', function (): void {
+    $admin = seoAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $html = Livewire::actingAs($admin)->test(SeoSettings::class)
+            ->assertSee('Ảnh khi chia sẻ lên Facebook, Zalo')
+            ->assertSee('Đặt ở mục Giao diện website, cùng logo và biểu tượng trang — đổi ở đó thì mọi nơi cùng cập nhật.')
+            ->assertSee('Xem trước khi chia sẻ lên Facebook, Zalo')
+            ->html();
+
+        expect($html)->toMatch('~<a href="'.preg_quote(route('admin.settings.appearance'), '~').'"\s+wire:navigate[^>]*data-share-change[^>]*>.*?Đổi ảnh</span>~s');
+    });
 });
 
 it('gates the page — settings.manage on the route, in boot() and on every action', function (string $action): void {
@@ -233,7 +247,7 @@ it('gates the page — settings.manage on the route, in boot() and on every acti
     $editor = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($editor, 'editor', ['entries.view', 'entries.edit.any']));
 
-    $this->actingAs($admin)->get('http://a.test/admin/settings/seo')->assertOk()->assertSee('Hiện trên Google &amp; mạng xã hội', false);
+    $this->actingAs($admin)->get('http://a.test/admin/settings/seo')->assertOk()->assertSee('Google &amp; mạng xã hội', false);
     $this->actingAs($editor->fresh())->get('http://a.test/admin/settings/seo')->assertForbidden();
 
     app(Tenancy::class)->enter(1, function () use ($admin, $editor, $action): void {
@@ -248,7 +262,7 @@ it('gates the page — settings.manage on the route, in boot() and on every acti
     });
 
     expect(seoStored())->toBeNull();
-})->with(['save', 'setLang', 'toggleIndexable', 'hideFromGoogle', 'cancelHide', 'toggleSitemap', 'regenerateSitemap', 'resetChanges', 'dismissToast']);
+})->with(['save', 'setLang', 'toggleIndexable', 'hideFromGoogle', 'cancelHide', 'toggleSitemap', 'resetChanges', 'dismissToast']);
 
 it('saves for the current site only', function (): void {
     $admin = seoAdmin();
@@ -294,6 +308,8 @@ it('discards the draft back to the saved values', function (): void {
 it('lists the page in the settings menu for settings.manage only', function (): void {
     $admin = seoAdmin();
 
-    $this->actingAs($admin)->get('http://a.test/admin/settings/general')->assertOk()
-        ->assertSee(route('admin.settings.seo', [], false));
+    $page = $this->actingAs($admin)->get('http://a.test/admin/settings/general')->assertOk()
+        ->assertSee(route('admin.settings.seo', [], false))->getContent();
+    expect($page)->toMatch('~href="[^"]*/admin/settings/seo"[^>]*>\\s*(?:<[^>]+>\\s*)*Google &amp; mạng xã hội\\s*<~')
+        ->not->toContain('Hiện trên Google &amp; mạng xã hội');
 });
