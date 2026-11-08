@@ -68,11 +68,14 @@ final readonly class PageRenderer
         // One pass over the body and the slots: pages and files are looked up once per kind.
         $drawn = $this->blocks->renderBodies([self::withPageTitle($body, $title, $leadBlock, $crumbs), ...self::slotBodies($slots['blocks'])], $slots['context']);
         ['html' => $sections, 'bgVideo' => $bgVideo] = $drawn[0];
-        $extra['slotHtml'] = self::slotHtml($slots['blocks'], array_slice($drawn, 1));
+        $slotHtml = self::slotHtml($slots['blocks'], array_slice($drawn, 1));
+        $extra['slotHtml'] = $slotHtml;
         $bgVideo = $bgVideo || array_filter(array_slice($drawn, 1), fn (array $one): bool => $one['bgVideo']) !== [];
         // The background-video script loads only on a page where a hero's video resolved (a missing
         // or deleted video renders the plain hero, with no script).
         $extra += $bgVideo ? ['bgVideoScript' => true] : [];
+        // The photo viewer loads only on a page that drew a photo opening larger (body or slots).
+        $extra += self::zooms($sections, ...array_values($slotHtml)) ? ['viewerScript' => true] : [];
         // The post layout's table of contents: anchors are made here for the formatted-text headings (two or more).
         $toc = ['html' => $sections, 'items' => []];
         if ($layout === 'theme::layouts.post') {
@@ -168,7 +171,8 @@ final readonly class PageRenderer
 
         $scripts = ['blocks' => self::slotBlockList($slots['blocks'])];
         $drawn = $this->blocks->renderBodies(self::slotBodies($slots['blocks']), $slots['context'], false);
-        $extra['slotHtml'] = self::slotHtml($slots['blocks'], $drawn);
+        $slotHtml = self::slotHtml($slots['blocks'], $drawn);
+        $extra['slotHtml'] = $slotHtml;
         $flags = [
             // A slider with two or more slides rotates, and a list block's rows slide: the same checks as a body's.
             'sliderScript' => self::hasRails($scripts) || (in_array('hero_slider', $this->blocks->types($scripts), true) && (self::sliderHints($scripts, null, $this->media)['sliderScript'] ?? false)),
@@ -177,6 +181,7 @@ final readonly class PageRenderer
             'statsScript' => self::countsUp($scripts),
             'tabsScript' => self::hasTabs($scripts),
             'bgVideoScript' => array_filter($drawn, fn (array $one): bool => $one['bgVideo']) !== [],
+            'viewerScript' => self::zooms(...array_values($slotHtml)),
         ];
         foreach ($flags as $key => $on) {
             if ($on) {
@@ -298,6 +303,22 @@ final readonly class PageRenderer
         foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
             $url = is_array($block) && ($block['type'] ?? null) === 'video' ? data_get($block, 'props.url') : null;
             if (is_string($url) && VideoEmbed::player($url) !== null) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether drawn HTML holds a photo that opens larger (a link marked `data-sf-zoom`, printed only by
+     * the theme's gallery and about views). Matched on the tag, as `bodyHighImage` is: text cannot
+     * hold a raw "<", and the purifier drops data attributes from formatted text.
+     */
+    private static function zooms(string ...$html): bool
+    {
+        foreach ($html as $one) {
+            if (preg_match('~<a\b[^>]*\sdata-sf-zoom=~', $one) === 1) {
                 return true;
             }
         }

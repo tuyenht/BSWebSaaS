@@ -479,6 +479,31 @@ it('loads the slider script for a rotating slider in a list or product slot', fu
     'a list' => ['/tin-tuc', 'after_list'],
 ]);
 
+it('loads the photo viewer for a gallery in a post, list or product slot', function (string $path, string $slot): void {
+    $this->swap(Vite::class, new class extends Vite
+    {
+        public function __invoke($entrypoints, $buildDirectory = null): HtmlString
+        {
+            return new HtmlString(collect((array) $entrypoints)->map(fn (string $entry): string => '<script type="module" src="/'.$entry.'"></script>')->implode(''));
+        }
+    });
+    slotsSite();
+    $id = slotsSiteId();
+    $photo = app(Tenancy::class)->enter($id, fn (): int => StorefrontCards::media('anh-thu-vien')->id);
+    expect(slotsHtml($path))->not->toContain('sf-viewer');
+
+    slotsDefault($id, $slot, [['type' => 'gallery', 'props' => ['images' => [['image' => $photo, 'caption' => 'Xưởng']]]]]);
+    $html = slotsHtml($path);
+
+    expect($html)->toContain('<script type="module" src="/resources/js/sf-viewer.js"></script>')
+        ->and($html)->toContain('<template id="sf-viewer">')
+        ->and($html)->toContain('data-sf-zoom="gallery"');
+})->with([
+    'a post' => ['/tin-tuc/ong-dang-doc', 'after_post'],
+    'a product' => ['/do-ga-kiem', 'after_product'],
+    'a list' => ['/tin-tuc', 'after_list'],
+]);
+
 it('gives every drawing of the recent-posts and category blocks its own heading id', function (): void {
     slotsSite();
     $id = slotsSiteId();

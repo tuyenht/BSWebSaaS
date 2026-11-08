@@ -225,3 +225,8 @@
 @if (! empty($tabsScript))
 @vite(['resources/js/sf-tabs.js'])
 @endif
+@if (! empty($viewerScript))
+@vite(['resources/js/sf-viewer.js'])
+{{-- The photo viewer's frame, translated here; sf-viewer.js copies it into the page on first use. --}}
+<template id="sf-viewer"><dialog class="sf-viewer" aria-label="{{ __('storefront.photo_viewer') }}"><button type="button" class="sf-viewer__close" aria-label="{{ __('storefront.close_viewer') }}">×</button><figure class="sf-viewer__figure"><img class="sf-viewer__img" alt=""><figcaption class="sf-viewer__caption" aria-live="polite"><span class="sf-viewer__text"></span> <span class="sf-viewer__count"></span></figcaption></figure><button type="button" class="sf-viewer__nav sf-viewer__prev" aria-label="{{ __('storefront.prev_photo') }}"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 19l-7-7 7-7"/></svg></button><button type="button" class="sf-viewer__nav sf-viewer__next" aria-label="{{ __('storefront.next_photo') }}"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button></dialog></template>
+@endif
