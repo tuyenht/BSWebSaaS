@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\DB;
  * it, down() drops it, and each can run twice. Run in both directions from whatever state the
  * database is in, and always put back what it found: a migrated database (CI) gets the columns
  * back, one without them gets none left behind.
+ *
+ * CI only: dropping and re-adding a column on the shared dev database would wipe its marks, break
+ * live saves in that window and leave PgBouncer holding stale plans for other sessions.
  */
 
 /**
@@ -72,4 +75,4 @@ it('adds the content mark as a nullable timestamptz with no default the app may 
             ->and($column->is_nullable)->toBe('YES')
             ->and($column->column_default)->toBeNull();
     }
-});
+})->skip(getenv('CI') !== 'true', 'drops and re-adds a column: runs on CI\'s own database only');
