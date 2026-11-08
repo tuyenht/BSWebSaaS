@@ -60,6 +60,9 @@ final readonly class AiCrawlerCheck
 
     private const array LEVELS = ['ok' => 0, 'info' => 1, 'unchecked' => 2, 'warning' => 3];
 
+    /** X-Robots-Tag directives written `name: value` — the name is not a bot's. */
+    private const array VALUED_DIRECTIVES = ['max-snippet', 'max-image-preview', 'max-video-preview', 'unavailable_after'];
+
     public function __construct(
         private SiteResolver $sites,
         private SiteSeo $seo,
@@ -149,7 +152,7 @@ final readonly class AiCrawlerCheck
                 return null;
             }
 
-            $findings = $input->findings;
+            $findings = self::ownRobots($input);
             try {
                 $this->probe($input, $findings);
             } catch (SafeHttpException $e) {
@@ -172,8 +175,9 @@ final readonly class AiCrawlerCheck
     }
 
     /**
-     * The tenant step: what the check needs from the site (the current context must be this site).
-     * Null while the site has no address.
+     * The tenant step: what the check needs from the site, as stored (the current context must be
+     * this site) — nothing is judged here, so the transaction stays short. Null while the site has
+     * no address.
      */
     public function prepare(int $siteId): ?AiCheckInput
     {
@@ -191,7 +195,7 @@ final readonly class AiCrawlerCheck
             indexable: $settings['indexable'],
             sitemap: $settings['sitemap'],
             platformNoindex: $resolved !== null && $resolved->isPlatformSubdomain && Cast::bool(config('tenancy.noindex_platform_subdomains')),
-            findings: $this->ownRobots(),
+            ownRobots: $settings['robots'],
         );
     }
 
@@ -221,25 +225,25 @@ final readonly class AiCrawlerCheck
     }
 
     /**
-     * Checks 1 and 2, from the settings alone.
+     * Checks 1 and 2, from the settings alone (read in the tenant step, judged after it). A text
+     * past the judging bounds gives nothing here: the platform's robots.txt holds it, so check 3
+     * says it could not be judged.
      *
      * @return list<array{level: string, code: string, params: array<string, mixed>}>
      */
-    private function ownRobots(): array
+    private static function ownRobots(AiCheckInput $input): array
     {
-        $settings = $this->seo->settings();
-        if (! $settings['indexable']) {
+        if (! $input->indexable) {
             return [self::finding('info', 'hidden')];
         }
-        if ($settings['robots'] === '') {
+        if ($input->ownRobots === '') {
             return [];
         }
 
-        $own = RobotsTxt::parse($settings['robots']);
         $blocked = [];
         $partial = [];
-        foreach (self::bots() as $bot) {
-            match ($own->verdict($bot)) {
+        foreach (RobotsTxt::parse($input->ownRobots)->verdicts(self::bots()) ?? [] as $bot => $verdict) {
+            match ($verdict) {
                 'blocked' => $blocked[] = $bot,
                 'partial' => $partial[] = $bot,
                 'allowed' => null,
@@ -311,7 +315,7 @@ final readonly class AiCrawlerCheck
         $noindex = false;
         foreach ($answers as $answer) {
             $cloudflare = $cloudflare || strtolower(trim($answer->header('Server'))) === 'cloudflare';
-            $noindex = $noindex || preg_match('/\b(noindex|none)\b/i', implode(',', $answer->toPsrResponse()->getHeader('X-Robots-Tag'))) === 1;
+            $noindex = $noindex || self::noindexed($answer->toPsrResponse()->getHeader('X-Robots-Tag'));
         }
 
         if ($refused !== []) {
@@ -339,15 +343,22 @@ final readonly class AiCrawlerCheck
         $findings = [];
 
         if (RobotsTxt::comparable($served) !== RobotsTxt::comparable($ours)) {
-            $rank = ['allowed' => 0, 'partial' => 1, 'blocked' => 2];
-            $added = [];
-            foreach (self::bots() as $bot) {
-                if ($rank[$live->verdict($bot)] > $rank[$mine->verdict($bot)]) {
-                    $added[] = $bot;
+            $bots = self::bots();
+            $liveVerdicts = $live->verdicts($bots);
+            $myVerdicts = $mine->verdicts($bots);
+            if ($liveVerdicts === null || $myVerdicts === null) {
+                $findings[] = self::finding('unchecked', 'robots_too_complex');
+            } else {
+                $rank = ['allowed' => 0, 'partial' => 1, 'blocked' => 2];
+                $added = [];
+                foreach ($bots as $bot) {
+                    if ($rank[$liveVerdicts[$bot]] > $rank[$myVerdicts[$bot]]) {
+                        $added[] = $bot;
+                    }
                 }
-            }
-            if ($added !== []) {
-                $findings[] = self::finding('warning', 'proxy_blocks', ['bots' => $added]);
+                if ($added !== []) {
+                    $findings[] = self::finding('warning', 'proxy_blocks', ['bots' => $added]);
+                }
             }
         }
 
@@ -357,6 +368,36 @@ final readonly class AiCrawlerCheck
         }
 
         return $findings;
+    }
+
+    /**
+     * Whether X-Robots-Tag headers keep the page out of search for every bot, Googlebot or a bot
+     * this check knows: `noindex` or `none` with no bot named, or after one of those bots' names
+     * (`googlebot: noindex`). A name holds for what follows it in the same header, so
+     * `otherbot: noindex` hides the page from that bot alone and is not counted.
+     *
+     * @param  array<string>  $values  each X-Robots-Tag header
+     */
+    private static function noindexed(array $values): bool
+    {
+        $watched = array_map(strtolower(...), [...self::bots(), 'googlebot']);
+        foreach ($values as $value) {
+            $agent = null;
+            foreach (explode(',', $value) as $part) {
+                $part = trim($part);
+                $colon = strpos($part, ':');
+                $name = $colon === false ? '' : strtolower(trim(substr($part, 0, $colon)));
+                if (preg_match('/\A[a-z0-9_-]+\z/', $name) === 1 && ! in_array($name, self::VALUED_DIRECTIVES, true)) {
+                    $agent = $name;
+                    $part = trim(substr($part, (int) $colon + 1));
+                }
+                if (in_array(strtolower($part), ['noindex', 'none'], true) && ($agent === null || in_array($agent, $watched, true))) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /** @throws SafeHttpException */

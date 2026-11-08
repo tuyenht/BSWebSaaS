@@ -30,6 +30,9 @@ final class CheckAiCrawlers implements ShouldQueue
     /** Six requests of at most five seconds each, with room to spare. */
     public int $timeout = 60;
 
+    /** A check that runs out of time has failed — it is not put back to run again. */
+    public bool $failOnTimeout = true;
+
     /**
      * Queued once the request's transaction commits: never inside another site's (or this one's)
      * open tenant transaction, whatever queue connection runs it.

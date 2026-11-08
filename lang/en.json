@@ -2880,6 +2880,7 @@
     "admin.seoset.ai.content_signal": "The website has a Content-Signal line (:signals). It only says how you want the content used; it blocks no bot.",
     "admin.seoset.ai.robots_status": "Could not check robots.txt: the website answered with code :status.",
     "admin.seoset.ai.robots_too_long": "robots.txt was not read to the end because it is longer than 512 KB, so it is not known whether it blocks AI bots.",
+    "admin.seoset.ai.robots_too_complex": "robots.txt holds more rules, or longer ones, than the check can judge, so it is not known whether it blocks AI bots.",
     "admin.seoset.ai.site_status": "Could not check: the website answers with code :status when opened in a browser.",
     "admin.seoset.ai.cloudflare_challenge": "Cloudflare sits in front of the website and is blocking or challenging bots: :bots.",
     "admin.seoset.ai.bot_refused": "The website turns AI bots away while a browser still opens it: :bots.",

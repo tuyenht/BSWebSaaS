@@ -207,6 +207,33 @@ it('warns about a noindex the platform did not set', function (): void {
     expect(aiCodes(aiRun()))->toBe(['warning:noindex_header']);
 });
 
+it('counts a noindex X-Robots-Tag only when it names no bot, Googlebot or a bot the check knows', function (string $header, array $codes): void {
+    aiFakeSite(all: ['X-Robots-Tag' => $header]);
+
+    expect(aiCodes(aiRun()))->toBe($codes);
+})->with([
+    'another bot only' => ['otherbot: noindex', []],
+    'another bot, then the rest' => ['otherbot: noindex, nofollow', []],
+    'Googlebot' => ['googlebot: noindex', ['warning:noindex_header']],
+    'a known AI bot' => ['GPTBot: none', ['warning:noindex_header']],
+    'no bot named' => ['max-snippet: 20, noindex', ['warning:noindex_header']],
+    'a dated directive' => ['unavailable_after: Friday, 25-Jun-30 15:00:00 GMT', []],
+]);
+
+it('says it cannot judge a served robots.txt with more rules than it judges — quickly', function (): void {
+    $text = "User-agent: *\nDisallow: /\n";
+    for ($i = 0; strlen($text) < AiCrawlerCheck::ROBOTS_MAX_BYTES - 64; $i++) {
+        $text .= "Disallow: /trang-{$i}/x*y\n";
+    }
+    aiFakeSite(robots: [200, $text]);
+
+    $started = hrtime(true);
+    $result = aiRun();
+
+    expect(aiCodes($result))->toBe(['unchecked:robots_too_complex'])
+        ->and((hrtime(true) - $started) / 1e9)->toBeLessThan(2.0);
+});
+
 it('cannot check an address that does not resolve or does not answer', function (): void {
     app()->instance(SafeHttp::class, new SafeHttp(static fn (string $host): array => []));
     aiFakeSite();
@@ -303,7 +330,12 @@ it('runs inside the site’s own tenant context', function (): void {
         ->and(aiCodes(aiRun(1)))->toBe(['warning:proxy_blocks']);
 });
 
-it('holds no database transaction while it calls the site', function (): void {
+it('holds no database transaction while it calls the site, and only reads the settings in the tenant step', function (): void {
+    $own = "User-agent: GPTBot\nDisallow: /";
+    aiSeo(['robots' => $own]);
+    $input = app(Tenancy::class)->enter(1, fn () => app(AiCrawlerCheck::class)->prepare(1));
+    expect($input->ownRobots)->toBe($own);   // the text as stored: judged after the step commits
+
     $levels = [];
     Http::fake(function (Request $request) use (&$levels) {
         $levels[] = DB::connection()->transactionLevel();
@@ -311,7 +343,7 @@ it('holds no database transaction while it calls the site', function (): void {
         return Http::response("User-agent: *\nDisallow:", 200);
     });
 
-    expect(aiRun()['level'])->toBe('ok')
+    expect(aiCodes(aiRun()))->toBe(['info:own_blocks'])
         ->and($levels)->toHaveCount(6)
         ->and(array_unique($levels))->toBe([0]);
 });

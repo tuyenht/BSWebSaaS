@@ -78,6 +78,32 @@ it('keeps redirects on the same host when asked, and names where the redirect wa
     Http::assertSentCount(2);
 });
 
+it('refuses a redirect on the same host to another port, or from https down to http', function (string $from, string $to): void {
+    Http::fake([$from => Http::response('', 302, ['Location' => $to]), '*' => Http::response('', 200)]);
+
+    try {
+        guardResolving('93.184.216.34')->get($from, sameHost: true);
+        $this->fail('expected a refusal');
+    } catch (SafeHttpException $e) {
+        expect($e->reason)->toBe('redirect_off_host');
+    }
+    Http::assertSentCount(1);
+})->with([
+    'https to another port' => ['https://vi-du.test/', 'https://vi-du.test:8443/'],
+    'http to another port' => ['http://vi-du.test/', 'http://vi-du.test:8080/'],
+    'http to https on another port' => ['http://vi-du.test/', 'https://vi-du.test:8443/'],
+    'https down to http' => ['https://vi-du.test/', 'http://vi-du.test/'],
+]);
+
+it('takes the default port written out as the same port', function (): void {
+    Http::fake([
+        'https://vi-du.test/' => Http::response('', 301, ['Location' => 'https://vi-du.test:443/vi']),
+        '*' => Http::response('ổn', 200),
+    ]);
+
+    expect(guardResolving('93.184.216.34')->get('https://vi-du.test/', sameHost: true)['response']->status())->toBe(200);
+});
+
 it('follows at most three redirects', function (): void {
     Http::fake(['*' => Http::response('', 302, ['Location' => '/lại-nữa'])]);
 

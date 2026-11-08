@@ -32,8 +32,9 @@ class SafeHttp
 
     /**
      * GET with manual redirect handling — every hop re-passes the gate. `$sameHost` refuses a
-     * redirect to any other host (http → https on the same host is fine). `$budget` caps the time of
-     * all hops together, in seconds; each hop is also held to `$timeout`.
+     * redirect to any other host, to another port, or from https down to http; http → https on the
+     * same host (each on its default port) is fine. `$budget` caps the time of all hops together,
+     * in seconds; each hop is also held to `$timeout`.
      *
      * @param  array<string, string>  $headers
      * @return array{response: Response, url: string} the final answer (body unread) and its address
@@ -42,7 +43,6 @@ class SafeHttp
      */
     public function get(string $url, array $headers = [], float $timeout = 10, float $connectTimeout = 5, bool $sameHost = false, ?float $budget = null): array
     {
-        $origin = strtolower((string) parse_url($url, PHP_URL_HOST));
         $started = hrtime(true);
 
         for ($hop = 0; $hop <= self::MAX_REDIRECTS; $hop++) {
@@ -80,11 +80,11 @@ class SafeHttp
                 if ($location === '') {
                     throw new SafeHttpException('redirect_invalid');
                 }
-                $url = self::absolutize($location, $url);
-                $next = strtolower((string) parse_url($url, PHP_URL_HOST));
-                if ($sameHost && $next !== $origin) {
-                    throw new SafeHttpException('redirect_off_host', $next);
+                $next = self::absolutize($location, $url);
+                if ($sameHost) {
+                    self::assertSameOrigin(self::origin($url), self::origin($next));
                 }
+                $url = $next;
 
                 continue;
             }
@@ -228,6 +228,41 @@ class SafeHttp
         $publicOnly = FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE | FILTER_FLAG_GLOBAL_RANGE;
         if (filter_var($ip, FILTER_VALIDATE_IP, $publicOnly) === false) {
             throw new SafeHttpException('private_address');
+        }
+    }
+
+    /**
+     * @return array{scheme: string, host: string, port: int}
+     */
+    private static function origin(string $url): array
+    {
+        $parts = parse_url($url);
+        $scheme = strtolower((string) ($parts['scheme'] ?? ''));
+
+        return [
+            'scheme' => $scheme,
+            'host' => strtolower((string) ($parts['host'] ?? '')),
+            'port' => is_int($parts['port'] ?? null) ? $parts['port'] : ($scheme === 'https' ? 443 : 80),
+        ];
+    }
+
+    /**
+     * One redirect hop kept where it was told to stay: the same host, and the same scheme and port
+     * — or the step up from http to https, each on its default port. Compared hop by hop, so an
+     * address that went up to https cannot come back down.
+     *
+     * @param  array{scheme: string, host: string, port: int}  $from
+     * @param  array{scheme: string, host: string, port: int}  $to
+     */
+    private static function assertSameOrigin(array $from, array $to): void
+    {
+        if ($to['host'] !== $from['host']) {
+            throw new SafeHttpException('redirect_off_host', $to['host']);
+        }
+        $same = $to['scheme'] === $from['scheme'] && $to['port'] === $from['port'];
+        $upgrade = $from['scheme'] === 'http' && $from['port'] === 80 && $to['scheme'] === 'https' && $to['port'] === 443;
+        if (! $same && ! $upgrade) {
+            throw new SafeHttpException('redirect_off_host', $to['scheme'].'://'.$to['host'].':'.$to['port']);
         }
     }
 

@@ -155,19 +155,62 @@ it('lets "Kiểm tra lại" run once a minute per site, and another site is not 
     $admin = seoAiAdmin();
     $other = seoAiAdmin(2);
 
-    app(Tenancy::class)->enter(1, function () use ($admin): void {
+    $check = app(AiCrawlerCheck::class);   // the queue is faked: each check is ended by hand
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $check): void {
         $lw = Livewire::actingAs($admin)->test(SeoSettings::class);
+        $check->clearRunning(1);
         $lw->call('recheck')->assertSet('toastTone', 'success');
+        $check->clearRunning(1);
         $lw->call('recheck')->assertSet('toastTone', 'error')->assertSee('Bạn vừa kiểm tra. Hãy thử lại sau');
     });
-    app(Tenancy::class)->enter(2, fn () => Livewire::actingAs($other)->test(SeoSettings::class)->call('recheck')->assertSet('toastTone', 'success'));
+    app(Tenancy::class)->enter(2, function () use ($other, $check): void {
+        $lw = Livewire::actingAs($other)->test(SeoSettings::class);
+        $check->clearRunning(2);
+        $lw->call('recheck')->assertSet('toastTone', 'success');
+    });
 
     $this->travel(SeoSettings::RECHECK_WINDOW + 1)->seconds();
-    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(SeoSettings::class)->call('recheck')->assertSet('toastTone', 'success'));
+    app(Tenancy::class)->enter(1, function () use ($admin, $check): void {
+        $lw = Livewire::actingAs($admin)->test(SeoSettings::class);
+        $check->clearRunning(1);
+        $lw->call('recheck')->assertSet('toastTone', 'success');
+    });
 
     // Each open plus each allowed "Kiểm tra lại" queues one check for its own site.
-    Queue::assertPushed(CheckAiCrawlers::class, fn (CheckAiCrawlers $job): bool => $job->siteId === 2);
-    expect(Queue::pushed(CheckAiCrawlers::class)->filter(fn (CheckAiCrawlers $job): bool => $job->siteId === 1)->count())->toBe(3);
+    expect(Queue::pushed(CheckAiCrawlers::class)->filter(fn (CheckAiCrawlers $job): bool => $job->siteId === 2)->count())->toBe(2)
+        ->and(Queue::pushed(CheckAiCrawlers::class)->filter(fn (CheckAiCrawlers $job): bool => $job->siteId === 1)->count())->toBe(4);
+});
+
+it('queues nothing more when "Kiểm tra lại" is pressed while a check is under way', function (): void {
+    Queue::fake();
+    $admin = seoAiAdmin();
+    app(AiCrawlerCheck::class)->markRunning(1);
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        Livewire::actingAs($admin)->test(SeoSettings::class)->call('recheck')
+            ->assertSet('toast', 'Đang kiểm tra lại. Kết quả hiện ở đây sau ít phút.');
+    });
+
+    Queue::assertNothingPushed();
+    expect(app(AiCrawlerCheck::class)->isRunning(1))->toBeTrue();
+});
+
+it('drops the "checking" mark when the request that queued the check rolls back', function (): void {
+    Queue::fake();
+    $admin = seoAiAdmin();
+
+    try {
+        app(Tenancy::class)->enter(1, function () use ($admin): void {
+            Livewire::actingAs($admin)->test(SeoSettings::class)->assertOk();
+            expect(app(AiCrawlerCheck::class)->isRunning(1))->toBeTrue();
+
+            throw new RuntimeException('a later step of the same request failed');
+        });
+    } catch (RuntimeException) {
+    }
+
+    expect(app(AiCrawlerCheck::class)->isRunning(1))->toBeFalse();
 });
 
 it('needs settings.manage to see the result or check again', function (): void {

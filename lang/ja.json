@@ -2880,6 +2880,7 @@
     "admin.seoset.ai.content_signal": "ウェブサイトに Content-Signal の行があります（:signals）。内容の使い方の希望を示すだけで、ボットはブロックしません。",
     "admin.seoset.ai.robots_status": "robots.txt を確認できませんでした：ウェブサイトはコード :status を返しました。",
     "admin.seoset.ai.robots_too_long": "robots.txt が 512 KB を超えるため最後まで読めず、AIボットをブロックしているかは分かりません。",
+    "admin.seoset.ai.robots_too_complex": "robots.txt のルールが多すぎるか長すぎるため判定できず、AIボットをブロックしているかは分かりません。",
     "admin.seoset.ai.site_status": "確認できませんでした：ブラウザで開くとウェブサイトはコード :status を返します。",
     "admin.seoset.ai.cloudflare_challenge": "ウェブサイトの前に Cloudflare があり、ボットをブロックまたはチャレンジしています：:bots。",
     "admin.seoset.ai.bot_refused": "ブラウザでは開けるのに、ウェブサイトが AI ボットを拒否しています：:bots。",

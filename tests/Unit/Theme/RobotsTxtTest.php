@@ -97,3 +97,87 @@ it('reads the robots.txt Cloudflare serves for a managed zone as comments only â
     }
     expect(RobotsTxt::comparable((string) file_get_contents(__DIR__.'/../../Fixtures/robots-cloudflare-managed.txt')))->toBe([]);
 });
+
+/*
+ * The served robots.txt may come from a server the site's owner runs, up to 512 KB: judging it
+ * must stay cheap whatever it holds â€” a file past the bounds is not judged rather than judged slowly.
+ */
+const ROBOTS_BOTS = ['GPTBot', 'OAI-SearchBot', 'ChatGPT-User', 'ClaudeBot', 'Claude-SearchBot', 'Claude-User', 'PerplexityBot', 'Perplexity-User', 'Google-Extended', 'Applebot-Extended', 'CCBot', 'Bytespider', 'meta-externalagent', 'Amazonbot'];
+
+/** @return array{0: mixed, 1: float} what the call gave and how long it took, in seconds */
+function robotsTimed(Closure $call): array
+{
+    $started = hrtime(true);
+    $result = $call();
+
+    return [$result, (hrtime(true) - $started) / 1e9];
+}
+
+it('gives up at once on a 512 KB robots.txt of Disallow rules instead of judging it for every bot slowly', function (): void {
+    $text = "User-agent: *\nDisallow: /\n";
+    for ($i = 0; strlen($text) < 512 * 1024; $i++) {
+        $text .= "Disallow: /trang-{$i}/x*y\$\n";
+    }
+
+    [$verdicts, $seconds] = robotsTimed(fn () => RobotsTxt::parse($text)->verdicts(ROBOTS_BOTS));
+
+    expect($verdicts)->toBeNull()->and($seconds)->toBeLessThan(2.0);
+});
+
+it('judges a file at the rule bound for every bot quickly, even one built to make every path try every rule', function (): void {
+    // Each probe path is named by an Allow rule that does not match it, so every wildcard rule is
+    // tried on it before `Disallow: /` closes it (about 80,000 checks, inside the budget); the
+    // wildcards would backtrack in a regex.
+    $text = "User-agent: *\nDisallow: /\n";
+    for ($i = 0; $i < 40; $i++) {
+        $text .= 'Allow: /'.str_repeat('a', 300).$i."*z\n";
+    }
+    for ($i = 0; $i < RobotsTxt::MAX_RULES - 41; $i++) {
+        $text .= 'Disallow: /*'.str_repeat('a*', 20).'b'.$i."\n";
+    }
+
+    [$verdicts, $seconds] = robotsTimed(fn () => RobotsTxt::parse($text)->verdicts(ROBOTS_BOTS));
+
+    expect($verdicts)->toBe(array_fill_keys(ROBOTS_BOTS, 'blocked'))->and($seconds)->toBeLessThan(2.0);
+});
+
+it('stops judging once the rule checks for all the bots together pass the budget', function (): void {
+    // One big group every bot follows, plus a small group of its own for each, so no two bots
+    // share a judgement.
+    $text = "User-agent: *\nDisallow: /\n";
+    foreach (ROBOTS_BOTS as $bot) {
+        $text .= "User-agent: {$bot}\nAllow: /chi-{$bot}*z\n\n";
+    }
+    $text .= 'User-agent: '.implode("\nUser-agent: ", ROBOTS_BOTS)."\nDisallow: /\n";
+    for ($i = 0; $i < 100; $i++) {
+        $text .= 'Allow: /'.str_repeat('a', 300).$i."*z\n";
+    }
+    for ($i = 0; $i < 1800; $i++) {
+        $text .= 'Disallow: /*'.str_repeat('a', 30).'b'.$i."\n";
+    }
+
+    [$verdicts, $seconds] = robotsTimed(fn () => RobotsTxt::parse($text)->verdicts(ROBOTS_BOTS));
+
+    expect($verdicts)->toBeNull()->and($seconds)->toBeLessThan(2.0);
+});
+
+it('does not judge a file with more rules, or a longer rule, than it keeps', function (): void {
+    $many = "User-agent: *\n".str_repeat("Disallow: /a\n", RobotsTxt::MAX_RULES + 1);
+    $long = "User-agent: *\nDisallow: /".str_repeat('a', RobotsTxt::MAX_PATH)."\n";
+
+    expect(RobotsTxt::parse($many)->verdicts(ROBOTS_BOTS))->toBeNull()
+        ->and(RobotsTxt::parse($long)->verdict('GPTBot'))->toBeNull()
+        ->and(RobotsTxt::parse("User-agent: *\n".str_repeat("Disallow: /a\n", RobotsTxt::MAX_RULES))->verdict('GPTBot'))->toBe('partial');
+});
+
+it('matches a pattern full of * without backtracking, and still gives the right answer', function (): void {
+    $robots = RobotsTxt::parse("User-agent: *\nDisallow: /".str_repeat('a*', 40)."b\nDisallow: /x*y*z\$");
+
+    [$open, $seconds] = robotsTimed(fn () => $robots->allows('GPTBot', '/'.str_repeat('a', 500)));
+
+    expect($open)->toBeTrue()->and($seconds)->toBeLessThan(0.5)
+        ->and($robots->allows('GPTBot', '/'.str_repeat('a', 60).'b'))->toBeFalse()
+        ->and($robots->allows('GPTBot', '/x-1-y-2-z'))->toBeFalse()
+        ->and($robots->allows('GPTBot', '/x-1-y-2-z/'))->toBeTrue()
+        ->and($robots->allows('GPTBot', '/xzy'))->toBeTrue();
+});

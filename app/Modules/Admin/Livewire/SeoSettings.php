@@ -19,6 +19,7 @@ use App\Modules\Theme\Jobs\CheckAiCrawlers;
 use App\Modules\Theme\Theming\AiCrawlerCheck;
 use App\Modules\Theme\Theming\SiteSeo;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
@@ -196,14 +197,12 @@ final class SeoSettings extends Component
         }
         RateLimiter::hit($key, self::RECHECK_WINDOW);
 
-        $check = app(AiCrawlerCheck::class);
         if ($this->aiHost($siteId) === null) {
             $this->notify(__('admin.seoset.ai.not_ready'), 'error');
 
             return;
         }
-        $check->markRunning($siteId);
-        CheckAiCrawlers::dispatch($siteId);
+        $this->startAiCheck($siteId);   // a check already under way is the one the owner waits for
         $this->notify(__('admin.seoset.ai.started'));
     }
 
@@ -364,9 +363,22 @@ final class SeoSettings extends Component
         if ($host === null || $check->result($siteId, $host) !== null) {
             return;
         }
-        if ($check->markRunning($siteId)) {
-            CheckAiCrawlers::dispatch($siteId);
+        $this->startAiCheck($siteId);
+    }
+
+    /**
+     * Queue a check unless one already is. The job is sent once this request's transaction
+     * commits; should it roll back instead, the job is dropped with it, and so is the mark — or
+     * the page would say "checking" for RUNNING_TTL with nothing queued.
+     */
+    private function startAiCheck(int $siteId): void
+    {
+        $check = app(AiCrawlerCheck::class);
+        if (! $check->markRunning($siteId)) {
+            return;
         }
+        DB::afterRollBack(static fn () => $check->clearRunning($siteId));
+        CheckAiCrawlers::dispatch($siteId);
     }
 
     /**

@@ -2880,6 +2880,7 @@
     "admin.seoset.ai.content_signal": "网站有 Content-Signal 行（:signals）。它只说明您希望内容如何被使用，不会阻止任何机器人。",
     "admin.seoset.ai.robots_status": "无法检查 robots.txt：网站返回了代码 :status。",
     "admin.seoset.ai.robots_too_long": "robots.txt 超过 512 KB，未能读完，因此无法确定是否阻止了 AI 机器人。",
+    "admin.seoset.ai.robots_too_complex": "robots.txt 的规则过多或过长，无法判断，因此无法确定是否阻止了 AI 机器人。",
     "admin.seoset.ai.site_status": "无法检查：用浏览器打开时网站返回代码 :status。",
     "admin.seoset.ai.cloudflare_challenge": "网站前面有 Cloudflare，它正在阻止或质询机器人：:bots。",
     "admin.seoset.ai.bot_refused": "浏览器可以打开网站，但网站拒绝了 AI 机器人：:bots。",

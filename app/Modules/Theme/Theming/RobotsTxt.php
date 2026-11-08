@@ -14,7 +14,13 @@ namespace App\Modules\Theme\Theming;
  *   - `*` matches any run of characters and a final `$` anchors the end;
  *   - other records (Sitemap, Crawl-delay, Content-Signal…) belong to no group and decide nothing;
  *     Content-Signal lines are kept so the check can name them.
- * The caller bounds what is read (at most 512 KB).
+ * The caller bounds what is read (at most 512 KB). Judging is bounded too, whatever the file holds
+ * (it may come from a server the site's owner runs): at most MAX_RULES rules each at most MAX_PATH
+ * bytes, at most MAX_PROBES paths per bot, at most BUDGET rule checks for all the bots asked
+ * about together, and no regular expression that can backtrack. A file past any bound is not
+ * judged (verdicts() gives null) rather than judged slowly.
+ *
+ * @phpstan-type Rule array{allow: bool, length: int, literal: int, segments: non-empty-list<string>, anchored: bool, probe: string}
  */
 final readonly class RobotsTxt
 {
@@ -22,21 +28,43 @@ final readonly class RobotsTxt
     private const string PROBE = '/x-robots-probe';
 
     /**
-     * @param  list<array{agents: list<string>, rules: list<array{allow: bool, path: string}>}>  $groups
+     * Rules kept from one file. A file people write holds tens of rules, the site's own text (at
+     * most SiteSeo::ROBOTS_MAX characters, seven or more per rule line) fewer than 1,500; judging
+     * costs rules × paths per bot, so a longer file is not judged rather than judged slowly.
+     */
+    public const int MAX_RULES = 2000;
+
+    /** The longest rule path judged, in bytes: no real address is longer, and matching costs its length. */
+    public const int MAX_PATH = 512;
+
+    /** Paths tried per bot: the root, one below it, and the first distinct paths the rules name. */
+    public const int MAX_PROBES = 100;
+
+    /**
+     * Rule checks (one rule against one path) for one verdicts() call. Bots that follow the same
+     * groups share one judgement, and a real file decides most paths on its first few rules, so a
+     * file people wrote stays far below this.
+     */
+    public const int BUDGET = 100000;
+
+    /**
+     * @param  list<array{agents: list<string>, rules: list<Rule>}>  $groups
      * @param  list<string>  $signals
      */
-    private function __construct(private array $groups, private array $signals) {}
+    private function __construct(private array $groups, private array $signals, private bool $judgeable) {}
 
     public static function parse(string $text): self
     {
-        /** @var list<array{agents: list<string>, rules: list<array{allow: bool, path: string}>}> $groups */
+        /** @var list<array{agents: list<string>, rules: list<Rule>}> $groups */
         $groups = [];
         $signals = [];
         /** @var list<string> $agents */
         $agents = [];
-        /** @var list<array{allow: bool, path: string}> $rules */
+        /** @var list<Rule> $rules */
         $rules = [];
         $inAgents = false;
+        $kept = 0;
+        $judgeable = true;
 
         foreach (self::records($text) as [$field, $value]) {
             if ($field === 'user-agent') {
@@ -52,9 +80,16 @@ final readonly class RobotsTxt
                 $agents[] = self::agentToken($value);
             } elseif ($field === 'allow' || $field === 'disallow') {
                 $inAgents = false;
-                if ($agents !== []) {   // a rule before any User-agent line belongs to nobody
-                    $rules[] = ['allow' => $field === 'allow', 'path' => $value];
+                // A rule before any User-agent line belongs to nobody; an empty one decides nothing.
+                if ($agents === [] || $value === '' || ! $judgeable) {
+                    continue;
                 }
+                if (++$kept > self::MAX_RULES || strlen($value) > self::MAX_PATH) {
+                    $judgeable = false;
+
+                    continue;
+                }
+                $rules[] = self::rule($field === 'allow', $value);
             } elseif ($field === 'content-signal' && $value !== '') {
                 $signals[] = $value;
             }
@@ -63,7 +98,7 @@ final readonly class RobotsTxt
             $groups[] = ['agents' => $agents, 'rules' => $rules];
         }
 
-        return new self($groups, $signals);
+        return new self($groups, $signals, $judgeable);
     }
 
     /**
@@ -94,80 +129,196 @@ final readonly class RobotsTxt
     /** May this bot fetch this path? */
     public function allows(string $agent, string $path): bool
     {
-        $bestLength = -1;
-        $allowed = true;
-        foreach ($this->rulesFor($agent) as $rule) {
-            if ($rule['path'] === '' || ! self::matches($rule['path'], $path)) {
-                continue;
-            }
-            $length = strlen($rule['path']);
-            if ($length > $bestLength || ($length === $bestLength && $rule['allow'])) {
-                $bestLength = $length;
-                $allowed = $rule['allow'];
-            }
-        }
+        $budget = self::BUDGET;
 
-        return $allowed;
+        return self::decide(self::ranked($this->rulesFor($agent)[1]), $path, $budget) !== false;
     }
 
     /**
-     * How much of the site this bot may read: `blocked` (nothing), `partial` (some paths
-     * disallowed, e.g. `/san-pham`) or `allowed` (everything). Judged on the root, a path below it
-     * and each path a rule names.
+     * How much of the site each bot may read: `blocked` (nothing), `partial` (some paths
+     * disallowed, e.g. `/san-pham`) or `allowed` (everything). Null when the file is past a bound
+     * (see the class): nothing can be concluded from it.
      *
-     * @return 'blocked'|'partial'|'allowed'
+     * @param  list<string>  $agents
+     * @return array<string, 'blocked'|'partial'|'allowed'>|null
      */
-    public function verdict(string $agent): string
+    public function verdicts(array $agents): ?array
     {
-        $paths = ['/', self::PROBE];
-        foreach ($this->rulesFor($agent) as $rule) {
-            if ($rule['path'] !== '') {
-                $prefix = preg_split('/[*$]/', $rule['path'])[0] ?? '';
-                $paths[] = '/'.ltrim($prefix, '/');
+        if (! $this->judgeable) {
+            return null;
+        }
+        $budget = self::BUDGET;
+        $judged = [];
+        $verdicts = [];
+        foreach ($agents as $agent) {
+            [$key, $rules] = $this->rulesFor($agent);
+            $verdict = $judged[$key] ?? self::judge($rules, $budget);
+            if ($verdict === null) {
+                return null;
             }
+            $judged[$key] = $verdicts[$agent] = $verdict;
         }
 
-        $denied = 0;
-        foreach ($paths as $path) {
-            $denied += $this->allows($agent, $path) ? 0 : 1;
-        }
+        return $verdicts;
+    }
 
-        return match (true) {
-            $denied === 0 => 'allowed',
-            $denied === count($paths) => 'blocked',
-            default => 'partial',
-        };
+    /** @return 'blocked'|'partial'|'allowed'|null one bot's verdict (see verdicts()) */
+    public function verdict(string $agent): ?string
+    {
+        return $this->verdicts([$agent])[$agent] ?? null;
     }
 
     /**
-     * The rules this bot follows: every group naming it, merged; else every `*` group, merged.
+     * Judged on the root, a path below it and each path a rule names (the first MAX_PROBES in
+     * all); it stops once it has seen both an open and a closed path. Null once the budget is spent.
      *
-     * @return list<array{allow: bool, path: string}>
+     * @param  list<Rule>  $rules
+     * @return 'blocked'|'partial'|'allowed'|null
+     */
+    private static function judge(array $rules, int &$budget): ?string
+    {
+        $paths = ['/' => true, self::PROBE => true];
+        foreach ($rules as $rule) {
+            if (count($paths) >= self::MAX_PROBES) {
+                break;
+            }
+            $paths[$rule['probe']] = true;
+        }
+
+        $ranked = self::ranked($rules);
+        $open = 0;
+        $closed = 0;
+        foreach (array_keys($paths) as $path) {
+            $allowed = self::decide($ranked, (string) $path, $budget);
+            if ($allowed === null) {
+                return null;
+            }
+            $allowed ? $open++ : $closed++;
+            if ($open > 0 && $closed > 0) {
+                return 'partial';
+            }
+        }
+
+        return $closed === 0 ? 'allowed' : 'blocked';
+    }
+
+    /**
+     * The rules this bot follows: every group naming it, merged; else every `*` group, merged —
+     * with a key naming those groups, the same for every bot that follows the same ones.
+     *
+     * @return array{0: string, 1: list<Rule>}
      */
     private function rulesFor(string $agent): array
     {
         $agent = strtolower($agent);
         $own = null;
+        $ownKey = '';
         $any = [];
-        foreach ($this->groups as $group) {
+        $anyKey = '*';
+        foreach ($this->groups as $index => $group) {
             if (in_array($agent, $group['agents'], true)) {
                 $own = [...$own ?? [], ...$group['rules']];
+                $ownKey .= $index.',';
             } elseif (in_array('*', $group['agents'], true)) {
                 array_push($any, ...$group['rules']);
+                $anyKey .= $index.',';
             }
         }
 
-        return $own ?? $any;
+        return $own !== null ? [$ownKey, $own] : [$anyKey, $any];
     }
 
-    /** `*` = any run of characters, a final `$` = the end of the path; anything else literal. */
-    private static function matches(string $pattern, string $path): bool
+    /**
+     * The rules in the order they win: the longest path first and, at the same length, `Allow`
+     * first — so the first rule that matches a path decides it.
+     *
+     * @param  list<Rule>  $rules
+     * @return list<Rule>
+     */
+    private static function ranked(array $rules): array
     {
-        $anchored = str_ends_with($pattern, '$');
-        $body = $anchored ? substr($pattern, 0, -1) : $pattern;
-        $regex = implode('.*', array_map(static fn (string $part): string => preg_quote($part, '~'), explode('*', $body)));
+        usort($rules, static fn (array $a, array $b): int => [$b['length'], $b['allow']] <=> [$a['length'], $a['allow']]);
 
-        return preg_match('~\A'.$regex.($anchored ? '\z' : '').'~', $path) === 1;
+        return $rules;
+    }
+
+    /**
+     * Whether the path is open (the first ranked rule that matches decides; none = open); null once
+     * the budget is spent.
+     *
+     * @param  list<Rule>  $ranked
+     */
+    private static function decide(array $ranked, string $path, int &$budget): ?bool
+    {
+        $size = strlen($path);
+        foreach ($ranked as $rule) {
+            if (--$budget < 0) {
+                return null;
+            }
+            if ($rule['literal'] <= $size && self::matches($rule, $path)) {
+                return $rule['allow'];
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * One rule, ready to match: its pieces between `*`, whether a final `$` anchors it, its length
+     * (what decides between rules), how many plain characters it needs, and the path before its
+     * first `*` or `$` (one of the paths the verdict tries).
+     *
+     * @return Rule
+     */
+    private static function rule(bool $allow, string $path): array
+    {
+        $anchored = str_ends_with($path, '$');
+        $body = $anchored ? substr($path, 0, -1) : $path;
+
+        return [
+            'allow' => $allow,
+            'length' => strlen($path),
+            'literal' => strlen($body) - substr_count($body, '*'),
+            'segments' => explode('*', $body),
+            'anchored' => $anchored,
+            'probe' => '/'.ltrim(substr($path, 0, strcspn($path, '*$')), '/'),
+        ];
+    }
+
+    /**
+     * `*` = any run of characters, a final `$` = the end of the path; anything else literal.
+     * Matched piece by piece, each at its first place after the one before (enough for `*`-only
+     * patterns), so the work is linear in the path — never a regular expression that can backtrack.
+     *
+     * @param  Rule  $rule
+     */
+    private static function matches(array $rule, string $path): bool
+    {
+        $segments = $rule['segments'];
+        $last = count($segments) - 1;
+        if (! str_starts_with($path, $segments[0])) {
+            return false;
+        }
+        $at = strlen($segments[0]);
+        if ($last === 0) {
+            return ! $rule['anchored'] || strlen($path) === $at;
+        }
+        for ($i = 1; $i < $last; $i++) {
+            if ($segments[$i] === '') {
+                continue;
+            }
+            $found = strpos($path, $segments[$i], $at);
+            if ($found === false) {
+                return false;
+            }
+            $at = $found + strlen($segments[$i]);
+        }
+        $end = $segments[$last];
+        if (! $rule['anchored']) {
+            return $end === '' || strpos($path, $end, $at) !== false;
+        }
+
+        return strlen($path) - strlen($end) >= $at && str_ends_with($path, $end);
     }
 
     /** The product token of a User-agent value, lower case (`GPTBot/1.1` → `gptbot`); `*` stays. */

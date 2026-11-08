@@ -2880,6 +2880,7 @@
     "admin.seoset.ai.content_signal": "Website có dòng Content-Signal (:signals). Dòng này chỉ nói bạn muốn nội dung được dùng thế nào, không chặn bot nào.",
     "admin.seoset.ai.robots_status": "Chưa kiểm được robots.txt: website trả mã :status.",
     "admin.seoset.ai.robots_too_long": "Chưa đọc hết robots.txt vì tệp dài hơn 512 KB, nên chưa biết có chặn bot AI hay không.",
+    "admin.seoset.ai.robots_too_complex": "robots.txt có quá nhiều quy tắc, hoặc quy tắc quá dài, để kiểm tra được, nên chưa biết có chặn bot AI hay không.",
     "admin.seoset.ai.site_status": "Chưa kiểm được: website trả mã :status khi mở bằng trình duyệt.",
     "admin.seoset.ai.cloudflare_challenge": "Có Cloudflare đứng trước website và nó đang chặn hoặc thử thách bot: :bots.",
     "admin.seoset.ai.bot_refused": "Website từ chối bot AI trong khi trình duyệt vẫn mở được: :bots.",
