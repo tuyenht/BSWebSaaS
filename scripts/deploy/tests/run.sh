@@ -105,6 +105,18 @@ w database/migrations/3000_01_01_000600_insert_using.php "<?php
 return new class extends Migration {
     public function up(): void { \$q->from('a')->insertUsing(['x'], \$sub); }
 };"
+# the write shapes the second review listed: Eloquent destroy, the quiet and OrFail instance writes, restore,
+# touch, and a command or seeder run from a migration
+n=0
+for body in "Media::destroy([1, 2]);" "\$m->saveQuietly();" "\$m->updateQuietly(['x' => 1]);" "\$m->deleteQuietly();" \
+    "\$m->restore();" "\$m->touch();" "Artisan::call('site:link-contact-page');" "\$this->call(RoleSeeder::class);" \
+    "\$m->forceDeleteQuietly();" "\$m->updateOrFail(['x' => 1]);"; do
+    w "database/migrations/3000_01_01_001${n}00_write_$n.php" "<?php
+return new class extends Migration {
+    public function up(): void { $body }
+};"
+    n=$((n + 1))
+done
 git -C "$SRC" add -A && gitc -m flags; FLAGSC=$(git -C "$SRC" rev-parse HEAD)
 branch t-unknown; w weird/thing.txt x; w app/Modules/X/Foo.php '<?php // 2'; git -C "$SRC" add -A && gitc -m unknown; UNKNOWN=$(git -C "$SRC" rev-parse HEAD)
 branch t-sched; w routes/console.php "<?php
@@ -146,7 +158,7 @@ fresh() { # fresh <target>: a new fake prod at OLD, its fake DB files, profile a
     printf '%s\n' 'col|sites|id|bigint|notnull' 'idx|sites|sites_pkey|valid' 'con|sites|sites_pkey|p|validated' > "$FAKE/catalog.txt"
     echo 'col|sites|extra|text|null' > "$FAKE/catalog-add-2100_01_01_000000_add_col"
     echo 'idx|sites|sites_extra_idx|valid' > "$FAKE/catalog-add-2100_01_01_000100_add_idx"
-    echo 1 > "$FAKE/oneoff-count"
+    echo 1 > "$FAKE/oneoff-count"; echo 2 > "$FAKE/pre-count"
     printf '/bai-1\n/bai-2\n' > "$FAKE/pages"; echo 404 > "$FAKE/code_bai-1"   # release_pages keeps the first that opens
     cat > "$S/profile" <<EOF
 PROD=$PROD PREFIX=fake_deploy_ COMPOSE_PROJECT=fake-deploy BK=$S/bk SECRETS=$S/secret.env DEPLOY_RUNS=$RUNS
@@ -170,6 +182,13 @@ oneoff_sample() { case "$1" in
     apply) [ "$2" = 1 ] || die "apply got '$2', not the preview count"; art fake:oneoff; echo 0 > "$FAKE/oneoff-count" ;;
     verify) touch "$FAKE/verified" ;;
 esac; }
+ONEOFFS_PRE=(early)
+oneoff_early() { case "$1" in
+    preview) q "SELECT FAKE_PRE" ;;
+    apply) [ "$2" = 2 ] || die "early apply got '$2', not the preview count"; art fake:pre; echo 0 > "$FAKE/pre-count" ;;
+    verify) touch "$FAKE/pre-verified" ;;
+esac; }
+release_guard() { [ ! -e "$FAKE/past-deadline" ] || die "hạn của bản thử đã qua"; }
 release_pages() { local p; p=$(first_open "SELECT FAKE_PAGES"); [ -n "$p" ] || die "no page opens"; echo "$p"; }
 BUILD_DYNAMIC=(resources/js/lazy.js)
 BUILD_MARKERS=("resources/js/app.js bsNewThing" "resources/css/storefront.css sf-newclass")
@@ -228,8 +247,18 @@ EXP="3000_01_01_000000_builder_update nonadd table
 3000_01_01_000300_add_only table
 3000_01_01_000400_eloquent nonadd table
 3000_01_01_000500_pdo nonadd
-3000_01_01_000600_insert_using nonadd"
-ok '[ "$GOT" = "$EXP" ]' "builder update (0008 shape), aliased UPDATE (2051 shape), alias without AS, Eloquent create, PDO exec, insertUsing → nonadd; onUpdate/nullOnDelete/useCurrentOnUpdate and a write in down() stay additive"
+3000_01_01_000600_insert_using nonadd
+3000_01_01_001000_write_0 nonadd
+3000_01_01_001100_write_1 nonadd
+3000_01_01_001200_write_2 nonadd
+3000_01_01_001300_write_3 nonadd
+3000_01_01_001400_write_4 nonadd
+3000_01_01_001500_write_5 nonadd
+3000_01_01_001600_write_6 nonadd
+3000_01_01_001700_write_7 nonadd
+3000_01_01_001800_write_8 nonadd
+3000_01_01_001900_write_9 nonadd"
+ok '[ "$GOT" = "$EXP" ]' "builder update (0008 shape), aliased UPDATE (2051 shape), alias without AS, Eloquent create, PDO exec, insertUsing, ::destroy, saveQuietly/updateQuietly/deleteQuietly/forceDeleteQuietly, updateOrFail, restore, touch, Artisan::call, \$this->call → nonadd; onUpdate/nullOnDelete/useCurrentOnUpdate and a write in down() stay additive"
 [ "$GOT" = "$EXP" ] || diff <(printf '%s\n' "$EXP") <(printf '%s\n' "$GOT")
 
 echo "== plan: git only, flags, hash line"
@@ -242,6 +271,7 @@ ok '[ ! -s "$FAKE/calls.log" ]' "plan called no docker, gh or pnpm"
 ok 'grep -q "2100_01_01_000000_add_col: \[table\] PgBouncer: restart" "$PLAN"' "add_col flagged table only (down() and comments ignored), restart"
 ok 'grep -q "add_idx: \[raw nonadd table concurrent\] PgBouncer: no-restart (PGB_SKIP: index only)" "$PLAN"' "add_idx raw + concurrent, restart narrowed"
 ok 'grep -qF "launch $ECOMMIT $EBLOB $REL $(sha256sum "$REL" | cut -d" " -f1)" "$PLAN"' "the owner line carries commit, engine blob and release sha256"
+ok 'grep -q "một lần trước khi nạp lại.*: early" "$PLAN" && grep -q "optimize, một lần trước khi nạp lại (code mới, worker cũ còn phục vụ): early, octane:reload" "$PLAN"' "the plan names the pre-reload one-off between optimize and octane:reload"
 release 'unset "MIG_OK[2100_01_01_000100_add_idx]"'
 ( export PATH="$STUB:$PATH" FAKE; bash "$SRC/scripts/deploy/deploy.sh" plan "$REL" ) > "$PLAN" 2>&1; RC=$?
 ok '[ "$RC" = 1 ] && grep -q "MIG_OK" "$PLAN"' "raw SQL migration without a reviewed reason stops"
@@ -251,6 +281,22 @@ ok '[ "$RC" = 1 ] && grep -q "không được gọi gh" "$PLAN" && [ ! -s "$FAKE
 release 'SCHEMA_REMOVED_OK=("sites extra")'
 ( export PATH="$STUB:$PATH" FAKE; bash "$SRC/scripts/deploy/deploy.sh" plan "$REL" ) > "$PLAN" 2>&1; RC=$?
 ok '[ "$RC" = 1 ] && grep -q "SCHEMA_REMOVED_OK: dòng" "$PLAN"' "a SCHEMA_REMOVED_OK line not in snapshot form stops the plan"
+release 'SCHEMA_REMOVED_OK=("col|sites|created_at|timestamp(0) with time zone|null" "col|sites|name|character varying(255)|notnull" "con|sites|sites_owner_fk|f|NOT-VALID")'
+( export PATH="$STUB:$PATH" FAKE; bash "$SRC/scripts/deploy/deploy.sh" plan "$REL" ) > "$PLAN" 2>&1; RC=$?
+ok '[ "$RC" = 0 ] && grep -qF "timestamp(0) with time zone|null" "$PLAN"' "SCHEMA_REMOVED_OK lines with spaces in the column type (as format_type prints them) pass the plan"
+release 'SCHEMA_REMOVED_OK=("col|sites|created_at|timestamp(0) with time zone")'
+( export PATH="$STUB:$PATH" FAKE; bash "$SRC/scripts/deploy/deploy.sh" plan "$REL" ) > "$PLAN" 2>&1; RC=$?
+ok '[ "$RC" = 1 ] && grep -q "SCHEMA_REMOVED_OK: dòng" "$PLAN"' "a col| line without its null/notnull field stops the plan"
+release 'ONEOFFS_PRE=(early missing)'
+( export PATH="$STUB:$PATH" FAKE; bash "$SRC/scripts/deploy/deploy.sh" plan "$REL" ) > "$PLAN" 2>&1; RC=$?
+ok '[ "$RC" = 1 ] && grep -q "thiếu hàm oneoff_missing" "$PLAN"' "a pre-reload one-off without its function stops the plan"
+release 'ONEOFFS_PRE=(sample)'
+( export PATH="$STUB:$PATH" FAKE; bash "$SRC/scripts/deploy/deploy.sh" plan "$REL" ) > "$PLAN" 2>&1; RC=$?
+ok '[ "$RC" = 1 ] && grep -q "cả ONEOFFS và ONEOFFS_PRE" "$PLAN"' "a one-off in both lists stops the plan"
+release; touch "$FAKE/past-deadline"
+( export PATH="$STUB:$PATH" FAKE; bash "$SRC/scripts/deploy/deploy.sh" plan "$REL" ) > "$PLAN" 2>&1; RC=$?
+rm -f "$FAKE/past-deadline"
+ok '[ "$RC" = 1 ] && grep -q "hạn của bản thử đã qua" "$PLAN"' "the plan runs the release guard"
 release 'BUILD_MARKERS=("resources/js/app.js notInTheSource")'
 ( export PATH="$STUB:$PATH" FAKE; bash "$SRC/scripts/deploy/deploy.sh" plan "$REL" ) > "$PLAN" 2>&1; RC=$?
 ok '[ "$RC" = 1 ] && grep -q "không có trong resources/" "$PLAN"' "a build marker missing from resources/ at TARGET stops the plan"
@@ -291,6 +337,9 @@ ok 'says "0 would change on 1 site(s)." && [ "$(calls "cms:resanitize-bodies --d
 ok '[ "$(cat "$FAKE/oneoff-count")" = 0 ] && says "OK   sample xem lại sau khi chạy (còn đổi) = 0"' "one-off: preview → apply → re-preview 0"
 ok 'says "chỉ mục mới hợp lệ" && says "+ idx|sites|sites_extra_idx|valid"' "schema delta printed and checked"
 ok '[ -e "$FAKE/verified" ]' "one-off: apply got the preview count, verify ran"
+O=$(line_of "artisan optimize"); P=$(line_of "artisan fake:pre"); L=$(line_of "artisan octane:reload"); Q1=$(line_of "artisan fake:oneoff")
+ok '[ -n "$O" ] && [ -n "$P" ] && [ -n "$L" ] && [ "$O" -lt "$P" ] && [ "$P" -lt "$L" ] && [ "$L" -lt "$Q1" ]' "pre-reload one-off ran after optimize, before octane:reload; the other one-off after it ($O < $P < $L < $Q1)"
+ok '[ "$(cat "$FAKE/pre-count")" = 0 ] && [ -e "$FAKE/pre-verified" ] && says "OK   early xem lại sau khi chạy (còn đổi) = 0" && [ -s "$RUNS/${OLD:0:7}-${FULL:0:8}/oneoff-pre-early" ]' "pre-reload one-off: preview 2 → apply 2 → re-preview 0 → verify, its own mark"
 PB=$RUNS/${OLD:0:7}-${FULL:0:8}/pages-before
 ok 'grep -qx "/bai-2 200" "$PB" && ! grep -q "^/bai-1 " "$PB" && says "OK   trang /bai-2 (code cũ trên cấu trúc bảng mới; trước: 200) = 200"' "release_pages: the first page that opens is kept and re-checked on the old code in step 4"
 ok 'says "OK   bản build có phần tải sau resources/js/lazy.js = true" && says "OK   bản build: resources/js/app.js có '"'"'bsNewThing'"'"'" && says "OK   bản build: resources/css/storefront.css có '"'"'sf-newclass'"'"'"' "build: lazy chunk and the new strings checked"
@@ -306,6 +355,23 @@ ok '[ "$RC" = 1 ] && says "khác bản ghi lần đầu"' "a resume with a chang
 release; launch rollback
 ok '[ "$RC" = 0 ] && head_is "$OLD"' "rollback puts the code back on OLD"
 ok '[ "$(calls "MIGRATED")" = 2 ]' "rollback ran no migration"
+ok '[ "$(calls "artisan fake:pre")" = 1 ] && [ "$(calls "artisan octane:reload")" = 2 ]' "rollback reloads without the pre-reload one-off"
+
+echo "== pre-reload one-off: a stop at the reload, then resume at 7"
+fresh "$FULL"; touch "$FAKE/fail-reload-once"; launch
+ok '[ "$RC" = 1 ] && says "DỪNG (bước 7)" && [ "$(calls "artisan fake:pre")" = 1 ]' "octane:reload fails after the pre-reload one-off applied"
+launch 7
+ok '[ "$RC" = 0 ] && says "Bỏ qua early: đã chạy" && [ "$(calls "artisan fake:pre")" = 1 ] && [ "$(calls "artisan fake:oneoff")" = 1 ]' "resume at 7 skips the marked pre-reload one-off and finishes"
+
+echo "== release guard before every step, a resume included"
+fresh "$FULL"; touch "$FAKE/past-deadline"; launch
+ok '[ "$RC" = 1 ] && says "DỪNG (bước 0)" && says "hạn của bản thử đã qua" && [ ! -s "$FAKE/calls.log" ]' "a first run past the release deadline stops before step 0 does anything"
+fresh "$FULL"; touch "$FAKE/bad-dump"; launch
+ok '[ "$RC" = 1 ] && says "DỪNG (bước 2)"' "a run stops in step 2"
+rm -f "$FAKE/bad-dump"; touch "$FAKE/past-deadline"; launch 2
+ok '[ "$RC" = 1 ] && says "DỪNG (bước 2)" && says "hạn của bản thử đã qua" && [ "$(calls "pg_dump")" = 1 ] && head_is "$OLD"' "a resume from step 2 after the deadline stops before the step runs"
+rm -f "$FAKE/past-deadline"; launch 2
+ok '[ "$RC" = 0 ] && head_is "$FULL"' "the same resume before the deadline finishes"
 
 echo "== lock timeout: retried, PgBouncer restarted after every attempt"
 fresh "$FULL"; echo 1 > "$FAKE/lockfail-2100_01_01_000000_add_col"; launch
@@ -339,6 +405,9 @@ fresh "$FULL"; echo 'idx|sites|sites_pkey|valid' > "$FAKE/catalog-del-2100_01_01
 ok '[ "$RC" = 0 ] && says "bớt/đổi đúng SCHEMA_REMOVED_OK (1 dòng)"' "the same drop listed exactly passes"
 fresh "$FULL"; echo 'idx|sites|sites_pkey|valid' > "$FAKE/catalog-del-2100_01_01_000000_add_col"; release 'SCHEMA_REMOVED_OK=("idx|sites|sites_pkey|valid" "col|sites|id|bigint|notnull")'; launch
 ok '[ "$RC" = 1 ] && says "khai báo mà không bớt/đổi: col|sites|id|bigint|notnull"' "a listed line that did not go stops (exact compare)"
+fresh "$FULL"; echo 'col|sites|created_at|timestamp(0) with time zone|null' >> "$FAKE/catalog.txt"; echo 'col|sites|created_at|timestamp(0) with time zone|null' > "$FAKE/catalog-del-2100_01_01_000000_add_col"
+release 'SCHEMA_REMOVED_OK=("col|sites|created_at|timestamp(0) with time zone|null")'; launch
+ok '[ "$RC" = 0 ] && says "- col|sites|created_at|timestamp(0) with time zone|null" && says "bớt/đổi đúng SCHEMA_REMOVED_OK (1 dòng)"' "a dropped timestamptz column listed exactly (type with spaces) passes step 4"
 fresh "$FULL"; echo 'col|sites|extra2|text|null' >> "$FAKE/catalog-add-2100_01_01_000100_add_idx"; launch
 ok '[ "$RC" = 1 ] && says "đổi cột của bảng nhưng không khởi động lại PgBouncer" && says "PGB_SKIP: index only" && says "+ col|sites|extra2|text|null" && head_is "$OLD"' "PGB_SKIP on a file that changed a column is refused"
 ok '[ "$(calls "restart -t 2 fake_deploy_pgbouncer")" = 2 ]' "the refusal restarts PgBouncer (after add_col, at the stop)"
@@ -363,6 +432,10 @@ rel_unit 'date() { echo 2026-12-09; }; trash_deadline'
 ok '[ "$RC" = 1 ] && says "DIE: hôm nay 2026-12-09"' "deploy on the trash deadline (2026-12-09) stops"
 rel_unit 'date() { echo 2026-12-08; }; trash_deadline'
 ok '[ "$RC" = 0 ]' "the day before the deadline passes"
+rel_unit 'date() { echo 2026-12-10; }; release_guard'
+ok '[ "$RC" = 1 ] && says "DIE: hôm nay 2026-12-10"' "the release guard (run before every step) is the trash deadline"
+rel_unit '[ "${#ONEOFFS_PRE[@]}" = 0 ] && echo empty'
+ok '[ "$RC" = 0 ] && says empty' "the worked release has no pre-reload one-off"
 rel_unit "date() { echo 2026-11-20; }; git() { echo \"    public const string SINCE = '2026-11-10';\"; }; release_git x"
 ok '[ "$RC" = 1 ] && says "ProductTrash::SINCE"' "a ProductTrash::SINCE other than 2026-11-09 stops"
 rel_unit "date() { echo 2026-11-20; }; release_git '$TOP'"

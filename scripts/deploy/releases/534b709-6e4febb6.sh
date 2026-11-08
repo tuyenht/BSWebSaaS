@@ -57,11 +57,12 @@ trash_deadline() {
     [[ "$x" < "$TRASH_DEADLINE" ]] || die "hôm nay $x đã tới hoặc qua $TRASH_DEADLINE: lệnh xóa sản phẩm quá 30 ngày trong Thùng rác sẽ xóa ngay sản phẩm cũ. Nhắn AI: phải đổi ProductTrash::SINCE thành ngày deploy (một PR mới) rồi làm tệp khai báo mới"
     echo "OK   hôm nay $x, trước $TRASH_DEADLINE (Thùng rác sản phẩm: chưa xóa gì trước $TRASH_DEADLINE)"
 }
+release_guard() { trash_deadline; }   # the engine runs it in the plan and before every step, a resume included
 release_git() { # plan and step 1: the grace start in the code is the date TRASH_DEADLINE was counted from
+    # (fixed by TARGET, which the run record pins, so a resume cannot change it)
     local since
     since=$(git -C "$1" show "$TARGET:app/Modules/Catalog/Support/ProductTrash.php" | sed -nE "s/.*const string SINCE = '([0-9-]+)'.*/\1/p")
     expect "ngày bắt đầu ân hạn Thùng rác sản phẩm (ProductTrash::SINCE ở ${TARGET:0:8})" "$since" "$TRASH_SINCE"
-    trash_deadline
 }
 # Up to 10 published posts / products of the site in its default language, newest first
 POSTS_SQL="SELECT r.path FROM routes r JOIN entries e ON e.id = r.entry_id
@@ -96,7 +97,6 @@ brand_mark() { # the home page's favicon href | header logo src | robots meta: t
 }
 release_before() {
     local x
-    trash_deadline
     echo "Sản phẩm đang trong Thùng rác (mọi website; việc tự xóa mới chỉ xóa cái quá 30 ngày, tính từ $TRASH_SINCE): $(q "SELECT count(*) FROM products WHERE deleted_at IS NOT NULL")"
     expect "trang /sitemap.xml trước khi triển khai" "$(code /sitemap.xml '%{http_code}')" "200"
     # step 8 compares these: the footer company line, the brand marks (the fill writes ids only, K83 / #403),
@@ -115,6 +115,9 @@ release_check() { # read-only, before step 4
         || die "$HOST không có trang /lien-he đã đăng: nút Yêu cầu báo giá sẽ không gắn được"
 }
 
+# One-off commands run between optimize and octane:reload (new code, old workers still serving): none here,
+# nothing this range ships needs data before its first request.
+ONEOFFS_PRE=()
 # One-off commands, each run once after the reload: preview prints how many rows would change (last line),
 # apply <preview count> writes; the engine requires the second preview to print 0, runs verify, and marks it done.
 ONEOFFS=(link_contact fill_brand)

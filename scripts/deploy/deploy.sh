@@ -9,8 +9,9 @@
 # checks its blob hash and the release file's sha256 (both written in the line), then runs the copy:
 #   run <release copy> <engine blob> <release sha256> <commit> [step | dump | rollback]
 # Steps (the order of the clean run of 05/11, 58 s): 0 checks · 1 delta · 2 dump · 3 read-only checks ·
-# 4 migrate (old code still serves) · 5 code + composer · 6 build · 7 caches + reload + one-off commands ·
-# 8 smoke. Rollback moves the code only (migrations must be expand-only; a non-additive one needs review).
+# 4 migrate (old code still serves) · 5 code + composer · 6 build · 7 caches, pre-reload one-offs, reload,
+# one-off commands · 8 smoke. Rollback moves the code only (migrations must be expand-only; a non-additive
+# one needs review).
 # Every changed path must belong to a known class (scripts/deploy/README.md); an unknown path, a server
 # file, or an edited or deleted migration stops. Classes that need a human look (migrations, schedule,
 # dependencies, permissions, sanitizer, content packs, backup scripts) must be declared in the release file.
@@ -190,9 +191,11 @@ mig_scan() { # mig_scan <git dir> <commit> <name>: the file without its down() b
         !skip { print }'
 }
 # nonadd = drops, renames, type or NOT NULL changes, and every data write: raw SQL (UPDATE with or without an
-# alias, DELETE, INSERT), the query builder (DB::table(…)->update(…), insert, upsert…), Eloquent statics, PDO
-MIG_NONADD='->change\(|->drop[A-Za-z]*\(|Schema::drop|rename|nullable\(false\)|SET NOT NULL|DROP (TABLE|COLUMN|INDEX|CONSTRAINT|VIEW|TYPE)|ALTER COLUMN|TRUNCATE|DELETE FROM|INSERT INTO|UPDATE[[:space:]]+[^[:space:](]+([[:space:]]+(AS[[:space:]]+)?[A-Za-z_][A-Za-z0-9_]*)?[[:space:]]+SET[[:space:]]|DB::(table|select|insert|update|delete|statement|unprepared|connection)\b|->(update|delete|insert|insertGetId|insertOrIgnore|insertUsing|upsert|updateOrInsert|increment|decrement|forceDelete|save|exec)\(|getPdo'
-MIG_ELOQUENT='::(create|insert|upsert|firstOrCreate|updateOrCreate|forceCreate|query|where)\('   # Model::create(…) & co.; Schema::create is removed first
+# alias, DELETE, INSERT), the query builder (DB::table(…)->update(…), insert, upsert…), Eloquent statics and
+# instance writes (the …Quietly / …OrFail forms too, restore, touch), PDO, and commands or seeders run from a
+# migration (Artisan::call, $this->call)
+MIG_NONADD='->change\(|->drop[A-Za-z]*\(|Schema::drop|rename|nullable\(false\)|SET NOT NULL|DROP (TABLE|COLUMN|INDEX|CONSTRAINT|VIEW|TYPE)|ALTER COLUMN|TRUNCATE|DELETE FROM|INSERT INTO|UPDATE[[:space:]]+[^[:space:](]+([[:space:]]+(AS[[:space:]]+)?[A-Za-z_][A-Za-z0-9_]*)?[[:space:]]+SET[[:space:]]|DB::(table|select|insert|update|delete|statement|unprepared|connection)\b|->(insert|insertGetId|insertOrIgnore|insertUsing|upsert|updateOrInsert|increment|decrement|exec)\(|->(update|delete|forceDelete|save|restore|touch)(Quietly|OrFail)?\(|getPdo|Artisan::(call|callSilent|queue)\(|\$this->call(Silent|With|Once)?\('
+MIG_ELOQUENT='::(create|insert|upsert|firstOrCreate|updateOrCreate|forceCreate|query|where|destroy)\('   # Model::create(…) & co.; Schema::create is removed first
 mig_flags() { # mig_flags <git dir> <commit> <name> → space list of: raw nonadd table concurrent
     local t f=
     t=$(mig_scan "$@")
@@ -258,9 +261,14 @@ analyse() {
     [ "${RESANITIZE:-dry-run}" = dry-run ] || [ "${RESANITIZE:-}" = apply ] || die "RESANITIZE chỉ nhận dry-run hoặc apply"
     if [ "${RESANITIZE:-dry-run}" = apply ]; then case " $CLASSES " in *" sanitizer "*) ;; *) die "RESANITIZE=apply nhưng bộ lọc nội dung không đổi" ;; esac; fi
     case " $CLASSES " in *" content-pack "*) note "gói nội dung đổi: chỉ báo, bản này không nạp gói" ;; esac
-    for k in "${ONEOFFS[@]}"; do declare -F "oneoff_$k" >/dev/null || die "thiếu hàm oneoff_$k trong tệp khai báo"; done
-    for x in "${SCHEMA_REMOVED_OK[@]}"; do
-        [[ "$x" =~ ^(col|idx|con)\|[^[:space:]]+$ ]] || die "SCHEMA_REMOVED_OK: dòng '$x' không theo dạng col|…, idx|… hoặc con|… của bản chụp cấu trúc bảng"
+    for k in "${ONEOFFS[@]}" "${ONEOFFS_PRE[@]}"; do declare -F "oneoff_$k" >/dev/null || die "thiếu hàm oneoff_$k trong tệp khai báo"; done
+    for k in "${ONEOFFS_PRE[@]}"; do
+        if printf '%s\n' "${ONEOFFS[@]}" | grep -qxF -- "$k"; then die "một lần $k có trong cả ONEOFFS và ONEOFFS_PRE: chỉ được chạy một lần"; fi
+    done
+    [ "${#ONEOFFS_PRE[@]}" = 0 ] || note "một lần trước khi nạp lại (sau optimize, code mới, worker cũ còn phục vụ; ghi phải vô hại với code cũ): ${ONEOFFS_PRE[*]}"
+    for x in "${SCHEMA_REMOVED_OK[@]}"; do   # the CATALOG_SQL line shapes; a column type may hold spaces ("timestamp(0) with time zone")
+        [[ "$x" =~ $SNAP_COL ]] || [[ "$x" =~ $SNAP_IDX ]] || [[ "$x" =~ $SNAP_CON ]] \
+            || die "SCHEMA_REMOVED_OK: dòng '$x' không theo dạng col|bảng|cột|kiểu|null, idx|bảng|tên|valid hoặc con|bảng|tên|loại|validated của bản chụp cấu trúc bảng"
     done
     note "cấu trúc bảng được phép bớt/đổi (SCHEMA_REMOVED_OK, so đúng từng dòng ở bước 4): ${SCHEMA_REMOVED_OK[*]:-không dòng nào}"
     VITE=$(vite_inputs "$g" "$TARGET" | joinw)
@@ -346,6 +354,11 @@ CATALOG_SQL="SELECT 'col|'||c.relname||'|'||a.attname||'|'||format_type(a.atttyp
     FROM pg_constraint k JOIN pg_class t ON t.oid = k.conrelid JOIN pg_namespace n ON n.oid = t.relnamespace
     WHERE n.nspname = 'public' AND NOT t.relispartition
   ORDER BY 1"
+# one field of a snapshot line: anything but the separator and control characters (spaces, brackets, quotes ok)
+SNAP_F='[^|[:cntrl:]]+'
+SNAP_COL="^col\\|$SNAP_F\\|$SNAP_F\\|$SNAP_F\\|(null|notnull)\$"
+SNAP_IDX="^idx\\|$SNAP_F\\|$SNAP_F\\|(valid|INVALID)\$"
+SNAP_CON="^con\\|$SNAP_F\\|$SNAP_F\\|[a-z]\\|(validated|NOT-VALID)\$"
 catalog() { # sorted here, in byte order: comm and the exact SCHEMA_REMOVED_OK compare must not follow the DB collation
     q "$CATALOG_SQL" | LC_ALL=C sort > "$STATE/$1"; [ -s "$STATE/$1" ] || die "không đọc được cấu trúc bảng"
 }
@@ -556,24 +569,29 @@ s6() {
         echo "OK   bản build: ${x%% *} có '${x#* }'"
     done
 }
-reload() {
+reload() { # reload [pre]: "pre" (step 7 only, never the rollback) runs ONEOFFS_PRE between optimize and octane:reload
+    local k
     date -u +%FT%TZ > "$STATE/t7"
     art view:clear
     art optimize
+    # a fresh artisan exec here runs the new code with the new config cache while the old workers still serve:
+    # data the new code needs from its first request; what it writes must be harmless to the old code
+    if [ "${1:-}" = pre ]; then for k in "${ONEOFFS_PRE[@]}"; do oneoff "$k" pre; done; fi
     art octane:reload
     docker restart "${PREFIX}horizon" "${PREFIX}scheduler"
     if restart_needed; then pgb_drop; fi
     wait_up
 }
-oneoff() { # oneoff <name>: preview → apply <preview count> → re-preview must be 0 → verify; a mark stops a resume from applying twice
-    local k=$1 n
-    if [ -s "$STATE/oneoff-$k" ]; then echo "Bỏ qua $k: đã chạy lúc $(cat "$STATE/oneoff-$k")"; return 0; fi
+oneoff() { # oneoff <name> [pre]: preview → apply <preview count> → re-preview must be 0 → verify; a mark stops a resume from applying twice
+    local k=$1 n mark=$STATE/oneoff-$1
+    [ "${2:-}" != pre ] || mark=$STATE/oneoff-pre-$1   # the pre-reload list keeps its own marks
+    if [ -s "$mark" ]; then echo "Bỏ qua $k: đã chạy lúc $(cat "$mark")"; return 0; fi
     n=$("oneoff_$k" preview | tail -n 1); [[ "$n" =~ ^[0-9]+$ ]] || die "$k (xem trước) không in số dòng sẽ đổi"
-    echo "$k: xem trước sẽ đổi $n"
+    echo "$k${2:+ (trước khi nạp lại)}: xem trước sẽ đổi $n"
     if [ "$n" != 0 ]; then "oneoff_$k" apply "$n"; fi   # apply may check that it changed exactly n
     expect "$k xem lại sau khi chạy (còn đổi)" "$("oneoff_$k" preview | tail -n 1)" "0"
     "oneoff_$k" verify   # the end state, also when a resume finds nothing left to apply
-    date '+%F %T' > "$STATE/oneoff-$k"
+    date '+%F %T' > "$mark"
 }
 s7() {
     local x c k
@@ -581,7 +599,7 @@ s7() {
     RESUME=5; expect "commit prod" "$(git -C "$PROD" rev-parse HEAD)" "$TARGET"; RESUME=
     need_state s4-ok 4
     rm -f "$STATE/data-ok"
-    reload
+    reload pre
     MIXED=
     pending; expect "migration còn chờ" "${PENDING:-không}" "không"
     if [ "${#MIGRATIONS[@]}" -gt 0 ]; then expect "migration mới nhất đã chạy" "$(q "SELECT max(migration) FROM migrations")" "${MIGRATIONS[-1]}"
@@ -654,7 +672,7 @@ rollback() { # CODE only: the schema stays (expand-only migrations; step 4 prove
 
 # ---------------------------------------------------------------- modes
 load_release() { # data + one-off functions only; arrays default to empty
-    DECLARED=() MIGRATIONS=() SCHEDULE_ADDED=() SCHEDULE_REMOVED=() ENV_DEFAULT_OK=() ONEOFFS=() PAGES=(/ /admin/login)
+    DECLARED=() MIGRATIONS=() SCHEDULE_ADDED=() SCHEDULE_REMOVED=() ENV_DEFAULT_OK=() ONEOFFS=() ONEOFFS_PRE=() PAGES=(/ /admin/login)
     SCHEMA_REMOVED_OK=() BUILD_DYNAMIC=() BUILD_MARKERS=()
     declare -gA MIG_OK=() PGB_SKIP=()
     RESANITIZE=dry-run HOST= OLD= TARGET=
@@ -681,6 +699,7 @@ mode_plan() { # git only, on the dev repo; prod is never touched (docker/gh/ssh/
     [ -z "$pin" ] || { [ "$pin" = "$OLD" ] && echo "OK   prod đang ở OLD" || echo "LƯU Ý prod đang ở $pin, khác OLD ${OLD:0:8}: bước 0 sẽ dừng"; }
     git -C "$dev" merge-base --is-ancestor "$commit" origin/main 2>/dev/null || echo "LƯU Ý commit bộ khung chưa nằm trên origin/main: chưa dùng cho prod"
     analyse "$dev"
+    if declare -F release_guard >/dev/null; then release_guard; fi
     echo "Các bước:"
     note "0 kiểm tra (CI đầy đủ, container, ổ đĩa, ảnh trước: ${#PAGES[@]} trang$(declare -F release_pages >/dev/null && echo ' + release_pages'), lịch chạy$(declare -F release_before >/dev/null && echo ', release_before'))"
     note "1 so thay đổi trên prod (như trên) + khóa .env mới: ${NEW_ENV:-không có}"
@@ -690,7 +709,7 @@ mode_plan() { # git only, on the dev repo; prod is never touched (docker/gh/ssh/
         note "4 migrate từng tệp (code cũ vẫn phục vụ; tệp không khởi động lại PgBouncer không được đổi cột), rồi so cấu trúc bảng (bớt/đổi = đúng SCHEMA_REMOVED_OK), mọi trang của bước 0 như trước trên code cũ"
     else note "3–4 không có migration (chỉ kiểm không còn chờ)"; fi
     note "5 đổi code + composer install · 6 pnpm install + build ($(wc -w <<< "$VITE") input)"
-    note "7 view:clear, optimize, octane:reload, khởi động lại horizon + scheduler$(restart_needed_plan && echo ', PgBouncer')$(case " $CLASSES " in *" permission "*) echo ', rbac:sync' ;; esac)$(case " $CLASSES " in *" sanitizer "*) echo ", resanitize ${RESANITIZE}" ;; esac)${ONEOFFS[*]:+, một lần: ${ONEOFFS[*]}}"
+    note "7 view:clear, optimize,${ONEOFFS_PRE[*]:+ một lần trước khi nạp lại (code mới, worker cũ còn phục vụ): ${ONEOFFS_PRE[*]},} octane:reload, khởi động lại horizon + scheduler$(restart_needed_plan && echo ', PgBouncer')$(case " $CLASSES " in *" permission "*) echo ', rbac:sync' ;; esac)$(case " $CLASSES " in *" sanitizer "*) echo ", resanitize ${RESANITIZE}" ;; esac)${ONEOFFS[*]:+, một lần: ${ONEOFFS[*]}}"
     note "8 kiểm sau: trang như trước, CSS mới, lịch chạy (+${SCHEDULE_ADDED[*]:-} −${SCHEDULE_REMOVED[*]:-}), mật khẩu superuser, cached plan"
     echo "Dòng anh chạy (giữ nguyên; muốn chạy tiếp từ một bước thì thêm số bước trước dấu ;):"
     local envp=; [ "$dev" = /opt/bswebsaas/dev ] || envp="DEPLOY_DEV_REPO=$dev "
@@ -745,7 +764,11 @@ mode_run() {
     for s in 0 1 2 3 4 5 6 7 8; do
         [ "$s" = "$start" ] && on=1
         [ -n "$on" ] || continue
-        CUR=$s; printf '\n===== Bước %s =====\n' "$s"; "s$s"
+        CUR=$s; printf '\n===== Bước %s =====\n' "$s"
+        # the release's own guards (a date it must not pass…) before EVERY step: a resume from a later step
+        # and a run that crosses midnight both meet them; rollback and dump do not (they never ship the new code)
+        if declare -F release_guard >/dev/null; then release_guard; fi
+        "s$s"
     done
     [ -n "$on" ] || die "không có bước '$start' (0–8, dump, rollback)"
     trap - ERR INT TERM HUP
