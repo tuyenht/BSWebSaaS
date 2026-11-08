@@ -330,7 +330,7 @@ final class SeoSettings extends Component
             'aiCheck' => $aiCheck,
             'aiCard' => $this->aiCard($aiCheck, $blocking),
             // Under the robots.txt box: what the text as typed blocks, and how to undo it.
-            'robotsNote' => $blocking !== null ? $blocking.' '.Cast::string(__('admin.seoset.ai.robots_note_fix')) : null,
+            'robotsNote' => $blocking !== null ? $blocking['message'].' '.Cast::string(__('admin.seoset.ai.robots_note_fix')) : null,
         ]);
         $view->title(__('admin.seoset.title'));
 
@@ -451,10 +451,10 @@ final class SeoSettings extends Component
      * findings are listed the worst first.
      *
      * @param  array{running: bool, level: string|null, label: string, checkedAt: string|null, host: string|null, findings: list<array{level: string, code: string, message: string, fix: string|null}>}  $check
-     * @param  string|null  $blocking  what the robots.txt text as typed blocks (robotsBlocking)
+     * @param  array{message: string, unchecked: bool}|null  $blocking  what the robots.txt text as typed blocks (robotsBlocking)
      * @return array{tone: string, icon: string, status: string, lines: list<array{message: string, fix: string|null}>, at: string|null, busy: bool, limited: bool, limit: string, unlockIn: int}
      */
-    private function aiCard(array $check, ?string $blocking): array
+    private function aiCard(array $check, ?array $blocking): array
     {
         $draft = $this->sharedDraft();
         $words = static fn (string $key): string => Cast::string(__('admin.seoset.ai.'.$key));
@@ -464,8 +464,10 @@ final class SeoSettings extends Component
             [$tone, $icon, $status, $lines] = ['wait', 'ri-loader-4', $words('running'), [['message' => $words('running_note'), 'fix' => null]]];
         } elseif (! $draft['indexable']) {
             [$tone, $icon, $status, $lines] = ['info', 'ri-eye-off', $words('level.info'), [['message' => $words('hidden'), 'fix' => $words('fix.hidden')]]];
+        } elseif ($blocking !== null && $blocking['unchecked']) {
+            [$tone, $icon, $status, $lines] = ['nochk', 'ri-question', $words('level.unchecked'), [['message' => $blocking['message'], 'fix' => $words('fix.own_blocks')]]];
         } elseif ($blocking !== null) {
-            [$tone, $icon, $status, $lines] = ['info', 'ri-information', $words('level.info'), [['message' => $blocking, 'fix' => $words('fix.own_blocks')]]];
+            [$tone, $icon, $status, $lines] = ['info', 'ri-information', $words('level.info'), [['message' => $blocking['message'], 'fix' => $words('fix.own_blocks')]]];
         } elseif ($check['level'] === null) {
             [$tone, $icon, $status, $lines] = ['nochk', 'ri-question', $words('level.unchecked'), [['message' => $words('never'), 'fix' => null]]];
         } else {
@@ -505,19 +507,26 @@ final class SeoSettings extends Component
 
     /**
      * What the site's own robots.txt text (as typed) blocks, in words — every search engine
-     * (Googlebot included), else the bots it shuts out and those it keeps from some pages — or
-     * null when it blocks no bot the check knows (or is past the judging bounds).
+     * (Googlebot and every AI bot the check knows), else the bots it shuts out and those it keeps
+     * from some pages; a text past the judging bounds says it could not be judged (never "ổn") —
+     * or null when it blocks no bot the check knows.
+     *
+     * @return array{message: string, unchecked: bool}|null
      */
-    private function robotsBlocking(string $robots): ?string
+    private function robotsBlocking(string $robots): ?array
     {
         if ($robots === '') {
             return null;
         }
         $parsed = RobotsTxt::parse($robots);
-        if ($parsed->verdict('Googlebot') === 'blocked') {
-            return Cast::string(__('admin.seoset.ai.own_all'));
+        $verdicts = $parsed->verdicts(AiCrawlerCheck::bots());
+        if ($verdicts === null) {
+            return ['message' => Cast::string(__('admin.seoset.ai.robots_too_complex')), 'unchecked' => true];
         }
-        $verdicts = $parsed->verdicts(AiCrawlerCheck::bots()) ?? [];
+        $allBlocked = $verdicts !== [] && array_filter($verdicts, static fn (string $v): bool => $v !== 'blocked') === [];
+        if ($allBlocked && $parsed->verdict('Googlebot') === 'blocked') {
+            return ['message' => Cast::string(__('admin.seoset.ai.own_all')), 'unchecked' => false];
+        }
         $blocked = array_keys(array_filter($verdicts, static fn (string $v): bool => $v === 'blocked'));
         $partial = array_keys(array_filter($verdicts, static fn (string $v): bool => $v === 'partial'));
         $parts = [];
@@ -528,7 +537,7 @@ final class SeoSettings extends Component
             $parts[] = Cast::string(__('admin.seoset.ai.own_partial', ['bots' => implode(', ', $partial)]));
         }
 
-        return $parts === [] ? null : implode(' ', $parts);
+        return $parts === [] ? null : ['message' => implode(' ', $parts), 'unchecked' => false];
     }
 
     private static function recheckKey(int $siteId): string

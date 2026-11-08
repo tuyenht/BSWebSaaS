@@ -9,6 +9,7 @@ use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Theme\Jobs\CheckAiCrawlers;
 use App\Modules\Theme\Theming\AiCrawlerCheck;
+use App\Modules\Theme\Theming\RobotsTxt;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -396,6 +397,30 @@ it('names the bots the robots.txt text blocks, in the card and under the box, as
     'some pages' => ["User-agent: PerplexityBot\nDisallow: /bang-gia", 'Bạn đang chặn một số trang với: PerplexityBot.'],
     'every search engine' => ["User-agent: *\nDisallow: /", 'Chữ robots.txt này đang chặn mọi công cụ tìm kiếm, kể cả Google và các công cụ AI.'],
 ]);
+
+it('says "every search engine" only when Google and every AI bot are shut out', function (string $robots): void {
+    Queue::fake();
+
+    $page = seoAiPage(seoAiAdmin(), fn ($lw) => $lw->set('form.robots', $robots));
+
+    expect($page)->not->toContain('mọi công cụ tìm kiếm');
+})->with([
+    'Google only' => ["User-agent: Googlebot\nDisallow: /"],
+    'all but GPTBot' => ["User-agent: *\nDisallow: /\n\nUser-agent: GPTBot\nAllow: /"],
+]);
+
+it('says the robots.txt text cannot be judged, never "Ổn", when it is past the judging bounds', function (): void {
+    seoAiFakeSite();
+    app(AiCrawlerCheck::class)->run(1);
+    Queue::fake();
+
+    $page = seoAiPage(seoAiAdmin(), fn ($lw) => $lw->set('form.robots', "User-agent: *\nDisallow: /".str_repeat('a', RobotsTxt::MAX_PATH + 8)));
+    $card = seoAiCardHtml($page);
+
+    expect($card)->toContain('>Chưa kiểm được<', 'robots.txt có quá nhiều quy tắc, hoặc quy tắc quá dài')
+        ->not->toContain('>Ổn<')
+        ->and($page)->toContain('data-robots-note');
+});
 
 it('shows no note under the robots.txt box when the text blocks no bot', function (): void {
     Queue::fake();
