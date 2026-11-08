@@ -72,7 +72,7 @@ function bulkItems(Taxonomy $category): int
     return (int) DB::table('taxonomies')->where('id', $category->id)->value('items_count');
 }
 
-it('ticks rows and the whole page, unticks them again, and drops the ticks when the list changes', function (): void {
+it('ticks rows and the whole page, unticks them again, keeps the ticks on another page and drops them when the list changes', function (): void {
     $manager = bulkManager();
 
     app(Tenancy::class)->enter(1, function () use ($manager): void {
@@ -89,8 +89,8 @@ it('ticks rows and the whole page, unticks them again, and drops the ticks when 
 
         $test->call('toggleSelect', [$a->ulid])->set('search', 'khuôn')->assertSet('selected', []);
         $test->set('search', '')->call('toggleSelect', [$a->ulid])->call('setTab', 'published')->assertSet('selected', []);
-        $test->call('toggleSelect', [$a->ulid])->call('gotoPage', 1)->assertSet('selected', []);
-        $test->call('toggleSelect', [$a->ulid])->call('clearSelection')->assertSet('selected', []);
+        $test->call('setTab', 'all')->call('toggleSelect', [$a->ulid])->call('gotoPage', 2)->assertSet('selected', [$a->ulid]);
+        $test->call('clearSelection')->assertSet('selected', []);
     });
 });
 
@@ -258,7 +258,7 @@ it('restores the ticked products from the Trash as drafts and puts them back wit
             ->and($a->fresh()->status)->toBe('draft')->and($b->fresh()->status)->toBe('draft')->and(bulkItems($category))->toBe(3);
 
         $test->call('undoLast');
-        expect(Product::onlyTrashed()->pluck('status', 'ulid')->all())->toBe([$a->ulid => 'published', $b->ulid => 'archived'])->and(bulkItems($category))->toBe(1);
+        expect(Product::onlyTrashed()->orderBy('id')->pluck('status', 'ulid')->all())->toBe([$a->ulid => 'published', $b->ulid => 'archived'])->and(bulkItems($category))->toBe(1);
     });
 });
 
@@ -322,7 +322,7 @@ it('changes the main category of drafts and live products, redirects only the ad
         expect($test->get('toastMsg'))->toBe(__('catalog.bulk_cat_done', ['count' => 3, 'category' => 'Khuôn mẫu']).' '.__('catalog.bulk_cat_redirect', ['count' => 1]))
             ->and($test->get('catOpen'))->toBeFalse()->and($test->get('catTargets'))->toBe([])
             ->and($live->primaryCategory()?->id)->toBe($to->id)
-            ->and($both->fresh()->taxonomies()->pluck('taxonomies.id')->all())->toBe([$to->id, $other->id])
+            ->and($both->fresh()->taxonomies()->pluck('taxonomies.id')->sort()->values()->all())->toBe(collect([$to->id, $other->id])->sort()->values()->all())
             ->and(SiteRoute::query()->where('product_id', $live->id)->value('path'))->toBe("/{$toSlug}/do-ga-han")
             ->and(Redirect::query()->where('from_path', $liveRoute)->value('to_path'))->toBe("/{$toSlug}/do-ga-han")
             ->and(SiteRoute::query()->where('product_id', $draft->id)->exists())->toBeFalse()
@@ -330,7 +330,7 @@ it('changes the main category of drafts and live products, redirects only the ad
 
         $test->call('undoLast');
         expect($live->fresh()->primaryCategory()?->id)->toBe($from->id)
-            ->and($both->fresh()->taxonomies()->pluck('taxonomies.id')->all())->toBe([$from->id, $other->id])
+            ->and($both->fresh()->taxonomies()->pluck('taxonomies.id')->sort()->values()->all())->toBe(collect([$from->id, $other->id])->sort()->values()->all())
             ->and(SiteRoute::query()->where('product_id', $live->id)->value('path'))->toBe($liveRoute)
             ->and(bulkItems($from))->toBe(3)->and(bulkItems($to))->toBe(1)
             ->and($test->get('toastMsg'))->toBe(__('catalog.toast_undone'));

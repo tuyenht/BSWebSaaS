@@ -426,7 +426,6 @@ final class Index extends Component
         }
         $this->cursor = $token;
         $this->page = $note['n'];
-        $this->selected = [];
     }
 
     /** Footer pager — page-pill/arrow clicks; the read clamps an out-of-range target. */
@@ -434,7 +433,6 @@ final class Index extends Component
     {
         $this->page = max(1, $page);
         $this->cursor = '';
-        $this->selected = [];
     }
 
     /** Soft-delete: the product moves to the Trash, keeping its translations/images/sku. */
