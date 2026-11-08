@@ -22,17 +22,20 @@ const HOST_TOKEN = 'preview.platform.test';
 const PORT = Number(process.env.PORT || 8098);
 const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.mjs': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ico': 'image/x-icon', '.json': 'application/json', '.map': 'application/json' };
 
-// Livewire prints its <script> only once per app instance; a multi-page render leaves it on the
-// first page only. Borrow the dashboard's tag for any page that lacks it, so Alpine boots everywhere.
-async function livewireTag() {
+// Livewire prints its <script> and its styles (which hide wire:loading parts until a request runs)
+// only once per app instance; a multi-page render leaves them on the first page only. Borrow the
+// dashboard's for any page that lacks them, so Alpine boots and loading parts stay hidden everywhere.
+async function livewireTag(pattern) {
     try {
         const dashboard = await readFile(join(SCREENS, 'dashboard.html'), 'utf8');
-        return (dashboard.match(/<script src="https?:\/\/[^"]*\/livewire-[^>]*><\/script>/) || [''])[0]
+        return (dashboard.match(pattern) || [''])[0]
             .replace(new RegExp(`https?://${HOST_TOKEN}/`, 'g'), '/');
     } catch {
         return '';
     }
 }
+const LIVEWIRE_SCRIPT = /<script src="https?:\/\/[^"]*\/livewire-[^>]*><\/script>/;
+const LIVEWIRE_STYLES = /<!-- Livewire Styles --><style[^>]*>[\s\S]*?<\/style>/;
 
 const send = (res, code, type, body) => { res.writeHead(code, { 'content-type': type }); res.end(body); };
 
@@ -46,7 +49,10 @@ createServer(async (req, res) => {
             let html = (await readFile(join(SCREENS, normalize(url.pathname.slice('/screens/'.length))), 'utf8'))
                 .replace(new RegExp(`https?://${HOST_TOKEN}/`, 'g'), '/');
             if (!html.includes('/livewire.js') && !/\/livewire-[0-9a-f]+\//.test(html)) {
-                html = html.replace('</body>', `${await livewireTag()}\n</body>`);
+                html = html.replace('</body>', `${await livewireTag(LIVEWIRE_SCRIPT)}\n</body>`);
+            }
+            if (!html.includes('<!-- Livewire Styles -->')) {
+                html = html.replace('</head>', `${await livewireTag(LIVEWIRE_STYLES)}\n</head>`);
             }
             return send(res, 200, TYPES['.html'], html);
         }
