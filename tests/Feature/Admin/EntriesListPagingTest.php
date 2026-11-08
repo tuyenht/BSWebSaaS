@@ -415,3 +415,75 @@ it('reads only the website it is on, and still refuses a member who may not view
         Livewire::actingAs($outsider->fresh())->test(Index::class, ['section' => 'posts'])->assertForbidden();
     });
 });
+
+/**
+ * The titles (and slugs) of the rows a search finds, newest first.
+ *
+ * @return list<string>
+ */
+function searchedTitles(string $search): array
+{
+    $filter = new EntryListFilter('post', 'all', null, $search, [], [], [], [], ['vi'], 'vi', null, null);
+    $list = new EntryListQuery($filter, 1, fn (Builder $rows) => $rows->select(array_map(fn (string $c): string => 'entries.'.$c, EntryListQuery::COLUMNS)));
+    $groups = $list->groups('title', 'asc', []);
+
+    return $list->rows($groups, 0, 100)->map(fn (Entry $e): string => (string) $e->translations()->first()?->title)->sort()->values()->all();
+}
+
+function searchedEntry(string $title, string $slug): void
+{
+    $user = User::factory()->create();
+    $entry = Entry::query()->create(['type' => 'post', 'status' => 'published', 'author_id' => $user->id]);
+    $entry->translations()->create(['locale' => 'vi', 'title' => $title, 'slug' => $slug, 'status' => 'draft', 'body' => ['blocks' => []]]);
+}
+
+it('finds a title whatever the accents and the case of what is typed', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        searchedEntry('Hồ Chí Minh', 'ho-chi-minh');
+        searchedEntry('Hà Nội', 'ha-noi');
+
+        // old code compared accents too: "ho chi minh" found nothing
+        expect(searchedTitles('ho chi minh'))->toBe(['Hồ Chí Minh'])
+            ->and(searchedTitles('HỒ CHÍ'))->toBe(['Hồ Chí Minh'])
+            ->and(searchedTitles('  hà nội '))->toBe(['Hà Nội'])
+            ->and(searchedTitles('ha-noi'))->toBe(['Hà Nội']);
+    });
+});
+
+it('matches a literal percent sign or underscore only where the row has it', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        searchedEntry('Giảm 50% hôm nay', 'giam-gia');
+        searchedEntry('Bài thường', 'bai-thuong');
+        searchedEntry('Mã a_b', 'ma-ab');
+
+        // old code treated % and _ as wildcards: "%" and "_" listed every row
+        expect(searchedTitles('%'))->toBe(['Giảm 50% hôm nay'])
+            ->and(searchedTitles('50%'))->toBe(['Giảm 50% hôm nay'])
+            ->and(searchedTitles('_'))->toBe(['Mã a_b'])
+            ->and(searchedTitles('a_b'))->toBe(['Mã a_b'])
+            ->and(searchedTitles('mã a_c'))->toBe([]);
+    });
+});
+
+it('lists every row when the search is empty or only spaces', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        searchedEntry('Bài một', 'bai-mot');
+        searchedEntry('Bài hai', 'bai-hai');
+
+        expect(searchedTitles(''))->toHaveCount(2)
+            ->and(searchedTitles('   '))->toHaveCount(2);
+    });
+});
+
+it('never matches a row of another website by its title or slug', function (): void {
+    app(Tenancy::class)->enter(2, function (): void {
+        searchedEntry('Hồ Chí Minh của website B', 'ho-chi-minh-b');
+    });
+
+    app(Tenancy::class)->enter(1, function (): void {
+        searchedEntry('Bài của website A', 'bai-a');
+
+        expect(searchedTitles('ho chi minh'))->toBe([])
+            ->and(searchedTitles('ho-chi-minh-b'))->toBe([]);
+    });
+});

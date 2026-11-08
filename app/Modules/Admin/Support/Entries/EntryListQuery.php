@@ -4,6 +4,7 @@ namespace App\Modules\Admin\Support\Entries;
 
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Shared\Support\VietnameseFold;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -121,7 +122,7 @@ final class EntryListQuery
 
     /**
      * The search words in a title or slug of any language, as the list has always matched them
-     * (case-insensitive, anywhere in the text). No index can serve it under RLS (ILIKE is not
+     * (ignoring case and accents, anywhere in the text). No index can serve it under RLS (ILIKE is not
      * leakproof), so the list walks its rows in the order shown and stops once the page is full:
      * `offset 0` keeps the test a probe per row (Postgres would otherwise turn it into a join that
      * reads every title of the website first, whatever the page needs).
@@ -135,10 +136,15 @@ final class EntryListQuery
             return;
         }
 
+        // accents and case are ignored in titles (needle folded here, column by the same letter table in SQL);
+        // a slug is ASCII, so it is matched as typed, case-insensitively; `%` and `_` match only themselves
+        $folded = VietnameseFold::like(VietnameseFold::text($term));
+        $literal = '%'.addcslashes($term, '\\%_').'%';
+
         $query->whereExists(fn (QueryBuilder $text) => $text->selectRaw('1')->from('entry_translations as st')
             ->where('st.site_id', $this->siteId)
             ->whereColumn('st.entry_id', 'entries.id')
-            ->where(fn (QueryBuilder $either) => $either->where('st.title', 'ilike', "%{$term}%")->orWhere('st.slug', 'ilike', "%{$term}%"))
+            ->where(fn (QueryBuilder $either) => $either->whereRaw(VietnameseFold::sql('st.title').' like ?', [$folded])->orWhere('st.slug', 'ilike', $literal))
             ->offset(0));
     }
 
