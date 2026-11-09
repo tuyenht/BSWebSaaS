@@ -95,9 +95,11 @@ updates:
       prefix: 'ci(deps)'
 
   # Runtime images: the app image's base (Dockerfile) and the database, cache, pooler and edge
-  # images in both compose files. Every tag is pinned, so nothing moves without a pull request;
-  # these entries are what says a newer one exists. Octane needs FrankenPHP at or above its own
-  # floor (requiredFrankenPhpVersion): take a FrankenPHP minor before an Octane minor that asks for it.
+  # images in both compose files, each pinned as tag@digest: the tag gives Dependabot the version
+  # line (a bare digest is compared with `latest`, which crosses majors), the digest fixes the
+  # build. `COPY --from=composer:2` still floats within Composer 2. Octane needs FrankenPHP at or
+  # above its own floor (requiredFrankenPhpVersion): take a FrankenPHP minor before an Octane minor
+  # that asks for it.
   - package-ecosystem: docker
     directory: /docker/frankenphp
     schedule:
