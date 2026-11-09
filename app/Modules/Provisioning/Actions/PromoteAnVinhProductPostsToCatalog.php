@@ -7,6 +7,7 @@ namespace App\Modules\Provisioning\Actions;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Catalog\Support\ProductGallery;
+use App\Modules\Catalog\Support\ProductSearchWords;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Redirect;
@@ -287,6 +288,10 @@ final readonly class PromoteAnVinhProductPostsToCatalog
 
         $wasNew = $existingTranslation === null;
         $product = $wasNew ? new Product : Product::query()->findOrFail($existingTranslation->product_id);
+        if (! $wasNew) {
+            // the product row before its translation, like every write of a name or a SKU
+            ProductSearchWords::lock($product->site_id, $product->id);
+        }
 
         $product->fill([
             'status' => $this->mapStatus($entry->status),

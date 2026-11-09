@@ -309,3 +309,16 @@ function monitoringMails(string $mailer = 'monitoring'): array
 
     return $mails;
 }
+
+/**
+ * Every product of the site has search words, and they are exactly the words of its names and SKU now:
+ * `catalog:search-words` finds nothing to correct (the same splitting the write path uses).
+ */
+function expectProductSearchWordsCurrent(int $siteId): void
+{
+    $words = (int) DB::connection('pgsql_admin')->table('product_search_words')->where('site_id', $siteId)->count();
+    $products = (int) DB::connection('pgsql_admin')->table('products')->where('site_id', $siteId)->count();
+    expect($products)->toBeGreaterThan(0)->and($words)->toBeGreaterThanOrEqual($products);
+
+    test()->artisan('catalog:search-words', ['--site' => $siteId])->expectsOutputToContain('corrected 0.')->assertSuccessful();
+}

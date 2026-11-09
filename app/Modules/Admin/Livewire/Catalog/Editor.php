@@ -12,6 +12,7 @@ use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Catalog\Support\AppRoutePaths;
 use App\Modules\Catalog\Support\ProductGallery;
+use App\Modules\Catalog\Support\ProductSearchWords;
 use App\Modules\Catalog\Support\UniqueViolation;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\SiteRoute;
@@ -496,6 +497,8 @@ final class Editor extends Component
         } else {
             $product = $this->resolveOrFail($this->ulid);
             $this->authorize('update', $product);
+            // the product row before its translation, like every other write of a name or a SKU
+            ProductSearchWords::lock($product->site_id, $product->id);
             $product->update($attributes);
         }
 

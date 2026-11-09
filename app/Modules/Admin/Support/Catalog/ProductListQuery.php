@@ -3,8 +3,8 @@
 namespace App\Modules\Admin\Support\Catalog;
 
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Catalog\Support\ProductSearchWords;
 use App\Modules\Shared\Support\Cast;
-use App\Modules\Shared\Support\VietnameseFold;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -30,6 +30,9 @@ final class ProductListQuery
 {
     /** Counts stop past this many rows ("hơn 10.000"); numbered pages reach this far into a list. */
     public const int CAP = 10_000;
+
+    /** Word rows of the rarest typed word up to which a search gathers its products first (whereWords). */
+    public const int GATHER = 100_000;
 
     /** What a row of the list reads (no meta). */
     public const array COLUMNS = ['id', 'ulid', 'site_id', 'sku', 'price', 'sale_price', 'sale_ends_at', 'stock', 'is_featured', 'is_bestseller',
@@ -67,14 +70,19 @@ final class ProductListQuery
         private readonly string $locale,
         private readonly int $cap = self::CAP,
         private readonly ProductListFilter $filter = new ProductListFilter,
+        private readonly int $gather = self::GATHER,
     ) {}
 
+    /** @var array<string, array<string, int>> the word counts of a search, read once per list (wordCounts) */
+    private array $wordCounts = [];
+
     /**
-     * The status group, the filters and the search.
+     * The status group, the filters and the search. $order is the sort the rows will be read in (rows()),
+     * or null for a count or a set of rows the caller picks itself.
      *
      * @return Builder<Product>
      */
-    public function filtered(): Builder
+    public function filtered(?string $order = null): Builder
     {
         $query = $this->scoped($this->tab);
         $this->applyFilters($query);
@@ -83,18 +91,103 @@ final class ProductListQuery
             return $query;
         }
 
-        // accents and case are ignored on both sides: the needle is folded here, the columns by the same letter table in SQL
-        $like = VietnameseFold::like(VietnameseFold::text($term));
-        // no index can serve a LIKE under RLS: the list walks its rows in the order shown and stops once
-        // the page is full; `offset 0` keeps the name test a probe per row
-        $query->where(fn (Builder $either) => $either->whereRaw(VietnameseFold::sql('products.sku').' like ?', [$like])
-            ->orWhereExists(fn (QueryBuilder $text) => $text->selectRaw('1')->from('product_translations as st')
-                ->where('st.site_id', $this->siteId)
-                ->whereColumn('st.product_id', 'products.id')
-                ->whereRaw(VietnameseFold::sql('st.name').' like ?', [$like])
-                ->offset(0)));
+        $needles = ProductSearchWords::needles($term);
+        if ($needles === []) {
+            // nothing that can start a word ("%", only signs): nothing is found, never the whole list
+            return $query->whereRaw('false');
+        }
+        $this->whereWords($query, $needles, $order === null || ($order === 'updated' && $this->tab !== 'trash'));
 
         return $query;
+    }
+
+    /**
+     * Each typed word starts one of the product's words (ProductSearchWords), in any order: accents and
+     * case are ignored, `%` and `_` are letters like any other. Every condition is a range of the word
+     * table's key (leakproof, so an index condition under RLS).
+     *
+     * The rarest word decides the shape, by its word rows counted up to the gather limit + 1 (one
+     * statement for every word, read once per list):
+     * - none: nothing is found;
+     * - at most the gather limit (100,000), or a page in an order no index walks (name, price, stock, the
+     *   Trash): its products are gathered first, each checked for the other words, and the list reads
+     *   them by id (`id = any(array(…))`, then sorted);
+     * - more (every word is very common) for a count or a page in edit order: the list walks in its own
+     *   order and checks each row's words until the page or the bounded count is full (`offset 0` keeps
+     *   each a probe per row).
+     * Walking when a word is merely common is fast only while the matches are dense: measured on a
+     * website of 200,000 products, "vòng bi chịu nhiệt" (3,800 matches, every word on 20,000 or more)
+     * took 1.5 s to count by walking and the "published" tab, where none matched, 1.0 s for its first
+     * page; the name and price orders walked every row (1.1–1.6 s). Gathered, each is under 100 ms.
+     * A row count is a little over the products when a product has several words with the same start;
+     * that only moves the choice, never the result.
+     *
+     * @param  Builder<Product>  $query
+     * @param  list<string>  $needles
+     */
+    private function whereWords(Builder $query, array $needles, bool $walkable): void
+    {
+        $counts = $this->wordCounts($needles);
+        asort($counts);
+        $rarest = (string) array_key_first($counts);
+        if (($counts[$rarest] ?? 0) === 0) {
+            $query->whereRaw('false');
+
+            return;
+        }
+
+        $others = array_slice(array_map(strval(...), array_keys($counts)), 1);
+        if ($counts[$rarest] <= $this->gather || ! $walkable) {
+            [$range, $bindings] = ProductSearchWords::range('w.word', $rarest);
+            $sql = 'select w.product_id from product_search_words w where w.site_id = ? and '.$range;
+            $bindings = [$this->siteId, ...$bindings];
+            foreach ($others as $needle) {
+                [$also, $values] = ProductSearchWords::range('o.word', $needle);
+                $sql .= ' and exists (select 1 from product_search_words o where o.site_id = ? and o.product_id = w.product_id and '.$also.')';
+                $bindings = [...$bindings, $this->siteId, ...$values];
+            }
+            $query->whereRaw("products.id = any (array({$sql}))", $bindings);
+
+            return;
+        }
+
+        foreach ([$rarest, ...$others] as $needle) {
+            [$range, $bindings] = ProductSearchWords::range('w.word', $needle);
+            $query->whereExists(fn (QueryBuilder $has) => $has->selectRaw('1')->from('product_search_words as w')
+                ->where('w.site_id', $this->siteId)
+                ->whereColumn('w.product_id', 'products.id')
+                ->whereRaw($range, $bindings)
+                ->offset(0));
+        }
+    }
+
+    /**
+     * How many word rows of the site start with each needle, each counted up to the gather limit + 1, in one statement.
+     *
+     * @param  list<string>  $needles
+     * @return array<string, int>
+     */
+    private function wordCounts(array $needles): array
+    {
+        $key = implode("\0", $needles);
+        if (isset($this->wordCounts[$key])) {
+            return $this->wordCounts[$key];
+        }
+
+        $select = [];
+        $bindings = [];
+        foreach ($needles as $i => $needle) {
+            [$range, $values] = ProductSearchWords::range('word', $needle);
+            $select[] = "(select count(*) from (select 1 from product_search_words where site_id = ? and {$range} limit ?) as bounded) as c{$i}";
+            $bindings = [...$bindings, $this->siteId, ...$values, $this->gather + 1];
+        }
+        $row = (array) DB::selectOne('select '.implode(', ', $select), $bindings);
+        $counts = [];
+        foreach ($needles as $i => $needle) {
+            $counts[$needle] = Cast::int($row["c{$i}"] ?? 0);
+        }
+
+        return $this->wordCounts[$key] = $counts;
     }
 
     /**
@@ -313,7 +406,7 @@ final class ProductListQuery
         [$order, $value, $cast, $nullable] = $this->sortExpression($key);
         $reading = $before ? ($dir === 'asc' ? 'desc' : 'asc') : $dir;
 
-        $query = $this->filtered()
+        $query = $this->filtered($key)
             ->select(array_map(fn (string $column): string => 'products.'.$column, self::COLUMNS))
             ->selectRaw("({$value})::text as __sv")
             ->selectRaw('('.self::ON_SALE.') as on_sale'); // the sale state is the one the filter and the sort use, never re-worked in PHP

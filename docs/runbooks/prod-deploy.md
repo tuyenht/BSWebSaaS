@@ -73,6 +73,35 @@ Prod is a separate git checkout, `/opt/bswebsaas/prod` (branch `main`), on the s
 8. The delta narrows what formatted text may hold or patches the sanitizer (`RichTextSanitizer.php`, or `ezyang/htmlpurifier` in `composer.lock`) → after step 5, `docker exec bsweb_prod_app php artisan cms:resanitize-bodies --dry-run` (prints per site how many bodies would change), then the same without `--dry-run`. Add `--site=<hostname>` for one site. It cleans stored page and post bodies and pending changes through the same cleaning every save uses, keeps their edit times and records no revision; it is idempotent (a second run changes 0) and keeps an editor's save made while it runs. A row it cannot clean is named (site, column, row id) and skipped; the others are still cleaned and the command ends with an error, so look at those rows and run it again. Then `docker exec bsweb_prod_app php artisan media:reconcile-content-usage`, so a picture the cleaning removed is no longer listed as used. Without it, the old markup stays stored until each body's next save (the storefront still checks it before printing).
 9. The delta adds the product page's quote button (the `catalog` / `contact_page` setting) → after step 5, `docker exec bsweb_prod_app php artisan site:link-contact-page` once; add `--site=<id>` for one site. It records each existing site's contact page (the published page whose path in the default language, `vi` if none is set, is `/lien-he`) and relinks a setting whose page is gone; it never replaces one that points at a live page, and a second run changes nothing. Without it the button is missing on every site made before the deploy. A site whose contact page was renamed gets no link and needs the page chosen by hand.
 
+### The deploy that carries migration 2054 (the product search words)
+
+From this deploy on, the admin products list searches the word table `product_search_words`, and a product with no rows there is not found. The migration creates the table empty, and there is no switch that keeps the old search on, so the table is filled right after the code switch and before the reload. Prod mounts the checkout at `/app` and starts Octane with `--max-requests=500`: a worker that has served 500 requests restarts and loads whatever code is on disk, so from the merge on some workers already run the new code (Deploy step 5). Run these steps in this order, back to back:
+
+1. Migrate 2054 BEFORE the code switch, while the checkout is still at the old commit (as the deploy scripts do: the target's migration file goes into a folder mounted into the `migrate` one-off container).
+   ```bash
+   mkdir -m 700 /tmp/mig-2054
+   git -C /opt/bswebsaas/prod fetch origin
+   git -C /opt/bswebsaas/prod show <sha>:database/migrations/2054_01_01_000000_create_product_search_words_table.php \
+     > /tmp/mig-2054/2054_01_01_000000_create_product_search_words_table.php
+   ( cd /opt/bswebsaas/prod && docker compose --profile ops run --rm --no-deps -v /tmp/mig-2054:/deploy-migrations:ro \
+     migrate php artisan migrate --database=pgsql_admin --force --path=/deploy-migrations --realpath )
+   rm -r /tmp/mig-2054
+   ```
+   - The old code never reads the table, and no existing column changes, so this step needs no PgBouncer restart.
+   - Adding the foreign keys briefly locks `sites` and `products` against writes; the migration gives up after 5 s (`lock_timeout`) if a long transaction holds them. Run it again.
+   - Laravel records the file under its name, so Deploy step 2 after the merge finds it done.
+   - From here a product saved by a worker on the new code (after the merge below) gets its words; one saved by a worker on the old code does not (step 4 heals it).
+2. Switch the code: Deploy step 1 (merge, `composer install`), step 2 (any other migration; 2054 is done), step 3 (front-end build). The image stays `bsweb/app:prod` and is not rebuilt.
+3. Fill the table at once, after `optimize` and BEFORE `octane:reload`: Deploy step 4 (`view:clear`, `optimize`), then `docker exec bsweb_prod_app php artisan catalog:search-words`. A fresh `artisan` process loads the new code and the new cached config from disk; the running workers keep serving while it runs. Its writes are harmless to the old code, which ignores the table.
+   - It works site by site, as the app user under each site's tenant context, and checks every product (the Trash too).
+   - It must exit 0 and print `Checked N product(s) on M site(s); corrected K.`, where N is the number of products on prod and K the number of those with a name or a SKU. A site that fails is named, and the command exits 1; stop and look at it before the reload.
+   - Measured: 2.4 ms a product (200,000 products in 485 s). A re-run must print `corrected 0.`
+4. Reload: Deploy step 5 (`octane:reload`, restart horizon). From here every worker searches the words. Then heal the products saved by workers on the old code between step 1 and the reload, which got no words: `docker exec bsweb_prod_app php artisan catalog:search-words --recent=500` (they are among the 500 edited last). The nightly `catalog:search-words --recent=500 --rolling=10000` (20:45 UTC) does the same if this is skipped.
+
+The short window: from the merge in step 2 until the fill in step 3 ends, a worker that has restarted after its 500 requests already runs the new search, so the admin products search on it may show "nothing found" for products whose words are not written yet. It lasts about the build plus the fill (2.4 ms a product); no product is lost or changed, and the storefront is not affected.
+
+Rollback: the old code ignores the table, so the table can stay. `down()` drops it, and the source data is not touched.
+
 ## `.env` changes and the image
 
 - The containers get `.env` through `env_file` **when they are created**. Laravel never overrides a variable the process already has, so after an `.env` edit `optimize` re-caches the old value (26/09: the Cloudflare token replaced in `.env` is still the old one inside `bsweb_prod_app`). Only a recreate (`docker compose up -d app horizon scheduler` in `/opt/bswebsaas/prod`) applies it — a few seconds of downtime.

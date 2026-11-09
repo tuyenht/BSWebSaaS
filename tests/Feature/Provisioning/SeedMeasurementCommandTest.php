@@ -33,7 +33,7 @@ function measurementCounts(int $siteId): array
 }
 
 it('seeds the measurement page and the news card grid', function (): void {
-    StorefrontCards::site('Đo tốc độ', 'cwv.platform.test');
+    $siteId = StorefrontCards::site('Đo tốc độ', 'cwv.platform.test');
 
     $this->artisan('site:seed-measurement', ['--host' => 'cwv.platform.test'])->assertSuccessful();
 
@@ -55,6 +55,7 @@ it('seeds the measurement page and the news card grid', function (): void {
         ->and($news)->toContain('<a class="sf-chips__chip" href="/tin-cong-ty">Tin công ty</a>')
         ->and($news)->toContain('<a class="sf-chips__chip" href="/tin-nganh">Tin ngành</a>');
     $this->get('http://cwv.platform.test/tin-cong-ty')->assertOk();
+    expectProductSearchWordsCurrent($siteId);
 });
 
 it('points every photo row at a fixture file the CI job copies', function (): void {
