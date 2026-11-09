@@ -98,7 +98,7 @@ it('gives every project, news card and product its own image and the quality blo
 
 it('never moves a tone mark off its syllable when the text is spelt the new way (hoàn, thoát stay whole)', function (): void {
     foreach ((new PackReader)->read('an-vinh')->items as $item) {
-        expect(json_encode($item->data, JSON_UNESCAPED_UNICODE))->not->toMatch('/(hòa|hóa|thỏa|tùy|ủy|xóa|lòa|khỏe)\p{L}/iu', $item->key);
+        expect(json_encode($item->data, JSON_UNESCAPED_UNICODE))->not->toMatch('/[òóỏõọ][ae]\p{L}|[ùúủũụ]y\p{L}/iu', $item->key);
     }
 });
 
