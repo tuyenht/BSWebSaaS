@@ -88,7 +88,7 @@
 
     .sx-ud-p {
         border: 0;
-        background: var(--color-admin-primary);
+        background: var(--color-primary);
         color: var(--color-on-primary);
 
         &:active {
