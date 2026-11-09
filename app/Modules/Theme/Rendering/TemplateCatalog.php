@@ -28,6 +28,9 @@ final class TemplateCatalog
 
     public const string KIND_PRODUCT = 'product';
 
+    /** The page layout with a numbered table of contents built from its headings (a policy, terms). */
+    public const string PAGE_TOC = 'page-toc';
+
     /** The set whose posts carry an application deadline. */
     public const string SET_JOB = 'job';
 
@@ -46,6 +49,7 @@ final class TemplateCatalog
         'project' => ['role' => self::ROLE_POST, 'kinds' => [self::KIND_POST], 'cards' => null, 'set' => null],
         'job' => ['role' => self::ROLE_POST, 'kinds' => [self::KIND_POST], 'cards' => null, 'set' => self::SET_JOB],
         'page' => ['role' => self::ROLE_PAGE, 'kinds' => [], 'cards' => null, 'set' => null],
+        self::PAGE_TOC => ['role' => self::ROLE_PAGE, 'kinds' => [], 'cards' => null, 'set' => null],
     ];
 
     /** The kind of category a vocabulary holds. */

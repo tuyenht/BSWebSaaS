@@ -15,6 +15,11 @@
     $image = \App\Modules\Shared\Support\SafeLink::href($props['image_url'] ?? null);
     $bandSrcset = $image !== null ? ($listSrcset ?? ($srcsets[$image] ?? null)) : null;
     $bandCrumbs = ! empty($props['_lead']) && is_array($props['_crumbs'] ?? null) ? $props['_crumbs'] : [];
+    // The page's days (the layout with a table of contents): the day it took effect, and the day it
+    // last changed when that is a later day (PageRenderer sets `_dates` on the leading band only).
+    $bandDates = ! empty($props['_lead']) && is_array($props['_dates'] ?? null) ? $props['_dates'] : [];
+    $bandDay = is_string($bandDates['date'] ?? null) ? $bandDates['date'] : '';
+    $bandUpdated = is_string($bandDates['updated'] ?? null) ? $bandDates['updated'] : '';
 @endphp
 <section class="page-band">
     @if ($image !== null)
@@ -40,5 +45,8 @@
         @if (! empty($props['subtitle']))
             <p class="page-band__subtitle">{{ $props['subtitle'] }}</p>
         @endif
+@if ($bandDay !== '')
+        <p class="page-band__dates">{{ __('storefront.effective_date') }} <time datetime="{{ $bandDates['datetime'] ?? '' }}">{{ $bandDay }}</time>@if ($bandUpdated !== '') · {{ __('storefront.updated') }} <time datetime="{{ $bandDates['updatedDatetime'] ?? '' }}">{{ $bandUpdated }}</time>@endif</p>
+@endif
     </div>
 </section>

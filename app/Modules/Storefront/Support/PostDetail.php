@@ -55,6 +55,20 @@ final readonly class PostDetail
      */
     public function band(Entry $post, EntryTranslation $translation, string $locale): array
     {
+        return $this->dates($post, $translation, $locale) + [
+            'excerpt' => trim((string) $translation->excerpt),
+            'cover' => $this->cover($post, $locale),
+        ];
+    }
+
+    /**
+     * The day an entry went out and, when its content changed on a later day, the day it changed,
+     * in the site's zone and day format. No query beyond the site's (memoized) time settings.
+     *
+     * @return array{date: string, datetime: string, updated: string, updatedDatetime: string}
+     */
+    public function dates(Entry $post, EntryTranslation $translation, string $locale): array
+    {
         $published = $this->time->forDisplay($post->published_at);
         // The same content date as the Article's dateModified (contentDate()).
         $edited = $this->time->forDisplay($translation->contentDate($post->published_at));
@@ -67,8 +81,6 @@ final readonly class PostDetail
             'datetime' => $published?->format('Y-m-d') ?? '',
             'updated' => $later ? SiteTime::formatDay($edited, $format, $locale) : '',
             'updatedDatetime' => $later ? $edited->format('Y-m-d') : '',
-            'excerpt' => trim((string) $translation->excerpt),
-            'cover' => $this->cover($post, $locale),
         ];
     }
 
