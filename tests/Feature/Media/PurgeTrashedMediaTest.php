@@ -74,3 +74,26 @@ it('scopes the purge per-site (never reaches across tenants)', function (): void
     // Command iterates all sites, so site 2's stale trash is also purged — prove it ran there too.
     expect(app(Tenancy::class)->enter(2, fn () => Media::withTrashed()->whereKey($otherSiteId)->exists()))->toBeFalse();
 });
+
+it('keeps trash for 30 days when no retention is configured', function (): void {
+    config(['media.trash_retention_days' => null]);
+
+    [$keptId, $goneId] = app(Tenancy::class)->enter(1, function (): array {
+        $kept = seedTrashMedia('kept');
+        $kept->delete();
+        $kept->forceFill(['deleted_at' => now()->subDays(29)])->saveQuietly();
+
+        $gone = seedTrashMedia('gone');
+        $gone->delete();
+        $gone->forceFill(['deleted_at' => now()->subDays(31)])->saveQuietly();
+
+        return [$kept->id, $gone->id];
+    });
+
+    $this->artisan('media:purge-trash')->expectsOutputToContain('30 day(s)')->assertSuccessful();
+
+    app(Tenancy::class)->enter(1, function () use ($keptId, $goneId): void {
+        expect(Media::withTrashed()->whereKey($keptId)->exists())->toBeTrue()
+            ->and(Media::withTrashed()->whereKey($goneId)->exists())->toBeFalse();
+    });
+});

@@ -8,7 +8,7 @@ use Illuminate\Console\Command;
 
 /**
  * Permanently deletes media that has sat in the Trash (soft-deleted) longer than the configured
- * retention (config('media.trash_retention_days'), default 15). Scheduled daily; the manual
+ * retention (config('media.trash_retention_days'), default 30). Scheduled daily; the manual
  * "empty trash" / "delete permanently" picker actions purge immediately regardless of age.
  *
  * Runs per-site inside Tenancy::enter so RLS + the model's global scope resolve each tenant's own
@@ -26,8 +26,8 @@ class PurgeTrashedMedia extends Command
 
     public function handle(Tenancy $tenancy): int
     {
-        $configured = config('media.trash_retention_days', 15);
-        $days = max(1, is_numeric($configured) ? (int) $configured : 15);
+        $configured = config('media.trash_retention_days', 30);
+        $days = max(1, is_numeric($configured) ? (int) $configured : 30);
         $cutoff = now()->subDays($days);
         $purged = 0;
 
