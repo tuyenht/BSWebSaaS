@@ -325,7 +325,8 @@ release 'BUILD_MARKERS=("resources/js/app.js x()")'
 ok '[ "$RC" = 1 ] && grep -q "đã có ở" "$PLAN"' "a build marker already at OLD (proves nothing) stops the plan"
 release
 ( export PATH="$STUB:$PATH" FAKE; bash "$SRC/scripts/deploy/deploy.sh" plan "$REL" ) > "$PLAN" 2>&1
-INNER=$(sed -n "s/^  ! tmux new-session -d -s deploy '\(.*\); exec bash'\$/\1/p" "$PLAN")
+INNER=$(sed -n "s/^  ! tmux new-session -d -s deploy-[0-9a-f]\{8\}-\$(date +%d%H%M%S) '\(.*\); exec bash'\$/\1/p" "$PLAN")
+ok '[ -n "$INNER" ]' "the owner line names its own tmux session (target + start time), never a fixed name"
 BADC=$(printf '%040d' 7)
 ( export DEPLOY_PROFILE=$S/profile DEPLOY_RUNS_DIR=$S/runs FAKE PATH="$STUB:$PATH"
   bash -c "${INNER//show $ECOMMIT:/show $BADC:}" ) > "$S/line.txt" 2>&1; RC=$?
