@@ -771,8 +771,9 @@ mode_run() {
         # a guard that fails once the new code is on disk (a resume after step 5) is past its date while the
         # scheduler already starts jobs from that code: only an immediate rollback stops them
         if declare -F release_guard >/dev/null; then
+            local keep=$MIXED   # a guard that passes leaves the step's own MIXED as it was (s7 clears it)
             [ "$(git -C "$PROD" rev-parse HEAD)" != "$TARGET" ] || { MIXED=1; LATE=1; }
-            release_guard; LATE=
+            release_guard; LATE= MIXED=$keep
         fi
         "s$s"
     done

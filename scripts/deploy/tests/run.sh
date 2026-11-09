@@ -397,6 +397,10 @@ ok '[ "$RC" = 1 ] && says "DỪNG (bước 7)" && head_is "$FULL"' "a run stops 
 touch "$FAKE/past-deadline"; launch 7
 ok '[ "$RC" = 1 ] && says "DỪNG (bước 7)" && says "hạn của bản thử đã qua" && says "chạy \"rollback\" NGAY" && [ "$(calls "artisan fake:pre")" = 1 ]' "a resume after step 5 past the deadline stops before the step and says to roll back now"
 rm -f "$FAKE/past-deadline"
+fresh "$FULL"; touch "$FAKE/fail-reload-once"; launch
+echo 500 > "$FAKE/code_bai-2"; launch 7
+ok '[ "$RC" = 1 ] && says "DỪNG (bước 8)" && ! says "Code trên đĩa đã đổi" && ! says "NGAY"' "a step-8 stop after a passing guard does not say the code is half-updated"
+rm -f "$FAKE/code_bai-2"
 
 echo "== lock timeout: retried, PgBouncer restarted after every attempt"
 fresh "$FULL"; echo 1 > "$FAKE/lockfail-2100_01_01_000000_add_col"; launch
