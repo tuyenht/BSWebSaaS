@@ -38,6 +38,9 @@ quietly() {
         exit 1
     fi
 }
+# migrate:fresh drops tables only: the audit-log functions (CREATE FUNCTION, owned by audit_owner) would stay
+# behind and make their migration fail with "already exists" on a database that ran it before.
+quietly php artisan tinker --execute 'DB::connection("pgsql_admin")->statement("DROP FUNCTION IF EXISTS public.audit_log_month_create(date), public.audit_log_months_ensure(), public.audit_log_month_drop(date, text), public.audit_log_months(), public.audit_log_month_count(date)");'
 quietly php artisan migrate:fresh --database=pgsql_admin --force
 quietly php artisan rbac:sync
 
