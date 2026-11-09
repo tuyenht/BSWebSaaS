@@ -47,6 +47,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Media\Http\Controllers\MediaUploadController;
 use App\Modules\Storefront\Http\Controllers\FormSubmissionController;
+use App\Modules\Storefront\Http\Controllers\ProductPreviewController;
 use App\Modules\Storefront\Http\Controllers\SitemapController;
 use App\Modules\Storefront\Http\Controllers\StorefrontController;
 use App\Modules\Tenancy\Http\Controllers\CaddyAskController;
@@ -242,6 +243,9 @@ Route::prefix(config('admin.prefix', 'admin'))
         Route::get('/catalog', CatalogIndex::class)->name('admin.catalog.index');
         Route::get('/catalog/create', CatalogEditor::class)->middleware('can:catalog.manage')->name('admin.catalog.create');
         Route::get('/catalog/{ulid}/edit', CatalogEditor::class)->middleware('can:catalog.manage')->name('admin.catalog.edit');
+        // The real storefront page of a product of this site, whatever its status, for whoever may
+        // manage products: never cached or indexed, its forms switched off (ProductPreviewController).
+        Route::get('/catalog/{ulid}/preview', ProductPreviewController::class)->middleware('can:catalog.manage')->name('admin.catalog.preview');
         // Review inbox — for people who APPROVE: gated on the review ability, never on edit
         // rights, so an approve-only role has a place to work (the component re-checks).
         Route::get('/content/review', ReviewInbox::class)->middleware('can:review,App\\Modules\\Cms\\Models\\Entry')->name('admin.entries.review');

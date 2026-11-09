@@ -555,6 +555,12 @@ JS, ['@ULID@' => (string) Js::from($product->ulid)]) : '{}';
                         <x-bs-admin::list.cell col="act">
                             @php
                                 $live = ! $trashed && $product->status === 'published' && $fullUrl !== null;
+                                // not on the website yet: whoever manages products opens its real page in a preview tab instead
+                                // a product with no page in the default language opens in the first enabled language it has
+                                $previewLocale = $t !== null ? null : collect($locales)->first(fn ($l) => in_array($l, $langHas, true));
+                                $previewUrl = $canManage && ! $trashed && ! $live && $product->status !== 'published' && ($t !== null || $previewLocale !== null)
+                                    ? route('admin.catalog.preview', array_filter(['ulid' => $product->ulid, 'locale' => $previewLocale]))
+                                    : null;
                                 $shownUrl = $fullUrl === null ? '' : (string) preg_replace('#^https?://#', '', $fullUrl);
                             @endphp
                             @if ($canManage || $live)
@@ -573,6 +579,11 @@ JS, ['@ULID@' => (string) Js::from($product->ulid)]) : '{}';
                                                 :aria-label="__('catalog.view_named', ['name' => $name])" :title="__('catalog.view_named', ['name' => $name])" data-row-view>
                                                 <x-bs-admin::icon name="ri-external-link" class="size-4" /> {{ __('catalog.view_action') }}
                                             </x-bs-admin::button>
+                                        @elseif ($previewUrl !== null)
+                                            <x-bs-admin::button size="sm" variant="soft" color="primary" :href="$previewUrl" :navigate="false" target="_blank" rel="noopener" x-show="xvVis" x-cloak
+                                                :aria-label="__('catalog.preview_named', ['name' => $name])" :title="__('catalog.preview_named', ['name' => $name])" data-row-view>
+                                                <x-bs-admin::icon name="ri-eye" class="size-4" /> {{ __('catalog.view_action') }}
+                                            </x-bs-admin::button>
                                         @endif
                                         <x-bs-admin::button size="sm" variant="soft" color="primary" :href="route('admin.catalog.edit', ['ulid' => $product->ulid])"
                                             :aria-label="__('catalog.edit_named', ['name' => $name])">
@@ -582,13 +593,17 @@ JS, ['@ULID@' => (string) Js::from($product->ulid)]) : '{}';
                                             @if ($live)
                                                 <x-bs-admin::list.menu-item icon="ri-external-link" :href="$fullUrl" target="_blank" rel="noopener" x-show="! xvVis">{{ __('catalog.view_on_site') }}</x-bs-admin::list.menu-item>
                                                 <span class="list-mwhy" x-show="! xvVis">{{ $shownUrl }}</span>
+                                            @elseif ($previewUrl !== null)
+                                                <x-bs-admin::list.menu-item icon="ri-eye" :href="$previewUrl" target="_blank" rel="noopener" x-show="! xvVis">{{ __('catalog.preview_action') }}</x-bs-admin::list.menu-item>
                                             @endif
                                             @if ($quickEdit && $path !== null)
                                                 <x-bs-admin::list.menu-item icon="ri-link" x-on:click="$dispatch('list-slug-edit')">{{ __('catalog.slug_edit_action') }}</x-bs-admin::list.menu-item>
                                             @endif
                                             @if ($fullUrl !== null)
                                                 <x-bs-admin::list.menu-item icon="ri-file-copy" x-show="mode === 'card'" x-on:click="copy({{ Js::from($fullUrl) }})">{{ __('catalog.copy_path') }}</x-bs-admin::list.menu-item>
-                                                <x-bs-admin::list.menu-sep x-show="mode === 'card'{{ $live ? ' || ! xvVis' : '' }}" />
+                                            @endif
+                                            @if ($fullUrl !== null || $live || $previewUrl !== null)
+                                                <x-bs-admin::list.menu-sep x-show="{{ $fullUrl !== null ? "mode === 'card'".($live || $previewUrl !== null ? ' || ! xvVis' : '') : '! xvVis' }}" />
                                             @endif
                                             <x-bs-admin::list.menu-item icon="ri-star" wire:click="toggleFlag('{{ $product->ulid }}', 'featured', {{ $product->is_featured ? 'false' : 'true' }})">{{ __($product->is_featured ? 'catalog.flag_remove_featured' : 'catalog.flag_add_featured') }}</x-bs-admin::list.menu-item>
                                             <x-bs-admin::list.menu-item icon="ri-fire" wire:click="toggleFlag('{{ $product->ulid }}', 'best', {{ $product->is_bestseller ? 'false' : 'true' }})">{{ __($product->is_bestseller ? 'catalog.flag_remove_best' : 'catalog.flag_add_best') }}</x-bs-admin::list.menu-item>
