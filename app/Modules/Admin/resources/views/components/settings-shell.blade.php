@@ -1,4 +1,4 @@
-@props(['active' => '', 'unsaved' => null, 'save' => 'save', 'discard' => 'resetChanges', 'hints' => []])
+@props(['active' => '', 'unsaved' => null, 'save' => 'save', 'discard' => 'resetChanges', 'hints' => [], 'head' => true])
 @php
     // The section's title row: its name, then an (i) button stuck to it (the same button and in-place
     // note as a field's explanation) that opens "Về mục <name>" right under the row, with the full
@@ -6,6 +6,7 @@
     // row, one short line of description (hidden while the note is open, which holds the full one).
     // A page passes `hints` (FirstHints key => the sentence as it shows on that page) for the
     // explanations it offers; only the dismissed ones go into the note.
+    // `head` false leaves the row out for a page whose own card header still names the section.
     // A section that keeps its draft on the server joins the shared unsaved-changes dialog by
     // passing its change count (`:unsaved="$changes"`) and, when they are named otherwise, its save
     // and discard methods. Leaving it then asks first; a section that passes nothing leaves freely.
@@ -108,7 +109,7 @@
 
         {{-- Section content --}}
         <div class="min-w-0">
-            @if ($sectionName !== '')
+            @if ($head && $sectionName !== '')
                 <div class="mb-5 flex flex-col gap-1 max-md:mb-2" x-data="{ secInfo: false }"
                      x-on:keydown.escape="if (secInfo) { secInfo = false; $refs.secInfoBtn.focus() }">
                     <div class="flex min-w-0 items-start gap-x-0.5">

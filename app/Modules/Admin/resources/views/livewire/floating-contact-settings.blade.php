@@ -568,7 +568,7 @@
         </div>
 
         {{-- The page's own save bar --}}
-        <div class="flex flex-wrap items-center justify-end gap-2.5 border-t border-border-strong pt-4" data-set-savebar @unless ($dirty) data-clean @endunless>
+        <div class="flex flex-wrap items-center justify-end gap-2.5 border-t border-border-strong pt-4">
             <span role="status" class="inline-flex min-h-6 items-center gap-1.5 px-2.5 text-caption leading-snug font-semibold">
                 @if ($dirty)
                     <span class="inline-flex items-center gap-1.5 text-warning-text"><x-bs-admin::icon name="ri-error-warning" class="size-[min(1.5rem,calc(1rem+var(--user-text-boost)))]" />{{ __('admin.fc.dirty') }}</span>
