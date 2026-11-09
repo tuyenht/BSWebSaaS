@@ -351,7 +351,7 @@ CATALOG_SQL="SELECT 'col|'||c.relname||'|'||a.attname||'|'||format_type(a.atttyp
   UNION ALL SELECT 'idx|'||t.relname||'|'||i.relname||'|'||CASE WHEN x.indisvalid AND x.indisready THEN 'valid' ELSE 'INVALID' END
     FROM pg_index x JOIN pg_class i ON i.oid = x.indexrelid JOIN pg_class t ON t.oid = x.indrelid JOIN pg_namespace n ON n.oid = t.relnamespace
     WHERE n.nspname = 'public' AND NOT t.relispartition
-  UNION ALL SELECT 'con|'||t.relname||'|'||k.conname||'|'||k.contype||'|'||CASE WHEN k.convalidated THEN 'validated' ELSE 'NOT-VALID' END
+  UNION ALL SELECT 'con|'||t.relname||'|'||k.conname||'|'||k.contype::text||'|'||CASE WHEN k.convalidated THEN 'validated' ELSE 'NOT-VALID' END
     FROM pg_constraint k JOIN pg_class t ON t.oid = k.conrelid JOIN pg_namespace n ON n.oid = t.relnamespace
     WHERE n.nspname = 'public' AND NOT t.relispartition
   ORDER BY 1"
