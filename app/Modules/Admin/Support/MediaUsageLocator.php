@@ -72,15 +72,16 @@ final readonly class MediaUsageLocator
             ];
         }
 
-        // Brand — the site's logo, logo on a dark background, favicon or share image (one entry per slot).
+        // Brand — the site's logo, logo on a dark background, favicon or share image (one entry per
+        // slot), each to the page it is changed on: the share image on "Google & mạng xã hội".
         $profile = SiteProfile::query()->first(array_values(SiteProfile::IMAGE_COLUMNS));
-        foreach (SiteProfile::IMAGE_COLUMNS as $column) {
+        foreach (SiteProfile::IMAGE_COLUMNS as $slot => $column) {
             if ($profile !== null && $profile->getAttribute($column) === $media->id) {
                 $usages[] = [
                     'kind' => 'site',
                     'role' => 'brand',
-                    'label' => __('admin.appearance'),
-                    'url' => route('admin.settings.appearance'),
+                    'label' => $slot === 'og_image' ? __('admin.seoset.title') : __('admin.appearance'),
+                    'url' => route($slot === 'og_image' ? 'admin.settings.seo' : 'admin.settings.appearance'),
                 ];
             }
         }

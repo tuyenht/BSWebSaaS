@@ -143,8 +143,9 @@ it('keeps the catalog list flat with a search, a sort and a second page, whateve
     $this->actingAs($viewer)->get($url)->assertOk(); // granting the role again clears the permission cache
     $more = countQueries(fn () => $this->actingAs($viewer)->get($url)->assertOk());
 
-    // 10 rows on the page either way: twice the products must not add a single query
-    expect($more)->toBe($count)->and($count)->toBe(18);
+    // 10 rows on the page either way: twice the products must not add a single query. The search adds
+    // one statement to the list without it: the word counts that choose its shape (ProductListQuery::whereWords)
+    expect($more)->toBe($count)->and($count)->toBe(19);
 });
 
 it('keeps the catalog list flat for a member who manages products, with every row menu drawn, on a second page, whatever the number of rows', function (): void {
@@ -177,7 +178,8 @@ it('keeps the catalog list flat for a member who manages products, with every ro
     $more = countQueries(fn () => $this->actingAs($manager)->get($url)->assertOk());
 
     // the status menu, the labels, the Trash, the quick edits and the Xem button are decided from the rows already loaded: twice the products adds no query
-    expect($more)->toBe($count)->and($count)->toBe(17);
+    // (the search adds one statement, its word counts, to the list without it)
+    expect($more)->toBe($count)->and($count)->toBe(18);
 });
 
 it('keeps the catalog list flat with every filter on and a second page, whatever the number of rows and categories', function (): void {

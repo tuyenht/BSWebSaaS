@@ -6,6 +6,7 @@ namespace App\Modules\Provisioning\ContentPack;
 
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Support\ProductGallery;
+use App\Modules\Catalog\Support\ProductSearchWords;
 use App\Modules\Cms\Actions\RecordEntryRevision;
 use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Models\Entry;
@@ -291,6 +292,8 @@ final class Applier
             $product = Product::query()->create(['status' => $status, 'published_at' => $status === 'published' ? now() : null]);
         } else {
             $product = Product::query()->findOrFail($planned->recordId);
+            // the product row before its translations, like every write of a name or a SKU
+            ProductSearchWords::lock($product->site_id, $product->id);
             $product->status = $status;
             if ($status === 'published' && $product->published_at === null) {
                 $product->published_at = now();

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Catalog\Models;
 
+use App\Modules\Catalog\Support\ProductSearchWords;
 use App\Modules\Cms\Concerns\HasCategoryTaxonomies;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Shared\Concerns\HasUlidColumn;
@@ -38,6 +39,22 @@ class Product extends Model
 
     #[\Override]
     protected $guarded = [];
+
+    /** A new SKU, or a changed one, rewrites the product's search words in the same transaction (ProductSearchWords). */
+    #[\Override]
+    protected static function booted(): void
+    {
+        static::created(static function (self $product): void {
+            if ($product->sku !== null) {
+                ProductSearchWords::sync($product->site_id, $product->id);
+            }
+        });
+        static::updated(static function (self $product): void {
+            if ($product->wasChanged('sku')) {
+                ProductSearchWords::sync($product->site_id, $product->id);
+            }
+        });
+    }
 
     /**
      * Mark that the main content of these products changed, in every language (TracksContentChange),

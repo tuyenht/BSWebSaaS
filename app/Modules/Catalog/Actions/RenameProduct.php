@@ -7,6 +7,7 @@ namespace App\Modules\Catalog\Actions;
 use App\Modules\Catalog\Exceptions\ProductEditRefused;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
+use App\Modules\Catalog\Support\ProductSearchWords;
 use App\Modules\Shared\Support\PlainText;
 
 /**
@@ -47,7 +48,8 @@ final class RenameProduct
     }
 
     /**
-     * Save the name in $locale and return the name that was stored.
+     * Save the name in $locale and return the name that was stored, in the caller's transaction: the
+     * product row is locked before its translation is written (ProductSearchWords::lock).
      *
      * @throws ProductEditRefused empty, too long, or the product has no text in that language
      */
@@ -55,6 +57,7 @@ final class RenameProduct
     {
         $name = $this->clean($input);
 
+        ProductSearchWords::lock($product->site_id, $product->id);
         $translation = $product->translations()->where('locale', $locale)->first();
         if (! $translation instanceof ProductTranslation) {
             throw new ProductEditRefused(__('catalog.row_gone'));
