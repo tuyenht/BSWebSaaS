@@ -47,12 +47,12 @@ it('draws a numbered contents list from the page’s headings, with matching anc
     tocPage('page-toc');
     $html = tocHtml();
 
-    preg_match('~<nav class="sf-doc__toc" aria-labelledby="sf-doc-toc-title">(.*?)</nav>~s', $html, $nav);
+    preg_match('~<nav class="sf-doc__toc" aria-label="Nội dung">(.*?)</nav>~s', $html, $nav);
     preg_match_all('~<a class="sf-doc__toc-link" href="#([^"]+)">([^<]+)</a>~', $nav[1] ?? '', $links);
 
     expect($nav)->not->toBe([])
         // the name read out is the title shown
-        ->and($nav[1])->toContain('<p class="sf-doc__toc-title" id="sf-doc-toc-title">Nội dung</p>')
+        ->and($nav[1])->toContain('<p class="sf-doc__toc-title">Nội dung</p>')
         ->toContain('<ol class="sf-doc__toc-list">')
         ->and($links[1])->toBe(['muc-ve-chinh-sach-nay', 'muc-don-vi-chiu-trach-nhiem', 'muc-thong-tin-thu-thap', 'muc-quyen-cua-ban'])
         ->and($links[2])->toBe(['Về chính sách này', 'Đơn vị chịu trách nhiệm', 'Thông tin thu thập', 'Quyền của bạn'])
@@ -105,7 +105,7 @@ it('keeps the author’s own numbering on every heading when any heading carries
     expect($html)->toContain('<h2 id="muc-gioi-thieu">Giới thiệu</h2>')
         ->toContain('>1. Phạm vi</h2>')->not->toContain('1. 1. Phạm vi')->not->toContain('1. Giới thiệu')
         ->toContain('>2) Liên hệ</h2>')->not->toContain('3. 2) Liên hệ')
-        ->toContain('<ol class="sf-doc__toc-list sf-doc__toc-list--own">')
+        ->toContain('<ol class="sf-doc__toc-list sf-doc__toc-list--own" role="list">')
         ->toContain('href="#muc-1-pham-vi">1. Phạm vi</a>')
         ->toContain('href="#muc-2-lien-he">2) Liên hệ</a>');
 });
@@ -121,19 +121,19 @@ it('recognises the usual ways an author numbers a heading', function (string $he
     expect($html)->toContain('>'.$heading.'</h2>')
         ->toContain('<h2 id="muc-muc-sau">Mục sau</h2>')
         ->toContain('sf-doc__toc-list--own');
-})->with(['Điều 1. Phạm vi', 'Chương 2 Quy định chung', '1.Phạm vi', '1.1 Phạm vi']);
+})->with(['Điều 1. Phạm vi', 'Chương 2 Quy định chung', '1.Phạm vi', '1.1 Phạm vi', 'I. Quy định chung', 'A. Phạm vi']);
 
-it('numbers a heading that only starts with a count', function (): void {
+it('numbers a heading that only starts with a count or a figure', function (string $heading): void {
     tocPage('page-toc', [
         ['type' => 'page_header', 'props' => []],
-        ['type' => 'richtext', 'props' => ['heading' => '3 lý do chọn chúng tôi', 'paragraphs' => ['Một.']]],
+        ['type' => 'richtext', 'props' => ['heading' => $heading, 'paragraphs' => ['Một.']]],
         ['type' => 'richtext', 'props' => ['heading' => 'Liên hệ', 'paragraphs' => ['Hai.']]],
     ]);
 
-    expect(tocHtml())->toContain('>1. 3 lý do chọn chúng tôi</h2>')
+    expect(tocHtml())->toContain('>1. '.e($heading).'</h2>')
         ->toContain('>2. Liên hệ</h2>')
         ->not->toContain('sf-doc__toc-list--own');
-});
+})->with(['3 lý do chọn chúng tôi', '2.000 khách hàng tin dùng', '1.000+ dự án', 'Vì sao chọn chúng tôi.', 'a) chữ thường']);
 
 it('escapes a heading’s markup and entities in the contents list', function (): void {
     tocPage('page-toc', [

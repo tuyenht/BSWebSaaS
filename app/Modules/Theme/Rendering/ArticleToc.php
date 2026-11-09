@@ -29,8 +29,13 @@ final class ArticleToc
     /** The longest slug kept (a long heading must not make a long address). */
     private const int MAX_SLUG = 60;
 
-    /** A heading that already carries its number: "1. …", "2) …", "1.Foo", "1.1 …", "Điều 1 …". */
-    private const string OWN_NUMBER = '~^(?:(?:điều|mục|chương|phần)\\s+\\d{1,3}\\b|\\d{1,3}(?:\\.\\d{1,3})*[.)]|\\d{1,3}(?:\\.\\d{1,3})+\\b)~iu';
+    /**
+     * A heading that already carries its number: "1. …", "2) …", "1.Foo", "1.1 …", "Điều 1 …", "I. …",
+     * "A. …". A figure written the Vietnamese way ("2.000 khách hàng", "1.000+ dự án") is not a
+     * number, since a level is one or two digits; "1.5 triệu" still reads as a level (ambiguous).
+     * Roman and letter numbers are upper case only, so "a) …" or a word ending in a dot are not.
+     */
+    private const string OWN_NUMBER = '~^(?:(?:điều|mục|chương|phần)\\s+\\d{1,3}\\b|\\d{1,3}[.)](?!\\d)|\\d{1,2}(?:\\.\\d{1,2})+[.)]?(?=\\s)|(?-i:(?:[IVX]{1,5}|[A-Z])[.)])\\s)~iu';
 
     /**
      * @param  list<string>  $taken  ids already on the page (section anchors, list rows)
