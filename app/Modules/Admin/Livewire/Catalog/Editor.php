@@ -177,6 +177,9 @@ final class Editor extends Component
     #[Locked]
     public string $summaryShown = '';
 
+    /** A product's published status (a product, not an entry: no entry revision road applies). */
+    private const string PRODUCT_LIVE = 'published';
+
     /** Only the publish button writes a status; set for the length of that one request. */
     private bool $publishing = false;
 
@@ -928,7 +931,7 @@ final class Editor extends Component
             }
         }
         if ($this->publishing) {
-            $this->status = 'published';
+            $this->status = self::PRODUCT_LIVE;
         }
         try {
             $this->validate();
@@ -956,7 +959,7 @@ final class Editor extends Component
             $this->authorize('update', $product);
             // the product row before its translation, like every other write of a name or a SKU
             ProductSearchWords::lock($product->site_id, $product->id);
-            $product->update($this->publishing ? $attributes + ['status' => 'published'] : $attributes);
+            $product->update($this->publishing ? $attributes + ['status' => $this->status] : $attributes);
         }
 
         $summary = $keepSummary ? $this->summaryStored : $this->summary;
