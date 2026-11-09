@@ -113,7 +113,7 @@
                 <div class="mb-5 flex flex-col gap-1 max-md:mb-2" x-data="{ secInfo: false }"
                      x-on:keydown.escape="if (secInfo) { secInfo = false; $refs.secInfoBtn.focus() }">
                     <div class="flex min-w-0 items-start gap-x-0.5">
-                        <h2 class="min-w-0 py-[max(0rem,calc((var(--spacing-control)-1.4em)/2))] text-[min(1.375rem,calc(1rem+var(--user-text-boost)))] leading-[1.4] font-semibold text-heading [overflow-wrap:break-word] [text-wrap:pretty]">{{ $sectionName }}</h2>
+                        <h2 class="min-w-0 py-[max(0rem,calc((var(--spacing-control)-1.4em)/2))] text-[min(1.375rem,calc(1rem+var(--user-text-boost)))] leading-[1.4] font-semibold text-text-strong [overflow-wrap:break-word] [text-wrap:pretty]">{{ $sectionName }}</h2>
                         @if ($hasInfo)
                             <button type="button" x-ref="secInfoBtn" data-set-info
                                     class="hit-area inline-flex size-control shrink-0 items-center justify-center rounded-md text-text-muted hover:text-primary-text aria-expanded:text-primary-text"
@@ -126,7 +126,7 @@
                     @if ($hasInfo)
                         <div id="set-info" role="note" aria-labelledby="set-info-t" x-show="secInfo" x-cloak
                              class="max-w-[40rem] rounded-lg border border-border bg-surface px-3 py-2.5 text-caption leading-relaxed text-text [overflow-wrap:break-word]">
-                            <span id="set-info-t" class="mb-1 block font-semibold text-heading">{{ __('admin.set.info_title', ['name' => $sectionName]) }}</span>
+                            <span id="set-info-t" class="mb-1 block font-semibold text-text-strong">{{ __('admin.set.info_title', ['name' => $sectionName]) }}</span>
                             @if ($full !== '')
                                 <span class="block">{{ $full }}</span>
                             @endif

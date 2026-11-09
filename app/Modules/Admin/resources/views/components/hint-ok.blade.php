@@ -16,6 +16,6 @@
             .then((r) => { if (! r.ok) { throw new Error(String(r.status)) } return $wire.$refresh() })
             .then(() => { document.querySelector('[data-set-info]')?.focus() })
             .catch(() => { failed = true }).finally(() => { busy = false })"
-        {{ $attributes->except('class')->merge(['class' => 'hit-area inline-flex min-h-control-row shrink-0 items-center justify-center rounded border border-admin-secondary-text px-2.5 py-1 text-caption font-medium leading-tight text-admin-secondary-text transition-colors hover:bg-admin-secondary-solid hover:text-white disabled:opacity-60']) }}>{{ __('admin.hint.ok') }}</button>
+        {{ $attributes->except('class')->merge(['class' => 'hit-area inline-flex min-h-control-row shrink-0 items-center justify-center rounded border border-secondary-text px-2.5 py-1 text-caption font-medium leading-tight text-secondary-text transition-colors hover:bg-secondary hover:text-white disabled:opacity-60']) }}>{{ __('admin.hint.ok') }}</button>
 <span role="alert" x-show="failed" x-cloak class="text-caption text-danger-text">{{ __('admin.hint.fail') }}</span>
 </span>
