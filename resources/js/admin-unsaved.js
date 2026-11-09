@@ -155,6 +155,9 @@ export function unsavedDialog(cfg) {
         open: false,
         section: false,
         busy: false,
+        // an editor's own sentence and save button, as the page last drew them
+        body: '',
+        saveText: '',
 
         init() {
             root = this.$root;
@@ -233,6 +236,9 @@ export function unsavedDialog(cfg) {
             }
             opener = from && from !== document.body ? from : null;
             go = goOn;
+            const words = this.$refs.count;
+            this.body = (words && words.getAttribute('data-unsaved-body')) || '';
+            this.saveText = (words && words.getAttribute('data-unsaved-save')) || '';
             this.section = !!target && (cfg.sections || []).includes(target.pathname);
             this.open = true;
             lock();

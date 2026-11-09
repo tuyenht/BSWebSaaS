@@ -97,6 +97,21 @@ test('with changes, a link asks first: another settings section says so, any oth
     assert.equal(e.defaultPrevented, true, 'closing the tab asks the browser’s question');
 });
 
+test('a page that gives its own sentence and save label shows them, read when the dialog opens', async () => {
+    const { c } = page(1);
+    const count = document.getElementById('count');
+    count.setAttribute('data-unsaved-body', 'Thay đổi vừa rồi chưa kịp tự lưu.');
+    count.setAttribute('data-unsaved-save', 'Lưu nháp và rời đi');
+    assert.equal(await navigate('/admin/catalog'), false);
+    assert.equal(c.body, 'Thay đổi vừa rồi chưa kịp tự lưu.');
+    assert.equal(c.saveText, 'Lưu nháp và rời đi');
+    c.stay();
+    count.setAttribute('data-unsaved-save', 'Cập nhật và rời đi');   // published meanwhile: the label follows
+    assert.equal(await navigate('/admin/catalog'), false);
+    assert.equal(c.saveText, 'Cập nhật và rời đi');
+    c.stay();
+});
+
 test('a link to the section already open does nothing', async () => {
     const { c } = page(1);
     assert.equal(await navigate('/admin/settings/general'), false);

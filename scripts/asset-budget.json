@@ -2,7 +2,7 @@
   "entries": {
     "resources/css/app.css": {
       "js": 0,
-      "css": 36250
+      "css": 37483
     },
     "resources/css/storefront.css": {
       "js": 0,
@@ -64,6 +64,10 @@
     },
     "resources/js/admin-unsaved.js": {
       "js": 22683,
+      "css": 0
+    },
+    "resources/js/admin-editor.js": {
+      "js": 1082,
       "css": 0
     },
     "resources/js/media-picker-uploader.js": {

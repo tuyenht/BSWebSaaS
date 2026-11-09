@@ -155,7 +155,7 @@ it('keeps the words through the product editor, for a new product and an edited 
         grantRole($editor, 'cat-words-manager', ['catalog.view', 'catalog.manage']);
 
         Livewire::actingAs($editor->fresh())->test(Editor::class)
-            ->set('name', 'Đồ gá phay')->set('slug', 'do-ga-phay')->set('sku', 'DGP-7')->set('status', 'draft')
+            ->set('name', 'Đồ gá phay')->set('slug', 'do-ga-phay')->set('sku', 'DGP-7')
             ->call('save')->assertHasNoErrors();
         $product = Product::query()->firstOrFail();
         expect(storedWords($product))->toBe(['7', 'dgp', 'dgp7', 'do', 'ga', 'gp7', 'p7', 'phay']);
