@@ -64,9 +64,13 @@ final readonly class PageRenderer
             unset($extra['breadcrumb']);
         }
         $crumbs = is_array($extra['breadcrumb'] ?? null) ? array_values($extra['breadcrumb']) : [];
+        // The layout with a table of contents prints the page's days in the band that leads it.
+        $withToc = $layout === 'theme::layouts.'.TemplateCatalog::PAGE_TOC;
+        $dates = $withToc && is_array($extra['pageDates'] ?? null) ? $extra['pageDates'] : [];
+        unset($extra['pageDates']);
         $tokens = $this->theme->cssVariables();
         // One pass over the body and the slots: pages and files are looked up once per kind.
-        $drawn = $this->blocks->renderBodies([self::withPageTitle($body, $title, $leadBlock, $crumbs), ...self::slotBodies($slots['blocks'])], $slots['context']);
+        $drawn = $this->blocks->renderBodies([self::withPageTitle($body, $title, $leadBlock, $crumbs, $dates), ...self::slotBodies($slots['blocks'])], $slots['context']);
         ['html' => $sections, 'bgVideo' => $bgVideo] = $drawn[0];
         $slotHtml = self::slotHtml($slots['blocks'], array_slice($drawn, 1));
         $extra['slotHtml'] = $slotHtml;
@@ -82,18 +86,27 @@ final readonly class PageRenderer
             $toc = ArticleToc::of($sections, array_map('strval', array_keys((array) request()->attributes->get('sf_zigzag_ids', []))));
             $sections = $toc['html'];
         }
+        // The page layout with a table of contents: the band that leads the page stays full width above
+        // the two columns, and the headings of the text after it are numbered and given anchors.
+        $band = '';
+        if ($withToc) {
+            [$band, $sections] = $leadBlock === 'page_header' ? self::splitBand($sections) : ['', $sections];
+            $toc = ArticleToc::numbered($sections, array_map('strval', array_keys((array) request()->attributes->get('sf_zigzag_ids', []))));
+            $sections = $toc['html'];
+        }
 
         return $this->views->make($layout, $this->head($seo, $title, $extra) + [
             'title' => $title,
             'tokens' => $tokens,
             'sections' => $sections,
+            'band' => $band,
             // A page_header band leading the page renders the h1 itself; the layout then skips its own.
             'leadBlock' => $leadBlock,
             // Whether a section already printed a high-priority image (a hero, about, slider or a
             // first block's background, wherever it sits): a post's cover then stays at 'eager', so
             // the page asks for one high-priority image, not two. Matched on the tag: text (a post
             // about the attribute itself) cannot hold a raw "<", Blade and the purifier escape it.
-            'bodyHighImage' => preg_match('~<img\b[^>]*\sfetchpriority="high"~', $sections) === 1,
+            'bodyHighImage' => preg_match('~<img\b[^>]*\sfetchpriority="high"~', $band.$sections) === 1,
             // The headings of the body's formatted text, for a post's table of contents (two or more).
             'toc' => $toc['items'],
         ] + $extra)->render();
@@ -356,14 +369,15 @@ final readonly class PageRenderer
     /**
      * Prepare the page_header blocks: one without its own title shows the page title, and only
      * the band that leads the page is marked as the page's h1 (`_lead`) and carries the page's
-     * breadcrumb (`_crumbs`) — any later band is an h2 without one. Both are always set here, so
-     * a stored value never counts.
+     * breadcrumb (`_crumbs`) and, on the layout with a table of contents, the page's days (`_dates`)
+     * — any later band is an h2 without them. All are always set here, so a stored value never counts.
      *
      * @param  array<string, mixed>  $body
      * @param  list<mixed>  $crumbs  the page's breadcrumb trail (Home → … → this page)
+     * @param  array<array-key, mixed>  $dates  the page's days (PostDetail::dates shape), or none
      * @return array<string, mixed>
      */
-    private static function withPageTitle(array $body, string $title, ?string $leadType, array $crumbs = []): array
+    private static function withPageTitle(array $body, string $title, ?string $leadType, array $crumbs = [], array $dates = []): array
     {
         if ($leadType === null || ! is_array($body['blocks'] ?? null)) {
             return $body;
@@ -387,12 +401,33 @@ final readonly class PageRenderer
             }
             $props['_lead'] = $isLead;
             $props['_crumbs'] = $isLead ? $crumbs : [];
+            $props['_dates'] = $isLead ? $dates : [];
             $block['props'] = $props;
             $blocks[$index] = $block;
         }
         $body['blocks'] = $blocks;
 
         return $body;
+    }
+
+    /**
+     * The title band that leads the page (its first block, bare or in its look wrapper) and the rest
+     * of the page's sections. Both views are the theme's own, so the band closes at its first
+     * `</section>` (it holds no section), followed by the wrapper's `</div>` when it has one.
+     *
+     * @return array{0: string, 1: string}
+     */
+    private static function splitBand(string $sections): array
+    {
+        if (preg_match('~^\s*(?:<div class="sf-s[^"]*"[^>]*>.*?)?<section class="page-band">.*?</section>~s', $sections, $band) !== 1) {
+            return ['', $sections];
+        }
+        $end = strlen($band[0]);
+        if (str_starts_with(ltrim($band[0]), '<div') && preg_match('~\G\s*</div>~', $sections, $close, 0, $end) === 1) {
+            $end += strlen($close[0]);
+        }
+
+        return [substr($sections, 0, $end), substr($sections, $end)];
     }
 
     /**

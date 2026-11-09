@@ -29,19 +29,44 @@ final class ArticleToc
     /** The longest slug kept (a long heading must not make a long address). */
     private const int MAX_SLUG = 60;
 
+    /** A heading that already carries its number: "1. …", "2) …". */
+    private const string OWN_NUMBER = '~^\\d{1,3}[.)]\\s+~u';
+
     /**
      * @param  list<string>  $taken  ids already on the page (section anchors, list rows)
      * @return array{html: string, items: list<array{id: string, label: string}>}
      */
     public static function of(string $html, array $taken = []): array
     {
+        // Formatted-text blocks only: their sections open with this exact tag (richtext_html view).
+        return self::build($html, $taken, '~(<section class="sf-prose">)(.*?)(</section>)~s', false);
+    }
+
+    /**
+     * The contents of a page on the layout with a table of contents: the h2 headings of its plain and
+     * formatted text blocks, each numbered in page order ("1. …") unless the author already numbered
+     * it (its number is then left out of the list label, which the list numbers itself).
+     *
+     * @param  list<string>  $taken  ids already on the page (section anchors, list rows)
+     * @return array{html: string, items: list<array{id: string, label: string}>}
+     */
+    public static function numbered(string $html, array $taken = []): array
+    {
+        // The plain text block (richtext view) and the formatted one (richtext_html view).
+        return self::build($html, $taken, '~(<section class="(?:sf-prose|richtext)">)(.*?)(</section>)~s', true);
+    }
+
+    /**
+     * @param  list<string>  $taken
+     * @return array{html: string, items: list<array{id: string, label: string}>}
+     */
+    private static function build(string $html, array $taken, string $pattern, bool $number): array
+    {
         $none = ['html' => $html, 'items' => []];
         if (stripos($html, '<h2>') === false) {
             return $none;
         }
 
-        // Formatted-text blocks only: their sections open with this exact tag (richtext_html view).
-        $pattern = '~(<section class="sf-prose">)(.*?)(</section>)~s';
         $headings = 0;
         preg_replace_callback($pattern, function (array $part) use (&$headings): string {
             $headings += preg_match_all('~<h2>(.*?)</h2>~s', $part[2]);
@@ -54,8 +79,8 @@ final class ArticleToc
 
         $used = array_fill_keys([...StyleProps::LAYOUT_IDS, ...self::LAYOUT_IDS, ...$taken], true);
         $items = [];
-        $out = preg_replace_callback($pattern, function (array $part) use (&$used, &$items): string {
-            $inner = preg_replace_callback('~<h2>(.*?)</h2>~s', function (array $heading) use (&$used, &$items): string {
+        $out = preg_replace_callback($pattern, function (array $part) use (&$used, &$items, $number): string {
+            $inner = preg_replace_callback('~<h2>(.*?)</h2>~s', function (array $heading) use (&$used, &$items, $number): string {
                 $label = trim((string) preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags($heading[1]), ENT_QUOTES | ENT_HTML5)));
                 if ($label === '') {
                     return $heading[0];
@@ -66,9 +91,15 @@ final class ArticleToc
                     $id = "{$base}-{$n}";
                 }
                 $used[$id] = true;
+                $text = $heading[1];
+                if ($number) {
+                    $own = preg_match(self::OWN_NUMBER, $label) === 1;
+                    $label = $own ? (string) preg_replace(self::OWN_NUMBER, '', $label) : $label;
+                    $text = $own ? $text : (count($items) + 1).'. '.ltrim($text);
+                }
                 $items[] = ['id' => $id, 'label' => $label];
 
-                return '<h2 id="'.$id.'">'.$heading[1].'</h2>';
+                return '<h2 id="'.$id.'">'.$text.'</h2>';
             }, $part[2]);
 
             return $part[1].$inner.$part[3];
