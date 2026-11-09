@@ -1,3 +1,14 @@
 {
- "items": []
+ "items": [
+  {
+   "key": "redirect:vi:/thiet-ke-jig-do-ga",
+   "to": "/thiet-ke-lap-trinh",
+   "status": 301
+  },
+  {
+   "key": "redirect:vi:/san-xuat-chi-tiet-may-oem",
+   "to": "/gia-cong-phay-tien-cnc",
+   "status": 301
+  }
+ ]
 }

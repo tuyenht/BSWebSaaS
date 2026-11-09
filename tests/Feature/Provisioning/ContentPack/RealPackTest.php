@@ -9,9 +9,13 @@ use Tests\Fixtures\StorefrontCards;
 /*
  * The real pack under database/content-packs passes every check the loader makes, publishes every
  * page, post and product (the owner publishes the content as it stands; the site's staff edit it
- * later), holds no testimonial, and plans with no conflict on a freshly provisioned site; after
+ * later) except the job offers, which wait as drafts for the company to confirm what they promise,
+ * and the two retired capability posts, whose addresses redirect to the capabilities that replace
+ * them. It holds no testimonial, and plans with no conflict on a freshly provisioned site; after
  * loading, every internal link it holds resolves to a live address.
  */
+
+const RETIRED = ['post:thiet-ke-jig-do-ga', 'post:san-xuat-chi-tiet-may-oem'];
 
 beforeEach(function (): void {
     StorefrontCards::reset();
@@ -34,22 +38,30 @@ function packLinks(mixed $value, ?string $key = null): array
     return $links;
 }
 
-it('validates the real pack: schema, bodies, slots, every page, post and product published, no testimonials', function (): void {
+it('validates the real pack: schema, bodies, slots, content published but job offers and retired posts, no testimonials', function (): void {
     $pack = (new PackReader)->read('an-vinh');
 
     expect(app(PackValidator::class)->validate($pack, 'an-vinh'))->toBe([]);
 
     $content = 0;
+    $jobs = [];
     foreach ($pack->items as $item) {
         if (preg_match('/\A(page|post|product):/', $item->key) === 1) {
             $content++;
-            expect($item->data['verified'])->toBeTrue($item->key)
-                ->and($item->data['status'])->toBe('published', $item->key)
-                ->and($item->data)->not->toHaveKey('claims');
+            if (in_array('tax:post_cat/tuyen-dung', $item->data['categories'] ?? [], true)) {
+                $jobs[] = $item->key;
+                expect($item->data['verified'])->toBeFalse($item->key)
+                    ->and($item->data['status'])->toBe('draft', $item->key)
+                    ->and($item->data['claims'])->not->toBeEmpty();
+            } else {
+                expect($item->data['verified'])->toBeTrue($item->key)
+                    ->and($item->data['status'])->toBe(in_array($item->key, RETIRED, true) ? 'draft' : 'published', $item->key)
+                    ->and($item->data)->not->toHaveKey('claims');
+            }
         }
         expect(json_encode($item->data))->not->toContain('testimonial');
     }
-    expect($content)->toBe(36);
+    expect($content)->toBe(44)->and($jobs)->toHaveCount(3);
     foreach ($pack->slots as $slot) {
         if (isset($slot['file'])) {
             expect(PackValidator::mime($pack->dir.'/'.$slot['file']))->not->toBeNull();
@@ -76,15 +88,19 @@ it('gives every project, news card and product its own image and the quality blo
 
     $quality = collect($items['page:/gioi-thieu']->data['body']['vi'])
         ->firstWhere('props.heading', 'Cam Kết Chất Lượng Theo Tiêu Chuẩn Quốc Tế');
-    expect($quality['props']['image_url'])->toBe(['media' => 'pr-body-check-fixture']);
+    expect($quality['props']['image_url'])->toBe(['media' => 'inspect-1']);
 });
 
 it('gives every post body text, an excerpt and a search description', function (): void {
     $posts = collect((new PackReader)->read('an-vinh')->items)->filter(fn ($item) => str_starts_with($item->key, 'post:'));
 
     foreach ($posts as $item) {
-        $paragraphs = collect($item->data['body']['vi'])->where('type', 'richtext')->flatMap(fn (array $block): array => $block['props']['paragraphs']);
-        expect($paragraphs->filter()->count())->toBeGreaterThan(0, $item->key)
+        $text = collect($item->data['body']['vi'])->map(fn (array $block): string => match ($block['type']) {
+            'richtext' => implode('', $block['props']['paragraphs']),
+            'richtext_html' => trim(strip_tags($block['props']['html'])),
+            default => '',
+        });
+        expect($text->filter()->count())->toBeGreaterThan(0, $item->key)
             ->and($item->data['excerpt']['vi'] ?? '')->not->toBe('', $item->key)
             ->and($item->data['seo_description']['vi'] ?? '')->not->toBe('', $item->key);
     }
@@ -94,11 +110,12 @@ it('lists the partners on their page with a call to contact, and links the priva
     $items = collect((new PackReader)->read('an-vinh')->items)->keyBy(fn ($item) => $item->key);
 
     $blocks = collect($items['page:/doi-tac']->data['body']['vi']);
-    expect($blocks->pluck('type')->all())->toBe(['page_header', 'features', 'cta'])
+    expect($blocks->pluck('type')->all())->toBe(['page_header', 'features', 'features', 'cta'])
         ->and(collect($blocks[1]['props']['items'])->pluck('title')->all())->toBe([
             'VinFast', 'Festo', 'Hutchinson', 'Weldcom', 'SMC', 'DGP', 'Yamaguchi', 'Mitsuboshi', 'Palfinger', 'Vinmanutech',
         ])
-        ->and($blocks[2]['props']['button_url'])->toBe('/lien-he');
+        ->and($blocks[3]['props']['button_url'])->toBe('/lien-he')
+        ->and($blocks[3]['props']['button2_url'])->toBe('/lien-he');
 
     $about = $items['menu:footer']->data['items'][0];
     expect($about['label']['vi'])->toBe('GIỚI THIỆU')
@@ -140,4 +157,8 @@ it('plans the real pack on a fresh site with no conflict, and every internal lin
     $live = ContentPacks::in($siteId, fn () => SiteRoute::query()->where('locale', 'vi')->whereIn('path', $links)->pluck('path')->all());
 
     expect(array_values(array_diff($links, $live)))->toBe([]);
+
+    $this->get('http://'.ContentPacks::HOST.'/thiet-ke-jig-do-ga')->assertStatus(301)->assertRedirect('/thiet-ke-lap-trinh');
+    $this->get('http://'.ContentPacks::HOST.'/san-xuat-chi-tiet-may-oem')->assertStatus(301)->assertRedirect('/gia-cong-phay-tien-cnc');
+    $this->get('http://'.ContentPacks::HOST.'/thiet-ke-lap-trinh')->assertOk();
 });

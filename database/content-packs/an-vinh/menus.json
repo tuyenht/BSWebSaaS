@@ -21,6 +21,12 @@
         "vi": "Giới thiệu công ty"
        },
        "target": "page:/gioi-thieu"
+      },
+      {
+       "label": {
+        "vi": "Nhà xưởng & máy móc"
+       },
+       "target": "page:/nha-xuong-may-moc"
       }
      ]
     },
@@ -32,27 +38,33 @@
      "children": [
       {
        "label": {
-        "vi": "Thiết kế Jig & Đồ gá"
+        "vi": "Thiết kế & Lập trình"
        },
-       "target": "post:thiet-ke-jig-do-ga"
+       "target": "post:thiet-ke-lap-trinh"
       },
       {
        "label": {
-        "vi": "Gia công Phay & Tiện CNC"
+        "vi": "Gia công Phay-Tiện CNC"
        },
        "target": "post:gia-cong-phay-tien-cnc"
       },
       {
        "label": {
-        "vi": "Hàn & Lắp ráp cơ khí"
+        "vi": "Gia công Cắt dây-Xung điện"
+       },
+       "target": "post:gia-cong-cat-day-xung-dien"
+      },
+      {
+       "label": {
+        "vi": "Hàn & Lắp ráp"
        },
        "target": "post:han-lap-rap-co-khi"
       },
       {
        "label": {
-        "vi": "Sản xuất chi tiết máy & OEM"
+        "vi": "Đo kiểm & QA/QC"
        },
-       "target": "post:san-xuat-chi-tiet-may-oem"
+       "target": "post:do-kiem-qa-qc"
       }
      ]
     },
@@ -79,6 +91,12 @@
         "vi": "Chi tiết máy"
        },
        "target": "tax:product_cat/san-pham/chi-tiet-may"
+      },
+      {
+       "label": {
+        "vi": "Sản phẩm tự động hóa"
+       },
+       "target": "tax:product_cat/san-pham/tu-dong-hoa"
       }
      ]
     },
@@ -99,6 +117,12 @@
       "vi": "Tin tức"
      },
      "target": "tax:post_cat/tin-tuc"
+    },
+    {
+     "label": {
+      "vi": "Tuyển dụng"
+     },
+     "target": "tax:post_cat/tuyen-dung"
     },
     {
      "label": {
@@ -132,9 +156,21 @@
       },
       {
        "label": {
+        "vi": "Nhà xưởng & máy móc"
+       },
+       "target": "page:/nha-xuong-may-moc"
+      },
+      {
+       "label": {
         "vi": "Tin tức"
        },
        "target": "tax:post_cat/tin-tuc"
+      },
+      {
+       "label": {
+        "vi": "Tuyển dụng"
+       },
+       "target": "tax:post_cat/tuyen-dung"
       },
       {
        "label": {
@@ -173,6 +209,12 @@
         "vi": "Chi tiết máy"
        },
        "target": "tax:product_cat/san-pham/chi-tiet-may"
+      },
+      {
+       "label": {
+        "vi": "Tự động hóa"
+       },
+       "target": "tax:product_cat/san-pham/tu-dong-hoa"
       }
      ]
     },
@@ -184,27 +226,27 @@
      "children": [
       {
        "label": {
-        "vi": "Thiết kế Jig & Đồ gá"
+        "vi": "Thiết kế & Lập trình"
        },
-       "target": "post:thiet-ke-jig-do-ga"
+       "target": "post:thiet-ke-lap-trinh"
       },
       {
        "label": {
-        "vi": "Gia công Phay & Tiện CNC"
+        "vi": "Gia công CNC"
        },
        "target": "post:gia-cong-phay-tien-cnc"
       },
       {
        "label": {
-        "vi": "Hàn & Lắp ráp cơ khí"
+        "vi": "Hàn & Lắp ráp"
        },
        "target": "post:han-lap-rap-co-khi"
       },
       {
        "label": {
-        "vi": "Sản xuất chi tiết máy & OEM"
+        "vi": "Đo kiểm & QA/QC"
        },
-       "target": "post:san-xuat-chi-tiet-may-oem"
+       "target": "post:do-kiem-qa-qc"
       }
      ]
     }

@@ -137,7 +137,8 @@
        "variant": "news-cards",
        "view_all_label": "Xem tất cả tin tức",
        "view_all_url": "/tin-tuc",
-       "layout": "auto"
+       "layout": "auto",
+       "tabs": "auto"
       }
      },
      {
@@ -148,6 +149,45 @@
        "button_label": "Liên hệ ngay",
        "button_url": "/lien-he",
        "variant": "rounded"
+      }
+     },
+     {
+      "type": "partners",
+      "props": {
+       "heading": "Đối tác tin cậy",
+       "layout": "slider",
+       "logos": [
+        {
+         "name": "VinFast"
+        },
+        {
+         "name": "Festo"
+        },
+        {
+         "name": "Hutchinson"
+        },
+        {
+         "name": "Weldcom"
+        },
+        {
+         "name": "SMC"
+        },
+        {
+         "name": "DGP"
+        },
+        {
+         "name": "Yamaguchi"
+        },
+        {
+         "name": "Mitsuboshi"
+        },
+        {
+         "name": "Palfinger"
+        },
+        {
+         "name": "Vinmanutech"
+        }
+       ]
       }
      }
     ]
@@ -176,6 +216,38 @@
        "image_url": {
         "media": "about-header"
        }
+      }
+     },
+     {
+      "type": "stats",
+      "props": {
+       "variant": "floating",
+       "items": [
+        {
+         "kind": "years",
+         "value": 2019,
+         "suffix": "+",
+         "label": "Năm kinh nghiệm"
+        },
+        {
+         "kind": "number",
+         "value": 3,
+         "suffix": "",
+         "label": "Nhà máy sản xuất"
+        },
+        {
+         "kind": "number",
+         "value": 4300,
+         "suffix": "m²",
+         "label": "Diện tích nhà xưởng"
+        },
+        {
+         "kind": "number",
+         "value": 120,
+         "suffix": "+",
+         "label": "Kỹ sư & công nhân"
+        }
+       ]
       }
      },
      {
@@ -250,13 +322,41 @@
      {
       "type": "about",
       "props": {
-       "heading": "Cam Kết Chất Lượng Theo Tiêu Chuẩn Quốc Tế",
+       "heading": "Nhà Xưởng & Máy Móc",
        "paragraphs": [
-        "An Vinh tự hào được đánh giá và chứng nhận phù hợp với các yêu cầu của tiêu chuẩn quốc tế ISO 9001:2015 cho Hệ thống Quản lý Chất lượng. Đây là minh chứng cho cam kết không ngừng của chúng tôi trong việc cung cấp những sản phẩm và dịch vụ đạt chuẩn mực cao nhất, từ khâu thiết kế, sản xuất đến kiểm định, mang lại sự an tâm tuyệt đối cho khách hàng."
+        "Ba nhà máy với tổng diện tích 4.300 m² tại xã Trung Giã và xã Thạch Thất, Hà Nội, khép kín từ thiết kế, gia công CNC, hàn, lắp ráp đến đo kiểm.",
+        "Xem địa chỉ từng nhà máy, danh mục máy móc và hình ảnh, video thực tế tại xưởng."
        ],
        "image_url": {
-        "media": "pr-body-check-fixture"
+        "media": "factory-1"
+       },
+       "cta_label": "Xem nhà xưởng & máy móc",
+       "cta_url": "/nha-xuong-may-moc"
+      }
+     },
+     {
+      "type": "about",
+      "props": {
+       "heading": "Cam Kết Chất Lượng Theo Tiêu Chuẩn Quốc Tế",
+       "paragraphs": [
+        "An Vinh tự hào được đánh giá và chứng nhận phù hợp với các yêu cầu của tiêu chuẩn quốc tế ISO 9001:2015 cho Hệ thống Quản lý Chất lượng – từ khâu thiết kế, sản xuất đến kiểm định.",
+        "Số chứng nhận: HT 3078 · Mã số 3078-24-01/01",
+        "Tổ chức chứng nhận: Viện Nghiên cứu Phát triển Tiêu chuẩn Chất lượng (ISSQ)",
+        "Hiệu lực: 01/04/2024 – 23/02/2027",
+        "Phạm vi: Gia công rèn, dập, hàn; sản xuất đồ gá, khuôn mẫu"
+       ],
+       "image_url": {
+        "media": "inspect-1"
        }
+      }
+     },
+     {
+      "type": "cta",
+      "props": {
+       "heading": "Tham quan nhà máy An Vinh",
+       "text": "Đặt lịch khảo sát năng lực thực tế cùng đội ngũ kỹ sư của chúng tôi.",
+       "button_label": "Đặt lịch tham quan",
+       "button_url": "/lien-he"
       }
      }
     ]
@@ -325,13 +425,39 @@
       }
      },
      {
+      "type": "features",
+      "props": {
+       "heading": "Lĩnh vực khách hàng",
+       "description": "Jig, đồ gá, khuôn mẫu và chi tiết máy An Vinh chế tạo đang phục vụ dây chuyền sản xuất của các ngành:",
+       "items": [
+        {
+         "title": "Ô tô & xe máy",
+         "text": "Jig hàn khung, đồ gá kiểm tra thân vỏ, khuôn dập chi tiết."
+        },
+        {
+         "title": "Điện tử",
+         "text": "Jig kiểm tra, dây chuyền lắp ráp linh kiện."
+        },
+        {
+         "title": "Tự động hoá",
+         "text": "Máy chuyên dùng, hệ thống cấp phôi tự động."
+        },
+        {
+         "title": "Hàng không & chính xác",
+         "text": "Chi tiết máy gia công CNC dung sai chặt."
+        }
+       ]
+      }
+     },
+     {
       "type": "cta",
       "props": {
-       "heading": "Sẵn sàng nâng tầm dự án của bạn?",
-       "text": "Hãy để các chuyên gia của An Vinh tư vấn giải pháp cơ khí chính xác tối ưu nhất.",
-       "button_label": "Liên hệ ngay",
+       "heading": "Hợp tác cùng An Vinh",
+       "text": "Doanh nghiệp cần nhà cung cấp gia công cơ khí, hoặc đơn vị muốn trở thành nhà cung cấp vật tư, thiết bị cho An Vinh.",
+       "button_label": "Tôi cần gia công",
        "button_url": "/lien-he",
-       "variant": "rounded"
+       "button2_label": "Đăng ký nhà cung cấp",
+       "button2_url": "/lien-he"
       }
      }
     ]
@@ -380,6 +506,301 @@
        "form_key": "contact",
        "description": "Điền vào biểu mẫu bên dưới và chúng tôi sẽ liên hệ lại với bạn trong thời gian sớm nhất.",
        "map_embed": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d12503.468002335805!2d105.85833024594946!3d21.29902948043917!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31351dc82e015dad%3A0xc3a6d44da6b27bb9!2zQ8O0bmcgdHkgY8ahIGtow60gQW4gVmluaA!5e0!3m2!1svi!2s!4v1762317872785!5m2!1svi!2s"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "key": "page:/nha-xuong-may-moc",
+   "verified": true,
+   "status": "published",
+   "title": {
+    "vi": "Nhà Xưởng & Máy Móc"
+   },
+   "seo_title": {
+    "vi": "Nhà Xưởng & Máy Móc | Cơ Khí Chính Xác An Vinh"
+   },
+   "seo_description": {
+    "vi": "Ba nhà máy của An Vinh tại Hà Nội, tổng 4.300 m²: lắp ráp, hàn, dập và gia công cơ khí; máy móc, thiết bị và hình ảnh gia công."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "page_header",
+      "props": {
+       "title": "Nhà Xưởng & Máy Móc",
+       "subtitle": "3 nhà máy, máy móc thiết bị và hình ảnh gia công",
+       "image_url": {
+        "media": "factory-1"
+       }
+      }
+     },
+     {
+      "type": "features",
+      "props": {
+       "heading": "Ba nhà máy",
+       "description": "Tổng diện tích 4.300 m² tại Hà Nội.",
+       "variant": "top-rule",
+       "items": [
+        {
+         "title": "Nhà máy 1 · 2.000 m²",
+         "icon": "machine",
+         "text": "Lắp ráp & sản xuất hàn, dập. Đường 418, thôn Xuân Sơn, xã Trung Giã, TP Hà Nội."
+        },
+        {
+         "title": "Nhà máy 2 · 500 m²",
+         "icon": "wrench",
+         "text": "Lắp ráp. Đường QL3, thôn Hương Ninh, xã Trung Giã, TP Hà Nội."
+        },
+        {
+         "title": "Nhà máy 3 · 1.800 m²",
+         "icon": "cog",
+         "text": "Gia công. Đội 6, thôn Ngũ Sơn, xã Thạch Thất, TP Hà Nội."
+        }
+       ]
+      }
+     },
+     {
+      "type": "features",
+      "props": {
+       "heading": "Máy móc, thiết bị",
+       "items": [
+        {
+         "title": "Máy phay CNC 3–5 trục",
+         "icon": "machine",
+         "text": "Hành trình tới 1.000 × 600 × 500 mm · dung sai ±0,01 mm"
+        },
+        {
+         "title": "Máy tiện CNC",
+         "icon": "cog",
+         "text": "Đường kính tới Ø300 × dài 500 mm · có trục C"
+        },
+        {
+         "title": "Máy cắt dây, xung điện (EDM)",
+         "icon": "adjust",
+         "text": "Biên dạng phức tạp, chi tiết khuôn, vật liệu đã nhiệt luyện"
+        },
+        {
+         "title": "Máy hàn MIG/MAG, TIG",
+         "icon": "wrench",
+         "text": "Hàn kết cấu, khung đồ gá, cụm chi tiết"
+        },
+        {
+         "title": "Máy dập, máy ép",
+         "icon": "box",
+         "text": "Dập, rèn chi tiết kim loại theo khuôn"
+        },
+        {
+         "title": "Thiết bị đo kiểm",
+         "icon": "check",
+         "text": "Máy đo CMM, máy đo 2.5D, dụng cụ đo cầm tay"
+        }
+       ]
+      }
+     },
+     {
+      "type": "video",
+      "props": {
+       "heading": "Video minh họa: phay CNC (timelapse) – nguồn kênh HackerspaceOL, giấy phép CC BY",
+       "url": "https://www.youtube.com/watch?v=FpYQc5zMLzM",
+       "poster": {
+        "media": "cnc-1"
+       }
+      }
+     },
+     {
+      "type": "gallery",
+      "props": {
+       "heading": "Nhà xưởng",
+       "columns": "4",
+       "images": [
+        {
+         "image": {
+          "media": "factory-1"
+         },
+         "caption": "Khu sản xuất"
+        },
+        {
+         "image": {
+          "media": "factory-2"
+         },
+         "caption": "Mặt bằng xưởng"
+        },
+        {
+         "image": {
+          "media": "weld-1"
+         },
+         "caption": "Khu vực hàn"
+        },
+        {
+         "image": {
+          "media": "office-1"
+         },
+         "caption": "Phòng họp tiếp khách"
+        }
+       ]
+      }
+     },
+     {
+      "type": "gallery",
+      "props": {
+       "heading": "Máy móc",
+       "columns": "4",
+       "images": [
+        {
+         "image": {
+          "media": "cnc-1"
+         },
+         "caption": "Trung tâm gia công CNC"
+        },
+        {
+         "image": {
+          "media": "cnc-2"
+         },
+         "caption": "Phay CNC chi tiết"
+        },
+        {
+         "image": {
+          "media": "edm-1"
+         },
+         "caption": "Cắt dây EDM"
+        },
+        {
+         "image": {
+          "media": "inspect-2"
+         },
+         "caption": "Đo kiểm bằng panme"
+        }
+       ]
+      }
+     },
+     {
+      "type": "gallery",
+      "props": {
+       "heading": "Sản phẩm",
+       "columns": "4",
+       "images": [
+        {
+         "image": {
+          "media": "p-weld-jig-frame"
+         },
+         "caption": "Jig hàn khung"
+        },
+        {
+         "image": {
+          "media": "p-die-cast-mould"
+         },
+         "caption": "Khuôn đúc áp lực"
+        },
+        {
+         "image": {
+          "media": "pr-headlamp-jig"
+         },
+         "caption": "Đồ gá kiểm tra cụm đèn"
+        },
+        {
+         "image": {
+          "media": "p-fuel-tank-die"
+         },
+         "caption": "Khuôn dập"
+        }
+       ]
+      }
+     },
+     {
+      "type": "cta",
+      "props": {
+       "heading": "Tham quan nhà máy trực tiếp",
+       "text": "Đặt lịch khảo sát năng lực thực tế cùng đội ngũ kỹ sư An Vinh.",
+       "button_label": "Đặt lịch tham quan",
+       "button_url": "/lien-he"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "key": "page:/cam-on",
+   "verified": true,
+   "status": "published",
+   "title": {
+    "vi": "Cảm ơn bạn"
+   },
+   "seo_title": {
+    "vi": "Cảm ơn bạn – Cơ khí An Vinh"
+   },
+   "seo_description": {
+    "vi": "An Vinh đã nhận yêu cầu của bạn. Kỹ sư phụ trách sẽ liên hệ lại trong thời gian sớm nhất."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "page_header",
+      "props": {
+       "title": "Cảm ơn bạn đã gửi yêu cầu!",
+       "subtitle": "An Vinh đã nhận thông tin. Kỹ sư phụ trách sẽ liên hệ lại với bạn trong thời gian sớm nhất."
+      }
+     },
+     {
+      "type": "process",
+      "props": {
+       "heading": "Bước tiếp theo",
+       "steps": [
+        {
+         "title": "Tiếp nhận & phân tích",
+         "text": "Kỹ sư xem bản vẽ, số lượng, vật liệu bạn gửi."
+        },
+        {
+         "title": "Liên hệ làm rõ",
+         "text": "Gọi điện hoặc Zalo để thống nhất yêu cầu kỹ thuật."
+        },
+        {
+         "title": "Gửi báo giá",
+         "text": "Báo giá chi tiết kèm tiến độ dự kiến qua email."
+        }
+       ]
+      }
+     },
+     {
+      "type": "cta",
+      "props": {
+       "heading": "Cần gấp? Gọi ngay cho kỹ sư",
+       "text": "Thứ 2 – Thứ 7, giờ hành chính",
+       "button_label": "0915 66 83 83",
+       "button2_label": "Chat Zalo",
+       "button_url_do": {
+        "k": "tel",
+        "phone": "0915668383"
+       },
+       "button2_url_do": {
+        "k": "zalo",
+        "phone": "0915668383"
+       }
+      }
+     },
+     {
+      "type": "quick_links",
+      "props": {
+       "heading": "Trong lúc chờ, bạn có thể tham khảo:",
+       "variant": "row",
+       "items": [
+        {
+         "icon": "link",
+         "label": "Sản phẩm",
+         "url": "/san-pham"
+        },
+        {
+         "icon": "link",
+         "label": "Dự án tiêu biểu",
+         "url": "/du-an"
+        },
+        {
+         "icon": "building",
+         "label": "Về trang chủ",
+         "url": "/"
+        }
+       ]
       }
      }
     ]
