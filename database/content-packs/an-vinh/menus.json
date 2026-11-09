@@ -27,6 +27,12 @@
         "vi": "Nhà xưởng & máy móc"
        },
        "target": "page:/nha-xuong-may-moc"
+      },
+      {
+       "label": {
+        "vi": "Chứng chỉ & thành tựu"
+       },
+       "url": "/gioi-thieu#chung-chi"
       }
      ]
     },

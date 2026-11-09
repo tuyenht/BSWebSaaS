@@ -347,7 +347,8 @@
        ],
        "image_url": {
         "media": "inspect-1"
-       }
+       },
+       "anchor_id": "chung-chi"
       }
      },
      {
@@ -439,7 +440,7 @@
          "text": "Jig kiểm tra, dây chuyền lắp ráp linh kiện."
         },
         {
-         "title": "Tự động hoá",
+         "title": "Tự động hóa",
          "text": "Máy chuyên dùng, hệ thống cấp phôi tự động."
         },
         {
@@ -594,7 +595,7 @@
         {
          "title": "Thiết bị đo kiểm",
          "icon": "check",
-         "text": "Máy đo CMM, máy đo 2.5D, dụng cụ đo cầm tay"
+         "text": "Máy đo CMM, máy đo 2,5D, dụng cụ đo cầm tay"
         }
        ]
       }

@@ -24,11 +24,16 @@ beforeEach(function (): void {
 
 afterEach(fn () => ContentPacks::cleanup());
 
-/** @return list<string> every internal path a value links to (props ending in url/href) */
+/** @return list<string> every internal path a value links to (props ending in url/href, links inside html), without its #fragment */
 function packLinks(mixed $value, ?string $key = null): array
 {
+    if (is_string($value) && str_contains($value, '<a ')) {
+        preg_match_all('/href="(\/[^"#]*)/', $value, $m);
+
+        return $m[1];
+    }
     if (is_string($value)) {
-        return $key !== null && preg_match('/(url|href)$/', $key) === 1 && str_starts_with($value, '/') ? [$value] : [];
+        return $key !== null && preg_match('/(url|href)$/', $key) === 1 && str_starts_with($value, '/') ? [explode('#', $value)[0]] : [];
     }
     $links = [];
     foreach (is_array($value) ? $value : [] as $child => $item) {
@@ -160,5 +165,12 @@ it('plans the real pack on a fresh site with no conflict, and every internal lin
 
     $this->get('http://'.ContentPacks::HOST.'/thiet-ke-jig-do-ga')->assertStatus(301)->assertRedirect('/thiet-ke-lap-trinh');
     $this->get('http://'.ContentPacks::HOST.'/san-xuat-chi-tiet-may-oem')->assertStatus(301)->assertRedirect('/gia-cong-phay-tien-cnc');
-    $this->get('http://'.ContentPacks::HOST.'/thiet-ke-lap-trinh')->assertOk();
+    foreach (['/', '/gioi-thieu', '/doi-tac', '/nha-xuong-may-moc', '/cam-on', '/nang-luc', '/thiet-ke-lap-trinh', '/gia-cong-phay-tien-cnc',
+        '/gia-cong-cat-day-xung-dien', '/han-lap-rap-co-khi', '/do-kiem-qa-qc', '/du-an', '/tin-tuc', '/san-pham', '/lien-he'] as $path) {
+        $this->get('http://'.ContentPacks::HOST.$path)->assertOk();
+    }
+    foreach (['/ky-thuat-vien-van-hanh-may-cnc', '/ky-su-thiet-ke-co-khi-do-ga', '/nhan-vien-kiem-tra-chat-luong-qc'] as $path) {
+        $this->get('http://'.ContentPacks::HOST.$path)->assertNotFound();
+    }
+    expect($this->get('http://'.ContentPacks::HOST.'/gioi-thieu')->getContent())->toContain('Nhà Xưởng &amp; Máy Móc');
 });
