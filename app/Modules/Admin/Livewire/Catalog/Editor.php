@@ -213,8 +213,14 @@ final class Editor extends Component
     public function publish(): void
     {
         $this->authorizeEdit();
+        $this->saveAs('published');
+    }
+
+    /** Saves the product with `status`; nothing saved, the status stays as it was. */
+    private function saveAs(string $status): void
+    {
         $was = $this->status;
-        $this->status = 'published';
+        $this->status = $status;
 
         try {
             $saved = $this->commit(quiet: false);

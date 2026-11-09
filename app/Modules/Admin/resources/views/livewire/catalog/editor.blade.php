@@ -32,7 +32,7 @@
     $error = 'mt-1 text-small text-danger-text';
     $hint = 'mt-1.5 text-caption text-text-muted';
     $cardHead = 'flex flex-wrap items-center gap-2 border-b border-border px-4 py-3';
-    $cardTitle = 'm-0 text-[calc(1rem+var(--user-text-boost))] font-semibold leading-tight text-body-text';
+    $cardTitle = 'm-0 text-[calc(1rem+var(--user-text-boost))] font-semibold leading-tight text-text';
     $chip = $multiLocale ? strtoupper($locale) : null;
     $glyph = 'size-[1.15em] shrink-0';
     $more = ['slug', 'summary', 'sku', 'categoryId'];
@@ -60,21 +60,7 @@
                 <x-bs-admin::icon name="ri-arrow-left" :class="$glyph" /><span class="@max-[37.5rem]:hidden">{{ __('catalog.ed.back') }}</span>
             </x-bs-admin::button>
 
-            {{-- Two live regions: the server's state (saved, a field to fix) and the browser's; the
-                 count of changes is not read out at every keystroke, saving and no connection are. --}}
-            <span class="flex min-w-0 @max-[48rem]:flex-1">
-                <span role="status" class="ped-sv ped-sv-rest @max-[48rem]:rounded-xl" data-s="{{ $note['key'] }}" title="{{ $note['tip'] }}">
-                    <x-bs-admin::icon :name="$note['icon']" :class="$glyph" /><span aria-hidden="true">{{ $note['text'] }}</span><span class="sr-only">{{ $note['full'] }}</span>
-                </span>
-                <span wire:ignore class="contents">
-                    <span role="status" class="ped-sv @max-[48rem]:rounded-xl" x-show="state()" x-cloak x-bind:data-s="state()" x-bind:aria-live="state() === 'dirty' ? 'off' : 'polite'" x-bind:title="text()">
-                        <x-bs-admin::icon name="ri-error-warning" :class="$glyph" x-show="state() === 'dirty'" />
-                        <x-bs-admin::icon name="ri-loader-4" :class="$glyph.' motion-safe:animate-spin'" x-show="state() === 'saving'" />
-                        <x-bs-admin::icon name="ri-wifi-off" :class="$glyph" x-show="state() === 'offline'" />
-                        <span x-text="text()"></span>
-                    </span>
-                </span>
-            </span>
+            <x-bs-admin::save-state :note="$note" class="@max-[48rem]:flex-1" />
             <span wire:ignore class="contents">
                 <x-bs-admin::button variant="outline" color="secondary" size="sm" class="shrink-0" x-show="state() === 'offline'" x-cloak x-on:click="retry()">
                     <x-bs-admin::icon name="ri-refresh" :class="$glyph" /> {{ __('catalog.ed.retry') }}
@@ -140,7 +126,7 @@
                                 <span class="shrink-0 text-small text-text-muted" dir="ltr">/</span>
                                 <input type="text" id="catalog-slug" wire:model="slug" dir="ltr" spellcheck="false" autocomplete="off"
                                        aria-describedby="catalog-slug-h @error('slug') catalog-slug-e @enderror" @error('slug') aria-invalid="true" @enderror
-                                       class="field min-w-0 flex-1 border-0 bg-transparent px-1 font-mono text-text outline-none focus-visible:outline-none">
+                                       class="field min-w-0 flex-1 border-0 bg-transparent px-1 font-mono text-text">
                             </div>
                             @error('slug') <p id="catalog-slug-e" class="{{ $error }}" x-init="setMore(true)">{{ $message }}</p> @enderror
                             @if ($liveUrl !== null && ($saved['slug'] ?? '') !== '')
@@ -197,26 +183,26 @@
                     <div class="{{ $cardHead }}"><h2 id="ped-h-img" class="{{ $cardTitle }}">{{ __('catalog.card_gallery') }}</h2></div>
                     <div class="space-y-3 p-4">
                         @if ($galleryImages === [])
-                            <p class="text-sm text-body-muted">{{ __('catalog.gallery_empty') }}</p>
+                            <p class="text-sm text-text-muted">{{ __('catalog.gallery_empty') }}</p>
                         @else
                             <ul class="grid grid-cols-3 gap-3 sm:grid-cols-4" role="list">
                                 @foreach ($galleryImages as $i => $image)
                                     <li wire:key="gallery-{{ $image['id'] }}" class="overflow-hidden rounded border border-border">
                                         @if ($image['missing'])
-                                            <div class="flex aspect-square items-center justify-center bg-surface-muted p-2 text-center text-xs text-body-muted">{{ __('catalog.gallery_missing') }}</div>
+                                            <div class="flex aspect-square items-center justify-center bg-surface-muted p-2 text-center text-xs text-text-muted">{{ __('catalog.gallery_missing') }}</div>
                                         @else
                                             <img src="{{ $image['url'] }}" alt="{{ $image['name'] ?? '' }}" loading="lazy" class="aspect-square w-full object-cover">
                                         @endif
                                         <div class="flex items-center justify-between gap-1 border-t border-border bg-surface-muted px-1.5 py-1">
                                             @if ($i === 0)
-                                                <span class="text-xs font-medium text-accent">{{ __('catalog.gallery_primary') }}</span>
+                                                <span class="text-xs font-medium text-primary-text">{{ __('catalog.gallery_primary') }}</span>
                                             @else
                                                 <span></span>
                                             @endif
                                             <span class="flex items-center">
-                                                <button type="button" wire:click="moveImageUp({{ $i }})" aria-label="{{ __('catalog.gallery_move_up') }}" class="rounded px-1 text-sm text-body-muted hover:bg-surface-hover hover:text-body-text">↑</button>
-                                                <button type="button" wire:click="moveImageDown({{ $i }})" aria-label="{{ __('catalog.gallery_move_down') }}" class="rounded px-1 text-sm text-body-muted hover:bg-surface-hover hover:text-body-text">↓</button>
-                                                <button type="button" wire:click="removeImage({{ $i }})" class="rounded px-1 text-sm text-admin-danger-text hover:bg-surface-hover">{{ __('catalog.gallery_remove') }}</button>
+                                                <button type="button" wire:click="moveImageUp({{ $i }})" aria-label="{{ __('catalog.gallery_move_up') }}" class="rounded px-1 text-sm text-text-muted hover:bg-surface-hover hover:text-text">↑</button>
+                                                <button type="button" wire:click="moveImageDown({{ $i }})" aria-label="{{ __('catalog.gallery_move_down') }}" class="rounded px-1 text-sm text-text-muted hover:bg-surface-hover hover:text-text">↓</button>
+                                                <button type="button" wire:click="removeImage({{ $i }})" class="rounded px-1 text-sm text-danger-text hover:bg-surface-hover">{{ __('catalog.gallery_remove') }}</button>
                                             </span>
                                         </div>
                                     </li>
@@ -227,8 +213,8 @@
                         @can('media.view')
                             <x-bs-admin::button variant="soft" color="primary" wire:click="openImagePicker">{{ __('catalog.gallery_add') }}</x-bs-admin::button>
                         @endcan
-                        <p class="text-sm text-body-muted">{{ __('catalog.gallery_hint') }}</p>
-                        @error('imageMediaIds.*') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
+                        <p class="text-sm text-text-muted">{{ __('catalog.gallery_hint') }}</p>
+                        @error('imageMediaIds.*') <p class="mt-1 text-sm text-danger-text">{{ $message }}</p> @enderror
                     </div>
                 </section>
 
@@ -249,14 +235,14 @@
                     </div>
                     <div class="p-4">
                         <x-bs-admin::rich-editor target="description" profile="full" :value="$description" rows="10" />
-                        @error('description') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
+                        @error('description') <p class="mt-1 text-sm text-danger-text">{{ $message }}</p> @enderror
                     </div>
                 </section>
 
                 <x-bs-admin::seo-fields page-title-model="name" kind="product" :address="$address" :locale="$locale" :multi-locale="$multiLocale" id="catalog-seo" />
 
                 <button type="button" x-on:click="setMore(! more)" x-bind:aria-expanded="more ? 'true' : 'false'" aria-expanded="false"
-                        class="grid w-full grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2.5 gap-y-1 rounded-md border border-dashed border-border-input px-4 py-2.5 text-left text-body font-semibold text-accent transition-colors min-h-12 hover:bg-[color-mix(in_srgb,var(--color-accent)_6%,var(--color-surface))] pointer-coarse:min-h-(--spacing-control-row)">
+                        class="grid w-full grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2.5 gap-y-1 rounded-md border border-dashed border-border-input px-4 py-2.5 text-left text-body font-semibold text-primary-text transition-colors min-h-12 hover:bg-[color-mix(in_srgb,var(--color-primary-text)_6%,var(--color-surface))]">
                     <x-bs-admin::icon name="ri-add" :class="$glyph" x-show="! more" />
                     <x-bs-admin::icon name="ri-subtract" :class="$glyph" x-show="more" x-cloak />
                     <span x-text="more ? @js(__('catalog.ed.less')) : @js(__('catalog.ed.more'))">{{ __('catalog.ed.more') }}</span>
@@ -307,7 +293,7 @@
                         <label for="catalog-sku" class="{{ $label }} mb-1.5">{{ __('catalog.card_opt_sku') }}</label>
                         <input type="text" id="catalog-sku" wire:model="sku" dir="ltr" autocomplete="off" spellcheck="false"
                                aria-describedby="catalog-sku-h @error('sku') catalog-sku-e @enderror" @error('sku') aria-invalid="true" @enderror
-                               class="{{ $field }} font-mono">
+                               class="field block w-full rounded-md border border-border-input bg-surface-muted px-3 font-mono text-text placeholder:text-placeholder transition-colors focus:border-primary-text aria-invalid:border-danger-text">
                         @error('sku') <p id="catalog-sku-e" class="{{ $error }}" x-init="setMore(true)">{{ $message }}</p> @enderror
                         <p id="catalog-sku-h" class="{{ $hint }}">{{ __('catalog.ed.sku_hint') }}</p>
                     </div>
