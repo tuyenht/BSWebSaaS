@@ -235,6 +235,20 @@ test('a round trip that carried the typed text clears it; one sent while the fie
     assert.equal(c.dirty(), true);
 });
 
+test('typed text not yet sent marks the root data-typed (a settings save bar on a phone shows then), cleared with it', () => {
+    const { c } = page(0);
+    const root = document.getElementById('root');
+    const f = document.getElementById('f');
+    assert.equal(root.hasAttribute('data-typed'), false, 'nothing typed: a clean save bar may hide on a phone');
+    f.focus();
+    f.dispatchEvent(new window.Event('input', { bubbles: true }));
+    assert.equal(root.hasAttribute('data-typed'), true);
+    f.blur();
+    hooks.forEach((h) => h({ component: { id: 'c1' }, succeed: (cb) => cb() }));
+    assert.equal(c.dirty(), false);
+    assert.equal(root.hasAttribute('data-typed'), false, 'the round trip carried it: the server count decides again');
+});
+
 test('taken off with the page: no guard is left behind', async () => {
     const { c } = page(1);
     c.destroy();

@@ -1,4 +1,4 @@
-<x-bs-admin::settings-shell :active="$scope === 'platform' ? 'system-email' : 'email'">
+<x-bs-admin::settings-shell :active="$scope === 'platform' ? 'system-email' : 'email'" :head="false">
     {{-- Flash + OAuth-connect errors --}}
     @if (session('status'))
         <div class="rounded border border-admin-success/30 bg-admin-success/10 px-4 py-3 text-sm text-admin-success-text">{{ session('status') }}</div>

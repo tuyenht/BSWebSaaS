@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Admin\Http\Controllers\HintPreferenceController;
 use App\Modules\Admin\Http\Controllers\OAuthController;
 use App\Modules\Admin\Http\Controllers\SupportSignInController;
 use App\Modules\Admin\Http\Controllers\ThemePreferenceController;
@@ -131,6 +132,8 @@ Route::domain((string) config('tenancy.platform_host'))
         // consoles live on different hosts and fetch() stays same-origin.
         Route::post('/theme-preference', [ThemePreferenceController::class, 'store'])->name('platform.theme.save');
         Route::delete('/theme-preference', [ThemePreferenceController::class, 'destroy'])->name('platform.theme.reset');
+        // A first-time explanation the member put away with "Đã hiểu" (own preferences only).
+        Route::post('/hint-preference', [HintPreferenceController::class, 'store'])->name('platform.hint.dismiss');
 
         Route::post('/logout', function () {
             Auth::logout();
@@ -228,6 +231,8 @@ Route::prefix(config('admin.prefix', 'admin'))
         // Per-user Customizer persistence (fetch/JSON) — any authenticated member, own prefs only.
         Route::post('/theme-preference', [ThemePreferenceController::class, 'store'])->name('admin.theme.save');
         Route::delete('/theme-preference', [ThemePreferenceController::class, 'destroy'])->name('admin.theme.reset');
+        // A first-time explanation the member put away with "Đã hiểu" — any member, own preferences only.
+        Route::post('/hint-preference', [HintPreferenceController::class, 'store'])->name('admin.hint.dismiss');
 
         // Site members + their roles (owner/admin). Add/change/remove routes through the guarded
         // AssignRole/RevokeRole actions, so the role hierarchy is enforced server-side.

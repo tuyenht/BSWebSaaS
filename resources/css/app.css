@@ -993,3 +993,17 @@ button:not(:disabled) {
     line-height: 1.5;
     color: var(--color-text);
 }
+
+/* A settings page's own save bar (`data-set-savebar` inside the shared settings frame) shows on a
+   phone (narrower than 768px) only once there is something to save, as the menus editor does: the
+   server marks a bar with nothing to save `data-clean`, and text typed but not yet sent (the unsaved
+   dialog's `data-typed`) counts as a change. From 768px the bar always shows. Unlayered on purpose:
+   it must win over the bar's own `flex` utility. */
+@media (width < 48rem) {
+    [data-set-savebar][data-clean] {
+        display: none;
+    }
+    [data-set-shell]:has([data-unsaved-guard][data-typed]) [data-set-savebar][data-clean] {
+        display: flex;
+    }
+}
