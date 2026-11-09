@@ -51,7 +51,7 @@
 
         {{-- The language being edited (only on a site with more than one) --}}
         @if ($multi)
-            <div class="flex flex-wrap items-center gap-2.5 rounded-md border border-border-strong bg-surface-muted px-2.5 py-1.5">
+            <div class="flex flex-wrap items-center gap-2.5 rounded-md border border-border-strong bg-surface-muted px-2.5 py-1.5 max-md:py-1">
                 <x-bs-admin::icon name="ri-translate-2" class="{{ $glyph }} text-text-muted" title="{{ __('admin.gs.lang_title') }}" />
                 <div role="group" aria-label="{{ __('admin.gs.lang_title') }}" class="flex min-w-0 flex-wrap items-center gap-1.5 p-px">
                     @foreach ($locales as $lc)
@@ -145,8 +145,8 @@
                                 @continue
                             @endif
 
-                            <div @class(['flex min-w-0 flex-col gap-1.5', 'col-span-full' => $wide]) wire:key="gs-f-{{ $key }}-{{ $perLang ? $lang : 'shared' }}">
-                                <span class="flex min-h-control flex-wrap items-center gap-x-[7px] gap-y-1 text-[calc(0.8125rem+var(--user-text-boost))] font-medium text-text-strong">
+                            <div @class(['flex min-w-0 flex-col gap-1.5', 'col-span-full' => $wide, 'max-md:gap-3.5' => $hint !== null]) wire:key="gs-f-{{ $key }}-{{ $perLang ? $lang : 'shared' }}">
+                                <span class="flex min-h-control flex-wrap items-center gap-x-[7px] max-md:min-h-7 gap-y-1 text-[calc(0.8125rem+var(--user-text-boost))] font-medium text-text-strong">
                                     <label for="{{ $fid }}" class="cursor-pointer">{{ $label }}</label>
                                     @if ($perLang && $multi)
                                         <span class="inline-flex shrink-0 items-center rounded-sm bg-primary-soft px-1.5 py-px text-caption font-bold text-primary-text uppercase">{{ $lang }}</span>
@@ -157,7 +157,7 @@
                                         </span>
                                     @endif
                                     @if ($hint !== null)
-                                        <button type="button" class="hit-area inline-flex size-control shrink-0 items-center justify-center rounded-md text-text-muted hover:text-primary-text aria-expanded:text-primary-text"
+                                        <button type="button" class="hit-area inline-flex size-control shrink-0 items-center justify-center rounded-md text-text-muted hover:text-primary-text aria-expanded:text-primary-text max-md:size-7"
                                                 x-on:click="info = info === '{{ $infoId }}' ? null : '{{ $infoId }}'" x-bind:aria-expanded="info === '{{ $infoId }}' ? 'true' : 'false'"
                                                 aria-controls="{{ $infoId }}" aria-label="{{ __('admin.gs.info_aria') }}">
                                             <x-bs-admin::icon name="ri-information" class="size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))]" />
@@ -241,7 +241,7 @@
         </div>
 
         {{-- The page's own save bar, kept in view at the bottom --}}
-        <div class="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center justify-between gap-2.5 border-t border-border-strong bg-surface px-1 py-3" role="region" aria-label="{{ __('admin.gs.savebar') }}">
+        <div class="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center justify-between gap-2.5 border-t border-border-strong bg-surface px-1 py-3" role="region" aria-label="{{ __('admin.gs.savebar') }}" data-set-savebar @if ($changes === 0) data-clean @endif>
             <div role="status" aria-live="polite" class="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption leading-snug">
                 @if ($changes > 0)
                     <span class="inline-flex items-center gap-1.5 font-semibold text-warning-text"><x-bs-admin::icon name="ri-error-warning" :class="$glyph" />{{ __('admin.gs.changes', ['count' => $changes]) }}</span>
