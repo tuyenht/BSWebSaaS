@@ -1,3 +1,5 @@
+# Not deployed: stopped at step 3 on 09/11 (the engine's schema snapshot failed on real PostgreSQL, fixed in #458);
+# prod went 6e4febb6 → 4f093714 with 6e4febb6-4f093714.sh instead. Kept as the record of that run.
 # Release file: prod 6e4febb6 → 7ce6254d (main on 09/11). Data and one-off commands only; the engine
 # (scripts/deploy/deploy.sh) does every generic step. Review this file and the printed plan:
 #     bash scripts/deploy/deploy.sh plan scripts/deploy/releases/6e4febb6-7ce6254d.sh
