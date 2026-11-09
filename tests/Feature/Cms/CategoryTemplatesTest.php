@@ -188,7 +188,7 @@ it('lists only the layouts that fit a role and a kind of category', function ():
     expect(TemplateCatalog::names(TemplateCatalog::ROLE_LIST, TemplateCatalog::KIND_POST))->toBe(['category', 'grid-job', 'grid-news', 'grid-product', 'grid-project'])
         ->and(TemplateCatalog::names(TemplateCatalog::ROLE_LIST, TemplateCatalog::KIND_PRODUCT))->toBe(['category', 'grid-product'])
         ->and(TemplateCatalog::names(TemplateCatalog::ROLE_POST, TemplateCatalog::KIND_POST))->toBe(['job', 'post', 'project'])
-        ->and(TemplateCatalog::names(TemplateCatalog::ROLE_PAGE))->toBe(['page'])
+        ->and(TemplateCatalog::names(TemplateCatalog::ROLE_PAGE))->toBe(['page', 'page-toc'])
         ->and(TemplateCatalog::isJob('grid-job'))->toBeTrue()
         ->and(TemplateCatalog::isJob('job'))->toBeTrue()
         ->and(TemplateCatalog::isJob('post'))->toBeFalse()

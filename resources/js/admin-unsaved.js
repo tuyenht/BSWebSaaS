@@ -111,6 +111,15 @@ export function unsavedDialog(cfg) {
     let seq = 0;
     let typed = false;
     let typedField = null;
+    let root = null;
+    // Typed text the server has not seen yet is also shown on the dialog's root (data-typed), so the
+    // page's CSS can treat the page as changed before the round trip (a settings save bar on a phone).
+    const setTyped = (on) => {
+        typed = on;
+        if (root) {
+            root.toggleAttribute('data-typed', on);
+        }
+    };
     let go = null;
     let opener = null;
     let asking = false;
@@ -123,7 +132,7 @@ export function unsavedDialog(cfg) {
             return;
         }
         seq += 1;
-        typed = true;
+        setTyped(true);
         if (/\.blur\b/.test(m)) {
             typedField = e.target;
         }
@@ -148,6 +157,7 @@ export function unsavedDialog(cfg) {
         busy: false,
 
         init() {
+            root = this.$root;
             page = this.$root.closest('[wire\\:id]') || document.body;
             page.addEventListener('input', onInput, true);
             page.addEventListener('focusout', onFieldLeft, true);
@@ -161,7 +171,7 @@ export function unsavedDialog(cfg) {
                     const at = seq;
                     succeed(() => {
                         if (at === seq && typedField === null) {
-                            typed = false;
+                            setTyped(false);
                         }
                     });
                 });
@@ -215,7 +225,7 @@ export function unsavedDialog(cfg) {
                 const sent = await this.flush();
                 asking = false;
                 if (sent && this.count() === 0) {
-                    typed = false;
+                    setTyped(false);
                     goOn();
 
                     return;
@@ -299,7 +309,7 @@ export function unsavedDialog(cfg) {
             const goOn = go;
             const o = opener;
             if (sent && this.count() === 0 && !page.querySelector('[aria-invalid="true"]')) {
-                typed = false;
+                setTyped(false);
                 this.close(false);
                 if (goOn) {
                     goOn();
@@ -335,7 +345,7 @@ export function unsavedDialog(cfg) {
                 // leaving drops the draft all the same
             }
             this.busy = false;
-            typed = false;
+            setTyped(false);
             const goOn = go;
             this.close(false);
             if (goOn) {

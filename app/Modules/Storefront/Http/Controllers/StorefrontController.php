@@ -328,6 +328,12 @@ final readonly class StorefrontController
             $extra['breadcrumb'] = [$this->crumbs->home($locale), ...$this->crumbs->parentPages($entry, $locale), $self];
         }
 
+        // A page on the layout with a table of contents shows the day it took effect (and the day it
+        // last changed) in its title band.
+        if ($entry->type === 'page' && $entry->template_override === TemplateCatalog::PAGE_TOC) {
+            $extra['pageDates'] = $this->posts->dates($entry, $content->translation, $locale);
+        }
+
         // The home page names the website itself: the name search results show for the site.
         $brandName = data_get($chrome, 'brand.name');
         if ($path === '/' && is_string($brandName) && trim($brandName) !== '') {

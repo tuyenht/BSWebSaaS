@@ -1115,6 +1115,111 @@ main:has(.hero, .sf-slider) .page__title {
     margin-bottom: 0.75rem;
 }
 
+/* ───── Page with a table of contents (layout page-toc) ──────────────────── */
+/* The contents box above the text on a phone; from 1024px a quarter-width column that stays in view
+   while the three-quarter text column scrolls. The text blocks inside drop their own section
+   padding and column so the page keeps one rhythm; their h2 carry a primary-colour rule. */
+.sf-doc {
+    display: grid;
+    gap: 3rem;
+    max-width: 80rem;
+    margin-inline: auto;
+    padding: 4rem 1rem;
+}
+
+@media (min-width: 640px) {
+    .sf-doc {
+        padding-inline: 1.5rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .sf-doc {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
+        align-items: start;
+        padding-inline: 2rem;
+    }
+
+    /* A long list scrolls inside its column, so its last items stay reachable on a short screen. */
+    .sf-doc__toc {
+        position: sticky;
+        top: 7rem;
+        max-height: calc(100vh - 8rem);
+        max-height: calc(100dvh - 8rem);
+        overflow-y: auto;
+    }
+}
+
+.sf-doc__toc-box {
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+}
+
+.sf-doc__toc-title {
+    margin: 0 0 0.75rem;
+    color: var(--color-text-strong);
+    font-weight: 700;
+}
+
+.sf-doc__toc-list {
+    display: grid;
+    gap: 0.125rem;
+    margin: 0;
+    padding-left: 1.5rem;
+    list-style: decimal;
+    font-size: 0.875rem;
+}
+
+.sf-doc__toc-list--own {
+    padding-left: 0;
+    list-style: none;
+}
+
+.sf-doc__toc-list li::marker {
+    color: var(--color-primary-text);
+    font-weight: 600;
+}
+
+.sf-doc__toc-link {
+    display: block;
+    padding-block: 0.25rem;
+    color: var(--color-text);
+    overflow-wrap: anywhere;
+}
+
+.sf-doc__toc-link:hover {
+    color: var(--color-primary-text);
+}
+
+@media (any-pointer: coarse) {
+    .sf-doc__toc-link {
+        display: flex;
+        align-items: center;
+        min-height: 2.75rem;
+    }
+}
+
+.sf-doc__body {
+    min-width: 0;
+    max-width: 48rem;
+}
+
+.sf-doc__body > :is(.richtext, .sf-prose) {
+    max-width: none;
+    margin-inline: 0;
+    padding: 0;
+}
+
+.sf-doc__body > * + * {
+    margin-top: 2.5rem;
+}
+
+.sf-doc__body > :is(.richtext, .sf-prose) h2 {
+    padding-bottom: 0.4rem;
+    border-bottom: 2px solid var(--color-primary);
+}
+
 /* ───── Formatted text section (richtext_html) ───────────────────────────── */
 /* A readable 48rem column of sanitized HTML (ADR-19). Pictures carry their width (share of the
    column) and alignment as classes printed by RichHtml; tables scroll inside themselves so the page
@@ -3411,6 +3516,17 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     color: var(--sch-body, currentColor);
 }
 
+/* The page's days under the title (the layout with a table of contents). */
+.page-band__dates {
+    margin: 1rem 0 0;
+    color: var(--sch-body, var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white)));
+    font-size: 0.875rem;
+}
+
+.page-band:has(> .page-band__bg) .page-band__dates {
+    color: var(--sch-body, currentColor);
+}
+
 /* Touch screens: every control of the rich chrome reaches 44px. */
 @media (any-pointer: coarse) {
     .sf-header--topbar {
@@ -4606,6 +4722,11 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     list-style: none;
 }
 
+/* The 5rem is the space above the map; cards that end the block leave the spacing to the section. */
+.sf-contact-cards:last-child {
+    margin-bottom: 0;
+}
+
 @media (min-width: 768px) {
     .sf-contact-cards {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -4998,6 +5119,18 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
         height: 100%;
         min-height: 20rem;
     }
+}
+
+/* The form-with-map card right after a contact block: one 4rem gap between the two at every width
+   (the contact cards, then the form card, as the contact page's design draws them), not the
+   section's bottom padding plus the card's own top margin. A block in a look wrapper (a colour
+   set or a photo) is not a sibling here and keeps its own spacing. */
+.contact:has(+ .lead-form--map) {
+    padding-bottom: 0;
+}
+
+.contact + .lead-form.lead-form--map {
+    margin-top: 4rem;
 }
 
 .lead-form__main {

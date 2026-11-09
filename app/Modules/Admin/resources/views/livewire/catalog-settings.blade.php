@@ -1,4 +1,4 @@
-<x-bs-admin::settings-shell active="catalog">
+<x-bs-admin::settings-shell active="catalog" :head="false">
     @if (session('status'))
         <x-bs-admin::alert color="success" icon="shield">{{ session('status') }}</x-bs-admin::alert>
     @endif
