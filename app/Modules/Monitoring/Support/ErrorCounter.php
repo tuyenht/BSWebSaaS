@@ -172,7 +172,7 @@ final readonly class ErrorCounter
     {
         $connection = Redis::connection();
 
-        if (! $connection instanceof PhpRedisConnection) {
+        if (! $connection instanceof PhpRedisConnection) { // @phpstan-ignore instanceof.alwaysTrue (Larastan reads the config default; REDIS_CLIENT can still change it at runtime)
             throw new RuntimeException('Error notices need the phpredis client.');
         }
 
