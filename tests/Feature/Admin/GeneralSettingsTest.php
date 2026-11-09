@@ -410,6 +410,42 @@ it('discards the draft back to the saved values', function (): void {
     });
 });
 
+it('hands its change count to the leave dialog, which reads it to decide whether to ask', function (): void {
+    gsBrand();
+    $admin = gsAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $lw = Livewire::actingAs($admin)->test(GeneralSettings::class)
+            ->assertSeeHtml('data-bs-lazy="bsUnsaved"')
+            ->assertSeeHtml('data-unsaved-count="0"')
+            ->assertSee('“Thông tin chung” có thay đổi chưa lưu. Rời trang này bây giờ thì các thay đổi này sẽ mất.')
+            ->assertSee('Mục “Thông tin chung” có thay đổi chưa lưu. Sang mục khác bây giờ thì các thay đổi này sẽ mất.');
+
+        $lw->set('form.phone', '0911 111 111')->assertSeeHtml('data-unsaved-count="1"');
+        // "Lưu và rời đi" goes on only after a save that leaves nothing unsaved and no field in error.
+        $lw->call('save')->assertHasNoErrors()->assertSeeHtml('data-unsaved-count="0"')->assertDontSeeHtml('aria-invalid="true"');
+        // "Bỏ thay đổi và rời đi" drops the draft through the page's own discard.
+        $lw->set('form.phone', '0922 222 222')->assertSeeHtml('data-unsaved-count="1"')
+            ->call('resetChanges')->assertSeeHtml('data-unsaved-count="0"');
+    });
+});
+
+it('keeps the page, its errors and the typed text when the dialog’s save fails', function (): void {
+    $admin = gsAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        Livewire::actingAs($admin)->test(GeneralSettings::class)
+            ->set('form.phone', '0911 111 111')->assertSeeHtml('data-unsaved-count="1"')
+            ->call('save')
+            ->assertHasErrors('i18n.vi.name')
+            ->assertSet('form.phone', '0911 111 111')
+            ->assertSeeHtml('data-unsaved-count="1"')
+            ->assertSeeHtml('aria-invalid="true"');
+    });
+
+    expect(DB::connection('pgsql_admin')->table('site_profiles')->count())->toBe(0);
+});
+
 it('gates the page — settings.manage on the route, in boot() and on save', function (): void {
     $admin = gsAdmin();
     $editor = User::factory()->create();

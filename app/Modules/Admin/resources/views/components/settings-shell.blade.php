@@ -1,5 +1,8 @@
-@props(['active' => ''])
+@props(['active' => '', 'unsaved' => null, 'save' => 'save', 'discard' => 'resetChanges'])
 @php
+    // A section that keeps its draft on the server joins the shared unsaved-changes dialog by
+    // passing its change count (`:unsaved="$changes"`) and, when they are named otherwise, its save
+    // and discard methods. Leaving it then asks first; a section that passes nothing leaves freely.
     if (\App\Modules\Admin\Support\AdminPlane::isPlatform()) {
         // Platform (system) console — super_admin-only system defaults.
         $nav = [[
@@ -92,4 +95,13 @@
         {{-- Section content --}}
         <div class="min-w-0 space-y-6">{{ $slot }}</div>
     </div>
+
+    @if ($unsaved !== null)
+        @php
+            $items = array_merge(...array_column($nav, 'items'));
+            $current = collect($items)->firstWhere('key', $active);
+            $paths = array_map(static fn (array $item): string => (string) parse_url(route($item['route']), PHP_URL_PATH), $items);
+        @endphp
+        <x-bs-admin::unsaved-dialog :count="(int) $unsaved" :label="$current['label'] ?? ''" :save="$save" :discard="$discard" :sections="$paths" />
+    @endif
 </div>

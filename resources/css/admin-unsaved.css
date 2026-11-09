@@ -1,0 +1,166 @@
+/*
+ | The shared "Bạn có thay đổi chưa lưu" dialog (<x-bs-admin::unsaved-dialog>; design 01, the
+ | admin-components .sx-ud* part). One blocking dialog over a dimmed page, centred; a sheet from the
+ | bottom on a phone (narrower than 600px, or 500px tall or less). The foot is one row when its three
+ | buttons fit (admin-unsaved.js measures them and sets data-ud-lay) — Bỏ thay đổi on the left, set
+ | apart, then Ở lại and the main button — otherwise stacked: main, Ở lại, a wider gap, Bỏ thay đổi.
+ | The DOM order is the order on screen in both. Unmeasured, it is stacked. Button heights are the
+ | shared control size (touch reaches the hit size through hit-area); every colour is a shared token.
+ */
+@layer components {
+    .sx-udw {
+        position: fixed;
+        inset: 0;
+        z-index: 90;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        box-sizing: border-box;
+        background: color-mix(in oklab, var(--color-gray-900) 45%, transparent);
+    }
+
+    .sx-ud {
+        width: min(calc(35rem + 8 * var(--user-text-boost)), 100%);
+        max-height: 100%;
+        overflow: auto;
+        box-sizing: border-box;
+        padding: 1.25rem 1.5rem;
+        border-radius: 0.375rem;
+        background: var(--color-surface);
+        color: var(--color-text);
+
+        @apply shadow-lg;
+
+        & h2 {
+            margin: 0 0 0.5rem;
+            font-size: calc(1rem + var(--user-text-boost) * 0.67);
+            font-weight: 600;
+            line-height: 1.4;
+            color: var(--color-text-strong);
+            overflow-wrap: anywhere;
+        }
+
+        & p {
+            margin: 0 0 1rem;
+            font-size: var(--text-body);
+            line-height: var(--text-body--line-height);
+            color: var(--color-text);
+            text-wrap: pretty;
+            overflow-wrap: anywhere;
+        }
+    }
+
+    @media (max-width: 599.98px), (max-height: 500px) {
+        .sx-udw {
+            align-items: flex-end;
+            padding: 0;
+        }
+
+        .sx-ud {
+            width: min(30rem, 100%);
+            border-radius: 0.75rem 0.75rem 0 0;
+            padding: 1.25rem max(1rem, env(safe-area-inset-right)) calc(1rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+        }
+    }
+
+    .sx-ud-b {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        min-height: var(--spacing-control);
+        padding: 0 1rem;
+        box-sizing: border-box;
+        border-radius: 0.25rem;
+        font-family: inherit;
+        font-size: calc(1rem + var(--user-text-boost) * 0.67);
+        font-weight: 600;
+        line-height: 1.3;
+        text-align: center;
+        cursor: pointer;
+
+        &[aria-busy='true'] {
+            cursor: progress;
+            opacity: 0.8;
+        }
+    }
+
+    .sx-ud-p {
+        border: 0;
+        background: var(--color-admin-primary);
+        color: var(--color-on-primary);
+
+        &:active {
+            filter: brightness(0.9);
+        }
+    }
+
+    .sx-ud-s {
+        border: 1px solid var(--color-border-input);
+        background: var(--color-surface);
+        color: var(--color-text-strong);
+    }
+
+    .sx-ud-x {
+        border: 1px solid var(--color-danger-text);
+        background: var(--color-surface);
+        color: var(--color-danger-text);
+    }
+
+    .sx-ud-s:active,
+    .sx-ud-x:active {
+        filter: brightness(0.96);
+    }
+
+    @media (hover: hover) {
+        .sx-ud-p:hover {
+            filter: brightness(0.95);
+        }
+
+        .sx-ud-s:hover {
+            background: var(--color-surface-hover);
+        }
+
+        .sx-ud-x:hover {
+            background: color-mix(in srgb, var(--color-danger-text) 8%, var(--color-surface));
+        }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        .sx-ud-b {
+            transition: background-color var(--duration-fast) var(--ease-standard), filter var(--duration-fast) var(--ease-standard);
+        }
+    }
+
+    .sx-ud-foot {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+
+        & > .sx-ud-b {
+            width: 100%;
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
+
+        & > .sx-ud-x {
+            margin-top: 0.75rem;
+        }
+
+        &[data-ud-lay='row'] {
+            flex-direction: row;
+            align-items: center;
+
+            & > .sx-ud-b {
+                width: auto;
+                flex: 0 0 auto;
+                white-space: nowrap;
+            }
+
+            & > .sx-ud-x {
+                margin: 0 auto 0 0;
+            }
+        }
+    }
+}

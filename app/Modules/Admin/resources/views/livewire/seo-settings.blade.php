@@ -52,7 +52,7 @@
     $infoBox = 'rounded-lg border border-border bg-surface px-3 py-2.5 text-caption leading-relaxed text-text [overflow-wrap:break-word]';
     $mutedCard = 'col-span-full rounded-lg border border-border bg-surface-muted';
 @endphp
-<x-bs-admin::settings-shell active="seo">
+<x-bs-admin::settings-shell active="seo" :unsaved="$changes">
     <div class="@container/seo flex flex-col gap-4" data-set-form
          x-data="{ open: {{ Js::from($groupKeys[0]) }}, info: null }"
          x-on:seo-first-error.window="open = $event.detail.group; $nextTick(() => $el.querySelector('[aria-invalid=true]:not([disabled])')?.focus())"
