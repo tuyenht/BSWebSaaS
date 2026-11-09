@@ -204,6 +204,18 @@ test('text typed but not yet sent counts: the draft is sent first and the count 
     assert.deepEqual(went, []);
 });
 
+test('typed text whose send fails asks instead of leaving: the text stays', async () => {
+    const lost = page(0, { commit: () => { throw new Error('offline'); } });
+    const f = document.getElementById('f');
+    f.focus();
+    f.dispatchEvent(new window.Event('input', { bubbles: true }));
+    await navigate('/admin/posts');
+    await tick();
+    assert.deepEqual(lost.calls, ['$commit']);
+    assert.equal(lost.c.open, true);
+    assert.deepEqual(went, []);
+});
+
 test('a round trip that carried the typed text clears it; one sent while the field is still being typed in does not', () => {
     const { c } = page(0);
     const f = document.getElementById('f');

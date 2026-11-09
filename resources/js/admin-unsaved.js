@@ -209,11 +209,12 @@ export function unsavedDialog(cfg) {
             }
             const from = document.activeElement;
             if (this.count() === 0) {
-                // Only typed text the server has not seen: send it, then let the count decide.
+                // Only typed text the server has not seen: send it, then let the count decide. A
+                // send that fails (no network, an expired session) asks instead: the text stays.
                 asking = true;
-                await this.flush();
+                const sent = await this.flush();
                 asking = false;
-                if (this.count() === 0) {
+                if (sent && this.count() === 0) {
                     typed = false;
                     goOn();
 
@@ -228,7 +229,7 @@ export function unsavedDialog(cfg) {
             this.$nextTick(() => this.shown());
         },
 
-        /** Leave the field being typed in (a .blur field sends then) and send the draft. */
+        /** Leave the field being typed in (a .blur field sends then) and send the draft; false when the send failed. */
         async flush() {
             const a = document.activeElement;
             if (a && page && page.contains(a) && modelOf(a)) {
@@ -236,8 +237,10 @@ export function unsavedDialog(cfg) {
             }
             try {
                 await this.$wire.$commit();
+
+                return true;
             } catch {
-                // the count as it stands decides
+                return false;
             }
         },
 
