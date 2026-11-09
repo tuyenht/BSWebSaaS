@@ -10,7 +10,7 @@
     },
     "devDependencies": {
         "@axe-core/cli": "^4.14.0",
-        "@lhci/cli": "^0.15.1",
+        "@lhci/cli": "^0.16.0",
         "@tailwindcss/vite": "^4.3.5",
         "@uppy/aws-s3": "^5.1.0",
         "@uppy/core": "^5.2.0",
