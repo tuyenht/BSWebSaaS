@@ -1,4 +1,4 @@
-<x-bs-admin::settings-shell active="appearance">
+<x-bs-admin::settings-shell active="appearance" :head="false">
     <form wire:submit="save">
         <div class="overflow-hidden rounded-md border border-border bg-surface shadow-card">
             <div class="border-b border-border px-5 py-3">

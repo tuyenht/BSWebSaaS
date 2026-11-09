@@ -1,4 +1,5 @@
 @php
+    use App\Modules\Admin\Support\FirstHints;
     use App\Modules\Theme\Chrome\ContactIcons;
     use App\Modules\Theme\Chrome\FloatingContact;
     use Illuminate\Support\Js;
@@ -58,13 +59,23 @@
         default => 'border-[1.5px] border-dashed border-text-faint',
     };
     $missingLangs = count(array_filter($langInfo, fn (array $l): bool => ! $l['src'] && $l['done'] < $filled));
+    // On the source language the bar first explains what the source is, with "Đã hiểu"; once the
+    // member has put that away it lives in the section's (i) note and only the live part stays (how
+    // many languages still lack labels) — on a phone inside the bar's own row, otherwise under it.
+    // The other languages' lines are live information and always show.
+    $srcHint = __('admin.fc.note_src', ['code' => strtoupper($defaultLocale)]);
+    $srcHintOk = FirstHints::dismissed(FirstHints::LANG_SOURCE);
+    $missingText = $missingLangs > 0 ? __('admin.fc.note_src_missing', ['count' => $missingLangs]) : '';
     $note = match (true) {
         $cur['kind'] === 'empty' => ['text' => __('admin.fc.note_empty', ['name' => $cur['name']]), 'icon' => 'ri-translate-2', 'tone' => 'warning'],
         $cur['kind'] === 'partial' => ['text' => __('admin.fc.note_partial', ['count' => $filled - $cur['done'], 'name' => $cur['name']]), 'icon' => 'ri-error-warning', 'tone' => 'warning'],
-        $cur['src'] => ['text' => __('admin.fc.note_src', ['code' => strtoupper($cur['code'])]).($missingLangs > 0 ? ' '.__('admin.fc.note_src_missing', ['count' => $missingLangs]) : ''), 'icon' => 'ri-star-fill', 'tone' => 'src'],
+        $cur['src'] && ! $srcHintOk => ['text' => $srcHint.($missingText !== '' ? ' '.$missingText : ''), 'icon' => 'ri-star-fill', 'tone' => 'src'],
+        $cur['src'] => $missingText !== '' ? ['text' => $missingText, 'icon' => 'ri-star-fill', 'tone' => 'src'] : null,
         default => ['text' => __('admin.fc.note_ok', ['name' => $cur['name']]), 'icon' => 'ri-checkbox-circle', 'tone' => 'ok'],
     };
-    $noteTone = ['warning' => 'bg-warning-soft text-warning-text', 'src' => 'bg-primary-soft text-text', 'ok' => 'bg-success-soft text-success-text'][$note['tone']];
+    $noteOk = $cur['src'] && ! $srcHintOk;
+    $leftInBar = $cur['src'] && $srcHintOk && $missingText !== '';
+    $noteTone = $note === null ? '' : ['warning' => 'bg-warning-soft text-warning-text', 'src' => 'bg-primary-soft text-text', 'ok' => 'bg-success-soft text-success-text'][$note['tone']];
     $manyLangs = count($locales) > 5;
 
     // A channel's errors that no field on screen shows: on a switched-off row every field but the
@@ -102,13 +113,13 @@
     $pvBuy = $preview['buy'] ?? null;
     $buySafe = FloatingContact::color($buyColor) ?? FloatingContact::BUY_COLOR;
 @endphp
-<x-bs-admin::settings-shell active="floating">
+<x-bs-admin::settings-shell active="floating" :hints="count($locales) > 1 ? [FirstHints::LANG_SOURCE => $srcHint] : []">
     <div class="@container/fc flex flex-col gap-4" x-data x-on:fc-first-error.window="$nextTick(() => $el.querySelector('[aria-invalid=true]')?.focus())">
 
         {{-- Language of the hover labels (only on a site with more than one) --}}
         @if (count($locales) > 1)
             <div class="rounded-md border border-border-strong bg-surface-muted">
-                <div class="flex flex-wrap items-center gap-2.5 px-2.5 py-1.5">
+                <div class="flex flex-wrap items-center gap-2.5 px-2.5 py-1.5 max-md:py-1">
                     <x-bs-admin::icon name="ri-translate-2" class="size-[min(1.5rem,calc(1rem+var(--user-text-boost)))] shrink-0 text-text-muted" title="{{ __('admin.fc.lang_icon_title') }}" />
 
                     @unless ($manyLangs)
@@ -172,14 +183,22 @@
                     <span class="hidden items-center gap-1.5 text-caption text-text-muted @min-[50rem]/fc:inline-flex">
                         <span class="size-2 shrink-0 rounded-full {{ $dotClass($cur['kind']) }}" aria-hidden="true"></span>{{ $cur['label'] }}
                     </span>
-                    <span class="min-w-2 flex-auto"></span>
-                    <span class="h-5 w-px shrink-0 bg-border-strong" aria-hidden="true"></span>
+                    @if ($leftInBar)
+                        <span class="min-w-0 flex-[1_1_8em] text-caption leading-[1.35] text-text-muted [overflow-wrap:break-word] [text-wrap:pretty] md:hidden" data-lang-left>{{ $missingText }}</span>
+                    @endif
+                    <span @class(['min-w-2 flex-auto', 'max-md:hidden' => $leftInBar])></span>
+                    <span @class(['h-5 w-px shrink-0 bg-border-strong', 'max-md:hidden' => $leftInBar]) aria-hidden="true"></span>
                     <span class="shrink-0 text-caption whitespace-nowrap text-text-muted" title="{{ __('admin.fc.lang_prog_title') }}">{{ $prog }}</span>
                 </div>
-                <div class="flex items-start gap-2 border-t border-border px-3 py-2 text-caption leading-normal {{ $noteTone }}">
-                    <x-bs-admin::icon :name="$note['icon']" class="mt-px size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))] shrink-0" />
-                    <span class="min-w-0">{{ $note['text'] }}</span>
-                </div>
+                @if ($note !== null)
+                    <div @class(['flex items-start gap-2 border-t border-border px-3 py-2 text-caption leading-normal '.$noteTone, 'flex-wrap gap-y-1.5' => $noteOk, 'max-md:hidden' => $leftInBar])>
+                        <x-bs-admin::icon :name="$note['icon']" class="mt-px size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))] shrink-0" />
+                        <span @class(['min-w-0', 'flex-[1_1_14em]' => $noteOk])>{{ $note['text'] }}</span>
+                        @if ($noteOk)
+                            <x-bs-admin::hint-ok :key="FirstHints::LANG_SOURCE" class="ms-auto" />
+                        @endif
+                    </div>
+                @endif
             </div>
         @endif
 
