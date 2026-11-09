@@ -351,7 +351,7 @@ CATALOG_SQL="SELECT 'col|'||c.relname||'|'||a.attname||'|'||format_type(a.atttyp
   UNION ALL SELECT 'idx|'||t.relname||'|'||i.relname||'|'||CASE WHEN x.indisvalid AND x.indisready THEN 'valid' ELSE 'INVALID' END
     FROM pg_index x JOIN pg_class i ON i.oid = x.indexrelid JOIN pg_class t ON t.oid = x.indrelid JOIN pg_namespace n ON n.oid = t.relnamespace
     WHERE n.nspname = 'public' AND NOT t.relispartition
-  UNION ALL SELECT 'con|'||t.relname||'|'||k.conname||'|'||k.contype||'|'||CASE WHEN k.convalidated THEN 'validated' ELSE 'NOT-VALID' END
+  UNION ALL SELECT 'con|'||t.relname||'|'||k.conname||'|'||k.contype::text||'|'||CASE WHEN k.convalidated THEN 'validated' ELSE 'NOT-VALID' END
     FROM pg_constraint k JOIN pg_class t ON t.oid = k.conrelid JOIN pg_namespace n ON n.oid = t.relnamespace
     WHERE n.nspname = 'public' AND NOT t.relispartition
   ORDER BY 1"
@@ -715,8 +715,10 @@ mode_plan() { # git only, on the dev repo; prod is never touched (docker/gh/ssh/
     echo "Dòng anh chạy (giữ nguyên; muốn chạy tiếp từ một bước thì thêm số bước trước dấu ;):"
     local envp=; [ "$dev" = /opt/bswebsaas/dev ] || envp="DEPLOY_DEV_REPO=$dev "
     # an unreadable launcher must stop the line, not run an empty "bash -c" that exits 0
-    printf "  ! tmux new-session -d -s deploy '%sbash -c \"\$(git -C %s show %s:scripts/deploy/launch.sh || echo \"echo DỪNG: không đọc được launch.sh ở commit %s >&2; exit 1\")\" launch %s %s %s %s; exec bash'\n" "$envp" "$dev" "$commit" "${commit:0:8}" "$commit" "$blob" "$(readlink -f "$rel")" "$relsha"
-    echo "Lùi code: cùng dòng, thêm \"rollback\". Sao lưu lại: thêm \"dump\"."
+    # a session name of its own per run (target + start time): a fixed name is refused once taken, and every
+    # line leaves its session behind (exec bash), so a resume or a rollback would hit the name of the first run
+    printf "  ! tmux new-session -d -s deploy-%s-\$(date +%%d%%H%%M%%S) '%sbash -c \"\$(git -C %s show %s:scripts/deploy/launch.sh || echo \"echo DỪNG: không đọc được launch.sh ở commit %s >&2; exit 1\")\" launch %s %s %s %s; exec bash'\n" "${TARGET:0:8}" "$envp" "$dev" "$commit" "${commit:0:8}" "$commit" "$blob" "$(readlink -f "$rel")" "$relsha"
+    echo "Lùi code: cùng dòng, thêm \"rollback\". Sao lưu lại: thêm \"dump\". Mỗi lần chạy mở một phiên tmux mới (tên có giờ chạy): xem bằng tmux ls."
 }
 mode_flags() { # flags <git dir> <commit>: "name<TAB>flags" for every migration of that commit (review, tests)
     local m
