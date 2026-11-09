@@ -29,8 +29,8 @@ final class ArticleToc
     /** The longest slug kept (a long heading must not make a long address). */
     private const int MAX_SLUG = 60;
 
-    /** A heading that already carries its number: "1. …", "2) …". */
-    private const string OWN_NUMBER = '~^\\d{1,3}[.)]\\s+~u';
+    /** A heading that already carries its number: "1. …", "2) …", "1.Foo", "1.1 …", "Điều 1 …". */
+    private const string OWN_NUMBER = '~^(?:(?:điều|mục|chương|phần)\\s+\\d{1,3}\\b|\\d{1,3}(?:\\.\\d{1,3})*[.)]|\\d{1,3}(?:\\.\\d{1,3})+\\b)~iu';
 
     /**
      * @param  list<string>  $taken  ids already on the page (section anchors, list rows)
@@ -39,16 +39,19 @@ final class ArticleToc
     public static function of(string $html, array $taken = []): array
     {
         // Formatted-text blocks only: their sections open with this exact tag (richtext_html view).
-        return self::build($html, $taken, '~(<section class="sf-prose">)(.*?)(</section>)~s', false);
+        $toc = self::build($html, $taken, '~(<section class="sf-prose">)(.*?)(</section>)~s', false);
+
+        return ['html' => $toc['html'], 'items' => $toc['items']];
     }
 
     /**
      * The contents of a page on the layout with a table of contents: the h2 headings of its plain and
-     * formatted text blocks, each numbered in page order ("1. …") unless the author already numbered
-     * it (its number is then left out of the list label, which the list numbers itself).
+     * formatted text blocks, each numbered in page order ("1. …"). One rule for the whole page: when
+     * any heading already carries the author's own number, none is added and the list shows the
+     * headings as written (`own`), so the text and the list never disagree.
      *
      * @param  list<string>  $taken  ids already on the page (section anchors, list rows)
-     * @return array{html: string, items: list<array{id: string, label: string}>}
+     * @return array{html: string, items: list<array{id: string, label: string}>, own: bool}
      */
     public static function numbered(string $html, array $taken = []): array
     {
@@ -58,21 +61,26 @@ final class ArticleToc
 
     /**
      * @param  list<string>  $taken
-     * @return array{html: string, items: list<array{id: string, label: string}>}
+     * @return array{html: string, items: list<array{id: string, label: string}>, own: bool}
      */
     private static function build(string $html, array $taken, string $pattern, bool $number): array
     {
-        $none = ['html' => $html, 'items' => []];
+        $none = ['html' => $html, 'items' => [], 'own' => false];
         if (stripos($html, '<h2>') === false) {
             return $none;
         }
 
         $headings = 0;
-        preg_replace_callback($pattern, function (array $part) use (&$headings): string {
-            $headings += preg_match_all('~<h2>(.*?)</h2>~s', $part[2]);
+        $own = false;
+        preg_replace_callback($pattern, function (array $part) use (&$headings, &$own, $number): string {
+            $headings += preg_match_all('~<h2>(.*?)</h2>~s', $part[2], $found);
+            foreach ($found[1] as $inner) {
+                $own = $own || ($number && preg_match(self::OWN_NUMBER, self::label($inner)) === 1);
+            }
 
             return $part[0];
         }, $html);
+        $number = $number && ! $own;
         if ($headings < self::MIN) {
             return $none;
         }
@@ -81,7 +89,7 @@ final class ArticleToc
         $items = [];
         $out = preg_replace_callback($pattern, function (array $part) use (&$used, &$items, $number): string {
             $inner = preg_replace_callback('~<h2>(.*?)</h2>~s', function (array $heading) use (&$used, &$items, $number): string {
-                $label = trim((string) preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags($heading[1]), ENT_QUOTES | ENT_HTML5)));
+                $label = self::label($heading[1]);
                 if ($label === '') {
                     return $heading[0];
                 }
@@ -91,12 +99,7 @@ final class ArticleToc
                     $id = "{$base}-{$n}";
                 }
                 $used[$id] = true;
-                $text = $heading[1];
-                if ($number) {
-                    $own = preg_match(self::OWN_NUMBER, $label) === 1;
-                    $label = $own ? (string) preg_replace(self::OWN_NUMBER, '', $label) : $label;
-                    $text = $own ? $text : (count($items) + 1).'. '.ltrim($text);
-                }
+                $text = $number ? (count($items) + 1).'. '.ltrim($heading[1]) : $heading[1];
                 $items[] = ['id' => $id, 'label' => $label];
 
                 return '<h2 id="'.$id.'">'.$text.'</h2>';
@@ -105,6 +108,12 @@ final class ArticleToc
             return $part[1].$inner.$part[3];
         }, $html);
 
-        return count($items) >= self::MIN && is_string($out) ? ['html' => $out, 'items' => $items] : $none;
+        return count($items) >= self::MIN && is_string($out) ? ['html' => $out, 'items' => $items, 'own' => $own] : $none;
+    }
+
+    /** The plain text of a heading's inner HTML, spaces collapsed. */
+    private static function label(string $inner): string
+    {
+        return trim((string) preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags($inner), ENT_QUOTES | ENT_HTML5)));
     }
 }

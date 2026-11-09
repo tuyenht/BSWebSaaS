@@ -1140,9 +1140,13 @@ main:has(.hero, .sf-slider) .page__title {
         padding-inline: 2rem;
     }
 
+    /* A long list scrolls inside its column, so its last items stay reachable on a short screen. */
     .sf-doc__toc {
         position: sticky;
         top: 7rem;
+        max-height: calc(100vh - 8rem);
+        max-height: calc(100dvh - 8rem);
+        overflow-y: auto;
     }
 }
 
@@ -1165,6 +1169,11 @@ main:has(.hero, .sf-slider) .page__title {
     padding-left: 1.5rem;
     list-style: decimal;
     font-size: 0.875rem;
+}
+
+.sf-doc__toc-list--own {
+    padding-left: 0;
+    list-style: none;
 }
 
 .sf-doc__toc-list li::marker {

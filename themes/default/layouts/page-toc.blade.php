@@ -25,10 +25,11 @@
         {!! $band ?? '' !!}
 @if (($toc ?? []) !== [])
         <div class="sf-doc">
-            <nav class="sf-doc__toc" aria-label="{{ __('storefront.toc') }}">
+            <nav class="sf-doc__toc" aria-labelledby="sf-doc-toc-title">
                 <div class="sf-doc__toc-box">
-                    <p class="sf-doc__toc-title">{{ __('storefront.toc_page') }}</p>
-                    <ol class="sf-doc__toc-list">
+                    <p class="sf-doc__toc-title" id="sf-doc-toc-title">{{ __('storefront.toc_page') }}</p>
+                    {{-- Headings the author numbered keep their own numbers, so the list adds none. --}}
+                    <ol @class(['sf-doc__toc-list', 'sf-doc__toc-list--own' => $tocOwn ?? false])>
 @foreach ($toc as $item)
                         <li><a class="sf-doc__toc-link" href="#{{ $item['id'] }}">{{ $item['label'] }}</a></li>
 @endforeach

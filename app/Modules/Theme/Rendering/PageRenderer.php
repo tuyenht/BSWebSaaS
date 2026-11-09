@@ -89,10 +89,12 @@ final readonly class PageRenderer
         // The page layout with a table of contents: the band that leads the page stays full width above
         // the two columns, and the headings of the text after it are numbered and given anchors.
         $band = '';
+        $tocOwn = false;
         if ($withToc) {
             [$band, $sections] = $leadBlock === 'page_header' ? self::splitBand($sections) : ['', $sections];
             $toc = ArticleToc::numbered($sections, array_map('strval', array_keys((array) request()->attributes->get('sf_zigzag_ids', []))));
             $sections = $toc['html'];
+            $tocOwn = $toc['own'];
         }
 
         return $this->views->make($layout, $this->head($seo, $title, $extra) + [
@@ -109,6 +111,8 @@ final readonly class PageRenderer
             'bodyHighImage' => preg_match('~<img\b[^>]*\sfetchpriority="high"~', $band.$sections) === 1,
             // The headings of the body's formatted text, for a post's table of contents (two or more).
             'toc' => $toc['items'],
+            // The author numbered the headings: the contents list then adds no numbers of its own.
+            'tocOwn' => $tocOwn,
         ] + $extra)->render();
     }
 

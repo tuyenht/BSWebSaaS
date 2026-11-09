@@ -32,8 +32,9 @@ function tocPage(?string $template, ?array $blocks = null): void
             ['type' => 'richtext', 'props' => ['heading' => 'Đơn vị chịu trách nhiệm', 'paragraphs' => ['Đoạn hai.']]],
             ['type' => 'richtext_html', 'props' => ['html' => '<h2>Thông tin thu thập</h2><p>Ba.</p><h3>Chi tiết</h3><h2>Quyền của bạn</h2><p>Bốn.</p>']],
         ]);
-        $entry->forceFill(['template_override' => $template, 'published_at' => CarbonImmutable::parse('2026-11-01 03:00', 'UTC')])->save();
-        EntryTranslation::query()->where('entry_id', $entry->id)->update(['content_changed_at' => CarbonImmutable::parse('2026-11-05 03:00', 'UTC')]);
+        $entry->forceFill(['template_override' => $template, 'published_at' => CarbonImmutable::parse('2026-10-31 18:00', 'UTC')])->save();
+        // Both instants fall on the next day in the site's zone (GMT+7), so a day taken in UTC shows.
+        EntryTranslation::query()->where('entry_id', $entry->id)->update(['content_changed_at' => CarbonImmutable::parse('2026-11-04 20:00', 'UTC')]);
     });
 }
 
@@ -46,11 +47,13 @@ it('draws a numbered contents list from the page’s headings, with matching anc
     tocPage('page-toc');
     $html = tocHtml();
 
-    preg_match('~<nav class="sf-doc__toc" aria-label="Mục lục">(.*?)</nav>~s', $html, $nav);
+    preg_match('~<nav class="sf-doc__toc" aria-labelledby="sf-doc-toc-title">(.*?)</nav>~s', $html, $nav);
     preg_match_all('~<a class="sf-doc__toc-link" href="#([^"]+)">([^<]+)</a>~', $nav[1] ?? '', $links);
 
     expect($nav)->not->toBe([])
-        ->and($nav[1])->toContain('<ol class="sf-doc__toc-list">')
+        // the name read out is the title shown
+        ->and($nav[1])->toContain('<p class="sf-doc__toc-title" id="sf-doc-toc-title">Nội dung</p>')
+        ->toContain('<ol class="sf-doc__toc-list">')
         ->and($links[1])->toBe(['muc-ve-chinh-sach-nay', 'muc-don-vi-chiu-trach-nhiem', 'muc-thong-tin-thu-thap', 'muc-quyen-cua-ban'])
         ->and($links[2])->toBe(['Về chính sách này', 'Đơn vị chịu trách nhiệm', 'Thông tin thu thập', 'Quyền của bạn'])
         ->and($html)->toContain('<h2 id="muc-ve-chinh-sach-nay">1. Về chính sách này</h2>')
@@ -73,9 +76,9 @@ it('shows the effective and updated days in the title band', function (): void {
 
     expect($dates)->not->toBe([])
         ->and($dates[1])->toContain('Ngày hiệu lực:')
-        ->toContain('<time datetime="2026-11-01">')
+        ->toContain('<time datetime="2026-11-01">01/11/2026</time>')
         ->toContain('Cập nhật:')
-        ->toContain('<time datetime="2026-11-05">');
+        ->toContain('<time datetime="2026-11-05">05/11/2026</time>');
 });
 
 it('leaves a page on the default layout exactly as it was', function (): void {
@@ -89,18 +92,61 @@ it('leaves a page on the default layout exactly as it was', function (): void {
         ->toContain('<h2>Thông tin thu thập</h2>');
 });
 
-it('does not number a heading twice nor repeat its number in the list', function (): void {
+it('keeps the author’s own numbering on every heading when any heading carries one', function (): void {
     tocPage('page-toc', [
         ['type' => 'page_header', 'props' => []],
+        ['type' => 'richtext', 'props' => ['heading' => 'Giới thiệu', 'paragraphs' => ['Không.']]],
         ['type' => 'richtext', 'props' => ['heading' => '1. Phạm vi', 'paragraphs' => ['Một.']]],
         ['type' => 'richtext', 'props' => ['heading' => '2) Liên hệ', 'paragraphs' => ['Hai.']]],
     ]);
     $html = tocHtml();
 
-    expect($html)->toContain('>1. Phạm vi</h2>')->not->toContain('1. 1. Phạm vi')
-        ->toContain('>2) Liên hệ</h2>')->not->toContain('2. 2) Liên hệ')
-        ->toContain('href="#muc-1-pham-vi">Phạm vi</a>')
-        ->toContain('href="#muc-2-lien-he">Liên hệ</a>');
+    // One rule for the page: nothing is added, and the list shows the headings as written, unnumbered.
+    expect($html)->toContain('<h2 id="muc-gioi-thieu">Giới thiệu</h2>')
+        ->toContain('>1. Phạm vi</h2>')->not->toContain('1. 1. Phạm vi')->not->toContain('1. Giới thiệu')
+        ->toContain('>2) Liên hệ</h2>')->not->toContain('3. 2) Liên hệ')
+        ->toContain('<ol class="sf-doc__toc-list sf-doc__toc-list--own">')
+        ->toContain('href="#muc-1-pham-vi">1. Phạm vi</a>')
+        ->toContain('href="#muc-2-lien-he">2) Liên hệ</a>');
+});
+
+it('recognises the usual ways an author numbers a heading', function (string $heading): void {
+    tocPage('page-toc', [
+        ['type' => 'page_header', 'props' => []],
+        ['type' => 'richtext', 'props' => ['heading' => $heading, 'paragraphs' => ['Một.']]],
+        ['type' => 'richtext', 'props' => ['heading' => 'Mục sau', 'paragraphs' => ['Hai.']]],
+    ]);
+    $html = tocHtml();
+
+    expect($html)->toContain('>'.$heading.'</h2>')
+        ->toContain('<h2 id="muc-muc-sau">Mục sau</h2>')
+        ->toContain('sf-doc__toc-list--own');
+})->with(['Điều 1. Phạm vi', 'Chương 2 Quy định chung', '1.Phạm vi', '1.1 Phạm vi']);
+
+it('numbers a heading that only starts with a count', function (): void {
+    tocPage('page-toc', [
+        ['type' => 'page_header', 'props' => []],
+        ['type' => 'richtext', 'props' => ['heading' => '3 lý do chọn chúng tôi', 'paragraphs' => ['Một.']]],
+        ['type' => 'richtext', 'props' => ['heading' => 'Liên hệ', 'paragraphs' => ['Hai.']]],
+    ]);
+
+    expect(tocHtml())->toContain('>1. 3 lý do chọn chúng tôi</h2>')
+        ->toContain('>2. Liên hệ</h2>')
+        ->not->toContain('sf-doc__toc-list--own');
+});
+
+it('escapes a heading’s markup and entities in the contents list', function (): void {
+    tocPage('page-toc', [
+        ['type' => 'page_header', 'props' => []],
+        ['type' => 'richtext_html', 'props' => ['html' => '<h2><strong>Phí</strong> &amp; "điều kiện" &lt;mới&gt;</h2><p>A.</p><h2>Liên hệ</h2><p>B.</p>']],
+    ]);
+    $html = tocHtml();
+
+    preg_match('~<nav class="sf-doc__toc"[^>]*>(.*?)</nav>~s', $html, $nav);
+
+    expect($nav[1] ?? '')->toContain('Phí &amp; &quot;điều kiện&quot; &lt;mới&gt;</a>')
+        ->not->toContain('<strong>')
+        ->not->toContain('<mới>');
 });
 
 it('draws no contents list for fewer than two headings, but keeps the band and its days', function (): void {
