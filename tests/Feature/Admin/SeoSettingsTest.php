@@ -2,7 +2,9 @@
 
 use App\Modules\Admin\Livewire\SeoSettings;
 use App\Modules\Admin\Support\SeoFields;
+use App\Modules\Admin\Support\Settings\SetBrandImages;
 use App\Modules\Identity\Models\User;
+use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\Tenancy;
@@ -32,10 +34,11 @@ afterEach(function (): void {
     Livewire::flushState();   // a full-page GET leaves Livewire's asset-injection flag set for the next file's pages
 });
 
-function seoAdmin(int $siteId = 1): User
+/** @param  list<string>  $more  permissions besides settings.manage */
+function seoAdmin(int $siteId = 1, array $more = []): User
 {
     $admin = User::factory()->create();
-    app(Tenancy::class)->enter($siteId, fn () => grantRole($admin, 'site-admin', ['settings.manage']));
+    app(Tenancy::class)->enter($siteId, fn () => grantRole($admin, 'site-admin', ['settings.manage', ...$more]));
 
     return $admin->fresh();
 }
@@ -44,6 +47,28 @@ function seoAdmin(int $siteId = 1): User
 function seoStored(int $siteId = 1): ?array
 {
     return app(Tenancy::class)->enter($siteId, fn () => SiteSetting::query()->where('group_name', 'seo')->where('key', 'config')->first()?->value);
+}
+
+/** A picture in a site's Image library. */
+function seoMedia(int $siteId, string $name, string $mime = 'image/jpeg'): Media
+{
+    return app(Tenancy::class)->enter($siteId, function () use ($name, $mime): Media {
+        $hash = hash('sha256', $name.random_bytes(8));
+
+        return Media::query()->create([
+            'collection' => 'library', 'slug' => $name, 'hash' => $hash, 'original_filename' => $name.'.jpg',
+            'storage_key' => 's/library/'.$name.'-'.substr($hash, 0, 12).'.jpg',
+            'mime' => $mime, 'size' => 120_000, 'width' => 1200, 'height' => 630,
+        ]);
+    });
+}
+
+/** The share image id a site's profile holds. */
+function seoShareId(int $siteId = 1): ?int
+{
+    $id = DB::connection('pgsql_admin')->table('site_profiles')->where('site_id', $siteId)->value('og_image_media_id');
+
+    return $id === null ? null : (int) $id;
 }
 
 function seoEnglish(int $siteId = 1): void
@@ -247,17 +272,179 @@ it('has no "rebuild the sitemap" action: the sitemap follows the pages by itself
     expect(method_exists(SeoSettings::class, 'regenerateSitemap'))->toBeFalse();
 });
 
-it('shows the share image and sends "Đổi ảnh" to the appearance settings, where it is set', function (): void {
-    $admin = seoAdmin();
+it('shows the share image as a slot that opens the Image library, with no link to the admin theme page', function (): void {
+    $admin = seoAdmin(1, ['media.view']);
 
     app(Tenancy::class)->enter(1, function () use ($admin): void {
         $html = Livewire::actingAs($admin)->test(SeoSettings::class)
             ->assertSee('Ảnh khi chia sẻ lên Facebook, Zalo')
-            ->assertSee('Đặt ở mục Giao diện website, cùng logo và biểu tượng trang — đổi ở đó thì mọi nơi cùng cập nhật.')
+            ->assertSee('Cỡ 1200×630. Hiện khi ai đó gửi liên kết website lên Facebook, Zalo. Bỏ trống thì dùng logo. Ảnh cũ vẫn nằm trong Thư viện ảnh; liên kết đã gửi trước đó có thể còn hiện ảnh cũ một thời gian.')
+            ->assertSee('Chọn từ Thư viện ảnh hoặc tải ảnh mới lên')
             ->assertSee('Xem trước khi chia sẻ lên Facebook, Zalo')
+            ->assertDontSee('Đặt ở mục Giao diện website')
+            ->assertSeeHtml('wire:click="openImagePicker"')
             ->html();
 
-        expect($html)->toMatch('~<a href="'.preg_quote(route('admin.settings.appearance'), '~').'"\s+wire:navigate[^>]*data-share-change[^>]*>.*?Đổi ảnh</span>~s');
+        expect($html)->not->toMatch('~href="[^"]*/admin/settings/appearance"[^>]*data-share~');
+    });
+});
+
+it('picks the share image into the draft, saves it by its media key and shows it again when the page opens', function (): void {
+    config(['media.driver' => 'cloudflare', 'media.cloudflare.base' => 'https://files.test']);
+    $admin = seoAdmin(1, ['media.view']);
+    $share = seoMedia(1, 'anh-chia-se');
+    $other = seoMedia(1, 'anh-khac');
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $share, $other): void {
+        $lw = Livewire::actingAs($admin)->test(SeoSettings::class)
+            ->call('openImagePicker')->assertSet('showImagePicker', true)
+            // One image for the slot: choosing a second replaces the first.
+            ->call('togglePickerItem', $other->id)->call('togglePickerItem', $share->id)
+            ->assertSet('pickerSelected', [$share->id])
+            ->call('insertPicked')
+            ->assertSet('showImagePicker', false)
+            ->assertSet('shareKey', $share->storage_key)
+            ->assertSee('1 thay đổi chưa lưu')
+            ->assertSeeHtml('data-unsaved-count="1"')
+            ->assertSee('anh-chia-se.jpg')
+            ->assertSee('1200×630 px')
+            ->assertSeeHtml('aria-label="Gỡ ảnh"');
+        // The Facebook/Zalo preview follows the draft before it is saved.
+        expect($lw->html())->toContain('<img src="https://files.test/'.$share->storage_key.'?w=1280" alt="Ảnh khi chia sẻ"');
+
+        $lw->call('save')->assertHasNoErrors()->assertSee('Chưa có thay đổi');
+    });
+
+    expect(seoShareId())->toBe($share->id)
+        ->and(seoStored())->not->toBeNull();
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $share): void {
+        Livewire::actingAs($admin)->test(SeoSettings::class)
+            ->assertSet('shareKey', $share->storage_key)
+            ->assertSee('anh-chia-se.jpg')
+            ->assertSee('Chưa có thay đổi');
+    });
+});
+
+it('brings the saved share image back with "Bỏ thay đổi"', function (): void {
+    $admin = seoAdmin(1, ['media.view']);
+    $saved = seoMedia(1, 'anh-da-luu');
+    $picked = seoMedia(1, 'anh-moi');
+    app(Tenancy::class)->enter(1, function () use ($admin, $saved): void {
+        auth()->setUser($admin);
+        app(SetBrandImages::class)->handle(['og_image' => $saved->storage_key]);
+    });
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $saved, $picked): void {
+        Livewire::actingAs($admin)->test(SeoSettings::class)
+            ->assertSet('shareKey', $saved->storage_key)
+            ->call('openImagePicker')->call('pickImage', $picked->id)
+            ->assertSet('shareKey', $picked->storage_key)->assertSee('1 thay đổi chưa lưu')
+            ->call('resetChanges')
+            ->assertSet('shareKey', $saved->storage_key)->assertSee('Chưa có thay đổi')->assertSee('anh-da-luu.jpg');
+    });
+
+    expect(seoShareId())->toBe($saved->id);
+});
+
+it('empties the slot with "Gỡ ảnh"; once saved the image is gone from the site and the preview shows the logo', function (): void {
+    config(['media.driver' => 'cloudflare', 'media.cloudflare.base' => 'https://files.test']);
+    $admin = seoAdmin(1, ['media.view']);
+    $share = seoMedia(1, 'anh-chia-se');
+    $logo = seoMedia(1, 'logo');
+    app(Tenancy::class)->enter(1, function () use ($admin, $share, $logo): void {
+        auth()->setUser($admin);
+        app(SetBrandImages::class)->handle(['og_image' => $share->storage_key, 'logo' => $logo->storage_key]);
+    });
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $share, $logo): void {
+        $lw = Livewire::actingAs($admin)->test(SeoSettings::class)
+            ->call('removeShareImage')
+            ->assertSet('shareKey', '')
+            ->assertSee('1 thay đổi chưa lưu')
+            ->assertSee('Chọn từ Thư viện ảnh hoặc tải ảnh mới lên');
+        expect($lw->html())->toContain($logo->storage_key)->not->toContain($share->storage_key);
+
+        $lw->call('save')->assertHasNoErrors()->assertSee('Chưa có thay đổi');
+    });
+
+    // The old picture stays in the library, untouched.
+    expect(seoShareId())->toBeNull()
+        ->and(app(Tenancy::class)->enter(1, fn () => Media::query()->whereKey($share->id)->exists()))->toBeTrue();
+});
+
+it('refuses another site’s picture and a picture in the trash, and then writes nothing', function (string $whose): void {
+    $admin = seoAdmin(1, ['media.view']);
+    $media = $whose === 'other site' ? seoMedia(2, 'cua-site-khac') : seoMedia(1, 'trong-thung-rac');
+    if ($whose === 'trash') {
+        app(Tenancy::class)->enter(1, fn () => $media->delete());
+    }
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $media): void {
+        Livewire::actingAs($admin)->test(SeoSettings::class)
+            // The library never hands it over…
+            ->call('openImagePicker')->call('pickImage', $media->id)
+            ->assertSet('shareKey', '')
+            ->call('togglePickerItem', $media->id)->assertSet('pickerSelected', [])
+            // …and its key sent by hand is refused on save, with the rest of the draft.
+            ->set('shareKey', $media->storage_key)
+            ->set('i18n.vi.title', 'Không được lưu')
+            ->call('save')
+            ->assertHasErrors('share_image')
+            ->assertSee('Ảnh này không dùng được');
+    });
+
+    expect(seoStored())->toBeNull()
+        ->and(seoShareId())->toBeNull();
+})->with(['other site', 'trash']);
+
+it('opens the library on pictures only, and refuses a file that is not a picture or an SVG', function (string $mime): void {
+    $admin = seoAdmin(1, ['media.view']);
+    $file = seoMedia(1, 'tep-khong-dung-duoc', $mime);
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $file): void {
+        Livewire::actingAs($admin)->test(SeoSettings::class)
+            ->call('openImagePicker')->assertSet('pickerType', 'image')
+            ->call('pickImage', $file->id)
+            ->assertSet('showImagePicker', false)
+            ->assertSet('shareKey', '')
+            ->assertHasErrors('share_image')
+            ->assertSee('Chỉ chọn được ảnh JPG, PNG, WebP hoặc GIF')
+            ->assertSee('Chưa có thay đổi');
+    });
+})->with(['application/pdf', 'image/svg+xml']);
+
+it('shows a share image that is still the older brand URL, keeps it on other saves and removes it with "Gỡ ảnh"', function (): void {
+    $admin = seoAdmin(1, ['media.view']);
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->create(['group_name' => 'general', 'key' => 'brand', 'value' => ['name' => 'An Vinh', 'og_image' => 'https://old.test/anh-cu.png']]));
+    $brand = fn (): array => (array) app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->value('value'));
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $lw = Livewire::actingAs($admin)->test(SeoSettings::class)
+            ->assertSee('anh-cu.png')->assertSee('Ảnh đặt trước đây')->assertSeeHtml('aria-label="Gỡ ảnh"')
+            ->assertSee('Chưa có thay đổi');
+        expect($lw->html())->toContain('<img src="https://old.test/anh-cu.png" alt="Ảnh khi chia sẻ"');
+        $lw->set('form.template', '%tieu-de%')->call('save')->assertHasNoErrors();
+    });
+    expect($brand()['og_image'] ?? null)->toBe('https://old.test/anh-cu.png');
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        Livewire::actingAs($admin)->test(SeoSettings::class)
+            ->call('removeShareImage')->assertSee('1 thay đổi chưa lưu')
+            ->call('save')->assertHasNoErrors()
+            ->assertSee('Chọn từ Thư viện ảnh hoặc tải ảnh mới lên')->assertDontSee('anh-cu.png');
+    });
+    expect($brand())->toBe(['name' => 'An Vinh'])
+        ->and(seoShareId())->toBeNull();
+});
+
+it('re-checks the library permission when the picker opens', function (): void {
+    $admin = seoAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        Livewire::actingAs($admin)->test(SeoSettings::class)
+            ->assertDontSeeHtml('wire:click="openImagePicker"')
+            ->call('openImagePicker')->assertForbidden();
     });
 });
 
@@ -281,7 +468,7 @@ it('gates the page — settings.manage on the route, in boot() and on every acti
     });
 
     expect(seoStored())->toBeNull();
-})->with(['save', 'setLang', 'toggleIndexable', 'hideFromGoogle', 'cancelHide', 'toggleSitemap', 'resetChanges', 'dismissToast']);
+})->with(['save', 'setLang', 'toggleIndexable', 'hideFromGoogle', 'cancelHide', 'toggleSitemap', 'resetChanges', 'dismissToast', 'removeShareImage']);
 
 it('saves for the current site only', function (): void {
     $admin = seoAdmin();

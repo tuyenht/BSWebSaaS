@@ -55,7 +55,7 @@
 <x-bs-admin::settings-shell active="seo" :unsaved="$changes">
     <div class="@container/seo flex flex-col gap-4" data-set-form
          x-data="{ open: {{ Js::from($groupKeys[0]) }}, info: null }"
-         x-on:seo-first-error.window="open = $event.detail.group; $nextTick(() => $el.querySelector('[aria-invalid=true]:not([disabled])')?.focus())"
+         x-on:seo-first-error.window="open = $event.detail.group; $nextTick(() => $el.querySelector('[aria-invalid=true]:not([disabled]), [data-ferr-focus]')?.focus())"
          x-on:keydown.escape="if (info) { const b = $el.querySelector('[aria-controls=\'' + info + '\']'); info = null; b?.focus() }">
 
         {{-- The language being edited (only on a site with more than one) --}}
@@ -202,7 +202,7 @@
                                                 <div class="text-small text-text-muted [overflow-wrap:anywhere]" x-text="previewDescription.join('')"></div>
                                             </div>
                                         </div>
-                                        @if ($shareImage !== '')
+                                        @if ($shareImage !== '' && $shareSaved)
                                             <p class="mt-1.5 text-caption text-text-muted">{{ __('admin.seoset.share_image_from_site') }}</p>
                                         @endif
                                     </div>
@@ -229,18 +229,61 @@
                                 @continue
                             @endif
 
-                            @if ($kind === 'action')
-                                {{-- The share image: set with the logo on the appearance page, which "Đổi ảnh" opens. --}}
-                                <div class="{{ $mutedCard }} flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5 px-[15px] py-[13px]" wire:key="seo-f-{{ $key }}">
-                                    <div class="flex min-w-0 flex-col gap-0.5">
-                                        <span class="{{ $label }}">{{ __('admin.seoset.f.'.$key) }}</span>
-                                        <span class="text-caption leading-normal text-text-muted">{{ __('admin.seoset.hint.'.$key) }}</span>
-                                    </div>
-                                    @if ($appearanceLink !== null)
-                                        <x-bs-admin::button variant="outline" color="secondary" :href="$appearanceLink" data-share-change>
-                                            <x-bs-admin::icon name="ri-image-edit" :class="$glyph" /><span>{{ __('admin.seoset.share_change') }}</span>
-                                        </x-bs-admin::button>
+                            @if ($kind === 'image')
+                                {{-- The share image: one picture from the Image library ("Đổi ảnh" / the empty box open it), kept in the
+                                     draft until saved; "Gỡ ảnh" empties the slot and the logo is used. Read-only on another language. --}}
+                                @php($imgBad = $errors->has('share_image'))
+                                <div class="col-span-full flex min-w-0 flex-col gap-1.5" wire:key="seo-f-{{ $key }}" data-share-image>
+                                    <span id="{{ $fid }}-l" class="flex flex-wrap items-center gap-x-[7px] gap-y-1 {{ $label }}">
+                                        {{ __('admin.seoset.f.'.$key) }}
+                                        @if ($locked)
+                                            <span class="inline-flex shrink-0 items-center gap-1 rounded-sm bg-surface-muted px-1.5 py-px text-caption font-bold text-text-muted" title="{{ __('admin.gs.shared_title') }}">
+                                                <x-bs-admin::icon name="ri-lock" class="size-[min(1.5rem,calc(0.75rem+var(--user-text-boost)))]" />{{ __('admin.gs.shared') }}
+                                            </span>
+                                        @endif
+                                    </span>
+                                    @if ($shareSlot !== null)
+                                        <div role="group" aria-labelledby="{{ $fid }}-l" class="flex flex-wrap items-center gap-3.5 rounded-lg border bg-surface p-3 {{ $imgBad ? 'border-danger-text' : 'border-border' }}"
+                                             @if ($imgBad && ($locked || ! $canPick)) tabindex="-1" data-ferr-focus aria-describedby="{{ $errId }}" @endif>
+                                            <img src="{{ $shareSlot['thumb'] }}" alt="" class="size-[58px] shrink-0 rounded-md border border-border object-cover" loading="lazy" decoding="async">
+                                            <div class="flex min-w-[8rem] flex-1 flex-col gap-0.5">
+                                                <span class="text-[calc(0.8125rem+var(--user-text-boost))] font-medium text-text-strong [overflow-wrap:anywhere]">{{ $shareSlot['name'] }}</span>
+                                                <span class="text-caption text-text-muted">{{ $shareSlot['meta'] }}</span>
+                                            </div>
+                                            @unless ($locked)
+                                                <div class="flex shrink-0 items-center gap-[7px]">
+                                                    @if ($canPick)
+                                                        <x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="openImagePicker" data-share-change
+                                                                            :data-ferr-focus="$imgBad" :aria-describedby="trim(($imgBad ? $errId.' ' : '').$fid.'-hint')">{{ __('admin.seoset.share_change') }}</x-bs-admin::button>
+                                                    @endif
+                                                    <x-bs-admin::tooltip :text="__('admin.seoset.share_remove')">
+                                                        <x-bs-admin::button size="sm" variant="outline" color="secondary" icon wire:click="removeShareImage" :aria-label="__('admin.seoset.share_remove')">
+                                                            <x-bs-admin::icon name="ri-delete-bin-6" class="size-[min(1.5rem,calc(0.9375rem+var(--user-text-boost)))]" />
+                                                        </x-bs-admin::button>
+                                                    </x-bs-admin::tooltip>
+                                                </div>
+                                            @endunless
+                                        </div>
+                                    @elseif ($canPick && ! $locked)
+                                        <button type="button" wire:click="openImagePicker" data-share-change aria-labelledby="{{ $fid }}-l {{ $fid }}-pick"
+                                                @if ($imgBad) data-ferr-focus @endif aria-describedby="{{ trim(($imgBad ? $errId.' ' : '').$fid.'-hint') }}"
+                                                class="flex min-h-control w-full items-center gap-3.5 rounded-lg border border-dashed bg-surface p-4 text-start hover:border-primary-text {{ $imgBad ? 'border-danger-text' : 'border-border-strong' }}">
+                                            <x-bs-admin::icon name="ri-image-add" class="size-6 shrink-0 text-text-muted" />
+                                            <span id="{{ $fid }}-pick" class="min-w-0 text-[calc(0.78125rem+var(--user-text-boost))] text-text-muted">{{ __('admin.seoset.share_pick') }}</span>
+                                        </button>
+                                    @else
+                                        <div class="flex items-center gap-3.5 rounded-lg border border-dashed border-border-strong bg-surface-muted p-4"
+                                             @if ($imgBad) tabindex="-1" data-ferr-focus aria-describedby="{{ $errId }}" @endif>
+                                            <x-bs-admin::icon name="ri-image-add" class="size-6 shrink-0 text-text-muted" />
+                                            <span class="min-w-0 text-[calc(0.78125rem+var(--user-text-boost))] text-text-muted">{{ __('admin.seoset.share_none') }}</span>
+                                        </div>
                                     @endif
+                                    <span id="{{ $fid }}-hint" class="text-caption leading-normal text-text-muted">{{ __('admin.seoset.hint.'.$key) }}</span>
+                                    @error('share_image')
+                                        <span id="{{ $errId }}" data-ferr class="inline-flex items-start gap-[5px] text-caption text-danger-text">
+                                            <x-bs-admin::icon name="ri-error-warning" class="mt-px size-[min(1.5rem,calc(0.8125rem+var(--user-text-boost)))] shrink-0" /><span class="min-w-0">{{ $message }}</span>
+                                        </span>
+                                    @enderror
                                 </div>
                                 @continue
                             @endif
@@ -337,6 +380,9 @@
             </div>
         </div>
     </div>
+
+    {{-- The shared Image library, opened by the share image slot (one picture goes back). --}}
+    @include('admin::partials.media-picker-modal', ['pickedIds' => []])
 
     {{-- Turning Google off asks first and names what happens. --}}
     <x-bs-admin::confirm-dialog model="confirmHide" :title="__('admin.seoset.cf_title')" icon="ri-eye-off" :ok="__('admin.seoset.cf_ok')" confirm="hideFromGoogle" cancel="cancelHide">

@@ -4,8 +4,13 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Admin\Support\SeoFields;
+use App\Modules\Admin\Support\Settings\SetBrandImages;
+use App\Modules\Admin\Support\Settings\SettingsChangeRejected;
 use App\Modules\Admin\Support\SettingsRepository;
+use App\Modules\Media\Models\Media;
+use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\PlainText;
 use App\Modules\Storefront\Support\BrandImages;
@@ -14,6 +19,7 @@ use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Entitlement\Entitlement;
+use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Theme\Jobs\CheckAiCrawlers;
 use App\Modules\Theme\Theming\AiCrawlerCheck;
 use App\Modules\Theme\Theming\RobotsTxt;
@@ -34,12 +40,19 @@ use Livewire\Component;
 /**
  * "Google & mạng xã hội": per language the site's home page title and default description, one
  * title template for the other pages without their own title, whether Google may find the site,
- * whether the sitemap is made, and a custom robots.txt. The share image is only shown here: it is
- * set with the logo under "Giao diện website", which the page links to. One `site_settings` row
- * (group `seo`, key `config`, the shape SiteSeo reads), written through SettingsRepository; the
- * storefront follows it (SiteSeo). The page edits a draft and saves it in one step, like "Thông
- * tin chung": a field is checked when it is left and every field again on save. Turning Google
- * off asks first. Every request is settings.manage-gated (boot) and so is every action.
+ * whether the sitemap is made, and a custom robots.txt. One `site_settings` row (group `seo`, key
+ * `config`, the shape SiteSeo reads), written through SettingsRepository; the storefront follows it
+ * (SiteSeo). The page edits a draft and saves it in one step, like "Thông tin chung": a field is
+ * checked when it is left and every field again on save. Turning Google off asks first. Every
+ * request is settings.manage-gated (boot) and so is every action.
+ *
+ * The share image is set here too, from the shared Image library (WithMediaLibraryPicker, which
+ * re-checks media.view and only hands over this site's live pictures): the pick is a media key in
+ * the draft, counted and discarded like any field, and saved with it through SetBrandImages (slot
+ * og_image), which checks the key again; a refused key writes nothing. "Gỡ ảnh" empties the slot
+ * and the site falls back to its logo. The picture the slot held before stays in the library. A
+ * share image that is still the older general.brand URL shows in the slot too, so it can be
+ * replaced or removed here.
  *
  * It also says whether AI bots reach the website (AiCrawlerCheck, run off the request by
  * CheckAiCrawlers): opening the page starts a check when the kept result is missing or older than
@@ -48,6 +61,17 @@ use Livewire\Component;
 #[Layout('admin::layouts.app')]
 final class SeoSettings extends Component
 {
+    use WithMediaLibraryPicker {
+        openImagePicker as private openLibrary;
+        togglePickerItem as private toggleLibraryItem;
+    }
+
+    /**
+     * The draft's share image while it is still the older URL general.brand holds (a site whose
+     * share image was never saved here): never a media key, so a save that sends it is refused.
+     */
+    private const string OLD_IMAGE = '@old';
+
     /** "Kiểm tra lại" (the AI crawler check): once per site in this many seconds. */
     public const int RECHECK_WINDOW = 60;
 
@@ -56,13 +80,13 @@ final class SeoSettings extends Component
 
     /**
      * The groups of the page and the fields of each, in order: [key, kind, per-language].
-     * Kinds: text, textarea, preview, toggle, note, aibot (the AI bot check card), action (a row
-     * with a button), code.
+     * Kinds: text, textarea, preview, toggle, note, aibot (the AI bot check card), image (a picture
+     * from the Image library), code.
      *
      * @var array<string, list<array{string, string, bool}>>
      */
     public const array GROUPS = [
-        'google' => [['title', 'text', true], ['template', 'text', false], ['description', 'textarea', true], ['share_image', 'action', false], ['preview', 'preview', false]],
+        'google' => [['title', 'text', true], ['template', 'text', false], ['description', 'textarea', true], ['share_image', 'image', false], ['preview', 'preview', false]],
         'index' => [['indexable', 'toggle', false], ['domain_note', 'note', false], ['ai_check', 'aibot', false], ['verify_note', 'note', false]],
         'advanced' => [['sitemap', 'toggle', false], ['robots', 'code', false]],
     ];
@@ -73,6 +97,9 @@ final class SeoSettings extends Component
     /** @var array{template: string, indexable: bool, sitemap: bool, robots: string} the values every language shares */
     public array $form = ['template' => '', 'indexable' => true, 'sitemap' => true, 'robots' => ''];
 
+    /** The share image of the draft: a media key of the site's library ('' = none, the logo is used). */
+    public string $shareKey = '';
+
     /** The language whose own values are being edited. */
     public string $lang = '';
 
@@ -82,10 +109,10 @@ final class SeoSettings extends Component
     /**
      * The draft as it was loaded or last saved: the bar counts the fields that differ.
      *
-     * @var array{i18n: array<string, array{title: string, description: string}>, shared: array{template: string, indexable: bool, sitemap: bool, robots: string}}
+     * @var array{i18n: array<string, array{title: string, description: string}>, shared: array{template: string, indexable: bool, sitemap: bool, robots: string}, image: string}
      */
     #[Locked]
-    public array $saved = ['i18n' => [], 'shared' => ['template' => '', 'indexable' => true, 'sitemap' => true, 'robots' => '']];
+    public array $saved = ['i18n' => [], 'shared' => ['template' => '', 'indexable' => true, 'sitemap' => true, 'robots' => ''], 'image' => ''];
 
     public string $toast = '';
 
@@ -178,6 +205,50 @@ final class SeoSettings extends Component
         $this->startAiCheck($siteId);
     }
 
+    /** "Gỡ ảnh": the slot is emptied in the draft; once saved the site uses its logo. */
+    #[Authorize('settings.manage')]
+    public function removeShareImage(): void
+    {
+        $this->shareKey = '';
+        $this->resetErrorBag('share_image');
+    }
+
+    /** The library opens on pictures only: the slot takes nothing else. */
+    public function openImagePicker(string $mode = 'gallery'): void
+    {
+        $this->openLibrary('gallery');
+        $this->pickerType = 'image';
+    }
+
+    /** The slot holds one image: choosing another in the library replaces the one chosen before. */
+    public function togglePickerItem(int $mediaId): void
+    {
+        $this->toggleLibraryItem($mediaId);
+        if (! $this->pickerTrash && count($this->pickerSelected) > 1) {
+            $this->pickerSelected = [$mediaId];
+        }
+    }
+
+    /**
+     * The picture chosen in the library goes into the draft, as its media key. A file that is not a
+     * picture, or an SVG (Facebook and Zalo show none), is refused with a message under the slot.
+     */
+    protected function addGalleryImage(int $mediaId): void
+    {
+        $this->showImagePicker = false;
+        $this->resetErrorBag('share_image');
+        $media = Media::query()->whereKey($mediaId)->first(['id', 'storage_key', 'mime']);
+        if ($media === null) {
+            return;
+        }
+        if (! str_starts_with($media->mime, 'image/') || $media->mime === 'image/svg+xml') {
+            $this->addError('share_image', __('admin.seoset.err_share_type'));
+
+            return;
+        }
+        $this->shareKey = $media->storage_key;
+    }
+
     /** A field was left: check it now, so the error shows at once. */
     public function updated(string $name): void
     {
@@ -216,14 +287,38 @@ final class SeoSettings extends Component
             $descriptions[$locale] = $row['description'];
         }
         $shared = $this->sharedDraft();
-        $settings->put('seo', 'config', [
-            'titles' => array_filter($titles, static fn (string $text): bool => $text !== ''),
-            'descriptions' => array_filter($descriptions, static fn (string $text): bool => $text !== ''),
-            'template' => $shared['template'],
-            'indexable' => $shared['indexable'],
-            'sitemap' => $shared['sitemap'],
-            'robots' => $shared['robots'],
-        ]);
+        $image = trim($this->shareKey);
+        try {
+            // One step: a share image the library refuses (another site's, in the trash, not a
+            // picture) or a busy lock leaves the texts unsaved too, so the draft is kept whole.
+            DB::transaction(function () use ($settings, $titles, $descriptions, $shared, $image): void {
+                if ($image !== $this->saved['image']) {
+                    app(SetBrandImages::class)->handle(['og_image' => $image]);
+                }
+                $settings->put('seo', 'config', [
+                    'titles' => array_filter($titles, static fn (string $text): bool => $text !== ''),
+                    'descriptions' => array_filter($descriptions, static fn (string $text): bool => $text !== ''),
+                    'template' => $shared['template'],
+                    'indexable' => $shared['indexable'],
+                    'sitemap' => $shared['sitemap'],
+                    'robots' => $shared['robots'],
+                ]);
+            });
+        } catch (SettingsChangeRejected $e) {
+            if ($e->reason === 'busy') {
+                $this->notify(__('admin.settings.busy'), 'error');
+
+                return;
+            }
+            if ($e->reason !== 'image_invalid') {
+                throw $e;
+            }
+            $this->addError('share_image', __('admin.seoset.err_share_image'));
+            $this->notify(__('admin.gs.toast_invalid', ['count' => 1]), 'error');
+            $this->dispatch('seo-first-error', group: $this->groupOf('share_image'));
+
+            return;
+        }
 
         // What the AI check looked at changed: its kept result no longer holds — check again.
         $was = $this->saved['shared'];
@@ -269,9 +364,17 @@ final class SeoSettings extends Component
 
         $host = SeoFields::publicHost();
         $home = SeoFields::address($host, '/', $this->lang, true)['home'] ?? $host;
-        // The share preview shows the image a shared link carries today: the share image, else the logo.
+        // The share preview shows the image a shared link would carry with the draft: the saved
+        // share image (or the logo) until another is picked, the picked one, else the logo.
+        $urls = app(MediaUrlResolver::class);
         $images = app(BrandImages::class)->for(app(SiteIdentity::class)->for($this->lang));
-        $shareImage = $images['og_image'] ?? $images['logo'] ?? '';
+        $picked = $this->pickedShareImage();
+        $oldImage = $this->shareKey === self::OLD_IMAGE ? ($images['og_image'] ?? null) : null;
+        $shareImage = match (true) {
+            $this->shareKey === $this->saved['image'] => $images['og_image'] ?? $images['logo'] ?? '',
+            $picked !== null => $urls->url($picked->storage_key, 1280),
+            default => $images['logo'] ?? '',
+        };
 
         $aiCheck = $this->aiCheck();
         $blocking = $this->robotsBlocking($this->sharedDraft()['robots']);
@@ -291,11 +394,27 @@ final class SeoSettings extends Component
             'home' => $home,
             'host' => $host,
             'shareImage' => preg_match('~\Ahttps?://~i', $shareImage) === 1 ? $shareImage : '',
+            'shareSlot' => match (true) {
+                $picked !== null => [
+                    'thumb' => $urls->url($picked->storage_key, 320),
+                    'name' => $picked->original_filename ?? $picked->slug ?? basename($picked->storage_key),
+                    'meta' => $picked->width !== null && $picked->height !== null
+                        ? Cast::string(__('admin.seoset.share_size', ['w' => $picked->width, 'h' => $picked->height]))
+                        : Cast::string(__('admin.seoset.share_from_library')),
+                ],
+                $oldImage !== null && preg_match('~\Ahttps?://~i', $oldImage) === 1 => [
+                    'thumb' => $oldImage,
+                    'name' => rawurldecode(basename(Cast::string(parse_url($oldImage, PHP_URL_PATH)))) ?: $oldImage,
+                    'meta' => Cast::string(__('admin.seoset.share_old')),
+                ],
+                default => null,
+            },
+            // Under the preview, "the image the site uses now" holds only while the slot is as saved.
+            'shareSaved' => $this->shareKey === $this->saved['image'],
+            'canPick' => Gate::allows('media.view'),
             // The sentence is true only while the platform keeps its subdomains out of search engines.
             'platformHidden' => Cast::bool(config('tenancy.noindex_platform_subdomains')),
             'domainsLink' => $this->domainsLink(),
-            // The share image is set with the logo on the appearance page (same settings.manage gate).
-            'appearanceLink' => Route::has('admin.settings.appearance') ? route('admin.settings.appearance') : null,
             'aiCheck' => $aiCheck,
             'aiCard' => $this->aiCard($aiCheck, $blocking),
             // Under the robots.txt box: what the text as typed blocks, and how to undo it.
@@ -556,7 +675,21 @@ final class SeoSettings extends Component
         return route('admin.settings.domains');
     }
 
-    /** @return array{i18n: array<string, array{title: string, description: string}>, shared: array{template: string, indexable: bool, sitemap: bool, robots: string}} */
+    /**
+     * The picture the draft's share image names, when it is a live picture of this site's library
+     * (null otherwise: none, or a key the library does not know).
+     */
+    private function pickedShareImage(): ?Media
+    {
+        if ($this->shareKey === '' || $this->shareKey === self::OLD_IMAGE) {
+            return null;
+        }
+
+        return Media::query()->where('storage_key', $this->shareKey)->where('mime', 'like', 'image/%')
+            ->first(['id', 'storage_key', 'slug', 'original_filename', 'width', 'height']);
+    }
+
+    /** @return array{i18n: array<string, array{title: string, description: string}>, shared: array{template: string, indexable: bool, sitemap: bool, robots: string}, image: string} */
     private function load(): array
     {
         $stored = SiteSeo::normalize(app(SettingsRepository::class)->get('seo', 'config'));
@@ -565,16 +698,26 @@ final class SeoSettings extends Component
             $i18n[$locale] = ['title' => $stored['titles'][$locale] ?? '', 'description' => $stored['descriptions'][$locale] ?? ''];
         }
 
+        // The saved share image, by its key: only a live picture of the site counts (one query).
+        // Without one, the older URL general.brand may still hold is what the site shows.
+        $image = Media::query()->whereIn('id', SiteProfile::query()->select(SiteProfile::IMAGE_COLUMNS['og_image']))
+            ->where('mime', 'like', 'image/%')->value('storage_key');
+        if (! is_string($image) || $image === '') {
+            $old = Cast::arr(app(SiteIdentity::class)->for(app(SiteLocale::class)->default())['legacy_images'] ?? null)['og_image'] ?? null;
+            $image = is_string($old) && $old !== '' ? self::OLD_IMAGE : '';
+        }
+
         return ['i18n' => $i18n, 'shared' => [
             'template' => $stored['template'], 'indexable' => $stored['indexable'], 'sitemap' => $stored['sitemap'], 'robots' => $stored['robots'],
-        ]];
+        ], 'image' => $image];
     }
 
-    /** @param  array{i18n: array<string, array{title: string, description: string}>, shared: array{template: string, indexable: bool, sitemap: bool, robots: string}}  $loaded */
+    /** @param  array{i18n: array<string, array{title: string, description: string}>, shared: array{template: string, indexable: bool, sitemap: bool, robots: string}, image: string}  $loaded */
     private function apply(array $loaded): void
     {
         $this->i18n = $loaded['i18n'];
         $this->form = $loaded['shared'];
+        $this->shareKey = $loaded['image'];
         $this->saved = $loaded;
     }
 
@@ -651,6 +794,7 @@ final class SeoSettings extends Component
                 $n += $value !== ($this->saved['i18n'][$locale][$field] ?? '') ? 1 : 0;
             }
         }
+        $n += $this->shareKey !== $this->saved['image'] ? 1 : 0;
 
         return $n;
     }
