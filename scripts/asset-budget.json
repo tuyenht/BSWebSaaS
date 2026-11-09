@@ -62,6 +62,10 @@
       "js": 220996,
       "css": 36159
     },
+    "resources/js/admin-unsaved.js": {
+      "js": 22683,
+      "css": 0
+    },
     "resources/js/media-picker-uploader.js": {
       "js": 51908,
       "css": 920

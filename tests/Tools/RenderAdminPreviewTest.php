@@ -26,6 +26,7 @@ use App\Modules\Admin\Livewire\Platform\Audit\CleanupDialog;
 use App\Modules\Admin\Livewire\SeoSettings;
 use App\Modules\Admin\Livewire\Settings\Domains as DomainSettings;
 use App\Modules\Admin\Livewire\WorkflowSettings;
+use App\Modules\Admin\Support\Settings\SetBrandImages;
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Actions\Menus\SaveMenu;
@@ -40,6 +41,7 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Identity\Models\User;
+use App\Modules\Media\Models\Media;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Rbac\Support\PlatformAccess;
@@ -302,7 +304,7 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('Tên pháp lý đầy đủ (theo giấy phép)', 'wire:model.live.blur="form.legalName"');   // the values ride in the Livewire snapshot
     file_put_contents($dir.'/general.html', $html);
 
-    // "Hiện trên Google & mạng xã hội" with long default texts and a custom robots.txt (the Google
+    // "Google & mạng xã hội" with long default texts and a custom robots.txt (the Google
     // preview shows where it cuts), and again with the "hide from Google" question open.
     app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'seo', 'key' => 'config'], ['value' => [
         'titles' => ['vi' => 'Công ty Demo — gia công cơ khí chính xác CNC 5 trục cho ngành ô tô, điện tử và khuôn mẫu'],
@@ -321,7 +323,7 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     app(AiCrawlerCheck::class)->run(1);
     $this->flushSession();
     $page = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/seo')->assertOk()->getContent();
-    expect($page)->toContain('wire:model.live.blur="form.template"', 'bsSeoFields(', 'data-ai-check', 'data-robots-note');
+    expect($page)->toContain('wire:model.live.blur="form.template"', 'data-template-insert', 'data-share-change', 'bsSeoFields(', 'data-ai-check', 'data-robots-note');
     file_put_contents($dir.'/seo.html', $page);
     $open = app(Tenancy::class)->enter(1, fn (): string => Livewire::actingAs($owner)->test(SeoSettings::class)
         ->call('toggleIndexable')->assertSet('confirmHide', true)->html());
@@ -348,6 +350,17 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     app(AiCrawlerCheck::class)->run(1);
     RateLimiter::hit('seo-ai-check:1', 60);
     $aiShot('seo-ai-warn', 'Mỗi phút chỉ kiểm được 1 lần.');
+
+    // The share image slot holding a picture from the library, its long file name wrapped, never clipped.
+    $shareHash = hash('sha256', random_bytes(16));
+    $share = app(Tenancy::class)->enter(1, fn (): Media => Media::query()->create([
+        'collection' => 'library', 'slug' => 'anh-chia-se', 'hash' => $shareHash,
+        'original_filename' => 'anh-chia-se-facebook-zalo-nha-xuong-gia-cong-co-khi-chinh-xac-phu-nghia-2026.jpg',
+        'storage_key' => 's/library/anh-chia-se-'.substr($shareHash, 0, 12).'.jpg',
+        'mime' => 'image/jpeg', 'size' => 182_000, 'width' => 1200, 'height' => 630,
+    ]));
+    app(Tenancy::class)->enter(1, fn () => app(SetBrandImages::class)->handle(['og_image' => $share->storage_key]));
+    $aiShot('seo-image', 'aria-label="Gỡ ảnh"');
 
     // The post editor with its short description and Google title and description filled, long
     // enough that the meters show their bands and the Google preview shows where it cuts the text.
@@ -489,5 +502,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $dialog = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($mount()->call('toggleSelect', [$ulids[0], $ulids[1]])->call('openCategory')));
     file_put_contents($dir.'/product-list-category.html', $swap($html, $dialog));
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 25);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 26);
 });

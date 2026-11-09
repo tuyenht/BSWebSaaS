@@ -244,6 +244,22 @@ it('counts the four brand images as in use in the media library', function (): v
         ->and($usages[0]['kind'])->toBe('site');
 });
 
+it('sends "Đang dùng ở" for the share image to "Google & mạng xã hội", where it is changed', function (): void {
+    app()->setLocale('vi');
+    $logo = brandMedia(1, 'logo');
+    $share = brandMedia(1, 'share');
+    $this->actingAs(brandAdmin());
+    app(Tenancy::class)->enter(1, fn () => app(SetBrandImages::class)->handle(['logo' => $logo->storage_key, 'og_image' => $share->storage_key]));
+
+    [$shareUsages, $logoUsages] = app(Tenancy::class)->enter(1, fn (): array => [
+        app(MediaUsageLocator::class)->usagesFor($share, 'vi'),
+        app(MediaUsageLocator::class)->usagesFor($logo, 'vi'),
+    ]);
+
+    expect($shareUsages)->toBe([['kind' => 'site', 'role' => 'brand', 'label' => 'Google & mạng xã hội', 'url' => route('admin.settings.seo')]])
+        ->and($logoUsages)->toBe([['kind' => 'site', 'role' => 'brand', 'label' => 'Giao diện', 'url' => route('admin.settings.appearance')]]);
+});
+
 it('records who saved a setting, and the stamp names the newest save of a section', function (): void {
     $lan = brandAdmin(1, 'Chị Lan');
     $minh = brandAdmin(1, 'Anh Minh');

@@ -11,7 +11,6 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
-use App\Modules\Cms\Navigation\MenuResolver;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\ResolvedCategory;
 use App\Modules\Cms\Routing\ResolvedContent;
@@ -23,25 +22,20 @@ use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\SafeLink;
 use App\Modules\Storefront\Support\ArticleData;
-use App\Modules\Storefront\Support\BrandImages;
 use App\Modules\Storefront\Support\Breadcrumbs;
 use App\Modules\Storefront\Support\JobPosting;
 use App\Modules\Storefront\Support\ListPage;
+use App\Modules\Storefront\Support\PageChrome;
 use App\Modules\Storefront\Support\PostDetail;
 use App\Modules\Storefront\Support\ProductDetail;
+use App\Modules\Storefront\Support\ProductPage;
 use App\Modules\Storefront\Support\SlotContext;
-use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
-use App\Modules\Theme\Chrome\FloatingContact;
-use App\Modules\Theme\Chrome\SiteVerification;
-use App\Modules\Theme\Chrome\StorefrontChrome;
 use App\Modules\Theme\Rendering\PageRenderer;
 use App\Modules\Theme\Rendering\TemplateCatalog;
 use App\Modules\Theme\Rendering\TemplateResolver;
 use App\Modules\Theme\Theming\StorefrontSettings;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\Query\JoinClause;
 use Illuminate\Http\Request;
@@ -64,12 +58,9 @@ final readonly class StorefrontController
         private RouteResolver $resolver,
         private PageRenderer $renderer,
         private SiteLocale $locale,
-        private MenuResolver $nav,
         private PathBuilder $paths,
         private MediaUrlResolver $media,
         private EntryViewCounter $views,
-        private SiteIdentity $identity,
-        private BrandImages $brandImages,
         private StorefrontSettings $settings,
         private ListPage $lists,
         private TemplateResolver $templates,
@@ -79,6 +70,8 @@ final readonly class StorefrontController
         private CategoryTemplates $categoryTemplates,
         private JobPosting $jobs,
         private SlotContext $slots,
+        private PageChrome $pageChrome,
+        private ProductPage $productPage,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -147,56 +140,14 @@ final readonly class StorefrontController
     }
 
     /**
-     * The page chrome for the active locale, read inside the site's own context like every page:
-     * the optional rich header/footer (site settings, normalized; null = the classic one, read
-     * through the same one-query settings reader the design tokens use), the floating contact
-     * buttons, the business identity, the menus, the <html lang> and the hreflang alternates
-     * (none for a page that was not found).
+     * The page chrome for the active locale (PageChrome: header, footer, menus, business identity),
+     * with the hreflang alternates of the resolved content (none for a page that was not found).
      *
      * @return array<string, mixed>
      */
     private function chrome(string $locale, string $default, string $requestPath, ResolvedContent|ResolvedCategory|ResolvedProduct|null $resolved, string $path): array
     {
-        /** @var list<string> $mapHosts */
-        $mapHosts = config('cms.map_hosts', []);
-        $header = StorefrontChrome::header($this->settings->get('storefront', 'header'), $locale, $default);
-        $footer = StorefrontChrome::footer($this->settings->get('storefront', 'footer'), $locale, $default, $mapHosts);
-        // The floating contact buttons / phone bottom bar; the product list is looked up only when
-        // the bar's "Mua hàng" button is switched on (it is shown only when the site has one).
-        $floating = $this->settings->get('storefront', 'floating_contact');
-        $shopHref = FloatingContact::wantsShop($floating) ? app(ProductIndexLink::class)->for($locale) : null;
-
-        // Business identity in the page's language (site_profiles + translations, the legacy
-        // general.brand setting keeping precedence in the default language — SiteIdentity). The
-        // menu's special links (call, Zalo, email, map) read their addresses from it too. The brand
-        // images' addresses come from their media ids (BrandImages: one query, none when unset).
-        $brand = $this->brandImages->apply($this->identity->for($locale));
-
-        // Header nav (active-state matches the prefixed request path; a missing per-locale
-        // assignment falls back to the default-locale menu), the phone menu panel and, for the rich
-        // footer, its link columns — all regions resolved together. The phone panel shows its own
-        // menu, else the main one (whether it follows the main menu or was never set up).
-        $menus = $this->nav->resolveMany(
-            $footer === null ? ['primary', 'handheld'] : ['primary', 'handheld', $footer['region']],
-            $locale, $default, $requestPath, $brand ?? [],
-        );
-
-        return [
-            'menu' => $menus['primary'] ?? [],
-            'mobileMenu' => ($menus['handheld'] ?? []) !== [] ? $menus['handheld'] : ($menus['primary'] ?? []),
-            'footerMenu' => $footer === null ? [] : ($menus[$footer['region']] ?? []),
-            'header' => $header,
-            'footer' => $footer,
-            // null = off or no channel to show.
-            'floatingContact' => FloatingContact::for($floating, $locale, $shopHref),
-            'lang' => $locale,
-            'hreflang' => $resolved === null ? [] : $this->hreflangFor($resolved, $locale, $default, $path),
-            'brand' => $brand,
-            // Site-ownership meta tags (Google, Bing, Facebook), read with the other storefront settings.
-            'verification' => SiteVerification::tags($this->settings->get('storefront', 'verification')),
-            // The logo and footer home links stay in the page's language (/en for an English page).
-            'homeUrl' => $this->paths->publicUrl('/', $locale),
-        ];
+        return $this->pageChrome->for($locale, $default, $requestPath, $resolved === null ? [] : $this->hreflangFor($resolved, $locale, $default, $path));
     }
 
     /**
@@ -564,89 +515,21 @@ final readonly class StorefrontController
     }
 
     /**
-     * Render a catalog product detail page. The product is loaded HERE (the storefront may depend on
-     * Catalog; Cms routing must not) and visibility is enforced at load — an unpublished/soft-deleted
-     * product, or one with no translation for the locale, 404s. Name + description HTML + gallery are
-     * handed to the Theme as primitives, with the main category's name, the summary, the contact
-     * box's links and the other products of the same category.
+     * Render a catalog product detail page (ProductPage). The product is loaded in the Storefront
+     * (the storefront may depend on Catalog; Cms routing must not) and visibility is enforced at load
+     * — an unpublished/soft-deleted product, or one with no translation for the locale, 404s.
      *
      * @param  array<string, mixed>  $chrome  page chrome (menu, lang, hreflang)
      */
     private function renderProduct(ResolvedProduct $resolved, string $locale, string $path, array $chrome): Response
     {
-        $product = Product::query()
-            ->whereKey($resolved->productId)
-            ->where('status', 'published')
-            ->with([
-                'translations',
-                'images.media',
-                // The main category (and its name) for the breadcrumb.
-                'taxonomies' => fn (BelongsToMany $query) => $query->wherePivot('position', 0),
-                'taxonomies.translations' => fn (Relation $query) => $query->where('locale', $locale),
-            ])
-            ->first();
-
+        $product = $this->productPage->published($resolved->productId, $locale);
         abort_if($product === null, 404);
 
         $translation = $product->translationFor($locale);
         abort_if($translation === null, 404);
 
-        $canonical = url($this->paths->publicUrl($path, $locale));
-        $extra = $chrome;
-        $extra['canonical'] = $canonical;
-        $extra['ogType'] = 'product';
-        $category = $product->primaryCategory();
-        $extra['breadcrumb'] = [
-            $this->crumbs->home($locale),
-            ...($category !== null ? $this->crumbs->category($category, $locale) : []),
-            $this->crumbs->crumb($translation->name, $this->paths->publicUrl($path, $locale)),
-        ];
-
-        $images = $this->products->photos($product, $translation->name);
-        if ($images !== []) {
-            $extra['ogImage'] = $images[0]['url'];
-        }
-        // The thumbnails work as plain links; the switcher script only swaps them in place.
-        $extra['galleryScript'] = count($images) > 1;
-        $extra['product'] = [
-            'group' => $category?->translationFor($locale)->name ?? '',
-            'summary' => trim((string) $translation->summary),
-            'featured' => $product->is_featured,
-            'bestseller' => $product->is_bestseller,
-            'quote' => $this->products->quoteLink($locale, ContactPageSetting::ulid($this->settings->get(ContactPageSetting::GROUP, ContactPageSetting::KEY))),
-            'contact' => ProductDetail::contact(is_array($chrome['brand'] ?? null) ? $chrome['brand'] : null),
-        ];
-        $extra['related'] = $category !== null ? $this->products->related($product, $category, $locale) : [];
-        $extra['slotBlocks'] = $this->slots->blocks(SlotContext::PRODUCT_SLOTS, $locale, $category);
-        $extra['slotContext'] = $this->slots->context($extra['slotBlocks'], $category, $locale, is_array($chrome['brand'] ?? null) ? $chrome['brand'] : null);
-
-        // Product JSON-LD (brochure mode: no offers/price — this catalog sells nothing online).
-        // Description must be plain text, so the sanitized HTML body is stripped; the dedicated
-        // SEO description wins when the editor wrote one.
-        $ldDescription = ! empty($translation->seo_description)
-            ? $translation->seo_description
-            : str((string) $translation->description)->stripTags()->squish()->limit(300)->toString();
-        $extra['productLd'] = array_filter([
-            '@context' => 'https://schema.org',
-            '@type' => 'Product',
-            'name' => $translation->name,
-            'description' => $ldDescription !== '' ? $ldDescription : null,
-            'image' => array_column($images, 'url') ?: null,
-            'url' => $canonical,
-            'brand' => ($brandName = data_get($chrome, 'brand.name')) !== null && $brandName !== ''
-                ? ['@type' => 'Brand', 'name' => $brandName]
-                : null,
-        ], fn ($value) => $value !== null);
-
-        $html = $this->renderer->renderProduct(
-            $translation->name,
-            (string) $translation->description,
-            $images,
-            ['title' => $translation->seo_title, 'description' => $translation->seo_description],
-            $extra,
-        );
-
-        return response($html);
+        return response($this->productPage->render($product, $translation, $locale, $path, $chrome));
     }
 
     /**

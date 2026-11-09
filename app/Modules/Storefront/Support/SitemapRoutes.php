@@ -199,22 +199,6 @@ final readonly class SitemapRoutes
         return $this->readPlan($this->planKey($this->maxUrls()));
     }
 
-    /**
-     * Drop the site's cached page plan, so the next request lists the site as it is now; true when
-     * there was one. The last built plan stays as the stand-in a request serves while a peer
-     * rebuilds. A site that fits in one file has no plan: its sitemap is read on every request.
-     */
-    public function forgetPlan(): bool
-    {
-        $key = $this->planKey($this->maxUrls());
-        if ($this->readPlan($key) === null) {
-            return false;
-        }
-        Cache::forget($key);
-
-        return true;
-    }
-
     /** @return list<array{0: string, 1: int}>|null */
     private function readPlan(string $key): ?array
     {

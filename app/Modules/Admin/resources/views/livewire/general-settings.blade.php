@@ -43,7 +43,7 @@
 
     $readOnly = 'bg-surface-muted text-text-muted';
 @endphp
-<x-bs-admin::settings-shell active="general">
+<x-bs-admin::settings-shell active="general" :unsaved="$changes">
     <div class="@container/gs flex flex-col gap-4" data-set-form
          x-data="{ open: {{ Js::from($groupKeys[0]) }}, info: null }"
          x-on:gs-first-error.window="open = $event.detail.group; $nextTick(() => $el.querySelector('[aria-invalid=true]:not([disabled])')?.focus())"
