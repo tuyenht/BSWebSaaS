@@ -37,6 +37,12 @@ updates:
     ignore:
       - dependency-name: '*'
         update-types: ['version-update:semver-major']
+      # 4.19 adds a Caption button to the image popup and a caption checkbox to the image dialog;
+      # their plugin is not loaded and the controls have no design yet. Lift this when the editor's
+      # caption design lands. Until then a jodit 4.19+ security fix shows only as an alert, with no
+      # pull request: review this entry when one appears (none up to 4.19.10).
+      - dependency-name: 'jodit'
+        versions: ['>=4.19']
     groups:
       # @lhci/cli is 0.x: a minor bump (0.15 → 0.16) can break, and it is the release that clears
       # the uuid and basic-ftp advisories. It arrives on its own so the cwv job vouches for it alone.
