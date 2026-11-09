@@ -505,6 +505,85 @@ describe('a product changed elsewhere while the editor is open', function (): vo
     });
 });
 
+describe('a status changed elsewhere, then a status button pressed', function (): void {
+    it('after a skipped quiet save shows the stored address and first publication, not the typed address', function (): void {
+        $user = shellManager();
+
+        app(Tenancy::class)->enter(1, function () use ($user): void {
+            $product = shellProduct('draft', ['slug' => 'a']);
+            $editor = Livewire::actingAs($user)->test(Editor::class, ['ulid' => $product->ulid]);
+            app(ChangeProductStatus::class)->handle($product->fresh(), 'published');
+
+            $editor->set('slug', 'b')->call('autosave')->assertSet('status', 'published');
+
+            expect($editor->get('liveUrl'))->toEndWith('a')
+                ->and($editor->get('publishedAt'))->toBe($product->fresh()->published_at?->toIso8601String())
+                ->and($editor->get('publishedAt'))->not->toBeNull();
+        });
+    });
+
+    it('saves the content only when a published page is pressed Cập nhật after it was archived elsewhere', function (): void {
+        $user = shellManager();
+
+        app(Tenancy::class)->enter(1, function () use ($user): void {
+            $product = shellProduct('published');
+            $editor = Livewire::actingAs($user)->test(Editor::class, ['ulid' => $product->ulid]);
+            app(ChangeProductStatus::class)->handle($product->fresh(), 'archived');
+
+            $editor->set('name', 'Tên mới')->call('publish')
+                ->assertHasNoErrors()
+                ->assertSet('status', 'archived')
+                ->assertSet('liveUrl', null)
+                ->assertDispatched('bs-toast', text: 'Trạng thái sản phẩm vừa được đổi ở nơi khác (hiện: Đã gỡ khỏi website). Đã lưu nội dung, chưa đổi trạng thái.');
+
+            expect($product->fresh()->status)->toBe('archived')
+                ->and($product->fresh()->translationFor('vi')?->name)->toBe('Tên mới');
+        });
+    });
+
+    it('saves the content only when a draft page is pressed Đăng after it was archived elsewhere', function (): void {
+        $user = shellManager();
+
+        app(Tenancy::class)->enter(1, function () use ($user): void {
+            $product = shellProduct('draft');
+            $editor = staleEditor($user, $product, 'archived');
+
+            $editor->set('name', 'Tên mới')->call('publish')->assertHasNoErrors()->assertSet('status', 'archived');
+
+            expect($product->fresh()->status)->toBe('archived')
+                ->and($product->fresh()->translationFor('vi')?->name)->toBe('Tên mới');
+        });
+    });
+
+    it('still publishes an unchanged draft on Đăng', function (): void {
+        $user = shellManager();
+
+        app(Tenancy::class)->enter(1, function () use ($user): void {
+            $product = shellProduct('draft');
+
+            Livewire::actingAs($user)->test(Editor::class, ['ulid' => $product->ulid])
+                ->set('name', 'Tên mới')->call('publish')->assertHasNoErrors()->assertSet('status', 'published')
+                ->assertNotDispatched('bs-toast', text: 'Trạng thái sản phẩm vừa được đổi ở nơi khác (hiện: Đã đăng). Đã lưu nội dung, chưa đổi trạng thái.');
+
+            expect($product->fresh()->status)->toBe('published');
+        });
+    });
+
+    it('keeps an unchanged published product published on Cập nhật', function (): void {
+        $user = shellManager();
+
+        app(Tenancy::class)->enter(1, function () use ($user): void {
+            $product = shellProduct('published');
+
+            Livewire::actingAs($user)->test(Editor::class, ['ulid' => $product->ulid])
+                ->set('name', 'Tên mới')->call('publish')->assertHasNoErrors()->assertSet('status', 'published');
+
+            expect($product->fresh()->status)->toBe('published')
+                ->and($product->fresh()->translationFor('vi')?->name)->toBe('Tên mới');
+        });
+    });
+});
+
 describe('words on the board', function (): void {
     it('says "Đã lưu lúc" with the time after a button save, and gives the board\'s example texts', function (): void {
         $user = shellManager();

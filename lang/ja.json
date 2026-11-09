@@ -3474,6 +3474,7 @@
     "catalog.ed.retry": "再試行",
     "catalog.ed.toast_published": "公開しました — :url で今すぐ表示されます。",
     "catalog.ed.toast_updated": "更新しました — 変更はすぐに表示されます。",
+    "catalog.ed.toast_status_elsewhere": "商品のステータスが別の場所で変更されました（現在：:status）。内容は保存しましたが、ステータスは変更していません。",
     "catalog.ed.toast_draft": "下書きを :time に保存しました。",
     "catalog.ed.toast_saved": ":time に保存しました。",
     "catalog.ed.leave_new": "この商品はまだ保存されていません。今このページを離れると、入力した内容は失われます。",

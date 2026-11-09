@@ -3474,6 +3474,7 @@
     "catalog.ed.retry": "Try again",
     "catalog.ed.toast_published": "Published — visitors can see it now at :url.",
     "catalog.ed.toast_updated": "Updated — visitors see the changes now.",
+    "catalog.ed.toast_status_elsewhere": "The product's status was just changed elsewhere (now: :status). The content is saved; the status was not changed.",
     "catalog.ed.toast_draft": "Draft saved at :time.",
     "catalog.ed.toast_saved": "Saved at :time.",
     "catalog.ed.leave_new": "This product has not been saved. If you leave this page now, what you wrote will be lost.",

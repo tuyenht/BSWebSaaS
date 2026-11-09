@@ -3474,6 +3474,7 @@
     "catalog.ed.retry": "重试",
     "catalog.ed.toast_published": "已发布 — 访客现在可在 :url 看到。",
     "catalog.ed.toast_updated": "已更新 — 访客立即看到更改。",
+    "catalog.ed.toast_status_elsewhere": "商品状态刚在其他地方被更改（当前：:status）。内容已保存，状态未更改。",
     "catalog.ed.toast_draft": "草稿已于 :time 保存。",
     "catalog.ed.toast_saved": "已于 :time 保存。",
     "catalog.ed.leave_new": "此商品尚未保存。现在离开此页，刚写的内容将丢失。",

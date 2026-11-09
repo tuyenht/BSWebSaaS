@@ -3474,6 +3474,7 @@
     "catalog.ed.retry": "Thử lại",
     "catalog.ed.toast_published": "Đã đăng — khách thấy ngay ở :url.",
     "catalog.ed.toast_updated": "Đã cập nhật — khách thấy thay đổi ngay.",
+    "catalog.ed.toast_status_elsewhere": "Trạng thái sản phẩm vừa được đổi ở nơi khác (hiện: :status). Đã lưu nội dung, chưa đổi trạng thái.",
     "catalog.ed.toast_draft": "Đã lưu nháp lúc :time.",
     "catalog.ed.toast_saved": "Đã lưu lúc :time.",
     "catalog.ed.leave_new": "Sản phẩm này chưa được lưu. Rời trang này bây giờ thì phần vừa viết sẽ mất.",

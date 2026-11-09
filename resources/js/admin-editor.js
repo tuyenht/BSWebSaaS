@@ -96,8 +96,9 @@ export function editorSave(cfg) {
                     clearTimeout(timer);
                     this.busy = true;
                     const lost = () => {
+                        const wasOnline = !this.offline;
                         this.offline = true;
-                        if (cfg.words.offlineToast && typeof window.bsToast === 'function') {
+                        if (wasOnline && cfg.words.offlineToast && typeof window.bsToast === 'function') {
                             window.bsToast({ text: cfg.words.offlineToast, icon: cfg.words.offlineToastIcon });
                         }
                         this.last = names.includes('publish') ? 'publish' : 'save';

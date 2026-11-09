@@ -199,3 +199,18 @@ test('a save that does not reach the server also raises the shared toast with th
     delete window.bsToast;
     c.destroy();
 });
+
+test('the offline toast is raised once when the state turns offline, not on every failed save while offline', (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const shown = [];
+    window.bsToast = (o) => shown.push(o);
+    const { c } = editor();
+    trip('save', 'failure')();
+    trip('save', 'failure')();
+    assert.equal(shown.length, 1);
+    trip('save', 'success')();
+    trip('save', 'failure')();
+    assert.equal(shown.length, 2, 'a new loss after coming back raises it again');
+    delete window.bsToast;
+    c.destroy();
+});

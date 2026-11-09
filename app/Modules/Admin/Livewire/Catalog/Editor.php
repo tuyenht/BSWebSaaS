@@ -180,6 +180,15 @@ final class Editor extends Component
     /** Only the publish button writes a status; set for the length of that one request. */
     private bool $publishing = false;
 
+    /** The status the page showed when the publish button was pressed; the button only changes a product still in it. */
+    private ?string $publishFrom = null;
+
+    /** Set while saving: the stored status differed from the one the page showed, so the button wrote none. */
+    private bool $statusChangedElsewhere = false;
+
+    /** Set while saving: a draft saving itself found the product no longer a draft; the stored product. */
+    private ?Product $skippedFor = null;
+
     public function mount(?string $ulid = null): void
     {
         $this->locale = app(SiteLocale::class)->default();
@@ -218,6 +227,7 @@ final class Editor extends Component
         $this->authorizeEdit();
         $was = $this->status;
         $this->publishing = true;
+        $this->publishFrom = $was;
 
         try {
             $saved = $this->commit(quiet: false);
@@ -227,6 +237,7 @@ final class Editor extends Component
             throw $e;
         } finally {
             $this->publishing = false;
+            $this->publishFrom = null;
         }
 
         if (! $saved) {
@@ -538,8 +549,15 @@ final class Editor extends Component
 
         if (! $product instanceof Product) {
             // The product was published or archived elsewhere while this page was open: a draft
-            // saving itself writes nothing; the page learns the stored status.
-            $this->liveUrl = $this->status === 'published' ? $this->address['base'].$this->slug : null;
+            // saving itself writes nothing; the page learns the stored status, address and date.
+            $this->fill($typed);
+            if ($this->skippedFor instanceof Product) {
+                $this->publishedAt = self::iso($this->skippedFor->published_at);
+                $slug = $this->skippedFor->translationFor($this->locale)?->slug;
+                $this->liveUrl = $this->status === 'published' && $slug !== null
+                    ? $this->previewAddress($this->skippedFor->primaryCategory())['base'].$slug
+                    : null;
+            }
 
             return false;
         }
@@ -566,6 +584,7 @@ final class Editor extends Component
         if (! $quiet) {
             $time = app(SiteTime::class)->forDisplay($now)?->format('H:i') ?? '';
             $this->dispatch('bs-toast', text: match (true) {
+                $this->statusChangedElsewhere => __('catalog.ed.toast_status_elsewhere', ['status' => __('catalog.ed.chip_'.$this->status)]),
                 $this->status === 'published' && ! $wasLive => __('catalog.ed.toast_published', ['url' => $this->liveUrl]),
                 $this->status === 'published' => __('catalog.ed.toast_updated'),
                 $this->status === 'draft' => __('catalog.ed.toast_draft', ['time' => $time]),
@@ -844,22 +863,11 @@ final class Editor extends Component
      */
     private function persist(bool $quiet): ?Product
     {
-        if ($this->ulid !== null) {
-            // the product row first, then the stored status is read under that lock
-            $stored = Product::query()->where('ulid', $this->ulid)->lockForUpdate()->firstOrFail();
-            if (! $this->publishing) {
-                $this->status = $stored->status;
-                if ($quiet && $stored->status !== 'draft') {
-                    return null;
-                }
-            }
-        } elseif ($this->publishing) {
-            $this->status = 'published';
-        } else {
-            $this->status = 'draft';
-        }
-        if ($this->publishing) {
-            $this->status = 'published';
+        $this->statusChangedElsewhere = false;
+        $this->skippedFor = null;
+        $untouched = ['description' => $this->description, 'imageMediaIds' => $this->imageMediaIds];
+        if ($this->ulid === null) {
+            $this->status = $this->publishing ? 'published' : 'draft';
         }
 
         // A cleared input arrives as '' — store NULL: an '' sku would enter the partial
@@ -891,8 +899,36 @@ final class Editor extends Component
         $this->imageMediaIds = $this->normalizeIds($this->imageMediaIds);
 
         $filled = $this->fillBlankSlug();
-        // Two saves of the same address wait for each other: the second sees the first one's row.
+        // Always in this order: the address, then the product row (the slug change and the search
+        // words take their locks the same way), then the writes.
         app(ChangeProductSlug::class)->lock($this->slug, $this->locale);
+        $stored = null;
+        if ($this->ulid !== null) {
+            // The stored status is read inside this transaction, under the row lock.
+            $stored = Product::query()->where('ulid', $this->ulid)->lock('for no key update')->firstOrFail();
+            if ($this->publishing && $stored->status !== $this->publishFrom) {
+                // Changed elsewhere since the page loaded: the button saves the content only.
+                $this->publishing = false;
+                $this->statusChangedElsewhere = true;
+            }
+            if (! $this->publishing) {
+                $this->status = $stored->status;
+                if ($quiet && $stored->status !== 'draft') {
+                    // A draft saving itself writes nothing: the page keeps what it had typed.
+                    $this->skippedFor = $stored;
+                    $this->description = $untouched['description'];
+                    $this->imageMediaIds = $untouched['imageMediaIds'];
+                    if ($filled) {
+                        $this->slug = '';
+                    }
+
+                    return null;
+                }
+            }
+        }
+        if ($this->publishing) {
+            $this->status = 'published';
+        }
         try {
             $this->validate();
         } catch (ValidationException $e) {
@@ -915,7 +951,7 @@ final class Editor extends Component
             $this->ulid = $product->ulid;
             $this->productId = $product->id;
         } else {
-            $product = $this->resolveOrFail($this->ulid);
+            $product = $stored;
             $this->authorize('update', $product);
             // the product row before its translation, like every other write of a name or a SKU
             ProductSearchWords::lock($product->site_id, $product->id);
