@@ -43,7 +43,7 @@ load_profile() {
 }
 
 # ---------------------------------------------------------------- output, stops, traps
-MODE= CUR=- MIXED= RESUME= SCHEMA= MIGRATING= TICK= LOG= SELF= STATE= TS=
+MODE= CUR=- MIXED= LATE= RESUME= SCHEMA= MIGRATING= TICK= LOG= SELF= STATE= TS=
 die() { # to stderr, so a stop inside "$(…)" shows; the main shell prints the full stop once
     if [ "${BASH_SUBSHELL:-0}" -gt 0 ]; then printf '!!!!! %s\n' "$*" >&2; exit 1; fi
     trap '' INT TERM HUP; trap - ERR
@@ -51,6 +51,7 @@ die() { # to stderr, so a stop inside "$(…)" shows; the main shell prints the 
     printf '\n!!!!! DỪNG (bước %s): %s\n' "$CUR" "$*" >&2
     if [ "$MODE" = run ]; then
         printf '!!!!! Chưa làm các bước sau. Nhắn AI: "xem log %s"\n' "$LOG" >&2
+        [ -z "$LATE" ] || printf '!!!!! Bản mới đã nằm trên đĩa từ bước 5 và lịch chạy nền đã dùng nó: chạy "rollback" NGAY (dòng tmux, thêm "rollback" ở cuối), rồi nhắn AI.\n' >&2
         [ -z "$MIXED" ] || printf '!!!!! Code trên đĩa đã đổi: website có thể đang lỗi trang hoặc lệch giao diện. Nhắn AI ngay; AI sẽ bảo chạy lại từ một bước hoặc "rollback".\n' >&2
         [ "$CUR" = - ] || printf '!!!!! Khi AI bảo chạy tiếp: chạy lại dòng tmux, thêm "%s" ở cuối (các bước trước đã xong).\n' "${RESUME:-$CUR}" >&2
         [ -z "$MIGRATING" ] || printf '!!!!! Dừng trong lúc migrate: đừng chạy lại ngay, lệnh migrate có thể vẫn chạy trong container. Nhắn AI trước.\n' >&2
@@ -194,8 +195,8 @@ mig_scan() { # mig_scan <git dir> <commit> <name>: the file without its down() b
 # alias, DELETE, INSERT), the query builder (DB::table(…)->update(…), insert, upsert…), Eloquent statics and
 # instance writes (the …Quietly / …OrFail forms too, restore, touch), PDO, and commands or seeders run from a
 # migration (Artisan::call, $this->call)
-MIG_NONADD='->change\(|->drop[A-Za-z]*\(|Schema::drop|rename|nullable\(false\)|SET NOT NULL|DROP (TABLE|COLUMN|INDEX|CONSTRAINT|VIEW|TYPE)|ALTER COLUMN|TRUNCATE|DELETE FROM|INSERT INTO|UPDATE[[:space:]]+[^[:space:](]+([[:space:]]+(AS[[:space:]]+)?[A-Za-z_][A-Za-z0-9_]*)?[[:space:]]+SET[[:space:]]|DB::(table|select|insert|update|delete|statement|unprepared|connection)\b|->(insert|insertGetId|insertOrIgnore|insertUsing|upsert|updateOrInsert|increment|decrement|exec)\(|->(update|delete|forceDelete|save|restore|touch)(Quietly|OrFail)?\(|getPdo|Artisan::(call|callSilent|queue)\(|\$this->call(Silent|With|Once)?\('
-MIG_ELOQUENT='::(create|insert|upsert|firstOrCreate|updateOrCreate|forceCreate|query|where|destroy)\('   # Model::create(…) & co.; Schema::create is removed first
+MIG_NONADD='->change\(|->drop[A-Za-z]*\(|Schema::drop|rename|nullable\(false\)|SET NOT NULL|DROP (TABLE|COLUMN|INDEX|CONSTRAINT|VIEW|TYPE)|ALTER COLUMN|TRUNCATE|DELETE FROM|INSERT INTO|UPDATE[[:space:]]+[^[:space:](]+([[:space:]]+(AS[[:space:]]+)?[A-Za-z_][A-Za-z0-9_]*)?[[:space:]]+SET[[:space:]]|DB::(table|select|insert|update|delete|statement|unprepared|connection)\b|->(insert|insertGetId|insertOrIgnore|insertUsing|upsert|updateOrInsert|increment|decrement|incrementEach|decrementEach|exec|create|createMany|saveMany|attach|detach|sync|syncWithoutDetaching|push)\(|->(update|delete|forceDelete|save|restore|touch)(Quietly|OrFail)?\(|getPdo|Artisan::(call|callSilent|queue)\(|\$this->call(Silent|With|Once)?\('
+MIG_ELOQUENT='::(create|insert|upsert|firstOrCreate|updateOrCreate|forceCreate|query|where|destroy|forceDestroy|truncate|all|find|findOrFail|first)\('   # Model::create(…) & co.; Schema::create is removed first
 mig_flags() { # mig_flags <git dir> <commit> <name> → space list of: raw nonadd table concurrent
     local t f=
     t=$(mig_scan "$@")
@@ -767,7 +768,12 @@ mode_run() {
         CUR=$s; printf '\n===== Bước %s =====\n' "$s"
         # the release's own guards (a date it must not pass…) before EVERY step: a resume from a later step
         # and a run that crosses midnight both meet them; rollback and dump do not (they never ship the new code)
-        if declare -F release_guard >/dev/null; then release_guard; fi
+        # a guard that fails once the new code is on disk (a resume after step 5) is past its date while the
+        # scheduler already starts jobs from that code: only an immediate rollback stops them
+        if declare -F release_guard >/dev/null; then
+            [ "$(git -C "$PROD" rev-parse HEAD)" != "$TARGET" ] || { MIXED=1; LATE=1; }
+            release_guard; LATE=
+        fi
         "s$s"
     done
     [ -n "$on" ] || die "không có bước '$start' (0–8, dump, rollback)"

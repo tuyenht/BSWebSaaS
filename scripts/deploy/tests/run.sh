@@ -117,6 +117,16 @@ return new class extends Migration {
 };"
     n=$((n + 1))
 done
+# the third review's shapes: relation writes, statics that load a model to write it, incrementEach, forceDestroy, push
+n=0
+for body in "\$s->roles()->create(['x' => 1]);" "\$s->roles()->attach(1);" "\$s->roles()->sync([1]);" "\$s->roles()->saveMany([]);" \
+    "Site::all();" "Site::find(1);" "Site::findOrFail(1);" "\$m->incrementEach(['n' => 1]);" "Media::forceDestroy([1]);" "\$m->push();"; do
+    w "database/migrations/3000_01_01_002${n}00_write2_$n.php" "<?php
+return new class extends Migration {
+    public function up(): void { $body }
+};"
+    n=$((n + 1))
+done
 git -C "$SRC" add -A && gitc -m flags; FLAGSC=$(git -C "$SRC" rev-parse HEAD)
 branch t-unknown; w weird/thing.txt x; w app/Modules/X/Foo.php '<?php // 2'; git -C "$SRC" add -A && gitc -m unknown; UNKNOWN=$(git -C "$SRC" rev-parse HEAD)
 branch t-sched; w routes/console.php "<?php
@@ -257,7 +267,17 @@ EXP="3000_01_01_000000_builder_update nonadd table
 3000_01_01_001600_write_6 nonadd
 3000_01_01_001700_write_7 nonadd
 3000_01_01_001800_write_8 nonadd
-3000_01_01_001900_write_9 nonadd"
+3000_01_01_001900_write_9 nonadd
+3000_01_01_002000_write2_0 nonadd
+3000_01_01_002100_write2_1 nonadd
+3000_01_01_002200_write2_2 nonadd
+3000_01_01_002300_write2_3 nonadd
+3000_01_01_002400_write2_4 nonadd
+3000_01_01_002500_write2_5 nonadd
+3000_01_01_002600_write2_6 nonadd
+3000_01_01_002700_write2_7 nonadd
+3000_01_01_002800_write2_8 nonadd
+3000_01_01_002900_write2_9 nonadd"
 ok '[ "$GOT" = "$EXP" ]' "builder update (0008 shape), aliased UPDATE (2051 shape), alias without AS, Eloquent create, PDO exec, insertUsing, ::destroy, saveQuietly/updateQuietly/deleteQuietly/forceDeleteQuietly, updateOrFail, restore, touch, Artisan::call, \$this->call → nonadd; onUpdate/nullOnDelete/useCurrentOnUpdate and a write in down() stay additive"
 [ "$GOT" = "$EXP" ] || diff <(printf '%s\n' "$EXP") <(printf '%s\n' "$GOT")
 
@@ -369,9 +389,14 @@ ok '[ "$RC" = 1 ] && says "DỪNG (bước 0)" && says "hạn của bản thử 
 fresh "$FULL"; touch "$FAKE/bad-dump"; launch
 ok '[ "$RC" = 1 ] && says "DỪNG (bước 2)"' "a run stops in step 2"
 rm -f "$FAKE/bad-dump"; touch "$FAKE/past-deadline"; launch 2
-ok '[ "$RC" = 1 ] && says "DỪNG (bước 2)" && says "hạn của bản thử đã qua" && [ "$(calls "pg_dump")" = 1 ] && head_is "$OLD"' "a resume from step 2 after the deadline stops before the step runs"
+ok '[ "$RC" = 1 ] && says "DỪNG (bước 2)" && says "hạn của bản thử đã qua" && [ "$(calls "pg_dump")" = 1 ] && head_is "$OLD" && ! says "NGAY"' "a resume from step 2 after the deadline stops before the step runs (no rollback advice: the old code is still on disk)"
 rm -f "$FAKE/past-deadline"; launch 2
 ok '[ "$RC" = 0 ] && head_is "$FULL"' "the same resume before the deadline finishes"
+fresh "$FULL"; touch "$FAKE/fail-reload-once"; launch
+ok '[ "$RC" = 1 ] && says "DỪNG (bước 7)" && head_is "$FULL"' "a run stops in step 7 with the new code on disk"
+touch "$FAKE/past-deadline"; launch 7
+ok '[ "$RC" = 1 ] && says "DỪNG (bước 7)" && says "hạn của bản thử đã qua" && says "chạy \"rollback\" NGAY" && [ "$(calls "artisan fake:pre")" = 1 ]' "a resume after step 5 past the deadline stops before the step and says to roll back now"
+rm -f "$FAKE/past-deadline"
 
 echo "== lock timeout: retried, PgBouncer restarted after every attempt"
 fresh "$FULL"; echo 1 > "$FAKE/lockfail-2100_01_01_000000_add_col"; launch
