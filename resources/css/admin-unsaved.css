@@ -1,6 +1,7 @@
 /*
  | The shared "Bạn có thay đổi chưa lưu" dialog (<x-bs-admin::unsaved-dialog>; design 01, the
- | admin-components .sx-ud* part). One blocking dialog over a dimmed page, centred; a sheet from the
+ | admin-components .sx-ud* part). One blocking dialog over a dimmed page, centred, as the design has
+ | it for the settings pages; with data-sheet (the design's create/edit screens) it is a sheet from the
  | bottom on a phone (narrower than 600px, or 500px tall or less). The foot is one row when its three
  | buttons fit (admin-unsaved.js measures them and sets data-ud-lay) — Bỏ thay đổi on the left, set
  | apart, then Ở lại and the main button — otherwise stacked: main, Ở lại, a wider gap, Bỏ thay đổi.
@@ -52,12 +53,12 @@
     }
 
     @media (max-width: 599.98px), (max-height: 500px) {
-        .sx-udw {
+        .sx-udw[data-sheet] {
             align-items: flex-end;
             padding: 0;
         }
 
-        .sx-ud {
+        .sx-udw[data-sheet] .sx-ud {
             width: min(30rem, 100%);
             border-radius: 0.75rem 0.75rem 0 0;
             padding: 1.25rem max(1rem, env(safe-area-inset-right)) calc(1rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
