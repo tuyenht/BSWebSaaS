@@ -2,6 +2,11 @@
 
 Prod is a separate git checkout, `/opt/bswebsaas/prod` (branch `main`), on the same host as dev. It runs as compose project `bsweb-prod` (`docker-compose.prod.yml`), with containers `bsweb_prod_app`, `bsweb_prod_horizon`, `bsweb_prod_scheduler`, `bsweb_prod_pg`, `bsweb_prod_pgbouncer` and `bsweb_prod_valkey`. There is no CI deploy job — deploys are manual.
 
+The steps below run through one shared engine, `scripts/deploy/deploy.sh`. Each deploy adds only a small
+release file, and the owner starts the run with a single tmux line that pins the engine and the release file
+by hash. How to write a release file, print the plan and run the tests: `scripts/deploy/README.md`. This
+runbook stays the reference for what each step does and why.
+
 ## Before
 
 1. Merge to `origin/main` first. Deploy a pinned SHA — `main` moves fast because parallel sessions push to it — and only one with **a full CI run green on that exact commit**.
