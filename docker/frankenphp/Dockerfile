@@ -1,4 +1,4 @@
-FROM dunglas/frankenphp:php8.5
+FROM dunglas/frankenphp:1.13.5-php8.5.12-trixie
 
 # PHP extensions required by the pinned stack (PG, Valkey, Octane worker mode)
 RUN install-php-extensions \
