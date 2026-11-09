@@ -86,7 +86,9 @@ services:
       disable: true
 
   postgres:
-    image: pgvector/pgvector:pg17
+    # Tag plus digest: the tag tells Dependabot the version line, the digest fixes the build (a
+    # floating pg17 tag moves on its own).
+    image: pgvector/pgvector:0.8.2-pg17@sha256:feb68f4f15446397d8cac7f4fe48fe4586de83160d1fc48b46283312d1a33966
     container_name: bsweb_prod_pg
     restart: unless-stopped
     environment:
@@ -132,7 +134,7 @@ services:
 
   pgbouncer:
     # PgBouncer 1.25.2, pinned by digest: `:latest` would move on the next pull.
-    image: edoburu/pgbouncer@sha256:4c1ca296ef525f108f5d3552cc337c0c09587cf8dae7f0067fd93349e47dc1cd
+    image: edoburu/pgbouncer:v1.25.2-p0@sha256:4c1ca296ef525f108f5d3552cc337c0c09587cf8dae7f0067fd93349e47dc1cd
     container_name: bsweb_prod_pgbouncer
     restart: unless-stopped
     environment:
@@ -157,7 +159,8 @@ services:
         condition: service_healthy
 
   valkey:
-    image: valkey/valkey:8.1-alpine
+    # The June 8.1.8-alpine build running today (the tag was rebuilt in July), pinned like PostgreSQL.
+    image: valkey/valkey:8.1.8-alpine@sha256:77643d152547b446fc15cbafaff22004545663fcd40c6b28038ad283837baa75
     container_name: bsweb_prod_valkey
     restart: unless-stopped
     # appendonly ON for prod — sessions, cache and the queue live here; survive a restart.
@@ -173,7 +176,7 @@ services:
       retries: 12
 
   caddy:
-    image: caddy:2
+    image: caddy:2.11.9
     restart: unless-stopped
     depends_on:
       - app

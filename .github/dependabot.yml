@@ -70,10 +70,6 @@ updates:
     ignore:
       - dependency-name: '*'
         update-types: ['version-update:semver-major']
-      # Octane 2.22 needs FrankenPHP >= 1.13 and the app image ships 1.12.4: octane:start then tries
-      # to download a new binary and the server never comes up. Drop this once the image is rebuilt.
-      - dependency-name: 'laravel/octane'
-        versions: ['>=2.22']
       # Boost 2.5+ needs laravel/roster 1.x (a major of an indirect dev package). Drop this once that
       # upgrade is agreed.
       - dependency-name: 'laravel/boost'
@@ -97,3 +93,41 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: 'ci(deps)'
+
+  # Runtime images: the app image's base (Dockerfile) and the database, cache, pooler and edge
+  # images in both compose files, each pinned as tag@digest: the tag gives Dependabot the version
+  # line (a bare digest is compared with `latest`, which crosses majors), the digest fixes the
+  # build. `COPY --from=composer:2` still floats within Composer 2. Octane needs FrankenPHP at or
+  # above its own floor (requiredFrankenPhpVersion): take a FrankenPHP minor before an Octane minor
+  # that asks for it.
+  - package-ecosystem: docker
+    directory: /docker/frankenphp
+    schedule:
+      interval: weekly
+      day: monday
+      time: '07:41'
+      timezone: Asia/Ho_Chi_Minh
+    cooldown:
+      default-days: 3
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: 'chore(deps)'
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '07:41'
+      timezone: Asia/Ho_Chi_Minh
+    cooldown:
+      default-days: 3
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: 'chore(deps)'
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
