@@ -9,11 +9,11 @@
     $glyph = 'size-[1.15em] shrink-0';
 @endphp
 <span {{ $attributes->only('class')->merge(['class' => 'flex min-w-0']) }}>
-    <span role="status" class="ped-sv ped-sv-rest @max-[48rem]:rounded-xl" data-s="{{ $note['key'] }}" title="{{ $note['tip'] }}">
+    <span role="status" class="bs-save-state bs-save-state-rest @max-[48rem]:rounded-xl" data-s="{{ $note['key'] }}" title="{{ $note['tip'] }}">
         <x-bs-admin::icon :name="$note['icon']" :class="$glyph" /><span aria-hidden="true">{{ $note['text'] }}</span><span class="sr-only">{{ $note['full'] }}</span>
     </span>
     <span wire:ignore class="contents">
-        <span role="status" class="ped-sv @max-[48rem]:rounded-xl" x-show="state()" x-cloak x-bind:data-s="state()" x-bind:aria-live="state() === 'dirty' ? 'off' : 'polite'" x-bind:title="text()">
+        <span role="status" class="bs-save-state @max-[48rem]:rounded-xl" x-show="state()" x-cloak x-bind:data-s="state()" x-bind:aria-live="state() === 'dirty' ? 'off' : 'polite'" x-bind:title="text()">
             <x-bs-admin::icon name="ri-error-warning" :class="$glyph" x-show="state() === 'dirty'" />
             <x-bs-admin::icon name="ri-loader-4" :class="$glyph.' motion-safe:animate-spin'" x-show="state() === 'saving'" />
             <x-bs-admin::icon name="ri-wifi-off" :class="$glyph" x-show="state() === 'offline'" />

@@ -4,7 +4,7 @@
 // below shows it with no per-component wiring. Also exposed as the Alpine magic $bsToast.
 //
 // Styling mirrors design_handoff_pages_admin §3a: a compact dark pill anchored bottom-center with a
-// small green ri-checkbox-circle glyph + 13px text — NOT SweetAlert2's large animated success icon
+// small green ri-checkbox-circle glyph (or the caller's own icon markup, `icon`, in amber and kept longer: a warning) + 13px text — NOT SweetAlert2's large animated success icon
 // or timer bar, which read chunky. Text is escaped (it may carry entry titles).
 
 const CHECK_SVG =
@@ -26,9 +26,9 @@ async function bsToast(opts = {}) {
     await Swal.fire({
         toast: true,
         position: 'bottom',
-        html: `<span style="display:inline-flex;align-items:center;gap:8px;font-size:13px;line-height:1.4;">${CHECK_SVG}<span>${escapeHtml(opts.text)}</span></span>`,
+        html: `<span style="display:inline-flex;align-items:center;gap:8px;font-size:13px;line-height:1.4;">${opts.icon ? `<span aria-hidden="true" style="display:inline-flex;flex:none;color:#f7b84b;">${opts.icon}</span>` : CHECK_SVG}<span>${escapeHtml(opts.text)}</span></span>`,
         showConfirmButton: false,
-        timer: 2400,
+        timer: opts.icon ? 6000 : 2400,
         background: '#212529', // dark slab (design tokens)
         color: '#fff',
         width: 'auto',
@@ -41,7 +41,7 @@ document.addEventListener('alpine:init', () => {
 });
 
 document.addEventListener('bs-toast', (event) => {
-    bsToast({ text: event.detail?.text });
+    bsToast({ text: event.detail?.text, icon: event.detail?.icon });
 });
 
 window.bsToast = bsToast;

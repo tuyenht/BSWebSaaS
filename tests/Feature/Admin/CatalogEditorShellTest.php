@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Livewire\Catalog\Editor;
+use App\Modules\Catalog\Actions\ChangeProductStatus;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductImage;
 use App\Modules\Identity\Models\User;
@@ -9,6 +10,7 @@ use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\DB;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -445,4 +447,96 @@ describe('authorization', function (): void {
             expect($product->fresh()->translationFor('vi')?->name)->toBe('Đồ gá hàn');
         });
     })->with(['save', 'publish', 'autosave', 'resetChanges', 'removeImage', 'moveImageUp', 'moveImageDown', 'categoryId']);
+});
+
+describe('a product changed elsewhere while the editor is open', function (): void {
+    /** An editor opened on a draft, whose product is then set to `$status` from another place (the list, another tab). */
+    function staleEditor(User $user, Product $product, string $status): Testable
+    {
+        $editor = Livewire::actingAs($user)->test(Editor::class, ['ulid' => $product->ulid]);
+        app(ChangeProductStatus::class)->handle($product->fresh(), $status);
+
+        return $editor;
+    }
+
+    it('does not turn a product published elsewhere back into a draft when the draft saves itself', function (): void {
+        $user = shellManager();
+
+        app(Tenancy::class)->enter(1, function () use ($user): void {
+            $product = shellProduct('draft');
+            $editor = staleEditor($user, $product, 'published');
+
+            $editor->set('name', 'Tên gõ muộn')->call('autosave')->assertHasNoErrors()->assertSet('status', 'published');
+
+            expect($product->fresh()->status)->toBe('published')
+                ->and($product->fresh()->translationFor('vi')?->name)->toBe('Đồ gá hàn');
+        });
+    });
+
+    it('keeps a product published elsewhere published on a button save, and saves the name', function (): void {
+        $user = shellManager();
+
+        app(Tenancy::class)->enter(1, function () use ($user): void {
+            $product = shellProduct('draft');
+            $editor = staleEditor($user, $product, 'published');
+
+            $editor->set('name', 'Tên mới')->call('save')->assertHasNoErrors()->assertSet('status', 'published');
+
+            expect($product->fresh()->status)->toBe('published')
+                ->and($product->fresh()->translationFor('vi')?->name)->toBe('Tên mới');
+        });
+    });
+
+    it('leaves a product archived elsewhere archived, by autosave and by a button save', function (): void {
+        $user = shellManager();
+
+        app(Tenancy::class)->enter(1, function () use ($user): void {
+            $product = shellProduct('draft');
+            $editor = staleEditor($user, $product, 'archived');
+
+            $editor->set('name', 'Tên gõ muộn')->call('autosave')->assertSet('status', 'archived');
+            expect($product->fresh()->status)->toBe('archived')
+                ->and($product->fresh()->translationFor('vi')?->name)->toBe('Đồ gá hàn');
+
+            $editor->call('save')->assertHasNoErrors()->assertSet('status', 'archived');
+            expect($product->fresh()->status)->toBe('archived')
+                ->and($product->fresh()->translationFor('vi')?->name)->toBe('Tên gõ muộn');
+        });
+    });
+});
+
+describe('words on the board', function (): void {
+    it('says "Đã lưu lúc" with the time after a button save, and gives the board\'s example texts', function (): void {
+        $user = shellManager();
+
+        app(Tenancy::class)->enter(1, function () use ($user): void {
+            Livewire::actingAs($user)->test(Editor::class)
+                ->assertSeeHtml('placeholder="Dao phay ngón hợp kim 4 me D10"')
+                ->assertSeeHtml('placeholder="Dao phay 4 me phủ AlTiN, cắt thép đến 45 HRC, bền gấp đôi dao thường."')
+                ->set('name', 'Đồ gá hàn khung')
+                ->call('save')
+                ->assertSeeText('Đã lưu lúc');
+        });
+    });
+});
+
+describe('query budget', function (): void {
+    it('opens the edit screen and runs one autosave request within a flat query ceiling', function (): void {
+        $user = shellManager();
+        $ulid = null;
+
+        app(Tenancy::class)->enter(1, function () use (&$ulid): void {
+            $ulid = shellProduct('draft')->ulid;
+        });
+
+        $get = countQueries(fn () => $this->actingAs($user)->get("http://a.test/admin/catalog/{$ulid}/edit")->assertOk());
+        expect($get)->toBeLessThanOrEqual(24);
+
+        $auto = 0;
+        app(Tenancy::class)->enter(1, function () use ($user, $ulid, &$auto): void {
+            $editor = Livewire::actingAs($user)->test(Editor::class, ['ulid' => $ulid])->set('name', 'Đồ gá hàn khung');
+            $auto = countQueries(fn () => $editor->call('autosave')->assertHasNoErrors());
+        });
+        expect($auto)->toBeLessThanOrEqual(20);
+    });
 });

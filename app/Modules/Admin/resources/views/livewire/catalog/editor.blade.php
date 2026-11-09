@@ -25,6 +25,8 @@
         'dirtyLive' => __('catalog.ed.sv_dirty_live'),
         'saving' => __('catalog.ed.sv_saving'),
         'offline' => __('catalog.ed.sv_offline'),
+        'offlineToast' => __('catalog.ed.toast_offline'),
+        'offlineToastIcon' => \Illuminate\Support\Facades\Blade::render('<x-bs-admin::icon name="ri-wifi-off" class="size-4" />'),
     ]];
     $field = 'field block w-full rounded-md border border-border-input bg-surface-muted px-3 text-text placeholder:text-placeholder transition-colors focus:border-primary-text aria-invalid:border-danger-text';
     $label = 'inline-flex min-w-0 max-w-full flex-wrap items-center gap-x-1.5 gap-y-1 text-small font-semibold text-text-strong';
@@ -95,7 +97,7 @@
                                     @endif
                                 </label>
                             </div>
-                            <textarea id="catalog-name" wire:model="name" rows="1" maxlength="{{ \App\Modules\Catalog\Actions\RenameProduct::MAX }}" lang="{{ $locale }}" aria-required="true"
+                            <textarea id="catalog-name" wire:model="name" rows="1" placeholder="{{ __('catalog.ed.name_ph') }}" maxlength="{{ \App\Modules\Catalog\Actions\RenameProduct::MAX }}" lang="{{ $locale }}" aria-required="true"
                                       aria-describedby="catalog-name-c @error('name') catalog-name-e @enderror" @error('name') aria-invalid="true" @enderror
                                       x-on:keydown.enter="if (! $event.isComposing && $event.keyCode !== 229) $event.preventDefault()"
                                       class="{{ $field }} resize-none py-2 [field-sizing:content]"></textarea>
@@ -160,7 +162,7 @@
                                     <span x-text="excerptMeter.text"></span>
                                 </span>
                             </div>
-                            <textarea id="catalog-summary" wire:model="summary" rows="3" maxlength="{{ Editor::SUMMARY_MAX }}" lang="{{ $locale }}"
+                            <textarea id="catalog-summary" wire:model="summary" rows="3" placeholder="{{ __('catalog.ed.summary_ph') }}" maxlength="{{ Editor::SUMMARY_MAX }}" lang="{{ $locale }}"
                                       aria-describedby="catalog-summary-c catalog-summary-h @if ($summaryWarning) catalog-summary-w @endif @error('summary') catalog-summary-e @enderror" @error('summary') aria-invalid="true" @enderror
                                       class="{{ $field }} resize-y py-2.5"></textarea>
                             <span class="seo-meter" :data-b="excerptMeter.band" aria-hidden="true">

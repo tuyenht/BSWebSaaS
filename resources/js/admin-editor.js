@@ -97,6 +97,9 @@ export function editorSave(cfg) {
                     this.busy = true;
                     const lost = () => {
                         this.offline = true;
+                        if (cfg.words.offlineToast && typeof window.bsToast === 'function') {
+                            window.bsToast({ text: cfg.words.offlineToast, icon: cfg.words.offlineToastIcon });
+                        }
                         this.last = names.includes('publish') ? 'publish' : 'save';
                     };
                     // Only a request that never reached the server is "no connection"; a refusal

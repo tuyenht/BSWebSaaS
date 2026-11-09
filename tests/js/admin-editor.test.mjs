@@ -34,7 +34,7 @@ window.Livewire = {
 };
 const { valueText, countChanges, overState, stateText } = await import('../../resources/js/admin-editor.js');
 
-const words = { dirty: ':n thay đổi chưa lưu', dirtyDraft: ':n thay đổi chưa lưu — tự lưu sau 3 giây', dirtyLive: ':n thay đổi chưa lưu — bấm Cập nhật để khách thấy', saving: 'Đang lưu…', offline: 'Chưa lưu được — mất kết nối' };
+const words = { offlineToast: 'Chưa lưu được vì mất kết nối.', offlineToastIcon: '<svg></svg>', dirty: ':n thay đổi chưa lưu', dirtyDraft: ':n thay đổi chưa lưu — tự lưu sau 3 giây', dirtyLive: ':n thay đổi chưa lưu — bấm Cập nhật để khách thấy', saving: 'Đang lưu…', offline: 'Chưa lưu được — mất kết nối' };
 const rerun = () => effects.slice().forEach((fn) => fn());
 
 // An editor whose server state is `wire` (values, saved, status); returns the part and its calls.
@@ -188,3 +188,14 @@ test('taken off with the page: no timer, effect or listener is left behind', (t)
 });
 
 mock.reset();
+
+test('a save that does not reach the server also raises the shared toast with the warning icon', (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const shown = [];
+    window.bsToast = (o) => shown.push(o);
+    const { c } = editor();
+    trip('save', 'failure')();
+    assert.deepEqual(shown, [{ text: 'Chưa lưu được vì mất kết nối.', icon: '<svg></svg>' }]);
+    delete window.bsToast;
+    c.destroy();
+});

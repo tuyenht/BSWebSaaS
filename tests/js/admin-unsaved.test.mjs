@@ -279,3 +279,24 @@ test('the buttons sit on one row only when all three fit; otherwise stacked, the
     assert.deepEqual(ORDER.row, ['x', 's', 'p']);
     assert.deepEqual(ORDER.col, ['p', 's', 'x']);
 });
+
+test('leaving twice while the first leave is still sending the typed text sends once and goes once', async () => {
+    const { c, calls } = page(0);
+    let release = () => {};
+    c.$wire.$commit = () => {
+        calls.push('$commit');
+
+        return new Promise((r) => {
+            release = r;
+        });
+    };
+    c.$wire.$commit.bind(c);
+    document.getElementById('f').dispatchEvent(new window.Event('input', { bubbles: true }));
+    let gone = 0;
+    const first = c.ask(() => gone++);
+    const second = c.ask(() => gone++);
+    release();
+    await Promise.all([first, second]);
+    assert.deepEqual(calls.filter((x) => x === '$commit'), ['$commit']);
+    assert.equal(gone, 1);
+});

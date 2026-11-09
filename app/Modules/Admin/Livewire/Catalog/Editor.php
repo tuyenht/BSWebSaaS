@@ -177,6 +177,9 @@ final class Editor extends Component
     #[Locked]
     public string $summaryShown = '';
 
+    /** Only the publish button writes a status; set for the length of that one request. */
+    private bool $publishing = false;
+
     public function mount(?string $ulid = null): void
     {
         $this->locale = app(SiteLocale::class)->default();
@@ -213,14 +216,8 @@ final class Editor extends Component
     public function publish(): void
     {
         $this->authorizeEdit();
-        $this->saveAs('published');
-    }
-
-    /** Saves the product with `status`; nothing saved, the status stays as it was. */
-    private function saveAs(string $status): void
-    {
         $was = $this->status;
-        $this->status = $status;
+        $this->publishing = true;
 
         try {
             $saved = $this->commit(quiet: false);
@@ -228,6 +225,8 @@ final class Editor extends Component
             $this->status = $was;
 
             throw $e;
+        } finally {
+            $this->publishing = false;
         }
 
         if (! $saved) {
@@ -509,7 +508,7 @@ final class Editor extends Component
         $typed = $quiet ? array_intersect_key(get_object_vars($this), array_flip(self::AS_TYPED)) : [];
 
         try {
-            $product = DB::transaction(fn (): Product => $this->persist());
+            $product = DB::transaction(fn (): ?Product => $this->persist($quiet));
         } catch (RouteConflictException|UniqueConstraintViolationException|ValidationException $e) {
             if ($wasNew) {
                 // Rolled back: the form is still a create form.
@@ -533,6 +532,14 @@ final class Editor extends Component
                 ? UniqueViolation::refusal($e)
                 : new ProductEditRefused(__('catalog.slug_conflict'), 'slug');
             $this->addError($refusal->field ?? 'slug', $refusal->getMessage());
+
+            return false;
+        }
+
+        if (! $product instanceof Product) {
+            // The product was published or archived elsewhere while this page was open: a draft
+            // saving itself writes nothing; the page learns the stored status.
+            $this->liveUrl = $this->status === 'published' ? $this->address['base'].$this->slug : null;
 
             return false;
         }
@@ -618,7 +625,7 @@ final class Editor extends Component
         $full = $today ? __('catalog.ed.sv_full_today', ['time' => $time]) : __('catalog.ed.sv_full_day', ['time' => $time, 'day' => $at->format('d/m/Y')]);
         $text = match ($this->savedKind) {
             'auto' => __('catalog.ed.sv_auto_at', ['time' => $time]),
-            default => $today ? __('catalog.ed.sv_short', ['when' => $time]) : __('catalog.ed.sv_short', ['when' => $at->format('d/m')]),
+            default => $today ? __('catalog.ed.sv_short_at', ['time' => $time]) : __('catalog.ed.sv_short', ['when' => $at->format('d/m')]),
         };
 
         return ['key' => $this->savedKind === null ? 'auto' : 'saved', 'icon' => 'ri-checkbox-circle', 'text' => $text, 'full' => $full, 'tip' => __('catalog.ed.sv_tip', ['text' => $full])];
@@ -830,10 +837,31 @@ final class Editor extends Component
      * Validate + persist the product, its default-locale translation, category, gallery and — when
      * it is live — its public address; returns it. Runs inside commit()'s transaction.
      *
+     * The status is the stored one (read under the row lock) unless this is the publish button; a
+     * draft saving itself finds a product no longer a draft and writes nothing (null).
+     *
      * @throws RouteConflictException the composed path belongs to another page or category
      */
-    private function persist(): Product
+    private function persist(bool $quiet): ?Product
     {
+        if ($this->ulid !== null) {
+            // the product row first, then the stored status is read under that lock
+            $stored = Product::query()->where('ulid', $this->ulid)->lockForUpdate()->firstOrFail();
+            if (! $this->publishing) {
+                $this->status = $stored->status;
+                if ($quiet && $stored->status !== 'draft') {
+                    return null;
+                }
+            }
+        } elseif ($this->publishing) {
+            $this->status = 'published';
+        } else {
+            $this->status = 'draft';
+        }
+        if ($this->publishing) {
+            $this->status = 'published';
+        }
+
         // A cleared input arrives as '' — store NULL: an '' sku would enter the partial
         // UNIQUE(site_id, sku) index and collide with the next skuless product.
         $this->sku = $this->sku !== null ? PlainText::line($this->sku) : null;
@@ -879,12 +907,11 @@ final class Editor extends Component
         $attributes = [
             'sku' => $this->sku,
             'price' => $this->price !== null ? (int) $this->price : null,
-            'status' => $this->status,
         ];
 
         if ($this->ulid === null) {
             $this->authorize('create', Product::class);
-            $product = Product::query()->create($attributes);
+            $product = Product::query()->create($attributes + ['status' => $this->status]);
             $this->ulid = $product->ulid;
             $this->productId = $product->id;
         } else {
@@ -892,7 +919,7 @@ final class Editor extends Component
             $this->authorize('update', $product);
             // the product row before its translation, like every other write of a name or a SKU
             ProductSearchWords::lock($product->site_id, $product->id);
-            $product->update($attributes);
+            $product->update($this->publishing ? $attributes + ['status' => 'published'] : $attributes);
         }
 
         $summary = $keepSummary ? $this->summaryStored : $this->summary;
