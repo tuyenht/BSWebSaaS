@@ -96,6 +96,12 @@ it('gives every project, news card and product its own image and the quality blo
     expect($quality['props']['image_url'])->toBe(['media' => 'inspect-1']);
 });
 
+it('never moves a tone mark off its syllable when the text is spelt the new way (hoàn, thoát stay whole)', function (): void {
+    foreach ((new PackReader)->read('an-vinh')->items as $item) {
+        expect(json_encode($item->data, JSON_UNESCAPED_UNICODE))->not->toMatch('/(hòa|hóa|thỏa|tùy|ủy|xóa|lòa|khỏe)\p{L}/iu', $item->key);
+    }
+});
+
 it('gives every post body text, an excerpt and a search description', function (): void {
     $posts = collect((new PackReader)->read('an-vinh')->items)->filter(fn ($item) => str_starts_with($item->key, 'post:'));
 
