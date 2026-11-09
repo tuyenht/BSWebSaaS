@@ -906,8 +906,9 @@ final class Editor extends Component
         if ($this->ulid !== null) {
             // The stored status is read inside this transaction, under the row lock.
             $stored = Product::query()->where('ulid', $this->ulid)->lock('for no key update')->firstOrFail();
-            if ($this->publishing && $stored->status !== $this->publishFrom) {
-                // Changed elsewhere since the page loaded: the button saves the content only.
+            $shown = $this->publishing ? $this->publishFrom : $this->status;
+            if (! $quiet && $stored->status !== $shown) {
+                // Changed elsewhere since the page loaded: a button saves the content only, and says so.
                 $this->publishing = false;
                 $this->statusChangedElsewhere = true;
             }

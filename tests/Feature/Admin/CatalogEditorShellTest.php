@@ -480,7 +480,8 @@ describe('a product changed elsewhere while the editor is open', function (): vo
             $product = shellProduct('draft');
             $editor = staleEditor($user, $product, 'published');
 
-            $editor->set('name', 'Tên mới')->call('save')->assertHasNoErrors()->assertSet('status', 'published');
+            $editor->set('name', 'Tên mới')->call('save')->assertHasNoErrors()->assertSet('status', 'published')
+                ->assertDispatched('bs-toast', text: 'Trạng thái sản phẩm vừa được đổi ở nơi khác (hiện: Đã đăng). Đã lưu nội dung, chưa đổi trạng thái.');
 
             expect($product->fresh()->status)->toBe('published')
                 ->and($product->fresh()->translationFor('vi')?->name)->toBe('Tên mới');
@@ -498,7 +499,9 @@ describe('a product changed elsewhere while the editor is open', function (): vo
             expect($product->fresh()->status)->toBe('archived')
                 ->and($product->fresh()->translationFor('vi')?->name)->toBe('Đồ gá hàn');
 
-            $editor->call('save')->assertHasNoErrors()->assertSet('status', 'archived');
+            // the skipped autosave already showed the stored status, so this save has nothing to warn about
+            $editor->call('save')->assertHasNoErrors()->assertSet('status', 'archived')
+                ->assertNotDispatched('bs-toast', fn (string $name, array $params): bool => str_contains((string) ($params['text'] ?? ''), 'nơi khác'));
             expect($product->fresh()->status)->toBe('archived')
                 ->and($product->fresh()->translationFor('vi')?->name)->toBe('Tên gõ muộn');
         });
@@ -548,7 +551,8 @@ describe('a status changed elsewhere, then a status button pressed', function ()
             $product = shellProduct('draft');
             $editor = staleEditor($user, $product, 'archived');
 
-            $editor->set('name', 'Tên mới')->call('publish')->assertHasNoErrors()->assertSet('status', 'archived');
+            $editor->set('name', 'Tên mới')->call('publish')->assertHasNoErrors()->assertSet('status', 'archived')
+                ->assertDispatched('bs-toast', text: 'Trạng thái sản phẩm vừa được đổi ở nơi khác (hiện: Đã gỡ khỏi website). Đã lưu nội dung, chưa đổi trạng thái.');
 
             expect($product->fresh()->status)->toBe('archived')
                 ->and($product->fresh()->translationFor('vi')?->name)->toBe('Tên mới');
@@ -563,7 +567,7 @@ describe('a status changed elsewhere, then a status button pressed', function ()
 
             Livewire::actingAs($user)->test(Editor::class, ['ulid' => $product->ulid])
                 ->set('name', 'Tên mới')->call('publish')->assertHasNoErrors()->assertSet('status', 'published')
-                ->assertNotDispatched('bs-toast', text: 'Trạng thái sản phẩm vừa được đổi ở nơi khác (hiện: Đã đăng). Đã lưu nội dung, chưa đổi trạng thái.');
+                ->assertNotDispatched('bs-toast', fn (string $name, array $params): bool => str_contains((string) ($params['text'] ?? ''), 'nơi khác'));
 
             expect($product->fresh()->status)->toBe('published');
         });
