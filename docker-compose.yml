@@ -89,7 +89,7 @@ services:
   postgres:
     # Tag plus digest: the tag tells Dependabot the version line, the digest fixes the build (a
     # floating pg17 tag moves on its own).
-    image: pgvector/pgvector:0.8.2-pg17@sha256:feb68f4f15446397d8cac7f4fe48fe4586de83160d1fc48b46283312d1a33966
+    image: pgvector/pgvector:0.8.7-pg17@sha256:7d0a41464797aeb9862dfdc0bbf1526b82cfd324cdd8036df19e3545f4a9ccb8
     container_name: bsweb_dev_pg
     restart: unless-stopped
     environment:
