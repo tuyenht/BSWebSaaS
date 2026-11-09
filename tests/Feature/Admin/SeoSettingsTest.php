@@ -324,6 +324,21 @@ it('discards the draft back to the saved values', function (): void {
     });
 });
 
+it('hands its change count to the leave dialog, which reads it to decide whether to ask', function (): void {
+    $admin = seoAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        Livewire::actingAs($admin)->test(SeoSettings::class)
+            ->assertSeeHtml('data-bs-lazy="bsUnsaved"')
+            ->assertSeeHtml('data-unsaved-count="0"')
+            ->assertSee('“Google & mạng xã hội” có thay đổi chưa lưu. Rời trang này bây giờ thì các thay đổi này sẽ mất.')
+            ->set('form.template', '%tieu-de% | %ten-website%')->assertSeeHtml('data-unsaved-count="1"')
+            ->call('save')->assertHasNoErrors()->assertSeeHtml('data-unsaved-count="0"')
+            ->set('form.robots', 'User-agent: *')->assertSeeHtml('data-unsaved-count="1"')
+            ->call('resetChanges')->assertSeeHtml('data-unsaved-count="0"')->assertSet('form.robots', '');
+    });
+});
+
 it('lists the page in the settings menu for settings.manage only', function (): void {
     $admin = seoAdmin();
 

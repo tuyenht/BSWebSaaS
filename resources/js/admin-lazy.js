@@ -13,6 +13,7 @@
 // the same failure), the second try reloads the page.
 const PARTS = {
     bsCategories: () => import('./admin-categories.js'),
+    bsUnsaved: () => import('./admin-unsaved.js'),
 };
 
 export function makeLazy({ parts, alpine, reload }) {
