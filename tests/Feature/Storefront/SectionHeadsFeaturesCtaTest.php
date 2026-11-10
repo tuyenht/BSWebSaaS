@@ -115,12 +115,29 @@ describe('the features block', function (): void {
         'two top-rule cards fill two columns' => ['top-rule', 2, 'sf-grid--2'],
         'three top-rule cards' => ['top-rule', 3, 'sf-grid--3'],
         'six top-rule cards' => ['top-rule', 6, 'sf-grid--3s'],
-        'four top-rule cards' => ['top-rule', 4, 'sf-grid--3s'],
+        'four top-rule cards, two then four a row' => ['top-rule', 4, 'sf-grid--4'],
+        'eight top-rule cards' => ['top-rule', 8, 'sf-grid--4'],
         'two plain cards' => ['default', 2, 'sf-grid--2'],
         'three plain cards' => ['default', 3, 'sf-grid--3'],
         'four plain cards, two on a phone' => ['default', 4, 'sf-grid--4p'],
         'six plain cards' => ['default', 6, 'sf-grid--3s'],
+        'eight plain cards' => ['default', 8, 'sf-grid--4p'],
     ]);
+
+    it('stacks the glyph tile above the text when four plain cards sit two a row on a phone', function (): void {
+        $items = array_map(fn (array $item): array => $item + ['icon' => 'wrench'], shfcItems(4));
+        $html = shfcView('features', ['items' => $items]);
+        $css = (string) file_get_contents(resource_path('css/storefront.css'));
+
+        expect($html)->toContain('<ul class="sf-grid sf-grid--4p">')
+            ->and(substr_count($html, '<li class="sf-fcard">'))->toBe(4)
+            ->and(substr_count($html, '<span class="sf-fcard__icon">'))->toBe(4)
+            ->and(substr_count($html, '<div class="sf-fcard__body">'))->toBe(4)
+            // Below 640px the two-a-row card is a column (tile, then the text at the card's full width), and
+            // the rule comes after the dark-band one that sets a row, so it holds on every band.
+            ->and($css)->toMatch('/@media \(max-width: 639\.98px\) \{\n    \.sf-grid--4p > \.sf-fcard \{\n        flex-direction: column;\n    \}\n\n    \.sf-grid--4p > \.sf-fcard > \.sf-fcard__body \{\n        align-self: stretch;/')
+            ->and(strpos($css, '.sf-grid--4p > .sf-fcard {'))->toBeGreaterThan(strpos($css, '.sf-band--dark :is(.sf-feature, .sf-fcard) {'));
+    });
 
     it('keeps the top-rule card and wraps its text so a phone can lay it out as a row', function (): void {
         $html = shfcView('features', ['variant' => 'top-rule', 'items' => [['title' => 'Thiết kế', 'text' => 'Bản vẽ', 'icon' => 'box']]]);
@@ -156,6 +173,17 @@ describe('section title sizes', function (): void {
         expect($css)->toMatch('/\.sf-section-head__title \{[^}]*font-size: 1\.875rem;/')
             ->toMatch('/\.about__heading \{\n    font-size: 1\.875rem;\n    line-height: 2\.25rem;\n    font-weight: 700;/')
             ->toMatch('/\.cta h2 \{\n    font-size: 1\.875rem;\n    line-height: 2\.25rem;/');
+    });
+});
+
+describe('the section head rule', function (): void {
+    it('takes the band colour scheme rule colour, else the brand accent, for every headed block', function (): void {
+        $css = (string) file_get_contents(resource_path('css/storefront.css'));
+
+        expect($css)->toMatch('/\.sf-section-head__rule \{[^}]*background: linear-gradient\(90deg, transparent, var\(--sch-rule, var\(--color-primary\)\) 20%, var\(--sch-rule, var\(--color-primary\)\) 80%, transparent\);/')
+            // The scheme sets that a rule reads: white over a photo, the heading colour on a brand ground.
+            ->toMatch('/\.sf-s--image \{[^}]*--sch-rule: #fff;/')
+            ->toMatch('/\.sf-s--sch-brand \{\n    --sch-rule: var\(--sch-brand-head\);/');
     });
 });
 

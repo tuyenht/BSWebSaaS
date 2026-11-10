@@ -1,10 +1,13 @@
 {{--
     Features: a band (`bg`: none, surface, tint, dark) with the shared section head and a grid sized by how
-    many items there are, so two items fill two columns and no card stands alone in a third.
+    many items there are: two fill two columns, three fill three, a multiple of four fills rows of four on
+    a wide screen (two a row below it), so none of these counts leaves a card alone; any other count takes
+    three a row.
 
     - top-rule (opt-in): cards with an accent rule; on a phone each is a compact row (glyph left, text
-      right), from a tablet up a centered card with the rule on top.
-    - default: plain cards; an item with a glyph shows it in a dark tile beside its text.
+      right) one a row, from a tablet up a centered card with the rule on top.
+    - default: plain cards; an item with a glyph shows it in a dark tile beside its text. A multiple of
+      four puts two cards a row on a phone too, and there the tile sits above the text.
 
     On a dark band both looks drop the card: the glyph sits beside a light title. `icon` is a key of the
     icon partial; an unknown key draws nothing.
@@ -16,7 +19,7 @@
     $sfGrid = match (true) {
         $sfCount <= 2 => 'sf-grid--2',
         $sfCount === 3 => 'sf-grid--3',
-        ! $sfTopRule && $sfCount % 4 === 0 => 'sf-grid--4p',
+        $sfCount % 4 === 0 => $sfTopRule ? 'sf-grid--4' : 'sf-grid--4p',
         default => 'sf-grid--3s',
     };
 @endphp

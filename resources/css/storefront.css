@@ -3684,7 +3684,8 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     height: 0.1875rem;
     margin-inline: auto;
     border-radius: 9999px;
-    background: linear-gradient(90deg, transparent, var(--color-primary) 20%, var(--color-primary) 80%, transparent);
+    /* The band's rule colour inside a colour scheme or over a photo (white there), else the brand accent. */
+    background: linear-gradient(90deg, transparent, var(--sch-rule, var(--color-primary)) 20%, var(--sch-rule, var(--color-primary)) 80%, transparent);
 }
 
 .sf-section-head__text {
@@ -4909,6 +4910,18 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     margin-top: 0;
     color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white));
     font-size: 1rem;
+}
+
+/* Plain cards two a row on a phone (sf-grid--4p), on any band: the tile above the text, so the text
+   keeps the card's full width. After the dark-band rules, which set a row. */
+@media (max-width: 639.98px) {
+    .sf-grid--4p > .sf-fcard {
+        flex-direction: column;
+    }
+
+    .sf-grid--4p > .sf-fcard > .sf-fcard__body {
+        align-self: stretch;
+    }
 }
 
 /* CTA: the sub-line (both looks) and the rounded look. */
@@ -7137,7 +7150,8 @@ html:has(.sf-viewer[open]) {
     margin-top: 2rem;
 }
 
-/* The title of the rounded and split looks: the sub-line's own margin spaces them. */
+/* The title of the rounded and split looks: the sub-line's own margin spaces them (the boards: a title with
+   no margin, the sub-line 1rem under it, the buttons 2rem under that). */
 .cta .cta__title {
     margin: 0;
 }
