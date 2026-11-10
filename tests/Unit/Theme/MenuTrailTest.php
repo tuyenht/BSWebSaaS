@@ -7,7 +7,7 @@ use App\Modules\Theme\Chrome\StorefrontChrome;
  * itself mark the menu items that link to them, so a post or a project lights up its section.
  */
 
-function mtMenu(): array
+function menuTrailFixture(): array
 {
     return [
         ['label' => 'Trang chủ', 'url' => '/', 'active' => false, 'children' => []],
@@ -19,7 +19,7 @@ function mtMenu(): array
 }
 
 it('marks the menu items that link to a level above the page, in both menus', function (): void {
-    $extra = StorefrontChrome::withTrail(['menu' => mtMenu(), 'mobileMenu' => mtMenu(), 'breadcrumb' => [
+    $extra = StorefrontChrome::withTrail(['menu' => menuTrailFixture(), 'mobileMenu' => menuTrailFixture(), 'breadcrumb' => [
         ['name' => 'Trang chủ', 'url' => 'https://x.test/', 'href' => '/'],
         ['name' => 'Dự án', 'url' => 'https://x.test/du-an', 'href' => '/du-an'],
         ['name' => 'Hệ thống cấp phôi', 'url' => 'https://x.test/he-thong', 'href' => '/he-thong'],
@@ -31,7 +31,7 @@ it('marks the menu items that link to a level above the page, in both menus', fu
 });
 
 it('marks a parent through a child on the trail, and never the home page or the page itself', function (): void {
-    $extra = StorefrontChrome::withTrail(['menu' => mtMenu(), 'breadcrumb' => [
+    $extra = StorefrontChrome::withTrail(['menu' => menuTrailFixture(), 'breadcrumb' => [
         ['name' => 'Trang chủ', 'href' => '/'],
         ['name' => 'Sự kiện', 'href' => '/su-kien'],
         ['name' => 'Dự án', 'href' => '/du-an'],
@@ -43,11 +43,11 @@ it('marks a parent through a child on the trail, and never the home page or the 
 });
 
 it('leaves the menus alone without a breadcrumb, and never marks the current item', function (): void {
-    $extra = ['menu' => mtMenu(), 'breadcrumb' => []];
+    $extra = ['menu' => menuTrailFixture(), 'breadcrumb' => []];
     expect(StorefrontChrome::withTrail($extra))->toBe($extra)
-        ->and(StorefrontChrome::withTrail(['menu' => mtMenu()]))->toBe(['menu' => mtMenu()]);
+        ->and(StorefrontChrome::withTrail(['menu' => menuTrailFixture()]))->toBe(['menu' => menuTrailFixture()]);
 
-    $menu = mtMenu();
+    $menu = menuTrailFixture();
     $menu[1]['active'] = true;
     $out = StorefrontChrome::withTrail(['menu' => $menu, 'breadcrumb' => [['href' => '/'], ['href' => '/du-an'], ['href' => '/x']]]);
     expect($out['menu'][1])->not->toHaveKey('trail');
