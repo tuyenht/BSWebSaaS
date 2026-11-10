@@ -45,12 +45,28 @@ describe('stats kinds', function (): void {
         Carbon::setTestNow('2026-12-31 18:30:00 UTC');
         $html = kindsStats(['items' => [['kind' => 'years', 'value' => 2014, 'suffix' => '+', 'label' => 'Năm kinh nghiệm']]]);
 
-        expect($html)->toContain('<span>13</span>')->not->toContain('data-count')->not->toContain('sf-stat__suffix')
-            ->and($html)->toContain('<span class="sr-only">13</span>');
+        expect($html)->toContain('<span>13</span><span class="sf-stat__suffix">+</span>')->not->toContain('data-count')
+            ->and($html)->toContain('<span class="sr-only">13+</span>');
 
         Carbon::setTestNow('2026-12-31 16:30:00 UTC');
         expect(kindsStats(['items' => [['kind' => 'years', 'value' => 2014, 'label' => 'Năm']]]))->toContain('<span>12</span>');
     });
+
+    it('locks the unit of years to "+", whatever unit the item keeps', function (string $suffix): void {
+        Carbon::setTestNow('2026-06-01 00:00:00 UTC');
+        $html = kindsStats(['items' => [['kind' => 'years', 'value' => 2019, 'suffix' => $suffix, 'label' => 'Năm kinh nghiệm']]]);
+
+        expect($html)->toContain('<span>7</span><span class="sf-stat__suffix">+</span>')
+            ->and($html)->toContain('<span class="sr-only">7+</span>')
+            ->and(substr_count($html, 'sf-stat__suffix'))->toBe(1);
+        if ($suffix !== '' && $suffix !== '+') {
+            expect($html)->not->toContain($suffix);
+        }
+    })->with([
+        'no unit' => [''],
+        'the plus already' => ['+'],
+        'another unit' => ['năm'],
+    ]);
 
     it('counts the new year from the site\'s own timezone setting, not from UTC', function (): void {
         seedTenancy();

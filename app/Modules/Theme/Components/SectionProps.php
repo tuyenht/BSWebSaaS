@@ -183,6 +183,9 @@ final class SectionProps
         'label' => ['type' => 'text'],
     ];
 
+    /** The unit a `years` stat always prints, whatever unit the item keeps: "7+" years. */
+    public const string YEARS_SUFFIX = '+';
+
     /** The earliest year a `year` / `years` stat accepts. */
     public const int STAT_YEAR_MIN = 1900;
 
@@ -198,7 +201,8 @@ final class SectionProps
     /**
      * The stats to draw from a list prop, in order, each as {value, number, suffix, label, count, length}:
      * `number` prints the value with thousands separators and counts up (`count`); `years` prints
-     * this year minus the start year and `year` the year itself, both plain and with the unit locked.
+     * this year minus the start year with the unit locked to "+" ("7+": at least that many years), and
+     * `year` the year itself, plain with no unit; neither counts up.
      * A unit that starts with a letter (m², tấn) gets a no-break space before it, in place of any space
      * typed before it; `+`, `%` and other signs stay against the number. `length` is how wide the number and its unit print, in digits
      * (a unit character counts 0.6, 5 at the least): the view shrinks a long number to fit its cell.
@@ -224,7 +228,8 @@ final class SectionProps
                     continue;
                 }
                 $number = (string) ($kind === 'years' ? $year - $value : $value);
-                $stats[] = ['value' => $value, 'number' => $number, 'suffix' => '', 'label' => $label, 'count' => false, 'length' => self::statLength($number, '')];
+                $suffix = $kind === 'years' ? self::YEARS_SUFFIX : '';
+                $stats[] = ['value' => $value, 'number' => $number, 'suffix' => $suffix, 'label' => $label, 'count' => false, 'length' => self::statLength($number, $suffix)];
 
                 continue;
             }
