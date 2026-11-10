@@ -5830,7 +5830,7 @@ html:has(.sf-header--sticky) .product-toc {
 
 .sf-bmap__approx {
     margin: 0.25rem 0 0;
-    color: color-mix(in srgb, var(--color-text) 80%, white);
+    color: var(--color-primary-text);
     font-size: 0.75rem;
 }
 
