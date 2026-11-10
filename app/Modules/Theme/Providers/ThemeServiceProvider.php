@@ -110,6 +110,8 @@ final class ThemeServiceProvider extends ServiceProvider
             // A phone number or a zalo.me link (the floating Zalo button's own rule); the cell is titled "Zalo".
             'zalo' => ['type' => 'url', 'zalo' => true],
             'zalo_label' => ['type' => 'text'],
+            // A small line under the address of the card look, e.g. the working days and hours.
+            'hours' => ['type' => 'text'],
         ],
         // Block-slot blocks (LayoutSlots): they draw data of the page around them, so only a slot holds them.
         'recent_posts' => [

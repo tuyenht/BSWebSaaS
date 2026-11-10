@@ -4996,6 +4996,11 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     .sf-contact-cards {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
+
+    /* Four ways to reach the company stand in one row. */
+    .sf-contact-cards:has(> :nth-child(4)) {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
 }
 
 .sf-contact-card {
@@ -5033,10 +5038,19 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     overflow-wrap: anywhere;
 }
 
+.sf-contact-card__note {
+    margin-top: 0.25rem;
+    color: var(--color-text);
+    font-size: 0.75rem;
+    line-height: 1.5;
+}
+
 .sf-contact-card__value {
     display: inline-flex;
     align-items: center;
     min-height: 2.5rem;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .sf-map,

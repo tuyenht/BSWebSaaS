@@ -46,7 +46,7 @@ it('seeds a contact form with its fields and the owner as the notify recipient',
 
     expect($form->status)->toBe('active')
         ->and($form->notify_emails)->toBe(['owner@anvinh.test'])
-        ->and($fieldKeys)->toBe(['name', 'email', 'phone', 'message', 'consent']);
+        ->and($fieldKeys)->toBe(['name', 'phone', 'email', 'message', 'consent']);
 });
 
 it('embeds the form block on the provisioned /lien-he page', function (): void {

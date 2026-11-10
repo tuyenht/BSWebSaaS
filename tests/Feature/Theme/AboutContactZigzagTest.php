@@ -12,6 +12,7 @@ use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\Site;
+use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\ListDisplay;
 use App\Modules\Theme\Components\SectionProps;
 use App\Modules\Theme\Components\StyleProps;
@@ -254,6 +255,42 @@ describe('contact Zalo', function (): void {
 
         expect($html)->toContain('class="contact__zalo" href="https://zalo.me/0915668383"')->toContain('&lt;i&gt;Zalo&lt;/i&gt;')->not->toContain('<i>');
     });
+});
+
+describe('contact hours and phone', function (): void {
+    it('draws the working hours under the address of the address card, and no line without them', function (): void {
+        $props = ['variant' => 'cards', 'address' => 'Ấ Xã Trung Giã Ế'];
+        $html = contactHtml($props + ['hours' => 'Thứ 2 – Thứ 7, giờ hành chính']);
+
+        expect($html)->toContain('<p class="sf-contact-card__text">Ấ Xã Trung Giã Ế</p>')
+            ->toContain('<p class="sf-contact-card__note">Thứ 2 – Thứ 7, giờ hành chính</p>')
+            ->and(strpos($html, 'sf-contact-card__note'))->toBeGreaterThan((int) strpos($html, 'Ấ Xã Trung Giã Ế'));
+
+        foreach ([[], ['hours' => ''], ['hours' => '   ']] as $extra) {
+            expect(contactHtml($props + $extra))->not->toContain('sf-contact-card__note');
+        }
+        // The hours belong to the address card: a block without an address has no card to carry them.
+        expect(contactHtml(['variant' => 'cards', 'phone' => '0915668383', 'hours' => 'Ấ giờ Ế']))->not->toContain('Ấ giờ Ế');
+    });
+
+    it('escapes the hours and takes them on save as plain text', function (): void {
+        expect(contactHtml(['variant' => 'cards', 'address' => 'Hà Nội', 'hours' => '<b>8h</b>']))
+            ->toContain('&lt;b&gt;8h&lt;/b&gt;')->not->toContain('<b>8h');
+
+        expect(aboutErrors(['hours' => 'Thứ 2 – Thứ 7, giờ hành chính'], 'contact'))->toBe([])
+            ->and(app(ComponentRegistry::class)->schemaFor('contact')['hours'])->toBe(['type' => 'text']);
+    });
+
+    it('shows the phone as the site wrote it and dials its digits only', function (string $variant): void {
+        $html = contactHtml(['variant' => $variant, 'phone' => '0915 66 83 83']);
+
+        expect($html)->toContain('href="tel:0915668383"')->toContain('>0915 66 83 83</a>')->not->toContain('tel:0915 66');
+    })->with(['cards', 'list']);
+
+    it('dials a number the floating button rules do not read by its digits and a leading plus', function (string $variant): void {
+        expect(contactHtml(['variant' => $variant, 'phone' => '+44 20 7946 0958']))
+            ->toContain('href="tel:+442079460958"')->toContain('>+44 20 7946 0958</a>');
+    })->with(['cards', 'list']);
 });
 
 describe('zigzag list', function (): void {

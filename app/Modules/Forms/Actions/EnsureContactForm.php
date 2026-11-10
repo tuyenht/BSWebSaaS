@@ -12,6 +12,10 @@ use App\Modules\Shared\Support\Cast;
  * inbox). Anchored on the unique (site_id, key) and each field's (form_id, key) — a re-run never
  * duplicates and never clobbers a tenant's later-customized recipients.
  *
+ * A new form gets name and phone first, then email, message and the consent box, with an example in
+ * the empty phone, email and message fields; an existing form keeps its order and its examples (a
+ * field added later takes its default place).
+ *
  * The default wording (form name, thank-you sentence, field labels) is written in every interface
  * language, so a visitor reading the site in English sees English labels. A form created before
  * that — Vietnamese only — gets its missing languages filled on the next run; a language the site
@@ -19,15 +23,25 @@ use App\Modules\Shared\Support\Cast;
  */
 final class EnsureContactForm
 {
-    /** The default fields, their wording keyed by the lang/*.json entry it comes from. */
+    /**
+     * The default fields, their wording keyed by the lang/*.json entry it comes from. Name and phone
+     * share the first row, the email takes the next with the "at least one" hint under it.
+     */
     private const array FIELDS = [
         ['key' => 'name', 'type' => 'text', 'label' => 'forms.lead_field_name', 'is_required' => true, 'sort_order' => 1],
-        ['key' => 'email', 'type' => 'email', 'label' => 'forms.lead_field_email', 'is_required' => false, 'sort_order' => 2],
-        ['key' => 'phone', 'type' => 'tel', 'label' => 'forms.lead_field_phone', 'is_required' => false, 'sort_order' => 3],
+        ['key' => 'phone', 'type' => 'tel', 'label' => 'forms.lead_field_phone', 'is_required' => false, 'sort_order' => 2],
+        ['key' => 'email', 'type' => 'email', 'label' => 'forms.lead_field_email', 'is_required' => false, 'sort_order' => 3],
         ['key' => 'message', 'type' => 'textarea', 'label' => 'forms.lead_field_message', 'is_required' => true, 'sort_order' => 4],
         // Personal data is collected only with the visitor's explicit agreement; the ticked
         // sentence is stored with the lead as the evidence (SubmitForm).
         ['key' => 'consent', 'type' => 'checkbox', 'label' => 'forms.consent_label', 'is_required' => true, 'sort_order' => 5],
+    ];
+
+    /** The example shown inside an empty field of a new form, keyed like FIELDS' labels. */
+    private const array PLACEHOLDERS = [
+        'phone' => 'forms.placeholder_phone',
+        'email' => 'forms.placeholder_email',
+        'message' => 'forms.placeholder_message',
     ];
 
     /**
@@ -46,7 +60,8 @@ final class EnsureContactForm
         );
 
         foreach (self::FIELDS as $field) {
-            $form->fields()->firstOrCreate(['key' => $field['key']], [...$field, 'label' => $this->inEveryLanguage($field['label'])]);
+            $placeholder = isset(self::PLACEHOLDERS[$field['key']]) ? ['placeholder' => $this->inEveryLanguage(self::PLACEHOLDERS[$field['key']])] : [];
+            $form->fields()->firstOrCreate(['key' => $field['key']], [...$field, 'label' => $this->inEveryLanguage($field['label']), 'options' => $placeholder]);
         }
 
         $this->fillMissingLanguages($form);
