@@ -82,12 +82,18 @@ it('runs every query a release file defines', function () use ($shellValues, $ro
     $files = File::glob(base_path('scripts/deploy/releases/*.sh'));
     expect($files)->not->toBeEmpty();
 
+    $defined = 0;
     foreach ($files as $file) {
+        // a release with no data checks of its own defines none
         preg_match_all('/^\s*([A-Z_]+_SQL)=/m', (string) file_get_contents($file), $m);
-        expect($m[1])->not->toBeEmpty();
+        if ($m[1] === []) {
+            continue;
+        }
         foreach ($shellValues($file, implode(' ', $m[1])) as $name => $sql) {
             expect($sql)->not->toBe('', "{$name} in ".basename($file));
             $rows($sql);   // throws on SQL PostgreSQL rejects
+            $defined++;
         }
     }
+    expect($defined)->toBeGreaterThan(0);
 });
