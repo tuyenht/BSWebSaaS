@@ -1038,18 +1038,22 @@
       "type": "contact",
       "props": {
        "variant": "cards",
-       "phone": "0915668383",
+       "phone": "0915 66 83 83",
        "phone_label": "Điện thoại",
+       "zalo": "https://zalo.me/0915668383",
+       "zalo_label": "Gửi ảnh bản vẽ qua Zalo OA",
        "email": "quybv@ckanvinh.vn",
        "email_label": "Email",
        "address": "Xã Trung Giã, TP Hà Nội",
-       "address_label": "Trụ sở & Nhà máy"
+       "address_label": "Trụ sở & Nhà máy",
+       "hours": "Thứ 2 – Thứ 7, giờ hành chính"
       }
      },
      {
       "type": "form",
       "props": {
        "form_key": "contact",
+       "heading": "Gửi Yêu Cầu Tư Vấn",
        "description": "Điền vào biểu mẫu bên dưới và chúng tôi sẽ liên hệ lại với bạn trong thời gian sớm nhất.",
        "map_embed": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d12503.468002335805!2d105.85833024594946!3d21.29902948043917!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31351dc82e015dad%3A0xc3a6d44da6b27bb9!2zQ8O0bmcgdHkgY8ahIGtow60gQW4gVmluaA!5e0!3m2!1svi!2s!4v1762317872785!5m2!1svi!2s"
       }
