@@ -346,3 +346,43 @@ it('refuses a file over the media library\'s upload limit', function (): void {
 
     expect(implode("\n", cpProblems()))->toContain("media slot 'profile': media/profile.pdf is 10.0 MB; the media library takes files up to 10 MB.");
 });
+
+/** Adds a call to action to the about page whose button downloads $slot, its label followed by the file's type and size. */
+function cpAddFileButton(string $folder, string $slot): void
+{
+    ContentPacks::item($folder, 'pages.json', 'page:/gioi-thieu', function (array $page) use ($slot): array {
+        $page['body']['vi'][] = ['type' => 'cta', 'props' => [
+            'heading' => 'Hồ sơ năng lực',
+            'button_label' => ['text' => 'Tải hồ sơ', 'type_and_size_of' => $slot],
+            'button_url_do' => ['k' => 'file', 'file' => ['media' => $slot]],
+        ]];
+
+        return $page;
+    });
+}
+
+it('accepts a page button that downloads a document slot', function (): void {
+    cpAddSlot($this->folder, ['slot' => 'profile', 'kind' => 'document'], 'media/profile.pdf', "%PDF-1.4\n%%EOF\n");
+    cpAddFileButton($this->folder, 'profile');
+
+    expect(cpProblems())->toBe([]);
+});
+
+it('refuses a download button that names an image slot or a slot media.json does not list', function (): void {
+    cpAddFileButton($this->folder, 'header');
+    cpAddFileButton($this->folder, 'brochure');
+
+    expect(implode("\n", cpProblems()))->toContain("page:/gioi-thieu: media slot 'header' is an image, not a document.")
+        ->toContain("page:/gioi-thieu: document slot 'brochure' is not in media.json.");
+});
+
+it('refuses a download button outside a page or post body', function (): void {
+    cpAddSlot($this->folder, ['slot' => 'profile', 'kind' => 'document'], 'media/profile.pdf', "%PDF-1.4\n%%EOF\n");
+    cpAddSetting($this->folder, 'setting:storefront.layout_blocks', ['post_aside' => ['vi' => ['blocks' => [['type' => 'consult', 'props' => [
+        'heading' => 'Hồ sơ năng lực',
+        'button_label' => 'Tải hồ sơ',
+        'button_url_do' => ['k' => 'file', 'file' => ['media' => 'profile']],
+    ]]]]]]);
+
+    expect(implode("\n", cpProblems()))->toContain('setting:storefront.layout_blocks: a file download button is supported only in a page or post body.');
+});

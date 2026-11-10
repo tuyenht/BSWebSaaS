@@ -80,7 +80,7 @@ final class Planner
     /** @var array<int, string> product id → key */
     private array $productKeys = [];
 
-    /** @var array<string, array{id: int, key: string}|null> */
+    /** @var array<string, array{id: int, key: string, mime: string, size: int}|null> */
     private array $slots = [];
 
     /** Slots resolved to the pack's own file (the rest of the resolved ones use a legacy image). */
@@ -235,7 +235,7 @@ final class Planner
         return $this->matched[$key] ?? null;
     }
 
-    /** @return array{id: int, key: string}|null */
+    /** @return array{id: int, key: string, mime: string, size: int}|null */
     public function slot(string $name): ?array
     {
         return $this->slots[$name] ?? null;
@@ -329,7 +329,7 @@ final class Planner
         }
         if ($hashes !== []) {
             $rows = Media::query()->whereIn('hash', array_values(array_unique(array_map(fn (string $at): string => explode("\0", $at, 2)[1], $hashes))))
-                ->get(['id', 'collection', 'hash', 'storage_key']);
+                ->get(['id', 'collection', 'hash', 'storage_key', 'mime', 'size']);
             $byHash = [];
             foreach ($rows as $row) {
                 $byHash[$row->collection."\0".$row->hash] = $row;
@@ -337,7 +337,7 @@ final class Planner
             foreach ($hashes as $name => $at) {
                 $row = $byHash[$at] ?? null;
                 if ($row instanceof Media) {
-                    $this->slots[$name] = ['id' => $row->id, 'key' => $row->storage_key];
+                    $this->slots[$name] = ['id' => $row->id, 'key' => $row->storage_key, 'mime' => $row->mime, 'size' => $row->size];
                     $this->packed++;
                 }
             }
@@ -354,11 +354,11 @@ final class Planner
             return;
         }
 
-        $media = Media::query()->whereIn('storage_key', array_values($keys))->get(['id', 'storage_key'])->keyBy('storage_key');
+        $media = Media::query()->whereIn('storage_key', array_values($keys))->get(['id', 'storage_key', 'mime', 'size'])->keyBy('storage_key');
         foreach ($keys as $name => $key) {
             $row = $media->get($key);
             if ($row instanceof Media) {
-                $this->slots[$name] = ['id' => $row->id, 'key' => $row->storage_key];
+                $this->slots[$name] = ['id' => $row->id, 'key' => $row->storage_key, 'mime' => $row->mime, 'size' => $row->size];
             }
         }
     }
@@ -373,7 +373,9 @@ final class Planner
 
     /**
      * A body with every `{"media": slot}` replaced by the slot's media id — or left out when the
-     * slot does not resolve (a list element is dropped, an object prop is removed).
+     * slot does not resolve (a list element is dropped, an object prop is removed). A file button
+     * gets the document's storage key and its label the document's type and size; a document that
+     * does not resolve leaves the button out and its label as the plain text.
      */
     private function resolveBody(mixed $value, string $at): mixed
     {
@@ -384,6 +386,25 @@ final class Planner
         $list = array_is_list($value);
         $out = [];
         foreach ($value as $key => $child) {
+            if (PackValidator::isFileButton($child)) {
+                $slot = $this->slots[$child['file']['media']] ?? null;
+                if ($slot === null) {
+                    $this->warnings[] = "{$at}: ".str_replace('image slot', 'document slot', $this->unresolved($child['file']['media'])).'; the download button is left out.';
+
+                    continue;
+                }
+                $out[$key] = ['k' => 'file', 'file' => $slot['key']];
+
+                continue;
+            }
+            if (PackValidator::isFileLabel($child)) {
+                $slot = $this->slots[$child['type_and_size_of']] ?? null;
+                $out[$key] = $slot === null
+                    ? $child['text']
+                    : $child['text'].' ('.Media::typeAndSize($slot['mime'], $slot['size']).')';
+
+                continue;
+            }
             if (PackValidator::isMediaRef($child)) {
                 $slot = $this->slots[$child['media']] ?? null;
                 if ($slot === null) {

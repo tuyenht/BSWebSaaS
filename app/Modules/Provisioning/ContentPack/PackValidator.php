@@ -136,6 +136,17 @@ final readonly class PackValidator
                     $errors[] = "{$at}: media slot '{$slot}' is a document, not an image.";
                 }
             }
+            $documents = self::documentsIn($item->data);
+            if ($documents !== [] && ! in_array($item->kind, ['page', 'post'], true)) {
+                $errors[] = "{$at}: a file download button is supported only in a page or post body.";
+            }
+            foreach ($documents as $slot) {
+                if (! isset($pack->slots[$slot])) {
+                    $errors[] = "{$at}: document slot '{$slot}' is not in media.json.";
+                } elseif (! self::isDocument($pack->slots[$slot])) {
+                    $errors[] = "{$at}: media slot '{$slot}' is an image, not a document.";
+                }
+            }
         }
 
         foreach ($pack->slots as $name => $slot) {
@@ -146,13 +157,13 @@ final readonly class PackValidator
     }
 
     /**
-     * Every `{"media": slot}` reference anywhere in a value.
+     * Every `{"media": slot}` image reference anywhere in a value (a file button's document is not one).
      *
      * @return list<string>
      */
     public static function slotsIn(mixed $value): array
     {
-        if (! is_array($value)) {
+        if (! is_array($value) || self::isFileButton($value) || self::isFileLabel($value)) {
             return [];
         }
         if (self::isMediaRef($value)) {
@@ -171,6 +182,54 @@ final readonly class PackValidator
     public static function isMediaRef(mixed $value): bool
     {
         return is_array($value) && count($value) === 1 && is_string($value['media'] ?? null);
+    }
+
+    /**
+     * Every document slot a file button names anywhere in a value: the button's
+     * `{"k": "file", "file": {"media": slot}}` and its label's `{"text": …, "type_and_size_of": slot}`.
+     *
+     * @return list<string>
+     */
+    public static function documentsIn(mixed $value): array
+    {
+        if (! is_array($value)) {
+            return [];
+        }
+        if (self::isFileButton($value)) {
+            return [$value['file']['media']];
+        }
+        if (self::isFileLabel($value)) {
+            return [$value['type_and_size_of']];
+        }
+
+        $slots = [];
+        foreach ($value as $child) {
+            array_push($slots, ...self::documentsIn($child));
+        }
+
+        return array_values(array_unique($slots));
+    }
+
+    /**
+     * A download button of a page body that names a pack document: `{"k": "file", "file": {"media": slot}}`.
+     * It loads as the button the admin stores, holding the document's storage key.
+     *
+     * @phpstan-assert-if-true array{k: 'file', file: array{media: string}} $value
+     */
+    public static function isFileButton(mixed $value): bool
+    {
+        return is_array($value) && count($value) === 2 && ($value['k'] ?? null) === 'file' && self::isMediaRef($value['file'] ?? null);
+    }
+
+    /**
+     * A button label followed by a pack document's type and size, read from the uploaded file:
+     * `{"text": "Tải hồ sơ", "type_and_size_of": slot}` loads as "Tải hồ sơ (PDF · 9,0 MB)".
+     *
+     * @phpstan-assert-if-true array{text: string, type_and_size_of: string} $value
+     */
+    public static function isFileLabel(mixed $value): bool
+    {
+        return is_array($value) && count($value) === 2 && is_string($value['text'] ?? null) && is_string($value['type_and_size_of'] ?? null);
     }
 
     /** @param list<string> $errors */
@@ -437,7 +496,7 @@ final readonly class PackValidator
                     $errors[] = "{$where}: needs {\"blocks\": […]}.";
                 } elseif (($max = LayoutSlots::maxBlocks($slot)) !== null && count($blocks) > $max) {
                     $errors[] = "{$where}: holds at most {$max} blocks.";
-                } elseif (count(self::slotsIn($blocks)) > 0) {
+                } elseif (self::slotsIn($blocks) !== [] || self::documentsIn($blocks) !== []) {
                     $errors[] = "{$where}: an image reference is not supported inside a block slot.";
                 } else {
                     $check = Validator::make(['blocks' => $blocks], ['blocks' => [$this->pageJson->forSlots()]]);
@@ -761,11 +820,20 @@ final readonly class PackValidator
         }
     }
 
-    /** Image references stand in as a media id while the body is checked (they resolve later). */
+    /**
+     * Image references stand in as a media id while the body is checked (they resolve later); a file
+     * button stands in with no file chosen yet and its label as the plain text.
+     */
     private static function withPlaceholderMedia(mixed $value): mixed
     {
         if (self::isMediaRef($value)) {
             return 1;
+        }
+        if (self::isFileButton($value)) {
+            return ['k' => 'file'];
+        }
+        if (self::isFileLabel($value)) {
+            return $value['text'];
         }
 
         return is_array($value) ? array_map(self::withPlaceholderMedia(...), $value) : $value;
