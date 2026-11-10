@@ -120,8 +120,8 @@ test('only the last segment of a foldered key names the download', async () => {
   assert.equal((await get(`/${k}`, env({ [k]: '%PDF' }))).headers.get('Content-Disposition'), NAMED);
 });
 
-test('a name with a quote or a space falls back to a plain attachment', async () => {
-  for (const k of ['a/x%22y-0123456789ab.pdf', 'a/x%20y-0123456789ab.pdf', 'a/x%3By.pdf']) {
+test('a name with a quote or a space, or not starting with a letter or digit, falls back to a plain attachment', async () => {
+  for (const k of ['a/x%22y-0123456789ab.pdf', 'a/x%20y-0123456789ab.pdf', 'a/x%3By.pdf', 'a/-0123456789ab.pdf', 'a/.hidden.pdf']) {
     const key = decodeURIComponent(k);
     const res = await get(`/${k}`, env({ [key]: '%PDF' }));
     assert.equal(res.headers.get('Content-Disposition'), 'attachment', k);
