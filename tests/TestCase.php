@@ -7,6 +7,7 @@ namespace Tests;
 use App\Modules\Shared\Http\SafeHttp;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use PDO;
 
 abstract class TestCase extends BaseTestCase
@@ -40,6 +41,16 @@ abstract class TestCase extends BaseTestCase
         // would otherwise reach out from the sync queue): every host resolves to nothing unless a
         // test binds its own answers.
         $this->app->instance(SafeHttp::class, new SafeHttp(static fn (string $host): array => []));
+
+        // Each test boots its own application. Its database connections would close only when PHP
+        // collects that application, which a reference cycle can put off for many tests, so a
+        // shard could hold dozens of idle connections and reach the server's limit ("too many
+        // clients"). Close them when the test ends.
+        $this->beforeApplicationDestroyed(static function (): void {
+            foreach (array_keys(DB::getConnections()) as $name) {
+                DB::disconnect($name);
+            }
+        });
     }
 
     /**
