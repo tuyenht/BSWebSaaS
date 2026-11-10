@@ -491,8 +491,7 @@ final readonly class PageRenderer
         // one gets an anchor and a link on the bar; the bar's script marks the part being read.
         $slotHtml = is_array($extra['slotHtml'] ?? null) ? $extra['slotHtml'] : [];
         $shared = Cast::string($slotHtml['product_tabs'] ?? '');
-        $body = (trim($descriptionHtml) !== '' ? '<section class="sf-prose">'.$descriptionHtml.'</section>' : '').$shared;
-        $parts = ArticleToc::parts($body, self::PRODUCT_IDS);
+        $parts = ArticleToc::parts($descriptionHtml, $shared, self::PRODUCT_IDS);
 
         return $this->views->make($layout, $this->head($seo, $name, $extra) + [
             'title' => $name,

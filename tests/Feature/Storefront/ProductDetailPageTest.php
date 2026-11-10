@@ -393,6 +393,30 @@ it('splits a description written with h3 headings only at those, and draws no ba
         ->toContain('<section class="sf-prose"><h2>Mô tả</h2><p>Một.</p><h3>Bảo hành</h3><p>Hai.</p></section>');
 });
 
+it('picks the heading level from the description alone, not from a shared part that carries an h2', function (): void {
+    $product = productSite();
+    productDescribe($product, '<h3>Mô tả</h3><p>Một.</p><h3>Bảo hành</h3><p>Hai.</p>');
+    productSlots($product, ['product_tabs' => [
+        ['type' => 'richtext_html', 'props' => ['html' => '<h2>Hỗ trợ</h2><p>Ba.</p>']],
+    ]]);
+
+    $html = productHtml();
+
+    expect(productBar($html))->toBe([['muc-mo-ta', 'Mô tả'], ['muc-bao-hanh', 'Bảo hành'], ['muc-ho-tro', 'Hỗ trợ']])
+        ->and($html)->toContain('<h3 id="muc-mo-ta">Mô tả</h3>')->toContain('<h2 id="muc-ho-tro">Hỗ trợ</h2>');
+});
+
+it('does not take a heading inside a table cell as a part, and labels a heading with inline markup by its text', function (): void {
+    $product = productSite();
+    productDescribe($product, '<h2><strong>Mô tả</strong></h2><p>Một.</p><table><tbody><tr><td><h2>Trong bảng</h2></td></tr></tbody></table><h2>Bảo hành</h2><p>Hai.</p>');
+
+    $html = productHtml();
+
+    expect(productBar($html))->toBe([['muc-mo-ta', 'Mô tả'], ['muc-bao-hanh', 'Bảo hành']])
+        ->and($html)->toContain('<h2 id="muc-mo-ta"><strong>Mô tả</strong></h2>')
+        ->not->toContain('muc-trong-bang');
+});
+
 it('adds the site\'s shared parts after the description, each with its link on the bar', function (): void {
     $product = productSite();
     productDescribe($product, '<h2>Mô tả</h2><p>Một.</p><h2>Hỏi đáp</h2><p>Hai.</p>');

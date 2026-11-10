@@ -59,17 +59,21 @@ final class ArticleToc
     }
 
     /**
-     * The parts of a product's description (its formatted text and the site's shared parts after
-     * it, each drawn as a formatted-text or block section): one per heading of the highest level the
-     * text uses, h2, or h3 when it has no h2 at all; two or more make the section bar.
+     * The parts of a product's description (its formatted text, then the site's shared parts, each
+     * drawn as a formatted-text or block section): one per heading of the highest level the
+     * description itself uses, h2, or h3 when it has no h2 at all; a shared part always counts by its
+     * h2 and block heads, whatever the description uses. A heading inside a table is not a part. Two
+     * or more parts make the section bar.
      *
      * @param  list<string>  $taken  ids already on the page
      * @return array{html: string, items: list<array{id: string, label: string}>}
      */
-    public static function parts(string $html, array $taken = []): array
+    public static function parts(string $description, string $shared, array $taken = []): array
     {
-        $level = stripos($html, '<h2') === false ? 'h3' : 'h2';
-        $toc = self::build($html, $taken, '~(<section class="sf-prose">)(.*?)(</section>)'.self::BLOCK_HEAD.'~s', false, $level);
+        $hasDescription = trim($description) !== '';
+        $level = preg_match('~<h2[\s>]~i', (string) preg_replace('~<table\b.*?</table>~is', '', $description)) === 1 ? 'h2' : 'h3';
+        $html = ($hasDescription ? '<section class="sf-prose">'.$description.'</section>' : '').$shared;
+        $toc = self::build($html, $taken, '~(<section class="sf-prose">)(.*?)(</section>)'.self::BLOCK_HEAD.'~s', false, $hasDescription ? [0 => $level] : []);
 
         return ['html' => $toc['html'], 'items' => $toc['items']];
     }
@@ -91,13 +95,15 @@ final class ArticleToc
 
     /**
      * @param  list<string>  $taken
+     * @param  array<int, string>  $levels  heading level by the position of a matched section (h2 when absent)
      * @return array{html: string, items: list<array{id: string, label: string}>, own: bool}
      */
-    private static function build(string $html, array $taken, string $pattern, bool $number, string $level = 'h2'): array
+    private static function build(string $html, array $taken, string $pattern, bool $number, array $levels = []): array
     {
         $none = ['html' => $html, 'items' => [], 'own' => false];
-        $heading = '~<'.$level.'>(.*?)</'.$level.'>~s';
-        if (stripos($html, '<'.$level) === false) {
+        // A heading inside a table is skipped, not a part.
+        $heading = static fn (string $level): string => '~<table\b.*?</table>(*SKIP)(*FAIL)|<'.$level.'>(.*?)</'.$level.'>~is';
+        if (stripos($html, '<h2') === false && stripos($html, '<h3') === false) {
             return $none;
         }
 
@@ -106,12 +112,14 @@ final class ArticleToc
         $isBlock = static fn (array $part): bool => ($part[4] ?? '') !== '';
         $headings = 0;
         $own = false;
-        preg_replace_callback($pattern, function (array $part) use (&$headings, &$own, $number, $isBlock, $heading): string {
+        $at = 0;
+        preg_replace_callback($pattern, function (array $part) use (&$headings, &$own, &$at, $number, $isBlock, $heading, $levels): string {
+            $level = $levels[$at++] ?? 'h2';
             $found = [1 => []];
             if ($isBlock($part)) {
                 $found[1][] = $part[5];
             } else {
-                preg_match_all($heading, $part[2], $found);
+                preg_match_all($heading($level), $part[2], $found);
             }
             $headings += count($found[1]);
             foreach ($found[1] as $inner) {
@@ -144,13 +152,15 @@ final class ArticleToc
 
             return ['id' => $id, 'text' => $text];
         };
-        $out = preg_replace_callback($pattern, function (array $part) use ($anchor, $isBlock, $heading, $level): string {
+        $at = 0;
+        $out = preg_replace_callback($pattern, function (array $part) use ($anchor, $isBlock, $heading, $levels, &$at): string {
+            $level = $levels[$at++] ?? 'h2';
             if ($isBlock($part)) {
                 $made = $anchor($part[5]);
 
                 return $made === null ? $part[0] : $part[4].'<h2 class="sf-section-head__title" id="'.$made['id'].'">'.$made['text'].'</h2>';
             }
-            $inner = preg_replace_callback($heading, function (array $found) use ($anchor, $level): string {
+            $inner = preg_replace_callback($heading($level), function (array $found) use ($anchor, $level): string {
                 $made = $anchor($found[1]);
 
                 return $made === null ? $found[0] : '<'.$level.' id="'.$made['id'].'">'.$made['text'].'</'.$level.'>';
