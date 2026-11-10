@@ -67,11 +67,11 @@
             this.unlisten?.();
         },
         get expanded() {
-            return this.wide ? this.$store.adminTheme.state.sidebar_size !== 'sm' : this.open;
+            return this.wide ? ! this.$store.adminTheme.folded : this.open;
         },
         toggle() {
             if (this.wide) {
-                this.$store.adminTheme.set('sidebar_size', this.expanded ? 'sm' : 'lg');
+                this.$store.adminTheme.toggleSidebar();
             } else if (this.open) {
                 this.close();
             } else {

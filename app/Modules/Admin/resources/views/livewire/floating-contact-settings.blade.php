@@ -476,22 +476,28 @@
 
             {{-- Preview and the "applies everywhere" note --}}
             <div class="flex min-w-0 flex-col gap-4 @min-[56rem]/fc:sticky @min-[56rem]/fc:top-[calc(var(--topbar-height)+1.375rem)]">
-                <div class="rounded-md border border-border bg-surface shadow-card" x-data="{ dev: 'desktop' }">
+                {{-- The bottom bar only exists on phones: its preview is always the phone, with no device switch. --}}
+                <div class="rounded-md border border-border bg-surface shadow-card" x-data="{ pick: 'desktop', get dev() { return this.$wire.theme === 'horizontal' ? 'mobile' : this.pick } }">
                     <div class="flex items-center justify-between gap-2.5 border-b border-border px-4 py-3">
-                        <h2 class="{{ $name }}">{{ __('admin.fc.preview') }}</h2>
+                        <h2 class="{{ $name }}">{{ __('admin.fc.preview') }}@unless ($isVertical)<span class="font-normal text-text-muted"> · {{ __('admin.fc.on_phone') }}</span>@endunless</h2>
+                        @if ($isVertical)
                         <div class="seg" role="group" aria-label="{{ __('admin.fc.device') }}">
-                            <button type="button" x-on:click="dev = 'desktop'" x-bind:aria-pressed="dev === 'desktop' ? 'true' : 'false'" aria-pressed="true" aria-label="{{ __('admin.fc.desk') }}" title="{{ __('admin.fc.desk') }}" class="inline-flex items-center justify-center">
+                            <button type="button" x-on:click="pick = 'desktop'" x-bind:aria-pressed="dev === 'desktop' ? 'true' : 'false'" aria-pressed="true" aria-label="{{ __('admin.fc.desk') }}" title="{{ __('admin.fc.desk') }}" class="inline-flex items-center justify-center">
                                 <x-bs-admin::icon name="ri-computer" class="size-[min(1.5rem,calc(0.9375rem+var(--user-text-boost)))]" />
                             </button>
-                            <button type="button" x-on:click="dev = 'mobile'" x-bind:aria-pressed="dev === 'mobile' ? 'true' : 'false'" aria-pressed="false" aria-label="{{ __('admin.fc.mob') }}" title="{{ __('admin.fc.mob') }}" class="inline-flex items-center justify-center">
+                            <button type="button" x-on:click="pick = 'mobile'" x-bind:aria-pressed="dev === 'mobile' ? 'true' : 'false'" aria-pressed="false" aria-label="{{ __('admin.fc.mob') }}" title="{{ __('admin.fc.mob') }}" class="inline-flex items-center justify-center">
                                 <x-bs-admin::icon name="ri-smartphone" class="size-[min(1.5rem,calc(0.9375rem+var(--user-text-boost)))]" />
                             </button>
                         </div>
+                        @endif
                     </div>
                     <div class="flex justify-center bg-surface-muted p-5" aria-hidden="true">
                         <div class="flex flex-col overflow-hidden bg-surface"
-                             x-bind:class="dev === 'mobile' ? 'h-[25.625rem] w-[14.375rem] rounded-[26px] border-[7px] border-text-strong shadow-[0_12px_30px_-10px_rgb(0_0_0/0.35)]' : 'h-[18.125rem] w-full rounded-[10px] shadow-[0_10px_30px_-12px_rgb(0_0_0/0.3)]'"
-                             class="h-[18.125rem] w-full rounded-[10px] shadow-[0_10px_30px_-12px_rgb(0_0_0/0.3)]">
+                             x-bind:class="dev === 'mobile' ? 'h-[25.625rem] w-[min(17.5rem,100%)] rounded-[26px] border-[7px] border-text-strong shadow-[0_12px_30px_-10px_rgb(0_0_0/0.35)]' : 'h-[18.125rem] w-full rounded-[10px] shadow-[0_10px_30px_-12px_rgb(0_0_0/0.3)]'"
+                             @class([
+                                 'h-[18.125rem] w-full rounded-[10px] shadow-[0_10px_30px_-12px_rgb(0_0_0/0.3)]' => $isVertical,
+                                 'h-[25.625rem] w-[min(17.5rem,100%)] rounded-[26px] border-[7px] border-text-strong shadow-[0_12px_30px_-10px_rgb(0_0_0/0.35)]' => ! $isVertical,
+                             ])>
                             <div class="flex h-7 shrink-0 items-center gap-1.5 border-b border-border bg-surface px-3">
                                 <span class="size-2 rounded-full bg-danger-base"></span><span class="size-2 rounded-full bg-warning-base"></span><span class="size-2 rounded-full bg-success-base"></span>
                             </div>
@@ -524,31 +530,28 @@
                                         @endforeach
                                     </div>
                                 @else
-                                    <div x-show="dev === 'mobile'" x-cloak class="absolute inset-x-0 bottom-0 flex h-[60px] border-t border-border bg-surface shadow-[0_-3px_16px_rgb(32_21_18/0.13)]">
+                                    <div class="absolute inset-x-0 bottom-0 flex min-h-12 border-t border-border bg-surface shadow-[0_-3px_16px_rgb(32_21_18/0.13)]">
                                         @foreach ($pvBar as $b)
-                                            <span @class(['flex min-w-0 flex-1 flex-col items-center justify-center gap-[3px] px-0.5 py-1.5', 'border-l border-border-soft' => ! $loop->first])>
-                                                <span class="flex min-h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full text-white" style="background: {{ $b['fill'] }}">
+                                            <span @class(['flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-[5px]', 'border-l border-border-soft' => ! $loop->first])>
+                                                <span class="flex h-[22px] min-w-[22px] shrink-0 items-center justify-center rounded-full px-[3px] text-white" style="background: {{ $b['fill'] }}">
                                                     @if ($b['text'] !== null)
-                                                        <span class="text-[0.5625rem] font-extrabold">{{ $b['text'] }}</span>
+                                                        <span class="text-caption leading-none font-extrabold">{{ $b['text'] }}</span>
                                                     @else
-                                                        <svg viewBox="0 0 24 24" fill="currentColor" class="size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))]"><path d="{{ $b['icon'] }}"/></svg>
+                                                        <svg viewBox="0 0 24 24" fill="currentColor" class="size-[min(1.5rem,calc(0.8125rem+var(--user-text-boost)))]"><path d="{{ $b['icon'] }}"/></svg>
                                                     @endif
                                                 </span>
-                                                <span class="max-w-full text-center text-caption leading-tight font-semibold text-text [overflow-wrap:anywhere]">{{ $word($b) }}</span>
+                                                <span class="max-w-full text-center text-caption leading-[1.2] font-semibold text-text [overflow-wrap:anywhere]">{{ $word($b) }}</span>
                                             </span>
                                         @endforeach
                                         @if ($pvBuy !== null)
-                                            <span @class(['flex min-w-0 flex-1 flex-col items-center justify-center gap-[3px] px-0.5 py-1.5', 'border-l border-border-soft' => $pvBar !== []])>
-                                                <span class="flex min-h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full" style="background: {{ $pvBuy['fill'] }}; color: {{ $pvBuy['ink'] }}">
-                                                    <svg viewBox="0 0 24 24" fill="currentColor" class="size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))]"><path d="{{ $svg('ri-shopping-bag-fill') }}"/></svg>
+                                            <span @class(['flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-[5px]', 'border-l border-border-soft' => $pvBar !== []])>
+                                                <span class="flex h-[22px] min-w-[22px] shrink-0 items-center justify-center rounded-full px-[3px]" style="background: {{ $pvBuy['fill'] }}; color: {{ $pvBuy['ink'] }}">
+                                                    <svg viewBox="0 0 24 24" fill="currentColor" class="size-[min(1.5rem,calc(0.8125rem+var(--user-text-boost)))]"><path d="{{ $svg('ri-shopping-bag-fill') }}"/></svg>
                                                 </span>
-                                                <span class="max-w-full text-center text-caption leading-tight font-semibold text-text [overflow-wrap:anywhere]">{{ __('storefront.fc_buy', [], $lang) }}</span>
+                                                <span class="max-w-full text-center text-caption leading-[1.2] font-semibold text-text [overflow-wrap:anywhere]">{{ __('storefront.fc_buy', [], $lang) }}</span>
                                             </span>
                                         @endif
                                     </div>
-                                    <p x-show="dev === 'desktop'" class="absolute inset-x-3.5 bottom-3.5 flex items-start gap-2 rounded-[7px] border border-info-text/30 bg-info-soft px-3 py-2.5 text-caption leading-snug text-info-text">
-                                        <x-bs-admin::icon name="ri-information" class="mt-px size-[min(1.5rem,calc(0.9375rem+var(--user-text-boost)))] shrink-0" />{{ __('admin.fc.preview_note') }}
-                                    </p>
                                 @endif
                             </div>
                         </div>

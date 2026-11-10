@@ -135,7 +135,7 @@ it('gives the platform console a menu button that drives the drawer, the laid-ov
         ->and((string) $shell->getAttribute('x-data'))->toMatch('/else if \(this\.open\) \{\s*this\.close\(\);/')
         ->and((string) $shell->getAttribute('x-data'))->not->toContain('defaultPrevented')
         ->and($shell->getAttribute(':data-nav-open'))->toBe("open ? '' : null")
-        ->and((string) $shell->getAttribute('x-data'))->toContain("\$store.adminTheme.set('sidebar_size'");
+        ->and((string) $shell->getAttribute('x-data'))->toContain('$store.adminTheme.toggleSidebar()');
 
     // The open drawer / laid-over menu is a dialog: Tab stays inside and the page does not scroll,
     // but the page is never hidden from screen readers — the drawer has no close button of its own,

@@ -137,6 +137,16 @@ it('keeps the first of a repeated channel in the phone bar too', function (): vo
         ->and($out['bar'][0]['href'])->toBe('https://zalo.me/0912345678');
 });
 
+it('fills the phone bar with five buttons at most, "Mua hàng" counted', function (): void {
+    $raw = ['enabled' => true, 'theme' => 'horizontal', 'buy' => ['enabled' => true, 'color' => '#0ab39c'], 'channels' => array_map(
+        static fn (string $key): array => ['key' => $key, 'on' => true, 'value' => '0912345678'],
+        ['phone', 'zalo', 'sms', 'whatsapp', 'viber', 'messenger'],
+    )];
+
+    expect(array_column(FloatingContact::for($raw, 'vi', '/san-pham')['bar'], 'key'))->toBe(['phone', 'zalo', 'sms', 'whatsapp'])
+        ->and(array_column(FloatingContact::for($raw, 'vi')['bar'], 'key'))->toBe(['phone', 'zalo', 'sms', 'whatsapp', 'viber']);
+});
+
 it('ends the phone bar with "Mua hàng" only when it is on and the site has a product list', function (): void {
     $raw = ['enabled' => true, 'theme' => 'horizontal', 'buy' => ['enabled' => true, 'color' => '#FFFFFF'], 'channels' => [
         ['key' => 'phone', 'on' => true, 'value' => '0912345678'],
@@ -147,7 +157,7 @@ it('ends the phone bar with "Mua hàng" only when it is on and the site has a pr
     $with = FloatingContact::for($raw, 'vi', '/san-pham');
     expect($with['buy'])->toMatchArray(['href' => '/san-pham', 'ink' => '#ffffff', 'icon' => ContactIcons::path('ri-shopping-bag-fill')])
         ->and(ReadableColor::ratio($with['buy']['fill'], '#ffffff'))->toBeGreaterThanOrEqual(3.0)
-        ->and(array_column($with['bar'], 'key'))->toBe(['phone', 'zalo']);
+        ->and(array_column($with['bar'], 'key'))->toBe(['phone', 'zalo', 'sms']);
 
     // No product list: the switch is kept but nothing is drawn, and the bar keeps three channels.
     $without = FloatingContact::for($raw, 'vi');

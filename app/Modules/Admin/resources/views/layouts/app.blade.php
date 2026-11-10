@@ -176,7 +176,7 @@
                     class="grid size-control any-pointer-coarse:size-hit place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg lg:hidden">
                 <x-bs-admin::icon name="menu" class="size-5" />
             </button>
-            <button type="button" @click="$store.adminTheme.set('sidebar_size', $store.adminTheme.state.sidebar_size === 'sm' ? 'lg' : 'sm')" aria-label="{{ __('admin.collapse_menu') }}"
+            <button type="button" @click="$store.adminTheme.toggleSidebar()" aria-label="{{ __('admin.collapse_menu') }}"
                     class="hidden size-control any-pointer-coarse:size-hit place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg lg:grid">
                 <x-bs-admin::icon name="menu" class="size-5" />
             </button>

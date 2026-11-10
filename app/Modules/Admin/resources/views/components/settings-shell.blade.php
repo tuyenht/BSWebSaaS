@@ -83,6 +83,10 @@
     $learned = array_values(array_filter((array) $hints, static fn (mixed $text, mixed $key): bool => is_string($key) && \App\Modules\Admin\Support\FirstHints::dismissed($key) && is_string($text) && $text !== '', ARRAY_FILTER_USE_BOTH));
     $hasInfo = $full !== '' || $learned !== [];
     $infoGlyph = 'size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))]';
+    // A page with this column folds the main menu to its icon rail so the column and the section
+    // get the room: the layout prints data-sidebar-fold on <html> (the shell renders before it),
+    // and app.js keeps it in step across wire:navigate through [data-set-shell]. Per request only.
+    request()->attributes->set('admin.sidebar_fold', true);
 @endphp
 <div class="mx-auto max-w-5xl" data-set-shell>
     <h1 class="mb-5 text-lg font-semibold text-heading">{{ \App\Modules\Admin\Support\AdminPlane::isPlatform() ? __('admin.settings_system') : __('admin.settings') }}</h1>

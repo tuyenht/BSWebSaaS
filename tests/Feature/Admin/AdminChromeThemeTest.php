@@ -184,3 +184,20 @@ it('prints the brand colour on the platform console too', function (): void {
         ->assertOk()
         ->assertSee('--color-primary:#9d174d;', false);
 });
+
+it('folds a wide menu to its icon rail on a settings page only, leaving the saved size alone', function (): void {
+    $htmlTag = fn (string $html): string => (string) strstr((string) strstr($html, '<html'), '>', true);
+    $member = themeMember();
+
+    $settings = $htmlTag((string) $this->actingAs($member)->get('http://a.test/admin/settings/security')->assertOk()->getContent());
+    $content = $htmlTag((string) $this->actingAs($member)->get('http://a.test/admin/content')->assertOk()->getContent());
+
+    expect($settings)->toContain('data-sidebar-fold=""')->toContain('data-sidebar-size="lg"')
+        ->and($content)->not->toContain('data-sidebar-fold');
+
+    // A member who keeps the small menu has nothing to fold.
+    $member->preferences = ['theme' => ['sidebar_size' => 'sm']];
+    $member->save();
+    expect($htmlTag((string) $this->actingAs($member->fresh())->get('http://a.test/admin/settings/security')->assertOk()->getContent()))
+        ->toContain('data-sidebar-size="sm"')->not->toContain('data-sidebar-fold');
+});

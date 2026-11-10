@@ -319,7 +319,7 @@ it('keeps the “Mua hàng” switch but shows the button nowhere while the site
     expect(fcsStored()['buy'])->toEqual(['enabled' => true, 'color' => '#ff7a46']);
 });
 
-it('shows “Mua hàng” in the preview, after two channels, when the site has a product list', function (): void {
+it('shows “Mua hàng” in the preview, after the channels, when the site has a product list', function (): void {
     $admin = fcsAdmin();
     fcsShop(1);
 
@@ -336,8 +336,25 @@ it('shows “Mua hàng” in the preview, after two channels, when the site has 
         $lw->set('channels.'.fcsIndex($lw, 'sms').'.value', '0912345678');
 
         expect($lw->viewData('preview')['buy'])->toMatchArray(['fill' => 'var(--color-primary)', 'ink' => 'var(--color-on-primary)'])
-            ->and(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo']);
+            ->and(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo', 'sms']);
         $lw->assertSee('Mua hàng');
+    });
+});
+
+it('previews the bottom bar on a phone only, with no device switch', function (): void {
+    $admin = fcsAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+            ->assertSee('aria-label="Thiết bị xem trước"', false)
+            ->assertDontSee('<span class="font-normal text-text-muted"> · trên điện thoại</span>', false);
+
+        $lw->call('setTheme', 'horizontal')
+            ->assertDontSee('aria-label="Thiết bị xem trước"', false)
+            ->assertSee('<span class="font-normal text-text-muted"> · trên điện thoại</span>', false)
+            ->assertSee('Điện thoại hẹp tự bớt nút ở cuối');
+
+        $lw->call('setTheme', 'vertical')->assertSee('aria-label="Thiết bị xem trước"', false);
     });
 });
 
