@@ -18,6 +18,17 @@ use Tests\Fixtures\StorefrontCards;
 
 const RETIRED = ['post:thiet-ke-jig-do-ga', 'post:san-xuat-chi-tiet-may-oem'];
 
+/** Pages written ahead of the files they offer: drafts until the company sends them. */
+const AWAITING_FILES = ['page:/ho-so-nang-luc'];
+
+/** The about section: the company page, then its subpages in menu order. */
+const ABOUT_PAGES = [
+    'page:/gioi-thieu' => 'Giới thiệu',
+    'page:/nha-xuong-may-moc' => 'Nhà xưởng & máy móc',
+    'page:/chung-chi-thanh-tuu' => 'Chứng chỉ & thành tựu',
+    'page:/ho-so-nang-luc' => 'Hồ sơ năng lực & tài liệu',
+];
+
 beforeEach(function (): void {
     StorefrontCards::reset();
     StorefrontCards::pinMediaConfig();
@@ -61,13 +72,13 @@ it('validates the real pack: schema, bodies, slots, content published but job of
                     ->and($item->data['claims'])->not->toBeEmpty();
             } else {
                 expect($item->data['verified'])->toBeTrue($item->key)
-                    ->and($item->data['status'])->toBe(in_array($item->key, RETIRED, true) ? 'draft' : 'published', $item->key)
+                    ->and($item->data['status'])->toBe(in_array($item->key, [...RETIRED, ...AWAITING_FILES], true) ? 'draft' : 'published', $item->key)
                     ->and($item->data)->not->toHaveKey('claims');
             }
         }
         expect(json_encode($item->data))->not->toContain('testimonial');
     }
-    expect($content)->toBe(44)->and($jobs)->toHaveCount(3);
+    expect($content)->toBe(46)->and($jobs)->toHaveCount(3);
     foreach ($pack->slots as $slot) {
         if (isset($slot['file'])) {
             expect(PackValidator::mime($pack->dir.'/'.$slot['file']))->not->toBeNull();
@@ -93,8 +104,10 @@ it('gives every project, news card and product its own image and the quality blo
         ->and($productImages->duplicates()->all())->toBe([]);
 
     $quality = collect($items['page:/gioi-thieu']->data['body']['vi'])
-        ->firstWhere('props.heading', 'Cam Kết Chất Lượng Theo Tiêu Chuẩn Quốc Tế');
+        ->firstWhere('props.heading', 'Cam kết chất lượng theo tiêu chuẩn quốc tế');
     expect($quality['props']['image_url'])->toBe(['media' => 'iso-9001-certificate']);
+    $certificate = collect($items['page:/chung-chi-thanh-tuu']->data['body']['vi'])->firstWhere('type', 'about');
+    expect($certificate['props']['image_url'])->toBe(['media' => 'iso-9001-certificate']);
 });
 
 it('never moves a tone mark off its syllable when the text is spelt the new way (hoàn, thoát stay whole)', function (): void {
@@ -231,14 +244,14 @@ it('plans the real pack on a fresh site with no conflict, and every internal lin
 
     $this->get('http://'.ContentPacks::HOST.'/thiet-ke-jig-do-ga')->assertStatus(301)->assertRedirect('/thiet-ke-lap-trinh');
     $this->get('http://'.ContentPacks::HOST.'/san-xuat-chi-tiet-may-oem')->assertStatus(301)->assertRedirect('/gia-cong-phay-tien-cnc');
-    foreach (['/', '/gioi-thieu', '/doi-tac', '/nha-xuong-may-moc', '/cam-on', '/nang-luc', '/thiet-ke-lap-trinh', '/gia-cong-phay-tien-cnc',
+    foreach (['/', '/gioi-thieu', '/doi-tac', '/nha-xuong-may-moc', '/chung-chi-thanh-tuu', '/cam-on', '/nang-luc', '/thiet-ke-lap-trinh', '/gia-cong-phay-tien-cnc',
         '/gia-cong-cat-day-xung-dien', '/han-lap-rap-co-khi', '/do-kiem-qa-qc', '/du-an', '/tin-tuc', '/san-pham', '/lien-he'] as $path) {
         $this->get('http://'.ContentPacks::HOST.$path)->assertOk();
     }
-    foreach (['/ky-thuat-vien-van-hanh-may-cnc', '/ky-su-thiet-ke-co-khi-do-ga', '/nhan-vien-kiem-tra-chat-luong-qc'] as $path) {
+    foreach (['/ky-thuat-vien-van-hanh-may-cnc', '/ky-su-thiet-ke-co-khi-do-ga', '/nhan-vien-kiem-tra-chat-luong-qc', '/ho-so-nang-luc'] as $path) {
         $this->get('http://'.ContentPacks::HOST.$path)->assertNotFound();
     }
-    expect($this->get('http://'.ContentPacks::HOST.'/gioi-thieu')->getContent())->toContain('Nhà Xưởng &amp; Máy Móc')
+    expect($this->get('http://'.ContentPacks::HOST.'/gioi-thieu')->getContent())->toContain('Nhà xưởng &amp; máy móc')
         ->and($this->get('http://'.ContentPacks::HOST.'/gia-cong-cat-day-xung-dien')->getContent())->toContain('nguồn kênh Kurt Bleyweert')->toContain('4IhkMgHkMEA');
 });
 
@@ -272,4 +285,60 @@ it('loads the flourish heading decoration, a floating contact of Zalo and call o
 
     $product = $this->get('http://'.ContentPacks::HOST.'/jig-kiem-tap-lo-vf7')->assertOk()->getContent();
     expect($product)->toContain('Cần đồ gá cho dây chuyền của bạn?');
+});
+
+it('builds the about section as one family: a parent page, titles named like the menu, one band style, one closing call, unique search texts', function (): void {
+    $items = collect((new PackReader)->read('an-vinh')->items)->keyBy(fn ($item) => $item->key);
+    $closing = null;
+    $seo = [];
+
+    foreach (ABOUT_PAGES as $key => $title) {
+        $page = $items[$key];
+        $blocks = collect($page->data['body']['vi']);
+        expect($page->data['title']['vi'])->toBe($title, $key)
+            ->and($page->data['parent'] ?? null)->toBe($key === 'page:/gioi-thieu' ? null : 'page:/gioi-thieu', $key)
+            ->and($blocks->first()['type'])->toBe('page_header', $key)
+            ->and($blocks->where('type', 'page_header'))->toHaveCount(1)
+            ->and($blocks->first()['props'])->toHaveKeys(['title', 'subtitle', 'image_url'])->not->toHaveKey('overlay')
+            ->and($page->data['seo_title']['vi'])->toEndWith(' | Cơ Khí Chính Xác An Vinh')
+            ->and(mb_strlen($page->data['seo_title']['vi']))->toBeLessThanOrEqual(60, $key)
+            ->and(mb_strlen($page->data['seo_description']['vi']))->toBeGreaterThanOrEqual(140, $key)->toBeLessThanOrEqual(160, $key);
+        $closing ??= $blocks->last();
+        expect($blocks->last())->toBe($closing, $key)
+            ->and($closing['props']['button_url'])->toBe('/lien-he');
+        $seo[] = $page->data['seo_title']['vi'];
+        $seo[] = $page->data['seo_description']['vi'];
+    }
+    expect(array_unique($seo))->toHaveCount(count($seo));
+
+    // the short ISO summary on the company page leads to the full certificate page
+    expect(collect($items['page:/gioi-thieu']->data['body']['vi'])->firstWhere('props.anchor_id', 'chung-chi')['props']['cta_url'])->toBe('/chung-chi-thanh-tuu');
+
+    $menu = fn (string $key): array => $items[$key]->data['items'];
+    $about = collect($menu('menu:primary'))->firstWhere('label.vi', 'Giới thiệu');
+    $wanted = [['Giới thiệu công ty', 'page:/gioi-thieu'], ...array_map(null, array_slice(array_values(ABOUT_PAGES), 1), array_slice(array_keys(ABOUT_PAGES), 1))];
+    expect($about['target'])->toBe('page:/gioi-thieu')
+        ->and(collect($about['children'])->map(fn (array $child): array => [$child['label']['vi'], $child['target']])->all())->toBe($wanted)
+        ->and(collect($menu('menu:footer')[0]['children'])->take(4)->map(fn (array $child): array => [$child['label']['vi'], $child['target']])->all())->toBe($wanted);
+});
+
+it('shows each about subpage under Giới thiệu in its breadcrumb, opens the about menu by its own button, and keeps the draft out of the menus', function (): void {
+    $folder = ContentPacks::use('an-vinh', database_path('content-packs'));
+    ContentPacks::edit($folder, 'pack.json', fn (array $pack): array => ['hosts' => [ContentPacks::HOST]] + $pack);
+    StorefrontCards::site('Demo', ContentPacks::HOST);
+    [$exit, $output] = ContentPacks::load('an-vinh');
+    expect($exit)->toBe(0, $output);
+
+    foreach (['/nha-xuong-may-moc' => 'Nhà xưởng &amp; máy móc', '/chung-chi-thanh-tuu' => 'Chứng chỉ &amp; thành tựu'] as $path => $crumb) {
+        $html = $this->get('http://'.ContentPacks::HOST.$path)->assertOk()->getContent();
+        expect(preg_match('#<nav class="sf-crumbs[^"]*"[^>]*>.*?</nav>#s', $html, $crumbs))->toBe(1, $path)
+            ->and($crumbs[0])->toMatch('#<a class="sf-crumbs__link" href="/">Trang chủ</a>.*<a class="sf-crumbs__link" href="/gioi-thieu">Giới thiệu</a>.*<span class="sf-crumbs__current" aria-current="page">'.preg_quote($crumb, '#').'</span>#s')
+            ->and(substr_count($html, '<h1'))->toBe(1, $path);
+    }
+
+    $home = $this->get('http://'.ContentPacks::HOST.'/')->assertOk()->getContent();
+    expect($home)->toMatch('#<a class="sf-nav__link" href="/gioi-thieu"\s*>Giới thiệu</a><button type="button" class="sf-nav__chev" aria-expanded="false" aria-controls="dsm-1"#')
+        ->toContain('href="/chung-chi-thanh-tuu"')
+        ->not->toContain('/ho-so-nang-luc')
+        ->not->toContain('/gioi-thieu#chung-chi');
 });
