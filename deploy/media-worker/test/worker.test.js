@@ -100,13 +100,18 @@ test('uploads in flight and other underscore prefixes are not public, on either 
 test('a pdf is a download, never rendered inline', async () => {
   const res = await get('/a/library/bang-gia-1a2b.pdf', env({ 'a/library/bang-gia-1a2b.pdf': '%PDF' }));
   assert.equal(res.headers.get('Content-Type'), 'application/pdf');
-  assert.equal(res.headers.get('Content-Disposition'), 'attachment; filename="bang-gia-1a2b.pdf"; filename*=UTF-8\'\'bang-gia-1a2b.pdf');
+  assert.equal(res.headers.get('Content-Disposition'), 'attachment; filename="bang-gia.pdf"; filename*=UTF-8\'\'bang-gia.pdf');
 });
 
 const NAMED = 'attachment; filename="ho-so-nang-luc-an-vinh.pdf"; filename*=UTF-8\'\'ho-so-nang-luc-an-vinh.pdf';
 
 test('a pdf download drops the content hash from its file name', async () => {
   const k = 'an-vinh/library/ho-so-nang-luc-an-vinh-0123456789ab.pdf';
+  assert.equal((await get(`/${k}`, env({ [k]: '%PDF' }))).headers.get('Content-Disposition'), NAMED);
+});
+
+test('a pdf download drops the default 4-hex content hash too', async () => {
+  const k = 'co-khi-chinh-xac-an-vinh/library/ho-so-nang-luc-an-vinh-6ab7.pdf';
   assert.equal((await get(`/${k}`, env({ [k]: '%PDF' }))).headers.get('Content-Disposition'), NAMED);
 });
 
