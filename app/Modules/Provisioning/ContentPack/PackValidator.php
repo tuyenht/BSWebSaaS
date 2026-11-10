@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Provisioning\ContentPack;
 
+use App\Modules\Admin\Support\Settings\FloatingContactInput;
+use App\Modules\Admin\Support\Settings\HeadingDecorInput;
+use App\Modules\Admin\Support\Settings\SettingsChangeRejected;
 use App\Modules\Cms\Taxonomy\TaxonomyRules;
 use App\Modules\Cms\Validation\ValidPageJson;
 use App\Modules\Media\Models\Media;
@@ -11,7 +14,12 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\RichTextSanitizer;
 use App\Modules\Shared\Support\SafeLink;
 use App\Modules\Theme\Chrome\StorefrontChrome;
+use App\Modules\Theme\Components\ButtonLink;
 use App\Modules\Theme\Components\ComponentRegistry;
+use App\Modules\Theme\Components\SchemaHtml;
+use App\Modules\Theme\Components\SchemaImages;
+use App\Modules\Theme\Rendering\LayoutSlots;
+use App\Modules\Theme\Rendering\RichHtml;
 use App\Modules\Theme\Rendering\TemplateCatalog;
 use App\Modules\Theme\Theming\ThemeResolver;
 use Illuminate\Support\Facades\Validator;
@@ -48,8 +56,8 @@ final readonly class PackValidator
 
     /** The setting groups and names a pack may write; everything else is the site's own. */
     private const array SETTINGS = [
-        'theme' => ['tokens'],
-        'storefront' => ['header', 'footer'],
+        'theme' => ['tokens', 'heading_decor'],
+        'storefront' => ['header', 'footer', 'floating_contact', 'layout_blocks'],
         'general' => ['brand'],
     ];
 
@@ -237,6 +245,9 @@ final readonly class PackValidator
             'setting:theme.tokens' => $this->tokens($item->key, $value, $errors),
             'setting:storefront.header' => $this->chromeHeader($item->key, $value, $pack, $errors),
             'setting:storefront.footer' => $this->footer($item->key, $value, $pack, $errors),
+            'setting:theme.heading_decor' => $this->headingDecor($item->key, $value, $item->managedKeys(), $errors),
+            'setting:storefront.floating_contact' => $this->floatingContact($item->key, $value, $pack, $errors),
+            'setting:storefront.layout_blocks' => $this->layoutBlocks($item->key, $value, $pack, $errors),
             default => null,
         };
         unset($default);
@@ -334,6 +345,117 @@ final readonly class PackValidator
             }
             if (isset($value['columns_menu_region']) && $read['region'] !== $value['columns_menu_region']) {
                 $errors[] = "{$at}: columns_menu_region is not a region name.";
+            }
+        }
+    }
+
+    /**
+     * The admin's own check of the heading decoration. A mask picture is a media key of the site's
+     * library, which a pack cannot name, so it is left out.
+     *
+     * With managed keys only those are the pack's; a custom colour whose hex the pack leaves to the
+     * live value is judged when the plan is made (the merged whole), not here.
+     *
+     * @param  array<array-key, mixed>  $value
+     * @param  list<string>|null  $managed
+     * @param  list<string>  $errors
+     */
+    private function headingDecor(string $at, array $value, ?array $managed, array &$errors): void
+    {
+        if ($value === []) {
+            $errors[] = "{$at}: value must not be empty (an empty heading decoration removes the setting; leave the item out instead).";
+
+            return;
+        }
+        if (($value['mask_media'] ?? '') !== '') {
+            $errors[] = "{$at}: mask_media is a picture of the site's own library; a pack cannot set it.";
+
+            return;
+        }
+        $probe = array_combine(array_map('strval', array_keys($value)), $value);
+        if ($managed !== null) {
+            $probe = array_intersect_key($probe, array_flip($managed));
+            if (($probe['color'] ?? null) === 'custom') {
+                $probe += ['custom_color' => '#000000'];
+                $probe += ['custom_color_2' => '#000000'];
+            }
+        }
+        try {
+            HeadingDecorInput::checked($probe);
+        } catch (SettingsChangeRejected $e) {
+            $errors[] = "{$at}: '{$e->field}' is not accepted ({$e->reason}).";
+        }
+    }
+
+    /**
+     * @param  array<array-key, mixed>  $value
+     * @param  list<string>  $errors
+     */
+    private function floatingContact(string $at, array $value, Pack $pack, array &$errors): void
+    {
+        foreach (FloatingContactInput::errors($value, $pack->locales) as $problem) {
+            $errors[] = "{$at}: {$problem}";
+        }
+    }
+
+    /**
+     * Slot → {locale: {"blocks": […]}}, checked as the admin checks a site's block slots
+     * (LayoutSlotInput): a slot of LayoutSlots, a language the pack lists, the slot's block limit, the
+     * editor's ValidPageJson for a slot, a block type the slot accepts. Block links must be links a
+     * pack may write; an image reference is not resolved inside a slot, so it is refused.
+     *
+     * @param  array<array-key, mixed>  $value
+     * @param  list<string>  $errors
+     */
+    private function layoutBlocks(string $at, array $value, Pack $pack, array &$errors): void
+    {
+        foreach ($value as $slot => $perLocale) {
+            $slot = (string) $slot;
+            if (! LayoutSlots::has($slot)) {
+                $errors[] = "{$at}: '{$slot}' is not a block slot (".implode(', ', LayoutSlots::SLOTS).').';
+
+                continue;
+            }
+            if (! is_array($perLocale) || $perLocale === [] || array_is_list($perLocale)) {
+                $errors[] = "{$at}: '{$slot}' must be {language: {\"blocks\": […]}}.";
+
+                continue;
+            }
+            foreach ($perLocale as $locale => $text) {
+                $where = "{$at}: '{$slot}' ({$locale})";
+                $blocks = is_array($text) ? ($text['blocks'] ?? null) : null;
+                if (! in_array((string) $locale, $pack->locales, true)) {
+                    $errors[] = "{$where}: the pack does not list this language.";
+                } elseif (! is_array($blocks) || ! array_is_list($blocks)) {
+                    $errors[] = "{$where}: needs {\"blocks\": […]}.";
+                } elseif (($max = LayoutSlots::maxBlocks($slot)) !== null && count($blocks) > $max) {
+                    $errors[] = "{$where}: holds at most {$max} blocks.";
+                } elseif (count(self::slotsIn($blocks)) > 0) {
+                    $errors[] = "{$where}: an image reference is not supported inside a block slot.";
+                } else {
+                    $check = Validator::make(['blocks' => $blocks], ['blocks' => [$this->pageJson->forSlots()]]);
+                    foreach ($check->errors()->all() as $message) {
+                        $errors[] = "{$where}: {$message}";
+                    }
+                    foreach ($blocks as $index => $block) {
+                        $type = is_array($block) ? ($block['type'] ?? null) : null;
+                        if (is_string($type) && ! LayoutSlots::accepts($slot, $type)) {
+                            $errors[] = "{$where}: block {$type} does not belong in this slot.";
+                        }
+                        if (is_string($type) && $this->components->has($type) && is_array($block['props'] ?? null)) {
+                            $this->blockLinks("{$where}: block ".($index + 1)." ({$type})", $block['props'], $this->components->schemaFor($type), '', $errors);
+                            $schema = $this->components->schemaFor($type);
+                            $files = ButtonLink::refs($block['props'], $schema)['files'];
+                            $htmlImages = [];
+                            foreach (SchemaHtml::values($block['props'], $schema) as $html) {
+                                array_push($htmlImages, ...RichHtml::imageIds($html));
+                            }
+                            if (SchemaImages::ids($block['props'], $schema) !== [] || $files !== [] || $htmlImages !== []) {
+                                $errors[] = "{$where}: block ".($index + 1)." ({$type}) names a library picture or file by id or key; a block slot of a pack cannot reference media.";
+                            }
+                        }
+                    }
+                }
             }
         }
     }

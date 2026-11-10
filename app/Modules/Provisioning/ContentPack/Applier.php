@@ -20,6 +20,7 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\CategoryRelinker;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Routing\SectionResolver;
+use App\Modules\Cms\Support\BlockMediaUsage;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
 use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
@@ -28,6 +29,7 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Rendering\LayoutSlots;
 use App\Modules\Theme\Theming\StorefrontSettings;
 use Illuminate\Support\Carbon;
 
@@ -56,6 +58,7 @@ final class Applier
         private readonly StorefrontSettings $settings,
         private readonly PermalinkConfig $permalinks,
         private readonly SectionResolver $sections,
+        private readonly BlockMediaUsage $blockUsage,
     ) {}
 
     /** Returns how many items were written. */
@@ -115,18 +118,22 @@ final class Applier
     {
         [$group, $name] = explode('.', $planned->item->anchor(), 2);
         $row = SiteSetting::query()->where('group_name', $group)->where('key', $name)->first();
-        $value = isset($planned->item->data['managed_keys']) && $row !== null
+        $managed = $planned->item->managedKeys();
+        $value = $managed !== null && $row !== null
             ? array_replace(Cast::arr($row->value), $planned->desired)
             : $planned->desired;
-        if (isset($planned->item->data['managed_keys']) && $row !== null) {
-            foreach (Cast::strings($planned->item->data['managed_keys']) as $managed) {
-                if (! array_key_exists($managed, $planned->desired)) {
-                    unset($value[$managed]);
+        if ($managed !== null && $row !== null) {
+            foreach ($managed as $slot) {
+                if (! array_key_exists($slot, $planned->desired)) {
+                    unset($value[$slot]);
                 }
             }
         }
 
-        SiteSetting::query()->updateOrCreate(['group_name' => $group, 'key' => $name], ['value' => $value]);
+        $saved = SiteSetting::query()->updateOrCreate(['group_name' => $group, 'key' => $name], ['value' => $value]);
+        if ($planned->item->key === 'setting:storefront.layout_blocks') {
+            $this->blockUsage->sync('site_setting', Cast::int($saved->getKey()), LayoutSlots::blockLists($saved->value));
+        }
     }
 
     private function profile(PlanItem $planned): void

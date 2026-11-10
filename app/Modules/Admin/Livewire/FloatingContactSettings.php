@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Support\Settings\FloatingContactInput;
 use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Catalog\Support\ProductIndexLink;
 use App\Modules\Shared\Support\Cast;
@@ -314,19 +315,7 @@ final class FloatingContactSettings extends Component
             'offset_x' => $this->offsetX,
             'offset_y' => $this->offsetY,
             'buy' => ['enabled' => $this->buyOn, 'color' => $this->buyColor],
-            'channels' => array_map(function (array $c): array {
-                $row = ['key' => $c['key'], 'on' => $c['on'], 'value' => $c['value']];
-                if ($c['color'] !== '') {
-                    $row['color'] = $c['color'];
-                }
-                if (FloatingContact::typeOf($c['key']) === 'custom') {
-                    $row['icon'] = $c['icon'];
-                    $row['name'] = $c['name'];
-                }
-                $row['tips'] = array_filter($c['tips'], fn (string $t): bool => $t !== '');
-
-                return $row;
-            }, $rows),
+            'channels' => array_map(FloatingContactInput::storedRow(...), $rows),
         ];
     }
 
@@ -340,23 +329,7 @@ final class FloatingContactSettings extends Component
      */
     private function rows(): array
     {
-        return array_map(function (mixed $c): array {
-            $c = Cast::arr($c);
-            $tips = [];
-            foreach (Cast::arr($c['tips'] ?? null) as $lc => $t) {
-                $tips[(string) $lc] = trim(Cast::string($t));
-            }
-
-            return [
-                'key' => Cast::string($c['key'] ?? null),
-                'on' => ($c['on'] ?? false) === true,
-                'value' => trim(Cast::string($c['value'] ?? null)),
-                'color' => strtolower(Cast::string($c['color'] ?? null)),
-                'icon' => Cast::string($c['icon'] ?? null),
-                'name' => trim(Cast::string($c['name'] ?? null)),
-                'tips' => $tips,
-            ];
-        }, $this->sent());
+        return array_map(FloatingContactInput::castRow(...), $this->sent());
     }
 
     /** @return list<string> */
