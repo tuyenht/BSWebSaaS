@@ -582,3 +582,26 @@ it('offers an optional select\'s empty pick as a real answer and draws no requir
     expect($section)->toMatch('/<select id="lf-contact__service" name="service"\s*>\s*<option value="">— Chọn —<\/option>/')
         ->and(substr_count($section, 'lead-form__required" aria-hidden="true"'))->toBe(1);
 });
+
+it('starts a select with its own example in the visitor\'s language, else the Vietnamese one, else the general one', function (): void {
+    $choices = [['value' => 'jig', 'label' => ['vi' => 'Thiết kế Jig & Đồ gá']]];
+    seedSelectFormPage(['options' => ['choices' => $choices, 'placeholder' => ['vi' => '— Chọn nhu cầu —', 'en' => '— Pick a need —']]]);
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteLocale::query()->create(['locale' => 'en', 'is_default' => false, 'enabled' => true, 'is_public' => true]);
+        $entry = Entry::query()->findOrFail(SiteRoute::query()->where('path', '/lien-he')->value('entry_id'));
+        $entry->translations()->create(['locale' => 'en', 'title' => 'Contact', 'slug' => 'contact', 'status' => 'published',
+            'body' => ['blocks' => [['type' => 'form', 'props' => ['form_key' => 'contact']]]]]);
+        SiteRoute::query()->create(['locale' => 'en', 'path' => '/contact', 'entry_id' => $entry->id]);
+    });
+    $empty = fn (string $url): string => Str::betweenFirst(leadFormSection($this->get($url)->assertOk()->getContent()), 'name="service"', '</option>');
+
+    expect($empty('http://a.test/lien-he'))->toEndWith('<option value="">— Chọn nhu cầu —')
+        ->and($empty('http://a.test/en/contact'))->toEndWith('<option value="">— Pick a need —');
+
+    $field = fn () => Form::query()->firstWhere('key', 'contact')->fields()->where('key', 'service');
+    app(Tenancy::class)->enter(1, fn () => $field()->update(['options' => json_encode(['choices' => $choices, 'placeholder' => ['vi' => '— Chọn nhu cầu —']])]));
+    expect($empty('http://a.test/en/contact'))->toEndWith('<option value="">— Chọn nhu cầu —');
+
+    app(Tenancy::class)->enter(1, fn () => $field()->update(['options' => json_encode(['choices' => $choices])]));
+    expect($empty('http://a.test/lien-he'))->toEndWith('<option value="">— Chọn —');
+});

@@ -9,13 +9,13 @@ use App\Modules\Shared\Support\Cast;
 /**
  * A content pack as read from its folder: the header (code, version, the hosts it may load into,
  * its languages), every item in the order the loader writes them (settings → profile → categories
- * → products → posts → pages → menus → redirects) and the image slots. Data only — nothing in a
+ * → products → posts → pages → forms → menus → redirects) and the image slots. Data only — nothing in a
  * pack can execute.
  */
 final readonly class Pack
 {
     /** Kinds in write order: what a later kind points at is written first. */
-    public const array KINDS = ['setting', 'profile', 'taxonomy', 'product', 'post', 'page', 'menu', 'redirect'];
+    public const array KINDS = ['setting', 'profile', 'taxonomy', 'product', 'post', 'page', 'form', 'menu', 'redirect'];
 
     /**
      * @param  list<string>  $hosts

@@ -25,6 +25,7 @@ final readonly class PackReader
         'products.json' => 'product',
         'posts.json' => 'post',
         'pages.json' => 'page',
+        'forms.json' => 'form',
         'menus.json' => 'menu',
         'redirects.json' => 'redirect',
     ];

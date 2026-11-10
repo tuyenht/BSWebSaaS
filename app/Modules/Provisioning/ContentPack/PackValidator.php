@@ -9,6 +9,7 @@ use App\Modules\Admin\Support\Settings\HeadingDecorInput;
 use App\Modules\Admin\Support\Settings\SettingsChangeRejected;
 use App\Modules\Cms\Taxonomy\TaxonomyRules;
 use App\Modules\Cms\Validation\ValidPageJson;
+use App\Modules\Forms\Support\FormFieldTypes;
 use App\Modules\Media\Actions\UploadMedia;
 use App\Modules\Media\Models\Media;
 use App\Modules\Shared\Support\Cast;
@@ -30,7 +31,7 @@ use Illuminate\Support\Facades\Validator;
  * key shapes and uniqueness, locale maps, the "unverified ⇒ draft" rule, every page and post body
  * through the editor's own ValidPageJson, header/footer/theme settings through the storefront's
  * own readers (a value the reader would drop is an error here, never a silent drop), category
- * order and references, menus, redirects and image slots (a named file must exist and be an image
+ * order and references, forms (FormFieldTypes), menus, redirects and image slots (a named file must exist and be an image
  * by its magic bytes). Returns every problem at once.
  */
 final readonly class PackValidator
@@ -54,6 +55,15 @@ final readonly class PackValidator
     ];
 
     private const array DYNAMIC_LINKS = ['home'];
+
+    /**
+     * The contact form's fields the platform owns (the consent box is handled on its own, on every
+     * form). Only the contact form carries them as platform rows: EnsureContactForm creates that one
+     * form with them and forms:sync-contact-fields restores them. Any other form is the site's own,
+     * its fields loaded once from a preset and then renamed or removed by staff at will, so there a
+     * field keyed name, phone, email or message is an ordinary field the pack writes whole.
+     */
+    public const array FORM_PLATFORM_FIELDS = ['name', 'phone', 'email', 'message'];
 
     /** The setting groups and names a pack may write; everything else is the site's own. */
     private const array SETTINGS = [
@@ -118,6 +128,7 @@ final readonly class PackValidator
                 'product' => $this->product($pack, $item, $taxonomies, $errors),
                 'post' => $this->post($pack, $item, $taxonomies, $errors),
                 'page' => $this->page($pack, $item, $pages, $errors),
+                'form' => $this->form($pack, $item, $errors),
                 'menu' => $this->menu($pack, $item, $errors),
                 'redirect' => $this->redirect($pack, $item, $errors),
                 default => $errors[] = "{$at}: unknown kind.",
@@ -938,6 +949,182 @@ final readonly class PackValidator
     {
         return preg_match('/\A(?:page:\/(?:'.self::SLUG.')?|(?:post|product):'.self::SLUG.')\z/', $key) === 1
             || self::taxonomyChain($key) !== null;
+    }
+
+    /**
+     * A form of the site, by its key: the fields the pack adds or places and the form's settings.
+     * The contact form's platform fields keep what the platform gives them — the pack only places
+     * them (and may give an example in the empty field) — and on every form the pack only places
+     * the consent box, last, whose sentence is the platform's legal wording. Every field states its
+     * sort_order; the contact form lists every platform field, so the order it ends up with is the
+     * pack's whole order. A field the pack adds is checked like the storefront reads it
+     * (FormFieldTypes): a usable key, a stored type, and a choice field with choices. The only
+     * setting is the thank-you page a send opens.
+     *
+     * @param  list<string>  $errors
+     */
+    private function form(Pack $pack, PackItem $item, array &$errors): void
+    {
+        $at = $item->key;
+        if (preg_match('/\Aform:([a-z][a-z0-9_-]{0,39})\z/', $item->key, $m) !== 1) {
+            $errors[] = "{$at}: a form key is form:<key> (the form's key on the site).";
+
+            return;
+        }
+        foreach (array_diff(array_keys($item->data), ['key', 'fields', 'settings']) as $name) {
+            $errors[] = "{$at}: '{$name}' is not something the loader writes on a form (fields, settings).";
+        }
+
+        $fields = $item->data['fields'] ?? null;
+        if (! is_array($fields) || ! array_is_list($fields) || $fields === []) {
+            $errors[] = "{$at}: fields must be a non-empty list.";
+
+            return;
+        }
+
+        $keys = [];
+        $orders = [];
+        foreach ($fields as $index => $raw) {
+            $field = Cast::arr($raw);
+            $key = $field['key'] ?? null;
+            $where = "{$at} field ".(is_string($key) ? $key : $index + 1);
+            if (! is_array($raw) || ! is_string($key) || ! FormFieldTypes::isUsableKey($key)) {
+                $errors[] = "{$where}: key must be a field key (lowercase letters, digits and _, starting with a letter; not ".implode(', ', FormFieldTypes::RESERVED_KEYS).').';
+
+                continue;
+            }
+            if (isset($keys[$key])) {
+                $errors[] = "{$where}: the field is listed twice.";
+            }
+            $order = $field['sort_order'] ?? null;
+            if (! is_int($order) || $order < 1 || $order > 9999) {
+                $errors[] = "{$where}: sort_order must be a whole number from 1 to 9999.";
+            } elseif (isset($orders[$order])) {
+                $errors[] = "{$where}: sort_order {$order} is also {$orders[$order]}'s.";
+            } else {
+                $orders[$order] = $key;
+            }
+            $keys[$key] = is_int($order) ? $order : 0;
+
+            if ($key === 'consent') {
+                foreach (array_diff(array_keys($field), ['key', 'sort_order']) as $name) {
+                    $errors[] = "{$where}: the consent box is the platform's legal wording; the pack may only place it ('{$name}' is not allowed).";
+                }
+            } elseif (self::isPlatformField($m[1], $key)) {
+                foreach (array_diff(array_keys($field), ['key', 'sort_order', 'placeholder']) as $name) {
+                    $errors[] = "{$where}: a platform field keeps its type, label and required flag; the pack may only place it and give its placeholder ('{$name}' is not allowed).";
+                }
+            } else {
+                $this->extraField($pack, $where, $field, $errors);
+            }
+            $this->localeMap($pack, $where, $field, 'placeholder', false, self::TEXT_MAX, $errors);
+        }
+
+        if (isset($keys['consent']) && $keys['consent'] !== max($keys)) {
+            $errors[] = "{$at} field consent: the consent box comes after every field it covers (the highest sort_order).";
+        }
+        if ($m[1] === 'contact') {
+            foreach ([...self::FORM_PLATFORM_FIELDS, 'consent'] as $platform) {
+                if (! isset($keys[$platform])) {
+                    $errors[] = "{$at}: the contact form lists every platform field with its sort_order ({$platform} is missing).";
+                }
+            }
+        }
+
+        $this->formSettings($at, $item->data, $errors);
+    }
+
+    /** Whether a field of the form keyed $formKey is one the platform owns (FORM_PLATFORM_FIELDS). */
+    public static function isPlatformField(string $formKey, string $fieldKey): bool
+    {
+        return $formKey === 'contact' && in_array($fieldKey, self::FORM_PLATFORM_FIELDS, true);
+    }
+
+    /**
+     * A field the pack adds: a stored type, a label, a required flag, and choices exactly when the
+     * type is a choice.
+     *
+     * @param  array<array-key, mixed>  $field
+     * @param  list<string>  $errors
+     */
+    private function extraField(Pack $pack, string $where, array $field, array &$errors): void
+    {
+        foreach (array_diff(array_keys($field), ['key', 'sort_order', 'type', 'label', 'is_required', 'placeholder', 'choices']) as $name) {
+            $errors[] = "{$where}: '{$name}' is not a field setting the loader writes (type, label, is_required, placeholder, choices).";
+        }
+        $type = $field['type'] ?? null;
+        if (! is_string($type) || ! in_array($type, FormFieldTypes::STORED_TYPES, true)) {
+            $errors[] = "{$where}: type must be one of ".implode(', ', FormFieldTypes::STORED_TYPES).'.';
+
+            return;
+        }
+        $this->localeMap($pack, $where, $field, 'label', true, self::TEXT_MAX, $errors);
+        if (array_key_exists('is_required', $field) && ! is_bool($field['is_required'])) {
+            $errors[] = "{$where}: is_required must be true or false.";
+        }
+        if ($type === 'checkbox' && array_key_exists('placeholder', $field)) {
+            $errors[] = "{$where}: a checkbox shows no placeholder.";
+        }
+
+        $choices = $field['choices'] ?? null;
+        if (! FormFieldTypes::isChoice($type)) {
+            if ($choices !== null) {
+                $errors[] = "{$where}: only a choice field has choices.";
+            }
+
+            return;
+        }
+        if (! is_array($choices) || ! array_is_list($choices) || $choices === []) {
+            $errors[] = "{$where}: a {$type} field needs a non-empty list of choices.";
+
+            return;
+        }
+        $values = [];
+        foreach ($choices as $index => $choice) {
+            $choice = Cast::arr($choice);
+            $value = $choice['value'] ?? null;
+            $at = "{$where} choice ".($index + 1);
+            if (array_diff(array_keys($choice), ['value', 'label']) !== []) {
+                $errors[] = "{$at}: a choice has a value and a label only.";
+            }
+            if (! is_string($value) || preg_match('/\A[a-z0-9][a-z0-9_-]{0,39}\z/', $value) !== 1) {
+                $errors[] = "{$at}: value must be a short stable name (lowercase letters, digits, - and _).";
+            } elseif (isset($values[$value])) {
+                $errors[] = "{$at}: value '{$value}' is listed twice.";
+            } else {
+                $values[$value] = true;
+            }
+            $this->localeMap($pack, $at, $choice, 'label', true, self::TEXT_MAX, $errors);
+        }
+    }
+
+    /**
+     * The form's settings the pack writes: only the thank-you page (`redirect_entry`), by the key of
+     * a page — never a post, a link or anything else.
+     *
+     * @param  array<string, mixed>  $data
+     * @param  list<string>  $errors
+     */
+    private function formSettings(string $at, array $data, array &$errors): void
+    {
+        if (! array_key_exists('settings', $data)) {
+            return;
+        }
+        $settings = $data['settings'];
+        if (! is_array($settings) || ($settings !== [] && array_is_list($settings))) {
+            $errors[] = "{$at}: settings must be a JSON object.";
+
+            return;
+        }
+        foreach (array_diff(array_keys($settings), ['redirect_entry']) as $name) {
+            $errors[] = "{$at}: the loader writes only the form setting redirect_entry ('{$name}' stays the site's own).";
+        }
+        if (array_key_exists('redirect_entry', $settings)) {
+            $page = $settings['redirect_entry'];
+            if (! is_string($page) || preg_match('/\Apage:\/(?:'.self::SLUG.')?\z/', $page) !== 1) {
+                $errors[] = "{$at}: redirect_entry must be the key of a page (page:/<slug>), the page a send opens.";
+            }
+        }
     }
 
     /** @param list<string> $errors */

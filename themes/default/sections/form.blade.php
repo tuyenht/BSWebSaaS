@@ -172,12 +172,13 @@
                                   @if ($sfFirstBad === $field['key']) autofocus @endif>{{ $sfOld($field['key']) }}</textarea>
                     @elseif ($field['type'] === 'select')
                         {{-- The empty pick comes first: it is the answer an optional select leaves, and what a
-                             required one asks to change. A choice is sent by its stable value, read by its label. --}}
+                             required one asks to change. It reads the field's own example, else the general one.
+                             A choice is sent by its stable value, read by its label. --}}
                         <select id="{{ $sfId }}" name="{{ $field['key'] }}" @if ($field['is_required']) required @endif
                                 @if ($sfBad) aria-invalid="true" @endif
                                 @if ($sfDescribed !== '') aria-describedby="{{ $sfDescribed }}" @endif
                                 @if ($sfFirstBad === $field['key']) autofocus @endif>
-                            <option value="">{{ __('forms.select_placeholder') }}</option>
+                            <option value="">{{ ($field['placeholder'] ?? '') !== '' ? $field['placeholder'] : __('forms.select_placeholder') }}</option>
                             @foreach ($field['choices'] as $sfValue => $sfText)
                                 <option value="{{ $sfValue }}" @selected($sfOld($field['key']) === (string) $sfValue)>{{ $sfText }}</option>
                             @endforeach
