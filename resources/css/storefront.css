@@ -56,7 +56,10 @@
 @font-face {
     font-family: "Inter";
     font-style: normal;
-    font-weight: 100 900;
+    /* The same weight range as the face above: Chrome matches weight before unicode-range, so
+       a wider range here made it pick this face alone for every character and paint the
+       fallback font for all Latin and Vietnamese text. */
+    font-weight: 400 900;
     font-display: optional;
     src: url("/fonts/inter-latin-ext.woff2") format("woff2");
     /* Fontsource's latin-ext range minus every code point inter-latin-vi already covers (Ă Đ Ĩ Ũ
