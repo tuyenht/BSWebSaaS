@@ -76,6 +76,83 @@
    "was": [
     "dich-vu"
    ]
+  },
+  {
+   "key": "tax:post_cat/du-an/du-an-o-to",
+   "parent": "tax:post_cat/du-an",
+   "name": {
+    "vi": "Ô tô"
+   },
+   "list_template": "grid-project",
+   "detail_template": "project",
+   "position": 1
+  },
+  {
+   "key": "tax:post_cat/du-an/du-an-tu-dong-hoa",
+   "parent": "tax:post_cat/du-an",
+   "name": {
+    "vi": "Tự động hóa"
+   },
+   "list_template": "grid-project",
+   "detail_template": "project",
+   "position": 2
+  },
+  {
+   "key": "tax:post_cat/du-an/du-an-dien-tu",
+   "parent": "tax:post_cat/du-an",
+   "name": {
+    "vi": "Điện tử"
+   },
+   "list_template": "grid-project",
+   "detail_template": "project",
+   "position": 3
+  },
+  {
+   "key": "tax:post_cat/du-an/du-an-khuon-mau",
+   "parent": "tax:post_cat/du-an",
+   "name": {
+    "vi": "Khuôn mẫu"
+   },
+   "list_template": "grid-project",
+   "detail_template": "project",
+   "position": 4
+  },
+  {
+   "key": "tax:post_cat/du-an/du-an-hang-khong",
+   "parent": "tax:post_cat/du-an",
+   "name": {
+    "vi": "Hàng không"
+   },
+   "list_template": "grid-project",
+   "detail_template": "project",
+   "position": 5
+  },
+  {
+   "key": "tax:post_cat/du-an/du-an-gia-dung",
+   "parent": "tax:post_cat/du-an",
+   "name": {
+    "vi": "Gia dụng"
+   },
+   "list_template": "grid-project",
+   "detail_template": "project",
+   "position": 6
+  },
+  {
+   "key": "tax:product_cat/san-pham/tu-dong-hoa",
+   "parent": "tax:post_cat/san-pham",
+   "name": {
+    "vi": "Sản phẩm tự động hóa"
+   },
+   "list_template": "grid-product",
+   "position": 4
+  },
+  {
+   "key": "tax:post_cat/tuyen-dung",
+   "name": {
+    "vi": "Tuyển dụng"
+   },
+   "list_template": "grid-job",
+   "detail_template": "job"
   }
  ]
 }
