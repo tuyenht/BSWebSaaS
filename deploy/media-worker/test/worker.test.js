@@ -5,25 +5,36 @@ import assert from 'node:assert/strict';
 import worker from '../src/index.js';
 import { publicKey, typeOf } from '../src/keys.js';
 
-// An R2 stand-in whose objects carry whatever metadata the uploader chose.
+// An R2 stand-in whose objects carry whatever metadata the uploader chose. A ranged get answers the
+// first two bytes (the only range these tests ask for), as R2 does with { offset, length }.
 function env(objects) {
+  const meta = (key) => ({
+    size: objects[key].length,
+    httpEtag: '"e1"',
+    writeHttpMetadata(h) {
+      h.set('Content-Type', 'text/html');
+    },
+  });
   return {
     MEDIA: {
-      async get(key) {
+      async head(key) {
+        return key in objects ? meta(key) : null;
+      },
+      async get(key, opts = {}) {
         if (!(key in objects)) return null;
+        const ranged = opts.range instanceof Headers && opts.range.has('Range');
         return {
-          body: objects[key],
-          httpEtag: '"e1"',
-          writeHttpMetadata(h) {
-            h.set('Content-Type', 'text/html');
-          },
+          ...meta(key),
+          body: ranged ? objects[key].slice(0, 2) : objects[key],
+          range: ranged ? { offset: 0, length: 2 } : undefined,
         };
       },
     },
   };
 }
 
-const get = (path, e, headers = {}) => worker.fetch(new Request(`https://files.example.test${path}`, { headers }), e);
+const get = (path, e, headers = {}, method = 'GET') =>
+  worker.fetch(new Request(`https://files.example.test${path}`, { headers, method }), e);
 
 test('an image key is served with the type of its extension, not the stored metadata', async () => {
   const res = await get('/an-vinh/library/may-tien-3f9a.jpg', env({ 'an-vinh/library/may-tien-3f9a.jpg': 'x' }));
@@ -91,6 +102,28 @@ test('a transform that returns svg or html falls back to the master with its ext
 test('writes are refused', async () => {
   const res = await worker.fetch(new Request('https://files.example.test/a/x.jpg', { method: 'PUT', body: 'x' }), env({}));
   assert.equal(res.status, 405);
+});
+
+test('a ranged read answers 206 under the extension type, with the safety headers', async () => {
+  const res = await get('/a/library/x-1a2b.jpg', env({ 'a/library/x-1a2b.jpg': 'abcdef' }), { Range: 'bytes=0-1' });
+  assert.equal(res.status, 206);
+  assert.equal(res.headers.get('Content-Range'), 'bytes 0-1/6');
+  assert.equal(res.headers.get('Accept-Ranges'), 'bytes');
+  assert.equal(res.headers.get('Content-Type'), 'image/jpeg');
+  assert.equal(res.headers.get('X-Content-Type-Options'), 'nosniff');
+});
+
+test('HEAD answers the extension type and size, never the stored metadata', async () => {
+  const e = env({ 'a/library/x-1a2b.webp': 'abcdef' });
+  const res = await get('/a/library/x-1a2b.webp', e, {}, 'HEAD');
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('Content-Type'), 'image/webp');
+  assert.equal(res.headers.get('Content-Length'), '6');
+  assert.equal(res.headers.get('X-Content-Type-Options'), 'nosniff');
+  assert.equal((await get('/a/library/page.html', e, {}, 'HEAD')).status, 404);
+  const missing = await get('/a/library/gone-1a2b.webp', e, {}, 'HEAD');
+  assert.equal(missing.status, 404);
+  assert.equal(missing.headers.get('X-Content-Type-Options'), 'nosniff');
 });
 
 test('key rules', () => {
