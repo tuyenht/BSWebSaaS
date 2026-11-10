@@ -68,6 +68,15 @@ it('accepts the full branch fields next to the footer\'s own', function (): void
         ->and(branchRefusal(array_map(fn (int $n): array => branchItem($n), range(1, 12))))->toBeNull();
 });
 
+it('accepts a coordinate below 1e-4 that has at most seven decimals, and refuses one finer than that', function (float $lat, bool $accepted): void {
+    expect(branchRefusal([branchItem(1, ['lat' => $lat, 'lng' => 105])]))->toBe($accepted ? null : 'lat_invalid factories.0.lat');
+})->with([
+    'a tiny positive' => [0.00001, true],
+    'a tiny negative' => [-0.00005, true],
+    'seven decimals below 1e-4' => [0.0000001, true],
+    'eight decimals below 1e-4' => [0.00000001, false],
+]);
+
 it('refuses a list it cannot store, naming the field', function (mixed $factories, string $refusal): void {
     expect(branchRefusal($factories))->toBe($refusal);
 })->with([

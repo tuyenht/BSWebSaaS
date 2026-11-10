@@ -418,6 +418,17 @@ it('refuses a branch list the settings check refuses', function (array $change, 
     'a picture slot not in media.json' => [['image_media_id' => ['media' => 'nowhere']], "setting:storefront.footer: image slot 'nowhere' is not in media.json"],
 ]);
 
+it('reports a bad picture and a bad branch list in the same run', function (): void {
+    cpFooter($this->folder, [
+        ['key' => 'nha-may-1', 'title' => ['vi' => 'Nhà máy 1'], 'image_media_id' => 12],
+        ['key' => 'nha-may-1', 'title' => ['vi' => 'Nhà máy 2']],
+    ]);
+
+    $problems = implode("\n", cpProblems());
+    expect($problems)->toContain('factory 1 image_media_id must be an image reference')
+        ->and($problems)->toContain("'factories.1.key' is not accepted (key_duplicate)");
+});
+
 it('refuses a thirteenth branch', function (): void {
     cpFooter($this->folder, array_map(fn (int $n): array => ['key' => "nha-may-{$n}", 'title' => "Nhà máy {$n}"], range(1, 13)));
 

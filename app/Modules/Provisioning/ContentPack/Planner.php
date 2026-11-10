@@ -1708,6 +1708,9 @@ final class Planner
                 $livePictures[$branch['key']] = $branch['image_media_id'];
             }
         }
+        // a live picture that was purged is dropped when the list is stored, so it is not "kept"
+        $present = $livePictures === [] ? [] : Media::withTrashed()->whereIn('id', array_values(array_unique($livePictures)))->where('mime', 'like', 'image/%')->pluck('id')->map(fn ($id): int => Cast::int($id))->all();
+        $livePictures = array_filter($livePictures, fn (int $id): bool => in_array($id, $present, true));
         if (is_array($factories)) {
             $resolved = [];
             foreach ($factories as $index => $factory) {

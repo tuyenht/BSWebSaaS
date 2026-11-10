@@ -288,8 +288,15 @@ final class BranchList
         }
 
         // The shortest decimal that reads back as this number, the form JSON stores: 21.0655337 has
-        // 7 decimals. A form with an exponent (1.0e-13) is too fine by itself.
+        // 7 decimals. JSON writes a number below 1e-4 with an exponent (1.0e-5); that one is written
+        // out at MAX_DECIMALS and accepted only when it reads back as the same number (1.0e-13 does not).
         $digits = json_encode($value);
+        if (is_string($digits) && str_contains($digits, 'e')) {
+            $digits = rtrim(rtrim(sprintf('%.'.self::MAX_DECIMALS.'F', $value), '0'), '.');
+            if ((float) $digits !== (float) $value) {
+                return false;
+            }
+        }
         if (! is_string($digits) || preg_match('/\A-?\d+(?:\.(\d+))?\z/', $digits, $m) !== 1) {
             return false;
         }

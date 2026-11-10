@@ -282,6 +282,18 @@ it('loads a factory whose picture is not on the site yet without one, with a war
         ->and(sfStored($this->siteId, 'storefront', 'footer')['factories'])->toBe([['key' => 'nha-may-1', 'title' => 'NHÀ MÁY 1']]);
 });
 
+it('says the factory is shown without a picture when its live picture was purged', function (): void {
+    $live = ContentPacks::in($this->siteId, fn () => StorefrontCards::media('live-plant'));
+    ContentPacks::in($this->siteId, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'footer', 'value' => ['factories' => [['key' => 'nha-may-1', 'title' => 'NHÀ MÁY 1', 'image_media_id' => $live->id]]]]));
+    ContentPacks::in($this->siteId, fn () => $live->forceDelete());
+    sfAddSetting($this->folder, 'setting:storefront.footer', ['factories' => [['key' => 'nha-may-1', 'title' => 'NHÀ MÁY 1', 'image_media_id' => ['media' => 'about']]]]);
+
+    [$exit, $output] = ContentPacks::run();
+    expect($exit)->toBe(0, $output)
+        ->and($output)->toContain('factory 1 is shown without a picture.')
+        ->and($output)->not->toContain('keeps its live picture');
+});
+
 it('keeps the live picture of a factory whose picture slot is not on the site yet', function (): void {
     $live = ContentPacks::in($this->siteId, fn () => StorefrontCards::media('live-plant'));
     ContentPacks::in($this->siteId, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'footer', 'value' => ['factories' => [['key' => 'nha-may-1', 'title' => 'NHÀ MÁY 1', 'image_media_id' => $live->id]]]]));

@@ -445,10 +445,10 @@ final readonly class PackValidator
                 if (is_array($factory) && array_key_exists('image_media_id', $factory)) {
                     if (! self::isMediaRef($factory['image_media_id'])) {
                         $errors[] = "{$at}: factory ".(Cast::int($index) + 1).' image_media_id must be an image reference ({"media": slot}).';
-
-                        return;
+                        unset($factory['image_media_id']);
+                    } else {
+                        $factory['image_media_id'] = $factory['image_media_id']['media'];
                     }
-                    $factory['image_media_id'] = $factory['image_media_id']['media'];
                 }
                 $plain[$index] = $factory;
             }

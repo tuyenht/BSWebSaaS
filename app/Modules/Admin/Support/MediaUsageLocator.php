@@ -18,8 +18,8 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Finds which content uses a media master, and constrains the library grid to used/unused. Media
- * usage is NOT centralised in `mediables` yet (no producer writes it), so this reads the real
- * relations directly: a product's gallery (product_images.media_id), an entry's cover image
+ * usage is only partly centralised in `mediables` (the branch list is its one producer so far), so
+ * this reads the real relations directly: a product's gallery (product_images.media_id), an entry's cover image
  * (entry.meta['image_url'] = the media's storage_key), a category's picture
  * (taxonomies.cover_media_id) and the site's four brand images (site_profiles: logo, logo on a dark
  * background, favicon, share image; role `brand`, kind `site`) and the site's branch and factory
