@@ -1,0 +1,73 @@
+/* The product editor's frame (catalog/editor.blade.php): the save-state pill beside the title, the
+   bar of buttons that stays under the admin's top bar while the page scrolls, and on a narrow page
+   the same buttons in a bar along the bottom. */
+.ped-bar {
+    position: sticky;
+    top: var(--topbar-height);
+    z-index: 10;
+}
+
+/* The admin's top bar scrolls away (Layout position: scrollable): nothing to stay under. */
+@media (min-width: 64rem) {
+    :root[data-layout-position='scrollable'] .ped-bar {
+        top: 0;
+    }
+}
+
+/* A short window keeps its room for the form. */
+@media (max-height: 479px) {
+    .ped-bar,
+    .ped-bbar {
+        position: static;
+    }
+}
+
+.ped-bbar {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    padding-bottom: calc(0.625rem + env(safe-area-inset-bottom));
+}
+
+.bs-save-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: 2rem;
+    max-width: 100%;
+    padding: 0.25rem 0.625rem;
+    border-radius: 1rem;
+    font-size: var(--text-small);
+    font-weight: 600;
+    line-height: 1.3;
+    background: var(--color-surface-hover);
+    color: var(--color-text);
+}
+
+.bs-save-state[data-s='saved'] {
+    background: color-mix(in srgb, var(--color-success-base) 10%, var(--color-surface));
+    color: var(--color-success-text);
+}
+
+.bs-save-state[data-s='dirty'] {
+    background: color-mix(in srgb, var(--color-warning-base) 20%, var(--color-surface));
+    color: var(--color-warning-text);
+}
+
+.bs-save-state[data-s='error'] {
+    background: color-mix(in srgb, var(--color-danger-base) 10%, var(--color-surface));
+    color: var(--color-danger-text);
+}
+
+.bs-save-state[data-s='auto'] {
+    font-weight: 500;
+}
+
+.bs-save-state[data-s='offline'] {
+    border: 1px dashed var(--color-border-input);
+}
+
+/* The browser's state (typing, saving, no connection) covers the server's one. */
+[data-sv-over] .bs-save-state-rest {
+    display: none;
+}

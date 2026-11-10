@@ -311,8 +311,8 @@ it('treats a path owned by a category as taken when a product name would collide
         app(RouteSync::class)->syncTaxonomy($category, 'vi', 'may-tien');
 
         Livewire::actingAs($user)->test(ProductEditor::class)
-            ->set('name', 'Máy tiện')->set('slug', '')->set('status', 'published')
-            ->call('save')
+            ->set('name', 'Máy tiện')->set('slug', '')
+            ->call('publish')
             ->assertHasNoErrors()
             ->assertSet('slug', 'may-tien-2');
     });

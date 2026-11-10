@@ -21,6 +21,9 @@
 /* The shared unsaved-changes dialog (<x-bs-admin::unsaved-dialog>): one row or stacked, a sheet on a phone. */
 @import './admin-unsaved.css';
 
+/* The product editor's frame: the save-state pill, the sticky button bars. */
+@import './admin-editor.css';
+
 /* Scan module Blade + bundled theme Blade + framework/runtime views so utility classes aren't purged. */
 @source '../../app/Modules/**/*.blade.php';
 @source '../../themes/**/*.blade.php';
