@@ -5049,6 +5049,8 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     display: inline-flex;
     align-items: center;
     min-height: 2.5rem;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .sf-map,
