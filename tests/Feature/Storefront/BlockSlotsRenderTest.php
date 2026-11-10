@@ -330,6 +330,37 @@ it('makes anchors for the formatted-text headings from two up, unique and Vietna
         ->and(ArticleToc::of('<p>Không có tiêu đề</p>')['items'])->toBe([]);
 });
 
+it('lists the headings of gallery, video and FAQ blocks with the text headings, in page order', function (): void {
+    $block = fn (string $kind, string $heading): string => '<section class="sf-band sf-band--none '.$kind.'">'."\n".'    <div class="sf-container">'."\n"
+        .'<div class="sf-section-head">'."\n".'    <h2 class="sf-section-head__title">'.$heading.'</h2>'."\n".'</div>'."\n".'<p>…</p>'."\n".'    </div>'."\n".'</section>';
+    $html = '<section class="sf-prose">'."\n".'<h2>Tổng quan</h2><p>a</p>'."\n".'</section>'
+        .$block('sf-gallery', 'Hình ảnh')
+        .'<section class="sf-prose"><h2>Thông số</h2></section>'
+        .$block('sf-video-block', 'Video &amp; quy trình')
+        .$block('sf-faq', 'Câu hỏi thường gặp')
+        // other blocks' heads (a call to action, a process) are not part of the article's contents
+        .$block('sf-process', 'Quy trình')
+        .'<section class="cta"><h2 class="cta__title">Liên hệ</h2></section>';
+
+    $toc = ArticleToc::of($html);
+
+    expect($toc['items'])->toBe([
+        ['id' => 'muc-tong-quan', 'label' => 'Tổng quan'],
+        ['id' => 'muc-hinh-anh', 'label' => 'Hình ảnh'],
+        ['id' => 'muc-thong-so', 'label' => 'Thông số'],
+        ['id' => 'muc-video-quy-trinh', 'label' => 'Video & quy trình'],
+        ['id' => 'muc-cau-hoi-thuong-gap', 'label' => 'Câu hỏi thường gặp'],
+    ])->and($toc['html'])->toContain('<h2 class="sf-section-head__title" id="muc-hinh-anh">Hình ảnh</h2>')
+        ->toContain('<h2 class="sf-section-head__title" id="muc-video-quy-trinh">Video &amp; quy trình</h2>')
+        ->toContain('<h2 class="sf-section-head__title">Quy trình</h2>')->toContain('<h2 class="cta__title">Liên hệ</h2>');
+
+    // One text heading and one FAQ heading make two: the contents are drawn.
+    $two = '<section class="sf-prose"><h2>Một</h2></section>'.$block('sf-faq', 'Hỏi đáp');
+    expect(array_column(ArticleToc::of($two)['items'], 'id'))->toBe(['muc-mot', 'muc-hoi-dap'])
+        // a lone block heading is not a table of contents, and the body comes back as it went in
+        ->and(ArticleToc::of($block('sf-faq', 'Hỏi đáp')))->toBe(['html' => $block('sf-faq', 'Hỏi đáp'), 'items' => []]);
+});
+
 it('never makes an anchor equal to an id the page already uses', function (): void {
     $html = '<section class="sf-prose"><h2>Liên quan</h2><h2>Liên quan</h2></section>';
 
@@ -380,6 +411,53 @@ it('builds both tables of contents of a post from its stored formatted text, wit
     foreach ($phoneLinks[1] as $anchor) {
         expect(substr_count($html, 'id="'.$anchor.'"'))->toBe(1);
     }
+});
+
+it('builds the contents of a post from its text and its gallery, video and FAQ blocks, and loads the reading marker', function (): void {
+    $this->swap(Vite::class, new class extends Vite
+    {
+        public function __invoke($entrypoints, $buildDirectory = null): HtmlString
+        {
+            return new HtmlString(collect((array) $entrypoints)->map(fn (string $entry): string => '<script type="module" src="/'.$entry.'"></script>')->implode(''));
+        }
+    });
+    $site = slotsSite();
+    $id = slotsSiteId();
+    $photo = app(Tenancy::class)->enter($id, fn (): int => StorefrontCards::media('anh-bai')->id);
+    app(Tenancy::class)->enter($id, function () use ($site, $photo): void {
+        $translation = $site['read']->translations()->firstOrFail();
+        $translation->body = ['blocks' => [
+            ['type' => 'richtext_html', 'props' => ['html' => '<h2>Tổng quan</h2><p>a</p>']],
+            ['type' => 'gallery', 'props' => ['heading' => 'Hình ảnh', 'images' => [['image' => $photo, 'caption' => 'Xưởng']]]],
+            ['type' => 'video', 'props' => ['heading' => 'Video', 'url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ']],
+            ['type' => 'faq', 'props' => ['heading' => 'Câu hỏi thường gặp', 'items' => [['q' => 'Bao lâu?', 'a' => 'Một tuần.']]]],
+            // a FAQ with no heading adds nothing to the contents
+            ['type' => 'faq', 'props' => ['items' => [['q' => 'Ở đâu?', 'a' => 'Hà Nội.']]]],
+            ['type' => 'cta', 'props' => ['heading' => 'Cần báo giá?', 'button_label' => 'Gửi', 'button_url' => '/lien-he']],
+        ]];
+        $translation->save();
+    });
+    slotsFresh();
+
+    $html = slotsHtml('/tin-tuc/ong-dang-doc');
+
+    preg_match('#<nav class="post-toc".*?</nav>#s', $html, $desktop);
+    preg_match('#<details class="post-toc-phone">.*?</details>#s', $html, $phone);
+    preg_match_all('#href="\#(muc-[a-z0-9-]+)"#', $desktop[0] ?? '', $desktopLinks);
+    preg_match_all('#href="\#(muc-[a-z0-9-]+)"#', $phone[0] ?? '', $phoneLinks);
+    expect($desktopLinks[1])->toBe(['muc-tong-quan', 'muc-hinh-anh', 'muc-video', 'muc-cau-hoi-thuong-gap'])
+        ->and($phoneLinks[1])->toBe($desktopLinks[1])
+        ->and($html)->toContain('<h2 class="sf-section-head__title" id="muc-cau-hoi-thuong-gap">Câu hỏi thường gặp</h2>')
+        ->and($html)->toContain('<script type="module" src="/resources/js/sf-toc.js"></script>')
+        // plain links: nothing is marked as being read until the script runs
+        ->and($desktop[0] ?? '')->not->toContain('aria-current');
+    foreach ($desktopLinks[1] as $anchor) {
+        expect(substr_count($html, 'id="'.$anchor.'"'))->toBe(1);
+    }
+
+    // A post with no contents loads no marker.
+    slotsBody($id, $site['read'], '<h2>Chỉ một đề mục</h2><p>Nội dung</p>');
+    expect(slotsHtml('/tin-tuc/ong-dang-doc'))->not->toContain('sf-toc.js');
 });
 
 it('leaves a post with one heading byte for byte as the body was stored, with no contents', function (): void {

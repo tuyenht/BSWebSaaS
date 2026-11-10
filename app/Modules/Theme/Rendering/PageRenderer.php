@@ -83,11 +83,14 @@ final readonly class PageRenderer
         $extra += $bgVideo ? ['bgVideoScript' => true] : [];
         // The photo viewer loads only on a page that drew a photo opening larger (body or slots).
         $extra += self::zooms($sections, ...array_values($slotHtml)) ? ['viewerScript' => true] : [];
-        // The post layout's table of contents: anchors are made here for the formatted-text headings (two or more).
+        // The post layout's table of contents: anchors are made here for the headings of the formatted
+        // text and of the gallery, video and FAQ blocks (two or more). Its small script marks the entry
+        // being read; without it the list is plain links.
         $toc = ['html' => $sections, 'items' => []];
         if ($layout === 'theme::layouts.post') {
             $toc = ArticleToc::of($sections, array_map('strval', array_keys((array) request()->attributes->get('sf_zigzag_ids', []))));
             $sections = $toc['html'];
+            $extra += $toc['items'] !== [] ? ['tocScript' => true] : [];
         }
         // The page layout with a table of contents: the band that leads the page stays full width above
         // the two columns, and the headings of the text after it are numbered and given anchors.

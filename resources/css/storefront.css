@@ -2162,6 +2162,37 @@ main:has(.hero, .sf-slider) .page__title {
     color: var(--color-primary-text);
 }
 
+/* The side column's contents: each entry a row with a left rule; the entry being read (marked by
+   sf-toc.js with aria-current) is a light row, bold, with the brand rule. Without the script the
+   rows stay plain links. The phone's list keeps the plain links. */
+.post-toc .post-toc__link {
+    display: flex;
+    align-items: center;
+    min-height: 2.5rem;
+    padding: 0.5rem 0.75rem;
+    border-left: 4px solid transparent;
+    border-radius: 0.375rem;
+    transition: color 0.2s, background-color 0.2s, border-color 0.2s;
+}
+
+.post-toc .post-toc__link[aria-current="true"] {
+    border-left-color: var(--color-primary);
+    background: var(--color-surface);
+    color: var(--color-text-strong);
+    font-weight: 600;
+}
+
+.post-toc .post-toc__link:focus-visible {
+    outline: 2px solid var(--color-primary-text, var(--color-text-strong));
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .post-toc .post-toc__link {
+        transition: none;
+    }
+}
+
 .slot-recent__list,
 .slot-categories__list {
     display: grid;
@@ -5485,7 +5516,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     z-index: 1;
     width: 100%;
     max-width: 64rem;
-    padding: 3rem 1rem 7rem;
+    padding: 3rem 3rem 5rem;
     text-align: center;
 }
 
@@ -5508,16 +5539,31 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     text-shadow: 0 2px 4px rgb(0 0 0 / 0.5);
 }
 
+/* A phone puts the two buttons side by side in equal halves (a lone one takes the row); from 640px
+   they sit in a centred row at their own width. A long label wraps inside its half, never cut. */
 .sf-slide__ctas {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    justify-content: center;
+    display: grid;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+    gap: 0.75rem;
+    max-width: 24rem;
+    margin-inline: auto;
 }
 
 .sf-slide__cta {
     border-radius: 9999px;
     box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+/* A phone's halves: smaller text and a slim side padding, so a usual label ("Yêu Cầu Báo Giá" in
+   the site font at a 390px width) keeps one line; a longer one wraps inside its half (never cut,
+   never past the button's edge). */
+@media (max-width: 639.98px) {
+    .sf-slide__cta {
+        padding-inline: 0.25rem;
+        font-size: 0.875rem;
+        text-wrap: balance;
+    }
 }
 
 .sf-slide__cta.sf-slide__cta--accent {
@@ -5531,7 +5577,10 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     }
 
     .sf-slide__ctas {
-        flex-direction: row;
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        max-width: none;
     }
 }
 
@@ -5541,16 +5590,25 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     }
 }
 
-/* Controls. Below md they form one bottom row (prev · dots · pause · next), so the arrows never
- * cover the centered text; from md the arrows sit at the sides and the row keeps pause + dots. */
+/* Controls. The arrows sit at the sides, halfway down, on every width: outlined discs (a dark wash
+ * with a light ring), 40px on a phone and 48px from 640px, so a phone keeps 3rem of side room for the
+ * text (.sf-slide__content). The bottom row holds the dots, then the Pause button: a bare icon with
+ * no disc. Pause comes first in the markup (it is the first stop for a keyboard, as the carousel
+ * pattern asks) and is moved after the dots only on screen. */
 .sf-slider__controls {
     position: absolute;
-    inset: auto 0 1.25rem;
+    inset: 0;
     z-index: 3;
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: center;
-    gap: 0.5rem;
+    gap: 0.25rem;
+    padding-bottom: 1rem;
+    pointer-events: none;
+}
+
+.sf-slider__controls > * {
+    pointer-events: auto;
 }
 
 .sf-slider__controls[hidden] {
@@ -5580,23 +5638,49 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     box-shadow: 0 0 0 4px rgb(0 0 0 / 0.6);
 }
 
+.sf-slider__prev,
+.sf-slider__next {
+    position: absolute;
+    top: 50%;
+    width: 2.5rem;
+    height: 2.5rem;
+    background: rgb(0 0 0 / 0.4);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.2);
+    transform: translateY(-50%);
+}
+
 .sf-slider__prev {
-    order: 1;
+    left: 0.5rem;
+}
+
+.sf-slider__next {
+    right: 0.5rem;
+}
+
+/* The hit area reaches 44px (the touch size) round the 40px disc of a phone. */
+.sf-slider__prev::after,
+.sf-slider__next::after {
+    content: "";
+    position: absolute;
+    inset: -0.125rem;
 }
 
 .sf-slider__dots {
     display: flex;
-    order: 2;
+    order: 1;
 }
 
 .sf-slider__pause {
-    order: 3;
-    width: 2.75rem;
-    height: 2.75rem;
+    order: 2;
+    width: 2.5rem;
+    height: 2.5rem;
+    background: transparent;
+    color: rgb(255 255 255 / 0.8);
 }
 
-.sf-slider__next {
-    order: 4;
+.sf-slider__pause svg {
+    width: 1rem;
+    height: 1rem;
 }
 
 .sf-slider__pause .sf-slider__icon-play,
@@ -5633,28 +5717,15 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     transform: scale(1.25);
 }
 
-@media (min-width: 768px) {
-    /* The row spans the slider (clicks pass through to the slide) so the arrows can center. */
+@media (min-width: 640px) {
     .sf-slider__controls {
-        inset: 0;
-        align-items: flex-end;
-        padding-bottom: 2rem;
-        pointer-events: none;
-    }
-
-    .sf-slider__controls > * {
-        pointer-events: auto;
-    }
-
-    .sf-slider__pause {
-        order: 0;
+        padding-bottom: 1.5rem;
     }
 
     .sf-slider__prev,
     .sf-slider__next {
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
+        width: 3rem;
+        height: 3rem;
     }
 
     .sf-slider__prev {
@@ -5665,6 +5736,12 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
         right: 1.25rem;
     }
 
+    .sf-slide__content {
+        padding-inline: 4rem;
+    }
+}
+
+@media (min-width: 768px) {
     .sf-slide__content {
         padding-bottom: 6rem;
     }
@@ -5867,6 +5944,16 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
         background: rgb(0 0 0 / 0.5);
     }
 
+    .sf-slider__prev:hover,
+    .sf-slider__next:hover {
+        background: rgb(0 0 0 / 0.6);
+    }
+
+    .sf-slider__pause:hover {
+        background: rgb(255 255 255 / 0.15);
+        color: #fff;
+    }
+
     .sf-slider__dot:hover .sf-slider__dot-mark {
         background: #fff;
     }
@@ -5891,7 +5978,8 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 
 /* Touch screens: the new controls reach 44px. */
 @media (any-pointer: coarse) {
-    .sf-slider__dot {
+    .sf-slider__dot,
+    .sf-slider__pause {
         width: 2.75rem;
         height: 2.75rem;
     }
@@ -8030,6 +8118,58 @@ html:has(.sf-viewer[open]) {
 
 .partners .sf-rail__list > li > * {
     flex: 0 1 auto;
+}
+
+/* Partner logos: the arrows stand outside the row of logos, beside it and centred on it (a grid of
+   arrow · row · arrow, the Pause bar below), as dark discs with a light ring: 36px on a phone, 40px
+   from 640px, inside the 44px hit area. The Pause button takes the same disc. An arrow the script
+   keeps hidden (a row that does not scroll) leaves no room behind. */
+.partners .sf-rail {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+}
+
+.partners .sf-rail__list {
+    grid-area: 1 / 2;
+}
+
+.partners :is(.sf-rail__prev, .sf-rail__next) {
+    position: relative;
+    translate: none;
+    inset: auto;
+}
+
+.partners .sf-rail__prev { grid-area: 1 / 1; }
+.partners .sf-rail__next { grid-area: 1 / 3; }
+
+.partners .sf-rail__bar {
+    grid-area: 2 / 1 / 3 / -1;
+}
+
+.partners .sf-rail__btn {
+    color: #fff;
+}
+
+.partners .sf-rail__btn::before {
+    background: color-mix(in srgb, var(--color-dark) 90%, transparent);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1), inset 0 0 0 1px rgb(255 255 255 / 0.3);
+}
+
+@media (min-width: 640px) {
+    .partners .sf-rail {
+        column-gap: 0.25rem;
+    }
+
+    .partners .sf-rail__btn::before {
+        inset: 0.125rem;
+    }
+}
+
+@media (hover: hover) {
+    .partners .sf-rail__btn:hover::before {
+        background: var(--color-dark);
+    }
 }
 
 /* ───── 404 page (theme::layouts.not-found) ─────────────────────────────── */

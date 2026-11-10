@@ -230,6 +230,9 @@
 @if (! empty($tabsScript))
 @vite(['resources/js/sf-tabs.js'])
 @endif
+@if (! empty($tocScript))
+@vite(['resources/js/sf-toc.js'])
+@endif
 @if (! empty($viewerScript))
 @vite(['resources/js/sf-viewer.js'])
 {{-- The photo viewer's frame, translated here; sf-viewer.js copies it into the page on first use. --}}
