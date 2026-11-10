@@ -9,6 +9,7 @@ use App\Modules\Admin\Support\Settings\HeadingDecorInput;
 use App\Modules\Admin\Support\Settings\SettingsChangeRejected;
 use App\Modules\Cms\Taxonomy\TaxonomyRules;
 use App\Modules\Cms\Validation\ValidPageJson;
+use App\Modules\Media\Actions\UploadMedia;
 use App\Modules\Media\Models\Media;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\RichTextSanitizer;
@@ -131,6 +132,8 @@ final readonly class PackValidator
             foreach (self::slotsIn($item->data) as $slot) {
                 if (! isset($pack->slots[$slot])) {
                     $errors[] = "{$at}: image slot '{$slot}' is not in media.json.";
+                } elseif (self::isDocument($pack->slots[$slot])) {
+                    $errors[] = "{$at}: media slot '{$slot}' is a document, not an image.";
                 }
             }
         }
@@ -910,6 +913,11 @@ final readonly class PackValidator
         if (isset($slot['alt'])) {
             $this->localeMap($pack, $at, $slot, 'alt', false, Media::ALT_MAX_LENGTH, $errors);
         }
+        if (! in_array($slot['kind'] ?? 'image', ['image', 'document'], true)) {
+            $errors[] = "{$at}: kind is image or document.";
+
+            return;
+        }
 
         $file = $slot['file'] ?? null;
         if ($file === null) {
@@ -920,18 +928,45 @@ final readonly class PackValidator
 
             return;
         }
-        if (self::mime($pack->dir.'/'.$file) === null) {
-            $errors[] = "{$at}: {$file} is missing or not a JPEG/PNG/WebP image.";
+        $path = $pack->dir.'/'.$file;
+        $document = self::isDocument($slot);
+        if (self::mime($path, $document) === null) {
+            $errors[] = $document
+                ? "{$at}: {$file} is missing or not a PDF document."
+                : "{$at}: {$file} is missing or not a JPEG/PNG/WebP image.";
+
+            return;
+        }
+        // The media library's own upload limit: a larger file would pass here and fail at upload.
+        $max = UploadMedia::MAX_KB * 1024;
+        if ((int) filesize($path) > $max) {
+            $errors[] = sprintf('%s: %s is %.1f MB; the media library takes files up to %d MB.', $at, $file, (int) filesize($path) / 1048576, $max / 1048576);
         }
     }
 
-    /** The image type a file really is, by its first bytes; null when it is none of the allowed ones. */
-    public static function mime(string $path): ?string
+    /**
+     * Whether a media.json slot holds a document (`"kind": "document"`, a PDF) rather than an image.
+     *
+     * @param  array<array-key, mixed>  $slot
+     */
+    public static function isDocument(array $slot): bool
+    {
+        return ($slot['kind'] ?? null) === 'document';
+    }
+
+    /**
+     * The type a file really is, by its first bytes; null when it is none of the allowed ones. A
+     * document slot allows only a PDF, an image slot only a JPEG, PNG or WebP image.
+     */
+    public static function mime(string $path, bool $document = false): ?string
     {
         if (! is_file($path)) {
             return null;
         }
         $head = (string) file_get_contents($path, false, null, 0, 16);
+        if ($document) {
+            return str_starts_with($head, '%PDF-') ? 'application/pdf' : null;
+        }
         foreach (self::MAGIC as $magic => $mime) {
             if (str_starts_with($head, $magic)) {
                 return $mime;

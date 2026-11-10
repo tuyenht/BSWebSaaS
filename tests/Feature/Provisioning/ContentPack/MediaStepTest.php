@@ -361,3 +361,25 @@ it('records the files written before a run stopped part-way', function (): void 
         ->and(packMedia($this->siteId))->toHaveCount(1)
         ->and(AuditLog::query()->where('action', 'content_pack.media_applied')->where('id', '>', $before)->sole()->meta)->toMatchArray(['written' => 1]);
 });
+
+it('uploads a document slot as a PDF through the media library', function (): void {
+    $pdf = "%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n";
+    File::put($this->folder.'/media/profile.pdf', $pdf);
+    ContentPacks::edit($this->folder, 'media.json', function (array $media): array {
+        $media['slots'][] = ['slot' => 'profile', 'kind' => 'document', 'file' => 'media/profile.pdf', 'alt' => ['vi' => 'Hồ sơ năng lực']];
+
+        return $media;
+    });
+
+    [$exit, $output] = mediaLoad();
+    expect($exit)->toBe(0, $output)
+        ->and(ContentPacks::verdict($output, 'media:profile'))->toBe('upload');
+
+    $row = ContentPacks::in($this->siteId, fn () => Media::query()->where('original_filename', 'profile.pdf')->firstOrFail());
+    expect($row->mime)->toBe('application/pdf')
+        ->and($row->storage_key)->toMatch('#^demo/library/profile-[0-9a-f]{4}\.pdf$#')
+        ->and($row->hash)->toBe(hash('sha256', $pdf))
+        ->and($row->width)->toBeNull()
+        ->and($row->alt)->toBe(['vi' => 'Hồ sơ năng lực'])
+        ->and(Storage::disk('r2')->get($row->storage_key))->toBe($pdf);
+});

@@ -23,6 +23,8 @@ use RuntimeException;
  * no second row and no second object. A match in the Trash is reported and left there, unless the
  * slot is forced with `--force-item=media:<slot>`. Uploaded rows get the slot's alt text and no
  * uploader (`created_by` null); an existing row's alt text is the site's own and never rewritten.
+ * A slot of `"kind": "document"` holds a PDF and takes the same path (the library stores a PDF as a
+ * download); an image slot holds only a JPEG, PNG or WebP image.
  *
  * Storage keys: new keys are prefixed with the slug of the site's name (MediaKey), so two websites
  * whose names give the same slug would file images in the same folder and could overwrite each
@@ -115,6 +117,7 @@ final readonly class MediaStep
                 'collection' => Cast::string($slot['collection'] ?? 'library'),
                 'hash' => (string) hash_file('sha256', $path),
                 'size' => (int) filesize($path),
+                'document' => PackValidator::isDocument($slot),
             ];
         }
 
@@ -159,7 +162,7 @@ final readonly class MediaStep
                 $verdict = $disk->exists($storageKey) ? self::REUSE : self::REPAIR;
             } else {
                 $verdict = self::UPLOAD;
-                $storageKey = $this->newKey($site, $slot['collection'], $slot['path'], $slot['hash']);
+                $storageKey = $this->newKey($site, $slot['collection'], $slot['path'], $slot['hash'], $slot['document']);
                 if (isset($newKeys[$storageKey])) {
                     throw new PackRejected("Refused: {$key} and another slot would both be stored under '{$storageKey}'; rename one of the two files. Nothing was uploaded.");
                 }
@@ -255,12 +258,12 @@ final readonly class MediaStep
     }
 
     /** The key UploadMedia gives these bytes: its slug from the file name, its extension from the sniffed type. */
-    private function newKey(Site $site, string $collection, string $path, string $hash): string
+    private function newKey(Site $site, string $collection, string $path, string $hash, bool $document): string
     {
-        $mime = PackValidator::mime($path);
+        $mime = PackValidator::mime($path, $document);
         $ext = $mime === null ? null : (UploadMedia::MIME_EXT[$mime] ?? null);
         if ($ext === null) {
-            throw new PackRejected('Refused: '.basename($path).' is not an image the media library accepts.');
+            throw new PackRejected('Refused: '.basename($path).' is not '.($document ? 'a PDF document' : 'an image').' the media library accepts.');
         }
         $slug = Slugger::make(pathinfo(basename($path), PATHINFO_FILENAME)) ?: 'tep';
 

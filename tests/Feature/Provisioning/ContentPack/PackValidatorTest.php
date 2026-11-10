@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Media\Actions\UploadMedia;
 use App\Modules\Provisioning\ContentPack\PackReader;
 use App\Modules\Provisioning\ContentPack\PackValidator;
 use Tests\Fixtures\ContentPacks;
@@ -289,3 +290,59 @@ it('accepts a page parent listed earlier in the pack, a page outside it (the pla
 
     expect(cpProblems())->toBe([]);
 })->with(['page:/gioi-thieu', 'page:/ngoai-goi', null]);
+
+/** Adds a media slot whose file holds $bytes. */
+function cpAddSlot(string $folder, array $slot, string $file, string $bytes): void
+{
+    file_put_contents($folder.'/'.$file, $bytes);
+    ContentPacks::edit($folder, 'media.json', function (array $media) use ($slot, $file): array {
+        $media['slots'][] = $slot + ['file' => $file];
+
+        return $media;
+    });
+}
+
+it('accepts a PDF in a document slot', function (): void {
+    cpAddSlot($this->folder, ['slot' => 'profile', 'kind' => 'document'], 'media/profile.pdf', "%PDF-1.4\n%%EOF\n");
+
+    expect(cpProblems())->toBe([]);
+});
+
+it('refuses a file named .pdf that is not a PDF, in a document slot', function (): void {
+    cpAddSlot($this->folder, ['slot' => 'profile', 'kind' => 'document'], 'media/profile.pdf', (string) file_get_contents($this->folder.'/media/header.png'));
+
+    expect(implode("\n", cpProblems()))->toContain("media slot 'profile': media/profile.pdf is missing or not a PDF document.");
+});
+
+it('refuses a PDF in an image slot', function (?string $kind): void {
+    cpAddSlot($this->folder, ['slot' => 'banner'] + ($kind === null ? [] : ['kind' => $kind]), 'media/banner.pdf', "%PDF-1.4\n%%EOF\n");
+
+    expect(implode("\n", cpProblems()))->toContain("media slot 'banner': media/banner.pdf is missing or not a JPEG/PNG/WebP image.");
+})->with(['no kind' => [null], 'kind image' => ['image']]);
+
+it('refuses a slot kind other than image or document', function (): void {
+    cpAddSlot($this->folder, ['slot' => 'clip', 'kind' => 'video'], 'media/clip.pdf', "%PDF-1.4\n%%EOF\n");
+
+    expect(implode("\n", cpProblems()))->toContain("media slot 'clip': kind is image or document.");
+});
+
+it('refuses a document slot used where an image goes', function (): void {
+    cpAddSlot($this->folder, ['slot' => 'profile', 'kind' => 'document'], 'media/profile.pdf', "%PDF-1.4\n%%EOF\n");
+    ContentPacks::edit($this->folder, 'media.json', function (array $media): array {
+        foreach ($media['slots'] as $i => $slot) {
+            if ($slot['slot'] === 'header') {
+                $media['slots'][$i] = ['slot' => 'header', 'kind' => 'document', 'file' => 'media/profile.pdf'];
+            }
+        }
+
+        return $media;
+    });
+
+    expect(implode("\n", cpProblems()))->toContain("media slot 'header' is a document, not an image.");
+});
+
+it('refuses a file over the media library\'s upload limit', function (): void {
+    cpAddSlot($this->folder, ['slot' => 'profile', 'kind' => 'document'], 'media/profile.pdf', "%PDF-1.4\n".str_repeat('0', UploadMedia::MAX_KB * 1024));
+
+    expect(implode("\n", cpProblems()))->toContain("media slot 'profile': media/profile.pdf is 10.0 MB; the media library takes files up to 10 MB.");
+});
