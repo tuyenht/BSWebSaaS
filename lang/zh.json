@@ -1631,6 +1631,7 @@
     "entries.opt_variant_news-cards": "新闻卡片",
     "entries.opt_variant_overlay": "图片叠加文字",
     "entries.opt_variant_rounded": "圆角按钮",
+    "entries.opt_variant_split": "左侧文字，右侧按钮",
     "entries.opt_variant_cards": "卡片样式",
     "entries.opt_variant_top-rule": "顶部线条卡片",
     "entries.opt_kind_number": "数字",

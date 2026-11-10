@@ -55,7 +55,9 @@ function oldBlockTrees(): array
     return [
         'partners' => <<<'TREE'
 section.partners
- h2.partners__heading
+ div.sf-section-head
+  h2.sf-section-head__title
+  span.sf-section-head__rule
  ul.partners__list
   li.partners__item
    a.partners__link

@@ -1,4 +1,5 @@
 @php
+    // The head is the shared centered one (heading, decoration, optional description).
     // A block with the display group (a new one) draws a rail; a block saved before it keeps the plain list.
     // A partner with a logo or a name is shown: the name stands in for a logo not uploaded yet.
     $sfShown = static fn (mixed $logo): bool => (is_string($src = ((array) $logo)['image_url'] ?? null) && $src !== '')
@@ -11,9 +12,10 @@
     }
 @endphp
 <section class="partners">
-    @if (! empty($props['heading']))
-        <h2 class="partners__heading">{{ $props['heading'] }}</h2>
-    @endif
+@include('theme::partials.sf-section-head', [
+    'heading' => \App\Modules\Theme\Components\SectionProps::text($props, 'heading'),
+    'description' => \App\Modules\Theme\Components\SectionProps::text($props, 'description'),
+])
 @if ($sfDisplay !== null)
 @include('theme::partials.sf-rail-open', ['display' => $sfDisplay, 'label' => \App\Modules\Theme\Components\SectionProps::text($props, 'heading', __('storefront.list_rail'))])
 @endif

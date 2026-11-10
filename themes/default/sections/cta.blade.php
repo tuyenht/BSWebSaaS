@@ -2,9 +2,11 @@
     $button = \App\Modules\Theme\Components\ButtonLink::of($props, 'button_url');
     $button2 = \App\Modules\Theme\Components\ButtonLink::of($props, 'button2_url');
     $hasButton2 = ! empty($props['button2_label']) && $button2 !== null;
-    $rounded = \App\Modules\Theme\Components\SectionProps::choice($props, 'variant', \App\Modules\Theme\Components\SectionProps::CTA_VARIANTS) === 'rounded';
-    // The stats beside the text exist with the default look only; the rounded band ignores them.
-    $side = ! $rounded && \App\Modules\Theme\Components\SectionProps::choice($props, 'side', \App\Modules\Theme\Components\SectionProps::CTA_SIDES) === 'stats'
+    $variant = \App\Modules\Theme\Components\SectionProps::choice($props, 'variant', \App\Modules\Theme\Components\SectionProps::CTA_VARIANTS);
+    $rounded = $variant === 'rounded';
+    $hasButton = ! empty($props['button_label']) && $button !== null;
+    // The stats beside the text exist with the default look only; the rounded and split bands ignore them.
+    $side = $variant === 'default' && \App\Modules\Theme\Components\SectionProps::choice($props, 'side', \App\Modules\Theme\Components\SectionProps::CTA_SIDES) === 'stats'
         ? \App\Modules\Theme\Components\SectionProps::statEntries($props, 'side_items', \App\Modules\Theme\Components\SectionProps::CTA_SIDE_MAX_ITEMS)
         : [];
 @endphp
@@ -26,6 +28,31 @@
 @endif
 @if ($hasButton2)
         <a class="cta__button cta__button--pill cta__button--outline" href="{{ $button2['href'] }}"@if ($button2['blank']) target="_blank" rel="noopener"@elseif ($button2['download']) download=""@endif>{{ $props['button2_label'] }}@if ($button2['blank'])<span class="sr-only"> {{ __('storefront.new_tab') }}</span>@endif</a>
+        </div>
+@endif
+    </div>
+</section>
+@elseif ($variant === 'split')
+{{-- The split look (opt-in): the text on the left and pill buttons on the right from a tablet up;
+     stacked on a phone, the buttons full width. --}}
+<section class="cta cta--split">
+    <div class="sf-container cta__row">
+        <div class="cta__copy">
+@if (! empty($props['heading']))
+            <h2 class="cta__title">{{ $props['heading'] }}</h2>
+@endif
+@if (! empty($props['text']))
+            <p class="cta__text">{{ $props['text'] }}</p>
+@endif
+        </div>
+@if ($hasButton || $hasButton2)
+        <div class="cta__actions">
+@if ($hasButton)
+            <a class="cta__button cta__button--pill" href="{{ $button['href'] }}"@if ($button['blank']) target="_blank" rel="noopener"@elseif ($button['download']) download=""@endif>{{ $props['button_label'] }}@if ($button['blank'])<span class="sr-only"> {{ __('storefront.new_tab') }}</span>@endif</a>
+@endif
+@if ($hasButton2)
+            <a class="cta__button cta__button--pill cta__button--outline" href="{{ $button2['href'] }}"@if ($button2['blank']) target="_blank" rel="noopener"@elseif ($button2['download']) download=""@endif>{{ $props['button2_label'] }}@if ($button2['blank'])<span class="sr-only"> {{ __('storefront.new_tab') }}</span>@endif</a>
+@endif
         </div>
 @endif
     </div>

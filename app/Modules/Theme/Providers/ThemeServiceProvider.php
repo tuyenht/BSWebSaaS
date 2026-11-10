@@ -77,6 +77,8 @@ final class ThemeServiceProvider extends ServiceProvider
         ],
         'partners' => [
             'heading' => ['type' => 'text'],
+            // The line under the heading in the shared section head.
+            'description' => ['type' => 'textarea'],
             'logos' => ['type' => 'list', 'of' => [
                 'image_url' => ['type' => 'image'],
                 'name' => ['type' => 'text'],
@@ -91,7 +93,7 @@ final class ThemeServiceProvider extends ServiceProvider
             'variant' => ['type' => 'enum', 'options' => SectionProps::CTA_VARIANTS, 'default' => 'default'],
             'button2_label' => ['type' => 'text'],
             'button2_url' => ['type' => 'url', 'action' => 'button2_label'],
-            // Up to three stats beside the text, with the default look only (the rounded band ignores them).
+            // Up to three stats beside the text, with the default look only (the rounded and split bands ignore them).
             'side' => ['type' => 'enum', 'options' => SectionProps::CTA_SIDES, 'default' => 'none'],
             'side_items' => ['type' => 'list', 'max' => SectionProps::CTA_SIDE_MAX_ITEMS, 'of' => SectionProps::STAT_ITEM],
         ],
@@ -245,7 +247,7 @@ final class ThemeServiceProvider extends ServiceProvider
     private const array SLOT_ONLY = ['recent_posts', 'category_list', 'consult'];
 
     /** Types whose view draws a section heading (theme::partials.sf-section-head): they take `heading_decor`. */
-    private const array HEADED = ['features', 'process', 'pricing', 'testimonial', 'stats', 'gallery', 'quick_links', 'team', 'video', 'faq'];
+    private const array HEADED = ['features', 'partners', 'process', 'pricing', 'testimonial', 'stats', 'gallery', 'quick_links', 'team', 'video', 'faq'];
 
     #[\Override]
     public function register(): void
