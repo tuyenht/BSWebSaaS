@@ -141,7 +141,7 @@
    "key": "tax:product_cat/san-pham/tu-dong-hoa",
    "parent": "tax:post_cat/san-pham",
    "name": {
-    "vi": "Sản phẩm tự động hóa"
+    "vi": "Tự động hóa"
    },
    "list_template": "grid-product",
    "position": 4
