@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Support\Settings;
 
 use App\Modules\Admin\Livewire\FloatingContactSettings;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Theme\Chrome\ContactIcons;
 use App\Modules\Theme\Chrome\FloatingContact;
 
@@ -78,6 +79,112 @@ final class FloatingContactInput
         }
 
         return $errors;
+    }
+
+    /**
+     * One channel row cast to the shape the form works with: texts trimmed, the colour lower-cased,
+     * a label per language trimmed.
+     *
+     * @return array{key: string, on: bool, value: string, color: string, icon: string, name: string, tips: array<string, string>}
+     */
+    public static function castRow(mixed $row): array
+    {
+        $c = Cast::arr($row);
+        $tips = [];
+        foreach (Cast::arr($c['tips'] ?? null) as $lc => $t) {
+            $tips[(string) $lc] = trim(Cast::string($t));
+        }
+
+        return [
+            'key' => Cast::string($c['key'] ?? null),
+            'on' => ($c['on'] ?? false) === true,
+            'value' => trim(Cast::string($c['value'] ?? null)),
+            'color' => strtolower(Cast::string($c['color'] ?? null)),
+            'icon' => Cast::string($c['icon'] ?? null),
+            'name' => trim(Cast::string($c['name'] ?? null)),
+            'tips' => $tips,
+        ];
+    }
+
+    /**
+     * One channel in the stored shape: a colour only when chosen, an icon and name only on a
+     * channel of the site's own, and the labels that are not empty.
+     *
+     * @param  array{key: string, on: bool, value: string, color: string, icon: string, name: string, tips: array<string, string>}  $c
+     * @return array<string, mixed>
+     */
+    public static function storedRow(array $c): array
+    {
+        $row = ['key' => $c['key'], 'on' => $c['on'], 'value' => $c['value']];
+        if ($c['color'] !== '') {
+            $row['color'] = $c['color'];
+        }
+        if (FloatingContact::typeOf($c['key']) === 'custom') {
+            $row['icon'] = $c['icon'];
+            $row['name'] = $c['name'];
+        }
+        $row['tips'] = array_filter($c['tips'], fn (string $t): bool => $t !== '');
+
+        return $row;
+    }
+
+    /**
+     * A valid value as the form stores it after a save with no change: the form's load (defaults for
+     * what is missing, the built-in channels added switched off, labels of a language the site does
+     * not list dropped) followed by its save (trimmed, colours lower-cased, empty labels dropped).
+     * The loader writes this, so an admin save with no change reads back the same.
+     *
+     * @param  array<array-key, mixed>  $raw  a value that passed errors()
+     * @param  list<string>  $locales  the site's languages
+     * @return array<string, mixed>
+     */
+    public static function stored(array $raw, array $locales): array
+    {
+        $buy = Cast::arr($raw['buy'] ?? null);
+        $buyColor = Cast::string($buy['color'] ?? null);
+        $rows = [];
+        $seen = [];
+        foreach (array_slice(array_values(Cast::arr($raw['channels'] ?? null)), 0, FloatingContact::MAX_CHANNELS) as $c) {
+            $c = Cast::arr($c);
+            $key = Cast::string($c['key'] ?? null);
+            if (FloatingContact::typeOf($key) === null || isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $tips = [];
+            foreach (Cast::arr($c['tips'] ?? null) as $lc => $tip) {
+                if (is_string($tip) && in_array((string) $lc, $locales, true)) {
+                    $tips[(string) $lc] = $tip;
+                }
+            }
+            $rows[] = self::castRow([
+                'key' => $key,
+                'on' => ($c['on'] ?? false) === true,
+                'value' => Cast::string($c['value'] ?? null),
+                'color' => FloatingContact::color($c['color'] ?? null) ?? '',
+                'icon' => in_array($c['icon'] ?? null, ContactIcons::CUSTOM, true) ? Cast::string($c['icon']) : 'ri-global-line',
+                'name' => Cast::string($c['name'] ?? null),
+                'tips' => $tips,
+            ]);
+        }
+        foreach (FloatingContact::CORE as $key) {
+            if (! isset($seen[$key])) {
+                $rows[] = self::castRow(['key' => $key]);
+            }
+        }
+
+        return [
+            'enabled' => ($raw['enabled'] ?? false) === true,
+            'theme' => in_array($raw['theme'] ?? null, FloatingContact::THEMES, true) ? Cast::string($raw['theme']) : 'vertical',
+            'position' => in_array($raw['position'] ?? null, FloatingContact::POSITIONS, true) ? Cast::string($raw['position']) : 'right',
+            'offset_x' => FloatingContact::offset($raw['offset_x'] ?? null, FloatingContact::MAX_OFFSET_X, FloatingContact::DEFAULT_OFFSET_X),
+            'offset_y' => FloatingContact::offset($raw['offset_y'] ?? null, FloatingContact::MAX_OFFSET_Y, FloatingContact::DEFAULT_OFFSET_Y),
+            'buy' => [
+                'enabled' => ($buy['enabled'] ?? false) === true,
+                'color' => in_array($buyColor, FloatingContactSettings::BUY_SWATCHES, true) || FloatingContact::color($buyColor) !== null ? $buyColor : FloatingContact::BUY_COLOR,
+            ],
+            'channels' => array_map(self::storedRow(...), $rows),
+        ];
     }
 
     /**

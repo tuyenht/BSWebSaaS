@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Provisioning\ContentPack;
 
+use App\Modules\Admin\Support\Settings\FloatingContactInput;
 use App\Modules\Admin\Support\Settings\HeadingDecorInput;
+use App\Modules\Admin\Support\Settings\SettingsChangeRejected;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Cms\Casts\SanitizedPageBody;
@@ -1361,7 +1363,7 @@ final class Planner
         [$group, $name] = explode('.', $item->anchor(), 2);
         $row = $this->locked(SiteSetting::query()->where('group_name', $group)->where('key', $name))->first(['group_name', 'key', 'value']);
         $live = $row === null ? null : Cast::arr($row->value);
-        $managed = isset($item->data['managed_keys']) ? Cast::strings($item->data['managed_keys']) : null;
+        $managed = $item->managedKeys();
 
         $current = $live === null ? null : self::settingState($live, $managed);
         $desired = [];
@@ -1384,22 +1386,41 @@ final class Planner
             $desired[$key] = $value;
         }
 
-        return $this->decide($context, $item, $current, self::asTheAdminStores($item, $desired, $managed), $current === null ? null : $item->anchor(), null);
+        return $this->decide($context, $item, $current, $this->asTheAdminStores($item, $desired, $managed, $live), $current === null ? null : $item->anchor(), null);
     }
 
     /**
      * The value in the shape the admin's own save stores it, so a pack-written setting and a
-     * staff-written one read back the same: the heading decoration with every field filled in, and a
-     * block slot's text through the page-body sanitizer. Other settings are written as given.
+     * staff-written one read back the same: the heading decoration with every field filled in, the
+     * floating contact as its form stores it (trimmed, built-in channels added) and a block slot's
+     * text through the page-body sanitizer. When the item owns only some keys, the heading
+     * decoration is checked as the whole it becomes once merged with the live value (the admin
+     * refuses a custom colour without its hex), and only the owned keys are kept. Other settings
+     * are written as given.
      *
      * @param  array<string, mixed>  $desired
      * @param  list<string>|null  $managed
+     * @param  array<array-key, mixed>|null  $live
      * @return array<string, mixed>
+     *
+     * @throws PackRejected the merged heading decoration is one the admin would refuse
      */
-    private static function asTheAdminStores(PackItem $item, array $desired, ?array $managed): array
+    private function asTheAdminStores(PackItem $item, array $desired, ?array $managed, ?array $live): array
     {
-        if ($item->key === 'setting:theme.heading_decor' && $managed === null) {
-            return HeadingDecorInput::checked($desired) ?? $desired;
+        if ($item->key === 'setting:theme.heading_decor' || $item->key === 'setting:storefront.floating_contact') {
+            $whole = $managed === null ? $desired : array_replace($live ?? [], $desired);
+            if ($item->key === 'setting:theme.heading_decor') {
+                try {
+                    $stored = HeadingDecorInput::checked(array_combine(array_map('strval', array_keys($whole)), $whole)) ?? $whole;
+                } catch (SettingsChangeRejected $e) {
+                    throw new PackRejected("Refused: {$item->key} would leave the site's heading decoration with '{$e->field}' not accepted ({$e->reason}) once merged with its current value.");
+                }
+            } else {
+                $stored = FloatingContactInput::stored($whole, $this->locales);
+            }
+
+            /** @var array<string, mixed> $stored */
+            return $managed === null ? $stored : array_intersect_key($stored, array_flip($managed));
         }
         if ($item->key === 'setting:storefront.layout_blocks') {
             foreach ($desired as $slot => $perLocale) {

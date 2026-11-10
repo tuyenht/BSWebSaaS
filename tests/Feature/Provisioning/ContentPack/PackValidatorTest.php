@@ -117,6 +117,44 @@ it('refuses a setting or profile link that leaves the site or is not a web link'
     'the trade ministry link' => ['settings.json', 'profile', fn (array $item): array => ['fields' => $item['fields'] + ['moit_url' => '//evil.example']] + $item, "profile: 'moit_url' has a value of the wrong shape"],
 ]);
 
+it('refuses a block the admin would refuse, with the plain message', function (array $value, array $messages): void {
+    cpAddSetting($this->folder, 'setting:storefront.layout_blocks', $value);
+
+    expect(cpProblems())->toBe($messages);
+})->with([
+    'an unknown block type' => [
+        ['post_aside' => ['vi' => ['blocks' => [['type' => 'no-such-block', 'props' => []]]]]],
+        ["setting:storefront.layout_blocks: 'post_aside' (vi): The \"no-such-block\" block is not supported."],
+    ],
+    'a javascript link in a block' => [
+        ['post_aside' => ['vi' => ['blocks' => [['type' => 'cta', 'props' => ['heading' => 'Hi', 'button_label' => 'Go', 'button_url' => 'javascript:alert(1)']]]]]],
+        [
+            "setting:storefront.layout_blocks: 'post_aside.vi.blocks.0.props.button_url' must be a site path (/…, never //host, a backslash or a space) or an http(s) link.",
+            "setting:storefront.layout_blocks: 'post_aside' (vi): A link in the \"cta\" block is not valid.",
+            "setting:storefront.layout_blocks: 'post_aside' (vi): block 1 (cta): button_url must be a site path (/…, never //host, a backslash or a space) or an http(s) link.",
+        ],
+    ],
+    'a library picture by id in a block' => [
+        ['post_aside' => ['vi' => ['blocks' => [['type' => 'about', 'props' => ['heading' => 'Hi', 'image_url' => 7]]]]]],
+        [
+            "setting:storefront.layout_blocks: 'post_aside.vi.blocks.0.props.image_url' must be a site path (/…, never //host, a backslash or a space) or an http(s) link.",
+            "setting:storefront.layout_blocks: 'post_aside' (vi): block 1 (about) names a library picture or file by id or key; a block slot of a pack cannot reference media.",
+        ],
+    ],
+    'a library file by key in a block' => [
+        ['post_aside' => ['vi' => ['blocks' => [['type' => 'cta', 'props' => ['heading' => 'Hi', 'button_label' => 'Go', 'button_url_do' => ['k' => 'file', 'file' => 'docs/brochure.pdf']]]]]]],
+        [
+            "setting:storefront.layout_blocks: 'post_aside' (vi): A button points to a file that is not in this website’s library. Choose the button’s file again.",
+            "setting:storefront.layout_blocks: 'post_aside' (vi): block 1 (cta) names a library picture or file by id or key; a block slot of a pack cannot reference media.",
+        ],
+    ],
+]);
+
+it('accepts a managed heading decoration whose custom colour is left to the live value', function (): void {
+    cpAddSetting($this->folder, 'setting:theme.heading_decor', ['color' => 'custom'], ['managed_keys' => ['color']]);
+
+    expect(cpProblems())->toBe([]);
+});
 it('refuses a list or post layout that is not a layout of the theme', function (string $field): void {
     ContentPacks::item($this->folder, 'taxonomies.json', 'tax:post_cat/tin-tuc', fn (array $item): array => [...$item, $field => 'khong-co']);
 
@@ -218,10 +256,8 @@ it('refuses block slots the admin would refuse', function (array $value, string 
     expect(implode("\n", cpProblems()))->toContain($message);
 })->with([
     'an unknown slot' => [['sidebar' => ['vi' => ['blocks' => []]]], "'sidebar' is not a block slot"],
-    'an unknown block type' => [['post_aside' => ['vi' => ['blocks' => [['type' => 'no-such-block', 'props' => []]]]]], "'post_aside' (vi)"],
     'a language the pack lacks' => [['post_aside' => ['en' => ['blocks' => []]]], 'the pack does not list this language'],
     'a block type that belongs in no side slot' => [['after_list' => ['vi' => ['blocks' => [['type' => 'recent_posts', 'props' => []]]]]], 'does not belong in this slot'],
-    'a javascript link in a block' => [['post_aside' => ['vi' => ['blocks' => [['type' => 'cta', 'props' => ['heading' => 'Hi', 'button_label' => 'Go', 'button_url' => 'javascript:alert(1)']]]]]], "'post_aside' (vi)"],
     'blocks that are not a list' => [['post_aside' => ['vi' => ['blocks' => ['x' => 1]]]], 'needs {"blocks"'],
     'too many tabs' => [['product_tabs' => ['vi' => ['blocks' => array_fill(0, 4, ['type' => 'richtext', 'props' => ['paragraphs' => ['x']]])]]], 'holds at most 3 blocks'],
 ]);

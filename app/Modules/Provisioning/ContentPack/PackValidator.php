@@ -14,8 +14,12 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\RichTextSanitizer;
 use App\Modules\Shared\Support\SafeLink;
 use App\Modules\Theme\Chrome\StorefrontChrome;
+use App\Modules\Theme\Components\ButtonLink;
 use App\Modules\Theme\Components\ComponentRegistry;
+use App\Modules\Theme\Components\SchemaHtml;
+use App\Modules\Theme\Components\SchemaImages;
 use App\Modules\Theme\Rendering\LayoutSlots;
+use App\Modules\Theme\Rendering\RichHtml;
 use App\Modules\Theme\Rendering\TemplateCatalog;
 use App\Modules\Theme\Theming\ThemeResolver;
 use Illuminate\Support\Facades\Validator;
@@ -241,7 +245,7 @@ final readonly class PackValidator
             'setting:theme.tokens' => $this->tokens($item->key, $value, $errors),
             'setting:storefront.header' => $this->chromeHeader($item->key, $value, $pack, $errors),
             'setting:storefront.footer' => $this->footer($item->key, $value, $pack, $errors),
-            'setting:theme.heading_decor' => $this->headingDecor($item->key, $value, $errors),
+            'setting:theme.heading_decor' => $this->headingDecor($item->key, $value, $item->managedKeys(), $errors),
             'setting:storefront.floating_contact' => $this->floatingContact($item->key, $value, $pack, $errors),
             'setting:storefront.layout_blocks' => $this->layoutBlocks($item->key, $value, $pack, $errors),
             default => null,
@@ -349,10 +353,14 @@ final readonly class PackValidator
      * The admin's own check of the heading decoration. A mask picture is a media key of the site's
      * library, which a pack cannot name, so it is left out.
      *
+     * With managed keys only those are the pack's; a custom colour whose hex the pack leaves to the
+     * live value is judged when the plan is made (the merged whole), not here.
+     *
      * @param  array<array-key, mixed>  $value
+     * @param  list<string>|null  $managed
      * @param  list<string>  $errors
      */
-    private function headingDecor(string $at, array $value, array &$errors): void
+    private function headingDecor(string $at, array $value, ?array $managed, array &$errors): void
     {
         if ($value === []) {
             $errors[] = "{$at}: value must not be empty (an empty heading decoration removes the setting; leave the item out instead).";
@@ -364,8 +372,16 @@ final readonly class PackValidator
 
             return;
         }
+        $probe = array_combine(array_map('strval', array_keys($value)), $value);
+        if ($managed !== null) {
+            $probe = array_intersect_key($probe, array_flip($managed));
+            if (($probe['color'] ?? null) === 'custom') {
+                $probe += ['custom_color' => '#000000'];
+                $probe += ['custom_color_2' => '#000000'];
+            }
+        }
         try {
-            HeadingDecorInput::checked(array_combine(array_map('strval', array_keys($value)), $value));
+            HeadingDecorInput::checked($probe);
         } catch (SettingsChangeRejected $e) {
             $errors[] = "{$at}: '{$e->field}' is not accepted ({$e->reason}).";
         }
@@ -428,6 +444,15 @@ final readonly class PackValidator
                         }
                         if (is_string($type) && $this->components->has($type) && is_array($block['props'] ?? null)) {
                             $this->blockLinks("{$where}: block ".($index + 1)." ({$type})", $block['props'], $this->components->schemaFor($type), '', $errors);
+                            $schema = $this->components->schemaFor($type);
+                            $files = ButtonLink::refs($block['props'], $schema)['files'];
+                            $htmlImages = [];
+                            foreach (SchemaHtml::values($block['props'], $schema) as $html) {
+                                array_push($htmlImages, ...RichHtml::imageIds($html));
+                            }
+                            if (SchemaImages::ids($block['props'], $schema) !== [] || $files !== [] || $htmlImages !== []) {
+                                $errors[] = "{$where}: block ".($index + 1)." ({$type}) names a library picture or file by id or key; a block slot of a pack cannot reference media.";
+                            }
                         }
                     }
                 }

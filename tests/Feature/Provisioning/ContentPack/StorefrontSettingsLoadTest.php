@@ -1,8 +1,14 @@
 <?php
 
+use App\Modules\Admin\Livewire\FloatingContactSettings;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\SiteRoute;
+use App\Modules\Cms\Support\BlockMediaUsage;
+use App\Modules\Identity\Models\User;
+use App\Modules\Media\Models\Mediable;
+use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Models\SiteSetting;
+use Livewire\Livewire;
 use Tests\Fixtures\ContentPacks;
 use Tests\Fixtures\StorefrontCards;
 
@@ -94,6 +100,93 @@ it('replaces only the slots the pack manages and keeps the others staff set', fu
     expect($exit)->toBe(0, $output);
 
     expect(array_keys(sfStored($this->siteId, 'storefront', 'layout_blocks')))->toEqualCanonicalizing(['after_list', 'post_aside']);
+});
+
+it('keeps the slots staff set that the pack does not name, with no managed_keys given', function (): void {
+    $staff = ['after_list' => ['vi' => ['blocks' => [['type' => 'richtext', 'props' => ['paragraphs' => ['Của nhân viên']]]]]]];
+    ContentPacks::in($this->siteId, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'layout_blocks', 'value' => $staff]));
+    $key = 'setting:storefront.layout_blocks';
+    sfAddSetting($this->folder, $key, ['post_aside' => ['vi' => ['blocks' => [['type' => 'richtext', 'props' => ['paragraphs' => ['Của gói']]]]]]]);
+
+    [$exit, $output] = ContentPacks::load('demo-co', [$key]);
+    expect($exit)->toBe(0, $output);
+    $stored = sfStored($this->siteId, 'storefront', 'layout_blocks');
+    expect(array_keys($stored))->toEqualCanonicalizing(['after_list', 'post_aside'])
+        ->and($stored['after_list'])->toEqual($staff['after_list']);
+
+    // the first load (adopting the existing row) behaves the same
+    ContentPacks::in($this->siteId, fn () => SiteSetting::query()->where('group_name', 'storefront')->where('key', 'layout_blocks')->update(['value' => $staff]));
+    ContentPacks::edit($this->folder, 'pack.json', fn (array $pack): array => ['version' => 3] + $pack);
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)->and(array_keys(sfStored($this->siteId, 'storefront', 'layout_blocks')))->toContain('after_list');
+});
+
+it('checks a managed heading decoration as the whole it becomes, as the admin does', function (): void {
+    $key = 'setting:theme.heading_decor';
+    sfAddSetting($this->folder, $key, ['style' => 'gear', 'color' => 'accent']);
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output);
+    $before = sfStored($this->siteId, 'theme', 'heading_decor');
+
+    ContentPacks::edit($this->folder, 'pack.json', fn (array $pack): array => ['version' => 2] + $pack);
+    ContentPacks::item($this->folder, 'settings.json', $key, fn (array $item): array => ['value' => ['color' => 'custom', 'custom_color' => '#aabbcc'], 'managed_keys' => ['color']] + $item);
+    [$exit, $output] = ContentPacks::run('demo-co', ['--apply' => true, '--force-item' => [$key]]);
+    expect($exit)->not->toBe(0)
+        ->and($output)->toContain("Refused: {$key} would leave the site's heading decoration with 'custom_color' not accepted (color_invalid) once merged with its current value.")
+        ->and(sfStored($this->siteId, 'theme', 'heading_decor'))->toEqual($before);
+});
+
+it('stores the floating contact as the admin form does, so an unchanged admin save is not a staff edit', function (): void {
+    $key = 'setting:storefront.floating_contact';
+    sfAddSetting($this->folder, $key, [
+        'enabled' => true,
+        'channels' => [
+            ['key' => 'zalo', 'on' => true, 'value' => ' 0901234567 ', 'color' => '#AABBCC', 'tips' => ['vi' => ' Nhắn Zalo ']],
+            ['key' => 'phone', 'on' => true, 'value' => '0901 234 567', 'tips' => ['vi' => '']],
+            ['key' => 'c1', 'on' => true, 'value' => 'https://example.com/x', 'icon' => 'ri-global-line', 'name' => ' Cửa hàng '],
+        ],
+    ]);
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output);
+
+    $stored = sfStored($this->siteId, 'storefront', 'floating_contact');
+    expect(array_column($stored['channels'], 'key'))->toBe(['zalo', 'phone', 'c1', 'messenger', 'email', 'sms'])
+        ->and($stored['channels'][0])->toEqual(['key' => 'zalo', 'on' => true, 'value' => '0901234567', 'color' => '#aabbcc', 'tips' => ['vi' => 'Nhắn Zalo']])
+        ->and($stored['channels'][1]['tips'])->toBe([])
+        ->and($stored['channels'][2]['name'])->toBe('Cửa hàng')
+        ->and($stored['offset_x'])->toBe(20)->and($stored['buy'])->toEqual(['enabled' => false, 'color' => '#ff7a46']);
+
+    // an admin save with no change
+    $admin = User::factory()->create();
+    $this->artisan('rbac:sync')->assertSuccessful();
+    ContentPacks::in($this->siteId, fn () => grantRole($admin, 'site-admin', ['settings.manage']));
+    app(TeamContext::class)->forget();
+    app()->setLocale('vi');
+    ContentPacks::in($this->siteId, function () use ($admin): void {
+        Livewire::actingAs($admin->fresh())->test(FloatingContactSettings::class)->call('save')->assertHasNoErrors();
+    });
+    expect(sfStored($this->siteId, 'storefront', 'floating_contact'))->toEqual($stored);
+
+    [, $full] = ContentPacks::run('demo-co', ['-vv' => true]);
+    expect(ContentPacks::verdict($full, $key))->toBe('unchanged');
+});
+
+it('syncs the library usage rows of the block slots after a load, as the admin does', function (): void {
+    $key = 'setting:storefront.layout_blocks';
+    $rowId = ContentPacks::in($this->siteId, function (): int {
+        $row = SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'layout_blocks', 'value' => []]);
+        $media = StorefrontCards::media('stale-picture');
+        Mediable::query()->create(['media_id' => $media->id, 'mediable_type' => 'site_setting', 'mediable_id' => $row->id, 'collection' => BlockMediaUsage::COLLECTION]);
+
+        return (int) $row->id;
+    });
+    sfAddSetting($this->folder, $key, ['post_aside' => ['vi' => ['blocks' => [['type' => 'richtext', 'props' => ['paragraphs' => ['Một']]]]]]]);
+
+    [$exit, $output] = ContentPacks::load('demo-co', [$key]);
+    expect($exit)->toBe(0, $output);
+
+    $rows = ContentPacks::in($this->siteId, fn (): int => Mediable::query()->where('mediable_type', 'site_setting')->where('mediable_id', $rowId)->count());
+    expect($rows)->toBe(0);
 });
 
 it('keeps a value staff changed in the admin, shows both at -vv, and writes the pack only when forced', function (string $group, string $name, array $first, array $second, array $staff): void {
