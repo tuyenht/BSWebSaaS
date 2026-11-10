@@ -3,6 +3,12 @@
     product); below it the photos sit beside the main category's name, the page's single h1, the
     summary and the contact box (call and Zalo from the site's business identity); the description
     follows in its own band, then up to four other products of the same category.
+    The site's own blocks (LayoutSlots) sit in four places: before the order buttons (in place of the
+    "price on request" line), after them (a bulleted list there reads as ticks in two columns), as
+    shared parts after the description, and in the band at the end. The description and the shared
+    parts split at their headings (`parts`, two or more): a bar of links to each part stays under the
+    header while the description scrolls; it is plain anchor links, and its small script only marks
+    the part being read.
     Photos: the first is the page's main image (eager, high priority, srcset), every other one and
     each thumbnail load lazily. Each thumbnail and the main photo are plain links to the photo, so
     they work without script; the switcher script (loaded only with more than one photo) swaps the
@@ -18,6 +24,10 @@
     $sfContact = is_array($sfInfo['contact'] ?? null) ? $sfInfo['contact'] : null;
     $sfRelated = $related ?? [];
     $sfHasBody = trim(strip_tags((string) $description, '<img><iframe><video><table>')) !== '';
+    $sfSlots = is_array($slotHtml ?? null) ? $slotHtml : [];
+    $sfBefore = trim((string) ($sfSlots['product_before_action'] ?? ''));
+    $sfAfter = trim((string) ($sfSlots['product_after_action'] ?? ''));
+    $sfParts = $parts ?? [];
 @endphp
 <!doctype html>
 <html lang="{{ $lang ?? 'vi' }}">
@@ -81,9 +91,13 @@
 @if (($sfInfo['summary'] ?? '') !== '')
                     <p class="product__summary">{{ $sfInfo['summary'] }}</p>
 @endif
-@if ($sfContact !== null || ($sfInfo['quote'] ?? null) !== null)
+@if ($sfContact !== null || ($sfInfo['quote'] ?? null) !== null || $sfBefore !== '')
                     <div class="product__contact">
+@if ($sfBefore !== '')
+                        <div class="product__lead">{!! $sfBefore !!}</div>
+@else
                         <p class="product__price">{{ __('storefront.price_on_request') }}</p>
+@endif
 @if (($sfInfo['quote'] ?? null) !== null || ($sfContact !== null && $sfContact['call'] !== null))
                         <div class="product__actions">
 @if (($sfInfo['quote'] ?? null) !== null)
@@ -99,15 +113,29 @@
 @endif
                     </div>
 @endif
+@if ($sfAfter !== '')
+                    <div class="product__extra">{!! $sfAfter !!}</div>
+@endif
                 </div>
             </div>
 @if ($sfHasBody)
             <section class="product__details" aria-labelledby="thong-tin-san-pham">
                 <div class="sf-container">
                     <h2 class="sr-only" id="thong-tin-san-pham">{{ __('storefront.product_info') }}</h2>
-                    {{-- $description is the product's pre-sanitized description HTML (HTMLPurifier at write time),
-                         rendered raw exactly like a post body's block HTML. --}}
-                    <div class="product__body sf-prose">{!! $description !!}</div>
+                    <div class="product__sheet">
+@if ($sfParts !== [])
+                        <nav class="product-toc" aria-label="{{ __('storefront.product_contents') }}">
+                            <ul class="product-toc__list">
+@foreach ($sfParts as $part)
+                                <li><a class="product-toc__link" href="#{{ $part['id'] }}">{{ $part['label'] }}</a></li>
+@endforeach
+                            </ul>
+                        </nav>
+@endif
+                        {{-- $description is the product's pre-sanitized description HTML (HTMLPurifier at write time),
+                             then the shared parts' block HTML, rendered raw exactly like a post body's. --}}
+                        <div class="product__body sf-prose sf-prose--article{{ $sfParts !== [] ? ' product__body--parts' : '' }}">{!! $description !!}</div>
+                    </div>
                 </div>
             </section>
 @endif

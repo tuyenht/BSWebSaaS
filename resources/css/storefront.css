@@ -4183,6 +4183,75 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     font-size: 0.875rem;
 }
 
+/* The site's blocks before and after the order buttons: the text keeps the box's small size, not a
+   prose column's; a bulleted list after the buttons reads as ticks in two columns. */
+:is(.product__lead, .product__extra) .sf-prose {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    line-height: inherit;
+}
+
+.product__lead {
+    margin-bottom: 1rem;
+    color: var(--color-text);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+}
+
+.product__lead .sf-prose:not(.sf-prose--article) :is(p, ul, ol) {
+    margin: 0;
+}
+
+.product__lead .sf-prose:not(.sf-prose--article) :is(p, ul, ol) + :is(p, ul, ol) {
+    margin-top: 0.5rem;
+}
+
+:is(.product__lead, .product__extra) strong {
+    color: var(--color-text-strong);
+}
+
+.product__extra {
+    margin-top: 1.5rem;
+    color: var(--color-text);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+}
+
+.product__extra .sf-prose:not(.sf-prose--article) :is(p, ul, ol) {
+    margin: 0 0 0.75rem;
+}
+
+.product__extra .sf-prose:not(.sf-prose--article) ul {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    padding: 0;
+    list-style: none;
+}
+
+.product__extra .sf-prose:not(.sf-prose--article) ul > li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.product__extra .sf-prose:not(.sf-prose--article) ul > li::before {
+    content: "";
+    flex-shrink: 0;
+    width: 1.25rem;
+    height: 1.25rem;
+    background: var(--color-primary);
+    -webkit-mask: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='%23000' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 13l4 4L19 7'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='%23000' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 13l4 4L19 7'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.product__extra .sf-prose:not(.sf-prose--article) > :last-child {
+    margin-bottom: 0;
+}
+
 .product__actions {
     display: flex;
     flex-direction: column;
@@ -4243,15 +4312,96 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 }
 
 .product__details {
-    padding-block: 4rem;
+    padding-block: 3rem;
     background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
 }
 
-.product__body {
-    padding: 1.5rem;
+/* The description: one white sheet the container's width, the text in a post's prose (a 56rem
+   column on the left); with two or more parts a bar of links to them stays under the header. */
+.product__sheet {
     border-radius: 0.5rem;
     background: var(--color-surface);
     box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+.product-toc {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    padding-inline: 0.75rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-text) 15%, transparent);
+    border-radius: 0.5rem 0.5rem 0 0;
+    background: color-mix(in srgb, var(--color-surface) 95%, transparent);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+}
+
+/* The header's main bar (5rem) stays on top while scrolling; the bar sits right under it. */
+html:has(.sf-header--sticky) .product-toc {
+    top: 5rem;
+}
+
+.product-toc__list {
+    display: flex;
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0.75rem 0;
+    overflow-x: auto;
+    list-style: none;
+    scrollbar-width: none;
+}
+
+.product-toc__list::-webkit-scrollbar {
+    display: none;
+}
+
+.product-toc__list > li {
+    flex-shrink: 0;
+}
+
+.product-toc__link {
+    display: flex;
+    align-items: center;
+    min-height: 2.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    color: var(--color-text);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.product-toc__link[aria-current="true"] {
+    background: var(--color-dark);
+    color: var(--color-surface);
+}
+
+/* Inside the bar (it scrolls sideways) the ring is drawn inward, so it is never cut off. */
+.product-toc__link:focus-visible {
+    outline: 2px solid var(--color-primary-text);
+    outline-offset: -2px;
+}
+
+.product-toc__link[aria-current="true"]:focus-visible {
+    outline-color: var(--color-primary);
+}
+
+.product__body.sf-prose {
+    max-width: none;
+    margin: 0;
+    padding: 2rem 1.25rem;
+}
+
+.product__body.sf-prose > * {
+    max-width: 56rem;
+}
+
+/* An anchor jump lands the part's heading below the bar (the header's own height is the page's
+   scroll padding). */
+.product__body--parts [id^="muc-"] {
+    scroll-margin-top: 5rem;
 }
 
 .post-related--plain {
@@ -4263,15 +4413,33 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
         font-size: 2.25rem;
         line-height: 2.5rem;
     }
-
-    .product__body {
-        padding: 2.5rem;
-    }
 }
 
 @media (min-width: 640px) {
     .product__actions {
         flex-direction: row;
+    }
+
+    .product__details {
+        padding-block: 4rem;
+    }
+
+    .product-toc {
+        padding-inline: 1.5rem;
+    }
+
+    .product-toc__list {
+        gap: 0.5rem;
+    }
+
+    .product__body.sf-prose {
+        padding: 2.5rem;
+    }
+}
+
+@media (any-pointer: coarse) {
+    .product-toc__link {
+        min-height: 2.75rem;
     }
 }
 
@@ -4298,12 +4466,17 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     .product__zalo:hover {
         text-decoration: underline;
     }
+
+    .product-toc__link:not([aria-current="true"]):hover {
+        background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .product__thumb,
     .product__quote,
-    .product__call {
+    .product__call,
+    .product-toc__link {
         transition: none;
     }
 }
@@ -4622,12 +4795,25 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 
 @media (min-width: 640px) {
     .sf-card__foot {
+        justify-content: flex-end;
         padding-top: 1rem;
     }
 
     .sf-card--product.sf-card--list .sf-card__title {
         margin-bottom: 1rem;
     }
+
+    /* A product list's photo: 4:3 on a phone, a fixed 14rem band from 640px (the card stays short). */
+    .sf-card--product.sf-card--list .sf-card__frame {
+        aspect-ratio: auto;
+        height: 14rem;
+    }
+}
+
+/* The other products on a product page: a fixed 12rem photo band. */
+.product-page > .post-related .sf-card__frame {
+    aspect-ratio: auto;
+    height: 12rem;
 }
 
 /* The compact row on a phone: photo left, title right; the excerpt of news, the tag and the

@@ -17,8 +17,8 @@ const html = `<nav class="post-toc"><ol>
 
 // The page with each heading's top (px from the window's top), and a start() that runs a fresh copy
 // of the script; `fire()` plays the observer's callback, as a heading crossing the line would.
-function page(tops, { observer = true } = {}) {
-    const dom = new JSDOM(`<!doctype html><body>${html}</body>`);
+function page(tops, { observer = true, body = html } = {}) {
+    const dom = new JSDOM(`<!doctype html><body>${body}</body>`);
     const win = dom.window;
     const doc = win.document;
     Object.defineProperty(win, 'innerHeight', { value: 900, configurable: true });
@@ -46,7 +46,7 @@ function page(tops, { observer = true } = {}) {
         doc,
         seen,
         tops,
-        current: () => [...doc.querySelectorAll('.post-toc [aria-current]')].map((a) => a.hash),
+        current: () => [...doc.querySelectorAll('nav [aria-current]')].map((a) => a.hash),
         start: async () => {
             globalThis.window = win;
             globalThis.document = doc;
@@ -100,4 +100,34 @@ test('the last entry is marked once the page is scrolled to its end, even below 
     Object.defineProperty(p.doc.defaultView, 'scrollY', { value: 4100, configurable: true });
     p.seen.callback([]);
     assert.deepEqual(p.current(), ['#muc-c']);
+});
+
+// A product's section bar: one row of pills that slides sideways on a narrow screen. The marked pill is
+// brought into the row's view by sliding the row itself; a pill already in view leaves the row still.
+const bar = `<nav class="product-toc"><ul class="product-toc__list">
+    <li><a class="product-toc__link" href="#muc-a">A</a></li>
+    <li><a class="product-toc__link" href="#muc-b">B</a></li>
+    <li><a class="product-toc__link" href="#muc-c">C</a></li>
+</ul></nav>
+<h2 id="muc-a">A</h2><h2 id="muc-b">B</h2><h2 id="muc-c">C</h2>`;
+
+test('the product bar marks the pill being read and slides it into the row when it is out of view', async () => {
+    const p = page({ 'muc-a': 600, 'muc-b': 1500, 'muc-c': 2400 }, { body: bar });
+    const strip = p.doc.querySelector('.product-toc__list');
+    strip.getBoundingClientRect = () => ({ left: 0, right: 300, width: 300 });
+    const pills = [...strip.querySelectorAll('a')];
+    pills.forEach((a, i) => {
+        a.getBoundingClientRect = () => ({ left: i * 200 - strip.scrollLeft, right: i * 200 + 150 - strip.scrollLeft, width: 150 });
+    });
+    await p.start();
+    assert.deepEqual(p.current(), ['#muc-a']);
+    assert.equal(strip.scrollLeft, 0);
+
+    // C passes the line: its pill (400-550) is past the row's right edge, so the row slides to centre it
+    p.tops['muc-a'] = -2000;
+    p.tops['muc-b'] = -1000;
+    p.tops['muc-c'] = 100;
+    p.seen.callback([]);
+    assert.deepEqual(p.current(), ['#muc-c']);
+    assert.equal(strip.scrollLeft, 325);
 });
