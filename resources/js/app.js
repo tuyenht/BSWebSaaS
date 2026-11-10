@@ -199,6 +199,10 @@ document.addEventListener('alpine:init', () => {
             }
             this.state[field] = value;
             document.documentElement.setAttribute(spec.attr, value);
+            if (field === 'sidebar_size') {
+                // A size chosen on a settings page shows at once instead of under the fold.
+                this.unfolded = this.onSettings && value !== 'sm';
+            }
             this._applyFold();
 
             const pending = readPendingTheme();
@@ -226,7 +230,6 @@ document.addEventListener('alpine:init', () => {
                 this._applyFold();
                 return;
             }
-            this.unfolded = this.onSettings;
             this.set('sidebar_size', this.state.sidebar_size === 'sm' ? 'lg' : 'sm');
         },
 
@@ -243,6 +246,7 @@ document.addEventListener('alpine:init', () => {
                     const { attributes } = await response.json();
                     applyThemeAttributes(attributes);
                     this.state = readThemeFromHtml();
+                    this._applyFold();
                 }
             });
         },
@@ -321,7 +325,13 @@ document.addEventListener('admin-chrome-changed', (event) => {
         applyThemeAttributes(attributes);
         const store = window.Alpine?.store('adminTheme');
         if (store) {
+            const size = store.state.sidebar_size;
             store.state = readThemeFromHtml();
+            // A new menu size chosen on a settings page shows at once instead of under the fold.
+            if (store.state.sidebar_size !== size) {
+                store.unfolded = store.onSettings && store.state.sidebar_size !== 'sm';
+            }
+            store._applyFold();
         }
     }
 });
