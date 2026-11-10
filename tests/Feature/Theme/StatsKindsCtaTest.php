@@ -45,12 +45,28 @@ describe('stats kinds', function (): void {
         Carbon::setTestNow('2026-12-31 18:30:00 UTC');
         $html = kindsStats(['items' => [['kind' => 'years', 'value' => 2014, 'suffix' => '+', 'label' => 'Năm kinh nghiệm']]]);
 
-        expect($html)->toContain('<span>13</span>')->not->toContain('data-count')->not->toContain('sf-stat__suffix')
-            ->and($html)->toContain('<span class="sr-only">13</span>');
+        expect($html)->toContain('<span>13</span><span class="sf-stat__suffix">+</span>')->not->toContain('data-count')
+            ->and($html)->toContain('<span class="sr-only">13+</span>');
 
         Carbon::setTestNow('2026-12-31 16:30:00 UTC');
         expect(kindsStats(['items' => [['kind' => 'years', 'value' => 2014, 'label' => 'Năm']]]))->toContain('<span>12</span>');
     });
+
+    it('locks the unit of years to "+", whatever unit the item keeps', function (string $suffix): void {
+        Carbon::setTestNow('2026-06-01 00:00:00 UTC');
+        $html = kindsStats(['items' => [['kind' => 'years', 'value' => 2019, 'suffix' => $suffix, 'label' => 'Năm kinh nghiệm']]]);
+
+        expect($html)->toContain('<span>7</span><span class="sf-stat__suffix">+</span>')
+            ->and($html)->toContain('<span class="sr-only">7+</span>')
+            ->and(substr_count($html, 'sf-stat__suffix'))->toBe(1);
+        if ($suffix !== '' && $suffix !== '+') {
+            expect($html)->not->toContain($suffix);
+        }
+    })->with([
+        'no unit' => [''],
+        'the plus already' => ['+'],
+        'another unit' => ['năm'],
+    ]);
 
     it('counts the new year from the site\'s own timezone setting, not from UTC', function (): void {
         seedTenancy();
@@ -73,6 +89,10 @@ describe('stats kinds', function (): void {
         $html = kindsStats(['items' => [['kind' => 'year', 'value' => 2019, 'suffix' => 'm²', 'label' => 'Năm thành lập']]]);
 
         expect($html)->toContain('<span>2019</span>')->not->toContain('2.019')->not->toContain('data-count')->not->toContain('m²');
+
+        // only "years" locks its unit to "+": a year keeps no unit, even a "+" the item keeps
+        expect(kindsStats(['items' => [['kind' => 'year', 'value' => 2019, 'suffix' => '+', 'label' => 'Năm thành lập']]]))
+            ->toContain('<span>2019</span>')->not->toContain('sf-stat__suffix');
     });
 
     it('hides an item whose year is outside 1900 up to this year', function (string $kind, int $value): void {
