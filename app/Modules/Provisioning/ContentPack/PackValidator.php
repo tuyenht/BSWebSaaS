@@ -56,7 +56,13 @@ final readonly class PackValidator
 
     private const array DYNAMIC_LINKS = ['home'];
 
-    /** The contact form's fields the platform owns (the consent box is handled on its own). */
+    /**
+     * The contact form's fields the platform owns (the consent box is handled on its own, on every
+     * form). Only the contact form carries them as platform rows: EnsureContactForm creates that one
+     * form with them and forms:sync-contact-fields restores them. Any other form is the site's own,
+     * its fields loaded once from a preset and then renamed or removed by staff at will, so there a
+     * field keyed name, phone, email or message is an ordinary field the pack writes whole.
+     */
     public const array FORM_PLATFORM_FIELDS = ['name', 'phone', 'email', 'message'];
 
     /** The setting groups and names a pack may write; everything else is the site's own. */
@@ -947,12 +953,13 @@ final readonly class PackValidator
 
     /**
      * A form of the site, by its key: the fields the pack adds or places and the form's settings.
-     * The platform's own fields keep what the platform gives them — the pack only places them (and
-     * may give an example in the empty field), and only places the consent box, last, whose
-     * sentence is the platform's legal wording. Every field states its sort_order; the contact form
-     * lists every platform field, so the order it ends up with is the pack's whole order. A field the
-     * pack adds is checked like the storefront reads it (FormFieldTypes): a usable key, a stored
-     * type, and a choice field with choices. The only setting is the thank-you page a send opens.
+     * The contact form's platform fields keep what the platform gives them — the pack only places
+     * them (and may give an example in the empty field) — and on every form the pack only places
+     * the consent box, last, whose sentence is the platform's legal wording. Every field states its
+     * sort_order; the contact form lists every platform field, so the order it ends up with is the
+     * pack's whole order. A field the pack adds is checked like the storefront reads it
+     * (FormFieldTypes): a usable key, a stored type, and a choice field with choices. The only
+     * setting is the thank-you page a send opens.
      *
      * @param  list<string>  $errors
      */
@@ -1003,7 +1010,7 @@ final readonly class PackValidator
                 foreach (array_diff(array_keys($field), ['key', 'sort_order']) as $name) {
                     $errors[] = "{$where}: the consent box is the platform's legal wording; the pack may only place it ('{$name}' is not allowed).";
                 }
-            } elseif (in_array($key, self::FORM_PLATFORM_FIELDS, true)) {
+            } elseif (self::isPlatformField($m[1], $key)) {
                 foreach (array_diff(array_keys($field), ['key', 'sort_order', 'placeholder']) as $name) {
                     $errors[] = "{$where}: a platform field keeps its type, label and required flag; the pack may only place it and give its placeholder ('{$name}' is not allowed).";
                 }
@@ -1025,6 +1032,12 @@ final readonly class PackValidator
         }
 
         $this->formSettings($at, $item->data, $errors);
+    }
+
+    /** Whether a field of the form keyed $formKey is one the platform owns (FORM_PLATFORM_FIELDS). */
+    public static function isPlatformField(string $formKey, string $fieldKey): bool
+    {
+        return $formKey === 'contact' && in_array($fieldKey, self::FORM_PLATFORM_FIELDS, true);
     }
 
     /**

@@ -369,8 +369,10 @@ final class Applier
 
     /**
      * The form's fields as planned — each named field placed, a platform field's example and a
-     * field the pack adds written whole, the field's other options kept — and the thank-you page
-     * stored by its ulid next to the form's other settings. Fields the pack does not name stay.
+     * field the pack adds written whole, the field's other options kept (a checkbox drops the
+     * example it had as another type: it shows none) — and the thank-you page stored by its ulid
+     * next to the form's other settings. Fields the pack does not name stay. A platform field or
+     * consent box the form lacks is never created here (the plan refuses it as a conflict).
      */
     private function form(PlanItem $planned, Planner $planner): void
     {
@@ -394,6 +396,11 @@ final class Applier
                 } else {
                     $options['choices'] = $choices;
                 }
+                if ($attributes['type'] === 'checkbox') {
+                    unset($options['placeholder']);
+                }
+            } elseif ($row === null) {
+                throw new PackRejected("Refused: {$planned->item->key} places field {$key}, which the site's form lacks; the loader never creates a platform field or the consent box.");
             }
             if (array_key_exists('placeholder', $state)) {
                 $options['placeholder'] = Cast::arr($state['placeholder']);

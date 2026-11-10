@@ -1816,9 +1816,12 @@ final class Planner
      * the fields the pack names, each with what the pack manages of it — a platform field its place
      * (and its example when the pack gives one), a field the pack adds all of it — plus the thank-you
      * page by its key (the form stores the page's ulid). A language the pack gives no label or
-     * example keeps its live text. A form the site does not have, a platform field it lacks or a
-     * thank-you page that is neither in the pack nor on the site is a conflict: forms and their
-     * platform fields come with the site (EnsureContactForm), the loader never invents them.
+     * example keeps its live text. A conflict, never a write: a form the site does not have, a
+     * platform field or consent box it lacks (forms and their platform fields come with the site,
+     * EnsureContactForm; the loader never invents them), a field that would end up after the
+     * consent box, or a thank-you page that is neither in the pack nor on the site. On a first load
+     * (no ledger line) a field the pack adds that staff already built differently counts as a staff
+     * edit: it is overwritten only with --force-item.
      *
      * @return array<string, PlanItem>
      */
@@ -1862,25 +1865,33 @@ final class Planner
 
         $planned = [];
         foreach ($items as $item) {
-            $form = $forms->get($item->anchor());
+            $formKey = $item->anchor();
+            $form = $forms->get($formKey);
             $packFields = array_values(array_map(fn (mixed $field): array => Cast::arr($field), Cast::arr($item->data['fields'] ?? null)));
             if (! $form instanceof Form) {
                 $planned[$item->key] = $this->decide($context, $item, null, $this->desiredForm($item, $packFields, []), null, null,
-                    conflict: "the site has no form '{$item->anchor()}'; forms come with the site, the loader never creates one");
+                    conflict: "the site has no form '{$formKey}'; forms come with the site, the loader never creates one");
 
                 continue;
             }
             $this->matched[$item->key] = $form->id;
 
             $live = $fields[$form->id] ?? [];
+            $desired = $this->desiredForm($item, $packFields, $live);
             $current = ['fields' => []];
             $problems = [];
+            $staffBuilt = [];
             foreach ($packFields as $field) {
                 $key = Cast::string($field['key'] ?? null);
                 $row = $live[$key] ?? null;
-                $current['fields'][$key] = $row === null ? null : self::fieldState($field, $row);
-                if ($row === null && self::isPlatformField($key)) {
+                $current['fields'][$key] = $row === null ? null : self::fieldState($formKey, $field, $row);
+                if ($row === null && ($key === 'consent' || PackValidator::isPlatformField($formKey, $key))) {
                     $problems[] = $key;
+                }
+                $wanted = Cast::arr(Cast::arr($desired['fields'])[$key] ?? null);
+                if ($row !== null && array_key_exists('type', $wanted)
+                    && CanonicalHash::of(array_diff_key(Cast::arr($current['fields'][$key]), ['sort_order' => true])) !== CanonicalHash::of(array_diff_key($wanted, ['sort_order' => true]))) {
+                    $staffBuilt[] = $key;
                 }
             }
             $settings = Cast::arr($item->data['settings'] ?? null);
@@ -1890,20 +1901,38 @@ final class Planner
                 $current['redirect_entry'] = $id === null ? $ulid : ($this->entryKeys[Cast::int($id)] ?? $ulid);
             }
 
+            $notes = [];
+            /** @var array<string, int> $order field key → its place once the pack is loaded */
+            $order = [];
+            foreach ($packFields as $field) {
+                $order[Cast::string($field['key'] ?? null)] = Cast::int($field['sort_order'] ?? null);
+            }
+            foreach ($live as $other => $row) {
+                $other = (string) $other;
+                if (! array_key_exists($other, $order)) {
+                    $order[$other] = Cast::int($row->getAttribute('sort_order'));
+                    $notes[] = "field {$other} is not in the pack and keeps its place ({$order[$other]})";
+                }
+            }
+
             $conflict = null;
             $target = Cast::stringOrNull($settings['redirect_entry'] ?? null);
+            $afterConsent = self::fieldsAfterConsent($order, array_keys($current['fields']));
             if ($problems !== []) {
-                $conflict = "the site's form has no platform field ".implode(', ', $problems).' (forms:sync-contact-fields restores it); the loader places platform fields, never creates them';
+                $conflict = "the site's form has no platform field ".implode(', ', $problems)
+                    .($formKey === 'contact' ? ' (forms:sync-contact-fields restores it)' : '')
+                    .'; the loader places platform fields and the consent box, never creates them';
+            } elseif ($afterConsent !== []) {
+                $conflict = 'the consent box ('.$order['consent'].') would no longer come last: '.implode(', ', $afterConsent)
+                    .' would follow it; list every field in the pack with a place above the box, or move it on the site';
             } elseif ($target !== null && ! in_array($target, $known, true)) {
                 $conflict = "the thank-you page {$target} is neither in the pack nor on the site";
             }
 
-            $notes = [];
-            foreach (array_diff(array_keys($live), array_keys($current['fields'])) as $other) {
-                $notes[] = "field {$other} is not in the pack and keeps its place (".Cast::int($live[$other]->getAttribute('sort_order')).')';
-            }
+            $evidence = $staffBuilt === [] ? null
+                : 'the site already has field '.implode(', ', $staffBuilt).' built by staff, unlike the pack';
 
-            $planned[$item->key] = $this->decide($context, $item, $current, $this->desiredForm($item, $packFields, $live), $form->ulid, $form->id, $notes, conflict: $conflict);
+            $planned[$item->key] = $this->decide($context, $item, $current, $desired, $form->ulid, $form->id, $notes, $evidence, conflict: $conflict);
         }
 
         return $planned;
@@ -1923,7 +1952,7 @@ final class Planner
             $key = Cast::string($field['key'] ?? null);
             $row = $live[$key] ?? null;
             $state = ['sort_order' => Cast::int($field['sort_order'] ?? null)];
-            if (! self::isPlatformField($key) && $key !== 'consent') {
+            if (! PackValidator::isPlatformField($item->anchor(), $key) && $key !== 'consent') {
                 $state['type'] = Cast::string($field['type'] ?? null);
                 $state['label'] = self::localeTexts($row?->label, $field['label'] ?? null);
                 $state['is_required'] = ($field['is_required'] ?? false) === true;
@@ -1948,12 +1977,12 @@ final class Planner
      * @param  array<array-key, mixed>  $field
      * @return array<string, mixed>
      */
-    public static function fieldState(array $field, FormField $row): array
+    public static function fieldState(string $formKey, array $field, FormField $row): array
     {
         $key = Cast::string($field['key'] ?? null);
         $options = Cast::arr($row->getAttribute('options'));
         $state = ['sort_order' => Cast::int($row->getAttribute('sort_order'))];
-        if (! self::isPlatformField($key) && $key !== 'consent') {
+        if (! PackValidator::isPlatformField($formKey, $key) && $key !== 'consent') {
             $state['type'] = $row->type;
             $state['label'] = self::localeTexts($row->label, null);
             $state['is_required'] = $row->is_required;
@@ -1966,9 +1995,30 @@ final class Planner
         return $state;
     }
 
-    private static function isPlatformField(string $key): bool
+    /**
+     * The fields that would come at or after the consent box once the pack is loaded, each with its
+     * place — only those whose place relative to the box the pack decides (the pack names the field
+     * or the box). A form without a consent box has none.
+     *
+     * @param  array<string, int>  $order  field key → place after the load
+     * @param  list<array-key>  $named  the fields the pack names
+     * @return list<string>
+     */
+    private static function fieldsAfterConsent(array $order, array $named): array
     {
-        return in_array($key, PackValidator::FORM_PLATFORM_FIELDS, true);
+        if (! array_key_exists('consent', $order)) {
+            return [];
+        }
+        $named = array_map(strval(...), $named);
+        $boxNamed = in_array('consent', $named, true);
+        $after = [];
+        foreach ($order as $key => $place) {
+            if ($key !== 'consent' && $place >= $order['consent'] && ($boxNamed || in_array($key, $named, true))) {
+                $after[] = "{$key} ({$place})";
+            }
+        }
+
+        return $after;
     }
 
     /**

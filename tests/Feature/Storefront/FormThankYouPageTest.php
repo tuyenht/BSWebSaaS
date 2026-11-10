@@ -8,6 +8,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteLocale;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Testing\TestResponse;
 
@@ -111,4 +112,41 @@ it('does not open the thank-you page for a send refused for too many attempts', 
 
     tySend()->assertRedirect('http://a.test/lien-he')->assertSessionHasErrors('form')->assertSessionMissing('form_success');
     expect(app(Tenancy::class)->enter(1, fn () => FormSubmission::query()->count()))->toBe(5);
+});
+
+it('keeps a send that fails validation on its page with the errors, never opening the thank-you page', function (): void {
+    tyRedirectTo(tyPage(1, ['vi' => 'cam-on']));
+
+    test()->from('http://a.test/lien-he')->post('http://a.test/forms/contact', ['email' => 'a@example.test'])
+        ->assertStatus(302)->assertRedirect('http://a.test/lien-he')
+        ->assertSessionHasErrors(['name', 'message'])->assertSessionMissing('form_success');
+    expect(app(Tenancy::class)->enter(1, fn () => FormSubmission::query()->count()))->toBe(0);
+});
+
+it('answers a send it files as spam exactly like a real one, so a bot learns nothing', function (Closure $spam): void {
+    tyRedirectTo(tyPage(1, ['vi' => 'cam-on']));
+
+    $extra = $spam();
+    tySend($extra)->assertStatus(303)->assertRedirect('http://a.test/cam-on')->assertSessionHasNoErrors();
+
+    expect(app(Tenancy::class)->enter(1, fn () => FormSubmission::query()->sole()->is_spam))->toBeTrue();
+    Notification::assertNothingSent();
+})->with([
+    'the hidden honeypot filled' => [fn (): array => ['company_website' => 'https://bot.example']],
+    'Turnstile refusing the token' => [function (): array {
+        config(['services.turnstile.secret_key' => 'test-secret']);
+        Http::fake(['challenges.cloudflare.com/*' => Http::response(['success' => false])]);
+
+        return ['cf-turnstile-response' => 'bad-token'];
+    }],
+]);
+
+it('sends to a form with a thank-you page within its query budget', function (): void {
+    tyRedirectTo(tyPage(1, ['vi' => 'cam-on']));
+    tySend()->assertStatus(303); // warm the per-site reads that outlive a request
+    app()->forgetScopedInstances();
+
+    $count = countQueries(fn () => tySend(['name' => 'Khách 2'])->assertStatus(303));
+
+    expect($count)->toBe(9);
 });

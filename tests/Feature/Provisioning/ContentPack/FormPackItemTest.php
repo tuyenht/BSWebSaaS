@@ -221,7 +221,19 @@ it('keeps a staff edit of a field it manages, and overwrites it only when forced
         ->and(ContentPacks::in($this->siteId, fn () => FormField::query()->where('key', 'need')->firstOrFail()->label))->toBe(['vi' => 'Bạn cần tư vấn về']);
 });
 
-it('leaves a field the pack does not name in its place, and a staff field added after the load does not count as an edit', function (): void {
+it('refuses to leave a field the pack does not name after the consent box', function (): void {
+    ContentPacks::load();
+    ContentPacks::in($this->siteId, fn () => Form::query()->where('key', 'contact')->firstOrFail()->fields()->create([
+        'key' => 'company', 'type' => 'text', 'label' => ['vi' => 'Công ty'], 'sort_order' => 9,
+    ]));
+
+    [$exit, $output] = ContentPacks::run();
+    expect($exit)->toBe(1)
+        ->and($output)->toContain('the consent box (6) would no longer come last: company (9) would follow it');
+});
+
+it('leaves a field the pack does not name in its place above the consent box, and a staff field added after the load does not count as an edit', function (): void {
+    fpField($this->folder, 'consent', fn (array $field): array => ['sort_order' => 10] + $field);
     ContentPacks::load();
     ContentPacks::in($this->siteId, fn () => Form::query()->where('key', 'contact')->firstOrFail()->fields()->create([
         'key' => 'company', 'type' => 'text', 'label' => ['vi' => 'Công ty'], 'sort_order' => 9,
@@ -232,7 +244,21 @@ it('leaves a field the pack does not name in its place, and a staff field added 
 
     fpField($this->folder, 'need', fn (array $field): array => ['label' => ['vi' => 'Nhu cầu']] + $field);
     [$exit, $output] = ContentPacks::load();
-    expect($exit)->toBe(0, $output)->and(fpFields($this->siteId)['company']['sort_order'])->toBe(9);
+    expect($exit)->toBe(0, $output)
+        ->and(fpFields($this->siteId)['company']['sort_order'])->toBe(9)
+        ->and(fpFields($this->siteId)['consent']['sort_order'])->toBe(10);
+});
+
+it('refuses a field the pack adds below a consent box it does not place', function (): void {
+    fpChange($this->folder, fn (array $item): array => ['key' => 'form:contact', 'fields' => [
+        ['key' => 'need', 'type' => 'text', 'label' => ['vi' => 'Nhu cầu'], 'sort_order' => 7],
+    ]]);
+    ContentPacks::in($this->siteId, fn () => Form::query()->where('key', 'contact')->firstOrFail()->update(['key' => 'bao-gia']));
+    ContentPacks::edit($this->folder, 'forms.json', fn (array $data): array => ['items' => [['key' => 'form:bao-gia'] + $data['items'][0]]]);
+
+    [$exit, $output] = ContentPacks::run();
+    expect($exit)->toBe(1)
+        ->and($output)->toContain('the consent box (5) would no longer come last: need (7) would follow it');
 });
 
 it('plans a thank-you page that is neither in the pack nor on the site, or a form the site lacks, as a conflict', function (Closure $change, string $conflict): void {
@@ -252,15 +278,74 @@ it('plans a platform field the site lost as a conflict instead of inventing it',
     expect($exit)->toBe(1)->and($output)->toContain("the site's form has no platform field phone");
 });
 
-it('takes a staff field the pack then names under its management, keeping its other options', function (): void {
+it('plans a consent box the site lost as a conflict, and an apply writes nothing', function (): void {
+    ContentPacks::in($this->siteId, fn () => FormField::query()->where('key', 'consent')->delete());
+
+    [$exit, $output] = ContentPacks::run();
+    expect($exit)->toBe(1)
+        ->and($output)->toContain("the site's form has no platform field consent (forms:sync-contact-fields restores it)");
+
+    $writes = ContentPacks::writes(function () use ($output, &$exit): void {
+        [$exit] = ContentPacks::run('demo-co', ['--apply' => true, '--plan' => ContentPacks::fingerprint($output)]);
+    });
+    expect($exit)->toBe(1)
+        ->and($writes)->toBe([])
+        ->and(fpFields($this->siteId))->not->toHaveKey('consent')->not->toHaveKey('need');
+});
+
+it('counts a field staff built differently before the first load as an edit, and takes it over only when forced, keeping its other options', function (): void {
     ContentPacks::in($this->siteId, fn () => Form::query()->where('key', 'contact')->firstOrFail()->fields()->create([
-        'key' => 'need', 'type' => 'text', 'label' => ['vi' => 'Nhu cầu'], 'sort_order' => 9, 'options' => ['note' => 'x'],
+        'key' => 'need', 'type' => 'text', 'label' => ['vi' => 'Nhu cầu'], 'sort_order' => 4, 'options' => ['note' => 'x'],
     ]));
 
-    [$exit, $output] = ContentPacks::load();
+    [$exit, $output] = ContentPacks::run();
+    expect($exit)->toBe(0, $output)
+        ->and(ContentPacks::verdict($output, 'form:contact'))->toBe('skip:edited')
+        ->and($output)->toContain('the site already has field need built by staff, unlike the pack');
+
+    [$exit, $output] = ContentPacks::load(force: ['form:contact']);
     expect($exit)->toBe(0, $output);
     $need = ContentPacks::in($this->siteId, fn () => FormField::query()->where('key', 'need')->firstOrFail());
     expect($need->type)->toBe('select')->and($need->getAttribute('options')['note'])->toBe('x');
+});
+
+it('adopts on the first load a field staff already built as the pack writes it', function (): void {
+    $need = collect(fpContactItem()['fields'])->firstWhere('key', 'need');
+    ContentPacks::in($this->siteId, fn () => Form::query()->where('key', 'contact')->firstOrFail()->fields()->create([
+        'key' => 'need', 'type' => 'select', 'label' => $need['label'], 'is_required' => false, 'sort_order' => 9,
+        'options' => ['choices' => $need['choices'], 'placeholder' => $need['placeholder']],
+    ]));
+
+    [$exit, $output] = ContentPacks::run();
+    expect($exit)->toBe(0, $output)->and(ContentPacks::verdict($output, 'form:contact'))->toBe('adopt');
+
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)->and(fpFields($this->siteId)['need']['sort_order'])->toBe(4);
+});
+
+it('drops the example of a field that becomes a checkbox', function (): void {
+    ContentPacks::load();
+    fpField($this->folder, 'need', fn (array $field): array => ['type' => 'checkbox'] + array_diff_key($field, ['choices' => true, 'placeholder' => true]));
+
+    [, $output] = ContentPacks::run();
+    expect(ContentPacks::verdict($output, 'form:contact'))->toBe('skip:edited'); // the field's state no longer names the example it had
+
+    [$exit, $output] = ContentPacks::load(force: ['form:contact']);
+    expect($exit)->toBe(0, $output);
+    $need = ContentPacks::in($this->siteId, fn () => FormField::query()->where('key', 'need')->firstOrFail());
+    expect($need->type)->toBe('checkbox')->and($need->getAttribute('options'))->toBe([]);
+});
+
+it('treats name, phone, email and message as the platform\'s only on the contact form', function (): void {
+    ContentPacks::edit($this->folder, 'forms.json', fn (array $data): array => ['items' => [...$data['items'], [
+        'key' => 'form:bao-gia',
+        'fields' => [
+            ['key' => 'name', 'type' => 'text', 'label' => ['vi' => 'Người liên hệ'], 'is_required' => true, 'sort_order' => 1],
+            ['key' => 'consent', 'sort_order' => 2],
+        ],
+    ]]]);
+
+    expect(fpProblems())->toBe('');
 });
 
 it('backs up the form and its fields before it writes', function (): void {
