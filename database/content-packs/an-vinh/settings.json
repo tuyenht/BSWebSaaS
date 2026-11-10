@@ -163,7 +163,12 @@
     "ward": "Xã Trung Giã",
     "province": "TP Hà Nội",
     "license_issued_at": "2019-03-15",
-    "social_links": {}
+    "social_links": {
+     "facebook": "https://www.facebook.com/baosonads",
+     "tiktok": "https://www.tiktok.com/@baosonads",
+     "youtube": "https://www.youtube.com/channel/UClyA28-01x4z60eWQ2kiNbA",
+     "zalo": "https://zalo.me/0915668383"
+    }
    },
    "localized": {
     "brand_name": {
