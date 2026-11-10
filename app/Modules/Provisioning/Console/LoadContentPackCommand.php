@@ -32,7 +32,9 @@ use Throwable;
  * prints the plan and its fingerprint and writes nothing. `--apply --plan=<fingerprint>` writes
  * exactly that plan — recomputed inside the write transaction; a staff edit or pack change in
  * between changes the fingerprint and the command refuses. Never deletes; never overwrites what
- * staff changed since the last load unless the item is named with --force-item. Runs as the app
+ * staff changed since the last load unless the item is named with --force-item (`-v` lists each
+ * changed field trimmed, `-vv` prints it in full: what the site holds next to what the pack would
+ * write, to compare before forcing). Runs as the app
  * connection with the site's tenant context (RLS on) — allowed on production.
  *
  * `--media` runs the image step instead (MediaStep): the same dry run / `--apply --plan` pair,
@@ -347,6 +349,8 @@ final class LoadContentPackCommand extends Command
 
         $labels = ['setting' => 'SETTINGS', 'profile' => 'PROFILE', 'taxonomy' => 'TAXONOMY', 'product' => 'PRODUCTS', 'post' => 'POSTS', 'page' => 'PAGES', 'menu' => 'MENUS', 'redirect' => 'REDIRECTS'];
         $verbose = $this->output->getVerbosity() >= OutputInterface::VERBOSITY_VERBOSE;
+        // -vv: each changed field in full, so what staff wrote can be compared with the pack before a --force-item
+        $full = $this->output->getVerbosity() >= OutputInterface::VERBOSITY_VERY_VERBOSE;
         $shown = '';
         foreach ($plan->items as $planned) {
             $kind = $labels[$planned->item->kind] ?? strtoupper($planned->item->kind);
@@ -362,7 +366,9 @@ final class LoadContentPackCommand extends Command
 
             if ($verbose && in_array($planned->verdict, [PlanItem::UPDATE, PlanItem::ADOPT, PlanItem::SKIP_EDITED], true)) {
                 foreach ($planned->changes() as $field => [$old, $new]) {
-                    $this->line(sprintf('%31s%s: %s → %s', '', $field, self::trim($old), self::trim($new)));
+                    $this->line($full
+                        ? sprintf('%31s%s: %s', '', $field, CanonicalHash::encode(['site' => $old, 'pack' => $new]))
+                        : sprintf('%31s%s: %s → %s', '', $field, self::trim($old), self::trim($new)));
                 }
             }
         }

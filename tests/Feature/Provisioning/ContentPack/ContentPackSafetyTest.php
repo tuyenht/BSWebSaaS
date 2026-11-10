@@ -113,6 +113,23 @@ function cpVersion2(string $folder): void
     ContentPacks::edit($folder, 'pack.json', fn (array $pack): array => ['version' => 2] + $pack);
 }
 
+it('shows what staff wrote next to what the pack would write: trimmed with -v, in full with -vv, writing nothing', function (): void {
+    ContentPacks::load();
+    $staff = 'Giới thiệu do nhân viên sửa, một tiêu đề dài hơn tám mươi ký tự để dòng tóm tắt phải cắt bớt ở giữa';
+    cpStaffEdit($this->siteId, '/gioi-thieu', $staff);
+    cpVersion2($this->folder);
+    ContentPacks::item($this->folder, 'pages.json', 'page:/gioi-thieu', fn (array $item): array => ['title' => ['vi' => 'Giới thiệu bản 2']] + $item);
+
+    [, $short] = ContentPacks::run('demo-co', ['-v' => true]);
+    [$exit, $full] = ContentPacks::run('demo-co', ['-vv' => true]);
+
+    expect(ContentPacks::verdict($full, 'page:/gioi-thieu'))->toBe('skip:edited')
+        ->and($exit)->toBe(0, $full)
+        ->and($short)->toContain(' … ')->not->toContain($staff)
+        ->and($full)->toContain(json_encode(['pack' => 'Giới thiệu bản 2', 'site' => $staff], JSON_UNESCAPED_UNICODE))
+        ->and(ContentPacks::in($this->siteId, fn () => cpEntryAt('/gioi-thieu')->translationFor('vi')?->title))->toBe($staff);
+});
+
 it('keeps a staff edit byte for byte, updates the rest, and overwrites the edit only when forced (backup first)', function (): void {
     ContentPacks::load();
     cpStaffEdit($this->siteId, '/gioi-thieu', 'Giới thiệu do nhân viên sửa');
