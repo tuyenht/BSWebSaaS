@@ -14,7 +14,7 @@
      "label": {
       "vi": "Giới thiệu"
      },
-     "url": "#",
+     "target": "page:/gioi-thieu",
      "children": [
       {
        "label": {
@@ -32,7 +32,13 @@
        "label": {
         "vi": "Chứng chỉ & thành tựu"
        },
-       "url": "/gioi-thieu#chung-chi"
+       "target": "page:/chung-chi-thanh-tuu"
+      },
+      {
+       "label": {
+        "vi": "Hồ sơ năng lực & tài liệu"
+       },
+       "target": "page:/ho-so-nang-luc"
       }
      ]
     },
@@ -150,21 +156,33 @@
      "children": [
       {
        "label": {
-        "vi": "Về công ty"
+        "vi": "Giới thiệu công ty"
        },
        "target": "page:/gioi-thieu"
-      },
-      {
-       "label": {
-        "vi": "Dự án"
-       },
-       "target": "tax:post_cat/du-an"
       },
       {
        "label": {
         "vi": "Nhà xưởng & máy móc"
        },
        "target": "page:/nha-xuong-may-moc"
+      },
+      {
+       "label": {
+        "vi": "Chứng chỉ & thành tựu"
+       },
+       "target": "page:/chung-chi-thanh-tuu"
+      },
+      {
+       "label": {
+        "vi": "Hồ sơ năng lực & tài liệu"
+       },
+       "target": "page:/ho-so-nang-luc"
+      },
+      {
+       "label": {
+        "vi": "Dự án"
+       },
+       "target": "tax:post_cat/du-an"
       },
       {
        "label": {

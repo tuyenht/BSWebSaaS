@@ -89,7 +89,7 @@ final class Applier
                 'profile' => $this->profile($planned),
                 'taxonomy' => $this->taxonomy($planned, $planner),
                 'product' => $this->product($planned),
-                'post', 'page' => $this->entry($planned),
+                'post', 'page' => $this->entry($planned, $planner),
                 'menu' => $this->menu($planned, $planner),
                 'redirect' => $this->redirect($planned),
                 default => null,
@@ -197,11 +197,13 @@ final class Applier
         }
     }
 
-    private function entry(PlanItem $planned): void
+    private function entry(PlanItem $planned, Planner $planner): void
     {
         $desired = $planned->desired;
         $status = Cast::string($desired['status'] ?? null);
         $isPost = $planned->item->kind === 'post';
+        // A page whose pack item names a parent (or null) gets it; one that names none keeps its own.
+        $parent = array_key_exists('parent', $desired) ? ['parent_id' => $this->parentPage(Cast::stringOrNull($desired['parent']), $planner)] : [];
 
         if ($planned->recordId === null) {
             $entry = Entry::query()->create([
@@ -209,7 +211,7 @@ final class Applier
                 'status' => $status,
                 'published_at' => $this->publishedAt($planned->item, $status),
                 'meta' => $isPost && is_string($desired['image'] ?? null) ? ['image_url' => $desired['image']] : [],
-            ]);
+            ] + $parent);
         } else {
             $entry = Entry::withTrashed()->findOrFail($planned->recordId);
             if ($entry->trashed()) {
@@ -224,7 +226,7 @@ final class Applier
                     unset($meta['image_url']);
                 }
             }
-            $entry->fill(['status' => $status, 'meta' => $meta]);
+            $entry->fill(['status' => $status, 'meta' => $meta] + $parent);
             if ($status === 'published' && $entry->published_at === null) {
                 $entry->published_at = $this->publishedAt($planned->item, $status);
             }
@@ -269,6 +271,17 @@ final class Applier
         $entry->unsetRelation('translations');
         $this->reconciler->reconcile($entry);
         $this->recordRevisions($entry);
+    }
+
+    /** The parent page's id: written earlier in this load, matched, or a live page outside the pack. */
+    private function parentPage(?string $key, Planner $planner): ?int
+    {
+        if ($key === null) {
+            return null;
+        }
+
+        return $this->ids[$key] ?? $planner->liveTarget($key)
+            ?? throw new PackRejected("Refused: {$key} is needed as a parent page but does not exist on the site.");
     }
 
     private function recordRevisions(Entry $entry): void

@@ -179,13 +179,16 @@ final class LoadContentPackCommand extends Command
 
     /**
      * Read every item back with the planner's own readers and record its hash. A written item must
-     * read back exactly as planned, or the load is rolled back. Skipped and orphaned items keep
+     * read back exactly as planned, or the load is rolled back. A page's line also records its parent
+     * page (the live one, unless the item names none and the line already recorded one), so a
+     * later plan can tell a page staff moved. Skipped and orphaned items keep
      * their previous ledger line (a renamed category's under its new key), so a staff edit is never
      * taken for the loader's own write.
      */
     private function recordLedger(Plan $plan, Planner $planner): void
     {
         $after = $planner->plan($plan->pack, $plan->siteUlid, $plan->siteName, $plan->host, []);
+        $parents = $planner->pageParents();
         $previous = $plan->ledger['items'] ?? [];
         $items = [];
         $drift = [];
@@ -204,7 +207,14 @@ final class LoadContentPackCommand extends Command
 
                     continue;
                 }
-                $items[$key] = ['hash' => $hash, 'ref' => (string) $readBack->ref];
+                $line = ['hash' => $hash, 'ref' => (string) $readBack->ref];
+                if ($readBack->item->kind === 'page' && $readBack->recordId !== null && array_key_exists($readBack->recordId, $parents)) {
+                    // an item that names no parent keeps the parent its line recorded, so a later move by staff stays visible
+                    $line['parent'] = ! array_key_exists('parent', $readBack->item->data) && isset($previous[$key]) && array_key_exists('parent', $previous[$key])
+                        ? $previous[$key]['parent']
+                        : $parents[$readBack->recordId];
+                }
+                $items[$key] = $line;
             } elseif (isset($previous[$key])) {
                 $items[$key] = $previous[$key];
             } elseif (isset($previous[$plan->carried[$key] ?? ''])) {

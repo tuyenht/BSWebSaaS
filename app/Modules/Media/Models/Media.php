@@ -104,4 +104,20 @@ final class Media extends Model
     {
         return self::MIME_EXT_LABELS[$this->mime] ?? Str::after($this->mime, '/');
     }
+
+    /**
+     * A file's type and size the way a visitor reads them: "PDF · 9,0 MB", "DOCX · 120 KB". The unit
+     * follows the rounded KB, so a file just under 1 MB reads "1,0 MB", never "1.024 KB"; an
+     * unmapped type shows its mime subtype ("ZIP").
+     */
+    public static function typeAndSize(string $mime, int $bytes): string
+    {
+        $kb = max(1, (int) round($bytes / 1024));
+        $size = $kb >= 1024
+            ? number_format($bytes / 1_048_576, 1, ',', '.').' MB'
+            : number_format($kb, 0, ',', '.').' KB';
+        $type = strtoupper(self::MIME_EXT_LABELS[$mime] ?? Str::after($mime, '/'));
+
+        return $type === '' ? $size : $type.' · '.$size;
+    }
 }

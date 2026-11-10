@@ -9,6 +9,7 @@ use App\Modules\Admin\Support\Settings\HeadingDecorInput;
 use App\Modules\Admin\Support\Settings\SettingsChangeRejected;
 use App\Modules\Cms\Taxonomy\TaxonomyRules;
 use App\Modules\Cms\Validation\ValidPageJson;
+use App\Modules\Media\Actions\UploadMedia;
 use App\Modules\Media\Models\Media;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\RichTextSanitizer;
@@ -102,6 +103,7 @@ final readonly class PackValidator
 
         $seen = [];
         $taxonomies = [];
+        $pages = [];
         foreach ($pack->items as $item) {
             if (isset($seen[$item->key])) {
                 $errors[] = "{$item->key}: the key is used twice.";
@@ -115,7 +117,7 @@ final readonly class PackValidator
                 'taxonomy' => $this->taxonomy($pack, $item, $taxonomies, $errors),
                 'product' => $this->product($pack, $item, $taxonomies, $errors),
                 'post' => $this->post($pack, $item, $taxonomies, $errors),
-                'page' => $this->page($pack, $item, $errors),
+                'page' => $this->page($pack, $item, $pages, $errors),
                 'menu' => $this->menu($pack, $item, $errors),
                 'redirect' => $this->redirect($pack, $item, $errors),
                 default => $errors[] = "{$at}: unknown kind.",
@@ -123,10 +125,26 @@ final readonly class PackValidator
             if ($item->kind === 'taxonomy') {
                 $taxonomies[$item->key] = true;
             }
+            if ($item->kind === 'page') {
+                $pages[$item->key] = true;
+            }
 
             foreach (self::slotsIn($item->data) as $slot) {
                 if (! isset($pack->slots[$slot])) {
                     $errors[] = "{$at}: image slot '{$slot}' is not in media.json.";
+                } elseif (self::isDocument($pack->slots[$slot])) {
+                    $errors[] = "{$at}: media slot '{$slot}' is a document, not an image.";
+                }
+            }
+            $documents = self::documentsIn($item->data);
+            if ($documents !== [] && ! in_array($item->kind, ['page', 'post'], true)) {
+                $errors[] = "{$at}: a file download button is supported only in a page or post body.";
+            }
+            foreach ($documents as $slot) {
+                if (! isset($pack->slots[$slot])) {
+                    $errors[] = "{$at}: document slot '{$slot}' is not in media.json.";
+                } elseif (! self::isDocument($pack->slots[$slot])) {
+                    $errors[] = "{$at}: media slot '{$slot}' is an image, not a document.";
                 }
             }
         }
@@ -139,13 +157,13 @@ final readonly class PackValidator
     }
 
     /**
-     * Every `{"media": slot}` reference anywhere in a value.
+     * Every `{"media": slot}` image reference anywhere in a value (a file button's document is not one).
      *
      * @return list<string>
      */
     public static function slotsIn(mixed $value): array
     {
-        if (! is_array($value)) {
+        if (! is_array($value) || self::isFileButton($value) || self::isFileLabel($value)) {
             return [];
         }
         if (self::isMediaRef($value)) {
@@ -164,6 +182,54 @@ final readonly class PackValidator
     public static function isMediaRef(mixed $value): bool
     {
         return is_array($value) && count($value) === 1 && is_string($value['media'] ?? null);
+    }
+
+    /**
+     * Every document slot a file button names anywhere in a value: the button's
+     * `{"k": "file", "file": {"media": slot}}` and its label's `{"text": …, "type_and_size_of": slot}`.
+     *
+     * @return list<string>
+     */
+    public static function documentsIn(mixed $value): array
+    {
+        if (! is_array($value)) {
+            return [];
+        }
+        if (self::isFileButton($value)) {
+            return [$value['file']['media']];
+        }
+        if (self::isFileLabel($value)) {
+            return [$value['type_and_size_of']];
+        }
+
+        $slots = [];
+        foreach ($value as $child) {
+            array_push($slots, ...self::documentsIn($child));
+        }
+
+        return array_values(array_unique($slots));
+    }
+
+    /**
+     * A download button of a page body that names a pack document: `{"k": "file", "file": {"media": slot}}`.
+     * It loads as the button the admin stores, holding the document's storage key.
+     *
+     * @phpstan-assert-if-true array{k: 'file', file: array{media: string}} $value
+     */
+    public static function isFileButton(mixed $value): bool
+    {
+        return is_array($value) && count($value) === 2 && ($value['k'] ?? null) === 'file' && self::isMediaRef($value['file'] ?? null);
+    }
+
+    /**
+     * A button label followed by a pack document's type and size, read from the uploaded file:
+     * `{"text": "Tải hồ sơ", "type_and_size_of": slot}` loads as "Tải hồ sơ (PDF · 9,0 MB)".
+     *
+     * @phpstan-assert-if-true array{text: string, type_and_size_of: string} $value
+     */
+    public static function isFileLabel(mixed $value): bool
+    {
+        return is_array($value) && count($value) === 2 && is_string($value['text'] ?? null) && is_string($value['type_and_size_of'] ?? null);
     }
 
     /** @param list<string> $errors */
@@ -430,7 +496,7 @@ final readonly class PackValidator
                     $errors[] = "{$where}: needs {\"blocks\": […]}.";
                 } elseif (($max = LayoutSlots::maxBlocks($slot)) !== null && count($blocks) > $max) {
                     $errors[] = "{$where}: holds at most {$max} blocks.";
-                } elseif (count(self::slotsIn($blocks)) > 0) {
+                } elseif (self::slotsIn($blocks) !== [] || self::documentsIn($blocks) !== []) {
                     $errors[] = "{$where}: an image reference is not supported inside a block slot.";
                 } else {
                     $check = Validator::make(['blocks' => $blocks], ['blocks' => [$this->pageJson->forSlots()]]);
@@ -645,14 +711,42 @@ final readonly class PackValidator
         }
     }
 
-    /** @param list<string> $errors */
-    private function page(Pack $pack, PackItem $item, array &$errors): void
+    /**
+     * @param  array<string, true>  $earlier  page keys seen so far (a parent in the pack comes first)
+     * @param  list<string>  $errors
+     */
+    private function page(Pack $pack, PackItem $item, array $earlier, array &$errors): void
     {
         if (preg_match('/\Apage:\/(?:'.self::SLUG.')?\z/', $item->key) !== 1) {
             $errors[] = "{$item->key}: a page key is page:/ or page:/<slug>.";
         }
+        $this->pageParent($pack, $item, $earlier, $errors);
         $this->flags($item, $errors);
         $this->entryText($pack, $item, $errors);
+    }
+
+    /**
+     * `parent` (optional) names the page this one sits under: the breadcrumb and the admin tree show
+     * it, the address stays the page's own. Null puts the page back at the top. A parent in the pack
+     * comes earlier in pages.json, so the pack itself cannot hold a loop; a parent outside the pack
+     * must be a page on the site, which the plan checks.
+     *
+     * @param  array<string, true>  $earlier
+     * @param  list<string>  $errors
+     */
+    private function pageParent(Pack $pack, PackItem $item, array $earlier, array &$errors): void
+    {
+        if (! array_key_exists('parent', $item->data) || $item->data['parent'] === null) {
+            return;
+        }
+        $parent = $item->data['parent'];
+        if (! is_string($parent) || preg_match('/\Apage:\/'.self::SLUG.'\z/', $parent) !== 1) {
+            $errors[] = "{$item->key}: parent must be the key of another page (page:/<slug>), not the home page.";
+        } elseif ($parent === $item->key) {
+            $errors[] = "{$item->key}: a page cannot be its own parent.";
+        } elseif ($pack->item($parent) !== null && ! isset($earlier[$parent])) {
+            $errors[] = "{$item->key}: its parent {$parent} must come earlier in pages.json.";
+        }
     }
 
     /** @param list<string> $errors */
@@ -726,11 +820,20 @@ final readonly class PackValidator
         }
     }
 
-    /** Image references stand in as a media id while the body is checked (they resolve later). */
+    /**
+     * Image references stand in as a media id while the body is checked (they resolve later); a file
+     * button stands in with no file chosen yet and its label as the plain text.
+     */
     private static function withPlaceholderMedia(mixed $value): mixed
     {
         if (self::isMediaRef($value)) {
             return 1;
+        }
+        if (self::isFileButton($value)) {
+            return ['k' => 'file'];
+        }
+        if (self::isFileLabel($value)) {
+            return $value['text'];
         }
 
         return is_array($value) ? array_map(self::withPlaceholderMedia(...), $value) : $value;
@@ -878,6 +981,11 @@ final readonly class PackValidator
         if (isset($slot['alt'])) {
             $this->localeMap($pack, $at, $slot, 'alt', false, Media::ALT_MAX_LENGTH, $errors);
         }
+        if (! in_array($slot['kind'] ?? 'image', ['image', 'document'], true)) {
+            $errors[] = "{$at}: kind is image or document.";
+
+            return;
+        }
 
         $file = $slot['file'] ?? null;
         if ($file === null) {
@@ -888,18 +996,45 @@ final readonly class PackValidator
 
             return;
         }
-        if (self::mime($pack->dir.'/'.$file) === null) {
-            $errors[] = "{$at}: {$file} is missing or not a JPEG/PNG/WebP image.";
+        $path = $pack->dir.'/'.$file;
+        $document = self::isDocument($slot);
+        if (self::mime($path, $document) === null) {
+            $errors[] = $document
+                ? "{$at}: {$file} is missing or not a PDF document."
+                : "{$at}: {$file} is missing or not a JPEG/PNG/WebP image.";
+
+            return;
+        }
+        // The media library's own upload limit: a larger file would pass here and fail at upload.
+        $max = UploadMedia::MAX_KB * 1024;
+        if ((int) filesize($path) > $max) {
+            $errors[] = sprintf('%s: %s is %.1f MB; the media library takes files up to %d MB.', $at, $file, (int) filesize($path) / 1048576, $max / 1048576);
         }
     }
 
-    /** The image type a file really is, by its first bytes; null when it is none of the allowed ones. */
-    public static function mime(string $path): ?string
+    /**
+     * Whether a media.json slot holds a document (`"kind": "document"`, a PDF) rather than an image.
+     *
+     * @param  array<array-key, mixed>  $slot
+     */
+    public static function isDocument(array $slot): bool
+    {
+        return ($slot['kind'] ?? null) === 'document';
+    }
+
+    /**
+     * The type a file really is, by its first bytes; null when it is none of the allowed ones. A
+     * document slot allows only a PDF, an image slot only a JPEG, PNG or WebP image.
+     */
+    public static function mime(string $path, bool $document = false): ?string
     {
         if (! is_file($path)) {
             return null;
         }
         $head = (string) file_get_contents($path, false, null, 0, 16);
+        if ($document) {
+            return str_starts_with($head, '%PDF-') ? 'application/pdf' : null;
+        }
         foreach (self::MAGIC as $magic => $mime) {
             if (str_starts_with($head, $magic)) {
                 return $mime;

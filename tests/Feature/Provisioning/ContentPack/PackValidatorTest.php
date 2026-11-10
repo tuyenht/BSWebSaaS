@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Media\Actions\UploadMedia;
 use App\Modules\Provisioning\ContentPack\PackReader;
 use App\Modules\Provisioning\ContentPack\PackValidator;
 use Tests\Fixtures\ContentPacks;
@@ -261,3 +262,127 @@ it('refuses block slots the admin would refuse', function (array $value, string 
     'blocks that are not a list' => [['post_aside' => ['vi' => ['blocks' => ['x' => 1]]]], 'needs {"blocks"'],
     'too many tabs' => [['product_tabs' => ['vi' => ['blocks' => array_fill(0, 4, ['type' => 'richtext', 'props' => ['paragraphs' => ['x']]])]]], 'holds at most 3 blocks'],
 ]);
+
+it('refuses a page parent that is no other page, the home page, the page itself, or a pack page listed later', function (mixed $parent, string $message): void {
+    ContentPacks::item($this->folder, 'pages.json', 'page:/', fn (array $page): array => ['parent' => $parent === 'later' ? 'page:/gioi-thieu' : $parent] + $page);
+
+    expect(implode("\n", cpProblems()))->toContain($message);
+})->with([
+    'a category' => ['tax:post_cat/dich-vu', 'page:/: parent must be the key of another page'],
+    'not a string' => [7, 'page:/: parent must be the key of another page'],
+    'the home page' => ['page:/', 'page:/: parent must be the key of another page'],
+    'a pack page listed later' => ['later', 'page:/: its parent page:/gioi-thieu must come earlier in pages.json.'],
+]);
+
+it('refuses a page that names itself as its parent', function (): void {
+    ContentPacks::item($this->folder, 'pages.json', 'page:/gioi-thieu', fn (array $page): array => ['parent' => 'page:/gioi-thieu'] + $page);
+
+    expect(cpProblems())->toContain('page:/gioi-thieu: a page cannot be its own parent.');
+});
+
+it('accepts a page parent listed earlier in the pack, a page outside it (the plan checks the site), and null', function (?string $parent): void {
+    ContentPacks::edit($this->folder, 'pages.json', function (array $data) use ($parent): array {
+        $data['items'][] = ['key' => 'page:/doi-ngu', 'parent' => $parent, 'verified' => true, 'status' => 'published',
+            'title' => ['vi' => 'Đội ngũ'], 'body' => ['vi' => [['type' => 'richtext', 'props' => ['paragraphs' => ['Đội ngũ.']]]]]];
+
+        return $data;
+    });
+
+    expect(cpProblems())->toBe([]);
+})->with(['page:/gioi-thieu', 'page:/ngoai-goi', null]);
+
+/** Adds a media slot whose file holds $bytes. */
+function cpAddSlot(string $folder, array $slot, string $file, string $bytes): void
+{
+    file_put_contents($folder.'/'.$file, $bytes);
+    ContentPacks::edit($folder, 'media.json', function (array $media) use ($slot, $file): array {
+        $media['slots'][] = $slot + ['file' => $file];
+
+        return $media;
+    });
+}
+
+it('accepts a PDF in a document slot', function (): void {
+    cpAddSlot($this->folder, ['slot' => 'profile', 'kind' => 'document'], 'media/profile.pdf', "%PDF-1.4\n%%EOF\n");
+
+    expect(cpProblems())->toBe([]);
+});
+
+it('refuses a file named .pdf that is not a PDF, in a document slot', function (): void {
+    cpAddSlot($this->folder, ['slot' => 'profile', 'kind' => 'document'], 'media/profile.pdf', (string) file_get_contents($this->folder.'/media/header.png'));
+
+    expect(implode("\n", cpProblems()))->toContain("media slot 'profile': media/profile.pdf is missing or not a PDF document.");
+});
+
+it('refuses a PDF in an image slot', function (?string $kind): void {
+    cpAddSlot($this->folder, ['slot' => 'banner'] + ($kind === null ? [] : ['kind' => $kind]), 'media/banner.pdf', "%PDF-1.4\n%%EOF\n");
+
+    expect(implode("\n", cpProblems()))->toContain("media slot 'banner': media/banner.pdf is missing or not a JPEG/PNG/WebP image.");
+})->with(['no kind' => [null], 'kind image' => ['image']]);
+
+it('refuses a slot kind other than image or document', function (): void {
+    cpAddSlot($this->folder, ['slot' => 'clip', 'kind' => 'video'], 'media/clip.pdf', "%PDF-1.4\n%%EOF\n");
+
+    expect(implode("\n", cpProblems()))->toContain("media slot 'clip': kind is image or document.");
+});
+
+it('refuses a document slot used where an image goes', function (): void {
+    cpAddSlot($this->folder, ['slot' => 'profile', 'kind' => 'document'], 'media/profile.pdf', "%PDF-1.4\n%%EOF\n");
+    ContentPacks::edit($this->folder, 'media.json', function (array $media): array {
+        foreach ($media['slots'] as $i => $slot) {
+            if ($slot['slot'] === 'header') {
+                $media['slots'][$i] = ['slot' => 'header', 'kind' => 'document', 'file' => 'media/profile.pdf'];
+            }
+        }
+
+        return $media;
+    });
+
+    expect(implode("\n", cpProblems()))->toContain("media slot 'header' is a document, not an image.");
+});
+
+it('refuses a file over the media library\'s upload limit', function (): void {
+    cpAddSlot($this->folder, ['slot' => 'profile', 'kind' => 'document'], 'media/profile.pdf', "%PDF-1.4\n".str_repeat('0', UploadMedia::MAX_KB * 1024));
+
+    expect(implode("\n", cpProblems()))->toContain("media slot 'profile': media/profile.pdf is 10.0 MB; the media library takes files up to 10 MB.");
+});
+
+/** Adds a call to action to the about page whose button downloads $slot, its label followed by the file's type and size. */
+function cpAddFileButton(string $folder, string $slot): void
+{
+    ContentPacks::item($folder, 'pages.json', 'page:/gioi-thieu', function (array $page) use ($slot): array {
+        $page['body']['vi'][] = ['type' => 'cta', 'props' => [
+            'heading' => 'Hồ sơ năng lực',
+            'button_label' => ['text' => 'Tải hồ sơ', 'type_and_size_of' => $slot],
+            'button_url_do' => ['k' => 'file', 'file' => ['media' => $slot]],
+        ]];
+
+        return $page;
+    });
+}
+
+it('accepts a page button that downloads a document slot', function (): void {
+    cpAddSlot($this->folder, ['slot' => 'profile', 'kind' => 'document'], 'media/profile.pdf', "%PDF-1.4\n%%EOF\n");
+    cpAddFileButton($this->folder, 'profile');
+
+    expect(cpProblems())->toBe([]);
+});
+
+it('refuses a download button that names an image slot or a slot media.json does not list', function (): void {
+    cpAddFileButton($this->folder, 'header');
+    cpAddFileButton($this->folder, 'brochure');
+
+    expect(implode("\n", cpProblems()))->toContain("page:/gioi-thieu: media slot 'header' is an image, not a document.")
+        ->toContain("page:/gioi-thieu: document slot 'brochure' is not in media.json.");
+});
+
+it('refuses a download button outside a page or post body', function (): void {
+    cpAddSlot($this->folder, ['slot' => 'profile', 'kind' => 'document'], 'media/profile.pdf', "%PDF-1.4\n%%EOF\n");
+    cpAddSetting($this->folder, 'setting:storefront.layout_blocks', ['post_aside' => ['vi' => ['blocks' => [['type' => 'consult', 'props' => [
+        'heading' => 'Hồ sơ năng lực',
+        'button_label' => 'Tải hồ sơ',
+        'button_url_do' => ['k' => 'file', 'file' => ['media' => 'profile']],
+    ]]]]]]);
+
+    expect(implode("\n", cpProblems()))->toContain('setting:storefront.layout_blocks: a file download button is supported only in a page or post body.');
+});

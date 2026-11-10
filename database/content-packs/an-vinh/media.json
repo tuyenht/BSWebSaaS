@@ -523,6 +523,16 @@
    },
    "collection": "library",
    "license": "Giấy chứng nhận của An Vinh do Viện Nghiên cứu Phát triển Tiêu chuẩn Chất lượng (ISSQ) cấp; khách hàng cung cấp."
+  },
+  {
+   "slot": "ho-so-nang-luc",
+   "kind": "document",
+   "file": "media/ho-so-nang-luc-an-vinh.pdf",
+   "alt": {
+    "vi": "Hồ sơ năng lực Công ty An Vinh (PDF, 21 trang)"
+   },
+   "collection": "library",
+   "license": "Tài liệu của Công ty An Vinh, công ty gửi để đăng tải trên website; bản nén ảnh 250 dpi từ bản gốc 21 trang."
   }
  ]
 }

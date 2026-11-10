@@ -249,18 +249,18 @@
     "vi": "Giới thiệu"
    },
    "seo_title": {
-    "vi": "Về Chúng Tôi | Cơ Khí Chính Xác An Vinh"
+    "vi": "Giới Thiệu Công Ty | Cơ Khí Chính Xác An Vinh"
    },
    "seo_description": {
-    "vi": "Chế Tác Tinh Hoa - Kiến Tạo Tương Lai"
+    "vi": "An Vinh thiết kế, chế tạo Jig & đồ gá, khuôn mẫu và gia công CNC từ năm 2019, với ba nhà máy 4.300 m² tại Hà Nội và hệ thống quản lý chất lượng ISO 9001:2015."
    },
    "body": {
     "vi": [
      {
       "type": "page_header",
       "props": {
-       "title": "Về An Vinh",
-       "subtitle": "Chế Tác Tinh Hoa - Kiến Tạo Tương Lai",
+       "title": "Giới thiệu công ty",
+       "subtitle": "Thiết kế, chế tạo Jig & đồ gá, khuôn mẫu và gia công CNC tại Hà Nội từ năm 2019",
        "image_url": {
         "media": "about-header"
        }
@@ -301,16 +301,17 @@
      {
       "type": "about",
       "props": {
-       "heading": "Thư Ngỏ từ Ban Lãnh Đạo",
+       "heading": "Thư ngỏ từ Ban lãnh đạo",
        "paragraphs": [
-        "Kính gửi Quý Đối tác và Khách hàng!",
-        "Thay mặt tập thể Công ty TNHH Thương mại và Dịch vụ Thiết kế Gia công Cơ khí An Vinh, Ban Lãnh đạo chúng tôi xin trân trọng gửi lời chúc sức khỏe, thành công và lời cảm ơn sâu sắc đến Quý vị đã luôn tin tưởng, đồng hành cùng sự phát triển của công ty trong suốt thời gian qua.",
-        "An Vinh được xây dựng trên nền tảng của sự tâm huyết, sáng tạo và nỗ lực không ngừng của toàn thể cán bộ, công nhân viên. Cùng với sự hợp tác quý báu từ Quý vị, chúng tôi đã và đang khẳng định vị thế.",
-        "Với đội ngũ kỹ sư chất lượng cao, giàu kinh nghiệm và chiến lược đầu tư vào hệ thống máy móc, trang thiết bị hiện đại, chúng tôi cam kết mang đến những giải pháp toàn diện, đáp ứng và vượt trên sự mong đợi của khách hàng.",
-        "Chúng tôi lấy chất lượng sản phẩm và sự hài lòng của Quý vị làm kim chỉ nam cho mọi hoạt động. Sự thành công của An Vinh gắn liền với sự thịnh vượng của Quý vị. Vì vậy, chúng tôi luôn mở rộng vòng tay hợp tác với các doanh nghiệp trên cả nước, trên tinh thần chia sẻ lợi ích và cùng nhau phát triển bền vững.",
+        "Kính gửi Quý Chủ đầu tư và Khách hàng!",
+        "Lời đầu tiên, thay mặt Ban lãnh đạo Công ty TNHH Thương mại và Dịch vụ Thiết kế Gia công Cơ khí An Vinh, chúng tôi xin gửi lời chúc sức khỏe, thành đạt, hạnh phúc và lời cảm ơn chân thành tới Quý khách hàng đã, đang và sẽ hợp tác với công ty.",
+        "Được thành lập với sự năng động, sáng tạo và nỗ lực của tập thể cán bộ, công nhân viên, cùng sự hợp tác của Quý vị, An Vinh không ngừng lớn mạnh và phát triển trong lĩnh vực thiết kế và gia công đồ gá, khuôn mẫu.",
+        "Đội ngũ kỹ thuật viên của An Vinh giàu kinh nghiệm, có khả năng tư vấn chuyên sâu, tinh thần kỷ luật, đoàn kết và trách nhiệm cao trong chế tạo cơ khí chính xác, gia công khuôn mẫu và đồ gá. Với chiến lược tập trung đầu tư máy móc, trang thiết bị hiện đại cùng kinh nghiệm và ý tưởng sáng tạo trong thiết kế, chúng tôi luôn đáp ứng và làm hài lòng mọi nhu cầu của khách hàng.",
+        "Chúng tôi lấy chất lượng sản phẩm, dịch vụ và sự hài lòng của Quý khách hàng làm tôn chỉ hành động. Đồng hành cùng sự phát triển của An Vinh là sự thịnh vượng của Quý khách hàng; vì vậy An Vinh luôn chào đón sự hợp tác của các doanh nghiệp trên cả nước, trên cơ sở chia sẻ lợi ích và cùng hướng tới sự phát triển bền vững, lâu dài.",
+        "Chúng tôi hy vọng nhận được sự hợp tác của Quý vị.",
         "Xin trân trọng cảm ơn!",
-        "Ban Lãnh đạo",
-        "Công ty TNHH Thương mại và Dịch vụ Thiết kế Gia công Cơ khí An Vinh"
+        "Bùi Văn Quy",
+        "Giám đốc Công ty An Vinh"
        ],
        "image_url": {
         "media": "about-letter"
@@ -321,19 +322,19 @@
      {
       "type": "features",
       "props": {
-       "heading": "Định Hướng Phát Triển",
-       "description": "An Vinh không ngừng vươn tới những tiêu chuẩn cao hơn, kiến tạo giá trị bền vững cho khách hàng và xã hội.",
+       "heading": "Định hướng phát triển",
+       "description": "Với phương châm “Nhận trách nhiệm – Gửi chữ tín”, An Vinh phát triển theo bốn tiêu chí: chuyên nghiệp, chất lượng, uy tín, tiến bộ.",
        "variant": "top-rule",
        "bg": "tint",
        "items": [
         {
-         "title": "Tầm Nhìn",
-         "text": "Trở thành công ty gia công cơ khí chính xác, thiết kế đồ gá, khuôn mẫu hàng đầu Việt Nam với trang thiết bị hiện đại, tiên tiến. Cung cấp sản phẩm, dịch vụ chất lượng tốt, giá cả cạnh tranh, thỏa mãn mọi nhu cầu của khách hàng.",
+         "title": "Tầm nhìn",
+         "text": "Trở thành công ty gia công cơ khí chính xác, thiết kế và gia công đồ gá, khuôn mẫu với trang thiết bị ngày càng hiện đại, tiên tiến. Cung cấp sản phẩm, dịch vụ chất lượng tốt, giá cả cạnh tranh và ngày càng thỏa mãn nhu cầu của khách hàng.",
          "icon": "eye"
         },
         {
-         "title": "Sứ Mệnh",
-         "text": "Thiết kế, thi công và sản xuất những sản phẩm có chất lượng tốt, an toàn, đảm bảo tiến độ và hiệu quả kinh tế. Phát huy cao nhất năng lực đội ngũ và nâng cao chất lượng đời sống vật chất, tinh thần cho toàn thể cán bộ nhân viên.",
+         "title": "Sứ mệnh",
+         "text": "Thiết kế, thi công và sản xuất những sản phẩm có chất lượng tốt, an toàn, đảm bảo tiến độ và hiệu quả kinh tế. Phát huy cao nhất năng lực của đội ngũ cán bộ công nhân viên, cùng với chất lượng cuộc sống vật chất, tinh thần ngày càng được nâng cao.",
          "icon": "users"
         }
        ]
@@ -342,38 +343,33 @@
      {
       "type": "features",
       "props": {
-       "heading": "Giá Trị Cốt Lõi",
+       "heading": "Giá trị cốt lõi",
        "bg": "dark",
        "items": [
         {
-         "title": "Uy Tín",
-         "text": "Luôn nỗ lực hết mình để đảm bảo chất lượng hoàn hảo và cam kết đúng tiến độ.",
+         "title": "Uy tín",
+         "text": "Uy tín là quan trọng nhất: nỗ lực đảm bảo chất lượng trên từng công trình, dịch vụ và cam kết đúng tiến độ thực hiện.",
          "icon": "check"
         },
         {
-         "title": "Sáng Tạo",
-         "text": "Không ngừng sáng tạo nhằm tạo sự khác biệt và mang đậm bản sắc riêng.",
-         "icon": "adjust"
-        },
-        {
-         "title": "Trách Nhiệm",
-         "text": "Luôn làm việc tận tụy và có trách nhiệm với những gì đã cam kết.",
-         "icon": "lock"
-        },
-        {
-         "title": "Hiệu Quả",
-         "text": "Cải tiến liên tục kỹ năng để phục vụ khách hàng với hiệu suất cao nhất.",
-         "icon": "cog"
-        },
-        {
-         "title": "Khách Hàng Là Trọng Tâm",
-         "text": "Lấy sự hài lòng của khách hàng làm thước đo cho thành công.",
+         "title": "Khách hàng là trọng tâm",
+         "text": "Đặt lợi ích của khách hàng lên đầu và coi sự hài lòng của khách hàng là thước đo thành công.",
          "icon": "users"
         },
         {
-         "title": "Chia Sẻ Thành Công",
-         "text": "Đồng hành cùng sự phát triển của khách hàng và cộng đồng.",
-         "icon": "shield"
+         "title": "Sáng tạo không ngừng",
+         "text": "Tạo sự khác biệt và bản sắc riêng trong từng sản phẩm, dịch vụ.",
+         "icon": "adjust"
+        },
+        {
+         "title": "Trách nhiệm",
+         "text": "Làm việc tận tụy và có trách nhiệm với những gì đã cam kết.",
+         "icon": "lock"
+        },
+        {
+         "title": "Hiệu quả",
+         "text": "Cải tiến liên tục kiến thức, kỹ năng để phục vụ khách hàng với hiệu suất cao nhất, mang lại lợi ích thiết thực.",
+         "icon": "cog"
         }
        ],
        "variant": "top-rule"
@@ -382,10 +378,10 @@
      {
       "type": "about",
       "props": {
-       "heading": "Nhà Xưởng & Máy Móc",
+       "heading": "Nhà xưởng & máy móc",
        "paragraphs": [
-        "Ba nhà máy với tổng diện tích 4.300 m² tại xã Trung Giã và xã Thạch Thất, Hà Nội, khép kín từ thiết kế, gia công CNC, hàn, lắp ráp đến đo kiểm.",
-        "Xem địa chỉ từng nhà máy, danh mục máy móc và hình ảnh, video thực tế tại xưởng."
+        "Ba nhà máy với tổng diện tích 4.300 m² tại xã Trung Giã và xã Thạch Thất, Hà Nội, chuyên lắp ráp, hàn, dập và gia công cơ khí chính xác.",
+        "Xem địa chỉ từng nhà máy, danh mục máy móc và thiết bị đo kiểm."
        ],
        "image_url": {
         "media": "factory-1"
@@ -397,25 +393,486 @@
      {
       "type": "about",
       "props": {
-       "heading": "Cam Kết Chất Lượng Theo Tiêu Chuẩn Quốc Tế",
+       "heading": "Cam kết chất lượng theo tiêu chuẩn quốc tế",
        "paragraphs": [
-        "An Vinh tự hào được đánh giá và chứng nhận phù hợp với các yêu cầu của tiêu chuẩn quốc tế ISO 9001:2015 cho Hệ thống Quản lý Chất lượng – từ khâu thiết kế, sản xuất đến kiểm định.",
-        "Số chứng nhận: HT 3078 · Mã số 3078-24-01/01",
-        "Tổ chức chứng nhận: Viện Nghiên cứu Phát triển Tiêu chuẩn Chất lượng (ISSQ)",
-        "Hiệu lực: 01/04/2024 – 23/02/2027",
-        "Phạm vi: Gia công rèn, dập, hàn; sản xuất đồ gá, khuôn mẫu"
+        "Hệ thống quản lý chất lượng của An Vinh được chứng nhận phù hợp tiêu chuẩn ISO 9001:2015 cho gia công rèn, dập, hàn và sản xuất đồ gá, khuôn mẫu.",
+        "Số chứng nhận: HT 3078 · Hiệu lực đến 23/02/2027"
        ],
        "image_url": {
         "media": "iso-9001-certificate"
        },
-       "anchor_id": "chung-chi"
+       "anchor_id": "chung-chi",
+       "cta_label": {
+        "text": "Tải hồ sơ năng lực",
+        "type_and_size_of": "ho-so-nang-luc"
+       },
+       "cta_url_do": {
+        "k": "file",
+        "file": {
+         "media": "ho-so-nang-luc"
+        }
+       }
       }
      },
      {
       "type": "cta",
       "props": {
        "heading": "Tham quan nhà máy An Vinh",
-       "text": "Đặt lịch khảo sát năng lực thực tế cùng đội ngũ kỹ sư của chúng tôi.",
+       "text": "Đặt lịch khảo sát năng lực thực tế cùng đội ngũ kỹ sư An Vinh.",
+       "button_label": "Đặt lịch tham quan",
+       "button_url": "/lien-he",
+       "variant": "rounded",
+       "extra_style": [
+        "pattern-cross"
+       ]
+      }
+     }
+    ]
+   }
+  },
+  {
+   "key": "page:/nha-xuong-may-moc",
+   "parent": "page:/gioi-thieu",
+   "verified": true,
+   "status": "published",
+   "title": {
+    "vi": "Nhà xưởng & máy móc"
+   },
+   "seo_title": {
+    "vi": "Nhà Xưởng & Máy Móc | Cơ Khí Chính Xác An Vinh"
+   },
+   "seo_description": {
+    "vi": "Ba nhà máy của An Vinh tại Trung Giã và Thạch Thất, Hà Nội, tổng 4.300 m²: lắp ráp, hàn, dập, gia công CNC; máy phay, tiện CNC, cắt dây EDM và máy đo CMM."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "page_header",
+      "props": {
+       "title": "Nhà Xưởng & Máy Móc",
+       "subtitle": "Ba nhà máy tại Hà Nội, tổng diện tích 4.300 m², cùng máy móc và thiết bị đo kiểm",
+       "image_url": {
+        "media": "factory-1"
+       }
+      }
+     },
+     {
+      "type": "features",
+      "props": {
+       "heading": "Ba nhà máy",
+       "description": "Tổng diện tích 4.300 m² tại Hà Nội.",
+       "variant": "top-rule",
+       "items": [
+        {
+         "title": "Nhà máy 1 · 2.000 m²",
+         "text": "Lắp ráp và sản xuất hàn, dập với quy trình tự động hóa. Đường 418, thôn Xuân Sơn, xã Trung Giã, TP Hà Nội."
+        },
+        {
+         "title": "Nhà máy 2 · 500 m²",
+         "text": "Lắp ráp sản phẩm cơ khí chính xác, kiểm soát chất lượng chặt chẽ. Đường QL3, thôn Hương Ninh, xã Trung Giã, TP Hà Nội."
+        },
+        {
+         "title": "Nhà máy 3 · 1.800 m²",
+         "text": "Gia công cơ khí chính xác: CNC, phay, mài, cắt dây, xung và đo CMM. Đội 6, thôn Ngũ Sơn, xã Thạch Thất, TP Hà Nội."
+        }
+       ]
+      }
+     },
+     {
+      "type": "features",
+      "props": {
+       "heading": "Máy móc, thiết bị",
+       "items": [
+        {
+         "title": "Máy CNC",
+         "icon": "wrench",
+         "text": "3 máy cỡ lớn, kích thước bàn gia công tới X4200 × Y3200 × Z1000 mm, và 15 máy cỡ nhỏ X900 × Y450 × Z450 mm."
+        },
+        {
+         "title": "Máy phay, máy mài",
+         "icon": "cog",
+         "text": "Máy phay giường X6000 × Y1500 × Z1000 mm, 2 máy phay tự động, 11 máy phay nhỏ và 8 máy mài giường tới X3200 × Y1500 × Z1000 mm."
+        },
+        {
+         "title": "Máy tiện, khoan, taro",
+         "icon": "adjust",
+         "text": "3 máy tiện CNC, 3 máy tiện cơ, 5 máy khoan cần tới X1000 × Y1500 × Z1500 mm, 11 máy khoan khác và 5 máy taro."
+        },
+        {
+         "title": "Cắt dây, xung điện (EDM)",
+         "icon": "adjust",
+         "text": "7 máy cắt dây X900 × Y450 × Z300 mm và 2 máy xung X300 × Y250 × Z400 mm."
+        },
+        {
+         "title": "Hàn, dập",
+         "icon": "box",
+         "text": "6 máy hàn MIG/MAG, 1 máy hàn brazing, 3 máy hàn khác, máy dập 110 tấn và máy khắc laze."
+        },
+        {
+         "title": "Thiết bị đo kiểm",
+         "icon": "check",
+         "text": "2 máy đo 3D CMM và 2 tay đo 3D Faro Arm."
+        }
+       ],
+       "description": "Máy và thiết bị chính tại nhà máy 1 và nhà máy 3."
+      }
+     },
+     {
+      "type": "video",
+      "props": {
+       "heading": "Video minh họa: phay CNC (timelapse) – nguồn kênh HackerspaceOL, giấy phép CC BY",
+       "url": "https://www.youtube.com/watch?v=FpYQc5zMLzM",
+       "poster": {
+        "media": "cnc-1"
+       },
+       "anchor_id": "video"
+      }
+     },
+     {
+      "type": "gallery",
+      "props": {
+       "heading": "Nhà xưởng",
+       "columns": "4",
+       "images": [
+        {
+         "image": {
+          "media": "factory-1"
+         },
+         "caption": "Khu sản xuất"
+        },
+        {
+         "image": {
+          "media": "factory-2"
+         },
+         "caption": "Mặt bằng xưởng"
+        },
+        {
+         "image": {
+          "media": "weld-1"
+         },
+         "caption": "Khu vực hàn"
+        },
+        {
+         "image": {
+          "media": "office-1"
+         },
+         "caption": "Phòng họp tiếp khách"
+        }
+       ]
+      }
+     },
+     {
+      "type": "gallery",
+      "props": {
+       "heading": "Máy móc",
+       "columns": "4",
+       "images": [
+        {
+         "image": {
+          "media": "cnc-1"
+         },
+         "caption": "Trung tâm gia công CNC"
+        },
+        {
+         "image": {
+          "media": "cnc-2"
+         },
+         "caption": "Máy tiện"
+        },
+        {
+         "image": {
+          "media": "edm-1"
+         },
+         "caption": "Cắt dây EDM"
+        },
+        {
+         "image": {
+          "media": "inspect-2"
+         },
+         "caption": "Đo kiểm bằng panme"
+        }
+       ]
+      }
+     },
+     {
+      "type": "gallery",
+      "props": {
+       "heading": "Sản phẩm",
+       "columns": "4",
+       "images": [
+        {
+         "image": {
+          "media": "p-weld-jig-frame"
+         },
+         "caption": "Jig hàn khung"
+        },
+        {
+         "image": {
+          "media": "p-die-cast-mould"
+         },
+         "caption": "Khuôn đúc áp lực"
+        },
+        {
+         "image": {
+          "media": "pr-headlamp-jig"
+         },
+         "caption": "Đồ gá kiểm tra cụm đèn"
+        },
+        {
+         "image": {
+          "media": "p-fuel-tank-die"
+         },
+         "caption": "Khuôn dập"
+        }
+       ]
+      }
+     },
+     {
+      "type": "quick_links",
+      "props": {
+       "heading": "Tìm hiểu thêm",
+       "variant": "pill",
+       "items": [
+        {
+         "icon": "license",
+         "label": "Chứng chỉ & thành tựu",
+         "url": "/chung-chi-thanh-tuu"
+        },
+        {
+         "icon": "link",
+         "label": "Đo kiểm & QA/QC",
+         "url": "/do-kiem-qa-qc"
+        },
+        {
+         "icon": "building",
+         "label": "Giới thiệu công ty",
+         "url": "/gioi-thieu"
+        }
+       ]
+      }
+     },
+     {
+      "type": "cta",
+      "props": {
+       "heading": "Tham quan nhà máy An Vinh",
+       "text": "Đặt lịch khảo sát năng lực thực tế cùng đội ngũ kỹ sư An Vinh.",
+       "button_label": "Đặt lịch tham quan",
+       "button_url": "/lien-he",
+       "variant": "rounded",
+       "extra_style": [
+        "pattern-cross"
+       ]
+      }
+     }
+    ]
+   }
+  },
+  {
+   "key": "page:/chung-chi-thanh-tuu",
+   "parent": "page:/gioi-thieu",
+   "verified": true,
+   "status": "published",
+   "title": {
+    "vi": "Chứng chỉ & thành tựu"
+   },
+   "seo_title": {
+    "vi": "Chứng Chỉ & Thành Tựu | Cơ Khí Chính Xác An Vinh"
+   },
+   "seo_description": {
+    "vi": "Chứng nhận ISO 9001:2015 số HT 3078 do ISSQ cấp, hiệu lực đến 23/02/2027, cho gia công rèn, dập, hàn, đồ gá, khuôn mẫu; cùng đối tác và dự án đã thực hiện."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "page_header",
+      "props": {
+       "title": "Chứng Chỉ & Thành Tựu",
+       "subtitle": "Chứng nhận ISO 9001:2015, đối tác và các dự án An Vinh đã thực hiện",
+       "image_url": {
+        "media": "inspect-1"
+       }
+      }
+     },
+     {
+      "type": "about",
+      "props": {
+       "heading": "Chứng nhận ISO 9001:2015",
+       "paragraphs": [
+        "Hệ thống quản lý chất lượng của An Vinh được đánh giá và chứng nhận phù hợp với các yêu cầu của tiêu chuẩn ISO 9001:2015.",
+        "Số chứng nhận: HT 3078 · Mã số 3078-24-01/01",
+        "Tổ chức chứng nhận: Viện Nghiên cứu Phát triển Tiêu chuẩn Chất lượng (ISSQ)",
+        "Chứng nhận lần đầu: 24/02/2024 · Hiệu lực: 01/04/2024 – 23/02/2027",
+        "Phạm vi chứng nhận: gia công các sản phẩm rèn, dập, hàn; sản xuất các sản phẩm cơ khí: đồ gá, khuôn mẫu"
+       ],
+       "image_url": {
+        "media": "iso-9001-certificate"
+       },
+       "cta_label": "Xem máy móc & thiết bị đo kiểm",
+       "cta_url": "/nha-xuong-may-moc",
+       "anchor_id": "iso-9001"
+      }
+     },
+     {
+      "type": "partners",
+      "props": {
+       "heading": "Đối tác đã tin tưởng An Vinh",
+       "layout": "grid",
+       "logos": [
+        {
+         "image_url": {
+          "media": "logo-vinfast"
+         },
+         "name": "VinFast"
+        },
+        {
+         "image_url": {
+          "media": "logo-festo"
+         },
+         "name": "Festo"
+        },
+        {
+         "image_url": {
+          "media": "logo-hutchinson"
+         },
+         "name": "Hutchinson"
+        },
+        {
+         "image_url": {
+          "media": "logo-weldcom"
+         },
+         "name": "Weldcom"
+        },
+        {
+         "image_url": {
+          "media": "logo-smc"
+         },
+         "name": "SMC"
+        },
+        {
+         "name": "DGP"
+        },
+        {
+         "name": "Yamaguchi"
+        },
+        {
+         "name": "Mitsuboshi"
+        },
+        {
+         "image_url": {
+          "media": "logo-palfinger"
+         },
+         "name": "Palfinger"
+        },
+        {
+         "image_url": {
+          "media": "logo-vinmanutech"
+         },
+         "name": "Vinmanutech"
+        }
+       ]
+      }
+     },
+     {
+      "type": "entry_grid",
+      "props": {
+       "heading": "Dự án đã thực hiện",
+       "description": "Một số dự án Jig & đồ gá, khuôn mẫu và chi tiết máy An Vinh đã thực hiện cho khách hàng.",
+       "taxonomy_slug": "du-an",
+       "limit": 3,
+       "variant": "project-cards",
+       "view_all_label": "Xem tất cả dự án",
+       "view_all_url": "/du-an",
+       "layout": "auto"
+      }
+     },
+     {
+      "type": "cta",
+      "props": {
+       "heading": "Tham quan nhà máy An Vinh",
+       "text": "Đặt lịch khảo sát năng lực thực tế cùng đội ngũ kỹ sư An Vinh.",
+       "button_label": "Đặt lịch tham quan",
+       "button_url": "/lien-he",
+       "variant": "rounded",
+       "extra_style": [
+        "pattern-cross"
+       ]
+      }
+     }
+    ]
+   }
+  },
+  {
+   "key": "page:/ho-so-nang-luc",
+   "parent": "page:/gioi-thieu",
+   "verified": true,
+   "status": "published",
+   "title": {
+    "vi": "Hồ sơ năng lực & tài liệu"
+   },
+   "seo_title": {
+    "vi": "Hồ Sơ Năng Lực & Tài Liệu | Cơ Khí Chính Xác An Vinh"
+   },
+   "seo_description": {
+    "vi": "Tải hồ sơ năng lực An Vinh (PDF, 21 trang): thông tin công ty, ba nhà máy 4.300 m², máy móc, chứng nhận ISO 9001:2015, sản phẩm Jig & đồ gá, khuôn mẫu."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "page_header",
+      "props": {
+       "title": "Hồ Sơ Năng Lực & Tài Liệu",
+       "subtitle": "Tài liệu giúp bộ phận mua hàng đánh giá nhà cung cấp nhanh hơn",
+       "image_url": {
+        "media": "cad-1"
+       }
+      }
+     },
+     {
+      "type": "cta",
+      "props": {
+       "heading": "Hồ sơ năng lực An Vinh",
+       "text": "Thông tin công ty, thư ngỏ, tầm nhìn và giá trị cốt lõi, chứng nhận ISO 9001:2015, đối tác, sản phẩm tiêu biểu, ba nhà máy và danh sách máy móc, thiết bị.",
+       "button_label": {
+        "text": "Tải hồ sơ năng lực",
+        "type_and_size_of": "ho-so-nang-luc"
+       },
+       "button_url_do": {
+        "k": "file",
+        "file": {
+         "media": "ho-so-nang-luc"
+        }
+       },
+       "side": "stats",
+       "side_items": [
+        {
+         "kind": "year",
+         "value": 2019,
+         "suffix": "",
+         "label": "Năm thành lập"
+        },
+        {
+         "kind": "number",
+         "value": 3,
+         "suffix": "",
+         "label": "Nhà máy"
+        },
+        {
+         "kind": "number",
+         "value": 4300,
+         "suffix": "m²",
+         "label": "Nhà xưởng"
+        }
+       ],
+       "extra_style": [
+        "pattern-cross"
+       ]
+      }
+     },
+     {
+      "type": "cta",
+      "props": {
+       "heading": "Tham quan nhà máy An Vinh",
+       "text": "Đặt lịch khảo sát năng lực thực tế cùng đội ngũ kỹ sư An Vinh.",
        "button_label": "Đặt lịch tham quan",
        "button_url": "/lien-he",
        "variant": "rounded",
@@ -595,217 +1052,6 @@
        "form_key": "contact",
        "description": "Điền vào biểu mẫu bên dưới và chúng tôi sẽ liên hệ lại với bạn trong thời gian sớm nhất.",
        "map_embed": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d12503.468002335805!2d105.85833024594946!3d21.29902948043917!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31351dc82e015dad%3A0xc3a6d44da6b27bb9!2zQ8O0bmcgdHkgY8ahIGtow60gQW4gVmluaA!5e0!3m2!1svi!2s!4v1762317872785!5m2!1svi!2s"
-      }
-     }
-    ]
-   }
-  },
-  {
-   "key": "page:/nha-xuong-may-moc",
-   "verified": true,
-   "status": "published",
-   "title": {
-    "vi": "Nhà Xưởng & Máy Móc"
-   },
-   "seo_title": {
-    "vi": "Nhà Xưởng & Máy Móc | Cơ Khí Chính Xác An Vinh"
-   },
-   "seo_description": {
-    "vi": "Ba nhà máy của An Vinh tại Hà Nội, tổng 4.300 m²: lắp ráp, hàn, dập và gia công cơ khí; máy móc, thiết bị và hình ảnh gia công."
-   },
-   "body": {
-    "vi": [
-     {
-      "type": "page_header",
-      "props": {
-       "title": "Nhà Xưởng & Máy Móc",
-       "subtitle": "3 nhà máy, máy móc thiết bị và hình ảnh thực tế tại xưởng",
-       "image_url": {
-        "media": "factory-1"
-       }
-      }
-     },
-     {
-      "type": "features",
-      "props": {
-       "heading": "Ba nhà máy",
-       "description": "Tổng diện tích 4.300 m² tại Hà Nội.",
-       "variant": "top-rule",
-       "items": [
-        {
-         "title": "Nhà máy 1 · 2.000 m²",
-         "text": "Lắp ráp & sản xuất hàn, dập. Đường 418, thôn Xuân Sơn, xã Trung Giã, TP Hà Nội."
-        },
-        {
-         "title": "Nhà máy 2 · 500 m²",
-         "text": "Lắp ráp. Đường QL3, thôn Hương Ninh, xã Trung Giã, TP Hà Nội."
-        },
-        {
-         "title": "Nhà máy 3 · 1.800 m²",
-         "text": "Gia công. Đội 6, thôn Ngũ Sơn, xã Thạch Thất, TP Hà Nội."
-        }
-       ]
-      }
-     },
-     {
-      "type": "features",
-      "props": {
-       "heading": "Máy móc, thiết bị",
-       "items": [
-        {
-         "title": "Máy phay CNC 3–5 trục",
-         "icon": "wrench",
-         "text": "Hành trình tới 1.000 × 600 × 500 mm · dung sai ±0,01 mm"
-        },
-        {
-         "title": "Máy tiện CNC",
-         "icon": "cog",
-         "text": "Đường kính tới Ø300 × dài 500 mm · có trục C"
-        },
-        {
-         "title": "Máy cắt dây, xung điện (EDM)",
-         "icon": "adjust",
-         "text": "Biên dạng phức tạp, chi tiết khuôn, vật liệu đã nhiệt luyện"
-        },
-        {
-         "title": "Máy hàn MIG/MAG, TIG",
-         "icon": "wrench",
-         "text": "Hàn kết cấu, khung đồ gá, cụm chi tiết"
-        },
-        {
-         "title": "Máy dập, máy ép",
-         "icon": "box",
-         "text": "Dập, rèn chi tiết kim loại theo khuôn"
-        },
-        {
-         "title": "Thiết bị đo kiểm",
-         "icon": "check",
-         "text": "Máy đo CMM, máy đo 2,5D, dụng cụ đo cầm tay"
-        }
-       ]
-      }
-     },
-     {
-      "type": "video",
-      "props": {
-       "heading": "Video minh họa: phay CNC (timelapse) – nguồn kênh HackerspaceOL, giấy phép CC BY",
-       "url": "https://www.youtube.com/watch?v=FpYQc5zMLzM",
-       "poster": {
-        "media": "cnc-1"
-       },
-       "anchor_id": "video"
-      }
-     },
-     {
-      "type": "gallery",
-      "props": {
-       "heading": "Nhà xưởng",
-       "columns": "4",
-       "images": [
-        {
-         "image": {
-          "media": "factory-1"
-         },
-         "caption": "Khu sản xuất"
-        },
-        {
-         "image": {
-          "media": "factory-2"
-         },
-         "caption": "Mặt bằng xưởng"
-        },
-        {
-         "image": {
-          "media": "weld-1"
-         },
-         "caption": "Khu vực hàn"
-        },
-        {
-         "image": {
-          "media": "office-1"
-         },
-         "caption": "Phòng họp tiếp khách"
-        }
-       ]
-      }
-     },
-     {
-      "type": "gallery",
-      "props": {
-       "heading": "Máy móc",
-       "columns": "4",
-       "images": [
-        {
-         "image": {
-          "media": "cnc-1"
-         },
-         "caption": "Trung tâm gia công CNC"
-        },
-        {
-         "image": {
-          "media": "cnc-2"
-         },
-         "caption": "Máy tiện"
-        },
-        {
-         "image": {
-          "media": "edm-1"
-         },
-         "caption": "Cắt dây EDM"
-        },
-        {
-         "image": {
-          "media": "inspect-2"
-         },
-         "caption": "Đo kiểm bằng panme"
-        }
-       ]
-      }
-     },
-     {
-      "type": "gallery",
-      "props": {
-       "heading": "Sản phẩm",
-       "columns": "4",
-       "images": [
-        {
-         "image": {
-          "media": "p-weld-jig-frame"
-         },
-         "caption": "Jig hàn khung"
-        },
-        {
-         "image": {
-          "media": "p-die-cast-mould"
-         },
-         "caption": "Khuôn đúc áp lực"
-        },
-        {
-         "image": {
-          "media": "pr-headlamp-jig"
-         },
-         "caption": "Đồ gá kiểm tra cụm đèn"
-        },
-        {
-         "image": {
-          "media": "p-fuel-tank-die"
-         },
-         "caption": "Khuôn dập"
-        }
-       ]
-      }
-     },
-     {
-      "type": "cta",
-      "props": {
-       "heading": "Tham quan nhà máy trực tiếp",
-       "text": "Đặt lịch khảo sát năng lực thực tế cùng đội ngũ kỹ sư An Vinh.",
-       "button_label": "Đặt lịch tham quan",
-       "button_url": "/lien-he",
-       "variant": "rounded",
-       "extra_style": [
-        "pattern-cross"
-       ]
       }
      }
     ]

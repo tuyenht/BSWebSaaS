@@ -415,17 +415,12 @@ final class ButtonActions
      */
     private function document(Media $media): array
     {
-        $ext = strtoupper(Media::MIME_EXT_LABELS[$media->mime] ?? '');
-        $bytes = $media->size;
-        $size = $bytes >= 1_048_576
-            ? number_format($bytes / 1_048_576, 1, ',', '.').' MB'
-            : number_format(max(1, (int) round($bytes / 1024)), 0, ',', '.').' KB';
         $date = $media->created_at?->format('d/m/Y');
 
         return [
             'key' => $media->storage_key,
             'name' => $media->original_filename ?? basename($media->storage_key),
-            'meta' => $ext.' · '.$size.($date !== null ? ' · '.__('entries.btn_file_uploaded', ['date' => $date]) : ''),
+            'meta' => Media::typeAndSize($media->mime, $media->size).($date !== null ? ' · '.__('entries.btn_file_uploaded', ['date' => $date]) : ''),
             'icon' => self::DOC_ICONS[$media->mime] ?? 'ri-file',
         ];
     }

@@ -361,3 +361,107 @@ it('records the files written before a run stopped part-way', function (): void 
         ->and(packMedia($this->siteId))->toHaveCount(1)
         ->and(AuditLog::query()->where('action', 'content_pack.media_applied')->where('id', '>', $before)->sole()->meta)->toMatchArray(['written' => 1]);
 });
+
+it('uploads a document slot as a PDF through the media library', function (): void {
+    $pdf = "%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n";
+    File::put($this->folder.'/media/profile.pdf', $pdf);
+    ContentPacks::edit($this->folder, 'media.json', function (array $media): array {
+        $media['slots'][] = ['slot' => 'profile', 'kind' => 'document', 'file' => 'media/profile.pdf', 'alt' => ['vi' => 'Hồ sơ năng lực']];
+
+        return $media;
+    });
+
+    [$exit, $output] = mediaLoad();
+    expect($exit)->toBe(0, $output)
+        ->and(ContentPacks::verdict($output, 'media:profile'))->toBe('upload');
+
+    $row = ContentPacks::in($this->siteId, fn () => Media::query()->where('original_filename', 'profile.pdf')->firstOrFail());
+    expect($row->mime)->toBe('application/pdf')
+        ->and($row->storage_key)->toMatch('#^demo/library/profile-[0-9a-f]{4}\.pdf$#')
+        ->and($row->hash)->toBe(hash('sha256', $pdf))
+        ->and($row->width)->toBeNull()
+        ->and($row->alt)->toBe(['vi' => 'Hồ sơ năng lực'])
+        ->and(Storage::disk('r2')->get($row->storage_key))->toBe($pdf);
+});
+
+/** The pack's company profile as a document slot, with a download button on the about page; returns the PDF's bytes. */
+function profileButton(string $folder): string
+{
+    $pdf = "%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n";
+    File::put($folder.'/media/profile.pdf', $pdf);
+    ContentPacks::edit($folder, 'media.json', function (array $media): array {
+        $media['slots'][] = ['slot' => 'profile', 'kind' => 'document', 'file' => 'media/profile.pdf'];
+
+        return $media;
+    });
+    ContentPacks::item($folder, 'pages.json', 'page:/gioi-thieu', function (array $page): array {
+        $page['body']['vi'][] = ['type' => 'cta', 'props' => [
+            'heading' => 'Hồ sơ năng lực',
+            'button_label' => ['text' => 'Tải hồ sơ', 'type_and_size_of' => 'profile'],
+            'button_url_do' => ['k' => 'file', 'file' => ['media' => 'profile']],
+        ]];
+
+        return $page;
+    });
+
+    return $pdf;
+}
+
+/** The props of the about page's last block, as stored. */
+function aboutLastBlock(int $siteId): array
+{
+    return ContentPacks::in($siteId, function (): array {
+        $entry = Entry::query()->whereKey(SiteRoute::query()->where('path', '/gioi-thieu')->value('entry_id'))->firstOrFail();
+        $blocks = $entry->translationFor('vi')?->body['blocks'] ?? [];
+
+        return end($blocks)['props'] ?? [];
+    });
+}
+
+it('gives a page button the uploaded document and its label the file\'s type and size', function (): void {
+    profileButton($this->folder);
+    [$exit, $output] = mediaLoad();
+    expect($exit)->toBe(0, $output);
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output);
+
+    $key = ContentPacks::in($this->siteId, fn () => Media::query()->where('original_filename', 'profile.pdf')->value('storage_key'));
+    expect(aboutLastBlock($this->siteId))->toMatchArray([
+        'button_label' => 'Tải hồ sơ (PDF · 1 KB)',
+        'button_url_do' => ['k' => 'file', 'file' => $key],
+    ]);
+
+    $html = $this->get('http://'.ContentPacks::HOST.'/gioi-thieu')->assertOk()->getContent();
+    expect($html)->toMatch('#<a [^>]*href="[^"]*'.preg_quote((string) $key, '#').'"[^>]*download[^>]*>.*?Tải hồ sơ \(PDF · 1 KB\)#s');
+});
+
+it('leaves the download button out, with a warning, while its document is not uploaded', function (): void {
+    profileButton($this->folder);
+    [$exit, $plan] = ContentPacks::run();
+    expect($exit)->toBe(0, $plan)
+        ->and($plan)->toContain("page:/gioi-thieu: document slot 'profile' is not uploaded yet (run with --media first); the download button is left out.");
+
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)
+        ->and(aboutLastBlock($this->siteId))->toMatchArray(['button_label' => 'Tải hồ sơ'])->not->toHaveKey('button_url_do');
+});
+
+it('leaves the download button out when its document slot names an existing image', function (): void {
+    profileButton($this->folder);
+    $image = ContentPacks::in($this->siteId, fn (): Media => StorefrontCards::media('brochure'));
+    ContentPacks::edit($this->folder, 'media.json', function (array $media) use ($image): array {
+        $media['slots'] = array_map(fn (array $slot): array => $slot['slot'] === 'profile'
+            ? ['slot' => 'profile', 'kind' => 'document', 'legacy_key' => $image->storage_key]
+            : $slot, $media['slots']);
+
+        return $media;
+    });
+
+    [$exit, $plan] = ContentPacks::run();
+    expect($exit)->toBe(0, $plan)
+        ->and($plan)->toContain("page:/gioi-thieu: document slot 'profile' names a file that is not a document; the download button is left out.");
+
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)
+        ->and(aboutLastBlock($this->siteId))->toMatchArray(['button_label' => 'Tải hồ sơ'])->not->toHaveKey('button_url_do');
+});
