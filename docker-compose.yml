@@ -89,7 +89,7 @@ services:
   postgres:
     # Tag plus digest: the tag tells Dependabot the version line, the digest fixes the build (a
     # floating pg17 tag moves on its own).
-    image: pgvector/pgvector:0.8.2-pg17@sha256:feb68f4f15446397d8cac7f4fe48fe4586de83160d1fc48b46283312d1a33966
+    image: pgvector/pgvector:0.8.7-pg17@sha256:7d0a41464797aeb9862dfdc0bbf1526b82cfd324cdd8036df19e3545f4a9ccb8
     container_name: bsweb_dev_pg
     restart: unless-stopped
     environment:
@@ -108,8 +108,8 @@ services:
       retries: 12
 
   pgbouncer:
-    # PgBouncer 1.25.2, pinned by digest: `:latest` would move on the next pull.
-    image: edoburu/pgbouncer:v1.25.2-p0@sha256:4c1ca296ef525f108f5d3552cc337c0c09587cf8dae7f0067fd93349e47dc1cd
+    # PgBouncer 1.26.1, pinned by digest: `:latest` would move on the next pull.
+    image: edoburu/pgbouncer:v1.26.1-p0@sha256:488422e38cff912895d0d65d8963fcd306e6ac589a724398b6eb8e294e94d624
     container_name: bsweb_dev_pgbouncer
     restart: unless-stopped
     environment:
@@ -133,8 +133,8 @@ services:
         condition: service_healthy
 
   valkey:
-    # The June 8.1.8-alpine build running today (the tag was rebuilt in July), pinned like PostgreSQL.
-    image: valkey/valkey:8.1.8-alpine@sha256:77643d152547b446fc15cbafaff22004545663fcd40c6b28038ad283837baa75
+    # Valkey 8.1.11, pinned like PostgreSQL: a moving tag is rebuilt in place.
+    image: valkey/valkey:8.1.11-alpine@sha256:2602ace2be6569bc2bbb06f873776516ab9089821525be34f4305c67eb9db02a
     container_name: bsweb_dev_valkey
     restart: unless-stopped
     command: valkey-server --save 60 1 --appendonly no
