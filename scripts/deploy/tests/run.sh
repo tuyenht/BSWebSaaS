@@ -133,9 +133,10 @@ branch t-sched; w routes/console.php "<?php
 Schedule::command('audit:months')->daily();
 Schedule::command('x:new')->daily();"; git -C "$SRC" add -A && gitc -m sched; SCHED=$(git -C "$SRC" rev-parse HEAD)
 branch t-env; w config/app.php "<?php return ['name' => env('APP_NAME', 'x'), 'k' => env('NEW_KEY', 'd')];"; git -C "$SRC" add -A && gitc -m env; ENVK=$(git -C "$SRC" rev-parse HEAD)
+branch t-worker; w deploy/media-worker/src/index.js "export default {};"; git -C "$SRC" add -A && gitc -m worker; WORKER=$(git -C "$SRC" rev-parse HEAD)
 branch t-kinds
 for p in database/content-packs/p/pages.json package.json resources/js/app.js routes/web.php config/octane.php \
-    docker-compose.prod.yml deploy/Caddyfile app/Modules/Rbac/Registry/PermissionRegistry.php themes/default/y.blade.php \
+    docker-compose.prod.yml deploy/Caddyfile deploy/media-worker/src/index.js app/Modules/Rbac/Registry/PermissionRegistry.php themes/default/y.blade.php \
     lang/en.json scripts/backup-prod-db.sh scripts/other.mjs tests/Unit/BarTest.php docs/b.md weird/thing.txt; do w "$p" changed; done
 w "docs/Biểu mẫu.dc.html" x; w public/x.php '<?php'; w public/.htaccess x; w public/vendor/.htaccess x; w public/robots.txt x
 w composer.lock '{"packages":[{"name":"laravel/framework","version":"v13.2.0"}]}'
@@ -230,6 +231,7 @@ routes M routes/web.php
 server A config/octane.php
 server A docker-compose.prod.yml
 server A deploy/Caddyfile
+worker A deploy/media-worker/src/index.js
 permission A app/Modules/Rbac/Registry/PermissionRegistry.php
 view A themes/default/y.blade.php
 text A lang/en.json
@@ -488,6 +490,10 @@ fresh "$SCHED"; launch
 ok '[ "$RC" = 1 ] && says "nhóm cần khai báo: thấy '"'"'schedule'"'"'"' "an undeclared schedule change stops"
 fresh "$SCHED"; release 'DECLARED=(schedule)' 'SCHEDULE_ADDED=(x:new)'; launch
 ok '[ "$RC" = 0 ] && says "OK   lịch chạy thêm = x:new"' "declared schedule change passes and is checked after the reload"
+fresh "$WORKER"; launch
+ok '[ "$RC" = 1 ] && says "nhóm cần khai báo: thấy '"'"'worker'"'"'"' "an undeclared media Worker change stops"
+fresh "$WORKER"; release 'DECLARED=(worker)'; launch
+ok '[ "$RC" = 0 ]' "a declared media Worker change lets the app deploy go on"
 fresh "$ENVK"; launch
 ok '[ "$RC" = 1 ] && says "thiếu khóa mới: NEW_KEY"' "a new env key missing on prod stops"
 fresh "$ENVK"; release 'ENV_DEFAULT_OK=(NEW_KEY)'; launch

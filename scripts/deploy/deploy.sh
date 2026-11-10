@@ -158,6 +158,7 @@ class_of() {
         config/horizon.php) echo queue ;;
         config/*.php|bootstrap/app.php|bootstrap/providers.php) echo config ;;
         .env.example) echo env-doc ;;
+        deploy/media-worker/*) echo worker ;;   # the Cloudflare Worker: deployed apart by its own line, never by this engine
         docker/*|deploy/*|docker-compose*.yml|Dockerfile*|*/Dockerfile*|Caddyfile*|artisan|.dockerignore) echo server ;;
         public/*.php|public/*.phtml|public/*.phar|public/.htaccess|public/*/.htaccess) echo server ;;   # served or run by the web server
         app/*/PermissionRegistry.php) echo permission ;;
@@ -173,7 +174,7 @@ class_of() {
 }
 kind_of() {
     case "$1" in
-        migration|schedule|content-pack|data|composer-lock|npm|permission|sanitizer|ops-script) echo declare ;;
+        migration|schedule|content-pack|data|composer-lock|npm|permission|sanitizer|ops-script|worker) echo declare ;;
         migration-edit|server|unknown) echo stop ;;
         *) echo auto ;;
     esac
