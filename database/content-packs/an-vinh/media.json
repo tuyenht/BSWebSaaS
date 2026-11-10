@@ -343,6 +343,114 @@
    "collection": "library",
    "legacy_key": "an-vinh/brand/logo-e76d7cb1dfe4.png",
    "license": "Logo của khách hàng, đã có trong thư viện ảnh."
+  },
+  {
+   "slot": "factory-1",
+   "file": "media/factory-1.webp",
+   "alt": {
+    "vi": "Xưởng dập sạch sẽ với hàng máy dập khung C xếp thẳng hàng"
+   },
+   "collection": "library",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/31352672/"
+  },
+  {
+   "slot": "factory-2",
+   "file": "media/factory-2.webp",
+   "alt": {
+    "vi": "Nhà xưởng sản xuất rộng, sàn sạch, kệ vật tư và xe tự hành"
+   },
+   "collection": "library",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/34207364/"
+  },
+  {
+   "slot": "cnc-1",
+   "file": "media/cnc-1.webp",
+   "alt": {
+    "vi": "Dao phay cắt phôi thép trên máy phay CNC, phoi kim loại bắn ra"
+   },
+   "collection": "library",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/8865189/"
+  },
+  {
+   "slot": "cnc-2",
+   "file": "media/cnc-2.webp",
+   "alt": {
+    "vi": "Máy tiện đang tiện trục thép, vòi tưới dung dịch làm mát"
+   },
+   "collection": "library",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/11951233/"
+  },
+  {
+   "slot": "edm-1",
+   "file": "media/edm-1.webp",
+   "alt": {
+    "vi": "Máy cắt dây đang cắt chi tiết thép, tia lửa điện sáng"
+   },
+   "collection": "library",
+   "license": "Pixabay Content License (https://pixabay.com/service/license-summary/): dùng thương mại, không cần ghi nguồn. Nguồn: https://pixabay.com/photos/industry-spark-wire-cut-machine-2308670/"
+  },
+  {
+   "slot": "weld-1",
+   "file": "media/weld-1.webp",
+   "alt": {
+    "vi": "Thợ hàn đeo găng da hàn mặt bích chi tiết thép cỡ lớn"
+   },
+   "collection": "library",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/28929546/"
+  },
+  {
+   "slot": "weld-2",
+   "file": "media/weld-2.webp",
+   "alt": {
+    "vi": "Cận cảnh mỏ hàn và đường hàn trên tấm thép tại bàn gá"
+   },
+   "collection": "library",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/36522037/"
+  },
+  {
+   "slot": "cad-1",
+   "file": "media/cad-1.webp",
+   "alt": {
+    "vi": "Kỹ sư dùng bút chì soát bản vẽ kỹ thuật mặt bích"
+   },
+   "collection": "library",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/5324968/"
+  },
+  {
+   "slot": "cad-2",
+   "file": "media/cad-2.webp",
+   "alt": {
+    "vi": "Bàn tay kỹ sư trên các bản vẽ cơ khí chi tiết"
+   },
+   "collection": "library",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/5324968/"
+  },
+  {
+   "slot": "inspect-1",
+   "file": "media/inspect-1.webp",
+   "alt": {
+    "vi": "Thước cặp điện tử đo chiều dày dầm thép"
+   },
+   "collection": "library",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/36003972/"
+  },
+  {
+   "slot": "inspect-2",
+   "file": "media/inspect-2.webp",
+   "alt": {
+    "vi": "Panme điện tử kẹp mép tấm thép khi đo kiểm"
+   },
+   "collection": "library",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/36003970/"
+  },
+  {
+   "slot": "office-1",
+   "file": "media/office-1.webp",
+   "alt": {
+    "vi": "Phòng họp gọn gàng với bàn dài và bảng lật"
+   },
+   "collection": "library",
+   "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/20101490/"
   }
  ]
 }

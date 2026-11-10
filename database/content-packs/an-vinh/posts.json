@@ -3,7 +3,7 @@
   {
    "key": "post:thiet-ke-jig-do-ga",
    "verified": true,
-   "status": "published",
+   "status": "draft",
    "categories": [
     "tax:post_cat/nang-luc"
    ],
@@ -31,33 +31,533 @@
    }
   },
   {
+   "key": "post:thiet-ke-lap-trinh",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:post_cat/nang-luc"
+   ],
+   "image": {
+    "media": "cad-1"
+   },
+   "title": {
+    "vi": "Thiết kế & Lập trình"
+   },
+   "excerpt": {
+    "vi": "Thiết kế 3D đồ gá, khuôn mẫu và lập trình gia công CNC, mô phỏng trước khi chế tạo để tối ưu chi phí và tiến độ."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "page_header",
+      "props": {
+       "title": "Thiết Kế & Lập Trình",
+       "subtitle": "Thiết kế đồ gá, khuôn mẫu và lập trình CNC – kiểm chứng bằng mô phỏng trước khi chế tạo",
+       "image_url": {
+        "media": "cad-1"
+       }
+      }
+     },
+     {
+      "type": "richtext_html",
+      "props": {
+       "html": "<h2>Tổng quan</h2><p>An Vinh thiết kế 3D đồ gá hàn, đồ gá kiểm tra, khuôn dập, máy chuyên dùng và lập trình gia công CNC cho chính các chi tiết đó. Kỹ sư làm việc từ bản vẽ, mẫu thật hoặc yêu cầu công năng của khách hàng, mô phỏng lắp ghép và đường chạy dao trên máy tính để phát hiện va chạm, thiếu khe hở lắp ghép hay nguyên công thừa trước khi đưa xuống xưởng.</p><ul><li><strong>Phần mềm thiết kế:</strong> SolidWorks, Siemens NX, AutoCAD</li><li><strong>Lập trình CAM:</strong> 2,5D, 3 trục và 5 trục</li><li><strong>Thời gian thiết kế:</strong> 5 – 10 ngày làm việc cho một bộ đồ gá thông thường</li></ul><h2>Thông số kỹ thuật</h2><table><thead><tr><th>Hạng mục</th><th>Thiết kế cơ khí</th><th>Lập trình CNC</th></tr></thead><tbody><tr><td><strong>Đối tượng</strong></td><td>Đồ gá hàn, đồ gá kiểm tra, khuôn dập, máy chuyên dùng</td><td>Chi tiết phay, tiện, cắt dây</td></tr><tr><td><strong>Phần mềm</strong></td><td>SolidWorks, Siemens NX, AutoCAD</td><td>Mastercam, Siemens NX CAM</td></tr><tr><td><strong>Kết quả bàn giao</strong></td><td>Mô hình 3D, bản vẽ chế tạo 2D, bảng vật tư (BOM)</td><td>Chương trình NC đã mô phỏng, phiếu dao, phiếu gá đặt</td></tr><tr><td><strong>Kiểm chứng</strong></td><td>Mô phỏng lắp ghép, kiểm tra va chạm, phân tích chuỗi dung sai</td><td>Mô phỏng đường chạy dao, kiểm tra va chạm với đồ gá</td></tr><tr><td><strong>Thời gian</strong></td><td>5 – 10 ngày làm việc (đồ gá thông thường)</td><td>1 – 3 ngày làm việc</td></tr></tbody></table><h2>Định dạng file tiếp nhận</h2><ul><li><strong>3D:</strong> STEP, IGES, Parasolid (x_t)</li><li><strong>SolidWorks:</strong> SLDPRT, SLDASM</li><li><strong>2D:</strong> DWG, DXF, PDF</li><li><strong>Chưa có bản vẽ:</strong> mẫu thật, ảnh chụp có kích thước hoặc phác thảo tay</li></ul><h2>Tiêu chuẩn bản vẽ</h2><p>Bản vẽ chế tạo ghi đủ dung sai kích thước, dung sai hình học (GD&amp;T), vật liệu, độ cứng và xử lý bề mặt. Khi khách hàng yêu cầu, bộ hồ sơ bàn giao gồm file 3D gốc, bản vẽ 2D và bảng vật tư.</p>"
+      }
+     },
+     {
+      "type": "gallery",
+      "props": {
+       "heading": "Hình ảnh thiết kế",
+       "columns": "2",
+       "images": [
+        {
+         "image": {
+          "media": "cad-2"
+         },
+         "caption": "Mô hình 3D đồ gá trước khi chế tạo."
+        },
+        {
+         "image": {
+          "media": "p-weld-jig-frame"
+         },
+         "caption": "Jig hàn khung chế tạo theo bản thiết kế."
+        }
+       ]
+      }
+     },
+     {
+      "type": "video",
+      "props": {
+       "heading": "Video minh họa: đồ gá và jig là gì (tiếng Anh) – nguồn kênh MechanicaLEi, giấy phép CC BY",
+       "url": "https://www.youtube.com/watch?v=fiKdIcF6x90",
+       "poster": {
+        "media": "cad-2"
+       }
+      }
+     },
+     {
+      "type": "faq",
+      "props": {
+       "heading": "Câu hỏi thường gặp",
+       "items": [
+        {
+         "q": "Tôi chỉ có mẫu thật, chưa có bản vẽ thì sao?",
+         "a": "Kỹ sư An Vinh đo mẫu, dựng lại mô hình 3D và bản vẽ chế tạo, gửi khách hàng duyệt trước khi gia công."
+        },
+        {
+         "q": "An Vinh có nhận riêng phần thiết kế, không gia công?",
+         "a": "Có. Khách hàng có thể đặt riêng thiết kế đồ gá, khuôn hoặc lập trình CNC; bàn giao gồm file 3D, bản vẽ 2D và bảng vật tư."
+        },
+        {
+         "q": "Bản vẽ của tôi có được bảo mật?",
+         "a": "Bản vẽ chỉ dùng cho mục đích báo giá và sản xuất. An Vinh sẵn sàng ký thỏa thuận bảo mật (NDA) trước khi nhận file."
+        },
+        {
+         "q": "Thiết kế được điều chỉnh mấy lần?",
+         "a": "Số lần điều chỉnh và phạm vi được ghi rõ trong báo giá. Khách hàng duyệt phương án trên mô hình 3D trước khi An Vinh làm bản vẽ chế tạo."
+        }
+       ]
+      }
+     },
+     {
+      "type": "cta",
+      "props": {
+       "heading": "Cần tư vấn hoặc báo giá?",
+       "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá. Hotline 0915 66 83 83 · Email quybv@ckanvinh.vn",
+       "button_label": "Gửi yêu cầu báo giá",
+       "button_url": "/lien-he",
+       "variant": "rounded"
+      }
+     }
+    ]
+   },
+   "seo_description": {
+    "vi": "An Vinh thiết kế 3D đồ gá hàn, đồ gá kiểm tra, khuôn dập và lập trình gia công CNC, mô phỏng lắp ghép và đường chạy dao trước khi chế tạo."
+   }
+  },
+  {
+   "key": "post:gia-cong-cat-day-xung-dien",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:post_cat/nang-luc"
+   ],
+   "image": {
+    "media": "edm-1"
+   },
+   "title": {
+    "vi": "Gia công Cắt dây-Xung điện"
+   },
+   "excerpt": {
+    "vi": "Cắt dây và gia công xung điện (EDM) cho biên dạng phức tạp, chi tiết khuôn và vật liệu đã nhiệt luyện."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "page_header",
+      "props": {
+       "title": "Gia Công Cắt Dây-Xung Điện",
+       "subtitle": "Biên dạng phức tạp, góc trong sắc và vật liệu đã tôi cứng",
+       "image_url": {
+        "media": "edm-1"
+       }
+      }
+     },
+     {
+      "type": "richtext_html",
+      "props": {
+       "html": "<h2>Tổng quan</h2><p>An Vinh cắt dây (Wire EDM) và gia công xung điện định hình (EDM) những chi tiết dao phay khó hoặc không làm được: góc trong sắc, rãnh hẹp, biên dạng chày, cối khuôn dập, lòng khuôn có gân sâu và chi tiết bằng thép đã tôi cứng. Gia công bằng tia lửa điện không có lực cắt, nên chi tiết thành mỏng không bị biến dạng, và có thể làm sau nhiệt luyện để giữ đúng kích thước.</p><ul><li><strong>Độ chính xác cắt dây:</strong> ±0,005 mm</li><li><strong>Chiều dày phôi tối đa:</strong> 300 mm</li><li><strong>Đường kính dây:</strong> Ø0,2 – 0,25 mm (dây đồng thau)</li></ul><h2>Thông số kỹ thuật</h2><table><thead><tr><th>Hạng mục</th><th>Cắt dây (Wire EDM)</th><th>Xung điện (EDM định hình)</th></tr></thead><tbody><tr><td><strong>Kích thước tối đa</strong></td><td>Hành trình 400 × 300 mm (X × Y)</td><td>Bàn máy 600 × 400 mm, hành trình Z 300 mm</td></tr><tr><td><strong>Chiều dày phôi tối đa</strong></td><td>300 mm</td><td>Chiều sâu xung tới 150 mm</td></tr><tr><td><strong>Độ chính xác</strong></td><td>±0,005 mm</td><td>±0,01 mm</td></tr><tr><td><strong>Độ nhám bề mặt</strong></td><td>Ra 0,4 – 0,8 µm (cắt tinh nhiều lần)</td><td>Ra 0,8 – 1,6 µm</td></tr><tr><td><strong>Dây / điện cực</strong></td><td>Dây đồng thau Ø0,2 – 0,25 mm; cắt côn tới ±15°</td><td>Điện cực đồng đỏ, graphite</td></tr><tr><td><strong>Thời gian làm mẫu</strong></td><td>3 – 5 ngày làm việc</td><td>5 – 7 ngày làm việc</td></tr></tbody></table><h2>Vật liệu gia công</h2><ul><li><strong>Thép dụng cụ đã nhiệt luyện:</strong> SKD11, SKD61, SKH51, DC53</li><li><strong>Thép hợp kim, thép carbon:</strong> SCM440, S45C</li><li><strong>Inox:</strong> SUS304, SUS420J2</li><li><strong>Hợp kim cứng (carbide)</strong></li><li><strong>Đồng, đồng thau, nhôm</strong></li></ul><p>Phương pháp này chỉ gia công được vật liệu dẫn điện; nhựa và gốm kỹ thuật cần phương pháp khác.</p><h2>Xử lý bề mặt</h2><p>Với chày, cối và lòng khuôn, An Vinh cắt tinh nhiều lần để giảm lớp biến trắng trên bề mặt cắt, sau đó đánh bóng, nhiệt luyện bổ sung hoặc phủ cứng PVD theo yêu cầu bản vẽ.</p>"
+      }
+     },
+     {
+      "type": "gallery",
+      "props": {
+       "heading": "Hình ảnh gia công",
+       "columns": "2",
+       "images": [
+        {
+         "image": {
+          "media": "factory-1"
+         },
+         "caption": "Xưởng dập với hàng máy dập khung chữ C (ảnh minh họa)."
+        },
+        {
+         "image": {
+          "media": "p-fuel-tank-die"
+         },
+         "caption": "Khuôn dập: chày, cối thường được cắt dây sau nhiệt luyện."
+        }
+       ]
+      }
+     },
+     {
+      "type": "video",
+      "props": {
+       "heading": "Video minh họa: máy cắt dây EDM cắt chi tiết – nguồn kênh Kurt Bleyweert, giấy phép CC BY",
+       "url": "https://www.youtube.com/watch?v=4IhkMgHkMEA",
+       "poster": {
+        "media": "edm-1"
+       }
+      }
+     },
+     {
+      "type": "faq",
+      "props": {
+       "heading": "Câu hỏi thường gặp",
+       "items": [
+        {
+         "q": "Khi nào nên chọn cắt dây thay vì phay?",
+         "a": "Khi chi tiết cần góc trong sắc, rãnh hẹp hơn dao phay nhỏ nhất, vật liệu đã tôi cứng trên 50 HRC hoặc thành mỏng dễ biến dạng. Với biên dạng đơn giản trên vật liệu mềm, phay CNC thường nhanh và rẻ hơn."
+        },
+        {
+         "q": "Có cắt được chi tiết đã nhiệt luyện không?",
+         "a": "Có. Cắt dây không phụ thuộc độ cứng vật liệu, nên thường làm sau nhiệt luyện để chi tiết giữ đúng kích thước, không bị cong vênh do tôi."
+        },
+        {
+         "q": "Cần gửi file gì để báo giá cắt dây?",
+         "a": "Bản vẽ 2D (DWG, DXF) có biên dạng, chiều dày, dung sai và vật liệu là đủ. Chi tiết có cắt côn hoặc biên dạng mặt trên và mặt dưới khác nhau, vui lòng gửi thêm file 3D (STEP)."
+        },
+        {
+         "q": "Có nhận cắt một chi tiết, giao gấp không?",
+         "a": "Có. An Vinh nhận từ 1 chi tiết; thời gian giao phụ thuộc chiều dày, chiều dài đường cắt và số lần cắt tinh, kỹ sư báo cụ thể khi báo giá."
+        }
+       ]
+      }
+     },
+     {
+      "type": "cta",
+      "props": {
+       "heading": "Cần tư vấn hoặc báo giá?",
+       "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá. Hotline 0915 66 83 83 · Email quybv@ckanvinh.vn",
+       "button_label": "Gửi yêu cầu báo giá",
+       "button_url": "/lien-he",
+       "variant": "rounded"
+      }
+     }
+    ]
+   },
+   "seo_description": {
+    "vi": "Cắt dây và xung điện EDM chày, cối khuôn dập, lòng khuôn, chi tiết thép đã nhiệt luyện; độ chính xác ±0,005 mm, phôi dày tới 300 mm."
+   }
+  },
+  {
+   "key": "post:do-kiem-qa-qc",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:post_cat/nang-luc"
+   ],
+   "image": {
+    "media": "inspect-1"
+   },
+   "title": {
+    "vi": "Đo kiểm & QA/QC"
+   },
+   "excerpt": {
+    "vi": "Kiểm soát chất lượng theo ISO 9001:2015 từ vật liệu đầu vào đến sản phẩm bàn giao, có biên bản đo kiểm."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "page_header",
+      "props": {
+       "title": "Đo Kiểm & QA/QC",
+       "subtitle": "Kiểm soát từ vật liệu đầu vào đến sản phẩm bàn giao, có biên bản đo kiểm",
+       "image_url": {
+        "media": "inspect-1"
+       }
+      }
+     },
+     {
+      "type": "richtext_html",
+      "props": {
+       "html": "<h2>Tổng quan</h2><p>Chất lượng tại An Vinh được quản lý theo hệ thống ISO 9001:2015 (giấy chứng nhận số HT 3078 do ISSQ cấp, hiệu lực từ 01/04/2024 đến 23/02/2027). Mỗi đơn hàng đi qua ba chốt kiểm: vật liệu đầu vào, kiểm tra trong quá trình gia công và kiểm tra cuối trước khi giao. Kết quả đo được ghi vào biên bản đo kiểm gửi kèm hàng.</p><ul><li><strong>Thiết bị đo:</strong> máy đo CMM, máy đo 2,5D, dụng cụ đo cầm tay</li><li><strong>Độ phân giải dụng cụ cầm tay:</strong> 0,001 mm (panme điện tử)</li><li><strong>Hồ sơ:</strong> biên bản đo kiểm, báo cáo kiểm tra mẫu đầu (FAI)</li></ul><h2>Thông số kỹ thuật</h2><table><thead><tr><th>Hạng mục</th><th>Thiết bị, phương pháp</th><th>Áp dụng</th></tr></thead><tbody><tr><td><strong>Kích thước 3D, vị trí lỗ, GD&amp;T</strong></td><td>Máy đo tọa độ CMM</td><td>Chi tiết khuôn, đồ gá, chi tiết có dung sai hình học</td></tr><tr><td><strong>Biên dạng 2D, kích thước nhỏ</strong></td><td>Máy đo 2,5D (đo quang học)</td><td>Chi tiết cắt dây, chi tiết mỏng, lỗ nhỏ</td></tr><tr><td><strong>Kích thước thông dụng</strong></td><td>Thước cặp, panme, đồng hồ so, căn mẫu</td><td>Kiểm tra trong quá trình và kiểm tra cuối</td></tr><tr><td><strong>Ren, lỗ lắp ghép</strong></td><td>Calip trục, calip lỗ, calip ren (đạt/không đạt)</td><td>Lỗ ren, trục ren, lỗ chốt định vị</td></tr><tr><td><strong>Độ nhám bề mặt</strong></td><td>Máy đo độ nhám (Ra, Rz)</td><td>Bề mặt lắp ghép, bề mặt làm việc</td></tr><tr><td><strong>Độ cứng</strong></td><td>Máy đo độ cứng Rockwell (HRC)</td><td>Chi tiết sau nhiệt luyện</td></tr></tbody></table><h2>Hồ sơ chất lượng bàn giao</h2><ul><li><strong>Biên bản đo kiểm:</strong> kích thước đo thực tế so với bản vẽ, ghi đạt hoặc không đạt cho từng kích thước</li><li><strong>Báo cáo kiểm tra mẫu đầu (FAI):</strong> cho đơn hàng mới hoặc khi thay đổi thiết kế</li><li><strong>Chứng chỉ vật liệu và kết quả nhiệt luyện:</strong> khi khách hàng yêu cầu</li><li><strong>Hồ sơ PPAP:</strong> lập theo mức khách hàng ô tô yêu cầu</li></ul><h2>Lấy mẫu và xử lý sản phẩm không phù hợp</h2><p>Hàng loạt được lấy mẫu theo kế hoạch thống nhất với khách hàng, thường theo ISO 2859-1 với AQL 1,0, mức kiểm tra II; các kích thước quan trọng (CTQ) được kiểm 100%. Sản phẩm không phù hợp được cách ly, ghi nhận và phân tích nguyên nhân; hành động khắc phục được báo lại cho khách hàng, theo mẫu báo cáo 8D khi yêu cầu.</p>"
+      }
+     },
+     {
+      "type": "gallery",
+      "props": {
+       "heading": "Hình ảnh đo kiểm",
+       "columns": "2",
+       "images": [
+        {
+         "image": {
+          "media": "inspect-2"
+         },
+         "caption": "Đo kiểm bằng panme điện tử."
+        },
+        {
+         "image": {
+          "media": "cad-1"
+         },
+         "caption": "Đối chiếu kích thước với bản vẽ trước khi đo."
+        }
+       ]
+      }
+     },
+     {
+      "type": "faq",
+      "props": {
+       "heading": "Câu hỏi thường gặp",
+       "items": [
+        {
+         "q": "Hàng giao có kèm biên bản đo kiểm không?",
+         "a": "Có. Mỗi lô hàng có biên bản đo kiểm các kích thước chính; báo cáo FAI hoặc đo toàn bộ kích thước được thực hiện khi khách hàng yêu cầu."
+        },
+        {
+         "q": "Chi tiết không đạt khi nhận hàng thì xử lý thế nào?",
+         "a": "Khách hàng gửi ảnh hoặc biên bản kiểm tra; An Vinh đối chiếu với biên bản xuất hàng, sửa hoặc làm lại chi tiết không đạt và báo nguyên nhân cùng hành động khắc phục."
+        },
+        {
+         "q": "Khách hàng có thể đến kiểm hàng tại xưởng không?",
+         "a": "Có. Khách hàng có thể chứng kiến đo kiểm hoặc đánh giá nhà cung cấp tại nhà máy theo lịch hẹn trước."
+        },
+        {
+         "q": "An Vinh có chứng nhận ISO 9001:2015 không?",
+         "a": "Có. An Vinh được ISSQ chứng nhận hệ thống quản lý chất lượng ISO 9001:2015, số HT 3078, hiệu lực từ 01/04/2024 đến 23/02/2027, phạm vi: Gia công rèn, dập, hàn; sản xuất đồ gá, khuôn mẫu."
+        }
+       ]
+      }
+     },
+     {
+      "type": "cta",
+      "props": {
+       "heading": "Cần tư vấn hoặc báo giá?",
+       "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá. Hotline 0915 66 83 83 · Email quybv@ckanvinh.vn",
+       "button_label": "Gửi yêu cầu báo giá",
+       "button_url": "/lien-he",
+       "variant": "rounded"
+      }
+     }
+    ]
+   },
+   "seo_description": {
+    "vi": "Đo kiểm và QA/QC theo ISO 9001:2015: kiểm vật liệu, kiểm trong quá trình, kiểm cuối; biên bản đo kiểm, báo cáo FAI kèm mỗi lô hàng."
+   }
+  },
+  {
+   "key": "post:ky-thuat-vien-van-hanh-may-cnc",
+   "verified": false,
+   "status": "draft",
+   "categories": [
+    "tax:post_cat/tuyen-dung"
+   ],
+   "image": {
+    "media": "cnc-1"
+   },
+   "title": {
+    "vi": "Kỹ thuật viên vận hành máy CNC"
+   },
+   "excerpt": {
+    "vi": "Vận hành máy phay, tiện CNC theo bản vẽ; chưa có kinh nghiệm sẽ được đào tạo."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "richtext_html",
+      "props": {
+       "html": "<h2>Thông tin chung</h2><ul><li>Nơi làm việc: Nhà máy 3 – Thạch Thất</li><li>Hình thức: Toàn thời gian</li><li>Số lượng: 3</li><li>Lương: 9 – 14 triệu/tháng</li><li>Hạn nộp: 15/12/2026</li></ul><h2>Mô tả công việc</h2><ul><li>Vận hành máy phay, tiện CNC theo bản vẽ và chương trình được giao.</li><li>Gá đặt phôi, dao cụ; kiểm tra kích thước chi tiết sau gia công.</li><li>Bảo dưỡng máy định kỳ, giữ gìn khu vực làm việc theo 5S.</li><li>Phối hợp QC kiểm tra sản phẩm đầu ca, ghi nhật ký sản xuất.</li></ul><h2>Yêu cầu</h2><ul><li>Tốt nghiệp trung cấp, cao đẳng cơ khí hoặc tương đương.</li><li>Ưu tiên có kinh nghiệm vận hành máy CNC từ 1 năm; chưa có kinh nghiệm sẽ được đào tạo.</li><li>Đọc hiểu bản vẽ kỹ thuật, sử dụng thước cặp, panme.</li><li>Cẩn thận, chấp hành an toàn lao động.</li></ul><h2>Quyền lợi</h2><ul><li>Lương theo năng lực, thưởng lễ Tết và tháng lương thứ 13.</li><li>Đóng BHXH, BHYT, BHTN đầy đủ theo quy định.</li><li>Được đào tạo vận hành máy CNC, kể cả máy 5 trục.</li><li>Team building, hoạt động tập thể hằng năm.</li></ul><h2>Thời gian & địa điểm làm việc</h2><p>Thứ 2 – Thứ 7, 7:30 – 17:00 · Nhà máy 3: Đội 6, thôn Ngũ Sơn, xã Thạch Thất, TP Hà Nội.</p><h2>Cách ứng tuyển</h2><p>Hồ sơ gồm: CV hoặc đơn xin việc; bản sao bằng cấp, chứng chỉ (nếu có). Gửi hồ sơ về <a href=\"mailto:quybv@ckanvinh.vn\">quybv@ckanvinh.vn</a> hoặc gọi, nhắn Zalo <a href=\"tel:0915668383\">0915 66 83 83</a>.</p><p>Liên hệ tuyển dụng: Điện thoại / Zalo 0915 66 83 83, email quybv@ckanvinh.vn.</p>"
+      }
+     }
+    ]
+   },
+   "seo_description": {
+    "vi": "Vận hành máy phay, tiện CNC theo bản vẽ; chưa có kinh nghiệm sẽ được đào tạo."
+   },
+   "claims": [
+    "Vị trí: Kỹ thuật viên vận hành máy CNC",
+    "Nơi làm việc: Nhà máy 3 – Thạch Thất (Đội 6, thôn Ngũ Sơn, xã Thạch Thất, TP Hà Nội)",
+    "Số lượng: 3",
+    "Lương: 9 – 14 triệu/tháng",
+    "Hạn nộp: 15/12/2026",
+    "Quyền lợi: tháng lương thứ 13, thưởng lễ Tết, BHXH/BHYT/BHTN, đào tạo cả máy 5 trục",
+    "Giờ làm: Thứ 2 – Thứ 7, 7:30 – 17:00",
+    "Nhận người chưa có kinh nghiệm và đào tạo"
+   ]
+  },
+  {
+   "key": "post:ky-su-thiet-ke-co-khi-do-ga",
+   "verified": false,
+   "status": "draft",
+   "categories": [
+    "tax:post_cat/tuyen-dung"
+   ],
+   "image": {
+    "media": "cad-1"
+   },
+   "title": {
+    "vi": "Kỹ sư thiết kế cơ khí – đồ gá"
+   },
+   "excerpt": {
+    "vi": "Thiết kế 3D jig, đồ gá trên SolidWorks/NX theo bản vẽ và yêu cầu của khách hàng; lập bản vẽ chế tạo."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "richtext_html",
+      "props": {
+       "html": "<h2>Thông tin chung</h2><ul><li>Nơi làm việc: Trụ sở – Nhà máy 1, Trung Giã</li><li>Hình thức: Toàn thời gian</li><li>Số lượng: 2</li><li>Lương: Thỏa thuận</li><li>Hạn nộp: 31/12/2026</li></ul><h2>Mô tả công việc</h2><ul><li>Thiết kế 3D jig, đồ gá trên SolidWorks/NX theo bản vẽ và yêu cầu của khách hàng.</li><li>Lập bản vẽ chế tạo, bản vẽ lắp và danh mục vật tư cho xưởng gia công.</li><li>Tính toán chuẩn định vị, cơ cấu kẹp và dung sai của đồ gá theo chi tiết sản phẩm.</li><li>Phối hợp xưởng gia công, lắp ráp và QC trong quá trình chế tạo, chạy thử và bàn giao đồ gá.</li><li>Trao đổi kỹ thuật với khách hàng khi làm rõ yêu cầu và nghiệm thu.</li></ul><h2>Yêu cầu</h2><ul><li>Tốt nghiệp đại học chuyên ngành cơ khí, cơ điện tử hoặc tương đương.</li><li>Sử dụng thành thạo SolidWorks hoặc NX; đọc hiểu bản vẽ và dung sai hình học.</li><li>Ưu tiên ứng viên đã thiết kế jig hàn, đồ gá kiểm tra hoặc đồ gá gia công.</li><li>Hiểu biết về gia công phay, tiện, cắt dây và vật liệu chế tạo đồ gá.</li><li>Cẩn thận, chủ động, làm việc nhóm tốt.</li></ul><h2>Quyền lợi</h2><ul><li>Lương theo năng lực, thưởng lễ Tết và tháng lương thứ 13.</li><li>Đóng BHXH, BHYT, BHTN đầy đủ theo quy định.</li><li>Tham gia trực tiếp dự án jig, đồ gá cho khách hàng ngành ô tô, điện tử, tự động hóa.</li><li>Team building, hoạt động tập thể hằng năm.</li></ul><h2>Thời gian & địa điểm làm việc</h2><p>Thứ 2 – Thứ 7, 7:30 – 17:00 · Trụ sở: Thôn Xuân Sơn, xã Trung Giã, TP Hà Nội.</p><h2>Cách ứng tuyển</h2><p>Hồ sơ gồm: CV hoặc đơn xin việc; bản sao bằng cấp, chứng chỉ (nếu có). Gửi hồ sơ về <a href=\"mailto:quybv@ckanvinh.vn\">quybv@ckanvinh.vn</a> hoặc gọi, nhắn Zalo <a href=\"tel:0915668383\">0915 66 83 83</a>.</p><p>Liên hệ tuyển dụng: Điện thoại / Zalo 0915 66 83 83, email quybv@ckanvinh.vn.</p>"
+      }
+     }
+    ]
+   },
+   "seo_description": {
+    "vi": "Thiết kế 3D jig, đồ gá trên SolidWorks/NX theo bản vẽ và yêu cầu của khách hàng; lập bản vẽ chế tạo."
+   },
+   "claims": [
+    "Vị trí: Kỹ sư thiết kế cơ khí – đồ gá (tuyển gấp)",
+    "Nơi làm việc: Trụ sở – Nhà máy 1, Trung Giã",
+    "Số lượng: 2",
+    "Lương: Thỏa thuận",
+    "Hạn nộp: 31/12/2026",
+    "Yêu cầu: đại học cơ khí/cơ điện tử, SolidWorks hoặc NX",
+    "Quyền lợi: tháng lương thứ 13, thưởng lễ Tết, BHXH/BHYT/BHTN",
+    "Giờ làm: Thứ 2 – Thứ 7, 7:30 – 17:00"
+   ]
+  },
+  {
+   "key": "post:nhan-vien-kiem-tra-chat-luong-qc",
+   "verified": false,
+   "status": "draft",
+   "categories": [
+    "tax:post_cat/tuyen-dung"
+   ],
+   "image": {
+    "media": "inspect-1"
+   },
+   "title": {
+    "vi": "Nhân viên kiểm tra chất lượng (QC)"
+   },
+   "excerpt": {
+    "vi": "Đo kiểm chi tiết bằng dụng cụ đo và máy CMM, lập biên bản kiểm tra."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "richtext_html",
+      "props": {
+       "html": "<h2>Thông tin chung</h2><ul><li>Nơi làm việc: Trụ sở – Nhà máy 1, Trung Giã</li><li>Hình thức: Toàn thời gian</li><li>Số lượng: 1</li><li>Lương: Thỏa thuận</li><li>Hạn nộp: 30/11/2026</li></ul><h2>Mô tả công việc</h2><ul><li>Đo kiểm chi tiết bằng dụng cụ đo và máy CMM, lập biên bản kiểm tra.</li><li>Kiểm tra sản phẩm đầu ca, trong quá trình và trước khi giao hàng theo bản vẽ và tiêu chuẩn kiểm tra.</li><li>Ghi nhận, khoanh vùng sản phẩm không phù hợp và phối hợp xưởng tìm nguyên nhân.</li><li>Lưu hồ sơ kiểm tra theo hệ thống quản lý chất lượng ISO 9001:2015.</li><li>Kiểm tra định kỳ và bảo quản dụng cụ đo.</li></ul><h2>Yêu cầu</h2><ul><li>Tốt nghiệp trung cấp, cao đẳng trở lên chuyên ngành cơ khí hoặc tương đương.</li><li>Đọc hiểu bản vẽ kỹ thuật, dung sai kích thước và dung sai hình học.</li><li>Sử dụng thành thạo thước cặp, panme, đồng hồ so; biết sử dụng máy CMM là lợi thế.</li><li>Trung thực, cẩn thận, ghi chép rõ ràng.</li></ul><h2>Quyền lợi</h2><ul><li>Lương theo năng lực, thưởng lễ Tết và tháng lương thứ 13.</li><li>Đóng BHXH, BHYT, BHTN đầy đủ theo quy định.</li><li>Được đào tạo về đo kiểm và hệ thống quản lý chất lượng.</li><li>Team building, hoạt động tập thể hằng năm.</li></ul><h2>Thời gian & địa điểm làm việc</h2><p>Thứ 2 – Thứ 7, 7:30 – 17:00 · Trụ sở: Thôn Xuân Sơn, xã Trung Giã, TP Hà Nội.</p><h2>Cách ứng tuyển</h2><p>Hồ sơ gồm: CV hoặc đơn xin việc; bản sao bằng cấp, chứng chỉ (nếu có). Gửi hồ sơ về <a href=\"mailto:quybv@ckanvinh.vn\">quybv@ckanvinh.vn</a> hoặc gọi, nhắn Zalo <a href=\"tel:0915668383\">0915 66 83 83</a>.</p><p>Liên hệ tuyển dụng: Điện thoại / Zalo 0915 66 83 83, email quybv@ckanvinh.vn.</p>"
+      }
+     }
+    ]
+   },
+   "seo_description": {
+    "vi": "Đo kiểm chi tiết bằng dụng cụ đo và máy CMM, lập biên bản kiểm tra."
+   },
+   "claims": [
+    "Vị trí: Nhân viên kiểm tra chất lượng (QC)",
+    "Nơi làm việc: Trụ sở – Nhà máy 1, Trung Giã",
+    "Số lượng: 1",
+    "Lương: Thỏa thuận",
+    "Hạn nộp: 30/11/2026",
+    "Thiết bị: máy CMM (có hay không)",
+    "Quyền lợi: tháng lương thứ 13, thưởng lễ Tết, BHXH/BHYT/BHTN",
+    "Giờ làm: Thứ 2 – Thứ 7, 7:30 – 17:00"
+   ]
+  },
+  {
    "key": "post:gia-cong-phay-tien-cnc",
    "verified": true,
    "status": "published",
    "categories": [
     "tax:post_cat/nang-luc"
    ],
-   "image": "box",
+   "image": {
+    "media": "cnc-1"
+   },
    "title": {
-    "vi": "Gia công Phay & Tiện CNC"
+    "vi": "Gia công Phay-Tiện CNC"
    },
    "excerpt": {
-    "vi": "Gia công phay, tiện CNC trên các vật liệu đa dạng, đáp ứng nhanh nhu cầu khách hàng, tăng năng suất sản xuất."
+    "vi": "Gia công phay, tiện CNC trên các vật liệu đa dạng, đáp ứng nhanh nhu cầu từ mẫu thử đến sản xuất loạt."
    },
    "body": {
     "vi": [
      {
-      "type": "richtext",
+      "type": "page_header",
       "props": {
-       "paragraphs": [
-        "Gia công phay, tiện CNC trên các vật liệu đa dạng, đáp ứng nhanh nhu cầu khách hàng, tăng năng suất sản xuất."
+       "title": "Gia Công Phay-Tiện CNC",
+       "subtitle": "Chính xác theo bản vẽ – từ mẫu thử đến sản xuất loạt",
+       "image_url": {
+        "media": "cnc-1"
+       }
+      }
+     },
+     {
+      "type": "richtext_html",
+      "props": {
+       "html": "<h2>Tổng quan</h2><p>An Vinh gia công phay, tiện CNC các chi tiết máy, linh kiện thay thế và chi tiết đồ gá theo bản vẽ của khách hàng. Kỹ sư rà soát bản vẽ trước khi gia công để đề xuất phương án tối ưu chi phí mà vẫn đảm bảo dung sai.</p><ul><li><strong>Dung sai tiêu chuẩn:</strong> ±0,01 mm</li><li><strong>Hành trình phay tối đa:</strong> 1.000 × 600 × 500 mm</li><li><strong>Số lượng:</strong> từ 1 chi tiết mẫu đến sản xuất loạt</li></ul><h2>Thông số kỹ thuật</h2><table><thead><tr><th>Hạng mục</th><th>Phay CNC</th><th>Tiện CNC</th></tr></thead><tbody><tr><td><strong>Kích thước tối đa</strong></td><td>1.000 × 600 × 500 mm</td><td>Ø300 × 500 mm</td></tr><tr><td><strong>Dung sai tiêu chuẩn</strong></td><td>±0,01 mm</td><td>±0,01 mm</td></tr><tr><td><strong>Độ nhám bề mặt</strong></td><td>Ra 0,8 – 1,6 µm</td><td>Ra 0,8 – 1,6 µm</td></tr><tr><td><strong>Số trục</strong></td><td>3, 4 và 5 trục</td><td>2 trục, trục C</td></tr><tr><td><strong>Thời gian làm mẫu</strong></td><td>3 – 7 ngày làm việc</td><td>3 – 5 ngày làm việc</td></tr></tbody></table><h2>Vật liệu gia công</h2><ul><li><strong>Nhôm:</strong> A5052, A6061, A7075</li><li><strong>Thép:</strong> S45C, SS400, SKD11, SKD61</li><li><strong>Inox:</strong> SUS304, SUS316</li><li><strong>Đồng, đồng thau</strong></li><li><strong>Nhựa kỹ thuật:</strong> POM, PEEK, Bakelite</li></ul><h2>Xử lý bề mặt</h2><p>Anode nhôm, nhuộm đen, mạ kẽm, mạ niken, nhiệt luyện, sơn tĩnh điện và đánh bóng theo yêu cầu bản vẽ.</p>"
+      }
+     },
+     {
+      "type": "gallery",
+      "props": {
+       "heading": "Hình ảnh gia công",
+       "columns": "2",
+       "images": [
+        {
+         "image": {
+          "media": "cnc-2"
+         },
+         "caption": "Tiện trục thép, tưới dung dịch làm mát (ảnh minh họa)."
+        },
+        {
+         "image": {
+          "media": "p-cnc-shaft"
+         },
+         "caption": "Tiện CNC trục, bạc, chốt."
+        }
        ]
+      }
+     },
+     {
+      "type": "video",
+      "props": {
+       "heading": "Video minh họa: một lần phay CNC từ đầu đến cuối (timelapse) – nguồn kênh HackerspaceOL, giấy phép CC BY",
+       "url": "https://www.youtube.com/watch?v=FpYQc5zMLzM",
+       "poster": {
+        "media": "cnc-1"
+       }
+      }
+     },
+     {
+      "type": "faq",
+      "props": {
+       "heading": "Câu hỏi thường gặp",
+       "items": [
+        {
+         "q": "An Vinh có nhận gia công số lượng ít, mẫu thử không?",
+         "a": "Có. An Vinh nhận từ 1 chi tiết mẫu thử đến sản xuất loạt."
+        },
+        {
+         "q": "Tôi cần gửi bản vẽ định dạng gì?",
+         "a": "Ưu tiên file 3D (STEP, IGES) kèm bản vẽ 2D (DWG, DXF hoặc PDF) có ghi dung sai, vật liệu và xử lý bề mặt. Chưa có bản vẽ, bạn có thể gửi mẫu thật hoặc ảnh chụp để kỹ sư tư vấn."
+        },
+        {
+         "q": "Bản vẽ của tôi có được bảo mật?",
+         "a": "Bản vẽ chỉ dùng cho mục đích báo giá và sản xuất. An Vinh sẵn sàng ký thỏa thuận bảo mật (NDA) trước khi nhận file."
+        },
+        {
+         "q": "Có xuất hóa đơn VAT và giao hàng tận nơi?",
+         "a": "Có xuất hóa đơn VAT và giao hàng tận nơi trong khu vực Hà Nội và các tỉnh lân cận."
+        }
+       ]
+      }
+     },
+     {
+      "type": "cta",
+      "props": {
+       "heading": "Cần tư vấn hoặc báo giá?",
+       "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá. Hotline 0915 66 83 83 · Email quybv@ckanvinh.vn",
+       "button_label": "Gửi yêu cầu báo giá",
+       "button_url": "/lien-he",
+       "variant": "rounded"
       }
      }
     ]
    },
    "seo_description": {
-    "vi": "Gia công phay, tiện CNC trên các vật liệu đa dạng, đáp ứng nhanh nhu cầu khách hàng, tăng năng suất sản xuất."
+    "vi": "Gia công phay, tiện CNC chi tiết máy, đồ gá theo bản vẽ: nhôm, thép, inox, đồng, nhựa kỹ thuật; từ 1 chi tiết mẫu đến sản xuất loạt."
    }
   },
   {
@@ -67,9 +567,11 @@
    "categories": [
     "tax:post_cat/nang-luc"
    ],
-   "image": "users",
+   "image": {
+    "media": "weld-1"
+   },
    "title": {
-    "vi": "Hàn & Lắp ráp cơ khí"
+    "vi": "Hàn & Lắp ráp"
    },
    "excerpt": {
     "vi": "Thực hiện đa dạng các phương pháp hàn và lắp ráp cụm chi tiết với độ chính xác và thẩm mỹ cao."
@@ -77,23 +579,86 @@
    "body": {
     "vi": [
      {
-      "type": "richtext",
+      "type": "page_header",
       "props": {
-       "paragraphs": [
-        "Thực hiện đa dạng các phương pháp hàn và lắp ráp cụm chi tiết với độ chính xác và thẩm mỹ cao."
+       "title": "Hàn & Lắp Ráp",
+       "subtitle": "Kết cấu hàn, khung đồ gá và cụm máy – lắp hoàn chỉnh, chạy thử trước khi giao",
+       "image_url": {
+        "media": "weld-1"
+       }
+      }
+     },
+     {
+      "type": "richtext_html",
+      "props": {
+       "html": "<h2>Tổng quan</h2><p>An Vinh hàn kết cấu thép, inox, nhôm và lắp ráp cụm chi tiết, đồ gá, máy chuyên dùng tại Nhà máy 1 (Xuân Sơn, 2.000 m²); cụm lắp ráp còn được hoàn thiện tại Nhà máy 2 (Hương Ninh, 500 m²). Chi tiết được gá trên đồ gá định vị khi hàn để giữ biến dạng trong giới hạn; mặt chuẩn và lỗ lắp quan trọng được gia công lại sau hàn khi bản vẽ yêu cầu. Cụm lắp ráp được căn chỉnh, đo kiểm và chạy thử trước khi bàn giao.</p><ul><li><strong>Phương pháp hàn:</strong> MIG/MAG, TIG, hàn que, hàn điểm</li><li><strong>Kết cấu hàn tối đa:</strong> 3.000 × 1.500 × 1.500 mm</li><li><strong>Dung sai lắp ráp:</strong> ±0,05 mm tại các điểm định vị</li></ul><h2>Thông số kỹ thuật</h2><table><thead><tr><th>Hạng mục</th><th>Hàn</th><th>Lắp ráp</th></tr></thead><tbody><tr><td><strong>Phương pháp</strong></td><td>MIG/MAG, TIG, hàn que, hàn điểm</td><td>Lắp cơ khí, khí nén, điện điều khiển</td></tr><tr><td><strong>Đối tượng</strong></td><td>Khung đồ gá, kết cấu máy, giá đỡ, chi tiết tấm</td><td>Jig hàn, đồ gá kiểm tra, máy chuyên dùng, cụm cấp phôi</td></tr><tr><td><strong>Kích thước tối đa</strong></td><td>3.000 × 1.500 × 1.500 mm</td><td>Cụm máy tới 3.000 × 2.000 mm</td></tr><tr><td><strong>Độ chính xác</strong></td><td>Gia công lại mặt chuẩn sau hàn khi cần</td><td>±0,05 mm tại điểm định vị</td></tr><tr><td><strong>Kiểm tra</strong></td><td>Ngoại quan, kích thước; thẩm thấu (PT) khi bản vẽ yêu cầu</td><td>Đo kiểm, chạy thử, biên bản bàn giao</td></tr></tbody></table><h2>Vật liệu hàn</h2><ul><li><strong>Thép carbon:</strong> SS400, S45C, thép hộp, thép tấm</li><li><strong>Inox:</strong> SUS304, SUS316</li><li><strong>Nhôm:</strong> A5052, A6061</li><li><strong>Vật liệu hàn:</strong> dây hàn, que hàn chọn theo vật liệu cơ bản và yêu cầu bản vẽ</li></ul><h2>Xử lý bề mặt</h2><p>Mài và làm sạch mối hàn, ủ khử ứng suất cho kết cấu cần ổn định kích thước, phun bi, sơn tĩnh điện, mạ kẽm nhúng nóng hoặc sơn chống gỉ theo yêu cầu bản vẽ.</p>"
+      }
+     },
+     {
+      "type": "gallery",
+      "props": {
+       "heading": "Hình ảnh hàn & lắp ráp",
+       "columns": "2",
+       "images": [
+        {
+         "image": {
+          "media": "weld-2"
+         },
+         "caption": "Hàn MIG/MAG kết cấu thép."
+        },
+        {
+         "image": {
+          "media": "p-weld-jig-stand"
+         },
+         "caption": "Jig hàn sau khi lắp ráp, căn chỉnh."
+        }
        ]
+      }
+     },
+     {
+      "type": "faq",
+      "props": {
+       "heading": "Câu hỏi thường gặp",
+       "items": [
+        {
+         "q": "An Vinh có lắp cả phần khí nén và điện không?",
+         "a": "Có. Ngoài phần cơ khí, An Vinh lắp xi lanh, van khí nén, cảm biến và tủ điều khiển theo sơ đồ được duyệt, rồi chạy thử cả cụm trước khi giao."
+        },
+        {
+         "q": "Làm sao kiểm soát cong vênh khi hàn?",
+         "a": "Chi tiết được gá trên đồ gá định vị và hàn theo thứ tự đối xứng để cân bằng nhiệt; mặt chuẩn và lỗ lắp quan trọng được gia công lại sau hàn để đạt dung sai bản vẽ."
+        },
+        {
+         "q": "Mối hàn có được kiểm tra không?",
+         "a": "Mối hàn được kiểm tra ngoại quan và kích thước; kiểm tra thẩm thấu (PT) hoặc phương pháp không phá hủy khác được thực hiện khi bản vẽ hoặc hợp đồng yêu cầu."
+        },
+        {
+         "q": "An Vinh có lắp đặt tại nhà máy khách hàng không?",
+         "a": "Có. Với đồ gá và máy chuyên dùng, kỹ thuật viên An Vinh lắp đặt, căn chỉnh và hướng dẫn vận hành tại nhà máy khách hàng."
+        }
+       ]
+      }
+     },
+     {
+      "type": "cta",
+      "props": {
+       "heading": "Cần tư vấn hoặc báo giá?",
+       "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá. Hotline 0915 66 83 83 · Email quybv@ckanvinh.vn",
+       "button_label": "Gửi yêu cầu báo giá",
+       "button_url": "/lien-he",
+       "variant": "rounded"
       }
      }
     ]
    },
    "seo_description": {
-    "vi": "Thực hiện đa dạng các phương pháp hàn và lắp ráp cụm chi tiết với độ chính xác và thẩm mỹ cao."
+    "vi": "Hàn MIG/MAG, TIG kết cấu thép, inox, nhôm và lắp ráp cụm đồ gá, máy chuyên dùng tại nhà máy An Vinh ở Trung Giã, Hà Nội."
    }
   },
   {
    "key": "post:san-xuat-chi-tiet-may-oem",
    "verified": true,
-   "status": "published",
+   "status": "draft",
    "categories": [
     "tax:post_cat/nang-luc"
    ],
@@ -125,7 +690,8 @@
    "verified": true,
    "status": "published",
    "categories": [
-    "tax:post_cat/du-an"
+    "tax:post_cat/du-an",
+    "tax:post_cat/du-an/du-an-dien-tu"
    ],
    "image": {
     "media": "pr-electronic-line"
@@ -134,22 +700,46 @@
     "vi": "Dây chuyền lắp ráp tự động"
    },
    "excerpt": {
-    "vi": "Thiết kế và thi công hệ thống dây chuyền lắp ráp linh kiện điện tử, tăng năng suất 200%."
+    "vi": "Dây chuyền 6 trạm lắp ráp mô-đun điện tử, kiểm soát lực ép, mô-men vít và truy vết theo mã vạch; nhịp chuyền giảm từ 60 xuống 28 giây mỗi sản phẩm."
    },
    "body": {
     "vi": [
      {
-      "type": "richtext",
+      "type": "richtext_html",
       "props": {
-       "paragraphs": [
-        "Thiết kế và thi công hệ thống dây chuyền lắp ráp linh kiện điện tử, tăng năng suất 200%."
+       "html": "<h2>Tổng quan dự án</h2><p>An Vinh đã thiết kế, chế tạo và lắp đặt một dây chuyền lắp ráp bán tự động 6 trạm cho mô-đun điều khiển điện tử của một nhà sản xuất linh kiện điện tử. Sản phẩm di chuyển trên pallet gá qua băng tải, mỗi trạm tự kiểm tra bước của mình trước khi cho sản phẩm đi tiếp; nhịp chuyền giảm từ khoảng 60 giây xuống <strong>28 giây</strong> mỗi sản phẩm.</p><table><tbody><tr><td>Khách hàng / ngành</td><td>Nhà sản xuất linh kiện điện tử</td></tr><tr><td>Sản phẩm lắp ráp</td><td>Mô-đun điều khiển gồm vỏ nhựa, bo mạch và đầu nối</td></tr><tr><td>Phạm vi</td><td>Thiết kế, chế tạo, lắp đặt dây chuyền 6 trạm và 40 pallet gá</td></tr><tr><td>Thời gian thực hiện</td><td>16 tuần, năm 2024</td></tr><tr><td>Điều khiển</td><td>PLC, màn hình HMI, đọc mã vạch từng sản phẩm</td></tr><tr><td>Sản phẩm bàn giao</td><td>Dây chuyền 6 trạm, 40 pallet gá, bản vẽ, chương trình PLC, hướng dẫn vận hành</td></tr></tbody></table><h2>Bài toán của khách hàng</h2><p>Mô-đun được lắp thủ công trên bàn, mỗi công nhân làm nhiều bước liền nhau. Lỗi thường gặp là cắm ngược đầu nối, thiếu vít hoặc vít chưa đủ lực, và khi khách hàng cuối báo lỗi thì không tra được sản phẩm đã đi qua những bước nào.</p><p>Yêu cầu đặt ra cho dây chuyền mới:</p><ul><li>Nhịp chuyền không quá 30 giây mỗi sản phẩm.</li><li>Chống lắp sai ngay tại trạm (poka-yoke): sai chiều, thiếu chi tiết thì sản phẩm không được đi tiếp.</li><li>Vùng tiếp xúc với bo mạch chống tĩnh điện (ESD).</li><li>Lưu kết quả từng trạm theo mã vạch của sản phẩm.</li></ul><h2>Giải pháp: dây chuyền pallet 6 trạm có kiểm soát từng bước</h2><p>An Vinh chia các thao tác thành 6 trạm cân bằng thời gian, mỗi trạm có đồ gá và cảm biến riêng:</p><ul><li><strong>Pallet gá:</strong> đế nhôm A6061 anode, chốt định vị theo vỏ sản phẩm, đệm tiếp xúc bằng vật liệu chống tĩnh điện.</li><li><strong>Ép đầu nối:</strong> máy ép servo ghi lại đường cong lực – hành trình; lực hoặc độ sâu ép ngoài ngưỡng thì báo lỗi.</li><li><strong>Bắt vít tự động:</strong> tô vít điện có giám sát mô-men và góc xoay, đếm đủ số vít mới cho pallet chạy.</li><li><strong>Kiểm tra chức năng:</strong> đầu dò pogo pin tiếp xúc điểm kiểm tra trên bo mạch, đọc tín hiệu qua I/O về PLC.</li><li><strong>Truy vết:</strong> đầu đọc mã vạch ở trạm đầu và trạm cuối, kết quả từng trạm ghi theo mã sản phẩm.</li></ul>"
+      }
+     },
+     {
+      "type": "gallery",
+      "props": {
+       "columns": "2",
+       "images": [
+        {
+         "image": {
+          "media": "cad-2"
+         },
+         "caption": "Thiết kế bố trí trạm và pallet gá trên phần mềm 3D (ảnh minh họa)."
+        },
+        {
+         "image": {
+          "media": "factory-1"
+         },
+         "caption": "Nhà xưởng với hàng máy dập (ảnh minh họa)."
+        }
        ]
+      }
+     },
+     {
+      "type": "richtext_html",
+      "props": {
+       "html": "<h2>Quy trình thực hiện</h2><ol><li><strong>Khảo sát và cân bằng chuyền:</strong> bấm giờ từng thao tác hiện tại, chia trạm để thời gian các trạm gần bằng nhau.</li><li><strong>Thiết kế 3D và duyệt bố trí:</strong> lập bố trí mặt bằng, thiết kế pallet và đồ gá từng trạm, duyệt với khách hàng.</li><li><strong>Gia công, lắp ráp và lập trình:</strong> gia công CNC pallet, đồ gá; lắp băng tải, tủ điện; viết chương trình PLC và HMI.</li><li><strong>Chạy thử và bàn giao:</strong> chạy thử tại xưởng An Vinh, lắp đặt và chạy thử lại tại nhà máy khách hàng, đào tạo vận hành và bảo dưỡng.</li></ol><p>Pallet gá và đồ gá của các trạm được sản xuất trong phạm vi chứng nhận <strong>ISO 9001:2015</strong> của An Vinh.</p><h2>Kết quả sau khi đưa vào sản xuất</h2><ul><li>Nhịp chuyền giảm từ khoảng 60 giây xuống <strong>28 giây</strong> mỗi sản phẩm.</li><li>Dây chuyền cần <strong>3 công nhân</strong> thay vì 6.</li><li>Lỗi cắm ngược đầu nối và thiếu vít <strong>không còn lọt</strong> ra cuối chuyền; kết quả từng trạm tra được theo mã vạch.</li></ul><h2>Câu hỏi thường gặp</h2><h3>Khi đổi mã sản phẩm, dây chuyền có dùng tiếp được không?</h3><p>Được, nếu các mã có cùng kiểu lắp. Pallet được thiết kế để thay tấm gá theo mã, chương trình PLC lưu thông số riêng cho từng mã và công nhân chọn mã trên màn hình HMI trước khi chạy.</p><h3>An Vinh có làm từng trạm riêng lẻ không?</h3><p>Có. Bạn có thể đặt riêng một trạm ép, trạm bắt vít hoặc trạm kiểm tra để lắp vào dây chuyền đang có, ví dụ <a href=\"/jig-kiem-tra-dien-tu\">jig kiểm tra điện tử</a>.</p><h3>Cần chuẩn bị gì để được báo giá dây chuyền lắp ráp?</h3><p>Bạn gửi bản vẽ hoặc mẫu sản phẩm, trình tự lắp ráp hiện tại, sản lượng và nhịp mong muốn, cùng mặt bằng dự kiến đặt dây chuyền. Kỹ sư An Vinh sẽ đề xuất phương án và báo giá. <a href=\"/lien-he\">Gửi yêu cầu báo giá</a> hoặc gọi hotline 0915 66 83 83.</p>"
       }
      }
     ]
    },
    "seo_description": {
-    "vi": "Thiết kế và thi công hệ thống dây chuyền lắp ráp linh kiện điện tử, tăng năng suất 200%."
+    "vi": "Dây chuyền lắp ráp bán tự động 6 trạm cho mô-đun điện tử: ép servo, bắt vít có giám sát mô-men, kiểm tra pogo pin, truy vết mã vạch."
    }
   },
   {
@@ -157,7 +747,8 @@
    "verified": true,
    "status": "published",
    "categories": [
-    "tax:post_cat/du-an"
+    "tax:post_cat/du-an",
+    "tax:post_cat/du-an/du-an-o-to"
    ],
    "image": {
     "media": "pr-robot-weld-line"
@@ -166,22 +757,46 @@
     "vi": "Hệ thống Jig hàn robot"
    },
    "excerpt": {
-    "vi": "Phát triển hệ thống đồ gá hàn cho robot, ứng dụng trong ngành công nghiệp ô tô."
+    "vi": "04 jig hàn robot cho hai trạm bàn xoay hàn cụm giá đỡ khung xe ô tô; nhịp hàn mỗi cụm giảm từ 180 xuống 95 giây, lỗ lắp sau hàn trong ±0,3 mm."
    },
    "body": {
     "vi": [
      {
-      "type": "richtext",
+      "type": "richtext_html",
       "props": {
-       "paragraphs": [
-        "Phát triển hệ thống đồ gá hàn cho robot, ứng dụng trong ngành công nghiệp ô tô."
+       "html": "<h2>Tổng quan dự án</h2><p>An Vinh đã thiết kế và chế tạo 04 jig hàn robot cho hai trạm bàn xoay hai mặt, dùng để hàn cụm giá đỡ khung xe ô tô của một nhà sản xuất linh kiện ô tô. Trong lúc robot hàn ở mặt này, công nhân tháo và nạp chi tiết ở mặt kia, nên robot gần như không phải chờ. Nhịp hàn mỗi cụm giảm từ khoảng 180 giây xuống <strong>95 giây</strong>.</p><table><tbody><tr><td>Khách hàng / ngành</td><td>Nhà sản xuất linh kiện khung xe ô tô</td></tr><tr><td>Sản phẩm hàn</td><td>Cụm giá đỡ khung xe, 7 chi tiết dập ghép lại</td></tr><tr><td>Phạm vi</td><td>Thiết kế, chế tạo, lắp đặt 04 jig hàn cho 02 trạm robot bàn xoay</td></tr><tr><td>Thời gian thực hiện</td><td>12 tuần, năm 2024</td></tr><tr><td>Phương pháp hàn</td><td>Hàn MIG/MAG bằng robot</td></tr><tr><td>Sản phẩm bàn giao</td><td>04 jig hàn, biên bản đo kiểm jig, bản vẽ 2D/3D, bộ chốt định vị dự phòng</td></tr></tbody></table><h2>Bài toán của khách hàng</h2><p>Khách hàng chuyển từ hàn tay sang hàn robot. Robot lặp lại đúng một đường hàn, nên chi tiết phải nằm đúng vị trí ở mọi lần nạp; jig hàn tay cũ có khe hở lớn ở chốt và bị biến dạng sau thời gian dài chịu nhiệt, làm lệch vị trí lỗ lắp của cụm sau hàn.</p><p>Yêu cầu đặt ra cho jig mới:</p><ul><li>Vị trí các lỗ lắp sau hàn nằm trong ±0,5 mm so với bản vẽ.</li><li>Súng hàn của robot tiếp cận được mọi mối hàn, không va vào kẹp.</li><li>Cảm biến báo thiếu chi tiết hoặc kẹp chưa đóng thì robot không bắt đầu hàn.</li><li>Thay nhanh được chốt và mặt tựa bị mòn.</li></ul><h2>Giải pháp: jig hàn robot định vị theo hệ chuẩn chi tiết</h2><p>An Vinh thiết kế jig theo hệ chuẩn định vị trên bản vẽ của khách hàng và mô phỏng đường đi của súng hàn trước khi gia công:</p><ul><li><strong>Định vị:</strong> chốt và khối định vị bằng thép SKD11 nhiệt luyện, lắp trên đế qua tấm căn (shim) để chỉnh được sau khi đo.</li><li><strong>Kẹp:</strong> kẹp khí nén có cảm biến xác nhận đóng kẹp, nối tín hiệu với bộ điều khiển robot.</li><li><strong>Chống xỉ hàn:</strong> chốt gần mối hàn được phủ lớp chống bám xỉ, các khe dễ đọng xỉ có tấm che tháo nhanh.</li><li><strong>Kiểm soát biến dạng:</strong> thứ tự kẹp và thứ tự hàn được chọn sau khi hàn thử, để cụm co về đúng kích thước khi nguội.</li></ul>"
+      }
+     },
+     {
+      "type": "gallery",
+      "props": {
+       "columns": "2",
+       "images": [
+        {
+         "image": {
+          "media": "weld-1"
+         },
+         "caption": "Hàn cụm chi tiết thép trên đồ gá (ảnh minh họa)."
+        },
+        {
+         "image": {
+          "media": "weld-2"
+         },
+         "caption": "Mối hàn MIG/MAG trên kết cấu thép (ảnh minh họa)."
+        }
        ]
+      }
+     },
+     {
+      "type": "richtext_html",
+      "props": {
+       "html": "<h2>Quy trình thực hiện</h2><ol><li><strong>Khảo sát và thiết kế 3D:</strong> nhận bản vẽ cụm hàn, mô hình robot và bàn xoay; thiết kế jig và mô phỏng tầm với của súng hàn.</li><li><strong>Gia công CNC và nhiệt luyện:</strong> đế jig, khối định vị, chốt gia công trên máy phay, tiện, cắt dây; chốt và mặt tựa được nhiệt luyện.</li><li><strong>Lắp ráp và đo kiểm:</strong> lắp kẹp, cảm biến, chỉnh tấm căn và đo vị trí chốt, mặt tựa theo bản vẽ.</li><li><strong>Hàn thử và bàn giao:</strong> hàn thử cùng khách hàng, đo cụm sau hàn, chỉnh thứ tự kẹp, bàn giao và hướng dẫn bảo dưỡng.</li></ol><p>Sản xuất đồ gá và gia công hàn nằm trong phạm vi chứng nhận <strong>ISO 9001:2015</strong> của An Vinh.</p><h2>Kết quả sau khi đưa vào sản xuất</h2><ul><li>Nhịp hàn mỗi cụm giảm từ khoảng 180 giây xuống <strong>95 giây</strong>.</li><li>Vị trí lỗ lắp sau hàn nằm trong <strong>±0,3 mm</strong>, tốt hơn yêu cầu ±0,5 mm.</li><li>Thay một chốt định vị mòn mất khoảng <strong>15 phút</strong>, không phải chỉnh lại jig.</li></ul><h2>Câu hỏi thường gặp</h2><h3>Jig hàn robot khác jig hàn tay ở điểm nào?</h3><p>Jig hàn robot cần độ lặp lại vị trí cao hơn, vì robot không tự bù sai lệch như thợ hàn. Kẹp và chốt phải chừa đường cho súng hàn, có cảm biến báo trạng thái về bộ điều khiển robot, và phải chịu được nhiệt, xỉ hàn khi chạy liên tục nhiều ca.</p><h3>Làm sao giảm biến dạng của cụm sau khi hàn?</h3><p>Biến dạng phụ thuộc thứ tự hàn, lượng nhiệt và cách kẹp. An Vinh hàn thử trên jig, đo cụm sau khi nguội rồi điều chỉnh thứ tự kẹp, thứ tự hàn hoặc vị trí định vị bù trước, cho đến khi kích thước ổn định.</p><h3>Cần chuẩn bị gì để được báo giá jig hàn robot?</h3><p>Bạn gửi bản vẽ 3D của cụm hàn và từng chi tiết, vị trí các mối hàn, model robot và bàn xoay đang dùng, cùng sản lượng dự kiến. <a href=\"/lien-he\">Gửi yêu cầu báo giá</a> hoặc gọi hotline 0915 66 83 83.</p>"
       }
      }
     ]
    },
    "seo_description": {
-    "vi": "Phát triển hệ thống đồ gá hàn cho robot, ứng dụng trong ngành công nghiệp ô tô."
+    "vi": "Jig hàn robot cho trạm bàn xoay hai mặt, hàn cụm giá đỡ khung xe ô tô: chốt SKD11 nhiệt luyện, kẹp khí nén có cảm biến, nhịp hàn 95 giây."
    }
   },
   {
@@ -189,7 +804,8 @@
    "verified": true,
    "status": "published",
    "categories": [
-    "tax:post_cat/du-an"
+    "tax:post_cat/du-an",
+    "tax:post_cat/du-an/du-an-gia-dung"
    ],
    "image": {
     "media": "pr-injection-mould"
@@ -198,22 +814,46 @@
     "vi": "Khuôn mẫu cho sản phẩm gia dụng"
    },
    "excerpt": {
-    "vi": "Chế tạo loạt khuôn ép nhựa cho các sản phẩm gia dụng phức tạp, đáp ứng tiêu chuẩn xuất khẩu."
+    "vi": "04 khuôn ép nhựa cho vỏ và nắp máy xay cầm tay, duyệt mẫu ở lần thử T2; chu kỳ ép 32 giây, cong vênh trong 0,2 mm."
    },
    "body": {
     "vi": [
      {
-      "type": "richtext",
+      "type": "richtext_html",
       "props": {
-       "paragraphs": [
-        "Chế tạo loạt khuôn ép nhựa cho các sản phẩm gia dụng phức tạp, đáp ứng tiêu chuẩn xuất khẩu."
+       "html": "<h2>Tổng quan dự án</h2><p>An Vinh đã thiết kế, chế tạo và thử 04 bộ khuôn ép nhựa cho vỏ và nắp của một dòng máy xay cầm tay, cho một nhà sản xuất đồ gia dụng có hàng xuất khẩu. Cả 4 khuôn được duyệt mẫu ở lần thử thứ hai (T2); chu kỳ ép đạt <strong>32 giây</strong>, độ cong vênh của vỏ nằm trong 0,2 mm.</p><table><tbody><tr><td>Khách hàng / ngành</td><td>Nhà sản xuất đồ gia dụng</td></tr><tr><td>Sản phẩm</td><td>Vỏ trên, vỏ dưới, nắp và nút bấm máy xay cầm tay (nhựa ABS, PP)</td></tr><tr><td>Phạm vi</td><td>Thiết kế, chế tạo, thử 04 bộ khuôn ép nhựa</td></tr><tr><td>Thời gian thực hiện</td><td>14 tuần, năm 2024</td></tr><tr><td>Thép lòng khuôn</td><td>NAK80 cho bề mặt bóng, 2738 cho chi tiết bên trong</td></tr><tr><td>Sản phẩm bàn giao</td><td>04 khuôn, mẫu thử T1/T2, báo cáo đo kích thước mẫu, bản vẽ khuôn</td></tr></tbody></table><h2>Bài toán của khách hàng</h2><p>Vỏ máy có thành mỏng khoảng 2 mm, nhiều gân chịu lực và móc cài để lắp hai nửa vỏ không cần vít. Bề mặt ngoài là mặt bóng nhìn thấy, không được có vết hàn nhựa, vết co lõm hay vết dòng chảy; hai nửa vỏ phải khớp đều sau khi lắp.</p><p>Yêu cầu đặt ra cho bộ khuôn:</p><ul><li>Cong vênh của vỏ không quá 0,3 mm.</li><li>Không có vết hàn nhựa trên mặt nhìn thấy.</li><li>Chu kỳ ép không quá 35 giây.</li><li>Tuổi thọ khuôn từ 300.000 lần ép trở lên.</li></ul><h2>Giải pháp: khuôn ép có mô phỏng dòng chảy và cơ cấu tháo móc cài</h2><p>An Vinh phân tích sản phẩm trước khi thiết kế khuôn, đề xuất chỉnh nhỏ góc thoát khuôn và độ dày gân để dễ ép:</p><ul><li><strong>Mô phỏng dòng chảy:</strong> chọn vị trí cổng phun để đường hàn nhựa nằm ở mặt trong, dự đoán cong vênh trước khi gia công.</li><li><strong>Tháo móc cài:</strong> móc cài và lỗ bên được tháo bằng con trượt (slide) và lõi nghiêng (lifter).</li><li><strong>Làm mát:</strong> kênh nước bố trí sát lòng khuôn và đều hai nửa khuôn, giúp vỏ nguội đều, giảm cong vênh và rút ngắn chu kỳ.</li><li><strong>Gân sâu và bề mặt:</strong> gân mảnh được gia công bằng xung điện; lòng khuôn mặt ngoài được đánh bóng.</li></ul>"
+      }
+     },
+     {
+      "type": "gallery",
+      "props": {
+       "columns": "2",
+       "images": [
+        {
+         "image": {
+          "media": "edm-1"
+         },
+         "caption": "Gia công gân mảnh của lòng khuôn bằng xung điện (ảnh minh họa)."
+        },
+        {
+         "image": {
+          "media": "cnc-2"
+         },
+         "caption": "Tiện chi tiết tròn của khuôn: chốt, bạc dẫn hướng (ảnh minh họa)."
+        }
        ]
+      }
+     },
+     {
+      "type": "richtext_html",
+      "props": {
+       "html": "<h2>Quy trình thực hiện</h2><ol><li><strong>Phân tích sản phẩm:</strong> kiểm tra góc thoát, độ dày thành, móc cài; đề xuất chỉnh sửa để dễ ép.</li><li><strong>Thiết kế khuôn 3D:</strong> mô phỏng dòng chảy, thiết kế hệ thống cổng, làm mát, đẩy sản phẩm; duyệt với khách hàng.</li><li><strong>Gia công khuôn:</strong> phay CNC, xung điện, cắt dây các tấm khuôn và lòng khuôn; đánh bóng và lắp ráp.</li><li><strong>Thử khuôn và bàn giao:</strong> thử khuôn T1, đo mẫu, chỉnh sửa, thử T2 và bàn giao khi mẫu được duyệt.</li></ol><p>Sản xuất khuôn mẫu nằm trong phạm vi chứng nhận <strong>ISO 9001:2015</strong> của An Vinh.</p><h2>Kết quả sau khi đưa vào sản xuất</h2><ul><li>Cả 4 khuôn được duyệt mẫu ở lần thử <strong>T2</strong>.</li><li>Chu kỳ ép đạt <strong>32 giây</strong>, nhanh hơn yêu cầu 35 giây.</li><li>Cong vênh của vỏ nằm trong <strong>0,2 mm</strong>; không có vết hàn nhựa trên mặt nhìn thấy.</li></ul><h2>Câu hỏi thường gặp</h2><h3>Chọn thép làm khuôn ép nhựa như thế nào?</h3><p>Tùy nhựa, sản lượng và yêu cầu bề mặt. Thép tôi sẵn như 2738 hoặc NAK80 dùng tốt cho nhựa thông thường ở sản lượng vừa, NAK80 cho mặt bóng; nhựa có sợi thủy tinh hoặc sản lượng rất lớn nên dùng thép tôi cứng sau gia công để chống mòn.</p><h3>Thử khuôn được thực hiện ở đâu?</h3><p>Khuôn được thử trên máy ép có lực kẹp phù hợp, thường cùng khách hàng tại nhà máy của khách. An Vinh đo mẫu sau mỗi lần thử và chỉnh sửa khuôn cho đến khi mẫu đạt.</p><h3>Cần chuẩn bị gì để được báo giá khuôn ép nhựa?</h3><p>Bạn gửi file 3D sản phẩm, loại nhựa, sản lượng dự kiến, lực kẹp máy ép sẽ dùng và yêu cầu bề mặt. <a href=\"/lien-he\">Gửi yêu cầu báo giá</a> hoặc gọi hotline 0915 66 83 83.</p>"
       }
      }
     ]
    },
    "seo_description": {
-    "vi": "Chế tạo loạt khuôn ép nhựa cho các sản phẩm gia dụng phức tạp, đáp ứng tiêu chuẩn xuất khẩu."
+    "vi": "04 khuôn ép nhựa cho vỏ máy xay cầm tay: mô phỏng dòng chảy, con trượt và lõi nghiêng tháo móc cài, duyệt mẫu ở lần thử T2."
    }
   },
   {
@@ -221,7 +861,8 @@
    "verified": true,
    "status": "published",
    "categories": [
-    "tax:post_cat/du-an"
+    "tax:post_cat/du-an",
+    "tax:post_cat/du-an/du-an-o-to"
    ],
    "image": {
     "media": "pr-body-check-fixture"
@@ -230,22 +871,46 @@
     "vi": "Đồ gá kiểm tra thân vỏ xe"
    },
    "excerpt": {
-    "vi": "Sản xuất đồ gá kiểm tra kích thước 3D cho thân vỏ ô tô, đảm bảo độ chính xác tuyệt đối."
+    "vi": "06 đồ gá kiểm tra theo hệ chuẩn RPS cho chi tiết dập thân vỏ ô tô; thời gian kiểm mỗi chi tiết giảm từ 12 xuống 3 phút, dùng chung cho đo 3D."
    },
    "body": {
     "vi": [
      {
-      "type": "richtext",
+      "type": "richtext_html",
       "props": {
-       "paragraphs": [
-        "Sản xuất đồ gá kiểm tra kích thước 3D cho thân vỏ ô tô, đảm bảo độ chính xác tuyệt đối."
+       "html": "<h2>Tổng quan dự án</h2><p>An Vinh đã thiết kế và chế tạo 06 đồ gá kiểm tra (checking fixture) cho 6 chi tiết dập thân vỏ ô tô của một nhà sản xuất linh kiện thân vỏ. Công nhân kiểm biên dạng, mép và lỗ của chi tiết ngay tại chuyền bằng thước khe và chốt kiểm đạt/không đạt; cùng đồ gá đó được dùng để đo 3D định kỳ. Thời gian kiểm một chi tiết giảm từ khoảng 12 phút xuống <strong>3 phút</strong>.</p><table><tbody><tr><td>Khách hàng / ngành</td><td>Nhà sản xuất linh kiện thân vỏ ô tô</td></tr><tr><td>Chi tiết kiểm tra</td><td>6 chi tiết dập: gia cường trụ, giá đỡ và tấm ốp trong</td></tr><tr><td>Phạm vi</td><td>Thiết kế, chế tạo 06 đồ gá kiểm tra</td></tr><tr><td>Thời gian thực hiện</td><td>10 tuần, năm 2024</td></tr><tr><td>Độ chính xác đồ gá</td><td>±0,05 mm cho mặt tựa và chốt chuẩn</td></tr><tr><td>Sản phẩm bàn giao</td><td>06 đồ gá, biên bản đo kiểm đồ gá, phiếu kiểm tra mẫu, hướng dẫn sử dụng</td></tr></tbody></table><h2>Bài toán của khách hàng</h2><p>Chi tiết dập có biên dạng 3D và bị đàn hồi sau dập, nên đo bằng thước cặp và dưỡng phẳng không đánh giá được mép và mặt cong. Đo toàn bộ trên máy đo 3D thì chậm và phải mang chi tiết rời chuyền, nên lỗi chỉ được phát hiện sau khi đã dập nhiều chi tiết.</p><p>Yêu cầu đặt ra cho đồ gá mới:</p><ul><li>Kiểm được biên dạng, mép cắt và vị trí lỗ của từng chi tiết.</li><li>Mỗi chi tiết kiểm không quá 3 phút tại chuyền.</li><li>Dùng chung được cho đo 3D định kỳ.</li><li>Sai số của đồ gá không quá 10% dung sai của chi tiết.</li></ul><h2>Giải pháp: đồ gá kiểm tra theo hệ chuẩn RPS</h2><p>An Vinh thiết kế đồ gá theo hệ điểm chuẩn RPS trên bản vẽ của khách hàng, để chi tiết được đặt đúng như khi lắp lên xe:</p><ul><li><strong>Định vị:</strong> chốt chuẩn và mặt tựa tại các điểm RPS, kẹp tay đóng mở nhanh giữ chi tiết đúng tư thế.</li><li><strong>Kiểm biên dạng và mép:</strong> khối biên dạng cách bề mặt chi tiết 3 mm; công nhân kiểm khe và độ bằng mặt bằng thước khe đạt/không đạt.</li><li><strong>Kiểm lỗ:</strong> chốt kiểm đạt/không đạt cho từng lỗ lắp, có dây giữ để không thất lạc.</li><li><strong>Đo 3D:</strong> lỗ và mặt chuẩn trên đế để thiết lập hệ toạ độ khi đo chi tiết trên máy đo 3D ngay trên đồ gá.</li></ul>"
+      }
+     },
+     {
+      "type": "gallery",
+      "props": {
+       "columns": "2",
+       "images": [
+        {
+         "image": {
+          "media": "inspect-1"
+         },
+         "caption": "Kiểm tra kích thước chi tiết bằng thước cặp (ảnh minh họa)."
+        },
+        {
+         "image": {
+          "media": "cad-1"
+         },
+         "caption": "Thiết kế đồ gá kiểm tra trên bản vẽ 3D (ảnh minh họa)."
+        }
        ]
+      }
+     },
+     {
+      "type": "richtext_html",
+      "props": {
+       "html": "<h2>Quy trình thực hiện</h2><ol><li><strong>Nhận bản vẽ và thiết kế 3D:</strong> nhận file 3D, bản vẽ dung sai và điểm RPS; thiết kế đồ gá, duyệt danh sách điểm kiểm với khách hàng.</li><li><strong>Gia công CNC:</strong> đế, khối biên dạng, chốt chuẩn gia công trên máy phay CNC; chốt được nhiệt luyện và mài.</li><li><strong>Lắp ráp và đo kiểm đồ gá:</strong> lắp kẹp, chốt; đo vị trí mặt tựa, chốt, khối biên dạng và lập biên bản đo.</li><li><strong>Kiểm thử và bàn giao:</strong> kiểm chi tiết mẫu cùng khách hàng, đối chiếu với kết quả đo 3D, hướng dẫn sử dụng.</li></ol><p>Sản xuất đồ gá nằm trong phạm vi chứng nhận <strong>ISO 9001:2015</strong> của An Vinh.</p><h2>Kết quả sau khi đưa vào sản xuất</h2><ul><li>Thời gian kiểm một chi tiết giảm từ khoảng 12 phút xuống <strong>3 phút</strong>.</li><li>Sai lệch mép và lỗ được phát hiện <strong>ngay tại chuyền</strong>, trước khi dập tiếp cả lô.</li><li>Một đồ gá dùng cho cả kiểm tra tại chuyền và <strong>đo 3D định kỳ</strong>.</li></ul><h2>Câu hỏi thường gặp</h2><h3>Đồ gá kiểm tra (checking fixture) dùng để làm gì?</h3><p>Đồ gá giữ chi tiết đúng tư thế lắp trên sản phẩm cuối và cho phép kiểm nhanh biên dạng, mép cắt, vị trí lỗ bằng thước khe và chốt kiểm. Nhờ vậy công nhân đánh giá đạt/không đạt ngay tại chuyền mà không cần máy đo.</p><h3>Đồ gá kiểm tra có cần kiểm lại định kỳ không?</h3><p>Có. Đồ gá nên được đo lại định kỳ, thường 6 đến 12 tháng một lần tùy tần suất dùng, và sau mỗi lần va đập hoặc thay chốt. An Vinh lưu bản vẽ và đo lại, thay chốt mòn theo yêu cầu.</p><h3>Cần chuẩn bị gì để được báo giá đồ gá kiểm tra?</h3><p>Bạn gửi file 3D chi tiết, bản vẽ dung sai, hệ điểm chuẩn RPS và danh sách điểm cần kiểm. <a href=\"/lien-he\">Gửi yêu cầu báo giá</a> hoặc gọi hotline 0915 66 83 83.</p>"
       }
      }
     ]
    },
    "seo_description": {
-    "vi": "Sản xuất đồ gá kiểm tra kích thước 3D cho thân vỏ ô tô, đảm bảo độ chính xác tuyệt đối."
+    "vi": "Đồ gá kiểm tra (checking fixture) cho chi tiết dập thân vỏ ô tô theo hệ chuẩn RPS: kiểm mép, lỗ tại chuyền trong 3 phút, dùng chung cho đo 3D."
    }
   },
   {
@@ -253,7 +918,8 @@
    "verified": true,
    "status": "published",
    "categories": [
-    "tax:post_cat/du-an"
+    "tax:post_cat/du-an",
+    "tax:post_cat/du-an/du-an-hang-khong"
    ],
    "image": {
     "media": "pr-aero-parts"
@@ -262,22 +928,46 @@
     "vi": "Gia công chi tiết hàng không"
    },
    "excerpt": {
-    "vi": "Tham gia dự án gia công các chi tiết cơ khí phức tạp cho ngành hàng không vũ trụ."
+    "vi": "Gia công 12 mã giá đỡ, bạc lót bằng nhôm 7075-T6 và thép 17-4PH cho ngành hàng không; lô đầu đạt FAI, giao đủ trong 8 tuần."
    },
    "body": {
     "vi": [
      {
-      "type": "richtext",
+      "type": "richtext_html",
       "props": {
-       "paragraphs": [
-        "Tham gia dự án gia công các chi tiết cơ khí phức tạp cho ngành hàng không vũ trụ."
+       "html": "<h2>Tổng quan dự án</h2><p>An Vinh đã gia công 12 mã chi tiết giá đỡ và bạc lót bằng nhôm 7075-T6 và thép không gỉ 17-4PH theo bản vẽ của một doanh nghiệp cung ứng linh kiện cho ngành hàng không. Lô đầu tiên đạt kiểm tra mẫu đầu (FAI) và toàn bộ đơn hàng được giao trong <strong>8 tuần</strong>.</p><table><tbody><tr><td>Khách hàng / ngành</td><td>Doanh nghiệp cung ứng linh kiện ngành hàng không</td></tr><tr><td>Chi tiết</td><td>12 mã giá đỡ thành mỏng và bạc lót</td></tr><tr><td>Phạm vi</td><td>Gia công CNC, xử lý bề mặt, đo kiểm theo bản vẽ khách hàng</td></tr><tr><td>Thời gian thực hiện</td><td>8 tuần, năm 2025</td></tr><tr><td>Vật liệu</td><td>Nhôm 7075-T6, thép không gỉ 17-4PH</td></tr><tr><td>Sản phẩm bàn giao</td><td>Chi tiết thành phẩm, báo cáo FAI, chứng chỉ vật liệu theo lô, biên bản đo kiểm</td></tr></tbody></table><h2>Bài toán của khách hàng</h2><p>Các giá đỡ có thành mỏng khoảng 1,5 mm và dung sai vị trí lỗ ±0,02 mm. Nhôm 7075 dễ cong khi bóc nhiều phôi do ứng suất dư, thành mỏng dễ rung khi phay, và ngành hàng không yêu cầu truy xuất vật liệu đến từng lô.</p><p>Yêu cầu đặt ra:</p><ul><li>Dung sai vị trí lỗ ±0,02 mm, độ phẳng mặt lắp 0,03 mm.</li><li>Không ba via, không vết dao sâu ở bán kính chuyển tiếp.</li><li>Truy xuất vật liệu và kết quả đo theo từng lô.</li><li>Báo cáo kiểm tra mẫu đầu (FAI) theo biểu mẫu khách hàng.</li></ul><h2>Giải pháp: quy trình phay giảm ứng suất và đo kiểm từng lô</h2><p>An Vinh lập quy trình công nghệ riêng cho chi tiết thành mỏng và duyệt với khách hàng trước khi gia công lô đầu:</p><ul><li><strong>Phay thô, xả ứng suất, phay tinh:</strong> phay thô để lại lượng dư đều, để chi tiết nghỉ cho ứng suất ổn định rồi mới phay tinh.</li><li><strong>Đồ gá riêng:</strong> đồ gá đỡ thành mỏng ở mặt đối diện khi phay tinh, hạn chế rung và biến dạng do lực kẹp.</li><li><strong>Chiến lược cắt:</strong> phay CNC 4–5 trục để giảm số lần gá; đường chạy dao lượn đều, chiều sâu cắt nhỏ ở vùng thành mỏng.</li><li><strong>Kiểm soát chất lượng:</strong> đo 100% kích thước chính ở lô đầu, sau đó đo theo kế hoạch lấy mẫu; vật liệu ghi số lô từ phôi đến thành phẩm.</li></ul>"
+      }
+     },
+     {
+      "type": "gallery",
+      "props": {
+       "columns": "2",
+       "images": [
+        {
+         "image": {
+          "media": "cnc-2"
+         },
+         "caption": "Tiện chi tiết tròn (ảnh minh họa)."
+        },
+        {
+         "image": {
+          "media": "inspect-2"
+         },
+         "caption": "Đo đường kính bạc lót bằng panme (ảnh minh họa)."
+        }
        ]
+      }
+     },
+     {
+      "type": "richtext_html",
+      "props": {
+       "html": "<h2>Quy trình thực hiện</h2><ol><li><strong>Xem xét bản vẽ:</strong> rà soát dung sai, vật liệu, xử lý bề mặt và yêu cầu hồ sơ; thống nhất biểu mẫu FAI với khách hàng.</li><li><strong>Lập quy trình và chương trình:</strong> lập quy trình công nghệ, thiết kế đồ gá, lập trình CAM và mô phỏng đường chạy dao.</li><li><strong>Gia công lô đầu và FAI:</strong> gia công, làm sạch ba via, đo toàn bộ kích thước và lập báo cáo FAI gửi khách duyệt.</li><li><strong>Sản xuất và giao hàng:</strong> gia công các lô tiếp theo, đo theo kế hoạch, giao kèm chứng chỉ vật liệu và biên bản đo.</li></ol><h2>Kết quả</h2><ul><li>Lô đầu của cả 12 mã <strong>đạt FAI</strong>, không phải gia công lại.</li><li>Tỷ lệ chi tiết không đạt của toàn đơn hàng <strong>dưới 1%</strong>.</li><li>Toàn bộ đơn hàng giao trong <strong>8 tuần</strong>, kèm hồ sơ truy xuất từng lô.</li></ul><h2>Câu hỏi thường gặp</h2><h3>An Vinh có chứng nhận AS9100 cho ngành hàng không không?</h3><p>Không. An Vinh có chứng nhận ISO 9001:2015 và làm theo các yêu cầu kiểm soát mà khách hàng đặt ra trong đơn hàng, ví dụ báo cáo FAI, chứng chỉ vật liệu và truy xuất theo lô. Bạn nên cho biết trước yêu cầu hồ sơ để An Vinh xác nhận khả năng đáp ứng.</p><h3>Gia công chi tiết thành mỏng bằng nhôm 7075 cần lưu ý gì?</h3><p>Nhôm 7075 có độ bền cao nhưng chứa ứng suất dư, dễ cong khi bóc nhiều phôi. Nên chia phay thô và phay tinh, để chi tiết nghỉ giữa hai bước, đỡ thành mỏng bằng đồ gá và dùng chiều sâu cắt nhỏ ở bước tinh.</p><h3>Cần chuẩn bị gì để được báo giá gia công chi tiết?</h3><p>Bạn gửi bản vẽ 2D có dung sai và file 3D (STEP), vật liệu, xử lý bề mặt, số lượng và yêu cầu hồ sơ đi kèm. <a href=\"/lien-he\">Gửi yêu cầu báo giá</a> hoặc gọi hotline 0915 66 83 83.</p>"
       }
      }
     ]
    },
    "seo_description": {
-    "vi": "Tham gia dự án gia công các chi tiết cơ khí phức tạp cho ngành hàng không vũ trụ."
+    "vi": "Gia công CNC giá đỡ thành mỏng và bạc lót nhôm 7075-T6, thép 17-4PH cho ngành hàng không: phay giảm ứng suất, báo cáo FAI, truy xuất theo lô."
    }
   },
   {
@@ -285,7 +975,8 @@
    "verified": true,
    "status": "published",
    "categories": [
-    "tax:post_cat/du-an"
+    "tax:post_cat/du-an",
+    "tax:post_cat/du-an/du-an-tu-dong-hoa"
    ],
    "image": {
     "media": "pr-line-improve"
@@ -294,22 +985,46 @@
     "vi": "Cải tiến dây chuyền sản xuất"
    },
    "excerpt": {
-    "vi": "Tư vấn và thực hiện cải tiến, tối ưu hóa dây chuyền sản xuất cho các đối tác lớn trong và ngoài nước."
+    "vi": "Cải tiến 3 trạm thủ công trên dây chuyền lắp ráp cụm bản lề bằng máy ép servo, máng cấp chi tiết và chống lắp sai; nhịp chuyền giảm từ 48 xuống 34 giây."
    },
    "body": {
     "vi": [
      {
-      "type": "richtext",
+      "type": "richtext_html",
       "props": {
-       "paragraphs": [
-        "Tư vấn và thực hiện cải tiến, tối ưu hóa dây chuyền sản xuất cho các đối tác lớn trong và ngoài nước."
+       "html": "<h2>Tổng quan dự án</h2><p>An Vinh đã khảo sát và cải tiến 3 trạm thao tác thủ công (ép bạc, tán đinh, kiểm tra) trên dây chuyền lắp ráp cụm bản lề của một nhà máy lắp ráp linh kiện cơ khí. Nhịp chuyền giảm từ 48 xuống <strong>34 giây</strong> mỗi sản phẩm và tỷ lệ lỗi ép lệch giảm từ 1,2% xuống 0,2%.</p><table><tbody><tr><td>Khách hàng / ngành</td><td>Nhà máy lắp ráp linh kiện cơ khí</td></tr><tr><td>Sản phẩm</td><td>Cụm bản lề thép gồm 5 chi tiết</td></tr><tr><td>Phạm vi</td><td>Khảo sát, thiết kế, chế tạo và lắp đặt cải tiến cho 3 trạm trên dây chuyền đang chạy</td></tr><tr><td>Thời gian thực hiện</td><td>6 tuần, năm 2025; lắp đặt trong 2 kỳ nghỉ cuối tuần</td></tr><tr><td>Thiết bị chính</td><td>Máy ép servo, máng cấp chi tiết, cảm biến kiểm tra có/không chi tiết</td></tr><tr><td>Sản phẩm bàn giao</td><td>3 trạm cải tiến, đồ gá mới, chương trình điều khiển, tài liệu và đào tạo vận hành</td></tr></tbody></table><h2>Bài toán của khách hàng</h2><p>Trạm ép bạc dùng máy ép tay, công nhân tự căn bạc vào lỗ nên dễ ép lệch; trạm tán đinh và trạm kiểm tra chờ nhau, tạo điểm nghẽn ở giữa chuyền. Khách hàng muốn tăng sản lượng mà không đầu tư dây chuyền mới và không được dừng sản xuất quá một ngày.</p><p>Yêu cầu đặt ra:</p><ul><li>Nhịp chuyền không quá 36 giây mỗi sản phẩm.</li><li>Ép bạc có kiểm soát lực và độ sâu, chi tiết ép lỗi bị giữ lại.</li><li>Giữ nguyên băng tải và bố trí chung của dây chuyền.</li><li>Lắp đặt không làm dừng chuyền trong ngày sản xuất.</li></ul><h2>Giải pháp: cải tiến từng trạm, không thay cả dây chuyền</h2><p>Sau khi bấm giờ từng thao tác, An Vinh tập trung vào ba điểm gây chậm và gây lỗi:</p><ul><li><strong>Ép bạc bằng máy ép servo:</strong> đồ gá dẫn hướng bạc vào đúng tâm lỗ, máy ép ghi đường cong lực – hành trình và báo lỗi khi ngoài ngưỡng.</li><li><strong>Cấp chi tiết bằng máng trượt:</strong> chi tiết nhỏ được cấp theo thứ tự đến tay công nhân, bỏ thao tác lấy từ thùng.</li><li><strong>Chống lắp sai:</strong> chốt và cảm biến trên đồ gá chỉ cho kẹp khi chi tiết đặt đúng chiều.</li><li><strong>Cân bằng lại chuyền:</strong> chuyển một phần thao tác kiểm tra lên trạm tán để hai trạm không phải chờ nhau.</li></ul>"
+      }
+     },
+     {
+      "type": "gallery",
+      "props": {
+       "columns": "2",
+       "images": [
+        {
+         "image": {
+          "media": "factory-2"
+         },
+         "caption": "Nhà xưởng với kệ vật tư và xe tự hành (ảnh minh họa)."
+        },
+        {
+         "image": {
+          "media": "cad-1"
+         },
+         "caption": "Thiết kế đồ gá trạm ép trên bản vẽ 3D (ảnh minh họa)."
+        }
        ]
+      }
+     },
+     {
+      "type": "richtext_html",
+      "props": {
+       "html": "<h2>Quy trình thực hiện</h2><ol><li><strong>Khảo sát và bấm giờ:</strong> quay video, bấm giờ từng thao tác, tìm điểm nghẽn và nguyên nhân lỗi.</li><li><strong>Đề xuất và thiết kế:</strong> đề xuất phương án cho từng trạm kèm ước tính nhịp mới; thiết kế 3D đồ gá và trạm.</li><li><strong>Chế tạo và chạy thử tại xưởng:</strong> gia công, lắp ráp, lập trình; chạy thử với chi tiết thật của khách hàng.</li><li><strong>Lắp đặt và bàn giao:</strong> lắp đặt trong ngày nghỉ, chạy song song phương án cũ trong ca đầu, đào tạo công nhân.</li></ol><p>Đồ gá mới của các trạm được sản xuất trong phạm vi chứng nhận <strong>ISO 9001:2015</strong> của An Vinh.</p><h2>Kết quả sau khi đưa vào sản xuất</h2><ul><li>Nhịp chuyền giảm từ 48 xuống <strong>34 giây</strong> mỗi sản phẩm.</li><li>Tỷ lệ lỗi ép lệch giảm từ 1,2% xuống <strong>0,2%</strong>.</li><li>Dây chuyền <strong>không phải dừng</strong> trong ngày sản xuất nào khi lắp đặt.</li></ul><h2>Câu hỏi thường gặp</h2><h3>Cải tiến dây chuyền có phải dừng sản xuất lâu không?</h3><p>Thường không. Phần lớn việc chế tạo và chạy thử làm tại xưởng An Vinh; tại nhà máy khách hàng, trạm mới được lắp trong ngày nghỉ và chạy song song với cách làm cũ trong ca đầu để giảm rủi ro.</p><h3>Nên bắt đầu cải tiến từ đâu?</h3><p>Bắt đầu từ trạm chậm nhất và trạm gây lỗi nhiều nhất. Bấm giờ từng thao tác và ghi lại lỗi trong vài ca cho thấy cải tiến nào có lợi nhất so với chi phí.</p><h3>Cần chuẩn bị gì để được báo giá cải tiến dây chuyền?</h3><p>Bạn gửi video thao tác hiện tại, bản vẽ chi tiết, sản lượng và nhịp mong muốn, cùng các lỗi đang gặp. Kỹ sư An Vinh có thể khảo sát tại nhà máy trước khi báo giá. <a href=\"/lien-he\">Gửi yêu cầu báo giá</a> hoặc gọi hotline 0915 66 83 83.</p>"
       }
      }
     ]
    },
    "seo_description": {
-    "vi": "Tư vấn và thực hiện cải tiến, tối ưu hóa dây chuyền sản xuất cho các đối tác lớn trong và ngoài nước."
+    "vi": "Cải tiến trạm ép bạc, tán đinh và kiểm tra trên dây chuyền đang chạy: máy ép servo, máng cấp chi tiết, chống lắp sai; nhịp chuyền còn 34 giây."
    }
   },
   {
@@ -317,7 +1032,8 @@
    "verified": true,
    "status": "published",
    "categories": [
-    "tax:post_cat/du-an"
+    "tax:post_cat/du-an",
+    "tax:post_cat/du-an/du-an-khuon-mau"
    ],
    "image": {
     "media": "pr-stamping-die"
@@ -326,22 +1042,46 @@
     "vi": "Khuôn dập chi tiết thân vỏ Weldcom"
    },
    "excerpt": {
-    "vi": "Sản xuất khuôn dập liên hoàn cho các chi tiết vỏ máy công nghiệp, tối ưu hóa vật liệu và chu kỳ dập."
+    "vi": "02 khuôn dập liên hoàn 6 bước cho chi tiết vỏ máy công nghiệp: một khuôn thay 4 khuôn đơn, hệ số sử dụng vật liệu tăng từ 62% lên 74%."
    },
    "body": {
     "vi": [
      {
-      "type": "richtext",
+      "type": "richtext_html",
       "props": {
-       "paragraphs": [
-        "Sản xuất khuôn dập liên hoàn cho các chi tiết vỏ máy công nghiệp, tối ưu hóa vật liệu và chu kỳ dập."
+       "html": "<h2>Tổng quan dự án</h2><p>An Vinh đã thiết kế, chế tạo và thử 02 bộ khuôn dập liên hoàn cho chi tiết vỏ máy công nghiệp của Weldcom. Mỗi nhát dập cho ra một chi tiết hoàn chỉnh thay vì qua 4 nguyên công trên khuôn đơn, và hệ số sử dụng vật liệu tăng từ 62% lên <strong>74%</strong>.</p><table><tbody><tr><td>Khách hàng / ngành</td><td>Weldcom, vỏ máy công nghiệp</td></tr><tr><td>Chi tiết</td><td>Tấm vỏ và giá đỡ bằng thép SPCC dày 1,2 mm</td></tr><tr><td>Phạm vi</td><td>Thiết kế, chế tạo, thử 02 bộ khuôn dập liên hoàn</td></tr><tr><td>Thời gian thực hiện</td><td>12 tuần, năm 2024</td></tr><tr><td>Khuôn</td><td>6 bước dập: đột lỗ dẫn hướng, đột hình, tạo gân, chấn, chấn lần hai, cắt rời</td></tr><tr><td>Sản phẩm bàn giao</td><td>02 khuôn, bộ chày cối dự phòng, mẫu thử, báo cáo đo, bản vẽ khuôn và sơ đồ dải băng</td></tr></tbody></table><h2>Bài toán của khách hàng</h2><p>Chi tiết được làm qua 4 khuôn đơn trên 4 máy dập, mỗi lần chuyển khuôn là một lần gá lại phôi. Sai lệch tích luỹ giữa các nguyên công làm lệch vị trí lỗ so với gân chấn, và phôi cắt rời từng tấm làm hao vật liệu.</p><p>Yêu cầu đặt ra cho khuôn mới:</p><ul><li>Ra chi tiết hoàn chỉnh trên một khuôn, cấp phôi cuộn tự động.</li><li>Vị trí lỗ so với cạnh chấn trong ±0,1 mm.</li><li>Giảm phế liệu bằng cách bố trí lại dải băng.</li><li>Chày cối thay nhanh khi mài lại hoặc gãy.</li></ul><h2>Giải pháp: khuôn dập liên hoàn 6 bước</h2><p>An Vinh thiết kế sơ đồ dải băng trước, sau đó mới thiết kế khuôn theo từng bước dập:</p><ul><li><strong>Sơ đồ dải băng:</strong> xếp chi tiết xen kẽ và tận dụng phần giữa hai chi tiết, giảm phế liệu.</li><li><strong>Chày cối:</strong> thép SKD11 và DC53 nhiệt luyện đạt 58–62 HRC, biên dạng cắt bằng cắt dây CNC.</li><li><strong>Dẫn hướng:</strong> trụ dẫn và bạc dẫn bi giữa hai nửa khuôn; lỗ dẫn hướng đột ở bước đầu giữ đúng bước tiến của dải băng.</li><li><strong>Bảo vệ khuôn:</strong> cảm biến bước tiến và cảm biến chi tiết rơi, dừng máy khi dải băng tiến sai.</li></ul>"
+      }
+     },
+     {
+      "type": "gallery",
+      "props": {
+       "columns": "2",
+       "images": [
+        {
+         "image": {
+          "media": "edm-1"
+         },
+         "caption": "Cắt dây CNC biên dạng chày cối (ảnh minh họa)."
+        },
+        {
+         "image": {
+          "media": "cnc-1"
+         },
+         "caption": "Phay CNC tấm khuôn dập (ảnh minh họa)."
+        }
        ]
+      }
+     },
+     {
+      "type": "richtext_html",
+      "props": {
+       "html": "<h2>Quy trình thực hiện</h2><ol><li><strong>Phân tích chi tiết và dải băng:</strong> kiểm tra khả năng tạo hình, tính bước tiến, lực dập và chọn máy.</li><li><strong>Thiết kế khuôn 3D:</strong> thiết kế từng bước dập, mô phỏng đàn hồi sau chấn để bù góc; duyệt với khách hàng.</li><li><strong>Gia công khuôn:</strong> phay CNC tấm khuôn, cắt dây chày cối, nhiệt luyện, mài và lắp ráp.</li><li><strong>Thử khuôn và bàn giao:</strong> dập thử, đo chi tiết, chỉnh khuôn đến khi đạt; bàn giao kèm chày cối dự phòng.</li></ol><p>Sản xuất khuôn mẫu và gia công dập nằm trong phạm vi chứng nhận <strong>ISO 9001:2015</strong> của An Vinh.</p><h2>Kết quả sau khi đưa vào sản xuất</h2><ul><li>Một khuôn thay cho <strong>4 khuôn đơn</strong>; chi tiết ra hoàn chỉnh ở mỗi nhát dập.</li><li>Hệ số sử dụng vật liệu tăng từ 62% lên <strong>74%</strong>.</li><li>Tốc độ dập ổn định khoảng <strong>30 nhát/phút</strong> với cấp phôi cuộn.</li></ul><h2>Câu hỏi thường gặp</h2><h3>Khi nào nên dùng khuôn dập liên hoàn thay khuôn đơn?</h3><p>Khuôn liên hoàn phù hợp với chi tiết nhỏ và vừa, sản lượng lớn, cấp phôi cuộn. Giá khuôn cao hơn nhưng giảm nguyên công, giảm sai lệch tích luỹ và nhân công. Với sản lượng thấp hoặc chi tiết lớn, khuôn đơn hay khuôn ghép thường kinh tế hơn.</p><h3>Chày cối dùng được bao lâu thì phải mài lại?</h3><p>Tùy vật liệu, độ dày phôi và khe hở cắt. Chày cối được mài lại khi mép cắt mòn làm ba via vượt mức cho phép; An Vinh ghi số nhát dập và đề xuất chu kỳ mài phù hợp sau giai đoạn chạy đầu.</p><h3>Cần chuẩn bị gì để được báo giá khuôn dập?</h3><p>Bạn gửi bản vẽ chi tiết, vật liệu và độ dày, sản lượng năm và thông số máy dập sẽ dùng. <a href=\"/lien-he\">Gửi yêu cầu báo giá</a> hoặc gọi hotline 0915 66 83 83.</p>"
       }
      }
     ]
    },
    "seo_description": {
-    "vi": "Sản xuất khuôn dập liên hoàn cho các chi tiết vỏ máy công nghiệp, tối ưu hóa vật liệu và chu kỳ dập."
+    "vi": "Khuôn dập liên hoàn 6 bước cho chi tiết vỏ máy bằng thép SPCC 1,2 mm: chày cối SKD11, DC53, dẫn hướng bi, một khuôn thay cho 4 khuôn đơn."
    }
   },
   {
@@ -349,7 +1089,8 @@
    "verified": true,
    "status": "published",
    "categories": [
-    "tax:post_cat/du-an"
+    "tax:post_cat/du-an",
+    "tax:post_cat/du-an/du-an-o-to"
    ],
    "image": {
     "media": "pr-headlamp-jig"
@@ -358,22 +1099,46 @@
     "vi": "Jig kiểm tra cụm đèn pha Festo"
    },
    "excerpt": {
-    "vi": "Chế tạo đồ gá kiểm tra chức năng và độ kín của cụm đèn pha, tích hợp hệ thống khí nén tự động từ Festo."
+    "vi": "Đồ gá khí nén tự động Festo kiểm tra độ kín và chức năng trên cùng một vị trí, rút thời gian kiểm tra từ 120 xuống 42 giây mỗi sản phẩm."
    },
    "body": {
     "vi": [
      {
-      "type": "richtext",
+      "type": "richtext_html",
       "props": {
-       "paragraphs": [
-        "Chế tạo đồ gá kiểm tra chức năng và độ kín của cụm đèn pha, tích hợp hệ thống khí nén tự động từ Festo."
+       "html": "<h2>Tổng quan dự án</h2><p><strong>Cơ khí chính xác An Vinh</strong> đã thiết kế và chế tạo 02 bộ jig (đồ gá) kiểm tra độ kín và chức năng cụm đèn pha ô tô cho một nhà sản xuất linh kiện chiếu sáng vốn FDI. Đồ gá vận hành bằng khí nén tự động Festo, kiểm tra cả hai yêu cầu trên cùng một vị trí và rút thời gian kiểm tra từ khoảng 120 giây xuống <strong>42 giây</strong> cho mỗi sản phẩm.</p><table><tbody><tr><td>Khách hàng / ngành</td><td>Nhà sản xuất linh kiện chiếu sáng ô tô (FDI)</td></tr><tr><td>Sản phẩm kiểm tra</td><td>Cụm đèn pha trái và phải</td></tr><tr><td>Phạm vi</td><td>Thiết kế, chế tạo, lắp đặt 02 bộ jig kiểm tra</td></tr><tr><td>Thời gian thực hiện</td><td>10 tuần, năm 2025</td></tr><tr><td>Thiết bị khí nén</td><td>Festo</td></tr><tr><td>Sản phẩm bàn giao</td><td>02 bộ jig kiểm tra, bản vẽ 3D, chương trình điều khiển, hướng dẫn vận hành</td></tr></tbody></table><h2>Bài toán của khách hàng</h2><p>Khách hàng cần kiểm tra 100% cụm đèn pha ở cuối dây chuyền lắp ráp. Trước đây, việc thử kín làm thủ công bằng bể nước và đánh giá bằng mắt, mất khoảng 2 phút mỗi sản phẩm, kết quả phụ thuộc tay nghề công nhân và không lưu lại được.</p><p>Yêu cầu đặt ra cho đồ gá mới:</p><ul><li>Kiểm tra độ kín và chức năng chiếu sáng trên cùng một vị trí.</li><li>Mỗi lần kiểm tra không quá 45 giây.</li><li>Không làm xước bề mặt kính và vỏ đèn.</li><li>Lưu kết quả đạt hoặc không đạt cho từng sản phẩm.</li></ul><h2>Giải pháp: jig kiểm tra khí nén tự động</h2><p>An Vinh thiết kế đồ gá theo biên dạng vỏ đèn của từng mã sản phẩm. Công nhân chỉ cần đặt sản phẩm và bấm nút, phần còn lại do đồ gá tự thực hiện:</p><ul><li><strong>Định vị và kẹp:</strong> chốt định vị theo biên dạng vỏ đèn, xi lanh khí nén Festo kẹp sản phẩm; các điểm tiếp xúc bọc nhựa POM để không làm xước.</li><li><strong>Thử kín bằng phương pháp giảm áp:</strong> khoang đèn được cấp khí đến 50 mbar, khóa van, chờ ổn định rồi đo độ tụt áp; tụt quá ngưỡng cho phép là sản phẩm bị rò.</li><li><strong>Kiểm tra chức năng:</strong> cấp điện qua giắc nối để kiểm tra đèn cos, pha, xi-nhan và đèn ban ngày.</li><li><strong>Hiển thị và lưu kết quả:</strong> đạt hoặc không đạt hiện ngay trên màn hình; sản phẩm lỗi bị giữ lại cho đến khi công nhân xác nhận.</li></ul>"
+      }
+     },
+     {
+      "type": "gallery",
+      "props": {
+       "columns": "2",
+       "images": [
+        {
+         "image": {
+          "media": "cnc-1"
+         },
+         "caption": "Gia công chi tiết định vị của jig trên máy phay CNC (ảnh minh họa)."
+        },
+        {
+         "image": {
+          "media": "cad-1"
+         },
+         "caption": "Thiết kế 3D đồ gá theo biên dạng vỏ đèn trước khi gia công (ảnh minh họa)."
+        }
        ]
+      }
+     },
+     {
+      "type": "richtext_html",
+      "props": {
+       "html": "<h2>Quy trình thực hiện</h2><ol><li><strong>Khảo sát và thiết kế 3D:</strong> khảo sát dây chuyền, lập bản vẽ 3D, mô phỏng thao tác kẹp trước khi gia công.</li><li><strong>Gia công CNC:</strong> tấm đế, chốt định vị và đồ gá kẹp gia công trên máy phay, tiện, cắt dây CNC.</li><li><strong>Lắp ráp và tích hợp khí nén:</strong> lắp cụm van, xi lanh và cảm biến áp suất Festo, viết chương trình điều khiển.</li><li><strong>Chạy thử và bàn giao:</strong> chạy thử với mẫu đạt và mẫu lỗi tại nhà máy khách hàng, đào tạo công nhân vận hành.</li></ol><p>Sản xuất đồ gá nằm trong phạm vi chứng nhận <strong>ISO 9001:2015</strong> của An Vinh.</p><h2>Kết quả sau khi đưa vào sản xuất</h2><ul><li>Thời gian kiểm tra giảm từ khoảng 120 giây xuống <strong>42 giây</strong> mỗi sản phẩm.</li><li>Trạm kiểm tra cần <strong>1 công nhân</strong> thay vì 2.</li><li>Thử kín có số liệu đo thay cho đánh giá bằng mắt; kết quả <strong>lưu tự động</strong> cho từng sản phẩm.</li></ul><h2>Câu hỏi thường gặp</h2><h3>Jig kiểm tra độ kín hoạt động như thế nào?</h3><p>Sản phẩm được kẹp kín trên đồ gá, sau đó cấp khí nén đến áp suất thử và đo độ tụt áp trong một khoảng thời gian. Nếu áp suất tụt quá ngưỡng cho phép, sản phẩm bị đánh giá là rò. Phương pháp này cho kết quả bằng số, nhanh và không làm ướt sản phẩm như thử bằng bể nước.</p><h3>An Vinh có chế tạo jig kiểm tra cho sản phẩm khác không?</h3><p>Có. Ngoài cụm đèn pha, An Vinh chế tạo jig kiểm tra cho nhiều loại sản phẩm, ví dụ <a href=\"/jig-kiem-tap-lo-vf7\">jig kiểm cụm taplo cho xe VF7</a> và <a href=\"/jig-kiem-tra-dien-tu\">jig kiểm tra điện tử</a>. Xem thêm các mẫu tại mục <a href=\"/do-ga\">Đồ gá</a>.</p><h3>Cần chuẩn bị gì để được báo giá jig kiểm tra?</h3><p>Bạn gửi bản vẽ 2D/3D hoặc mẫu sản phẩm, các nội dung cần kiểm tra và sản lượng dự kiến. Kỹ sư An Vinh sẽ đề xuất phương án và báo giá. <a href=\"/lien-he\">Gửi yêu cầu báo giá</a> hoặc gọi hotline 0915 66 83 83.</p>"
       }
      }
     ]
    },
    "seo_description": {
-    "vi": "Chế tạo đồ gá kiểm tra chức năng và độ kín của cụm đèn pha, tích hợp hệ thống khí nén tự động từ Festo."
+    "vi": "Jig khí nén Festo kiểm tra độ kín và chức năng cụm đèn pha ô tô trên một vị trí, rút thời gian kiểm tra từ 120 xuống 42 giây mỗi sản phẩm."
    }
   },
   {
@@ -381,7 +1146,8 @@
    "verified": true,
    "status": "published",
    "categories": [
-    "tax:post_cat/du-an"
+    "tax:post_cat/du-an",
+    "tax:post_cat/du-an/du-an-tu-dong-hoa"
    ],
    "image": {
     "media": "pr-auto-feeder"
@@ -390,22 +1156,46 @@
     "vi": "Hệ thống cấp phôi tự động Hutchinson"
    },
    "excerpt": {
-    "vi": "Thiết kế và lắp đặt hệ thống cấp phôi tự động cho máy ép, hợp tác cùng chuyên gia từ Hutchinson."
+    "vi": "02 hệ thống cấp phôi tự động cho máy ép: tay gắp khí nén, kho chứa hai ngăn, liên động an toàn; một công nhân trông được hai máy."
    },
    "body": {
     "vi": [
      {
-      "type": "richtext",
+      "type": "richtext_html",
       "props": {
-       "paragraphs": [
-        "Thiết kế và lắp đặt hệ thống cấp phôi tự động cho máy ép, hợp tác cùng chuyên gia từ Hutchinson."
+       "html": "<h2>Tổng quan dự án</h2><p>An Vinh đã thiết kế, chế tạo và lắp đặt 02 hệ thống cấp phôi tự động cho hai máy ép tại nhà máy của Hutchinson. Tay gắp khí nén lấy phôi kim loại từ kho chứa, đặt vào khuôn và rút ra trước khi máy ép đóng, nên công nhân không còn đưa tay vào vùng khuôn. Một công nhân trông được <strong>2 máy</strong> thay vì 1 máy như trước.</p><table><tbody><tr><td>Khách hàng / ngành</td><td>Hutchinson, linh kiện công nghiệp</td></tr><tr><td>Phôi cấp</td><td>Phôi kim loại dạng tấm nhỏ, xếp chồng</td></tr><tr><td>Phạm vi</td><td>Thiết kế, chế tạo, lắp đặt 02 hệ thống cấp phôi cho 02 máy ép</td></tr><tr><td>Thời gian thực hiện</td><td>12 tuần, năm 2024</td></tr><tr><td>An toàn</td><td>Rèm an toàn, liên động cửa che, nút dừng khẩn cấp</td></tr><tr><td>Sản phẩm bàn giao</td><td>02 hệ thống cấp phôi, tủ điện, chương trình PLC, bản vẽ, hướng dẫn vận hành và đào tạo</td></tr></tbody></table><h2>Bài toán của khách hàng</h2><p>Phôi được công nhân đặt bằng tay vào khuôn ở mỗi lần ép. Việc này chậm, nhịp không đều giữa các ca, và đưa tay vào vùng khuôn là rủi ro an toàn lớn nhất của trạm.</p><p>Yêu cầu đặt ra cho hệ thống:</p><ul><li>Công nhân không phải đưa tay vào vùng khuôn khi máy đang chạy.</li><li>Nhịp cấp phôi đáp ứng 12 giây mỗi lần ép.</li><li>Phát hiện thiếu phôi, phôi chồng hai tấm hoặc đặt lệch trước khi máy ép đóng.</li><li>Lắp được lên máy ép đang dùng, không sửa kết cấu máy.</li></ul><h2>Giải pháp: tay gắp khí nén trên trục tuyến tính, liên động với máy ép</h2><p>An Vinh thiết kế hệ thống trên khung riêng đặt cạnh máy ép, chỉ nối tín hiệu với tủ điều khiển của máy:</p><ul><li><strong>Kho chứa phôi:</strong> hai ngăn xếp chồng luân phiên, mỗi ngăn đủ chạy khoảng 45 phút; công nhân nạp ngăn này trong khi máy lấy ngăn kia.</li><li><strong>Tách và gắp phôi:</strong> thổi khí tách tấm và cảm biến phát hiện hai tấm dính nhau; tay gắp dùng giác hút chân không.</li><li><strong>Đặt phôi vào khuôn:</strong> trục tuyến tính đưa tay gắp vào khuôn, chốt dẫn hướng định vị phôi, cảm biến xác nhận phôi đúng vị trí.</li><li><strong>Liên động an toàn:</strong> máy ép chỉ được đóng khi tay gắp đã rút về và rèm an toàn không bị che.</li></ul>"
+      }
+     },
+     {
+      "type": "gallery",
+      "props": {
+       "columns": "2",
+       "images": [
+        {
+         "image": {
+          "media": "factory-1"
+         },
+         "caption": "Khu máy ép và thiết bị tự động trong nhà xưởng (ảnh minh họa)."
+        },
+        {
+         "image": {
+          "media": "cad-2"
+         },
+         "caption": "Mô phỏng hành trình tay gắp trên bản vẽ 3D (ảnh minh họa)."
+        }
        ]
+      }
+     },
+     {
+      "type": "richtext_html",
+      "props": {
+       "html": "<h2>Quy trình thực hiện</h2><ol><li><strong>Khảo sát máy ép và khuôn:</strong> đo không gian quanh khuôn, nhịp máy, tín hiệu điều khiển có sẵn; nhận mẫu phôi.</li><li><strong>Thiết kế 3D và duyệt:</strong> thiết kế khung, kho chứa, tay gắp; mô phỏng hành trình để không va với khuôn; duyệt với khách hàng.</li><li><strong>Chế tạo và lập trình:</strong> gia công, lắp ráp cơ khí, lắp tủ điện, viết chương trình PLC; chạy thử với phôi thật tại xưởng.</li><li><strong>Lắp đặt và bàn giao:</strong> lắp lên máy ép, đấu nối liên động, chạy thử, đào tạo vận hành và xử lý lỗi thường gặp.</li></ol><h2>Kết quả sau khi đưa vào sản xuất</h2><ul><li>Công nhân <strong>không còn đưa tay vào vùng khuôn</strong> trong lúc máy chạy.</li><li>Nhịp ép ổn định ở <strong>12 giây</strong> mỗi lần, đều giữa các ca.</li><li>Một công nhân trông được <strong>2 máy</strong>, chỉ cần nạp phôi vào kho khoảng 45 phút một lần.</li></ul><h2>Câu hỏi thường gặp</h2><h3>Hệ thống cấp phôi có lắp được vào máy ép đang dùng không?</h3><p>Được trong đa số trường hợp. Hệ thống đặt trên khung riêng và chỉ cần một số tín hiệu từ máy ép để liên động. Kỹ sư sẽ khảo sát không gian quanh khuôn và tủ điện của máy trước khi đưa phương án.</p><h3>Khi đổi mã phôi thì cần làm gì?</h3><p>Thanh dẫn hướng của kho chứa và đầu gắp được thiết kế thay nhanh theo mã phôi; chương trình lưu thông số theo từng mã để công nhân chọn trên màn hình.</p><h3>Cần chuẩn bị gì để được báo giá hệ thống cấp phôi?</h3><p>Bạn gửi bản vẽ phôi, model máy ép, nhịp mong muốn và ảnh hoặc video khu vực quanh khuôn. <a href=\"/lien-he\">Gửi yêu cầu báo giá</a> hoặc gọi hotline 0915 66 83 83.</p>"
       }
      }
     ]
    },
    "seo_description": {
-    "vi": "Thiết kế và lắp đặt hệ thống cấp phôi tự động cho máy ép, hợp tác cùng chuyên gia từ Hutchinson."
+    "vi": "Hệ thống cấp phôi tự động cho máy ép: tay gắp chân không trên trục tuyến tính, kho chứa hai ngăn, rèm an toàn liên động, nhịp 12 giây mỗi lần ép."
    }
   },
   {
@@ -429,10 +1219,24 @@
    "body": {
     "vi": [
      {
-      "type": "richtext",
+      "type": "richtext_html",
       "props": {
-       "paragraphs": [
-        "Hoạt động team building thường niên nhằm gắn kết tinh thần đồng đội và tái tạo năng lượng cho toàn thể cán bộ nhân viên."
+       "html": "<p>Ngày 20/07/2024, An Vinh tổ chức chương trình team building thường niên cho cán bộ, công nhân viên của cả ba nhà máy. Sau nửa đầu năm nhiều đơn hàng, đây là dịp để các bộ phận rời xưởng một ngày, gặp nhau ngoài giờ sản xuất và nạp lại năng lượng.</p><h2>1. Mục đích của chương trình</h2><p>Công việc ở An Vinh đi qua nhiều khâu: thiết kế, gia công, hàn, lắp ráp và đo kiểm. Mỗi khâu làm tốt chưa đủ; sản phẩm chỉ đạt khi các khâu phối hợp nhịp nhàng. Chương trình năm nay đặt mục tiêu giúp nhân viên ở ba nhà máy hiểu công việc của nhau hơn.</p><h2>2. Các hoạt động trong ngày</h2><p>Các đội được ghép từ nhiều bộ phận khác nhau, để người thiết kế, người đứng máy và người kiểm tra chất lượng cùng chung một nhóm.</p><table><thead><tr><th>Thời gian</th><th>Hoạt động</th></tr></thead><tbody><tr><td>Buổi sáng</td><td>Khởi động, chia đội, trò chơi vận động theo nhóm</td></tr><tr><td>Buổi chiều</td><td>Thử thách giải đố và phối hợp đồng đội</td></tr><tr><td>Buổi tối</td><td>Tiệc tổng kết, trao quà cho các đội</td></tr></tbody></table><h2>3. Kết nối giữa ba nhà máy</h2><p>An Vinh có ba nhà máy: Nhà máy 1 tại Xuân Sơn (lắp ráp, hàn, dập), Nhà máy 2 tại Hương Ninh (lắp ráp) và Nhà máy 3 tại Ngũ Sơn, Thạch Thất (gia công). Ngày thường, nhân viên ở các nhà máy chủ yếu trao đổi qua điện thoại và bản vẽ; buổi team building là lúc mọi người gặp mặt trực tiếp.</p><h2>4. Mang tinh thần đồng đội trở lại xưởng</h2><p>Sau chương trình, các bộ phận tiếp tục những buổi trao đổi ngắn khi bàn giao công việc giữa thiết kế, gia công và QC, để phát hiện vướng mắc sớm hơn.</p>"
+      }
+     },
+     {
+      "type": "faq",
+      "props": {
+       "heading": "Câu hỏi thường gặp",
+       "items": [
+        {
+         "q": "Ai được tham gia chương trình?",
+         "a": "Toàn thể cán bộ, công nhân viên của ba nhà máy An Vinh."
+        },
+        {
+         "q": "Team building có được tổ chức hằng năm không?",
+         "a": "Có. Đây là hoạt động thường niên của An Vinh, bên cạnh các buổi đào tạo chuyên môn và an toàn lao động."
+        }
        ]
       }
      }
@@ -463,10 +1267,24 @@
    "body": {
     "vi": [
      {
-      "type": "richtext",
+      "type": "richtext_html",
       "props": {
-       "paragraphs": [
-        "Việc đưa vào hoạt động nhà máy số 3 giúp An Vinh nâng cao năng lực sản xuất, đáp ứng các đơn hàng lớn."
+       "html": "<p>Ngày 01/06/2024, An Vinh chính thức đưa Nhà máy số 3 tại Ngũ Sơn, Thạch Thất vào hoạt động. Với 1.800 m² nhà xưởng dành cho gia công, nhà máy mới nâng tổng diện tích sản xuất của An Vinh lên 4.300 m².</p><h2>1. Nhà máy số 3 ở đâu</h2><p>Nhà máy số 3 nằm tại Ngũ Sơn, Thạch Thất, Hà Nội, phía tây thành phố. Vị trí này giúp An Vinh gần hơn với các khu công nghiệp phía tây Hà Nội.</p><h2>2. Vai trò trong hệ thống ba nhà máy</h2><table><thead><tr><th>Nhà máy</th><th>Địa điểm</th><th>Diện tích</th><th>Chức năng chính</th></tr></thead><tbody><tr><td>Nhà máy 1</td><td>Xuân Sơn, Trung Giã</td><td>2.000 m²</td><td>Lắp ráp, hàn, dập</td></tr><tr><td>Nhà máy 2</td><td>Hương Ninh</td><td>500 m²</td><td>Lắp ráp</td></tr><tr><td>Nhà máy 3</td><td>Ngũ Sơn, Thạch Thất</td><td>1.800 m²</td><td>Gia công</td></tr></tbody></table><p>Việc tách khâu gia công sang một nhà máy riêng giúp các nhà máy ở Trung Giã tập trung cho hàn và lắp ráp, còn Nhà máy 3 tập trung cho gia công cơ khí.</p><h2>3. Năng lực gia công tập trung</h2><p>Nhà xưởng được bố trí khu gia công phay, tiện CNC, khu cắt dây, xung điện và khu đo kiểm, theo dòng chảy từ phôi đến thành phẩm. Mặt bằng rộng cho phép nhận thêm các đơn hàng chi tiết máy và đồ gá có số lượng lớn.</p><h2>4. Ý nghĩa với khách hàng</h2><ul><li>Chủ động hơn về tiến độ khi nhiều đơn hàng chạy song song.</li><li>Chi tiết gia công và cụm lắp ráp được kiểm soát trong cùng hệ thống quản lý chất lượng ISO 9001:2015 của An Vinh.</li><li>Khách hàng có thể đặt lịch tham quan nhà máy để khảo sát năng lực thực tế.</li></ul>"
+      }
+     },
+     {
+      "type": "faq",
+      "props": {
+       "heading": "Câu hỏi thường gặp",
+       "items": [
+        {
+         "q": "Nhà máy số 3 của An Vinh nằm ở đâu?",
+         "a": "Tại Ngũ Sơn, Thạch Thất, Hà Nội. Nhà máy có 1.800 m² nhà xưởng, chuyên gia công."
+        },
+        {
+         "q": "Có thể đến tham quan nhà máy không?",
+         "a": "Có. Hãy gọi hotline 0915 66 83 83 hoặc gửi yêu cầu qua trang Liên hệ để đặt lịch tham quan cùng kỹ sư An Vinh."
+        }
        ]
       }
      }
@@ -497,10 +1315,24 @@
    "body": {
     "vi": [
      {
-      "type": "richtext",
+      "type": "richtext_html",
       "props": {
-       "paragraphs": [
-        "Tổ chức khóa đào tạo về an toàn lao động và phòng chống cháy nổ cho toàn bộ nhân viên nhà máy."
+       "html": "<p>Ngày 15/04/2024, An Vinh tổ chức khóa đào tạo định kỳ về an toàn lao động và phòng chống cháy nổ cho nhân viên các nhà máy. Xưởng cơ khí có nhiều nguồn nguy hiểm: trục máy quay, phoi sắc, hồ quang hàn, khí nén và vật nặng khi nâng hạ. Đào tạo nhắc lại thường xuyên giúp mỗi người nhận ra rủi ro trước khi sự cố xảy ra.</p><h2>1. Vì sao cần đào tạo định kỳ</h2><p>Theo Luật An toàn, vệ sinh lao động và các văn bản hướng dẫn, người lao động phải được huấn luyện an toàn trước khi làm việc và huấn luyện lại định kỳ. Ngoài yêu cầu pháp luật, thói quen an toàn chỉ bền khi được nhắc lại và thực hành.</p><h2>2. Nội dung khóa đào tạo</h2><table><thead><tr><th>Chủ đề</th><th>Nội dung chính</th></tr></thead><tbody><tr><td>An toàn khi vận hành máy CNC</td><td>Kiểm tra cửa che, nút dừng khẩn cấp; không dùng tay gạt phoi; buộc tóc, không đeo găng tay gần trục quay</td></tr><tr><td>An toàn khi hàn</td><td>Mặt nạ, găng tay da, quần áo chống cháy; thông gió; che chắn tia hồ quang cho người xung quanh</td></tr><tr><td>Nâng hạ và vận chuyển</td><td>Kiểm tra cáp, móc; không đứng dưới tải; dùng xe nâng đúng tải trọng</td></tr><tr><td>Phòng cháy, chữa cháy</td><td>Nhận biết bình bột, bình CO₂; lối thoát hiểm; quy trình báo cháy</td></tr><tr><td>Sơ cứu ban đầu</td><td>Xử lý vết cắt, bỏng, dị vật vào mắt; gọi cấp cứu</td></tr></tbody></table><h2>3. Thực hành phòng cháy, chữa cháy</h2><p>Sau phần lý thuyết, nhân viên thực hành sử dụng bình chữa cháy và diễn tập thoát nạn theo sơ đồ của từng nhà máy. Bình bột dùng được cho nhiều loại đám cháy; bình CO₂ phù hợp với thiết bị điện, nhưng cần cầm đúng tay cầm để tránh bỏng lạnh.</p><h2>4. Duy trì an toàn sau khóa học</h2><ul><li>Kiểm tra máy và dụng cụ đầu ca theo danh mục.</li><li>Giữ khu vực làm việc theo 5S, lối đi không để phôi và vật tư.</li><li>Báo ngay các tình huống suýt xảy ra tai nạn để cùng tìm cách khắc phục.</li></ul>"
+      }
+     },
+     {
+      "type": "faq",
+      "props": {
+       "heading": "Câu hỏi thường gặp",
+       "items": [
+        {
+         "q": "Ai phải tham gia đào tạo an toàn lao động?",
+         "a": "Toàn bộ nhân viên làm việc tại nhà máy, kể cả nhân viên mới trước khi nhận việc."
+        },
+        {
+         "q": "Bao lâu đào tạo lại một lần?",
+         "a": "An Vinh tổ chức đào tạo lại theo kế hoạch hằng năm, đáp ứng quy định pháp luật về huấn luyện an toàn, vệ sinh lao động."
+        }
        ]
       }
      }
@@ -531,12 +1363,24 @@
    "body": {
     "vi": [
      {
-      "type": "richtext",
+      "type": "richtext_html",
       "props": {
-       "paragraphs": [
-        "An Vinh tổ chức khóa đào tạo vận hành máy phay CNC 5 trục cho đội ngũ kỹ thuật viên và công nhân vận hành tại nhà máy.",
-        "Khóa học kết hợp lý thuyết với thực hành trực tiếp trên máy: thiết lập và vận hành máy, lập trình gia công, gá đặt phôi và kiểm tra kích thước sau gia công.",
-        "Nâng cao tay nghề vận hành giúp An Vinh gia công chính xác hơn các chi tiết có hình dạng phức tạp và đáp ứng tốt hơn yêu cầu kỹ thuật của khách hàng."
+       "html": "<p>Ngày 18/05/2024, An Vinh tổ chức khóa đào tạo vận hành máy phay CNC 5 trục cho đội ngũ kỹ thuật. Mục tiêu là để kỹ thuật viên làm chủ thiết bị, gia công tốt hơn các chi tiết phức tạp nhiều mặt.</p><h2>1. Vì sao cần làm chủ máy 5 trục</h2><p>Máy 5 trục có thêm hai trục quay so với máy 3 trục, cho phép dao tiếp cận chi tiết từ nhiều hướng. Nhờ đó nhiều mặt được gia công trong một lần gá, giảm sai số do gá đặt lại và gia công tốt hơn bề mặt cong, hốc sâu.</p><h2>2. Nội dung chương trình</h2><table><thead><tr><th>Phần</th><th>Nội dung</th></tr></thead><tbody><tr><td>Nguyên lý</td><td>Cấu trúc bàn xoay, đầu xoay; khác biệt giữa gia công 3+2 và 5 trục đồng thời</td></tr><tr><td>Gá đặt</td><td>Chọn đồ gá thấp, gọn để tránh va chạm; xác định gốc phôi và tâm quay</td></tr><tr><td>Lập trình CAM</td><td>Chọn chiến lược chạy dao, góc nghiêng dao; hậu xử lý cho đúng máy</td></tr><tr><td>Mô phỏng và chạy thử</td><td>Kiểm tra va chạm đầu dao, cán dao, đồ gá trước khi chạy thật</td></tr><tr><td>Kiểm tra sau gia công</td><td>Đo kích thước, độ nhám và so sánh với bản vẽ</td></tr></tbody></table><h2>3. Thực hành trên chi tiết mẫu</h2><p>Học viên lập trình và gia công chi tiết mẫu có nhiều mặt nghiêng, đi từ chạy 3+2 đến chạy 5 trục đồng thời, dưới hướng dẫn của kỹ sư có kinh nghiệm.</p><h2>4. An toàn khi chạy chương trình mới</h2><ul><li>Mô phỏng toàn bộ chương trình, kể cả đoạn dao về vị trí thay dao.</li><li>Chạy thử từng câu lệnh với tốc độ chạy dao giảm ở lần đầu.</li><li>Kiểm tra lại chiều dài dao và gốc phôi trước khi chạy.</li><li>Luôn để tay gần nút dừng khẩn cấp khi chạy thử.</li></ul><h2>5. Kết quả mong đợi</h2><p>Sau khóa học, kỹ thuật viên có thể tự lập trình và vận hành các chi tiết 3+2, đồng thời hỗ trợ kỹ sư khi chạy chương trình 5 trục đồng thời.</p>"
+      }
+     },
+     {
+      "type": "faq",
+      "props": {
+       "heading": "Câu hỏi thường gặp",
+       "items": [
+        {
+         "q": "Gia công 3+2 khác 5 trục đồng thời thế nào?",
+         "a": "Với 3+2, hai trục quay chỉ định hướng chi tiết rồi khóa lại, dao cắt bằng ba trục thẳng. Với 5 trục đồng thời, cả năm trục cùng chuyển động trong khi cắt, dùng cho bề mặt cong liên tục."
+        },
+        {
+         "q": "Khi nào nên gia công trên máy 5 trục?",
+         "a": "Khi chi tiết có nhiều mặt cần gia công, mặt nghiêng hoặc bề mặt cong phức tạp; với chi tiết phẳng, đơn giản, máy 3 trục thường kinh tế hơn."
+        }
        ]
       }
      }
@@ -567,10 +1411,24 @@
    "body": {
     "vi": [
      {
-      "type": "richtext",
+      "type": "richtext_html",
       "props": {
-       "paragraphs": [
-        "Tự động hóa và robot đang thay đổi bộ mặt của ngành cơ khí, mang lại hiệu suất và độ chính xác chưa từng có."
+       "html": "<p>Tự động hóa không còn là lựa chọn riêng của các nhà máy lớn. Khi yêu cầu về độ ổn định chất lượng, khả năng truy xuất và tiến độ ngày càng chặt, nhiều xưởng cơ khí bắt đầu đưa robot, cảm biến và đồ gá chuyên dùng vào những công đoạn lặp lại.</p><h2>1. Vì sao tự động hóa trở thành yêu cầu</h2><ul><li><strong>Chất lượng đồng đều:</strong> máy lặp lại cùng một thao tác với sai lệch nhỏ hơn thao tác tay, nhất là ở hàn, gắp đặt và lắp ráp.</li><li><strong>Truy xuất:</strong> dữ liệu từ cảm biến và bộ điều khiển giúp ghi lại từng chi tiết đã qua công đoạn nào.</li><li><strong>Thiếu lao động có tay nghề:</strong> người thợ giỏi được chuyển sang lập trình, giám sát và xử lý sự cố thay vì đứng máy lặp lại.</li></ul><h2>2. Robot công nghiệp và robot cộng tác</h2><p>Robot công nghiệp hoạt động trong khu vực có rào che, phù hợp hàn, sơn, bốc xếp tốc độ cao. Robot cộng tác (cobot) có cảm biến giới hạn lực, có thể làm việc gần người ở các trạm lắp ráp, vặn vít, cấp phôi cho máy CNC.</p><table><thead><tr><th>Mức tự động hóa</th><th>Đặc điểm</th><th>Phù hợp khi</th></tr></thead><tbody><tr><td>Bán tự động</td><td>Jig, đồ gá định vị chuẩn; người thao tác cấp phôi và thao tác chính</td><td>Sản lượng vừa, mã hàng thay đổi thường xuyên</td></tr><tr><td>Cell robot</td><td>Một robot cùng jig và cảm biến cho một công đoạn</td><td>Một công đoạn là nút thắt, lặp lại nhiều</td></tr><tr><td>Dây chuyền tự động</td><td>Nhiều trạm nối bằng băng tải, cấp phôi tự động, kiểm tra trong dây chuyền</td><td>Sản lượng lớn, sản phẩm ổn định trong thời gian dài</td></tr></tbody></table><h2>3. Đồ gá: phần quyết định độ ổn định của dây chuyền</h2><p>Robot chỉ lặp lại đúng một quỹ đạo, nên phôi phải nằm đúng vị trí mỗi lần. Đồ gá cho trạm tự động thường được thiết kế theo nguyên tắc định vị 3-2-1, dùng chốt định vị, kẹp khí nén và cảm biến báo có phôi hoặc kẹp chưa đóng.</p><p>Sai lệch của đồ gá cộng thẳng vào sai lệch của sản phẩm, vì vậy bản vẽ đồ gá cần dung sai chặt hơn dung sai chi tiết và cần được đo kiểm trước khi đưa vào dây chuyền.</p><h2>4. Kiểm tra ngay trong dây chuyền</h2><p>Thay vì kiểm tra lô ở cuối ca, nhiều dây chuyền kiểm tra từng chi tiết bằng camera, cảm biến đo hoặc cơ cấu chống sai (poka-yoke). Lỗi được phát hiện ngay tại trạm, tránh chuyển sai hỏng sang công đoạn sau.</p><h2>5. Bắt đầu từ đâu</h2><ol><li>Đo thời gian chu kỳ từng công đoạn để tìm nút thắt.</li><li>Chọn công đoạn lặp lại, ít thay đổi mã hàng để tự động hóa trước.</li><li>Chuẩn hóa đồ gá và phôi đầu vào trước khi đầu tư robot.</li><li>Tính thời gian hoàn vốn dựa trên sản lượng thực tế, không dựa trên công suất tối đa của thiết bị.</li></ol><p>An Vinh thiết kế và chế tạo jig, đồ gá cho các trạm hàn, lắp ráp và kiểm tra; khách hàng có thể gửi bản vẽ hoặc mô tả công đoạn để được tư vấn.</p>"
+      }
+     },
+     {
+      "type": "faq",
+      "props": {
+       "heading": "Câu hỏi thường gặp",
+       "items": [
+        {
+         "q": "Tự động hóa có phù hợp với sản lượng nhỏ?",
+         "a": "Có thể, nếu bắt đầu ở mức bán tự động: đồ gá định vị chuẩn và cảm biến chống sai đã giúp chất lượng ổn định hơn mà chi phí thấp hơn nhiều so với một cell robot."
+        },
+        {
+         "q": "Robot cộng tác khác robot công nghiệp ở điểm nào?",
+         "a": "Robot cộng tác có cảm biến giới hạn lực để làm việc gần người, thường tải nhẹ và chậm hơn; robot công nghiệp nhanh, tải lớn nhưng cần rào che an toàn."
+        }
        ]
       }
      }
@@ -601,10 +1459,24 @@
    "body": {
     "vi": [
      {
-      "type": "richtext",
+      "type": "richtext_html",
       "props": {
-       "paragraphs": [
-        "Các loại thép công cụ thế hệ mới giúp tăng tuổi thọ khuôn và cải thiện chất lượng bề mặt sản phẩm."
+       "html": "<p>Trong chế tạo khuôn mẫu, chi phí vật liệu thường chỉ chiếm một phần nhỏ tổng giá thành, nhưng lại quyết định phần lớn <strong>tuổi thọ khuôn</strong> và <strong>chất lượng bề mặt sản phẩm</strong>. Một bộ khuôn phải dừng máy sửa chữa sớm có thể khiến doanh nghiệp mất nhiều hơn khoản tiết kiệm ban đầu khi chọn vật liệu rẻ.</p><h2>1. Ba nhóm thép công cụ thường dùng</h2><p>Mỗi loại khuôn chịu tải, nhiệt độ và kiểu mài mòn khác nhau, vì vậy không có một mác thép phù hợp cho mọi trường hợp.</p><table><thead><tr><th>Nhóm thép</th><th>Mác tiêu biểu</th><th>Độ cứng sau nhiệt luyện</th><th>Ứng dụng</th></tr></thead><tbody><tr><td><strong>Làm việc nguội</strong></td><td>SKD11, DC53</td><td>~ HRC 58–62</td><td>Khuôn dập, chày cối</td></tr><tr><td><strong>Làm việc nóng</strong></td><td>SKD61</td><td>~ HRC 45–52</td><td>Khuôn đúc áp lực nhôm, kẽm</td></tr><tr><td><strong>Luyện kim bột (PM)</strong></td><td>ASP23, Vanadis 4E</td><td>~ HRC 60–64</td><td>Khuôn sản lượng lớn</td></tr></tbody></table><p><em>Giá trị tham khảo, phụ thuộc chế độ nhiệt luyện và nhà sản xuất thép.</em></p><h2>2. Thép luyện kim bột cho khuôn sản lượng lớn</h2><p>Thép luyện kim bột được chế tạo từ bột kim loại nén và thiêu kết, giúp các hạt cacbit phân bố đều và mịn hơn. Nhờ đó vật liệu vừa cứng, vừa ít bị mẻ cạnh.</p><ul><li>Phù hợp chày, cối dập tấm dày hoặc vật liệu có độ bền cao.</li><li>Giảm số lần mài sửa trong một chu kỳ sản xuất.</li><li>Giá cao hơn – nên dùng cho chi tiết chịu mòn chính, không cần cho toàn bộ khuôn.</li></ul><h2>3. Lớp phủ PVD và xử lý bề mặt</h2><ol><li><strong>TiN</strong> – tăng độ cứng bề mặt, dễ nhận biết qua màu vàng.</li><li><strong>TiAlN</strong> – chịu nhiệt tốt, phù hợp khuôn làm việc ở nhiệt độ cao.</li><li><strong>CrN</strong> – chống bám dính, phù hợp khuôn ép nhựa, dập nhôm.</li><li><strong>Thấm nitơ</strong> – tăng độ cứng lớp bề mặt mà ít biến dạng chi tiết.</li></ol><h2>4. Kinh nghiệm lựa chọn tại An Vinh</h2><p>Trước khi đề xuất vật liệu, kỹ sư An Vinh thường làm rõ: sản lượng dự kiến và nhịp sản xuất; vật liệu, độ dày sản phẩm; yêu cầu bề mặt sau dập, đúc, ép; điều kiện bảo dưỡng khuôn tại nhà máy khách hàng.</p>"
+      }
+     },
+     {
+      "type": "faq",
+      "props": {
+       "heading": "5. Câu hỏi thường gặp",
+       "items": [
+        {
+         "q": "Có nên dùng thép luyện kim bột cho toàn bộ khuôn?",
+         "a": "Thường không cần. Nên dùng cho chày, cối, lưỡi cắt để cân bằng tuổi thọ và chi phí."
+        },
+        {
+         "q": "Lớp phủ PVD có làm thay đổi kích thước khuôn?",
+         "a": "Lớp phủ rất mỏng, chỉ vài micromet, nhưng với chi tiết dung sai chặt vẫn cần tính trước khi gia công tinh."
+        }
        ]
       }
      }
@@ -635,10 +1507,24 @@
    "body": {
     "vi": [
      {
-      "type": "richtext",
+      "type": "richtext_html",
       "props": {
-       "paragraphs": [
-        "In 3D kim loại mở ra những khả năng mới trong việc tạo mẫu nhanh và sản xuất các chi tiết phức tạp."
+       "html": "<p>In 3D kim loại (sản xuất bồi đắp) tạo chi tiết bằng cách đắp vật liệu từng lớp theo mô hình 3D, thay vì cắt bỏ vật liệu như phay, tiện. Công nghệ này mở ra cách làm mới cho mẫu thử nhanh và những chi tiết có hình dạng mà dao cắt không với tới.</p><h2>1. Các công nghệ phổ biến</h2><table><thead><tr><th>Công nghệ</th><th>Nguyên lý</th><th>Ưu điểm</th><th>Hạn chế</th></tr></thead><tbody><tr><td><strong>Nung chảy lớp bột bằng laser</strong> (L-PBF, SLM, DMLS)</td><td>Tia laser nung chảy từng lớp bột kim loại mỏng</td><td>Chi tiết phức tạp, độ chính xác tốt</td><td>Buồng in nhỏ, tốc độ chậm</td></tr><tr><td><strong>Chùm điện tử</strong> (EBM)</td><td>Chùm điện tử nung chảy bột trong chân không</td><td>Ít ứng suất dư, hợp titan</td><td>Bề mặt thô, thiết bị đắt</td></tr><tr><td><strong>Lắng đọng năng lượng định hướng</strong> (DED)</td><td>Đắp bột hoặc dây kim loại vào vũng chảy</td><td>Chi tiết lớn, sửa chữa, đắp thêm</td><td>Độ chính xác thấp, cần gia công lại</td></tr><tr><td><strong>Phun chất kết dính</strong> (binder jetting)</td><td>Kết dính bột rồi thiêu kết trong lò</td><td>Nhanh, hợp loạt nhỏ</td><td>Co ngót khi thiêu kết</td></tr></tbody></table><h2>2. Vật liệu thường dùng</h2><ul><li>Thép không gỉ 316L, 17-4PH cho chi tiết chịu ăn mòn.</li><li>Thép maraging cho chèn khuôn và chi tiết cần độ cứng cao sau hóa già.</li><li>Titan Ti6Al4V cho chi tiết nhẹ, bền trong hàng không và y tế.</li><li>Nhôm AlSi10Mg cho vỏ, giá đỡ nhẹ.</li><li>Hợp kim niken như Inconel 718 cho chi tiết làm việc ở nhiệt độ cao.</li></ul><h2>3. Ứng dụng trong khuôn mẫu</h2><p>Ứng dụng rõ nhất là <strong>kênh làm mát bám theo biên dạng</strong> (conformal cooling) trong chèn khuôn ép nhựa. Khoan thẳng chỉ tạo được kênh làm mát dạng đường thẳng, còn in 3D cho phép kênh đi sát bề mặt lòng khuôn, giúp làm nguội đều hơn, giảm cong vênh và rút ngắn chu kỳ ép.</p><h2>4. Giới hạn và gia công sau in</h2><p>Chi tiết in 3D hiếm khi dùng được ngay. Thông thường cần:</p><ol><li>Xử lý nhiệt để giảm ứng suất dư.</li><li>Tách chi tiết khỏi đế in và bỏ phần đỡ.</li><li>Gia công CNC các bề mặt lắp ghép, lỗ chính xác và ren, vì bề mặt sau in thô hơn bề mặt phay.</li><li>Đo kiểm kích thước trước khi lắp.</li></ol><h2>5. In 3D và CNC: bổ sung cho nhau</h2><p>In 3D phù hợp số lượng ít, hình dạng phức tạp; gia công CNC vẫn nhanh và kinh tế hơn với chi tiết đơn giản, số lượng lớn. Nhiều nhà máy kết hợp cả hai: in phần hình dạng phức tạp, rồi phay tinh các bề mặt cần dung sai chặt.</p>"
+      }
+     },
+     {
+      "type": "faq",
+      "props": {
+       "heading": "Câu hỏi thường gặp",
+       "items": [
+        {
+         "q": "In 3D kim loại có thay thế được gia công CNC không?",
+         "a": "Không thay thế hoàn toàn. Hai công nghệ bổ sung cho nhau; phần lớn chi tiết in vẫn cần phay hoặc tiện các bề mặt chính xác."
+        },
+        {
+         "q": "Khi nào nên cân nhắc in 3D kim loại cho khuôn?",
+         "a": "Khi chèn khuôn cần kênh làm mát phức tạp hoặc sản phẩm hay cong vênh do nguội không đều; với chèn khuôn hình dạng đơn giản, gia công truyền thống thường kinh tế hơn."
+        }
        ]
       }
      }
@@ -669,19 +1555,31 @@
    "body": {
     "vi": [
      {
-      "type": "richtext",
+      "type": "richtext_html",
       "props": {
-       "paragraphs": [
-        "MTA Vietnam là triển lãm chuyên ngành về máy công cụ, gia công kim loại và tự động hóa, nơi các doanh nghiệp trong và ngoài nước giới thiệu thiết bị và giải pháp sản xuất mới.",
-        "Với doanh nghiệp cơ khí Việt Nam, đây là cơ hội để cập nhật công nghệ, tìm hiểu xu hướng gia công chính xác và tự động hóa, đồng thời mở rộng kết nối với khách hàng và nhà cung cấp.",
-        "Đi cùng cơ hội là thách thức: yêu cầu về độ chính xác, chất lượng và tiến độ ngày càng cao, đòi hỏi doanh nghiệp liên tục đầu tư thiết bị, nâng cao tay nghề và cải tiến quy trình để cạnh tranh."
+       "html": "<p>MTA Vietnam là triển lãm chuyên ngành về máy công cụ, gia công kim loại và tự động hóa, tổ chức thường niên tại Thành phố Hồ Chí Minh. Kỳ 2024 diễn ra vào tháng 7, tiếp tục là nơi doanh nghiệp cơ khí trong nước xem tận mắt thiết bị và công nghệ mới.</p><h2>1. MTA Vietnam dành cho ai</h2><p>Khách tham quan chủ yếu là chủ xưởng, kỹ sư sản xuất, bộ phận mua hàng của các nhà máy cơ khí, ô tô, điện tử. Đây là dịp so sánh nhiều hãng thiết bị trong một lần, trao đổi trực tiếp với kỹ thuật viên và xem máy chạy thực tế.</p><h2>2. Những nhóm công nghệ đáng chú ý</h2><table><thead><tr><th>Nhóm công nghệ</th><th>Điểm đáng chú ý</th><th>Ý nghĩa với xưởng gia công</th></tr></thead><tbody><tr><td>Máy CNC nhiều trục</td><td>Trung tâm gia công 5 trục, máy phay tiện kết hợp</td><td>Gia công nhiều mặt trong một lần gá</td></tr><tr><td>Cắt laser fiber</td><td>Cắt tấm nhanh, ít bavia</td><td>Rút ngắn khâu chuẩn bị phôi tấm</td></tr><tr><td>Robot và cobot</td><td>Cấp phôi cho máy CNC, hàn tự động</td><td>Giảm thao tác lặp lại, chạy thêm ca</td></tr><tr><td>Đo lường 3D</td><td>Máy đo tọa độ, máy quét 3D</td><td>Kiểm tra nhanh, có số liệu cho khách</td></tr><tr><td>Phần mềm CAD/CAM</td><td>Mô phỏng gia công, kiểm tra va chạm</td><td>Giảm lỗi khi chạy chương trình mới</td></tr></tbody></table><h2>3. Cơ hội cho doanh nghiệp trong nước</h2><p>Các nhà máy có vốn đầu tư nước ngoài tại Việt Nam có nhu cầu tìm nhà cung cấp địa phương cho linh kiện, jig, đồ gá và khuôn mẫu để rút ngắn thời gian giao hàng. Doanh nghiệp trong nước đáp ứng được yêu cầu kỹ thuật và chất lượng sẽ có cơ hội tham gia sâu hơn vào chuỗi cung ứng.</p><h2>4. Thách thức</h2><ul><li><strong>Vốn đầu tư:</strong> máy hiện đại có giá cao, cần tính kỹ sản lượng để hoàn vốn.</li><li><strong>Nhân lực:</strong> máy mới cần người lập trình, vận hành và bảo trì được đào tạo bài bản.</li><li><strong>Tiêu chuẩn chất lượng:</strong> khách hàng lớn thường yêu cầu hệ thống quản lý chất lượng, hồ sơ đo kiểm và truy xuất đầy đủ.</li><li><strong>Cạnh tranh:</strong> nhà cung cấp trong khu vực cũng đầu tư mạnh.</li></ul><h2>5. Doanh nghiệp nên chuẩn bị gì</h2><ol><li>Xác định nút thắt trong xưởng trước khi đi xem thiết bị.</li><li>Mang theo bản vẽ chi tiết điển hình để hỏi các hãng về thời gian và cách gia công.</li><li>Đầu tư cho đào tạo song song với đầu tư máy.</li><li>Hoàn thiện hệ thống quản lý chất lượng để sẵn sàng khi khách hàng đánh giá nhà cung cấp.</li></ol>"
+      }
+     },
+     {
+      "type": "faq",
+      "props": {
+       "heading": "Câu hỏi thường gặp",
+       "items": [
+        {
+         "q": "MTA Vietnam được tổ chức ở đâu?",
+         "a": "Tại Thành phố Hồ Chí Minh, thường vào khoảng tháng 7 hằng năm. Thời gian và địa điểm từng kỳ nên xem trên trang chính thức của triển lãm."
+        },
+        {
+         "q": "Doanh nghiệp nhỏ có nên đi triển lãm không?",
+         "a": "Nên, nếu đi có mục tiêu: chuẩn bị trước danh sách công đoạn cần cải thiện và bản vẽ mẫu, để buổi trao đổi với các hãng có kết quả cụ thể."
+        }
        ]
       }
      }
     ]
    },
    "seo_description": {
-    "vi": "Triển lãm MTA Vietnam 2024 giới thiệu nhiều công nghệ mới về máy công cụ và gia công kim loại, mang đến cả cơ hội lẫn thách thức cho doanh nghiệp cơ khí trong nước."
+    "vi": "MTA Vietnam 2024: các nhóm công nghệ máy công cụ, gia công kim loại đáng chú ý, cơ hội và thách thức cho doanh nghiệp cơ khí trong nước."
    }
   }
  ]

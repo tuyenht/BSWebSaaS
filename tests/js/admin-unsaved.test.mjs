@@ -97,6 +97,21 @@ test('with changes, a link asks first: another settings section says so, any oth
     assert.equal(e.defaultPrevented, true, 'closing the tab asks the browser’s question');
 });
 
+test('a page that gives its own sentence and save label shows them, read when the dialog opens', async () => {
+    const { c } = page(1);
+    const count = document.getElementById('count');
+    count.setAttribute('data-unsaved-body', 'Thay đổi vừa rồi chưa kịp tự lưu.');
+    count.setAttribute('data-unsaved-save', 'Lưu nháp và rời đi');
+    assert.equal(await navigate('/admin/catalog'), false);
+    assert.equal(c.body, 'Thay đổi vừa rồi chưa kịp tự lưu.');
+    assert.equal(c.saveText, 'Lưu nháp và rời đi');
+    c.stay();
+    count.setAttribute('data-unsaved-save', 'Cập nhật và rời đi');   // published meanwhile: the label follows
+    assert.equal(await navigate('/admin/catalog'), false);
+    assert.equal(c.saveText, 'Cập nhật và rời đi');
+    c.stay();
+});
+
 test('a link to the section already open does nothing', async () => {
     const { c } = page(1);
     assert.equal(await navigate('/admin/settings/general'), false);
@@ -263,4 +278,25 @@ test('the buttons sit on one row only when all three fit; otherwise stacked, the
     assert.equal(layoutOf(0, [150, 70, 200]), null);
     assert.deepEqual(ORDER.row, ['x', 's', 'p']);
     assert.deepEqual(ORDER.col, ['p', 's', 'x']);
+});
+
+test('leaving twice while the first leave is still sending the typed text sends once and goes once', async () => {
+    const { c, calls } = page(0);
+    let release = () => {};
+    c.$wire.$commit = () => {
+        calls.push('$commit');
+
+        return new Promise((r) => {
+            release = r;
+        });
+    };
+    c.$wire.$commit.bind(c);
+    document.getElementById('f').dispatchEvent(new window.Event('input', { bubbles: true }));
+    let gone = 0;
+    const first = c.ask(() => gone++);
+    const second = c.ask(() => gone++);
+    release();
+    await Promise.all([first, second]);
+    assert.deepEqual(calls.filter((x) => x === '$commit'), ['$commit']);
+    assert.equal(gone, 1);
 });

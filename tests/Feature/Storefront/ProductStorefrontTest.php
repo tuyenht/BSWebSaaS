@@ -175,8 +175,7 @@ it('opens a product the admin has just published — page and catalog link alike
             ->test(Editor::class)
             ->set('name', 'Jig hàn khung mới')
             ->set('slug', 'jig-han-khung-moi')
-            ->set('status', 'published')
-            ->call('save')
+            ->call('publish')
             ->assertHasNoErrors();
     });
 

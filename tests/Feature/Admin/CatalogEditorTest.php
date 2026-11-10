@@ -101,8 +101,7 @@ it('creates a product with its translation and category pivot, all stamped with 
             ->set('categoryId', $categoryId)
             ->set('price', '25000000')
             ->set('sku', 'DG-001')
-            ->set('status', 'published')
-            ->call('save')
+            ->call('publish')
             ->assertHasNoErrors();
 
         $product = Product::query()->first();
@@ -230,10 +229,8 @@ it('sanitizes rich text on write — scripts and junk styles out, allowlisted ma
             ->and($translation?->description)->toContain('<img src="https://files.baoson.net/x.png"')
             ->and($translation?->description)->toContain('youtube.com/embed/abc123')
             ->and($translation?->description)->not->toContain('evil.example.com')
-            // basic profile: no headings, inline emphasis kept, javascript: URI stripped
-            ->and($translation?->summary)->not->toContain('<h2')
-            ->and($translation?->summary)->toContain('<strong>đậm</strong>')
-            ->and($translation?->summary)->not->toContain('javascript:');
+            // the summary is plain text: kept as typed, and the website prints it as text (escaped)
+            ->and($translation?->summary)->toBe('<h2>To</h2><strong>đậm</strong><a href="javascript:alert(1)">x</a>');
     });
 });
 
@@ -288,7 +285,7 @@ it('persists and reloads the summary and SEO meta fields', function (): void {
             ->test(Editor::class)
             ->set('name', 'Đồ gá')
             ->set('slug', 'do-ga')
-            ->set('summary', '<p>Teaser <strong>ngắn</strong></p>')
+            ->set('summary', 'Teaser ngắn, gọn')
             ->set('seoTitle', 'Đồ gá hàn | An Vinh')
             ->set('seoDescription', 'Đồ gá hàn chính xác cho khung máy.')
             ->call('save')
@@ -297,7 +294,7 @@ it('persists and reloads the summary and SEO meta fields', function (): void {
         $product = Product::query()->first();
         $translation = $product?->translationFor('vi');
         expect($translation)->not->toBeNull()
-            ->and($translation?->summary)->toBe('<p>Teaser <strong>ngắn</strong></p>')
+            ->and($translation?->summary)->toBe('Teaser ngắn, gọn')
             ->and($translation?->seo_title)->toBe('Đồ gá hàn | An Vinh')
             ->and($translation?->seo_description)->toBe('Đồ gá hàn chính xác cho khung máy.')
             ->and($translation?->site_id)->toBe(1);
@@ -305,7 +302,7 @@ it('persists and reloads the summary and SEO meta fields', function (): void {
         // The edit form round-trips them back into the component state.
         Livewire::actingAs($editor->fresh())
             ->test(Editor::class, ['ulid' => $product?->ulid])
-            ->assertSet('summary', '<p>Teaser <strong>ngắn</strong></p>')
+            ->assertSet('summary', 'Teaser ngắn, gọn')
             ->assertSet('seoTitle', 'Đồ gá hàn | An Vinh')
             ->assertSet('seoDescription', 'Đồ gá hàn chính xác cho khung máy.');
     });
@@ -480,8 +477,7 @@ it('gives a published product its public address and its first publication date'
             ->test(Editor::class)
             ->set('name', 'Đồ gá hàn khung')
             ->set('slug', 'do-ga-han-khung')
-            ->set('status', 'published')
-            ->call('save')
+            ->call('publish')
             ->assertHasNoErrors();
 
         $product = Product::query()->firstOrFail();
@@ -500,7 +496,6 @@ it('leaves a draft without an address until it is published', function (): void 
             ->test(Editor::class)
             ->set('name', 'Jig kiểm')
             ->set('slug', 'jig-kiem')
-            ->set('status', 'draft')
             ->call('save')
             ->assertHasNoErrors();
 
@@ -510,8 +505,7 @@ it('leaves a draft without an address until it is published', function (): void 
 
         Livewire::actingAs($editor->fresh())
             ->test(Editor::class, ['ulid' => $product->ulid])
-            ->set('status', 'published')
-            ->call('save')
+            ->call('publish')
             ->assertHasNoErrors();
 
         expect(productRoutePath($product))->toBe('/jig-kiem');
@@ -528,8 +522,7 @@ it('moves the address with a 301 when a published product is renamed, keeping it
             ->test(Editor::class)
             ->set('name', 'Đồ gá')
             ->set('slug', 'do-ga-cu')
-            ->set('status', 'published')
-            ->call('save')
+            ->call('publish')
             ->assertHasNoErrors();
 
         $product = Product::query()->firstOrFail();
@@ -563,8 +556,7 @@ it('refuses an address a page already owns and keeps nothing of the save', funct
             ->test(Editor::class)
             ->set('name', 'Sản phẩm')
             ->set('slug', 'gioi-thieu')
-            ->set('status', 'published')
-            ->call('save')
+            ->call('publish')
             ->assertHasErrors(['slug'])
             ->assertSet('ulid', null);
 
@@ -575,8 +567,7 @@ it('refuses an address a page already owns and keeps nothing of the save', funct
             ->test(Editor::class)
             ->set('name', 'Sản phẩm')
             ->set('slug', 'san-pham-a')
-            ->set('status', 'published')
-            ->call('save')
+            ->call('publish')
             ->assertHasNoErrors();
         $product = Product::query()->firstOrFail();
 
@@ -639,7 +630,7 @@ it('refuses a draft link that a category route already owns, in the category\'s 
         expect($category->id)->toBeInt();
 
         $test = Livewire::actingAs($editor->fresh())->test(Editor::class)
-            ->set('name', 'Đĩa cắt')->set('slug', 'dao-cat')->set('status', 'draft')->call('save')
+            ->set('name', 'Đĩa cắt')->set('slug', 'dao-cat')->call('save')
             ->assertHasErrors(['slug']);
 
         expect($test->errors()->get('slug'))->toBe([__('catalog.slug_owner_category', ['slug' => 'dao-cat', 'name' => 'Đồ cắt'])])
@@ -657,8 +648,7 @@ it('gives a new product named like an application path a free address instead of
             ->test(Editor::class)
             ->set('name', 'Login')
             ->set('slug', '')
-            ->set('status', 'published')
-            ->call('save')
+            ->call('publish')
             ->assertHasNoErrors();
 
         expect(Product::query()->first()?->translationFor('vi')?->slug)->toBe('login-2');
