@@ -24,6 +24,8 @@ use App\Modules\Cms\Queries\PendingEntryDrafts;
 use App\Modules\Cms\Routing\CategoryChange;
 use App\Modules\Cms\Routing\CategoryRelinker;
 use App\Modules\Cms\Routing\PathBuilder;
+use App\Modules\Forms\Models\Form;
+use App\Modules\Forms\Models\FormField;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\Cast;
@@ -161,6 +163,7 @@ final class Planner
         $entries = $this->entryItems($pack, $context);
         $products = $this->productItems($pack, $context);
         $menus = $this->menuItems($pack, $context);
+        $forms = $this->formItems($pack, $context);
 
         foreach ($pack->items as $item) {
             $planned = match ($item->kind) {
@@ -170,6 +173,7 @@ final class Planner
                 'product' => $products[$item->key] ?? null,
                 'post', 'page' => $entries[$item->key] ?? null,
                 'menu' => $menus[$item->key] ?? null,
+                'form' => $forms[$item->key] ?? null,
                 'redirect' => $this->redirectItem($item, $context, $entries),
                 default => null,
             };
@@ -1803,6 +1807,205 @@ final class Planner
         return Entry::query()->whereKey($route->entry_id)->where('status', 'published')
             ->whereHas('translations', fn (Builder $query) => $query->where('locale', $locale)->where('status', 'published'))
             ->exists();
+    }
+
+    // ---------------------------------------------------------------- forms
+
+    /**
+     * Each form item against the site's form of that key, two queries for all of them. The state is
+     * the fields the pack names, each with what the pack manages of it — a platform field its place
+     * (and its example when the pack gives one), a field the pack adds all of it — plus the thank-you
+     * page by its key (the form stores the page's ulid). A language the pack gives no label or
+     * example keeps its live text. A form the site does not have, a platform field it lacks or a
+     * thank-you page that is neither in the pack nor on the site is a conflict: forms and their
+     * platform fields come with the site (EnsureContactForm), the loader never invents them.
+     *
+     * @return array<string, PlanItem>
+     */
+    private function formItems(Pack $pack, PlanContext $context): array
+    {
+        $items = $pack->ofKind('form');
+        if ($items === []) {
+            return [];
+        }
+
+        $forms = $this->locked(Form::query()->whereIn('key', array_map(fn (PackItem $item): string => $item->anchor(), $items)))
+            ->get(['id', 'ulid', 'key', 'settings'])->keyBy('key');
+        /** @var array<int, array<string, FormField>> $fields form id → field key → field */
+        $fields = [];
+        if ($forms->isNotEmpty()) {
+            $rows = $this->locked(FormField::query()->whereIn('form_id', $forms->pluck('id')->all()))
+                ->get(['id', 'form_id', 'key', 'type', 'label', 'is_required', 'options', 'sort_order']);
+            foreach ($rows as $row) {
+                $fields[$row->form_id][$row->key] = $row;
+            }
+        }
+
+        $targets = [];
+        foreach ($items as $item) {
+            $target = Cast::arr($item->data['settings'] ?? null)['redirect_entry'] ?? null;
+            if (is_string($target)) {
+                $targets[] = $target;
+            }
+        }
+        $this->rememberLiveTargets(array_values(array_diff(array_unique($targets), $this->knownTargets($pack))));
+        $known = $this->knownTargets($pack);
+        $stored = [];
+        foreach ($forms as $form) {
+            $ulid = Cast::arr($form->settings)['redirect_entry'] ?? null;
+            if (is_string($ulid) && $ulid !== '') {
+                $stored[] = $ulid;
+            }
+        }
+        $pages = $stored === [] ? [] : Entry::query()->where('type', 'page')->whereIn('ulid', array_values(array_unique($stored)))->pluck('id', 'ulid')->all();
+        $this->rememberEntryKeys(array_map(fn (mixed $id): int => Cast::int($id), array_values($pages)));
+
+        $planned = [];
+        foreach ($items as $item) {
+            $form = $forms->get($item->anchor());
+            $packFields = array_values(array_map(fn (mixed $field): array => Cast::arr($field), Cast::arr($item->data['fields'] ?? null)));
+            if (! $form instanceof Form) {
+                $planned[$item->key] = $this->decide($context, $item, null, $this->desiredForm($item, $packFields, []), null, null,
+                    conflict: "the site has no form '{$item->anchor()}'; forms come with the site, the loader never creates one");
+
+                continue;
+            }
+            $this->matched[$item->key] = $form->id;
+
+            $live = $fields[$form->id] ?? [];
+            $current = ['fields' => []];
+            $problems = [];
+            foreach ($packFields as $field) {
+                $key = Cast::string($field['key'] ?? null);
+                $row = $live[$key] ?? null;
+                $current['fields'][$key] = $row === null ? null : self::fieldState($field, $row);
+                if ($row === null && self::isPlatformField($key)) {
+                    $problems[] = $key;
+                }
+            }
+            $settings = Cast::arr($item->data['settings'] ?? null);
+            if (array_key_exists('redirect_entry', $settings)) {
+                $ulid = Cast::arr($form->settings)['redirect_entry'] ?? null;
+                $id = is_string($ulid) ? ($pages[$ulid] ?? null) : null;
+                $current['redirect_entry'] = $id === null ? $ulid : ($this->entryKeys[Cast::int($id)] ?? $ulid);
+            }
+
+            $conflict = null;
+            $target = Cast::stringOrNull($settings['redirect_entry'] ?? null);
+            if ($problems !== []) {
+                $conflict = "the site's form has no platform field ".implode(', ', $problems).' (forms:sync-contact-fields restores it); the loader places platform fields, never creates them';
+            } elseif ($target !== null && ! in_array($target, $known, true)) {
+                $conflict = "the thank-you page {$target} is neither in the pack nor on the site";
+            }
+
+            $notes = [];
+            foreach (array_diff(array_keys($live), array_keys($current['fields'])) as $other) {
+                $notes[] = "field {$other} is not in the pack and keeps its place (".Cast::int($live[$other]->getAttribute('sort_order')).')';
+            }
+
+            $planned[$item->key] = $this->decide($context, $item, $current, $this->desiredForm($item, $packFields, $live), $form->ulid, $form->id, $notes, conflict: $conflict);
+        }
+
+        return $planned;
+    }
+
+    /**
+     * What the pack makes of the form's fields and settings, in the shape fieldState() reads them.
+     *
+     * @param  list<array<array-key, mixed>>  $packFields
+     * @param  array<string, FormField>  $live
+     * @return array<string, mixed>
+     */
+    private function desiredForm(PackItem $item, array $packFields, array $live): array
+    {
+        $desired = ['fields' => []];
+        foreach ($packFields as $field) {
+            $key = Cast::string($field['key'] ?? null);
+            $row = $live[$key] ?? null;
+            $state = ['sort_order' => Cast::int($field['sort_order'] ?? null)];
+            if (! self::isPlatformField($key) && $key !== 'consent') {
+                $state['type'] = Cast::string($field['type'] ?? null);
+                $state['label'] = self::localeTexts($row?->label, $field['label'] ?? null);
+                $state['is_required'] = ($field['is_required'] ?? false) === true;
+                $state['choices'] = self::choiceState(Cast::arr($field['choices'] ?? null));
+            }
+            if (array_key_exists('placeholder', $field)) {
+                $state['placeholder'] = self::localeTexts(Cast::arr($row?->options)['placeholder'] ?? null, $field['placeholder']);
+            }
+            $desired['fields'][$key] = $state;
+        }
+        $settings = Cast::arr($item->data['settings'] ?? null);
+        if (array_key_exists('redirect_entry', $settings)) {
+            $desired['redirect_entry'] = Cast::string($settings['redirect_entry']);
+        }
+
+        return $desired;
+    }
+
+    /**
+     * One live field as the pack's entry for it manages it (see desiredForm()).
+     *
+     * @param  array<array-key, mixed>  $field
+     * @return array<string, mixed>
+     */
+    public static function fieldState(array $field, FormField $row): array
+    {
+        $key = Cast::string($field['key'] ?? null);
+        $options = Cast::arr($row->getAttribute('options'));
+        $state = ['sort_order' => Cast::int($row->getAttribute('sort_order'))];
+        if (! self::isPlatformField($key) && $key !== 'consent') {
+            $state['type'] = $row->type;
+            $state['label'] = self::localeTexts($row->label, null);
+            $state['is_required'] = $row->is_required;
+            $state['choices'] = self::choiceState(Cast::arr($options['choices'] ?? null));
+        }
+        if (array_key_exists('placeholder', $field)) {
+            $state['placeholder'] = self::localeTexts($options['placeholder'] ?? null, null);
+        }
+
+        return $state;
+    }
+
+    private static function isPlatformField(string $key): bool
+    {
+        return in_array($key, PackValidator::FORM_PLATFORM_FIELDS, true);
+    }
+
+    /**
+     * A language map of texts: the live one with the pack's languages written over it.
+     *
+     * @return array<string, string>
+     */
+    private static function localeTexts(mixed $live, mixed $pack): array
+    {
+        $texts = [];
+        foreach (array_replace(Cast::arr($live), Cast::arr($pack)) as $locale => $text) {
+            $texts[(string) $locale] = Cast::string($text);
+        }
+        ksort($texts, SORT_STRING);
+
+        return $texts;
+    }
+
+    /**
+     * Choices as the storefront reads them (FormFieldTypes::choices): value and label per language,
+     * a choice without a value or with a value already listed dropped.
+     *
+     * @param  array<array-key, mixed>  $choices
+     * @return list<array{value: string, label: array<string, string>}>
+     */
+    private static function choiceState(array $choices): array
+    {
+        $state = [];
+        foreach ($choices as $choice) {
+            $choice = Cast::arr($choice);
+            $value = Cast::string($choice['value'] ?? null);
+            if ($value !== '' && ! isset($state[$value])) {
+                $state[$value] = ['value' => $value, 'label' => self::localeTexts($choice['label'] ?? null, null)];
+            }
+        }
+
+        return array_values($state);
     }
 
     // ---------------------------------------------------------------- addresses

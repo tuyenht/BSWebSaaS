@@ -164,7 +164,7 @@ Rollback (any step): `sed -i '/^DB_ADMIN_PASSWORD=/d' /opt/bswebsaas/prod/.env &
 
 ## Loading a site's content pack
 
-`site:load-content` writes a pack from `database/content-packs/<pack>/` into one site. It runs as the app user inside that site's tenant context, never as the superuser. It never deletes anything, and it skips what staff changed since the last load unless an item is named with `--force-item=<key>`. The owner runs every step.
+`site:load-content` writes a pack from `database/content-packs/<pack>/` into one site. It runs as the app user inside that site's tenant context, never as the superuser. It never deletes anything, and it skips what staff changed since the last load unless an item is named with `--force-item=<key>`. A form item (`forms.json`, `form:<key>`) places the site's existing form fields, adds the pack's extra fields and names the thank-you page a send opens; it only places the platform's own fields (and may give them an example), and never creates a form. The owner runs every step.
 
 1. Take the pre-deploy dump (Before, step 4), even when the delta has no migration.
 2. Dry run, which writes nothing: `docker exec bsweb_prod_app php artisan site:load-content an-vinh --host=av1.baoson.net -v`. Read the unpublish notes, the `skip:*` lines and the warnings. Any `conflict` line stops the load: the command exits 1 and refuses to apply. This output is what you read before `--apply`. On the first load into a site whose products the loader did not write, every product shows `skip:edited`, because catalog edits leave no history. Check each one, then name it with `--force-item=product:<slug>` in both the dry run and the apply.

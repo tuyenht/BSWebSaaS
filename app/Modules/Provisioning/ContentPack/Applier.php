@@ -24,6 +24,7 @@ use App\Modules\Cms\Support\BlockMediaUsage;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
 use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
+use App\Modules\Forms\Models\Form;
 use App\Modules\Media\Models\Media;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\PermalinkConfig;
@@ -35,7 +36,7 @@ use Illuminate\Support\Carbon;
 
 /**
  * Writes a plan's create / update / adopt items, in kind order (settings → profile → categories →
- * products → posts → pages → menus → redirects), inside the caller's tenant transaction. It writes
+ * products → posts → pages → forms → menus → redirects), inside the caller's tenant transaction. It writes
  * exactly the plan's `desired` state through the platform's own writers: RouteSync for every
  * address (301 + chain collapse), CategoryRelinker after a category rename, assignCategories() for
  * filing, RecordEntryRevision before and after an entry write (staff can restore the earlier text
@@ -90,6 +91,7 @@ final class Applier
                 'taxonomy' => $this->taxonomy($planned, $planner),
                 'product' => $this->product($planned),
                 'post', 'page' => $this->entry($planned, $planner),
+                'form' => $this->form($planned, $planner),
                 'menu' => $this->menu($planned, $planner),
                 'redirect' => $this->redirect($planned),
                 default => null,
@@ -362,6 +364,57 @@ final class Applier
             if ($status === 'published' || $routed) {
                 $this->routes->syncProduct($product->id, $product->primaryCategory(), $locale, $slug);
             }
+        }
+    }
+
+    /**
+     * The form's fields as planned — each named field placed, a platform field's example and a
+     * field the pack adds written whole, the field's other options kept — and the thank-you page
+     * stored by its ulid next to the form's other settings. Fields the pack does not name stay.
+     */
+    private function form(PlanItem $planned, Planner $planner): void
+    {
+        $form = Form::query()->findOrFail($planned->recordId);
+        $live = $form->fields()->get()->keyBy('key');
+
+        foreach (Cast::arr($planned->desired['fields'] ?? null) as $key => $state) {
+            $state = Cast::arr($state);
+            $row = $live->get((string) $key);
+            $options = Cast::arr($row?->getAttribute('options'));
+            $attributes = ['sort_order' => Cast::int($state['sort_order'] ?? null)];
+            if (array_key_exists('type', $state)) {
+                $attributes += [
+                    'type' => Cast::string($state['type']),
+                    'label' => Cast::arr($state['label'] ?? null),
+                    'is_required' => ($state['is_required'] ?? false) === true,
+                ];
+                $choices = Cast::arr($state['choices'] ?? null);
+                if ($choices === []) {
+                    unset($options['choices']);
+                } else {
+                    $options['choices'] = $choices;
+                }
+            }
+            if (array_key_exists('placeholder', $state)) {
+                $options['placeholder'] = Cast::arr($state['placeholder']);
+            }
+            $attributes['options'] = $options;
+
+            if ($row === null) {
+                $form->fields()->create(['key' => (string) $key] + $attributes);
+            } else {
+                $row->update($attributes);
+            }
+        }
+
+        if (array_key_exists('redirect_entry', $planned->desired)) {
+            $page = Cast::string($planned->desired['redirect_entry']);
+            $id = $this->ids[$page] ?? $planner->liveTarget($page);
+            $ulid = $id === null ? null : Entry::query()->whereKey($id)->where('type', 'page')->value('ulid');
+            if (! is_string($ulid)) {
+                throw new PackRejected("Refused: {$planned->item->key} opens {$page} after a send, which does not exist on the site.");
+            }
+            $form->update(['settings' => array_replace(Cast::arr($form->settings), ['redirect_entry' => $ulid])]);
         }
     }
 

@@ -12,6 +12,7 @@ use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Forms\Models\Form;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Models\SiteProfile;
@@ -21,8 +22,8 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Before --apply writes anything: a gzip JSON file of every row the plan is about to change (per
- * item: the record, its translations, routes, category links, images, image-usage rows or menu
- * tree; for a category, the routes of the posts and products it carries along; settings; the
+ * item: the record, its translations, routes, category links, images, image-usage rows, menu
+ * tree or form fields; for a category, the routes of the posts and products it carries along; settings; the
  * profile; redirects) plus every redirect from or to an address the load moves, writes or vacates
  * (the new addresses of the posts and products a category carries along included),
  * and the previous ledger, so one item can be inspected or restored by hand.
@@ -160,6 +161,7 @@ final readonly class Backup
             'product' => $this->productRows((int) $id),
             'taxonomy' => $this->taxonomyRows((int) $id, $planned->item->key, $planner),
             'menu' => $this->menuRows($id, $planned->item->anchor(), $planner->defaultLocale()),
+            'form' => $this->formRows((int) $id),
             'setting' => $this->settingRows($planned->item->anchor()),
             'profile' => $this->profileRows(),
             'redirect' => $this->redirectRows($planned->item->anchor()),
@@ -236,6 +238,21 @@ final readonly class Backup
                 ->orderBy('id')->get()->map(fn (Model $row): array => $row->attributesToArray())->all(),
             'items' => $id === null ? [] : MenuItem::withTrashed()->with('translations')->where('menu_id', $id)->orderBy('id')->get()
                 ->map(fn (MenuItem $row): array => $row->attributesToArray() + ['translations' => $row->translations->map(fn (Model $t): array => $t->attributesToArray())->all()])->all(),
+        ];
+    }
+
+    /**
+     * The form row (its settings hold the thank-you page) and every one of its fields.
+     *
+     * @return array<string, mixed>
+     */
+    private function formRows(int $id): array
+    {
+        $form = Form::query()->with('fields')->findOrFail($id);
+
+        return [
+            'form' => $form->attributesToArray(),
+            'fields' => $form->fields->map(fn (Model $row): array => $row->attributesToArray())->all(),
         ];
     }
 

@@ -357,7 +357,7 @@ final class LoadContentPackCommand extends Command
         $ledger = $plan->ledger === null ? 'none (first load)' : "v{$plan->ledger['pack_version']} loaded {$plan->ledger['loaded_at']}";
         $this->line("Site: {$plan->siteName} ({$plan->host})   Pack: {$plan->pack->code} v{$plan->pack->version}   Ledger: {$ledger}");
 
-        $labels = ['setting' => 'SETTINGS', 'profile' => 'PROFILE', 'taxonomy' => 'TAXONOMY', 'product' => 'PRODUCTS', 'post' => 'POSTS', 'page' => 'PAGES', 'menu' => 'MENUS', 'redirect' => 'REDIRECTS'];
+        $labels = ['setting' => 'SETTINGS', 'profile' => 'PROFILE', 'taxonomy' => 'TAXONOMY', 'product' => 'PRODUCTS', 'post' => 'POSTS', 'page' => 'PAGES', 'form' => 'FORMS', 'menu' => 'MENUS', 'redirect' => 'REDIRECTS'];
         $verbose = $this->output->getVerbosity() >= OutputInterface::VERBOSITY_VERBOSE;
         // -vv: each changed field in full, so what staff wrote can be compared with the pack before a --force-item
         $full = $this->output->getVerbosity() >= OutputInterface::VERBOSITY_VERY_VERBOSE;
