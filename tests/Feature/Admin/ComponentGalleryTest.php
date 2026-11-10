@@ -96,6 +96,20 @@ it('renders the list tools (status groups, search field and Filter panel)', func
         ->assertSee('data-g="trash" data-pin="1"', false);
 });
 
+it('renders the shared list rows in each state: selected, read-only, Trash, with a long name', function (): void {
+    $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
+
+    $this->actingAs($owner)->get('http://anvinh.platform.test/admin/_gallery')
+        ->assertOk()
+        ->assertSee('<div role="table" aria-label="Danh sách mẫu" class="list-g">', false)
+        ->assertSee('<div role="row" class="list-r list-hd">', false)
+        ->assertSee('data-sel="1"', false)
+        ->assertSee('aria-checked="mixed"', false)
+        ->assertSee('Chính sách bảo hành và đổi trả sản phẩm gia công cơ khí chính xác cho khách hàng doanh nghiệp tại Việt Nam')
+        ->assertSee('<span class="list-name">Trang cũ đã bỏ</span>', false)
+        ->assertSee('aria-label="'.__('admin.list.more_for', ['name' => 'Trang cũ đã bỏ']).'"', false);
+});
+
 it('renders the interactive primitives (dropdown, tabs, tooltip, modal) with a11y roles', function (): void {
     $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
 

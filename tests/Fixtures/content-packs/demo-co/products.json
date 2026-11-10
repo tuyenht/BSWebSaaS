@@ -1,0 +1,44 @@
+{
+ "items": [
+  {
+   "key": "product:may-mau-a",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:post_cat/san-pham"
+   ],
+   "images": [
+    {
+     "media": "product-a"
+    }
+   ],
+   "name": {
+    "vi": "Máy mẫu A"
+   },
+   "summary": {
+    "vi": "Máy mẫu dùng để thử."
+   },
+   "description": {
+    "vi": "<p>Máy mẫu A dùng để thử.</p>"
+   }
+  },
+  {
+   "key": "product:may-mau-b",
+   "verified": false,
+   "claims": [
+    "Công suất 10 kW"
+   ],
+   "status": "draft",
+   "categories": [
+    "tax:post_cat/san-pham"
+   ],
+   "images": [],
+   "name": {
+    "vi": "Máy mẫu B"
+   },
+   "summary": {
+    "vi": "Công suất 10 kW."
+   }
+  }
+ ]
+}

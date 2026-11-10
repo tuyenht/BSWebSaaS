@@ -6,6 +6,8 @@
 
 ## Nguồn thiết kế (vòng nhận: `README.md` → "Nối Claude Code ↔ Claude Design")
 
+> **Từ 26/10/2026, nguồn duy nhất của giao diện quản trị là canvas thiết kế của owner** (link trong skill `bs-design-canvas`, bản sao `plans/design-canvas/admin/project/`). Bản export 18/09 và các link publish dưới đây là lịch sử, không port theo chúng.
+
 - **Export dự án Claude Design 18/09/2026** → `design-source/` (32 màn `.dc.html` + script dùng chung + token + ghi chú dự án).
   Các cột "Thiết kế" trong bảng dưới đối chiếu với bản này.
 - **Link publish** (29/09 kiểm: phần logic giống hệt export 18/09): Trình đơn 72uxdN6nMYG1RJhthnjV7F · Bài viết

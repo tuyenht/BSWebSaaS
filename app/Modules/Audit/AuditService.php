@@ -41,33 +41,7 @@ final class AuditService
     public function record(string $action, array $context = []): void
     {
         try {
-            $user = Auth::user();
-            $current = app(CurrentSite::class);
-            $request = request();
-            // Signed in as a member for support: the member is the actor, the staff member stands behind.
-            $support = app(SupportSession::class)->current();
-
-            $entry = new AuditLog([
-                // Kept only when it looks like one (uuid, ray id…): it comes from the client.
-                'request_id' => RequestId::accept($request->headers->get(RequestId::HEADER)),
-                'actor_id' => $context['actor_id'] ?? $user?->getAuthIdentifier(),
-                'actor_label' => $context['actor_label'] ?? ($user instanceof User ? $user->email : null),
-                'impersonator_id' => $support['staff_id'] ?? null,
-                'impersonator_label' => $support['staff_label'] ?? null,
-                // The caller names the code only on the console's "issued" row; everywhere else it comes
-                // from the session itself, so no caller can stamp a row with another session's code.
-                'support_session_ulid' => ($action === self::SUPPORT_SESSION_ISSUED ? $context['support_session_ulid'] ?? null : null)
-                    ?? $support['session_ulid'] ?? null,
-                'site_id' => $context['site_id'] ?? ($current->hasId() ? $current->id() : null),
-                'action' => $action,
-                'auditable_type' => $context['auditable_type'] ?? null,
-                'auditable_id' => $context['auditable_id'] ?? null,
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-                'meta' => $context['meta'] ?? [],
-                'created_at' => now(),
-            ]);
-
+            $entry = $this->entry($action, $context);
             $entry->getConnection()->transaction(fn (): bool => $entry->save());
         } catch (Throwable $e) {
             // Inside a transaction a lock conflict has already aborted it (Laravel rethrows without
@@ -79,5 +53,52 @@ final class AuditService
 
             report($e); // best-effort — swallow so the caller's flow is never blocked
         }
+    }
+
+    /**
+     * Records the row or throws: for a change that must not happen unaudited, run inside the same
+     * transaction as the change, so a failed insert rolls the change back too. Same context as
+     * record().
+     *
+     * @param  array<string, mixed>  $context
+     * @return string the row's ulid
+     */
+    public function recordOrFail(string $action, array $context = []): string
+    {
+        $entry = $this->entry($action, $context);
+        $entry->saveOrFail();
+
+        return $entry->ulid;
+    }
+
+    /** @param  array<string, mixed>  $context */
+    private function entry(string $action, array $context): AuditLog
+    {
+        $user = Auth::user();
+        $current = app(CurrentSite::class);
+        $request = request();
+        // Signed in as a member for support: the member is the actor, the staff member stands behind.
+        $support = app(SupportSession::class)->current();
+
+        return new AuditLog([
+            // Kept only when it looks like one (uuid, ray id…): it comes from the client.
+            'request_id' => RequestId::accept($request->headers->get(RequestId::HEADER)),
+            'actor_id' => $context['actor_id'] ?? $user?->getAuthIdentifier(),
+            'actor_label' => $context['actor_label'] ?? ($user instanceof User ? $user->email : null),
+            'impersonator_id' => $support['staff_id'] ?? null,
+            'impersonator_label' => $support['staff_label'] ?? null,
+            // The caller names the code only on the console's "issued" row; everywhere else it comes
+            // from the session itself, so no caller can stamp a row with another session's code.
+            'support_session_ulid' => ($action === self::SUPPORT_SESSION_ISSUED ? $context['support_session_ulid'] ?? null : null)
+                ?? $support['session_ulid'] ?? null,
+            'site_id' => $context['site_id'] ?? ($current->hasId() ? $current->id() : null),
+            'action' => $action,
+            'auditable_type' => $context['auditable_type'] ?? null,
+            'auditable_id' => $context['auditable_id'] ?? null,
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'meta' => $context['meta'] ?? [],
+            'created_at' => now(),
+        ]);
     }
 }

@@ -110,12 +110,12 @@ jobs:
           echo "${verdict}"
           echo "${verdict}" >> "${GITHUB_STEP_SUMMARY}"
 
-  guardrails:
-    name: Guardrails (pint · phpstan · pest · migrate)
+  static:
+    name: Static checks (pint · phpstan · lang)
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 15
 
     services:
       postgres:
@@ -204,10 +204,120 @@ jobs:
       - name: Translations (same keys in every language)
         run: php artisan lang:check
 
-      # One process runs every suite, and its memory grows with the test count (the run died at
-      # 256M near 1190 tests). The limit is raised for this step only; composer qa matches it.
-      - name: Pest (unit · feature · arch · query-budget)
-        run: php -d memory_limit=512M vendor/bin/pest
+  pest:
+    name: Pest shard ${{ matrix.shard }}/4
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    strategy:
+      # One red shard must not hide the others.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_DB: bswebsaas
+          POSTGRES_USER: bsweb
+          POSTGRES_PASSWORD: secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U bsweb -d bswebsaas"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+      valkey:
+        image: valkey/valkey:8.1-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+
+    env:
+      # CI talks to Postgres directly (no PgBouncer). RUNTIME/tests connect as the
+      # restricted app_user so RLS is enforced; migrations use the privileged role.
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: bswebsaas
+      DB_USERNAME: app_user
+      DB_PASSWORD: app_secret
+      DB_ADMIN_HOST: 127.0.0.1
+      DB_ADMIN_PORT: 5432
+      DB_ADMIN_USERNAME: bsweb
+      DB_ADMIN_PASSWORD: secret
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: 6379
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
+      SESSION_DRIVER: redis
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup PHP 8.5
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: pdo_pgsql, pgsql, redis, intl, zip, bcmath, gd, pcntl, sodium, pdo_sqlite, sqlite3
+          # Mirror docker/frankenphp/conf.d/app.ini so the runtime matches dev/prod: the browser-upload
+          # ceiling stays at/above the 10MB media cap (UploadMediaTest guards this — stock 2M/8M fall below).
+          ini-values: upload_max_filesize=12M, post_max_size=16M, memory_limit=256M
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v6
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Migrate (PostgreSQL + extensions + restricted app role)
+        run: php artisan migrate --database=pgsql_admin --force
+
+      # The suite is split by test count into four shards that run side by side, each on its own
+      # database. One process used to run every suite and reached the job's 30-minute limit. Its
+      # memory grows with the test count and the code the arch rules parse (it died at 256M near
+      # 1190 tests, peaked at 530M near 2880 and died at 768M near 4540), so the limit stays raised.
+      - name: Pest (unit · feature · arch · query-budget) shard ${{ matrix.shard }}/4
+        run: php -d memory_limit=1G vendor/bin/pest --shard=${{ matrix.shard }}/4
+
+  # The check name that existed before the split; branch protection may require it (deploy scripts read the run conclusion):
+  # it is green only when the static job and every Pest shard are green. It skips under the same
+  # condition the jobs above skip (documents only).
+  guardrails:
+    name: Guardrails (pint · phpstan · pest · migrate)
+    needs: [changes, static, pest]
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Every part succeeded
+        shell: bash
+        env:
+          STATIC: ${{ needs.static.result }}
+          PEST: ${{ needs.pest.result }}
+        run: |
+          echo "static=${STATIC} pest=${PEST}"
+          [ "${STATIC}" = success ] && [ "${PEST}" = success ]
 
   frontend:
     name: Frontend build (Vite + Tailwind)
@@ -237,10 +347,26 @@ jobs:
       - name: Build assets (Vite + Tailwind 4)
         run: pnpm run build
 
+      # What each page downloads, gzipped, against scripts/asset-budget.json: an entry or a lazy chunk that grows more
+      # than 3% over its line, or a new one with no line, fails. Record an intended change with --update. Pure Node.
+      - name: Asset size budget
+        run: node scripts/asset-budget.mjs
+
       # Gate the admin design tokens at WCAG AA: reads the token values straight from the CSS and
       # fails if any checked text/border/focus pair drops below its threshold. Pure Node, no deps.
       - name: Contrast tokens (WCAG AA)
         run: node scripts/contrast-check.mjs
+
+      - name: JS unit tests (tree drag rule)
+        run: node --test 'tests/js/*.test.mjs'
+
+      # The storefront slider's behaviour (rotation, pause, keys, reduced motion) in jsdom.
+      - name: Storefront slider behaviour
+        run: node scripts/storefront/slider-check.mjs
+
+      # The click-to-load video: link → button, no player before the press, player + focus after.
+      - name: Storefront video behaviour
+        run: node scripts/storefront/video-check.mjs
 
       # New lines in resources/ and module Blade must use the standard token names
       # (docs/notes/design-tokens.md §7); lines already on main are left to move over as touched.
@@ -297,7 +423,7 @@ jobs:
       CACHE_STORE: redis
       QUEUE_CONNECTION: redis
       SESSION_DRIVER: redis
-      # phpunit.xml sets these for the Pest run in `guardrails`; this job calls `artisan`
+      # phpunit.xml sets these for the Pest run in `pest`; this job calls `artisan`
       # commands directly (no Pest), so the fail-closed guards (PepperedArgon2IdHasher,
       # SecretCipher) need their own values here. Same test-only strings phpunit.xml uses,
       # not secrets.
@@ -358,6 +484,17 @@ jobs:
             --owner-email="cwv-ci@example.test" \
             --no-interaction
 
+      # The richer storefront looks on real pages: /do-kiem (slider, card grids, contact cards)
+      # and /ban-tin, a news card grid with child-category chips. The photos are the licensed
+      # fixtures in tests/Fixtures/cwv, served from this origin by the static media driver (the
+      # serving steps below set MEDIA_DRIVER/MEDIA_CF_BASE; a media host equal to the site's host
+      # would make provisioning refuse the name, so it is not set job-wide).
+      - name: Seed the measurement pages
+        run: |
+          php artisan site:seed-measurement --host="${CWV_HOST}"
+          mkdir -p public/cwv-media/cwv/library
+          cp tests/Fixtures/cwv/*.webp public/cwv-media/cwv/library/
+
       # Chrome (via Lighthouse/axe) resolves this by real hostname, same as production —
       # no Host-header spoofing needed, and the multi-tenant domain resolver sees a real domain.
       - name: Map the CI hostname to localhost
@@ -375,11 +512,15 @@ jobs:
           chrome-version: stable
           install-chromedriver: true
 
-      # Self-contained: lhci boots `php artisan serve`, waits for it, runs Lighthouse 3x,
+      # Self-contained: lhci boots PHP's built-in server behind scripts/cwv-serve.php (gzip, as
+      # production's Caddy compresses), waits for it, runs Lighthouse 3x,
       # asserts against .lighthouserc.cjs, then stops the server. LCP ≤ 1.5s and JS ≤ 30KB
       # FAIL the job (calibrated 24/09 on 18 real samples — see that file); the overall
       # performance score only warns.
       - name: Lighthouse CI (performance + LCP + JS budget)
+        env:
+          MEDIA_DRIVER: static
+          MEDIA_CF_BASE: http://${{ env.CWV_HOST }}:${{ env.CWV_PORT }}/cwv-media
         run: pnpm exec lhci autorun --collect.chromePath="${{ steps.chrome.outputs.chrome-path }}"
 
       # The numbers the "warn" thresholds must be calibrated against, printed where they cannot
@@ -447,6 +588,9 @@ jobs:
           retention-days: 7
 
       - name: Boot a server for the axe pass
+        env:
+          MEDIA_DRIVER: static
+          MEDIA_CF_BASE: http://${{ env.CWV_HOST }}:${{ env.CWV_PORT }}/cwv-media
         run: |
           php artisan serve --host=0.0.0.0 --port="${CWV_PORT}" &
           for i in $(seq 1 15); do
@@ -460,7 +604,7 @@ jobs:
       # fixed de81d6b), clean on every run since. A WCAG2A/AA violation fails the job (--exit).
       - name: axe accessibility scan
         run: >-
-          pnpm exec axe "http://${CWV_HOST}:${CWV_PORT}/" "http://${CWV_HOST}:${CWV_PORT}/lien-he" "http://${CWV_HOST}:${CWV_PORT}/tin-tuc"
+          pnpm exec axe "http://${CWV_HOST}:${CWV_PORT}/" "http://${CWV_HOST}:${CWV_PORT}/lien-he" "http://${CWV_HOST}:${CWV_PORT}/tin-tuc" "http://${CWV_HOST}:${CWV_PORT}/do-kiem" "http://${CWV_HOST}:${CWV_PORT}/ban-tin"
           --tags wcag2a,wcag2aa
           --chrome-path="${{ steps.chrome.outputs.chrome-path }}"
           --chromedriver-path="${{ steps.chrome.outputs.chromedriver-path }}"

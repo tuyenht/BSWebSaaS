@@ -1,0 +1,31 @@
+{
+ "items": [
+  {
+   "key": "tax:post_cat/tin-tuc",
+   "name": {
+    "vi": "Tin tức"
+   },
+   "list_template": "grid-news"
+  },
+  {
+   "key": "tax:post_cat/tin-tuc/cap-nhat",
+   "parent": "tax:post_cat/tin-tuc",
+   "name": {
+    "vi": "Cập nhật"
+   },
+   "position": 1
+  },
+  {
+   "key": "tax:post_cat/dich-vu",
+   "name": {
+    "vi": "Dịch vụ"
+   }
+  },
+  {
+   "key": "tax:post_cat/san-pham",
+   "name": {
+    "vi": "Sản phẩm"
+   }
+  }
+ ]
+}

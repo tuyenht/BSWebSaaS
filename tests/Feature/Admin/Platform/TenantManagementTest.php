@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Admin\Support\Customers\CustomerDirectory;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Support\PlatformAccess;
@@ -86,10 +87,10 @@ it('lists tenants without an N+1 on the site count', function (): void {
         ['ulid' => 'TENANT0000000000000000003', 'name' => 'C3', 'status' => 'active', 'settings' => '{}', 'created_at' => now(), 'updated_at' => now()],
     ]);
 
-    // Mirrors the Index component query: withCount folds the site count into the select, so
-    // the query count is constant (paginator count + select) regardless of how many tenants.
+    // The Index component's page read: the site count and the owner are folded into one select,
+    // so a page costs the same however many customers it holds.
     $queries = countQueries(function (): void {
-        Tenant::query()->withCount('sites')->orderBy('id')->paginate(20);
+        app(CustomerDirectory::class)->page('', '', [], 20, '', '');
     });
 
     expect($queries)->toBeLessThanOrEqual(3);

@@ -70,6 +70,149 @@
         </div>
     </x-bs-admin::card>
 
+    {{-- Record status pills: every status, then the menu trigger beside a row's buttons --}}
+    <x-bs-admin::card :title="__('entries.status_label')">
+        <div class="space-y-3">
+            <div class="flex flex-wrap items-center gap-2">
+                @foreach (['published', 'draft', 'scheduled', 'pending', 'private', 'archived'] as $status)
+                    <x-bs-admin::status-pill :status="$status">{{ __('entries.status_'.$status) }}</x-bs-admin::status-pill>
+                @endforeach
+            </div>
+            <div class="flex flex-wrap items-center gap-2" x-data="{ open: false }">
+                <x-bs-admin::status-pill button status="published" x-on:click="open = ! open" x-bind:aria-expanded="open.toString()" aria-haspopup="true">{{ __('entries.status_published') }}</x-bs-admin::status-pill>
+                <x-bs-admin::button size="sm" variant="soft" color="secondary">{{ __('admin.view') }}</x-bs-admin::button>
+                <x-bs-admin::button size="sm" variant="soft" color="primary">{{ __('entries.edit_action') }}</x-bs-admin::button>
+            </div>
+        </div>
+    </x-bs-admin::card>
+
+    {{-- Shared list row: one row in each state (card < 600, one line to 900, table from 900 — by the list's width) --}}
+    <x-bs-admin::card title="List rows">
+        @php
+            $galleryRows = [
+                ['title' => 'Giới thiệu công ty', 'pill' => 'published', 'meta' => ['/gioi-thieu', '1.204 lượt xem'], 'author' => 'Nguyễn Văn Demo', 'when' => '12 Thg 10, 2026', 'state' => 'normal', 'langs' => ['vi', 'en', 'ja'], 'has' => ['vi', 'en']],
+                ['title' => 'Chính sách bảo hành và đổi trả sản phẩm gia công cơ khí chính xác cho khách hàng doanh nghiệp tại Việt Nam', 'pill' => 'draft', 'meta' => ['/chinh-sach-bao-hanh-va-doi-tra-san-pham-gia-cong-co-khi-chinh-xac', 'Chưa có lượt xem'], 'author' => 'Trần Thị Ngọc Anh', 'when' => '30 Thg 10, 2026', 'state' => 'selected', 'langs' => ['vi', 'en', 'ja', 'zh', 'ko'], 'has' => ['vi', 'en']],
+                ['title' => 'Tuyển dụng kỹ sư CNC', 'pill' => 'scheduled', 'meta' => ['/tuyen-dung', 'Chưa có lượt xem'], 'author' => 'Lê Minh Trí', 'when' => 'Lên lịch 05 Thg 11, 2026 · 08:00', 'state' => 'readonly', 'langs' => ['vi', 'en'], 'has' => ['vi']],
+                ['title' => 'Trang cũ đã bỏ', 'pill' => 'archived', 'meta' => ['/trang-cu', '18 lượt xem'], 'author' => 'Nguyễn Văn Demo', 'when' => '01 Thg 9, 2026', 'state' => 'trashed', 'langs' => ['vi', 'en'], 'has' => ['vi', 'en']],
+            ];
+        @endphp
+        <x-bs-admin::list label="Danh sách mẫu" class="-mx-4">
+            <x-slot:select>
+                <x-bs-admin::list.check checked="mixed" label="Chọn tất cả" visible />
+            </x-slot:select>
+            <x-bs-admin::list.head>
+                <x-bs-admin::list.cell head col="chk"><x-bs-admin::list.check checked="mixed" label="Chọn tất cả" /></x-bs-admin::list.cell>
+                <x-bs-admin::list.cell head col="main" sort="ascending"><x-bs-admin::list.sort active dir="asc">Tiêu đề</x-bs-admin::list.sort></x-bs-admin::list.cell>
+                <x-bs-admin::list.cell head col="st" sort="none"><x-bs-admin::list.sort>Trạng thái</x-bs-admin::list.sort></x-bs-admin::list.cell>
+                <x-bs-admin::list.cell head col="au" sort="none"><x-bs-admin::list.sort>Người tạo</x-bs-admin::list.sort></x-bs-admin::list.cell>
+                <x-bs-admin::list.cell head col="act">Thao tác</x-bs-admin::list.cell>
+            </x-bs-admin::list.head>
+            @foreach ($galleryRows as $gr)
+                @php $grTrashed = $gr['state'] === 'trashed'; $grEdit = $gr['state'] !== 'readonly' && ! $grTrashed; @endphp
+                <x-bs-admin::list.row :selected="$gr['state'] === 'selected'">
+                    <x-bs-admin::list.cell col="chk"><x-bs-admin::list.check :checked="$gr['state'] === 'selected'" :label="'Chọn “'.$gr['title'].'”'" /></x-bs-admin::list.cell>
+                    <x-bs-admin::list.cell col="main">
+                        <x-bs-admin::list.name :href="$grTrashed ? null : '#'" :quick-edit="$grEdit ? 'Sửa nhanh tiêu đề “'.$gr['title'].'”' : null">{{ $gr['title'] }}</x-bs-admin::list.name>
+                        <x-bs-admin::list.meta>
+                            @foreach ($gr['meta'] as $piece)
+                                <span class="list-m">{{ $piece }}</span>
+                            @endforeach
+                            <x-bs-admin::list.langs :locales="$gr['langs']" :has="$gr['has']" source="vi" :name="$gr['title']"
+                                :href="$grEdit ? fn (string $lc): string => '#' : null"
+                                :why="$grTrashed ? __('entries.lc_why_trashed') : __('entries.lc_why_view_only', ['noun' => __('entries.noun_page')])" />
+                            <span class="list-m" data-for="au">{{ $gr['author'] }}</span>
+                            <span class="list-m" data-for="when">{{ $gr['when'] }}</span>
+                        </x-bs-admin::list.meta>
+                    </x-bs-admin::list.cell>
+                    <x-bs-admin::list.cell col="st">
+                        <div class="list-stw">
+                            @if ($grEdit)
+                                <x-bs-admin::status-pill button :status="$gr['pill']" aria-haspopup="true">{{ __('entries.status_'.$gr['pill']) }}</x-bs-admin::status-pill>
+                            @else
+                                <x-bs-admin::status-pill :status="$gr['pill']">{{ __('entries.status_'.$gr['pill']) }}</x-bs-admin::status-pill>
+                            @endif
+                        </div>
+                        <div class="list-st-meta">{{ $gr['when'] }}</div>
+                    </x-bs-admin::list.cell>
+                    <x-bs-admin::list.cell col="au"><span class="list-au">{{ $gr['author'] }}</span></x-bs-admin::list.cell>
+                    <x-bs-admin::list.cell col="act">
+                        <x-bs-admin::list.actions :name="$gr['title']">
+                            @if ($grTrashed)
+                                <x-bs-admin::button size="sm" variant="soft" color="primary"><x-bs-admin::icon name="ri-arrow-go-back" class="size-4" /> {{ __('entries.action_restore') }}</x-bs-admin::button>
+                                <x-slot:menu>
+                                    <x-bs-admin::list.menu-item icon="ri-delete-bin" danger>{{ __('entries.action_destroy') }}</x-bs-admin::list.menu-item>
+                                </x-slot:menu>
+                            @else
+                                <x-bs-admin::button size="sm" variant="soft" color="secondary"><x-bs-admin::icon name="ri-eye" class="size-4" /> {{ __('admin.view') }}</x-bs-admin::button>
+                                <x-bs-admin::button size="sm" variant="soft" color="primary"><x-bs-admin::icon name="ri-pencil" class="size-4" /> {{ __('entries.edit_action') }}</x-bs-admin::button>
+                                @if ($grEdit)
+                                    <x-slot:menu>
+                                        <x-bs-admin::list.menu-item icon="ri-pencil">{{ __('entries.quick_edit_title') }}</x-bs-admin::list.menu-item>
+                                        <x-bs-admin::list.menu-item icon="ri-file-copy">{{ __('entries.action_duplicate') }}</x-bs-admin::list.menu-item>
+                                        <x-bs-admin::list.menu-sep />
+                                        <x-bs-admin::list.menu-item icon="ri-delete-bin" danger>{{ __('entries.action_trash') }}</x-bs-admin::list.menu-item>
+                                    </x-slot:menu>
+                                @endif
+                            @endif
+                        </x-bs-admin::list.actions>
+                    </x-bs-admin::list.cell>
+                </x-bs-admin::list.row>
+            @endforeach
+        </x-bs-admin::list>
+    </x-bs-admin::card>
+
+    {{-- Shared tree: the one drag rule, guide lines, the keyboard moves; then every drag state drawn still --}}
+    @php
+        $treeRows = \App\Modules\Admin\Support\TreeRows::build($treeNodes);
+        $stillRows = \App\Modules\Admin\Support\TreeRows::build([
+            ['key' => 's-gioi-thieu', 'parent' => null, 'label' => 'Giới thiệu', 'state' => 'drop-in'],
+            ['key' => 's-lich-su', 'parent' => 's-gioi-thieu', 'label' => 'Lịch sử công ty', 'state' => null],
+            ['key' => 's-san-pham', 'parent' => null, 'label' => 'Sản phẩm', 'state' => 'dragging'],
+            ['key' => 's-cnc', 'parent' => 's-san-pham', 'label' => 'Gia công CNC', 'state' => null],
+            ['key' => 's-phay', 'parent' => 's-cnc', 'label' => 'Phay CNC 5 trục', 'state' => 'drop-bad'],
+            ['key' => 's-khuon', 'parent' => 's-san-pham', 'label' => 'Khuôn mẫu', 'state' => null, 'locked' => 'Lê Hoàng Phúc đang sửa'],
+        ]);
+        $noun = __('admin.tree.noun');
+    @endphp
+    <x-bs-admin::card title="Tree list">
+        <div class="space-y-6">
+            <div>
+                <p class="mb-2 text-small text-text-muted">Kéo một dòng: thả vào giữa tên để thành mục con đầu tiên, thả vào khe giữa hai dòng để nằm ngang hàng — kéo sang trái trong khe để ra ngoài một cấp. Tối đa 3 cấp; «Khuôn mẫu» đang khóa. Bấm Tab tới tên để thấy viền focus, rồi dùng phím tắt bên dưới.</p>
+                <x-bs-admin::tree label="Trình đơn mẫu" move="moveTreeItem" :max-depth="3">
+                    @foreach ($treeRows as $tr)
+                        <x-bs-admin::tree.row :row="$tr" :name="$tr['node']['label']" :locked="$tr['node']['locked']" wire:key="tree-{{ $tr['key'] }}">
+                            <x-bs-admin::tree.name>{{ $tr['node']['label'] }}</x-bs-admin::tree.name>
+                            <x-slot:actions>
+                                <x-bs-admin::list.actions :name="$tr['node']['label']">
+                                    <x-bs-admin::button size="sm" variant="soft" color="primary"><x-bs-admin::icon name="ri-pencil" class="size-4" /> {{ __('entries.edit_action') }}</x-bs-admin::button>
+                                    <x-slot:menu>
+                                        <x-bs-admin::tree.move-menu :row="$tr" />
+                                    </x-slot:menu>
+                                </x-bs-admin::list.actions>
+                            </x-slot:actions>
+                        </x-bs-admin::tree.row>
+                    @endforeach
+                </x-bs-admin::tree>
+                <x-bs-admin::tree.keys />
+            </div>
+            <div>
+                <p class="mb-2 text-small text-text-muted">Các trạng thái khi kéo, vẽ tĩnh: «Sản phẩm» đang được kéo (mờ); thả vào «Giới thiệu» được (viền xanh + dòng giữ chỗ); thả vào «Phay CNC 5 trục» bị chặn (viền đỏ + lý do); «Khuôn mẫu» đang khóa.</p>
+                <x-bs-admin::tree label="Các trạng thái khi kéo (mẫu tĩnh)">
+                    @foreach ($stillRows as $sr)
+                        <x-bs-admin::tree.row :row="$sr" :name="$sr['node']['label']" :locked="$sr['node']['locked'] ?? null" :state="$sr['node']['state']">
+                            <x-bs-admin::tree.name>{{ $sr['node']['label'] }}</x-bs-admin::tree.name>
+                        </x-bs-admin::tree.row>
+                        @if ($sr['key'] === 's-gioi-thieu')
+                            <x-bs-admin::tree.placeholder :level="2">{{ __('admin.tree.will_child', ['noun' => $noun, 'name' => 'Giới thiệu', 'level' => 2]) }}</x-bs-admin::tree.placeholder>
+                        @elseif ($sr['key'] === 's-phay')
+                            <x-bs-admin::tree.placeholder :level="4" bad>{{ __('admin.tree.too_deep', ['max' => 3]) }}</x-bs-admin::tree.placeholder>
+                        @endif
+                    @endforeach
+                </x-bs-admin::tree>
+            </div>
+        </div>
+    </x-bs-admin::card>
+
     {{-- Inputs --}}
     <x-bs-admin::card title="Inputs">
         <div class="grid gap-4 sm:grid-cols-2">
@@ -85,7 +228,7 @@
             $gallerySections = [
                 ['key' => 'status', 'label' => 'Trạng thái', 'model' => 'galleryStatus', 'icon' => 'ri-inbox-archive', 'value' => $galleryStatus, 'options' => [
                     ['value' => 'live', 'label' => 'Tệp đang có', 'count' => 21],
-                    ['value' => 'trash', 'label' => 'Thùng rác', 'count' => 3],
+                    ['value' => 'trash', 'label' => 'Thùng rác', 'count' => 3, 'divider' => true],
                 ]],
                 ['key' => 'kind', 'label' => 'Loại tệp', 'model' => 'galleryKinds', 'multiple' => true, 'icon' => 'ri-image-2', 'value' => $galleryKinds, 'options' => [
                     ['value' => 'image', 'label' => 'Ảnh', 'count' => 19],
@@ -106,9 +249,20 @@
             $galleryGroupLabel = collect($galleryGroups)->firstWhere('key', $galleryGroup)['label'] ?? null;
         @endphp
         <x-bs-admin::group-row :groups="$galleryGroups" :active="$galleryGroup" model="galleryGroup" label="Nhóm tệp" class="-mx-4 mb-2" />
-        <div class="flex items-center gap-3">
-            <div class="min-w-0 flex-1"><x-bs-admin::search label="Tìm theo tên tệp" wire:model.live.debounce.300ms="gallerySearch" /></div>
-            <x-bs-admin::filter-panel :sections="$gallerySections" :active="$galleryActive" clear="clearGalleryFilters" />
+        @php
+            // the groups also lead the Filter sheet below 900, where their row hides (a sheet-only section)
+            $gallerySections = [['key' => 'group', 'label' => 'Nhóm', 'model' => 'galleryGroup', 'value' => $galleryGroup, 'default' => 'all', 'sheet' => true, 'class' => 'min-[900px]:hidden',
+                'options' => array_map(fn (array $g): array => ['value' => $g['key'], 'label' => $g['label'], 'count' => $g['count'], 'divider' => $g['trash'] ?? false], $galleryGroups)], ...$gallerySections];
+        @endphp
+        <div class="flex flex-col gap-3">
+            <x-bs-admin::search label="Tìm theo tên tệp" wire:model.live.debounce.300ms="gallerySearch" />
+            {{-- one line that never wraps: Sắp xếp drops its word first, then Lọc --}}
+            <x-bs-admin::tool-row>
+                <x-bs-admin::list.check :checked="false" label="Chọn tất cả" visible />
+                <x-bs-admin::filter-panel class="ms-auto flex-nowrap" :sections="$gallerySections" :active="$galleryActive" :active-narrow="$galleryActive + ($galleryGroup === 'all' ? 0 : 1)" clear="clearGalleryFilters" />
+                <x-bs-admin::sort-menu :options="[['key' => 'name', 'label' => 'Tên (A–Z)', 'icon' => 'ri-sort-alphabet-asc'], ['key' => 'size', 'label' => 'Lớn nhất trước'], ['key' => 'new', 'label' => 'Mới tải lên']]"
+                    :active="$gallerySort" :lit="$gallerySort !== 'name'" set="setGallerySort" />
+            </x-bs-admin::tool-row>
         </div>
         <x-bs-admin::filter-status class="-mx-3 mt-2" :group="$galleryGroup === 'all' ? null : $galleryGroupLabel" :summary="$galleryGroup === 'all' && $galleryActive === 0 ? null : '12 tệp'"
             :chips="array_map(fn (string $k): array => ['label' => $k === 'pdf' ? 'Tài liệu PDF' : 'Ảnh', 'remove' => '$set(\'galleryKinds\', [])'], $galleryKinds)" clear="clearGalleryFilters" />

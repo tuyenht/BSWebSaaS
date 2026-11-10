@@ -177,3 +177,14 @@ it('resolves a media storage key to a width-sized URL; leaves glyphs and absolut
         expect($byTitle['Ngoài']['image'])->toBe('https://cdn.example/x.avif');  // absolute URL untouched
     });
 });
+
+it('finds its category when the slug in the props is typed with capitals', function (): void {
+    $site = gridProvision('Grid Co', 'grid.platform.test', 'owner@grid.test');
+
+    app(Tenancy::class)->enter($site->id, function (): void {
+        gridSeedProject('owner@grid.test');
+
+        expect(app(EntryGridComponent::class)->data(['taxonomy_slug' => 'Du-An', 'locale' => 'vi'])['items'])->toHaveCount(1)
+            ->and(app(EntryGridComponent::class)->data(['taxonomy_slug' => 'du-an', 'locale' => 'en'])['items'])->toBe([]);
+    });
+});

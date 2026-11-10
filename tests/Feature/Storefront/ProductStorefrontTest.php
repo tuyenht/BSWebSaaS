@@ -69,8 +69,23 @@ it('renders a published product detail page at its base-pinned route within budg
             ->toContain('property="og:type" content="product"');
     });
 
-    // Product load (+ eager translations & images.media), route resolve, nav, brand — no N+1.
-    expect($count)->toBeLessThanOrEqual(16);
+    // Product load (+ eager translations & images.media), route resolve, nav, brand, the contact page's
+    // route for the quote button (its setting rides the storefront settings read) — no N+1.
+    expect($count)->toBeLessThanOrEqual(17);
+});
+
+it('lays out a specification table in the description like one in a post body', function (): void {
+    seedStorefrontProduct('jig-vf7');
+    $site = Site::query()->firstWhere('name', 'An Vinh');
+    app(Tenancy::class)->enter($site->id, function (): void {
+        Product::query()->firstOrFail()->translations()->update(['description' => '<h2>Thông số</h2><table style="width:900px;"><tbody>'
+            .'<tr><td style="width:300px;">Vật liệu</td><td>SUS304</td></tr><tr><td>Dung sai</td><td>±0.01 mm</td></tr></tbody></table>']);
+    });
+
+    $html = $this->get('http://anvinh.platform.test/san-pham/jig-vf7')->assertOk()->getContent();
+
+    expect($html)->toContain('<div class="sf-table sf-table--kv sf-cols-2"><table><tbody><tr><td>Vật liệu</td><td>SUS304</td></tr>')
+        ->and($html)->not->toContain('900px');
 });
 
 it('404s a product route whose product is not published (visibility enforced at load)', function (): void {
@@ -160,8 +175,7 @@ it('opens a product the admin has just published — page and catalog link alike
             ->test(Editor::class)
             ->set('name', 'Jig hàn khung mới')
             ->set('slug', 'jig-han-khung-moi')
-            ->set('status', 'published')
-            ->call('save')
+            ->call('publish')
             ->assertHasNoErrors();
     });
 

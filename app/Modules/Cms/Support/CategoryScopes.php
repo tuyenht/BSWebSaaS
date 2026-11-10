@@ -281,13 +281,26 @@ final class CategoryScopes
      * the list learns it without a query of its own; hand the value to learnHasLimits().
      *
      * @param  Builder<Entry>  $rows
+     * @param  list<string>  $columns  the row columns the list reads (all of them by default)
      */
-    public function selectHasLimits(Builder $rows, User $user): void
+    public function selectHasLimits(Builder $rows, User $user, array $columns = ['*']): void
     {
-        $rows->select($rows->getModel()->qualifyColumn('*'))->selectRaw(
+        $rows->select(array_map(fn (string $column): string => $rows->getModel()->qualifyColumn($column), $columns));
+        [$sql, $bindings] = $this->hasLimitsColumn($user);
+        $rows->selectRaw($sql, $bindings);
+    }
+
+    /**
+     * The HAS_LIMITS column as SQL, for a list that builds its own select.
+     *
+     * @return array{0: literal-string, 1: list<mixed>}
+     */
+    public function hasLimitsColumn(User $user): array
+    {
+        return [
             'exists(select 1 from member_category_scopes where member_category_scopes.site_id = ? and member_category_scopes.user_id = ?) as '.self::HAS_LIMITS,
             [$this->site->id(), $user->getKey()],
-        );
+        ];
     }
 
     /**
@@ -333,6 +346,29 @@ final class CategoryScopes
         $changed = array_keys(array_filter($reach, static fn (array $sides): bool => $sides[0] !== $sides[1]));
 
         return $this->membersWithLevels(fn (Builder $members) => $members->whereKey($changed), $changed !== []);
+    }
+
+    /**
+     * Every member limited on this site, with the categories their limits name and the highest
+     * role level each holds here: for a screen that weighs many moves at once (the "Chuyển tới"
+     * targets), which then applies membersReachChangedBy()'s rule to each candidate itself. Two
+     * queries, whatever the number of candidates.
+     *
+     * @return list<array{id: int, name: string, level: int, roots: list<int>}>
+     */
+    public function siteLimits(): array
+    {
+        $roots = [];
+        foreach (DB::table('member_category_scopes')->where('site_id', $this->site->id())->orderBy('user_id')->orderBy('taxonomy_id')->get(['user_id', 'taxonomy_id']) as $row) {
+            $roots[Cast::int($row->user_id)][] = Cast::int($row->taxonomy_id);
+        }
+
+        $limits = [];
+        foreach ($this->membersWithLevels(fn (Builder $members) => $members->whereKey(array_keys($roots)), $roots !== []) as $member) {
+            $limits[] = [...$member, 'roots' => $roots[$member['id']] ?? []];
+        }
+
+        return $limits;
     }
 
     /**

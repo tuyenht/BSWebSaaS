@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Cms\Actions\Menus\DeleteMenuItem;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuAssignment;
@@ -16,6 +17,7 @@ use App\Modules\Tenancy\Models\Domain;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteModule;
+use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Tenancy\Registry\ModuleCatalog;
 use Illuminate\Support\Facades\DB;
 
@@ -209,4 +211,38 @@ it('seeds a contact page routed at /lien-he so the homepage CTA resolves', funct
         expect($tr->slug)->toBe('lien-he')
             ->and($tr->body['blocks'][0]['type'])->toBe('contact');
     });
+});
+
+it('neither duplicates nor brings back a menu item staff moved to the trash, and keeps a region that follows another', function (): void {
+    $site = provisionAnVinh();
+    $tenancy = app(Tenancy::class);
+    $editor = menuEditor($site->id);
+
+    $tenancy->enter($site->id, function () use ($editor): void {
+        app(DeleteMenuItem::class)->handle($editor, MenuItem::query()->where('dynamic_key', 'home')->firstOrFail());
+        MenuAssignment::query()->create(['region_key' => 'handheld', 'locale' => 'vi', 'same_as_region' => 'primary']);
+    });
+
+    provisionAnVinh();
+
+    $tenancy->enter($site->id, function (): void {
+        expect(MenuItem::withTrashed()->where('dynamic_key', 'home')->count())->toBe(1)
+            ->and(MenuItem::onlyTrashed()->where('dynamic_key', 'home')->count())->toBe(1)
+            ->and(MenuItem::withTrashed()->count())->toBe(2)
+            ->and(MenuAssignment::query()->where('region_key', 'handheld')->value('same_as_region'))->toBe('primary');
+    });
+});
+
+it('records the contact page of a site whose /lien-he route already exists, when its setting is missing', function (): void {
+    $site = provisionAnVinh();
+    $ulid = app(Tenancy::class)->enter($site->id, function (): string {
+        SiteSetting::query()->where('group_name', 'catalog')->where('key', 'contact_page')->delete();
+
+        return SiteRoute::query()->where('path', '/lien-he')->firstOrFail()->entry->ulid;
+    });
+
+    provisionAnVinh();
+
+    $value = app(Tenancy::class)->enter($site->id, fn () => SiteSetting::query()->where('group_name', 'catalog')->where('key', 'contact_page')->value('value'));
+    expect($value)->toBe(['entry' => $ulid]);
 });

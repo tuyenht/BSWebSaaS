@@ -17,7 +17,7 @@ Mandatory conventions and guardrails, loaded every session. Full design: `docs/d
 | Layer | Technology | Notes |
 |---|---|---|
 | Runtime | PHP **8.5** + Laravel **13** + Octane 2 + **FrankenPHP** (RoadRunner fallback) | worker mode |
-| DB | PostgreSQL **17** + **RLS** + `ltree` + `pgvector` + PgBouncer (transaction mode) | |
+| DB | PostgreSQL **17** + **RLS** + `ltree` + `pgvector` + `pg_trgm` + PgBouncer (transaction mode) | |
 | Cache/Queue | **Valkey** (not Redis) + Horizon 5 | Reverb deferred past phase 1 |
 | Search | ⏳ Meilisearch + Scout | **tenant tokens** (§2) when shipped |
 | Admin UI | Livewire 4 + ⏳ React island (Inertia v2) for the builder only | |
@@ -52,7 +52,7 @@ Many fresh majors → AI often suggests wrong syntax: follow the pinned version'
 - **D11 time:** every time column is **`timestamptz`**, stored UTC, rendered in the site timezone.
 - **D12 VN collation:** compared/sorted/unique columns (email, slug, name) use `citext`/ICU `vi-VN`.
 - **D13 enums:** `status`/`kind`/`link_type` = **`varchar` + `CHECK`** (no native ENUM).
-- **D4 FK/soft delete:** children CASCADE with the parent; soft references SET NULL. Soft delete (`deleted_at`) only for entities with a trash — **RLS + scopes include `deleted_at IS NULL`**.
+- **D4 FK/soft delete:** children CASCADE with the parent; soft references SET NULL. Soft delete (`deleted_at`) only for entities with a trash — scopes include `deleted_at IS NULL`; RLS stays on `site_id`. <!-- owner signed this wording 04/11/2026 (K82) -->
 - **D3 polymorphic:** typed FKs for the content graph (entry↔taxonomy) + `routes`; polymorphic + observer cleanup for soft attachments (mediables/menu targets/reviews).
 - **D15 commerce:** `CHECK(stock ≥ 0)` + atomic decrement (never read-then-write) against oversell; idempotent payments.
 - **D7 naming:** snake_case; no SQL keywords (`order` → `sort_order`); FK `{entity}_id`; bools `is_/has_`.
@@ -63,7 +63,7 @@ Many fresh majors → AI often suggests wrong syntax: follow the pinned version'
 Every table/list/query. Target 10,000+ **sites** × 100M+ rows; the isolation key is `site_id` (not a tenant id).
 - **Optimize irreversible choices at birth** (schema, indexes, query shape, pagination, transaction boundaries); defer reversible ones (cache, read models) behind a seam until measured.
 - **PK/partition:** keep `bigint identity + ulid` (ADR-16), single-column PK. Partition only **measure-first with a trigger** (table ≥ 30M rows or a p99 breach). HASH-`site_id` candidates: entries/products/media/mediables/orders; RANGE-time + pg_partman: form_submissions/audit_logs; **never** config/RBAC/lookup/tenants/domains; a whale site gets its own DB (ADR-03). Retrofitting a composite `(site_id, id)` at the trigger is planned work — never ad hoc.
-- **Indexes:** lead with `site_id` matching the query shape (site_id → filter → sort) + partial `WHERE deleted_at IS NULL` + BRIN for append-only; justify with pg_stat evidence; don't over-index. Exception: a parent delete looks up children by the foreign key alone (no `site_id`), so a foreign key whose parent is hard-deleted gets an index led by its column(s). `ForeignKeyIndexCoverageTest` flags missing ones but cannot see delete paths: giving a parent on its exemption list a hard delete means indexing that parent's children.
+- **Indexes:** lead with `site_id` matching the query shape (site_id → filter → sort) + partial `WHERE deleted_at IS NULL` + BRIN for append-only; justify with pg_stat evidence; don't over-index. Exception: a parent delete looks up children by the foreign key alone (no `site_id`), so a foreign key whose parent is hard-deleted gets an index led by its column(s). `ForeignKeyIndexCoverageTest` flags missing ones but cannot see delete paths: giving a parent on its exemption list a hard delete means indexing that parent's children. Exception: a platform-wide (D6) table may lead an index with its main filter column (or the expression the query uses) when measurements back it (`.claude/rules/migrations.md`).
 - **Fetch just enough:** keyset cursor + `(…, id)` tie-break (no OFFSET on large lists); select only needed columns (no `*`); eager `whereIn` (Query Budget blocks N+1); lazy images + `srcset`. Cross-cutting lookups use a materialized index table/counter maintained in the same transaction (+ a reconcile command), never a scan of content.
 - **Aggregation:** per-`site_id` rollups — no live `COUNT(*)` on big tables.
 - **Tenant context:** every tenant query runs inside an explicit transaction and the global scope keeps an explicit `site_id = ?` (built — guard against regressions). Prod must run `tenancy.assert=sample` (strict is for dev/CI). ⏳ Not built yet: `READ ONLY` transactions for GET; domain → site_id cache + negative cache (`SetCurrentSite` queries `domains` on every request).
@@ -88,20 +88,20 @@ Every table/list/query. Target 10,000+ **sites** × 100M+ rows; the isolation ke
 - N+1 is forbidden (eager load); respect the **Query Budget** (§6).
 - PHP: typed parameters/returns, constructor promotion, TitleCase enum cases, PHPDoc array shapes, braces always (Pint + Larastan enforce most).
 - Tests: Pest 4 — every feature has tests, every bug fix a regression test; never delete a test without approval.
-- Migrations: expand-contract; `CREATE INDEX CONCURRENTLY`; indexes lead with `site_id` (foreign-key exception: §3.1).
+- Migrations: expand-contract; `CREATE INDEX CONCURRENTLY`; indexes lead with `site_id` (exceptions: §3.1).
 
 ## 6. Guardrails — two tiers, both mandatory (they differ in where they are enforced)
 
 **Tier 1 · CI (`.github/workflows/ci.yml`, blocks merge):**
-- `guardrails`: migrate real PostgreSQL (app_user + pgsql_admin) · `pint --test` · Larastan max · `lang:check` (every `lang/*.json` has exactly `en.json`'s keys) · Pest suites Unit, Feature (incl. Query Budget: max queries per hot route), Arch, Concurrency.
-- `frontend`: Vite + Tailwind build · `scripts/contrast-check.mjs` (admin token pairs ≥ WCAG AA).
+- `guardrails` (the merge gate; its work runs in a `static` job and four Pest shards, each on its own PostgreSQL): migrate real PostgreSQL (app_user + pgsql_admin) · `pint --test` · Larastan max · `lang:check` (every `lang/*.json` has exactly `en.json`'s keys) · Pest suites Unit, Feature (incl. Query Budget: max queries per hot route), Arch, Concurrency.
+- `frontend`: Vite + Tailwind build · `scripts/asset-budget.mjs` (gzipped size of each page entry and lazy chunk ≤ its line in `scripts/asset-budget.json` + 3%) · `scripts/contrast-check.mjs` (admin token pairs ≥ WCAG AA).
 - `cwv`: Lighthouse on `/`, `/lien-he`, `/tin-tuc` of a measurement site — LCP ≤ 1.5s + JS ≤ 30KB (median of 3; the overall score only warns) + axe WCAG 2A/AA with 0 violations; then the admin screens are rendered without login and scanned by axe in jsdom (structural; known debt in `scripts/admin-preview/axe-allowlist.json`, any new violation fails).
 - Arch tests: every tenant model uses BelongsToSite · Entry actions through EntryPolicy (+ admin entry components authorize) · workflow transitions only through the engine · acyclic module boundaries (Tenancy is the base).
 - When it runs: a pull request runs the jobs its changed paths call for (documents only → none; no path that can change a rendered page → no `cwv`; anything else, or any doubt → all three). Every job runs nightly on `main` and on a manual run; a merge to `main` starts no run (`.claude/rules/ci-workflows.md`).
 
 **Tier 2 · manual, by touched area (not merge-blocking — paste the output before reporting done, §10.4):**
 - Mutation baseline classes → `.claude/rules/mutation-baseline.md` (widen the list and raise `--min` over time, never lower).
-- Storefront/UI → LCP/JS from the `cwv` job summary ("Print Lighthouse measurements") after pushing: thresholds are calibrated on the CI runner and lhci boots `php artisan serve` (no PHP on the host). Pages beyond the gated three: measure and paste too.
+- Storefront/UI → LCP/JS from the `cwv` job summary ("Print Lighthouse measurements") after pushing: thresholds are calibrated on the CI runner and lhci boots PHP's built-in server with gzip like production (`scripts/cwv-serve.php`; no PHP on the host). Pages beyond the gated three: measure and paste too.
 - Admin UI → locally: `pnpm run build` → `docker compose run --rm --no-deps app vendor/bin/pest tests/Tools/RenderAdminPreviewTest.php` (must PASS, not skip) → `node scripts/admin-preview/axe.mjs` + `node scripts/contrast-check.mjs`.
 - Tenancy middleware / Octane lifecycle / site resolution → the real worker-pool hammer + D14 (`.claude/rules/tenancy-octane.md`).
 
@@ -110,7 +110,7 @@ Every table/list/query. Target 10,000+ **sites** × 100M+ rows; the isolation ke
 No PHP on the host — everything runs through Docker. Tests/QA always use `run --rm` (a fresh process; `exec` into the Octane container can serve stale opcache).
 
 ```bash
-docker compose up -d        # PG17 + PgBouncer + Valkey + FrankenPHP/Octane + Horizon + scheduler
+docker compose up -d        # PG17 + PgBouncer + Valkey + FrankenPHP/Octane + Horizon (scheduler is opt-in: see docker-compose.yml)
 docker compose run --rm --no-deps app php artisan migrate --database=pgsql_admin --force   # privileged role only — never plain migrate
 docker compose run --rm --no-deps app vendor/bin/pest [path | --filter=name]
 docker compose run --rm --no-deps app vendor/bin/phpstan analyse --memory-limit=1G   # full run; single-file runs give false positives on Pest closures
@@ -144,7 +144,7 @@ docker compose restart horizon                                  # after Job/List
 
 **UI without a design handoff = don't build it** (owner, every session): still do the backend + tests (ACT), mark the UI `⏸ awaiting design`, and output a self-contained Claude Design prompt (recipe: `docs/README.md`). With a handoff, port it 1:1. Small edits to an already-designed screen (one button/column): ask the owner — existing tokens or Claude Design.
 
-**Design leads, backend follows** <!-- owner 29/09/2026 -->: when an approved design does more than the backend, extend the backend to match — never trim the design, prompt it down to the backend, or ship stand-in UI states. Schema parts still go through COUNCIL (how, not whether). Only §2 security/tenancy, §3.1 scale or legal limits go back to the owner as a question. Before auditing, prompting or building a screen, open its design in `docs/design-source/` (the owner's full Claude Design export) first. Sync loop and snapshots: `docs/README.md` ("Nối Claude Code ↔ Claude Design").
+**Design leads, backend follows** <!-- owner 29/09/2026 -->: when an approved design does more than the backend, extend the backend to match — never trim the design, prompt it down to the backend, or ship stand-in UI states. Schema parts still go through COUNCIL (how, not whether). Only §2 security/tenancy, §3.1 scale or legal limits go back to the owner as a question. Before auditing, prompting or building an admin screen, open its board on the owner's design canvas first: the link is in the local `bs-design-canvas` skill, the mirror is `plans/design-canvas/admin/project/<NN-…>.dc.html`. Check that the mirror matches the canvas (Artifact `read`), then port 1:1 and never invent UI. `docs/design-source/` is an old export, kept as history only, never a source. Sync loop: `docs/README.md` ("Nối Claude Code ↔ Claude Design").
 
 Status/order: `docs/roadmap.md` + `git log`. `plans/` is gitignored (local drafts); Claude Design briefs live in `docs/design-briefs/` (doc map: `docs/README.md`).
 
@@ -217,7 +217,7 @@ RULE | scope: <repo|lang|task-type> | WHEN <trigger> THEN <correct behavior> NOT
 - **Invariants only:** status, dated baselines and current arc names live in `plans/` + git, not here. Owner provenance/dates go in HTML comments (stripped from the model context).
 - **Descriptive drift** (what is installed/running/enforced) that contradicts green reality → fix that line in the commit you are making, citing evidence (file:line / command) in the message (ACT).
 - **Decisions** (choose X not Y · forbid Z · threshold N — §2, D1–D15, ADRs, every owner call) = COUNCIL even when reality differs; reality violating a decision is a code bug or needs a re-decision — never edit the doc to match.
-- **Zone-specific procedures and lessons** go to `.claude/rules/<area>.md` with `paths:` frontmatter (loaded only when matching files are read); this file keeps invariants + shared commands. Rules: `livewire` · `pest-tests` · `php-larastan` · `tenancy-octane` · `migrations` · `ci-workflows` · `mutation-baseline`.
+- **Zone-specific procedures and lessons** go to `.claude/rules/<area>.md` with `paths:` frontmatter (loaded only when matching files are read); this file keeps invariants + shared commands. Rules: `livewire` · `pest-tests` · `php-larastan` · `tenancy-octane` · `migrations` · `ci-workflows` · `mutation-baseline` · `frontend-assets`.
 - **lessons.log compaction** only when the owner asks (e.g. at arc close via `/bs:close`): promote lessons into the matching rule file (or here if global), then archive the log.
 - Update the stamp below only on a FULL audit; older than ~30 days → propose a re-audit.
 

@@ -39,6 +39,7 @@ use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Tenancy\Models\SiteType;
 use App\Modules\Tenancy\Models\Tenant;
+use App\Modules\Tenancy\Models\TenantHistory;
 use App\Modules\Tenancy\Registry\ModuleCatalog;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -164,6 +165,8 @@ final readonly class ProvisionSite
                     throw new HostnameOwnedByAnotherTenantException($hostname);
                 }
 
+                $this->recordHistory($tenant, $site);
+
                 return [$site, $tenant];
             });
             // The host may be remembered as unknown from a request made before it existed.
@@ -262,6 +265,28 @@ final readonly class ProvisionSite
         ]);
 
         return $site->refresh();
+    }
+
+    /**
+     * The customer's history (tenant_history), in the same transaction as the rows it tells of: a new
+     * customer's creation (with the plan it starts on), then the new website — by its ulid and its
+     * name as given, never its bigint id. Provisioning has no person behind it: "Hệ thống".
+     */
+    private function recordHistory(Tenant $tenant, Site $site): void
+    {
+        if ($tenant->wasRecentlyCreated) {
+            TenantHistory::query()->create([
+                'tenant_id' => $tenant->id,
+                'kind' => TenantHistory::KIND_CUSTOMER_CREATED,
+                'to_plan_id' => $tenant->plan_id,
+            ]);
+        }
+
+        TenantHistory::query()->create([
+            'tenant_id' => $tenant->id,
+            'kind' => TenantHistory::KIND_SITE_CREATED,
+            'meta' => ['site' => $site->ulid, 'site_name' => $site->name],
+        ]);
     }
 
     /** The customer a NEW website goes to: one created on request, one chosen by id, or (DTO callers) by name. */
@@ -374,7 +399,12 @@ final readonly class ProvisionSite
      */
     private function seedContactPage(ProvisionSiteData $data, User $owner): void
     {
-        if (SiteRoute::query()->where('path', '/lien-he')->exists()) {
+        $existing = SiteRoute::query()->where('path', '/lien-he')->with('entry:id,ulid')->first();
+        if ($existing !== null) {
+            if ($existing->entry !== null) {
+                app(LinkContactPage::class)->handle($existing->entry->ulid);
+            }
+
             return;
         }
 
@@ -404,6 +434,8 @@ final readonly class ProvisionSite
             'path' => '/lien-he',
             'entry_id' => $entry->id,
         ]);
+
+        app(LinkContactPage::class)->handle($entry->ulid);
     }
 
     /**
@@ -467,13 +499,15 @@ final readonly class ProvisionSite
             ['name' => 'Menu chính', 'locales' => null],
         );
 
-        $home = MenuItem::query()->firstOrCreate(
+        // A matching item staff moved to the trash stays there: a re-run neither duplicates it nor
+        // brings it back.
+        $home = MenuItem::withTrashed()->firstOrCreate(
             ['menu_id' => $menu->id, 'link_type' => 'dynamic', 'dynamic_key' => 'home'],
             ['position' => 0],
         );
         $home->translations()->firstOrCreate(['locale' => $locale], ['label' => 'Trang chủ']);
 
-        $newsItem = MenuItem::query()->firstOrCreate(
+        $newsItem = MenuItem::withTrashed()->firstOrCreate(
             ['menu_id' => $menu->id, 'link_type' => 'taxonomy', 'routable_type' => 'taxonomy', 'routable_id' => $news->id],
             ['position' => 1],
         );

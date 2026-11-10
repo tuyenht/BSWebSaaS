@@ -5,7 +5,7 @@
      $pickedIds (optional, from the host view) still marks already-attached gallery items. --}}
 @php($mp = $this->mediaPickerState())
 @if ($showImagePicker && ($mp['open'] ?? false))
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+    <div class="fixed inset-0 z-90 flex items-center justify-center bg-black/50 p-4"
          role="dialog" aria-modal="true" aria-label="{{ __('media.picker_title') }}"
          x-data x-on:keydown.escape.window="$wire.closeImagePicker()"
          wire:click.self="closeImagePicker">
@@ -26,7 +26,7 @@
                     </div>
                 </div>
                 <button type="button" wire:click="closeImagePicker" title="{{ __('admin.dismiss') }}"
-                        class="flex size-8 items-center justify-center rounded-lg bg-surface-hover text-body-muted transition-colors hover:text-body-text">
+                        class="hit-area flex size-control items-center justify-center rounded-lg bg-surface-hover text-text-muted transition-colors hover:text-text">
                     <x-bs-admin::icon name="ri-close" class="size-[17px]" />
                 </button>
             </div>

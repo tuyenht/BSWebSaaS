@@ -121,6 +121,7 @@ it('promotes product-posts to Product rows at the identical route, with no redir
     $summary = app(Tenancy::class)->enter($site->id, fn (): array => app(PromoteAnVinhProductPostsToCatalog::class)->handle());
 
     expect($summary)->toHaveCount(2);
+    expectProductSearchWordsCurrent($site->id);
     foreach ($summary as $row) {
         expect($row['action'])->toBe('created');
         expect($row['productUrl'])->toStartWith('/san-pham/');
@@ -173,6 +174,9 @@ it('is idempotent — a second run creates no duplicates', function (): void {
         expect(ProductTranslation::query()->count())->toBe(2);
         expect(SiteRoute::query()->where('path', 'like', '/san-pham/%')->count())->toBe(2);
     });
+
+    // The category totals moved with the posts into the trash and the products onto their categories.
+    expect(categoryCountDrift($site->id))->toBe([]);
 });
 
 it('updates an existing Product by slug instead of duplicating it', function (): void {

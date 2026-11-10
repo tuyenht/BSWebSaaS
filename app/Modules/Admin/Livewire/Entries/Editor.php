@@ -2,6 +2,9 @@
 
 namespace App\Modules\Admin\Livewire\Entries;
 
+use App\Modules\Admin\Livewire\Concerns\EditsButtonActions;
+use App\Modules\Admin\Support\SeoFields;
+use App\Modules\Catalog\Components\ProductGridComponent;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\RecordEntryRevision;
@@ -11,8 +14,10 @@ use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
+use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
+use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
 use App\Modules\Cms\Support\EntryCategoryWriter;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
@@ -21,10 +26,15 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaLibraryUrls;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Shared\Support\Cast;
+use App\Modules\Shared\Support\PlainText;
+use App\Modules\Shared\Support\Slugger;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SchemaImages;
+use App\Modules\Theme\Components\StyleProps;
+use App\Modules\Theme\Theming\ThemeResolver;
 use App\Modules\Workflow\Exceptions\InvalidTransitionException;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowState;
@@ -34,10 +44,14 @@ use App\Modules\Workflow\Services\WorkflowTrail;
 use Carbon\CarbonInterface;
 use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -63,6 +77,7 @@ use Livewire\Component;
 final class Editor extends Component
 {
     use AuthorizesRequests;
+    use EditsButtonActions;
 
     /** How many trail rows the block shows before "Xem thêm" (design: 3, +3 per load). */
     private const int TRAIL_PAGE = 3;
@@ -94,8 +109,34 @@ final class Editor extends Component
 
     public string $slug = '';
 
+    /** The short excerpt of this language (news cards, category pages; the Google description's fallback). */
+    public string $excerpt = '';
+
+    /** The title Google shows for this language; empty = the page title. */
+    public string $seoTitle = '';
+
+    /** The description Google shows for this language; empty = the excerpt. */
+    public string $seoDescription = '';
+
+    /** Whether the site writes in more than one language (the per-language fields then carry its code). */
+    #[Locked]
+    public bool $multiLocale = false;
+
     /** Primary category id (posts only; index 0 of entry_taxonomies drives the URL). */
     public ?int $categoryId = null;
+
+    /**
+     * The Google preview's address around the slug (SeoFields::address): built on mount and again
+     * when the category changes, finished in the browser as the slug is typed. Server data.
+     *
+     * @var array{base: string, home: string|null, homeSlug: string}
+     */
+    #[Locked]
+    public array $address = ['base' => '', 'home' => null, 'homeSlug' => PathBuilder::HOME_SLUG];
+
+    /** The site's primary domain, kept from the first request for the address above. */
+    #[Locked]
+    public string $addressHost = '';
 
     /** Featured/OG image — the picked media's storage_key, persisted to entry.meta['image_url']. */
     public string $coverImageKey = '';
@@ -111,6 +152,14 @@ final class Editor extends Component
 
     /** @var list<array<string, mixed>> */
     public array $blocks = [];
+
+    /**
+     * Blocks whose "Trình bày" panel shows the top and bottom spacing apart, by index (editor state
+     * only, never saved; a block whose two steps differ shows them apart anyway).
+     *
+     * @var array<int, bool>
+     */
+    public array $lookSplit = [];
 
     #[Locked]
     public ?string $status = null;
@@ -152,6 +201,7 @@ final class Editor extends Component
     public function mount(?string $ulid = null, ?string $section = null, ?string $locale = null): void
     {
         $this->locale = $this->resolveLocale(app(SiteLocale::class), $locale ?? request()->query('locale'));
+        $this->multiLocale = count(app(SiteLocale::class)->enabled()) > 1;
 
         if ($ulid === null) {
             $this->authorize('create', Entry::class);
@@ -163,6 +213,7 @@ final class Editor extends Component
             $this->categoryId = $this->type === 'post' && $contentSection instanceof ContentSection && $contentSection->taxonomy_id !== null
                 ? (int) $contentSection->taxonomy_id
                 : null;
+            $this->address = $this->previewAddress(new Entry(['type' => $this->type]));
 
             return;
         }
@@ -179,18 +230,44 @@ final class Editor extends Component
             $this->title = $translation->title;
             $this->slug = $translation->slug;
             $this->blocks = $this->normalizeBlocks($translation->body['blocks'] ?? []);
+            $this->excerpt = $translation->excerpt ?? '';
+            $this->seoTitle = $translation->seo_title ?? '';
+            $this->seoDescription = $translation->seo_description ?? '';
         }
 
         $cover = data_get($entry->meta, 'image_url');
         $this->coverImageKey = is_string($cover) ? $cover : '';
 
-        if ($this->type === 'post') {
-            $this->categoryId = $entry->primaryCategory()?->id;
-        }
+        $category = $this->type === 'post' ? $entry->primaryCategory() : null;
+        $this->categoryId = $category?->id;
+        $this->address = $this->previewAddress($entry, $category);
 
         if ($this->governingWorkflow() !== null) {
             $this->loadTrail($entry->id);
         }
+    }
+
+    /** A post's category is part of its address: the preview follows the pick (posts only). */
+    public function updatedCategoryId(): void
+    {
+        if ($this->type === 'post') {
+            $this->address = $this->previewAddress();
+        }
+    }
+
+    /**
+     * The Google preview's address around the slug, composed as publishing will compose it: the
+     * site's primary domain, the language prefix and the path before the slug.
+     *
+     * @return array{base: string, home: string|null, homeSlug: string}
+     */
+    private function previewAddress(?Entry $entry = null, ?Taxonomy $category = null): array
+    {
+        if ($this->addressHost === '') {
+            $this->addressHost = SeoFields::publicHost();
+        }
+
+        return SeoFields::address($this->addressHost, $this->publicPathPrefix($entry, $category), $this->locale, $this->type === 'page');
     }
 
     /**
@@ -210,7 +287,7 @@ final class Editor extends Component
 
     public function addBlock(string $type): void
     {
-        if (! app(ComponentRegistry::class)->has($type)) {
+        if (! in_array($type, app(ComponentRegistry::class)->listedTypes(), true)) {
             $this->addError('blocks', __('entries.block_unsupported', ['type' => $type]));
 
             return;
@@ -229,6 +306,7 @@ final class Editor extends Component
         $blocks = $this->blocks;
         array_splice($blocks, $index, 1);
         $this->blocks = $blocks;
+        $this->lookSplit = [];
     }
 
     public function moveUp(int $index): void
@@ -240,6 +318,7 @@ final class Editor extends Component
         $blocks = $this->blocks;
         [$blocks[$index - 1], $blocks[$index]] = [$blocks[$index], $blocks[$index - 1]];
         $this->blocks = $blocks;
+        $this->lookSplit = [];
     }
 
     public function moveDown(int $index): void
@@ -251,6 +330,157 @@ final class Editor extends Component
         $blocks = $this->blocks;
         [$blocks[$index], $blocks[$index + 1]] = [$blocks[$index + 1], $blocks[$index]];
         $this->blocks = $blocks;
+        $this->lookSplit = [];
+    }
+
+    /**
+     * One choice on a block's "Trình bày" panel. Only a value listed in StyleProps is kept, and only
+     * where the block's schema takes the look prop (page_header's own `overlay` is not this one). A
+     * colour set paints the band (under a photo it waits until the photo is removed); `spacing` sets
+     * the top and bottom step together.
+     */
+    public function setLook(int $index, string $prop, string $value): void
+    {
+        if (! in_array($value, StyleProps::CHOICES[$prop] ?? [], true) || ! $this->takesLook($index, $prop === 'spacing' ? 'spacing_top' : $prop)) {
+            return;
+        }
+
+        $props = $this->lookProps($index);
+        if ($prop === 'scheme') {
+            $props['scheme'] = $value;
+            $props['bg'] = ($props['bg'] ?? null) === 'image' ? 'image' : 'scheme';
+        } elseif ($prop === 'spacing') {
+            $props['spacing_top'] = $value;
+            $props['spacing_bottom'] = $value;
+        } else {
+            $props[$prop] = $value;
+        }
+        $this->setBlockProp("{$index}.props", $props);
+    }
+
+    /** Show the top and bottom spacing apart, or join them again (bottom takes the top step). */
+    public function toggleLookSplit(int $index): void
+    {
+        if (! array_key_exists($index, $this->blocks)) {
+            return;
+        }
+
+        if ($this->spacingSplit($index)) {
+            unset($this->lookSplit[$index]);
+            $props = $this->lookProps($index);
+            $top = $props['spacing_top'] ?? null;
+            if (is_string($top)) {
+                $props['spacing_bottom'] = $top;
+            } else {
+                unset($props['spacing_bottom']);
+            }
+            $this->setBlockProp("{$index}.props", $props);
+        } else {
+            $this->lookSplit[$index] = true;
+        }
+    }
+
+    /** Take the background photo away: the band goes back to the chosen colour set, if any. */
+    public function removeLookImage(int $index): void
+    {
+        if (! $this->takesLookPhoto($index)) {
+            return;
+        }
+
+        $props = $this->lookProps($index);
+        unset($props['bg_image'], $props['overlay']);
+        $props['bg'] = isset($props['scheme']) ? 'scheme' : 'none';
+        $this->setBlockProp("{$index}.props", $props);
+    }
+
+    /**
+     * A typed link anchor becomes a valid one ("Liên hệ" → "lien-he"); blank clears it. One that another
+     * block or the page layout already uses gets a number ("lien-he-2"), so a link never lands on the
+     * wrong place. Text with no Latin letter or digit (お問い合わせ, emoji) stays as typed, with a message
+     * saying how to fix it, instead of vanishing.
+     */
+    public function updatedBlocks(mixed $value, ?string $key = null): void
+    {
+        if ($key === null || preg_match('/^(\d+)\.props\.anchor_id$/', $key, $match) !== 1) {
+            return;
+        }
+
+        $index = (int) $match[1];
+        $field = "blocks.{$index}.props.anchor_id";
+        $typed = is_string($value) ? trim($value) : '';
+        $anchor = rtrim(Str::limit(Str::slug($typed), 64, ''), '-');
+        if ($typed !== '' && $anchor === '') {
+            $this->addError($field, __('entries.look_anchor_invalid'));
+
+            return;
+        }
+
+        $this->resetErrorBag($field);
+        $props = $this->lookProps($index);
+        if ($anchor === '') {
+            unset($props['anchor_id']);
+        } else {
+            $props['anchor_id'] = $this->freeAnchor($anchor, $index);
+        }
+        $this->setBlockProp("{$index}.props", $props);
+    }
+
+    /** Whether the block at $index takes this look prop from the panel (not a same-named prop of its own). */
+    private function takesLook(int $index, string $key): bool
+    {
+        $type = $this->blocks[$index]['type'] ?? null;
+        $registry = app(ComponentRegistry::class);
+
+        return is_string($type) && $registry->has($type)
+            && ($registry->schemaFor($type)[$key] ?? null) === (StyleProps::SCHEMA[$key] ?? false);
+    }
+
+    /**
+     * Whether the panel's background photo applies: a block with a photo and darkening of its own
+     * (page_header, hero_slider) keeps those, and the panel offers no second photo.
+     */
+    private function takesLookPhoto(int $index): bool
+    {
+        return $this->takesLook($index, 'bg_image') && $this->takesLook($index, 'overlay');
+    }
+
+    /** $anchor, or it with the first free number, when another block or the layout already uses it. */
+    private function freeAnchor(string $anchor, int $index): string
+    {
+        $taken = StyleProps::LAYOUT_IDS;
+        foreach (array_keys($this->blocks) as $other) {
+            $used = $this->lookProps($other)['anchor_id'] ?? null;
+            if ($other !== $index && is_string($used)) {
+                $taken[] = $used;
+            }
+        }
+
+        $candidate = $anchor;
+        for ($n = 2; in_array($candidate, $taken, true); $n++) {
+            $suffix = '-'.$n;
+            $candidate = rtrim(substr($anchor, 0, 64 - strlen($suffix)), '-').$suffix;
+        }
+
+        return $candidate;
+    }
+
+    private function spacingSplit(int $index): bool
+    {
+        $props = $this->lookProps($index);
+
+        return ($this->lookSplit[$index] ?? false) || ($props['spacing_top'] ?? null) !== ($props['spacing_bottom'] ?? null);
+    }
+
+    /**
+     * A block's props (an empty list for a missing block).
+     *
+     * @return array<array-key, mixed>
+     */
+    private function lookProps(int $index): array
+    {
+        $props = $this->blocks[$index]['props'] ?? null;
+
+        return is_array($props) ? $props : [];
     }
 
     /** Append a blank item (shaped by the list's `of` schema) to a list-typed prop. */
@@ -664,6 +894,9 @@ final class Editor extends Component
 
         if ($this->blockImagePickerPath !== '' && Media::query()->whereKey($mediaId)->exists()) {
             $this->setBlockProp($this->blockImagePickerPath, $mediaId);
+            if (preg_match('/^(\d+)\.props\.bg_image$/', $this->blockImagePickerPath, $match) === 1 && $this->takesLookPhoto((int) $match[1])) {
+                $this->setBlockProp("{$match[1]}.props.bg", 'image');
+            }
         }
 
         $this->showBlockImagePicker = false;
@@ -689,14 +922,20 @@ final class Editor extends Component
         $urls = app(MediaUrlResolver::class);
         $schemas = $this->schemas();
         $workflow = $this->governingWorkflow();
+        $buttonPanel = $this->buttonPanel($schemas);
 
         return view('admin::livewire.entries.editor', [
-            'availableTypes' => app(ComponentRegistry::class)->types(),
+            'buttons' => $buttonPanel['buttons'],
+            'buttonPanel' => $buttonPanel,
+            'availableTypes' => app(ComponentRegistry::class)->listedTypes(),
             'schemas' => $schemas,
             'categories' => $this->type === 'post' ? $this->availableCategories() : [],
             'urls' => $urls,
             'coverUrl' => $this->coverImageKey !== '' ? $urls->url($this->coverImageKey, 640) : null,
             'blockImageUrls' => $this->resolveBlockImageUrls($schemas),
+            'goneProducts' => $this->goneProductKeys(),
+            'looks' => $this->looks(),
+            'schemeColours' => $this->schemeColours(),
             'pickerMedia' => $this->showMediaPicker || $this->showBlockImagePicker
                 ? Media::query()->orderByDesc('created_at')->limit(60)->get()
                 : collect(),
@@ -704,6 +943,81 @@ final class Editor extends Component
                 ? $this->workflowPanel($workflow, $this->ulid !== null ? $this->resolveOrFail($this->ulid) : null)
                 : null,
         ]);
+    }
+
+    /**
+     * What each block's "Trình bày" panel shows: the colour set it paints today, whether a heavy set
+     * (brand, dark) repeats on a neighbour (two such bands side by side read as one), the photo band,
+     * the first block (it never moves) and whether its spacing is shown apart.
+     *
+     * @return array<int, array{scheme: string, clash: bool, image: bool, first: bool, split: bool}>
+     */
+    private function looks(): array
+    {
+        $schemes = [];
+        $types = [];
+        foreach (array_keys($this->blocks) as $i) {
+            $props = $this->lookProps($i);
+            $types[$i] = is_string($this->blocks[$i]['type'] ?? null) ? $this->blocks[$i]['type'] : '';
+            $schemes[$i] = ($props['bg'] ?? null) === 'image' ? null : StyleProps::schemeOf($props, $types[$i]);
+        }
+
+        $looks = [];
+        foreach (array_keys($this->blocks) as $i) {
+            $scheme = $schemes[$i];
+            $heavy = $scheme === 'brand' || $scheme === 'dark';
+            $looks[$i] = [
+                'scheme' => $scheme ?? StyleProps::schemeOf(['bg' => 'scheme'] + $this->lookProps($i), $types[$i]),
+                'clash' => $heavy && (($schemes[$i - 1] ?? null) === $scheme || ($schemes[$i + 1] ?? null) === $scheme),
+                'image' => $scheme === null,
+                'first' => $i === 0,
+                'split' => $this->spacingSplit($i),
+            ];
+        }
+
+        return $looks;
+    }
+
+    /**
+     * The site's colours for each set, so a "Bộ màu" card shows the band it paints: `light` is the
+     * page itself, the others the roles ThemeResolver derives.
+     *
+     * @return array<string, array{bg: string, head: string, body: string, button: string, button_text: string}>
+     */
+    private function schemeColours(): array
+    {
+        $variables = app(ThemeResolver::class)->cssVariables();
+        $colours = ['light' => [
+            'bg' => $variables['surface'], 'head' => $variables['ink'], 'body' => $variables['body'],
+            'button' => $variables['primary'], 'button_text' => $variables['color-on-primary'],
+        ]];
+        foreach (['soft', 'brand', 'dark'] as $set) {
+            $colours[$set] = [
+                'bg' => $variables["sch-{$set}-bg"], 'head' => $variables["sch-{$set}-head"], 'body' => $variables["sch-{$set}-body"],
+                'button' => $variables["sch-{$set}-pri-bg"], 'button_text' => $variables["sch-{$set}-pri-fg"],
+            ];
+        }
+
+        return $colours;
+    }
+
+    /**
+     * The hand-picked product keys of the product grids in the body that name no published product of
+     * this site (deleted, unpublished or another site's), upper case: the list shows them as gone. One query.
+     *
+     * @return list<string>
+     */
+    private function goneProductKeys(): array
+    {
+        $keys = [];
+        foreach ($this->blocks as $block) {
+            $props = Cast::arr($block['props'] ?? null);
+            if (($block['type'] ?? null) === 'product_grid' && ($props['source'] ?? null) === 'picked') {
+                $keys = array_merge($keys, Cast::arr($props['product_keys'] ?? null));
+            }
+        }
+
+        return ProductGridComponent::goneKeys($keys);
     }
 
     /**
@@ -732,7 +1046,7 @@ final class Editor extends Component
      */
     protected function rules(): array
     {
-        $rules = app(EntryContentRules::class)->rules();
+        $rules = self::onFormFields(app(EntryContentRules::class)->rules());
 
         // A post's URL is its category slug + post slug, so a post must have a category.
         if ($this->type === 'post') {
@@ -798,16 +1112,126 @@ final class Editor extends Component
     protected function messages(): array
     {
         return [
-            ...app(EntryContentRules::class)->messages(),
+            ...self::onFormFields(app(EntryContentRules::class)->messages()),
             'categoryId.required' => __('entries.category_required'),
             'categoryId.exists' => __('entries.category_invalid'),
         ];
     }
 
+    /**
+     * The content rules (or their messages) keyed by this form's field names: the Google fields are
+     * columns `seo_title`/`seo_description` in the content shape and `seoTitle`/`seoDescription` here.
+     *
+     * @template TValue
+     *
+     * @param  array<string, TValue>  $byColumn
+     * @return array<string, TValue>
+     */
+    private static function onFormFields(array $byColumn): array
+    {
+        $fields = ['seo_title' => 'seoTitle', 'seo_description' => 'seoDescription'];
+        $out = [];
+        foreach ($byColumn as $key => $value) {
+            $column = explode('.', $key, 2)[0];
+            $out[($fields[$column] ?? $column).substr($key, strlen($column))] = $value;
+        }
+
+        return $out;
+    }
+
+    /**
+     * A blank link is made from the title (any writing system) and made free for this language: no
+     * other page's link and no other route (a category, a product) may already hold the public path it would get, and a
+     * flat page is never given `home`, which publishing turns into the site's root. A link the
+     * person typed is never touched. A title with
+     * nothing usable leaves it blank, so validation asks for the link. Returns whether it filled one.
+     */
+    private function fillBlankSlug(): bool
+    {
+        if (trim($this->slug) !== '') {
+            return false;
+        }
+
+        $ownId = $this->ulid !== null ? $this->resolveOrFail($this->ulid)->id : null;
+        $prefix = $this->publicPathPrefix();
+
+        $this->slug = Slugger::fromTitle(
+            $this->title,
+            $this->locale,
+            fn (string $base): array => [
+                ...Slugger::takenAmong(
+                    EntryTranslation::query()
+                        ->where('locale', $this->locale)
+                        ->when($ownId !== null, fn ($q) => $q->where('entry_id', '!=', $ownId)),
+                    'slug',
+                    $base,
+                ),
+                ...Slugger::takenAmong(
+                    SiteRoute::query()
+                        ->where('locale', $this->locale)
+                        ->when($ownId !== null, fn ($q) => $q->where(
+                            fn ($own) => $own->whereNull('entry_id')->orWhere('entry_id', '!=', $ownId),
+                        )),
+                    'path',
+                    $base,
+                    $prefix,
+                ),
+                ...($prefix === '/' ? [PathBuilder::HOME_SLUG] : []),
+            ],
+        );
+
+        return $this->slug !== '';
+    }
+
+    /**
+     * The part of the public path that comes before the slug, composed by PathBuilder for this
+     * entry and its picked category exactly as publishing will ('/' for a flat page). The caller may
+     * hand in the entry and its picked category when it already holds them.
+     */
+    private function publicPathPrefix(?Entry $entry = null, ?Taxonomy $category = null): string
+    {
+        $entry ??= $this->ulid !== null ? $this->resolveOrFail($this->ulid) : new Entry(['type' => $this->type]);
+
+        if ($this->type === 'post') {
+            $category ??= $this->categoryId !== null
+                ? Taxonomy::query()->with('translations')->find($this->categoryId)
+                : null;
+            $categories = new EloquentCollection;
+            if ($category instanceof Taxonomy) {
+                $category->setRelation('pivot', (new Pivot)->forceFill(['position' => 0]));
+                $categories->push($category);
+            }
+            $entry->setRelation('taxonomies', $categories);
+        }
+
+        $path = app(PathBuilder::class)->forEntry($entry, $this->locale, 'x');
+
+        return str_ends_with($path, 'x') ? substr($path, 0, -1) : '/';
+    }
+
     /** Validate + persist the entry and its translation (+ category for posts); returns it. */
     private function persist(): Entry
     {
-        $this->validate();
+        // No control character is stored (PostgreSQL refuses a NUL); Google shows its two fields on
+        // one line, so a line break or an invisible direction mark never reaches the head either.
+        $this->title = PlainText::line($this->title);
+        $this->slug = PlainText::line($this->slug);
+        $this->excerpt = PlainText::lines($this->excerpt);
+        $this->seoTitle = SeoFields::singleLine($this->seoTitle);
+        $this->seoDescription = SeoFields::singleLine($this->seoDescription);
+        $this->blocks = PlainText::linesIn($this->blocks);
+
+        $filled = $this->fillBlankSlug();
+        try {
+            $this->validate();
+        } catch (ValidationException $e) {
+            // A link made for a save that failed must not stay behind: it would pin the old title.
+            if ($filled) {
+                $this->slug = '';
+            }
+
+            throw $e;
+        }
 
         if ($this->ulid === null) {
             $this->authorize('create', Entry::class);
@@ -845,6 +1269,9 @@ final class Editor extends Component
             'title' => $this->title,
             'slug' => $this->slug,
             'body' => ['blocks' => $this->blocks],
+            'excerpt' => $this->excerpt !== '' ? $this->excerpt : null,
+            'seo_title' => $this->seoTitle !== '' ? $this->seoTitle : null,
+            'seo_description' => $this->seoDescription !== '' ? $this->seoDescription : null,
             'status' => $this->translationStatus($entry, $translation),
         ])->save();
 
@@ -917,6 +1344,19 @@ final class Editor extends Component
         return array_values($categories);
     }
 
+    /**
+     * The gate of the save path, for an endpoint that changes the page being edited: `create` for a
+     * page not saved yet, else `update` on the entry.
+     */
+    private function authorizeEditing(): void
+    {
+        if ($this->ulid === null) {
+            $this->authorize('create', Entry::class);
+        } else {
+            $this->authorize('update', $this->resolveOrFail($this->ulid));
+        }
+    }
+
     private function resolveOrFail(string $ulid): Entry
     {
         return Entry::query()->where('ulid', $ulid)->firstOrFail();
@@ -948,7 +1388,7 @@ final class Editor extends Component
             return null;
         }
 
-        $spec = $registry->get($type)->schema()[$key] ?? null;
+        $spec = $registry->schemaFor($type)[$key] ?? null;
         if (! is_array($spec) || ($spec['type'] ?? null) !== 'list') {
             return null;
         }
@@ -1037,13 +1477,14 @@ final class Editor extends Component
         return match ($type) {
             'list' => [],
             'int' => $default ?? 0,
-            'image' => $default,   // a media_id, or null for an unset picker
+            'image', 'video' => $default,   // a media_id, or null for an unset picker
             default => $default ?? '',
         };
     }
 
     /**
-     * Every registered type's §E7 schema, for the editor view to render inputs/repeaters.
+     * Every registered type's §E7 schema with the look props, for the editor view to render
+     * inputs/repeaters (the look props, group `style`, render on the "Trình bày" panel instead).
      *
      * @return array<string, array<string, array<string, mixed>>>
      */
@@ -1052,10 +1493,39 @@ final class Editor extends Component
         $registry = app(ComponentRegistry::class);
         $schemas = [];
         foreach ($registry->types() as $type) {
-            $schemas[$type] = $registry->get($type)->schema();
+            $schemas[$type] = $registry->schemaFor($type);
         }
 
         return $schemas;
+    }
+
+    /**
+     * A saved number outside its schema's range (a list block's `limit` is 1-50) is pulled into it
+     * when the block loads, so saving it again never fails on a value the visitor-facing page already
+     * treated as the nearest one. A value that is not a number at all reads as the schema default.
+     *
+     * @param  array<array-key, mixed>  $props
+     * @return array<array-key, mixed>
+     */
+    private function clampNumbers(string $type, array $props): array
+    {
+        $registry = app(ComponentRegistry::class);
+        if (! $registry->has($type)) {
+            return $props;
+        }
+
+        foreach ($registry->get($type)->schema() as $prop => $spec) {
+            if (($spec['type'] ?? null) !== 'int' || ! array_key_exists($prop, $props)
+                || (! isset($spec['min']) && ! isset($spec['max'])) || $props[$prop] === null || $props[$prop] === '') {
+                continue;
+            }
+            $value = $props[$prop];
+            $props[$prop] = is_numeric($value)
+                ? min($spec['max'] ?? PHP_INT_MAX, max($spec['min'] ?? PHP_INT_MIN, (int) $value))
+                : ($spec['default'] ?? $spec['min'] ?? 0);
+        }
+
+        return $props;
     }
 
     /**
@@ -1072,7 +1542,7 @@ final class Editor extends Component
             if (is_array($block) && isset($block['type']) && is_string($block['type'])) {
                 $normalized[] = [
                     'type' => $block['type'],
-                    'props' => is_array($block['props'] ?? null) ? $block['props'] : [],
+                    'props' => $this->clampNumbers($block['type'], is_array($block['props'] ?? null) ? $block['props'] : []),
                 ];
             }
         }

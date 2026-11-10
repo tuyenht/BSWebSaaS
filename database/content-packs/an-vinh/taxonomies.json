@@ -1,0 +1,158 @@
+{
+ "items": [
+  {
+   "key": "tax:post_cat/san-pham",
+   "name": {
+    "vi": "Sản phẩm"
+   },
+   "list_template": "grid-product"
+  },
+  {
+   "key": "tax:product_cat/san-pham/do-ga",
+   "parent": "tax:post_cat/san-pham",
+   "name": {
+    "vi": "Đồ gá"
+   },
+   "list_template": "grid-product",
+   "position": 1
+  },
+  {
+   "key": "tax:product_cat/san-pham/khuon-mau",
+   "parent": "tax:post_cat/san-pham",
+   "name": {
+    "vi": "Khuôn mẫu"
+   },
+   "list_template": "grid-product",
+   "position": 2
+  },
+  {
+   "key": "tax:product_cat/san-pham/chi-tiet-may",
+   "parent": "tax:post_cat/san-pham",
+   "name": {
+    "vi": "Chi tiết máy"
+   },
+   "list_template": "grid-product",
+   "position": 3
+  },
+  {
+   "key": "tax:post_cat/du-an",
+   "name": {
+    "vi": "Dự án"
+   },
+   "list_template": "grid-project",
+   "detail_template": "project"
+  },
+  {
+   "key": "tax:post_cat/tin-tuc",
+   "name": {
+    "vi": "Tin tức"
+   },
+   "list_template": "grid-news"
+  },
+  {
+   "key": "tax:post_cat/tin-tuc/tin-noi-bo",
+   "parent": "tax:post_cat/tin-tuc",
+   "name": {
+    "vi": "Tin nội bộ"
+   },
+   "list_template": "grid-news",
+   "position": 1
+  },
+  {
+   "key": "tax:post_cat/tin-tuc/tin-nganh",
+   "parent": "tax:post_cat/tin-tuc",
+   "name": {
+    "vi": "Tin tức ngành"
+   },
+   "list_template": "grid-news",
+   "position": 2
+  },
+  {
+   "key": "tax:post_cat/nang-luc",
+   "name": {
+    "vi": "Năng lực"
+   },
+   "list_template": null,
+   "was": [
+    "dich-vu"
+   ]
+  },
+  {
+   "key": "tax:post_cat/du-an/du-an-o-to",
+   "parent": "tax:post_cat/du-an",
+   "name": {
+    "vi": "Ô tô"
+   },
+   "list_template": "grid-project",
+   "detail_template": "project",
+   "position": 1
+  },
+  {
+   "key": "tax:post_cat/du-an/du-an-tu-dong-hoa",
+   "parent": "tax:post_cat/du-an",
+   "name": {
+    "vi": "Tự động hóa"
+   },
+   "list_template": "grid-project",
+   "detail_template": "project",
+   "position": 2
+  },
+  {
+   "key": "tax:post_cat/du-an/du-an-dien-tu",
+   "parent": "tax:post_cat/du-an",
+   "name": {
+    "vi": "Điện tử"
+   },
+   "list_template": "grid-project",
+   "detail_template": "project",
+   "position": 3
+  },
+  {
+   "key": "tax:post_cat/du-an/du-an-khuon-mau",
+   "parent": "tax:post_cat/du-an",
+   "name": {
+    "vi": "Khuôn mẫu"
+   },
+   "list_template": "grid-project",
+   "detail_template": "project",
+   "position": 4
+  },
+  {
+   "key": "tax:post_cat/du-an/du-an-hang-khong",
+   "parent": "tax:post_cat/du-an",
+   "name": {
+    "vi": "Hàng không"
+   },
+   "list_template": "grid-project",
+   "detail_template": "project",
+   "position": 5
+  },
+  {
+   "key": "tax:post_cat/du-an/du-an-gia-dung",
+   "parent": "tax:post_cat/du-an",
+   "name": {
+    "vi": "Gia dụng"
+   },
+   "list_template": "grid-project",
+   "detail_template": "project",
+   "position": 6
+  },
+  {
+   "key": "tax:product_cat/san-pham/tu-dong-hoa",
+   "parent": "tax:post_cat/san-pham",
+   "name": {
+    "vi": "Sản phẩm tự động hóa"
+   },
+   "list_template": "grid-product",
+   "position": 4
+  },
+  {
+   "key": "tax:post_cat/tuyen-dung",
+   "name": {
+    "vi": "Tuyển dụng"
+   },
+   "list_template": "grid-job",
+   "detail_template": "job"
+  }
+ ]
+}

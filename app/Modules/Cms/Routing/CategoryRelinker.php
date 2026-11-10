@@ -6,6 +6,7 @@ namespace App\Modules\Cms\Routing;
 
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Support\CategoryItemCounts;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\PermalinkConfig;
@@ -20,7 +21,9 @@ use Illuminate\Support\Facades\DB;
  *    (pivot position 0) is in the changed branch — RouteSync moves each route and leaves a 301;
  *  - refile(): before categories are deleted, move their items onto another category (which takes
  *    the deleted one's rank) or detach them, renumber each item's categories 0..n-1 so position 0 is
- *    a primary again — facet terms from FACET_POSITION_BASE up are never touched — then re-sync.
+ *    a primary again — facet terms from FACET_POSITION_BASE up are never touched — then re-sync;
+ *    the categories' item totals follow every main category it changes (CategoryItemCounts), and
+ *    so does the content mark of every item whose main category it changes (the page's breadcrumb).
  * Paths are re-synced only for kinds whose permalink preset can carry the change (follows()): on a
  * site where everything is flat, a category change touches no item route.
  *
@@ -42,16 +45,19 @@ final readonly class CategoryRelinker
         private SectionResolver $sections,
         private RouteSync $routes,
         private CurrentSite $site,
+        private CategoryItemCounts $counts,
     ) {}
 
     /**
-     * Re-sync the items filed primarily under these categories. Returns the routes moved.
+     * Re-sync the items filed primarily under these categories. Returns the routes moved. Pass every
+     * change the categories went through (a rename and a move together): a kind is re-synced when
+     * any of them can change its paths.
      *
      * @param  list<int>  $taxonomyIds  the changed categories and everything under them
      *
      * @throws RouteConflictException an item's new path already belongs to something else
      */
-    public function relink(array $taxonomyIds, CategoryChange $change): int
+    public function relink(array $taxonomyIds, CategoryChange ...$changes): int
     {
         $moved = 0;
         if ($taxonomyIds === []) {
@@ -59,7 +65,7 @@ final readonly class CategoryRelinker
         }
 
         foreach ($this->kinds() as $kind) {
-            if (! $this->follows($kind['section'], $change)) {
+            if (! $this->follows($kind['section'], $changes)) {
                 continue;
             }
 
@@ -93,8 +99,15 @@ final readonly class CategoryRelinker
             return ['items' => $items, 'routes' => $routes];
         }
 
+        // The totals move once, after every item has been locked (items, then categories: the order
+        // an editor save keeps), so a save cannot slip in between the two readings of an item. A
+        // delete that lifts sub-categories has already written those category rows: a save moving an
+        // item to or from one of them at that moment is a deadlock Postgres breaks by rolling one
+        // side back (an error to retry, never a wrong total).
+        $before = [];
+        $now = [];
         foreach ($this->kinds() as $kind) {
-            $follows = $this->follows($kind['section'], CategoryChange::Refiled);
+            $follows = $this->follows($kind['section'], [CategoryChange::Refiled]);
             $after = 0;
 
             do {
@@ -112,7 +125,24 @@ final readonly class CategoryRelinker
                 }
                 $after = max($chunk);
 
+                // The main category of an item can change here (moved onto the target, or the next
+                // one moving up): the totals follow the difference, read before and after. The item
+                // rows are locked first, so a save of one of them waits instead of being counted twice.
+                DB::table($kind['items'])
+                    ->where('site_id', $this->site->id())
+                    ->whereIn('id', $chunk)
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->pluck('id');
+                $before = self::sum($before, $this->counts->primaries($kind['pivot'], $chunk));
+                $mainsBefore = $this->mains($kind['pivot'], $kind['column'], $chunk);
                 $this->rewrite($kind['pivot'], $kind['column'], $deleted, $targetId, $chunk);
+                $mainsNow = $this->mains($kind['pivot'], $kind['column'], $chunk);
+                $now = self::sum($now, $this->counts->primaries($kind['pivot'], $chunk));
+                ($kind['changed'])(array_values(array_filter(
+                    $chunk,
+                    static fn (int $item): bool => ($mainsBefore[$item] ?? null) !== ($mainsNow[$item] ?? null),
+                )));
                 $items += count($chunk);
 
                 if ($follows) {
@@ -120,8 +150,57 @@ final readonly class CategoryRelinker
                 }
             } while (count($chunk) === self::CHUNK);
         }
+        $this->counts->settle($before, $now);
 
         return ['items' => $items, 'routes' => $routes];
+    }
+
+    /**
+     * Each of these items' main category (pivot position 0); an item with none is left out.
+     *
+     * @param  list<int>  $items
+     * @return array<int, int>
+     */
+    private function mains(string $pivot, string $column, array $items): array
+    {
+        $mains = [];
+        foreach (DB::table($pivot)->where('site_id', $this->site->id())->whereIn($column, $items)->where('position', 0)->get([$column, 'taxonomy_id']) as $row) {
+            $mains[Cast::int($row->{$column})] = Cast::int($row->taxonomy_id);
+        }
+
+        return $mains;
+    }
+
+    /**
+     * Two category → count maps added together.
+     *
+     * @param  array<int, int>  $into
+     * @param  array<int, int>  $add
+     * @return array<int, int>
+     */
+    private static function sum(array $into, array $add): array
+    {
+        foreach ($add as $id => $count) {
+            $into[$id] = ($into[$id] ?? 0) + $count;
+        }
+
+        return $into;
+    }
+
+    /**
+     * Whether relink() with these changes re-syncs the paths of the items filed through this pivot
+     * (`entry_taxonomies` for posts, or a registered kind's) — for a planner that must predict
+     * exactly which items a category write carries along.
+     */
+    public function resyncs(string $pivot, CategoryChange ...$changes): bool
+    {
+        foreach ($this->kinds() as $kind) {
+            if ($kind['pivot'] === $pivot) {
+                return $this->follows($kind['section'], $changes);
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -160,18 +239,33 @@ final readonly class CategoryRelinker
      * Cms's own entries, then every registered kind. A null section means posts: their preset
      * depends on the section their primary category puts them in.
      *
-     * @return list<array{pivot: string, column: string, section: string|null, resync: Closure(list<int>): int}>
+     * @return list<array{pivot: string, column: string, section: string|null, resync: Closure(list<int>): int, items: string, changed: Closure(list<int>): void}>
      */
     private function kinds(): array
     {
         return [
-            ['pivot' => 'entry_taxonomies', 'column' => 'entry_id', 'section' => null, 'resync' => $this->resyncEntries(...)],
+            ['pivot' => 'entry_taxonomies', 'column' => 'entry_id', 'section' => null, 'resync' => $this->resyncEntries(...), 'items' => 'entries', 'changed' => Entry::markContentChanged(...)],
             ...array_values($this->dependents->all()),
         ];
     }
 
-    /** Whether a kind's public paths can change with this kind of category change. */
-    private function follows(?string $section, CategoryChange $change): bool
+    /**
+     * Whether a kind's public paths can change with any of these category changes.
+     *
+     * @param  array<array-key, CategoryChange>  $changes
+     */
+    private function follows(?string $section, array $changes): bool
+    {
+        foreach ($changes as $change) {
+            if ($this->followsOne($section, $change)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function followsOne(?string $section, CategoryChange $change): bool
     {
         if ($section === null) {
             // A post's preset comes from the section its primary category resolves to, and a move or

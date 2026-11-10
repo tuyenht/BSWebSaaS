@@ -1,0 +1,1547 @@
+/*
+ | Shared record-list rows (<x-bs-admin::list> and list.*; design 05 "Bài viết", flat rows).
+ | The list is a size container: every row lays itself out by the LIST's width —
+ |   below 600 (37.5rem)  a card: [select · name + meta] / [status … Xem Sửa ⋮], the button group
+ |                        wrapping whole onto its own line, right-aligned, when it does not fit;
+ |   600–899              one record per line: [select] [name + meta] [status] [buttons];
+ |   from 900 (56.25rem)  a table: a header row and the rows on ONE grid (subgrid), so a header
+ |                        always stands over its column; the author column joins from 1280 (80rem).
+ | Widths are in rem so the switches move with the reader's text size. Every size comes from the
+ | shared tokens (--spacing-hit, --spacing-control-row, --text-*); a screen passes content only.
+ | Names and meta text wrap and are never clipped.
+ */
+@layer components {
+    .list-rows {
+        /* The size of a small target in the table's name cell (✎, language chips): 24 with a mouse
+           at the default text size, 44 from the next size up and on touch. */
+        --list-qe-s: var(--spacing-tap-cell);
+        /* The name link and the path button: 44 below 900 at every pointer, as in the design; the
+           table (from 900) takes --list-qe-s. */
+        --list-tap: var(--spacing-hit);
+        /* One line of the name, so its box can centre the first line in the target height. */
+        --list-nlh: calc(var(--text-body) * 1.45);
+        container: list / inline-size;
+        min-width: 0;
+    }
+
+    @media (any-pointer: coarse) {
+        .list-rows {
+            --list-qe-s: var(--spacing-hit);
+        }
+    }
+
+    .list-g {
+        min-width: 0;
+        border-top: 1px solid var(--color-border);
+    }
+
+    .list-r {
+        box-sizing: border-box;
+        min-width: 0;
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .list-r:last-child {
+        border-bottom: 0;
+    }
+
+    @media (hover: hover) {
+        .list-r:not(.list-hd):hover {
+            background: var(--color-surface-muted);
+        }
+    }
+
+    .list-r[data-sel],
+    .list-r[data-sel]:hover {
+        background: color-mix(in srgb, var(--color-primary-text) 5%, var(--color-surface));
+    }
+
+    .list-c {
+        box-sizing: border-box;
+        min-width: 0;
+    }
+
+    .list-c-full {
+        padding: 3rem 1rem;
+        text-align: center;
+        color: var(--color-text-muted);
+    }
+
+    /* Header row: shown from 900 only. */
+    .list-hd {
+        display: none;
+        background: var(--color-surface-muted);
+        font-size: var(--text-small);
+        font-weight: 600;
+        color: var(--color-text-muted);
+    }
+
+    .list-sb {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        min-height: var(--spacing-hit);
+        padding: 0;
+        border: 0;
+        background: transparent;
+        font: inherit;
+        color: inherit;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .list-sb:hover,
+    .list-sb[data-a] {
+        color: var(--color-primary-text);
+    }
+
+    .list-sb-i {
+        flex: none;
+        width: calc(0.875rem + var(--user-text-boost));
+        height: calc(0.875rem + var(--user-text-boost));
+    }
+
+    /* Select box: a 44 × 44 button, the visible box 18px. */
+    .list-ck {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        width: var(--spacing-hit);
+        height: var(--spacing-hit);
+        padding: 0;
+        border: 0;
+        border-radius: 0.25rem;
+        background: transparent;
+        cursor: pointer;
+    }
+
+    .list-ck-text {
+        width: auto;
+        gap: 0.8125rem;
+        padding-inline: 0.8125rem 0.5rem;
+        margin-inline-start: -0.8125rem;
+        font-size: var(--text-body);
+        color: var(--color-text);
+    }
+
+    .list-box {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        width: 1.125rem;
+        height: 1.125rem;
+        border: 1px solid var(--color-border-input);
+        border-radius: 0.25rem;
+        background: var(--color-surface);
+        color: var(--color-on-primary);
+    }
+
+    .list-ck:hover .list-box {
+        border-color: var(--color-primary-text);
+    }
+
+    .list-ck:is([aria-checked='true'], [aria-checked='mixed']) .list-box {
+        border-color: var(--color-primary);
+        background: var(--color-primary);
+    }
+
+    .list-box-i {
+        width: 0.875rem;
+        height: 0.875rem;
+    }
+
+    .list-selbar {
+        display: flex;
+        align-items: center;
+        min-height: var(--spacing-hit);
+        padding-inline: 0.75rem;
+    }
+
+    /* Name: a link to the editor, wrapping, never clipped; the ✎ quick-edit button beside it. The
+       link's box is at least the target height (--list-tap), its first line centred in that height
+       however many lines follow, so the row check lines up with the first line at every size. */
+    .list-tl {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        min-width: 0;
+        min-height: var(--list-tap);
+    }
+
+    /* The text sits centred in a box at least one target tall; a wrapped title grows by its lines only,
+       not by the target's spare height (the slot is plain text, so it stays one flex item). */
+    .list-name {
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        min-height: var(--list-tap);
+        font-size: var(--text-body);
+        font-weight: 600;
+        line-height: var(--list-nlh);
+        color: var(--color-text-strong);
+        overflow-wrap: anywhere;
+    }
+
+    /* The path button: as tall as the name's target, the text centred; nothing reaches past its box. */
+    .list-path {
+        display: inline-flex;
+        align-items: center;
+        box-sizing: border-box;
+        min-height: var(--list-tap);
+        margin-block: 0.25rem;
+        border-radius: 0.25rem;
+        text-align: left;
+    }
+
+    /* The tree mark of a child record, drawn in the 1.25rem indent the screen gives it. */
+    .list-tree {
+        display: inline-block;
+        flex: none;
+        width: 0.875rem;
+        height: 0.875rem;
+        margin-inline: -1.25rem 0.375rem;
+        vertical-align: -0.125rem;
+        color: var(--color-text-faint);
+    }
+
+    a.list-name:hover {
+        color: var(--color-primary-text);
+        text-decoration: underline;
+        text-underline-offset: 3px;
+    }
+
+    /* The ✎ is a small target in the name cell: 24 with a mouse at the default text size, 44 from
+       the next size up and on touch (one shared size, --spacing-tap-cell). It shows in the table
+       only (from 900); below that, as in the design, "Sửa nhanh tiêu đề" stays in the row's ⋮ menu,
+       so no touch-size hit box reaches over the detail line under the name. */
+    .list-qe {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: var(--list-qe-s);
+        height: var(--list-qe-s);
+        margin-inline-start: 0.5rem;
+        padding: 0;
+        border: 0;
+        border-radius: 0.25rem;
+        background: transparent;
+        color: var(--color-text-muted);
+        vertical-align: middle;
+        cursor: pointer;
+    }
+
+    .list-qe:hover {
+        background: var(--color-surface-hover);
+        color: var(--color-primary-text);
+    }
+
+    .list-qe-i {
+        width: calc(1rem + var(--user-text-boost));
+        height: calc(1rem + var(--user-text-boost));
+    }
+
+    /* The title field that replaces the name while it is being edited. */
+    .list-in {
+        box-sizing: border-box;
+        width: 100%;
+        min-height: var(--spacing-control);
+        padding: 0.25rem 0.5rem;
+        border: 1px solid var(--color-primary-text);
+        border-radius: 0.25rem;
+        background: var(--color-surface);
+        font-size: var(--text-body);
+        font-weight: 600;
+        color: var(--color-text);
+    }
+
+    @media (any-pointer: coarse) {
+        .list-in {
+            min-height: var(--spacing-hit);
+        }
+    }
+
+    /* Meta line: pieces joined by " · ". Each dot sits in the gap before its piece; a dot that
+       would open a line falls left of the line box and is clipped away. */
+    .list-meta {
+        --list-dw: 0.5em;
+        --list-dg: 0.5rem;
+        position: relative;
+        z-index: 2;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        column-gap: calc(var(--list-dw) + 2 * var(--list-dg));
+        row-gap: 0.125rem;
+        margin-top: 0.25rem;
+        clip-path: inset(-100vh -100vw -100vh calc(-1 * var(--list-dg)));
+        font-size: var(--text-small);
+        line-height: 1.45;
+        color: var(--color-text-muted);
+    }
+
+    .list-m {
+        position: relative;
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .list-m::before {
+        content: '·';
+        display: inline-block;
+        width: var(--list-dw);
+        margin-inline: calc(-1 * (var(--list-dw) + var(--list-dg))) var(--list-dg);
+        text-align: center;
+        pointer-events: none;
+    }
+
+    .list-m[data-for='when'] {
+        display: none;
+    }
+
+    .list-rows[data-hide~='au'] .list-m[data-for='au'] {
+        display: none;
+    }
+
+    /* Language versions (list.langs): the "Chưa dịch" note, then a chip per locale. A chip is drawn
+       small (1px box, radius 4); its hit area is --list-qe-s (24 with a mouse at the default text
+       size, 44 on touch) through a transparent ::after, so neither the chip nor the line grows. The
+       hit area reaches at most --list-lc-up above the chip and the rest below. The chips' group,
+       like the path button, keeps 0.25rem above and below, so with the meta line's own gap a chip's
+       area stays 8px clear of the name and of a path button on the line above. Its popover and
+       menu hang from the meta line. */
+    .list-m[data-for='langs'] {
+        --list-lc-up: 0.25rem;
+        position: static;
+    }
+
+    .list-lcs,
+    .list-lcg {
+        display: inline-flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.25rem 0.5rem;
+        max-width: 100%;
+        min-width: 0;
+        vertical-align: middle;
+    }
+
+    .list-lcg {
+        margin-block: 0.25rem;
+    }
+
+    /* Too wide for its line, the group wraps inside itself beside its dot, so the dot never stands
+       alone on a line of its own. */
+    .list-m[data-for='langs'] {
+        display: flex;
+        align-items: center;
+    }
+
+    /* On touch the 44 hit areas of neighbouring chips do not overlap: a chip is at least its hit
+       size less the gap, so even the narrowest name ("Ý") leaves its neighbour's area alone. */
+    @media (any-pointer: coarse) {
+        .list-lcs,
+        .list-lcg {
+            --list-lc-gap: 0.75rem;
+            column-gap: var(--list-lc-gap);
+        }
+
+        .list-lc {
+            justify-content: center;
+            min-width: calc(var(--list-qe-s) - var(--list-lc-gap));
+        }
+    }
+
+    .list-lmiss {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 0.25rem;
+        font-size: var(--text-caption);
+        font-weight: 600;
+        line-height: 1.4;
+        color: var(--color-warning-text);
+        overflow-wrap: anywhere;
+    }
+
+    .list-lmiss-i {
+        align-self: center;
+    }
+
+    .list-lc,
+    .list-lsum {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        font: inherit;
+        cursor: pointer;
+    }
+
+    .list-lc::after,
+    .list-lsum::after {
+        --list-lc-out: max(0px, calc(var(--list-qe-s) - 100%));
+        content: '';
+        position: absolute;
+        inset-inline: min(0px, calc((100% - var(--list-qe-s)) / 2));
+        top: calc(-1 * min(var(--list-lc-up), var(--list-lc-out) / 2));
+        bottom: calc(-1 * (var(--list-lc-out) - min(var(--list-lc-up), var(--list-lc-out) / 2)));
+    }
+
+    .list-lc {
+        gap: 0.125rem;
+        padding: 0.0625rem 0.4375rem;
+        border: 1px solid var(--color-border-input);
+        border-radius: 0.25rem;
+        background: var(--color-surface);
+        font-size: var(--text-caption);
+        font-weight: 700;
+        line-height: 1.4;
+        color: var(--color-text);
+        text-decoration: none;
+    }
+
+    .list-lc[data-s='empty'] {
+        border-style: dashed;
+        background: transparent;
+        color: var(--color-text-muted);
+    }
+
+    .list-lc[data-add]::before {
+        content: '+';
+        font-weight: 700;
+    }
+
+    .list-lc:hover {
+        border-color: var(--color-primary-text);
+    }
+
+    .list-lc-star {
+        color: var(--color-warning-text);
+    }
+
+    /* More than four locales: one summary button, its text wrapping (never clipped). */
+    .list-lsum {
+        gap: 0.375rem;
+        padding: 0 0.25rem;
+        margin-inline-start: -0.25rem;
+        border: 0;
+        border-radius: 0.25rem;
+        background: transparent;
+        font-size: var(--text-small);
+        line-height: 1.45;
+        color: var(--color-text);
+        text-align: left;
+        overflow-wrap: anywhere;
+    }
+
+    .list-lsum:hover {
+        background: var(--color-surface-hover);
+    }
+
+    .list-lsum-i {
+        color: var(--color-success-text);
+    }
+
+    .list-lsum[data-ok='0'] .list-lsum-i {
+        color: var(--color-warning-text);
+    }
+
+    /* An open popover or menu lifts its meta line over the rows after it. */
+    .list-meta:has([aria-expanded='true']) {
+        z-index: 31;
+    }
+
+    .list-menu:is(.list-lmenu, .list-pop) {
+        top: calc(100% + 0.25rem);
+        right: auto;
+        left: 0;
+        width: max-content;
+        min-width: min(15rem, 100%);
+        max-width: min(20rem, 100%);
+    }
+
+    .list-lmh {
+        padding: 0.375rem 0.875rem 0.25rem;
+        font-size: var(--text-caption);
+        font-weight: 600;
+        color: var(--color-text-muted);
+    }
+
+    .list-mi-tx {
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .list-mi-st {
+        margin-inline-start: 0.25rem;
+        font-size: var(--text-caption);
+        color: var(--color-text-muted);
+    }
+
+    .list-mi-act {
+        flex: none;
+        font-weight: 600;
+        color: var(--color-primary-text);
+    }
+
+    .list-mi[aria-disabled='true'] {
+        cursor: default;
+    }
+
+    .list-lmw,
+    .list-pop-w {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.375rem;
+        font-size: var(--text-caption);
+        color: var(--color-text-muted);
+    }
+
+    .list-lmw {
+        padding: 0.5rem 0.875rem 0.375rem;
+        border-top: 1px solid var(--color-border);
+    }
+
+    .list-lmw-i {
+        margin-top: 0.125rem;
+    }
+
+    /* The why-note of a chip the member cannot open (drawn as a list menu). */
+    .list-menu.list-pop {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        box-sizing: border-box;
+        padding: 0.625rem 0.75rem;
+        font-size: var(--text-small);
+        overflow-wrap: anywhere;
+    }
+
+    /* The column choice off: chips with content hide (below 600 all chips, see the card band). */
+    .list-lcg[data-off] > .list-lc:not([data-s='empty']) {
+        display: none;
+    }
+
+    .list-pop-h {
+        font-weight: 600;
+        color: var(--color-text-strong);
+    }
+
+    /* Status cell: the shared status pill, then the date line. */
+    .list-stw {
+        position: relative;
+        display: flex;
+        align-items: center;
+        min-height: var(--spacing-hit);
+    }
+
+    .list-st-meta {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: var(--text-caption);
+        color: var(--color-text-muted);
+    }
+
+    .list-au {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: var(--spacing-hit);
+        font-size: var(--text-body);
+        color: var(--color-text);
+        overflow-wrap: anywhere;
+    }
+
+    .list-avi {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        width: calc(1.625rem + var(--user-text-boost));
+        height: calc(1.625rem + var(--user-text-boost));
+        border-radius: 9999px;
+        font-size: var(--text-caption);
+        font-weight: 700;
+    }
+
+    /* Row buttons + ⋮. */
+    .list-acts {
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        min-height: var(--spacing-hit);
+    }
+
+    .list-acts > * {
+        flex: none;
+    }
+
+    .list-more {
+        position: relative;
+    }
+
+    .list-more-i {
+        width: calc(1rem + var(--user-text-boost));
+        height: calc(1rem + var(--user-text-boost));
+    }
+
+    .list-menu {
+        position: absolute;
+        top: calc(100% + 0.375rem);
+        right: 0;
+        z-index: 30;
+        min-width: 15rem;
+        max-width: min(20rem, calc(100vw - 2rem));
+        padding-block: 0.25rem;
+        border: 1px solid var(--color-border-strong);
+        border-radius: 0.375rem;
+        background: var(--color-surface);
+        box-shadow: 0 10px 30px rgb(15 18 30 / 0.18);
+        font-size: var(--text-body);
+        color: var(--color-text);
+        text-align: left;
+    }
+
+    .list-mi {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        box-sizing: border-box;
+        width: 100%;
+        min-height: var(--spacing-menu-row);
+        padding: 0.5rem 0.875rem;
+        border: 0;
+        background: transparent;
+        font: inherit;
+        color: inherit;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    @media (any-pointer: coarse) {
+        .list-mi {
+            min-height: var(--spacing-menu-row-touch);
+        }
+    }
+
+    .list-mi:hover,
+    .list-mi:focus-visible {
+        background: var(--color-surface-hover);
+    }
+
+    .list-mi-i {
+        flex: none;
+        width: calc(1rem + var(--user-text-boost));
+        height: calc(1rem + var(--user-text-boost));
+        color: var(--color-text-muted);
+    }
+
+    /* The item's keyboard shortcut ("Alt →"), at the end of the row. */
+    .list-mi-k {
+        flex: none;
+        margin-inline-start: auto;
+        padding-inline-start: 0.75rem;
+        font-size: var(--text-caption);
+        color: var(--color-text-muted);
+        white-space: nowrap;
+    }
+
+    .list-mi[data-t='danger'],
+    .list-mi[data-t='danger'] .list-mi-i {
+        color: var(--color-danger-text);
+    }
+
+    .list-msep {
+        height: 1px;
+        margin-block: 0.25rem;
+        background: var(--color-border);
+    }
+
+    /* A menu item that cannot be used yet, and the reason on the line under it. */
+    .list-mi[aria-disabled='true']:not(.list-lmenu *) {
+        color: var(--color-text-muted);
+        cursor: not-allowed;
+    }
+
+    .list-mwhy {
+        display: block;
+        padding: 0 0.875rem 0.375rem calc(1.5rem + 0.875rem + var(--user-text-boost));
+        font-size: var(--text-caption);
+        color: var(--color-text-muted);
+    }
+
+    /* Too little room below the ⋮: the menu opens upwards. */
+    .list-menu[data-up='true'] {
+        top: auto;
+        bottom: calc(100% + 0.375rem);
+    }
+
+    /* A menu with a title ("Thao tác cho …"): below 600 a sheet from the bottom over a dimmed
+       screen, the title above its items. */
+    .list-mh,
+    .list-sheet-bg {
+        display: none;
+    }
+
+    @media (max-width: 37.4999rem) {
+        .list-sheet-bg {
+            display: block;
+            position: fixed;
+            inset: 0;
+            z-index: 205;
+            background: rgb(15 18 30 / 0.45);
+        }
+
+        .list-menu[data-sheet] {
+            position: fixed;
+            inset: auto 0 0 0;
+            z-index: 206;
+            max-width: none;
+            max-height: 92dvh;
+            overflow: auto;
+            padding: 0.5rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom));
+            border-radius: 0.75rem 0.75rem 0 0;
+        }
+
+        .list-menu[data-sheet] .list-mh {
+            display: block;
+            margin-bottom: 0.25rem;
+            padding: 0.5rem 0.625rem 0.625rem;
+            border-bottom: 1px solid var(--color-border);
+            font-weight: 600;
+            color: var(--color-text-strong);
+            overflow-wrap: anywhere;
+        }
+    }
+
+    /* The one-line tools row below 900 (<x-bs-admin::tool-row>): it never wraps; when the buttons do not fit,
+       Sort drops its word first, then Filter, each keeping its icon (and Filter its count); then the select-all
+       label may wrap. The script only sets data-fit; the sizes stay here. */
+    .list-tools-row {
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 0;
+    }
+
+    .list-tools-row > * {
+        flex-shrink: 0;
+    }
+
+    .list-tools-row:is([data-fit='1'], [data-fit='2'], [data-fit='3']) [data-sort-text],
+    .list-tools-row:is([data-fit='2'], [data-fit='3']) [data-lf-text] {
+        display: none;
+    }
+
+    .list-tools-row:is([data-fit='1'], [data-fit='2'], [data-fit='3']) [data-sort],
+    .list-tools-row:is([data-fit='2'], [data-fit='3']) [data-lf] {
+        min-width: var(--spacing-control);
+        padding-inline: 0.625rem;
+    }
+
+    .list-tools-row[data-fit='3'] > :first-child {
+        flex-shrink: 1;
+        min-width: 0;
+    }
+
+    /* ── Below 600: a card per record ─────────────────────────────────────────────────────── */
+    @container list (width < 37.5rem) {
+        .list-r:not(.list-hd) {
+            --list-nlh: calc((0.9375rem + var(--user-text-boost)) * 1.45);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            gap: 0.5rem;
+            padding: clamp(0.625rem, 2.5cqw, 0.75rem) 0.75rem;
+        }
+
+        /* The 18px box starts at the card's inner edge; its 44 frame keeps the 8px gap to the name.
+           The name centres its first line in 44, so the two tops line up. */
+        .list-c-chk {
+            display: flex;
+            flex: 0 0 var(--spacing-hit);
+            margin: 0 0 0 calc((1.125rem - var(--spacing-hit)) / 2);
+        }
+
+        /* One detail line: author · date · views. */
+        .list-m[data-for='au'] {
+            order: 1;
+        }
+
+        .list-m[data-for='views'] {
+            order: 3;
+        }
+
+        /* Languages close the detail line. With the column choice off only the note shows. */
+        .list-m[data-for='langs'] {
+            order: 4;
+        }
+
+        .list-lcg[data-off] {
+            display: none;
+        }
+
+        .list-c-main {
+            flex: 1 1 calc(100% - var(--spacing-hit) - (1.125rem - var(--spacing-hit)) / 2 - 0.5rem);
+        }
+
+        .list-c-main .list-name {
+            font-size: calc(0.9375rem + var(--user-text-boost));
+            line-height: var(--list-nlh);
+        }
+
+        .list-c-st {
+            order: 1;
+            flex: 0 0 auto;
+            align-self: center;
+        }
+
+        .list-c-act {
+            order: 2;
+            flex: 0 0 auto;
+            /* As in the design: the group runs into the card's 12px side padding, so the last
+               button's hit area reaches the card's edge. */
+            margin-inline: auto -0.75rem;
+            align-self: center;
+        }
+
+        .list-c-au,
+        .list-st-meta {
+            display: none;
+        }
+
+        .list-m[data-for='when'] {
+            display: inline;
+            order: 2;
+        }
+
+        .list-stw,
+        .list-acts {
+            min-height: 0;
+        }
+    }
+
+    /* ── Below 900: the ✎ leaves the name; the row's ⋮ menu carries the quick edit ──────────── */
+    @container list (width < 56.25rem) {
+        .list-qe {
+            display: none;
+        }
+
+        /* The chips' line is as tall as their hit area, which sits evenly around them, so a chip's
+           area never reaches past its line onto a path button or a name. */
+        .list-m[data-for='langs'] {
+            --list-lc-up: var(--list-qe-s);
+        }
+
+        .list-lcg {
+            min-height: var(--list-qe-s);
+        }
+    }
+
+    /* ── 600–899: one record per line ─────────────────────────────────────────────────────── */
+    @container list (37.5rem <= width < 56.25rem) {
+        .list-r:not(.list-hd) {
+            display: grid;
+            grid-template-columns: var(--spacing-hit) minmax(0, 1fr) auto auto;
+            grid-template-areas: 'chk main st act';
+            column-gap: 0.5rem;
+            row-gap: 0.5rem;
+            align-items: start;
+            padding: clamp(0.625rem, 2.5cqw, 0.75rem) 0.75rem;
+        }
+
+        .list-c-chk {
+            grid-area: chk;
+        }
+
+        .list-c-main {
+            grid-area: main;
+        }
+
+        .list-c-st {
+            grid-area: st;
+        }
+
+        .list-c-act {
+            grid-area: act;
+        }
+
+        .list-c-full {
+            grid-column: 1 / -1;
+        }
+
+        .list-c-au {
+            display: none;
+        }
+    }
+
+    /* ── From 900: a table on one grid ────────────────────────────────────────────────────── */
+    @container list (width >= 56.25rem) {
+        /* From here the header's checkbox selects the page; the bar above the rows is not needed. */
+        .list-selbar {
+            display: none;
+        }
+
+        .list-g {
+            display: grid;
+            grid-template-columns: [chk] 3.5rem [main] minmax(0, 1fr) [st] 10.75rem [act] auto [end];
+        }
+
+        .list-r {
+            display: grid;
+            grid-column: chk / end;
+            grid-template-columns: subgrid;
+            align-items: start;
+            min-height: calc(var(--spacing-hit) + 0.625rem);
+        }
+
+        .list-hd {
+            align-items: center;
+            min-height: 0;
+            padding-bottom: 0.625rem;
+        }
+
+        .list-c {
+            padding: 0.3125rem 0.5rem;
+        }
+
+        .list-hd > .list-c {
+            padding-block: 0.375rem 0;
+        }
+
+        .list-c-chk {
+            grid-column: chk;
+            padding-left: 0.75rem;
+            padding-right: 0;
+        }
+
+        .list-c-main {
+            grid-column: main;
+        }
+
+        .list-c-st {
+            grid-column: st;
+        }
+
+        .list-c-au {
+            display: none;
+            grid-column: au;
+        }
+
+        .list-c-act {
+            grid-column: act;
+            padding-right: 1rem;
+        }
+
+        .list-hd > .list-c-act {
+            text-align: right;
+        }
+
+        .list-c-full {
+            grid-column: chk / end;
+        }
+
+        /* The name cell's small targets (name, ✎, path, chips) take --list-qe-s: 24 with a mouse at
+           the default text size, 8px apart; 44 from the next size up and on touch. The title line
+           drops by half of what the name is short of 44, so its first line stays level with the
+           row's 44 controls; under it the meta line keeps 0.375rem, plus the 0.25rem of a path
+           button or chips' group, and the chips reach at most 0.125rem up: 8px clear of the name. */
+        .list-r {
+            --list-tap: var(--list-qe-s);
+        }
+
+        .list-tl {
+            padding-top: calc((var(--spacing-hit) - var(--list-tap)) / 2);
+        }
+
+        .list-meta {
+            margin-top: 0.375rem;
+        }
+
+        .list-m[data-for='langs'] {
+            --list-lc-up: 0.125rem;
+        }
+
+        .list-acts {
+            column-gap: 0.625rem;
+        }
+    }
+
+    @container list (width >= 80rem) {
+        .list-rows:not([data-hide~='au']) .list-g {
+            grid-template-columns: [chk] 3.5rem [main] minmax(0, 1fr) [st] 10.75rem [au] 8.75rem [act] auto [end];
+        }
+
+        .list-rows:not([data-hide~='au']) .list-c-au {
+            display: block;
+        }
+
+        .list-rows:not([data-hide~='au']) .list-m[data-for='au'] {
+            display: none;
+        }
+    }
+
+    /* ── A list of facts (list kind="facts"; design 03 "Khách hàng") ──────────────────────────
+       Records with no select box and up to three short fact columns (col="f1"…"f3") between the
+       name and the status. The list's width picks the layout, as for every list:
+         below 600   a card: [name … ⋮] then one line "status · facts" (.list-line);
+         600–767     [name … ⋮] / [status] / [facts joined by " · "];
+         from 768    a table: a header row and one row per record, the columns at fixed widths
+                     (narrower up to 1100) so a header always stands over its cells.
+       A screen leaves out the fact columns its member hid; the header leaves out the same ones. */
+    .list-rows[data-kind='facts'] .list-g {
+        display: block;
+    }
+
+    .list-rows[data-kind='facts'] .list-r {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        column-gap: 0.5rem;
+        row-gap: 0.25rem;
+        min-height: 0;
+        padding: 0.75rem;
+    }
+
+    .list-rows[data-kind='facts'] .list-c {
+        padding: 0;
+        margin: 0;
+        min-width: 0;
+    }
+
+    .list-rows[data-kind='facts'] .list-c-main {
+        order: 1;
+        flex: 1 1 0;
+    }
+
+    .list-rows[data-kind='facts'] .list-c-act {
+        order: 2;
+        flex: 0 0 auto;
+        margin: 0;
+    }
+
+    .list-rows[data-kind='facts'] .list-c-st {
+        order: 3;
+        flex: 1 0 100%;
+    }
+
+    .list-rows[data-kind='facts'] .list-c-f {
+        order: 4;
+        flex: 0 1 auto;
+        font-size: var(--text-small);
+        color: var(--color-text-muted);
+        overflow-wrap: anywhere;
+    }
+
+    .list-rows[data-kind='facts'] .list-c-f + .list-c-f::before {
+        content: '·';
+        margin-inline-end: 0.5rem;
+    }
+
+    .list-rows[data-kind='facts'] .list-c-full {
+        flex: 1 1 100%;
+        padding: 0;
+        text-align: start;
+        color: inherit;
+    }
+
+    /* The sub line under the name (owner · email) shows from 768; the card line below 600 only. */
+    .list-sub {
+        display: none;
+        margin-top: 0.125rem;
+        font-size: var(--text-small);
+        color: var(--color-text-muted);
+        overflow-wrap: anywhere;
+    }
+
+    .list-sub-em {
+        overflow-wrap: break-word;
+    }
+
+    .list-line {
+        display: none;
+    }
+
+    @container list (width < 37.5rem) {
+        .list-rows[data-kind='facts'] .list-r:not(.list-hd) {
+            --list-nlh: calc((0.9375rem + var(--user-text-boost)) * 1.45);
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) var(--spacing-hit);
+            column-gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+        }
+
+        .list-rows[data-kind='facts'] .list-c-st,
+        .list-rows[data-kind='facts'] .list-c-f {
+            display: none;
+        }
+
+        .list-rows[data-kind='facts'] .list-c-full {
+            grid-column: 1 / -1;
+        }
+
+        /* The name is the shared hit-sized box (.list-name), so the menu beside it lines up from the top. */
+        .list-rows[data-kind='facts'] .list-c-act {
+            align-self: start;
+            justify-content: center;
+        }
+
+        .list-rows[data-kind='facts'] .list-c-act [data-row-btn] {
+            display: none;
+        }
+
+        .list-line {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0 0.25rem;
+            margin-top: 0.125rem;
+            font-size: var(--text-small);
+            line-height: 1.4;
+            color: var(--color-text-muted);
+            overflow-wrap: anywhere;
+        }
+
+        .list-line > * + *::before {
+            content: '·';
+            margin-inline-end: 0.25rem;
+        }
+
+        /* The status pill inside the line is as tall as the text: it is not a button. */
+        .list-line [data-s] {
+            min-height: 0;
+            padding-block: 0;
+            line-height: 1.4;
+            font-size: var(--text-caption);
+        }
+    }
+
+    @container list (37.5rem <= width < 48rem) {
+        .list-rows[data-kind='facts'] .list-c-act [data-row-btn] {
+            display: none;
+        }
+
+        .list-rows[data-kind='facts'] .list-c-st > * {
+            justify-self: start;
+        }
+    }
+
+    @container list (width >= 48rem) {
+        .list-rows[data-kind='facts'] .list-r {
+            flex-wrap: nowrap;
+            align-items: center;
+            column-gap: 0.75rem;
+            padding: 0.625rem 1rem;
+        }
+
+        .list-rows[data-kind='facts'] .list-hd {
+            display: flex;
+            padding-block: 0.5rem;
+            border-radius: 0.375rem 0.375rem 0 0;
+        }
+
+        .list-rows[data-kind='facts'] .list-c-main {
+            order: 1;
+        }
+
+        .list-rows[data-kind='facts'] .list-c-f {
+            order: 2;
+            font-size: var(--text-body);
+            color: inherit;
+        }
+
+        .list-rows[data-kind='facts'] .list-hd > .list-c-f {
+            font-size: inherit;
+        }
+
+        .list-rows[data-kind='facts'] .list-c-f + .list-c-f::before {
+            content: none;
+        }
+
+        .list-rows[data-kind='facts'] .list-c-f1 {
+            flex: 0 0 10.625rem;
+        }
+
+        .list-rows[data-kind='facts'] .list-c-f2 {
+            flex: 0 0 5.625rem;
+        }
+
+        .list-rows[data-kind='facts'] .list-c-f3 {
+            flex: 0 0 calc(6.5rem + 4 * var(--user-text-boost));
+            white-space: nowrap;
+        }
+
+        /* "Đang hoạt động" stays on one line at every text size. */
+        .list-rows[data-kind='facts'] .list-c-st {
+            order: 3;
+            flex: 0 1 max(8.75rem, 9.5em);
+            min-width: 8.75rem;
+        }
+
+        .list-rows[data-kind='facts'] .list-c-act {
+            order: 4;
+            flex: 0 0 8.25rem;
+        }
+
+        .list-rows[data-kind='facts'] .list-hd > .list-c-act {
+            text-align: right;
+        }
+
+        .list-sub {
+            display: block;
+        }
+    }
+
+    @container list (48rem <= width < 68.75rem) {
+        .list-rows[data-kind='facts'] .list-c-main {
+            min-width: 11.25rem;
+        }
+
+        .list-rows[data-kind='facts'] .list-c-f1 {
+            flex-basis: 7.5rem;
+        }
+
+        .list-rows[data-kind='facts'] .list-c-f2 {
+            flex-basis: 4.75rem;
+        }
+
+        .list-rows[data-kind='facts'] .list-c-f3 {
+            flex-basis: calc(6rem + 5 * var(--user-text-boost));
+        }
+
+        /* Room for Xem + ⋮ at every text size; it may shrink to just that on a tight row. */
+        .list-rows[data-kind='facts'] .list-c-act {
+            flex: 0 1 calc(3 * var(--spacing-control-row));
+        }
+    }
+
+    /* A ⋮ menu's heading ("Thao tác cho …") and the reason under an item that is locked. */
+    .list-mh {
+        padding: 0.375rem 0.875rem 0.25rem;
+        font-size: var(--text-caption);
+        font-weight: 600;
+        color: var(--color-text-muted);
+        overflow-wrap: anywhere;
+    }
+
+    .list-mwhy {
+        display: block;
+        margin-top: 0.125rem;
+        font-size: var(--text-caption);
+        font-weight: 400;
+        color: var(--color-text-muted);
+        white-space: normal;
+    }
+
+    /* A menu with a locked item and its reason keeps a readable line length. */
+    .list-menu:has(.list-mi-locked) {
+        width: min(20rem, calc(100vw - 2rem));
+    }
+
+    .list-mi-locked {
+        align-items: flex-start;
+        padding-block: 0.5rem;
+        text-align: start;
+    }
+
+    .list-mi[aria-disabled='true'] {
+        color: var(--color-text-muted);
+        cursor: not-allowed;
+    }
+    /* ── The product list (list kind="catalog"): category, price, stock and label cells ─────────
+       Below 900 the cells are not drawn and the same facts stand in the name's meta line (price
+       and stock, category, labels as a comma list); the "(gốc … ₫)" of a sale is one block that
+       wraps whole. From 900 a table: the four columns join the grid and the meta pieces leave; as
+       the list narrows the label column folds back into the line below 80rem and the category
+       column below 68.75rem. `data-hide` (space-separated keys: cat price stock badge) turns a
+       column off, its head, its cells and its track together (a track of 0 takes no room). */
+    .list-rows[data-kind='catalog'] .list-c-cat,
+    .list-rows[data-kind='catalog'] .list-c-price,
+    .list-rows[data-kind='catalog'] .list-c-stock,
+    .list-rows[data-kind='catalog'] .list-c-badge {
+        display: none;
+    }
+
+    .list-rows[data-kind='catalog'] .list-m[data-for='price'] {
+        font-weight: 700;
+        color: var(--color-text-strong);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .list-rows[data-kind='catalog'] .list-old {
+        display: inline-block;
+        max-width: 100%;
+        font-weight: 400;
+        color: var(--color-text-muted);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .list-rows[data-kind='catalog'] .list-m[data-for='slug'] .list-cpy {
+        display: none;
+    }
+
+    .list-rows[data-kind='catalog'] .list-cpy {
+        align-items: center;
+        justify-content: center;
+        min-width: var(--spacing-hit);
+        min-height: var(--spacing-hit);
+        padding: 0;
+        border: 0;
+        border-radius: 0.25rem;
+        background: transparent;
+        color: var(--color-text-muted);
+    }
+
+    .list-rows[data-kind='catalog'] .list-cpy:hover {
+        background: var(--color-surface-hover);
+        color: var(--color-primary-text);
+    }
+
+    .list-rows[data-kind='catalog'] .list-ell {
+        overflow-wrap: anywhere;
+    }
+
+    .sp-pr {
+        display: block;
+        font-weight: 700;
+        color: var(--color-text-strong);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    .sp-pr[data-k='ask'] {
+        font-weight: 500;
+        color: var(--color-text-muted);
+    }
+
+    .sp-old {
+        display: block;
+        color: var(--color-text-muted);
+        text-decoration: line-through;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    .sp-stk {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .sp-stk[data-k='out'] {
+        color: var(--color-danger-text);
+        font-weight: 600;
+    }
+
+    .sp-stk[data-k='low'] {
+        color: var(--color-warning-text);
+        font-weight: 600;
+    }
+
+    .sp-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+
+    .sp-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        min-height: 1.375rem;
+        padding: 0 0.5rem;
+        border-radius: 0.6875rem;
+        font-weight: 600;
+        white-space: nowrap;
+        color: var(--color-warning-text);
+        background: color-mix(in srgb, var(--color-warning-text) 14%, var(--color-surface));
+    }
+
+    .sp-tag[data-k='best'] {
+        color: var(--color-primary-text);
+        background: color-mix(in srgb, var(--color-primary-text) 8%, var(--color-surface));
+    }
+
+    /* The copy button of the path line: on the one-record-per-line layout only (below 600 the row's
+       menu carries it; the table keeps the path as text). */
+    @container list (37.5rem <= width < 56.25rem) {
+        .list-rows[data-kind='catalog'] .list-m[data-for='slug'] .list-cpy {
+            display: inline-flex;
+        }
+    }
+
+    @container list (width >= 56.25rem) {
+        .list-rows[data-kind='catalog'] .list-g {
+            --list-w-cat: 9.375rem;
+            --list-w-price: 9.75rem;
+            --list-w-stock: calc(8.75rem + 8 * var(--user-text-boost));
+            --list-w-badge: 7.75rem;
+        }
+
+        /* the price track takes the widest price the page shows (never below its floor), so "1.090.000.000 ₫" never spills into the stock; the other side columns shrink to their content, up to their default width */
+        .list-rows[data-kind='catalog'][data-kind] .list-g {
+            grid-template-columns: [chk] 3.5rem [main] minmax(0, 1fr) [cat] fit-content(var(--list-w-cat)) [price] minmax(var(--list-w-price), max-content) [stock] fit-content(var(--list-w-stock)) [badge] fit-content(var(--list-w-badge)) [st] 11.5rem [act] auto [end];
+        }
+
+        .list-rows[data-kind='catalog'] .list-c-cat {
+            display: block;
+            grid-column: cat;
+        }
+
+        .list-rows[data-kind='catalog'] .list-c-price {
+            display: block;
+            grid-column: price;
+            text-align: right;
+        }
+
+        .list-rows[data-kind='catalog'] .list-c-stock {
+            display: block;
+            grid-column: stock;
+        }
+
+        .list-rows[data-kind='catalog'] .list-c-badge {
+            display: block;
+            grid-column: badge;
+        }
+
+        .list-rows[data-kind='catalog'] .list-m[data-for='price'],
+        .list-rows[data-kind='catalog'] .list-m[data-for='stock'],
+        .list-rows[data-kind='catalog'] .list-m[data-for='cat'],
+        .list-rows[data-kind='catalog'] .list-m[data-for='badge'] {
+            display: none;
+        }
+
+        .list-rows[data-kind='catalog'][data-hide~='cat'] .list-g {
+            --list-w-cat: 0px;
+        }
+
+        .list-rows[data-kind='catalog'][data-hide~='price'] .list-g {
+            --list-w-price: 0px;
+        }
+
+        .list-rows[data-kind='catalog'][data-hide~='stock'] .list-g {
+            --list-w-stock: 0px;
+        }
+
+        .list-rows[data-kind='catalog'][data-hide~='badge'] .list-g {
+            --list-w-badge: 0px;
+        }
+
+        .list-rows[data-kind='catalog'][data-hide~='cat'] .list-c-cat,
+        .list-rows[data-kind='catalog'][data-hide~='price'] .list-c-price,
+        .list-rows[data-kind='catalog'][data-hide~='stock'] .list-c-stock,
+        .list-rows[data-kind='catalog'][data-hide~='badge'] .list-c-badge {
+            display: none;
+        }
+    }
+
+    @container list (56.25rem <= width < 80rem) {
+        .list-rows[data-kind='catalog'] .list-g {
+            --list-w-badge: 0px;
+        }
+
+        .list-rows[data-kind='catalog'] .list-c-badge {
+            display: none;
+        }
+
+        .list-rows[data-kind='catalog'] .list-m[data-for='badge'] {
+            display: inline;
+        }
+    }
+
+    @container list (56.25rem <= width < 68.75rem) {
+        .list-rows[data-kind='catalog'] .list-g {
+            --list-w-cat: 0px;
+        }
+
+        .list-rows[data-kind='catalog'] .list-c-cat {
+            display: none;
+        }
+
+        .list-rows[data-kind='catalog'] .list-m[data-for='cat'] {
+            display: inline;
+        }
+    }
+
+    /* The page script folds more columns into the line under the name when the text is large or the list narrow
+       (`data-fold`, in the order label, category, stock, price). */
+    @container list (width >= 56.25rem) {
+        .list-rows[data-kind='catalog'][data-fold~='badge'] .list-g {
+            --list-w-badge: 0px;
+        }
+
+        .list-rows[data-kind='catalog'][data-fold~='cat'] .list-g {
+            --list-w-cat: 0px;
+        }
+
+        .list-rows[data-kind='catalog'][data-fold~='stock'] .list-g {
+            --list-w-stock: 0px;
+        }
+
+        .list-rows[data-kind='catalog'][data-fold~='price'] .list-g {
+            --list-w-price: 0px;
+        }
+
+        .list-rows[data-kind='catalog'][data-fold~='badge'] .list-c-badge,
+        .list-rows[data-kind='catalog'][data-fold~='cat'] .list-c-cat,
+        .list-rows[data-kind='catalog'][data-fold~='stock'] .list-c-stock,
+        .list-rows[data-kind='catalog'][data-fold~='price'] .list-c-price {
+            display: none;
+        }
+
+        .list-rows[data-kind='catalog'][data-fold~='badge'] .list-m[data-for='badge'],
+        .list-rows[data-kind='catalog'][data-fold~='cat'] .list-m[data-for='cat'],
+        .list-rows[data-kind='catalog'][data-fold~='stock'] .list-m[data-for='stock'],
+        .list-rows[data-kind='catalog'][data-fold~='price'] .list-m[data-for='price'] {
+            display: inline;
+        }
+    }
+
+    /* Languages on the card: the chips lead the detail line and the "Chưa dịch" note is its last item (below 600);
+       below 400 both move to a row of their own under the picture, full width. A record in the Trash has no note. */
+    .list-rows[data-kind='catalog'] .list-langs2,
+    .list-rows[data-kind='catalog'] .list-m[data-for='lmiss'] {
+        display: none;
+    }
+
+    @container list (width < 56.25rem) {
+        .list-rows[data-kind='catalog'] .list-meta > .list-m[data-for='langs'] {
+            order: -1;
+        }
+    }
+
+    @container list (width < 37.5rem) {
+        .list-rows[data-kind='catalog'] .list-m[data-for='lmiss'] {
+            display: flex;
+            order: 5;
+        }
+
+        .list-rows[data-kind='catalog'] .list-meta > .list-m[data-for='langs'] .list-lmiss {
+            display: none;
+        }
+    }
+
+    @container list (width < 25rem) {
+        .list-rows[data-kind='catalog'] .list-meta > .list-m[data-for='langs'],
+        .list-rows[data-kind='catalog'] .list-m[data-for='lmiss'] {
+            display: none;
+        }
+
+        .list-rows[data-kind='catalog'] .list-langs2 {
+            display: block;
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+
+        .list-rows[data-kind='catalog'] .list-langs2 .list-m[data-for='langs']::before {
+            content: none;
+        }
+    }
+}

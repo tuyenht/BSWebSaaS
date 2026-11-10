@@ -1,28 +1,22 @@
 {{--
-    Floating Theme Customizer: launcher button (fixed bottom-right, hidden on small
-    screens per Velzon) + right offcanvas panel. Per-USER overrides only — instant
+    Theme Customizer: a right offcanvas panel, opened from the user menu's "Giao diện" item
+    (partials/topbar-user). No floating launcher: it sat on the pages' sticky save bars. Per-USER overrides only — instant
     attribute flip via the `adminTheme` Alpine store, persisted through the plane's
-    theme-preference endpoint. The platform console is a scheme-only plane, so it
-    renders just the Scheme axis.
+    theme-preference endpoint. The platform console's launcher renders just the
+    Scheme axis (its sidebar size is the topbar menu button's, not a launcher axis).
 
     State lives in the global Alpine store (survives wire:navigate morphs); this
     partial is pure template.
 --}}
 @php($planeIsPlatform = \App\Modules\Admin\Support\AdminPlane::isPlatform())
 <div x-data class="contents">
-    <button type="button" @click="$store.adminTheme.open = true"
-            aria-label="{{ __('admin.customize_theme') }}"
-            class="fixed bottom-6 end-6 z-40 hidden size-12 place-items-center rounded-full bg-admin-info-solid text-white shadow-lg transition-transform hover:scale-105 md:grid">
-        {{-- Slow continuous spin draws the eye to the launcher (Velzon parity); paused for reduced-motion. --}}
-        <x-bs-admin::icon name="settings" class="size-5 customizer-gear" />
-    </button>
-
     <div x-show="$store.adminTheme.open" x-transition.opacity @click="$store.adminTheme.open = false" x-cloak
          class="fixed inset-0 z-40 bg-gray-900/40"></div>
 
     <section x-show="$store.adminTheme.open" x-cloak role="dialog" aria-modal="true"
              aria-label="{{ __('admin.customize_theme') }}"
              @keydown.escape.window="$store.adminTheme.open = false"
+             x-trap.noscroll="$store.adminTheme.open"
              x-transition:enter="transition-transform duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
              x-transition:leave="transition-transform duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
              class="fixed inset-y-0 end-0 z-50 flex w-80 max-w-full flex-col bg-surface shadow-card">
@@ -30,7 +24,7 @@
         <header class="flex items-center gap-2 bg-primary px-4 py-3 text-white [--color-focus:currentColor]">
             <h2 class="text-sm font-semibold">{{ __('admin.customize_theme') }}</h2>
             <button type="button" @click="$store.adminTheme.open = false" aria-label="{{ __('admin.close') }}"
-                    class="ms-auto grid size-8 place-items-center rounded transition-colors hover:bg-white/10">
+                    class="hit-area ms-auto grid size-control place-items-center rounded transition-colors hover:bg-white/10">
                 <x-bs-admin::icon name="x" class="size-4" />
             </button>
         </header>

@@ -5,23 +5,42 @@ declare(strict_types=1);
 namespace App\Modules\Storefront\Http\Controllers;
 
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Catalog\Support\ContactPageSetting;
+use App\Modules\Catalog\Support\ProductIndexLink;
+use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
-use App\Modules\Cms\Navigation\MenuResolver;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\ResolvedCategory;
 use App\Modules\Cms\Routing\ResolvedContent;
 use App\Modules\Cms\Routing\ResolvedProduct;
 use App\Modules\Cms\Routing\RouteResolver;
 use App\Modules\Cms\Support\EntryViewCounter;
+use App\Modules\Cms\Taxonomy\CategoryTemplates;
+use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
-use App\Modules\Tenancy\Context\ContentSections;
-use App\Modules\Tenancy\Context\SiteIdentity;
+use App\Modules\Shared\Support\SafeLink;
+use App\Modules\Storefront\Support\ArticleData;
+use App\Modules\Storefront\Support\Breadcrumbs;
+use App\Modules\Storefront\Support\JobPosting;
+use App\Modules\Storefront\Support\ListPage;
+use App\Modules\Storefront\Support\PageChrome;
+use App\Modules\Storefront\Support\PostDetail;
+use App\Modules\Storefront\Support\ProductDetail;
+use App\Modules\Storefront\Support\ProductPage;
+use App\Modules\Storefront\Support\SlotContext;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Theme\Rendering\PageRenderer;
+use App\Modules\Theme\Rendering\TemplateCatalog;
+use App\Modules\Theme\Rendering\TemplateResolver;
+use App\Modules\Theme\Theming\StorefrontSettings;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Database\Query\JoinClause;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Public storefront: resolve (locale, path) → published content within the current site
@@ -32,29 +51,48 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final readonly class StorefrontController
 {
-    /** Posts per category-list page. */
-    private const int POSTS_PER_PAGE = 12;
+    /** The most links the 404 page suggests from the main menu. */
+    private const int SUGGESTIONS_MAX = 6;
 
     public function __construct(
         private RouteResolver $resolver,
         private PageRenderer $renderer,
         private SiteLocale $locale,
-        private MenuResolver $nav,
         private PathBuilder $paths,
         private MediaUrlResolver $media,
         private EntryViewCounter $views,
-        private SiteIdentity $identity,
-        private ContentSections $sections,
+        private StorefrontSettings $settings,
+        private ListPage $lists,
+        private TemplateResolver $templates,
+        private Breadcrumbs $crumbs,
+        private PostDetail $posts,
+        private ProductDetail $products,
+        private CategoryTemplates $categoryTemplates,
+        private JobPosting $jobs,
+        private SlotContext $slots,
+        private PageChrome $pageChrome,
+        private ProductPage $productPage,
     ) {}
 
     public function __invoke(Request $request): Response
     {
         $requestPath = strtolower('/'.ltrim($request->path(), '/'));
+
+        // A path with a dot in it (`/wp-login.php`, `/.env`, `/.git/config`, also `/wp-login%2ephp`)
+        // is never a page of the site: every slug is lower-case words joined by hyphens, and the
+        // sitemap and robots files have routes of their own. These are scanners, so the only thing
+        // looked up for them is a stored redirect (checked with the same call as any other path);
+        // without one they get the plain 404 before any content, settings or menus are read.
+        $dotted = str_contains(rawurldecode($requestPath), '.');
+
         $default = $this->locale->default();
 
         [$locale, $path, $redirectTo] = $this->localeContext($requestPath, $default);
 
         if ($redirectTo !== null) {
+            // A default-locale prefix before a dotted path (`/vi//evil.example/x`) is refused, never rewritten.
+            abort_if($dotted, 404);
+
             return redirect()->to($redirectTo, 301);
         }
 
@@ -63,36 +101,102 @@ final readonly class StorefrontController
         // without this a vi site would show English UI strings.
         app()->setLocale($locale);
 
-        $resolved = $this->resolver->resolve($locale, $path);
-
-        if ($resolved === null) {
+        if ($dotted) {
             $redirect = $this->resolver->redirect($locale, $path);
-            abort_if(! $redirect instanceof Redirect, 404);
+            abort_unless($redirect instanceof Redirect && SafeLink::isSitePath($redirect->to_path), 404);
 
             return redirect()->to($redirect->to_path, $redirect->status_code);
         }
 
-        // Page chrome for the active locale: header nav (active-state matches the prefixed request
-        // path; a missing per-locale assignment falls back to the default-locale menu), the
-        // <html lang>, and the hreflang alternates.
-        $chrome = [
-            'menu' => $this->nav->resolve('primary', $locale, $default, $requestPath),
-            'lang' => $locale,
-            'hreflang' => $this->hreflangFor($resolved, $locale, $default, $path),
-            // Business identity in the page's language (site_profiles + translations, the legacy
-            // general.brand setting keeping precedence in the default language — SiteIdentity).
-            'brand' => $this->identity->for($locale),
-            // The logo and footer home links stay in the page's language (/en for an English page).
-            'homeUrl' => $this->paths->publicUrl('/', $locale),
-        ];
+        $resolved = $this->resolver->resolve($locale, $path);
 
-        if ($resolved instanceof ResolvedProduct) {
-            return $this->renderProduct($resolved, $locale, $path, $chrome);
+        if ($resolved === null) {
+            $redirect = $this->resolver->redirect($locale, $path);
+            // A stored target that is not a path on this site (`//host`, `/\host`, a full link) is
+            // never followed: a redirect row must not become a way off the site.
+            if ($redirect instanceof Redirect && SafeLink::isSitePath($redirect->to_path)) {
+                return redirect()->to($redirect->to_path, $redirect->status_code);
+            }
+
+            return $this->notFound($this->chrome($locale, $default, $requestPath, null, $path));
         }
 
-        return $resolved instanceof ResolvedCategory
-            ? $this->renderCategory($resolved, $locale, $path, $chrome)
-            : $this->renderEntry($resolved, $locale, $path, $chrome);
+        $chrome = $this->chrome($locale, $default, $requestPath, $resolved, $path);
+
+        // Every "not here" past this point — an unpublished product, a product without this
+        // language, a list page number or anchor that does not exist — answers with the same 404
+        // page in the site's own header and footer. Only the 404 is caught: a 403 or 419 stays itself.
+        try {
+            if ($resolved instanceof ResolvedProduct) {
+                return $this->renderProduct($resolved, $locale, $path, $chrome);
+            }
+
+            return $resolved instanceof ResolvedCategory
+                ? $this->renderCategory($resolved, $locale, $path, $chrome)
+                : $this->renderEntry($resolved, $locale, $path, $chrome);
+        } catch (NotFoundHttpException) {
+            return $this->notFound($chrome);
+        }
+    }
+
+    /**
+     * The page chrome for the active locale (PageChrome: header, footer, menus, business identity),
+     * with the hreflang alternates of the resolved content (none for a page that was not found).
+     *
+     * @return array<string, mixed>
+     */
+    private function chrome(string $locale, string $default, string $requestPath, ResolvedContent|ResolvedCategory|ResolvedProduct|null $resolved, string $path): array
+    {
+        return $this->pageChrome->for($locale, $default, $requestPath, $resolved === null ? [] : $this->hreflangFor($resolved, $locale, $default, $path));
+    }
+
+    /**
+     * The site's 404 page: its own header, footer and menus around the "not here" message, a way
+     * home, a way to the site's contact page (when the site names one) and the first links of its
+     * main menu. A real 404 status (never a page that answers 200) and kept out of search engines;
+     * no canonical, share tags or alternates, since there is no page to point at.
+     *
+     * @param  array<string, mixed>  $chrome
+     */
+    private function notFound(array $chrome): Response
+    {
+        $locale = is_string($chrome['lang'] ?? null) ? $chrome['lang'] : $this->locale->default();
+        $extra = $chrome;
+        $extra['hreflang'] = [];
+        $extra['robots'] = 'noindex';
+        $extra['contactUrl'] = $this->products->quoteLink($locale, ContactPageSetting::ulid($this->settings->get(ContactPageSetting::GROUP, ContactPageSetting::KEY)));
+        $extra['suggestions'] = self::suggestions(
+            is_array($chrome['menu'] ?? null) ? $chrome['menu'] : [],
+            is_string($chrome['homeUrl'] ?? null) ? $chrome['homeUrl'] : '/',
+        );
+
+        return response($this->renderer->renderNotFound(__('storefront.not_found.title'), $extra), 404);
+    }
+
+    /**
+     * The 404 page's "you may be looking for" links: the top level of the main menu already loaded
+     * for the header (no query), keeping only the links to a page of this site and leaving out the
+     * home page (the page has its own button for it), at most six. Empty when the menu is.
+     *
+     * @param  list<mixed>|array<mixed>  $menu  the resolved primary menu tree
+     * @return list<array{label: string, url: string}>
+     */
+    private static function suggestions(array $menu, string $homeUrl): array
+    {
+        $links = [];
+        foreach ($menu as $item) {
+            $url = is_array($item) ? ($item['url'] ?? null) : null;
+            $label = is_array($item) ? ($item['label'] ?? null) : null;
+            if (! is_string($url) || ! is_string($label) || trim($label) === '' || $url === $homeUrl || ! SafeLink::isSitePath($url)) {
+                continue;
+            }
+            $links[] = ['label' => $label, 'url' => $url];
+            if (count($links) === self::SUGGESTIONS_MAX) {
+                break;
+            }
+        }
+
+        return $links;
     }
 
     /**
@@ -116,7 +220,9 @@ final readonly class StorefrontController
         }
 
         if ($first === $default) {
-            $rest = '/'.implode('/', array_slice($segments, 1));   // /{default}/x → /x ; /{default} → /
+            // /{default}/x → /x ; /{default} → /. Empty segments are dropped: /{default}//host
+            // must never become a protocol-relative `//host` redirect off the site.
+            $rest = '/'.implode('/', array_filter(array_slice($segments, 1), fn (string $segment): bool => $segment !== ''));
 
             return [$default, $path, $rest];
         }
@@ -163,28 +269,75 @@ final readonly class StorefrontController
             $extra['ogImage'] = $this->media->url($metaImageKey, 1280);
         }
 
+        // The breadcrumb trail (Home → … → self) feeds both the head's BreadcrumbList JSON-LD and
+        // the on-page breadcrumb, so the two always match. The home page has none.
+        $self = $this->crumbs->crumb($content->translation->title, $this->paths->publicUrl($path, $locale));
+
         // A post is shown under its primary category: the category drives its layout
-        // (detail_template) and a breadcrumb back to the category list. Pages skip this.
-        // The Cms lookup lives here so the Theme module stays Cms-agnostic.
+        // (detail_template), its breadcrumb (the category and the ones above it) and the previous,
+        // next and related posts. The band reads its dates, excerpt and cover photo. Pages get
+        // their parent pages as breadcrumb levels instead. The Cms lookups live here so the Theme
+        // module stays Cms-agnostic.
         if ($entry->type === 'post') {
             $category = $entry->primaryCategory();
-            $categoryTemplate = $category?->detail_template;
+            // The category's own layout, or the one of the category above when it follows its parent;
+            // a layout of the wrong role, or one the theme lacks, falls back like null.
+            $categoryTemplate = $category !== null ? $this->categoryTemplates->detail($category) : null;
+            $extra['post'] = $this->posts->band($entry, $content->translation, $locale);
+
+            // A post on a job layout carries its deadline state and the JobPosting data for the head.
+            $own = $entry->template_override;
+            $postTemplate = $own !== null && TemplateCatalog::fits($own, TemplateCatalog::ROLE_POST) ? $own : $categoryTemplate;
+            $brand = data_get($chrome, 'brand');
+            $job = $this->jobs->forPost($entry, $content->translation, $postTemplate, $canonical, is_array($brand) ? $brand : null);
+            if ($job !== null) {
+                $extra['deadline'] = $job['state'];
+                if ($job['ld'] !== null) {
+                    $extra['jobLd'] = $job['ld'];
+                }
+            } else {
+                $extra['articleLd'] = ArticleData::ld(
+                    $entry, $content->translation, $canonical, url($this->paths->publicUrl('/', $locale)), $locale,
+                    is_string($extra['ogImage'] ?? null) ? $extra['ogImage'] : null, is_array($brand) ? $brand : null,
+                );
+            }
+
+            // The blocks of the side column and of the band below the post; the newest posts of the
+            // category's root branch are read with the related posts only when a block asks for them.
+            $slotBlocks = $this->slots->blocks(SlotContext::POST_SLOTS, $locale, $category);
+            $extra['slotBlocks'] = $slotBlocks;
+            $withRecent = SlotContext::has($slotBlocks, 'recent_posts');
+            $brandData = is_array($brand) ? $brand : null;
 
             $categoryTranslation = $category?->translationFor($locale);
-            if ($categoryTranslation !== null) {
-                $categoryUrl = $this->paths->publicUrl('/'.trim($categoryTranslation->slug, '/'), $locale);
+            if ($category !== null && $categoryTranslation !== null) {
                 $extra['category'] = [
                     'name' => $categoryTranslation->name,
-                    'url' => $categoryUrl,
+                    'url' => $this->paths->publicUrl($this->paths->forTaxonomy($categoryTranslation->slug), $locale),
                 ];
-                // BreadcrumbList trail (Home → category → self) for the shared head's JSON-LD;
-                // mirrors the on-page post breadcrumb.
                 $extra['breadcrumb'] = [
-                    $this->homeCrumb($locale),
-                    ['name' => $categoryTranslation->name, 'url' => url($categoryUrl)],
-                    ['name' => $content->translation->title, 'url' => $canonical],
+                    $this->crumbs->home($locale),
+                    ...$this->crumbs->category($category, $locale, $categoryTranslation->name, $categoryTranslation->slug),
+                    $self,
                 ];
+                $extra += $this->posts->siblings($entry, $category, $locale, true, $withRecent);
             }
+            $extra['slotContext'] = $this->slots->context($slotBlocks, $category, $locale, $brandData, is_array($extra['recent'] ?? null) ? $extra['recent'] : []);
+            unset($extra['recent']);
+        } elseif ($path !== '/') {
+            $extra['breadcrumb'] = [$this->crumbs->home($locale), ...$this->crumbs->parentPages($entry, $locale), $self];
+        }
+
+        // A page on the layout with a table of contents shows the day it took effect (and the day it
+        // last changed) in its title band.
+        if ($entry->type === 'page' && $entry->template_override === TemplateCatalog::PAGE_TOC) {
+            $extra['pageDates'] = $this->posts->dates($entry, $content->translation, $locale);
+        }
+
+        // The home page names the website itself: the name search results show for the site.
+        $brandName = data_get($chrome, 'brand.name');
+        if ($path === '/' && is_string($brandName) && trim($brandName) !== '') {
+            $extra['websiteLd'] = ['@context' => 'https://schema.org', '@type' => 'WebSite', 'name' => trim($brandName), 'url' => $canonical, 'inLanguage' => $locale];
         }
 
         $html = $this->renderer->render(
@@ -192,10 +345,7 @@ final readonly class StorefrontController
             $entry->template_override,
             $content->translation->title,
             $content->translation->body,
-            [
-                'title' => $content->translation->seo_title,
-                'description' => $content->translation->seo_description,
-            ],
+            self::entrySeo($content->translation) + ['home' => $path === '/'],
             $categoryTemplate,
             $extra,
         );
@@ -204,6 +354,10 @@ final readonly class StorefrontController
     }
 
     /**
+     * A category list page. A category with a card layout (`grid-*` list template) lists its whole
+     * subtree as cards with child-category chips; the default layout lists only its own posts as
+     * titles. Both page without a COUNT (ListPage).
+     *
      * @param  array<string, mixed>  $chrome  page chrome (menu, lang, hreflang)
      */
     private function renderCategory(ResolvedCategory $resolved, string $locale, string $path, array $chrome): Response
@@ -212,113 +366,154 @@ final readonly class StorefrontController
         // the product index — list published products instead of entries (the storefront may depend
         // on Catalog). With no products yet it falls through to the entry list, so the page keeps
         // working through the post→product migration (posts until products land, products after).
-        if ($this->sections->taxonomyIdOf('products') === $resolved->taxonomy->id
-            && Product::query()->where('status', 'published')->exists()) {
-            return $this->renderProductIndex($resolved, $locale, $path, $chrome);
+        // A category below the catalog root lists the products filed under it, on the same terms.
+        $taxonomy = $resolved->taxonomy;
+        // The real list layout, with "follow the parent" already turned into a layout name or null.
+        $listTemplate = $this->categoryTemplates->list($taxonomy);
+        // Asked through ProductIndexLink, which remembers both for the request: a page showing the
+        // "Mua hàng" button has already read them.
+        $shop = app(ProductIndexLink::class);
+        $catalogRoot = $shop->catalogRoot();
+        $hasProducts = fn (): bool => $shop->hasPublishedProducts();
+        if ($catalogRoot === $taxonomy->id && $hasProducts()) {
+            return $this->renderProductIndex($resolved, $locale, $path, $chrome, false, $listTemplate);
+        }
+        if ($catalogRoot !== null && $this->lists->isUnder($taxonomy, $catalogRoot) && $hasProducts()) {
+            return $this->renderProductIndex($resolved, $locale, $path, $chrome, true, $listTemplate);
         }
 
-        // Posts whose PRIMARY category (pivot position 0) is this one. Only published, locale-present.
-        $paginator = $resolved->taxonomy->entries()
-            ->where('entries.type', 'post')
+        $position = $this->lists->position(request());
+        $cards = $this->templates->listShape($listTemplate) === 'cards';
+
+        if ($cards) {
+            // Posts whose PRIMARY category (pivot position 0) is this one or any below it.
+            $query = Entry::query()
+                ->select('entries.*', 'entry_taxonomies.taxonomy_id as primary_taxonomy_id')
+                ->join('entry_taxonomies', fn (JoinClause $join) => $join->on('entry_taxonomies.entry_id', '=', 'entries.id')->where('entry_taxonomies.position', 0))
+                ->whereIn('entry_taxonomies.taxonomy_id', $this->lists->subtree($taxonomy));
+        } else {
+            // Posts whose PRIMARY category (pivot position 0) is this one.
+            $query = $taxonomy->entries()->where('entry_taxonomies.position', 0);
+        }
+        $query->where('entries.type', 'post')
             ->where('entries.status', 'published')
-            ->where('entry_taxonomies.position', 0)
             ->whereHas('translations', fn (Builder $query) => $query->where('locale', $locale)->where('status', 'published'))
-            ->with(['translations', 'routes'])
-            ->orderByDesc('entries.published_at')
-            ->paginate(self::POSTS_PER_PAGE);
+            ->with(['translations', 'routes']);
+        ['rows' => $rows, 'more' => $more] = $this->lists->window($query, Entry::class, $position);
 
         $posts = [];
-        foreach ($paginator->items() as $post) {
-            $translation = $post->translationFor($locale);
-            if ($translation === null) {
-                continue;
-            }
-            // Link each card to the post's STORED route, so it follows the section's permalink
-            // preset (flat, category, …) exactly instead of a hardcoded shape. A published post
-            // always has a route; fall back to a config-correct compose if one is somehow absent.
-            $route = $post->routes->firstWhere('locale', $locale);
-            $unprefixed = $route !== null
-                ? $route->path
-                : $this->paths->forEntry($post, $locale, trim((string) $translation->slug, '/'));
-            $posts[] = [
-                'title' => $translation->title,
-                'url' => $this->paths->publicUrl($unprefixed, $locale),
-            ];
-        }
-
-        // Each paginated page self-canonicals (with ?page=N) — rel=prev/next signals the series;
-        // canonicaling page-N→page-1 would drop the deeper pages from the index.
-        $canonical = url($this->paths->publicUrl($path, $locale));
-        if ($paginator->currentPage() > 1) {
-            $canonical .= '?page='.$paginator->currentPage();
-        }
         $extra = $chrome;
-        $extra['canonical'] = $canonical;
-        $extra['ogType'] = 'website';
-        $extra['breadcrumb'] = [
-            $this->homeCrumb($locale),
-            ['name' => $resolved->translation->name, 'url' => $canonical],
-        ];
+        if ($cards) {
+            ['chips' => $chips, 'labels' => $labels] = $this->lists->chips($taxonomy, $locale);
+            $extra['cards'] = $this->lists->postCards($rows, $locale, $labels, TemplateCatalog::cards($listTemplate) === 'news');
+            $extra['chips'] = $chips;
+            $extra['band'] = $this->listBand($resolved);
+        } else {
+            foreach ($rows as $post) {
+                $translation = $post->translationFor($locale);
+                if ($translation === null) {
+                    continue;
+                }
+                // Link each card to the post's STORED route, so it follows the section's permalink
+                // preset (flat, category, …) exactly instead of a hardcoded shape. A published post
+                // always has a route; fall back to a config-correct compose if one is somehow absent.
+                $route = $post->routes->firstWhere('locale', $locale);
+                $unprefixed = $route !== null
+                    ? $route->path
+                    : $this->paths->forEntry($post, $locale, trim((string) $translation->slug, '/'));
+                $posts[] = [
+                    'title' => $translation->title,
+                    'url' => $this->paths->publicUrl($unprefixed, $locale),
+                ];
+            }
+        }
 
-        $html = $this->renderer->renderCategory(
-            $resolved->taxonomy->list_template,
-            $resolved->translation->name,
-            $posts,
-            [
-                'prevUrl' => $paginator->previousPageUrl(),
-                'nextUrl' => $paginator->nextPageUrl(),
-            ],
-            ['title' => $resolved->translation->name],
-            $extra,
-        );
-
-        return response($html);
+        return $this->listResponse($resolved, $locale, $path, $position, $more, ListPage::ulidOf($rows->last()), $posts, $extra, $listTemplate);
     }
 
     /**
      * The catalog product index — the catalog section's category (e.g. /san-pham) lists published
-     * products newest-first, each linking to its canonical product route, on the category layout.
-     * The product query lives here so Cms and Theme stay Catalog-agnostic.
+     * products newest-first, each linking to its canonical product route; a category below it
+     * lists the products filed under it (its own on the default layout, its whole subtree on a
+     * card layout). The product query lives here so Cms and Theme stay Catalog-agnostic.
      *
      * @param  array<string, mixed>  $chrome  page chrome (menu, lang, hreflang)
      */
-    private function renderProductIndex(ResolvedCategory $resolved, string $locale, string $path, array $chrome): Response
+    private function renderProductIndex(ResolvedCategory $resolved, string $locale, string $path, array $chrome, bool $filtered, ?string $listTemplate): Response
     {
-        $paginator = Product::query()
+        $taxonomy = $resolved->taxonomy;
+        $position = $this->lists->position(request());
+        $cards = $this->templates->listShape($listTemplate) === 'cards';
+
+        $query = Product::query()
             ->where('status', 'published')
-            ->with(['translations', 'taxonomies'])
-            ->orderByDesc('published_at')
-            ->orderByDesc('id')
-            ->paginate(self::POSTS_PER_PAGE);
+            ->with($cards ? ['translations', 'taxonomies.translations', 'images.media'] : ['translations', 'taxonomies']);
+        if ($filtered) {
+            $ids = $cards ? $this->lists->subtree($taxonomy) : [$taxonomy->id];
+            $query->whereExists(fn (QueryBuilder $filed) => $filed->selectRaw('1')
+                ->from('product_taxonomies')
+                ->whereColumn('product_taxonomies.product_id', 'products.id')
+                ->whereIn('product_taxonomies.taxonomy_id', $ids));
+        }
+        ['rows' => $rows, 'more' => $more] = $this->lists->window($query, Product::class, $position);
 
         $products = [];
-        foreach ($paginator->items() as $product) {
-            $translation = $product->translationFor($locale);
-            if ($translation === null) {
-                continue;
+        $extra = $chrome;
+        if ($cards) {
+            $extra['cards'] = $this->lists->productCards($rows, $locale);
+            $extra['chips'] = $this->lists->chips($taxonomy, $locale)['chips'];
+            $extra['emptyKey'] = 'storefront.no_products';
+            $extra['band'] = $this->listBand($resolved);
+        } else {
+            foreach ($rows as $product) {
+                $translation = $product->translationFor($locale);
+                if ($translation === null) {
+                    continue;
+                }
+                $unprefixed = $this->paths->forProduct($product->primaryCategory(), (string) $translation->slug, $locale);
+                $products[] = ['title' => $translation->name, 'url' => $this->paths->publicUrl($unprefixed, $locale)];
             }
-            $unprefixed = $this->paths->forProduct($product->primaryCategory(), (string) $translation->slug, $locale);
-            $products[] = ['title' => $translation->name, 'url' => $this->paths->publicUrl($unprefixed, $locale)];
         }
 
-        $canonical = url($this->paths->publicUrl($path, $locale));
-        if ($paginator->currentPage() > 1) {
-            $canonical .= '?page='.$paginator->currentPage();
+        return $this->listResponse($resolved, $locale, $path, $position, $more, ListPage::ulidOf($rows->last()), $products, $extra, $listTemplate);
+    }
+
+    /**
+     * Render a list page: self canonical (with its page or anchor), breadcrumb, the paging links,
+     * and `noindex,follow` on keyset pages (the sitemap lists every item).
+     *
+     * @param  array{page: int, after: string|null}  $position
+     * @param  list<array{title: string, url: string}>  $titles
+     * @param  array<string, mixed>  $extra
+     */
+    private function listResponse(ResolvedCategory $resolved, string $locale, string $path, array $position, bool $more, ?string $lastUlid, array $titles, array $extra, ?string $listTemplate): Response
+    {
+        // Each paginated page self-canonicals (with ?page=N) — rel=prev/next signals the series;
+        // canonicaling page-N→page-1 would drop the deeper pages from the index.
+        $base = url($this->paths->publicUrl($path, $locale));
+        $canonical = $base;
+        if ($position['after'] !== null) {
+            $canonical .= '?sau='.$position['after'];
+            $extra['robots'] = 'noindex,follow';
+        } elseif ($position['page'] > 1) {
+            $canonical .= '?page='.$position['page'];
         }
-        $extra = $chrome;
         $extra['canonical'] = $canonical;
         $extra['ogType'] = 'website';
-        $extra['breadcrumb'] = [
-            $this->homeCrumb($locale),
-            ['name' => $resolved->translation->name, 'url' => $canonical],
-        ];
+        // Home → the categories above → this one (its own entry keeps the page's canonical address).
+        $trail = $this->crumbs->category($resolved->taxonomy, $locale, $resolved->translation->name, $resolved->translation->slug);
+        $trail[count($trail) - 1]['url'] = $canonical;
+        $extra['breadcrumb'] = [$this->crumbs->home($locale), ...$trail];
+        // The band below the list (the list's own category speaks first, then the site's default).
+        $extra['slotBlocks'] = $this->slots->blocks(SlotContext::LIST_SLOTS, $locale, $resolved->taxonomy);
+        $extra['slotContext'] = $this->slots->context($extra['slotBlocks'], $resolved->taxonomy, $locale, is_array($extra['brand'] ?? null) ? $extra['brand'] : null);
 
         $html = $this->renderer->renderCategory(
-            $resolved->taxonomy->list_template,
+            $listTemplate,
             $resolved->translation->name,
-            $products,
-            ['prevUrl' => $paginator->previousPageUrl(), 'nextUrl' => $paginator->nextPageUrl()],
-            ['title' => $resolved->translation->name],
+            $titles,
+            $this->lists->links(request()->url(), $position, $more, $lastUlid),
+            [],   // a category has no Google title of its own: its name, through the site's title template
             $extra,
         );
 
@@ -326,73 +521,21 @@ final readonly class StorefrontController
     }
 
     /**
-     * Render a catalog product detail page. The product is loaded HERE (the storefront may depend on
-     * Catalog; Cms routing must not) and visibility is enforced at load — an unpublished/soft-deleted
-     * product, or one with no translation for the locale, 404s. Name + description HTML + gallery are
-     * handed to the Theme as primitives.
+     * Render a catalog product detail page (ProductPage). The product is loaded in the Storefront
+     * (the storefront may depend on Catalog; Cms routing must not) and visibility is enforced at load
+     * — an unpublished/soft-deleted product, or one with no translation for the locale, 404s.
      *
      * @param  array<string, mixed>  $chrome  page chrome (menu, lang, hreflang)
      */
     private function renderProduct(ResolvedProduct $resolved, string $locale, string $path, array $chrome): Response
     {
-        $product = Product::query()
-            ->whereKey($resolved->productId)
-            ->where('status', 'published')
-            ->with(['translations', 'images.media'])
-            ->first();
-
+        $product = $this->productPage->published($resolved->productId, $locale);
         abort_if($product === null, 404);
 
         $translation = $product->translationFor($locale);
         abort_if($translation === null, 404);
 
-        $canonical = url($this->paths->publicUrl($path, $locale));
-        $extra = $chrome;
-        $extra['canonical'] = $canonical;
-        $extra['ogType'] = 'product';
-        $extra['breadcrumb'] = [
-            $this->homeCrumb($locale),
-            ['name' => $translation->name, 'url' => $canonical],
-        ];
-
-        $images = [];
-        foreach ($product->images as $image) {
-            $key = $image->media?->storage_key;
-            if (is_string($key) && $key !== '') {
-                $images[] = ['url' => $this->media->url($key, 1280), 'alt' => $translation->name];
-            }
-        }
-        if ($images !== []) {
-            $extra['ogImage'] = $images[0]['url'];
-        }
-
-        // Product JSON-LD (brochure mode: no offers/price — this catalog sells nothing online).
-        // Description must be plain text, so the sanitized HTML body is stripped; the dedicated
-        // SEO description wins when the editor wrote one.
-        $ldDescription = ! empty($translation->seo_description)
-            ? $translation->seo_description
-            : str((string) $translation->description)->stripTags()->squish()->limit(300)->toString();
-        $extra['productLd'] = array_filter([
-            '@context' => 'https://schema.org',
-            '@type' => 'Product',
-            'name' => $translation->name,
-            'description' => $ldDescription !== '' ? $ldDescription : null,
-            'image' => array_column($images, 'url') ?: null,
-            'url' => $canonical,
-            'brand' => ($brandName = data_get($chrome, 'brand.name')) !== null && $brandName !== ''
-                ? ['@type' => 'Brand', 'name' => $brandName]
-                : null,
-        ], fn ($value) => $value !== null);
-
-        $html = $this->renderer->renderProduct(
-            $translation->name,
-            (string) $translation->description,
-            $images,
-            ['title' => $translation->seo_title, 'description' => $translation->seo_description],
-            $extra,
-        );
-
-        return response($html);
+        return response($this->productPage->render($product, $translation, $locale, $path, $chrome));
     }
 
     /**
@@ -470,12 +613,48 @@ final readonly class StorefrontController
     }
 
     /**
-     * The Home crumb shared by every breadcrumb trail — an absolute, locale-correct URL.
+     * The band of a card list page: the category's description under its name and its cover photo
+     * (one read, only when it has one) behind them, with a srcset for the page's main image. No
+     * cover, or a cover that is gone, means the plain band.
      *
-     * @return array{name: string, url: string}
+     * @return array{subtitle: string, image: string|null, srcset: string|null}
      */
-    private function homeCrumb(string $locale): array
+    private function listBand(ResolvedCategory $resolved): array
     {
-        return ['name' => __('storefront.home'), 'url' => url($this->paths->publicUrl('/', $locale))];
+        $image = null;
+        $srcset = null;
+        $coverId = $resolved->taxonomy->cover_media_id;
+        if ($coverId !== null) {
+            $cover = Media::query()->whereKey($coverId)->first(['id', 'storage_key', 'width']);
+            if ($cover !== null && $cover->storage_key !== '') {
+                $image = $this->media->url($cover->storage_key, 1280);
+                $srcset = $this->media->srcset($cover->storage_key, [640, 960, 1280, 1920], $cover->width);
+            }
+        }
+
+        return [
+            'subtitle' => trim((string) $resolved->translation->description),
+            'image' => $image,
+            'srcset' => $srcset,
+        ];
+    }
+
+    /**
+     * What a post or page tells search engines and link previews: its own Google title, else what
+     * the site's search settings make of the page title (PageRenderer); its own Google description,
+     * else its short excerpt, else nothing, so the head falls back to the site's default description
+     * and then the brand description. A blank value counts as none.
+     *
+     * @return array{title: string|null, description: string|null}
+     */
+    private static function entrySeo(EntryTranslation $translation): array
+    {
+        $filled = static fn (?string $value): ?string => $value !== null && trim($value) !== '' ? $value : null;
+
+        return [
+            'title' => $filled($translation->seo_title),
+            // The excerpt may hold line breaks (a news card shows it as is); a description is one line.
+            'description' => $filled($translation->seo_description) ?? $filled(str((string) $translation->excerpt)->squish()->toString()),
+        ];
     }
 }

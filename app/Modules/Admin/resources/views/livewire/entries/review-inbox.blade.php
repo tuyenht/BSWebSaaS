@@ -44,13 +44,13 @@
 
             {{-- Search + type filter --}}
             <div class="mb-3 flex flex-col gap-2">
-                <label class="flex items-center gap-2 rounded border border-border px-2.5 focus-within:border-accent focus-within:ring-[3px] focus-within:ring-admin-primary/20">
+                <label class="field flex items-center gap-2 rounded border border-border px-2.5 focus-within:border-primary-text focus-within:ring-[3px] focus-within:ring-primary/20">
                     <x-bs-admin::icon name="ri-search" class="size-4 shrink-0 text-body-muted" />
-                    <input type="search" wire:model.live.debounce.300ms="search" class="min-h-9 w-full border-0 bg-transparent p-0 text-[13px] text-body-text"
+                    <input type="search" wire:model.live.debounce.300ms="search" class="w-full border-0 bg-transparent p-0 text-text"
                            placeholder="{{ __('admin.inbox.search_placeholder') }}" aria-label="{{ __('admin.inbox.search_placeholder') }}">
                 </label>
                 @if (count($sections) > 1)
-                    <select wire:model.live="sectionFilter" class="min-h-9 w-full rounded border border-border bg-surface px-2.5 text-[13px] text-body-text focus:border-accent">
+                    <select wire:model.live="sectionFilter" class="field w-full rounded border border-border bg-surface px-2.5 text-text focus:border-primary-text">
                         <option value="">{{ __('admin.inbox.all_types') }}</option>
                         @foreach ($sections as $key => $label)
                             <option value="{{ $key }}">{{ $label }}</option>

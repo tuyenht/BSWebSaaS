@@ -10,8 +10,8 @@ use App\Modules\Tenancy\Context\Tenancy;
  * SSR of the resolved admin-chrome theme onto <html data-*> (P5 Customizer). The chain is
  * app default → site default (site_settings group `admin_theme`) → per-user override
  * (users.preferences.theme), merged per field; anything outside the allow-list is ignored
- * on read (the values render into attributes). The platform console is a scheme-only
- * plane: it must never emit sidebar/topbar/position attributes.
+ * on read (the values render into attributes). The platform console emits only the scheme
+ * and the sidebar size (its menu button's collapse): never sidebar/topbar/position variants.
  */
 
 beforeEach(function (): void {
@@ -92,7 +92,7 @@ it('keeps site defaults isolated per site', function (): void {
         ->assertSee('data-sidebar="dark"', false); // site 1's pin never bleeds into site 2
 });
 
-it('emits only the scheme on the platform console (scheme-only plane)', function (): void {
+it('emits only the scheme and the sidebar size on the platform console', function (): void {
     $host = (string) config('tenancy.platform_host');
     $operator = User::factory()->create();
     app(PlatformAccess::class)->onPlatform(fn () => $operator->assignRole('super_admin'));
@@ -105,12 +105,34 @@ it('emits only the scheme on the platform console (scheme-only plane)', function
     $this->actingAs($operator->fresh())->get("http://{$host}/tenants")
         ->assertOk()
         ->assertSee('data-bs-theme="dark"', false)
+        ->assertSee('data-sidebar-size="lg"', false) // the menu button's collapse, default full
         ->assertDontSee('data-sidebar=', false)
         ->assertDontSee('data-layout-position=', false)
         ->assertDontSee('data-layout=', false)
         ->assertDontSee('data-layout-width=', false)
-        ->assertDontSee('data-sidebar-size=', false)
         ->assertDontSee('data-sidebar-image=', false);
+});
+
+it('renders the platform console collapsed when the operator pinned the small sidebar', function (): void {
+    $host = (string) config('tenancy.platform_host');
+    $operator = User::factory()->create();
+    app(PlatformAccess::class)->onPlatform(fn () => $operator->assignRole('super_admin'));
+    app(PlatformAccess::class)->forgetMemo();
+
+    $operator = $operator->fresh();
+    $operator->preferences = ['theme' => ['sidebar_size' => 'sm', 'sidebar_image' => 'img-2']];
+    $operator->save();
+
+    $html = (string) $this->actingAs($operator->fresh())->get("http://{$host}/tenants")->assertOk()->getContent();
+    $htmlTag = (string) strstr((string) strstr($html, '<html'), '>', true);
+
+    expect($htmlTag)->toContain('data-sidebar-size="sm"')
+        ->toContain('data-bs-theme="light"')
+        ->not->toContain('data-sidebar-image='); // other tenant axes stay off the console
+    // theme-boot re-applies an unsaved size before paint, with the same allow-list (@js escapes quotes).
+    $js = fn (string $json): string => str_replace('"', '\u0022', $json);
+    expect($html)->toContain($js('"sidebar_size":{"attr":"data-sidebar-size","values":["lg","sm"]}'))
+        ->not->toContain($js('"sidebar_image":{'));
 });
 
 it('applies the new axes when a user pins them', function (): void {

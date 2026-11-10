@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\UserPreferences;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
@@ -98,17 +99,38 @@ it('resets only the scheme on the platform console, keeping tenant-plane pins', 
     app(PlatformAccess::class)->forgetMemo();
 
     $operator = $operator->fresh();
-    $operator->preferences = ['theme' => ['scheme' => 'dark', 'sidebar' => 'light']];
+    $operator->preferences = ['theme' => ['scheme' => 'dark', 'sidebar' => 'light', 'sidebar_size' => 'sm']];
     $operator->save();
 
     $this->actingAs($operator->fresh())
         ->deleteJson("http://{$host}/theme-preference")
         ->assertOk()
-        ->assertJsonPath('attributes.data-bs-theme', 'light');
+        ->assertJsonPath('attributes.data-bs-theme', 'light')
+        ->assertJsonPath('attributes.data-sidebar-size', 'sm');
 
     // The console launcher only shows Scheme — its reset must not silently drop the
-    // operator's sidebar pin for tenant admins.
-    expect($operator->fresh()->preferences['theme'])->toBe(['sidebar' => 'light']);
+    // operator's sidebar pins for tenant admins, nor the shared sidebar size.
+    expect($operator->fresh()->preferences['theme'])->toBe(['sidebar' => 'light', 'sidebar_size' => 'sm']);
+});
+
+it('saves the sidebar size from the platform console and renders the console collapsed', function (): void {
+    $host = (string) config('tenancy.platform_host');
+    $operator = User::factory()->create();
+    app(PlatformAccess::class)->onPlatform(fn () => $operator->assignRole('super_admin'));
+    app(PlatformAccess::class)->forgetMemo();
+
+    $this->actingAs($operator->fresh())
+        ->postJson("http://{$host}/theme-preference", ['sidebar_size' => 'sm'])
+        ->assertOk()
+        ->assertJsonPath('attributes.data-sidebar-size', 'sm')
+        ->assertJsonMissingPath('attributes.data-sidebar');
+
+    // One per-user preference: the console and the tenant admin read the same pin.
+    expect($operator->fresh()->preferences['theme'])->toBe(['sidebar_size' => 'sm']);
+
+    $this->actingAs($operator->fresh())->get("http://{$host}/tenants")
+        ->assertOk()
+        ->assertSee('data-sidebar-size="sm"', false);
 });
 
 it('persists on the platform plane through the mirrored route', function (): void {
@@ -136,4 +158,30 @@ it('pins new visual axes and echoes their attributes', function (): void {
 
     expect($user->fresh()->preferences['theme'])
         ->toEqualCanonicalizing(['sidebar' => 'gradient-3', 'sidebar_size' => 'sm']);
+});
+
+it('keeps the member\'s list choices when the theme is saved or reset', function (): void {
+    $user = prefMember();
+    $lists = ['platform.customers' => ['per' => 50, 'cols' => ['plan']]];
+    $user->forceFill(['preferences' => ['theme' => ['sidebar' => 'light'], 'lists' => $lists]])->save();
+
+    $this->actingAs($user->fresh())->postJson('http://a.test/admin/theme-preference', ['scheme' => 'dark'])->assertOk();
+    expect($user->fresh()->preferences['lists'])->toBe($lists)
+        ->and($user->fresh()->preferences['theme'])->toEqualCanonicalizing(['sidebar' => 'light', 'scheme' => 'dark']);
+
+    $this->actingAs($user->fresh())->deleteJson('http://a.test/admin/theme-preference')->assertOk();
+    expect($user->fresh()->preferences)->toBe(['lists' => $lists]);
+});
+
+it('keeps a theme saved meanwhile when a list choice is written, and the other way round', function (): void {
+    $user = prefMember();
+    $stale = $user->fresh(); // a model read before the theme was saved, as a long-lived page holds it
+
+    $this->actingAs($user)->postJson('http://a.test/admin/theme-preference', ['scheme' => 'dark'])->assertOk();
+    UserPreferences::set($stale, ['lists', 'platform.customers', 'per'], 50);
+
+    expect($user->fresh()->preferences)->toEqualCanonicalizing([
+        'theme' => ['scheme' => 'dark'],
+        'lists' => ['platform.customers' => ['per' => 50]],
+    ]);
 });

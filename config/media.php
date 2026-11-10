@@ -40,6 +40,6 @@ return [
 
     // Days a soft-deleted (Thùng rác) master survives before media:purge-trash permanently deletes
     // it (row + R2 object). Manual "empty trash" / "delete permanently" purge immediately regardless.
-    'trash_retention_days' => (int) env('MEDIA_TRASH_RETENTION_DAYS', 15),
+    'trash_retention_days' => (int) env('MEDIA_TRASH_RETENTION_DAYS', 30),
 
 ];

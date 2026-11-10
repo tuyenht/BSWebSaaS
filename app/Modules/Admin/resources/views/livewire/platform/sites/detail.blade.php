@@ -26,7 +26,11 @@
         </dl>
     </div>
 
-    <h2 class="mb-3 text-sm font-semibold text-body-text">{{ __('admin.domains') }}</h2>
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h2 class="text-sm font-semibold text-text">{{ __('admin.domains') }}</h2>
+        <a href="{{ route('platform.sites.domains', ['ulid' => $site->ulid]) }}" wire:navigate
+           class="inline-flex min-h-control-row items-center text-sm font-medium text-primary-text transition-colors hover:underline any-pointer-coarse:min-h-hit">{{ __('admin.domains_manage_link') }}</a>
+    </div>
     <div class="overflow-x-auto rounded-lg border border-border bg-surface shadow-card">
         <table class="w-full text-sm">
             <thead class="border-b border-border bg-surface-muted text-left text-xs uppercase tracking-wider text-body-muted">

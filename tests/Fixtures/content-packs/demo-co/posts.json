@@ -1,0 +1,88 @@
+{
+ "items": [
+  {
+   "key": "post:thiet-ke-mau",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:post_cat/dich-vu"
+   ],
+   "image": "cog",
+   "title": {
+    "vi": "Thiết kế mẫu"
+   },
+   "excerpt": {
+    "vi": "Dịch vụ thiết kế mẫu."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "richtext",
+      "props": {
+       "paragraphs": [
+        "Dịch vụ thiết kế mẫu."
+       ]
+      }
+     }
+    ]
+   }
+  },
+  {
+   "key": "post:ra-mat-website",
+   "verified": true,
+   "status": "published",
+   "categories": [
+    "tax:post_cat/tin-tuc/cap-nhat",
+    "tax:post_cat/tin-tuc"
+   ],
+   "image": {
+    "media": "news-1"
+   },
+   "published_at": "2026-01-15",
+   "title": {
+    "vi": "Ra mắt website"
+   },
+   "excerpt": {
+    "vi": "Website mới đã ra mắt."
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "richtext",
+      "props": {
+       "paragraphs": [
+        "Website mới đã ra mắt."
+       ]
+      }
+     }
+    ]
+   }
+  },
+  {
+   "key": "post:giai-thuong-mau",
+   "verified": false,
+   "claims": [
+    "Đạt giải thưởng mẫu năm 2026"
+   ],
+   "status": "draft",
+   "categories": [
+    "tax:post_cat/tin-tuc"
+   ],
+   "title": {
+    "vi": "Giải thưởng mẫu"
+   },
+   "body": {
+    "vi": [
+     {
+      "type": "richtext",
+      "props": {
+       "paragraphs": [
+        "Đạt giải thưởng mẫu năm 2026."
+       ]
+      }
+     }
+    ]
+   }
+  }
+ ]
+}

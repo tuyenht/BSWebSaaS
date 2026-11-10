@@ -5,6 +5,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
 /*
@@ -63,6 +64,30 @@ it('sets a block image prop to a media_id from this site, rejecting a cross-site
             ->call('selectBlockImage', $foreign->id)
             ->assertSet('blocks.0.props.image_url', $mine->id);   // cross-site id rejected → unchanged
     });
+});
+
+it('saves a page whose wire payload carries another site\'s or an unknown image id, recording usage for neither', function (): void {
+    // The blocks property is client-owned, so the picker check alone does not stop an id typed into
+    // the payload. The save must behave the same for both ids (no error that tells them apart) and
+    // must not record another site's media in this site's usage index.
+    $editor = User::factory()->create();
+    $foreignId = app(Tenancy::class)->enter(2, fn (): int => (int) blockPickerMedia('b/library/z-cccccccccccc.png', 'c')->id);
+    $unknownId = 9_000_000_000_000_000;
+
+    app(Tenancy::class)->enter(1, function () use ($editor, $foreignId, $unknownId): void {
+        grantRole($editor, 'editor', ['entries.create', 'entries.edit.any', 'media.view']);
+
+        foreach (['khac' => $foreignId, 'khong-co' => $unknownId] as $slug => $id) {
+            Livewire::actingAs($editor->fresh())->test(Editor::class)
+                ->set('title', 'Trang')
+                ->set('slug', "trang-{$slug}")
+                ->set('blocks', [['type' => 'hero', 'props' => ['heading' => 'Hi', 'image_url' => $id]]])
+                ->call('save')
+                ->assertHasNoErrors();
+        }
+    });
+
+    expect(DB::connection('pgsql_admin')->table('mediables')->whereIn('media_id', [$foreignId, $unknownId])->count())->toBe(0);
 });
 
 it('sets an image inside a repeater row (partners.logos[].image_url)', function (): void {

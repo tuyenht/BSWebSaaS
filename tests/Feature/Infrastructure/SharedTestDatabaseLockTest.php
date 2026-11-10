@@ -23,8 +23,10 @@ function suiteLockPdo(): PDO
 }
 
 it('holds the shared test-database lock for the whole run', function (): void {
+    // pg_locks lists the whole cluster: a run on another database (a scratch copy) holds its own lock.
     $held = suiteLockPdo()->query(sprintf(
-        "select count(*) from pg_locks where locktype = 'advisory' and granted and classid = 0 and objid = %d and objsubid = 1",
+        "select count(*) from pg_locks where locktype = 'advisory' and granted and classid = 0 and objid = %d and objsubid = 1"
+        .' and database = (select oid from pg_database where datname = current_database())',
         TestCase::SUITE_LOCK_KEY,
     ))->fetchColumn();
 

@@ -8,6 +8,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Tenancy\Support\SiteWriteLock;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -79,6 +80,7 @@ final class SyncSiteProfilesFromBrandCommand extends Command
      */
     private function syncSite(bool $apply): array
     {
+        SiteWriteLock::take();   // first, as every writer of the profile and settings rows does
         $brand = SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->value('value');
         if (! is_array($brand)) {
             return [];

@@ -16,16 +16,17 @@
     {{-- Velzon reference 1:1 — .header-item sets an EXPLICIT height: $header-height (not a
          percentage chain), so the gray slab spans the full 70px topbar regardless of the
          flex cluster around it, and ENDS at the header's 1.5rem end-padding; 32px avatar,
-         13px semibold name over an 11px muted role, no chevron, no hover shift. --}}
-    <button type="button" @click="userOpen = ! userOpen" :aria-expanded="userOpen"
+         a semibold name at the small text size over a muted role at the caption size (both follow
+         the reader's text size), no chevron, no hover shift. --}}
+    <button type="button" x-ref="userButton" @click="userOpen = ! userOpen" :aria-expanded="userOpen"
             class="flex h-[var(--spacing-header)] items-center gap-2.5 bg-topbar-user-block px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg">
         <span class="grid size-8 shrink-0 place-items-center rounded-full bg-topbar-user text-sm font-semibold text-topbar-user-fg">
             {{ \Illuminate\Support\Str::of($name)->substr(0, 1)->upper() }}
         </span>
         <span class="hidden text-start leading-tight sm:block">
-            <span class="block text-[13px] font-semibold text-topbar-fg-strong">{{ $shortName }}</span>
+            <span class="block text-small leading-tight font-semibold text-topbar-fg-strong">{{ $shortName }}</span>
             @if (! empty($roleLabel))
-                <span class="block text-[11px] text-topbar-fg">{{ $roleLabel }}</span>
+                <span class="block text-caption leading-tight text-topbar-fg">{{ $roleLabel }}</span>
             @endif
         </span>
     </button>
@@ -44,17 +45,28 @@
              configuration lives under the sidebar's Cài đặt group, not here. --}}
         @unless ($isPlatform)
             <a href="{{ route('admin.settings.security') }}" wire:navigate role="menuitem"
-               class="flex items-center gap-2.5 px-4 py-2 text-sm text-body-text transition-colors hover:bg-surface-hover">
+               class="flex min-h-menu-row items-center gap-2.5 px-4 py-2 text-body text-text transition-colors hover:bg-surface-hover any-pointer-coarse:min-h-menu-row-touch">
                 <x-bs-admin::icon name="user" class="size-4 text-body-muted" />
                 {{ __('admin.settings_account') }}
             </a>
         @endunless
 
+        {{-- The look of the admin for this user: opens the Customizer panel. Focus goes back to the
+             user button first, so closing the panel returns it there (the menu item is hidden by then). --}}
+        <button type="button" role="menuitem" aria-haspopup="dialog"
+                @click="userOpen = false; $refs.userButton.focus(); $store.adminTheme.open = true"
+                class="flex min-h-menu-row w-full items-center gap-2.5 px-4 py-2 text-body text-text transition-colors hover:bg-surface-hover any-pointer-coarse:min-h-menu-row-touch">
+            <x-bs-admin::icon name="ri-palette" class="size-4 text-text-muted" />
+            {{ __('admin.appearance') }}
+            <span class="ms-auto text-caption text-text-muted"
+                  x-text="$store.adminTheme.state.scheme === 'dark' ? @js(__('admin.theme_dark')) : @js(__('admin.theme_light'))">{{ __('admin.theme_light') }}</span>
+        </button>
+
         <div class="my-1 border-t border-border"></div>
         <form method="POST" action="{{ \App\Modules\Admin\Support\AdminPlane::route('logout') }}" role="none">
             @csrf
             <button type="submit" role="menuitem"
-                    class="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-body-text transition-colors hover:bg-surface-hover">
+                    class="flex min-h-menu-row w-full items-center gap-2.5 px-4 py-2 text-body text-text transition-colors hover:bg-surface-hover any-pointer-coarse:min-h-menu-row-touch">
                 <x-bs-admin::icon name="logout" class="size-4 text-body-muted" />
                 {{ __('admin.logout') }}
             </button>

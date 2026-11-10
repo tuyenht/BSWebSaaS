@@ -3,6 +3,7 @@
 namespace App\Modules\Media\Services;
 
 use App\Modules\Media\Models\Media;
+use App\Modules\Tenancy\Context\SiteLocale;
 
 /**
  * Batch-resolves a set of media ids to their public URLs in ONE query (site-scoped by
@@ -14,6 +15,9 @@ use App\Modules\Media\Models\Media;
  */
 final readonly class MediaLibraryUrls
 {
+    /** The video files the library accepts (Media::MIME_EXT_LABELS) that a <video> plays. */
+    public const array VIDEO_MIMES = ['video/mp4', 'video/webm'];
+
     public function __construct(private MediaUrlResolver $resolver) {}
 
     /**
@@ -21,6 +25,25 @@ final readonly class MediaLibraryUrls
      * @return array<int, string> media_id => public URL (only for ids that resolve in this site)
      */
     public function urlsForIds(array $ids, ?int $width = null): array
+    {
+        return $this->resolve($ids, $width)['urls'];
+    }
+
+    /**
+     * The URLs of urlsForIds() plus, from the same single SELECT, a `srcset` per URL at
+     * $srcsetWidths (capped at each master's stored width). A URL whose srcset would hold fewer
+     * than two distinct candidates has none (MediaUrlResolver::srcset). `alts` holds, per URL, the
+     * library's alt text in the current locale (else the site's default locale); a picture with no
+     * alt text is left out. `dims` holds, per URL, the master's stored [width, height] (for the
+     * intrinsic ratio of an <img>); a picture without both is left out. `videos` holds, per media id
+     * of a video file (mp4 / webm), the file's own address (never a picture transform) and its type,
+     * for a <video> source. Same rows, no extra query.
+     *
+     * @param  array<array-key, mixed>  $ids
+     * @param  list<int>  $srcsetWidths
+     * @return array{urls: array<int, string>, srcsets: array<string, string>, alts: array<string, string>, dims: array<string, array{0: int, 1: int}>, videos: array<int, array{url: string, type: string}>}
+     */
+    public function resolve(array $ids, ?int $width = null, array $srcsetWidths = []): array
     {
         $wanted = [];
         foreach ($ids as $id) {
@@ -30,14 +53,75 @@ final readonly class MediaLibraryUrls
         }
 
         if ($wanted === []) {
+            return ['urls' => [], 'srcsets' => [], 'alts' => [], 'dims' => [], 'videos' => []];
+        }
+
+        $urls = [];
+        $srcsets = [];
+        $alts = [];
+        $dims = [];
+        $videos = [];
+        foreach (Media::query()->whereIn('id', array_keys($wanted))->get(['id', 'storage_key', 'mime', 'width', 'height', 'alt']) as $media) {
+            $key = (string) $media->storage_key;
+            if (in_array($media->mime, self::VIDEO_MIMES, true)) {
+                $videos[(int) $media->id] = ['url' => $this->resolver->fileUrl($key), 'type' => $media->mime];
+            }
+            $url = $this->resolver->url($key, $width);
+            $urls[(int) $media->id] = $url;
+            $srcset = $srcsetWidths !== [] ? $this->resolver->srcset($key, $srcsetWidths, $media->width) : null;
+            if ($srcset !== null) {
+                $srcsets[$url] = $srcset;
+            }
+            $alt = $this->altText($media->alt);
+            if ($alt !== '') {
+                $alts[$url] = $alt;
+            }
+            if (is_int($media->width) && $media->width > 0 && is_int($media->height) && $media->height > 0) {
+                $dims[$url] = [$media->width, $media->height];
+            }
+        }
+
+        return ['urls' => $urls, 'srcsets' => $srcsets, 'alts' => $alts, 'dims' => $dims, 'videos' => $videos];
+    }
+
+    /**
+     * Storage key => the file's own address, for the keys that name a file of this site (not in the
+     * Trash) whose type is one of $mimes — what a "Tải tệp" block button links to. One query; an
+     * unknown, foreign or trashed key resolves to nothing.
+     *
+     * @param  list<string>  $keys
+     * @param  list<string>  $mimes
+     * @return array<string, string>
+     */
+    public function fileUrls(array $keys, array $mimes): array
+    {
+        if ($keys === []) {
             return [];
         }
 
         $urls = [];
-        foreach (Media::query()->whereIn('id', array_keys($wanted))->get(['id', 'storage_key']) as $media) {
-            $urls[(int) $media->id] = $this->resolver->url((string) $media->storage_key, $width);
+        foreach (Media::query()->whereIn('storage_key', $keys)->whereIn('mime', $mimes)->pluck('storage_key') as $key) {
+            if (is_string($key)) {
+                $urls[$key] = $this->resolver->fileUrl($key);
+            }
         }
 
         return $urls;
+    }
+
+    /**
+     * The alt text for the current locale, else the site's default locale, else ''.
+     *
+     * @param  array<string, string>  $alt  per-locale alt texts of one picture
+     */
+    private function altText(array $alt): string
+    {
+        if ($alt === []) {
+            return '';
+        }
+
+        $text = trim($alt[app()->getLocale()] ?? '');
+
+        return $text !== '' ? $text : trim($alt[app(SiteLocale::class)->default()] ?? '');
     }
 }

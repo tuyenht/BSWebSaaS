@@ -1,0 +1,82 @@
+{
+  "entries": {
+    "resources/css/app.css": {
+      "js": 0,
+      "css": 37483
+    },
+    "resources/css/storefront.css": {
+      "js": 0,
+      "css": 22421
+    },
+    "resources/js/app.js": {
+      "js": 20351,
+      "css": 0
+    },
+    "resources/js/sections.js": {
+      "js": 284,
+      "css": 0
+    },
+    "resources/js/sf-bgvideo.js": {
+      "js": 504,
+      "css": 0
+    },
+    "resources/js/sf-gallery.js": {
+      "js": 395,
+      "css": 0
+    },
+    "resources/js/sf-slider.js": {
+      "js": 1373,
+      "css": 0
+    },
+    "resources/js/sf-stats.js": {
+      "js": 495,
+      "css": 0
+    },
+    "resources/js/sf-tabs.js": {
+      "js": 498,
+      "css": 0
+    },
+    "resources/js/sf-viewer.js": {
+      "js": 919,
+      "css": 0
+    },
+    "resources/js/sf-video.js": {
+      "js": 478,
+      "css": 0
+    },
+    "resources/js/storefront.js": {
+      "js": 724,
+      "css": 0
+    }
+  },
+  "lazy": {
+    "npm:sweetalert2/dist/sweetalert2.all.js": {
+      "js": 41022,
+      "css": 0
+    },
+    "resources/js/admin-categories.js": {
+      "js": 26801,
+      "css": 0
+    },
+    "resources/js/admin-rich-editor.js": {
+      "js": 220996,
+      "css": 36159
+    },
+    "resources/js/admin-unsaved.js": {
+      "js": 22683,
+      "css": 0
+    },
+    "resources/js/admin-editor.js": {
+      "js": 1082,
+      "css": 0
+    },
+    "resources/js/media-picker-uploader.js": {
+      "js": 51908,
+      "css": 920
+    },
+    "resources/js/media-uppy.js": {
+      "js": 104370,
+      "css": 10606
+    }
+  }
+}

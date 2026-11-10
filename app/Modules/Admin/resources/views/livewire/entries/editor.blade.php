@@ -11,18 +11,18 @@
     @endif
 
     <label>{{ __('entries.title_label') }}
-        <input type="text" wire:model="title">
+        <input type="text" wire:model="title" class="field block w-full">
     </label>
     @error('title') <p class="error">{{ $message }}</p> @enderror
 
     <label>{{ __('entries.slug_label') }}
-        <input type="text" wire:model="slug">
+        <input type="text" wire:model="slug" class="field block w-full">
     </label>
     @error('slug') <p class="error">{{ $message }}</p> @enderror
 
     @if ($type === 'post')
         <label>{{ __('entries.category_label') }}
-            <select wire:model="categoryId">
+            <select wire:model.live="categoryId" class="field">
                 <option value="">{{ __('entries.category_placeholder') }}</option>
                 @foreach ($categories as $category)
                     <option value="{{ $category['id'] }}">{{ $category['name'] }}</option>
@@ -31,6 +31,8 @@
         </label>
         @error('categoryId') <p class="error">{{ $message }}</p> @enderror
     @endif
+
+    <x-bs-admin::seo-fields excerpt="excerpt" :kind="$type" :address="$address" :locale="$locale" :multi-locale="$multiLocale" id="entry-seo" />
 
     @can('media.view')
         <section class="entry-cover">
@@ -91,6 +93,36 @@
                 @endif
             </div>
         @endif
+
+        {{-- "Tải tệp": a document of the library for a button to hand out. --}}
+        <x-bs-admin::modal model="showButtonFilePicker" :title="__('entries.btn_file_dialog_title')" :subtitle="__('entries.btn_file_dialog_sub')" :close-label="__('entries.btn_file_dialog_close')">
+            @if ($buttonPanel['documents'] === [])
+                <div class="btn-act__docs-empty">
+                    <b>{{ __('entries.btn_file_dialog_empty_title') }}</b>
+                    <span>{{ __('entries.btn_file_dialog_empty_how') }}</span>
+                    <a class="btn-act__lib" href="{{ route('admin.media.index') }}" target="_blank" rel="noopener"><x-bs-admin::icon name="ri-folder-open" class="btn-act__btn-ic" />{{ __('entries.btn_file_dialog_library') }}<span class="sr-only"> {{ __('entries.btn_new_tab') }}</span></a>
+                </div>
+            @else
+                <div class="btn-act__docs">
+                    @foreach (array_map(fn (array $doc): array => $doc + ['current' => $doc['key'] === $buttonPanel['fileCurrent']], $buttonPanel['documents']) as $doc)
+                        <button type="button" class="btn-act__doc" aria-pressed="{{ $doc['current'] ? 'true' : 'false' }}" wire:click="pickButtonFile({{ \Illuminate\Support\Js::from($doc['key']) }})" wire:key="btn-doc-{{ $doc['key'] }}" @if ($doc['current']) autofocus @endif>
+                            <span class="btn-act__ic"><x-bs-admin::icon :name="$doc['icon']" class="btn-act__ic-glyph" /></span>
+                            <span class="btn-act__kt"><span class="btn-act__name">{{ $doc['name'] }}</span><span class="btn-act__meta">{{ $doc['meta'] }}</span>
+                                @if ($doc['current'])
+                                    <span class="btn-act__doc-cur"><x-bs-admin::icon name="ri-check" class="btn-act__btn-ic" />{{ __('entries.btn_file_dialog_current') }}</span>
+                                @endif
+                            </span>
+                        </button>
+                    @endforeach
+                </div>
+            @endif
+            <x-slot:footer>
+                @if ($buttonPanel['documents'] !== [])
+                    <a class="btn-act__lib me-auto" href="{{ route('admin.media.index') }}" target="_blank" rel="noopener"><x-bs-admin::icon name="ri-folder-open" class="btn-act__btn-ic" />{{ __('entries.btn_file_dialog_library') }}<span class="sr-only"> {{ __('entries.btn_new_tab') }}</span></a>
+                @endif
+                <x-bs-admin::button variant="outline" color="secondary" wire:click="closeButtonFilePicker">{{ __('entries.btn_file_dialog_cancel') }}</x-bs-admin::button>
+            </x-slot:footer>
+        </x-bs-admin::modal>
     @endcan
 
     <section class="blocks">
@@ -114,17 +146,23 @@
                     </header>
                     <div class="block-props">
                         @foreach (($schemas[$block['type']] ?? []) as $prop => $spec)
+                            @continue(in_array($spec['group'] ?? null, ['style', 'display'], true))
+                            {{-- A background video is chosen in the page builder's video field (not built in this editor yet); its value is kept as saved. --}}
+                            @continue(($spec['type'] ?? null) === 'video')
                             @if (($spec['type'] ?? 'text') === 'list')
                                 <fieldset class="prop-list" wire:key="list-{{ $i }}-{{ $prop }}">
                                     <legend>{{ $prop }}</legend>
                                     @foreach (($block['props'][$prop] ?? []) as $j => $item)
                                         <div class="prop-list__item" wire:key="item-{{ $i }}-{{ $prop }}-{{ $j }}">
                                             @if (isset($spec['of']['type']))
-                                                @include('admin::livewire.entries.partials.prop-input', ['fieldType' => $spec['of']['type'], 'model' => "blocks.$i.props.$prop.$j", 'fieldLabel' => $prop, 'value' => $item, 'imageUrls' => $blockImageUrls])
+                                                @include('admin::livewire.entries.partials.prop-input', ['fieldType' => $spec['of']['type'], 'model' => "blocks.$i.props.$prop.$j", 'fieldLabel' => $prop, 'value' => $item, 'imageUrls' => $blockImageUrls, 'options' => $spec['of']['options'] ?? [], 'describedBy' => $prop === 'product_keys' && is_string($item) && in_array(strtoupper($item), $goneProducts, true) ? "gone-$i-$j" : null])
                                             @else
                                                 @foreach (($spec['of'] ?? []) as $field => $fieldSpec)
-                                                    @include('admin::livewire.entries.partials.prop-input', ['fieldType' => $fieldSpec['type'] ?? 'text', 'model' => "blocks.$i.props.$prop.$j.$field", 'fieldLabel' => $field, 'value' => $item[$field] ?? null, 'imageUrls' => $blockImageUrls])
+                                                    @include('admin::livewire.entries.partials.prop-input', ['fieldType' => $fieldSpec['type'] ?? 'text', 'model' => "blocks.$i.props.$prop.$j.$field", 'fieldLabel' => $field, 'value' => $item[$field] ?? null, 'imageUrls' => $blockImageUrls, 'options' => $fieldSpec['options'] ?? []])
                                                 @endforeach
+                                            @endif
+                                            @if ($prop === 'product_keys' && is_string($item) && in_array(strtoupper($item), $goneProducts, true))
+                                                <span class="error" id="gone-{{ $i }}-{{ $j }}">{{ __('entries.product_pick_gone') }}</span>
                                             @endif
                                             <button type="button" wire:click="moveItemUp({{ $i }}, '{{ $prop }}', {{ $j }})" aria-label="{{ __('entries.move_up') }}">↑</button>
                                             <button type="button" wire:click="moveItemDown({{ $i }}, '{{ $prop }}', {{ $j }})" aria-label="{{ __('entries.move_down') }}">↓</button>
@@ -134,10 +172,11 @@
                                     <button type="button" wire:click="addItem({{ $i }}, '{{ $prop }}')">{{ __('entries.add_item') }}</button>
                                 </fieldset>
                             @else
-                                @include('admin::livewire.entries.partials.prop-input', ['fieldType' => $spec['type'] ?? 'text', 'model' => "blocks.$i.props.$prop", 'fieldLabel' => $prop, 'value' => $block['props'][$prop] ?? null, 'imageUrls' => $blockImageUrls])
+                                @include('admin::livewire.entries.partials.prop-input', ['fieldType' => $spec['type'] ?? 'text', 'model' => "blocks.$i.props.$prop", 'fieldLabel' => $prop, 'value' => $block['props'][$prop] ?? null, 'imageUrls' => $blockImageUrls, 'options' => $spec['options'] ?? [], 'min' => $spec['min'] ?? null, 'max' => $spec['max'] ?? null])
                             @endif
                         @endforeach
                     </div>
+                    @include('admin::livewire.entries.partials.block-look', ['look' => $looks[$i]])
                 </li>
             @endforeach
         </ol>

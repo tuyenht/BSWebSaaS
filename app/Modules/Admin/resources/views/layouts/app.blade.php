@@ -16,15 +16,61 @@
     @livewireStyles
 </head>
 <body class="admin-shell min-h-full bg-bg font-sans text-base text-text antialiased">
-<div x-data="{ open: false }" class="admin-shell-wrapper min-h-screen">
+{{-- Below 1024px the sidebar is a drawer the menu button opens: focus moves to its first item,
+     Tab stays inside and the page behind does not scroll. Esc or the overlay closes it and focus
+     goes back to the menu button; the page stays readable to screen readers, so they can also
+     close it with the menu button (the open drawer covers it for touch and mouse, as in the
+     design). Opening the theme panel closes the drawer. The closed drawer is inert. `open` resets
+     when the width crosses 1024px. --}}
+<div x-data="{
+        open: false,
+        mobile: false,
+        unlisten: null,
+        init() {
+            const root = this.$el;
+            const lg = window.matchMedia('(min-width: 64rem)');
+            const sync = () => { this.mobile = ! lg.matches; this.open = false; };
+            sync();
+            lg.addEventListener('change', sync);
+            // wire:navigate swaps the page: drop the listener with the component.
+            this.unlisten = () => lg.removeEventListener('change', sync);
+            this.$watch('$store.adminTheme.open', (value) => {
+                if (value) {
+                    this.open = false;
+                }
+            });
+            this.$watch('open', (value) => {
+                if (value) {
+                    this.$nextTick(() => root.querySelector('#admin-sidebar nav :is(a[href], button)')?.focus());
+                }
+            });
+        },
+        destroy() {
+            this.unlisten?.();
+        },
+        close() {
+            if (! this.open) {
+                return;
+            }
+            this.open = false;
+            this.$nextTick(() => this.$refs.menuButton?.focus());
+        },
+     }"
+     @keydown.escape.window="close()" class="admin-shell-wrapper min-h-screen">
 
     {{-- Mobile overlay --}}
-    <div x-show="open" x-transition.opacity @click="open = false" x-cloak
+    <div x-show="open" @click="close()" x-cloak
+         x-transition:enter="transition-opacity duration-150 motion-reduce:transition-none" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+         x-transition:leave="transition-opacity duration-150 motion-reduce:transition-none" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
          class="fixed inset-0 z-30 bg-gray-900/40 lg:hidden"></div>
 
     {{-- Sidebar (Velzon dark vertical). `admin-sidebar` is the [data-layout-position] flip hook. --}}
-    <aside
-        class="admin-sidebar fixed inset-y-0 left-0 z-40 flex w-[var(--spacing-sidebar)] flex-col bg-sidebar text-sidebar-fg transition-all duration-200"
+    <aside id="admin-sidebar"
+        x-trap.noscroll.noautofocus="open && mobile"
+        :role="open && mobile ? 'dialog' : null"
+        :aria-label="open && mobile ? @js(__('admin.menu')) : null"
+        x-effect="$el.inert = mobile && ! open"
+        class="admin-sidebar fixed inset-y-0 left-0 z-40 flex w-(--sidebar-width) flex-col bg-sidebar-bg text-sidebar-fg transition-all duration-200 motion-reduce:transition-none"
         :class="{
             'translate-x-0': open,
             '-translate-x-full lg:translate-x-0': !open
@@ -71,7 +117,7 @@
                                         :aria-expanded="openGroup === '{{ $item->key }}'"
                                         :class="openGroup === '{{ $item->key }}' && 'text-sidebar-fg-active'"
                                         @class([
-                                            'group flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors hover:text-sidebar-fg-hover',
+                                            'group flex min-h-control w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-body font-medium transition-colors hover:text-sidebar-fg-hover any-pointer-coarse:min-h-hit',
                                             $currentRow => $item->active,
                                         ])>
                                     <x-bs-admin::icon :name="$item->icon ?? 'doc'" class="size-5 shrink-0" />
@@ -88,7 +134,7 @@
                                         <li>
                                             <a href="{{ $child->url }}" wire:navigate @if ($child->active) aria-current="page" @endif
                                                @class([
-                                                   'flex items-center gap-2.5 px-3 py-2 text-[13px] transition-colors hover:text-sidebar-fg-hover',
+                                                   'flex min-h-control items-center gap-2.5 px-3 py-2 text-small transition-colors hover:text-sidebar-fg-hover any-pointer-coarse:min-h-hit',
                                                    $currentRow => $child->active,
                                                ])>
                                                 <span class="h-[1.5px] w-1.5 shrink-0 rounded-full bg-current opacity-60"></span>
@@ -101,14 +147,14 @@
                         @else
                             <a href="{{ $item->url }}" wire:navigate aria-label="{{ $item->label }}" @if ($item->active) aria-current="page" @endif
                                @class([
-                                   'group flex w-full items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors hover:text-sidebar-fg-hover',
+                                   'group flex min-h-control w-full items-center gap-3 px-3 py-2.5 text-body font-medium transition-colors hover:text-sidebar-fg-hover any-pointer-coarse:min-h-hit',
                                    $currentRow => $item->active,
                                ])>
                                 <x-bs-admin::icon :name="$item->icon ?? 'doc'" class="size-5 shrink-0" />
                                 <span class="sidebar-label">{{ $item->label }}</span>
                                 @if ($item->badge !== null)
                                     {{-- Work waiting on this person; hidden with the labels when the rail collapses. --}}
-                                    <span class="sidebar-label ml-auto rounded-full bg-admin-danger-solid px-1.5 py-0.5 text-[10.5px] font-bold leading-none text-white">{{ $item->badge }}</span>
+                                    <span class="sidebar-label ml-auto rounded-full bg-danger px-1.5 py-0.5 text-caption font-bold leading-none text-white">{{ $item->badge }}</span>
                                 @endif
                             </a>
                         @endif
@@ -119,18 +165,19 @@
     </aside>
 
     {{-- Content column --}}
-    <div class="admin-content flex min-h-screen flex-col pl-0 transition-all duration-200 lg:pl-[var(--spacing-sidebar)]">
+    <div class="admin-content flex min-h-screen flex-col pl-0 transition-all duration-200 motion-reduce:transition-none lg:pl-(--sidebar-width)">
 
         {{-- Topbar. `admin-topbar` is the [data-layout-position] flip hook.
              Reference paddings: .75rem start · 1.5rem end (navbar-header), so the user slab
              keeps the same balanced right gap as the content gutter below. --}}
         <header class="admin-topbar sticky top-0 z-20 flex h-[var(--spacing-header)] items-center gap-3 border-b border-topbar-border bg-topbar ps-3 pe-6 shadow-card">
-            <button type="button" @click="open = true" aria-label="{{ __('admin.open_menu') }}"
-                    class="grid size-10 place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg lg:hidden">
+            <button type="button" x-ref="menuButton" @click="open ? close() : (open = true)" aria-label="{{ __('admin.menu') }}"
+                    aria-controls="admin-sidebar" aria-expanded="false" :aria-expanded="open ? 'true' : 'false'"
+                    class="grid size-control any-pointer-coarse:size-hit place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg lg:hidden">
                 <x-bs-admin::icon name="menu" class="size-5" />
             </button>
             <button type="button" @click="$store.adminTheme.set('sidebar_size', $store.adminTheme.state.sidebar_size === 'sm' ? 'lg' : 'sm')" aria-label="{{ __('admin.collapse_menu') }}"
-                    class="hidden size-10 place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg lg:grid">
+                    class="hidden size-control any-pointer-coarse:size-hit place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg lg:grid">
                 <x-bs-admin::icon name="menu" class="size-5" />
             </button>
 
@@ -140,7 +187,7 @@
                     <x-bs-admin::icon name="search" class="size-4" />
                 </span>
                 <input type="search" aria-label="{{ __('admin.search') }}" placeholder="{{ __('admin.search_placeholder') }}"
-                       class="w-56 rounded border border-topbar-search-border bg-topbar-search py-2 pl-9 pr-3 text-sm text-topbar-search-fg placeholder:text-topbar-search-placeholder transition-colors focus:border-topbar-search-accent focus:bg-topbar-search-focus lg:w-72">
+                       class="field w-56 rounded border border-topbar-search-border bg-topbar-search pl-9 pr-3 text-topbar-search-fg placeholder:text-topbar-search-placeholder transition-colors focus:border-topbar-search-accent focus:bg-topbar-search-focus lg:w-72">
             </div>
 
             {{-- Right cluster: language · fullscreen · light/dark · notifications · user --}}
@@ -157,11 +204,14 @@
 
         {{-- Footer --}}
         {{-- Footer — one left-aligned line (owner preference; deliberately NOT the reference's split layout). --}}
-        <footer class="border-t border-border px-4 py-4 text-xs text-footer">
-            <div class="flex flex-wrap items-center gap-1">
+        {{-- Text at the caption size, so it follows the reader's text size. The link keeps its look and
+             gets a 44px hit area through a transparent extension (one box, so it never splits across
+             lines); a wrapped second line starts below that area, never under it. --}}
+        <footer class="border-t border-border px-4 py-4 text-caption text-footer-fg">
+            <div class="flex flex-wrap items-center gap-x-1 gap-y-3.5">
                 <span>&copy; {{ now()->year }}
                     <a href="{{ config('admin.brand.company_url') }}" target="_blank" rel="noopener noreferrer"
-                       class="font-medium text-body-muted transition-colors hover:text-accent hover:underline">{{ config('admin.brand.company') }}</a>.
+                       class="hit-area inline-block font-medium text-text-muted transition-colors hover:text-primary-text hover:underline">{{ config('admin.brand.company') }}</a>.
                 </span>
                 <span>{{ __('auth.rights') }}</span>
             </div>

@@ -2,6 +2,7 @@
 
 use App\Modules\Cms\Validation\ValidPageJson;
 use App\Modules\Theme\Components\ComponentRegistry;
+use App\Modules\Theme\Components\SchemaHtml;
 use App\Modules\Theme\Components\SectionComponent;
 use Illuminate\Support\Facades\Validator;
 
@@ -84,11 +85,13 @@ it('rejects a non-array block entry', function (): void {
 it('stays in lockstep with the renderer allow-list (DRY)', function (): void {
     $registry = app(ComponentRegistry::class);
 
-    // Every type the renderer can dispatch also validates …
+    // Every type the renderer can dispatch also validates (a type only a block slot may hold validates through the slot guard) …
     foreach ($registry->types() as $type) {
-        expect(validateBlocks([['type' => $type, 'props' => []]])->passes())
+        $guard = $registry->slotOnly($type) ? app(ValidPageJson::class)->forSlots() : app(ValidPageJson::class);
+        expect(Validator::make(['blocks' => [['type' => $type, 'props' => []]]], ['blocks' => [$guard]])->passes())
             ->toBeTrue("registered type '{$type}' should validate");
     }
+    expect(validateBlocks([['type' => 'recent_posts', 'props' => []]])->fails())->toBeTrue();
 
     // … and a type it cannot dispatch is rejected — one source of truth.
     expect(validateBlocks([['type' => 'definitely_not_registered', 'props' => []]])->fails())->toBeTrue();
@@ -98,6 +101,25 @@ it('rejects a dangerous URL scheme in a url prop (stored-XSS guard)', function (
     expect(validateBlocks([['type' => 'cta', 'props' => ['button_url' => 'javascript:alert(document.cookie)']]])->fails())->toBeTrue()
         ->and(validateBlocks([['type' => 'cta', 'props' => ['button_url' => "java\tscript:alert(1)"]]])->fails())->toBeTrue()
         ->and(validateBlocks([['type' => 'cta', 'props' => ['button_url' => 'data:text/html,<script>']]])->fails())->toBeTrue();
+});
+
+it('refuses a look that is not in its list and accepts a listed one or none', function (): void {
+    expect(validateBlocks([['type' => 'entry_grid', 'props' => ['variant' => 'icon-cards', 'bg' => 'tint']]])->passes())->toBeTrue()
+        ->and(validateBlocks([['type' => 'cta', 'props' => ['variant' => null]]])->passes())->toBeTrue()
+        ->and(validateBlocks([['type' => 'features', 'props' => []]])->passes())->toBeTrue();
+
+    foreach ([['entry_grid', 'variant', 'carousel'], ['product_grid', 'bg', 'neon'], ['contact', 'variant', 'Cards'], ['cta', 'variant', 1]] as [$type, $prop, $value]) {
+        $validator = validateBlocks([['type' => $type, 'props' => [$prop => $value]]]);
+        expect($validator->fails())->toBeTrue("{$type}.{$prop}={$value} should fail")
+            ->and($validator->errors()->first('blocks'))->toBe(__('entries.err_block_option_invalid', ['type' => $type]));
+    }
+});
+
+it('checks a choice inside a list item too', function (): void {
+    registerSchemaBlock('test_enum_list', ['items' => ['type' => 'list', 'of' => ['look' => ['type' => 'enum', 'options' => ['a', 'b'], 'default' => 'a']]]]);
+
+    expect(validateBlocks([['type' => 'test_enum_list', 'props' => ['items' => [['look' => 'b']]]]])->passes())->toBeTrue()
+        ->and(validateBlocks([['type' => 'test_enum_list', 'props' => ['items' => [['look' => 'c']]]]])->fails())->toBeTrue();
 });
 
 it('allows safe URL schemes in url props', function (): void {
@@ -112,6 +134,31 @@ it('rejects a body with too many blocks', function (): void {
 
 it('rejects an oversized body', function (): void {
     expect(validateBlocks([['type' => 'hero', 'props' => ['heading' => str_repeat('x', 300_000)]]])->fails())->toBeTrue();
+});
+
+it('measures the body in UTF-8 bytes, so a long Vietnamese article fits', function (): void {
+    // 60,000 accented letters: 180 KB as UTF-8, 360 KB with every letter escaped to \uXXXX.
+    $article = '<p>'.str_repeat('ệ', 60_000).'</p>';
+
+    expect(strlen((string) json_encode($article)))->toBeGreaterThan(262_144)
+        ->and(validateBlocks([['type' => 'richtext_html', 'props' => ['html' => $article]]])->passes())->toBeTrue();
+});
+
+it('refuses a body over 256 KB of UTF-8 in plain words, even when each prop is within its own cap', function (): void {
+    // 90,000 letters: under the 100,000-character html cap, 270 KB as UTF-8.
+    $article = str_repeat('ệ', 90_000);
+    $validator = validateBlocks([['type' => 'richtext_html', 'props' => ['html' => $article]]]);
+
+    expect(mb_strlen($article))->toBeLessThan(ValidPageJson::MAX_HTML_CHARS)
+        ->and($validator->fails())->toBeTrue()
+        ->and($validator->errors()->first('blocks'))->toBe(__('entries.err_body_too_large'));
+});
+
+it('refuses a body that is not valid UTF-8 instead of letting it past the size check', function (): void {
+    $validator = validateBlocks([['type' => 'hero', 'props' => ['heading' => "Ti\xC3\x28u đề"]]]);
+
+    expect($validator->fails())->toBeTrue()
+        ->and($validator->errors()->first('blocks'))->toBe(__('entries.err_blocks_invalid'));
 });
 
 it('rejects a dangerous scheme in a typed-url prop regardless of its NAME (schema-driven)', function (): void {
@@ -171,7 +218,16 @@ it('every author href/src sink in a section partial is a schema-declared url pro
         $blade = (string) file_get_contents($file);
 
         // No unescaped output in a section partial — author props must always render through e().
-        expect(str_contains($blade, '{!!'))->toBeFalse("{$type}.blade: section partials must not use {!! !!} (unescaped author output)");
+        // The ONE exception is the formatted-text block: its `html` prop is sanitized on every write
+        // (the body casts, ADR-19) and prepared by RichHtml before the partial sees it, so the
+        // partial may print exactly that one value raw, once.
+        if ($type === 'richtext_html') {
+            expect(substr_count($blade, '{!!'))->toBe(1)
+                ->and($blade)->toContain('{!! $html !!}')
+                ->and($blade)->toContain("\$html = is_string(\$props['html'] ?? null)");
+        } else {
+            expect(str_contains($blade, '{!!'))->toBeFalse("{$type}.blade: section partials must not use {!! !!} (unescaped author output)");
+        }
 
         // Top-level author sinks: href/src reading $props['KEY'] must be schema type:url.
         preg_match_all('/(?:href|src)\s*=\s*["\']\{\{[^}]*\$props\[[\'"](\w+)[\'"]\]/', $blade, $top);
@@ -222,4 +278,58 @@ it('rejects a dangerous URL scheme in a contact phone/email/map prop', function 
         ->and(validateBlocks([['type' => 'contact', 'props' => ['email' => 'javascript:alert(1)']]])->fails())->toBeTrue()
         ->and(validateBlocks([['type' => 'contact', 'props' => ['map_embed' => 'data:text/html,<script>']]])->fails())->toBeTrue()
         ->and(validateBlocks([['type' => 'contact', 'props' => ['phone' => '0901234567', 'email' => 'a@b.test', 'map_embed' => 'https://maps.example/e']]])->passes())->toBeTrue();
+});
+
+describe('formatted text (html props)', function (): void {
+    it('declares the html prop type on the formatted-text block only', function (): void {
+        // html is printed without escaping: a second block declaring it would be a second raw sink
+        // the sink sentinel and the write-path test were not written for.
+        $registry = app(ComponentRegistry::class);
+        $declaring = array_values(array_filter($registry->types(), fn (string $type): bool => SchemaHtml::declares($registry->schemaFor($type))));
+
+        expect($declaring)->toBe(['richtext_html'])
+            ->and($registry->schemaFor('richtext_html')['html'])->toBe(['type' => 'html']);
+    });
+
+    it('accepts a string or nothing in an html prop', function (mixed $html): void {
+        expect(validateBlocks([['type' => 'richtext_html', 'props' => ['html' => $html]]])->passes())->toBeTrue();
+    })->with([
+        'formatted text' => '<h2>Câu chuyện</h2><p>Thành lập <strong>2009</strong>.</p>',
+        'empty' => '',
+        'unset' => null,
+    ]);
+
+    it('refuses an html prop that is not text, in plain words', function (mixed $html): void {
+        $validator = validateBlocks([['type' => 'richtext_html', 'props' => ['html' => $html]]]);
+
+        expect($validator->fails())->toBeTrue()
+            ->and($validator->errors()->first('blocks'))->toBe(__('entries.err_block_html_invalid'));
+    })->with([
+        'a list' => [['<p>x</p>']],
+        'an object' => [['tag' => 'p']],
+        'a number' => 42,
+        'true' => true,
+    ]);
+
+    it('refuses formatted text over the length cap, saying how long it may be', function (): void {
+        $atCap = str_repeat('a', ValidPageJson::MAX_HTML_CHARS);
+        $validator = validateBlocks([['type' => 'richtext_html', 'props' => ['html' => $atCap.'a']]]);
+
+        expect(validateBlocks([['type' => 'richtext_html', 'props' => ['html' => $atCap]]])->passes())->toBeTrue()
+            ->and($validator->fails())->toBeTrue()
+            ->and($validator->errors()->first('blocks'))->toBe(__('entries.err_block_html_too_long', ['max' => ValidPageJson::MAX_HTML_CHARS]));
+    });
+
+    it('counts the cap in characters, so Vietnamese text is not cut short by its bytes', function (): void {
+        $vietnamese = str_repeat('ệ', ValidPageJson::MAX_HTML_CHARS);
+
+        expect(strlen($vietnamese))->toBeGreaterThan(ValidPageJson::MAX_HTML_CHARS)
+            ->and(validateBlocks([['type' => 'richtext_html', 'props' => ['html' => $vietnamese]]])->errors()->first('blocks'))
+            ->not->toBe(__('entries.err_block_html_too_long', ['max' => ValidPageJson::MAX_HTML_CHARS]));
+    });
+
+    it('checks only the structure: markup that the write path will clean is not refused here', function (): void {
+        // Sanitizing is the body casts' job (ADR-19 pt 3), never the validator's.
+        expect(validateBlocks([['type' => 'richtext_html', 'props' => ['html' => '<p onclick="x">a</p><script>1</script>']]])->passes())->toBeTrue();
+    });
 });

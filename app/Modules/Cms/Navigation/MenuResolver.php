@@ -3,12 +3,13 @@
 namespace App\Modules\Cms\Navigation;
 
 use App\Modules\Cms\Models\EntryTranslation;
-use App\Modules\Cms\Models\Menu;
+use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\MenuItemTranslation;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\PathBuilder;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -22,6 +23,12 @@ use Illuminate\Support\Collection;
  * by other modules (Catalog's `product`) come in through {@see MenuTargets}, so Cms imports
  * none of them. Returns nested arrays (NOT Cms models) so the Theme module stays
  * Cms-agnostic. Every query is RLS-scoped to the current site.
+ *
+ * An item the editor hid (meta.hidden) is left out with everything under it. A special link
+ * (MenuRules::DYNAMIC) leads where SpecialLinks says from the site's own details ($contact); one
+ * with nothing behind it is left out like an unpublished page. Each node also carries the item's
+ * display options for this language and this moment (MenuItemOptions::forRender): icon,
+ * description, button style, large-panel columns, a badge not past its end date, device.
  */
 final readonly class MenuResolver
 {
@@ -29,73 +36,130 @@ final readonly class MenuResolver
     public function __construct(
         private PathBuilder $paths,
         private MenuTargets $targets,
+        private SpecialLinks $specials,
     ) {}
 
     /**
-     * @return list<array<string, mixed>> nodes: {label, url, active, attrs, children}
+     * @param  array<string, mixed>  $contact  the site's details in the page's language (SiteIdentity::for), for the special links
+     * @return list<array<string, mixed>> nodes: {label, url, active, attrs, icon, description, cta, mega, badge, device, children}
      */
-    public function resolve(string $region, string $locale, string $defaultLocale, string $currentPath = '/'): array
+    public function resolve(string $region, string $locale, string $defaultLocale, string $currentPath = '/', array $contact = []): array
     {
-        [$menu, $effectiveLocale] = $this->menuFor($region, $locale, $defaultLocale);
+        return $this->resolveMany([$region], $locale, $defaultLocale, $currentPath, $contact)[$region] ?? [];
+    }
 
-        if ($menu === null) {
-            return [];
+    /**
+     * Several regions at once (the header's and the footer's menus): one assignments query for all
+     * of them, one items query (+ translations) for every chosen menu, and the URL/title lookups
+     * batched per language — so a second region costs no extra round trips for its lookups.
+     *
+     * @param  list<string>  $regions
+     * @param  array<string, mixed>  $contact  the site's details in the page's language, for the special links
+     * @return array<string, list<array<string, mixed>>> region → its tree (empty when no menu is bound)
+     */
+    public function resolveMany(array $regions, string $locale, string $defaultLocale, string $currentPath = '/', array $contact = []): array
+    {
+        $regions = array_values(array_unique($regions));
+        $trees = array_fill_keys($regions, []);
+        $chosen = $this->menusFor($regions, $locale, $defaultLocale);
+
+        if ($chosen === []) {
+            return $trees;
         }
 
-        // Resolve labels + URLs in the locale the chosen menu is actually assigned under: a
-        // default-locale fallback menu must be rendered in the default locale, not the
-        // requested one (otherwise every label/URL would miss and the menu would drop out).
         /** @var Collection<int, MenuItem> $items */
-        $items = $menu->items()
+        $items = MenuItem::query()
+            ->whereIn('menu_id', array_values(array_unique(array_column($chosen, 'menu'))))
             ->with('translations')
             ->orderBy('position')
             ->orderBy('id')
             ->get();
 
-        $urls = $this->resolveUrls($items, $effectiveLocale);
-        $titles = $this->resolveFallbackTitles($items, $effectiveLocale);
+        // Resolve labels + URLs in the locale each chosen menu is actually assigned under: a
+        // default-locale fallback menu must be rendered in the default locale, not the
+        // requested one (otherwise every label/URL would miss and the menu would drop out).
+        $lookups = [];   // effective locale → [urls, titles]
+        foreach (array_unique(array_column($chosen, 'locale')) as $effective) {
+            $menuIds = array_column(array_filter($chosen, fn (array $pick): bool => $pick['locale'] === $effective), 'menu');
+            $subset = $items->whereIn('menu_id', $menuIds);
+            $lookups[$effective] = [$this->resolveUrls($subset, $effective, $contact), $this->resolveFallbackTitles($subset, $effective)];
+        }
 
-        return $this->buildTree($items, null, $effectiveLocale, $currentPath, $urls, $titles, 0);
+        $now = CarbonImmutable::now();
+        foreach ($chosen as $region => $pick) {
+            [$urls, $titles] = $lookups[$pick['locale']];
+            $menuItems = $items->where('menu_id', $pick['menu'])->values();
+            $trees[$region] = $this->buildTree($menuItems, null, $pick['locale'], $currentPath, $urls, $titles, 0, $now);
+        }
+
+        return $trees;
     }
 
     /**
-     * The menu bound to the region for the active locale, plus the locale it was found
-     * under — falling back to the site's default locale so an untranslated region is never
-     * a dead-end.
+     * The menu each region shows for the active locale, plus the locale it was found under. The
+     * region's own row is taken for the active locale, else the site's default, so an untranslated
+     * region is never a dead-end. A row with a menu shows that menu. A row that follows another
+     * region ("Dùng trình đơn chung") shows what the followed region shows to this visitor: its own
+     * menu in the active locale, else in the default one — so a follow set up in the default
+     * language still shows the followed region's menu in the visitor's language. One hop only: a
+     * followed row that itself follows is not walked. When the follow finds nothing, the region's
+     * row for the next locale is tried. One query for every region and every region they follow
+     * (in either locale). A region with no menu at all is left out.
      *
-     * @return array{0: Menu|null, 1: string}
+     * @param  list<string>  $regions
+     * @return array<string, array{menu: int, locale: string}>
      */
-    private function menuFor(string $region, string $locale, string $defaultLocale): array
+    private function menusFor(array $regions, string $locale, string $defaultLocale): array
     {
-        $menu = $this->assignedMenu($region, $locale);
-        if ($menu instanceof Menu) {
-            return [$menu, $locale];
+        $locales = array_values(array_unique([$locale, $defaultLocale]));
+        $assignments = MenuAssignment::query()
+            ->whereIn('locale', $locales)
+            ->where(fn (Builder $query) => $query
+                ->whereIn('region_key', $regions)
+                ->orWhereIn('region_key', MenuAssignment::query()
+                    ->whereIn('region_key', $regions)
+                    ->whereIn('locale', $locales)
+                    ->whereNotNull('same_as_region')
+                    ->select('same_as_region')))
+            ->orderBy('id')
+            ->get(['region_key', 'locale', 'menu_id', 'same_as_region']);
+
+        /** @var array<string, array<string, MenuAssignment>> $rows region → locale → its row */
+        $rows = [];
+        foreach ($assignments as $assignment) {
+            $rows[$assignment->region_key][$assignment->locale] ??= $assignment;
         }
 
-        if ($defaultLocale !== $locale) {
-            $menu = $this->assignedMenu($region, $defaultLocale);
-            if ($menu instanceof Menu) {
-                return [$menu, $defaultLocale];
+        $chosen = [];
+        foreach ($regions as $region) {
+            foreach ($locales as $own) {
+                $row = $rows[$region][$own] ?? null;
+                if ($row?->menu_id !== null) {
+                    $chosen[$region] = ['menu' => $row->menu_id, 'locale' => $own];
+                    break;
+                }
+                if ($row?->same_as_region === null) {
+                    continue;
+                }
+                foreach ($locales as $candidate) {
+                    $followed = $rows[$row->same_as_region][$candidate] ?? null;
+                    if ($followed?->menu_id !== null) {
+                        $chosen[$region] = ['menu' => $followed->menu_id, 'locale' => $candidate];
+                        break 2;
+                    }
+                }
             }
         }
 
-        return [null, $locale];
-    }
-
-    private function assignedMenu(string $region, string $locale): ?Menu
-    {
-        return Menu::query()
-            ->whereHas('assignments', fn (Builder $query) => $query
-                ->where('region_key', $region)
-                ->where('locale', $locale))
-            ->first();
+        return $chosen;
     }
 
     /**
      * @param  Collection<int, MenuItem>  $items
+     * @param  array<string, mixed>  $contact
      * @return array<int, string|null> itemId → resolved URL (null = unresolved/orphan/unreachable)
      */
-    private function resolveUrls(Collection $items, string $locale): array
+    private function resolveUrls(Collection $items, string $locale, array $contact): array
     {
         $targets = [];   // link type → target ids
         foreach ($items as $item) {
@@ -110,7 +174,7 @@ final readonly class MenuResolver
         foreach ($items as $item) {
             $urls[$item->id] = match (true) {
                 $item->link_type === 'url' => $this->sanitizeUrl($item->url),   // external link — never locale-prefixed
-                $item->link_type === 'dynamic' => $this->internalUrl($this->resolveDynamic($item->dynamic_key), $locale),
+                $item->link_type === 'dynamic' => $this->specialUrl($item->dynamic_key, $locale, $contact),
                 $item->routable_id !== null => $this->internalUrl($paths[$item->link_type][$item->routable_id] ?? null, $locale),
                 default => null,
             };
@@ -285,7 +349,7 @@ final readonly class MenuResolver
      * @param  array<int, string>  $titles
      * @return list<array<string, mixed>>
      */
-    private function buildTree(Collection $items, ?int $parentId, string $locale, string $currentPath, array $urls, array $titles, int $depth): array
+    private function buildTree(Collection $items, ?int $parentId, string $locale, string $currentPath, array $urls, array $titles, int $depth, CarbonImmutable $now): array
     {
         if ($depth >= MenuRules::MAX_DEPTH) {
             return [];
@@ -293,8 +357,8 @@ final readonly class MenuResolver
 
         $nodes = [];
         foreach ($items as $item) {
-            if ($item->parent_id !== $parentId) {
-                continue;
+            if ($item->parent_id !== $parentId || ($item->meta['hidden'] ?? false) === true) {
+                continue;   // another branch, or hidden by the editor with everything under it
             }
 
             $url = $urls[$item->id] ?? null;
@@ -312,7 +376,8 @@ final readonly class MenuResolver
                 'url' => $url,
                 'active' => $url === $currentPath,
                 'attrs' => $this->attrs($item),
-                'children' => $this->buildTree($items, $item->id, $locale, $currentPath, $urls, $titles, $depth + 1),
+                ...MenuItemOptions::forRender($item->meta ?? [], $locale, $now),
+                'children' => $this->buildTree($items, $item->id, $locale, $currentPath, $urls, $titles, $depth + 1, $now),
             ];
         }
 
@@ -352,8 +417,16 @@ final readonly class MenuResolver
         return MenuRules::safeUrl($url);
     }
 
-    private function resolveDynamic(?string $key): ?string
+    /**
+     * @param  array<string, mixed>  $contact
+     */
+    private function specialUrl(?string $key, string $locale, array $contact): ?string
     {
-        return $key === null ? null : (MenuRules::DYNAMIC[$key] ?? null);
+        $link = $key === null ? null : $this->specials->resolve($key, $contact);
+        if ($link === null) {
+            return null;
+        }
+
+        return $link['internal'] ? $this->internalUrl($link['href'], $locale) : $link['href'];
     }
 }

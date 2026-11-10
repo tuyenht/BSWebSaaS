@@ -17,7 +17,7 @@ namespace App\Modules\Workflow\Registry;
  * The `template` values line up with the workflows.template CHECK: 'none' means no workflow, so
  * it is intentionally absent here.
  *
- * Names and labels are lang/*.json keys: localized() resolves them for one language — the site's
+ * Names, descriptions and labels are lang/*.json keys: localized() resolves them for one language — the site's
  * default when a template is copied into a site's rows (a site's stages then read in its own
  * language and stay editable), the reader's for a screen that previews the templates.
  */
@@ -26,6 +26,7 @@ final class WorkflowTemplateRegistry
     /**
      * @return array<string, array{
      *     name: string,
+     *     description: string,
      *     states: list<array{key: string, label: string, is_initial?: bool, is_published?: bool, is_terminal?: bool}>,
      *     transitions: list<array{key: string, label: string, from: string, to: string, permission: string, note?: bool}>,
      * }>
@@ -37,6 +38,7 @@ final class WorkflowTemplateRegistry
             // is still more than tier-1 — one explicit review before the public sees anything.
             'admin_approval' => [
                 'name' => 'workflow.template_admin_approval',
+                'description' => 'workflow.template_admin_approval_desc',
                 'states' => [
                     ['key' => 'draft', 'label' => 'workflow.state_draft', 'is_initial' => true],
                     ['key' => 'pending', 'label' => 'workflow.state_pending'],
@@ -56,6 +58,7 @@ final class WorkflowTemplateRegistry
             // reviews, an approver signs off. Separates who may edit from who may approve.
             'editorial' => [
                 'name' => 'workflow.template_editorial',
+                'description' => 'workflow.template_editorial_desc',
                 'states' => [
                     ['key' => 'draft', 'label' => 'workflow.state_draft', 'is_initial' => true],
                     ['key' => 'pending', 'label' => 'workflow.state_pending_edit'],
@@ -81,6 +84,7 @@ final class WorkflowTemplateRegistry
      *
      * @return array<string, array{
      *     name: string,
+     *     description: string,
      *     states: list<array{key: string, label: string, is_initial?: bool, is_published?: bool, is_terminal?: bool}>,
      *     transitions: list<array{key: string, label: string, from: string, to: string, permission: string, note?: bool}>,
      * }>
@@ -92,6 +96,7 @@ final class WorkflowTemplateRegistry
         return array_map(static fn (array $template): array => [
             ...$template,
             'name' => $text($template['name']),
+            'description' => $text($template['description']),
             'states' => array_map(static fn (array $state): array => [...$state, 'label' => $text($state['label'])], $template['states']),
             'transitions' => array_map(static fn (array $transition): array => [...$transition, 'label' => $text($transition['label'])], $template['transitions']),
         ], self::all());

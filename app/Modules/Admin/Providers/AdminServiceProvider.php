@@ -11,6 +11,7 @@ use App\Modules\Admin\Livewire\AppearanceSettings;
 use App\Modules\Admin\Livewire\Catalog\Editor as CatalogEditor;
 use App\Modules\Admin\Livewire\Catalog\Index as CatalogIndex;
 use App\Modules\Admin\Livewire\CatalogSettings;
+use App\Modules\Admin\Livewire\Categories\Index as CategoriesIndex;
 use App\Modules\Admin\Livewire\ComponentGallery;
 use App\Modules\Admin\Livewire\Dashboard;
 use App\Modules\Admin\Livewire\EmailOtpChallenge;
@@ -20,10 +21,13 @@ use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
 use App\Modules\Admin\Livewire\ForgotPassword;
 use App\Modules\Admin\Livewire\Login;
 use App\Modules\Admin\Livewire\LoginSecuritySettings;
+use App\Modules\Admin\Livewire\Menus\Index as MenusIndex;
 use App\Modules\Admin\Livewire\Placeholder;
+use App\Modules\Admin\Livewire\Platform\Audit\CleanupDialog as PlatformAuditCleanupDialog;
 use App\Modules\Admin\Livewire\Platform\Audit\Index as PlatformAuditIndex;
 use App\Modules\Admin\Livewire\Platform\Sites\Detail as PlatformSitesDetail;
 use App\Modules\Admin\Livewire\Platform\Sites\Index as PlatformSitesIndex;
+use App\Modules\Admin\Livewire\Platform\Tenants\ChangePlanDialog as PlatformChangePlanDialog;
 use App\Modules\Admin\Livewire\Platform\Tenants\Detail as PlatformTenantsDetail;
 use App\Modules\Admin\Livewire\Platform\Tenants\Index as PlatformTenantsIndex;
 use App\Modules\Admin\Livewire\ResetPassword;
@@ -37,10 +41,14 @@ use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Admin\Support\TenantMailer;
 use App\Modules\Admin\Theme\AdminBrandColor;
 use App\Modules\Admin\Theme\AdminChromeResolver;
+use App\Modules\Cms\Support\BlockMediaUsage;
 use App\Modules\Identity\Models\User;
+use App\Modules\Rbac\Support\RoleLabel;
 use App\Modules\Shared\Contracts\TenantMailConfigurator;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Events\DomainNeedsAttention;
+use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Rendering\LayoutSlots;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Mail\Events\MessageSending;
@@ -53,7 +61,6 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Symfony\Component\Mailer\Transport\Smtp\Auth\XOAuth2Authenticator;
 use Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport;
@@ -81,6 +88,15 @@ final class AdminServiceProvider extends ServiceProvider
             $this->commands([ReconcileContentUsage::class]);
         }
 
+        // The block slots setting owns "in use" rows in the library (polymorphic, no FK cascade): a
+        // deleted row takes them with it. app(), not $this->app: under Octane each request runs in a
+        // clone of the booted app.
+        SiteSetting::deleted(function (SiteSetting $setting): void {
+            if ($setting->group_name === LayoutSlots::SETTING_GROUP && $setting->key === LayoutSlots::SETTING_KEY) {
+                app(BlockMediaUsage::class)->forget('site_setting', [Cast::int($setting->getKey())]);
+            }
+        });
+
         // Admin UI primitives as anonymous Blade components: <x-bs-admin::icon />, etc.
         Blade::anonymousComponentPath($this->app->basePath('app/Modules/Admin/resources/views/components'), 'bs-admin');
 
@@ -103,11 +119,15 @@ final class AdminServiceProvider extends ServiceProvider
         Livewire::component('admin.entries.index', EntriesIndex::class);
         Livewire::component('admin.entries.editor', Editor::class);
         Livewire::component('admin.users.index', UsersIndex::class);
+        Livewire::component('admin.menus.index', MenusIndex::class);
+        Livewire::component('admin.categories.index', CategoriesIndex::class);
         Livewire::component('admin.platform.tenants.index', PlatformTenantsIndex::class);
         Livewire::component('admin.platform.tenants.detail', PlatformTenantsDetail::class);
+        Livewire::component('admin.platform.tenants.change-plan-dialog', PlatformChangePlanDialog::class);
         Livewire::component('admin.platform.sites.index', PlatformSitesIndex::class);
         Livewire::component('admin.platform.sites.detail', PlatformSitesDetail::class);
         Livewire::component('admin.platform.audit.index', PlatformAuditIndex::class);
+        Livewire::component('admin.platform.audit.cleanup-dialog', PlatformAuditCleanupDialog::class);
 
         // Password-reset mail is NOT the framework default notification: ForgotPassword dispatches
         // the queued ResetPasswordLinkNotification with a request-built URL (plane + host resolve
@@ -156,7 +176,7 @@ final class AdminServiceProvider extends ServiceProvider
 
         // Operator console nav (platform plane) — data-driven by platform permissions.
         View::composer('admin::layouts.platform', function (ViewContract $view): void {
-            $view->with('platformNav', app(PlatformNav::class)->items(Auth::user()));
+            $view->with('platformNav', app(PlatformNav::class)->sections(Auth::user(), Route::currentRouteName()));
         });
 
         // Resolved admin-chrome theme (app → site → user) as <html data-*> attributes,
@@ -169,12 +189,10 @@ final class AdminServiceProvider extends ServiceProvider
             // :root tokens the layout prints in its head.
             $view->with('brandTokens', AdminBrandColor::cssVariables(config('admin.brand.color')));
 
-            // Primary-role label (highest level) for the topbar user area. Role slugs have no
-            // display map, so headline() renders "super_admin" → "Super Admin". Roles are
-            // team-scoped (current site, or platform team 0) and already warmed by the nav build.
-            $primaryRole = $user ? $user->roles->sortByDesc('level')->first() : null;
-            $roleName = $primaryRole?->getAttribute('name');
-            $view->with('roleLabel', is_string($roleName) && $roleName !== '' ? Str::headline($roleName) : null);
+            // Primary-role label (highest level) for the topbar user area, in the reader's
+            // language. Roles are team-scoped (current site, or platform team 0) and already
+            // warmed by the nav build.
+            $view->with('roleLabel', $user ? RoleLabel::topOf($user) : null);
         });
 
         // Livewire's AJAX update endpoint must run inside the tenant context so component

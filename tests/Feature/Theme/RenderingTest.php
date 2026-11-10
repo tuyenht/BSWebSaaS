@@ -41,7 +41,7 @@ it('resolves the layout via the override → type → theme chain', function ():
 
     expect($resolver->layoutFor('page'))->toBe('theme::layouts.page')
         ->and($resolver->layoutFor('post'))->toBe('theme::layouts.post')
-        ->and($resolver->layoutFor('page', 'landing'))->toBe('theme::layouts.landing');
+        ->and($resolver->layoutFor('post', 'job'))->toBe('theme::layouts.job');
 });
 
 it('renders a post on the post layout (title heading + blocks)', function (): void {
@@ -50,19 +50,19 @@ it('renders a post on the post layout (title heading + blocks)', function (): vo
     ], ['description' => 'SEO bài 1']);
 
     expect($html)->toContain('<title>Bài 1</title>')
-        ->toContain('class="post__title">Bài 1')
+        ->toContain('class="post-band__title">Bài 1')
         ->toContain('Mở đầu')
         ->toContain('Đoạn 1');
 });
 
 it('threads a per-category detail_template through to the layout', function (): void {
-    // The category template ('page', an existing layout) must beat the 'post' type:
+    // The category template ('project', a post layout) must beat the standard post layout:
     // proves PageRenderer forwards $categoryTemplate to TemplateResolver::layoutFor.
     $html = app(PageRenderer::class)->render('post', null, 'X', [
         'blocks' => [['type' => 'hero', 'props' => ['heading' => 'Y']]],
-    ], [], 'page');
+    ], [], 'project');
 
-    expect($html)->toContain('<main>')->not->toContain('class="post"');
+    expect($html)->toContain('post-page--project')->not->toContain('class="post"');
 });
 
 it('renders a category list page with posts + pagination links', function (): void {

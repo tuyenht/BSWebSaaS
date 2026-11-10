@@ -4,10 +4,11 @@
     'pill' => false,
 ])
 @php
-    // Mirrors Velzon .badge / soft badge (bg-*-subtle + text-*). line-height ~0.95, .75em.
+    // Mirrors Velzon .badge / soft badge (bg-*-subtle + text-*). line-height ~0.95, caption size
+    // (12px at the default text size, following the reader's text size).
     // White text sits on the `*-solid` fill; soft text is `*-text` (readable in both schemes);
     // warning keeps its fill and takes dark text.
-    $base = 'inline-flex items-center gap-1 px-2 py-1 text-xs font-medium leading-none';
+    $base = 'inline-flex items-center gap-1 px-2 py-1 text-caption font-medium leading-none';
     $shape = $pill ? 'rounded-full' : 'rounded';
 
     $solid = [

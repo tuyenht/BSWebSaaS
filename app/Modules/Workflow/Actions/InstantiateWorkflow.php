@@ -35,7 +35,7 @@ final readonly class InstantiateWorkflow
         return DB::transaction(function () use ($templateKey, $template, $appliesToType, $active): Workflow {
             $workflow = Workflow::query()->updateOrCreate(
                 ['applies_to_type' => $appliesToType],
-                ['key' => $templateKey, 'name' => $template['name'], 'template' => $templateKey, 'is_active' => $active],
+                ['key' => $appliesToType, 'name' => $template['name'], 'template' => $templateKey, 'is_active' => $active],
             );
 
             // Rebuild children from the template. Transitions carry a composite FK onto states, so

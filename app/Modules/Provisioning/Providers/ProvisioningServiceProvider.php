@@ -4,13 +4,18 @@ declare(strict_types=1);
 
 namespace App\Modules\Provisioning\Providers;
 
+use App\Modules\Provisioning\Console\FillBrandImagesFromBrandCommand;
 use App\Modules\Provisioning\Console\ImportAdminUnitsCommand;
+use App\Modules\Provisioning\Console\LinkContactPageCommand;
+use App\Modules\Provisioning\Console\LoadContentPackCommand;
 use App\Modules\Provisioning\Console\PlatformPlanCommand;
 use App\Modules\Provisioning\Console\PromoteAnVinhProductPostsToCatalogCommand;
 use App\Modules\Provisioning\Console\ProvisionSiteCommand;
 use App\Modules\Provisioning\Console\RecheckDomainsCommand;
+use App\Modules\Provisioning\Console\RecheckWaitingDomainsCommand;
 use App\Modules\Provisioning\Console\ReflowSitePermalinksCommand;
 use App\Modules\Provisioning\Console\SeedAnVinhContentCommand;
+use App\Modules\Provisioning\Console\SeedMeasurementCommand;
 use App\Modules\Provisioning\Console\SiteDomainCommand;
 use App\Modules\Provisioning\Console\SiteFeatureCommand;
 use App\Modules\Provisioning\Console\SiteLocaleCommand;
@@ -26,16 +31,21 @@ final class ProvisioningServiceProvider extends ServiceProvider
             $this->commands([
                 ProvisionSiteCommand::class,
                 SeedAnVinhContentCommand::class,
+                LoadContentPackCommand::class,
+                SeedMeasurementCommand::class,
                 PromoteAnVinhProductPostsToCatalogCommand::class,
                 ReflowSitePermalinksCommand::class,
                 SyncSiteProfilesFromBrandCommand::class,
+                FillBrandImagesFromBrandCommand::class,
                 ImportAdminUnitsCommand::class,
                 SyncProductRoutesCommand::class,
                 SiteLocaleCommand::class,
+                LinkContactPageCommand::class,
                 SiteFeatureCommand::class,
                 PlatformPlanCommand::class,
                 SiteDomainCommand::class,
                 RecheckDomainsCommand::class,
+                RecheckWaitingDomainsCommand::class,
             ]);
         }
     }

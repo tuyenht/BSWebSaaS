@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Audit\Models\AuditLog;
+use App\Modules\Cms\Actions\Menus\DeleteMenuItem;
 use App\Modules\Cms\Actions\Menus\SaveMenu;
 use App\Modules\Cms\Actions\Menus\SaveMenuItem;
 use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
@@ -13,6 +14,7 @@ use App\Modules\Cms\Enums\CategoryChildrenOnDelete;
 use App\Modules\Cms\Enums\CategoryItemsOnDelete;
 use App\Modules\Cms\Exceptions\TaxonomyChangeRejectedException;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
@@ -560,21 +562,26 @@ it('answers every address a deleted category leaves behind with a 301', function
     });
 });
 
-it('points menu links at the category the items moved to, and leaves them when there is none', function (): void {
-    twSiteOne(function (): void {
+it('points menu links at the category the items moved to, in the menu trash too, and leaves them when there is none', function (): void {
+    $editor = menuEditor(1);
+
+    twSiteOne(function () use ($editor): void {
         $news = twCreate('Tin tức');
         $events = twCreate('Sự kiện', $news);
         $talks = twCreate('Hội thảo', $news);
         $jobs = twCreate('Tuyển dụng');
         $menu = app(SaveMenu::class)->handle(null, 'Menu chính');
-        $toEvents = app(SaveMenuItem::class)->handle($menu, null, new MenuItemData('taxonomy', $events->id));
-        $toJobs = app(SaveMenuItem::class)->handle($menu, null, new MenuItemData('taxonomy', $jobs->id));
+        $toEvents = app(SaveMenuItem::class)->handle($editor, $menu, null, new MenuItemData('taxonomy', $events->id));
+        $toJobs = app(SaveMenuItem::class)->handle($editor, $menu, null, new MenuItemData('taxonomy', $jobs->id));
+        $trashedToEvents = app(SaveMenuItem::class)->handle($editor, $menu, null, new MenuItemData('taxonomy', $events->id));
+        app(DeleteMenuItem::class)->handle($editor, $trashedToEvents);
 
         $result = app(DeleteTaxonomy::class)->handle($events, CategoryItemsOnDelete::Reassign, $talks);
         app(DeleteTaxonomy::class)->handle($jobs, CategoryItemsOnDelete::Detach);
 
-        expect($result['menu_links'])->toBe(1)
+        expect($result['menu_links'])->toBe(2)
             ->and($toEvents->fresh()?->routable_id)->toBe($talks->id)
+            ->and(MenuItem::onlyTrashed()->findOrFail($trashedToEvents->id)->routable_id)->toBe($talks->id)
             ->and($toJobs->fresh()?->routable_id)->toBe($jobs->id);
     });
 });
@@ -657,5 +664,52 @@ it('keeps paths right when an older parent has none yet', function (): void {
 
         $child = twCreate('Mới', $legacy);
         expect(twPath($child))->toBe("{$legacy->id}.{$child->id}");
+    });
+});
+
+it('refuses a layout that cannot render a post as the detail layout of a post category', function (string $layout): void {
+    twSiteOne(function () use ($layout): void {
+        $news = twCreate('Tin tức');
+        $create = fn () => app(CreateTaxonomy::class)->handle('post_cat', null, new TaxonomyData(names: ['vi' => 'Sự kiện ạ'], detailTemplate: $layout));
+        $update = fn () => app(UpdateTaxonomy::class)->handle($news, new TaxonomyData(detailTemplate: $layout));
+
+        expect(twRefusal($create))->toBe('template_invalid')
+            ->and(twRefusal($update))->toBe('template_invalid')
+            ->and($news->fresh()->detail_template)->toBeNull();
+    });
+})->with(['category', 'product', 'grid-news']);
+
+it('accepts the post and project layouts as the detail layout of a post category', function (string $layout): void {
+    twSiteOne(function () use ($layout): void {
+        $created = app(CreateTaxonomy::class)->handle('post_cat', null, new TaxonomyData(names: ['vi' => 'Dự án ạ'], detailTemplate: $layout));
+        $updated = app(UpdateTaxonomy::class)->handle(twCreate('Tin tức'), new TaxonomyData(detailTemplate: $layout));
+
+        expect($created->detail_template)->toBe($layout)->and($updated->detail_template)->toBe($layout);
+    });
+})->with(['post', 'project']);
+
+it('keeps an old detail layout that is no longer allowed while the other fields are saved', function (): void {
+    twSiteOne(function (): void {
+        $news = twCreate('Tin tức');
+        $news->forceFill(['detail_template' => 'category'])->save();
+
+        $saved = app(UpdateTaxonomy::class)->handle($news, new TaxonomyData(names: ['vi' => 'Tin mới ạ'], detailTemplate: 'category'));
+
+        expect($saved->detail_template)->toBe('category')
+            ->and($saved->translationFor('vi')?->name)->toBe('Tin mới ạ')
+            ->and(twRefusal(fn () => app(UpdateTaxonomy::class)->handle($news, new TaxonomyData(detailTemplate: 'product'))))->toBe('template_invalid');
+    });
+});
+
+it('lets a product category take any theme layout as its detail layout', function (): void {
+    twSiteOne(function (): void {
+        $shelf = app(CreateTaxonomy::class)->handle('product_cat', null, new TaxonomyData(names: ['vi' => 'Vòng bi'], detailTemplate: 'product'));
+        expect($shelf->detail_template)->toBe('product');
+
+        $updated = app(UpdateTaxonomy::class)->handle($shelf, new TaxonomyData(names: ['vi' => 'Vòng bi'], detailTemplate: 'category'));
+        expect($updated->detail_template)->toBe('category');
+
+        $news = twCreate('Tin tức');
+        expect(twRefusal(fn () => app(UpdateTaxonomy::class)->handle($news, new TaxonomyData(names: ['vi' => 'Tin tức'], detailTemplate: 'product'))))->toBe('template_invalid');
     });
 });

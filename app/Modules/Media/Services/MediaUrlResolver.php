@@ -20,6 +20,57 @@ final class MediaUrlResolver
     }
 
     /**
+     * The address of the stored file itself, never a transform — for a file that is not a picture (a
+     * video). Every driver serves masters from the same plane the `static` driver uses: imgproxy only
+     * resizes pictures, and the Worker passes a request without ?w through as the raw master.
+     */
+    public function fileUrl(string $key): string
+    {
+        return $this->base('cloudflare').'/'.ltrim($key, '/');
+    }
+
+    /**
+     * A `srcset` value for the key at the given widths: `{url} {w}w` per width the Worker allows,
+     * never wider than the master (the smallest width is always kept, so a small master still gets
+     * one candidate), with duplicate URLs dropped. Null when fewer than two distinct URLs remain —
+     * the `static` driver ignores the width, so it never prints a srcset. Pure.
+     *
+     * @param  list<int>  $widths
+     */
+    public function srcset(string $key, array $widths, ?int $masterWidth = null): ?string
+    {
+        sort($widths);
+        $candidates = [];
+        foreach ($widths as $index => $width) {
+            $snapped = $this->snapWidth($width);
+            if ($index > 0 && $masterWidth !== null && $masterWidth > 0 && $snapped > $masterWidth) {
+                break;
+            }
+            $url = $this->url($key, $snapped);
+            $candidates[$url] ??= $url.' '.$snapped.'w';
+        }
+
+        return count($candidates) >= 2 ? implode(', ', $candidates) : null;
+    }
+
+    /**
+     * The scheme and host media URLs are served from, for a `preconnect` hint; null when the base is
+     * not an absolute URL.
+     */
+    public function origin(): ?string
+    {
+        $base = $this->base(config('media.driver') === 'imgproxy' ? 'imgproxy' : 'cloudflare');
+        $scheme = parse_url($base, PHP_URL_SCHEME);
+        $host = parse_url($base, PHP_URL_HOST);
+        if (! is_string($scheme) || ! is_string($host) || $host === '') {
+            return null;
+        }
+        $port = parse_url($base, PHP_URL_PORT);
+
+        return $scheme.'://'.$host.(is_int($port) ? ':'.$port : '');
+    }
+
+    /**
      * Inverse of url() for the cloudflare/static form: recover the storage_key baked into a public
      * URL, or null when the URL is not one this resolver would mint — a foreign host, or the
      * HMAC-signed imgproxy form, which is not reversible. Driver-independent (always inverts the

@@ -61,6 +61,14 @@ final readonly class SitemapRoutes
      * the whole result set client-side, so this saves the models, not the transfer. lastmod goes
      * through the model's own datetime cast, so the output format is the model's.
      *
+     * lastmod is when the page last changed (Google trusts it only while it stays accurate): the
+     * later of the route's own change (its path) and the page's content date in that language —
+     * the translation's content mark (its updated_at while it has none), never earlier than the
+     * page went public (TracksContentChange::contentDate(), the date a post shows as "Cập nhật").
+     * A category list changes whenever a post joins it, which no column records, so its route
+     * carries no lastmod rather than a stale one. Each lookup is one probe of the translation's
+     * unique (owner, locale) index and one of its owner's primary key; greatest() leaves out NULL.
+     *
      * @param  array{0: string, 1: int}|null  $from
      * @param  array{0: string, 1: int}|null  $to
      * @return list<array{path: string, locale: string, lastmod: string|null}>
@@ -75,7 +83,15 @@ final readonly class SitemapRoutes
             ->orderBy('routes.path')
             ->orderBy('routes.id')
             ->limit($limit)
-            ->select(['routes.path', 'routes.locale', 'routes.updated_at'])
+            ->select(['routes.path', 'routes.locale'])
+            ->selectRaw('case when routes.taxonomy_id is null then greatest(routes.updated_at,
+                (select greatest(coalesce(t.content_changed_at, t.updated_at), o.published_at) from entry_translations t
+                    join entries o on o.site_id = t.site_id and o.id = t.entry_id
+                    where t.site_id = routes.site_id and t.entry_id = routes.entry_id and t.locale = routes.locale),
+                (select greatest(coalesce(t.content_changed_at, t.updated_at), o.published_at) from product_translations t
+                    join products o on o.site_id = t.site_id and o.id = t.product_id
+                    where t.site_id = routes.site_id and t.product_id = routes.product_id and t.locale = routes.locale)
+            ) end as updated_at')
             ->toBase()
             ->cursor();
 

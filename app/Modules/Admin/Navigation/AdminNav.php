@@ -242,10 +242,13 @@ final class AdminNav
 
             if ($can('settings.manage')) {
                 foreach ([
+                    ['settings.general', 'admin.gs.title', 'admin.settings.general'],
                     ['settings.email', 'admin.email_settings', 'admin.settings.email'],
                     ['settings.social', 'admin.social_login', 'admin.settings.social'],
                     ['settings.appearance', 'admin.appearance', 'admin.settings.appearance'],
                     ['settings.catalog', 'admin.catalog_settings', 'admin.settings.catalog'],
+                    ['settings.floating-contact', 'admin.fc.title', 'admin.settings.floating-contact'],
+                    ['settings.integrations', 'admin.int.title', 'admin.settings.integrations'],
                 ] as [$sKey, $sLabelKey, $sRoute]) {
                     $settingsChildren[] = new NavItem(
                         key: $sKey,
@@ -255,6 +258,18 @@ final class AdminNav
                         permission: 'settings.manage',
                     );
                 }
+            }
+
+            // Domains: read-only for whoever holds domains.view (adding and changing need
+            // domains.manage on the screen itself), so it sits outside the settings.manage block.
+            if (in_array('domains', $entitled, true) && $can('domains.view')) {
+                $settingsChildren[] = new NavItem(
+                    key: 'settings.domains',
+                    label: __('admin.domains'),
+                    url: route('admin.settings.domains'),
+                    active: $request->routeIs('admin.settings.domains'),
+                    permission: 'domains.view',
+                );
             }
 
             // Operator-only: approval-workflow switchboard. No tenant role template carries

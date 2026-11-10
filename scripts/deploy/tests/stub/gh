@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Fake gh: the CI runs of the target commit come from $FAKE/ci.json (a full green run by default).
+set -u
+printf '%s\n' "gh $*" >> "$FAKE/calls.log"
+case "$1 $2" in
+    "run list") cat "$FAKE/ci.json" 2>/dev/null || echo '[{"event":"workflow_dispatch","status":"completed","conclusion":"success"}]' ;;
+    *) echo "stub gh: no answer: $*" >&2; exit 3 ;;
+esac

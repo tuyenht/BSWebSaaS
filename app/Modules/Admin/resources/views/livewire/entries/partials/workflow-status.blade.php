@@ -66,8 +66,8 @@
                 </span>
             </div>
 
-            {{-- Milestone track (≥ 560px container) --}}
-            <ol class="hidden w-full items-start @[560px]:flex" aria-label="{{ __('admin.wfb.title') }}">
+            {{-- Milestone track (≥ 35rem container, so larger text switches earlier) --}}
+            <ol class="hidden w-full items-start @[35rem]:flex" aria-label="{{ __('admin.wfb.title') }}">
                 @foreach ($workflow['steps'] as $i => $step)
                     @php
                         $done = $step['state'] === 'done';
@@ -101,7 +101,7 @@
             </ol>
 
             {{-- Compact bar (narrow container) --}}
-            <div class="flex w-full flex-col gap-1.5 @[560px]:hidden">
+            <div class="flex w-full flex-col gap-1.5 @[35rem]:hidden">
                 <span class="flex h-1.5 overflow-hidden rounded-full bg-border-soft"><span class="block h-1.5 rounded-full bg-admin-primary" style="width: {{ $progress }}%"></span></span>
                 <span class="text-[11.5px] text-body-muted">
                     {{ __('admin.wfb.step_of', ['n' => $workflow['current']['index'] + 1, 'total' => $stepCount, 'label' => $workflow['current']['label']]) }}
@@ -135,15 +135,15 @@
                                     .($workflow['is_live'] && ! $action['to_published'] ? ' '.__('admin.wfb.tip_offline') : '');
                             @endphp
                             @if ($action['to_published'])
-                                <x-bs-admin::button color="primary" wire:click="applyTransition({{ \Illuminate\Support\Js::from($action['key']) }})" wire:loading.attr="disabled" title="{{ $title }}" wire:key="wf-action-{{ $action['key'] }}" class="@max-[560px]:w-full pointer-coarse:min-h-11">
+                                <x-bs-admin::button color="primary" wire:click="applyTransition({{ \Illuminate\Support\Js::from($action['key']) }})" wire:loading.attr="disabled" title="{{ $title }}" wire:key="wf-action-{{ $action['key'] }}" class="@max-[35rem]:w-full">
                                     <x-bs-admin::icon name="ri-check-double" class="size-4" />{{ $action['label'] }}
                                 </x-bs-admin::button>
                             @elseif ($action['note'])
-                                <x-bs-admin::button color="danger" variant="outline" x-on:click="open({{ \Illuminate\Support\Js::from($action['key']) }})" title="{{ $title }}" wire:key="wf-action-{{ $action['key'] }}" class="@max-[560px]:w-full pointer-coarse:min-h-11">
+                                <x-bs-admin::button color="danger" variant="outline" x-on:click="open({{ \Illuminate\Support\Js::from($action['key']) }})" title="{{ $title }}" wire:key="wf-action-{{ $action['key'] }}" class="@max-[35rem]:w-full">
                                     <x-bs-admin::icon name="ri-arrow-go-back" class="size-4" />{{ $action['label'] }}
                                 </x-bs-admin::button>
                             @else
-                                <x-bs-admin::button color="light" wire:click="applyTransition({{ \Illuminate\Support\Js::from($action['key']) }})" wire:loading.attr="disabled" title="{{ $title }}" wire:key="wf-action-{{ $action['key'] }}" class="@max-[560px]:w-full pointer-coarse:min-h-11">
+                                <x-bs-admin::button color="light" wire:click="applyTransition({{ \Illuminate\Support\Js::from($action['key']) }})" wire:loading.attr="disabled" title="{{ $title }}" wire:key="wf-action-{{ $action['key'] }}" class="@max-[35rem]:w-full">
                                     <x-bs-admin::icon name="ri-send-plane" class="size-4" />{{ $action['label'] }}
                                 </x-bs-admin::button>
                             @endif
@@ -215,13 +215,13 @@
 
     {{-- Note + hand-off modal, one per transition that requires a reason --}}
     @foreach ($noteActions as $action)
-        <div x-cloak x-show="modal === @js($action['key'])" class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" wire:key="wf-modal-{{ $action['key'] }}">
+        <div x-cloak x-show="modal === @js($action['key'])" class="fixed inset-0 z-90 flex items-center justify-center p-4" role="dialog" aria-modal="true" wire:key="wf-modal-{{ $action['key'] }}">
             <div class="absolute inset-0 bg-gray-900/50" x-on:click="close()"></div>
             <div class="relative flex max-h-[calc(100vh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-md bg-surface shadow-[0_5px_20px_rgba(56,65,74,.28)]">
                 <div class="flex items-center gap-2 border-b border-border-soft px-4 py-3.5">
                     <x-bs-admin::icon :name="$action['key'] === 'retract' ? 'ri-eye-off' : 'ri-arrow-go-back'" class="size-4 text-[#c0432c]" />
                     <span class="text-sm font-semibold text-heading">{{ $action['label'] }}</span>
-                    <button type="button" class="ml-auto flex size-9 items-center justify-center rounded text-body-muted hover:bg-surface-hover" x-on:click="close()" aria-label="{{ __('admin.close') }}">
+                    <button type="button" class="hit-area ml-auto flex size-control shrink-0 items-center justify-center rounded text-text-muted hover:bg-surface-hover" x-on:click="close()" aria-label="{{ __('admin.close') }}">
                         <x-bs-admin::icon name="ri-close" class="size-5" />
                     </button>
                 </div>
@@ -245,7 +245,7 @@
                     </div>
                     <div class="flex flex-col gap-1.5">
                         <label class="text-xs font-semibold text-body-text" for="wf-who-{{ $action['key'] }}">{{ __('admin.wfb.assign_label') }} <span class="font-normal text-body-muted">{{ __('admin.wfb.assign_optional') }}</span></label>
-                        <select id="wf-who-{{ $action['key'] }}" wire:model="assignTo" class="min-h-[38px] w-full rounded border border-border bg-surface px-2.5 text-[13px] text-body-text focus:border-accent">
+                        <select id="wf-who-{{ $action['key'] }}" wire:model="assignTo" class="field w-full rounded border border-border bg-surface px-2.5 text-text focus:border-primary-text">
                             <option value="">{{ __('admin.wfb.assign_none') }}</option>
                             @foreach ($action['members'] as $member)
                                 <option value="{{ $member['id'] }}">{{ $member['name'] }}</option>
@@ -256,8 +256,8 @@
                     </div>
                 </div>
                 <div class="flex flex-wrap justify-end gap-2 border-t border-border-soft bg-surface-muted px-4 py-3">
-                    <x-bs-admin::button color="light" x-on:click="close()" x-ref="cancel-{{ $action['key'] }}" class="@max-[560px]:w-full pointer-coarse:min-h-11">{{ __('admin.cancel') }}</x-bs-admin::button>
-                    <x-bs-admin::button color="danger" variant="outline" x-on:click="submit({{ \Illuminate\Support\Js::from($action['key']) }})" wire:loading.attr="disabled" class="@max-[560px]:w-full pointer-coarse:min-h-11">{{ $action['label'] }}</x-bs-admin::button>
+                    <x-bs-admin::button color="light" x-on:click="close()" x-ref="cancel-{{ $action['key'] }}" class="@max-[35rem]:w-full">{{ __('admin.cancel') }}</x-bs-admin::button>
+                    <x-bs-admin::button color="danger" variant="outline" x-on:click="submit({{ \Illuminate\Support\Js::from($action['key']) }})" wire:loading.attr="disabled" class="@max-[35rem]:w-full">{{ $action['label'] }}</x-bs-admin::button>
                 </div>
             </div>
         </div>

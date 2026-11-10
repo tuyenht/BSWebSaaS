@@ -22,4 +22,14 @@ return [
         'plan_lock_wait' => (int) env('CMS_SITEMAP_PLAN_LOCK_WAIT', 0),
     ],
 
+    // Hosts a storefront map may come from — the footer's "view map" link and the contact block's
+    // embedded map (a subdomain matches too), e.g. google.com,maps.app.goo.gl. Empty: any http(s)
+    // link passes the link check.
+    'map_hosts' => array_values(array_filter(array_map('trim', explode(',', (string) env('CMS_MAP_HOSTS', ''))))),
+
+    // The slugs a site's privacy-policy page may have in its default language. The consent sentence
+    // of a lead form links to the first published page found under one of them, and has no link
+    // while the site has none. The site template creates the page under the first slug.
+    'privacy_page_slugs' => ['chinh-sach-bao-mat', 'privacy-policy'],
+
 ];

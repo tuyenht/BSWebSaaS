@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Fake pnpm: "run build" writes a manifest with one file per vite.config.js input of the checkout it runs in.
+set -u
+printf '%s\n' "pnpm $* (in $PWD)" >> "$FAKE/calls.log"
+case "$*" in
+    "install --frozen-lockfile") echo "Already up to date" ;;
+    "run build")
+        if [ -e "$FAKE/fail-build-once" ]; then rm -f "$FAKE/fail-build-once"; echo "build failed"; exit 1; fi
+        mkdir -p public/build/assets
+        rev=$(git rev-parse --short HEAD)
+        ins=$(grep -E 'input' vite.config.js | grep -oE "resources/[^'\"]+" | sort -u)
+        # lazy chunks: files an input imports with import('./x.js')
+        dyn=$(for i in $ins; do grep -oE "import\('\./[^']+'\)" "$i" 2>/dev/null | sed -E "s#import\('\./##; s#'\)##; s#^#$(dirname "$i")/#"; done | sort -u)
+        { for i in $ins; do jq -n --arg k "$i" --arg f "assets/$(basename "$i")-$rev" '{key: $k, value: {file: $f}}'; done
+          for i in $dyn; do jq -n --arg k "$i" --arg f "assets/$(basename "$i")-$rev" '{key: $k, value: {file: $f, isDynamicEntry: true}}'; done
+        } | jq -s 'from_entries' > public/build/manifest.json
+        # a built file holds its source (so a string of the source is in the build), or nothing with $FAKE/build-empty
+        for i in $ins $dyn; do if [ -e "$FAKE/build-empty" ]; then : > "public/build/assets/$(basename "$i")-$rev"; else cat "$i" > "public/build/assets/$(basename "$i")-$rev"; fi; done ;;
+    *) echo "stub pnpm: no answer: $*" >&2; exit 3 ;;
+esac

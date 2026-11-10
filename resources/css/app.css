@@ -6,6 +6,24 @@
 /* Admin chrome value switches (dark scheme, topbar/sidebar presets, zone overrides). */
 @import './admin-chrome.css';
 
+/* Shared record-list rows (<x-bs-admin::list>): layout by the list's own width. */
+@import './admin-list.css';
+
+/* The approval-workflow list (design 18): its table → three columns → flat rows by the page's width. */
+@import './admin-workflow.css';
+
+/* The shared admin tree (<x-bs-admin::tree>): guide lines, the drop placeholder, the drag label. */
+@import './admin-tree.css';
+
+/* The shared "Hiện thế nào trên Google" part (<x-bs-admin::seo-fields>): length meters, the cut mark. */
+@import './admin-seo.css';
+
+/* The shared unsaved-changes dialog (<x-bs-admin::unsaved-dialog>): one row or stacked, a sheet on a phone. */
+@import './admin-unsaved.css';
+
+/* The product editor's frame: the save-state pill, the sticky button bars. */
+@import './admin-editor.css';
+
 /* Scan module Blade + bundled theme Blade + framework/runtime views so utility classes aren't purged. */
 @source '../../app/Modules/**/*.blade.php';
 @source '../../themes/**/*.blade.php';
@@ -217,6 +235,13 @@
     --spacing-control: calc(2.5rem + min(0.25rem, var(--user-text-boost) * 2));
     --spacing-control-row: calc(2.25rem + min(0.5rem, var(--user-text-boost) * 2));
     --spacing-hit: 2.75rem;
+    /* A row in a menu or an option list: 40 / 44 / 48 / 48px with a mouse across the four text
+       sizes, 48px on touch (`any-pointer-coarse:min-h-menu-row-touch`). */
+    --spacing-menu-row: calc(2.5rem + min(0.5rem, var(--user-text-boost) * 2));
+    --spacing-menu-row-touch: 3rem;
+    /* A small target inside a list's name cell (the quick-edit ✎): 24px with a mouse at the default
+       text size, 44px from the next size up; touch takes --spacing-hit. */
+    --spacing-tap-cell: min(2.75rem, calc(1.5rem + var(--user-text-boost) * 10));
 }
 
 /* Dense-table font sizes (Velzon fs-* scale): the caption and small roles. */
@@ -241,6 +266,237 @@
     }
 }
 
+/* Hit area of a button in a row of neighbours (the pager, the rows-per-page group): at least
+   --spacing-control with a mouse (40px at the default text size, 44px from the next size up) and
+   --spacing-hit on touch. The transparent ::after grows full height but, sideways, stops at half the
+   gap (--hit-gap, 8px unless a row says otherwise) so it never covers a neighbour. It is placed from
+   the inside of the border, so a bordered button names its border width (--hit-border) to reach the
+   middle of the gap: without it a 36px bordered button got 42px on touch, not 44. */
+@utility hit-area-row {
+    --hit-size: var(--spacing-control);
+    position: relative;
+
+    @media (any-pointer: coarse) {
+        --hit-size: var(--spacing-hit);
+    }
+
+    &::after {
+        content: '';
+        position: absolute;
+        top: min(0px, calc((100% - var(--hit-size)) / 2));
+        bottom: min(0px, calc((100% - var(--hit-size)) / 2));
+        left: max(min(0px, calc((100% - var(--hit-size)) / 2)), calc(var(--hit-gap, 0.5rem) / -2 - var(--hit-border, 0px)));
+        right: max(min(0px, calc((100% - var(--hit-size)) / 2)), calc(var(--hit-gap, 0.5rem) / -2 - var(--hit-border, 0px)));
+    }
+}
+
+/* The size of every admin text field and select (the kit input and each hand-built field): the main
+   control height (40px at the default text size, 44px from the next size up), 44px on touch, the
+   text at the user's body size. Only the size lives here; each field keeps its own width, border,
+   radius, colours and inline padding. `field-row` draws a field on a list row or inline at the
+   row-control size (36 / 40 / 44px) and keeps the 44px touch height. A bordered box that holds a
+   bare field (an icon + input label) takes `field` itself; the bare input inherits its text. */
+@utility field {
+    min-height: var(--field-height, var(--spacing-control));
+    padding-block: 0.375rem;
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+
+    @apply any-pointer-coarse:min-h-hit;
+}
+
+@utility field-row {
+    --field-height: var(--spacing-control-row);
+}
+
+/* A pager link (the kit pagination and the posts list's keyset pager): drawn at the row-control size
+   (36 / 40 / 44px across the text sizes) at every pointer; the shared transparent row hit area
+   (`hit-area-row`) makes the target 40 / 44px with a mouse and 44px on touch without changing what is drawn. */
+@utility pager-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: var(--spacing-control-row);
+    min-height: var(--spacing-control-row);
+    padding-inline: 0.5rem;
+    border-radius: 0.25rem;
+    /* Body text, so the numbers grow with the user's text size like the rest of the list foot. */
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke;
+    transition-timing-function: var(--default-transition-timing-function);
+    transition-duration: var(--default-transition-duration);
+
+    @apply hit-area-row;
+
+    /* the bordered ones (rows per page, the media picker's pager) */
+    &.border {
+        --hit-border: 1px;
+    }
+}
+
+/* A segmented choice: one soft frame holding the options of one setting side by side, the chosen
+   one raised on the surface in the brand ink and bold (aria-pressed). Each option is drawn at the
+   row-control size (36 / 40 / 44px) and reaches 40 / 44px with a mouse and 44px on touch through
+   the shared transparent row hit area. Options wrap to a new line when the frame is too narrow; the
+   gap between lines leaves room for that hit area, so one never covers the option below it. */
+@utility seg {
+    display: flex;
+    flex-wrap: wrap;
+    gap: max(2px, calc(var(--spacing-hit) - var(--spacing-control-row))) 2px;
+    width: fit-content;
+    max-width: 100%;
+    padding: 2px;
+    /* The control edge of the shared standard: the frame reads as one control on any background,
+       the grey editor page included, where the soft fill alone disappears. */
+    border: 1px solid var(--color-border-input);
+    border-radius: 0.375rem;
+    background: var(--color-surface-hover);
+
+    & > button {
+        --hit-gap: 2px;
+        flex: 1 0 auto;
+        max-width: 100%;
+        min-width: var(--spacing-control-row);
+        min-height: var(--spacing-control-row);
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        color: var(--color-text-muted);
+        font-size: var(--text-caption);
+        font-weight: 500;
+        line-height: 1.4;
+        cursor: pointer;
+
+        @apply hit-area-row;
+    }
+
+    & > button:hover {
+        color: var(--color-text);
+    }
+
+    & > button[aria-pressed='true'] {
+        background: var(--color-surface);
+        /* The thin brand edge keeps the chosen option clear on the dark scheme, where the surface
+           and the frame are close in tone. */
+        box-shadow:
+            0 1px 2px rgb(56 65 74 / 0.15),
+            inset 0 0 0 1px color-mix(in srgb, var(--color-primary-text) 45%, transparent);
+        color: var(--color-primary-text);
+        font-weight: 600;
+    }
+}
+
+/* The drawn on/off switch, one look everywhere (design standard `.dsw`): a 44 × 24 track with
+   the field border, a 16px knob; on = the brand as ink with a surface-coloured knob (the dark
+   scheme lightens that ink, so the track keeps 3:1 against the dark page; the brand fill would
+   not). `switch` is the switch alone (its words sit elsewhere and name it through aria-labelledby or
+   aria-label; add `hit-area` for the 44px touch target); `switch-row` is the switch then its words,
+   the whole row being the target, as tall as a main control (40 / 44px with a mouse, 44 on touch).
+   Both draw the track from the same custom properties. */
+@utility switch {
+    --switch-knob: var(--color-text-muted);
+    position: relative;
+    flex-shrink: 0;
+    width: 2.75rem;
+    height: 1.5rem;
+    padding: 0;
+    border: 1px solid var(--color-border-input);
+    border-radius: 0.75rem;
+    background-color: var(--color-surface-hover);
+    cursor: pointer;
+    transition: background-color 0.15s;
+
+    &::before {
+        content: '';
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 1rem;
+        height: 1rem;
+        border-radius: 50%;
+        background: var(--switch-knob);
+        transition: transform 0.15s;
+    }
+
+    /* on: the brand fill with a white knob; the border is the brand ink, which is the fill itself
+       in the light scheme and the light brand tint in the dark one, where the fill on the dark card
+       is only about 2:1 (design .dsw, --color-switch-on-border) */
+    &[aria-checked='true'] {
+        --switch-knob: var(--color-white);
+        border-color: var(--color-primary-text);
+        background-color: var(--color-primary);
+    }
+
+    &[aria-checked='true']::before {
+        transform: translateX(1.25rem);
+    }
+
+    &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        transition: none;
+
+        &::before {
+            transition: none;
+        }
+    }
+}
+
+@utility switch-row {
+    --switch-knob: var(--color-text-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    width: 100%;
+    min-height: var(--spacing-control);
+    padding-block: 0.25rem;
+    text-align: start;
+    cursor: pointer;
+
+    @apply any-pointer-coarse:min-h-hit;
+
+    /* the same track as `switch`, drawn in one box: the knob is a circle in the background, moved
+       by its position */
+    &::before {
+        content: '';
+        flex-shrink: 0;
+        width: 2.75rem;
+        height: 1.5rem;
+        border: 1px solid var(--color-border-input);
+        border-radius: 0.75rem;
+        background: radial-gradient(circle at 0.6875rem 50%, var(--switch-knob) 0.5rem, transparent calc(0.5rem + 0.5px)) no-repeat var(--color-surface-hover);
+        transition: background-position 0.15s, background-color 0.15s;
+    }
+
+    &[aria-checked='true'] {
+        --switch-knob: var(--color-white);
+    }
+
+    &[aria-checked='true']::before {
+        border-color: var(--color-primary-text);
+        background-color: var(--color-primary);
+        background-position: 1.25rem 0;
+    }
+
+    /* only the switch dims, its words stay readable */
+    &:disabled {
+        cursor: not-allowed;
+    }
+
+    &:disabled::before {
+        opacity: 0.6;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        &::before {
+            transition: none;
+        }
+    }
+}
+
 /* A box that draws one control around a bare field (the list search: icon + input inside a
    bordered label) carries the shared focus ring on the box, not on the field inside it. */
 @utility focus-ring-within {
@@ -259,6 +515,13 @@
     display: none !important;
 }
 
+/* A screen part that loads later (admin-lazy.js) and so runs no Alpine until it starts: its
+   waiting block shows until then, its error block ("Thử lại") only once the download was lost. */
+[data-bs-lazy]:not([data-bs-lazy-failed]) [data-bs-lazy-error],
+[data-bs-lazy][data-bs-lazy-failed] [data-bs-lazy-wait] {
+    display: none !important;
+}
+
 /* Keyboard focus — one indicator for every control in the admin shells: the focus-ring tokens
    (admin-chrome.css) as a 2px outline 2px off the element, >= 3:1 on the page, the card and, via
    the zone re-point, the sidebar. In the base layer on purpose: a component that draws its own
@@ -271,10 +534,12 @@
 }
 
 /* The sticky topbar would hide whatever focus or an in-page link scrolls to the top edge
-   (WCAG 2.4.11) — keep its height clear. Zero specificity: a topbar that scrolls away resets
+   (WCAG 2.4.11) — keep its height clear, and at the bottom the height of a list's selection bar while
+   it sticks there (--bulk-bar-h, set by the bar). Zero specificity: a topbar that scrolls away resets
    it (admin-chrome.css). */
 :where(:root:has(> body.admin-shell)) {
     scroll-padding-top: var(--topbar-height);
+    scroll-padding-bottom: var(--bulk-bar-h, 0px);
 }
 
 /* Every admin form field draws its edge in the input-border role. Views style fields inline with
@@ -351,4 +616,397 @@ button:not(:disabled) {
    editorOptions), so the two-tab strip would show one useful tab and one empty one — drop it. */
 .jodit-ui-image-properties-form .jodit-tabs__buttons {
     display: none;
+}
+
+/* The editor's "Trình bày" panel under each block: groups of choices, each setting a shared
+   segmented choice (`seg`) and each on/off a shared switch row (`switch-row`); the colour sets are
+   cards that show the set they paint. */
+.block-look {
+    display: grid;
+    gap: 1rem;
+    margin-top: 0.75rem;
+}
+/* Heading levels by weight and size: the panel title, then each group, then each choice's label. */
+.block-look > legend {
+    margin-bottom: 0.25rem;
+    font-size: 1rem;
+    font-weight: 700;
+}
+.block-look__group {
+    display: grid;
+    gap: 0.5rem;
+}
+.block-look__group > legend,
+.block-look__group > summary {
+    margin-bottom: 0.25rem;
+    font-weight: 700;
+}
+.block-look__setting {
+    display: grid;
+    gap: 0.3125rem;
+}
+.block-look__label {
+    color: var(--color-text-muted);
+    font-size: var(--text-caption);
+    font-weight: 600;
+}
+.block-look__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+/* While the choice is on its way to the server: shown at once, so a tap never looks ignored. */
+.block-look button[data-loading] {
+    cursor: progress;
+    opacity: 0.6;
+}
+.block-look__schemes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+    gap: 0.5rem;
+}
+.block-look__scheme {
+    display: grid;
+    align-content: start;
+    gap: 0.25rem;
+    padding: 0.5rem;
+    border: 1px solid var(--color-border-input);
+    border-radius: 0.375rem;
+    background: var(--color-surface);
+    color: var(--color-text);
+    text-align: left;
+}
+/* The chosen set: the brand border and fill, and a tick before its name (not by colour alone). */
+.block-look__scheme[aria-pressed='true'] {
+    border-color: var(--color-primary-text);
+    background: color-mix(in srgb, var(--color-primary-text) 10%, var(--color-surface));
+    color: var(--color-primary-text);
+    font-weight: 600;
+}
+.block-look__scheme[aria-pressed='true'] > span:nth-child(2)::before {
+    content: '✓ ';
+    /* The pressed state is already announced; the tick is for the eye only. */
+    content: '✓ ' / '';
+}
+.block-look__sample {
+    display: grid;
+    gap: 0.125rem;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12);
+}
+.block-look__sample > span:last-child {
+    justify-self: start;
+    padding: 0 0.375rem;
+    border-radius: 0.25rem;
+}
+.block-look__hint {
+    color: var(--color-text-muted);
+    font-size: 0.8125rem;
+}
+.block-look__warn {
+    padding: 0.5rem 0.75rem;
+    border-left: 3px solid var(--color-warning-base);
+    border-radius: 0.25rem;
+    background: var(--color-warning-soft);
+    color: var(--color-text);
+    font-size: 0.8125rem;
+}
+.block-look summary {
+    min-height: var(--spacing-control);
+    padding-block: 0.5rem;
+    cursor: pointer;
+    font-weight: 600;
+}
+@media (any-pointer: coarse) {
+    .block-look summary {
+        min-height: var(--spacing-hit);
+    }
+}
+.block-look__anchor {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+
+/* The editor's "Khi bấm nút" control for a block button: the current kind in one button that opens
+   the list of kinds, then the field of that kind (page card or search, address, part, number,
+   email, file). Long names and addresses wrap, never clipped. */
+.btn-act {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 0;
+}
+.btn-act__title,
+.btn-act__lbl {
+    font-size: var(--text-caption);
+    font-weight: 600;
+    color: var(--color-text-muted);
+}
+.btn-act__cur {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    width: 100%;
+    min-height: var(--spacing-control);
+    padding: 0.375rem 0.75rem;
+    border: 1px solid var(--color-border-input);
+    border-radius: 0.375rem;
+    background: var(--color-surface);
+    font-size: calc(0.8125rem + var(--user-text-boost));
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--color-text-strong);
+    text-align: start;
+    cursor: pointer;
+}
+.btn-act__cur:hover {
+    border-color: var(--color-primary-text);
+}
+.btn-act__glyph,
+.btn-act__ck {
+    flex-shrink: 0;
+    width: calc(1.125rem + var(--user-text-boost) * 0.5);
+    height: calc(1.125rem + var(--user-text-boost) * 0.5);
+    color: var(--color-primary-text);
+}
+.btn-act__ct,
+.btn-act__kt {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.btn-act__kt {
+    display: flex;
+    flex-direction: column;
+    gap: 0.0625rem;
+}
+.btn-act__chg {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.125rem;
+    font-weight: 500;
+    color: var(--color-primary-text);
+}
+.btn-act__chg-ic,
+.btn-act__btn-ic,
+.btn-act__err-ic,
+.btn-act__mig-ic,
+.btn-act__empty-ic {
+    flex-shrink: 0;
+    width: calc(1rem + var(--user-text-boost) * 0.5);
+    height: calc(1rem + var(--user-text-boost) * 0.5);
+}
+.btn-act__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    padding: 0.25rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    background: var(--color-surface);
+}
+.btn-act__mi {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+    width: 100%;
+    min-height: var(--spacing-menu-row);
+    padding: 0.5rem 0.625rem;
+    border-radius: 0.25rem;
+    font-size: calc(0.8125rem + var(--user-text-boost));
+    line-height: 1.4;
+    color: var(--color-text-strong);
+    text-align: start;
+    cursor: pointer;
+}
+.btn-act__mi:hover {
+    background: var(--color-surface-hover);
+}
+.btn-act__mi[aria-checked='true'] {
+    background: color-mix(in srgb, var(--color-primary-text) 8%, var(--color-surface));
+    font-weight: 600;
+}
+.btn-act__mi > .btn-act__glyph {
+    margin-top: 0.0625rem;
+}
+.btn-act__meta {
+    font-size: var(--text-caption);
+    font-weight: 400;
+    line-height: 1.4;
+    color: var(--color-text-muted);
+}
+.btn-act__name {
+    font-size: calc(0.8125rem + var(--user-text-boost));
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--color-text-strong);
+}
+.btn-act__card {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5625rem;
+    background: var(--color-surface-muted);
+}
+.btn-act__ic {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.375rem;
+    background: color-mix(in srgb, var(--color-primary-text) 10%, var(--color-surface));
+    color: var(--color-primary-text);
+}
+.btn-act__ic-glyph {
+    width: calc(1.25rem + var(--user-text-boost) * 0.5);
+    height: calc(1.25rem + var(--user-text-boost) * 0.5);
+}
+.btn-act__hint {
+    margin: 0;
+    font-size: var(--text-caption);
+    line-height: 1.5;
+    color: var(--color-text-muted);
+}
+.btn-act__mig {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.375rem;
+}
+.btn-act__mig-ic {
+    margin-top: 0.125rem;
+    color: var(--color-primary-text);
+}
+.btn-act__err {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.25rem;
+    margin: 0;
+    font-size: var(--text-caption);
+    font-weight: 600;
+    line-height: 1.45;
+    color: var(--color-danger-text);
+}
+.btn-act__err-ic {
+    margin-top: 0.0625rem;
+}
+.btn-act__in--bad {
+    border-color: var(--color-danger-text);
+}
+.btn-act__row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.btn-act__empty {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border: 2px dashed var(--color-border-input);
+    border-radius: 0.5625rem;
+    font-size: var(--text-caption);
+    line-height: 1.45;
+    color: var(--color-text-muted);
+}
+.btn-act__empty b {
+    color: var(--color-text);
+}
+.btn-act__tgt {
+    font-size: calc(0.8125rem + var(--user-text-boost));
+    color: var(--color-text);
+}
+.btn-act__cur:focus-visible,
+.btn-act__mi:focus-visible,
+.btn-act__doc:focus-visible {
+    outline: 3px solid var(--color-primary-text);
+    outline-offset: 2px;
+}
+@media (any-pointer: coarse) {
+    .btn-act__cur,
+    .btn-act__mi {
+        min-height: var(--spacing-hit);
+    }
+}
+
+/* The file dialog: one row per document of the library, the current one marked. */
+.btn-act__docs {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.btn-act__doc {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: var(--spacing-menu-row);
+    padding: 0.5rem;
+    border: 1px solid var(--color-border-input);
+    border-radius: 0.625rem;
+    background: var(--color-surface);
+    text-align: start;
+    cursor: pointer;
+}
+.btn-act__doc:hover {
+    background: var(--color-surface-hover);
+}
+.btn-act__doc[aria-pressed='true'] {
+    border-color: var(--color-primary-text);
+    box-shadow: inset 0 0 0 1px var(--color-primary-text);
+    background: color-mix(in srgb, var(--color-primary-text) 6%, var(--color-surface));
+}
+.btn-act__doc-cur {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.25rem;
+    font-size: var(--text-caption);
+    font-weight: 600;
+    color: var(--color-primary-text);
+}
+.btn-act__lib {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: var(--spacing-control);
+    font-weight: 600;
+    color: var(--color-primary-text);
+    text-decoration: underline;
+    text-underline-offset: 0.1875rem;
+    overflow-wrap: anywhere;
+}
+.btn-act__docs-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.375rem;
+    padding: 1rem;
+    border: 2px dashed var(--color-border-input);
+    border-radius: 0.625rem;
+    font-size: calc(0.8125rem + var(--user-text-boost));
+    line-height: 1.5;
+    color: var(--color-text);
+}
+
+/* A settings page's own save bar (`data-set-savebar` inside the shared settings frame) shows on a
+   phone (narrower than 768px) only once there is something to save, as the menus editor does: the
+   server marks a bar with nothing to save `data-clean`, and text typed but not yet sent (the unsaved
+   dialog's `data-typed`) counts as a change. From 768px the bar always shows. Unlayered on purpose:
+   it must win over the bar's own `flex` utility. */
+@media (width < 48rem) {
+    [data-set-savebar][data-clean] {
+        display: none;
+    }
+    [data-set-shell]:has([data-unsaved-guard][data-typed]) [data-set-savebar][data-clean] {
+        display: flex;
+    }
 }

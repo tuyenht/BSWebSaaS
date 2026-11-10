@@ -116,7 +116,7 @@ it('leaves keyboard focus to the shared focus ring', function (string $markup): 
 it('draws the modal close icon in the muted role, not the placeholder gray', function (): void {
     preg_match('/<button type="button" @click="hide\(\)"[^>]*class="([^"]*)"/', (string) $this->blade('<x-bs-admin::modal title="Xác nhận xoá"><p>Chắc chưa?</p></x-bs-admin::modal>'), $close);
 
-    expect($close[1] ?? '')->toContain('text-body-muted')->not->toContain('text-placeholder');
+    expect($close[1] ?? '')->toContain('text-text-muted')->not->toContain('text-placeholder');
 });
 
 it('paints secondary text a reader needs with the muted role, never the decorative faint one', function (string $markup): void {

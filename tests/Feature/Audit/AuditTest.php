@@ -115,6 +115,8 @@ it('drops a request id that is not a plain token instead of losing the entry', f
 it('adds and removes the impersonator columns reversibly', function (): void {
     /** @var Migration $migration */
     $migration = require database_path('migrations/2028_01_01_000000_add_impersonator_to_audit_logs.php');
+    // Rolled back newest first, as the migrator would: the monthly split comes off before this one.
+    $monthly = auditMonthlyMigration();
     $columns = ['impersonator_id', 'impersonator_label'];
 
     // Migrations run on the privileged connection (DDL needs table ownership). Restore the columns
@@ -122,11 +124,14 @@ it('adds and removes the impersonator columns reversibly', function (): void {
     $original = DB::getDefaultConnection();
     DB::setDefaultConnection('pgsql_admin');
     try {
+        $monthly->down();
         $migration->down();
         $dropped = ! Schema::hasColumns('audit_logs', $columns);
         $migration->up();
         $migration->up();   // re-runnable after a mid-run failure
     } finally {
+        rebuildAuditFilterIndexes();
+        $monthly->up();
         DB::setDefaultConnection($original);
     }
 
@@ -141,15 +146,20 @@ it('adds and removes the impersonator columns reversibly', function (): void {
 it('adds and removes the support session column reversibly', function (): void {
     /** @var Migration $migration */
     $migration = require database_path('migrations/2037_01_01_000000_add_support_session_to_audit_logs.php');
+    // Rolled back newest first, as the migrator would: the monthly split comes off before this one.
+    $monthly = auditMonthlyMigration();
 
     $original = DB::getDefaultConnection();
     DB::setDefaultConnection('pgsql_admin');
     try {
+        $monthly->down();
         $migration->down();
         $dropped = ! Schema::hasColumn('audit_logs', 'support_session_ulid');
     } finally {
         $migration->up();
         $migration->up();   // re-runnable after a mid-run failure
+        rebuildAuditFilterIndexes();
+        $monthly->up();
         DB::setDefaultConnection($original);
     }
 
@@ -169,16 +179,20 @@ it('refuses an audit row without a time, so paging by time never skips one', fun
 it('keeps the not-null time reversible and re-runnable', function (): void {
     /** @var Migration $migration */
     $migration = require database_path('migrations/2037_01_01_000100_require_created_at_on_audit_logs.php');
+    // Rolled back newest first, as the migrator would: the monthly split comes off before this one.
+    $monthly = auditMonthlyMigration();
     $nullable = fn (): mixed => DB::connection('pgsql_admin')->scalar("select is_nullable from information_schema.columns where table_name = 'audit_logs' and column_name = 'created_at'");
 
     $original = DB::getDefaultConnection();
     DB::setDefaultConnection('pgsql_admin');
     try {
+        $monthly->down();
         $migration->down();
         $before = $nullable();
     } finally {
         $migration->up();
         $migration->up();
+        $monthly->up();
         DB::setDefaultConnection($original);
     }
 
@@ -254,3 +268,23 @@ it('stays best-effort for a lock conflict outside any transaction, where nothing
 
     expect(AuditLog::count())->toBe(0);
 });
+
+/**
+ * Dropping a column drops the filter indexes built on it, and putting the column back does not
+ * bring them back. Rebuild them so the tests that pin those indexes do not depend on test order.
+ */
+function rebuildAuditFilterIndexes(): void
+{
+    /** @var Migration $indexes */
+    $indexes = require database_path('migrations/2038_01_01_000000_add_filter_indexes_to_audit_logs.php');
+    $indexes->up();
+}
+
+/** The migration that splits the audit log by month: older audit migrations act on the plain table. */
+function auditMonthlyMigration(): Migration
+{
+    /** @var Migration $migration */
+    $migration = require database_path('migrations/2046_01_01_000000_partition_audit_logs_by_month.php');
+
+    return $migration;
+}

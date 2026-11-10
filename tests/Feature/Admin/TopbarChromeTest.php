@@ -1,9 +1,16 @@
 <?php
 
+use App\Modules\Admin\Navigation\PlatformNav;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
+use Dom\Element;
+use Dom\HTMLDocument;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\HtmlString;
+use Spatie\Permission\PermissionRegistrar;
 
 /*
  * Velzon-parity admin topbar chrome (V-A2 branding): the shared tools partial
@@ -21,12 +28,17 @@ beforeEach(function (): void {
 
 it('shows the user name, primary-role label, and a real-flag language switcher', function (): void {
     $user = User::factory()->create(['name' => 'Topbar Tester']);
-    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        grantRole($user, 'editor', ['entries.view']);
+        // A provisioned site's built-in roles are system roles, shown by their translated name.
+        Role::query()->where('name', 'editor')->update(['is_system' => true]);
+    });
 
-    $this->actingAs($user->fresh())->get('http://a.test/admin/content')
+    $this->actingAs($user->fresh())->withSession(['locale' => 'vi'])->get('http://a.test/admin/content')
         ->assertOk()
         ->assertSee('Topbar Tester', false)          // user area shows the name
-        ->assertSee('Editor', false)                 // Str::headline('editor') — primary-role label
+        ->assertSee('>Biên tập</span>', false)       // primary-role label in the reader's language
+        ->assertDontSee('>Editor</span>', false)
         ->assertSee('langOpen', false)               // language switcher rendered
         ->assertSee('images/admin/flags/', false);   // a vendored flag image, not an emoji
 });
@@ -42,7 +54,9 @@ it('wires the user menu to real routes and keeps notifications an honest placeho
         ->assertSee('notifOpen', false)                                       // notifications button present
         ->assertDontSee('topbar-badge', false)                                // NO Velzon fake unread-count badge
         ->assertSee("adminTheme.set('scheme'", false)                         // light/dark toggle shares the Customizer store
-        ->assertSee('requestFullscreen', false);                              // fullscreen toggle present
+        ->assertSee('requestFullscreen', false)                               // fullscreen toggle present
+        ->assertSee('$store.adminTheme.open = true', false)                   // "Giao diện" opens the Customizer
+        ->assertDontSee('customizer-gear', false);                            // the floating launcher is gone
 });
 
 it('renders the sidebar logo at the reference sizes (48px full, 22px collapsed mark)', function (): void {
@@ -65,21 +79,197 @@ it('gives the platform console the shared tools but omits tenant account links',
         ->assertOk()
         ->assertSee('langOpen', false)                                            // shared topbar tools present
         ->assertSee("adminTheme.set('scheme'", false)
-        ->assertSee('Super Admin', false)                                         // operator's primary-role label
+        ->assertSee('>Quản trị nền tảng</span>', false)                           // operator's primary-role label
+        ->assertDontSee('Super Admin', false)
         ->assertSee(route('platform.logout', absolute: false), false)            // platform sign-out
         ->assertDontSee(route('admin.settings.security', absolute: false), false); // no tenant account link on the operator plane
 });
 
-it('exposes a mobile menu trigger on the platform console so small screens keep the nav', function (): void {
+/** The page as an HTML5 document, so a test can check the shell's structure and attributes. */
+function platformShellDom(string $html): HTMLDocument
+{
+    return HTMLDocument::createFromString($html, LIBXML_NOERROR);
+}
+
+/** One element the test needs; fails the test when it is missing. */
+function platformShellOne(HTMLDocument $dom, string $selector): Element
+{
+    $element = $dom->querySelector($selector);
+    expect($element)->toBeInstanceOf(Element::class, "missing: {$selector}");
+    assert($element instanceof Element);
+
+    return $element;
+}
+
+/** @return list<string> */
+function platformShellClasses(Element $element): array
+{
+    return array_values(array_filter(explode(' ', (string) $element->getAttribute('class'))));
+}
+
+it('gives the platform console a menu button that drives the drawer, the laid-over menu and the collapse', function (): void {
     $host = (string) config('tenancy.platform_host');
     $operator = User::factory()->create();
     app(PlatformAccess::class)->onPlatform(fn () => $operator->assignRole('super_admin'));
     app(PlatformAccess::class)->forgetMemo();
 
-    // The console nav is `hidden md:flex`; below md it lives only in the hamburger dropdown,
-    // so the trigger + click-away panel must be present or small screens hit a dead-end.
-    $this->actingAs($operator->fresh())->get("http://{$host}/tenants")
-        ->assertOk()
-        ->assertSee('@click="open = ! open"', false)          // hamburger toggles the dropdown
-        ->assertSee('@click.outside="open = false"', false);  // click-away closes the mobile nav panel
+    $dom = platformShellDom((string) $this->actingAs($operator->fresh())->get("http://{$host}/tenants")->assertOk()->getContent());
+
+    // One menu button, inside the topbar, pointing at the sidebar. It stays at every width (no
+    // xl:hidden): from 1280px it collapses the sidebar to the rail. Its name is fixed; the title
+    // and aria-expanded follow the state (drawer/laid-over menu open, or the sidebar size from 1280px).
+    expect($dom->querySelectorAll('[aria-controls="platform-sidebar"]'))->toHaveCount(1);
+    $button = platformShellOne($dom, 'header > button[aria-controls="platform-sidebar"]');
+    expect($button->getAttribute('type'))->toBe('button')
+        ->and($button->getAttribute('aria-label'))->toBe(__('admin.menu'))
+        ->and($button->getAttribute('aria-expanded'))->toBe('false')
+        ->and($button->getAttribute('@click'))->toBe('toggle()')
+        ->and($button->getAttribute(':aria-expanded'))->toBe("expanded ? 'true' : 'false'")
+        ->and((string) $button->getAttribute(':title'))->toContain(__('admin.collapse_menu'))->toContain(__('admin.expand_menu'))
+        ->and(platformShellClasses($button))->not->toContain('xl:hidden');
+
+    // The shell's state lives on its wrapper: Esc closes; the toggle saves the shared sidebar size.
+    $shell = platformShellOne($dom, 'div.platform-shell');
+    expect($shell->getAttribute('@keydown.escape.window'))->toBe('close()')
+        ->and((string) $shell->getAttribute('x-data'))->toContain("\$watch('\$store.adminTheme.open'")
+        ->and((string) $shell->getAttribute('x-data'))->toMatch('/else if \(this\.open\) \{\s*this\.close\(\);/')
+        ->and((string) $shell->getAttribute('x-data'))->not->toContain('defaultPrevented')
+        ->and($shell->getAttribute(':data-nav-open'))->toBe("open ? '' : null")
+        ->and((string) $shell->getAttribute('x-data'))->toContain("\$store.adminTheme.set('sidebar_size'");
+
+    // The open drawer / laid-over menu is a dialog: Tab stays inside and the page does not scroll,
+    // but the page is never hidden from screen readers — the drawer has no close button of its own,
+    // so the menu button must stay reachable. The closed phone drawer is inert.
+    $aside = platformShellOne($dom, 'aside#platform-sidebar');
+    expect($aside->getAttribute('x-trap.noscroll.noautofocus'))->toBe('open && ! wide')
+        ->and(array_filter($aside->getAttributeNames(), fn (string $name): bool => str_contains($name, 'aria-modal')))->toBe([])
+        ->and($aside->getAttribute(':role'))->toBe("open && ! wide ? 'dialog' : null")
+        ->and((string) $aside->getAttribute(':aria-label'))->toContain(__('admin.menu'))
+        ->and($aside->getAttribute('x-effect'))->toBe('$el.inert = mobile && ! open')
+        ->and($aside->querySelector('nav[aria-label] a[href]'))->toBeInstanceOf(Element::class);
+
+    // The backdrop closes the menu and fades through the layout's own class (none for reduced motion).
+    $backdrop = platformShellOne($dom, 'div.platform-shell > div[aria-hidden="true"]');
+    expect($backdrop->getAttribute('@click'))->toBe('close()')
+        ->and($backdrop->getAttribute('x-transition:enter'))->toBe('platform-fade')
+        ->and($backdrop->getAttribute('x-transition:leave'))->toBe('platform-fade');
+
+    // With a sidebar, the topbar logo is the phone/tablet way home; the sidebar carries it from 1024px.
+    $home = platformShellOne($dom, 'header > a[href="'.route('platform.dashboard').'"]');
+    expect(platformShellClasses($home))->toContain('lg:hidden')
+        ->and($aside->querySelector('a[href="'.route('platform.dashboard').'"]'))->toBeInstanceOf(Element::class);
+});
+
+it('keeps the logo and a way home in the topbar at every width when the operator may see no console screen', function (): void {
+    $host = (string) config('tenancy.platform_host');
+    $operator = User::factory()->create();
+    app(PlatformAccess::class)->onPlatform(function () use ($operator): void {
+        $operator->assignRole('billing');
+        $operator->roles()->firstOrFail()->revokePermissionTo('platform.tenants.view');
+    });
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+    app(PlatformAccess::class)->forgetMemo();
+    $operator = $operator->fresh();
+
+    // Still an operator (the console lets them in), but no nav link is theirs to see.
+    expect(app(PlatformAccess::class)->isOperator($operator))->toBeTrue()
+        ->and(app(PlatformNav::class)->sections($operator, null))->toBe([]);
+
+    // No console screen opens for this operator, so the layout is rendered on a probe route that
+    // sits behind the console's own middleware.
+    Route::domain($host)->middleware(['web', 'auth', 'platform'])
+        ->get('/__shell-probe', fn () => view('admin::layouts.platform', ['slot' => new HtmlString('<p>probe</p>')]));
+
+    $dom = platformShellDom((string) $this->actingAs($operator)->get("http://{$host}/__shell-probe")->assertOk()->getContent());
+
+    expect($dom->querySelector('aside#platform-sidebar'))->toBeNull()
+        ->and($dom->querySelector('[aria-controls="platform-sidebar"]'))->toBeNull()
+        ->and($dom->querySelector('div.platform-shell'))->toBeNull(); // no rail padding on the content
+
+    $home = platformShellOne($dom, 'header > a[href="'.route('platform.dashboard').'"]');
+    expect(platformShellClasses($home))->not->toContain('lg:hidden')
+        ->and($home->firstElementChild)->toBeInstanceOf(Element::class); // the logo (or the initials chip)
+});
+
+/** Classes of every element matching a selector. @return list<list<string>> */
+function shellClassesOf(HTMLDocument $dom, string $selector): array
+{
+    $out = [];
+    foreach ($dom->querySelectorAll($selector) as $element) {
+        $out[] = platformShellClasses($element);
+    }
+
+    return $out;
+}
+
+it('sizes the shell text by the text roles and gives its small links a 44px hit area', function (): void {
+    $user = User::factory()->create(['name' => 'Topbar Tester']);
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
+
+    $dom = platformShellDom((string) $this->actingAs($user->fresh())->get('http://a.test/admin/content')->assertOk()->getContent());
+
+    // footer: caption-size text; the company link keeps its look, one box, with the transparent 44 extension
+    $footer = platformShellClasses(platformShellOne($dom, 'div.admin-content > footer'));
+    $link = platformShellClasses(platformShellOne($dom, 'div.admin-content > footer a[href]'));
+    expect($footer)->toContain('text-caption')->not->toContain('text-xs')
+        ->and($link)->toContain('hit-area', 'inline-block')
+        ->and(platformShellClasses(platformShellOne($dom, 'div.admin-content > footer > div')))->toContain('gap-y-3.5');
+
+    // user block: name at the small size over the role at the caption size, never fixed pixels
+    $name = platformShellOne($dom, 'header.admin-topbar span.text-topbar-fg-strong');
+    expect(trim((string) $name->textContent))->toBe('Topbar Tester')
+        ->and(platformShellClasses($name))->toContain('text-small')
+        ->and(platformShellClasses($name->nextElementSibling ?? $name))->toContain('text-caption')
+        ->and(array_merge(...shellClassesOf($dom, 'header.admin-topbar span')))->not->toContain('text-[13px]', 'text-[11px]');
+
+    // the Customizer opens from the user menu's "Giao diện" item; no floating launcher sits on the pages' save bars
+    $items = array_values(array_filter(
+        iterator_to_array($dom->querySelectorAll('div[role="menu"] button[role="menuitem"]')),
+        fn (Element $b): bool => str_starts_with(trim(preg_replace('/\s+/', ' ', (string) $b->textContent)), __('admin.appearance')),
+    ));
+    expect($items)->toHaveCount(1)
+        ->and((string) $items[0]->getAttribute('@click'))->toContain('$store.adminTheme.open = true')
+        ->and(platformShellClasses($items[0]))->toContain('min-h-menu-row', 'any-pointer-coarse:min-h-menu-row-touch')
+        ->and($dom->querySelectorAll('button.fixed[aria-label="'.__('admin.customize_theme').'"]')->length)->toBe(0);
+});
+
+it('gives the platform console logo and footer link a 44px hit area and caption-size footer text', function (): void {
+    $host = (string) config('tenancy.platform_host');
+    $operator = User::factory()->create();
+    app(PlatformAccess::class)->onPlatform(fn () => $operator->assignRole('super_admin'));
+    app(PlatformAccess::class)->forgetMemo();
+
+    $dom = platformShellDom((string) $this->actingAs($operator->fresh())->get("http://{$host}/tenants")->assertOk()->getContent());
+
+    expect(platformShellClasses(platformShellOne($dom, 'header a[href="'.route('platform.dashboard').'"]')))->toContain('hit-area')
+        ->and(platformShellClasses(platformShellOne($dom, 'div.admin-content > footer')))->toContain('text-caption')->not->toContain('text-xs')
+        ->and(platformShellClasses(platformShellOne($dom, 'div.admin-content > footer a[href]')))->toContain('hit-area', 'inline-block');
+});
+
+it('sizes the kit badge at the caption size, so it follows the reader\'s text size', function (): void {
+    $html = (string) $this->blade('<x-bs-admin::badge color="warning" soft pill>Hỗ trợ</x-bs-admin::badge>');
+
+    preg_match('/<span class="([^"]*)">Hỗ trợ<\/span>/', $html, $m);
+    expect($m)->not->toBeEmpty()
+        ->and(explode(' ', $m[1]))->toContain('text-caption')->not->toContain('text-xs');
+});
+
+it('sizes the site menu labels by the text roles, so they follow the reader\'s text size', function (): void {
+    $user = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
+
+    $dom = platformShellDom((string) $this->actingAs($user->fresh())->get('http://a.test/admin/content')->assertOk()->getContent());
+
+    $links = shellClassesOf($dom, 'aside.admin-sidebar nav a, aside.admin-sidebar nav button');
+    expect($links)->not->toBeEmpty();
+    foreach ($links as $classes) {
+        expect(array_intersect($classes, ['text-body', 'text-small']))->not->toBeEmpty()
+            ->and($classes)->not->toContain('text-sm', 'text-[13px]');
+    }
+    expect(array_merge(...shellClassesOf($dom, 'aside.admin-sidebar span')))->not->toContain('text-[10.5px]');
+
+    // the collapsed rail's flyout starts just under the label line at every text size
+    $chrome = (string) file_get_contents(resource_path('css/admin-chrome.css'));
+    expect($chrome)->toContain('top: calc(1.25rem + var(--text-body) * 1.5 - 0.2rem);')
+        ->not->toContain('top: 2.35rem;');
 });

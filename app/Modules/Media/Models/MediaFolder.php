@@ -63,11 +63,6 @@ final class MediaFolder extends Model
             $base = $this->suggestSlugBase($name)['slug'];
         }
 
-        $slug = $base;
-        for ($i = 2; self::query()->where('slug', $slug)->exists(); $i++) {
-            $slug = $base.'-'.$i;
-        }
-
-        return $slug;
+        return Slugger::free($base, fn (string $b): array => Slugger::takenAmong(self::query(), 'slug', $b));
     }
 }

@@ -8,6 +8,7 @@ use App\Modules\Cms\Support\EntryStatusAudit;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteLocale;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Str;
@@ -86,10 +87,10 @@ it('never purges a live row named in a Trash-tab selection, however the selectio
         grantRole($editor, 'editor', ['entries.view', 'entries.delete.any']);
         $live = bulkRow($editor, 'Trang đang chạy');
 
-        // `tab` set directly, not through setTab(): the selection survives, as a forged one would.
+        // A selection forged after the Trash group is chosen (a group change itself drops the selection).
         $component = Livewire::actingAs($editor->fresh())->test(Index::class)
-            ->set('selected', [$live->ulid])
             ->set('tab', 'trash')
+            ->set('selected', [$live->ulid])
             ->call('bulkForceDelete');
 
         expect(bulkFind($live)?->trashed())->toBeFalse();
@@ -358,6 +359,9 @@ it('offers no editor link on a Trash row, since the editor does not open trashed
 
     app(Tenancy::class)->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.view', 'entries.edit.any', 'entries.delete.any']);
+        // two languages, so each row carries its per-language editor links
+        SiteLocale::query()->firstOrCreate(['locale' => 'vi'], ['is_default' => true, 'enabled' => true]);
+        SiteLocale::query()->firstOrCreate(['locale' => 'en'], ['is_default' => false, 'enabled' => true]);
         $trashed = bulkRow($editor, 'Bài đã bỏ', trashed: true);
         $live = bulkRow($editor, 'Bài đang chạy');
 

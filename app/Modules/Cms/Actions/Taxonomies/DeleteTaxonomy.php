@@ -19,6 +19,7 @@ use App\Modules\Cms\Routing\CategoryChange;
 use App\Modules\Cms\Routing\CategoryRelinker;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Routing\SectionResolver;
+use App\Modules\Cms\Support\BlockMediaUsage;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Cms\Taxonomy\CategoryLimitGuard;
@@ -26,6 +27,7 @@ use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -58,7 +60,8 @@ use Illuminate\Support\Facades\DB;
  * the target category when there is one; with no target they stay, and the website stops showing
  * a link whose target is gone.
  *
- * Who may manage categories (`taxonomies.manage`) is the caller's check; a member limited to some
+ * Who may manage categories (`taxonomies.manage`) is checked through TaxonomyPolicy for the person
+ * signed in; a member limited to some
  * categories stays inside them (CategoryLimitGuard, outside_category_limits). Runs inside the tenant
  * context. Returns the counts the screen reports.
  */
@@ -75,11 +78,13 @@ final readonly class DeleteTaxonomy
         private CurrentSite $site,
         private CategoryScopes $scopes,
         private CategoryLimitGuard $limits,
+        private BlockMediaUsage $usage,
     ) {}
 
     /**
      * @return array{categories: int, items: int, routes_moved: int, redirects: int, menu_links: int}
      *
+     * @throws AuthorizationException
      * @throws TaxonomyChangeRejectedException
      */
     public function handle(
@@ -89,6 +94,8 @@ final readonly class DeleteTaxonomy
         ?CategoryChildrenOnDelete $children = null,
         bool $evenIfSectionChanges = false,
     ): array {
+        $this->authorizeManage();
+
         return DB::transaction(function () use ($taxonomy, $items, $target, $children, $evenIfSectionChanges): array {
             $this->lockTree($this->site->id());
             $taxonomy = $this->reload($taxonomy, 'taxonomy_invalid');
@@ -147,7 +154,8 @@ final readonly class DeleteTaxonomy
             }
 
             // Menu links follow the items: the person deleting chose where the category's content lives now.
-            $menuLinks = $targetId === null ? 0 : MenuItem::query()
+            // Links in the menu trash too, so a restored link never points at the deleted category.
+            $menuLinks = $targetId === null ? 0 : MenuItem::withTrashed()
                 ->where('routable_type', 'taxonomy')
                 ->whereIn('routable_id', $deleted)
                 ->update(['routable_id' => $targetId]);
@@ -158,6 +166,9 @@ final readonly class DeleteTaxonomy
 
             // The category rows go last; their translations, routes and (now empty) pivot rows cascade.
             $count = Cast::int(Taxonomy::query()->whereKey($deleted)->delete());
+            // Their block slots' "in use" rows in the library are polymorphic (no foreign key): dropped
+            // here, after the rows, so a slot save that held a category row has committed and is seen.
+            $this->usage->forget('taxonomy', $deleted);
 
             Audit::record('cms.taxonomy.deleted', [
                 'auditable_type' => Taxonomy::class,
@@ -218,9 +229,12 @@ final readonly class DeleteTaxonomy
      * branch — whose limits a delete would have to move: for the dialog to name before deleting.
      *
      * @return list<array{id: int, name: string}>
+     *
+     * @throws AuthorizationException
      */
     public function limitedMembers(Taxonomy $taxonomy, ?CategoryChildrenOnDelete $children = null): array
     {
+        $this->authorizeManage();
         $deleted = $children === CategoryChildrenOnDelete::Delete ? array_keys(TaxonomyTree::branchOf($taxonomy->id)) : [$taxonomy->id];
 
         return array_map(

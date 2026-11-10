@@ -5,6 +5,16 @@
 > **Grounded as-built @ main:** `ComponentRegistry` · `SectionComponent` · `ValidPageJson` · `BlockRenderer` · `ThemeResolver` · `Editor` (Livewire) · `themes/default/` · `resources/css/storefront.css`.
 > **Bất biến tối cao (ADR-04):** trình bày = token/enum allow-list do PLATFORM đăng ký — **CẤM raw CSS/class tự nhập ở MỌI tầng tenant** (Page-JSON, menu meta, mọi chỗ khác).
 
+> **v2.16 (03/11/2026 — AI quyết thay owner theo quy tắc 31/10 "tự chọn phương án tốt nhất", owner lật được; `plans/cho-ky.md` mục Đã quyết thay).** Thiết kế đã duyệt màn 27 (`plans/design-canvas/admin/project/27-trinh-dung-trang.dc.html`, bảng "Trình bày" của trình dựng) đi xa hơn bảng §2.1, nên code theo thiết kế ("Design leads, backend follows"):
+> - **Màu của khối = "Bộ màu"** — prop mới `scheme` ∈ `light · soft · brand · dark` (+ `accent` khi site có màu thương hiệu thứ hai, Tầng 0) với nhãn Sáng · Nhạt · Thương hiệu · Tối · Màu phụ. Mỗi bộ là một **bộ vai trò đủ** (nền, tiêu đề, chữ, chữ phụ, liên kết, nút chính/phụ, thẻ, ô nhập, đường kẻ) do `ThemeResolver` tính sẵn theo màu site và **ép tương phản AA** (chữ ≥ 4.5:1, nút/đường viền ≥ 3:1) — người dùng chọn 1 thẻ, không phối 10 giá trị.
+> - `bg` thu về `none · scheme · image`; giá trị cũ vẫn đọc được bằng bảng quy đổi của thiết kế (`surface`/`tint` → `soft`, `dark` → `dark`, `none` → `light`, riêng `hero`/`cta` → `brand`), nên dữ liệu đã lưu không cần migration. `brand-soft` và 3 `gradient-*` không còn trong bảng chọn (đọc quy đổi nếu gặp).
+> - `overlay` ∈ `0 · 75 · 90`: `0` = **Tự động** = mức tối tối thiểu để chữ trắng đạt 4.5:1 trên mọi vùng ảnh (một hằng số tính một lần), 75 = Tối hơn, 90 = Rất tối.
+> - Khoảng cách: thiếu prop = khoảng cách sẵn có của khối (trang cũ giữ nguyên); `none` = Sát. "Tách riêng trên/dưới" là trạng thái của trình soạn, suy ra từ `spacing_top ≠ spacing_bottom`, không lưu.
+> - `hide_on` giữ giá trị lưu; nhãn theo thiết kế ("Hiện trên: Mọi nơi · Điện thoại · Máy tính" = `none · desktop · mobile`).
+> - Tên cấm khai trong schema nội dung (§2.1 Reserved-names) thêm `scheme`, `ink`, `spacing_split` (21 tên).
+> - `SectionPresetRegistry` (§3) hoãn: bảng "Trình bày" bản cuối không có ô kiểu có sẵn; chỉ khung "sửa trang mẫu" (WEB-5d) dùng — làm khi port khung đó.
+> - Mã màu tuỳ chỉnh từng bộ ("schOv" trong thiết kế) là cài đặt cấp site (Tầng 0, màn Giao diện), không phải prop khối — biên cấm color-picker per-section (§5) giữ nguyên.
+
 ---
 
 ## 0. Kiến trúc 4 tầng + LUẬT THĂNG CẤP
@@ -30,22 +40,22 @@
 |---|---|---|
 | Màu | `--brand-50..900` (palette generator từ **1 màu brand** — §E7 đã đặc tả) + vai trò `--color-surface / surface-tint / dark / on-dark / text / text-muted / accent` | Chữ trên nền tối/ảnh **tự đổi theo class nền** (CSS đi kèm `sec--bg-dark/image`) — KHÔNG có prop chọn màu chữ |
 | Chữ | `--font-heading` + `--font-body` (nâng từ 1 `--font` hiện tại) + scale modular h1–h4/body/small | Font chọn từ danh sách Việt-subset — KHÔNG upload font tự do |
-| Khoảng cách | thang `--space-s/m/l/xl` × hệ số mật độ `--space-unit` (compact 0.85 · normal 1 · airy 1.2) | 1 cài đặt site đổi "độ thở" mọi section |
+| Khoảng cách | thang `--space-s/m/l/xl` × hệ số mật độ `--space-unit` (compact 0.85 · normal 1 · airy 1.2), mỗi giá trị làm tròn về bội số 4px (AI quyết thay owner 03/11/2026 theo quy tắc 31/10, owner lật được: giữ mật độ, làm tròn về 4) | 1 cài đặt site đổi "độ thở" mọi section |
 | Bo & bóng | `--radius-soft/round` · `--shadow-soft/medium` | |
-| Gradient | `--gradient-1..3` sinh từ brand (brand→đậm · brand→accent · dark→brand) | |
-| Motion | `--motion-duration` (0.5s) · `--motion-distance` (24px) | 1 công tắc site tắt toàn bộ motion |
+| Gradient | `--gradient-1..3` sinh từ brand (brand→đậm · brand→accent, tạm thời brand→sáng cho tới khi có vai trò `--color-accent` · dark→brand) | |
+| Motion | `--motion-duration` (tối đa 250ms — AI quyết thay owner 03/11/2026 theo chuẩn thiết kế 06–07/10, chặt hơn 0,5s của ADR-04; owner lật được) · `--motion-distance` (24px) | 1 công tắc site tắt toàn bộ motion |
 
-> **Tên token (07/10/2026):** theo chuẩn chung `docs/notes/design-tokens.md`: giữ các tên vai trò trong bảng trên; `--brand-50..900` đổi thành `--color-brand-50..900` (bí danh tên cũ trong thời gian chuyển). Mật độ khoảng cách và thời lượng hiệu ứng đang chờ owner chốt lại theo chuẩn thiết kế 06–07/10 (§9 của tài liệu đó).
+> **Tên token (07/10/2026):** theo chuẩn chung `docs/notes/design-tokens.md`: giữ các tên vai trò trong bảng trên; `--brand-50..900` đổi thành `--color-brand-50..900` (bí danh tên cũ trong thời gian chuyển). Mật độ khoảng cách và thời lượng hiệu ứng đã được AI quyết thay owner 03/11/2026 (owner lật được, ghi ở `plans/cho-ky.md` mục Đã quyết thay) (làm tròn về bội số 4px; tối đa 250ms).
 
 **Hai tầng token (chốt 23/09/2026 — khớp as-built `ThemeResolver`):**
 - **Seed = giá trị LƯU per-site** (`site_settings` group `theme` key `tokens`) — contract bền: đổi tên seed = migrate data mọi tenant ⇒ tên giữ nguyên as-built: `primary` (màu thương hiệu — nguồn duy nhất của `--brand-50..900` + gradient) · `surface` (nền) · `ink` (gần-đen: heading, nền tối header/footer, chữ đặt trên nền `primary`) · `body` (màu chữ nội dung dài, mềm hơn `ink`) · `font` (fallback cho tới khi thêm cặp seed `font-heading`/`font-body` — additive). Seed do operator/seeder hoặc panel "Giao diện" (5 quyết định bên dưới) ghi; KHÔNG phải knob per-section.
-- **Role = tên trong bảng trên** (`--color-*`, `--brand-*`, `--space-*`, `--radius-*`…) — CSS nội bộ SINH từ seed (`color-mix()` / palette generator) ⇒ đổi tên tự do, KHÔNG đụng data. Utility class + preset CHỈ tiêu thụ role, không đọc seed trực tiếp (`storefront.css` hiện còn đọc seed trực tiếp — chuyển sang role trong PR 1a.1 phần còn lại).
+- **Role = tên trong bảng trên** (`--color-*`, `--brand-*`, `--space-*`, `--radius-*`…) — CSS nội bộ SINH từ seed (`color-mix()` / palette generator) ⇒ đổi tên tự do, KHÔNG đụng data. Utility class + preset CHỈ tiêu thụ role, không đọc seed trực tiếp (`storefront.css` chỉ đọc role từ 03/11/2026; `ThemeResolver` vẫn in seed cho `--page` và dữ liệu cũ).
 - **✅ Role `--primary-text` (v2.24):** chữ màu thương hiệu trên nền sáng dùng `var(--primary-text)` — `ThemeResolver::cssVariables()` sinh từ seed `primary` bằng `ReadableColor::on()` (dịch dần về đen/trắng, giữ sắc, tới khi ≥4.5:1 so với `surface`; seed không phải hex ⇒ `var(--ink)`). Lý do phải ở PHP: brand là lựa chọn tự do của tenant và CSS không lặp tới ngưỡng. `--primary` giữ cho nền/viền và chữ trên nền tối.
-- Thêm seed = key + default ở `ThemeResolver::DEFAULTS` + **tự contrast-check với seed đã có** (bài học 23/09: default `primary` phải đạt AA khi `ink` nằm trên nó). `text` (default cũ, trùng `ink`, chỉ còn `welcome.blade.php` dùng) → gỡ ở PR 1a.1 phần còn lại.
+- Thêm seed = key + default ở `ThemeResolver::DEFAULTS` + **tự contrast-check với seed đã có** (bài học 23/09: default `primary` phải đạt AA khi `ink` nằm trên nó). Default `text` (cũ, trùng `ink`, không CSS nào đọc) đã gỡ 03/11/2026.
 
 **Cài đặt site-level mở cho tenant (panel "Giao diện" — ngôn ngữ đời thường §24, 5 quyết định):** màu thương hiệu (1 màu → cả palette) · cặp font · mật độ (thoáng/vừa/gọn) · kiểu bo mặc định · bật/tắt hiệu ứng chuyển động. Lưu `site_settings` group `theme` (đường `ThemeResolver` sẵn có; value validate allow-list `Rule::in` — đây là chỗ Rule::in đúng nghĩa, KHÔNG phải trong body).
 
-**Trả nợ white-label:** ~~`storefront.css` hardcode palette An Vinh~~ — **phần MÀU đã xong 23/09** (`5f19003`+`4941016`: 15 hex/101 lần → `var()`/`color-mix()` từ seed; An Vinh giữ diện mạo nhờ seed `{primary,ink,body}` trên prod). CÒN của PR 1a.1: ~~palette generator `--brand-50..900`~~ ✅ 26/09 (`Theme\Theming\BrandPalette`, OKLCH: giữ sắc, bậc sáng đều, màu gốc nằm nguyên ở bậc gần nhất; `ThemeResolver::cssVariables()` in ra, chưa CSS nào dùng ⇒ An Vinh không đổi) + thang spacing/radius/shadow/gradient + chuyển CSS sang tầng role.
+**Trả nợ white-label:** ~~`storefront.css` hardcode palette An Vinh~~ — **phần MÀU đã xong 23/09** (`5f19003`+`4941016`: 15 hex/101 lần → `var()`/`color-mix()` từ seed; An Vinh giữ diện mạo nhờ seed `{primary,ink,body}` trên prod). CÒN của PR 1a.1: ~~palette generator `--brand-50..900`~~ ✅ 26/09 (`Theme\Theming\BrandPalette`, OKLCH: giữ sắc, bậc sáng đều, màu gốc nằm nguyên ở bậc gần nhất; `ThemeResolver::cssVariables()` in ra, chưa CSS nào dùng ⇒ An Vinh không đổi) + ✅ 03/11/2026: thang `--space-s/m/l/xl` × `--space-unit` (seed tùy chọn `density`: compact · normal · airy; làm tròn bội số 4px), `--radius-soft/round`, `--shadow-soft/medium`, `--gradient-1..3` (brand→đậm · brand→sáng · dark→brand, `color-mix()` nên chạy cả khi brand không phải hex), `--motion-duration` 250ms · `--motion-distance` 24px — `ThemeResolver::cssVariables()` sinh, không đọc từ settings; chưa CSS nào tiêu thụ thang (PR 1a.2) — và `storefront.css` đã chuyển hết sang tầng role (giao diện không đổi).
 
 ---
 
@@ -114,6 +124,8 @@ Cơ chế: `list(enum)` — chỉ nhận key đã đăng ký trong theme (`Style
 | `pattern-dots` | họa tiết chấm mờ nền | CSS thuần từ token |
 | `pattern-grid` | họa tiết lưới mờ nền | CSS thuần từ token |
 
+**Đã dựng (một giá trị):** `pattern-cross` — họa tiết chữ thập mờ (CSS thuần, `currentColor` ở độ mờ 10%) sau dải kêu gọi hành động. `extra_style` là prop dành riêng ở mọi khối, đúng hợp đồng ở bảng trên (`list(enum)`, mặc định `[]`), khai một lần trong `StyleProps::SCHEMA`. `StyleProps::EXTRA_STYLES` là bảng tra giá trị → lớp (`pattern-cross` → `sf-s--x-pattern-cross`): `ValidPageJson` từ chối giá trị lạ lúc lưu; `StyleProps::wrapper()` chỉ in lớp của giá trị có trong bảng, bỏ qua giá trị lạ hoặc giá trị không phải danh sách lúc vẽ, và không bao giờ nối giá trị đã lưu vào markup. Thêm một hiệu ứng nữa = thêm vào bảng tra + `options` trong `SCHEMA` + CSS + 1 test (chỉ thêm, không đổi tên).
+
 Thêm/bớt hiệu ứng = 1 entry registry + CSS + 1 test (append-only như mọi enum). Hoãn build tới Đợt 2 vì: cần theme utility layer (1a) ổn định trước + tránh chồng lấn `corner/shadow` ngày đầu (§24).
 
 ---
@@ -139,6 +151,8 @@ Thêm/bớt hiệu ứng = 1 entry registry + CSS + 1 test (append-only như m�
 - **Đợt 1a (NỀN — 2 PR tuần tự, cùng arc):**
   - **PR 1a.1 — token hóa `storefront.css`** (visual no-op): CSS custom properties + palette generator + thang spacing/radius/shadow/gradient; **invariant: An Vinh render giống hệt** (regression DOM/screenshot); gỡ hardcode brand.
   - **PR 1a.2 — style-props plumbing:** `StyleProps` fragment + `ComponentRegistry::schemaFor()` + leaf `enum`/`list(enum)` ValidPageJson + wrapper BlockRenderer + utility classes + eager-theo-vị-trí + panel "Trình bày" trong Editor (group=style) + `SectionPresetRegistry` + preset cho 11 type hiện có.
+  - **Đã build trước một phần (02/11, website khách An Vinh):** leaf `enum` trong `ValidPageJson` (giá trị ∉ danh sách → từ chối khi lưu; lúc hiển thị rơi về mặc định) + ô chọn trong trình soạn; prop `variant` theo từng kiểu khối và tập con `bg ∈ none · surface · tint · dark` (cùng tên, cùng giá trị với prop #1, nên plumbing đầy đủ về sau dùng lại dữ liệu đã lưu, không cần migration) trên `entry_grid`, `product_grid`, `features`. Danh sách giá trị: `Theme\Components\SectionProps`. Chưa có: `list(enum)`, wrapper BlockRenderer, panel "Trình bày", `SectionPresetRegistry`.
+  - **Đã build 03/11 (PR 1a.2a, theo v2.16):** `StyleProps` (12 prop + 21 tên cấm) gộp ở `ComponentRegistry::schemaFor()` cho mọi đường đọc (ValidPageJson, BlockRenderer, chỉ mục ảnh, ghi nội dung, nạp gói nội dung); leaf `pattern` cho `anchor_id`; wrapper `themes/default/partials/sf-section.blade.php` chỉ khi khối có trình bày (trang cũ y nguyên); bộ màu `sch-{soft,brand,dark}-*` ép AA trong `ThemeResolver`; CSS khối đọc `var(--sch-*, màu cũ)`; `resources/js/sections.js` (chỉ tải khi có khối chuyển động sau khối đầu). Khoảng cách theo thang: s 16 · m 32 · l 56 · xl 80 px (× mật độ). Chưa: panel "Trình bày" trong trình soạn (1a.2b, port `stylePanel` màn 27), eager theo vị trí, khoảng cách của `hero` (đệm nằm ở `.hero__content`, bước khoảng cách cộng thêm vào khối).
   - (Các hạng mục 1a khác của council catalog — §E7 `html/datetime/bool/file`, `sections.js` foundation + size-gate CI, srcset, ADR-19 — theo report catalog F3, plan riêng.)
 - **Đợt 2:** +6 prop (`overlay_tone/divider×2/border/motion_stagger/extra_style`) + giá trị mở rộng (`corner:round`, `shadow:medium`, `motion:zoom`, cân nhắc `overlay:80`).
 - **Phân loại:** base arc + preset content = **ACT** (contract đã chốt v2.15, guardrail §6 đầy đủ); mỗi WAVE section mới = **COUNCIL nhẹ theo nhóm**; `columns`/`embed`/`offer`/data-bound = **COUNCIL riêng** (giữ nguyên catalog Đợt 3).

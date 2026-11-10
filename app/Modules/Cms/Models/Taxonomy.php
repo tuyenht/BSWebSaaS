@@ -2,6 +2,7 @@
 
 namespace App\Modules\Cms\Models;
 
+use App\Modules\Shared\Concerns\HasUlidColumn;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,7 +14,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * fast subtree queries); localized name/slug in taxonomy_translations. The category's
  * templates (list/detail) drive storefront display per §8. RLS isolates by site.
  *
+ * `ulid` is the key screens put into the page (D2); rows made before it existed are filled by
+ * `cms:fill-ulids`, so it can still be null until a later deploy makes it NOT NULL.
+ * `items_count` counts the posts and products whose main category this is, not in the trash: a
+ * counter kept in the same transaction as each write, never a live COUNT.
+ *
  * @property int $id
+ * @property string|null $ulid
  * @property int $site_id
  * @property string $vocabulary
  * @property int|null $parent_id
@@ -21,11 +28,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $list_template
  * @property string|null $detail_template
  * @property int $position
+ * @property int|null $cover_media_id
+ * @property int $items_count
  * @property array<string, mixed> $meta
  */
 class Taxonomy extends Model
 {
     use BelongsToSite;
+    use HasUlidColumn;
 
     #[\Override]
     protected $guarded = [];
@@ -75,6 +85,8 @@ class Taxonomy extends Model
         return [
             'parent_id' => 'integer',
             'position' => 'integer',
+            'cover_media_id' => 'integer',
+            'items_count' => 'integer',
             'meta' => 'array',
         ];
     }

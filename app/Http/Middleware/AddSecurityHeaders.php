@@ -7,6 +7,7 @@ namespace App\Http\Middleware;
 use App\Modules\Tenancy\Context\ResolvedHost;
 use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Domains\DomainName;
+use App\Modules\Theme\Chrome\StorefrontCsp;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -19,7 +20,7 @@ use Symfony\Component\HttpFoundation\Response;
  *   Referrer-Policy, Permissions-Policy.
  *
  * Content-Security-Policy is plane-specific:
- *   Storefront (pure Blade SSR, known origins) — strict allow-list CSP applied.
+ *   Storefront (pure Blade SSR, known origins) — strict allow-list CSP applied (StorefrontCsp).
  *   Admin + platform (Livewire 4 / Alpine.js) — CSP omitted entirely.
  *   Livewire hydration and Alpine reactivity require 'unsafe-eval'; shipping a
  *   strict CSP on those planes would break the admin UI. Omitting CSP there is
@@ -46,12 +47,16 @@ final readonly class AddSecurityHeaders
         $response->headers->set('Strict-Transport-Security', $this->hsts($request));
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
-        $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
+        // A page that asked to send no referrer at all (the admin's product preview) keeps that
+        // stricter value; every other response gets the baseline.
+        if ($response->headers->get('Referrer-Policy') !== 'no-referrer') {
+            $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
+        }
         $response->headers->set('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
 
         // ── Content-Security-Policy: storefront plane only ───────────────────
         if ($this->isStorefrontPlane($request)) {
-            $response->headers->set('Content-Security-Policy', $this->storefrontCsp());
+            $response->headers->set('Content-Security-Policy', StorefrontCsp::header());
         }
 
         return $response;
@@ -97,57 +102,5 @@ final readonly class AddSecurityHeaders
         $adminPrefix = trim(is_string($rawPrefix) ? $rawPrefix : 'admin', '/');
 
         return ! $request->is($adminPrefix, $adminPrefix.'/*');
-    }
-
-    /**
-     * The strict Content-Security-Policy applied to storefront responses only.
-     *
-     * Origin inventory:
-     *   default-src 'self'             – same-origin baseline for everything
-     *   img-src      media planes      – the configured media hosts (media.cloudflare.base,
-     *                                    media.imgproxy.base) — config, never a hardcoded brand
-     *                data:             – inline SVG data URIs and favicons
-     *   style-src    'unsafe-inline'   – Blade renders a <style>:root{} token block;
-     *                                    no external stylesheet dependencies
-     *   script-src   'self' + CF       – /build/* Vite assets + the Cloudflare Turnstile
-     *                                    api.js (lead-form anti-spam, §23/R20)
-     *   frame-src    google.com + CF   – Google Maps embed on /lien-he + the Turnstile
-     *                                    challenge iframe (challenges.cloudflare.com)
-     *   font-src     'self'            – self-hosted web fonts
-     *   base-uri     'self'            – prevent base-tag injection attacks
-     *   form-action  'self'            – constrain POST submission targets
-     */
-    private function storefrontCsp(): string
-    {
-        return implode('; ', [
-            "default-src 'self'",
-            trim("img-src 'self' ".implode(' ', $this->mediaOrigins()).' data:'),
-            "style-src 'self' 'unsafe-inline'",
-            "script-src 'self' https://challenges.cloudflare.com",
-            'frame-src https://www.google.com https://challenges.cloudflare.com',
-            "font-src 'self'",
-            "base-uri 'self'",
-            "form-action 'self'",
-        ]);
-    }
-
-    /**
-     * The origins (scheme://host[:port]) the configured media planes serve images from.
-     *
-     * @return list<string>
-     */
-    private function mediaOrigins(): array
-    {
-        $origins = [];
-
-        foreach ([config('media.cloudflare.base'), config('media.imgproxy.base')] as $base) {
-            $parts = is_string($base) ? parse_url($base) : false;
-
-            if (is_array($parts) && isset($parts['scheme'], $parts['host'])) {
-                $origins[] = $parts['scheme'].'://'.$parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '');
-            }
-        }
-
-        return array_values(array_unique($origins));
     }
 }

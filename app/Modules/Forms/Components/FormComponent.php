@@ -4,14 +4,17 @@ namespace App\Modules\Forms\Components;
 
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormField;
+use App\Modules\Forms\Support\FormFieldTypes;
 use App\Modules\Shared\Contracts\Component;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Shared\Support\PreviewMode;
 
 /**
  * Data-bound page component: embeds a lead-capture form (resolved by key within the current site,
  * RLS) into a Page-JSON page — e.g. the contact / quote form on /lien-he alongside the NAP block.
  * The view renders the form's fields, a hidden honeypot, and (only when configured) the Turnstile
- * widget; the success / error state is read from the session by the view. Fail-safe: an
+ * widget; the success / error state is read from the session by the view. In the admin's preview of a
+ * page (PreviewMode) the form is drawn switched off: no address to send to, no Turnstile, no outcome. Fail-safe: an
  * unknown/inactive form_key yields a null action so the view renders nothing (the block-type
  * allow-list already gates rendering).
  */
@@ -29,6 +32,9 @@ final class FormComponent implements Component
     {
         return [
             'form_key' => ['type' => 'text', 'default' => 'contact'],
+            // Optional, opt-in: a line under the heading, and a map that puts the form in a card beside it.
+            'description' => ['type' => 'textarea'],
+            'map_embed' => ['type' => 'url'],
         ];
     }
 
@@ -47,19 +53,23 @@ final class FormComponent implements Component
             ->first();
 
         $locale = app()->getLocale();
+        $preview = PreviewMode::on();
 
         return [
             'props' => $props,
             'action' => $form !== null ? '/forms/'.$form->key : null,
             'locale' => $locale,
             'heading' => $form !== null ? $this->localized($form->name, $locale) : '',
-            'fields' => $form?->fields->map(fn (FormField $field): array => [
+            // Only fields a visitor can answer: the lead request validates and keeps exactly these.
+            'fields' => $form?->fields->filter(FormFieldTypes::isCollectable(...))->values()->map(fn (FormField $field): array => [
                 'key' => $field->key,
                 'type' => $field->type,
                 'label' => $this->localized($field->label, $locale),
                 'is_required' => $field->is_required,
+                'choices' => FormFieldTypes::isChoice($field->type) ? FormFieldTypes::choiceLabels($field, $locale) : [],
             ])->all() ?? [],
-            'turnstileSiteKey' => Cast::string(config('services.turnstile.site_key')),
+            'turnstileSiteKey' => $preview ? '' : Cast::string(config('services.turnstile.site_key')),
+            'preview' => $preview,
         ];
     }
 

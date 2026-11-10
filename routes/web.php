@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Admin\Http\Controllers\HintPreferenceController;
 use App\Modules\Admin\Http\Controllers\OAuthController;
 use App\Modules\Admin\Http\Controllers\SupportSignInController;
 use App\Modules\Admin\Http\Controllers\ThemePreferenceController;
@@ -10,6 +11,7 @@ use App\Modules\Admin\Livewire\AppearanceSettings;
 use App\Modules\Admin\Livewire\Catalog\Editor as CatalogEditor;
 use App\Modules\Admin\Livewire\Catalog\Index as CatalogIndex;
 use App\Modules\Admin\Livewire\CatalogSettings;
+use App\Modules\Admin\Livewire\Categories\Index as CategoriesIndex;
 use App\Modules\Admin\Livewire\ComponentGallery;
 use App\Modules\Admin\Livewire\Dashboard;
 use App\Modules\Admin\Livewire\EmailOtpChallenge;
@@ -17,20 +19,25 @@ use App\Modules\Admin\Livewire\EmailSettings;
 use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
 use App\Modules\Admin\Livewire\Entries\ReviewInbox;
+use App\Modules\Admin\Livewire\FloatingContactSettings;
 use App\Modules\Admin\Livewire\ForgotPassword;
 use App\Modules\Admin\Livewire\Forms\Detail as FormsDetail;
 use App\Modules\Admin\Livewire\Forms\Inbox as FormsInbox;
+use App\Modules\Admin\Livewire\GeneralSettings;
+use App\Modules\Admin\Livewire\IntegrationsSettings;
 use App\Modules\Admin\Livewire\Login;
 use App\Modules\Admin\Livewire\LoginSecuritySettings;
 use App\Modules\Admin\Livewire\Media\Library as MediaLibrary;
-use App\Modules\Admin\Livewire\Placeholder;
+use App\Modules\Admin\Livewire\Menus\Index as MenusIndex;
 use App\Modules\Admin\Livewire\Platform\Audit\Index as AuditIndex;
 use App\Modules\Admin\Livewire\Platform\Sites\Detail as SiteDetail;
 use App\Modules\Admin\Livewire\Platform\Sites\Index as SiteIndex;
 use App\Modules\Admin\Livewire\Platform\Tenants\Detail;
 use App\Modules\Admin\Livewire\Platform\Tenants\Index;
 use App\Modules\Admin\Livewire\ResetPassword;
+use App\Modules\Admin\Livewire\SeoSettings;
 use App\Modules\Admin\Livewire\Settings;
+use App\Modules\Admin\Livewire\Settings\Domains as DomainSettings;
 use App\Modules\Admin\Livewire\SocialSettings;
 use App\Modules\Admin\Livewire\TwoFactorChallenge;
 use App\Modules\Admin\Livewire\Users\Index as UsersIndex;
@@ -41,11 +48,13 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Media\Http\Controllers\MediaUploadController;
 use App\Modules\Storefront\Http\Controllers\FormSubmissionController;
+use App\Modules\Storefront\Http\Controllers\ProductPreviewController;
 use App\Modules\Storefront\Http\Controllers\SitemapController;
 use App\Modules\Storefront\Http\Controllers\StorefrontController;
 use App\Modules\Tenancy\Http\Controllers\CaddyAskController;
 use App\Modules\Tenancy\Http\Middleware\ServeOnPrimaryDomain;
 use App\Modules\Tenancy\Http\Middleware\SetCurrentSite;
+use App\Modules\Theme\Theming\SiteSeo;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -111,6 +120,9 @@ Route::domain((string) config('tenancy.platform_host'))
         // Operator site directory (read-only) + global audit log (cross-site).
         Route::get('/sites', SiteIndex::class)->name('platform.sites.index');
         Route::get('/sites/{ulid}', SiteDetail::class)->name('platform.sites.show');
+        // One site's domain names; reading needs platform.sites.view, changing platform.sites.manage
+        // (checked by the component on every request, including Livewire updates).
+        Route::get('/sites/{ulid}/domains', DomainSettings::class)->name('platform.sites.domains');
         Route::get('/audit', AuditIndex::class)->name('platform.audit.index');
 
         Route::get('/settings/email', EmailSettings::class)->defaults('scope', 'platform')->name('platform.settings.email');
@@ -120,6 +132,8 @@ Route::domain((string) config('tenancy.platform_host'))
         // consoles live on different hosts and fetch() stays same-origin.
         Route::post('/theme-preference', [ThemePreferenceController::class, 'store'])->name('platform.theme.save');
         Route::delete('/theme-preference', [ThemePreferenceController::class, 'destroy'])->name('platform.theme.reset');
+        // A first-time explanation the member put away with "Đã hiểu" (own preferences only).
+        Route::post('/hint-preference', [HintPreferenceController::class, 'store'])->name('platform.hint.dismiss');
 
         Route::post('/logout', function () {
             Auth::logout();
@@ -199,10 +213,17 @@ Route::prefix(config('admin.prefix', 'admin'))
         // Site-wide settings — only roles with `settings.manage` (owner/admin/super_admin).
         // The Livewire components ALSO guard in boot() because the livewire/update endpoint
         // does not pass through this route middleware.
+        Route::get('/settings/general', GeneralSettings::class)->middleware('can:settings.manage')->name('admin.settings.general');
+        Route::get('/settings/seo', SeoSettings::class)->middleware('can:settings.manage')->name('admin.settings.seo');
         Route::get('/settings/email', EmailSettings::class)->middleware('can:settings.manage')->name('admin.settings.email');
         Route::get('/settings/social', SocialSettings::class)->middleware('can:settings.manage')->name('admin.settings.social');
         Route::get('/settings/appearance', AppearanceSettings::class)->middleware('can:settings.manage')->name('admin.settings.appearance');
         Route::get('/settings/catalog', CatalogSettings::class)->middleware('can:settings.manage')->name('admin.settings.catalog');
+        Route::get('/settings/integrations', IntegrationsSettings::class)->middleware('can:settings.manage')->name('admin.settings.integrations');
+        Route::get('/settings/floating-contact', FloatingContactSettings::class)->middleware('can:settings.manage')->name('admin.settings.floating-contact');
+        // The site's domain names: whoever holds domains.view may look, domains.manage may change.
+        // The component checks both itself (no route gate: a viewer gets the no-permission card).
+        Route::get('/settings/domains', DomainSettings::class)->name('admin.settings.domains');
         // Approval-workflow switchboard — platform operators only (no tenant role template
         // grants this permission; super_admin passes via Gate::before).
         Route::get('/settings/workflows', WorkflowSettings::class)->middleware('can:platform.workflows.manage')->name('admin.settings.workflows');
@@ -210,6 +231,8 @@ Route::prefix(config('admin.prefix', 'admin'))
         // Per-user Customizer persistence (fetch/JSON) — any authenticated member, own prefs only.
         Route::post('/theme-preference', [ThemePreferenceController::class, 'store'])->name('admin.theme.save');
         Route::delete('/theme-preference', [ThemePreferenceController::class, 'destroy'])->name('admin.theme.reset');
+        // A first-time explanation the member put away with "Đã hiểu" — any member, own preferences only.
+        Route::post('/hint-preference', [HintPreferenceController::class, 'store'])->name('admin.hint.dismiss');
 
         // Site members + their roles (owner/admin). Add/change/remove routes through the guarded
         // AssignRole/RevokeRole actions, so the role hierarchy is enforced server-side.
@@ -221,20 +244,23 @@ Route::prefix(config('admin.prefix', 'admin'))
         // Content CRUD (W4 + post collections). One section-driven set of routes for
         // every entry type (?section=… picks the type); addressed by ulid (D2).
         Route::get('/content', EntriesIndex::class)->middleware('can:entries.view')->name('admin.entries.index');
-        Route::get('/catalog', CatalogIndex::class)->middleware('can:catalog.view')->name('admin.catalog.index');
+        // no `can:` here: a member without catalog.view sees the screen's own no-permission card
+        Route::get('/catalog', CatalogIndex::class)->name('admin.catalog.index');
         Route::get('/catalog/create', CatalogEditor::class)->middleware('can:catalog.manage')->name('admin.catalog.create');
         Route::get('/catalog/{ulid}/edit', CatalogEditor::class)->middleware('can:catalog.manage')->name('admin.catalog.edit');
+        // The real storefront page of a product of this site, whatever its status, for whoever may
+        // manage products: never cached or indexed, its forms switched off (ProductPreviewController).
+        Route::get('/catalog/{ulid}/preview', ProductPreviewController::class)->middleware('can:catalog.manage')->name('admin.catalog.preview');
         // Review inbox — for people who APPROVE: gated on the review ability, never on edit
         // rights, so an approve-only role has a place to work (the component re-checks).
         Route::get('/content/review', ReviewInbox::class)->middleware('can:review,App\\Modules\\Cms\\Models\\Entry')->name('admin.entries.review');
         Route::get('/content/create', Editor::class)->middleware('can:entries.create')->name('admin.entries.create');
         Route::get('/content/{ulid}/edit', Editor::class)->name('admin.entries.edit');
 
-        // Placeholder pages — the nav link is live but the real UI isn't built yet (taxonomies,
-        // menu builder). Still gated at the route by the module's own ability, so only permitted
-        // roles reach the stub — no dead-end, defence-in-depth intact.
-        Route::get('/taxonomies', Placeholder::class)->middleware('can:taxonomies.manage')->name('admin.taxonomies.index');
-        Route::get('/menus', Placeholder::class)->middleware('can:menus.manage')->name('admin.menus.index');
+        // Chuyên mục (?section=…): the component re-checks taxonomies.manage on every request (boot) and per method.
+        Route::get('/taxonomies', CategoriesIndex::class)->middleware('can:taxonomies.manage')->name('admin.taxonomies.index');
+        // Trình đơn: the component re-checks menus.manage on every request (boot) and per method.
+        Route::get('/menus', MenusIndex::class)->middleware('can:menus.manage')->name('admin.menus.index');
 
         // Lead inbox (contacts module). Read gated by forms.view; status changes inside the
         // Detail component re-gate on forms.manage (the livewire/update endpoint bypasses this
@@ -307,10 +333,13 @@ Route::get('/sitemap-{page}.xml', [SitemapController::class, 'page'])
     ->where('page', '[1-9][0-9]{0,5}')
     ->middleware([ServeOnPrimaryDomain::class, SetCurrentSite::class, 'site.active']);
 
-Route::get('/robots.txt', function (Request $request) {
+// The body follows the site's search settings (SiteSeo): hidden from Google = everything
+// disallowed; otherwise the custom text or the safe default, with the Sitemap: line while the
+// sitemap is served. Plain text, never sniffed as anything else.
+Route::get('/robots.txt', function (Request $request, SiteSeo $seo) {
     $sitemap = $request->getScheme().'://'.$request->getHost().'/sitemap.xml';
 
-    return response("User-agent: *\nDisallow:\nSitemap: {$sitemap}", 200, ['Content-Type' => 'text/plain']);
+    return response($seo->robotsTxt($sitemap), 200, ['Content-Type' => 'text/plain; charset=utf-8', 'X-Content-Type-Options' => 'nosniff']);
 })->middleware([ServeOnPrimaryDomain::class, SetCurrentSite::class, 'site.active']);
 
 // ── Storefront plane — public, tenant context. A fallback so it never shadows a

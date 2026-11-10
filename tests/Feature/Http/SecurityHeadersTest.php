@@ -11,6 +11,8 @@
  *   4. Admin and platform pages still render 200 (CSP omission did not break them).
  */
 
+use App\Modules\Theme\Chrome\StorefrontChrome;
+
 beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
@@ -44,11 +46,18 @@ it('storefront response carries the allow-list Content-Security-Policy', functio
     expect($csp)
         ->toContain("default-src 'self'")
         ->toContain("img-src 'self' https://files.baoson.net data:")
+        // The hero's background video plays its library file from the same media host — exactly
+        // that host, never data: or a wildcard (without it the policy falls back to default-src).
+        ->toMatch('#(?:^|; )media-src \'self\' https://files\.baoson\.net(?:;|$)#')
         ->toContain("style-src 'self' 'unsafe-inline'")
         // Cloudflare Turnstile (lead-form anti-spam, §23/R20) loads a script + iframe from
         // challenges.cloudflare.com → both directives must allow that one trusted origin.
-        ->toContain("script-src 'self' https://challenges.cloudflare.com")
-        ->toContain('frame-src https://www.google.com https://challenges.cloudflare.com')
+        // plus the hash of the one inline script (the text-size boot) and no 'unsafe-inline'.
+        ->toContain("script-src 'self' ".StorefrontChrome::textSizeBootHash().' https://challenges.cloudflare.com')
+        ->not->toMatch("/script-src[^;]*'unsafe-inline'/")
+        // Maps + Turnstile, and the two video players a visitor starts by pressing play (the
+        // click-to-load façade builds the iframe only then) — exactly these, nothing wider.
+        ->toMatch('#(?:^|; )frame-src https://www\.google\.com https://challenges\.cloudflare\.com https://www\.youtube-nocookie\.com https://player\.vimeo\.com(?:;|$)#')
         ->toContain("base-uri 'self'")
         ->toContain("form-action 'self'");
 });
@@ -63,6 +72,7 @@ it('allows images from the configured media hosts, not a hardcoded one', functio
     $csp = (string) $this->get('http://a.test/')->assertOk()->headers->get('Content-Security-Policy', '');
 
     expect($csp)->toContain("img-src 'self' https://cdn.example.test https://img.example.test:8443 data:")
+        ->toMatch('#(?:^|; )media-src \'self\' https://cdn\.example\.test https://img\.example\.test:8443(?:;|$)#')
         ->not->toContain('files.baoson.net');
 });
 

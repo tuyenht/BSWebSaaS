@@ -9,6 +9,7 @@ use App\Modules\Cms\Support\EntryCategoryWriter;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\Slugger;
+use App\Modules\Theme\Rendering\TemplateCatalog;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Support\Facades\DB;
@@ -52,7 +53,8 @@ final class DuplicateEntry
                 'status' => 'draft',
                 'author_id' => $actor->id,
                 'parent_id' => null,
-                'template_override' => $entry->template_override,
+                // A layout the theme no longer lists for this kind of page is not carried over.
+                'template_override' => $this->ownLayout($entry),
                 'cover_media_id' => $entry->cover_media_id,
                 'meta' => $entry->meta,
             ]);
@@ -97,6 +99,15 @@ final class DuplicateEntry
         return $copy;
     }
 
+    /** The original's own layout when the theme still lists it for this kind of page, else none. */
+    private function ownLayout(Entry $entry): ?string
+    {
+        $layout = $entry->template_override;
+        $role = TemplateCatalog::roleOfEntry($entry->type);
+
+        return $layout !== null && $role !== null && TemplateCatalog::fits($layout, $role) ? $layout : null;
+    }
+
     /** Appends a suffix until the slug is free for this locale (site-scoped by RLS). */
     private function uniqueSlug(string $slug, string $locale): string
     {
@@ -104,14 +115,10 @@ final class DuplicateEntry
         // the word leaves nothing usable.
         $marker = Slugger::make(__('entries.copy_slug', [], $locale), $locale) ?: 'copy';
         $base = $slug === '' ? $marker : $slug.'-'.$marker;
-        $candidate = $base;
-        $n = 1;
 
-        while (EntryTranslation::query()->where('locale', $locale)->where('slug', $candidate)->exists()) {
-            $n++;
-            $candidate = $base.'-'.$n;
-        }
-
-        return $candidate;
+        return Slugger::free(
+            $base,
+            fn (string $b): array => Slugger::takenAmong(EntryTranslation::query()->where('locale', $locale), 'slug', $b),
+        );
     }
 }

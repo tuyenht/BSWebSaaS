@@ -2,6 +2,8 @@
 
 use App\Modules\Admin\Livewire\Catalog\Editor;
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
+use App\Modules\Cms\Data\TaxonomyData;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
@@ -99,8 +101,7 @@ it('creates a product with its translation and category pivot, all stamped with 
             ->set('categoryId', $categoryId)
             ->set('price', '25000000')
             ->set('sku', 'DG-001')
-            ->set('status', 'published')
-            ->call('save')
+            ->call('publish')
             ->assertHasNoErrors();
 
         $product = Product::query()->first();
@@ -228,10 +229,8 @@ it('sanitizes rich text on write — scripts and junk styles out, allowlisted ma
             ->and($translation?->description)->toContain('<img src="https://files.baoson.net/x.png"')
             ->and($translation?->description)->toContain('youtube.com/embed/abc123')
             ->and($translation?->description)->not->toContain('evil.example.com')
-            // basic profile: no headings, inline emphasis kept, javascript: URI stripped
-            ->and($translation?->summary)->not->toContain('<h2')
-            ->and($translation?->summary)->toContain('<strong>đậm</strong>')
-            ->and($translation?->summary)->not->toContain('javascript:');
+            // the summary is plain text: kept as typed, and the website prints it as text (escaped)
+            ->and($translation?->summary)->toBe('<h2>To</h2><strong>đậm</strong><a href="javascript:alert(1)">x</a>');
     });
 });
 
@@ -286,7 +285,7 @@ it('persists and reloads the summary and SEO meta fields', function (): void {
             ->test(Editor::class)
             ->set('name', 'Đồ gá')
             ->set('slug', 'do-ga')
-            ->set('summary', '<p>Teaser <strong>ngắn</strong></p>')
+            ->set('summary', 'Teaser ngắn, gọn')
             ->set('seoTitle', 'Đồ gá hàn | An Vinh')
             ->set('seoDescription', 'Đồ gá hàn chính xác cho khung máy.')
             ->call('save')
@@ -295,7 +294,7 @@ it('persists and reloads the summary and SEO meta fields', function (): void {
         $product = Product::query()->first();
         $translation = $product?->translationFor('vi');
         expect($translation)->not->toBeNull()
-            ->and($translation?->summary)->toBe('<p>Teaser <strong>ngắn</strong></p>')
+            ->and($translation?->summary)->toBe('Teaser ngắn, gọn')
             ->and($translation?->seo_title)->toBe('Đồ gá hàn | An Vinh')
             ->and($translation?->seo_description)->toBe('Đồ gá hàn chính xác cho khung máy.')
             ->and($translation?->site_id)->toBe(1);
@@ -303,7 +302,7 @@ it('persists and reloads the summary and SEO meta fields', function (): void {
         // The edit form round-trips them back into the component state.
         Livewire::actingAs($editor->fresh())
             ->test(Editor::class, ['ulid' => $product?->ulid])
-            ->assertSet('summary', '<p>Teaser <strong>ngắn</strong></p>')
+            ->assertSet('summary', 'Teaser ngắn, gọn')
             ->assertSet('seoTitle', 'Đồ gá hàn | An Vinh')
             ->assertSet('seoDescription', 'Đồ gá hàn chính xác cho khung máy.');
     });
@@ -384,7 +383,7 @@ it('reorders and removes gallery images across saves without tripping the unique
     });
 });
 
-it('rejects gallery ids from another site (RLS-scoped exists rule)', function (): void {
+it('rejects gallery ids from another site (RLS-scoped exists rule), exactly as it rejects an unknown id', function (): void {
     $editor = User::factory()->create();
     $foreignMedia = app(Tenancy::class)->enter(2, fn (): int => seedCatalogMedia('c'));
 
@@ -392,14 +391,17 @@ it('rejects gallery ids from another site (RLS-scoped exists rule)', function ()
         grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage', 'media.view']);
 
         // Injected straight into the wire payload — the pickImage path never allows it, so the
-        // validation rule is the net that must hold.
-        Livewire::actingAs($editor->fresh())
-            ->test(Editor::class)
-            ->set('name', 'Sản phẩm')
-            ->set('slug', 'san-pham')
-            ->set('imageMediaIds', [$foreignMedia])
-            ->call('save')
-            ->assertHasErrors('imageMediaIds.0');
+        // validation rule is the net that must hold. The same error for both ids: the answer must
+        // not tell whether an id exists on another site.
+        foreach ([$foreignMedia, 9_000_000_000_000_000] as $id) {
+            Livewire::actingAs($editor->fresh())
+                ->test(Editor::class)
+                ->set('name', 'Sản phẩm')
+                ->set('slug', 'san-pham')
+                ->set('imageMediaIds', [$id])
+                ->call('save')
+                ->assertHasErrors(['imageMediaIds.0' => 'exists']);
+        }
 
         expect(Product::query()->count())->toBe(0);
     });
@@ -475,8 +477,7 @@ it('gives a published product its public address and its first publication date'
             ->test(Editor::class)
             ->set('name', 'Đồ gá hàn khung')
             ->set('slug', 'do-ga-han-khung')
-            ->set('status', 'published')
-            ->call('save')
+            ->call('publish')
             ->assertHasNoErrors();
 
         $product = Product::query()->firstOrFail();
@@ -495,7 +496,6 @@ it('leaves a draft without an address until it is published', function (): void 
             ->test(Editor::class)
             ->set('name', 'Jig kiểm')
             ->set('slug', 'jig-kiem')
-            ->set('status', 'draft')
             ->call('save')
             ->assertHasNoErrors();
 
@@ -505,8 +505,7 @@ it('leaves a draft without an address until it is published', function (): void 
 
         Livewire::actingAs($editor->fresh())
             ->test(Editor::class, ['ulid' => $product->ulid])
-            ->set('status', 'published')
-            ->call('save')
+            ->call('publish')
             ->assertHasNoErrors();
 
         expect(productRoutePath($product))->toBe('/jig-kiem');
@@ -523,8 +522,7 @@ it('moves the address with a 301 when a published product is renamed, keeping it
             ->test(Editor::class)
             ->set('name', 'Đồ gá')
             ->set('slug', 'do-ga-cu')
-            ->set('status', 'published')
-            ->call('save')
+            ->call('publish')
             ->assertHasNoErrors();
 
         $product = Product::query()->firstOrFail();
@@ -558,8 +556,7 @@ it('refuses an address a page already owns and keeps nothing of the save', funct
             ->test(Editor::class)
             ->set('name', 'Sản phẩm')
             ->set('slug', 'gioi-thieu')
-            ->set('status', 'published')
-            ->call('save')
+            ->call('publish')
             ->assertHasErrors(['slug'])
             ->assertSet('ulid', null);
 
@@ -570,8 +567,7 @@ it('refuses an address a page already owns and keeps nothing of the save', funct
             ->test(Editor::class)
             ->set('name', 'Sản phẩm')
             ->set('slug', 'san-pham-a')
-            ->set('status', 'published')
-            ->call('save')
+            ->call('publish')
             ->assertHasNoErrors();
         $product = Product::query()->firstOrFail();
 
@@ -583,5 +579,145 @@ it('refuses an address a page already owns and keeps nothing of the save', funct
 
         expect($product->fresh()->translationFor('vi')?->slug)->toBe('san-pham-a')
             ->and(productRoutePath($product))->toBe('/san-pham-a');
+    });
+});
+
+it('refuses a link another product holds in this language, with the same message, whatever its capitals', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(2, function (): void {
+        $elsewhere = Product::query()->create(['status' => 'draft']);
+        $elsewhere->translations()->create(['locale' => 'vi', 'name' => 'Bàn máy', 'slug' => 'ban-may']);
+    });
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage']);
+
+        $existing = Product::query()->create(['status' => 'draft']);
+        $existing->translations()->create(['locale' => 'vi', 'name' => 'Đồ gá', 'slug' => 'do-ga']);
+        $english = Product::query()->create(['status' => 'draft']);
+        $english->translations()->create(['locale' => 'en', 'name' => 'Lathe', 'slug' => 'may-tien']);
+
+        $taken = Livewire::actingAs($editor->fresh())->test(Editor::class)
+            ->set('name', 'Sản phẩm khác')->set('slug', 'do-ga')->call('save')
+            ->assertHasErrors(['slug']);
+        expect($taken->errors()->get('slug'))->toBe([__('catalog.slug_taken')]);
+
+        $capitals = Livewire::actingAs($editor->fresh())->test(Editor::class)
+            ->set('name', 'Sản phẩm khác')->set('slug', 'Do-Ga')->call('save')
+            ->assertHasErrors(['slug']);
+        expect($capitals->errors()->get('slug'))->toBe([__('catalog.slug_format'), __('catalog.slug_taken')]);
+
+        // Another language and another website may hold the same link.
+        Livewire::actingAs($editor->fresh())->test(Editor::class)
+            ->set('name', 'Máy tiện')->set('slug', 'may-tien')->call('save')
+            ->assertHasNoErrors();
+        Livewire::actingAs($editor->fresh())->test(Editor::class)
+            ->set('name', 'Bàn máy')->set('slug', 'ban-may')->call('save')
+            ->assertHasNoErrors();
+
+        expect(Product::query()->count())->toBe(4);
+    });
+});
+
+it('refuses a draft link that a category route already owns, in the category\'s words', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage']);
+        $category = app(CreateTaxonomy::class)
+            ->handle('product_cat', null, new TaxonomyData(names: ['vi' => 'Đồ cắt'], slugs: ['vi' => 'dao-cat']));
+        expect($category->id)->toBeInt();
+
+        $test = Livewire::actingAs($editor->fresh())->test(Editor::class)
+            ->set('name', 'Đĩa cắt')->set('slug', 'dao-cat')->call('save')
+            ->assertHasErrors(['slug']);
+
+        expect($test->errors()->get('slug'))->toBe([__('catalog.slug_owner_category', ['slug' => 'dao-cat', 'name' => 'Đồ cắt'])])
+            ->and(Product::query()->count())->toBe(0);
+    });
+});
+
+it('gives a new product named like an application path a free address instead of an error', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage']);
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('name', 'Login')
+            ->set('slug', '')
+            ->call('publish')
+            ->assertHasNoErrors();
+
+        expect(Product::query()->first()?->translationFor('vi')?->slug)->toBe('login-2');
+    });
+});
+
+it('shows the SKU message on the SKU field when the SKU is taken by a request that won the race', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage']);
+
+        $armed = true;
+        DB::beforeExecuting(function (string $query) use (&$armed): void {
+            if ($armed && str_starts_with($query, 'insert into "products"')) {
+                $armed = false;
+                Product::query()->create(['status' => 'draft', 'sku' => 'RACE-1']);
+            }
+        });
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('name', 'Đồ gá hàn khung')
+            ->set('slug', 'do-ga-han-khung')
+            ->set('sku', 'RACE-1')
+            ->call('save')
+            ->assertHasErrors(['sku' => __('catalog.sku_taken')])
+            ->assertHasNoErrors(['slug']);
+    });
+});
+
+it('drops the address it made from the name when the save loses a SKU race', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage']);
+
+        $armed = true;
+        DB::beforeExecuting(function (string $query) use (&$armed): void {
+            if ($armed && str_starts_with($query, 'insert into "products"')) {
+                $armed = false;
+                Product::query()->create(['status' => 'draft', 'sku' => 'RACE-2']);
+            }
+        });
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('name', 'Đồ gá hàn khung')
+            ->set('slug', '')
+            ->set('sku', 'RACE-2')
+            ->call('save')
+            ->assertHasErrors(['sku' => __('catalog.sku_taken')])
+            ->assertSet('slug', '');
+    });
+});
+
+it('stores the name trimmed of every kind of space, so padding never pushes it past the column', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage']);
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('name', "\u{00A0}\u{200B}Đồ gá kẹp".str_repeat("\u{00A0}", 300))
+            ->set('slug', 'do-ga-kep')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        expect(Product::query()->first()?->translationFor('vi')?->name)->toBe('Đồ gá kẹp');
     });
 });

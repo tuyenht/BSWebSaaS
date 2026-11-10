@@ -28,6 +28,8 @@ use Illuminate\Support\Carbon;
  * @property int|null $cover_media_id
  * @property int|null $author_id
  * @property Carbon|null $published_at
+ * @property int $position
+ * @property int $view_count
  * @property string|null $workflow_state the stage of the section's approval workflow, null until it joins one
  * @property int|null $assigned_to
  * @property array<string, mixed> $meta
@@ -41,6 +43,43 @@ class Entry extends Model
 
     #[\Override]
     protected $guarded = [];
+
+    /** Only posts count in their main category's total: the post list is where it is read. */
+    public function countsInCategoryTotals(): bool
+    {
+        return $this->type === 'post';
+    }
+
+    #[\Override]
+    protected static function booted(): void
+    {
+        // The cover photo is the one part of `meta` the page shows (the picture at the top, the
+        // share image, the Article image): a new one changes every language's content. Nothing else
+        // in `meta` does. getOriginal() still holds the stored value at `saved`.
+        static::saved(static function (Entry $entry): void {
+            if ($entry->wasChanged('meta') && self::coverOf($entry->getOriginal('meta')) !== self::coverOf($entry->meta)) {
+                self::markContentChanged([$entry->id]);
+            }
+        });
+    }
+
+    /**
+     * Mark that the main content of these entries changed, in every language (TracksContentChange),
+     * in one statement in the caller's transaction. The site scope and RLS keep it to this site.
+     *
+     * @param  list<int>  $ids
+     */
+    public static function markContentChanged(array $ids): void
+    {
+        if ($ids !== []) {
+            EntryTranslation::query()->whereIn('entry_id', $ids)->update(['content_changed_at' => now()]);
+        }
+    }
+
+    private static function coverOf(mixed $meta): mixed
+    {
+        return is_array($meta) ? ($meta['image_url'] ?? null) : null;
+    }
 
     /**
      * @return HasMany<EntryTranslation, $this>

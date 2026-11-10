@@ -3,9 +3,11 @@
 use App\Modules\Admin\Support\MediaUsageLocator;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
+use App\Modules\Cms\Support\EntryContentWriter;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Support\Facades\DB;
 
 /*
  * Slice 2 — usage tracking. A block image is a media_id buried in blocks[].props, which no indexed
@@ -83,6 +85,73 @@ it('clears content rows when no block images remain', function (): void {
     });
 });
 
+it('costs the same few queries however many images the body holds, writing only the rows that are new', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $media = array_map(fn (string $c): Media => reconcilerMedia("m-{$c}", $c), ['a', 'b', 'c', 'd', 'e']);
+        $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'meta' => []]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'T', 'slug' => 't', 'status' => 'draft',
+            'body' => ['blocks' => array_map(fn (Media $m): array => ['type' => 'hero', 'props' => ['image_url' => $m->id]], $media)]]);
+        $reconciler = app(EntryBlockMediaReconciler::class);
+        $reconciler->reconcile($entry);
+
+        // Unchanged body: read the bodies, the visible ids, prune, read what is recorded — nothing per image.
+        expect(countQueries(fn () => $reconciler->reconcile($entry)))->toBeLessThanOrEqual(4);
+
+        // One new image: the same reads plus one insert.
+        $extra = reconcilerMedia('m-f', 'f');
+        $entry->translations()->where('locale', 'vi')->update(['body' => ['blocks' => array_map(
+            fn (Media $m): array => ['type' => 'hero', 'props' => ['image_url' => $m->id]], [...$media, $extra],
+        )]]);
+        expect(countQueries(fn () => $reconciler->reconcile($entry)))->toBeLessThanOrEqual(5)
+            ->and(contentMediaIds($entry))->toBe(array_map(fn (Media $m): int => $m->id, [...$media, $extra]));
+    });
+});
+
+it('records usage only for media this site can see, skipping another site\'s id and an unknown id alike', function (): void {
+    // The foreign-key check on mediables.media_id ignores RLS: without the filter, another site's
+    // id would be written (a stray row) while an unknown id fails the insert — a way to learn
+    // whether an id exists on some other site. Both must end the same way: skipped, no error.
+    $foreignId = app(Tenancy::class)->enter(2, fn (): int => (int) reconcilerMedia('theirs', 'c')->id);
+    $unknownId = 9_000_000_000_000_000;
+
+    $outcomes = app(Tenancy::class)->enter(1, function () use ($foreignId, $unknownId): array {
+        $mine = reconcilerMedia('mine', 'a');
+        $outcomes = [];
+
+        foreach (['foreign' => $foreignId, 'unknown' => $unknownId] as $label => $id) {
+            $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'meta' => []]);
+            $entry->translations()->create(['locale' => 'vi', 'title' => 'T', 'slug' => "t-{$label}", 'status' => 'draft',
+                'body' => ['blocks' => [
+                    ['type' => 'hero', 'props' => ['image_url' => $mine->id]],
+                    ['type' => 'about', 'props' => ['image_url' => $id]],
+                ]]]);
+
+            app(EntryBlockMediaReconciler::class)->reconcile($entry);
+            $outcomes[$label] = contentMediaIds($entry) === [$mine->id];
+        }
+
+        return $outcomes;
+    });
+
+    expect($outcomes)->toBe(['foreign' => true, 'unknown' => true])
+        // Checked without RLS: no row anywhere points at the other site's media.
+        ->and(DB::connection('pgsql_admin')->table('mediables')->where('media_id', $foreignId)->count())->toBe(0);
+});
+
+it('keeps usage for this site\'s media while it sits in the Trash', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $m = reconcilerMedia('a', 'a');
+        $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'meta' => []]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'T', 'slug' => 't', 'status' => 'draft',
+            'body' => ['blocks' => [['type' => 'hero', 'props' => ['image_url' => $m->id]]]]]);
+
+        $m->delete();   // Trash: still this site's media, restorable — the usage must still show
+        app(EntryBlockMediaReconciler::class)->reconcile($entry);
+
+        expect(contentMediaIds($entry))->toBe([$m->id]);
+    });
+});
+
 it('surfaces a block-image entry in MediaUsageLocator', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         $m = reconcilerMedia('a', 'a');
@@ -147,5 +216,96 @@ it('cleans an entry content mediables on force-delete, keeps them on soft-delete
 
         $entry->forceDelete();     // permanent → cleaned (no orphan, no false "used")
         expect($exists())->toBeFalse();
+    });
+});
+
+describe('pictures inside formatted text', function (): void {
+    /** A body whose only picture sits inside a formatted-text block. */
+    $formatted = fn (int ...$mediaIds): array => ['blocks' => [['type' => 'richtext_html', 'props' => ['html' => '<p>Đoạn mở đầu</p>'
+        .implode('', array_map(fn (int $id): string => '<figure><img data-media-id="'.$id.'" data-size="full" data-align="center" alt="Ảnh" /></figure>', $mediaIds))]]]];
+
+    it('counts a picture used only inside formatted text once the entry is saved', function () use ($formatted): void {
+        app(Tenancy::class)->enter(1, function () use ($formatted): void {
+            $m = reconcilerMedia('a', 'a');
+            $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'meta' => []]);
+
+            app(EntryContentWriter::class)->write($entry, 'vi', [
+                'title' => 'Bài A', 'slug' => 'bai-a', 'blocks' => $formatted((int) $m->id)['blocks'],
+                'excerpt' => null, 'seo_title' => null, 'seo_description' => null, 'og_image_id' => null,
+                'template_override' => null, 'cover_media_id' => null, 'meta' => [],
+            ]);
+
+            $usages = app(MediaUsageLocator::class)->usagesFor($m, 'vi');
+            expect(contentMediaIds($entry))->toBe([$m->id])
+                ->and($usages)->toHaveCount(1)
+                ->and($usages[0]['role'])->toBe('content')
+                ->and($usages[0]['label'])->toBe('Bài A');
+        });
+    });
+
+    it('counts it for content that never went through a save once media:reconcile-content-usage runs', function () use ($formatted): void {
+        [$entryId, $mediaId] = app(Tenancy::class)->enter(1, function () use ($formatted): array {
+            $m = reconcilerMedia('a', 'a');
+            $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'meta' => []]);
+            $entry->translations()->create(['locale' => 'vi', 'title' => 'T', 'slug' => 't', 'status' => 'draft', 'body' => $formatted((int) $m->id)]);
+            expect(contentMediaIds($entry))->toBe([]);
+
+            return [(int) $entry->id, (int) $m->id];
+        });
+
+        $this->artisan('media:reconcile-content-usage')->assertSuccessful();
+
+        app(Tenancy::class)->enter(1, function () use ($entryId, $mediaId): void {
+            expect(contentMediaIds(Entry::query()->findOrFail($entryId)))->toBe([$mediaId]);
+        });
+    });
+
+    it('drops the usage once the picture is taken out of the text, keeping the others', function () use ($formatted): void {
+        app(Tenancy::class)->enter(1, function () use ($formatted): void {
+            $a = reconcilerMedia('a', 'a');
+            $b = reconcilerMedia('b', 'b');
+            $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'meta' => []]);
+            $translation = $entry->translations()->create(['locale' => 'vi', 'title' => 'T', 'slug' => 't', 'status' => 'draft', 'body' => $formatted((int) $a->id, (int) $b->id)]);
+            app(EntryBlockMediaReconciler::class)->reconcile($entry);
+            expect(contentMediaIds($entry))->toBe([$a->id, $b->id]);
+
+            $translation->update(['body' => $formatted((int) $b->id)]);
+            app(EntryBlockMediaReconciler::class)->reconcile($entry);
+            expect(contentMediaIds($entry))->toBe([$b->id]);
+
+            $translation->update(['body' => $formatted()]);
+            app(EntryBlockMediaReconciler::class)->reconcile($entry);
+            expect(contentMediaIds($entry))->toBe([]);
+        });
+    });
+
+    it('counts a picture in both an image prop and the text once, beside the image prop', function () use ($formatted): void {
+        app(Tenancy::class)->enter(1, function () use ($formatted): void {
+            $a = reconcilerMedia('a', 'a');
+            $b = reconcilerMedia('b', 'b');
+            $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'meta' => []]);
+            $entry->translations()->create(['locale' => 'vi', 'title' => 'T', 'slug' => 't', 'status' => 'draft', 'body' => ['blocks' => [
+                ['type' => 'hero', 'props' => ['image_url' => $a->id]],
+                ...$formatted((int) $a->id, (int) $b->id)['blocks'],
+            ]]]);
+
+            app(EntryBlockMediaReconciler::class)->reconcile($entry);
+            expect(contentMediaIds($entry))->toBe([$a->id, $b->id]);
+        });
+    });
+
+    it('never records another site\'s picture named inside the text', function () use ($formatted): void {
+        $foreignId = app(Tenancy::class)->enter(2, fn (): int => (int) reconcilerMedia('theirs', 'c')->id);
+
+        app(Tenancy::class)->enter(1, function () use ($formatted, $foreignId): void {
+            $mine = reconcilerMedia('mine', 'a');
+            $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'meta' => []]);
+            $entry->translations()->create(['locale' => 'vi', 'title' => 'T', 'slug' => 't', 'status' => 'draft', 'body' => $formatted((int) $mine->id, $foreignId, 900_000_000_000)]);
+
+            app(EntryBlockMediaReconciler::class)->reconcile($entry);
+            expect(contentMediaIds($entry))->toBe([$mine->id]);
+        });
+
+        expect(DB::connection('pgsql_admin')->table('mediables')->where('media_id', $foreignId)->count())->toBe(0);
     });
 });

@@ -9,6 +9,7 @@ use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Chrome\StorefrontChrome;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -95,10 +96,10 @@ it('emits canonical + OG article + BreadcrumbList on a post, no extra queries', 
             ->toContain('"name":"Bài viết đầu tiên"')
             ->toContain('"name":"Tin tức"')          // category crumb
             ->toContain('<title>Bài viết đầu tiên</title>')  // no regression
-            ->toContain('class="post__breadcrumb"');         // existing HTML breadcrumb kept
+            ->toContain('<nav class="sf-crumbs sf-crumbs--dark post-band__crumbs"');  // the visible trail
     });
 
-    expect($count)->toBeLessThanOrEqual(16);   // SEO reuses resolved data → no new queries
+    expect($count)->toBeLessThanOrEqual(18);   // SEO reuses resolved data → no new queries (+2: previous, next, related)
 });
 
 it('emits canonical + OG website + BreadcrumbList on a category list', function (): void {
@@ -158,4 +159,104 @@ it('uses the tenant brand favicon when set, and the platform file only as fallba
     $html = $this->get('http://anvinh.platform.test/')->assertOk()->getContent();
     expect($html)->toContain('<link rel="icon" href="https://files.example.test/an-vinh/brand/logo-64.png"');
     expect($html)->not->toContain('<link rel="icon" href="/favicon.ico"');
+});
+
+it('preloads the one Inter Latin and Vietnamese file only for a site whose font is Inter', function (): void {
+    seoProvision();
+    $site = Site::query()->firstWhere('name', 'An Vinh');
+    $preload = '<link rel="preload" href="/fonts/inter-latin-vi.woff2" as="font" type="font/woff2" crossorigin>';
+
+    expect($this->get('http://anvinh.platform.test/')->assertOk()->getContent())->not->toContain('rel="preload"');
+
+    app(Tenancy::class)->enter($site->id, fn () => SiteSetting::query()->create(
+        ['group_name' => 'theme', 'key' => 'tokens', 'value' => ['font' => 'Inter, Inter-Fallback, system-ui, sans-serif']],
+    ));
+
+    $html = $this->get('http://anvinh.platform.test/')->assertOk()->getContent();
+    expect($html)->toContain($preload)
+        ->and(substr_count($html, 'as="font"'))->toBe(1);
+});
+
+it('inlines the text-size script only when the header offers the button, and every inline script is allowed by its CSP hash', function (): void {
+    seoProvision();
+    $site = Site::query()->firstWhere('name', 'An Vinh');
+    $setHeader = fn (array $header) => app(Tenancy::class)->enter($site->id, fn () => SiteSetting::query()->updateOrCreate(
+        ['group_name' => 'storefront', 'key' => 'header'], ['value' => $header],
+    ));
+
+    $setHeader(['text_size' => false]);
+    $without = $this->get('http://anvinh.platform.test/')->assertOk();
+    $setHeader(['text_size' => true]);
+    $with = $this->get('http://anvinh.platform.test/')->assertOk();
+
+    expect($without->getContent())->not->toContain(StorefrontChrome::TEXT_SIZE_BOOT)
+        ->and($with->getContent())->toMatch('#<head>.*<script>'.preg_quote(StorefrontChrome::TEXT_SIZE_BOOT, '#').'</script>.*</head>#s');
+
+    // Every <script> loads a file, is JSON-LD, or is inline text whose sha256 the page's CSP lists
+    // (an edit to the boot script that forgets the hash fails here, not silently in browsers).
+    $inlineCount = [];
+    foreach (['without' => $without, 'with' => $with] as $case => $response) {
+        $csp = (string) $response->headers->get('Content-Security-Policy');
+        preg_match_all('/<script(?![^>]*\ssrc=)(?![^>]*\stype="application\/ld\+json")[^>]*>(.*?)<\/script>/s', (string) $response->getContent(), $inline);
+        foreach ($inline[1] as $code) {
+            expect($csp)->toContain("'sha256-".base64_encode(hash('sha256', $code, true))."'");
+        }
+        $inlineCount[$case] = count($inline[1]);
+    }
+    expect($inlineCount)->toBe(['without' => 0, 'with' => 1]);
+});
+
+/** The vi translation of the post "bai-seo", changed directly (as a save leaves it). */
+function seoPostTranslation(array $changes): void
+{
+    $site = Site::query()->firstWhere('name', 'An Vinh');
+    app(Tenancy::class)->enter($site->id, function () use ($changes): void {
+        Entry::query()->where('type', 'post')->sole()->translationFor('vi')->update($changes);
+    });
+}
+
+it('uses a post’s own Google title and description, escaped, at the same query count', function (): void {
+    seoProvision();
+    seoPublishPost('Bài SEO', 'bai-seo');
+    $this->get('http://anvinh.platform.test/tin-tuc/bai-seo')->assertOk();   // warm up
+    $before = countQueries(fn () => $this->get('http://anvinh.platform.test/tin-tuc/bai-seo')->assertOk());
+
+    seoPostTranslation([
+        'seo_title' => 'Tiêu đề Google <b>đậm</b>', 'seo_description' => 'Mô tả Google "riêng" & rõ.', 'excerpt' => 'Tóm tắt bài.',
+    ]);
+
+    $html = '';
+    $after = countQueries(function () use (&$html): void {
+        $html = $this->get('http://anvinh.platform.test/tin-tuc/bai-seo')->assertOk()->getContent();
+    });
+
+    expect($html)
+        ->toContain('<title>Tiêu đề Google &lt;b&gt;đậm&lt;/b&gt;</title>')
+        ->toContain('<meta name="description" content="Mô tả Google &quot;riêng&quot; &amp; rõ.">')
+        ->toContain('<meta property="og:description" content="Mô tả Google &quot;riêng&quot; &amp; rõ.">')
+        ->not->toContain('<b>đậm</b>')
+        ->and($after)->toBe($before);
+});
+
+it('falls back to the excerpt when a post has no Google description, then to the brand description', function (): void {
+    seoProvision();
+    seoPublishPost('Bài SEO', 'bai-seo');
+
+    seoPostTranslation(['seo_title' => '', 'seo_description' => null, 'excerpt' => "Tóm tắt\ncủa bài <viết>."]);
+    $html = $this->get('http://anvinh.platform.test/tin-tuc/bai-seo')->assertOk()->getContent();
+    expect($html)
+        ->toContain('<title>Bài SEO</title>')
+        ->toContain('<meta name="description" content="Tóm tắt của bài &lt;viết&gt;.">');
+
+    seoPostTranslation(['seo_description' => '', 'excerpt' => null]);
+    $site = Site::query()->firstWhere('name', 'An Vinh');
+    app(Tenancy::class)->enter($site->id, function (): void {
+        SiteSetting::query()->updateOrCreate(
+            ['group_name' => 'general', 'key' => 'brand'],
+            ['value' => ['name' => 'An Vinh', 'description' => 'Cơ khí chính xác An Vinh.']],
+        );
+    });
+    $html = $this->get('http://anvinh.platform.test/tin-tuc/bai-seo')->assertOk()->getContent();
+    expect($html)->not->toContain('Tóm tắt')
+        ->toContain('<meta name="description" content="Cơ khí chính xác An Vinh.">');
 });

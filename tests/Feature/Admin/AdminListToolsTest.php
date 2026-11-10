@@ -124,6 +124,27 @@ it('says All, dimmed, for a section with nothing chosen and shortens long choice
         ->and($html)->toContain('aria-label="Đi tới phần Định dạng: JPG, PNG, WEBP và 2 mục khác"');
 });
 
+it('marks a section that filters with a dot and its value in bold in the list of sections', function (): void {
+    app()->setLocale('vi');
+    $sections = filterSections();
+    $sections[1]['value'] = ['image'];
+    $html = (string) $this->blade('<x-bs-admin::filter-panel :sections="$sections" />', ['sections' => $sections]);
+
+    expect(substr_count($html, 'data-on aria-hidden="true"'))->toBe(1)
+        ->and($html)->toMatch('/Loại tệp<span data-on aria-hidden="true"/')
+        ->and($html)->toMatch('/font-semibold[^"]*"[^>]*>\s*Ảnh\s*</')
+        ->and($html)->not->toMatch('/Trạng thái<span data-on/');
+});
+
+it('draws a thin rule above an option set apart from the ones before it', function (): void {
+    $sections = filterSections();
+    $sections[0]['options'][1]['divider'] = true;
+    $html = (string) $this->blade('<x-bs-admin::filter-panel :sections="$sections" />', ['sections' => $sections]);
+
+    expect($html)->toMatch('/border-t border-border"[^>]*>\s*<input type="radio"[^>]*value="trash"/')
+        ->and($html)->not->toMatch('/border-t border-border"[^>]*>\s*<input type="radio"[^>]*value="live"/');
+});
+
 it('keeps the same ids across renders, so a live update never renames the radio groups', function (): void {
     $render = fn (): string => (string) $this->blade('<x-bs-admin::filter-panel :sections="$sections" />', ['sections' => filterSections()]);
 
@@ -223,8 +244,19 @@ it('keeps the More menu id across renders and fits the row again after every Liv
     preg_match('/aria-controls="(gm-[a-z0-9]{8})"/', $render(), $b);
 
     expect($a[1])->toBe($b[1])
-        ->and($render())->toContain('onMorphed(() => this.fit())')
+        ->and($render())->toContain('onMorphed(() => { this.observeGroups?.(); this.fit(); })')
         ->and($render())->toContain('@focusout=');
+});
+
+it('fits the row again when a group grows while the row keeps its box (larger text, late font)', function (): void {
+    $html = (string) $this->blade('<x-bs-admin::group-row :groups="$groups" active="used" model="group" label="Nhóm tệp" />', ['groups' => statusGroups()]);
+
+    // on touch every group is already 44px tall, so a larger text size widens the groups without
+    // resizing the row: each shown group is watched too; a group the fit just hid is skipped
+    expect($html)->toContain('x-init="$nextTick(() => fit()); watchSize(); watchMorph()"')
+        ->toContain("this.observeGroups = () => row.querySelectorAll(':scope > [data-g]').forEach((el) => ro.observe(el))")
+        ->toContain('entries.some((e) => e.target === row || ! e.target.hidden)')
+        ->toContain('destroy() { this.stopMorph?.(); this.stopSize?.(); }');
 });
 
 it('says what is filtered in plain words, with Clear and one removable chip per condition', function (): void {
@@ -258,4 +290,47 @@ it('never starts the status line with a separator', function (): void {
     ]);
 
     expect($html)->not->toContain('<span aria-hidden="true">·</span>');
+});
+
+it('indents an option under its parent and offers the rest of a long list on one button', function (): void {
+    $sections = [['key' => 'cat', 'label' => 'Chuyên mục', 'model' => 'catF', 'multiple' => true, 'value' => [], 'options' => [
+        ['value' => 'a', 'label' => 'Dụng cụ', 'depth' => 0],
+        ['value' => 'b', 'label' => 'Dao phay', 'depth' => 1],
+        ['value' => 'c', 'label' => 'Lưỡi cạo', 'depth' => 2],
+    ], 'more' => ['label' => 'Hiện thêm 7 chuyên mục', 'call' => "showMore('cat')"]]];
+    $html = (string) $this->blade('<x-bs-admin::filter-panel :sections="$sections" />', ['sections' => $sections]);
+
+    expect($html)->toMatch('/ps-4[^>]*>\s*<input type="checkbox"[^>]*value="a"/')
+        ->and($html)->toMatch('/ps-8[^>]*>\s*<input type="checkbox"[^>]*value="b"/')
+        ->and($html)->toMatch('/ps-12[^>]*>\s*<input type="checkbox"[^>]*value="c"/')
+        ->and($html)->toContain('wire:click="showMore(&#039;cat&#039;)"')->and($html)->toContain('Hiện thêm 7 chuyên mục');
+});
+
+it('adds a footer with Bỏ chọn to the section panel only when the section names a reset', function (): void {
+    $make = fn (array $extra): string => (string) $this->blade('<x-bs-admin::filter-panel :sections="$sections" results="Hiện 4 sản phẩm" />', ['sections' => [
+        ['key' => 'tag', 'label' => 'Nhãn', 'model' => 'tagF', 'multiple' => true, 'value' => ['featured'], 'options' => [['value' => 'featured', 'label' => 'Nổi bật']]] + $extra,
+    ]]);
+
+    $with = $make(['reset' => "resetFilterGroup('tag')"]);
+    expect($with)->toContain('wire:click="resetFilterGroup(&#039;tag&#039;)"')->and($with)->toContain(__('admin.list.reset_section'))
+        ->and(substr_count($with, 'Hiện 4 sản phẩm'))->toBe(2); // the section panel's footer and the sheet's
+    expect(substr_count($make([]), 'Hiện 4 sản phẩm'))->toBe(1);
+});
+
+it('puts an icon and a full name on a filter chip when it has them, and names it by its label when not', function (): void {
+    $html = (string) $this->blade('<x-bs-admin::filter-status :chips="$chips" />', ['chips' => [
+        ['label' => 'Nhãn: Nổi bật', 'remove' => 'x', 'icon' => 'ri-price-tag-3', 'aria' => 'Bỏ lọc nhãn “Nổi bật”'],
+        ['label' => 'Tìm: “dụng”', 'remove' => 'y'],
+    ]]);
+
+    expect($html)->toContain('aria-label="Bỏ lọc nhãn “Nổi bật”"')->and($html)->toContain('<svg')
+        ->and($html)->toContain(e(__('admin.list.remove_filter', ['name' => 'Tìm: “dụng”'])));
+});
+
+it('closes the filter sheet on Bỏ lọc only for a list that asks for it', function (): void {
+    $make = fn (string $extra): string => (string) $this->blade('<x-bs-admin::filter-panel :sections="$sections" :active="2" clear="clearFilters" '.$extra.' />', ['sections' => filterSections()]);
+    $clear = fn (string $html): string => (string) preg_replace('/^.*?(<button[^>]*wire:click="clearFilters"[^>]*>).*$/s', '$1', $html);
+
+    expect($clear($make('')))->not->toContain('hide()')
+        ->and($clear($make(':clear-closes="true"')))->toContain('hide()');
 });

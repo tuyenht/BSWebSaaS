@@ -14,14 +14,51 @@ final class ComponentRegistry
     /** @var array<string, Component> */
     private array $components = [];
 
-    public function register(string $type, Component $component): void
+    /** @var array<string, true> types that render and validate but are not offered in the builder's add list */
+    private array $unlisted = [];
+
+    /** @var array<string, true> types that draw a section heading, so take the `heading_decor` prop */
+    private array $headed = [];
+
+    /** @var array<string, true> types a block slot may hold but a page body may not (they read the page around them) */
+    private array $slotOnly = [];
+
+    /**
+     * $listed false keeps a type out of the builder's add list while it still renders and
+     * validates — for a block whose editor field is not built yet, so existing bodies holding it
+     * keep working and nobody is handed a half-built field. $headed marks a block whose view draws
+     * a section heading (theme::partials.sf-section-head): only those take the heading decoration.
+     * $slotOnly keeps a type out of page bodies: only the block slots around a post, a list and a
+     * product (LayoutSlots) accept it, because it draws data of the page it sits on.
+     */
+    public function register(string $type, Component $component, bool $listed = true, bool $headed = false, bool $slotOnly = false): void
     {
         $this->components[$type] = $component;
+        if ($slotOnly) {
+            $this->slotOnly[$type] = true;
+        } else {
+            unset($this->slotOnly[$type]);
+        }
+        if ($headed) {
+            $this->headed[$type] = true;
+        } else {
+            unset($this->headed[$type]);
+        }
+        if ($listed) {
+            unset($this->unlisted[$type]);
+        } else {
+            $this->unlisted[$type] = true;
+        }
     }
 
     public function has(string $type): bool
     {
         return isset($this->components[$type]);
+    }
+
+    public function slotOnly(string $type): bool
+    {
+        return isset($this->slotOnly[$type]);
     }
 
     public function get(string $type): Component
@@ -30,10 +67,37 @@ final class ComponentRegistry
     }
 
     /**
+     * A type's full §E7 schema: its own props plus the look props every block shares (StyleProps; the heading decoration only for a block that has a heading).
+     * Validation, rendering, the media index and the editor read a block's props through here, so
+     * the look props are checked and resolved like any other prop.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public function schemaFor(string $type): array
+    {
+        $schema = $this->components[$type]->schema() + StyleProps::SCHEMA;
+        if (! isset($this->headed[$type])) {
+            unset($schema['heading_decor']);
+        }
+
+        return $schema;
+    }
+
+    /**
      * @return list<string>
      */
     public function types(): array
     {
         return array_keys($this->components);
+    }
+
+    /**
+     * The types the builder offers to add.
+     *
+     * @return list<string>
+     */
+    public function listedTypes(): array
+    {
+        return array_values(array_filter($this->types(), fn (string $type): bool => ! isset($this->unlisted[$type])));
     }
 }

@@ -5,6 +5,7 @@
     'type' => 'button',
     'href' => null,
     'icon' => false,
+    'navigate' => true,
 ])
 @php
     // Mirrors Velzon .btn / .btn-soft-* / .btn-outline-* / .btn-ghost-*.
@@ -19,7 +20,10 @@
     // grow with the user's text size: md is a main button (40 → 44), sm a button on a list row or
     // inline (36 → 44). The touch area stays 44 through hit-area. A long label wraps instead of
     // running out of the button; `icon` makes a square button for a lone icon with an aria-label.
-    $base = 'hit-area inline-flex items-center justify-center gap-2 rounded font-medium leading-tight text-center transition-colors disabled:opacity-60 disabled:pointer-events-none';
+    // A link opens in place through wire:navigate; `:navigate="false"` keeps it a plain link (a
+    // page on the public website in a new tab).
+    // A toggle (aria-pressed) shows its on state: the accent edge and ink on a soft accent fill, bold.
+    $base = 'hit-area inline-flex items-center justify-center gap-2 rounded font-medium leading-tight text-center transition-colors disabled:opacity-60 disabled:pointer-events-none aria-pressed:border-primary-text aria-pressed:bg-primary-soft aria-pressed:font-semibold aria-pressed:text-primary-text';
 
     $sizes = $icon ? [
         'sm' => 'size-control-row shrink-0 text-caption',
@@ -73,7 +77,7 @@
     $classes = trim($base.' '.($sizes[$size] ?? $sizes['md']).' '.$tone);
 @endphp
 @if ($href)
-    <a href="{{ $href }}" wire:navigate {{ $attributes->merge(['class' => $classes]) }}>{{ $slot }}</a>
+    <a href="{{ $href }}" @if ($navigate) wire:navigate @endif {{ $attributes->merge(['class' => $classes]) }}>{{ $slot }}</a>
 @else
     <button type="{{ $type }}" {{ $attributes->merge(['class' => $classes]) }}>{{ $slot }}</button>
 @endif

@@ -75,7 +75,7 @@ C. Bảng thuật ngữ & động từ (`#thuat-ngu`) — một nguồn cho mọ
    5. Cất bài khỏi website, giữ nội dung (chỉ từ bài đã đăng): nút "Gỡ khỏi website" · trạng thái "Đã gỡ khỏi website". Không dùng: Lưu trữ.
    6. Đã xong nhưng không đưa lên website: nút "Để không công khai" · trạng thái "Không công khai" — thành viên có quyền xem bài vẫn thấy trong trang quản trị. Không dùng: Riêng tư.
    7. Bỏ một thành viên khỏi website: nút "Xóa khỏi website" (không vào Thùng rác, mời lại được) — khác "Gỡ khỏi website" của bài.
-   8. Thùng rác: "Chuyển vào Thùng rác" · "Khôi phục" · "Xóa vĩnh viễn". Ảnh & tệp tự xóa hẳn sau 15 ngày trong Thùng rác (`config/media.php`); bài, trang, sản phẩm, trình đơn tự xóa hẳn sau 30 ngày (như D1-2, D1-3) — Chờ backend (repo hiện giữ tới khi Xóa vĩnh viễn).
+   8. Thùng rác: "Chuyển vào Thùng rác" · "Khôi phục" · "Xóa vĩnh viễn". Ảnh & tệp tự xóa hẳn sau 30 ngày trong Thùng rác (`config/media.php`); bài, trang, sản phẩm, trình đơn tự xóa hẳn sau 30 ngày (như D1-2, D1-3) — Chờ backend (repo hiện giữ tới khi Xóa vĩnh viễn).
    9. Hạn ngạch = phần dùng dần, mua thêm được (từ AI, ảnh AI — §7/§7a) ≠ Hạn mức = trần của gói, không mua lẻ (số ngôn ngữ, số website, dung lượng, thư/ngày).
    10. Khách hàng = người/doanh nghiệp thuê nền tảng · Khách = người xem website · Người mua = người đặt hàng. Mục "Khách hàng" của nhóm bán hàng trong Shell (người đặt hàng) đổi thành "Người mua" → ghi TODO.md · D0-4a. Việc của vận hành viên: "Đăng nhập dưới tên khách hàng" (không "dưới tên khách").
    11. Trình đơn = menu của website khách hàng (màn dựng menu) · "Menu" = nút mở danh sách mục của trang quản trị trên điện thoại (owner chốt Q4, AUDIT.md). Giữ cả hai, đúng nghĩa.

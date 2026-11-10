@@ -1,14 +1,28 @@
-{{-- One labelled input for a typed prop (§E7): text | textarea | url | int. --}}
+{{-- One labelled input for a typed prop (§E7): text | textarea | url | int | image | enum (a choice
+     from `options`, labelled entries.opt_{prop}_{value}). A url the schema marks as a button's
+     link draws the button-action control instead. --}}
+@php $buttonView = $fieldType === 'url' ? (($buttons ?? [])[\Illuminate\Support\Str::after($model, 'blocks.')] ?? null) : null; @endphp
+@if ($buttonView !== null)
+    {{-- A block button: what it does when pressed (kind + its value), not a bare address. --}}
+    @include('admin::livewire.entries.partials.button-action', ['button' => $buttonView])
+@else
 <label>{{ $fieldLabel }}
     @switch($fieldType)
         @case('textarea')
             <textarea wire:model="{{ $model }}"></textarea>
             @break
         @case('int')
-            <input type="number" wire:model="{{ $model }}">
+            <input type="number" wire:model="{{ $model }}" class="field"@if (is_int($min ?? null)) min="{{ $min }}"@endif @if (is_int($max ?? null)) max="{{ $max }}"@endif>
+            @break
+        @case('enum')
+            <select wire:model="{{ $model }}" class="field">
+                @foreach (($options ?? []) as $option)
+                    <option value="{{ $option }}">{{ __('entries.opt_'.$fieldLabel.'_'.$option) }}</option>
+                @endforeach
+            </select>
             @break
         @case('url')
-            <input type="url" wire:model="{{ $model }}">
+            <input type="url" wire:model="{{ $model }}" class="field">
             @break
         @case('image')
             @php $imagePath = \Illuminate\Support\Str::after($model, 'blocks.'); @endphp
@@ -23,6 +37,7 @@
             </span>
             @break
         @default
-            <input type="text" wire:model="{{ $model }}">
+            <input type="text" wire:model="{{ $model }}" class="field"@if (! empty($describedBy)) aria-describedby="{{ $describedBy }}"@endif>
     @endswitch
 </label>
+@endif

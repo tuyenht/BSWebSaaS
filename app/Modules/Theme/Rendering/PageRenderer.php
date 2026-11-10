@@ -2,6 +2,12 @@
 
 namespace App\Modules\Theme\Rendering;
 
+use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Shared\Support\Cast;
+use App\Modules\Shared\Support\VideoEmbed;
+use App\Modules\Theme\Components\ListDisplay;
+use App\Modules\Theme\Components\SectionProps;
+use App\Modules\Theme\Theming\SiteSeo;
 use App\Modules\Theme\Theming\ThemeResolver;
 use Illuminate\Contracts\View\Factory as ViewFactory;
 
@@ -9,7 +15,8 @@ use Illuminate\Contracts\View\Factory as ViewFactory;
  * Renders resolved content to a full SSR HTML page on the SHARED master template:
  * pick the layout (TemplateResolver), render the Page-JSON blocks (BlockRenderer),
  * apply per-site design tokens (ThemeResolver), wrap in the layout. Takes primitives,
- * not Cms models, so the Theme module stays independent of Cms.
+ * not Cms models, so the Theme module stays independent of Cms. The <title>, the description and
+ * the meta robots follow the site's search settings (SiteSeo): head().
  */
 final readonly class PageRenderer
 {
@@ -18,11 +25,14 @@ final readonly class PageRenderer
         private TemplateResolver $templates,
         private BlockRenderer $blocks,
         private ThemeResolver $theme,
+        private MediaUrlResolver $media,
+        private VideoFacades $videos,
+        private SiteSeo $seo,
     ) {}
 
     /**
      * @param  array<string, mixed>  $body  the Page-JSON body
-     * @param  array{title?: string|null, description?: string|null}  $seo
+     * @param  array{title?: string|null, description?: string|null, home?: bool}  $seo  `home`: the site's home page
      * @param  string|null  $categoryTemplate  per-category layout name (override → category → type)
      * @param  array<string, mixed>  $extra  extra layout vars (e.g. a post's category breadcrumb)
      */
@@ -30,14 +40,398 @@ final readonly class PageRenderer
     {
         /** @var view-string $layout a theme layout name (TemplateResolver) */
         $layout = $this->templates->layoutFor($type, $templateOverride, $categoryTemplate);
+        $leadBlock = $this->blocks->leadType($body);
+        // The blocks of the slots around the page (LayoutSlots) are drawn with the body; the scripts
+        // they need load like the body's own.
+        $slots = self::slots($extra);
+        unset($extra['slotBlocks'], $extra['slotContext']);
+        $scripts = $slots['blocks'] === [] ? $body : ['blocks' => [...array_values(is_array($body['blocks'] ?? null) ? $body['blocks'] : []), ...self::slotBlockList($slots['blocks'])]];
+        $extra += in_array('hero_slider', $this->blocks->types($scripts), true) ? self::sliderHints($scripts, $leadBlock, $this->media) : [];
+        // The slider script also drives the list rows (a list block that carries the display group).
+        $extra += self::hasRails($scripts) ? ['sliderScript' => true] : [];
+        // The scroll-in motion script loads only on a page with a block that moves.
+        $extra += $this->blocks->moves($scripts) ? ['sectionsScript' => true] : [];
+        // The click-to-load video script loads only on a page with a video it can play.
+        $extra += self::playsVideo($scripts) || $this->blocks->playsRichVideo($scripts) ? ['videoScript' => true] : [];
+        // The count-up script loads only on a page with a stats block that holds a number.
+        $extra += self::countsUp($scripts) ? ['statsScript' => true] : [];
+        // The tab script loads only on a page with an article list that asks for tabs (it draws them
+        // from two sub-categories up; the script is a few hundred bytes).
+        $extra += self::hasTabs($scripts) ? ['tabsScript' => true] : [];
+        // A page led by a hero shows no breadcrumb (the hero is its opening), so its head lists none
+        // either: the JSON-LD trail and the visible one always match.
+        if ($type === 'page' && in_array($leadBlock, ['hero', 'hero_slider'], true)) {
+            unset($extra['breadcrumb']);
+        }
+        $crumbs = is_array($extra['breadcrumb'] ?? null) ? array_values($extra['breadcrumb']) : [];
+        // The layout with a table of contents prints the page's days in the band that leads it.
+        $withToc = $layout === 'theme::layouts.'.TemplateCatalog::PAGE_TOC;
+        $dates = $withToc && is_array($extra['pageDates'] ?? null) ? $extra['pageDates'] : [];
+        unset($extra['pageDates']);
+        $tokens = $this->theme->cssVariables();
+        // One pass over the body and the slots: pages and files are looked up once per kind.
+        $drawn = $this->blocks->renderBodies([self::withPageTitle($body, $title, $leadBlock, $crumbs, $dates), ...self::slotBodies($slots['blocks'])], $slots['context']);
+        ['html' => $sections, 'bgVideo' => $bgVideo] = $drawn[0];
+        $slotHtml = self::slotHtml($slots['blocks'], array_slice($drawn, 1));
+        $extra['slotHtml'] = $slotHtml;
+        $bgVideo = $bgVideo || array_filter(array_slice($drawn, 1), fn (array $one): bool => $one['bgVideo']) !== [];
+        // The background-video script loads only on a page where a hero's video resolved (a missing
+        // or deleted video renders the plain hero, with no script).
+        $extra += $bgVideo ? ['bgVideoScript' => true] : [];
+        // The photo viewer loads only on a page that drew a photo opening larger (body or slots).
+        $extra += self::zooms($sections, ...array_values($slotHtml)) ? ['viewerScript' => true] : [];
+        // The post layout's table of contents: anchors are made here for the formatted-text headings (two or more).
+        $toc = ['html' => $sections, 'items' => []];
+        if ($layout === 'theme::layouts.post') {
+            $toc = ArticleToc::of($sections, array_map('strval', array_keys((array) request()->attributes->get('sf_zigzag_ids', []))));
+            $sections = $toc['html'];
+        }
+        // The page layout with a table of contents: the band that leads the page stays full width above
+        // the two columns, and the headings of the text after it are numbered and given anchors.
+        $band = '';
+        $tocOwn = false;
+        if ($withToc) {
+            [$band, $sections] = $leadBlock === 'page_header' ? self::splitBand($sections) : ['', $sections];
+            $toc = ArticleToc::numbered($sections, array_map('strval', array_keys((array) request()->attributes->get('sf_zigzag_ids', []))));
+            $sections = $toc['html'];
+            $tocOwn = $toc['own'];
+        }
 
-        return $this->views->make($layout, [
+        return $this->views->make($layout, $this->head($seo, $title, $extra) + [
             'title' => $title,
-            'seoTitle' => $seo['title'] ?? $title,
-            'seoDescription' => $seo['description'] ?? null,
-            'tokens' => $this->theme->cssVariables(),
-            'sections' => $this->blocks->render($body),
+            'tokens' => $tokens,
+            'sections' => $sections,
+            'band' => $band,
+            // A page_header band leading the page renders the h1 itself; the layout then skips its own.
+            'leadBlock' => $leadBlock,
+            // Whether a section already printed a high-priority image (a hero, about, slider or a
+            // first block's background, wherever it sits): a post's cover then stays at 'eager', so
+            // the page asks for one high-priority image, not two. Matched on the tag: text (a post
+            // about the attribute itself) cannot hold a raw "<", Blade and the purifier escape it.
+            'bodyHighImage' => preg_match('~<img\b[^>]*\sfetchpriority="high"~', $band.$sections) === 1,
+            // The headings of the body's formatted text, for a post's table of contents (two or more).
+            'toc' => $toc['items'],
+            // The author numbered the headings: the contents list then adds no numbers of its own.
+            'tocOwn' => $tocOwn,
         ] + $extra)->render();
+    }
+
+    /**
+     * The slot blocks and the page data they draw, as the controller handed them in `$extra`.
+     *
+     * @param  array<string, mixed>  $extra
+     * @return array{blocks: array<string, list<array<array-key, mixed>>>, context: array<array-key, mixed>}
+     */
+    private static function slots(array $extra): array
+    {
+        $blocks = [];
+        foreach (is_array($extra['slotBlocks'] ?? null) ? $extra['slotBlocks'] : [] as $slot => $list) {
+            $kept = array_values(array_filter(is_array($list) ? $list : [], 'is_array'));
+            if (is_string($slot) && $kept !== []) {
+                $blocks[$slot] = $kept;
+            }
+        }
+
+        return ['blocks' => $blocks, 'context' => is_array($extra['slotContext'] ?? null) ? $extra['slotContext'] : []];
+    }
+
+    /**
+     * @param  array<string, list<array<array-key, mixed>>>  $blocks
+     * @return list<mixed>
+     */
+    private static function slotBlockList(array $blocks): array
+    {
+        return array_merge([], ...array_values($blocks));
+    }
+
+    /**
+     * @param  array<string, list<array<array-key, mixed>>>  $blocks
+     * @return list<array{blocks: list<array<array-key, mixed>>}>
+     */
+    private static function slotBodies(array $blocks): array
+    {
+        return array_map(fn (array $list): array => ['blocks' => $list], array_values($blocks));
+    }
+
+    /**
+     * @param  array<string, list<array<array-key, mixed>>>  $blocks
+     * @param  list<array{html: string, bgVideo: bool}>  $drawn
+     * @return array<string, string> slot → its HTML (only the slots that drew something)
+     */
+    private static function slotHtml(array $blocks, array $drawn): array
+    {
+        $html = [];
+        foreach (array_keys($blocks) as $index => $slot) {
+            if (trim($drawn[$index]['html']) !== '') {
+                $html[$slot] = $drawn[$index]['html'];
+            }
+        }
+
+        return $html;
+    }
+
+    /**
+     * Draw the slots of a page that has no body of its own (a list, a product): the slot HTML and
+     * the scripts its blocks need, added to the layout's variables. Takes `slotBlocks` and
+     * `slotContext` out of $extra; with no slot blocks it changes nothing else.
+     *
+     * @param  array<string, mixed>  $extra
+     * @return array<string, mixed>
+     */
+    private function withSlots(array $extra): array
+    {
+        $slots = self::slots($extra);
+        unset($extra['slotBlocks'], $extra['slotContext']);
+        if ($slots['blocks'] === []) {
+            return $extra;
+        }
+
+        $scripts = ['blocks' => self::slotBlockList($slots['blocks'])];
+        $drawn = $this->blocks->renderBodies(self::slotBodies($slots['blocks']), $slots['context'], false);
+        $slotHtml = self::slotHtml($slots['blocks'], $drawn);
+        $extra['slotHtml'] = $slotHtml;
+        $flags = [
+            // A slider with two or more slides rotates, and a list block's rows slide: the same checks as a body's.
+            'sliderScript' => self::hasRails($scripts) || (in_array('hero_slider', $this->blocks->types($scripts), true) && (self::sliderHints($scripts, null, $this->media)['sliderScript'] ?? false)),
+            'sectionsScript' => $this->blocks->moves($scripts),
+            'videoScript' => self::playsVideo($scripts) || $this->blocks->playsRichVideo($scripts),
+            'statsScript' => self::countsUp($scripts),
+            'tabsScript' => self::hasTabs($scripts),
+            'bgVideoScript' => array_filter($drawn, fn (array $one): bool => $one['bgVideo']) !== [],
+            'viewerScript' => self::zooms(...array_values($slotHtml)),
+        ];
+        foreach ($flags as $key => $on) {
+            if ($on) {
+                $extra[$key] = true;
+            }
+        }
+
+        return $extra;
+    }
+
+    /**
+     * The head's search lines for a page (SiteSeo): the <title> (its own Google title, the site's
+     * default title on the home page, else the title template), the description (its own, else the
+     * site's default in the page's language; the head falls back to the brand description), and
+     * `noindex, nofollow` on every page while the site is hidden from search engines (over any
+     * robots line the page asked for). The page's language and the site's name come from the
+     * chrome the controller already resolved: no query here.
+     *
+     * @param  array{title?: string|null, description?: string|null, home?: bool}  $seo
+     * @param  array<string, mixed>  $extra
+     * @return array{seoTitle: string, seoDescription: string|null, robots?: string}
+     */
+    private function head(array $seo, string $title, array $extra): array
+    {
+        $locale = Cast::string($extra['lang'] ?? null, app()->getLocale());
+        $head = [
+            'seoTitle' => $this->seo->title($seo['title'] ?? null, $title, $seo['home'] ?? false, $locale, Cast::string(data_get($extra, 'brand.name'))),
+            'seoDescription' => $this->seo->description($seo['description'] ?? null, $locale),
+        ];
+        if (! $this->seo->indexable()) {
+            $head['robots'] = SiteSeo::HIDDEN;
+        }
+
+        return $head;
+    }
+
+    /**
+     * Whether an article list on the page asks for tabs (a card look with `tabs` other than `off`; the
+     * plain list and the rows never draw tabs, so they do not load the script).
+     * Pure: no query.
+     *
+     * @param  array<string, mixed>  $body
+     */
+    private static function hasTabs(array $body): bool
+    {
+        foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
+            $props = is_array($block) && ($block['type'] ?? null) === 'entry_grid' && is_array($block['props'] ?? null) ? $block['props'] : null;
+            if ($props !== null && in_array($props['variant'] ?? 'list', SectionProps::TAB_VARIANTS, true) && in_array($props['tabs'] ?? 'off', ['auto', 'filter'], true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether a list block on the page carries the display group (a block saved before it has no
+     * `layout` key and draws as it always did, with no script). Pure: no query.
+     *
+     * @param  array<string, mixed>  $body
+     */
+    private static function hasRails(array $body): bool
+    {
+        foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
+            if (is_array($block) && in_array($block['type'] ?? null, ['entry_grid', 'product_grid', 'partners', 'testimonial', 'team'], true)
+                && is_array($block['props'] ?? null) && ListDisplay::applies($block['props'])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * What the head needs for a slider: `sliderScript` when a slider on the page has two or more
+     * slides to rotate (the script loads nowhere else), and `mediaOrigin` when a slider leads the
+     * page with a photo on its first slide and the media host is another origin (a `preconnect`,
+     * so the LCP image's connection starts with the HTML). Pages without a slider get nothing, so
+     * their head is unchanged. Pure: no query.
+     *
+     * @param  array<string, mixed>  $body
+     * @return array{sliderScript?: true, mediaOrigin?: string}
+     */
+    private static function sliderHints(array $body, ?string $leadType, MediaUrlResolver $media): array
+    {
+        $hints = [];
+        $leadSeen = false;
+        foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
+            if (! is_array($block) || ($block['type'] ?? null) !== 'hero_slider') {
+                continue;
+            }
+            $slides = array_values(array_filter(
+                is_array(data_get($block, 'props.slides')) ? data_get($block, 'props.slides') : [],
+                fn (mixed $slide): bool => is_array($slide) && (! empty($slide['image_url']) || (is_string($slide['heading'] ?? null) && trim($slide['heading']) !== '')),
+            ));
+            if (count($slides) > 1) {
+                $hints['sliderScript'] = true;
+            }
+            if ($leadType === 'hero_slider' && ! $leadSeen) {
+                $leadSeen = true;
+                $origin = $slides !== [] && ! empty($slides[0]['image_url']) ? $media->origin() : null;
+                if ($origin !== null && $origin !== request()->getSchemeAndHttpHost()) {
+                    $hints['mediaOrigin'] = $origin;
+                }
+            }
+        }
+
+        return $hints;
+    }
+
+    /**
+     * Whether a video block on the page holds an address VideoEmbed recognises (the block renders
+     * nothing otherwise). Pure: no query.
+     *
+     * @param  array<string, mixed>  $body
+     */
+    private static function playsVideo(array $body): bool
+    {
+        foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
+            $url = is_array($block) && ($block['type'] ?? null) === 'video' ? data_get($block, 'props.url') : null;
+            if (is_string($url) && VideoEmbed::player($url) !== null) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether drawn HTML holds a photo that opens larger (a link marked `data-sf-zoom`, printed only by
+     * the theme's gallery and about views). Matched on the tag, as `bodyHighImage` is: text cannot
+     * hold a raw "<", and the purifier drops data attributes from formatted text.
+     */
+    private static function zooms(string ...$html): bool
+    {
+        foreach ($html as $one) {
+            if (preg_match('~<a\b[^>]*\sdata-sf-zoom=~', $one) === 1) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether a stats block (or the stats beside a call to action) on the page holds at least one
+     * counted number, the only thing the count-up script animates: a year is printed as is. Pure: no query.
+     *
+     * @param  array<string, mixed>  $body
+     */
+    private static function countsUp(array $body): bool
+    {
+        foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
+            $type = is_array($block) ? ($block['type'] ?? null) : null;
+            $props = is_array($block) && is_array($block['props'] ?? null) ? $block['props'] : [];
+            $key = match (true) {
+                $type === 'stats' => 'items',
+                $type === 'cta' && ($props['side'] ?? null) === 'stats' && ($props['variant'] ?? null) !== 'rounded' => 'side_items',
+                default => null,
+            };
+            $max = $type === 'stats' ? SectionProps::STATS_MAX_ITEMS : SectionProps::CTA_SIDE_MAX_ITEMS;
+            foreach ($key === null ? [] : SectionProps::items($props, $key, $max) as $item) {
+                if (SectionProps::choice($item, 'kind', SectionProps::STAT_KINDS) === 'number' && SectionProps::statNumber($item['value'] ?? null) !== null) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Prepare the page_header blocks: one without its own title shows the page title, and only
+     * the band that leads the page is marked as the page's h1 (`_lead`) and carries the page's
+     * breadcrumb (`_crumbs`) and, on the layout with a table of contents, the page's days (`_dates`)
+     * — any later band is an h2 without them. All are always set here, so a stored value never counts.
+     *
+     * @param  array<string, mixed>  $body
+     * @param  list<mixed>  $crumbs  the page's breadcrumb trail (Home → … → this page)
+     * @param  array<array-key, mixed>  $dates  the page's days (PostDetail::dates shape), or none
+     * @return array<string, mixed>
+     */
+    private static function withPageTitle(array $body, string $title, ?string $leadType, array $crumbs = [], array $dates = []): array
+    {
+        if ($leadType === null || ! is_array($body['blocks'] ?? null)) {
+            return $body;
+        }
+
+        $blocks = $body['blocks'];
+        $leadFound = false;
+        foreach ($blocks as $index => $block) {
+            if (! is_array($block) || ! is_string($block['type'] ?? null)) {
+                continue;
+            }
+            $isLead = ! $leadFound && $block['type'] === $leadType;
+            $leadFound = $leadFound || $isLead;
+            if ($block['type'] !== 'page_header') {
+                continue;
+            }
+
+            $props = is_array($block['props'] ?? null) ? $block['props'] : [];
+            if (! is_string($props['title'] ?? null) || trim($props['title']) === '') {
+                $props['title'] = $title;
+            }
+            $props['_lead'] = $isLead;
+            $props['_crumbs'] = $isLead ? $crumbs : [];
+            $props['_dates'] = $isLead ? $dates : [];
+            $block['props'] = $props;
+            $blocks[$index] = $block;
+        }
+        $body['blocks'] = $blocks;
+
+        return $body;
+    }
+
+    /**
+     * The title band that leads the page (its first block, bare or in its look wrapper) and the rest
+     * of the page's sections. Both views are the theme's own, so the band closes at its first
+     * `</section>` (it holds no section), followed by the wrapper's `</div>` when it has one.
+     *
+     * @return array{0: string, 1: string}
+     */
+    private static function splitBand(string $sections): array
+    {
+        if (preg_match('~^\s*(?:<div class="sf-s[^"]*"[^>]*>.*?)?<section class="page-band">.*?</section>~s', $sections, $band) !== 1) {
+            return ['', $sections];
+        }
+        $end = strlen($band[0]);
+        if (str_starts_with(ltrim($band[0]), '<div') && preg_match('~\G\s*</div>~', $sections, $close, 0, $end) === 1) {
+            $end += strlen($close[0]);
+        }
+
+        return [substr($sections, 0, $end), substr($sections, $end)];
     }
 
     /**
@@ -54,11 +448,10 @@ final readonly class PageRenderer
     {
         /** @var view-string $layout a theme layout name (TemplateResolver) */
         $layout = $this->templates->layoutFor('category', null, $listTemplate);
+        $extra = $this->withSlots($extra);
 
-        return $this->views->make($layout, [
+        return $this->views->make($layout, $this->head($seo, $title, $extra) + [
             'title' => $title,
-            'seoTitle' => $seo['title'] ?? $title,
-            'seoDescription' => $seo['description'] ?? null,
             'tokens' => $this->theme->cssVariables(),
             'posts' => $posts,
             'pagination' => $pagination,
@@ -79,14 +472,35 @@ final readonly class PageRenderer
     {
         /** @var view-string $layout a theme layout name (TemplateResolver) */
         $layout = $this->templates->layoutFor('product');
+        $extra = $this->withSlots($extra);
+        // Videos stored in the description render as the click-to-load façade (VideoFacades).
+        ['html' => $descriptionHtml, 'videos' => $videos] = $this->videos->render($descriptionHtml);
+        // A specification table gets the same narrow-column layout as one in a post body.
+        $descriptionHtml = ProseTables::apply($descriptionHtml);
 
-        return $this->views->make($layout, [
+        return $this->views->make($layout, $this->head($seo, $name, $extra) + [
             'title' => $name,
-            'seoTitle' => $seo['title'] ?? $name,
-            'seoDescription' => $seo['description'] ?? null,
             'tokens' => $this->theme->cssVariables(),
             'description' => $descriptionHtml,
             'images' => $images,
+        ] + ($videos > 0 ? ['videoScript' => true] : []) + $extra)->render();
+    }
+
+    /**
+     * Render the site's 404 page on its own layout (theme::layouts.not-found), in the same header,
+     * footer and tokens as every page. The <title> runs through the site's title template like any
+     * inner page, and the head carries whatever robots line the caller set (the controller asks
+     * for `noindex`; a site hidden from search engines keeps its own, stricter one).
+     *
+     * @param  array<string, mixed>  $extra  the page chrome, the contact page's address and the suggested links
+     */
+    public function renderNotFound(string $title, array $extra = []): string
+    {
+        return $this->views->make('theme::layouts.not-found', $this->head([], $title, $extra) + [
+            'title' => $title,
+            'tokens' => $this->theme->cssVariables(),
+            // The head leaves out the share tags and the JSON-LD: there is no page to describe.
+            'notFound' => true,
         ] + $extra)->render();
     }
 }

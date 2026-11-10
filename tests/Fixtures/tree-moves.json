@@ -1,0 +1,37 @@
+{
+    "about": "The shared admin tree's moves on the component gallery's sample menu. tests/js/admin-tree-dnd.test.mjs checks that the browser's rule (resources/js/admin-tree-dnd.js) works out exactly these parents and positions; AdminTreeListTest feeds the same parents and positions to the gallery's move method and checks the children it ends with.",
+    "rows": [
+        { "k": "trang-chu", "parent": null, "lv": 1 },
+        { "k": "gioi-thieu", "parent": null, "lv": 1 },
+        { "k": "lich-su", "parent": "gioi-thieu", "lv": 2 },
+        { "k": "doi-ngu", "parent": "gioi-thieu", "lv": 2 },
+        { "k": "san-pham", "parent": null, "lv": 1 },
+        { "k": "gia-cong-cnc", "parent": "san-pham", "lv": 2 },
+        { "k": "phay-5-truc", "parent": "gia-cong-cnc", "lv": 3 },
+        { "k": "tien-cnc", "parent": "gia-cong-cnc", "lv": 3 },
+        { "k": "khuon-mau", "parent": "san-pham", "lv": 2 },
+        { "k": "tin-tuc", "parent": null, "lv": 1 },
+        { "k": "lien-he", "parent": null, "lv": 1 }
+    ],
+    "moves": [
+        { "act": "moveUp", "k": "tien-cnc", "parent": "gia-cong-cnc", "pos": 0, "kids": ["tien-cnc", "phay-5-truc"] },
+        { "act": "moveDown", "k": "phay-5-truc", "parent": "gia-cong-cnc", "pos": 1, "kids": ["tien-cnc", "phay-5-truc"] },
+        { "act": "moveDown", "k": "lich-su", "parent": "gioi-thieu", "pos": 1, "kids": ["doi-ngu", "lich-su"] },
+        { "act": "moveDown", "k": "trang-chu", "parent": null, "pos": 1, "kids": ["gioi-thieu", "trang-chu", "san-pham", "tin-tuc", "lien-he"] },
+        { "act": "indent", "k": "tin-tuc", "parent": "san-pham", "pos": 2, "kids": ["gia-cong-cnc", "khuon-mau", "tin-tuc"] },
+        { "act": "indent", "k": "doi-ngu", "parent": "lich-su", "pos": 0, "kids": ["doi-ngu"] },
+        { "act": "outdent", "k": "phay-5-truc", "parent": "san-pham", "pos": 1, "kids": ["gia-cong-cnc", "phay-5-truc", "khuon-mau"] },
+        { "act": "outdent", "k": "lich-su", "parent": null, "pos": 2, "kids": ["trang-chu", "gioi-thieu", "lich-su", "san-pham", "tin-tuc", "lien-he"] }
+    ],
+    "drops": [
+        { "k": "lien-he", "target": { "rel": "child", "parent": "gioi-thieu", "refK": "gioi-thieu" }, "pos": 0, "kids": ["lien-he", "lich-su", "doi-ngu"] },
+        { "k": "trang-chu", "target": { "rel": "after", "parent": null, "refK": "san-pham", "afterK": "san-pham" }, "pos": 2, "kids": ["gioi-thieu", "san-pham", "trang-chu", "tin-tuc", "lien-he"] },
+        { "k": "lien-he", "target": { "rel": "before", "parent": "san-pham", "refK": "khuon-mau", "beforeK": "khuon-mau" }, "pos": 1, "kids": ["gia-cong-cnc", "lien-he", "khuon-mau"] }
+    ],
+    "refused": [
+        { "act": "moveUp", "k": "trang-chu", "no": "atTop" },
+        { "act": "moveDown", "k": "doi-ngu", "no": "atBottom" },
+        { "act": "indent", "k": "lich-su", "no": "noAbove" },
+        { "act": "outdent", "k": "tin-tuc", "no": "atOuter" }
+    ]
+}

@@ -75,3 +75,33 @@ it('lists sites without an N+1 on domain/tenant/site_type', function (): void {
 
     expect($queries)->toBeLessThanOrEqual(6);
 });
+
+it('finds a website by its name whatever the accents and the case of what is typed', function (): void {
+    $host = (string) config('tenancy.platform_host');
+    DB::connection('pgsql_admin')->table('sites')->where('id', 1)->update(['name' => 'Cửa hàng Hồ Chí Minh']);
+    DB::connection('pgsql_admin')->table('sites')->where('id', 2)->update(['name' => 'Xưởng Hà Nội']);
+    $operator = siteOperator('super_admin');
+
+    // old code compared accents: "ho chi minh" found nothing
+    $this->actingAs($operator)->get("http://{$host}/sites?q=".rawurlencode('HO CHI MINH'))
+        ->assertOk()->assertSee('a.test')->assertDontSee('b.test');
+    $this->actingAs($operator)->get("http://{$host}/sites?q=".rawurlencode('  xương hà '))
+        ->assertOk()->assertSee('b.test')->assertDontSee('a.test');
+    $this->actingAs($operator)->get("http://{$host}/sites?q=".rawurlencode('   '))
+        ->assertOk()->assertSee('a.test')->assertSee('b.test');
+});
+
+it('matches a literal percent sign or underscore in a website name search only where the name has it', function (): void {
+    $host = (string) config('tenancy.platform_host');
+    DB::connection('pgsql_admin')->table('sites')->where('id', 1)->update(['name' => 'Giảm 50% Hồ']);
+    DB::connection('pgsql_admin')->table('sites')->where('id', 2)->update(['name' => 'Xưởng thường']);
+    $operator = siteOperator('super_admin');
+
+    // old code treated % and _ as wildcards: both listed every website
+    foreach (['%', '50%'] as $q) {
+        $this->actingAs($operator)->get("http://{$host}/sites?q=".rawurlencode($q))
+            ->assertOk()->assertSee('a.test')->assertDontSee('b.test');
+    }
+    $this->actingAs($operator)->get("http://{$host}/sites?q=".rawurlencode('_'))
+        ->assertOk()->assertDontSee('a.test')->assertDontSee('b.test');
+});

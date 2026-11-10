@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Providers\AdminServiceProvider;
+use App\Modules\Audit\Providers\AuditServiceProvider;
 use App\Modules\Catalog\Providers\CatalogServiceProvider;
 use App\Modules\Cms\Providers\CmsServiceProvider;
 use App\Modules\Forms\Providers\FormsServiceProvider;
@@ -10,6 +11,7 @@ use App\Modules\Monitoring\Providers\MonitoringServiceProvider;
 use App\Modules\Notifications\Providers\NotificationsServiceProvider;
 use App\Modules\Provisioning\Providers\ProvisioningServiceProvider;
 use App\Modules\Rbac\Providers\RbacServiceProvider;
+use App\Modules\Shared\Providers\SharedServiceProvider;
 use App\Modules\Tenancy\Providers\TenancyServiceProvider;
 use App\Modules\Theme\Providers\ThemeServiceProvider;
 use App\Providers\AppServiceProvider;
@@ -18,9 +20,11 @@ use App\Providers\HorizonServiceProvider;
 return [
     AppServiceProvider::class,
     HorizonServiceProvider::class,
+    SharedServiceProvider::class,
     IdentityServiceProvider::class,
     TenancyServiceProvider::class,
     RbacServiceProvider::class,
+    AuditServiceProvider::class,
     NotificationsServiceProvider::class,
     ProvisioningServiceProvider::class,
     ThemeServiceProvider::class,

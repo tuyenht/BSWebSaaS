@@ -37,6 +37,29 @@ it('closes a permission set under its implications', function (): void {
         ->toEqualCanonicalizing(['catalog.manage', 'catalog.view', 'entries.edit.any', 'entries.view']);
 });
 
+it('lets whoever manages domains also see them', function (): void {
+    expect(PermissionRegistry::TENANT_PERMISSIONS)->toContain('domains.view')
+        ->and(PermissionRegistry::withImplied(['domains.manage']))->toEqualCanonicalizing(['domains.manage', 'domains.view']);
+});
+
+it('grants the read-only domains permission to editor and viewer, not to author or contributor', function (): void {
+    $templates = PermissionRegistry::tenantRoleTemplates('corporate');
+    $holds = function (string $name) use ($templates): bool {
+        $permissions = $templates[$name]['permissions'] === '*' ? PermissionRegistry::TENANT_PERMISSIONS : $templates[$name]['permissions'];
+
+        return in_array('domains.view', $permissions, true);
+    };
+
+    expect($holds('owner'))->toBeTrue()
+        ->and($holds('admin'))->toBeTrue()
+        ->and($holds('editor'))->toBeTrue()
+        ->and($holds('viewer'))->toBeTrue()
+        ->and($holds('author'))->toBeFalse()
+        ->and($holds('contributor'))->toBeFalse()
+        ->and(in_array('domains.manage', $templates['editor']['permissions'], true))->toBeFalse()
+        ->and(in_array('domains.manage', $templates['viewer']['permissions'], true))->toBeFalse();
+});
+
 it('ships every role template already closed under implication', function (): void {
     foreach (PermissionRegistry::tenantRoleTemplates('corporate') as $name => $template) {
         $permissions = $template['permissions'] === '*' ? PermissionRegistry::TENANT_PERMISSIONS : $template['permissions'];

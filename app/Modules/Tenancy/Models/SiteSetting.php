@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Tenancy\Models;
 
 use App\Modules\Tenancy\Concerns\BelongsToSite;
+use App\Modules\Tenancy\Concerns\RecordsWhoSaved;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -15,10 +16,12 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $group_name
  * @property string $key
  * @property array<string, mixed> $value
+ * @property int|null $updated_by the account that saved last (RecordsWhoSaved)
  */
 class SiteSetting extends Model
 {
     use BelongsToSite;
+    use RecordsWhoSaved;
 
     #[\Override]
     protected $guarded = [];
@@ -31,6 +34,7 @@ class SiteSetting extends Model
     {
         return [
             'value' => 'array',
+            'updated_by' => 'integer',
         ];
     }
 }

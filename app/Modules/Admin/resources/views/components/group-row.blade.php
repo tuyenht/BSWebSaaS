@@ -12,12 +12,13 @@
     // last first, while the chosen group and Trash always stay in the row. "Khác" sits right after
     // the last group and Trash at the far end, at least 2rem apart; the menu never leaves the row.
     //
-    // $groups: list<array{key: string, label: string, icon?: string|null, count?: int|null, trash?: bool}>
+    // $groups: list<array{key: string, label: string, icon?: string|null, count?: int|string|null, trash?: bool}>
+    // A count given as text ("hơn 10.000", for a list that stops counting) is shown as given.
     // $active: the chosen group's key. $model: the host Livewire property a click sets.
     // $label: the row's name, e.g. "Nhóm tệp".
     //
     // "Khác" opens with Enter, Space or ↓; ↑ ↓ move through it; Esc closes it and focus returns to it.
-    $fmt = fn (?int $n): ?string => $n === null ? null : \Illuminate\Support\Number::format($n, locale: app()->getLocale());
+    $fmt = fn (int|string|null $n): ?string => is_int($n) ? \Illuminate\Support\Number::format($n, locale: app()->getLocale()) : $n;
     $setter = fn (string $key): string => '$set('.\Illuminate\Support\Js::from($model).', '.\Illuminate\Support\Js::from($key).')';
     // Stable across re-renders, so a morph never rewrites aria-controls under an open menu
     $menuId = 'gm-'.substr(md5($model), 0, 8);
@@ -28,6 +29,8 @@
         open: false,
         left: 0,
         stopMorph: null,
+        stopSize: null,
+        observeGroups: null,
         fits() {
             const row = this.$refs.row, trash = row.querySelector(':scope > [data-trash]');
             if (row.scrollWidth > row.clientWidth) return false;
@@ -54,11 +57,24 @@
             this.over = over;
             if (! over.length) { more.hidden = true; this.open = false; }
         },
+        // Fit again when the row's width changes, and when a shown group's width changes while the row
+        // keeps its box: a larger text size (on touch every group is already 44px tall, so the row
+        // does not grow) or a web font that arrives late. A group fit() has just hidden reports a
+        // zero size and is skipped, so a fit never triggers itself. Groups a re-render adds are
+        // observed too (observeGroups() runs again after each morph).
+        watchSize() {
+            const row = this.$refs.row;
+            const ro = new ResizeObserver((entries) => { if (entries.some((e) => e.target === row || ! e.target.hidden)) this.fit(); });
+            ro.observe(row);
+            this.observeGroups = () => row.querySelectorAll(':scope > [data-g]').forEach((el) => ro.observe(el));
+            this.observeGroups();
+            this.stopSize = () => ro.disconnect();
+        },
         // A Livewire re-render morphs the row back to the server HTML (every group shown, Khác hidden): fit again after each one
         watchMorph() {
-            try { this.stopMorph = this.$wire.interceptMessage(({ onSuccess }) => onSuccess(({ onMorphed }) => onMorphed(() => this.fit()))); } catch (e) {}
+            try { this.stopMorph = this.$wire.interceptMessage(({ onSuccess }) => onSuccess(({ onMorphed }) => onMorphed(() => { this.observeGroups?.(); this.fit(); }))); } catch (e) {}
         },
-        destroy() { this.stopMorph?.(); },
+        destroy() { this.stopMorph?.(); this.stopSize?.(); },
         items() { return [...this.$refs.menu.querySelectorAll('[role=menuitemradio]')].filter((el) => el.offsetParent !== null); },
         show(focusFirst = true) {
             this.left = this.$refs.more.offsetLeft;
@@ -73,7 +89,7 @@
         hide(back = true) { if (! this.open) return; this.open = false; if (back) this.$refs.moreButton.focus(); },
         step(d) { const f = this.items(), i = f.indexOf(document.activeElement); f[(i + d + f.length) % f.length]?.focus(); },
     }"
-    x-init="$nextTick(() => fit()); new ResizeObserver(() => fit()).observe($refs.row); watchMorph()"
+    x-init="$nextTick(() => fit()); watchSize(); watchMorph()"
     @keydown.escape="hide()"
     @click.outside="hide(false)"
     {{ $attributes->merge(['class' => 'relative hidden min-w-0 border-b border-border min-[900px]:block']) }}
@@ -86,7 +102,7 @@
                             aria-haspopup="menu" aria-controls="{{ $menuId }}" :aria-expanded="open ? 'true' : 'false'"
                             @click="open ? hide() : show()"
                             @keydown.down.prevent="show()"
-                            class="-mb-px inline-flex min-h-control items-center gap-1 whitespace-nowrap border-b-2 border-transparent px-2.5 text-body font-medium text-text-muted transition-colors hover:text-text-strong pointer-coarse:min-h-hit">
+                            class="-mb-px inline-flex min-h-control items-center gap-1 whitespace-nowrap border-b-2 border-transparent px-2.5 text-body font-medium text-text-muted transition-colors hover:text-text-strong any-pointer-coarse:min-h-hit">
                         <span>{{ __('admin.list.more_groups') }}</span>
                         <x-bs-admin::icon name="chevron-down" class="size-4 shrink-0" />
                     </button>
@@ -98,7 +114,7 @@
                     aria-pressed="{{ $on ? 'true' : 'false' }}"
                     wire:click="{{ $setter($group['key']) }}"
                     @class([
-                        '-mb-px inline-flex min-h-control shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-2.5 text-body transition-colors pointer-coarse:min-h-hit',
+                        '-mb-px inline-flex min-h-control shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-2.5 text-body transition-colors any-pointer-coarse:min-h-hit',
                         'ms-auto' => $group['trash'] ?? false,
                         'border-transparent font-medium text-text-muted hover:text-text-strong' => ! $on,
                         'border-primary-text font-bold text-primary-text' => $on && ! ($group['trash'] ?? false),
@@ -130,7 +146,7 @@
                     x-show="over.includes(@js($group['key']))"
                     wire:click="{{ $setter($group['key']) }}" @click="hide()"
                     @class([
-                        'flex min-h-control w-full items-center gap-2 rounded px-2.5 py-1.5 text-start text-body [overflow-wrap:anywhere] hover:bg-surface-hover pointer-coarse:min-h-hit',
+                        'flex min-h-menu-row w-full items-center gap-2 rounded px-2.5 py-1.5 text-start text-body [overflow-wrap:anywhere] hover:bg-surface-hover any-pointer-coarse:min-h-menu-row-touch',
                         'font-bold text-primary-text' => $on,
                         'text-text' => ! $on,
                     ])>

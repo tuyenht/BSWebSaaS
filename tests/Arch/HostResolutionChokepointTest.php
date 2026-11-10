@@ -75,7 +75,7 @@ it('changes a site\'s domains only behind the permission check and the audit tra
             continue;
         }
 
-        if (preg_match('/Tenancy\\\\Actions\\\\(AttachDomain|CheckDomain|ChooseRunningSpelling|EnableHttps|SetPrimaryDomain|RemoveDomain)\b/', File::get($file->getPathname())) === 1) {
+        if (preg_match('/Tenancy\\\\Actions\\\\(AttachDomain|CheckDomain|ChooseRunningSpelling|ChoosePointingMethod|EnableHttps|SetPrimaryDomain|RemoveDomain)\b/', File::get($file->getPathname())) === 1) {
             $violations[] = $relative;
         }
     }

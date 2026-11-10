@@ -88,12 +88,69 @@ it('renders the partners block as a logo grid, linking a logo only when it has b
     expect(substr_count($html, '<a '))->toBe(1);
 });
 
-it('skips a partner logo that has no image_url (no empty <img>)', function (): void {
-    $props = ['logos' => [['name' => 'Không ảnh', 'url' => '/x']]];
+it('shows the name of a partner that has no logo yet, and skips one with neither', function (): void {
+    $props = ['logos' => [
+        ['name' => 'Không ảnh', 'url' => '/x'],
+        ['name' => '  '],
+        ['url' => '/y'],
+        ['name' => 'Công ty TNHH Cơ khí Chính xác Mẫu'],
+    ]];
 
     $html = View::make('theme::sections.partners', ['props' => $props])->render();
 
-    expect($html)->not->toContain('<img')->not->toContain('src=""');
+    // no empty <img>: the name stands in the frame, still linked (it is the link's own text)
+    expect($html)->not->toContain('<img')->not->toContain('src=""')
+        ->toContain('<span class="partners__name">Không ảnh</span>')
+        ->toContain('href="/x"')->not->toContain('href="/y"');
+    // a full company name is set smaller, so a narrow frame stays a few lines tall
+    expect($html)->toContain('<span class="partners__name partners__name--long">Công ty TNHH Cơ khí Chính xác Mẫu</span>');
+    expect(substr_count($html, '<li class="partners__item">'))->toBe(2);
+});
+
+it('links a partner only by a real name and shows nothing for a logo that is not a file path', function (): void {
+    $props = ['logos' => [
+        ['image_url' => 'https://cdn.example/blank.png', 'name' => '  ', 'url' => '/blank'],
+        ['image_url' => 'https://cdn.example/odd.png', 'name' => ['x'], 'url' => '/odd'],
+        ['image_url' => ['x']],
+        ['image_url' => true],
+    ]];
+
+    $html = View::make('theme::sections.partners', ['props' => $props])->render();
+
+    // a blank or odd name never makes a name-less link, and never breaks the page
+    expect($html)->toContain('src="https://cdn.example/blank.png" alt=""')
+        ->toContain('src="https://cdn.example/odd.png" alt=""')
+        ->not->toContain('<a ')->not->toContain('partners__name');
+    expect(substr_count($html, '<li class="partners__item">'))->toBe(2);
+});
+
+it('draws a partner with only a name inside the slider rail too', function (): void {
+    $props = ['layout' => 'slider', 'logos' => [
+        ['image_url' => 'https://cdn.example/a.png', 'name' => 'Có ảnh'],
+        ['name' => 'Chỉ có tên', 'url' => 'https://ten.example'],
+    ]];
+
+    $html = View::make('theme::sections.partners', ['props' => $props])->render();
+
+    expect($html)->toContain('sf-rail__list')
+        ->toContain('href="https://ten.example"')
+        ->toContain('<span class="partners__name">Chỉ có tên</span>');
+});
+
+it('draws a library logo at its own proportions, and a logo of unknown size at a stand-in box', function (): void {
+    $props = ['logos' => [
+        ['image_url' => 'https://cdn.example/wide.png', 'name' => 'Rộng'],
+        ['image_url' => 'https://cdn.example/other.png', 'name' => 'Ngoài thư viện'],
+        ['image_url' => 'https://cdn.example/broken.png', 'name' => 'Hỏng'],
+    ]];
+    $dims = ['https://cdn.example/wide.png' => [600, 150], 'https://cdn.example/broken.png' => [0, 0]];
+
+    $html = View::make('theme::sections.partners', ['props' => $props, 'dims' => $dims])->render();
+
+    // the library's size reserves the space (no layout shift); the ratio sizes the logo's height
+    expect($html)->toContain('src="https://cdn.example/wide.png" alt="Rộng" width="600" height="150" style="--logo-r: 4"')
+        ->toContain('src="https://cdn.example/other.png" alt="Ngoài thư viện" width="160" height="80" loading="lazy"')
+        ->toContain('src="https://cdn.example/broken.png" alt="Hỏng" width="160" height="80" loading="lazy"');
 });
 
 it('renders a hero second CTA when cta2 props are set', function (): void {
@@ -172,6 +229,18 @@ it('sandboxes the contact map iframe and names it even when the heading is empty
         ->toContain('title="Bản đồ"')->not->toContain('title=""');              // a11y fallback name
 });
 
+it('embeds a contact map only from an allowed web link', function (): void {
+    $render = fn (string $url): string => View::make('theme::sections.contact', ['props' => ['map_embed' => $url]])->render();
+
+    expect($render('//evil.example/e'))->not->toContain('<iframe')
+        ->and($render('javascript:alert(1)'))->not->toContain('<iframe')
+        ->and($render('https://maps.example/e?a=1&b=2'))->toContain('src="https://maps.example/e?a=1&amp;b=2"');   // no host list: any web link
+
+    config(['cms.map_hosts' => ['google.com']]);
+    expect($render('https://www.google.com/maps/embed?pb=1'))->toContain('src="https://www.google.com/maps/embed?pb=1"')
+        ->and($render('https://maps.example/e'))->not->toContain('<iframe');
+});
+
 it('does not link a partner logo that has a url but no name (a11y: no name-less link)', function (): void {
     $props = ['logos' => [['image_url' => 'https://cdn.example/p.png', 'url' => 'https://p.test']]];
 
@@ -185,4 +254,31 @@ it('scans bundled theme blades for Tailwind classes so storefront utilities are 
     // Regression guard: the bundled theme lives at top-level themes/; the Tailwind @source must
     // cover it, else moving views out of app/Modules/ silently purges their utility classes.
     expect(file_get_contents(base_path('resources/css/app.css')))->toContain("@source '../../themes/");
+});
+
+it('renders the page title band with an eager, decorative LCP image and a clamped overlay', function (int $overlay, string $opacity): void {
+    $html = View::make('theme::sections.page_header', ['props' => [
+        'title' => 'Giới thiệu', 'subtitle' => 'Về chúng tôi', 'image_url' => 'https://files.baoson.net/band.jpg', 'overlay' => $overlay, '_lead' => true, '_high' => true,
+    ]])->render();
+
+    expect($html)
+        ->toMatch('#<img class="page-band__bg"\s+src="https://files\.baoson\.net/band\.jpg"\s+alt=""\s+width="1600"\s+height="400"\s+loading="eager"\s+fetchpriority="high">#')
+        ->toContain('<div class="page-band__overlay" style="opacity:'.$opacity.'"></div>')
+        ->toContain('<h1 class="page-band__title">Giới thiệu</h1>')
+        ->toContain('<p class="page-band__subtitle">Về chúng tôi</p>');
+})->with([
+    'in range' => [70, '0.7'],
+    'too light' => [5, '0.55'],
+    'below the readable floor' => [40, '0.55'],
+    'too dark' => [100, '0.8'],
+]);
+
+it('renders a solid band with an h2 when it has no image and does not lead the page', function (): void {
+    $plain = View::make('theme::sections.page_header', ['props' => ['title' => 'Nhà xưởng']])->render();
+    $unsafe = View::make('theme::sections.page_header', ['props' => ['title' => 'X', 'image_url' => 'javascript:alert(1)']])->render();
+
+    expect($plain)->toContain('<h2 class="page-band__title">Nhà xưởng</h2>')
+        ->not->toContain('<img')
+        ->not->toContain('page-band__overlay')
+        ->and($unsafe)->not->toContain('<img')->not->toContain('javascript:');
 });

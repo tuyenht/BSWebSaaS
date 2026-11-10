@@ -4,21 +4,37 @@ namespace App\Modules\Cms\Providers;
 
 use App\Modules\Cms\Components\EntryGridComponent;
 use App\Modules\Cms\Components\LatestPostsComponent;
+use App\Modules\Cms\Console\CountWrongTemplates;
+use App\Modules\Cms\Console\FillMissingUlids;
 use App\Modules\Cms\Console\FlushEntryViews;
 use App\Modules\Cms\Console\PruneEntryRevisions;
 use App\Modules\Cms\Console\PublishDueEntries;
+use App\Modules\Cms\Console\PurgeTrashedMenuItems;
 use App\Modules\Cms\Console\RebuildTaxonomyPaths;
+use App\Modules\Cms\Console\ReconcileCategoryCounts;
+use App\Modules\Cms\Console\ResanitizePageBodies;
 use App\Modules\Cms\Console\SnapshotPublishedEntries;
+use App\Modules\Cms\Events\EntryPublished;
+use App\Modules\Cms\Listeners\AddPublishedPageToMenu;
 use App\Modules\Cms\Listeners\ForgetMemberCategoryScopes;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Navigation\MenuTargets;
+use App\Modules\Cms\Navigation\SpecialLinks;
 use App\Modules\Cms\Observers\EntryObserver;
+use App\Modules\Cms\Observers\TaxonomyObserver;
 use App\Modules\Cms\Policies\EntryPolicy;
+use App\Modules\Cms\Policies\MenuPolicy;
+use App\Modules\Cms\Policies\TaxonomyPolicy;
 use App\Modules\Cms\Routing\CategoryDependents;
+use App\Modules\Cms\Routing\EntryPageLinks;
 use App\Modules\Cms\Routing\SectionResolver;
+use App\Modules\Cms\Support\CategoryItemCounts;
 use App\Modules\Cms\Support\CategoryScopes;
+use App\Modules\Cms\Support\LayoutSlotBlocks;
 use App\Modules\Rbac\Events\SiteMembershipChanged;
+use App\Modules\Shared\Contracts\PageLinks;
 use App\Modules\Theme\Components\ComponentRegistry;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Event;
@@ -44,13 +60,29 @@ final class CmsServiceProvider extends ServiceProvider
         // same reason — a limit read in one request must never answer for another.
         $this->app->scoped(CategoryScopes::class);
 
+        // The category totals' open bulk batches belong to one request or job; scoped so a batch
+        // can never be carried into the next Octane operation.
+        $this->app->scoped(CategoryItemCounts::class);
+
+        // The blocks of the slots around posts, lists and products: reads the request's settings memo
+        // and the request's locales, so it is scoped with them and never outlives a request.
+        $this->app->scoped(LayoutSlotBlocks::class);
+
         // Menu link kinds other modules register at boot (Catalog → `product`). Boot-time closures
         // only, no request state — shared across Octane requests like the ComponentRegistry.
         $this->app->singleton(MenuTargets::class);
 
+        // Pages other modules provide for the menu's special links (search, cart, account…).
+        // Boot-time closures only, no request state — same as MenuTargets.
+        $this->app->singleton(SpecialLinks::class);
+
         // Item kinds other modules file under categories (Catalog → `product`), re-routed when a
         // category changes. Boot-time closures only, no request state — same as MenuTargets.
         $this->app->singleton(CategoryDependents::class);
+
+        // The current address of a page a block button opens (the Theme renders it through the contract).
+        // Built per resolve: PathBuilder holds the request-scoped SectionResolver, so it is never kept across requests.
+        $this->app->bind(PageLinks::class, EntryPageLinks::class);
     }
 
     public function boot(): void
@@ -65,15 +97,22 @@ final class CmsServiceProvider extends ServiceProvider
 
         $registry = $this->app->make(ComponentRegistry::class);
         $registry->register('latest_posts', new LatestPostsComponent);
-        $registry->register('entry_grid', $this->app->make(EntryGridComponent::class));
+        $registry->register('entry_grid', $this->app->make(EntryGridComponent::class), headed: true);
 
         Gate::policy(Entry::class, EntryPolicy::class);
+        Gate::policy(Menu::class, MenuPolicy::class);
+        Gate::policy(Taxonomy::class, TaxonomyPolicy::class);
 
         // Purging an entry drops its block image usage rows (polymorphic, no FK cascade).
         Entry::observe(EntryObserver::class);
+        // Deleting a category drops its block slots' usage rows (polymorphic, no FK cascade).
+        Taxonomy::observe(TaxonomyObserver::class);
 
         // A member's category limits on a site follow their roles there (left the site, or never limited).
         Event::listen(SiteMembershipChanged::class, ForgetMemberCategoryScopes::class);
+
+        // "Tự thêm trang mới": a published page joins the menus that asked for new pages.
+        Event::listen(EntryPublished::class, AddPublishedPageToMenu::class);
 
         // Module commands aren't auto-discovered like app/Console/Commands.
         if ($this->app->runningInConsole()) {
@@ -83,6 +122,11 @@ final class CmsServiceProvider extends ServiceProvider
                 RebuildTaxonomyPaths::class,
                 SnapshotPublishedEntries::class,
                 PruneEntryRevisions::class,
+                ResanitizePageBodies::class,
+                FillMissingUlids::class,
+                PurgeTrashedMenuItems::class,
+                CountWrongTemplates::class,
+                ReconcileCategoryCounts::class,
             ]);
         }
     }

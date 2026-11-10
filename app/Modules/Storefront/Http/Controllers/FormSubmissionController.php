@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\Storefront\Http\Controllers;
 
 use App\Modules\Forms\Actions\SubmitForm;
-use App\Modules\Forms\Models\Form;
 use App\Modules\Storefront\Http\Requests\StoreLeadRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\RateLimiter;
@@ -13,7 +12,8 @@ use Illuminate\Support\Facades\RateLimiter;
 /**
  * Public storefront lead capture: POST /forms/{key}. CSRF-exempt (see bootstrap/app.php) — a
  * session-less public endpoint defended by Turnstile + honeypot + rate-limit (§23/R20). The form
- * is resolved by key within the host's site context (RLS, fail-closed), the lead is captured via
+ * is resolved by key within the host's site context (RLS, fail-closed) once, by the request that
+ * validated it, the lead is captured via
  * SubmitForm, and the visitor is redirected back to the page with a localized confirmation. Too
  * many attempts from one IP are throttled with a plain-language message (no 429 dead end).
  */
@@ -27,7 +27,7 @@ final readonly class FormSubmissionController
 
     public function __invoke(StoreLeadRequest $request, string $key): RedirectResponse
     {
-        $form = Form::query()->where('key', $key)->where('status', 'active')->first();
+        $form = $request->leadForm();
         abort_if($form === null, 404);
 
         $throttle = 'lead-submit:'.$form->id.'|'.$request->ip();
@@ -56,6 +56,6 @@ final readonly class FormSubmissionController
 
         $confirmation = $form->successMessageFor(app()->getLocale()) ?? (string) __('forms.submit_success');
 
-        return back()->with('form_success', $confirmation);
+        return back()->with('form_success', $confirmation)->with('form_success_key', $form->key);
     }
 }
