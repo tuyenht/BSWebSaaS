@@ -457,25 +457,11 @@
       }
      },
      {
-      "type": "features",
+      "type": "branches",
       "props": {
        "heading": "Ba nhà máy",
        "description": "Tổng diện tích 4.300 m² tại Hà Nội.",
-       "variant": "top-rule",
-       "items": [
-        {
-         "title": "Nhà máy 1 · 2.000 m²",
-         "text": "Lắp ráp và sản xuất hàn, dập với quy trình tự động hóa. Đường 418, thôn Xuân Sơn, xã Trung Giã, TP Hà Nội."
-        },
-        {
-         "title": "Nhà máy 2 · 500 m²",
-         "text": "Lắp ráp sản phẩm cơ khí chính xác, kiểm soát chất lượng chặt chẽ. Đường QL3, thôn Hương Ninh, xã Trung Giã, TP Hà Nội."
-        },
-        {
-         "title": "Nhà máy 3 · 1.800 m²",
-         "text": "Gia công cơ khí chính xác: CNC, phay, mài, cắt dây, xung và đo CMM. Đội 6, thôn Ngũ Sơn, xã Thạch Thất, TP Hà Nội."
-        }
-       ]
+       "layout": "auto"
       }
      },
      {
@@ -1031,7 +1017,8 @@
        "form_key": "contact",
        "heading": "Gửi Yêu Cầu Tư Vấn",
        "description": "Điền vào biểu mẫu bên dưới và chúng tôi sẽ liên hệ lại với bạn trong thời gian sớm nhất.",
-       "map_embed": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d12503.468002335805!2d105.85833024594946!3d21.29902948043917!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31351dc82e015dad%3A0xc3a6d44da6b27bb9!2zQ8O0bmcgdHkgY8ahIGtow60gQW4gVmluaA!5e0!3m2!1svi!2s!4v1762317872785!5m2!1svi!2s"
+       "map_embed": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d12503.468002335805!2d105.85833024594946!3d21.29902948043917!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31351dc82e015dad%3A0xc3a6d44da6b27bb9!2zQ8O0bmcgdHkgY8ahIGtow60gQW4gVmluaA!5e0!3m2!1svi!2s!4v1762317872785!5m2!1svi!2s",
+       "map_source": "branches"
       }
      }
     ]

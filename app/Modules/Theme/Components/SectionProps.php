@@ -111,6 +111,9 @@ final class SectionProps
         'view_all' => ['type' => 'enum', 'options' => ['auto', 'show', 'hide'], 'default' => 'auto', 'group' => 'display'],
     ];
 
+    /** Where a form block's map comes from: its own address (`embed`) or the site's branches (`branches`). Append-only. */
+    public const array MAP_SOURCES = ['embed', 'branches'];
+
     /** The most items a list of a static block holds (the block's own list may set a lower `max`). */
     public const int MAX_ITEMS = 12;
 

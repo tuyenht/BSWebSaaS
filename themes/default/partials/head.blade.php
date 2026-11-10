@@ -230,6 +230,9 @@
 @if (! empty($tabsScript))
 @vite(['resources/js/sf-tabs.js'])
 @endif
+@if (! empty($branchMapScript))
+@vite(['resources/js/sf-branch-map.js'])
+@endif
 @if (! empty($tocScript))
 @vite(['resources/js/sf-toc.js'])
 @endif

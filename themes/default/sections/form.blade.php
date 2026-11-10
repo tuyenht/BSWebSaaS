@@ -5,7 +5,8 @@
     (data-appearance="interaction-only"): a check that passes on its own leaves no empty box above
     the button. Anti-spam: hidden honeypot (off-screen, a11y-hidden) + Turnstile + server-side rate-limit. POSTs same-origin to /forms/{key} (form-action 'self').
     Optional: a `description` line under the heading, and a `map_embed` (host-checked against
-    cms.map_hosts like the contact block) that puts the form in a card beside the map.
+    cms.map_hosts like the contact block) that puts the form in a card beside the map, or `map_source: branches`,
+    which puts the site's branches there instead (partials.branch-map; one map per page is enough).
 
     States, all server-side: after a send the form gives way to a thank-you card with a link back to
     an empty form; after a failed send one alert sits above the button (tied to it when the button is
@@ -17,6 +18,10 @@
 --}}
 @php
     $sfMap = \App\Modules\Shared\Support\SafeLink::href($props['map_embed'] ?? null, config('cms.map_hosts'));
+    // `map_source: branches` draws the site's branches (chooser, card, buttons) in the map's place; a site
+    // with no branch to show falls back to the map address above, so the card never loses its map.
+    $sfBranches = is_array($branchMap ?? null) ? array_values($branchMap) : [];
+    $sfCard = $sfBranches !== [] || $sfMap !== null;
     $sfFormKey = basename((string) $action);
     // The same form may sit twice on a page: only the first copy shows the send's outcome. Ids are
     // registered per request (nothing leaks between requests under Octane): the key reduced to
@@ -93,7 +98,7 @@
     [$sfNoteBefore, $sfNoteAfter] = array_pad(explode('__MARK__', __('forms.required_note', ['mark' => '__MARK__']), 2), 2, '');
 @endphp
 @if (! empty($action))
-@if ($sfMap !== null)
+@if ($sfCard)
     <section class="lead-form lead-form--map" id="{{ $sfFormId }}">
         <div class="lead-form__main">
 @else
@@ -217,9 +222,13 @@
             </div>
         </form>
         @endif
-@if ($sfMap !== null)
+@if ($sfCard)
         </div>
+@if ($sfBranches !== [])
+        @include('theme::partials.branch-map', ['places' => $sfBranches, 'callLink' => $callLink ?? null, 'uid' => $sfFormId.'-map'])
+@else
         <iframe class="lead-form__map" src="{{ $sfMap }}" title="{{ __('storefront.map') }}" width="600" height="340" loading="lazy" referrerpolicy="no-referrer-when-downgrade" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
+@endif
 @endif
     </section>
 @endif
