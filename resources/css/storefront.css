@@ -5689,7 +5689,7 @@ html:has(.sf-header--sticky) .product-toc {
 
 .sf-bmap__tabs {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr));
     gap: 0.5rem;
     padding: 0.25rem;
     border-radius: 0.5rem;
