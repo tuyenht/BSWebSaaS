@@ -147,10 +147,10 @@ function rawHeaders(obj, type, key) {
 }
 
 // A download keeps the readable name of its key: the last segment without the content hash before
-// the extension. A name that does not start with a letter or digit, or holds anything outside
+// the extension (4 hex by default, longer only after a collision: media.url_hash_length). A name that does not start with a letter or digit, or holds anything outside
 // [A-Za-z0-9._-] (quotes, spaces, CR/LF, ';'), gets no name at all.
 function attachment(key) {
-  const name = key.slice(key.lastIndexOf('/') + 1).replace(/-[0-9a-f]{12}(?=\.[^.]*$)/, '');
+  const name = key.slice(key.lastIndexOf('/') + 1).replace(/-[0-9a-f]{4,64}(?=\.[^.]*$)/, '');
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name)) return 'attachment';
   return `attachment; filename="${name}"; filename*=UTF-8''${name}`;
 }
