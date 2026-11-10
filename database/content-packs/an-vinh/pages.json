@@ -452,7 +452,7 @@
        "title": "Nhà Xưởng & Máy Móc",
        "subtitle": "Ba nhà máy tại Hà Nội, tổng diện tích 4.300 m², cùng máy móc và thiết bị đo kiểm",
        "image_url": {
-        "media": "factory-1"
+        "media": "plant-3-machining-hall"
        }
       }
      },
@@ -532,31 +532,25 @@
       "type": "gallery",
       "props": {
        "heading": "Nhà xưởng",
-       "columns": "4",
+       "columns": "3",
        "images": [
         {
          "image": {
-          "media": "factory-1"
+          "media": "plant-3-machining-hall"
          },
-         "caption": "Khu sản xuất"
+         "caption": "Nhà máy 3: xưởng gia công"
         },
         {
          "image": {
-          "media": "factory-2"
+          "media": "plant-2-assembly-floor-1"
          },
-         "caption": "Mặt bằng xưởng"
+         "caption": "Nhà máy 2: xưởng lắp ráp"
         },
         {
          "image": {
-          "media": "weld-1"
+          "media": "plant-2-assembly-floor-2"
          },
-         "caption": "Khu vực hàn"
-        },
-        {
-         "image": {
-          "media": "office-1"
-         },
-         "caption": "Phòng họp tiếp khách"
+         "caption": "Nhà máy 2: các khung đồ gá trên sàn xưởng"
         }
        ]
       }
@@ -565,31 +559,19 @@
       "type": "gallery",
       "props": {
        "heading": "Máy móc",
-       "columns": "4",
+       "columns": "2",
        "images": [
         {
          "image": {
-          "media": "cnc-1"
+          "media": "plant-3-cnc-x4200"
          },
-         "caption": "Trung tâm gia công CNC"
+         "caption": "Máy CNC lớn X4200 × Y3200 × Z1000 mm"
         },
         {
          "image": {
-          "media": "cnc-2"
+          "media": "plant-3-cnc-gantry"
          },
-         "caption": "Máy tiện"
-        },
-        {
-         "image": {
-          "media": "edm-1"
-         },
-         "caption": "Cắt dây EDM"
-        },
-        {
-         "image": {
-          "media": "inspect-2"
-         },
-         "caption": "Đo kiểm bằng panme"
+         "caption": "Máy CNC cỡ lớn tại nhà máy 3"
         }
        ]
       }
@@ -598,31 +580,25 @@
       "type": "gallery",
       "props": {
        "heading": "Sản phẩm",
-       "columns": "4",
+       "columns": "3",
        "images": [
         {
          "image": {
-          "media": "p-weld-jig-frame"
+          "media": "jig-technician"
          },
-         "caption": "Jig hàn khung"
+         "caption": "Kỹ thuật viên An Vinh căn chỉnh đồ gá"
         },
         {
          "image": {
-          "media": "p-die-cast-mould"
+          "media": "design-straightening-machine"
          },
-         "caption": "Khuôn đúc áp lực"
+         "caption": "Thiết kế 3D máy tự động nắn sửa sản phẩm"
         },
         {
          "image": {
-          "media": "pr-headlamp-jig"
+          "media": "design-spot-weld-station"
          },
-         "caption": "Đồ gá kiểm tra cụm đèn"
-        },
-        {
-         "image": {
-          "media": "p-fuel-tank-die"
-         },
-         "caption": "Khuôn dập"
+         "caption": "Mô phỏng 3D trạm jig hàn spot"
         }
        ]
       }
