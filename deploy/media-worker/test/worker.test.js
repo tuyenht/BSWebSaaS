@@ -100,7 +100,44 @@ test('uploads in flight and other underscore prefixes are not public, on either 
 test('a pdf is a download, never rendered inline', async () => {
   const res = await get('/a/library/bang-gia-1a2b.pdf', env({ 'a/library/bang-gia-1a2b.pdf': '%PDF' }));
   assert.equal(res.headers.get('Content-Type'), 'application/pdf');
-  assert.equal(res.headers.get('Content-Disposition'), 'attachment');
+  assert.equal(res.headers.get('Content-Disposition'), 'attachment; filename="bang-gia-1a2b.pdf"; filename*=UTF-8\'\'bang-gia-1a2b.pdf');
+});
+
+const NAMED = 'attachment; filename="ho-so-nang-luc-an-vinh.pdf"; filename*=UTF-8\'\'ho-so-nang-luc-an-vinh.pdf';
+
+test('a pdf download drops the content hash from its file name', async () => {
+  const k = 'an-vinh/library/ho-so-nang-luc-an-vinh-0123456789ab.pdf';
+  assert.equal((await get(`/${k}`, env({ [k]: '%PDF' }))).headers.get('Content-Disposition'), NAMED);
+});
+
+test('a pdf key without a hash suffix keeps its name', async () => {
+  const k = 'an-vinh/ho-so-nang-luc-an-vinh.pdf';
+  assert.equal((await get(`/${k}`, env({ [k]: '%PDF' }))).headers.get('Content-Disposition'), NAMED);
+});
+
+test('only the last segment of a foldered key names the download', async () => {
+  const k = 'an-vinh/library/tai-lieu/2026/ho-so-nang-luc-an-vinh-0123456789ab.pdf';
+  assert.equal((await get(`/${k}`, env({ [k]: '%PDF' }))).headers.get('Content-Disposition'), NAMED);
+});
+
+test('a name with a quote or a space, or not starting with a letter or digit, falls back to a plain attachment', async () => {
+  for (const k of ['a/x%22y-0123456789ab.pdf', 'a/x%20y-0123456789ab.pdf', 'a/x%3By.pdf', 'a/-0123456789ab.pdf', 'a/.hidden.pdf']) {
+    const key = decodeURIComponent(k);
+    const res = await get(`/${k}`, env({ [key]: '%PDF' }));
+    assert.equal(res.headers.get('Content-Disposition'), 'attachment', k);
+  }
+});
+
+test('a non-pdf has no Content-Disposition', async () => {
+  const res = await get('/a/library/x-0123456789ab.jpg', env({ 'a/library/x-0123456789ab.jpg': 'x' }));
+  assert.equal(res.headers.get('Content-Disposition'), null);
+});
+
+test('the ranged answer for a pdf carries the same file name', async () => {
+  const k = 'an-vinh/library/ho-so-nang-luc-an-vinh-0123456789ab.pdf';
+  const res = await get(`/${k}`, env({ [k]: '%PDF-1.7' }), { Range: 'bytes=0-3' });
+  assert.equal(res.status, 206);
+  assert.equal(res.headers.get('Content-Disposition'), NAMED);
 });
 
 test('a malformed escape is a 404, not a crash', async () => {

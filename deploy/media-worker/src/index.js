@@ -93,7 +93,7 @@ async function serveRaw(request, env, key, type) {
   if (request.method === 'HEAD') {
     const meta = await env.MEDIA.head(key);
     if (!meta) return new Response(null, { status: 404, headers: SAFETY_HEADERS });
-    const headers = rawHeaders(meta, type);
+    const headers = rawHeaders(meta, type, key);
     headers.set('Content-Length', String(meta.size));
     return new Response(null, { headers });
   }
@@ -110,7 +110,7 @@ async function serveRaw(request, env, key, type) {
       const meta = await env.MEDIA.head(key);
       if (!meta) return plain(404, 'Not found');
       if (single[1] === '' || Number(single[1]) < meta.size) throw err;
-      const headers = rawHeaders(meta, type); // starts past the end: say how long the file is
+      const headers = rawHeaders(meta, type, key); // starts past the end: say how long the file is
       headers.set('Content-Range', `bytes */${meta.size}`);
       return new Response(null, { status: 416, headers });
     }
@@ -119,7 +119,7 @@ async function serveRaw(request, env, key, type) {
   }
   if (!obj) return plain(404, 'Not found');
 
-  const headers = rawHeaders(obj, type);
+  const headers = rawHeaders(obj, type, key);
   if (!('body' in obj) || !obj.body) {
     return new Response(null, { status: preconditionStatus(request, obj), headers });
   }
@@ -135,15 +135,24 @@ async function serveRaw(request, env, key, type) {
 }
 
 // Only the type from the extension and our own caching and safety headers.
-function rawHeaders(obj, type) {
+function rawHeaders(obj, type, key) {
   const headers = new Headers();
   headers.set('Content-Type', type);
-  if (type === 'application/pdf') headers.set('Content-Disposition', 'attachment');
+  if (type === 'application/pdf') headers.set('Content-Disposition', attachment(key));
   headers.set('Cache-Control', CACHE_CONTROL);
   headers.set('ETag', obj.httpEtag);
   headers.set('Accept-Ranges', 'bytes');
   for (const [k, v] of Object.entries(SAFETY_HEADERS)) headers.set(k, v);
   return headers;
+}
+
+// A download keeps the readable name of its key: the last segment without the content hash before
+// the extension. A name that does not start with a letter or digit, or holds anything outside
+// [A-Za-z0-9._-] (quotes, spaces, CR/LF, ';'), gets no name at all.
+function attachment(key) {
+  const name = key.slice(key.lastIndexOf('/') + 1).replace(/-[0-9a-f]{12}(?=\.[^.]*$)/, '');
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name)) return 'attachment';
+  return `attachment; filename="${name}"; filename*=UTF-8''${name}`;
 }
 
 // The first and last byte R2 returned: its range is {offset, length?} or {suffix}.
