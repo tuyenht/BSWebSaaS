@@ -135,7 +135,7 @@ Schedule::command('x:new')->daily();"; git -C "$SRC" add -A && gitc -m sched; SC
 branch t-env; w config/app.php "<?php return ['name' => env('APP_NAME', 'x'), 'k' => env('NEW_KEY', 'd')];"; git -C "$SRC" add -A && gitc -m env; ENVK=$(git -C "$SRC" rev-parse HEAD)
 branch t-kinds
 for p in database/content-packs/p/pages.json package.json resources/js/app.js routes/web.php config/octane.php \
-    docker-compose.prod.yml deploy/Caddyfile app/Modules/Rbac/Registry/PermissionRegistry.php themes/default/y.blade.php \
+    docker-compose.prod.yml deploy/Caddyfile deploy/media-worker/src/index.js app/Modules/Rbac/Registry/PermissionRegistry.php themes/default/y.blade.php \
     lang/en.json scripts/backup-prod-db.sh scripts/other.mjs tests/Unit/BarTest.php docs/b.md weird/thing.txt; do w "$p" changed; done
 w "docs/Biểu mẫu.dc.html" x; w public/x.php '<?php'; w public/.htaccess x; w public/vendor/.htaccess x; w public/robots.txt x
 w composer.lock '{"packages":[{"name":"laravel/framework","version":"v13.2.0"}]}'
@@ -230,6 +230,7 @@ routes M routes/web.php
 server A config/octane.php
 server A docker-compose.prod.yml
 server A deploy/Caddyfile
+worker A deploy/media-worker/src/index.js
 permission A app/Modules/Rbac/Registry/PermissionRegistry.php
 view A themes/default/y.blade.php
 text A lang/en.json
