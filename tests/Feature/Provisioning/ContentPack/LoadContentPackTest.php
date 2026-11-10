@@ -470,3 +470,37 @@ it('makes a page a conflict when its parent cannot be given', function (Closure 
         ContentPacks::in($test->siteId, fn () => Entry::query()->whereKey(SiteRoute::query()->where('path', '/gioi-thieu')->value('entry_id'))->firstOrFail()->delete());
     }, 'its parent page page:/gioi-thieu would not exist after this load'],
 ]);
+
+it('never takes another site\'s page for the parent a page names', function (): void {
+    config(['tenancy.assert' => 'strict']);
+    $other = StorefrontCards::site('Other', 'other.platform.test');
+    ContentPacks::in($other, function (): void {
+        $page = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()]);
+        $page->translations()->create(['locale' => 'vi', 'title' => 'Giới thiệu B', 'slug' => 'gioi-thieu', 'status' => 'published', 'body' => ['blocks' => []]]);
+        SiteRoute::query()->create(['locale' => 'vi', 'path' => '/gioi-thieu', 'entry_id' => $page->id]);
+    });
+    ContentPacks::edit($this->folder, 'pages.json', fn (array $data): array => ['items' => array_values(array_filter($data['items'], fn (array $item): bool => $item['key'] !== 'page:/gioi-thieu'))] + $data);
+    cpAddChildPage($this->folder);
+
+    [$exit, $output] = ContentPacks::run();
+    expect($exit)->toBe(1, $output)
+        ->and(ContentPacks::verdict($output, 'page:/doi-ngu'))->toBe('conflict')
+        ->and($output)->toContain('its parent page page:/gioi-thieu is neither in the pack nor on the site');
+});
+
+it('records each page\'s parent in its ledger line and skips a page staff moved before its item named a parent', function (): void {
+    cpAddChildPage($this->folder, []);
+    ContentPacks::load();
+    $line = fn (): array => ContentPacks::in($this->siteId, fn (): ?array => Ledger::read('demo-co'))['items']['page:/doi-ngu'] ?? [];
+    expect($line())->toHaveKey('parent')->and($line()['parent'])->toBeNull();
+
+    ContentPacks::in($this->siteId, fn () => Entry::query()->whereKey(SiteRoute::query()->where('path', '/doi-ngu')->value('entry_id'))
+        ->update(['parent_id' => SiteRoute::query()->where('path', '/')->value('entry_id')]));
+    // a load that leaves the page as it is keeps the parent its line recorded, not the one staff chose
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)->and($line()['parent'])->toBeNull();
+
+    ContentPacks::item($this->folder, 'pages.json', 'page:/doi-ngu', fn (array $item): array => ['parent' => 'page:/gioi-thieu'] + $item);
+    [, $output] = ContentPacks::run();
+    expect(ContentPacks::verdict($output, 'page:/doi-ngu'))->toBe('skip:edited');
+});

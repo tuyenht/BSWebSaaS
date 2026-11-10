@@ -33,6 +33,7 @@ use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Components\ButtonLink;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -79,6 +80,9 @@ final class Planner
 
     /** @var array<int, string> product id → key */
     private array $productKeys = [];
+
+    /** @var array<int, string|null> matched page id → its live parent page's key (null at the top) */
+    private array $pageParents = [];
 
     /** @var array<string, array{id: int, key: string, mime: string, size: int}|null> */
     private array $slots = [];
@@ -235,6 +239,17 @@ final class Planner
         return $this->matched[$key] ?? null;
     }
 
+    /**
+     * Each matched page's live parent page, by key, as the last plan read it: the ledger records
+     * it so a later plan can tell a page staff moved from one the pack never placed.
+     *
+     * @return array<int, string|null>
+     */
+    public function pageParents(): array
+    {
+        return $this->pageParents;
+    }
+
     /** @return array{id: int, key: string, mime: string, size: int}|null */
     public function slot(string $name): ?array
     {
@@ -267,6 +282,7 @@ final class Planner
         $this->taxonomyKeys = [];
         $this->entryKeys = [];
         $this->productKeys = [];
+        $this->pageParents = [];
         $this->slots = [];
         $this->packed = 0;
         $this->slotFiles = [];
@@ -372,6 +388,19 @@ final class Planner
     }
 
     /**
+     * A document slot's resolved file, or null: a slot that resolved (by `legacy_key`) to a file the
+     * download button does not take, an image, counts as unresolved.
+     *
+     * @return array{id: int, key: string, mime: string, size: int}|null
+     */
+    private function document(string $name): ?array
+    {
+        $slot = $this->slots[$name] ?? null;
+
+        return $slot !== null && in_array($slot['mime'], ButtonLink::DOCUMENT_MIMES, true) ? $slot : null;
+    }
+
+    /**
      * A body with every `{"media": slot}` replaced by the slot's media id — or left out when the
      * slot does not resolve (a list element is dropped, an object prop is removed). A file button
      * gets the document's storage key and its label the document's type and size; a document that
@@ -387,9 +416,12 @@ final class Planner
         $out = [];
         foreach ($value as $key => $child) {
             if (PackValidator::isFileButton($child)) {
-                $slot = $this->slots[$child['file']['media']] ?? null;
+                $name = $child['file']['media'];
+                $slot = $this->document($name);
                 if ($slot === null) {
-                    $this->warnings[] = "{$at}: ".str_replace('image slot', 'document slot', $this->unresolved($child['file']['media'])).'; the download button is left out.';
+                    $this->warnings[] = "{$at}: ".(isset($this->slots[$name])
+                        ? "document slot '{$name}' names a file that is not a document"
+                        : str_replace('image slot', 'document slot', $this->unresolved($name))).'; the download button is left out.';
 
                     continue;
                 }
@@ -398,7 +430,7 @@ final class Planner
                 continue;
             }
             if (PackValidator::isFileLabel($child)) {
-                $slot = $this->slots[$child['type_and_size_of']] ?? null;
+                $slot = $this->document($child['type_and_size_of']);
                 $out[$key] = $slot === null
                     ? $child['text']
                     : $child['text'].' ('.Media::typeAndSize($slot['mime'], $slot['size']).')';
@@ -470,7 +502,7 @@ final class Planner
         $skip = null;
         if ($draftPending) {
             $skip = [PlanItem::SKIP_DRAFT, 'a staff draft is waiting; overwriting would make it stale'];
-        } elseif ($ledger !== null && ! in_array($ledger['hash'], self::ledgerHashes($current), true)) {
+        } elseif ($ledger !== null && ! in_array($ledger['hash'], self::ledgerHashes($current, $ledger), true)) {
             $skip = [PlanItem::SKIP_EDITED, 'edited by staff since the last load'];
         } elseif ($ledger === null && $evidence !== null) {
             $skip = [PlanItem::SKIP_EDITED, $evidence];
@@ -494,19 +526,24 @@ final class Planner
 
     /**
      * The hashes a ledger line may hold for this live state: the state itself, and the state as
-     * ledgers recorded it before an entry's date and its parent page were managed fields.
+     * the line recorded it while the item named no date or no parent page. The state without its
+     * parent is accepted only from a line that does not record the page's parent (written before
+     * parents were managed), or one whose recorded parent is still the live one: a page staff moved
+     * since the last load is never taken for the loader's own write.
      *
      * @param  array<string, mixed>  $current
+     * @param  array{hash: string, ref: string, parent?: string|null}  $ledger
      * @return list<string>
      */
-    private static function ledgerHashes(array $current): array
+    private static function ledgerHashes(array $current, array $ledger): array
     {
-        return array_values(array_unique([
-            CanonicalHash::of($current),
-            CanonicalHash::of(array_diff_key($current, ['published_at' => true])),
-            CanonicalHash::of(array_diff_key($current, ['parent' => true])),
-            CanonicalHash::of(array_diff_key($current, ['published_at' => true, 'parent' => true])),
-        ]));
+        $states = [$current, array_diff_key($current, ['published_at' => true])];
+        if (! array_key_exists('parent', $ledger) || (array_key_exists('parent', $current) && $ledger['parent'] === $current['parent'])) {
+            $states[] = array_diff_key($current, ['parent' => true]);
+            $states[] = array_diff_key($current, ['published_at' => true, 'parent' => true]);
+        }
+
+        return array_values(array_unique(array_map(CanonicalHash::of(...), $states)));
     }
 
     /** @param list<string> $claims */
@@ -827,7 +864,8 @@ final class Planner
      *
      * `published_at` is part of the state only for the entries in `$dated` (their pack item states a date),
      * so an item without a date never reports or rewrites the live one. `parent` (the parent page's
-     * key) likewise only for the pages in `$parented` (their pack item names a parent, or null).
+     * key) likewise only for the pages in `$parented` (their pack item names a parent, or null);
+     * every page's live parent is kept for its ledger line (pageParents()).
      *
      * @param  list<int>  $ids
      * @param  list<int>  $dated
@@ -843,7 +881,7 @@ final class Planner
         $entries = $this->locked(Entry::query()->whereIn('id', $ids))->get(['id', 'ulid', 'type', 'status', 'published_at', 'meta', 'parent_id']);
         $parentIds = [];
         foreach ($entries as $entry) {
-            if ($entry->parent_id !== null && in_array($entry->id, $parented, true)) {
+            if ($entry->type === 'page' && $entry->parent_id !== null) {
                 $parentIds[] = $entry->parent_id;
             }
         }
@@ -877,9 +915,13 @@ final class Planner
             if (in_array($entry->id, $dated, true)) {
                 $state['published_at'] = $entry->published_at?->copy()->utc()->format('Y-m-d');
             }
-            if (in_array($entry->id, $parented, true)) {
+            if ($entry->type === 'page') {
                 // a parent the plan cannot name (in the trash) still reads as a difference
-                $state['parent'] = $entry->parent_id === null ? null : ($this->entryKeys[$entry->parent_id] ?? 'page:(not found)');
+                $parent = $entry->parent_id === null ? null : ($this->entryKeys[$entry->parent_id] ?? 'page:(not found)');
+                $this->pageParents[$entry->id] = $parent;
+                if (in_array($entry->id, $parented, true)) {
+                    $state['parent'] = $parent;
+                }
             }
             if ($entry->type === 'post') {
                 $image = $entry->meta['image_url'] ?? null;
@@ -1358,7 +1400,7 @@ final class Planner
      * nests page addresses under their parent (the loader keeps a page's address its own, so a
      * parent would move it), a parent that is neither in the pack nor a live page, or a parent
      * chain — the pack's stated parents over the site's live ones — that leads back to the page.
-     * The live links are read only when some page names a parent.
+     * The live links are read only when some page names a parent, and only above the stated parents.
      *
      * @param  list<PackItem>  $pages
      * @return array<string, string>
@@ -1387,10 +1429,14 @@ final class Planner
 
         $inPack = array_flip(array_map(fn (PackItem $item): string => $item->key, $pages));
         $this->rememberLiveTargets(array_values(array_diff(array_values($stated), array_keys($inPack))));
-        $links = [];
-        foreach (Entry::query()->where('type', 'page')->whereNotNull('parent_id')->get(['id', 'parent_id']) as $page) {
-            $links[$page->id] = Cast::int($page->parent_id);
+        $starts = [];
+        foreach ($stated as $parent) {
+            $id = $this->matched[$parent] ?? $this->liveTarget($parent);
+            if ($id !== null) {
+                $starts[] = $id;
+            }
         }
+        $links = $this->parentLinks($starts);
         $this->rememberEntryKeys(array_values($links));
 
         $problems = [];
@@ -1420,6 +1466,32 @@ final class Planner
         }
 
         return $problems;
+    }
+
+    /**
+     * The live parent links from these pages upward (page id → parent id), in one read: a walk up
+     * the parent column bounded at depth 32, so a loop in the data ends. Pages in the trash have no link.
+     *
+     * @param  list<int>  $ids
+     * @return array<int, int>
+     */
+    private function parentLinks(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+        $siteId = $this->site->id();
+        $up = 'with recursive up(id, parent_id, depth) as (select p.id, p.parent_id, 0 from entries p where p.site_id = ? and p.id = any(?::bigint[]) '
+            .'union all select p.id, p.parent_id, up.depth + 1 from entries p join up on p.id = up.parent_id where p.site_id = ? and up.depth < 32) select up.id from up';
+        $pages = $this->locked(Entry::query()->where('type', 'page')->whereNotNull('parent_id')->whereRaw("entries.id in ({$up})", [$siteId, '{'.implode(',', array_unique($ids)).'}', $siteId]))
+            ->get(['id', 'parent_id']);
+
+        $links = [];
+        foreach ($pages as $page) {
+            $links[$page->id] = Cast::int($page->parent_id);
+        }
+
+        return $links;
     }
 
     /**

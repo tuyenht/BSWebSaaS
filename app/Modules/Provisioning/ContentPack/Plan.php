@@ -19,7 +19,7 @@ final readonly class Plan
      * @param  list<string>  $forced
      * @param  list<string>  $orphans  ledger keys no longer in the pack (reported, never deleted)
      * @param  list<string>  $warnings
-     * @param  array{pack_version: int, loaded_at: string, items: array<string, array{hash: string, ref: string}>}|null  $ledger
+     * @param  array{pack_version: int, loaded_at: string, items: array<string, array{hash: string, ref: string, parent?: string|null}>}|null  $ledger
      * @param  array{slots: int, resolved: int, packed: int}  $media  slot counts: all, resolved, resolved to the pack's own file
      * @param  array<string, string>  $carried  pack key → the earlier ledger key it carries on (a renamed or moved category)
      */

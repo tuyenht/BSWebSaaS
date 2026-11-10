@@ -445,3 +445,23 @@ it('leaves the download button out, with a warning, while its document is not up
     expect($exit)->toBe(0, $output)
         ->and(aboutLastBlock($this->siteId))->toMatchArray(['button_label' => 'Tải hồ sơ'])->not->toHaveKey('button_url_do');
 });
+
+it('leaves the download button out when its document slot names an existing image', function (): void {
+    profileButton($this->folder);
+    $image = ContentPacks::in($this->siteId, fn (): Media => StorefrontCards::media('brochure'));
+    ContentPacks::edit($this->folder, 'media.json', function (array $media) use ($image): array {
+        $media['slots'] = array_map(fn (array $slot): array => $slot['slot'] === 'profile'
+            ? ['slot' => 'profile', 'kind' => 'document', 'legacy_key' => $image->storage_key]
+            : $slot, $media['slots']);
+
+        return $media;
+    });
+
+    [$exit, $plan] = ContentPacks::run();
+    expect($exit)->toBe(0, $plan)
+        ->and($plan)->toContain("page:/gioi-thieu: document slot 'profile' names a file that is not a document; the download button is left out.");
+
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)
+        ->and(aboutLastBlock($this->siteId))->toMatchArray(['button_label' => 'Tải hồ sơ'])->not->toHaveKey('button_url_do');
+});

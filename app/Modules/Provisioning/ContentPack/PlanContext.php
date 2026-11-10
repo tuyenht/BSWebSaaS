@@ -8,7 +8,7 @@ namespace App\Modules\Provisioning\ContentPack;
 final readonly class PlanContext
 {
     /**
-     * @param  array<string, array{hash: string, ref: string}>  $ledger
+     * @param  array<string, array{hash: string, ref: string, parent?: string|null}>  $ledger
      * @param  list<string>  $forced
      */
     public function __construct(
