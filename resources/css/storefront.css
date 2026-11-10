@@ -3333,8 +3333,13 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     color: var(--color-primary);
 }
 
+/* The hotline and email sit after a label in the same colour: a soft underline marks them as links
+   at rest (not by colour alone); hover and focus add the brand colour. */
 .sf-footer__fact a {
     color: inherit;
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+    text-underline-offset: 0.2em;
     transition: color 0.3s;
 }
 

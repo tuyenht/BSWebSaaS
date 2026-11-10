@@ -89,6 +89,10 @@ describe('stats kinds', function (): void {
         $html = kindsStats(['items' => [['kind' => 'year', 'value' => 2019, 'suffix' => 'm²', 'label' => 'Năm thành lập']]]);
 
         expect($html)->toContain('<span>2019</span>')->not->toContain('2.019')->not->toContain('data-count')->not->toContain('m²');
+
+        // only "years" locks its unit to "+": a year keeps no unit, even a "+" the item keeps
+        expect(kindsStats(['items' => [['kind' => 'year', 'value' => 2019, 'suffix' => '+', 'label' => 'Năm thành lập']]]))
+            ->toContain('<span>2019</span>')->not->toContain('sf-stat__suffix');
     });
 
     it('hides an item whose year is outside 1900 up to this year', function (string $kind, int $value): void {
