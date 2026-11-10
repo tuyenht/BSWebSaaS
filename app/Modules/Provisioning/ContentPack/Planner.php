@@ -932,6 +932,8 @@ final class Planner
                 $image = $entry->meta['image_url'] ?? null;
                 $state['image'] = is_string($image) && $image !== '' ? $image : null;
                 $state['categories'] = $categories[$entry->id] ?? [];
+                $state['facts'] = is_array($entry->meta['facts'] ?? null) ? $entry->meta['facts'] : [];
+                $state['badge'] = is_array($entry->meta['badge'] ?? null) ? $entry->meta['badge'] : null;
             }
             $state['translations'] = [];
             foreach ($this->locales as $locale) {
@@ -996,6 +998,8 @@ final class Planner
                 $state['image'] = Cast::stringOrNull($image);
             }
             $state['categories'] = Cast::strings($item->data['categories'] ?? []);
+            $state['facts'] = is_array($item->data['facts'] ?? null) ? $item->data['facts'] : [];
+            $state['badge'] = is_array($item->data['badge'] ?? null) ? $item->data['badge'] : null;
         }
 
         $titles = Cast::arr($item->data['title'] ?? null);

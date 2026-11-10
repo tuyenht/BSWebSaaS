@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Tenancy\Context\Tenancy;
@@ -56,8 +57,8 @@ function jobPage(string $path): string
 it('shows a place that follows its parent on the job card list', function (): void {
     jobSite();
 
-    expect(jobPage('/ha-noi'))->toContain('sf-card--news')->toContain('Thợ tiện CNC')
-        ->and(jobPage('/tin-tuyen-dung'))->toContain('sf-card--news');
+    expect(jobPage('/ha-noi'))->toContain('sf-card--job')->toContain('Thợ tiện CNC')
+        ->and(jobPage('/tin-tuyen-dung'))->toContain('sf-card--job');
 });
 
 it('prints JobPosting data for a post on a job layout, with no deadline until posts have one', function (): void {
@@ -236,4 +237,62 @@ it('reads the parent chain once for a post that follows a three-level chain', fu
     $plain = $count('/thach-that/tho-tien-cnc');
 
     expect($following - $plain)->toBeLessThanOrEqual(1);
+});
+
+/** Gives the job post its short facts and badge (what a pack writes into meta). */
+function jobFacts(): void
+{
+    app(Tenancy::class)->enter(StorefrontCards::site(), function (): void {
+        $post = Entry::query()->whereHas('translations', fn ($q) => $q->where('slug', 'tho-tien-cnc'))->firstOrFail();
+        $post->meta = ['facts' => [
+            ['text' => ['vi' => 'Nhà máy 3 – Thạch Thất'], 'tone' => 'plain'],
+            ['text' => ['vi' => 'Lương: 9 – 14 triệu/tháng'], 'tone' => 'accent'],
+            ['text' => ['vi' => 'Hạn nộp: 15/12/2026'], 'tone' => 'plain', 'html' => '<script>x</script>'],
+        ], 'badge' => ['vi' => 'Tuyển gấp']];
+        $post->save();
+    });
+}
+
+it('draws the job card with its facts and badge on the list page and not the news card', function (): void {
+    jobSite();
+    jobFacts();
+    $html = jobPage('/tin-tuyen-dung');
+
+    expect($html)->toContain('sf-card--job')->not->toContain('sf-card--news')
+        ->toContain('<span class="sf-card__badge">Tuyển gấp</span>')
+        ->toContain('<li class="sf-card__fact sf-card__fact--accent">Lương: 9 – 14 triệu/tháng</li>')
+        ->toContain('<li class="sf-card__fact">Hạn nộp: 15/12/2026</li>')
+        ->not->toContain('<script>x</script>')
+        ->toContain('sf-grid--2');
+});
+
+it('shows the filter chips of a job list from two child categories', function (): void {
+    jobSite();
+    app(Tenancy::class)->enter(StorefrontCards::site(), function (): void {
+        $jobs = Taxonomy::query()->whereHas('translations', fn ($q) => $q->where('slug', 'tin-tuyen-dung'))->firstOrFail();
+        StorefrontCards::category('Thạch Thất', 'thach-that-moi', $jobs, '@parent', 2)->forceFill(['detail_template' => '@parent'])->save();
+    });
+
+    expect(jobPage('/tin-tuyen-dung'))->toContain('sf-chips__chip')->toContain('Ứng viên mới')->toContain('Thạch Thất');
+});
+
+it('draws the job band of a post: open tag, badge, title and the facts as chips, with no deadline in the data', function (): void {
+    jobSite();
+    jobFacts();
+    $html = jobPage('/ha-noi/tho-tien-cnc');
+
+    expect($html)->toContain('post-band post-band--job')
+        ->toContain('<span class="post-band__open">Đang tuyển</span>')
+        ->toContain('<span class="post-band__badge">Tuyển gấp</span>')
+        ->toContain('<li class="post-band__fact post-band__fact--accent">Lương: 9 – 14 triệu/tháng</li>')
+        ->toContain('<li class="post-band__fact">Nhà máy 3 – Thạch Thất</li>')
+        ->not->toContain('<script>x</script>')
+        ->not->toContain('validThrough');
+});
+
+it('keeps the standard post band for a post that is not on the job layout', function (): void {
+    jobSite();
+    jobFacts();
+
+    expect(jobPage('/tin-tuc/tin-ngay'))->not->toContain('post-band--job')->not->toContain('post-band__fact');
 });

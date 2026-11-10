@@ -10,8 +10,8 @@
     `cards` and `chips` are built by the controller from stored routes; no id reaches the markup.
 --}}
 @php
-    $sfKind = in_array($kind ?? 'news', ['product', 'project', 'news'], true) ? $kind : 'news';
-    $sfGrid = $sfKind === 'product' ? 'sf-grid--3p' : 'sf-grid--3m';
+    $sfKind = in_array($kind ?? 'news', ['product', 'project', 'news', 'job'], true) ? $kind : 'news';
+    $sfGrid = ['product' => 'sf-grid--3p', 'job' => 'sf-grid--2'][$sfKind] ?? 'sf-grid--3m';
     $sfSizes = $sfKind === 'product'
         ? '(min-width:1360px) 408px, (min-width:1024px) calc((100vw - 8.5rem)/3), (min-width:640px) calc((100vw - 5rem)/2), calc((100vw - 2.75rem)/2)'
         : '(min-width:1360px) 408px, (min-width:1024px) calc((100vw - 8.5rem)/3), (min-width:768px) calc((100vw - 5rem)/2), calc(100vw - 2rem)';
@@ -73,7 +73,7 @@
 @endif
 @else
             <div class="sf-empty-box">
-                <p>{{ __($emptyKey ?? 'storefront.no_posts') }}</p>
+                <p>{{ __($emptyKey ?? ($sfKind === 'job' ? 'storefront.no_jobs' : 'storefront.no_posts')) }}</p>
 @if ($sfAll !== null && $sfAll['all'] && ! $sfAll['current'])
                 <a class="sf-empty-box__link" href="{{ $sfAll['url'] }}">{{ $sfAll['name'] }}</a>
 @endif

@@ -203,6 +203,28 @@ final class Applier
         }
     }
 
+    /**
+     * A post's meta with what the pack manages (the card image, the short facts, the badge) set or removed;
+     * every other key staff or the editor put there is kept.
+     *
+     * @param  array<array-key, mixed>  $meta
+     * @param  array<string, mixed>  $desired
+     * @return array<array-key, mixed>
+     */
+    private function postMeta(array $meta, array $desired): array
+    {
+        foreach (['image' => 'image_url', 'facts' => 'facts', 'badge' => 'badge'] as $from => $to) {
+            $value = $desired[$from] ?? null;
+            if ($from === 'image' ? is_string($value) : (is_array($value) && $value !== [])) {
+                $meta[$to] = $value;
+            } else {
+                unset($meta[$to]);
+            }
+        }
+
+        return $meta;
+    }
+
     private function entry(PlanItem $planned, Planner $planner): void
     {
         $desired = $planned->desired;
@@ -216,7 +238,7 @@ final class Applier
                 'type' => $planned->item->kind,
                 'status' => $status,
                 'published_at' => $this->publishedAt($planned->item, $status),
-                'meta' => $isPost && is_string($desired['image'] ?? null) ? ['image_url' => $desired['image']] : [],
+                'meta' => $isPost ? $this->postMeta([], $desired) : [],
             ] + $parent);
         } else {
             $entry = Entry::withTrashed()->findOrFail($planned->recordId);
@@ -224,14 +246,7 @@ final class Applier
                 $entry->restore();   // a forced re-create of an item staff put in the trash
             }
             $this->recordRevisions($entry);
-            $meta = $entry->meta;
-            if ($isPost) {
-                if (is_string($desired['image'] ?? null)) {
-                    $meta['image_url'] = $desired['image'];
-                } else {
-                    unset($meta['image_url']);
-                }
-            }
+            $meta = $isPost ? $this->postMeta($entry->meta, $desired) : $entry->meta;
             $entry->fill(['status' => $status, 'meta' => $meta] + $parent);
             if ($status === 'published' && $entry->published_at === null) {
                 $entry->published_at = $this->publishedAt($planned->item, $status);

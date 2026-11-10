@@ -14,6 +14,10 @@
     $sfPost = is_array($post ?? null) ? $post : [];
     $sfCover = is_array($sfPost['cover'] ?? null) ? $sfPost['cover'] : null;
     $sfOwnBand = ($leadBlock ?? null) !== 'page_header';
+    // The job look of the band (layout "job"): the short facts and the badge come from the controller.
+    $sfJobBand = (bool) ($sfJob ?? false);
+    $sfFacts = $sfJobBand && is_array($sfPost['facts'] ?? null) ? $sfPost['facts'] : [];
+    $sfBadge = $sfJobBand ? (string) ($sfPost['badge'] ?? '') : '';
     // A body section that already prints a high-priority image keeps the page at one.
     $sfCoverPriority = ($bodyHighImage ?? false) ? 'eager' : 'high';
     $sfPrev = $previous ?? null;
@@ -35,13 +39,29 @@
     <main class="post-page" id="noi-dung" tabindex="-1">
         <article class="post">
 @if ($sfOwnBand)
-            <header class="post-band">
+            <header class="post-band{{ $sfJobBand ? ' post-band--job' : '' }}">
                 <div class="post-band__inner">
                     @include('theme::partials.sf-breadcrumb', ['crumbs' => $breadcrumb ?? [], 'tone' => 'dark', 'class' => 'post-band__crumbs'])
+@if ($sfJobBand)
+                    <p class="post-band__tags">
+                        <span class="post-band__open">{{ __('storefront.job_open') }}</span>
+@if ($sfBadge !== '')
+                        <span class="post-band__badge">{{ $sfBadge }}</span>
+@endif
+                    </p>
+@else
 @isset($category)
                     <p class="post-band__chip">{{ $category['name'] }}</p>
 @endisset
+@endif
                     <h1 class="post-band__title">{{ $title }}</h1>
+@if ($sfFacts !== [])
+                    <ul class="post-band__facts">
+@foreach ($sfFacts as $fact)
+                        <li class="post-band__fact{{ $fact['tone'] === 'accent' ? ' post-band__fact--accent' : '' }}">{{ $fact['text'] }}</li>
+@endforeach
+                    </ul>
+@endif
 @if (($sfPost['excerpt'] ?? '') !== '')
                     <p class="post-band__excerpt">{{ $sfPost['excerpt'] }}</p>
 @endif

@@ -20,8 +20,8 @@ final class SectionProps
     /** The band behind a section: the page, the card surface, a light tint or the dark colour. */
     public const array BG = ['none', 'surface', 'tint', 'dark'];
 
-    /** The look of an article list; `zigzag` is a row per item with the photo alternating left and right. Append-only. */
-    public const array ENTRY_GRID_VARIANTS = ['list', 'icon-cards', 'project-cards', 'news-cards', 'zigzag'];
+    /** The look of an article list; `zigzag` is a row per item with the photo alternating left and right, `job` a card of short facts and a badge (job postings; with `tabs: filter` it adds filter buttons by sub-category). Append-only. */
+    public const array ENTRY_GRID_VARIANTS = ['list', 'icon-cards', 'project-cards', 'news-cards', 'zigzag', 'job'];
 
     /**
      * News tabs of an article list: none (today's look), one tab per published sub-category, or the

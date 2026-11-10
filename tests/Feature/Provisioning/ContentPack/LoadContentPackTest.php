@@ -504,3 +504,31 @@ it('records each page\'s parent in its ledger line and skips a page staff moved 
     [, $output] = ContentPacks::run();
     expect(ContentPacks::verdict($output, 'page:/doi-ngu'))->toBe('skip:edited');
 });
+
+it('writes the short facts and the badge of a post into its meta, plans a change as an update, and removes them when the item drops them', function (): void {
+    $meta = fn (): array => (array) ContentPacks::in($this->siteId, fn () => Entry::query()->whereKey(EntryTranslation::query()->where('slug', 'ra-mat-website')->value('entry_id'))->value('meta'));
+    $facts = [['text' => ['vi' => 'Trung Giã'], 'tone' => 'plain'], ['text' => ['vi' => 'Lương: Thỏa thuận'], 'tone' => 'accent']];
+
+    ContentPacks::load();
+    expect($meta())->not->toHaveKey('facts');
+
+    ContentPacks::item($this->folder, 'posts.json', 'post:ra-mat-website', fn (array $item): array => ['facts' => $facts, 'badge' => ['vi' => 'Tuyển gấp']] + $item);
+    [, $output] = ContentPacks::run();
+    expect(ContentPacks::verdict($output, 'post:ra-mat-website'))->toBe('update');
+
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)
+        ->and($meta()['facts'])->toBe($facts)
+        ->and($meta()['badge'])->toBe(['vi' => 'Tuyển gấp']);
+
+    [, $output] = ContentPacks::run();
+    expect(ContentPacks::verdict($output, 'post:ra-mat-website'))->toBe('unchanged');
+
+    ContentPacks::item($this->folder, 'posts.json', 'post:ra-mat-website', function (array $item): array {
+        unset($item['facts'], $item['badge']);
+
+        return $item;
+    });
+    ContentPacks::load();
+    expect($meta())->not->toHaveKey('facts')->not->toHaveKey('badge');
+});

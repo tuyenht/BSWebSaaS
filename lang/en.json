@@ -3613,5 +3613,10 @@
     "catalog.purge_title_many": "Permanently delete :count products?",
     "catalog.purge_text_one": "This cannot be undone. The pictures, price and every language version of this product are deleted. The SKU and address become free for other products.",
     "catalog.purge_text_many": "This cannot be undone. The pictures, price and every language version of these :count products are deleted. The SKUs and addresses become free for other products.",
-    "catalog.purge_ok_many": "Delete :count products forever"
+    "catalog.purge_ok_many": "Delete :count products forever",
+    "storefront.job_detail": "Details",
+    "storefront.job_filter": "Filter by workplace",
+    "storefront.job_open": "Hiring",
+    "storefront.no_jobs": "No open positions right now.",
+    "entries.opt_variant_job": "Job cards"
 }

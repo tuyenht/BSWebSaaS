@@ -326,7 +326,7 @@
      {
       "type": "richtext_html",
       "props": {
-       "html": "<h2>Thông tin chung</h2><ul><li>Nơi làm việc: Nhà máy 3 – Thạch Thất</li><li>Hình thức: Toàn thời gian</li><li>Số lượng: 3</li><li>Lương: 9 – 14 triệu/tháng</li><li>Hạn nộp: 15/12/2026</li></ul><h2>Mô tả công việc</h2><ul><li>Vận hành máy phay, tiện CNC theo bản vẽ và chương trình được giao.</li><li>Gá đặt phôi, dao cụ; kiểm tra kích thước chi tiết sau gia công.</li><li>Bảo dưỡng máy định kỳ, giữ gìn khu vực làm việc theo 5S.</li><li>Phối hợp QC kiểm tra sản phẩm đầu ca, ghi nhật ký sản xuất.</li></ul><h2>Yêu cầu</h2><ul><li>Tốt nghiệp trung cấp, cao đẳng cơ khí hoặc tương đương.</li><li>Ưu tiên có kinh nghiệm vận hành máy CNC từ 1 năm; chưa có kinh nghiệm sẽ được đào tạo.</li><li>Đọc hiểu bản vẽ kỹ thuật, sử dụng thước cặp, panme.</li><li>Cẩn thận, chấp hành an toàn lao động.</li></ul><h2>Quyền lợi</h2><ul><li>Lương theo năng lực, thưởng lễ Tết và tháng lương thứ 13.</li><li>Đóng BHXH, BHYT, BHTN đầy đủ theo quy định.</li><li>Được đào tạo vận hành máy CNC, kể cả máy 5 trục.</li><li>Team building, hoạt động tập thể hằng năm.</li></ul><h2>Thời gian & địa điểm làm việc</h2><p>Thứ 2 – Thứ 7, 7:30 – 17:00 · Nhà máy 3: Đội 6, thôn Ngũ Sơn, xã Thạch Thất, TP Hà Nội.</p><h2>Cách ứng tuyển</h2><p>Hồ sơ gồm: CV hoặc đơn xin việc; bản sao bằng cấp, chứng chỉ (nếu có). Gửi hồ sơ về <a href=\"mailto:quybv@ckanvinh.vn\">quybv@ckanvinh.vn</a> hoặc gọi, nhắn Zalo <a href=\"tel:0915668383\">0915 66 83 83</a>.</p><p>Liên hệ tuyển dụng: Điện thoại / Zalo 0915 66 83 83, email quybv@ckanvinh.vn.</p>"
+       "html": "<h2>Mô tả công việc</h2><ul><li>Vận hành máy phay, tiện CNC theo bản vẽ và chương trình được giao.</li><li>Gá đặt phôi, dao cụ; kiểm tra kích thước chi tiết sau gia công.</li><li>Bảo dưỡng máy định kỳ, giữ gìn khu vực làm việc theo 5S.</li><li>Phối hợp QC kiểm tra sản phẩm đầu ca, ghi nhật ký sản xuất.</li></ul><h2>Yêu cầu</h2><ul><li>Tốt nghiệp trung cấp, cao đẳng cơ khí hoặc tương đương.</li><li>Ưu tiên có kinh nghiệm vận hành máy CNC từ 1 năm; chưa có kinh nghiệm sẽ được đào tạo.</li><li>Đọc hiểu bản vẽ kỹ thuật, sử dụng thước cặp, panme.</li><li>Cẩn thận, chấp hành an toàn lao động.</li></ul><h2>Quyền lợi</h2><ul><li>Lương theo năng lực, thưởng lễ Tết và tháng lương thứ 13.</li><li>Đóng BHXH, BHYT, BHTN đầy đủ theo quy định.</li><li>Được đào tạo vận hành máy CNC, kể cả máy 5 trục.</li><li>Team building, hoạt động tập thể hằng năm.</li></ul><h2>Thời gian & địa điểm làm việc</h2><p>Thứ 2 – Thứ 7, 7:30 – 17:00 · Nhà máy 3: Đội 6, thôn Ngũ Sơn, xã Thạch Thất, TP Hà Nội.</p><h2>Cách ứng tuyển</h2><p>Hồ sơ gồm: CV hoặc đơn xin việc; bản sao bằng cấp, chứng chỉ (nếu có). Gửi hồ sơ về <a href=\"mailto:quybv@ckanvinh.vn\">quybv@ckanvinh.vn</a> hoặc gọi, nhắn Zalo <a href=\"tel:0915668383\">0915 66 83 83</a>.</p><p>Liên hệ tuyển dụng: Điện thoại / Zalo 0915 66 83 83, email quybv@ckanvinh.vn.</p>"
       }
      }
     ]
@@ -343,6 +343,32 @@
     "Quyền lợi: tháng lương thứ 13, thưởng lễ Tết, BHXH/BHYT/BHTN, đào tạo cả máy 5 trục",
     "Giờ làm: Thứ 2 – Thứ 7, 7:30 – 17:00",
     "Nhận người chưa có kinh nghiệm và đào tạo"
+   ],
+   "facts": [
+    {
+     "text": {
+      "vi": "Nhà máy 3 – Thạch Thất"
+     },
+     "tone": "plain"
+    },
+    {
+     "text": {
+      "vi": "Toàn thời gian · SL: 3"
+     },
+     "tone": "plain"
+    },
+    {
+     "text": {
+      "vi": "Lương: 9 – 14 triệu/tháng"
+     },
+     "tone": "accent"
+    },
+    {
+     "text": {
+      "vi": "Hạn nộp: 15/12/2026"
+     },
+     "tone": "plain"
+    }
    ]
   },
   {
@@ -366,7 +392,7 @@
      {
       "type": "richtext_html",
       "props": {
-       "html": "<h2>Thông tin chung</h2><ul><li>Nơi làm việc: Trụ sở – Nhà máy 1, Trung Giã</li><li>Hình thức: Toàn thời gian</li><li>Số lượng: 2</li><li>Lương: Thỏa thuận</li><li>Hạn nộp: 31/12/2026</li></ul><h2>Mô tả công việc</h2><ul><li>Thiết kế 3D jig, đồ gá trên SolidWorks/NX theo bản vẽ và yêu cầu của khách hàng.</li><li>Lập bản vẽ chế tạo, bản vẽ lắp và danh mục vật tư cho xưởng gia công.</li><li>Tính toán chuẩn định vị, cơ cấu kẹp và dung sai của đồ gá theo chi tiết sản phẩm.</li><li>Phối hợp xưởng gia công, lắp ráp và QC trong quá trình chế tạo, chạy thử và bàn giao đồ gá.</li><li>Trao đổi kỹ thuật với khách hàng khi làm rõ yêu cầu và nghiệm thu.</li></ul><h2>Yêu cầu</h2><ul><li>Tốt nghiệp đại học chuyên ngành cơ khí, cơ điện tử hoặc tương đương.</li><li>Sử dụng thành thạo SolidWorks hoặc NX; đọc hiểu bản vẽ và dung sai hình học.</li><li>Ưu tiên ứng viên đã thiết kế jig hàn, đồ gá kiểm tra hoặc đồ gá gia công.</li><li>Hiểu biết về gia công phay, tiện, cắt dây và vật liệu chế tạo đồ gá.</li><li>Cẩn thận, chủ động, làm việc nhóm tốt.</li></ul><h2>Quyền lợi</h2><ul><li>Lương theo năng lực, thưởng lễ Tết và tháng lương thứ 13.</li><li>Đóng BHXH, BHYT, BHTN đầy đủ theo quy định.</li><li>Tham gia trực tiếp dự án jig, đồ gá cho khách hàng ngành ô tô, điện tử, tự động hóa.</li><li>Team building, hoạt động tập thể hằng năm.</li></ul><h2>Thời gian & địa điểm làm việc</h2><p>Thứ 2 – Thứ 7, 7:30 – 17:00 · Trụ sở: Thôn Xuân Sơn, xã Trung Giã, TP Hà Nội.</p><h2>Cách ứng tuyển</h2><p>Hồ sơ gồm: CV hoặc đơn xin việc; bản sao bằng cấp, chứng chỉ (nếu có). Gửi hồ sơ về <a href=\"mailto:quybv@ckanvinh.vn\">quybv@ckanvinh.vn</a> hoặc gọi, nhắn Zalo <a href=\"tel:0915668383\">0915 66 83 83</a>.</p><p>Liên hệ tuyển dụng: Điện thoại / Zalo 0915 66 83 83, email quybv@ckanvinh.vn.</p>"
+       "html": "<h2>Mô tả công việc</h2><ul><li>Thiết kế 3D jig, đồ gá trên SolidWorks/NX theo bản vẽ và yêu cầu của khách hàng.</li><li>Lập bản vẽ chế tạo, bản vẽ lắp và danh mục vật tư cho xưởng gia công.</li><li>Tính toán chuẩn định vị, cơ cấu kẹp và dung sai của đồ gá theo chi tiết sản phẩm.</li><li>Phối hợp xưởng gia công, lắp ráp và QC trong quá trình chế tạo, chạy thử và bàn giao đồ gá.</li><li>Trao đổi kỹ thuật với khách hàng khi làm rõ yêu cầu và nghiệm thu.</li></ul><h2>Yêu cầu</h2><ul><li>Tốt nghiệp đại học chuyên ngành cơ khí, cơ điện tử hoặc tương đương.</li><li>Sử dụng thành thạo SolidWorks hoặc NX; đọc hiểu bản vẽ và dung sai hình học.</li><li>Ưu tiên ứng viên đã thiết kế jig hàn, đồ gá kiểm tra hoặc đồ gá gia công.</li><li>Hiểu biết về gia công phay, tiện, cắt dây và vật liệu chế tạo đồ gá.</li><li>Cẩn thận, chủ động, làm việc nhóm tốt.</li></ul><h2>Quyền lợi</h2><ul><li>Lương theo năng lực, thưởng lễ Tết và tháng lương thứ 13.</li><li>Đóng BHXH, BHYT, BHTN đầy đủ theo quy định.</li><li>Tham gia trực tiếp dự án jig, đồ gá cho khách hàng ngành ô tô, điện tử, tự động hóa.</li><li>Team building, hoạt động tập thể hằng năm.</li></ul><h2>Thời gian & địa điểm làm việc</h2><p>Thứ 2 – Thứ 7, 7:30 – 17:00 · Trụ sở: Thôn Xuân Sơn, xã Trung Giã, TP Hà Nội.</p><h2>Cách ứng tuyển</h2><p>Hồ sơ gồm: CV hoặc đơn xin việc; bản sao bằng cấp, chứng chỉ (nếu có). Gửi hồ sơ về <a href=\"mailto:quybv@ckanvinh.vn\">quybv@ckanvinh.vn</a> hoặc gọi, nhắn Zalo <a href=\"tel:0915668383\">0915 66 83 83</a>.</p><p>Liên hệ tuyển dụng: Điện thoại / Zalo 0915 66 83 83, email quybv@ckanvinh.vn.</p>"
       }
      }
     ]
@@ -383,7 +409,36 @@
     "Yêu cầu: đại học cơ khí/cơ điện tử, SolidWorks hoặc NX",
     "Quyền lợi: tháng lương thứ 13, thưởng lễ Tết, BHXH/BHYT/BHTN",
     "Giờ làm: Thứ 2 – Thứ 7, 7:30 – 17:00"
-   ]
+   ],
+   "facts": [
+    {
+     "text": {
+      "vi": "Trụ sở – Nhà máy 1, Trung Giã"
+     },
+     "tone": "plain"
+    },
+    {
+     "text": {
+      "vi": "Toàn thời gian · SL: 2"
+     },
+     "tone": "plain"
+    },
+    {
+     "text": {
+      "vi": "Lương: Thỏa thuận"
+     },
+     "tone": "accent"
+    },
+    {
+     "text": {
+      "vi": "Hạn nộp: 31/12/2026"
+     },
+     "tone": "plain"
+    }
+   ],
+   "badge": {
+    "vi": "Tuyển gấp"
+   }
   },
   {
    "key": "post:nhan-vien-kiem-tra-chat-luong-qc",
@@ -406,7 +461,7 @@
      {
       "type": "richtext_html",
       "props": {
-       "html": "<h2>Thông tin chung</h2><ul><li>Nơi làm việc: Trụ sở – Nhà máy 1, Trung Giã</li><li>Hình thức: Toàn thời gian</li><li>Số lượng: 1</li><li>Lương: Thỏa thuận</li><li>Hạn nộp: 30/11/2026</li></ul><h2>Mô tả công việc</h2><ul><li>Đo kiểm chi tiết bằng dụng cụ đo và máy CMM, lập biên bản kiểm tra.</li><li>Kiểm tra sản phẩm đầu ca, trong quá trình và trước khi giao hàng theo bản vẽ và tiêu chuẩn kiểm tra.</li><li>Ghi nhận, khoanh vùng sản phẩm không phù hợp và phối hợp xưởng tìm nguyên nhân.</li><li>Lưu hồ sơ kiểm tra theo hệ thống quản lý chất lượng ISO 9001:2015.</li><li>Kiểm tra định kỳ và bảo quản dụng cụ đo.</li></ul><h2>Yêu cầu</h2><ul><li>Tốt nghiệp trung cấp, cao đẳng trở lên chuyên ngành cơ khí hoặc tương đương.</li><li>Đọc hiểu bản vẽ kỹ thuật, dung sai kích thước và dung sai hình học.</li><li>Sử dụng thành thạo thước cặp, panme, đồng hồ so; biết sử dụng máy CMM là lợi thế.</li><li>Trung thực, cẩn thận, ghi chép rõ ràng.</li></ul><h2>Quyền lợi</h2><ul><li>Lương theo năng lực, thưởng lễ Tết và tháng lương thứ 13.</li><li>Đóng BHXH, BHYT, BHTN đầy đủ theo quy định.</li><li>Được đào tạo về đo kiểm và hệ thống quản lý chất lượng.</li><li>Team building, hoạt động tập thể hằng năm.</li></ul><h2>Thời gian & địa điểm làm việc</h2><p>Thứ 2 – Thứ 7, 7:30 – 17:00 · Trụ sở: Thôn Xuân Sơn, xã Trung Giã, TP Hà Nội.</p><h2>Cách ứng tuyển</h2><p>Hồ sơ gồm: CV hoặc đơn xin việc; bản sao bằng cấp, chứng chỉ (nếu có). Gửi hồ sơ về <a href=\"mailto:quybv@ckanvinh.vn\">quybv@ckanvinh.vn</a> hoặc gọi, nhắn Zalo <a href=\"tel:0915668383\">0915 66 83 83</a>.</p><p>Liên hệ tuyển dụng: Điện thoại / Zalo 0915 66 83 83, email quybv@ckanvinh.vn.</p>"
+       "html": "<h2>Mô tả công việc</h2><ul><li>Đo kiểm chi tiết bằng dụng cụ đo và máy CMM, lập biên bản kiểm tra.</li><li>Kiểm tra sản phẩm đầu ca, trong quá trình và trước khi giao hàng theo bản vẽ và tiêu chuẩn kiểm tra.</li><li>Ghi nhận, khoanh vùng sản phẩm không phù hợp và phối hợp xưởng tìm nguyên nhân.</li><li>Lưu hồ sơ kiểm tra theo hệ thống quản lý chất lượng ISO 9001:2015.</li><li>Kiểm tra định kỳ và bảo quản dụng cụ đo.</li></ul><h2>Yêu cầu</h2><ul><li>Tốt nghiệp trung cấp, cao đẳng trở lên chuyên ngành cơ khí hoặc tương đương.</li><li>Đọc hiểu bản vẽ kỹ thuật, dung sai kích thước và dung sai hình học.</li><li>Sử dụng thành thạo thước cặp, panme, đồng hồ so; biết sử dụng máy CMM là lợi thế.</li><li>Trung thực, cẩn thận, ghi chép rõ ràng.</li></ul><h2>Quyền lợi</h2><ul><li>Lương theo năng lực, thưởng lễ Tết và tháng lương thứ 13.</li><li>Đóng BHXH, BHYT, BHTN đầy đủ theo quy định.</li><li>Được đào tạo về đo kiểm và hệ thống quản lý chất lượng.</li><li>Team building, hoạt động tập thể hằng năm.</li></ul><h2>Thời gian & địa điểm làm việc</h2><p>Thứ 2 – Thứ 7, 7:30 – 17:00 · Trụ sở: Thôn Xuân Sơn, xã Trung Giã, TP Hà Nội.</p><h2>Cách ứng tuyển</h2><p>Hồ sơ gồm: CV hoặc đơn xin việc; bản sao bằng cấp, chứng chỉ (nếu có). Gửi hồ sơ về <a href=\"mailto:quybv@ckanvinh.vn\">quybv@ckanvinh.vn</a> hoặc gọi, nhắn Zalo <a href=\"tel:0915668383\">0915 66 83 83</a>.</p><p>Liên hệ tuyển dụng: Điện thoại / Zalo 0915 66 83 83, email quybv@ckanvinh.vn.</p>"
       }
      }
     ]
@@ -423,6 +478,32 @@
     "Thiết bị: máy CMM (có hay không)",
     "Quyền lợi: tháng lương thứ 13, thưởng lễ Tết, BHXH/BHYT/BHTN",
     "Giờ làm: Thứ 2 – Thứ 7, 7:30 – 17:00"
+   ],
+   "facts": [
+    {
+     "text": {
+      "vi": "Trụ sở – Nhà máy 1, Trung Giã"
+     },
+     "tone": "plain"
+    },
+    {
+     "text": {
+      "vi": "Toàn thời gian · SL: 1"
+     },
+     "tone": "plain"
+    },
+    {
+     "text": {
+      "vi": "Lương: Thỏa thuận"
+     },
+     "tone": "accent"
+    },
+    {
+     "text": {
+      "vi": "Hạn nộp: 30/11/2026"
+     },
+     "tone": "plain"
+    }
    ]
   },
   {

@@ -68,6 +68,51 @@
 @endif
 @include('theme::partials.sf-view-all', ['label' => \App\Modules\Theme\Components\SectionProps::text($props, 'view_all_label'), 'url' => $props['view_all_url'] ?? null, 'show' => ($display ?? null)['view_all'] ?? true])
 @endcomponent
+@elseif (($variant ?? 'list') === 'job')
+{{-- Job postings: the cards (short facts, badge), a count line of the whole branch (`count_label`, "{n}"),
+     filter buttons by sub-category when `tabs` is filter and two or more have posts (sf-tabs.js shows the
+     bar and hides the cards of the other groups; without it every card stays), and `empty_text` when the
+     branch has no post. --}}
+@php
+    $sfJobs = $jobs ?? [];
+    $sfJobChips = $sfJobs['chips'] ?? [];
+    $sfBg = \App\Modules\Theme\Components\SectionProps::choice($props, 'bg', \App\Modules\Theme\Components\SectionProps::BG);
+    $sfJobEmpty = \App\Modules\Theme\Components\SectionProps::text($props, 'empty_text', __('storefront.no_jobs'));
+@endphp
+@component('theme::partials.sf-band', ['bg' => $sfBg, 'class' => 'sf-cards sf-cards--job'])
+@include('theme::partials.sf-section-head', [
+    'heading' => \App\Modules\Theme\Components\SectionProps::text($props, 'heading'),
+    'description' => \App\Modules\Theme\Components\SectionProps::text($props, 'description'),
+])
+@if (count($items) > 0)
+<div class="sf-jobs" data-sf-filter>
+@if (($sfJobs['count'] ?? '') !== '')
+<p class="sf-jobs__count">{{ $sfJobs['count'] }}</p>
+@endif
+@if ($sfJobChips !== [])
+<div class="sf-jobs__chips" role="group" aria-label="{{ __('storefront.job_filter') }}" data-sf-chips hidden>
+<button type="button" class="sf-jobs__chip" data-sf-pick="all" aria-pressed="true">{{ __('storefront.all') }} ({{ $sfJobs['total'] }})</button>
+@foreach ($sfJobChips as $sfChip)
+<button type="button" class="sf-jobs__chip" data-sf-pick="{{ $sfChip['key'] }}" aria-pressed="false">{{ $sfChip['name'] }}</button>
+@endforeach
+</div>
+@endif
+<ul class="sf-grid sf-grid--2 sf-jobs__list">
+@foreach ($items as $card)
+<li data-sf-group="{{ $card['group'] }}">@include('theme::partials.sf-card', [
+    'card' => $card,
+    'kind' => 'job',
+    'level' => 'h3',
+    'linkLabel' => \App\Modules\Theme\Components\SectionProps::text($props, 'link_label', __('storefront.job_detail')),
+])</li>
+@endforeach
+</ul>
+</div>
+@else
+<div class="sf-empty-box"><p>{{ $sfJobEmpty }}</p></div>
+@endif
+@include('theme::partials.sf-view-all', ['label' => \App\Modules\Theme\Components\SectionProps::text($props, 'view_all_label'), 'url' => $props['view_all_url'] ?? null, 'show' => true])
+@endcomponent
 @elseif (! empty($tabs))
 {{-- Tabs by sub-category: every panel is drawn here, on the server, so a search engine reads them all.
      Without JavaScript the panels stack, each under its own heading; sf-tabs.js hides the headings,
