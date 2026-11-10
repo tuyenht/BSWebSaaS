@@ -446,7 +446,8 @@ final class Planner
         $skip = null;
         if ($draftPending) {
             $skip = [PlanItem::SKIP_DRAFT, 'a staff draft is waiting; overwriting would make it stale'];
-        } elseif ($ledger !== null && $ledger['hash'] !== $currentHash) {
+        } elseif ($ledger !== null && $ledger['hash'] !== $currentHash && $ledger['hash'] !== CanonicalHash::of(array_diff_key($current, ['published_at' => true]))) {
+            // (the second hash is the state as ledgers recorded it before the date was managed)
             $skip = [PlanItem::SKIP_EDITED, 'edited by staff since the last load'];
         } elseif ($ledger === null && $evidence !== null) {
             $skip = [PlanItem::SKIP_EDITED, $evidence];
@@ -722,7 +723,13 @@ final class Planner
                 $ids[$item->key] = $this->matched[$item->key];
             }
         }
-        $states = $this->entryStates(array_values($ids));
+        $dated = [];
+        foreach ([...$pages, ...$posts] as $item) {
+            if (isset($ids[$item->key]) && self::packDate($item) !== null) {
+                $dated[] = $ids[$item->key];
+            }
+        }
+        $states = $this->entryStates(array_values($ids), $dated);
         foreach ($ids as $key => $id) {
             $this->entryKeys[$id] = $key;
         }
@@ -763,16 +770,20 @@ final class Planner
     /**
      * Managed fields of these entries, as the ledger hashes them.
      *
+     * `published_at` is part of the state only for the entries in `$dated` (their pack item states a date),
+     * so an item without a date never reports or rewrites the live one.
+     *
      * @param  list<int>  $ids
+     * @param  list<int>  $dated
      * @return array<int, array{ulid: string, state: array<string, mixed>}>
      */
-    public function entryStates(array $ids): array
+    public function entryStates(array $ids, array $dated = []): array
     {
         if ($ids === []) {
             return [];
         }
 
-        $entries = $this->locked(Entry::query()->whereIn('id', $ids))->get(['id', 'ulid', 'type', 'status', 'meta']);
+        $entries = $this->locked(Entry::query()->whereIn('id', $ids))->get(['id', 'ulid', 'type', 'status', 'published_at', 'meta']);
         $translations = $this->locked(EntryTranslation::query()->whereIn('entry_id', $ids)->whereIn('locale', $this->locales))
             ->get(['entry_id', 'locale', 'title', 'slug', 'body', 'excerpt', 'seo_title', 'seo_description', 'status']);
         $byEntry = [];
@@ -799,6 +810,9 @@ final class Planner
                 $byLocale[$translation->locale] = $row;
             }
             $state = ['status' => $entry->status];
+            if (in_array($entry->id, $dated, true)) {
+                $state['published_at'] = $entry->published_at?->copy()->utc()->format('Y-m-d');
+            }
             if ($entry->type === 'post') {
                 $image = $entry->meta['image_url'] ?? null;
                 $state['image'] = is_string($image) && $image !== '' ? $image : null;
@@ -848,6 +862,9 @@ final class Planner
     {
         $status = Cast::string($item->data['status'] ?? null, 'draft');
         $state = ['status' => $status];
+        if (self::packDate($item) !== null) {
+            $state['published_at'] = self::packDate($item);
+        }
 
         if ($item->kind === 'post') {
             $image = $item->data['image'] ?? null;
@@ -892,6 +909,12 @@ final class Planner
         }
 
         return $state;
+    }
+
+    /** The publication date (Y-m-d) a published pack item states, or null when it gives none (or is a draft). */
+    private static function packDate(PackItem $item): ?string
+    {
+        return Cast::string($item->data['status'] ?? null, 'draft') === 'published' ? Cast::stringOrNull($item->data['published_at'] ?? null) : null;
     }
 
     /** @param array<string, mixed> $data */

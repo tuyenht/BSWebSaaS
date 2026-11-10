@@ -10,6 +10,7 @@ use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
+use App\Modules\Provisioning\ContentPack\CanonicalHash;
 use App\Modules\Provisioning\ContentPack\Ledger;
 use App\Modules\Provisioning\ContentPack\PackReader;
 use App\Modules\Provisioning\ContentPack\Planner;
@@ -239,4 +240,115 @@ it('writes a category\'s post layout and then sees it as unchanged', function ()
 
     [, $again] = ContentPacks::run();
     expect(ContentPacks::verdict($again, 'tax:post_cat/tin-tuc'))->toBe('unchanged');
+});
+
+/** The publication date (Y-m-d, UTC) of the post behind a slug. */
+function cpPostDate(int $siteId, string $slug): ?string
+{
+    return ContentPacks::in($siteId, fn () => Entry::query()
+        ->whereKey(EntryTranslation::query()->where('slug', $slug)->value('entry_id'))
+        ->firstOrFail()->published_at?->copy()->utc()->format('Y-m-d'));
+}
+
+function cpSetPostDate(int $siteId, string $slug, string $date): void
+{
+    ContentPacks::in($siteId, fn () => Entry::query()
+        ->whereKey(EntryTranslation::query()->where('slug', $slug)->value('entry_id'))
+        ->update(['published_at' => $date.' 08:00:00']));
+}
+
+it('moves a published post to the date its pack item states, and the plan says so before the apply writes it', function (): void {
+    ContentPacks::load();
+    expect(cpPostDate($this->siteId, 'ra-mat-website'))->toBe('2026-01-15');
+
+    ContentPacks::item($this->folder, 'posts.json', 'post:ra-mat-website', fn (array $item): array => ['published_at' => '2024-03-05'] + $item);
+
+    [, $output] = ContentPacks::run('demo-co', ['-vv' => true]);
+    expect(ContentPacks::verdict($output, 'post:ra-mat-website'))->toBe('update')
+        ->and($output)->toContain('published_at');
+
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)
+        ->and(cpPostDate($this->siteId, 'ra-mat-website'))->toBe('2024-03-05');
+
+    [, $output] = ContentPacks::run();
+    expect(ContentPacks::verdict($output, 'post:ra-mat-website'))->toBe('unchanged');
+});
+
+it('keeps the live date of a published post whose pack item states none', function (): void {
+    ContentPacks::load();
+    cpSetPostDate($this->siteId, 'ra-mat-website', '2025-07-07');
+    ContentPacks::item($this->folder, 'posts.json', 'post:ra-mat-website', function (array $item): array {
+        unset($item['published_at']);
+
+        return $item;
+    });
+
+    [, $output] = ContentPacks::run();
+    expect(ContentPacks::verdict($output, 'post:ra-mat-website'))->toBe('unchanged');
+
+    ContentPacks::load();
+    expect(cpPostDate($this->siteId, 'ra-mat-website'))->toBe('2025-07-07');
+});
+
+it('does not overwrite the date of a post staff edited, until it is forced', function (): void {
+    ContentPacks::load();
+    ContentPacks::in($this->siteId, fn () => EntryTranslation::query()->where('slug', 'ra-mat-website')->update(['title' => 'Tiêu đề do nhân viên sửa']));
+    ContentPacks::item($this->folder, 'posts.json', 'post:ra-mat-website', fn (array $item): array => ['published_at' => '2024-03-05'] + $item);
+
+    [, $output] = ContentPacks::run();
+    expect(ContentPacks::verdict($output, 'post:ra-mat-website'))->toBe('skip:edited');
+    ContentPacks::load();
+    expect(cpPostDate($this->siteId, 'ra-mat-website'))->toBe('2026-01-15');
+
+    ContentPacks::load('demo-co', ['post:ra-mat-website']);
+    expect(cpPostDate($this->siteId, 'ra-mat-website'))->toBe('2024-03-05');
+});
+
+/** Rewrite the ledger line of one item as a load made before the date was managed recorded it: the hash of the state without published_at. */
+function cpLegacyLedger(int $siteId, string $key): void
+{
+    ContentPacks::in($siteId, function () use ($key): void {
+        $plan = app(Planner::class)->plan(app(PackReader::class)->read('demo-co'), Site::query()->value('ulid'), 'Demo', ContentPacks::HOST);
+        $current = $plan->item($key)?->current ?? [];
+        unset($current['published_at']);
+        $ledger = Ledger::read('demo-co');
+        $items = $ledger['items'];
+        $items[$key]['hash'] = CanonicalHash::of($current);
+        Ledger::write('demo-co', $ledger['pack_version'], $items, null);
+    });
+}
+
+it('plans an entry loaded before the date was managed as an update and applies the new date', function (): void {
+    ContentPacks::load();
+    cpLegacyLedger($this->siteId, 'post:ra-mat-website');
+    ContentPacks::item($this->folder, 'posts.json', 'post:ra-mat-website', fn (array $item): array => ['published_at' => '2024-03-05'] + $item);
+
+    [, $output] = ContentPacks::run();
+    expect(ContentPacks::verdict($output, 'post:ra-mat-website'))->toBe('update');
+
+    ContentPacks::load();
+    expect(cpPostDate($this->siteId, 'ra-mat-website'))->toBe('2024-03-05');
+});
+
+it('still skips an entry loaded before the date was managed when staff also changed its title', function (): void {
+    ContentPacks::load();
+    cpLegacyLedger($this->siteId, 'post:ra-mat-website');
+    ContentPacks::in($this->siteId, fn () => EntryTranslation::query()->where('slug', 'ra-mat-website')->update(['title' => 'Tiêu đề do nhân viên sửa']));
+    ContentPacks::item($this->folder, 'posts.json', 'post:ra-mat-website', fn (array $item): array => ['published_at' => '2024-03-05'] + $item);
+
+    [, $output] = ContentPacks::run();
+    expect(ContentPacks::verdict($output, 'post:ra-mat-website'))->toBe('skip:edited');
+
+    ContentPacks::load();
+    expect(cpPostDate($this->siteId, 'ra-mat-website'))->toBe('2026-01-15');
+});
+
+it('leaves the date of an entry alone when its pack item is a draft that states one', function (): void {
+    ContentPacks::load();
+    cpSetPostDate($this->siteId, 'ra-mat-website', '2025-07-07');
+    ContentPacks::item($this->folder, 'posts.json', 'post:ra-mat-website', fn (array $item): array => ['published_at' => '2024-03-05', 'status' => 'draft'] + $item);
+
+    ContentPacks::load();
+    expect(cpPostDate($this->siteId, 'ra-mat-website'))->toBe('2025-07-07');
 });
