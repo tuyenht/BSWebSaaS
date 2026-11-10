@@ -909,6 +909,7 @@
     "media.picker_kind_site": "网站",
     "media.usage_layout_slots": "右侧栏 / 页面底部号召",
     "media.usage_layout_slots_of": ":name · 右侧栏 / 页面底部号召",
+    "media.usage_branches": "分支机构 / 工厂",
     "media.picker_trash": "回收站",
     "media.picker_trash_restore": "恢复",
     "media.picker_trash_purge": "永久删除",

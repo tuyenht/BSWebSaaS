@@ -909,6 +909,7 @@
     "media.picker_kind_site": "Website",
     "media.usage_layout_slots": "Side column / End-of-page call to action",
     "media.usage_layout_slots_of": ":name · Side column / End-of-page call to action",
+    "media.usage_branches": "Branches / Factories",
     "media.picker_trash": "Trash",
     "media.picker_trash_restore": "Restore",
     "media.picker_trash_purge": "Delete permanently",

@@ -38,6 +38,7 @@ use App\Modules\Admin\Livewire\Users\Index as UsersIndex;
 use App\Modules\Admin\Navigation\AdminNav;
 use App\Modules\Admin\Navigation\PlatformNav;
 use App\Modules\Admin\Support\AdminPlane;
+use App\Modules\Admin\Support\Settings\BranchList;
 use App\Modules\Admin\Support\TenantMailer;
 use App\Modules\Admin\Theme\AdminBrandColor;
 use App\Modules\Admin\Theme\AdminChromeResolver;
@@ -88,12 +89,15 @@ final class AdminServiceProvider extends ServiceProvider
             $this->commands([ReconcileContentUsage::class]);
         }
 
-        // The block slots setting owns "in use" rows in the library (polymorphic, no FK cascade): a
-        // deleted row takes them with it. app(), not $this->app: under Octane each request runs in a
-        // clone of the booted app.
+        // The block slots setting and the footer (its branch pictures) own "in use" rows in the
+        // library (polymorphic, no FK cascade): a deleted row takes them with it. app(), not
+        // $this->app: under Octane each request runs in a clone of the booted app.
         SiteSetting::deleted(function (SiteSetting $setting): void {
             if ($setting->group_name === LayoutSlots::SETTING_GROUP && $setting->key === LayoutSlots::SETTING_KEY) {
                 app(BlockMediaUsage::class)->forget('site_setting', [Cast::int($setting->getKey())]);
+            }
+            if ($setting->group_name === 'storefront' && $setting->key === 'footer') {
+                BranchList::syncUsage(Cast::int($setting->getKey()), []);
             }
         });
 

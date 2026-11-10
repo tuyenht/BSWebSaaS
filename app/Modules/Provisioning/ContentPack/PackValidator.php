@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Provisioning\ContentPack;
 
+use App\Modules\Admin\Support\Settings\BranchList;
 use App\Modules\Admin\Support\Settings\FloatingContactInput;
 use App\Modules\Admin\Support\Settings\HeadingDecorInput;
 use App\Modules\Admin\Support\Settings\SettingsChangeRejected;
@@ -392,15 +393,17 @@ final readonly class PackValidator
     {
         $mapHosts = Cast::strings(config('cms.map_hosts'));
         $factories = Cast::arr($value['factories'] ?? null);
+        $this->branches($at, $value['factories'] ?? null, $errors);
+        $shown = array_slice(array_values($factories), 0, StorefrontChrome::MAX_FACTORIES);
         foreach ($pack->locales as $locale) {
             $read = StorefrontChrome::footer($value, $locale, $pack->defaultLocale, $mapHosts);
             if ($read === null) {
                 continue;
             }
-            if (count($read['factories']) !== count($factories)) {
-                $errors[] = "{$at}: a factory would be dropped in '{$locale}' (no title, or more than ".StorefrontChrome::MAX_FACTORIES.').';
+            if (count($read['factories']) !== count($shown) || count(StorefrontChrome::branches($value, $locale, $pack->defaultLocale, $mapHosts)) !== count($factories)) {
+                $errors[] = "{$at}: a factory would be dropped in '{$locale}' (no title in that language or the default one).";
             }
-            foreach (array_values($factories) as $index => $factory) {
+            foreach ($shown as $index => $factory) {
                 $factory = Cast::arr($factory);
                 if (isset($factory['map_url']) && ($read['factories'][$index]['map_url'] ?? null) === null) {
                     $errors[] = "{$at}: factory ".($index + 1).' map_url is not an allowed map link.';
@@ -423,6 +426,38 @@ final readonly class PackValidator
             if (isset($value['columns_menu_region']) && $read['region'] !== $value['columns_menu_region']) {
                 $errors[] = "{$at}: columns_menu_region is not a region name.";
             }
+        }
+    }
+
+    /**
+     * The branch list's own check (BranchList), the one the settings screen runs. A pack names a
+     * branch's picture as an image reference (`{"media": slot}`), never a key or an id: the slot is
+     * checked like every other reference, and the plan turns it into the site's picture.
+     *
+     * @param  list<string>  $errors
+     */
+    private function branches(string $at, mixed $factories, array &$errors): void
+    {
+        $plain = $factories;
+        if (is_array($factories)) {
+            $plain = [];
+            foreach ($factories as $index => $factory) {
+                if (is_array($factory) && array_key_exists('image_media_id', $factory)) {
+                    if (! self::isMediaRef($factory['image_media_id'])) {
+                        $errors[] = "{$at}: factory ".(Cast::int($index) + 1).' image_media_id must be an image reference ({"media": slot}).';
+
+                        return;
+                    }
+                    $factory['image_media_id'] = $factory['image_media_id']['media'];
+                }
+                $plain[$index] = $factory;
+            }
+        }
+
+        try {
+            BranchList::checked($plain);
+        } catch (SettingsChangeRejected $e) {
+            $errors[] = "{$at}: '{$e->field}' is not accepted ({$e->reason}); at most ".BranchList::MAX_ITEMS.' branches, each with a title, unique keys, lat −90…90 and lng −180…180 with at most '.BranchList::MAX_DECIMALS.' decimals, a map_query of at most '.BranchList::MAX_MAP_QUERY.' characters.';
         }
     }
 

@@ -4,6 +4,7 @@ use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Provisioning\ContentPack\PackReader;
 use App\Modules\Provisioning\ContentPack\PackValidator;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Chrome\StorefrontChrome;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
 use Tests\Fixtures\ContentPacks;
@@ -286,6 +287,31 @@ it('loads the flourish heading decoration, a floating contact of Zalo and call o
 
     $product = $this->get('http://'.ContentPacks::HOST.'/jig-kiem-tap-lo-vf7')->assertOk()->getContent();
     expect($product)->toContain('Cần đồ gá cho dây chuyền của bạn?');
+
+    // The factories are the site's branches: stored with their coordinates, and planned again as unchanged.
+    $branches = StorefrontChrome::branches($stored('storefront', 'footer'), 'vi', 'vi');
+    expect(array_column($branches, 'key'))->toBe(['nha-may-1', 'nha-may-2', 'nha-may-3'])
+        ->and(array_column($branches, 'approximate'))->toBe([false, true, true])
+        ->and($branches[2]['lat'])->toBe(21.0655337)->and($branches[2]['lng'])->toBe(105.556209);
+    [$exit, $output] = ContentPacks::run('an-vinh');
+    expect($exit)->toBe(0, $output)->and(ContentPacks::verdict($output, 'setting:storefront.footer'))->toBe('unchanged');
+});
+
+it('gives the factories the design\'s map points and only the company\'s own photos, none where it has no photo of that factory', function (): void {
+    $pack = (new PackReader)->read('an-vinh');
+    $footer = collect($pack->items)->firstWhere('key', 'setting:storefront.footer')->data['value'];
+
+    $points = array_map(fn (array $factory): array => [$factory['key'], $factory['lat'], $factory['lng'], $factory['approximate'], $factory['image_media_id']['media'] ?? null], $footer['factories']);
+    expect($points)->toBe([
+        ['nha-may-1', 21.2983367, 105.8672342, false, null],
+        ['nha-may-2', 21.2936586, 105.8649934, true, 'plant-2-assembly-floor-1'],
+        ['nha-may-3', 21.0655337, 105.556209, true, 'plant-3-machining-hall'],
+    ])
+        ->and($footer['factories'][0]['map_query'])->toBe('Cơ khí An Vinh, Xuân Sơn, Trung Giã, Hà Nội')
+        ->and(array_column($footer['factories'], 'full_name'))->toBe([['vi' => 'Nhà máy 1 – Xuân Sơn'], ['vi' => 'Nhà máy 2 – Hương Ninh'], ['vi' => 'Nhà máy 3 – Ngũ Sơn']]);
+    foreach (['plant-2-assembly-floor-1', 'plant-3-machining-hall'] as $slot) {
+        expect($pack->slots[$slot]['license'])->toStartWith('Ảnh của Công ty An Vinh');
+    }
 });
 
 it('builds the about section as one family: a parent page, titles named like the menu, one band style, one closing call, unique search texts', function (): void {

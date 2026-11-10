@@ -56,7 +56,7 @@
   },
   {
    "key": "setting:storefront.footer",
-   "note": "Không có map_url (chưa có liên kết bản đồ thật).",
+   "note": "Không có map_url (chưa có liên kết bản đồ thật). Mỗi nhà máy là một chi nhánh: key, tên đầy đủ, địa bàn, tọa độ và cờ gần đúng theo bảng Báo giá/Liên hệ của bản thiết kế; câu tìm bản đồ chỉ nhà máy 1 có. Ảnh là ảnh thật của An Vinh từ hồ sơ năng lực: nhà máy 2 xưởng lắp ráp, nhà máy 3 xưởng gia công; nhà máy 1 chưa có ảnh thật nên để trống.",
    "value": {
     "about": {
      "vi": "An Vinh – giải pháp cơ khí chính xác: thiết kế, gia công đồ gá, jig và khuôn mẫu chất lượng cao tại Việt Nam."
@@ -70,6 +70,7 @@
     },
     "factories": [
      {
+      "key": "nha-may-1",
       "title": {
        "vi": "NHÀ MÁY 1"
       },
@@ -79,9 +80,20 @@
       },
       "address": {
        "vi": "Đường 418, thôn Xuân Sơn, xã Trung Giã, TP Hà Nội"
-      }
+      },
+      "full_name": {
+       "vi": "Nhà máy 1 – Xuân Sơn"
+      },
+      "locality": {
+       "vi": "Trung Giã"
+      },
+      "map_query": "Cơ khí An Vinh, Xuân Sơn, Trung Giã, Hà Nội",
+      "lat": 21.2983367,
+      "lng": 105.8672342,
+      "approximate": false
      },
      {
+      "key": "nha-may-2",
       "title": {
        "vi": "NHÀ MÁY 2"
       },
@@ -91,9 +103,22 @@
       },
       "address": {
        "vi": "Đường QL3, thôn Hương Ninh, xã Trung Giã, TP Hà Nội"
-      }
+      },
+      "full_name": {
+       "vi": "Nhà máy 2 – Hương Ninh"
+      },
+      "locality": {
+       "vi": "Trung Giã"
+      },
+      "image_media_id": {
+       "media": "plant-2-assembly-floor-1"
+      },
+      "lat": 21.2936586,
+      "lng": 105.8649934,
+      "approximate": true
      },
      {
+      "key": "nha-may-3",
       "title": {
        "vi": "NHÀ MÁY 3"
       },
@@ -103,7 +128,19 @@
       },
       "address": {
        "vi": "Đội 6, thôn Ngũ Sơn, xã Thạch Thất, TP Hà Nội"
-      }
+      },
+      "full_name": {
+       "vi": "Nhà máy 3 – Ngũ Sơn"
+      },
+      "locality": {
+       "vi": "Thạch Thất"
+      },
+      "image_media_id": {
+       "media": "plant-3-machining-hall"
+      },
+      "lat": 21.0655337,
+      "lng": 105.556209,
+      "approximate": true
      }
     ],
     "copyright": {

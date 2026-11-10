@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Provisioning\ContentPack;
 
+use App\Modules\Admin\Support\Settings\BranchList;
 use App\Modules\Admin\Support\Settings\FloatingContactInput;
 use App\Modules\Admin\Support\Settings\HeadingDecorInput;
 use App\Modules\Admin\Support\Settings\SettingsChangeRejected;
@@ -1671,6 +1672,9 @@ final class Planner
             /** @var array<string, mixed> $stored */
             return $managed === null ? $stored : array_intersect_key($stored, array_flip($managed));
         }
+        if ($item->key === 'setting:storefront.footer' && array_key_exists('factories', $desired)) {
+            $desired['factories'] = $this->branches($item->key, $desired['factories'], Cast::arr($live)['factories'] ?? null);
+        }
         if ($item->key === 'setting:storefront.layout_blocks') {
             foreach ($desired as $slot => $perLocale) {
                 $cleaned = [];
@@ -1683,6 +1687,55 @@ final class Planner
         }
 
         return $desired;
+    }
+
+    /**
+     * The branch list as the settings check stores it (BranchList): each picture reference becomes
+     * the library key of its slot, which the check turns into the site's picture id. A slot that is
+     * not on the site yet keeps the picture the live branch of the same key has (as a top-level
+     * picture keeps its live value), or leaves the branch without one; with a warning either way.
+     *
+     * @return list<array<string, mixed>>
+     *
+     * @throws PackRejected the list is one the settings check refuses
+     */
+    private function branches(string $at, mixed $factories, mixed $live): array
+    {
+        $livePictures = [];
+        foreach (Cast::arr($live) as $branch) {
+            $branch = Cast::arr($branch);
+            if (is_string($branch['key'] ?? null) && is_int($branch['image_media_id'] ?? null)) {
+                $livePictures[$branch['key']] = $branch['image_media_id'];
+            }
+        }
+        if (is_array($factories)) {
+            $resolved = [];
+            foreach ($factories as $index => $factory) {
+                $image = is_array($factory) ? ($factory['image_media_id'] ?? null) : null;
+                if (is_array($factory) && PackValidator::isMediaRef($image)) {
+                    $slot = $this->slots[$image['media']] ?? null;
+                    $kept = is_string($factory['key'] ?? null) ? ($livePictures[$factory['key']] ?? null) : null;
+                    if ($slot === null) {
+                        $this->warnings[] = "{$at}: {$this->unresolved($image['media'])}; factory ".(Cast::int($index) + 1).($kept === null ? ' is shown without a picture.' : ' keeps its live picture.');
+                        if ($kept === null) {
+                            unset($factory['image_media_id']);
+                        } else {
+                            $factory['image_media_id'] = $kept;
+                        }
+                    } else {
+                        $factory['image_media_id'] = $slot['key'];
+                    }
+                }
+                $resolved[$index] = $factory;
+            }
+            $factories = $resolved;
+        }
+
+        try {
+            return BranchList::stored($factories);
+        } catch (SettingsChangeRejected $e) {
+            throw new PackRejected("Refused: {$at} '{$e->field}' is not accepted ({$e->reason}).");
+        }
     }
 
     /**

@@ -25,6 +25,14 @@ final class StorefrontChrome
 
     public const int MAX_FACTORIES = 6;
 
+    /** The branches and factories a site may list (the footer shows the first MAX_FACTORIES). */
+    public const int MAX_BRANCHES = 12;
+
+    public const int MAX_MAP_QUERY = 200;
+
+    /** A branch's key: a short slug, unique in the list. */
+    public const string BRANCH_KEY_PATTERN = '/\A[a-z0-9][a-z0-9-]{0,39}\z/';
+
     public const int MAX_FOOTER_TEXT = 300;
 
     /** Breakpoints an item may appear from (xs = always). */
@@ -171,6 +179,81 @@ final class StorefrontChrome
             'holder' => self::text($copyright['holder'] ?? null, $locale, $default, self::MAX_FOOTER_TEXT),
             'credit' => $credit,
         ];
+    }
+
+    /**
+     * The site's branches and factories with every field, for a branch map or card list: the same
+     * `storefront.footer.factories` list the footer reads (the footer keeps its own shorter shape and
+     * its first MAX_FACTORIES), up to MAX_BRANCHES, an item without a title left out as the footer
+     * does. Each value is read defensively, as footer() does: texts in the page's language, a map
+     * link that passes SafeLink, a key that is a slug and not taken by an earlier item, a map search
+     * text of at most MAX_MAP_QUERY characters, coordinates only as an in-range pair, the picture as
+     * the library id the settings check stored (resolved by the caller, in one query for the list).
+     * Pure: no query.
+     *
+     * @param  mixed  $raw  the stored `storefront.footer` value (an array when set)
+     * @param  list<string>  $mapHosts  hosts a map link may point at (empty = any web host)
+     * @return list<array{key: string|null, title: string, full_name: string|null, locality: string|null, area: int|null, name: string|null, address: string|null, map_url: string|null, map_query: string|null, lat: float|null, lng: float|null, approximate: bool, image_media_id: int|null}>
+     */
+    public static function branches(mixed $raw, string $locale, string $default, array $mapHosts = []): array
+    {
+        $stored = is_array($raw) && is_array($raw['factories'] ?? null) ? $raw['factories'] : [];
+
+        $branches = [];
+        $keys = [];
+        foreach ($stored as $item) {
+            if (count($branches) >= self::MAX_BRANCHES) {
+                break;
+            }
+            if (! is_array($item)) {
+                continue;
+            }
+            $title = self::text($item['title'] ?? null, $locale, $default, self::MAX_FOOTER_TEXT);
+            if ($title === null) {
+                continue;
+            }
+
+            $key = $item['key'] ?? null;
+            $key = is_string($key) && preg_match(self::BRANCH_KEY_PATTERN, $key) === 1 && ! isset($keys[$key]) ? $key : null;
+            if ($key !== null) {
+                $keys[$key] = true;
+            }
+            $area = $item['area_m2'] ?? null;
+            $query = $item['map_query'] ?? null;
+            $query = is_string($query) && trim($query) !== '' && mb_strlen($query) <= self::MAX_MAP_QUERY && preg_match('/[\x00-\x1F\x7F]/u', $query) === 0 ? trim($query) : null;
+            $lat = self::degrees($item['lat'] ?? null, 90);
+            $lng = self::degrees($item['lng'] ?? null, 180);
+            $image = $item['image_media_id'] ?? null;
+
+            $branches[] = [
+                'key' => $key,
+                'title' => $title,
+                'full_name' => self::text($item['full_name'] ?? null, $locale, $default, self::MAX_FOOTER_TEXT),
+                'locality' => self::text($item['locality'] ?? null, $locale, $default, self::MAX_FOOTER_TEXT),
+                'area' => is_int($area) && $area >= 1 && $area <= 10_000_000 ? $area : null,
+                'name' => self::text($item['name'] ?? null, $locale, $default, self::MAX_FOOTER_TEXT),
+                'address' => self::text($item['address'] ?? null, $locale, $default, self::MAX_FOOTER_TEXT),
+                'map_url' => self::external($item['map_url'] ?? null, $mapHosts),
+                'map_query' => $query,
+                'lat' => $lat !== null && $lng !== null ? $lat : null,
+                'lng' => $lat !== null && $lng !== null ? $lng : null,
+                'approximate' => ($item['approximate'] ?? false) === true,
+                'image_media_id' => is_int($image) && $image >= 1 ? $image : null,
+            ];
+        }
+
+        return $branches;
+    }
+
+    /** A coordinate in degrees within ±$limit, as a float; null for anything else. */
+    private static function degrees(mixed $value, int $limit): ?float
+    {
+        if (! is_int($value) && ! is_float($value)) {
+            return null;
+        }
+        $value = (float) $value;
+
+        return is_finite($value) && abs($value) <= $limit ? $value : null;
     }
 
     /**

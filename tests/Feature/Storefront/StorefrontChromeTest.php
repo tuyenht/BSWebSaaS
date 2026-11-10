@@ -351,6 +351,33 @@ it('renders the rich footer: factories, dated licence with its issuer, copyright
         ->toContain("Bản quyền © {$year} thuộc về <strong>Xưởng Mẫu</strong>");
 });
 
+it('keeps the footer byte for byte when the factories carry the branch fields', function (): void {
+    $branchFields = [
+        ['key' => 'nha-may-1', 'full_name' => ['vi' => 'Nhà máy 1 – Xuân Sơn'], 'locality' => ['vi' => 'Trung Giã'], 'map_query' => 'Xưởng Mẫu, KCN Thử',
+            'lat' => 21.2983367, 'lng' => 105.8672342, 'approximate' => false, 'image_media_id' => 7],
+        ['key' => 'nha-may-2', 'lat' => 21.0655337, 'lng' => 105.556209, 'approximate' => true],
+    ];
+    $old = sfcFooter();
+    $withBranches = sfcFooter(['factories' => array_map(fn (array $factory, array $extra): array => $factory + $extra, $old['factories'], $branchFields)]);
+
+    expect(StorefrontChrome::footer($old, 'vi', 'vi')['factories'])->toBe([
+        ['title' => 'Nhà máy 1', 'area' => 12000, 'name' => 'Xưởng cơ khí', 'address' => 'Lô A1, KCN Thử', 'map_url' => 'https://maps.google.com/?q=1'],
+        ['title' => 'Nhà máy 2', 'area' => null, 'name' => null, 'address' => 'Lô B2, KCN Thử', 'map_url' => null],
+    ])
+        ->and(StorefrontChrome::footer($withBranches, 'vi', 'vi'))->toBe(StorefrontChrome::footer($old, 'vi', 'vi'));
+
+    $siteId = sfcSite();
+    $footerHtml = function (array $value) use ($siteId): string {
+        sfcSetting($siteId, 'footer', $value);
+        $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
+        expect(preg_match('~<footer class="sf-footer".*?</footer>~s', $html, $m))->toBe(1);
+
+        return $m[0];
+    };
+
+    expect($footerHtml($withBranches))->toBe($footerHtml($old));
+});
+
 it('drops unsafe links from map, credit and social settings', function (string $url): void {
     $siteId = sfcSite();
     app(Tenancy::class)->enter($siteId, fn () => SiteProfile::query()->firstOrFail()->update(['social_links' => ['facebook' => $url]]));
