@@ -302,14 +302,15 @@
       "props": {
        "heading": "Thư ngỏ từ Ban lãnh đạo",
        "paragraphs": [
-        "Kính gửi Quý Đối tác và Khách hàng!",
-        "Thay mặt tập thể Công ty TNHH Thương mại và Dịch vụ Thiết kế Gia công Cơ khí An Vinh, Ban Lãnh đạo chúng tôi xin trân trọng gửi lời chúc sức khỏe, thành công và lời cảm ơn sâu sắc đến Quý vị đã luôn tin tưởng, đồng hành cùng sự phát triển của công ty trong suốt thời gian qua.",
-        "An Vinh được xây dựng trên nền tảng của sự tâm huyết, sáng tạo và nỗ lực không ngừng của toàn thể cán bộ, công nhân viên. Cùng với sự hợp tác quý báu từ Quý vị, chúng tôi đang từng bước khẳng định vị thế trong lĩnh vực thiết kế, chế tạo đồ gá và khuôn mẫu.",
-        "Với đội ngũ kỹ sư chất lượng cao, giàu kinh nghiệm và chiến lược đầu tư vào hệ thống máy móc, trang thiết bị hiện đại, chúng tôi cam kết mang đến những giải pháp toàn diện, đáp ứng và vượt trên sự mong đợi của khách hàng.",
-        "Chúng tôi lấy chất lượng sản phẩm và sự hài lòng của Quý vị làm kim chỉ nam cho mọi hoạt động. Sự thành công của An Vinh gắn liền với sự thịnh vượng của Quý vị. Vì vậy, chúng tôi luôn mở rộng vòng tay hợp tác với các doanh nghiệp trên cả nước, trên tinh thần chia sẻ lợi ích và cùng nhau phát triển bền vững.",
+        "Kính gửi Quý Chủ đầu tư và Khách hàng!",
+        "Lời đầu tiên, thay mặt Ban lãnh đạo Công ty TNHH Thương mại và Dịch vụ Thiết kế Gia công Cơ khí An Vinh, chúng tôi xin gửi lời chúc sức khỏe, thành đạt, hạnh phúc và lời cảm ơn chân thành tới Quý khách hàng đã, đang và sẽ hợp tác với công ty.",
+        "Được thành lập với sự năng động, sáng tạo và nỗ lực của tập thể cán bộ, công nhân viên, cùng sự hợp tác của Quý vị, An Vinh không ngừng lớn mạnh và phát triển trong lĩnh vực thiết kế và gia công đồ gá, khuôn mẫu.",
+        "Đội ngũ kỹ thuật viên của An Vinh giàu kinh nghiệm, có khả năng tư vấn chuyên sâu, tinh thần kỷ luật, đoàn kết và trách nhiệm cao trong chế tạo cơ khí chính xác, gia công khuôn mẫu và đồ gá. Với chiến lược tập trung đầu tư máy móc, trang thiết bị hiện đại cùng kinh nghiệm và ý tưởng sáng tạo trong thiết kế, chúng tôi luôn đáp ứng và làm hài lòng mọi nhu cầu của khách hàng.",
+        "Chúng tôi lấy chất lượng sản phẩm, dịch vụ và sự hài lòng của Quý khách hàng làm tôn chỉ hành động. Đồng hành cùng sự phát triển của An Vinh là sự thịnh vượng của Quý khách hàng; vì vậy An Vinh luôn chào đón sự hợp tác của các doanh nghiệp trên cả nước, trên cơ sở chia sẻ lợi ích và cùng hướng tới sự phát triển bền vững, lâu dài.",
+        "Chúng tôi hy vọng nhận được sự hợp tác của Quý vị.",
         "Xin trân trọng cảm ơn!",
-        "Ban Lãnh đạo",
-        "Công ty TNHH Thương mại và Dịch vụ Thiết kế Gia công Cơ khí An Vinh"
+        "Bùi Văn Quy",
+        "Giám đốc Công ty An Vinh"
        ],
        "image_url": {
         "media": "about-letter"
@@ -321,18 +322,18 @@
       "type": "features",
       "props": {
        "heading": "Định hướng phát triển",
-       "description": "An Vinh không ngừng vươn tới những tiêu chuẩn cao hơn, kiến tạo giá trị bền vững cho khách hàng và xã hội.",
+       "description": "Với phương châm “Nhận trách nhiệm – Gửi chữ tín”, An Vinh phát triển theo bốn tiêu chí: chuyên nghiệp, chất lượng, uy tín, tiến bộ.",
        "variant": "top-rule",
        "bg": "tint",
        "items": [
         {
          "title": "Tầm nhìn",
-         "text": "Trở thành công ty gia công cơ khí chính xác, thiết kế đồ gá, khuôn mẫu hàng đầu Việt Nam với trang thiết bị hiện đại, tiên tiến. Cung cấp sản phẩm, dịch vụ chất lượng tốt, giá cả cạnh tranh, thỏa mãn mọi nhu cầu của khách hàng.",
+         "text": "Trở thành công ty gia công cơ khí chính xác, thiết kế và gia công đồ gá, khuôn mẫu với trang thiết bị ngày càng hiện đại, tiên tiến. Cung cấp sản phẩm, dịch vụ chất lượng tốt, giá cả cạnh tranh và ngày càng thỏa mãn nhu cầu của khách hàng.",
          "icon": "eye"
         },
         {
          "title": "Sứ mệnh",
-         "text": "Thiết kế, thi công và sản xuất những sản phẩm có chất lượng tốt, an toàn, đảm bảo tiến độ và hiệu quả kinh tế. Phát huy cao nhất năng lực đội ngũ và nâng cao chất lượng đời sống vật chất, tinh thần cho toàn thể cán bộ nhân viên.",
+         "text": "Thiết kế, thi công và sản xuất những sản phẩm có chất lượng tốt, an toàn, đảm bảo tiến độ và hiệu quả kinh tế. Phát huy cao nhất năng lực của đội ngũ cán bộ công nhân viên, cùng với chất lượng cuộc sống vật chất, tinh thần ngày càng được nâng cao.",
          "icon": "users"
         }
        ]
@@ -346,33 +347,28 @@
        "items": [
         {
          "title": "Uy tín",
-         "text": "Luôn nỗ lực hết mình để đảm bảo chất lượng hoàn hảo và cam kết đúng tiến độ.",
+         "text": "Uy tín là quan trọng nhất: nỗ lực đảm bảo chất lượng trên từng công trình, dịch vụ và cam kết đúng tiến độ thực hiện.",
          "icon": "check"
         },
         {
-         "title": "Sáng tạo",
-         "text": "Không ngừng sáng tạo nhằm tạo sự khác biệt và mang đậm bản sắc riêng.",
+         "title": "Khách hàng là trọng tâm",
+         "text": "Đặt lợi ích của khách hàng lên đầu và coi sự hài lòng của khách hàng là thước đo thành công.",
+         "icon": "users"
+        },
+        {
+         "title": "Sáng tạo không ngừng",
+         "text": "Tạo sự khác biệt và bản sắc riêng trong từng sản phẩm, dịch vụ.",
          "icon": "adjust"
         },
         {
          "title": "Trách nhiệm",
-         "text": "Luôn làm việc tận tụy và có trách nhiệm với những gì đã cam kết.",
+         "text": "Làm việc tận tụy và có trách nhiệm với những gì đã cam kết.",
          "icon": "lock"
         },
         {
          "title": "Hiệu quả",
-         "text": "Cải tiến liên tục kỹ năng để phục vụ khách hàng với hiệu suất cao nhất.",
+         "text": "Cải tiến liên tục kiến thức, kỹ năng để phục vụ khách hàng với hiệu suất cao nhất, mang lại lợi ích thiết thực.",
          "icon": "cog"
-        },
-        {
-         "title": "Khách hàng là trọng tâm",
-         "text": "Lấy sự hài lòng của khách hàng làm thước đo cho thành công.",
-         "icon": "users"
-        },
-        {
-         "title": "Chia sẻ thành công",
-         "text": "Đồng hành cùng sự phát triển của khách hàng và cộng đồng.",
-         "icon": "shield"
         }
        ],
        "variant": "top-rule"
@@ -460,15 +456,15 @@
        "items": [
         {
          "title": "Nhà máy 1 · 2.000 m²",
-         "text": "Lắp ráp & sản xuất hàn, dập. Đường 418, thôn Xuân Sơn, xã Trung Giã, TP Hà Nội."
+         "text": "Lắp ráp và sản xuất hàn, dập với quy trình tự động hóa. Đường 418, thôn Xuân Sơn, xã Trung Giã, TP Hà Nội."
         },
         {
          "title": "Nhà máy 2 · 500 m²",
-         "text": "Lắp ráp. Đường QL3, thôn Hương Ninh, xã Trung Giã, TP Hà Nội."
+         "text": "Lắp ráp sản phẩm cơ khí chính xác, kiểm soát chất lượng chặt chẽ. Đường QL3, thôn Hương Ninh, xã Trung Giã, TP Hà Nội."
         },
         {
          "title": "Nhà máy 3 · 1.800 m²",
-         "text": "Gia công. Đội 6, thôn Ngũ Sơn, xã Thạch Thất, TP Hà Nội."
+         "text": "Gia công cơ khí chính xác: CNC, phay, mài, cắt dây, xung và đo CMM. Đội 6, thôn Ngũ Sơn, xã Thạch Thất, TP Hà Nội."
         }
        ]
       }
@@ -479,36 +475,37 @@
        "heading": "Máy móc, thiết bị",
        "items": [
         {
-         "title": "Máy phay CNC 3–5 trục",
+         "title": "Máy CNC",
          "icon": "wrench",
-         "text": "Hành trình tới 1.000 × 600 × 500 mm · dung sai ±0,01 mm"
+         "text": "3 máy cỡ lớn, hành trình tới X4200 × Y3200 × Z1000 mm, và 15 máy cỡ nhỏ X900 × Y450 × Z450 mm."
         },
         {
-         "title": "Máy tiện CNC",
+         "title": "Máy phay, máy mài",
          "icon": "cog",
-         "text": "Đường kính tới Ø300 × dài 500 mm · có trục C"
+         "text": "Máy phay giường X6000 × Y1500 × Z1000 mm, 2 máy phay tự động, 10 máy phay nhỏ và 8 máy mài giường tới X3200 × Y1500 × Z1000 mm."
         },
         {
-         "title": "Máy cắt dây, xung điện (EDM)",
+         "title": "Máy tiện, khoan, taro",
          "icon": "adjust",
-         "text": "Biên dạng phức tạp, chi tiết khuôn, vật liệu đã nhiệt luyện"
+         "text": "3 máy tiện CNC, 3 máy tiện cơ, 5 máy khoan cần tới X1000 × Y1500 × Z1500 mm, 11 máy khoan khác và 5 máy taro."
         },
         {
-         "title": "Máy hàn MIG/MAG, TIG",
-         "icon": "wrench",
-         "text": "Hàn kết cấu, khung đồ gá, cụm chi tiết"
+         "title": "Cắt dây, xung điện (EDM)",
+         "icon": "adjust",
+         "text": "7 máy cắt dây X900 × Y450 × Z300 mm và 2 máy xung X300 × Y250 × Z400 mm cho chi tiết khuôn."
         },
         {
-         "title": "Máy dập, máy ép",
+         "title": "Hàn, dập",
          "icon": "box",
-         "text": "Dập, rèn chi tiết kim loại theo khuôn"
+         "text": "6 máy hàn MIG/MAG, 1 máy hàn brazing, 3 máy hàn khác, máy dập 110 tấn và máy khắc laze."
         },
         {
          "title": "Thiết bị đo kiểm",
          "icon": "check",
-         "text": "Máy đo CMM, máy đo 2,5D, dụng cụ đo cầm tay"
+         "text": "2 máy đo 3D CMM và 2 tay đo 3D Faro Arm."
         }
-       ]
+       ],
+       "description": "Máy và thiết bị chính tại nhà máy 1 và nhà máy 3."
       }
      },
      {
@@ -695,8 +692,8 @@
         "Hệ thống quản lý chất lượng của An Vinh được đánh giá và chứng nhận phù hợp với các yêu cầu của tiêu chuẩn ISO 9001:2015.",
         "Số chứng nhận: HT 3078 · Mã số 3078-24-01/01",
         "Tổ chức chứng nhận: Viện Nghiên cứu Phát triển Tiêu chuẩn Chất lượng (ISSQ)",
-        "Hiệu lực: 01/04/2024 – 23/02/2027",
-        "Phạm vi chứng nhận: gia công rèn, dập, hàn; sản xuất đồ gá, khuôn mẫu"
+        "Chứng nhận lần đầu: 24/02/2024 · Hiệu lực: 01/04/2024 – 23/02/2027",
+        "Phạm vi chứng nhận: gia công các sản phẩm rèn, dập, hàn; sản xuất các sản phẩm cơ khí: đồ gá, khuôn mẫu"
        ],
        "image_url": {
         "media": "iso-9001-certificate"
@@ -825,7 +822,7 @@
       "type": "cta",
       "props": {
        "heading": "Hồ sơ năng lực An Vinh",
-       "text": "Giới thiệu công ty, ba nhà máy, danh mục máy móc, chứng nhận ISO 9001:2015, sản phẩm và dự án tiêu biểu.",
+       "text": "Thông tin công ty, thư ngỏ, tầm nhìn và giá trị cốt lõi, chứng nhận ISO 9001:2015, đối tác, sản phẩm tiêu biểu, ba nhà máy và danh sách máy móc, thiết bị.",
        "button_label": "Yêu cầu hồ sơ năng lực",
        "button_url": "/lien-he",
        "side": "stats",
