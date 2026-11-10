@@ -1631,6 +1631,7 @@
     "entries.opt_variant_news-cards": "News cards",
     "entries.opt_variant_overlay": "Text over the photo",
     "entries.opt_variant_rounded": "Rounded button",
+    "entries.opt_variant_split": "Text left, buttons right",
     "entries.opt_variant_cards": "Cards",
     "entries.opt_variant_top-rule": "Cards with a top rule",
     "entries.opt_kind_number": "Number",

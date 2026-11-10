@@ -546,9 +546,11 @@ main:has(.hero, .sf-slider) .page__title {
     }
 }
 
+/* The size of every section title (.sf-section-head__title), on a phone too. */
 .about__heading {
-    font-size: clamp(1.25rem, 2.5vw, 1.875rem);
-    font-weight: 800;
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+    font-weight: 700;
     color: var(--sch-head, var(--color-text-strong));
     margin: 0 0 1rem;
 }
@@ -919,7 +921,8 @@ main:has(.hero, .sf-slider) .page__title {
 }
 
 .cta h2 {
-    font-size: clamp(1.25rem, 2.5vw, 1.875rem);
+    font-size: 1.875rem;
+    line-height: 2.25rem;
     font-weight: 800;
     color: var(--sch-head, var(--color-surface));
     margin: 0 0 1.5rem;
@@ -951,16 +954,6 @@ main:has(.hero, .sf-slider) .page__title {
     .partners {
         padding: 4rem 2rem;
     }
-}
-
-.partners__heading {
-    font-size: clamp(1.25rem, 2.5vw, 1.875rem);
-    font-weight: 800;
-    color: var(--sch-head, var(--color-text-strong));
-    margin: 0 0 2rem;
-    padding-bottom: 0.625rem;
-    border-bottom: 3px solid var(--sch-rule, var(--color-primary));
-    display: inline-block;
 }
 
 .partners__list {
@@ -1029,67 +1022,6 @@ main:has(.hero, .sf-slider) .page__title {
     .partners__link:hover .partners__logo {
         filter: none;
     }
-}
-
-/* ───── Features section ─────────────────────────────────────────────────── */
-.features {
-    max-width: 80rem;
-    margin-inline: auto;
-    padding: 3rem 1.5rem;
-}
-
-@media (min-width: 1024px) {
-    .features {
-        padding: 4rem 2rem;
-    }
-}
-
-.features h2 {
-    font-size: clamp(1.25rem, 2.5vw, 1.875rem);
-    font-weight: 800;
-    color: var(--sch-head, var(--color-text-strong));
-    margin: 0 0 2rem;
-    padding-bottom: 0.625rem;
-    border-bottom: 3px solid var(--sch-rule, var(--color-primary));
-    display: inline-block;
-}
-
-.features__list {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 1.25rem;
-}
-
-@media (min-width: 640px) {
-    .features__list {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-@media (min-width: 1024px) {
-    .features__list {
-        grid-template-columns: repeat(3, 1fr);
-    }
-}
-
-.features__item {
-    background: var(--color-surface);
-    border-radius: 0.5rem;
-    padding: 1.5rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
-}
-
-.features__item h3 {
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--color-text-strong);
-    margin: 0 0 0.5rem;
-}
-
-.features__item p {
-    font-size: 0.9rem;
-    color: color-mix(in srgb, var(--color-text) 80%, white);
-    line-height: 1.6;
 }
 
 /* ───── Richtext section ─────────────────────────────────────────────────── */
@@ -3752,7 +3684,8 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     height: 0.1875rem;
     margin-inline: auto;
     border-radius: 9999px;
-    background: linear-gradient(90deg, transparent, var(--color-primary) 20%, var(--color-primary) 80%, transparent);
+    /* The band's rule colour inside a colour scheme or over a photo (white there), else the brand accent. */
+    background: linear-gradient(90deg, transparent, var(--sch-rule, var(--color-primary)) 20%, var(--sch-rule, var(--color-primary)) 80%, transparent);
 }
 
 .sf-section-head__text {
@@ -3923,8 +3856,9 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     --sf-decor-c2: var(--color-surface);
 }
 
-/* Grids: --4 (2 from md, 4 from lg) · --4s (2 from sm, 4 from lg) · --3 (3 from md)
- * · --3s (2 from sm, 3 from lg) · --3m (2 from md, 3 from lg) · --3p (2 on a phone, 3 from lg). */
+/* Grids: --4 (2 from md, 4 from lg) · --4s (2 from sm, 4 from lg) · --4p (2 on a phone, 4 from lg)
+ * · --3 (3 from md) · --3s (2 from sm, 3 from lg) · --3m (2 from md, 3 from lg) · --3p (2 on a phone,
+ * 3 from lg) · --2 (2 from md). */
 .sf-grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -3943,7 +3877,8 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     flex: 1;
 }
 
-.sf-grid--3p {
+.sf-grid--3p,
+.sf-grid--4p {
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
@@ -3971,6 +3906,10 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    .sf-grid--2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .sf-grid--3 {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
@@ -3978,7 +3917,8 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 
 @media (min-width: 1024px) {
     .sf-grid--4,
-    .sf-grid--4s {
+    .sf-grid--4s,
+    .sf-grid--4p {
         grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 
@@ -4420,8 +4360,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     transition: transform 0.3s;
 }
 
-.sf-card__icon .icon,
-.sf-feature__icon .icon {
+.sf-card__icon .icon {
     width: 4rem;
     height: 4rem;
     color: inherit;
@@ -4773,32 +4712,60 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     }
 }
 
-/* Features, top-rule look (capabilities). */
+/* Features (theme::sections.features). The grid is tighter on a phone. */
+.sf-features .sf-grid {
+    gap: 1rem;
+}
+
+@media (min-width: 768px) {
+    .sf-features .sf-grid {
+        gap: 2rem;
+    }
+}
+
+/* Top-rule look: on a phone a compact row (glyph in a ring on the left, rule on the left edge); from a
+   tablet up a centered card with the rule on top. */
 .sf-feature {
-    flex-direction: column;
-    align-items: center;
-    padding: 2rem;
-    border-top: 0.25rem solid var(--color-primary);
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.25rem;
+    border-left: 0.25rem solid var(--color-primary);
     border-radius: 0.5rem;
     background: var(--color-surface);
     box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    text-align: center;
+    text-align: left;
     transition: box-shadow 0.3s, transform 0.3s;
+}
+
+.sf-grid > :is(.sf-feature, .sf-fcard) > * {
+    flex: none;
+}
+
+.sf-grid > :is(.sf-feature, .sf-fcard) > :is(.sf-feature__body, .sf-fcard__body) {
+    flex: 1;
+    min-width: 0;
 }
 
 .sf-feature__icon {
     display: inline-flex;
-    margin-bottom: 1.5rem;
-    padding: 1rem;
+    padding: 0.75rem;
     border-radius: 9999px;
-    background: color-mix(in srgb, var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark))) 80%, var(--color-dark));
-    color: var(--color-primary-text);
+    background: color-mix(in srgb, var(--color-dark) 12%, var(--color-surface));
+    color: var(--color-dark-raised, var(--color-dark));
+}
+
+.sf-feature__icon .icon {
+    width: 1.75rem;
+    height: 1.75rem;
+    color: inherit;
 }
 
 .sf-feature__title {
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.25rem;
     color: var(--color-text-strong);
-    font-size: 1.25rem;
+    font-size: 1.125rem;
+    line-height: 1.75rem;
     font-weight: 700;
     overflow-wrap: anywhere;
 }
@@ -4806,6 +4773,155 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 .sf-feature__text {
     color: var(--color-text);
     font-size: 0.875rem;
+    line-height: 1.625;
+}
+
+@media (min-width: 768px) {
+    .sf-feature {
+        flex-direction: column;
+        align-items: center;
+        gap: 0;
+        padding: 2rem;
+        border-left: 0;
+        border-top: 0.25rem solid var(--color-primary);
+        text-align: center;
+    }
+
+    .sf-grid > .sf-feature > .sf-feature__body {
+        align-self: stretch;
+    }
+
+    .sf-feature__icon {
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+    }
+
+    .sf-feature__icon .icon {
+        width: 3rem;
+        height: 3rem;
+    }
+
+    .sf-feature__title {
+        margin-bottom: 0.75rem;
+        font-size: 1.25rem;
+    }
+}
+
+/* Default look: plain cards; a glyph sits in a dark tile beside the text. */
+.sf-fcard {
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.25rem;
+    border-radius: 0.75rem;
+    background: var(--color-surface);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-dark) 12%, var(--color-surface)), 0 1px 2px rgb(0 0 0 / 0.05);
+}
+
+.sf-fcard__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 0.5rem;
+    background: var(--color-dark);
+    color: var(--color-primary-on-dark);
+}
+
+.sf-fcard__icon .icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    color: inherit;
+}
+
+.sf-fcard__title {
+    color: var(--color-text-strong);
+    font-size: 1rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.sf-fcard__text {
+    margin-top: 0.5rem;
+    color: var(--color-text);
+    font-size: 0.875rem;
+    line-height: 1.625;
+}
+
+@media (min-width: 640px) {
+    .sf-features--cards .sf-grid {
+        gap: 1.5rem;
+    }
+
+    .sf-fcard {
+        padding: 1.5rem;
+    }
+}
+
+/* On a dark band (a raised dark) both looks drop the card: the glyph in the brand colour beside a light
+   title, at every width. */
+.sf-band--dark.sf-features {
+    background: var(--color-dark-raised, var(--color-dark));
+}
+
+.sf-band--dark.sf-features .sf-grid {
+    gap: 2rem;
+}
+
+.sf-band--dark :is(.sf-feature, .sf-fcard) {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    text-align: left;
+}
+
+.sf-band--dark :is(.sf-feature, .sf-fcard):hover {
+    box-shadow: none;
+    transform: none;
+}
+
+.sf-band--dark :is(.sf-feature__icon, .sf-fcard__icon) {
+    width: auto;
+    height: auto;
+    margin: 0.25rem 0 0;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--color-primary-on-dark);
+}
+
+.sf-band--dark :is(.sf-feature__icon, .sf-fcard__icon) .icon {
+    width: 2rem;
+    height: 2rem;
+}
+
+.sf-band--dark :is(.sf-feature__title, .sf-fcard__title) {
+    margin-bottom: 0.5rem;
+    color: var(--color-surface);
+    font-size: 1.25rem;
+}
+
+.sf-band--dark :is(.sf-feature__text, .sf-fcard__text) {
+    margin-top: 0;
+    color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white));
+    font-size: 1rem;
+}
+
+/* Plain cards two a row on a phone (sf-grid--4p), on any band: the tile above the text, so the text
+   keeps the card's full width. After the dark-band rules, which set a row. */
+@media (max-width: 639.98px) {
+    .sf-grid--4p > .sf-fcard {
+        flex-direction: column;
+    }
+
+    .sf-grid--4p > .sf-fcard > .sf-fcard__body {
+        align-self: stretch;
+    }
 }
 
 /* CTA: the sub-line (both looks) and the rounded look. */
@@ -7032,6 +7148,42 @@ html:has(.sf-viewer[open]) {
 
 .cta--rounded .cta__actions {
     margin-top: 2rem;
+}
+
+/* The title of the rounded and split looks: the sub-line's own margin spaces them (the boards: a title with
+   no margin, the sub-line 1rem under it, the buttons 2rem under that). */
+.cta .cta__title {
+    margin: 0;
+}
+
+/* The split look: text left, pill buttons right from a tablet up; stacked on a phone. */
+.cta.cta--split {
+    padding: 4rem 0;
+    text-align: left;
+}
+
+.cta__row {
+    display: grid;
+    gap: 2rem;
+    align-items: center;
+}
+
+.cta--split .cta__text {
+    margin: 0.75rem 0 0;
+}
+
+.cta--split .cta__actions {
+    justify-content: flex-start;
+}
+
+@media (min-width: 768px) {
+    .cta__row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .cta--split .cta__actions {
+        justify-content: flex-end;
+    }
 }
 
 .cta__button.cta__button--outline {

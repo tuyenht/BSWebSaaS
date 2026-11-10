@@ -132,6 +132,9 @@ describe('stats kinds', function (): void {
             ->and($counts([['type' => 'stats', 'props' => ['items' => [['kind' => 'year', 'value' => 2019], ['value' => 5]]]]]))->toBeTrue()
             ->and($counts([['type' => 'cta', 'props' => ['side' => 'stats', 'side_items' => [['value' => 5]]]]]))->toBeTrue()
             ->and($counts([['type' => 'cta', 'props' => ['side' => 'stats', 'variant' => 'rounded', 'side_items' => [['value' => 5]]]]]))->toBeFalse()
+            ->and($counts([['type' => 'cta', 'props' => ['side' => 'stats', 'variant' => 'split', 'side_items' => [['value' => 5]]]]]))->toBeFalse()
+            // An unknown look is drawn as the default band, stats included, so it counts up like it.
+            ->and($counts([['type' => 'cta', 'props' => ['side' => 'stats', 'variant' => 'bogus', 'side_items' => [['value' => 5]]]]]))->toBeTrue()
             ->and($counts([['type' => 'cta', 'props' => ['side' => 'none', 'side_items' => [['value' => 5]]]]]))->toBeFalse();
     });
 });

@@ -169,7 +169,7 @@ describe('the block choice', function (): void {
 describe('the block schema', function (): void {
     it('offers the choice only on blocks that draw a section heading', function (): void {
         $registry = app(ComponentRegistry::class);
-        $headed = ['features', 'process', 'pricing', 'testimonial', 'stats', 'gallery', 'quick_links', 'team', 'video', 'faq', 'entry_grid', 'product_grid'];
+        $headed = ['features', 'partners', 'process', 'pricing', 'testimonial', 'stats', 'gallery', 'quick_links', 'team', 'video', 'faq', 'entry_grid', 'product_grid'];
 
         foreach ($registry->types() as $type) {
             $schema = $registry->schemaFor($type);

@@ -1631,6 +1631,7 @@
     "entries.opt_variant_news-cards": "ニュースカード",
     "entries.opt_variant_overlay": "写真に文字を重ねる",
     "entries.opt_variant_rounded": "丸いボタン",
+    "entries.opt_variant_split": "左に文章、右にボタン",
     "entries.opt_variant_cards": "カード形式",
     "entries.opt_variant_top-rule": "上線付きカード",
     "entries.opt_kind_number": "数字",

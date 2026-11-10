@@ -359,7 +359,7 @@ final readonly class PageRenderer
             $props = is_array($block) && is_array($block['props'] ?? null) ? $block['props'] : [];
             $key = match (true) {
                 $type === 'stats' => 'items',
-                $type === 'cta' && ($props['side'] ?? null) === 'stats' && ($props['variant'] ?? null) !== 'rounded' => 'side_items',
+                $type === 'cta' && ($props['side'] ?? null) === 'stats' && SectionProps::choice($props, 'variant', SectionProps::CTA_VARIANTS) === 'default' => 'side_items',
                 default => null,
             };
             $max = $type === 'stats' ? SectionProps::STATS_MAX_ITEMS : SectionProps::CTA_SIDE_MAX_ITEMS;
