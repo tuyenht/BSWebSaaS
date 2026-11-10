@@ -1941,10 +1941,20 @@ main:has(.hero, .sf-slider) .page__title {
 
 /* Blocks placed in a post body (video, FAQ, gallery, call to action…) keep their own look — the
    text rules above reach only the written text — and follow the article: its column, its rhythm,
-   and a heading like the text's own (left, one brand rule under it). */
-.sf-prose--article > :is(.sf-band, .cta, .sf-s):not(:first-child),
+   and a heading like the text's own (left, one brand rule under it). A text block that has a look
+   set (its .sf-s wrapper) is text: it keeps the text's rhythm, not a block's gap. */
+.sf-prose--article > :is(.sf-band, .cta, .sf-s:not(:has(> :is(.richtext, .sf-prose)))):not(:first-child),
 .sf-prose--article > .page-band + * {
     margin-block: 2.5rem 0;
+}
+
+.sf-prose--article > .sf-s:has(> :is(.richtext, .sf-prose)) {
+    margin-block: 0;
+}
+
+/* A painted one (a colour set or a photo) holds its last paragraph's gap inside: one more below. */
+.sf-prose--article > .sf-s:is([class*="sf-s--sch-"], .sf-s--image):has(> :is(.richtext, .sf-prose)) {
+    margin-bottom: 1.15em;
 }
 
 .sf-prose--article > .sf-band--none,
@@ -2870,14 +2880,24 @@ html:has(.sf-header--sticky) {
     object-fit: contain;
 }
 
-/* Menu, desktop (from xl) and mobile panel (below xl) — theme::partials.nav-disclosure. The desktop
-   menu sits at the bar's right end, at least 2.5rem from the logo (the bar's 1rem gap + 1.5rem). */
+/* Menu, desktop (from lg) and mobile panel (below lg) — theme::partials.nav-disclosure. A menu too
+   wide for a 1024px laptop (sf-header--menu-xl, decided from the menu by StorefrontChrome::menuNeedsXl)
+   switches at xl instead. The desktop menu sits at the bar's right end, at least 2.5rem from the logo
+   (the bar's 1rem gap + 1.5rem). */
 .sf-nav--desk {
     display: none;
 }
 
+@media (min-width: 1024px) {
+    .sf-header:not(.sf-header--menu-xl) .sf-nav--desk {
+        display: block;
+        margin-left: auto;
+        padding-left: 1.5rem;
+    }
+}
+
 @media (min-width: 1280px) {
-    .sf-nav--desk {
+    .sf-header--menu-xl .sf-nav--desk {
         display: block;
         margin-left: auto;
         padding-left: 1.5rem;
@@ -2936,7 +2956,9 @@ html:has(.sf-header--sticky) {
 }
 
 /* Desktop: a parent's link and its chevron button read as one item — the chevron right after the
-   label (its 40px target reaching to the right), one highlight across both. */
+   label and the item's usual 0.75rem after it, so a parent is spaced like a plain item; one
+   highlight across both. The button draws narrower than its target: a transparent extension over
+   the gap and the next item's blank padding makes it 40px wide (44px on touch screens, below). */
 .sf-nav--desk .sf-nav__item--parent > .sf-nav__link:has(+ .sf-nav__chev) {
     padding-right: 0;
     border-start-end-radius: 0;
@@ -2944,10 +2966,18 @@ html:has(.sf-header--sticky) {
 }
 
 .sf-nav--desk .sf-nav__item--parent > .sf-nav__chev {
-    justify-content: flex-start;
-    padding-left: 0.25rem;
+    position: relative;
+    z-index: 1;
+    min-width: 0;
+    padding: 0 0.75rem 0 0.25rem;
     border-start-start-radius: 0;
     border-end-start-radius: 0;
+}
+
+.sf-nav--desk .sf-nav__item--parent > .sf-nav__chev::after {
+    content: "";
+    position: absolute;
+    inset: 0 calc(100% - 2.5rem) 0 0;
 }
 
 .sf-nav--desk .sf-nav__item--parent:is(.is-open, :hover, :has(> .is-trail), :has(> [aria-current="page"])) > :is(.sf-nav__link, .sf-nav__chev) {
@@ -3044,9 +3074,16 @@ html:not(.sf-js) .sf-nav--desk .sf-nav__item--parent:focus-within > .sf-nav__pan
     display: inline-flex;
 }
 
-/* After the base rule above, which it must override: from xl the bar has the full menu. */
+/* After the base rule above, which it must override: from lg (xl for a wide menu) the bar has the
+   full menu. */
+@media (min-width: 1024px) {
+    .sf-header:not(.sf-header--menu-xl) .sf-burger {
+        display: none;
+    }
+}
+
 @media (min-width: 1280px) {
-    .sf-burger {
+    .sf-header--menu-xl .sf-burger {
         display: none;
     }
 }
@@ -3060,8 +3097,17 @@ html:not(.sf-js) .sf-nav--desk .sf-nav__item--parent:focus-within > .sf-nav__pan
     border-top: 1px solid var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
 }
 
+@media (min-width: 1024px) {
+    .sf-header:not(.sf-header--menu-xl) .sf-nav--mob {
+        visibility: hidden;
+        height: 0;
+        padding: 0;
+        overflow: hidden;
+    }
+}
+
 @media (min-width: 1280px) {
-    .sf-nav--mob {
+    .sf-header--menu-xl .sf-nav--mob {
         visibility: hidden;
         height: 0;
         padding: 0;
@@ -3108,10 +3154,23 @@ html:not(.sf-js) .sf-nav--desk .sf-nav__item--parent:focus-within > .sf-nav__pan
 }
 
 .sf-nav--mob .sf-nav__link[aria-current="page"],
-.sf-nav--mob .sf-nav__sublink[aria-current="page"],
-.sf-nav--mob .sf-nav__item:not(.sf-nav__item--parent) > .sf-nav__link.is-trail {
+.sf-nav--mob .sf-nav__sublink[aria-current="page"] {
     background: var(--color-primary);
     color: var(--color-on-primary);
+}
+
+/* The section the page sits in (aria-current="true"): a brand bar at its start, not the current
+   page's fill, so the two never look alike. */
+.sf-nav--mob .sf-nav__link.is-trail,
+.sf-nav--mob .sf-nav__sublink.is-trail {
+    background: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
+    box-shadow: inset 4px 0 0 var(--color-primary);
+    color: #fff;
+}
+
+.sf-nav--mob .sf-nav__item--parent > .sf-nav__chev.is-trail {
+    background: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
+    color: #fff;
 }
 
 .sf-nav--mob .sf-nav__panel {
@@ -3129,7 +3188,8 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 /* Menu item options (admin "Trình đơn"), for every menu the theme draws: "Hiện trên" one device
    only, a badge, a description under a sub-item, a top-level item drawn as a button, and a large
    panel whose children sit in --sf-mega-cols columns from lg (a plain list in the phone drawer).
-   The rich header switches at xl, so inside it each menu shows its own device's items only. */
+   "Hiện trên" follows the screen width in every menu: from 1024px a computer-only item shows in the
+   menu panel too, where a wide menu's panel serves laptops up to 1280px. */
 @media (max-width: 1023.98px) {
     .sf-only-desk {
         display: none !important;
@@ -3137,14 +3197,9 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 }
 
 @media (min-width: 1024px) {
-    .sf-only-mob:not(.sf-nav--mob .sf-only-mob) {
+    .sf-only-mob {
         display: none !important;
     }
-}
-
-.sf-nav--mob .sf-only-desk,
-.sf-nav--desk .sf-only-mob {
-    display: none !important;
 }
 
 .sf-menu__badge {
@@ -3581,7 +3636,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     color: var(--sch-body, currentColor);
 }
 
-/* Touch screens: every control of the rich chrome reaches 44px. */
+/* Touch screens: every control of the rich chrome reaches 44px, at every width. */
 @media (any-pointer: coarse) {
     .sf-header--topbar {
         --sf-topbar-h: 2.75rem;
@@ -3597,6 +3652,40 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 
     .sf-nav__chev {
         min-width: 2.75rem;
+    }
+
+    .sf-nav--desk .sf-nav__item--parent > .sf-nav__chev::after {
+        inset: 0 calc(100% - 2.75rem) 0 0;
+    }
+}
+
+/* From lg the top bar draws 32px, as the design does, on touch laptops too. Its links keep a 40px
+   target (44px on touch) through a transparent extension into the blank top of the main bar, which
+   the top bar paints over. After the touch rule above, which it overrides. */
+@media (min-width: 1024px) {
+    .sf-header--topbar:not(.sf-header--fs-only) {
+        --sf-topbar-h: 2rem;
+    }
+
+    .sf-topbar {
+        position: relative;
+        z-index: 1;
+    }
+
+    .sf-topbar :is(.sf-topbar__link, .sf-lang__link) {
+        position: relative;
+    }
+
+    .sf-topbar :is(.sf-topbar__link, .sf-lang__link)::after {
+        content: "";
+        position: absolute;
+        inset: 0 0 -0.5rem;
+    }
+}
+
+@media (min-width: 1024px) and (any-pointer: coarse) {
+    .sf-topbar :is(.sf-topbar__link, .sf-lang__link)::after {
+        bottom: -0.75rem;
     }
 }
 
@@ -7223,8 +7312,7 @@ html:has(.sf-viewer[open]) {
 /* The reserved room: the same buttons, invisible, in the page flow after the footer and in its
    colour. The copy keeps the real list's max-height and wrapping, so it is exactly as tall as what
    is drawn (plus the gap above and the offset below). The bottom row reserves it at every width; a
-   side stack only below 768px — from there it sits over the page's edge, as the design draws it,
-   and an empty dark band under the footer would only push the page's end away. */
+   side stack wherever it can cover the footer's text (below). */
 .sf-fc-ghost {
     display: flex;
     justify-content: flex-end;
@@ -7247,9 +7335,23 @@ html:has(.sf-viewer[open]) {
     padding-inline: 0;
 }
 
+/* From 768px a side stack keeps its room only where it can cover the footer's text: where it
+   reaches into the 80rem page (--fc-cover > 0: its offset and a 50px button against the margin
+   beside the page's 2rem padding — at a 16px root up to about 1357px at the default 20px offset,
+   1437px at 60px; at An Vinh's 17px root 1440px, measured), or
+   where it wraps into a second column (--fc-over > 0: its buttons, from --fc-n, and gaps against
+   the list's max-height above; capping it to one column would push buttons off a short screen).
+   Elsewhere a one-column stack sits in the page margin and an empty band would only push the
+   page's end away. clamp(0px, x × 9999, room) turns either sum into a switch (0 or the full room)
+   without script; the 1px leans to keeping the room when it only just fits. */
 @media (min-width: 768px) {
     .sf-fc-ghost--side {
-        display: none;
+        --fc-over: calc(var(--fc-n, 0) * (max(50px, 3.125rem) + 0.75rem) - 0.75rem - (100dvh - var(--fc-oy, 24px) - 5rem) + 1px);
+        --fc-cover: calc(var(--fc-ox, 20px) + max(50px, 3.125rem) + 38rem - 50vw + 1px);
+        overflow: hidden;
+        max-height: clamp(0px, max(var(--fc-over), var(--fc-cover)) * 9999, 300vh);
+        padding-top: clamp(0px, max(var(--fc-over), var(--fc-cover)) * 9999, 0.625rem);
+        padding-bottom: clamp(0px, max(var(--fc-over), var(--fc-cover)) * 9999, calc(var(--fc-oy, 24px) + env(safe-area-inset-bottom, 0px)));
     }
 }
 

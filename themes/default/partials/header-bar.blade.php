@@ -1,17 +1,20 @@
 {{--
     Rich storefront header (site setting `storefront.header`, normalized into $header): an optional
     top bar (contact items, language switch, text-size button below lg) that scrolls away, then the main bar
-    — logo, the desktop menu from xl at the bar's right end, the menu button and its panel below xl
-    (the phone menu when the site set one, else the main menu) — which stays at the
+    — logo, the desktop menu at the bar's right end from lg (from xl when it is too wide for a
+    laptop: sf-header--menu-xl), the menu button and its panel below that (the phone menu when the
+    site set one, else the main menu) — which stays at the
     top. One <header> landmark holds both; it sticks with the top bar's height scrolled off, so no
     script runs on scroll and nothing shifts. Every value is Blade-escaped; links come validated.
 --}}
 @php
     $sfLanguages = \App\Modules\Theme\Chrome\StorefrontChrome::languages($hreflang ?? [], $lang ?? 'vi');
     $sfTopBar = $header['top_bar'] !== [] || $sfLanguages !== [] || $header['text_size'];
+    // a menu too wide for a 1024px laptop keeps the menu button up to 1280px (StorefrontChrome::menuNeedsXl)
+    $sfMenuXl = ! empty($menu) && \App\Modules\Theme\Chrome\StorefrontChrome::menuNeedsXl($menu);
     $sfSizes = ['m' => __('storefront.text_size_m'), 'l' => __('storefront.text_size_l'), 'xl' => __('storefront.text_size_xl')];
 @endphp
-<header class="sf-header{{ $header['sticky'] ? ' sf-header--sticky' : '' }}{{ $sfTopBar ? ' sf-header--topbar' : '' }}{{ $header['top_bar'] === [] && $sfLanguages === [] && $header['text_size'] ? ' sf-header--fs-only' : '' }}">
+<header class="sf-header{{ $header['sticky'] ? ' sf-header--sticky' : '' }}{{ $sfTopBar ? ' sf-header--topbar' : '' }}{{ $sfMenuXl ? ' sf-header--menu-xl' : '' }}{{ $header['top_bar'] === [] && $sfLanguages === [] && $header['text_size'] ? ' sf-header--fs-only' : '' }}">
     @if ($sfTopBar)
         <div class="sf-topbar">
             <div class="sf-container sf-topbar__inner">
@@ -76,5 +79,5 @@
     </div>
     {{-- Without scripts the menu panel is simply open below the bar, and the text-size button
          (which needs a script) is not shown. --}}
-    <noscript><style>@media (max-width:1279.98px){.sf-nav--mob[hidden]{display:block}}.sf-burger,.sf-fs{display:none}</style></noscript>
+    <noscript><style>@media (max-width:{{ $sfMenuXl ? '1279.98' : '1023.98' }}px){.sf-nav--mob[hidden]{display:block}}.sf-burger,.sf-fs{display:none}</style></noscript>
 </header>
