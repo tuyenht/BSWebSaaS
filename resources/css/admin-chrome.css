@@ -248,27 +248,29 @@
    — the <lg off-canvas keeps its full width and slides over content. This REPLACES
    the old Alpine `collapsed` toggle (the header button now flips this persisted axis).
    Scoped to the tenant shell (:where adds no specificity): the platform console shares the
-   attribute but draws its own rail (see "Platform console shell"). */
+   attribute but draws its own rail (see "Platform console shell"). [data-sidebar-fold] (a settings
+   page, for that page only — see app.js) draws the same rail; :is() keeps one attribute's
+   specificity. */
 @media (min-width: 64rem) {
-    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar {
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) :where(.admin-shell-wrapper) .admin-sidebar {
         width: var(--sidebar-width-collapsed); /* 70px */
     }
-    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-content {
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) :where(.admin-shell-wrapper) .admin-content {
         padding-left: var(--sidebar-width-collapsed);
     }
-    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar .sidebar-label {
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) :where(.admin-shell-wrapper) .admin-sidebar .sidebar-label {
         display: none;
     }
     /* Center ONLY the rail's own items (icon-only). Scoping to the direct row keeps the
        hover flyout's child links left-aligned instead of centered/staggered. */
-    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar nav > ul > li > a,
-    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar nav > ul > li > div > button,
-    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar .sidebar-brand-link {
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) :where(.admin-shell-wrapper) .admin-sidebar nav > ul > li > a,
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) :where(.admin-shell-wrapper) .admin-sidebar nav > ul > li > div > button,
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) :where(.admin-shell-wrapper) .admin-sidebar .sidebar-brand-link {
         justify-content: center;
     }
 
     /* Collapsed rail = icons only → nested submenus stay hidden inline… */
-    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar nav ul ul {
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) :where(.admin-shell-wrapper) .admin-sidebar nav ul ul {
         display: none;
     }
 
@@ -277,18 +279,18 @@
        a native title tooltip. Target span.sidebar-label only (the chevron carries the class too). */
     /* The scroll container (overflow-y:auto forces overflow-x:auto) would CLIP the absolute flyout —
        let the collapsed rail overflow (icon rail is short enough not to need its own scroll). */
-    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar nav {
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) :where(.admin-shell-wrapper) .admin-sidebar nav {
         overflow: visible;
         /* Drop the row inset (Velzon uses container padding:0) so each <li> spans the FULL 70px
            rail and butts against the flyout. With the inset, the <li> ended ~12px short of the
            rail edge, leaving a dead gap the pointer could not cross to reach the flyout links. */
         padding-inline: 0;
     }
-    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar nav > ul > li {
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) :where(.admin-shell-wrapper) .admin-sidebar nav > ul > li {
         position: relative;
     }
-    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar nav > ul > li:hover > a > span.sidebar-label,
-    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar nav > ul > li:hover > div > button > span.sidebar-label {
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) :where(.admin-shell-wrapper) .admin-sidebar nav > ul > li:hover > a > span.sidebar-label,
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) :where(.admin-shell-wrapper) .admin-sidebar nav > ul > li:hover > div > button > span.sidebar-label {
         display: block;
         position: absolute;
         left: calc(var(--sidebar-width-collapsed) - 2px); /* overlap the rail edge 2px (same bg) so no seam breaks the hover */
@@ -303,7 +305,7 @@
         text-align: start;
     }
     /* Group children fly out below the label box; re-show the child labels inside it. */
-    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar nav > ul > li:hover > div > ul {
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) :where(.admin-shell-wrapper) .admin-sidebar nav > ul > li:hover > div > ul {
         display: block !important;
         position: absolute;
         left: calc(var(--sidebar-width-collapsed) - 2px); /* overlap the rail edge 2px (same bg) so no seam breaks the hover */
@@ -318,7 +320,7 @@
         border-radius: 0 0 0.25rem 0.25rem;
         box-shadow: var(--shadow-card);
     }
-    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar nav > ul > li:hover > div > ul span.sidebar-label {
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) :where(.admin-shell-wrapper) .admin-sidebar nav > ul > li:hover > div > ul span.sidebar-label {
         display: inline;
     }
 }
@@ -360,9 +362,9 @@
 :root[data-sidebar='light'] .admin-sidebar .brand-logo--light { display: none; }
 :root[data-sidebar='light'] .admin-sidebar .brand-logo--dark { display: block; }
 @media (min-width: 64rem) {
-    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar .brand-logo--light,
-    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar .brand-logo--dark { display: none; }
-    :root[data-sidebar-size='sm'] :where(.admin-shell-wrapper) .admin-sidebar .brand-logo--sm { display: block; }
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) :where(.admin-shell-wrapper) .admin-sidebar .brand-logo--light,
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) :where(.admin-shell-wrapper) .admin-sidebar .brand-logo--dark { display: none; }
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) :where(.admin-shell-wrapper) .admin-sidebar .brand-logo--sm { display: block; }
 }
 
 /* ---- Sidebar scrollbar: thin + auto-hide (Velzon/SimpleBar-like, no JS library — ADR-A1) ---
@@ -427,7 +429,7 @@
     .platform-shell .admin-content {
         padding-inline-start: var(--sidebar-width);
     }
-    :root[data-sidebar-size='sm'] .platform-shell .admin-content {
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) .platform-shell .admin-content {
         padding-inline-start: var(--sidebar-width-collapsed);
     }
 }
@@ -506,18 +508,18 @@
     }
 }
 @media (min-width: 80rem) {
-    :root[data-sidebar-size='sm'] .platform-shell .admin-sidebar {
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) .platform-shell .admin-sidebar {
         width: var(--sidebar-width-collapsed);
     }
-    :root[data-sidebar-size='sm'] .platform-shell .admin-sidebar nav {
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) .platform-shell .admin-sidebar nav {
         overflow: visible; /* the scroll box would clip the name beside the rail */
     }
-    :root[data-sidebar-size='sm'] .platform-shell .admin-sidebar .sidebar-link {
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) .platform-shell .admin-sidebar .sidebar-link {
         position: relative;
         justify-content: center;
         padding-inline: 0;
     }
-    :root[data-sidebar-size='sm'] .platform-shell .admin-sidebar .sidebar-label {
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) .platform-shell .admin-sidebar .sidebar-label {
         position: absolute;
         width: 1px;
         height: 1px;
@@ -525,7 +527,7 @@
         clip-path: inset(50%);
         white-space: nowrap;
     }
-    :root[data-sidebar-size='sm'] .platform-shell .admin-sidebar .sidebar-link:is(:hover, :focus-visible) .sidebar-label {
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) .platform-shell .admin-sidebar .sidebar-link:is(:hover, :focus-visible) .sidebar-label {
         inset-inline-start: calc(100% - 2px); /* overlaps the rail edge (same fill) so no seam breaks the hover */
         top: 0;
         z-index: 50;
@@ -544,21 +546,21 @@
         color: var(--color-sidebar-fg-hover);
         box-shadow: var(--shadow-card);
     }
-    :root[data-sidebar-size='sm'] .platform-shell .admin-sidebar .sidebar-heading {
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) .platform-shell .admin-sidebar .sidebar-heading {
         height: 1px;
         margin: 0.5625rem 1.25rem;
         padding: 0;
         overflow: hidden;
         background: var(--color-sidebar-hover);
     }
-    :root[data-sidebar-size='sm'] .platform-shell .admin-sidebar .sidebar-heading:first-child {
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) .platform-shell .admin-sidebar .sidebar-heading:first-child {
         display: none;
     }
-    :root[data-sidebar-size='sm'] .platform-shell .admin-sidebar .brand-logo--light,
-    :root[data-sidebar-size='sm'] .platform-shell .admin-sidebar .brand-logo--dark {
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) .platform-shell .admin-sidebar .brand-logo--light,
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) .platform-shell .admin-sidebar .brand-logo--dark {
         display: none;
     }
-    :root[data-sidebar-size='sm'] .platform-shell .admin-sidebar .brand-logo--sm {
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) .platform-shell .admin-sidebar .brand-logo--sm {
         display: block;
     }
 }

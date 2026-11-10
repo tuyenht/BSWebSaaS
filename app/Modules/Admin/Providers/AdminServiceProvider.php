@@ -184,7 +184,13 @@ final class AdminServiceProvider extends ServiceProvider
         View::composer(['admin::layouts.app', 'admin::layouts.platform'], function (ViewContract $view): void {
             $user = Auth::user();
             $user = $user instanceof User ? $user : null;
-            $view->with('chrome', app(AdminChromeResolver::class)->attributes($user));
+            $chrome = app(AdminChromeResolver::class)->attributes($user);
+            // A settings page folds a wide menu to its icon rail for that page only (settings-shell);
+            // the member's saved size is not touched.
+            if (request()->attributes->get('admin.sidebar_fold') === true && ($chrome['data-sidebar-size'] ?? null) !== 'sm') {
+                $chrome['data-sidebar-fold'] = '';
+            }
+            $view->with('chrome', $chrome);
             // The platform's admin brand colour (one table, resources/admin-brands.json) as the
             // :root tokens the layout prints in its head.
             $view->with('brandTokens', AdminBrandColor::cssVariables(config('admin.brand.color')));

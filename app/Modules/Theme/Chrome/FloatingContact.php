@@ -41,8 +41,8 @@ final class FloatingContact
     /** Longest value (a link or an address). */
     public const int MAX_VALUE = 500;
 
-    /** Buttons the phone bottom bar holds. */
-    public const int BAR_MAX = 3;
+    /** Buttons the phone bottom bar holds at most; past the third they show only where the phone is wide enough. */
+    public const int BAR_MAX = 5;
 
     /** A channel of the site's own: `c` and a number. */
     public const string CUSTOM_KEY = '/\Ac[1-9]\d{0,5}\z/';
@@ -156,7 +156,7 @@ final class FloatingContact
      * has no channel to show. `label` is the hover label in the page's language (null = the
      * channel's own default, which the theme words); custom channels fall back to their name.
      * `buy` is the "Mua hàng" button at the end of the phone bar: only when its switch is on and
-     * the site has a product list to send people to ($shopHref); it then takes the third place.
+     * the site has a product list to send people to ($shopHref); it then takes one of the five places.
      *
      * @param  mixed  $raw  the stored value (an array when set)
      * @param  string|null  $shopHref  the site's product list, or null when it has none

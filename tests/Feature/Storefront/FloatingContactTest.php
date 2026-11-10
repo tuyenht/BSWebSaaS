@@ -200,7 +200,7 @@ it('falls back to the default side and offsets on unknown or odd values', functi
     expect($part)->toContain('<nav class="sf-fc sf-fc--right" aria-label="Liên hệ nhanh" style="--fc-ox:20px;--fc-oy:24px">');
 });
 
-it('draws the phone bottom bar with at most three channels and without the chat-window ones', function (): void {
+it('draws the phone bottom bar with at most five channels and without the chat-window ones', function (): void {
     $siteId = flcSite();
     flcSetting($siteId, flcConfig([
         ['key' => 'messenger', 'on' => true, 'value' => 'trang.mau'],
@@ -209,16 +209,22 @@ it('draws the phone bottom bar with at most three channels and without the chat-
         ['key' => 'zalo', 'on' => true, 'value' => '0912345678'],
         ['key' => 'sms', 'on' => true, 'value' => '0912345678'],
         ['key' => 'whatsapp', 'on' => true, 'value' => '0912345678'],
+        ['key' => 'telegram', 'on' => true, 'value' => 'trangmau'],
+        ['key' => 'viber', 'on' => true, 'value' => '0912345678'],
     ], ['theme' => 'horizontal']));
 
     $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
     preg_match('~<nav class="sf-fc-bar".*?</nav>~s', $html, $bar);
 
+    // The fourth and fifth are marked to drop out first on a narrow phone.
     expect($bar[0] ?? '')->toContain('href="tel:0912345678"')
         ->toContain('href="https://zalo.me/0912345678"')
         ->toContain('href="sms:0912345678"')
-        ->not->toContain('m.me')->not->toContain('mailto:')->not->toContain('wa.me')
-        ->and(substr_count($bar[0] ?? '', '<a '))->toBe(3)
+        ->toContain('<li class="sf-fc-bar__item sf-fc-bar__item--r4"><a class="sf-fc-bar__link" href="https://wa.me/')
+        ->toContain('<li class="sf-fc-bar__item sf-fc-bar__item--r5"><a class="sf-fc-bar__link" href="https://t.me/')
+        ->not->toContain('m.me')->not->toContain('mailto:')->not->toContain('viber:')
+        ->and(substr_count($bar[0] ?? '', '<a '))->toBe(5)
+        ->and(substr_count($bar[0] ?? '', '<li class="sf-fc-bar__item">'))->toBe(3)
         ->and($html)->not->toContain('<nav class="sf-fc sf-fc--')
         ->toContain('sf-fc-bar sf-fc-bar--ghost');
 });
@@ -256,12 +262,13 @@ it('ends the phone bar with “Mua hàng” opening the product list, and keeps 
     preg_match('~<div class="sf-fc-bar sf-fc-bar--ghost".*?</ul></div>~s', $html, $ghost);
 
     expect($bar[0] ?? '')->toContain('href="tel:0912345678"')->toContain('href="https://zalo.me/0912345678"')
-        ->not->toContain('sms:')
+        ->toContain('<li class="sf-fc-bar__item sf-fc-bar__item--r4"><a class="sf-fc-bar__link" href="sms:0912345678"')
         ->toContain('href="/san-pham" style="--fc-fill:')
         ->toContain(';--fc-ink:#ffffff"')
         ->toContain('<span class="sf-fc-bar__label">Mua hàng</span>')
-        ->and(substr_count($bar[0] ?? '', '<a '))->toBe(3)
+        ->and(substr_count($bar[0] ?? '', '<a '))->toBe(4)
         ->and(substr_count($ghost[0] ?? '', '<li class="sf-fc-bar__item">'))->toBe(3)
+        ->and(substr_count($ghost[0] ?? '', '<li class="sf-fc-bar__item sf-fc-bar__item--r4">'))->toBe(1)
         ->and($ghost[0] ?? '')->toContain('Mua hàng');
 
     // The product list itself is reachable at that address.

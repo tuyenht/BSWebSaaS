@@ -199,6 +199,7 @@ document.addEventListener('alpine:init', () => {
             }
             this.state[field] = value;
             document.documentElement.setAttribute(spec.attr, value);
+            this._applyFold();
 
             const pending = readPendingTheme();
             pending[field] = value;
@@ -206,6 +207,31 @@ document.addEventListener('alpine:init', () => {
             // Send the WHOLE buffer, not just this field: an axis whose earlier save
             // failed rides along on the next successful request instead of being lost.
             this._persist(pending);
+        },
+
+        // A settings page (its column, [data-set-shell]) folds a wide menu to the icon rail for
+        // that page only: [data-sidebar-fold] on <html>, printed by the server on a full load and
+        // kept here across wire:navigate. The menu button opens it again while the member stays
+        // in Settings (`unfolded`, never saved); leaving Settings ends both.
+        onSettings: document.querySelector('[data-set-shell]') !== null,
+        unfolded: false,
+
+        get folded() {
+            return this.state.sidebar_size === 'sm' || (this.onSettings && !this.unfolded);
+        },
+
+        toggleSidebar() {
+            if (this.onSettings && this.state.sidebar_size !== 'sm') {
+                this.unfolded = !this.unfolded;
+                this._applyFold();
+                return;
+            }
+            this.unfolded = this.onSettings;
+            this.set('sidebar_size', this.state.sidebar_size === 'sm' ? 'lg' : 'sm');
+        },
+
+        _applyFold() {
+            document.documentElement.toggleAttribute('data-sidebar-fold', this.onSettings && !this.unfolded && this.state.sidebar_size !== 'sm');
         },
 
         reset() {
@@ -270,6 +296,19 @@ document.addEventListener('alpine:init', () => {
     });
 
     window.Alpine.store('adminTheme').retryPending();
+});
+
+// Settings fold, kept in step with the page wire:navigate brings in (also fires on the first load).
+document.addEventListener('livewire:navigated', () => {
+    const theme = window.Alpine?.store('adminTheme');
+    if (!theme) {
+        return;
+    }
+    theme.onSettings = document.querySelector('[data-set-shell]') !== null;
+    if (!theme.onSettings) {
+        theme.unfolded = false;
+    }
+    theme._applyFold();
 });
 
 // The Appearance Settings page saved a new SITE default — repaint this tab immediately
