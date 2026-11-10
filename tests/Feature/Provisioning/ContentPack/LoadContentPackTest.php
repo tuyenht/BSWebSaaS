@@ -352,3 +352,121 @@ it('leaves the date of an entry alone when its pack item is a draft that states 
     ContentPacks::load();
     expect(cpPostDate($this->siteId, 'ra-mat-website'))->toBe('2025-07-07');
 });
+
+/** Add page:/doi-ngu after the pack's own pages, under /gioi-thieu unless $extra says otherwise ([] names no parent). */
+function cpAddChildPage(string $folder, array $extra = ['parent' => 'page:/gioi-thieu']): void
+{
+    ContentPacks::edit($folder, 'pages.json', function (array $data) use ($extra): array {
+        $data['items'][] = $extra + [
+            'key' => 'page:/doi-ngu',
+            'verified' => true,
+            'status' => 'published',
+            'title' => ['vi' => 'Đội ngũ'],
+            'body' => ['vi' => [['type' => 'page_header', 'props' => ['title' => 'Đội Ngũ', 'subtitle' => 'Những người làm nên sản phẩm']]]],
+        ];
+
+        return $data;
+    });
+}
+
+/** @return array{parent: int|null, gioiThieu: int, route: string|null} */
+function cpChildPage(int $siteId): array
+{
+    return ContentPacks::in($siteId, function (): array {
+        $child = SiteRoute::query()->where('path', '/doi-ngu')->value('entry_id');
+
+        return [
+            'parent' => Entry::query()->whereKey($child)->value('parent_id'),
+            'gioiThieu' => (int) SiteRoute::query()->where('path', '/gioi-thieu')->value('entry_id'),
+            'route' => SiteRoute::query()->where('entry_id', $child)->value('path'),
+        ];
+    });
+}
+
+it('puts a page under the parent page it names, at its own address, with the parent in its breadcrumb, and re-plans it unchanged', function (): void {
+    cpAddChildPage($this->folder);
+
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output);
+
+    $page = cpChildPage($this->siteId);
+    expect($page['parent'])->toBe($page['gioiThieu'])
+        ->and($page['route'])->toBe('/doi-ngu');
+
+    $html = $this->get('http://'.ContentPacks::HOST.'/doi-ngu')->assertOk()->getContent();
+    expect(preg_match('#<nav class="sf-crumbs[^"]*"[^>]*>.*?</nav>#s', $html, $crumbs))->toBe(1)
+        ->and(strip_tags($crumbs[0]))->toMatch('/Trang chủ\s+Giới thiệu\s+Đội ngũ/u')
+        ->and($crumbs[0])->toContain('href="/gioi-thieu"');
+    $this->get('http://'.ContentPacks::HOST.'/gioi-thieu/doi-ngu')->assertNotFound();
+
+    [$exit, $output] = ContentPacks::run();
+    $count = count(app(PackReader::class)->read('demo-co')->items);
+    expect($exit)->toBe(0)->and($output)->toContain("create 0 · update 0 · adopt 0 · unchanged {$count} · skip 0 · conflict 0");
+});
+
+it('gives a page loaded before parents were managed its parent as an update, leaves it when the item names none, and clears it on null', function (): void {
+    cpAddChildPage($this->folder, []);
+    ContentPacks::load();
+    expect(cpChildPage($this->siteId)['parent'])->toBeNull();
+
+    ContentPacks::item($this->folder, 'pages.json', 'page:/doi-ngu', fn (array $item): array => ['parent' => 'page:/gioi-thieu'] + $item);
+    [, $output] = ContentPacks::run();
+    expect(ContentPacks::verdict($output, 'page:/doi-ngu'))->toBe('update')
+        ->and($output)->toContain('parent');
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output);
+    $page = cpChildPage($this->siteId);
+    expect($page['parent'])->toBe($page['gioiThieu'])->and($page['route'])->toBe('/doi-ngu');
+
+    ContentPacks::item($this->folder, 'pages.json', 'page:/doi-ngu', function (array $item): array {
+        unset($item['parent']);
+
+        return $item;
+    });
+    [, $output] = ContentPacks::run();
+    expect(ContentPacks::verdict($output, 'page:/doi-ngu'))->toBe('unchanged');
+
+    ContentPacks::item($this->folder, 'pages.json', 'page:/doi-ngu', fn (array $item): array => ['parent' => null] + $item);
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)->and(cpChildPage($this->siteId)['parent'])->toBeNull();
+});
+
+it('still skips a page staff moved under another parent since the last load', function (): void {
+    cpAddChildPage($this->folder);
+    ContentPacks::load();
+    ContentPacks::in($this->siteId, fn () => Entry::query()->whereKey(SiteRoute::query()->where('path', '/doi-ngu')->value('entry_id'))
+        ->update(['parent_id' => SiteRoute::query()->where('path', '/')->value('entry_id')]));
+    ContentPacks::item($this->folder, 'pages.json', 'page:/doi-ngu', fn (array $item): array => ['title' => ['vi' => 'Đội ngũ kỹ sư']] + $item);
+
+    [, $output] = ContentPacks::run();
+    expect(ContentPacks::verdict($output, 'page:/doi-ngu'))->toBe('skip:edited');
+});
+
+it('makes a page a conflict when its parent cannot be given', function (Closure $setup, string $message): void {
+    $setup($this);
+
+    [$exit, $output] = ContentPacks::run();
+    expect($exit)->toBe(1, $output)
+        ->and(ContentPacks::verdict($output, 'page:/doi-ngu'))->toBe('conflict')
+        ->and($output)->toContain($message);
+})->with([
+    'a parent neither in the pack nor on the site' => [function ($test): void {
+        cpAddChildPage($test->folder, ['parent' => 'page:/khong-co']);
+    }, 'its parent page page:/khong-co is neither in the pack nor on the site'],
+    'a site that nests page addresses' => [function ($test): void {
+        ContentPacks::in($test->siteId, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'permalinks', 'key' => 'pages'], ['value' => ['pattern' => 'nested']]));
+        cpAddChildPage($test->folder);
+    }, 'the site nests page addresses under their parent page'],
+    'a loop through a live parent' => [function ($test): void {
+        cpAddChildPage($test->folder, []);
+        ContentPacks::load();
+        ContentPacks::in($test->siteId, fn () => Entry::query()->whereKey(SiteRoute::query()->where('path', '/gioi-thieu')->value('entry_id'))
+            ->update(['parent_id' => SiteRoute::query()->where('path', '/doi-ngu')->value('entry_id')]));
+        ContentPacks::item($test->folder, 'pages.json', 'page:/doi-ngu', fn (array $item): array => ['parent' => 'page:/gioi-thieu'] + $item);
+    }, 'its parent pages lead back to page:/doi-ngu itself'],
+    'a parent staff deleted' => [function ($test): void {
+        cpAddChildPage($test->folder);
+        ContentPacks::load();
+        ContentPacks::in($test->siteId, fn () => Entry::query()->whereKey(SiteRoute::query()->where('path', '/gioi-thieu')->value('entry_id'))->firstOrFail()->delete());
+    }, 'its parent page page:/gioi-thieu would not exist after this load'],
+]);

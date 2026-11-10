@@ -102,6 +102,7 @@ final readonly class PackValidator
 
         $seen = [];
         $taxonomies = [];
+        $pages = [];
         foreach ($pack->items as $item) {
             if (isset($seen[$item->key])) {
                 $errors[] = "{$item->key}: the key is used twice.";
@@ -115,13 +116,16 @@ final readonly class PackValidator
                 'taxonomy' => $this->taxonomy($pack, $item, $taxonomies, $errors),
                 'product' => $this->product($pack, $item, $taxonomies, $errors),
                 'post' => $this->post($pack, $item, $taxonomies, $errors),
-                'page' => $this->page($pack, $item, $errors),
+                'page' => $this->page($pack, $item, $pages, $errors),
                 'menu' => $this->menu($pack, $item, $errors),
                 'redirect' => $this->redirect($pack, $item, $errors),
                 default => $errors[] = "{$at}: unknown kind.",
             };
             if ($item->kind === 'taxonomy') {
                 $taxonomies[$item->key] = true;
+            }
+            if ($item->kind === 'page') {
+                $pages[$item->key] = true;
             }
 
             foreach (self::slotsIn($item->data) as $slot) {
@@ -645,14 +649,42 @@ final readonly class PackValidator
         }
     }
 
-    /** @param list<string> $errors */
-    private function page(Pack $pack, PackItem $item, array &$errors): void
+    /**
+     * @param  array<string, true>  $earlier  page keys seen so far (a parent in the pack comes first)
+     * @param  list<string>  $errors
+     */
+    private function page(Pack $pack, PackItem $item, array $earlier, array &$errors): void
     {
         if (preg_match('/\Apage:\/(?:'.self::SLUG.')?\z/', $item->key) !== 1) {
             $errors[] = "{$item->key}: a page key is page:/ or page:/<slug>.";
         }
+        $this->pageParent($pack, $item, $earlier, $errors);
         $this->flags($item, $errors);
         $this->entryText($pack, $item, $errors);
+    }
+
+    /**
+     * `parent` (optional) names the page this one sits under: the breadcrumb and the admin tree show
+     * it, the address stays the page's own. Null puts the page back at the top. A parent in the pack
+     * comes earlier in pages.json, so the pack itself cannot hold a loop; a parent outside the pack
+     * must be a page on the site, which the plan checks.
+     *
+     * @param  array<string, true>  $earlier
+     * @param  list<string>  $errors
+     */
+    private function pageParent(Pack $pack, PackItem $item, array $earlier, array &$errors): void
+    {
+        if (! array_key_exists('parent', $item->data) || $item->data['parent'] === null) {
+            return;
+        }
+        $parent = $item->data['parent'];
+        if (! is_string($parent) || preg_match('/\Apage:\/'.self::SLUG.'\z/', $parent) !== 1) {
+            $errors[] = "{$item->key}: parent must be the key of another page (page:/<slug>), not the home page.";
+        } elseif ($parent === $item->key) {
+            $errors[] = "{$item->key}: a page cannot be its own parent.";
+        } elseif ($pack->item($parent) !== null && ! isset($earlier[$parent])) {
+            $errors[] = "{$item->key}: its parent {$parent} must come earlier in pages.json.";
+        }
     }
 
     /** @param list<string> $errors */

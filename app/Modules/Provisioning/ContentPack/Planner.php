@@ -449,8 +449,7 @@ final class Planner
         $skip = null;
         if ($draftPending) {
             $skip = [PlanItem::SKIP_DRAFT, 'a staff draft is waiting; overwriting would make it stale'];
-        } elseif ($ledger !== null && $ledger['hash'] !== $currentHash && $ledger['hash'] !== CanonicalHash::of(array_diff_key($current, ['published_at' => true]))) {
-            // (the second hash is the state as ledgers recorded it before the date was managed)
+        } elseif ($ledger !== null && ! in_array($ledger['hash'], self::ledgerHashes($current), true)) {
             $skip = [PlanItem::SKIP_EDITED, 'edited by staff since the last load'];
         } elseif ($ledger === null && $evidence !== null) {
             $skip = [PlanItem::SKIP_EDITED, $evidence];
@@ -470,6 +469,23 @@ final class Planner
         $verdict = $ledger === null && ! $forced ? PlanItem::ADOPT : PlanItem::UPDATE;
 
         return new PlanItem($item, $verdict, $current, $desired, $ref, $recordId, $notes, $forced);
+    }
+
+    /**
+     * The hashes a ledger line may hold for this live state: the state itself, and the state as
+     * ledgers recorded it before an entry's date and its parent page were managed fields.
+     *
+     * @param  array<string, mixed>  $current
+     * @return list<string>
+     */
+    private static function ledgerHashes(array $current): array
+    {
+        return array_values(array_unique([
+            CanonicalHash::of($current),
+            CanonicalHash::of(array_diff_key($current, ['published_at' => true])),
+            CanonicalHash::of(array_diff_key($current, ['parent' => true])),
+            CanonicalHash::of(array_diff_key($current, ['published_at' => true, 'parent' => true])),
+        ]));
     }
 
     /** @param list<string> $claims */
@@ -732,10 +748,17 @@ final class Planner
                 $dated[] = $ids[$item->key];
             }
         }
-        $states = $this->entryStates(array_values($ids), $dated);
+        $parented = [];
+        foreach ($pages as $item) {
+            if (isset($ids[$item->key]) && array_key_exists('parent', $item->data)) {
+                $parented[] = $ids[$item->key];
+            }
+        }
         foreach ($ids as $key => $id) {
             $this->entryKeys[$id] = $key;
         }
+        $parentProblems = $this->pageParentProblems($pages);
+        $states = $this->entryStates(array_values($ids), $dated, $parented);
         $drafts = app(PendingEntryDrafts::class)->among(array_values($ids));
         $edited = app(EntryRevisions::class)->editedByPeople(array_values($ids));
 
@@ -752,6 +775,14 @@ final class Planner
                 $notes[] = 'primary category changes: the address moves with a 301';
             }
 
+            // A parent page of the pack that this load leaves missing (deleted by staff, or in conflict)
+            // would leave the page nothing to sit under: a conflict, not a refused load mid-way.
+            $conflict = $conflicts[$item->key] ?? $parentProblems[$item->key] ?? null;
+            $parentKey = $item->kind === 'page' ? Cast::stringOrNull($item->data['parent'] ?? null) : null;
+            if ($conflict === null && $parentKey !== null && isset($planned[$parentKey]) && ! isset($this->matched[$parentKey]) && ! $planned[$parentKey]->writes()) {
+                $conflict = "its parent page {$parentKey} would not exist after this load";
+            }
+
             $planned[$item->key] = $this->decide(
                 $context,
                 $item,
@@ -762,7 +793,7 @@ final class Planner
                 array_values(array_filter($notes)),
                 evidence: $id !== null && in_array($id, $edited, true) ? 'changed by a person in the editor (revision history)' : null,
                 draftPending: $id !== null && in_array($id, $drafts, true),
-                conflict: $conflicts[$item->key] ?? null,
+                conflict: $conflict,
                 trashedId: $trashed[$item->key] ?? null,
             );
         }
@@ -774,19 +805,28 @@ final class Planner
      * Managed fields of these entries, as the ledger hashes them.
      *
      * `published_at` is part of the state only for the entries in `$dated` (their pack item states a date),
-     * so an item without a date never reports or rewrites the live one.
+     * so an item without a date never reports or rewrites the live one. `parent` (the parent page's
+     * key) likewise only for the pages in `$parented` (their pack item names a parent, or null).
      *
      * @param  list<int>  $ids
      * @param  list<int>  $dated
+     * @param  list<int>  $parented
      * @return array<int, array{ulid: string, state: array<string, mixed>}>
      */
-    public function entryStates(array $ids, array $dated = []): array
+    public function entryStates(array $ids, array $dated = [], array $parented = []): array
     {
         if ($ids === []) {
             return [];
         }
 
-        $entries = $this->locked(Entry::query()->whereIn('id', $ids))->get(['id', 'ulid', 'type', 'status', 'published_at', 'meta']);
+        $entries = $this->locked(Entry::query()->whereIn('id', $ids))->get(['id', 'ulid', 'type', 'status', 'published_at', 'meta', 'parent_id']);
+        $parentIds = [];
+        foreach ($entries as $entry) {
+            if ($entry->parent_id !== null && in_array($entry->id, $parented, true)) {
+                $parentIds[] = $entry->parent_id;
+            }
+        }
+        $this->rememberEntryKeys($parentIds);
         $translations = $this->locked(EntryTranslation::query()->whereIn('entry_id', $ids)->whereIn('locale', $this->locales))
             ->get(['entry_id', 'locale', 'title', 'slug', 'body', 'excerpt', 'seo_title', 'seo_description', 'status']);
         $byEntry = [];
@@ -815,6 +855,10 @@ final class Planner
             $state = ['status' => $entry->status];
             if (in_array($entry->id, $dated, true)) {
                 $state['published_at'] = $entry->published_at?->copy()->utc()->format('Y-m-d');
+            }
+            if (in_array($entry->id, $parented, true)) {
+                // a parent the plan cannot name (in the trash) still reads as a difference
+                $state['parent'] = $entry->parent_id === null ? null : ($this->entryKeys[$entry->parent_id] ?? 'page:(not found)');
             }
             if ($entry->type === 'post') {
                 $image = $entry->meta['image_url'] ?? null;
@@ -867,6 +911,9 @@ final class Planner
         $state = ['status' => $status];
         if (self::packDate($item) !== null) {
             $state['published_at'] = self::packDate($item);
+        }
+        if ($item->kind === 'page' && array_key_exists('parent', $item->data)) {
+            $state['parent'] = Cast::stringOrNull($item->data['parent']);
         }
 
         if ($item->kind === 'post') {
@@ -1254,22 +1301,104 @@ final class Planner
                 $productIds[] = $id;
             }
         }
-        if ($entryIds !== []) {
-            $entries = Entry::query()->whereIn('id', $entryIds)->pluck('type', 'id');
-            $paths = SiteRoute::query()->where('locale', $this->locale)->whereIn('entry_id', $entryIds)->pluck('path', 'entry_id');
-            $slugs = EntryTranslation::query()->where('locale', $this->locale)->whereIn('entry_id', $entryIds)->pluck('slug', 'entry_id');
-            foreach ($entries as $id => $type) {
-                $id = Cast::int($id);
-                $this->entryKeys[$id] = $type === 'page'
-                    ? 'page:'.Cast::string($paths[$id] ?? null, '/'.Cast::string($slugs[$id] ?? null))
-                    : 'post:'.Cast::string($slugs[$id] ?? null);
-            }
-        }
+        $this->rememberEntryKeys($entryIds);
         if ($productIds !== []) {
             foreach (ProductTranslation::query()->where('locale', $this->locale)->whereIn('product_id', $productIds)->pluck('slug', 'product_id') as $id => $slug) {
                 $this->productKeys[Cast::int($id)] = 'product:'.Cast::string($slug);
             }
         }
+    }
+
+    /**
+     * Give these live entries a key (pages by path, posts by slug) unless they have one; three
+     * batched queries. An entry in the trash gets none.
+     *
+     * @param  list<int>  $entryIds
+     */
+    private function rememberEntryKeys(array $entryIds): void
+    {
+        $entryIds = array_values(array_unique(array_filter($entryIds, fn (int $id): bool => ! isset($this->entryKeys[$id]))));
+        if ($entryIds === []) {
+            return;
+        }
+        $entries = Entry::query()->whereIn('id', $entryIds)->pluck('type', 'id');
+        $paths = SiteRoute::query()->where('locale', $this->locale)->whereIn('entry_id', $entryIds)->pluck('path', 'entry_id');
+        $slugs = EntryTranslation::query()->where('locale', $this->locale)->whereIn('entry_id', $entryIds)->pluck('slug', 'entry_id');
+        foreach ($entries as $id => $type) {
+            $id = Cast::int($id);
+            $this->entryKeys[$id] = $type === 'page'
+                ? 'page:'.Cast::string($paths[$id] ?? null, '/'.Cast::string($slugs[$id] ?? null))
+                : 'post:'.Cast::string($slugs[$id] ?? null);
+        }
+    }
+
+    /**
+     * What stops each pack page that names a parent from getting it, keyed by page key: a site that
+     * nests page addresses under their parent (the loader keeps a page's address its own, so a
+     * parent would move it), a parent that is neither in the pack nor a live page, or a parent
+     * chain — the pack's stated parents over the site's live ones — that leads back to the page.
+     * The live links are read only when some page names a parent.
+     *
+     * @param  list<PackItem>  $pages
+     * @return array<string, string>
+     */
+    private function pageParentProblems(array $pages): array
+    {
+        $stated = [];
+        $topLevel = [];
+        foreach ($pages as $item) {
+            if (! array_key_exists('parent', $item->data)) {
+                continue;
+            }
+            $parent = Cast::stringOrNull($item->data['parent']);
+            if ($parent === null) {
+                $topLevel[$item->key] = true;
+            } else {
+                $stated[$item->key] = $parent;
+            }
+        }
+        if ($stated === []) {
+            return [];
+        }
+        if ($this->permalinks->pagesNested()) {
+            return array_map(fn (): string => 'the site nests page addresses under their parent page, and the loader keeps a page at its own address', $stated);
+        }
+
+        $inPack = array_flip(array_map(fn (PackItem $item): string => $item->key, $pages));
+        $this->rememberLiveTargets(array_values(array_diff(array_values($stated), array_keys($inPack))));
+        $links = [];
+        foreach (Entry::query()->where('type', 'page')->whereNotNull('parent_id')->get(['id', 'parent_id']) as $page) {
+            $links[$page->id] = Cast::int($page->parent_id);
+        }
+        $this->rememberEntryKeys(array_values($links));
+
+        $problems = [];
+        foreach ($stated as $key => $parent) {
+            if (! isset($inPack[$parent]) && $this->liveTarget($parent) === null) {
+                $problems[$key] = "its parent page {$parent} is neither in the pack nor on the site";
+
+                continue;
+            }
+            $seen = [];
+            for ($cursor = $parent; $cursor !== null && ! isset($seen[$cursor]);) {
+                if ($cursor === $key) {
+                    $problems[$key] = "its parent pages lead back to {$key} itself";
+
+                    break;
+                }
+                $seen[$cursor] = true;
+                if (isset($stated[$cursor]) || isset($topLevel[$cursor])) {
+                    $cursor = $stated[$cursor] ?? null;
+
+                    continue;
+                }
+                $id = $this->matched[$cursor] ?? $this->liveTarget($cursor);
+                $up = $id === null ? null : ($links[$id] ?? null);
+                $cursor = $up === null ? null : ($this->entryKeys[$up] ?? null);
+            }
+        }
+
+        return $problems;
     }
 
     /**

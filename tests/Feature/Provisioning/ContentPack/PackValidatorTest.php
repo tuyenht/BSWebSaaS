@@ -261,3 +261,31 @@ it('refuses block slots the admin would refuse', function (array $value, string 
     'blocks that are not a list' => [['post_aside' => ['vi' => ['blocks' => ['x' => 1]]]], 'needs {"blocks"'],
     'too many tabs' => [['product_tabs' => ['vi' => ['blocks' => array_fill(0, 4, ['type' => 'richtext', 'props' => ['paragraphs' => ['x']]])]]], 'holds at most 3 blocks'],
 ]);
+
+it('refuses a page parent that is no other page, the home page, the page itself, or a pack page listed later', function (mixed $parent, string $message): void {
+    ContentPacks::item($this->folder, 'pages.json', 'page:/', fn (array $page): array => ['parent' => $parent === 'later' ? 'page:/gioi-thieu' : $parent] + $page);
+
+    expect(implode("\n", cpProblems()))->toContain($message);
+})->with([
+    'a category' => ['tax:post_cat/dich-vu', 'page:/: parent must be the key of another page'],
+    'not a string' => [7, 'page:/: parent must be the key of another page'],
+    'the home page' => ['page:/', 'page:/: parent must be the key of another page'],
+    'a pack page listed later' => ['later', 'page:/: its parent page:/gioi-thieu must come earlier in pages.json.'],
+]);
+
+it('refuses a page that names itself as its parent', function (): void {
+    ContentPacks::item($this->folder, 'pages.json', 'page:/gioi-thieu', fn (array $page): array => ['parent' => 'page:/gioi-thieu'] + $page);
+
+    expect(cpProblems())->toContain('page:/gioi-thieu: a page cannot be its own parent.');
+});
+
+it('accepts a page parent listed earlier in the pack, a page outside it (the plan checks the site), and null', function (?string $parent): void {
+    ContentPacks::edit($this->folder, 'pages.json', function (array $data) use ($parent): array {
+        $data['items'][] = ['key' => 'page:/doi-ngu', 'parent' => $parent, 'verified' => true, 'status' => 'published',
+            'title' => ['vi' => 'Đội ngũ'], 'body' => ['vi' => [['type' => 'richtext', 'props' => ['paragraphs' => ['Đội ngũ.']]]]]];
+
+        return $data;
+    });
+
+    expect(cpProblems())->toBe([]);
+})->with(['page:/gioi-thieu', 'page:/ngoai-goi', null]);
