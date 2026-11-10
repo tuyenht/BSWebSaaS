@@ -102,6 +102,29 @@ it('never moves a tone mark off its syllable when the text is spelt the new way 
     }
 });
 
+it('makes no absolute advertising claim, and credits every video as an illustration under its licence', function (): void {
+    $pack = (new PackReader)->read('an-vinh');
+    $settings = json_decode((string) file_get_contents($pack->dir.'/settings.json'), true);
+    $texts = [json_encode($settings, JSON_UNESCAPED_UNICODE)];
+    $videos = [];
+    foreach ($pack->items as $item) {
+        $texts[] = json_encode($item->data, JSON_UNESCAPED_UNICODE);
+        foreach ($item->data['body']['vi'] ?? [] as $block) {
+            if ($block['type'] === 'video') {
+                $videos[$block['props']['url']] = $block['props']['heading'];
+            }
+        }
+    }
+
+    foreach ($texts as $text) {
+        expect($text)->not->toMatch('/dẫn đầu|tuyệt đối|100% sản phẩm|(tốt|tối ưu|khắt khe|tiết kiệm chi phí|rõ nét|số) (nhất|một)\b/iu');
+    }
+    expect($videos)->toHaveCount(3);
+    foreach ($videos as $heading) {
+        expect($heading)->toStartWith('Video minh họa:')->toContain('nguồn kênh')->toContain('giấy phép CC BY');
+    }
+});
+
 it('gives every post body text, an excerpt and a search description', function (): void {
     $posts = collect((new PackReader)->read('an-vinh')->items)->filter(fn ($item) => str_starts_with($item->key, 'post:'));
 
@@ -178,5 +201,6 @@ it('plans the real pack on a fresh site with no conflict, and every internal lin
     foreach (['/ky-thuat-vien-van-hanh-may-cnc', '/ky-su-thiet-ke-co-khi-do-ga', '/nhan-vien-kiem-tra-chat-luong-qc'] as $path) {
         $this->get('http://'.ContentPacks::HOST.$path)->assertNotFound();
     }
-    expect($this->get('http://'.ContentPacks::HOST.'/gioi-thieu')->getContent())->toContain('Nhà Xưởng &amp; Máy Móc');
+    expect($this->get('http://'.ContentPacks::HOST.'/gioi-thieu')->getContent())->toContain('Nhà Xưởng &amp; Máy Móc')
+        ->and($this->get('http://'.ContentPacks::HOST.'/gia-cong-cat-day-xung-dien')->getContent())->toContain('nguồn kênh Kurt Bleyweert')->toContain('4IhkMgHkMEA');
 });

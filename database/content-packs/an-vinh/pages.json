@@ -11,7 +11,7 @@
     "vi": "Trang Chủ | Cơ Khí Chính Xác An Vinh"
    },
    "seo_description": {
-    "vi": "An Vinh - Dẫn đầu về giải pháp cơ khí chính xác, chuyên thiết kế, gia công đồ gá, jig, và khuôn mẫu chất lượng cao tại Việt Nam."
+    "vi": "An Vinh - Giải pháp cơ khí chính xác, chuyên thiết kế, gia công đồ gá, jig, và khuôn mẫu chất lượng cao tại Việt Nam."
    },
    "body": {
     "vi": [
@@ -24,7 +24,7 @@
           "media": "hero-1"
          },
          "heading": "CÔNG NGHỆ HIỆN ĐẠI - TIÊU CHUẨN TOÀN CẦU",
-         "subheading": "Hệ thống máy móc CNC, đảm bảo độ chính xác tuyệt đối cho từng sản phẩm."
+         "subheading": "Hệ thống máy móc CNC, gia công đúng dung sai trên bản vẽ cho từng sản phẩm."
         },
         {
          "image_url": {
@@ -55,7 +55,7 @@
        "heading": "Chế Tác Tinh Hoa - Nâng Tầm Chính Xác",
        "paragraphs": [
         "An Vinh tự hào mang đến các giải pháp toàn diện về thiết kế và gia công đồ gá, jig, khuôn mẫu và các chi tiết máy công nghệ cao.",
-        "Với đội ngũ kỹ sư dày dặn kinh nghiệm, hệ thống máy móc CNC hiện đại và quy trình quản lý chất lượng nghiêm ngặt theo tiêu chuẩn ISO 9001:2015, chúng tôi cam kết mỗi sản phẩm xuất xưởng đều đạt độ chính xác tuyệt đối, đáp ứng những yêu cầu kỹ thuật khắt khe nhất của khách hàng trong và ngoài nước."
+        "Với đội ngũ kỹ sư dày dặn kinh nghiệm, hệ thống máy móc CNC hiện đại và quy trình quản lý chất lượng nghiêm ngặt theo tiêu chuẩn ISO 9001:2015, chúng tôi cam kết mỗi sản phẩm xuất xưởng đều đạt đúng dung sai trên bản vẽ, đáp ứng các yêu cầu kỹ thuật khắt khe của khách hàng trong và ngoài nước."
        ],
        "cta_label": "Về Chúng Tôi",
        "cta_url": "/gioi-thieu"
@@ -65,7 +65,7 @@
       "type": "entry_grid",
       "props": {
        "heading": "Dịch vụ của chúng tôi",
-       "description": "Với đội ngũ kỹ sư giàu kinh nghiệm và hệ thống máy móc hiện đại, An Vinh cung cấp các giải pháp gia công toàn diện, đáp ứng những yêu cầu kỹ thuật khắt khe nhất.",
+       "description": "Với đội ngũ kỹ sư giàu kinh nghiệm và hệ thống máy móc hiện đại, An Vinh cung cấp các giải pháp gia công toàn diện, đáp ứng các yêu cầu kỹ thuật khắt khe.",
        "taxonomy_slug": "nang-luc",
        "limit": 4,
        "variant": "icon-cards",
@@ -98,17 +98,17 @@
         {
          "title": "Tư Vấn & Thiết Kế 3D Tối Ưu",
          "icon": "box",
-         "text": "Từ ý tưởng đến bản vẽ 3D chi tiết, chúng tôi mô phỏng và tối ưu hóa mọi khía cạnh để đảm bảo giải pháp hiệu quả và tiết kiệm chi phí nhất."
+         "text": "Từ ý tưởng đến bản vẽ 3D chi tiết, chúng tôi mô phỏng và tối ưu hóa mọi khía cạnh để đảm bảo giải pháp hiệu quả và tiết kiệm chi phí."
         },
         {
          "title": "Sản Xuất Chính Xác Trên Hệ Thống CNC",
          "icon": "cog",
-         "text": "Với dàn máy phay, tiện, cắt dây CNC, chúng tôi cam kết mọi chi tiết đều đạt dung sai kỹ thuật khắt khe nhất."
+         "text": "Với dàn máy phay, tiện, cắt dây CNC, chúng tôi cam kết mọi chi tiết đều đạt dung sai kỹ thuật theo bản vẽ."
         },
         {
          "title": "Lắp Ráp & Kiểm Định Chất Lượng QA/QC",
          "icon": "check",
-         "text": "Quy trình lắp ráp chuyên nghiệp và kiểm định chất lượng nghiêm ngặt đảm bảo 100% sản phẩm bàn giao đạt chuẩn."
+         "text": "Quy trình lắp ráp chuyên nghiệp và kiểm định chất lượng nghiêm ngặt trước khi bàn giao."
         }
        ]
       }
@@ -117,7 +117,7 @@
       "type": "entry_grid",
       "props": {
        "heading": "Dự Án Nổi Bật",
-       "description": "Những dự án thực tế là minh chứng rõ nét nhất cho năng lực và cam kết của An Vinh về chất lượng.",
+       "description": "Những dự án thực tế là minh chứng rõ nét cho năng lực và cam kết của An Vinh về chất lượng.",
        "taxonomy_slug": "du-an",
        "limit": 8,
        "variant": "project-cards",
@@ -145,7 +145,7 @@
       "type": "cta",
       "props": {
        "heading": "Sẵn sàng nâng tầm dự án của bạn?",
-       "text": "Hãy để các chuyên gia của An Vinh tư vấn giải pháp cơ khí chính xác tối ưu nhất.",
+       "text": "Hãy để các chuyên gia của An Vinh tư vấn giải pháp cơ khí chính xác phù hợp.",
        "button_label": "Liên hệ ngay",
        "button_url": "/lien-he",
        "variant": "rounded"
@@ -277,7 +277,7 @@
        "items": [
         {
          "title": "Tầm Nhìn",
-         "text": "Trở thành công ty gia công cơ khí chính xác, thiết kế đồ gá, khuôn mẫu hàng đầu Việt Nam với trang thiết bị hiện đại, tiên tiến. Cung cấp sản phẩm, dịch vụ chất lượng tốt nhất, giá cả cạnh tranh, thoả mãn mọi nhu cầu của khách hàng."
+         "text": "Trở thành công ty gia công cơ khí chính xác, thiết kế đồ gá, khuôn mẫu hàng đầu Việt Nam với trang thiết bị hiện đại, tiên tiến. Cung cấp sản phẩm, dịch vụ chất lượng tốt, giá cả cạnh tranh, thỏa mãn mọi nhu cầu của khách hàng."
         },
         {
          "title": "Sứ Mệnh",

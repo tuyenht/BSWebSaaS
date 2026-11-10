@@ -86,6 +86,16 @@
       }
      },
      {
+      "type": "video",
+      "props": {
+       "heading": "Video minh họa: đồ gá và jig là gì (tiếng Anh) – nguồn kênh MechanicaLEi, giấy phép CC BY",
+       "url": "https://www.youtube.com/watch?v=fiKdIcF6x90",
+       "poster": {
+        "media": "cad-2"
+       }
+      }
+     },
+     {
       "type": "faq",
       "props": {
        "heading": "Câu hỏi thường gặp",
@@ -178,6 +188,16 @@
          "caption": "Khuôn dập: chày, cối thường được cắt dây sau nhiệt luyện."
         }
        ]
+      }
+     },
+     {
+      "type": "video",
+      "props": {
+       "heading": "Video minh họa: máy cắt dây EDM cắt chi tiết – nguồn kênh Kurt Bleyweert, giấy phép CC BY",
+       "url": "https://www.youtube.com/watch?v=4IhkMgHkMEA",
+       "poster": {
+        "media": "edm-1"
+       }
       }
      },
      {
@@ -488,6 +508,16 @@
          "caption": "Tiện CNC trục, bạc, chốt."
         }
        ]
+      }
+     },
+     {
+      "type": "video",
+      "props": {
+       "heading": "Video minh họa: một lần phay CNC từ đầu đến cuối (timelapse) – nguồn kênh HackerspaceOL, giấy phép CC BY",
+       "url": "https://www.youtube.com/watch?v=FpYQc5zMLzM",
+       "poster": {
+        "media": "cnc-1"
+       }
       }
      },
      {
