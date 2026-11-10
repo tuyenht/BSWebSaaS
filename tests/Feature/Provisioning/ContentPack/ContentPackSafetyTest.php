@@ -120,12 +120,15 @@ it('shows what staff wrote next to what the pack would write: trimmed with -v, i
     cpVersion2($this->folder);
     ContentPacks::item($this->folder, 'pages.json', 'page:/gioi-thieu', fn (array $item): array => ['title' => ['vi' => 'Giới thiệu bản 2']] + $item);
 
-    [, $short] = ContentPacks::run('demo-co', ['-v' => true]);
-    [$exit, $full] = ContentPacks::run('demo-co', ['-vv' => true]);
+    $writes = ContentPacks::writes(function () use (&$short, &$full, &$exit): void {
+        [, $short] = ContentPacks::run('demo-co', ['-v' => true]);
+        [$exit, $full] = ContentPacks::run('demo-co', ['-vv' => true]);
+    });
 
-    expect(ContentPacks::verdict($full, 'page:/gioi-thieu'))->toBe('skip:edited')
+    expect($writes)->toBe([])
+        ->and(ContentPacks::verdict($full, 'page:/gioi-thieu'))->toBe('skip:edited')
         ->and($exit)->toBe(0, $full)
-        ->and($short)->toContain(' … ')->not->toContain($staff)
+        ->and($short)->toContain(mb_substr($staff, 0, 38).' … ')->not->toContain($staff)
         ->and($full)->toContain(json_encode(['pack' => 'Giới thiệu bản 2', 'site' => $staff], JSON_UNESCAPED_UNICODE))
         ->and(ContentPacks::in($this->siteId, fn () => cpEntryAt('/gioi-thieu')->translationFor('vi')?->title))->toBe($staff);
 });
