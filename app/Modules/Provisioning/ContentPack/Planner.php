@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Provisioning\ContentPack;
 
+use App\Modules\Admin\Support\Settings\HeadingDecorInput;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Cms\Casts\SanitizedPageBody;
@@ -1383,7 +1384,35 @@ final class Planner
             $desired[$key] = $value;
         }
 
-        return $this->decide($context, $item, $current, $desired, $current === null ? null : $item->anchor(), null);
+        return $this->decide($context, $item, $current, self::asTheAdminStores($item, $desired, $managed), $current === null ? null : $item->anchor(), null);
+    }
+
+    /**
+     * The value in the shape the admin's own save stores it, so a pack-written setting and a
+     * staff-written one read back the same: the heading decoration with every field filled in, and a
+     * block slot's text through the page-body sanitizer. Other settings are written as given.
+     *
+     * @param  array<string, mixed>  $desired
+     * @param  list<string>|null  $managed
+     * @return array<string, mixed>
+     */
+    private static function asTheAdminStores(PackItem $item, array $desired, ?array $managed): array
+    {
+        if ($item->key === 'setting:theme.heading_decor' && $managed === null) {
+            return HeadingDecorInput::checked($desired) ?? $desired;
+        }
+        if ($item->key === 'setting:storefront.layout_blocks') {
+            foreach ($desired as $slot => $perLocale) {
+                $cleaned = [];
+                foreach (Cast::arr($perLocale) as $locale => $text) {
+                    $clean = SanitizedPageBody::cleanBody(['blocks' => Cast::arr(Cast::arr($text)['blocks'] ?? null)])['blocks'];
+                    $cleaned[$locale] = ['blocks' => is_array($clean) ? array_values($clean) : []];
+                }
+                $desired[$slot] = $cleaned;
+            }
+        }
+
+        return $desired;
     }
 
     /**

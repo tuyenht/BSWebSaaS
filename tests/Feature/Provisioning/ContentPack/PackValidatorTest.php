@@ -166,3 +166,62 @@ it('lets a product category of a pack take any theme layout as its detail layout
 
     expect(implode("\n", cpProblems()))->not->toContain('detail_template');
 })->with(['product', 'category']);
+
+/** Add a setting item to the copied pack's settings.json. */
+function cpAddSetting(string $folder, string $key, array $value, array $extra = []): void
+{
+    ContentPacks::edit($folder, 'settings.json', fn (array $data): array => ['items' => [...$data['items'], ['key' => $key, 'value' => $value] + $extra]]);
+}
+
+it('accepts a heading decoration, floating contact buttons and block slots written as the admin writes them', function (): void {
+    cpAddSetting($this->folder, 'setting:theme.heading_decor', ['style' => 'gear', 'color' => '600', 'width' => 'wide']);
+    cpAddSetting($this->folder, 'setting:storefront.floating_contact', [
+        'enabled' => true, 'theme' => 'vertical', 'position' => 'right',
+        'channels' => [['key' => 'phone', 'on' => true, 'value' => '0900 000 000'], ['key' => 'zalo', 'on' => true, 'value' => '0900000000'], ['key' => 'maps', 'on' => true, 'value' => 'https://maps.google.com/?q=x']],
+    ]);
+    cpAddSetting($this->folder, 'setting:storefront.layout_blocks', ['post_aside' => ['vi' => ['blocks' => [['type' => 'richtext', 'props' => ['paragraphs' => ['Cần tư vấn?']]]]]]]);
+
+    expect(cpProblems())->toBe([]);
+});
+
+it('refuses a heading decoration the admin would refuse', function (array $value, string $message): void {
+    cpAddSetting($this->folder, 'setting:theme.heading_decor', $value);
+
+    expect(implode("\n", cpProblems()))->toContain($message);
+})->with([
+    'a shape that is not the platform\'s' => [['style' => 'skull'], "setting:theme.heading_decor: 'style' is not accepted"],
+    'a colour that is not hex' => [['style' => 'gear', 'color' => 'custom', 'custom_color' => 'red'], "'custom_color' is not accepted"],
+    'an unknown field' => [['style' => 'gear', 'glow' => true], "'glow' is not accepted"],
+    'a mask picture' => [['mask_media' => 'a/b.png'], 'mask_media is a picture of the site'],
+    'an empty value' => [[], 'value must not be empty'],
+]);
+
+it('refuses floating contact channels the storefront would drop or that are unsafe', function (array $value, string $message): void {
+    cpAddSetting($this->folder, 'setting:storefront.floating_contact', $value);
+
+    expect(implode("\n", cpProblems()))->toContain($message);
+})->with([
+    'javascript in a web link' => [['enabled' => true, 'channels' => [['key' => 'youtube', 'on' => true, 'value' => 'javascript:alert(1)']]], "channel 'youtube': 'value' is not a valid url"],
+    'a protocol-relative link' => [['enabled' => true, 'channels' => [['key' => 'maps', 'on' => true, 'value' => '//evil.example/x']]], "channel 'maps': 'value' is not a valid url"],
+    'a javascript custom link' => [['enabled' => true, 'channels' => [['key' => 'c1', 'on' => true, 'value' => 'javascript:alert(1)', 'icon' => 'ri-global-line', 'name' => 'X']]], "channel 'c1': 'value' is not a valid custom"],
+    'a phone that is not a number' => [['enabled' => true, 'channels' => [['key' => 'phone', 'on' => true, 'value' => 'gọi tôi']]], "channel 'phone': 'value' is not a valid phone"],
+    'an unknown channel' => [['enabled' => true, 'channels' => [['key' => 'icq', 'on' => true, 'value' => '1']]], "channel 1: 'key' must be one of"],
+    'a channel listed twice' => [['enabled' => true, 'channels' => [['key' => 'phone', 'on' => false, 'value' => ''], ['key' => 'phone', 'on' => false, 'value' => '']]], "channel 'phone': the channel is listed twice"],
+    'an unknown theme' => [['enabled' => true, 'theme' => 'diagonal'], "'theme' must be one of"],
+    'a label in a language the pack lacks' => [['enabled' => true, 'channels' => [['key' => 'phone', 'on' => true, 'value' => '0900000000', 'tips' => ['en' => 'Call']]]], 'tips.en must be a label'],
+    'a field of its own' => [['enabled' => true, 'script' => 'x'], "'script' is not a floating-contact field"],
+]);
+
+it('refuses block slots the admin would refuse', function (array $value, string $message): void {
+    cpAddSetting($this->folder, 'setting:storefront.layout_blocks', $value);
+
+    expect(implode("\n", cpProblems()))->toContain($message);
+})->with([
+    'an unknown slot' => [['sidebar' => ['vi' => ['blocks' => []]]], "'sidebar' is not a block slot"],
+    'an unknown block type' => [['post_aside' => ['vi' => ['blocks' => [['type' => 'no-such-block', 'props' => []]]]]], "'post_aside' (vi)"],
+    'a language the pack lacks' => [['post_aside' => ['en' => ['blocks' => []]]], 'the pack does not list this language'],
+    'a block type that belongs in no side slot' => [['after_list' => ['vi' => ['blocks' => [['type' => 'recent_posts', 'props' => []]]]]], 'does not belong in this slot'],
+    'a javascript link in a block' => [['post_aside' => ['vi' => ['blocks' => [['type' => 'cta', 'props' => ['heading' => 'Hi', 'button_label' => 'Go', 'button_url' => 'javascript:alert(1)']]]]]], "'post_aside' (vi)"],
+    'blocks that are not a list' => [['post_aside' => ['vi' => ['blocks' => ['x' => 1]]]], 'needs {"blocks"'],
+    'too many tabs' => [['product_tabs' => ['vi' => ['blocks' => array_fill(0, 4, ['type' => 'richtext', 'props' => ['paragraphs' => ['x']]])]]], 'holds at most 3 blocks'],
+]);
