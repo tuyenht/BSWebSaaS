@@ -221,6 +221,11 @@ final class Applier
             if ($status === 'published' && $entry->published_at === null) {
                 $entry->published_at = $this->publishedAt($planned->item, $status);
             }
+            // a date the pack item states wins over the live one (an item without a date keeps it)
+            if ($status === 'published' && is_string($desired['published_at'] ?? null)
+                && $entry->published_at?->copy()->utc()->format('Y-m-d') !== $desired['published_at']) {
+                $entry->published_at = $this->publishedAt($planned->item, $status);
+            }
             $entry->save();
         }
         $this->ids[$planned->item->key] = $entry->id;
