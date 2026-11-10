@@ -259,7 +259,7 @@
      {
       "type": "page_header",
       "props": {
-       "title": "Về An Vinh",
+       "title": "Giới thiệu công ty",
        "subtitle": "Thiết kế, chế tạo Jig & đồ gá, khuôn mẫu và gia công CNC tại Hà Nội từ năm 2019",
        "image_url": {
         "media": "about-header"
@@ -380,7 +380,7 @@
       "props": {
        "heading": "Nhà xưởng & máy móc",
        "paragraphs": [
-        "Ba nhà máy với tổng diện tích 4.300 m² tại xã Trung Giã và xã Thạch Thất, Hà Nội, khép kín từ thiết kế, gia công CNC, hàn, lắp ráp đến đo kiểm.",
+        "Ba nhà máy với tổng diện tích 4.300 m² tại xã Trung Giã và xã Thạch Thất, Hà Nội, chuyên lắp ráp, hàn, dập và gia công cơ khí chính xác.",
         "Xem địa chỉ từng nhà máy, danh mục máy móc và thiết bị đo kiểm."
        ],
        "image_url": {
@@ -486,7 +486,7 @@
         {
          "title": "Máy CNC",
          "icon": "wrench",
-         "text": "3 máy cỡ lớn, hành trình tới X4200 × Y3200 × Z1000 mm, và 15 máy cỡ nhỏ X900 × Y450 × Z450 mm."
+         "text": "3 máy cỡ lớn, kích thước bàn gia công tới X4200 × Y3200 × Z1000 mm, và 15 máy cỡ nhỏ X900 × Y450 × Z450 mm."
         },
         {
          "title": "Máy phay, máy mài",
@@ -501,7 +501,7 @@
         {
          "title": "Cắt dây, xung điện (EDM)",
          "icon": "adjust",
-         "text": "7 máy cắt dây X900 × Y450 × Z300 mm và 2 máy xung X300 × Y250 × Z400 mm cho chi tiết khuôn."
+         "text": "7 máy cắt dây X900 × Y450 × Z300 mm và 2 máy xung X300 × Y250 × Z400 mm."
         },
         {
          "title": "Hàn, dập",
