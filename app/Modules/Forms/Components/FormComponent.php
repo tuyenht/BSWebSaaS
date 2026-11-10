@@ -8,6 +8,7 @@ use App\Modules\Forms\Support\FormFieldTypes;
 use App\Modules\Shared\Contracts\Component;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\PreviewMode;
+use App\Modules\Theme\Chrome\BranchMap;
 use App\Modules\Theme\Components\SectionProps;
 
 /**
@@ -38,6 +39,9 @@ final class FormComponent implements Component
             // Optional, opt-in: a line under the heading, and a map that puts the form in a card beside it.
             'description' => ['type' => 'textarea'],
             'map_embed' => ['type' => 'url'],
+            // Where the map beside the form comes from: the address above (embed, the default) or the site's
+            // branches and factories, drawn with a chooser (branches).
+            'map_source' => ['type' => 'enum', 'options' => SectionProps::MAP_SOURCES, 'default' => 'embed'],
         ];
     }
 
@@ -72,6 +76,10 @@ final class FormComponent implements Component
                 'choices' => FormFieldTypes::isChoice($field->type) ? FormFieldTypes::choiceLabels($field, $locale) : [],
                 'placeholder' => $this->localized(Cast::arr($field->options)['placeholder'] ?? null, $locale),
             ])->all() ?? [],
+            'branchMap' => SectionProps::choice($props, 'map_source', SectionProps::MAP_SOURCES) === 'branches'
+                ? app(BranchMap::class)->places($locale)
+                : [],
+            'callLink' => BranchMap::callLink(),
             'turnstileSiteKey' => $preview ? '' : Cast::string(config('services.turnstile.site_key')),
             'preview' => $preview,
         ];

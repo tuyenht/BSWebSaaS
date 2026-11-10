@@ -61,6 +61,8 @@ final readonly class PageRenderer
         // The tab script loads only on a page with an article list that asks for tabs (it draws them
         // from two sub-categories up; the script is a few hundred bytes).
         $extra += self::hasTabs($scripts) ? ['tabsScript' => true] : [];
+        // The branch chooser's script loads only on a page with a form that draws the branches' map.
+        $extra += self::hasBranchMap($scripts) ? ['branchMapScript' => true] : [];
         // A page led by a hero shows no breadcrumb (the hero is its opening), so its head lists none
         // either: the JSON-LD trail and the visible one always match.
         if ($type === 'page' && in_array($leadBlock, ['hero', 'hero_slider'], true)) {
@@ -203,6 +205,7 @@ final readonly class PageRenderer
             'videoScript' => self::playsVideo($scripts) || $this->blocks->playsRichVideo($scripts),
             'statsScript' => self::countsUp($scripts),
             'tabsScript' => self::hasTabs($scripts),
+            'branchMapScript' => self::hasBranchMap($scripts),
             'bgVideoScript' => array_filter($drawn, fn (array $one): bool => $one['bgVideo']) !== [],
             'viewerScript' => self::zooms(...array_values($slotHtml)),
         ];
@@ -261,6 +264,23 @@ final readonly class PageRenderer
     }
 
     /**
+     * Whether a form block on the page draws the branches' map (`map_source: branches`), the only place the
+     * chooser's script has work. Pure: no query.
+     *
+     * @param  array<string, mixed>  $body
+     */
+    private static function hasBranchMap(array $body): bool
+    {
+        foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
+            if (is_array($block) && ($block['type'] ?? null) === 'form' && is_array($block['props'] ?? null) && ($block['props']['map_source'] ?? null) === 'branches') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Whether a list block on the page carries the display group (a block saved before it has no
      * `layout` key and draws as it always did, with no script). Pure: no query.
      *
@@ -269,7 +289,7 @@ final readonly class PageRenderer
     private static function hasRails(array $body): bool
     {
         foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
-            if (is_array($block) && in_array($block['type'] ?? null, ['entry_grid', 'product_grid', 'partners', 'testimonial', 'team'], true)
+            if (is_array($block) && in_array($block['type'] ?? null, ['entry_grid', 'product_grid', 'partners', 'testimonial', 'team', 'branches'], true)
                 && is_array($block['props'] ?? null) && ListDisplay::applies($block['props'])) {
                 return true;
             }

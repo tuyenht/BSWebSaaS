@@ -54,6 +54,8 @@ final readonly class PageChrome
         // menu's special links (call, Zalo, email, map) read their addresses from it too. The brand
         // images' addresses come from their media ids (BrandImages: one query, none when unset).
         $brand = $this->brandImages->apply($this->identity->for($locale));
+        // The blocks of the page (the branch map's call button) read the hotline from here, with no read of their own.
+        request()->attributes->set('sf_brand', $brand);
 
         // Header nav (active-state matches the prefixed request path; a missing per-locale
         // assignment falls back to the default-locale menu), the phone menu panel and, for the rich

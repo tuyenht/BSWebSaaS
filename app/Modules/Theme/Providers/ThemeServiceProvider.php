@@ -4,6 +4,7 @@ namespace App\Modules\Theme\Providers;
 
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Components\BranchesComponent;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SectionComponent;
 use App\Modules\Theme\Components\SectionProps;
@@ -260,6 +261,9 @@ final class ThemeServiceProvider extends ServiceProvider
             foreach (self::SECTION_SCHEMAS as $type => $schema) {
                 $registry->register($type, new SectionComponent("theme::sections.{$type}", $schema), ! in_array($type, self::UNLISTED, true) && ! in_array($type, self::SLOT_ONLY, true), in_array($type, self::HEADED, true), in_array($type, self::SLOT_ONLY, true));
             }
+
+            // The branches list reads the site's settings, so it is data-bound like the product grid.
+            $registry->register('branches', new BranchesComponent, headed: true);
 
             return $registry;
         });

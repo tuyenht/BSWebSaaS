@@ -5465,6 +5465,346 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     min-width: 0;
 }
 
+/* The branches' map (partials/branch-map): a chooser, the map and the branch's card, in the form's card. */
+.sf-bmap {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-width: 0;
+    color: var(--color-text);
+}
+
+.sf-bmap__head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.sf-bmap__title {
+    margin: 0;
+    color: var(--color-text-strong);
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.sf-bmap__hint {
+    display: none;
+    color: var(--color-text);
+    font-size: 0.75rem;
+}
+
+@media (min-width: 640px) {
+    .sf-bmap__hint {
+        display: inline;
+    }
+}
+
+.sf-bmap__tabs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+    gap: 0.5rem;
+    padding: 0.25rem;
+    border-radius: 0.5rem;
+    background: color-mix(in srgb, var(--color-surface) 92%, var(--color-dark));
+}
+
+.sf-bmap__tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 2.75rem;
+    margin: 0;
+    padding: 0.625rem 0.25rem;
+    border: 0;
+    border-radius: 0.375rem;
+    background: transparent;
+    color: var(--color-text-strong);
+    font: inherit;
+    text-align: center;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.sf-bmap__tab:hover {
+    background: var(--color-surface);
+}
+
+.sf-bmap__tab[aria-selected="true"] {
+    background: var(--color-dark);
+    color: #fff;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+}
+
+.sf-bmap__tab:focus-visible,
+.sf-bmap__btn:focus-visible {
+    outline: 2px solid var(--color-primary-text);
+    outline-offset: 2px;
+}
+
+.sf-bmap__tab-name {
+    display: block;
+    overflow-wrap: anywhere;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.sf-bmap__tab-sub {
+    display: block;
+    margin-top: 0.125rem;
+    overflow-wrap: anywhere;
+    font-size: 0.75rem;
+    line-height: 1.25;
+}
+
+@media (min-width: 640px) {
+    .sf-bmap__tab-name {
+        font-size: 1rem;
+    }
+}
+
+.sf-bmap__panel {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--color-surface) 85%, var(--color-dark));
+    border-radius: 0.5rem;
+    background: var(--color-surface);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+
+.sf-bmap__frame {
+    position: relative;
+    height: 18rem;
+    background: color-mix(in srgb, var(--color-surface) 88%, var(--color-dark));
+}
+
+.sf-bmap__map {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+@media (min-width: 640px) {
+    .sf-bmap__frame {
+        height: 20rem;
+    }
+}
+
+.sf-bmap__card {
+    padding: 1rem;
+    border-top: 4px solid var(--color-primary);
+}
+
+@media (min-width: 640px) {
+    .sf-bmap__card {
+        padding: 1.25rem;
+    }
+}
+
+.sf-bmap__name-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0.5rem;
+}
+
+.sf-bmap__name {
+    margin: 0;
+    color: var(--color-text-strong);
+    font-size: 1.125rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.sf-bmap__meta {
+    font-size: 0.875rem;
+    overflow-wrap: anywhere;
+}
+
+.sf-bmap__addr {
+    margin: 0.25rem 0 0;
+    overflow-wrap: anywhere;
+}
+
+.sf-bmap__approx {
+    margin: 0.25rem 0 0;
+    color: #92400e;
+    font-size: 0.75rem;
+}
+
+.sf-bmap__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.sf-bmap__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-width: 0;
+    min-height: 2.75rem;
+    margin: 0;
+    padding: 0.5rem 0.75rem;
+    border: 0;
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--color-surface) 90%, var(--color-dark));
+    color: var(--color-text-strong);
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.25;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.sf-bmap__btn:hover {
+    background: color-mix(in srgb, var(--color-surface) 80%, var(--color-dark));
+}
+
+.sf-bmap__btn--main {
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+}
+
+.sf-bmap__btn--main:hover {
+    background: var(--color-primary-hover);
+}
+
+.sf-bmap__btn--dark {
+    background: var(--color-dark);
+    color: #fff;
+}
+
+.sf-bmap__btn--dark:hover {
+    background: color-mix(in srgb, var(--color-dark) 85%, white);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sf-bmap__tab,
+    .sf-bmap__btn {
+        transition: none;
+    }
+}
+
+@media (min-width: 1024px) {
+    .lead-form--map .sf-bmap {
+        height: 100%;
+    }
+
+    .lead-form--map .sf-bmap__panel {
+        flex: 1;
+    }
+
+    .lead-form--map .sf-bmap__frame {
+        flex: 1;
+        height: auto;
+        min-height: 20rem;
+    }
+}
+
+/* Branch cards (sections/branches): a photo with the area on it, then the name, role and address. */
+.sf-branch {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--color-surface) 85%, var(--color-dark));
+    border-radius: 0.5rem;
+    background: var(--color-surface);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.12);
+}
+
+.sf-branches__list {
+    display: grid;
+    gap: 1.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+@media (min-width: 768px) {
+    .sf-branches__list {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+.sf-rail__list > li > .sf-branch {
+    flex: 1;
+}
+
+.sf-branch__photo {
+    position: relative;
+    flex: none;
+    aspect-ratio: 4 / 3;
+    max-height: 13rem;
+    width: 100%;
+    overflow: hidden;
+}
+
+.sf-branch__img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.sf-branch__chip {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+    padding: 0.25rem 0.625rem;
+    border-radius: 0.25rem;
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.sf-branch__body {
+    padding: 1.5rem;
+}
+
+.sf-branch__name {
+    margin: 0;
+    color: var(--color-text-strong);
+    font-size: 1.25rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.sf-branch__role {
+    margin: 0.25rem 0 0;
+    color: var(--color-primary-text);
+    font-size: 0.875rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.sf-branch__area {
+    margin: 0.25rem 0 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.sf-branch__addr {
+    margin: 0.75rem 0 0;
+    font-size: 0.875rem;
+    overflow-wrap: anywhere;
+}
+
 /* Hero slider. Every slide shares one grid cell: the box is the tallest slide, so a switch never
  * moves the page. 16:9 on common screens, capped at the viewport, a readable floor on phones. */
 .sf-slider {

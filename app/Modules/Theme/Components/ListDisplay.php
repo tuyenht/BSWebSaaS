@@ -44,6 +44,7 @@ final class ListDisplay
         'partners' => ['columns' => 6, 'fit' => 6, 'seconds' => 3, 'arrows' => 'always'],
         'testimonial' => ['columns' => 3, 'fit' => 3, 'seconds' => 8, 'arrows' => 'auto'],
         'team' => ['columns' => 4, 'fit' => PHP_INT_MAX, 'seconds' => 5, 'arrows' => 'auto'],
+        'branches' => ['columns' => 3, 'fit' => PHP_INT_MAX, 'seconds' => 5, 'arrows' => 'auto'],
     ];
 
     /**
