@@ -283,7 +283,7 @@ it('loads the flourish heading decoration, a floating contact of Zalo and call o
         ->and(preg_match_all('/<a /', $nav[0]))->toBe(2);
 
     $post = $this->get('http://'.ContentPacks::HOST.'/gia-cong-phay-tien-cnc')->assertOk()->getContent();
-    expect($post)->toContain('Tư vấn kỹ thuật')->toContain('Cần tư vấn hoặc báo giá?')->toContain('Năng lực của An Vinh');
+    expect($post)->toContain('Tư vấn kỹ thuật')->toContain('Cần tư vấn hoặc báo giá?')->toContain('Chuyên mục');
 
     $product = $this->get('http://'.ContentPacks::HOST.'/jig-kiem-tap-lo-vf7')->assertOk()->getContent();
     expect($product)->toContain('Cần đồ gá cho dây chuyền của bạn?');
