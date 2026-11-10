@@ -181,6 +181,7 @@
       "type": "partners",
       "props": {
        "heading": "Đối tác tin cậy",
+       "description": "Sự tin tưởng và hợp tác của các đối tác là động lực để chúng tôi không ngừng nỗ lực và phát triển.",
        "layout": "slider",
        "logos": [
         {
@@ -1001,7 +1002,8 @@
        "button2_url": "/lien-he",
        "extra_style": [
         "pattern-cross"
-       ]
+       ],
+       "variant": "split"
       }
      }
     ]

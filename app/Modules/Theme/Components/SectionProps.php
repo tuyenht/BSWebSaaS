@@ -60,7 +60,8 @@ final class SectionProps
 
     public const array PRODUCT_GRID_VARIANTS = ['grid', 'overlay'];
 
-    public const array CTA_VARIANTS = ['default', 'rounded'];
+    /** The CTA looks: today's centered band, the rounded band, or text left and buttons right (split). Append-only. */
+    public const array CTA_VARIANTS = ['default', 'rounded', 'split'];
 
     /** The block beside a call to action: nothing (today's look) or up to three stats (default variant only). */
     public const array CTA_SIDES = ['none', 'stats'];
