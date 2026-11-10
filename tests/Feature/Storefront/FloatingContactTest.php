@@ -155,11 +155,22 @@ it('puts the buttons on the chosen side with the offsets, each named and drawn r
         ->toContain('aria-label="Chat ngay Zalo"')
         ->toContain('<span class="sf-fc__word" aria-hidden="true">Zalo</span>')
         ->toContain('href="sms:0912345678" aria-label="Nhắn tin SMS"')
-        // the spacer copies the buttons (same list classes), hidden from assistive tech; the count
-        // tells it on a wide screen whether the stack wraps to a second column
-        ->toContain('<div class="sf-fc-ghost sf-fc-ghost--side" aria-hidden="true" style="--fc-ox:40px;--fc-oy:100px;--fc-n:3"><div class="sf-fc__list sf-fc__list--left">')
+        // the spacer copies the buttons (same list classes), hidden from assistive tech
+        ->toContain('<div class="sf-fc-ghost sf-fc-ghost--side" aria-hidden="true" style="--fc-ox:40px;--fc-oy:100px"><div class="sf-fc__list sf-fc__list--left">')
         ->and(substr_count($part, 'sf-fc__btn"></span>'))->toBe(3)
         ->and($part)->not->toContain('sf-fc-bar--ghost');
+});
+
+it('keeps a side stack’s room under the footer on a phone only, and the bottom row’s at every width', function (): void {
+    // From 768px the side stack sits over the page's edge, as the design draws it: an empty dark
+    // band under the footer would only push the page's end away. Below it, the room stays, with
+    // the safe-area inset, so the stack never covers the last footer line.
+    $css = (string) file_get_contents(resource_path('css/storefront.css'));
+
+    expect($css)->toContain("@media (min-width: 768px) {\n    .sf-fc-ghost--side {\n        display: none;")
+        ->toContain('padding: 0.625rem var(--fc-ox, 20px) calc(var(--fc-oy, 24px) + env(safe-area-inset-bottom, 0px));')
+        ->not->toContain('--fc-n')
+        ->and(preg_match('~\.sf-fc-ghost--row\s*\{[^}]*display:\s*none~', $css))->toBe(0);
 });
 
 it('reserves the bottom row’s room as a row', function (): void {

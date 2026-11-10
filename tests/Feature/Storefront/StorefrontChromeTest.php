@@ -173,20 +173,25 @@ it('drops a top bar that holds only the text-size button from the laptop layout'
         ->assertDontSee('sf-header--fs-only', false);
 });
 
-it('hides the menu button and the text-size control in the laptop layout, after the rules that show them', function (): void {
-    // equal selectors: the later rule wins, so each lg rule must come after the base rule it overrides
+it('hides the menu button from xl and the text-size control from lg, after the rules that show them', function (): void {
+    // equal selectors: the later rule wins, so each hiding rule must come after the base rule it overrides
     $css = (string) file_get_contents(resource_path('css/storefront.css'));
     $at = fn (string $needle): int => (int) strpos($css, $needle);
 
-    foreach (['sf-burger', 'sf-fs'] as $class) {
+    foreach (['sf-burger' => 1280, 'sf-fs' => 1024] as $class => $from) {
         $base = $at("\n.{$class} {\n    display: inline-flex;");
-        $hidden = $at("@media (min-width: 1024px) {\n    .{$class} {\n        display: none;");
+        $hidden = $at("@media (min-width: {$from}px) {\n    .{$class} {\n        display: none;");
 
         expect($base)->toBeGreaterThan(0, "base .{$class} rule not found")
-            ->and($hidden)->toBeGreaterThan($base, "the lg rule hiding .{$class} must come after its base rule");
+            ->and($hidden)->toBeGreaterThan($base, "the rule hiding .{$class} from {$from}px must come after its base rule");
     }
-    // the small-laptop spacing comes after the menu's own gap and padding
-    expect($at('@media (min-width: 1024px) and (max-width: 1279.98px)'))->toBeGreaterThan($at(".sf-nav--desk > .sf-nav__list {\n    display: flex;"));
+    // the desktop menu and the phone panel switch at the same width as the menu button, the
+    // no-script panel too, and nothing keeps the old 1024–1279 squeeze
+    expect($css)->toContain("@media (min-width: 1280px) {\n    .sf-nav--desk {\n        display: block;\n        margin-left: auto;")
+        ->toContain("@media (min-width: 1280px) {\n    .sf-nav--mob {\n        visibility: hidden;")
+        ->not->toContain('@media (min-width: 1024px) and (max-width: 1279.98px)')
+        ->and((string) file_get_contents(base_path('themes/default/partials/header-bar.blade.php')))
+        ->toContain('@media (max-width:1279.98px){.sf-nav--mob[hidden]{display:block}}');
     // the enlarged sizes apply below lg only
     expect(preg_match('/@media \(max-width: 1023\.98px\) \{\s*html\[data-fs="l"\][^}]*\}\s*html\[data-fs="xl"\]/', $css))->toBe(1)
         ->and(substr_count($css, 'html[data-fs='))->toBe(2);

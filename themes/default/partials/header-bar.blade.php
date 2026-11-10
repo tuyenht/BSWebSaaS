@@ -1,8 +1,8 @@
 {{--
     Rich storefront header (site setting `storefront.header`, normalized into $header): an optional
     top bar (contact items, language switch, text-size button below lg) that scrolls away, then the main bar
-    — logo, the desktop menu from lg, the menu button and its panel below lg (the phone menu when the
-    site set one, else the main menu) — which stays at the
+    — logo, the desktop menu from xl at the bar's right end, the menu button and its panel below xl
+    (the phone menu when the site set one, else the main menu) — which stays at the
     top. One <header> landmark holds both; it sticks with the top bar's height scrolled off, so no
     script runs on scroll and nothing shifts. Every value is Blade-escaped; links come validated.
 --}}
@@ -76,5 +76,5 @@
     </div>
     {{-- Without scripts the menu panel is simply open below the bar, and the text-size button
          (which needs a script) is not shown. --}}
-    <noscript><style>@media (max-width:1023.98px){.sf-nav--mob[hidden]{display:block}}.sf-burger,.sf-fs{display:none}</style></noscript>
+    <noscript><style>@media (max-width:1279.98px){.sf-nav--mob[hidden]{display:block}}.sf-burger,.sf-fs{display:none}</style></noscript>
 </header>

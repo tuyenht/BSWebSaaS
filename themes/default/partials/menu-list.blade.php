@@ -20,7 +20,7 @@
             @include('theme::partials.menu-list', ['items' => $item['children'], 'level' => 1, 'panelId' => $panel])
         </li>
 @else
-        <li class="site-nav__item{{ \App\Modules\Theme\Chrome\StorefrontChrome::menuItemClass($item) }}">
+        <li class="site-nav__item{{ \App\Modules\Theme\Chrome\StorefrontChrome::inTrail($item) ? ' is-trail' : '' }}{{ \App\Modules\Theme\Chrome\StorefrontChrome::menuItemClass($item) }}">
             <a class="site-nav__link" href="{{ $item['url'] }}"
                 @if (! empty($item['active'])) aria-current="page" @endif
                 @foreach (($item['attrs'] ?? []) as $attr => $value) {{ $attr }}="{{ $value }}" @endforeach

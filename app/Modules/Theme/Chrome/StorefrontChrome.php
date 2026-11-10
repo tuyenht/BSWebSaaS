@@ -238,13 +238,17 @@ final class StorefrontChrome
     }
 
     /**
-     * Whether a menu item's subtree holds the current page (the parent of the active page is
-     * highlighted too).
+     * Whether a menu item is on the way to the current page: it links to a level above the page
+     * (marked by withTrail), or something below it is the current page or such a level. The
+     * parent of the active page is highlighted too.
      *
-     * @param  array<mixed>  $item  a resolved menu node {label, url, active, children}
+     * @param  array<mixed>  $item  a resolved menu node {label, url, active, trail?, children}
      */
     public static function inTrail(array $item): bool
     {
+        if (! empty($item['trail'])) {
+            return true;
+        }
         foreach (is_array($item['children'] ?? null) ? $item['children'] : [] as $child) {
             if (is_array($child) && (! empty($child['active']) || self::inTrail($child))) {
                 return true;
@@ -252,6 +256,60 @@ final class StorefrontChrome
         }
 
         return false;
+    }
+
+    /**
+     * The menus of a page with the items that link to a level above it marked (`trail`): the
+     * levels of its breadcrumb between the home page and the page itself, so a post or product
+     * marks the section it sits in ("Dự án" on a project, "Tin tức" on a news post) even when its
+     * own address is not in the menu. The home link and the page itself are left out (the page is
+     * already `active`). Pure: no query.
+     *
+     * @param  array<string, mixed>  $extra  the page's layout variables (menu, mobileMenu, breadcrumb)
+     * @return array<string, mixed>
+     */
+    public static function withTrail(array $extra): array
+    {
+        $crumbs = is_array($extra['breadcrumb'] ?? null) ? array_values($extra['breadcrumb']) : [];
+        $paths = [];
+        foreach (array_slice($crumbs, 1, -1) as $crumb) {
+            if (is_array($crumb) && is_string($crumb['href'] ?? null) && $crumb['href'] !== '') {
+                $paths[$crumb['href']] = true;
+            }
+        }
+        if ($paths === []) {
+            return $extra;
+        }
+        foreach (['menu', 'mobileMenu'] as $key) {
+            if (is_array($extra[$key] ?? null)) {
+                $extra[$key] = self::markTrail($extra[$key], $paths);
+            }
+        }
+
+        return $extra;
+    }
+
+    /**
+     * @param  array<mixed>  $items
+     * @param  array<string, true>  $paths
+     * @return array<mixed>
+     */
+    private static function markTrail(array $items, array $paths): array
+    {
+        foreach ($items as $i => $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+            if (is_string($item['url'] ?? null) && isset($paths[$item['url']]) && empty($item['active'])) {
+                $item['trail'] = true;
+            }
+            if (is_array($item['children'] ?? null) && $item['children'] !== []) {
+                $item['children'] = self::markTrail($item['children'], $paths);
+            }
+            $items[$i] = $item;
+        }
+
+        return $items;
     }
 
     /**
