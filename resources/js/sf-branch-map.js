@@ -15,7 +15,7 @@ for (const root of document.querySelectorAll('[data-sf-bmap]')) {
     const part = (name) => root.querySelector(`[data-sf-bmap-${name}]`);
 
     blockNo += 1;
-    let address = tabs[0]?.dataset.addr ?? '';
+    let address = part('addr')?.textContent.trim() ?? '';
     let timer = 0;
 
     const say = (text) => {

@@ -38,19 +38,17 @@ final readonly class BranchMap
      * The branches that can be shown on a map (a search text or a coordinate pair), each with its
      * three map addresses. Pure but for the settings read (memoized per request): no query of its own.
      *
-     * @return list<array{key: string, title: string, short: string, full_name: string, locality: string, area: string|null, role: string|null, address: string|null, approximate: bool, embed: string, dir: string, open: string}>
+     * @return list<array{title: string, short: string, full_name: string, locality: string, area: string|null, role: string|null, address: string|null, approximate: bool, embed: string, dir: string, open: string}>
      */
     public function places(string $locale): array
     {
         $places = [];
-        foreach ($this->branches($locale) as $index => $branch) {
+        foreach ($this->branches($locale) as $branch) {
             $urls = self::urls($branch, $locale);
             if ($urls === null) {
                 continue;
             }
             $places[] = [
-                // A branch saved without a key is addressed by its position.
-                'key' => $branch['key'] ?? 'b'.($index + 1),
                 'title' => $branch['title'],
                 'short' => self::short($branch['full_name'], $branch['title']),
                 'full_name' => $branch['full_name'] ?? $branch['title'],

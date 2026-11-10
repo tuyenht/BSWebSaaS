@@ -41,12 +41,12 @@ function branchesFooter(?int $photoId): array
 }
 
 /** Provisions a site with those branches (and a hotline when $profile), then draws $blocks on /khoi. */
-function branchesPage(array $blocks, bool $profile = true): string
+function branchesPage(array $blocks, bool $profile = true, ?array $footer = null): string
 {
     $siteId = StorefrontCards::site();
-    app(Tenancy::class)->enter($siteId, function () use ($blocks, $profile): void {
+    app(Tenancy::class)->enter($siteId, function () use ($blocks, $profile, $footer): void {
         $photo = StorefrontCards::media('nha-may-1', 800, 600);
-        SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'footer', 'value' => branchesFooter($photo->id)]);
+        SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'footer', 'value' => $footer ?? branchesFooter($photo->id)]);
         if ($profile) {
             SiteProfile::query()->update(['hotline' => '0915 668 383']);
         }
@@ -54,6 +54,18 @@ function branchesPage(array $blocks, bool $profile = true): string
     });
 
     return test()->get('http://mau.platform.test/khoi')->assertOk()->getContent();
+}
+
+/** Vite entries drawn as plain script tags, so a page shows which scripts it asked for. */
+function branchesFakeVite(): void
+{
+    test()->swap(Vite::class, new class extends Vite
+    {
+        public function __invoke($entrypoints, $buildDirectory = null): HtmlString
+        {
+            return new HtmlString(collect((array) $entrypoints)->map(fn (string $entry): string => '<script type="module" src="/'.$entry.'"></script>')->implode(''));
+        }
+    });
 }
 
 function branchFormBlock(array $props = []): array
@@ -79,7 +91,7 @@ it('draws the chooser, the first branch\'s card, four buttons and the approximat
         ->and($html)->toContain('<p class="sf-bmap__approx" data-sf-bmap-approx hidden>Vị trí trên bản đồ là gần đúng')
         ->and($html)->toContain('data-approx="1"')
         ->and($html)->toContain('<iframe class="sf-bmap__map" data-sf-bmap-frame')
-        ->and($html)->toContain('loading="lazy"')
+        ->and($html)->toMatch('~<iframe class="sf-bmap__map" data-sf-bmap-frame[^>]*loading="lazy"~')
         ->and($html)->not->toContain('lead-form__map');
 });
 
@@ -112,13 +124,7 @@ it('leaves the call button out when the site has no phone number', function (): 
 });
 
 it('loads the chooser script only on a page whose form draws the branches', function (): void {
-    $this->swap(Vite::class, new class extends Vite
-    {
-        public function __invoke($entrypoints, $buildDirectory = null): HtmlString
-        {
-            return new HtmlString(collect((array) $entrypoints)->map(fn (string $entry): string => '<script type="module" src="/'.$entry.'"></script>')->implode(''));
-        }
-    });
+    branchesFakeVite();
 
     expect(branchesPage([branchFormBlock()]))->toContain('src="/resources/js/sf-branch-map.js"');
 
@@ -136,6 +142,60 @@ it('keeps a form without map_source exactly as it was, and loads no chooser scri
     StorefrontCards::reset();
     $plain = branchesPage([['type' => 'form', 'props' => ['form_key' => 'contact']]]);
     expect($plain)->toContain('<section class="lead-form" id="lf-contact">')->and($plain)->not->toContain('sf-bmap');
+});
+
+it('loads no chooser script when the form falls back to its map address', function (): void {
+    branchesFakeVite();
+    $siteId = StorefrontCards::site();
+    app(Tenancy::class)->enter($siteId, function (): void {
+        StorefrontCards::page('/khoi', 'Các khối', [branchFormBlock(['map_embed' => 'https://www.google.com/maps/embed?pb=3'])]);
+    });
+    $html = $this->get('http://mau.platform.test/khoi')->assertOk()->getContent();
+
+    expect($html)->toContain('lead-form__map')->and($html)->not->toContain('sf-branch-map');
+});
+
+it('loads the chooser script for a form drawn in a page slot', function (): void {
+    branchesFakeVite();
+    $siteId = StorefrontCards::site();
+    app(Tenancy::class)->enter($siteId, function (): void {
+        SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'footer', 'value' => branchesFooter(null)]);
+        SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'layout_blocks', 'value' => ['after_list' => ['vi' => ['blocks' => [branchFormBlock()]]]]]);
+    });
+    $html = $this->get('http://mau.platform.test/tin-tuc')->assertOk()->getContent();
+
+    expect($html)->toContain('data-sf-bmap')->and($html)->toContain('src="/resources/js/sf-branch-map.js"');
+});
+
+it('draws a single branch with no chooser, its copy button and its links', function (): void {
+    $html = branchesPage([branchFormBlock()], true, ['factories' => [
+        ['key' => 'tru-so', 'title' => ['vi' => 'TRỤ SỞ'], 'full_name' => ['vi' => 'Trụ sở chính'], 'address' => ['vi' => 'Số 1, phố Mẫu'], 'map_query' => 'Cơ khí An Vinh'],
+    ]]);
+
+    expect($html)->toContain('data-sf-bmap')
+        ->and($html)->not->toContain('data-sf-bmap-tabs')
+        ->and($html)->not->toContain('sf-bmap__hint')
+        ->and($html)->toContain('<p class="sf-bmap__addr" data-sf-bmap-addr >Số 1, phố Mẫu</p>')
+        ->and($html)->toContain('data-sf-bmap-copy hidden>Sao chép</button>')
+        ->and($html)->toContain('Chỉ đường')->toContain('Gọi điện')->toContain('Mở Maps')
+        // no coordinates: directions go to the search text
+        ->and($html)->toContain('href="https://www.google.com/maps/dir/?api=1&amp;destination='.rawurlencode('Cơ khí An Vinh').'"');
+});
+
+it('draws no photo for a branch whose picture belongs to another site', function (): void {
+    $foreign = 0;
+    $other = StorefrontCards::site('Xưởng Khác', 'khac.platform.test');
+    app(Tenancy::class)->enter($other, function () use (&$foreign): void {
+        $foreign = StorefrontCards::media('anh-nguoi-khac', 800, 600)->id;
+    });
+
+    $html = branchesPage([['type' => 'branches', 'props' => ['heading' => 'Các nhà máy', 'layout' => 'auto']]], true, ['factories' => [
+        ['key' => 'nha-may-1', 'title' => ['vi' => 'NHÀ MÁY 1'], 'full_name' => ['vi' => 'Nhà máy 1'], 'map_query' => 'Cơ khí An Vinh', 'image_media_id' => $foreign],
+    ]]);
+
+    expect($html)->toContain('<h3 class="sf-branch__name">Nhà máy 1</h3>')
+        ->and($html)->not->toContain('sf-branch__img')
+        ->and($html)->not->toContain('anh-nguoi-khac');
 });
 
 it('falls back to the map address when the site has no branch to show', function (): void {

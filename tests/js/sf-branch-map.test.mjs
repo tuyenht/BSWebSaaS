@@ -10,9 +10,9 @@ let load = 0;
 
 const tab = (n, approx) => `<button type="button" class="sf-bmap__tab" data-sf-bmap-tab data-embed="https://www.google.com/maps?q=${n}&amp;output=embed" data-dir="https://www.google.com/maps/dir/?api=1&amp;destination=${n}" data-open="https://www.google.com/maps/search/?api=1&amp;query=${n}" data-name="Nhà máy ${n}" data-meta="${n}00 m²" data-addr="${n === 3 ? '' : `Địa chỉ ${n}`}" data-approx="${approx ? '1' : ''}" data-title="Bản đồ ${n}"><span>Nhà máy ${n}</span></button>`;
 
+// Like the server's markup: with one branch the chooser is not printed at all.
 const block = (count = 3) => `<section data-sf-bmap data-copy-label="Sao chép" data-copied-label="Đã chép ✓" data-copy-failed="Không sao chép được">
-    <div data-sf-bmap-tabs data-label="Chọn nhà máy" hidden>${[1, 2, 3].slice(0, count).map((n) => tab(n, n === 2)).join('')}</div>
-    <div data-sf-bmap-panel>
+${count > 1 ? `    <div data-sf-bmap-tabs data-label="Chọn nhà máy" hidden>${[1, 2, 3].slice(0, count).map((n) => tab(n, n === 2)).join('')}</div>\n` : ''}    <div data-sf-bmap-panel>
         <iframe data-sf-bmap-frame src="https://www.google.com/maps?q=1&amp;output=embed" title="Bản đồ 1"></iframe>
         <h3 data-sf-bmap-name>Nhà máy 1</h3><span data-sf-bmap-meta>100 m²</span>
         <p data-sf-bmap-addr>Địa chỉ 1</p><p data-sf-bmap-approx hidden>Gần đúng</p>
@@ -129,12 +129,26 @@ test('leaving the chooser puts the tab stop back on the chosen branch', async ()
     assert.deepEqual(tabs.map((t) => t.tabIndex), [-1, 0, -1]);
 });
 
-test('a single branch keeps its chooser hidden and the card as printed, but still copies', async () => {
-    const { doc, start } = page(block(1));
+test('a single branch prints no chooser, shows the copy button from the printed address and copies it', async () => {
+    const written = [];
+    const { doc, start } = page(block(1), { writeText: async (value) => { written.push(value); } });
+    Object.defineProperty(globalThis, 'isSecureContext', { value: true, configurable: true });
+    assert.equal(doc.querySelector('[data-sf-bmap-tabs]'), null);
     await start();
-    assert.equal(doc.querySelector('[data-sf-bmap-tabs]').hidden, true);
+    globalThis.window.isSecureContext = true;
     assert.equal(doc.querySelectorAll('[role="tab"]').length, 0);
-    assert.equal(doc.querySelector('[data-sf-bmap-copy]').hidden, false);
+    const copy = doc.querySelector('[data-sf-bmap-copy]');
+    assert.equal(copy.hidden, false);
+
+    copy.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.deepEqual(written, ['Địa chỉ 1']);
+});
+
+test('a single branch without an address keeps the copy button hidden', async () => {
+    const { doc, start } = page(block(1).replace('<p data-sf-bmap-addr>Địa chỉ 1</p>', '<p data-sf-bmap-addr hidden></p>'));
+    await start();
+    assert.equal(doc.querySelector('[data-sf-bmap-copy]').hidden, true);
 });
 
 test('copy writes the address with the clipboard and announces it politely', async () => {

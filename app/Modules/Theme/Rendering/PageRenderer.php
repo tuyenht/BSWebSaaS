@@ -5,6 +5,7 @@ namespace App\Modules\Theme\Rendering;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\VideoEmbed;
+use App\Modules\Theme\Chrome\BranchMap;
 use App\Modules\Theme\Chrome\StorefrontChrome;
 use App\Modules\Theme\Components\ListDisplay;
 use App\Modules\Theme\Components\SectionProps;
@@ -65,7 +66,7 @@ final readonly class PageRenderer
         // from two sub-categories up; the script is a few hundred bytes).
         $extra += self::hasTabs($scripts) ? ['tabsScript' => true] : [];
         // The branch chooser's script loads only on a page with a form that draws the branches' map.
-        $extra += self::hasBranchMap($scripts) ? ['branchMapScript' => true] : [];
+        $extra += $this->hasBranchMap($scripts) ? ['branchMapScript' => true] : [];
         // A page led by a hero shows no breadcrumb (the hero is its opening), so its head lists none
         // either: the JSON-LD trail and the visible one always match.
         if ($type === 'page' && in_array($leadBlock, ['hero', 'hero_slider'], true)) {
@@ -208,7 +209,7 @@ final readonly class PageRenderer
             'videoScript' => self::playsVideo($scripts) || $this->blocks->playsRichVideo($scripts),
             'statsScript' => self::countsUp($scripts),
             'tabsScript' => self::hasTabs($scripts),
-            'branchMapScript' => self::hasBranchMap($scripts),
+            'branchMapScript' => $this->hasBranchMap($scripts),
             'bgVideoScript' => array_filter($drawn, fn (array $one): bool => $one['bgVideo']) !== [],
             'viewerScript' => self::zooms(...array_values($slotHtml)),
         ];
@@ -267,16 +268,17 @@ final readonly class PageRenderer
     }
 
     /**
-     * Whether a form block on the page draws the branches' map (`map_source: branches`), the only place the
-     * chooser's script has work. Pure: no query.
+     * Whether a form block on the page draws the branches' map (`map_source: branches` and at least one
+     * branch that can be mapped; otherwise the form draws its map address), the only place the chooser's
+     * script has work. No query: the places come from the request's memoized settings.
      *
      * @param  array<string, mixed>  $body
      */
-    private static function hasBranchMap(array $body): bool
+    private function hasBranchMap(array $body): bool
     {
         foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
             if (is_array($block) && ($block['type'] ?? null) === 'form' && is_array($block['props'] ?? null) && ($block['props']['map_source'] ?? null) === 'branches') {
-                return true;
+                return app(BranchMap::class)->places(app()->getLocale()) !== [];
             }
         }
 

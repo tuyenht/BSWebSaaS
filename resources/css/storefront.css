@@ -5696,6 +5696,14 @@ html:has(.sf-header--sticky) .product-toc {
     background: color-mix(in srgb, var(--color-surface) 92%, var(--color-dark));
 }
 
+/* The chooser, the card's address lines and the copy button are printed hidden: the display above must not win. */
+.sf-bmap__tabs[hidden],
+.sf-bmap__addr[hidden],
+.sf-bmap__approx[hidden],
+.sf-bmap__btn[hidden] {
+    display: none;
+}
+
 .sf-bmap__tab {
     display: flex;
     flex-direction: column;
@@ -5721,7 +5729,7 @@ html:has(.sf-header--sticky) .product-toc {
 
 .sf-bmap__tab[aria-selected="true"] {
     background: var(--color-dark);
-    color: #fff;
+    color: var(--color-on-dark, #fff);
     box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
 }
 
@@ -5822,7 +5830,7 @@ html:has(.sf-header--sticky) .product-toc {
 
 .sf-bmap__approx {
     margin: 0.25rem 0 0;
-    color: #92400e;
+    color: color-mix(in srgb, var(--color-text) 80%, white);
     font-size: 0.75rem;
 }
 
@@ -5871,7 +5879,7 @@ html:has(.sf-header--sticky) .product-toc {
 
 .sf-bmap__btn--dark {
     background: var(--color-dark);
-    color: #fff;
+    color: var(--color-on-dark, #fff);
 }
 
 .sf-bmap__btn--dark:hover {
