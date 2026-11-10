@@ -451,6 +451,78 @@
    },
    "collection": "library",
    "license": "Pexels License (https://www.pexels.com/license/): dùng thương mại, không cần ghi nguồn. Nguồn: https://www.pexels.com/photo/20101490/"
+  },
+  {
+   "slot": "logo-vinfast",
+   "file": "media/logo-vinfast.webp",
+   "alt": {
+    "vi": "Logo VinFast"
+   },
+   "collection": "library",
+   "license": "Logo của đối tác, An Vinh được phép hiển thị trên website. Tệp lấy từ website chính thức của hãng."
+  },
+  {
+   "slot": "logo-festo",
+   "file": "media/logo-festo.webp",
+   "alt": {
+    "vi": "Logo Festo"
+   },
+   "collection": "library",
+   "license": "Logo của đối tác, An Vinh được phép hiển thị trên website. Tệp lấy từ website chính thức của hãng."
+  },
+  {
+   "slot": "logo-hutchinson",
+   "file": "media/logo-hutchinson.webp",
+   "alt": {
+    "vi": "Logo Hutchinson"
+   },
+   "collection": "library",
+   "license": "Logo của đối tác, An Vinh được phép hiển thị trên website. Tệp lấy từ website chính thức của hãng."
+  },
+  {
+   "slot": "logo-weldcom",
+   "file": "media/logo-weldcom.webp",
+   "alt": {
+    "vi": "Logo Weldcom"
+   },
+   "collection": "library",
+   "license": "Logo của đối tác, An Vinh được phép hiển thị trên website. Tệp lấy từ website chính thức của hãng."
+  },
+  {
+   "slot": "logo-smc",
+   "file": "media/logo-smc.webp",
+   "alt": {
+    "vi": "Logo SMC"
+   },
+   "collection": "library",
+   "license": "Logo của đối tác, An Vinh được phép hiển thị trên website. Tệp lấy từ website chính thức của hãng."
+  },
+  {
+   "slot": "logo-palfinger",
+   "file": "media/logo-palfinger.webp",
+   "alt": {
+    "vi": "Logo Palfinger"
+   },
+   "collection": "library",
+   "license": "Logo của đối tác, An Vinh được phép hiển thị trên website. Tệp lấy từ website chính thức của hãng."
+  },
+  {
+   "slot": "logo-vinmanutech",
+   "file": "media/logo-vinmanutech.webp",
+   "alt": {
+    "vi": "Logo Vinmanutech"
+   },
+   "collection": "library",
+   "license": "Logo của đối tác, An Vinh được phép hiển thị trên website. Tệp cắt từ hồ sơ năng lực An Vinh (chờ tệp gốc của hãng)."
+  },
+  {
+   "slot": "iso-9001-certificate",
+   "file": "media/iso-9001-certificate.webp",
+   "alt": {
+    "vi": "Giấy chứng nhận ISO 9001:2015 của An Vinh"
+   },
+   "collection": "library",
+   "license": "Giấy chứng nhận của An Vinh do Viện Nghiên cứu Phát triển Tiêu chuẩn Chất lượng (ISSQ) cấp; khách hàng cung cấp."
   }
  ]
 }

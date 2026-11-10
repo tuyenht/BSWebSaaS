@@ -49,16 +49,6 @@
    "body": {
     "vi": [
      {
-      "type": "page_header",
-      "props": {
-       "title": "Thiết Kế & Lập Trình",
-       "subtitle": "Thiết kế đồ gá, khuôn mẫu và lập trình CNC – kiểm chứng bằng mô phỏng trước khi chế tạo",
-       "image_url": {
-        "media": "cad-1"
-       }
-      }
-     },
-     {
       "type": "richtext_html",
       "props": {
        "html": "<h2>Tổng quan</h2><p>An Vinh thiết kế 3D đồ gá hàn, đồ gá kiểm tra, khuôn dập, máy chuyên dùng và lập trình gia công CNC cho chính các chi tiết đó. Kỹ sư làm việc từ bản vẽ, mẫu thật hoặc yêu cầu công năng của khách hàng, mô phỏng lắp ghép và đường chạy dao trên máy tính để phát hiện va chạm, thiếu khe hở lắp ghép hay nguyên công thừa trước khi đưa xuống xưởng.</p><ul><li><strong>Phần mềm thiết kế:</strong> SolidWorks, Siemens NX, AutoCAD</li><li><strong>Lập trình CAM:</strong> 2,5D, 3 trục và 5 trục</li><li><strong>Thời gian thiết kế:</strong> 5 – 10 ngày làm việc cho một bộ đồ gá thông thường</li></ul><h2>Thông số kỹ thuật</h2><table><thead><tr><th>Hạng mục</th><th>Thiết kế cơ khí</th><th>Lập trình CNC</th></tr></thead><tbody><tr><td><strong>Đối tượng</strong></td><td>Đồ gá hàn, đồ gá kiểm tra, khuôn dập, máy chuyên dùng</td><td>Chi tiết phay, tiện, cắt dây</td></tr><tr><td><strong>Phần mềm</strong></td><td>SolidWorks, Siemens NX, AutoCAD</td><td>Mastercam, Siemens NX CAM</td></tr><tr><td><strong>Kết quả bàn giao</strong></td><td>Mô hình 3D, bản vẽ chế tạo 2D, bảng vật tư (BOM)</td><td>Chương trình NC đã mô phỏng, phiếu dao, phiếu gá đặt</td></tr><tr><td><strong>Kiểm chứng</strong></td><td>Mô phỏng lắp ghép, kiểm tra va chạm, phân tích chuỗi dung sai</td><td>Mô phỏng đường chạy dao, kiểm tra va chạm với đồ gá</td></tr><tr><td><strong>Thời gian</strong></td><td>5 – 10 ngày làm việc (đồ gá thông thường)</td><td>1 – 3 ngày làm việc</td></tr></tbody></table><h2>Định dạng file tiếp nhận</h2><ul><li><strong>3D:</strong> STEP, IGES, Parasolid (x_t)</li><li><strong>SolidWorks:</strong> SLDPRT, SLDASM</li><li><strong>2D:</strong> DWG, DXF, PDF</li><li><strong>Chưa có bản vẽ:</strong> mẫu thật, ảnh chụp có kích thước hoặc phác thảo tay</li></ul><h2>Tiêu chuẩn bản vẽ</h2><p>Bản vẽ chế tạo ghi đủ dung sai kích thước, dung sai hình học (GD&amp;T), vật liệu, độ cứng và xử lý bề mặt. Khi khách hàng yêu cầu, bộ hồ sơ bàn giao gồm file 3D gốc, bản vẽ 2D và bảng vật tư.</p>"
@@ -154,16 +144,6 @@
    "body": {
     "vi": [
      {
-      "type": "page_header",
-      "props": {
-       "title": "Gia Công Cắt Dây-Xung Điện",
-       "subtitle": "Biên dạng phức tạp, góc trong sắc và vật liệu đã tôi cứng",
-       "image_url": {
-        "media": "edm-1"
-       }
-      }
-     },
-     {
       "type": "richtext_html",
       "props": {
        "html": "<h2>Tổng quan</h2><p>An Vinh cắt dây (Wire EDM) và gia công xung điện định hình (EDM) những chi tiết dao phay khó hoặc không làm được: góc trong sắc, rãnh hẹp, biên dạng chày, cối khuôn dập, lòng khuôn có gân sâu và chi tiết bằng thép đã tôi cứng. Gia công bằng tia lửa điện không có lực cắt, nên chi tiết thành mỏng không bị biến dạng, và có thể làm sau nhiệt luyện để giữ đúng kích thước.</p><ul><li><strong>Độ chính xác cắt dây:</strong> ±0,005 mm</li><li><strong>Chiều dày phôi tối đa:</strong> 300 mm</li><li><strong>Đường kính dây:</strong> Ø0,2 – 0,25 mm (dây đồng thau)</li></ul><h2>Thông số kỹ thuật</h2><table><thead><tr><th>Hạng mục</th><th>Cắt dây (Wire EDM)</th><th>Xung điện (EDM định hình)</th></tr></thead><tbody><tr><td><strong>Kích thước tối đa</strong></td><td>Hành trình 400 × 300 mm (X × Y)</td><td>Bàn máy 600 × 400 mm, hành trình Z 300 mm</td></tr><tr><td><strong>Chiều dày phôi tối đa</strong></td><td>300 mm</td><td>Chiều sâu xung tới 150 mm</td></tr><tr><td><strong>Độ chính xác</strong></td><td>±0,005 mm</td><td>±0,01 mm</td></tr><tr><td><strong>Độ nhám bề mặt</strong></td><td>Ra 0,4 – 0,8 µm (cắt tinh nhiều lần)</td><td>Ra 0,8 – 1,6 µm</td></tr><tr><td><strong>Dây / điện cực</strong></td><td>Dây đồng thau Ø0,2 – 0,25 mm; cắt côn tới ±15°</td><td>Điện cực đồng đỏ, graphite</td></tr><tr><td><strong>Thời gian làm mẫu</strong></td><td>3 – 5 ngày làm việc</td><td>5 – 7 ngày làm việc</td></tr></tbody></table><h2>Vật liệu gia công</h2><ul><li><strong>Thép dụng cụ đã nhiệt luyện:</strong> SKD11, SKD61, SKH51, DC53</li><li><strong>Thép hợp kim, thép carbon:</strong> SCM440, S45C</li><li><strong>Inox:</strong> SUS304, SUS420J2</li><li><strong>Hợp kim cứng (carbide)</strong></li><li><strong>Đồng, đồng thau, nhôm</strong></li></ul><p>Phương pháp này chỉ gia công được vật liệu dẫn điện; nhựa và gốm kỹ thuật cần phương pháp khác.</p><h2>Xử lý bề mặt</h2><p>Với chày, cối và lòng khuôn, An Vinh cắt tinh nhiều lần để giảm lớp biến trắng trên bề mặt cắt, sau đó đánh bóng, nhiệt luyện bổ sung hoặc phủ cứng PVD theo yêu cầu bản vẽ.</p>"
@@ -258,16 +238,6 @@
    },
    "body": {
     "vi": [
-     {
-      "type": "page_header",
-      "props": {
-       "title": "Đo Kiểm & QA/QC",
-       "subtitle": "Kiểm soát từ vật liệu đầu vào đến sản phẩm bàn giao, có biên bản đo kiểm",
-       "image_url": {
-        "media": "inspect-1"
-       }
-      }
-     },
      {
       "type": "richtext_html",
       "props": {
@@ -474,16 +444,6 @@
    "body": {
     "vi": [
      {
-      "type": "page_header",
-      "props": {
-       "title": "Gia Công Phay-Tiện CNC",
-       "subtitle": "Chính xác theo bản vẽ – từ mẫu thử đến sản xuất loạt",
-       "image_url": {
-        "media": "cnc-1"
-       }
-      }
-     },
-     {
       "type": "richtext_html",
       "props": {
        "html": "<h2>Tổng quan</h2><p>An Vinh gia công phay, tiện CNC các chi tiết máy, linh kiện thay thế và chi tiết đồ gá theo bản vẽ của khách hàng. Kỹ sư rà soát bản vẽ trước khi gia công để đề xuất phương án tối ưu chi phí mà vẫn đảm bảo dung sai.</p><ul><li><strong>Dung sai tiêu chuẩn:</strong> ±0,01 mm</li><li><strong>Hành trình phay tối đa:</strong> 1.000 × 600 × 500 mm</li><li><strong>Số lượng:</strong> từ 1 chi tiết mẫu đến sản xuất loạt</li></ul><h2>Thông số kỹ thuật</h2><table><thead><tr><th>Hạng mục</th><th>Phay CNC</th><th>Tiện CNC</th></tr></thead><tbody><tr><td><strong>Kích thước tối đa</strong></td><td>1.000 × 600 × 500 mm</td><td>Ø300 × 500 mm</td></tr><tr><td><strong>Dung sai tiêu chuẩn</strong></td><td>±0,01 mm</td><td>±0,01 mm</td></tr><tr><td><strong>Độ nhám bề mặt</strong></td><td>Ra 0,8 – 1,6 µm</td><td>Ra 0,8 – 1,6 µm</td></tr><tr><td><strong>Số trục</strong></td><td>3, 4 và 5 trục</td><td>2 trục, trục C</td></tr><tr><td><strong>Thời gian làm mẫu</strong></td><td>3 – 7 ngày làm việc</td><td>3 – 5 ngày làm việc</td></tr></tbody></table><h2>Vật liệu gia công</h2><ul><li><strong>Nhôm:</strong> A5052, A6061, A7075</li><li><strong>Thép:</strong> S45C, SS400, SKD11, SKD61</li><li><strong>Inox:</strong> SUS304, SUS316</li><li><strong>Đồng, đồng thau</strong></li><li><strong>Nhựa kỹ thuật:</strong> POM, PEEK, Bakelite</li></ul><h2>Xử lý bề mặt</h2><p>Anode nhôm, nhuộm đen, mạ kẽm, mạ niken, nhiệt luyện, sơn tĩnh điện và đánh bóng theo yêu cầu bản vẽ.</p>"
@@ -578,16 +538,6 @@
    },
    "body": {
     "vi": [
-     {
-      "type": "page_header",
-      "props": {
-       "title": "Hàn & Lắp Ráp",
-       "subtitle": "Kết cấu hàn, khung đồ gá và cụm máy – lắp hoàn chỉnh, chạy thử trước khi giao",
-       "image_url": {
-        "media": "weld-1"
-       }
-      }
-     },
      {
       "type": "richtext_html",
       "props": {
@@ -690,8 +640,8 @@
    "verified": true,
    "status": "published",
    "categories": [
-    "tax:post_cat/du-an",
-    "tax:post_cat/du-an/du-an-dien-tu"
+    "tax:post_cat/du-an/du-an-dien-tu",
+    "tax:post_cat/du-an"
    ],
    "image": {
     "media": "pr-electronic-line"
@@ -747,8 +697,8 @@
    "verified": true,
    "status": "published",
    "categories": [
-    "tax:post_cat/du-an",
-    "tax:post_cat/du-an/du-an-o-to"
+    "tax:post_cat/du-an/du-an-o-to",
+    "tax:post_cat/du-an"
    ],
    "image": {
     "media": "pr-robot-weld-line"
@@ -804,8 +754,8 @@
    "verified": true,
    "status": "published",
    "categories": [
-    "tax:post_cat/du-an",
-    "tax:post_cat/du-an/du-an-gia-dung"
+    "tax:post_cat/du-an/du-an-gia-dung",
+    "tax:post_cat/du-an"
    ],
    "image": {
     "media": "pr-injection-mould"
@@ -861,8 +811,8 @@
    "verified": true,
    "status": "published",
    "categories": [
-    "tax:post_cat/du-an",
-    "tax:post_cat/du-an/du-an-o-to"
+    "tax:post_cat/du-an/du-an-o-to",
+    "tax:post_cat/du-an"
    ],
    "image": {
     "media": "pr-body-check-fixture"
@@ -918,8 +868,8 @@
    "verified": true,
    "status": "published",
    "categories": [
-    "tax:post_cat/du-an",
-    "tax:post_cat/du-an/du-an-hang-khong"
+    "tax:post_cat/du-an/du-an-hang-khong",
+    "tax:post_cat/du-an"
    ],
    "image": {
     "media": "pr-aero-parts"
@@ -975,8 +925,8 @@
    "verified": true,
    "status": "published",
    "categories": [
-    "tax:post_cat/du-an",
-    "tax:post_cat/du-an/du-an-tu-dong-hoa"
+    "tax:post_cat/du-an/du-an-tu-dong-hoa",
+    "tax:post_cat/du-an"
    ],
    "image": {
     "media": "pr-line-improve"
@@ -1032,8 +982,8 @@
    "verified": true,
    "status": "published",
    "categories": [
-    "tax:post_cat/du-an",
-    "tax:post_cat/du-an/du-an-khuon-mau"
+    "tax:post_cat/du-an/du-an-khuon-mau",
+    "tax:post_cat/du-an"
    ],
    "image": {
     "media": "pr-stamping-die"
@@ -1089,8 +1039,8 @@
    "verified": true,
    "status": "published",
    "categories": [
-    "tax:post_cat/du-an",
-    "tax:post_cat/du-an/du-an-o-to"
+    "tax:post_cat/du-an/du-an-o-to",
+    "tax:post_cat/du-an"
    ],
    "image": {
     "media": "pr-headlamp-jig"
@@ -1146,8 +1096,8 @@
    "verified": true,
    "status": "published",
    "categories": [
-    "tax:post_cat/du-an",
-    "tax:post_cat/du-an/du-an-tu-dong-hoa"
+    "tax:post_cat/du-an/du-an-tu-dong-hoa",
+    "tax:post_cat/du-an"
    ],
    "image": {
     "media": "pr-auto-feeder"

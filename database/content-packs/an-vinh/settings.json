@@ -15,7 +15,7 @@
     "color-on-dark": "#cbd5e1",
     "color-on-dark-muted": "#94a3b8",
     "primary-hover": "#d97706",
-    "font": "Inter, system-ui, sans-serif",
+    "font": "Inter, Inter-Fallback, system-ui, sans-serif",
     "text-base": "17px"
    }
   },
@@ -56,10 +56,10 @@
   },
   {
    "key": "setting:storefront.footer",
-   "note": "Không có map_url (chưa có liên kết bản đồ thật) và không có start_year (bản mẫu ghi 2014, giấy phép 2019, chờ xác nhận).",
+   "note": "Không có map_url (chưa có liên kết bản đồ thật).",
    "value": {
     "about": {
-     "vi": "An Vinh - Giải pháp cơ khí chính xác, chuyên thiết kế, gia công đồ gá, jig, và khuôn mẫu chất lượng cao tại Việt Nam."
+     "vi": "An Vinh – giải pháp cơ khí chính xác: thiết kế, gia công đồ gá, jig và khuôn mẫu chất lượng cao tại Việt Nam."
     },
     "columns_menu_region": "footer",
     "legal": {
@@ -109,7 +109,8 @@
     "copyright": {
      "holder": {
       "vi": "Cơ khí An Vinh"
-     }
+     },
+     "start_year": 2019
     },
     "credit": {
      "label": {
@@ -138,7 +139,7 @@
     "name": "Cơ Khí Chính Xác An Vinh",
     "legal_name": "CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ THIẾT KẾ GIA CÔNG CƠ KHÍ AN VINH",
     "description": "An Vinh - Giải pháp cơ khí chính xác, chuyên thiết kế, gia công đồ gá, jig, và khuôn mẫu chất lượng cao tại Việt Nam.",
-    "address": "Thôn Xuân Sơn, Xã Trung Giã, TP Hà Nội",
+    "address": "Thôn Xuân Sơn, Xã Trung Giã, TP Hà Nội, Việt Nam",
     "address_line": "Thôn Xuân Sơn",
     "ward": "Xã Trung Giã",
     "province": "TP Hà Nội",

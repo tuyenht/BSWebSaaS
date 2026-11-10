@@ -55,10 +55,28 @@
        "heading": "Chế Tác Tinh Hoa - Nâng Tầm Chính Xác",
        "paragraphs": [
         "An Vinh tự hào mang đến các giải pháp toàn diện về thiết kế và gia công đồ gá, jig, khuôn mẫu và các chi tiết máy công nghệ cao.",
-        "Với đội ngũ kỹ sư dày dặn kinh nghiệm, hệ thống máy móc CNC hiện đại và quy trình quản lý chất lượng nghiêm ngặt theo tiêu chuẩn ISO 9001:2015, chúng tôi cam kết mỗi sản phẩm xuất xưởng đều đạt đúng dung sai trên bản vẽ, đáp ứng các yêu cầu kỹ thuật khắt khe của khách hàng trong và ngoài nước."
+        "Với đội ngũ kỹ sư dày dạn kinh nghiệm, hệ thống máy móc CNC hiện đại và quy trình quản lý chất lượng nghiêm ngặt theo tiêu chuẩn ISO 9001:2015, chúng tôi cam kết mỗi sản phẩm xuất xưởng đều đạt đúng dung sai trên bản vẽ, đáp ứng các yêu cầu kỹ thuật khắt khe của khách hàng trong và ngoài nước."
        ],
-       "cta_label": "Về Chúng Tôi",
-       "cta_url": "/gioi-thieu"
+       "image_url": {
+        "media": "weld-2"
+       },
+       "links": [
+        {
+         "icon": "building",
+         "label": "Về Chúng Tôi",
+         "url": "/gioi-thieu"
+        },
+        {
+         "icon": "link",
+         "label": "Video Xưởng",
+         "url": "/nha-xuong-may-moc#video"
+        },
+        {
+         "icon": "license",
+         "label": "Quy Trình Làm Việc",
+         "url": "/nang-luc"
+        }
+       ]
       }
      },
      {
@@ -102,12 +120,12 @@
         },
         {
          "title": "Sản Xuất Chính Xác Trên Hệ Thống CNC",
-         "icon": "cog",
+         "icon": "wrench",
          "text": "Với dàn máy phay, tiện, cắt dây CNC, chúng tôi cam kết mọi chi tiết đều đạt dung sai kỹ thuật theo bản vẽ."
         },
         {
          "title": "Lắp Ráp & Kiểm Định Chất Lượng QA/QC",
-         "icon": "check",
+         "icon": "shield",
          "text": "Quy trình lắp ráp chuyên nghiệp và kiểm định chất lượng nghiêm ngặt trước khi bàn giao."
         }
        ]
@@ -148,7 +166,15 @@
        "text": "Hãy để các chuyên gia của An Vinh tư vấn giải pháp cơ khí chính xác phù hợp.",
        "button_label": "Liên hệ ngay",
        "button_url": "/lien-he",
-       "variant": "rounded"
+       "variant": "rounded",
+       "button2_label": "Hotline: 0915 66 83 83",
+       "button2_url_do": {
+        "k": "tel",
+        "phone": "0915668383"
+       },
+       "extra_style": [
+        "pattern-cross"
+       ]
       }
      },
      {
@@ -158,18 +184,33 @@
        "layout": "slider",
        "logos": [
         {
+         "image_url": {
+          "media": "logo-vinfast"
+         },
          "name": "VinFast"
         },
         {
+         "image_url": {
+          "media": "logo-festo"
+         },
          "name": "Festo"
         },
         {
+         "image_url": {
+          "media": "logo-hutchinson"
+         },
          "name": "Hutchinson"
         },
         {
+         "image_url": {
+          "media": "logo-weldcom"
+         },
          "name": "Weldcom"
         },
         {
+         "image_url": {
+          "media": "logo-smc"
+         },
          "name": "SMC"
         },
         {
@@ -182,9 +223,15 @@
          "name": "Mitsuboshi"
         },
         {
+         "image_url": {
+          "media": "logo-palfinger"
+         },
          "name": "Palfinger"
         },
         {
+         "image_url": {
+          "media": "logo-vinmanutech"
+         },
          "name": "Vinmanutech"
         }
        ]
@@ -256,15 +303,18 @@
        "heading": "Thư Ngỏ từ Ban Lãnh Đạo",
        "paragraphs": [
         "Kính gửi Quý Đối tác và Khách hàng!",
-        "Thay mặt tập thể CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ THIẾT KẾ GIA CÔNG CƠ KHÍ AN VINH, Ban Lãnh đạo chúng tôi xin trân trọng gửi lời chúc sức khỏe, thành công và lời cảm ơn sâu sắc đến Quý vị đã luôn tin tưởng, đồng hành cùng sự phát triển của công ty trong suốt thời gian qua.",
+        "Thay mặt tập thể Công ty TNHH Thương mại và Dịch vụ Thiết kế Gia công Cơ khí An Vinh, Ban Lãnh đạo chúng tôi xin trân trọng gửi lời chúc sức khỏe, thành công và lời cảm ơn sâu sắc đến Quý vị đã luôn tin tưởng, đồng hành cùng sự phát triển của công ty trong suốt thời gian qua.",
         "An Vinh được xây dựng trên nền tảng của sự tâm huyết, sáng tạo và nỗ lực không ngừng của toàn thể cán bộ, công nhân viên. Cùng với sự hợp tác quý báu từ Quý vị, chúng tôi đã và đang khẳng định vị thế.",
         "Với đội ngũ kỹ sư chất lượng cao, giàu kinh nghiệm và chiến lược đầu tư vào hệ thống máy móc, trang thiết bị hiện đại, chúng tôi cam kết mang đến những giải pháp toàn diện, đáp ứng và vượt trên sự mong đợi của khách hàng.",
         "Chúng tôi lấy chất lượng sản phẩm và sự hài lòng của Quý vị làm kim chỉ nam cho mọi hoạt động. Sự thành công của An Vinh gắn liền với sự thịnh vượng của Quý vị. Vì vậy, chúng tôi luôn mở rộng vòng tay hợp tác với các doanh nghiệp trên cả nước, trên tinh thần chia sẻ lợi ích và cùng nhau phát triển bền vững.",
-        "Xin trân trọng cảm ơn!"
+        "Xin trân trọng cảm ơn!",
+        "Ban Lãnh đạo",
+        "Công ty TNHH Thương mại và Dịch vụ Thiết kế Gia công Cơ khí An Vinh"
        ],
        "image_url": {
         "media": "about-letter"
-       }
+       },
+       "variant": "letter"
       }
      },
      {
@@ -277,11 +327,13 @@
        "items": [
         {
          "title": "Tầm Nhìn",
-         "text": "Trở thành công ty gia công cơ khí chính xác, thiết kế đồ gá, khuôn mẫu hàng đầu Việt Nam với trang thiết bị hiện đại, tiên tiến. Cung cấp sản phẩm, dịch vụ chất lượng tốt, giá cả cạnh tranh, thỏa mãn mọi nhu cầu của khách hàng."
+         "text": "Trở thành công ty gia công cơ khí chính xác, thiết kế đồ gá, khuôn mẫu hàng đầu Việt Nam với trang thiết bị hiện đại, tiên tiến. Cung cấp sản phẩm, dịch vụ chất lượng tốt, giá cả cạnh tranh, thỏa mãn mọi nhu cầu của khách hàng.",
+         "icon": "eye"
         },
         {
          "title": "Sứ Mệnh",
-         "text": "Thiết kế, thi công và sản xuất những sản phẩm có chất lượng tốt, an toàn, đảm bảo tiến độ và hiệu quả kinh tế. Phát huy cao nhất năng lực đội ngũ và nâng cao chất lượng đời sống vật chất, tinh thần cho toàn thể cán bộ nhân viên."
+         "text": "Thiết kế, thi công và sản xuất những sản phẩm có chất lượng tốt, an toàn, đảm bảo tiến độ và hiệu quả kinh tế. Phát huy cao nhất năng lực đội ngũ và nâng cao chất lượng đời sống vật chất, tinh thần cho toàn thể cán bộ nhân viên.",
+         "icon": "users"
         }
        ]
       }
@@ -294,29 +346,36 @@
        "items": [
         {
          "title": "Uy Tín",
-         "text": "Luôn nỗ lực hết mình để đảm bảo chất lượng hoàn hảo và cam kết đúng tiến độ."
+         "text": "Luôn nỗ lực hết mình để đảm bảo chất lượng hoàn hảo và cam kết đúng tiến độ.",
+         "icon": "check"
         },
         {
          "title": "Sáng Tạo",
-         "text": "Không ngừng sáng tạo nhằm tạo sự khác biệt và mang đậm bản sắc riêng."
+         "text": "Không ngừng sáng tạo nhằm tạo sự khác biệt và mang đậm bản sắc riêng.",
+         "icon": "adjust"
         },
         {
          "title": "Trách Nhiệm",
-         "text": "Luôn làm việc tận tụy và có trách nhiệm với những gì đã cam kết."
+         "text": "Luôn làm việc tận tụy và có trách nhiệm với những gì đã cam kết.",
+         "icon": "lock"
         },
         {
          "title": "Hiệu Quả",
-         "text": "Cải tiến liên tục kỹ năng để phục vụ khách hàng với hiệu suất cao nhất."
+         "text": "Cải tiến liên tục kỹ năng để phục vụ khách hàng với hiệu suất cao nhất.",
+         "icon": "cog"
         },
         {
          "title": "Khách Hàng Là Trọng Tâm",
-         "text": "Lấy sự hài lòng của khách hàng làm thước đo cho thành công."
+         "text": "Lấy sự hài lòng của khách hàng làm thước đo cho thành công.",
+         "icon": "users"
         },
         {
          "title": "Chia Sẻ Thành Công",
-         "text": "Đồng hành cùng sự phát triển của khách hàng và cộng đồng."
+         "text": "Đồng hành cùng sự phát triển của khách hàng và cộng đồng.",
+         "icon": "shield"
         }
-       ]
+       ],
+       "variant": "top-rule"
       }
      },
      {
@@ -346,7 +405,7 @@
         "Phạm vi: Gia công rèn, dập, hàn; sản xuất đồ gá, khuôn mẫu"
        ],
        "image_url": {
-        "media": "inspect-1"
+        "media": "iso-9001-certificate"
        },
        "anchor_id": "chung-chi"
       }
@@ -357,7 +416,11 @@
        "heading": "Tham quan nhà máy An Vinh",
        "text": "Đặt lịch khảo sát năng lực thực tế cùng đội ngũ kỹ sư của chúng tôi.",
        "button_label": "Đặt lịch tham quan",
-       "button_url": "/lien-he"
+       "button_url": "/lien-he",
+       "variant": "rounded",
+       "extra_style": [
+        "pattern-cross"
+       ]
       }
      }
     ]
@@ -386,41 +449,61 @@
       }
      },
      {
-      "type": "features",
+      "type": "partners",
       "props": {
        "heading": "Những đối tác đã tin tưởng An Vinh",
-       "variant": "top-rule",
-       "bg": "surface",
-       "items": [
+       "layout": "grid",
+       "logos": [
         {
-         "title": "VinFast"
+         "image_url": {
+          "media": "logo-vinfast"
+         },
+         "name": "VinFast"
         },
         {
-         "title": "Festo"
+         "image_url": {
+          "media": "logo-festo"
+         },
+         "name": "Festo"
         },
         {
-         "title": "Hutchinson"
+         "image_url": {
+          "media": "logo-hutchinson"
+         },
+         "name": "Hutchinson"
         },
         {
-         "title": "Weldcom"
+         "image_url": {
+          "media": "logo-weldcom"
+         },
+         "name": "Weldcom"
         },
         {
-         "title": "SMC"
+         "image_url": {
+          "media": "logo-smc"
+         },
+         "name": "SMC"
         },
         {
-         "title": "DGP"
+         "name": "DGP"
         },
         {
-         "title": "Yamaguchi"
+         "name": "Yamaguchi"
         },
         {
-         "title": "Mitsuboshi"
+         "name": "Mitsuboshi"
         },
         {
-         "title": "Palfinger"
+         "image_url": {
+          "media": "logo-palfinger"
+         },
+         "name": "Palfinger"
         },
         {
-         "title": "Vinmanutech"
+         "image_url": {
+          "media": "logo-vinmanutech"
+         },
+         "name": "Vinmanutech"
         }
        ]
       }
@@ -458,7 +541,10 @@
        "button_label": "Tôi cần gia công",
        "button_url": "/lien-he",
        "button2_label": "Đăng ký nhà cung cấp",
-       "button2_url": "/lien-he"
+       "button2_url": "/lien-he",
+       "extra_style": [
+        "pattern-cross"
+       ]
       }
      }
     ]
@@ -531,7 +617,7 @@
       "type": "page_header",
       "props": {
        "title": "Nhà Xưởng & Máy Móc",
-       "subtitle": "3 nhà máy, máy móc thiết bị và hình ảnh gia công",
+       "subtitle": "3 nhà máy, máy móc thiết bị và hình ảnh thực tế tại xưởng",
        "image_url": {
         "media": "factory-1"
        }
@@ -546,17 +632,14 @@
        "items": [
         {
          "title": "Nhà máy 1 · 2.000 m²",
-         "icon": "machine",
          "text": "Lắp ráp & sản xuất hàn, dập. Đường 418, thôn Xuân Sơn, xã Trung Giã, TP Hà Nội."
         },
         {
          "title": "Nhà máy 2 · 500 m²",
-         "icon": "wrench",
          "text": "Lắp ráp. Đường QL3, thôn Hương Ninh, xã Trung Giã, TP Hà Nội."
         },
         {
          "title": "Nhà máy 3 · 1.800 m²",
-         "icon": "cog",
          "text": "Gia công. Đội 6, thôn Ngũ Sơn, xã Thạch Thất, TP Hà Nội."
         }
        ]
@@ -569,7 +652,7 @@
        "items": [
         {
          "title": "Máy phay CNC 3–5 trục",
-         "icon": "machine",
+         "icon": "wrench",
          "text": "Hành trình tới 1.000 × 600 × 500 mm · dung sai ±0,01 mm"
         },
         {
@@ -607,7 +690,8 @@
        "url": "https://www.youtube.com/watch?v=FpYQc5zMLzM",
        "poster": {
         "media": "cnc-1"
-       }
+       },
+       "anchor_id": "video"
       }
      },
      {
@@ -715,7 +799,11 @@
        "heading": "Tham quan nhà máy trực tiếp",
        "text": "Đặt lịch khảo sát năng lực thực tế cùng đội ngũ kỹ sư An Vinh.",
        "button_label": "Đặt lịch tham quan",
-       "button_url": "/lien-he"
+       "button_url": "/lien-he",
+       "variant": "rounded",
+       "extra_style": [
+        "pattern-cross"
+       ]
       }
      }
     ]
@@ -784,7 +872,7 @@
       "type": "quick_links",
       "props": {
        "heading": "Trong lúc chờ, bạn có thể tham khảo:",
-       "variant": "row",
+       "variant": "pill",
        "items": [
         {
          "icon": "link",

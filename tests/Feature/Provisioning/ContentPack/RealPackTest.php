@@ -74,7 +74,7 @@ it('validates the real pack: schema, bodies, slots, content published but job of
     }
 });
 
-it('gives every project, news card and product its own image and the quality block a photo', function (): void {
+it('gives every project, news card and product its own image and the quality block its ISO certificate', function (): void {
     $pack = (new PackReader)->read('an-vinh');
     $items = collect($pack->items)->keyBy(fn ($item) => $item->key);
 
@@ -93,7 +93,7 @@ it('gives every project, news card and product its own image and the quality blo
 
     $quality = collect($items['page:/gioi-thieu']->data['body']['vi'])
         ->firstWhere('props.heading', 'Cam Kết Chất Lượng Theo Tiêu Chuẩn Quốc Tế');
-    expect($quality['props']['image_url'])->toBe(['media' => 'inspect-1']);
+    expect($quality['props']['image_url'])->toBe(['media' => 'iso-9001-certificate']);
 });
 
 it('never moves a tone mark off its syllable when the text is spelt the new way (hoàn, thoát stay whole)', function (): void {
@@ -145,18 +145,51 @@ it('gives every post body text, an excerpt and a search description', function (
 
 it('lists the partners on their page with a call to contact, and links the privacy policy from the footer', function (): void {
     $items = collect((new PackReader)->read('an-vinh')->items)->keyBy(fn ($item) => $item->key);
+    $partners = ['VinFast', 'Festo', 'Hutchinson', 'Weldcom', 'SMC', 'DGP', 'Yamaguchi', 'Mitsuboshi', 'Palfinger', 'Vinmanutech'];
+    $withLogo = ['VinFast', 'Festo', 'Hutchinson', 'Weldcom', 'SMC', 'Palfinger', 'Vinmanutech'];
 
     $blocks = collect($items['page:/doi-tac']->data['body']['vi']);
-    expect($blocks->pluck('type')->all())->toBe(['page_header', 'features', 'features', 'cta'])
-        ->and(collect($blocks[1]['props']['items'])->pluck('title')->all())->toBe([
-            'VinFast', 'Festo', 'Hutchinson', 'Weldcom', 'SMC', 'DGP', 'Yamaguchi', 'Mitsuboshi', 'Palfinger', 'Vinmanutech',
-        ])
+    $home = collect($items['page:/']->data['body']['vi'])->firstWhere('type', 'partners');
+    foreach ([$blocks[1]['props'], $home['props']] as $wall) {
+        $logos = collect($wall['logos']);
+        expect($logos->pluck('name')->all())->toBe($partners)
+            ->and($logos->filter(fn (array $logo): bool => isset($logo['image_url']))->pluck('name')->all())->toBe($withLogo)
+            ->and($logos->pluck('image_url.media')->filter()->every(fn (string $slot): bool => str_starts_with($slot, 'logo-')))->toBeTrue();
+    }
+    expect($blocks->pluck('type')->all())->toBe(['page_header', 'partners', 'features', 'cta'])
+        ->and($blocks[1]['props']['layout'])->toBe('grid')
         ->and($blocks[3]['props']['button_url'])->toBe('/lien-he')
         ->and($blocks[3]['props']['button2_url'])->toBe('/lien-he');
 
     $about = $items['menu:footer']->data['items'][0];
     expect($about['label']['vi'])->toBe('GIỚI THIỆU')
         ->and(collect($about['children'])->firstWhere('target', 'page:/chinh-sach-bao-mat')['label']['vi'] ?? null)->toBe('Chính sách bảo mật');
+});
+
+it('follows the storefront design: capability posts let the layout draw their band, projects lead with their sector', function (): void {
+    $pack = (new PackReader)->read('an-vinh');
+    $items = collect($pack->items)->keyBy(fn ($item) => $item->key);
+
+    foreach (['thiet-ke-lap-trinh', 'gia-cong-cat-day-xung-dien', 'do-kiem-qa-qc', 'gia-cong-phay-tien-cnc', 'han-lap-rap-co-khi'] as $slug) {
+        expect($items['post:'.$slug]->data['body']['vi'][0]['type'])->not->toBe('page_header', $slug);
+    }
+    $projects = $items->filter(fn ($item) => str_starts_with($item->key, 'post:') && in_array('tax:post_cat/du-an', $item->data['categories'], true));
+    expect($projects)->toHaveCount(9);
+    foreach ($projects as $item) {
+        expect($item->data['categories'][0])->toStartWith('tax:post_cat/du-an/', $item->key);
+    }
+
+    $home = collect($items['page:/']->data['body']['vi']);
+    expect($home->firstWhere('type', 'cta')['props'])->toMatchArray([
+        'button2_url_do' => ['k' => 'tel', 'phone' => '0915668383'],
+        'extra_style' => ['pattern-cross'],
+    ])->and(collect($home->firstWhere('type', 'about')['props']['links'])->pluck('url')->all())
+        ->toBe(['/gioi-thieu', '/nha-xuong-may-moc#video', '/nang-luc']);
+    expect(collect($items['page:/gioi-thieu']->data['body']['vi'])->firstWhere('type', 'about')['props']['variant'])->toBe('letter');
+
+    $settings = collect(json_decode((string) file_get_contents($pack->dir.'/settings.json'), true)['items'])->keyBy('key');
+    expect($settings['setting:storefront.footer']['value']['copyright']['start_year'])->toBe(2019)
+        ->and($settings['setting:theme.tokens']['value']['font'])->toContain('Inter-Fallback');
 });
 
 it('publishes a privacy policy naming the company, what the form collects and how to exercise rights', function (): void {
