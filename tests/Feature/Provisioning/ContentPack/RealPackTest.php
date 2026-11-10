@@ -4,6 +4,8 @@ use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Provisioning\ContentPack\PackReader;
 use App\Modules\Provisioning\ContentPack\PackValidator;
 use App\Modules\Tenancy\Models\SiteSetting;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Notification;
 use Tests\Fixtures\ContentPacks;
 use Tests\Fixtures\StorefrontCards;
 
@@ -345,4 +347,24 @@ it('shows each about subpage under Giới thiệu in its breadcrumb and opens th
         ->toContain('href="/chung-chi-thanh-tuu"')
         ->toContain('href="/ho-so-nang-luc"')
         ->not->toContain('/gioi-thieu#chung-chi');
+});
+
+it('gives the contact form the board\'s order, a need list with its four choices, and opens the thank-you page after a send', function (): void {
+    $folder = ContentPacks::use('an-vinh', database_path('content-packs'));
+    ContentPacks::edit($folder, 'pack.json', fn (array $pack): array => ['hosts' => [ContentPacks::HOST]] + $pack);
+    StorefrontCards::site('Demo', ContentPacks::HOST);
+    [$exit, $output] = ContentPacks::load('an-vinh');
+    expect($exit)->toBe(0, $output);
+
+    $page = $this->get('http://'.ContentPacks::HOST.'/lien-he')->assertOk()->getContent();
+    preg_match_all('/<(?:input|select|textarea) id="[^"]+" (?:type="[a-z]+" )?name="([a-z_]+)"/', $page, $names);
+    expect(array_values(array_diff($names[1], ['locale', 'company_website'])))->toBe(['name', 'phone', 'email', 'need', 'message', 'consent'])
+        ->and($page)->toMatch('/<option value="">— Chọn nhu cầu —<\/option>\s*<option value="jig-do-ga"\s*>Thiết kế Jig &amp; Đồ gá<\/option>\s*<option value="khuon-mau"\s*>Khuôn mẫu<\/option>\s*<option value="gia-cong-chi-tiet"\s*>Gia công chi tiết<\/option>\s*<option value="khac"\s*>Khác<\/option>/')
+        ->toContain('placeholder="ten@congty.vn"')->toContain('placeholder="0912 345 678"');
+
+    config(['services.turnstile.secret_key' => '']);
+    Cache::flush();
+    Notification::fake();
+    $this->post('http://'.ContentPacks::HOST.'/forms/contact', ['name' => 'A', 'phone' => '0912345678', 'need' => 'khac', 'message' => 'Xin báo giá', 'consent' => '1', 'locale' => 'vi'])
+        ->assertStatus(303)->assertRedirect('http://'.ContentPacks::HOST.'/cam-on');
 });

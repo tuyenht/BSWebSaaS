@@ -1,0 +1,79 @@
+{
+ "items": [
+  {
+   "key": "form:contact",
+   "fields": [
+    {
+     "key": "name",
+     "sort_order": 1
+    },
+    {
+     "key": "phone",
+     "sort_order": 2,
+     "placeholder": {
+      "vi": "0912 345 678"
+     }
+    },
+    {
+     "key": "email",
+     "sort_order": 3,
+     "placeholder": {
+      "vi": "ten@congty.vn"
+     }
+    },
+    {
+     "key": "need",
+     "type": "select",
+     "label": {
+      "vi": "Bạn cần tư vấn về"
+     },
+     "is_required": false,
+     "sort_order": 4,
+     "placeholder": {
+      "vi": "— Chọn nhu cầu —"
+     },
+     "choices": [
+      {
+       "value": "jig-do-ga",
+       "label": {
+        "vi": "Thiết kế Jig & Đồ gá"
+       }
+      },
+      {
+       "value": "khuon-mau",
+       "label": {
+        "vi": "Khuôn mẫu"
+       }
+      },
+      {
+       "value": "gia-cong-chi-tiet",
+       "label": {
+        "vi": "Gia công chi tiết"
+       }
+      },
+      {
+       "value": "khac",
+       "label": {
+        "vi": "Khác"
+       }
+      }
+     ]
+    },
+    {
+     "key": "message",
+     "sort_order": 5,
+     "placeholder": {
+      "vi": "Ví dụ: sản phẩm, số lượng, thời gian cần…"
+     }
+    },
+    {
+     "key": "consent",
+     "sort_order": 6
+    }
+   ],
+   "settings": {
+    "redirect_entry": "page:/cam-on"
+   }
+  }
+ ]
+}
