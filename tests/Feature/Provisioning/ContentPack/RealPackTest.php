@@ -18,9 +18,6 @@ use Tests\Fixtures\StorefrontCards;
 
 const RETIRED = ['post:thiet-ke-jig-do-ga', 'post:san-xuat-chi-tiet-may-oem'];
 
-/** Pages written ahead of the files they offer: drafts until the company sends them. */
-const AWAITING_FILES = ['page:/ho-so-nang-luc'];
-
 /** The about section: the company page, then its subpages in menu order. */
 const ABOUT_PAGES = [
     'page:/gioi-thieu' => 'Giới thiệu',
@@ -72,7 +69,7 @@ it('validates the real pack: schema, bodies, slots, content published but job of
                     ->and($item->data['claims'])->not->toBeEmpty();
             } else {
                 expect($item->data['verified'])->toBeTrue($item->key)
-                    ->and($item->data['status'])->toBe(in_array($item->key, [...RETIRED, ...AWAITING_FILES], true) ? 'draft' : 'published', $item->key)
+                    ->and($item->data['status'])->toBe(in_array($item->key, RETIRED, true) ? 'draft' : 'published', $item->key)
                     ->and($item->data)->not->toHaveKey('claims');
             }
         }
@@ -247,10 +244,10 @@ it('plans the real pack on a fresh site with no conflict, and every internal lin
     $this->get('http://'.ContentPacks::HOST.'/thiet-ke-jig-do-ga')->assertStatus(301)->assertRedirect('/thiet-ke-lap-trinh');
     $this->get('http://'.ContentPacks::HOST.'/san-xuat-chi-tiet-may-oem')->assertStatus(301)->assertRedirect('/gia-cong-phay-tien-cnc');
     foreach (['/', '/gioi-thieu', '/doi-tac', '/nha-xuong-may-moc', '/chung-chi-thanh-tuu', '/cam-on', '/nang-luc', '/thiet-ke-lap-trinh', '/gia-cong-phay-tien-cnc',
-        '/gia-cong-cat-day-xung-dien', '/han-lap-rap-co-khi', '/do-kiem-qa-qc', '/du-an', '/tin-tuc', '/san-pham', '/lien-he'] as $path) {
+        '/gia-cong-cat-day-xung-dien', '/han-lap-rap-co-khi', '/do-kiem-qa-qc', '/du-an', '/tin-tuc', '/san-pham', '/lien-he', '/ho-so-nang-luc'] as $path) {
         $this->get('http://'.ContentPacks::HOST.$path)->assertOk();
     }
-    foreach (['/ky-thuat-vien-van-hanh-may-cnc', '/ky-su-thiet-ke-co-khi-do-ga', '/nhan-vien-kiem-tra-chat-luong-qc', '/ho-so-nang-luc'] as $path) {
+    foreach (['/ky-thuat-vien-van-hanh-may-cnc', '/ky-su-thiet-ke-co-khi-do-ga', '/nhan-vien-kiem-tra-chat-luong-qc'] as $path) {
         $this->get('http://'.ContentPacks::HOST.$path)->assertNotFound();
     }
     expect($this->get('http://'.ContentPacks::HOST.'/gioi-thieu')->getContent())->toContain('Nhà xưởng &amp; máy móc')
@@ -313,8 +310,13 @@ it('builds the about section as one family: a parent page, titles named like the
     }
     expect(array_unique($seo))->toHaveCount(count($seo));
 
-    // the short ISO summary on the company page leads to the full certificate page
-    expect(collect($items['page:/gioi-thieu']->data['body']['vi'])->firstWhere('props.anchor_id', 'chung-chi')['props']['cta_url'])->toBe('/chung-chi-thanh-tuu');
+    // the ISO summary on the company page and the profile page's main call both download the company
+    // profile, labelled with the file's type and size as loaded
+    $download = ['label' => ['text' => 'Tải hồ sơ năng lực', 'type_and_size_of' => 'ho-so-nang-luc'], 'do' => ['k' => 'file', 'file' => ['media' => 'ho-so-nang-luc']]];
+    $iso = collect($items['page:/gioi-thieu']->data['body']['vi'])->firstWhere('props.anchor_id', 'chung-chi')['props'];
+    $profile = collect($items['page:/ho-so-nang-luc']->data['body']['vi'])->firstWhere('props.heading', 'Hồ sơ năng lực An Vinh')['props'];
+    expect(['label' => $iso['cta_label'], 'do' => $iso['cta_url_do']])->toBe($download)->and($iso)->not->toHaveKey('cta_url')
+        ->and(['label' => $profile['button_label'], 'do' => $profile['button_url_do']])->toBe($download)->and($profile)->not->toHaveKey('button_url');
 
     $menu = fn (string $key): array => $items[$key]->data['items'];
     $about = collect($menu('menu:primary'))->firstWhere('label.vi', 'Giới thiệu');
@@ -324,14 +326,14 @@ it('builds the about section as one family: a parent page, titles named like the
         ->and(collect($menu('menu:footer')[0]['children'])->take(4)->map(fn (array $child): array => [$child['label']['vi'], $child['target']])->all())->toBe($wanted);
 });
 
-it('shows each about subpage under Giới thiệu in its breadcrumb, opens the about menu by its own button, and keeps the draft out of the menus', function (): void {
+it('shows each about subpage under Giới thiệu in its breadcrumb and opens the about menu by its own button', function (): void {
     $folder = ContentPacks::use('an-vinh', database_path('content-packs'));
     ContentPacks::edit($folder, 'pack.json', fn (array $pack): array => ['hosts' => [ContentPacks::HOST]] + $pack);
     StorefrontCards::site('Demo', ContentPacks::HOST);
     [$exit, $output] = ContentPacks::load('an-vinh');
     expect($exit)->toBe(0, $output);
 
-    foreach (['/nha-xuong-may-moc' => 'Nhà xưởng &amp; máy móc', '/chung-chi-thanh-tuu' => 'Chứng chỉ &amp; thành tựu'] as $path => $crumb) {
+    foreach (['/nha-xuong-may-moc' => 'Nhà xưởng &amp; máy móc', '/chung-chi-thanh-tuu' => 'Chứng chỉ &amp; thành tựu', '/ho-so-nang-luc' => 'Hồ sơ năng lực &amp; tài liệu'] as $path => $crumb) {
         $html = $this->get('http://'.ContentPacks::HOST.$path)->assertOk()->getContent();
         expect(preg_match('#<nav class="sf-crumbs[^"]*"[^>]*>.*?</nav>#s', $html, $crumbs))->toBe(1, $path)
             ->and($crumbs[0])->toMatch('#<a class="sf-crumbs__link" href="/">Trang chủ</a>.*<a class="sf-crumbs__link" href="/gioi-thieu">Giới thiệu</a>.*<span class="sf-crumbs__current" aria-current="page">'.preg_quote($crumb, '#').'</span>#s')
@@ -341,6 +343,6 @@ it('shows each about subpage under Giới thiệu in its breadcrumb, opens the a
     $home = $this->get('http://'.ContentPacks::HOST.'/')->assertOk()->getContent();
     expect($home)->toMatch('#<a class="sf-nav__link" href="/gioi-thieu"\s*>Giới thiệu</a><button type="button" class="sf-nav__chev" aria-expanded="false" aria-controls="dsm-1"#')
         ->toContain('href="/chung-chi-thanh-tuu"')
-        ->not->toContain('/ho-so-nang-luc')
+        ->toContain('href="/ho-so-nang-luc"')
         ->not->toContain('/gioi-thieu#chung-chi');
 });

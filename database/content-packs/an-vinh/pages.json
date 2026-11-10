@@ -401,8 +401,16 @@
         "media": "iso-9001-certificate"
        },
        "anchor_id": "chung-chi",
-       "cta_label": "Xem chứng chỉ & thành tựu",
-       "cta_url": "/chung-chi-thanh-tuu"
+       "cta_label": {
+        "text": "Tải hồ sơ năng lực",
+        "type_and_size_of": "ho-so-nang-luc"
+       },
+       "cta_url_do": {
+        "k": "file",
+        "file": {
+         "media": "ho-so-nang-luc"
+        }
+       }
       }
      },
      {
@@ -482,7 +490,7 @@
         {
          "title": "Máy phay, máy mài",
          "icon": "cog",
-         "text": "Máy phay giường X6000 × Y1500 × Z1000 mm, 2 máy phay tự động, 10 máy phay nhỏ và 8 máy mài giường tới X3200 × Y1500 × Z1000 mm."
+         "text": "Máy phay giường X6000 × Y1500 × Z1000 mm, 2 máy phay tự động, 11 máy phay nhỏ và 8 máy mài giường tới X3200 × Y1500 × Z1000 mm."
         },
         {
          "title": "Máy tiện, khoan, taro",
@@ -796,7 +804,7 @@
    "key": "page:/ho-so-nang-luc",
    "parent": "page:/gioi-thieu",
    "verified": true,
-   "status": "draft",
+   "status": "published",
    "title": {
     "vi": "Hồ sơ năng lực & tài liệu"
    },
@@ -804,7 +812,7 @@
     "vi": "Hồ Sơ Năng Lực & Tài Liệu | Cơ Khí Chính Xác An Vinh"
    },
    "seo_description": {
-    "vi": "Hồ sơ năng lực An Vinh cho bộ phận mua hàng: giới thiệu công ty, ba nhà máy 4.300 m², máy móc, chứng nhận ISO 9001:2015, sản phẩm Jig & đồ gá, khuôn mẫu."
+    "vi": "Tải hồ sơ năng lực An Vinh (PDF, 21 trang): thông tin công ty, ba nhà máy 4.300 m², máy móc, chứng nhận ISO 9001:2015, sản phẩm Jig & đồ gá, khuôn mẫu."
    },
    "body": {
     "vi": [
@@ -823,8 +831,16 @@
       "props": {
        "heading": "Hồ sơ năng lực An Vinh",
        "text": "Thông tin công ty, thư ngỏ, tầm nhìn và giá trị cốt lõi, chứng nhận ISO 9001:2015, đối tác, sản phẩm tiêu biểu, ba nhà máy và danh sách máy móc, thiết bị.",
-       "button_label": "Yêu cầu hồ sơ năng lực",
-       "button_url": "/lien-he",
+       "button_label": {
+        "text": "Tải hồ sơ năng lực",
+        "type_and_size_of": "ho-so-nang-luc"
+       },
+       "button_url_do": {
+        "k": "file",
+        "file": {
+         "media": "ho-so-nang-luc"
+        }
+       },
        "side": "stats",
        "side_items": [
         {
