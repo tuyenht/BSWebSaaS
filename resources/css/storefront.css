@@ -4199,11 +4199,11 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     line-height: 1.25rem;
 }
 
-.product__lead .sf-prose :is(p, ul, ol) {
+.product__lead .sf-prose:not(.sf-prose--article) :is(p, ul, ol) {
     margin: 0;
 }
 
-.product__lead .sf-prose :is(p, ul, ol) + :is(p, ul, ol) {
+.product__lead .sf-prose:not(.sf-prose--article) :is(p, ul, ol) + :is(p, ul, ol) {
     margin-top: 0.5rem;
 }
 
@@ -4218,11 +4218,11 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     line-height: 1.25rem;
 }
 
-.product__extra .sf-prose :is(p, ul, ol) {
+.product__extra .sf-prose:not(.sf-prose--article) :is(p, ul, ol) {
     margin: 0 0 0.75rem;
 }
 
-.product__extra .sf-prose ul {
+.product__extra .sf-prose:not(.sf-prose--article) ul {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem;
@@ -4230,7 +4230,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     list-style: none;
 }
 
-.product__extra .sf-prose ul > li {
+.product__extra .sf-prose:not(.sf-prose--article) ul > li {
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -4238,7 +4238,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     overflow-wrap: anywhere;
 }
 
-.product__extra .sf-prose ul > li::before {
+.product__extra .sf-prose:not(.sf-prose--article) ul > li::before {
     content: "";
     flex-shrink: 0;
     width: 1.25rem;
@@ -4248,7 +4248,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     mask: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='%23000' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 13l4 4L19 7'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
-.product__extra .sf-prose > :last-child {
+.product__extra .sf-prose:not(.sf-prose--article) > :last-child {
     margin-bottom: 0;
 }
 
