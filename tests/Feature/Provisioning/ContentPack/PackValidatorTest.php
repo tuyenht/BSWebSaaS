@@ -386,3 +386,51 @@ it('refuses a download button outside a page or post body', function (): void {
 
     expect(implode("\n", cpProblems()))->toContain('setting:storefront.layout_blocks: a file download button is supported only in a page or post body.');
 });
+
+/** Adds a footer setting holding the given factories to the fixture pack. */
+function cpFooter(string $folder, array $factories): void
+{
+    ContentPacks::edit($folder, 'settings.json', fn (array $data): array => ['items' => [...$data['items'], ['key' => 'setting:storefront.footer', 'value' => ['factories' => $factories]]]]);
+}
+
+it('accepts up to twelve branches with their map and picture, the footer showing the first six', function (): void {
+    $factories = array_map(fn (int $n): array => ['key' => "nha-may-{$n}", 'title' => ['vi' => "Nhà máy {$n}"], 'lat' => 21.0655337, 'lng' => 105.556209, 'approximate' => true], range(1, 12));
+    $factories[1] += ['image_media_id' => ['media' => 'about'], 'map_query' => 'Xưởng mẫu, Hà Nội', 'map_url' => 'https://maps.google.com/?q=2'];
+    $factories[8] += ['map_url' => 'https://maps.google.com/?q=9'];
+    cpFooter($this->folder, $factories);
+
+    expect(cpProblems())->toBe([]);
+});
+
+it('refuses a branch list the settings check refuses', function (array $change, string $problem): void {
+    $factories = [['key' => 'nha-may-1', 'title' => ['vi' => 'Nhà máy 1']], ['key' => 'nha-may-2', 'title' => ['vi' => 'Nhà máy 2']]];
+    $factories[1] = array_replace($factories[1], $change);
+    cpFooter($this->folder, $factories);
+
+    expect(implode("\n", cpProblems()))->toContain($problem);
+})->with([
+    'a duplicate key' => [['key' => 'nha-may-1'], "setting:storefront.footer: 'factories.1.key' is not accepted (key_duplicate)"],
+    'an unknown key' => [['embed' => '<iframe>'], "setting:storefront.footer: 'factories.1.embed' is not accepted (field_invalid)"],
+    'a title only in another language' => [['title' => ['en' => 'Plant 2']], "setting:storefront.footer: a factory would be dropped in 'vi'"],
+    'a latitude out of range' => [['lat' => -91, 'lng' => 105], "setting:storefront.footer: 'factories.1.lat' is not accepted (lat_invalid)"],
+    'a picture given as a key' => [['image_media_id' => 's/library/about-a4262e1c9bcb.webp'], 'setting:storefront.footer: factory 2 image_media_id must be an image reference'],
+    'a picture given as an id' => [['image_media_id' => 12], 'setting:storefront.footer: factory 2 image_media_id must be an image reference'],
+    'a picture slot not in media.json' => [['image_media_id' => ['media' => 'nowhere']], "setting:storefront.footer: image slot 'nowhere' is not in media.json"],
+]);
+
+it('reports a bad picture and a bad branch list in the same run', function (): void {
+    cpFooter($this->folder, [
+        ['key' => 'nha-may-1', 'title' => ['vi' => 'Nhà máy 1'], 'image_media_id' => 12],
+        ['key' => 'nha-may-1', 'title' => ['vi' => 'Nhà máy 2']],
+    ]);
+
+    $problems = implode("\n", cpProblems());
+    expect($problems)->toContain('factory 1 image_media_id must be an image reference')
+        ->and($problems)->toContain("'factories.1.key' is not accepted (key_duplicate)");
+});
+
+it('refuses a thirteenth branch', function (): void {
+    cpFooter($this->folder, array_map(fn (int $n): array => ['key' => "nha-may-{$n}", 'title' => "Nhà máy {$n}"], range(1, 13)));
+
+    expect(implode("\n", cpProblems()))->toContain("'factories' is not accepted (branches_too_many)");
+});

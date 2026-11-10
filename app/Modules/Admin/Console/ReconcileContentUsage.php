@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Console;
 
+use App\Modules\Admin\Support\Settings\BranchList;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\BlockMediaUsage;
@@ -17,7 +18,8 @@ use Illuminate\Console\Command;
 /**
  * Rebuilds the block image usage index (mediables collection='content') per site, for every owner
  * of blocks: each entry, the site's block slots setting and each category with blocks of its own
- * for those slots. Every save reconciles, so this covers content that never passed through a save —
+ * for those slots; and the site's branch and factory pictures (collection 'branch', owner the
+ * `storefront.footer` setting row, BranchList). Every save reconciles, so this covers content that never passed through a save —
  * seeded pages, a fresh deploy, or self-healing after a drift — and drops the rows of a slot owner
  * that no longer holds slot blocks (a setting or category deleted, or emptied, by a road that
  * skipped the save). Idempotent (it upserts/prunes to match the current content), so it is safe to
@@ -81,6 +83,15 @@ class ReconcileContentUsage extends Command
             ->delete();
         foreach ($categories->select(['id', 'meta'])->cursor() as $category) {
             $usage->sync('taxonomy', $category->id, LayoutSlots::blockLists(Cast::arr($category->meta)[LayoutSlots::META_KEY] ?? null));
+            $count++;
+        }
+
+        $footer = SiteSetting::query()->where('group_name', 'storefront')->where('key', 'footer')->first(['id', 'value']);
+        Mediable::query()->where('mediable_type', 'site_setting')->where('collection', BranchList::COLLECTION)
+            ->when($footer !== null, fn ($query) => $query->where('mediable_id', '!=', $footer?->getKey()))
+            ->delete();
+        if ($footer !== null) {
+            BranchList::syncUsage(Cast::int($footer->getKey()), Cast::arr($footer->value)['factories'] ?? null);
             $count++;
         }
 

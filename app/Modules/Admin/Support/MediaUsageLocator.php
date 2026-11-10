@@ -3,10 +3,12 @@
 namespace App\Modules\Admin\Support;
 
 use App\Modules\Admin\Support\Categories\CategorySections;
+use App\Modules\Admin\Support\Settings\BranchList;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductImage;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Support\BlockMediaUsage;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
@@ -16,11 +18,13 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Finds which content uses a media master, and constrains the library grid to used/unused. Media
- * usage is NOT centralised in `mediables` yet (no producer writes it), so this reads the real
- * relations directly: a product's gallery (product_images.media_id), an entry's cover image
+ * usage is only partly centralised in `mediables` (the branch list is its one producer so far), so
+ * this reads the real relations directly: a product's gallery (product_images.media_id), an entry's cover image
  * (entry.meta['image_url'] = the media's storage_key), a category's picture
  * (taxonomies.cover_media_id) and the site's four brand images (site_profiles: logo, logo on a dark
- * background, favicon, share image; role `brand`, kind `site`). Rich-text body images (a URL in the HTML, no media_id) are
+ * background, favicon, share image; role `brand`, kind `site`) and the site's branch and factory
+ * pictures (mediables collection `branch`, written with the branch list; role `content`, kind
+ * `site`, labelled "Chi nhánh / Nhà máy"). Rich-text body images (a URL in the HTML, no media_id) are
  * intentionally out of scope here — they can't be resolved back to a master.
  *
  * Lives in Admin (not Media) on purpose: it reaches into Catalog + Cms, and Catalog already depends
@@ -29,6 +33,13 @@ use Illuminate\Support\Facades\DB;
  */
 final readonly class MediaUsageLocator
 {
+    /**
+     * The collections of the library's "in use" rows (mediables) that mean "used": a block's
+     * picture or file (content) and a branch or factory picture (branch). Every reader here counts
+     * both, so a picture named only by the branch list is never listed as unused.
+     */
+    private const array COLLECTIONS = [BlockMediaUsage::COLLECTION, BranchList::COLLECTION];
+
     public function __construct(private CategorySections $sections) {}
 
     /**
@@ -90,10 +101,17 @@ final readonly class MediaUsageLocator
         // entry body, in the site's block slots (around posts, lists and products) or in a
         // category's own blocks for those slots.
         $owners = ['entry' => [], 'site_setting' => [], 'taxonomy' => []];
+        $branch = false;
         $rows = Mediable::query()
-            ->where('media_id', $media->id)->where('collection', 'content')->whereIn('mediable_type', array_keys($owners))
-            ->get(['mediable_type', 'mediable_id']);
+            ->where('media_id', $media->id)->whereIn('collection', self::COLLECTIONS)->whereIn('mediable_type', array_keys($owners))
+            ->get(['mediable_type', 'mediable_id', 'collection']);
         foreach ($rows as $row) {
+            if ($row->collection === BranchList::COLLECTION) {
+                // A branch or factory picture, named by the site's branch list (storefront.footer).
+                $branch = $branch || $row->mediable_type === 'site_setting';
+
+                continue;
+            }
             $owners[$row->mediable_type][] = $row->mediable_id;
         }
         foreach (Entry::query()->with('translations')->whereIn('id', array_unique($owners['entry']))->get() as $entry) {
@@ -104,6 +122,14 @@ final readonly class MediaUsageLocator
                 'kind' => 'site',
                 'role' => 'content',
                 'label' => __('media.usage_layout_slots'),
+                'url' => route('admin.settings.appearance'),
+            ];
+        }
+        if ($branch) {
+            $usages[] = [
+                'kind' => 'site',
+                'role' => 'content',
+                'label' => __('media.usage_branches'),
                 'url' => route('admin.settings.appearance'),
             ];
         }
@@ -186,7 +212,8 @@ final readonly class MediaUsageLocator
 
     /**
      * Constrain a media query to used (true) / unused (false): used = in a product gallery, an entry
-     * cover, an entry body, a category's picture or one of the site's brand images. The sub-selects are themselves site-scoped, so
+     * cover, an entry body or block slot, a branch or factory, a category's picture or one of the
+     * site's brand images. The sub-selects are themselves site-scoped, so
      * this never leaks across tenants.
      *
      * @param  Builder<Media>  $query
@@ -195,7 +222,7 @@ final readonly class MediaUsageLocator
     {
         $galleryMediaIds = ProductImage::query()->select('media_id');
         $coverKeys = Entry::query()->whereNotNull('meta->image_url')->select(DB::raw("meta->>'image_url'"));
-        $blockMediaIds = Mediable::query()->where('collection', 'content')->select('media_id');
+        $blockMediaIds = Mediable::query()->whereIn('collection', self::COLLECTIONS)->select('media_id');
         // NOT IN with a NULL in the list matches nothing, so categories without a picture stay out.
         $categoryMediaIds = Taxonomy::query()->whereNotNull('cover_media_id')->select('cover_media_id');
         // The four brand image columns of the site's profile, as one list of ids (no NULLs).

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Provisioning\ContentPack;
 
+use App\Modules\Admin\Support\Settings\BranchList;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Support\ProductGallery;
 use App\Modules\Catalog\Support\ProductSearchWords;
@@ -135,6 +136,9 @@ final class Applier
         $saved = SiteSetting::query()->updateOrCreate(['group_name' => $group, 'key' => $name], ['value' => $value]);
         if ($planned->item->key === 'setting:storefront.layout_blocks') {
             $this->blockUsage->sync('site_setting', Cast::int($saved->getKey()), LayoutSlots::blockLists($saved->value));
+        }
+        if ($planned->item->key === 'setting:storefront.footer') {
+            BranchList::syncUsage(Cast::int($saved->getKey()), Cast::arr($saved->value)['factories'] ?? null);
         }
     }
 
