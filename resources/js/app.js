@@ -237,6 +237,15 @@ document.addEventListener('alpine:init', () => {
             document.documentElement.toggleAttribute('data-sidebar-fold', this.onSettings && !this.unfolded && this.state.sidebar_size !== 'sm');
         },
 
+        // After the size came from elsewhere (reset, the server, the Appearance page): a new size
+        // shows at once on a settings page, as one chosen in the Customizer does.
+        _refold(previousSize) {
+            if (this.state.sidebar_size !== previousSize) {
+                this.unfolded = this.onSettings && this.state.sidebar_size !== 'sm';
+            }
+            this._applyFold();
+        },
+
         reset() {
             const { resetUrl } = themeConfig();
             localStorage.removeItem(THEME_PENDING_KEY);
@@ -244,9 +253,10 @@ document.addEventListener('alpine:init', () => {
                 const response = await postTheme(resetUrl, 'DELETE');
                 if (response.ok) {
                     const { attributes } = await response.json();
+                    const size = this.state.sidebar_size;
                     applyThemeAttributes(attributes);
                     this.state = readThemeFromHtml();
-                    this._applyFold();
+                    this._refold(size);
                 }
             });
         },
@@ -282,12 +292,14 @@ document.addEventListener('alpine:init', () => {
                     // Adopt the server's resolved attributes (heals site-default drift),
                     // except on axes that still have a newer unsaved change.
                     const { attributes } = await response.json();
+                    const size = this.state.sidebar_size;
                     for (const [field, spec] of Object.entries(axes)) {
                         if (!(field in pending) && typeof attributes[spec.attr] === 'string') {
                             document.documentElement.setAttribute(spec.attr, attributes[spec.attr]);
                         }
                     }
                     this.state = readThemeFromHtml();
+                    this._refold(size);
                 }
             });
         },
@@ -327,11 +339,7 @@ document.addEventListener('admin-chrome-changed', (event) => {
         if (store) {
             const size = store.state.sidebar_size;
             store.state = readThemeFromHtml();
-            // A new menu size chosen on a settings page shows at once instead of under the fold.
-            if (store.state.sidebar_size !== size) {
-                store.unfolded = store.onSettings && store.state.sidebar_size !== 'sm';
-            }
-            store._applyFold();
+            store._refold(size);
         }
     }
 });
