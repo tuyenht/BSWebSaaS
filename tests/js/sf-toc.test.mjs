@@ -22,6 +22,7 @@ function page(tops, { observer = true } = {}) {
     const win = dom.window;
     const doc = win.document;
     Object.defineProperty(win, 'innerHeight', { value: 900, configurable: true });
+    Object.defineProperty(doc.documentElement, 'scrollHeight', { value: 5000, configurable: true });
     for (const [id, top] of Object.entries(tops)) {
         doc.getElementById(id).getBoundingClientRect = () => ({ top: tops[id] ?? top });
     }
@@ -90,4 +91,13 @@ test('without IntersectionObserver nothing is marked and the links stay plain', 
     const p = page({ 'muc-a': 0, 'muc-b': 1000, 'muc-c': 2000 }, { observer: false });
     await p.start();
     assert.deepEqual(p.current(), []);
+});
+
+test('the last entry is marked once the page is scrolled to its end, even below the line', async () => {
+    const p = page({ 'muc-a': -2000, 'muc-b': 200, 'muc-c': 700 });
+    await p.start();
+    assert.deepEqual(p.current(), ['#muc-b']);
+    Object.defineProperty(p.doc.defaultView, 'scrollY', { value: 4100, configurable: true });
+    p.seen.callback([]);
+    assert.deepEqual(p.current(), ['#muc-c']);
 });

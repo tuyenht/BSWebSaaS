@@ -2166,6 +2166,9 @@ main:has(.hero, .sf-slider) .page__title {
    sf-toc.js with aria-current) is a light row, bold, with the brand rule. Without the script the
    rows stay plain links. The phone's list keeps the plain links. */
 .post-toc .post-toc__link {
+    display: flex;
+    align-items: center;
+    min-height: 2.5rem;
     padding: 0.5rem 0.75rem;
     border-left: 4px solid transparent;
     border-radius: 0.375rem;

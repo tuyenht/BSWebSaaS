@@ -6,7 +6,7 @@
     },
     "resources/css/storefront.css": {
       "js": 0,
-      "css": 23830
+      "css": 23841
     },
     "resources/js/app.js": {
       "js": 20351,
@@ -37,7 +37,7 @@
       "css": 0
     },
     "resources/js/sf-toc.js": {
-      "js": 377,
+      "js": 479,
       "css": 0
     },
     "resources/js/sf-viewer.js": {
