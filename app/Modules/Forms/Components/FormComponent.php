@@ -8,6 +8,7 @@ use App\Modules\Forms\Support\FormFieldTypes;
 use App\Modules\Shared\Contracts\Component;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\PreviewMode;
+use App\Modules\Theme\Components\SectionProps;
 
 /**
  * Data-bound page component: embeds a lead-capture form (resolved by key within the current site,
@@ -32,6 +33,8 @@ final class FormComponent implements Component
     {
         return [
             'form_key' => ['type' => 'text', 'default' => 'contact'],
+            // The form's title on this page; empty means the form's own name.
+            'heading' => ['type' => 'text'],
             // Optional, opt-in: a line under the heading, and a map that puts the form in a card beside it.
             'description' => ['type' => 'textarea'],
             'map_embed' => ['type' => 'url'],
@@ -59,7 +62,7 @@ final class FormComponent implements Component
             'props' => $props,
             'action' => $form !== null ? '/forms/'.$form->key : null,
             'locale' => $locale,
-            'heading' => $form !== null ? $this->localized($form->name, $locale) : '',
+            'heading' => $form !== null ? SectionProps::text($props, 'heading', $this->localized($form->name, $locale)) : '',
             // Only fields a visitor can answer: the lead request validates and keeps exactly these.
             'fields' => $form?->fields->filter(FormFieldTypes::isCollectable(...))->values()->map(fn (FormField $field): array => [
                 'key' => $field->key,
@@ -67,6 +70,7 @@ final class FormComponent implements Component
                 'label' => $this->localized($field->label, $locale),
                 'is_required' => $field->is_required,
                 'choices' => FormFieldTypes::isChoice($field->type) ? FormFieldTypes::choiceLabels($field, $locale) : [],
+                'placeholder' => $this->localized(Cast::arr($field->options)['placeholder'] ?? null, $locale),
             ])->all() ?? [],
             'turnstileSiteKey' => $preview ? '' : Cast::string(config('services.turnstile.site_key')),
             'preview' => $preview,

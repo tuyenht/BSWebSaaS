@@ -6,9 +6,11 @@ use App\Modules\Forms\Models\Form;
 use App\Modules\Storefront\Support\PrivacyPolicyLink;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteLocale;
+use App\Modules\Theme\Components\ComponentRegistry;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 
 /*
  * Storefront form block (Increment 4) — the 'form' Page-JSON block renders a lead-capture form
@@ -22,9 +24,10 @@ beforeEach(function (): void {
     config(['services.turnstile.site_key' => '']); // dev → Turnstile widget omitted
 });
 
-function seedContactPageWithForm(int $site = 1): void
+/** @param  array<string, mixed>  $formProps */
+function seedContactPageWithForm(int $site = 1, array $formProps = ['form_key' => 'contact']): void
 {
-    app(Tenancy::class)->enter($site, function (): void {
+    app(Tenancy::class)->enter($site, function () use ($formProps): void {
         Form::query()->create([
             'key' => 'contact',
             'name' => ['vi' => 'Gửi yêu cầu báo giá'],
@@ -43,7 +46,7 @@ function seedContactPageWithForm(int $site = 1): void
             'slug' => 'lien-he',
             'status' => 'published',
             'body' => ['blocks' => [
-                ['type' => 'form', 'props' => ['form_key' => 'contact']],
+                ['type' => 'form', 'props' => $formProps],
                 ['type' => 'contact', 'props' => ['heading' => 'Thông tin liên hệ', 'address' => 'Hà Nội']],
             ]],
         ]);
@@ -88,7 +91,46 @@ it('includes the Turnstile widget when a site_key is configured', function (): v
 
     expect($this->get('http://a.test/lien-he')->getContent())
         ->toContain('challenges.cloudflare.com/turnstile/v0/api.js')
-        ->toContain('data-sitekey="0x4AAAAAADtFZhUYB224F9cf"');
+        ->toContain('data-sitekey="0x4AAAAAADtFZhUYB224F9cf"')
+        // Shown only when the visitor has to act, so a passed check leaves no empty box above the button.
+        ->toContain('data-appearance="interaction-only"');
+});
+
+it('heads the form with its own heading, else with the form name', function (): void {
+    seedContactPageWithForm(1, ['form_key' => 'contact', 'heading' => 'Gửi Yêu Cầu Tư Vấn']);
+
+    expect($this->get('http://a.test/lien-he')->getContent())
+        ->toContain('<h2 class="lead-form__heading">Gửi Yêu Cầu Tư Vấn</h2>')
+        ->not->toContain('Gửi yêu cầu báo giá');
+});
+
+it('falls back to the form name when the heading is empty or blank', function (string $heading): void {
+    seedContactPageWithForm(1, ['form_key' => 'contact', 'heading' => $heading]);
+
+    expect($this->get('http://a.test/lien-he')->getContent())
+        ->toContain('<h2 class="lead-form__heading">Gửi yêu cầu báo giá</h2>');
+})->with(['', '   ']);
+
+it('escapes the heading and declares it as plain text', function (): void {
+    seedContactPageWithForm(1, ['form_key' => 'contact', 'heading' => '<i>Báo giá</i>']);
+
+    expect($this->get('http://a.test/lien-he')->getContent())->toContain('&lt;i&gt;Báo giá&lt;/i&gt;')->not->toContain('<i>Báo giá')
+        ->and(app(ComponentRegistry::class)->schemaFor('form')['heading'])->toBe(['type' => 'text']);
+});
+
+it('shows a field\'s placeholder in the visitor\'s language, and none for a field without one', function (): void {
+    seedContactPageWithForm();
+    app(Tenancy::class)->enter(1, function (): void {
+        $fields = Form::query()->where('key', 'contact')->firstOrFail()->fields()->get()->keyBy('key');
+        $fields['phone']->update(['options' => ['placeholder' => ['vi' => '0912 345 678', 'en' => '0912 345 679']]]);
+        $fields['message']->update(['options' => ['placeholder' => ['vi' => 'Ví dụ: <sản phẩm>']]]);
+    });
+
+    $html = (string) $this->get('http://a.test/lien-he')->getContent();
+
+    expect($html)->toContain('placeholder="0912 345 678"')
+        ->toContain('placeholder="Ví dụ: &lt;sản phẩm&gt;"')
+        ->and(substr_count(Str::between($html, '<section class="lead-form', '</section>'), 'placeholder="'))->toBe(2);
 });
 
 it('renders nothing for the block when the form key does not resolve', function (): void {

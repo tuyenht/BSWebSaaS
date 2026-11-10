@@ -1,8 +1,9 @@
 {{--
     Lead-capture form block (Forms\Components\FormComponent). SSR Blade; the only client JS is the
     Cloudflare Turnstile widget, loaded async/defer ONLY when a site_key is configured (prod) — so
-    dev/test render no third-party JS. Anti-spam: hidden honeypot (off-screen, a11y-hidden) +
-    Turnstile + server-side rate-limit. POSTs same-origin to /forms/{key} (form-action 'self').
+    dev/test render no third-party JS. The widget appears only when the visitor has to act
+    (data-appearance="interaction-only"): a check that passes on its own leaves no empty box above
+    the button. Anti-spam: hidden honeypot (off-screen, a11y-hidden) + Turnstile + server-side rate-limit. POSTs same-origin to /forms/{key} (form-action 'self').
     Optional: a `description` line under the heading, and a `map_embed` (host-checked against
     cms.map_hosts like the contact block) that puts the form in a card beside the map.
 
@@ -165,6 +166,7 @@
                     @if ($field['type'] === 'textarea')
                         <textarea id="{{ $sfId }}" name="{{ $field['key'] }}" rows="4"
                                   @if ($field['is_required']) required @endif
+@if (($field['placeholder'] ?? '') !== '') placeholder="{{ $field['placeholder'] }}" @endif
                                   @if ($sfBad) aria-invalid="true" @endif
                                   @if ($sfDescribed !== '') aria-describedby="{{ $sfDescribed }}" @endif
                                   @if ($sfFirstBad === $field['key']) autofocus @endif>{{ $sfOld($field['key']) }}</textarea>
@@ -184,6 +186,7 @@
                         <input id="{{ $sfId }}" type="{{ $inputType }}" name="{{ $field['key'] }}"
                                value="{{ $sfOld($field['key']) }}" @if ($field['is_required']) required @endif
                                @if ($sfAuto !== null) autocomplete="{{ $sfAuto }}" @endif
+@if (($field['placeholder'] ?? '') !== '') placeholder="{{ $field['placeholder'] }}" @endif
                                @if ($sfBad) aria-invalid="true" @endif
                                @if ($sfDescribed !== '') aria-describedby="{{ $sfDescribed }}" @endif
                                @if ($sfFirstBad === $field['key']) autofocus @endif>
@@ -203,7 +206,7 @@
             @endif
 
             @if (! empty($turnstileSiteKey))
-                <div class="cf-turnstile lead-form__wide" data-sitekey="{{ $turnstileSiteKey }}"></div>
+                <div class="cf-turnstile lead-form__wide" data-sitekey="{{ $turnstileSiteKey }}" data-appearance="interaction-only"></div>
                 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
             @endif
 

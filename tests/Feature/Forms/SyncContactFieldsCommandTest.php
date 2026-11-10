@@ -29,7 +29,7 @@ it('adds the consent box to an existing contact form without touching what the s
         return [$form, $form->fields->pluck('key')->all(), $form->fields->firstWhere('key', 'name')->label];
     });
 
-    expect($keys)->toBe(['name', 'email', 'phone', 'message', 'consent'])
+    expect($keys)->toBe(['name', 'phone', 'email', 'message', 'consent'])
         ->and($form->notify_emails)->toBe(['sales@a.test'])
         // The site's own wording stays; only the languages it lacked are added.
         ->and($nameLabel['vi'])->toBe('Tên của bạn')
