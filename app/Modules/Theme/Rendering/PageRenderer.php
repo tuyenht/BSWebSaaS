@@ -5,6 +5,7 @@ namespace App\Modules\Theme\Rendering;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\VideoEmbed;
+use App\Modules\Theme\Chrome\StorefrontChrome;
 use App\Modules\Theme\Components\ListDisplay;
 use App\Modules\Theme\Components\SectionProps;
 use App\Modules\Theme\Theming\SiteSeo;
@@ -45,6 +46,8 @@ final readonly class PageRenderer
         // they need load like the body's own.
         $slots = self::slots($extra);
         unset($extra['slotBlocks'], $extra['slotContext']);
+        // The menu items that link to a level above the page (its breadcrumb) are marked too.
+        $extra = StorefrontChrome::withTrail($extra);
         $scripts = $slots['blocks'] === [] ? $body : ['blocks' => [...array_values(is_array($body['blocks'] ?? null) ? $body['blocks'] : []), ...self::slotBlockList($slots['blocks'])]];
         $extra += in_array('hero_slider', $this->blocks->types($scripts), true) ? self::sliderHints($scripts, $leadBlock, $this->media) : [];
         // The slider script also drives the list rows (a list block that carries the display group).
@@ -448,7 +451,7 @@ final readonly class PageRenderer
     {
         /** @var view-string $layout a theme layout name (TemplateResolver) */
         $layout = $this->templates->layoutFor('category', null, $listTemplate);
-        $extra = $this->withSlots($extra);
+        $extra = StorefrontChrome::withTrail($this->withSlots($extra));
 
         return $this->views->make($layout, $this->head($seo, $title, $extra) + [
             'title' => $title,
@@ -472,7 +475,7 @@ final readonly class PageRenderer
     {
         /** @var view-string $layout a theme layout name (TemplateResolver) */
         $layout = $this->templates->layoutFor('product');
-        $extra = $this->withSlots($extra);
+        $extra = StorefrontChrome::withTrail($this->withSlots($extra));
         // Videos stored in the description render as the click-to-load façade (VideoFacades).
         ['html' => $descriptionHtml, 'videos' => $videos] = $this->videos->render($descriptionHtml);
         // A specification table gets the same narrow-column layout as one in a post body.

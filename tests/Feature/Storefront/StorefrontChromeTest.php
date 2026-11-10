@@ -173,23 +173,84 @@ it('drops a top bar that holds only the text-size button from the laptop layout'
         ->assertDontSee('sf-header--fs-only', false);
 });
 
-it('hides the menu button and the text-size control in the laptop layout, after the rules that show them', function (): void {
-    // equal selectors: the later rule wins, so each lg rule must come after the base rule it overrides
+it('hides the menu button from lg (xl for a wide menu) and the text-size control from lg, after the rules that show them', function (): void {
+    // equal selectors: the later rule wins, so each hiding rule must come after the base rule it overrides
     $css = (string) file_get_contents(resource_path('css/storefront.css'));
     $at = fn (string $needle): int => (int) strpos($css, $needle);
 
-    foreach (['sf-burger', 'sf-fs'] as $class) {
+    foreach ([
+        "@media (min-width: 1024px) {\n    .sf-header:not(.sf-header--menu-xl) .sf-burger {\n        display: none;",
+        "@media (min-width: 1280px) {\n    .sf-header--menu-xl .sf-burger {\n        display: none;",
+        "@media (min-width: 1024px) {\n    .sf-fs {\n        display: none;",
+    ] as $hiding) {
+        $class = str_contains($hiding, 'sf-fs') ? 'sf-fs' : 'sf-burger';
         $base = $at("\n.{$class} {\n    display: inline-flex;");
-        $hidden = $at("@media (min-width: 1024px) {\n    .{$class} {\n        display: none;");
 
         expect($base)->toBeGreaterThan(0, "base .{$class} rule not found")
-            ->and($hidden)->toBeGreaterThan($base, "the lg rule hiding .{$class} must come after its base rule");
+            ->and($at($hiding))->toBeGreaterThan($base, "{$hiding} must come after its base rule");
     }
-    // the small-laptop spacing comes after the menu's own gap and padding
-    expect($at('@media (min-width: 1024px) and (max-width: 1279.98px)'))->toBeGreaterThan($at(".sf-nav--desk > .sf-nav__list {\n    display: flex;"));
+    // the desktop menu and the phone panel switch at the same width as the menu button: lg, or xl
+    // for a menu too wide for a laptop; nothing squeezes a wide menu into 1024–1279 any more
+    expect($css)->toContain("@media (min-width: 1024px) {\n    .sf-header:not(.sf-header--menu-xl) .sf-nav--desk {\n        display: block;\n        margin-left: auto;")
+        ->toContain("@media (min-width: 1280px) {\n    .sf-header--menu-xl .sf-nav--desk {\n        display: block;\n        margin-left: auto;")
+        ->toContain("@media (min-width: 1024px) {\n    .sf-header:not(.sf-header--menu-xl) .sf-nav--mob {\n        visibility: hidden;")
+        ->toContain("@media (min-width: 1280px) {\n    .sf-header--menu-xl .sf-nav--mob {\n        visibility: hidden;")
+        ->not->toContain('@media (min-width: 1024px) and (max-width: 1279.98px)')
+        ->and(preg_match('/@media \(min-width: 1280px\) \{\s*\.sf-(?:burger|nav--desk|nav--mob) \{/', $css))->toBe(0);
     // the enlarged sizes apply below lg only
     expect(preg_match('/@media \(max-width: 1023\.98px\) \{\s*html\[data-fs="l"\][^}]*\}\s*html\[data-fs="xl"\]/', $css))->toBe(1)
         ->and(substr_count($css, 'html[data-fs='))->toBe(2);
+});
+
+it('keeps a menu that fits a laptop from 1024px and gives a wide one the menu button up to 1280px', function (): void {
+    $siteId = sfcSite();
+    sfcSetting($siteId, 'header', ['sticky' => false]);
+
+    // the provisioned menu (three short items) fits beside the logo at 1024px
+    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
+    expect($html)->toContain('<header class="sf-header">')
+        ->toContain('<noscript><style>@media (max-width:1023.98px){.sf-nav--mob[hidden]{display:block}}');
+
+    // six more top-level items: An Vinh's nine-item menu wraps at 1024 and 1100px beside its logo
+    app(Tenancy::class)->enter($siteId, function (): void {
+        $menu = Menu::query()->firstOrFail();
+        foreach (['Sản phẩm', 'Dự án', 'Đối tác', 'Tuyển dụng', 'Liên hệ', 'Chứng chỉ'] as $i => $label) {
+            $item = MenuItem::query()->create(['menu_id' => $menu->id, 'link_type' => 'url', 'url' => 'https://example.com/'.$i, 'position' => 10 + $i]);
+            $item->translations()->create(['locale' => 'vi', 'label' => $label]);
+        }
+    });
+    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
+    expect($html)->toContain('<header class="sf-header sf-header--menu-xl">')
+        ->toContain('<noscript><style>@media (max-width:1279.98px){.sf-nav--mob[hidden]{display:block}}');
+});
+
+it('shows each menu item set to one device by the screen width, in the menu panel too', function (): void {
+    // From 1024px the menu panel serves laptops (a wide menu keeps it up to 1280px): a computer-only
+    // item must be reachable there, and a phone-only one hidden. Below 1024px the reverse.
+    $css = (string) file_get_contents(resource_path('css/storefront.css'));
+
+    expect($css)->toContain("@media (max-width: 1023.98px) {\n    .sf-only-desk {\n        display: none !important;\n    }\n}")
+        ->toContain("@media (min-width: 1024px) {\n    .sf-only-mob {\n        display: none !important;\n    }\n}")
+        ->and(preg_match_all('/[^{}]*\.sf-only-(?:desk|mob)[^{}]*\{/', $css, $rules))->toBe(2, 'one rule per device class: '.implode(' | ', $rules[0]))
+        ->and(implode('', $rules[0]))->not->toContain('sf-nav--');
+});
+
+it('keeps every menu and top-bar target 40px with a mouse and 44px on touch, at every width', function (): void {
+    $css = (string) file_get_contents(resource_path('css/storefront.css'));
+    preg_match('/\/\* Touch screens: every control of the rich chrome reaches 44px, at every width\. \*\/\n@media \(any-pointer: coarse\) \{(.*?)\n\}\n/s', $css, $touch);
+
+    expect($touch[1] ?? '')->toContain(".sf-nav__link,\n    .sf-nav__chev,\n    .sf-nav__sublink,\n    .sf-footer__link,\n    .sf-factory__map {\n        min-height: 2.75rem;")
+        ->toContain(".sf-nav__chev {\n        min-width: 2.75rem;")
+        ->toContain(".sf-nav--desk .sf-nav__item--parent > .sf-nav__chev::after {\n        inset: 0 calc(100% - 2.75rem) 0 0;");
+    // a parent's chevron draws narrow (spaced like a plain item) and reaches 40px through its extension
+    expect($css)->toContain(".sf-nav--desk .sf-nav__item--parent > .sf-nav__chev {\n    position: relative;\n    z-index: 1;\n    min-width: 0;\n    padding: 0 0.75rem 0 0.25rem;")
+        ->toContain(".sf-nav--desk .sf-nav__item--parent > .sf-nav__chev::after {\n    content: \"\";\n    position: absolute;\n    inset: 0 calc(100% - 2.5rem) 0 0;");
+    // from lg the top bar draws 32px (2rem), after the touch rule; its links reach 40 / 44px below it
+    $touchAt = (int) strpos($css, '@media (any-pointer: coarse) {'."\n".'    .sf-header--topbar {');
+    $barAt = (int) strpos($css, "@media (min-width: 1024px) {\n    .sf-header--topbar:not(.sf-header--fs-only) {\n        --sf-topbar-h: 2rem;");
+    expect($touchAt)->toBeGreaterThan(0)->and($barAt)->toBeGreaterThan($touchAt)
+        ->and($css)->toContain(".sf-topbar :is(.sf-topbar__link, .sf-lang__link)::after {\n        content: \"\";\n        position: absolute;\n        inset: 0 0 -0.5rem;")
+        ->toContain("@media (min-width: 1024px) and (any-pointer: coarse) {\n    .sf-topbar :is(.sf-topbar__link, .sf-lang__link)::after {\n        bottom: -0.75rem;");
 });
 
 it('makes submenus disclosures: a # parent is a button, a page parent keeps its link plus a toggle', function (): void {
@@ -202,7 +263,7 @@ it('makes submenus disclosures: a # parent is a button, a page parent keeps its 
         ->toContain('<header class="sf-header">')
         ->not->toContain('sf-topbar')
         ->toMatch('#<button type="button" class="sf-nav__link sf-nav__toggle" aria-expanded="false" aria-controls="dsm-2"><span>Năng lực</span>#')
-        ->toMatch('#<a class="sf-nav__link is-trail" href="/tin-tuc"\s*>Tin tức</a><button type="button" class="sf-nav__chev is-trail" aria-expanded="false" aria-controls="dsm-1" aria-label="Mở menu con Tin tức">#')
+        ->toMatch('#<a class="sf-nav__link is-trail" href="/tin-tuc"\s*aria-current="true"\s*>Tin tức</a><button type="button" class="sf-nav__chev is-trail" aria-expanded="false" aria-controls="dsm-1" aria-label="Mở menu con Tin tức">#')
         ->toContain('<div class="sf-nav__panel" id="dsm-1">')
         ->toContain('<div class="sf-nav__panel" id="msm-1">')
         ->toMatch('#<a class="sf-nav__sublink" href="/gioi-thieu"\s+aria-current="page"\s*>Giới thiệu</a>#')
@@ -217,7 +278,8 @@ it('gives the classic menu keyboard-operable submenu toggles too', function (): 
         ->toContain('<button type="button" class="site-nav__link site-nav__toggle" aria-expanded="false" aria-controls="sm-2">Năng lực')
         ->toContain('aria-label="Mở menu con Tin tức"')
         ->toContain('<ul class="site-nav__list site-nav__list--level-1" id="sm-1">')
-        ->toContain('class="site-nav__item site-nav__item--parent is-trail" data-disclosure');
+        ->toContain('class="site-nav__item site-nav__item--parent is-trail" data-disclosure')
+        ->toMatch('#<a class="site-nav__link" href="/tin-tuc"\s*aria-current="true"\s*>Tin tức</a>#');
 });
 
 it('puts the skip link first, aimed at the main content', function (string $path, string $landmark): void {

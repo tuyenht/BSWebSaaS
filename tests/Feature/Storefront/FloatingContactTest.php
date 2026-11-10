@@ -155,11 +155,31 @@ it('puts the buttons on the chosen side with the offsets, each named and drawn r
         ->toContain('aria-label="Chat ngay Zalo"')
         ->toContain('<span class="sf-fc__word" aria-hidden="true">Zalo</span>')
         ->toContain('href="sms:0912345678" aria-label="Nhắn tin SMS"')
-        // the spacer copies the buttons (same list classes), hidden from assistive tech; the count
-        // tells it on a wide screen whether the stack wraps to a second column
+        // the spacer copies the buttons (same list classes), hidden from assistive tech
         ->toContain('<div class="sf-fc-ghost sf-fc-ghost--side" aria-hidden="true" style="--fc-ox:40px;--fc-oy:100px;--fc-n:3"><div class="sf-fc__list sf-fc__list--left">')
         ->and(substr_count($part, 'sf-fc__btn"></span>'))->toBe(3)
         ->and($part)->not->toContain('sf-fc-bar--ghost');
+});
+
+it('keeps a side stack’s room under the footer wherever it can cover the footer’s text, and the bottom row’s at every width', function (): void {
+    // Below 768px the room always stays. From 768px it stays while the stack reaches into the 80rem
+    // page (its offset + a 50px button > the margin beside the page's 2rem padding: up to about
+    // 1357px at a 16px root and the default offset, 1440px at An Vinh's 17px root, measured) or wraps into a
+    // second column; elsewhere the stack sits in the margin and no empty band is left. With the
+    // safe-area inset, so the stack never covers the last footer line.
+    $css = (string) file_get_contents(resource_path('css/storefront.css'));
+    preg_match('/@media \(min-width: 768px\) \{\n    \.sf-fc-ghost--side \{(.*?)\n    \}\n\}/s', $css, $side);
+
+    expect($css)->toContain('padding: 0.625rem var(--fc-ox, 20px) calc(var(--fc-oy, 24px) + env(safe-area-inset-bottom, 0px));')
+        ->and($side[1] ?? '')->toContain('--fc-over: calc(var(--fc-n, 0) * (max(50px, 3.125rem) + 0.75rem) - 0.75rem - (100dvh - var(--fc-oy, 24px) - 5rem) + 1px);')
+        ->toContain('--fc-cover: calc(var(--fc-ox, 20px) + max(50px, 3.125rem) + 38rem - 50vw + 1px);')
+        ->toContain('max-height: clamp(0px, max(var(--fc-over), var(--fc-cover)) * 9999, 300vh);')
+        ->toContain('padding-bottom: clamp(0px, max(var(--fc-over), var(--fc-cover)) * 9999, calc(var(--fc-oy, 24px) + env(safe-area-inset-bottom, 0px)));')
+        ->not->toContain('display: none')
+        // the page the cover term measures against: 80rem with 2rem side padding from lg
+        ->and($css)->toContain(".sf-container {\n    max-width: 80rem;")
+        ->and(preg_match('~\.sf-fc-ghost--row\s*\{[^}]*display:\s*none~', $css))->toBe(0)
+        ->and(preg_match('~\.sf-fc-ghost--side\s*\{[^}]*display:\s*none~', $css))->toBe(0);
 });
 
 it('reserves the bottom row’s room as a row', function (): void {

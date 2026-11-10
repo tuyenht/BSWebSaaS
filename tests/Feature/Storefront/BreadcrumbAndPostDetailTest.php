@@ -1,8 +1,11 @@
 <?php
 
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\Menu;
+use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteSetting;
 use Carbon\CarbonImmutable;
 use Tests\Fixtures\StorefrontCards;
 
@@ -344,3 +347,28 @@ it('shows a post on the default post layout when its category holds a layout tha
     expect($html)->toContain('<header class="post-band')
         ->and(substr_count($html, '<h1'))->toBe(1);
 })->with(['category', 'product']);
+
+it('marks the menu item of the section a post sits in, in the desktop menu, the phone menu and the classic menu', function (): void {
+    $news = bcNews();
+    app(Tenancy::class)->enter($news['site'], function (): void {
+        $menu = Menu::query()->firstOrFail();
+        $item = MenuItem::query()->create(['menu_id' => $menu->id, 'link_type' => 'url', 'url' => '/an-pham-so-hoa', 'position' => 5]);
+        $item->translations()->create(['locale' => 'vi', 'label' => 'Ấn phẩm']);
+    });
+
+    // The classic header: the section's item carries the trail mark; the post itself is not in the menu.
+    $classic = $this->get(BC_HOST.'/an-pham-so-hoa/o-lai-voi-nghe-co-khi')->assertOk()->getContent();
+    expect(bcTrail($classic)[1] ?? null)->toBe(['Ấn phẩm số hóa', '/an-pham-so-hoa'])
+        ->and($classic)->toMatch('#<li class="site-nav__item is-trail">\s*<a class="site-nav__link" href="/an-pham-so-hoa"#');
+
+    // The rich header: both menus mark it, and the section's own list page does not (it is current).
+    app(Tenancy::class)->enter($news['site'], fn () => SiteSetting::query()->updateOrCreate(
+        ['group_name' => 'storefront', 'key' => 'header'], ['value' => ['sticky' => false]],
+    ));
+    $rich = $this->get(BC_HOST.'/an-pham-so-hoa/o-lai-voi-nghe-co-khi')->assertOk()->getContent();
+    expect(substr_count($rich, '<a class="sf-nav__link is-trail" href="/an-pham-so-hoa"'))->toBe(2);
+
+    $list = $this->get(BC_HOST.'/an-pham-so-hoa')->assertOk()->getContent();
+    expect($list)->not->toContain('is-trail" href="/an-pham-so-hoa"')
+        ->toMatch('#<a class="sf-nav__link" href="/an-pham-so-hoa"\s+aria-current="page"#');
+});

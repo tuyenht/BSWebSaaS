@@ -4,8 +4,10 @@
     the bottom on every screen; "horizontal": a bar along the bottom on phones only. An invisible
     copy after the footer (same list classes, so the same size, cap and wrapping) keeps exactly the
     room they take, so the end of the page — footer links included — always scrolls clear of them:
-    for the bar and the bottom row at every width, for a side stack below 90rem (from there a
-    one-column stack sits in the page margin; one that wraps to a second column keeps its room). Labels may wrap, so a fixed padding could not match. The bar ends with "Mua hàng" when the site has a product list. Each link
+    for the bar and the bottom row at every width, for a side stack wherever it can cover the
+    footer's text (it reaches into the page, or wraps into a second column; elsewhere it sits in
+    the page margin and leaves no empty band under the footer). Labels may wrap, so a fixed padding could not match. The bar ends with "Mua hàng" when
+    the site has a product list. Each link
     carries its name (aria-label), which also holds the word printed on the button (SMS), and the
     hover label repeats the name for the eye. Colours come from the normalizer (white marks at 3:1,
     words at 4.5:1; the brand fill uses the brand's own readable ink).

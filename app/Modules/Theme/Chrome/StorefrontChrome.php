@@ -45,6 +45,27 @@ final class StorefrontChrome
     /** A theme region key (the same shape menus are bound to). */
     private const string REGION_PATTERN = '/\A[a-z][a-z0-9_-]{0,31}\z/';
 
+    /** Pixels per label character (0.875rem semibold, measured 6.3–8.3, so on the wide side). */
+    private const float MENU_CHAR = 7.5;
+
+    /** An item's side padding (2 × 0.75rem). */
+    private const int MENU_ITEM = 26;
+
+    /** The split chevron button beside a parent's link (4px + 16px icon + 0.75rem). */
+    private const int MENU_CHEVRON = 34;
+
+    /** A 16px icon and its gap: the chevron of a heading-only parent, or an item's own icon. */
+    private const int MENU_ICON = 21;
+
+    /** A badge ("Mới", "Hot"…): its gap, padding and a short word. */
+    private const int MENU_BADGE = 46;
+
+    /** The gap between two items (0.25rem). */
+    private const int MENU_GAP = 4;
+
+    /** The menu's room in the bar at 1024px (see menuNeedsXl). */
+    private const int MENU_ROOM_LG = 698;
+
     /**
      * @param  mixed  $raw  the stored `storefront.header` value (an array when set)
      * @return array{top_bar: list<array{kind: string, text: string, href: string|null, from: string, below: string|null}>, text_size: bool, sticky: bool}|null
@@ -238,13 +259,17 @@ final class StorefrontChrome
     }
 
     /**
-     * Whether a menu item's subtree holds the current page (the parent of the active page is
-     * highlighted too).
+     * Whether a menu item is on the way to the current page: it links to a level above the page
+     * (marked by withTrail), or something below it is the current page or such a level. The
+     * parent of the active page is highlighted too.
      *
-     * @param  array<mixed>  $item  a resolved menu node {label, url, active, children}
+     * @param  array<mixed>  $item  a resolved menu node {label, url, active, trail?, children}
      */
     public static function inTrail(array $item): bool
     {
+        if (! empty($item['trail'])) {
+            return true;
+        }
         foreach (is_array($item['children'] ?? null) ? $item['children'] : [] as $child) {
             if (is_array($child) && (! empty($child['active']) || self::inTrail($child))) {
                 return true;
@@ -252,6 +277,97 @@ final class StorefrontChrome
         }
 
         return false;
+    }
+
+    /**
+     * The menus of a page with the items that link to a level above it marked (`trail`): the
+     * levels of its breadcrumb between the home page and the page itself, so a post or product
+     * marks the section it sits in ("Dự án" on a project, "Tin tức" on a news post) even when its
+     * own address is not in the menu. The home link and the page itself are left out (the page is
+     * already `active`). Pure: no query.
+     *
+     * @param  array<string, mixed>  $extra  the page's layout variables (menu, mobileMenu, breadcrumb)
+     * @return array<string, mixed>
+     */
+    public static function withTrail(array $extra): array
+    {
+        $crumbs = is_array($extra['breadcrumb'] ?? null) ? array_values($extra['breadcrumb']) : [];
+        $paths = [];
+        foreach (array_slice($crumbs, 1, -1) as $crumb) {
+            if (is_array($crumb) && is_string($crumb['href'] ?? null) && $crumb['href'] !== '') {
+                $paths[$crumb['href']] = true;
+            }
+        }
+        if ($paths === []) {
+            return $extra;
+        }
+        foreach (['menu', 'mobileMenu'] as $key) {
+            if (is_array($extra[$key] ?? null)) {
+                $extra[$key] = self::markTrail($extra[$key], $paths);
+            }
+        }
+
+        return $extra;
+    }
+
+    /**
+     * @param  array<mixed>  $items
+     * @param  array<string, true>  $paths
+     * @return array<mixed>
+     */
+    private static function markTrail(array $items, array $paths): array
+    {
+        foreach ($items as $i => $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+            if (is_string($item['url'] ?? null) && isset($paths[$item['url']]) && empty($item['active'])) {
+                $item['trail'] = true;
+            }
+            if (is_array($item['children'] ?? null) && $item['children'] !== []) {
+                $item['children'] = self::markTrail($item['children'], $paths);
+            }
+            $items[$i] = $item;
+        }
+
+        return $items;
+    }
+
+    /**
+     * Whether the rich header's desktop menu is too wide for a 1024px laptop, so the header keeps
+     * the menu button up to 1280px (`sf-header--menu-xl`); a shorter menu shows from 1024px.
+     * Decided from the menu alone, before any browser measures it: the top-level items a laptop
+     * shows, by their label length plus what each draws beside it (padding, chevron, icon, badge).
+     * Calibrated on Chromium at the default text size: An Vinh's nine items (71 label characters,
+     * one heading-only parent, two parents with a page) measure 837px and estimate 887px; the room
+     * at 1024px is 698px (1024 less a 15px scroll bar, the 2rem side padding, a 200px logo, the
+     * 1rem gap and the menu's 1.5rem offset).
+     *
+     * @param  mixed  $menu  the resolved desktop menu (a list of menu nodes)
+     */
+    public static function menuNeedsXl(mixed $menu): bool
+    {
+        $width = 0.0;
+        $count = 0;
+        foreach (is_array($menu) ? $menu : [] as $item) {
+            // a phone-only row is hidden on a laptop; a leaf that links nowhere is not drawn
+            if (! is_array($item) || ($item['device'] ?? 'all') === 'phone' || (($item['url'] ?? '#') === '#' && empty($item['children']))) {
+                continue;
+            }
+            $count++;
+            $width += self::MENU_CHAR * mb_strlen(is_string($item['label'] ?? null) ? $item['label'] : '') + self::MENU_ITEM;
+            if (! empty($item['children'])) {
+                $width += ($item['url'] ?? '#') === '#' ? self::MENU_ICON : self::MENU_CHEVRON;
+            }
+            if (is_string($item['icon'] ?? null)) {
+                $width += self::MENU_ICON;
+            }
+            if (is_string($item['badge'] ?? null)) {
+                $width += self::MENU_BADGE;
+            }
+        }
+
+        return $width + self::MENU_GAP * max(0, $count - 1) > self::MENU_ROOM_LG;
     }
 
     /**
