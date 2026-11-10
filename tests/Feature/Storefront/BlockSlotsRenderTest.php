@@ -650,5 +650,11 @@ it('adds exactly the expected queries to a page for its filled slots, and stays 
     // "category_list" reads the branch and the names of its categories.
     'a post' => ['/tin-tuc/ong-dang-doc', ['post_aside' => [['type' => 'recent_posts', 'props' => []], ['type' => 'category_list', 'props' => []], ['type' => 'consult', 'props' => ['button_label' => 'Gửi', 'button_url' => '/lien-he']]], 'after_post' => [['type' => 'cta', 'props' => ['heading' => 'Báo giá', 'button_label' => 'Gửi', 'button_url' => '/lien-he']]]], 2, 22],
     'a product' => ['/do-ga-kiem', ['after_product' => [['type' => 'cta', 'props' => ['heading' => 'Báo giá', 'button_label' => 'Gửi', 'button_url' => '/lien-he']]]], 0, 23],
+    'a product, every slot' => ['/do-ga-kiem', [
+        'product_before_action' => [['type' => 'richtext_html', 'props' => ['html' => '<p>Giá theo bản vẽ.</p>']]],
+        'product_after_action' => [['type' => 'richtext_html', 'props' => ['html' => '<ul><li>Hoá đơn VAT</li></ul>']]],
+        'product_tabs' => [['type' => 'richtext_html', 'props' => ['html' => '<h2>Bảo hành</h2><p>12 tháng.</p>']], ['type' => 'faq', 'props' => ['heading' => 'Hỏi đáp', 'items' => [['q' => 'Có?', 'a' => 'Có.']]]]],
+        'after_product' => [['type' => 'cta', 'props' => ['heading' => 'Báo giá', 'button_label' => 'Gửi', 'button_url' => '/lien-he']]],
+    ], 0, 23],
     'a category list' => ['/tin-tuc', ['after_list' => [['type' => 'cta', 'props' => ['heading' => 'Báo giá', 'button_label' => 'Gửi', 'button_url' => '/lien-he']]]], 0, 17],
 ]);

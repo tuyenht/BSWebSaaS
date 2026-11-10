@@ -59,6 +59,22 @@ final class ArticleToc
     }
 
     /**
+     * The parts of a product's description (its formatted text and the site's shared parts after
+     * it, each drawn as a formatted-text or block section): one per heading of the highest level the
+     * text uses, h2, or h3 when it has no h2 at all; two or more make the section bar.
+     *
+     * @param  list<string>  $taken  ids already on the page
+     * @return array{html: string, items: list<array{id: string, label: string}>}
+     */
+    public static function parts(string $html, array $taken = []): array
+    {
+        $level = stripos($html, '<h2') === false ? 'h3' : 'h2';
+        $toc = self::build($html, $taken, '~(<section class="sf-prose">)(.*?)(</section>)'.self::BLOCK_HEAD.'~s', false, $level);
+
+        return ['html' => $toc['html'], 'items' => $toc['items']];
+    }
+
+    /**
      * The contents of a page on the layout with a table of contents: the h2 headings of its plain and
      * formatted text blocks, each numbered in page order ("1. …"). One rule for the whole page: when
      * any heading already carries the author's own number, none is added and the list shows the
@@ -77,10 +93,11 @@ final class ArticleToc
      * @param  list<string>  $taken
      * @return array{html: string, items: list<array{id: string, label: string}>, own: bool}
      */
-    private static function build(string $html, array $taken, string $pattern, bool $number): array
+    private static function build(string $html, array $taken, string $pattern, bool $number, string $level = 'h2'): array
     {
         $none = ['html' => $html, 'items' => [], 'own' => false];
-        if (stripos($html, '<h2') === false) {
+        $heading = '~<'.$level.'>(.*?)</'.$level.'>~s';
+        if (stripos($html, '<'.$level) === false) {
             return $none;
         }
 
@@ -89,12 +106,12 @@ final class ArticleToc
         $isBlock = static fn (array $part): bool => ($part[4] ?? '') !== '';
         $headings = 0;
         $own = false;
-        preg_replace_callback($pattern, function (array $part) use (&$headings, &$own, $number, $isBlock): string {
+        preg_replace_callback($pattern, function (array $part) use (&$headings, &$own, $number, $isBlock, $heading): string {
             $found = [1 => []];
             if ($isBlock($part)) {
                 $found[1][] = $part[5];
             } else {
-                preg_match_all('~<h2>(.*?)</h2>~s', $part[2], $found);
+                preg_match_all($heading, $part[2], $found);
             }
             $headings += count($found[1]);
             foreach ($found[1] as $inner) {
@@ -127,16 +144,16 @@ final class ArticleToc
 
             return ['id' => $id, 'text' => $text];
         };
-        $out = preg_replace_callback($pattern, function (array $part) use ($anchor, $isBlock): string {
+        $out = preg_replace_callback($pattern, function (array $part) use ($anchor, $isBlock, $heading, $level): string {
             if ($isBlock($part)) {
                 $made = $anchor($part[5]);
 
                 return $made === null ? $part[0] : $part[4].'<h2 class="sf-section-head__title" id="'.$made['id'].'">'.$made['text'].'</h2>';
             }
-            $inner = preg_replace_callback('~<h2>(.*?)</h2>~s', function (array $heading) use ($anchor): string {
-                $made = $anchor($heading[1]);
+            $inner = preg_replace_callback($heading, function (array $found) use ($anchor, $level): string {
+                $made = $anchor($found[1]);
 
-                return $made === null ? $heading[0] : '<h2 id="'.$made['id'].'">'.$made['text'].'</h2>';
+                return $made === null ? $found[0] : '<'.$level.' id="'.$made['id'].'">'.$made['text'].'</'.$level.'>';
             }, $part[2]);
 
             return $part[1].$inner.$part[3];
