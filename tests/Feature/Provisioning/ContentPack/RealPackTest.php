@@ -117,8 +117,11 @@ it('makes no absolute advertising claim, and credits every video as an illustrat
     }
 
     foreach ($texts as $text) {
-        expect($text)->not->toMatch('/dẫn đầu|tuyệt đối|100% sản phẩm|(tốt|tối ưu|khắt khe|tiết kiệm chi phí|rõ nét|số) (nhất|một)\b/iu');
+        expect($text)->not->toMatch('/dẫn đầu|tuyệt đối|duy nhất|100% sản phẩm|(tốt|tối ưu|khắt khe|tiết kiệm chi phí|rõ nét|số) (nhất|một)\b/iu');
     }
+    // "hàng đầu" only in the company's stated goal ("trở thành … hàng đầu"), never as a claim about today
+    preg_match_all('/.{0,90}hàng đầu/iu', implode("\n", $texts), $leading);
+    expect($leading[0])->toHaveCount(1)->and($leading[0][0])->toMatch('/trở thành công ty/iu');
     expect($videos)->toHaveCount(3);
     foreach ($videos as $heading) {
         expect($heading)->toStartWith('Video minh họa:')->toContain('nguồn kênh')->toContain('giấy phép CC BY');
