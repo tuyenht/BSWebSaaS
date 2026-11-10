@@ -15,7 +15,8 @@ use Illuminate\Validation\Rule;
  * so a field the visitor sees is always one the server validates and keeps — and nothing else is.
  *
  * options (jsonb) of a choice field: {"choices": [{"value": "cnc", "label": {"vi": "…", "en": "…"}}]};
- * of a text kind, optionally the example shown in the empty field: {"placeholder": {"vi": "…", "en": "…"}}
+ * of a text kind or a select, optionally the example shown in the empty field (a select's empty pick):
+ * {"placeholder": {"vi": "…", "en": "…"}}
  * — `value` is the stable key stored with the lead, `label` what the visitor reads per locale.
  * validation (jsonb), all optional: {"max_length": n} (text kinds), {"min": n, "max": n} (number),
  * {"max_choices": n} (checkboxes), {"not_past": true} (date).
