@@ -3,6 +3,7 @@
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Provisioning\ContentPack\PackReader;
 use App\Modules\Provisioning\ContentPack\PackValidator;
+use App\Modules\Tenancy\Models\SiteSetting;
 use Tests\Fixtures\ContentPacks;
 use Tests\Fixtures\StorefrontCards;
 
@@ -239,4 +240,36 @@ it('plans the real pack on a fresh site with no conflict, and every internal lin
     }
     expect($this->get('http://'.ContentPacks::HOST.'/gioi-thieu')->getContent())->toContain('Nhà Xưởng &amp; Máy Móc')
         ->and($this->get('http://'.ContentPacks::HOST.'/gia-cong-cat-day-xung-dien')->getContent())->toContain('nguồn kênh Kurt Bleyweert')->toContain('4IhkMgHkMEA');
+});
+
+it('loads the flourish heading decoration, a floating contact of Zalo and call only, and the post side column and product band', function (): void {
+    $settings = collect(json_decode((string) file_get_contents((new PackReader)->read('an-vinh')->dir.'/settings.json'), true)['items'])->keyBy('key');
+    expect($settings['setting:theme.heading_decor']['value'])->toBe(['style' => 'flourish'])
+        ->and(collect($settings['setting:storefront.floating_contact']['value']['channels'])->where('on', true)->pluck('key')->all())->toBe(['zalo', 'phone'])
+        ->and($settings['setting:storefront.layout_blocks']['managed_keys'])->toBe(['post_aside', 'after_product'])
+        ->and(collect($settings['setting:storefront.layout_blocks']['value']['post_aside']['vi']['blocks'])->pluck('type')->all())->toBe(['category_list', 'consult', 'recent_posts'])
+        ->and(collect($settings['setting:storefront.layout_blocks']['value']['after_product']['vi']['blocks'])->pluck('type')->all())->toBe(['cta']);
+
+    $folder = ContentPacks::use('an-vinh', database_path('content-packs'));
+    ContentPacks::edit($folder, 'pack.json', fn (array $pack): array => ['hosts' => [ContentPacks::HOST]] + $pack);
+    $siteId = StorefrontCards::site('Demo', ContentPacks::HOST);
+    [$exit, $output] = ContentPacks::load('an-vinh');
+    expect($exit)->toBe(0, $output);
+
+    $stored = fn (string $group, string $key): array => ContentPacks::in($siteId, fn (): array => SiteSetting::query()->where('group_name', $group)->where('key', $key)->value('value'));
+    expect($stored('theme', 'heading_decor')['style'])->toBe('flourish')
+        ->and(array_keys($stored('storefront', 'layout_blocks')))->toEqualCanonicalizing(['post_aside', 'after_product']);
+
+    $home = $this->get('http://'.ContentPacks::HOST.'/')->assertOk()->getContent();
+    expect($home)->toContain('<nav class="sf-fc sf-fc--right"')
+        ->toContain('href="https://zalo.me/0915668383"')->toContain('href="tel:0915668383"')
+        ->not->toContain('mailto:quybv@ckanvinh.vn" class="sf-fc')
+        ->and(preg_match('/<nav class="sf-fc sf-fc--right".*?<\/nav>/s', $home, $nav))->toBe(1)
+        ->and(preg_match_all('/<a /', $nav[0]))->toBe(2);
+
+    $post = $this->get('http://'.ContentPacks::HOST.'/gia-cong-phay-tien-cnc')->assertOk()->getContent();
+    expect($post)->toContain('Tư vấn kỹ thuật')->toContain('Cần tư vấn hoặc báo giá?')->toContain('Năng lực của An Vinh');
+
+    $product = $this->get('http://'.ContentPacks::HOST.'/jig-kiem-tap-lo-vf7')->assertOk()->getContent();
+    expect($product)->toContain('Cần đồ gá cho dây chuyền của bạn?');
 });

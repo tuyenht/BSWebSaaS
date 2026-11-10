@@ -121,6 +121,90 @@
    }
   },
   {
+   "key": "setting:theme.heading_decor",
+   "note": "Hoa văn dưới tiêu đề khu vực: kiểu flourish, các tuỳ chọn khác giữ mặc định của giao diện.",
+   "value": {
+    "style": "flourish"
+   }
+  },
+  {
+   "key": "setting:storefront.floating_contact",
+   "note": "Nút liên hệ nổi chỉ có Zalo và Gọi, dùng số hotline của An Vinh.",
+   "value": {
+    "enabled": true,
+    "theme": "vertical",
+    "position": "right",
+    "channels": [
+     {
+      "key": "zalo",
+      "on": true,
+      "value": "0915668383"
+     },
+     {
+      "key": "phone",
+      "on": true,
+      "value": "0915 66 83 83",
+      "tips": {
+       "vi": "Gọi hotline"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "key": "setting:storefront.layout_blocks",
+   "note": "Cột phải bài năng lực, dự án, tin tức và dải cuối trang sản phẩm; chỉ các ô này do gói quản lý.",
+   "managed_keys": [
+    "post_aside",
+    "after_product"
+   ],
+   "value": {
+    "post_aside": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "category_list",
+        "props": {
+         "heading": "Năng lực của An Vinh"
+        }
+       },
+       {
+        "type": "consult",
+        "props": {
+         "eyebrow": "Tư vấn kỹ thuật",
+         "heading": "Cần tư vấn hoặc báo giá?",
+         "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá.",
+         "button_label": "Gửi yêu cầu báo giá",
+         "button_url": "/lien-he"
+        }
+       },
+       {
+        "type": "recent_posts",
+        "props": {
+         "heading": "Bài viết mới"
+        }
+       }
+      ]
+     }
+    },
+    "after_product": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "cta",
+        "props": {
+         "heading": "Cần đồ gá cho dây chuyền của bạn?",
+         "text": "Gửi bản vẽ cụm chi tiết và sản lượng dự kiến – kỹ sư An Vinh phản hồi trong thời gian sớm nhất.",
+         "button_label": "Gửi yêu cầu báo giá",
+         "button_url": "/lien-he"
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
    "key": "setting:general.brand",
    "managed_keys": [
     "name",
