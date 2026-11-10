@@ -323,3 +323,133 @@ it('leaves the quote button out when the contact page is in the trash', function
 
     expect(productHtml())->not->toContain('product__quote');
 });
+
+/** Give the product a description (formatted text, as the editor stores it). */
+function productDescribe(Product $product, string $html): void
+{
+    app(Tenancy::class)->enter($product->site_id, fn () => $product->translations()->update(['description' => $html]));
+}
+
+/**
+ * Set the site's blocks for the product page's slots (slot → blocks, Vietnamese).
+ *
+ * @param  array<string, list<array<string, mixed>>>  $slots
+ */
+function productSlots(Product $product, array $slots): void
+{
+    app(Tenancy::class)->enter($product->site_id, fn () => SiteSetting::query()->updateOrCreate(
+        ['group_name' => 'storefront', 'key' => 'layout_blocks'],
+        ['value' => array_map(fn (array $blocks): array => ['vi' => ['blocks' => $blocks]], $slots)],
+    ));
+    // The next request starts as Octane starts one: no scoped instance and no cached controller carried over.
+    app()->forgetScopedInstances();
+    foreach (app('router')->getRoutes() as $route) {
+        $route->flushController();
+    }
+}
+
+/** @return list<array{string, string}> the bar's links: [target id, label] */
+function productBar(string $html): array
+{
+    preg_match('~<nav class="product-toc" aria-label="Nội dung sản phẩm">(.*?)</nav>~s', $html, $bar);
+    preg_match_all('~<a class="product-toc__link" href="#([^"]+)">([^<]+)</a>~', $bar[1] ?? '', $links, PREG_SET_ORDER);
+
+    return array_map(fn (array $link): array => [$link[1], $link[2]], $links);
+}
+
+it('splits the description at its h2 headings into a bar of links to each part, with the reading marker script', function (): void {
+    $this->swap(Vite::class, new class extends Vite
+    {
+        public function __invoke($entrypoints, $buildDirectory = null): HtmlString
+        {
+            return new HtmlString(collect((array) $entrypoints)->map(fn (string $entry): string => '<script type="module" src="/'.$entry.'"></script>')->implode(''));
+        }
+    });
+    $product = productSite();
+    productDescribe($product, '<h2>Mô tả</h2><p>Đồ gá theo bản vẽ.</p><h3>Ưu điểm</h3><ul><li>Kiểm 24 điểm.</li></ul><h2>Thông số kỹ thuật</h2><p>Nhôm A6061.</p><h2>Mô tả</h2><p>Lặp tên.</p>');
+
+    $html = productHtml();
+
+    expect(productBar($html))->toBe([['muc-mo-ta', 'Mô tả'], ['muc-thong-so-ky-thuat', 'Thông số kỹ thuật'], ['muc-mo-ta-2', 'Mô tả']])
+        ->and($html)->toContain('<div class="product__body sf-prose sf-prose--article product__body--parts"><section class="sf-prose"><h2 id="muc-mo-ta">Mô tả</h2>')
+        ->toContain('<h2 id="muc-thong-so-ky-thuat">Thông số kỹ thuật</h2>')
+        ->toContain('<h2 id="muc-mo-ta-2">Mô tả</h2>')
+        // An h3 under a part is not a part of its own.
+        ->toContain('<h3>Ưu điểm</h3>')
+        ->toContain('<script type="module" src="/resources/js/sf-toc.js"></script>')
+        // The sheet's bar sits above the text, inside the description band, after its one hidden heading.
+        ->and(strpos($html, 'id="thong-tin-san-pham"'))->toBeLessThan(strpos($html, 'class="product-toc"'))
+        ->and(strpos($html, 'class="product-toc"'))->toBeLessThan(strpos($html, 'class="product__body'));
+});
+
+it('splits a description written with h3 headings only at those, and draws no bar for fewer than two', function (): void {
+    $product = productSite();
+    productDescribe($product, '<h3>Mô tả</h3><p>Một.</p><h3>Bảo hành</h3><p>Hai.</p>');
+    expect(productBar(productHtml()))->toBe([['muc-mo-ta', 'Mô tả'], ['muc-bao-hanh', 'Bảo hành']]);
+
+    productDescribe($product, '<h2>Mô tả</h2><p>Một.</p><h3>Bảo hành</h3><p>Hai.</p>');
+    $html = productHtml();
+    expect($html)->not->toContain('product-toc')->not->toContain('product__body--parts')->not->toContain('sf-toc.js')
+        ->toContain('<section class="sf-prose"><h2>Mô tả</h2><p>Một.</p><h3>Bảo hành</h3><p>Hai.</p></section>');
+});
+
+it('picks the heading level from the description alone, not from a shared part that carries an h2', function (): void {
+    $product = productSite();
+    productDescribe($product, '<h3>Mô tả</h3><p>Một.</p><h3>Bảo hành</h3><p>Hai.</p>');
+    productSlots($product, ['product_tabs' => [
+        ['type' => 'richtext_html', 'props' => ['html' => '<h2>Hỗ trợ</h2><p>Ba.</p>']],
+    ]]);
+
+    $html = productHtml();
+
+    expect(productBar($html))->toBe([['muc-mo-ta', 'Mô tả'], ['muc-bao-hanh', 'Bảo hành'], ['muc-ho-tro', 'Hỗ trợ']])
+        ->and($html)->toContain('<h3 id="muc-mo-ta">Mô tả</h3>')->toContain('<h2 id="muc-ho-tro">Hỗ trợ</h2>');
+});
+
+it('does not take a heading inside a table cell as a part, and labels a heading with inline markup by its text', function (): void {
+    $product = productSite();
+    productDescribe($product, '<h2><strong>Mô tả</strong></h2><p>Một.</p><table><tbody><tr><td><h2>Trong bảng</h2></td></tr></tbody></table><h2>Bảo hành</h2><p>Hai.</p>');
+
+    $html = productHtml();
+
+    expect(productBar($html))->toBe([['muc-mo-ta', 'Mô tả'], ['muc-bao-hanh', 'Bảo hành']])
+        ->and($html)->toContain('<h2 id="muc-mo-ta"><strong>Mô tả</strong></h2>')
+        ->not->toContain('muc-trong-bang');
+});
+
+it('adds the site\'s shared parts after the description, each with its link on the bar', function (): void {
+    $product = productSite();
+    productDescribe($product, '<h2>Mô tả</h2><p>Một.</p><h2>Hỏi đáp</h2><p>Hai.</p>');
+    productSlots($product, ['product_tabs' => [
+        ['type' => 'richtext_html', 'props' => ['html' => '<h2>Bảo hành &amp; hỗ trợ</h2><ul><li>Bảo hành 12 tháng.</li></ul>']],
+    ]]);
+
+    $html = productHtml();
+
+    expect(productBar($html))->toBe([['muc-mo-ta', 'Mô tả'], ['muc-hoi-dap', 'Hỏi đáp'], ['muc-bao-hanh-ho-tro', 'Bảo hành &amp; hỗ trợ']])
+        ->and(strpos($html, 'Hai.'))->toBeLessThan(strpos($html, 'Bảo hành 12 tháng.'));
+
+    // A product with no description still shows the shared part.
+    productDescribe($product, '');
+    expect(productHtml())->toContain('Bảo hành 12 tháng.')->toContain('class="product__details"');
+});
+
+it('puts the site\'s text before the order buttons in place of the price line, and its list after them', function (): void {
+    $product = productSite();
+    $plain = productHtml();
+    expect($plain)->toContain('<p class="product__price">')->not->toContain('product__lead')->not->toContain('product__extra');
+
+    productSlots($product, [
+        'product_before_action' => [['type' => 'richtext_html', 'props' => ['html' => '<p>Sản phẩm chế tạo theo yêu cầu – <strong>giá phụ thuộc bản vẽ.</strong></p>']]],
+        'product_after_action' => [['type' => 'richtext_html', 'props' => ['html' => '<ul><li>Biên bản đo kiểm</li><li>Hoá đơn VAT</li></ul>']]],
+    ]);
+    $html = productHtml();
+
+    expect($html)->not->toContain('<p class="product__price">')
+        ->toContain('<div class="product__lead"><section class="sf-prose">')
+        ->toContain('giá phụ thuộc bản vẽ.')
+        ->toContain('<div class="product__extra"><section class="sf-prose">')
+        ->and(strpos($html, 'product__lead'))->toBeLessThan(strpos($html, 'product__actions'))
+        ->and(strpos($html, 'product__actions'))->toBeLessThan(strpos($html, 'Biên bản đo kiểm'))
+        ->and(strpos($html, 'Biên bản đo kiểm'))->toBeLessThan(strpos($html, 'product__details') ?: PHP_INT_MAX);
+});

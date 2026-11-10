@@ -28,8 +28,8 @@ final readonly class SlotContext
     /** The slot of a category list page (posts or products). */
     public const array LIST_SLOTS = ['after_list'];
 
-    /** The slot of a product page. */
-    public const array PRODUCT_SLOTS = ['after_product'];
+    /** The slots of a product page: before and after its order buttons, its shared parts, the band below it. */
+    public const array PRODUCT_SLOTS = ['product_before_action', 'product_after_action', 'product_tabs', 'after_product'];
 
     /** The most categories the category list shows (a branch is a handful; the cap bounds a bad tree). */
     public const int CATEGORY_CAP = 50;

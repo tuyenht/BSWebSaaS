@@ -21,6 +21,9 @@ use Illuminate\Contracts\View\Factory as ViewFactory;
  */
 final readonly class PageRenderer
 {
+    /** Ids the product layout itself prints (never made into a part's anchor). */
+    private const array PRODUCT_IDS = ['thong-tin-san-pham', 'san-pham-cung-nhom'];
+
     public function __construct(
         private ViewFactory $views,
         private TemplateResolver $templates,
@@ -483,13 +486,20 @@ final readonly class PageRenderer
         ['html' => $descriptionHtml, 'videos' => $videos] = $this->videos->render($descriptionHtml);
         // A specification table gets the same narrow-column layout as one in a post body.
         $descriptionHtml = ProseTables::apply($descriptionHtml);
+        // The description is drawn as a formatted-text section (the shape the section bar reads), and
+        // the site's shared parts (the product_tabs slot) follow it. With two or more headings each
+        // one gets an anchor and a link on the bar; the bar's script marks the part being read.
+        $slotHtml = is_array($extra['slotHtml'] ?? null) ? $extra['slotHtml'] : [];
+        $shared = Cast::string($slotHtml['product_tabs'] ?? '');
+        $parts = ArticleToc::parts($descriptionHtml, $shared, self::PRODUCT_IDS);
 
         return $this->views->make($layout, $this->head($seo, $name, $extra) + [
             'title' => $name,
             'tokens' => $this->theme->cssVariables(),
-            'description' => $descriptionHtml,
+            'description' => $parts['html'],
+            'parts' => $parts['items'],
             'images' => $images,
-        ] + ($videos > 0 ? ['videoScript' => true] : []) + $extra)->render();
+        ] + ($videos > 0 ? ['videoScript' => true] : []) + ($parts['items'] !== [] ? ['tocScript' => true] : []) + $extra)->render();
     }
 
     /**
