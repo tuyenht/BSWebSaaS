@@ -346,6 +346,72 @@ it('reports a redirect over a live path as a conflict', function (): void {
     expect($exit)->toBe(1)->and(ContentPacks::verdict($output, 'redirect:vi:/gioi-thieu'))->toBe('conflict');
 });
 
+it('lets a redirect take the address of a post the same load unpublishes, and keeps it on the next run', function (): void {
+    ContentPacks::load();
+    $path = ContentPacks::in($this->siteId, fn (): string => (string) SiteRoute::query()
+        ->where('entry_id', EntryTranslation::query()->where('slug', 'thiet-ke-mau')->value('entry_id'))->value('path'));
+    ContentPacks::item($this->folder, 'posts.json', 'post:thiet-ke-mau', fn (array $item): array => ['status' => 'draft'] + $item);
+    ContentPacks::edit($this->folder, 'redirects.json', fn (array $data): array => ['items' => [...$data['items'], ['key' => "redirect:vi:{$path}", 'to' => '/', 'status' => 301]]]);
+
+    [$exit, $output] = ContentPacks::run();
+    expect($exit)->toBe(0)
+        ->and(ContentPacks::verdict($output, "redirect:vi:{$path}"))->toBe('create')
+        ->and(ContentPacks::verdict($output, 'post:thiet-ke-mau'))->toBe('update');
+
+    expect(ContentPacks::load()[0])->toBe(0);
+    $this->get('http://'.ContentPacks::HOST.$path)->assertStatus(301)->assertRedirect('/');
+
+    [$exit, $output] = ContentPacks::run();
+    expect($exit)->toBe(0)->and(ContentPacks::verdict($output, "redirect:vi:{$path}"))->toBe('unchanged');
+});
+
+it('still refuses a redirect over a post the pack keeps published', function (): void {
+    ContentPacks::load();
+    $path = ContentPacks::in($this->siteId, fn (): string => (string) SiteRoute::query()
+        ->where('entry_id', EntryTranslation::query()->where('slug', 'thiet-ke-mau')->value('entry_id'))->value('path'));
+    ContentPacks::edit($this->folder, 'redirects.json', fn (array $data): array => ['items' => [...$data['items'], ['key' => "redirect:vi:{$path}", 'to' => '/', 'status' => 301]]]);
+
+    [$exit, $output] = ContentPacks::run();
+
+    expect($exit)->toBe(1)->and(ContentPacks::verdict($output, "redirect:vi:{$path}"))->toBe('conflict');
+});
+
+it('still refuses a redirect over a post staff edited, which the load leaves published', function (): void {
+    ContentPacks::load();
+    $path = ContentPacks::in($this->siteId, fn (): string => (string) SiteRoute::query()
+        ->where('entry_id', EntryTranslation::query()->where('slug', 'thiet-ke-mau')->value('entry_id'))->value('path'));
+    cpStaffEdit($this->siteId, $path, 'Thiết kế mẫu do nhân viên sửa');
+    ContentPacks::item($this->folder, 'posts.json', 'post:thiet-ke-mau', fn (array $item): array => ['status' => 'draft'] + $item);
+    ContentPacks::edit($this->folder, 'redirects.json', fn (array $data): array => ['items' => [...$data['items'], ['key' => "redirect:vi:{$path}", 'to' => '/', 'status' => 301]]]);
+
+    [$exit, $output] = ContentPacks::run();
+
+    expect($exit)->toBe(1)
+        ->and(ContentPacks::verdict($output, 'post:thiet-ke-mau'))->toBe('skip:edited')
+        ->and(ContentPacks::verdict($output, "redirect:vi:{$path}"))->toBe('conflict');
+});
+
+it('judges a staff post the pack does not hold by its live status', function (string $entry, string $translation, int $exit, string $verdict): void {
+    ContentPacks::load();
+    cpStaffPost($this->siteId, 'bai-cua-nhan-vien', 'cap-nhat');
+    $path = ContentPacks::in($this->siteId, function () use ($entry, $translation): string {
+        $entryId = EntryTranslation::query()->where('slug', 'bai-cua-nhan-vien')->value('entry_id');
+        Entry::query()->whereKey($entryId)->update(['status' => $entry]);
+        EntryTranslation::query()->where('entry_id', $entryId)->update(['status' => $translation]);
+
+        return (string) SiteRoute::query()->where('entry_id', $entryId)->value('path');
+    });
+    ContentPacks::edit($this->folder, 'redirects.json', fn (array $data): array => ['items' => [...$data['items'], ['key' => "redirect:vi:{$path}", 'to' => '/', 'status' => 301]]]);
+
+    [$code, $output] = ContentPacks::run();
+
+    expect($code)->toBe($exit)->and(ContentPacks::verdict($output, "redirect:vi:{$path}"))->toBe($verdict);
+})->with([
+    'published: the post would be hidden' => ['published', 'published', 1, 'conflict'],
+    'draft: the address shows nothing' => ['draft', 'draft', 0, 'create'],
+    'published, its translation draft: the address shows nothing' => ['published', 'draft', 0, 'create'],
+]);
+
 /** A published post staff filed primarily under a category, at the address the site composes for it. */
 function cpStaffPost(int $siteId, string $slug, string $categorySlug): void
 {

@@ -163,7 +163,7 @@ final class Planner
                 'product' => $products[$item->key] ?? null,
                 'post', 'page' => $entries[$item->key] ?? null,
                 'menu' => $menus[$item->key] ?? null,
-                'redirect' => $this->redirectItem($item, $context),
+                'redirect' => $this->redirectItem($item, $context, $entries),
                 default => null,
             };
             if ($planned !== null) {
@@ -1462,16 +1462,52 @@ final class Planner
         return $state;
     }
 
-    private function redirectItem(PackItem $item, PlanContext $context): PlanItem
+    /** @param  array<string, PlanItem>  $entries  the plan's page and post items */
+    private function redirectItem(PackItem $item, PlanContext $context, array $entries): PlanItem
     {
         [$locale, $from] = explode(':', $item->anchor(), 2);
         $redirect = $this->locked(Redirect::query()->where('locale', $locale)->where('from_path', $from))->first(['to_path', 'status_code']);
         $current = $redirect === null ? null : ['to' => $redirect->to_path, 'status' => $redirect->status_code];
         $desired = ['to' => Cast::string($item->data['to'] ?? null), 'status' => Cast::int($item->data['status'] ?? 301, 301)];
-        $live = SiteRoute::query()->where('locale', $locale)->where('path', $from)->exists();
+        $route = SiteRoute::query()->where('locale', $locale)->where('path', $from)->first(['entry_id', 'taxonomy_id', 'product_id']);
+        $live = $route !== null && $this->stillServed($route, $locale, $entries);
 
         return $this->decide($context, $item, $current, $desired, $current === null ? null : $from, null,
             conflict: $live ? "{$from} is a live address; a redirect would hide it" : null);
+    }
+
+    /**
+     * Whether an address still shows its content once this load is applied: the storefront follows a
+     * redirect only where it does not (RouteResolver). A page or post counts while it and its translation
+     * stay published, as the plan writes it, or as it is live when the plan leaves it alone; so a post the
+     * same load unpublishes can hand its address to a redirect. A category or product address always counts.
+     *
+     * @param  array<string, PlanItem>  $entries
+     */
+    private function stillServed(SiteRoute $route, string $locale, array $entries): bool
+    {
+        if ($route->entry_id === null) {
+            return true;
+        }
+
+        foreach ($entries as $planned) {
+            if ($planned->recordId === $route->entry_id) {
+                $state = ($planned->writes() ? $planned->desired : $planned->current) ?? [];
+                $translation = Cast::arr(Cast::arr($state['translations'] ?? null)[$locale] ?? null);
+                if (($state['status'] ?? null) !== 'published') {
+                    return false;
+                }
+
+                // a language the pack gives no text keeps its live translation as it is
+                return $translation === []
+                    ? EntryTranslation::query()->where('entry_id', $route->entry_id)->where('locale', $locale)->where('status', 'published')->exists()
+                    : ($translation['status'] ?? null) === 'published';
+            }
+        }
+
+        return Entry::query()->whereKey($route->entry_id)->where('status', 'published')
+            ->whereHas('translations', fn (Builder $query) => $query->where('locale', $locale)->where('status', 'published'))
+            ->exists();
     }
 
     // ---------------------------------------------------------------- addresses
