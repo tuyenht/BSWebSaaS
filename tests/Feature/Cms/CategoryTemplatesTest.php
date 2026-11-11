@@ -185,7 +185,7 @@ it('points the open-positions link at the nearest category above that lists jobs
 });
 
 it('lists only the layouts that fit a role and a kind of category', function (): void {
-    expect(TemplateCatalog::names(TemplateCatalog::ROLE_LIST, TemplateCatalog::KIND_POST))->toBe(['category', 'grid-job', 'grid-news', 'grid-product', 'grid-project'])
+    expect(TemplateCatalog::names(TemplateCatalog::ROLE_LIST, TemplateCatalog::KIND_POST))->toBe(['category', 'grid-capability', 'grid-job', 'grid-news', 'grid-product', 'grid-project'])
         ->and(TemplateCatalog::names(TemplateCatalog::ROLE_LIST, TemplateCatalog::KIND_PRODUCT))->toBe(['category', 'grid-product'])
         ->and(TemplateCatalog::names(TemplateCatalog::ROLE_POST, TemplateCatalog::KIND_POST))->toBe(['job', 'post', 'project'])
         ->and(TemplateCatalog::names(TemplateCatalog::ROLE_PAGE))->toBe(['page', 'page-toc'])

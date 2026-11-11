@@ -38,6 +38,7 @@ use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Components\ButtonLink;
+use App\Modules\Theme\Rendering\LayoutSlots;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -73,7 +74,7 @@ final class Planner
     /** @var list<string> */
     private array $locales = [];
 
-    /** @var array<int, array{vocabulary: string, parent_id: int|null, position: int, list_template: string|null, detail_template: string|null, cover: string|null, tr: array<string, array{name: string, slug: string, description?: string}>}> */
+    /** @var array<int, array{vocabulary: string, parent_id: int|null, position: int, list_template: string|null, detail_template: string|null, cover: string|null, layout_blocks: array<array-key, mixed>, tr: array<string, array{name: string, slug: string, description?: string}>}> */
     private array $taxonomies = [];
 
     /** @var array<int, string> taxonomy id → its key (the pack item's when matched, else derived) */
@@ -564,7 +565,7 @@ final class Planner
 
     private function loadTaxonomies(): void
     {
-        $rows = $this->locked(Taxonomy::query())->get(['id', 'vocabulary', 'parent_id', 'position', 'list_template', 'detail_template', 'cover_media_id']);
+        $rows = $this->locked(Taxonomy::query())->get(['id', 'vocabulary', 'parent_id', 'position', 'list_template', 'detail_template', 'cover_media_id', 'meta']);
         $covers = Media::query()->whereIn('id', $rows->pluck('cover_media_id')->filter()->all())->pluck('storage_key', 'id');
         // Every language, not only the pack's: a category write re-syncs the posts and products under
         // it in every language they are routed in, and their addresses there carry these slugs.
@@ -578,6 +579,7 @@ final class Planner
                 'list_template' => $row->list_template,
                 'detail_template' => $row->detail_template,
                 'cover' => $row->cover_media_id === null ? null : Cast::stringOrNull($covers[$row->cover_media_id] ?? null),
+                'layout_blocks' => Cast::arr(Cast::arr($row->meta)[LayoutSlots::META_KEY] ?? null),
                 'tr' => [],
             ];
         }
@@ -695,16 +697,24 @@ final class Planner
             $translations[$locale] = $row['tr'][$locale] ?? null;
         }
 
-        // The intro picture and the intro text are part of the state only when the category has them, so a
-        // category without them keeps the state (and ledger hash) it had.
-        return [
+        // The intro picture and the category's own block slots are part of the state only when the category
+        // has them, so a category without them keeps the state (and ledger hash) it had.
+        $state = [
             'vocabulary' => $row['vocabulary'],
             'parent' => $row['parent_id'] === null ? null : $this->taxonomyKey($row['parent_id']),
             'position' => $row['position'],
             'list_template' => $row['list_template'],
             'detail_template' => $row['detail_template'],
-            'translations' => $translations,
-        ] + ($row['cover'] === null ? [] : ['cover' => $row['cover']]);
+        ];
+        if ($row['layout_blocks'] !== []) {
+            $state['layout_blocks'] = $row['layout_blocks'];
+        }
+        if ($row['cover'] !== null) {
+            $state['cover'] = $row['cover'];
+        }
+        $state['translations'] = $translations;
+
+        return $state;
     }
 
     /**
@@ -750,14 +760,25 @@ final class Planner
             $extra['cover'] = $key;
         }
 
-        return $extra + [
+        $desired = $extra + [
             'vocabulary' => $chain['vocabulary'] ?? '',
             'parent' => Cast::stringOrNull($item->data['parent'] ?? null),
             'position' => array_key_exists('position', $item->data) ? Cast::int($item->data['position']) : Cast::int($current['position'] ?? null),
             'list_template' => array_key_exists('list_template', $item->data) ? Cast::stringOrNull($item->data['list_template']) : Cast::stringOrNull($current['list_template'] ?? null),
             'detail_template' => array_key_exists('detail_template', $item->data) ? Cast::stringOrNull($item->data['detail_template']) : Cast::stringOrNull($current['detail_template'] ?? null),
-            'translations' => $translations,
         ];
+        // The block slots the pack names replace the same slots live; a slot it does not name (one an
+        // editor set, or set to none) stays as it is.
+        $layout = Cast::arr($current['layout_blocks'] ?? null);
+        if (is_array($item->data['layout_blocks'] ?? null) && $item->data['layout_blocks'] !== []) {
+            $layout = array_replace($layout, $this->cleanedSlots(Cast::arr($item->data['layout_blocks'])));
+        }
+        if ($layout !== []) {
+            $desired['layout_blocks'] = $layout;
+        }
+        $desired['translations'] = $translations;
+
+        return $desired;
     }
 
     // ---------------------------------------------------------------- entries
@@ -1720,17 +1741,34 @@ final class Planner
             $desired['factories'] = $this->branches($item->key, $desired['factories'], Cast::arr($live)['factories'] ?? null);
         }
         if ($item->key === 'setting:storefront.layout_blocks') {
-            foreach ($desired as $slot => $perLocale) {
-                $cleaned = [];
-                foreach (Cast::arr($perLocale) as $locale => $text) {
-                    $clean = SanitizedPageBody::cleanBody(['blocks' => Cast::arr(Cast::arr($text)['blocks'] ?? null)])['blocks'];
-                    $cleaned[$locale] = ['blocks' => is_array($clean) ? array_values($clean) : []];
-                }
-                $desired[$slot] = $cleaned;
-            }
+            $desired = $this->cleanedSlots($desired);
         }
 
         return $desired;
+    }
+
+    /**
+     * A block-slot map (slot → language → {"blocks": […]}) with each block list cleaned the way the
+     * page editor stores it.
+     *
+     * @param  array<string, mixed>  $slots
+     * @return array<string, mixed>
+     */
+    private function cleanedSlots(array $slots): array
+    {
+        foreach ($slots as $slot => $perLocale) {
+            if (! is_array($perLocale)) {
+                continue;
+            }
+            $cleaned = [];
+            foreach ($perLocale as $locale => $text) {
+                $clean = SanitizedPageBody::cleanBody(['blocks' => Cast::arr(Cast::arr($text)['blocks'] ?? null)])['blocks'];
+                $cleaned[$locale] = ['blocks' => is_array($clean) ? array_values($clean) : []];
+            }
+            $slots[$slot] = $cleaned;
+        }
+
+        return $slots;
     }
 
     /**

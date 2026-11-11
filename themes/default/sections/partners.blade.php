@@ -40,4 +40,7 @@
 @if ($sfDisplay !== null)
 @include('theme::partials.sf-rail-close', ['display' => $sfDisplay])
 @endif
+@if (\App\Modules\Theme\Components\SectionProps::text($props, 'note') !== '')
+    <p class="partners__note">{{ \App\Modules\Theme\Components\SectionProps::text($props, 'note') }}</p>
+@endif
 </section>

@@ -62,21 +62,27 @@
        },
        "links": [
         {
-         "icon": "building",
+         "icon": "info",
          "label": "Về Chúng Tôi",
          "url": "/gioi-thieu"
         },
         {
-         "icon": "link",
+         "icon": "document",
+         "label": "Hồ Sơ Năng Lực",
+         "url": "/ho-so-nang-luc"
+        },
+        {
+         "icon": "video",
          "label": "Video Xưởng",
          "url": "/nha-xuong-may-moc#video"
         },
         {
-         "icon": "license",
+         "icon": "building",
          "label": "Quy Trình Làm Việc",
          "url": "/nang-luc"
         }
-       ]
+       ],
+       "bg": "surface"
       }
      },
      {
@@ -181,6 +187,7 @@
       "type": "partners",
       "props": {
        "heading": "Đối tác tin cậy",
+       "bg": "tint",
        "description": "Sự tin tưởng và hợp tác của các đối tác là động lực để chúng tôi không ngừng nỗ lực và phát triển.",
        "layout": "slider",
        "logos": [
@@ -316,7 +323,8 @@
        "image_url": {
         "media": "about-letter"
        },
-       "variant": "letter"
+       "variant": "letter",
+       "bg": "surface"
       }
      },
      {
@@ -324,7 +332,7 @@
       "props": {
        "heading": "Định hướng phát triển",
        "description": "Với phương châm “Nhận trách nhiệm – Gửi chữ tín”, An Vinh phát triển theo bốn tiêu chí: chuyên nghiệp, chất lượng, uy tín, tiến bộ.",
-       "variant": "top-rule",
+       "variant": "icon-head",
        "bg": "tint",
        "items": [
         {
@@ -388,7 +396,9 @@
         "media": "factory-1"
        },
        "cta_label": "Xem nhà xưởng & máy móc",
-       "cta_url": "/nha-xuong-may-moc"
+       "cta_url": "/nha-xuong-may-moc",
+       "variant": "showcase",
+       "bg": "surface"
       }
      },
      {
@@ -509,21 +519,25 @@
      {
       "type": "video",
       "props": {
-       "heading": "Video minh họa: phay CNC (timelapse) – nguồn kênh HackerspaceOL, giấy phép CC BY",
+       "heading": "Video minh họa: phay CNC (timelapse)",
        "url": "https://www.youtube.com/watch?v=FpYQc5zMLzM",
        "poster": {
         "media": "cnc-1"
        },
        "anchor_id": "video",
        "heading_decor": "line",
-       "heading_align": "left"
+       "heading_align": "left",
+       "caption": "Nguồn kênh HackerspaceOL, giấy phép CC BY",
+       "spacing_top": "s",
+       "spacing_bottom": "s",
+       "player_width": "wide"
       }
      },
      {
       "type": "gallery",
       "props": {
        "heading": "Nhà xưởng",
-       "columns": "3",
+       "columns": "4",
        "images": [
         {
          "image": {
@@ -545,7 +559,10 @@
         }
        ],
        "heading_decor": "line",
-       "heading_align": "left"
+       "heading_align": "left",
+       "spacing_top": "s",
+       "spacing_bottom": "s",
+       "caption_style": "overlay"
       }
      },
      {
@@ -568,14 +585,17 @@
         }
        ],
        "heading_decor": "line",
-       "heading_align": "left"
+       "heading_align": "left",
+       "spacing_top": "s",
+       "spacing_bottom": "s",
+       "caption_style": "overlay"
       }
      },
      {
       "type": "gallery",
       "props": {
        "heading": "Sản phẩm",
-       "columns": "3",
+       "columns": "4",
        "images": [
         {
          "image": {
@@ -597,7 +617,10 @@
         }
        ],
        "heading_decor": "line",
-       "heading_align": "left"
+       "heading_align": "left",
+       "spacing_top": "s",
+       "spacing_bottom": "s",
+       "caption_style": "overlay"
       }
      },
      {
@@ -937,7 +960,9 @@
          "name": "Vinmanutech"
         }
        ],
-       "heading_decor": "none"
+       "heading_decor": "none",
+       "mobile": "two",
+       "note": "Logo theo hồ sơ năng lực An Vinh. Đối tác chưa có tệp logo đủ nét đang hiện tên."
       }
      },
      {
@@ -1079,7 +1104,8 @@
          "text": "Báo giá chi tiết kèm tiến độ dự kiến qua email."
         }
        ],
-       "heading_decor": "none"
+       "heading_decor": "none",
+       "variant": "numeral"
       }
      },
      {
@@ -1096,7 +1122,9 @@
        "button2_url_do": {
         "k": "zalo",
         "phone": "0915668383"
-       }
+       },
+       "variant": "card",
+       "button2_tone": "zalo"
       }
      },
      {
@@ -1106,19 +1134,24 @@
        "variant": "pill",
        "items": [
         {
-         "icon": "link",
+         "icon": "none",
          "label": "Sản phẩm",
          "url": "/san-pham"
         },
         {
-         "icon": "link",
+         "icon": "none",
          "label": "Dự án tiêu biểu",
          "url": "/du-an"
         },
         {
-         "icon": "building",
+         "icon": "none",
          "label": "Về trang chủ",
          "url": "/"
+        },
+        {
+         "icon": "none",
+         "label": "Hồ sơ năng lực",
+         "url": "/ho-so-nang-luc"
         }
        ]
       }

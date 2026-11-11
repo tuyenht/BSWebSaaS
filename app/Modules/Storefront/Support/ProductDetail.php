@@ -112,21 +112,32 @@ final readonly class ProductDetail
     }
 
     /**
-     * Up to RELATED other published products whose main category is this one, newest first — only
-     * the columns a card reads, their photo and translation loaded in one read each.
+     * Up to RELATED other published products: the ones whose main category is this one first, then
+     * the newest of the rest of its root branch, each newest first, in one read. The photo and
+     * translation load in one read each; the categories of the products from another group (the only
+     * ones a card needs a name for) load in two more, and only when there are any.
      *
      * @return list<array<string, mixed>>
      */
     public function related(Product $product, Taxonomy $category, string $locale): array
     {
+        // The ltree path holds the ids from the root down; a category whose path was never written is its own root.
+        $first = explode('.', (string) $category->path)[0];
+        $rootId = ctype_digit($first) ? (int) $first : $category->id;
+
         $rows = Product::query()
-            ->select(['products.id', 'products.site_id', 'products.published_at'])
+            ->select(['products.id', 'products.site_id', 'products.published_at', 'product_taxonomies.taxonomy_id as related_taxonomy_id'])
             ->join('product_taxonomies', fn (JoinClause $join) => $join->on('product_taxonomies.product_id', '=', 'products.id')
-                ->where('product_taxonomies.position', 0)
-                ->where('product_taxonomies.taxonomy_id', $category->id))
+                ->where('product_taxonomies.position', 0))
+            ->whereIn('product_taxonomies.taxonomy_id', Taxonomy::query()
+                ->select('taxonomies.id')
+                ->where(fn ($ids) => $ids
+                    ->whereKey($rootId)
+                    ->orWhereRaw('taxonomies.path <@ (select root.path from taxonomies root where root.id = ?)', [$rootId])))
             ->where('products.status', 'published')
             ->where('products.id', '!=', $product->id)
             ->whereHas('translations', fn ($query) => $query->where('locale', $locale))
+            ->orderByRaw('(product_taxonomies.taxonomy_id = ?) DESC', [$category->id])
             ->orderByRaw('products.published_at DESC NULLS FIRST, products.id DESC')
             ->limit(self::RELATED)
             ->with([
@@ -137,9 +148,22 @@ final readonly class ProductDetail
             ])
             ->get();
 
-        // Every row shares this main category: hand it over instead of reading it again.
+        // A row of this main category is handed the category instead of reading it again; the others read theirs.
+        /** @var Collection<int, Product> $others */
+        $others = new Collection;
         foreach ($rows as $row) {
-            $row->setRelation('taxonomies', new Collection([$category]));
+            $own = $row->getAttribute('related_taxonomy_id');
+            if (is_numeric($own) && (int) $own === $category->id) {
+                $row->setRelation('taxonomies', new Collection([$category]));
+            } else {
+                $others->push($row);
+            }
+        }
+        if ($others->isNotEmpty()) {
+            $others->load([
+                'taxonomies' => fn (Relation $query) => $query->wherePivot('position', 0),
+                'taxonomies.translations' => fn (Relation $query) => $query->where('locale', $locale),
+            ]);
         }
 
         return $this->lists->productCards($rows, $locale);

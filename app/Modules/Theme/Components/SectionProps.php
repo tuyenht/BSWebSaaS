@@ -49,8 +49,11 @@ final class SectionProps
     /** A ulid as the screens print it (26 characters of Crockford base32), either case. */
     public const string ULID_PATTERN = '/^[0-9A-HJKMNP-TV-Z]{26}$/i';
 
-    /** About: the plain text beside a photo, or a letter (greeting in bold, the last two paragraphs the signature). Append-only. */
-    public const array ABOUT_VARIANTS = ['default', 'letter'];
+    /** About: the plain text beside a photo, a letter (greeting in bold, the last two paragraphs the signature) or a showcase (a rule under the heading, a dark pill button with an arrow). Append-only. */
+    public const array ABOUT_VARIANTS = ['default', 'letter', 'showcase'];
+
+    /** The band behind an about block: the page's own colour, the surface (white) or the tint. Append-only. */
+    public const array ABOUT_BG = ['none', 'surface', 'tint'];
 
     /** Where the about photo is cropped when the frame is shorter than the picture. Append-only. */
     public const array ABOUT_IMAGE_FOCUS = ['center', 'top', 'bottom'];
@@ -60,8 +63,14 @@ final class SectionProps
 
     public const array PRODUCT_GRID_VARIANTS = ['grid', 'overlay'];
 
-    /** The CTA looks: today's centered band, the rounded band, or text left and buttons right (split). Append-only. */
-    public const array CTA_VARIANTS = ['default', 'rounded', 'split'];
+    /** The CTA looks: today's centered band, the rounded band, text left and buttons right (split), or a dark card inside the page width (card). Append-only. */
+    public const array CTA_VARIANTS = ['default', 'rounded', 'split', 'card'];
+
+    /** The second button of the card look: an outline, or the Zalo brand blue. Append-only. */
+    public const array CTA_BUTTON2_TONES = ['outline', 'zalo'];
+
+    /** The process looks: white cards with a round number, or grey cards with a big numeral. Append-only. */
+    public const array PROCESS_VARIANTS = ['default', 'numeral'];
 
     /** The block beside a call to action: nothing (today's look) or up to three stats (default variant only). */
     public const array CTA_SIDES = ['none', 'stats'];
@@ -81,13 +90,19 @@ final class SectionProps
 
     public const array CONTACT_VARIANTS = ['list', 'cards'];
 
-    public const array FEATURES_VARIANTS = ['default', 'top-rule'];
+    public const array FEATURES_VARIANTS = ['default', 'top-rule', 'icon-head'];
 
     /** The glyphs of the quick-links tiles: keys of theme::partials.sf-icon that suit a link. */
-    public const array QUICK_LINK_ICONS = ['link', 'phone', 'email', 'address', 'map', 'building', 'license'];
+    public const array QUICK_LINK_ICONS = ['link', 'phone', 'email', 'address', 'map', 'building', 'license', 'info', 'document', 'video', 'none'];
 
     /** Columns on a wide screen; a phone always shows one (gallery two). Stored as the digit string. */
     public const array GALLERY_COLUMNS = ['3', '2', '4'];
+
+    /** Where a gallery picture's caption goes: under the photo, or on it over a dark fade. Append-only. */
+    public const array GALLERY_CAPTIONS = ['below', 'overlay'];
+
+    /** How wide a video block's player is: the narrow column, or the page's full content width. Append-only. */
+    public const array VIDEO_WIDTHS = ['narrow', 'wide'];
 
     public const array FAQ_COLUMNS = ['1', '2'];
 

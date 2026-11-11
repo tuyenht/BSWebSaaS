@@ -10,7 +10,36 @@
         ? \App\Modules\Theme\Components\SectionProps::statEntries($props, 'side_items', \App\Modules\Theme\Components\SectionProps::CTA_SIDE_MAX_ITEMS)
         : [];
 @endphp
-@if ($rounded)
+@if ($variant === 'card')
+{{-- The card look (opt-in): a dark card inside the page width, the text on the left and pill buttons on the right from a tablet up. --}}
+@php
+    $tone = \App\Modules\Theme\Components\SectionProps::choice($props, 'button2_tone', \App\Modules\Theme\Components\SectionProps::CTA_BUTTON2_TONES);
+@endphp
+<section class="cta cta--card">
+    <div class="sf-container">
+        <div class="cta__card">
+            <div class="cta__copy">
+@if (! empty($props['heading']))
+                <h2 class="cta__title">{{ $props['heading'] }}</h2>
+@endif
+@if (! empty($props['text']))
+                <p class="cta__text">{{ $props['text'] }}</p>
+@endif
+            </div>
+@if ($hasButton || $hasButton2)
+            <div class="cta__actions">
+@if ($hasButton)
+                <a class="cta__button cta__button--pill" href="{{ $button['href'] }}"@if ($button['blank']) target="_blank" rel="noopener"@elseif ($button['download']) download=""@endif>{{ $props['button_label'] }}@if ($button['blank'])<span class="sr-only"> {{ __('storefront.new_tab') }}</span>@endif</a>
+@endif
+@if ($hasButton2)
+                <a class="cta__button cta__button--pill {{ $tone === 'zalo' ? 'cta__button--zalo' : 'cta__button--outline' }}" href="{{ $button2['href'] }}"@if ($button2['blank']) target="_blank" rel="noopener"@elseif ($button2['download']) download=""@endif>{{ $props['button2_label'] }}@if ($button2['blank'])<span class="sr-only"> {{ __('storefront.new_tab') }}</span>@endif</a>
+@endif
+            </div>
+@endif
+        </div>
+    </div>
+</section>
+@elseif ($rounded)
 {{-- The rounded look (opt-in): a centered dark band with a pill button; `text` is its sub-line. --}}
 <section class="cta cta--rounded">
     <div class="sf-container cta__inner">

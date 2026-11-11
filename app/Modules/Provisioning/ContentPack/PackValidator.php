@@ -654,6 +654,16 @@ final readonly class PackValidator
 
         $this->localeMap($pack, $item->key, $item->data, 'name', true, TaxonomyRules::NAME_MAX, $errors);
         $this->slugMap($pack, $item, $errors);
+        if (array_key_exists('layout_blocks', $item->data)) {
+            $layout = $item->data['layout_blocks'];
+            if (! is_array($layout) || $layout === [] || array_is_list($layout)) {
+                $errors[] = "{$item->key}: layout_blocks must be {slot: {language: {\"blocks\": […]}}}.";
+            } elseif (! in_array($chain['vocabulary'], ['post_cat', 'product_cat'], true)) {
+                $errors[] = "{$item->key}: layout_blocks belong to a post_cat or product_cat category.";
+            } else {
+                $this->layoutBlocks($item->key.' layout_blocks', $layout, $pack, $errors);
+            }
+        }
 
         foreach (Cast::arr($item->data['was'] ?? []) as $was) {
             if (! is_string($was) || preg_match('/\A'.self::SLUG.'\z/', $was) !== 1) {

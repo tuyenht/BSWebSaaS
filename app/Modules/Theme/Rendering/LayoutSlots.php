@@ -6,7 +6,7 @@ namespace App\Modules\Theme\Rendering;
 
 /**
  * The places around a post, a list and a product where a site puts blocks of its own: the post's
- * side column, the band at the end of a list, of a post and of a product, and the three places on
+ * side column, the band before and the band at the end of a list, of a post and of a product, and the three places on
  * a product page (before and after the order buttons, and its content tabs). The one list of them:
  * the stores, the resolver and the usage index all name a slot from here.
  *
@@ -20,6 +20,7 @@ final class LayoutSlots
     /** @var list<string> */
     public const array SLOTS = [
         'post_aside',
+        'before_list',
         'after_list',
         'after_post',
         'after_product',
