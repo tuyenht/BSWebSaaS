@@ -161,6 +161,7 @@
     'level' => $sfCardLevel,
     'sizes' => $sfSizes,
     'linkLabel' => $sfLinkLabel,
+    'short' => $sfDisplay !== null,
 ])</li>
 @endforeach
 </ul>
@@ -202,6 +203,7 @@
     'level' => 'h3',
     'sizes' => $sfSizes,
     'linkLabel' => \App\Modules\Theme\Components\SectionProps::text($props, 'link_label', __('storefront.view_detail')),
+    'short' => $sfDisplay !== null,
 ])</li>
 @endforeach
 </ul>

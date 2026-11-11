@@ -181,6 +181,7 @@
       "type": "partners",
       "props": {
        "heading": "Đối tác tin cậy",
+       "bg": "tint",
        "description": "Sự tin tưởng và hợp tác của các đối tác là động lực để chúng tôi không ngừng nỗ lực và phát triển.",
        "layout": "slider",
        "logos": [
@@ -873,6 +874,8 @@
       "props": {
        "heading": "Những đối tác đã tin tưởng An Vinh",
        "layout": "grid",
+       "mobile": "two",
+       "note": "Logo theo hồ sơ năng lực An Vinh. Đối tác chưa có tệp logo đủ nét đang hiện tên.",
        "logos": [
         {
          "image_url": {

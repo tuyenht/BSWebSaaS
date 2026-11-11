@@ -2362,6 +2362,7 @@
     "storefront.branch_copied": "コピーしました ✓",
     "storefront.branch_copy_failed": "コピーできませんでした。住所を選択して手でコピーしてください。",
     "storefront.tabs_label": "ニュースのグループを選ぶ",
+    "storefront.swipe_hint": "横にスワイプしてさらに表示 →",
     "storefront.rail_prev": "前の項目を表示",
     "storefront.rail_next": "次の項目を表示",
     "storefront.rail_pause": "自動切り替えを停止",

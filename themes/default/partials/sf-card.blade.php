@@ -10,6 +10,8 @@
     a product its "details" footer, and news and project cards turn into a compact row on a phone
     (photo left, title right; the excerpt of news, the tag and the footers are hidden there).
     `featured` (news only): the wide first card of a news list, with its "featured" mark.
+    `short` (news only, a block with the display group): the short card, its date, the title and "read more", with
+    no category chip and no excerpt, as the design draws it; the chip and the excerpt are a list page's.
 --}}
 @php
     $sfKind = in_array($kind ?? 'news', ['icon', 'product', 'product-overlay', 'project', 'news', 'job'], true) ? $kind : 'news';
@@ -21,6 +23,7 @@
     $sfFrame = in_array($sfKind, ['product', 'product-overlay'], true) ? '4x3' : '8x5';
     $sfList = (bool) ($list ?? false);
     $sfFeatured = (bool) ($featured ?? false) && $sfKind === 'news';
+    $sfShort = (bool) ($short ?? false) && $sfKind === 'news' && ! $sfList && ! $sfFeatured;
     $sfClass = 'sf-card sf-card--'.$sfKind
         .($sfList ? ' sf-card--list' : '')
         .($sfFeatured ? ' sf-card--featured' : ($sfList && in_array($sfKind, ['news', 'project'], true) ? ' sf-card--row' : ''));
@@ -83,9 +86,9 @@
 @endif
     </div>
     <div class="sf-card__body">
-@if ($sfKind === 'news' && ($sfLabel !== '' || ($card['date'] ?? '') !== ''))
-        <div class="sf-card__meta">
-@if ($sfLabel !== '')
+@if ($sfKind === 'news' && (($sfLabel !== '' && ! $sfShort) || ($card['date'] ?? '') !== ''))
+        <div class="sf-card__meta{{ $sfShort ? ' sf-card__meta--plain' : '' }}">
+@if ($sfLabel !== '' && ! $sfShort)
             <span class="sf-card__chip">{{ $sfLabel }}</span>
 @endif
 @if (($card['date'] ?? '') !== '')
@@ -99,7 +102,7 @@
         <p class="sf-card__label">{{ $sfLabel }}</p>
 @endif
         <{{ $sfLevel }} class="sf-card__title">@if ($sfUrl !== null)<a class="sf-card__link" href="{{ $sfUrl }}">{{ $sfTitle }}</a>@else{{ $sfTitle }}@endif</{{ $sfLevel }}>
-@if ($sfKind !== 'product' && $sfExcerpt !== '')
+@if ($sfKind !== 'product' && $sfExcerpt !== '' && ! $sfShort)
         <p class="sf-card__text{{ $sfList && $sfKind === 'news' ? ' sf-card__row-hide' : '' }}">{{ $sfExcerpt }}</p>
 @endif
 @if ($sfKind === 'news' && $sfUrl !== null)
