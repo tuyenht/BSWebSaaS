@@ -30,8 +30,17 @@ final class HeadingDecor
         'bar', 'double', 'dots', 'stitch', 'wave',
     ];
 
-    /** What a block's `heading_decor` may hold: the site's choice, no decoration, or one shape. */
-    public const array BLOCK_CHOICES = ['inherit', 'none', ...self::STYLES];
+    /**
+     * Rules that are not a mask shape: `line` is the one gold rule across the whole row under a heading
+     * (the look of the boards' left-aligned heads). A block may choose it; the site-wide setting keeps to STYLES.
+     */
+    public const array RULE_STYLES = ['line'];
+
+    /** What a block's `heading_decor` may hold: the site's choice, no decoration, one shape or a rule. */
+    public const array BLOCK_CHOICES = ['inherit', 'none', ...self::STYLES, ...self::RULE_STYLES];
+
+    /** What a block's `heading_align` may hold: the head centred (the default) or at the left edge. */
+    public const array HEAD_ALIGNS = ['center', 'left'];
 
     /** The site-wide `style`: a shape, or none at all. Empty means "keep the rule headings always had". */
     public const array SITE_STYLES = ['none', ...self::STYLES];
@@ -146,10 +155,12 @@ final class HeadingDecor
 
     /**
      * What a heading draws, for a block's `heading_decor` choice (null: the page's own, i.e. inherit).
+     * `$headAlign` is the block's `heading_align`: a head at the left edge takes a shape to the left too,
+     * unless the site setting keeps it in the middle (align: center).
      *
      * @return string|null null: draw the rule headings always had · '': draw nothing · otherwise the class list of the decoration
      */
-    public function classes(mixed $choice): ?string
+    public function classes(mixed $choice, mixed $headAlign = null): ?string
     {
         $site = $this->site();
         $pick = is_string($choice) && in_array($choice, self::BLOCK_CHOICES, true) ? $choice : 'inherit';
@@ -167,6 +178,9 @@ final class HeadingDecor
         if ($style === 'none') {
             return '';
         }
+        if (in_array($style, self::RULE_STYLES, true)) {
+            return 'sf-decor sf-decor--'.$style;
+        }
 
         $classes = ['sf-decor', $style === 'mask' ? ($site['mask_keep_color'] ? 'sf-decor--image' : 'sf-decor--mask') : 'sf-decor--'.$style];
         if ($site['width'] !== 'medium') {
@@ -177,6 +191,9 @@ final class HeadingDecor
         }
         if ($site['gradient'] && ! ($style === 'mask' && $site['mask_keep_color'])) {
             $classes[] = 'sf-decor--grad';
+        }
+        if ($headAlign === 'left' && $site['align'] === 'title') {
+            $classes[] = 'sf-decor--left';
         }
 
         return implode(' ', $classes);

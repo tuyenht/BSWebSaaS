@@ -154,6 +154,9 @@ final class ThemeServiceProvider extends ServiceProvider
             'subtitle' => ['type' => 'text'],
             'image_url' => ['type' => 'image'],
             'overlay' => ['type' => 'int', 'default' => 60],
+            // Without a photo the band is a plain dark one (`pattern` on adds a thin diagonal pattern); `mark` adds the round gold tick above the title (a thank-you page).
+            'pattern' => ['type' => 'enum', 'options' => SectionProps::BAND_PATTERNS, 'default' => 'off'],
+            'mark' => ['type' => 'enum', 'options' => SectionProps::BAND_MARKS, 'default' => 'none'],
         ],
         // The home slider: up to five photos with a heading and a line each, and the same two buttons
         // on every slide. autoplay is seconds per slide (0 = off, else 5–15); overlay is the darkening

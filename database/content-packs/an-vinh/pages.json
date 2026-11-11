@@ -380,7 +380,8 @@
          "icon": "cog"
         }
        ],
-       "variant": "top-rule"
+       "variant": "top-rule",
+       "heading_decor": "none"
       }
      },
      {
@@ -470,8 +471,9 @@
       "type": "branches",
       "props": {
        "heading": "Ba nhà máy",
-       "description": "Tổng diện tích 4.300 m² tại Hà Nội.",
-       "layout": "auto"
+       "layout": "auto",
+       "heading_decor": "line",
+       "heading_align": "left"
       }
      },
      {
@@ -510,7 +512,8 @@
          "text": "2 máy đo 3D CMM và 2 tay đo 3D Faro Arm."
         }
        ],
-       "description": "Máy và thiết bị chính tại nhà máy 1 và nhà máy 3."
+       "heading_decor": "line",
+       "heading_align": "left"
       }
      },
      {
@@ -522,6 +525,8 @@
         "media": "cnc-1"
        },
        "anchor_id": "video",
+       "heading_decor": "line",
+       "heading_align": "left",
        "caption": "Nguồn kênh HackerspaceOL, giấy phép CC BY",
        "spacing_top": "s",
        "spacing_bottom": "s",
@@ -553,6 +558,8 @@
          "caption": "Nhà máy 2: các khung đồ gá trên sàn xưởng"
         }
        ],
+       "heading_decor": "line",
+       "heading_align": "left",
        "spacing_top": "s",
        "spacing_bottom": "s",
        "caption_style": "overlay"
@@ -577,6 +584,8 @@
          "caption": "Máy CNC cỡ lớn tại nhà máy 3"
         }
        ],
+       "heading_decor": "line",
+       "heading_align": "left",
        "spacing_top": "s",
        "spacing_bottom": "s",
        "caption_style": "overlay"
@@ -607,6 +616,8 @@
          "caption": "Mô phỏng 3D trạm jig hàn spot"
         }
        ],
+       "heading_decor": "line",
+       "heading_align": "left",
        "spacing_top": "s",
        "spacing_bottom": "s",
        "caption_style": "overlay"
@@ -896,8 +907,6 @@
       "props": {
        "heading": "Những đối tác đã tin tưởng An Vinh",
        "layout": "grid",
-       "mobile": "two",
-       "note": "Logo theo hồ sơ năng lực An Vinh. Đối tác chưa có tệp logo đủ nét đang hiện tên.",
        "logos": [
         {
          "image_url": {
@@ -950,7 +959,10 @@
          },
          "name": "Vinmanutech"
         }
-       ]
+       ],
+       "heading_decor": "none",
+       "mobile": "two",
+       "note": "Logo theo hồ sơ năng lực An Vinh. Đối tác chưa có tệp logo đủ nét đang hiện tên."
       }
      },
      {
@@ -975,7 +987,8 @@
          "title": "Hàng không & chính xác",
          "text": "Chi tiết máy gia công CNC dung sai chặt."
         }
-       ]
+       ],
+       "heading_decor": "none"
       }
      },
      {
@@ -1068,7 +1081,9 @@
       "type": "page_header",
       "props": {
        "title": "Cảm ơn bạn đã gửi yêu cầu!",
-       "subtitle": "An Vinh đã nhận thông tin. Kỹ sư phụ trách sẽ liên hệ lại với bạn trong thời gian sớm nhất."
+       "subtitle": "An Vinh đã nhận thông tin. Kỹ sư phụ trách sẽ liên hệ lại với bạn trong thời gian sớm nhất.",
+       "mark": "check",
+       "pattern": "on"
       }
      },
      {
@@ -1089,8 +1104,8 @@
          "text": "Báo giá chi tiết kèm tiến độ dự kiến qua email."
         }
        ],
-       "variant": "numeral",
-       "heading_decor": "none"
+       "heading_decor": "none",
+       "variant": "numeral"
       }
      },
      {
@@ -1157,7 +1172,8 @@
       "type": "page_header",
       "props": {
        "title": "Chính sách bảo mật",
-       "subtitle": "Cách chúng tôi thu thập, sử dụng và bảo vệ thông tin cá nhân của bạn"
+       "subtitle": "Cách chúng tôi thu thập, sử dụng và bảo vệ thông tin cá nhân của bạn",
+       "pattern": "on"
       }
      },
      {

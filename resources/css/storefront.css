@@ -1526,7 +1526,8 @@ main:has(.hero, .sf-slider) .page__title {
     overflow-wrap: anywhere;
 }
 
-.sf-crumbs__item + .sf-crumbs__item::before {
+/* The separator closes each level but the last, so a trail that wraps never starts a line with a lone "/". */
+.sf-crumbs__item:not(:last-child)::after {
     content: "/";
     content: "/" / "";
     margin-inline: 0.5rem;
@@ -1920,7 +1921,8 @@ main:has(.hero, .sf-slider) .page__title {
     line-height: 1.3;
 }
 
-.sf-prose--article .sf-band--none .sf-section-head__rule {
+.sf-prose--article .sf-band--none .sf-section-head__rule,
+.sf-prose--article .sf-band--none .sf-section-head > .sf-decor {
     display: none;
 }
 
@@ -10659,4 +10661,108 @@ html:has(.sf-viewer[open]) {
     font-size: 0.875rem;
     text-align: center;
     overflow-wrap: anywhere;
+}
+
+/* ───── Page heads: title band variants, section head alignment and rule ───── */
+/* A title band without a photo: dark with the thin diagonal pattern the boards draw (45deg and -45deg lines, 10% white). */
+.page-band--pattern::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0.1;
+    background-image:
+        repeating-linear-gradient(45deg, #fff 0 1px, transparent 1px 22px),
+        repeating-linear-gradient(-45deg, #fff 0 1px, transparent 1px 22px);
+    pointer-events: none;
+}
+
+/* The round gold tick above a thank-you title; its ring pulses three times (2s each) and then stops; it stands still when motion is reduced. */
+.page-band--mark .page-band__content {
+    padding-block: 3rem;
+}
+
+.page-band__mark {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 5rem;
+    height: 5rem;
+    margin: 0 auto 1.5rem;
+    border-radius: 9999px;
+    background: var(--color-primary);
+    color: var(--color-dark);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3);
+}
+
+.page-band__mark .icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    color: var(--color-dark);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .page-band__mark::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        animation: sf-band-pulse 2s 3;
+    }
+}
+
+@keyframes sf-band-pulse {
+    0% {
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 60%, transparent);
+    }
+
+    70% {
+        box-shadow: 0 0 0 1.1rem transparent;
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 transparent;
+    }
+}
+
+/* A band followed by the floating stats card: the card rises over the band's bottom edge, so the
+   band keeps that much room under its last line and a long subtitle is never covered. */
+.page-band:has(+ .sf-stats--floating),
+.page-band:has(+ .sf-s > .sf-stats--floating) {
+    padding-bottom: 3.5rem;
+}
+
+/* A head at the left edge (`heading_align` left): title, rule and line of text start at the left. */
+.sf-section-head--left {
+    max-width: none;
+    margin-inline: 0;
+    text-align: left;
+}
+
+.sf-section-head--left .sf-section-head__rule,
+.sf-decor--left {
+    margin-inline: 0;
+}
+
+.sf-section-head--left .sf-section-head__rule {
+    background: var(--sch-rule, var(--color-primary));
+}
+
+/* The row-long rule (`heading_decor` line): one gold line under the title across the whole width. */
+.sf-decor--line {
+    width: 100%;
+    max-width: none;
+    height: 2px;
+    aspect-ratio: auto;
+    margin: 0;
+    -webkit-mask: none;
+    mask: none;
+}
+
+.sf-section-head:has(> .sf-decor--line) {
+    margin-bottom: 2rem;
+}
+
+.sf-section-head:has(> .sf-decor--line) .sf-section-head__title {
+    margin-bottom: 0.5rem;
 }

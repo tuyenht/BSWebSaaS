@@ -490,7 +490,7 @@ final readonly class PageRenderer
      */
     private static function splitBand(string $sections): array
     {
-        if (preg_match('~^\s*(?:<div class="sf-s[^"]*"[^>]*>.*?)?<section class="page-band">.*?</section>~s', $sections, $band) !== 1) {
+        if (preg_match('~^\s*(?:<div class="sf-s[^"]*"[^>]*>.*?)?<section class="page-band[^"]*">.*?</section>~s', $sections, $band) !== 1) {
             return ['', $sections];
         }
         $end = strlen($band[0]);

@@ -25,6 +25,7 @@ use App\Modules\Cms\Queries\PendingEntryDrafts;
 use App\Modules\Cms\Routing\CategoryChange;
 use App\Modules\Cms\Routing\CategoryRelinker;
 use App\Modules\Cms\Routing\PathBuilder;
+use App\Modules\Cms\Taxonomy\TaxonomyRules;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormField;
 use App\Modules\Media\Models\Media;
@@ -73,7 +74,7 @@ final class Planner
     /** @var list<string> */
     private array $locales = [];
 
-    /** @var array<int, array{vocabulary: string, parent_id: int|null, position: int, list_template: string|null, detail_template: string|null, layout_blocks: array<array-key, mixed>, tr: array<string, array{name: string, slug: string}>}> */
+    /** @var array<int, array{vocabulary: string, parent_id: int|null, position: int, list_template: string|null, detail_template: string|null, cover: string|null, layout_blocks: array<array-key, mixed>, tr: array<string, array{name: string, slug: string, description?: string}>}> */
     private array $taxonomies = [];
 
     /** @var array<int, string> taxonomy id → its key (the pack item's when matched, else derived) */
@@ -564,10 +565,11 @@ final class Planner
 
     private function loadTaxonomies(): void
     {
-        $rows = $this->locked(Taxonomy::query())->get(['id', 'vocabulary', 'parent_id', 'position', 'list_template', 'detail_template', 'meta']);
+        $rows = $this->locked(Taxonomy::query())->get(['id', 'vocabulary', 'parent_id', 'position', 'list_template', 'detail_template', 'cover_media_id', 'meta']);
+        $covers = Media::query()->whereIn('id', $rows->pluck('cover_media_id')->filter()->all())->pluck('storage_key', 'id');
         // Every language, not only the pack's: a category write re-syncs the posts and products under
         // it in every language they are routed in, and their addresses there carry these slugs.
-        $translations = $this->locked(TaxonomyTranslation::query())->get(['taxonomy_id', 'locale', 'name', 'slug']);
+        $translations = $this->locked(TaxonomyTranslation::query())->get(['taxonomy_id', 'locale', 'name', 'slug', 'description']);
 
         foreach ($rows as $row) {
             $this->taxonomies[$row->id] = [
@@ -576,13 +578,15 @@ final class Planner
                 'position' => $row->position,
                 'list_template' => $row->list_template,
                 'detail_template' => $row->detail_template,
+                'cover' => $row->cover_media_id === null ? null : Cast::stringOrNull($covers[$row->cover_media_id] ?? null),
                 'layout_blocks' => Cast::arr(Cast::arr($row->meta)[LayoutSlots::META_KEY] ?? null),
                 'tr' => [],
             ];
         }
         foreach ($translations as $translation) {
             if (isset($this->taxonomies[$translation->taxonomy_id])) {
-                $this->taxonomies[$translation->taxonomy_id]['tr'][$translation->locale] = ['name' => $translation->name, 'slug' => $translation->slug];
+                $this->taxonomies[$translation->taxonomy_id]['tr'][$translation->locale] = ['name' => $translation->name, 'slug' => $translation->slug]
+                    + (trim((string) $translation->description) === '' ? [] : ['description' => (string) $translation->description]);
             }
         }
     }
@@ -693,6 +697,8 @@ final class Planner
             $translations[$locale] = $row['tr'][$locale] ?? null;
         }
 
+        // The intro picture and the category's own block slots are part of the state only when the category
+        // has them, so a category without them keeps the state (and ledger hash) it had.
         $state = [
             'vocabulary' => $row['vocabulary'],
             'parent' => $row['parent_id'] === null ? null : $this->taxonomyKey($row['parent_id']),
@@ -700,10 +706,11 @@ final class Planner
             'list_template' => $row['list_template'],
             'detail_template' => $row['detail_template'],
         ];
-        // The category's own block slots join its state only when it has some, so a category
-        // without any hashes as it did before the pack could carry them.
         if ($row['layout_blocks'] !== []) {
             $state['layout_blocks'] = $row['layout_blocks'];
+        }
+        if ($row['cover'] !== null) {
+            $state['cover'] = $row['cover'];
         }
         $state['translations'] = $translations;
 
@@ -724,12 +731,36 @@ final class Planner
         $translations = [];
         foreach ($this->locales as $locale) {
             $name = Cast::stringOrNull($names[$locale] ?? null);
-            $translations[$locale] = $name === null
+            $translation = $name === null
                 ? ($live[$locale] ?? null)
                 : ['name' => $name, 'slug' => $locale === $this->locale ? $this->taxonomySlug($item) : Cast::string($slugs[$locale] ?? null, $this->taxonomySlug($item))];
+            if ($name !== null) {
+                $intro = array_key_exists($locale, Cast::arr($item->data['description'] ?? null))
+                    ? (TaxonomyRules::description(Cast::string(Cast::arr($item->data['description'])[$locale])) ?? '')
+                    : Cast::string(Cast::arr($live[$locale] ?? null)['description'] ?? null);
+                if ($intro !== '') {
+                    $translation = Cast::arr($translation) + ['description' => $intro];
+                }
+            }
+            $translations[$locale] = $translation;
         }
 
-        $desired = [
+        $extra = [];
+        $cover = $item->data['cover'] ?? null;
+        if (PackValidator::isMediaRef($cover)) {
+            $slot = $this->slots[$cover['media']] ?? null;
+            if ($slot === null) {
+                $this->warnings[] = "{$item->key}: {$this->unresolved($cover['media'])}; the category keeps its live picture.";
+            }
+            $key = $slot['key'] ?? Cast::stringOrNull($current['cover'] ?? null);
+        } else {
+            $key = Cast::stringOrNull($current['cover'] ?? null);
+        }
+        if ($key !== null) {
+            $extra['cover'] = $key;
+        }
+
+        $desired = $extra + [
             'vocabulary' => $chain['vocabulary'] ?? '',
             'parent' => Cast::stringOrNull($item->data['parent'] ?? null),
             'position' => array_key_exists('position', $item->data) ? Cast::int($item->data['position']) : Cast::int($current['position'] ?? null),

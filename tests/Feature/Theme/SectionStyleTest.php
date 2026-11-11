@@ -47,7 +47,7 @@ it('adds the look props to every block type and lets no block declare a reserved
     foreach ($registry->types() as $type) {
         expect(array_values(array_diff(array_intersect(array_keys($registry->get($type)->schema()), StyleProps::RESERVED), $own[$type] ?? [])))->toBe([], "{$type} declares a reserved look prop")
             // The heading decoration is offered only on a block that draws a section heading.
-            ->and(array_keys($registry->schemaFor($type)))->toContain(...array_diff(array_keys(StyleProps::SCHEMA), ['heading_decor']));
+            ->and(array_keys($registry->schemaFor($type)))->toContain(...array_diff(array_keys(StyleProps::SCHEMA), ['heading_decor', 'heading_align']));
     }
 
     expect(array_diff(array_keys(StyleProps::SCHEMA), StyleProps::RESERVED))->toBe([]);
