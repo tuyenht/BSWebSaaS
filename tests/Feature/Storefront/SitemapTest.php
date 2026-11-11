@@ -3,6 +3,7 @@
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Media\Models\Media;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Actions\SeedAnVinhContent;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
@@ -50,7 +51,7 @@ it('GET /sitemap.xml returns 200 application/xml with a valid urlset', function 
     $xml = $response->getContent();
     expect($xml)
         ->toContain('<?xml version="1.0" encoding="UTF-8"?>')
-        ->toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
+        ->toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">')
         ->toContain('</urlset>');
 });
 
@@ -164,7 +165,7 @@ it('renders a small site byte for byte as before the index existed', function ()
     // Golden output of the pre-index controller (81a0d4d) for the same fixture, except that the
     // category list now carries no lastmod (nothing records when a post joins it).
     expect($this->get('http://other.platform.test/sitemap.xml')->assertOk()->getContent())->toBe(
-        '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">'
         .'<url><loc>http://other.platform.test/</loc><lastmod>2026-01-02T03:04:05+00:00</lastmod></url>'
         .'<url><loc>http://other.platform.test/lien-he</loc><lastmod>2026-01-02T03:04:05+00:00</lastmod></url>'
         .'<url><loc>http://other.platform.test/tin-tuc</loc></url>'
@@ -507,4 +508,113 @@ it('serves the last built plan instead of a 503 while another request rebuilds a
     expect($this->get('http://anvinh.platform.test/sitemap-2.xml')->assertOk()->getContent())->toBe($page2);
 
     $lock->release();
+});
+
+/*
+ * Main picture of each page (Google image sitemap extension): read with the route list in the
+ * same query, so the number of queries does not grow with the number of pages.
+ */
+
+function sitemapSeedOtherCo(): Site
+{
+    app(ProvisionSite::class)->handle(new ProvisionSiteData(
+        tenantName: 'Other Co', siteName: 'Other Co', hostname: 'other.platform.test',
+        ownerEmail: 'owner@other.test', ownerName: 'Owner', ownerPassword: 'a-strong-password',
+    ));
+
+    return Site::query()->firstWhere('name', 'Other Co');
+}
+
+/** Seeds one published page per $covers entry (null = no cover) and returns their slugs. */
+function sitemapSeedPages(Site $site, array $covers): void
+{
+    app(Tenancy::class)->enter($site->id, function () use ($covers): void {
+        foreach ($covers as $slug => $cover) {
+            $entry = Entry::query()->create([
+                'type' => 'page', 'status' => 'published', 'published_at' => now(),
+                'meta' => $cover === null ? [] : ['image_url' => $cover],
+            ]);
+            $entry->translations()->create(['locale' => 'vi', 'title' => $slug, 'slug' => $slug, 'status' => 'published']);
+            app(RouteSync::class)->sync($entry, 'vi', $slug);
+        }
+    });
+}
+
+it('lists the cover of a page as an image:image and nothing for a page without one', function (): void {
+    $site = sitemapSeedOtherCo();
+    sitemapSeedPages($site, [
+        'with-cover' => 'tenant/posts/cover-0123456789ab.jpg',
+        'no-cover' => null,
+        'icon-only' => 'building',
+        'full-link' => 'https://cdn.example.test/a&b.jpg',
+    ]);
+
+    $xml = $this->get('http://other.platform.test/sitemap.xml')->assertOk()->getContent();
+
+    $doc = new DOMDocument;
+    expect($doc->loadXML($xml))->toBeTrue();
+    expect($xml)->toContain('xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"');
+
+    $blocks = collect(sitemapUrlBlocks($xml));
+    $block = fn (string $slug): string => $blocks->first(fn (string $b): bool => str_contains($b, '/'.$slug.'</loc>'));
+
+    expect($block('with-cover'))->toContain('<image:image><image:loc>')
+        ->toContain('tenant/posts/cover-0123456789ab.jpg')
+        ->and($block('no-cover'))->not->toContain('image:image')
+        ->and($block('icon-only'))->not->toContain('image:image')
+        ->and($block('full-link'))->toContain('<image:loc>https://cdn.example.test/a&amp;b.jpg</image:loc>')
+        ->and(substr_count($xml, '<image:image>'))->toBe(2);
+});
+
+it('lists the first photo of a product and ignores a trashed one', function (): void {
+    $site = sitemapSeedOtherCo();
+    app(Tenancy::class)->enter($site->id, function (): void {
+        SiteSetting::query()->updateOrCreate(
+            ['group_name' => 'permalinks', 'key' => 'products'],
+            ['value' => ['pattern' => 'base', 'base' => 'san-pham']],
+        );
+        $product = Product::query()->create(['status' => 'published', 'published_at' => now()]);
+        $product->translations()->create(['locale' => 'vi', 'name' => 'Trục', 'slug' => 'truc']);
+        app(RouteSync::class)->syncProduct($product->id, null, 'vi', 'truc');
+        foreach (['second' => 2, 'first' => 1, 'trashed' => 0] as $name => $position) {
+            $media = Media::query()->create([
+                'storage_key' => "tenant/products/{$name}-0123456789ab.jpg", 'mime' => 'image/jpeg',
+                'size' => 10, 'original_filename' => "{$name}.jpg", 'hash' => str_pad($name, 64, 'a'), 'slug' => $name,
+            ]);
+            $product->images()->create(['media_id' => $media->id, 'position' => $position]);
+            if ($name === 'trashed') {
+                $media->delete();
+            }
+        }
+    });
+
+    $xml = $this->get('http://other.platform.test/sitemap.xml')->assertOk()->getContent();
+
+    expect($xml)->toContain('first-0123456789ab.jpg')
+        ->not->toContain('second-0123456789ab.jpg')
+        ->not->toContain('trashed-0123456789ab.jpg');
+});
+
+it('reads the images in the same queries however many pages carry one', function (): void {
+    $site = sitemapSeedOtherCo();
+    $count = function () {
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+        $this->get('http://other.platform.test/sitemap.xml')->assertOk();
+        $n = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        return $n;
+    };
+
+    $this->get('http://other.platform.test/sitemap.xml')->assertOk(); // warm caches
+    sitemapSeedPages($site, ['a' => 'tenant/posts/a-0123456789ab.jpg']);
+    $few = $count();
+    sitemapSeedPages($site, array_combine(
+        array_map(fn (int $i): string => "p{$i}", range(1, 12)),
+        array_map(fn (int $i): string => "tenant/posts/p{$i}-0123456789ab.jpg", range(1, 12)),
+    ));
+    $many = $count();
+
+    expect($many)->toBe($few)->toBeLessThanOrEqual(12);
 });
