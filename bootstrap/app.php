@@ -19,14 +19,18 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Trust the loopback AND the Docker-internal reverse proxy. In prod the edge Caddy is a
-        // SEPARATE container that reaches the app over the bridge network on a private IP (NOT
-        // loopback), so a loopback-only list ignored its X-Forwarded-Host — making signed-URL
-        // validation reconstruct the internal host:port (…:80) and reject every signed URL
-        // (notably Livewire's file-upload endpoint) with a 401 invalid-signature. The RFC-1918
-        // private ranges trust that in-cluster proxy while still rejecting any spoofed
-        // X-Forwarded-* from a public client (whose source IP is never private).
-        $middleware->trustProxies(at: ['127.0.0.1', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']);
+        // Trust the loopback AND the Docker-internal reverse proxy (prod's edge Caddy is a separate
+        // container on a private bridge IP), but ONLY for the visitor's IP (X-Forwarded-For) and the
+        // scheme (X-Forwarded-Proto). Caddy forwards the visitor's own Host header unchanged, so the
+        // host comes from Host alone: Caddy keeps an X-Forwarded-Host that arrives through
+        // Cloudflare (a trusted proxy for Caddy) as the client wrote it, and trusting it here let any
+        // visitor pick which site a request resolves to. Port and prefix are never trusted either.
+        // Signed URLs still validate: the scheme comes from X-Forwarded-Proto and the host and
+        // standard port from Host.
+        $middleware->trustProxies(
+            at: ['127.0.0.1', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'],
+            headers: Request::HEADER_X_FORWARDED_FOR | Request::HEADER_X_FORWARDED_PROTO,
+        );
 
         // Append security headers to every web response. Placement at the end of the
         // web group means headers are applied after routing but before the response
