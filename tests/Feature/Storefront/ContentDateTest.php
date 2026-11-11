@@ -35,15 +35,7 @@ function sitemapLastmod(string $xml, string $path): ?string
 /** The Article data in a page head. @return array<string, mixed> */
 function contentDateArticle(string $html): array
 {
-    preg_match_all('~<script type="application/ld\+json">(.*?)</script>~s', $html, $found);
-    foreach ($found[1] as $json) {
-        $data = json_decode($json, true);
-        if (is_array($data) && ($data['@type'] ?? null) === 'Article') {
-            return $data;
-        }
-    }
-
-    throw new RuntimeException('No Article data in the page.');
+    return ldNode($html, 'Article') ?? throw new RuntimeException('No Article data in the page.');
 }
 
 it('keeps a post\'s dates when only its address moves, while the sitemap shows the move', function (): void {

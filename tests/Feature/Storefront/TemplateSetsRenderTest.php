@@ -74,15 +74,7 @@ it('prints JobPosting data for a post on a job layout, with no deadline until po
 /** The JobPosting object printed in the page head, or null when the page carries none. */
 function jobLd(string $html): ?array
 {
-    preg_match_all('~<script type="application/ld\+json">(.*?)</script>~s', $html, $found);
-    foreach ($found[1] as $json) {
-        $data = json_decode($json, true);
-        if (is_array($data) && ($data['@type'] ?? null) === 'JobPosting') {
-            return $data;
-        }
-    }
-
-    return null;
+    return ldNode($html, 'JobPosting');
 }
 
 it('prints the employer, the workplace address and the excerpt in the JobPosting data', function (): void {

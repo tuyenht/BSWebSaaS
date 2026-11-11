@@ -189,6 +189,40 @@ function seedHomepage(int $site, string $title = 'Home', string $path = '/'): vo
 
 /*
 |--------------------------------------------------------------------------
+| Structured data of a storefront page
+|--------------------------------------------------------------------------
+| A page prints exactly one `application/ld+json` script holding one `@graph`. These return its
+| nodes in order (a lone object counts as one node); a page with a second script, or a script that
+| is not valid JSON, fails the test.
+*/
+
+/** @return list<array<string, mixed>> */
+function ldNodes(string $html): array
+{
+    preg_match_all('~<script type="application/ld\+json">(.*?)</script>~s', $html, $found);
+    expect(count($found[1]))->toBeLessThanOrEqual(1, 'A page prints one JSON-LD script');
+    if ($found[1] === []) {
+        return [];
+    }
+    $data = json_decode($found[1][0], true, 512, JSON_THROW_ON_ERROR);
+
+    return array_values(is_array($data['@graph'] ?? null) ? $data['@graph'] : [$data]);
+}
+
+/** The first node of $type in the page's structured data, or null. @return array<string, mixed>|null */
+function ldNode(string $html, string $type): ?array
+{
+    foreach (ldNodes($html) as $node) {
+        if (($node['@type'] ?? null) === $type) {
+            return $node;
+        }
+    }
+
+    return null;
+}
+
+/*
+|--------------------------------------------------------------------------
 | Breach-check (HIBP) test double
 |--------------------------------------------------------------------------
 | Password::defaults() carries ->uncompromised(), which calls the HaveIBeenPwned

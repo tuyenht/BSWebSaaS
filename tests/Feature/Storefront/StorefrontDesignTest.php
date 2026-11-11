@@ -95,26 +95,20 @@ it('BreadcrumbList JSON-LD is valid decodable JSON on a post page', function ():
 
     $html = $this->get('http://anvinh.platform.test/tin-tuc/bai-kiem-tra-json-ld')->assertOk()->getContent();
 
-    // Extract the BreadcrumbList block (the post also carries its Article data).
-    $matched = preg_match(
-        '/<script type="application\/ld\+json">(\{"@context":"https:\/\/schema.org","@type":"BreadcrumbList".*?)<\/script>/s',
-        (string) $html,
-        $m,
-    );
+    // The page prints one script holding one graph; the BreadcrumbList is a node of it (the post also carries its Article data).
+    preg_match('~<script type="application/ld\+json">(.*?)</script>~s', (string) $html, $m);
+    $document = json_decode($m[1] ?? 'null', true);
 
-    expect($matched)->toBe(1, 'No application/ld+json script block found');
-
-    $decoded = json_decode($m[1]);
-
-    expect($decoded)->not->toBeNull('JSON-LD failed to decode: '.json_last_error_msg());
-    expect($decoded->{'@type'})->toBe('BreadcrumbList');
-    expect($decoded->{'@context'})->toBe('https://schema.org');
+    expect($document)->not->toBeNull('JSON-LD failed to decode: '.json_last_error_msg());
+    expect($document['@context'])->toBe('https://schema.org');
+    $list = ldNode((string) $html, 'BreadcrumbList');
+    expect($list)->not->toBeNull();
 
     // Confirm the breadcrumb trail: Home → category → post
-    $items = $decoded->itemListElement;
+    $items = $list['itemListElement'];
     expect(count($items))->toBe(3);
-    expect($items[0]->position)->toBe(1);
-    expect($items[2]->name)->toBe('Bài kiểm tra JSON-LD');
+    expect($items[0]['position'])->toBe(1);
+    expect($items[2]['name'])->toBe('Bài kiểm tra JSON-LD');
 });
 
 // ─── Branded Vietnamese 404 ───────────────────────────────────────────────────

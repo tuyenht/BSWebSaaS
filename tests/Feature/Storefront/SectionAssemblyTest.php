@@ -31,7 +31,9 @@ it('lists a capability category as numbered rows between its before and after ba
         app(SetCategoryLayoutBlocks::class)->handle($category, ['before_list' => assemblyCta('Trước danh sách'), 'after_list' => assemblyCta('Sau danh sách')]);
     });
 
-    $html = test()->get('http://mau.platform.test/nang-luc')->assertOk()->getContent();
+    // The order is that of the body: the head's structured data names the posts too.
+    $page = test()->get('http://mau.platform.test/nang-luc')->assertOk()->getContent();
+    $html = substr($page, (int) strpos($page, '<body'));
 
     expect(substr_count($html, 'class="sf-cap'))->toBeGreaterThanOrEqual(2)
         ->and($html)->toContain('sf-cap--flip')

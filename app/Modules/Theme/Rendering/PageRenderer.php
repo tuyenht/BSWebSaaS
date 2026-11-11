@@ -522,6 +522,7 @@ final readonly class PageRenderer
             'tokens' => $this->theme->cssVariables(),
             'posts' => $posts,
             'pagination' => $pagination,
+            'ldPage' => 'CollectionPage',
         ] + $extra)->render();
     }
 
@@ -557,6 +558,7 @@ final readonly class PageRenderer
             'description' => $parts['html'],
             'parts' => $parts['items'],
             'images' => $images,
+            'ldPage' => 'ItemPage',
         ] + ($videos > 0 ? ['videoScript' => true] : []) + ($parts['items'] !== [] ? ['tocScript' => true] : []) + $extra)->render();
     }
 

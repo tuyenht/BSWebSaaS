@@ -113,7 +113,7 @@ it('lists a category within its budget on each layout', function (string $path, 
     // Measured on the same fixture before these layouts: the titles list 19, the product index 20.
     'titles layout: the COUNT is gone' => ['/tin-tuc', null, null, 18],
     'news cards, a parent with chips: chips and the site timezone' => ['/tin-tuc', 'grid-news', null, 22],
-    'product cards, a child category: the products check, chips, photos, categories and the parent category in the trail' => ['/do-ga', null, 'grid-product', 26],
+    'product cards, a child category: the products check, chips, photos, categories and the parent category in the trail, and the one read that keeps its title unique' => ['/do-ga', null, 'grid-product', 27],
     'a product page in a child category: its category trail, the parent category, the photos and the look for products of its group (none here), and the route of the contact page for the quote button, plus the row of products of its branch that fills the group: its photos, translations and the categories of the ones from another group' => ['/san-pham-1', null, null, 26],
 ]);
 

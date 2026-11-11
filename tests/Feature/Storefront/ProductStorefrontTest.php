@@ -152,16 +152,15 @@ it('emits Product JSON-LD on the detail page — name, text description, url, br
 
     expect($html)->toContain('"@type":"Product"');
 
-    preg_match_all('/<script type="application\/ld\+json">(.*?)<\/script>/s', $html, $matches);
-    $productLd = collect($matches[1])
-        ->map(fn (string $json) => json_decode($json, true))
-        ->firstWhere('@type', 'Product');
+    $productLd = ldNode($html, 'Product');
 
     expect($productLd)->not->toBeNull();
     expect($productLd['name'])->toBe('Jig kiểm VF7');
     expect($productLd['description'])->toBe('Đồ gá kiểm tra cụm taplo.'); // stripped to plain text
     expect($productLd['url'])->toBe('http://anvinh.platform.test/san-pham/jig-vf7');
-    expect($productLd['brand'])->toBe(['@type' => 'Brand', 'name' => 'Cơ Khí Chính Xác An Vinh']);
+    // The business is named by its Organization id; the home page describes it in full.
+    expect($productLd['brand'])->toBe(['@id' => 'http://anvinh.platform.test/#organization'])
+        ->and($productLd['manufacturer'])->toBe(['@id' => 'http://anvinh.platform.test/#organization']);
     expect($productLd)->not->toHaveKey('offers'); // brochure catalog — nothing is sold online
 });
 
