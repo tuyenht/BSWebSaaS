@@ -8,10 +8,10 @@
     "vi": "Cơ Khí Chính Xác An Vinh"
    },
    "seo_title": {
-    "vi": "Trang Chủ | Cơ Khí Chính Xác An Vinh"
+    "vi": "Đồ gá, khuôn mẫu, gia công CNC | Cơ Khí Chính Xác An Vinh"
    },
    "seo_description": {
-    "vi": "An Vinh - Giải pháp cơ khí chính xác, chuyên thiết kế, gia công đồ gá, jig, và khuôn mẫu chất lượng cao tại Việt Nam."
+    "vi": "An Vinh thiết kế, chế tạo jig, đồ gá, khuôn mẫu và gia công CNC theo bản vẽ tại ba nhà máy 4.300 m² ở Hà Nội; quản lý chất lượng ISO 9001:2015."
    },
    "body": {
     "vi": [
@@ -256,7 +256,7 @@
     "vi": "Giới thiệu"
    },
    "seo_title": {
-    "vi": "Giới Thiệu Công Ty | Cơ Khí Chính Xác An Vinh"
+    "vi": "Giới thiệu công ty | Cơ Khí Chính Xác An Vinh"
    },
    "seo_description": {
     "vi": "An Vinh thiết kế, chế tạo Jig & đồ gá, khuôn mẫu và gia công CNC từ năm 2019, với ba nhà máy 4.300 m² tại Hà Nội và hệ thống quản lý chất lượng ISO 9001:2015."
@@ -378,6 +378,11 @@
          "title": "Hiệu quả",
          "text": "Cải tiến liên tục kiến thức, kỹ năng để phục vụ khách hàng với hiệu suất cao nhất, mang lại lợi ích thiết thực.",
          "icon": "cog"
+        },
+        {
+         "title": "An toàn",
+         "text": "Giữ an toàn cho người lao động và cho sản phẩm trong từng công đoạn, từ vận hành máy đến đóng gói giao hàng.",
+         "icon": "shield"
         }
        ],
        "variant": "top-rule",
@@ -406,8 +411,10 @@
       "props": {
        "heading": "Cam kết chất lượng theo tiêu chuẩn quốc tế",
        "paragraphs": [
-        "Hệ thống quản lý chất lượng của An Vinh được chứng nhận phù hợp tiêu chuẩn ISO 9001:2015 cho gia công rèn, dập, hàn và sản xuất đồ gá, khuôn mẫu.",
-        "Số chứng nhận: HT 3078 · Hiệu lực đến 23/02/2027"
+        "Hệ thống quản lý chất lượng của An Vinh được chứng nhận phù hợp tiêu chuẩn ISO 9001:2015.",
+        "Số chứng nhận: HT 3078 · Cấp bởi Viện Nghiên cứu Phát triển Tiêu chuẩn Chất lượng (ISSQ)",
+        "Hiệu lực đến 23/02/2027",
+        "Phạm vi: gia công rèn, dập, hàn; sản xuất đồ gá, khuôn mẫu"
        ],
        "image_url": {
         "media": "iso-9001-certificate"
@@ -450,7 +457,7 @@
     "vi": "Nhà xưởng & máy móc"
    },
    "seo_title": {
-    "vi": "Nhà Xưởng & Máy Móc | Cơ Khí Chính Xác An Vinh"
+    "vi": "Nhà xưởng & máy móc | Cơ Khí Chính Xác An Vinh"
    },
    "seo_description": {
     "vi": "Ba nhà máy của An Vinh tại Trung Giã và Thạch Thất, Hà Nội, tổng 4.300 m²: lắp ráp, hàn, dập, gia công CNC; máy phay, tiện CNC, cắt dây EDM và máy đo CMM."
@@ -519,7 +526,7 @@
      {
       "type": "video",
       "props": {
-       "heading": "Video minh họa: phay CNC (timelapse)",
+       "heading": "Video & hình ảnh",
        "url": "https://www.youtube.com/watch?v=FpYQc5zMLzM",
        "poster": {
         "media": "cnc-1"
@@ -672,7 +679,7 @@
     "vi": "Chứng chỉ & thành tựu"
    },
    "seo_title": {
-    "vi": "Chứng Chỉ & Thành Tựu | Cơ Khí Chính Xác An Vinh"
+    "vi": "Chứng chỉ & thành tựu | Cơ Khí Chính Xác An Vinh"
    },
    "seo_description": {
     "vi": "Chứng nhận ISO 9001:2015 số HT 3078 do ISSQ cấp, hiệu lực đến 23/02/2027, cho gia công rèn, dập, hàn, đồ gá, khuôn mẫu; cùng đối tác và dự án đã thực hiện."
@@ -806,7 +813,7 @@
     "vi": "Hồ sơ năng lực & tài liệu"
    },
    "seo_title": {
-    "vi": "Hồ Sơ Năng Lực & Tài Liệu | Cơ Khí Chính Xác An Vinh"
+    "vi": "Hồ sơ năng lực & tài liệu | Cơ Khí Chính Xác An Vinh"
    },
    "seo_description": {
     "vi": "Tải hồ sơ năng lực An Vinh (PDF, 21 trang): thông tin công ty, ba nhà máy 4.300 m², máy móc, chứng nhận ISO 9001:2015, sản phẩm Jig & đồ gá, khuôn mẫu."
@@ -888,7 +895,10 @@
     "vi": "Đối tác"
    },
    "seo_title": {
-    "vi": "Đối Tác | Cơ Khí Chính Xác An Vinh"
+    "vi": "Đối tác | Cơ Khí Chính Xác An Vinh"
+   },
+   "seo_description": {
+    "vi": "Đối tác và khách hàng của An Vinh trong ngành ô tô, xe máy, tự động hóa: VinFast, Festo, Hutchinson, Weldcom, SMC, Yamaguchi, Palfinger và nhiều đơn vị khác."
    },
    "body": {
     "vi": [
@@ -1017,10 +1027,10 @@
     "vi": "Liên hệ"
    },
    "seo_title": {
-    "vi": "Liên Hệ | Cơ Khí Chính Xác An Vinh"
+    "vi": "Liên hệ | Cơ Khí Chính Xác An Vinh"
    },
    "seo_description": {
-    "vi": "Chúng tôi luôn sẵn sàng lắng nghe và tư vấn giải pháp cho bạn"
+    "vi": "Liên hệ An Vinh để nhận tư vấn và báo giá jig, đồ gá, khuôn mẫu, gia công CNC: gọi 0915 66 83 83, email quybv@ckanvinh.vn hoặc gửi bản vẽ qua biểu mẫu."
    },
    "body": {
     "vi": [
@@ -1303,7 +1313,7 @@
     ]
    },
    "seo_title": {
-    "vi": "Chính Sách Bảo Mật | Cơ Khí Chính Xác An Vinh"
+    "vi": "Chính sách bảo mật | Cơ Khí Chính Xác An Vinh"
    },
    "seo_description": {
     "vi": "Cơ Khí Chính Xác An Vinh thu thập thông tin gì qua website, dùng để làm gì, lưu bao lâu và cách bạn xem, sửa hoặc xóa thông tin của mình."

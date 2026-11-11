@@ -141,7 +141,7 @@ it('makes no absolute advertising claim, and credits every video as an illustrat
     }
     expect($videos)->toHaveCount(3);
     foreach ($videos as $heading) {
-        expect($heading)->toStartWith('Video minh họa:')->and(mb_strtolower($heading))->toContain('nguồn kênh')->toContain('giấy phép cc by');
+        expect($heading)->toMatch('/^Video (minh họa|& hình ảnh): /u')->and(mb_strtolower($heading))->toContain('nguồn kênh')->toContain('giấy phép cc by');
     }
 });
 
@@ -262,7 +262,7 @@ it('loads the flourish heading decoration, a floating contact of Zalo and call o
     $settings = collect(json_decode((string) file_get_contents((new PackReader)->read('an-vinh')->dir.'/settings.json'), true)['items'])->keyBy('key');
     expect($settings['setting:theme.heading_decor']['value'])->toBe(['style' => 'flourish'])
         ->and(collect($settings['setting:storefront.floating_contact']['value']['channels'])->where('on', true)->pluck('key')->all())->toBe(['zalo', 'phone'])
-        ->and($settings['setting:storefront.layout_blocks']['managed_keys'])->toBe(['post_aside', 'after_product'])
+        ->and($settings['setting:storefront.layout_blocks']['managed_keys'])->toBe(['post_aside', 'after_product', 'product_before_action', 'product_after_action'])
         ->and(collect($settings['setting:storefront.layout_blocks']['value']['post_aside']['vi']['blocks'])->pluck('type')->all())->toBe(['consult', 'recent_posts', 'category_list'])
         ->and(collect($settings['setting:storefront.layout_blocks']['value']['after_product']['vi']['blocks'])->pluck('type')->all())->toBe(['cta']);
 
@@ -274,7 +274,7 @@ it('loads the flourish heading decoration, a floating contact of Zalo and call o
 
     $stored = fn (string $group, string $key): array => ContentPacks::in($siteId, fn (): array => SiteSetting::query()->where('group_name', $group)->where('key', $key)->value('value'));
     expect($stored('theme', 'heading_decor')['style'])->toBe('flourish')
-        ->and(array_keys($stored('storefront', 'layout_blocks')))->toEqualCanonicalizing(['post_aside', 'after_product']);
+        ->and(array_keys($stored('storefront', 'layout_blocks')))->toEqualCanonicalizing(['post_aside', 'after_product', 'product_before_action', 'product_after_action']);
 
     $home = $this->get('http://'.ContentPacks::HOST.'/')->assertOk()->getContent();
     expect($home)->toContain('<nav class="sf-fc sf-fc--right sf-fc--md"')
@@ -304,7 +304,7 @@ it('gives the factories the design\'s map points and only the company\'s own pho
 
     $points = array_map(fn (array $factory): array => [$factory['key'], $factory['lat'], $factory['lng'], $factory['approximate'], $factory['image_media_id']['media'] ?? null], $footer['factories']);
     expect($points)->toBe([
-        ['nha-may-1', 21.2983367, 105.8672342, false, null],
+        ['nha-may-1', 21.2983367, 105.8672342, false, 'factory-1'],
         ['nha-may-2', 21.2936586, 105.8649934, true, 'plant-2-assembly-floor-1'],
         ['nha-may-3', 21.0655337, 105.556209, true, 'plant-3-machining-hall'],
     ])

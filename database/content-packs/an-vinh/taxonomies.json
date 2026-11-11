@@ -650,6 +650,32 @@
        }
       ]
      }
+    },
+    "after_list": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "cta",
+        "props": {
+         "heading": "Chưa thấy vị trí phù hợp? Gửi hồ sơ cho chúng tôi",
+         "text": "Gửi CV qua email hoặc nhắn Zalo cho bộ phận nhân sự. Hồ sơ gồm CV hoặc đơn xin việc, kèm bằng cấp, chứng chỉ nếu có.",
+         "button_label": "Gửi CV qua email",
+         "button_url_do": {
+          "k": "mail",
+          "email": "quybv@ckanvinh.vn",
+          "subject": "Ứng tuyển vào An Vinh"
+         },
+         "button2_label": "Nhắn Zalo",
+         "button2_url_do": {
+          "k": "zalo",
+          "phone": "0915668383"
+         },
+         "variant": "card",
+         "button2_tone": "zalo"
+        }
+       }
+      ]
+     }
     }
    }
   }
