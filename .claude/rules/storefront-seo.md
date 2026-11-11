@@ -27,7 +27,7 @@ Sources with quotes and URLs: `docs/notes/seo-geo-sources.md` (read 2026-11-11).
 
 ## 2. HTML structure
 - Exactly one `<h1>` and it equals the visible page title. Heading levels never skip.
-- One each of `header`, `main`, `footer`. Each `nav` has an `aria-label`.
+- Exactly one `main`, a page `header` and `footer` (an `article` may have its own). Each `nav` has an `aria-label`.
 - A skip link comes before the header. `<html lang>` is the page's locale, and `aria-current="page"` marks the current item in the menu and the breadcrumb.
 - Use the element that means the thing:
   - `<article>` for a post, product or job;
@@ -47,12 +47,12 @@ Sources with quotes and URLs: `docs/notes/seo-geo-sources.md` (read 2026-11-11).
   - detail pages (post, project, job, product) end the visible trail at the parent;
   - JSON-LD keeps the full path;
   - no BreadcrumbList with fewer than 2 items.
-- Class names do not help search engines or AI. Keep BEM (`block__part--variant`); shared parts use the `sf-` prefix; no mass renames.
+- Class names carry no meaning for search engines or AI (project judgement: no source ranks them; meaning comes from elements, JSON-LD and text). Keep BEM (`block__part--variant`); shared parts use the `sf-` prefix; no mass renames.
 
 ## 3. Titles and descriptions
 - Every title is unique: `{page title} | {site name}`, with the brand short and at the end. The home page may lead with what the business does.
 - Two pages with the same name (a product category and a project category both "Khuôn mẫu") get their parent added: "Khuôn mẫu · Dự án".
-- Description fallback chain: the page's own SEO description → its excerpt or description → a sentence built from its name, parent and count. Never one shared fallback sentence on many pages. Keep it about 70–160 characters, with no keyword lists.
+- Description fallback chain: the page's own SEO description → its excerpt or description → a sentence built from its name, parent and count. Never one shared fallback sentence on many pages. Project target about 70–160 characters (Google sets no length; it wants unique, accurate text), with no keyword lists.
 - Staff can override both per page, category, product and site. The fallback must already be good.
 
 ## 4. Structured data (JSON-LD only, true to what is visible)
@@ -72,9 +72,9 @@ Sources with quotes and URLs: `docs/notes/seo-geo-sources.md` (read 2026-11-11).
 These rules apply to pack writers, demo content and the admin's writing hints.
 - People-first, unique, non-commodity text: who made it (author or company), when (updated date shown), how (process, equipment, standards).
 - Concrete facts with numbers and units: tolerances, areas, capacity, years, counts. Name the sources: standard numbers, certifying bodies, customers with consent.
-  - The GEO study (Aggarwal et al., 2023) measured these methods: quotations +43% (27.8 vs 19.5), statistics +33%, cited sources +28%.
+  - The GEO study (Aggarwal et al., 2023) measured these methods: quotations +43% (27.8 vs 19.5, relative gain in position-adjusted word count; the paper's headline is "up to 40%"), statistics +33%, cited sources +28%.
   - Keyword stuffing scored below baseline. It is a 2023 study on simulated engines, so treat it as direction, not a promise.
-- Questions as headings, the direct answer in the first sentence under them, details after. Short paragraphs, real lists and tables.
+- Writing style (project judgement for readers, not an AI requirement: Google says content need not be chunked for AI): questions as headings with the answer first, then details; real lists and tables for list and table content.
 - One clear topic per page, internal links with descriptive anchor text, no thin pages and no near-duplicates.
 
 ## 6. Crawlers and AI bots
@@ -102,12 +102,12 @@ These rules apply to pack writers, demo content and the admin's writing hints.
     - lang;
     - one h1;
     - heading order;
-    - landmarks;
+    - landmarks and nav names;
     - skip link;
     - alt;
     - unique titles and descriptions;
     - JSON-LD parse;
     - Organization placement.
   - It also prints coverage numbers: lastmod, sitemap images, ETag, images without size.
-  - It exits 1 on any failure. Paste the summary into the report.
+  - It exits 1 on any rule failure and 2 when it cannot run (no sitemap, empty sitemap, network). Paste the summary into the report.
 - What it cannot see, check by hand: words that match the visible content, real facts, and Search Console reports (owner's account).

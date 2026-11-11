@@ -1,108 +1,182 @@
 #!/usr/bin/env node
 // Structure and SEO audit of a live storefront, read from its public sitemap (any site, any page type).
 // Usage: node scripts/storefront/seo-audit.mjs https://example.com [out.json]
-// Exits 1 when a page breaks a rule in .claude/rules/storefront-seo.md that HTML alone can show.
+// Exit 0 = clean · 1 = a page breaks a rule in .claude/rules/storefront-seo.md that HTML alone can show
+// · 2 = the audit could not run (bad argument, sitemap missing or empty, network failure).
 import { writeFileSync } from 'node:fs';
 
-const host = (process.argv[2] || '').replace(/\/$/, '');
-if (!/^https?:\/\//.test(host)) {
-    console.error('usage: seo-audit.mjs https://host [out.json]');
+const stop = (msg) => {
+    console.error(`seo-audit: ${msg}`);
     process.exit(2);
+};
+let origin;
+try {
+    origin = new URL(process.argv[2] || '').origin;
+} catch {
+    stop('usage: seo-audit.mjs https://host [out.json]');
 }
+
 const UA = { 'User-Agent': 'Mozilla/5.0 (compatible; bs-seo-audit)' };
 const get = async (url) => {
-    const res = await fetch(url, { headers: UA, redirect: 'manual' });
+    const res = await fetch(url, { headers: UA, redirect: 'manual', signal: AbortSignal.timeout(30000) });
     return { status: res.status, headers: res.headers, body: await res.text() };
 };
+const unescape = (s) => s.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
 const all = (re, s) => [...s.matchAll(re)];
+// Attributes of every <name …> tag, in any order and with either quote style.
+const tags = (html, name) =>
+    all(new RegExp(`<${name}\\b([^>]*)>`, 'gi'), html).map((m) => {
+        const attrs = { _index: m.index };
+        for (const a of all(/([\w:-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+)))?/g, m[1])) {
+            attrs[a[1].toLowerCase()] = unescape(a[2] ?? a[3] ?? a[4] ?? '');
+        }
+        return attrs;
+    });
+// A URL's identity for comparisons: origin + path without a trailing slash (the home page stays "/").
+const key = (u, base) => {
+    const x = new URL(u, base);
+    return x.origin + (x.pathname.replace(/\/+$/, '') || '/') + x.search;
+};
 
-const sitemap = await get(`${host}/sitemap.xml`);
-let urls = [];
+// Sitemap: a <sitemapindex> lists child sitemaps, a <urlset> lists pages.
+const urls = [];
 const entries = [];
-for (const loc of all(/<loc>([^<]+)<\/loc>/g, sitemap.body).map((m) => m[1])) {
-    if (loc.endsWith('.xml')) {
-        const child = await get(loc);
-        for (const u of all(/<url>([\s\S]*?)<\/url>/g, child.body)) entries.push(u[1]);
+const readSitemap = async (url, depth) => {
+    const r = await get(url);
+    if (r.status !== 200) {
+        stop(`${url} answered ${r.status}`);
     }
+    if (/<sitemapindex[\s>]/.test(r.body)) {
+        if (depth > 2) {
+            stop(`${url}: sitemap indexes nested too deep`);
+        }
+        for (const m of all(/<sitemap>[\s\S]*?<loc>([^<]+)<\/loc>/g, r.body)) {
+            await readSitemap(unescape(m[1]), depth + 1);
+        }
+        return;
+    }
+    for (const m of all(/<url>([\s\S]*?)<\/url>/g, r.body)) {
+        const loc = m[1].match(/<loc>([^<]+)<\/loc>/);
+        if (loc) {
+            urls.push(unescape(loc[1]));
+            entries.push(m[1]);
+        }
+    }
+};
+try {
+    await readSitemap(`${origin}/sitemap.xml`, 0);
+} catch (e) {
+    stop(`sitemap: ${e.message}`);
 }
-if (!entries.length) for (const u of all(/<url>([\s\S]*?)<\/url>/g, sitemap.body)) entries.push(u[1]);
-urls = entries.map((e) => e.match(/<loc>([^<]+)<\/loc>/)[1]);
-const noLastmod = entries.filter((e) => !e.includes('<lastmod>')).length;
-const withImage = entries.filter((e) => e.includes('<image:image>')).length;
+if (!urls.length) {
+    stop('the sitemap lists no pages');
+}
 
+const NODE_ONLY = new Set(['@type', '@id', 'name', 'url']);
 const pages = [];
 for (const url of urls) {
-    const r = await get(url);
+    const path = new URL(url).pathname || '/';
+    let r;
+    try {
+        r = await get(url);
+    } catch (e) {
+        pages.push({ url: path, status: 0, error: e.message });
+        continue;
+    }
     const h = r.body;
-    const head = h.slice(0, h.indexOf('</head>'));
-    const headings = all(/<h([1-6])[\s>]/g, h).map((m) => Number(m[1]));
+    const headEnd = h.search(/<\/head>/i);
+    const head = headEnd > 0 ? h.slice(0, headEnd) : '';
+    const meta = (name) => (tags(head, 'meta').find((t) => t.name === name) || {}).content || '';
+    const headings = all(/<h([1-6])[\s>]/gi, h).map((m) => Number(m[1]));
     const ld = [];
     let ldBroken = 0;
-    for (const m of all(/<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g, h)) {
+    for (const m of all(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi, h)) {
+        if (!/type\s*=\s*["']?application\/ld\+json/i.test(m[1])) {
+            continue;
+        }
         try {
-            const d = JSON.parse(m[1]);
-            const nodes = Array.isArray(d) ? d : d['@graph'] || [d];
-            for (const n of nodes) ld.push({ type: n['@type'], id: n['@id'] || null });
+            const d = JSON.parse(m[2]);
+            for (const n of Array.isArray(d) ? d : d['@graph'] || [d]) {
+                ld.push({ type: n['@type'], id: n['@id'] || null, full: Object.keys(n).some((k) => !k.startsWith('@context') && !NODE_ONLY.has(k)) });
+            }
         } catch {
             ldBroken++;
         }
     }
-    const robots = (head.match(/<meta name="robots" content="([^"]*)"/) || [])[1] || '';
+    const ids = new Set(tags(h, '[a-z0-9-]+').map((t) => t.id).filter(Boolean));
+    const mainAt = h.search(/<main[\s>]/i);
+    const firstLink = tags(h.slice(headEnd > 0 ? headEnd : 0, mainAt > 0 ? mainAt : undefined), 'a').find((t) => (t.href || '').startsWith('#'));
+    const robots = `${meta('robots')} ${r.headers.get('x-robots-tag') || ''}`;
+    const canonical = (tags(head, 'link').find((t) => (t.rel || '').split(/\s+/).includes('canonical')) || {}).href || '';
     pages.push({
-        url: url.replace(host, '') || '/',
+        url: path,
         status: r.status,
-        title: ((h.match(/<title>\s*([\s\S]*?)\s*<\/title>/) || [])[1] || '').trim(),
-        description: (head.match(/<meta name="description" content="([^"]*)"/) || [])[1] || '',
-        canonical: (head.match(/<link rel="canonical" href="([^"]*)"/) || [])[1] || '',
-        lang: (h.match(/<html[^>]*\blang="([^"]*)"/) || [])[1] || '',
+        title: unescape(((h.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i) || [])[1] || '').replace(/\s+/g, ' ')),
+        description: meta('description'),
+        canonicalOk: canonical !== '' && key(canonical, url) === key(url),
+        lang: (tags(h, 'html')[0] || {}).lang || '',
         h1: headings.filter((n) => n === 1).length,
         jumps: headings.slice(1).filter((n, i) => n > headings[i] + 1).length,
-        landmarks: Object.fromEntries(['header', 'nav', 'main', 'footer'].map((t) => [t, all(new RegExp(`<${t}[\\s>]`, 'g'), h).length])),
-        skip: /<a[^>]+href="#[^"]+"[^>]*>\s*[^<]{2,}/.test(h.slice(0, h.indexOf('<header') > 0 ? h.indexOf('<header') : 4000)),
-        current: /aria-current="page"/.test(h),
-        imgNoAlt: all(/<img(?![^>]*\balt=)[^>]*>/g, h).length,
-        imgNoSize: all(/<img(?![^>]*\bwidth=)[^>]*>/g, h).length,
+        main: all(/<main[\s>]/gi, h).length,
+        header: /<header[\s>]/i.test(h),
+        footer: /<footer[\s>]/i.test(h),
+        navNoName: tags(h, 'nav').filter((t) => !t['aria-label'] && !t['aria-labelledby']).length,
+        skip: Boolean(firstLink && ids.has(firstLink.href.slice(1))),
+        current: /aria-current\s*=\s*["']?page/i.test(h),
+        imgNoAlt: tags(h, 'img').filter((t) => !('alt' in t)).length,
+        imgNoSize: tags(h, 'img').filter((t) => !('width' in t && 'height' in t)).length,
         ld,
         ldBroken,
-        noindex: /noindex/.test(robots),
+        noindex: /noindex/i.test(robots),
         etag: r.headers.has('etag') || r.headers.has('last-modified'),
     });
 }
 
-const count = (key) => pages.reduce((m, p) => m.set(p[key], (m.get(p[key]) || 0) + 1), new Map());
+const ok = pages.filter((p) => p.status === 200);
+const count = (k) => ok.reduce((m, p) => m.set(p[k], (m.get(p[k]) || 0) + 1), new Map());
 const titles = count('title');
 const descs = count('description');
 const rules = {
-    'status is not 200': (p) => p.status !== 200,
+    'status is not 200 (or the page did not load)': (p) => p.status !== 200,
     'noindex page listed in the sitemap': (p) => p.noindex,
-    'canonical is not the page itself': (p) => p.canonical.replace(/\/$/, '') !== (host + p.url).replace(/\/$/, ''),
+    'canonical missing or not the page itself': (p) => !p.canonicalOk,
     'no lang': (p) => !p.lang,
     'not exactly one h1': (p) => p.h1 !== 1,
     'heading level skipped': (p) => p.jumps > 0,
-    'missing header, main or footer, or more than one main': (p) => !p.landmarks.header || p.landmarks.main !== 1 || !p.landmarks.footer,
-    'no skip link before the header': (p) => !p.skip,
+    'no header or footer, or not exactly one main': (p) => !p.header || !p.footer || p.main !== 1,
+    'nav without an accessible name': (p) => p.navNoName > 0,
+    'no skip link to an existing id before main': (p) => !p.skip,
     'image without alt': (p) => p.imgNoAlt > 0,
-    'title shared with another page': (p) => titles.get(p.title) > 1,
+    'empty title, or one shared with another page': (p) => !p.title || titles.get(p.title) > 1,
     'empty description, or one shared with another page': (p) => !p.description || descs.get(p.description) > 1,
     'broken JSON-LD block': (p) => p.ldBroken > 0,
     'BreadcrumbList on the home page': (p) => p.url === '/' && p.ld.some((n) => n.type === 'BreadcrumbList'),
-    'full Organization node away from the home page without an @id': (p) => p.url !== '/' && p.ld.some((n) => n.type === 'Organization' && !n.id),
+    'full Organization node away from the home page (point to it by @id)': (p) => p.url !== '/' && p.ld.some((n) => n.type === 'Organization' && n.full),
 };
 const failures = [];
 for (const [rule, test] of Object.entries(rules)) {
-    const hit = pages.filter(test).map((p) => p.url);
-    if (hit.length) failures.push({ rule, pages: hit.length, sample: hit.slice(0, 8) });
+    const pool = rule.startsWith('status') ? pages : ok;
+    const hit = pool.filter(test).map((p) => p.url);
+    if (hit.length) {
+        failures.push({ rule, pages: hit.length, sample: hit.slice(0, 8) });
+    }
 }
 const types = {};
-for (const p of pages) for (const n of p.ld) types[n.type] = (types[n.type] || 0) + 1;
+for (const p of ok) {
+    for (const n of p.ld) {
+        types[n.type] = (types[n.type] || 0) + 1;
+    }
+}
 const info = {
     pages: pages.length,
-    sitemapWithoutLastmod: noLastmod,
-    sitemapWithImage: withImage,
-    pagesWithEtagOrLastModified: pages.filter((p) => p.etag).length,
-    imagesWithoutSize: pages.reduce((n, p) => n + p.imgNoSize, 0),
+    sitemapWithoutLastmod: entries.filter((e) => !e.includes('<lastmod>')).length,
+    sitemapWithImage: entries.filter((e) => e.includes('<image:image>')).length,
+    pagesWithEtagOrLastModified: ok.filter((p) => p.etag).length,
+    imagesWithoutSize: ok.reduce((n, p) => n + p.imgNoSize, 0),
     jsonLdTypes: types,
 };
 console.log(JSON.stringify({ info, failures }, null, 1));
-if (process.argv[3]) writeFileSync(process.argv[3], JSON.stringify({ host, info, failures, pages }, null, 1));
+if (process.argv[3]) {
+    writeFileSync(process.argv[3], JSON.stringify({ origin, info, failures, pages }, null, 1));
+}
 process.exit(failures.length ? 1 : 0);
