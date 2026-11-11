@@ -7728,7 +7728,7 @@ html:has(.sf-header--sticky) .product-toc {
 @keyframes sf-in-rise {
     from {
         opacity: 0;
-        translate: 0 var(--motion-distance);
+        translate: 0 var(--motion-distance, 24px);
     }
 }
 
@@ -7738,7 +7738,7 @@ html:has(.sf-header--sticky) .product-toc {
 
 .sf-s--m-rise.sf-s--before,
 .sf-s--m-rise .sf-s--before {
-    translate: 0 var(--motion-distance);
+    translate: 0 var(--motion-distance, 24px);
 }
 
 .sf-s--in {

@@ -13,17 +13,19 @@ const moving = [...document.querySelectorAll('.sf-s--m-fade, .sf-s--m-rise')];
 
 if (moving.length && 'IntersectionObserver' in window && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     const parts = moving.flatMap((section) => section.classList.contains('sf-s--stagger')
-        ? [...section.querySelectorAll('.sf-section-head, li')].filter((el) => el.tagName !== 'LI' || !el.parentElement.closest('li'))
+        ? [...section.querySelectorAll('.sf-section-head, li')].filter((el) => el.tagName !== 'LI' || !el.parentElement.closest('li, nav'))
         : [section]);
     let waiting = [];
 
     const show = (all) => {
         let step = 0;
         waiting = waiting.filter((el) => {
-            if (!all && el.getBoundingClientRect().top >= window.innerHeight * LINE) {
+            const box = el.getBoundingClientRect();
+            if (!all && box.top >= window.innerHeight * LINE) {
                 return true;
             }
-            el.style.setProperty('--sf-step', String(Math.min(step++, 5)));
+            // what was scrolled past (a fast scroll, an anchor jump) comes in at once, without a step
+            el.style.setProperty('--sf-step', String(box.bottom > 0 ? Math.min(step++, 5) : 0));
             el.classList.replace('sf-s--before', 'sf-s--in');
             observer.unobserve(el);
 
