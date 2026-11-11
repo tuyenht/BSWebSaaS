@@ -49,13 +49,12 @@ it('draws a news block with the display group short and one without it as before
         ->and($without)->toContain('sf-card__chip')->toContain('Đoạn trích dài của tin');
 });
 
-it('says "swipe sideways" under a phone swipe row, but not under a row whose arrows always show', function (): void {
+it('prints no "swipe sideways" line under a phone row: its arrows and dots already say it', function (): void {
     $swipe = ['mobile' => 'swipe', 'arrows' => 'auto', 'interval' => 0, 'scrolls' => false, 'bar' => '', 'shown' => 3];
     $row = fn (array $display): string => cardView('theme::partials.sf-rail-close', ['display' => $display]);
 
-    expect($row($swipe))->toContain('sf-rail__hint')->toContain('Vuốt ngang để xem thêm')
-        ->and($row(['arrows' => 'always'] + $swipe))->not->toContain('sf-rail__hint')
-        ->and($row(['mobile' => 'one'] + $swipe))->not->toContain('sf-rail__hint');
+    expect($row($swipe))->toContain('sf-rail__dots')->not->toContain('sf-rail__hint')->not->toContain('Vuốt ngang')
+        ->and($row(['arrows' => 'always'] + $swipe))->not->toContain('sf-rail__hint');
 });
 
 it('prints the partners note under the logos only when it is set, as plain text', function (): void {

@@ -388,6 +388,9 @@ it('swaps the round buttons for the dark phone bar below 768px when the site swi
         ->and($bar[0] ?? '')->toContain('href="https://zalo.me/0912345678"')->toContain('>Chat Zalo<')
         ->toContain('href="tel:0912345678"')->toContain('>Gọi<')
         ->toContain('sf-fc-bar__item--cta')->toContain('href="/gioi-thieu"')->toContain('>Yêu cầu báo giá<')
+        // every cell draws its mark above its label, the quote cell too
+        ->and(substr_count($bar[0] ?? '', '<span class="sf-fc-bar__dot'))->toBe(3)
+        ->and($bar[0] ?? '')->toMatch('~sf-fc-bar__item--cta.*?<span class="sf-fc-bar__dot" aria-hidden="true"><svg~s')
         ->and($ghost[0] ?? '')->toContain('Yêu cầu báo giá')
         // the call leads, the quote cell is last
         ->and(strpos($bar[0] ?? '', '>Gọi<'))->toBeLessThan(strpos($bar[0] ?? '', 'Chat Zalo'))

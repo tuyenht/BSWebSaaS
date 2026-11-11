@@ -16,8 +16,8 @@
     words at 4.5:1; the brand fill uses the brand's own readable ink).
     A round-button site may add a phone bar (`phone_bar`): below 768px the round buttons give way to a
     dark bar of up to three equal cells (quick channels, then the site's own cell such as a quote
-    request) and above it the round buttons stay; no band is reserved under the footer at the
-    wider widths, and the invisible copy under it is dark, like the footer, so the page ends on the bar.
+    request, drawn with the design's send-a-file glyph) and above it the round buttons stay; no band is
+    reserved under the footer at the wider widths, and the invisible copy under it is dark, like the footer, so the page ends on the bar.
 --}}
 @if (! empty($floatingContact))
 @php
@@ -50,7 +50,7 @@
     </ul>
 </nav>
 @if ($fcPb !== null)
-<div class="sf-fc-bar sf-fc-bar--board sf-fc-bar--ghost" aria-hidden="true"><ul class="sf-fc-bar__list" role="list">@foreach ($fcPb['bar'] as $b)<li class="sf-fc-bar__item"><span class="sf-fc-bar__link"><span class="sf-fc-bar__dot"></span><span class="sf-fc-bar__label">{{ $fcWord($b) }}</span></span></li>@endforeach @if ($fcPb['cta'] !== null)<li class="sf-fc-bar__item"><span class="sf-fc-bar__link"><span class="sf-fc-bar__label">{{ $fcPb['cta']['label'] }}</span></span></li>@endif</ul></div>
+<div class="sf-fc-bar sf-fc-bar--board sf-fc-bar--ghost" aria-hidden="true"><ul class="sf-fc-bar__list" role="list">@foreach ($fcPb['bar'] as $b)<li class="sf-fc-bar__item"><span class="sf-fc-bar__link"><span class="sf-fc-bar__dot"></span><span class="sf-fc-bar__label">{{ $fcWord($b) }}</span></span></li>@endforeach @if ($fcPb['cta'] !== null)<li class="sf-fc-bar__item"><span class="sf-fc-bar__link"><span class="sf-fc-bar__dot"></span><span class="sf-fc-bar__label">{{ $fcPb['cta']['label'] }}</span></span></li>@endif</ul></div>
 <nav class="sf-fc-bar sf-fc-bar--board" aria-label="{{ __('storefront.fc_nav') }}">
     <ul class="sf-fc-bar__list" role="list">
         @foreach ($fcPb['bar'] as $b)
@@ -66,7 +66,7 @@
             </a></li>
         @endforeach
         @if ($fcPb['cta'] !== null)
-            <li class="sf-fc-bar__item sf-fc-bar__item--cta"><a class="sf-fc-bar__link" href="{{ $fcPb['cta']['href'] }}"><span class="sf-fc-bar__label">{{ $fcPb['cta']['label'] }}</span></a></li>
+            <li class="sf-fc-bar__item sf-fc-bar__item--cta"><a class="sf-fc-bar__link" href="{{ $fcPb['cta']['href'] }}"><span class="sf-fc-bar__dot" aria-hidden="true">@include('theme::partials.sf-icon', ['name' => 'upload', 'size' => 22])</span><span class="sf-fc-bar__label">{{ $fcPb['cta']['label'] }}</span></a></li>
         @endif
     </ul>
 </nav>
