@@ -124,8 +124,8 @@ html {
         font-size: calc(var(--sf-root, var(--text-base, 1rem)) * 1.125);
     }
 
-    /* The largest step always reaches a 20px body, even on a site whose base is below 1rem. */
     html[data-fs="xl"] {
+        /* The largest step always reaches a 20px body, even on a site whose base is below 1rem. */
         font-size: max(1.25rem, calc(var(--sf-root, var(--text-base, 1rem)) * 1.25));
     }
 }
