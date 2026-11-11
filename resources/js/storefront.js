@@ -1,8 +1,8 @@
 /*
  * Storefront header behaviour, no framework: submenus as disclosures (button + panel, no
- * role=menu), the mobile menu panel and the text-size button. Everything here is an addition —
- * without it the submenus still open on hover and keyboard focus (CSS), and the menu panel is
- * shown open (noscript style).
+ * role=menu), the mobile menu panel, the text-size button; and the fade-in of lazy photos.
+ * Everything here is an addition — without it the submenus still open on hover and keyboard focus
+ * (CSS), the menu panel is shown open (noscript style) and photos show as they arrive.
  */
 
 const SIZES = ['m', 'l', 'xl'];
@@ -159,4 +159,21 @@ if (sizeButtons.length > 0) {
         }
         showSize(next);
     }));
+}
+
+// A lazy photo below the first screen that is not loaded yet waits transparent over its frame's tint
+// and fades in once decoded (CSS `sf-img--wait` / `sf-img--in`); a photo already loaded, in the first
+// screen, hidden, or on a page that asked for reduced motion is left as it is. Without this script
+// every photo simply shows when it arrives.
+if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.querySelectorAll('img[loading="lazy"]').forEach((img) => {
+        const box = img.getBoundingClientRect();
+        if (img.complete || !box.width || (box.top < window.innerHeight && box.left < window.innerWidth)) {
+            return;
+        }
+        const show = () => img.classList.replace('sf-img--wait', 'sf-img--in');
+        img.classList.add('sf-img--wait');
+        img.addEventListener('load', () => img.decode().then(show, show), { once: true });
+        img.addEventListener('error', show, { once: true });
+    });
 }

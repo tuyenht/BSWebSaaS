@@ -6,14 +6,14 @@
     },
     "resources/css/storefront.css": {
       "js": 0,
-      "css": 30273
+      "css": 30380
     },
     "resources/js/app.js": {
       "js": 20351,
       "css": 0
     },
     "resources/js/sections.js": {
-      "js": 315,
+      "js": 567,
       "css": 0
     },
     "resources/js/sf-bgvideo.js": {
@@ -65,7 +65,7 @@
       "css": 0
     },
     "resources/js/storefront.js": {
-      "js": 1011,
+      "js": 1196,
       "css": 0
     }
   },

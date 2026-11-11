@@ -59,6 +59,17 @@ final class StyleProps
     ];
 
     /**
+     * The block types whose items come into view one after another (their head first, then each card,
+     * stat, logo or step a moment later) when the block keeps the automatic motion; any other block,
+     * or a block whose motion was chosen, moves as one piece. Changing a line changes every site that
+     * kept the default.
+     */
+    public const array AUTO_STAGGER = [
+        'entry_grid', 'latest_posts', 'features', 'team', 'testimonial', 'pricing', 'process', 'stats',
+        'partners', 'gallery', 'quick_links', 'branches',
+    ];
+
+    /**
      * The extra looks a block may add on top (the reserved prop `extra_style`, a list), registered by the
      * theme: each saved value maps to the class the wrapper prints. A value that is not a key here is
      * refused at save and ignored at render; the saved value is never put in the markup. Append-only.
@@ -158,6 +169,9 @@ final class StyleProps
         $motion = self::motion($props, $type, $first, $slot);
         if ($motion !== 'none') {
             $classes[] = "sf-s--m-{$motion}";
+            if (self::staggers($props, $type)) {
+                $classes[] = 'sf-s--stagger';
+            }
         }
 
         $extra = $props['extra_style'] ?? null;
@@ -228,6 +242,18 @@ final class StyleProps
             'none', 'fade', 'rise' => $motion,
             default => $slot ? 'none' : self::autoMotion($type),
         };
+    }
+
+    /**
+     * Whether a moving block brings its items in one after another rather than as one piece: only a
+     * block that keeps the automatic motion (also when nothing or an unknown value is saved) and whose
+     * type AUTO_STAGGER lists.
+     *
+     * @param  array<array-key, mixed>  $props
+     */
+    public static function staggers(array $props, string $type): bool
+    {
+        return SectionProps::choice($props, 'motion', self::MOTION, 'auto') === 'auto' && in_array($type, self::AUTO_STAGGER, true);
     }
 
     /** @return 'none'|'fade'|'rise' */

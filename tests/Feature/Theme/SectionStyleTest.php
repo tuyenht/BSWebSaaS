@@ -151,7 +151,47 @@ it('names a known block type for every automatic motion', function (): void {
     $types = app(ComponentRegistry::class)->types();
 
     expect(array_diff(array_keys(StyleProps::AUTO_MOTION), $types))->toBe([])
-        ->and(array_diff(array_values(StyleProps::AUTO_MOTION), ['none', 'fade', 'rise']))->toBe([]);
+        ->and(array_diff(array_values(StyleProps::AUTO_MOTION), ['none', 'fade', 'rise']))->toBe([])
+        ->and(array_diff(StyleProps::AUTO_STAGGER, $types))->toBe([]);
+
+    // A block whose items come in one after another moves by default, or nothing would ever come in.
+    foreach (StyleProps::AUTO_STAGGER as $type) {
+        expect(StyleProps::autoMotion($type))->not->toBe('none', $type);
+    }
+});
+
+it('brings the items of a list block in one after another only while it keeps the automatic motion', function (): void {
+    $html = styleRender([
+        ['type' => 'features', 'props' => ['heading' => 'Đầu trang chủ']],
+        ['type' => 'features', 'props' => ['heading' => 'Năng lực']],
+        ['type' => 'features', 'props' => ['heading' => 'Dịch vụ chính', 'motion' => 'rise']],
+        ['type' => 'partners', 'props' => ['heading' => 'Đối tác', 'logos' => [['name' => 'Công ty Bình']]]],
+        ['type' => 'cta', 'props' => ['heading' => 'Cần báo giá?', 'button_label' => 'Liên hệ', 'button_url' => '/lien-he']],
+        ['type' => 'stats', 'props' => ['heading' => 'Số liệu nổi bật', 'items' => [['value' => '15', 'label' => 'Năm kinh nghiệm']], 'motion' => 'spin']],
+        ['type' => 'stats', 'props' => ['heading' => 'Số liệu nổi bật', 'items' => [['value' => '15', 'label' => 'Năm kinh nghiệm']], 'motion' => 'none']],
+    ]);
+
+    // The first block never moves; a list block that keeps "auto" (also with a value that is not
+    // listed) comes in item by item in its own motion; a chosen motion moves the block as one piece,
+    // and so does a block that is not a list.
+    expect(substr_count($html, 'sf-s--stagger'))->toBe(3)
+        ->and($html)->toContain('<div class="sf-s sf-s--m-rise sf-s--stagger">')
+        ->and($html)->toContain('<div class="sf-s sf-s--m-fade sf-s--stagger">')
+        ->and(substr_count($html, '<div class="sf-s sf-s--m-rise">'))->toBe(2)
+        ->and(StyleProps::staggers([], 'features'))->toBeTrue()
+        ->and(StyleProps::staggers(['motion' => 'fade'], 'features'))->toBeFalse()
+        ->and(StyleProps::staggers([], 'cta'))->toBeFalse()
+        ->and(StyleProps::wrapper([], 'features', false, null, true))->toBeNull();
+});
+
+it('shows everything that waits for the scroll-in motion at once with reduced motion and in print', function (): void {
+    $css = (string) preg_replace('~/\*.*?\*/~s', '', (string) file_get_contents(resource_path('css/storefront.css')));
+    preg_match('~@media \(prefers-reduced-motion: reduce\), print \{\s*\.sf-s--before,(.*?)\n\}~s', $css, $block);
+
+    expect($block[1] ?? '')->toContain('.sf-img--wait')
+        ->and($block[1] ?? '')->toContain('opacity: 1;')
+        ->and($block[1] ?? '')->toContain('translate: none;')
+        ->and($block[1] ?? '')->toContain('animation: none;');
 });
 
 it('paints a background photo as a sized image under an overlay, in the one media query of the page', function (): void {
