@@ -29,8 +29,8 @@ use Illuminate\Support\ViewErrorBag;
 
 beforeEach(function (): void {
     seedTenancy(); // sites 1 (a.test) / 2 (b.test)
-    seedHomepage(1, 'Trang chủ Ân Vĩnh');
-    seedHomepage(2, 'Trang chủ Bình Định');
+    seedHomepage(1, 'Mở đầu Ân Vĩnh');
+    seedHomepage(2, 'Mở đầu Bình Định');
     Cache::flush();
 });
 
@@ -112,13 +112,13 @@ it('answers private, no-store with no cookie on a page that does not exist', fun
 
 it('sends every visitor the same bytes, and each site only its own', function (): void {
     $first = $this->get('http://a.test/')->assertOk();
-    $second = $this->withHeaders(['User-Agent' => 'Khách thứ hai', 'Accept-Language' => 'en'])->get('http://a.test/')->assertOk();
+    $second = $this->withHeaders(['User-Agent' => 'Khách thứ nhì', 'Accept-Language' => 'en'])->get('http://a.test/')->assertOk();
     $other = (string) $this->get('http://b.test/')->assertOk()->getContent();
 
     expect($second->getContent())->toBe($first->getContent())
         ->and($second->headers->get('ETag'))->toBe($first->headers->get('ETag'))
-        ->and($first->getContent())->toContain('Trang chủ Ân Vĩnh')->not->toContain('Trang chủ Bình Định')
-        ->and($other)->toContain('Trang chủ Bình Định')->not->toContain('Trang chủ Ân Vĩnh');
+        ->and($first->getContent())->toContain('Mở đầu Ân Vĩnh')->not->toContain('Mở đầu Bình Định')
+        ->and($other)->toContain('Mở đầu Bình Định')->not->toContain('Mở đầu Ân Vĩnh');
 });
 
 it('never lets a page without a session see an error bag shared by an earlier request', function (): void {
@@ -148,11 +148,11 @@ it('purges the site once its write commits, never before, for each kind of chang
 
     expect($edge->calls)->toBe([['hosts', ['a.test']]]);
 })->with([
-    'a page' => [fn () => EntryTranslation::query()->firstOrFail()->update(['title' => 'Trang chủ mới của Ân Vĩnh'])],
+    'a page' => [fn () => EntryTranslation::query()->firstOrFail()->update(['title' => 'Mở đầu mới của Ân Vĩnh'])],
     'a product' => [fn () => Product::query()->create(['status' => 'published', 'published_at' => now()])],
     'a menu' => [function (): void {
         $menu = Menu::query()->create(['name' => 'Trình đơn chính', 'handle' => 'header']);
-        DB::table('menus')->where('id', $menu->id)->update(['name' => 'Trình đơn đầu trang']); // a query-builder write
+        DB::table('menus')->where('id', $menu->id)->update(['name' => 'Trình đơn đầu']); // a query-builder write
     }],
     'the floating contact' => [fn () => app(SettingsRepository::class)->put('storefront', 'floating_contact', ['enabled' => true])],
     'the appearance' => [fn () => app(SettingsRepository::class)->put('theme', 'config', ['accent' => '#0a7d3b'])],
@@ -163,8 +163,8 @@ it('purges once for many writes in one transaction, and again for the next one',
     $edge = edgeCacheRecorder();
 
     app(Tenancy::class)->enter(1, function (): void {
-        $menu = Menu::query()->create(['name' => 'Trình đơn chân trang', 'handle' => 'footer']);
-        DB::table('menus')->where('id', $menu->id)->update(['name' => 'Trình đơn cuối trang']);
+        $menu = Menu::query()->create(['name' => 'Trình đơn chân', 'handle' => 'footer']);
+        DB::table('menus')->where('id', $menu->id)->update(['name' => 'Trình đơn cuối']);
         Product::query()->create(['status' => 'draft']);
     });
     app(Tenancy::class)->enter(2, fn () => Product::query()->create(['status' => 'draft']));
@@ -264,7 +264,7 @@ it('keeps a lead whose Turnstile token fails out of the inbox, with no notice se
     ]));
 
     $this->post('http://a.test/forms/contact', [
-        'name' => 'Khách giả mạo', 'email' => 'bot@example.test', 'message' => 'Gửi không qua trang',
+        'name' => 'Khách giả mạo', 'email' => 'bot@example.test', 'message' => 'Gửi thẳng không kiểm',
         'cf-turnstile-response' => 'token-sai',
     ])->assertRedirect();
 
