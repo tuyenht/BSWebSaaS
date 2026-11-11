@@ -97,7 +97,7 @@ final readonly class ThemeResolver
      * storefront.css still reads, with the same values: `color-primary`, `color-primary-text`,
      * `color-primary-on-dark`, `color-surface`, `color-text`, `color-text-strong`, `color-dark`,
      * `font-body`, `color-brand-*`, the scales (`space-*`, `radius-*`, `shadow-*`, `gradient-*`, `motion-*`), plus
-     * `color-on-primary` — white on the brand fill when it reads 4.5:1, otherwise the darkest same-hue
+     * `color-on-primary` — white on the brand fill when it reads 4.5:1, otherwise a deep same-hue
      * shade that does (the ink when none can be derived), and `color-primary-hover` — the fill a hovered brand button
      * takes, moved away from that text so it reads at least as well. A new
      * name never points back at an old one, so a fallback is the color itself, not `var(--ink)`.
@@ -275,7 +275,7 @@ final readonly class ThemeResolver
 
     /**
      * Text on the brand fill as the site chose it (the fill is never moved): white when it reads
-     * 4.5:1, otherwise the darkest same-hue shade that does (an amber fill gets a deep brown), and
+     * 4.5:1, otherwise a deep same-hue shade that does (an amber fill gets a deep brown), and
      * the ink (moved toward black when needed) only when no shade can be measured or reaches it.
      */
     private function textOnBrand(string $fill, string $ink): string
