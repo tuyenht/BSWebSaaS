@@ -13,6 +13,7 @@ use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Theming\ReadableColor;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -368,4 +369,57 @@ it('adds no query to a page, and for “Mua hàng” only the product list looku
     expect($html)->toContain('href="/san-pham" style="--fc-fill:')
         ->and($pageBuy - $page)->toBe(5)
         ->and($listBuy - $list)->toBe(3);
+});
+
+it('swaps the round buttons for the dark phone bar below 768px when the site switches it on, and reserves no band under the footer', function (): void {
+    $siteId = flcSite();
+    flcSetting($siteId, flcConfig([
+        ['key' => 'zalo', 'on' => true, 'value' => '0912345678', 'tips' => ['vi' => 'Chat Zalo']],
+        ['key' => 'phone', 'on' => true, 'value' => '0912345678', 'color' => '#f59e0b', 'tips' => ['vi' => 'Gọi']],
+    ], ['phone_bar' => ['enabled' => true, 'cta' => ['label' => ['vi' => 'Yêu cầu báo giá'], 'url' => '/gioi-thieu']]]));
+
+    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
+    preg_match('~<nav class="sf-fc sf-fc--right sf-fc--md".*?</nav>~s', $html, $round);
+    preg_match('~<nav class="sf-fc-bar sf-fc-bar--board".*?</nav>~s', $html, $bar);
+    preg_match('~<div class="sf-fc-bar sf-fc-bar--board sf-fc-bar--ghost".*?</ul></div>~s', $html, $ghost);
+
+    expect($round[0] ?? '')->toContain('href="tel:0912345678"')->not->toContain('--fc-fill:#f59e0b')->toContain('--fc-ink:#ffffff')
+        ->and($bar[0] ?? '')->toContain('--fc-fill:#f59e0b;--fc-ink:#0f172a')
+        ->and($bar[0] ?? '')->toContain('href="https://zalo.me/0912345678"')->toContain('>Chat Zalo<')
+        ->toContain('href="tel:0912345678"')->toContain('>Gọi<')
+        ->toContain('sf-fc-bar__item--cta')->toContain('href="/gioi-thieu"')->toContain('>Yêu cầu báo giá<')
+        ->and($ghost[0] ?? '')->toContain('Yêu cầu báo giá')
+        // the call leads, the quote cell is last
+        ->and(strpos($bar[0] ?? '', '>Gọi<'))->toBeLessThan(strpos($bar[0] ?? '', 'Chat Zalo'))
+        ->and(strpos($bar[0] ?? '', 'Chat Zalo'))->toBeLessThan(strpos($bar[0] ?? '', 'Yêu cầu báo giá'))
+        // no invisible copy of the side stack: nothing is reserved at the wider widths
+        ->and($html)->not->toContain('sf-fc-ghost');
+
+    // Without the switch the page keeps the side stack and its reserved room, and no bar.
+    flcSetting($siteId, flcConfig([['key' => 'phone', 'on' => true, 'value' => '0912345678']]));
+    $plain = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
+    expect($plain)->toContain('sf-fc-ghost')->not->toContain('sf-fc-bar')->not->toContain('sf-fc--md');
+});
+
+it('draws the phone bar with the channels alone when its own cell has no safe link', function (): void {
+    $siteId = flcSite();
+    flcSetting($siteId, flcConfig([['key' => 'phone', 'on' => true, 'value' => '0912345678']],
+        ['phone_bar' => ['enabled' => true, 'cta' => ['label' => ['vi' => 'Báo giá'], 'url' => 'javascript:alert(1)']]]));
+
+    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
+
+    expect($html)->toContain('sf-fc-bar--board')->not->toContain('sf-fc-bar__item--cta')->not->toContain('javascript:');
+});
+
+it('prints the readable ink on every link of the horizontal bar, a light colour of the site included', function (): void {
+    $siteId = flcSite();
+    flcSetting($siteId, flcConfig([['key' => 'phone', 'on' => true, 'value' => '0912345678', 'color' => '#f59e0b']], ['theme' => 'horizontal']));
+
+    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
+    preg_match('~<nav class="sf-fc-bar".*?</nav>~s', $html, $bar);
+    preg_match('~href="tel:0912345678" style="--fc-fill:(#[0-9a-f]{6});--fc-ink:(#[0-9a-f]{6})"~', $bar[0] ?? '', $m);
+
+    expect($m)->not->toBe([])
+        ->and($m[2])->toBe('#ffffff')
+        ->and(ReadableColor::ratio($m[1], $m[2]))->toBeGreaterThanOrEqual(3.0);
 });

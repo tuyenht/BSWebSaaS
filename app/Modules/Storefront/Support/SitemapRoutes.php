@@ -24,6 +24,7 @@ use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
  * A route is listed only when the storefront would render it — a URL that 404s costs the site
  * crawl budget and shows up as an error in Google Search Console:
  *  - its language is one the site has made public;
+ *  - an entry that is a form's thank-you page (noindex, see ThankYouPages) is left out;
  *  - an entry route: the entry is published (soft-deletes respected) AND its translation in the
  *    route's language is published;
  *  - a category route: the category has a translation in the route's language;
@@ -43,6 +44,7 @@ final readonly class SitemapRoutes
     public function __construct(
         private SiteLocale $locales,
         private CurrentSite $site,
+        private ThankYouPages $thankYou,
     ) {}
 
     /** URLs per file: config, clamped to the sitemaps.org ceiling of 50,000. */
@@ -261,11 +263,15 @@ final readonly class SitemapRoutes
     /** @return Builder<SiteRoute> */
     private function listed(): Builder
     {
+        // A form's thank-you page is sent with noindex: one lookup of the cached set, never a query per row.
+        $thankYou = $this->thankYou->all();
+
         return SiteRoute::query()
             ->whereIn('locale', $this->locales->public())
-            ->where(function (Builder $query): void {
+            ->where(function (Builder $query) use ($thankYou): void {
                 $query->whereHas('entry', fn (Builder $entry) => $entry
                     ->where('status', 'published')
+                    ->whereNotIn('entries.ulid', $thankYou)
                     ->whereHas('translations', fn (Builder $translation) => $translation
                         ->whereColumn('entry_translations.locale', 'routes.locale')
                         ->where('entry_translations.status', 'published')))
