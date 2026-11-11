@@ -4703,6 +4703,12 @@ html:has(.sf-header--sticky) .product-toc {
     overflow: hidden;
 }
 
+/* A news card's excerpt is cut at three lines, as the design's cards are. */
+.sf-card--news .sf-card__text {
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+}
+
 /* News card. */
 .sf-card__meta {
     display: flex;
@@ -9490,4 +9496,164 @@ html:has(.sf-viewer[open]) {
     .sf-jobs__chip {
         transition: none;
     }
+}
+
+/* ───── Cards and rails per board: service icons, product height, news in a block, swipe hint, project arrows, partner strip and grid ───── */
+/* Services: the glyph is the brand amber, as the board paints it (decoration, the title carries the meaning). */
+.sf-card--icon .sf-card__icon {
+    color: var(--color-primary);
+}
+
+/* A product card of a block is 16rem tall on a phone and 20rem from 640px, whatever the column's width. */
+.sf-card--product-overlay .sf-card__frame--4x3 {
+    aspect-ratio: auto;
+    height: 16rem;
+}
+
+@media (min-width: 640px) {
+    .sf-card--product-overlay .sf-card__frame--4x3 {
+        height: 20rem;
+    }
+}
+
+/* A news card of a block has no chip: the date alone, at the start. */
+.sf-card__meta--plain {
+    justify-content: flex-start;
+}
+
+.sf-card__meta--plain .sf-card__date {
+    font-size: 0.875rem;
+}
+
+/* The phone's "swipe sideways" line, under a row that scrolls by itself. */
+.sf-rail__hint {
+    display: none;
+    margin-top: 0.25rem;
+    color: var(--color-text);
+    font-size: 0.75rem;
+    line-height: 1rem;
+    text-align: center;
+}
+
+@media (max-width: 639.98px) {
+    .sf-rail__hint {
+        display: block;
+    }
+}
+
+.sf-band--dark .sf-rail__hint {
+    color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white));
+}
+
+/* Projects: the arrows are centred on the row's edge (half outside the first and last card), and the
+   "view all" button on a dark band is the amber one. */
+@media (min-width: 640px) {
+    .sf-cards--project .sf-rail__prev {
+        left: -1.375rem;
+    }
+
+    .sf-cards--project .sf-rail__next {
+        right: -1.375rem;
+    }
+}
+
+.sf-band--dark .sf-view-all__link {
+    background: var(--color-primary);
+    color: var(--sch-pri-fg, var(--color-on-primary));
+}
+
+/* Partners on the home strip: the logos sit in one white box with a thin border; the arrows stand
+   outside it, and a name never breaks inside the box. */
+.partners .sf-rail__list--slider {
+    padding-block: 1.25rem;
+    border: 1px solid color-mix(in srgb, var(--color-surface) 85%, var(--color-dark));
+    border-radius: 0.5rem;
+    background: var(--color-surface);
+}
+
+.partners .sf-rail__list--slider .partners__item {
+    padding-inline: 0.5rem;
+}
+
+.partners .sf-rail__list--slider .partners__name:not(.partners__name--long) {
+    white-space: nowrap;
+    overflow-wrap: normal;
+}
+
+@media (max-width: 639.98px) {
+    .partners .sf-rail__list--slider .partners__name {
+        font-size: 0.9375rem;
+    }
+}
+
+/* Partners page: a grid of grey cards 7rem tall, two across on a phone up to five; hover is white with an amber edge. */
+.partners .sf-rail__list--grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem;
+}
+
+@media (min-width: 640px) {
+    .partners .sf-rail__list--grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 768px) {
+    .partners .sf-rail__list--grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 2rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .partners .sf-rail__list--grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+}
+
+.partners .sf-rail__list--grid > li {
+    flex: none;
+}
+
+.partners .sf-rail__list--grid .partners__item {
+    width: 100%;
+    height: 7rem;
+    border: 1px solid transparent;
+    border-radius: 0.5rem;
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+    transition: background 0.25s, border-color 0.25s, box-shadow 0.25s;
+}
+
+.partners .sf-rail__list--grid .partners__link {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+}
+
+.partners .sf-rail__list--grid .partners__name {
+    color: var(--color-text);
+}
+
+@media (hover: hover) {
+    .partners .sf-rail__list--grid .partners__item:hover {
+        border-color: var(--color-primary);
+        background: var(--color-surface);
+        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    }
+}
+
+.partners__note {
+    margin-top: 1.5rem;
+    color: var(--color-text);
+    font-size: 0.75rem;
+    line-height: 1rem;
+    text-align: center;
+}
+
+/* News filter chips start at the left, as the board's row does (it has the search box at the right). */
+.sf-list--news .sf-chips {
+    justify-content: flex-start;
 }

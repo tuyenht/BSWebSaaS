@@ -112,7 +112,7 @@ it('shows a single photo without thumbnails, arrows or the counter', function ()
         ->not->toContain('product__thumbs')->not->toContain('product__nav')->not->toContain('data-sf-gallery-count');
 });
 
-it('lists the other products of the same group only, never another site’s, by their routes', function (): void {
+it('lists the other products of the same group first, then the rest of its branch, never another site’s, by their routes', function (): void {
     $product = productSite();
     productSite('Xưởng Khác', 'khac.platform.test', 'Ấn bản lạ ');
     $html = productHtml();
@@ -123,10 +123,10 @@ it('lists the other products of the same group only, never another site’s, by 
 
     expect($section)->toContain('Sản phẩm cùng nhóm')
         ->toContain('>Đế gá máy cũ</a>')->toContain('>Ống kẹp cỡ bé</a>')
-        ->not->toContain('Ụ đỡ trục phụ')        // another group
+        ->toContain('>Ụ đỡ trục phụ</a>')        // another group of the branch fills the row
         ->not->toContain('Đồ gá kiểm độ</a>')    // the page's own product
         ->and($html)->not->toContain('Ấn bản lạ')  // another site's products
-        ->and($hrefs[1])->toBe(['/de-ga-may', '/ong-kep']);
+        ->and($hrefs[1])->toBe(['/de-ga-may', '/ong-kep', '/u-do-truc']);  // the group's own first, then the other group
     foreach ($hrefs[1] as $href) {
         expect($href)->not->toMatch('#/\d+(/|$)#')->not->toContain((string) $product->id.'"');
     }

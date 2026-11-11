@@ -372,3 +372,25 @@ it('marks the menu item of the section a post sits in, in the desktop menu, the 
     expect($list)->not->toContain('is-trail" href="/an-pham-so-hoa"')
         ->toMatch('#<a class="sf-nav__link" href="/an-pham-so-hoa"\s+aria-current="page"#');
 });
+
+it('fills "other projects" to three: the category\'s own projects first, then the newest of its branch', function (): void {
+    $site = StorefrontCards::site();
+    app(Tenancy::class)->enter($site, function (): void {
+        $outer = StorefrontCards::category('Dự án các loại', 'du-an-cac-loai');
+        $own = StorefrontCards::category('Tự động hóa ạ', 'tu-dong-hoa-a', $outer);
+        $own->update(['detail_template' => 'project']);
+        $other = StorefrontCards::category('Ô tô ạ', 'o-to-a', $outer);
+        $other->update(['detail_template' => 'project']);
+        $day = fn (int $n): CarbonImmutable => CarbonImmutable::parse('2026-09-01 08:00:00', 'UTC')->addDays($n);
+        StorefrontCards::post($own, 'Dự án đang xem', 'dang-xem', $day(1));
+        StorefrontCards::post($own, 'Dự án cùng mục', 'cung-muc', $day(2));
+        StorefrontCards::post($other, 'Dự án ô tô cũ', 'o-to-cu', $day(3));
+        StorefrontCards::post($other, 'Dự án ô tô mới', 'o-to-moi', $day(4));
+    });
+
+    $html = $this->get(BC_HOST.'/tu-dong-hoa-a/dang-xem')->assertOk()->getContent();
+    $links = array_values(array_filter(array_unique(bcLinks($html, '<section class="post-related', '</section>')), fn (string $href): bool => str_contains($href, '/o-to-') || str_contains($href, '/cung-muc')));
+
+    expect($links)->toBe(['/tu-dong-hoa-a/cung-muc', '/o-to-a/o-to-moi', '/o-to-a/o-to-cu'])
+        ->and($html)->not->toContain('href="/tu-dong-hoa-a/dang-xem"');
+});

@@ -322,7 +322,7 @@ final readonly class StorefrontController
                     ...$this->crumbs->category($category, $locale, $categoryTranslation->name, $categoryTranslation->slug),
                     $self,
                 ];
-                $extra += $this->posts->siblings($entry, $category, $locale, true, $withRecent);
+                $extra += $this->posts->siblings($entry, $category, $locale, true, $withRecent, $postTemplate === 'project');
             }
             $extra['slotContext'] = $this->slots->context($slotBlocks, $category, $locale, $brandData, is_array($extra['recent'] ?? null) ? $extra['recent'] : []);
             unset($extra['recent']);
