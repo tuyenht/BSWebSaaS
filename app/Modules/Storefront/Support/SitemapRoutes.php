@@ -73,7 +73,10 @@ final readonly class SitemapRoutes
      *
      * @param  array{0: string, 1: int}|null  $from
      * @param  array{0: string, 1: int}|null  $to
-     * @return list<array{path: string, locale: string, lastmod: string|null}>
+     *                                             image is the page's main picture, read in the same query: a post or page's cover (the
+     *                                             image_url its og:image uses: a stored key, or a full link kept as it is) or a product's first
+     *                                             photo (the storage key of its first gallery media, trashed ones left out); null when none.
+     * @return list<array{path: string, locale: string, lastmod: string|null, image: string|null}>
      */
     public function slice(?array $from, int $limit, ?array $to = null): array
     {
@@ -94,6 +97,13 @@ final readonly class SitemapRoutes
                     join products o on o.site_id = t.site_id and o.id = t.product_id
                     where t.site_id = routes.site_id and t.product_id = routes.product_id and t.locale = routes.locale)
             ) end as updated_at')
+            ->selectRaw("case when routes.entry_id is not null then
+                (select e.meta->>'image_url' from entries e where e.site_id = routes.site_id and e.id = routes.entry_id)
+                when routes.product_id is not null then
+                (select m.storage_key from product_images pi join media m on m.site_id = pi.site_id and m.id = pi.media_id
+                    where pi.site_id = routes.site_id and pi.product_id = routes.product_id and m.deleted_at is null
+                    order by pi.position, pi.id limit 1)
+            end as image")
             ->toBase()
             ->cursor();
 
@@ -105,6 +115,7 @@ final readonly class SitemapRoutes
                 'path' => Cast::string($row->path),
                 'locale' => Cast::string($row->locale),
                 'lastmod' => $updated instanceof CarbonInterface ? $updated->toAtomString() : null,
+                'image' => is_string($row->image) && str_contains($row->image, '/') ? $row->image : null,
             ];
         }
 

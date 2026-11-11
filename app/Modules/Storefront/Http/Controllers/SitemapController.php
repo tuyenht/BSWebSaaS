@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Storefront\Http\Controllers;
 
 use App\Modules\Cms\Routing\PathBuilder;
+use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Storefront\Support\SitemapRoutes;
 use App\Modules\Theme\Theming\SiteSeo;
 use Illuminate\Http\Request;
@@ -33,10 +34,16 @@ final readonly class SitemapController
 {
     private const string XMLNS = 'http://www.sitemaps.org/schemas/sitemap/0.9';
 
+    private const string XMLNS_IMAGE = 'http://www.google.com/schemas/sitemap-image/1.1';
+
+    /** The width a page's main picture is listed at (a whitelisted width, like the og:image). */
+    private const int IMAGE_WIDTH = 1280;
+
     public function __construct(
         private PathBuilder $paths,
         private SitemapRoutes $routes,
         private SiteSeo $seo,
+        private MediaUrlResolver $media,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -90,17 +97,21 @@ final readonly class SitemapController
     }
 
     /**
-     * @param  list<array{path: string, locale: string, lastmod: string|null}>  $routes
+     * @param  list<array{path: string, locale: string, lastmod: string|null, image: string|null}>  $routes
      */
     private function urlset(Request $request, array $routes): Response
     {
         $base = $this->base($request);
-        $xml = '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="'.self::XMLNS.'">';
+        $xml = '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="'.self::XMLNS.'" xmlns:image="'.self::XMLNS_IMAGE.'">';
 
         foreach ($routes as $route) {
             $xml .= '<url><loc>'.$this->escape($base.$this->paths->publicUrl($route['path'], $route['locale'])).'</loc>';
             if ($route['lastmod'] !== null) {
                 $xml .= '<lastmod>'.$this->escape($route['lastmod']).'</lastmod>';
+            }
+            if ($route['image'] !== null) {
+                $image = str_contains($route['image'], '://') ? $route['image'] : $this->media->url($route['image'], self::IMAGE_WIDTH);
+                $xml .= '<image:image><image:loc>'.$this->escape($image).'</image:loc></image:image>';
             }
             $xml .= '</url>';
         }
