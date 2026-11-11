@@ -235,9 +235,10 @@ Route::prefix(config('admin.prefix', 'admin'))
         // A first-time explanation the member put away with "Đã hiểu" — any member, own preferences only.
         Route::post('/hint-preference', [HintPreferenceController::class, 'store'])->name('admin.hint.dismiss');
 
-        // Site members + their roles (owner/admin). Add/change/remove routes through the guarded
-        // AssignRole/RevokeRole actions, so the role hierarchy is enforced server-side.
-        Route::get('/users', UsersIndex::class)->middleware('can:users.manage')->name('admin.users.index');
+        // Site members + their roles. Invite/change/remove go through the guarded InviteMember /
+        // AssignRole / RevokeRole actions, so the role hierarchy is enforced server-side. No `can:`
+        // here: a member without users.manage sees the screen's own no-permission card.
+        Route::get('/users', UsersIndex::class)->name('admin.users.index');
 
         // Dev-only design-system showcase (component mount() aborts in production).
         Route::get('/_gallery', ComponentGallery::class)->name('admin.gallery');

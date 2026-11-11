@@ -47,7 +47,7 @@ it('rings focus in the white ink of the navy Customizer header, not the navy acc
 });
 
 it('heads a list table in the muted role', function (): void {
-    $html = $this->actingAs(shellOwner())->get('http://demo.platform.test/admin/users')->assertOk()->getContent();
+    $html = $this->actingAs(shellOwner())->get('http://demo.platform.test/admin/forms')->assertOk()->getContent();
 
     expect((string) $html)->toMatch('/<thead class="[^"]*text-body-muted[^"]*">/')
         ->not->toMatch('/<thead class="[^"]*text-body-faint/');

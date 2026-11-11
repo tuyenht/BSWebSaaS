@@ -61,7 +61,7 @@ it('shows the Vietnamese max-length message on the own-profile form, not the Eng
         ->and($message)->not->toContain('must not be greater than');
 });
 
-it('shows the Vietnamese email-format message on an invalid member invite, not the English default', function (): void {
+it('shows the Vietnamese max-length message on the member invite, naming the field by its visible label', function (): void {
     $admin = User::factory()->create();
 
     $message = app(Tenancy::class)->enter(1, function () use ($admin): string {
@@ -69,15 +69,16 @@ it('shows the Vietnamese email-format message on an invalid member invite, not t
 
         $component = Livewire::actingAs($admin->fresh())
             ->test(UsersIndex::class)
-            ->set('inviteEmail', 'not-an-email')
-            ->set('inviteRole', 'viewer')
-            ->call('addMember');
+            ->set('inviteEmail', 'moi@example.test')
+            ->set('inviteRoles', ['viewer'])
+            ->set('inviteMessage', str_repeat('a', 501))
+            ->call('sendInvites');
 
-        return $component->errors()->first('inviteEmail');
+        return $component->errors()->first('inviteMessage');
     });
 
-    expect($message)->toBe('Email chưa đúng dạng email.')
-        ->and($message)->not->toContain('must be a valid email address');
+    expect($message)->toBe('Lời nhắn dài tối đa 500 ký tự.')
+        ->and($message)->not->toContain('must not be greater than');
 });
 
 it('capitalises a field name only where it opens the sentence', function (): void {

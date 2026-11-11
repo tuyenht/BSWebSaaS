@@ -26,7 +26,7 @@ const { default: axe } = await import('axe-core');
 const doc = boot.window.document; // axe validates the context against THIS window's Node class
 
 const DIR = process.env.ADMIN_PREVIEW_DIR ?? 'storage/app/admin-preview';
-const SCREENS = ['dashboard', 'list', 'form', 'gallery', 'editor', 'audit', 'audit-detail', 'audit-cleanup', 'audit-cleanup-pick', 'audit-cleanup-confirm', 'workflows', 'domains-add', 'floating-contact', 'floating-contact-bar', 'integrations', 'general', 'seo', 'seo-hide', 'seo-ai-ok', 'seo-ai-busy', 'seo-ai-warn', 'seo-image', 'post-editor', 'product-editor', 'product-list', 'menus', 'categories', 'leads', 'lead-detail'];
+const SCREENS = ['dashboard', 'list', 'form', 'gallery', 'editor', 'audit', 'audit-detail', 'audit-cleanup', 'audit-cleanup-pick', 'audit-cleanup-confirm', 'workflows', 'domains-add', 'floating-contact', 'floating-contact-bar', 'integrations', 'general', 'seo', 'seo-hide', 'seo-ai-ok', 'seo-ai-busy', 'seo-ai-warn', 'seo-image', 'post-editor', 'product-editor', 'product-list', 'menus', 'categories', 'leads', 'lead-detail', 'members', 'members-panel', 'members-invite'];
 const THEMES = ['light', 'dark'];
 const ALLOWLIST = JSON.parse(readFileSync(new URL('./axe-allowlist.json', import.meta.url), 'utf8'));
 

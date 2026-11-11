@@ -72,11 +72,12 @@ it('answers "invite member" with the same sentence whether or not the address ha
         app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($owner->fresh())
             ->test(Index::class)
             ->set('inviteEmail', $email)
-            ->set('inviteRole', 'viewer')
-            ->call('addMember')
+            ->set('inviteRoles', ['viewer'])
+            ->call('sendInvites')
             ->assertHasNoErrors()
             // One sentence template for both — nothing tells the admin which address has an account.
-            ->assertSee(__('rbac.invitation.sent', ['email' => $email, 'days' => InviteMember::VALID_DAYS])));
+            ->assertSet('inviteResults', [['email' => $email, 'ok' => true, 'text' => __('admin.members.inv_res_ok', ['days' => InviteMember::VALID_DAYS])]])
+            ->assertSee(__('admin.members.inv_res_ok', ['days' => InviteMember::VALID_DAYS])));
     }
 
     Notification::assertSentOnDemandTimes(MemberInvitationNotification::class, 2);
@@ -89,8 +90,8 @@ it('tells the admin in plain words when an address has had its invitations for t
     $inviteHopThu = fn () => app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($owner->fresh())
         ->test(Index::class)
         ->set('inviteEmail', 'hop-thu@example.test')
-        ->set('inviteRole', 'viewer')
-        ->call('addMember'));
+        ->set('inviteRoles', ['viewer'])
+        ->call('sendInvites'));
 
     for ($i = 0; $i < InviteMember::ADDRESS_DAILY_LIMIT; $i++) {
         $inviteHopThu()->assertHasNoErrors();
@@ -98,7 +99,7 @@ it('tells the admin in plain words when an address has had its invitations for t
     }
 
     $inviteHopThu()
-        ->assertHasErrors('inviteEmail')
+        ->assertSet('inviteResults', [['email' => 'hop-thu@example.test', 'ok' => false, 'text' => __('rbac.invitation.error_address_daily_limit')]])
         ->assertSee(__('rbac.invitation.error_address_daily_limit'));
 
     Notification::assertSentOnDemandTimes(MemberInvitationNotification::class, InviteMember::ADDRESS_DAILY_LIMIT);
@@ -113,8 +114,8 @@ it('mails a link to the invitation page on the site’s own host', function (): 
     app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($owner->fresh())
         ->test(Index::class)
         ->set('inviteEmail', 'moi@example.test')
-        ->set('inviteRole', 'viewer')
-        ->call('addMember'));
+        ->set('inviteRoles', ['viewer'])
+        ->call('sendInvites'));
 
     Notification::assertSentOnDemand(MemberInvitationNotification::class, function (MemberInvitationNotification $note, array $channels, object $notifiable): bool {
         app()->setLocale((string) $note->locale);   // the sender renders the mail in the notification's locale
