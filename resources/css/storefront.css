@@ -9494,7 +9494,7 @@ html:has(.sf-viewer[open]) {
     }
 }
 
-/* ───── K1 heads: title band variants, section head alignment and rule ───── */
+/* ───── Page heads: title band variants, section head alignment and rule ───── */
 /* A title band without a photo: dark with the thin diagonal pattern the boards draw (45deg and -45deg lines, 10% white). */
 .page-band--pattern::before {
     content: "";
@@ -9507,7 +9507,7 @@ html:has(.sf-viewer[open]) {
     pointer-events: none;
 }
 
-/* The round gold tick above a thank-you title; it pulses once a second or so, and stands still when motion is reduced. */
+/* The round gold tick above a thank-you title; its ring pulses three times (2s each) and then stops; it stands still when motion is reduced. */
 .page-band--mark .page-band__content {
     padding-block: 3rem;
 }
@@ -9538,7 +9538,7 @@ html:has(.sf-viewer[open]) {
         position: absolute;
         inset: 0;
         border-radius: inherit;
-        animation: sf-band-pulse 2s infinite;
+        animation: sf-band-pulse 2s 3;
     }
 }
 

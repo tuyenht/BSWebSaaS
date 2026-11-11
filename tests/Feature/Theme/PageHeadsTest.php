@@ -28,31 +28,32 @@ function headsFaq(array $props = []): string
 }
 
 describe('the title band', function (): void {
-    it('is dark with the diagonal pattern when it has no photo', function (): void {
-        expect(headsBand([]))->toContain('<section class="page-band page-band--pattern">')
-            ->not->toContain('page-band__mark');
+    it('is plain dark by default and gets the diagonal pattern only when the page sets it', function (): void {
+        expect(headsBand([]))->toContain('<section class="page-band">')->not->toContain('--pattern')
+            ->not->toContain('page-band__mark')
+            ->and(headsBand(['pattern' => 'on']))->toContain('<section class="page-band page-band--pattern">');
     });
 
-    it('keeps the plain photo band when it has a photo, and a plain dark band when the pattern is off', function (): void {
+    it('keeps the plain photo band when it has a photo, even when the pattern is on', function (): void {
         $photo = headsBand(['image_url' => 'https://files.baoson.net/band.jpg']);
-        $off = headsBand(['pattern' => 'off']);
+        $photoOn = headsBand(['image_url' => 'https://files.baoson.net/band.jpg', 'pattern' => 'on']);
 
         expect($photo)->toContain('<section class="page-band">')->toContain('page-band__overlay')
-            ->and($off)->toContain('<section class="page-band">')->not->toContain('--pattern');
+            ->and($photoOn)->toContain('<section class="page-band">')->not->toContain('--pattern');
     });
 
     it('draws the gold tick above the title only when asked, hidden from screen readers', function (): void {
-        $html = headsBand(['mark' => 'check']);
+        $html = headsBand(['mark' => 'check', 'pattern' => 'on']);
 
         expect($html)->toContain('page-band page-band--pattern page-band--mark')
             ->toMatch('#<span class="page-band__mark" aria-hidden="true">.*<svg.*</svg>.*</span>\s*<h2 class="page-band__title">#s')
             ->and(headsBand(['mark' => 'none']))->not->toContain('page-band__mark');
     });
 
-    it('lists its new choices in the schema, defaulting to the old look', function (): void {
+    it('lists its new choices in the schema, defaulting to the old look (no pattern, no tick)', function (): void {
         $schema = app(ComponentRegistry::class)->schemaFor('page_header');
 
-        expect($schema['pattern'])->toMatchArray(['type' => 'enum', 'options' => SectionProps::BAND_PATTERNS, 'default' => 'on'])
+        expect($schema['pattern'])->toMatchArray(['type' => 'enum', 'options' => SectionProps::BAND_PATTERNS, 'default' => 'off'])
             ->and($schema['mark'])->toMatchArray(['type' => 'enum', 'options' => SectionProps::BAND_MARKS, 'default' => 'none'])
             ->and($schema)->not->toHaveKey('heading_align');
     });

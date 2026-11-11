@@ -1057,7 +1057,8 @@
       "props": {
        "title": "Cảm ơn bạn đã gửi yêu cầu!",
        "subtitle": "An Vinh đã nhận thông tin. Kỹ sư phụ trách sẽ liên hệ lại với bạn trong thời gian sớm nhất.",
-       "mark": "check"
+       "mark": "check",
+       "pattern": "on"
       }
      },
      {
@@ -1138,7 +1139,8 @@
       "type": "page_header",
       "props": {
        "title": "Chính sách bảo mật",
-       "subtitle": "Cách chúng tôi thu thập, sử dụng và bảo vệ thông tin cá nhân của bạn"
+       "subtitle": "Cách chúng tôi thu thập, sử dụng và bảo vệ thông tin cá nhân của bạn",
+       "pattern": "on"
       }
      },
      {

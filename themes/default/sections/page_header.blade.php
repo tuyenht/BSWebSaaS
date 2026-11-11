@@ -2,7 +2,7 @@
     Page title band (inner pages). When it leads the page it carries the page's single h1 (the
     layout skips its own — PageRenderer marks it `_lead`); a later band is an h2. The background is
     a real <img> (not a CSS background) so fetchpriority="high" reaches the LCP image; alt="" since
-    the heading is its text. No image (or one whose URL is not a safe web link) → a solid ink band. The overlay darkens the photo by
+    the heading is its text. No image (or one whose URL is not a safe web link) → a solid ink band (with the diagonal pattern when `pattern` is on). The overlay darkens the photo by
     55–80% (default 60): at 55% white text over a white photo still reads 4.76:1, so the breadcrumb
     and the subtitle are white too. The band that leads the page carries the page's breadcrumb
     (`_crumbs`, set by PageRenderer or the list layout); a library photo comes with its srcset
@@ -20,8 +20,8 @@
     $bandDates = ! empty($props['_lead']) && is_array($props['_dates'] ?? null) ? $props['_dates'] : [];
     $bandDay = is_string($bandDates['date'] ?? null) ? $bandDates['date'] : '';
     $bandUpdated = is_string($bandDates['updated'] ?? null) ? $bandDates['updated'] : '';
-    // Without a photo the band is dark with the thin diagonal pattern (`pattern` off: plain dark); `mark` = check adds the gold tick.
-    $bandPattern = $image === null && ($props['pattern'] ?? 'on') !== 'off';
+    // Without a photo the band is a plain dark one; `pattern` = on adds the thin diagonal pattern; `mark` = check adds the gold tick.
+    $bandPattern = $image === null && ($props['pattern'] ?? 'off') === 'on';
     $bandMark = ($props['mark'] ?? 'none') === 'check';
 @endphp
 <section class="page-band{{ $bandPattern ? ' page-band--pattern' : '' }}{{ $bandMark ? ' page-band--mark' : '' }}">

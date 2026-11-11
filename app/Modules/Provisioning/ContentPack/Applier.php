@@ -190,10 +190,12 @@ final class Applier
             if ($row === []) {
                 continue;
             }
+            // A pack that names the intro for this language sets it (an empty one clears it); a pack that does not keeps the live one.
+            $stated = array_key_exists((string) $locale, Cast::arr($planned->item->data['description'] ?? null));
             $taxonomy->translations()->updateOrCreate(['locale' => (string) $locale], [
                 'name' => Cast::string($row['name'] ?? null),
                 'slug' => Cast::string($row['slug'] ?? null),
-            ] + (is_string($row['description'] ?? null) ? ['description' => $row['description']] : []));
+            ] + ($stated ? ['description' => Cast::stringOrNull($row['description'] ?? null)] : (is_string($row['description'] ?? null) ? ['description' => $row['description']] : [])));
             $this->routes->syncTaxonomy($taxonomy, (string) $locale, Cast::string($row['slug'] ?? null));
         }
         $this->paths->refreshBranch($taxonomy->id);

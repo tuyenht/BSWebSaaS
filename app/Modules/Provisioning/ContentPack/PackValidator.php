@@ -662,7 +662,7 @@ final readonly class PackValidator
         }
         // The intro under the name (plain text per language) and the intro picture: the same checks a category edit makes.
         if (array_key_exists('description', $item->data)) {
-            $this->localeMap($pack, $item->key, $item->data, 'description', false, TaxonomyRules::DESCRIPTION_MAX, $errors);
+            $this->localeMap($pack, $item->key, $item->data, 'description', false, TaxonomyRules::DESCRIPTION_MAX, $errors, true);
         }
         if (array_key_exists('cover', $item->data) && ! self::isMediaRef($item->data['cover'])) {
             $errors[] = "{$item->key}: cover must be an image reference ({\"media\": slot}).";
@@ -1285,7 +1285,7 @@ final readonly class PackValidator
      * @param  array<array-key, mixed>  $data
      * @param  list<string>  $errors
      */
-    private function localeMap(Pack $pack, string $at, array $data, string $field, bool $required, ?int $max, array &$errors): void
+    private function localeMap(Pack $pack, string $at, array $data, string $field, bool $required, ?int $max, array &$errors, bool $nullClears = false): void
     {
         if (! array_key_exists($field, $data) || $data[$field] === null) {
             if ($required) {
@@ -1306,6 +1306,8 @@ final readonly class PackValidator
         foreach ($map as $locale => $text) {
             if (! in_array($locale, $pack->locales, true)) {
                 $errors[] = "{$at}: {$field} has a language the pack does not list ({$locale}).";
+            } elseif ($nullClears && $text === null) {
+                continue;
             } elseif (! is_string($text) || ($required && trim($text) === '')) {
                 $errors[] = "{$at}: {$field} ({$locale}) must be text.";
             } elseif ($max !== null && mb_strlen($text) > $max) {
