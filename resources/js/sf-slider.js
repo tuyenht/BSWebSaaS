@@ -99,7 +99,7 @@ function init(root) {
         start = null;
     });
     root.addEventListener('pointerenter', (event) => {
-        hovered = event.pointerType === 'mouse';
+        hovered = event.pointerType !== 'touch';
         schedule();
     });
     root.addEventListener('pointerleave', () => {
@@ -220,7 +220,7 @@ function initRail(root) {
         }
     });
     root.addEventListener('pointerenter', (event) => {
-        hovered = event.pointerType === 'mouse';
+        hovered = event.pointerType !== 'touch';
         schedule();
     });
     root.addEventListener('pointerleave', () => {
@@ -228,7 +228,11 @@ function initRail(root) {
         schedule();
     });
     document.addEventListener('visibilitychange', schedule);
-    window.addEventListener('resize', sync);
+    let resized;
+    window.addEventListener('resize', () => {
+        clearTimeout(resized);
+        resized = setTimeout(sync, 200);
+    });
     phone.addEventListener?.('change', sync);
     reduce.addEventListener?.('change', sync);
     sync();

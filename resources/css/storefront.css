@@ -10032,6 +10032,7 @@ html:has(.sf-viewer[open]) {
    it is plain that the row moves; the logo strip scrolls freely (no snapping) so a flick coasts. */
 @media (min-width: 640px) and (max-width: 1023px) {
     .sf-rail__list--slider:not(.sf-rail__list--c6) { --sf-c: 2.25; }
+    .partners .sf-rail__list--slider { --sf-c: 3.25; }
 }
 
 .partners .sf-rail__list--slider,
