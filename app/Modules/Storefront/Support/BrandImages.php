@@ -40,16 +40,22 @@ final readonly class BrandImages
      */
     public function for(?array $identity): array
     {
+        return $this->resolve($identity)['images'];
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $identity
+     * @return array{images: array{logo: string|null, logo_dark: string|null, favicon: string|null, og_image: string|null}, ogSize: array{0: int, 1: int}|null}
+     */
+    private function resolve(?array $identity): array
+    {
         $legacy = Cast::arr($identity['legacy_images'] ?? null);
         $ids = array_filter(Cast::arr($identity['media_ids'] ?? null), is_int(...));
 
         $keys = [];
-        if ($ids !== [] && $this->current->hasId()) {
-            $keys = Media::query()
-                ->where('site_id', $this->current->id())
-                ->whereIn('id', array_values(array_unique($ids)))
-                ->pluck('storage_key', 'id')
-                ->all();
+        $rows = $this->rows($ids);
+        foreach ($rows as $id => $row) {
+            $keys[$id] = $row->storage_key;
         }
 
         $images = [];
@@ -64,7 +70,38 @@ final readonly class BrandImages
         }
         $images['logo_dark'] ??= $images['logo'];
 
-        return $images;
+        // The share image's shown size, known only for a library picture (the older URL carries none):
+        // the master's size, scaled down to the width the address asks for (never enlarged).
+        $ogSize = null;
+        $og = isset($ids['og_image']) ? ($rows[$ids['og_image']] ?? null) : null;
+        $legacyOg = $legacy['og_image'] ?? null;
+        if ($og !== null && ! (is_string($legacyOg) && $legacyOg !== '') && is_int($og->width) && $og->width > 0 && is_int($og->height) && $og->height > 0) {
+            $shown = min($og->width, self::WIDTHS['og_image']);
+            $ogSize = [$shown, max(1, (int) round($og->height * $shown / $og->width))];
+        }
+
+        return ['images' => $images, 'ogSize' => $ogSize];
+    }
+
+    /**
+     * The site's media rows for the ids, one query (none without an id), keyed by id.
+     *
+     * @param  array<array-key, mixed>  $ids
+     * @return array<int, Media>
+     */
+    private function rows(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter($ids, is_int(...))));
+        if ($ids === [] || ! $this->current->hasId()) {
+            return [];
+        }
+
+        $rows = [];
+        foreach (Media::query()->where('site_id', $this->current->id())->whereIn('id', $ids)->get(['id', 'storage_key', 'width', 'height']) as $media) {
+            $rows[(int) $media->id] = $media;
+        }
+
+        return $rows;
     }
 
     /**
@@ -80,9 +117,10 @@ final readonly class BrandImages
             return null;
         }
 
-        $images = array_filter($this->for($identity), fn (?string $url): bool => $url !== null);
+        ['images' => $resolved, 'ogSize' => $ogSize] = $this->resolve($identity);
+        $images = array_filter($resolved, fn (?string $url): bool => $url !== null);
         unset($identity['media_ids'], $identity['legacy_images']);
 
-        return [...$identity, ...$images];
+        return [...$identity, ...$images, ...($ogSize !== null && isset($images['og_image']) ? ['og_image_width' => $ogSize[0], 'og_image_height' => $ogSize[1]] : [])];
     }
 }

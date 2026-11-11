@@ -29,10 +29,10 @@
             <li class="partners__item">
                 @if (($link = \App\Modules\Theme\Components\ButtonLink::of($item, 'url')) !== null && \App\Modules\Theme\Components\SectionProps::text($item, 'name') !== '')
                     <a class="partners__link" href="{{ $link['href'] }}"@if ($link['blank']) target="_blank" rel="noopener"@elseif ($link['download']) download=""@endif>
-                        @include('theme::partials.partners-logo', ['item' => $item, 'dims' => $dims ?? []])
+                        @include('theme::partials.partners-logo', ['item' => $item, 'dims' => $dims ?? [], 'thumbs' => $thumbs ?? []])
                     @if ($link['blank'])<span class="sr-only"> {{ __('storefront.new_tab') }}</span>@endif</a>
                 @else
-                    @include('theme::partials.partners-logo', ['item' => $item, 'dims' => $dims ?? []])
+                    @include('theme::partials.partners-logo', ['item' => $item, 'dims' => $dims ?? [], 'thumbs' => $thumbs ?? []])
                 @endif
             </li>
         @endforeach

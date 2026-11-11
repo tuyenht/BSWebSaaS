@@ -114,6 +114,20 @@ final readonly class PageRenderer
             $tocOwn = $toc['own'];
         }
 
+        // Whether a section already printed a high-priority image (a hero, about, slider or a
+        // first block's background, wherever it sits): a post's cover then stays at 'eager', so
+        // the page asks for one high-priority image, not two. Matched on the tag: text (a post
+        // about the attribute itself) cannot hold a raw "<", Blade and the purifier escape it.
+        $bodyHighImage = preg_match('~<img\b[^>]*\sfetchpriority="high"~', $band.$sections) === 1;
+        // A post or product page with a cover photo (the photo that also gives it its share image) leads
+        // with that photo from the media host: connect to the host with the HTML.
+        if (! isset($extra['mediaOrigin']) && ! empty($extra['ogImage'])) {
+            $origin = $this->media->origin();
+            if ($origin !== null && $origin !== request()->getSchemeAndHttpHost()) {
+                $extra['mediaOrigin'] = $origin;
+            }
+        }
+
         return $this->views->make($layout, $this->head($seo, $title, $extra) + [
             'title' => $title,
             'tokens' => $tokens,
@@ -121,11 +135,7 @@ final readonly class PageRenderer
             'band' => $band,
             // A page_header band leading the page renders the h1 itself; the layout then skips its own.
             'leadBlock' => $leadBlock,
-            // Whether a section already printed a high-priority image (a hero, about, slider or a
-            // first block's background, wherever it sits): a post's cover then stays at 'eager', so
-            // the page asks for one high-priority image, not two. Matched on the tag: text (a post
-            // about the attribute itself) cannot hold a raw "<", Blade and the purifier escape it.
-            'bodyHighImage' => preg_match('~<img\b[^>]*\sfetchpriority="high"~', $band.$sections) === 1,
+            'bodyHighImage' => $bodyHighImage,
             // The headings of the body's formatted text, for a post's table of contents (two or more).
             'toc' => $toc['items'],
             // The author numbered the headings: the contents list then adds no numbers of its own.
