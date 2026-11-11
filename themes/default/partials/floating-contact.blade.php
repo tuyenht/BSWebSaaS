@@ -14,6 +14,10 @@
     carries its name (aria-label), which also holds the word printed on the button (SMS), and the
     hover label repeats the name for the eye. Colours come from the normalizer (white marks at 3:1,
     words at 4.5:1; the brand fill uses the brand's own readable ink).
+    A round-button site may add a phone bar (`phone_bar`): below 768px the round buttons give way to a
+    dark bar of up to three equal cells (quick channels, then the site's own cell such as a quote
+    request) and above it the round buttons stay; no band is reserved under the footer at the
+    wider widths, and the invisible copy under it is dark, like the footer, so the page ends on the bar.
 --}}
 @if (! empty($floatingContact))
 @php
@@ -27,11 +31,14 @@
     $fcRank = static fn (int $i): string => ($r = $i + 1 + ($fc['buy'] !== null && $i >= 2 ? 1 : 0)) > 3 ? ' sf-fc-bar__item--r'.$r : '';
 @endphp
 @if ($fc['theme'] === 'vertical')
+@php($fcPb = $fc['phone_bar'])
+@if ($fcPb === null)
 <div class="sf-fc-ghost sf-fc-ghost--{{ $fc['position'] === 'bottom' ? 'row' : 'side' }}" aria-hidden="true" style="{{ $fcOffsets }};--fc-n:{{ count($fc['buttons']) }}"><div class="sf-fc__list sf-fc__list--{{ $fc['position'] }}">@foreach ($fc['buttons'] as $b)<span class="sf-fc__btn"></span>@endforeach</div></div>
-<nav class="sf-fc sf-fc--{{ $fc['position'] }}" aria-label="{{ __('storefront.fc_nav') }}" style="{{ $fcOffsets }}">
+@endif
+<nav class="sf-fc sf-fc--{{ $fc['position'] }}{{ $fcPb !== null ? ' sf-fc--md' : '' }}" aria-label="{{ __('storefront.fc_nav') }}" style="{{ $fcOffsets }}">
     <ul class="sf-fc__list sf-fc__list--{{ $fc['position'] }}" role="list">
         @foreach ($fc['buttons'] as $b)
-            <li><a class="sf-fc__btn{{ $b['pulse'] ? ' sf-fc__btn--pulse' : '' }}" href="{{ $b['href'] }}" aria-label="{{ $fcName($b) }}" style="--fc-fill:{{ $b['fill'] }}">
+            <li><a class="sf-fc__btn{{ $b['pulse'] ? ' sf-fc__btn--pulse' : '' }}" href="{{ $b['href'] }}" aria-label="{{ $fcName($b) }}" style="--fc-fill:{{ $b['fill'] }};--fc-ink:{{ $b['ink'] }}">
                 @if ($b['text'] !== null)
                     <span class="sf-fc__word" aria-hidden="true">{{ $b['text'] }}</span>
                 @else
@@ -42,6 +49,28 @@
         @endforeach
     </ul>
 </nav>
+@if ($fcPb !== null)
+<div class="sf-fc-bar sf-fc-bar--board sf-fc-bar--ghost" aria-hidden="true"><ul class="sf-fc-bar__list" role="list">@foreach ($fcPb['bar'] as $b)<li class="sf-fc-bar__item"><span class="sf-fc-bar__link"><span class="sf-fc-bar__dot"></span><span class="sf-fc-bar__label">{{ $fcWord($b) }}</span></span></li>@endforeach @if ($fcPb['cta'] !== null)<li class="sf-fc-bar__item"><span class="sf-fc-bar__link"><span class="sf-fc-bar__label">{{ $fcPb['cta']['label'] }}</span></span></li>@endif</ul></div>
+<nav class="sf-fc-bar sf-fc-bar--board" aria-label="{{ __('storefront.fc_nav') }}">
+    <ul class="sf-fc-bar__list" role="list">
+        @foreach ($fcPb['bar'] as $b)
+            <li class="sf-fc-bar__item"><a class="sf-fc-bar__link" href="{{ $b['href'] }}" @if (str_starts_with($b['href'], 'http')) rel="noopener" @endif style="--fc-fill:{{ $b['fill'] }};--fc-ink:{{ $b['ink'] }}">
+                <span class="sf-fc-bar__dot{{ $b['text'] !== null ? ' sf-fc-bar__dot--chip' : '' }}" aria-hidden="true">
+                    @if ($b['text'] !== null)
+                        <span class="sf-fc-bar__word">{{ $b['text'] }}</span>
+                    @else
+                        <svg class="sf-fc-bar__icon" viewBox="0 0 24 24" focusable="false"><path d="{{ $b['icon'] }}"/></svg>
+                    @endif
+                </span>
+                <span class="sf-fc-bar__label">{{ $fcWord($b) }}</span>
+            </a></li>
+        @endforeach
+        @if ($fcPb['cta'] !== null)
+            <li class="sf-fc-bar__item sf-fc-bar__item--cta"><a class="sf-fc-bar__link" href="{{ $fcPb['cta']['href'] }}"><span class="sf-fc-bar__label">{{ $fcPb['cta']['label'] }}</span></a></li>
+        @endif
+    </ul>
+</nav>
+@endif
 @else
 <div class="sf-fc-bar sf-fc-bar--ghost" aria-hidden="true"><ul class="sf-fc-bar__list" role="list">@foreach ($fc['bar'] as $b)<li class="sf-fc-bar__item{{ $fcRank($loop->index) }}"><span class="sf-fc-bar__link"><span class="sf-fc-bar__dot">@if ($b['text'] !== null)<span class="sf-fc-bar__word">{{ $b['text'] }}</span>@endif</span><span class="sf-fc-bar__label">{{ $fcWord($b) }}</span></span></li>@endforeach @if ($fc['buy'] !== null)<li class="sf-fc-bar__item"><span class="sf-fc-bar__link"><span class="sf-fc-bar__dot"></span><span class="sf-fc-bar__label">{{ __('storefront.fc_buy') }}</span></span></li>@endif</ul></div>
 <nav class="sf-fc-bar" aria-label="{{ __('storefront.fc_nav') }}">

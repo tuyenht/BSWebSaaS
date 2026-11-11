@@ -124,7 +124,7 @@
                     </ul>
                 </div>
                 @if ($footer['factories'] !== [])
-                    <ul class="sf-footer__factories">
+                    <ul class="sf-footer__factories" data-sf-rot role="list" aria-label="{{ __('storefront.factories_label') }}">
                         @foreach ($footer['factories'] as $factory)
                             <li class="sf-factory">
                                 <div class="sf-factory__head">
@@ -149,10 +149,22 @@
                                 @endif
                                 @if ($factory['map_url'] !== null)
                                     <a class="sf-factory__map" href="{{ $factory['map_url'] }}" rel="noopener" aria-label="{{ __('storefront.view_map_of', ['name' => $factory['title']]) }} {{ __('storefront.external') }}">@include('theme::partials.sf-icon', ['name' => 'map', 'size' => 16])<span>{{ __('storefront.view_map') }}</span></a>
+                                @elseif ($factory['directions_url'] !== null)
+                                    <a class="sf-factory__map" href="{{ $factory['directions_url'] }}" target="_blank" rel="noopener" aria-label="{{ __('storefront.directions_to', ['name' => $factory['title']]) }} {{ __('storefront.external') }}">@include('theme::partials.sf-icon', ['name' => 'map', 'size' => 16])<span>{{ __('storefront.directions') }}</span></a>
                                 @endif
                             </li>
                         @endforeach
                     </ul>
+                    @if (count($footer['factories']) > 1)
+                        <div class="sf-rot__nav" data-sf-rot-nav hidden>
+                            <button type="button" class="sf-rot__arrow" data-sf-rot-prev aria-label="{{ __('storefront.factory_prev') }}">@include('theme::partials.sf-icon', ['name' => 'chevron-left', 'size' => 16])</button>
+                            @foreach ($footer['factories'] as $factory)
+                                <button type="button" class="sf-rot__go" data-sf-rot-go aria-label="{{ $factory['title'] }}"@if ($loop->first) aria-current="true"@endif><span class="sf-rot__dot"></span></button>
+                            @endforeach
+                            <button type="button" class="sf-rot__arrow" data-sf-rot-next aria-label="{{ __('storefront.factory_next') }}">@include('theme::partials.sf-icon', ['name' => 'chevron-right', 'size' => 16])</button>
+                        </div>
+                        @vite(['resources/js/sf-footer-rot.js'])
+                    @endif
                 @endif
             </div>
         </div>

@@ -369,3 +369,42 @@ it('adds no query to a page, and for “Mua hàng” only the product list looku
         ->and($pageBuy - $page)->toBe(5)
         ->and($listBuy - $list)->toBe(3);
 });
+
+it('swaps the round buttons for the dark phone bar below 768px when the site switches it on, and reserves no band under the footer', function (): void {
+    $siteId = flcSite();
+    flcSetting($siteId, flcConfig([
+        ['key' => 'zalo', 'on' => true, 'value' => '0912345678', 'tips' => ['vi' => 'Chat Zalo']],
+        ['key' => 'phone', 'on' => true, 'value' => '0912345678', 'color' => '#f59e0b', 'tips' => ['vi' => 'Gọi']],
+    ], ['phone_bar' => ['enabled' => true, 'cta' => ['label' => ['vi' => 'Yêu cầu báo giá'], 'url' => '/gioi-thieu']]]));
+
+    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
+    preg_match('~<nav class="sf-fc sf-fc--right sf-fc--md".*?</nav>~s', $html, $round);
+    preg_match('~<nav class="sf-fc-bar sf-fc-bar--board".*?</nav>~s', $html, $bar);
+    preg_match('~<div class="sf-fc-bar sf-fc-bar--board sf-fc-bar--ghost".*?</ul></div>~s', $html, $ghost);
+
+    expect($round[0] ?? '')->toContain('href="tel:0912345678"')->toContain('--fc-fill:#f59e0b;--fc-ink:#0f172a')
+        ->and($bar[0] ?? '')->toContain('href="https://zalo.me/0912345678"')->toContain('>Chat Zalo<')
+        ->toContain('href="tel:0912345678"')->toContain('>Gọi<')
+        ->toContain('sf-fc-bar__item--cta')->toContain('href="/gioi-thieu"')->toContain('>Yêu cầu báo giá<')
+        ->and($ghost[0] ?? '')->toContain('Yêu cầu báo giá')
+        // the call leads, the quote cell is last
+        ->and(strpos($bar[0] ?? '', '>Gọi<'))->toBeLessThan(strpos($bar[0] ?? '', 'Chat Zalo'))
+        ->and(strpos($bar[0] ?? '', 'Chat Zalo'))->toBeLessThan(strpos($bar[0] ?? '', 'Yêu cầu báo giá'))
+        // no invisible copy of the side stack: nothing is reserved at the wider widths
+        ->and($html)->not->toContain('sf-fc-ghost');
+
+    // Without the switch the page keeps the side stack and its reserved room, and no bar.
+    flcSetting($siteId, flcConfig([['key' => 'phone', 'on' => true, 'value' => '0912345678']]));
+    $plain = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
+    expect($plain)->toContain('sf-fc-ghost')->not->toContain('sf-fc-bar')->not->toContain('sf-fc--md');
+});
+
+it('draws the phone bar with the channels alone when its own cell has no safe link', function (): void {
+    $siteId = flcSite();
+    flcSetting($siteId, flcConfig([['key' => 'phone', 'on' => true, 'value' => '0912345678']],
+        ['phone_bar' => ['enabled' => true, 'cta' => ['label' => ['vi' => 'Báo giá'], 'url' => 'javascript:alert(1)']]]));
+
+    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
+
+    expect($html)->toContain('sf-fc-bar--board')->not->toContain('sf-fc-bar__item--cta')->not->toContain('javascript:');
+});
