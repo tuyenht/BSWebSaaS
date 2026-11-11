@@ -176,14 +176,16 @@ it('draws the about photo and a hero photo with a srcset, and a sizes that fits 
     });
 
     expect(preg_match_all('~<img class="about__image[^"]*"[^>]*>~', $html, $about))->toBe(2);
-    // A cut-to-fit photo: whitelisted widths only, 1280px file only where the frame is wide.
-    expect($about[0][0])->toMatch('~srcset="[^"]*\?w=640 640w, [^"]*\?w=960 960w, [^"]*\?w=1280 1280w[^"]*" sizes="\(min-width:1280px\) 46rem, \(min-width:1024px\) calc\(\(100vw - 7rem\) \* 0\.625\), \(min-width:768px\) calc\(\(100vw - 6rem\) \* 0\.625\), calc\(100vw - 3rem\)"~')
+    // A cut-to-fit photo: whitelisted widths only; from 768px its frame may be tall, so the file stays large.
+    expect($about[0][0])->toMatch('~srcset="[^"]*\?w=640 640w, [^"]*\?w=960 960w, [^"]*\?w=1280 1280w[^"]*" sizes="\(min-width:768px\) 64rem, calc\(\(100vw - 3rem\) \* 1\.25\)"~')
         ->and($about[0][0])->toContain('width="2000"')->toContain('height="1200"');
     // A whole portrait photo: a frame of at most 27rem.
     expect($about[0][1])->toContain('sizes="(min-width:768px) min(27rem, calc((100vw - 6rem) * 0.4 - 1rem)), min(27rem, calc(100vw - 4rem))"')
         ->and($about[0][1])->toContain('srcset="');
 
-    expect($html)->toMatch('~<img class="hero__bg"[^>]*srcset="[^"]*\?w=640 640w[^"]*" sizes="100vw"~')
+    // The hero photo covers a tall box on a phone, so it keeps one large file.
+    expect($html)->toMatch('~<img class="hero__bg"[^>]*\?w=1280"~')
+        ->and($html)->not->toMatch('~<img class="hero__bg"[^>]*srcset=~')
         ->and(headHighImages($html))->toBe(1);
 });
 
@@ -203,9 +205,9 @@ it('keeps the about photo without a srcset when its master is no wider than the 
 
 it('sizes a card photo to the rail it sits in, on a phone and on a wide screen', function (): void {
     expect(ListDisplay::cardSizes(['columns' => 3, 'mobile' => 'swipe']))
-        ->toBe('(min-width:1280px) 24.333rem, (min-width:1024px) calc((100vw - 7rem) / 3), (min-width:640px) calc((100vw - 4.5rem) / 2), calc((100vw - 2.25rem) / 1.25)')
+        ->toBe('(min-width:1024px) calc((100vw - 7rem) / 3), (min-width:640px) calc((100vw - 4.5rem) / 2), calc((100vw - 2.25rem) / 1.25)')
         ->and(ListDisplay::cardSizes(['columns' => 4, 'mobile' => 'two']))
-        ->toBe('(min-width:1280px) 17.875rem, (min-width:1024px) calc((100vw - 8.5rem) / 4), (min-width:640px) calc((100vw - 4.5rem) / 2), calc((100vw - 3rem) / 2)')
+        ->toBe('(min-width:1024px) calc((100vw - 8.5rem) / 4), (min-width:640px) calc((100vw - 4.5rem) / 2), calc((100vw - 3rem) / 2)')
         ->and(ListDisplay::cardSizes(['columns' => 1, 'mobile' => 'one']))
-        ->toBe('(min-width:1280px) 76rem, (min-width:1024px) calc(100vw - 4rem), (min-width:640px) calc((100vw - 4.5rem) / 2), calc(100vw - 2rem)');
+        ->toBe('(min-width:1024px) calc(100vw - 4rem), (min-width:640px) calc((100vw - 4.5rem) / 2), calc(100vw - 2rem)');
 });

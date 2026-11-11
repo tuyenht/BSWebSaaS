@@ -40,13 +40,13 @@
     $sfZoom = $sfWhole ? \App\Modules\Shared\Support\SafeLink::href($sfSrc) : null;
     // The files offered (server-built, keyed by the photo's address) and the width the frame draws them at.
     // A whole photo: its frame is at most 28rem with 0.5rem padding, and from 768px sits in the 2fr column
-    // (.about--whole). A cut-to-fit photo: the full width less the section padding on a phone, half the
-    // grid from 768px (the container is 80rem; padding 1.5rem, 2rem from 1024px; gap 3rem); the frame
-    // crops the photo to fit, so it may need it up to a quarter wider (the 0.625 is 0.5 x 1.25).
+    // (.about--whole). A cut-to-fit photo: on a phone a 4:3 frame the full width less the section padding,
+    // which a landscape photo covers at up to a quarter wider; from 768px the frame is as tall as the text
+    // (up to 42rem), so a wide photo may be drawn up to 64rem wide whatever the column: ask for that.
     $sfSrcset = $sfSrc !== null ? (($srcsets ?? [])[$sfSrc] ?? null) : null;
     $sfSizes = $sfWhole
         ? '(min-width:768px) min(27rem, calc((100vw - 6rem) * 0.4 - 1rem)), min(27rem, calc(100vw - 4rem))'
-        : '(min-width:1280px) 46rem, (min-width:1024px) calc((100vw - 7rem) * 0.625), (min-width:768px) calc((100vw - 6rem) * 0.625), calc(100vw - 3rem)';
+        : '(min-width:768px) 64rem, calc((100vw - 3rem) * 1.25)';
 @endphp
 @if ($sfBand !== 'none')
 <div class="about-band about-band--{{ $sfBand }}">

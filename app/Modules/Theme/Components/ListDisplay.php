@@ -51,8 +51,8 @@ final class ListDisplay
      * The `sizes` of a card photo in a list drawn from a plan(): what the rail's CSS gives each card
      * (`.sf-rail__list`: 1.5rem gap, `columns` across from 1024px, two across from 640px, and on a phone
      * the swipe row shows 1.25 cards, `two` shows two, `one` one, `slider` three; the page container is
-     * 80rem with 2rem side padding, 1.5rem from 640px, 1rem on a phone). A block's own width setting
-     * can only make the card narrower, never wider, so the answer is never too small.
+     * 80rem with 2rem side padding, 1.5rem from 640px, 1rem on a phone). From 1024px the answer follows
+     * the window rather than the container, so a block set to the full width is not given a small file.
      *
      * @param  array{columns: int, mobile: string}  $plan
      */
@@ -61,7 +61,6 @@ final class ListDisplay
         $columns = max(1, $plan['columns']);
         $gaps = 1.5 * ($columns - 1);
         $rem = static fn (float $n): string => rtrim(rtrim(number_format($n, 3, '.', ''), '0'), '.');
-        $wide = $rem((76 - $gaps) / $columns).'rem';
         $desktop = $columns === 1 ? 'calc(100vw - 4rem)' : sprintf('calc((100vw - %srem) / %d)', $rem(4 + $gaps), $columns);
         $phone = match ($plan['mobile']) {
             'one' => 'calc(100vw - 2rem)',
@@ -70,7 +69,8 @@ final class ListDisplay
             default => 'calc((100vw - 2.25rem) / 1.25)',
         };
 
-        return sprintf('(min-width:1280px) %s, (min-width:1024px) %s, (min-width:640px) calc((100vw - 4.5rem) / 2), %s', $wide, $desktop, $phone);
+        // No cap for a wide screen: a block set to the full width (.sf-s--w-full) grows with the window.
+        return sprintf('(min-width:1024px) %s, (min-width:640px) calc((100vw - 4.5rem) / 2), %s', $desktop, $phone);
     }
 
     /**
