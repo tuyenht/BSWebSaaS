@@ -372,7 +372,8 @@
          "icon": "cog"
         }
        ],
-       "variant": "top-rule"
+       "variant": "top-rule",
+       "heading_decor": "none"
       }
      },
      {
@@ -460,8 +461,9 @@
       "type": "branches",
       "props": {
        "heading": "Ba nhà máy",
-       "description": "Tổng diện tích 4.300 m² tại Hà Nội.",
-       "layout": "auto"
+       "layout": "auto",
+       "heading_decor": "line",
+       "heading_align": "left"
       }
      },
      {
@@ -500,7 +502,8 @@
          "text": "2 máy đo 3D CMM và 2 tay đo 3D Faro Arm."
         }
        ],
-       "description": "Máy và thiết bị chính tại nhà máy 1 và nhà máy 3."
+       "heading_decor": "line",
+       "heading_align": "left"
       }
      },
      {
@@ -511,7 +514,9 @@
        "poster": {
         "media": "cnc-1"
        },
-       "anchor_id": "video"
+       "anchor_id": "video",
+       "heading_decor": "line",
+       "heading_align": "left"
       }
      },
      {
@@ -538,7 +543,9 @@
          },
          "caption": "Nhà máy 2: các khung đồ gá trên sàn xưởng"
         }
-       ]
+       ],
+       "heading_decor": "line",
+       "heading_align": "left"
       }
      },
      {
@@ -559,7 +566,9 @@
          },
          "caption": "Máy CNC cỡ lớn tại nhà máy 3"
         }
-       ]
+       ],
+       "heading_decor": "line",
+       "heading_align": "left"
       }
      },
      {
@@ -586,7 +595,9 @@
          },
          "caption": "Mô phỏng 3D trạm jig hàn spot"
         }
-       ]
+       ],
+       "heading_decor": "line",
+       "heading_align": "left"
       }
      },
      {
@@ -925,7 +936,8 @@
          },
          "name": "Vinmanutech"
         }
-       ]
+       ],
+       "heading_decor": "none"
       }
      },
      {
@@ -950,7 +962,8 @@
          "title": "Hàng không & chính xác",
          "text": "Chi tiết máy gia công CNC dung sai chặt."
         }
-       ]
+       ],
+       "heading_decor": "none"
       }
      },
      {
@@ -1043,7 +1056,8 @@
       "type": "page_header",
       "props": {
        "title": "Cảm ơn bạn đã gửi yêu cầu!",
-       "subtitle": "An Vinh đã nhận thông tin. Kỹ sư phụ trách sẽ liên hệ lại với bạn trong thời gian sớm nhất."
+       "subtitle": "An Vinh đã nhận thông tin. Kỹ sư phụ trách sẽ liên hệ lại với bạn trong thời gian sớm nhất.",
+       "mark": "check"
       }
      },
      {
@@ -1063,7 +1077,8 @@
          "title": "Gửi báo giá",
          "text": "Báo giá chi tiết kèm tiến độ dự kiến qua email."
         }
-       ]
+       ],
+       "heading_decor": "none"
       }
      },
      {

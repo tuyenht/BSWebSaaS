@@ -77,7 +77,7 @@ final class ComponentRegistry
     {
         $schema = $this->components[$type]->schema() + StyleProps::SCHEMA;
         if (! isset($this->headed[$type])) {
-            unset($schema['heading_decor']);
+            unset($schema['heading_decor'], $schema['heading_align']);
         }
 
         return $schema;

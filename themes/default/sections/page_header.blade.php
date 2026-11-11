@@ -20,8 +20,11 @@
     $bandDates = ! empty($props['_lead']) && is_array($props['_dates'] ?? null) ? $props['_dates'] : [];
     $bandDay = is_string($bandDates['date'] ?? null) ? $bandDates['date'] : '';
     $bandUpdated = is_string($bandDates['updated'] ?? null) ? $bandDates['updated'] : '';
+    // Without a photo the band is dark with the thin diagonal pattern (`pattern` off: plain dark); `mark` = check adds the gold tick.
+    $bandPattern = $image === null && ($props['pattern'] ?? 'on') !== 'off';
+    $bandMark = ($props['mark'] ?? 'none') === 'check';
 @endphp
-<section class="page-band">
+<section class="page-band{{ $bandPattern ? ' page-band--pattern' : '' }}{{ $bandMark ? ' page-band--mark' : '' }}">
     @if ($image !== null)
         <img class="page-band__bg"
              src="{{ $image }}"
@@ -38,6 +41,9 @@
     <div class="page-band__content">
 @if ($bandCrumbs !== [])
         @include('theme::partials.sf-breadcrumb', ['crumbs' => $bandCrumbs, 'tone' => 'dark', 'class' => 'page-band__crumbs'])
+@endif
+@if ($bandMark)
+        <span class="page-band__mark" aria-hidden="true">@include('theme::partials.icon', ['name' => 'check', 'stroke' => 3])</span>
 @endif
         @if (! empty($props['title']))
             <{{ $heading }} class="page-band__title">{{ $props['title'] }}</{{ $heading }}>

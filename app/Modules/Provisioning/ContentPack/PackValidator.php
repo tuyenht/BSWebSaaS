@@ -660,6 +660,13 @@ final readonly class PackValidator
                 $errors[] = "{$item->key}: was must list earlier slugs.";
             }
         }
+        // The intro under the name (plain text per language) and the intro picture: the same checks a category edit makes.
+        if (array_key_exists('description', $item->data)) {
+            $this->localeMap($pack, $item->key, $item->data, 'description', false, TaxonomyRules::DESCRIPTION_MAX, $errors);
+        }
+        if (array_key_exists('cover', $item->data) && ! self::isMediaRef($item->data['cover'])) {
+            $errors[] = "{$item->key}: cover must be an image reference ({\"media\": slot}).";
+        }
         $position = $item->data['position'] ?? 0;
         if (! is_int($position) || $position < 0) {
             $errors[] = "{$item->key}: position must be a whole number from 0.";
