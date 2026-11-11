@@ -125,7 +125,7 @@ final class StorefrontChrome
     /**
      * @param  mixed  $raw  the stored `storefront.footer` value (an array when set)
      * @param  list<string>  $mapHosts  hosts a map link may point at (empty = any web host)
-     * @return array{about: string|null, region: string, license_issuer: string|null, show_contact: bool, factories: list<array{title: string, area: int|null, name: string|null, address: string|null, map_url: string|null}>, start_year: int|null, holder: string|null, credit: array{label: string, url: string|null}|null}|null
+     * @return array{about: string|null, region: string, license_issuer: string|null, show_contact: bool, factories: list<array{title: string, area: int|null, name: string|null, address: string|null, map_url: string|null, directions_url: string|null}>, start_year: int|null, holder: string|null, credit: array{label: string, url: string|null}|null}|null
      */
     public static function footer(mixed $raw, string $locale, string $default, array $mapHosts = []): ?array
     {
@@ -150,12 +150,22 @@ final class StorefrontChrome
                 continue;
             }
             $area = $factory['area_m2'] ?? null;
+            $query = $factory['map_query'] ?? null;
+            $lat = self::degrees($factory['lat'] ?? null, 90);
+            $lng = self::degrees($factory['lng'] ?? null, 180);
             $factories[] = [
                 'title' => $title,
                 'area' => is_int($area) && $area >= 1 && $area <= 10_000_000 ? $area : null,
                 'name' => self::text($factory['name'] ?? null, $locale, $default, self::MAX_FOOTER_TEXT),
                 'address' => self::text($factory['address'] ?? null, $locale, $default, self::MAX_FOOTER_TEXT),
                 'map_url' => self::external($factory['map_url'] ?? null, $mapHosts),
+                // Route planner to the factory's coordinates (else its map search text); null when it has neither.
+                'directions_url' => BranchMap::urls([
+                    'map_query' => is_string($query) && trim($query) !== '' && mb_strlen($query) <= self::MAX_MAP_QUERY && preg_match('/[\x00-\x1F\x7F]/u', $query) === 0 ? trim($query) : null,
+                    'lat' => $lat !== null && $lng !== null ? $lat : null,
+                    'lng' => $lat !== null && $lng !== null ? $lng : null,
+                    'approximate' => false,
+                ], $locale)['dir'] ?? null,
             ];
         }
 

@@ -64,9 +64,21 @@
 @if (! empty($canonical))
     <meta property="og:url" content="{{ $canonical }}">
 @endif
-<meta property="og:locale" content="{{ $lang ?? 'vi' }}">
+@if (! empty(data_get($brand ?? null, 'name')))
+<meta property="og:site_name" content="{{ $brand['name'] }}">
+@endif
+<meta property="og:locale" content="{{ ['vi' => 'vi_VN', 'en' => 'en_US'][$lang ?? 'vi'] ?? ($lang ?? 'vi') }}">
 @if (! empty($effectiveOgImage))
     <meta property="og:image" content="{{ $effectiveOgImage }}">
+@endif
+{{-- Twitter / X card: a large image card when there is an image to show, else a plain summary. --}}
+<meta name="twitter:card" content="{{ ! empty($effectiveOgImage) ? 'summary_large_image' : 'summary' }}">
+<meta name="twitter:title" content="{{ $seoTitle }}">
+@if (! empty($effectiveDescription))
+    <meta name="twitter:description" content="{{ $effectiveDescription }}">
+@endif
+@if (! empty($effectiveOgImage))
+    <meta name="twitter:image" content="{{ $effectiveOgImage }}">
 @endif
 @endif
 
@@ -134,6 +146,7 @@
                 'taxID'     => ! empty($brand['tax_id']) ? $brand['tax_id'] : null,
                 'address'   => $orgPostal ?: null,
                 'sameAs'    => $orgSameAs,
+                'location'  => array_values(is_array($branchPlaces ?? null) ? $branchPlaces : []),
                 'openingHoursSpecification' => $orgHours,
             ],
             fn ($v) => $v !== null && $v !== '' && $v !== [],
@@ -165,6 +178,13 @@
         $articleJson = json_encode($articleLd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG);
     @endphp
     <script type="application/ld+json">{!! $articleJson !!}</script>
+@endif
+@if (! empty($faqLd) && empty($notFound) && empty($preview))
+    @php
+        // FAQPage for the question-and-answer blocks the page draws (built by PageRenderer).
+        $faqJson = json_encode($faqLd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG);
+    @endphp
+    <script type="application/ld+json">{!! $faqJson !!}</script>
 @endif
 @if (! empty($websiteLd))
     @php

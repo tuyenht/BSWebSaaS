@@ -28,6 +28,7 @@ use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Media\Models\Media;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Storefront\Support\ThankYouPages;
 use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
@@ -453,6 +454,7 @@ final class Applier
                 throw new PackRejected("Refused: {$planned->item->key} opens {$page} after a send, which does not exist on the site.");
             }
             $form->update(['settings' => array_replace(Cast::arr($form->settings), ['redirect_entry' => $ulid])]);
+            ThankYouPages::forget($form->site_id);
         }
     }
 

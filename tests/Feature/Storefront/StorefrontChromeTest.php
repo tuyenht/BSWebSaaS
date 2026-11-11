@@ -14,7 +14,9 @@ use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Chrome\StorefrontChrome;
+use Illuminate\Foundation\Vite;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\HtmlString;
 
 /*
  * The opt-in storefront header and footer (`storefront.header` / `storefront.footer` settings).
@@ -351,7 +353,7 @@ it('renders the rich footer: factories, dated licence with its issuer, copyright
         ->toContain("Bản quyền © {$year} thuộc về <strong>Xưởng Mẫu</strong>");
 });
 
-it('keeps the footer byte for byte when the factories carry the branch fields', function (): void {
+it('adds only a directions link to the footer when the factories carry branch coordinates', function (): void {
     $branchFields = [
         ['key' => 'nha-may-1', 'full_name' => ['vi' => 'Nhà máy 1 – Xuân Sơn'], 'locality' => ['vi' => 'Trung Giã'], 'map_query' => 'Xưởng Mẫu, KCN Thử',
             'lat' => 21.2983367, 'lng' => 105.8672342, 'approximate' => false, 'image_media_id' => 7],
@@ -361,10 +363,13 @@ it('keeps the footer byte for byte when the factories carry the branch fields', 
     $withBranches = sfcFooter(['factories' => array_map(fn (array $factory, array $extra): array => $factory + $extra, $old['factories'], $branchFields)]);
 
     expect(StorefrontChrome::footer($old, 'vi', 'vi')['factories'])->toBe([
-        ['title' => 'Nhà máy 1', 'area' => 12000, 'name' => 'Xưởng cơ khí', 'address' => 'Lô A1, KCN Thử', 'map_url' => 'https://maps.google.com/?q=1'],
-        ['title' => 'Nhà máy 2', 'area' => null, 'name' => null, 'address' => 'Lô B2, KCN Thử', 'map_url' => null],
+        ['title' => 'Nhà máy 1', 'area' => 12000, 'name' => 'Xưởng cơ khí', 'address' => 'Lô A1, KCN Thử', 'map_url' => 'https://maps.google.com/?q=1', 'directions_url' => null],
+        ['title' => 'Nhà máy 2', 'area' => null, 'name' => null, 'address' => 'Lô B2, KCN Thử', 'map_url' => null, 'directions_url' => null],
     ])
-        ->and(StorefrontChrome::footer($withBranches, 'vi', 'vi'))->toBe(StorefrontChrome::footer($old, 'vi', 'vi'));
+        ->and(StorefrontChrome::footer($withBranches, 'vi', 'vi')['factories'])->toBe([
+            ['title' => 'Nhà máy 1', 'area' => 12000, 'name' => 'Xưởng cơ khí', 'address' => 'Lô A1, KCN Thử', 'map_url' => 'https://maps.google.com/?q=1', 'directions_url' => 'https://www.google.com/maps/dir/?api=1&destination=21.2983367%2C105.8672342'],
+            ['title' => 'Nhà máy 2', 'area' => null, 'name' => null, 'address' => 'Lô B2, KCN Thử', 'map_url' => null, 'directions_url' => 'https://www.google.com/maps/dir/?api=1&destination=21.0655337%2C105.556209'],
+        ]);
 
     $siteId = sfcSite();
     $footerHtml = function (array $value) use ($siteId): string {
@@ -375,7 +380,43 @@ it('keeps the footer byte for byte when the factories carry the branch fields', 
         return $m[0];
     };
 
-    expect($footerHtml($withBranches))->toBe($footerHtml($old));
+    // A factory with its own map link keeps it (and no directions link); the other gets "Chỉ đường".
+    $plain = $footerHtml($old);
+    $rich = $footerHtml($withBranches);
+    expect($plain)->not->toContain('Chỉ đường')
+        ->and($rich)->toContain('>Chỉ đường</span>')
+        ->toContain('href="https://www.google.com/maps/dir/?api=1&amp;destination=21.0655337%2C105.556209"')
+        ->not->toContain('destination=21.2983367')
+        ->and(substr_count($rich, 'sf-factory__map'))->toBe(substr_count($plain, 'sf-factory__map') + 1);
+});
+
+it('turns the footer\'s factory cards into a one-card chooser only when there are two or more', function (): void {
+    // Print each Vite entry as a module script so the footer's own script is visible.
+    $this->swap(Vite::class, new class extends Vite
+    {
+        public function __invoke($entrypoints, $buildDirectory = null): HtmlString
+        {
+            return new HtmlString(collect((array) $entrypoints)->map(fn (string $entry): string => '<script type="module" src="/'.$entry.'"></script>')->implode(''));
+        }
+    });
+    $siteId = sfcSite();
+    $footerHtml = function (array $value) use ($siteId): string {
+        sfcSetting($siteId, 'footer', $value);
+
+        return $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
+    };
+
+    $two = $footerHtml(sfcFooter());
+    expect($two)->toContain('<ul class="sf-footer__factories" data-sf-rot')
+        ->toContain('data-sf-rot-nav hidden')
+        ->and(substr_count($two, 'data-sf-rot-go'))->toBe(2)
+        ->and($two)->toContain('aria-label="Nhà máy trước"')->toContain('aria-label="Nhà máy tiếp theo"')
+        ->toContain('sf-footer-rot')
+        // the first dot is the current one before any script runs
+        ->and(preg_match('~data-sf-rot-go aria-label="Nhà máy 1" aria-current="true"~', $two))->toBe(1);
+
+    $one = $footerHtml(sfcFooter(['factories' => [['title' => ['vi' => 'Nhà máy 1'], 'address' => 'Lô A1']]]));
+    expect($one)->toContain('sf-footer__factories')->not->toContain('data-sf-rot-nav')->not->toContain('sf-footer-rot');
 });
 
 it('drops unsafe links from map, credit and social settings', function (string $url): void {

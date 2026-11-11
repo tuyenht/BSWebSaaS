@@ -140,7 +140,7 @@ final readonly class ListPage
         $page = $position['page'];
         $next = $more ? ($page < self::MAX_PAGE ? $base.'?page='.($page + 1) : $keyset) : null;
 
-        return ['prevUrl' => $page > 1 ? $base.'?page='.($page - 1) : null, 'nextUrl' => $next];
+        return ['prevUrl' => $page > 2 ? $base.'?page='.($page - 1) : ($page === 2 ? $base : null), 'nextUrl' => $next];
     }
 
     /**
