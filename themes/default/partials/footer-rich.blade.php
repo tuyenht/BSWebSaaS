@@ -124,6 +124,8 @@
                     </ul>
                 </div>
                 @if ($footer['factories'] !== [])
+                    {{-- The cards and their turning controls share one box: on a phone the arrows stand on the card's edges, halfway down. --}}
+                    <div class="sf-rot">
                     <ul class="sf-footer__factories" data-sf-rot role="list" aria-label="{{ __('storefront.factories_label') }}">
                         @foreach ($footer['factories'] as $factory)
                             <li class="sf-factory">
@@ -165,6 +167,7 @@
                         </div>
                         @vite(['resources/js/sf-footer-rot.js'])
                     @endif
+                    </div>
                 @endif
             </div>
         </div>

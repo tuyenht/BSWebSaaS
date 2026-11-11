@@ -1,27 +1,52 @@
 {{--
     Rich storefront header (site setting `storefront.header`, normalized into $header): an optional
-    top bar (contact items, language switch, text-size button below lg) that scrolls away, then the main bar
+    top bar (contact items, language switch) that scrolls away, then the main bar
     — logo, the desktop menu at the bar's right end from lg (from xl when it is too wide for a
     laptop: sf-header--menu-xl), the menu button and its panel below that (the phone menu when the
     site set one, else the main menu) — which stays at the
     top. One <header> landmark holds both; it sticks with the top bar's height scrolled off, so no
     script runs on scroll and nothing shifts. Every value is Blade-escaped; links come validated.
+    The text-size button lives in the phone menu (drawer); only a header without one keeps it in the
+    top bar (below lg). While the phone bottom bar carries a call, the top bar's phone items step aside
+    under 768px, and a width band where the top bar would hold nothing draws no top bar at all.
 --}}
 @php
     // every public language of the site (PageChrome: StorefrontChrome::languages), none for a one-language site
     $sfLanguages = $languages ?? [];
-    $sfTopBar = $header['top_bar'] !== [] || $sfLanguages !== [] || $header['text_size'];
+    $drawerMenu = ! empty($mobileMenu) ? $mobileMenu : ($menu ?? []);
+    $sfFsTop = $header['text_size'] && empty($drawerMenu);
+    // The phone bottom bar (under 768px) and whether it carries the call: then the header's own copies
+    // of the call (the corner icon, the top bar's phone items) step aside there.
+    $sfBar = ! empty($floatingContact) && ($floatingContact['theme'] === 'horizontal' || ($floatingContact['phone_bar'] ?? null) !== null);
+    $sfBarCells = $sfBar ? ($floatingContact['theme'] === 'horizontal' ? $floatingContact['bar'] : $floatingContact['phone_bar']['bar']) : [];
+    $sfBarCalls = in_array('phone', array_column($sfBarCells, 'key'), true);
+    // Which width bands the top bar has something to show in: xs <640, sm 640–767, md 768–1023, lg ≥1024.
+    $sfBands = ['xs' => ['xs'], 'sm' => ['xs', 'sm'], 'md' => ['xs', 'sm', 'md'], 'lg' => ['xs', 'sm', 'md', 'lg']];
+    $sfBelow = ['xs' => ['sm', 'md', 'lg'], 'sm' => ['md', 'lg'], 'md' => ['lg'], 'lg' => []];
+    $sfTopOff = [];
+    foreach ($sfBands as $band => $froms) {
+        $shows = $sfLanguages !== [] || ($sfFsTop && $band !== 'lg');
+        foreach ($header['top_bar'] as $item) {
+            $stepsAside = $sfBarCalls && $item['kind'] === 'phone' && in_array($band, ['xs', 'sm'], true);
+            $shows = $shows || (! $stepsAside && (in_array($item['from'], $froms, true) || in_array($item['below'], $sfBelow[$band], true)));
+        }
+        if (! $shows) {
+            $sfTopOff[] = $band;
+        }
+    }
+    $sfTopBar = count($sfTopOff) < 4;
+    $sfTopOffClass = $sfTopBar ? implode('', array_map(static fn (string $band): string => ' sf-header--top-off-'.$band, $sfTopOff)) : '';
     // a menu too wide for a 1024px laptop keeps the menu button up to 1280px (StorefrontChrome::menuNeedsXl)
     $sfMenuXl = ! empty($menu) && \App\Modules\Theme\Chrome\StorefrontChrome::menuNeedsXl($menu);
     $sfSizes = ['m' => __('storefront.text_size_m'), 'l' => __('storefront.text_size_l'), 'xl' => __('storefront.text_size_xl')];
 @endphp
-<header class="sf-header{{ $header['sticky'] ? ' sf-header--sticky' : '' }}{{ $sfTopBar ? ' sf-header--topbar' : '' }}{{ $sfMenuXl ? ' sf-header--menu-xl' : '' }}{{ $header['top_bar'] === [] && $sfLanguages === [] && $header['text_size'] ? ' sf-header--fs-only' : '' }}">
+<header class="sf-header{{ $header['sticky'] ? ' sf-header--sticky' : '' }}{{ $sfTopBar ? ' sf-header--topbar' : '' }}{{ $sfMenuXl ? ' sf-header--menu-xl' : '' }}{{ $sfTopOffClass }}">
     @if ($sfTopBar)
         <div class="sf-topbar">
             <div class="sf-container sf-topbar__inner">
                 <ul class="sf-topbar__items">
                     @foreach ($header['top_bar'] as $item)
-                        <li class="sf-topbar__item sf-from-{{ $item['from'] }}{{ $item['below'] !== null ? ' sf-below-'.$item['below'] : '' }}">
+                        <li class="sf-topbar__item sf-from-{{ $item['from'] }}{{ $item['below'] !== null ? ' sf-below-'.$item['below'] : '' }}{{ $sfBarCalls && $item['kind'] === 'phone' ? ' sf-topbar__item--bar' : '' }}">
                             @if ($item['href'] !== null)
                                 <a class="sf-topbar__link" href="{{ $item['href'] }}">@include('theme::partials.sf-icon', ['name' => $item['kind'], 'size' => 16])<span>{{ $item['text'] }}</span></a>
                             @else
@@ -42,7 +67,7 @@
                             </ul>
                         </nav>
                     @endif
-                    @if ($header['text_size'])
+                    @if ($sfFsTop)
                         <button type="button" class="sf-fs" data-fs-toggle
                             aria-label="{{ __('storefront.text_size_state', ['size' => $sfSizes['m']]) }}"
                             @foreach ($sfSizes as $step => $label) data-label-{{ $step }}="{{ $label }}" data-aria-{{ $step }}="{{ __('storefront.text_size_state', ['size' => $label]) }}" @endforeach
@@ -53,11 +78,9 @@
         </div>
     @endif
     @php
-        $drawerMenu = ! empty($mobileMenu) ? $mobileMenu : ($menu ?? []);
         // The phone header's right corner. While the phone bottom bar is on, the call is hidden only where
         // that bar shows (under 768px; it carries the call itself), so a tablet keeps it; search and cart
         // draw nothing until the site has them.
-        $sfBar = ! empty($floatingContact) && ($floatingContact['theme'] === 'horizontal' || ($floatingContact['phone_bar'] ?? null) !== null);
         $sfCallHref = \App\Modules\Shared\Support\SafeLink::tel($brand['phone'] ?? null);
         $sfCorner = ($header['mobile_corner'] ?? 'call') === 'call' && $sfCallHref !== null;
         $sfEmailHref = \App\Modules\Shared\Support\SafeLink::mailto($brand['email'] ?? null);
