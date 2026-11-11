@@ -133,9 +133,12 @@ export const placeholderHits = (html) => {
 };
 
 // The first image inside <main> (or the first on the page) is the likely LCP element: it must not be lazy.
+// Only the page's own content counts: a footer logo after </main> is rightly lazy on a page with no image.
 export const firstImageLazy = (html) => {
     const at = html.search(/<main[\s>]/i);
-    const img = tags(at > 0 ? html.slice(at) : html, 'img')[0];
+    const main = at >= 0 ? html.slice(at) : html;
+    const end = main.search(/<\/main>/i);
+    const img = tags(end >= 0 ? main.slice(0, end) : main, 'img')[0];
     return Boolean(img && (img.loading || '').toLowerCase() === 'lazy');
 };
 

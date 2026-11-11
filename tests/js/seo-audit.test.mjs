@@ -75,6 +75,7 @@ test('first content image: lazy is flagged', () => {
     assert.equal(firstImageLazy('<header><img src="logo.png"></header><main><img src="a.jpg" loading="lazy"></main>'), true);
     assert.equal(firstImageLazy('<main><img src="a.jpg" loading="eager"><img src="b.jpg" loading="lazy"></main>'), false);
     assert.equal(firstImageLazy('<p>no images</p>'), false);
+    assert.equal(firstImageLazy('<main><p>text only</p></main><footer><img src="logo.png" loading="lazy"></footer>'), false);
 });
 
 test('mixed content: only resources on an https page', () => {
