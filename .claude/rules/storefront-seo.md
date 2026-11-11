@@ -18,6 +18,7 @@ Sources with quotes and URLs: `docs/notes/seo-geo-sources.md` (read 2026-11-11).
 - HTML is complete on the server (Blade SSR). Links are real `<a href>`; nothing important appears only after JS.
 - Real status codes: missing = 404 (or 410 when removed for good), moved = 301 to the new URL, never a 200 "not found" page.
 - Every indexable page has a self `canonical`. Paged lists canonicalise to themselves.
+- Google stopped using rel=prev/next in 2019; keep them only as harmless link hints — crawlable `<a href>` links to every page plus a self canonical are what count.
 - `sitemap.xml` lists only pages that answer 200, are canonical and are indexable. Never list noindex pages (thank-you, search results, cart, checkout, account, admin).
 - `lastmod` is the time of the last significant change, so Google and Bing keep trusting it. Never write a fake "now". A list page's lastmod is its newest member's change.
 - Add `<image:image><image:loc>` for each page's main images. Leave out `changefreq` and `priority`: both engines ignore them. The Google sitemap ping is gone.
@@ -66,6 +67,7 @@ Sources with quotes and URLs: `docs/notes/seo-geo-sources.md` (read 2026-11-11).
 - Branches use the most specific `LocalBusiness` subtype, only with a real address, phone and opening hours.
 - `FAQPage` may stay as plain markup for other engines. Google stopped showing FAQ rich results on 2026-05-07, so never build a feature for it.
 - `ItemList` carousels are Google-only for Course, Movie, Recipe and Restaurant. Use `CollectionPage` + `mainEntity` for list pages instead.
+- Never build (retired): FAQ rich results (Google ended them 2026-05-07), HowTo rich results, the sitemap ping, `changefreq` / `priority`.
 - Validate the JSON (the audit fails on a broken block). Mark up nothing that a reader cannot see.
 
 ## 5. Content that AI answers quote (GEO)
@@ -107,7 +109,13 @@ These rules apply to pack writers, demo content and the admin's writing hints.
     - alt;
     - unique titles and descriptions;
     - JSON-LD parse;
-    - Organization placement.
+    - Organization placement;
+    - viewport, one canonical tag, one description tag, mixed content (http:// resources on https), placeholder text (lorem ipsum, TODO; `{{`, undefined and NaN only warn, and code in `pre`/`code` is skipped), malformed canonical or hreflang URLs;
+    - sitemap hygiene: over 50,000 URLs or 50 MB per file, URLs on another host (fail); duplicate URLs and lastmod in the future (warn);
+    - hreflang (HTML links): self link equal to the canonical, return links between fetched pages, valid language codes, alternates answering 200;
+    - `robots.txt` (5xx fails: Google treats it as disallow-all) and soft 404 (an unknown path must answer 404 or 410).
+  - Warnings (advice, never an exit code): identical lastmod on 10+ URLs (looks fake), several hreflang languages without `x-default`, `robots.txt` without a sitemap line, HTML over 2 MB (a reported Googlebot limit, not in our sources note), missing og:title / og:image / og:url, first content image lazy-loaded, title over 60 characters (Google sets no limit).
   - It also prints coverage numbers: lastmod, sitemap images, ETag, images without size.
+  - It sends one request at a time. The pure checks have tests: `node --test tests/js/seo-audit.test.mjs`.
   - It exits 1 on any rule failure and 2 when it cannot run (no sitemap, empty sitemap, network). Paste the summary into the report.
 - What it cannot see, check by hand: words that match the visible content, real facts, and Search Console reports (owner's account).
