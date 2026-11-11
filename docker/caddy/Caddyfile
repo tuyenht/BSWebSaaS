@@ -29,6 +29,14 @@
 		match status 200
 		Cache-Control "public, max-age=2592000"
 	}
+	# Biểu tượng tab: một ngày (tên không đổi khi thay).
+	@favicon path /favicon.ico
+	header @favicon {
+		match status 200
+		Cache-Control "public, max-age=86400"
+	}
+	# Không báo phiên bản PHP ra ngoài.
+	header -X-Powered-By
 }
 
 # Platform console — cert MANAGED riêng, KHÔNG phụ thuộc ask-endpoint (fail-safe).
