@@ -439,3 +439,26 @@ it('refuses a thirteenth branch', function (): void {
 
     expect(implode("\n", cpProblems()))->toContain("'factories' is not accepted (branches_too_many)");
 });
+
+it('refuses a category intro picture that is not an image reference', function (mixed $cover): void {
+    ContentPacks::item($this->folder, 'taxonomies.json', 'tax:post_cat/tin-tuc', fn (array $item): array => [...$item, 'cover' => $cover]);
+
+    expect(implode("\n", cpProblems()))->toContain('tax:post_cat/tin-tuc: cover must be an image reference');
+})->with(['a path' => ['s/library/a.webp'], 'a list' => [['about']], 'an extra key' => [['media' => 'about', 'x' => 1]]]);
+
+it('refuses a category intro that is not a language map of text within the limit', function (mixed $description, string $message): void {
+    ContentPacks::item($this->folder, 'taxonomies.json', 'tax:post_cat/tin-tuc', fn (array $item): array => [...$item, 'description' => $description]);
+
+    expect(implode("\n", cpProblems()))->toContain($message);
+})->with([
+    'plain text' => ['Giới thiệu', 'description must be a language map'],
+    'a number' => [['vi' => 5], 'description (vi) must be text'],
+    'a language the pack does not list' => [['xx' => 'a'], 'description has a language the pack does not list (xx)'],
+    'too long' => [['vi' => str_repeat('a', 1001)], 'description (vi) is longer than 1000 characters'],
+]);
+
+it('accepts a category intro that is empty or null, which clears it', function (mixed $text): void {
+    ContentPacks::item($this->folder, 'taxonomies.json', 'tax:post_cat/tin-tuc', fn (array $item): array => [...$item, 'description' => ['vi' => $text], 'cover' => ['media' => 'about']]);
+
+    expect(cpProblems())->toBe([]);
+})->with(['empty' => [''], 'null' => [null]]);

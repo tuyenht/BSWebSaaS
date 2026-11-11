@@ -1526,7 +1526,8 @@ main:has(.hero, .sf-slider) .page__title {
     overflow-wrap: anywhere;
 }
 
-.sf-crumbs__item + .sf-crumbs__item::before {
+/* The separator closes each level but the last, so a trail that wraps never starts a line with a lone "/". */
+.sf-crumbs__item:not(:last-child)::after {
     content: "/";
     content: "/" / "";
     margin-inline: 0.5rem;
@@ -1920,7 +1921,8 @@ main:has(.hero, .sf-slider) .page__title {
     line-height: 1.3;
 }
 
-.sf-prose--article .sf-band--none .sf-section-head__rule {
+.sf-prose--article .sf-band--none .sf-section-head__rule,
+.sf-prose--article .sf-band--none .sf-section-head > .sf-decor {
     display: none;
 }
 
@@ -2345,6 +2347,332 @@ main:has(.hero, .sf-slider) .page__title {
 /* The band below a post, a list or a product: its blocks span the page width. */
 .slot-band {
     display: block;
+}
+
+/* ═══ Post pages (side column per post type, byline, share bar, reading line, article figures) ═══ */
+
+/* The list of a category's own posts (source = posts): an outlined box, a small upper-case title,
+   rows with an arrow; the post being read is the dark row. */
+.slot-categories--posts {
+    padding: 1.25rem;
+    border: 1px solid color-mix(in srgb, var(--color-text) 16%, transparent);
+    border-radius: 1rem;
+    background: var(--color-surface);
+}
+
+.slot-categories--posts .slot-title {
+    padding: 0 0.25rem;
+    margin-bottom: 0.75rem;
+    border-bottom: 0;
+    color: color-mix(in srgb, var(--color-text) 85%, white);
+    font-size: 0.875rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.slot-categories--posts .slot-categories__list {
+    gap: 0.25rem;
+}
+
+.slot-categories--posts .slot-categories__list li + li {
+    border-top: 0;
+}
+
+.slot-categories--posts .slot-categories__link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-height: 2.75rem;
+    padding: 0.625rem 0.75rem;
+    border-radius: 0.5rem;
+}
+
+.slot-categories--posts .slot-categories__link:hover {
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+}
+
+.slot-categories--posts .slot-categories__link[aria-current] {
+    background: var(--color-dark);
+    color: var(--color-surface);
+}
+
+.slot-categories__arrow {
+    flex: none;
+}
+
+/* The category list with counts: a plain heading, then one row per category, its count on the right. */
+.slot-categories--counts .slot-title {
+    padding-bottom: 0;
+    border-bottom: 0;
+}
+
+.slot-categories--counts .slot-categories__link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding-block: 0.625rem;
+}
+
+.slot-categories__count {
+    flex: none;
+    color: color-mix(in srgb, var(--color-text) 70%, white);
+}
+
+/* A document card (badge, title, line): the whole card is one link. */
+.slot-file {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem;
+    border: 1px solid color-mix(in srgb, var(--color-text) 16%, transparent);
+    border-radius: 1rem;
+    background: var(--color-surface);
+    color: var(--color-text-strong);
+}
+
+.slot-file:hover {
+    border-color: var(--color-primary);
+}
+
+.slot-file__badge {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 3rem;
+    border-radius: 0.5rem;
+    background: #fef2f2;
+    color: #b91c1c;
+    font-size: 0.75rem;
+    font-weight: 800;
+}
+
+.slot-file__text {
+    display: grid;
+    min-width: 0;
+}
+
+.slot-file__title {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.slot-file__line {
+    color: color-mix(in srgb, var(--color-text) 80%, white);
+    font-size: 0.875rem;
+}
+
+/* The byline in a news band: the site as author with its initials, the days, the reading time. */
+.post-band__author {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.post-band__avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 9999px;
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+/* The share bar: a sticky column beside the text on a wide screen, a row after the text on a phone. */
+.post-share {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.post-share--rail {
+    display: none;
+}
+
+.post-share--row {
+    margin-top: 1.5rem;
+}
+
+.post-share__label {
+    color: color-mix(in srgb, var(--color-text) 75%, white);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.post-share--row .post-share__label {
+    width: 100%;
+    font-size: 0.875rem;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.post-share__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0 0.75rem;
+    border: 0;
+    border-radius: 9999px;
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+    color: var(--color-text-strong);
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.post-share__btn:hover {
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+}
+
+.post-share__btn:focus-visible {
+    outline: 2px solid var(--color-primary-text, var(--color-text-strong));
+    outline-offset: 2px;
+}
+
+.post-share__copy[hidden] {
+    display: none;
+}
+
+.post-share__status {
+    color: var(--color-primary-text);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.post-share--rail .post-share__status {
+    min-height: 1rem;
+}
+
+/* The reading line: a thin bar at the top of the window, filled by sf-post.js as the page scrolls. */
+.post-progress {
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: 60;
+    height: 0.25rem;
+    pointer-events: none;
+}
+
+.post-progress__bar {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: var(--color-primary);
+    transform: scaleX(var(--p, 0));
+    transform-origin: left;
+}
+
+/* A capability or project page keeps its side column in view while the text scrolls; the cover
+   sits inside the same frame (side padding) as the columns below it. */
+@media (min-width: 1024px) {
+    .post-page--capability .post-cover,
+    .post-page--project .post-cover {
+        padding-inline: 2rem;
+    }
+
+    .post-columns.post-columns--share {
+        grid-template-columns: 3.5rem minmax(0, 1fr) 20rem;
+        gap: 2.5rem;
+    }
+
+    .post-columns.post-columns--share:not(:has(.post-aside)) {
+        grid-template-columns: 3.5rem minmax(0, 1fr);
+    }
+
+    .post-share--rail {
+        position: sticky;
+        top: 8rem;
+        display: flex;
+        flex-direction: column;
+        flex-wrap: nowrap;
+        gap: 0.75rem;
+        align-self: start;
+    }
+
+    .post-share--row {
+        display: none;
+    }
+
+    .post-aside--sticky,
+    .post-page--project .post-aside {
+        position: sticky;
+        top: 7rem;
+        max-height: calc(100vh - 8rem);
+        max-height: calc(100dvh - 8rem);
+        overflow-y: auto;
+    }
+}
+
+/* A gallery set to one picture a row is one column wherever it sits (a page body or an article). */
+.sf-gallery__list.sf-gallery__list--1 {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+/* Pictures in an article: one to a row, the caption centred under it, and room before the next heading. */
+.sf-prose--article .sf-gallery__list.sf-gallery__list--1 {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+}
+
+.sf-prose--article .sf-gallery__list--1 .sf-gallery__zoom {
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 25px -10px rgb(0 0 0 / 0.3);
+}
+
+.sf-prose--article .sf-gallery__list--1 .sf-gallery__caption {
+    margin-top: 0.6rem;
+    color: color-mix(in srgb, var(--color-text) 80%, white);
+    text-align: center;
+}
+
+.sf-prose--article > :is(.sf-band, .sf-s):has(.sf-gallery__list) {
+    margin-bottom: 4rem;
+}
+
+/* Questions printed as an article does: a heading with its answer under it, nothing folds. */
+.sf-faq__list.sf-faq__list--open {
+    display: grid;
+    gap: 0;
+    max-width: none;
+}
+
+.sf-faq__entry-q {
+    margin: 1.6em 0 0.5em;
+    color: var(--color-text-strong);
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.sf-faq__entry:first-child .sf-faq__entry-q {
+    margin-top: 0;
+}
+
+.sf-faq__entry-a {
+    margin: 0;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
+
+@media (any-pointer: coarse) {
+    .post-share__btn {
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+    }
 }
 
 @media (min-width: 1024px) {
@@ -10333,4 +10661,108 @@ html:has(.sf-viewer[open]) {
     font-size: 0.875rem;
     text-align: center;
     overflow-wrap: anywhere;
+}
+
+/* ───── Page heads: title band variants, section head alignment and rule ───── */
+/* A title band without a photo: dark with the thin diagonal pattern the boards draw (45deg and -45deg lines, 10% white). */
+.page-band--pattern::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0.1;
+    background-image:
+        repeating-linear-gradient(45deg, #fff 0 1px, transparent 1px 22px),
+        repeating-linear-gradient(-45deg, #fff 0 1px, transparent 1px 22px);
+    pointer-events: none;
+}
+
+/* The round gold tick above a thank-you title; its ring pulses three times (2s each) and then stops; it stands still when motion is reduced. */
+.page-band--mark .page-band__content {
+    padding-block: 3rem;
+}
+
+.page-band__mark {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 5rem;
+    height: 5rem;
+    margin: 0 auto 1.5rem;
+    border-radius: 9999px;
+    background: var(--color-primary);
+    color: var(--color-dark);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3);
+}
+
+.page-band__mark .icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    color: var(--color-dark);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .page-band__mark::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        animation: sf-band-pulse 2s 3;
+    }
+}
+
+@keyframes sf-band-pulse {
+    0% {
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 60%, transparent);
+    }
+
+    70% {
+        box-shadow: 0 0 0 1.1rem transparent;
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 transparent;
+    }
+}
+
+/* A band followed by the floating stats card: the card rises over the band's bottom edge, so the
+   band keeps that much room under its last line and a long subtitle is never covered. */
+.page-band:has(+ .sf-stats--floating),
+.page-band:has(+ .sf-s > .sf-stats--floating) {
+    padding-bottom: 3.5rem;
+}
+
+/* A head at the left edge (`heading_align` left): title, rule and line of text start at the left. */
+.sf-section-head--left {
+    max-width: none;
+    margin-inline: 0;
+    text-align: left;
+}
+
+.sf-section-head--left .sf-section-head__rule,
+.sf-decor--left {
+    margin-inline: 0;
+}
+
+.sf-section-head--left .sf-section-head__rule {
+    background: var(--sch-rule, var(--color-primary));
+}
+
+/* The row-long rule (`heading_decor` line): one gold line under the title across the whole width. */
+.sf-decor--line {
+    width: 100%;
+    max-width: none;
+    height: 2px;
+    aspect-ratio: auto;
+    margin: 0;
+    -webkit-mask: none;
+    mask: none;
+}
+
+.sf-section-head:has(> .sf-decor--line) {
+    margin-bottom: 2rem;
+}
+
+.sf-section-head:has(> .sf-decor--line) .sf-section-head__title {
+    margin-bottom: 0.5rem;
 }

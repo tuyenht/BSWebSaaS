@@ -176,9 +176,13 @@ describe('the block schema', function (): void {
             if (in_array($type, $headed, true)) {
                 expect($schema['heading_decor'])->toBe(StyleProps::SCHEMA['heading_decor'])
                     ->and($schema['heading_decor']['default'])->toBe('inherit')
-                    ->and($schema['heading_decor']['options'])->toBe(['inherit', 'none', ...HeadingDecor::STYLES]);
+                    ->and($schema['heading_decor']['options'])->toBe(['inherit', 'none', ...HeadingDecor::STYLES, 'line'])
+                    ->and($schema['heading_align'])->toBe(StyleProps::SCHEMA['heading_align'])
+                    ->and($schema['heading_align']['default'])->toBe('center')
+                    ->and($schema['heading_align']['options'])->toBe(['center', 'left']);
             } else {
-                expect($schema)->not->toHaveKey('heading_decor', "{$type} has no section heading");
+                expect($schema)->not->toHaveKey('heading_decor', "{$type} has no section heading")
+                    ->and($schema)->not->toHaveKey('heading_align', "{$type} has no section heading");
             }
         }
 

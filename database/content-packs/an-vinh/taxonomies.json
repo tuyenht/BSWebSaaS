@@ -6,6 +6,12 @@
     "vi": "Sản phẩm"
    },
    "list_template": "grid-product",
+   "description": {
+    "vi": "Khám phá các giải pháp cơ khí chính xác của chúng tôi, từ đồ gá, khuôn mẫu đến các chi tiết máy phức tạp."
+   },
+   "cover": {
+    "media": "products-header"
+   },
    "layout_blocks": {
     "after_list": {
      "vi": {
@@ -113,6 +119,12 @@
    },
    "list_template": "grid-project",
    "detail_template": "project",
+   "description": {
+    "vi": "Minh chứng cho năng lực và kinh nghiệm của An Vinh"
+   },
+   "cover": {
+    "media": "projects-header"
+   },
    "layout_blocks": {
     "after_list": {
      "vi": {
@@ -132,6 +144,22 @@
        }
       ]
      }
+    },
+    "post_aside": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "consult",
+        "props": {
+         "eyebrow": "Tư vấn kỹ thuật",
+         "heading": "Bạn có dự án tương tự?",
+         "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá.",
+         "button_label": "Gửi yêu cầu báo giá",
+         "button_url": "/lien-he"
+        }
+       }
+      ]
+     }
     }
    }
   },
@@ -140,7 +168,13 @@
    "name": {
     "vi": "Tin tức"
    },
-   "list_template": "grid-news"
+   "list_template": "grid-news",
+   "description": {
+    "vi": "Cập nhật thông tin mới nhất từ An Vinh và ngành cơ khí"
+   },
+   "cover": {
+    "media": "news-header"
+   }
   },
   {
    "key": "tax:post_cat/tin-tuc/tin-noi-bo",
@@ -222,8 +256,41 @@
        }
       ]
      }
+    },
+    "post_aside": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "category_list",
+        "props": {
+         "heading": "Năng lực của An Vinh",
+         "source": "posts"
+        }
+       },
+       {
+        "type": "consult",
+        "props": {
+         "eyebrow": "Tư vấn kỹ thuật",
+         "heading": "Cần tư vấn hoặc báo giá?",
+         "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá.",
+         "button_label": "Gửi yêu cầu báo giá",
+         "button_url": "/lien-he"
+        }
+       },
+       {
+        "type": "file_card",
+        "props": {
+         "badge": "PDF",
+         "title": "Hồ sơ năng lực An Vinh",
+         "text": "Tải xuống",
+         "url": "/ho-so-nang-luc"
+        }
+       }
+      ]
+     }
     }
-   }
+   },
+   "detail_template": "capability"
   },
   {
    "key": "tax:post_cat/du-an/du-an-o-to",
@@ -249,6 +316,22 @@
          "extra_style": [
           "pattern-cross"
          ]
+        }
+       }
+      ]
+     }
+    },
+    "post_aside": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "consult",
+        "props": {
+         "eyebrow": "Tư vấn kỹ thuật",
+         "heading": "Bạn có dự án tương tự?",
+         "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá.",
+         "button_label": "Gửi yêu cầu báo giá",
+         "button_url": "/lien-he"
         }
        }
       ]
@@ -284,6 +367,22 @@
        }
       ]
      }
+    },
+    "post_aside": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "consult",
+        "props": {
+         "eyebrow": "Tư vấn kỹ thuật",
+         "heading": "Bạn có dự án tương tự?",
+         "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá.",
+         "button_label": "Gửi yêu cầu báo giá",
+         "button_url": "/lien-he"
+        }
+       }
+      ]
+     }
     }
    }
   },
@@ -311,6 +410,22 @@
          "extra_style": [
           "pattern-cross"
          ]
+        }
+       }
+      ]
+     }
+    },
+    "post_aside": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "consult",
+        "props": {
+         "eyebrow": "Tư vấn kỹ thuật",
+         "heading": "Bạn có dự án tương tự?",
+         "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá.",
+         "button_label": "Gửi yêu cầu báo giá",
+         "button_url": "/lien-he"
         }
        }
       ]
@@ -346,6 +461,22 @@
        }
       ]
      }
+    },
+    "post_aside": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "consult",
+        "props": {
+         "eyebrow": "Tư vấn kỹ thuật",
+         "heading": "Bạn có dự án tương tự?",
+         "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá.",
+         "button_label": "Gửi yêu cầu báo giá",
+         "button_url": "/lien-he"
+        }
+       }
+      ]
+     }
     }
    }
   },
@@ -377,6 +508,22 @@
        }
       ]
      }
+    },
+    "post_aside": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "consult",
+        "props": {
+         "eyebrow": "Tư vấn kỹ thuật",
+         "heading": "Bạn có dự án tương tự?",
+         "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá.",
+         "button_label": "Gửi yêu cầu báo giá",
+         "button_url": "/lien-he"
+        }
+       }
+      ]
+     }
     }
    }
   },
@@ -404,6 +551,22 @@
          "extra_style": [
           "pattern-cross"
          ]
+        }
+       }
+      ]
+     }
+    },
+    "post_aside": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "consult",
+        "props": {
+         "eyebrow": "Tư vấn kỹ thuật",
+         "heading": "Bạn có dự án tương tự?",
+         "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá.",
+         "button_label": "Gửi yêu cầu báo giá",
+         "button_url": "/lien-he"
         }
        }
       ]
@@ -445,6 +608,12 @@
    },
    "list_template": "grid-job",
    "detail_template": "job",
+   "description": {
+    "vi": "Cùng chế tác những sản phẩm cơ khí chính xác"
+   },
+   "cover": {
+    "media": "products-header"
+   },
    "layout_blocks": {
     "before_list": {
      "vi": {

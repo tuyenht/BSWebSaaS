@@ -170,6 +170,13 @@ final class Applier
             'list_template' => Cast::stringOrNull($desired['list_template'] ?? null),
             'detail_template' => Cast::stringOrNull($desired['detail_template'] ?? null),
         ];
+        // The intro picture: the media row holding the stored file (a pack that names none keeps the live one).
+        if (is_string($desired['cover'] ?? null)) {
+            $cover = Media::query()->where('storage_key', $desired['cover'])->value('id');
+            if ($cover !== null) {
+                $attributes['cover_media_id'] = Cast::int($cover);
+            }
+        }
 
         if ($planned->recordId === null) {
             $taxonomy = Taxonomy::query()->create($attributes);
@@ -184,7 +191,12 @@ final class Applier
             if ($row === []) {
                 continue;
             }
-            $taxonomy->translations()->updateOrCreate(['locale' => (string) $locale], ['name' => Cast::string($row['name'] ?? null), 'slug' => Cast::string($row['slug'] ?? null)]);
+            // A pack that names the intro for this language sets it (an empty one clears it); a pack that does not keeps the live one.
+            $stated = array_key_exists((string) $locale, Cast::arr($planned->item->data['description'] ?? null));
+            $taxonomy->translations()->updateOrCreate(['locale' => (string) $locale], [
+                'name' => Cast::string($row['name'] ?? null),
+                'slug' => Cast::string($row['slug'] ?? null),
+            ] + ($stated ? ['description' => Cast::stringOrNull($row['description'] ?? null)] : (is_string($row['description'] ?? null) ? ['description' => $row['description']] : [])));
             $this->routes->syncTaxonomy($taxonomy, (string) $locale, Cast::string($row['slug'] ?? null));
         }
         $this->paths->refreshBranch($taxonomy->id);

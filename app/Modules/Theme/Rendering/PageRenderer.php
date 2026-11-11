@@ -99,6 +99,8 @@ final readonly class PageRenderer
             $toc = ArticleToc::of($sections, array_map('strval', array_keys((array) request()->attributes->get('sf_zigzag_ids', []))));
             $sections = $toc['html'];
             $extra += $toc['items'] !== [] ? ['tocScript' => true] : [];
+            // The news look's reading progress line and copy-link button (a post with no address to share has neither).
+            $extra += ! empty($extra['canonical']) ? ['postScript' => true] : [];
         }
         // The page layout with a table of contents: the band that leads the page stays full width above
         // the two columns, and the headings of the text after it are numbered and given anchors.
@@ -488,7 +490,7 @@ final readonly class PageRenderer
      */
     private static function splitBand(string $sections): array
     {
-        if (preg_match('~^\s*(?:<div class="sf-s[^"]*"[^>]*>.*?)?<section class="page-band">.*?</section>~s', $sections, $band) !== 1) {
+        if (preg_match('~^\s*(?:<div class="sf-s[^"]*"[^>]*>.*?)?<section class="page-band[^"]*">.*?</section>~s', $sections, $band) !== 1) {
             return ['', $sections];
         }
         $end = strlen($band[0]);

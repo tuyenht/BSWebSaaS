@@ -80,6 +80,11 @@ final class SectionProps
     /** Stats look: the plain band, or a card floating up over the band above it. */
     public const array STATS_VARIANTS = ['default', 'floating'];
 
+    /** The title band without a photo: the diagonal pattern on or off; the mark above its title: none or the gold tick. */
+    public const array BAND_PATTERNS = ['on', 'off'];
+
+    public const array BAND_MARKS = ['none', 'check'];
+
     /** What a stat's value means: a counted number, years since a start year, or a year printed as is. Append-only. */
     public const array STAT_KINDS = ['number', 'years', 'year'];
 
@@ -91,7 +96,7 @@ final class SectionProps
     public const array QUICK_LINK_ICONS = ['link', 'phone', 'email', 'address', 'map', 'building', 'license', 'info', 'document', 'video', 'none'];
 
     /** Columns on a wide screen; a phone always shows one (gallery two). Stored as the digit string. */
-    public const array GALLERY_COLUMNS = ['3', '2', '4'];
+    public const array GALLERY_COLUMNS = ['3', '2', '4', '1'];
 
     /** Where a gallery picture's caption goes: under the photo, or on it over a dark fade. Append-only. */
     public const array GALLERY_CAPTIONS = ['below', 'overlay'];
@@ -100,6 +105,15 @@ final class SectionProps
     public const array VIDEO_WIDTHS = ['narrow', 'wide'];
 
     public const array FAQ_COLUMNS = ['1', '2'];
+
+    /** FAQ looks: folding questions (the default) or open headings with their answers. Append-only. */
+    public const array FAQ_STYLES = ['accordion', 'open'];
+
+    /** What a side column's list names: the categories of the page's branch, or the posts of its own category (the current one marked). Append-only. */
+    public const array CATEGORY_LIST_SOURCES = ['categories', 'posts'];
+
+    /** Whether the list shows each category's post count. Append-only. */
+    public const array CATEGORY_LIST_COUNTS = ['hide', 'show'];
 
     /** Team: three or four members across on a wide screen (two on a phone). */
     public const array TEAM_VARIANTS = ['grid-3', 'grid-4'];

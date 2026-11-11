@@ -10,6 +10,7 @@ use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
+use App\Modules\Media\Models\Media;
 use App\Modules\Provisioning\ContentPack\CanonicalHash;
 use App\Modules\Provisioning\ContentPack\Ledger;
 use App\Modules\Provisioning\ContentPack\PackReader;
@@ -552,4 +553,93 @@ it('keeps a post loaded before facts and badges existed reading as unchanged, an
     ContentPacks::item($this->folder, 'posts.json', 'post:ra-mat-website', fn (array $item): array => ['facts' => [['text' => ['vi' => 'Trung Giã'], 'tone' => 'plain']]] + $item);
     [, $output] = ContentPacks::run();
     expect(ContentPacks::verdict($output, 'post:ra-mat-website'))->toBe('update');
+});
+
+/** The intro picture's storage key and the intro text of the category with this slug. */
+function cpCategoryIntro(int $siteId, string $slug = 'tin-tuc'): array
+{
+    return ContentPacks::in($siteId, function () use ($slug): array {
+        $category = Taxonomy::query()->findOrFail(TaxonomyTranslation::query()->where('slug', $slug)->value('taxonomy_id'));
+
+        return [
+            'cover' => $category->cover_media_id === null ? null : Media::query()->whereKey($category->cover_media_id)->value('storage_key'),
+            'intro' => TaxonomyTranslation::query()->where('taxonomy_id', $category->id)->where('locale', 'vi')->value('description'),
+        ];
+    });
+}
+
+/** Gives the news category of the pack the fields of an intro. */
+function cpCategoryFields(string $folder, array $fields): void
+{
+    ContentPacks::item($folder, 'taxonomies.json', 'tax:post_cat/tin-tuc', fn (array $item): array => [...$item, ...$fields]);
+}
+
+it('writes a category\'s intro picture and text, plans a change as an update, and sees a second identical load as unchanged', function (): void {
+    $about = ContentPacks::in($this->siteId, fn () => StorefrontCards::media('about'));
+    $logo = ContentPacks::in($this->siteId, fn () => StorefrontCards::media('logo'));
+    cpCategoryFields($this->folder, ['cover' => ['media' => 'about'], 'description' => ['vi' => 'Tin tức của chúng tôi.']]);
+
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)
+        ->and(cpCategoryIntro($this->siteId))->toBe(['cover' => $about->storage_key, 'intro' => 'Tin tức của chúng tôi.']);
+
+    [, $again] = ContentPacks::run();
+    expect(ContentPacks::verdict($again, 'tax:post_cat/tin-tuc'))->toBe('unchanged');
+
+    cpCategoryFields($this->folder, ['cover' => ['media' => 'logo'], 'description' => ['vi' => 'Tin mới.']]);
+    [, $plan] = ContentPacks::run();
+    expect(ContentPacks::verdict($plan, 'tax:post_cat/tin-tuc'))->toBe('update');
+
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)
+        ->and(cpCategoryIntro($this->siteId))->toBe(['cover' => $logo->storage_key, 'intro' => 'Tin mới.']);
+
+    [, $settled] = ContentPacks::run();
+    expect(ContentPacks::verdict($settled, 'tax:post_cat/tin-tuc'))->toBe('unchanged');
+});
+
+it('clears a category\'s intro when the pack states it empty or null, and then plans nothing', function (mixed $empty): void {
+    cpCategoryFields($this->folder, ['description' => ['vi' => 'Có lời giới thiệu.']]);
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)->and(cpCategoryIntro($this->siteId)['intro'])->toBe('Có lời giới thiệu.');
+
+    cpCategoryFields($this->folder, ['description' => ['vi' => $empty]]);
+    [, $plan] = ContentPacks::run();
+    expect(ContentPacks::verdict($plan, 'tax:post_cat/tin-tuc'))->toBe('update');
+
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)->and(cpCategoryIntro($this->siteId)['intro'])->toBeNull();
+
+    [, $settled] = ContentPacks::run();
+    expect(ContentPacks::verdict($settled, 'tax:post_cat/tin-tuc'))->toBe('unchanged');
+})->with(['empty text' => [''], 'null' => [null]]);
+
+it('keeps the live intro picture and text of a category whose pack item states neither', function (): void {
+    $about = ContentPacks::in($this->siteId, fn () => StorefrontCards::media('about'));
+    cpCategoryFields($this->folder, ['cover' => ['media' => 'about'], 'description' => ['vi' => 'Giữ lại.']]);
+    expect(ContentPacks::load()[0])->toBe(0);
+
+    ContentPacks::item($this->folder, 'taxonomies.json', 'tax:post_cat/tin-tuc', function (array $item): array {
+        unset($item['cover'], $item['description']);
+
+        return $item;
+    });
+    [, $plan] = ContentPacks::run();
+    expect(ContentPacks::verdict($plan, 'tax:post_cat/tin-tuc'))->toBe('unchanged');
+
+    expect(ContentPacks::load()[0])->toBe(0)
+        ->and(cpCategoryIntro($this->siteId))->toBe(['cover' => $about->storage_key, 'intro' => 'Giữ lại.']);
+});
+
+it('warns about an intro picture whose file is not uploaded and keeps the live picture', function (): void {
+    $about = ContentPacks::in($this->siteId, fn () => StorefrontCards::media('about'));
+    cpCategoryFields($this->folder, ['cover' => ['media' => 'about']]);
+    expect(ContentPacks::load()[0])->toBe(0);
+
+    cpCategoryFields($this->folder, ['cover' => ['media' => 'header']]);
+    [, $output] = ContentPacks::run();
+    expect($output)->toContain('tax:post_cat/tin-tuc')->toContain('keeps its live picture');
+
+    expect(ContentPacks::load()[0])->toBe(0)
+        ->and(cpCategoryIntro($this->siteId)['cover'])->toBe($about->storage_key);
 });

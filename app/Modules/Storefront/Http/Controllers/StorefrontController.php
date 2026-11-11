@@ -324,9 +324,12 @@ final readonly class StorefrontController
                     ...$this->crumbs->category($category, $locale, $categoryTranslation->name, $categoryTranslation->slug),
                     $self,
                 ];
-                $extra += $this->posts->siblings($entry, $category, $locale, true, $withRecent, $postTemplate === 'project');
+                // The capability layout draws neither neighbours nor related cards: read them only when a block needs the recent posts.
+                if ($postTemplate !== 'capability' || $withRecent) {
+                    $extra += $this->posts->siblings($entry, $category, $locale, true, $withRecent, $postTemplate === 'project');
+                }
             }
-            $extra['slotContext'] = $this->slots->context($slotBlocks, $category, $locale, $brandData, is_array($extra['recent'] ?? null) ? $extra['recent'] : []);
+            $extra['slotContext'] = $this->slots->context($slotBlocks, $category, $locale, $brandData, is_array($extra['recent'] ?? null) ? $extra['recent'] : [], $entry->id);
             unset($extra['recent']);
         } elseif ($path !== '/') {
             $extra['breadcrumb'] = [$this->crumbs->home($locale), ...$this->crumbs->parentPages($entry, $locale), $self];
