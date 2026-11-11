@@ -145,7 +145,7 @@ function moRichHeader(): void
 /** The phone menu panel of a rendered page. */
 function moDrawer(string $html): string
 {
-    preg_match('~<nav id="mobile-menu".*?</nav>~s', $html, $drawer);
+    preg_match('~<nav class="sf-nav sf-nav--mob".*?</nav>~s', $html, $drawer);
 
     return $drawer[0] ?? '';
 }
