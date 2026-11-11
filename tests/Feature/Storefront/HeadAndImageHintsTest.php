@@ -6,6 +6,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Components\ListDisplay;
 use App\Modules\Theme\Rendering\BlockRenderer;
 use Carbon\CarbonImmutable;
 use Tests\Fixtures\StorefrontCards;
@@ -157,4 +158,56 @@ it('keeps one high-priority image on a page led by a title band, loaded eagerly'
 
     expect(headHighImages($html))->toBe(1)
         ->and($html)->toMatch('~<img\b[^>]*loading="eager"[^>]*fetchpriority="high"~');
+});
+
+it('draws the about photo and a hero photo with a srcset, and a sizes that fits the frame', function (): void {
+    $siteId = StorefrontCards::site();
+
+    $html = app(Tenancy::class)->enter($siteId, function (): string {
+        $wide = StorefrontCards::media('about-wide', 2000, 1200);
+        $portrait = StorefrontCards::media('about-portrait', 1400, 2000);
+        $hero = StorefrontCards::media('hero-wide', 2000, 1000);
+
+        return app(BlockRenderer::class)->render(['blocks' => [
+            ['type' => 'hero', 'props' => ['heading' => 'Chào', 'image_url' => $hero->id]],
+            ['type' => 'about', 'props' => ['heading' => 'Giới thiệu', 'paragraphs' => ['Một'], 'image_url' => $wide->id]],
+            ['type' => 'about', 'props' => ['heading' => 'Chứng nhận', 'paragraphs' => ['Hai'], 'image_url' => $portrait->id]],
+        ]]);
+    });
+
+    expect(preg_match_all('~<img class="about__image[^"]*"[^>]*>~', $html, $about))->toBe(2);
+    // A cut-to-fit photo: whitelisted widths only; from 768px its frame may be tall, so the file stays large.
+    expect($about[0][0])->toMatch('~srcset="[^"]*\?w=640 640w, [^"]*\?w=960 960w, [^"]*\?w=1280 1280w[^"]*" sizes="\(min-width:768px\) 64rem, calc\(\(100vw - 3rem\) \* 1\.25\)"~')
+        ->and($about[0][0])->toContain('width="2000"')->toContain('height="1200"');
+    // A whole portrait photo: a frame of at most 27rem.
+    expect($about[0][1])->toContain('sizes="(min-width:768px) min(27rem, calc((100vw - 6rem) * 0.4 - 1rem)), min(27rem, calc(100vw - 4rem))"')
+        ->and($about[0][1])->toContain('srcset="');
+
+    // The hero photo covers a tall box on a phone, so it keeps one large file.
+    expect($html)->toMatch('~<img class="hero__bg"[^>]*\?w=1280"~')
+        ->and($html)->not->toMatch('~<img class="hero__bg"[^>]*srcset=~')
+        ->and(headHighImages($html))->toBe(1);
+});
+
+it('keeps the about photo without a srcset when its master is no wider than the smallest step', function (): void {
+    $siteId = StorefrontCards::site();
+
+    $html = app(Tenancy::class)->enter($siteId, function (): string {
+        $small = StorefrontCards::media('about-small', 600, 400);
+
+        return app(BlockRenderer::class)->render(['blocks' => [['type' => 'about', 'props' => ['heading' => 'Nhỏ', 'paragraphs' => ['Một'], 'image_url' => $small->id]]]]);
+    });
+
+    expect(preg_match('~<img class="about__image[^"]*"[^>]*>~', $html, $tag))->toBe(1)
+        ->and($tag[0])->not->toContain('srcset=')->not->toContain('sizes=')
+        ->and($tag[0])->toContain('fetchpriority="high"');
+});
+
+it('sizes a card photo to the rail it sits in, on a phone and on a wide screen', function (): void {
+    expect(ListDisplay::cardSizes(['columns' => 3, 'mobile' => 'swipe']))
+        ->toBe('(min-width:1024px) calc((100vw - 7rem) / 3), (min-width:640px) calc((100vw - 4.5rem) / 2), calc((100vw - 2.25rem) / 1.25)')
+        ->and(ListDisplay::cardSizes(['columns' => 4, 'mobile' => 'two']))
+        ->toBe('(min-width:1024px) calc((100vw - 8.5rem) / 4), (min-width:640px) calc((100vw - 4.5rem) / 2), calc((100vw - 3rem) / 2)')
+        ->and(ListDisplay::cardSizes(['columns' => 1, 'mobile' => 'one']))
+        ->toBe('(min-width:1024px) calc(100vw - 4rem), (min-width:640px) calc((100vw - 4.5rem) / 2), calc(100vw - 2rem)');
 });

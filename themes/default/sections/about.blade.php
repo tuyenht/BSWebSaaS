@@ -38,6 +38,15 @@
     $sfWhole = $sfSize !== null && $sfSize[1] > $sfSize[0];
     // A portrait photo opens larger: a link to itself (a safe link only), with a tap-to-enlarge line.
     $sfZoom = $sfWhole ? \App\Modules\Shared\Support\SafeLink::href($sfSrc) : null;
+    // The files offered (server-built, keyed by the photo's address) and the width the frame draws them at.
+    // A whole photo: its frame is at most 28rem with 0.5rem padding, and from 768px sits in the 2fr column
+    // (.about--whole). A cut-to-fit photo: on a phone a 4:3 frame the full width less the section padding,
+    // which a landscape photo covers at up to a quarter wider; from 768px the frame is as tall as the text
+    // (up to 42rem), so a wide photo may be drawn up to 64rem wide whatever the column: ask for that.
+    $sfSrcset = $sfSrc !== null ? (($srcsets ?? [])[$sfSrc] ?? null) : null;
+    $sfSizes = $sfWhole
+        ? '(min-width:768px) min(27rem, calc((100vw - 6rem) * 0.4 - 1rem)), min(27rem, calc(100vw - 4rem))'
+        : '(min-width:768px) 64rem, calc((100vw - 3rem) * 1.25)';
 @endphp
 @if ($sfBand !== 'none')
 <div class="about-band about-band--{{ $sfBand }}">
@@ -68,7 +77,8 @@
              fetchpriority="high" when it is the page's first image (LCP). --}}
         <div class="about__media{{ $sfWhole ? ' about__media--whole' : '' }}">
             @if ($sfZoom !== null)<a class="about__zoom" href="{{ $sfZoom }}" data-sf-zoom="single">@endif<img class="about__image{{ $sfWhole ? '' : $sfFocus }}"
-                 src="{{ $sfSrc }}"
+                 src="{{ $sfSrc }}"@if (! empty($sfSrcset)) srcset="{{ $sfSrcset }}" sizes="{{ $sfSizes }}"@endif
+
                  alt="{{ $sfHeading }}"
                  width="{{ $sfSize[0] ?? 640 }}"
                  height="{{ $sfSize[1] ?? 480 }}"

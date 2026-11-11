@@ -28,6 +28,11 @@
         .($sfList ? ' sf-card--list' : '')
         .($sfFeatured ? ' sf-card--featured' : ($sfList && in_array($sfKind, ['news', 'project'], true) ? ' sf-card--row' : ''));
     $sfSizes = $sizes ?? '(min-width:1360px) 408px, (min-width:1024px) calc((100vw - 8.5rem)/3), (min-width:768px) calc((100vw - 5rem)/2), calc(100vw - 2rem)';
+    // The compact row of a phone (.sf-card--row, under 640px) draws the photo in a 7.5rem frame; a taller row
+    // crops it to fit, so it is asked for at 10rem. A wider screen keeps the grid's own sizes.
+    if (str_contains($sfClass, 'sf-card--row')) {
+        $sfSizes = '(max-width:639.98px) 10rem, '.$sfSizes;
+    }
 @endphp
 <article class="{{ $sfClass }}">
 @if ($sfKind === 'icon')
