@@ -51,6 +51,7 @@ use App\Modules\Storefront\Http\Controllers\FormSubmissionController;
 use App\Modules\Storefront\Http\Controllers\ProductPreviewController;
 use App\Modules\Storefront\Http\Controllers\SitemapController;
 use App\Modules\Storefront\Http\Controllers\StorefrontController;
+use App\Modules\Storefront\Http\Middleware\ConditionalGet;
 use App\Modules\Tenancy\Http\Controllers\CaddyAskController;
 use App\Modules\Tenancy\Http\Middleware\ServeOnPrimaryDomain;
 use App\Modules\Tenancy\Http\Middleware\SetCurrentSite;
@@ -325,13 +326,13 @@ Route::post('/forms/{key}', FormSubmissionController::class)
 //    fallback so these explicit routes win). public/robots.txt is deleted; this route
 //    emits the dynamic per-host Sitemap: line instead. ─────────────────────────────
 Route::get('/sitemap.xml', SitemapController::class)
-    ->middleware([ServeOnPrimaryDomain::class, SetCurrentSite::class, 'site.active']);
+    ->middleware([ServeOnPrimaryDomain::class, SetCurrentSite::class, 'site.active', ConditionalGet::class]);
 
 // Numbered pages of a site over the 50,000-URL limit, listed by /sitemap.xml's <sitemapindex>.
 // {page} is a position (1, 2, …), never a route id; a leading zero falls through to a 404.
 Route::get('/sitemap-{page}.xml', [SitemapController::class, 'page'])
     ->where('page', '[1-9][0-9]{0,5}')
-    ->middleware([ServeOnPrimaryDomain::class, SetCurrentSite::class, 'site.active']);
+    ->middleware([ServeOnPrimaryDomain::class, SetCurrentSite::class, 'site.active', ConditionalGet::class]);
 
 // The body follows the site's search settings (SiteSeo): hidden from Google = everything
 // disallowed; otherwise the custom text or the safe default, with the Sitemap: line while the
@@ -340,9 +341,9 @@ Route::get('/robots.txt', function (Request $request, SiteSeo $seo) {
     $sitemap = $request->getScheme().'://'.$request->getHost().'/sitemap.xml';
 
     return response($seo->robotsTxt($sitemap), 200, ['Content-Type' => 'text/plain; charset=utf-8', 'X-Content-Type-Options' => 'nosniff']);
-})->middleware([ServeOnPrimaryDomain::class, SetCurrentSite::class, 'site.active']);
+})->middleware([ServeOnPrimaryDomain::class, SetCurrentSite::class, 'site.active', ConditionalGet::class]);
 
 // ── Storefront plane — public, tenant context. A fallback so it never shadows a
 //    defined route; resolves dynamic content for any other path (404 if none). ─────
 Route::fallback(StorefrontController::class)
-    ->middleware([ServeOnPrimaryDomain::class, SetCurrentSite::class, 'site.active']);
+    ->middleware([ServeOnPrimaryDomain::class, SetCurrentSite::class, 'site.active', ConditionalGet::class]);
