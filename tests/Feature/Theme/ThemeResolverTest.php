@@ -171,7 +171,7 @@ it('prints exactly the same variables as before for a site with no settings', fu
     $expected = [
         'primary' => '#3b82f6', 'surface' => '#ffffff', 'font' => 'system-ui, sans-serif',
         'ink' => '#111111', 'body' => '#333333', 'primary-text' => '#326fd1', 'primary-on-ink' => '#3b82f6',
-        'color-primary' => '#3b82f6', 'color-on-primary' => '#111111', 'color-primary-hover' => '#5895f7', 'color-primary-text' => '#326fd1',
+        'color-primary' => '#3b82f6', 'color-on-primary' => '#031c44', 'color-primary-hover' => '#5895f7', 'color-primary-text' => '#326fd1',
         'color-primary-on-dark' => '#3b82f6', 'color-surface' => '#ffffff', 'color-text' => '#333333',
         'color-text-strong' => '#111111', 'color-dark' => '#111111', 'font-body' => 'system-ui, sans-serif',
     ];
@@ -280,21 +280,22 @@ it('prints every standard token name next to its old name, with the same value',
     });
 })->with('brand seeds');
 
-it('puts white or the ink colour on the brand fill, whichever reads better, and never moves the fill', function (string $primary, string $expected): void {
+it('puts white on a brand fill it reads on, else a dark shade of the brand hue, and never moves the fill', function (string $primary, ?string $expected): void {
     app(Tenancy::class)->enter(1, function () use ($primary, $expected): void {
         SiteSetting::query()->create(['group_name' => 'theme', 'key' => 'tokens', 'value' => ['primary' => $primary, 'ink' => '#111111']]);
 
         $variables = app(ThemeResolver::class)->cssVariables();
 
-        expect($variables['color-on-primary'])->toBe($expected)
+        expect($variables['color-on-primary'])->when($expected !== null, fn ($e) => $e->toBe($expected))
             ->and($variables['color-primary'])->toBe($primary)
             ->and(ReadableColor::ratio($variables['color-on-primary'], $primary))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT);
     });
 })->with([
-    'the default blue takes the dark ink (white reads 3.7:1 there)' => ['#3b82f6', '#111111'],
-    'an amber brand takes the dark ink' => ['#f59e0b', '#111111'],
+    'the default blue, where white reads 3.7:1, takes a deep blue' => ['#3b82f6', null],
+    'an amber brand takes a deep brown' => ['#f59e0b', null],
+    'a dark blue brand takes white' => ['#1e3a8a', '#ffffff'],
     'a navy brand takes white' => ['#1e3a5f', '#ffffff'],
-    'a mid-tone brand, where white reads 4.29:1 and the ink 4.41:1, takes the ink darkened' => ['#7a7a7a', '#0d0d0d'],
+    'a mid-tone grey brand takes a deep grey' => ['#7a7a7a', null],
 ]);
 
 it('derives the standard names even when settings try to pin them', function (): void {
@@ -309,7 +310,7 @@ it('derives the standard names even when settings try to pin them', function ():
         $variables = app(ThemeResolver::class)->cssVariables();
 
         expect($variables['color-primary-text'])->toBe($variables['primary-text'])->not->toBe('#f59e0b')
-            ->and($variables['color-on-primary'])->toBe('#111111')
+            ->and($variables['color-on-primary'])->toBe('#452c03')
             ->and($variables['color-brand-500'])->toBe(BrandPalette::from('#f59e0b')[500]);
     });
 });
@@ -363,5 +364,38 @@ it('derives the scales even when settings try to pin them, and keeps motion with
 
         expect($variables['space-m'])->toBe('16px')
             ->and($variables['motion-duration'])->toBe('250ms');
+    });
+});
+
+it('derives a deep shade of the brand hue for text on a light brand, readable on it and under its hover fill', function (string $primary, float $hue): void {
+    app(Tenancy::class)->enter(1, function () use ($primary, $hue): void {
+        SiteSetting::query()->create(['group_name' => 'theme', 'key' => 'tokens', 'value' => ['primary' => $primary, 'ink' => '#111111']]);
+
+        $variables = app(ThemeResolver::class)->cssVariables();
+        $text = $variables['color-on-primary'];
+        [$r, $g, $b] = array_map('hexdec', str_split(ltrim($text, '#'), 2));
+        $max = max($r, $g, $b);
+        $delta = $max - min($r, $g, $b);
+        $shadeHue = fmod(60 * ($max === $r ? ($g - $b) / $delta : ($max === $g ? ($b - $r) / $delta + 2 : ($r - $g) / $delta + 4)) + 360, 360);
+
+        expect($text)->not->toBe('#ffffff')->not->toBe('#111111')
+            ->and($shadeHue)->toBeGreaterThan($hue - 12)->toBeLessThan($hue + 12)
+            ->and(ReadableColor::ratio($text, $primary))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT)
+            ->and(ReadableColor::ratio($text, $variables['color-primary-hover']))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT);
+    });
+})->with([
+    'amber' => ['#f59e0b', 38.0],
+    'default blue' => ['#3b82f6', 217.0],
+    'a mid green' => ['#22c55e', 142.0],
+]);
+
+it('keeps white on a dark brand and its hover fill still reads', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteSetting::query()->create(['group_name' => 'theme', 'key' => 'tokens', 'value' => ['primary' => '#1e3a8a', 'ink' => '#111111']]);
+
+        $variables = app(ThemeResolver::class)->cssVariables();
+
+        expect($variables['color-on-primary'])->toBe('#ffffff')
+            ->and(ReadableColor::ratio($variables['color-on-primary'], $variables['color-primary-hover']))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT);
     });
 });

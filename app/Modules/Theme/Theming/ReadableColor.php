@@ -20,6 +20,15 @@ final class ReadableColor
     /** Attempts on the way to black/white: each moves 1/20 (5%) further. */
     private const int STEPS = 20;
 
+    /** A fill's saturation below this is a grey: its dark shade stays grey. */
+    private const float NEUTRAL_SATURATION = 0.1;
+
+    /** Least saturation of a dark shade of a coloured fill (a deep tone reads as a colour, not mud). */
+    private const float SHADE_SATURATION = 0.9;
+
+    /** Lightness a dark shade starts from, before it is lowered. */
+    private const float SHADE_START = 0.14;
+
     /** WCAG 2 contrast ratio of two hex colors (#rgb / #rrggbb), or null when either is not one. */
     public static function ratio(string $a, string $b): ?float
     {
@@ -116,6 +125,56 @@ final class ReadableColor
             $one[1] * $firstShare + $two[1] * (1 - $firstShare),
             $one[2] * $firstShare + $two[2] * (1 - $firstShare),
         ]);
+    }
+
+    /**
+     * A very dark shade of the same hue as $fill that reads at $minimum on it: saturation raised
+     * (a neutral fill stays neutral) and lightness lowered from a deep tone step by step until it
+     * does. Null when $fill is not hex or no shade reaches it.
+     */
+    public static function darkShade(string $fill, float $minimum = self::AA_NORMAL_TEXT): ?string
+    {
+        $rgb = self::parse($fill);
+        if ($rgb === null) {
+            return null;
+        }
+
+        [$r, $g, $b] = [$rgb[0] / 255, $rgb[1] / 255, $rgb[2] / 255];
+        $max = max($r, $g, $b);
+        $min = min($r, $g, $b);
+        $delta = $max - $min;
+        $hue = 0.0;
+        if ($delta > 0) {
+            $hue = match ($max) {
+                $r => fmod(($g - $b) / $delta, 6),
+                $g => ($b - $r) / $delta + 2,
+                default => ($r - $g) / $delta + 4,
+            } * 60;
+            $hue = $hue < 0 ? $hue + 360 : $hue;
+        }
+        $lightness = ($max + $min) / 2;
+        $saturation = $delta === 0.0 ? 0.0 : $delta / (1 - abs(2 * $lightness - 1));
+        $saturation = $saturation < self::NEUTRAL_SATURATION ? $saturation : max($saturation, self::SHADE_SATURATION);
+
+        for ($tone = self::SHADE_START; $tone >= 0.0; $tone -= 0.01) {
+            $chroma = (1 - abs(2 * $tone - 1)) * $saturation;
+            $x = $chroma * (1 - abs(fmod($hue / 60, 2) - 1));
+            $m = $tone - $chroma / 2;
+            [$cr, $cg, $cb] = match ((int) floor($hue / 60) % 6) {
+                0 => [$chroma, $x, 0.0],
+                1 => [$x, $chroma, 0.0],
+                2 => [0.0, $chroma, $x],
+                3 => [0.0, $x, $chroma],
+                4 => [$x, 0.0, $chroma],
+                default => [$chroma, 0.0, $x],
+            };
+            $shade = self::hex([($cr + $m) * 255, ($cg + $m) * 255, ($cb + $m) * 255]);
+            if ((float) self::ratio($shade, $fill) >= $minimum) {
+                return $shade;
+            }
+        }
+
+        return null;
     }
 
     /** @param  list<string>  $backgrounds */
