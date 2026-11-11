@@ -6264,6 +6264,11 @@ html:has(.sf-header--sticky) .product-toc {
     transition: background-color 0.3s;
 }
 
+/* While a send waits for the anti-spam check (sf-turnstile.js). */
+.lead-form__submit[aria-busy="true"] {
+    cursor: progress;
+}
+
 .lead-form__submit:hover {
     background: var(--lf-submit-hover);
 }
