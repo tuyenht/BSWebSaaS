@@ -128,7 +128,23 @@ it('moves a block that keeps the automatic choice the way its kind suits, and ke
         ->and(app(BlockRenderer::class)->moves(['blocks' => [['type' => 'hero'], ['type' => 'richtext'], ['type' => 'form']]]))->toBeFalse()
         ->and(styleBlockValid(['motion' => 'auto']))->toBeTrue()
         // A block that draws nothing (a list of questions with none) gets no wrapper: no empty band.
-        ->and(styleRender([['type' => 'richtext', 'props' => ['heading' => 'Một']], ['type' => 'faq', 'props' => ['heading' => 'Hai', 'motion' => 'rise']]]))->not->toContain('sf-s');
+        ->and(styleRender([['type' => 'richtext', 'props' => ['heading' => 'Một']], ['type' => 'faq', 'props' => ['heading' => 'Hai', 'motion' => 'rise']]]))->not->toContain('sf-s')
+        // ...unless a link points at its anchor.
+        ->and(styleRender([['type' => 'richtext', 'props' => ['heading' => 'Một']], ['type' => 'faq', 'props' => ['heading' => 'Hai', 'anchor_id' => 'hoi-dap']]]))->toContain('id="hoi-dap"');
+});
+
+it('lets no block in a slot around the page move by itself, while a chosen motion still applies', function (): void {
+    $renderer = app(BlockRenderer::class);
+    $slot = ['blocks' => [['type' => 'features', 'props' => ['heading' => 'Một']], ['type' => 'features', 'props' => ['heading' => 'Hai', 'motion' => 'fade']]]];
+
+    $html = app(Tenancy::class)->enter($this->siteId, fn (): string => $renderer->renderBodies([['blocks' => [['type' => 'richtext', 'props' => ['heading' => 'Bài']]]], $slot])[1]['html']);
+
+    expect(substr_count($html, 'sf-s--m-rise'))->toBe(0)
+        ->and(substr_count($html, 'sf-s--m-fade'))->toBe(1)
+        ->and($renderer->moves(['blocks' => [['type' => 'features']]], true))->toBeFalse()
+        ->and($renderer->moves(['blocks' => [['type' => 'features', 'props' => ['motion' => 'fade']]]], true))->toBeTrue()
+        // The same block first in a slot is not the page's first block, so its chosen motion applies.
+        ->and($renderer->moves(['blocks' => [['type' => 'features', 'props' => ['motion' => 'rise']]]]))->toBeFalse();
 });
 
 it('names a known block type for every automatic motion', function (): void {

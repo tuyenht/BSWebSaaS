@@ -269,8 +269,9 @@ final readonly class BlockRenderer
                 $resolved['_high'] = $first && ($wrapper === null || $wrapper['image'] === null);
                 $section = $this->views->make($view, $component->data($resolved) + ['srcsets' => $srcsets, 'thumbs' => $thumbs, 'alts' => $alts, 'dims' => $dims, 'sfSlot' => $isOwn ? [] : $context] + $band)->render();
 
-                // A block that draws nothing gets no wrapper either: an empty band would still take a margin.
-                $html .= $wrapper === null || ($wrapper['image'] === null && trim($section) === '') ? $section : $this->views->make('theme::partials.sf-section', [
+                // A block that draws nothing gets no wrapper either (an empty band would still take a margin),
+                // unless a link points at its anchor.
+                $html .= $wrapper === null || ($wrapper['image'] === null && $wrapper['id'] === null && trim($section) === '') ? $section : $this->views->make('theme::partials.sf-section', [
                     'wrapper' => $wrapper,
                     'section' => $section,
                     'srcset' => $wrapper['image'] !== null ? ($srcsets[$wrapper['image']] ?? null) : null,

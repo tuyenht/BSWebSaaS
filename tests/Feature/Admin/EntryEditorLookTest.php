@@ -62,6 +62,8 @@ it('keeps only listed choices and paints the band when a colour set is picked', 
             ->assertSet('blocks.0.props.scheme', 'dark')
             ->assertSet('blocks.0.props.bg', 'scheme')
             ->call('setLook', 0, 'width', 'narrow')
+            ->call('setLook', 0, 'motion', 'auto')
+            ->assertSet('blocks.0.props.motion', 'auto')
             ->call('setLook', 0, 'motion', 'rise')
             ->call('setLook', 0, 'scheme', 'neon')
             ->call('setLook', 0, 'width', 'huge')
