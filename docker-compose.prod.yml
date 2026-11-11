@@ -183,6 +183,8 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      # HTTP/3 (QUIC): Caddy already advertises it (alt-svc h3); the UDP port must be open too.
+      - "443:443/udp"
     volumes:
       - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data_prod:/data
