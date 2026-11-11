@@ -4,6 +4,7 @@ namespace App\Modules\Cms\Components;
 
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
+use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Support\JobFacts;
 use App\Modules\Media\Services\MediaUrlResolver;
@@ -189,8 +190,12 @@ final readonly class EntryGridComponent implements Component
      */
     private function jobs(int $taxonomyId, string $locale, int $limit, array $props): array
     {
-        $children = $this->children($taxonomyId, $locale);
-        $ids = [$taxonomyId, ...array_map(fn (mixed $id): int => Cast::int($id), $children->pluck('taxonomy_id')->all())];
+        // The branch is the category and its first TAB_CHILDREN_READ (12) sub-categories in their own
+        // order, read without the language join: a post under a sub-category that has no name in this
+        // language still counts and shows. Only the chips need a name, so only named ones get a chip.
+        $childIds = Taxonomy::query()->where('parent_id', $taxonomyId)->orderBy('position')->orderBy('id')->limit(self::TAB_CHILDREN_READ)->pluck('id')->map(fn (mixed $id): int => Cast::int($id))->all();
+        $names = $childIds === [] ? [] : TaxonomyTranslation::query()->where('locale', $locale)->whereIn('taxonomy_id', $childIds)->pluck('name', 'taxonomy_id')->all();
+        $ids = [$taxonomyId, ...$childIds];
         $branch = fn (): Builder => Entry::query()
             ->where('type', 'post')
             ->where('status', 'published')
@@ -204,8 +209,10 @@ final readonly class EntryGridComponent implements Component
             ->get();
 
         $childIndex = [];
-        foreach ($children as $index => $child) {
-            $childIndex[Cast::int($child->taxonomy_id)] = $index;
+        foreach ($childIds as $index => $childId) {
+            if (isset($names[$childId])) {
+                $childIndex[$childId] = $index;
+            }
         }
         $groups = [];
         $used = [];
@@ -223,9 +230,9 @@ final readonly class EntryGridComponent implements Component
 
         $chips = [];
         if (SectionProps::choice($props, 'tabs', SectionProps::ENTRY_GRID_TABS) === 'filter' && count($used) >= SectionProps::TABS_MIN) {
-            foreach ($children as $index => $child) {
+            foreach ($childIds as $index => $childId) {
                 if (isset($used[$index])) {
-                    $chips[] = ['key' => 'g'.$index, 'name' => $child->name];
+                    $chips[] = ['key' => 'g'.$index, 'name' => Cast::string($names[$childId])];
                 }
             }
         }
@@ -237,7 +244,8 @@ final readonly class EntryGridComponent implements Component
             'display' => null,
             'jobs' => [
                 'count' => $total > 0 && $template !== '' ? str_replace('{n}', $shown, $template) : '',
-                'total' => $shown,
+                // "All" labels the cards drawn, so its number is theirs (the count line holds the branch).
+                'total' => (string) $entries->count(),
                 'chips' => $chips,
             ],
         ];

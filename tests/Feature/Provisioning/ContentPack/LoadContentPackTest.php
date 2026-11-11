@@ -532,3 +532,24 @@ it('writes the short facts and the badge of a post into its meta, plans a change
     ContentPacks::load();
     expect($meta())->not->toHaveKey('facts')->not->toHaveKey('badge');
 });
+
+it('keeps a post loaded before facts and badges existed reading as unchanged, and plans a post that gains facts as an update', function (): void {
+    ContentPacks::load();
+    ContentPacks::in($this->siteId, function (): void {
+        $plan = app(Planner::class)->plan(app(PackReader::class)->read('demo-co'), Site::query()->value('ulid'), 'Demo', ContentPacks::HOST);
+        $current = $plan->item('post:ra-mat-website')?->current ?? [];
+        // The state shape a load made before facts and badges recorded: neither key at all.
+        expect($current)->not->toHaveKey('facts')->not->toHaveKey('badge');
+        $ledger = Ledger::read('demo-co');
+        $items = $ledger['items'];
+        $items['post:ra-mat-website']['hash'] = CanonicalHash::of($current);
+        Ledger::write('demo-co', $ledger['pack_version'], $items, null);
+    });
+
+    [, $output] = ContentPacks::run();
+    expect(ContentPacks::verdict($output, 'post:ra-mat-website'))->toBe('unchanged');
+
+    ContentPacks::item($this->folder, 'posts.json', 'post:ra-mat-website', fn (array $item): array => ['facts' => [['text' => ['vi' => 'Trung Giã'], 'tone' => 'plain']]] + $item);
+    [, $output] = ContentPacks::run();
+    expect(ContentPacks::verdict($output, 'post:ra-mat-website'))->toBe('update');
+});

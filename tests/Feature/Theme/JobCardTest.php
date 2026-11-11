@@ -108,6 +108,33 @@ it('counts the whole branch, not what is shown or chosen', function (): void {
     });
 });
 
+it('labels "all" with the number of cards drawn and keeps the branch count in the line', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        jobBranch(['Trung Giã' => 3, 'Thạch Thất' => 3]);
+
+        [$data, $html] = jobGrid(['count_label' => '{n} vị trí đang mở', 'tabs' => 'filter', 'limit' => 4]);
+
+        expect($data['jobs']['total'])->toBe('4')->and($html)->toContain('Tất cả (4)')->not->toContain('Tất cả (6)')
+            ->and($data['jobs']['count'])->toBe('6 vị trí đang mở');
+    });
+});
+
+it('counts and shows a post under a sub-category with no name in the page language', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        jobBranch(['Trung Giã' => 1, 'Thạch Thất' => 1]);
+        $bare = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'parent_id' => Taxonomy::query()->where('vocabulary', 'post_cat')->whereNull('parent_id')->value('id'), 'position' => 9]);
+        $entry = Entry::query()->create(['type' => 'post', 'status' => 'published', 'published_at' => '2026-10-02 08:00:00', 'meta' => []]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'Vị trí không tên nhóm', 'slug' => 'khong-ten-nhom', 'status' => 'published', 'body' => ['blocks' => []]]);
+        $entry->assignCategories([$bare->id]);
+        app(RouteSync::class)->sync($entry, 'vi', 'khong-ten-nhom');
+
+        [$data, $html] = jobGrid(['count_label' => '{n} vị trí đang mở', 'tabs' => 'filter']);
+
+        expect($data['jobs']['count'])->toBe('3 vị trí đang mở')->and($html)->toContain('Vị trí không tên nhóm')->toContain('Tất cả (3)')
+            ->and(array_column($data['jobs']['chips'], 'name'))->toBe(['Trung Giã', 'Thạch Thất']);
+    });
+});
+
 it('draws no count line without a label', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         jobBranch();
