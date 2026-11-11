@@ -1,5 +1,7 @@
 <?php
 
+use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteProfile;
@@ -75,15 +77,33 @@ it('prints the size and alt text of the site share image, and no size for a page
         ->and($post)->not->toContain('og:image:width');
 });
 
-it('lists the locales of the other published languages', function (): void {
+it('lists the locales of the other languages the page is published in', function (): void {
     $siteId = StorefrontCards::site();
-    app(Tenancy::class)->enter($siteId, fn () => SiteLocale::create(['locale' => 'en', 'is_default' => false, 'enabled' => true, 'is_public' => true]));
+    app(Tenancy::class)->enter($siteId, function (): void {
+        SiteLocale::create(['locale' => 'en', 'is_default' => false, 'enabled' => true, 'is_public' => true]);
+        $entry = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'Giới thiệu', 'slug' => 'gioi-thieu', 'status' => 'published', 'body' => ['blocks' => []]]);
+        $entry->translations()->create(['locale' => 'en', 'title' => 'About', 'slug' => 'about', 'status' => 'published', 'body' => ['blocks' => []]]);
+        SiteRoute::query()->create(['locale' => 'vi', 'path' => '/gioi-thieu', 'entry_id' => $entry->id]);
+        SiteRoute::query()->create(['locale' => 'en', 'path' => '/about', 'entry_id' => $entry->id]);
+    });
 
-    $html = test()->get('http://mau.platform.test/')->assertOk()->getContent();
+    $html = test()->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
 
     expect($html)->toContain('<meta property="og:locale" content="vi_VN">')
         ->and($html)->toContain('<meta property="og:locale:alternate" content="en_US">')
         ->and($html)->not->toContain('og:locale:alternate" content="vi_VN"');
+});
+
+it('names no alternate locale the page has no translation in', function (): void {
+    $siteId = StorefrontCards::site();
+    app(Tenancy::class)->enter($siteId, function (): void {
+        SiteLocale::create(['locale' => 'en', 'is_default' => false, 'enabled' => true, 'is_public' => true]);
+        StorefrontCards::post(StorefrontCards::news(), 'Chỉ tiếng Việt', 'chi-tieng-viet');
+    });
+
+    expect(test()->get('http://mau.platform.test/tin-tuc/chi-tieng-viet')->assertOk()->getContent())
+        ->not->toContain('og:locale:alternate');
 });
 
 it('prints no alternate locale on a one-language site', function (): void {

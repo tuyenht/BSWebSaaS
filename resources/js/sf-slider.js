@@ -235,10 +235,14 @@ function initRail(root) {
     });
     document.addEventListener('visibilitychange', schedule);
     let resized;
-    window.addEventListener('resize', () => {
+    const later = () => {
         clearTimeout(resized);
         resized = setTimeout(sync, 200);
-    });
+    };
+    window.addEventListener('resize', later);
+    // A row can start to overflow once its lazy images or the web font arrive.
+    track.addEventListener('load', later, true);
+    document.fonts?.ready.then(later);
     phone.addEventListener?.('change', sync);
     reduce.addEventListener?.('change', sync);
     sync();

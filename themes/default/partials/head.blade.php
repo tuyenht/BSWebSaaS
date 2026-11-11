@@ -55,10 +55,11 @@
     $ogHeight = $ogSharesBrand ? (int) data_get($brand ?? null, 'og_image_height', 0) : 0;
     $ogAlt = ! empty($passedOgImage) ? (string) $seoTitle : (string) data_get($brand ?? null, 'name', '');
 
-    // The site's other published languages (the chrome's language list: empty on a one-language site).
+    // The other languages this page is published in (the chrome's language list, empty on a one-language
+    // site; an entry that only leads to another language's home page is not this page).
     $ogAlternates = [];
     foreach (($languages ?? []) as $language) {
-        if (is_array($language) && ! empty($language['locale']) && $language['locale'] !== ($lang ?? null)) {
+        if (is_array($language) && ! empty($language['locale']) && empty($language['fallback']) && $language['locale'] !== ($lang ?? null)) {
             $ogAlternates[] = \App\Modules\Theme\Chrome\StorefrontChrome::ogLocale((string) $language['locale']);
         }
     }

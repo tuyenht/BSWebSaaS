@@ -119,9 +119,9 @@ final readonly class PageRenderer
         // the page asks for one high-priority image, not two. Matched on the tag: text (a post
         // about the attribute itself) cannot hold a raw "<", Blade and the purifier escape it.
         $bodyHighImage = preg_match('~<img\b[^>]*\sfetchpriority="high"~', $band.$sections) === 1;
-        // A post or product page with a cover photo (the photo that also gives it its share image) leads
-        // with that photo from the media host: connect to the host with the HTML.
-        if (! isset($extra['mediaOrigin']) && ! empty($extra['ogImage'])) {
+        // A post with a cover photo (the photo that also gives it its share image) leads with that photo
+        // from the media host: connect to the host with the HTML. A page's share image is not drawn.
+        if ($type === 'post' && ! isset($extra['mediaOrigin']) && ! empty($extra['ogImage'])) {
             $origin = $this->media->origin();
             if ($origin !== null && $origin !== request()->getSchemeAndHttpHost()) {
                 $extra['mediaOrigin'] = $origin;
