@@ -309,3 +309,68 @@ it('pages the members by cursor, forward and back, meeting each one once', funct
         ->and(count($seen['pages'][2]))->toBe(5)
         ->and($seen['back'])->toBe($seen['pages'][1]);
 });
+
+it('draws the failed card with a retry when a list read fails, and the page still answers', function (): void {
+    $owner = usersPageMember(1, 'owner', ['name' => 'Đặng Anh Tú']);
+    usersPageMember(1, 'viewer', ['name' => 'Ngô Bảo Châu']);
+
+    $fail = true;
+    DB::beforeExecuting(function (string $query) use (&$fail): void {
+        if ($fail && str_contains($query, 'grouping sets')) {
+            $fail = false;
+            // a statement Postgres itself refuses: it aborts the transaction it runs in, as a timeout would
+            DB::select('select 1 / 0');
+        }
+    });
+
+    $this->actingAs($owner)->get('http://a.test/admin/users')->assertOk()
+        ->assertSee(__('admin.members.error_title'))->assertSee(__('admin.members.retry'))->assertDontSee('Ngô Bảo Châu');
+
+    $this->actingAs($owner)->get('http://a.test/admin/users')->assertOk()
+        ->assertDontSee(__('admin.members.error_title'))->assertSee('Ngô Bảo Châu');
+});
+
+it('refuses an admin who ticks a role at or above their own level, changing nothing', function (): void {
+    $admin = usersPageMember(1, 'admin', ['name' => 'Lê Thị Hồng']);
+    $editor = usersPageMember(1, 'editor', ['name' => 'Vũ Minh Tâm']);
+    usersPageMember(1, 'owner');
+
+    foreach ([['admin'], ['owner'], ['editor', 'owner']] as $forged) {
+        usersPage($admin, fn (Testable $page) => $page
+            ->call('openPanel', $editor->ulid)
+            ->set('panelRoles', $forged)
+            ->call('saveRoles')
+            ->assertSet('panelError', __('admin.role_change_denied'))
+            ->assertSet('panelFor', $editor->ulid)
+            ->assertSet('undoRoles', null));
+    }
+
+    expect(usersPageRoles(1, $editor))->toBe(['editor']);
+});
+
+it('refuses a forged undo — another site’s member, a role at or above the actor, an oversized or repeated list — changing nothing', function (): void {
+    $admin = usersPageMember(1, 'admin', ['name' => 'Lê Thị Hồng']);
+    $editor = usersPageMember(1, 'editor', ['name' => 'Vũ Minh Tâm']);
+    $outsider = usersPageMember(2, 'viewer');
+    usersPageMember(1, 'owner');
+    usersPageMember(1, 'viewer');
+
+    $forged = [
+        ['ulid' => $outsider->ulid, 'roles' => ['viewer']],
+        ['ulid' => $editor->ulid, 'roles' => ['owner']],
+        ['ulid' => $editor->ulid, 'roles' => ['admin']],
+        // unknown names would be dropped, leaving a valid grant: the list itself is refused
+        ['ulid' => $editor->ulid, 'roles' => array_merge(['viewer'], array_map(fn (int $i): string => "nhóm-{$i}", range(1, 50)))],
+        ['ulid' => $editor->ulid, 'roles' => ['viewer', 'viewer']],
+    ];
+    foreach ($forged as $undo) {
+        usersPage($admin, fn (Testable $page) => $page
+            ->set('undoRoles', $undo)
+            ->call('undo')
+            ->assertSee(__('admin.members.undo_failed'))
+            ->assertSet('undoRoles', null));
+    }
+
+    expect(usersPageRoles(1, $editor))->toBe(['editor'])
+        ->and(usersPageRoles(2, $outsider))->toBe(['viewer']);
+});

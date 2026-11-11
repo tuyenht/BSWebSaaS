@@ -30,6 +30,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -57,6 +58,9 @@ final class Index extends Component
 {
     /** Where this list's page size lives in the member's preferences. */
     public const string PREFS = 'site.members';
+
+    /** Addresses one send may hold: more is refused with a message, never cut short in silence. */
+    public const int INVITE_MAX = 50;
 
     #[Url(as: 'q', except: '')]
     public string $search = '';
@@ -216,7 +220,7 @@ final class Index extends Component
         $this->ensureOpen();
         $this->validate([
             'panelRoles' => 'array|max:50',
-            'panelRoles.*' => 'string|max:125',
+            'panelRoles.*' => 'string|max:125|distinct',
         ]);
         if ($this->refusedWhileSupport()) {
             return;
@@ -256,6 +260,19 @@ final class Index extends Component
     public function undo(): void
     {
         $this->ensureOpen();
+        // the earlier roles come back from the browser: the same limits as the panel's list
+        try {
+            $this->validate([
+                'undoRoles' => 'nullable|array',
+                'undoRoles.ulid' => 'string|max:26',
+                'undoRoles.roles' => 'array|max:50',
+                'undoRoles.roles.*' => 'string|max:125|distinct',
+            ]);
+        } catch (ValidationException) {
+            $this->say(__('admin.members.undo_failed'), 'error');
+
+            return;
+        }
         $undo = $this->undoRoles;
         $this->undoRoles = null;
         if ($undo === null || $this->refusedWhileSupport()) {
@@ -400,19 +417,38 @@ final class Index extends Component
 
             return;
         }
+        if (count($valid) > self::INVITE_MAX) {
+            $this->addError('inviteEmail', __('admin.members.inv_too_many', ['n' => count($valid), 'max' => self::INVITE_MAX]));
+
+            return;
+        }
         $roles = $this->siteRoles($this->inviteRoles);
         if ($roles->isEmpty()) {
             $this->addError('inviteRoles', __('admin.members.inv_role_need'));
 
             return;
         }
+        // what the site may still mail today, said up front: the action would refuse the addresses past it one by one
+        $siteId = app(CurrentSite::class)->id();
+        $left = max(0, InviteMember::DAILY_LIMIT - app(InviteMember::class)->sentToday($siteId));
+        if (count($valid) > $left) {
+            $this->addError('inviteEmail', $left === 0
+                ? __('admin.members.inv_quota_none', ['max' => InviteMember::DAILY_LIMIT])
+                : __('admin.members.inv_over_quota', ['n' => count($valid), 'left' => $left, 'max' => InviteMember::DAILY_LIMIT]));
+
+            return;
+        }
 
         $message = trim($this->inviteMessage) === '' ? null : trim($this->inviteMessage);
+        // read once for every address: the mail names the site and the roles the invitation carries ($roles, synced as is)
+        $siteName = Site::query()->whereKey($siteId)->value('name');
+        $siteName = is_string($siteName) && $siteName !== '' ? $siteName : request()->getHost();
+        $roleList = array_values($roles->map(fn (Role $role): array => ['name' => $role->name, 'system' => $role->is_system])->all());
         $results = [];
         foreach ($valid as $email) {
             try {
                 $issued = app(InviteMember::class)->handle($actor, $email, array_values($roles->all()), $message);
-                $this->mailInvitation($issued, $actor);
+                $this->mailInvitation($issued, $actor, $siteName, $roleList);
                 $results[] = ['email' => $issued->invitation->email, 'ok' => true, 'text' => __('admin.members.inv_res_ok', ['days' => InviteMember::VALID_DAYS])];
             } catch (AuthorizationException) {
                 $results[] = ['email' => $email, 'ok' => false, 'text' => __('admin.role_change_denied')];
@@ -451,14 +487,25 @@ final class Index extends Component
         $matched = 0;
         $scopes = [];
         try {
-            $page = $directory->page($this->search, $this->groups, $this->per, $this->after, $this->before);
-            $rows = $page['rows'];
-            $older = $page['older'];
-            $newer = $page['newer'];
-            $counts = $directory->counts();
-            $narrowed = MemberDirectory::searches($this->search) || $this->groups !== [];
-            $matched = $narrowed ? $directory->matchCount($this->search, $this->groups) : $counts['total'];
-            $scopes = $this->scopeNames($rows, $siteId);
+            // a savepoint inside the request's tenancy transaction: a failed read leaves it usable for the rest of the page
+            $read = DB::transaction(function () use ($directory, $siteId): array {
+                $page = $directory->page($this->search, $this->groups, $this->per, $this->after, $this->before);
+                $counts = $directory->counts();
+                $narrowed = MemberDirectory::searches($this->search) || $this->groups !== [];
+
+                return [
+                    'page' => $page,
+                    'counts' => $counts,
+                    'matched' => $narrowed ? $directory->matchCount($this->search, $this->groups) : $counts['total'],
+                    'scopes' => $this->scopeNames($page['rows'], $siteId),
+                ];
+            });
+            $rows = $read['page']['rows'];
+            $older = $read['page']['older'];
+            $newer = $read['page']['newer'];
+            $counts = $read['counts'];
+            $matched = $read['matched'];
+            $scopes = $read['scopes'];
         } catch (QueryException $e) {
             report($e);
             $failed = true;
@@ -526,7 +573,7 @@ final class Index extends Component
             }
         }
 
-        return [array_slice(array_keys($valid), 0, 50), $bad];
+        return [array_keys($valid), $bad];
     }
 
     /**
@@ -723,18 +770,19 @@ final class Index extends Component
      * Queue the invitation mail. Everything is composed here, in the request: the worker has no
      * host to build the link from and no site context to read names in. Same mail for every
      * address — the invitation page decides whether to sign in or create the account.
+     *
+     * @param  list<array{name: string, system: bool}>  $roles
      */
-    private function mailInvitation(IssuedInvitation $issued, User $actor): void
+    private function mailInvitation(IssuedInvitation $issued, User $actor, string $siteName, array $roles): void
     {
         $invitation = $issued->invitation;
-        $siteName = Site::query()->whereKey(app(CurrentSite::class)->id())->value('name');
         $expiresAt = app(SiteTime::class)->forDisplay($invitation->expires_at);
 
         $notification = (new MemberInvitationNotification(
             acceptUrl: route('admin.invitations.accept', ['token' => $issued->token]),
-            siteName: is_string($siteName) && $siteName !== '' ? $siteName : request()->getHost(),
+            siteName: $siteName,
             inviterName: $actor->name,
-            roles: array_values($invitation->roles()->get()->map(fn (Role $role): array => ['name' => $role->name, 'system' => $role->is_system])->all()),
+            roles: $roles,
             personalMessage: $invitation->message,
             expiresOn: $expiresAt?->format('d/m/Y H:i') ?? '',
         ))->forCurrentSite();
