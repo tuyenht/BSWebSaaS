@@ -6,6 +6,7 @@ namespace App\Modules\Storefront\Providers;
 
 use App\Modules\Shared\Contracts\EdgeCache;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Shared\Support\EdgeCachePause;
 use App\Modules\Storefront\EdgeCache\CloudflareEdgeCache;
 use App\Modules\Storefront\EdgeCache\EdgeCachePurges;
 use App\Modules\Storefront\EdgeCache\NullEdgeCache;
@@ -34,6 +35,8 @@ final class StorefrontServiceProvider extends ServiceProvider
 
         // Per request or job (Octane-safe): what this operation has marked for a purge.
         $this->app->scoped(EdgeCachePurges::class);
+        // Per request or job too: work running inside EdgeCachePause::during() purges nothing.
+        $this->app->scoped(EdgeCachePause::class);
     }
 
     public function boot(): void

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Storefront\EdgeCache;
 
 use App\Modules\Shared\Contracts\EdgeCache;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteDirectory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
@@ -21,6 +22,10 @@ use Illuminate\Queue\InteractsWithQueue;
  * Purge by host name first; when the edge refuses (Cloudflare limits host purges per minute) the
  * home pages go by URL, the edit a site owner looks at first, and the rest ages out within
  * `storefront.edge_cache.s_maxage`. When even that fails the job tries again a minute later.
+ *
+ * Only names inside the platform's own zone go (`tenancy.base_domains` and their subdomains): a
+ * purge call naming a host of another zone is refused whole by Cloudflare. A customer's own domain
+ * is not purged and its pages age out within `s_maxage` (Cloudflare for SaaS would cover it later).
  */
 final class PurgeSiteEdgeCache implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
@@ -41,7 +46,7 @@ final class PurgeSiteEdgeCache implements ShouldBeUniqueUntilProcessing, ShouldQ
 
     public function handle(EdgeCache $edge, SiteDirectory $sites): void
     {
-        $hosts = $sites->hostsOf($this->siteId);
+        $hosts = self::inZone($sites->hostsOf($this->siteId));
         if ($hosts === []) {
             return;
         }
@@ -54,5 +59,28 @@ final class PurgeSiteEdgeCache implements ShouldBeUniqueUntilProcessing, ShouldQ
         if (! $edge->purgeUrls($homes) && $this->attempts() < $this->tries) {
             $this->release(60);
         }
+    }
+
+    /**
+     * The hosts that are a platform base domain or one of its subdomains.
+     *
+     * @param  list<string>  $hosts
+     * @return list<string>
+     */
+    public static function inZone(array $hosts): array
+    {
+        $bases = array_map(static fn (string $base): string => strtolower(trim($base, ' .')), Cast::strings(config('tenancy.base_domains')));
+        $bases = array_filter($bases, static fn (string $base): bool => $base !== '');
+
+        return array_values(array_filter($hosts, static function (string $host) use ($bases): bool {
+            $host = strtolower(rtrim($host, '.'));
+            foreach ($bases as $base) {
+                if ($host === $base || str_ends_with($host, '.'.$base)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }));
     }
 }

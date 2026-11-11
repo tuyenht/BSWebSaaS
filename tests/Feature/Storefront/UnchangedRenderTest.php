@@ -67,10 +67,10 @@ function unchangedSite(): void
     });
 }
 
-/** The page with the current year masked (the footer prints it). */
+/** The page with the current year (the footer prints it) and the page's own view address masked. */
 function unchangedHtml(string $html): string
 {
-    return str_replace(date('Y'), '{year}', $html);
+    return (string) preg_replace('~/_view/[0-9A-Z]{26}~', '/_view/{entry}', str_replace(date('Y'), '{year}', $html));
 }
 
 it('renders every existing block, a band-led page, the lists and the home page byte for byte', function (string $path, string $golden): void {

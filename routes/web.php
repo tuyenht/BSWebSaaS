@@ -49,6 +49,7 @@ use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Media\Http\Controllers\MediaUploadController;
 use App\Modules\Storefront\Http\Controllers\FormSubmissionController;
 use App\Modules\Storefront\Http\Controllers\ProductPreviewController;
+use App\Modules\Storefront\Http\Controllers\RecordEntryView;
 use App\Modules\Storefront\Http\Controllers\SitemapController;
 use App\Modules\Storefront\Http\Controllers\StorefrontController;
 use App\Modules\Storefront\Http\Middleware\ConditionalGet;
@@ -327,6 +328,15 @@ Route::get('/caddy/ask', CaddyAskController::class)->name('caddy.ask');
 Route::post('/forms/{key}', FormSubmissionController::class)
     ->middleware([SetCurrentSite::class, 'site.active'])
     ->name('storefront.forms.submit');
+
+// ── Storefront page views — POST /_view/{entry ulid}, sent by the visitor's browser (sf-view.js)
+//    so a page served from the edge is counted too. Public like the lead form: no session, no
+//    cookie, no CSRF token (it records a tally, acts as nobody); per-IP rate limit, bots ignored.
+Route::post('/_view/{entry}', RecordEntryView::class)
+    ->where('entry', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')
+    ->withoutMiddleware([StartSession::class, ShareErrorsFromSession::class, PreventRequestForgery::class])
+    ->middleware([SetCurrentSite::class, 'site.active'])
+    ->name('storefront.views.record');
 
 // ── Public pages (sitemap, robots, the storefront) — no session for a visitor who brings no
 //    session cookie, so the edge may keep the page (StorefrontSession, EdgeCacheHeaders); the web

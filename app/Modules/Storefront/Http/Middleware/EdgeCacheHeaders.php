@@ -19,6 +19,10 @@ use Symfony\Component\HttpFoundation\Response;
  * Anything else that reaches here — a 404, a redirect, any other key, a page the controller already
  * marked private — answers `private, no-store`, so no shared cache ever stores it.
  *
+ * A request carrying an X-Forwarded-Host, -Port or -Prefix that disagrees with its own Host header is
+ * kept private too: the edge files the copy under Host, so a page built for any other address must
+ * never land there (the app takes the host from Host alone; this holds even if that ever slips).
+ *
  * The innermost storefront middleware: it sees the page as the controller made it, and
  * ConditionalGet (outside it) turns a match into a 304 that keeps these headers. Answers made before
  * the route ran (redirects to the primary domain, an unknown host, a closed site) keep their own.
@@ -56,9 +60,35 @@ final readonly class EdgeCacheHeaders
             && $response->getStatusCode() === Response::HTTP_OK
             && ! $request->hasSession()
             && ! PreviewMode::on()
+            && ! self::forwardedElsewhere($request)
             && $headers->get('Cache-Control') === self::UNSET
             && $headers->getCookies() === []
             && $this->cookies->getQueuedCookies() === []
             && array_diff(array_map('strval', array_keys($request->query->all())), Cast::strings(config('storefront.edge_cache.query_allow'))) === [];
+    }
+
+    /** Whether the proxy headers name another host, port or path prefix than Host itself. */
+    private static function forwardedElsewhere(Request $request): bool
+    {
+        $headers = $request->headers;
+        $host = strtolower(rtrim(trim((string) $headers->get('host', '')), '.'));
+
+        $forwardedHost = $headers->get('x-forwarded-host');
+        if ($forwardedHost !== null && strtolower(rtrim(trim(explode(',', $forwardedHost)[0]), '.')) !== $host) {
+            return true;
+        }
+
+        $forwardedPort = $headers->get('x-forwarded-port');
+        if ($forwardedPort !== null) {
+            $colon = strrpos($host, ':');
+            $port = $colon !== false && ! str_ends_with($host, ']') ? substr($host, $colon + 1) : ($request->isSecure() ? '443' : '80');
+            if (trim(explode(',', $forwardedPort)[0]) !== $port) {
+                return true;
+            }
+        }
+
+        $prefix = $headers->get('x-forwarded-prefix');
+
+        return $prefix !== null && trim($prefix) !== '' && trim($prefix) !== '/';
     }
 }
