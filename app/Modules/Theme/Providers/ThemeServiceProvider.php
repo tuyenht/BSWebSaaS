@@ -122,8 +122,20 @@ final class ThemeServiceProvider extends ServiceProvider
         'recent_posts' => [
             'heading' => ['type' => 'text'],
         ],
+        // `source`: the categories of the page's branch (the default) or the posts of its own category (the post
+        // being read marked); `counts` = show each category's post count after its name.
         'category_list' => [
             'heading' => ['type' => 'text'],
+            'source' => ['type' => 'enum', 'options' => SectionProps::CATEGORY_LIST_SOURCES, 'default' => 'categories'],
+            'counts' => ['type' => 'enum', 'options' => SectionProps::CATEGORY_LIST_COUNTS, 'default' => 'hide'],
+        ],
+        // A document card of a side column: a small badge (PDF), a title and a line under it, linking to the
+        // page or file the editor names.
+        'file_card' => [
+            'badge' => ['type' => 'text'],
+            'title' => ['type' => 'text'],
+            'text' => ['type' => 'text'],
+            'url' => ['type' => 'url', 'action' => 'title'],
         ],
         // The consult box of a side column: a small line, a heading, a line of text and one button; the hotline and
         // the email come from the site's contact settings.
@@ -201,6 +213,8 @@ final class ThemeServiceProvider extends ServiceProvider
                 'a' => ['type' => 'textarea'],
             ]],
             'columns' => ['type' => 'enum', 'options' => SectionProps::FAQ_COLUMNS, 'default' => '1'],
+            // "open": every question is a heading with its answer under it (as an article prints them), no folding.
+            'style' => ['type' => 'enum', 'options' => SectionProps::FAQ_STYLES, 'default' => 'accordion'],
         ],
         'testimonial' => [
             'heading' => ['type' => 'text'],
@@ -261,7 +275,7 @@ final class ThemeServiceProvider extends ServiceProvider
     private const array UNLISTED = ['richtext_html'];
 
     /** Types only a block slot may hold (a page body is refused them): they draw data of the page they sit on. */
-    private const array SLOT_ONLY = ['recent_posts', 'category_list', 'consult'];
+    private const array SLOT_ONLY = ['recent_posts', 'category_list', 'consult', 'file_card'];
 
     /** Types whose view draws a section heading (theme::partials.sf-section-head): they take `heading_decor`. */
     private const array HEADED = ['features', 'partners', 'process', 'pricing', 'testimonial', 'stats', 'gallery', 'quick_links', 'team', 'video', 'faq'];

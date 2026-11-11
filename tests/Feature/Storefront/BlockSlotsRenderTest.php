@@ -197,7 +197,7 @@ it('keeps the post one column with no side blocks and fewer than two headings, a
     slotsSite();
     $id = slotsSiteId();
 
-    expect(slotsHtml('/tin-tuc/ong-dang-doc'))->not->toContain('post-columns')->not->toContain('<aside');
+    expect(slotsHtml('/tin-tuc/ong-dang-doc'))->not->toContain('post-aside')->not->toContain('<aside');
 
     slotsDefault($id, 'post_aside', [['type' => 'recent_posts', 'props' => []]]);
 
@@ -468,7 +468,7 @@ it('leaves a post with one heading byte for byte as the body was stored, with no
     $html = slotsHtml('/tin-tuc/ong-dang-doc');
 
     expect($html)->toContain("<section class=\"sf-prose\">\n<h2>Chỉ một đề mục</h2><p>Nội dung</p>\n</section>")
-        ->not->toContain('id="muc-')->not->toContain('post-toc')->not->toContain('post-columns');
+        ->not->toContain('id="muc-')->not->toContain('post-toc')->not->toContain('post-aside');
 });
 
 it('keeps the slot-only blocks out of a page body and accepts them in a slot', function (string $type): void {
@@ -656,5 +656,138 @@ it('adds exactly the expected queries to a page for its filled slots, and stays 
         'product_tabs' => [['type' => 'richtext_html', 'props' => ['html' => '<h2>Bảo hành</h2><p>12 tháng.</p>']], ['type' => 'faq', 'props' => ['heading' => 'Hỏi đáp', 'items' => [['q' => 'Có?', 'a' => 'Có.']]]]],
         'after_product' => [['type' => 'cta', 'props' => ['heading' => 'Báo giá', 'button_label' => 'Gửi', 'button_url' => '/lien-he']]],
     ], 0, 23],
+    'a post, categories with counts' => ['/tin-tuc/ong-dang-doc', ['post_aside' => [['type' => 'category_list', 'props' => ['counts' => 'show']]]], 3, 23],
+    'a post, posts of its category' => ['/tin-tuc/ong-dang-doc', ['post_aside' => [['type' => 'category_list', 'props' => ['source' => 'posts']]]], 3, 24],
     'a category list' => ['/tin-tuc', ['after_list' => [['type' => 'cta', 'props' => ['heading' => 'Báo giá', 'button_label' => 'Gửi', 'button_url' => '/lien-he']]]], 0, 17],
 ]);
+
+it('prints the post count after each category when the block asks for counts', function (): void {
+    slotsSite();
+    $id = slotsSiteId();
+    slotsDefault($id, 'post_aside', [['type' => 'category_list', 'props' => ['counts' => 'show']]]);
+
+    preg_match('#<section class="slot-categories.*?</section>#s', slotsHtml('/tin-tuc/ong-dang-doc'), $match);
+    $list = $match[0] ?? '';
+
+    // The branch root holds the post being read and six others; the child holds three.
+    expect($list)->toContain('slot-categories--counts')->toContain('slot-categories__count')
+        ->and($list)->toMatch('#Bản tin nội bộ.*?slot-categories__count">\s*3#s');
+});
+
+it('lists the posts of the page category, the one being read marked, when the source is posts', function (): void {
+    slotsSite();
+    $id = slotsSiteId();
+    slotsDefault($id, 'post_aside', [['type' => 'category_list', 'props' => ['source' => 'posts', 'heading' => 'Cùng nhóm']]]);
+
+    preg_match('#<section class="slot-categories.*?</section>#s', slotsHtml('/tin-tuc/ong-dang-doc'), $match);
+    $list = $match[0] ?? '';
+
+    expect($list)->toContain('slot-categories--posts')->toContain('Cùng nhóm')->toContain('Ống đang đọc')->toContain('aria-current="page"')
+        ->and($list)->not->toContain('Việc làm kỹ sư');
+});
+
+it('draws a document card only with a title and a link, and nothing otherwise', function (): void {
+    slotsSite();
+    $id = slotsSiteId();
+    slotsDefault($id, 'post_aside', [['type' => 'file_card', 'props' => ['title' => 'Hồ sơ năng lực', 'text' => 'Tải xuống', 'url' => '/ho-so']]]);
+    $with = slotsHtml('/tin-tuc/ong-dang-doc');
+    expect($with)->toContain('class="slot-file"')->toContain('href="/ho-so"')->toContain('Hồ sơ năng lực')->toContain('>PDF<');
+
+    slotsDefault($id, 'post_aside', [['type' => 'file_card', 'props' => ['title' => 'Không có liên kết']]]);
+    expect(slotsHtml('/tin-tuc/ong-dang-doc'))->not->toContain('slot-file');
+});
+
+/** Set a post's own layout and read its body blocks. */
+function slotsPostWith(int $siteId, Entry $read, ?string $layout, array $blocks): void
+{
+    app(Tenancy::class)->enter($siteId, function () use ($read, $layout, $blocks): void {
+        $read->forceFill(['template_override' => $layout])->save();
+        $translation = $read->translations()->firstOrFail();
+        $translation->body = ['blocks' => $blocks];
+        $translation->save();
+    });
+    slotsFresh();
+}
+
+it('draws a news post with a side column as share rail, text and side column in one two-way grid', function (): void {
+    $site = slotsSite();
+    $id = slotsSiteId();
+    slotsDefault($id, 'post_aside', [slotsCta('Tư vấn')]);
+
+    $html = slotsHtml('/tin-tuc/ong-dang-doc');
+
+    expect($html)->toMatch('#<div class="post-columns sf-container post-columns--share">\s*<div class="post-share post-share--rail".*?<div class="post-columns__main">.*?</div>\s*<aside class="post-aside#s')
+        ->and($html)->toContain('post-share--row')
+        ->and($html)->not->toContain('zalo');
+});
+
+it('lets the share grid win over the plain columns rule on a wide screen', function (): void {
+    $css = file_get_contents(base_path('resources/css/storefront.css'));
+    preg_match_all('#(?<![\w-])((?:\.post-columns(?:\.post-columns--share)?)(?::not\(:has\(\.post-aside\)\))?)\s*\{[^}]*grid-template-columns:\s*([^;]+);#', $css, $rules, PREG_SET_ORDER);
+    $bySelector = [];
+    foreach ($rules as $rule) {
+        $bySelector[$rule[1]][] = trim($rule[2]);
+    }
+
+    // The older single rule has one class; the share rules have two, so the source order does not matter.
+    expect($bySelector)->toHaveKey('.post-columns')->toHaveKey('.post-columns.post-columns--share')
+        ->and($bySelector['.post-columns.post-columns--share'][0])->toBe('3.5rem minmax(0, 1fr) 20rem')
+        ->and($css)->not->toMatch('#\n\s*\.post-columns--share\s*[{,]#')
+        ->and($css)->toMatch('#\.post-aside--sticky,\s*\.post-page--project \.post-aside \{[^}]*max-height: calc\(100dvh - 8rem\);[^}]*overflow-y: auto#')
+        ->and($css)->toMatch('#\n\.sf-gallery__list\.sf-gallery__list--1 \{\s*grid-template-columns: minmax\(0, 1fr\);#')
+        ->and($css)->toMatch('#\.post-page--capability \.post-cover,\s*\.post-page--project \.post-cover \{\s*padding-inline: 2rem#');
+});
+
+it('prints the author line and the reading time on a news post, with Facebook, LinkedIn and copy-link sharing', function (): void {
+    $site = slotsSite();
+    $id = slotsSiteId();
+    app(Tenancy::class)->enter($id, fn () => SiteProfile::query()->updateOrCreate([], ['brand_name' => 'Cơ khí Mẫu']));
+    slotsPostWith($id, $site['read'], null, [['type' => 'richtext_html', 'props' => ['html' => '<h2>Một đề mục</h2><p>'.implode(' ', array_fill(0, 450, 'từ')).'</p>']]]);
+
+    $html = slotsHtml('/tin-tuc/ong-dang-doc');
+
+    expect($html)->toContain('post-band__author')->toContain('post-band__avatar')->toContain('>KM</span>Cơ khí Mẫu')
+        ->and($html)->toContain('3 phút đọc')
+        ->and($html)->toContain('facebook.com/sharer')->toContain('linkedin.com/sharing')->toContain('post-share__copy');
+});
+
+it('draws a capability post without share bar, neighbours, related cards or their queries', function (): void {
+    $site = slotsSite();
+    $id = slotsSiteId();
+    $queries = function (string $path): array {
+        slotsFresh();
+        test()->get('http://mau.platform.test'.$path)->assertOk();
+        slotsFresh();
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $html = test()->get('http://mau.platform.test'.$path)->assertOk()->getContent();
+        $log = array_column(DB::getQueryLog(), 'query');
+        DB::disableQueryLog();
+
+        return [$html, count(array_filter($log, fn (string $q): bool => str_contains(strtolower($q), 'union all')))];
+    };
+
+    [, $newsUnions] = $queries('/tin-tuc/ong-dang-doc');
+    slotsPostWith($id, $site['read'], 'capability', [slotsCta('Nội dung')]);
+    [$html, $capabilityUnions] = $queries('/tin-tuc/ong-dang-doc');
+
+    expect($newsUnions)->toBeGreaterThan(0)
+        ->and($capabilityUnions)->toBe(0)
+        ->and($html)->toContain('post-page--capability')
+        ->not->toContain('post-share')->not->toContain('post-nav')->not->toContain('post-related')->not->toContain('post-band__author');
+});
+
+it('prints a video caption under the player and a FAQ in the open style as headings', function (): void {
+    $site = slotsSite();
+    $id = slotsSiteId();
+    slotsPostWith($id, $site['read'], null, [
+        ['type' => 'video', 'props' => ['url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'caption' => 'Nguồn: kênh của đối tác']],
+        ['type' => 'faq', 'props' => ['heading' => 'Hỏi đáp', 'style' => 'open', 'items' => [['q' => 'Có bảo hành không?', 'a' => 'Có, 12 tháng.']]]],
+    ]);
+
+    $html = slotsHtml('/tin-tuc/ong-dang-doc');
+
+    expect($html)->toContain('<p class="sf-video-block__caption">Nguồn: kênh của đối tác</p>')
+        ->and($html)->toContain('<h3 class="sf-faq__entry-q">Có bảo hành không?</h3>')
+        ->and($html)->not->toContain('<details class="sf-faq__item"');
+});

@@ -144,6 +144,22 @@
        }
       ]
      }
+    },
+    "post_aside": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "consult",
+        "props": {
+         "eyebrow": "Tư vấn kỹ thuật",
+         "heading": "Bạn có dự án tương tự?",
+         "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá.",
+         "button_label": "Gửi yêu cầu báo giá",
+         "button_url": "/lien-he"
+        }
+       }
+      ]
+     }
     }
    }
   },
@@ -240,8 +256,41 @@
        }
       ]
      }
+    },
+    "post_aside": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "category_list",
+        "props": {
+         "heading": "Năng lực của An Vinh",
+         "source": "posts"
+        }
+       },
+       {
+        "type": "consult",
+        "props": {
+         "eyebrow": "Tư vấn kỹ thuật",
+         "heading": "Cần tư vấn hoặc báo giá?",
+         "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá.",
+         "button_label": "Gửi yêu cầu báo giá",
+         "button_url": "/lien-he"
+        }
+       },
+       {
+        "type": "file_card",
+        "props": {
+         "badge": "PDF",
+         "title": "Hồ sơ năng lực An Vinh",
+         "text": "Tải xuống",
+         "url": "/ho-so-nang-luc"
+        }
+       }
+      ]
+     }
     }
-   }
+   },
+   "detail_template": "capability"
   },
   {
    "key": "tax:post_cat/du-an/du-an-o-to",
@@ -267,6 +316,22 @@
          "extra_style": [
           "pattern-cross"
          ]
+        }
+       }
+      ]
+     }
+    },
+    "post_aside": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "consult",
+        "props": {
+         "eyebrow": "Tư vấn kỹ thuật",
+         "heading": "Bạn có dự án tương tự?",
+         "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá.",
+         "button_label": "Gửi yêu cầu báo giá",
+         "button_url": "/lien-he"
         }
        }
       ]
@@ -302,6 +367,22 @@
        }
       ]
      }
+    },
+    "post_aside": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "consult",
+        "props": {
+         "eyebrow": "Tư vấn kỹ thuật",
+         "heading": "Bạn có dự án tương tự?",
+         "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá.",
+         "button_label": "Gửi yêu cầu báo giá",
+         "button_url": "/lien-he"
+        }
+       }
+      ]
+     }
     }
    }
   },
@@ -329,6 +410,22 @@
          "extra_style": [
           "pattern-cross"
          ]
+        }
+       }
+      ]
+     }
+    },
+    "post_aside": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "consult",
+        "props": {
+         "eyebrow": "Tư vấn kỹ thuật",
+         "heading": "Bạn có dự án tương tự?",
+         "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá.",
+         "button_label": "Gửi yêu cầu báo giá",
+         "button_url": "/lien-he"
         }
        }
       ]
@@ -364,6 +461,22 @@
        }
       ]
      }
+    },
+    "post_aside": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "consult",
+        "props": {
+         "eyebrow": "Tư vấn kỹ thuật",
+         "heading": "Bạn có dự án tương tự?",
+         "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá.",
+         "button_label": "Gửi yêu cầu báo giá",
+         "button_url": "/lien-he"
+        }
+       }
+      ]
+     }
     }
    }
   },
@@ -395,6 +508,22 @@
        }
       ]
      }
+    },
+    "post_aside": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "consult",
+        "props": {
+         "eyebrow": "Tư vấn kỹ thuật",
+         "heading": "Bạn có dự án tương tự?",
+         "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá.",
+         "button_label": "Gửi yêu cầu báo giá",
+         "button_url": "/lien-he"
+        }
+       }
+      ]
+     }
     }
    }
   },
@@ -422,6 +551,22 @@
          "extra_style": [
           "pattern-cross"
          ]
+        }
+       }
+      ]
+     }
+    },
+    "post_aside": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "consult",
+        "props": {
+         "eyebrow": "Tư vấn kỹ thuật",
+         "heading": "Bạn có dự án tương tự?",
+         "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá.",
+         "button_label": "Gửi yêu cầu báo giá",
+         "button_url": "/lien-he"
         }
        }
       ]

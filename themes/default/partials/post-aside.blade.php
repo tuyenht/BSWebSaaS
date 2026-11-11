@@ -4,7 +4,7 @@
     (`html`, already Blade-escaped by BlockRenderer). Only drawn when either has something. On a
     phone a column holding just the contents is hidden: the contents are a wide-screen help.
 --}}
-<aside class="post-aside{{ ($html ?? '') === '' ? ' post-aside--toc-only' : '' }}" aria-label="{{ __('storefront.post_aside') }}">
+<aside class="post-aside{{ ($html ?? '') === '' ? ' post-aside--toc-only' : '' }}{{ ($sticky ?? false) ? ' post-aside--sticky' : '' }}" aria-label="{{ __('storefront.post_aside') }}">
 @if (($toc ?? []) !== [])
     <nav class="post-toc" aria-label="{{ __('storefront.toc') }}">
         <p class="post-toc__title">{{ __('storefront.toc') }}</p>

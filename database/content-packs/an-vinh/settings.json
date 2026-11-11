@@ -206,7 +206,7 @@
   },
   {
    "key": "setting:storefront.layout_blocks",
-   "note": "Cột phải bài năng lực, dự án, tin tức và dải cuối trang sản phẩm; chỉ các ô này do gói quản lý.",
+   "note": "Cột phải mặc định (bài tin tức): Tư vấn, Bài viết mới, Chuyên mục có số bài ở cuối; bài năng lực và bài dự án có cột riêng theo chuyên mục (taxonomies.json). Chỉ các ô này do gói quản lý.",
    "managed_keys": [
     "post_aside",
     "after_product"
@@ -215,12 +215,6 @@
     "post_aside": {
      "vi": {
       "blocks": [
-       {
-        "type": "category_list",
-        "props": {
-         "heading": "Chuyên mục"
-        }
-       },
        {
         "type": "consult",
         "props": {
@@ -235,6 +229,13 @@
         "type": "recent_posts",
         "props": {
          "heading": "Bài viết mới"
+        }
+       },
+       {
+        "type": "category_list",
+        "props": {
+         "heading": "Chuyên mục",
+         "counts": "show"
         }
        }
       ]
