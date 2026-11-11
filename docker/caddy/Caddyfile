@@ -14,9 +14,35 @@
 	}
 }
 
+# Thời hạn lưu đệm cho tệp tĩnh của app (app không gửi Cache-Control cho các tệp này).
+# Tên tệp do Vite dựng có mã băm nội dung: đổi nội dung là đổi tên, nên giữ một năm là an toàn.
+# Tệp font giữ nguyên tên qua các bản: một tháng rồi hỏi lại máy chủ (có ETag).
+(static_cache) {
+	# Chỉ gắn cho câu trả lời 200: một 404 (tệp chưa có) không bị trình duyệt hay Cloudflare giữ lại.
+	@hashed path /build/assets/*
+	header @hashed {
+		match status 200
+		Cache-Control "public, max-age=31536000, immutable"
+	}
+	@fonts path /fonts/*
+	header @fonts {
+		match status 200
+		Cache-Control "public, max-age=2592000"
+	}
+	# Biểu tượng tab: một ngày (tên không đổi khi thay).
+	@favicon path /favicon.ico
+	header @favicon {
+		match status 200
+		Cache-Control "public, max-age=86400"
+	}
+	# Không báo phiên bản PHP ra ngoài.
+	header -X-Powered-By
+}
+
 # Platform console — cert MANAGED riêng, KHÔNG phụ thuộc ask-endpoint (fail-safe).
 website.baoson.net {
 	encode zstd gzip
+	import static_cache
 	# Đẩy IP khách THẬT (Caddy đã giải qua trusted_proxies + CF-Connecting-IP) xuống app trong
 	# X-Forwarded-For. App tin Caddy (dải private) → request()->ip() ra đúng khách sau Cloudflare;
 	# host xám thì {client_ip} = remote trực tiếp = khách thật → cùng một đường, không rẽ nhánh.
@@ -31,6 +57,7 @@ website.baoson.net {
 		on_demand
 	}
 	encode zstd gzip
+	import static_cache
 	reverse_proxy app:80 {
 		header_up X-Forwarded-For {client_ip}
 	}
