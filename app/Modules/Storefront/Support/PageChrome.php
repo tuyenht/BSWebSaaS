@@ -8,6 +8,7 @@ use App\Modules\Catalog\Support\ProductIndexLink;
 use App\Modules\Cms\Navigation\MenuResolver;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Tenancy\Context\SiteIdentity;
+use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Theme\Chrome\FloatingContact;
 use App\Modules\Theme\Chrome\SiteVerification;
 use App\Modules\Theme\Chrome\StorefrontChrome;
@@ -26,6 +27,7 @@ final readonly class PageChrome
         private SiteIdentity $identity,
         private BrandImages $brandImages,
         private StorefrontSettings $settings,
+        private SiteLocale $siteLocale,
     ) {}
 
     /**
@@ -77,6 +79,9 @@ final readonly class PageChrome
             'floatingContact' => FloatingContact::for($floating, $locale, $shopHref),
             'lang' => $locale,
             'hreflang' => $hreflang,
+            'dir' => StorefrontChrome::dir($locale),
+            // Every public language, links from PathBuilder (the page's own translation, else that language's home page).
+            'languages' => StorefrontChrome::languages($hreflang, $locale, $this->siteLocale->public(), fn (string $to): string => $this->paths->publicUrl('/', $to)),
             'brand' => $brand,
             // The branches with an address or a position, for the business's structured data (no query: the footer setting is already read).
             'branchPlaces' => self::branchPlaces(StorefrontChrome::branches($footerRaw, $locale, $default, $mapHosts)),

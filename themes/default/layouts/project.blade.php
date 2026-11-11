@@ -23,7 +23,7 @@
     $sfAllUrl = isset($category) ? \App\Modules\Shared\Support\SafeLink::href($category['url'] ?? null) : null;
 @endphp
 <!doctype html>
-<html lang="{{ $lang ?? 'vi' }}">
+<html lang="{{ $lang ?? 'vi' }}"{!! ($dir ?? 'ltr') === 'rtl' ? ' dir="rtl"' : '' !!}>
 <head>
 @include('theme::partials.head')
 </head>

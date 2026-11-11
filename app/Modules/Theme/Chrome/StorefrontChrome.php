@@ -38,6 +38,8 @@ final class StorefrontChrome
     /** Breakpoints an item may appear from (xs = always). */
     private const array BREAKPOINTS = ['xs', 'sm', 'md', 'lg'];
 
+    private const array MOBILE_CORNERS = ['call', 'search', 'cart', 'none'];
+
     private const array TOP_BAR_KINDS = ['address', 'phone', 'email', 'link'];
 
     /** Social networks the footer has an icon for → their display name. Others are not shown. */
@@ -76,7 +78,7 @@ final class StorefrontChrome
 
     /**
      * @param  mixed  $raw  the stored `storefront.header` value (an array when set)
-     * @return array{top_bar: list<array{kind: string, text: string, href: string|null, from: string, below: string|null}>, text_size: bool, sticky: bool}|null
+     * @return array{top_bar: list<array{kind: string, text: string, href: string|null, from: string, below: string|null}>, text_size: bool, sticky: bool, mobile_corner: string}|null
      */
     public static function header(mixed $raw, string $locale, string $default): ?array
     {
@@ -119,6 +121,8 @@ final class StorefrontChrome
             'top_bar' => $items,
             'text_size' => ($raw['text_size'] ?? false) === true,
             'sticky' => ($raw['sticky'] ?? true) !== false,
+            // What the phone header's right corner offers: call, search, cart or nothing (search and cart draw nothing until the site has them).
+            'mobile_corner' => in_array($raw['mobile_corner'] ?? null, self::MOBILE_CORNERS, true) ? (string) $raw['mobile_corner'] : 'call',
         ];
     }
 
@@ -332,23 +336,84 @@ final class StorefrontChrome
         return preg_match('/\A[1-9]\d{5,19}\z/', $value) === 1 ? 'https://zalo.me/'.$value : null;
     }
 
+    /** Languages written right to left (the base language code). */
+    private const array RTL_LANGUAGES = ['ar', 'he', 'fa', 'ur', 'ps', 'sd', 'ug', 'yi', 'dv', 'ckb'];
+
     /**
-     * The language switch: one entry per public language the page exists in (from its hreflang
-     * alternates), or none when there is only one.
+     * The language switch: one entry per language the site has published (SiteLocale::public(), the
+     * default first), each in its own language ("Tiếng Việt", "English", "日本語"). A language the
+     * page itself has no translation in still gets its entry, pointing at that language's home page
+     * (`fallback`), so a visitor on a page that exists in one language can still find the others.
+     * Links come from the hreflang alternates (translated pages) or $home (PathBuilder's address of a
+     * language's home page); none when the site has one public language.
      *
-     * @param  list<array{hreflang: string, href: string}>  $alternates
-     * @return list<array{locale: string, href: string, current: bool}>
+     * @param  list<array{hreflang: string, href: string}>  $alternates  the page's real translations
+     * @param  list<string>  $public  the site's public languages, default first
+     * @param  callable(string): string  $home  a language's home page address
+     * @return list<array{locale: string, name: string, href: string, current: bool, fallback: bool, dir: string}>
      */
-    public static function languages(array $alternates, string $current): array
+    public static function languages(array $alternates, string $current, array $public, callable $home): array
     {
-        $languages = [];
+        $hrefs = [];
         foreach ($alternates as $alternate) {
             if ($alternate['hreflang'] !== 'x-default') {
-                $languages[] = ['locale' => $alternate['hreflang'], 'href' => $alternate['href'], 'current' => $alternate['hreflang'] === $current];
+                $hrefs[$alternate['hreflang']] = $alternate['href'];
             }
         }
 
+        $languages = [];
+        foreach (array_values(array_unique($public)) as $locale) {
+            $languages[] = [
+                'locale' => $locale,
+                'name' => self::languageName($locale),
+                'href' => $hrefs[$locale] ?? $home($locale),
+                'current' => $locale === $current,
+                'fallback' => ! isset($hrefs[$locale]) && $locale !== $current,
+                'dir' => self::dir($locale),
+            ];
+        }
+
         return count($languages) > 1 ? $languages : [];
+    }
+
+    /** A language's name in that language, first letter capitalised ("Tiếng Việt", "English", "日本語"). */
+    public static function languageName(string $locale): string
+    {
+        $name = class_exists(\Locale::class) ? \Locale::getDisplayName($locale, $locale) : '';
+        if (! is_string($name) || $name === '' || $name === $locale) {
+            return strtoupper($locale);
+        }
+
+        return mb_strtoupper(mb_substr($name, 0, 1)).mb_substr($name, 1);
+    }
+
+    /** The text direction of a language: "rtl" for Arabic, Hebrew, Persian…, else "ltr". */
+    public static function dir(string $locale): string
+    {
+        $base = strtolower(strtok(str_replace('_', '-', $locale), '-') ?: $locale);
+
+        return in_array($base, self::RTL_LANGUAGES, true) ? 'rtl' : 'ltr';
+    }
+
+    /**
+     * The `og:locale` of a language: language_TERRITORY ("vi_VN", "en_US", "ja_JP"), the territory
+     * taken from the code ("en-GB" → "en_GB") or, when it has none, from the language's most likely
+     * one (ICU). A code ICU cannot place is returned as given.
+     */
+    public static function ogLocale(string $locale): string
+    {
+        $tag = str_replace('_', '-', $locale);
+        if (! class_exists(\Locale::class)) {
+            return $locale;
+        }
+        $region = \Locale::getRegion($tag);
+        if ($region === '') {
+            $likely = \Locale::addLikelySubtags($tag);
+            $region = is_string($likely) ? \Locale::getRegion($likely) : '';
+        }
+        $language = \Locale::getPrimaryLanguage($tag);
+
+        return $region !== '' && $language !== '' ? $language.'_'.$region : $locale;
     }
 
     /**

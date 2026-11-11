@@ -6,7 +6,7 @@
     },
     "resources/css/storefront.css": {
       "js": 0,
-      "css": 28384
+      "css": 29345
     },
     "resources/js/app.js": {
       "js": 20351,
@@ -61,7 +61,7 @@
       "css": 0
     },
     "resources/js/storefront.js": {
-      "js": 724,
+      "js": 1011,
       "css": 0
     }
   },

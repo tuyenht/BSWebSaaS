@@ -7,7 +7,7 @@
     Nothing here names a tenant: the contact label carries the site's own name.
 --}}
 <!doctype html>
-<html lang="{{ $lang ?? 'vi' }}">
+<html lang="{{ $lang ?? 'vi' }}"{!! ($dir ?? 'ltr') === 'rtl' ? ' dir="rtl"' : '' !!}>
 <head>
 @include('theme::partials.head')
 </head>
