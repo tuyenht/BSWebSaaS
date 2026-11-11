@@ -658,6 +658,8 @@ final readonly class PackValidator
             $layout = $item->data['layout_blocks'];
             if (! is_array($layout) || $layout === [] || array_is_list($layout)) {
                 $errors[] = "{$item->key}: layout_blocks must be {slot: {language: {\"blocks\": […]}}}.";
+            } elseif (! in_array($chain['vocabulary'], ['post_cat', 'product_cat'], true)) {
+                $errors[] = "{$item->key}: layout_blocks belong to a post_cat or product_cat category.";
             } else {
                 $this->layoutBlocks($item->key.' layout_blocks', $layout, $pack, $errors);
             }

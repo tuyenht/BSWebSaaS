@@ -3628,7 +3628,7 @@
     "entries.opt_variant_job": "职位卡片",
     "entries.opt_variant_card": "右侧带按钮的卡片",
     "entries.opt_variant_showcase": "旁边带图片的展示",
-    "entries.opt_variant_icon-head": "顶部带图标的卡片",
+    "entries.opt_variant_icon-head": "大标题旁带图标的卡片",
     "entries.opt_variant_numeral": "灰色卡片上的大数字",
     "entries.opt_button2_tone_outline": "描边",
     "entries.opt_button2_tone_zalo": "Zalo 蓝",

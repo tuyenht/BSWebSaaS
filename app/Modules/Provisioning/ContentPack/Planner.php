@@ -736,10 +736,12 @@ final class Planner
             'list_template' => array_key_exists('list_template', $item->data) ? Cast::stringOrNull($item->data['list_template']) : Cast::stringOrNull($current['list_template'] ?? null),
             'detail_template' => array_key_exists('detail_template', $item->data) ? Cast::stringOrNull($item->data['detail_template']) : Cast::stringOrNull($current['detail_template'] ?? null),
         ];
-        // The block slots the pack states replace the live ones; a category whose item states none keeps its own.
-        $layout = is_array($item->data['layout_blocks'] ?? null) && $item->data['layout_blocks'] !== []
-            ? $this->cleanedSlots(Cast::arr($item->data['layout_blocks']))
-            : Cast::arr($current['layout_blocks'] ?? null);
+        // The block slots the pack names replace the same slots live; a slot it does not name (one an
+        // editor set, or set to none) stays as it is.
+        $layout = Cast::arr($current['layout_blocks'] ?? null);
+        if (is_array($item->data['layout_blocks'] ?? null) && $item->data['layout_blocks'] !== []) {
+            $layout = array_replace($layout, $this->cleanedSlots(Cast::arr($item->data['layout_blocks'])));
+        }
         if ($layout !== []) {
             $desired['layout_blocks'] = $layout;
         }

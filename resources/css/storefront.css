@@ -536,6 +536,16 @@ main:has(.hero, .sf-slider) .page__title {
     }
 }
 
+.about__body {
+    order: 1;
+}
+
+@media (min-width: 768px) {
+    .about__body {
+        order: 0;
+    }
+}
+
 /* The size of every section title (.sf-section-head__title), on a phone too. */
 .about__heading {
     font-size: 1.875rem;

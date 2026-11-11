@@ -58,7 +58,7 @@
 @if ($sfKind === 'job')
             <header class="sf-jobs-head">
                 <h2 class="sf-jobs-head__title">{{ __('storefront.jobs_open_title') }}</h2>
-                <p class="sf-jobs-head__count">{{ count($sfCards) > 0 ? __('storefront.jobs_open_count', ['count' => count($sfCards)]) : __('storefront.jobs_updated') }}</p>
+                <p class="sf-jobs-head__count">{{ (count($sfCards) > 0 && empty($pagination['prevUrl']) && empty($pagination['nextUrl']) && empty($pagination['firstUrl'])) ? __('storefront.jobs_open_count', ['count' => count($sfCards)]) : __('storefront.jobs_updated') }}</p>
             </header>
 @endif
 @if (count($sfCards) > 0)
@@ -86,10 +86,13 @@
     $sfCv = \App\Modules\Storefront\Support\SlotContext::contact(is_array($brand ?? null) ? $brand : null)['mail'];
 @endphp
             <div class="sf-empty-box sf-empty-box--jobs">
-                <p class="sf-empty-box__title">{{ __('storefront.no_jobs') }}</p>
+                <p class="sf-empty-box__title">{{ __($emptyKey ?? 'storefront.no_jobs') }}</p>
                 <p class="sf-empty-box__text">{{ __('storefront.jobs_empty_hint') }}</p>
 @if ($sfCv !== null)
                 <a class="sf-empty-box__button" href="{{ $sfCv }}">{{ __('storefront.jobs_send_cv') }}</a>
+@endif
+@if ($sfAll !== null && $sfAll['all'] && ! $sfAll['current'])
+                <a class="sf-empty-box__link" href="{{ $sfAll['url'] }}">{{ $sfAll['name'] }}</a>
 @endif
             </div>
 @else
