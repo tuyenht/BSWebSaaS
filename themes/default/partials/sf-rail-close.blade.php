@@ -1,7 +1,9 @@
-{{-- The rail's controls: a row below the list, arrow · dots · arrow (from 1360px the arrows stand beside the
-     list, outside its cards). They are rendered hidden: only the script reveals them, so a page without JS
-     shows no dead buttons, and the script fills the dots. There is no pause button: the rotation pauses
-     while a mouse is over the rail or focus is inside it. The arrows draw 36px inside a 44px transparent hit area. --}}
+{{-- The rail's controls: a row below the list, arrow · dots · arrow on a tablet or laptop; on a phone the arrows
+     stand on the cards' left and right edges, halfway down, and the dots stay alone under the row (from 1360px
+     the arrows stand beside the list, outside its cards). They are rendered hidden: only the script reveals
+     them, so a page without JS shows no dead buttons, and the script fills the dots. There is no pause button:
+     the rotation pauses while a mouse is over the rail or focus is inside it. The arrows draw a disc inside a
+     44px transparent hit area. No "swipe" line under a phone's row: the peeking card, the arrows and the dots say it. --}}
     <div class="sf-rail__controls">
 @if ($display['arrows'] !== 'none')
         <button type="button" class="sf-rail__btn sf-rail__prev" data-sf-rail-prev hidden aria-label="{{ __('storefront.rail_prev') }}" title="{{ __('storefront.rail_prev') }}">
@@ -14,7 +16,3 @@
 @endif
     </div>
 </div>
-{{-- A phone's swipe row says so under it (decoration: the row scrolls by itself); not where the arrows always show. --}}
-@if (($display['mobile'] ?? '') === 'swipe' && ($display['arrows'] ?? '') !== 'always')
-<p class="sf-rail__hint" aria-hidden="true">{{ __('storefront.swipe_hint') }}</p>
-@endif

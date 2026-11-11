@@ -163,16 +163,58 @@ it('renders the top bar with safe tel and mailto links and each item’s breakpo
         ->not->toContain('site-header');
 });
 
-it('drops a top bar that holds only the text-size button from the laptop layout', function (): void {
+it('keeps the text-size button in the menu panel, never in the top bar, when the site has a menu', function (): void {
+    $siteId = sfcSite();
+    sfcSetting($siteId, 'header', sfcHeader());
+
+    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
+    $topBar = substr($html, (int) strpos($html, '<div class="sf-topbar">'), (int) strpos($html, '<div class="sf-bar">') - (int) strpos($html, '<div class="sf-topbar">'));
+
+    expect($topBar)->toContain('sf-topbar__items')->not->toContain('data-fs-toggle')
+        ->and(substr_count($html, 'data-fs-toggle'))->toBe(1)
+        ->and($html)->toContain('<button type="button" class="sf-fs sf-drawer__fs" data-fs-toggle');
+});
+
+it('draws no top bar where it would hold only the text-size button, and none at a width with nothing in it', function (): void {
     $siteId = sfcSite();
     sfcSetting($siteId, 'header', ['top_bar' => ['items' => []], 'text_size' => true, 'sticky' => false]);
 
+    // the text-size button lives in the menu panel: an empty top bar is not drawn at all
     $this->get('http://mau.platform.test/gioi-thieu')->assertOk()
-        ->assertSee('<header class="sf-header sf-header--topbar sf-header--fs-only">', false);
+        ->assertSee('<header class="sf-header">', false)
+        ->assertDontSee('sf-topbar', false);
 
+    // every item from 640px up: the phone width (xs) gets no top bar
+    sfcSetting($siteId, 'header', ['top_bar' => ['items' => [
+        ['kind' => 'email', 'text' => 'lienhe@mau.test', 'value' => 'lienhe@mau.test', 'from' => 'sm'],
+    ]], 'text_size' => true, 'sticky' => false]);
+    $this->get('http://mau.platform.test/gioi-thieu')->assertOk()
+        ->assertSee('<header class="sf-header sf-header--topbar sf-header--top-off-xs">', false);
+
+    // something at every width: no band is switched off
     sfcSetting($siteId, 'header', sfcHeader());
     $this->get('http://mau.platform.test/gioi-thieu')->assertOk()
-        ->assertDontSee('sf-header--fs-only', false);
+        ->assertSee('<header class="sf-header sf-header--sticky sf-header--topbar">', false)
+        ->assertDontSee('sf-header--top-off', false);
+});
+
+it('lets the top bar\'s phone items step aside under 768px while the phone bottom bar carries the call', function (): void {
+    $siteId = sfcSite();
+    sfcSetting($siteId, 'header', ['top_bar' => ['items' => [
+        ['kind' => 'phone', 'text' => '0901 234 567', 'value' => '+84 901-234-567', 'from' => 'md', 'phone_only_below' => 'md'],
+        ['kind' => 'email', 'text' => 'lienhe@mau.test', 'value' => 'lienhe@mau.test', 'from' => 'md'],
+    ]], 'text_size' => true, 'sticky' => false]);
+    sfcSetting($siteId, 'floating_contact', ['enabled' => true, 'theme' => 'vertical', 'position' => 'right', 'offset_x' => 20, 'offset_y' => 24,
+        'channels' => [['key' => 'phone', 'on' => true, 'value' => '0912345678']], 'phone_bar' => ['enabled' => true]]);
+
+    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
+
+    // the phone-only copy (below md) was all the top bar had under 768px: those two bands draw none
+    expect($html)->toContain('<header class="sf-header sf-header--topbar sf-header--top-off-xs sf-header--top-off-sm">')
+        ->toContain('<li class="sf-topbar__item sf-from-md sf-below-md sf-topbar__item--bar">')
+        ->toContain('<li class="sf-topbar__item sf-from-md">')
+        ->and((string) file_get_contents(resource_path('css/storefront.css')))
+        ->toContain("@media (max-width: 767.98px) {\n    .sf-topbar__item--bar {\n        display: none;");
 });
 
 it('hides the menu button from lg (xl for a wide menu) and the text-size control from lg, after the rules that show them', function (): void {
@@ -249,7 +291,7 @@ it('keeps every menu and top-bar target 40px with a mouse and 44px on touch, at 
         ->toContain(".sf-nav--desk .sf-nav__item--parent > .sf-nav__chev::after {\n    content: \"\";\n    position: absolute;\n    inset: 0 calc(100% - 2.5rem) 0 0;");
     // from lg the top bar draws 32px (2rem), after the touch rule; its links reach 40 / 44px below it
     $touchAt = (int) strpos($css, '@media (any-pointer: coarse) {'."\n".'    .sf-header--topbar {');
-    $barAt = (int) strpos($css, "@media (min-width: 1024px) {\n    .sf-header--topbar:not(.sf-header--fs-only) {\n        --sf-topbar-h: 2rem;");
+    $barAt = (int) strpos($css, "@media (min-width: 1024px) {\n    .sf-header--topbar:not(.sf-header--top-off-lg) {\n        --sf-topbar-h: 2rem;");
     expect($touchAt)->toBeGreaterThan(0)->and($barAt)->toBeGreaterThan($touchAt)
         ->and($css)->toContain(".sf-topbar :is(.sf-topbar__link, .sf-lang__link)::after {\n        content: \"\";\n        position: absolute;\n        inset: 0 0 -0.5rem;")
         ->toContain("@media (min-width: 1024px) and (any-pointer: coarse) {\n    .sf-topbar :is(.sf-topbar__link, .sf-lang__link)::after {\n        bottom: -0.75rem;");
