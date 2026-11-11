@@ -18,3 +18,17 @@ it('takes the initials of the last two words of a name', function (): void {
         ->and(ReadingTime::initials('đạt'))->toBe('Đ')
         ->and(ReadingTime::initials('  '))->toBe('');
 });
+
+it('does not glue the last word of one element to the first word of the next', function (): void {
+    $words = implode(' ', array_fill(0, 199, 'từ'));
+
+    expect(ReadingTime::minutes('<h2>'.$words.' mục</h2><p>Nội dung</p>'))->toBe(2)
+        ->and(ReadingTime::minutes('<p>'.$words.' mục</p><p>Nội</p>'))->toBe(2)
+        ->and(ReadingTime::minutes('<p>'.$words.' mục</p>'))->toBe(1);
+});
+
+it('counts characters, not words, for text written without spaces', function (): void {
+    expect(ReadingTime::minutes('<p>'.str_repeat('字', 500).'</p>'))->toBe(1)
+        ->and(ReadingTime::minutes('<p>'.str_repeat('字', 501).'</p>'))->toBe(2)
+        ->and(ReadingTime::minutes('<p>'.str_repeat('あ', 1200).'</p>'))->toBe(3);
+});
