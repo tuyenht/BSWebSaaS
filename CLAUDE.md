@@ -188,7 +188,7 @@ Most items have automated gates in §2/§3/§6; this is the final checklist:
 2. **Security §2** — tenancy, RLS fail-closed, no cross-tenant exposure, no raw bigint ids, upload sniffing.
 3. **DB §3** — D1–D15 (integer money, timestamptz, citext, CHECK enums, FK/soft delete, atomic decrement…).
 4. **Performance** — Query Budget, no N+1; storefront **LCP ≤ 1.5s, JS ≤ 30KB** (§6).
-5. **SEO** (storefront; Lighthouse/axe don't measure these): real Blade SSR · semantic HTML + correct heading levels · meta title/description + canonical + OG · JSON-LD where relevant · sitemap.xml + robots.txt · pagination rel=prev/next with self-canonical pages · breadcrumbs.
+5. **SEO** (storefront; Lighthouse/axe don't measure these): real Blade SSR · semantic HTML + correct heading levels · meta title/description + canonical + OG · JSON-LD where relevant · sitemap.xml + robots.txt · pagination rel=prev/next with self-canonical pages · breadcrumbs. Full rules, including AI search (GEO): `.claude/rules/storefront-seo.md`; audit a live site with `node scripts/storefront/seo-audit.mjs https://<site>`.
 6. **UX for non-technical users** — every screen: empty state · loading state · errors in **plain language** (never technical) · no dead ends · mobile-first · WCAG AA contrast.
 7. **Guardrails §6 green** — the CI tier + the manual tier for the touched area.
 8. **Reversible** — expand-contract migrations · `CREATE INDEX CONCURRENTLY` · a safe rollback path.
@@ -217,7 +217,7 @@ RULE | scope: <repo|lang|task-type> | WHEN <trigger> THEN <correct behavior> NOT
 - **Invariants only:** status, dated baselines and current arc names live in `plans/` + git, not here. Owner provenance/dates go in HTML comments (stripped from the model context).
 - **Descriptive drift** (what is installed/running/enforced) that contradicts green reality → fix that line in the commit you are making, citing evidence (file:line / command) in the message (ACT).
 - **Decisions** (choose X not Y · forbid Z · threshold N — §2, D1–D15, ADRs, every owner call) = COUNCIL even when reality differs; reality violating a decision is a code bug or needs a re-decision — never edit the doc to match.
-- **Zone-specific procedures and lessons** go to `.claude/rules/<area>.md` with `paths:` frontmatter (loaded only when matching files are read); this file keeps invariants + shared commands. Rules: `livewire` · `pest-tests` · `php-larastan` · `tenancy-octane` · `migrations` · `ci-workflows` · `mutation-baseline` · `frontend-assets`.
+- **Zone-specific procedures and lessons** go to `.claude/rules/<area>.md` with `paths:` frontmatter (loaded only when matching files are read); this file keeps invariants + shared commands. Rules: `livewire` · `pest-tests` · `php-larastan` · `tenancy-octane` · `migrations` · `ci-workflows` · `mutation-baseline` · `frontend-assets` · `storefront-seo`.
 - **lessons.log compaction** only when the owner asks (e.g. at arc close via `/bs:close`): promote lessons into the matching rule file (or here if global), then archive the log.
 - Update the stamp below only on a FULL audit; older than ~30 days → propose a re-audit.
 
