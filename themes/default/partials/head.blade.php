@@ -1,6 +1,6 @@
 {{--
-    Shared storefront <head>: SSR SEO baseline — canonical, Open Graph, optional BreadcrumbList
-    JSON-LD, hreflang alternates, design-token CSS variables, font preload, storefront stylesheet
+    Shared storefront <head>: SSR SEO baseline — canonical, Open Graph, one JSON-LD
+    @graph (Theme\Seo\StructuredData), hreflang alternates, design-token CSS variables, font preload, storefront stylesheet
     and the optional header scripts. Included inside each layout's <head>; inherits layout view
     data. Adds no DB queries.
     Inter's one Latin + Vietnamese file is preloaded only when the site's font is Inter (the
@@ -92,124 +92,32 @@
     <link rel="alternate" hreflang="{{ $alt['hreflang'] }}" href="{{ $alt['href'] }}">
 @endforeach
 
-@if (empty($notFound) && empty($preview) && ! empty(data_get($brand ?? null, 'name')))
-    @php
-        // Organization JSON-LD — reads from $brand (already loaded by StorefrontController::brand();
-        // no additional DB query here). Null/empty fields are omitted; the whole block is suppressed
-        // when no brand name is set (fail-safe for tenants without a brand setting).
-        $orgTelephone = (! empty($brand['phone'])) ? $brand['phone'] : ((! empty($brand['hotline'])) ? $brand['hotline'] : null);
-        // address_line (new split key) takes priority; falls back to the combined address string
-        // so existing tenants without split keys still get a populated streetAddress.
-        $orgStreet    = (! empty($brand['address_line'])) ? $brand['address_line'] : ((! empty($brand['address'])) ? $brand['address'] : null);
-        $orgLocality  = ! empty($brand['ward']) ? $brand['ward'] : null;
-        $orgRegion    = ! empty($brand['province']) ? $brand['province'] : null;
-
-        $orgPostal = null;
-        if ($orgStreet !== null || $orgLocality !== null || $orgRegion !== null) {
-            $orgPostal = array_filter(
-                [
-                    '@type'           => 'PostalAddress',
-                    'streetAddress'   => $orgStreet,
-                    'addressLocality' => $orgLocality,
-                    'addressRegion'   => $orgRegion,
-                    'addressCountry'  => 'VN',
-                ],
-                fn ($v) => $v !== null && $v !== '',
-            );
-        }
-
-        // The site's own social profiles (site_profiles.social_links) — how search engines tie the
-        // Facebook page / YouTube channel to this business. Only web links; Zalo kept as a phone
-        // number or an Official Account id is given as its zalo.me link.
-        $orgSameAs = [];
-        foreach ((is_array($brand['social_links'] ?? null) ? $brand['social_links'] : []) as $orgNetwork => $orgLink) {
-            $orgLink = $orgNetwork === 'zalo' ? \App\Modules\Theme\Chrome\StorefrontChrome::zalo($orgLink) : $orgLink;
-            if (is_string($orgLink) && preg_match('~\Ahttps?://~i', $orgLink) === 1) {
-                $orgSameAs[] = $orgLink;
-            }
-        }
-        // Opening hours make the business a LocalBusiness (the type that carries them).
-        $orgHours = \App\Modules\Tenancy\Support\BusinessHours::from($brand['business_hours'] ?? null)?->openingHoursSpecification() ?? [];
-
-        // Build inside @php so Blade does not scan '@context' / '@type' as directives.
-        // JSON_HEX_TAG escapes < > — safe for inline <script>.
-        $orgLd = array_filter(
-            [
-                '@context'  => 'https://schema.org',
-                '@type'     => $orgHours !== [] ? 'LocalBusiness' : 'Organization',
-                'name'      => $brand['name'],
-                'legalName' => ! empty($brand['legal_name']) ? $brand['legal_name'] : null,
-                'url'       => url('/'),
-                'logo'      => ! empty($brand['logo']) ? $brand['logo'] : null,
-                'telephone' => $orgTelephone,
-                'email'     => ! empty($brand['email']) ? $brand['email'] : null,
-                'taxID'     => ! empty($brand['tax_id']) ? $brand['tax_id'] : null,
-                'address'   => $orgPostal ?: null,
-                'sameAs'    => $orgSameAs,
-                'location'  => array_values(is_array($branchPlaces ?? null) ? $branchPlaces : []),
-                'openingHoursSpecification' => $orgHours,
-            ],
-            fn ($v) => $v !== null && $v !== '' && $v !== [],
-        );
-
-        $orgJson = json_encode($orgLd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG);
-    @endphp
-    <script type="application/ld+json">{!! $orgJson !!}</script>
-@endif
-
-@if (! empty($productLd))
-    @php
-        // Product schema for catalog detail pages (built by StorefrontController::renderProduct —
-        // no offers: brochure catalog). Encoded inside @php, same escaping rules as the blocks below.
-        $productJson = json_encode($productLd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG);
-    @endphp
-    <script type="application/ld+json">{!! $productJson !!}</script>
-@endif
-@if (! empty($jobLd))
-    @php
-        // JobPosting for a post on a job layout (built by StorefrontController::render), printed like the product's.
-        $jobJson = json_encode($jobLd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG);
-    @endphp
-    <script type="application/ld+json">{!! $jobJson !!}</script>
-@endif
-@if (! empty($articleLd))
-    @php
-        // Article for any other post (built by StorefrontController::render via ArticleData), printed like the product's.
-        $articleJson = json_encode($articleLd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG);
-    @endphp
-    <script type="application/ld+json">{!! $articleJson !!}</script>
-@endif
-@if (! empty($faqLd) && empty($notFound) && empty($preview))
-    @php
-        // FAQPage for the question-and-answer blocks the page draws (built by PageRenderer).
-        $faqJson = json_encode($faqLd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG);
-    @endphp
-    <script type="application/ld+json">{!! $faqJson !!}</script>
-@endif
-@if (! empty($websiteLd))
-    @php
-        // WebSite on the home page (built by StorefrontController::render): the site's name in search results.
-        $websiteJson = json_encode($websiteLd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG);
-    @endphp
-    <script type="application/ld+json">{!! $websiteJson !!}</script>
-@endif
-
-@if (is_array($breadcrumb ?? null) && count($breadcrumb) > 1 && empty($preview))
-    @php
-        // Build inside @php so Blade does not scan '@context' / '@type' as directives.
-        // JSON_HEX_TAG escapes < and > to < / > — safe for inline <script>.
-        $breadcrumbLd = json_encode([
-            '@context' => 'https://schema.org',
-            '@type' => 'BreadcrumbList',
-            'itemListElement' => collect($breadcrumb)->values()->map(fn ($crumb, $i) => [
-                '@type' => 'ListItem',
-                'position' => $i + 1,
-                'name' => $crumb['name'],
-                'item' => $crumb['url'],
-            ])->all(),
-        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG);
-    @endphp
-    <script type="application/ld+json">{!! $breadcrumbLd !!}</script>
+@php
+    // One schema.org @graph per page (organization, website, page, breadcrumb and the page's own
+    // Article, Product, JobPosting or FAQPage), built from data the page already holds. Null on a
+    // 404 and in the admin's preview. Built inside @php so Blade does not scan '@type' as a directive.
+    $ldJson = \App\Modules\Theme\Seo\StructuredData::json([
+        'brand' => $brand ?? null,
+        'branchPlaces' => $branchPlaces ?? null,
+        'canonical' => $canonical ?? null,
+        'lang' => $lang ?? null,
+        'title' => $title ?? null,
+        'description' => $effectiveDescription,
+        'ldPage' => $ldPage ?? null,
+        'posts' => $posts ?? null,
+        'cards' => $cards ?? null,
+        'websiteLd' => $websiteLd ?? null,
+        'articleLd' => $articleLd ?? null,
+        'productLd' => $productLd ?? null,
+        'jobLd' => $jobLd ?? null,
+        'faqLd' => $faqLd ?? null,
+        'breadcrumb' => $breadcrumb ?? null,
+        'notFound' => $notFound ?? null,
+        'preview' => $preview ?? null,
+    ]);
+@endphp
+@if ($ldJson !== null)
+    <script type="application/ld+json">{!! $ldJson !!}</script>
 @endif
 
 {{-- Per-site design tokens over the shared template (values are sanitized server-side). --}}

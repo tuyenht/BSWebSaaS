@@ -11,6 +11,7 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
+use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\ResolvedCategory;
 use App\Modules\Cms\Routing\ResolvedContent;
@@ -21,6 +22,7 @@ use App\Modules\Cms\Support\JobFacts;
 use App\Modules\Cms\Taxonomy\CategoryTemplates;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\SafeLink;
 use App\Modules\Storefront\Support\ArticleData;
 use App\Modules\Storefront\Support\Breadcrumbs;
@@ -32,6 +34,7 @@ use App\Modules\Storefront\Support\ProductDetail;
 use App\Modules\Storefront\Support\ProductPage;
 use App\Modules\Storefront\Support\SlotContext;
 use App\Modules\Storefront\Support\ThankYouPages;
+use App\Modules\Storefront\Support\TitleDisambiguator;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Theme\Rendering\PageRenderer;
 use App\Modules\Theme\Rendering\TemplateCatalog;
@@ -75,6 +78,7 @@ final readonly class StorefrontController
         private PageChrome $pageChrome,
         private ProductPage $productPage,
         private ThankYouPages $thankYou,
+        private TitleDisambiguator $titles,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -359,7 +363,7 @@ final readonly class StorefrontController
             $entry->template_override,
             $content->translation->title,
             $content->translation->body,
-            self::entrySeo($content->translation) + ['home' => $path === '/'],
+            self::entrySeo($content->translation) + ['home' => $path === '/'] + $this->pageTitleSeo($entry, $content->translation, $locale, $extra),
             $categoryTemplate,
             $extra,
         );
@@ -516,6 +520,7 @@ final readonly class StorefrontController
         $extra['ogType'] = 'website';
         // Home → the categories above → this one (its own entry keeps the page's canonical address).
         $trail = $this->crumbs->category($resolved->taxonomy, $locale, $resolved->translation->name, $resolved->translation->slug);
+        $parentName = count($trail) >= 2 ? $trail[count($trail) - 2]['name'] : null;
         $lastLevel = count($trail) - 1;
         $trail = array_map(
             fn (array $crumb, int $i): array => $i === $lastLevel ? ['name' => $crumb['name'], 'url' => $canonical, 'href' => $crumb['href']] : $crumb,
@@ -533,7 +538,7 @@ final readonly class StorefrontController
             $resolved->translation->name,
             $titles,
             $this->lists->links(request()->url(), $position, $more, $lastUlid),
-            [],   // a category has no Google title of its own: its name, through the site's title template
+            self::categorySeo($resolved->translation, $parentName, Cast::string(data_get($extra, 'brand.name'))) + $this->categoryTitleSeo($resolved, $locale, $parentName),
             $extra,
         );
 
@@ -656,6 +661,86 @@ final readonly class StorefrontController
             'subtitle' => trim((string) $resolved->translation->description),
             'image' => $image,
             'srcset' => $srcset,
+        ];
+    }
+
+    /**
+     * The name a page is searched under when another page or category of the site has the same name:
+     * its parent page's name is added. A page without a staff-written Google title, with a published
+     * parent, is the only one checked (one read); a post, the home page and a top-level page cost nothing.
+     *
+     * @param  array<string, mixed>  $extra
+     * @return array{pageTitle?: string}
+     */
+    private function pageTitleSeo(Entry $entry, EntryTranslation $translation, string $locale, array $extra): array
+    {
+        $crumbs = is_array($extra['breadcrumb'] ?? null) ? array_values($extra['breadcrumb']) : [];
+        if ($entry->type !== 'page' || trim((string) $translation->seo_title) !== '' || count($crumbs) < 3) {
+            return [];
+        }
+        $crumb = $crumbs[count($crumbs) - 2];
+        $parent = is_array($crumb) ? ($crumb['name'] ?? null) : null;
+
+        return ['pageTitle' => $this->titles->title($translation->title, is_string($parent) ? $parent : null, $locale, $entry->id, null)];
+    }
+
+    /**
+     * The same for a category: its parent's name is added when the name is taken. The trail is the one
+     * the page already built (home, the categories above, this one), so the parent's name costs nothing.
+     *
+     * @return array{pageTitle?: string}
+     */
+    private function categoryTitleSeo(ResolvedCategory $resolved, string $locale, ?string $parentName): array
+    {
+        $translation = $resolved->translation;
+        if (trim((string) $translation->seo_title) !== '' || $parentName === null) {
+            return [];
+        }
+
+        return ['pageTitle' => $this->titles->title($translation->name, $parentName, $locale, null, $resolved->taxonomy->id)];
+    }
+
+    /** A description for a search result: at most 160 characters, cut after a whole word. */
+    private static function cut(string $text): string
+    {
+        if (mb_strlen($text) <= 160) {
+            return $text;
+        }
+        $head = mb_substr($text, 0, 160);
+        if (! preg_match('/\s/u', mb_substr($text, 160, 1))) {
+            $space = mb_strrpos($head, ' ');
+            if ($space !== false && $space > 0) {
+                $head = mb_substr($head, 0, $space);
+            }
+        }
+
+        return rtrim($head, " \t\n\r,;:.-");
+    }
+
+    /**
+     * What a category tells search engines: its own Google title (else its name, through the site's
+     * title template) and its own Google description, else its description, else a sentence made from
+     * its name, the category above it and the site's name, so no two lists share one fallback sentence.
+     * Without a site name the sentence is left out and the head falls back to the site's defaults.
+     *
+     * @return array{title: string|null, description: string|null}
+     */
+    private static function categorySeo(TaxonomyTranslation $translation, ?string $parent, string $site): array
+    {
+        $filled = static fn (?string $value): ?string => $value !== null && trim($value) !== '' ? $value : null;
+        $site = trim($site);
+        $generated = null;
+        if ($site !== '') {
+            $generated = $parent !== null && trim($parent) !== ''
+                ? __('storefront.seo_list_description_child', ['name' => $translation->name, 'parent' => trim($parent), 'site' => $site])
+                : __('storefront.seo_list_description', ['name' => $translation->name, 'site' => $site]);
+        }
+
+        return [
+            'title' => $filled($translation->seo_title),
+            'description' => $filled($translation->seo_description)
+                ?? $filled(self::cut(str((string) $translation->description)->squish()->toString()))
+                ?? (is_string($generated) ? $generated : null),
         ];
     }
 

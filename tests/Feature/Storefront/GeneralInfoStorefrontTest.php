@@ -160,9 +160,7 @@ function gisFooter(string $html): string
 /** @return array<string, mixed> */
 function gisLd(string $html): array
 {
-    preg_match('/<script type="application\/ld\+json">(\{"@context":"https:\/\/schema.org","@type":"(?:Organization|LocalBusiness)".*?)<\/script>/s', $html, $m);
-
-    return json_decode($m[1] ?? '{}', true);
+    return ldNode($html, 'Organization') ?? ldNode($html, 'LocalBusiness') ?? [];
 }
 
 it('looks the same before any save, and after saving the form untouched', function (bool $rich): void {

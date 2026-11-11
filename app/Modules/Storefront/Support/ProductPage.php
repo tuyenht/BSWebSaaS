@@ -123,6 +123,8 @@ final readonly class ProductPage
                 'description' => $ldDescription !== '' ? $ldDescription : null,
                 'image' => array_column($images, 'url') ?: null,
                 'url' => $canonical,
+                'category' => ($categoryName = $category?->translationFor($locale)->name ?? '') !== '' ? $categoryName : null,
+                'additionalProperty' => ProductSpecs::properties((string) $translation->description) ?: null,
                 'brand' => ($brandName = data_get($chrome, 'brand.name')) !== null && $brandName !== ''
                     ? ['@type' => 'Brand', 'name' => $brandName]
                     : null,

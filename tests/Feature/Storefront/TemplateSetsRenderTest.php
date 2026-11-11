@@ -74,22 +74,14 @@ it('prints JobPosting data for a post on a job layout, with no deadline until po
 /** The JobPosting object printed in the page head, or null when the page carries none. */
 function jobLd(string $html): ?array
 {
-    preg_match_all('~<script type="application/ld\+json">(.*?)</script>~s', $html, $found);
-    foreach ($found[1] as $json) {
-        $data = json_decode($json, true);
-        if (is_array($data) && ($data['@type'] ?? null) === 'JobPosting') {
-            return $data;
-        }
-    }
-
-    return null;
+    return ldNode($html, 'JobPosting');
 }
 
 it('prints the employer, the workplace address and the excerpt in the JobPosting data', function (): void {
     jobSite();
     $ld = jobLd(jobPage('/ha-noi/tho-tien-cnc'));
 
-    expect($ld['hiringOrganization'])->toBe(['@type' => 'Organization', 'name' => 'Cơ khí Mẫu'])
+    expect($ld['hiringOrganization'])->toBe(['@type' => 'Organization', '@id' => 'http://mau.platform.test/#organization', 'name' => 'Cơ khí Mẫu'])
         ->and($ld['jobLocation'])->toBe(['@type' => 'Place', 'address' => [
             '@type' => 'PostalAddress', 'streetAddress' => 'Thôn Xuân Sơn', 'addressLocality' => 'Xã Trung Giã',
             'addressRegion' => 'TP Hà Nội', 'addressCountry' => 'VN',

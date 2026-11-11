@@ -16,12 +16,10 @@ beforeEach(function (): void {
     StorefrontCards::pinMediaConfig();
 });
 
-/** The JSON-LD blocks of a page, decoded. */
+/** The JSON-LD nodes of a page. */
 function techLd(string $html): array
 {
-    preg_match_all('#<script type="application/ld\+json">(.*?)</script>#s', $html, $m);
-
-    return array_map(fn (string $json): array => json_decode($json, true, 512, JSON_THROW_ON_ERROR), $m[1]);
+    return ldNodes($html);
 }
 
 /** A site with a brand name and one plain page at /gioi-thieu (or the given blocks), plus optional extra settings. */
@@ -87,7 +85,8 @@ it('lists the branches with an address or a position as locations of the busines
         ['title' => 'Văn phòng'],
     ]]);
 
-    $org = collect(techLd(test()->get('http://mau.platform.test/gioi-thieu')->getContent()))->firstWhere('@type', 'Organization');
+    // The business and its branches are described on the home page.
+    $org = collect(techLd(test()->get('http://mau.platform.test/')->getContent()))->firstWhere('@type', 'Organization');
 
     expect($org['location'])->toHaveCount(1)
         ->and($org['location'][0]['name'])->toBe('Nhà máy số 1')

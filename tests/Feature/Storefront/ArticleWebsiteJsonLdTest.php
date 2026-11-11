@@ -39,12 +39,7 @@ function articleSite(bool $brand = true): int
  */
 function headLd(string $html, string $type): ?array
 {
-    preg_match_all('~<script type="application/ld\+json">(.*?)</script>~s', $html, $found);
-    $matches = array_values(array_filter(array_map(fn (string $json): mixed => json_decode($json, true), $found[1]),
-        fn (mixed $data): bool => is_array($data) && ($data['@type'] ?? null) === $type));
-    expect(count($matches))->toBeLessThanOrEqual(1);
-
-    return $matches[0] ?? null;
+    return ldNode($html, $type);
 }
 
 it('describes a post as an Article with its dates and the business behind it', function (): void {
@@ -53,7 +48,6 @@ it('describes a post as an Article with its dates and the business behind it', f
     $ld = headLd($this->get('http://mau.platform.test/tin-tuc/gia-cong-cnc')->assertOk()->getContent(), 'Article');
 
     expect($ld)->toBe([
-        '@context' => 'https://schema.org',
         '@type' => 'Article',
         'headline' => 'Gia công CNC chính xác',
         'description' => 'Phay, tiện chính xác.',
@@ -61,8 +55,9 @@ it('describes a post as an Article with its dates and the business behind it', f
         'dateModified' => '2026-10-05T09:30:00+00:00',
         'inLanguage' => 'vi',
         'mainEntityOfPage' => 'http://mau.platform.test/tin-tuc/gia-cong-cnc',
-        'author' => ['@type' => 'Organization', 'name' => 'Cơ khí Mẫu', 'url' => 'http://mau.platform.test'],
-        'publisher' => ['@type' => 'Organization', 'name' => 'Cơ khí Mẫu', 'url' => 'http://mau.platform.test'],
+        // The business is a named, typed reference to its Organization (described in full on the home page).
+        'author' => ['@type' => 'Organization', '@id' => 'http://mau.platform.test/#organization', 'name' => 'Cơ khí Mẫu'],
+        'publisher' => ['@type' => 'Organization', '@id' => 'http://mau.platform.test/#organization', 'name' => 'Cơ khí Mẫu'],
     ]);
 });
 
@@ -97,7 +92,8 @@ it('names the website on the home page only', function (): void {
     $contact = $this->get('http://mau.platform.test/lien-he')->assertOk()->getContent();
 
     expect(headLd($home, 'WebSite'))->toBe([
-        '@context' => 'https://schema.org', '@type' => 'WebSite', 'name' => 'Cơ khí Mẫu', 'url' => 'http://mau.platform.test', 'inLanguage' => 'vi',
+        '@type' => 'WebSite', '@id' => 'http://mau.platform.test/#website', 'name' => 'Cơ khí Mẫu', 'url' => 'http://mau.platform.test', 'inLanguage' => 'vi',
+        'publisher' => ['@id' => 'http://mau.platform.test/#organization'],
     ])
         ->and(headLd($contact, 'WebSite'))->toBeNull()
         ->and(headLd($home, 'Article'))->toBeNull();

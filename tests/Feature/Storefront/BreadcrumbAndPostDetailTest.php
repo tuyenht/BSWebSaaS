@@ -42,15 +42,9 @@ function bcTrail(string $html): array
 /** @return list<string> the names in the page's BreadcrumbList JSON-LD, in order */
 function bcJsonLd(string $html): array
 {
-    preg_match_all('#<script type="application/ld\+json">(.*?)</script>#s', $html, $scripts);
-    foreach ($scripts[1] as $json) {
-        $data = json_decode($json, true);
-        if (($data['@type'] ?? null) === 'BreadcrumbList') {
-            return array_map(fn (array $item): string => $item['name'], $data['itemListElement']);
-        }
-    }
+    $list = ldNode($html, 'BreadcrumbList');
 
-    return [];
+    return $list === null ? [] : array_map(fn (array $item): string => $item['name'], $list['itemListElement']);
 }
 
 /** @return list<string> every href inside the element whose opening tag starts with $open */
