@@ -6,7 +6,7 @@
     },
     "resources/css/storefront.css": {
       "js": 0,
-      "css": 24872
+      "css": 26221
     },
     "resources/js/app.js": {
       "js": 20351,
@@ -28,6 +28,10 @@
       "js": 395,
       "css": 0
     },
+    "resources/js/sf-post.js": {
+      "js": 570,
+      "css": 0
+    },
     "resources/js/sf-slider.js": {
       "js": 1373,
       "css": 0
@@ -44,12 +48,12 @@
       "js": 578,
       "css": 0
     },
-    "resources/js/sf-viewer.js": {
-      "js": 919,
-      "css": 0
-    },
     "resources/js/sf-video.js": {
       "js": 478,
+      "css": 0
+    },
+    "resources/js/sf-viewer.js": {
+      "js": 919,
       "css": 0
     },
     "resources/js/storefront.js": {

@@ -82,9 +82,18 @@ final class SectionProps
     public const array QUICK_LINK_ICONS = ['link', 'phone', 'email', 'address', 'map', 'building', 'license'];
 
     /** Columns on a wide screen; a phone always shows one (gallery two). Stored as the digit string. */
-    public const array GALLERY_COLUMNS = ['3', '2', '4'];
+    public const array GALLERY_COLUMNS = ['3', '2', '4', '1'];
 
     public const array FAQ_COLUMNS = ['1', '2'];
+
+    /** FAQ looks: folding questions (the default) or open headings with their answers. Append-only. */
+    public const array FAQ_STYLES = ['accordion', 'open'];
+
+    /** What a side column's list names: the categories of the page's branch, or the posts of its own category (the current one marked). Append-only. */
+    public const array CATEGORY_LIST_SOURCES = ['categories', 'posts'];
+
+    /** Whether the list shows each category's post count. Append-only. */
+    public const array CATEGORY_LIST_COUNTS = ['hide', 'show'];
 
     /** Team: three or four members across on a wide screen (two on a phone). */
     public const array TEAM_VARIANTS = ['grid-3', 'grid-4'];

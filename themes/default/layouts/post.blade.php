@@ -20,12 +20,24 @@
     $sfBadge = $sfJobBand ? (string) ($sfPost['badge'] ?? '') : '';
     // A body section that already prints a high-priority image keeps the page at one.
     $sfCoverPriority = ($bodyHighImage ?? false) ? 'eager' : 'high';
-    $sfPrev = $previous ?? null;
-    $sfNext = $next ?? null;
-    $sfRelated = $related ?? [];
+    // The capability look (layout "capability" includes this one) has neither the neighbouring-post links, related
+    // cards, the share bar nor the author line: the page closes after its own content.
+    $sfPlain = (bool) ($sfPlain ?? false);
+    $sfPrev = $sfPlain ? null : ($previous ?? null);
+    $sfNext = $sfPlain ? null : ($next ?? null);
+    $sfRelated = $sfPlain ? [] : ($related ?? []);
     $sfToc = $toc ?? [];
     $sfAside = trim((string) (($slotHtml ?? [])['post_aside'] ?? ''));
-    $sfCols = $sfAside !== '' || $sfToc !== [];
+    // The news look: who wrote it and how long it takes (under the title), a share bar beside the text and a reading
+    // progress line at the top of the window. The author is the site's business (no staff name leaves the admin).
+    $sfNews = ! $sfPlain && ! $sfJobBand;
+    $sfShareUrl = $sfNews && ! empty($canonical) ? (string) $canonical : '';
+    $sfAuthor = $sfNews ? trim((string) (($brand ?? [])['name'] ?? '')) : '';
+    $sfMinutes = $sfNews ? \App\Modules\Theme\Components\ReadingTime::minutes((string) $sections) : 0;
+    $sfInitials = $sfAuthor !== '' ? \App\Modules\Theme\Components\ReadingTime::initials($sfAuthor) : '';
+    $sfRail = $sfShareUrl !== '';
+    $sfHasAside = $sfAside !== '' || $sfToc !== [];
+    $sfCols = $sfHasAside || $sfRail;
     $sfAfter = trim((string) (($slotHtml ?? [])['after_post'] ?? ''));
 @endphp
 <!doctype html>
@@ -36,7 +48,10 @@
 <body>
     <a class="sf-skip" href="#noi-dung">{{ __('storefront.skip_to_content') }}</a>
     @include('theme::partials.header', ['menu' => $menu ?? [], 'brand' => $brand ?? null])
-    <main class="post-page" id="noi-dung" tabindex="-1">
+@if ($sfRail)
+    <div class="post-progress" aria-hidden="true"><span class="post-progress__bar"></span></div>
+@endif
+    <main class="post-page{{ $sfPlain ? ' post-page--capability' : '' }}" id="noi-dung" tabindex="-1">
         <article class="post">
 @if ($sfOwnBand)
             <header class="post-band{{ $sfJobBand ? ' post-band--job' : '' }}">
@@ -65,11 +80,19 @@
 @if (($sfPost['excerpt'] ?? '') !== '')
                     <p class="post-band__excerpt">{{ $sfPost['excerpt'] }}</p>
 @endif
-@if (($sfPost['date'] ?? '') !== '')
+@if (($sfPost['date'] ?? '') !== '' || $sfAuthor !== '' || $sfMinutes > 0)
                     <p class="post-band__meta">
+@if ($sfAuthor !== '')
+                        <span class="post-band__author"><span class="post-band__avatar" aria-hidden="true">{{ $sfInitials }}</span>{{ $sfAuthor }}</span>
+@endif
+@if (($sfPost['date'] ?? '') !== '')
                         <time datetime="{{ $sfPost['datetime'] }}">{{ $sfPost['date'] }}</time>
 @if (($sfPost['updated'] ?? '') !== '')
                         <span>{{ __('storefront.updated') }} <time datetime="{{ $sfPost['updatedDatetime'] }}">{{ $sfPost['updated'] }}</time></span>
+@endif
+@endif
+@if ($sfMinutes > 0)
+                        <span class="post-band__reading">{{ __('storefront.reading_minutes', ['count' => $sfMinutes]) }}</span>
 @endif
                     </p>
 @endif
@@ -87,7 +110,10 @@
             {{-- $sections is pre-rendered, per-block Blade-escaped HTML (BlockRenderer). Post
                  bodies reuse the block-list Page-JSON (D1), so they render exactly like a page. --}}
 @if ($sfCols)
-            <div class="post-columns sf-container">
+            <div class="post-columns sf-container{{ $sfRail ? ' post-columns--share' : '' }}">
+@if ($sfRail)
+                @include('theme::partials.post-share', ['url' => $sfShareUrl, 'rail' => true])
+@endif
                 <div class="post-columns__main">
 @if ($sfToc !== [])
                     <details class="post-toc-phone">
@@ -101,6 +127,9 @@
 @endif
 @endif
             <div class="post__body sf-prose sf-prose--article">{!! $sections !!}</div>
+@if ($sfRail)
+            @include('theme::partials.post-share', ['url' => $sfShareUrl, 'rail' => false])
+@endif
 @if ($sfPrev !== null || $sfNext !== null)
             <nav class="post-nav" aria-label="{{ __('storefront.post_nav') }}">
 @if ($sfPrev !== null)
@@ -113,7 +142,9 @@
 @endif
 @if ($sfCols)
                 </div>
-                @include('theme::partials.post-aside', ['toc' => $sfToc, 'html' => $sfAside])
+@if ($sfHasAside)
+                @include('theme::partials.post-aside', ['toc' => $sfToc, 'html' => $sfAside, 'sticky' => $sfPlain])
+@endif
             </div>
 @endif
         </article>

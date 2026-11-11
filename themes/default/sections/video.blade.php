@@ -5,6 +5,7 @@
 @php
     $video = is_string($props['url'] ?? null) ? \App\Modules\Shared\Support\VideoEmbed::player($props['url']) : null;
     $heading = \App\Modules\Theme\Components\SectionProps::text($props, 'heading');
+    $caption = \App\Modules\Theme\Components\SectionProps::text($props, 'caption');
     $poster = is_string($props['poster'] ?? null) && $props['poster'] !== '' ? $props['poster'] : null;
 @endphp
 @if ($video !== null)
@@ -18,5 +19,8 @@
     'srcset' => $poster !== null ? (($srcsets ?? [])[$poster] ?? null) : null,
 ])
 </div>
+@if ($caption !== '')
+<p class="sf-video-block__caption">{{ $caption }}</p>
+@endif
 @endcomponent
 @endif

@@ -125,7 +125,7 @@ it('makes no absolute advertising claim, and credits every video as an illustrat
         $texts[] = json_encode($item->data, JSON_UNESCAPED_UNICODE);
         foreach ($item->data['body']['vi'] ?? [] as $block) {
             if ($block['type'] === 'video') {
-                $videos[$block['props']['url']] = $block['props']['heading'];
+                $videos[$block['props']['url']] = $block['props']['heading'].' | '.($block['props']['caption'] ?? '');
             }
         }
     }
@@ -140,7 +140,7 @@ it('makes no absolute advertising claim, and credits every video as an illustrat
     }
     expect($videos)->toHaveCount(3);
     foreach ($videos as $heading) {
-        expect($heading)->toStartWith('Video minh họa:')->toContain('nguồn kênh')->toContain('giấy phép CC BY');
+        expect($heading)->toStartWith('Video minh họa')->toContain('nguồn kênh')->toContain('giấy phép CC BY');
     }
 });
 
@@ -262,7 +262,7 @@ it('loads the flourish heading decoration, a floating contact of Zalo and call o
     expect($settings['setting:theme.heading_decor']['value'])->toBe(['style' => 'flourish'])
         ->and(collect($settings['setting:storefront.floating_contact']['value']['channels'])->where('on', true)->pluck('key')->all())->toBe(['zalo', 'phone'])
         ->and($settings['setting:storefront.layout_blocks']['managed_keys'])->toBe(['post_aside', 'after_product'])
-        ->and(collect($settings['setting:storefront.layout_blocks']['value']['post_aside']['vi']['blocks'])->pluck('type')->all())->toBe(['category_list', 'consult', 'recent_posts'])
+        ->and(collect($settings['setting:storefront.layout_blocks']['value']['post_aside']['vi']['blocks'])->pluck('type')->all())->toBe(['consult', 'recent_posts', 'category_list'])
         ->and(collect($settings['setting:storefront.layout_blocks']['value']['after_product']['vi']['blocks'])->pluck('type')->all())->toBe(['cta']);
 
     $folder = ContentPacks::use('an-vinh', database_path('content-packs'));
@@ -283,7 +283,7 @@ it('loads the flourish heading decoration, a floating contact of Zalo and call o
         ->and(preg_match_all('/<a /', $nav[0]))->toBe(2);
 
     $post = $this->get('http://'.ContentPacks::HOST.'/gia-cong-phay-tien-cnc')->assertOk()->getContent();
-    expect($post)->toContain('Tư vấn kỹ thuật')->toContain('Cần tư vấn hoặc báo giá?')->toContain('Chuyên mục');
+    expect($post)->toContain('Tư vấn kỹ thuật')->toContain('Cần tư vấn hoặc báo giá?')->toContain('Năng lực của An Vinh')->toContain('Hồ sơ năng lực An Vinh');
 
     $product = $this->get('http://'.ContentPacks::HOST.'/jig-kiem-tap-lo-vf7')->assertOk()->getContent();
     expect($product)->toContain('Cần đồ gá cho dây chuyền của bạn?');

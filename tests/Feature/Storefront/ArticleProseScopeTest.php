@@ -28,8 +28,8 @@ it('styles only the written text of a post body, and the blocks in it as the art
                 continue;
             }
             // Allowed: the text blocks themselves, the first child, the written text inside them, and
-            // the blocks of a post body by their own class.
-            expect(preg_match('~^\.sf-prose--article (?:(?:\.richtext|\.sf-prose)$|:is\(\.richtext, \.sf-prose\) |\.richtext p$|\.sf-band--none |> :first-child|> :is\(\.sf-band, \.cta, \.sf-s:not\(:has\(> :is\(\.richtext, \.sf-prose\)\)\)\)|> \.sf-s(?::is\(\[class\*="sf-s--sch-"\], \.sf-s--image\))?:has\(> :is\(\.richtext, \.sf-prose\)\)$|> \.page-band \+ \*$|> (?:\.sf-s > )?\.sf-band--none$)~', $selector))
+            // the blocks of a post body by their own class, and the one-image gallery of an article (one picture, one row).
+            expect(preg_match('~^\.sf-prose--article (?:(?:\.richtext|\.sf-prose)$|:is\(\.richtext, \.sf-prose\) |\.richtext p$|\.sf-band--none |> :first-child|> :is\(\.sf-band, \.cta, \.sf-s:not\(:has\(> :is\(\.richtext, \.sf-prose\)\)\)\)|> \.sf-s(?::is\(\[class\*="sf-s--sch-"\], \.sf-s--image\))?:has\(> :is\(\.richtext, \.sf-prose\)\)$|> \.page-band \+ \*$|> (?:\.sf-s > )?\.sf-band--none$|\.sf-gallery__list\.sf-gallery__list--1$|\.sf-gallery__list--1 \.sf-gallery__(?:zoom|caption)$|> :is\(\.sf-band, \.sf-s\):has\(\.sf-gallery__list\)$)~', $selector))
                 ->toBe(1, "a post-body rule that may reach a block: {$selector}");
         }
     }

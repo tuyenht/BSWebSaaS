@@ -324,7 +324,7 @@ final readonly class StorefrontController
                 ];
                 $extra += $this->posts->siblings($entry, $category, $locale, true, $withRecent);
             }
-            $extra['slotContext'] = $this->slots->context($slotBlocks, $category, $locale, $brandData, is_array($extra['recent'] ?? null) ? $extra['recent'] : []);
+            $extra['slotContext'] = $this->slots->context($slotBlocks, $category, $locale, $brandData, is_array($extra['recent'] ?? null) ? $extra['recent'] : [], $entry->id);
             unset($extra['recent']);
         } elseif ($path !== '/') {
             $extra['breadcrumb'] = [$this->crumbs->home($locale), ...$this->crumbs->parentPages($entry, $locale), $self];

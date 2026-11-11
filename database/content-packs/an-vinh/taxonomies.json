@@ -40,7 +40,25 @@
     "vi": "Dự án"
    },
    "list_template": "grid-project",
-   "detail_template": "project"
+   "detail_template": "project",
+   "layout_blocks": {
+    "post_aside": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "consult",
+        "props": {
+         "eyebrow": "Tư vấn kỹ thuật",
+         "heading": "Bạn có dự án tương tự?",
+         "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá.",
+         "button_label": "Gửi yêu cầu báo giá",
+         "button_url": "/lien-he"
+        }
+       }
+      ]
+     }
+    }
+   }
   },
   {
    "key": "tax:post_cat/tin-tuc",
@@ -75,7 +93,42 @@
    "list_template": null,
    "was": [
     "dich-vu"
-   ]
+   ],
+   "detail_template": "capability",
+   "layout_blocks": {
+    "post_aside": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "category_list",
+        "props": {
+         "heading": "Năng lực của An Vinh",
+         "source": "posts"
+        }
+       },
+       {
+        "type": "consult",
+        "props": {
+         "eyebrow": "Tư vấn kỹ thuật",
+         "heading": "Cần tư vấn hoặc báo giá?",
+         "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá.",
+         "button_label": "Gửi yêu cầu báo giá",
+         "button_url": "/lien-he"
+        }
+       },
+       {
+        "type": "file_card",
+        "props": {
+         "badge": "PDF",
+         "title": "Hồ sơ năng lực An Vinh",
+         "text": "Tải xuống",
+         "url": "/ho-so-nang-luc"
+        }
+       }
+      ]
+     }
+    }
+   }
   },
   {
    "key": "tax:post_cat/du-an/du-an-o-to",
@@ -85,7 +138,25 @@
    },
    "list_template": "grid-project",
    "detail_template": "project",
-   "position": 1
+   "position": 1,
+   "layout_blocks": {
+    "post_aside": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "consult",
+        "props": {
+         "eyebrow": "Tư vấn kỹ thuật",
+         "heading": "Bạn có dự án tương tự?",
+         "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá.",
+         "button_label": "Gửi yêu cầu báo giá",
+         "button_url": "/lien-he"
+        }
+       }
+      ]
+     }
+    }
+   }
   },
   {
    "key": "tax:post_cat/du-an/du-an-tu-dong-hoa",
@@ -95,7 +166,25 @@
    },
    "list_template": "grid-project",
    "detail_template": "project",
-   "position": 2
+   "position": 2,
+   "layout_blocks": {
+    "post_aside": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "consult",
+        "props": {
+         "eyebrow": "Tư vấn kỹ thuật",
+         "heading": "Bạn có dự án tương tự?",
+         "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá.",
+         "button_label": "Gửi yêu cầu báo giá",
+         "button_url": "/lien-he"
+        }
+       }
+      ]
+     }
+    }
+   }
   },
   {
    "key": "tax:post_cat/du-an/du-an-dien-tu",
@@ -105,7 +194,25 @@
    },
    "list_template": "grid-project",
    "detail_template": "project",
-   "position": 3
+   "position": 3,
+   "layout_blocks": {
+    "post_aside": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "consult",
+        "props": {
+         "eyebrow": "Tư vấn kỹ thuật",
+         "heading": "Bạn có dự án tương tự?",
+         "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá.",
+         "button_label": "Gửi yêu cầu báo giá",
+         "button_url": "/lien-he"
+        }
+       }
+      ]
+     }
+    }
+   }
   },
   {
    "key": "tax:post_cat/du-an/du-an-khuon-mau",
@@ -115,7 +222,25 @@
    },
    "list_template": "grid-project",
    "detail_template": "project",
-   "position": 4
+   "position": 4,
+   "layout_blocks": {
+    "post_aside": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "consult",
+        "props": {
+         "eyebrow": "Tư vấn kỹ thuật",
+         "heading": "Bạn có dự án tương tự?",
+         "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá.",
+         "button_label": "Gửi yêu cầu báo giá",
+         "button_url": "/lien-he"
+        }
+       }
+      ]
+     }
+    }
+   }
   },
   {
    "key": "tax:post_cat/du-an/du-an-hang-khong",
@@ -125,7 +250,25 @@
    },
    "list_template": "grid-project",
    "detail_template": "project",
-   "position": 5
+   "position": 5,
+   "layout_blocks": {
+    "post_aside": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "consult",
+        "props": {
+         "eyebrow": "Tư vấn kỹ thuật",
+         "heading": "Bạn có dự án tương tự?",
+         "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá.",
+         "button_label": "Gửi yêu cầu báo giá",
+         "button_url": "/lien-he"
+        }
+       }
+      ]
+     }
+    }
+   }
   },
   {
    "key": "tax:post_cat/du-an/du-an-gia-dung",
@@ -135,7 +278,25 @@
    },
    "list_template": "grid-project",
    "detail_template": "project",
-   "position": 6
+   "position": 6,
+   "layout_blocks": {
+    "post_aside": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "consult",
+        "props": {
+         "eyebrow": "Tư vấn kỹ thuật",
+         "heading": "Bạn có dự án tương tự?",
+         "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá.",
+         "button_label": "Gửi yêu cầu báo giá",
+         "button_url": "/lien-he"
+        }
+       }
+      ]
+     }
+    }
+   }
   },
   {
    "key": "tax:product_cat/san-pham/tu-dong-hoa",

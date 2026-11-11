@@ -197,7 +197,7 @@ it('keeps the post one column with no side blocks and fewer than two headings, a
     slotsSite();
     $id = slotsSiteId();
 
-    expect(slotsHtml('/tin-tuc/ong-dang-doc'))->not->toContain('post-columns')->not->toContain('<aside');
+    expect(slotsHtml('/tin-tuc/ong-dang-doc'))->not->toContain('post-aside')->not->toContain('<aside');
 
     slotsDefault($id, 'post_aside', [['type' => 'recent_posts', 'props' => []]]);
 
@@ -468,7 +468,7 @@ it('leaves a post with one heading byte for byte as the body was stored, with no
     $html = slotsHtml('/tin-tuc/ong-dang-doc');
 
     expect($html)->toContain("<section class=\"sf-prose\">\n<h2>Chỉ một đề mục</h2><p>Nội dung</p>\n</section>")
-        ->not->toContain('id="muc-')->not->toContain('post-toc')->not->toContain('post-columns');
+        ->not->toContain('id="muc-')->not->toContain('post-toc')->not->toContain('post-aside');
 });
 
 it('keeps the slot-only blocks out of a page body and accepts them in a slot', function (string $type): void {
@@ -658,3 +658,39 @@ it('adds exactly the expected queries to a page for its filled slots, and stays 
     ], 0, 23],
     'a category list' => ['/tin-tuc', ['after_list' => [['type' => 'cta', 'props' => ['heading' => 'Báo giá', 'button_label' => 'Gửi', 'button_url' => '/lien-he']]]], 0, 17],
 ]);
+
+it('prints the post count after each category when the block asks for counts', function (): void {
+    slotsSite();
+    $id = slotsSiteId();
+    slotsDefault($id, 'post_aside', [['type' => 'category_list', 'props' => ['counts' => 'show']]]);
+
+    preg_match('#<section class="slot-categories.*?</section>#s', slotsHtml('/tin-tuc/ong-dang-doc'), $match);
+    $list = $match[0] ?? '';
+
+    // The branch root holds the post being read and six others; the child holds three.
+    expect($list)->toContain('slot-categories--counts')->toContain('slot-categories__count')
+        ->and($list)->toMatch('#Bản tin nội bộ.*?slot-categories__count">\s*3#s');
+});
+
+it('lists the posts of the page category, the one being read marked, when the source is posts', function (): void {
+    slotsSite();
+    $id = slotsSiteId();
+    slotsDefault($id, 'post_aside', [['type' => 'category_list', 'props' => ['source' => 'posts', 'heading' => 'Cùng nhóm']]]);
+
+    preg_match('#<section class="slot-categories.*?</section>#s', slotsHtml('/tin-tuc/ong-dang-doc'), $match);
+    $list = $match[0] ?? '';
+
+    expect($list)->toContain('slot-categories--posts')->toContain('Cùng nhóm')->toContain('Ống đang đọc')->toContain('aria-current="page"')
+        ->and($list)->not->toContain('Việc làm kỹ sư');
+});
+
+it('draws a document card only with a title and a link, and nothing otherwise', function (): void {
+    slotsSite();
+    $id = slotsSiteId();
+    slotsDefault($id, 'post_aside', [['type' => 'file_card', 'props' => ['title' => 'Hồ sơ năng lực', 'text' => 'Tải xuống', 'url' => '/ho-so']]]);
+    $with = slotsHtml('/tin-tuc/ong-dang-doc');
+    expect($with)->toContain('class="slot-file"')->toContain('href="/ho-so"')->toContain('Hồ sơ năng lực')->toContain('>PDF<');
+
+    slotsDefault($id, 'post_aside', [['type' => 'file_card', 'props' => ['title' => 'Không có liên kết']]]);
+    expect(slotsHtml('/tin-tuc/ong-dang-doc'))->not->toContain('slot-file');
+});

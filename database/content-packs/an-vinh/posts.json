@@ -58,7 +58,7 @@
       "type": "gallery",
       "props": {
        "heading": "Hình ảnh thiết kế",
-       "columns": "2",
+       "columns": "1",
        "images": [
         {
          "image": {
@@ -78,11 +78,12 @@
      {
       "type": "video",
       "props": {
-       "heading": "Video minh họa: đồ gá và jig là gì (tiếng Anh) – nguồn kênh MechanicaLEi, giấy phép CC BY",
+       "heading": "Video minh họa",
        "url": "https://www.youtube.com/watch?v=fiKdIcF6x90",
        "poster": {
         "media": "cad-2"
-       }
+       },
+       "caption": "Đồ gá và jig là gì (tiếng Anh) – nguồn kênh MechanicaLEi, giấy phép CC BY."
       }
      },
      {
@@ -106,17 +107,8 @@
          "q": "Thiết kế được điều chỉnh mấy lần?",
          "a": "Số lần điều chỉnh và phạm vi được ghi rõ trong báo giá. Khách hàng duyệt phương án trên mô hình 3D trước khi An Vinh làm bản vẽ chế tạo."
         }
-       ]
-      }
-     },
-     {
-      "type": "cta",
-      "props": {
-       "heading": "Cần tư vấn hoặc báo giá?",
-       "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá. Hotline 0915 66 83 83 · Email quybv@ckanvinh.vn",
-       "button_label": "Gửi yêu cầu báo giá",
-       "button_url": "/lien-he",
-       "variant": "rounded"
+       ],
+       "style": "open"
       }
      }
     ]
@@ -153,7 +145,7 @@
       "type": "gallery",
       "props": {
        "heading": "Hình ảnh gia công",
-       "columns": "2",
+       "columns": "1",
        "images": [
         {
          "image": {
@@ -173,11 +165,12 @@
      {
       "type": "video",
       "props": {
-       "heading": "Video minh họa: máy cắt dây EDM cắt chi tiết – nguồn kênh Kurt Bleyweert, giấy phép CC BY",
+       "heading": "Video minh họa",
        "url": "https://www.youtube.com/watch?v=4IhkMgHkMEA",
        "poster": {
         "media": "edm-1"
-       }
+       },
+       "caption": "Máy cắt dây EDM cắt chi tiết – nguồn kênh Kurt Bleyweert, giấy phép CC BY."
       }
      },
      {
@@ -201,17 +194,8 @@
          "q": "Có nhận cắt một chi tiết, giao gấp không?",
          "a": "Có. An Vinh nhận từ 1 chi tiết; thời gian giao phụ thuộc chiều dày, chiều dài đường cắt và số lần cắt tinh, kỹ sư báo cụ thể khi báo giá."
         }
-       ]
-      }
-     },
-     {
-      "type": "cta",
-      "props": {
-       "heading": "Cần tư vấn hoặc báo giá?",
-       "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá. Hotline 0915 66 83 83 · Email quybv@ckanvinh.vn",
-       "button_label": "Gửi yêu cầu báo giá",
-       "button_url": "/lien-he",
-       "variant": "rounded"
+       ],
+       "style": "open"
       }
      }
     ]
@@ -248,7 +232,7 @@
       "type": "gallery",
       "props": {
        "heading": "Hình ảnh đo kiểm",
-       "columns": "2",
+       "columns": "1",
        "images": [
         {
          "image": {
@@ -286,17 +270,8 @@
          "q": "An Vinh có chứng nhận ISO 9001:2015 không?",
          "a": "Có. An Vinh được ISSQ chứng nhận hệ thống quản lý chất lượng ISO 9001:2015, số HT 3078, hiệu lực từ 01/04/2024 đến 23/02/2027, phạm vi: Gia công rèn, dập, hàn; sản xuất đồ gá, khuôn mẫu."
         }
-       ]
-      }
-     },
-     {
-      "type": "cta",
-      "props": {
-       "heading": "Cần tư vấn hoặc báo giá?",
-       "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá. Hotline 0915 66 83 83 · Email quybv@ckanvinh.vn",
-       "button_label": "Gửi yêu cầu báo giá",
-       "button_url": "/lien-he",
-       "variant": "rounded"
+       ],
+       "style": "open"
       }
      }
     ]
@@ -531,7 +506,7 @@
       "type": "gallery",
       "props": {
        "heading": "Hình ảnh gia công",
-       "columns": "2",
+       "columns": "1",
        "images": [
         {
          "image": {
@@ -551,11 +526,12 @@
      {
       "type": "video",
       "props": {
-       "heading": "Video minh họa: một lần phay CNC từ đầu đến cuối (timelapse) – nguồn kênh HackerspaceOL, giấy phép CC BY",
+       "heading": "Video minh họa",
        "url": "https://www.youtube.com/watch?v=FpYQc5zMLzM",
        "poster": {
         "media": "cnc-1"
-       }
+       },
+       "caption": "Một lần phay CNC từ đầu đến cuối (timelapse) – nguồn kênh HackerspaceOL, giấy phép CC BY."
       }
      },
      {
@@ -579,17 +555,8 @@
          "q": "Có xuất hóa đơn VAT và giao hàng tận nơi?",
          "a": "Có xuất hóa đơn VAT và giao hàng tận nơi trong khu vực Hà Nội và các tỉnh lân cận."
         }
-       ]
-      }
-     },
-     {
-      "type": "cta",
-      "props": {
-       "heading": "Cần tư vấn hoặc báo giá?",
-       "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá. Hotline 0915 66 83 83 · Email quybv@ckanvinh.vn",
-       "button_label": "Gửi yêu cầu báo giá",
-       "button_url": "/lien-he",
-       "variant": "rounded"
+       ],
+       "style": "open"
       }
      }
     ]
@@ -626,7 +593,7 @@
       "type": "gallery",
       "props": {
        "heading": "Hình ảnh hàn & lắp ráp",
-       "columns": "2",
+       "columns": "1",
        "images": [
         {
          "image": {
@@ -664,17 +631,8 @@
          "q": "An Vinh có lắp đặt tại nhà máy khách hàng không?",
          "a": "Có. Với đồ gá và máy chuyên dùng, kỹ thuật viên An Vinh lắp đặt, căn chỉnh và hướng dẫn vận hành tại nhà máy khách hàng."
         }
-       ]
-      }
-     },
-     {
-      "type": "cta",
-      "props": {
-       "heading": "Cần tư vấn hoặc báo giá?",
-       "text": "Gửi bản vẽ hoặc mô tả yêu cầu — kỹ sư sẽ đề xuất phương án và báo giá. Hotline 0915 66 83 83 · Email quybv@ckanvinh.vn",
-       "button_label": "Gửi yêu cầu báo giá",
-       "button_url": "/lien-he",
-       "variant": "rounded"
+       ],
+       "style": "open"
       }
      }
     ]
@@ -741,7 +699,7 @@
      {
       "type": "gallery",
       "props": {
-       "columns": "2",
+       "columns": "1",
        "images": [
         {
          "image": {
@@ -798,7 +756,7 @@
      {
       "type": "gallery",
       "props": {
-       "columns": "2",
+       "columns": "1",
        "images": [
         {
          "image": {
@@ -855,7 +813,7 @@
      {
       "type": "gallery",
       "props": {
-       "columns": "2",
+       "columns": "1",
        "images": [
         {
          "image": {
@@ -912,7 +870,7 @@
      {
       "type": "gallery",
       "props": {
-       "columns": "2",
+       "columns": "1",
        "images": [
         {
          "image": {
@@ -969,7 +927,7 @@
      {
       "type": "gallery",
       "props": {
-       "columns": "2",
+       "columns": "1",
        "images": [
         {
          "image": {
@@ -1026,7 +984,7 @@
      {
       "type": "gallery",
       "props": {
-       "columns": "2",
+       "columns": "1",
        "images": [
         {
          "image": {
@@ -1083,7 +1041,7 @@
      {
       "type": "gallery",
       "props": {
-       "columns": "2",
+       "columns": "1",
        "images": [
         {
          "image": {
@@ -1140,7 +1098,7 @@
      {
       "type": "gallery",
       "props": {
-       "columns": "2",
+       "columns": "1",
        "images": [
         {
          "image": {
@@ -1197,7 +1155,7 @@
      {
       "type": "gallery",
       "props": {
-       "columns": "2",
+       "columns": "1",
        "images": [
         {
          "image": {
@@ -1265,7 +1223,8 @@
          "q": "Team building có được tổ chức hằng năm không?",
          "a": "Có. Đây là hoạt động thường niên của An Vinh, bên cạnh các buổi đào tạo chuyên môn và an toàn lao động."
         }
-       ]
+       ],
+       "style": "open"
       }
      }
     ]
@@ -1313,7 +1272,8 @@
          "q": "Có thể đến tham quan nhà máy không?",
          "a": "Có. Hãy gọi hotline 0915 66 83 83 hoặc gửi yêu cầu qua trang Liên hệ để đặt lịch tham quan cùng kỹ sư An Vinh."
         }
-       ]
+       ],
+       "style": "open"
       }
      }
     ]
@@ -1361,7 +1321,8 @@
          "q": "Bao lâu đào tạo lại một lần?",
          "a": "An Vinh tổ chức đào tạo lại theo kế hoạch hằng năm, đáp ứng quy định pháp luật về huấn luyện an toàn, vệ sinh lao động."
         }
-       ]
+       ],
+       "style": "open"
       }
      }
     ]
@@ -1409,7 +1370,8 @@
          "q": "Khi nào nên gia công trên máy 5 trục?",
          "a": "Khi chi tiết có nhiều mặt cần gia công, mặt nghiêng hoặc bề mặt cong phức tạp; với chi tiết phẳng, đơn giản, máy 3 trục thường kinh tế hơn."
         }
-       ]
+       ],
+       "style": "open"
       }
      }
     ]
@@ -1457,7 +1419,8 @@
          "q": "Robot cộng tác khác robot công nghiệp ở điểm nào?",
          "a": "Robot cộng tác có cảm biến giới hạn lực để làm việc gần người, thường tải nhẹ và chậm hơn; robot công nghiệp nhanh, tải lớn nhưng cần rào che an toàn."
         }
-       ]
+       ],
+       "style": "open"
       }
      }
     ]
@@ -1505,7 +1468,8 @@
          "q": "Lớp phủ PVD có làm thay đổi kích thước khuôn?",
          "a": "Lớp phủ rất mỏng, chỉ vài micromet, nhưng với chi tiết dung sai chặt vẫn cần tính trước khi gia công tinh."
         }
-       ]
+       ],
+       "style": "open"
       }
      }
     ]
@@ -1553,7 +1517,8 @@
          "q": "Khi nào nên cân nhắc in 3D kim loại cho khuôn?",
          "a": "Khi chèn khuôn cần kênh làm mát phức tạp hoặc sản phẩm hay cong vênh do nguội không đều; với chèn khuôn hình dạng đơn giản, gia công truyền thống thường kinh tế hơn."
         }
-       ]
+       ],
+       "style": "open"
       }
      }
     ]
@@ -1601,7 +1566,8 @@
          "q": "Doanh nghiệp nhỏ có nên đi triển lãm không?",
          "a": "Nên, nếu đi có mục tiêu: chuẩn bị trước danh sách công đoạn cần cải thiện và bản vẽ mẫu, để buổi trao đổi với các hãng có kết quả cụ thể."
         }
-       ]
+       ],
+       "style": "open"
       }
      }
     ]

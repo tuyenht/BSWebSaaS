@@ -233,6 +233,9 @@
 @if (! empty($branchMapScript))
 @vite(['resources/js/sf-branch-map.js'])
 @endif
+@if (! empty($postScript))
+@vite(['resources/js/sf-post.js'])
+@endif
 @if (! empty($tocScript))
 @vite(['resources/js/sf-toc.js'])
 @endif
