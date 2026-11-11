@@ -72,9 +72,10 @@ final readonly class PageRenderer
         // A page led by a hero shows no breadcrumb (the hero is its opening), so its head lists none
         // either: the JSON-LD trail and the visible one always match.
         if ($type === 'page' && in_array($leadBlock, ['hero', 'hero_slider'], true)) {
-            unset($extra['breadcrumb']);
+            unset($extra['breadcrumb'], $extra['crumbsShown']);
         }
-        $crumbs = is_array($extra['breadcrumb'] ?? null) ? array_values($extra['breadcrumb']) : [];
+        $shown = $extra['crumbsShown'] ?? $extra['breadcrumb'] ?? null;
+        $crumbs = is_array($shown) ? array_values($shown) : [];
         // The layout with a table of contents prints the page's days in the band that leads it.
         $withToc = $layout === 'theme::layouts.'.TemplateCatalog::PAGE_TOC;
         $dates = $withToc && is_array($extra['pageDates'] ?? null) ? $extra['pageDates'] : [];

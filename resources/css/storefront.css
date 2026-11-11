@@ -1536,6 +1536,7 @@ main:has(.hero, .sf-slider) .page__title {
 .sf-crumbs__link {
     display: inline-flex;
     align-items: center;
+    min-width: 1.5rem;
     min-height: 1.5rem;
     color: var(--color-primary-text);
     font-weight: 600;
