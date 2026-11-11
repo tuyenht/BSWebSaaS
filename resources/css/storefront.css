@@ -92,6 +92,26 @@ html {
     font-size: var(--text-base, 1rem);
 }
 
+/* Moving between two pages of the same site cross-fades (Chrome/Edge 126+, Safari 18.2+; other
+   browsers just load the next page), and the header stays put instead of fading. Pure CSS, no script;
+   none of it, and no smooth scrolling, for a visitor who asked for less motion. */
+@media (prefers-reduced-motion: no-preference) {
+    @view-transition {
+        navigation: auto;
+    }
+
+    .sf-header,
+    .site-header {
+        view-transition-name: sf-header;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+}
+
 @media (max-width: 1023.98px) {
     html[data-fs="l"] {
         font-size: calc(var(--text-base, 1rem) * 1.125);

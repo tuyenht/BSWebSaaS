@@ -1,6 +1,7 @@
 # Storefront Instant Navigation — Quyết định & ràng buộc (L1 View Transitions)
 
 > **Loại:** decision-freeze (note rời, quy ước docs/notes — KHÔNG đánh số ADR-NN; nằm dưới **ADR-02** làm tinh chỉnh tầng theme/vận hành, không phải trụ kiến trúc mới).
+> **Đã dựng (11/2026):** L1 tối thiểu — `@view-transition { navigation: auto }` + `view-transition-name: sf-header` cho thanh đầu trang, cả hai chỉ trong `@media (prefers-reduced-motion: no-preference)`; giảm chuyển động thì cũng tắt `scroll-behavior: smooth` (`resources/css/storefront.css`, ngay sau quy tắc `html`). Footer chưa đặt tên (thường ngoài màn hình; chụp nó tốn công vô ích).
 > **Trạng thái theo lớp:** **L1 = Accepted** · **L0 = Deferred** (→ §25/ADR-06) · **L2 = Proposed, điều-kiện-benchmark**.
 > **Dẫn xuất từ:** design.md **§6** (ADR-02, tầng trình bày) · **§10/ADR-11** (i18n URL/PathBuilder) · **§18** (SLO CWV + benchmark TTFB-VN) · **§24** (UX tối ưu vô hình) · **§25/ADR-06** (cache 5 tầng) · **ADR-15** (hạ tầng/CDN).
 > **Nhãn bằng chứng:** 🟦 người/council chốt · 🟨 suy luận chưa kiểm (verify khi build) · ✅ đã verify từ repo.
@@ -60,6 +61,7 @@ Nền tốc độ cho L2. Thuộc lộ trình cache §25/ADR-06. **Hiện DESIGN
 
 ### 2.3 · L2 — Speculation Rules — **Proposed, điều-kiện-benchmark**
 
+- **Cập nhật 11/2026 ✅:** vùng `baoson.net` trên Cloudflare đã bật **Speed Brain** (header `speculation-rules: "/cdn-cgi/speculation"` thấy trên files.baoson.net) — prefetch chỉ phục vụ từ đệm biên, 0 tải máy gốc. Khi site đi qua proxy Cloudflare: **KHÔNG** gửi Speculation-Rules riêng (sẽ thay thế cái của Speed Brain); chỉ cân nhắc lại nếu cần prerender.
 - **Chốt sau** benchmark TTFB-VN 3 ISP + cache-hit-ratio đo được (§18/§25). CHƯA thiết kế cứng.
 - **Injection provider-agnostic:** server-side qua **Blade** (`<script type="speculationrules">` trong `<head>`), **KHÔNG** qua Cloudflare Worker 🟦 (edge-provider chưa chốt — nhánh ADR-15 có thể bỏ Worker khỏi serving path).
 - **🔴 Ràng buộc CSP (verify khi build L2):** CSP hiện tại `script-src 'self' https://challenges.cloudflare.com` (✅ AddSecurityHeaders.php:98–107) **CHẶN** cả inline `<script type="speculationrules">` lẫn inline JS. ⇒ Khi tới L2 phải (council riêng, sửa AddSecurityHeaders):
