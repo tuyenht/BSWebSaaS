@@ -220,7 +220,7 @@ describe('the split call to action', function (): void {
     });
 
     it('is offered and saved as a variant, and an unknown one draws the default band', function (): void {
-        expect(app(ComponentRegistry::class)->schemaFor('cta')['variant']['options'])->toBe(['default', 'rounded', 'split'])
+        expect(app(ComponentRegistry::class)->schemaFor('cta')['variant']['options'])->toBe(['default', 'rounded', 'split', 'card'])
             ->and(shfcErrors('cta', ['variant' => 'split', 'heading' => 'H']))->toBe([])
             ->and(shfcErrors('cta', ['variant' => 'sideways', 'heading' => 'H']))->not->toBe([])
             ->and(shfcView('cta', ['variant' => 'sideways', 'heading' => 'H']))->toContain('<section class="cta">');

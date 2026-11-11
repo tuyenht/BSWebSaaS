@@ -39,6 +39,9 @@
             'props' => ['title' => $title, 'subtitle' => $band['subtitle'] ?? '', 'image_url' => $band['image'] ?? null, '_lead' => true, '_high' => true, '_crumbs' => $breadcrumb ?? []],
             'listSrcset' => $band['srcset'] ?? null,
         ])
+@if (trim((string) (($slotHtml ?? [])['before_list'] ?? '')) !== '')
+        <div class="slot-band">{!! $slotHtml['before_list'] !!}</div>
+@endif
         <div class="sf-container sf-list__body">
 @if ($sfChips !== [])
             <nav class="sf-chips" aria-label="{{ __('storefront.filter_categories') }}">
@@ -52,10 +55,16 @@
 @if ($sfFeatured !== null)
             @include('theme::partials.sf-card', ['card' => $sfFeatured, 'kind' => 'news', 'level' => 'h2', 'featured' => true, 'sizes' => '(min-width:1360px) 640px, (min-width:1024px) calc((100vw - 4rem)/2), calc(100vw - 2rem)', 'priority' => (empty($band['image']) && ! empty($sfFeatured['image'])) ? 'high' : 'lazy'])
 @endif
+@if ($sfKind === 'job')
+            <header class="sf-jobs-head">
+                <h2 class="sf-jobs-head__title">{{ __('storefront.jobs_open_title') }}</h2>
+                <p class="sf-jobs-head__count">{{ count($sfCards) > 0 ? __('storefront.jobs_open_count', ['count' => count($sfCards)]) : __('storefront.jobs_updated') }}</p>
+            </header>
+@endif
 @if (count($sfCards) > 0)
             <ul class="sf-grid {{ $sfGrid }}">
 @foreach ($sfCards as $index => $card)
-                <li>@include('theme::partials.sf-card', ['card' => $card, 'kind' => $sfKind, 'level' => 'h2', 'list' => true, 'sizes' => $sfSizes, 'priority' => $index === $sfFirstPhoto ? 'high' : 'lazy'])</li>
+                <li>@include('theme::partials.sf-card', ['card' => $card, 'kind' => $sfKind, 'level' => $sfKind === 'job' ? 'h3' : 'h2', 'list' => true, 'sizes' => $sfSizes, 'priority' => $index === $sfFirstPhoto ? 'high' : 'lazy'])</li>
 @endforeach
             </ul>
 @if (! empty($pagination['prevUrl']) || ! empty($pagination['nextUrl']) || ! empty($pagination['firstUrl']))
@@ -72,12 +81,25 @@
             </nav>
 @endif
 @else
+@if ($sfKind === 'job')
+@php
+    $sfCv = \App\Modules\Storefront\Support\SlotContext::contact(is_array($brand ?? null) ? $brand : null)['mail'];
+@endphp
+            <div class="sf-empty-box sf-empty-box--jobs">
+                <p class="sf-empty-box__title">{{ __('storefront.no_jobs') }}</p>
+                <p class="sf-empty-box__text">{{ __('storefront.jobs_empty_hint') }}</p>
+@if ($sfCv !== null)
+                <a class="sf-empty-box__button" href="{{ $sfCv }}">{{ __('storefront.jobs_send_cv') }}</a>
+@endif
+            </div>
+@else
             <div class="sf-empty-box">
-                <p>{{ __($emptyKey ?? ($sfKind === 'job' ? 'storefront.no_jobs' : 'storefront.no_posts')) }}</p>
+                <p>{{ __($emptyKey ?? 'storefront.no_posts') }}</p>
 @if ($sfAll !== null && $sfAll['all'] && ! $sfAll['current'])
                 <a class="sf-empty-box__link" href="{{ $sfAll['url'] }}">{{ $sfAll['name'] }}</a>
 @endif
             </div>
+@endif
 @endif
         </div>
 @if (trim((string) (($slotHtml ?? [])['after_list'] ?? '')) !== '')

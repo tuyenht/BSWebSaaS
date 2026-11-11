@@ -5,7 +5,25 @@
    "name": {
     "vi": "Sản phẩm"
    },
-   "list_template": "grid-product"
+   "list_template": "grid-product",
+   "layout_blocks": {
+    "after_list": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "cta",
+        "props": {
+         "variant": "card",
+         "heading": "Không thấy sản phẩm bạn cần?",
+         "text": "An Vinh chế tạo theo bản vẽ hoặc mẫu thật của khách hàng. Gửi yêu cầu để được tư vấn.",
+         "button_label": "Gửi yêu cầu riêng",
+         "button_url": "/lien-he"
+        }
+       }
+      ]
+     }
+    }
+   }
   },
   {
    "key": "tax:product_cat/san-pham/do-ga",
@@ -14,7 +32,25 @@
     "vi": "Đồ gá"
    },
    "list_template": "grid-product",
-   "position": 1
+   "position": 1,
+   "layout_blocks": {
+    "after_list": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "cta",
+        "props": {
+         "variant": "card",
+         "heading": "Không thấy sản phẩm bạn cần?",
+         "text": "An Vinh chế tạo theo bản vẽ hoặc mẫu thật của khách hàng. Gửi yêu cầu để được tư vấn.",
+         "button_label": "Gửi yêu cầu riêng",
+         "button_url": "/lien-he"
+        }
+       }
+      ]
+     }
+    }
+   }
   },
   {
    "key": "tax:product_cat/san-pham/khuon-mau",
@@ -23,7 +59,25 @@
     "vi": "Khuôn mẫu"
    },
    "list_template": "grid-product",
-   "position": 2
+   "position": 2,
+   "layout_blocks": {
+    "after_list": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "cta",
+        "props": {
+         "variant": "card",
+         "heading": "Không thấy sản phẩm bạn cần?",
+         "text": "An Vinh chế tạo theo bản vẽ hoặc mẫu thật của khách hàng. Gửi yêu cầu để được tư vấn.",
+         "button_label": "Gửi yêu cầu riêng",
+         "button_url": "/lien-he"
+        }
+       }
+      ]
+     }
+    }
+   }
   },
   {
    "key": "tax:product_cat/san-pham/chi-tiet-may",
@@ -32,7 +86,25 @@
     "vi": "Chi tiết máy"
    },
    "list_template": "grid-product",
-   "position": 3
+   "position": 3,
+   "layout_blocks": {
+    "after_list": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "cta",
+        "props": {
+         "variant": "card",
+         "heading": "Không thấy sản phẩm bạn cần?",
+         "text": "An Vinh chế tạo theo bản vẽ hoặc mẫu thật của khách hàng. Gửi yêu cầu để được tư vấn.",
+         "button_label": "Gửi yêu cầu riêng",
+         "button_url": "/lien-he"
+        }
+       }
+      ]
+     }
+    }
+   }
   },
   {
    "key": "tax:post_cat/du-an",
@@ -40,7 +112,28 @@
     "vi": "Dự án"
    },
    "list_template": "grid-project",
-   "detail_template": "project"
+   "detail_template": "project",
+   "layout_blocks": {
+    "after_list": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "cta",
+        "props": {
+         "variant": "rounded",
+         "heading": "Dự án của bạn sẽ là câu chuyện tiếp theo",
+         "text": "Trao đổi với kỹ sư An Vinh để nhận phương án và báo giá phù hợp.",
+         "button_label": "Liên hệ ngay",
+         "button_url": "/lien-he",
+         "extra_style": [
+          "pattern-cross"
+         ]
+        }
+       }
+      ]
+     }
+    }
+   }
   },
   {
    "key": "tax:post_cat/tin-tuc",
@@ -72,10 +165,65 @@
    "name": {
     "vi": "Năng lực"
    },
-   "list_template": null,
+   "list_template": "grid-capability",
    "was": [
     "dich-vu"
-   ]
+   ],
+   "layout_blocks": {
+    "after_list": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "process",
+        "props": {
+         "heading": "Quy Trình Làm Việc",
+         "description": "Sáu bước rõ ràng giúp khách hàng luôn nắm được tiến độ đơn hàng.",
+         "bg": "tint",
+         "steps": [
+          {
+           "title": "Tiếp nhận yêu cầu",
+           "text": "Nhận bản vẽ 2D/3D, mẫu thật hoặc ý tưởng. Ký thoả thuận bảo mật (NDA) khi cần."
+          },
+          {
+           "title": "Phân tích & báo giá",
+           "text": "Đánh giá vật liệu, dung sai, tiến độ và gửi báo giá chi tiết."
+          },
+          {
+           "title": "Thiết kế & lập trình",
+           "text": "Thiết kế 3D, mô phỏng, lập trình gia công tối ưu."
+          },
+          {
+           "title": "Gia công & lắp ráp",
+           "text": "Phay, tiện, cắt dây, hàn, lắp ráp tại 3 nhà máy."
+          },
+          {
+           "title": "Đo kiểm QA/QC",
+           "text": "Kiểm tra kích thước, chức năng; lập biên bản đo kiểm."
+          },
+          {
+           "title": "Bàn giao & hỗ trợ",
+           "text": "Giao hàng, hướng dẫn sử dụng, hỗ trợ kỹ thuật sau bàn giao."
+          }
+         ]
+        }
+       },
+       {
+        "type": "cta",
+        "props": {
+         "variant": "rounded",
+         "heading": "Có bản vẽ cần gia công?",
+         "text": "Gửi bản vẽ 2D/3D, kỹ sư An Vinh sẽ tư vấn phương án và báo giá.",
+         "button_label": "Gửi yêu cầu báo giá",
+         "button_url": "/lien-he",
+         "extra_style": [
+          "pattern-cross"
+         ]
+        }
+       }
+      ]
+     }
+    }
+   }
   },
   {
    "key": "tax:post_cat/du-an/du-an-o-to",
@@ -85,7 +233,28 @@
    },
    "list_template": "grid-project",
    "detail_template": "project",
-   "position": 1
+   "position": 1,
+   "layout_blocks": {
+    "after_list": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "cta",
+        "props": {
+         "variant": "rounded",
+         "heading": "Dự án của bạn sẽ là câu chuyện tiếp theo",
+         "text": "Trao đổi với kỹ sư An Vinh để nhận phương án và báo giá phù hợp.",
+         "button_label": "Liên hệ ngay",
+         "button_url": "/lien-he",
+         "extra_style": [
+          "pattern-cross"
+         ]
+        }
+       }
+      ]
+     }
+    }
+   }
   },
   {
    "key": "tax:post_cat/du-an/du-an-tu-dong-hoa",
@@ -95,7 +264,28 @@
    },
    "list_template": "grid-project",
    "detail_template": "project",
-   "position": 2
+   "position": 2,
+   "layout_blocks": {
+    "after_list": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "cta",
+        "props": {
+         "variant": "rounded",
+         "heading": "Dự án của bạn sẽ là câu chuyện tiếp theo",
+         "text": "Trao đổi với kỹ sư An Vinh để nhận phương án và báo giá phù hợp.",
+         "button_label": "Liên hệ ngay",
+         "button_url": "/lien-he",
+         "extra_style": [
+          "pattern-cross"
+         ]
+        }
+       }
+      ]
+     }
+    }
+   }
   },
   {
    "key": "tax:post_cat/du-an/du-an-dien-tu",
@@ -105,7 +295,28 @@
    },
    "list_template": "grid-project",
    "detail_template": "project",
-   "position": 3
+   "position": 3,
+   "layout_blocks": {
+    "after_list": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "cta",
+        "props": {
+         "variant": "rounded",
+         "heading": "Dự án của bạn sẽ là câu chuyện tiếp theo",
+         "text": "Trao đổi với kỹ sư An Vinh để nhận phương án và báo giá phù hợp.",
+         "button_label": "Liên hệ ngay",
+         "button_url": "/lien-he",
+         "extra_style": [
+          "pattern-cross"
+         ]
+        }
+       }
+      ]
+     }
+    }
+   }
   },
   {
    "key": "tax:post_cat/du-an/du-an-khuon-mau",
@@ -115,7 +326,28 @@
    },
    "list_template": "grid-project",
    "detail_template": "project",
-   "position": 4
+   "position": 4,
+   "layout_blocks": {
+    "after_list": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "cta",
+        "props": {
+         "variant": "rounded",
+         "heading": "Dự án của bạn sẽ là câu chuyện tiếp theo",
+         "text": "Trao đổi với kỹ sư An Vinh để nhận phương án và báo giá phù hợp.",
+         "button_label": "Liên hệ ngay",
+         "button_url": "/lien-he",
+         "extra_style": [
+          "pattern-cross"
+         ]
+        }
+       }
+      ]
+     }
+    }
+   }
   },
   {
    "key": "tax:post_cat/du-an/du-an-hang-khong",
@@ -125,7 +357,28 @@
    },
    "list_template": "grid-project",
    "detail_template": "project",
-   "position": 5
+   "position": 5,
+   "layout_blocks": {
+    "after_list": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "cta",
+        "props": {
+         "variant": "rounded",
+         "heading": "Dự án của bạn sẽ là câu chuyện tiếp theo",
+         "text": "Trao đổi với kỹ sư An Vinh để nhận phương án và báo giá phù hợp.",
+         "button_label": "Liên hệ ngay",
+         "button_url": "/lien-he",
+         "extra_style": [
+          "pattern-cross"
+         ]
+        }
+       }
+      ]
+     }
+    }
+   }
   },
   {
    "key": "tax:post_cat/du-an/du-an-gia-dung",
@@ -135,7 +388,28 @@
    },
    "list_template": "grid-project",
    "detail_template": "project",
-   "position": 6
+   "position": 6,
+   "layout_blocks": {
+    "after_list": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "cta",
+        "props": {
+         "variant": "rounded",
+         "heading": "Dự án của bạn sẽ là câu chuyện tiếp theo",
+         "text": "Trao đổi với kỹ sư An Vinh để nhận phương án và báo giá phù hợp.",
+         "button_label": "Liên hệ ngay",
+         "button_url": "/lien-he",
+         "extra_style": [
+          "pattern-cross"
+         ]
+        }
+       }
+      ]
+     }
+    }
+   }
   },
   {
    "key": "tax:product_cat/san-pham/tu-dong-hoa",
@@ -144,7 +418,25 @@
     "vi": "Tự động hóa"
    },
    "list_template": "grid-product",
-   "position": 4
+   "position": 4,
+   "layout_blocks": {
+    "after_list": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "cta",
+        "props": {
+         "variant": "card",
+         "heading": "Không thấy sản phẩm bạn cần?",
+         "text": "An Vinh chế tạo theo bản vẽ hoặc mẫu thật của khách hàng. Gửi yêu cầu để được tư vấn.",
+         "button_label": "Gửi yêu cầu riêng",
+         "button_url": "/lien-he"
+        }
+       }
+      ]
+     }
+    }
+   }
   },
   {
    "key": "tax:post_cat/tuyen-dung",
@@ -152,7 +444,45 @@
     "vi": "Tuyển dụng"
    },
    "list_template": "grid-job",
-   "detail_template": "job"
+   "detail_template": "job",
+   "layout_blocks": {
+    "before_list": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "features",
+        "props": {
+         "heading": "Vì sao chọn An Vinh?",
+         "variant": "icon-head",
+         "bg": "tint",
+         "items": [
+          {
+           "icon": "graduation",
+           "title": "Đào tạo bài bản",
+           "text": "Đào tạo vận hành CNC, kể cả máy 5 trục, và an toàn lao động định kỳ."
+          },
+          {
+           "icon": "coin",
+           "title": "Thu nhập & chế độ",
+           "text": "Lương theo năng lực, thưởng lễ Tết, đóng BHXH đầy đủ, phụ cấp ăn ca."
+          },
+          {
+           "icon": "pin",
+           "title": "Làm việc gần nhà",
+           "text": "3 nhà máy tại xã Trung Giã và xã Thạch Thất, Hà Nội."
+          },
+          {
+           "icon": "group",
+           "title": "Gắn kết",
+           "text": "Team building thường niên, môi trường làm việc tập thể."
+          }
+         ]
+        }
+       }
+      ]
+     }
+    }
+   }
   }
  ]
 }

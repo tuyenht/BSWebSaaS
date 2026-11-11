@@ -188,6 +188,14 @@ final class Applier
         }
         $this->paths->refreshBranch($taxonomy->id);
 
+        // The category's own block slots: written to its meta (other keys stay) and listed in the
+        // usage index, as the admin does when it saves them.
+        $layout = Cast::arr($desired['layout_blocks'] ?? null);
+        if ($layout !== []) {
+            Taxonomy::query()->whereKey($taxonomy->id)->update(['meta->'.LayoutSlots::META_KEY => $layout]);
+            $this->blockUsage->sync('taxonomy', $taxonomy->id, LayoutSlots::blockLists($layout));
+        }
+
         // A slug change in any language, a new parent, or both move the posts and products under the
         // branch: relinked with every change it went through, as the Planner predicted them. A post
         // or product filed there after the re-plan would move unplanned (no backup of its old address,
