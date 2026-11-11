@@ -1,7 +1,8 @@
 {{--
     Lead-capture form block (Forms\Components\FormComponent). SSR Blade; the only client JS is the
-    Cloudflare Turnstile widget, loaded async/defer ONLY when a site_key is configured (prod) — so
-    dev/test render no third-party JS. The widget appears only when the visitor has to act
+    Cloudflare Turnstile widget, ONLY when a site_key is configured (prod) — so dev/test render no
+    third-party JS — and sf-turnstile.js fetches Cloudflare's script only once the visitor starts on
+    the form (a send before the check answers waits for it). The widget appears only when the visitor has to act
     (data-appearance="interaction-only"): a check that passes on its own leaves no empty box above
     the button. Anti-spam: hidden honeypot (off-screen, a11y-hidden) + Turnstile + server-side rate-limit. POSTs same-origin to /forms/{key} (form-action 'self').
     Optional: a `description` line under the heading, and a `map_embed` (host-checked against

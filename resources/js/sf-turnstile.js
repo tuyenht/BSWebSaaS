@@ -61,10 +61,15 @@ document.addEventListener('submit', (e) => {
     }
     waiting.add(form);
     const submitter = e.submitter;
+    submitter?.setAttribute('aria-busy', 'true');
     Promise.race([prepare(form), new Promise((r) => setTimeout(r, WAIT_MS))])
         .catch(() => {})
+        // A form ignores requestSubmit() while its own submit event is still running, which is the case
+        // when the check had already settled (blocked script, expired token): resend from a later task.
+        .then(() => new Promise((r) => setTimeout(r)))
         .then(() => {
             waiting.delete(form);
+            submitter?.removeAttribute('aria-busy');
             ready.add(form);
             if (form.requestSubmit) {
                 form.requestSubmit(submitter?.form === form ? submitter : undefined);

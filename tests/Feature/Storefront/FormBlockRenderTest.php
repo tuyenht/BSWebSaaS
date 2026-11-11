@@ -7,9 +7,12 @@ use App\Modules\Storefront\Support\PrivacyPolicyLink;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Theme\Components\ComponentRegistry;
+use Illuminate\Foundation\Vite as FoundationVite;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Vite;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 
 /*
@@ -88,8 +91,18 @@ it('omits the Turnstile widget when no site_key is configured (dev)', function (
 it('includes the Turnstile widget when a site_key is configured', function (): void {
     config(['services.turnstile.site_key' => '0x4AAAAAADtFZhUYB224F9cf']);
     seedContactPageWithForm();
+    // A Vite that prints the entry it was asked for, so the test sees the loader is wired in.
+    Vite::clearResolvedInstance();
+    $this->swap(FoundationVite::class, new class extends FoundationVite
+    {
+        public function __invoke($entrypoints, $buildDirectory = null)
+        {
+            return new HtmlString('<script data-vite-entry="'.implode(',', (array) $entrypoints).'"></script>');
+        }
+    });
 
     expect($this->get('http://a.test/lien-he')->getContent())
+        ->toContain('data-vite-entry="resources/js/sf-turnstile.js"')
         ->toContain('data-sitekey="0x4AAAAAADtFZhUYB224F9cf"')
         // Cloudflare's script is fetched by sf-turnstile.js once the visitor starts on the form, not on arrival.
         ->not->toContain('challenges.cloudflare.com/turnstile/v0/api.js')
