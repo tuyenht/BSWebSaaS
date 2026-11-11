@@ -375,15 +375,15 @@ it('keeps a member\'s limits when their role changes', function (): void {
 it('names the post categories a limited member may write in on the members list, and none for an owner', function (): void {
     $owner = csMember(1, 'owner');
     $member = csMember(1, 'editor');
-    $news = csCategory(1, 'Tin tức');
+    $news = csCategory(1, 'Bản tin nội bộ');
     $jobs = csCategory(1, 'Tuyển dụng');
     csLimit(1, $member, $news, $jobs);
     csLimit(1, $owner, $news); // an owner is never limited, whatever rows exist
 
     $html = csIn(1, fn (): string => Livewire::actingAs($owner->fresh())->test(Index::class)->html());
 
-    expect($html)->toContain(e(__('admin.members.scope_posts', ['names' => 'Tin tức, Tuyển dụng'])))
-        ->and(substr_count($html, e(__('admin.members.scope_posts', ['names' => 'Tin tức'])).'</span>'))->toBe(0);
+    expect($html)->toContain(e(__('admin.members.scope_posts', ['names' => 'Bản tin nội bộ, Tuyển dụng'])))
+        ->and(substr_count($html, e(__('admin.members.scope_posts', ['names' => 'Bản tin nội bộ'])).'</span>'))->toBe(0);
 });
 
 it('clears a member\'s limits when they leave the site, in the same step', function (): void {
