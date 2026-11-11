@@ -13,8 +13,10 @@
         'align' => ['left', 'center'],
     ];
     $hideOn = $props['hide_on'] ?? 'none';
+    $motion = in_array($props['motion'] ?? null, \App\Modules\Theme\Components\StyleProps::MOTION, true) ? $props['motion'] : 'auto';
+    $autoMotion = \App\Modules\Theme\Components\StyleProps::autoMotion($block['type']);
     $summary = __('entries.look_summary_hide_'.(in_array($hideOn, ['none', 'mobile', 'desktop'], true) ? $hideOn : 'none'))
-        .' · '.__('entries.look_summary_motion_'.(in_array($props['motion'] ?? 'none', ['none', 'fade', 'rise'], true) ? ($props['motion'] ?? 'none') : 'none'))
+        .' · '.__('entries.look_summary_motion_'.($motion === 'auto' ? $autoMotion : $motion))
         .(! empty($props['anchor_id']) ? ' · #'.$props['anchor_id'] : '');
 @endphp
 <fieldset class="block-look" wire:key="look-{{ $i }}">
@@ -120,12 +122,14 @@
         <div class="block-look__setting" role="group" aria-labelledby="look-{{ $i }}-motion">
             <span class="block-look__label" id="look-{{ $i }}-motion">{{ __('entries.look_motion') }}</span>
             <div class="seg">
-                @foreach (['none', 'fade', 'rise'] as $value)
-                    <button type="button" wire:click="setLook({{ $i }}, 'motion', '{{ $value }}')" aria-pressed="{{ ($props['motion'] ?? 'none') === $value ? 'true' : 'false' }}">{{ __('entries.look_motion_'.$value) }}</button>
+                @foreach (['auto', 'none', 'fade', 'rise'] as $value)
+                    <button type="button" wire:click="setLook({{ $i }}, 'motion', '{{ $value }}')" aria-pressed="{{ $motion === $value ? 'true' : 'false' }}">{{ __('entries.look_motion_'.$value) }}</button>
                 @endforeach
             </div>
             @if ($look['first'])
                 <p class="block-look__hint">{{ __('entries.look_motion_first') }}</p>
+            @elseif ($motion === 'auto')
+                <p class="block-look__hint">{{ __('entries.look_motion_auto_hint', ['effect' => __('entries.look_summary_motion_'.$autoMotion)]) }}</p>
             @endif
         </div>
         <label class="block-look__setting">

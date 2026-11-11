@@ -1773,6 +1773,8 @@
     "entries.look_summary_hide_desktop": "Chỉ điện thoại",
     "entries.look_summary_hide_mobile": "Chỉ máy tính",
     "entries.look_motion": "Hiệu ứng khi cuộn tới",
+    "entries.look_motion_auto": "Tự động",
+    "entries.look_motion_auto_hint": "Chọn sẵn theo loại khối: :effect.",
     "entries.look_motion_none": "Không",
     "entries.look_motion_fade": "Hiện dần",
     "entries.look_motion_rise": "Trượt lên",

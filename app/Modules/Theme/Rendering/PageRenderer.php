@@ -59,7 +59,7 @@ final readonly class PageRenderer
         // FAQPage structured data from the question blocks the page draws (body and slots).
         $extra += ($faq = self::faqLd($scripts)) !== null ? ['faqLd' => $faq] : [];
         // The scroll-in motion script loads only on a page with a block that moves.
-        $extra += $this->blocks->moves($scripts) ? ['sectionsScript' => true] : [];
+        $extra += $this->blocks->moves($body) || ($slots['blocks'] !== [] && $this->blocks->moves(['blocks' => self::slotBlockList($slots['blocks'])], true)) ? ['sectionsScript' => true] : [];
         // The click-to-load video script loads only on a page with a video it can play.
         $extra += self::playsVideo($scripts) || $this->blocks->playsRichVideo($scripts) ? ['videoScript' => true] : [];
         // The count-up script loads only on a page with a stats block that holds a number.
@@ -246,7 +246,7 @@ final readonly class PageRenderer
         $flags = [
             // A slider with two or more slides rotates, and a list block's rows slide: the same checks as a body's.
             'sliderScript' => self::hasRails($scripts) || (in_array('hero_slider', $this->blocks->types($scripts), true) && (self::sliderHints($scripts, null, $this->media)['sliderScript'] ?? false)),
-            'sectionsScript' => $this->blocks->moves($scripts),
+            'sectionsScript' => $this->blocks->moves($scripts, true),
             'videoScript' => self::playsVideo($scripts) || $this->blocks->playsRichVideo($scripts),
             'statsScript' => self::countsUp($scripts),
             'tabsScript' => self::hasTabs($scripts),

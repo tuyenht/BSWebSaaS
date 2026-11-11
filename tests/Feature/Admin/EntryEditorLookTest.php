@@ -43,6 +43,9 @@ it('shows the look panel under each block and keeps the look props out of the bl
         $test->assertSee(__('entries.look_heading'))
             ->assertSee(__('entries.look_scheme_brand'))
             ->assertSee(__('entries.look_motion_first'))
+            // The second block keeps the automatic choice and says what it draws for its kind.
+            ->assertSee(__('entries.look_motion_auto'))
+            ->assertSee(__('entries.look_motion_auto_hint', ['effect' => __('entries.look_summary_motion_none')]))
             ->assertSee(__('entries.look_spacing_unset'))
             ->assertDontSeeHtml('wire:model="blocks.0.props.width"')
             ->assertDontSeeHtml('wire:model="blocks.0.props.scheme"')
