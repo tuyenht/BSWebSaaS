@@ -78,11 +78,12 @@
      {
       "type": "video",
       "props": {
-       "heading": "Video minh họa: đồ gá và jig là gì (tiếng Anh) – nguồn kênh MechanicaLEi, giấy phép CC BY",
+       "heading": "Video & hình ảnh",
        "url": "https://www.youtube.com/watch?v=fiKdIcF6x90",
        "poster": {
         "media": "cad-2"
-       }
+       },
+       "caption": "Video minh họa: đồ gá và jig là gì (tiếng Anh). Nguồn kênh MechanicaLEi, giấy phép CC BY"
       }
      },
      {
@@ -176,11 +177,12 @@
      {
       "type": "video",
       "props": {
-       "heading": "Video minh họa: máy cắt dây EDM cắt chi tiết – nguồn kênh Kurt Bleyweert, giấy phép CC BY",
+       "heading": "Video & hình ảnh",
        "url": "https://www.youtube.com/watch?v=4IhkMgHkMEA",
        "poster": {
         "media": "edm-1"
-       }
+       },
+       "caption": "Video minh họa: máy cắt dây EDM cắt chi tiết. Nguồn kênh Kurt Bleyweert, giấy phép CC BY"
       }
      },
      {
@@ -569,11 +571,12 @@
      {
       "type": "video",
       "props": {
-       "heading": "Video minh họa: một lần phay CNC từ đầu đến cuối (timelapse) – nguồn kênh HackerspaceOL, giấy phép CC BY",
+       "heading": "Video & hình ảnh",
        "url": "https://www.youtube.com/watch?v=FpYQc5zMLzM",
        "poster": {
         "media": "cnc-1"
-       }
+       },
+       "caption": "Video minh họa: một lần phay CNC từ đầu đến cuối (timelapse). Nguồn kênh HackerspaceOL, giấy phép CC BY"
       }
      },
      {

@@ -87,6 +87,9 @@
       "locality": {
        "vi": "Trung Giã"
       },
+      "image_media_id": {
+       "media": "factory-1"
+      },
       "map_query": "Cơ khí An Vinh, Xuân Sơn, Trung Giã, Hà Nội",
       "lat": 21.2983367,
       "lng": 105.8672342,
@@ -206,10 +209,12 @@
   },
   {
    "key": "setting:storefront.layout_blocks",
-   "note": "Cột phải bài năng lực, dự án, tin tức và dải cuối trang sản phẩm; chỉ các ô này do gói quản lý.",
+   "note": "Cột phải bài năng lực, dự án, tin tức, dải cuối trang sản phẩm và hai ô quanh nút báo giá của trang sản phẩm; chỉ các ô này do gói quản lý.",
    "managed_keys": [
     "post_aside",
-    "after_product"
+    "after_product",
+    "product_before_action",
+    "product_after_action"
    ],
    "value": {
     "post_aside": {
@@ -250,6 +255,30 @@
          "text": "Gửi bản vẽ cụm chi tiết và sản lượng dự kiến – kỹ sư An Vinh phản hồi trong thời gian sớm nhất.",
          "button_label": "Gửi yêu cầu báo giá",
          "button_url": "/lien-he"
+        }
+       }
+      ]
+     }
+    },
+    "product_before_action": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "richtext_html",
+        "props": {
+         "html": "<p>Sản phẩm chế tạo theo yêu cầu – <strong>giá phụ thuộc bản vẽ, vật liệu và số lượng.</strong></p>"
+        }
+       }
+      ]
+     }
+    },
+    "product_after_action": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "richtext_html",
+        "props": {
+         "html": "<ul><li>ISO 9001:2015</li><li>Bảo mật bản vẽ (NDA)</li><li>Biên bản đo kiểm theo lô</li><li>Xuất hoá đơn VAT</li></ul>"
         }
        }
       ]
