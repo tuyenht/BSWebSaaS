@@ -9545,9 +9545,10 @@ html:has(.sf-viewer[open]) {
     color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white));
 }
 
-/* Projects: the arrows are centred on the row's edge (half outside the first and last card), and the
-   "view all" button on a dark band is the amber one. */
-@media (min-width: 640px) {
+/* Projects: the arrows are centred on the row's edge (half outside the first and last card) only where the
+   page margin is wide enough to hold them without a sideways scroll, and the "view all" button on a dark
+   band is the amber one. */
+@media (min-width: 1360px) {
     .sf-cards--project .sf-rail__prev {
         left: -1.375rem;
     }
