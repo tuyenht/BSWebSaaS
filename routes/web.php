@@ -52,14 +52,20 @@ use App\Modules\Storefront\Http\Controllers\ProductPreviewController;
 use App\Modules\Storefront\Http\Controllers\SitemapController;
 use App\Modules\Storefront\Http\Controllers\StorefrontController;
 use App\Modules\Storefront\Http\Middleware\ConditionalGet;
+use App\Modules\Storefront\Http\Middleware\EdgeCacheHeaders;
+use App\Modules\Storefront\Http\Middleware\StorefrontSession;
 use App\Modules\Tenancy\Http\Controllers\CaddyAskController;
 use App\Modules\Tenancy\Http\Middleware\ServeOnPrimaryDomain;
 use App\Modules\Tenancy\Http\Middleware\SetCurrentSite;
 use App\Modules\Theme\Theming\SiteSeo;
 use Illuminate\Auth\Events\Verified;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
+use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 /*
  * Two-plane routing (P0.8) + dynamic storefront render (P1.3). Order matters: the
@@ -322,17 +328,27 @@ Route::post('/forms/{key}', FormSubmissionController::class)
     ->middleware([SetCurrentSite::class, 'site.active'])
     ->name('storefront.forms.submit');
 
+// ── Public pages (sitemap, robots, the storefront) — no session for a visitor who brings no
+//    session cookie, so the edge may keep the page (StorefrontSession, EdgeCacheHeaders); the web
+//    group's session, shared errors and forgery check come off (a GET changes nothing). Early
+//    Hints: the first Vite assets the page preloads go out as Link headers too. ─────────────
+$storefrontSessionless = [StartSession::class, ShareErrorsFromSession::class, PreventRequestForgery::class];
+$storefrontPage = [
+    StorefrontSession::class, ServeOnPrimaryDomain::class, SetCurrentSite::class, 'site.active',
+    ConditionalGet::class, AddLinkHeadersForPreloadedAssets::class.':6', EdgeCacheHeaders::class,
+];
+
 // ── Per-tenant sitemap + robots (same middleware as storefront; registered BEFORE the
 //    fallback so these explicit routes win). public/robots.txt is deleted; this route
 //    emits the dynamic per-host Sitemap: line instead. ─────────────────────────────
 Route::get('/sitemap.xml', SitemapController::class)
-    ->middleware([ServeOnPrimaryDomain::class, SetCurrentSite::class, 'site.active', ConditionalGet::class]);
+    ->withoutMiddleware($storefrontSessionless)->middleware($storefrontPage);
 
 // Numbered pages of a site over the 50,000-URL limit, listed by /sitemap.xml's <sitemapindex>.
 // {page} is a position (1, 2, …), never a route id; a leading zero falls through to a 404.
 Route::get('/sitemap-{page}.xml', [SitemapController::class, 'page'])
     ->where('page', '[1-9][0-9]{0,5}')
-    ->middleware([ServeOnPrimaryDomain::class, SetCurrentSite::class, 'site.active', ConditionalGet::class]);
+    ->withoutMiddleware($storefrontSessionless)->middleware($storefrontPage);
 
 // The body follows the site's search settings (SiteSeo): hidden from Google = everything
 // disallowed; otherwise the custom text or the safe default, with the Sitemap: line while the
@@ -341,9 +357,9 @@ Route::get('/robots.txt', function (Request $request, SiteSeo $seo) {
     $sitemap = $request->getScheme().'://'.$request->getHost().'/sitemap.xml';
 
     return response($seo->robotsTxt($sitemap), 200, ['Content-Type' => 'text/plain; charset=utf-8', 'X-Content-Type-Options' => 'nosniff']);
-})->middleware([ServeOnPrimaryDomain::class, SetCurrentSite::class, 'site.active', ConditionalGet::class]);
+})->withoutMiddleware($storefrontSessionless)->middleware($storefrontPage);
 
 // ── Storefront plane — public, tenant context. A fallback so it never shadows a
 //    defined route; resolves dynamic content for any other path (404 if none). ─────
 Route::fallback(StorefrontController::class)
-    ->middleware([ServeOnPrimaryDomain::class, SetCurrentSite::class, 'site.active', ConditionalGet::class]);
+    ->withoutMiddleware($storefrontSessionless)->middleware($storefrontPage);

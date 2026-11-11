@@ -34,7 +34,7 @@ it('sends the same weak ETag for two identical requests', function (string $path
     $etag = $first->headers->get('ETag');
     expect($etag)->toMatch('~^W/"[0-9a-f]{32}"$~')   // weak: the bytes may be compressed on the way out
         ->and($second->headers->get('ETag'))->toBe($etag)
-        ->and($first->headers->get('Cache-Control'))->toContain('no-cache');
+        ->and($first->headers->get('Cache-Control'))->toContain('public')->toContain('max-age=0');
 })->with('crawlable');
 
 it('answers If-None-Match with 304 and an empty body', function (string $path): void {
@@ -45,7 +45,7 @@ it('answers If-None-Match with 304 and an empty body', function (string $path): 
     $response->assertStatus(304);
     expect($response->getContent())->toBe('')
         ->and($response->headers->get('ETag'))->toBe($etag)
-        ->and($response->headers->get('Cache-Control'))->toContain('no-cache');
+        ->and($response->headers->get('Cache-Control'))->toContain('public')->toContain('max-age=0');
 
     $this->get('http://other.platform.test'.$path, ['If-None-Match' => '"stale"'])->assertOk();
 })->with('crawlable');
@@ -79,12 +79,14 @@ it('puts no ETag on a 404, on a POST or on the admin pages', function (): void {
     $this->post('http://other.platform.test/forms/none', [])->assertHeaderMissing('ETag');
 });
 
-it('keeps sending the session cookies on a 304', function (): void {
+it('answers a visitor who brings a session cookie in full: private, untagged, with their cookie', function (): void {
     $etag = $this->get('http://other.platform.test/')->assertOk()->headers->get('ETag');
 
-    $response = $this->get('http://other.platform.test/', ['If-None-Match' => $etag])->assertStatus(304);
+    $response = $this->withCookie((string) config('session.cookie'), 'visitor')
+        ->get('http://other.platform.test/', ['If-None-Match' => $etag])->assertOk()->assertHeaderMissing('ETag');
 
-    expect(collect($response->headers->getCookies())->map->getName()->all())->toContain('XSRF-TOKEN');
+    expect(collect($response->headers->getCookies())->map->getName()->all())->toContain((string) config('session.cookie'))
+        ->and($response->headers->get('Cache-Control'))->toBe('no-store, private');
 });
 
 it('matches a weak tag, a list and a star as a proxy or crawler sends them', function (string $form): void {
