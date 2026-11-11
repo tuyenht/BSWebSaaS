@@ -68,6 +68,7 @@ test('placeholder text: found in visible text only', () => {
     assert.deepEqual(placeholderHits('<body><p>Lorem ipsum dolor</p><p>Price: NaN</p></body>'), ['lorem ipsum', 'NaN']);
     assert.deepEqual(placeholderHits('<body><p>Hello {{ name }}</p><p>TODO fix</p><p>undefined</p></body>'), ['TODO', '{{', 'undefined']);
     assert.deepEqual(placeholderHits('<head><title>TODO</title></head><body><script>var a = undefined; {{x}}</script><!-- TODO --><p>Fine</p></body>'), []);
+    assert.deepEqual(placeholderHits('<body><pre><code>{{ name }}</code></pre><p>Read <code>NaN</code> docs</p></body>'), []);
 });
 
 test('first content image: lazy is flagged', () => {
@@ -95,4 +96,15 @@ test('page facts: duplicates, og, viewport, long title, alternates', () => {
     assert.equal(f.viewport, false);
     assert.equal(f.titleLong, true);
     assert.deepEqual(f.alternates, [{ lang: 'en', href: 'https://x.test/en' }]);
+});
+
+test('a malformed canonical or hreflang href is reported, never thrown', () => {
+    const f = pageFacts('<html lang="vi"><head><link rel="canonical" href="http://[x"><link rel="alternate" hreflang="en" href="http://[y"></head><body></body></html>', 'https://a.test/p');
+    assert.equal(f.canonicalHref, '');
+    assert.equal(f.badHref, 2);
+    assert.deepEqual(f.alternates, []);
+});
+
+test('mixed content ignores comments and URLs inside inline script text', () => {
+    assert.deepEqual(mixedContent('<!-- <img src="http://a/x.png"> --><script>document.write(\'<script src="http://a/y.js">\')</script><img src="http://a/z.png">', 'https://s.test/'), ['http://a/z.png']);
 });

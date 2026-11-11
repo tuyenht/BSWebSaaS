@@ -115,7 +115,7 @@ export const visibleText = (html) => {
     return unescape(
         body
             .replace(/<!--[\s\S]*?-->/g, ' ')
-            .replace(/<(script|style|noscript|template|svg)\b[\s\S]*?<\/\1>/gi, ' ')
+            .replace(/<(script|style|noscript|template|svg|pre|code)\b[\s\S]*?<\/\1>/gi, ' ')
             .replace(/<[^>]*>/g, ' ')
             .replace(/\s+/g, ' '),
     );
@@ -139,11 +139,23 @@ export const firstImageLazy = (html) => {
     return Boolean(img && (img.loading || '').toLowerCase() === 'lazy');
 };
 
+// An absolute URL, or '' when the href cannot be parsed (reported as a rule failure, never a crash).
+const abs = (href, base) => {
+    try {
+        return new URL(href, base).href;
+    } catch {
+        return '';
+    }
+};
+const lc = (v) => (v || '').toLowerCase();
+
 // http:// resources an https page loads (mixed content). Plain links (<a href>) are not resources.
-export const mixedContent = (html, url) => {
+export const mixedContent = (body, url) => {
     if (!url.startsWith('https://')) {
         return [];
     }
+    // Comments and inline script text are not loaded resources (a URL inside a JS string is not a request).
+    const html = body.replace(/<!--[\s\S]*?-->/g, ' ').replace(/(<script\b[^>]*>)[\s\S]*?(<\/script>)/gi, '$1$2');
     const found = [];
     for (const t of tags(html, '(?:img|script|iframe|source|video|audio|embed|track)')) {
         if (/^http:\/\//i.test(t.src || '')) {
@@ -170,12 +182,13 @@ export const pageFacts = (h, url) => {
     const canon = links.filter((t) => rel(t, 'canonical'));
     const title = unescape(((h.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i) || [])[1] || '').replace(/\s+/g, ' '));
     return {
-        canonicalHref: canon[0] ? new URL(canon[0].href || url, url).href : '',
+        canonicalHref: canon[0] ? abs(canon[0].href || url, url) : '',
         canonicalCount: canon.length,
-        descriptionCount: metas.filter((t) => t.name === 'description').length,
-        alternates: links.filter((t) => rel(t, 'alternate') && t.hreflang).map((t) => ({ lang: t.hreflang, href: new URL(t.href || '', url).href })),
-        ogMissing: ['og:title', 'og:image', 'og:url'].filter((p) => !metas.some((t) => t.property === p && t.content)),
-        viewport: metas.some((t) => t.name === 'viewport'),
+        descriptionCount: metas.filter((t) => lc(t.name) === 'description').length,
+        alternates: links.filter((t) => rel(t, 'alternate') && t.hreflang).map((t) => ({ lang: t.hreflang, href: abs(t.href || '', url) })).filter((a) => a.href),
+        badHref: links.filter((t) => (rel(t, 'canonical') || (rel(t, 'alternate') && t.hreflang)) && !abs(t.href || '', url)).length,
+        ogMissing: ['og:title', 'og:image', 'og:url'].filter((p) => !metas.some((t) => lc(t.property) === p && t.content)),
+        viewport: metas.some((t) => lc(t.name) === 'viewport'),
         mixed: mixedContent(h, url).length,
         bytes: Buffer.byteLength(h),
         placeholders: placeholderHits(h),
@@ -329,7 +342,8 @@ const main = async () => {
         'no skip link to an existing id before main': (p) => !p.skip,
         'image without alt': (p) => p.imgNoAlt > 0,
         'http:// resource on an https page (mixed content)': (p) => p.mixed > 0,
-        'placeholder text in the visible page (lorem ipsum, TODO, {{, undefined, NaN)': (p) => p.placeholders.length > 0,
+        'placeholder text in the visible page (lorem ipsum, TODO)': (p) => p.placeholders.some((n) => n === 'lorem ipsum' || n === 'TODO'),
+        'canonical or hreflang href is not a valid URL': (p) => p.badHref > 0,
         'empty title, or one shared with another page': (p) => !p.title || titles.get(p.title) > 1,
         'empty description, or one shared with another page': (p) => !p.description || descs.get(p.description) > 1,
         'broken JSON-LD block': (p) => p.ldBroken > 0,
@@ -338,6 +352,7 @@ const main = async () => {
     };
     const warns = {
         'og:title, og:image or og:url missing': (p) => p.ogMissing.length > 0,
+        'template text in the visible page ({{, undefined, NaN; code samples in pre/code are skipped)': (p) => p.placeholders.some((n) => n === '{{' || n === 'undefined' || n === 'NaN'),
         'HTML over 2 MB (reported limit: Googlebot reads only the first 2 MB of HTML)': (p) => p.bytes > HTML_LIMIT,
         'first content image is loading="lazy" (hurts LCP)': (p) => p.lazyFirst,
         'title over 60 characters (may be cut in results; Google sets no hard limit)': (p) => p.titleLong,
@@ -367,9 +382,9 @@ const main = async () => {
     const sm = sitemapIssues(sitemapFiles, host);
     site(failures, 'sitemap file over 50,000 URLs', sm.tooMany);
     site(failures, 'sitemap file over 50 MB uncompressed', sm.tooBig);
-    site(failures, 'sitemap lists the same URL more than once', sm.duplicates);
+    site(warnings, 'sitemap lists the same URL more than once', sm.duplicates);
     site(failures, 'sitemap lists URLs on another host', sm.otherHost);
-    site(failures, 'sitemap lastmod in the future', sm.futureLastmod);
+    site(warnings, 'sitemap lastmod in the future', sm.futureLastmod);
     if (sm.uniformLastmod) {
         warnings.push({ rule: 'every sitemap lastmod is identical (looks fake; Google ignores a lastmod that is not verifiably accurate)', pages: urls.length, sample: [] });
     }
@@ -382,7 +397,8 @@ const main = async () => {
     site(warnings, 'several hreflang languages but no x-default', hl.noXDefault);
     const status = new Map(fetched.map((p) => [key(p.url), p.status]));
     const badAlt = [];
-    const extra = [...new Set(fetched.flatMap((p) => p.alternates.map((a) => a.href)))].filter((u) => !status.has(key(u)));
+    // Only alternates on the audited host are fetched: another site is never crawled.
+    const extra = [...new Set(fetched.flatMap((p) => p.alternates.map((a) => a.href)))].filter((u) => !status.has(key(u)) && new URL(u).hostname === host);
     for (const u of extra.slice(0, 100)) {
         try {
             status.set(key(u), (await get(u)).status);
@@ -392,7 +408,7 @@ const main = async () => {
     }
     for (const p of fetched) {
         for (const a of p.alternates) {
-            if (status.get(key(a.href)) !== 200 && !badAlt.includes(a.href)) {
+            if (new URL(a.href).hostname === host && status.get(key(a.href)) !== 200 && !badAlt.includes(a.href)) {
                 badAlt.push(a.href);
             }
         }

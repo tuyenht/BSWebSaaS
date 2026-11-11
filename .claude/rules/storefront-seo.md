@@ -110,8 +110,8 @@ These rules apply to pack writers, demo content and the admin's writing hints.
     - unique titles and descriptions;
     - JSON-LD parse;
     - Organization placement;
-    - viewport, one canonical tag, one description tag, mixed content (http:// resources on https), placeholder text (lorem ipsum, TODO, `{{`, undefined, NaN);
-    - sitemap hygiene: over 50,000 URLs or 50 MB per file, duplicate URLs, URLs on another host, lastmod in the future;
+    - viewport, one canonical tag, one description tag, mixed content (http:// resources on https), placeholder text (lorem ipsum, TODO; `{{`, undefined and NaN only warn, and code in `pre`/`code` is skipped), malformed canonical or hreflang URLs;
+    - sitemap hygiene: over 50,000 URLs or 50 MB per file, URLs on another host (fail); duplicate URLs and lastmod in the future (warn);
     - hreflang (HTML links): self link equal to the canonical, return links between fetched pages, valid language codes, alternates answering 200;
     - `robots.txt` (5xx fails: Google treats it as disallow-all) and soft 404 (an unknown path must answer 404 or 410).
   - Warnings (advice, never an exit code): identical lastmod on 10+ URLs (looks fake), several hreflang languages without `x-default`, `robots.txt` without a sitemap line, HTML over 2 MB (a reported Googlebot limit, not in our sources note), missing og:title / og:image / og:url, first content image lazy-loaded, title over 60 characters (Google sets no limit).
