@@ -89,6 +89,7 @@ final readonly class ProductPage
             ...($category !== null ? $this->crumbs->category($category, $locale) : []),
             $this->crumbs->crumb($translation->name, $this->paths->publicUrl($path, $locale)),
         ];
+        $extra['crumbsShown'] = $this->crumbs->visible($extra['breadcrumb'], true);
 
         $images = $this->products->photos($product, $translation->name);
         if ($images !== [] && ! $preview) {

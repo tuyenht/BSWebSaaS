@@ -395,3 +395,34 @@ it('gives the contact form the board\'s order, a need list with its four choices
     $this->post('http://'.ContentPacks::HOST.'/forms/contact', ['name' => 'A', 'phone' => '0912345678', 'need' => 'khac', 'message' => 'Xin báo giá', 'consent' => '1', 'locale' => 'vi'])
         ->assertStatus(303)->assertRedirect('http://'.ContentPacks::HOST.'/cam-on');
 });
+
+/** @return list<string> the title of every page_header block found anywhere in a decoded pack file */
+function packBandTitles(mixed $node): array
+{
+    $titles = [];
+    if (is_array($node)) {
+        if (($node['type'] ?? null) === 'page_header' && is_string($node['props']['title'] ?? null)) {
+            $titles[] = $node['props']['title'];
+        }
+        foreach ($node as $child) {
+            $titles = [...$titles, ...packBandTitles($child)];
+        }
+    }
+
+    return $titles;
+}
+
+it('writes every title band in sentence case, like the page names, never Every Word Capitalised', function (): void {
+    $titles = [];
+    foreach (glob(database_path('content-packs/*/*.json')) ?: [] as $file) {
+        $titles = [...$titles, ...packBandTitles(json_decode((string) file_get_contents($file), true))];
+    }
+
+    expect($titles)->not->toBeEmpty();
+    foreach ($titles as $title) {
+        $words = array_values(array_filter(preg_split('/\s+/u', $title) ?: [], fn (string $word): bool => preg_match('/\p{L}/u', $word) === 1));
+        $capitalised = array_filter($words, fn (string $word): bool => mb_strtoupper(mb_substr($word, 0, 1)) === mb_substr($word, 0, 1));
+
+        expect(count($words) >= 3 && count($capitalised) === count($words))->toBeFalse($title);
+    }
+});
