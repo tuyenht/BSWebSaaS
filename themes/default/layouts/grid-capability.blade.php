@@ -13,7 +13,7 @@
     $sfFirstPhoto = $sfLead ? null : array_key_first(array_filter($sfCaps, fn (array $c): bool => ! empty($c['image'])));
 @endphp
 <!doctype html>
-<html lang="{{ $lang ?? 'vi' }}">
+<html lang="{{ $lang ?? 'vi' }}"{!! ($dir ?? 'ltr') === 'rtl' ? ' dir="rtl"' : '' !!}>
 <head>
 @include('theme::partials.head')
 </head>

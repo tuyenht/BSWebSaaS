@@ -3174,6 +3174,80 @@ html:has(.sf-header--sticky) {
     min-height: 5rem;
 }
 
+/* Phone header with a menu: the menu button at the start, the logo in the middle (it shrinks to
+   the room left, never over a neighbour), the corner action at the end. From lg (xl for a wide
+   menu) the bar is the desktop flex row above. */
+.sf-bar__inner--drawer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 0.5rem;
+}
+
+.sf-bar__inner--drawer .sf-burger {
+    grid-column: 1;
+    justify-self: start;
+}
+
+.sf-bar__inner--drawer .sf-bar__brand {
+    grid-column: 2;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.sf-bar__inner--drawer .sf-bar__logo {
+    max-width: 100%;
+}
+
+.sf-bar__corner {
+    grid-column: 3;
+    justify-self: end;
+    display: flex;
+    align-items: center;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+}
+
+.sf-bar__call {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 0.375rem;
+    color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white));
+}
+
+.sf-bar__call:hover {
+    background: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
+}
+
+/* the phone bottom bar (under 768px) carries the call, so the header copy steps aside there only */
+@media (max-width: 767.98px) {
+    .sf-bar__call--hasbar {
+        display: none;
+    }
+}
+
+@media (min-width: 1024px) {
+    .sf-header:not(.sf-header--menu-xl) .sf-bar__inner--drawer {
+        display: flex;
+    }
+
+    .sf-header:not(.sf-header--menu-xl) .sf-bar__corner {
+        display: none;
+    }
+}
+
+@media (min-width: 1280px) {
+    .sf-header--menu-xl .sf-bar__inner--drawer {
+        display: flex;
+    }
+
+    .sf-header--menu-xl .sf-bar__corner {
+        display: none;
+    }
+}
+
 .sf-bar__brand {
     display: flex;
     align-items: center;
@@ -3358,13 +3432,29 @@ html:not(.sf-js) .sf-nav--desk .sf-nav__item--parent:focus-within > .sf-nav__pan
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 2.75rem;
+    min-width: 2.75rem;
     height: 2.75rem;
+    gap: 0.375rem;
+    padding-inline: 0.5rem;
     border: 0;
     border-radius: 0.375rem;
     background: none;
     color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white));
+    font-size: 0.9375rem;
+    font-weight: 700;
     cursor: pointer;
+}
+
+/* The word beside the button shows where there is room (A phone under 360px keeps the icon alone,
+   named by its aria-label). */
+.sf-burger__word {
+    display: none;
+}
+
+@media (min-width: 360px) {
+    .sf-burger__word {
+        display: inline;
+    }
 }
 
 .sf-burger:hover {
@@ -3394,13 +3484,12 @@ html:not(.sf-js) .sf-nav--desk .sf-nav__item--parent:focus-within > .sf-nav__pan
     }
 }
 
-/* The mobile panel keeps its `hidden` attribute as the open/closed state (never a display here). */
+/* The phone menu is a dialog drawer (theme::partials.header-bar): its `hidden` attribute is the
+   open/closed state, never a display set here. A light panel from the site's tokens, 3.25rem top
+   rows and 3rem sub rows, text that wraps (never "…"), the 4px bar at the start marks where the
+   visitor is, logical properties throughout so a right-to-left language mirrors it. */
 .sf-nav--mob {
-    max-height: calc(100dvh - 5rem);
-    overflow-y: auto;
-    padding: 0.5rem 0.5rem 0.75rem;
-    background: var(--color-dark);
-    border-top: 1px solid var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
+    padding: 0.25rem 0;
 }
 
 @media (min-width: 1024px) {
@@ -3421,10 +3510,119 @@ html:not(.sf-js) .sf-nav--desk .sf-nav__item--parent:focus-within > .sf-nav__pan
     }
 }
 
+.sf-drawer {
+    --sf-drawer-w: min(322px, calc(100% - 64px));
+    --sf-drawer-line: color-mix(in srgb, var(--color-text-strong) 55%, var(--color-surface));
+    --sf-drawer-hair: color-mix(in srgb, var(--color-text-strong) 12%, var(--color-surface));
+    --sf-drawer-tint: color-mix(in srgb, var(--color-text-strong) 6%, var(--color-surface));
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+}
+
+.sf-drawer[hidden] {
+    display: none;
+}
+
+.sf-drawer:dir(rtl) {
+    --sf-dir: -1;
+}
+
+@media (min-width: 1024px) {
+    .sf-header:not(.sf-header--menu-xl) .sf-drawer {
+        display: none;
+    }
+}
+
+@media (min-width: 1280px) {
+    .sf-header--menu-xl .sf-drawer {
+        display: none;
+    }
+}
+
+html.sf-menu-open {
+    overflow: hidden;
+}
+
+.sf-drawer__scrim {
+    position: absolute;
+    inset: 0;
+    background: color-mix(in srgb, var(--color-dark) 60%, transparent);
+}
+
+.sf-drawer__panel {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    display: flex;
+    flex-direction: column;
+    width: var(--sf-drawer-w);
+    padding-block: env(safe-area-inset-top, 0px) env(safe-area-inset-bottom, 0px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: var(--color-surface);
+    color: var(--color-text-strong);
+    box-shadow: 0 0 2rem color-mix(in srgb, var(--color-dark) 35%, transparent);
+}
+
+/* The ✕ sits in the dimmed strip beside the panel (at least 64px stays free, even at 320px). */
+.sf-drawer__close {
+    position: absolute;
+    top: calc(0.5rem + env(safe-area-inset-top, 0px));
+    inset-inline-start: calc(var(--sf-drawer-w) + 0.5rem);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border: 0;
+    border-radius: 999px;
+    background: var(--color-dark);
+    color: var(--color-on-dark, #fff);
+    box-shadow: 0 0 0 2px color-mix(in srgb, #fff 30%, transparent);
+    cursor: pointer;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .sf-drawer__panel {
+        animation: sf-drawer-in 0.25s ease-out;
+    }
+
+    .sf-drawer__scrim {
+        animation: sf-drawer-fade 0.25s ease-out;
+    }
+}
+
+@keyframes sf-drawer-in {
+    from {
+        opacity: 0;
+        transform: translateX(calc(-12% * var(--sf-dir, 1)));
+    }
+}
+
+@keyframes sf-drawer-fade {
+    from {
+        opacity: 0;
+    }
+}
+
 .sf-nav--mob .sf-nav__list {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+}
+
+.sf-nav--mob .sf-nav__nested {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.sf-nav--mob .sf-nav__nested .sf-nav__nested {
+    padding-inline-start: 1rem;
+}
+
+.sf-nav--mob > .sf-nav__list > .sf-nav__item {
+    border-bottom: 1px solid var(--sf-drawer-hair);
 }
 
 .sf-nav--mob .sf-nav__item--parent {
@@ -3433,62 +3631,184 @@ html:not(.sf-js) .sf-nav--desk .sf-nav__item--parent:focus-within > .sf-nav__pan
 
 .sf-nav--mob .sf-nav__link,
 .sf-nav--mob .sf-nav__sublink {
+    position: relative;
     display: flex;
     flex: 1;
-    min-height: 2.75rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.375rem;
-    font-size: 1rem;
+    min-height: 3.25rem;
+    padding: 0.5rem 1rem;
+    border-radius: 0;
+    color: var(--color-text-strong);
+    font-size: 1.0625rem;
     font-weight: 500;
+    line-height: 1.35;
+    text-align: start;
     white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.sf-nav--mob .sf-nav__sublink {
+    min-height: 3rem;
+    border-radius: 0.625rem;
+    color: var(--color-text);
+    font-size: 1rem;
 }
 
 .sf-nav--mob .sf-nav__toggle {
     justify-content: space-between;
-    text-align: left;
 }
 
 .sf-nav--mob .sf-nav__chev {
-    min-width: 2.75rem;
-    min-height: 2.75rem;
+    min-width: 3rem;
+    min-height: 3.25rem;
+    border-radius: 0;
+    color: var(--color-text-strong);
 }
 
 .sf-nav--mob .sf-nav__link:hover,
-.sf-nav--mob .sf-nav__sublink:hover {
-    background: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
-    color: #fff;
+.sf-nav--mob .sf-nav__sublink:hover,
+.sf-nav--mob .sf-nav__chev:hover,
+.sf-nav--mob .sf-nav__item--parent.is-open > .sf-nav__link,
+.sf-nav--mob .sf-nav__item--parent.is-open > .sf-nav__chev {
+    background: var(--sf-drawer-tint);
+    color: var(--color-text-strong);
 }
 
+/* Where the visitor is: a light neutral fill, strong text, and a 4px bar at the start in the
+   brand colour made readable on light (3:1 or more against the fill). The section the page sits
+   in (aria-current="true") gets the bar and bold text, not the fill, so the two never look alike. */
 .sf-nav--mob .sf-nav__link[aria-current="page"],
 .sf-nav--mob .sf-nav__sublink[aria-current="page"] {
-    background: var(--color-primary);
-    color: var(--color-on-primary);
+    background: var(--sf-drawer-tint);
+    color: var(--color-text-strong);
+    font-weight: 700;
 }
 
-/* The section the page sits in (aria-current="true"): a brand bar at its start, not the current
-   page's fill, so the two never look alike. */
 .sf-nav--mob .sf-nav__link.is-trail,
 .sf-nav--mob .sf-nav__sublink.is-trail {
-    background: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
-    box-shadow: inset 4px 0 0 var(--color-primary);
-    color: #fff;
+    background: none;
+    color: var(--color-text-strong);
+    font-weight: 700;
 }
 
-.sf-nav--mob .sf-nav__item--parent > .sf-nav__chev.is-trail {
-    background: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
-    color: #fff;
+.sf-nav--mob .sf-nav__link[aria-current]::before,
+.sf-nav--mob .sf-nav__sublink[aria-current]::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: 4px;
+    background: var(--color-primary-text);
+}
+
+.sf-nav--mob .sf-nav__link[aria-current="page"]:hover,
+.sf-nav--mob .sf-nav__sublink[aria-current="page"]:hover {
+    background: var(--sf-drawer-tint);
 }
 
 .sf-nav--mob .sf-nav__panel {
     display: none;
     width: 100%;
-    margin-top: 0.5rem;
-    padding-left: 1rem;
+    padding: 0.125rem 0.5rem 0.5rem;
+    background: color-mix(in srgb, var(--color-text-strong) 3%, var(--color-surface));
 }
 
 .sf-nav--mob .sf-nav__item--parent.is-open > .sf-nav__panel,
 html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     display: block;
+}
+
+/* Under the menu: language and text size first (a visitor who needs bigger letters finds them early),
+   then the ways to reach the business. Control borders keep 3:1 against the panel. */
+.sf-drawer__tools,
+.sf-drawer__contact {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem;
+    border-top: 1px solid var(--sf-drawer-hair);
+}
+
+.sf-drawer__langs ul {
+    margin: 0;
+    padding: 0.25rem;
+    list-style: none;
+    border: 1px solid var(--sf-drawer-line);
+    border-radius: 0.75rem;
+}
+
+.sf-drawer__lang {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-height: 3rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.625rem;
+    color: var(--color-text-strong);
+    font-size: 1rem;
+    overflow-wrap: anywhere;
+}
+
+.sf-drawer__lang[aria-current="true"] {
+    position: relative;
+    background: var(--sf-drawer-tint);
+    font-weight: 700;
+}
+
+.sf-drawer__lang[aria-current="true"]::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: 4px;
+    border-radius: 2px;
+    background: var(--color-primary-text);
+}
+
+.sf-drawer__hint {
+    display: block;
+    color: var(--color-text);
+    font-size: 0.8125rem;
+    font-weight: 500;
+}
+
+.sf-drawer__fs {
+    justify-content: center;
+    min-height: 3.25rem;
+    padding: 0 1rem;
+    border: 1px solid var(--sf-drawer-line);
+    border-radius: 999px;
+    background: none;
+    color: var(--color-text-strong);
+    font-size: 0.9375rem;
+    font-weight: 600;
+}
+
+.sf-drawer__call {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 3rem;
+    padding: 0.25rem 1rem;
+    border-radius: 0.75rem;
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+    font-size: 1rem;
+    font-weight: 700;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+
+.sf-drawer__line {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    min-height: 2.75rem;
+    color: var(--color-text-strong);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
 }
 
 /* Menu item options (admin "Trình đơn"), for every menu the theme draws: "Hiện trên" one device

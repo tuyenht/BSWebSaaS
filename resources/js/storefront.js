@@ -65,47 +65,86 @@ document.addEventListener('click', (event) => {
     }
 });
 
-// Mobile menu panel.
+// Mobile menu drawer: a dialog. Opening locks the page's scroll and moves focus in; Tab stays inside;
+// Esc, the dimmed area, the ✕ and a followed link close it, and focus goes back to the menu button.
 const burger = document.querySelector('[data-menu-toggle]');
 const panel = burger ? document.getElementById(burger.getAttribute('aria-controls')) : null;
 
-function setMenu(open) {
+function drawerFocusables() {
+    return Array.from(panel.querySelectorAll('a[href], button:not([disabled])')).filter((el) => el.offsetParent !== null);
+}
+
+function setMenu(open, returnFocus = true) {
     burger.setAttribute('aria-expanded', open ? 'true' : 'false');
     burger.setAttribute('aria-label', open ? burger.dataset.labelClose : burger.dataset.labelOpen);
     panel.hidden = !open;
+    root.classList.toggle('sf-menu-open', open);
+    if (open) {
+        const first = panel.querySelector('.sf-nav--mob a[href], .sf-nav--mob button') || panel.querySelector('[data-menu-close]');
+        if (first) {
+            first.focus();
+        }
+    } else if (returnFocus) {
+        burger.focus();
+    }
 }
 
 if (burger && panel) {
     burger.addEventListener('click', () => setMenu(burger.getAttribute('aria-expanded') !== 'true'));
+    panel.querySelectorAll('[data-menu-close]').forEach((el) => el.addEventListener('click', () => setMenu(false)));
     panel.addEventListener('click', (event) => {
         if (event.target.closest('a')) {
-            setMenu(false);
+            setMenu(false, false);
         }
     });
     document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && !panel.hidden) {
+        if (panel.hidden) {
+            return;
+        }
+        if (event.key === 'Escape') {
             setMenu(false);
-            burger.focus();
+        } else if (event.key === 'Tab') {
+            const items = drawerFocusables();
+            if (items.length === 0) {
+                return;
+            }
+            const first = items[0];
+            const last = items[items.length - 1];
+            if (event.shiftKey && (document.activeElement === first || !panel.contains(document.activeElement))) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && (document.activeElement === last || !panel.contains(document.activeElement))) {
+                event.preventDefault();
+                first.focus();
+            }
+        }
+    });
+    // Widening the window until the bar shows the full menu: the drawer has no place any more.
+    window.addEventListener('resize', () => {
+        if (!panel.hidden && burger.offsetParent === null) {
+            setMenu(false, false);
         }
     });
 }
 
 // Text size: Vừa → Lớn → Cực lớn, kept in localStorage (the inline boot script in the head applies it before paint).
-const sizeButton = document.querySelector('[data-fs-toggle]');
+const sizeButtons = document.querySelectorAll('[data-fs-toggle]');
 
 function showSize(size) {
-    sizeButton.setAttribute('aria-label', sizeButton.getAttribute('data-aria-' + size));
-    const value = sizeButton.querySelector('[data-fs-value]');
-    if (value) {
-        value.textContent = sizeButton.getAttribute('data-label-' + size);
-    }
+    sizeButtons.forEach((button) => {
+        button.setAttribute('aria-label', button.getAttribute('data-aria-' + size));
+        const value = button.querySelector('[data-fs-value]');
+        if (value) {
+            value.textContent = button.getAttribute('data-label-' + size);
+        }
+    });
 }
 
-if (sizeButton) {
+if (sizeButtons.length > 0) {
     const current = root.getAttribute('data-fs');
     showSize(SIZES.includes(current) ? current : 'm');
 
-    sizeButton.addEventListener('click', () => {
+    sizeButtons.forEach((button) => button.addEventListener('click', () => {
         const now = root.getAttribute('data-fs') || 'm';
         const next = SIZES[(SIZES.indexOf(now) + 1) % SIZES.length];
         if (next === 'm') {
@@ -119,5 +158,5 @@ if (sizeButton) {
             // Storage blocked (private mode): the size still applies to this page.
         }
         showSize(next);
-    });
+    }));
 }

@@ -211,7 +211,7 @@ it('keeps a menu that fits a laptop from 1024px and gives a wide one the menu bu
     // the provisioned menu (three short items) fits beside the logo at 1024px
     $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
     expect($html)->toContain('<header class="sf-header">')
-        ->toContain('<noscript><style>@media (max-width:1023.98px){.sf-nav--mob[hidden]{display:block}}');
+        ->toContain('<noscript><style>@media (max-width:1023.98px){.sf-drawer[hidden]{display:block;position:static}');
 
     // six more top-level items: An Vinh's nine-item menu wraps at 1024 and 1100px beside its logo
     app(Tenancy::class)->enter($siteId, function (): void {
@@ -223,7 +223,7 @@ it('keeps a menu that fits a laptop from 1024px and gives a wide one the menu bu
     });
     $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
     expect($html)->toContain('<header class="sf-header sf-header--menu-xl">')
-        ->toContain('<noscript><style>@media (max-width:1279.98px){.sf-nav--mob[hidden]{display:block}}');
+        ->toContain('<noscript><style>@media (max-width:1279.98px){.sf-drawer[hidden]{display:block;position:static}');
 });
 
 it('shows each menu item set to one device by the screen width, in the menu panel too', function (): void {
@@ -269,7 +269,7 @@ it('makes submenus disclosures: a # parent is a button, a page parent keeps its 
         ->toContain('<div class="sf-nav__panel" id="dsm-1">')
         ->toContain('<div class="sf-nav__panel" id="msm-1">')
         ->toMatch('#<a class="sf-nav__sublink" href="/gioi-thieu"\s+aria-current="page"\s*>Giới thiệu</a>#')
-        ->toContain('<nav id="mobile-menu" class="sf-nav sf-nav--mob" aria-label="Điều hướng chính" hidden>')
+        ->toContain('<div id="mobile-menu" class="sf-drawer" role="dialog" aria-modal="true" aria-label="Menu" hidden>')
         ->toContain('aria-controls="mobile-menu"');
 });
 

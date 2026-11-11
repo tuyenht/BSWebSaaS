@@ -67,7 +67,7 @@
 @if (! empty(data_get($brand ?? null, 'name')))
 <meta property="og:site_name" content="{{ $brand['name'] }}">
 @endif
-<meta property="og:locale" content="{{ ['vi' => 'vi_VN', 'en' => 'en_US'][$lang ?? 'vi'] ?? ($lang ?? 'vi') }}">
+<meta property="og:locale" content="{{ \App\Modules\Theme\Chrome\StorefrontChrome::ogLocale($lang ?? 'vi') }}">
 @if (! empty($effectiveOgImage))
     <meta property="og:image" content="{{ $effectiveOgImage }}">
 @endif

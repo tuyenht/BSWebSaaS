@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="{{ $lang ?? 'vi' }}">
+<html lang="{{ $lang ?? 'vi' }}"{!! ($dir ?? 'ltr') === 'rtl' ? ' dir="rtl"' : '' !!}>
 <head>
 @include('theme::partials.head')
 </head>
