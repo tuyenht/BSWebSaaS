@@ -9576,9 +9576,9 @@ html:has(.sf-viewer[open]) {
     padding-inline: 0.5rem;
 }
 
+/* A short name breaks between words only, never inside one, unless a single word is wider than the box. */
 .partners .sf-rail__list--slider .partners__name:not(.partners__name--long) {
-    white-space: nowrap;
-    overflow-wrap: normal;
+    overflow-wrap: break-word;
 }
 
 @media (max-width: 639.98px) {

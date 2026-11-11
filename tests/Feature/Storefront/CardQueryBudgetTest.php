@@ -126,7 +126,7 @@ it('reads the products of the same group in a fixed number of reads, however man
     // The row is one read; its rows add their translations, photos and photo files, and the categories of
     // those from another group add two more (not read when the group alone fills the row).
     expect($two)->toBe($none)
-        ->and(budgetCount('/san-pham-1', 14, 1))->toBeLessThanOrEqual($two)
+        ->and(budgetCount('/san-pham-1', 14, 1))->toBe($two - 2)
         ->and(budgetCount('/san-pham-1', 6, 1, warm: false))->toBeLessThanOrEqual(27);
 });
 
