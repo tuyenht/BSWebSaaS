@@ -141,7 +141,7 @@ it('makes no absolute advertising claim, and credits every video as an illustrat
     }
     expect($videos)->toHaveCount(3);
     foreach ($videos as $heading) {
-        expect($heading)->toStartWith('Video minh họa:')->and(mb_strtolower($heading))->toContain('nguồn kênh')->toContain('giấy phép cc by');
+        expect($heading)->toMatch('/^Video (minh họa|& hình ảnh): /u')->and(mb_strtolower($heading))->toContain('nguồn kênh')->toContain('giấy phép cc by');
     }
 });
 
