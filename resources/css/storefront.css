@@ -8377,6 +8377,20 @@ html:has(.sf-viewer[open]) {
     overflow-wrap: anywhere;
 }
 
+/* A counted number stays transparent until sf-stats.js sets it to 0 and counts it up (`is-counting`),
+   so its final value never flashes first. If the script never runs, the number shows after 2.5s. Only
+   on screen with scripting on and motion allowed: otherwise the server's final number shows at once. */
+@media screen and (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+    .sf-stat__value [data-count]:not(.is-counting) {
+        opacity: 0;
+        animation: sf-stat-show 0s 2.5s forwards;
+    }
+}
+
+@keyframes sf-stat-show {
+    to { opacity: 1; }
+}
+
 /* A long number shrinks to fit its cell, so it stays on one line: the cell's width (less its padding)
    over the number's length (`--stat-len`, set by the view: the number's characters and 0.6 per unit
    character) in digit widths; never above the usual size, never below 1rem. Only a number too long
