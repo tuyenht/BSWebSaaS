@@ -93,16 +93,13 @@ html {
 }
 
 /* Moving between two pages of the same site cross-fades (Chrome/Edge 126+, Safari 18.2+; other
-   browsers just load the next page), and the header stays put instead of fading. Pure CSS, no script;
-   none of it, and no smooth scrolling, for a visitor who asked for less motion. */
+   browsers just load the next page). The header is drawn in the same place on both pages, so it looks
+   still without a name of its own; a name would make it a stacking context all the time and trap the
+   phone menu inside it. Pure CSS, no script; none of it, and no smooth scrolling, for a visitor who
+   asked for less motion. */
 @media (prefers-reduced-motion: no-preference) {
     @view-transition {
         navigation: auto;
-    }
-
-    .sf-header,
-    .site-header {
-        view-transition-name: sf-header;
     }
 }
 

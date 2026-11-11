@@ -1,7 +1,7 @@
 # Storefront Instant Navigation — Quyết định & ràng buộc (L1 View Transitions)
 
 > **Loại:** decision-freeze (note rời, quy ước docs/notes — KHÔNG đánh số ADR-NN; nằm dưới **ADR-02** làm tinh chỉnh tầng theme/vận hành, không phải trụ kiến trúc mới).
-> **Đã dựng (11/2026):** L1 tối thiểu — `@view-transition { navigation: auto }` + `view-transition-name: sf-header` cho thanh đầu trang, cả hai chỉ trong `@media (prefers-reduced-motion: no-preference)`; giảm chuyển động thì cũng tắt `scroll-behavior: smooth` (`resources/css/storefront.css`, ngay sau quy tắc `html`). Footer chưa đặt tên (thường ngoài màn hình; chụp nó tốn công vô ích).
+> **Đã dựng (11/2026):** L1 tối thiểu — `@view-transition { navigation: auto }` (chỉ mờ chuyển cả trang), chỉ trong `@media (prefers-reduced-motion: no-preference)`; giảm chuyển động thì cũng tắt `scroll-behavior: smooth` (`resources/css/storefront.css`, ngay sau quy tắc `html`). KHÔNG đặt `view-transition-name` cho thanh đầu trang: tên đặt thường trực biến nó thành stacking context và nhốt ngăn menu điện thoại (`.sf-drawer`, fixed, nằm trong `<header>`); thanh đầu trang vẽ cùng chỗ ở hai trang nên mờ chuyển vẫn trông đứng yên. Mẫu §8 đặt tên header/footer: chỉ dùng khi ngăn menu đã ra ngoài header.
 > **Trạng thái theo lớp:** **L1 = Accepted** · **L0 = Deferred** (→ §25/ADR-06) · **L2 = Proposed, điều-kiện-benchmark**.
 > **Dẫn xuất từ:** design.md **§6** (ADR-02, tầng trình bày) · **§10/ADR-11** (i18n URL/PathBuilder) · **§18** (SLO CWV + benchmark TTFB-VN) · **§24** (UX tối ưu vô hình) · **§25/ADR-06** (cache 5 tầng) · **ADR-15** (hạ tầng/CDN).
 > **Nhãn bằng chứng:** 🟦 người/council chốt · 🟨 suy luận chưa kiểm (verify khi build) · ✅ đã verify từ repo.
