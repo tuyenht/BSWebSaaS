@@ -36,7 +36,7 @@
             <header class="post-band post-band--split">
                 <div class="post-band__inner">
                     <div class="post-band__text">
-                        @include('theme::partials.sf-breadcrumb', ['crumbs' => $breadcrumb ?? [], 'tone' => 'dark', 'class' => 'post-band__crumbs'])
+                        @include('theme::partials.sf-breadcrumb', ['crumbs' => $crumbsShown ?? $breadcrumb ?? [], 'tone' => 'dark', 'class' => 'post-band__crumbs'])
                         <h1 class="post-band__title">{{ $title }}</h1>
 @if (($sfPost['excerpt'] ?? '') !== '')
                         <p class="post-band__excerpt">{{ $sfPost['excerpt'] }}</p>

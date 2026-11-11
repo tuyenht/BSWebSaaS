@@ -56,7 +56,7 @@
 @if ($sfOwnBand)
             <header class="post-band{{ $sfJobBand ? ' post-band--job' : '' }}">
                 <div class="post-band__inner">
-                    @include('theme::partials.sf-breadcrumb', ['crumbs' => $breadcrumb ?? [], 'tone' => 'dark', 'class' => 'post-band__crumbs'])
+                    @include('theme::partials.sf-breadcrumb', ['crumbs' => $crumbsShown ?? $breadcrumb ?? [], 'tone' => 'dark', 'class' => 'post-band__crumbs'])
 @if ($sfJobBand)
                     <p class="post-band__tags">
                         <span class="post-band__open">{{ __('storefront.job_open') }}</span>
@@ -65,9 +65,9 @@
 @endif
                     </p>
 @else
-@isset($category)
+@if (isset($category) && ! (($sfShownLast = collect($crumbsShown ?? $breadcrumb ?? [])->last()) !== null && ($sfShownLast['href'] ?? null) === ($category['url'] ?? '') && empty($sfShownLast['current'])))
                     <p class="post-band__chip">{{ $category['name'] }}</p>
-@endisset
+@endif
 @endif
                     <h1 class="post-band__title">{{ $title }}</h1>
 @if ($sfFacts !== [])

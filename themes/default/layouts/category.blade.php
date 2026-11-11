@@ -7,7 +7,7 @@
     <a class="sf-skip" href="#noi-dung">{{ __('storefront.skip_to_content') }}</a>
     @include('theme::partials.header', ['menu' => $menu ?? [], 'brand' => $brand ?? null])
     <main class="category" id="noi-dung" tabindex="-1">
-        @include('theme::partials.sf-breadcrumb', ['crumbs' => $breadcrumb ?? [], 'class' => 'category__crumbs'])
+        @include('theme::partials.sf-breadcrumb', ['crumbs' => $crumbsShown ?? $breadcrumb ?? [], 'class' => 'category__crumbs'])
         <h1 class="category__title">{{ $title }}</h1>
 @if (trim((string) (($slotHtml ?? [])['before_list'] ?? '')) !== '')
         <div class="slot-band">{!! $slotHtml['before_list'] !!}</div>

@@ -18,7 +18,7 @@
     <main id="noi-dung" tabindex="-1">
 @if (($leadBlock ?? null) !== 'page_header')
 @if (! empty($breadcrumb))
-        <div class="page__crumbs">@include('theme::partials.sf-breadcrumb', ['crumbs' => $breadcrumb])</div>
+        <div class="page__crumbs">@include('theme::partials.sf-breadcrumb', ['crumbs' => $crumbsShown ?? $breadcrumb])</div>
 @endif
         <h1 class="page__title">{{ $title }}</h1>
 @endif

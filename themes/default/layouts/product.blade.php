@@ -44,7 +44,7 @@
         <article class="product">
             <div class="product-band">
                 <div class="sf-container">
-                    @include('theme::partials.sf-breadcrumb', ['crumbs' => $breadcrumb ?? [], 'tone' => 'dark', 'class' => 'product__crumbs'])
+                    @include('theme::partials.sf-breadcrumb', ['crumbs' => $crumbsShown ?? $breadcrumb ?? [], 'tone' => 'dark', 'class' => 'product__crumbs'])
                 </div>
             </div>
             <div class="sf-container product__top">

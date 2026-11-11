@@ -45,13 +45,14 @@ it('renders each slide as a labelled group with slide 1 as the high-priority ima
         ->and(substr_count($html, 'href="/lien-he">Báo giá</a>'))->toBe(3);
 });
 
-it('renders the controls hidden, the rotation button first and dot 1 current', function (): void {
+it('renders the controls hidden with no pause button and dot 1 current', function (): void {
     $html = heroSlider(threeSlides(), ['autoplay' => 6]);
 
     expect($html)->toContain('<div class="sf-slider__controls" hidden>');
     $controls = substr($html, strpos($html, 'sf-slider__controls'), strpos($html, 'sf-slider__viewport') - strpos($html, 'sf-slider__controls'));
-    expect(strpos($controls, 'data-sf-pause'))->toBeLessThan(strpos($controls, 'data-sf-prev'))
-        ->and($controls)->toContain('data-label-play="Tự chuyển ảnh tiếp"')
+    expect($html)->not->toContain('data-sf-pause')->and($html)->not->toContain('sf-slider__pause')
+        ->and(strpos($controls, 'data-sf-prev'))->toBeLessThan(strpos($controls, 'data-sf-next'))
+        ->and($controls)->toContain('aria-label="Ảnh trước"')
         ->and($controls)->toContain('aria-label="Xem ảnh 1" aria-current="true"')
         ->and(substr_count($controls, 'aria-current'))->toBe(1);
 });
