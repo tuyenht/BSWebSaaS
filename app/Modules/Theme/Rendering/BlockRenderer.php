@@ -47,6 +47,9 @@ final readonly class BlockRenderer
      */
     public const array SRCSET_WIDTHS = [640, 960, 1280, 1600, 2048];
 
+    /** The widths a small picture (a partner logo, drawn at most about 210 px wide) offers through `$thumbs`. */
+    public const array THUMB_WIDTHS = [320, 640];
+
     public function __construct(
         private ViewFactory $views,
         private ComponentRegistry $registry,
@@ -222,7 +225,7 @@ final readonly class BlockRenderer
         // One batched lookup for the whole page (site-scoped; unknown ids simply resolve to nothing).
         // The same rows give each URL its srcset (server-built from storage keys, never from props) and
         // its alt text from the library.
-        ['urls' => $urls, 'srcsets' => $srcsets, 'alts' => $alts, 'dims' => $dims, 'videos' => $videos] = $this->mediaUrls->resolve($ids, self::CONTENT_IMAGE_WIDTH, self::SRCSET_WIDTHS);
+        ['urls' => $urls, 'srcsets' => $srcsets, 'alts' => $alts, 'dims' => $dims, 'thumbs' => $thumbs, 'videos' => $videos] = $this->mediaUrls->resolve($ids, self::CONTENT_IMAGE_WIDTH, self::SRCSET_WIDTHS, self::THUMB_WIDTHS);
 
         // Pass 2 — render each block, swapping each image prop's media_id for its resolved URL, inside
         // the look wrapper when the block sets one (StyleProps).
@@ -263,7 +266,7 @@ final readonly class BlockRenderer
                 // The page's one high-priority image: only the first block may claim it, and a first block
                 // with a background photo has already claimed it through the sf-section wrapper.
                 $resolved['_high'] = $first && ($wrapper === null || $wrapper['image'] === null);
-                $section = $this->views->make($view, $component->data($resolved) + ['srcsets' => $srcsets, 'alts' => $alts, 'dims' => $dims, 'sfSlot' => $isOwn ? [] : $context] + $band)->render();
+                $section = $this->views->make($view, $component->data($resolved) + ['srcsets' => $srcsets, 'thumbs' => $thumbs, 'alts' => $alts, 'dims' => $dims, 'sfSlot' => $isOwn ? [] : $context] + $band)->render();
 
                 $html .= $wrapper === null ? $section : $this->views->make('theme::partials.sf-section', [
                     'wrapper' => $wrapper,

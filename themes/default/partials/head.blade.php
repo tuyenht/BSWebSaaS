@@ -46,7 +46,35 @@
     $effectiveOgImage = ! empty($passedOgImage)
         ? $passedOgImage
         : (data_get($brand ?? null, 'og_image') ?: data_get($brand ?? null, 'logo', ''));
+
+    // The share image's size is known only for the site's own library share image (BrandImages); the
+    // page's featured image and the logo carry none, so no size is printed for them. The alt text is the
+    // page's title for its own image, else the business name.
+    $ogSharesBrand = empty($passedOgImage) && ! empty(data_get($brand ?? null, 'og_image'));
+    $ogWidth = $ogSharesBrand ? (int) data_get($brand ?? null, 'og_image_width', 0) : 0;
+    $ogHeight = $ogSharesBrand ? (int) data_get($brand ?? null, 'og_image_height', 0) : 0;
+    $ogAlt = ! empty($passedOgImage) ? (string) $seoTitle : (string) data_get($brand ?? null, 'name', '');
+
+    // The other languages this page is published in (the chrome's language list, empty on a one-language
+    // site; an entry that only leads to another language's home page is not this page).
+    $ogAlternates = [];
+    foreach (($languages ?? []) as $language) {
+        if (is_array($language) && ! empty($language['locale']) && empty($language['fallback']) && $language['locale'] !== ($lang ?? null)) {
+            $ogAlternates[] = \App\Modules\Theme\Chrome\StorefrontChrome::ogLocale((string) $language['locale']);
+        }
+    }
+    $ogAlternates = array_values(array_diff(array_unique($ogAlternates), [\App\Modules\Theme\Chrome\StorefrontChrome::ogLocale($lang ?? 'vi')]));
+
+    // A post's publishing and change times (ISO 8601 with the zone), from the article data already built.
+    $articlePublished = ($ogType ?? 'website') === 'article' ? data_get($articleLd ?? null, 'datePublished') : null;
+    $articleModified = ($ogType ?? 'website') === 'article' ? data_get($articleLd ?? null, 'dateModified') : null;
+
+    // The browser bar colour: the site's brand colour (a sanitized hex token).
+    $themeColor = is_string($tokens['primary'] ?? null) && preg_match('/^#[0-9a-f]{3}(?:[0-9a-f]{3})?$/i', $tokens['primary']) === 1 ? $tokens['primary'] : null;
 @endphp
+@if ($themeColor !== null)
+<meta name="theme-color" content="{{ $themeColor }}">
+@endif
 @if (! empty($effectiveDescription))
     <meta name="description" content="{{ $effectiveDescription }}">
 @endif
@@ -68,8 +96,24 @@
 <meta property="og:site_name" content="{{ $brand['name'] }}">
 @endif
 <meta property="og:locale" content="{{ \App\Modules\Theme\Chrome\StorefrontChrome::ogLocale($lang ?? 'vi') }}">
+@foreach ($ogAlternates as $ogAlternate)
+<meta property="og:locale:alternate" content="{{ $ogAlternate }}">
+@endforeach
+@if (! empty($articlePublished))
+<meta property="article:published_time" content="{{ $articlePublished }}">
+@endif
+@if (! empty($articleModified))
+<meta property="article:modified_time" content="{{ $articleModified }}">
+@endif
 @if (! empty($effectiveOgImage))
     <meta property="og:image" content="{{ $effectiveOgImage }}">
+@if ($ogWidth > 0 && $ogHeight > 0)
+    <meta property="og:image:width" content="{{ $ogWidth }}">
+    <meta property="og:image:height" content="{{ $ogHeight }}">
+@endif
+@if ($ogAlt !== '')
+    <meta property="og:image:alt" content="{{ $ogAlt }}">
+@endif
 @endif
 {{-- Twitter / X card: a large image card when there is an image to show, else a plain summary. --}}
 <meta name="twitter:card" content="{{ ! empty($effectiveOgImage) ? 'summary_large_image' : 'summary' }}">
@@ -79,6 +123,9 @@
 @endif
 @if (! empty($effectiveOgImage))
     <meta name="twitter:image" content="{{ $effectiveOgImage }}">
+@if ($ogAlt !== '')
+    <meta name="twitter:image:alt" content="{{ $ogAlt }}">
+@endif
 @endif
 @endif
 

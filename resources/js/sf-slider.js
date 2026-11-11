@@ -150,9 +150,12 @@ function initRail(root) {
     let timer = 0;
     let holdTimer = 0;
     let pages = 0;
+    // Whether the row overflows, measured by sync() (every layout read happens there, before its writes),
+    // so schedule() never forces a layout of its own right after the dots were drawn.
+    let over = false;
 
     const overflows = () => track.scrollWidth > track.clientWidth + 1;
-    const rotates = () => interval > 0 && !reduce.matches && !(phone.matches && root.dataset.mobile === 'swipe') && overflows();
+    const rotates = () => interval > 0 && !reduce.matches && !(phone.matches && root.dataset.mobile === 'swipe') && over;
     const running = () => rotates() && !hovered && !focused && !held && !document.hidden;
     const step = () => (track.children.length > 1 ? track.children[1].offsetLeft - track.children[0].offsetLeft : track.clientWidth);
     const move = (dir) => {
@@ -168,24 +171,27 @@ function initRail(root) {
             }, interval);
         }
     };
-    const light = () => {
-        const on = railDot(track.scrollLeft, track.clientWidth, track.scrollWidth);
+    const lightDots = (on) => {
         [...dotsBox.children].forEach((dot, i) => dot.classList.toggle('is-on', i === on));
     };
+    const light = () => lightDots(railDot(track.scrollLeft, track.clientWidth, track.scrollWidth));
     const sync = () => {
-        const show = overflows() && mode !== 'none';
+        // Every layout read first, then the writes: no forced reflow between them.
+        over = overflows();
+        const show = over && mode !== 'none';
+        const n = dotsBox && show ? railPages(track.clientWidth, track.scrollWidth) : 0;
+        const on = dotsBox ? railDot(track.scrollLeft, track.clientWidth, track.scrollWidth) : 0;
         [prev, next].forEach((btn) => btn && (btn.hidden = !show));
         if (dotsBox) {
-            const n = show ? railPages(track.clientWidth, track.scrollWidth) : 0;
             if (n !== pages) {
                 pages = n;
                 dotsBox.replaceChildren(...Array.from({ length: n }, () => document.createElement('span')));
             }
             dotsBox.hidden = n < 2;
-            light();
+            lightDots(on);
         }
         // A row that scrolls needs a keyboard stop of its own when none of its cards holds a link.
-        if (overflows()) {
+        if (over) {
             track.tabIndex = 0;
         } else {
             track.removeAttribute('tabindex');
@@ -229,10 +235,14 @@ function initRail(root) {
     });
     document.addEventListener('visibilitychange', schedule);
     let resized;
-    window.addEventListener('resize', () => {
+    const later = () => {
         clearTimeout(resized);
         resized = setTimeout(sync, 200);
-    });
+    };
+    window.addEventListener('resize', later);
+    // A row can start to overflow once its lazy images or the web font arrive.
+    track.addEventListener('load', later, true);
+    document.fonts?.ready.then(later);
     phone.addEventListener?.('change', sync);
     reduce.addEventListener?.('change', sync);
     sync();

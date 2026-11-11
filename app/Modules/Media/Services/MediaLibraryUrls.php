@@ -37,13 +37,15 @@ final readonly class MediaLibraryUrls
      * alt text is left out. `dims` holds, per URL, the master's stored [width, height] (for the
      * intrinsic ratio of an <img>); a picture without both is left out. `videos` holds, per media id
      * of a video file (mp4 / webm), the file's own address (never a picture transform) and its type,
-     * for a <video> source. Same rows, no extra query.
+     * for a <video> source. `thumbs` holds, per URL, a second `srcset` at $thumbWidths (small widths, for
+     * a picture that is drawn small, such as a logo); empty when none are asked for. Same rows, no extra query.
      *
      * @param  array<array-key, mixed>  $ids
      * @param  list<int>  $srcsetWidths
-     * @return array{urls: array<int, string>, srcsets: array<string, string>, alts: array<string, string>, dims: array<string, array{0: int, 1: int}>, videos: array<int, array{url: string, type: string}>}
+     * @param  list<int>  $thumbWidths
+     * @return array{urls: array<int, string>, srcsets: array<string, string>, thumbs: array<string, string>, alts: array<string, string>, dims: array<string, array{0: int, 1: int}>, videos: array<int, array{url: string, type: string}>}
      */
-    public function resolve(array $ids, ?int $width = null, array $srcsetWidths = []): array
+    public function resolve(array $ids, ?int $width = null, array $srcsetWidths = [], array $thumbWidths = []): array
     {
         $wanted = [];
         foreach ($ids as $id) {
@@ -53,11 +55,12 @@ final readonly class MediaLibraryUrls
         }
 
         if ($wanted === []) {
-            return ['urls' => [], 'srcsets' => [], 'alts' => [], 'dims' => [], 'videos' => []];
+            return ['urls' => [], 'srcsets' => [], 'thumbs' => [], 'alts' => [], 'dims' => [], 'videos' => []];
         }
 
         $urls = [];
         $srcsets = [];
+        $thumbs = [];
         $alts = [];
         $dims = [];
         $videos = [];
@@ -72,6 +75,10 @@ final readonly class MediaLibraryUrls
             if ($srcset !== null) {
                 $srcsets[$url] = $srcset;
             }
+            $thumb = $thumbWidths !== [] ? $this->resolver->srcset($key, $thumbWidths, $media->width) : null;
+            if ($thumb !== null) {
+                $thumbs[$url] = $thumb;
+            }
             $alt = $this->altText($media->alt);
             if ($alt !== '') {
                 $alts[$url] = $alt;
@@ -81,7 +88,7 @@ final readonly class MediaLibraryUrls
             }
         }
 
-        return ['urls' => $urls, 'srcsets' => $srcsets, 'alts' => $alts, 'dims' => $dims, 'videos' => $videos];
+        return ['urls' => $urls, 'srcsets' => $srcsets, 'thumbs' => $thumbs, 'alts' => $alts, 'dims' => $dims, 'videos' => $videos];
     }
 
     /**
