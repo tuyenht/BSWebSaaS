@@ -3397,18 +3397,98 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     gap: 2rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
 }
 
-@media (min-width: 640px) {
-    .sf-footer__factories {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
     .sf-footer__factories {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
+}
+
+/* Below 1024px sf-footer-rot.js shows one card at a time: the cards share one grid cell, so the frame is
+   as tall as the tallest card and the page does not jump when the card turns. */
+.sf-footer__factories.is-rot {
+    gap: 0;
+}
+
+.sf-footer__factories.is-rot > .sf-factory {
+    grid-area: 1 / 1;
+}
+
+.sf-footer__factories.is-rot > .sf-factory[aria-hidden="true"] {
+    visibility: hidden;
+}
+
+.sf-rot__nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    margin-top: 1rem;
+}
+
+.sf-rot__nav[hidden] {
+    display: none;
+}
+
+.sf-rot__arrow,
+.sf-rot__go {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    color: var(--color-on-dark, #cbd5e1);
+    cursor: pointer;
+}
+
+.sf-rot__arrow::before {
+    content: "";
+    position: absolute;
+    inset: 0.25rem;
+    border: 1px solid color-mix(in srgb, var(--color-dark-line, #334155) 60%, var(--color-on-dark-muted, #94a3b8));
+    border-radius: 50%;
+}
+
+.sf-rot__arrow .sf-icon {
+    position: relative;
+}
+
+.sf-rot__arrow:hover::before,
+.sf-rot__arrow:focus-visible::before {
+    border-color: var(--color-primary);
+}
+
+.sf-rot__arrow:hover,
+.sf-rot__arrow:focus-visible {
+    color: var(--color-primary);
+}
+
+.sf-rot__arrow:focus-visible,
+.sf-rot__go:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+}
+
+.sf-rot__dot {
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--color-dark-line, #334155) 60%, var(--color-on-dark-muted, #94a3b8));
+    transition: background-color 0.2s, width 0.2s;
+}
+
+.sf-rot__go[aria-current="true"] .sf-rot__dot {
+    width: 1.5rem;
+    border-radius: 0.3125rem;
+    background: var(--color-primary);
 }
 
 .sf-factory {
@@ -5394,6 +5474,12 @@ html:has(.sf-header--sticky) .product-toc {
     min-width: 0;
 }
 
+/* The anti-spam check is invisible until it needs a tap: its box takes no room (and no extra gap) before
+   the script draws it, and while its frame is hidden. */
+.lead-form__form > .cf-turnstile:is(:empty, :has(> iframe[style*="display: none"])) {
+    display: none;
+}
+
 .lead-form__field > label:not(.lead-form__check) {
     display: block;
     margin-bottom: 0.25rem;
@@ -5695,7 +5781,9 @@ html:has(.sf-header--sticky) .product-toc {
 
 .sf-bmap__tabs {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr));
+    /* One row at every width, as the design draws it: the choices share the row equally. */
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
     gap: 0.5rem;
     padding: 0.25rem;
     border-radius: 0.5rem;
@@ -5819,13 +5907,13 @@ html:has(.sf-header--sticky) .product-toc {
 .sf-bmap__name {
     margin: 0;
     color: var(--color-text-strong);
-    font-size: 1.125rem;
+    font-size: 1.0625rem;
     font-weight: 700;
     overflow-wrap: anywhere;
 }
 
 .sf-bmap__meta {
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     overflow-wrap: anywhere;
 }
 
@@ -8051,7 +8139,7 @@ html:has(.sf-viewer[open]) {
     height: max(44px, 2.75rem);
     border-radius: 50%;
     background: var(--fc-fill, var(--color-dark));
-    color: #fff;
+    color: var(--fc-ink, #fff);
     text-decoration: none;
     box-shadow: 0 4px 12px rgb(0 0 0 / 0.25);
     transition: transform 0.25s, filter 0.25s;
@@ -8314,6 +8402,79 @@ html:has(.sf-viewer[open]) {
     font-weight: 600;
     line-height: 1.2;
     overflow-wrap: anywhere;
+}
+
+/* Board-style phone bar (a round-button site's `phone_bar`): below 768px the round buttons are
+   replaced by a dark bar of up to three equal 64px cells in the footer's colour, so the page ends on
+   it; its invisible copy is painted in the same colour (not hidden), which leaves no light strip or
+   empty dark band under the copyright line. From 768px only the round buttons are drawn. */
+@media (max-width: 767.98px) {
+    .sf-fc--md {
+        display: none;
+    }
+
+    .sf-fc-bar--board {
+        background: var(--color-dark);
+        border-top: 1px solid var(--color-dark-line, color-mix(in srgb, var(--color-dark) 75%, white));
+        box-shadow: none;
+    }
+
+    .sf-fc-bar--board.sf-fc-bar--ghost {
+        visibility: visible;
+    }
+
+    .sf-fc-bar--board.sf-fc-bar--ghost .sf-fc-bar__list {
+        visibility: hidden;
+    }
+}
+
+.sf-fc-bar--board .sf-fc-bar__item + .sf-fc-bar__item {
+    border-left-color: var(--color-dark-line, color-mix(in srgb, var(--color-dark) 75%, white));
+}
+
+.sf-fc-bar--board .sf-fc-bar__link {
+    min-height: max(64px, 4rem);
+    color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 25%, white));
+}
+
+.sf-fc-bar--board .sf-fc-bar__link:focus-visible {
+    outline-color: #fff;
+}
+
+.sf-fc-bar--board .sf-fc-bar__dot {
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    /* The glyph sits on the dark bar: a dark brand colour is lifted with white so it keeps 3:1. */
+    color: color-mix(in srgb, var(--fc-fill, var(--color-primary)) 55%, white);
+}
+
+.sf-fc-bar--board .sf-fc-bar__dot--chip {
+    padding: 0 0.25rem;
+    border-radius: 0.25rem;
+    background: var(--fc-fill, var(--color-dark));
+    color: var(--fc-ink, #fff);
+}
+
+.sf-fc-bar--board .sf-fc-bar__icon {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.sf-fc-bar--board .sf-fc-bar__item--cta {
+    border-left: 0;
+}
+
+.sf-fc-bar--board .sf-fc-bar__item--cta .sf-fc-bar__link {
+    background: var(--color-primary);
+    color: var(--color-on-primary, #fff);
+    font-weight: 700;
+}
+
+.sf-fc-bar--board .sf-fc-bar__item--cta .sf-fc-bar__link:focus-visible {
+    outline-color: var(--color-dark);
 }
 
 @media (prefers-reduced-motion: reduce) {
