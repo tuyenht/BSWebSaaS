@@ -1773,6 +1773,8 @@
     "entries.look_summary_hide_desktop": "仅手机",
     "entries.look_summary_hide_mobile": "仅电脑",
     "entries.look_motion": "滚动到时的效果",
+    "entries.look_motion_auto": "自动",
+    "entries.look_motion_auto_hint": "按区块类型自动选择：:effect",
     "entries.look_motion_none": "无",
     "entries.look_motion_fade": "渐显",
     "entries.look_motion_rise": "上滑",

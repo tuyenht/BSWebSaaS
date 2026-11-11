@@ -7517,8 +7517,9 @@ html:has(.sf-header--sticky) .product-toc {
     }
 }
 
-/* Scroll-in motion: sections.js sets back only what is still below the screen; opacity and
-   transform only, so nothing shifts. Without the script, or with reduced motion, nothing moves. */
+/* Scroll-in motion: once the visitor scrolls, sections.js sets back only what is still below the
+   screen; opacity and transform only, so nothing shifts. Without the script, before the first
+   scroll, or with reduced motion, nothing is hidden and nothing moves. */
 .sf-s--m-fade,
 .sf-s--m-rise {
     transition: opacity var(--motion-duration) ease-out, transform var(--motion-duration) ease-out;

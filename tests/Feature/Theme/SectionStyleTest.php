@@ -104,6 +104,56 @@ it('never moves the first block, so the main content paints at once', function (
         ->and(app(BlockRenderer::class)->moves(['blocks' => [['type' => 'richtext'], ['type' => 'richtext', 'props' => ['motion' => 'rise']]]]))->toBeTrue();
 });
 
+it('moves a block that keeps the automatic choice the way its kind suits, and keeps a saved choice', function (): void {
+    $html = styleRender([
+        ['type' => 'richtext', 'props' => ['heading' => 'Một']],
+        ['type' => 'features', 'props' => ['heading' => 'Hai']],
+        ['type' => 'faq', 'props' => ['heading' => 'Ba', 'items' => [['q' => 'Hỏi?', 'a' => 'Đáp.']]]],
+        ['type' => 'richtext', 'props' => ['heading' => 'Bốn']],
+        ['type' => 'features', 'props' => ['heading' => 'Năm', 'motion' => 'none']],
+        ['type' => 'richtext', 'props' => ['heading' => 'Sáu', 'motion' => 'rise']],
+        ['type' => 'faq', 'props' => ['heading' => 'Bảy', 'items' => [['q' => 'Hỏi?', 'a' => 'Đáp.']], 'motion' => 'spin']],
+    ]);
+
+    // features rises, faq fades (also with a value that is not listed), reading text stays still
+    // unless chosen, and a block set to "none" stays still.
+    expect(substr_count($html, 'sf-s--m-rise'))->toBe(2)
+        ->and(substr_count($html, 'sf-s--m-fade'))->toBe(2)
+        ->and(StyleProps::motion([], 'features', false))->toBe('rise')
+        ->and(StyleProps::motion([], 'features', true))->toBe('none')
+        ->and(StyleProps::motion(['motion' => 'auto'], 'hero', false))->toBe('none')
+        ->and(StyleProps::motion(['motion' => 'fade'], 'stats', false))->toBe('fade')
+        ->and(StyleProps::motion([], 'a-later-type', false))->toBe('fade')
+        ->and(app(BlockRenderer::class)->moves(['blocks' => [['type' => 'hero'], ['type' => 'stats']]]))->toBeTrue()
+        ->and(app(BlockRenderer::class)->moves(['blocks' => [['type' => 'hero'], ['type' => 'richtext'], ['type' => 'form']]]))->toBeFalse()
+        ->and(styleBlockValid(['motion' => 'auto']))->toBeTrue()
+        // A block that draws nothing (a list of questions with none) gets no wrapper: no empty band.
+        ->and(styleRender([['type' => 'richtext', 'props' => ['heading' => 'Một']], ['type' => 'faq', 'props' => ['heading' => 'Hai', 'motion' => 'rise']]]))->not->toContain('sf-s')
+        // ...unless a link points at its anchor.
+        ->and(styleRender([['type' => 'richtext', 'props' => ['heading' => 'Một']], ['type' => 'faq', 'props' => ['heading' => 'Hai', 'anchor_id' => 'hoi-dap']]]))->toContain('id="hoi-dap"');
+});
+
+it('lets no block in a slot around the page move by itself, while a chosen motion still applies', function (): void {
+    $renderer = app(BlockRenderer::class);
+    $slot = ['blocks' => [['type' => 'features', 'props' => ['heading' => 'Một']], ['type' => 'features', 'props' => ['heading' => 'Hai', 'motion' => 'fade']]]];
+
+    $html = app(Tenancy::class)->enter($this->siteId, fn (): string => $renderer->renderBodies([['blocks' => [['type' => 'richtext', 'props' => ['heading' => 'Bài']]]], $slot])[1]['html']);
+
+    expect(substr_count($html, 'sf-s--m-rise'))->toBe(0)
+        ->and(substr_count($html, 'sf-s--m-fade'))->toBe(1)
+        ->and($renderer->moves(['blocks' => [['type' => 'features']]], true))->toBeFalse()
+        ->and($renderer->moves(['blocks' => [['type' => 'features', 'props' => ['motion' => 'fade']]]], true))->toBeTrue()
+        // The same block first in a slot is not the page's first block, so its chosen motion applies.
+        ->and($renderer->moves(['blocks' => [['type' => 'features', 'props' => ['motion' => 'rise']]]]))->toBeFalse();
+});
+
+it('names a known block type for every automatic motion', function (): void {
+    $types = app(ComponentRegistry::class)->types();
+
+    expect(array_diff(array_keys(StyleProps::AUTO_MOTION), $types))->toBe([])
+        ->and(array_diff(array_values(StyleProps::AUTO_MOTION), ['none', 'fade', 'rise']))->toBe([]);
+});
+
 it('paints a background photo as a sized image under an overlay, in the one media query of the page', function (): void {
     $media = app(Tenancy::class)->enter($this->siteId, fn () => [StorefrontCards::media('band', 1600, 900), StorefrontCards::media('logo', 320, 160)]);
 

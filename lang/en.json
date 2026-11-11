@@ -1773,6 +1773,8 @@
     "entries.look_summary_hide_desktop": "Phones only",
     "entries.look_summary_hide_mobile": "Computers only",
     "entries.look_motion": "Effect when scrolled into view",
+    "entries.look_motion_auto": "Automatic",
+    "entries.look_motion_auto_hint": "Chosen for this kind of block: :effect.",
     "entries.look_motion_none": "None",
     "entries.look_motion_fade": "Fade in",
     "entries.look_motion_rise": "Slide up",

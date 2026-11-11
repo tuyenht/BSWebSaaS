@@ -42,7 +42,21 @@ final class StyleProps
 
     public const array HIDE_ON = ['none', 'mobile', 'desktop'];
 
-    public const array MOTION = ['none', 'fade', 'rise'];
+    public const array MOTION = ['none', 'fade', 'rise', 'auto'];
+
+    /**
+     * What `auto` (the default) draws for each block type: lists of cards, numbers and bands rise into
+     * view, lighter blocks only fade in; the top-of-page bands, forms and long reading text never move
+     * (a form must stay where the visitor aims, and moving body text has no purpose). A type not listed
+     * here fades. Changing a line changes every site that kept the default.
+     */
+    public const array AUTO_MOTION = [
+        'hero' => 'none', 'hero_slider' => 'none', 'page_header' => 'none', 'form' => 'none', 'contact' => 'none',
+        'richtext' => 'none', 'richtext_html' => 'none',
+        'about' => 'rise', 'cta' => 'rise', 'entry_grid' => 'rise', 'latest_posts' => 'rise', 'recent_posts' => 'rise',
+        'category_list' => 'rise', 'features' => 'rise', 'team' => 'rise', 'testimonial' => 'rise', 'pricing' => 'rise',
+        'process' => 'rise', 'stats' => 'rise',
+    ];
 
     /**
      * The extra looks a block may add on top (the reserved prop `extra_style`, a list), registered by the
@@ -84,7 +98,7 @@ final class StyleProps
         'shadow' => ['type' => 'enum', 'options' => self::SHADOW, 'default' => 'none', 'group' => 'style'],
         'hide_on' => ['type' => 'enum', 'options' => self::HIDE_ON, 'default' => 'none', 'group' => 'style'],
         'anchor_id' => ['type' => 'text', 'pattern' => self::ANCHOR_PATTERN, 'group' => 'style'],
-        'motion' => ['type' => 'enum', 'options' => self::MOTION, 'default' => 'none', 'group' => 'style'],
+        'motion' => ['type' => 'enum', 'options' => self::MOTION, 'default' => 'auto', 'group' => 'style'],
         'extra_style' => ['type' => 'list', 'of' => ['type' => 'enum', 'options' => ['pattern-cross']], 'group' => 'style'],
         // Only on a block that draws a section heading (ComponentRegistry::schemaFor); the block editor
         // lists it with the block's own props, in its own group.
@@ -106,14 +120,15 @@ final class StyleProps
     ];
 
     /**
-     * The wrapper around one rendered block, or null when the block sets no look (it then renders
-     * exactly as before). $imageUrl is `bg_image` already resolved by BlockRenderer; the first block
-     * never moves, so the page's main content paints at once.
+     * The wrapper around one rendered block, or null when the block sets no look and does not move (it
+     * then renders exactly as before). $imageUrl is `bg_image` already resolved by BlockRenderer; the
+     * first block never moves, so the page's main content paints at once; $slot is a block of a slot
+     * around the page (motion()).
      *
      * @param  array<array-key, mixed>  $props
      * @return array{classes: list<string>, id: string|null, image: string|null}|null
      */
-    public static function wrapper(array $props, bool $first, ?string $imageUrl): ?array
+    public static function wrapper(array $props, string $type, bool $first, ?string $imageUrl, bool $slot = false): ?array
     {
         $classes = [];
         $bg = SectionProps::choice($props, 'bg', self::BG);
@@ -140,7 +155,7 @@ final class StyleProps
             }
         }
 
-        $motion = $first ? 'none' : SectionProps::choice($props, 'motion', self::MOTION);
+        $motion = self::motion($props, $type, $first, $slot);
         if ($motion !== 'none') {
             $classes[] = "sf-s--m-{$motion}";
         }
@@ -188,8 +203,36 @@ final class StyleProps
      *
      * @param  array<array-key, mixed>  $props
      */
-    public static function moves(array $props, bool $first): bool
+    public static function moves(array $props, string $type, bool $first, bool $slot = false): bool
     {
-        return ! $first && SectionProps::choice($props, 'motion', self::MOTION) !== 'none';
+        return self::motion($props, $type, $first, $slot) !== 'none';
+    }
+
+    /**
+     * The scroll-in motion a block draws: none for the first block; the saved choice; for `auto` (also
+     * when nothing or an unknown value is saved) the one AUTO_MOTION gives its type, except in a slot
+     * around the page (a post's side column sticks, so a block there may never scroll into view).
+     *
+     * @param  array<array-key, mixed>  $props
+     * @return 'none'|'fade'|'rise'
+     */
+    public static function motion(array $props, string $type, bool $first, bool $slot = false): string
+    {
+        if ($first) {
+            return 'none';
+        }
+
+        $motion = SectionProps::choice($props, 'motion', self::MOTION, 'auto');
+
+        return match ($motion) {
+            'none', 'fade', 'rise' => $motion,
+            default => $slot ? 'none' : self::autoMotion($type),
+        };
+    }
+
+    /** @return 'none'|'fade'|'rise' */
+    public static function autoMotion(string $type): string
+    {
+        return self::AUTO_MOTION[$type] ?? 'fade';
     }
 }

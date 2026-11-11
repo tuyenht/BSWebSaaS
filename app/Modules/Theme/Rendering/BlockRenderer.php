@@ -105,19 +105,20 @@ final readonly class BlockRenderer
 
     /**
      * Whether a block after the first asks for the scroll-in motion — the layout loads the small
-     * sections script only then. Pure: no query.
+     * sections script only then. $slots: the blocks of the slots around a page (none of them is first).
+     * Pure: no query.
      *
      * @param  array<string, mixed>  $body
      */
-    public function moves(array $body): bool
+    public function moves(array $body, bool $slots = false): bool
     {
-        $first = true;
+        $first = ! $slots;
         foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
             $type = is_array($block) ? ($block['type'] ?? null) : null;
             if (! is_string($type) || ! $this->registry->has($type)) {
                 continue;
             }
-            if (StyleProps::moves(is_array($block['props'] ?? null) ? $block['props'] : [], $first)) {
+            if (StyleProps::moves(is_array($block['props'] ?? null) ? $block['props'] : [], $type, $first, $slots)) {
                 return true;
             }
             $first = false;
@@ -262,13 +263,15 @@ final readonly class BlockRenderer
                 /** @var view-string $view a theme section view (ComponentRegistry) */
                 $view = $component->view();
                 $image = $resolved['bg_image'] ?? null;
-                $wrapper = StyleProps::wrapper($props, $first, is_string($image) ? $image : null);
+                $wrapper = StyleProps::wrapper($props, $type, $first, is_string($image) ? $image : null, ! $isOwn);
                 // The page's one high-priority image: only the first block may claim it, and a first block
                 // with a background photo has already claimed it through the sf-section wrapper.
                 $resolved['_high'] = $first && ($wrapper === null || $wrapper['image'] === null);
                 $section = $this->views->make($view, $component->data($resolved) + ['srcsets' => $srcsets, 'thumbs' => $thumbs, 'alts' => $alts, 'dims' => $dims, 'sfSlot' => $isOwn ? [] : $context] + $band)->render();
 
-                $html .= $wrapper === null ? $section : $this->views->make('theme::partials.sf-section', [
+                // A block that draws nothing gets no wrapper either (an empty band would still take a margin),
+                // unless a link points at its anchor.
+                $html .= $wrapper === null || ($wrapper['image'] === null && $wrapper['id'] === null && trim($section) === '') ? $section : $this->views->make('theme::partials.sf-section', [
                     'wrapper' => $wrapper,
                     'section' => $section,
                     'srcset' => $wrapper['image'] !== null ? ($srcsets[$wrapper['image']] ?? null) : null,

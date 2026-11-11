@@ -1773,6 +1773,8 @@
     "entries.look_summary_hide_desktop": "スマートフォンのみ",
     "entries.look_summary_hide_mobile": "パソコンのみ",
     "entries.look_motion": "スクロール時の効果",
+    "entries.look_motion_auto": "自動",
+    "entries.look_motion_auto_hint": "ブロックの種類に合わせて選択：:effect",
     "entries.look_motion_none": "なし",
     "entries.look_motion_fade": "フェードイン",
     "entries.look_motion_rise": "スライドアップ",
