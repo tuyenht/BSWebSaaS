@@ -467,7 +467,7 @@
      {
       "type": "page_header",
       "props": {
-       "title": "Nhà Xưởng & Máy Móc",
+       "title": "Nhà xưởng & máy móc",
        "subtitle": "Ba nhà máy tại Hà Nội, tổng diện tích 4.300 m², cùng máy móc và thiết bị đo kiểm",
        "image_url": {
         "media": "plant-3-machining-hall"
@@ -689,7 +689,7 @@
      {
       "type": "page_header",
       "props": {
-       "title": "Chứng Chỉ & Thành Tựu",
+       "title": "Chứng chỉ & thành tựu",
        "subtitle": "Chứng nhận ISO 9001:2015, đối tác và các dự án An Vinh đã thực hiện",
        "image_url": {
         "media": "inspect-1"
@@ -823,7 +823,7 @@
      {
       "type": "page_header",
       "props": {
-       "title": "Hồ Sơ Năng Lực & Tài Liệu",
+       "title": "Hồ sơ năng lực & tài liệu",
        "subtitle": "Tài liệu giúp bộ phận mua hàng đánh giá nhà cung cấp nhanh hơn",
        "image_url": {
         "media": "cad-1"
@@ -905,7 +905,7 @@
      {
       "type": "page_header",
       "props": {
-       "title": "Đối Tác Của Chúng Tôi",
+       "title": "Đối tác của chúng tôi",
        "subtitle": "Cùng nhau xây dựng thành công bền vững",
        "image_url": {
         "media": "partners-header"
@@ -1037,7 +1037,7 @@
      {
       "type": "page_header",
       "props": {
-       "title": "Liên Hệ Với Chúng Tôi",
+       "title": "Liên hệ với chúng tôi",
        "subtitle": "Chúng tôi luôn sẵn sàng lắng nghe và tư vấn giải pháp cho bạn",
        "image_url": {
         "media": "contact-header"
