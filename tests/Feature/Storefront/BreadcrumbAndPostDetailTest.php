@@ -139,9 +139,9 @@ it('gives a category, a post and a product their category levels', function (): 
 
     expect(bcTrail($category))->toBe([['Trang chủ', '/'], ['Ấn phẩm số hóa', '/an-pham-so-hoa'], ['Ước tính giá cả', null]])
         ->and(bcJsonLd($category))->toBe(['Trang chủ', 'Ấn phẩm số hóa', 'Ước tính giá cả'])
-        ->and(bcTrail($post))->toBe([['Trang chủ', '/'], ['Ấn phẩm số hóa', '/an-pham-so-hoa'], ['Ước tính giá cả', '/uoc-tinh-gia-ca'], ['Ống thép cỡ nhỏ', null]])
+        ->and(bcTrail($post))->toBe([['Trang chủ', '/'], ['Ấn phẩm số hóa', '/an-pham-so-hoa'], ['Ước tính giá cả', '/uoc-tinh-gia-ca']])
         ->and(bcJsonLd($post))->toBe(['Trang chủ', 'Ấn phẩm số hóa', 'Ước tính giá cả', 'Ống thép cỡ nhỏ'])
-        ->and(bcTrail($product))->toBe([['Trang chủ', '/'], ['Đồ gá cỡ nhỏ', '/do-ga-co-nho'], ['Ổ bi chặn trục cỡ nhỏ', null]])
+        ->and(bcTrail($product))->toBe([['Trang chủ', '/'], ['Đồ gá cỡ nhỏ', '/do-ga-co-nho']])
         ->and(bcJsonLd($product))->toBe(['Trang chủ', 'Đồ gá cỡ nhỏ', 'Ổ bi chặn trục cỡ nhỏ'])
         ->and(substr_count($post, '<h1'))->toBe(1);
 });
@@ -298,7 +298,8 @@ it('prints the news post band with its category, dates, excerpt and cover captio
     $html = $this->get(BC_HOST.'/an-pham-so-hoa/de-an-mua-he')->assertOk()->getContent();
 
     expect($html)
-        ->toContain('<p class="post-band__chip">Ấn phẩm số hóa</p>')
+        ->toContain('<a class="sf-crumbs__link" href="/an-pham-so-hoa">Ấn phẩm số hóa</a>')
+        ->not->toContain('class="post-band__chip"')
         ->toContain('<h1 class="post-band__title">Đề án mùa hè</h1>')
         ->toContain('<p class="post-band__excerpt">Ước tính chi phí cả năm đó</p>')
         ->toContain('<time datetime="2026-09-01">')
@@ -393,4 +394,51 @@ it('fills "other projects" to three: the category\'s own projects first, then th
 
     expect($links)->toBe(['/tu-dong-hoa-a/cung-muc', '/o-to-a/o-to-moi', '/o-to-a/o-to-cu'])
         ->and($html)->not->toContain('href="/tu-dong-hoa-a/dang-xem"');
+});
+
+it('ends the visible trail of a detail page at its category while the JSON-LD keeps the page', function (): void {
+    bcNews();
+
+    $post = $this->get(BC_HOST.'/uoc-tinh-gia-ca/ong-thep-co-nho')->assertOk()->getContent();
+
+    expect($post)->not->toContain('aria-current="page"')
+        ->and(bcTrail($post))->toHaveCount(3)
+        ->and(array_column(bcTrail($post), 1))->each->not->toBeNull()
+        ->and(bcJsonLd($post))->toBe(['Trang chủ', 'Ấn phẩm số hóa', 'Ước tính giá cả', 'Ống thép cỡ nhỏ']);
+});
+
+it('shows the current page, as plain text, as the last visible level of a list or information page', function (): void {
+    bcNews();
+
+    $list = $this->get(BC_HOST.'/uoc-tinh-gia-ca')->assertOk()->getContent();
+
+    expect(bcTrail($list))->toBe([['Trang chủ', '/'], ['Ấn phẩm số hóa', '/an-pham-so-hoa'], ['Ước tính giá cả', null]])
+        ->and(substr_count($list, 'aria-current="page"'))->toBeGreaterThanOrEqual(1);
+});
+
+it('prints no breadcrumb and no BreadcrumbList on the home page, and none with fewer than two levels', function (): void {
+    bcNews();
+
+    $home = $this->get(BC_HOST.'/')->assertOk()->getContent();
+
+    expect(bcTrail($home))->toBe([])
+        ->and(bcJsonLd($home))->toBe([])
+        ->and($home)->not->toContain('BreadcrumbList');
+});
+
+it('does not repeat the post category as a chip under a trail that already ends with it', function (): void {
+    bcNews();
+
+    $post = $this->get(BC_HOST.'/uoc-tinh-gia-ca/ong-thep-co-nho')->assertOk()->getContent();
+
+    expect($post)->not->toContain('class="post-band__chip"')
+        ->and(bcTrail($post)[2][0])->toBe('Ước tính giá cả');
+});
+
+it('separates the levels with one slash only', function (): void {
+    $css = (string) file_get_contents(resource_path('css/storefront.css'));
+
+    expect($css)->toContain('content: "/" / ""')
+        ->and(substr_count($css, '"›"'))->toBe(0)
+        ->and(file_get_contents(base_path('themes/default/partials/sf-breadcrumb.blade.php')))->not->toContain('›');
 });

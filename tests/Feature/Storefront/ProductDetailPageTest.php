@@ -64,7 +64,7 @@ it('leads with the breadcrumb through the group and the group name above the one
     $html = productHtml();
 
     preg_match('#<nav class="sf-crumbs sf-crumbs--dark product__crumbs".*?</nav>#s', $html, $crumbs);
-    expect($crumbs[0] ?? '')->toContain('>Ấn phẩm cơ khí</a>')->toContain('>Đồ gá</a>')->toContain('Đồ gá kiểm độ')
+    expect($crumbs[0] ?? '')->toContain('>Ấn phẩm cơ khí</a>')->toContain('>Đồ gá</a>')->not->toContain('Đồ gá kiểm độ')
         ->and(substr_count($html, '<h1'))->toBe(1)
         ->and($html)->toContain('<p class="product__group">Đồ gá</p>')
         ->and($html)->toContain('<h1 class="product__title">Đồ gá kiểm độ</h1>')

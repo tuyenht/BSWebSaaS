@@ -194,7 +194,7 @@
     <script type="application/ld+json">{!! $websiteJson !!}</script>
 @endif
 
-@if (! empty($breadcrumb) && empty($preview))
+@if (is_array($breadcrumb ?? null) && count($breadcrumb) > 1 && empty($preview))
     @php
         // Build inside @php so Blade does not scan '@context' / '@type' as directives.
         // JSON_HEX_TAG escapes < and > to < / > — safe for inline <script>.

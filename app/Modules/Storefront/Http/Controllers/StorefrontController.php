@@ -324,6 +324,7 @@ final readonly class StorefrontController
                     ...$this->crumbs->category($category, $locale, $categoryTranslation->name, $categoryTranslation->slug),
                     $self,
                 ];
+                $extra['crumbsShown'] = $this->crumbs->visible($extra['breadcrumb'], true);
                 // The capability layout draws neither neighbours nor related cards: read them only when a block needs the recent posts.
                 if ($postTemplate !== 'capability' || $withRecent) {
                     $extra += $this->posts->siblings($entry, $category, $locale, true, $withRecent, $postTemplate === 'project');
@@ -333,6 +334,7 @@ final readonly class StorefrontController
             unset($extra['recent']);
         } elseif ($path !== '/') {
             $extra['breadcrumb'] = [$this->crumbs->home($locale), ...$this->crumbs->parentPages($entry, $locale), $self];
+            $extra['crumbsShown'] = $this->crumbs->visible($extra['breadcrumb'], false);
         }
 
         // A page on the layout with a table of contents shows the day it took effect (and the day it
@@ -514,8 +516,14 @@ final readonly class StorefrontController
         $extra['ogType'] = 'website';
         // Home → the categories above → this one (its own entry keeps the page's canonical address).
         $trail = $this->crumbs->category($resolved->taxonomy, $locale, $resolved->translation->name, $resolved->translation->slug);
-        $trail[count($trail) - 1]['url'] = $canonical;
+        $lastLevel = count($trail) - 1;
+        $trail = array_map(
+            fn (array $crumb, int $i): array => $i === $lastLevel ? ['name' => $crumb['name'], 'url' => $canonical, 'href' => $crumb['href']] : $crumb,
+            $trail,
+            array_keys($trail),
+        );
         $extra['breadcrumb'] = [$this->crumbs->home($locale), ...$trail];
+        $extra['crumbsShown'] = $this->crumbs->visible($extra['breadcrumb'], false);
         // The band below the list (the list's own category speaks first, then the site's default).
         $extra['slotBlocks'] = $this->slots->blocks(SlotContext::LIST_SLOTS, $locale, $resolved->taxonomy);
         $extra['slotContext'] = $this->slots->context($extra['slotBlocks'], $resolved->taxonomy, $locale, is_array($extra['brand'] ?? null) ? $extra['brand'] : null);

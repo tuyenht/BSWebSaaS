@@ -6,8 +6,8 @@
     first paint and switching never moves the page. Slide 1's photo is the LCP image (eager, high
     priority); the photos of the others sit in a `hidden` wrapper, which no browser fetches, and
     the script reveals each one shortly before it is shown. The controls are rendered `hidden` and
-    only the script shows them, so a page without JS never shows dead buttons. Their texts come
-    from the server in attributes (no strings in the script, no inline script).
+    only the script shows them, so a page without JS never shows dead buttons. There is no pause
+    button: the rotation pauses while a mouse is over the band or focus is inside it (see sf-slider.js).
     `autoplay` is in seconds (0 = off, else 5–15); `overlay` darkens the photo 55–80% (default 60):
     white text over a white photo still reads 4.76:1 at 55%.
 --}}
@@ -44,12 +44,6 @@
 <section class="sf-slider"@if ($sfCount > 1) data-sf-slider data-interval="{{ $sfInterval }}"@endif aria-roledescription="carousel" aria-label="{{ __('storefront.slider') }}">
 @if ($sfCount > 1)
     <div class="sf-slider__controls" hidden>
-@if ($sfInterval > 0)
-        <button type="button" class="sf-slider__btn sf-slider__pause" data-sf-pause aria-label="{{ __('storefront.slide_pause') }}" data-label-pause="{{ __('storefront.slide_pause') }}" data-label-play="{{ __('storefront.slide_play') }}">
-            <svg class="sf-slider__icon-pause" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M7 5h3v14H7zM14 5h3v14h-3z"/></svg>
-            <svg class="sf-slider__icon-play" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z"/></svg>
-        </button>
-@endif
         <button type="button" class="sf-slider__btn sf-slider__prev" data-sf-prev aria-label="{{ __('storefront.slide_prev') }}">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 19l-7-7 7-7"/></svg>
         </button>
