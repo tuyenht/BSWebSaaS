@@ -8,10 +8,15 @@
 
     The letter look: the first paragraph is the greeting (bold) and, from three paragraphs up, the last
     two are the signature (name, then title); the author types plain paragraphs only. Every saved text
-    is printed escaped. The photo focus is a fixed class from a lookup table, never the saved string.
+    is printed escaped. The showcase look puts a rule under the heading and ends in a dark pill button
+    with an arrow (a file to download gets an outlined button with the download glyph instead). `bg`
+    (none, surface, tint) paints a band behind the block. The photo focus is a fixed class from a lookup table, never the saved string.
 --}}
 @php
-    $sfLetter = \App\Modules\Theme\Components\SectionProps::choice($props, 'variant', \App\Modules\Theme\Components\SectionProps::ABOUT_VARIANTS) === 'letter';
+    $sfVariant = \App\Modules\Theme\Components\SectionProps::choice($props, 'variant', \App\Modules\Theme\Components\SectionProps::ABOUT_VARIANTS);
+    $sfLetter = $sfVariant === 'letter';
+    $sfShowcase = $sfVariant === 'showcase';
+    $sfBand = \App\Modules\Theme\Components\SectionProps::choice($props, 'bg', \App\Modules\Theme\Components\SectionProps::ABOUT_BG);
     $sfFocus = ['top' => ' about__image--top', 'bottom' => ' about__image--bottom'][\App\Modules\Theme\Components\SectionProps::choice($props, 'image_focus', \App\Modules\Theme\Components\SectionProps::ABOUT_IMAGE_FOCUS)] ?? '';
     $sfParagraphs = array_values(array_filter((array) ($props['paragraphs'] ?? []), fn ($sfP) => is_string($sfP) && trim($sfP) !== ''));
     $sfSigned = $sfLetter && count($sfParagraphs) >= 3;
@@ -34,7 +39,10 @@
     // A portrait photo opens larger: a link to itself (a safe link only), with a tap-to-enlarge line.
     $sfZoom = $sfWhole ? \App\Modules\Shared\Support\SafeLink::href($sfSrc) : null;
 @endphp
-<section class="about{{ $sfLetter ? ' about--letter' : '' }}{{ $sfWhole ? ' about--whole' : '' }}">
+@if ($sfBand !== 'none')
+<div class="about-band about-band--{{ $sfBand }}">
+@endif
+<section class="about{{ $sfLetter ? ' about--letter' : '' }}{{ $sfShowcase ? ' about--showcase' : '' }}{{ $sfWhole ? ' about--whole' : '' }}">
     <div class="about__body">
         @if (($sfHeading = \App\Modules\Theme\Components\SectionProps::text($props, 'heading')) !== '')
             <h2 class="about__heading">{{ $sfHeading }}</h2>
@@ -45,7 +53,7 @@
             <div class="about__signature"><p class="about__signer">{{ $sfSignature[0] }}</p><p class="about__signer-role">{{ $sfSignature[1] }}</p></div>
         @endif
         @if (! empty($props['cta_label']) && ($cta = \App\Modules\Theme\Components\ButtonLink::of($props, 'cta_url')) !== null)
-            <a class="about__cta" href="{{ $cta['href'] }}"@if ($cta['blank']) target="_blank" rel="noopener"@elseif ($cta['download']) download=""@endif>{{ $props['cta_label'] }}@if ($cta['blank'])<span class="sr-only"> {{ __('storefront.new_tab') }}</span>@endif</a>
+            <a class="about__cta{{ $cta['download'] ? ' about__cta--download' : '' }}" href="{{ $cta['href'] }}"@if ($cta['blank']) target="_blank" rel="noopener"@elseif ($cta['download']) download=""@endif>@if ($cta['download'])<svg class="about__cta-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>@endif{{ $props['cta_label'] }}@if ($sfShowcase && ! $cta['download'])<span class="about__cta-arrow" aria-hidden="true">→</span>@endif@if ($cta['blank'])<span class="sr-only"> {{ __('storefront.new_tab') }}</span>@endif</a>
         @endif@if ($sfTiles !== [])
             <ul class="about__links">
                 @foreach ($sfTiles as $sfTile)
@@ -68,3 +76,6 @@
 @if ($sfZoom !== null)<span class="about__zoom-hint">{{ __('storefront.zoom_hint') }}</span></a>@endif        </div>
     @endif
 </section>
+@if ($sfBand !== 'none')
+</div>
+@endif

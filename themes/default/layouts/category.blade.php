@@ -9,6 +9,9 @@
     <main class="category" id="noi-dung" tabindex="-1">
         @include('theme::partials.sf-breadcrumb', ['crumbs' => $breadcrumb ?? [], 'class' => 'category__crumbs'])
         <h1 class="category__title">{{ $title }}</h1>
+@if (trim((string) (($slotHtml ?? [])['before_list'] ?? '')) !== '')
+        <div class="slot-band">{!! $slotHtml['before_list'] !!}</div>
+@endif
 
         @if (count($posts) > 0)
             <ul class="category__list">
