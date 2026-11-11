@@ -110,7 +110,7 @@
                     <x-bs-admin::button variant="outline" color="secondary" wire:click="$refresh"><x-bs-admin::icon name="ri-refresh" class="size-4" />{{ __('admin.members.retry') }}</x-bs-admin::button>
                 </div>
             @else
-                <x-bs-admin::list kind="facts" :label="__('admin.members.list_label')">
+                <x-bs-admin::list kind="facts" data-cols="people" :label="__('admin.members.list_label')">
                     @if ($rows->isNotEmpty())
                         <x-bs-admin::list.head>
                             <x-bs-admin::list.cell head col="main">{{ __('admin.members.col_name') }}</x-bs-admin::list.cell>
@@ -253,7 +253,7 @@
                         <label class="flex min-h-hit cursor-pointer items-start gap-3 rounded-md border border-border px-3 py-2.5 has-checked:border-primary has-checked:bg-primary/5 has-disabled:cursor-not-allowed">
                             <input type="checkbox" value="{{ $role->name }}" wire:model.live="panelRoles" @disabled($fixed) class="mt-1 size-4.5 shrink-0 accent-primary-text">
                             <span class="flex min-w-0 flex-col">
-                                <span class="font-medium text-text-strong [overflow-wrap:anywhere]">{{ RoleLabel::for($role) }}</span>
+                                <span class="text-body font-medium text-text-strong [overflow-wrap:anywhere]">{{ RoleLabel::for($role) }}</span>
                                 <span class="text-small text-text-muted">{{ $fixed ? __('admin.members.role_fixed') : $describe($role) }}</span>
                             </span>
                         </label>
@@ -321,7 +321,7 @@
                             <label class="flex min-h-hit cursor-pointer items-start gap-3 rounded-md border border-border px-3 py-2.5 has-checked:border-primary has-checked:bg-primary/5">
                                 <input type="checkbox" value="{{ $role->name }}" wire:model="inviteRoles" class="mt-1 size-4.5 shrink-0 accent-primary-text">
                                 <span class="flex min-w-0 flex-col">
-                                    <span class="font-medium text-text-strong [overflow-wrap:anywhere]">{{ RoleLabel::for($role) }}</span>
+                                    <span class="text-body font-medium text-text-strong [overflow-wrap:anywhere]">{{ RoleLabel::for($role) }}</span>
                                     <span class="text-small text-text-muted">{{ $describe($role) }}</span>
                                 </span>
                             </label>
