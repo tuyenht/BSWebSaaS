@@ -520,6 +520,6 @@ it('keeps a line break inside a richtext paragraph and prints **text** bold, all
 
     expect($html)->toContain('<p><strong>CÔNG TY A</strong><br>Mã số: 0108<br>Email: a@b.test · &lt;b&gt;x&lt;/b&gt;</p>')
         ->toContain('<p>Một dòng, không dấu sao.</p>')
-        ->toContain('<p>Dấu <strong> mở mà không đóng</strong></p>')
+        ->toContain('<p>Dấu ** mở mà không đóng</p>')
         ->not->toContain('<b>');
 });

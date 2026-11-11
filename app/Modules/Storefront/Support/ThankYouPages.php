@@ -37,12 +37,28 @@ final class ThankYouPages
         return in_array($ulid, $this->ulids($this->current->id()), true);
     }
 
+    /**
+     * Every thank-you page of the current site (what sitemap.xml leaves out).
+     *
+     * @return list<string>
+     */
+    public function all(): array
+    {
+        return $this->current->hasId() ? $this->ulids($this->current->id()) : [];
+    }
+
+    /** Drops the cached set of a site (a form's thank-you page changed outside the admin). */
+    public static function forget(int $siteId): void
+    {
+        Cache::forget(self::KEY.$siteId);
+    }
+
     /** @return list<string> */
     private function ulids(int $siteId): array
     {
         return $this->memo[$siteId] ??= Cache::remember(self::KEY.$siteId, self::TTL, static function (): array {
             $ulids = [];
-            foreach (Form::query()->get(['id', 'settings']) as $form) {
+            foreach (Form::query()->where('status', 'active')->get(['id', 'settings']) as $form) {
                 $ulid = Cast::arr($form->settings)['redirect_entry'] ?? null;
                 if (is_string($ulid) && $ulid !== '') {
                     $ulids[$ulid] = $ulid;

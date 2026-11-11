@@ -106,7 +106,7 @@ it('darkens a fill until white marks read on it: 3:1 for a glyph, 4.5:1 for a wo
     expect(ReadableColor::ratio($phone['fill'], '#ffffff'))->toBeGreaterThanOrEqual(3.0)
         ->and(ReadableColor::ratio($zalo['fill'], '#ffffff'))->toBeGreaterThanOrEqual(4.5)
         ->and($zalo['text'])->toBe('Zalo')
-        ->and(ReadableColor::ratio($own['fill'], $own['ink']))->toBeGreaterThanOrEqual(3.0)
+        ->and(ReadableColor::ratio($own['fill'], '#ffffff'))->toBeGreaterThanOrEqual(3.0)
         ->and($own['icon'])->toBe(ContactIcons::path('ri-chat-3-line'))
         ->and($phone['pulse'])->toBeTrue();
 });
@@ -184,18 +184,26 @@ it('picks the hover label of the page’s language, else the name of a channel o
         ]], 'ja')['buttons'], 'label'))->toBe([null]);
 });
 
-it('keeps a light fill the site chose and gives it a dark ink, white stays where it reads', function (): void {
-    $out = FloatingContact::for(['enabled' => true, 'channels' => [
+it('keeps a light fill the site chose with a dark ink on the phone bar only; round buttons and the bar theme keep the darkened fill with white', function (): void {
+    $channels = [
         ['key' => 'phone', 'on' => true, 'value' => '0912345678', 'color' => '#f59e0b'],
         ['key' => 'zalo', 'on' => true, 'value' => '0912345678', 'color' => '#0068ff'],
-    ]], 'vi');
+    ];
+    $out = FloatingContact::for(['enabled' => true, 'channels' => $channels, 'phone_bar' => ['enabled' => true]], 'vi');
 
-    [$phone, $zalo] = $out['buttons'];
+    [$phone, $zalo] = $out['phone_bar']['bar'];
     expect($phone['fill'])->toBe('#f59e0b')
         ->and($phone['ink'])->toBe(FloatingContact::DARK_INK)
         ->and(ReadableColor::ratio($phone['fill'], $phone['ink']))->toBeGreaterThanOrEqual(3.0)
         ->and($zalo['fill'])->toBe('#0068ff')
         ->and($zalo['ink'])->toBe('#ffffff');
+
+    // Round buttons: the old rule, the colour darkened until white reads on it.
+    foreach ([$out['buttons'], FloatingContact::for(['enabled' => true, 'theme' => 'horizontal', 'channels' => $channels], 'vi')['bar']] as $set) {
+        expect($set[0]['ink'])->toBe('#ffffff')
+            ->and($set[0]['fill'])->not->toBe('#f59e0b')
+            ->and(ReadableColor::ratio($set[0]['fill'], '#ffffff'))->toBeGreaterThanOrEqual(3.0);
+    }
 });
 
 it('builds the board phone bar: the call first, then the other quick channels, then the site\'s own cell, three cells at most', function (): void {

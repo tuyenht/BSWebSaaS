@@ -53,3 +53,17 @@ it('reads the forms once and then answers from the cache', function (): void {
 
     expect($queries)->toBe(0);
 });
+
+it('leaves a thank-you page out of sitemap.xml and keeps the other pages', function (): void {
+    $xml = $this->get('http://mau.platform.test/sitemap.xml')->assertOk()->getContent();
+
+    expect($xml)->toContain('/gioi-thieu')->not->toContain('/cam-on');
+});
+
+it('counts only forms that are active as thank-you pages', function (): void {
+    app(Tenancy::class)->enter($this->siteId, fn () => Form::query()->where('key', 'contact')->update(['status' => 'disabled']));
+    Cache::flush();
+
+    expect($this->get('http://mau.platform.test/cam-on')->assertOk()->getContent())->not->toContain('name="robots"');
+    expect($this->get('http://mau.platform.test/sitemap.xml')->assertOk()->getContent())->toContain('/cam-on');
+});

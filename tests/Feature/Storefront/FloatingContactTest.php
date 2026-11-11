@@ -13,6 +13,7 @@ use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Theming\ReadableColor;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -382,7 +383,8 @@ it('swaps the round buttons for the dark phone bar below 768px when the site swi
     preg_match('~<nav class="sf-fc-bar sf-fc-bar--board".*?</nav>~s', $html, $bar);
     preg_match('~<div class="sf-fc-bar sf-fc-bar--board sf-fc-bar--ghost".*?</ul></div>~s', $html, $ghost);
 
-    expect($round[0] ?? '')->toContain('href="tel:0912345678"')->toContain('--fc-fill:#f59e0b;--fc-ink:#0f172a')
+    expect($round[0] ?? '')->toContain('href="tel:0912345678"')->not->toContain('--fc-fill:#f59e0b')->toContain('--fc-ink:#ffffff')
+        ->and($bar[0] ?? '')->toContain('--fc-fill:#f59e0b;--fc-ink:#0f172a')
         ->and($bar[0] ?? '')->toContain('href="https://zalo.me/0912345678"')->toContain('>Chat Zalo<')
         ->toContain('href="tel:0912345678"')->toContain('>Gọi<')
         ->toContain('sf-fc-bar__item--cta')->toContain('href="/gioi-thieu"')->toContain('>Yêu cầu báo giá<')
@@ -407,4 +409,17 @@ it('draws the phone bar with the channels alone when its own cell has no safe li
     $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
 
     expect($html)->toContain('sf-fc-bar--board')->not->toContain('sf-fc-bar__item--cta')->not->toContain('javascript:');
+});
+
+it('prints the readable ink on every link of the horizontal bar, a light colour of the site included', function (): void {
+    $siteId = flcSite();
+    flcSetting($siteId, flcConfig([['key' => 'phone', 'on' => true, 'value' => '0912345678', 'color' => '#f59e0b']], ['theme' => 'horizontal']));
+
+    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
+    preg_match('~<nav class="sf-fc-bar".*?</nav>~s', $html, $bar);
+    preg_match('~href="tel:0912345678" style="--fc-fill:(#[0-9a-f]{6});--fc-ink:(#[0-9a-f]{6})"~', $bar[0] ?? '', $m);
+
+    expect($m)->not->toBe([])
+        ->and($m[2])->toBe('#ffffff')
+        ->and(ReadableColor::ratio($m[1], $m[2]))->toBeGreaterThanOrEqual(3.0);
 });

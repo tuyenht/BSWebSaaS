@@ -8441,7 +8441,8 @@ html:has(.sf-viewer[open]) {
     padding: 0;
     background: transparent;
     box-shadow: none;
-    color: var(--fc-fill, var(--color-primary));
+    /* The glyph sits on the dark bar: a dark brand colour is lifted with white so it keeps 3:1. */
+    color: color-mix(in srgb, var(--fc-fill, var(--color-primary)) 55%, white);
 }
 
 .sf-fc-bar--board .sf-fc-bar__dot--chip {

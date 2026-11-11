@@ -169,7 +169,7 @@ final class FloatingContact
      *
      * @param  mixed  $raw  the stored value (an array when set)
      * @param  string|null  $shopHref  the site's product list, or null when it has none
-     * @return array{theme: string, position: string, offset_x: int, offset_y: int, buttons: list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, ink: string, pulse: bool}>, bar: list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, ink: string, pulse: bool}>, buy: array{href: string, fill: string, ink: string, icon: string}|null, phone_bar: array{bar: list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, ink: string, pulse: bool}>, cta: array{href: string, label: string}|null}|null}|null
+     * @return array{theme: string, position: string, offset_x: int, offset_y: int, buttons: list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, ink: string, bar_fill: string, bar_ink: string, pulse: bool}>, bar: list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, ink: string, bar_fill: string, bar_ink: string, pulse: bool}>, buy: array{href: string, fill: string, ink: string, icon: string}|null, phone_bar: array{bar: list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, ink: string, bar_fill: string, bar_ink: string, pulse: bool}>, cta: array{href: string, label: string}|null}|null}|null
      */
     public static function for(mixed $raw, string $locale, ?string $shopHref = null): ?array
     {
@@ -218,8 +218,8 @@ final class FloatingContact
      * (messenger and e-mail left out, as in the other bar), then an optional cell of the site's own, such as
      * "Yêu cầu báo giá". Null when the site did not switch it on or nothing is left to show.
      *
-     * @param  list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, ink: string, pulse: bool}>  $buttons
-     * @return array{bar: list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, ink: string, pulse: bool}>, cta: array{href: string, label: string}|null}|null
+     * @param  list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, ink: string, bar_fill: string, bar_ink: string, pulse: bool}>  $buttons
+     * @return array{bar: list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, ink: string, bar_fill: string, bar_ink: string, pulse: bool}>, cta: array{href: string, label: string}|null}|null
      */
     private static function phoneBar(mixed $raw, array $buttons, string $locale): ?array
     {
@@ -230,7 +230,12 @@ final class FloatingContact
         $quick = array_values(array_filter($buttons, static fn (array $b): bool => ! in_array($b['key'], self::BAR_HIDDEN, true)));
         // On a phone the call comes first (the rest keep the order of the setting).
         usort($quick, static fn (array $a, array $b): int => ($b['key'] === 'phone') <=> ($a['key'] === 'phone'));
-        $bar = array_slice($quick, 0, self::PHONE_BAR_MAX - ($cta === null ? 0 : 1));
+        $bar = array_map(static function (array $b): array {
+            $b['fill'] = $b['bar_fill'];
+            $b['ink'] = $b['bar_ink'];
+
+            return $b;
+        }, array_slice($quick, 0, self::PHONE_BAR_MAX - ($cta === null ? 0 : 1)));
 
         return $bar === [] && $cta === null ? null : ['bar' => $bar, 'cta' => $cta];
     }
@@ -283,7 +288,7 @@ final class FloatingContact
      * One shown button, or null when the channel is off, unknown or its value does not pass.
      *
      * @param  array<array-key, mixed>  $channel
-     * @return array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, ink: string, pulse: bool}|null
+     * @return array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, ink: string, bar_fill: string, bar_ink: string, pulse: bool}|null
      */
     private static function button(array $channel, string $locale): ?array
     {
@@ -320,8 +325,12 @@ final class FloatingContact
             'label' => $label,
             'icon' => ContactIcons::path($iconCode) ?? '',
             'text' => $text,
-            'fill' => $light ? $color : (ReadableColor::on($color, '#ffffff', $need) ?? $color),
-            'ink' => $light ? self::DARK_INK : '#ffffff',
+            // Round buttons and the horizontal bar keep their colour darkened until white reads on it.
+            'fill' => ReadableColor::on($color, '#ffffff', $need) ?? $color,
+            'ink' => '#ffffff',
+            // Only the phone bar keeps a light colour of the site's own and takes a dark ink on it.
+            'bar_fill' => $light ? $color : (ReadableColor::on($color, '#ffffff', $need) ?? $color),
+            'bar_ink' => $light ? self::DARK_INK : '#ffffff',
             'pulse' => ($meta['pulse'] ?? false) === true,
         ];
     }

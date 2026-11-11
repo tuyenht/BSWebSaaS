@@ -150,7 +150,7 @@
                                 @if ($factory['map_url'] !== null)
                                     <a class="sf-factory__map" href="{{ $factory['map_url'] }}" rel="noopener" aria-label="{{ __('storefront.view_map_of', ['name' => $factory['title']]) }} {{ __('storefront.external') }}">@include('theme::partials.sf-icon', ['name' => 'map', 'size' => 16])<span>{{ __('storefront.view_map') }}</span></a>
                                 @elseif ($factory['directions_url'] !== null)
-                                    <a class="sf-factory__map" href="{{ $factory['directions_url'] }}" target="_blank" rel="noopener" aria-label="{{ __('storefront.directions_to', ['name' => $factory['title']]) }} {{ __('storefront.external') }}">@include('theme::partials.sf-icon', ['name' => 'map', 'size' => 16])<span>{{ __('storefront.directions') }}</span></a>
+                                    <a class="sf-factory__map" href="{{ $factory['directions_url'] }}" rel="noopener" aria-label="{{ __('storefront.directions_to', ['name' => $factory['title']]) }} {{ __('storefront.external') }}">@include('theme::partials.sf-icon', ['name' => 'map', 'size' => 16])<span>{{ __('storefront.directions') }}</span></a>
                                 @endif
                             </li>
                         @endforeach

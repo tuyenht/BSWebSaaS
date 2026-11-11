@@ -1,13 +1,20 @@
 @php
-    // A line break stays a line break and text between two pairs of asterisks is bold;
+    // A line break stays a line break and text between two pairs of asterisks is bold when the pair closes in the same line;
     // every piece is escaped, nothing else is read as markup.
     $sfParagraphs = [];
     foreach ((array) ($props['paragraphs'] ?? []) as $sfParagraph) {
         $sfLines = [];
         foreach (preg_split('/\R/u', is_scalar($sfParagraph) ? (string) $sfParagraph : '') ?: [] as $sfLine) {
+            // Only a pair closed inside the line is bold; a lone ** stays as typed.
+            $sfParts = explode('**', $sfLine);
+            $sfClosed = count($sfParts) - (count($sfParts) % 2 === 0 ? 1 : 0);
             $sfPieces = '';
-            foreach (explode('**', $sfLine) as $sfIndex => $sfPart) {
-                $sfPieces .= $sfIndex % 2 === 1 ? '<strong>'.e($sfPart).'</strong>' : e($sfPart);
+            foreach ($sfParts as $sfIndex => $sfPart) {
+                if ($sfIndex >= $sfClosed && $sfIndex > 0) {
+                    $sfPieces .= '**'.e($sfPart);
+                } else {
+                    $sfPieces .= $sfIndex % 2 === 1 ? '<strong>'.e($sfPart).'</strong>' : e($sfPart);
+                }
             }
             $sfLines[] = $sfPieces;
         }

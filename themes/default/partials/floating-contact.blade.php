@@ -76,7 +76,7 @@
 <nav class="sf-fc-bar" aria-label="{{ __('storefront.fc_nav') }}">
     <ul class="sf-fc-bar__list" role="list">
         @foreach ($fc['bar'] as $b)
-            <li class="sf-fc-bar__item{{ $fcRank($loop->index) }}"><a class="sf-fc-bar__link" href="{{ $b['href'] }}" style="--fc-fill:{{ $b['fill'] }}">
+            <li class="sf-fc-bar__item{{ $fcRank($loop->index) }}"><a class="sf-fc-bar__link" href="{{ $b['href'] }}" style="--fc-fill:{{ $b['fill'] }};--fc-ink:{{ $b['ink'] }}">
                 <span class="sf-fc-bar__dot" aria-hidden="true">
                     @if ($b['text'] !== null)
                         <span class="sf-fc-bar__word">{{ $b['text'] }}</span>
