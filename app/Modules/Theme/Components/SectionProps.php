@@ -80,6 +80,11 @@ final class SectionProps
     /** Stats look: the plain band, or a card floating up over the band above it. */
     public const array STATS_VARIANTS = ['default', 'floating'];
 
+    /** The title band without a photo: the diagonal pattern on or off; the mark above its title: none or the gold tick. */
+    public const array BAND_PATTERNS = ['on', 'off'];
+
+    public const array BAND_MARKS = ['none', 'check'];
+
     /** What a stat's value means: a counted number, years since a start year, or a year printed as is. Append-only. */
     public const array STAT_KINDS = ['number', 'years', 'year'];
 

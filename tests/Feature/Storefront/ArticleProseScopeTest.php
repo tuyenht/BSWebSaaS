@@ -39,7 +39,7 @@ it('puts a block heading in a post body on the article’s left edge with one ru
     $css = (string) file_get_contents(resource_path('css/storefront.css'));
 
     expect($css)->toContain(".sf-prose--article .sf-band--none .sf-section-head {\n    max-width: none;\n    margin: 0 0 1.25rem;\n    text-align: left;")
-        ->toContain(".sf-prose--article .sf-band--none .sf-section-head__rule {\n    display: none;")
+        ->toContain(".sf-prose--article .sf-band--none .sf-section-head__rule,\n.sf-prose--article .sf-band--none .sf-section-head > .sf-decor {\n    display: none;")
         ->toContain(".sf-prose--article .sf-band--none > .sf-container,\n.sf-prose--article .sf-band--none :is(.sf-faq__list, .sf-video-block__frame) {\n    max-width: none;\n    margin-inline: 0;\n    padding-inline: 0;")
         ->toContain(".sf-prose:not(.sf-prose--article) a {\n    color: var(--color-primary-text);\n    text-decoration: underline;");
 });

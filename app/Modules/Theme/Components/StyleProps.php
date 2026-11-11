@@ -89,19 +89,20 @@ final class StyleProps
         // Only on a block that draws a section heading (ComponentRegistry::schemaFor); the block editor
         // lists it with the block's own props, in its own group.
         'heading_decor' => ['type' => 'enum', 'options' => HeadingDecor::BLOCK_CHOICES, 'default' => 'inherit', 'group' => 'heading'],
+        'heading_align' => ['type' => 'enum', 'options' => HeadingDecor::HEAD_ALIGNS, 'default' => 'center', 'group' => 'heading'],
     ];
 
     /**
      * Names a block's own schema may never declare: the props above, the ones reserved for later
      * (overlay_tone, divider_top/bottom, border, motion_stagger) and the editor's own
-     * state (ink, spacing_split), and heading_decor (the decoration under a section heading, only on a block
+     * state (ink, spacing_split), and heading_decor / heading_align (the decoration and the alignment of a section heading, only on a block
      * that has one). page_header and hero_slider had their own `overlay` (how dark their
      * photo is, a number) before; schemaFor() keeps theirs, and the wrapper photo is not offered there.
      */
     public const array RESERVED = [
         'scheme', 'bg', 'bg_image', 'overlay', 'spacing_top', 'spacing_bottom', 'width', 'align', 'corner',
         'shadow', 'hide_on', 'anchor_id', 'motion', 'overlay_tone', 'divider_top', 'divider_bottom', 'border',
-        'motion_stagger', 'extra_style', 'ink', 'spacing_split', 'heading_decor',
+        'motion_stagger', 'extra_style', 'ink', 'spacing_split', 'heading_decor', 'heading_align',
     ];
 
     /**

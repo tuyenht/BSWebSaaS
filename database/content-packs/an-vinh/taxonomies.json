@@ -6,6 +6,12 @@
     "vi": "Sản phẩm"
    },
    "list_template": "grid-product",
+   "description": {
+    "vi": "Khám phá các giải pháp cơ khí chính xác của chúng tôi, từ đồ gá, khuôn mẫu đến các chi tiết máy phức tạp."
+   },
+   "cover": {
+    "media": "products-header"
+   },
    "layout_blocks": {
     "after_list": {
      "vi": {
@@ -113,6 +119,12 @@
    },
    "list_template": "grid-project",
    "detail_template": "project",
+   "description": {
+    "vi": "Minh chứng cho năng lực và kinh nghiệm của An Vinh"
+   },
+   "cover": {
+    "media": "projects-header"
+   },
    "layout_blocks": {
     "after_list": {
      "vi": {
@@ -140,7 +152,13 @@
    "name": {
     "vi": "Tin tức"
    },
-   "list_template": "grid-news"
+   "list_template": "grid-news",
+   "description": {
+    "vi": "Cập nhật thông tin mới nhất từ An Vinh và ngành cơ khí"
+   },
+   "cover": {
+    "media": "news-header"
+   }
   },
   {
    "key": "tax:post_cat/tin-tuc/tin-noi-bo",
@@ -445,6 +463,12 @@
    },
    "list_template": "grid-job",
    "detail_template": "job",
+   "description": {
+    "vi": "Cùng chế tác những sản phẩm cơ khí chính xác"
+   },
+   "cover": {
+    "media": "products-header"
+   },
    "layout_blocks": {
     "before_list": {
      "vi": {
