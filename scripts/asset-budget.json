@@ -52,6 +52,10 @@
       "js": 578,
       "css": 0
     },
+    "resources/js/sf-turnstile.js": {
+      "js": 613,
+      "css": 0
+    },
     "resources/js/sf-viewer.js": {
       "js": 919,
       "css": 0

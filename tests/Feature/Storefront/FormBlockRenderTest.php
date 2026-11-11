@@ -90,8 +90,9 @@ it('includes the Turnstile widget when a site_key is configured', function (): v
     seedContactPageWithForm();
 
     expect($this->get('http://a.test/lien-he')->getContent())
-        ->toContain('challenges.cloudflare.com/turnstile/v0/api.js')
         ->toContain('data-sitekey="0x4AAAAAADtFZhUYB224F9cf"')
+        // Cloudflare's script is fetched by sf-turnstile.js once the visitor starts on the form, not on arrival.
+        ->not->toContain('challenges.cloudflare.com/turnstile/v0/api.js')
         // Shown only when the visitor has to act, so a passed check leaves no empty box above the button.
         ->toContain('data-appearance="interaction-only"');
 });

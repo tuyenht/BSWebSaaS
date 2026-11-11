@@ -213,7 +213,8 @@
 
             @if (! empty($turnstileSiteKey))
                 <div class="cf-turnstile lead-form__wide" data-sitekey="{{ $turnstileSiteKey }}" data-appearance="interaction-only"></div>
-                <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+                {{-- Fetches Cloudflare's script only when the visitor starts on the form. --}}
+                @vite(['resources/js/sf-turnstile.js'])
             @endif
 
             <div class="lead-form__actions">
