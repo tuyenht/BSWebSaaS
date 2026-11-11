@@ -37,7 +37,7 @@ final readonly class PageRenderer
 
     /**
      * @param  array<string, mixed>  $body  the Page-JSON body
-     * @param  array{title?: string|null, description?: string|null, home?: bool}  $seo  `home`: the site's home page
+     * @param  array{title?: string|null, description?: string|null, home?: bool, pageTitle?: string}  $seo  `home`: the site's home page
      * @param  string|null  $categoryTemplate  per-category layout name (override → category → type)
      * @param  array<string, mixed>  $extra  extra layout vars (e.g. a post's category breadcrumb)
      */
@@ -260,7 +260,7 @@ final readonly class PageRenderer
      * robots line the page asked for). The page's language and the site's name come from the
      * chrome the controller already resolved: no query here.
      *
-     * @param  array{title?: string|null, description?: string|null, home?: bool}  $seo
+     * @param  array{title?: string|null, description?: string|null, home?: bool, pageTitle?: string}  $seo  `pageTitle`: the name the title template is given when it differs from the heading (a parent added to keep titles unique)
      * @param  array<string, mixed>  $extra
      * @return array{seoTitle: string, seoDescription: string|null, robots?: string}
      */
@@ -268,7 +268,7 @@ final readonly class PageRenderer
     {
         $locale = Cast::string($extra['lang'] ?? null, app()->getLocale());
         $head = [
-            'seoTitle' => $this->seo->title($seo['title'] ?? null, $title, $seo['home'] ?? false, $locale, Cast::string(data_get($extra, 'brand.name'))),
+            'seoTitle' => $this->seo->title($seo['title'] ?? null, $seo['pageTitle'] ?? $title, $seo['home'] ?? false, $locale, Cast::string(data_get($extra, 'brand.name'))),
             'seoDescription' => $this->seo->description($seo['description'] ?? null, $locale),
         ];
         if (! $this->seo->indexable()) {
@@ -508,7 +508,7 @@ final readonly class PageRenderer
      *
      * @param  list<array{title: string, url: string}>  $posts
      * @param  array{prevUrl?: string|null, nextUrl?: string|null}  $pagination
-     * @param  array{title?: string|null, description?: string|null}  $seo
+     * @param  array{title?: string|null, description?: string|null, pageTitle?: string}  $seo
      * @param  array<string, mixed>  $extra  extra layout vars (e.g. the resolved nav menu)
      */
     public function renderCategory(?string $listTemplate, string $title, array $posts, array $pagination = [], array $seo = [], array $extra = []): string
@@ -532,7 +532,7 @@ final readonly class PageRenderer
      * Catalog.
      *
      * @param  list<array{url: string, alt: string}>  $images
-     * @param  array{title?: string|null, description?: string|null}  $seo
+     * @param  array{title?: string|null, description?: string|null, pageTitle?: string}  $seo
      * @param  array<string, mixed>  $extra  extra layout vars (chrome, canonical, og:*, breadcrumb)
      */
     public function renderProduct(string $name, string $descriptionHtml, array $images, array $seo = [], array $extra = []): string
