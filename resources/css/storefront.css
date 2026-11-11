@@ -6954,15 +6954,20 @@ html:has(.sf-header--sticky) .product-toc {
     grid-area: 1 / 1;
     align-items: center;
     justify-content: center;
+    z-index: 0;
     min-height: max(28rem, min(56.25vw, 100svh));
     visibility: hidden;
     opacity: 0;
-    transition: opacity 1s, visibility 1s;
+    transition: opacity 0s var(--motion-duration, 250ms), visibility 0s var(--motion-duration, 250ms);
 }
 
+/* The next slide fades in on top of the one it replaces, which stays whole underneath until the fade
+ * is over, so the band never dims between two photos; each slide keeps its text in its own layer. */
 .sf-slide.is-active {
+    z-index: 1;
     visibility: visible;
     opacity: 1;
+    transition: opacity var(--motion-duration, 250ms) ease-out;
 }
 
 .sf-slide__media,
@@ -7472,6 +7477,7 @@ html:has(.sf-header--sticky) .product-toc {
 
 @media (prefers-reduced-motion: reduce) {
     .sf-slide,
+    .sf-slide.is-active,
     .sf-card,
     .sf-card__img,
     .sf-card__icon,
@@ -7709,34 +7715,65 @@ html:has(.sf-header--sticky) .product-toc {
 }
 
 /* Scroll-in motion: once the visitor scrolls, sections.js sets back only what is still below the
-   screen; opacity and transform only, so nothing shifts. Without the script, before the first
-   scroll, or with reduced motion, nothing is hidden and nothing moves. */
-.sf-s--m-fade,
-.sf-s--m-rise {
-    transition: opacity var(--motion-duration) ease-out, transform var(--motion-duration) ease-out;
+   screen (`sf-s--before`) and brings it in (`sf-s--in`) when it reaches the reveal line: a section as
+   one piece, or in a `sf-s--stagger` section its head and each list item, each a step (`--sf-step`,
+   0-5) of 60 ms after the one before. Opacity and translate only, so nothing shifts; an animation
+   rather than a transition, so an item's own hover transitions stay as they are. Without the
+   script, before the first scroll, with reduced motion or in print, nothing is hidden and nothing
+   moves. */
+@keyframes sf-in-fade {
+    from { opacity: 0; }
 }
 
-.sf-s--m-fade.sf-s--before,
-.sf-s--m-rise.sf-s--before {
-    opacity: 0;
-}
-
-.sf-s--m-rise.sf-s--before {
-    transform: translateY(var(--motion-distance));
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .sf-s--m-fade,
-    .sf-s--m-rise {
-        transition: none;
+@keyframes sf-in-rise {
+    from {
+        opacity: 0;
+        translate: 0 var(--motion-distance, 24px);
     }
 }
 
+.sf-s--before {
+    opacity: 0;
+}
+
+.sf-s--m-rise.sf-s--before,
+.sf-s--m-rise .sf-s--before {
+    translate: 0 var(--motion-distance, 24px);
+}
+
+.sf-s--in {
+    animation: sf-in-fade var(--motion-duration) ease-out calc(var(--sf-step, 0) * 60ms) backwards;
+}
+
+.sf-s--m-rise.sf-s--in,
+.sf-s--m-rise .sf-s--in {
+    animation-name: sf-in-rise;
+}
+
+/* A lazy photo below the first screen waits transparent over its frame's tint (storefront.js) until
+   it is decoded, then fades in; its width and height already hold its space. */
+.sf-img--wait {
+    opacity: 0;
+}
+
+.sf-img--in {
+    animation: sf-in-fade 200ms ease-out;
+}
+
 @media (prefers-reduced-motion: reduce), print {
-    .sf-s--m-fade.sf-s--before,
-    .sf-s--m-rise.sf-s--before {
+    .sf-s--before,
+    .sf-s--m-rise.sf-s--before,
+    .sf-s--m-rise .sf-s--before,
+    .sf-img--wait {
         opacity: 1;
-        transform: none;
+        translate: none;
+    }
+
+    .sf-s--in,
+    .sf-s--m-rise.sf-s--in,
+    .sf-s--m-rise .sf-s--in,
+    .sf-img--in {
+        animation: none;
     }
 }
 
@@ -8015,6 +8052,7 @@ html:has(.sf-header--sticky) .product-toc {
     display: block;
     overflow: hidden;
     border-radius: 0.5rem;
+    background: var(--color-surface-tint, var(--color-surface));
     cursor: zoom-in;
 }
 
