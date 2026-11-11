@@ -217,6 +217,7 @@ it('accepts a heading decoration, floating contact buttons and block slots writt
     cpAddSetting($this->folder, 'setting:storefront.floating_contact', [
         'enabled' => true, 'theme' => 'vertical', 'position' => 'right',
         'channels' => [['key' => 'phone', 'on' => true, 'value' => '0900 000 000'], ['key' => 'zalo', 'on' => true, 'value' => '0900000000'], ['key' => 'maps', 'on' => true, 'value' => 'https://maps.google.com/?q=x']],
+        'phone_bar' => ['enabled' => true, 'cta' => ['label' => ['vi' => 'Yêu cầu báo giá'], 'url' => '/lien-he']],
     ]);
     cpAddSetting($this->folder, 'setting:storefront.layout_blocks', ['post_aside' => ['vi' => ['blocks' => [['type' => 'richtext', 'props' => ['paragraphs' => ['Cần tư vấn?']]]]]]]);
 
@@ -249,6 +250,10 @@ it('refuses floating contact channels the storefront would drop or that are unsa
     'an unknown theme' => [['enabled' => true, 'theme' => 'diagonal'], "'theme' must be one of"],
     'a label in a language the pack lacks' => [['enabled' => true, 'channels' => [['key' => 'phone', 'on' => true, 'value' => '0900000000', 'tips' => ['en' => 'Call']]]], 'tips.en must be a label'],
     'a field of its own' => [['enabled' => true, 'script' => 'x'], "'script' is not a floating-contact field"],
+    'a phone bar that is not an object' => [['enabled' => true, 'phone_bar' => true], "'phone_bar' must be"],
+    'a phone bar cell with an unsafe link' => [['enabled' => true, 'phone_bar' => ['enabled' => true, 'cta' => ['label' => ['vi' => 'Báo giá'], 'url' => 'javascript:alert(1)']]], "'phone_bar.cta.url' must be a safe link"],
+    'a phone bar cell in a language the pack lacks' => [['enabled' => true, 'phone_bar' => ['enabled' => true, 'cta' => ['label' => ['en' => 'Quote'], 'url' => '/lien-he']]], "'phone_bar.cta.label.en' must be a text"],
+    'a phone bar cell with no text' => [['enabled' => true, 'phone_bar' => ['enabled' => true, 'cta' => ['label' => [], 'url' => '/lien-he']]], "'phone_bar.cta.label' needs a text"],
 ]);
 
 it('refuses block slots the admin would refuse', function (array $value, string $message): void {

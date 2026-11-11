@@ -277,10 +277,10 @@ it('loads the flourish heading decoration, a floating contact of Zalo and call o
         ->and(array_keys($stored('storefront', 'layout_blocks')))->toEqualCanonicalizing(['post_aside', 'after_product']);
 
     $home = $this->get('http://'.ContentPacks::HOST.'/')->assertOk()->getContent();
-    expect($home)->toContain('<nav class="sf-fc sf-fc--right"')
+    expect($home)->toContain('<nav class="sf-fc sf-fc--right sf-fc--md"')
         ->toContain('href="https://zalo.me/0915668383"')->toContain('href="tel:0915668383"')
         ->not->toContain('mailto:quybv@ckanvinh.vn" class="sf-fc')
-        ->and(preg_match('/<nav class="sf-fc sf-fc--right".*?<\/nav>/s', $home, $nav))->toBe(1)
+        ->and(preg_match('/<nav class="sf-fc sf-fc--right sf-fc--md".*?<\/nav>/s', $home, $nav))->toBe(1)
         ->and(preg_match_all('/<a /', $nav[0]))->toBe(2);
 
     $post = $this->get('http://'.ContentPacks::HOST.'/gia-cong-phay-tien-cnc')->assertOk()->getContent();

@@ -6,6 +6,7 @@ namespace App\Modules\Admin\Support\Settings;
 
 use App\Modules\Admin\Livewire\FloatingContactSettings;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Shared\Support\SafeLink;
 use App\Modules\Theme\Chrome\ContactIcons;
 use App\Modules\Theme\Chrome\FloatingContact;
 
@@ -28,7 +29,7 @@ final class FloatingContactInput
     {
         $errors = [];
         foreach (array_keys($value) as $field) {
-            if (! in_array($field, ['enabled', 'theme', 'position', 'offset_x', 'offset_y', 'buy', 'channels'], true)) {
+            if (! in_array($field, ['enabled', 'theme', 'position', 'offset_x', 'offset_y', 'buy', 'phone_bar', 'channels'], true)) {
                 $errors[] = "'{$field}' is not a floating-contact field.";
             }
         }
@@ -53,6 +54,9 @@ final class FloatingContactInput
             } elseif (isset($buy['color']) && ! (in_array($buy['color'], FloatingContactSettings::BUY_SWATCHES, true) || FloatingContact::color($buy['color']) !== null)) {
                 $errors[] = "'buy.color' must be 'brand' or a #rrggbb colour.";
             }
+        }
+        if (isset($value['phone_bar'])) {
+            array_push($errors, ...self::phoneBarErrors($value['phone_bar'], $locales));
         }
 
         $channels = $value['channels'] ?? [];
@@ -129,6 +133,66 @@ final class FloatingContactInput
     }
 
     /**
+     * The phone bar: {"enabled": bool, "cta": {"label": {locale: text}, "url": link}} — the cell is
+     * optional, but a label needs a link that passes SafeLink and the other way round.
+     *
+     * @param  list<string>  $locales
+     * @return list<string>
+     */
+    private static function phoneBarErrors(mixed $bar, array $locales): array
+    {
+        if (! is_array($bar) || ! is_bool($bar['enabled'] ?? null) || array_diff(array_keys($bar), ['enabled', 'cta']) !== []) {
+            return ["'phone_bar' must be {\"enabled\": true|false, \"cta\": {\"label\": {…}, \"url\": …}}."];
+        }
+        if (! isset($bar['cta'])) {
+            return [];
+        }
+        $cta = $bar['cta'];
+        if (! is_array($cta) || array_diff(array_keys($cta), ['label', 'url']) !== [] || ! is_array($cta['label'] ?? null) || ! is_string($cta['url'] ?? null)) {
+            return ["'phone_bar.cta' must be {\"label\": {\"vi\": …}, \"url\": …}."];
+        }
+        $errors = [];
+        foreach ($cta['label'] as $locale => $text) {
+            if (! in_array((string) $locale, $locales, true) || ! is_string($text) || trim($text) === '' || mb_strlen(trim($text)) > FloatingContact::MAX_CTA_LABEL) {
+                $errors[] = "'phone_bar.cta.label.{$locale}' must be a text of at most ".FloatingContact::MAX_CTA_LABEL.' characters, in a language of the site.';
+            }
+        }
+        if ($cta['label'] === []) {
+            $errors[] = "'phone_bar.cta.label' needs a text.";
+        }
+        if (SafeLink::href(trim($cta['url'])) === null) {
+            $errors[] = "'phone_bar.cta.url' must be a safe link (a path on the site or an http(s) link).";
+        }
+
+        return $errors;
+    }
+
+    /**
+     * The phone bar as the form keeps it: the switch and, when it passes, the extra cell.
+     *
+     * @param  list<string>  $locales
+     * @return array<string, mixed>
+     */
+    public static function storedPhoneBar(mixed $raw, array $locales): array
+    {
+        $bar = Cast::arr($raw);
+        $out = ['enabled' => ($bar['enabled'] ?? false) === true];
+        $cta = Cast::arr($bar['cta'] ?? null);
+        $labels = [];
+        foreach (Cast::arr($cta['label'] ?? null) as $locale => $text) {
+            if (is_string($text) && trim($text) !== '' && in_array((string) $locale, $locales, true)) {
+                $labels[(string) $locale] = mb_substr(trim($text), 0, FloatingContact::MAX_CTA_LABEL);
+            }
+        }
+        $url = Cast::string($cta['url'] ?? null);
+        if ($labels !== [] && SafeLink::href(trim($url)) !== null) {
+            $out['cta'] = ['label' => $labels, 'url' => trim($url)];
+        }
+
+        return $out;
+    }
+
+    /**
      * A valid value as the form stores it after a save with no change: the form's load (defaults for
      * what is missing, the built-in channels added switched off, labels of a language the site does
      * not list dropped) followed by its save (trimmed, colours lower-cased, empty labels dropped).
@@ -173,6 +237,9 @@ final class FloatingContactInput
             }
         }
 
+        // The phone bar is kept only where a site set it, so a site that never did stores what it always did.
+        $phoneBar = isset($raw['phone_bar']) ? ['phone_bar' => self::storedPhoneBar($raw['phone_bar'], $locales)] : [];
+
         return [
             'enabled' => ($raw['enabled'] ?? false) === true,
             'theme' => in_array($raw['theme'] ?? null, FloatingContact::THEMES, true) ? Cast::string($raw['theme']) : 'vertical',
@@ -183,6 +250,7 @@ final class FloatingContactInput
                 'enabled' => ($buy['enabled'] ?? false) === true,
                 'color' => in_array($buyColor, FloatingContactSettings::BUY_SWATCHES, true) || FloatingContact::color($buyColor) !== null ? $buyColor : FloatingContact::BUY_COLOR,
             ],
+            ...$phoneBar,
             'channels' => array_map(self::storedRow(...), $rows),
         ];
     }

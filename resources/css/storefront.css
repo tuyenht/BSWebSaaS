@@ -3397,18 +3397,98 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     gap: 2rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
 }
 
-@media (min-width: 640px) {
-    .sf-footer__factories {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
     .sf-footer__factories {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
+}
+
+/* Below 1024px sf-footer-rot.js shows one card at a time: the cards share one grid cell, so the frame is
+   as tall as the tallest card and the page does not jump when the card turns. */
+.sf-footer__factories.is-rot {
+    gap: 0;
+}
+
+.sf-footer__factories.is-rot > .sf-factory {
+    grid-area: 1 / 1;
+}
+
+.sf-footer__factories.is-rot > .sf-factory[aria-hidden="true"] {
+    visibility: hidden;
+}
+
+.sf-rot__nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    margin-top: 1rem;
+}
+
+.sf-rot__nav[hidden] {
+    display: none;
+}
+
+.sf-rot__arrow,
+.sf-rot__go {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    color: var(--color-on-dark, #cbd5e1);
+    cursor: pointer;
+}
+
+.sf-rot__arrow::before {
+    content: "";
+    position: absolute;
+    inset: 0.25rem;
+    border: 1px solid color-mix(in srgb, var(--color-dark-line, #334155) 60%, var(--color-on-dark-muted, #94a3b8));
+    border-radius: 50%;
+}
+
+.sf-rot__arrow .sf-icon {
+    position: relative;
+}
+
+.sf-rot__arrow:hover::before,
+.sf-rot__arrow:focus-visible::before {
+    border-color: var(--color-primary);
+}
+
+.sf-rot__arrow:hover,
+.sf-rot__arrow:focus-visible {
+    color: var(--color-primary);
+}
+
+.sf-rot__arrow:focus-visible,
+.sf-rot__go:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+}
+
+.sf-rot__dot {
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--color-dark-line, #334155) 60%, var(--color-on-dark-muted, #94a3b8));
+    transition: background-color 0.2s, width 0.2s;
+}
+
+.sf-rot__go[aria-current="true"] .sf-rot__dot {
+    width: 1.5rem;
+    border-radius: 0.3125rem;
+    background: var(--color-primary);
 }
 
 .sf-factory {
@@ -4703,6 +4783,12 @@ html:has(.sf-header--sticky) .product-toc {
     overflow: hidden;
 }
 
+/* A news card's excerpt is cut at three lines, as the design's cards are. */
+.sf-card--news .sf-card__text {
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+}
+
 /* News card. */
 .sf-card__meta {
     display: flex;
@@ -5388,6 +5474,12 @@ html:has(.sf-header--sticky) .product-toc {
     min-width: 0;
 }
 
+/* The anti-spam check is invisible until it needs a tap: its box takes no room (and no extra gap) before
+   the script draws it, and while its frame is hidden. */
+.lead-form__form > .cf-turnstile:is(:empty, :has(> iframe[style*="display: none"])) {
+    display: none;
+}
+
 .lead-form__field > label:not(.lead-form__check) {
     display: block;
     margin-bottom: 0.25rem;
@@ -5689,7 +5781,9 @@ html:has(.sf-header--sticky) .product-toc {
 
 .sf-bmap__tabs {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr));
+    /* One row at every width, as the design draws it: the choices share the row equally. */
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
     gap: 0.5rem;
     padding: 0.25rem;
     border-radius: 0.5rem;
@@ -5813,13 +5907,13 @@ html:has(.sf-header--sticky) .product-toc {
 .sf-bmap__name {
     margin: 0;
     color: var(--color-text-strong);
-    font-size: 1.125rem;
+    font-size: 1.0625rem;
     font-weight: 700;
     overflow-wrap: anywhere;
 }
 
 .sf-bmap__meta {
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     overflow-wrap: anywhere;
 }
 
@@ -8045,7 +8139,7 @@ html:has(.sf-viewer[open]) {
     height: max(44px, 2.75rem);
     border-radius: 50%;
     background: var(--fc-fill, var(--color-dark));
-    color: #fff;
+    color: var(--fc-ink, #fff);
     text-decoration: none;
     box-shadow: 0 4px 12px rgb(0 0 0 / 0.25);
     transition: transform 0.25s, filter 0.25s;
@@ -8308,6 +8402,79 @@ html:has(.sf-viewer[open]) {
     font-weight: 600;
     line-height: 1.2;
     overflow-wrap: anywhere;
+}
+
+/* Board-style phone bar (a round-button site's `phone_bar`): below 768px the round buttons are
+   replaced by a dark bar of up to three equal 64px cells in the footer's colour, so the page ends on
+   it; its invisible copy is painted in the same colour (not hidden), which leaves no light strip or
+   empty dark band under the copyright line. From 768px only the round buttons are drawn. */
+@media (max-width: 767.98px) {
+    .sf-fc--md {
+        display: none;
+    }
+
+    .sf-fc-bar--board {
+        background: var(--color-dark);
+        border-top: 1px solid var(--color-dark-line, color-mix(in srgb, var(--color-dark) 75%, white));
+        box-shadow: none;
+    }
+
+    .sf-fc-bar--board.sf-fc-bar--ghost {
+        visibility: visible;
+    }
+
+    .sf-fc-bar--board.sf-fc-bar--ghost .sf-fc-bar__list {
+        visibility: hidden;
+    }
+}
+
+.sf-fc-bar--board .sf-fc-bar__item + .sf-fc-bar__item {
+    border-left-color: var(--color-dark-line, color-mix(in srgb, var(--color-dark) 75%, white));
+}
+
+.sf-fc-bar--board .sf-fc-bar__link {
+    min-height: max(64px, 4rem);
+    color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 25%, white));
+}
+
+.sf-fc-bar--board .sf-fc-bar__link:focus-visible {
+    outline-color: #fff;
+}
+
+.sf-fc-bar--board .sf-fc-bar__dot {
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    /* The glyph sits on the dark bar: a dark brand colour is lifted with white so it keeps 3:1. */
+    color: color-mix(in srgb, var(--fc-fill, var(--color-primary)) 55%, white);
+}
+
+.sf-fc-bar--board .sf-fc-bar__dot--chip {
+    padding: 0 0.25rem;
+    border-radius: 0.25rem;
+    background: var(--fc-fill, var(--color-dark));
+    color: var(--fc-ink, #fff);
+}
+
+.sf-fc-bar--board .sf-fc-bar__icon {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.sf-fc-bar--board .sf-fc-bar__item--cta {
+    border-left: 0;
+}
+
+.sf-fc-bar--board .sf-fc-bar__item--cta .sf-fc-bar__link {
+    background: var(--color-primary);
+    color: var(--color-on-primary, #fff);
+    font-weight: 700;
+}
+
+.sf-fc-bar--board .sf-fc-bar__item--cta .sf-fc-bar__link:focus-visible {
+    outline-color: var(--color-dark);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -9490,6 +9657,167 @@ html:has(.sf-viewer[open]) {
     .sf-jobs__chip {
         transition: none;
     }
+}
+
+/* ───── Cards and rails per board: service icons, product height, news in a block, swipe hint, project arrows, partner strip and grid ───── */
+/* Services: the glyph is the brand amber, as the board paints it (decoration, the title carries the meaning). */
+.sf-card--icon .sf-card__icon {
+    color: var(--color-primary);
+}
+
+/* A product card of a block is 16rem tall on a phone and 20rem from 640px, whatever the column's width. */
+.sf-card--product-overlay .sf-card__frame--4x3 {
+    aspect-ratio: auto;
+    height: 16rem;
+}
+
+@media (min-width: 640px) {
+    .sf-card--product-overlay .sf-card__frame--4x3 {
+        height: 20rem;
+    }
+}
+
+/* A news card of a block has no chip: the date alone, at the start. */
+.sf-card__meta--plain {
+    justify-content: flex-start;
+}
+
+.sf-card__meta--plain .sf-card__date {
+    font-size: 0.875rem;
+}
+
+/* The phone's "swipe sideways" line, under a row that scrolls by itself. */
+.sf-rail__hint {
+    display: none;
+    margin-top: 0.25rem;
+    color: var(--color-text);
+    font-size: 0.75rem;
+    line-height: 1rem;
+    text-align: center;
+}
+
+@media (max-width: 639.98px) {
+    .sf-rail__hint {
+        display: block;
+    }
+}
+
+.sf-band--dark .sf-rail__hint {
+    color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white));
+}
+
+/* Projects: the arrows are centred on the row's edge (half outside the first and last card) only where the
+   page margin is wide enough to hold them without a sideways scroll, and the "view all" button on a dark
+   band is the amber one. */
+@media (min-width: 1360px) {
+    .sf-cards--project .sf-rail__prev {
+        left: -1.375rem;
+    }
+
+    .sf-cards--project .sf-rail__next {
+        right: -1.375rem;
+    }
+}
+
+.sf-band--dark .sf-view-all__link {
+    background: var(--color-primary);
+    color: var(--sch-pri-fg, var(--color-on-primary));
+}
+
+/* Partners on the home strip: the logos sit in one white box with a thin border; the arrows stand
+   outside it, and a name never breaks inside the box. */
+.partners .sf-rail__list--slider {
+    padding-block: 1.25rem;
+    border: 1px solid color-mix(in srgb, var(--color-surface) 85%, var(--color-dark));
+    border-radius: 0.5rem;
+    background: var(--color-surface);
+}
+
+.partners .sf-rail__list--slider .partners__item {
+    padding-inline: 0.5rem;
+}
+
+/* A short name breaks between words only, never inside one, unless a single word is wider than the box. */
+.partners .sf-rail__list--slider .partners__name:not(.partners__name--long) {
+    overflow-wrap: break-word;
+}
+
+@media (max-width: 639.98px) {
+    .partners .sf-rail__list--slider .partners__name {
+        font-size: 0.9375rem;
+    }
+}
+
+/* Partners page: a grid of grey cards 7rem tall, two across on a phone up to five; hover is white with an amber edge. */
+.partners .sf-rail__list--grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem;
+}
+
+@media (min-width: 640px) {
+    .partners .sf-rail__list--grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 768px) {
+    .partners .sf-rail__list--grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 2rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .partners .sf-rail__list--grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+}
+
+.partners .sf-rail__list--grid > li {
+    flex: none;
+}
+
+.partners .sf-rail__list--grid .partners__item {
+    width: 100%;
+    height: 7rem;
+    border: 1px solid transparent;
+    border-radius: 0.5rem;
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+    transition: background 0.25s, border-color 0.25s, box-shadow 0.25s;
+}
+
+.partners .sf-rail__list--grid .partners__link {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+}
+
+.partners .sf-rail__list--grid .partners__name {
+    color: var(--color-text);
+}
+
+@media (hover: hover) {
+    .partners .sf-rail__list--grid .partners__item:hover {
+        border-color: var(--color-primary);
+        background: var(--color-surface);
+        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    }
+}
+
+.partners__note {
+    margin-top: 1.5rem;
+    color: var(--color-text);
+    font-size: 0.75rem;
+    line-height: 1rem;
+    text-align: center;
+}
+
+/* News filter chips start at the left, as the board's row does (it has the search box at the right). */
+.sf-list--news .sf-chips {
+    justify-content: flex-start;
 }
 
 /* ───── Content blocks and page assembly (capability rows, card CTA, numeral steps, job list head) ───── */

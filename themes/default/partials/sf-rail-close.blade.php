@@ -22,3 +22,7 @@
 @endif
     </div>
 </div>
+{{-- A phone's swipe row says so under it (decoration: the row scrolls by itself); not where the arrows always show. --}}
+@if (($display['mobile'] ?? '') === 'swipe' && ($display['arrows'] ?? '') !== 'always')
+<p class="sf-rail__hint" aria-hidden="true">{{ __('storefront.swipe_hint') }}</p>
+@endif

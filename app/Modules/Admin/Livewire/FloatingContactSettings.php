@@ -49,6 +49,15 @@ final class FloatingContactSettings extends Component
 
     public bool $buyOn = false;
 
+    /**
+     * The board-style phone bar a content pack may switch on (no control for it in the form yet):
+     * kept as stored and written back unchanged, so saving the form never drops it.
+     *
+     * @var array<string, mixed>
+     */
+    #[Locked]
+    public array $phoneBar = [];
+
     public string $buyColor = FloatingContact::BUY_COLOR;
 
     /**
@@ -315,6 +324,7 @@ final class FloatingContactSettings extends Component
             'offset_x' => $this->offsetX,
             'offset_y' => $this->offsetY,
             'buy' => ['enabled' => $this->buyOn, 'color' => $this->buyColor],
+            ...($this->phoneBar === [] ? [] : ['phone_bar' => $this->phoneBar]),
             'channels' => array_map(FloatingContactInput::storedRow(...), $rows),
         ];
     }
@@ -354,6 +364,7 @@ final class FloatingContactSettings extends Component
         $this->position = in_array($raw['position'] ?? null, FloatingContact::POSITIONS, true) ? Cast::string($raw['position']) : 'right';
         $this->offsetX = FloatingContact::offset($raw['offset_x'] ?? null, FloatingContact::MAX_OFFSET_X, FloatingContact::DEFAULT_OFFSET_X);
         $this->offsetY = FloatingContact::offset($raw['offset_y'] ?? null, FloatingContact::MAX_OFFSET_Y, FloatingContact::DEFAULT_OFFSET_Y);
+        $this->phoneBar = isset($raw['phone_bar']) ? FloatingContactInput::storedPhoneBar($raw['phone_bar'], $this->locales()) : [];
         $buy = Cast::arr($raw['buy'] ?? null);
         $this->buyOn = ($buy['enabled'] ?? false) === true;
         $color = Cast::string($buy['color'] ?? null);
@@ -416,6 +427,7 @@ final class FloatingContactSettings extends Component
         $this->offsetY = FloatingContact::DEFAULT_OFFSET_Y;
         $this->buyOn = false;
         $this->buyColor = FloatingContact::BUY_COLOR;
+        $this->phoneBar = [];
         $this->channels = [];
         foreach (FloatingContact::CORE as $key) {
             $row = $this->row($key, $key !== 'sms');

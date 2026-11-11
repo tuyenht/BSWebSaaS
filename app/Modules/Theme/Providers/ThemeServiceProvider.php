@@ -80,6 +80,8 @@ final class ThemeServiceProvider extends ServiceProvider
             'heading' => ['type' => 'text'],
             // The line under the heading in the shared section head.
             'description' => ['type' => 'textarea'],
+            // A small line under the logos (where the logos come from, which ones are names for now).
+            'note' => ['type' => 'textarea'],
             'logos' => ['type' => 'list', 'of' => [
                 'image_url' => ['type' => 'image'],
                 'name' => ['type' => 'text'],

@@ -43,7 +43,8 @@ final readonly class PageChrome
         /** @var list<string> $mapHosts */
         $mapHosts = config('cms.map_hosts', []);
         $header = StorefrontChrome::header($this->settings->get('storefront', 'header'), $locale, $default);
-        $footer = StorefrontChrome::footer($this->settings->get('storefront', 'footer'), $locale, $default, $mapHosts);
+        $footerRaw = $this->settings->get('storefront', 'footer');
+        $footer = StorefrontChrome::footer($footerRaw, $locale, $default, $mapHosts);
         // The floating contact buttons / phone bottom bar; the product list is looked up only when
         // the bar's "Mua hàng" button is switched on (it is shown only when the site has one).
         $floating = $this->settings->get('storefront', 'floating_contact');
@@ -77,10 +78,42 @@ final readonly class PageChrome
             'lang' => $locale,
             'hreflang' => $hreflang,
             'brand' => $brand,
+            // The branches with an address or a position, for the business's structured data (no query: the footer setting is already read).
+            'branchPlaces' => self::branchPlaces(StorefrontChrome::branches($footerRaw, $locale, $default, $mapHosts)),
             // Site-ownership meta tags (Google, Bing, Facebook), read with the other storefront settings.
             'verification' => SiteVerification::tags($this->settings->get('storefront', 'verification')),
             // The logo and footer home links stay in the page's language (/en for an English page).
             'homeUrl' => $this->paths->publicUrl('/', $locale),
         ];
+    }
+
+    /**
+     * schema.org Place entries for the branches that give an address or a position.
+     *
+     * @param  list<array<string, mixed>>  $branches
+     * @return list<array<string, mixed>>
+     */
+    private static function branchPlaces(array $branches): array
+    {
+        $places = [];
+        foreach ($branches as $branch) {
+            $address = is_string($branch['address'] ?? null) && $branch['address'] !== '' ? $branch['address'] : null;
+            $hasGeo = is_float($branch['lat'] ?? null) && is_float($branch['lng'] ?? null) && empty($branch['approximate']);
+            if ($address === null && ! $hasGeo) {
+                continue;
+            }
+            $name = is_string($branch['full_name'] ?? null) && $branch['full_name'] !== '' ? $branch['full_name'] : $branch['title'];
+            $locality = is_string($branch['locality'] ?? null) && $branch['locality'] !== '' ? $branch['locality'] : null;
+            $place = ['@type' => 'Place', 'name' => $name];
+            if ($address !== null) {
+                $place['address'] = array_filter(['@type' => 'PostalAddress', 'streetAddress' => $address, 'addressLocality' => $locality, 'addressCountry' => 'VN'], fn ($v): bool => $v !== null);
+            }
+            if ($hasGeo) {
+                $place['geo'] = ['@type' => 'GeoCoordinates', 'latitude' => $branch['lat'], 'longitude' => $branch['lng']];
+            }
+            $places[] = $place;
+        }
+
+        return $places;
     }
 }
