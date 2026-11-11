@@ -654,11 +654,12 @@ final readonly class PackValidator
 
         $this->localeMap($pack, $item->key, $item->data, 'name', true, TaxonomyRules::NAME_MAX, $errors);
         $this->slugMap($pack, $item, $errors);
-        // The category's own block slots (what the admin's "Cột phải bài viết" per category holds).
         if (array_key_exists('layout_blocks', $item->data)) {
             $layout = $item->data['layout_blocks'];
             if (! is_array($layout) || $layout === [] || array_is_list($layout)) {
                 $errors[] = "{$item->key}: layout_blocks must be {slot: {language: {\"blocks\": […]}}}.";
+            } elseif (! in_array($chain['vocabulary'], ['post_cat', 'product_cat'], true)) {
+                $errors[] = "{$item->key}: layout_blocks belong to a post_cat or product_cat category.";
             } else {
                 $this->layoutBlocks($item->key.' layout_blocks', $layout, $pack, $errors);
             }

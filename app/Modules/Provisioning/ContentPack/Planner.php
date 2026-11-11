@@ -37,6 +37,7 @@ use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Components\ButtonLink;
+use App\Modules\Theme\Rendering\LayoutSlots;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -575,7 +576,7 @@ final class Planner
                 'position' => $row->position,
                 'list_template' => $row->list_template,
                 'detail_template' => $row->detail_template,
-                'layout_blocks' => Cast::arr(Cast::arr($row->meta)['layout_blocks'] ?? null),
+                'layout_blocks' => Cast::arr(Cast::arr($row->meta)[LayoutSlots::META_KEY] ?? null),
                 'tr' => [],
             ];
         }
@@ -699,8 +700,8 @@ final class Planner
             'list_template' => $row['list_template'],
             'detail_template' => $row['detail_template'],
         ];
-        // The category's own block slots join the state only when it has some, so a category
-        // without them hashes as it did before the pack could carry them.
+        // The category's own block slots join its state only when it has some, so a category
+        // without any hashes as it did before the pack could carry them.
         if ($row['layout_blocks'] !== []) {
             $state['layout_blocks'] = $row['layout_blocks'];
         }
@@ -735,11 +736,12 @@ final class Planner
             'list_template' => array_key_exists('list_template', $item->data) ? Cast::stringOrNull($item->data['list_template']) : Cast::stringOrNull($current['list_template'] ?? null),
             'detail_template' => array_key_exists('detail_template', $item->data) ? Cast::stringOrNull($item->data['detail_template']) : Cast::stringOrNull($current['detail_template'] ?? null),
         ];
-        // The block slots the pack states replace the live ones; a category the pack states none for
-        // keeps what it has (staff may have set them). Present only when there are some (taxonomyState).
-        $layout = is_array($item->data['layout_blocks'] ?? null) && $item->data['layout_blocks'] !== []
-            ? $this->cleanedSlots(Cast::arr($item->data['layout_blocks']))
-            : Cast::arr($current['layout_blocks'] ?? null);
+        // The block slots the pack names replace the same slots live; a slot it does not name (one an
+        // editor set, or set to none) stays as it is.
+        $layout = Cast::arr($current['layout_blocks'] ?? null);
+        if (is_array($item->data['layout_blocks'] ?? null) && $item->data['layout_blocks'] !== []) {
+            $layout = array_replace($layout, $this->cleanedSlots(Cast::arr($item->data['layout_blocks'])));
+        }
         if ($layout !== []) {
             $desired['layout_blocks'] = $layout;
         }
@@ -1708,7 +1710,6 @@ final class Planner
             $desired['factories'] = $this->branches($item->key, $desired['factories'], Cast::arr($live)['factories'] ?? null);
         }
         if ($item->key === 'setting:storefront.layout_blocks') {
-            /** @var array<string, mixed> $desired */
             $desired = $this->cleanedSlots($desired);
         }
 
@@ -1719,14 +1720,17 @@ final class Planner
      * A block-slot map (slot → language → {"blocks": […]}) with each block list cleaned the way the
      * page editor stores it.
      *
-     * @param  array<array-key, mixed>  $slots
-     * @return array<array-key, mixed>
+     * @param  array<string, mixed>  $slots
+     * @return array<string, mixed>
      */
     private function cleanedSlots(array $slots): array
     {
         foreach ($slots as $slot => $perLocale) {
+            if (! is_array($perLocale)) {
+                continue;
+            }
             $cleaned = [];
-            foreach (Cast::arr($perLocale) as $locale => $text) {
+            foreach ($perLocale as $locale => $text) {
                 $clean = SanitizedPageBody::cleanBody(['blocks' => Cast::arr(Cast::arr($text)['blocks'] ?? null)])['blocks'];
                 $cleaned[$locale] = ['blocks' => is_array($clean) ? array_values($clean) : []];
             }

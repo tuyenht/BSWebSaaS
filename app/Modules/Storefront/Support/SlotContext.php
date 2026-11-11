@@ -29,8 +29,8 @@ final readonly class SlotContext
     /** The slots of a post page: the side column and the band below the post. */
     public const array POST_SLOTS = ['post_aside', 'after_post'];
 
-    /** The slot of a category list page (posts or products). */
-    public const array LIST_SLOTS = ['after_list'];
+    /** The slots of a category list page (posts or products): the band above its list and the band below it. */
+    public const array LIST_SLOTS = ['before_list', 'after_list'];
 
     /** The slots of a product page: before and after its order buttons, its shared parts, the band below it. */
     public const array PRODUCT_SLOTS = ['product_before_action', 'product_after_action', 'product_tabs', 'after_product'];

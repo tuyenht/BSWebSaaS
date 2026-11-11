@@ -80,6 +80,8 @@ final class ThemeServiceProvider extends ServiceProvider
             'heading' => ['type' => 'text'],
             // The line under the heading in the shared section head.
             'description' => ['type' => 'textarea'],
+            // A small line under the logos (where the logos come from, which ones are names for now).
+            'note' => ['type' => 'textarea'],
             'logos' => ['type' => 'list', 'of' => [
                 'image_url' => ['type' => 'image'],
                 'name' => ['type' => 'text'],
@@ -94,6 +96,8 @@ final class ThemeServiceProvider extends ServiceProvider
             'variant' => ['type' => 'enum', 'options' => SectionProps::CTA_VARIANTS, 'default' => 'default'],
             'button2_label' => ['type' => 'text'],
             'button2_url' => ['type' => 'url', 'action' => 'button2_label'],
+            // The card look's second button: an outline (default) or the Zalo brand blue.
+            'button2_tone' => ['type' => 'enum', 'options' => SectionProps::CTA_BUTTON2_TONES, 'default' => 'outline'],
             // Up to three stats beside the text, with the default look only (the rounded and split bands ignore them).
             'side' => ['type' => 'enum', 'options' => SectionProps::CTA_SIDES, 'default' => 'none'],
             'side_items' => ['type' => 'list', 'max' => SectionProps::CTA_SIDE_MAX_ITEMS, 'of' => SectionProps::STAT_ITEM],
@@ -174,7 +178,8 @@ final class ThemeServiceProvider extends ServiceProvider
             'heading' => ['type' => 'text'],
             'url' => ['type' => 'url', 'video' => true],
             'poster' => ['type' => 'image'],
-            // A line under the player (the credit of a video that is not the site's own).
+            // The player's width, and a line under it (a source or a licence).
+            'player_width' => ['type' => 'enum', 'options' => SectionProps::VIDEO_WIDTHS, 'default' => 'narrow'],
             'caption' => ['type' => 'text'],
         ],
         // Static blocks drawn by the page builder design. Every list carries its own `max` (and `min`
@@ -196,6 +201,7 @@ final class ThemeServiceProvider extends ServiceProvider
                 'caption' => ['type' => 'text'],
             ]],
             'columns' => ['type' => 'enum', 'options' => SectionProps::GALLERY_COLUMNS, 'default' => '3'],
+            'caption_style' => ['type' => 'enum', 'options' => SectionProps::GALLERY_CAPTIONS, 'default' => 'below'],
         ],
         'faq' => [
             'heading' => ['type' => 'text'],
@@ -228,6 +234,9 @@ final class ThemeServiceProvider extends ServiceProvider
         ] + SectionProps::LIST_DISPLAY,
         'process' => [
             'heading' => ['type' => 'text'],
+            // The line under the heading in the shared section head.
+            'description' => ['type' => 'textarea'],
+            'variant' => ['type' => 'enum', 'options' => SectionProps::PROCESS_VARIANTS, 'default' => 'default'],
             'steps' => ['type' => 'list', 'min' => 3, 'min_of' => 'title', 'max' => 6, 'of' => [
                 'title' => ['type' => 'text'],
                 'text' => ['type' => 'textarea'],

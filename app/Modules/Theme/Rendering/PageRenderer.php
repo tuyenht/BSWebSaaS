@@ -56,6 +56,8 @@ final readonly class PageRenderer
         $extra += in_array('hero_slider', $this->blocks->types($scripts), true) ? self::sliderHints($scripts, $leadBlock, $this->media) : [];
         // The slider script also drives the list rows (a list block that carries the display group).
         $extra += self::hasRails($scripts) ? ['sliderScript' => true] : [];
+        // FAQPage structured data from the question blocks the page draws (body and slots).
+        $extra += ($faq = self::faqLd($scripts)) !== null ? ['faqLd' => $faq] : [];
         // The scroll-in motion script loads only on a page with a block that moves.
         $extra += $this->blocks->moves($scripts) ? ['sectionsScript' => true] : [];
         // The click-to-load video script loads only on a page with a video it can play.
@@ -128,6 +130,32 @@ final readonly class PageRenderer
             // The author numbered the headings: the contents list then adds no numbers of its own.
             'tocOwn' => $tocOwn,
         ] + $extra)->render();
+    }
+
+    /**
+     * FAQPage JSON-LD for the `faq` blocks of a page: every question the block draws that also has
+     * an answer (a question without one is not a valid Question). Null when there is none.
+     *
+     * @param  array<array-key, mixed>  $scripts  a body or `['blocks' => [...]]`
+     * @return array<string, mixed>|null
+     */
+    private static function faqLd(array $scripts): ?array
+    {
+        $questions = [];
+        foreach (is_array($scripts['blocks'] ?? null) ? $scripts['blocks'] : [] as $block) {
+            if (! is_array($block) || ($block['type'] ?? null) !== 'faq' || ! is_array($block['props'] ?? null)) {
+                continue;
+            }
+            foreach (SectionProps::items($block['props'], 'items') as $item) {
+                $q = SectionProps::text($item, 'q');
+                $a = SectionProps::text($item, 'a');
+                if ($q !== '' && $a !== '') {
+                    $questions[] = ['@type' => 'Question', 'name' => $q, 'acceptedAnswer' => ['@type' => 'Answer', 'text' => $a]];
+                }
+            }
+        }
+
+        return $questions === [] ? null : ['@context' => 'https://schema.org', '@type' => 'FAQPage', 'mainEntity' => $questions];
     }
 
     /**

@@ -28,6 +28,7 @@ use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Media\Models\Media;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Storefront\Support\ThankYouPages;
 use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
@@ -188,7 +189,7 @@ final class Applier
         }
         $this->paths->refreshBranch($taxonomy->id);
 
-        // The category's own block slots: written to its meta (its other keys stay) and listed in the
+        // The category's own block slots: written to its meta (other keys stay) and listed in the
         // usage index, as the admin does when it saves them.
         $layout = Cast::arr($desired['layout_blocks'] ?? null);
         if ($layout !== []) {
@@ -449,6 +450,7 @@ final class Applier
                 throw new PackRejected("Refused: {$planned->item->key} opens {$page} after a send, which does not exist on the site.");
             }
             $form->update(['settings' => array_replace(Cast::arr($form->settings), ['redirect_entry' => $ulid])]);
+            ThankYouPages::forget($form->site_id);
         }
     }
 

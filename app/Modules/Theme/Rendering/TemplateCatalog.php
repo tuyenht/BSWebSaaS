@@ -44,6 +44,7 @@ final class TemplateCatalog
         'grid-news' => ['role' => self::ROLE_LIST, 'kinds' => [self::KIND_POST], 'cards' => 'news', 'set' => null],
         'grid-project' => ['role' => self::ROLE_LIST, 'kinds' => [self::KIND_POST], 'cards' => 'project', 'set' => null],
         'grid-job' => ['role' => self::ROLE_LIST, 'kinds' => [self::KIND_POST], 'cards' => 'news', 'set' => self::SET_JOB],
+        'grid-capability' => ['role' => self::ROLE_LIST, 'kinds' => [self::KIND_POST], 'cards' => 'project', 'set' => null],
         'grid-product' => ['role' => self::ROLE_LIST, 'kinds' => [self::KIND_POST, self::KIND_PRODUCT], 'cards' => 'product', 'set' => null],
         'post' => ['role' => self::ROLE_POST, 'kinds' => [self::KIND_POST], 'cards' => null, 'set' => null],
         'project' => ['role' => self::ROLE_POST, 'kinds' => [self::KIND_POST], 'cards' => null, 'set' => null],

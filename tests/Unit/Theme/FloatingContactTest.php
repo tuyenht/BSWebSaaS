@@ -183,3 +183,53 @@ it('picks the hover label of the page’s language, else the name of a channel o
             ['key' => 'email', 'on' => true, 'value' => 'a@b.test', 'tips' => ['vi' => 'Gửi thư']],
         ]], 'ja')['buttons'], 'label'))->toBe([null]);
 });
+
+it('keeps a light fill the site chose with a dark ink on the phone bar only; round buttons and the bar theme keep the darkened fill with white', function (): void {
+    $channels = [
+        ['key' => 'phone', 'on' => true, 'value' => '0912345678', 'color' => '#f59e0b'],
+        ['key' => 'zalo', 'on' => true, 'value' => '0912345678', 'color' => '#0068ff'],
+    ];
+    $out = FloatingContact::for(['enabled' => true, 'channels' => $channels, 'phone_bar' => ['enabled' => true]], 'vi');
+
+    [$phone, $zalo] = $out['phone_bar']['bar'];
+    expect($phone['fill'])->toBe('#f59e0b')
+        ->and($phone['ink'])->toBe(FloatingContact::DARK_INK)
+        ->and(ReadableColor::ratio($phone['fill'], $phone['ink']))->toBeGreaterThanOrEqual(3.0)
+        ->and($zalo['fill'])->toBe('#0068ff')
+        ->and($zalo['ink'])->toBe('#ffffff');
+
+    // Round buttons: the old rule, the colour darkened until white reads on it.
+    foreach ([$out['buttons'], FloatingContact::for(['enabled' => true, 'theme' => 'horizontal', 'channels' => $channels], 'vi')['bar']] as $set) {
+        expect($set[0]['ink'])->toBe('#ffffff')
+            ->and($set[0]['fill'])->not->toBe('#f59e0b')
+            ->and(ReadableColor::ratio($set[0]['fill'], '#ffffff'))->toBeGreaterThanOrEqual(3.0);
+    }
+});
+
+it('builds the board phone bar: the call first, then the other quick channels, then the site\'s own cell, three cells at most', function (): void {
+    $raw = ['enabled' => true, 'theme' => 'vertical', 'channels' => [
+        ['key' => 'messenger', 'on' => true, 'value' => 'page'],
+        ['key' => 'zalo', 'on' => true, 'value' => '0912345678', 'tips' => ['vi' => 'Chat Zalo']],
+        ['key' => 'phone', 'on' => true, 'value' => '0912345678'],
+        ['key' => 'sms', 'on' => true, 'value' => '0912345678'],
+    ], 'phone_bar' => ['enabled' => true, 'cta' => ['label' => ['vi' => 'Yêu cầu báo giá'], 'url' => '/lien-he']]];
+
+    $bar = FloatingContact::for($raw, 'vi')['phone_bar'];
+    expect(array_column($bar['bar'], 'key'))->toBe(['phone', 'zalo'])
+        ->and($bar['cta'])->toBe(['href' => '/lien-he', 'label' => 'Yêu cầu báo giá']);
+
+    // another language falls back to the label that was given; no cell when the link is unsafe
+    expect(FloatingContact::for($raw, 'en')['phone_bar']['cta']['label'])->toBe('Yêu cầu báo giá');
+    $raw['phone_bar']['cta']['url'] = 'javascript:alert(1)';
+    $noCta = FloatingContact::for($raw, 'vi')['phone_bar'];
+    expect($noCta['cta'])->toBeNull()
+        ->and(array_column($noCta['bar'], 'key'))->toBe(['phone', 'zalo', 'sms']);
+});
+
+it('has no phone bar unless switched on, and never on the bar theme', function (): void {
+    $channels = [['key' => 'phone', 'on' => true, 'value' => '0912345678']];
+
+    expect(FloatingContact::for(['enabled' => true, 'channels' => $channels], 'vi')['phone_bar'])->toBeNull()
+        ->and(FloatingContact::for(['enabled' => true, 'channels' => $channels, 'phone_bar' => ['enabled' => false]], 'vi')['phone_bar'])->toBeNull()
+        ->and(FloatingContact::for(['enabled' => true, 'theme' => 'horizontal', 'channels' => $channels, 'phone_bar' => ['enabled' => true]], 'vi')['phone_bar'])->toBeNull();
+});

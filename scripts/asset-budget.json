@@ -6,7 +6,7 @@
     },
     "resources/css/storefront.css": {
       "js": 0,
-      "css": 26221
+      "css": 28048
     },
     "resources/js/app.js": {
       "js": 20351,
@@ -22,6 +22,10 @@
     },
     "resources/js/sf-branch-map.js": {
       "js": 974,
+      "css": 0
+    },
+    "resources/js/sf-footer-rot.js": {
+      "js": 624,
       "css": 0
     },
     "resources/js/sf-gallery.js": {
@@ -48,12 +52,12 @@
       "js": 578,
       "css": 0
     },
-    "resources/js/sf-video.js": {
-      "js": 478,
-      "css": 0
-    },
     "resources/js/sf-viewer.js": {
       "js": 919,
+      "css": 0
+    },
+    "resources/js/sf-video.js": {
+      "js": 478,
       "css": 0
     },
     "resources/js/storefront.js": {

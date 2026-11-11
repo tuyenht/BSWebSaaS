@@ -88,9 +88,10 @@ final readonly class PostDetail
      * The neighbours and related posts of a post in its main category.
      *
      * @param  bool  $withRecent  also read the newest posts of the category's root branch (one more part of the same read)
+     * @param  bool  $fillRelated  when the category has fewer than RELATED other posts, fill the row with the newest posts of its root branch (same-category posts stay first)
      * @return array{previous: Link|null, next: Link|null, related: list<array<string, mixed>>, recent: list<array<string, mixed>>}
      */
-    public function siblings(Entry $post, Taxonomy $category, string $locale, bool $withDates, bool $withRecent = false): array
+    public function siblings(Entry $post, Taxonomy $category, string $locale, bool $withDates, bool $withRecent = false, bool $fillRelated = false): array
     {
         // One read for all three: the related posts, then (when the post has a publish time) the
         // one just older and the one just newer, each part ordered and limited on its own.
@@ -117,6 +118,12 @@ final readonly class PostDetail
                 ->orderByRaw('entries.published_at DESC NULLS LAST, entries.id DESC')
                 ->limit(self::RECENT + self::RELATED));
         }
+        if ($fillRelated) {
+            // The row's top-up: the newest of the root branch, used only for the places the category's own posts leave empty.
+            $query->unionAll($this->inRootBranch($post, $category, $locale, 'fill')
+                ->orderByRaw('entries.published_at DESC NULLS LAST, entries.id DESC')
+                ->limit(self::RELATED + 1));
+        }
         $rows = $query->get();
         $rows->load([
             'translations' => fn (Relation $query) => $query->where('locale', $locale),
@@ -132,6 +139,18 @@ final readonly class PostDetail
                 fn (Entry $a, Entry $b): int => $b->id <=> $a->id,
             ])
             ->values();
+
+        if ($fillRelated && $related->count() < self::RELATED) {
+            $own = $related->pluck('id')->all();
+            $related = $related->concat(
+                $rows->filter(fn (Entry $row): bool => $row->getAttribute('slot') === 'fill' && ! in_array($row->id, $own, true))
+                    ->sortBy([
+                        fn (Entry $a, Entry $b): int => ($b->published_at?->getTimestamp() ?? PHP_INT_MIN) <=> ($a->published_at?->getTimestamp() ?? PHP_INT_MIN),
+                        fn (Entry $a, Entry $b): int => $b->id <=> $a->id,
+                    ])
+                    ->take(self::RELATED - $related->count())
+            )->values();
+        }
 
         $relatedIds = $related->pluck('id')->all();
         $recent = $rows->filter(fn (Entry $row): bool => $row->getAttribute('slot') === 'recent' && ! in_array($row->id, $relatedIds, true))
@@ -169,15 +188,16 @@ final readonly class PostDetail
      * The other published posts whose main category is this category's root or any category below
      * it (filtered on the category tree), published in this language.
      *
+     * @param  'recent'|'fill'  $slot
      * @return Builder<Entry>
      */
-    private function inRootBranch(Entry $post, Taxonomy $category, string $locale): Builder
+    private function inRootBranch(Entry $post, Taxonomy $category, string $locale, string $slot = 'recent'): Builder
     {
         // The ltree path holds the ids from the root down; a category whose path was never written is its own root.
         $first = explode('.', (string) $category->path)[0];
         $rootId = ctype_digit($first) ? (int) $first : $category->id;
 
-        return $this->published($post, $locale, 'recent')
+        return $this->published($post, $locale, $slot)
             ->join('entry_taxonomies', fn (JoinClause $join) => $join->on('entry_taxonomies.entry_id', '=', 'entries.id')
                 ->where('entry_taxonomies.position', 0))
             ->whereIn('entry_taxonomies.taxonomy_id', Taxonomy::query()
@@ -191,7 +211,7 @@ final readonly class PostDetail
      * The published posts other than $post with a published translation in $locale — only the
      * columns a card or a link reads, tagged with the part of the union they belong to.
      *
-     * @param  'related'|'previous'|'next'|'recent'  $slot
+     * @param  'related'|'previous'|'next'|'recent'|'fill'  $slot
      * @return Builder<Entry>
      */
     private function published(Entry $post, string $locale, string $slot): Builder

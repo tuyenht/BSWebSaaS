@@ -137,6 +137,20 @@ it('saves the draft for the current site only and loads it back', function (): v
     app(Tenancy::class)->enter(2, fn () => Livewire::actingAs($other)->test(FloatingContactSettings::class)->assertSet('enabled', false));
 });
 
+it('keeps a phone bar a content pack switched on when the form saves', function (): void {
+    $admin = fcsAdmin();
+    $bar = ['enabled' => true, 'cta' => ['label' => ['vi' => 'Yêu cầu báo giá'], 'url' => '/lien-he']];
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'floating_contact', 'value' => [
+        'enabled' => true, 'theme' => 'vertical', 'phone_bar' => $bar,
+        'channels' => [['key' => 'phone', 'on' => true, 'value' => '0912345678']],
+    ]]));
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+        ->set('offsetX', 30)->call('save')->assertHasNoErrors());
+
+    expect(fcsStored(1)['phone_bar'] ?? null)->toEqual($bar);
+});
+
 it('refuses every invalid value with its plain message and saves nothing', function (string $key, string $value, string $message): void {
     $admin = fcsAdmin();
 

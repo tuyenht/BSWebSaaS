@@ -78,6 +78,15 @@ final class FloatingContact
     /** Channels the phone bottom bar leaves out (they read as a chat window, not a quick tap). */
     public const array BAR_HIDDEN = ['messenger', 'email'];
 
+    /** Ink of a mark on a light fill (a dark slate); white stays the ink wherever white reads. */
+    public const string DARK_INK = '#0f172a';
+
+    /** Cells of the board-style phone bar, the "request a quote" cell counted. */
+    public const int PHONE_BAR_MAX = 3;
+
+    /** Longest label of the phone bar's own cell. */
+    public const int MAX_CTA_LABEL = 40;
+
     /** Colour of a channel of the site's own when none is chosen: a fixed hue, never the admin brand. */
     public const string CUSTOM_COLOR = '#1e40af';
 
@@ -160,7 +169,7 @@ final class FloatingContact
      *
      * @param  mixed  $raw  the stored value (an array when set)
      * @param  string|null  $shopHref  the site's product list, or null when it has none
-     * @return array{theme: string, position: string, offset_x: int, offset_y: int, buttons: list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, pulse: bool}>, bar: list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, pulse: bool}>, buy: array{href: string, fill: string, ink: string, icon: string}|null}|null
+     * @return array{theme: string, position: string, offset_x: int, offset_y: int, buttons: list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, ink: string, bar_fill: string, bar_ink: string, pulse: bool}>, bar: list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, ink: string, bar_fill: string, bar_ink: string, pulse: bool}>, buy: array{href: string, fill: string, ink: string, icon: string}|null, phone_bar: array{bar: list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, ink: string, bar_fill: string, bar_ink: string, pulse: bool}>, cta: array{href: string, label: string}|null}|null}|null
      */
     public static function for(mixed $raw, string $locale, ?string $shopHref = null): ?array
     {
@@ -192,6 +201,7 @@ final class FloatingContact
         }
 
         return [
+            'phone_bar' => $theme === 'vertical' ? self::phoneBar($raw['phone_bar'] ?? null, $buttons, $locale) : null,
             'theme' => $theme,
             'position' => in_array($raw['position'] ?? null, self::POSITIONS, true) ? (string) $raw['position'] : 'right',
             'offset_x' => self::offset($raw['offset_x'] ?? null, self::MAX_OFFSET_X, self::DEFAULT_OFFSET_X),
@@ -200,6 +210,55 @@ final class FloatingContact
             'bar' => $bar,
             'buy' => $buy,
         ];
+    }
+
+    /**
+     * The board-style phone bar of a round-button site: on phones the round buttons give way to a
+     * bar along the bottom of up to PHONE_BAR_MAX equal cells — the quick channels first, the call leading
+     * (messenger and e-mail left out, as in the other bar), then an optional cell of the site's own, such as
+     * "Yêu cầu báo giá". Null when the site did not switch it on or nothing is left to show.
+     *
+     * @param  list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, ink: string, bar_fill: string, bar_ink: string, pulse: bool}>  $buttons
+     * @return array{bar: list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, ink: string, bar_fill: string, bar_ink: string, pulse: bool}>, cta: array{href: string, label: string}|null}|null
+     */
+    private static function phoneBar(mixed $raw, array $buttons, string $locale): ?array
+    {
+        if (! is_array($raw) || ($raw['enabled'] ?? false) !== true) {
+            return null;
+        }
+        $cta = self::cta($raw['cta'] ?? null, $locale);
+        $quick = array_values(array_filter($buttons, static fn (array $b): bool => ! in_array($b['key'], self::BAR_HIDDEN, true)));
+        // On a phone the call comes first (the rest keep the order of the setting).
+        usort($quick, static fn (array $a, array $b): int => ($b['key'] === 'phone') <=> ($a['key'] === 'phone'));
+        $bar = array_map(static function (array $b): array {
+            $b['fill'] = $b['bar_fill'];
+            $b['ink'] = $b['bar_ink'];
+
+            return $b;
+        }, array_slice($quick, 0, self::PHONE_BAR_MAX - ($cta === null ? 0 : 1)));
+
+        return $bar === [] && $cta === null ? null : ['bar' => $bar, 'cta' => $cta];
+    }
+
+    /**
+     * The phone bar's own cell: a label in the page's language (else the first one given) and a link
+     * that passes SafeLink; null when either is missing.
+     *
+     * @return array{href: string, label: string}|null
+     */
+    private static function cta(mixed $cta, string $locale): ?array
+    {
+        if (! is_array($cta)) {
+            return null;
+        }
+        $labels = is_array($cta['label'] ?? null) ? $cta['label'] : [];
+        $label = self::label($labels[$locale] ?? null);
+        foreach ($labels as $text) {
+            $label ??= self::label($text);
+        }
+        $href = is_string($cta['url'] ?? null) ? SafeLink::href(trim($cta['url'])) : null;
+
+        return $label === null || $href === null ? null : ['href' => $href, 'label' => $label];
     }
 
     /**
@@ -229,7 +288,7 @@ final class FloatingContact
      * One shown button, or null when the channel is off, unknown or its value does not pass.
      *
      * @param  array<array-key, mixed>  $channel
-     * @return array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, pulse: bool}|null
+     * @return array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, ink: string, bar_fill: string, bar_ink: string, pulse: bool}|null
      */
     private static function button(array $channel, string $locale): ?array
     {
@@ -255,14 +314,23 @@ final class FloatingContact
             $label = self::label($channel['name'] ?? null);
         }
 
+        // White marks on the fill: a word needs 4.5:1, a glyph 3:1. A light fill the site chose itself keeps
+        // its hue and takes a dark ink when that reads; otherwise the hue is darkened just enough.
+        $need = $text !== null ? ReadableColor::AA_NORMAL_TEXT : 3.0;
+        $light = self::color($channel['color'] ?? null) !== null && (ReadableColor::ratio($color, '#ffffff') ?? $need) < $need && (ReadableColor::ratio($color, self::DARK_INK) ?? 0.0) >= $need;
+
         return [
             'key' => $key,
             'href' => $href,
             'label' => $label,
             'icon' => ContactIcons::path($iconCode) ?? '',
             'text' => $text,
-            // White marks on the fill: a word needs 4.5:1, a glyph 3:1 — the brand hue darkened just enough.
-            'fill' => ReadableColor::on($color, '#ffffff', $text !== null ? ReadableColor::AA_NORMAL_TEXT : 3.0) ?? $color,
+            // Round buttons and the horizontal bar keep their colour darkened until white reads on it.
+            'fill' => ReadableColor::on($color, '#ffffff', $need) ?? $color,
+            'ink' => '#ffffff',
+            // Only the phone bar keeps a light colour of the site's own and takes a dark ink on it.
+            'bar_fill' => $light ? $color : (ReadableColor::on($color, '#ffffff', $need) ?? $color),
+            'bar_ink' => $light ? self::DARK_INK : '#ffffff',
             'pulse' => ($meta['pulse'] ?? false) === true,
         ];
     }

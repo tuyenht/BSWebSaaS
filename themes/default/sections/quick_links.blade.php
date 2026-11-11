@@ -20,7 +20,7 @@
 @include('theme::partials.sf-section-head', ['heading' => $heading])
 <ul class="sf-qlinks__list sf-qlinks__list--{{ $variant }} sf-qlinks__list--n{{ min(count($tiles), 4) }}">
 @foreach ($tiles as $tile)
-<li><a class="sf-qlinks__tile" href="{{ $tile['href']['href'] }}"@if ($tile['href']['blank']) target="_blank" rel="noopener"@elseif ($tile['href']['download']) download=""@endif><span class="sf-qlinks__icon">@include('theme::partials.sf-icon', ['name' => $tile['icon'], 'size' => $variant === 'pill' ? 20 : 24])</span><span class="sf-qlinks__label">{{ $tile['label'] }}</span>@if ($tile['href']['blank'])<span class="sr-only"> {{ __('storefront.new_tab') }}</span>@endif</a></li>
+<li><a class="sf-qlinks__tile" href="{{ $tile['href']['href'] }}"@if ($tile['href']['blank']) target="_blank" rel="noopener"@elseif ($tile['href']['download']) download=""@endif>@if ($tile['icon'] !== 'none')<span class="sf-qlinks__icon">@include('theme::partials.sf-icon', ['name' => $tile['icon'], 'size' => $variant === 'pill' ? 20 : 24])</span>@endif<span class="sf-qlinks__label">{{ $tile['label'] }}</span>@if ($tile['href']['blank'])<span class="sr-only"> {{ __('storefront.new_tab') }}</span>@endif</a></li>
 @endforeach
 </ul>
 @endcomponent

@@ -125,7 +125,8 @@ it('makes no absolute advertising claim, and credits every video as an illustrat
         $texts[] = json_encode($item->data, JSON_UNESCAPED_UNICODE);
         foreach ($item->data['body']['vi'] ?? [] as $block) {
             if ($block['type'] === 'video') {
-                $videos[$block['props']['url']] = $block['props']['heading'].' | '.($block['props']['caption'] ?? '');
+                // the source and licence may sit in the heading or in the caption line under the player
+                $videos[$block['props']['url']] = $block['props']['heading'].': '.($block['props']['caption'] ?? '');
             }
         }
     }
@@ -140,7 +141,7 @@ it('makes no absolute advertising claim, and credits every video as an illustrat
     }
     expect($videos)->toHaveCount(3);
     foreach ($videos as $heading) {
-        expect($heading)->toStartWith('Video minh họa')->toContain('nguồn kênh')->toContain('giấy phép CC BY');
+        expect($heading)->toStartWith('Video minh họa:')->and(mb_strtolower($heading))->toContain('nguồn kênh')->toContain('giấy phép cc by');
     }
 });
 
@@ -200,7 +201,7 @@ it('follows the storefront design: capability posts let the layout draw their ba
         'button2_url_do' => ['k' => 'tel', 'phone' => '0915668383'],
         'extra_style' => ['pattern-cross'],
     ])->and(collect($home->firstWhere('type', 'about')['props']['links'])->pluck('url')->all())
-        ->toBe(['/gioi-thieu', '/nha-xuong-may-moc#video', '/nang-luc']);
+        ->toBe(['/gioi-thieu', '/ho-so-nang-luc', '/nha-xuong-may-moc#video', '/nang-luc']);
     expect(collect($items['page:/gioi-thieu']->data['body']['vi'])->firstWhere('type', 'about')['props']['variant'])->toBe('letter');
 
     $settings = collect(json_decode((string) file_get_contents($pack->dir.'/settings.json'), true)['items'])->keyBy('key');
@@ -276,10 +277,10 @@ it('loads the flourish heading decoration, a floating contact of Zalo and call o
         ->and(array_keys($stored('storefront', 'layout_blocks')))->toEqualCanonicalizing(['post_aside', 'after_product']);
 
     $home = $this->get('http://'.ContentPacks::HOST.'/')->assertOk()->getContent();
-    expect($home)->toContain('<nav class="sf-fc sf-fc--right"')
+    expect($home)->toContain('<nav class="sf-fc sf-fc--right sf-fc--md"')
         ->toContain('href="https://zalo.me/0915668383"')->toContain('href="tel:0915668383"')
         ->not->toContain('mailto:quybv@ckanvinh.vn" class="sf-fc')
-        ->and(preg_match('/<nav class="sf-fc sf-fc--right".*?<\/nav>/s', $home, $nav))->toBe(1)
+        ->and(preg_match('/<nav class="sf-fc sf-fc--right sf-fc--md".*?<\/nav>/s', $home, $nav))->toBe(1)
         ->and(preg_match_all('/<a /', $nav[0]))->toBe(2);
 
     $post = $this->get('http://'.ContentPacks::HOST.'/gia-cong-phay-tien-cnc')->assertOk()->getContent();

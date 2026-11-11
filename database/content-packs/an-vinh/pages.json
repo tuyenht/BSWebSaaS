@@ -62,21 +62,27 @@
        },
        "links": [
         {
-         "icon": "building",
+         "icon": "info",
          "label": "Về Chúng Tôi",
          "url": "/gioi-thieu"
         },
         {
-         "icon": "link",
+         "icon": "document",
+         "label": "Hồ Sơ Năng Lực",
+         "url": "/ho-so-nang-luc"
+        },
+        {
+         "icon": "video",
          "label": "Video Xưởng",
          "url": "/nha-xuong-may-moc#video"
         },
         {
-         "icon": "license",
+         "icon": "building",
          "label": "Quy Trình Làm Việc",
          "url": "/nang-luc"
         }
-       ]
+       ],
+       "bg": "surface"
       }
      },
      {
@@ -181,6 +187,7 @@
       "type": "partners",
       "props": {
        "heading": "Đối tác tin cậy",
+       "bg": "tint",
        "description": "Sự tin tưởng và hợp tác của các đối tác là động lực để chúng tôi không ngừng nỗ lực và phát triển.",
        "layout": "slider",
        "logos": [
@@ -316,7 +323,8 @@
        "image_url": {
         "media": "about-letter"
        },
-       "variant": "letter"
+       "variant": "letter",
+       "bg": "surface"
       }
      },
      {
@@ -324,7 +332,7 @@
       "props": {
        "heading": "Định hướng phát triển",
        "description": "Với phương châm “Nhận trách nhiệm – Gửi chữ tín”, An Vinh phát triển theo bốn tiêu chí: chuyên nghiệp, chất lượng, uy tín, tiến bộ.",
-       "variant": "top-rule",
+       "variant": "icon-head",
        "bg": "tint",
        "items": [
         {
@@ -387,7 +395,9 @@
         "media": "factory-1"
        },
        "cta_label": "Xem nhà xưởng & máy móc",
-       "cta_url": "/nha-xuong-may-moc"
+       "cta_url": "/nha-xuong-may-moc",
+       "variant": "showcase",
+       "bg": "surface"
       }
      },
      {
@@ -506,19 +516,23 @@
      {
       "type": "video",
       "props": {
-       "heading": "Video minh họa: phay CNC (timelapse) – nguồn kênh HackerspaceOL, giấy phép CC BY",
+       "heading": "Video minh họa: phay CNC (timelapse)",
        "url": "https://www.youtube.com/watch?v=FpYQc5zMLzM",
        "poster": {
         "media": "cnc-1"
        },
-       "anchor_id": "video"
+       "anchor_id": "video",
+       "caption": "Nguồn kênh HackerspaceOL, giấy phép CC BY",
+       "spacing_top": "s",
+       "spacing_bottom": "s",
+       "player_width": "wide"
       }
      },
      {
       "type": "gallery",
       "props": {
        "heading": "Nhà xưởng",
-       "columns": "3",
+       "columns": "4",
        "images": [
         {
          "image": {
@@ -538,7 +552,10 @@
          },
          "caption": "Nhà máy 2: các khung đồ gá trên sàn xưởng"
         }
-       ]
+       ],
+       "spacing_top": "s",
+       "spacing_bottom": "s",
+       "caption_style": "overlay"
       }
      },
      {
@@ -559,14 +576,17 @@
          },
          "caption": "Máy CNC cỡ lớn tại nhà máy 3"
         }
-       ]
+       ],
+       "spacing_top": "s",
+       "spacing_bottom": "s",
+       "caption_style": "overlay"
       }
      },
      {
       "type": "gallery",
       "props": {
        "heading": "Sản phẩm",
-       "columns": "3",
+       "columns": "4",
        "images": [
         {
          "image": {
@@ -586,7 +606,10 @@
          },
          "caption": "Mô phỏng 3D trạm jig hàn spot"
         }
-       ]
+       ],
+       "spacing_top": "s",
+       "spacing_bottom": "s",
+       "caption_style": "overlay"
       }
      },
      {
@@ -873,6 +896,8 @@
       "props": {
        "heading": "Những đối tác đã tin tưởng An Vinh",
        "layout": "grid",
+       "mobile": "two",
+       "note": "Logo theo hồ sơ năng lực An Vinh. Đối tác chưa có tệp logo đủ nét đang hiện tên.",
        "logos": [
         {
          "image_url": {
@@ -1063,7 +1088,9 @@
          "title": "Gửi báo giá",
          "text": "Báo giá chi tiết kèm tiến độ dự kiến qua email."
         }
-       ]
+       ],
+       "variant": "numeral",
+       "heading_decor": "none"
       }
      },
      {
@@ -1080,7 +1107,9 @@
        "button2_url_do": {
         "k": "zalo",
         "phone": "0915668383"
-       }
+       },
+       "variant": "card",
+       "button2_tone": "zalo"
       }
      },
      {
@@ -1090,19 +1119,24 @@
        "variant": "pill",
        "items": [
         {
-         "icon": "link",
+         "icon": "none",
          "label": "Sản phẩm",
          "url": "/san-pham"
         },
         {
-         "icon": "link",
+         "icon": "none",
          "label": "Dự án tiêu biểu",
          "url": "/du-an"
         },
         {
-         "icon": "building",
+         "icon": "none",
          "label": "Về trang chủ",
          "url": "/"
+        },
+        {
+         "icon": "none",
+         "label": "Hồ sơ năng lực",
+         "url": "/ho-so-nang-luc"
         }
        ]
       }
@@ -1141,11 +1175,8 @@
       "props": {
        "heading": "Đơn vị chịu trách nhiệm về thông tin của bạn",
        "paragraphs": [
-        "CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ THIẾT KẾ GIA CÔNG CƠ KHÍ AN VINH (gọi tắt là “An Vinh” hoặc “chúng tôi”) quyết định mục đích và cách xử lý thông tin cá nhân thu thập qua website này.",
-        "Mã số doanh nghiệp: 0108649706.",
-        "Địa chỉ: Thôn Xuân Sơn, Xã Trung Giã, TP Hà Nội.",
-        "Điện thoại: 0915 66 83 83.",
-        "Email: quybv@ckanvinh.vn."
+        "**CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ THIẾT KẾ GIA CÔNG CƠ KHÍ AN VINH**\nMã số doanh nghiệp: 0108649706\nĐịa chỉ: Thôn Xuân Sơn, Xã Trung Giã, TP Hà Nội\nĐiện thoại: 0915 66 83 83 · Email: quybv@ckanvinh.vn",
+        "Công ty trên (gọi tắt là “An Vinh” hoặc “chúng tôi”) quyết định mục đích và cách xử lý thông tin cá nhân thu thập qua website này."
        ]
       }
      },

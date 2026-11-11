@@ -166,7 +166,7 @@
   },
   {
    "key": "setting:storefront.floating_contact",
-   "note": "Nút liên hệ nổi chỉ có Zalo và Gọi, dùng số hotline của An Vinh.",
+   "note": "Nút liên hệ nổi chỉ có Zalo và Gọi (gọi màu hổ phách như bản thiết kế), dùng số hotline của An Vinh. Dưới 768px thay bằng thanh đáy 3 ô: Gọi, Chat Zalo, Yêu cầu báo giá.",
    "value": {
     "enabled": true,
     "theme": "vertical",
@@ -175,17 +175,33 @@
      {
       "key": "zalo",
       "on": true,
-      "value": "0915668383"
+      "value": "0915668383",
+      "color": "#0068ff",
+      "tips": {
+       "vi": "Chat Zalo"
+      }
      },
      {
       "key": "phone",
       "on": true,
       "value": "0915 66 83 83",
       "tips": {
-       "vi": "Gọi hotline"
-      }
+       "vi": "Gọi ngay"
+      },
+      "color": "#f59e0b"
      }
-    ]
+    ],
+    "offset_x": 16,
+    "offset_y": 20,
+    "phone_bar": {
+     "enabled": true,
+     "cta": {
+      "label": {
+       "vi": "Yêu cầu báo giá"
+      },
+      "url": "/lien-he"
+     }
+    }
    }
   },
   {

@@ -220,7 +220,7 @@ describe('about image focus', function (): void {
             expect($lang)->toHaveKey('entries.err_block_zalo_invalid');
         }
         expect(SectionProps::ABOUT_IMAGE_FOCUS)->toBe(['center', 'top', 'bottom'])
-            ->and(SectionProps::ABOUT_VARIANTS)->toBe(['default', 'letter'])
+            ->and(SectionProps::ABOUT_VARIANTS)->toBe(['default', 'letter', 'showcase'])
             ->and(array_slice(SectionProps::ENTRY_GRID_VARIANTS, 0, 4))->toBe(['list', 'icon-cards', 'project-cards', 'news-cards']);
     });
 });

@@ -31,6 +31,7 @@ use App\Modules\Storefront\Support\PostDetail;
 use App\Modules\Storefront\Support\ProductDetail;
 use App\Modules\Storefront\Support\ProductPage;
 use App\Modules\Storefront\Support\SlotContext;
+use App\Modules\Storefront\Support\ThankYouPages;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Theme\Rendering\PageRenderer;
 use App\Modules\Theme\Rendering\TemplateCatalog;
@@ -73,6 +74,7 @@ final readonly class StorefrontController
         private SlotContext $slots,
         private PageChrome $pageChrome,
         private ProductPage $productPage,
+        private ThankYouPages $thankYou,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -324,7 +326,7 @@ final readonly class StorefrontController
                 ];
                 // The capability layout draws neither neighbours nor related cards: read them only when a block needs the recent posts.
                 if ($postTemplate !== 'capability' || $withRecent) {
-                    $extra += $this->posts->siblings($entry, $category, $locale, true, $withRecent);
+                    $extra += $this->posts->siblings($entry, $category, $locale, true, $withRecent, $postTemplate === 'project');
                 }
             }
             $extra['slotContext'] = $this->slots->context($slotBlocks, $category, $locale, $brandData, is_array($extra['recent'] ?? null) ? $extra['recent'] : [], $entry->id);
@@ -337,6 +339,11 @@ final readonly class StorefrontController
         // last changed) in its title band.
         if ($entry->type === 'page' && $entry->template_override === TemplateCatalog::PAGE_TOC) {
             $extra['pageDates'] = $this->posts->dates($entry, $content->translation, $locale);
+        }
+
+        // A form's thank-you page is only for someone who just sent it: kept out of search results.
+        if ($entry->type === 'page' && $path !== '/' && $this->thankYou->has($entry->ulid)) {
+            $extra['robots'] = 'noindex';
         }
 
         // The home page names the website itself: the name search results show for the site.
