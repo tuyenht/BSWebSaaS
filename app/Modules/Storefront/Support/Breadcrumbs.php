@@ -42,6 +42,28 @@ final readonly class Breadcrumbs
         return ['name' => $name, 'url' => url($href), 'href' => $href];
     }
 
+    /**
+     * The trail as the page shows it. A list or information page ends with itself, as plain text
+     * (`current`); a detail page (post, project, job, product) ends at its parent category, a link,
+     * because its own title is the heading right below. The full trail stays the JSON-LD's.
+     *
+     * @param  list<Crumb>  $trail  Home → … → the page itself
+     * @return list<array{name: string, url: string, href: string, current: bool}>
+     */
+    public function visible(array $trail, bool $detail): array
+    {
+        if ($detail) {
+            array_pop($trail);
+        }
+        $last = count($trail) - 1;
+
+        return array_map(
+            fn (array $crumb, int $i): array => $crumb + ['current' => ! $detail && $i === $last],
+            $trail,
+            array_keys($trail),
+        );
+    }
+
     /** @return Crumb */
     public function home(string $locale): array
     {

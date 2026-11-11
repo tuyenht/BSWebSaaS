@@ -299,12 +299,12 @@ it('offers no preview on a draft whose languages are all disabled', function ():
     expect($html)->not->toContain('/admin/catalog/'.$ulid.'/preview');
 });
 
-it('draws the last breadcrumb level of a preview as plain text, with no link to the unpublished address', function (): void {
+it('ends the breadcrumb of a preview at the category, with no link to the unpublished address', function (): void {
     $ulid = previewProduct();
     $manager = previewMember(['catalog.view', 'catalog.manage']);
 
     $html = (string) $this->actingAs($manager)->get("http://a.test/admin/catalog/{$ulid}/preview")->assertOk()->getContent();
 
-    expect($html)->toContain('<span class="sf-crumbs__current" aria-current="page">Đồ gá kiểm định</span>')
+    expect($html)->not->toContain('<span class="sf-crumbs__current" aria-current="page">Đồ gá kiểm định</span>')
         ->not->toContain('href="/do-ga/do-ga-kiem-dinh"');
 });

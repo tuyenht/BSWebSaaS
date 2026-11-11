@@ -10,7 +10,6 @@ const slide = (n, active) => `<div class="sf-slide${active ? ' is-active' : ''}"
 <div class="sf-slide__media"${n > 1 ? ' hidden' : ''}><img src="/s${n}.webp" alt=""></div><div class="sf-slide__content"><h2>Slide ${n}</h2></div></div>`;
 const html = `<!doctype html><body><section class="sf-slider" data-sf-slider data-interval="5000" aria-roledescription="carousel">
 <div class="sf-slider__controls" hidden>
-<button type="button" data-sf-pause aria-label="Dừng" data-label-pause="Dừng" data-label-play="Chạy"></button>
 <button type="button" data-sf-prev></button><button type="button" data-sf-next></button>
 <div><button type="button" data-sf-dot="0" aria-current="true"></button><button type="button" data-sf-dot="1"></button><button type="button" data-sf-dot="2"></button></div>
 </div>
@@ -64,6 +63,8 @@ async function mount({ reduced = false } = {}) {
         current: () => [...doc.querySelectorAll('[data-sf-dot]')].findIndex((d) => d.getAttribute('aria-current') === 'true'),
         media: (i) => doc.querySelectorAll('.sf-slide__media')[i],
         fire: (el, type) => el.dispatchEvent(new window.Event(type, { bubbles: type !== 'mouseenter' && type !== 'mouseleave' })),
+        // pointerenter/leave do not bubble; jsdom has no PointerEvent, so the type rides on a plain event
+        point: (el, type, pointerType = 'mouse') => el.dispatchEvent(Object.assign(new window.Event(type, { bubbles: type === 'pointerdown' }), { pointerType })),
         setHidden(value) {
             hidden = value;
             doc.dispatchEvent(new window.Event('visibilitychange'));
@@ -89,10 +90,9 @@ const check = (name, ok) => {
     check('prev moves back', s.active() === 0 && s.current() === 0);
     s.doc.querySelectorAll('[data-sf-dot]')[2].click();
     check('a dot shows its slide', s.active() === 2 && s.current() === 2);
-    check('a slide button stops rotation (live region polite, play label)', s.doc.querySelector('.sf-slider__viewport').getAttribute('aria-live') === 'polite'
-        && s.doc.querySelector('[data-sf-pause]').getAttribute('aria-label') === 'Chạy');
-    s.tick(20000);
-    check('no rotation after a slide button', s.active() === 2);
+    check('no pause button (the owner chose hover to pause)', s.doc.querySelector('[data-sf-pause]') === null);
+    s.tick(5000);
+    check('a slide button does not stop rotation', s.active() === 0);
 }
 {
     const s = await mount();
@@ -112,24 +112,48 @@ const check = (name, ok) => {
 }
 {
     const s = await mount();
-    s.fire(s.doc.querySelector('[data-sf-next]'), 'focusin');
+    const next = s.doc.querySelector('[data-sf-next]');
+    next.matches = (sel) => sel === ':focus-visible';
+    s.fire(next, 'focusin');
     s.tick(20000);
-    check('keyboard focus entering stops rotation', s.active() === 0);
-    s.fire(s.root, 'mouseleave');
+    check('keyboard focus inside pauses', s.active() === 0);
+    s.point(s.root, 'pointerleave');
     s.tick(20000);
-    check('leaving with the pointer does not restart it', s.active() === 0);
-    s.doc.querySelector('[data-sf-pause]').click();
+    check('leaving with the pointer keeps the keyboard pause', s.active() === 0);
+    s.root.dispatchEvent(Object.assign(new s.window.Event('focusout', { bubbles: true }), { relatedTarget: null }));
     s.tick(5000);
-    check('only play restarts it', s.active() === 1);
+    check('focus leaving the slider resumes', s.active() === 1);
 }
 {
     const s = await mount();
-    s.fire(s.root, 'mouseenter');
+    const next = s.doc.querySelector('[data-sf-next]');
+    next.matches = () => false;
+    s.fire(next, 'focusin');
+    s.tick(5000);
+    check('focus left by a mouse click does not pause', s.active() === 1);
+}
+{
+    const s = await mount();
+    s.point(s.root, 'pointerenter');
     s.tick(20000);
     check('hover pauses', s.active() === 0);
-    s.fire(s.root, 'mouseleave');
+    s.doc.querySelector('[data-sf-next]').click();
+    s.tick(20000);
+    check('an arrow click while hovering stays paused', s.active() === 1);
+    s.point(s.root, 'pointerleave');
     s.tick(5000);
-    check('leaving resumes', s.active() === 1);
+    check('leaving resumes', s.active() === 2);
+}
+{
+    const s = await mount();
+    s.point(s.root, 'pointerenter', 'touch');
+    s.tick(5000);
+    check('a touch pointer entering is not a hover', s.active() === 1);
+    s.point(s.doc.querySelector('.sf-slider__viewport'), 'pointerdown', 'touch');
+    s.tick(9000);
+    check('a touch holds rotation', s.active() === 1);
+    s.tick(6000);
+    check('rotation comes back after the hold', s.active() === 2);
 }
 {
     const s = await mount();

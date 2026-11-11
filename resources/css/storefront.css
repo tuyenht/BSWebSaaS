@@ -1536,6 +1536,7 @@ main:has(.hero, .sf-slider) .page__title {
 .sf-crumbs__link {
     display: inline-flex;
     align-items: center;
+    min-width: 1.5rem;
     min-height: 1.5rem;
     color: var(--color-primary-text);
     font-weight: 600;
@@ -6432,6 +6433,7 @@ html:has(.sf-header--sticky) .product-toc {
 
 .sf-slider__viewport {
     display: grid;
+    touch-action: pan-y;
 }
 
 .sf-slide {
@@ -6548,9 +6550,7 @@ html:has(.sf-header--sticky) .product-toc {
 
 /* Controls. The arrows sit at the sides, halfway down, on every width: outlined discs (a dark wash
  * with a light ring), 40px on a phone and 48px from 640px, so a phone keeps 3rem of side room for the
- * text (.sf-slide__content). The bottom row holds the dots, then the Pause button: a bare icon with
- * no disc. Pause comes first in the markup (it is the first stop for a keyboard, as the carousel
- * pattern asks) and is moved after the dots only on screen. */
+ * text (.sf-slide__content). The bottom row holds the dots. */
 .sf-slider__controls {
     position: absolute;
     inset: 0;
@@ -6623,29 +6623,6 @@ html:has(.sf-header--sticky) .product-toc {
 
 .sf-slider__dots {
     display: flex;
-    order: 1;
-}
-
-.sf-slider__pause {
-    order: 2;
-    width: 2.5rem;
-    height: 2.5rem;
-    background: transparent;
-    color: rgb(255 255 255 / 0.8);
-}
-
-.sf-slider__pause svg {
-    width: 1rem;
-    height: 1rem;
-}
-
-.sf-slider__pause .sf-slider__icon-play,
-.sf-slider__pause.is-paused .sf-slider__icon-pause {
-    display: none;
-}
-
-.sf-slider__pause.is-paused .sf-slider__icon-play {
-    display: block;
 }
 
 .sf-slider__dot {
@@ -6905,11 +6882,6 @@ html:has(.sf-header--sticky) .product-toc {
         background: rgb(0 0 0 / 0.6);
     }
 
-    .sf-slider__pause:hover {
-        background: rgb(255 255 255 / 0.15);
-        color: #fff;
-    }
-
     .sf-slider__dot:hover .sf-slider__dot-mark {
         background: #fff;
     }
@@ -6934,8 +6906,7 @@ html:has(.sf-header--sticky) .product-toc {
 
 /* Touch screens: the new controls reach 44px. */
 @media (any-pointer: coarse) {
-    .sf-slider__dot,
-    .sf-slider__pause {
+    .sf-slider__dot {
         width: 2.75rem;
         height: 2.75rem;
     }
@@ -9040,12 +9011,27 @@ html:has(.sf-viewer[open]) {
     outline-offset: 4px;
 }
 
+/* region: sf-rail controls. The controls are one row below the list: arrow, dots, arrow, so on a
+   phone or tablet nothing covers a card's text or photo. From 1360px the page margin is wide enough
+   for the arrows to stand beside the list, outside its cards. They are always visible (never
+   hover-only) once the script shows them. */
 .sf-rail__controls {
-    display: contents;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    margin-top: 0.5rem;
 }
 
 .sf-rail__controls[hidden],
-.sf-rail__btn[hidden] {
+.sf-rail__btn[hidden],
+.sf-rail__dots[hidden] {
+    display: none;
+}
+
+/* Nothing to show (no script, arrows off, a row that fits): the row takes no room. */
+.sf-rail__controls:not(:has(.sf-rail__btn:not([hidden]))) {
     display: none;
 }
 
@@ -9084,54 +9070,53 @@ html:has(.sf-viewer[open]) {
     outline-offset: 0;
 }
 
-.sf-rail__prev,
-.sf-rail__next {
-    position: absolute;
-    top: 50%;
-    translate: 0 -50%;
-    z-index: 1;
-}
-
-.sf-rail__prev { left: -0.5rem; }
-.sf-rail__next { right: -0.5rem; }
-
-.sf-rail__bar {
+.sf-rail__dots {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    justify-content: flex-end;
-    min-height: 2.75rem;
-    margin-top: 0.5rem;
+    justify-content: center;
+    gap: 0.5rem;
+    min-width: 0;
 }
 
-/* The bar keeps its room only on the widths where the list rotates. */
-.sf-rail__bar--phone {
-    display: none;
+.sf-rail__dots > span {
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--color-text) 35%, transparent);
+    transition: background 0.2s, transform 0.2s;
 }
 
-@media (max-width: 639px) {
-    .sf-rail__bar--phone {
-        display: flex;
+.sf-rail__dots > span.is-on {
+    background: var(--color-primary);
+    transform: scale(1.25);
+}
+
+.sf-band--dark .sf-rail__dots > span {
+    background: rgb(255 255 255 / 0.5);
+}
+
+@media (min-width: 1360px) {
+    .sf-rail__controls {
+        min-height: 1.5rem;
+        margin-top: 0.75rem;
     }
 
-    .sf-rail__bar--wide {
-        display: none;
+    .sf-rail__prev,
+    .sf-rail__next {
+        position: absolute;
+        top: calc(50% - 1.375rem);
+        z-index: 1;
     }
+
+    .sf-rail__prev { left: -3.5rem; }
+    .sf-rail__next { right: -3.5rem; }
 }
 
-/* Nothing rotates under reduced motion or without scripting, so nothing needs the room. */
-@media (prefers-reduced-motion: reduce), (scripting: none) {
-    .sf-rail .sf-rail__bar {
-        display: none;
+@media (prefers-reduced-motion: reduce) {
+    .sf-rail__dots > span {
+        transition: none;
     }
-}
-
-.sf-rail__pause .sf-slider__icon-play,
-.sf-rail__pause.is-paused .sf-slider__icon-pause {
-    display: none;
-}
-
-.sf-rail__pause.is-paused .sf-slider__icon-play {
-    display: block;
 }
 
 @media (hover: hover) {
@@ -9150,8 +9135,8 @@ html:has(.sf-viewer[open]) {
 }
 
 /* Partner logos: the arrows stand outside the row of logos, beside it and centred on it (a grid of
-   arrow · row · arrow, the Pause bar below), as dark discs with a light ring: 36px on a phone, 40px
-   from 640px, inside the 44px hit area. The Pause button takes the same disc. An arrow the script
+   arrow · row · arrow; the controls row dissolves into the grid and its dots are not drawn), as dark
+   discs with a light ring: 36px on a phone, 40px from 640px, inside the 44px hit area. An arrow the script
    keeps hidden (a row that does not scroll) leaves no room behind. */
 .partners .sf-rail {
     display: grid;
@@ -9163,6 +9148,14 @@ html:has(.sf-viewer[open]) {
     grid-area: 1 / 2;
 }
 
+.partners .sf-rail__controls:not([hidden]) {
+    display: contents;
+}
+
+.partners .sf-rail__dots {
+    display: none;
+}
+
 .partners :is(.sf-rail__prev, .sf-rail__next) {
     position: relative;
     translate: none;
@@ -9171,10 +9164,6 @@ html:has(.sf-viewer[open]) {
 
 .partners .sf-rail__prev { grid-area: 1 / 1; }
 .partners .sf-rail__next { grid-area: 1 / 3; }
-
-.partners .sf-rail__bar {
-    grid-area: 2 / 1 / 3 / -1;
-}
 
 .partners .sf-rail__btn {
     color: #fff;
@@ -10034,22 +10023,22 @@ html:has(.sf-viewer[open]) {
     color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white));
 }
 
-/* Projects: the arrows are centred on the row's edge (half outside the first and last card) only where the
-   page margin is wide enough to hold them without a sideways scroll, and the "view all" button on a dark
-   band is the amber one. */
-@media (min-width: 1360px) {
-    .sf-cards--project .sf-rail__prev {
-        left: -1.375rem;
-    }
-
-    .sf-cards--project .sf-rail__next {
-        right: -1.375rem;
-    }
-}
-
+/* Projects: the "view all" button on a dark band is the amber one. */
 .sf-band--dark .sf-view-all__link {
     background: var(--color-primary);
     color: var(--sch-pri-fg, var(--color-on-primary));
+}
+
+/* region: sf-rail peek and free scroll. On a tablet a card slider shows a slice of the next card, so
+   it is plain that the row moves; the logo strip scrolls freely (no snapping) so a flick coasts. */
+@media (min-width: 640px) and (max-width: 1023px) {
+    .sf-rail__list--slider:not(.sf-rail__list--c6) { --sf-c: 2.25; }
+    .partners .sf-rail__list--slider { --sf-c: 3.25; }
+}
+
+.partners .sf-rail__list--slider,
+.partners .sf-rail__list--m-slider {
+    scroll-snap-type: none;
 }
 
 /* Partners on the home strip: the logos sit in one white box with a thin border; the arrows stand
@@ -10691,7 +10680,7 @@ html:has(.sf-viewer[open]) {
     margin: 0 auto 1.5rem;
     border-radius: 9999px;
     background: var(--color-primary);
-    color: var(--color-dark);
+    color: var(--color-on-primary);
     box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3);
 }
 

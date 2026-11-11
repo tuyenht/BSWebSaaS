@@ -94,16 +94,20 @@ it('draws a new list block as a rail with the controls hidden for the script', f
     'team' => ['team', ['members' => members(7)], 'sf-rail__list sf-rail__list--grid sf-rail__list--c4 sf-rail__list--m-swipe'],
 ]);
 
-it('gives a rotating rail a Pause button with both labels, and a still one none', function (): void {
+it('draws no pause button on any rail, rotating or still, and the pause texts are gone from the language files', function (): void {
     $rotating = railView('partners', ['props' => ['layout' => 'auto', 'logos' => logos(8)]]);
     $still = railView('team', ['props' => ['layout' => 'auto', 'members' => members(7)]]);
-    $off = railView('partners', ['props' => ['layout' => 'auto', 'autoplay' => 'off', 'logos' => logos(8)]]);
+    $js = (string) file_get_contents(base_path('resources/js/sf-slider.js'));
 
-    expect($rotating)->toContain('data-sf-rail-pause hidden aria-label="Dừng tự chuyển" title="Dừng tự chuyển"')
-        ->and($rotating)->toContain('data-label-play="Tiếp tục tự chuyển"')
-        ->and($rotating)->toContain('data-interval="3000"')
-        ->and($still)->not->toContain('data-sf-rail-pause')->and($still)->toContain('data-interval="0"')
-        ->and($off)->not->toContain('data-sf-rail-pause');
+    expect($rotating)->toContain('data-interval="3000"')->and($still)->toContain('data-interval="0"');
+    foreach ([$rotating, $still] as $html) {
+        expect($html)->not->toContain('data-sf-rail-pause')->and($html)->not->toContain('sf-rail__pause')->and($html)->not->toContain('sf-rail__bar');
+    }
+    expect($js)->not->toContain('labelPause')->and($js)->not->toContain('data-sf-pause');
+    foreach (['vi', 'en', 'ja', 'zh'] as $locale) {
+        $file = json_decode((string) file_get_contents(base_path("lang/{$locale}.json")), true);
+        expect($file)->not->toHaveKey('storefront.rail_pause')->and($file)->not->toHaveKey('storefront.slide_pause');
+    }
 });
 
 it('gives the arrows a 44px hit area with a 36px disc and no arrows when the block says none', function (): void {
@@ -120,9 +124,10 @@ it('lets the script rotate nothing on a phone swipe row or under reduced motion,
 
     expect($js)->toContain("!(phone.matches && root.dataset.mobile === 'swipe')")
         ->and($js)->toContain('!reduce.matches')
-        ->and($js)->toContain("addEventListener('mouseenter'")->and($js)->toContain("addEventListener('focusin'")
+        ->and($js)->toContain("addEventListener('pointerenter'")->and($js)->toContain("addEventListener('pointerleave'")
+        ->and($js)->toContain("addEventListener('focusin'")->and($js)->toContain("addEventListener('focusout'")
         ->and($js)->toContain("addEventListener('pointerdown'")->and($js)->toContain('const HOLD = 10000;')
-        ->and($js)->toContain('dataset.labelPause');
+        ->and($js)->toContain("addEventListener('visibilitychange'");
 });
 
 it('draws a rail of at most 24 partner logos and keeps all when it is a grid', function (): void {
@@ -272,15 +277,21 @@ it('announces a list that rotates only on a phone, and names every rail even whe
         ->and($cards)->toContain('aria-label="Danh sách"')->and($cards)->not->toContain('aria-label=""');
 });
 
-it('keeps the Pause bar visible at its final size in the server markup and only for the widths that rotate', function (): void {
+it('draws the rail controls as one row below the list: arrow, dots, arrow, all hidden until the script shows them', function (): void {
     $css = (string) file_get_contents(base_path('resources/css/storefront.css'));
-    $phone = railView('partners', ['props' => ['layout' => 'grid', 'logos' => logos(5)]]);
-    $wide = railView('team', ['props' => ['layout' => 'slider', 'members' => members(9)]]);
+    $html = railView('team', ['props' => ['layout' => 'slider', 'members' => members(9)]]);
 
-    expect($phone)->toContain('<div class="sf-rail__controls">')->and($phone)->toContain('<div class="sf-rail__bar sf-rail__bar--phone">')
-        ->and($wide)->toContain('<div class="sf-rail__bar sf-rail__bar--wide">')
-        ->and($css)->toMatch('/\.sf-rail__bar \{[^}]*min-height: 2\.75rem;/s')
-        ->and($css)->toMatch('/prefers-reduced-motion: reduce\), \(scripting: none\) \{\s*\.sf-rail \.sf-rail__bar \{\s*display: none;/s');
+    expect($html)->toMatch('#<div class="sf-rail__controls">\s*<button type="button" class="sf-rail__btn sf-rail__prev" data-sf-rail-prev hidden aria-label="[^"]+" title="[^"]+">.*?<span class="sf-rail__dots" data-sf-rail-dots hidden aria-hidden="true"></span>\s*<button type="button" class="sf-rail__btn sf-rail__next" data-sf-rail-next hidden aria-label="[^"]+"#s')
+        ->and($css)->toMatch('/\.sf-rail__controls \{[^}]*display: flex;[^}]*justify-content: center;/s')
+        ->and($css)->toMatch('/@media \(min-width: 1360px\) \{\s*\.sf-rail__controls \{[^}]*\}\s*\.sf-rail__prev,\s*\.sf-rail__next \{\s*position: absolute;/s')
+        ->and($css)->not->toContain('.sf-rail__bar')->and($css)->not->toContain('sf-slider__pause');
+});
+
+it('shows a slice of the next card on a tablet slider and lets the logo strip scroll freely', function (): void {
+    $css = (string) file_get_contents(base_path('resources/css/storefront.css'));
+
+    expect($css)->toMatch('/\.sf-rail__list--slider:not\(\.sf-rail__list--c6\) \{ --sf-c: 2\.25; \}/')
+        ->and($css)->toMatch('/\.partners \.sf-rail__list--m-slider \{\s*scroll-snap-type: none;/s');
 });
 
 it('lets the phone rules win under 640px, caps the tablet at two (three logos for partners) and keeps the scrollbar when it is the only way to scroll', function (): void {
@@ -300,8 +311,7 @@ it('shows the arrows only on a row that can scroll, and the title tooltips on ev
     $html = railView('partners', ['props' => ['layout' => 'auto', 'logos' => logos(8)]]);
 
     expect($js)->toContain("overflows() && mode !== 'none'")->and($js)->not->toContain('hover: hover')
-        ->and($js)->toContain('pause.title = pause.getAttribute')
-        ->and(substr_count($html, 'title="'))->toBe(3);
+        ->and(substr_count($html, 'title="'))->toBe(2);
 });
 
 it('shows "view all" under the plain product grid only when the block carries the group', function (): void {
