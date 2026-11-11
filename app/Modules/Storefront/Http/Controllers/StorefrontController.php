@@ -24,6 +24,7 @@ use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\SafeLink;
 use App\Modules\Storefront\Support\ArticleData;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Storefront\Support\Breadcrumbs;
 use App\Modules\Storefront\Support\JobPosting;
 use App\Modules\Storefront\Support\ListPage;
@@ -528,7 +529,7 @@ final readonly class StorefrontController
             $resolved->translation->name,
             $titles,
             $this->lists->links(request()->url(), $position, $more, $lastUlid),
-            self::categorySeo($resolved->translation) + $this->categoryTitleSeo($resolved, $locale, $trail),
+            self::categorySeo($resolved->translation, count($trail) >= 2 ? $trail[count($trail) - 2]['name'] : null, Cast::string(data_get($extra, 'brand.name'))) + $this->categoryTitleSeo($resolved, $locale, $trail),
             $extra,
         );
 
@@ -692,13 +693,29 @@ final readonly class StorefrontController
 
     /**
      * What a category tells search engines: its own Google title (else its name, through the site's
-     * title template).
+     * title template) and its own Google description, else its description, else a sentence made from
+     * its name, the category above it and the site's name, so no two lists share one fallback sentence.
+     * Without a site name the sentence is left out and the head falls back to the site's defaults.
      *
-     * @return array{title: string|null}
+     * @return array{title: string|null, description: string|null}
      */
-    private static function categorySeo(TaxonomyTranslation $translation): array
+    private static function categorySeo(TaxonomyTranslation $translation, ?string $parent, string $site): array
     {
-        return ['title' => trim((string) $translation->seo_title) !== '' ? $translation->seo_title : null];
+        $filled = static fn (?string $value): ?string => $value !== null && trim($value) !== '' ? $value : null;
+        $site = trim($site);
+        $generated = null;
+        if ($site !== '') {
+            $generated = $parent !== null && trim($parent) !== ''
+                ? __('storefront.seo_list_description_child', ['name' => $translation->name, 'parent' => trim($parent), 'site' => $site])
+                : __('storefront.seo_list_description', ['name' => $translation->name, 'site' => $site]);
+        }
+
+        return [
+            'title' => $filled($translation->seo_title),
+            'description' => $filled($translation->seo_description)
+                ?? $filled(str((string) $translation->description)->squish()->toString())
+                ?? (is_string($generated) ? $generated : null),
+        ];
     }
 
     /**

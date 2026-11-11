@@ -2440,6 +2440,8 @@
     "storefront.filter_categories": "分类",
     "storefront.all": "全部",
     "storefront.no_products": "暂无产品。",
+    "storefront.seo_list_description": ":name - :site：相关信息、图片和文章。",
+    "storefront.seo_list_description_child": ":name（:parent）- :site：相关信息、图片和文章。",
     "storefront.back_to_first": "返回第一页",
     "storefront.contact_info": "联系方式",
     "storefront.contact_phone": "电话",

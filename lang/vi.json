@@ -2440,6 +2440,8 @@
     "storefront.filter_categories": "Chuyên mục",
     "storefront.all": "Tất cả",
     "storefront.no_products": "Chưa có sản phẩm nào.",
+    "storefront.seo_list_description": ":name tại :site: thông tin, hình ảnh và các bài viết liên quan.",
+    "storefront.seo_list_description_child": ":name thuộc :parent tại :site: thông tin, hình ảnh và các bài viết liên quan.",
     "storefront.back_to_first": "Về trang đầu",
     "storefront.contact_info": "Thông tin liên hệ",
     "storefront.contact_phone": "Điện thoại",

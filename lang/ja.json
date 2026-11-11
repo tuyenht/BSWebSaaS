@@ -2440,6 +2440,8 @@
     "storefront.filter_categories": "カテゴリー",
     "storefront.all": "すべて",
     "storefront.no_products": "まだ製品がありません。",
+    "storefront.seo_list_description": ":name | :site：関連情報、写真、記事をご覧いただけます。",
+    "storefront.seo_list_description_child": ":name（:parent）| :site：関連情報、写真、記事をご覧いただけます。",
     "storefront.back_to_first": "最初のページへ戻る",
     "storefront.contact_info": "連絡先",
     "storefront.contact_phone": "電話",
