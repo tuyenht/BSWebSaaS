@@ -27,12 +27,12 @@ beforeEach(function (): void {
 
 dataset('crawlable', ['/', '/lien-he', '/sitemap.xml', '/robots.txt']);
 
-it('sends the same strong ETag for two identical requests', function (string $path): void {
+it('sends the same weak ETag for two identical requests', function (string $path): void {
     $first = $this->get('http://other.platform.test'.$path)->assertOk();
     $second = $this->get('http://other.platform.test'.$path)->assertOk();
 
     $etag = $first->headers->get('ETag');
-    expect($etag)->toMatch('/^"[0-9a-f]{32}"$/')   // strong: no W/ prefix
+    expect($etag)->toMatch('~^W/"[0-9a-f]{32}"$~')   // weak: the bytes may be compressed on the way out
         ->and($second->headers->get('ETag'))->toBe($etag)
         ->and($first->headers->get('Cache-Control'))->toContain('no-cache');
 })->with('crawlable');
@@ -86,3 +86,12 @@ it('keeps sending the session cookies on a 304', function (): void {
 
     expect(collect($response->headers->getCookies())->map->getName()->all())->toContain('XSRF-TOKEN');
 });
+
+it('matches a weak tag, a list and a star as a proxy or crawler sends them', function (string $form): void {
+    $etag = $this->get('http://other.platform.test/lien-he')->assertOk()->headers->get('ETag');
+    $opaque = preg_replace('~^W/~', '', (string) $etag);
+    $header = ['weak' => 'W/'.$opaque, 'strong' => $opaque, 'list' => '"other", '.$etag, 'star' => '*'][$form];
+
+    expect($etag)->toStartWith('W/"');
+    $this->get('http://other.platform.test/lien-he', ['If-None-Match' => $header])->assertStatus(304);
+})->with(['weak', 'strong', 'list', 'star']);

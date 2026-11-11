@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Conditional GET for the public pages, sitemaps and robots.txt: a strong ETag (a hash of the
+ * Conditional GET for the public pages, sitemaps and robots.txt: a weak ETag (a hash of the
  * final body) and, when the visitor or crawler sends the same tag back in If-None-Match, a 304
  * with no body. A crawler that gets 304 skips the download and the parse, which is what lets it
  * visit more of the site per day.
@@ -47,7 +47,7 @@ final class ConditionalGet
             return $response; // streamed or file responses have no body in hand
         }
 
-        $response->setEtag(hash('xxh128', $content));
+        $response->setEtag(hash('xxh128', $content), true);
         $response->isNotModified($request);
 
         return $response;
