@@ -55,9 +55,9 @@ it('describes a post as an Article with its dates and the business behind it', f
         'dateModified' => '2026-10-05T09:30:00+00:00',
         'inLanguage' => 'vi',
         'mainEntityOfPage' => 'http://mau.platform.test/tin-tuc/gia-cong-cnc',
-        // The business is named by its Organization id (described in full on the home page).
-        'author' => ['@id' => 'http://mau.platform.test/#organization', 'name' => 'Cơ khí Mẫu'],
-        'publisher' => ['@id' => 'http://mau.platform.test/#organization'],
+        // The business is a named, typed reference to its Organization (described in full on the home page).
+        'author' => ['@type' => 'Organization', '@id' => 'http://mau.platform.test/#organization', 'name' => 'Cơ khí Mẫu'],
+        'publisher' => ['@type' => 'Organization', '@id' => 'http://mau.platform.test/#organization', 'name' => 'Cơ khí Mẫu'],
     ]);
 });
 

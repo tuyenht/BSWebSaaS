@@ -700,6 +700,23 @@ final readonly class StorefrontController
         return ['pageTitle' => $this->titles->title($translation->name, $parentName, $locale, null, $resolved->taxonomy->id)];
     }
 
+    /** A description for a search result: at most 160 characters, cut after a whole word. */
+    private static function cut(string $text): string
+    {
+        if (mb_strlen($text) <= 160) {
+            return $text;
+        }
+        $head = mb_substr($text, 0, 160);
+        if (! preg_match('/\s/u', mb_substr($text, 160, 1))) {
+            $space = mb_strrpos($head, ' ');
+            if ($space !== false && $space > 0) {
+                $head = mb_substr($head, 0, $space);
+            }
+        }
+
+        return rtrim($head, " \t\n\r,;:.-");
+    }
+
     /**
      * What a category tells search engines: its own Google title (else its name, through the site's
      * title template) and its own Google description, else its description, else a sentence made from
@@ -722,7 +739,7 @@ final readonly class StorefrontController
         return [
             'title' => $filled($translation->seo_title),
             'description' => $filled($translation->seo_description)
-                ?? $filled(str((string) $translation->description)->squish()->toString())
+                ?? $filled(self::cut(str((string) $translation->description)->squish()->toString()))
                 ?? (is_string($generated) ? $generated : null),
         ];
     }

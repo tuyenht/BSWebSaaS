@@ -158,9 +158,9 @@ it('emits Product JSON-LD on the detail page — name, text description, url, br
     expect($productLd['name'])->toBe('Jig kiểm VF7');
     expect($productLd['description'])->toBe('Đồ gá kiểm tra cụm taplo.'); // stripped to plain text
     expect($productLd['url'])->toBe('http://anvinh.platform.test/san-pham/jig-vf7');
-    // The business is named by its Organization id; the home page describes it in full.
-    expect($productLd['brand'])->toBe(['@id' => 'http://anvinh.platform.test/#organization'])
-        ->and($productLd['manufacturer'])->toBe(['@id' => 'http://anvinh.platform.test/#organization']);
+    // The brand is named; a reseller is never named as the maker.
+    expect($productLd['brand'])->toBe(['@type' => 'Brand', 'name' => 'Cơ Khí Chính Xác An Vinh'])
+        ->and($productLd)->not->toHaveKey('manufacturer');
     expect($productLd)->not->toHaveKey('offers'); // brochure catalog — nothing is sold online
 });
 

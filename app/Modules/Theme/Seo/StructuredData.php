@@ -40,6 +40,10 @@ final class StructuredData
         $siteId = $name !== '' ? $origin.'/#website' : null;
         $home = ! empty($page['websiteLd']) && is_array($page['websiteLd']);
         $url = self::text($page['canonical'] ?? null);
+        // The home page's address ends with a slash, as the organization's does, so the ids agree.
+        if ($url !== '' && rtrim($url, '/') === $origin) {
+            $url = $origin.'/';
+        }
         $webPageId = $url !== '' ? $url.'#webpage' : null;
 
         $graph = [];
@@ -59,7 +63,7 @@ final class StructuredData
         }
         foreach (['articleLd', 'productLd', 'jobLd', 'faqLd'] as $key) {
             if (! empty($page[$key]) && is_array($page[$key])) {
-                $graph[] = self::withOrganization(self::strip($page[$key]), $orgId, $name);
+                $graph[] = self::withOrganization(self::strip($page[$key]), $orgId, $name, self::text($brand['logo'] ?? null));
             }
         }
 
@@ -75,7 +79,12 @@ final class StructuredData
     {
         $graph = self::build($page);
 
-        return $graph === null ? null : (string) json_encode($graph, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG);
+        if ($graph === null) {
+            return null;
+        }
+        $json = json_encode($graph, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_INVALID_UTF8_SUBSTITUTE);
+
+        return is_string($json) ? $json : null;
     }
 
     /**
@@ -203,23 +212,19 @@ final class StructuredData
      * @param  array<string, mixed>  $node
      * @return array<string, mixed>
      */
-    private static function withOrganization(array $node, ?string $orgId, string $name): array
+    private static function withOrganization(array $node, ?string $orgId, string $name, string $logo): array
     {
         if ($orgId === null) {
             return $node;
         }
-        $ref = ['@id' => $orgId];
+        // A typed, named reference: a reader of this page alone still learns who the business is.
+        $ref = ['@type' => 'Organization', '@id' => $orgId, 'name' => $name];
         $type = $node['@type'] ?? null;
         if ($type === 'Article') {
-            // Google wants the author's name beside the reference.
-            $node['author'] = ['@id' => $orgId, 'name' => $name];
-            $node['publisher'] = $ref;
+            $node['author'] = $ref;
+            $node['publisher'] = $logo !== '' ? $ref + ['logo' => ['@type' => 'ImageObject', 'url' => $logo]] : $ref;
         } elseif ($type === 'JobPosting') {
-            // The hiring organization's name stays: a job posting is read on its own.
-            $node['hiringOrganization'] = ['@id' => $orgId, 'name' => $name];
-        } elseif ($type === 'Product') {
-            $node['brand'] = $ref;
-            $node['manufacturer'] = $ref;
+            $node['hiringOrganization'] = $ref;
         }
 
         return $node;

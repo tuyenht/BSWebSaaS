@@ -34,13 +34,15 @@ final class ProductSpecs
         $rows = [];
         foreach ($dom->getElementsByTagName('tr') as $tr) {
             $cells = [];
+            $headers = 0;
             foreach ($tr->childNodes as $cell) {
                 if ($cell instanceof DOMElement && in_array($cell->tagName, ['th', 'td'], true)) {
+                    $headers += $cell->tagName === 'th' ? 1 : 0;
                     $cells[] = trim((string) preg_replace('/\s+/u', ' ', $cell->textContent));
                 }
             }
-            // A specification row has exactly a name and a value (a header row of three columns is not one).
-            if (count($cells) === 2 && $cells[0] !== '' && $cells[1] !== '') {
+            // A specification row has exactly a name and a value (a header row of th cells is not one).
+            if (count($cells) === 2 && $headers < 2 && $cells[0] !== '' && $cells[1] !== '') {
                 $rows[] = ['@type' => 'PropertyValue', 'name' => $cells[0], 'value' => $cells[1]];
             }
         }

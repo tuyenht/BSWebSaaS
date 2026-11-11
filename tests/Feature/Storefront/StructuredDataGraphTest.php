@@ -89,7 +89,8 @@ it('makes a list a CollectionPage that lists what it shows, and a post an Articl
         ->and($collection['mainEntity']['itemListElement'][0]['name'])->toBe('Bài một')
         ->and($collection['breadcrumb'])->toBe(['@id' => $collection['url'].'#breadcrumb'])
         ->and(ldNode($list, 'BreadcrumbList')['@id'])->toBe($collection['url'].'#breadcrumb')
-        ->and($article['publisher'])->toBe(['@id' => SD_ORG])
+        ->and($article['publisher'])->toBe(['@type' => 'Organization', '@id' => SD_ORG, 'name' => 'Xưởng Mẫu', 'logo' => ['@type' => 'ImageObject', 'url' => 'https://files.test/logo.png']])
+        ->and($article['author'])->toBe(['@type' => 'Organization', '@id' => SD_ORG, 'name' => 'Xưởng Mẫu'])
         ->and($article['headline'])->toBe('Bài một')
         ->and(ldNode($post, 'WebPage'))->not->toBeNull();
 });
@@ -107,8 +108,8 @@ it('describes a product with its category, its specification rows and the busine
     $product = ldNode($html, 'Product');
 
     expect($product['category'])->toBe('Đồ gá')
-        ->and($product['brand'])->toBe(['@id' => SD_ORG])
-        ->and($product['manufacturer'])->toBe(['@id' => SD_ORG])
+        ->and($product['brand'])->toBe(['@type' => 'Brand', 'name' => 'Xưởng Mẫu'])
+        ->and($product)->not->toHaveKey('manufacturer')
         ->and($product['additionalProperty'])->toBe([
             ['@type' => 'PropertyValue', 'name' => 'Chất liệu', 'value' => 'Thép SKD11'],
             ['@type' => 'PropertyValue', 'name' => 'Độ cứng', 'value' => '58 HRC'],
