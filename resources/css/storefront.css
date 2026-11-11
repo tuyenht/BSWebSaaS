@@ -8379,8 +8379,8 @@ html:has(.sf-viewer[open]) {
 
 /* A counted number stays transparent until sf-stats.js sets it to 0 and counts it up (`is-counting`),
    so its final value never flashes first. If the script never runs, the number shows after 2.5s. Only
-   with scripting on and motion allowed: otherwise the server's final number shows at once. */
-@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+   on screen with scripting on and motion allowed: otherwise the server's final number shows at once. */
+@media screen and (scripting: enabled) and (prefers-reduced-motion: no-preference) {
     .sf-stat__value [data-count]:not(.is-counting) {
         opacity: 0;
         animation: sf-stat-show 0s 2.5s forwards;

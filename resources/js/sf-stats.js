@@ -4,7 +4,7 @@
 // final number never flashes before it drops to 0; if the script never runs, the stylesheet shows the
 // number after a short wait. Every number starts at 0 and counts up when it is 40% in view, the ones in
 // the first screen too. A script that arrives after that wait leaves numbers already in view alone.
-// Its box keeps the final height so nothing below moves.
+// Its box keeps the final height so nothing below moves. Print always shows the final number.
 const LATE_MS = 2400;
 
 const fmt = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
@@ -50,14 +50,15 @@ const start = () => {
     }
     // Late: the stylesheet has already shown the final numbers; count only the ones still out of view.
     const first = new IntersectionObserver((entries) => {
-        const out = entries.filter((e) => !e.isIntersecting).map((e) => e.target);
+        const out = entries.filter((e) => e.intersectionRatio < 0.4).map((e) => e.target);
         const heights = out.map((el) => el.parentElement.offsetHeight);
         out.forEach((el, i) => hold(el, heights[i]));
         first.disconnect();
-    });
+    }, { threshold: 0.4 });
     els.forEach((el) => first.observe(el));
 };
 
-if ('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+// A browser without the `scripting` media feature never hid the number, so it keeps the final one.
+if ('IntersectionObserver' in window && matchMedia('(scripting: enabled) and (prefers-reduced-motion: no-preference)').matches) {
     start();
 }
