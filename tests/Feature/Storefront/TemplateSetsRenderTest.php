@@ -81,7 +81,7 @@ it('prints the employer, the workplace address and the excerpt in the JobPosting
     jobSite();
     $ld = jobLd(jobPage('/ha-noi/tho-tien-cnc'));
 
-    expect($ld['hiringOrganization'])->toBe(['@type' => 'Organization', 'name' => 'Cơ khí Mẫu'])
+    expect($ld['hiringOrganization'])->toBe(['@id' => 'http://mau.platform.test/#organization', 'name' => 'Cơ khí Mẫu'])
         ->and($ld['jobLocation'])->toBe(['@type' => 'Place', 'address' => [
             '@type' => 'PostalAddress', 'streetAddress' => 'Thôn Xuân Sơn', 'addressLocality' => 'Xã Trung Giã',
             'addressRegion' => 'TP Hà Nội', 'addressCountry' => 'VN',

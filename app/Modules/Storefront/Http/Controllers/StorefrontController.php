@@ -518,6 +518,7 @@ final readonly class StorefrontController
         $extra['ogType'] = 'website';
         // Home → the categories above → this one (its own entry keeps the page's canonical address).
         $trail = $this->crumbs->category($resolved->taxonomy, $locale, $resolved->translation->name, $resolved->translation->slug);
+        $parentName = count($trail) >= 2 ? $trail[count($trail) - 2]['name'] : null;
         $trail[count($trail) - 1]['url'] = $canonical;
         $extra['breadcrumb'] = [$this->crumbs->home($locale), ...$trail];
         // The band below the list (the list's own category speaks first, then the site's default).
@@ -529,7 +530,7 @@ final readonly class StorefrontController
             $resolved->translation->name,
             $titles,
             $this->lists->links(request()->url(), $position, $more, $lastUlid),
-            self::categorySeo($resolved->translation, count($trail) >= 2 ? $trail[count($trail) - 2]['name'] : null, Cast::string(data_get($extra, 'brand.name'))) + $this->categoryTitleSeo($resolved, $locale, $trail),
+            self::categorySeo($resolved->translation, $parentName, Cast::string(data_get($extra, 'brand.name'))) + $this->categoryTitleSeo($resolved, $locale, $parentName),
             $extra,
         );
 
@@ -669,7 +670,8 @@ final readonly class StorefrontController
         if ($entry->type !== 'page' || trim((string) $translation->seo_title) !== '' || count($crumbs) < 3) {
             return [];
         }
-        $parent = $crumbs[count($crumbs) - 2]['name'] ?? null;
+        $crumb = $crumbs[count($crumbs) - 2];
+        $parent = is_array($crumb) ? ($crumb['name'] ?? null) : null;
 
         return ['pageTitle' => $this->titles->title($translation->title, is_string($parent) ? $parent : null, $locale, $entry->id, null)];
     }
@@ -678,17 +680,16 @@ final readonly class StorefrontController
      * The same for a category: its parent's name is added when the name is taken. The trail is the one
      * the page already built (home, the categories above, this one), so the parent's name costs nothing.
      *
-     * @param  list<array{name: string, url: string, href: string}>  $trail
      * @return array{pageTitle?: string}
      */
-    private function categoryTitleSeo(ResolvedCategory $resolved, string $locale, array $trail): array
+    private function categoryTitleSeo(ResolvedCategory $resolved, string $locale, ?string $parentName): array
     {
         $translation = $resolved->translation;
-        if (trim((string) $translation->seo_title) !== '' || count($trail) < 2) {
+        if (trim((string) $translation->seo_title) !== '' || $parentName === null) {
             return [];
         }
 
-        return ['pageTitle' => $this->titles->title($translation->name, $trail[count($trail) - 2]['name'], $locale, null, $resolved->taxonomy->id)];
+        return ['pageTitle' => $this->titles->title($translation->name, $parentName, $locale, null, $resolved->taxonomy->id)];
     }
 
     /**

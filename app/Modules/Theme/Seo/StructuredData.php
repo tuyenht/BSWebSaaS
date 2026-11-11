@@ -52,7 +52,7 @@ final class StructuredData
 
         $crumbs = self::breadcrumb($page['breadcrumb'] ?? null, $url);
         if ($webPageId !== null) {
-            $graph[] = self::webPage($page, $webPageId, $url, $siteId, $crumbs !== null ? $crumbs['@id'] : null);
+            $graph[] = self::webPage($page, $webPageId, $url, $siteId, $crumbs !== null && is_string($crumbs['@id']) ? $crumbs['@id'] : null);
         }
         if ($crumbs !== null) {
             $graph[] = $crumbs;
@@ -66,7 +66,11 @@ final class StructuredData
         return $graph === [] ? null : ['@context' => 'https://schema.org', '@graph' => $graph];
     }
 
-    /** The graph as the script's text; `<` and `>` are escaped so it is safe inline. Null when there is none. */
+    /**
+     * The graph as the script's text; `<` and `>` are escaped so it is safe inline. Null when there is none.
+     *
+     * @param  array<string, mixed>  $page
+     */
     public static function json(array $page): ?string
     {
         $graph = self::build($page);
@@ -185,6 +189,7 @@ final class StructuredData
         }
         $items = [];
         foreach (array_values($crumbs) as $i => $crumb) {
+            $crumb = is_array($crumb) ? $crumb : [];
             $items[] = ['@type' => 'ListItem', 'position' => $i + 1, 'name' => $crumb['name'] ?? '', 'item' => $crumb['url'] ?? ''];
         }
 

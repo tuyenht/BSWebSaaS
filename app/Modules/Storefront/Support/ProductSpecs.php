@@ -42,12 +42,9 @@ final class ProductSpecs
             // A specification row has exactly a name and a value (a header row of three columns is not one).
             if (count($cells) === 2 && $cells[0] !== '' && $cells[1] !== '') {
                 $rows[] = ['@type' => 'PropertyValue', 'name' => $cells[0], 'value' => $cells[1]];
-                if (count($rows) >= self::MAX) {
-                    break;
-                }
             }
         }
 
-        return $rows;
+        return array_slice($rows, 0, self::MAX);
     }
 }
