@@ -48,6 +48,32 @@ final class ListDisplay
     ];
 
     /**
+     * The `sizes` of a card photo in a list drawn from a plan(): what the rail's CSS gives each card
+     * (`.sf-rail__list`: 1.5rem gap, `columns` across from 1024px, two across from 640px, and on a phone
+     * the swipe row shows 1.25 cards, `two` shows two, `one` one, `slider` three; the page container is
+     * 80rem with 2rem side padding, 1.5rem from 640px, 1rem on a phone). A block's own width setting
+     * can only make the card narrower, never wider, so the answer is never too small.
+     *
+     * @param  array{columns: int, mobile: string}  $plan
+     */
+    public static function cardSizes(array $plan): string
+    {
+        $columns = max(1, $plan['columns']);
+        $gaps = 1.5 * ($columns - 1);
+        $rem = static fn (float $n): string => rtrim(rtrim(number_format($n, 3, '.', ''), '0'), '.');
+        $wide = $rem((76 - $gaps) / $columns).'rem';
+        $desktop = $columns === 1 ? 'calc(100vw - 4rem)' : sprintf('calc((100vw - %srem) / %d)', $rem(4 + $gaps), $columns);
+        $phone = match ($plan['mobile']) {
+            'one' => 'calc(100vw - 2rem)',
+            'two' => 'calc((100vw - 3rem) / 2)',
+            'slider' => 'calc((100vw - 4rem) / 3)',
+            default => 'calc((100vw - 2.25rem) / 1.25)',
+        };
+
+        return sprintf('(min-width:1280px) %s, (min-width:1024px) %s, (min-width:640px) calc((100vw - 4.5rem) / 2), %s', $wide, $desktop, $phone);
+    }
+
+    /**
      * Whether the block carries the group at all (a block saved before it did not).
      *
      * @param  array<array-key, mixed>  $props

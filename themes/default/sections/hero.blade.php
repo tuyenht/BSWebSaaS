@@ -23,7 +23,8 @@
 <section class="hero{{ $bgVideo !== null ? ' hero--video' : '' }}">
     @if (! empty($props['image_url']))
         <img class="hero__bg"
-             src="{{ $props['image_url'] }}"
+             src="{{ $props['image_url'] }}"@if (! empty(($srcsets ?? [])[$props['image_url']])) srcset="{{ $srcsets[$props['image_url']] }}" sizes="100vw"@endif
+
              alt=""
              width="1600"
              height="900"

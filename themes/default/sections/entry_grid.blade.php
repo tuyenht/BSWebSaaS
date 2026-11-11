@@ -149,6 +149,7 @@
 <{{ $sfTitleTag }} class="sf-tabs__title">{{ $sfTab['name'] }}</{{ $sfTitleTag }}>
 @php
     $sfDisplay = $sfTab['display'];
+    $sfTabSizes = $sfDisplay !== null ? \App\Modules\Theme\Components\ListDisplay::cardSizes($sfDisplay) : $sfSizes;
 @endphp
 @if ($sfDisplay !== null)
 @include('theme::partials.sf-rail-open', ['display' => $sfDisplay, 'label' => $sfTab['name']])
@@ -159,7 +160,7 @@
     'card' => $card,
     'kind' => $sfKind,
     'level' => $sfCardLevel,
-    'sizes' => $sfSizes,
+    'sizes' => $sfTabSizes,
     'linkLabel' => $sfLinkLabel,
     'short' => $sfDisplay !== null,
 ])</li>
@@ -183,6 +184,9 @@
     $sfSizes = $sfKind === 'product-overlay'
         ? '(min-width:1360px) 408px, (min-width:1024px) calc((100vw - 8.5rem)/3), (min-width:640px) calc((100vw - 5rem)/2), calc(100vw - 2rem)'
         : '(min-width:1360px) 298px, (min-width:1024px) calc((100vw - 10.5rem)/4), (min-width:640px) calc((100vw - 5rem)/2), calc(100vw - 2rem)';
+    if (($display ?? null) !== null) {
+        $sfSizes = \App\Modules\Theme\Components\ListDisplay::cardSizes($display);
+    }
     $sfBg = \App\Modules\Theme\Components\SectionProps::choice($props, 'bg', \App\Modules\Theme\Components\SectionProps::BG);
 @endphp
 @component('theme::partials.sf-band', ['bg' => $sfBg, 'class' => 'sf-cards sf-cards--'.$sfKind])
