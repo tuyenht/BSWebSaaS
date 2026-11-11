@@ -54,11 +54,12 @@
     @endif
     @php
         $drawerMenu = ! empty($mobileMenu) ? $mobileMenu : ($menu ?? []);
-        // The phone header's right corner. The call is left out while the phone bottom bar is on (it
-        // carries the call itself); search and cart draw nothing until the site has them.
+        // The phone header's right corner. While the phone bottom bar is on, the call is hidden only where
+        // that bar shows (under 768px; it carries the call itself), so a tablet keeps it; search and cart
+        // draw nothing until the site has them.
         $sfBar = ! empty($floatingContact) && ($floatingContact['theme'] === 'horizontal' || ($floatingContact['phone_bar'] ?? null) !== null);
         $sfCallHref = \App\Modules\Shared\Support\SafeLink::tel($brand['phone'] ?? null);
-        $sfCorner = ($header['mobile_corner'] ?? 'call') === 'call' && ! $sfBar && $sfCallHref !== null;
+        $sfCorner = ($header['mobile_corner'] ?? 'call') === 'call' && $sfCallHref !== null;
         $sfEmailHref = \App\Modules\Shared\Support\SafeLink::mailto($brand['email'] ?? null);
     @endphp
     <div class="sf-bar">
@@ -80,14 +81,14 @@
                 </nav>
             @endif
             @if (! empty($drawerMenu))
-                <span class="sf-bar__corner">@if ($sfCorner)<a class="sf-bar__call" href="{{ $sfCallHref }}" aria-label="{{ __('storefront.call_number', ['phone' => $brand['phone']]) }}">@include('theme::partials.sf-icon', ['name' => 'phone', 'size' => 24])</a>@endif</span>
+                <span class="sf-bar__corner">@if ($sfCorner)<a class="sf-bar__call{{ $sfBar ? ' sf-bar__call--hasbar' : '' }}" href="{{ $sfCallHref }}" aria-label="{{ __('storefront.call_number', ['phone' => $brand['phone']]) }}">@include('theme::partials.sf-icon', ['name' => 'phone', 'size' => 24])</a>@endif</span>
             @endif
         </div>
     </div>
     @if (! empty($drawerMenu))
         {{-- The phone menu: a dialog drawer (focus moves in on open and back to the button on close, Esc,
              the dimmed area and the ✕ close it). No title word in it: the page's own words are the menu. --}}
-        <div id="mobile-menu" class="sf-drawer" role="dialog" aria-modal="true" aria-label="{{ __('storefront.nav_main') }}" hidden>
+        <div id="mobile-menu" class="sf-drawer" role="dialog" aria-modal="true" aria-label="{{ __('storefront.menu_word') }}" hidden>
             <div class="sf-drawer__scrim" data-menu-close></div>
             <button type="button" class="sf-drawer__close" data-menu-close aria-label="{{ __('storefront.menu_close') }}">@include('theme::partials.sf-icon', ['name' => 'close', 'size' => 24])</button>
             <div class="sf-drawer__panel">

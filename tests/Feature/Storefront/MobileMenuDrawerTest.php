@@ -158,7 +158,7 @@ it('marks the current page in the drawer with aria-current and a bar, in a named
     $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
 
     expect($html)
-        ->toContain('<div id="mobile-menu" class="sf-drawer" role="dialog" aria-modal="true" aria-label="Điều hướng chính" hidden>')
+        ->toContain('<div id="mobile-menu" class="sf-drawer" role="dialog" aria-modal="true" aria-label="Menu" hidden>')
         ->toContain('data-menu-close aria-label="Đóng menu"')
         ->toMatch('#<div class="sf-nav__panel" id="msm-1">.*?<a class="sf-nav__sublink"\s+href="/gioi-thieu"\s+aria-current="page"\s*>Giới thiệu</a>#s');
 
@@ -193,8 +193,8 @@ it('shows the call in the header corner, and drops it while the phone bottom bar
     ));
     app(StorefrontSettings::class)->forget();   // the settings are memoized for the request
     $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
-    expect($html)->not->toContain('sf-bar__call')->toContain('class="sf-fc-bar"')
-        ->and($html)->toContain('<span class="sf-bar__corner"></span>');
+    // the header call stays for tablets and is hidden by CSS only where the bar shows (under 768px)
+    expect($html)->toContain('<a class="sf-bar__call sf-bar__call--hasbar" href="tel:')->toContain('class="sf-fc-bar"');
 
     // a round-button site with the board-style phone bar does the same
     app(Tenancy::class)->enter($siteId, fn () => SiteSetting::query()->where('key', 'floating_contact')->update(['value' => [
@@ -202,12 +202,12 @@ it('shows the call in the header corner, and drops it while the phone bottom bar
         'channels' => [['key' => 'phone', 'on' => true, 'value' => '0912345678']], 'phone_bar' => ['enabled' => true],
     ]]));
     app(StorefrontSettings::class)->forget();
-    expect($this->get('http://mau.platform.test/gioi-thieu')->getContent())->not->toContain('sf-bar__call');
+    expect($this->get('http://mau.platform.test/gioi-thieu')->getContent())->toContain('sf-bar__call--hasbar');
 
     // bar off again: the call is back
     app(Tenancy::class)->enter($siteId, fn () => SiteSetting::query()->where('key', 'floating_contact')->update(['value' => ['enabled' => false]]));
     app(StorefrontSettings::class)->forget();
-    expect($this->get('http://mau.platform.test/gioi-thieu')->getContent())->toContain('sf-bar__call');
+    expect($this->get('http://mau.platform.test/gioi-thieu')->getContent())->toContain('<a class="sf-bar__call" href="tel:');
 });
 
 it('follows the corner setting: search and cart draw nothing yet, none leaves it empty', function (string $corner): void {

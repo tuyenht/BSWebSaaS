@@ -3220,6 +3220,13 @@ html:has(.sf-header--sticky) {
     background: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
 }
 
+/* the phone bottom bar (under 768px) carries the call, so the header copy steps aside there only */
+@media (max-width: 767.98px) {
+    .sf-bar__call--hasbar {
+        display: none;
+    }
+}
+
 @media (min-width: 1024px) {
     .sf-header:not(.sf-header--menu-xl) .sf-bar__inner--drawer {
         display: flex;
