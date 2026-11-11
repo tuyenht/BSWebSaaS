@@ -10691,7 +10691,7 @@ html:has(.sf-viewer[open]) {
     margin: 0 auto 1.5rem;
     border-radius: 9999px;
     background: var(--color-primary);
-    color: var(--color-dark);
+    color: var(--color-on-primary);
     box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3);
 }
 

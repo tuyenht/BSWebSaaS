@@ -97,8 +97,8 @@ final readonly class ThemeResolver
      * storefront.css still reads, with the same values: `color-primary`, `color-primary-text`,
      * `color-primary-on-dark`, `color-surface`, `color-text`, `color-text-strong`, `color-dark`,
      * `font-body`, `color-brand-*`, the scales (`space-*`, `radius-*`, `shadow-*`, `gradient-*`, `motion-*`), plus
-     * `color-on-primary` — white or the ink color on the brand fill, whichever reads better (the ink
-     * darkened when neither reaches 4.5:1), and `color-primary-hover` — the fill a hovered brand button
+     * `color-on-primary` — white on the brand fill when it reads 4.5:1, otherwise the darkest same-hue
+     * shade that does (the ink when none can be derived), and `color-primary-hover` — the fill a hovered brand button
      * takes, moved away from that text so it reads at least as well. A new
      * name never points back at an old one, so a fallback is the color itself, not `var(--ink)`.
      *
@@ -274,12 +274,21 @@ final readonly class ThemeResolver
     }
 
     /**
-     * Text on the brand fill as the site chose it (the fill is never moved): textOnFill, and when
-     * neither white nor the ink reaches 4.5:1 (a mid-tone brand under a softer ink), the ink moved
-     * toward black until it does — black always reaches it where white does not.
+     * Text on the brand fill as the site chose it (the fill is never moved): white when it reads
+     * 4.5:1, otherwise the darkest same-hue shade that does (an amber fill gets a deep brown), and
+     * the ink (moved toward black when needed) only when no shade can be measured or reaches it.
      */
     private function textOnBrand(string $fill, string $ink): string
     {
+        if ((ReadableColor::ratio('#ffffff', $fill) ?? 0.0) >= ReadableColor::AA_NORMAL_TEXT) {
+            return '#ffffff';
+        }
+
+        $shade = ReadableColor::darkShade($fill);
+        if ($shade !== null) {
+            return $shade;
+        }
+
         $text = $this->textOnFill($fill, $ink);
         if ((ReadableColor::ratio($text, $fill) ?? ReadableColor::AA_NORMAL_TEXT) >= ReadableColor::AA_NORMAL_TEXT) {
             return $text;
