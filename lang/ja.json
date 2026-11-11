@@ -3613,5 +3613,10 @@
     "catalog.purge_title_many": ":count 件の商品を完全に削除しますか？",
     "catalog.purge_text_one": "元に戻せません。この商品の画像・価格・すべての言語版が削除されます。SKU とアドレスは他の商品で使えるようになります。",
     "catalog.purge_text_many": "元に戻せません。この :count 件の商品の画像・価格・すべての言語版が削除されます。SKU とアドレスは他の商品で使えるようになります。",
-    "catalog.purge_ok_many": ":count 件を完全に削除"
+    "catalog.purge_ok_many": ":count 件を完全に削除",
+    "storefront.job_detail": "詳細",
+    "storefront.job_filter": "勤務地で絞り込む",
+    "storefront.job_open": "募集中",
+    "storefront.no_jobs": "現在募集中の職種はありません。",
+    "entries.opt_variant_job": "求人カード"
 }

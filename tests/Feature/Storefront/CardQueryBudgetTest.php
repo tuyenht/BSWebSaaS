@@ -1,5 +1,7 @@
 <?php
 
+use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Tenancy\Context\Tenancy;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -146,4 +148,30 @@ it('reads one more row for a keyset page than for page 1: the anchor', function 
     $keyset = countQueries(fn () => test()->get('http://mau.platform.test/tin-tuc?sau='.$anchor)->assertOk());
 
     expect($keyset)->toBe($first + 1);
+});
+
+it('lists a job category and shows a job post within a fixed number of reads', function (): void {
+    $withFacts = function (): void {
+        foreach (Entry::query()->get() as $post) {
+            $post->meta = ($post->meta ?? []) + ['facts' => [['text' => ['vi' => 'Trung Giã'], 'tone' => 'plain'], ['text' => ['vi' => 'Lương: Thỏa thuận'], 'tone' => 'accent']], 'badge' => ['vi' => 'Tuyển gấp']];
+            $post->save();
+        }
+        $news = Taxonomy::query()->whereNull('parent_id')->whereHas('translations', fn ($q) => $q->where('slug', 'tin-tuc'))->firstOrFail();
+        $news->forceFill(['detail_template' => 'job'])->save();
+    };
+
+    $few = budgetCount('/tin-tuc', 3, 1, 'grid-job', setup: $withFacts);
+    $post = budgetCount('/tin-tuc/bai-1', 3, 1, 'grid-job', setup: $withFacts);
+
+    expect(budgetCount('/tin-tuc', 12, 1, 'grid-job', setup: $withFacts))->toBe($few)
+        ->and(budgetCount('/tin-tuc', 3, 4, 'grid-job', setup: $withFacts))->toBe($few)
+        ->and($few)->toBeLessThanOrEqual(22)
+        ->and(budgetCount('/tin-tuc/bai-1', 12, 1, 'grid-job', setup: $withFacts))->toBe($post)
+        ->and($post)->toBeLessThanOrEqual(24);
+});
+
+it('reads a job grid block in a fixed number of reads, however many posts it lists', function (): void {
+    $block = [['type' => 'entry_grid', 'props' => ['taxonomy_slug' => 'tin-tuc', 'variant' => 'job', 'tabs' => 'filter', 'count_label' => '{n} vị trí', 'limit' => 12]]];
+
+    expect(blockCount($block, 12))->toBe(blockCount($block, 3));
 });

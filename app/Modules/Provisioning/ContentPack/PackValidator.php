@@ -8,6 +8,7 @@ use App\Modules\Admin\Support\Settings\BranchList;
 use App\Modules\Admin\Support\Settings\FloatingContactInput;
 use App\Modules\Admin\Support\Settings\HeadingDecorInput;
 use App\Modules\Admin\Support\Settings\SettingsChangeRejected;
+use App\Modules\Cms\Support\JobFacts;
 use App\Modules\Cms\Taxonomy\TaxonomyRules;
 use App\Modules\Cms\Validation\ValidPageJson;
 use App\Modules\Forms\Support\FormFieldTypes;
@@ -754,6 +755,10 @@ final readonly class PackValidator
         $date = $item->data['published_at'] ?? null;
         if ($date !== null && ! (is_string($date) && self::isDate($date))) {
             $errors[] = "{$item->key}: published_at must be a date (YYYY-MM-DD).";
+        }
+        // The short facts and the badge of a card: the same rule an editor save and a restore pass.
+        foreach (JobFacts::errors(array_intersect_key($item->data, ['facts' => 1, 'badge' => 1])) as $problem) {
+            $errors[] = "{$item->key}: {$problem}";
         }
     }
 

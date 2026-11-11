@@ -17,6 +17,7 @@ use App\Modules\Cms\Routing\ResolvedContent;
 use App\Modules\Cms\Routing\ResolvedProduct;
 use App\Modules\Cms\Routing\RouteResolver;
 use App\Modules\Cms\Support\EntryViewCounter;
+use App\Modules\Cms\Support\JobFacts;
 use App\Modules\Cms\Taxonomy\CategoryTemplates;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
@@ -292,6 +293,7 @@ final readonly class StorefrontController
             $job = $this->jobs->forPost($entry, $content->translation, $postTemplate, $canonical, is_array($brand) ? $brand : null);
             if ($job !== null) {
                 $extra['deadline'] = $job['state'];
+                $extra['post'] += JobFacts::read($entry->meta, $locale);
                 if ($job['ld'] !== null) {
                     $extra['jobLd'] = $job['ld'];
                 }

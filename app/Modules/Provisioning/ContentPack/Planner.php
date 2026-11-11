@@ -932,6 +932,14 @@ final class Planner
                 $image = $entry->meta['image_url'] ?? null;
                 $state['image'] = is_string($image) && $image !== '' ? $image : null;
                 $state['categories'] = $categories[$entry->id] ?? [];
+                // Only when present, so a post without them hashes as it did before they existed
+                // and ledger lines written then keep reading as unchanged.
+                if (is_array($entry->meta['facts'] ?? null) && $entry->meta['facts'] !== []) {
+                    $state['facts'] = $entry->meta['facts'];
+                }
+                if (is_array($entry->meta['badge'] ?? null) && $entry->meta['badge'] !== []) {
+                    $state['badge'] = $entry->meta['badge'];
+                }
             }
             $state['translations'] = [];
             foreach ($this->locales as $locale) {
@@ -996,6 +1004,12 @@ final class Planner
                 $state['image'] = Cast::stringOrNull($image);
             }
             $state['categories'] = Cast::strings($item->data['categories'] ?? []);
+            if (is_array($item->data['facts'] ?? null) && $item->data['facts'] !== []) {
+                $state['facts'] = $item->data['facts'];
+            }
+            if (is_array($item->data['badge'] ?? null) && $item->data['badge'] !== []) {
+                $state['badge'] = $item->data['badge'];
+            }
         }
 
         $titles = Cast::arr($item->data['title'] ?? null);

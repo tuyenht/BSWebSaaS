@@ -1,6 +1,6 @@
 {{--
     One card, the same in a block and on a list page. `kind`: icon, product, product-overlay,
-    project or news. `card` is server-built (title, url = a stored route path, image + srcset,
+    project, news or job (the title and a badge, the short facts as chips, the excerpt, a "details" pill). `card` is server-built (title, url = a stored route path, image + srcset,
     icon = a glyph key, excerpt, date + datetime, label); no id ever reaches the markup.
     The title link is the card's one link and is stretched over the whole card; "view details" /
     "read more" are visual text only (aria-hidden). Titles and labels wrap, never clip; only an
@@ -12,7 +12,7 @@
     `featured` (news only): the wide first card of a news list, with its "featured" mark.
 --}}
 @php
-    $sfKind = in_array($kind ?? 'news', ['icon', 'product', 'product-overlay', 'project', 'news'], true) ? $kind : 'news';
+    $sfKind = in_array($kind ?? 'news', ['icon', 'product', 'product-overlay', 'project', 'news', 'job'], true) ? $kind : 'news';
     $sfUrl = \App\Modules\Shared\Support\SafeLink::href($card['url'] ?? null);
     $sfLevel = in_array($level ?? 'h3', ['h2', 'h4'], true) ? $level : 'h3';
     $sfTitle = (string) ($card['title'] ?? '');
@@ -38,6 +38,28 @@
 @if ($sfUrl !== null)
     <span class="sf-card__more" aria-hidden="true">{{ $linkLabel ?? __('storefront.view_detail') }} <span class="sf-card__arrow">→</span></span>
 @endif
+@elseif ($sfKind === 'job')
+    <div class="sf-card__body">
+        <div class="sf-card__jobhead">
+            <{{ $sfLevel }} class="sf-card__title">@if ($sfUrl !== null)<a class="sf-card__link" href="{{ $sfUrl }}">{{ $sfTitle }}</a>@else{{ $sfTitle }}@endif</{{ $sfLevel }}>
+@if (($card['badge'] ?? '') !== '')
+            <span class="sf-card__badge">{{ $card['badge'] }}</span>
+@endif
+        </div>
+@if (! empty($card['facts']))
+        <ul class="sf-card__facts">
+@foreach ($card['facts'] as $sfFact)
+            <li class="sf-card__fact{{ ($sfFact['tone'] ?? '') === 'accent' ? ' sf-card__fact--accent' : '' }}">{{ $sfFact['text'] }}</li>
+@endforeach
+        </ul>
+@endif
+@if ($sfExcerpt !== '')
+        <p class="sf-card__text">{{ $sfExcerpt }}</p>
+@endif
+@if ($sfUrl !== null)
+        <div class="sf-card__jobfoot" aria-hidden="true"><span class="sf-card__pill">{{ __('storefront.job_detail') }}</span></div>
+@endif
+    </div>
 @elseif ($sfKind === 'product-overlay')
     <div class="sf-card__frame sf-card__frame--{{ $sfFrame }}">
         @include('theme::partials.sf-img', ['src' => $card['image'] ?? null, 'srcset' => $card['srcset'] ?? null, 'sizes' => $sfSizes, 'w' => 960, 'h' => 720, 'priority' => $priority ?? 'lazy', 'class' => 'sf-card__img'])

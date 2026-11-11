@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Cms\Validation;
 
+use App\Modules\Cms\Support\JobFacts;
+
 /**
  * The rules one locale's content must pass to be written: the editor's save and a revision
  * restore read them from here, so nothing reaches entry_translations by one road that the other
@@ -31,6 +33,19 @@ final readonly class EntryContentRules
             'seo_title' => ['nullable', 'string', 'max:255'],
             'seo_description' => ['nullable', 'string', 'max:255'],
         ];
+    }
+
+    /**
+     * Why an entry's `meta` cannot be stored (the short facts and the badge of a card, JobFacts);
+     * empty when it is fine. The editor does not edit these keys, a revision restore and a content
+     * pack carry them.
+     *
+     * @param  array<array-key, mixed>  $meta
+     * @return list<string>
+     */
+    public function metaErrors(array $meta): array
+    {
+        return JobFacts::errors($meta);
     }
 
     /**

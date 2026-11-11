@@ -4,7 +4,9 @@ namespace App\Modules\Cms\Components;
 
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
+use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
+use App\Modules\Cms\Support\JobFacts;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Contracts\Component;
 use App\Modules\Shared\Support\Cast;
@@ -12,6 +14,7 @@ use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Theme\Components\ListDisplay;
 use App\Modules\Theme\Components\SectionProps;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -32,6 +35,9 @@ final readonly class EntryGridComponent implements Component
 
     /** The widths a card photo offers through srcset. */
     public const array CARD_SRCSET_WIDTHS = [320, 640, 960, 1280];
+
+    /** The most the job count shows exactly; more reads "100+". */
+    private const int COUNT_CAP = 100;
 
     /** How many sub-categories the tab read looks at. */
     private const int TAB_CHILDREN_READ = 12;
@@ -59,6 +65,8 @@ final readonly class EntryGridComponent implements Component
             'link_label' => ['type' => 'text'],
             'view_all_label' => ['type' => 'text'],
             'view_all_url' => ['type' => 'url'],
+            'count_label' => ['type' => 'text'],
+            'empty_text' => ['type' => 'text'],
         ] + SectionProps::LIST_DISPLAY;
     }
 
@@ -88,6 +96,10 @@ final readonly class EntryGridComponent implements Component
         }
 
         $taxonomyId = $taxonomyTranslation->taxonomy_id;
+
+        if ($variant === 'job') {
+            return $this->jobs($taxonomyId, $locale, $limit, $props);
+        }
 
         // Tabs: one per published sub-category, drawn only on the card looks and only from two up.
         $tabs = SectionProps::choice($props, 'tabs', SectionProps::ENTRY_GRID_TABS) !== 'off' && in_array($variant, SectionProps::TAB_VARIANTS, true)
@@ -149,6 +161,97 @@ final readonly class EntryGridComponent implements Component
     }
 
     /**
+     * The named sub-categories of a category, in their own order. A row of tabs or filter buttons is a
+     * handful of names; the read is bounded even when a category has many children.
+     *
+     * @return Collection<int, TaxonomyTranslation>
+     */
+    private function children(int $taxonomyId, string $locale): Collection
+    {
+        return TaxonomyTranslation::query()
+            ->join('taxonomies', 'taxonomies.id', '=', 'taxonomy_translations.taxonomy_id')
+            ->where('taxonomies.parent_id', $taxonomyId)
+            ->where('taxonomy_translations.locale', $locale)
+            ->orderBy('taxonomies.position')
+            ->orderBy('taxonomies.id')
+            ->limit(self::TAB_CHILDREN_READ)
+            ->get(['taxonomy_translations.taxonomy_id', 'taxonomy_translations.name']);
+    }
+
+    /**
+     * The job look: the newest posts of the category and of the sub-categories below it (one level) as
+     * cards with their short facts and badge. With `tabs: filter` and at least two sub-categories that
+     * hold a shown post, `filter` lists those as buttons (the script hides the cards of the others; without
+     * it every card shows). `count` is the whole branch, never the chosen button: read with a limit of
+     * COUNT_CAP + 1, so a long list never costs a full COUNT and prints as "100+".
+     *
+     * @param  array<string, mixed>  $props
+     * @return array<string, mixed>
+     */
+    private function jobs(int $taxonomyId, string $locale, int $limit, array $props): array
+    {
+        // The branch is the category and its first TAB_CHILDREN_READ (12) sub-categories in their own
+        // order, read without the language join: a post under a sub-category that has no name in this
+        // language still counts and shows. Only the chips need a name, so only named ones get a chip.
+        $childIds = Taxonomy::query()->where('parent_id', $taxonomyId)->orderBy('position')->orderBy('id')->limit(self::TAB_CHILDREN_READ)->pluck('id')->map(fn (mixed $id): int => Cast::int($id))->all();
+        $names = $childIds === [] ? [] : TaxonomyTranslation::query()->where('locale', $locale)->whereIn('taxonomy_id', $childIds)->pluck('name', 'taxonomy_id')->all();
+        $ids = [$taxonomyId, ...$childIds];
+        $branch = fn (): Builder => Entry::query()
+            ->where('type', 'post')
+            ->where('status', 'published')
+            ->whereHas('taxonomies', fn (Builder $query) => $query->whereIn('taxonomies.id', $ids));
+
+        $entries = $branch()
+            ->with(['translations', 'routes', 'taxonomies:id'])
+            ->orderByDesc('published_at')
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get();
+
+        $childIndex = [];
+        foreach ($childIds as $index => $childId) {
+            if (isset($names[$childId])) {
+                $childIndex[$childId] = $index;
+            }
+        }
+        $groups = [];
+        $used = [];
+        foreach ($entries as $entry) {
+            $mine = $entry->taxonomies->pluck('id')->map(fn (mixed $id): int => Cast::int($id))->filter(fn (int $id): bool => isset($childIndex[$id]))->sort(fn (int $a, int $b): int => $childIndex[$a] <=> $childIndex[$b])->first();
+            if ($mine !== null) {
+                $groups[$entry->id] = 'g'.$childIndex[$mine];
+                $used[$childIndex[$mine]] = true;
+            }
+        }
+
+        $total = DB::query()->fromSub($branch()->select('entries.id')->limit(self::COUNT_CAP + 1), 'branch')->count();
+        $shown = $total > self::COUNT_CAP ? self::COUNT_CAP.'+' : (string) $total;
+        $template = SectionProps::text($props, 'count_label');
+
+        $chips = [];
+        if (SectionProps::choice($props, 'tabs', SectionProps::ENTRY_GRID_TABS) === 'filter' && count($used) >= SectionProps::TABS_MIN) {
+            foreach ($childIds as $index => $childId) {
+                if (isset($used[$index])) {
+                    $chips[] = ['key' => 'g'.$index, 'name' => Cast::string($names[$childId])];
+                }
+            }
+        }
+
+        return [
+            'props' => $props,
+            'items' => $this->cards($entries, $locale, 'job', $groups),
+            'variant' => 'job',
+            'display' => null,
+            'jobs' => [
+                'count' => $total > 0 && $template !== '' ? str_replace('{n}', $shown, $template) : '',
+                // "All" labels the cards drawn, so its number is theirs (the count line holds the branch).
+                'total' => (string) $entries->count(),
+                'chips' => $chips,
+            ],
+        ];
+    }
+
+    /**
      * The tabs of the block: the published sub-categories of the block's category, in their own order,
      * each with its newest posts as cards. Three reads for the whole block, never one per tab: the
      * sub-categories (with their names in the page language), the ranked posts of all of them
@@ -164,15 +267,7 @@ final readonly class EntryGridComponent implements Component
      */
     private function tabs(int $taxonomyId, string $locale, int $limit, array $props, string $variant): ?array
     {
-        // A row of tabs is a handful of names; the read is bounded even when a category has many children.
-        $children = TaxonomyTranslation::query()
-            ->join('taxonomies', 'taxonomies.id', '=', 'taxonomy_translations.taxonomy_id')
-            ->where('taxonomies.parent_id', $taxonomyId)
-            ->where('taxonomy_translations.locale', $locale)
-            ->orderBy('taxonomies.position')
-            ->orderBy('taxonomies.id')
-            ->limit(self::TAB_CHILDREN_READ)
-            ->get(['taxonomy_translations.taxonomy_id', 'taxonomy_translations.name']);
+        $children = $this->children($taxonomyId, $locale);
         if ($children->count() < SectionProps::TABS_MIN) {
             return null;
         }
@@ -236,10 +331,13 @@ final readonly class EntryGridComponent implements Component
      * The card shape the shared card partial reads: title, link, photo (or glyph), excerpt, date and
      * a label. No id ever leaves the server.
      *
+     * The job look adds `facts`, `badge` and `group` (which filter button shows the card).
+     *
      * @param  iterable<Entry>  $entries
-     * @return list<array{title: string, url: string, image: string, srcset: string|null, icon: string, excerpt: string, date: string, datetime: string, label: string}>
+     * @param  array<int, string>  $groups  entry id => filter group (job look only)
+     * @return list<array<string, mixed>>
      */
-    private function cards(iterable $entries, string $locale, string $variant): array
+    private function cards(iterable $entries, string $locale, string $variant, array $groups = []): array
     {
         // Resolved per call, not injected: this component lives in a boot-time registry, and the
         // site's clock is request state (scoped).
@@ -248,7 +346,7 @@ final readonly class EntryGridComponent implements Component
         foreach ($entries as $entry) {
             $translation = $entry->translationFor($locale);
             $route = $entry->routes->firstWhere('locale', $locale);
-            $sector = $entry->sectors->first();
+            $sector = $variant === 'job' ? null : $entry->sectors->first();
             $meta = $entry->meta;
             $image = isset($meta['image_url']) && is_string($meta['image_url']) ? $meta['image_url'] : '';
             $isKey = $image !== '' && ! str_contains($image, '://') && str_contains($image, '/');
@@ -265,7 +363,7 @@ final readonly class EntryGridComponent implements Component
                 'date' => $published?->format('d/m/Y') ?? '',
                 'datetime' => $published?->format('Y-m-d') ?? '',
                 'label' => $sector !== null ? ($sector->translationFor($locale)->name ?? '') : '',
-            ];
+            ] + ($variant === 'job' ? JobFacts::read($meta, $locale) + ['group' => $groups[$entry->id] ?? ''] : []);
         }
 
         return $cards;

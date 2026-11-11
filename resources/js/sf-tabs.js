@@ -3,6 +3,23 @@
 // headings and nothing points at hidden content. Here the tab roles and their links are added, the
 // bar is shown, all panels but the selected one are hidden, and the arrow keys, Home and End move
 // between tabs (the tab in focus is the one selected).
+// Filter buttons of the job look: one grid, the buttons only hide the cards of the other groups (the count
+// line above is the whole list, it does not change). Without this script no button shows and every card stays.
+for (const root of document.querySelectorAll('[data-sf-filter]')) {
+    const chips = root.querySelector('[data-sf-chips]');
+    const buttons = [...root.querySelectorAll('[data-sf-pick]')];
+    const cards = [...root.querySelectorAll('[data-sf-group]')];
+    if (!chips || buttons.length < 3) {
+        continue;
+    }
+    buttons.forEach((button) => button.addEventListener('click', () => {
+        const pick = button.dataset.sfPick;
+        buttons.forEach((other) => other.setAttribute('aria-pressed', other === button ? 'true' : 'false'));
+        cards.forEach((card) => { card.hidden = pick !== 'all' && card.dataset.sfGroup !== pick; });
+    }));
+    chips.hidden = false;
+}
+
 let blockNo = 0;
 for (const root of document.querySelectorAll('[data-sf-tabs]')) {
     const tabs = [...root.querySelectorAll('[data-sf-tab]')];

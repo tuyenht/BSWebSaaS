@@ -3613,5 +3613,10 @@
     "catalog.purge_title_many": "永久删除 :count 个商品？",
     "catalog.purge_text_one": "无法恢复。该商品的图片、价格和所有语言版本都会被删除。SKU 和地址将释放，可用于其他商品。",
     "catalog.purge_text_many": "无法恢复。这 :count 个商品的图片、价格和所有语言版本都会被删除。SKU 和地址将释放，可用于其他商品。",
-    "catalog.purge_ok_many": "永久删除 :count 个商品"
+    "catalog.purge_ok_many": "永久删除 :count 个商品",
+    "storefront.job_detail": "详情",
+    "storefront.job_filter": "按工作地点筛选",
+    "storefront.job_open": "招聘中",
+    "storefront.no_jobs": "目前没有在招职位。",
+    "entries.opt_variant_job": "职位卡片"
 }

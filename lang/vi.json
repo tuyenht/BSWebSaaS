@@ -3613,5 +3613,10 @@
     "catalog.purge_title_many": "Xóa vĩnh viễn :count sản phẩm?",
     "catalog.purge_text_one": "Không khôi phục được. Ảnh, giá và mọi bản ngôn ngữ của sản phẩm này bị xóa. Mã SKU và đường dẫn sẽ được giải phóng để dùng cho sản phẩm khác.",
     "catalog.purge_text_many": "Không khôi phục được. Ảnh, giá và mọi bản ngôn ngữ của :count sản phẩm này bị xóa. Mã SKU và đường dẫn sẽ được giải phóng để dùng cho sản phẩm khác.",
-    "catalog.purge_ok_many": "Xóa vĩnh viễn :count sản phẩm"
+    "catalog.purge_ok_many": "Xóa vĩnh viễn :count sản phẩm",
+    "storefront.job_detail": "Chi tiết",
+    "storefront.job_filter": "Lọc theo nơi làm việc",
+    "storefront.job_open": "Đang tuyển",
+    "storefront.no_jobs": "Hiện chưa có vị trí đang tuyển.",
+    "entries.opt_variant_job": "Thẻ tin tuyển dụng"
 }

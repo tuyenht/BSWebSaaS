@@ -10,6 +10,7 @@ use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\PathBuilder;
+use App\Modules\Cms\Support\JobFacts;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Tenancy\Context\SiteTime;
 use Illuminate\Database\Eloquent\Builder;
@@ -239,7 +240,8 @@ final readonly class ListPage
      *
      * @param  iterable<Entry>  $posts
      * @param  array<int, string>  $labels
-     * @return list<array{title: string, url: string, image: string, srcset: string|null, icon: string, excerpt: string, date: string, datetime: string, label: string}>
+     *                                      `facts` and `badge` are the card's short facts (JobFacts); only the job card draws them.
+     * @return list<array{title: string, url: string, image: string, srcset: string|null, icon: string, excerpt: string, date: string, datetime: string, label: string, facts: list<array{text: string, tone: string}>, badge: string}>
      */
     public function postCards(iterable $posts, string $locale, array $labels, bool $withDates): array
     {
@@ -265,7 +267,7 @@ final readonly class ListPage
                 'date' => $published !== null ? SiteTime::formatDay($published, $time->dateFormat(), $locale) : '',
                 'datetime' => $published?->format('Y-m-d') ?? '',
                 'label' => is_numeric($primary) ? ($labels[(int) $primary] ?? '') : '',
-            ];
+            ] + JobFacts::read($post->meta, $locale);
         }
 
         return $cards;
