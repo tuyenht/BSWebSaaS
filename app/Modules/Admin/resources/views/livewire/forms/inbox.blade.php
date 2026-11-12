@@ -164,7 +164,7 @@
             'email' => $email,
             'tel' => $tel !== '' ? 'tel:'.$tel : null,
             'zalo' => $tel !== '' ? 'https://zalo.me/'.$tel : null,
-            'mailto' => $email !== '' ? 'mailto:'.$email.'?subject='.rawurlencode(__('leads.mail_subject', ['form' => $formName($openForm)])) : null,
+            'mailto' => $email !== '' ? 'mailto:'.str_replace('%40', '@', rawurlencode($email)).'?subject='.rawurlencode(__('leads.mail_subject', ['form' => $formName($openForm)])) : null,
             'kv' => $kv,
             'consents' => array_values(array_filter($answers, fn (array $a): bool => $a['ticked'])),
             'page' => $page($open->source_url),

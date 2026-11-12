@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\DB;
  * The lead list of "Khách liên hệ" as statements: the search (name and email without diacritics,
  * the phone by its digits), the forms ticked, the time window (in the site's own day), the status
  * group, and the counts beside each of them. Every count stops at CAP + 1, so a site with millions
- * of leads never walks them all to print one number. Rows come newest first with the id as the
+ * of leads never walks them all to print one number. Rows come newest first with the code (ulid) as the
  * tie-break, read up to a cursor (the last row loaded), never by OFFSET.
  */
 final class LeadListQuery
@@ -39,6 +39,7 @@ final class LeadListQuery
 
     /**
      * @param  list<int>  $formIds  the forms ticked (ids of this site's forms, already checked)
+     * @param  bool  $noForms  forms were ticked but none is a form of this site: nothing matches
      */
     public function __construct(
         private readonly string $search,
@@ -47,6 +48,7 @@ final class LeadListQuery
         private readonly string $from,
         private readonly string $to,
         private readonly SiteTime $time,
+        private readonly bool $noForms = false,
     ) {}
 
     /**
@@ -58,7 +60,9 @@ final class LeadListQuery
     {
         $query = FormSubmission::query();
         $this->searchIn($query);
-        if ($forms && $this->formIds !== []) {
+        if ($forms && $this->noForms) {
+            $query->whereRaw('false');
+        } elseif ($forms && $this->formIds !== []) {
             $query->whereIn('form_id', $this->formIds);
         }
         if ($dates) {
@@ -110,6 +114,14 @@ final class LeadListQuery
         if ($formIds === [] || $groupTotal > self::CAP) {
             return null;
         }
+        // the group's total above already holds the forms ticked; the grouped scan does not, so it
+        // is gated on the count without them
+        if ($this->formIds !== [] || $this->noForms) {
+            $all = $this->bounded(['all' => self::inTab($this->base(forms: false), $tab)])['all'];
+            if ($all > self::CAP) {
+                return null;
+            }
+        }
         $rows = self::inTab($this->base(forms: false), $tab)->toBase()
             ->select('form_id', DB::raw('count(*) as n'))->groupBy('form_id')->limit(count($formIds))->get();
         $out = [];
@@ -144,7 +156,7 @@ final class LeadListQuery
 
     /**
      * The rows of a group, newest first: the first $limit, or every row down to the cursor
-     * (`created_at|id` of the last row loaded) when one is given, at most $max.
+     * (`created_at|ulid` of the last row loaded) when one is given, at most $max.
      *
      * @return Collection<int, FormSubmission>
      */
@@ -153,11 +165,11 @@ final class LeadListQuery
         $query = self::inTab($this->base(), $tab)->select(self::ROW_COLUMNS);
         $cursor = self::cursor($until);
         if ($cursor !== null) {
-            $query->whereRaw('(created_at, id) >= (?::timestamptz, ?)', $cursor);
+            $query->whereRaw('(created_at, ulid) >= (?::timestamptz, ?)', $cursor);
             $limit = $max;
         }
 
-        return $query->orderByDesc('created_at')->orderByDesc('id')->limit($limit)->get();
+        return $query->orderByDesc('created_at')->orderByDesc('ulid')->limit($limit)->get();
     }
 
     /**
@@ -166,27 +178,27 @@ final class LeadListQuery
      */
     public function nextCursor(string $tab, ?string $until, int $first, int $more): ?string
     {
-        $query = self::inTab($this->base(), $tab)->toBase()->select('created_at', 'id');
+        $query = self::inTab($this->base(), $tab)->toBase()->select('created_at', 'ulid');
         $cursor = self::cursor($until);
         if ($cursor !== null) {
-            $query->whereRaw('(created_at, id) < (?::timestamptz, ?)', $cursor)->limit($more);
+            $query->whereRaw('(created_at, ulid) < (?::timestamptz, ?)', $cursor)->limit($more);
         } else {
             $query->limit($first + $more);
         }
-        $found = $query->orderByDesc('created_at')->orderByDesc('id')->get();
+        $found = $query->orderByDesc('created_at')->orderByDesc('ulid')->get();
         $last = $found->last();
 
-        return $last === null ? $until : CarbonImmutable::parse(Cast::string($last->created_at))->utc()->format('Y-m-d H:i:s.uP').'|'.Cast::int($last->id);
+        return $last === null ? $until : CarbonImmutable::parse(Cast::string($last->created_at))->utc()->format('Y-m-d H:i:s.uP').'|'.Cast::string($last->ulid);
     }
 
-    /** @return array{0: string, 1: int}|null */
+    /** @return array{0: string, 1: string}|null */
     private static function cursor(?string $until): ?array
     {
-        if ($until === null || preg_match('/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d{1,6})?[+-]\d{2}:\d{2})\|(\d{1,19})$/', $until, $m) !== 1) {
+        if ($until === null || preg_match('/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d{1,6})?[+-]\d{2}:\d{2})\|([0-9A-Za-z]{26})$/', $until, $m) !== 1) {
             return null;
         }
 
-        return [$m[1], (int) $m[2]];
+        return [$m[1], $m[2]];
     }
 
     /** @param  Builder<FormSubmission>  $query */
@@ -233,7 +245,7 @@ final class LeadListQuery
             $query->where('created_at', '>=', $this->time->toStorage($this->from.' 00:00:00'));
         }
         if ($this->to !== '') {
-            $query->where('created_at', '<', $this->time->toStorage($this->to.' 00:00:00')->addDay());
+            $query->where('created_at', '<', CarbonImmutable::parse($this->to.' 00:00:00', $this->time->zone())->addDay()->utc());
         }
     }
 

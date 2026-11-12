@@ -70,7 +70,7 @@ final class Inbox extends Component
     #[Url(as: 'lead', except: '')]
     public string $lead = '';
 
-    /** `created_at|id` of the last row loaded after "Tải thêm"; null = the first page only. */
+    /** `created_at|ulid` of the last row loaded after "Tải thêm"; null = the first page only. */
     #[Locked]
     public ?string $until = null;
 
@@ -83,7 +83,7 @@ final class Inbox extends Component
 
     public int $toastSeq = 0;
 
-    /** @var array{items: array<string, string>}|null what "Hoàn tác" puts back: ulid => the status before */
+    /** @var array{items: array<string, string>, set: string}|null what "Hoàn tác" puts back: ulid => the status before; `set` is the status the action gave them */
     #[Locked]
     public ?array $undoOp = null;
 
@@ -130,6 +130,7 @@ final class Inbox extends Component
 
     public function closeLead(): void
     {
+        $this->guardRead();
         $this->lead = '';
     }
 
@@ -141,12 +142,14 @@ final class Inbox extends Component
 
     public function removeForm(string $ulid): void
     {
+        $this->guardRead();
         $this->formF = array_values(array_diff($this->formF, [$ulid]));
         $this->updated('formF');
     }
 
     public function resetFilterGroup(string $group): void
     {
+        $this->guardRead();
         match ($group) {
             'form' => $this->formF = [],
             'when' => $this->when = $this->from = $this->to = '',
@@ -157,6 +160,7 @@ final class Inbox extends Component
 
     public function clearAllFilters(): void
     {
+        $this->guardRead();
         $this->tab = 'all';
         $this->search = '';
         $this->formF = [];
@@ -185,7 +189,7 @@ final class Inbox extends Component
             $before === 'spam' => __('leads.toast_not_spam'),
             default => __('leads.toast_status', ['status' => __('leads.st_'.$status)]),
         };
-        $this->say($message, 'success', ['items' => [$ulid => $before]]);
+        $this->say($message, 'success', ['items' => [$ulid => $before], 'set' => $status]);
     }
 
     /**
@@ -206,6 +210,7 @@ final class Inbox extends Component
 
     public function clearSelection(): void
     {
+        $this->guardRead();
         $this->selected = [];
     }
 
@@ -245,7 +250,9 @@ final class Inbox extends Component
         }
         $back = 0;
         foreach ($byStatus as $status => $ulids) {
-            $back += FormSubmission::query()->whereIn('ulid', $ulids)->update(['status' => $status, 'updated_at' => now()]);
+            // only a lead still in the status the action gave it: one a colleague changed since stays
+            $back += FormSubmission::query()->whereIn('ulid', $ulids)->where('status', $op['set'])
+                ->update(['status' => $status, 'updated_at' => now()]);
         }
         $this->say($back > 0 ? __('leads.toast_undone') : __('leads.gone'), $back > 0 ? 'success' : 'error');
     }
@@ -253,6 +260,7 @@ final class Inbox extends Component
     /** Close the message the member (or its timer) names; a newer message stays. */
     public function closeToast(int $seq): void
     {
+        $this->guardRead();
         if ($seq === $this->toastSeq) {
             $this->toastMsg = '';
             $this->undoOp = null;
@@ -278,6 +286,8 @@ final class Inbox extends Component
             $read = DB::transaction(function () use ($canManage): array {
                 $forms = $this->knownForms();
                 $list = $this->listQuery($forms);
+                // a ticked form this site does not know leaves the filter (and its count)
+                $this->formF = array_values(array_intersect($this->formF, array_map(fn (mixed $u): string => Cast::string($u), $forms->pluck('ulid')->all())));
                 $counts = $list->tabCounts();
                 $rows = $list->rows($this->tab, $this->until, self::PAGE, self::MAX_ROWS);
                 $open = $this->lead !== '' ? ($rows->firstWhere('ulid', $this->lead) ?? $this->findLead($this->lead)) : $rows->first();
@@ -343,7 +353,7 @@ final class Inbox extends Component
         }
         FormSubmission::query()->whereIn('id', $targets->pluck('id')->all())->update(['status' => $to, 'updated_at' => now()]);
         $this->selected = [];
-        $this->say(__($doneKey, ['count' => count($undo)]), 'success', ['items' => $undo]);
+        $this->say(__($doneKey, ['count' => count($undo)]), 'success', ['items' => $undo, 'set' => $to]);
     }
 
     /** A manager opening a new lead has read it; anyone else leaves it as it was. */
@@ -384,7 +394,8 @@ final class Inbox extends Component
     {
         $ids = array_values($forms->whereIn('ulid', $this->formF)->pluck('id')->map(fn (mixed $id): int => Cast::int($id))->all());
 
-        return new LeadListQuery(trim($this->search), $ids, $this->when, self::dateOr($this->from), self::dateOr($this->to), app(SiteTime::class));
+        // forms ticked but none of them this site's (gone, another website's, past the forms read): no rows, never the whole list
+        return new LeadListQuery(trim($this->search), $ids, $this->when, self::dateOr($this->from), self::dateOr($this->to), app(SiteTime::class), $this->formF !== [] && $ids === []);
     }
 
     /**
@@ -457,7 +468,7 @@ final class Inbox extends Component
     }
 
     /**
-     * @param  array{items: array<string, string>}|null  $undo
+     * @param  array{items: array<string, string>, set: string}|null  $undo
      */
     private function say(string $message, string $tone = 'success', ?array $undo = null): void
     {

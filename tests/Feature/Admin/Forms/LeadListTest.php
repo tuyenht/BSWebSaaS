@@ -1,10 +1,13 @@
 <?php
 
 use App\Modules\Admin\Livewire\Forms\Inbox;
+use App\Modules\Admin\Support\Leads\LeadListQuery;
+use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use Illuminate\Support\Facades\DB;
@@ -234,4 +237,186 @@ it('shows the plan card, and reads no lead, when the site has no contacts module
         ->assertSee('data-state="plan"', false)
         ->assertSee(__('leads.plan_title'))
         ->assertDontSee('Tạ Minh Khôi');
+});
+
+function otherSiteLead(string $name): FormSubmission
+{
+    return app(Tenancy::class)->enter(2, function () use ($name): FormSubmission {
+        $form = Form::query()->create(['key' => 'contact', 'name' => ['vi' => 'Liên hệ'], 'status' => 'active']);
+
+        return FormSubmission::query()->create(['form_id' => $form->id, 'data' => ['message' => 'x'], 'name' => $name, 'status' => 'new']);
+    });
+}
+
+function leadStatusOn(int $site, string $ulid): ?string
+{
+    $status = DB::connection('pgsql_admin')->table('form_submissions')->where('site_id', $site)->where('ulid', $ulid)->value('status');
+
+    return is_string($status) ? $status : null;
+}
+
+it('pages by a cursor of time and code, never a raw numeric id', function (): void {
+    $manager = leadManager();
+    foreach (range(1, 18) as $i) {
+        listLead('contact', ['name' => sprintf('Khách số %02d', $i), 'created_at' => now()->subMinutes(100 - $i)]);
+    }
+    $oldest = app(Tenancy::class)->enter(1, fn () => FormSubmission::query()->where('name', 'Khách số 01')->firstOrFail());
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $oldest): void {
+        $page = Livewire::actingAs($manager)->test(Inbox::class)->call('loadMore');
+        $until = $page->get('until');
+        expect($until)->toBeString()->toEndWith('|'.$oldest->ulid)->not->toEndWith('|'.$oldest->id);
+        $page->assertSee('Khách số 01');
+    });
+});
+
+it('leaves a lead alone on undo when a colleague changed it after the action', function (): void {
+    $manager = leadManager();
+    $a = listLead('contact', ['name' => 'Đặng Thu Hà', 'status' => 'new']);
+    $b = listLead('contact', ['name' => 'Bùi Quốc Việt', 'status' => 'new']);
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $a, $b): void {
+        $page = Livewire::actingAs($manager)->test(Inbox::class)
+            ->call('toggleSelect', [$a->ulid, $b->ulid])
+            ->call('bulkDone');
+        expect([leadStatus($a), leadStatus($b)])->toBe(['archived', 'archived']);
+
+        FormSubmission::query()->whereKey($a->id)->update(['status' => 'spam']);
+        $page->call('undoLast');
+        expect([leadStatus($a), leadStatus($b)])->toBe(['spam', 'new']);
+    });
+});
+
+it('never falls back to the whole list when a form filter names no known form', function (): void {
+    $manager = leadManager();
+    listLead('contact', ['name' => 'Lê Hoàng Bảo']);
+    $foreign = app(Tenancy::class)->enter(2, fn () => Form::query()->create(['key' => 'contact', 'name' => ['vi' => 'Khác'], 'status' => 'active'])->ulid);
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $foreign): void {
+        $page = Livewire::actingAs($manager)->test(Inbox::class)
+            ->set('formF', [$foreign, '01ARZ3NDEKTSV4RRFFQ69G5FAV'])
+            ->assertDontSee('Lê Hoàng Bảo');
+        expect($page->get('formF'))->toBe([]);
+    });
+});
+
+it('counts a time range to the end of its last day in the site zone', function (): void {
+    $manager = leadManager();
+    // the site zone is Asia/Ho_Chi_Minh (UTC+7)
+    listLead('contact', ['name' => 'Trong ngày cuối', 'created_at' => '2026-07-10 16:30:00']);   // 23:30 on 10/07 local
+    listLead('contact', ['name' => 'Sang ngày sau', 'created_at' => '2026-07-10 17:30:00']);     // 00:30 on 11/07 local
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        Livewire::actingAs($manager)->test(Inbox::class)
+            ->set('from', '2026-07-10')->set('to', '2026-07-10')
+            ->assertSee('Trong ngày cuối')->assertDontSee('Sang ngày sau');
+    });
+});
+
+it('adds the last day in the site zone before turning to UTC across a daylight-saving change', function (): void {
+    $zone = 'America/New_York';
+    app(Tenancy::class)->enter(1, fn () => app(SettingsRepository::class)->put('general', 'timezone', ['tz' => $zone]));
+    app(SiteTime::class)->forget();
+    $manager = leadManager();
+    // 2026-11-01 is 25 hours long in New York: its end is 2026-11-02 05:00 UTC
+    listLead('contact', ['name' => 'Cuối ngày đổi giờ', 'created_at' => '2026-11-02 04:30:00']);
+    listLead('contact', ['name' => 'Đã sang ngày sau', 'created_at' => '2026-11-02 05:30:00']);
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        Livewire::actingAs($manager)->test(Inbox::class)
+            ->set('from', '2026-11-01')->set('to', '2026-11-01')
+            ->assertSee('Cuối ngày đổi giờ')->assertDontSee('Đã sang ngày sau');
+    });
+});
+
+it('puts the address and the subject into the mail link encoded, so no header can be added', function (): void {
+    $manager = leadManager();
+    $lead = listLead('contact', ['name' => 'Khách thư', 'email' => 'a@b.test?bcc=x@y.test&cc=z']);
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $lead): void {
+        $html = Livewire::actingAs($manager)->test(Inbox::class, ['ulid' => $lead->ulid])->html();
+        expect($html)->toContain('mailto:a@b.test%3Fbcc%3Dx@y.test%26cc%3Dz?subject=')
+            ->not->toContain('mailto:a@b.test?bcc');
+    });
+});
+
+it('changes nothing of another site\'s lead from the ticks, the status buttons or the undo', function (): void {
+    $manager = leadManager();
+    $mine = listLead('contact', ['name' => 'Của tôi', 'status' => 'new']);
+    $theirs = otherSiteLead('Của người khác');
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $mine, $theirs): void {
+        Livewire::actingAs($manager)->test(Inbox::class)
+            ->call('toggleSelect', [$mine->ulid, $theirs->ulid])
+            ->call('bulkSpam')
+            ->assertOk()
+            ->assertSee(__('leads.bulk_done_spam', ['count' => 1]))
+            ->call('setStatus', $theirs->ulid, 'archived')
+            ->assertSee(__('leads.gone'))
+            ->assertDontSee('Của người khác');
+        expect(leadStatus($mine))->toBe('spam');
+    });
+    expect(leadStatusOn(2, $theirs->ulid))->toBe('new');
+});
+
+it('refuses every write once the plan loses the contacts module', function (): void {
+    $manager = leadManager();
+    $lead = listLead('contact', ['name' => 'Tạ Minh Khôi', 'status' => 'new']);
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $lead): void {
+        $pages = [];
+        foreach (range(1, 3) as $i) {
+            $pages[] = Livewire::actingAs($manager)->test(Inbox::class)->call('toggleSelect', [$lead->ulid]);
+        }
+        DB::connection('pgsql_admin')->table('site_modules')->where('site_id', 1)->delete();
+        DB::connection('pgsql_admin')->table('sites')->where('id', 1)->update(['site_type_id' => null]);
+        app()->forgetInstance(Entitlement::class);
+
+        $pages[0]->call('setStatus', $lead->ulid, 'spam')->assertForbidden();
+        $pages[1]->call('bulkDone')->assertForbidden();
+        $pages[2]->call('toggleSelect', [$lead->ulid])->assertForbidden();
+        expect(leadStatus($lead))->toBe('new');
+    });
+});
+
+it('reads the search text literally: a percent sign or an underscore is no wildcard', function (): void {
+    $manager = leadManager();
+    listLead('contact', ['name' => 'Giảm 50% hôm nay']);
+    listLead('contact', ['name' => 'Giảm 505 hôm nay']);
+    listLead('contact', ['name' => 'Mã a_b']);
+    listLead('contact', ['name' => 'Mã axb']);
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        Livewire::actingAs($manager)->test(Inbox::class)
+            ->set('search', '50%')
+            ->assertSee('Giảm 50% hôm nay')->assertDontSee('Giảm 505 hôm nay')
+            ->set('search', 'a_b')
+            ->assertSee('Mã a_b')->assertDontSee('Mã axb');
+    });
+});
+
+it('asks the read permission on every screen-state call, not only on render', function (): void {
+    $author = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($author, 'author', ['entries.view']));
+
+    app(Tenancy::class)->enter(1, function () use ($author): void {
+        foreach ([['closeLead', []], ['removeForm', ['x']], ['resetFilterGroup', ['form']], ['clearAllFilters', []], ['clearSelection', []], ['closeToast', [1]]] as [$method, $args]) {
+            Livewire::actingAs($author)->test(Inbox::class)->call($method, ...$args)->assertForbidden();
+        }
+    });
+});
+
+it('prints no per-form numbers when the site is past the cap, even with a form ticked', function (): void {
+    $lead = listLead('contact', ['name' => 'Một']);
+    DB::connection('pgsql_admin')->statement(
+        "insert into form_submissions (site_id, ulid, form_id, data, status, is_spam, created_at, updated_at)
+         select 1, left(md5(g::text), 26), ?, '{}', 'new', false, now(), now() from generate_series(1, ?) g",
+        [$lead->form_id, LeadListQuery::CAP + 1],
+    );
+
+    app(Tenancy::class)->enter(1, function () use ($lead): void {
+        $query = new LeadListQuery('', [$lead->form_id], '', '', '', app(SiteTime::class));
+        // the ticked form alone looks small to the caller; the site as a whole is past the cap
+        expect($query->formCounts('all', [$lead->form_id], 1))->toBeNull();
+    });
 });
