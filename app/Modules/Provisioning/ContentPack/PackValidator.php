@@ -761,6 +761,11 @@ final readonly class PackValidator
                 $errors[] = "{$item->key}: description ({$locale}) would be changed by the sanitizer; use the markup it keeps.";
             }
         }
+        $this->publishedAt($item, $errors);
+        $featured = $item->data['featured'] ?? null;
+        if ($featured !== null && ! is_bool($featured)) {
+            $errors[] = "{$item->key}: featured must be true or false.";
+        }
         $images = $item->data['images'] ?? [];
         if (! is_array($images) || ! array_is_list($images)) {
             $errors[] = "{$item->key}: images must be a list of image references.";
@@ -790,10 +795,7 @@ final readonly class PackValidator
         if ($image !== null && ! self::isMediaRef($image) && ! (is_string($image) && preg_match('/\A[a-z][a-z0-9-]{0,31}\z/', $image) === 1)) {
             $errors[] = "{$item->key}: image is an image reference or an icon name.";
         }
-        $date = $item->data['published_at'] ?? null;
-        if ($date !== null && ! (is_string($date) && self::isDate($date))) {
-            $errors[] = "{$item->key}: published_at must be a date (YYYY-MM-DD).";
-        }
+        $this->publishedAt($item, $errors);
         // The short facts and the badge of a card: the same rule an editor save and a restore pass.
         foreach (JobFacts::errors(array_intersect_key($item->data, ['facts' => 1, 'badge' => 1])) as $problem) {
             $errors[] = "{$item->key}: {$problem}";
@@ -1365,6 +1367,20 @@ final readonly class PackValidator
             } elseif (! is_string($slug) || preg_match('/\A'.self::SLUG.'\z/', $slug) !== 1) {
                 $errors[] = "{$item->key}: slug ({$locale}) is not a slug.";
             }
+        }
+    }
+
+    /**
+     * `published_at` (optional, posts and products): the day the item counts as published from,
+     * which orders the newest-first lists.
+     *
+     * @param  list<string>  $errors
+     */
+    private function publishedAt(PackItem $item, array &$errors): void
+    {
+        $date = $item->data['published_at'] ?? null;
+        if ($date !== null && ! (is_string($date) && self::isDate($date))) {
+            $errors[] = "{$item->key}: published_at must be a date (YYYY-MM-DD).";
         }
     }
 

@@ -458,3 +458,19 @@ it('lists the five capabilities in the board order, names the list pages like th
     }
     expect($items['page:/doi-tac']->data['body']['vi'][0]['props']['image_url'])->toBe(['media' => 'hero-2']);
 });
+
+it('dates the products in the board order with the Taplo jig first, and marks only it featured as the board shows', function (): void {
+    $products = collect((new PackReader)->read('an-vinh')->items)->filter(fn ($item) => str_starts_with($item->key, 'product:'));
+
+    // /san-pham lists newest first: the board's nine in its order, then the one product the board leaves out.
+    $newestFirst = $products->sortByDesc(fn ($item) => $item->data['published_at'])->map(fn ($item) => $item->key)->values()->all();
+    expect($newestFirst)->toBe([
+        'product:jig-kiem-tap-lo-vf7', 'product:khuon-dap-binh-xang', 'product:may-tu-dong-nan-sua-san-pham',
+        'product:truc-may-cnc', 'product:khuon-duc-ap-luc-cao', 'product:jig-han-frame-comp',
+        'product:jig-han-stand-main', 'product:jig-kiem-tra-dien-tu', 'product:chi-tiet-phay-cnc',
+        'product:khuon-dap-kim-loai',
+    ])->and($products->map(fn ($item) => $item->data['published_at'])->unique())->toHaveCount($products->count());
+
+    $featured = $products->filter(fn ($item) => ($item->data['featured'] ?? false) === true)->map(fn ($item) => $item->key)->values()->all();
+    expect($featured)->toBe(['product:jig-kiem-tap-lo-vf7']);
+});
