@@ -8,6 +8,7 @@ use App\Modules\Cms\Validation\ValidPageJson;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Theme\Rendering\BlockRenderer;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\ListDisplay;
 use App\Modules\Theme\Components\SectionProps;
@@ -248,10 +249,20 @@ it('validates the group in the page JSON', function (): void {
         ['blocks' => [app(ValidPageJson::class)]],
     )->fails();
 
-    expect($check(['layout' => 'slider', 'columns' => '4', 'mobile' => 'swipe', 'autoplay' => '8', 'arrows' => 'always', 'view_all' => 'hide']))->toBeTrue()
+    expect($check(['layout' => 'slider', 'columns' => '4', 'mobile' => 'swipe', 'autoplay' => '8', 'arrows' => 'always']))->toBeTrue()
         ->and($check(['layout' => 'carousel']))->toBeFalse()
         ->and($check(['autoplay' => '1']))->toBeFalse()
         ->and($check(['columns' => '5']))->toBeFalse();
+});
+
+it('still saves and draws a hand-typed list that kept a "view all" value from before, without the button', function (): void {
+    seedTenancy();
+    $block = ['type' => 'partners', 'props' => ['heading' => 'Đối tác Ấ', 'view_all' => 'show']];
+
+    expect(Validator::make(['blocks' => [$block]], ['blocks' => [app(ValidPageJson::class)]])->fails())->toBeFalse();
+    app(Tenancy::class)->enter(1, function () use ($block): void {
+        expect(app(BlockRenderer::class)->render(['blocks' => [$block]]))->toContain('Đối tác Ấ')->not->toContain('sf-view-all');
+    });
 });
 
 it('tells the editor the range when a list limit is out of it, not to type a whole number', function (int|string $limit): void {
