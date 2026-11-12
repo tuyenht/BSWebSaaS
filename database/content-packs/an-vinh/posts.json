@@ -40,6 +40,7 @@
    "image": {
     "media": "cad-1"
    },
+   "published_at": "2026-11-05",
    "title": {
     "vi": "Thiết kế & Lập trình"
    },
@@ -130,6 +131,7 @@
    "image": {
     "media": "edm-1"
    },
+   "published_at": "2026-11-03",
    "title": {
     "vi": "Gia công Cắt dây-Xung điện"
    },
@@ -220,6 +222,7 @@
    "image": {
     "media": "inspect-1"
    },
+   "published_at": "2026-11-01",
    "title": {
     "vi": "Đo kiểm & QA/QC"
    },
@@ -506,6 +509,7 @@
    "image": {
     "media": "cnc-1"
    },
+   "published_at": "2026-11-04",
    "title": {
     "vi": "Gia công Phay-Tiện CNC"
    },
@@ -596,6 +600,7 @@
    "image": {
     "media": "weld-1"
    },
+   "published_at": "2026-11-02",
    "title": {
     "vi": "Hàn & Lắp ráp"
    },

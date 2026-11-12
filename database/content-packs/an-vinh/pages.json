@@ -908,7 +908,7 @@
        "title": "Đối tác của chúng tôi",
        "subtitle": "Cùng nhau xây dựng thành công bền vững",
        "image_url": {
-        "media": "partners-header"
+        "media": "hero-2"
        }
       }
      },
@@ -1191,8 +1191,7 @@
       "props": {
        "heading": "Về chính sách này",
        "paragraphs": [
-        "Chính sách này cho biết website của Cơ Khí Chính Xác An Vinh thu thập những thông tin cá nhân nào, dùng vào việc gì, lưu trong bao lâu, chia sẻ với ai và bạn có những quyền gì đối với thông tin của mình. Chính sách được soạn theo quy định của pháp luật Việt Nam về bảo vệ dữ liệu cá nhân.",
-        "Ngày hiệu lực: tháng 11 năm 2026."
+        "Chính sách này cho biết website của Cơ Khí Chính Xác An Vinh thu thập những thông tin cá nhân nào, dùng vào việc gì, lưu trong bao lâu, chia sẻ với ai và bạn có những quyền gì đối với thông tin của mình. Chính sách được soạn theo quy định của pháp luật Việt Nam về bảo vệ dữ liệu cá nhân."
        ]
       }
      },
