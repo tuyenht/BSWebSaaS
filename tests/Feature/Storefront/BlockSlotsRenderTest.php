@@ -738,7 +738,8 @@ it('lets the share grid win over the plain columns rule on a wide screen', funct
         ->and($css)->not->toMatch('#\n\s*\.post-columns--share\s*[{,]#')
         ->and($css)->toMatch('#\.post-aside--sticky,\s*\.post-page--project \.post-aside \{[^}]*max-height: calc\(100dvh - 8rem\);[^}]*overflow-y: auto#')
         ->and($css)->toMatch('#\n\.sf-gallery__list\.sf-gallery__list--1 \{\s*grid-template-columns: minmax\(0, 1fr\);#')
-        ->and($css)->toMatch('#\.post-page--capability \.post-cover,\s*\.post-page--project \.post-cover \{\s*padding-inline: 2rem#');
+        // Every post cover (news, capability, project) keeps the columns' 2rem edges from 1024px.
+        ->and($css)->toMatch('#@media \(min-width: 1024px\) \{\s*\.post-cover \{\s*padding-inline: 2rem#');
 });
 
 it('prints the author line and the reading time on a news post, with Facebook, LinkedIn and copy-link sharing', function (): void {

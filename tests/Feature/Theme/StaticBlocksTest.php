@@ -188,7 +188,8 @@ describe('quick_links', function (): void {
 describe('gallery', function (): void {
     it('renders lazy sized pictures with the caption, in the chosen column count', function (): void {
         $url = 'https://files.test/s/library/a.webp?w=1280';
-        $html = staticBlock('gallery', ['columns' => '4', 'images' => [['image' => $url, 'caption' => 'Xưởng <i>1</i>'], ['image' => null, 'caption' => 'Mất ảnh']]], [$url => 'https://files.test/s/library/a.webp?w=640 640w']);
+        $more = array_map(fn (string $n): array => ['image' => "https://files.test/{$n}.webp"], ['b', 'c', 'd']);
+        $html = staticBlock('gallery', ['columns' => '4', 'images' => [['image' => $url, 'caption' => 'Xưởng <i>1</i>'], ['image' => null, 'caption' => 'Mất ảnh'], ...$more]], [$url => 'https://files.test/s/library/a.webp?w=640 640w']);
 
         expect($html)->toContain('sf-gallery__list--4')
             ->and($html)->toMatch('#<img class="sf-gallery__img" src="https://files\.test/s/library/a\.webp\?w=1280" srcset="[^"]+" sizes="[^"]+" alt="" width="800" height="600" loading="lazy"#')
@@ -198,8 +199,34 @@ describe('gallery', function (): void {
 
     it('falls back to three columns for an unknown value and renders nothing without a picture', function (): void {
         $url = 'https://files.test/a.webp';
-        expect(staticBlock('gallery', ['columns' => '9', 'images' => [['image' => $url]]]))->toContain('sf-gallery__list--3')
+        expect(staticBlock('gallery', ['columns' => '9', 'images' => repeatItem(['image' => $url], 3)]))->toContain('sf-gallery__list--3')
             ->and(trim(staticBlock('gallery', ['images' => [['image' => null]]])))->toBe('');
+    });
+
+    it('never draws more columns than pictures, two at least, so no column stays empty', function (): void {
+        $pictures = fn (int $n): array => array_map(fn (int $i): array => ['image' => "https://files.test/{$i}.webp"], range(1, $n));
+
+        expect(staticBlock('gallery', ['columns' => '4', 'images' => $pictures(3)]))->toContain('sf-gallery__list--3')
+            ->and(staticBlock('gallery', ['columns' => '4', 'images' => [...$pictures(3), ['image' => null]]]))->toContain('sf-gallery__list--3')
+            ->and(staticBlock('gallery', ['columns' => '4', 'images' => $pictures(2)]))->toContain('sf-gallery__list--2')
+            ->and(staticBlock('gallery', ['columns' => '3', 'images' => $pictures(1)]))->toContain('sf-gallery__list--2')
+            ->and(staticBlock('gallery', ['columns' => '1', 'images' => $pictures(3)]))->toContain('sf-gallery__list--1')
+            ->and(staticBlock('gallery', ['columns' => '4', 'images' => $pictures(6)]))->toContain('sf-gallery__list--4');
+    });
+
+    it('tells the browser the width each picture takes at the columns it really gets', function (): void {
+        $pictures = fn (int $n): array => array_map(fn (int $i): array => ['image' => "https://files.test/{$i}.webp"], range(1, $n));
+        // the browser reads `sizes` only beside a srcset, which the server builds for library pictures
+        $srcsets = array_combine(
+            array_map(fn (int $i): string => "https://files.test/{$i}.webp", range(1, 6)),
+            array_map(fn (int $i): string => "https://files.test/{$i}.webp?w=640 640w", range(1, 6)),
+        );
+        $gallery = fn (string $columns, int $n): string => staticBlock('gallery', ['columns' => $columns, 'images' => $pictures($n)], $srcsets);
+
+        expect($gallery('4', 6))->toContain('sizes="(min-width: 64rem) 25vw, (min-width: 48rem) 33vw, 50vw"')
+            ->and($gallery('4', 3))->toContain('sizes="(min-width: 48rem) 33vw, 50vw"')
+            ->and($gallery('4', 2))->toContain('sizes="50vw"')
+            ->and($gallery('1', 3))->toContain('sizes="100vw"');
     });
 
     it('keeps alt empty under a caption and uses the library alt text, escaped, without one', function (): void {

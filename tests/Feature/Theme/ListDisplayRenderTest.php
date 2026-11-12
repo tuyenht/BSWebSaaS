@@ -120,14 +120,14 @@ it('gives the arrows a 44px hit area with a 36px disc and no arrows when the blo
         ->and($none)->not->toContain('data-sf-rail-prev')->and($none)->not->toContain('data-sf-rail-next');
 });
 
-it('keeps a card link overlay inside its card so a tap on an arrow over the card edge turns the rail', function (): void {
+it('keeps a card link overlay inside its card so a tap on an arrow beside the row turns the rail', function (): void {
     $css = StorefrontCss::all();
 
     // The stretched link covers its card at z-index 2; isolating the card keeps that layer from rising
-    // over the arrows, which sit on the card edges on a phone and beside the row from 1360px.
+    // over the arrows, which stand beside the row from 1440px (below it on narrower screens).
     expect($css)->toMatch('/\n\.sf-card \{[^}]*isolation: isolate;/s')
         ->and($css)->toMatch('/\.sf-card__link::after \{[^}]*z-index: 2;/s')
-        ->and(preg_match_all('/\.sf-rail__prev,\s*\.sf-rail__next \{[^}]*position: absolute;[^}]*z-index: (\d+);/s', $css, $m))->toBe(2)
+        ->and(preg_match_all('/\.sf-rail__prev,\s*\.sf-rail__next \{[^}]*position: absolute;[^}]*z-index: (\d+);/s', $css, $m))->toBe(1)
         ->and(array_map(intval(...), $m[1]))->each->toBeGreaterThan(2);
 });
 
@@ -295,8 +295,25 @@ it('draws the rail controls as one row below the list: arrow, dots, arrow, all h
 
     expect($html)->toMatch('#<div class="sf-rail__controls">\s*<button type="button" class="sf-rail__btn sf-rail__prev" data-sf-rail-prev hidden aria-label="[^"]+" title="[^"]+">.*?<span class="sf-rail__dots" data-sf-rail-dots hidden aria-hidden="true"></span>\s*<button type="button" class="sf-rail__btn sf-rail__next" data-sf-rail-next hidden aria-label="[^"]+"#s')
         ->and($css)->toMatch('/\.sf-rail__controls \{[^}]*display: flex;[^}]*justify-content: center;/s')
-        ->and($css)->toMatch('/@media \(min-width: 1360px\) \{\s*\.sf-rail__controls \{[^}]*\}\s*\.sf-rail__prev,\s*\.sf-rail__next \{\s*position: absolute;/s')
+        ->and($css)->toMatch('/@media \(min-width: 1440px\) \{\s*\.sf-rail__controls \{[^}]*\}\s*\.sf-rail__prev,\s*\.sf-rail__next \{\s*position: absolute;/s')
         ->and($css)->not->toContain('.sf-rail__bar')->and($css)->not->toContain('sf-slider__pause');
+});
+
+it('never draws a rail arrow over a card on a phone, nor past the window edge on a laptop', function (): void {
+    $rail = (string) file_get_contents(resource_path('css/sf-rail.css'));
+    preg_match('/@media \(max-width: 639\.98px\) \{\s*\.sf-rail__controls \{.*?\n\}/s', $rail, $phone);
+
+    // On a phone the arrows stay in the controls row below the list (nothing positions them over the
+    // cards), and the row of cards starts at the page margin, with no inset kept for arrows.
+    expect($phone[0] ?? '')->not->toBe('')
+        ->and($phone[0])->not->toContain('position: absolute')
+        ->and($phone[0])->not->toContain('.sf-rail__prev')
+        ->and($rail)->not->toContain('padding-inline: 12px')
+        // Beside the row only from 1440px (at 1366px the 2rem margin cut the arrows in half and scrolled the
+        // page sideways), and never further out than the window's edge when a larger text size widens the page.
+        ->and($rail)->not->toContain('1360px')
+        ->and($rail)->toContain('.sf-rail__prev { left: max(-3.5rem, calc((100% - 100vw) / 2 + 0.75rem)); }')
+        ->and($rail)->toContain('.sf-rail__next { right: max(-3.5rem, calc((100% - 100vw) / 2 + 0.75rem)); }');
 });
 
 it('shows a slice of the next card on a tablet slider and lets the logo strip scroll freely', function (): void {
