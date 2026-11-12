@@ -161,19 +161,23 @@ if (sizeButtons.length > 0) {
     }));
 }
 
-// A lazy photo below the first screen that is not loaded yet waits transparent over its frame's tint
+// A lazy photo out of view (below the first screen, or further along a rail) that is not loaded yet waits transparent over its frame's tint
 // and fades in once decoded (CSS `sf-img--wait` / `sf-img--in`); a photo already loaded, in the first
 // screen, hidden, or on a page that asked for reduced motion is left as it is. Without this script
-// every photo simply shows when it arrives.
-if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    document.querySelectorAll('img[loading="lazy"]').forEach((img) => {
-        const box = img.getBoundingClientRect();
-        if (img.complete || !box.width || (box.top < window.innerHeight && box.left < window.innerWidth)) {
-            return;
-        }
-        const show = () => img.classList.replace('sf-img--wait', 'sf-img--in');
-        img.classList.add('sf-img--wait');
-        img.addEventListener('load', () => img.decode().then(show, show), { once: true });
-        img.addEventListener('error', show, { once: true });
+// every photo simply shows when it arrives. The observer reports where each photo sits after the
+// browser's own layout, so the script never makes the page lay out again just to measure it.
+if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
+    const firstLook = new IntersectionObserver((entries) => {
+        entries.forEach(({ target: img, isIntersecting, boundingClientRect: box }) => {
+            firstLook.unobserve(img);
+            if (img.complete || !box.width || isIntersecting) {
+                return;
+            }
+            const show = () => img.classList.replace('sf-img--wait', 'sf-img--in');
+            img.classList.add('sf-img--wait');
+            img.addEventListener('load', () => img.decode().then(show, show), { once: true });
+            img.addEventListener('error', show, { once: true });
+        });
     });
+    document.querySelectorAll('img[loading="lazy"]').forEach((img) => firstLook.observe(img));
 }
