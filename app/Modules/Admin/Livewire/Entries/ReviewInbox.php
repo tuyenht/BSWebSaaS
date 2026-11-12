@@ -2,13 +2,13 @@
 
 namespace App\Modules\Admin\Livewire\Entries;
 
+use App\Modules\Admin\Support\Entries\ReviewWaiting;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Exceptions\EntryNotGovernedException;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Routing\SectionResolver;
-use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Services\MediaUrlResolver;
@@ -299,46 +299,19 @@ final class ReviewInbox extends Component
             return $this->waitingMemo;
         }
 
-        $stages = app(ReviewQueue::class)->actionableStages($this->actor());
-        $keys = array_values(array_unique($stages === [] ? [] : array_merge(...array_values($stages))));
-
-        if ($keys === []) {
-            /** @var EloquentCollection<int, Entry> $empty */
-            $empty = Entry::query()->whereRaw('1 = 0')->get();
-
-            return $this->waitingMemo = $empty;
-        }
-
         // Bounded on purpose. A review queue is work in flight, so it is small in a healthy
         // team — but "small" is tenant behaviour, not an invariant, and this set is hydrated
         // with its relations. The ceiling keeps a neglected queue from turning every render
         // into an OOM; crossing it is the signal to move search + type filtering into SQL and
-        // page this properly (ADR-18).
-        // A member limited to some categories reviews only posts filed inside them.
-        $query = Entry::query()->whereIn('workflow_state', $keys);
-        app(CategoryScopes::class)->whereCovered($query, $this->actor());
-
-        $entries = $query
-            ->with(['translations', 'author', 'taxonomies.translations'])
-            ->orderByDesc('updated_at')
-            ->orderByDesc('id')
-            ->limit(self::MAX_QUEUE)
-            ->get();
+        // page this properly (ADR-18). Which posts wait (stage per type, category limits) is
+        // ReviewWaiting's answer, shared with the "Duyệt bài" card of Tổng quan.
+        $entries = app(ReviewWaiting::class)->read($this->actor(), self::MAX_QUEUE)['entries'];
 
         $term = trim(mb_strtolower($this->search));
         $locale = app(SiteLocale::class)->default();
 
-        $filtered = $entries->filter(function (Entry $entry) use ($stages, $term, $locale): bool {
-            $section = $this->sectionKey($entry);
-
-            // Stage keys repeat across templates ('pending' exists in both bundled flows), so a
-            // key match alone would show a reviewer of "Tin tức" every "Dịch vụ" post sitting on
-            // the same-named stage — work they have no transition for. Membership is per TYPE.
-            if ($section === null || ! isset($stages[$section]) || ! in_array((string) $entry->workflow_state, $stages[$section], true)) {
-                return false;
-            }
-
-            if ($this->sectionFilter !== '' && $section !== $this->sectionFilter) {
+        $filtered = $entries->filter(function (Entry $entry) use ($term, $locale): bool {
+            if ($this->sectionFilter !== '' && $this->sectionKey($entry) !== $this->sectionFilter) {
                 return false;
             }
 
