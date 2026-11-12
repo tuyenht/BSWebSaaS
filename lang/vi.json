@@ -2506,6 +2506,7 @@
     "storefront.not_found.title": "Không tìm thấy trang",
     "storefront.not_found.heading": "Không tìm thấy trang này",
     "storefront.not_found.message": "Trang bạn tìm có thể đã đổi địa chỉ hoặc không còn.",
+    "storefront.not_found.home": "Về Trang Chủ",
     "storefront.not_found.contact": "Liên hệ :name",
     "storefront.not_found.suggest": "Có thể bạn đang tìm",
     "storefront.site_state.provisioning_title": "Website sắp ra mắt",

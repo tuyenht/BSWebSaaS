@@ -156,9 +156,9 @@ final readonly class StorefrontController
     }
 
     /**
-     * The site's 404 page: its own header, footer and menus around the "not here" message, the
-     * first links of its main menu, then a way to the site's contact page (when the site names one).
-     * The header already carries the way home.
+     * The site's 404 page: its own header, footer and menus around the "not here" message, a way
+     * home, a way to the site's contact page (when the site names one), then the first links of
+     * its main menu.
      * A real 404 status (never a page that answers 200) and kept out of search engines; no
      * canonical, share tags or alternates, since there is no page to point at.
      *
@@ -182,7 +182,7 @@ final readonly class StorefrontController
     /**
      * The 404 page's "you may be looking for" links: the top level of the main menu already loaded
      * for the header (no query), keeping only the links to a page of this site and leaving out the
-     * home page (the header's logo leads there), at most five. Empty when the menu is.
+     * home page (the page has its own button for it), at most five. Empty when the menu is.
      *
      * @param  list<mixed>|array<mixed>  $menu  the resolved primary menu tree
      * @return list<array{label: string, url: string}>

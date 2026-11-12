@@ -2506,6 +2506,7 @@
     "storefront.not_found.title": "找不到页面",
     "storefront.not_found.heading": "找不到此页面",
     "storefront.not_found.message": "该页面可能已更改地址或已不存在。",
+    "storefront.not_found.home": "返回首页",
     "storefront.not_found.contact": "联系:name",
     "storefront.not_found.suggest": "您可能在找",
     "storefront.site_state.provisioning_title": "网站即将上线",

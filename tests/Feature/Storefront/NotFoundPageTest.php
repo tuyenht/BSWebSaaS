@@ -77,7 +77,8 @@ it('shows each site its own header, footer and menus on a 404, never the other s
             ->toContain('class="site-footer"')
             ->toContain('<p class="sf-404__code">404</p>')
             ->toContain('<h1 class="sf-404__title">Không tìm thấy trang này</h1>')
-            ->toContain('<p class="sf-404__text">Trang bạn tìm có thể đã đổi địa chỉ hoặc không còn.</p>');
+            ->toContain('<p class="sf-404__text">Trang bạn tìm có thể đã đổi địa chỉ hoặc không còn.</p>')
+            ->toContain('<a class="sf-404__btn sf-404__btn--home" href="/">Về Trang Chủ</a>');
         expect(substr_count($html, '<h1'))->toBe(1);
         foreach ($own as $text) {
             expect($html)->toContain($text);
@@ -106,20 +107,22 @@ it('leaves out the suggestions when the main menu has no links and the contact b
 
     expect($html)->toContain('Không tìm thấy trang này')
         ->not->toContain('sf-404__more')
-        ->not->toContain('sf-404__btn');
+        ->toContain('Về Trang Chủ')
+        ->not->toContain('sf-404__btn--contact');
 });
 
-it('links the contact button to the site’s contact page, named after the site, after the menu links', function (): void {
+it('links the contact button to the site’s contact page, named after the site, between home and the menu links', function (): void {
     notFoundContactPage(1);
 
     $html = $this->get('http://a.test/khong-co-trang-nay')->assertNotFound()->getContent();
 
     expect($html)->toContain('<a class="sf-404__btn sf-404__btn--contact" href="/lien-he-voi-chung-toi">Liên hệ Ánh Kim Hà</a>')
-        ->and(strpos($html, 'sf-404__btn--contact'))->toBeGreaterThan(strpos($html, 'sf-404__links'))
-        ->and(substr_count($html, 'class="sf-404__btn'))->toBe(1);
+        ->and(strpos($html, 'sf-404__btn--home'))->toBeLessThan(strpos($html, 'sf-404__btn--contact'))
+        ->and(strpos($html, 'sf-404__btn--contact'))->toBeLessThan(strpos($html, 'sf-404__links'))
+        ->and(substr_count($html, 'class="sf-404__btn'))->toBe(2);
 });
 
-it('suggests at most five links, then only the contact button and no search box', function (): void {
+it('suggests at most five links next to the home and contact buttons, and no search box', function (): void {
     notFoundContactPage(1);
     app(Tenancy::class)->enter(1, function (): void {
         $menu = Menu::query()->firstOrFail();
@@ -135,7 +138,7 @@ it('suggests at most five links, then only the contact button and no search box'
 
     expect(substr_count($list[1] ?? '', '<li>'))->toBe(5)
         ->and($list[1] ?? '')->toContain('Ấn phẩm hè')->toContain('Ba')->not->toContain('Bốn')
-        ->and(substr_count($html, 'class="sf-404__btn'))->toBe(1)
+        ->and(substr_count($html, 'class="sf-404__btn'))->toBe(2)
         ->and($html)->toContain('Liên hệ Ánh Kim Hà</a>')
         ->not->toContain('role="search"');
 });

@@ -160,6 +160,14 @@
     color: var(--color-text-strong);
 }
 
+.sf-404__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
+    max-width: 100%;
+}
+
 .sf-404__btn {
     box-sizing: border-box;
     display: inline-flex;
@@ -180,6 +188,16 @@
 .sf-404__btn:hover {
     background: var(--color-primary-hover, var(--color-primary));
     color: var(--color-on-primary);
+}
+
+.sf-404__btn--home {
+    background: var(--color-dark);
+    color: #fff;
+}
+
+.sf-404__btn--home:hover {
+    background: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 85%, white));
+    color: #fff;
 }
 
 .sf-404__glyph {
@@ -222,6 +240,11 @@
 
     .sf-404__title {
         font-size: 1.375rem;
+    }
+
+    .sf-404__actions {
+        flex-direction: column;
+        width: 100%;
     }
 
     .sf-404__btn {
