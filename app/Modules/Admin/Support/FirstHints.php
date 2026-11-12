@@ -21,8 +21,11 @@ final class FirstHints
     /** The language bar's sentence on the source language ("Đây là bản nguồn — …"). */
     public const string LANG_SOURCE = 'lang-src';
 
+    /** The members list's line on the member's own row ("Nhóm quyền của bạn đổi ở …"). */
+    public const string MEMBERS_YOU = 'members-you';
+
     /** @var list<string> */
-    public const array KEYS = [self::LANG_SOURCE];
+    public const array KEYS = [self::LANG_SOURCE, self::MEMBERS_YOU];
 
     /** Whether the signed-in member (or $user) has dismissed the hint $key. */
     public static function dismissed(string $key, ?User $user = null): bool

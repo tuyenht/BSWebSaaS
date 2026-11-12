@@ -243,8 +243,11 @@
 }
 
 /* The shared card. One link (the title), stretched over the whole card. */
+/* isolation: a card is its own stacking layer, so the stretched link's overlay (z-index 2 below) and
+   any layer inside the card stay under controls drawn over the card's edge, such as a rail's arrows. */
 .sf-card {
     position: relative;
+    isolation: isolate;
     display: flex;
     flex-direction: column;
     overflow: hidden;

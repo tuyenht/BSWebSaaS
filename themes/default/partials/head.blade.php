@@ -11,8 +11,9 @@
     slider to rotate (plus a preconnect to the media host when the slider leads the page), the
     background-video script only on a page whose hero has a video, the photo switcher only on a
     product page with more than one photo, and a
-    robots line only where a page asks for one (the 404 page prints no share tags or JSON-LD). These lines sit in column 0 so a site
-    without them renders the same bytes as before.
+    robots line only where a page asks for one (the 404 page prints no share tags or JSON-LD). A page or post ($viewBeacon)
+    names where its view is counted and loads sf-view.js, which sends that one view from the browser (so a copy served by
+    the edge cache counts too). These lines sit in column 0 so a site without them renders the same bytes as before.
     The admin's preview of a page ($preview) prints no share tags and no JSON-LD (its caller sets no canonical
     or alternates either), and opens every link outside the preview frame (<base target="_blank">).
 --}}
@@ -23,6 +24,9 @@
 <link rel="icon" href="{{ data_get($brand ?? null, 'favicon') ?: '/favicon.ico' }}" sizes="any">
 @if (! empty($robots))
 <meta name="robots" content="{{ $robots }}">
+@endif
+@if (! empty($viewBeacon) && empty($preview))
+<meta name="sf-view" content="{{ $viewBeacon }}">
 @endif
 @if (! empty($preview))
 <base target="_blank">
@@ -213,6 +217,9 @@
 @endif
 @if (! empty($tocScript))
 @vite(['resources/js/sf-toc.js'])
+@endif
+@if (! empty($viewBeacon) && empty($preview))
+@vite(['resources/js/sf-view.js'])
 @endif
 @if (! empty($viewerScript))
 @vite(['resources/js/sf-viewer.js'])

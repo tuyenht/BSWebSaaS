@@ -68,7 +68,9 @@ function slotsFresh(): void
 /** A page with the year masked: the footer prints the machine clock's year, the content dates the test clock's. */
 function slotsHtml(string $path, string $host = 'mau.platform.test'): string
 {
-    return str_replace(array_unique([date('Y'), now()->format('Y')]), '{year}', test()->get('http://'.$host.$path)->assertOk()->getContent());
+    $html = str_replace(array_unique([date('Y'), now()->format('Y')]), '{year}', test()->get('http://'.$host.$path)->assertOk()->getContent());
+
+    return (string) preg_replace('~/_view/[0-9A-Z]{26}~', '/_view/{entry}', $html); // the page's own view address
 }
 
 it('draws a post and a product with no slot set byte for byte as before', function (string $path, string $golden): void {

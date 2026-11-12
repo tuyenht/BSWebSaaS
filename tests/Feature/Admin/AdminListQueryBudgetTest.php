@@ -399,8 +399,37 @@ it('lists admin members on a flat query budget (no N+1 across rows)', function (
         }
     });
 
+    $this->actingAs($admin)->get('http://a.test/admin/users')->assertOk(); // the permission and settings caches fill on the first request
     $count = countQueries(fn () => $this->actingAs($admin)->get('http://a.test/admin/users')->assertOk());
 
-    // Same flat ceiling as the entries list: +1 admin_theme single-row read (P5).
-    expect($count)->toBeLessThanOrEqual(19);
+    expect($count)->toBe(14);
+});
+
+it('keeps the members list flat with a search, a role filter and a second page, whatever the number of members', function (): void {
+    $admin = User::factory()->create(['name' => 'Ánh Quản Trị']);
+    $seed = function (int $from, int $to) use ($admin): void {
+        app(Tenancy::class)->enter(1, function () use ($from, $to, $admin): void {
+            grantRole($admin, 'admin', ['users.manage', 'users.invite', 'entries.view']);
+            foreach (range($from, $to) as $i) {
+                $member = User::factory()->create(['name' => sprintf('Nguyễn %03d Mỹ', $i)]);
+                grantRole($member, 'editor', ['entries.view']);
+                grantRole($member, 'author', ['entries.view']);
+            }
+        });
+    };
+    $read = function () use ($admin): int {
+        $boundary = app(Tenancy::class)->enter(1, fn () => User::query()->where('name', 'Nguyễn 020 Mỹ')->value('ulid'));
+        $url = 'http://a.test/admin/users?q=nguyen&nhom[0]=editor&after='.$boundary;
+        $this->actingAs($admin)->get($url)->assertOk(); // the permission and settings caches fill on the first request
+
+        return countQueries(fn () => $this->actingAs($admin)->get($url)->assertOk()->assertSee('Nguyễn 021 Mỹ'));
+    };
+
+    $seed(1, 45);
+    $few = $read();
+    $seed(46, 300);
+    $many = $read();
+
+    // 20 rows on the page either way: the site's membership growing more than six-fold adds no query
+    expect($many)->toBe($few)->and($few)->toBe(16);
 });

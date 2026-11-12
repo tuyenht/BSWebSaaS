@@ -52,7 +52,9 @@
     $sfMine = ! $sfPreview && $sfNth === 0 && $sfFormKey !== '' && old('lead_form') === $sfFormKey;
     $sfErr = $sfMine ? $errors : new \Illuminate\Support\MessageBag();
     $sfOld = fn (string $name) => $sfMine ? old($name) : null;
-    $sfSent = ! $sfPreview && $sfNth === 0 && session('form_success_key') === $sfFormKey ? session('form_success') : null;
+    // A visitor who brings no session cookie has no session at all (StorefrontSession): nothing to read.
+    $sfSession = request()->hasSession() ? request()->session() : null;
+    $sfSent = ! $sfPreview && $sfNth === 0 && $sfSession?->get('form_success_key') === $sfFormKey ? $sfSession?->get('form_success') : null;
     $sfFirstBad = null;
     foreach ($fields as $sfField) {
         if ($sfErr->has($sfField['key'])) {

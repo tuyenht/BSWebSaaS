@@ -17,7 +17,6 @@ use App\Modules\Cms\Routing\ResolvedCategory;
 use App\Modules\Cms\Routing\ResolvedContent;
 use App\Modules\Cms\Routing\ResolvedProduct;
 use App\Modules\Cms\Routing\RouteResolver;
-use App\Modules\Cms\Support\EntryViewCounter;
 use App\Modules\Cms\Support\JobFacts;
 use App\Modules\Cms\Taxonomy\CategoryTemplates;
 use App\Modules\Media\Models\Media;
@@ -65,7 +64,6 @@ final readonly class StorefrontController
         private SiteLocale $locale,
         private PathBuilder $paths,
         private MediaUrlResolver $media,
-        private EntryViewCounter $views,
         private StorefrontSettings $settings,
         private ListPage $lists,
         private TemplateResolver $templates,
@@ -258,11 +256,11 @@ final readonly class StorefrontController
     {
         $entry = $content->entry;
 
-        // Buffer this page view in Valkey — fail-open, no Postgres write on a GET (§3.1).
-        $this->views->record($entry->site_id, $entry->id);
-
         $categoryTemplate = null;
         $extra = $chrome;
+        // The page view is counted by the visitor's browser (sf-view.js → RecordEntryView), never
+        // here: a page the edge serves never reaches this code, and counting both would double it.
+        $extra['viewBeacon'] = route('storefront.views.record', ['entry' => $entry->ulid], false);
         $canonical = url($this->paths->publicUrl($path, $locale));
         $extra['canonical'] = $canonical;
         $extra['ogType'] = $entry->type === 'post' ? 'article' : 'website';

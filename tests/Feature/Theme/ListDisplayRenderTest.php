@@ -120,6 +120,17 @@ it('gives the arrows a 44px hit area with a 36px disc and no arrows when the blo
         ->and($none)->not->toContain('data-sf-rail-prev')->and($none)->not->toContain('data-sf-rail-next');
 });
 
+it('keeps a card link overlay inside its card so a tap on an arrow over the card edge turns the rail', function (): void {
+    $css = StorefrontCss::all();
+
+    // The stretched link covers its card at z-index 2; isolating the card keeps that layer from rising
+    // over the arrows, which sit on the card edges on a phone and beside the row from 1360px.
+    expect($css)->toMatch('/\n\.sf-card \{[^}]*isolation: isolate;/s')
+        ->and($css)->toMatch('/\.sf-card__link::after \{[^}]*z-index: 2;/s')
+        ->and(preg_match_all('/\.sf-rail__prev,\s*\.sf-rail__next \{[^}]*position: absolute;[^}]*z-index: (\d+);/s', $css, $m))->toBe(2)
+        ->and(array_map(intval(...), $m[1]))->each->toBeGreaterThan(2);
+});
+
 it('lets the script rotate nothing on a phone swipe row or under reduced motion, and pause on hover, focus and touch', function (): void {
     $js = (string) file_get_contents(base_path('resources/js/sf-slider.js'));
 

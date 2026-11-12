@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Tenancy\Context;
 
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Tenancy\Models\Domain;
 use App\Modules\Tenancy\Models\Site;
 
 /**
@@ -42,5 +43,16 @@ final readonly class SiteDirectory
     public function nameOfCurrent(CurrentSite $current): string
     {
         return Cast::string(Site::query()->whereKey($current->id())->value('name'));
+    }
+
+    /**
+     * Every host name of a site (its primary, its platform subdomain and the spellings that only
+     * redirect), for a caller outside any tenant context — e.g. a queued purge of the edge cache.
+     *
+     * @return list<string>
+     */
+    public function hostsOf(int $siteId): array
+    {
+        return Cast::strings(Domain::query()->where('site_id', $siteId)->orderBy('id')->pluck('hostname')->all());
     }
 }

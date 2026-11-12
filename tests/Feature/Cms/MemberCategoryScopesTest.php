@@ -366,10 +366,24 @@ it('keeps a member\'s limits when their role changes', function (): void {
     $news = csCategory(1, 'Tin tức');
     csLimit(1, $member, $news);
 
-    csIn(1, fn () => Livewire::actingAs($owner->fresh())->test(Index::class)->call('changeRole', $member->ulid, 'author'));
+    csIn(1, fn () => Livewire::actingAs($owner->fresh())->test(Index::class)->call('openPanel', $member->ulid)->set('panelRoles', ['author'])->call('saveRoles'));
 
     expect(csRows(1, $member))->toBe([$news->id])
         ->and(csIn(1, fn () => $member->fresh()?->roles()->pluck('name')->all()))->toBe(['author']);
+});
+
+it('names the post categories a limited member may write in on the members list, and none for an owner', function (): void {
+    $owner = csMember(1, 'owner');
+    $member = csMember(1, 'editor');
+    $news = csCategory(1, 'Bản tin nội bộ');
+    $jobs = csCategory(1, 'Tuyển dụng');
+    csLimit(1, $member, $news, $jobs);
+    csLimit(1, $owner, $news); // an owner is never limited, whatever rows exist
+
+    $html = csIn(1, fn (): string => Livewire::actingAs($owner->fresh())->test(Index::class)->html());
+
+    expect($html)->toContain(e(__('admin.members.scope_posts', ['names' => 'Bản tin nội bộ, Tuyển dụng'])))
+        ->and(substr_count($html, e(__('admin.members.scope_posts', ['names' => 'Bản tin nội bộ'])).'</span>'))->toBe(0);
 });
 
 it('clears a member\'s limits when they leave the site, in the same step', function (): void {
@@ -378,7 +392,7 @@ it('clears a member\'s limits when they leave the site, in the same step', funct
     $news = csCategory(1, 'Tin tức');
     csLimit(1, $member, $news);
 
-    csIn(1, fn () => Livewire::actingAs($owner->fresh())->test(Index::class)->call('removeMember', $member->ulid));
+    csIn(1, fn () => Livewire::actingAs($owner->fresh())->test(Index::class)->call('askRemove', $member->ulid)->call('confirmRemove'));
 
     expect(csRows(1, $member))->toBe([])
         ->and(AuditLog::query()->where('action', 'cms.category_scopes.cleared')->value('meta'))
@@ -392,9 +406,9 @@ it('clears a member\'s limits when they are promoted to a role never limited, an
     $news = csCategory(1, 'Tin tức');
     csLimit(1, $member, $news);
 
-    csIn(1, fn () => Livewire::actingAs($owner->fresh())->test(Index::class)->call('changeRole', $member->ulid, 'admin'));
+    csIn(1, fn () => Livewire::actingAs($owner->fresh())->test(Index::class)->call('openPanel', $member->ulid)->set('panelRoles', ['admin'])->call('saveRoles'));
     $afterPromotion = csRows(1, $member);
-    csIn(1, fn () => Livewire::actingAs($owner->fresh())->test(Index::class)->call('changeRole', $member->ulid, 'editor'));
+    csIn(1, fn () => Livewire::actingAs($owner->fresh())->test(Index::class)->call('openPanel', $member->ulid)->set('panelRoles', ['editor'])->call('saveRoles'));
 
     expect($afterPromotion)->toBe([])
         ->and(csRows(1, $member))->toBe([])
@@ -407,17 +421,18 @@ it('rolls the limits back with the role when the role change fails', function ()
     $owner = csMember(1, 'owner');
     $member = csMember(1, 'editor');
     csRole(1, 'admin');
-    $boss = csRole(1, 'boss', 95, ['entries.view']);
-    app(Tenancy::class)->enter(1, fn () => $member->assignRole($boss));
+    // below the owner's level, but carrying a permission the owner does not hold, so they may not take it away
+    $odd = csRole(1, 'odd', 40, ['entries.view', 'platform.audit.view']);
+    app(Tenancy::class)->enter(1, fn () => $member->assignRole($odd));
     $news = csCategory(1, 'Tin tức');
     csLimit(1, $member, $news);
 
-    // Granting admin clears the limits, then the owner cannot revoke a role above them: the whole
+    // Granting admin clears the limits, then the owner cannot revoke the odd role: the whole
     // change rolls back, the limits included.
-    csIn(1, fn () => Livewire::actingAs($owner->fresh())->test(Index::class)->call('changeRole', $member->ulid, 'admin'));
+    csIn(1, fn () => Livewire::actingAs($owner->fresh())->test(Index::class)->call('openPanel', $member->ulid)->set('panelRoles', ['admin'])->call('saveRoles'));
 
     expect(csRows(1, $member))->toBe([$news->id])
-        ->and(csIn(1, fn () => $member->fresh()?->roles()->orderBy('name')->pluck('name')->all()))->toBe(['boss', 'editor']);
+        ->and(csIn(1, fn () => $member->fresh()?->roles()->orderBy('name')->pluck('name')->all()))->toBe(['editor', 'odd']);
 });
 
 // ── Deleting a scoped category ────────────────────────────────────────────────────────────────
@@ -537,7 +552,7 @@ it('takes the member\'s limits lock when a role change may clear the limits', fu
             $locks[] = (string) ($query->bindings[0] ?? '');
         }
     });
-    csIn(1, fn () => Livewire::actingAs($owner->fresh())->test(Index::class)->call('changeRole', $member->ulid, 'author'));
+    csIn(1, fn () => Livewire::actingAs($owner->fresh())->test(Index::class)->call('openPanel', $member->ulid)->set('panelRoles', ['author'])->call('saveRoles'));
 
     expect($locks)->toContain('category_scopes:1:'.$member->id);
 });

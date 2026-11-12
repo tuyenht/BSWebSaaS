@@ -144,6 +144,12 @@ final readonly class InviteMember
         });
     }
 
+    /** How many invitation mails $siteId sent in the last 24 hours: what DAILY_LIMIT counts. */
+    public function sentToday(int $siteId): int
+    {
+        return $this->mailsSentToday($siteId);
+    }
+
     /** The advisory-lock key every invitation write on $siteId waits on. */
     public static function lockKey(int $siteId): string
     {

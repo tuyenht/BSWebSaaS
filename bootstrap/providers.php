@@ -12,6 +12,7 @@ use App\Modules\Notifications\Providers\NotificationsServiceProvider;
 use App\Modules\Provisioning\Providers\ProvisioningServiceProvider;
 use App\Modules\Rbac\Providers\RbacServiceProvider;
 use App\Modules\Shared\Providers\SharedServiceProvider;
+use App\Modules\Storefront\Providers\StorefrontServiceProvider;
 use App\Modules\Tenancy\Providers\TenancyServiceProvider;
 use App\Modules\Theme\Providers\ThemeServiceProvider;
 use App\Providers\AppServiceProvider;
@@ -32,6 +33,7 @@ return [
     FormsServiceProvider::class,
     MediaServiceProvider::class,
     CatalogServiceProvider::class,
+    StorefrontServiceProvider::class,
     AdminServiceProvider::class,
     MonitoringServiceProvider::class,
 ];
