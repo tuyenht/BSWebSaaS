@@ -109,8 +109,10 @@
     // two channels fit, not three) — the normalizer decides both, as on the site.
     $word = static fn (array $b): string => $b['label'] ?? (array_key_exists($b['key'], FloatingContact::CHANNELS) ? __('storefront.fc_'.$b['key'], [], $lang) : __('storefront.fc_contact', [], $lang));
     $pvButtons = $preview['buttons'] ?? [];
-    $pvBar = $preview['bar'] ?? [];
+    // The preview phone is narrow (about 266px inside its frame): it draws the bar as a phone of that
+    // width would, four cells with "Mua hàng" counted, the ones further on dropped from the end.
     $pvBuy = $preview['buy'] ?? null;
+    $pvBar = array_slice($preview['bar'] ?? [], 0, $pvBuy === null ? 4 : 3);
     $buySafe = FloatingContact::color($buyColor) ?? FloatingContact::BUY_COLOR;
 @endphp
 <x-bs-admin::settings-shell active="floating" :hints="count($locales) > 1 ? [FirstHints::LANG_SOURCE => $srcHint] : []">
@@ -555,7 +557,7 @@
                                                         <svg viewBox="0 0 24 24" fill="currentColor" class="size-[min(1.5rem,calc(0.8125rem+var(--user-text-boost)))]"><path d="{{ $b['icon'] }}"/></svg>
                                                     @endif
                                                 </span>
-                                                <span @class(['max-w-full text-center text-caption leading-[1.2] font-semibold [overflow-wrap:anywhere]', 'text-text' => ! $pending, 'text-text-muted' => $pending])>{{ $word($b) }}</span>
+                                                <span @class(['max-w-full text-center text-caption leading-[1.2] font-semibold [overflow-wrap:break-word]', 'text-text' => ! $pending, 'text-text-muted' => $pending])>{{ $word($b) }}</span>
                                             </span>
                                         @endforeach
                                         @if ($pvBuy !== null)
@@ -563,7 +565,7 @@
                                                 <span class="flex h-[22px] min-w-[22px] shrink-0 items-center justify-center rounded-full px-[3px]" style="background: {{ $pvBuy['fill'] }}; color: {{ $pvBuy['ink'] }}">
                                                     <svg viewBox="0 0 24 24" fill="currentColor" class="size-[min(1.5rem,calc(0.8125rem+var(--user-text-boost)))]"><path d="{{ $svg('ri-shopping-bag-fill') }}"/></svg>
                                                 </span>
-                                                <span class="max-w-full text-center text-caption leading-[1.2] font-semibold text-text [overflow-wrap:anywhere]">{{ __('storefront.fc_buy', [], $lang) }}</span>
+                                                <span class="max-w-full text-center text-caption leading-[1.2] font-semibold text-text [overflow-wrap:break-word]">{{ __('storefront.fc_buy', [], $lang) }}</span>
                                             </span>
                                         @endif
                                     </div>

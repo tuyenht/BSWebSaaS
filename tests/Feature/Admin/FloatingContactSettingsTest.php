@@ -429,7 +429,7 @@ it('shows a channel switched on but not filled in at its place in the round-butt
     expect(collect(fcsStored()['channels'])->firstWhere('key', 'messenger'))->toMatchArray(['on' => true, 'value' => '']);
 });
 
-it('shows a channel switched on but not filled in at its cell of the bottom-bar preview, every channel kept', function (): void {
+it('keeps every channel in the bottom bar and draws the first four cells on the narrow preview phone, unfilled ones at their place', function (): void {
     $admin = fcsAdmin();
 
     app(Tenancy::class)->enter(1, function () use ($admin): void {
@@ -439,13 +439,16 @@ it('shows a channel switched on but not filled in at its cell of the bottom-bar 
             ->call('addPreset', 'whatsapp')->call('addPreset', 'telegram')->call('addPreset', 'viber');
 
         expect(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo', 'messenger', 'email', 'sms', 'whatsapp', 'telegram', 'viber']);
-        expect($lw->html())->toContain('data-fc-pending="zalo"', 'data-fc-pending="sms"', 'data-fc-pending="telegram"', 'data-fc-pending="viber"')
-            ->not->toContain('data-fc-pending="phone"')->not->toContain('ẩn ở kiểu thanh dưới');
+        // The preview phone is about 266px wide: four cells, the rest dropped from the end as on a phone that narrow.
+        expect($lw->html())->toContain('data-fc-pending="zalo"')
+            ->not->toContain('data-fc-pending="phone"')->not->toContain('data-fc-pending="sms"')
+            ->not->toContain('data-fc-pending="telegram"')->not->toContain('data-fc-pending="viber"')
+            ->not->toContain('ẩn ở kiểu thanh dưới');
 
         // A switched-off channel never takes a cell.
         $lw->call('toggleChannel', 'zalo');
         expect(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'messenger', 'email', 'sms', 'whatsapp', 'telegram', 'viber'])
-            ->and($lw->html())->not->toContain('data-fc-pending="zalo"');
+            ->and($lw->html())->not->toContain('data-fc-pending="zalo"')->toContain('data-fc-pending="sms"');
     });
 });
 

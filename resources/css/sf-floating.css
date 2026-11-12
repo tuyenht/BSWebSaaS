@@ -386,6 +386,8 @@
     font-size: max(12px, 0.6875rem);
     font-weight: 600;
     line-height: 1.2;
+    /* Wraps at spaces; only a single word longer than the cell (a site's own label) breaks inside. */
+    overflow-wrap: break-word;
 }
 
 /* Board-style phone bar (a round-button site's `phone_bar`): below 768px the round buttons are
