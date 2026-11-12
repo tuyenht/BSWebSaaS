@@ -1,0 +1,24 @@
+# CI only (the cwv job): the TLS + HTTP/2 front production has, in front of PHP's built-in server
+# (scripts/cwv-serve.php), so Lighthouse, axe and the tap check load the storefront over the
+# protocol visitors get. Production's edge (Cloudflare, then Caddy) always answers h2 or h3; over
+# HTTP/1.1 Chrome opens six connections per origin and queues the font and the LCP image behind the
+# CSS files, which no visitor sees.
+# - `tls internal`: a certificate from Caddy's own CA; Chrome is told to accept it by a flag in the
+#   CI tools only (--ignore-certificate-errors), nothing is trusted system-wide.
+# - h1 + h2 only: the measurement stays on HTTP/2 (no switch to h3 between runs).
+# - No `encode`: cwv-serve.php already gzips the way production's Caddy compresses; Caddy passes
+#   the body through as it is, so nothing is compressed twice.
+# CWV_HOST and CWV_PORT come from the job's env (the same values .lighthouserc.cjs reads).
+{
+	admin off
+	auto_https disable_redirects
+	skip_install_trust
+	servers {
+		protocols h1 h2
+	}
+}
+
+https://{$CWV_HOST} {
+	tls internal
+	reverse_proxy 127.0.0.1:{$CWV_PORT}
+}
