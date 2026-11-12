@@ -297,8 +297,9 @@ it('loads the flourish heading decoration, round floating buttons of email, Zalo
     // The factories are the site's branches: stored with their coordinates, and planned again as unchanged.
     $branches = StorefrontChrome::branches($stored('storefront', 'footer'), 'vi', 'vi');
     expect(array_column($branches, 'key'))->toBe(['nha-may-1', 'nha-may-2', 'nha-may-3'])
-        ->and(array_column($branches, 'approximate'))->toBe([false, true, true])
-        ->and($branches[2]['lat'])->toBe(21.0655337)->and($branches[2]['lng'])->toBe(105.556209);
+        ->and(array_column($branches, 'approximate'))->toBe([false, true, false])
+        ->and($branches[1]['lat'])->toBe(21.0655337)->and($branches[1]['lng'])->toBe(105.556209)
+        ->and($branches[2]['lat'])->toBeNull()->and($branches[2]['lng'])->toBeNull();
     [$exit, $output] = ContentPacks::run('an-vinh');
     expect($exit)->toBe(0, $output)->and(ContentPacks::verdict($output, 'setting:storefront.footer'))->toBe('unchanged');
 });
@@ -307,14 +308,14 @@ it('gives the factories the design\'s map points and only the company\'s own pho
     $pack = (new PackReader)->read('an-vinh');
     $footer = collect($pack->items)->firstWhere('key', 'setting:storefront.footer')->data['value'];
 
-    $points = array_map(fn (array $factory): array => [$factory['key'], $factory['lat'], $factory['lng'], $factory['approximate'], $factory['image_media_id']['media'] ?? null], $footer['factories']);
+    $points = array_map(fn (array $factory): array => [$factory['key'], $factory['lat'] ?? null, $factory['lng'] ?? null, $factory['approximate'] ?? null, $factory['image_media_id']['media'] ?? null], $footer['factories']);
     expect($points)->toBe([
         ['nha-may-1', 21.2983367, 105.8672342, false, 'factory-1'],
-        ['nha-may-2', 21.2936586, 105.8649934, true, 'plant-2-assembly-floor-1'],
-        ['nha-may-3', 21.0655337, 105.556209, true, 'plant-3-machining-hall'],
+        ['nha-may-2', 21.0655337, 105.556209, true, 'plant-3-machining-hall'],
+        ['nha-may-3', null, null, null, null],
     ])
         ->and($footer['factories'][0]['map_query'])->toBe('Cơ khí An Vinh, Xuân Sơn, Trung Giã, Hà Nội')
-        ->and(array_column($footer['factories'], 'full_name'))->toBe([['vi' => 'Nhà máy 1 – Xuân Sơn'], ['vi' => 'Nhà máy 2 – Hương Ninh'], ['vi' => 'Nhà máy 3 – Ngũ Sơn']]);
+        ->and(array_column($footer['factories'], 'full_name'))->toBe([['vi' => 'Nhà máy 1 – Xuân Sơn'], ['vi' => 'Nhà máy 2 – Ngũ Sơn'], ['vi' => 'Nhà máy 3 – Kim Tỉnh']]);
     foreach (['plant-2-assembly-floor-1', 'plant-3-machining-hall'] as $slot) {
         expect($pack->slots[$slot]['license'])->toStartWith('Ảnh của Công ty An Vinh');
     }
