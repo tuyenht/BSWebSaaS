@@ -1755,7 +1755,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 .sf-footer__link:hover,
 .sf-footer__link:focus-visible,
 .sf-footer__heading a:hover {
-    color: var(--color-primary);
+    color: var(--color-primary-on-dark);
 }
 
 .sf-footer__heading {
@@ -2009,9 +2009,11 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 .sf-factory__chip {
     display: none;
     padding: 0.25rem 0.625rem;
-    background: var(--color-dark-line, color-mix(in srgb, var(--color-dark) 75%, white));
+    /* A site's own line color, else the dark fill: brand text (--color-primary-on-dark, readable on the
+       dark fill and the card) would not reach 4.5:1 on the lighter line mix. */
+    background: var(--color-dark-line, var(--color-dark));
     border-radius: 0.375rem;
-    color: var(--color-primary);
+    color: var(--color-primary-on-dark);
     font-size: 0.75rem;
     font-weight: 600;
     white-space: nowrap;
@@ -2026,7 +2028,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 
 .sf-factory__area {
     margin-top: 0.25rem;
-    color: var(--color-primary);
+    color: var(--color-primary-on-dark);
     font-size: 0.875rem;
     font-weight: 500;
 }
@@ -2076,7 +2078,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 .sf-factory__map:hover,
 .sf-factory__map:focus-visible {
     border-color: var(--color-primary);
-    color: var(--color-primary);
+    color: var(--color-primary-on-dark);
 }
 
 .sf-footer__bottom {
@@ -2092,7 +2094,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 }
 
 .sf-footer__bottom a:hover strong {
-    color: var(--color-primary);
+    color: var(--color-primary-on-dark);
 }
 
 /* Page title band (theme::sections.page_header). */

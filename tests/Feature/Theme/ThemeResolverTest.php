@@ -127,6 +127,42 @@ it('lifts a dark brand to read as text on the dark ink surface (footer, hero, su
     });
 });
 
+it('keeps brand text readable on the footer card as well as on the ink (factory area, chip, map hover)', function (): void {
+    // The default blue reads 5.1:1 on the ink but 3.7:1 on the raised card (88% ink + white) the
+    // factory cards are drawn on; axe flagged the card's map button in its hover color.
+    $default = app(Tenancy::class)->enter(1, fn (): array => app(ThemeResolver::class)->cssVariables());
+    $card = ReadableColor::mix($default['ink'], '#ffffff', 0.88);
+
+    expect($card)->not->toBeNull()
+        ->and(ReadableColor::ratio($default['primary'], (string) $card))->toBeLessThan(ReadableColor::AA_NORMAL_TEXT)
+        ->and(ReadableColor::ratio($default['color-primary-on-dark'], (string) $card))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT)
+        ->and(ReadableColor::ratio($default['color-primary-on-dark'], $default['ink']))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT);
+
+    // A site's own card color is the one measured; a value that is not a hex color is left out.
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteSetting::query()->create([
+            'group_name' => 'theme',
+            'key' => 'tokens',
+            'value' => ['primary' => '#2563eb', 'ink' => '#0f172a', 'color-dark-raised' => '#334155'],
+        ]);
+    });
+    $own = app(Tenancy::class)->enter(1, fn (): array => app(ThemeResolver::class)->cssVariables());
+    expect(ReadableColor::ratio($own['color-primary-on-dark'], '#334155'))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT);
+});
+
+it('draws brand text on the dark footer in the color derived for it, never the raw brand', function (): void {
+    $css = (string) file_get_contents(resource_path('css/storefront.css'));
+
+    foreach (['.sf-footer__heading a:hover', '.sf-factory__map:focus-visible', '.sf-factory__chip', '.sf-factory__area', '.sf-footer__bottom a:hover strong'] as $selector) {
+        $start = strpos($css, $selector.' {');
+        expect($start)->not->toBeFalse();
+        $rule = substr($css, (int) $start, (int) strpos($css, '}', (int) $start) - (int) $start);
+        expect($rule)->toContain('color: var(--color-primary-on-dark);')
+            ->and($rule)->not->toMatch('/(?<!-)color: var\(--color-primary\);/');
+    }
+    expect($css)->toContain('background: var(--color-dark-line, var(--color-dark));');
+});
+
 it('leaves a light brand unchanged on the ink surface', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         SiteSetting::query()->create([
@@ -171,9 +207,9 @@ it('prints exactly the same variables as before for a site with no settings', fu
 
     $expected = [
         'primary' => '#3b82f6', 'surface' => '#ffffff', 'font' => 'system-ui, sans-serif',
-        'ink' => '#111111', 'body' => '#333333', 'primary-text' => '#326fd1', 'primary-on-ink' => '#3b82f6',
+        'ink' => '#111111', 'body' => '#333333', 'primary-text' => '#326fd1', 'primary-on-ink' => '#5895f7',
         'color-primary' => '#3b82f6', 'color-on-primary' => '#031c44', 'color-primary-hover' => '#5895f7', 'color-primary-text' => '#326fd1',
-        'color-primary-on-dark' => '#3b82f6', 'color-surface' => '#ffffff', 'color-text' => '#333333',
+        'color-primary-on-dark' => '#5895f7', 'color-surface' => '#ffffff', 'color-text' => '#333333',
         'color-text-strong' => '#111111', 'color-dark' => '#111111', 'font-body' => 'system-ui, sans-serif',
     ];
     $palette = ['50' => '#f0f6ff', '100' => '#deebff', '200' => '#c4dbff', '300' => '#9cc2ff', '400' => '#659fff',
