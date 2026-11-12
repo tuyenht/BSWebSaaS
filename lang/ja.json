@@ -2506,6 +2506,7 @@
     "storefront.not_found.title": "ページが見つかりません",
     "storefront.not_found.heading": "このページが見つかりません",
     "storefront.not_found.message": "お探しのページは移動したか、削除された可能性があります。",
+    "storefront.not_found.contact": ":nameへのお問い合わせ",
     "storefront.not_found.suggest": "お探しのページはこちらかもしれません",
     "storefront.site_state.provisioning_title": "ウェブサイトは近日公開予定です",
     "storefront.site_state.provisioning_text": "ただいまウェブサイトを準備しています。数分後にもう一度お越しください。",

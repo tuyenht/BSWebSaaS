@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Storefront\Http\Controllers;
 
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Catalog\Support\ContactPageSetting;
 use App\Modules\Catalog\Support\ProductIndexLink;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
@@ -28,6 +29,7 @@ use App\Modules\Storefront\Support\JobPosting;
 use App\Modules\Storefront\Support\ListPage;
 use App\Modules\Storefront\Support\PageChrome;
 use App\Modules\Storefront\Support\PostDetail;
+use App\Modules\Storefront\Support\ProductDetail;
 use App\Modules\Storefront\Support\ProductPage;
 use App\Modules\Storefront\Support\SlotContext;
 use App\Modules\Storefront\Support\ThankYouPages;
@@ -36,6 +38,7 @@ use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Theme\Rendering\PageRenderer;
 use App\Modules\Theme\Rendering\TemplateCatalog;
 use App\Modules\Theme\Rendering\TemplateResolver;
+use App\Modules\Theme\Theming\StorefrontSettings;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\Query\JoinClause;
@@ -61,10 +64,12 @@ final readonly class StorefrontController
         private SiteLocale $locale,
         private PathBuilder $paths,
         private MediaUrlResolver $media,
+        private StorefrontSettings $settings,
         private ListPage $lists,
         private TemplateResolver $templates,
         private Breadcrumbs $crumbs,
         private PostDetail $posts,
+        private ProductDetail $products,
         private CategoryTemplates $categoryTemplates,
         private JobPosting $jobs,
         private SlotContext $slots,
@@ -151,8 +156,9 @@ final readonly class StorefrontController
     }
 
     /**
-     * The site's 404 page: its own header, footer and menus around the "not here" message and the
-     * first links of its main menu (the header already carries the way home and the site's menu).
+     * The site's 404 page: its own header, footer and menus around the "not here" message, the
+     * first links of its main menu, then a way to the site's contact page (when the site names one).
+     * The header already carries the way home.
      * A real 404 status (never a page that answers 200) and kept out of search engines; no
      * canonical, share tags or alternates, since there is no page to point at.
      *
@@ -160,9 +166,11 @@ final readonly class StorefrontController
      */
     private function notFound(array $chrome): Response
     {
+        $locale = is_string($chrome['lang'] ?? null) ? $chrome['lang'] : $this->locale->default();
         $extra = $chrome;
         $extra['hreflang'] = [];
         $extra['robots'] = 'noindex';
+        $extra['contactUrl'] = $this->products->quoteLink($locale, ContactPageSetting::ulid($this->settings->get(ContactPageSetting::GROUP, ContactPageSetting::KEY)));
         $extra['suggestions'] = self::suggestions(
             is_array($chrome['menu'] ?? null) ? $chrome['menu'] : [],
             is_string($chrome['homeUrl'] ?? null) ? $chrome['homeUrl'] : '/',

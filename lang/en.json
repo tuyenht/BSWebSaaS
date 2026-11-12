@@ -2506,6 +2506,7 @@
     "storefront.not_found.title": "Page not found",
     "storefront.not_found.heading": "We can’t find this page",
     "storefront.not_found.message": "The page may have moved or no longer exists.",
+    "storefront.not_found.contact": "Contact :name",
     "storefront.not_found.suggest": "You might be looking for",
     "storefront.site_state.provisioning_title": "Website coming soon",
     "storefront.site_state.provisioning_text": "We’re getting the website ready. Please check back in a few minutes.",

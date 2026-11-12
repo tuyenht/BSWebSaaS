@@ -99,16 +99,27 @@ it('suggests the main menu’s links to the site’s pages, without the home pag
         ->not->toContain('Trang chủ');
 });
 
-it('leaves out the suggestions when the main menu has no links', function (): void {
+it('leaves out the suggestions when the main menu has no links and the contact button when no contact page is named', function (): void {
     app(Tenancy::class)->enter(2, fn () => MenuAssignment::query()->delete());
 
     $html = $this->get('http://b.test/khong-co-trang-nay')->assertNotFound()->getContent();
 
     expect($html)->toContain('Không tìm thấy trang này')
-        ->not->toContain('sf-404__more');
+        ->not->toContain('sf-404__more')
+        ->not->toContain('sf-404__btn');
 });
 
-it('suggests at most five links, and draws no button, contact line or search box of its own', function (): void {
+it('links the contact button to the site’s contact page, named after the site, after the menu links', function (): void {
+    notFoundContactPage(1);
+
+    $html = $this->get('http://a.test/khong-co-trang-nay')->assertNotFound()->getContent();
+
+    expect($html)->toContain('<a class="sf-404__btn sf-404__btn--contact" href="/lien-he-voi-chung-toi">Liên hệ Ánh Kim Hà</a>')
+        ->and(strpos($html, 'sf-404__btn--contact'))->toBeGreaterThan(strpos($html, 'sf-404__links'))
+        ->and(substr_count($html, 'class="sf-404__btn'))->toBe(1);
+});
+
+it('suggests at most five links, then only the contact button and no search box', function (): void {
     notFoundContactPage(1);
     app(Tenancy::class)->enter(1, function (): void {
         $menu = Menu::query()->firstOrFail();
@@ -124,8 +135,8 @@ it('suggests at most five links, and draws no button, contact line or search box
 
     expect(substr_count($list[1] ?? '', '<li>'))->toBe(5)
         ->and($list[1] ?? '')->toContain('Ấn phẩm hè')->toContain('Ba')->not->toContain('Bốn')
-        ->and($html)->not->toContain('sf-404__btn')
-        ->not->toContain('Liên hệ Ánh Kim Hà')
+        ->and(substr_count($html, 'class="sf-404__btn'))->toBe(1)
+        ->and($html)->toContain('Liên hệ Ánh Kim Hà</a>')
         ->not->toContain('role="search"');
 });
 
