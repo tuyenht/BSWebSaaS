@@ -165,7 +165,9 @@ it('keeps the logo and a way home in the topbar at every width when the operator
     $operator = User::factory()->create();
     app(PlatformAccess::class)->onPlatform(function () use ($operator): void {
         $operator->assignRole('billing');
+        // billing's two screens are Khách hàng and Gói & tính năng: take both away
         $operator->roles()->firstOrFail()->revokePermissionTo('platform.tenants.view');
+        $operator->roles()->firstOrFail()->revokePermissionTo('platform.billing.manage');
     });
     app(PermissionRegistrar::class)->forgetCachedPermissions();
     app(PlatformAccess::class)->forgetMemo();
