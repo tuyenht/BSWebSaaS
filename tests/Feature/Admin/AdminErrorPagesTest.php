@@ -167,6 +167,15 @@ it('answers an unknown admin address with "not found" for a guest and "no permis
     $this->actingAs(User::factory()->create())->get('http://a.test/admin/khong-co-trang-nay')->assertForbidden();
 });
 
+it('treats a wire:navigate click to an unknown address as a page the member opened', function (): void {
+    $member = errorMember();
+
+    $this->actingAs($member)->withHeaders(['X-Livewire-Navigate' => '1', 'Sec-Fetch-Mode' => 'cors', 'Sec-Fetch-Dest' => 'empty'])
+        ->get('http://a.test/admin/khong-co-trang-nay')
+        ->assertRedirect(route('admin.dashboard'))
+        ->assertSessionHas('admin.notice', __('errors.unknown_address'));
+});
+
 it('leaves no notice behind for an address the browser asks for on its own', function (array $headers): void {
     $member = errorMember();
 

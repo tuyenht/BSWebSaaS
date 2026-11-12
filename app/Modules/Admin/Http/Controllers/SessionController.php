@@ -79,8 +79,13 @@ final class SessionController
         return redirect()->to(AdminErrorPages::home())->with('admin.notice', __('errors.unknown_address'));
     }
 
+    /** A page the member opened: a top-level browser navigation, or a `wire:navigate` click (Livewire fetches the page and shows it). */
     private static function isNavigation(Request $request): bool
     {
+        if ($request->header('X-Livewire-Navigate') === '1') {
+            return true;
+        }
+
         return $request->header('Sec-Fetch-Mode') === 'navigate'
             && in_array($request->header('Sec-Fetch-Dest', 'document'), ['document'], true);
     }
