@@ -480,6 +480,14 @@
     padding: 0;
 }
 
+/* A block set to the narrow width (the rule in storefront.css) stays narrow inside an article body
+   and the post column: this file and sf-post.css load after storefront.css, so the width is repeated
+   here with one more class than their full-width rules. */
+.sf-s--w-narrow.sf-s--w-narrow > .richtext,
+.sf-s--w-narrow.sf-s--w-narrow > .sf-prose {
+    max-width: 48rem;
+}
+
 .sf-prose--article :is(.richtext, .sf-prose) :is(p, ul, ol, blockquote, figure, table) {
     margin: 0 0 1.15em;
 }

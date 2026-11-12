@@ -266,6 +266,11 @@
     margin-bottom: 2.5rem;
 }
 
+/* The line decoration keeps its own tighter gap here too (sf-decor.css loads before this file). */
+.post-related .sf-section-head:has(> .sf-decor--line) {
+    margin-bottom: 2rem;
+}
+
 .post-related__head {
     display: flex;
     flex-wrap: wrap;
