@@ -161,7 +161,9 @@ export function treeRowsOf(items, flat = false) {
     }));
 }
 
-if (typeof document !== 'undefined') document.addEventListener('alpine:init', () => {
+// Loaded by the shared lazy loader after Alpine has started, so the part registers at once (tests import the pure helpers
+// above without a browser).
+if (typeof window !== 'undefined' && window.Alpine) {
     window.Alpine.data('bsMenus', (cfg) => {
         const t = cfg.texts;
         // Outside Alpine's reactive state: the history, timers.
@@ -1424,4 +1426,4 @@ if (typeof document !== 'undefined') document.addEventListener('alpine:init', ()
             },
         };
     });
-});
+}

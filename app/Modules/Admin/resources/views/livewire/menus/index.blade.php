@@ -1,6 +1,6 @@
 {{--
     Trình đơn (design 11). Everything on the page is drawn by the screen's Alpine part 'bsMenus'
-    (resources/js/admin-menus.js) from what MenuScreen loads; every change goes through the
+    (resources/js/admin-menus.js, downloaded by the shared lazy loader) from what MenuScreen loads; every change goes through the
     component's methods ($wire.saveDraft, assign, …). Built on the shared admin parts: the item
     tree is <x-bs-admin::tree local> (the draft stays in the browser until "Lưu"), the buttons,
     cards, ⋮ menus, dialogs and the message line are the shared components. Labels, descriptions
@@ -43,7 +43,7 @@
     $chipHide = '@max-[32.5rem]:hidden';
 @endphp
 
-<div class="@container" x-data="bsMenus(@js($config))" x-on:keydown.window="keys($event)">
+<div class="@container" x-ignore wire:ignore.self data-bs-lazy="bsMenus" x-data="bsMenus(@js($config))" x-on:keydown.window="keys($event)">
     {{-- The website icons, drawn once and reused by name (<use>). --}}
     <svg class="hidden" aria-hidden="true">
         @foreach (array_merge(...array_column($icons, 'icons')) as $icon)
@@ -64,15 +64,15 @@
                 <x-bs-admin::button variant="outline" color="secondary" :href="$siteUrl" :navigate="false" target="_blank" rel="noopener">
                     <x-bs-admin::icon name="ri-external-link" class="size-4" />{{ $u('open_site') }}
                 </x-bs-admin::button>
-                <x-bs-admin::button x-on:click="save()" x-bind:disabled="!dirty().n || saveBusy || screen !== 'data'"
+                <x-bs-admin::button disabled x-on:click="save()" x-bind:disabled="!dirty().n || saveBusy || screen !== 'data'"
                     x-bind:title="dirty().n ? dirty().text : {{ $j($u('nothing_to_save')) }}">
                     <x-bs-admin::icon name="ri-save-3" class="size-4" /><span x-text="saveBusy ? {{ $j($u('saving')) }} : saveLabel">{{ $u('save') }}</span>
                 </x-bs-admin::button>
             </x-slot:actions>
         </x-bs-admin::page-header>
 
-        {{-- Loading --}}
-        <x-bs-admin::card flush aria-busy="true" aria-label="{{ $u('loading') }}" x-show="screen === 'loading'">
+        {{-- Loading: also what shows while the screen's part downloads (admin-lazy.js) --}}
+        <x-bs-admin::card flush data-bs-lazy-wait aria-busy="true" aria-label="{{ $u('loading') }}" x-show="screen === 'loading'">
             <div class="flex flex-wrap items-center gap-2 border-b border-border px-3.5 py-2.5">
                 <span class="h-[38px] max-w-[360px] flex-[1_1_190px] animate-pulse rounded bg-surface-hover"></span>
                 @foreach (range(1, 3) as $i)
@@ -88,6 +88,19 @@
             @endforeach
             <p role="status" class="border-t border-border-soft px-3.5 py-2.5 text-caption text-text-muted">{{ $u('loading_text') }}</p>
         </x-bs-admin::card>
+
+        {{-- The screen's part could not be downloaded: the same message, shown by the shared CSS before any Alpine runs;
+             "Thử lại" downloads it again (the shared loader). Hidden for good once the part has started. --}}
+        <div x-show="false">
+            <x-bs-admin::card data-bs-lazy-error>
+                <div class="flex flex-col items-center gap-2.5 px-1 py-4 text-center">
+                    <x-bs-admin::icon name="ri-wifi-off" class="size-6 text-danger-text" />
+                    <h2 class="text-body font-semibold text-text-strong">{{ $u('error_title') }}</h2>
+                    <p role="alert" class="max-w-[420px] text-small leading-relaxed text-text">{{ $u('error_text') }}</p>
+                    <x-bs-admin::button data-bs-lazy-retry><x-bs-admin::icon name="ri-refresh" class="size-4" />{{ $u('retry') }}</x-bs-admin::button>
+                </div>
+            </x-bs-admin::card>
+        </div>
 
         {{-- Could not load --}}
         <x-bs-admin::card x-cloak x-show="screen === 'error'">
