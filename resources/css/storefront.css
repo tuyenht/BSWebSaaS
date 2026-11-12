@@ -5398,8 +5398,11 @@ html:has(.sf-header--sticky) .product-toc {
 }
 
 /* The shared card. One link (the title), stretched over the whole card. */
+/* isolation: a card is its own stacking layer, so the stretched link's overlay (z-index 2 below) and
+   any layer inside the card stay under controls drawn over the card's edge, such as a rail's arrows. */
 .sf-card {
     position: relative;
+    isolation: isolate;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -9728,7 +9731,7 @@ html:has(.sf-viewer[open]) {
     .sf-rail__next {
         position: absolute;
         top: calc(50% - 0.75rem - 22px);
-        z-index: 1;
+        z-index: 3;
         width: 44px;
         height: 44px;
     }
@@ -9757,7 +9760,7 @@ html:has(.sf-viewer[open]) {
     .sf-rail__next {
         position: absolute;
         top: calc(50% - 1.375rem);
-        z-index: 1;
+        z-index: 3;
     }
 
     .sf-rail__prev { left: -3.5rem; }
