@@ -22,6 +22,9 @@ namespace App\Modules\Theme\Chrome;
  *                                    api.js (lead-form anti-spam, §23/R20)
  *                sha256 hash       – the one inline script: the text-size boot
  *                                    (StorefrontChrome::TEXT_SIZE_BOOT), no 'unsafe-inline'
+ *                CF insights       – static.cloudflareinsights.com/beacon.min.js, the
+ *                                    load-speed beacon the edge adds (cookieless)
+ *   connect-src  'self' + CF       – where that beacon reports (cloudflareinsights.com)
  *   frame-src    google.com + CF   – Google Maps embed on /lien-he + the Turnstile
  *                                    challenge iframe (challenges.cloudflare.com)
  *                video players     – www.youtube-nocookie.com + player.vimeo.com, the
@@ -42,7 +45,8 @@ final class StorefrontCsp
             trim("img-src 'self' ".$media.' data:'),
             trim("media-src 'self' ".$media),
             "style-src 'self' 'unsafe-inline'",
-            "script-src 'self' ".StorefrontChrome::textSizeBootHash().' https://challenges.cloudflare.com',
+            "script-src 'self' ".StorefrontChrome::textSizeBootHash().' https://challenges.cloudflare.com https://static.cloudflareinsights.com',
+            "connect-src 'self' https://cloudflareinsights.com",
             'frame-src https://www.google.com https://challenges.cloudflare.com https://www.youtube-nocookie.com https://player.vimeo.com',
             "font-src 'self'",
             "base-uri 'self'",

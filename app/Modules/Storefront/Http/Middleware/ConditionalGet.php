@@ -18,7 +18,7 @@ use Symfony\Component\HttpFoundation\Response;
  * there is no body to hash and HEAD is left as it is): redirects, errors and anything marked
  * no-store (previews) are left alone. Nothing is kept between requests; the tag is computed from
  * the response in hand, so it is safe under Octane. Cache-Control and every other header
- * (including the session cookies the web group adds around this) stay as they were: a 304 keeps
+ * (the edge-cache header EdgeCacheHeaders sets inside this) stay as they were: a 304 keeps
  * them, only the body and the content headers go.
  *
  * Runs inside the route, after the page is rendered, so the hash covers the body the visitor gets.

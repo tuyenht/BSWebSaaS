@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
+use Tests\TestCase;
 
 /*
  * Storefront form block (Increment 4) — the 'form' Page-JSON block renders a lead-capture form
@@ -55,6 +56,15 @@ function seedContactPageWithForm(int $site = 1, array $formProps = ['form_key' =
         ]);
         SiteRoute::query()->create(['locale' => 'vi', 'path' => '/lien-he', 'entry_id' => $entry->id]);
     });
+}
+
+/**
+ * The page after a send, as the visitor sees it: the form's POST gave them the session cookie, and
+ * only a request that brings it back reads the outcome (a page without one has no session at all).
+ */
+function returningSender(): TestCase
+{
+    return test()->withCookie((string) config('session.cookie'), 'visitor');
 }
 
 it('renders the form block with fields + honeypot + same-origin action, beside the NAP block', function (): void {
@@ -238,7 +248,7 @@ it('shows no policy link while the site has no published privacy page', function
 it('replaces the form with the thank-you card and a way back to an empty form after a send', function (): void {
     seedContactPageWithForm();
 
-    $html = $this->withSession(['form_success' => 'Đã nhận yêu cầu của bạn, xin cảm ơn ạ', 'form_success_key' => 'contact'])
+    $html = returningSender()->withSession(['form_success' => 'Đã nhận yêu cầu của bạn, xin cảm ơn ạ', 'form_success_key' => 'contact'])
         ->get('http://a.test/lien-he')->assertOk()->getContent();
 
     expect($html)
@@ -263,7 +273,7 @@ it('keeps what was typed after a failed send, says what is wrong and focuses the
         'locale' => 'vi',
     ])->assertRedirect('http://a.test/lien-he');
 
-    $section = leadFormSection($this->get('http://a.test/lien-he')->assertOk()->getContent());
+    $section = leadFormSection(returningSender()->get('http://a.test/lien-he')->assertOk()->getContent());
 
     expect($section)
         ->toContain('>Ống thép cần cắt gấp, giao ở Đà Nẵng nhé</textarea>')
@@ -286,7 +296,7 @@ it('tells the phone-or-email rule once, under the hint, and points both fields a
         'name' => 'Nguyễn Văn Ánh', 'message' => 'Ống thép cần cắt gấp, giao ở Đà Nẵng nhé', 'locale' => 'vi',
     ])->assertRedirect();
 
-    $section = leadFormSection($this->get('http://a.test/lien-he')->getContent());
+    $section = leadFormSection(returningSender()->get('http://a.test/lien-he')->getContent());
 
     expect(substr_count($section, 'Vui lòng để lại email hoặc số điện thoại để chúng tôi liên hệ.'))->toBe(2) // under the field + the alert
         ->and($section)->toContain('<p class="lead-form__hint" id="lf-contact__phone--hint">Để lại điện thoại hoặc email – ít nhất một.</p>')
@@ -307,7 +317,7 @@ it('moves the focus to the button when the send fails as a whole', function (): 
         'name' => 'Nguyễn Văn Ánh', 'phone' => '0912 345 678', 'message' => 'Ống thép cần cắt gấp, giao ở Đà Nẵng nhé', 'locale' => 'vi',
     ])->assertRedirect();
 
-    $section = leadFormSection($this->get('http://a.test/lien-he')->getContent());
+    $section = leadFormSection(returningSender()->get('http://a.test/lien-he')->getContent());
 
     expect($section)->toContain('<p class="lead-form__alert" id="lf-contact--alert" role="alert">Bạn đã gửi quá nhiều lần.')
         ->toMatch('/<button type="submit" class="lead-form__submit"\s+aria-describedby="lf-contact--alert"\s+autofocus\s*>/')
@@ -357,7 +367,7 @@ it('shows the thank-you card only on the form that was sent', function (): void 
         'name' => 'Nguyễn Văn Ánh', 'phone' => '0912 345 678', 'message' => 'Ống thép cần cắt gấp, giao ở Đà Nẵng nhé', 'locale' => 'vi',
     ])->assertRedirect('http://a.test/dat-hang');
 
-    $html = $this->get('http://a.test/dat-hang')->assertOk()->getContent();
+    $html = returningSender()->get('http://a.test/dat-hang')->assertOk()->getContent();
 
     expect(substr_count($html, 'class="lead-form__sent" '))->toBe(1)
         ->and(leadFormById($html, 'lf-quote'))->toContain('lead-form__sent')->not->toContain('<form')
@@ -372,7 +382,7 @@ it('shows a failed send only on the form it came from, with one alert and one fo
         'phone' => '0912 345 678', 'message' => 'Ống thép cần cắt gấp, giao ở Đà Nẵng nhé', 'locale' => 'vi',
     ])->assertRedirect();
 
-    $html = $this->get('http://a.test/dat-hang')->assertOk()->getContent();
+    $html = returningSender()->get('http://a.test/dat-hang')->assertOk()->getContent();
 
     expect(substr_count($html, 'role="alert"'))->toBe(1)
         ->and(substr_count($html, 'autofocus'))->toBe(1)
@@ -391,7 +401,7 @@ it('shows a failed send on the form that was posted, named by the server, keepin
         'phone' => '0912 345 678', 'message' => 'Ống thép cần cắt gấp, giao ở Đà Nẵng nhé', 'locale' => 'vi',
     ])->assertRedirect();
 
-    $html = $this->get('http://a.test/dat-hang')->assertOk()->getContent();
+    $html = returningSender()->get('http://a.test/dat-hang')->assertOk()->getContent();
 
     expect(substr_count($html, 'role="alert"'))->toBe(1)
         ->and(leadFormById($html, 'lf-quote'))->toContain('role="alert"')->toContain('value="0912 345 678"')
@@ -441,7 +451,7 @@ it('shows a failed send on the first copy only when the same form is placed twic
     seedTwoFormsPage([['type' => 'form', 'props' => ['form_key' => 'contact']], ['type' => 'form', 'props' => ['form_key' => 'contact']]]);
 
     $this->from('http://a.test/dat-hang')->post('http://a.test/forms/contact', ['locale' => 'vi'])->assertRedirect();
-    $html = $this->get('http://a.test/dat-hang')->assertOk()->getContent();
+    $html = returningSender()->get('http://a.test/dat-hang')->assertOk()->getContent();
 
     expect(substr_count($html, 'role="alert"'))->toBe(1)
         ->and(substr_count($html, 'autofocus'))->toBe(1)
@@ -579,11 +589,11 @@ it('keeps the picked choice after a failed send and points a missing choice at i
 
     $this->from('http://a.test/lien-he')->post('http://a.test/forms/contact', ['service' => 'mold', 'locale' => 'vi'])
         ->assertRedirect('http://a.test/lien-he');
-    expect(leadFormSection($this->get('http://a.test/lien-he')->getContent()))
+    expect(leadFormSection(returningSender()->get('http://a.test/lien-he')->getContent()))
         ->toMatch('/<option value="mold"\s+selected\s*>Khuôn mẫu<\/option>/');
 
     $this->from('http://a.test/lien-he')->post('http://a.test/forms/contact', ['name' => 'A', 'service' => '', 'locale' => 'vi']);
-    expect(leadFormSection($this->get('http://a.test/lien-he')->getContent()))
+    expect(leadFormSection(returningSender()->get('http://a.test/lien-he')->getContent()))
         ->toMatch('/<select id="lf-contact__service" name="service"\s+required\s+aria-invalid="true"\s+aria-describedby="lf-contact__service--error"\s+autofocus\s*>/')
         ->toContain('<p class="lead-form__field-error" id="lf-contact__service--error">Vui lòng chọn Bạn cần tư vấn về.</p>');
 });

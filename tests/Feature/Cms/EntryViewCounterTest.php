@@ -9,7 +9,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 
 /*
  * P8 — the Valkey-buffered view counter. Storefront views are bumped in Valkey (no Postgres write
- * on a GET); entries:flush-views drains each site's buffer into entries.view_count. Best-effort +
+ * on a GET; the browser reports each view, see EntryViewBeaconTest); entries:flush-views drains each site's buffer into entries.view_count. Best-effort +
  * fail-open: a Valkey outage never breaks a page and simply drops the count.
  */
 
@@ -63,7 +63,9 @@ it('counts a real storefront page view through to view_count', function (): void
         app(PublishEntry::class)->handle($entry->fresh(), 'vi', $editor->fresh());
     });
 
-    $this->get('http://a.test/xem-thu')->assertOk(); // storefront view → buffered in Valkey
+    // The page names its view address; the visitor's browser posts to it (sf-view.js) → buffered in Valkey.
+    $this->get('http://a.test/xem-thu')->assertOk()->assertSee('/_view/'.$entry->ulid, false);
+    $this->post('http://a.test/_view/'.$entry->ulid)->assertNoContent();
 
     $this->artisan('entries:flush-views')->assertSuccessful();
 
