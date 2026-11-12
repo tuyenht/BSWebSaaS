@@ -56,7 +56,7 @@
   },
   {
    "key": "setting:storefront.footer",
-   "note": "Không có map_url (chưa có liên kết bản đồ thật). Mỗi nhà máy là một chi nhánh: key, tên đầy đủ, địa bàn, tọa độ và cờ gần đúng theo bảng Báo giá/Liên hệ của bản thiết kế; câu tìm bản đồ chỉ nhà máy 1 có. Ảnh là ảnh thật của An Vinh từ hồ sơ năng lực: nhà máy 2 xưởng lắp ráp, nhà máy 3 xưởng gia công; nhà máy 1 chưa có ảnh thật nên để trống.",
+   "note": "Không có map_url (chưa có liên kết bản đồ thật). Mỗi nhà máy là một chi nhánh: key, tên đầy đủ, địa bàn, tọa độ và cờ gần đúng theo bảng Báo giá/Liên hệ của bản thiết kế; câu tìm bản đồ chỉ nhà máy 1 có. Ảnh là ảnh thật của An Vinh từ hồ sơ năng lực: nhà máy 2 xưởng gia công (Ngũ Sơn); nhà máy 1 và nhà máy 3 chưa có ảnh thật nên để trống.",
    "value": {
     "about": {
      "vi": "An Vinh – giải pháp cơ khí chính xác: thiết kế, gia công đồ gá, jig và khuôn mẫu chất lượng cao tại Việt Nam."
@@ -100,40 +100,15 @@
       "title": {
        "vi": "NHÀ MÁY 2"
       },
-      "area_m2": 500,
-      "name": {
-       "vi": "Nhà máy lắp ráp"
-      },
-      "address": {
-       "vi": "Đường QL3, thôn Hương Ninh, xã Trung Giã, TP Hà Nội"
-      },
-      "full_name": {
-       "vi": "Nhà máy 2 – Hương Ninh"
-      },
-      "locality": {
-       "vi": "Trung Giã"
-      },
-      "image_media_id": {
-       "media": "plant-2-assembly-floor-1"
-      },
-      "lat": 21.2936586,
-      "lng": 105.8649934,
-      "approximate": true
-     },
-     {
-      "key": "nha-may-3",
-      "title": {
-       "vi": "NHÀ MÁY 3"
-      },
       "area_m2": 1800,
       "name": {
-       "vi": "Nhà máy gia công"
+       "vi": "Nhà máy gia công khuôn, jig, chi tiết hàng loạt"
       },
       "address": {
        "vi": "Đội 6, thôn Ngũ Sơn, xã Thạch Thất, TP Hà Nội"
       },
       "full_name": {
-       "vi": "Nhà máy 3 – Ngũ Sơn"
+       "vi": "Nhà máy 2 – Ngũ Sơn"
       },
       "locality": {
        "vi": "Thạch Thất"
@@ -144,6 +119,25 @@
       "lat": 21.0655337,
       "lng": 105.556209,
       "approximate": true
+     },
+     {
+      "key": "nha-may-3",
+      "title": {
+       "vi": "NHÀ MÁY 3"
+      },
+      "area_m2": 3500,
+      "name": {
+       "vi": "Nhà máy gia công, sản xuất hàn, dập, sơn linh kiện ô tô, xe máy"
+      },
+      "address": {
+       "vi": "TDP Kim Tỉnh, phường Trung Thành, tỉnh Thái Nguyên"
+      },
+      "full_name": {
+       "vi": "Nhà máy 3 – Kim Tỉnh"
+      },
+      "locality": {
+       "vi": "Thái Nguyên"
+      }
      }
     ],
     "copyright": {

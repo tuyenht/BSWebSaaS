@@ -83,7 +83,7 @@ it('prints exactly one high-priority image: the first photo, with its srcset; th
     $thumbs = array_filter($images[0], fn (string $img): bool => str_contains($img, 'product__thumb-img'));
     expect($thumbs)->toHaveCount(3);
     foreach ($thumbs as $thumb) {
-        expect($thumb)->toContain('loading="lazy"')->not->toContain('fetchpriority');
+        expect($thumb)->toContain('loading="lazy"')->toContain('fetchpriority="low"')->not->toContain('fetchpriority="high"');
     }
 });
 

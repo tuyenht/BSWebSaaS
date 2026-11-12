@@ -504,7 +504,7 @@
     "vi": "Logo Vinmanutech"
    },
    "collection": "library",
-   "license": "Logo của đối tác, An Vinh được phép hiển thị trên website. Tệp cắt từ hồ sơ năng lực An Vinh (chờ tệp gốc của hãng)."
+   "license": "Logo của đối tác, An Vinh được phép hiển thị trên website. Tệp cắt từ hồ sơ năng lực An Vinh bản cũ (chờ tệp gốc của hãng)."
   },
   {
    "slot": "iso-9001-certificate",
@@ -520,10 +520,10 @@
    "kind": "document",
    "file": "media/ho-so-nang-luc-an-vinh.pdf",
    "alt": {
-    "vi": "Hồ sơ năng lực Công ty An Vinh (PDF, 21 trang)"
+    "vi": "Hồ sơ năng lực Công ty An Vinh (PDF, 27 trang)"
    },
    "collection": "library",
-   "license": "Tài liệu của Công ty An Vinh, công ty gửi để đăng tải trên website; bản nén ảnh 250 dpi từ bản gốc 21 trang."
+   "license": "Tài liệu của Công ty An Vinh, bản 27 trang do công ty gửi để đăng tải trên website."
   },
   {
    "slot": "plant-3-machining-hall",
@@ -532,7 +532,7 @@
     "vi": "Xưởng gia công nhìn từ trên cao: các dãy máy CNC, lối đi sơn đỏ viền vàng, cầu trục màu cam và công nhân đang làm việc"
    },
    "collection": "library",
-   "license": "Ảnh của Công ty An Vinh, lấy từ hồ sơ năng lực công ty gửi để đăng tải trên website (trang 19)."
+   "license": "Ảnh của Công ty An Vinh, lấy từ hồ sơ năng lực bản cũ công ty gửi để đăng tải trên website (trang 19)."
   },
   {
    "slot": "plant-2-assembly-floor-1",
@@ -541,7 +541,7 @@
     "vi": "Nhiều khung đồ gá sơn trắng có cụm kẹp màu đen và tấm đế màu vàng xếp thành hàng trên sàn nhà xưởng"
    },
    "collection": "library",
-   "license": "Ảnh của Công ty An Vinh, lấy từ hồ sơ năng lực công ty gửi để đăng tải trên website (trang 18)."
+   "license": "Ảnh của Công ty An Vinh, lấy từ hồ sơ năng lực bản cũ công ty gửi để đăng tải trên website (trang 18)."
   },
   {
    "slot": "plant-2-assembly-floor-2",
@@ -550,7 +550,7 @@
     "vi": "Các khung đồ gá sơn trắng xếp kín sàn nhà xưởng, nhìn dọc theo các dãy khung"
    },
    "collection": "library",
-   "license": "Ảnh của Công ty An Vinh, lấy từ hồ sơ năng lực công ty gửi để đăng tải trên website (trang 18)."
+   "license": "Ảnh của Công ty An Vinh, lấy từ hồ sơ năng lực bản cũ công ty gửi để đăng tải trên website (trang 18)."
   },
   {
    "slot": "plant-3-cnc-x4200",
@@ -559,7 +559,7 @@
     "vi": "Máy phay CNC dạng cổng Neway PM2040HA với bàn máy dài trong nhà xưởng"
    },
    "collection": "library",
-   "license": "Ảnh của Công ty An Vinh, lấy từ hồ sơ năng lực công ty gửi để đăng tải trên website (trang 19)."
+   "license": "Ảnh của Công ty An Vinh, lấy từ hồ sơ năng lực bản cũ công ty gửi để đăng tải trên website (trang 19)."
   },
   {
    "slot": "plant-3-cnc-gantry",
@@ -568,7 +568,7 @@
     "vi": "Máy CNC cỡ lớn dạng cổng có cầu thang màu cam; một công nhân đứng trên bệ máy, một người ngồi tại máy tính"
    },
    "collection": "library",
-   "license": "Ảnh của Công ty An Vinh, lấy từ hồ sơ năng lực công ty gửi để đăng tải trên website (trang 19)."
+   "license": "Ảnh của Công ty An Vinh, lấy từ hồ sơ năng lực bản cũ công ty gửi để đăng tải trên website (trang 19)."
   },
   {
    "slot": "jig-technician",
@@ -577,7 +577,7 @@
     "vi": "Kỹ thuật viên mặc áo đồng phục An Vinh, đội mũ bảo hộ, căn chỉnh đồ gá có nhiều cụm kẹp trên tấm nền màu vàng"
    },
    "collection": "library",
-   "license": "Ảnh của Công ty An Vinh, lấy từ hồ sơ năng lực công ty gửi để đăng tải trên website (trang 13)."
+   "license": "Ảnh của Công ty An Vinh, lấy từ hồ sơ năng lực bản cũ công ty gửi để đăng tải trên website (trang 13)."
   },
   {
    "slot": "design-straightening-machine",
@@ -586,7 +586,7 @@
     "vi": "Bản vẽ 3D máy tự động nắn sửa sản phẩm: bàn đồ gá màu vàng đặt trên bánh xe, bên cạnh tủ điện"
    },
    "collection": "library",
-   "license": "Ảnh của Công ty An Vinh, lấy từ hồ sơ năng lực công ty gửi để đăng tải trên website (trang 11)."
+   "license": "Ảnh của Công ty An Vinh, lấy từ hồ sơ năng lực bản cũ công ty gửi để đăng tải trên website (trang 11)."
   },
   {
    "slot": "design-spot-weld-station",
@@ -595,7 +595,7 @@
     "vi": "Mô phỏng 3D trạm hàn spot: ba robot công nghiệp đặt giữa các bàn đồ gá"
    },
    "collection": "library",
-   "license": "Ảnh của Công ty An Vinh, lấy từ hồ sơ năng lực công ty gửi để đăng tải trên website (trang 11)."
+   "license": "Ảnh của Công ty An Vinh, lấy từ hồ sơ năng lực bản cũ công ty gửi để đăng tải trên website (trang 11)."
   }
  ]
 }

@@ -111,7 +111,7 @@ describe('the block', function (): void {
         $poster = 'https://files.test/s/library/poster.webp?w=1280';
         $html = videoSection(['url' => 'https://youtu.be/SxwkhMy4Ywo', 'poster' => $poster], [$poster => 'https://files.test/s/library/poster.webp?w=640 640w']);
 
-        expect($html)->toMatch('#<img class="sf-video__poster" src="https://files\.test/s/library/poster\.webp\?w=1280" srcset="https://files\.test/s/library/poster\.webp\?w=640 640w" sizes="[^"]+" alt="" width="1600" height="900" loading="lazy" decoding="async">#')
+        expect($html)->toMatch('#<img class="sf-video__poster" src="https://files\.test/s/library/poster\.webp\?w=1280" srcset="https://files\.test/s/library/poster\.webp\?w=640 640w" sizes="[^"]+" alt="" width="1600" height="900" loading="lazy" decoding="async" fetchpriority="low">#')
             ->and($html)->not->toContain('sf-video--blank');
 
         $blank = videoSection(['url' => 'https://youtu.be/SxwkhMy4Ywo', 'poster' => null]);

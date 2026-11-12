@@ -39,7 +39,7 @@ it('renders each slide as a labelled group with slide 1 as the high-priority ima
         ->and($html)->toContain('aria-label="Ảnh 1/3"')->toContain('aria-label="Ảnh 3/3"')
         ->and($html)->toContain('aria-roledescription="carousel"')
         ->and($html)->toMatch('#<img class="sf-slide__img" src="https://files\.test/s/a\.webp\?w=1280" srcset="[^"]+" sizes="100vw" alt="" width="1600" height="900" loading="eager" fetchpriority="high">#')
-        ->and($html)->toMatch('#<div class="sf-slide__media" hidden >\s*<img class="sf-slide__img" src="https://files\.test/s/b\.webp\?w=1280" alt="" width="1600" height="900" loading="lazy" decoding="async">#')
+        ->and($html)->toMatch('#<div class="sf-slide__media" hidden >\s*<img class="sf-slide__img" src="https://files\.test/s/b\.webp\?w=1280" alt="" width="1600" height="900" loading="lazy" decoding="async" fetchpriority="low">#')
         ->and(substr_count($html, '<h2 class="sf-slide__title">'))->toBe(3)
         ->and($html)->not->toContain('<h1')
         ->and(substr_count($html, 'href="/lien-he">Báo giá</a>'))->toBe(3);

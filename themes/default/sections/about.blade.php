@@ -82,7 +82,7 @@
                  alt="{{ $sfHeading }}"
                  width="{{ $sfSize[0] ?? 640 }}"
                  height="{{ $sfSize[1] ?? 480 }}"
-                 loading="{{ ! empty($props['_high']) ? 'eager' : 'lazy' }}"@if (! empty($props['_high'])) fetchpriority="high"@endif>
+                 loading="{{ ! empty($props['_high']) ? 'eager' : 'lazy' }}"@if (! empty($props['_high'])) fetchpriority="high"@else decoding="async" fetchpriority="low"@endif>
 @if ($sfZoom !== null)<span class="about__zoom-hint">{{ __('storefront.zoom_hint') }}</span></a>@endif        </div>
     @endif
 </section>

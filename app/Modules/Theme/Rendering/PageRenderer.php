@@ -81,8 +81,10 @@ final readonly class PageRenderer
         $dates = $withToc && is_array($extra['pageDates'] ?? null) ? $extra['pageDates'] : [];
         unset($extra['pageDates']);
         $tokens = $this->theme->cssVariables();
-        // One pass over the body and the slots: pages and files are looked up once per kind.
-        $drawn = $this->blocks->renderBodies([self::withPageTitle($body, $title, $leadBlock, $crumbs, $dates), ...self::slotBodies($slots['blocks'])], $slots['context']);
+        // One pass over the body and the slots: pages and files are looked up once per kind. A page's layout
+        // draws no photo above the body (a post, project or product has its cover), so on a page the first
+        // block that draws an image takes the high priority, even after a block of text.
+        $drawn = $this->blocks->renderBodies([self::withPageTitle($body, $title, $leadBlock, $crumbs, $dates), ...self::slotBodies($slots['blocks'])], $slots['context'], true, $type === 'page');
         ['html' => $sections, 'bgVideo' => $bgVideo] = $drawn[0];
         $slotHtml = self::slotHtml($slots['blocks'], array_slice($drawn, 1));
         $extra['slotHtml'] = $slotHtml;
