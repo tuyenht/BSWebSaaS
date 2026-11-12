@@ -72,11 +72,12 @@ it('answers "invite member" with the same sentence whether or not the address ha
         app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($owner->fresh())
             ->test(Index::class)
             ->set('inviteEmail', $email)
-            ->set('inviteRole', 'viewer')
-            ->call('addMember')
+            ->set('inviteRoles', ['viewer'])
+            ->call('sendInvites')
             ->assertHasNoErrors()
             // One sentence template for both — nothing tells the admin which address has an account.
-            ->assertSee(__('rbac.invitation.sent', ['email' => $email, 'days' => InviteMember::VALID_DAYS])));
+            ->assertSet('inviteResults', [['email' => $email, 'ok' => true, 'text' => __('admin.members.inv_res_ok', ['days' => InviteMember::VALID_DAYS])]])
+            ->assertSee(__('admin.members.inv_res_ok', ['days' => InviteMember::VALID_DAYS])));
     }
 
     Notification::assertSentOnDemandTimes(MemberInvitationNotification::class, 2);
@@ -89,8 +90,8 @@ it('tells the admin in plain words when an address has had its invitations for t
     $inviteHopThu = fn () => app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($owner->fresh())
         ->test(Index::class)
         ->set('inviteEmail', 'hop-thu@example.test')
-        ->set('inviteRole', 'viewer')
-        ->call('addMember'));
+        ->set('inviteRoles', ['viewer'])
+        ->call('sendInvites'));
 
     for ($i = 0; $i < InviteMember::ADDRESS_DAILY_LIMIT; $i++) {
         $inviteHopThu()->assertHasNoErrors();
@@ -98,7 +99,7 @@ it('tells the admin in plain words when an address has had its invitations for t
     }
 
     $inviteHopThu()
-        ->assertHasErrors('inviteEmail')
+        ->assertSet('inviteResults', [['email' => 'hop-thu@example.test', 'ok' => false, 'text' => __('rbac.invitation.error_address_daily_limit')]])
         ->assertSee(__('rbac.invitation.error_address_daily_limit'));
 
     Notification::assertSentOnDemandTimes(MemberInvitationNotification::class, InviteMember::ADDRESS_DAILY_LIMIT);
@@ -113,8 +114,8 @@ it('mails a link to the invitation page on the site’s own host', function (): 
     app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($owner->fresh())
         ->test(Index::class)
         ->set('inviteEmail', 'moi@example.test')
-        ->set('inviteRole', 'viewer')
-        ->call('addMember'));
+        ->set('inviteRoles', ['viewer'])
+        ->call('sendInvites'));
 
     Notification::assertSentOnDemand(MemberInvitationNotification::class, function (MemberInvitationNotification $note, array $channels, object $notifiable): bool {
         app()->setLocale((string) $note->locale);   // the sender renders the mail in the notification's locale
@@ -235,4 +236,85 @@ it('explains a used or unknown link in plain words', function (): void {
 
 it('does not route a malformed invitation link', function (): void {
     $this->get('http://a.test/admin/invitations/ngan-qua')->assertNotFound();
+});
+
+/** Record $n invitation mails site 1 sent in the last hours, as InviteMember counts them. */
+function screensMailsSent(int $n): void
+{
+    DB::connection('pgsql_admin')->statement(<<<'SQL'
+        insert into audit_logs (ulid, action, site_id, meta, created_at)
+        select lpad(g::text, 26, '0'), 'rbac.invitation.sent', 1, jsonb_build_object('email', 'cu-' || g || '@example.test'), now() - interval '1 hour'
+        from generate_series(1, ?) g
+    SQL, [$n]);
+}
+
+it('refuses more addresses than one send takes, saying the limit, and sends none', function (): void {
+    Notification::fake();
+    $owner = screensMember('owner');
+    screensMember('viewer');
+    $emails = implode("\n", array_map(fn (int $i): string => "khach-{$i}@example.test", range(1, Index::INVITE_MAX + 1)));
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($owner->fresh())
+        ->test(Index::class)
+        ->set('inviteEmail', $emails)
+        ->set('inviteRoles', ['viewer'])
+        ->call('sendInvites')
+        ->assertHasErrors('inviteEmail')
+        ->assertSee(__('admin.members.inv_too_many', ['n' => Index::INVITE_MAX + 1, 'max' => Index::INVITE_MAX]))
+        ->assertSet('inviteResults', []));
+
+    expect(DB::connection('pgsql_admin')->table('invitations')->count())->toBe(0);
+    Notification::assertNothingSent();
+});
+
+it('refuses more addresses than the site may still mail today, saying how many are left, and sends none', function (): void {
+    Notification::fake();
+    $owner = screensMember('owner');
+    screensMember('viewer');
+    screensMailsSent(InviteMember::DAILY_LIMIT - 2);
+    $send = fn (string $emails) => app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($owner->fresh())
+        ->test(Index::class)
+        ->set('inviteEmail', $emails)
+        ->set('inviteRoles', ['viewer'])
+        ->call('sendInvites'));
+
+    $send('mot@example.test, hai@example.test, ba@example.test')
+        ->assertHasErrors('inviteEmail')
+        ->assertSee(__('admin.members.inv_over_quota', ['n' => 3, 'left' => 2, 'max' => InviteMember::DAILY_LIMIT]))
+        ->assertSet('inviteResults', []);
+    expect(DB::connection('pgsql_admin')->table('invitations')->count())->toBe(0);
+
+    $send('mot@example.test, hai@example.test')->assertHasNoErrors();
+    $send('ba@example.test')
+        ->assertHasErrors('inviteEmail')
+        ->assertSee(__('admin.members.inv_quota_none', ['max' => InviteMember::DAILY_LIMIT]));
+
+    expect(DB::connection('pgsql_admin')->table('invitations')->count())->toBe(2);
+    Notification::assertSentOnDemandTimes(MemberInvitationNotification::class, 2);
+});
+
+it('sends invitations on a fixed number of queries per address: the screen reads the site name and the roles once', function (): void {
+    Notification::fake();
+    $owner = screensMember('owner');
+    screensMember('viewer');
+    screensMember('editor');
+    $count = fn (string $batch, int $n): int => app(Tenancy::class)->enter(1, function () use ($owner, $batch, $n): int {
+        $page = Livewire::actingAs($owner->fresh())
+            ->test(Index::class)
+            ->set('inviteEmail', implode(', ', array_map(fn (int $i): string => "gui-{$batch}-{$i}@example.test", range(1, $n))))
+            ->set('inviteRoles', ['viewer', 'editor']);
+
+        return countQueries(fn () => $page->call('sendInvites')->assertHasNoErrors());
+    });
+
+    $count('am-may', 1); // the first send fills the permission caches the role checks read
+    $one = $count('mot', 1);
+    $twenty = $count('hai-muoi', 20);
+
+    // each further address costs only what InviteMember needs: the level check per role (2), the
+    // account lookup, the lock, the open invitation, the two mail counts, the invitation, its role
+    // rows (read + one insert per role) and the audit row — nothing the screen reads again
+    expect($twenty - $one)->toBe(19 * 12)
+        ->and($one)->toBe(72);
+    Notification::assertSentOnDemandTimes(MemberInvitationNotification::class, 22);
 });

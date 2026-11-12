@@ -25,6 +25,7 @@ use App\Modules\Admin\Livewire\Catalog\Index;
 use App\Modules\Admin\Livewire\Platform\Audit\CleanupDialog;
 use App\Modules\Admin\Livewire\SeoSettings;
 use App\Modules\Admin\Livewire\Settings\Domains as DomainSettings;
+use App\Modules\Admin\Livewire\Users\Index as MembersIndex;
 use App\Modules\Admin\Livewire\WorkflowSettings;
 use App\Modules\Admin\Support\Settings\SetBrandImages;
 use App\Modules\Audit\Models\AuditLog;
@@ -44,6 +45,8 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
+use App\Modules\Rbac\Models\Role;
+use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Shared\Http\SafeHttp;
 use App\Modules\Tenancy\Context\Tenancy;
@@ -478,9 +481,9 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
 
         return (string) preg_replace('/^<div wire:id="([^"]+)"/', '<div wire:snapshot="'.e(is_string($snapshot) ? $snapshot : json_encode($snapshot)).'" wire:effects="[]" wire:id="$1"', $test->html(), 1);
     };
-    $swap = function (string $page, string $component): string {
+    $swap = function (string $page, string $component, string $name = 'admin\\.catalog\\.index'): string {
         // the list's own root: the div that carries its snapshot, up to the div that closes it
-        expect(preg_match('/<div wire:snapshot="[^"]*admin\\.catalog\\.index/', $page, $m, PREG_OFFSET_CAPTURE))->toBe(1);
+        expect(preg_match('/<div wire:snapshot="[^"]*'.$name.'/', $page, $m, PREG_OFFSET_CAPTURE))->toBe(1);
         $from = $m[0][1];
         preg_match_all('#<div\b|</div>#', $page, $tags, PREG_OFFSET_CAPTURE, $from);
         $depth = 0;
@@ -502,5 +505,36 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $dialog = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($mount()->call('toggleSelect', [$ulids[0], $ulids[1]])->call('openCategory')));
     file_put_contents($dir.'/product-list-category.html', $swap($html, $dialog));
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 26);
+    // The members screen with a realistic team: several roles, one member in two of them, a very long name and
+    // email, a member at the owner's level (no buttons, says why). Then the roles panel and the invite dialog open.
+    $people = app(Tenancy::class)->enter(1, function (): array {
+        $made = [];
+        foreach ([
+            ['Trần Thị Thu Hà', 'ha.tran@congtydemo.vn', ['editor', 'author']],
+            ['Lê Văn Đức', 'duc.le@congtydemo.vn', ['admin']],
+            ['Phạm Minh Tâm', 'tam.pham@congtydemo.vn', ['viewer']],
+            ['Nguyễn Hoàng Bảo Ngọc Phương Thảo Trịnh Thị Minh Nguyệt', 'nguyet.trinh.thi.minh.phong.kinh.doanh@congtydemo.vn', ['contributor']],
+            ['Võ Quốc Việt', 'viet.vo@congtydemo.vn', ['owner']],
+        ] as [$name, $email, $roles]) {
+            $user = User::factory()->create(['name' => $name, 'email' => $email]);
+            foreach ($roles as $role) {
+                $user->assignRole(Role::findByName($role, PermissionRegistry::GUARD));
+            }
+            $made[$name] = $user->ulid;
+        }
+
+        return $made;
+    });
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/users')->assertOk()->getContent();
+    expect($html)->toContain('Trần Thị Thu Hà', __('admin.members.why_level'));
+    file_put_contents($dir.'/members.html', $html);
+    $members = fn () => Livewire::actingAs($owner)->test(MembersIndex::class);
+    $panel = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($members()->call('openPanel', $people['Trần Thị Thu Hà'])->set('panelRoles', ['editor'])));
+    expect($panel)->toContain(__('admin.members.panel_title', ['name' => 'Trần Thị Thu Hà']));
+    file_put_contents($dir.'/members-panel.html', $swap($html, $panel, 'admin\\.users\\.index'));
+    $invite = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($members()->call('openInvite')));
+    file_put_contents($dir.'/members-invite.html', $swap($html, $invite, 'admin\\.users\\.index'));
+
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 29);
 });

@@ -33,7 +33,6 @@ const ADMIN_HAND_BUILT_PARTS = [
     'seo-settings.blade.php' => [0, 1, 0],
     'settings.blade.php' => [0, 0, 1],
     'settings/domains.blade.php' => [0, 2, 0],
-    'users/index.blade.php' => [0, 0, 1],
     'workflow-settings.blade.php' => [4, 1, 0],
 ];
 

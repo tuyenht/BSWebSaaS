@@ -86,6 +86,29 @@ final class CategoryScopes
     }
 
     /**
+     * The categories each of $userIds is limited to (without their descendants), by user id, in one
+     * read for a whole page of members. A member never limited, or holding a role at or above
+     * EXEMPT_LEVEL (the caller leaves those out), has no entry.
+     *
+     * @param  list<int>  $userIds
+     * @return array<int, list<int>>
+     */
+    public function rootIdsOf(array $userIds): array
+    {
+        if ($userIds === []) {
+            return [];
+        }
+        $roots = [];
+        $rows = DB::table('member_category_scopes')->where('site_id', $this->site->id())->whereIn('user_id', $userIds)
+            ->orderBy('user_id')->orderBy('taxonomy_id')->limit(1000)->get(['user_id', 'taxonomy_id']);
+        foreach ($rows as $row) {
+            $roots[Cast::int($row->user_id)][] = Cast::int($row->taxonomy_id);
+        }
+
+        return $roots;
+    }
+
+    /**
      * Every category the member may write in — the scoped ones and all below them — or null when
      * not limited (every category).
      *
