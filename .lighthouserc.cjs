@@ -21,7 +21,8 @@ module.exports = {
       // Pages the provisioned measurement site publishes: home, the contact page (a form block),
       // the news list, and two pages site:seed-measurement adds: /do-kiem (slider, card grids,
       // contact cards) and /ban-tin (a news card grid with child-category chips).
-      url: [`${origin}/`, `${origin}/lien-he`, `${origin}/tin-tuc`, `${origin}/do-kiem`, `${origin}/ban-tin`],
+      url: [`${origin}/`, `${origin}/lien-he`, `${origin}/tin-tuc`, `${origin}/do-kiem`, `${origin}/ban-tin`,
+        `${origin}/khanh-thanh-xuong-moi`, `${origin}/do-kiem-gioi-thieu`, `${origin}/do-kiem-noi-dung`, `${origin}/do-kiem-thuong-mai`],
       numberOfRuns: 3,
       // PHP's built-in server behind a router that gzips HTML, CSS and JS the way production's
       // Caddy does (`encode zstd gzip`), so the page weighs what a visitor downloads.
@@ -39,7 +40,7 @@ module.exports = {
       // A page added later joins at 'warn' with the same budgets: /do-kiem and /ban-tin since
       // 02/11, promoted to 'error' once their own CI samples show headroom.
       assertMatrix: [
-        { matchingUrlPattern: '/(do-kiem|ban-tin)$', assertions: budgets('warn') },
+        { matchingUrlPattern: '/(do-kiem|ban-tin|khanh-thanh-xuong-moi|do-kiem-gioi-thieu|do-kiem-noi-dung|do-kiem-thuong-mai)$', assertions: budgets('warn') },
         { matchingUrlPattern: '^https?://[^/]+(/|/lien-he|/tin-tuc)$', assertions: budgets('error') },
       ],
     },

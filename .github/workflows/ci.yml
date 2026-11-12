@@ -604,7 +604,7 @@ jobs:
       # fixed de81d6b), clean on every run since. A WCAG2A/AA violation fails the job (--exit).
       - name: axe accessibility scan
         run: >-
-          pnpm exec axe "http://${CWV_HOST}:${CWV_PORT}/" "http://${CWV_HOST}:${CWV_PORT}/lien-he" "http://${CWV_HOST}:${CWV_PORT}/tin-tuc" "http://${CWV_HOST}:${CWV_PORT}/do-kiem" "http://${CWV_HOST}:${CWV_PORT}/ban-tin"
+          pnpm exec axe "http://${CWV_HOST}:${CWV_PORT}/" "http://${CWV_HOST}:${CWV_PORT}/lien-he" "http://${CWV_HOST}:${CWV_PORT}/tin-tuc" "http://${CWV_HOST}:${CWV_PORT}/do-kiem" "http://${CWV_HOST}:${CWV_PORT}/ban-tin" "http://${CWV_HOST}:${CWV_PORT}/khanh-thanh-xuong-moi" "http://${CWV_HOST}:${CWV_PORT}/do-kiem-gioi-thieu" "http://${CWV_HOST}:${CWV_PORT}/do-kiem-noi-dung" "http://${CWV_HOST}:${CWV_PORT}/do-kiem-thuong-mai"
           --tags wcag2a,wcag2aa
           --chrome-path="${{ steps.chrome.outputs.chrome-path }}"
           --chromedriver-path="${{ steps.chrome.outputs.chromedriver-path }}"
@@ -617,7 +617,7 @@ jobs:
       - name: Tap check (phone · nothing drawn over a control)
         run: >-
           node scripts/storefront/tap-check.mjs --chrome="${{ steps.chrome.outputs.chrome-path }}" --widths=320,390 --expect-arrows=/do-kiem
-          "http://${CWV_HOST}:${CWV_PORT}/" "http://${CWV_HOST}:${CWV_PORT}/lien-he" "http://${CWV_HOST}:${CWV_PORT}/tin-tuc" "http://${CWV_HOST}:${CWV_PORT}/do-kiem" "http://${CWV_HOST}:${CWV_PORT}/ban-tin"
+          "http://${CWV_HOST}:${CWV_PORT}/" "http://${CWV_HOST}:${CWV_PORT}/lien-he" "http://${CWV_HOST}:${CWV_PORT}/tin-tuc" "http://${CWV_HOST}:${CWV_PORT}/do-kiem" "http://${CWV_HOST}:${CWV_PORT}/ban-tin" "http://${CWV_HOST}:${CWV_PORT}/khanh-thanh-xuong-moi" "http://${CWV_HOST}:${CWV_PORT}/do-kiem-gioi-thieu" "http://${CWV_HOST}:${CWV_PORT}/do-kiem-noi-dung" "http://${CWV_HOST}:${CWV_PORT}/do-kiem-thuong-mai"
 
       # Admin a11y: render the admin screens as a seeded owner (no login, no 2FA, no real env —
       # tests/Tools/RenderAdminPreviewTest.php) and gate them on STRUCTURAL WCAG 2A/2AA with axe in
