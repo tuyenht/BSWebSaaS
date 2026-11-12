@@ -137,14 +137,30 @@ it('keeps the first of a repeated channel in the phone bar too', function (): vo
         ->and($out['bar'][0]['href'])->toBe('https://zalo.me/0912345678');
 });
 
-it('fills the phone bar with five buttons at most, "Mua hàng" counted', function (): void {
+it('puts every finished channel in the bar in the admin\'s order, chat channels included, with no cap of five', function (): void {
+    $keys = ['phone', 'messenger', 'zalo', 'email', 'sms', 'whatsapp', 'viber', 'telegram'];
     $raw = ['enabled' => true, 'theme' => 'horizontal', 'buy' => ['enabled' => true, 'color' => '#0ab39c'], 'channels' => array_map(
-        static fn (string $key): array => ['key' => $key, 'on' => true, 'value' => '0912345678'],
-        ['phone', 'zalo', 'sms', 'whatsapp', 'viber', 'messenger'],
+        static fn (string $key): array => ['key' => $key, 'on' => true, 'value' => match ($key) {
+            'email' => 'a@mau.test',
+            'messenger' => 'trang.mau',
+            'telegram' => 'trangmau',
+            default => '0912345678',
+        }],
+        $keys,
     )];
 
-    expect(array_column(FloatingContact::for($raw, 'vi', '/san-pham')['bar'], 'key'))->toBe(['phone', 'zalo', 'sms', 'whatsapp'])
-        ->and(array_column(FloatingContact::for($raw, 'vi')['bar'], 'key'))->toBe(['phone', 'zalo', 'sms', 'whatsapp', 'viber']);
+    expect(array_column(FloatingContact::for($raw, 'vi', '/san-pham')['bar'], 'key'))->toBe($keys)
+        ->and(array_column(FloatingContact::for($raw, 'vi')['bar'], 'key'))->toBe($keys)
+        ->and(FloatingContact::for($raw, 'vi')['phone_bar'])->toBeNull();
+});
+
+it('keeps the board phone bar of a round-button site without the chat channels and at three cells', function (): void {
+    $raw = ['enabled' => true, 'phone_bar' => ['enabled' => true], 'channels' => array_map(
+        static fn (string $key): array => ['key' => $key, 'on' => true, 'value' => $key === 'email' ? 'a@mau.test' : '0912345678'],
+        ['messenger', 'email', 'phone', 'zalo', 'sms', 'viber'],
+    )];
+
+    expect(array_column(FloatingContact::for($raw, 'vi')['phone_bar']['bar'], 'key'))->toBe(['phone', 'zalo', 'sms']);
 });
 
 it('ends the phone bar with "Mua hàng" only when it is on and the site has a product list', function (): void {
@@ -233,3 +249,59 @@ it('has no phone bar unless switched on, and never on the bar theme', function (
         ->and(FloatingContact::for(['enabled' => true, 'channels' => $channels, 'phone_bar' => ['enabled' => false]], 'vi')['phone_bar'])->toBeNull()
         ->and(FloatingContact::for(['enabled' => true, 'theme' => 'horizontal', 'channels' => $channels, 'phone_bar' => ['enabled' => true]], 'vi')['phone_bar'])->toBeNull();
 });
+
+it('marks a channel switched on but not filled in as an unfinished slot in the admin preview only', function (): void {
+    $raw = ['enabled' => true, 'theme' => 'horizontal', 'channels' => [
+        ['key' => 'phone', 'on' => true, 'value' => '0912345678'],
+        ['key' => 'messenger', 'on' => true, 'value' => ''],
+        ['key' => 'zalo', 'on' => true, 'value' => ''],
+        ['key' => 'sms', 'on' => true, 'value' => 'not a number'],
+        ['key' => 'email', 'on' => false, 'value' => ''],
+        ['key' => 'whatsapp', 'on' => true, 'value' => ''],
+        ['key' => 'telegram', 'on' => true, 'value' => ''],
+        ['key' => 'viber', 'on' => true, 'value' => ''],
+    ]];
+    $pending = static fn (array $list): array => array_column(array_filter($list, static fn (array $b): bool => $b['pending'] ?? false), 'key');
+
+    // The site: only what passes, never a slot.
+    $site = FloatingContact::for($raw, 'vi');
+    expect(array_column($site['buttons'], 'key'))->toBe(['phone'])
+        ->and($pending($site['buttons']))->toBe([])
+        ->and($site['buttons'][0])->not->toHaveKey('pending');
+
+    // The preview: every switched-on channel at its place, the unfinished ones marked; the bar
+    // holds all of them.
+    $preview = FloatingContact::preview($raw, 'vi');
+    expect(array_column($preview['buttons'], 'key'))->toBe(['phone', 'messenger', 'zalo', 'sms', 'whatsapp', 'telegram', 'viber'])
+        ->and($pending($preview['buttons']))->toBe(['messenger', 'zalo', 'sms', 'whatsapp', 'telegram', 'viber'])
+        ->and(array_column($preview['bar'], 'key'))->toBe(['phone', 'messenger', 'zalo', 'sms', 'whatsapp', 'telegram', 'viber'])
+        ->and(collect($preview['bar'])->firstWhere('key', 'zalo')['href'])->toBe('');
+
+    // Nothing filled in yet: the site shows nothing, the preview still shows where the buttons go.
+    $empty = ['enabled' => true, 'theme' => 'vertical', 'channels' => [['key' => 'sms', 'on' => true, 'value' => '']]];
+    expect(FloatingContact::for($empty, 'vi'))->toBeNull()
+        ->and(array_column(FloatingContact::preview($empty, 'vi')['buttons'], 'key'))->toBe(['sms']);
+});
+
+it('keeps every slot at its place in the bar preview and the finished cells exactly the site\'s bar', function (array $channels, ?string $shop, array $bar): void {
+    $raw = ['enabled' => true, 'theme' => 'horizontal', 'buy' => ['enabled' => true, 'color' => '#0ab39c'], 'channels' => $channels];
+
+    expect(array_column(FloatingContact::preview($raw, 'vi', $shop)['bar'], 'key'))->toBe($bar)
+        ->and(array_column(array_values(array_filter(FloatingContact::preview($raw, 'vi', $shop)['bar'], fn (array $b): bool => ! isset($b['pending']))), 'key'))
+        ->toBe(array_column(FloatingContact::for($raw, 'vi', $shop)['bar'], 'key'));
+})->with([
+    'five finished + one slot' => [[
+        ['key' => 'phone', 'on' => true, 'value' => '0912345678'],
+        ['key' => 'zalo', 'on' => true, 'value' => ''],
+        ['key' => 'sms', 'on' => true, 'value' => '0912345678'],
+        ['key' => 'whatsapp', 'on' => true, 'value' => '0912345678'],
+        ['key' => 'telegram', 'on' => true, 'value' => 'trangmau'],
+        ['key' => 'viber', 'on' => true, 'value' => '0912345678'],
+    ], null, ['phone', 'zalo', 'sms', 'whatsapp', 'telegram', 'viber']],
+    'a slot in the middle keeps the setting order' => [[
+        ['key' => 'phone', 'on' => true, 'value' => '0912345678'],
+        ['key' => 'messenger', 'on' => true, 'value' => ''],
+        ['key' => 'zalo', 'on' => true, 'value' => ''],
+        ['key' => 'sms', 'on' => true, 'value' => '0912345678'],
+    ], null, ['phone', 'messenger', 'zalo', 'sms']],
+]);

@@ -324,9 +324,9 @@ it('keeps the “Mua hàng” switch but shows the button nowhere while the site
             ->call('toggleChannel', 'sms');
         $lw->set('channels.'.fcsIndex($lw, 'sms').'.value', '0912345678');
 
-        // The preview draws what the site draws: three channels, no buy button.
+        // The preview draws what the site draws: no buy button.
         expect($lw->viewData('preview')['buy'])->toBeNull()
-            ->and(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo', 'sms']);
+            ->and(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo', 'messenger', 'email', 'sms']);
         $lw->call('save')->assertHasNoErrors();
     });
 
@@ -350,7 +350,7 @@ it('shows “Mua hàng” in the preview, after the channels, when the site has 
         $lw->set('channels.'.fcsIndex($lw, 'sms').'.value', '0912345678');
 
         expect($lw->viewData('preview')['buy'])->toMatchArray(['fill' => 'var(--color-primary)', 'ink' => 'var(--color-on-primary)'])
-            ->and(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo', 'sms']);
+            ->and(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo', 'messenger', 'email', 'sms']);
         $lw->assertSee('Mua hàng');
     });
 });
@@ -366,7 +366,7 @@ it('previews the bottom bar on a phone only, with no device switch', function ()
         $lw->call('setTheme', 'horizontal')
             ->assertDontSee('aria-label="Thiết bị xem trước"', false)
             ->assertSee('<span class="font-normal text-text-muted"> · trên điện thoại</span>', false)
-            ->assertSee('Điện thoại hẹp tự bớt nút ở cuối');
+            ->assertSee('màn hẹp tự bớt nút ở cuối');
 
         $lw->call('setTheme', 'vertical')->assertSee('aria-label="Thiết bị xem trước"', false);
     });
@@ -392,6 +392,64 @@ it('lets a switched-off or empty channel through, as the page draws it', functio
     });
 
     expect(fcsStored())->not->toBeNull();
+});
+
+it('shows a channel switched on but not filled in at its place in the round-button preview, with a hint under its field', function (): void {
+    $admin = fcsAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        // No brand phone or email: the call, Zalo, Messenger and email start switched on and empty.
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class);
+        $lw->set('channels.'.fcsIndex($lw, 'phone').'.value', '0912345678')
+            ->call('toggleChannel', 'sms');   // switched on, left empty
+        $lw->set('channels.'.fcsIndex($lw, 'zalo').'.value', 'abc');   // a value that does not pass
+
+        $preview = $lw->viewData('preview');
+        $pending = array_column(array_filter($preview['buttons'], fn (array $b): bool => $b['pending'] ?? false), 'key');
+        expect(array_column($preview['buttons'], 'key'))->toBe(['phone', 'zalo', 'messenger', 'email', 'sms'])
+            ->and($pending)->toBe(['zalo', 'messenger', 'email', 'sms']);
+
+        $html = $lw->html();
+        expect($html)->toContain('data-fc-pending="sms"', 'data-fc-pending="messenger"', 'data-fc-pending="zalo"')
+            ->not->toContain('data-fc-pending="phone"')
+            // the hint shows under the empty fields only (not under the filled call, nor under Zalo's error)
+            ->toContain('id="fc-empty-sms"', 'aria-describedby="fc-hint-sms fc-empty-sms"')
+            ->not->toContain('id="fc-empty-phone"')->not->toContain('id="fc-empty-zalo"')
+            ->and(substr_count($html, 'Chưa nhập — nút này chưa hiện trên website.'))->toBe(3);
+
+        // Switched off: gone from the preview, and its hint with it.
+        $lw->call('toggleChannel', 'sms');
+        expect($lw->html())->not->toContain('data-fc-pending="sms"')->not->toContain('id="fc-empty-sms"')
+            ->and(array_column($lw->viewData('preview')['buttons'], 'key'))->not->toContain('sms');
+
+        // Empty stays allowed on save.
+        $lw->set('channels.'.fcsIndex($lw, 'zalo').'.value', '')->call('save')->assertHasNoErrors();
+    });
+
+    expect(collect(fcsStored()['channels'])->firstWhere('key', 'messenger'))->toMatchArray(['on' => true, 'value' => '']);
+});
+
+it('keeps every channel in the bottom bar and draws the first four cells on the narrow preview phone, unfilled ones at their place', function (): void {
+    $admin = fcsAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)->call('setTheme', 'horizontal');
+        $lw->set('channels.'.fcsIndex($lw, 'phone').'.value', '0912345678')
+            ->call('toggleChannel', 'sms')
+            ->call('addPreset', 'whatsapp')->call('addPreset', 'telegram')->call('addPreset', 'viber');
+
+        expect(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo', 'messenger', 'email', 'sms', 'whatsapp', 'telegram', 'viber']);
+        // The preview phone is about 266px wide: four cells, the rest dropped from the end as on a phone that narrow.
+        expect($lw->html())->toContain('data-fc-pending="zalo"')
+            ->not->toContain('data-fc-pending="phone"')->not->toContain('data-fc-pending="sms"')
+            ->not->toContain('data-fc-pending="telegram"')->not->toContain('data-fc-pending="viber"')
+            ->not->toContain('ẩn ở kiểu thanh dưới');
+
+        // A switched-off channel never takes a cell.
+        $lw->call('toggleChannel', 'zalo');
+        expect(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'messenger', 'email', 'sms', 'whatsapp', 'telegram', 'viber'])
+            ->and($lw->html())->not->toContain('data-fc-pending="zalo"')->toContain('data-fc-pending="sms"');
+    });
 });
 
 it('refuses an icon outside the allowed set, an over-long name or label, and a bad colour', function (): void {

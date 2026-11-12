@@ -8,6 +8,7 @@ use App\Modules\Theme\Components\StyleProps;
 use App\Modules\Theme\Rendering\BlockRenderer;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\View;
+use Tests\Fixtures\StorefrontCss;
 
 /*
  * Section heads, the features block and the split call to action: the partners and features blocks
@@ -127,7 +128,7 @@ describe('the features block', function (): void {
     it('stacks the glyph tile above the text when four plain cards sit two a row on a phone', function (): void {
         $items = array_map(fn (array $item): array => $item + ['icon' => 'wrench'], shfcItems(4));
         $html = shfcView('features', ['items' => $items]);
-        $css = (string) file_get_contents(resource_path('css/storefront.css'));
+        $css = (string) StorefrontCss::all();
 
         expect($html)->toContain('<ul class="sf-grid sf-grid--4p">')
             ->and(substr_count($html, '<li class="sf-fcard">'))->toBe(4)
@@ -150,7 +151,7 @@ describe('the features block', function (): void {
     });
 
     it('lays the cards out as the boards show in the stylesheet', function (): void {
-        $css = (string) file_get_contents(resource_path('css/storefront.css'));
+        $css = (string) StorefrontCss::all();
 
         // Top-rule: a row with the rule on the left below 768px, a centered card with the rule on top from it.
         expect($css)->toMatch('/\.sf-feature \{\n    flex-direction: row;[^}]*border-left: 0\.25rem solid var\(--color-primary\);/')
@@ -168,7 +169,7 @@ describe('the features block', function (): void {
 
 describe('section title sizes', function (): void {
     it('gives the about and call-to-action titles the section title size on every screen', function (): void {
-        $css = (string) file_get_contents(resource_path('css/storefront.css'));
+        $css = (string) StorefrontCss::all();
 
         expect($css)->toMatch('/\.sf-section-head__title \{[^}]*font-size: 1\.875rem;/')
             ->toMatch('/\.about__heading \{\n    font-size: 1\.875rem;\n    line-height: 2\.25rem;\n    font-weight: 700;/')
@@ -178,7 +179,7 @@ describe('section title sizes', function (): void {
 
 describe('the section head rule', function (): void {
     it('takes the band colour scheme rule colour, else the brand accent, for every headed block', function (): void {
-        $css = (string) file_get_contents(resource_path('css/storefront.css'));
+        $css = (string) StorefrontCss::all();
 
         expect($css)->toMatch('/\.sf-section-head__rule \{[^}]*background: linear-gradient\(90deg, transparent, var\(--sch-rule, var\(--color-primary\)\) 20%, var\(--sch-rule, var\(--color-primary\)\) 80%, transparent\);/')
             // The scheme sets that a rule reads: white over a photo, the heading colour on a brand ground.
@@ -228,7 +229,7 @@ describe('the split call to action', function (): void {
 
     it('takes the cross pattern behind it', function (): void {
         $html = app(BlockRenderer::class)->render(['blocks' => [['type' => 'cta', 'props' => ['variant' => 'split', 'heading' => 'H', 'extra_style' => ['pattern-cross']]]]]);
-        $css = (string) file_get_contents(resource_path('css/storefront.css'));
+        $css = (string) StorefrontCss::all();
 
         expect($html)->toContain('sf-s sf-s--x-pattern-cross')->toContain('cta cta--split')
             ->and($css)->toContain('.sf-s--x-pattern-cross :is(.cta:not(.cta--side), .cta__panel)::before');

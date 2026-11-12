@@ -3,8 +3,11 @@
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
+use App\Modules\Storefront\Http\Middleware\ConditionalGet;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\Site;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -97,3 +100,19 @@ it('matches a weak tag, a list and a star as a proxy or crawler sends them', fun
     expect($etag)->toStartWith('W/"');
     $this->get('http://other.platform.test/lien-he', ['If-None-Match' => $header])->assertStatus(304);
 })->with(['weak', 'strong', 'list', 'star']);
+
+it('gives the same body with different early hints a different ETag, so the edge refetches the page', function (): void {
+    $tag = fn (?string $link): ?string => (new ConditionalGet)->handle(Request::create('/', 'GET'), function () use ($link): Response {
+        $response = new Response('<html><head></head><body>same</body></html>', 200);
+        if ($link !== null) {
+            $response->headers->set('Link', $link);
+        }
+
+        return $response;
+    })->headers->get('ETag');
+
+    $hintsA = '</build/assets/a.css>; rel="preload"; as="style"';
+    expect($tag($hintsA))->toBe($tag($hintsA))
+        ->and($tag($hintsA))->not->toBe($tag('</build/assets/b.css>; rel="preload"; as="style"'))
+        ->and($tag($hintsA))->not->toBe($tag(null));
+});

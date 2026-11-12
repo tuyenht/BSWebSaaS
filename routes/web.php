@@ -53,6 +53,7 @@ use App\Modules\Storefront\Http\Controllers\SitemapController;
 use App\Modules\Storefront\Http\Controllers\StorefrontController;
 use App\Modules\Storefront\Http\Middleware\ConditionalGet;
 use App\Modules\Storefront\Http\Middleware\EdgeCacheHeaders;
+use App\Modules\Storefront\Http\Middleware\PreloadHeadAssets;
 use App\Modules\Storefront\Http\Middleware\StorefrontSession;
 use App\Modules\Tenancy\Http\Controllers\CaddyAskController;
 use App\Modules\Tenancy\Http\Middleware\ServeOnPrimaryDomain;
@@ -60,7 +61,6 @@ use App\Modules\Tenancy\Http\Middleware\SetCurrentSite;
 use App\Modules\Theme\Theming\SiteSeo;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
-use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Auth;
@@ -342,11 +342,11 @@ Route::post('/_view/{entry}', RecordEntryView::class)
 // ── Public pages (sitemap, robots, the storefront) — no session for a visitor who brings no
 //    session cookie, so the edge may keep the page (StorefrontSession, EdgeCacheHeaders); the web
 //    group's session, shared errors and forgery check come off (a GET changes nothing). Early
-//    Hints: the first Vite assets the page preloads go out as Link headers too. ─────────────
+//    Hints: the stylesheets, font and scripts the page's head loads go out as Link headers too. ─────────────
 $storefrontSessionless = [StartSession::class, ShareErrorsFromSession::class, PreventRequestForgery::class];
 $storefrontPage = [
     StorefrontSession::class, ServeOnPrimaryDomain::class, SetCurrentSite::class, 'site.active',
-    ConditionalGet::class, AddLinkHeadersForPreloadedAssets::class.':6', EdgeCacheHeaders::class,
+    ConditionalGet::class, PreloadHeadAssets::class, EdgeCacheHeaders::class,
 ];
 
 // ── Per-tenant sitemap + robots (same middleware as storefront; registered BEFORE the

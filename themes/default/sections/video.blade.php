@@ -20,6 +20,7 @@
     'title' => $heading !== '' ? $heading : __('storefront.video_frame_'.$video['provider']),
     'poster' => $poster,
     'srcset' => $poster !== null ? (($srcsets ?? [])[$poster] ?? null) : null,
+    'high' => ! empty($props['_high']),
 ])
 </div>
 @if ($sfCaption !== '')

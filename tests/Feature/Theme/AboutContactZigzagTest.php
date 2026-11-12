@@ -22,6 +22,7 @@ use App\Modules\Theme\Theming\ThemeResolver;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\View;
+use Tests\Fixtures\StorefrontCss;
 
 /*
  * The about block as a letter (greeting, signature, shortcut tiles, photo focus), the Zalo cell of the
@@ -372,7 +373,7 @@ describe('zigzag list', function (): void {
 describe('zigzag on a dark band and anchors', function (): void {
     it('puts a dark band behind the rows and colours the text for it', function (): void {
         $html = zigzagHtml(zigzagCards(2), ['bg' => 'dark']);
-        $css = (string) file_get_contents(resource_path('css/storefront.css'));
+        $css = (string) StorefrontCss::all();
 
         expect($html)->toContain('sf-band sf-band--dark sf-zigzag');
 
@@ -388,7 +389,7 @@ describe('zigzag on a dark band and anchors', function (): void {
 
     it('keeps the text on the block colour roles in the dark colour set', function (): void {
         $html = zigzagHtml(zigzagCards(1), []);
-        $css = (string) file_get_contents(resource_path('css/storefront.css'));
+        $css = (string) StorefrontCss::all();
 
         // The set rewrites the roles on the wrapper; the rows never name a colour of their own.
         expect($html)->not->toContain('style=')
@@ -636,7 +637,7 @@ describe('zigzag through the block renderer', function (): void {
 
     it('draws the rows in the dark colour set and in the photo look with the button rules that keep it readable', function (): void {
         $site = zigzagProvision('zigdark');
-        $css = (string) file_get_contents(resource_path('css/storefront.css'));
+        $css = (string) StorefrontCss::all();
 
         app(Tenancy::class)->enter($site->id, function (): void {
             zigzagSeedPosts('zigdark');
@@ -709,7 +710,7 @@ describe('zigzag row ids', function (): void {
 
 describe('zigzag stylesheet', function (): void {
     it('stacks the number above the title in a row without media and ports the board title size', function (): void {
-        $css = (string) file_get_contents(resource_path('css/storefront.css'));
+        $css = (string) StorefrontCss::all();
 
         expect(preg_match('~\.sf-zigzag__no--inline \{([^}]*)\}~', $css, $badge))->toBe(1)
             ->and($badge[1])->toMatch('~display: (table|block)~')->not->toContain('inline-block')

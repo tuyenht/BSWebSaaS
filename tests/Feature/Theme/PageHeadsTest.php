@@ -4,6 +4,7 @@ use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SectionProps;
 use App\Modules\Theme\Theming\HeadingDecor;
 use Illuminate\Support\Facades\View;
+use Tests\Fixtures\StorefrontCss;
 
 /*
  * The heads of a page: the title band (photo, or dark with the diagonal pattern, with an optional gold
@@ -61,7 +62,7 @@ describe('the title band', function (): void {
 
 describe('the breadcrumb', function (): void {
     it('closes each level but the last with the separator, so a wrapped trail never starts a line with it', function (): void {
-        $css = file_get_contents(resource_path('css/storefront.css'));
+        $css = StorefrontCss::all();
 
         expect($css)->toContain(".sf-crumbs__item:not(:last-child)::after {\n    content: \"/\";")
             ->not->toContain('.sf-crumbs__item + .sf-crumbs__item::before');
@@ -96,7 +97,7 @@ describe('a section head', function (): void {
     });
 
     it('has a CSS rule for the line that is not a mask shape', function (): void {
-        $css = file_get_contents(resource_path('css/storefront.css'));
+        $css = StorefrontCss::all();
 
         expect($css)->toContain(".sf-decor--line {\n    width: 100%;")
             ->and(HeadingDecor::STYLES)->not->toContain('line')

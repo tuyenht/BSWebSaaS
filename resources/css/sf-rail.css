@@ -1,0 +1,502 @@
+/*
+ * sf-rail.css — storefront styles for card rails and the partner strip.
+ * Linked in the <head> only on a page whose HTML has a class from: .partners, .sf-rail
+ * (Theme\Rendering\BlockStyles, which lists the same roots), after storefront.css and in the order
+ * BlockStyles::FILES gives, so the cascade is the one the single file had. Every rule here needs one of
+ * those classes on the page; a rule for anything else belongs in storefront.css.
+ */
+
+/* ───── Partners section ─────────────────────────────────────────────────── */
+.partners {
+    max-width: 80rem;
+    margin-inline: auto;
+    padding: 3rem 1.5rem;
+}
+
+@media (min-width: 1024px) {
+    .partners {
+        padding: 4rem 2rem;
+    }
+}
+
+.partners__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Every partner sits in a frame of one height, so logos and names line up (a long name grows it). */
+.partners__item {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 5rem;
+    padding: 0.75rem 0.5rem;
+}
+
+/* A logo's height follows its ratio (--logo-r = width / height, printed from the library): 3.25rem
+   over its square root, between 1.625rem and 3.25rem, so a square and a long logo weigh the same. */
+.partners__logo {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    height: 2.25rem;
+    height: clamp(1.625rem, calc(3.25rem / sqrt(var(--logo-r, 2.5))), 3.25rem);
+    object-fit: contain;
+    filter: grayscale(1) opacity(0.6);
+    transition: filter 0.25s;
+}
+
+/* A partner with no logo yet: its name, in the band's own text colour (never greyed below 4.5:1), never cut.
+   A long name (a full company name) is set smaller, so a narrow frame on a phone stays a few lines tall. */
+.partners__name {
+    max-width: 100%;
+    color: var(--sch-body, var(--color-text));
+    font-size: clamp(1rem, 0.75rem + 1vw, 1.25rem);
+    font-weight: 800;
+    line-height: 1.25;
+    text-align: center;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
+}
+
+.partners__name--long {
+    font-size: clamp(0.8125rem, 0.7rem + 0.5vw, 1rem);
+    font-weight: 700;
+}
+
+/* A keyboard user sees the linked logo in colour too, inside the focus ring. */
+.partners__link:focus-visible {
+    outline: 2px solid var(--sch-pri, var(--color-primary));
+    outline-offset: 4px;
+}
+
+.partners__link:focus-visible .partners__logo {
+    filter: none;
+}
+
+@media (hover: hover) {
+    .partners__logo:hover,
+    .partners__link:hover .partners__logo {
+        filter: none;
+    }
+}
+
+.sf-rail__list > li > .sf-branch {
+    flex: 1;
+}
+
+/* ───── List rail: a list block with the display group ──────────────────────
+   One flex list serves the grid, the slider and a phone's swipe row. --sf-c is how many items fit
+   across (a fraction shows the next one peeking); fewer items than that sit centred. A slider, and
+   a swipe row on a phone, scroll sideways with snapping; the script adds the arrows and, for a
+   slider, the rotation. Without the script the row still scrolls and nothing is hidden. */
+.sf-rail {
+    position: relative;
+}
+
+.sf-rail__list {
+    --sf-gap: 1.5rem;
+    --sf-c: 3;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--sf-gap);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.sf-rail__list--c2 { --sf-c: 2; }
+.sf-rail__list--c3 { --sf-c: 3; }
+.sf-rail__list--c4 { --sf-c: 4; }
+.sf-rail__list--c6 { --sf-c: 6; }
+
+.sf-rail__list > li {
+    display: flex;
+    flex: 0 0 calc((100% - var(--sf-gap) * (var(--sf-c) - 1)) / var(--sf-c));
+    min-width: 0;
+    scroll-snap-align: start;
+}
+
+/* A card that is the item's only child fills it; an item built of several parts (a team member's
+   photo and name) keeps its own layout. */
+.sf-rail__list > li > :only-child {
+    flex: 1;
+    min-width: 0;
+}
+
+.sf-rail__list--slider {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+}
+
+/* The scrollbar is hidden only where the script's arrows stand in for it: with the arrows turned off,
+   or with scripting off, the row keeps its native scrollbar so a mouse can still move it. */
+@media (scripting: enabled) {
+    .sf-rail:not([data-arrows="none"]) .sf-rail__list {
+        scrollbar-width: none;
+    }
+}
+
+/* Tablet: two across (card kinds); partner logos keep three, as many as on a phone. The phone rules
+   below come last and cover every width under 640px. */
+@media (min-width: 640px) and (max-width: 1023px) {
+    .sf-rail__list { --sf-c: 2; }
+    .partners .sf-rail__list { --sf-c: 3; }
+}
+
+@media (max-width: 639px) {
+    .sf-rail__list { --sf-gap: 1rem; }
+    .sf-rail__list--m-swipe { --sf-c: 1.25; }
+    .sf-rail__list--m-two { --sf-c: 2; }
+    .sf-rail__list--m-one { --sf-c: 1; }
+    .sf-rail__list--m-slider { --sf-c: 3; }
+
+    .sf-rail__list--m-swipe,
+    .sf-rail__list--m-slider {
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+    }
+
+    /* Few logos sit centred; many scroll from the start. */
+    .sf-rail__list--m-slider {
+        justify-content: safe center;
+    }
+}
+
+.sf-rail__list:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 4px;
+}
+
+/* region: sf-rail controls. On a tablet or laptop the controls are one row below the list: arrow, dots,
+   arrow. On a phone the arrows stand on the cards' left and right edges, halfway down the row, and
+   the dots stay alone, centred under it (the phone block below). From 1360px the page margin is wide
+   enough for the arrows to stand beside the list, outside its cards. They are always visible (never
+   hover-only) once the script shows them. */
+.sf-rail__controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    margin-top: 0.5rem;
+}
+
+.sf-rail__controls[hidden],
+.sf-rail__btn[hidden],
+.sf-rail__dots[hidden] {
+    display: none;
+}
+
+/* Nothing to show (no script, arrows off, a row that fits): the row takes no room. */
+.sf-rail__controls:not(:has(.sf-rail__btn:not([hidden]))) {
+    display: none;
+}
+
+/* A 44px hit area, transparent; the visible disc inside it is 36px. */
+.sf-rail__btn {
+    position: relative;
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-text-strong, #111);
+    cursor: pointer;
+}
+
+.sf-rail__btn::before {
+    content: "";
+    position: absolute;
+    inset: 0.25rem;
+    border-radius: 9999px;
+    background: #fff;
+    box-shadow: 0 1px 6px rgb(0 0 0 / 0.25);
+    transition: background 0.2s;
+}
+
+.sf-rail__btn > svg {
+    position: relative;
+}
+
+.sf-rail__btn:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 0;
+}
+
+.sf-rail__dots {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.sf-rail__dots > span {
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--color-text) 35%, transparent);
+    transition: background 0.2s, transform 0.2s;
+}
+
+.sf-rail__dots > span.is-on {
+    background: var(--color-primary);
+    transform: scale(1.25);
+}
+
+.sf-band--dark .sf-rail__dots > span {
+    background: rgb(255 255 255 / 0.5);
+}
+
+/* Phone: a row that scrolls keeps 12px inside each side, so an arrow (a 40px disc centred on the card's
+   edge, in a 44px hit area) covers only the card's own padding, never its text; the inset is there from
+   the first paint (not added by the script), so nothing shifts when the arrows appear. The next card
+   peeks on the right. Every card rail shares it: capabilities, news, projects, products, branches; the
+   partner logo strip keeps its own arrows beside the row (below), which never sit under it. */
+@media (max-width: 639.98px) {
+    .sf-rail:not([data-arrows="none"], .partners .sf-rail) :is(.sf-rail__list--slider, .sf-rail__list--m-swipe, .sf-rail__list--m-slider) {
+        padding-inline: 12px;
+        scroll-padding-inline: 12px;
+    }
+
+    .sf-rail__controls {
+        min-height: 0.75rem;
+        margin-top: 0.75rem;
+    }
+
+    .sf-rail__prev,
+    .sf-rail__next {
+        position: absolute;
+        top: calc(50% - 0.75rem - 22px);
+        z-index: 3;
+        width: 44px;
+        height: 44px;
+    }
+
+    .sf-rail__prev {
+        left: -10px;
+    }
+
+    .sf-rail__next {
+        right: -10px;
+    }
+
+    .sf-rail__btn::before {
+        inset: 2px;
+        box-shadow: 0 2px 10px rgb(0 0 0 / 0.22);
+    }
+}
+
+@media (min-width: 1360px) {
+    .sf-rail__controls {
+        min-height: 1.5rem;
+        margin-top: 0.75rem;
+    }
+
+    .sf-rail__prev,
+    .sf-rail__next {
+        position: absolute;
+        top: calc(50% - 1.375rem);
+        z-index: 3;
+    }
+
+    .sf-rail__prev { left: -3.5rem; }
+    .sf-rail__next { right: -3.5rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sf-rail__dots > span {
+        transition: none;
+    }
+}
+
+@media (hover: hover) {
+    .sf-rail__btn:hover::before {
+        background: #f1f5f9;
+    }
+}
+
+.partners .sf-rail__list > li {
+    align-items: center;
+    justify-content: center;
+}
+
+.partners .sf-rail__list > li > * {
+    flex: 0 1 auto;
+}
+
+/* Partner logos: the arrows stand outside the row of logos, beside it and centred on it (a grid of
+   arrow · row · arrow; the controls row dissolves into the grid and its dots are not drawn), as dark
+   discs with a light ring: 36px on a phone, 40px from 640px, inside the 44px hit area. An arrow the script
+   keeps hidden (a row that does not scroll) leaves no room behind. */
+.partners .sf-rail {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+}
+
+.partners .sf-rail__list {
+    grid-area: 1 / 2;
+}
+
+.partners .sf-rail__controls:not([hidden]) {
+    display: contents;
+}
+
+.partners .sf-rail__dots {
+    display: none;
+}
+
+.partners :is(.sf-rail__prev, .sf-rail__next) {
+    position: relative;
+    translate: none;
+    inset: auto;
+}
+
+.partners .sf-rail__prev { grid-area: 1 / 1; }
+.partners .sf-rail__next { grid-area: 1 / 3; }
+
+.partners .sf-rail__btn {
+    color: #fff;
+}
+
+.partners .sf-rail__btn::before {
+    background: color-mix(in srgb, var(--color-dark) 90%, transparent);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1), inset 0 0 0 1px rgb(255 255 255 / 0.3);
+}
+
+@media (min-width: 640px) {
+    .partners .sf-rail {
+        column-gap: 0.25rem;
+    }
+
+    .partners .sf-rail__btn::before {
+        inset: 0.125rem;
+    }
+}
+
+@media (hover: hover) {
+    .partners .sf-rail__btn:hover::before {
+        background: var(--color-dark);
+    }
+}
+
+/* region: sf-rail peek and free scroll. On a tablet a card slider shows a slice of the next card, so
+   it is plain that the row moves; the logo strip scrolls freely (no snapping) so a flick coasts. */
+@media (min-width: 640px) and (max-width: 1023px) {
+    .sf-rail__list--slider:not(.sf-rail__list--c6) { --sf-c: 2.25; }
+    .partners .sf-rail__list--slider { --sf-c: 3.25; }
+}
+
+.partners .sf-rail__list--slider,
+.partners .sf-rail__list--m-slider {
+    scroll-snap-type: none;
+}
+
+/* Partners on the home strip: the logos sit in one white box with a thin border; the arrows stand
+   outside it, and a name never breaks inside the box. */
+.partners .sf-rail__list--slider {
+    padding-block: 1.25rem;
+    border: 1px solid color-mix(in srgb, var(--color-surface) 85%, var(--color-dark));
+    border-radius: 0.5rem;
+    background: var(--color-surface);
+}
+
+.partners .sf-rail__list--slider .partners__item {
+    padding-inline: 0.5rem;
+}
+
+/* A short name breaks between words only, never inside one, unless a single word is wider than the box. */
+.partners .sf-rail__list--slider .partners__name:not(.partners__name--long) {
+    overflow-wrap: break-word;
+}
+
+@media (max-width: 639.98px) {
+    .partners .sf-rail__list--slider .partners__name {
+        font-size: 0.9375rem;
+    }
+}
+
+/* Partners page: a grid of grey cards 7rem tall, two across on a phone up to five; hover is white with an amber edge. */
+.partners .sf-rail__list--grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem;
+}
+
+@media (min-width: 640px) {
+    .partners .sf-rail__list--grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 768px) {
+    .partners .sf-rail__list--grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 2rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .partners .sf-rail__list--grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+}
+
+.partners .sf-rail__list--grid > li {
+    flex: none;
+}
+
+.partners .sf-rail__list--grid .partners__item {
+    width: 100%;
+    height: 7rem;
+    border: 1px solid transparent;
+    border-radius: 0.5rem;
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+    transition: background 0.25s, border-color 0.25s, box-shadow 0.25s;
+}
+
+.partners .sf-rail__list--grid .partners__link {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+}
+
+.partners .sf-rail__list--grid .partners__name {
+    color: var(--color-text);
+}
+
+@media (hover: hover) {
+    .partners .sf-rail__list--grid .partners__item:hover {
+        border-color: var(--color-primary);
+        background: var(--color-surface);
+        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    }
+}
+
+.partners__note {
+    margin-top: 1.5rem;
+    color: var(--color-text);
+    font-size: 0.75rem;
+    line-height: 1rem;
+    text-align: center;
+}

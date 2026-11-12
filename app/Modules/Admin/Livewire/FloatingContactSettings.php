@@ -293,8 +293,9 @@ final class FloatingContactSettings extends Component
             'defaultLocale' => $siteLocale->default(),
             'locales' => $locales,
             'publicLocales' => $siteLocale->public(),
-            // The draft as the site would show it, in the language being edited.
-            'preview' => FloatingContact::for(['enabled' => true] + $stored, $this->lang, $this->hasShop ? '#' : null),
+            // The draft as the site would show it, in the language being edited; a channel switched on
+            // but not filled in yet keeps its place as an unfinished slot (the site never shows it).
+            'preview' => FloatingContact::preview(['enabled' => true] + $stored, $this->lang, $this->hasShop ? '#' : null),
         ]);
         $view->title(__('admin.fc.title'));
 

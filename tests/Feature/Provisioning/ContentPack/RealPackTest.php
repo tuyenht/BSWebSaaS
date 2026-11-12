@@ -258,10 +258,12 @@ it('plans the real pack on a fresh site with no conflict, and every internal lin
         ->and($this->get('http://'.ContentPacks::HOST.'/gia-cong-cat-day-xung-dien')->getContent())->toContain('nguồn kênh Kurt Bleyweert')->toContain('4IhkMgHkMEA');
 });
 
-it('loads the flourish heading decoration, a floating contact of Zalo and call only, and the post side column and product band', function (): void {
+it('loads the flourish heading decoration, round floating buttons of email, Zalo and call with no phone bar, the real-user speed beacon, and the post side column and product band', function (): void {
     $settings = collect(json_decode((string) file_get_contents((new PackReader)->read('an-vinh')->dir.'/settings.json'), true)['items'])->keyBy('key');
     expect($settings['setting:theme.heading_decor']['value'])->toBe(['style' => 'flourish'])
-        ->and(collect($settings['setting:storefront.floating_contact']['value']['channels'])->where('on', true)->pluck('key')->all())->toBe(['zalo', 'phone'])
+        ->and(collect($settings['setting:storefront.floating_contact']['value']['channels'])->where('on', true)->pluck('key')->all())->toBe(['email', 'zalo', 'phone'])
+        ->and($settings['setting:storefront.floating_contact']['value'])->not->toHaveKey('phone_bar')
+        ->and($settings['setting:storefront.web_analytics']['value']['cloudflare_token'])->toMatch('/\A[0-9a-f]{32}\z/')
         ->and($settings['setting:storefront.layout_blocks']['managed_keys'])->toBe(['post_aside', 'after_product', 'product_before_action', 'product_after_action'])
         ->and(collect($settings['setting:storefront.layout_blocks']['value']['post_aside']['vi']['blocks'])->pluck('type')->all())->toBe(['consult', 'recent_posts', 'category_list'])
         ->and(collect($settings['setting:storefront.layout_blocks']['value']['after_product']['vi']['blocks'])->pluck('type')->all())->toBe(['cta']);
@@ -277,11 +279,14 @@ it('loads the flourish heading decoration, a floating contact of Zalo and call o
         ->and(array_keys($stored('storefront', 'layout_blocks')))->toEqualCanonicalizing(['post_aside', 'after_product', 'product_before_action', 'product_after_action']);
 
     $home = $this->get('http://'.ContentPacks::HOST.'/')->assertOk()->getContent();
-    expect($home)->toContain('<nav class="sf-fc sf-fc--right sf-fc--md"')
+    expect($home)->toContain('<nav class="sf-fc sf-fc--right"')
         ->toContain('href="https://zalo.me/0915668383"')->toContain('href="tel:0915668383"')
-        ->not->toContain('mailto:quybv@ckanvinh.vn" class="sf-fc')
-        ->and(preg_match('/<nav class="sf-fc sf-fc--right sf-fc--md".*?<\/nav>/s', $home, $nav))->toBe(1)
-        ->and(preg_match_all('/<a /', $nav[0]))->toBe(2);
+        ->not->toContain('class="sf-fc-bar')
+        ->and(preg_match('/<nav class="sf-fc sf-fc--right".*?<\/nav>/s', $home, $nav))->toBe(1)
+        ->and($nav[0])->toContain('href="mailto:quybv@ckanvinh.vn"')
+        ->and(preg_match_all('/<a /', $nav[0]))->toBe(3)
+        ->and(substr_count($home, 'src="https://static.cloudflareinsights.com/beacon.min.js"'))->toBe(1)
+        ->and($home)->toContain($settings['setting:storefront.web_analytics']['value']['cloudflare_token']);
 
     $post = $this->get('http://'.ContentPacks::HOST.'/gia-cong-phay-tien-cnc')->assertOk()->getContent();
     expect($post)->toContain('Tư vấn kỹ thuật')->toContain('Cần tư vấn hoặc báo giá?')->toContain('Năng lực của An Vinh')->toContain('Hồ sơ năng lực An Vinh');
@@ -293,23 +298,24 @@ it('loads the flourish heading decoration, a floating contact of Zalo and call o
     $branches = StorefrontChrome::branches($stored('storefront', 'footer'), 'vi', 'vi');
     expect(array_column($branches, 'key'))->toBe(['nha-may-1', 'nha-may-2', 'nha-may-3'])
         ->and(array_column($branches, 'approximate'))->toBe([false, true, true])
-        ->and($branches[2]['lat'])->toBe(21.0655337)->and($branches[2]['lng'])->toBe(105.556209);
+        ->and($branches[1]['lat'])->toBe(21.0655337)->and($branches[1]['lng'])->toBe(105.556209)
+        ->and($branches[2]['lat'])->toBe(21.3655865)->and($branches[2]['lng'])->toBe(105.8750945);
     [$exit, $output] = ContentPacks::run('an-vinh');
     expect($exit)->toBe(0, $output)->and(ContentPacks::verdict($output, 'setting:storefront.footer'))->toBe('unchanged');
 });
 
-it('gives the factories the design\'s map points and only the company\'s own photos, none where it has no photo of that factory', function (): void {
+it('gives the factories map points (an approximate one where the exact place is unknown) and a photo each, the company\'s own where it has one', function (): void {
     $pack = (new PackReader)->read('an-vinh');
     $footer = collect($pack->items)->firstWhere('key', 'setting:storefront.footer')->data['value'];
 
-    $points = array_map(fn (array $factory): array => [$factory['key'], $factory['lat'], $factory['lng'], $factory['approximate'], $factory['image_media_id']['media'] ?? null], $footer['factories']);
+    $points = array_map(fn (array $factory): array => [$factory['key'], $factory['lat'] ?? null, $factory['lng'] ?? null, $factory['approximate'] ?? null, $factory['image_media_id']['media'] ?? null], $footer['factories']);
     expect($points)->toBe([
         ['nha-may-1', 21.2983367, 105.8672342, false, 'factory-1'],
-        ['nha-may-2', 21.2936586, 105.8649934, true, 'plant-2-assembly-floor-1'],
-        ['nha-may-3', 21.0655337, 105.556209, true, 'plant-3-machining-hall'],
+        ['nha-may-2', 21.0655337, 105.556209, true, 'plant-3-machining-hall'],
+        ['nha-may-3', 21.3655865, 105.8750945, true, 'n-factory-opening'],
     ])
         ->and($footer['factories'][0]['map_query'])->toBe('Cơ khí An Vinh, Xuân Sơn, Trung Giã, Hà Nội')
-        ->and(array_column($footer['factories'], 'full_name'))->toBe([['vi' => 'Nhà máy 1 – Xuân Sơn'], ['vi' => 'Nhà máy 2 – Hương Ninh'], ['vi' => 'Nhà máy 3 – Ngũ Sơn']]);
+        ->and(array_column($footer['factories'], 'full_name'))->toBe([['vi' => 'Nhà máy 1 – Xuân Sơn'], ['vi' => 'Nhà máy 2 – Ngũ Sơn'], ['vi' => 'Nhà máy 3 – Kim Tỉnh']]);
     foreach (['plant-2-assembly-floor-1', 'plant-3-machining-hall'] as $slot) {
         expect($pack->slots[$slot]['license'])->toStartWith('Ảnh của Công ty An Vinh');
     }

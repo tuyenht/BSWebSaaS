@@ -602,14 +602,27 @@ jobs:
       # A gate since 24/09 on all three measured pages: the home baseline was clean five runs in a
       # row; widening to /lien-he + /tin-tuc surfaced one real failure (.category__empty contrast,
       # fixed de81d6b), clean on every run since. A WCAG2A/AA violation fails the job (--exit).
+      # Each page is opened at its #noi-dung target: blocks below the first screen and the footer are
+      # drawn on demand (content-visibility), and axe reads a not-yet-drawn block's background as the
+      # page's, so it reported contrast failures that no reader sees, on some runs only (12/11, av1
+      # home: 4 of 4 plain loads flagged, 4 of 4 #noi-dung loads clean). A jump to a #target draws
+      # every block (the sf-anchored switch), so axe checks the colours readers get.
       - name: axe accessibility scan
         run: >-
-          pnpm exec axe "http://${CWV_HOST}:${CWV_PORT}/" "http://${CWV_HOST}:${CWV_PORT}/lien-he" "http://${CWV_HOST}:${CWV_PORT}/tin-tuc" "http://${CWV_HOST}:${CWV_PORT}/do-kiem" "http://${CWV_HOST}:${CWV_PORT}/ban-tin"
+          pnpm exec axe "http://${CWV_HOST}:${CWV_PORT}/#noi-dung" "http://${CWV_HOST}:${CWV_PORT}/lien-he#noi-dung" "http://${CWV_HOST}:${CWV_PORT}/tin-tuc#noi-dung" "http://${CWV_HOST}:${CWV_PORT}/do-kiem#noi-dung" "http://${CWV_HOST}:${CWV_PORT}/ban-tin#noi-dung"
           --tags wcag2a,wcag2aa
           --chrome-path="${{ steps.chrome.outputs.chrome-path }}"
           --chromedriver-path="${{ steps.chrome.outputs.chromedriver-path }}"
           --chrome-options="--headless=new,--no-sandbox"
           --exit
+
+      # Tap check on a phone (320 and 390px, touch): every visible control must be what a finger hits at
+      # its centre, and a tap on each rail arrow must turn the rail, never open the card under it (a
+      # card's link overlay once rose over the arrows). /do-kiem carries two card rails for this.
+      - name: Tap check (phone · nothing drawn over a control)
+        run: >-
+          node scripts/storefront/tap-check.mjs --chrome="${{ steps.chrome.outputs.chrome-path }}" --widths=320,390 --expect-arrows=/do-kiem
+          "http://${CWV_HOST}:${CWV_PORT}/" "http://${CWV_HOST}:${CWV_PORT}/lien-he" "http://${CWV_HOST}:${CWV_PORT}/tin-tuc" "http://${CWV_HOST}:${CWV_PORT}/do-kiem" "http://${CWV_HOST}:${CWV_PORT}/ban-tin"
 
       # Admin a11y: render the admin screens as a seeded owner (no login, no 2FA, no real env —
       # tests/Tools/RenderAdminPreviewTest.php) and gate them on STRUCTURAL WCAG 2A/2AA with axe in

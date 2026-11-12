@@ -17,6 +17,7 @@ use App\Modules\Theme\Chrome\StorefrontChrome;
 use Illuminate\Foundation\Vite;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\HtmlString;
+use Tests\Fixtures\StorefrontCss;
 
 /*
  * The opt-in storefront header and footer (`storefront.header` / `storefront.footer` settings).
@@ -213,13 +214,13 @@ it('lets the top bar\'s phone items step aside under 768px while the phone botto
     expect($html)->toContain('<header class="sf-header sf-header--topbar sf-header--top-off-xs sf-header--top-off-sm">')
         ->toContain('<li class="sf-topbar__item sf-from-md sf-below-md sf-topbar__item--bar">')
         ->toContain('<li class="sf-topbar__item sf-from-md">')
-        ->and((string) file_get_contents(resource_path('css/storefront.css')))
+        ->and((string) StorefrontCss::all())
         ->toContain("@media (max-width: 767.98px) {\n    .sf-topbar__item--bar {\n        display: none;");
 });
 
 it('hides the menu button from lg (xl for a wide menu) and the text-size control from lg, after the rules that show them', function (): void {
     // equal selectors: the later rule wins, so each hiding rule must come after the base rule it overrides
-    $css = (string) file_get_contents(resource_path('css/storefront.css'));
+    $css = (string) StorefrontCss::all();
     $at = fn (string $needle): int => (int) strpos($css, $needle);
 
     foreach ([
@@ -271,7 +272,7 @@ it('keeps a menu that fits a laptop from 1024px and gives a wide one the menu bu
 it('shows each menu item set to one device by the screen width, in the menu panel too', function (): void {
     // From 1024px the menu panel serves laptops (a wide menu keeps it up to 1280px): a computer-only
     // item must be reachable there, and a phone-only one hidden. Below 1024px the reverse.
-    $css = (string) file_get_contents(resource_path('css/storefront.css'));
+    $css = (string) StorefrontCss::all();
 
     expect($css)->toContain("@media (max-width: 1023.98px) {\n    .sf-only-desk {\n        display: none !important;\n    }\n}")
         ->toContain("@media (min-width: 1024px) {\n    .sf-only-mob {\n        display: none !important;\n    }\n}")
@@ -280,7 +281,7 @@ it('shows each menu item set to one device by the screen width, in the menu pane
 });
 
 it('keeps every menu and top-bar target 40px with a mouse and 44px on touch, at every width', function (): void {
-    $css = (string) file_get_contents(resource_path('css/storefront.css'));
+    $css = (string) StorefrontCss::all();
     preg_match('/\/\* Touch screens: every control of the rich chrome reaches 44px, at every width\. \*\/\n@media \(any-pointer: coarse\) \{(.*?)\n\}\n/s', $css, $touch);
 
     expect($touch[1] ?? '')->toContain(".sf-nav__link,\n    .sf-nav__chev,\n    .sf-nav__sublink,\n    .sf-footer__link,\n    .sf-factory__map {\n        min-height: 2.75rem;")
@@ -343,7 +344,7 @@ it('puts the skip link first, aimed at the main content', function (string $path
 it('keeps the hidden skip link and the top bar from widening the page at 200% text', function (): void {
     // A browser measures the page width; this pins the two rules that made a 320-390px page 410px wide
     // at 200% text: a skip link clipped at full size, and top-bar items that could not wrap.
-    $css = (string) file_get_contents(resource_path('css/storefront.css'));
+    $css = (string) StorefrontCss::all();
     $rule = function (string $selector) use ($css): string {
         expect(preg_match('/\n'.preg_quote($selector, '/').' \{([^}]*)\}/', $css, $m))->toBe(1, "rule {$selector} not found");
 

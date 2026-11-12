@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\HtmlString;
 use Tests\Fixtures\StorefrontCards;
+use Tests\Fixtures\StorefrontCss;
 
 /*
  * The look of a section ("Trình bày"): one set of props shared by every block type, checked at
@@ -185,7 +186,7 @@ it('brings the items of a list block in one after another only while it keeps th
 });
 
 it('shows everything that waits for the scroll-in motion at once with reduced motion and in print', function (): void {
-    $css = (string) preg_replace('~/\*.*?\*/~s', '', (string) file_get_contents(resource_path('css/storefront.css')));
+    $css = (string) preg_replace('~/\*.*?\*/~s', '', (string) StorefrontCss::all());
     preg_match('~@media \(prefers-reduced-motion: reduce\), print \{\s*\.sf-s--before,(.*?)\n\}~s', $css, $block);
 
     expect($block[1] ?? '')->toContain('.sf-img--wait')
@@ -262,7 +263,7 @@ it('loads the motion script only on a page where a block after the first moves',
 });
 
 it('pads the block itself, never the photo layer behind it', function (): void {
-    $css = (string) file_get_contents(resource_path('css/storefront.css'));
+    $css = (string) StorefrontCss::all();
 
     expect($css)->toContain('.sf-s--pt-l > :nth-child(1 of :not(.sf-s__bg))')
         ->and($css)->toContain('.sf-s--pb-l > :nth-last-child(1 of :not(.sf-s__bg))')

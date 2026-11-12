@@ -1,3 +1,6 @@
+{{-- The page's one first-screen image: the first card photo, only when this grid leads the page
+     (BlockRenderer sets `_high` on the first block); every other photo loads lazily. --}}
+@php $sfHighLeft = ! empty($props['_high']); @endphp
 @if (($variant ?? 'list') === 'zigzag')
 {{-- One row per item, the photo alternating left and right; the "01…" number comes from the order (nothing stored).
      The link is the row's button (`link_label`). Rows stack on a phone, photo first. --}}
@@ -38,7 +41,8 @@
 @if ($sfZHasMedia)
 <div class="sf-zigzag__media">
 @if ($sfZHasImage)
-@include('theme::partials.sf-img', ['src' => $card['image'], 'srcset' => $card['srcset'] ?? null, 'sizes' => '(min-width:1024px) 560px, (min-width:768px) 45vw, calc(100vw - 2rem)', 'w' => 960, 'h' => 600, 'priority' => 'lazy', 'class' => 'sf-zigzag__img'])
+@include('theme::partials.sf-img', ['src' => $card['image'], 'srcset' => $card['srcset'] ?? null, 'sizes' => '(min-width:1024px) 560px, (min-width:768px) 45vw, calc(100vw - 2rem)', 'w' => 960, 'h' => 600, 'priority' => $sfHighLeft ? 'high' : 'lazy', 'class' => 'sf-zigzag__img'])
+@php $sfHighLeft = false; @endphp
 @else
 @include('theme::partials.icon', ['name' => $card['icon'], 'stroke' => 1.5, 'wrap' => 'sf-zigzag__glyph'])
 @endif
@@ -156,8 +160,11 @@
 @endif
 <ul class="{{ $sfDisplay['class'] ?? 'sf-grid '.$sfTabGrid }}"@if ($sfDisplay['scrolls'] ?? false) tabindex="0"@endif>
 @foreach ($sfTab['items'] as $card)
+@php $sfCardPriority = $sfHighLeft && ! empty($card['image']) ? 'high' : 'lazy'; @endphp
+@php $sfHighLeft = $sfHighLeft && $sfCardPriority !== 'high'; @endphp
 <li>@include('theme::partials.sf-card', [
     'card' => $card,
+    'priority' => $sfCardPriority,
     'kind' => $sfKind,
     'level' => $sfCardLevel,
     'sizes' => $sfTabSizes,
@@ -170,6 +177,7 @@
 @include('theme::partials.sf-rail-close', ['display' => $sfDisplay])
 @endif
 </div>
+@php $sfHighLeft = false; @endphp
 @endforeach
 </div>
 {{-- One "view all" after the panels (the board has a single block link), with or without the script. --}}
@@ -194,15 +202,18 @@
     'heading' => \App\Modules\Theme\Components\SectionProps::text($props, 'heading'),
     'description' => \App\Modules\Theme\Components\SectionProps::text($props, 'description'),
 ])
-@php($sfDisplay = $display ?? null)
+@php $sfDisplay = $display ?? null; @endphp
 @if (count($items) > 0)
 @if ($sfDisplay !== null)
 @include('theme::partials.sf-rail-open', ['display' => $sfDisplay, 'label' => \App\Modules\Theme\Components\SectionProps::text($props, 'heading', __('storefront.list_rail'))])
 @endif
 <ul class="{{ $sfDisplay['class'] ?? 'sf-grid '.$sfGrid }}"@if ($sfDisplay['scrolls'] ?? false) tabindex="0"@endif>
 @foreach ($items as $card)
+@php $sfCardPriority = $sfHighLeft && ! empty($card['image']) ? 'high' : 'lazy'; @endphp
+@php $sfHighLeft = $sfHighLeft && $sfCardPriority !== 'high'; @endphp
 <li>@include('theme::partials.sf-card', [
     'card' => $card,
+    'priority' => $sfCardPriority,
     'kind' => $sfKind,
     'level' => 'h3',
     'sizes' => $sfSizes,
@@ -228,7 +239,7 @@
     {{-- $items are SERVER-resolved cards (EntryGridComponent::data), not author Page-JSON props —
          hence a data var ($card), like latest_posts' $post. url = a stored route path; image = a
          site meta field. Neither is author-injected Page-JSON, so they are not type:url props. --}}
-@php($sfDisplay = $display ?? null)
+@php $sfDisplay = $display ?? null; @endphp
     @if (count($items) > 0)
 @if ($sfDisplay !== null)
 @include('theme::partials.sf-rail-open', ['display' => $sfDisplay, 'label' => \App\Modules\Theme\Components\SectionProps::text($props, 'heading', __('storefront.list_rail'))])
@@ -241,7 +252,8 @@
                              width/height; lazy), otherwise it is a curated glyph key (e.g. a service
                              icon). Same image_url concept across post-type content. --}}
                         @if (\Illuminate\Support\Str::contains((string) $card['image'], ['/', '.', ':']))
-                            <img class="entry-grid__image" src="{{ $card['image'] }}" alt="{{ $card['title'] ?? '' }}" width="480" height="320" loading="lazy">
+                            @include('theme::partials.sf-img', ['src' => $card['image'], 'srcset' => $card['srcset'] ?? null, 'sizes' => '(min-width:1024px) 22rem, (min-width:640px) 45vw, calc(100vw - 2rem)', 'alt' => $card['title'] ?? '', 'w' => 480, 'h' => 320, 'priority' => $sfHighLeft ? 'high' : 'lazy', 'class' => 'entry-grid__image'])
+                            @php $sfHighLeft = false; @endphp
                         @else
                             @include('theme::partials.icon', ['name' => $card['image']])
                         @endif

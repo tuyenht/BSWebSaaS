@@ -1,5 +1,7 @@
 <?php
 
+use Tests\Fixtures\StorefrontCss;
+
 /*
  * The text rules of formatted text and of a post body reach only the written text. A post body
  * (`.sf-prose--article`) also holds whole blocks — a video, an FAQ, a gallery, a call to action —
@@ -8,7 +10,7 @@
  */
 
 it('keeps the formatted-text rules off a post body: they apply inside formatted text only', function (): void {
-    $css = (string) preg_replace('~/\*.*?\*/~s', '', (string) file_get_contents(resource_path('css/storefront.css')));
+    $css = (string) preg_replace('~/\*.*?\*/~s', '', (string) StorefrontCss::all());
 
     // ".sf-prose x" / ".sf-prose > x" written bare would also reach the blocks in a post body.
     expect(preg_match_all('~(?<![\w-])\.sf-prose(?![\w:-])(?:\s+|\s*>\s*)(?![{,\s])[^{,]*~', $css, $bare))->toBe(0, 'bare .sf-prose descendant rule: '.implode(' | ', $bare[0]))
@@ -16,7 +18,7 @@ it('keeps the formatted-text rules off a post body: they apply inside formatted 
 });
 
 it('styles only the written text of a post body, and the blocks in it as the article’s own', function (): void {
-    $css = (string) preg_replace('~/\*.*?\*/~s', '', (string) file_get_contents(resource_path('css/storefront.css')));
+    $css = (string) preg_replace('~/\*.*?\*/~s', '', (string) StorefrontCss::all());
     preg_match_all('~(?<![\w(-])\.sf-prose--article\b([^{]*)\{~', $css, $m);
 
     foreach ($m[1] as $rest) {
@@ -36,7 +38,7 @@ it('styles only the written text of a post body, and the blocks in it as the art
 });
 
 it('puts a block heading in a post body on the article’s left edge with one rule, and no link underline on a button', function (): void {
-    $css = (string) file_get_contents(resource_path('css/storefront.css'));
+    $css = (string) StorefrontCss::all();
 
     expect($css)->toContain(".sf-prose--article .sf-band--none .sf-section-head {\n    max-width: none;\n    margin: 0 0 1.25rem;\n    text-align: left;")
         ->toContain(".sf-prose--article .sf-band--none .sf-section-head__rule,\n.sf-prose--article .sf-band--none .sf-section-head > .sf-decor {\n    display: none;")
@@ -48,7 +50,7 @@ it('spaces a text block that has a look set like text in a post body, not like a
     // A look (padding, colour set…) wraps the block in .sf-s (BlockRenderer): in a post it keeps the
     // text's rhythm (measured: 21px from the paragraph above, like plain text) instead of the 2.5rem
     // gap of a video or FAQ; a painted one adds the paragraph gap below its box.
-    $css = (string) file_get_contents(resource_path('css/storefront.css'));
+    $css = (string) StorefrontCss::all();
 
     expect($css)->toContain(".sf-prose--article > :is(.sf-band, .cta, .sf-s:not(:has(> :is(.richtext, .sf-prose)))):not(:first-child),\n.sf-prose--article > .page-band + * {\n    margin-block: 2.5rem 0;")
         ->toContain(".sf-prose--article > .sf-s:has(> :is(.richtext, .sf-prose)) {\n    margin-block: 0;")

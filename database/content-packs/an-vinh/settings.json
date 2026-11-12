@@ -56,7 +56,7 @@
   },
   {
    "key": "setting:storefront.footer",
-   "note": "Không có map_url (chưa có liên kết bản đồ thật). Mỗi nhà máy là một chi nhánh: key, tên đầy đủ, địa bàn, tọa độ và cờ gần đúng theo bảng Báo giá/Liên hệ của bản thiết kế; câu tìm bản đồ chỉ nhà máy 1 có. Ảnh là ảnh thật của An Vinh từ hồ sơ năng lực: nhà máy 2 xưởng lắp ráp, nhà máy 3 xưởng gia công; nhà máy 1 chưa có ảnh thật nên để trống.",
+   "note": "Không có map_url (chưa có liên kết bản đồ thật). Mỗi nhà máy là một chi nhánh: key, tên đầy đủ, địa bàn, tọa độ và cờ gần đúng theo bảng Báo giá/Liên hệ của bản thiết kế; câu tìm bản đồ chỉ nhà máy 1 có. Ảnh nhà máy 2 là ảnh thật của An Vinh từ hồ sơ năng lực (xưởng gia công Ngũ Sơn); nhà máy 1 và nhà máy 3 chưa có ảnh thật nên dùng ảnh mẫu Pexels (có trong danh sách cần thay). Nhà máy 3 chưa có tọa độ thật: ghim gần đúng ở tâm phường Trung Thành theo OpenStreetMap.",
    "value": {
     "about": {
      "vi": "An Vinh – giải pháp cơ khí chính xác: thiết kế, gia công đồ gá, jig và khuôn mẫu chất lượng cao tại Việt Nam."
@@ -100,40 +100,15 @@
       "title": {
        "vi": "NHÀ MÁY 2"
       },
-      "area_m2": 500,
-      "name": {
-       "vi": "Nhà máy lắp ráp"
-      },
-      "address": {
-       "vi": "Đường QL3, thôn Hương Ninh, xã Trung Giã, TP Hà Nội"
-      },
-      "full_name": {
-       "vi": "Nhà máy 2 – Hương Ninh"
-      },
-      "locality": {
-       "vi": "Trung Giã"
-      },
-      "image_media_id": {
-       "media": "plant-2-assembly-floor-1"
-      },
-      "lat": 21.2936586,
-      "lng": 105.8649934,
-      "approximate": true
-     },
-     {
-      "key": "nha-may-3",
-      "title": {
-       "vi": "NHÀ MÁY 3"
-      },
       "area_m2": 1800,
       "name": {
-       "vi": "Nhà máy gia công"
+       "vi": "Nhà máy gia công khuôn, jig, chi tiết hàng loạt"
       },
       "address": {
        "vi": "Đội 6, thôn Ngũ Sơn, xã Thạch Thất, TP Hà Nội"
       },
       "full_name": {
-       "vi": "Nhà máy 3 – Ngũ Sơn"
+       "vi": "Nhà máy 2 – Ngũ Sơn"
       },
       "locality": {
        "vi": "Thạch Thất"
@@ -143,6 +118,31 @@
       },
       "lat": 21.0655337,
       "lng": 105.556209,
+      "approximate": true
+     },
+     {
+      "key": "nha-may-3",
+      "title": {
+       "vi": "NHÀ MÁY 3"
+      },
+      "area_m2": 3500,
+      "name": {
+       "vi": "Nhà máy gia công, sản xuất hàn, dập, sơn linh kiện ô tô, xe máy"
+      },
+      "address": {
+       "vi": "TDP Kim Tỉnh, phường Trung Thành, tỉnh Thái Nguyên"
+      },
+      "full_name": {
+       "vi": "Nhà máy 3 – Kim Tỉnh"
+      },
+      "locality": {
+       "vi": "Thái Nguyên"
+      },
+      "image_media_id": {
+       "media": "n-factory-opening"
+      },
+      "lat": 21.3655865,
+      "lng": 105.8750945,
       "approximate": true
      }
     ],
@@ -169,12 +169,21 @@
   },
   {
    "key": "setting:storefront.floating_contact",
-   "note": "Nút liên hệ nổi chỉ có Zalo và Gọi (gọi màu hổ phách như bản thiết kế), dùng số hotline của An Vinh. Dưới 768px thay bằng thanh đáy 3 ô: Gọi, Chat Zalo, Yêu cầu báo giá.",
+   "note": "Nút liên hệ nổi dạng nút tròn trên mọi cỡ màn hình: Email, Chat Zalo và Gọi (gọi màu hổ phách như bản thiết kế), dùng email và số hotline của An Vinh. Không dùng thanh đáy trên điện thoại.",
    "value": {
     "enabled": true,
     "theme": "vertical",
     "position": "right",
     "channels": [
+     {
+      "key": "email",
+      "on": true,
+      "value": "quybv@ckanvinh.vn",
+      "tips": {
+       "vi": "Gửi email"
+      },
+      "color": "#ea4335"
+     },
      {
       "key": "zalo",
       "on": true,
@@ -195,16 +204,14 @@
      }
     ],
     "offset_x": 16,
-    "offset_y": 20,
-    "phone_bar": {
-     "enabled": true,
-     "cta": {
-      "label": {
-       "vi": "Yêu cầu báo giá"
-      },
-      "url": "/lien-he"
-     }
-    }
+    "offset_y": 20
+   }
+  },
+  {
+   "key": "setting:storefront.web_analytics",
+   "note": "Đo tốc độ khách thật bằng Cloudflare Web Analytics: mã của trang av1.baoson.net (Cloudflare → Web Analytics, cách cài \"Enable with JS Snippet installation\"). Mã này hiện công khai trong mã trang, không phải mật khẩu.",
+   "value": {
+    "cloudflare_token": "2e6b9be8764d44e48361a27c55c5c8aa"
    }
   },
   {

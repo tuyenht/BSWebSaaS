@@ -81,8 +81,10 @@ final readonly class PageRenderer
         $dates = $withToc && is_array($extra['pageDates'] ?? null) ? $extra['pageDates'] : [];
         unset($extra['pageDates']);
         $tokens = $this->theme->cssVariables();
-        // One pass over the body and the slots: pages and files are looked up once per kind.
-        $drawn = $this->blocks->renderBodies([self::withPageTitle($body, $title, $leadBlock, $crumbs, $dates), ...self::slotBodies($slots['blocks'])], $slots['context']);
+        // One pass over the body and the slots: pages and files are looked up once per kind. A page's layout
+        // draws no photo above the body (a post, project or product has its cover), so on a page the first
+        // block that draws an image takes the high priority, even after a block of text.
+        $drawn = $this->blocks->renderBodies([self::withPageTitle($body, $title, $leadBlock, $crumbs, $dates), ...self::slotBodies($slots['blocks'])], $slots['context'], true, $type === 'page');
         ['html' => $sections, 'bgVideo' => $bgVideo] = $drawn[0];
         $slotHtml = self::slotHtml($slots['blocks'], array_slice($drawn, 1));
         $extra['slotHtml'] = $slotHtml;
@@ -128,7 +130,7 @@ final readonly class PageRenderer
             }
         }
 
-        return $this->views->make($layout, $this->head($seo, $title, $extra) + [
+        return BlockStyles::narrow($this->views->make($layout, $this->head($seo, $title, $extra) + [
             'title' => $title,
             'tokens' => $tokens,
             'sections' => $sections,
@@ -140,7 +142,7 @@ final readonly class PageRenderer
             'toc' => $toc['items'],
             // The author numbered the headings: the contents list then adds no numbers of its own.
             'tocOwn' => $tocOwn,
-        ] + $extra)->render();
+        ] + $extra)->render());
     }
 
     /**
@@ -528,13 +530,13 @@ final readonly class PageRenderer
         $layout = $this->templates->layoutFor('category', null, $listTemplate);
         $extra = StorefrontChrome::withTrail($this->withSlots($extra));
 
-        return $this->views->make($layout, $this->head($seo, $title, $extra) + [
+        return BlockStyles::narrow($this->views->make($layout, $this->head($seo, $title, $extra) + [
             'title' => $title,
             'tokens' => $this->theme->cssVariables(),
             'posts' => $posts,
             'pagination' => $pagination,
             'ldPage' => 'CollectionPage',
-        ] + $extra)->render();
+        ] + $extra)->render());
     }
 
     /**
@@ -563,14 +565,14 @@ final readonly class PageRenderer
         $shared = Cast::string($slotHtml['product_tabs'] ?? '');
         $parts = ArticleToc::parts($descriptionHtml, $shared, self::PRODUCT_IDS);
 
-        return $this->views->make($layout, $this->head($seo, $name, $extra) + [
+        return BlockStyles::narrow($this->views->make($layout, $this->head($seo, $name, $extra) + [
             'title' => $name,
             'tokens' => $this->theme->cssVariables(),
             'description' => $parts['html'],
             'parts' => $parts['items'],
             'images' => $images,
             'ldPage' => 'ItemPage',
-        ] + ($videos > 0 ? ['videoScript' => true] : []) + ($parts['items'] !== [] ? ['tocScript' => true] : []) + $extra)->render();
+        ] + ($videos > 0 ? ['videoScript' => true] : []) + ($parts['items'] !== [] ? ['tocScript' => true] : []) + $extra)->render());
     }
 
     /**
@@ -583,11 +585,11 @@ final readonly class PageRenderer
      */
     public function renderNotFound(string $title, array $extra = []): string
     {
-        return $this->views->make('theme::layouts.not-found', $this->head([], $title, $extra) + [
+        return BlockStyles::narrow($this->views->make('theme::layouts.not-found', $this->head([], $title, $extra) + [
             'title' => $title,
             'tokens' => $this->theme->cssVariables(),
             // The head leaves out the share tags and the JSON-LD: there is no page to describe.
             'notFound' => true,
-        ] + $extra)->render();
+        ] + $extra)->render());
     }
 }

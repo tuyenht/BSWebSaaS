@@ -18,6 +18,7 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\RichTextSanitizer;
 use App\Modules\Shared\Support\SafeLink;
 use App\Modules\Theme\Chrome\StorefrontChrome;
+use App\Modules\Theme\Chrome\WebAnalytics;
 use App\Modules\Theme\Components\ButtonLink;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SchemaHtml;
@@ -70,7 +71,7 @@ final readonly class PackValidator
     /** The setting groups and names a pack may write; everything else is the site's own. */
     private const array SETTINGS = [
         'theme' => ['tokens', 'heading_decor'],
-        'storefront' => ['header', 'footer', 'floating_contact', 'layout_blocks'],
+        'storefront' => ['header', 'footer', 'floating_contact', 'layout_blocks', 'web_analytics'],
         'general' => ['brand'],
     ];
 
@@ -327,6 +328,7 @@ final readonly class PackValidator
             'setting:theme.heading_decor' => $this->headingDecor($item->key, $value, $item->managedKeys(), $errors),
             'setting:storefront.floating_contact' => $this->floatingContact($item->key, $value, $pack, $errors),
             'setting:storefront.layout_blocks' => $this->layoutBlocks($item->key, $value, $pack, $errors),
+            'setting:storefront.web_analytics' => $this->webAnalytics($item->key, $value, $errors),
             default => null,
         };
         unset($default);
@@ -508,6 +510,25 @@ final readonly class PackValidator
     {
         foreach (FloatingContactInput::errors($value, $pack->locales) as $problem) {
             $errors[] = "{$at}: {$problem}";
+        }
+    }
+
+    /**
+     * Exactly {"cloudflare_token": "<32 lowercase hex>"}, the shape the storefront prints its beacon
+     * for (WebAnalytics): a token of another shape would silently print nothing, so it is refused here.
+     *
+     * @param  array<array-key, mixed>  $value
+     * @param  list<string>  $errors
+     */
+    private function webAnalytics(string $at, array $value, array &$errors): void
+    {
+        foreach (array_keys($value) as $name) {
+            if ($name !== 'cloudflare_token') {
+                $errors[] = "{$at}: '{$name}' is not a web-analytics field (only cloudflare_token).";
+            }
+        }
+        if (! WebAnalytics::valid($value['cloudflare_token'] ?? null)) {
+            $errors[] = "{$at}: 'cloudflare_token' must be the 32-character site token Cloudflare Web Analytics gives (digits and lowercase a–f only).";
         }
     }
 

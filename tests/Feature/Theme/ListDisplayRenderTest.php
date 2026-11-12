@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\View;
 use Illuminate\Support\HtmlString;
 use Livewire\Livewire;
 use Tests\Fixtures\StorefrontCards;
+use Tests\Fixtures\StorefrontCss;
 
 /*
  * Lists that carry the display group draw a rail (grid, slider or swipe row, with arrows and a pause
@@ -111,12 +112,23 @@ it('draws no pause button on any rail, rotating or still, and the pause texts ar
 });
 
 it('gives the arrows a 44px hit area with a 36px disc and no arrows when the block says none', function (): void {
-    $css = (string) file_get_contents(base_path('resources/css/storefront.css'));
+    $css = (string) StorefrontCss::all();
     $none = railView('partners', ['props' => ['layout' => 'auto', 'arrows' => 'none', 'logos' => logos(8)]]);
 
     expect($css)->toMatch('/\.sf-rail__btn \{[^}]*width: 2\.75rem;[^}]*height: 2\.75rem;[^}]*background: transparent;/s')
         ->and($css)->toMatch('/\.sf-rail__btn::before \{[^}]*inset: 0\.25rem;/s')
         ->and($none)->not->toContain('data-sf-rail-prev')->and($none)->not->toContain('data-sf-rail-next');
+});
+
+it('keeps a card link overlay inside its card so a tap on an arrow over the card edge turns the rail', function (): void {
+    $css = StorefrontCss::all();
+
+    // The stretched link covers its card at z-index 2; isolating the card keeps that layer from rising
+    // over the arrows, which sit on the card edges on a phone and beside the row from 1360px.
+    expect($css)->toMatch('/\n\.sf-card \{[^}]*isolation: isolate;/s')
+        ->and($css)->toMatch('/\.sf-card__link::after \{[^}]*z-index: 2;/s')
+        ->and(preg_match_all('/\.sf-rail__prev,\s*\.sf-rail__next \{[^}]*position: absolute;[^}]*z-index: (\d+);/s', $css, $m))->toBe(2)
+        ->and(array_map(intval(...), $m[1]))->each->toBeGreaterThan(2);
 });
 
 it('lets the script rotate nothing on a phone swipe row or under reduced motion, and pause on hover, focus and touch', function (): void {
@@ -278,7 +290,7 @@ it('announces a list that rotates only on a phone, and names every rail even whe
 });
 
 it('draws the rail controls as one row below the list: arrow, dots, arrow, all hidden until the script shows them', function (): void {
-    $css = (string) file_get_contents(base_path('resources/css/storefront.css'));
+    $css = (string) StorefrontCss::all();
     $html = railView('team', ['props' => ['layout' => 'slider', 'members' => members(9)]]);
 
     expect($html)->toMatch('#<div class="sf-rail__controls">\s*<button type="button" class="sf-rail__btn sf-rail__prev" data-sf-rail-prev hidden aria-label="[^"]+" title="[^"]+">.*?<span class="sf-rail__dots" data-sf-rail-dots hidden aria-hidden="true"></span>\s*<button type="button" class="sf-rail__btn sf-rail__next" data-sf-rail-next hidden aria-label="[^"]+"#s')
@@ -288,14 +300,14 @@ it('draws the rail controls as one row below the list: arrow, dots, arrow, all h
 });
 
 it('shows a slice of the next card on a tablet slider and lets the logo strip scroll freely', function (): void {
-    $css = (string) file_get_contents(base_path('resources/css/storefront.css'));
+    $css = (string) StorefrontCss::all();
 
     expect($css)->toMatch('/\.sf-rail__list--slider:not\(\.sf-rail__list--c6\) \{ --sf-c: 2\.25; \}/')
         ->and($css)->toMatch('/\.partners \.sf-rail__list--m-slider \{\s*scroll-snap-type: none;/s');
 });
 
 it('lets the phone rules win under 640px, caps the tablet at two (three logos for partners) and keeps the scrollbar when it is the only way to scroll', function (): void {
-    $css = (string) file_get_contents(base_path('resources/css/storefront.css'));
+    $css = (string) StorefrontCss::all();
     $tablet = strpos($css, '@media (min-width: 640px) and (max-width: 1023px) {', (int) strpos($css, '.sf-rail {'));
     $phone = strpos($css, '@media (max-width: 639px) {', (int) $tablet);
 

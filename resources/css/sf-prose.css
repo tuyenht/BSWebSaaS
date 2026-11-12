@@ -1,0 +1,636 @@
+/*
+ * sf-prose.css — storefront styles for formatted text (articles, pages with a table of contents, tables).
+ * Linked in the <head> only on a page whose HTML has a class from: .sf-prose, .sf-table, .richtext, .sf-doc
+ * (Theme\Rendering\BlockStyles, which lists the same roots), after storefront.css and in the order
+ * BlockStyles::FILES gives, so the cascade is the one the single file had. Every rule here needs one of
+ * those classes on the page; a rule for anything else belongs in storefront.css.
+ */
+
+/* ───── Richtext section ─────────────────────────────────────────────────── */
+.richtext {
+    max-width: 80rem;
+    margin-inline: auto;
+    padding: 2.5rem 1.5rem;
+}
+
+@media (min-width: 1024px) {
+    .richtext {
+        padding: 3rem 2rem;
+    }
+}
+
+.richtext h2 {
+    font-size: clamp(1.125rem, 2vw, 1.5rem);
+    font-weight: 700;
+    color: var(--sch-head, var(--color-text-strong));
+    margin: 0 0 0.875rem;
+}
+
+.richtext p {
+    color: var(--sch-body, color-mix(in srgb, var(--color-text) 80%, white));
+    line-height: 1.75;
+    margin-bottom: 0.75rem;
+}
+
+/* ───── Page with a table of contents (layout page-toc) ──────────────────── */
+/* The contents box above the text on a phone; from 1024px a quarter-width column that stays in view
+   while the three-quarter text column scrolls. The text blocks inside drop their own section
+   padding and column so the page keeps one rhythm; their h2 carry a primary-colour rule. */
+.sf-doc {
+    display: grid;
+    gap: 3rem;
+    max-width: 80rem;
+    margin-inline: auto;
+    padding: 4rem 1rem;
+}
+
+@media (min-width: 640px) {
+    .sf-doc {
+        padding-inline: 1.5rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .sf-doc {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
+        align-items: start;
+        padding-inline: 2rem;
+    }
+
+    /* A long list scrolls inside its column, so its last items stay reachable on a short screen. */
+    .sf-doc__toc {
+        position: sticky;
+        top: 7rem;
+        max-height: calc(100vh - 8rem);
+        max-height: calc(100dvh - 8rem);
+        overflow-y: auto;
+    }
+}
+
+.sf-doc__toc-box {
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+}
+
+.sf-doc__toc-title {
+    margin: 0 0 0.75rem;
+    color: var(--color-text-strong);
+    font-weight: 700;
+}
+
+.sf-doc__toc-list {
+    display: grid;
+    gap: 0.125rem;
+    margin: 0;
+    padding-left: 1.5rem;
+    list-style: decimal;
+    font-size: 0.875rem;
+}
+
+.sf-doc__toc-list--own {
+    padding-left: 0;
+    list-style: none;
+}
+
+.sf-doc__toc-list li::marker {
+    color: var(--color-primary-text);
+    font-weight: 600;
+}
+
+.sf-doc__toc-link {
+    display: block;
+    padding-block: 0.25rem;
+    color: var(--color-text);
+    overflow-wrap: anywhere;
+}
+
+.sf-doc__toc-link:hover {
+    color: var(--color-primary-text);
+}
+
+@media (any-pointer: coarse) {
+    .sf-doc__toc-link {
+        display: flex;
+        align-items: center;
+        min-height: 2.75rem;
+    }
+}
+
+.sf-doc__body {
+    min-width: 0;
+    max-width: 48rem;
+}
+
+.sf-doc__body > :is(.richtext, .sf-prose) {
+    max-width: none;
+    margin-inline: 0;
+    padding: 0;
+}
+
+.sf-doc__body > * + * {
+    margin-top: 2.5rem;
+}
+
+.sf-doc__body > .richtext p {
+    color: var(--sch-body, var(--color-text));
+}
+
+.sf-doc__body > :is(.richtext, .sf-prose) h2 {
+    padding-bottom: 0.4rem;
+    border-bottom: 2px solid var(--color-primary);
+}
+
+/* ───── Formatted text section (richtext_html) ───────────────────────────── */
+/* A readable 48rem column of sanitized HTML (ADR-19). Pictures carry their width (share of the
+   column) and alignment as classes printed by RichHtml; tables scroll inside themselves so the page
+   never scrolls sideways. Links are underlined: in running text colour alone would not mark them. */
+.sf-prose {
+    max-width: 48rem;
+    margin-inline: auto;
+    padding: 2.5rem 1.5rem;
+    color: var(--sch-body, var(--color-text));
+    line-height: 1.75;
+    overflow-wrap: break-word;
+    /* the picture rules below follow the column's width, and floated pictures stay inside it */
+    container: prose / inline-size;
+    display: flow-root;
+}
+
+@media (min-width: 1024px) {
+    .sf-prose {
+        padding: 3rem 2rem;
+    }
+}
+
+.sf-prose:not(.sf-prose--article) > :first-child {
+    margin-top: 0;
+}
+
+.sf-prose:not(.sf-prose--article) :is(h2, h3, h4, h5) {
+    color: var(--sch-head, var(--color-text-strong));
+    font-weight: 700;
+    line-height: 1.3;
+    margin: 1.75rem 0 0.625rem;
+}
+
+.sf-prose:not(.sf-prose--article) h2 {
+    font-size: clamp(1.25rem, 2.2vw, 1.5rem);
+}
+
+.sf-prose:not(.sf-prose--article) h3 {
+    font-size: 1.25rem;
+}
+
+.sf-prose:not(.sf-prose--article) h4 {
+    font-size: 1.125rem;
+}
+
+.sf-prose:not(.sf-prose--article) h5 {
+    font-size: 1rem;
+}
+
+.sf-prose:not(.sf-prose--article) :is(p, ul, ol, blockquote, table, figure) {
+    margin: 0 0 0.875rem;
+}
+
+.sf-prose:not(.sf-prose--article) :is(ul, ol) {
+    padding-left: 1.5rem;
+}
+
+.sf-prose:not(.sf-prose--article) ul {
+    list-style: disc;
+}
+
+.sf-prose:not(.sf-prose--article) ol {
+    list-style: decimal;
+}
+
+.sf-prose:not(.sf-prose--article) a {
+    color: var(--color-primary-text);
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+}
+
+.sf-prose:not(.sf-prose--article) blockquote {
+    border-left: 4px solid var(--color-primary);
+    padding-left: 1rem;
+    font-style: italic;
+}
+
+/* Tables (ProseTables wraps each one when the page is printed): always the column's full width,
+   never wider than the page. `kv` (two columns) and `stack` fit; `stack` turns each row into a card
+   on a narrow column (the column's width decides, not the screen's); `scroll` scrolls inside its
+   frame, with a shadow at the edge that still has content and its first column kept in view
+   (not when cells are merged: a merged cell would pin the wrong column). */
+.sf-table {
+    --sf-table-line: color-mix(in srgb, var(--color-text) 18%, transparent);
+    --sch-head: var(--color-text-strong);
+    --sch-body: var(--color-text);
+    --sch-link: var(--color-primary-text);
+    color: var(--color-text);
+    margin-top: 1.15em;
+    border: 1px solid var(--sf-table-line);
+    border-radius: 0.75rem;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    background:
+        linear-gradient(90deg, var(--color-surface) 30%, transparent) 0 / 2.5rem 100% no-repeat local,
+        linear-gradient(270deg, var(--color-surface) 30%, transparent) 100% / 2.5rem 100% no-repeat local,
+        radial-gradient(farthest-side at 0 50%, color-mix(in srgb, var(--color-dark) 22%, transparent), transparent) 0 / 0.875rem 100% no-repeat scroll,
+        radial-gradient(farthest-side at 100% 50%, color-mix(in srgb, var(--color-dark) 22%, transparent), transparent) 100% / 0.875rem 100% no-repeat scroll,
+        var(--color-surface);
+}
+
+.sf-table[tabindex]:focus-visible {
+    outline: 2px solid var(--color-primary-text);
+    outline-offset: 2px;
+}
+
+.sf-table > table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin: 0;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Every rule reaches only the table's own cells (child chains), never a table nested in a cell. */
+.sf-table > table > * > tr > :is(th, td) {
+    padding: 0.65rem 0.85rem;
+    text-align: left;
+    vertical-align: top;
+    overflow-wrap: break-word;
+}
+
+.sf-table > table > thead > tr > th {
+    background: var(--color-dark);
+    color: var(--color-on-dark, var(--color-surface));
+    font-weight: 600;
+}
+
+.sf-table > table > :is(tbody, tfoot) > tr > :is(th, td) {
+    border-top: 1px solid var(--sf-table-line);
+}
+
+.sf-table > table > tbody:first-child > tr:first-child > :is(th, td),
+.sf-table > table > thead + tbody > tr:first-child > :is(th, td) {
+    border-top: 0;
+}
+
+.sf-table > table > tbody > tr:nth-child(2n) > :is(th, td) {
+    background: color-mix(in srgb, var(--color-dark) 3%, transparent);
+}
+
+.sf-table img {
+    max-width: 100%;
+    height: auto;
+}
+
+.sf-table:is(.sf-table--kv, .sf-table--stack) > table > * > tr > :is(th, td) {
+    overflow-wrap: anywhere;
+}
+
+/* A row header: the first column of a key-value or word-led table, or a header cell in the body. */
+.sf-table > table > tbody > tr > th,
+.sf-table:is(.sf-table--kv, .sf-table--rowhead) > table > tbody > tr > :first-child {
+    color: var(--color-text-strong);
+    font-weight: 600;
+}
+
+.sf-table--kv > table > tbody > tr > :first-child {
+    width: 40%;
+}
+
+.sf-table--scroll > table {
+    min-width: calc(var(--sf-cols, 4) * 5.5rem + 2.5rem);
+}
+
+.sf-table--scroll:not(.sf-table--merged) > table > thead > tr > :first-child,
+.sf-table--scroll:not(.sf-table--merged) > table > tbody > tr > :first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--color-surface);
+    box-shadow: inset -1px 0 var(--sf-table-line);
+}
+
+.sf-table--scroll:not(.sf-table--merged) > table > thead > tr > :first-child {
+    background: var(--color-dark);
+    box-shadow: inset -1px 0 var(--color-dark-line, var(--color-dark));
+}
+
+.sf-table--scroll:not(.sf-table--merged) > table > tbody > tr:nth-child(2n) > :first-child {
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+}
+
+.sf-table--scroll > table > tbody > tr > :first-child {
+    min-width: 8.5rem;
+}
+
+@container prose (max-width: 29.99rem) {
+    .sf-table > table > * > tr > :is(th, td) {
+        padding: 0.55rem 0.7rem;
+    }
+
+    .sf-table > table {
+        font-size: 0.875rem;
+    }
+}
+
+/* The card layout, by the column's width (every supported browser has container queries, as the
+   picture rules above already assume). */
+@container prose (max-width: 29.99rem) {
+    .sf-table--stack { border: 0; border-radius: 0; background: none; overflow: visible; }
+    .sf-table--stack > table,
+    .sf-table--stack > table > tbody,
+    .sf-table--stack > table > tbody > tr,
+    .sf-table--stack > table > tbody > tr > :is(th, td) { display: block; width: 100%; min-width: 0; }
+    .sf-table--stack > table > thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .sf-table--stack > table > tbody > tr { border: 1px solid var(--sf-table-line); border-radius: 0.75rem; overflow: hidden; background: var(--color-surface); }
+    .sf-table--stack > table > tbody > tr + tr { margin-top: 0.75rem; }
+    .sf-table--stack > table > tbody > tr:nth-child(2n) > :is(th, td) { background: none; }
+    .sf-table--stack > table > tbody > tr > :is(th, td) { border-top: 1px solid var(--sf-table-line); padding: 0.6rem 0.9rem; }
+    .sf-table--stack > table > tbody > tr > td { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 0.75rem; }
+    .sf-table--stack > table > tbody > tr > :first-child { border-top: 0; }
+    .sf-table--stack > table > tbody > tr > td::before { content: attr(data-label); font-size: 0.8125rem; font-weight: 600; color: var(--color-text); }
+    .sf-table--stack > table > tbody > tr > th,
+    .sf-table--stack.sf-table--rowhead > table > tbody > tr > :first-child { display: block; background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark))); color: var(--color-text-strong); font-weight: 700; }
+    .sf-table--stack.sf-table--rowhead > table > tbody > tr > :first-child::before { content: none; }
+}
+
+@media print {
+    .sf-table { overflow: visible; border: 0; background: none; }
+    .sf-table--scroll > table { min-width: 0; }
+    .sf-table--scroll > table > thead > tr > :first-child,
+    .sf-table--scroll > table > tbody > tr > :first-child { position: static; }
+}
+
+.sf-prose:not(.sf-prose--article) hr {
+    border: 0;
+    border-top: 1px solid color-mix(in srgb, var(--color-text) 35%, transparent);
+    margin: 1.75rem 0;
+}
+
+.sf-prose:not(.sf-prose--article) figcaption {
+    margin-top: 0.375rem;
+    font-size: 0.875rem;
+    text-align: center;
+}
+
+.sf-prose:not(.sf-prose--article) figure:has(> .sf-prose__img--left) figcaption {
+    text-align: left;
+}
+
+.sf-prose:not(.sf-prose--article) figure:has(> .sf-prose__img--right) figcaption {
+    text-align: right;
+}
+
+.sf-prose__img {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    margin-inline: auto;
+    border-radius: 0.375rem;
+}
+
+.sf-prose__img--left {
+    margin-inline: 0 auto;
+}
+
+.sf-prose__img--right {
+    margin-inline: auto 0;
+}
+
+/* Width as a share of the text column — the editor's sizes. */
+.sf-prose__img--lg {
+    width: 75%;
+}
+
+.sf-prose__img--md {
+    width: 50%;
+}
+
+.sf-prose__img--sm {
+    width: 33.333%;
+}
+
+/* A medium or small picture set left or right lets the text run round it while the column is at
+   least 600px wide, as in the editor; headings, tables and rules start below it. Narrower, it
+   stands alone, half the column wide and centred. */
+@container prose (min-width: 600px) {
+    .sf-prose:not(.sf-prose--article) figure:has(> :is(.sf-prose__img--md, .sf-prose__img--sm).sf-prose__img--left) {
+        float: left;
+        margin: 0.25rem 1.5rem 1rem 0;
+    }
+
+    .sf-prose:not(.sf-prose--article) figure:has(> :is(.sf-prose__img--md, .sf-prose__img--sm).sf-prose__img--right) {
+        float: right;
+        margin: 0.25rem 0 1rem 1.5rem;
+    }
+
+    .sf-prose:not(.sf-prose--article) figure:has(> .sf-prose__img--md:is(.sf-prose__img--left, .sf-prose__img--right)) {
+        width: 50%;
+    }
+
+    .sf-prose:not(.sf-prose--article) figure:has(> .sf-prose__img--sm:is(.sf-prose__img--left, .sf-prose__img--right)) {
+        width: 33.333%;
+    }
+
+    .sf-prose:not(.sf-prose--article) figure > :is(.sf-prose__img--md, .sf-prose__img--sm):is(.sf-prose__img--left, .sf-prose__img--right) {
+        width: 100%;
+    }
+}
+
+@container prose (max-width: 599.98px) {
+    .sf-prose:not(.sf-prose--article) :is(.sf-prose__img--md, .sf-prose__img--sm):is(.sf-prose__img--left, .sf-prose__img--right) {
+        width: 50%;
+        margin-inline: auto;
+    }
+
+    .sf-prose:not(.sf-prose--article) figure:has(> :is(.sf-prose__img--md, .sf-prose__img--sm):is(.sf-prose__img--left, .sf-prose__img--right)) figcaption {
+        text-align: center;
+    }
+}
+
+.sf-prose:not(.sf-prose--article) :is(h2, h3, h4, h5, table, hr, .sf-video) {
+    clear: both;
+}
+
+/* Beside a floated picture, a quote's bar and a list's markers stay next to it, not behind it. */
+.sf-prose:not(.sf-prose--article) :is(blockquote, ul, ol) {
+    display: flow-root;
+}
+
+/* One prose look for every post body: the blocks inside (text, formatted text) give up their own
+   column and spacing and share this one; headings carry a brand rule, list markers the brand. */
+.sf-prose--article {
+    font-size: 1.0625rem;
+    line-height: 1.8;
+    color: var(--color-text);
+}
+
+.sf-prose--article .richtext,
+.sf-prose--article .sf-prose {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+}
+
+/* A block set to the narrow width (the rule in storefront.css) stays narrow inside an article body
+   and the post column: this file and sf-post.css load after storefront.css, so the width is repeated
+   here with one more class than their full-width rules. */
+.sf-s--w-narrow.sf-s--w-narrow > .richtext,
+.sf-s--w-narrow.sf-s--w-narrow > .sf-prose {
+    max-width: 48rem;
+}
+
+.sf-prose--article :is(.richtext, .sf-prose) :is(p, ul, ol, blockquote, figure, table) {
+    margin: 0 0 1.15em;
+}
+
+.sf-prose--article .richtext p {
+    color: inherit;
+    line-height: inherit;
+}
+
+.sf-prose--article :is(.richtext, .sf-prose) h2 {
+    margin: 2em 0 0.75em;
+    padding-bottom: 0.4rem;
+    border-bottom: 2px solid var(--color-primary);
+    color: var(--color-text-strong);
+    font-size: 1.6rem;
+    line-height: 1.3;
+    font-weight: 700;
+}
+
+.sf-prose--article :is(.richtext, .sf-prose) h3 {
+    margin: 1.6em 0 0.6em;
+    color: var(--color-text-strong);
+    font-size: 1.25rem;
+    line-height: 1.4;
+}
+
+.sf-prose--article > :first-child,
+.sf-prose--article > :first-child > :first-child {
+    margin-top: 0;
+}
+
+.sf-prose--article :is(.richtext, .sf-prose) li + li {
+    margin-top: 0.35em;
+}
+
+.sf-prose--article :is(.richtext, .sf-prose) li::marker {
+    color: var(--color-primary-text);
+}
+
+.sf-prose--article :is(.richtext, .sf-prose) a {
+    text-underline-offset: 3px;
+}
+
+.sf-prose--article :is(.richtext, .sf-prose) strong {
+    color: var(--color-text-strong);
+}
+
+.sf-prose--article :is(.richtext, .sf-prose) blockquote {
+    padding: 1rem 1.25rem;
+    border-left: 4px solid var(--color-primary);
+    border-radius: 0 0.5rem 0.5rem 0;
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+    color: var(--color-text-strong);
+}
+
+.sf-prose--article :is(.richtext, .sf-prose) figure img {
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 25px -10px rgb(0 0 0 / 0.3);
+}
+
+.sf-prose--article :is(.richtext, .sf-prose) figcaption {
+    margin-top: 0.6rem;
+    color: color-mix(in srgb, var(--color-text) 80%, white);
+    font-size: 0.875rem;
+}
+
+/* Blocks placed in a post body (video, FAQ, gallery, call to action…) keep their own look — the
+   text rules above reach only the written text — and follow the article: its column, its rhythm,
+   and a heading like the text's own (left, one brand rule under it). A text block that has a look
+   set (its .sf-s wrapper) is text: it keeps the text's rhythm, not a block's gap. */
+.sf-prose--article > :is(.sf-band, .cta, .sf-s:not(:has(> :is(.richtext, .sf-prose)))):not(:first-child),
+.sf-prose--article > .page-band + * {
+    margin-block: 2.5rem 0;
+}
+
+.sf-prose--article > .sf-s:has(> :is(.richtext, .sf-prose)) {
+    margin-block: 0;
+}
+
+/* A painted one (a colour set or a photo) holds its last paragraph's gap inside: one more below. */
+.sf-prose--article > .sf-s:is([class*="sf-s--sch-"], .sf-s--image):has(> :is(.richtext, .sf-prose)) {
+    margin-bottom: 1.15em;
+}
+
+.sf-prose--article > .sf-band--none,
+.sf-prose--article > .sf-s > .sf-band--none {
+    padding-block: 0;
+}
+
+.sf-prose--article .sf-band--none > .sf-container,
+.sf-prose--article .sf-band--none :is(.sf-faq__list, .sf-video-block__frame) {
+    max-width: none;
+    margin-inline: 0;
+    padding-inline: 0;
+}
+
+.sf-prose--article .sf-band--none .sf-section-head {
+    max-width: none;
+    margin: 0 0 1.25rem;
+    text-align: left;
+}
+
+.sf-prose--article .sf-band--none .sf-section-head__title {
+    margin: 0;
+    padding-bottom: 0.4rem;
+    border-bottom: 2px solid var(--color-primary);
+    color: var(--color-text-strong);
+    font-size: 1.6rem;
+    line-height: 1.3;
+}
+
+.sf-prose--article .sf-band--none .sf-section-head__rule,
+.sf-prose--article .sf-band--none .sf-section-head > .sf-decor {
+    display: none;
+}
+
+/* The site's blocks before and after the order buttons: the text keeps the box's small size, not a
+   prose column's; a bulleted list after the buttons reads as ticks in two columns. */
+:is(.product__lead, .product__extra) .sf-prose {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    line-height: inherit;
+}
+@media (max-width: 639.98px) {
+
+    .sf-prose--article :is(.richtext, .sf-prose) h2,
+    .sf-prose--article .sf-band--none .sf-section-head__title {
+        font-size: 1.375rem;
+        line-height: 1.3;
+    }
+}
+@media (max-width: 639.98px) {
+
+    .sf-prose--article :is(.richtext, .sf-prose) h3,
+    .sf-prose:not(.sf-prose--article) h3 {
+        font-size: 1.125rem;
+        line-height: 1.35;
+    }
+}
+@media (max-width: 639.98px) {
+
+    .sf-prose--article {
+        font-size: 1rem;
+    }
+}

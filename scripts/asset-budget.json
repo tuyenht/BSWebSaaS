@@ -6,7 +6,75 @@
     },
     "resources/css/storefront.css": {
       "js": 0,
-      "css": 30380
+      "css": 8219
+    },
+    "resources/css/sf-hero.css": {
+      "js": 0,
+      "css": 1122
+    },
+    "resources/css/sf-slider.css": {
+      "js": 0,
+      "css": 1379
+    },
+    "resources/css/sf-about.css": {
+      "js": 0,
+      "css": 1490
+    },
+    "resources/css/sf-cta.css": {
+      "js": 0,
+      "css": 1071
+    },
+    "resources/css/sf-decor.css": {
+      "js": 0,
+      "css": 1677
+    },
+    "resources/css/sf-cards.css": {
+      "js": 0,
+      "css": 2863
+    },
+    "resources/css/sf-lists.css": {
+      "js": 0,
+      "css": 2999
+    },
+    "resources/css/sf-blocks.css": {
+      "js": 0,
+      "css": 2260
+    },
+    "resources/css/sf-rail.css": {
+      "js": 0,
+      "css": 1910
+    },
+    "resources/css/sf-prose.css": {
+      "js": 0,
+      "css": 2642
+    },
+    "resources/css/sf-post.css": {
+      "js": 0,
+      "css": 3062
+    },
+    "resources/css/sf-product.css": {
+      "js": 0,
+      "css": 1978
+    },
+    "resources/css/sf-form.css": {
+      "js": 0,
+      "css": 2729
+    },
+    "resources/css/sf-media.css": {
+      "js": 0,
+      "css": 1668
+    },
+    "resources/css/sf-stats.css": {
+      "js": 0,
+      "css": 1187
+    },
+    "resources/css/sf-floating.css": {
+      "js": 0,
+      "css": 1900
+    },
+    "resources/css/sf-404.css": {
+      "js": 0,
+      "css": 843
     },
     "resources/js/app.js": {
       "js": 20351,
@@ -69,7 +137,7 @@
       "css": 0
     },
     "resources/js/storefront.js": {
-      "js": 1196,
+      "js": 1564,
       "css": 0
     }
   },
