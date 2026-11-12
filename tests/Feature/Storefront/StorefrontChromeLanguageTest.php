@@ -58,7 +58,7 @@ it('speaks the page language in the footer and links home in it', function (): v
 
     expect($this->get('http://chrome.platform.test/en/about')->assertOk()->getContent())
         ->toContain('<p class="site-footer__heading">Navigation</p>')
-        ->toContain('Business registration no.: 0100000001')
+        ->toContain('Enterprise code: 0100000001')
         ->toContain('Hotline: <a href="tel:0901234567">')
         ->toContain("© {$year} Xưởng Mẫu. All rights reserved.")
         ->toContain('<a class="site-header__brand" href="/en"')
@@ -67,7 +67,7 @@ it('speaks the page language in the footer and links home in it', function (): v
 
     expect($this->get('http://chrome.platform.test/gioi-thieu')->assertOk()->getContent())
         ->toContain('<p class="site-footer__heading">Điều hướng</p>')
-        ->toContain('GPĐKKD: 0100000001')
+        ->toContain('Mã số doanh nghiệp: 0100000001')
         ->toContain("© {$year} Xưởng Mẫu. Bảo lưu mọi quyền.")
         ->toContain('<a class="site-header__brand" href="/"');
 });
