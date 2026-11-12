@@ -286,8 +286,6 @@ final class Inbox extends Component
             $read = DB::transaction(function () use ($canManage): array {
                 $forms = $this->knownForms();
                 $list = $this->listQuery($forms);
-                // a ticked form this site does not know leaves the filter (and its count)
-                $this->formF = array_values(array_intersect($this->formF, array_map(fn (mixed $u): string => Cast::string($u), $forms->pluck('ulid')->all())));
                 $counts = $list->tabCounts();
                 $rows = $list->rows($this->tab, $this->until, self::PAGE, self::MAX_ROWS);
                 $open = $this->lead !== '' ? ($rows->firstWhere('ulid', $this->lead) ?? $this->findLead($this->lead)) : $rows->first();

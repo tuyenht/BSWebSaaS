@@ -296,7 +296,10 @@ it('never falls back to the whole list when a form filter names no known form', 
         $page = Livewire::actingAs($manager)->test(Inbox::class)
             ->set('formF', [$foreign, '01ARZ3NDEKTSV4RRFFQ69G5FAV'])
             ->assertDontSee('Lê Hoàng Bảo');
-        expect($page->get('formF'))->toBe([]);
+        // the filter stays on, so the next request still matches nothing and "clear filters" stays offered
+        expect($page->get('formF'))->toHaveCount(2);
+        $page->call('clearSelection')->assertDontSee('Lê Hoàng Bảo');
+        $page->call('clearAllFilters')->assertSee('Lê Hoàng Bảo');
     });
 });
 
