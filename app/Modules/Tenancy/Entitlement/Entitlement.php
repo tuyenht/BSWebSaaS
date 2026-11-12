@@ -155,8 +155,9 @@ final class Entitlement
     }
 
     /**
-     * The current site's lifecycle status (provisioning | active | suspended | archived), or null
-     * when no site is resolved.
+     * The current site's lifecycle status (provisioning · active · suspended · archived), so the
+     * storefront can tell a visitor which of them keeps the site closed. Fail-closed: null with no
+     * resolved site or no row, which no caller reads as open.
      */
     public function siteStatus(): ?string
     {

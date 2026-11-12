@@ -1,4 +1,39 @@
-@php($brandName = \App\Modules\Storefront\Support\ErrorPageBrand::for(request()))
+@php($brandLookup = \App\Modules\Storefront\Support\ErrorPageBrand::resolve(request()))
+@php($brandName = $brandLookup['name'])
+@if ($brandName === null)
+@php($noticeLang = \App\Modules\Storefront\Support\ErrorPageBrand::locale(request()))
+@php($noticeCopy = $brandLookup['failed']
+    ? ['icon' => 'compass', 'title' => 'storefront.not_found.title', 'heading' => 'storefront.not_found.heading', 'text' => 'storefront.not_found.message']
+    : ['icon' => 'globe', 'title' => 'storefront.site_state.unknown_title', 'heading' => 'storefront.site_state.unknown_title', 'text' => 'storefront.site_state.unknown_text'])
+{{--
+    A host no site owns (or one whose domain is not proven yet): the neutral page. No brand, no
+    host name, no footer — only what happened and a way to try again, in the language of the
+    address. Kept out of search engines; one h1. When the site could not be looked up because of a
+    fault (already reported), the same page only says the page was not found: the host may own a
+    website, so it never claims there is none.
+--}}
+<!doctype html>
+<html lang="{{ $noticeLang }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ __($noticeCopy['title'], [], $noticeLang) }}</title>
+    <meta name="robots" content="noindex">
+    @vite(['resources/css/storefront.css', 'resources/css/sf-404.css'])
+</head>
+<body>
+    <div class="sf-404__bar" aria-hidden="true"></div>
+    <main class="sf-404 sf-404--neutral" id="noi-dung">
+        <div class="sf-404__inner">
+            <div class="sf-404__icon" aria-hidden="true">@include('theme::partials.sf-notice-icon', ['name' => $noticeCopy['icon'], 'size' => 30])</div>
+            <h1 class="sf-404__title">{{ __($noticeCopy['heading'], [], $noticeLang) }}</h1>
+            <p class="sf-404__text">{{ __($noticeCopy['text'], [], $noticeLang) }}</p>
+            <a class="sf-404__btn" href="{{ \App\Modules\Storefront\Support\SiteStatePage::here(request()) }}">@include('theme::partials.sf-notice-icon', ['name' => 'refresh', 'size' => 20, 'stroke' => 2]){{ __('storefront.site_state.reload', [], $noticeLang) }}</a>
+        </div>
+    </main>
+</body>
+</html>
+@else
 <!doctype html>
 <html lang="vi">
 <head>
@@ -12,9 +47,9 @@
     {{--
         Minimal header — $brand and $menu are not available in error views (the
         StorefrontController did not run). The name comes from the request host (this
-        site's name, the platform brand on the operator host, else the host itself), so
-        every tenant's visitors see their own site — never another tenant's brand — and
-        there is never an English dead-end on a VN-language site.
+        site's name, the platform brand on the operator host), so every tenant's visitors
+        see their own site — never another tenant's brand — and there is never an English
+        dead-end on a VN-language site.
     --}}
     <header class="site-header" role="banner">
         <a class="site-header__brand" href="/" aria-label="Về trang chủ">
@@ -43,3 +78,4 @@
     </footer>
 </body>
 </html>
+@endif

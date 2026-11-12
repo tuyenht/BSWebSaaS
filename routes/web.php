@@ -55,6 +55,7 @@ use App\Modules\Storefront\Http\Controllers\StorefrontController;
 use App\Modules\Storefront\Http\Middleware\ConditionalGet;
 use App\Modules\Storefront\Http\Middleware\EdgeCacheHeaders;
 use App\Modules\Storefront\Http\Middleware\PreloadHeadAssets;
+use App\Modules\Storefront\Http\Middleware\ShowSiteStatePage;
 use App\Modules\Storefront\Http\Middleware\StorefrontSession;
 use App\Modules\Tenancy\Http\Controllers\CaddyAskController;
 use App\Modules\Tenancy\Http\Middleware\ServeOnPrimaryDomain;
@@ -397,6 +398,12 @@ Route::prefix(config('admin.prefix', 'admin'))
     });
 
 // ── Storefront plane — public, tenant context. A fallback so it never shadows a
-//    defined route; resolves dynamic content for any other path (404 if none). ─────
+//    defined route; resolves dynamic content for any other path (404 if none). A site that is
+//    not open (being set up, suspended, closed) answers its pages with its state page instead of
+//    the bare 403 of `site.active` (ShowSiteStatePage takes that middleware's place here). ─────
 Route::fallback(StorefrontController::class)
-    ->withoutMiddleware($storefrontSessionless)->middleware($storefrontPage);
+    ->withoutMiddleware($storefrontSessionless)
+    ->middleware([
+        StorefrontSession::class, ServeOnPrimaryDomain::class, SetCurrentSite::class, ShowSiteStatePage::class,
+        ConditionalGet::class, PreloadHeadAssets::class, EdgeCacheHeaders::class,
+    ]);

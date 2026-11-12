@@ -43,12 +43,14 @@ it('404s the storefront on an unknown host', function (): void {
     $this->get('http://nope.test/')->assertNotFound();
 });
 
-it('refuses a suspended site', function (): void {
+it('refuses a suspended site: its state page for the storefront, 403 for its admin', function (): void {
     seedHomepage(1, 'A home');
+    seedHomepage(2, 'B home');
     DB::connection('pgsql_admin')->table('sites')->where('id', 2)->update(['status' => 'suspended']);
 
     $this->get('http://a.test/')->assertOk();
-    $this->get('http://b.test/')->assertForbidden();
+    expect($this->get('http://b.test/')->assertStatus(503)->getContent())->not->toContain('B home');
+    $this->get('http://b.test/admin/login')->assertForbidden();
 });
 
 // ── Tenant admin ────────────────────────────────────────────────────────────────

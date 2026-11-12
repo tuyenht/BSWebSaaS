@@ -55,8 +55,8 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  */
 final readonly class StorefrontController
 {
-    /** The most links the 404 page suggests from the main menu. */
-    private const int SUGGESTIONS_MAX = 6;
+    /** The most links the 404 page suggests from the main menu (the design draws five). */
+    private const int SUGGESTIONS_MAX = 5;
 
     public function __construct(
         private RouteResolver $resolver,
@@ -157,9 +157,10 @@ final readonly class StorefrontController
 
     /**
      * The site's 404 page: its own header, footer and menus around the "not here" message, a way
-     * home, a way to the site's contact page (when the site names one) and the first links of its
-     * main menu. A real 404 status (never a page that answers 200) and kept out of search engines;
-     * no canonical, share tags or alternates, since there is no page to point at.
+     * home, a way to the site's contact page (when the site names one), then the first links of
+     * its main menu.
+     * A real 404 status (never a page that answers 200) and kept out of search engines; no
+     * canonical, share tags or alternates, since there is no page to point at.
      *
      * @param  array<string, mixed>  $chrome
      */
@@ -175,13 +176,13 @@ final readonly class StorefrontController
             is_string($chrome['homeUrl'] ?? null) ? $chrome['homeUrl'] : '/',
         );
 
-        return response($this->renderer->renderNotFound(__('storefront.not_found.title'), $extra), 404);
+        return response($this->renderer->renderNotice(__('storefront.not_found.title'), $extra), 404);
     }
 
     /**
      * The 404 page's "you may be looking for" links: the top level of the main menu already loaded
      * for the header (no query), keeping only the links to a page of this site and leaving out the
-     * home page (the page has its own button for it), at most six. Empty when the menu is.
+     * home page (the page has its own button for it), at most five. Empty when the menu is.
      *
      * @param  list<mixed>|array<mixed>  $menu  the resolved primary menu tree
      * @return list<array{label: string, url: string}>
