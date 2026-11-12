@@ -140,6 +140,20 @@ describe('the features block', function (): void {
             ->and(strpos($css, '.sf-grid--4p > .sf-fcard {'))->toBeGreaterThan(strpos($css, '.sf-band--dark :is(.sf-feature, .sf-fcard) {'));
     });
 
+    it('puts the icon above the title when four icon-head cards sit two a row on a phone', function (): void {
+        $items = array_map(fn (array $item): array => $item + ['icon' => 'wrench'], shfcItems(4));
+        $html = shfcView('features', ['variant' => 'icon-head', 'items' => $items]);
+        $css = (string) StorefrontCss::all();
+
+        expect($html)->toContain('<ul class="sf-grid sf-grid--4p">')
+            ->and(substr_count($html, '<li class="sf-hcard">'))->toBe(4)
+            // Beside the icon a title had about 35px of a 390px phone and broke inside words; below 640px the
+            // head is a column, so the title keeps the card's width and wraps between words.
+            ->and($css)->toMatch('/@media \(max-width: 639\.98px\) \{\n    \.sf-grid--4p > \.sf-hcard \{\n        padding: 1\.25rem;\n    \}\n\n    \.sf-grid--4p > \.sf-hcard > \.sf-hcard__head \{\n        flex-direction: column;/')
+            ->and(strpos($css, '.sf-grid--4p > .sf-hcard {'))->toBeGreaterThan(strpos($css, '.sf-grid > .sf-hcard {'))
+            ->and($css)->toMatch('/\.sf-hcard__title \{[^}]*overflow-wrap: break-word;/');
+    });
+
     it('keeps the top-rule card and wraps its text so a phone can lay it out as a row', function (): void {
         $html = shfcView('features', ['variant' => 'top-rule', 'items' => [['title' => 'Thiết kế', 'text' => 'Bản vẽ', 'icon' => 'box']]]);
 
