@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\View;
 use Tests\Fixtures\StorefrontCards;
+use Tests\Fixtures\StorefrontCss;
 
 /*
  * The decoration under a section heading: a site-wide setting (theme.heading_decor) and a block
@@ -399,13 +400,13 @@ describe('the ground', function (): void {
         }
 
         // The stylesheet repaints the decoration with the set's heading colour for exactly those grounds.
-        $css = file_get_contents(base_path('resources/css/storefront.css'));
+        $css = StorefrontCss::all();
         expect($css)->toContain(":is(.sf-band--dark, .sf-s--sch-dark, .sf-s--sch-brand, .sf-s--image) .sf-decor {\n    --sf-decor-c: var(--sch-head, var(--color-surface));\n    --sf-decor-c2: var(--sch-head, var(--color-surface));\n}")
             ->and($css)->toContain(".sf-band--dark .sf-decor {\n    --sf-decor-c: var(--color-surface);");
     });
 
     it('limits the width to 70% of the frame and hides the decoration from assistive technology', function (): void {
-        $css = file_get_contents(base_path('resources/css/storefront.css'));
+        $css = StorefrontCss::all();
 
         expect($css)->toContain("    width: var(--sf-decor-w, 15rem);\n    max-width: 70%;")
             ->and(decorFaq(1, ['heading_decor' => 'star']))->toContain('class="sf-decor sf-decor--star" aria-hidden="true"');

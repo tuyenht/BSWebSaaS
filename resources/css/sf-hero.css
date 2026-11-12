@@ -1,0 +1,218 @@
+/*
+ * sf-hero.css — storefront styles for the hero block.
+ * Linked in the <head> only on a page whose HTML has a class from: .hero
+ * (Theme\Rendering\BlockStyles, which lists the same roots), after storefront.css and in the order
+ * BlockStyles::FILES gives, so the cascade is the one the single file had. Every rule here needs one of
+ * those classes on the page; a rule for anything else belongs in storefront.css.
+ */
+
+/* ───── Hero section ─────────────────────────────────────────────────────── */
+.hero {
+    position: relative;
+    min-height: 28rem;
+    display: flex;
+    align-items: center;
+    background: var(--sch-bg, var(--color-dark));
+    overflow: hidden;
+}
+
+@media (min-width: 768px) {
+    .hero {
+        min-height: 36rem;
+    }
+}
+
+/* Real <img> tag so fetchpriority="high" signals LCP priority to the browser */
+.hero__bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.45;
+    z-index: 0;
+}
+
+.hero__content {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 80rem;
+    margin-inline: auto;
+    padding: 3rem 1.5rem;
+}
+
+@media (min-width: 1024px) {
+    .hero__content {
+        padding: 5rem 2rem;
+    }
+}
+
+.hero__heading {
+    font-size: clamp(1.75rem, 5vw, 3rem);
+    font-weight: 900;
+    color: var(--sch-head, var(--color-surface));
+    margin: 0 0 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+}
+
+.hero__subheading {
+    font-size: clamp(1rem, 2vw, 1.25rem);
+    color: var(--sch-body, color-mix(in srgb, var(--color-dark) 22%, white));
+    max-width: 40rem;
+    line-height: 1.65;
+    margin: 0 0 2rem;
+}
+
+.hero__cta {
+    display: inline-block;
+    padding: 0.75rem 1.75rem;
+    background: var(--sch-pri-bg, var(--color-primary));
+    color: var(--sch-pri-fg, var(--color-on-primary));
+    font-weight: 700;
+    font-size: 0.95rem;
+    border-radius: 0.375rem;
+    transition: background 0.2s;
+    margin-right: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.hero__cta:hover {
+    background: var(--sch-pri-hover, var(--color-primary-hover));
+}
+
+.hero__cta--secondary {
+    background: transparent;
+    border: 2px solid var(--sch-sec-fg, var(--color-primary));
+    color: var(--sch-sec-fg, var(--color-primary-on-dark));
+}
+
+.hero__cta--secondary:hover {
+    background: var(--sch-pri-bg, var(--color-primary));
+    color: var(--sch-pri-fg, var(--color-on-primary));
+}
+
+/*
+ * Background video of the hero (sf-bgvideo.js). The <video> sits where the image sits, at the same
+ * opacity over the same band colour, invisible until it plays (the image, or the band colour when
+ * there is no image, shows until then). The pause/play control is a pill in the bottom-right corner,
+ * 1rem from both edges, drawn 40px tall with a 44px tap area; the content keeps that much room at the
+ * bottom so the control never covers it. Dark band: a dark pill, a white ring with a dark edge on
+ * focus; light band: a white pill, the brand ring.
+ */
+.hero--video {
+    --sf-vctl-h: 2.5rem;
+    --sf-vctl-hit: 2.75rem;
+}
+
+.hero--video .hero__content {
+    padding-bottom: max(3rem, calc(var(--sf-vctl-h) + 1rem));
+}
+
+@media (min-width: 1024px) {
+    .hero--video .hero__content {
+        padding-bottom: max(5rem, calc(var(--sf-vctl-h) + 1rem));
+    }
+}
+
+.hero__video {
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+
+.hero--playing .hero__video {
+    opacity: 0.45;
+}
+
+.hero--playing img.hero__bg {
+    opacity: 0;
+}
+
+.hero__vctl {
+    position: absolute;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: var(--sf-vctl-h);
+    padding: 0 0.875rem 0 0.75rem;
+    border: 1px solid rgb(255 255 255 / 0.55);
+    border-radius: 999rem;
+    background: rgb(10 14 22 / 0.7);
+    color: #fff;
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+    -webkit-backdrop-filter: blur(0.375rem);
+    backdrop-filter: blur(0.375rem);
+}
+
+.hero__vctl[hidden] {
+    display: none;
+}
+
+/* The tap area: 44px tall around the 40px pill, border included (100% is the padding box). */
+.hero__vctl::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: min(0rem, calc((100% - var(--sf-vctl-hit)) / 2));
+    bottom: min(0rem, calc((100% - var(--sf-vctl-hit)) / 2));
+}
+
+.hero__vctl-icon {
+    flex-shrink: 0;
+    width: 1.125rem;
+    height: 1.125rem;
+}
+
+.hero__vctl[data-state="paused"] .hero__vctl-icon--pause,
+.hero__vctl:not([data-state="paused"]) .hero__vctl-icon--play {
+    display: none;
+}
+
+.hero__vctl:hover {
+    background: rgb(10 14 22 / 0.8);
+}
+
+.hero__vctl:focus-visible {
+    outline: 3px solid #fff;
+    outline-offset: 0;
+    box-shadow: 0 0 0 5px rgb(10 14 22 / 0.9);
+}
+
+.hero__vctl[data-band="light"] {
+    border-color: rgb(15 23 42 / 0.5);
+    background: rgb(255 255 255 / 0.9);
+    color: rgb(15 23 42 / 0.95);
+}
+
+.hero__vctl[data-band="light"]:hover {
+    background: #fff;
+}
+
+.hero__vctl[data-band="light"]:focus-visible {
+    outline: 3px solid var(--color-primary-text);
+    outline-offset: 2px;
+    box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hero__video {
+        transition: none;
+    }
+}
+
+@media print {
+    .hero__video,
+    .hero__vctl {
+        display: none !important;
+    }
+}

@@ -13,6 +13,7 @@ use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Chrome\StorefrontChrome;
 use App\Modules\Theme\Theming\StorefrontSettings;
 use Illuminate\Support\Facades\DB;
+use Tests\Fixtures\StorefrontCss;
 
 /*
  * The phone menu drawer (a named dialog, no title word, the current page marked) and the language
@@ -162,7 +163,7 @@ it('marks the current page in the drawer with aria-current and a bar, in a named
         ->toContain('data-menu-close aria-label="Đóng menu"')
         ->toMatch('#<div class="sf-nav__panel" id="msm-1">.*?<a class="sf-nav__sublink"\s+href="/gioi-thieu"\s+aria-current="page"\s*>Giới thiệu</a>#s');
 
-    $css = (string) file_get_contents(resource_path('css/storefront.css'));
+    $css = (string) StorefrontCss::all();
     expect($css)->toContain('.sf-nav--mob .sf-nav__link[aria-current]::before')
         ->toContain('background: var(--color-primary-text);');
 });

@@ -1,0 +1,260 @@
+/*
+ * sf-stats.css — storefront styles for the stats block.
+ * Linked in the <head> only on a page whose HTML has a class from: .sf-stat, .sf-stats
+ * (Theme\Rendering\BlockStyles, which lists the same roots), after storefront.css and in the order
+ * BlockStyles::FILES gives, so the cascade is the one the single file had. Every rule here needs one of
+ * those classes on the page; a rule for anything else belongs in storefront.css.
+ */
+
+/* Stats: big numbers; the label keeps the band's own text colour (4.5:1 on every band). */
+.sf-stats__list {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem 1.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+/* The stats block's list is the width a long number shrinks to fit (`--stat-across` items to a row). */
+.sf-stats .sf-stats__list {
+    container-type: inline-size;
+}
+
+.sf-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.375rem;
+    min-width: 0;
+    text-align: center;
+}
+
+.sf-stat__value {
+    color: var(--sch-head, var(--color-text-strong));
+    font-size: 2.375rem;
+    font-weight: 800;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+
+/* A counted number stays transparent until sf-stats.js sets it to 0 and counts it up (`is-counting`),
+   so its final value never flashes first. If the script never runs, the number shows after 2.5s. Only
+   on screen with scripting on and motion allowed: otherwise the server's final number shows at once. */
+@media screen and (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+    .sf-stat__value [data-count]:not(.is-counting) {
+        opacity: 0;
+        animation: sf-stat-show 0s 2.5s forwards;
+    }
+}
+
+@keyframes sf-stat-show {
+    to { opacity: 1; }
+}
+
+/* A long number shrinks to fit its cell, so it stays on one line: the cell's width (less its padding)
+   over the number's length (`--stat-len`, set by the view: the number's characters and 0.6 per unit
+   character) in digit widths; never above the usual size, never below 1rem. Only a number too long
+   even at 1rem still wraps (overflow-wrap above), never past its cell. */
+.sf-stats .sf-stat__value {
+    font-size: max(1rem, min(2.375rem, calc((100cqi / var(--stat-across, 1) - 2rem) / (var(--stat-len, 5) * 0.62))));
+}
+
+.sf-band--dark .sf-stat__value {
+    color: var(--color-surface);
+}
+
+.sf-stat__label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+/* Two or three numbers share one row on every screen, four go two by two on a phone (the board's
+   rule: no number alone on a row of a phone when it has a neighbour). */
+.sf-stats__list--2,
+.sf-stats__list--3,
+.sf-stats__list--4:not(:has(> :nth-child(5))) {
+    --stat-across: var(--stats, 2);
+    grid-template-columns: repeat(var(--stats, 2), minmax(0, 1fr));
+}
+
+.sf-stats__list--3 { --stats: 3; }
+
+@media (min-width: 40rem) {
+    .sf-stats__list--4:not(:has(> :nth-child(5))) {
+        --stats: 4;
+    }
+}
+
+/* Stats with 5 to 8 numbers share the --4 class (the markup of a saved block never changes); the
+   rows are laid out on twelve columns. A phone: two across, an odd last number across the full row.
+   A wide screen: 5 = three then two wider; 6 = three and three; 7 = four then three wider; 8 = four and four. */
+.sf-stats__list--4:has(> :nth-child(5)) {
+    --stat-across: 2;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+
+.sf-stats__list--4:has(> :nth-child(5)) > .sf-stat {
+    grid-column: span 6;
+}
+
+.sf-stats__list--4:has(> :nth-child(5)):not(:has(> :nth-child(6))) > .sf-stat:last-child,
+.sf-stats__list--4:has(> :nth-child(7)):not(:has(> :nth-child(8))) > .sf-stat:last-child {
+    grid-column: span 12;
+}
+
+@media (min-width: 40rem) {
+    .sf-stats__list--4:has(> :nth-child(5)):not(:has(> :nth-child(7))) {
+        --stat-across: 3;
+    }
+
+    .sf-stats__list--4:has(> :nth-child(7)) {
+        --stat-across: 4;
+    }
+
+    .sf-stats__list--4:has(> :nth-child(5)):not(:has(> :nth-child(7))) > .sf-stat {
+        grid-column: span 4;
+    }
+
+    .sf-stats__list--4:has(> :nth-child(7)) > .sf-stat {
+        grid-column: span 3;
+    }
+
+    .sf-stats__list--4:has(> :nth-child(5)):not(:has(> :nth-child(6))) > .sf-stat:nth-child(n+4) {
+        grid-column: span 6;
+    }
+
+    .sf-stats__list--4:has(> :nth-child(7)):not(:has(> :nth-child(8))) > .sf-stat:nth-child(n+5) {
+        grid-column: span 4;
+    }
+}
+
+/* Stats, floating look: one white card that rises over the section above it, items split by 1px
+   lines. The band keeps no top padding, so the card's top edge overlaps that section; every colour
+   inside the card is set here, whatever the band's own background or colour set is (a dark band or a
+   dark / brand / photo set would otherwise give light text on the white card). */
+.sf-band.sf-stats--floating {
+    position: relative;
+    z-index: 1;
+    margin-top: -2.5rem;
+    padding-block: 0 3rem;
+    padding-inline: 1rem;
+    background: transparent;
+}
+
+.sf-band.sf-stats--floating > .sf-container {
+    --sch-head: var(--color-text-strong);
+    --sch-body: var(--color-text);
+    max-width: 64rem;
+    padding-inline: 0;
+    overflow: hidden;
+    border-radius: 1rem;
+    background: var(--color-surface);
+    box-shadow: 0 10px 30px rgb(0 0 0 / 0.12);
+    color: var(--color-text);
+}
+
+/* The editor's width choice still works on the card (the default stays 64rem). */
+.sf-s--w-narrow .sf-band.sf-stats--floating > .sf-container {
+    max-width: 48rem;
+}
+
+.sf-s--w-full .sf-band.sf-stats--floating > .sf-container {
+    max-width: none;
+}
+
+.sf-band.sf-stats--floating .sf-section-head {
+    margin-block: 0;
+    padding: 1.5rem 1rem;
+}
+
+.sf-band.sf-stats--floating .sf-section-head__title,
+.sf-band.sf-stats--floating .sf-stat__value {
+    color: var(--color-text-strong);
+}
+
+.sf-band.sf-stats--floating .sf-section-head__text,
+.sf-band.sf-stats--floating .sf-stat__label {
+    color: var(--color-text);
+}
+
+/* The unit after a number (m², +) is smaller than the number and brand-coloured. It takes the brand's
+   text colour, made readable on the white card (4.5:1 or more): a light brand fill such as amber reads
+   about 2.2:1 there. */
+.sf-band.sf-stats--floating .sf-stat__suffix {
+    margin-left: 0.06em;
+    color: var(--color-primary-text);
+    font-size: 0.6em;
+}
+
+.sf-stats--floating .sf-stats__list {
+    gap: 1px;
+    background: color-mix(in srgb, var(--color-text) 15%, var(--color-surface));
+}
+
+.sf-stats--floating .sf-stat {
+    justify-content: center;
+    padding: 1.125rem 0.5rem;
+    background: var(--color-surface);
+}
+
+@media (min-width: 40rem) {
+    .sf-stats--floating .sf-stat {
+        padding: 1.5rem 1rem;
+    }
+}
+
+.cta__stats.sf-stats__list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+/* One or two stats fill the row: as many columns as items, no empty cells. */
+.cta__stats.sf-stats__list:not(:has(> :nth-child(3))) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.cta__stats.sf-stats__list:not(:has(> :nth-child(2))) {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.cta__stats .sf-stat {
+    justify-content: center;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+}
+
+.cta__stats .sf-stat__value {
+    color: var(--color-text-strong);
+    font-size: 1.5rem;
+}
+
+.cta__stats .sf-stat__suffix {
+    color: var(--color-text-strong);
+}
+
+.cta__stats .sf-stat__label {
+    color: var(--color-text);
+}
+
+@media (min-width: 64rem) {
+
+    .cta__stats.sf-stats__list {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .cta__stats .sf-stat__value {
+        font-size: 1.875rem;
+    }
+}
+
+/* A band followed by the floating stats card: the card rises over the band's bottom edge, so the
+   band keeps that much room under its last line and a long subtitle is never covered. */
+.page-band:has(+ .sf-stats--floating),
+.page-band:has(+ .sf-s > .sf-stats--floating) {
+    padding-bottom: 3.5rem;
+}

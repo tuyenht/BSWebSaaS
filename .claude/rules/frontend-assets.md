@@ -26,5 +26,7 @@ Goal: one copy of each pattern, and a page downloads only what it uses. The CI `
   - the base `storefront.js` stays tiny;
   - each section's script is its own Vite entry (`sf-<section>.js`), loaded only by a page that renders that section;
   - the CWV job keeps the storefront under its 30 KB JS gate.
+  - `storefront.css` holds only what every page needs; each kind of block or layout has its own `sf-<kind>.css` entry, linked by `Theme\Rendering\BlockStyles` only when the drawn page has one of the file's class roots. A new rule goes in the file of the root it needs, at the place it would have had in the single file (the files load in `BlockStyles::FILES` order, so moving a rule to another file can change which rule wins); a new root goes in `FILES` and its file's header;
+  - a changed font gets a new file name or a Cloudflare purge (fonts are cached 30 days at the edge).
 - **Dependencies:** before adding a package, check its gzipped size and its licence (no GPL), and whether a few lines of our own code do the job. A new entry or lazy chunk needs its budget line: `node scripts/asset-budget.mjs --update`, committed with the change, and the PR says why it grew.
 - **CSS:** Tailwind 4 utilities and the design tokens first. A screen-specific CSS file is a smell: keep it only for a shared part's own styles.

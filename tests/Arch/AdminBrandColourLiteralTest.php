@@ -78,8 +78,8 @@ it('copies no brand table colour into an admin view, stylesheet or script', func
 
     $violations = [];
     foreach ($files as $path) {
-        // The storefront has its own per-site brand (ThemeResolver); the admin table is not its source.
-        if ($path === 'resources/css/storefront.css') {
+        // The storefront (storefront.css and its block stylesheets) has its own per-site brand (ThemeResolver); the admin table is not its source.
+        if ($path === 'resources/css/storefront.css' || preg_match('~^resources/css/sf-[a-z0-9-]+\.css$~', $path) === 1) {
             continue;
         }
         $content = File::get(base_path($path));

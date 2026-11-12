@@ -8,6 +8,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteSetting;
 use Carbon\CarbonImmutable;
 use Tests\Fixtures\StorefrontCards;
+use Tests\Fixtures\StorefrontCss;
 
 /*
  * The shared breadcrumb (one trail for the visible "Trang chủ / … / page" and the BreadcrumbList
@@ -430,7 +431,7 @@ it('does not repeat the post category as a chip under a trail that already ends 
 });
 
 it('separates the levels with one slash only', function (): void {
-    $css = (string) file_get_contents(resource_path('css/storefront.css'));
+    $css = (string) StorefrontCss::all();
 
     expect($css)->toContain('content: "/" / ""')
         ->and(substr_count($css, '"›"'))->toBe(0)

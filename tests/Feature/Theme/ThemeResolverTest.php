@@ -5,6 +5,7 @@ use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Theming\BrandPalette;
 use App\Modules\Theme\Theming\ReadableColor;
 use App\Modules\Theme\Theming\ThemeResolver;
+use Tests\Fixtures\StorefrontCss;
 
 beforeEach(fn () => seedTenancy());
 
@@ -145,7 +146,7 @@ it('leaves a light brand unchanged on the ink surface', function (): void {
 it('measures the page background the storefront stylesheet actually paints', function (): void {
     $share = (int) round(ThemeResolver::PAGE_SURFACE_SHARE * 100);
 
-    expect((string) file_get_contents(resource_path('css/storefront.css')))
+    expect((string) StorefrontCss::all())
         ->toMatch("/body \\{[^}]*background: var\\(--page, color-mix\\(in srgb, var\\(--color-surface\\) {$share}%, var\\(--color-dark\\)\\)\\);/");
 });
 
@@ -332,7 +333,7 @@ it('falls back to the ink and surface colours themselves when the brand seed is 
 });
 
 it('reads only roles in the storefront stylesheet, never a seed', function (): void {
-    $css = (string) preg_replace('~/\*.*?\*/~s', '', (string) file_get_contents(resource_path('css/storefront.css')));
+    $css = (string) preg_replace('~/\*.*?\*/~s', '', (string) StorefrontCss::all());
 
     expect(preg_match_all('/var\(--(?:primary|primary-text|primary-on-ink|ink|body|surface|font)[,)]/', $css, $seeds))->toBe(0, implode(', ', $seeds[0]));
 });

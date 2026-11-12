@@ -1,5 +1,7 @@
 <?php
 
+use Tests\Fixtures\StorefrontCss;
+
 /*
  * Style contracts of the shared chrome that no render can show: the dark phone bar that ends the page
  * without a light strip, the one-row branch chooser, and the footer cards that turn one at a time.
@@ -8,7 +10,7 @@
 
 function chromeCss(): string
 {
-    return (string) file_get_contents(resource_path('css/storefront.css'));
+    return (string) StorefrontCss::all();
 }
 
 it('hides the round buttons and shows a dark phone bar below 768px, its copy painted so no light strip shows', function (): void {

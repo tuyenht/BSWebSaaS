@@ -5,6 +5,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Theme\Rendering\TemplateCatalog;
 use Carbon\CarbonImmutable;
 use Tests\Fixtures\StorefrontCards;
+use Tests\Fixtures\StorefrontCss;
 
 /*
  * The page layout with a table of contents (an opt-in page template, e.g. a privacy policy): the
@@ -181,7 +182,7 @@ it('is offered as a page layout only', function (): void {
 });
 
 it('joins the contact cards and the form-with-map card with one 4rem gap', function (): void {
-    $css = (string) file_get_contents(resource_path('css/storefront.css'));
+    $css = (string) StorefrontCss::all();
 
     // The cards' 5rem bottom margin is for the map under them only; the section's bottom padding
     // and the form card's top margin do not stack where the form follows the contact block.
