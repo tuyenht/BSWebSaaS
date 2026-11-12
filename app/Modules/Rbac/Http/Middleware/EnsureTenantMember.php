@@ -35,12 +35,14 @@ final readonly class EnsureTenantMember
 
         // Platform operators carry no per-site role (they live at team 0) but must
         // reach every tenant's admin.
-        if ($this->platform->isSuperAdmin($user)) {
-            return $next($request);
+        if (! $this->platform->isSuperAdmin($user)) {
+            // Membership = at least one role on the current site (team = site_id).
+            abort_unless($user->roles()->exists(), 403, 'You are not a member of this site.');
         }
 
-        // Membership = at least one role on the current site (team = site_id).
-        abort_unless($user->roles()->exists(), 403, 'You are not a member of this site.');
+        // An error later in this request may be drawn inside the admin's menu and top bar: only
+        // for someone who passed this check (a non-member never sees this site's menu).
+        $request->attributes->set('admin.member', true);
 
         return $next($request);
     }

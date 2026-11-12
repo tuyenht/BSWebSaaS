@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Tenancy\Http\Middleware;
 
 use App\Modules\Tenancy\Entitlement\Entitlement;
+use App\Modules\Tenancy\Exceptions\ModuleNotEnabled;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -22,7 +23,9 @@ final readonly class EnsureModuleEnabled
      */
     public function handle(Request $request, Closure $next, string $module): Response
     {
-        abort_unless($this->entitlement->moduleEnabled($module), 403, "Module [{$module}] is not enabled for this site.");
+        if (! $this->entitlement->moduleEnabled($module)) {
+            throw new ModuleNotEnabled($module);
+        }
 
         return $next($request);
     }

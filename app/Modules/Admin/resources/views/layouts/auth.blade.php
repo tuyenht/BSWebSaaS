@@ -6,6 +6,8 @@
     {{-- The login/2FA pages are the only crawler-reachable admin surface (guests get
          302'd here) — keep every admin plane out of search indexes. --}}
     <meta name="robots" content="noindex, nofollow">
+    {{-- Where a request refused for an ended session sends the page (admin-session.js). --}}
+    <meta name="bs-session-expired" content="{{ \App\Modules\Admin\Support\AdminPlane::route('session.expired') }}">
     <title>{{ $title ?? __('auth.welcome') }} — {{ config('admin.brand.name') }}</title>
     <link rel="icon" href="/favicon.ico" sizes="any">
     <meta name="description" content="{{ $metaDescription ?? config('admin.brand.name').' — '.config('admin.brand.tagline') }}">
