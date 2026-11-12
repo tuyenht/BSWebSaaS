@@ -42,6 +42,8 @@ it('defers only below-the-fold blocks and the footer, on screen only', function 
         expect($rule['media'])->toStartWith('@media screen');
         expect($rule['selectors'])->toContain(':not(.sf-anchored)');
         expect($rule['selectors'])->not->toMatch('~header|\.sf-header|:first-child|:nth-child~');
+        // the title is only ever named inside an exclusion
+        expect((string) preg_replace('~:not\([^)]*\)~', '', $rule['selectors']))->not->toMatch('~\bh1\b~');
     }
 
     // the generic block rule needs two earlier sibling blocks: the first two are never deferred
