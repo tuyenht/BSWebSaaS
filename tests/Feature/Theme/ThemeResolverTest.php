@@ -148,6 +148,13 @@ it('keeps brand text readable on the footer card as well as on the ink (factory 
     });
     $own = app(Tenancy::class)->enter(1, fn (): array => app(ThemeResolver::class)->cssVariables());
     expect(ReadableColor::ratio($own['color-primary-on-dark'], '#334155'))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT);
+
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteSetting::query()->where('group_name', 'theme')->where('key', 'tokens')->firstOrFail()
+            ->update(['value' => ['primary' => '#2563eb', 'ink' => '#0f172a', 'color-dark-raised' => 'var(--x)']]);
+    });
+    $unreadable = app(Tenancy::class)->enter(1, fn (): array => app(ThemeResolver::class)->cssVariables());
+    expect($unreadable['color-primary-on-dark'])->toBe(ReadableColor::onAll('#2563eb', ['#0f172a']) ?? $unreadable['surface']);
 });
 
 it('draws brand text on the dark footer in the color derived for it, never the raw brand', function (): void {

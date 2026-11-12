@@ -104,29 +104,6 @@ final readonly class ThemeResolver
      *
      * @return array<string, string>
      */
-    /**
-     * The dark fills brand-colored text sits on: --ink and the footer's raised card (`color-dark-raised`,
-     * else what storefront.css falls back to: 88% ink + white). A site token that is not a hex color is
-     * left out: the stylesheet's own fallback is not used then, and the contrast of a value it cannot
-     * read is unknown.
-     *
-     * @param  array<string, string>  $variables
-     * @return list<string>
-     */
-    private function darkSurfaces(array $variables): array
-    {
-        $ink = $variables['ink'];
-        $surfaces = [$ink];
-        foreach (['color-dark-raised' => 0.88] as $token => $inkShare) {
-            $surface = $variables[$token] ?? ReadableColor::mix($ink, '#ffffff', $inkShare);
-            if ($surface !== null && ReadableColor::ratio($surface, $surface) !== null) {
-                $surfaces[] = $surface;
-            }
-        }
-
-        return $surfaces;
-    }
-
     public function cssVariables(): array
     {
         // HeadingDecor is registered scoped: this puts the instance the tokens just used in its place, so the headings drawn next share its settings read and are dropped with the request.
@@ -169,6 +146,29 @@ final readonly class ThemeResolver
 
         // The heading decoration's own variables (colour, mask picture) come from its setting, never from a token.
         return array_merge($variables, $this->scales($variables['density'] ?? 'normal'), $this->schemes($variables), $this->headingDecor->variables());
+    }
+
+    /**
+     * The dark fills brand-colored text sits on: --ink and the footer's raised card (`color-dark-raised`,
+     * else what storefront.css falls back to: 88% ink + white). A site token that is not a hex color is
+     * left out: the stylesheet's own fallback is not used then, and the contrast of a value it cannot
+     * read is unknown.
+     *
+     * @param  array<string, string>  $variables
+     * @return list<string>
+     */
+    private function darkSurfaces(array $variables): array
+    {
+        $ink = $variables['ink'];
+        $surfaces = [$ink];
+        foreach (['color-dark-raised' => 0.88] as $token => $inkShare) {
+            $surface = $variables[$token] ?? ReadableColor::mix($ink, '#ffffff', $inkShare);
+            if ($surface !== null && ReadableColor::ratio($surface, $surface) !== null) {
+                $surfaces[] = $surface;
+            }
+        }
+
+        return $surfaces;
     }
 
     /**
