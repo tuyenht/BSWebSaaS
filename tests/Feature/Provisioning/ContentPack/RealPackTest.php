@@ -204,6 +204,17 @@ it('follows the storefront design: capability posts let the layout draw their ba
         ->toBe(['/gioi-thieu', '/ho-so-nang-luc', '/nha-xuong-may-moc#video', '/nang-luc']);
     expect(collect($items['page:/gioi-thieu']->data['body']['vi'])->firstWhere('type', 'about')['props']['variant'])->toBe('letter');
 
+    // The services strip is the board's four cards (glyph, title, text, "Xem chi tiết →"), not the capability posts.
+    $services = $home->firstWhere('props.heading', 'Dịch vụ của chúng tôi')['props'];
+    expect($home->where('type', 'entry_grid')->pluck('props.taxonomy_slug')->all())->not->toContain('nang-luc')
+        ->and($services)->toMatchArray(['variant' => 'icon-cards', 'bg' => 'tint', 'layout' => 'auto'])
+        ->and(collect($services['items'])->map(fn (array $item): array => [$item['title'], $item['icon'], $item['url']])->all())->toBe([
+            ['Thiết kế Jig & Đồ gá', 'lock', '/thiet-ke-lap-trinh'],
+            ['Gia công Phay & Tiện CNC', 'adjust', '/gia-cong-phay-tien-cnc'],
+            ['Hàn & Lắp ráp cơ khí', 'wrench', '/han-lap-rap-co-khi'],
+            ['Sản xuất chi tiết máy & OEM', 'machine', '/nang-luc'],
+        ]);
+
     $settings = collect(json_decode((string) file_get_contents($pack->dir.'/settings.json'), true)['items'])->keyBy('key');
     expect($settings['setting:storefront.footer']['value']['copyright']['start_year'])->toBe(2019)
         ->and($settings['setting:theme.tokens']['value']['font'])->toContain('Inter-Fallback');
@@ -255,6 +266,11 @@ it('plans the real pack on a fresh site with no conflict, and every internal lin
     foreach (['/ky-thuat-vien-van-hanh-may-cnc', '/ky-su-thiet-ke-co-khi-do-ga', '/nhan-vien-kiem-tra-chat-luong-qc'] as $path) {
         $this->get('http://'.ContentPacks::HOST.$path)->assertNotFound();
     }
+    $home = $this->get('http://'.ContentPacks::HOST.'/')->getContent();
+    foreach (['/thiet-ke-lap-trinh' => 'Thiết kế Jig &amp; Đồ gá', '/gia-cong-phay-tien-cnc' => 'Gia công Phay &amp; Tiện CNC', '/han-lap-rap-co-khi' => 'Hàn &amp; Lắp ráp cơ khí', '/nang-luc' => 'Sản xuất chi tiết máy &amp; OEM'] as $href => $title) {
+        expect($home)->toContain('<a class="sf-card__link" href="'.$href.'">'.$title.'</a>');
+    }
+    expect(substr_count($home, 'class="sf-card sf-card--icon"'))->toBe(4);
     expect($this->get('http://'.ContentPacks::HOST.'/gioi-thieu')->getContent())->toContain('Nhà xưởng &amp; máy móc')
         ->and($this->get('http://'.ContentPacks::HOST.'/gia-cong-cat-day-xung-dien')->getContent())->toContain('nguồn kênh Kurt Bleyweert')->toContain('4IhkMgHkMEA');
 });

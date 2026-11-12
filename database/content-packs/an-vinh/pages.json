@@ -86,16 +86,39 @@
       }
      },
      {
-      "type": "entry_grid",
+      "type": "features",
       "props": {
        "heading": "Dịch vụ của chúng tôi",
        "description": "Với đội ngũ kỹ sư giàu kinh nghiệm và hệ thống máy móc hiện đại, An Vinh cung cấp các giải pháp gia công toàn diện, đáp ứng các yêu cầu kỹ thuật khắt khe.",
-       "taxonomy_slug": "nang-luc",
-       "limit": 4,
        "variant": "icon-cards",
        "bg": "tint",
-       "link_label": "Xem chi tiết",
-       "layout": "auto"
+       "layout": "auto",
+       "items": [
+        {
+         "title": "Thiết kế Jig & Đồ gá",
+         "icon": "lock",
+         "text": "Cung cấp các thiết kế đồ gá tối ưu, đảm bảo độ chính xác cao và công năng vượt trội cho dây chuyền.",
+         "url": "/thiet-ke-lap-trinh"
+        },
+        {
+         "title": "Gia công Phay & Tiện CNC",
+         "icon": "adjust",
+         "text": "Gia công phay, tiện CNC trên các vật liệu đa dạng, đáp ứng nhanh nhu cầu khách hàng, tăng năng suất sản xuất.",
+         "url": "/gia-cong-phay-tien-cnc"
+        },
+        {
+         "title": "Hàn & Lắp ráp cơ khí",
+         "icon": "wrench",
+         "text": "Thực hiện đa dạng các phương pháp hàn và lắp ráp cụm chi tiết với độ chính xác và thẩm mỹ cao.",
+         "url": "/han-lap-rap-co-khi"
+        },
+        {
+         "title": "Sản xuất chi tiết máy & OEM",
+         "icon": "machine",
+         "text": "Sản xuất các chi tiết máy, linh kiện thay thế theo yêu cầu bản vẽ kỹ thuật, đảm bảo chất lượng và tiến độ.",
+         "url": "/nang-luc"
+        }
+       ]
       }
      },
      {

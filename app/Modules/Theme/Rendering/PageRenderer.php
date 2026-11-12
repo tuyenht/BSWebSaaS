@@ -343,8 +343,11 @@ final readonly class PageRenderer
     private static function hasRails(array $body): bool
     {
         foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
-            if (is_array($block) && in_array($block['type'] ?? null, ['entry_grid', 'product_grid', 'partners', 'testimonial', 'team', 'branches'], true)
-                && is_array($block['props'] ?? null) && ListDisplay::applies($block['props'])) {
+            $props = is_array($block) && is_array($block['props'] ?? null) ? $block['props'] : null;
+            // A features block draws a rail only with its icon-cards look.
+            $features = is_array($block) && ($block['type'] ?? null) === 'features' && ($props['variant'] ?? null) === 'icon-cards';
+            if ($props !== null && ($features || in_array($block['type'] ?? null, ['entry_grid', 'product_grid', 'partners', 'testimonial', 'team', 'branches'], true))
+                && ListDisplay::applies($props)) {
                 return true;
             }
         }

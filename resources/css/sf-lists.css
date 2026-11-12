@@ -1042,6 +1042,69 @@
         gap: 0.75rem;
     }
 }
+
+/* A features card with a link (every look but icon-cards, which is the shared card): the title is the card's one
+   link, stretched over the card (.sf-card__link::after) inside the card's own layer, and "Xem chi tiết →"
+   closes the text. A card without a link has none of these classes. */
+.sf-feature--link,
+.sf-fcard--link,
+.sf-hcard--link {
+    position: relative;
+    isolation: isolate;
+}
+
+.sf-feature--link:has(.sf-card__link:focus-visible),
+.sf-fcard--link:has(.sf-card__link:focus-visible),
+.sf-hcard--link:has(.sf-card__link:focus-visible) {
+    outline: 2px solid var(--color-primary-text);
+    outline-offset: 3px;
+}
+
+.sf-hcard__body {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.sf-feature__body > .sf-card__more,
+.sf-fcard__body > .sf-card__more {
+    display: inline-block;
+    margin-top: 0.75rem;
+}
+
+@media (hover: hover) {
+    .sf-feature--link:hover .sf-card__more,
+    .sf-fcard--link:hover .sf-card__more,
+    .sf-hcard--link:hover .sf-card__more {
+        color: var(--color-primary-text);
+    }
+
+    .sf-feature--link:hover .sf-card__arrow,
+    .sf-fcard--link:hover .sf-card__arrow,
+    .sf-hcard--link:hover .sf-card__arrow {
+        transform: translateX(0.25rem);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sf-feature--link:hover .sf-card__arrow,
+    .sf-fcard--link:hover .sf-card__arrow,
+    .sf-hcard--link:hover .sf-card__arrow {
+        transform: none;
+    }
+}
+
+/* On a dark band the top-rule and default looks are text on the band: "Xem chi tiết" and the focus ring take the light colours. */
+.sf-band--dark .sf-feature__body > .sf-card__more,
+.sf-band--dark .sf-fcard__body > .sf-card__more {
+    color: var(--color-primary-on-dark);
+}
+
+.sf-band--dark .sf-feature--link:has(.sf-card__link:focus-visible),
+.sf-band--dark .sf-fcard--link:has(.sf-card__link:focus-visible) {
+    outline-color: var(--color-primary);
+}
 @media (max-width: 639.98px) {
 
     .sf-tabs__title {
