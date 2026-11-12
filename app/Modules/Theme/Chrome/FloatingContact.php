@@ -22,6 +22,24 @@ final class FloatingContact
 {
     public const array THEMES = ['vertical', 'horizontal'];
 
+    /**
+     * How the buttons are laid out: combo = round buttons on a computer and a bottom bar on a phone
+     * (up to 767 px); vertical = round buttons everywhere; horizontal = the bottom bar on phones only.
+     */
+    public const array LAYOUTS = ['combo', 'vertical', 'horizontal'];
+
+    /** The bottom bar's tone: follow the page, always light or always dark. */
+    public const array BAR_TONES = ['auto', 'light', 'dark'];
+
+    /** Cells of the bottom bar, the "Mua hàng" and "Thêm" cells counted. */
+    public const int BAR_CAP = 5;
+
+    /** Channels that open from the "Thêm" sheet only, never as a cell of the bar. */
+    public const array SHEET_ONLY = ['messenger', 'email'];
+
+    /** Ready channels from which a phone folds round buttons into one "Liên hệ" button. */
+    public const int DIAL_FROM = 4;
+
     public const array POSITIONS = ['right', 'left', 'bottom'];
 
     public const int MAX_OFFSET_X = 60;
@@ -102,7 +120,7 @@ final class FloatingContact
         }
 
         return match ($type) {
-            'phone', 'sms' => self::phone($value, true, false),
+            'phone', 'sms' => self::phone($value, true, true),
             'whatsapp', 'viber' => self::phone($value, false, true),
             'zalo' => preg_match('~\A(?:https?://)?(?:www\.)?zalo\.me/(\d{6,20})/?\z~i', $value, $m) === 1 ? $m[1] : self::mobile($value),
             'messenger' => self::messenger($value),
@@ -139,6 +157,97 @@ final class FloatingContact
         }
 
         return preg_match(self::CUSTOM_KEY, $key) === 1 ? 'custom' : null;
+    }
+
+    /**
+     * The layout of a stored setting. A value saved before layouts existed is read from its theme and
+     * phone-bar switch (today's horizontal = bar on phones + round buttons on a computer = combo); a site
+     * that never saved gets the default, combo.
+     *
+     * @param  mixed  $raw  the stored value (an array when set)
+     * @return 'combo'|'vertical'|'horizontal'
+     */
+    public static function layout(mixed $raw): string
+    {
+        if (! is_array($raw)) {
+            return 'combo';
+        }
+        if (is_string($raw['layout'] ?? null) && in_array($raw['layout'], self::LAYOUTS, true)) {
+            return $raw['layout'];
+        }
+        if (($raw['theme'] ?? null) === 'horizontal') {
+            return 'combo';
+        }
+        $bar = $raw['phone_bar'] ?? null;
+
+        return is_array($bar) && ($bar['enabled'] ?? false) === true ? 'combo' : 'vertical';
+    }
+
+    /**
+     * The older `theme` word for a layout (what code from before layouts reads after a rollback).
+     *
+     * @return 'vertical'|'horizontal'
+     */
+    public static function legacyTheme(string $layout): string
+    {
+        return $layout === 'vertical' ? 'vertical' : 'horizontal';
+    }
+
+    /** Whether a phone folds many round buttons into one "Liên hệ" button (default on; only false turns it off). */
+    public static function dial(mixed $raw): bool
+    {
+        return ! is_array($raw) || ($raw['dial'] ?? true) !== false;
+    }
+
+    /**
+     * The bottom bar's tone (default auto).
+     *
+     * @return 'auto'|'light'|'dark'
+     */
+    public static function barTone(mixed $raw): string
+    {
+        $tone = is_array($raw) ? ($raw['bar_tone'] ?? null) : null;
+
+        return is_string($tone) && in_array($tone, self::BAR_TONES, true) ? $tone : 'auto';
+    }
+
+    /** Whether a click on a button is counted (default on; only false turns it off). */
+    public static function track(mixed $raw): bool
+    {
+        return ! is_array($raw) || ($raw['track'] ?? true) !== false;
+    }
+
+    /**
+     * Which channels sit on the phone's bottom bar, which wait in the "Thêm" sheet, and whether that
+     * cell shows: the quick channels (not SHEET_ONLY) fill the bar in saved order; one leftover joins
+     * the bar when there is room, two or more (or a full bar) turn the last cell into "Thêm".
+     *
+     * @param  list<string>  $ready  keys of the channels that are on and have a value that passes, in saved order
+     * @param  bool  $buy  whether the "Mua hàng" cell takes one place
+     * @return array{bar: list<string>, sheet: list<string>, more: bool}
+     */
+    public static function barSlots(array $ready, bool $buy): array
+    {
+        $cap = self::BAR_CAP - ($buy ? 1 : 0);
+        $quick = array_values(array_filter($ready, static fn (string $k): bool => ! in_array($k, self::SHEET_ONLY, true)));
+        $left = array_values(array_diff($ready, array_slice($quick, 0, $cap)));
+
+        if ($left === []) {
+            return ['bar' => $quick, 'sheet' => [], 'more' => false];
+        }
+        if (count($left) === 1 && count($quick) < $cap) {
+            return ['bar' => $ready, 'sheet' => [], 'more' => false];
+        }
+
+        $bar = array_slice($quick, 0, $cap - 1);
+
+        return ['bar' => $bar, 'sheet' => array_values(array_diff($ready, $bar)), 'more' => true];
+    }
+
+    /** Whether a phone folds the round buttons into one "Liên hệ" button: vertical layout, switch on, enough ready channels. */
+    public static function dials(string $layout, bool $dial, int $ready): bool
+    {
+        return $layout === 'vertical' && $dial && $ready >= self::DIAL_FROM;
     }
 
     /** A colour as stored (#rrggbb, lower case), else null. */

@@ -29,7 +29,7 @@ final class FloatingContactInput
     {
         $errors = [];
         foreach (array_keys($value) as $field) {
-            if (! in_array($field, ['enabled', 'theme', 'position', 'offset_x', 'offset_y', 'buy', 'phone_bar', 'channels'], true)) {
+            if (! in_array($field, ['enabled', 'theme', 'position', 'offset_x', 'offset_y', 'layout', 'dial', 'bar_tone', 'track', 'buy', 'phone_bar', 'channels'], true)) {
                 $errors[] = "'{$field}' is not a floating-contact field.";
             }
         }
@@ -41,6 +41,17 @@ final class FloatingContactInput
         }
         if (isset($value['position']) && ! in_array($value['position'], FloatingContact::POSITIONS, true)) {
             $errors[] = "'position' must be one of ".implode(', ', FloatingContact::POSITIONS).'.';
+        }
+        if (isset($value['layout']) && ! in_array($value['layout'], FloatingContact::LAYOUTS, true)) {
+            $errors[] = "'layout' must be one of ".implode(', ', FloatingContact::LAYOUTS).'.';
+        }
+        if (isset($value['bar_tone']) && ! in_array($value['bar_tone'], FloatingContact::BAR_TONES, true)) {
+            $errors[] = "'bar_tone' must be one of ".implode(', ', FloatingContact::BAR_TONES).'.';
+        }
+        foreach (['dial', 'track'] as $field) {
+            if (isset($value[$field]) && ! is_bool($value[$field])) {
+                $errors[] = "'{$field}' must be true or false.";
+            }
         }
         foreach (['offset_x' => FloatingContact::MAX_OFFSET_X, 'offset_y' => FloatingContact::MAX_OFFSET_Y] as $field => $max) {
             if (isset($value[$field]) && FloatingContact::offset($value[$field], $max, -1) === -1) {
@@ -240,12 +251,19 @@ final class FloatingContactInput
         // The phone bar is kept only where a site set it, so a site that never did stores what it always did.
         $phoneBar = isset($raw['phone_bar']) ? ['phone_bar' => self::storedPhoneBar($raw['phone_bar'], $locales)] : [];
 
+        $layout = FloatingContact::layout($raw);
+        $givenLayout = in_array($raw['layout'] ?? null, FloatingContact::LAYOUTS, true);
+
         return [
             'enabled' => ($raw['enabled'] ?? false) === true,
-            'theme' => in_array($raw['theme'] ?? null, FloatingContact::THEMES, true) ? Cast::string($raw['theme']) : 'vertical',
+            'theme' => $givenLayout ? FloatingContact::legacyTheme($layout) : (in_array($raw['theme'] ?? null, FloatingContact::THEMES, true) ? Cast::string($raw['theme']) : 'vertical'),
             'position' => in_array($raw['position'] ?? null, FloatingContact::POSITIONS, true) ? Cast::string($raw['position']) : 'right',
             'offset_x' => FloatingContact::offset($raw['offset_x'] ?? null, FloatingContact::MAX_OFFSET_X, FloatingContact::DEFAULT_OFFSET_X),
             'offset_y' => FloatingContact::offset($raw['offset_y'] ?? null, FloatingContact::MAX_OFFSET_Y, FloatingContact::DEFAULT_OFFSET_Y),
+            'layout' => $layout,
+            'dial' => FloatingContact::dial($raw),
+            'bar_tone' => FloatingContact::barTone($raw),
+            'track' => FloatingContact::track($raw),
             'buy' => [
                 'enabled' => ($buy['enabled'] ?? false) === true,
                 'color' => in_array($buyColor, FloatingContactSettings::BUY_SWATCHES, true) || FloatingContact::color($buyColor) !== null ? $buyColor : FloatingContact::BUY_COLOR,

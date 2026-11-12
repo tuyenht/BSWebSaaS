@@ -179,7 +179,7 @@ it('refuses every invalid value with its plain message and saves nothing', funct
     'email' => ['email', 'lienhe@', 'nhập dạng ten@congty.com'],
     'landline too long' => ['phone', '024 1234 56789', 'nhập số di động (vd 0912 345 678), số bàn 11 số (vd 024 1234 5678) hoặc tổng đài 1900/1800'],
     'hotline wrong length' => ['phone', '1900 12345', 'nhập số di động (vd 0912 345 678), số bàn 11 số (vd 024 1234 5678) hoặc tổng đài 1900/1800'],
-    'call abroad' => ['phone', '+65 9123 4567', 'nhập số di động (vd 0912 345 678), số bàn 11 số (vd 024 1234 5678) hoặc tổng đài 1900/1800'],
+    'call with country code 0' => ['phone', '+0 123', 'nhập số di động (vd 0912 345 678), số bàn 11 số (vd 024 1234 5678) hoặc tổng đài 1900/1800'],
     'whatsapp abroad too short' => ['whatsapp', '+1234567', 'nhập số di động (vd 0912 345 678), số bàn (vd 024 1234 5678) hoặc số nước ngoài bắt đầu bằng + (vd +65 9123 4567)'],
     'sms' => ['sms', '12', 'nhập số di động (vd 0912 345 678), số bàn 11 số (vd 024 1234 5678) hoặc tổng đài 1900/1800'],
     'telegram too short' => ['telegram', '@ab', 'nhập @username (5–32 chữ cái, số hoặc dấu _) hoặc liên kết t.me/username'],
@@ -652,4 +652,39 @@ it('gates the page — settings.manage on the route, in boot() and on save', fun
         Livewire::actingAs($member->fresh())->test(FloatingContactSettings::class)->assertForbidden();
     });
     expect(fcsStored())->toBeNull();
+});
+
+it('keeps the newer fields of a saved setting when the form saves with no change to them', function (): void {
+    $admin = fcsAdmin();
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'floating_contact', 'value' => [
+        'enabled' => true, 'theme' => 'horizontal', 'layout' => 'horizontal', 'dial' => false, 'bar_tone' => 'dark', 'track' => false,
+        'channels' => [['key' => 'phone', 'on' => true, 'value' => '0912345678']],
+    ]]));
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+        ->set('offsetX', 30)->call('save')->assertHasNoErrors());
+
+    expect(fcsStored(1))->toMatchArray(['layout' => 'horizontal', 'dial' => false, 'bar_tone' => 'dark', 'track' => false, 'theme' => 'horizontal']);
+});
+
+it('stores the layout the new theme gives when the theme is changed in the form', function (): void {
+    $admin = fcsAdmin();
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'floating_contact', 'value' => [
+        'enabled' => true, 'theme' => 'vertical', 'layout' => 'vertical', 'dial' => false, 'bar_tone' => 'light', 'track' => false,
+        'channels' => [['key' => 'phone', 'on' => true, 'value' => '0912345678']],
+    ]]));
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+        ->call('setTheme', 'horizontal')->call('save')->assertHasNoErrors());
+
+    expect(fcsStored(1))->toMatchArray(['layout' => 'combo', 'theme' => 'horizontal', 'dial' => false, 'bar_tone' => 'light', 'track' => false]);
+});
+
+it('stores the default newer fields for a site that never saved, matching the form defaults', function (): void {
+    $admin = fcsAdmin();
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+        ->call('toggleEnabled')->call('save')->assertHasNoErrors());
+
+    expect(fcsStored(1))->toMatchArray(['theme' => 'vertical', 'layout' => 'vertical', 'dial' => true, 'bar_tone' => 'auto', 'track' => true]);
 });

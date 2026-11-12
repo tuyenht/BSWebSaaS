@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Admin\Support\Settings\FloatingContactInput;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Provisioning\ContentPack\PackReader;
 use App\Modules\Provisioning\ContentPack\PackValidator;
@@ -489,4 +490,12 @@ it('dates the products in the board order with the Taplo jig first, and marks on
 
     $featured = $products->filter(fn ($item) => ($item->data['featured'] ?? false) === true)->map(fn ($item) => $item->key)->values()->all();
     expect($featured)->toBe(['product:jig-kiem-tap-lo-vf7']);
+});
+
+it('keeps the real floating contact valid and stores it with round buttons everywhere, folding on a phone, an automatic bar tone and click counting', function (): void {
+    $settings = collect(json_decode((string) file_get_contents((new PackReader)->read('an-vinh')->dir.'/settings.json'), true)['items'])->keyBy('key');
+    $value = $settings['setting:storefront.floating_contact']['value'];
+
+    expect(FloatingContactInput::errors($value, ['vi']))->toBe([])
+        ->and(FloatingContactInput::stored($value, ['vi']))->toMatchArray(['theme' => 'vertical', 'layout' => 'vertical', 'dial' => true, 'bar_tone' => 'auto', 'track' => true]);
 });
