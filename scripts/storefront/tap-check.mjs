@@ -2,11 +2,13 @@
 // its own centre (nothing drawn over it: a card's stretched-link overlay, a sticky bar, a slide), and a
 // real tap on a rail's arrow must turn the rail and never open the card under it.
 //
-//   node scripts/storefront/tap-check.mjs --chrome=<path> [--widths=320,390] [--add-css=<css>] [--expect-arrows=<url>,…] <url> [<url>…]
+//   node scripts/storefront/tap-check.mjs --chrome=<path> [--widths=320,390] [--add-css=<css>] [--expect-arrows=<url>,…] [--ignore-certificate-errors] <url> [<url>…]
 //
 // --add-css tries a style fix on a live site before it is deployed (the CSS is added to every page).
 // --expect-arrows names pages that must show at least one rail arrow, so a page that lost its rails
 // (or failed to load) cannot pass by having nothing to tap.
+// --ignore-certificate-errors is passed on to Chrome: for a test server with a self-made certificate
+// (CI serves the measurement site over HTTPS with Caddy's `tls internal`); never needed on a live site.
 //
 // Plain Node 22 (global WebSocket + fetch) talking to Chrome over the DevTools protocol: no dependency.
 // Exit 0 = clean, 1 = a covered control or a bad tap, 2 = could not run.
@@ -21,6 +23,7 @@ const chromePath = opt('chrome', process.env.CHROME_PATH ?? '');
 const widths = opt('widths', '320,390').split(',').map(Number);
 const addCss = opt('add-css', '');
 const expectArrows = opt('expect-arrows', '').split(',').filter(Boolean);
+const ignoreCertErrors = args.includes('--ignore-certificate-errors');
 const urls = args.filter((a) => !a.startsWith('--'));
 if (chromePath === '' || urls.length === 0) {
     console.error('usage: tap-check.mjs --chrome=<path> [--widths=320,390] <url>…');
@@ -30,7 +33,11 @@ if (chromePath === '' || urls.length === 0) {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const profile = mkdtempSync(join(tmpdir(), 'tap-check-'));
 const port = 9300 + Math.floor(Math.random() * 500);
-const chrome = spawn(chromePath, ['--headless=new', '--no-sandbox', '--disable-gpu', '--no-first-run', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, 'about:blank'], { stdio: 'ignore' });
+const chromeArgs = ['--headless=new', '--no-sandbox', '--disable-gpu', '--no-first-run', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`];
+if (ignoreCertErrors) {
+    chromeArgs.push('--ignore-certificate-errors');
+}
+const chrome = spawn(chromePath, [...chromeArgs, 'about:blank'], { stdio: 'ignore' });
 let chromeError;
 chrome.on('error', (e) => { chromeError = e; });
 

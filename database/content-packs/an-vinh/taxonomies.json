@@ -3,7 +3,7 @@
   {
    "key": "tax:post_cat/san-pham",
    "name": {
-    "vi": "Sản phẩm"
+    "vi": "Sản phẩm của chúng tôi"
    },
    "list_template": "grid-product",
    "description": {
@@ -115,7 +115,7 @@
   {
    "key": "tax:post_cat/du-an",
    "name": {
-    "vi": "Dự án"
+    "vi": "Dự án tiêu biểu"
    },
    "list_template": "grid-project",
    "detail_template": "project",
@@ -166,7 +166,7 @@
   {
    "key": "tax:post_cat/tin-tuc",
    "name": {
-    "vi": "Tin tức"
+    "vi": "Tin tức & sự kiện"
    },
    "list_template": "grid-news",
    "description": {
@@ -197,7 +197,7 @@
   {
    "key": "tax:post_cat/nang-luc",
    "name": {
-    "vi": "Năng lực"
+    "vi": "Năng lực sản xuất"
    },
    "list_template": "grid-capability",
    "was": [
@@ -290,7 +290,10 @@
      }
     }
    },
-   "detail_template": "capability"
+   "detail_template": "capability",
+   "description": {
+    "vi": "Từ thiết kế, gia công đến đo kiểm – một quy trình khép kín"
+   }
   },
   {
    "key": "tax:post_cat/du-an/du-an-o-to",
@@ -604,7 +607,7 @@
   {
    "key": "tax:post_cat/tuyen-dung",
    "name": {
-    "vi": "Tuyển dụng"
+    "vi": "Gia nhập đội ngũ An Vinh"
    },
    "list_template": "grid-job",
    "detail_template": "job",

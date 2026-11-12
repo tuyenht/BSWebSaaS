@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 // CI only (the cwv job): the router for PHP's built-in server, answering with the compression
 // production's Caddy applies (`encode zstd gzip`, docker/caddy/Caddyfile), so Lighthouse measures
-// the bytes a visitor downloads. Chrome asks a plain-http host for gzip, so this answers gzip.
-// Run from the project root: php -S 0.0.0.0:8099 -t public scripts/cwv-serve.php
+// the bytes a visitor downloads. It answers gzip whenever the browser accepts it (Chrome also
+// offers br and zstd over HTTPS; the gate was calibrated on gzip). Caddy (scripts/cwv-Caddyfile)
+// sits in front for TLS + HTTP/2 and passes the body through without compressing it again.
+// Run from the project root: php -S 127.0.0.1:8099 -t public scripts/cwv-serve.php
 
 $public = dirname(__DIR__).'/public';
 $path = urldecode((string) (parse_url((string) $_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/'));

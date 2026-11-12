@@ -79,28 +79,7 @@ final readonly class AuditEntryView
             return $this->isSystem($row) ? __('admin.audit.automatic') : '—';
         }
 
-        $browser = match (true) {
-            str_contains($agent, 'Edg/') => 'Edge',
-            str_contains($agent, 'OPR/'), str_contains($agent, 'Opera') => 'Opera',
-            str_contains($agent, 'SamsungBrowser') => 'Samsung Internet',
-            str_contains($agent, 'Firefox/'), str_contains($agent, 'FxiOS') => 'Firefox',
-            str_contains($agent, 'Chrome/'), str_contains($agent, 'CriOS') => 'Chrome',
-            str_contains($agent, 'Safari/') => 'Safari',
-            default => null,
-        };
-        $system = match (true) {
-            str_contains($agent, 'iPhone') => 'iPhone',
-            str_contains($agent, 'iPad') => 'iPad',
-            str_contains($agent, 'Android') => 'Android',
-            str_contains($agent, 'Windows') => 'Windows',
-            str_contains($agent, 'Macintosh'), str_contains($agent, 'Mac OS X') => 'macOS',
-            str_contains($agent, 'Ubuntu') => 'Ubuntu',
-            str_contains($agent, 'Linux') => 'Linux',
-            default => null,
-        };
-        $known = array_values(array_filter([$browser, $system]));
-
-        return $known === [] ? __('admin.audit.device_other') : implode(' · ', $known);
+        return DeviceLabel::of($agent) ?? __('admin.audit.device_other');
     }
 
     /** What the action was done to ("nhakhoatamduc.vn", a role's name, a plan feature…), or '' when the row does not say. */

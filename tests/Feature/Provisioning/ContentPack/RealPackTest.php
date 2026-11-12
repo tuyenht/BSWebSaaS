@@ -225,7 +225,8 @@ it('publishes a privacy policy naming the company, what the form collects and ho
         ->toContain('họ tên')
         ->toContain('địa chỉ IP')
         ->toContain('Google Maps')
-        ->toContain('tháng 11 năm 2026');
+        // The band over the text carries the effective date; the body repeats none, so the page never gives two.
+        ->not->toContain('Ngày hiệu lực');
 });
 
 it('plans the real pack on a fresh site with no conflict, and every internal link resolves after the load', function (): void {
@@ -358,7 +359,8 @@ it('builds the about section as one family: a parent page, titles named like the
     $wanted = [['Giới thiệu công ty', 'page:/gioi-thieu'], ...array_map(null, array_slice(array_values(ABOUT_PAGES), 1), array_slice(array_keys(ABOUT_PAGES), 1))];
     expect($about['target'])->toBe('page:/gioi-thieu')
         ->and(collect($about['children'])->map(fn (array $child): array => [$child['label']['vi'], $child['target']])->all())->toBe($wanted)
-        ->and(collect($menu('menu:footer')[0]['children'])->take(4)->map(fn (array $child): array => [$child['label']['vi'], $child['target']])->all())->toBe($wanted);
+        // The footer column follows the board's own wording and order, so it names the same pages without repeating the menu's labels.
+        ->and(array_diff(array_column($wanted, 1), array_column($menu('menu:footer')[0]['children'], 'target')))->toBe([]);
 });
 
 it('shows each about subpage under Giới thiệu in its breadcrumb and opens the about menu by its own button', function (): void {
@@ -431,4 +433,28 @@ it('writes every title band in sentence case, like the page names, never Every W
 
         expect(count($words) >= 3 && count($capitalised) === count($words))->toBeFalse($title);
     }
+});
+
+it('lists the five capabilities in the board order, names the list pages like the board and keeps one effective date on the policy', function (): void {
+    $items = collect((new PackReader)->read('an-vinh')->items)->keyBy(fn ($item) => $item->key);
+
+    // The list is newest first, so the board's 01…05 are the dates counted down.
+    $order = collect(['thiet-ke-lap-trinh', 'gia-cong-phay-tien-cnc', 'gia-cong-cat-day-xung-dien', 'han-lap-rap-co-khi', 'do-kiem-qa-qc'])
+        ->map(fn (string $slug): string => $items['post:'.$slug]->data['published_at']);
+    expect($order->all())->toBe($order->sortDesc()->values()->all())->and($order->unique())->toHaveCount(5);
+
+    expect($items['tax:post_cat/nang-luc']->data['name']['vi'])->toBe('Năng lực sản xuất')
+        ->and($items['tax:post_cat/nang-luc']->data['description']['vi'])->toBe('Từ thiết kế, gia công đến đo kiểm – một quy trình khép kín')
+        ->and($items['tax:post_cat/san-pham']->data['name']['vi'])->toBe('Sản phẩm của chúng tôi')
+        ->and($items['tax:post_cat/du-an']->data['name']['vi'])->toBe('Dự án tiêu biểu')
+        ->and($items['tax:post_cat/tin-tuc']->data['name']['vi'])->toBe('Tin tức & sự kiện')
+        ->and($items['tax:post_cat/tuyen-dung']->data['name']['vi'])->toBe('Gia nhập đội ngũ An Vinh');
+
+    $footer = collect($items['menu:footer']->data['items'][0]['children'])->pluck('label.vi')->all();
+    expect($footer)->toBe(['Về công ty', 'Dự án', 'Nhà xưởng & máy móc', 'Hồ sơ năng lực', 'Chứng chỉ & thành tựu', 'Tin tức', 'Tuyển dụng', 'Liên hệ', 'Chính sách bảo mật']);
+
+    foreach ($items->filter(fn ($item) => str_starts_with($item->key, 'product:')) as $product) {
+        expect($product->data['description']['vi'])->not->toContain('Năng lực liên quan');
+    }
+    expect($items['page:/doi-tac']->data['body']['vi'][0]['props']['image_url'])->toBe(['media' => 'hero-2']);
 });

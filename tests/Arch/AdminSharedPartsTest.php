@@ -23,7 +23,6 @@ const ADMIN_HAND_BUILT_PARTS = [
     'entries/editor.blade.php' => [2, 0, 0],
     'entries/partials/workflow-status.blade.php' => [1, 0, 0],
     'floating-contact-settings.blade.php' => [0, 1, 0],
-    'forms/detail.blade.php' => [0, 1, 0],
     'general-settings.blade.php' => [0, 1, 0],
     'login.blade.php' => [0, 1, 0],
     'menus/index.blade.php' => [0, 3, 0],
