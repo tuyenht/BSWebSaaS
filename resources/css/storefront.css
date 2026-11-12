@@ -1884,6 +1884,8 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     visibility: hidden;
 }
 
+/* Every width below 1024px, phones included, draws the controls as the design does: one centred row
+   under the card, outlined ‹ and › on either side of the dots, so nothing is drawn over the card. */
 .sf-rot__nav {
     display: flex;
     align-items: center;
@@ -1951,53 +1953,6 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     width: 1.5rem;
     border-radius: 0.3125rem;
     background: var(--color-primary);
-}
-
-/* Phone: the same rule as the list rails. The arrows stand on the card's left and right edges, halfway
-   down, as white discs (40px in a 44px hit area); the dots stay alone under the card; the cards keep
-   12px inside each side so an arrow covers only a card's padding. */
-@media (max-width: 639.98px) {
-    .sf-rot {
-        position: relative;
-    }
-
-    .sf-rot:has(> .sf-rot__nav) > .sf-footer__factories {
-        padding-inline: 12px;
-    }
-
-    .sf-rot__nav {
-        margin-top: 0.5rem;
-    }
-
-    .sf-rot__arrow {
-        position: absolute;
-        top: calc(50% - 1.625rem - 22px);
-        z-index: 1;
-        width: 44px;
-        min-width: 44px;
-        height: 44px;
-        color: var(--color-text-strong, #111);
-    }
-
-    .sf-rot__arrow[data-sf-rot-prev] {
-        left: -10px;
-    }
-
-    .sf-rot__arrow[data-sf-rot-next] {
-        right: -10px;
-    }
-
-    .sf-rot__arrow::before {
-        inset: 2px;
-        border: 0;
-        background: #fff;
-        box-shadow: 0 2px 10px rgb(0 0 0 / 0.3);
-    }
-
-    .sf-rot__arrow:hover,
-    .sf-rot__arrow:focus-visible {
-        color: var(--color-text-strong, #111);
-    }
 }
 
 .sf-factory {

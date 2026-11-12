@@ -169,12 +169,21 @@
   },
   {
    "key": "setting:storefront.floating_contact",
-   "note": "Nút liên hệ nổi chỉ có Zalo và Gọi (gọi màu hổ phách như bản thiết kế), dùng số hotline của An Vinh. Dưới 768px thay bằng thanh đáy 3 ô: Gọi, Chat Zalo, Yêu cầu báo giá.",
+   "note": "Nút liên hệ nổi dạng nút tròn trên mọi cỡ màn hình: Email, Chat Zalo và Gọi (gọi màu hổ phách như bản thiết kế), dùng email và số hotline của An Vinh. Không dùng thanh đáy trên điện thoại.",
    "value": {
     "enabled": true,
     "theme": "vertical",
     "position": "right",
     "channels": [
+     {
+      "key": "email",
+      "on": true,
+      "value": "quybv@ckanvinh.vn",
+      "tips": {
+       "vi": "Gửi email"
+      },
+      "color": "#ea4335"
+     },
      {
       "key": "zalo",
       "on": true,
@@ -195,16 +204,7 @@
      }
     ],
     "offset_x": 16,
-    "offset_y": 20,
-    "phone_bar": {
-     "enabled": true,
-     "cta": {
-      "label": {
-       "vi": "Yêu cầu báo giá"
-      },
-      "url": "/lien-he"
-     }
-    }
+    "offset_y": 20
    }
   },
   {
