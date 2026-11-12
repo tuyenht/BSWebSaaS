@@ -3,6 +3,7 @@
 use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
+use App\Modules\Rbac\Support\PlatformAccess;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -47,7 +48,12 @@ it('rings focus in the white ink of the navy Customizer header, not the navy acc
 });
 
 it('heads a list table in the muted role', function (): void {
-    $html = $this->actingAs(shellOwner())->get('http://demo.platform.test/admin/forms')->assertOk()->getContent();
+    // the operator's site directory is the list still drawn as a table (the contacts screen became a list)
+    $this->artisan('rbac:sync')->assertSuccessful();
+    $operator = User::factory()->create();
+    app(PlatformAccess::class)->onPlatform(fn () => $operator->assignRole('super_admin'));
+    app(PlatformAccess::class)->forgetMemo();
+    $html = $this->actingAs($operator->fresh() ?? $operator)->get('http://'.(string) config('tenancy.platform_host').'/sites')->assertOk()->getContent();
 
     expect((string) $html)->toMatch('/<thead class="[^"]*text-body-muted[^"]*">/')
         ->not->toMatch('/<thead class="[^"]*text-body-faint/');
