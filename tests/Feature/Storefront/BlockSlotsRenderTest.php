@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\HtmlString;
 use Tests\Fixtures\StorefrontCards;
+use Tests\Fixtures\StorefrontCss;
 
 /*
  * The blocks a site puts around its posts, lists and products (the block slots): the side column of
@@ -724,7 +725,7 @@ it('draws a news post with a side column as share rail, text and side column in 
 });
 
 it('lets the share grid win over the plain columns rule on a wide screen', function (): void {
-    $css = file_get_contents(base_path('resources/css/storefront.css'));
+    $css = StorefrontCss::all();
     preg_match_all('#(?<![\w-])((?:\.post-columns(?:\.post-columns--share)?)(?::not\(:has\(\.post-aside\)\))?)\s*\{[^}]*grid-template-columns:\s*([^;]+);#', $css, $rules, PREG_SET_ORDER);
     $bySelector = [];
     foreach ($rules as $rule) {

@@ -1,0 +1,308 @@
+/*
+ * sf-cta.css — storefront styles for the call-to-action band.
+ * Linked in the <head> only on a page whose HTML has a class from: .cta
+ * (Theme\Rendering\BlockStyles, which lists the same roots), after storefront.css and in the order
+ * BlockStyles::FILES gives, so the cascade is the one the single file had. Every rule here needs one of
+ * those classes on the page; a rule for anything else belongs in storefront.css.
+ */
+
+/* ───── CTA section ──────────────────────────────────────────────────────── */
+.cta {
+    background: var(--sch-bg, var(--color-dark));
+    padding: 4rem 1.5rem;
+    text-align: center;
+}
+
+@media (min-width: 1024px) {
+    .cta {
+        padding: 5rem 2rem;
+    }
+}
+
+.cta h2 {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+    font-weight: 800;
+    color: var(--sch-head, var(--color-surface));
+    margin: 0 0 1.5rem;
+}
+
+.cta__button {
+    display: inline-block;
+    padding: 0.75rem 2rem;
+    background: var(--sch-pri-bg, var(--color-primary));
+    color: var(--sch-pri-fg, var(--color-on-primary));
+    font-weight: 700;
+    font-size: 1rem;
+    border-radius: 0.375rem;
+    transition: background 0.2s;
+}
+
+.cta__button:hover {
+    background: var(--sch-pri-hover, var(--color-primary-hover));
+}
+
+/* CTA: the sub-line (both looks) and the rounded look. */
+.cta__text {
+    max-width: 42rem;
+    margin: 0 auto 1.5rem;
+    color: var(--sch-body, var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white)));
+    font-size: 1.125rem;
+    line-height: 1.5rem;
+}
+
+.cta.cta--rounded {
+    padding: 5rem 0;
+    background: var(--sch-bg, var(--color-dark));
+}
+
+.cta__title {
+    color: var(--sch-head, #fff);
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    overflow-wrap: anywhere;
+}
+
+.cta--rounded .cta__text {
+    margin: 1rem auto 0;
+}
+
+.cta__button.cta__button--pill {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    margin-top: 2rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 9999px;
+    background: var(--sch-pri-bg, var(--color-primary));
+    color: var(--sch-pri-fg, var(--color-on-primary));
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+    font-weight: 500;
+    transition: background 0.3s, transform 0.3s;
+}
+
+@media (min-width: 640px) {
+    .cta__button.cta__button--pill {
+        display: inline-flex;
+    }
+}
+@media (hover: hover) {
+
+    .cta__button.cta__button--pill:hover {
+        background: var(--sch-pri-hover, var(--color-primary-hover));
+        transform: scale(1.05);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cta__button.cta__button--pill {
+        transition: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .cta__button.cta__button--pill:hover {
+        transform: none;
+    }
+}
+
+/* CTA: a second, outlined button, the stats beside the text and the cross pattern. */
+.cta__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    justify-content: center;
+    text-align: center;
+}
+
+@media (min-width: 40rem) {
+    .cta__actions {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+}
+
+.cta--rounded .cta__actions {
+    margin-top: 2rem;
+}
+
+/* The title of the rounded and split looks: the sub-line's own margin spaces them (the boards: a title with
+   no margin, the sub-line 1rem under it, the buttons 2rem under that). */
+.cta .cta__title {
+    margin: 0;
+}
+
+/* The split look: text left, pill buttons right from a tablet up; stacked on a phone. */
+.cta.cta--split {
+    padding: 4rem 0;
+    text-align: left;
+}
+
+.cta__row {
+    display: grid;
+    gap: 2rem;
+    align-items: center;
+}
+
+.cta--split .cta__text {
+    margin: 0.75rem 0 0;
+}
+
+.cta--split .cta__actions {
+    justify-content: flex-start;
+}
+
+@media (min-width: 768px) {
+    .cta__row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .cta--split .cta__actions {
+        justify-content: flex-end;
+    }
+}
+
+.cta__button.cta__button--outline {
+    background: transparent;
+    border: 1px solid currentColor;
+    color: var(--sch-head, var(--color-surface));
+}
+
+.cta__button.cta__button--outline:hover {
+    background: transparent;
+    border-color: var(--sch-pri-bg, var(--color-primary));
+}
+
+.cta__actions > .cta__button.cta__button--pill {
+    margin-top: 0;
+}
+
+.cta.cta--side {
+    padding: 2rem 0;
+    background: transparent;
+    text-align: left;
+}
+
+.cta__split {
+    display: grid;
+    gap: 2rem;
+}
+
+.cta__panel {
+    padding: 2rem;
+    border-radius: 0.5rem;
+    background: var(--sch-bg, var(--color-dark));
+}
+
+.cta__panel .cta__text {
+    margin-inline: 0;
+}
+
+.cta__panel .cta__actions {
+    justify-content: flex-start;
+}
+
+@media (min-width: 64rem) {
+    .cta__split {
+        grid-template-columns: 3fr 2fr;
+        align-items: stretch;
+    }
+
+    .cta__panel {
+        padding: 2.5rem;
+    }
+}
+
+/* CTA, card look: a dark rounded card inside the page width with an accent rule on top, the text
+   on the left and pill buttons on the right (stacked on a phone). */
+.cta.cta--card {
+    padding: 4rem 0;
+    background: transparent;
+    text-align: left;
+}
+
+.cta__card {
+    display: grid;
+    gap: 1.5rem;
+    align-items: center;
+    padding: 2rem;
+    border-top: 4px solid var(--color-primary);
+    border-radius: 0.5rem;
+    background: var(--sch-bg, var(--color-dark));
+}
+
+.cta--card .cta__title {
+    font-size: 1.5rem;
+    line-height: 2rem;
+    font-weight: 700;
+}
+
+.cta--card .cta__text {
+    margin: 0.5rem 0 0;
+    font-size: 1rem;
+}
+
+.cta--card .cta__actions {
+    justify-content: flex-start;
+}
+
+.cta--card .cta__actions > .cta__button.cta__button--pill {
+    flex: 1 1 auto;
+    padding-inline: 2rem;
+    font-weight: 700;
+}
+
+/* The second button of the card look: the outline, or the Zalo brand blue. */
+.cta__button.cta__button--zalo {
+    border: 0;
+    background: #0068ff;
+    color: #fff;
+}
+
+@media (min-width: 48rem) {
+    .cta__card {
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 2rem;
+        padding: 2.5rem;
+    }
+
+    .cta--card .cta__actions {
+        justify-content: flex-end;
+    }
+
+    .cta--card .cta__actions > .cta__button.cta__button--pill {
+        flex: 0 0 auto;
+    }
+}
+
+@media (hover: hover) {
+    .cta__button.cta__button--zalo:hover {
+        background: #0068ff;
+        opacity: 0.9;
+    }
+}
+@media (max-width: 639.98px) {
+
+    .cta__title,
+    .cta h2 {
+        font-size: 1.375rem;
+        line-height: 1.3;
+    }
+}
+@media (max-width: 639.98px) {
+
+    .cta--card .cta__title {
+        font-size: 1.25rem;
+        line-height: 1.3;
+    }
+}
+@media (max-width: 639.98px) {
+
+    .cta__text {
+        font-size: 1.0625rem;
+    }
+}

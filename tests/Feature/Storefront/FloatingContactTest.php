@@ -15,6 +15,7 @@ use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Theming\ReadableColor;
 use Illuminate\Support\Facades\DB;
+use Tests\Fixtures\StorefrontCss;
 
 /*
  * The floating contact buttons (`storefront.floating_contact`): printed once per page after the
@@ -168,7 +169,7 @@ it('keeps a side stack’s room under the footer wherever it can cover the foote
     // 1357px at a 16px root and the default offset, 1440px at An Vinh's 17px root, measured) or wraps into a
     // second column; elsewhere the stack sits in the margin and no empty band is left. With the
     // safe-area inset, so the stack never covers the last footer line.
-    $css = (string) file_get_contents(resource_path('css/storefront.css'));
+    $css = (string) StorefrontCss::all();
     preg_match('/@media \(min-width: 768px\) \{\n    \.sf-fc-ghost--side \{(.*?)\n    \}\n\}/s', $css, $side);
 
     expect($css)->toContain('padding: 0.625rem var(--fc-ox, 20px) calc(var(--fc-oy, 24px) + env(safe-area-inset-bottom, 0px));')

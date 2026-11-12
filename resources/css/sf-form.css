@@ -1,0 +1,818 @@
+/*
+ * sf-form.css — storefront styles for forms, contact cards and the branch map.
+ * Linked in the <head> only on a page whose HTML has a class from: .lead-form, .contact, .sf-contact-card, .sf-contact-cards, .sf-map, .sf-bmap, .cf-turnstile
+ * (Theme\Rendering\BlockStyles, which lists the same roots), after storefront.css and in the order
+ * BlockStyles::FILES gives, so the cascade is the one the single file had. Every rule here needs one of
+ * those classes on the page; a rule for anything else belongs in storefront.css.
+ */
+
+/* ───── Contact section ──────────────────────────────────────────────────── */
+.contact {
+    max-width: 80rem;
+    margin-inline: auto;
+    padding: 3rem 1.5rem;
+}
+
+@media (min-width: 1024px) {
+    .contact {
+        padding: 4rem 2rem;
+    }
+}
+
+.contact__heading {
+    font-size: clamp(1.25rem, 2.5vw, 1.875rem);
+    font-weight: 800;
+    color: var(--sch-head, var(--color-text-strong));
+    margin: 0 0 1.25rem;
+    padding-bottom: 0.625rem;
+    border-bottom: 3px solid var(--sch-rule, var(--color-primary));
+    display: inline-block;
+}
+
+.contact__address {
+    color: var(--sch-body, color-mix(in srgb, var(--color-text) 80%, white));
+    line-height: 1.65;
+    margin-bottom: 0.75rem;
+}
+
+.contact__phone,
+.contact__email {
+    display: inline-block;
+    font-size: 1.0625rem;
+    font-weight: 700;
+    color: var(--sch-link, var(--color-primary-text));
+    margin: 0 1.5rem 0.5rem 0;
+}
+
+/* Hover underlines and keeps the colour: on a dark or brand colour set (light link text) a darker
+   mix would lower the contrast the set was chosen for. */
+.contact__phone:hover,
+.contact__email:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+}
+
+.contact__map {
+    display: block;
+    width: 100%;
+    max-width: 42rem;
+    height: 20rem;
+    border: 0;
+    border-radius: 0.5rem;
+    margin-top: 1.5rem;
+}
+
+/* Contact, card look. */
+.sf-contact-cards {
+    display: grid;
+    gap: 2rem;
+    margin: 0 0 5rem;
+    padding: 0;
+    list-style: none;
+}
+
+/* The 5rem is the space above the map; cards that end the block leave the spacing to the section. */
+.sf-contact-cards:last-child {
+    margin-bottom: 0;
+}
+
+@media (min-width: 768px) {
+    .sf-contact-cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1024px) {
+    .sf-contact-cards {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    /* Four ways to reach the company stand in one row. */
+    .sf-contact-cards:has(> :nth-child(4)) {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+.sf-contact-card {
+    display: flex;
+    gap: 1rem;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+}
+
+.sf-contact-card__icon {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 0.375rem;
+    background: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
+    color: #fff;
+}
+
+.sf-contact-card__title {
+    color: var(--color-text-strong);
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+    font-weight: 600;
+}
+
+.sf-contact-card__value,
+.sf-contact-card__text {
+    margin-top: 0.25rem;
+    color: var(--color-text);
+    font-size: 0.875rem;
+    overflow-wrap: anywhere;
+}
+
+.sf-contact-card__note {
+    margin-top: 0.25rem;
+    color: var(--color-text);
+    font-size: 0.75rem;
+    line-height: 1.5;
+}
+
+.sf-contact-card__value {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.5rem;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.sf-map,
+.lead-form__map {
+    display: block;
+    width: 100%;
+    height: 20rem;
+    border: 1px solid color-mix(in srgb, var(--color-surface) 80%, var(--color-dark));
+    border-radius: 0.5rem;
+}
+
+/* ───── Lead form (theme::sections.form) ─────────────────────────────────── */
+/*
+ * The shared contact form of every site. Labels, hints and notes read the --sch-* roles, so they
+ * follow a section colour set; the fields, the thank-you card and the alert are light boxes of their
+ * own and read the same on every set. The map card is a light surface, so it puts the light roles
+ * back for what it holds. Success and error keep fixed meaning colours (a site may set its own
+ * --color-success / --color-danger); everything else is a theme role or a mix of one.
+ */
+.lead-form {
+    --lf-ok: var(--color-success, #16a34a);
+    --lf-bad: var(--color-danger, #dc2626);
+    --lf-bad-ink: color-mix(in srgb, var(--lf-bad) 85%, black);
+    --lf-bad-text: var(--lf-bad-ink);
+    --lf-req: var(--lf-bad);
+    --lf-muted: var(--sch-body, var(--color-text));
+    --lf-focus: var(--sch-link, var(--color-primary-text));
+    --lf-border: color-mix(in srgb, var(--color-text) 70%, white);
+    --lf-submit-bg: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
+    --lf-submit-fg: var(--color-surface);
+    --lf-submit-hover: color-mix(in srgb, var(--color-dark) 75%, white);
+    max-width: 80rem;
+    margin-inline: auto;
+    padding: 3rem 1.5rem;
+}
+
+@media (min-width: 1024px) {
+    .lead-form {
+        padding: 4rem 2rem;
+    }
+}
+
+/* On a dark, brand or photo colour set the loose text and the button take that set's roles. */
+:is(.sf-s--sch-dark, .sf-s--sch-brand, .sf-s--image) .lead-form:not(.lead-form--map) {
+    --lf-bad-text: var(--sch-head);
+    --lf-req: var(--sch-head);
+    --lf-border: var(--sch-head);
+    --lf-submit-bg: var(--sch-pri-bg);
+    --lf-submit-fg: var(--sch-pri-fg);
+    --lf-submit-hover: var(--sch-pri-hover);
+}
+
+.lead-form:not(.lead-form--map) > :is(.lead-form__form, .lead-form__sent) {
+    max-width: 48rem;
+}
+
+.lead-form__heading {
+    margin-bottom: 0.5rem;
+    color: var(--sch-head, var(--color-text-strong));
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.lead-form__description {
+    margin-bottom: 1.5rem;
+    color: var(--lf-muted);
+}
+
+/* Fields: one column, two from sm; a short field paired with its neighbour takes half a row. */
+.lead-form__form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+}
+
+@media (min-width: 640px) {
+    .lead-form__form {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        column-gap: 1.25rem;
+    }
+
+    .lead-form__form > * {
+        grid-column: 1 / -1;
+    }
+
+    .lead-form__form > .lead-form__field--half {
+        grid-column: auto;
+    }
+}
+
+.lead-form__field {
+    min-width: 0;
+}
+
+/* The anti-spam check is invisible until it needs a tap: its box takes no room (and no extra gap) before
+   the script draws it, and while its frame is hidden. */
+.lead-form__form > .cf-turnstile:is(:empty, :has(> iframe[style*="display: none"])) {
+    display: none;
+}
+
+.lead-form__field > label:not(.lead-form__check) {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: var(--sch-body, var(--color-text));
+    font-size: 0.875rem;
+    line-height: 1.5;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.lead-form__field :is(input, textarea, select) {
+    display: block;
+    width: 100%;
+    min-height: 2.75rem;
+    margin: 0;
+    padding: 0.75rem;
+    border: 1px solid var(--lf-border);
+    border-radius: 0.375rem;
+    background: color-mix(in srgb, var(--color-surface) 97%, var(--color-dark));
+    color: var(--color-text-strong);
+    font: inherit;
+    font-size: 1rem;
+    line-height: 1.5;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.lead-form__field textarea {
+    min-height: 7.5rem;
+    resize: vertical;
+}
+
+.lead-form__field :is(input, textarea, select)[aria-invalid="true"] {
+    border-color: var(--lf-bad);
+}
+
+/* The ring sits outside the border; the transparent outline is what forced-colours mode shows. */
+.lead-form__field :is(input, textarea, select):focus {
+    border-color: var(--lf-focus);
+    outline: 2px solid transparent;
+    box-shadow: 0 0 0 2px var(--lf-focus);
+}
+
+.lead-form__check {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    min-height: 2.75rem;
+    color: var(--lf-muted);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    cursor: pointer;
+    overflow-wrap: anywhere;
+}
+
+.lead-form__check input {
+    flex-shrink: 0;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin: 0.125rem 0 0;
+    accent-color: var(--lf-focus);
+    cursor: pointer;
+}
+
+.lead-form__check input:focus-visible,
+.lead-form__policy:focus-visible,
+.lead-form__again:focus-visible,
+.lead-form__submit:focus-visible {
+    outline: 2px solid var(--lf-focus);
+    outline-offset: 2px;
+}
+
+.lead-form__policy {
+    color: var(--sch-head, var(--color-text-strong));
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.lead-form__required {
+    color: var(--lf-req);
+}
+
+.lead-form__hint {
+    margin-top: 0.25rem;
+    color: var(--lf-muted);
+    font-size: 0.75rem;
+    line-height: 1.5;
+}
+
+.lead-form__field-error {
+    margin-top: 0.25rem;
+    color: var(--lf-bad-text);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    font-weight: 600;
+}
+
+.lead-form__alert {
+    padding: 0.75rem;
+    border: 1px solid color-mix(in srgb, var(--lf-bad) 30%, white);
+    border-radius: 0.375rem;
+    background: color-mix(in srgb, var(--lf-bad) 6%, white);
+    color: var(--lf-bad-ink);
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.lead-form__alert a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.lead-form__alert a:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+.lead-form__submit {
+    display: block;
+    width: 100%;
+    min-height: 2.75rem;
+    margin: 0;
+    padding: 0.75rem 1.5rem;
+    border: 0;
+    border-radius: 0.375rem;
+    background: var(--lf-submit-bg);
+    color: var(--lf-submit-fg);
+    font: inherit;
+    font-weight: 700;
+    line-height: 1.5;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+/* While a send waits for the anti-spam check (sf-turnstile.js). */
+.lead-form__submit[aria-busy="true"] {
+    cursor: progress;
+}
+
+.lead-form__submit:hover {
+    background: var(--lf-submit-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lead-form__field :is(input, textarea, select),
+    .lead-form__submit {
+        transition: none;
+    }
+}
+
+.lead-form__note {
+    margin-top: 0.5rem;
+    color: var(--lf-muted);
+    font-size: 0.75rem;
+    line-height: 1.5;
+    text-align: center;
+}
+
+/* After a send: the thank-you card stands where the form was. */
+.lead-form__sent {
+    padding: 1.5rem;
+    border: 1px solid color-mix(in srgb, var(--lf-ok) 30%, white);
+    border-radius: 0.5rem;
+    background: color-mix(in srgb, var(--lf-ok) 7%, white);
+    text-align: center;
+}
+
+.lead-form__sent:focus {
+    outline: none;
+}
+
+.lead-form__sent-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    margin-inline: auto;
+    border-radius: 9999px;
+    background: var(--lf-ok);
+    color: white;
+}
+
+.lead-form__sent-title {
+    margin-top: 0.75rem;
+    color: color-mix(in srgb, var(--lf-ok) 55%, black);
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+    font-weight: 700;
+}
+
+.lead-form__sent-text {
+    margin-top: 0.25rem;
+    color: color-mix(in srgb, var(--lf-ok) 70%, black);
+    font-size: 0.875rem;
+}
+
+.lead-form__again {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    margin-top: 0.5rem;
+    color: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+/* Form beside a map: one light card, the map under the form, beside it from lg. */
+.lead-form.lead-form--map {
+    --sch-head: var(--color-text-strong);
+    --sch-body: var(--color-text);
+    --sch-link: var(--color-primary-text);
+    display: grid;
+    gap: 3rem;
+    width: min(76rem, calc(100% - 2rem));
+    margin: 3rem auto;
+    padding: 1.5rem;
+    border: 1px solid color-mix(in srgb, var(--color-surface) 90%, var(--color-dark));
+    border-radius: 0.5rem;
+    background: var(--color-surface);
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}
+
+@media (min-width: 640px) {
+    .lead-form.lead-form--map {
+        width: min(76rem, calc(100% - 3rem));
+        padding: 2rem;
+    }
+}
+
+@media (min-width: 768px) {
+    .lead-form.lead-form--map {
+        padding: 3rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .lead-form.lead-form--map {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        width: min(76rem, calc(100% - 4rem));
+        margin-block: 4rem;
+    }
+
+    .lead-form--map .lead-form__map {
+        height: 100%;
+        min-height: 20rem;
+    }
+}
+
+/* The form-with-map card right after a contact block: one 4rem gap between the two at every width
+   (the contact cards, then the form card, as the contact page's design draws them), not the
+   section's bottom padding plus the card's own top margin. A block in a look wrapper (a colour
+   set or a photo) is not a sibling here and keeps its own spacing. */
+.contact:has(+ .lead-form--map) {
+    padding-bottom: 0;
+}
+
+.contact + .lead-form.lead-form--map {
+    margin-top: 4rem;
+}
+
+.lead-form__main {
+    min-width: 0;
+}
+
+/* The branches' map (partials/branch-map): a chooser, the map and the branch's card, in the form's card. */
+.sf-bmap {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-width: 0;
+    color: var(--color-text);
+}
+
+.sf-bmap__head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.sf-bmap__title {
+    margin: 0;
+    color: var(--color-text-strong);
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.sf-bmap__hint {
+    display: none;
+    color: var(--color-text);
+    font-size: 0.75rem;
+}
+
+@media (min-width: 640px) {
+    .sf-bmap__hint {
+        display: inline;
+    }
+}
+
+.sf-bmap__tabs {
+    display: grid;
+    /* One row at every width, as the design draws it: the choices share the row equally. */
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    gap: 0.5rem;
+    padding: 0.25rem;
+    border-radius: 0.5rem;
+    background: color-mix(in srgb, var(--color-surface) 92%, var(--color-dark));
+}
+
+/* The chooser, the card's address lines and the copy button are printed hidden: the display above must not win. */
+.sf-bmap__tabs[hidden],
+.sf-bmap__addr[hidden],
+.sf-bmap__approx[hidden],
+.sf-bmap__btn[hidden] {
+    display: none;
+}
+
+.sf-bmap__tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 2.75rem;
+    margin: 0;
+    padding: 0.625rem 0.25rem;
+    border: 0;
+    border-radius: 0.375rem;
+    background: transparent;
+    color: var(--color-text-strong);
+    font: inherit;
+    text-align: center;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.sf-bmap__tab:hover {
+    background: var(--color-surface);
+}
+
+.sf-bmap__tab[aria-selected="true"] {
+    background: var(--color-dark);
+    color: var(--color-on-dark, #fff);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+}
+
+.sf-bmap__tab:focus-visible,
+.sf-bmap__btn:focus-visible {
+    outline: 2px solid var(--color-primary-text);
+    outline-offset: 2px;
+}
+
+.sf-bmap__tab-name {
+    display: block;
+    overflow-wrap: anywhere;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.sf-bmap__tab-sub {
+    display: block;
+    margin-top: 0.125rem;
+    overflow-wrap: anywhere;
+    font-size: 0.75rem;
+    line-height: 1.25;
+}
+
+@media (min-width: 640px) {
+    .sf-bmap__tab-name {
+        font-size: 1rem;
+    }
+}
+
+.sf-bmap__panel {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--color-surface) 85%, var(--color-dark));
+    border-radius: 0.5rem;
+    background: var(--color-surface);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+
+.sf-bmap__frame {
+    position: relative;
+    height: 18rem;
+    background: color-mix(in srgb, var(--color-surface) 88%, var(--color-dark));
+}
+
+.sf-bmap__map {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+@media (min-width: 640px) {
+    .sf-bmap__frame {
+        height: 20rem;
+    }
+}
+
+.sf-bmap__card {
+    padding: 1rem;
+    border-top: 4px solid var(--color-primary);
+}
+
+@media (min-width: 640px) {
+    .sf-bmap__card {
+        padding: 1.25rem;
+    }
+}
+
+.sf-bmap__name-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0.5rem;
+}
+
+.sf-bmap__name {
+    margin: 0;
+    color: var(--color-text-strong);
+    font-size: 1.0625rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.sf-bmap__meta {
+    font-size: 0.8125rem;
+    overflow-wrap: anywhere;
+}
+
+.sf-bmap__addr {
+    margin: 0.25rem 0 0;
+    overflow-wrap: anywhere;
+}
+
+.sf-bmap__approx {
+    margin: 0.25rem 0 0;
+    color: var(--color-primary-text);
+    font-size: 0.75rem;
+}
+
+.sf-bmap__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.sf-bmap__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-width: 0;
+    min-height: 2.75rem;
+    margin: 0;
+    padding: 0.5rem 0.75rem;
+    border: 0;
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--color-surface) 90%, var(--color-dark));
+    color: var(--color-text-strong);
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.25;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.sf-bmap__btn:hover {
+    background: color-mix(in srgb, var(--color-surface) 80%, var(--color-dark));
+}
+
+.sf-bmap__btn--main {
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+}
+
+.sf-bmap__btn--main:hover {
+    background: var(--color-primary-hover);
+}
+
+.sf-bmap__btn--dark {
+    background: var(--color-dark);
+    color: var(--color-on-dark, #fff);
+}
+
+.sf-bmap__btn--dark:hover {
+    background: color-mix(in srgb, var(--color-dark) 85%, white);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sf-bmap__tab,
+    .sf-bmap__btn {
+        transition: none;
+    }
+}
+
+@media (min-width: 1024px) {
+    .lead-form--map .sf-bmap {
+        height: 100%;
+    }
+
+    .lead-form--map .sf-bmap__panel {
+        flex: 1;
+    }
+
+    .lead-form--map .sf-bmap__frame {
+        flex: 1;
+        height: auto;
+        min-height: 20rem;
+    }
+}
+@media (hover: hover) {
+
+    .sf-contact-card__value:hover {
+        color: var(--color-text-strong);
+    }
+}
+@media (any-pointer: coarse) {
+
+    .sf-contact-card__value {
+        min-height: 2.75rem;
+    }
+}
+
+/* ───── Contact: Zalo ────────────────────────────────────────────────────── */
+.sf-contact-card__icon--zalo {
+    background: #0068ff;
+    font-size: 0.75rem;
+    font-weight: 800;
+}
+
+.contact__zalo {
+    display: inline-block;
+    font-size: 1.0625rem;
+    font-weight: 700;
+    color: var(--sch-link, var(--color-primary-text));
+    margin: 0 1.5rem 0.5rem 0;
+}
+
+.contact__zalo:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+}
+@media (max-width: 639.98px) {
+
+    .lead-form__heading {
+        font-size: 1.375rem;
+        line-height: 1.3;
+    }
+}
+@media (max-width: 639.98px) {
+
+    .sf-bmap__title {
+        font-size: 1.25rem;
+        line-height: 1.3;
+    }
+}

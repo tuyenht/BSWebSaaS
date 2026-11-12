@@ -12,6 +12,7 @@ use App\Modules\Theme\Rendering\PageRenderer;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\View;
+use Tests\Fixtures\StorefrontCss;
 
 /*
  * Stats kinds (a counted number, years since a start year, a year as is), the stats look, a second
@@ -298,7 +299,7 @@ describe('stats floating card', function (): void {
     /** The declarations of the first rule in the storefront stylesheet whose selector is exactly $selector. */
     function kindsRule(string $selector): string
     {
-        $css = (string) file_get_contents(base_path('resources/css/storefront.css'));
+        $css = (string) StorefrontCss::all();
         preg_match('/^'.preg_quote($selector, '/').' \{([^}]*)\}/m', $css, $match);
 
         return $match[1] ?? '';
@@ -317,13 +318,13 @@ describe('stats floating card', function (): void {
         $card = kindsRule('.sf-band.sf-stats--floating > .sf-container');
         expect($card)->toContain('background: var(--color-surface)')->toContain('--sch-head: var(--color-text-strong)')
             ->toContain('--sch-body: var(--color-text)')->toContain('color: var(--color-text)')
-            ->and((string) file_get_contents(base_path('resources/css/storefront.css')))
+            ->and((string) StorefrontCss::all())
             ->toContain(".sf-band.sf-stats--floating .sf-section-head__title,\n.sf-band.sf-stats--floating .sf-stat__value {\n    color: var(--color-text-strong);")
             ->toContain(".sf-band.sf-stats--floating .sf-section-head__text,\n.sf-band.sf-stats--floating .sf-stat__label {\n    color: var(--color-text);");
     });
 
     it('keeps the card\'s selectors above the dark band rules and the width choices, edge to edge', function (): void {
-        $css = (string) file_get_contents(base_path('resources/css/storefront.css'));
+        $css = (string) StorefrontCss::all();
         $card = kindsRule('.sf-band.sf-stats--floating > .sf-container');
 
         // Three classes (0,3,0) beat `.sf-band--dark .sf-stat__value` (0,2,0) whatever the source order.
@@ -334,7 +335,7 @@ describe('stats floating card', function (): void {
     });
 
     it('lays 2 items two across, 3 three across and 4 two by two on a phone, in every look, as the board', function (): void {
-        $css = (string) file_get_contents(base_path('resources/css/storefront.css'));
+        $css = (string) StorefrontCss::all();
 
         expect($css)->toContain(".sf-stats__list--2,\n.sf-stats__list--3,\n.sf-stats__list--4:not(:has(> :nth-child(5))) {\n    --stat-across: var(--stats, 2);\n    grid-template-columns: repeat(var(--stats, 2), minmax(0, 1fr));")
             ->toContain('.sf-stats__list--3 { --stats: 3; }')

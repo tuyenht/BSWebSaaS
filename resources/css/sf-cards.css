@@ -1,0 +1,980 @@
+/*
+ * sf-cards.css — storefront styles for cards and card grids (list blocks, post and product lists).
+ * Linked in the <head> only on a page whose HTML has a class from: .sf-card, .sf-cards, .sf-grid, .sf-view-all, .entry-grid, .latest-posts
+ * (Theme\Rendering\BlockStyles, which lists the same roots), after storefront.css and in the order
+ * BlockStyles::FILES gives, so the cascade is the one the single file had. Every rule here needs one of
+ * those classes on the page; a rule for anything else belongs in storefront.css.
+ */
+
+/* ───── Entry grid ───────────────────────────────────────────────────────── */
+.entry-grid {
+    padding: 3rem 1.5rem;
+    max-width: 80rem;
+    margin-inline: auto;
+}
+
+@media (min-width: 1024px) {
+    .entry-grid {
+        padding: 4rem 2rem;
+    }
+}
+
+.entry-grid__heading {
+    font-size: clamp(1.25rem, 2.5vw, 1.875rem);
+    font-weight: 800;
+    color: var(--sch-head, var(--color-text-strong));
+    margin: 0 0 2rem;
+    padding-bottom: 0.625rem;
+    border-bottom: 3px solid var(--sch-rule, var(--color-primary));
+    display: inline-block;
+}
+
+.entry-grid__list {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+}
+
+@media (min-width: 640px) {
+    .entry-grid__list {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 1024px) {
+    .entry-grid__list {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+.entry-grid__card {
+    background: var(--color-surface);
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.entry-grid__card:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    transform: translateY(-2px);
+}
+
+.entry-grid__image {
+    width: 100%;
+    height: 12rem;
+    object-fit: cover;
+}
+
+/* Icon glyph when image is a symbol key, not a URL */
+.entry-grid__card > .icon {
+    width: 3rem;
+    height: 3rem;
+    margin: 1.5rem 1.5rem 0;
+    color: var(--color-primary);
+}
+
+.entry-grid__title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--color-text-strong);
+    margin: 0;
+    padding: 0.875rem 1rem 0.375rem;
+    line-height: 1.4;
+}
+
+.entry-grid__title a {
+    color: inherit;
+    transition: color 0.2s;
+}
+
+.entry-grid__title a:hover {
+    color: var(--color-primary-text);
+}
+
+.entry-grid__sector {
+    display: block;
+    padding: 0 1rem 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-primary-text);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.entry-grid__outcome {
+    padding: 0 1rem 1rem;
+    font-size: 0.875rem;
+    color: color-mix(in srgb, var(--color-text) 80%, white);
+    line-height: 1.55;
+    flex: 1;
+}
+
+.entry-grid__empty {
+    color: var(--sch-body, color-mix(in srgb, var(--color-text) 80%, white));
+    font-style: italic;
+}
+
+/* ───── Latest posts section ─────────────────────────────────────────────── */
+.latest-posts {
+    max-width: 80rem;
+    margin-inline: auto;
+    padding: 3rem 1.5rem;
+}
+
+@media (min-width: 1024px) {
+    .latest-posts {
+        padding: 4rem 2rem;
+    }
+}
+
+.latest-posts h2 {
+    font-size: clamp(1.25rem, 2.5vw, 1.875rem);
+    font-weight: 800;
+    color: var(--sch-head, var(--color-text-strong));
+    margin: 0 0 1.5rem;
+    padding-bottom: 0.625rem;
+    border-bottom: 3px solid var(--sch-rule, var(--color-primary));
+    display: inline-block;
+}
+
+.latest-posts__list {
+    display: grid;
+    gap: 0.625rem;
+}
+
+.latest-posts__item {
+    background: var(--color-surface);
+    border-radius: 0.375rem;
+    padding: 0.875rem 1rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.latest-posts__item a {
+    font-weight: 600;
+    color: color-mix(in srgb, var(--color-dark) 85%, white);
+    transition: color 0.2s;
+}
+
+.latest-posts__item a:hover {
+    color: var(--color-primary-text);
+}
+
+/* Grids: --4 (2 from md, 4 from lg) · --4s (2 from sm, 4 from lg) · --4p (2 on a phone, 4 from lg)
+ * · --3 (3 from md) · --3s (2 from sm, 3 from lg) · --3m (2 from md, 3 from lg) · --3p (2 on a phone,
+ * 3 from lg) · --2 (2 from md). */
+.sf-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.sf-grid > li {
+    display: flex;
+    min-width: 0;
+}
+
+.sf-grid > li > * {
+    flex: 1;
+}
+
+.sf-grid--3p,
+.sf-grid--4p {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 640px) {
+    .sf-grid--4s,
+    .sf-grid--3s {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 768px) {
+    .sf-grid--4,
+    .sf-grid--3m {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .sf-grid--2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .sf-grid--3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1024px) {
+    .sf-grid--4,
+    .sf-grid--4s,
+    .sf-grid--4p {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .sf-grid--3s,
+    .sf-grid--3m,
+    .sf-grid--3p {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+.sf-view-all {
+    margin-top: 3rem;
+    text-align: center;
+}
+
+.sf-view-all__link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    padding: 0.75rem 2rem;
+    border-radius: 0.375rem;
+    background: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
+    color: #fff;
+    font-weight: 700;
+    transition: background 0.3s, transform 0.3s;
+}
+
+/* The shared card. One link (the title), stretched over the whole card. */
+/* isolation: a card is its own stacking layer, so the stretched link's overlay (z-index 2 below) and
+   any layer inside the card stay under controls drawn over the card's edge, such as a rail's arrows. */
+.sf-card {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 0.5rem;
+    background: var(--color-surface);
+    color: var(--color-text);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    transition: box-shadow 0.3s, transform 0.3s, border-color 0.3s;
+}
+
+.sf-card__title {
+    color: var(--color-text-strong);
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.sf-card__link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+}
+
+.sf-card__link:focus-visible {
+    outline: none;
+}
+
+.sf-card:has(.sf-card__link:focus-visible) {
+    outline: 2px solid var(--color-primary-text);
+    outline-offset: 3px;
+}
+
+.sf-band--dark .sf-card:has(.sf-card__link:focus-visible) {
+    outline-color: var(--color-primary);
+}
+
+.sf-card__text {
+    font-size: 0.875rem;
+    line-height: 1.625;
+}
+
+.sf-card__more {
+    margin-top: auto;
+    color: var(--color-text-strong);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.sf-card__arrow {
+    display: inline-block;
+    transition: transform 0.3s;
+}
+
+.sf-card__frame {
+    position: relative;
+    overflow: hidden;
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+}
+
+.sf-card__frame--4x3 {
+    aspect-ratio: 4 / 3;
+}
+
+.sf-card__frame--8x5 {
+    aspect-ratio: 8 / 5;
+}
+
+.sf-card__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s;
+}
+
+.sf-card__body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    padding: 1.5rem;
+}
+
+.sf-card__label {
+    color: var(--color-text);
+    font-size: 0.875rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+/* Icon card (services). */
+.sf-card--icon {
+    align-items: center;
+    padding: 2rem;
+    text-align: center;
+}
+
+.sf-card__icon {
+    display: block;
+    margin-bottom: 1.5rem;
+    color: var(--color-primary-text);
+    transition: transform 0.3s;
+}
+
+.sf-card__icon .icon {
+    width: 4rem;
+    height: 4rem;
+    color: inherit;
+}
+
+.sf-card--icon .sf-card__title {
+    margin-bottom: 0.75rem;
+}
+
+.sf-card--icon .sf-card__text {
+    flex-grow: 1;
+    margin-bottom: 1.25rem;
+}
+
+/* Product card (list) and product overlay card (block). */
+.sf-card--product {
+    border: 1px solid color-mix(in srgb, var(--color-surface) 90%, var(--color-dark));
+}
+
+.sf-card--product .sf-card__title {
+    margin-top: 0.25rem;
+}
+
+.sf-card--product-overlay .sf-card__frame {
+    background: var(--color-dark);
+}
+
+.sf-card--product-overlay .sf-card__img {
+    transition-duration: 0.5s;
+}
+
+.sf-card__shade {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgb(0 0 0 / 0.8), rgb(0 0 0 / 0.4) 50%, transparent);
+}
+
+.sf-card--project .sf-card__shade {
+    background: linear-gradient(to top, rgb(0 0 0 / 0.8), transparent);
+}
+
+.sf-card__hover {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgb(0 0 0 / 0.4);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.sf-card__eye {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 4rem;
+    height: 4rem;
+    border-radius: 9999px;
+    background: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
+    color: #fff;
+}
+
+.sf-card__eye .icon {
+    width: 2rem;
+    height: 2rem;
+    color: inherit;
+}
+
+.sf-card__caption {
+    position: absolute;
+    inset: auto 0 0;
+    z-index: 1;
+    padding: 1.5rem;
+}
+
+.sf-card--product-overlay .sf-card__label {
+    color: var(--color-primary);
+    font-size: 0.75rem;
+    line-height: 1rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.sf-card--product-overlay .sf-card__title {
+    color: #fff;
+    transition: color 0.3s;
+}
+
+/* Project card. */
+.sf-card--project .sf-card__title {
+    margin-bottom: 0.5rem;
+}
+
+.sf-band--dark .sf-card--project {
+    border: 1px solid var(--color-dark-line, color-mix(in srgb, var(--color-dark) 75%, white));
+    background: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
+    color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white));
+}
+
+.sf-band--dark .sf-card--project .sf-card__title {
+    color: var(--color-primary);
+}
+
+/* An excerpt is body text (not a name), so it alone may be cut at four lines. */
+.sf-band--dark .sf-card--project .sf-card__text,
+.sf-card--news .sf-card__text {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
+    overflow: hidden;
+}
+
+/* A news card's excerpt is cut at three lines, as the design's cards are. */
+.sf-card--news .sf-card__text {
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+}
+
+/* News card. */
+.sf-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.sf-card__chip {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+    color: var(--color-text-strong);
+    font-size: 0.75rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.sf-card__date {
+    color: color-mix(in srgb, var(--color-text) 80%, white);
+    font-size: 0.75rem;
+}
+
+.sf-card--news .sf-card__title {
+    flex-grow: 1;
+    margin-bottom: 0.75rem;
+}
+
+.sf-card--news .sf-card__text {
+    margin-bottom: 1rem;
+}
+
+/* List page cards: a project's category tag on its photo, the footers. */
+.sf-card__tag {
+    position: absolute;
+    bottom: 1rem;
+    left: 1rem;
+    z-index: 1;
+    max-width: calc(100% - 2rem);
+    padding: 0.25rem 0.625rem;
+    border-radius: 0.25rem;
+    background: var(--color-primary);
+    color: var(--sch-pri-fg, var(--color-on-primary));
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.sf-card--project.sf-card--list .sf-card__text {
+    flex-grow: 1;
+}
+
+.sf-card--project.sf-card--list .sf-card__more {
+    margin-top: 1rem;
+}
+
+.sf-card__foot {
+    display: flex;
+    margin-top: auto;
+    padding-top: 0.75rem;
+    border-top: 1px solid color-mix(in srgb, var(--color-surface) 90%, var(--color-dark));
+}
+
+.sf-card--product.sf-card--list .sf-card__title {
+    margin-bottom: 0.75rem;
+}
+
+@media (max-width: 639.98px) {
+    .sf-card--product.sf-card--list .sf-card__body {
+        padding: 0.75rem;
+    }
+
+    .sf-card--product.sf-card--list .sf-card__label {
+        font-size: 0.75rem;
+        line-height: 1rem;
+    }
+
+    .sf-card--product.sf-card--list .sf-card__title {
+        font-size: 0.875rem;
+        line-height: 1.375;
+    }
+
+    .sf-card--product.sf-card--list .sf-card__more {
+        font-size: 0.75rem;
+    }
+}
+
+@media (min-width: 640px) {
+    .sf-card__foot {
+        justify-content: flex-end;
+        padding-top: 1rem;
+    }
+
+    .sf-card--product.sf-card--list .sf-card__title {
+        margin-bottom: 1rem;
+    }
+
+    /* A product list's photo: 4:3 on a phone, a fixed 14rem band from 640px (the card stays short). */
+    .sf-card--product.sf-card--list .sf-card__frame {
+        aspect-ratio: auto;
+        height: 14rem;
+    }
+}
+
+/* The compact row on a phone: photo left, title right; the excerpt of news, the tag and the
+ * footers are hidden, a project keeps two lines of its summary. */
+@media (max-width: 639.98px) {
+    .sf-card--row {
+        flex-direction: row;
+        align-items: stretch;
+    }
+
+    .sf-card--row .sf-card__frame {
+        flex: 0 0 7.5rem;
+        width: 7.5rem;
+        min-height: 6.5rem;
+        aspect-ratio: auto;
+    }
+
+    .sf-card--row .sf-card__img {
+        position: absolute;
+        inset: 0;
+    }
+
+    .sf-card--row .sf-card__body {
+        min-width: 0;
+        padding: 0.75rem 0.875rem;
+    }
+
+    .sf-card--row .sf-card__title {
+        margin-bottom: 0.25rem;
+        font-size: 1rem;
+        line-height: 1.35;
+    }
+
+    .sf-card--row .sf-card__text {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        overflow: hidden;
+        font-size: 0.8125rem;
+    }
+
+    .sf-card--row .sf-card__row-hide {
+        display: none;
+    }
+}
+
+/* The featured news card: photo above the text, side by side from lg. */
+.sf-card--featured {
+    margin-bottom: 3rem;
+}
+
+.sf-card--featured .sf-card__frame {
+    height: 12rem;
+    aspect-ratio: auto;
+}
+
+.sf-card--featured .sf-card__img {
+    position: absolute;
+    inset: 0;
+}
+
+.sf-card--featured .sf-card__body {
+    justify-content: center;
+    padding: 1.25rem;
+}
+
+.sf-card--featured .sf-card__meta {
+    justify-content: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.sf-card__flag {
+    color: var(--color-primary-text);
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.sf-card--featured .sf-card__title {
+    flex-grow: 0;
+    margin-bottom: 0;
+    font-size: 1.5rem;
+    line-height: 2rem;
+}
+
+.sf-card--news.sf-card--featured .sf-card__text {
+    margin: 1rem 0 0;
+    font-size: 1rem;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+}
+
+.sf-card--featured .sf-card__more {
+    margin-top: 1.5rem;
+    font-size: 1rem;
+}
+
+@media (min-width: 640px) {
+    .sf-card--featured .sf-card__frame {
+        height: 16rem;
+    }
+
+    .sf-card--featured .sf-card__body {
+        padding: 2rem;
+    }
+
+    .sf-card--news.sf-card--featured .sf-card__text {
+        display: block;
+        overflow: visible;
+    }
+}
+
+@media (min-width: 768px) {
+    .sf-card--featured .sf-card__title {
+        font-size: 1.875rem;
+        line-height: 2.25rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .sf-card--featured {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .sf-card--featured .sf-card__frame {
+        height: auto;
+        min-height: 22rem;
+    }
+
+    .sf-card--featured .sf-card__body {
+        padding: 2.5rem;
+    }
+}
+
+.sf-grid > :is(.sf-feature, .sf-fcard) > * {
+    flex: none;
+}
+
+.sf-grid > :is(.sf-feature, .sf-fcard) > :is(.sf-feature__body, .sf-fcard__body) {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Hover only where a pointer can hover (never a touch-only state). */
+@media (hover: hover) {
+    .sf-card--icon:hover,
+    .sf-card--product:hover {
+        transform: translateY(-0.5rem);
+    }
+
+    .sf-card--icon:hover {
+        box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+    }
+
+    .sf-card--icon:hover .sf-card__icon {
+        transform: scale(1.1);
+    }
+
+    .sf-card--icon:hover .sf-card__more {
+        color: var(--color-primary-text);
+    }
+
+    .sf-card:hover .sf-card__arrow {
+        transform: translateX(0.25rem);
+    }
+
+    .sf-card--product:hover {
+        box-shadow: 0 0 20px rgb(30 41 59 / 0.2);
+    }
+
+    .sf-card--product:hover .sf-card__img {
+        transform: scale(1.1);
+    }
+
+    .sf-card--product-overlay:hover .sf-card__img {
+        transform: scale(1.05);
+    }
+
+    .sf-card--product-overlay:hover .sf-card__hover {
+        opacity: 1;
+    }
+
+    .sf-card--product-overlay:hover .sf-card__title {
+        color: var(--color-primary);
+    }
+
+    .sf-band--dark .sf-card--project:hover {
+        border-color: var(--color-primary);
+    }
+
+    .sf-card--news.sf-card--list:hover,
+    .sf-card--project.sf-card--list:hover,
+    .sf-card--featured:hover {
+        box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+    }
+
+    .sf-card--news.sf-card--list:hover .sf-card__title,
+    .sf-card--project.sf-card--list:hover .sf-card__title,
+    .sf-card--featured:hover .sf-card__title {
+        color: var(--color-primary-text);
+    }
+}
+@media (hover: hover) {
+
+    .sf-view-all__link:hover {
+        background: var(--color-dark-line, color-mix(in srgb, var(--color-dark) 75%, white));
+    }
+}
+
+/* List cards lift and zoom their photo on hover, only where motion is welcome. */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .sf-card--news.sf-card--list:hover {
+        transform: translateY(-0.25rem);
+    }
+
+    .sf-card--project.sf-card--list:hover {
+        transform: translateY(-0.5rem);
+    }
+
+    .sf-card--news.sf-card--list:hover .sf-card__img,
+    .sf-card--project.sf-card--list:hover .sf-card__img,
+    .sf-card--featured:hover .sf-card__img {
+        transform: scale(1.05);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sf-card,
+    .sf-card__img,
+    .sf-card__icon,
+    .sf-card__arrow,
+    .sf-card__hover,
+    .sf-view-all__link {
+        transition: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .sf-card:hover,
+    .sf-card:hover .sf-card__img,
+    .sf-card:hover .sf-card__icon,
+    .sf-card:hover .sf-card__arrow {
+        transform: none;
+    }
+}
+
+/* Job look: the card, the filter buttons, the count line and the job band of a post. Colours are the
+   site's tokens: the accent chip is the brand tint with the brand text colour (checked on that tint),
+   the badge the brand colour with its own on-colour. */
+.sf-card--job {
+    border: 1px solid color-mix(in srgb, var(--color-text) 18%, var(--color-surface));
+    box-shadow: var(--shadow-medium, 0 0.375rem 1rem rgb(0 0 0 / 0.16));
+}
+
+.sf-card--job .sf-card__body {
+    padding: 1.5rem;
+}
+
+.sf-card__jobhead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.sf-card__jobhead .sf-card__title {
+    flex: 1 1 12rem;
+    min-width: 0;
+}
+
+.sf-card__badge {
+    flex-shrink: 0;
+    padding: 0.25rem 0.625rem;
+    border-radius: 9999px;
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+    font-size: 0.75rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.sf-card__facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0.75rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.sf-card__fact {
+    padding: 0.25rem 0.625rem;
+    border-radius: 0.25rem;
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+    color: var(--color-text-strong);
+    font-size: 0.75rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.sf-card__fact--accent {
+    background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
+    /* The brand text colour is readable on the page surface, not always on its tint: 22% of the page
+       ink keeps small text at 4.5:1 on the tint for any brand colour. */
+    color: color-mix(in srgb, var(--color-primary-text) 78%, var(--color-text));
+}
+
+.sf-card--job .sf-card__text {
+    margin: 0.75rem 0 0;
+    flex-grow: 1;
+}
+
+.sf-card__jobfoot {
+    display: flex;
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid color-mix(in srgb, var(--color-text) 14%, var(--color-surface));
+}
+
+.sf-card__pill {
+    flex: 1;
+    padding: 0.5rem 1rem;
+    border: 2px solid var(--color-text-strong);
+    border-radius: 9999px;
+    color: var(--color-text-strong);
+    font-size: 0.875rem;
+    font-weight: 700;
+    text-align: center;
+    transition: background 0.3s, color 0.3s;
+}
+
+.sf-card--job:hover .sf-card__pill {
+    background: var(--color-text-strong);
+    color: var(--color-surface);
+}
+
+@media (min-width: 640px) {
+    .sf-card__pill {
+        flex: none;
+        margin-left: auto;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sf-card__pill {
+        transition: none;
+    }
+}
+
+/* ───── Cards and rails per board: service icons, product height, news in a block, swipe hint, project arrows, partner strip and grid ───── */
+/* Services: the glyph is the brand amber, as the board paints it (decoration, the title carries the meaning). */
+.sf-card--icon .sf-card__icon {
+    color: var(--color-primary);
+}
+
+/* A product card of a block is 16rem tall on a phone and 20rem from 640px, whatever the column's width. */
+.sf-card--product-overlay .sf-card__frame--4x3 {
+    aspect-ratio: auto;
+    height: 16rem;
+}
+
+@media (min-width: 640px) {
+    .sf-card--product-overlay .sf-card__frame--4x3 {
+        height: 20rem;
+    }
+}
+
+/* A news card of a block has no chip: the date alone, at the start. */
+.sf-card__meta--plain {
+    justify-content: flex-start;
+}
+
+.sf-card__meta--plain .sf-card__date {
+    font-size: 0.875rem;
+}
+
+/* Projects: the "view all" button on a dark band is the amber one. */
+.sf-band--dark .sf-view-all__link {
+    background: var(--color-primary);
+    color: var(--sch-pri-fg, var(--color-on-primary));
+}
+@media (max-width: 639.98px) {
+
+    .sf-card--featured .sf-card__title {
+        font-size: 1.25rem;
+        line-height: 1.3;
+    }
+
+    .sf-card__title {
+        font-size: 1.125rem;
+        line-height: 1.35;
+    }
+}
