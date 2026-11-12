@@ -7,9 +7,9 @@ namespace App\Modules\Admin\Http\Controllers;
 use App\Modules\Admin\Errors\AdminErrorPages;
 use App\Modules\Admin\Theme\AdminBrandColor;
 use App\Modules\Identity\Models\User;
+use App\Modules\Rbac\Http\Middleware\EnsurePlatformAccess;
 use App\Modules\Rbac\Http\Middleware\EnsureTenantMember;
 use App\Modules\Shared\Support\Cast;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Symfony\Component\HttpFoundation\Response as BaseResponse;
@@ -53,11 +53,35 @@ final class SessionController
     {
         abort_unless($request->user() instanceof User, 404);
 
-        return $member->handle($request, fn (): RedirectResponse => $this->unknown());
+        return $member->handle($request, fn (Request $request): BaseResponse => $this->unknown($request));
     }
 
-    public function unknown(): RedirectResponse
+    /**
+     * An address on the platform console that is no screen: the same split as on a website. A
+     * guest gets "not found", a signed-in user must hold a platform role ("no permission" if not).
+     */
+    public function unknownOnPlatform(Request $request, EnsurePlatformAccess $platform): BaseResponse
     {
+        abort_unless($request->user() instanceof User, 404);
+
+        return $platform->handle($request, fn (Request $request): BaseResponse => $this->unknown($request));
+    }
+
+    /**
+     * Back to the plane's first page with a notice, but only for an address the member opened
+     * (a top-level navigation). A request the browser makes on its own (an icon, a manifest, a
+     * DevTools probe, a fetch) gets "not found", so no notice turns up on the next page for nothing.
+     */
+    private function unknown(Request $request): BaseResponse
+    {
+        abort_unless(self::isNavigation($request), 404);
+
         return redirect()->to(AdminErrorPages::home())->with('admin.notice', __('errors.unknown_address'));
+    }
+
+    private static function isNavigation(Request $request): bool
+    {
+        return $request->header('Sec-Fetch-Mode') === 'navigate'
+            && in_array($request->header('Sec-Fetch-Dest', 'document'), ['document'], true);
     }
 }

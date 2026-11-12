@@ -8,8 +8,11 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Http\Middleware\SetCurrentSite;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Request;
+use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Session\TokenMismatchException;
+use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Js;
 
@@ -45,6 +48,21 @@ function errorMember(string $role = 'editor', array $permissions = ['entries.vie
     app(TeamContext::class)->forget();
 
     return $user->fresh() ?? $user;
+}
+
+/** The headers a browser sends when the member opens an address (a top-level navigation). */
+function navigation(): array
+{
+    return ['Sec-Fetch-Mode' => 'navigate', 'Sec-Fetch-Dest' => 'document'];
+}
+
+/** The short reference a 500 page shows. */
+function shownReference(string $html): string
+{
+    $set = ErrorReference::ALPHABET;
+    expect(preg_match('/<b aria-label="[^"]+">(['.$set.']{3}-['.$set.']{3})<\/b>/u', $html, $match))->toBe(1);
+
+    return $match[1];
 }
 
 function siteStatus(string $status): void
@@ -129,9 +147,10 @@ it('shows "not found" with the trash and the list for a member who may delete', 
 it('sends an unknown admin address to Tổng quan with a notice', function (): void {
     $member = errorMember();
 
-    $this->actingAs($member)->get('http://a.test/admin/khong-co-trang-nay')
+    $this->actingAs($member)->withHeaders(navigation())->get('http://a.test/admin/khong-co-trang-nay')
         ->assertRedirect(route('admin.dashboard'))
         ->assertSessionHas('admin.notice', __('errors.unknown_address'));
+    $this->flushHeaders();
 
     $this->actingAs($member)->withSession(['admin.notice' => __('errors.unknown_address')])
         ->get('http://a.test/admin')->assertOk()
@@ -142,11 +161,24 @@ it('sends an unknown admin address to Tổng quan with a notice', function (): v
 it('answers an unknown admin address with "not found" for a guest and "no permission" for a stranger', function (): void {
     errorMember();
 
-    $html = $this->get('http://a.test/admin/khong-co-trang-nay')->assertNotFound()->getContent();
+    $html = $this->withHeaders(navigation())->get('http://a.test/admin/khong-co-trang-nay')->assertNotFound()->getContent();
     expect($html)->toContain('data-te-page="notfound"')->toContain('href="'.route('admin.login').'"');
 
     $this->actingAs(User::factory()->create())->get('http://a.test/admin/khong-co-trang-nay')->assertForbidden();
 });
+
+it('leaves no notice behind for an address the browser asks for on its own', function (array $headers): void {
+    $member = errorMember();
+
+    $this->actingAs($member)->withHeaders($headers)->get('http://a.test/admin/apple-touch-icon.png')
+        ->assertNotFound()
+        ->assertSessionMissing('admin.notice');
+})->with([
+    'no fetch headers' => [[]],
+    'a fetch()' => [['Sec-Fetch-Mode' => 'cors', 'Sec-Fetch-Dest' => 'empty']],
+    'an image' => [['Sec-Fetch-Mode' => 'no-cors', 'Sec-Fetch-Dest' => 'image']],
+    'a frame' => [['Sec-Fetch-Mode' => 'navigate', 'Sec-Fetch-Dest' => 'iframe']],
+]);
 
 it('leaves existing routes to their own handlers ahead of the unknown-address pages', function (): void {
     $match = fn (string $url, string $method = 'GET') => app('router')->getRoutes()->match(Request::create($url, $method))->getName();
@@ -229,10 +261,25 @@ it('opens "session expired" for a Livewire 419 and keeps only this admin\'s own 
         ->assertSee(e(__('errors.expired.title')), false)
         ->assertSessionHas('url.intended', 'http://a.test/admin/content');
 
-    foreach (['//evil.test/admin', 'https://evil.test/admin', '/tin-tuc', '/admin/login', '/admin/../x\\y'] as $to) {
+    foreach (['//evil.test/admin', 'https://evil.test/admin', '/tin-tuc', '/admin/login', '/admin/../x\\y',
+        '/admin/content?x=\\evil.test', "/admin/content?x=\r\nLocation:%20//evil.test", '/admin/content?x=1#frag',
+        '/admin/content?x=a b', '/admin/login?tab=trash', 'https://evil.test/admin/content?tab=trash'] as $to) {
         $this->flushSession();
         $this->get('http://a.test/admin/session-expired?to='.urlencode($to))->assertOk()->assertSessionMissing('url.intended');
     }
+});
+
+it('keeps the query of the page to come back to (a list\'s filter, the trash tab)', function (): void {
+    $this->get('http://a.test/admin/session-expired?to='.urlencode('/admin/content?tab=trash&q=b%C3%A0n'))
+        ->assertOk()
+        ->assertSessionHas('url.intended', 'http://a.test/admin/content?tab=trash&q=b%C3%A0n');
+
+    $this->flushSession();
+    $member = errorMember();
+    $this->actingAs($member)->withHeader('Referer', 'http://a.test/admin/content?tab=trash')
+        ->get('http://a.test/admin/_fault/token')
+        ->assertStatus(419)
+        ->assertSessionHas('url.intended', 'http://a.test/admin/content?tab=trash');
 });
 
 it('counts down a 429 and keeps "Thử lại" off until then', function (): void {
@@ -266,6 +313,37 @@ it('shows a fault with a short reference and support, and nothing internal', fun
         ->toContain('bsSession(')
         ->toMatch('/<b aria-label="[^"]+">['.ErrorReference::ALPHABET.']{3}-['.ErrorReference::ALPHABET.']{3}<\/b>/u');
     assertNoLeak($html);
+});
+
+it('writes the reference on the page to the log, and gives a later abort(500) its own', function (): void {
+    $member = errorMember();
+    $earlier = null;
+    Route::middleware(['web', SetCurrentSite::class, 'site.active', 'auth', 'auth.session', 'tenant.member'])
+        ->get('admin/_fault/after-handled', function () use (&$earlier): never {
+            report(new RuntimeException('a handled fault'));
+            $earlier = Context::get('error_ref');
+            abort(500);
+        });
+    $lines = [];
+    Event::listen(MessageLogged::class, function (MessageLogged $line) use (&$lines): void {
+        // What the log context holds when the line is written (the line carries it).
+        $lines[] = ['message' => $line->message, 'context' => $line->context, 'ref' => Context::get('error_ref')];
+    });
+
+    // A fault that is logged: its own log line carries the code on the page.
+    $shown = shownReference($this->actingAs($member)->get('http://a.test/admin/_fault/boom')->assertStatus(500)->getContent());
+    $logged = collect($lines)->firstWhere('message', 'secret detail: SQLSTATE users.id=4242 /app/Secret.php');
+    expect($logged)->not->toBeNull()->and($logged['ref'])->toBe($shown);
+
+    // An abort(500) after a handled, logged fault: a code of its own, written to a line of its own.
+    $lines = [];
+    $shown = shownReference($this->actingAs($member)->get('http://a.test/admin/_fault/after-handled')->assertStatus(500)->getContent());
+    $own = collect($lines)->firstWhere('message', 'Admin error page shown');
+    expect($earlier)->toBeString()
+        ->and($shown)->not->toBe($earlier)
+        ->and($own)->not->toBeNull()
+        ->and($own['context']['error_ref'])->toBe($shown)
+        ->and($own['ref'])->toBe($shown);
 });
 
 it('keeps Laravel\'s own page for a fault while debugging', function (): void {
@@ -320,6 +398,24 @@ it('puts the session guard and the expired address in the admin frame', function
         ->assertSee(e(__('errors.warn.title')), false);
 });
 
+it('leaves the session-ending dialog out while support is signed in as the member', function (): void {
+    $member = errorMember();
+    $staff = User::factory()->create();
+    app(PlatformAccess::class)->onPlatform(fn () => $staff->assignRole('support'));
+    app(PlatformAccess::class)->forgetMemo();
+    $support = ['support_session' => [
+        'staff_id' => $staff->getKey(), 'staff_label' => 'Hỗ trợ', 'member_id' => $member->getKey(), 'reason' => 'Kiểm tra',
+        'site_id' => 1, 'expires_at' => now()->addMinutes(30)->getTimestamp(), 'session_ulid' => null,
+    ]];
+    $warnPair = substr(Js::from(['warn' => false])->toHtml(), strlen("JSON.parse('{"), -strlen("}')"));
+
+    $this->actingAs($member)->withSession($support)->get('http://a.test/admin')->assertOk()
+        ->assertSee('bsSession(', false)
+        ->assertSee($warnPair, false)
+        ->assertDontSee(e(__('errors.warn.title')), false)
+        ->assertDontSee('x-ref="logoutForm"', false);
+});
+
 it('keeps the session alive for a member and not for a guest', function (): void {
     $member = errorMember();
 
@@ -333,7 +429,25 @@ it('sends a console operator\'s unknown address to the customer list', function 
     app(PlatformAccess::class)->onPlatform(fn () => $operator->assignRole('super_admin'));
     $platform = 'http://'.config('tenancy.platform_host');
 
-    $this->actingAs($operator)->get($platform.'/khong-co')
+    $this->actingAs($operator)->withHeaders(navigation())->get($platform.'/khong-co')
         ->assertRedirect(route('platform.tenants.index'))
         ->assertSessionHas('admin.notice', __('errors.unknown_address'));
+    $this->flushHeaders();
+
+    // The browser's own requests get "not found" and leave no notice.
+    $this->actingAs($operator)->get($platform.'/.well-known/appspecific/com.chrome.devtools.json')
+        ->assertNotFound()
+        ->assertSessionMissing('admin.notice');
+});
+
+it('answers an unknown console address with "not found" for a guest and "no permission" for a non-operator', function (): void {
+    config(['admin.brand.name' => 'Nền Tảng Thử']);
+    $platform = 'http://'.config('tenancy.platform_host');
+
+    $html = $this->withHeaders(navigation())->get($platform.'/khong-co')->assertNotFound()->getContent();
+    expect($html)->toContain('data-te-page="notfound"')->toContain('Nền Tảng Thử');
+    $this->assertGuest();
+    expect(session('url.intended'))->toBeNull();
+
+    $this->actingAs(User::factory()->create())->get($platform.'/khong-co')->assertForbidden();
 });

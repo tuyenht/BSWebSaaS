@@ -221,7 +221,10 @@ final class AdminErrorPages
     private function expired(Request $request): array
     {
         // Back to the page the member was on once they sign in again (this host's admin only).
-        $back = self::safeReturnPath($request, (string) parse_url((string) $request->headers->get('referer'), PHP_URL_PATH), (string) parse_url((string) $request->headers->get('referer'), PHP_URL_HOST));
+        $referer = (string) $request->headers->get('referer');
+        $query = (string) parse_url($referer, PHP_URL_QUERY);
+        $path = (string) parse_url($referer, PHP_URL_PATH).($query !== '' ? '?'.$query : '');
+        $back = self::safeReturnPath($request, $path, (string) parse_url($referer, PHP_URL_HOST));
         if ($back !== null && $request->hasSession()) {
             $request->session()->put('url.intended', $request->getSchemeAndHttpHost().$back);
         }
@@ -239,16 +242,25 @@ final class AdminErrorPages
     }
 
     /**
-     * A path on this host's own admin plane to come back to, or null (anything else: another host,
-     * a protocol-relative or odd path, the sign-in pages themselves).
+     * A path on this host's own admin plane to come back to, with its query string (a list's
+     * filter, the Thùng rác tab), or null (anything else: another host, a scheme, a
+     * protocol-relative or odd path, a backslash or control character, the sign-in pages).
      */
     public static function safeReturnPath(Request $request, string $path, string $host = ''): ?string
     {
         if ($host !== '' && $host !== $request->getHost()) {
             return null;
         }
+        $cut = strpos($path, '?');
+        $query = $cut === false ? null : substr($path, $cut + 1);
+        $path = $cut === false ? $path : substr($path, 0, $cut);
         if ($path === '' || ! str_starts_with($path, '/') || str_starts_with($path, '//') || str_contains($path, '\\')
             || preg_match('#^/[A-Za-z0-9/_\-.~%]*$#', $path) !== 1) {
+            return null;
+        }
+        // The query only ever follows this host's own path, so it cannot change where the browser
+        // goes: printable characters only, no backslash, no fragment.
+        if ($query !== null && preg_match('#^[A-Za-z0-9/_\-.~%=&+,:;@!$\'()*\[\]?]*$#', $query) !== 1) {
             return null;
         }
         $prefix = '/'.trim(Cast::string(config('admin.prefix', 'admin')), '/');
@@ -259,7 +271,7 @@ final class AdminErrorPages
             return null;
         }
 
-        return $path;
+        return $query === null || $query === '' ? $path : $path.'?'.$query;
     }
 
     /** @return array<string, mixed> */
@@ -293,12 +305,13 @@ final class AdminErrorPages
     /** @return array<string, mixed> */
     private function systemError(Throwable $e): array
     {
-        // Logged faults already carry the reference (bootstrap/app.php adds it before the log
-        // line); one that is not logged (an abort(500)) gets a line of its own with it.
-        $logged = ErrorReference::exists();
-        $ref = ErrorReference::current();
-        if (! $logged) {
-            Log::warning('Admin error page shown', ['status' => 500, 'exception' => $e::class]);
+        // A logged fault already carries its reference (bootstrap/app.php adds it before the log
+        // line). One that was not logged (an abort(500)), even after another fault of the same
+        // request was, gets a reference and a log line of its own: support must find this one.
+        $ref = ErrorReference::of($e);
+        if ($ref === null) {
+            $ref = ErrorReference::assign($e);
+            Log::warning('Admin error page shown', ['status' => 500, 'exception' => $e::class, 'error_ref' => $ref]);
         }
 
         return self::page('e500', __('errors.e500.title'), __('errors.e500.line'), [

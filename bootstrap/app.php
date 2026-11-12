@@ -81,7 +81,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->report(function (Throwable $e): void {
             // A short reference in the log context before the fault's log line is written: the
             // admin's error page shows the same one, so support finds the fault from it.
-            ErrorReference::current();
+            ErrorReference::assign($e);
 
             try {
                 app(ErrorReporter::class)->report($e);

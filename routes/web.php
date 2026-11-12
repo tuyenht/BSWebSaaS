@@ -382,12 +382,13 @@ Route::get('/robots.txt', function (Request $request, SiteSeo $seo) {
 // ── Addresses that are no admin screen (design board 25: "địa chỉ lạ về Tổng quan + thông báo").
 //    Fallback routes: every other route (a package's too) is tried first, so an existing screen
 //    always wins; the console host's comes first so /admin/… there stays the console's. A signed-in
-//    member goes back to the plane's first page with a notice; on a website a guest gets "not found"
-//    (a mistyped invitation link is no reason to ask for a sign-in), on the console the sign-in. ──
+//    member who opened the address goes back to the plane's first page with a notice (a request the
+//    browser makes on its own gets "not found"); a guest gets "not found" on both planes (a mistyped
+//    link is no reason to ask for a sign-in). The controller runs the plane's own membership check. ──
 Route::domain((string) config('tenancy.platform_host'))
-    ->middleware(['web', 'auth', 'auth.session', 'platform', SetLocale::class])
+    ->middleware(['web', 'auth.session', SetLocale::class])
     ->group(function (): void {
-        Route::get('/{any}', [SessionController::class, 'unknown'])->where('any', '.*')->fallback()->name('platform.unknown');
+        Route::get('/{any}', [SessionController::class, 'unknownOnPlatform'])->where('any', '.*')->fallback()->name('platform.unknown');
     });
 Route::prefix(config('admin.prefix', 'admin'))
     ->middleware(['web', SetCurrentSite::class, EnforceSupportSession::class, 'site.active', 'auth.session', SetLocale::class])
