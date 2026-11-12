@@ -164,9 +164,9 @@ if (sizeButtons.length > 0) {
 // A lazy photo out of view (below the first screen, or further along a rail) that is not loaded yet
 // waits transparent over its frame's tint and fades in once decoded (CSS `sf-img--wait` /
 // `sf-img--in`); a photo already loaded, in view, hidden, or on a page that asked for reduced motion
-// is left as it is. Without this script
-// every photo simply shows when it arrives. The observer reports where each photo sits after the
-// browser's own layout, so the script never makes the page lay out again just to measure it.
+// is left as it is. Without this script every photo simply shows when it arrives. The observer
+// reports where each photo sits after the browser's own layout, so the script never makes the page
+// lay out again just to measure it.
 if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
     const firstLook = new IntersectionObserver((entries) => {
         entries.forEach(({ target: img, isIntersecting, boundingClientRect: box }) => {
