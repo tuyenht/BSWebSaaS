@@ -16,6 +16,7 @@ use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\EnsureMediaFromKey;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Rendering\LayoutSlots;
 use Carbon\CarbonImmutable;
 
 /**
@@ -47,6 +48,16 @@ final readonly class SeedMeasurementSite
 
     public const string NEWS_PATH = '/ban-tin';
 
+    /** The first seeded post: its page carries the post-only blocks (a measured URL of its own). */
+    public const string POST_PATH = '/khanh-thanh-xuong-moi';
+
+    /** Three pages that together draw every block kind the registry knows (a test pins this). */
+    public const string ABOUT_PATH = '/do-kiem-gioi-thieu';
+
+    public const string CONTENT_PATH = '/do-kiem-noi-dung';
+
+    public const string COMMERCE_PATH = '/do-kiem-thuong-mai';
+
     public function __construct(
         private RouteSync $routes,
         private TaxonomyPaths $paths,
@@ -64,6 +75,189 @@ final readonly class SeedMeasurementSite
         $this->seedProducts($locale, $photos);
         $this->seedNews($locale, $photos);
         $this->seedPage($locale, $photos);
+
+        $ids = array_map(static fn (Media $media): int => (int) $media->id, $photos);
+        foreach (self::extraPages($ids) as $path => [$title, $blocks]) {
+            $this->seedBlockPage($locale, $path, $title, $blocks);
+        }
+        $this->seedNewsSlots($locale);
+    }
+
+    /**
+     * The blocks of the three extra pages, path => [title, blocks]. Every block kind of the registry
+     * (the slot-only ones come from slotBlocks) appears on one of them with enough items to fill its
+     * grid or rail, so the CI job measures each kind's real markup.
+     *
+     * @param  array<string, int>  $img  photo name => media id
+     * @return array<string, array{0: string, 1: list<array<string, mixed>>}>
+     */
+    public static function extraPages(array $img): array
+    {
+        $photoNames = ['slide-1', 'slide-2', 'slide-3', 'product-1', 'product-2', 'product-3', 'news-1', 'news-2', 'news-3'];
+        $pic = static fn (int $n): int => $img[$photoNames[$n % 9]];
+        $names = ['Nguyễn Văn An', 'Trần Thị Bình', 'Lê Hoàng Cường', 'Phạm Minh Đức', 'Võ Thanh Hà', 'Đặng Quốc Khánh'];
+        $roles = ['Giám đốc kỹ thuật', 'Trưởng phòng chất lượng', 'Kỹ sư thiết kế', 'Quản đốc xưởng', 'Kỹ sư CNC', 'Chuyên viên kinh doanh'];
+
+        $about = [
+            ['type' => 'hero', 'props' => [
+                'heading' => 'Đối tác gia công cơ khí đáng tin cậy', 'subheading' => 'Hơn mười năm kinh nghiệm cùng đội ngũ kỹ sư tận tâm.',
+                'image_url' => $img['slide-1'], 'cta_label' => 'Nhận báo giá', 'cta_url' => '/lien-he', 'cta2_label' => 'Xem tin tức', 'cta2_url' => self::NEWS_PATH,
+            ]],
+            ['type' => 'about', 'props' => [
+                'heading' => 'Về chúng tôi', 'variant' => 'showcase', 'image_url' => $img['slide-2'],
+                'paragraphs' => ['Chúng tôi chế tạo đồ gá, khuôn mẫu và chi tiết máy theo bản vẽ của khách hàng.', 'Mỗi lô hàng đều được đo kiểm trước khi giao, để bạn yên tâm đưa vào dây chuyền.'],
+                'cta_label' => 'Liên hệ ngay', 'cta_url' => '/lien-he',
+                'links' => [
+                    ['icon' => 'phone', 'label' => 'Gọi tư vấn', 'url' => 'tel:0900000000'],
+                    ['icon' => 'email', 'label' => 'Gửi email', 'url' => 'mailto:lienhe@example.test'],
+                    ['icon' => 'map', 'label' => 'Xem đường đi', 'url' => '/lien-he'],
+                ],
+            ]],
+            ['type' => 'stats', 'props' => [
+                'heading' => 'Con số nổi bật', 'variant' => 'floating', 'items' => [
+                    ['kind' => 'years', 'value' => 2012, 'suffix' => '', 'label' => 'Năm kinh nghiệm'],
+                    ['kind' => 'number', 'value' => 120, 'suffix' => '+', 'label' => 'Khách hàng'],
+                    ['kind' => 'number', 'value' => 35, 'suffix' => '', 'label' => 'Máy CNC'],
+                    ['kind' => 'number', 'value' => 99, 'suffix' => '%', 'label' => 'Giao hàng đúng hẹn'],
+                ],
+            ]],
+            ['type' => 'partners', 'props' => [
+                'heading' => 'Đối tác tin cậy', 'description' => 'Những doanh nghiệp đã đồng hành cùng chúng tôi.',
+                'logos' => array_map(static fn (int $n): array => ['image_url' => $pic($n), 'name' => 'Đối tác '.($n + 1), 'url' => ''], range(0, 7)),
+            ]],
+            ['type' => 'team', 'props' => [
+                'heading' => 'Đội ngũ của chúng tôi', 'variant' => 'grid-3',
+                'members' => array_map(static fn (int $n): array => ['name' => $names[$n], 'role' => $roles[$n], 'photo' => $pic($n)], range(0, 5)),
+            ]],
+            ['type' => 'testimonial', 'props' => [
+                'heading' => 'Khách hàng nói gì', 'variant' => 'grid-3',
+                'items' => array_map(static fn (int $n): array => [
+                    'quote' => 'Sản phẩm đúng bản vẽ, giao hàng đúng hẹn và hỗ trợ kỹ thuật rất nhanh.',
+                    'name' => $names[$n], 'role' => 'Khách hàng '.($n + 1), 'avatar' => $pic($n + 3),
+                ], range(0, 3)),
+            ]],
+            ['type' => 'branches', 'props' => ['heading' => 'Nhà máy và chi nhánh', 'description' => 'Nơi bạn có thể đến thăm và trao đổi trực tiếp.']],
+        ];
+
+        $content = [
+            ['type' => 'page_header', 'props' => ['title' => 'Tài liệu và hỏi đáp', 'subtitle' => 'Quy trình làm việc, câu hỏi thường gặp và tin mới.', 'image_url' => $img['news-1'], 'overlay' => 65]],
+            ['type' => 'richtext', 'props' => ['heading' => 'Giới thiệu quy trình', 'paragraphs' => [
+                'Mỗi đơn hàng bắt đầu từ bản vẽ kỹ thuật. Kỹ sư của chúng tôi kiểm tra dung sai, vật liệu và phương án gia công trước khi báo giá.',
+                'Sau khi chốt phương án, xưởng lập kế hoạch sản xuất, đo kiểm từng công đoạn và bàn giao kèm biên bản kiểm tra.',
+            ]]],
+            ['type' => 'richtext_html', 'props' => ['html' => '<h2>Tiêu chuẩn áp dụng</h2><p>Chúng tôi làm việc theo <strong>dung sai ghi trên bản vẽ</strong> và kiểm tra bằng máy đo tọa độ.</p><ul><li>Kiểm tra vật liệu đầu vào</li><li>Đo kiểm trong quá trình gia công</li><li>Kiểm tra lần cuối trước khi giao</li></ul>']],
+            ['type' => 'process', 'props' => ['heading' => 'Quy trình làm việc', 'description' => 'Bốn bước từ bản vẽ đến sản phẩm.', 'variant' => 'numeral', 'steps' => [
+                ['title' => 'Tiếp nhận bản vẽ', 'text' => 'Nhận bản vẽ và yêu cầu kỹ thuật của bạn.'],
+                ['title' => 'Báo giá', 'text' => 'Phản hồi báo giá và thời gian giao trong 24 giờ.'],
+                ['title' => 'Gia công', 'text' => 'Sản xuất trên máy CNC, đo kiểm từng công đoạn.'],
+                ['title' => 'Bàn giao', 'text' => 'Giao hàng kèm biên bản đo kiểm.'],
+            ]]],
+            ['type' => 'video', 'props' => ['heading' => 'Xưởng của chúng tôi', 'url' => 'https://www.youtube.com/watch?v=aqz-KE-bpKQ', 'poster' => $img['slide-3'], 'player_width' => 'narrow', 'caption' => 'Giới thiệu xưởng gia công.']],
+            ['type' => 'gallery', 'props' => ['heading' => 'Hình ảnh xưởng', 'columns' => '3', 'caption_style' => 'below', 'images' => array_map(static fn (int $n): array => ['image' => $pic($n), 'caption' => 'Khu vực gia công '.($n + 1)], range(0, 8))]],
+            ['type' => 'faq', 'props' => ['heading' => 'Câu hỏi thường gặp', 'columns' => '2', 'style' => 'accordion', 'items' => [
+                ['q' => 'Thời gian báo giá là bao lâu?', 'a' => 'Thông thường trong vòng 24 giờ làm việc kể từ khi nhận đủ bản vẽ.'],
+                ['q' => 'Dung sai nhỏ nhất bạn gia công được?', 'a' => 'Tùy vật liệu và hình dạng, chúng tôi đạt tới cấp dung sai ghi trên bản vẽ.'],
+                ['q' => 'Có nhận đơn hàng nhỏ lẻ không?', 'a' => 'Có, chúng tôi nhận từ một chi tiết để làm mẫu.'],
+                ['q' => 'Có hỗ trợ thiết kế đồ gá không?', 'a' => 'Có, đội thiết kế sẽ đề xuất phương án phù hợp dây chuyền của bạn.'],
+            ]]],
+            ['type' => 'quick_links', 'props' => ['heading' => 'Liên kết nhanh', 'variant' => 'grid-2x2', 'items' => [
+                ['icon' => 'phone', 'label' => 'Gọi tư vấn', 'url' => 'tel:0900000000'],
+                ['icon' => 'email', 'label' => 'Gửi email', 'url' => 'mailto:lienhe@example.test'],
+                ['icon' => 'map', 'label' => 'Bản đồ', 'url' => '/lien-he'],
+                ['icon' => 'document', 'label' => 'Tin tức', 'url' => self::NEWS_PATH],
+            ]]],
+            ['type' => 'latest_posts', 'props' => ['heading' => 'Bài viết mới', 'limit' => 3]],
+            ['type' => 'entry_grid', 'props' => ['heading' => 'Tin công ty', 'taxonomy_slug' => 'ban-tin', 'limit' => 6, 'variant' => 'news-cards', 'tabs' => 'auto', 'layout' => 'auto', 'arrows' => 'always']],
+            ['type' => 'entry_grid', 'props' => ['heading' => 'Bài viết xen kẽ', 'taxonomy_slug' => 'ban-tin', 'limit' => 4, 'variant' => 'zigzag']],
+            ['type' => 'entry_grid', 'props' => ['heading' => 'Dự án tiêu biểu', 'taxonomy_slug' => 'ban-tin', 'limit' => 4, 'variant' => 'project-cards']],
+            ['type' => 'entry_grid', 'props' => ['heading' => 'Cơ hội nghề nghiệp', 'taxonomy_slug' => 'ban-tin', 'limit' => 6, 'variant' => 'job']],
+            ['type' => 'form', 'props' => ['form_key' => 'contact', 'heading' => 'Gửi yêu cầu', 'description' => 'Để lại thông tin, chúng tôi sẽ liên hệ lại sớm.']],
+        ];
+
+        $commerce = [
+            ['type' => 'product_grid', 'props' => ['heading' => 'Sản phẩm', 'limit' => 6, 'variant' => 'grid', 'layout' => 'grid']],
+            ['type' => 'features', 'props' => ['heading' => 'Lợi ích', 'variant' => 'icon-head', 'items' => [
+                ['title' => 'Đúng dung sai', 'text' => 'Đo kiểm từng lô hàng.', 'icon' => 'eye'],
+                ['title' => 'Giao đúng hẹn', 'text' => 'Kế hoạch sản xuất rõ ràng.', 'icon' => 'machine'],
+                ['title' => 'Hỗ trợ kỹ thuật', 'text' => 'Kỹ sư trả lời trong ngày.', 'icon' => 'wrench'],
+            ]]],
+            ['type' => 'features', 'props' => ['heading' => 'Cam kết', 'variant' => 'default', 'items' => [
+                ['title' => 'Bảo hành', 'text' => 'Bảo hành theo hợp đồng.'],
+                ['title' => 'Bảo mật bản vẽ', 'text' => 'Ký thỏa thuận bảo mật.'],
+                ['title' => 'Giá minh bạch', 'text' => 'Báo giá chi tiết từng hạng mục.'],
+            ]]],
+            ['type' => 'pricing', 'props' => ['heading' => 'Gói dịch vụ', 'plans' => [
+                ['name' => 'Cơ bản', 'price' => 1500000, 'unit' => 'đ/chi tiết', 'features' => "Gia công theo bản vẽ\nĐo kiểm cơ bản", 'cta_label' => 'Chọn gói', 'cta_url' => '/lien-he'],
+                ['name' => 'Tiêu chuẩn', 'price' => 4500000, 'unit' => 'đ/lô', 'features' => "Gia công nhiều chi tiết\nBiên bản đo kiểm\nHỗ trợ thiết kế", 'cta_label' => 'Chọn gói', 'cta_url' => '/lien-he'],
+                ['name' => 'Dự án', 'price' => 0, 'unit' => '', 'features' => "Đồ gá và khuôn mẫu\nKỹ sư riêng", 'cta_label' => 'Liên hệ', 'cta_url' => '/lien-he'],
+            ]]],
+            ['type' => 'cta', 'props' => ['heading' => 'Cần tư vấn giải pháp?', 'text' => 'Chúng tôi phản hồi trong 24 giờ.', 'button_label' => 'Liên hệ', 'button_url' => '/lien-he', 'variant' => 'default', 'side' => 'stats', 'side_items' => [
+                ['kind' => 'number', 'value' => 120, 'suffix' => '+', 'label' => 'Khách hàng'],
+                ['kind' => 'number', 'value' => 24, 'suffix' => 'h', 'label' => 'Báo giá'],
+            ]]],
+            ['type' => 'cta', 'props' => ['heading' => 'Gửi bản vẽ ngay hôm nay', 'text' => 'Nhận báo giá miễn phí.', 'button_label' => 'Gửi bản vẽ', 'button_url' => '/lien-he', 'variant' => 'split']],
+            ['type' => 'cta', 'props' => ['heading' => 'Nói chuyện với kỹ sư', 'text' => 'Gọi hoặc nhắn Zalo để được hỗ trợ.', 'button_label' => 'Gọi ngay', 'button_url' => 'tel:0900000000', 'variant' => 'card', 'button2_label' => 'Nhắn Zalo', 'button2_url' => 'https://zalo.me/0900000000', 'button2_tone' => 'zalo']],
+        ];
+
+        return [
+            self::ABOUT_PATH => ['Giới thiệu đo tốc độ', $about],
+            self::CONTENT_PATH => ['Nội dung đo tốc độ', $content],
+            self::COMMERCE_PATH => ['Thương mại đo tốc độ', $commerce],
+        ];
+    }
+
+    /**
+     * The blocks that only a slot may hold, put on the `/ban-tin` category (its list and its posts),
+     * slot => blocks. Kept off the site default so the other measured pages stay as they are.
+     *
+     * @return array<string, list<array<string, mixed>>>
+     */
+    public static function slotBlocks(): array
+    {
+        return [
+            'after_list' => [
+                ['type' => 'category_list', 'props' => ['heading' => 'Chuyên mục', 'source' => 'categories', 'counts' => 'show']],
+                ['type' => 'consult', 'props' => ['eyebrow' => 'Cần hỗ trợ?', 'heading' => 'Tư vấn miễn phí', 'text' => 'Gọi cho kỹ sư của chúng tôi.', 'button_label' => 'Liên hệ', 'button_url' => '/lien-he']],
+            ],
+            'post_aside' => [
+                ['type' => 'recent_posts', 'props' => ['heading' => 'Bài viết mới']],
+                ['type' => 'file_card', 'props' => ['badge' => 'PDF', 'title' => 'Hồ sơ năng lực', 'text' => 'Tải về tài liệu giới thiệu.', 'url' => '/lien-he']],
+            ],
+        ];
+    }
+
+    private function seedNewsSlots(string $locale): void
+    {
+        $id = TaxonomyTranslation::query()->where('locale', $locale)->where('slug', ltrim(self::NEWS_PATH, '/'))->value('taxonomy_id');
+        if (! is_numeric($id)) {
+            return;
+        }
+        $layout = [];
+        foreach (self::slotBlocks() as $slot => $blocks) {
+            $layout[$slot] = [$locale => ['blocks' => $blocks]];
+        }
+        Taxonomy::query()->whereKey((int) $id)->update(['meta->'.LayoutSlots::META_KEY => $layout]);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $blocks
+     */
+    private function seedBlockPage(string $locale, string $path, string $title, array $blocks): void
+    {
+        $route = SiteRoute::query()->where('locale', $locale)->where('path', $path)->first();
+        $entry = $route?->entry_id !== null ? Entry::query()->find($route->entry_id) : null;
+        if ($entry !== null) {
+            $entry->translationFor($locale)?->update(['body' => ['blocks' => $blocks]]);
+
+            return;
+        }
+
+        $entry = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()]);
+        $entry->translations()->create([
+            'locale' => $locale, 'title' => $title, 'slug' => trim($path, '/'), 'status' => 'published',
+            'seo_description' => 'Trang mẫu dùng để đo tốc độ tải và khả năng truy cập.', 'body' => ['blocks' => $blocks],
+        ]);
+        SiteRoute::query()->create(['locale' => $locale, 'path' => $path, 'entry_id' => $entry->id]);
     }
 
     private function seedSettings(): void

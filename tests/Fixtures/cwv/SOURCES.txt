@@ -11,3 +11,6 @@ product-3.webp  https://www.pexels.com/photo/10406128/
 news-1.webp     https://www.pexels.com/photo/34207359/
 news-2.webp     https://www.pexels.com/photo/3861437/
 news-3.webp     https://www.pexels.com/photo/32845668/
+
+w320/ holds the same photos resized to 320 px wide (PHP GD, WebP quality 82): the copies the
+media Worker would answer for ?w=320, served by scripts/cwv-serve.php in the cwv job.
