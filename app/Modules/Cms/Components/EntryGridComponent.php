@@ -7,6 +7,7 @@ use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Support\JobFacts;
+use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Contracts\Component;
 use App\Modules\Shared\Support\Cast;
@@ -138,8 +139,9 @@ final readonly class EntryGridComponent implements Component
             return ['props' => $props, 'items' => $this->cards($items, $locale, $variant), 'variant' => $variant, 'display' => $display];
         }
 
+        $widths = $this->masterWidths($items);
         $items = $items
-            ->map(function (Entry $entry) use ($locale): array {
+            ->map(function (Entry $entry) use ($locale, $widths): array {
                 $translation = $entry->translationFor($locale);
                 $route = $entry->routes->firstWhere('locale', $locale);
                 $sector = $entry->sectors->first();
@@ -152,7 +154,7 @@ final readonly class EntryGridComponent implements Component
                     'url' => $route !== null ? $route->path : '',
                     'image' => $this->resolveImage($image),
                     // A stored key offers smaller widths, so a phone fetches a phone-sized photo.
-                    'srcset' => $image !== '' && ! str_contains($image, '://') && str_contains($image, '/') ? $this->media->srcset($image, self::CARD_SRCSET_WIDTHS) : null,
+                    'srcset' => $image !== '' && ! str_contains($image, '://') && str_contains($image, '/') ? $this->media->srcset($image, self::CARD_SRCSET_WIDTHS, $widths[$image] ?? null) : null,
                     'short_outcome' => $translation instanceof EntryTranslation ? ($translation->excerpt ?? '') : '',
                     'sector' => $sectorTranslation !== null ? $sectorTranslation->name : '',
                 ];
@@ -344,6 +346,7 @@ final readonly class EntryGridComponent implements Component
         // Resolved per call, not injected: this component lives in a boot-time registry, and the
         // site's clock is request state (scoped).
         $time = $variant === 'news-cards' ? app(SiteTime::class) : null;
+        $widths = $this->masterWidths($entries);
         $cards = [];
         foreach ($entries as $entry) {
             $translation = $entry->translationFor($locale);
@@ -359,7 +362,7 @@ final readonly class EntryGridComponent implements Component
                 'title' => $translation instanceof EntryTranslation ? $translation->title : '',
                 'url' => $route !== null ? $route->path : '',
                 'image' => $isGlyph ? '' : $this->resolveImage($image),
-                'srcset' => $isKey ? $this->media->srcset($image, self::CARD_SRCSET_WIDTHS) : null,
+                'srcset' => $isKey ? $this->media->srcset($image, self::CARD_SRCSET_WIDTHS, $widths[$image] ?? null) : null,
                 'icon' => $isGlyph ? $image : '',
                 'excerpt' => $translation instanceof EntryTranslation ? ($translation->excerpt ?? '') : '',
                 'date' => $published?->format('d/m/Y') ?? '',
@@ -385,5 +388,33 @@ final readonly class EntryGridComponent implements Component
         }
 
         return $this->media->url($image, self::CARD_WIDTH);
+    }
+
+    /**
+     * The master width of each card photo stored as a library key, in one query, so a srcset never
+     * offers a width larger than the photo (no query when no card has such a photo).
+     *
+     * @param  iterable<Entry>  $entries
+     * @return array<string, int>
+     */
+    private function masterWidths(iterable $entries): array
+    {
+        $keys = [];
+        foreach ($entries as $entry) {
+            $image = $entry->meta['image_url'] ?? null;
+            if (is_string($image) && ! str_contains($image, '://') && str_contains($image, '/')) {
+                $keys[$image] = true;
+            }
+        }
+        if ($keys === []) {
+            return [];
+        }
+
+        $widths = [];
+        foreach (Media::query()->whereIn('storage_key', array_keys($keys))->get(['storage_key', 'width']) as $media) {
+            $widths[$media->storage_key] = Cast::int($media->width);
+        }
+
+        return $widths;
     }
 }

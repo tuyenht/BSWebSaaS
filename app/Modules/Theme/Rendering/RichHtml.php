@@ -350,7 +350,7 @@ final readonly class RichHtml
                 $tag .= ' width="'.$dims[$url][0].'" height="'.$dims[$url][1].'"';
             }
 
-            return $tag.' loading="lazy" decoding="async">';
+            return $tag.' loading="lazy" decoding="async" fetchpriority="low">';
         }, $html);
 
         if ($out === null) {
