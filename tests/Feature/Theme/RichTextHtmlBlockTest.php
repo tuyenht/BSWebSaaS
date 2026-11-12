@@ -74,7 +74,7 @@ describe('on a page', function (): void {
         $prose = proseOf($page);
 
         expect($prose)->toContain('<h2>Câu chuyện</h2><p>Đoạn <strong>đậm</strong> và <a href="/lien-he">liên hệ</a>.</p>')
-            ->and($prose)->toMatch('#<figure><img class="sf-prose__img sf-prose__img--md sf-prose__img--left" src="https://files\.test/s/library/xuong-[0-9a-f]{12}\.webp\?w=\d+" srcset="[^"]+ \d+w[^"]*" sizes="\(min-width: 52rem\) 24rem, 50vw" alt="Máy phay" width="1600" height="900" loading="lazy" decoding="async"><figcaption>Xưởng CNC</figcaption></figure>#')
+            ->and($prose)->toMatch('#<figure><img class="sf-prose__img sf-prose__img--md sf-prose__img--left" src="https://files\.test/s/library/xuong-[0-9a-f]{12}\.webp\?w=\d+" srcset="[^"]+ \d+w[^"]*" sizes="\(min-width: 52rem\) 24rem, 50vw" alt="Máy phay" width="1600" height="900" loading="lazy" decoding="async" fetchpriority="low"><figcaption>Xưởng CNC</figcaption></figure>#')
             ->and($page)->not->toContain('data-media-id')
             ->and($page)->not->toContain('data-size')
             ->and($page)->not->toContain('sf-video.js');

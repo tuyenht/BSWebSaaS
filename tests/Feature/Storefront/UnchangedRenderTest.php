@@ -128,6 +128,6 @@ it('gives the one high-priority image to the first block only, whatever follows'
     'an about block then a hero' => [['about', 'hero'], 1, 'about__image'],
     'a title band then a hero' => [['band', 'hero'], 1, 'page-band__bg'],
     'a hero then a title band' => [['hero', 'band'], 1, 'hero__bg'],
-    'a slider that is not first' => [['text', 'slider'], 0, null],
+    'a slider after a block of text' => [['text', 'slider'], 1, 'sf-slide__img'],
     'a slider that is first' => [['slider'], 1, null],
 ]);

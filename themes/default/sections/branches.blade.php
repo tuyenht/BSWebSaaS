@@ -24,7 +24,7 @@
 <article class="sf-branch">
 @if ($sfCard['image'] !== null)
 <div class="sf-branch__photo">
-<img class="sf-branch__img" src="{{ $sfCard['image'] }}"@if ($sfCard['srcset'] !== null) srcset="{{ $sfCard['srcset'] }}" sizes="(min-width: 1024px) 24rem, 85vw"@endif alt="{{ $sfCard['alt'] }}" width="{{ $sfCard['width'] }}" height="{{ $sfCard['height'] }}" loading="lazy" decoding="async">
+<img class="sf-branch__img" src="{{ $sfCard['image'] }}"@if ($sfCard['srcset'] !== null) srcset="{{ $sfCard['srcset'] }}" sizes="(min-width: 1024px) 24rem, 85vw"@endif alt="{{ $sfCard['alt'] }}" width="{{ $sfCard['width'] }}" height="{{ $sfCard['height'] }}" loading="lazy" decoding="async" fetchpriority="low">
 @if ($sfCard['area'] !== null)
 <span class="sf-branch__chip">{{ $sfCard['area'] }}</span>
 @endif

@@ -74,7 +74,7 @@ it('loads the first photo with high priority and the rest lazily', function (): 
     expect($images[0])->toHaveCount(5)
         ->and($images[0][0])->toContain('loading="eager" fetchpriority="high"');
     foreach (array_slice($images[0], 1) as $image) {
-        expect($image)->toContain('loading="lazy" decoding="async"')->not->toContain('fetchpriority');
+        expect($image)->toContain('loading="lazy" decoding="async" fetchpriority="low"');
     }
 });
 

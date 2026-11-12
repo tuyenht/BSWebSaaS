@@ -27,7 +27,7 @@
              alt=""
              width="1600"
              height="900"
-             loading="eager"@if (! empty($props['_high'])) fetchpriority="high"@endif>
+             loading="{{ ! empty($props['_high']) ? 'eager' : 'lazy' }}"@if (! empty($props['_high'])) fetchpriority="high"@else decoding="async" fetchpriority="low"@endif>
     @endif
 @if ($bgVideo !== null)
         <video class="hero__bg hero__video" data-sf-bgvideo data-src="{{ $bgVideo['url'] }}" data-type="{{ $bgVideo['type'] }}" muted loop playsinline preload="none" disablepictureinpicture disableremoteplayback aria-hidden="true"@if (! empty($props['image_url'])) poster="{{ $props['image_url'] }}"@endif></video>

@@ -11,7 +11,7 @@
     $size = is_array($size) && ($size[0] ?? 0) > 0 && ($size[1] ?? 0) > 0 ? $size : null;
 @endphp
 @if ($src !== null)
-<img class="partners__logo" src="{{ $src }}" alt="{{ $name }}" width="{{ $size[0] ?? 160 }}" height="{{ $size[1] ?? 80 }}"@if ($size !== null) style="--logo-r: {{ round($size[0] / $size[1], 3) }}"@endif{!! is_string($thumb) && $thumb !== '' ? ' srcset="'.e($thumb).'" sizes="210px"' : '' !!} loading="lazy">
+<img class="partners__logo" src="{{ $src }}" alt="{{ $name }}" width="{{ $size[0] ?? 160 }}" height="{{ $size[1] ?? 80 }}"@if ($size !== null) style="--logo-r: {{ round($size[0] / $size[1], 3) }}"@endif{!! is_string($thumb) && $thumb !== '' ? ' srcset="'.e($thumb).'" sizes="210px"' : '' !!} loading="lazy" decoding="async" fetchpriority="low">
 @else
 <span class="partners__name{{ mb_strlen($name) > 24 ? ' partners__name--long' : '' }}">{{ $name }}</span>
 @endif

@@ -178,13 +178,16 @@ final readonly class BlockRenderer
      * the page's own body: its first block may lead the page and its blocks get no slot data
      * ($ownBody false: every list is a slot's, for a page that has no body of its own). $context is
      * the page's data a slot block draws (SlotContext), handed to the views of the slots' blocks as
-     * `$sfSlot`; the result lists one `{html, bgVideo}` per body, in order.
+     * `$sfSlot`; the result lists one `{html, bgVideo}` per body, in order. With $leadAnyBlock (a page
+     * whose layout draws no photo of its own above the body), blocks that draw no image at all (text,
+     * numbers, a call to action, an empty list) leave the page's one high-priority image to the next
+     * block; otherwise only the first block may take it.
      *
      * @param  list<array<string, mixed>>  $bodies
      * @param  array<array-key, mixed>  $context
      * @return list<array{html: string, bgVideo: bool}>
      */
-    public function renderBodies(array $bodies, array $context = [], bool $ownBody = true): array
+    public function renderBodies(array $bodies, array $context = [], bool $ownBody = true, bool $leadAnyBlock = false): array
     {
         // Pass 1 — collect every media_id an image prop references across the whole page.
         $ids = [];
@@ -235,6 +238,8 @@ final readonly class BlockRenderer
             $html = '';
             $isOwn = $ownBody && $position === 0;
             $first = $isOwn;
+            // The page's one high-priority image is still unclaimed (only the page's own body may hold it).
+            $high = $isOwn;
             $bgVideo = false;
             foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
                 if (! is_array($block)) {
@@ -264,9 +269,10 @@ final readonly class BlockRenderer
                 $view = $component->view();
                 $image = $resolved['bg_image'] ?? null;
                 $wrapper = StyleProps::wrapper($props, $type, $first, is_string($image) ? $image : null, ! $isOwn);
-                // The page's one high-priority image: only the first block may claim it, and a first block
-                // with a background photo has already claimed it through the sf-section wrapper.
-                $resolved['_high'] = $first && ($wrapper === null || $wrapper['image'] === null);
+                // The page's one high-priority image: the block that leads the page claims it (a block with a
+                // background photo through the sf-section wrapper, any other through its own view).
+                $wrapperPhoto = $wrapper !== null && $wrapper['image'] !== null;
+                $resolved['_high'] = $high && ! $wrapperPhoto;
                 $section = $this->views->make($view, $component->data($resolved) + ['srcsets' => $srcsets, 'thumbs' => $thumbs, 'alts' => $alts, 'dims' => $dims, 'sfSlot' => $isOwn ? [] : $context] + $band)->render();
 
                 // A block that draws nothing gets no wrapper either (an empty band would still take a margin),
@@ -275,8 +281,11 @@ final readonly class BlockRenderer
                     'wrapper' => $wrapper,
                     'section' => $section,
                     'srcset' => $wrapper['image'] !== null ? ($srcsets[$wrapper['image']] ?? null) : null,
-                    'eager' => $first,
+                    'eager' => $high,
                 ])->render();
+                // The claim is spent once a block drew any image; a block with none passes it on, but only
+                // on a page whose layout has no photo of its own above the body.
+                $high = $high && $leadAnyBlock && ! $wrapperPhoto && ! str_contains($section, '<img');
                 $first = false;
             }
             $out[] = ['html' => $html, 'bgVideo' => $bgVideo];

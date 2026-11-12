@@ -49,7 +49,7 @@
         <div class="sf-footer__brand">
             @if (! empty($brand['logo_dark'] ?? $brand['logo'] ?? null))
                 <a class="sf-footer__logo-link" href="{{ $homeUrl ?? '/' }}">
-                    <img class="sf-footer__logo" src="{{ $brand['logo_dark'] ?? $brand['logo'] }}" alt="{{ $sfName ?? __('storefront.home') }}" width="156" height="40" loading="lazy">
+                    <img class="sf-footer__logo" src="{{ $brand['logo_dark'] ?? $brand['logo'] }}" alt="{{ $sfName ?? __('storefront.home') }}" width="156" height="40" loading="lazy" decoding="async" fetchpriority="low">
                 </a>
             @endif
 @if (! empty($brand['tagline']))
