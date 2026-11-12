@@ -256,6 +256,9 @@ final class Inbox extends Component
             $back += FormSubmission::query()->whereIn('ulid', $ulids)->where('status', $op['set'])
                 ->update(['status' => $status, 'updated_at' => now()]);
         }
+        if ($asked === 0) {
+            return;
+        }
         if ($back === 0) {
             $this->say(__('leads.undo_changed'), 'error');
         } elseif ($back < $asked) {
