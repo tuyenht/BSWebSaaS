@@ -182,3 +182,34 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
     });
     document.querySelectorAll('img[loading="lazy"]').forEach((img) => firstLook.observe(img));
 }
+
+// Blocks below the first screen are drawn on demand (CSS `content-visibility: auto`, storefront.css),
+// so the browser sizes the ones it has not drawn by an estimate, and a jump to a #target placed with
+// those estimates lands off the target. The page therefore asks to be drawn in full (`sf-anchored`
+// turns the deferral off) before such a jump: a click on a link to this page does it before the
+// browser scrolls; an address opened with a #target, or a hash change from the history, draws
+// everything and places the target again.
+document.addEventListener('click', (event) => {
+    const link = event.target instanceof Element ? event.target.closest('a[href*="#"]') : null;
+    if (link && link.origin === location.origin && link.pathname === location.pathname && link.hash.length > 1) {
+        root.classList.add('sf-anchored');
+    }
+}, true);
+
+function placeTarget() {
+    let id = location.hash.slice(1);
+    try {
+        id = decodeURIComponent(id);
+    } catch {
+        // A malformed escape: use the text as it is.
+    }
+    const target = id === '' ? null : document.getElementById(id);
+    if (target) {
+        root.classList.add('sf-anchored');
+        target.scrollIntoView({ block: 'start', behavior: 'instant' });
+    }
+}
+
+placeTarget();
+window.addEventListener('load', placeTarget, { once: true }); // photos and fonts that arrived since moved the blocks above
+window.addEventListener('hashchange', placeTarget);
