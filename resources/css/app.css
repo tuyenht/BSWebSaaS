@@ -24,6 +24,9 @@
 /* The product editor's frame: the save-state pill, the sticky button bars. */
 @import './admin-editor.css';
 
+/* The admin's error pages, the "Mất kết nối" strip and the "Phiên sắp hết hạn" dialog. */
+@import './admin-errors.css';
+
 /* Scan module Blade + bundled theme Blade + framework/runtime views so utility classes aren't purged. */
 @source '../../app/Modules/**/*.blade.php';
 @source '../../themes/**/*.blade.php';

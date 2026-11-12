@@ -2,6 +2,7 @@
 
 use App\Modules\Admin\Http\Controllers\HintPreferenceController;
 use App\Modules\Admin\Http\Controllers\OAuthController;
+use App\Modules\Admin\Http\Controllers\SessionController;
 use App\Modules\Admin\Http\Controllers\SupportSignInController;
 use App\Modules\Admin\Http\Controllers\ThemePreferenceController;
 use App\Modules\Admin\Http\Middleware\EnforceSupportSession;
@@ -82,6 +83,8 @@ Route::domain((string) config('tenancy.platform_host'))
         Route::get('/reset-password', ResetPassword::class)->name('platform.password.reset');
         Route::get('/otp/challenge', EmailOtpChallenge::class)->name('platform.otp.challenge');
         Route::get('/two-factor/challenge', TwoFactorChallenge::class)->name('platform.two-factor.challenge');
+        // "Phiên làm việc đã hết" — where a request refused for an ended session lands.
+        Route::get('/session-expired', [SessionController::class, 'expired'])->name('platform.session.expired');
 
         // Email verification target (signed, no auth) — mirrors the tenant route with a
         // platform-plane redirect, so an operator's verify link lands on the operator login.
@@ -141,6 +144,8 @@ Route::domain((string) config('tenancy.platform_host'))
         Route::delete('/theme-preference', [ThemePreferenceController::class, 'destroy'])->name('platform.theme.reset');
         // A first-time explanation the member put away with "Đã hiểu" (own preferences only).
         Route::post('/hint-preference', [HintPreferenceController::class, 'store'])->name('platform.hint.dismiss');
+        // "Tiếp tục làm việc" in the session-ending dialog: a signed-in request keeps the session.
+        Route::post('/session/ping', [SessionController::class, 'ping'])->name('platform.session.ping');
 
         Route::post('/logout', function () {
             Auth::logout();
@@ -159,6 +164,8 @@ Route::prefix(config('admin.prefix', 'admin'))
         Route::get('/forgot-password', ForgotPassword::class)->name('admin.password.request');
         Route::get('/reset-password', ResetPassword::class)->name('admin.password.reset');
         Route::get('/two-factor/challenge', TwoFactorChallenge::class)->name('admin.two-factor.challenge');
+        // "Phiên làm việc đã hết" — where a request refused for an ended session lands.
+        Route::get('/session-expired', [SessionController::class, 'expired'])->name('admin.session.expired');
         Route::get('/otp/challenge', EmailOtpChallenge::class)->name('admin.otp.challenge');
 
         // Member invitation link (mailed). Open to guests AND signed-in users: the page itself
@@ -240,6 +247,8 @@ Route::prefix(config('admin.prefix', 'admin'))
         Route::delete('/theme-preference', [ThemePreferenceController::class, 'destroy'])->name('admin.theme.reset');
         // A first-time explanation the member put away with "Đã hiểu" — any member, own preferences only.
         Route::post('/hint-preference', [HintPreferenceController::class, 'store'])->name('admin.hint.dismiss');
+        // "Tiếp tục làm việc" in the session-ending dialog: a signed-in request keeps the session.
+        Route::post('/session/ping', [SessionController::class, 'ping'])->name('admin.session.ping');
 
         // Site members + their roles. Invite/change/remove go through the guarded InviteMember /
         // AssignRole / RevokeRole actions, so the role hierarchy is enforced server-side. No `can:`
@@ -369,6 +378,22 @@ Route::get('/robots.txt', function (Request $request, SiteSeo $seo) {
 
     return response($seo->robotsTxt($sitemap), 200, ['Content-Type' => 'text/plain; charset=utf-8', 'X-Content-Type-Options' => 'nosniff']);
 })->withoutMiddleware($storefrontSessionless)->middleware($storefrontPage);
+
+// ── Addresses that are no admin screen (design board 25: "địa chỉ lạ về Tổng quan + thông báo").
+//    Fallback routes: every other route (a package's too) is tried first, so an existing screen
+//    always wins; the console host's comes first so /admin/… there stays the console's. A signed-in
+//    member goes back to the plane's first page with a notice; on a website a guest gets "not found"
+//    (a mistyped invitation link is no reason to ask for a sign-in), on the console the sign-in. ──
+Route::domain((string) config('tenancy.platform_host'))
+    ->middleware(['web', 'auth', 'auth.session', 'platform', SetLocale::class])
+    ->group(function (): void {
+        Route::get('/{any}', [SessionController::class, 'unknown'])->where('any', '.*')->fallback()->name('platform.unknown');
+    });
+Route::prefix(config('admin.prefix', 'admin'))
+    ->middleware(['web', SetCurrentSite::class, EnforceSupportSession::class, 'site.active', 'auth.session', SetLocale::class])
+    ->group(function (): void {
+        Route::get('/{any}', [SessionController::class, 'unknownOnSite'])->where('any', '.*')->fallback()->name('admin.unknown');
+    });
 
 // ── Storefront plane — public, tenant context. A fallback so it never shadows a
 //    defined route; resolves dynamic content for any other path (404 if none). ─────

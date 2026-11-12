@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Middleware\AddSecurityHeaders;
+use App\Modules\Admin\Errors\AdminErrorPages;
+use App\Modules\Admin\Errors\ErrorReference;
 use App\Modules\Identity\Http\Middleware\EnsureTwoFactorEnabled;
 use App\Modules\Monitoring\ErrorReporter;
 use App\Modules\Rbac\Http\Middleware\EnsurePlatformAccess;
@@ -77,10 +79,19 @@ return Application::configure(basePath: dirname(__DIR__))
         // Runs after Laravel's own ignore list (404, validation…); never returns false, so the
         // normal log entry is still written; never lets its own failure out.
         $exceptions->report(function (Throwable $e): void {
+            // A short reference in the log context before the fault's log line is written: the
+            // admin's error page shows the same one, so support finds the fault from it.
+            ErrorReference::current();
+
             try {
                 app(ErrorReporter::class)->report($e);
             } catch (Throwable) {
                 // the reporter guards itself; this only catches a failure to build it
             }
         });
+
+        // The admin's own error pages (no permission, not found, session ended, too fast, our
+        // fault, maintenance, a site not open): /admin…, the platform console and Livewire updates
+        // only — everything else (the storefront, JSON callers) keeps Laravel's handling (null).
+        $exceptions->render(fn (Throwable $e, Request $request) => app(AdminErrorPages::class)->render($e, $request));
     })->create();
