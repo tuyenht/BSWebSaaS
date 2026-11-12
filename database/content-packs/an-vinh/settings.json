@@ -208,6 +208,13 @@
    }
   },
   {
+   "key": "setting:storefront.web_analytics",
+   "note": "Đo tốc độ khách thật bằng Cloudflare Web Analytics: mã của trang av1.baoson.net (Cloudflare → Web Analytics, cách cài \"Enable with JS Snippet installation\"). Mã này hiện công khai trong mã trang, không phải mật khẩu.",
+   "value": {
+    "cloudflare_token": "2e6b9be8764d44e48361a27c55c5c8aa"
+   }
+  },
+  {
    "key": "setting:storefront.layout_blocks",
    "note": "Cột phải mặc định (bài tin tức): Tư vấn, Bài viết mới, Chuyên mục có số bài ở cuối; bài năng lực và bài dự án có cột riêng theo chuyên mục (taxonomies.json); dải cuối trang sản phẩm và hai ô quanh nút báo giá của trang sản phẩm. Chỉ các ô này do gói quản lý.",
    "managed_keys": [
