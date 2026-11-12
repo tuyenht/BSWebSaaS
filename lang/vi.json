@@ -915,6 +915,8 @@
     "leads.toast_spam": "Đã chuyển vào Thư rác",
     "leads.toast_not_spam": "Đã đưa về “Đã xem”",
     "leads.toast_undone": "Đã hoàn tác",
+    "leads.undo_changed": "Không hoàn tác được: liên hệ đã được người khác đổi trạng thái sau đó.",
+    "leads.undo_partial": "Đã hoàn tác :count liên hệ; :left liên hệ đã được người khác đổi sau đó nên giữ nguyên.",
     "leads.gone": "Liên hệ này không còn nữa — danh sách đã được tải lại.",
     "leads.back": "Quay lại danh sách",
     "leads.sent_via": "Gửi qua biểu mẫu “:form”",

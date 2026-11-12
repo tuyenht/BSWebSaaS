@@ -249,12 +249,20 @@ final class Inbox extends Component
             }
         }
         $back = 0;
+        $asked = 0;
         foreach ($byStatus as $status => $ulids) {
+            $asked += count($ulids);
             // only a lead still in the status the action gave it: one a colleague changed since stays
             $back += FormSubmission::query()->whereIn('ulid', $ulids)->where('status', $op['set'])
                 ->update(['status' => $status, 'updated_at' => now()]);
         }
-        $this->say($back > 0 ? __('leads.toast_undone') : __('leads.gone'), $back > 0 ? 'success' : 'error');
+        if ($back === 0) {
+            $this->say(__('leads.undo_changed'), 'error');
+        } elseif ($back < $asked) {
+            $this->say(__('leads.undo_partial', ['count' => $back, 'left' => $asked - $back]));
+        } else {
+            $this->say(__('leads.toast_undone'));
+        }
     }
 
     /** Close the message the member (or its timer) names; a newer message stays. */

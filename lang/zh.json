@@ -915,6 +915,8 @@
     "leads.toast_spam": "已移入垃圾信息",
     "leads.toast_not_spam": "已移回“已查看”",
     "leads.toast_undone": "已撤销",
+    "leads.undo_changed": "无法撤销：之后已有其他人更改了状态。",
+    "leads.undo_partial": "已撤销 :count 条；:left 条之后已被他人更改，保持不变。",
     "leads.gone": "此咨询已不存在 — 列表已重新加载。",
     "leads.back": "返回列表",
     "leads.sent_via": "通过表单“:form”发送",

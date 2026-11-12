@@ -11,6 +11,7 @@ use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use Illuminate\Support\Facades\DB;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 
 /*
@@ -282,8 +283,44 @@ it('leaves a lead alone on undo when a colleague changed it after the action', f
         expect([leadStatus($a), leadStatus($b)])->toBe(['archived', 'archived']);
 
         FormSubmission::query()->whereKey($a->id)->update(['status' => 'spam']);
-        $page->call('undoLast');
+        $page->call('undoLast')->assertSee(__('leads.undo_partial', ['count' => 1, 'left' => 1]));
         expect([leadStatus($a), leadStatus($b)])->toBe(['spam', 'new']);
+    });
+});
+
+it('says the undo did nothing when a colleague changed every lead after the action', function (): void {
+    $manager = leadManager();
+    $a = listLead('contact', ['name' => 'Đặng Thu Hà', 'status' => 'new']);
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $a): void {
+        $page = Livewire::actingAs($manager)->test(Inbox::class)
+            ->call('toggleSelect', [$a->ulid])
+            ->call('bulkDone');
+
+        FormSubmission::query()->whereKey($a->id)->update(['status' => 'spam']);
+        $page->call('undoLast')
+            ->assertSee(__('leads.undo_changed'))
+            ->assertDontSee(__('leads.toast_undone'));
+        expect(leadStatus($a))->toBe('spam');
+    });
+});
+
+it('pages leads sent in the same second by their code, none twice and none skipped', function (): void {
+    $manager = leadManager();
+    $at = now()->subHour()->startOfSecond();
+    foreach (range(1, 18) as $i) {
+        listLead('contact', ['name' => sprintf('Cùng lúc %02d', $i), 'created_at' => $at]);
+    }
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        $page = Livewire::actingAs($manager)->test(Inbox::class);
+        $first = preg_match_all('/Cùng lúc \d{2}/', $page->html(), $m) ? array_unique($m[0]) : [];
+        expect($first)->toHaveCount(15);
+
+        $page->call('loadMore')->assertDontSee(__('leads.load_more'));
+        $all = preg_match_all('/Cùng lúc \d{2}/', $page->html(), $m) ? array_values(array_unique($m[0])) : [];
+        sort($all);
+        expect($all)->toBe(array_map(fn (int $i): string => sprintf('Cùng lúc %02d', $i), range(1, 18)));
     });
 });
 
@@ -343,7 +380,7 @@ it('puts the address and the subject into the mail link encoded, so no header ca
     });
 });
 
-it('changes nothing of another site\'s lead from the ticks, the status buttons or the undo', function (): void {
+it('changes nothing of another site\'s lead from the ticks or the status buttons, and the undo cannot be set from the page', function (): void {
     $manager = leadManager();
     $mine = listLead('contact', ['name' => 'Của tôi', 'status' => 'new']);
     $theirs = otherSiteLead('Của người khác');
@@ -358,6 +395,11 @@ it('changes nothing of another site\'s lead from the ticks, the status buttons o
             ->assertSee(__('leads.gone'))
             ->assertDontSee('Của người khác');
         expect(leadStatus($mine))->toBe('spam');
+
+        // the page cannot hand the undo another website's lead: the undo is filled only by the server
+        expect(fn () => Livewire::actingAs($manager)->test(Inbox::class)
+            ->set('undoOp', ['set' => 'new', 'items' => [$theirs->ulid => 'archived']]))
+            ->toThrow(CannotUpdateLockedPropertyException::class);
     });
     expect(leadStatusOn(2, $theirs->ulid))->toBe('new');
 });
