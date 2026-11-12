@@ -30,7 +30,7 @@ final class BranchesComponent implements Component
         return [
             'heading' => ['type' => 'text'],
             'description' => ['type' => 'textarea'],
-        ] + SectionProps::LIST_DISPLAY;
+        ] + SectionProps::LIST_LAYOUT;
     }
 
     /**

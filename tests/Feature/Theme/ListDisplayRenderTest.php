@@ -216,13 +216,30 @@ it('reads the same number of queries with and without the display group', functi
     });
 });
 
+/**
+ * The display props a list block declares: a list of the site’s content adds the "view all" button.
+ *
+ * @return list<string>
+ */
+function listGroupKeys(string $type): array
+{
+    return array_keys(in_array($type, ['entry_grid', 'product_grid'], true) ? SectionProps::LIST_DISPLAY : SectionProps::LIST_LAYOUT);
+}
+
 it('declares the group on the five list blocks and refuses an unknown value when saving', function (string $type): void {
     $schema = app(ComponentRegistry::class)->schemaFor($type);
 
-    foreach (array_keys(SectionProps::LIST_DISPLAY) as $prop) {
+    foreach (listGroupKeys($type) as $prop) {
         expect($schema)->toHaveKey($prop);
     }
 })->with(['entry_grid', 'product_grid', 'partners', 'testimonial', 'team']);
+
+it('offers "view all" only on the lists that have a full list to lead to', function (string $type, bool $offered): void {
+    expect(array_key_exists('view_all', app(ComponentRegistry::class)->schemaFor($type)))->toBe($offered);
+})->with([
+    ['entry_grid', true], ['product_grid', true],
+    ['features', false], ['partners', false], ['testimonial', false], ['team', false], ['branches', false],
+]);
 
 it('validates the group in the page JSON', function (): void {
     seedTenancy();
@@ -406,7 +423,7 @@ describe('the builder', function (): void {
             $component = Livewire::actingAs($editor->fresh())->test(Editor::class)->call('addBlock', $type);
             $props = $component->get('blocks')[0]['props'];
 
-            foreach (array_keys(SectionProps::LIST_DISPLAY) as $prop) {
+            foreach (listGroupKeys($type) as $prop) {
                 expect($props[$prop])->toBe('auto');
             }
 
@@ -443,7 +460,7 @@ describe('the builder saving a list block', function (): void {
                 ->call('addBlock', $type)->call('save')->assertHasNoErrors();
 
             $props = $entry->translationFor('vi')?->body['blocks'][0]['props'] ?? [];
-            foreach (array_keys(SectionProps::LIST_DISPLAY) as $prop) {
+            foreach (listGroupKeys($type) as $prop) {
                 expect($props[$prop] ?? null)->toBe('auto');
             }
         });
