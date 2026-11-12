@@ -134,7 +134,7 @@ it('keeps refusing writes and the admin of a site that is not open', function ()
     $this->get('http://b.test/admin/login')->assertForbidden();
 });
 
-it('refuses with a 403 when the site’s status is not one it knows (fail-closed)', function (): void {
+it('refuses with a 403 when there is no site status to read (fail-closed)', function (): void {
     // The sites table's CHECK allows only the four known words, so the reachable unknown is none at
     // all: no resolved site, or no row. The gate reads that as closed, never as open.
     app(CurrentSite::class)->clear();

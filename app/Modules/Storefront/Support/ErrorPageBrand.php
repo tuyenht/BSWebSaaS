@@ -23,11 +23,6 @@ use Throwable;
  */
 final class ErrorPageBrand
 {
-    public static function for(Request $request): ?string
-    {
-        return self::resolve($request)['name'];
-    }
-
     /**
      * The name, and whether finding it failed on a fault (true) rather than on a host no site owns.
      *
