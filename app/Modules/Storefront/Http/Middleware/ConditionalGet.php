@@ -21,7 +21,9 @@ use Symfony\Component\HttpFoundation\Response;
  * (the edge-cache header EdgeCacheHeaders sets inside this) stay as they were: a 304 keeps
  * them, only the body and the content headers go.
  *
- * Runs inside the route, after the page is rendered, so the hash covers the body the visitor gets.
+ * Runs inside the route, after the page is rendered, so the hash covers the body the visitor gets,
+ * plus the Link header (Early Hints): the edge revalidates its copy with this tag and, on a 304,
+ * keeps the headers it stored, so a change to the hints alone must change the tag too.
  */
 final class ConditionalGet
 {
@@ -47,7 +49,7 @@ final class ConditionalGet
             return $response; // streamed or file responses have no body in hand
         }
 
-        $response->setEtag(hash('xxh128', $content), true);
+        $response->setEtag(hash('xxh128', $content."\0".$response->headers->get('Link', '')), true);
         $response->isNotModified($request);
 
         return $response;
