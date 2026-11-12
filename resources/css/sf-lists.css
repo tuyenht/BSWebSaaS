@@ -974,7 +974,7 @@
     font-size: 1.5rem;
     line-height: 2rem;
     font-weight: 700;
-    overflow-wrap: break-word;
+    overflow-wrap: anywhere;
 }
 
 .sf-hcard__text {
@@ -1015,7 +1015,7 @@
 }
 
 /* Icon-head cards two a row on a phone (sf-grid--4p): the icon goes above the title, so the title
-   keeps the card's full width and wraps between words, never inside one. */
+   keeps the card's full width; only a word longer than the card breaks. */
 @media (max-width: 639.98px) {
     .sf-grid--4p > .sf-hcard {
         padding: 1.25rem;

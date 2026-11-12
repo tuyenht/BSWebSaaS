@@ -148,10 +148,10 @@ describe('the features block', function (): void {
         expect($html)->toContain('<ul class="sf-grid sf-grid--4p">')
             ->and(substr_count($html, '<li class="sf-hcard">'))->toBe(4)
             // Beside the icon a title had about 35px of a 390px phone and broke inside words; below 640px the
-            // head is a column, so the title keeps the card's width and wraps between words.
+            // head is a column, so the title keeps the card's width; only a word longer than the card breaks.
             ->and($css)->toMatch('/@media \(max-width: 639\.98px\) \{\n    \.sf-grid--4p > \.sf-hcard \{\n        padding: 1\.25rem;\n    \}\n\n    \.sf-grid--4p > \.sf-hcard > \.sf-hcard__head \{\n        flex-direction: column;/')
             ->and(strpos($css, '.sf-grid--4p > .sf-hcard {'))->toBeGreaterThan(strpos($css, '.sf-grid > .sf-hcard {'))
-            ->and($css)->toMatch('/\.sf-hcard__title \{[^}]*overflow-wrap: break-word;/');
+            ->and($css)->toMatch('/\.sf-hcard__title \{[^}]*overflow-wrap: anywhere;/');
     });
 
     it('keeps the top-rule card and wraps its text so a phone can lay it out as a row', function (): void {
