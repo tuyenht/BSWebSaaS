@@ -11,7 +11,7 @@
     "vi": "Đồ gá, khuôn mẫu, gia công CNC | Cơ Khí Chính Xác An Vinh"
    },
    "seo_description": {
-    "vi": "An Vinh thiết kế, chế tạo jig, đồ gá, khuôn mẫu và gia công CNC theo bản vẽ tại ba nhà máy 4.300 m² ở Hà Nội; quản lý chất lượng ISO 9001:2015."
+    "vi": "An Vinh thiết kế, chế tạo jig, đồ gá, khuôn mẫu và gia công CNC theo bản vẽ tại ba nhà máy 7.300 m² ở Hà Nội và Thái Nguyên; quản lý chất lượng ISO 9001:2015."
    },
    "body": {
     "vi": [
@@ -259,7 +259,7 @@
     "vi": "Giới thiệu công ty | Cơ Khí Chính Xác An Vinh"
    },
    "seo_description": {
-    "vi": "An Vinh thiết kế, chế tạo Jig & đồ gá, khuôn mẫu và gia công CNC từ năm 2019, với ba nhà máy 4.300 m² tại Hà Nội và hệ thống quản lý chất lượng ISO 9001:2015."
+    "vi": "An Vinh thiết kế, chế tạo Jig & đồ gá, khuôn mẫu và gia công CNC từ năm 2019, với ba nhà máy 7.300 m² ở Hà Nội và Thái Nguyên; quản lý chất lượng ISO 9001:2015."
    },
    "body": {
     "vi": [
@@ -292,7 +292,7 @@
         },
         {
          "kind": "number",
-         "value": 4300,
+         "value": 7300,
          "suffix": "m²",
          "label": "Diện tích nhà xưởng"
         },
@@ -394,7 +394,7 @@
       "props": {
        "heading": "Nhà xưởng & máy móc",
        "paragraphs": [
-        "Ba nhà máy với tổng diện tích 4.300 m² tại xã Trung Giã và xã Thạch Thất, Hà Nội, chuyên lắp ráp, hàn, dập và gia công cơ khí chính xác.",
+        "Ba nhà máy với tổng diện tích 7.300 m² tại xã Trung Giã, xã Thạch Thất (Hà Nội) và Thái Nguyên, chuyên lắp ráp, hàn, dập và gia công cơ khí chính xác.",
         "Xem địa chỉ từng nhà máy, danh mục máy móc và thiết bị đo kiểm."
        ],
        "image_url": {
@@ -460,7 +460,7 @@
     "vi": "Nhà xưởng & máy móc | Cơ Khí Chính Xác An Vinh"
    },
    "seo_description": {
-    "vi": "Ba nhà máy của An Vinh tại Trung Giã và Thạch Thất, Hà Nội, tổng 4.300 m²: lắp ráp, hàn, dập, gia công CNC; máy phay, tiện CNC, cắt dây EDM và máy đo CMM."
+    "vi": "Ba nhà máy An Vinh tại Hà Nội và Thái Nguyên, tổng 7.300 m²: lắp ráp, hàn, dập, gia công CNC; máy phay, tiện CNC, cắt dây EDM và máy đo CMM."
    },
    "body": {
     "vi": [
@@ -468,7 +468,7 @@
       "type": "page_header",
       "props": {
        "title": "Nhà xưởng & máy móc",
-       "subtitle": "Ba nhà máy tại Hà Nội, tổng diện tích 4.300 m², cùng máy móc và thiết bị đo kiểm",
+       "subtitle": "Ba nhà máy tại Hà Nội và Thái Nguyên, tổng diện tích 7.300 m², cùng máy móc và thiết bị đo kiểm",
        "image_url": {
         "media": "plant-3-machining-hall"
        }
@@ -491,32 +491,32 @@
         {
          "title": "Máy CNC",
          "icon": "wrench",
-         "text": "3 máy cỡ lớn, kích thước bàn gia công tới X4200 × Y3200 × Z1000 mm, và 15 máy cỡ nhỏ X900 × Y450 × Z450 mm."
+         "text": "4 máy cỡ lớn, kích thước bàn gia công tới X4200 × Y3200 × Z1000 mm (thêm 1 máy X4200 × Y3000 × Z1250 mm), 15 máy cỡ nhỏ X900 × Y450 × Z450 mm và 10 máy X800 × Y450 × Z400 mm."
         },
         {
          "title": "Máy phay, máy mài",
          "icon": "cog",
-         "text": "Máy phay giường X6000 × Y1500 × Z1000 mm, 2 máy phay tự động, 11 máy phay nhỏ và 8 máy mài giường tới X3200 × Y1500 × Z1000 mm."
+         "text": "Máy phay giường X6000 × Y1500 × Z1000 mm, 10 máy phay nhỏ và 8 máy mài giường tới X3200 × Y1500 × Z1000 mm."
         },
         {
          "title": "Máy tiện, khoan, taro",
          "icon": "adjust",
-         "text": "3 máy tiện CNC, 3 máy tiện cơ, 5 máy khoan cần tới X1000 × Y1500 × Z1500 mm, 11 máy khoan khác và 5 máy taro."
+         "text": "4 máy tiện CNC, 3 máy tiện cơ, 5 máy khoan cần tới X1000 × Y1500 × Z1500 mm, 10 máy khoan nhỏ, 4 máy khoan taro và 5 máy taro."
         },
         {
          "title": "Cắt dây, xung điện (EDM)",
          "icon": "adjust",
-         "text": "7 máy cắt dây X900 × Y450 × Z300 mm và 2 máy xung X300 × Y250 × Z400 mm."
+         "text": "10 máy cắt dây X900 × Y450 × Z300 mm và 2 máy xung X300 × Y250 × Z400 mm."
         },
         {
          "title": "Hàn, dập",
          "icon": "box",
-         "text": "6 máy hàn MIG/MAG, 1 máy hàn brazing, 3 máy hàn khác, máy dập 110 tấn và máy khắc laze."
+         "text": "6 máy hàn MAG, 4 robot hàn MIG/MAG, 3 máy hàn brazing, 4 máy dập 80 – 160 tấn, 1 máy chấn, 3 máy uốn, 3 máy khắc laze, 1 máy cắt tia nước và 1 máy phun bi, phun cát."
         },
         {
          "title": "Thiết bị đo kiểm",
          "icon": "check",
-         "text": "2 máy đo 3D CMM và 2 tay đo 3D Faro Arm."
+         "text": "3 máy đo 3D CMM, 3 tay đo 3D Faro Arm và 1 máy đo C-track."
         }
        ],
        "heading_decor": "line",
@@ -550,19 +550,19 @@
          "image": {
           "media": "plant-3-machining-hall"
          },
-         "caption": "Nhà máy 3: xưởng gia công"
+         "caption": "Nhà máy 2: xưởng gia công"
         },
         {
          "image": {
           "media": "plant-2-assembly-floor-1"
          },
-         "caption": "Nhà máy 2: xưởng lắp ráp"
+         "caption": "Xưởng lắp ráp đồ gá"
         },
         {
          "image": {
           "media": "plant-2-assembly-floor-2"
          },
-         "caption": "Nhà máy 2: các khung đồ gá trên sàn xưởng"
+         "caption": "Các khung đồ gá trên sàn xưởng lắp ráp"
         }
        ],
        "heading_decor": "line",
@@ -588,7 +588,7 @@
          "image": {
           "media": "plant-3-cnc-gantry"
          },
-         "caption": "Máy CNC cỡ lớn tại nhà máy 3"
+         "caption": "Máy CNC cỡ lớn tại nhà máy 2"
         }
        ],
        "heading_decor": "line",
@@ -816,7 +816,7 @@
     "vi": "Hồ sơ năng lực & tài liệu | Cơ Khí Chính Xác An Vinh"
    },
    "seo_description": {
-    "vi": "Tải hồ sơ năng lực An Vinh (PDF, 21 trang): thông tin công ty, ba nhà máy 4.300 m², máy móc, chứng nhận ISO 9001:2015, sản phẩm Jig & đồ gá, khuôn mẫu."
+    "vi": "Tải hồ sơ năng lực An Vinh (PDF, 27 trang): thông tin công ty, ba nhà máy 7.300 m², máy móc, chứng nhận ISO 9001:2015, sản phẩm Jig & đồ gá, khuôn mẫu."
    },
    "body": {
     "vi": [
@@ -861,7 +861,7 @@
         },
         {
          "kind": "number",
-         "value": 4300,
+         "value": 7300,
          "suffix": "m²",
          "label": "Nhà xưởng"
         }
