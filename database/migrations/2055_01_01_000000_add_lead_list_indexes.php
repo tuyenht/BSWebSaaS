@@ -24,6 +24,10 @@ use Illuminate\Support\Facades\DB;
  *   capped count of the "new" tab       3.3 -> 2.2
  *   a website of 20, first page         0.07 -> 0.10
  *
+ * As app_user under RLS the same plans hold: every operator in these conditions (bigint, varchar,
+ * timestamptz and char(26) comparisons) is leakproof, so the cursor stays an index condition;
+ * tests/Feature/Admin/LeadListIndexesTest.php plans the real statements that way.
+ *
  * The form filter keeps the (site_id, form_id, created_at) index: its rows come out by time and
  * only leads sharing one created_at need the ulid sort.
  *
