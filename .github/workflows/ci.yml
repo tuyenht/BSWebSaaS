@@ -611,6 +611,14 @@ jobs:
           --chrome-options="--headless=new,--no-sandbox"
           --exit
 
+      # Tap check on a phone (320 and 390px, touch): every visible control must be what a finger hits at
+      # its centre, and a tap on each rail arrow must turn the rail, never open the card under it (a
+      # card's link overlay once rose over the arrows). /do-kiem carries two card rails for this.
+      - name: Tap check (phone · nothing drawn over a control)
+        run: >-
+          node scripts/storefront/tap-check.mjs --chrome="${{ steps.chrome.outputs.chrome-path }}" --widths=320,390 --expect-arrows=/do-kiem
+          "http://${CWV_HOST}:${CWV_PORT}/" "http://${CWV_HOST}:${CWV_PORT}/lien-he" "http://${CWV_HOST}:${CWV_PORT}/tin-tuc" "http://${CWV_HOST}:${CWV_PORT}/do-kiem" "http://${CWV_HOST}:${CWV_PORT}/ban-tin"
+
       # Admin a11y: render the admin screens as a seeded owner (no login, no 2FA, no real env —
       # tests/Tools/RenderAdminPreviewTest.php) and gate them on STRUCTURAL WCAG 2A/2AA with axe in
       # jsdom (dashboard, content list, email settings, kit + revealed modal; light and dark). Colour

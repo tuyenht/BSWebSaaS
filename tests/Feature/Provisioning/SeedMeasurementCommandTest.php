@@ -48,7 +48,10 @@ it('seeds the measurement page and the news card grid', function (): void {
         ->and($page)->toContain('sf-features')
         ->and($page)->toContain('cta--rounded')
         ->and(substr_count($page, '<li class="sf-contact-card">'))->toBe(3)
-        ->and(substr_count($page, '<h1'))->toBe(1);
+        ->and(substr_count($page, '<h1'))->toBe(1)
+        // Two card rails with their arrows: the cwv job taps those arrows on a phone (tap-check.mjs).
+        ->and(substr_count($page, 'data-sf-rail '))->toBe(2)
+        ->and(substr_count($page, 'data-sf-rail-prev'))->toBe(2);
 
     $news = $this->get('http://cwv.platform.test'.SeedMeasurementSite::NEWS_PATH)->assertOk()->getContent();
     expect(substr_count($news, '<article class="sf-card sf-card--news '))->toBeGreaterThanOrEqual(6)

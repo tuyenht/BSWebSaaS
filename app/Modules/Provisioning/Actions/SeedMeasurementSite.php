@@ -22,8 +22,9 @@ use Carbon\CarbonImmutable;
  * Fill a provisioned measurement site with the storefront's richer looks, so the CI `cwv` job
  * measures them on real pages: theme tokens, header and footer settings, nine photo rows pointing
  * at the CI fixture files (`tests/Fixtures/cwv`, served by the static media driver), a `/do-kiem`
- * page (slider, service icon cards, product photo cards, top-rule features, a rounded call to
- * action, contact cards) and `/ban-tin`, a news card grid with two child categories. The
+ * page (slider, service icon cards and product photo cards as card rails with arrows, which the
+ * job's tap check needs on a phone, top-rule features, a rounded call to action, contact cards) and
+ * `/ban-tin`, a news card grid with two child categories. The
  * provisioned `/tin-tuc` list is left as it is.
  *
  * White-label: neutral sample text, no brand. Idempotent: rows are looked up by slug, storage key,
@@ -184,9 +185,11 @@ final readonly class SeedMeasurementSite
             ['type' => 'entry_grid', 'props' => [
                 'heading' => 'Dịch vụ', 'description' => 'Giải pháp trọn gói từ thiết kế đến bảo trì.',
                 'taxonomy_slug' => 'dich-vu', 'limit' => 4, 'variant' => 'icon-cards', 'bg' => 'tint',
+                'layout' => 'auto', 'arrows' => 'always',
             ]],
             ['type' => 'product_grid', 'props' => [
                 'heading' => 'Sản phẩm tiêu biểu', 'limit' => 3, 'variant' => 'overlay', 'bg' => 'surface',
+                'layout' => 'auto', 'arrows' => 'always',
             ]],
             ['type' => 'features', 'props' => [
                 'heading' => 'Năng lực', 'variant' => 'top-rule',
