@@ -266,3 +266,42 @@ it('marks a channel switched on but not filled in as an unfinished slot in the a
     expect(FloatingContact::for($empty, 'vi'))->toBeNull()
         ->and(array_column(FloatingContact::preview($empty, 'vi')['buttons'], 'key'))->toBe(['sms']);
 });
+
+it('never lets an unfinished slot push a finished channel out of the bar preview', function (array $channels, ?string $shop, array $bar): void {
+    $raw = ['enabled' => true, 'theme' => 'horizontal', 'buy' => ['enabled' => true, 'color' => '#0ab39c'], 'channels' => $channels];
+
+    expect(array_column(FloatingContact::preview($raw, 'vi', $shop)['bar'], 'key'))->toBe($bar)
+        // the finished cells are exactly the site's bar
+        ->and(array_column(array_values(array_filter(FloatingContact::preview($raw, 'vi', $shop)['bar'], fn (array $b): bool => ! isset($b['pending']))), 'key'))
+        ->toBe(array_column(FloatingContact::for($raw, 'vi', $shop)['bar'], 'key'));
+})->with([
+    'five finished + one slot: no room left' => [[
+        ['key' => 'phone', 'on' => true, 'value' => '0912345678'],
+        ['key' => 'zalo', 'on' => true, 'value' => ''],
+        ['key' => 'sms', 'on' => true, 'value' => '0912345678'],
+        ['key' => 'whatsapp', 'on' => true, 'value' => '0912345678'],
+        ['key' => 'telegram', 'on' => true, 'value' => 'trangmau'],
+        ['key' => 'viber', 'on' => true, 'value' => '0912345678'],
+    ], null, ['phone', 'sms', 'whatsapp', 'telegram', 'viber']],
+    'two finished + one slot in the middle: setting order' => [[
+        ['key' => 'phone', 'on' => true, 'value' => '0912345678'],
+        ['key' => 'messenger', 'on' => true, 'value' => ''],
+        ['key' => 'zalo', 'on' => true, 'value' => ''],
+        ['key' => 'sms', 'on' => true, 'value' => '0912345678'],
+    ], null, ['phone', 'zalo', 'sms']],
+    '"Mua hàng" counted: four finished fill the bar' => [[
+        ['key' => 'phone', 'on' => true, 'value' => '0912345678'],
+        ['key' => 'zalo', 'on' => true, 'value' => ''],
+        ['key' => 'sms', 'on' => true, 'value' => '0912345678'],
+        ['key' => 'whatsapp', 'on' => true, 'value' => '0912345678'],
+        ['key' => 'telegram', 'on' => true, 'value' => 'trangmau'],
+    ], '/san-pham', ['phone', 'sms', 'whatsapp', 'telegram']],
+    'one place left: the first slot only' => [[
+        ['key' => 'zalo', 'on' => true, 'value' => ''],
+        ['key' => 'phone', 'on' => true, 'value' => '0912345678'],
+        ['key' => 'sms', 'on' => true, 'value' => ''],
+        ['key' => 'whatsapp', 'on' => true, 'value' => '0912345678'],
+        ['key' => 'telegram', 'on' => true, 'value' => 'trangmau'],
+        ['key' => 'viber', 'on' => true, 'value' => '0912345678'],
+    ], null, ['zalo', 'phone', 'whatsapp', 'telegram', 'viber']],
+]);

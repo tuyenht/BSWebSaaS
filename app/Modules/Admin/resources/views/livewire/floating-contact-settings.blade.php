@@ -499,16 +499,18 @@
                     </div>
                     <div class="flex justify-center bg-surface-muted p-5" aria-hidden="true">
                         <div class="flex flex-col overflow-hidden bg-surface"
-                             x-bind:class="dev === 'mobile' ? 'h-[25.625rem] w-[min(17.5rem,100%)] rounded-[26px] border-[7px] border-text-strong shadow-[0_12px_30px_-10px_rgb(0_0_0/0.35)]' : 'h-[18.125rem] w-full rounded-[10px] shadow-[0_10px_30px_-12px_rgb(0_0_0/0.3)]'"
+                             x-bind:class="dev === 'mobile' ? 'min-h-[25.625rem] w-[min(17.5rem,100%)] rounded-[26px] border-[7px] border-text-strong shadow-[0_12px_30px_-10px_rgb(0_0_0/0.35)]' : 'min-h-[18.125rem] w-full rounded-[10px] shadow-[0_10px_30px_-12px_rgb(0_0_0/0.3)]'"
                              @class([
-                                 'h-[18.125rem] w-full rounded-[10px] shadow-[0_10px_30px_-12px_rgb(0_0_0/0.3)]' => $isVertical,
-                                 'h-[25.625rem] w-[min(17.5rem,100%)] rounded-[26px] border-[7px] border-text-strong shadow-[0_12px_30px_-10px_rgb(0_0_0/0.35)]' => ! $isVertical,
+                                 'min-h-[18.125rem] w-full rounded-[10px] shadow-[0_10px_30px_-12px_rgb(0_0_0/0.3)]' => $isVertical,
+                                 'min-h-[25.625rem] w-[min(17.5rem,100%)] rounded-[26px] border-[7px] border-text-strong shadow-[0_12px_30px_-10px_rgb(0_0_0/0.35)]' => ! $isVertical,
                              ])>
                             <div class="flex h-7 shrink-0 items-center gap-1.5 border-b border-border bg-surface px-3">
                                 <span class="size-2 rounded-full bg-danger-base"></span><span class="size-2 rounded-full bg-warning-base"></span><span class="size-2 rounded-full bg-success-base"></span>
                             </div>
-                            <div class="relative flex-1 overflow-hidden bg-surface-muted">
-                                <div class="flex flex-col gap-2 p-4">
+                            {{-- The frame keeps its size at least and grows to hold the whole stack (every button, any text size):
+                                 the page sketch lies under it, the buttons sit in the flow at the bottom, never cut off. --}}
+                            <div class="relative flex flex-1 flex-col bg-surface-muted">
+                                <div class="absolute inset-x-0 top-0 flex flex-col gap-2 p-4">
                                     <div class="h-[11px] w-[55%] rounded bg-border-strong"></div><div class="h-2 w-[88%] rounded bg-border"></div><div class="h-2 w-[78%] rounded bg-border"></div>
                                     <div class="mt-1 h-16 rounded-lg bg-border"></div><div class="mt-1 h-2 w-[70%] rounded bg-border"></div>
                                 </div>
@@ -519,11 +521,14 @@
                                         // The side and offsets as the normalizer read them (a tampered draft can hold anything).
                                         $pvSide = $preview['position'];
                                         $tipSide = ['left' => 'left-full ml-2', 'bottom' => 'bottom-full mb-2 left-1/2 -translate-x-1/2', 'right' => 'right-full mr-2'][$pvSide] ?? 'right-full mr-2';
-                                        $wrap = $pvSide === 'bottom'
-                                            ? 'inset-x-0 flex-row justify-center'
-                                            : 'flex-col '.($pvSide === 'left' ? 'left-[var(--ox)]' : 'right-[var(--ox)]');
+                                        // A row at the bottom wraps as on the site (1rem in from each edge).
+                                        $wrap = match ($pvSide) {
+                                            'bottom' => 'w-full flex-row flex-wrap justify-center px-4',
+                                            'left' => 'flex-col self-start ml-[var(--ox)]',
+                                            default => 'flex-col self-end mr-[var(--ox)]',
+                                        };
                                     @endphp
-                                    <div class="absolute bottom-[var(--oy)] z-5 flex items-center {{ $wrap }}" x-bind:class="dev === 'mobile' ? 'gap-2.5' : 'gap-3'"
+                                    <div class="relative z-5 mt-auto mb-[var(--oy)] flex items-center pt-3 {{ $wrap }}" x-bind:class="dev === 'mobile' ? 'gap-2.5' : 'gap-3'"
                                          style="--ox: {{ $preview['offset_x'] }}px; --oy: {{ $preview['offset_y'] }}px">
                                         @foreach ($pvButtons as $b)
                                             {{-- Switched on but not filled in yet: its place, drawn unfinished (dashed, no brand fill) — the site does not show it. --}}

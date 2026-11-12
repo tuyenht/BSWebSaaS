@@ -179,8 +179,9 @@ final class FloatingContact
     /**
      * The same shape for the admin preview: a channel switched on whose value is missing or does not
      * pass yet keeps its place there as an unfinished slot (`pending` = true, `href` = ''), so the
-     * member sees where its button goes once filled in. It counts toward the bar's five places like a
-     * finished one, and the bar still leaves out the chat channels. Never used for the site itself.
+     * member sees where its button goes once filled in. The bar keeps exactly the site's channels; a
+     * slot only takes a place left under the bar's five (the chat channels still left out), and the
+     * board-style phone bar stays the site's. Never used for the site itself.
      *
      * @param  mixed  $raw  the stored value (an array when set)
      * @param  string|null  $shopHref  the site's product list, or null when it has none
@@ -207,7 +208,6 @@ final class FloatingContact
         $barMax = $buy === null ? self::BAR_MAX : self::BAR_MAX - 1;
 
         $buttons = [];
-        $bar = [];
         $seen = [];
         foreach (array_slice(is_array($raw['channels'] ?? null) ? array_values($raw['channels']) : [], 0, self::MAX_CHANNELS) as $channel) {
             $button = is_array($channel) ? self::button($channel, $locale, $draft) : null;
@@ -216,8 +216,25 @@ final class FloatingContact
             }
             $seen[$button['key']] = true;
             $buttons[] = $button;
-            if (! in_array($button['key'], self::BAR_HIDDEN, true) && count($bar) < $barMax) {
+        }
+
+        // The bar holds the first $barMax finished channels, exactly as the site draws it; unfinished
+        // slots (preview only) take just the places left over, each at its place in the setting's order.
+        $ready = array_values(array_filter($buttons, static fn (array $b): bool => ! isset($b['pending'])));
+        $quick = static fn (array $b): bool => ! in_array($b['key'], self::BAR_HIDDEN, true);
+        $room = $barMax - min($barMax, count(array_filter($ready, $quick)));
+        $bar = [];
+        $finished = 0;
+        $slots = 0;
+        foreach (array_filter($buttons, $quick) as $button) {
+            if (isset($button['pending'])) {
+                if ($slots < $room) {
+                    $bar[] = $button;
+                    $slots++;
+                }
+            } elseif ($finished < $barMax) {
                 $bar[] = $button;
+                $finished++;
             }
         }
 
@@ -226,7 +243,7 @@ final class FloatingContact
         }
 
         return [
-            'phone_bar' => $theme === 'vertical' ? self::phoneBar($raw['phone_bar'] ?? null, $buttons, $locale) : null,
+            'phone_bar' => $theme === 'vertical' ? self::phoneBar($raw['phone_bar'] ?? null, $ready, $locale) : null,
             'theme' => $theme,
             'position' => in_array($raw['position'] ?? null, self::POSITIONS, true) ? (string) $raw['position'] : 'right',
             'offset_x' => self::offset($raw['offset_x'] ?? null, self::MAX_OFFSET_X, self::DEFAULT_OFFSET_X),
