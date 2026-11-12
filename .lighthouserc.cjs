@@ -40,8 +40,8 @@ module.exports = {
       // A page added later joins at 'warn' with the same budgets: /do-kiem and /ban-tin since
       // 02/11, promoted to 'error' once their own CI samples show headroom.
       assertMatrix: [
-        { matchingUrlPattern: '/(do-kiem|ban-tin|khanh-thanh-xuong-moi|do-kiem-gioi-thieu|do-kiem-noi-dung|do-kiem-thuong-mai)$', assertions: budgets('warn') },
-        { matchingUrlPattern: '^https?://[^/]+(/|/lien-he|/tin-tuc)$', assertions: budgets('error') },
+        { matchingUrlPattern: '/(do-kiem|ban-tin)$', assertions: budgets('warn') },
+        { matchingUrlPattern: '^https?://[^/]+(/|/lien-he|/tin-tuc|/khanh-thanh-xuong-moi|/do-kiem-gioi-thieu|/do-kiem-noi-dung|/do-kiem-thuong-mai)$', assertions: budgets('error') },
       ],
     },
     upload: {
