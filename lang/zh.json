@@ -2821,6 +2821,7 @@
     "admin.fc.desk": "电脑预览",
     "admin.fc.mob": "手机预览",
     "admin.fc.preview_empty": "还没有可显示的渠道 — 请开启一个渠道并填写其联系方式。",
+    "admin.fc.empty_value": "尚未填写 — 此按钮还不会显示在网站上。",
     "admin.fc.applied_title": "自动应用到整个网站",
     "admin.fc.applied_body": "点击 :save 后，联系按钮会显示在每个页面上，无需手动粘贴代码。",
     "admin.fc.saved": "已保存",

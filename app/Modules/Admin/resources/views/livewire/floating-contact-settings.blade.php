@@ -290,6 +290,8 @@
                                     $dim = ! $isVertical && in_array($key, FloatingContact::BAR_HIDDEN, true);
                                     $text = FloatingContact::CHANNELS[$key]['text'] ?? null;
                                     $swState = $c['on'] ? __('admin.fc.on') : __('admin.fc.off');
+                                    // Switched on with nothing typed: the site leaves the button out until it is filled in.
+                                    $unfilled = $c['on'] && trim($c['value']) === '' && $valueError === '';
                                 @endphp
                                 <div wire:key="fc-ch-{{ $key }}" wire:sort:item="{{ $key }}"
                                      @class(['flex items-start gap-2.5 rounded-lg border bg-surface p-3', 'border-border' => $c['on'], 'border-dashed border-border bg-surface-muted' => ! $c['on'], 'opacity-80' => $dim])>
@@ -358,10 +360,14 @@
                                                 <div class="min-w-[min(10rem,100%)] flex-[1.35_1_10rem]">
                                                     <input type="text" wire:model.live.blur="channels.{{ $i }}.value" maxlength="{{ FloatingContact::MAX_VALUE }}"
                                                            placeholder="{{ $custom ? 'https://…  ·  tel:  ·  mailto:' : ($examples[$key] ?? '') }}"
-                                                           aria-label="{{ $label }} — {{ $hint }}" aria-invalid="{{ $valueError !== '' ? 'true' : 'false' }}" aria-describedby="fc-hint-{{ $key }}"
+                                                           aria-label="{{ $label }} — {{ $hint }}" aria-invalid="{{ $valueError !== '' ? 'true' : 'false' }}" aria-describedby="fc-hint-{{ $key }}{{ $unfilled ? ' fc-empty-'.$key : '' }}"
                                                            inputmode="{{ in_array($type, ['phone', 'sms', 'whatsapp', 'viber'], true) ? 'tel' : ($type === 'email' ? 'email' : ($type === 'url' ? 'url' : 'text')) }}" autocomplete="off" spellcheck="false"
                                                            class="field w-full min-w-0 rounded-md border bg-surface px-2.5 text-text placeholder:text-placeholder {{ $valueError !== '' ? 'border-danger-text' : 'border-border-input' }}">
                                                     <p id="fc-hint-{{ $key }}" @class(['mt-1 text-caption leading-snug', 'text-danger-text' => $valueError !== '', 'text-text-muted' => $valueError === ''])>{{ $valueError !== '' ? $valueError : $hint }}</p>
+                                                    @if ($unfilled)
+                                                        {{-- The grey text in the field is only an example: say plainly that nothing is filled in yet. --}}
+                                                        <p id="fc-empty-{{ $key }}" class="mt-0.5 text-caption leading-snug font-semibold text-warning-text">{{ __('admin.fc.empty_value') }}</p>
+                                                    @endif
                                                 </div>
                                                 <span class="flex min-w-[min(10rem,100%)] flex-[1_1_calc(13rem+2*var(--user-text-boost))] items-center gap-1.5">
                                                     <x-bs-admin::icon name="ri-price-tag-3" class="size-[min(1.5rem,calc(0.8125rem+var(--user-text-boost)))] shrink-0 text-text-muted" title="{{ __('admin.fc.tip_title') }}" />
@@ -510,16 +516,20 @@
                                     <p class="absolute inset-x-3.5 bottom-3.5 rounded-md border border-border bg-surface px-3 py-2.5 text-caption leading-snug text-text-muted">{{ __('admin.fc.preview_empty') }}</p>
                                 @elseif ($isVertical)
                                     @php
-                                        $tipSide = ['left' => 'left-full ml-2', 'bottom' => 'bottom-full mb-2 left-1/2 -translate-x-1/2', 'right' => 'right-full mr-2'][$position];
-                                        $wrap = $position === 'bottom'
+                                        // The side and offsets as the normalizer read them (a tampered draft can hold anything).
+                                        $pvSide = $preview['position'];
+                                        $tipSide = ['left' => 'left-full ml-2', 'bottom' => 'bottom-full mb-2 left-1/2 -translate-x-1/2', 'right' => 'right-full mr-2'][$pvSide] ?? 'right-full mr-2';
+                                        $wrap = $pvSide === 'bottom'
                                             ? 'inset-x-0 flex-row justify-center'
-                                            : 'flex-col '.($position === 'left' ? 'left-[var(--ox)]' : 'right-[var(--ox)]');
+                                            : 'flex-col '.($pvSide === 'left' ? 'left-[var(--ox)]' : 'right-[var(--ox)]');
                                     @endphp
                                     <div class="absolute bottom-[var(--oy)] z-5 flex items-center {{ $wrap }}" x-bind:class="dev === 'mobile' ? 'gap-2.5' : 'gap-3'"
-                                         style="--ox: {{ $offsetX }}px; --oy: {{ $offsetY }}px">
+                                         style="--ox: {{ $preview['offset_x'] }}px; --oy: {{ $preview['offset_y'] }}px">
                                         @foreach ($pvButtons as $b)
-                                            <span class="group relative flex items-center justify-center rounded-full text-white shadow-[0_4px_12px_rgb(0_0_0/0.25)]"
-                                                  x-bind:class="dev === 'mobile' ? 'size-11' : 'size-[50px]'" style="background: {{ $b['fill'] }}">
+                                            {{-- Switched on but not filled in yet: its place, drawn unfinished (dashed, no brand fill) — the site does not show it. --}}
+                                            @php $pending = $b['pending'] ?? false; @endphp
+                                            <span @class(['group relative flex items-center justify-center rounded-full', 'text-white shadow-[0_4px_12px_rgb(0_0_0/0.25)]' => ! $pending, 'border-2 border-dashed border-border-input bg-surface text-text-muted' => $pending])
+                                                  x-bind:class="dev === 'mobile' ? 'size-11' : 'size-[50px]'" @if ($pending) data-fc-pending="{{ $b['key'] }}" @else style="background: {{ $b['fill'] }}" @endif>
                                                 @if ($b['text'] !== null)
                                                     <span class="text-caption font-extrabold tracking-[-.01em]">{{ $b['text'] }}</span>
                                                 @else
@@ -532,15 +542,16 @@
                                 @else
                                     <div class="absolute inset-x-0 bottom-0 flex min-h-12 border-t border-border bg-surface shadow-[0_-3px_16px_rgb(32_21_18/0.13)]">
                                         @foreach ($pvBar as $b)
-                                            <span @class(['flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-[5px]', 'border-l border-border-soft' => ! $loop->first])>
-                                                <span class="flex h-[22px] min-w-[22px] shrink-0 items-center justify-center rounded-full px-[3px] text-white" style="background: {{ $b['fill'] }}">
+                                            @php $pending = $b['pending'] ?? false; @endphp
+                                            <span @class(['flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-[5px]', 'border-l border-border-soft' => ! $loop->first]) @if ($pending) data-fc-pending="{{ $b['key'] }}" @endif>
+                                                <span @class(['flex h-[22px] min-w-[22px] shrink-0 items-center justify-center rounded-full px-[3px]', 'text-white' => ! $pending, 'border-[1.5px] border-dashed border-border-input bg-surface text-text-muted' => $pending]) @unless ($pending) style="background: {{ $b['fill'] }}" @endunless>
                                                     @if ($b['text'] !== null)
                                                         <span class="text-caption leading-none font-extrabold">{{ $b['text'] }}</span>
                                                     @else
                                                         <svg viewBox="0 0 24 24" fill="currentColor" class="size-[min(1.5rem,calc(0.8125rem+var(--user-text-boost)))]"><path d="{{ $b['icon'] }}"/></svg>
                                                     @endif
                                                 </span>
-                                                <span class="max-w-full text-center text-caption leading-[1.2] font-semibold text-text [overflow-wrap:anywhere]">{{ $word($b) }}</span>
+                                                <span @class(['max-w-full text-center text-caption leading-[1.2] font-semibold [overflow-wrap:anywhere]', 'text-text' => ! $pending, 'text-text-muted' => $pending])>{{ $word($b) }}</span>
                                             </span>
                                         @endforeach
                                         @if ($pvBuy !== null)

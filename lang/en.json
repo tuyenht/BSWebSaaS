@@ -2821,6 +2821,7 @@
     "admin.fc.desk": "Preview on a computer",
     "admin.fc.mob": "Preview on a phone",
     "admin.fc.preview_empty": "No channel to show yet — switch one on and fill in its contact details.",
+    "admin.fc.empty_value": "Not filled in — this button does not show on the website yet.",
     "admin.fc.applied_title": "Applied to the whole website",
     "admin.fc.applied_body": "When you press :save, the contact buttons show on every page. No code to paste.",
     "admin.fc.saved": "Saved",

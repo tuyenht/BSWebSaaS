@@ -2821,6 +2821,7 @@
     "admin.fc.desk": "Xem trên máy tính",
     "admin.fc.mob": "Xem trên điện thoại",
     "admin.fc.preview_empty": "Chưa có kênh nào để hiện — bật một kênh và nhập thông tin liên hệ của kênh đó.",
+    "admin.fc.empty_value": "Chưa nhập — nút này chưa hiện trên website.",
     "admin.fc.applied_title": "Tự động áp dụng toàn website",
     "admin.fc.applied_body": "Khi bấm :save, nút liên hệ tự hiển thị trên mọi trang. Không cần dán mã thủ công.",
     "admin.fc.saved": "Đã lưu",

@@ -233,3 +233,36 @@ it('has no phone bar unless switched on, and never on the bar theme', function (
         ->and(FloatingContact::for(['enabled' => true, 'channels' => $channels, 'phone_bar' => ['enabled' => false]], 'vi')['phone_bar'])->toBeNull()
         ->and(FloatingContact::for(['enabled' => true, 'theme' => 'horizontal', 'channels' => $channels, 'phone_bar' => ['enabled' => true]], 'vi')['phone_bar'])->toBeNull();
 });
+
+it('marks a channel switched on but not filled in as an unfinished slot in the admin preview only', function (): void {
+    $raw = ['enabled' => true, 'theme' => 'horizontal', 'channels' => [
+        ['key' => 'phone', 'on' => true, 'value' => '0912345678'],
+        ['key' => 'messenger', 'on' => true, 'value' => ''],
+        ['key' => 'zalo', 'on' => true, 'value' => ''],
+        ['key' => 'sms', 'on' => true, 'value' => 'not a number'],
+        ['key' => 'email', 'on' => false, 'value' => ''],
+        ['key' => 'whatsapp', 'on' => true, 'value' => ''],
+        ['key' => 'telegram', 'on' => true, 'value' => ''],
+        ['key' => 'viber', 'on' => true, 'value' => ''],
+    ]];
+    $pending = static fn (array $list): array => array_column(array_filter($list, static fn (array $b): bool => $b['pending'] ?? false), 'key');
+
+    // The site: only what passes, never a slot.
+    $site = FloatingContact::for($raw, 'vi');
+    expect(array_column($site['buttons'], 'key'))->toBe(['phone'])
+        ->and($pending($site['buttons']))->toBe([])
+        ->and($site['buttons'][0])->not->toHaveKey('pending');
+
+    // The preview: every switched-on channel at its place, the unfinished ones marked; the bar
+    // still leaves out the chat channels and holds five at most.
+    $preview = FloatingContact::preview($raw, 'vi');
+    expect(array_column($preview['buttons'], 'key'))->toBe(['phone', 'messenger', 'zalo', 'sms', 'whatsapp', 'telegram', 'viber'])
+        ->and($pending($preview['buttons']))->toBe(['messenger', 'zalo', 'sms', 'whatsapp', 'telegram', 'viber'])
+        ->and(array_column($preview['bar'], 'key'))->toBe(['phone', 'zalo', 'sms', 'whatsapp', 'telegram'])
+        ->and(collect($preview['bar'])->firstWhere('key', 'zalo')['href'])->toBe('');
+
+    // Nothing filled in yet: the site shows nothing, the preview still shows where the buttons go.
+    $empty = ['enabled' => true, 'theme' => 'vertical', 'channels' => [['key' => 'sms', 'on' => true, 'value' => '']]];
+    expect(FloatingContact::for($empty, 'vi'))->toBeNull()
+        ->and(array_column(FloatingContact::preview($empty, 'vi')['buttons'], 'key'))->toBe(['sms']);
+});
