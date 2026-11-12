@@ -462,3 +462,22 @@ it('accepts a category intro that is empty or null, which clears it', function (
 
     expect(cpProblems())->toBe([]);
 })->with(['empty' => [''], 'null' => [null]]);
+
+it('accepts the site’s Cloudflare Web Analytics token in the shape the storefront prints', function (): void {
+    cpAddSetting($this->folder, 'setting:storefront.web_analytics', ['cloudflare_token' => '0123456789abcdef0123456789abcdef']);
+
+    expect(cpProblems())->toBe([]);
+});
+
+it('refuses a Cloudflare Web Analytics token the storefront would not print', function (array $value, string $message): void {
+    cpAddSetting($this->folder, 'setting:storefront.web_analytics', $value);
+
+    expect(implode("\n", cpProblems()))->toContain($message);
+})->with([
+    'no token' => [['other' => 'x'], "setting:storefront.web_analytics: 'cloudflare_token' must be the 32-character site token"],
+    'an extra field' => [['cloudflare_token' => '0123456789abcdef0123456789abcdef', 'script' => 'x'], "setting:storefront.web_analytics: 'script' is not a web-analytics field"],
+    'upper-case hex' => [['cloudflare_token' => '0123456789ABCDEF0123456789ABCDEF'], "'cloudflare_token' must be the 32-character site token"],
+    'too short' => [['cloudflare_token' => '0123456789abcdef'], "'cloudflare_token' must be the 32-character site token"],
+    'not a string' => [['cloudflare_token' => 123], "'cloudflare_token' must be the 32-character site token"],
+    'an injection attempt' => [['cloudflare_token' => 'abc"></script><script>'], "'cloudflare_token' must be the 32-character site token"],
+]);

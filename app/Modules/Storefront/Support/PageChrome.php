@@ -7,11 +7,13 @@ namespace App\Modules\Storefront\Support;
 use App\Modules\Catalog\Support\ProductIndexLink;
 use App\Modules\Cms\Navigation\MenuResolver;
 use App\Modules\Cms\Routing\PathBuilder;
+use App\Modules\Shared\Support\PreviewMode;
 use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Theme\Chrome\FloatingContact;
 use App\Modules\Theme\Chrome\SiteVerification;
 use App\Modules\Theme\Chrome\StorefrontChrome;
+use App\Modules\Theme\Chrome\WebAnalytics;
 use App\Modules\Theme\Theming\StorefrontSettings;
 
 /**
@@ -33,8 +35,9 @@ final readonly class PageChrome
     /**
      * The page chrome for the active locale: the optional rich header/footer (site settings,
      * normalized; null = the classic one, read through the same one-query settings reader the design
-     * tokens use), the floating contact buttons, the business identity, the menus, the <html lang>
-     * and the hreflang alternates the caller worked out (none for a page that was not found).
+     * tokens use), the floating contact buttons, the analytics token, the business identity, the
+     * menus, the <html lang> and the hreflang alternates the caller worked out (none for a page that
+     * was not found).
      *
      * @param  string  $requestPath  the prefixed path of the page, for the menus' active state
      * @param  list<array{hreflang: string, href: string}>  $hreflang
@@ -87,6 +90,9 @@ final readonly class PageChrome
             'branchPlaces' => self::branchPlaces(StorefrontChrome::branches($footerRaw, $locale, $default, $mapHosts)),
             // Site-ownership meta tags (Google, Bing, Facebook), read with the other storefront settings.
             'verification' => SiteVerification::tags($this->settings->get('storefront', 'verification')),
+            // The site's Cloudflare Web Analytics token, for the beacon that closes the page (null = none,
+            // or the admin's preview, which is no visitor's page view).
+            'webAnalytics' => PreviewMode::on() ? null : WebAnalytics::token($this->settings->get('storefront', 'web_analytics')),
             // The logo and footer home links stay in the page's language (/en for an English page).
             'homeUrl' => $this->paths->publicUrl('/', $locale),
         ];

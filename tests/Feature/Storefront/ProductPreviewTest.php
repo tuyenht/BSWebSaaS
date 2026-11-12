@@ -205,6 +205,21 @@ it('draws the lead form switched off in the preview and working on the public pa
         ->not->toContain('action=');
 });
 
+it('closes the public product page with the site’s analytics beacon, and never the preview', function (): void {
+    $ulid = previewProduct(status: 'published');
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'web_analytics', 'value' => ['cloudflare_token' => str_repeat('ab', 16)]]));
+    $manager = previewMember(['catalog.view', 'catalog.manage']);
+    $path = app(Tenancy::class)->enter(1, fn (): string => app(PathBuilder::class)->forProduct(Product::query()->firstOrFail()->primaryCategory(), 'do-ga-kiem-dinh', 'vi'));
+
+    $public = (string) $this->get('http://a.test'.$path)->assertOk()->getContent();
+    previewFresh();
+    $preview = (string) $this->actingAs($manager)->get("http://a.test/admin/catalog/{$ulid}/preview")->assertOk()->getContent();
+
+    expect(substr_count($public, 'data-cf-beacon=\'{"token": "'.str_repeat('ab', 16).'"}\''))->toBe(1)
+        ->and($preview)->toContain('<h1 class="product__title">Đồ gá kiểm định</h1>')
+        ->not->toContain('data-cf-beacon')->not->toContain('beacon.min.js');
+});
+
 it('previews a product in the public page’s queries plus the admin’s sign-in and permission checks, exactly', function (): void {
     $ulid = previewProduct(status: 'published');
     $manager = previewMember(['catalog.view', 'catalog.manage']);
