@@ -12,7 +12,9 @@ use App\Modules\Shared\Support\Cast;
  * A lead's answers as people read them: under the label of the field they answer, in the form's
  * order, a picked choice by its label. A ticked box shows the sentence stored with the lead (what
  * the visitor agreed to when they sent it), never the box's current wording. An answer whose field
- * was removed later still shows, under its key — nothing the visitor sent is hidden.
+ * was removed later still shows, under its key — nothing the visitor sent is hidden. With
+ * $withEmpty a field the visitor left empty is listed too, with an empty value (the inbox writes
+ * "Khách không điền" there); an unticked box is never listed.
  */
 final class LeadAnswers
 {
@@ -23,14 +25,14 @@ final class LeadAnswers
      * @param  array<mixed>  $data  the submission's data
      * @return list<array{key: string, label: string, value: string, ticked: bool, wide: bool}>
      */
-    public static function for(?Form $form, array $data, string $locale): array
+    public static function for(?Form $form, array $data, string $locale, bool $withEmpty = false): array
     {
         $answers = [];
         $seen = [];
 
         foreach ($form->fields ?? [] as $field) {
             $seen[$field->key] = true;
-            $answer = self::answer($field, $data[$field->key] ?? null, $locale);
+            $answer = self::answer($field, $data[$field->key] ?? null, $locale, $withEmpty);
             if ($answer !== null) {
                 $answers[] = $answer;
             }
@@ -50,7 +52,7 @@ final class LeadAnswers
     }
 
     /** @return array{key: string, label: string, value: string, ticked: bool, wide: bool}|null */
-    private static function answer(FormField $field, mixed $value, string $locale): ?array
+    private static function answer(FormField $field, mixed $value, string $locale, bool $withEmpty): ?array
     {
         if ($field->type === 'checkbox') {
             if ($value === null || $value === false || $value === '' || $value === '0') {
@@ -68,7 +70,7 @@ final class LeadAnswers
         }
 
         $text = self::plain($value);
-        if ($text === '') {
+        if ($text === '' && ! $withEmpty) {
             return null;
         }
 

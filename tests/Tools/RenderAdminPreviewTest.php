@@ -86,7 +86,7 @@ beforeEach(function (): void {
     app(ProvisionSite::class)->handle(new ProvisionSiteData(
         tenantName: 'Preview', siteName: 'Công ty Demo', hostname: ADMIN_PREVIEW_HOST,
         ownerEmail: 'owner@'.ADMIN_PREVIEW_HOST, ownerName: 'Nguyễn Văn Demo',
-        ownerPassword: 'a-strong-password', locales: ['vi', 'en'], modules: ['cms', 'media'],
+        ownerPassword: 'a-strong-password', locales: ['vi', 'en'], modules: ['cms', 'media', 'contacts'],
     ));
 });
 
@@ -188,13 +188,14 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
             ['key' => 'consent', 'type' => 'checkbox', 'label' => ['vi' => 'Tôi đồng ý cho website lưu thông tin liên hệ.'], 'is_required' => true, 'sort_order' => 6],
         ]);
         $form->submissions()->create(['data' => ['name' => 'Trần Minh Khoa', 'phone' => '0903 112 233'], 'name' => 'Trần Minh Khoa', 'phone' => '0903 112 233', 'status' => 'new']);
+        $form->submissions()->create(['data' => ['name' => 'Nhận vay nhanh', 'details' => 'Vay tiền trực tuyến duyệt trong 5 phút.'], 'name' => 'Nhận vay nhanh', 'email' => 'vaynhanh247@mail.ru', 'status' => 'spam', 'is_spam' => true]);
 
         return $form->submissions()->create(['status' => 'read', 'name' => 'Phạm Thị Lan', 'phone' => '0915 668 383', 'source_url' => 'https://'.ADMIN_PREVIEW_HOST.'/lien-he', 'data' => [
             'name' => 'Phạm Thị Lan', 'phone' => '0915 668 383', 'company' => 'Công ty TNHH Cơ khí Bình Minh', 'service' => 'cnc',
             'details' => "Trục inox 304, 40 cái.\nCần giao trong tháng 12.", 'consent' => 'Tôi đồng ý cho website lưu thông tin liên hệ.',
         ]]);
     });
-    foreach (['leads' => '/admin/forms', 'lead-detail' => '/admin/forms/'.$lead->ulid] as $name => $path) {
+    foreach (['leads' => '/admin/forms', 'lead-detail' => '/admin/forms/'.$lead->ulid, 'leads-spam' => '/admin/forms?status=spam'] as $name => $path) {
         $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.$path)->assertOk()->getContent();
         file_put_contents($dir.'/'.$name.'.html', $html);
     }
@@ -536,5 +537,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $invite = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($members()->call('openInvite')));
     file_put_contents($dir.'/members-invite.html', $swap($html, $invite, 'admin\\.users\\.index'));
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 29);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 30);
 });

@@ -21,7 +21,6 @@ use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
 use App\Modules\Admin\Livewire\Entries\ReviewInbox;
 use App\Modules\Admin\Livewire\FloatingContactSettings;
 use App\Modules\Admin\Livewire\ForgotPassword;
-use App\Modules\Admin\Livewire\Forms\Detail as FormsDetail;
 use App\Modules\Admin\Livewire\Forms\Inbox as FormsInbox;
 use App\Modules\Admin\Livewire\GeneralSettings;
 use App\Modules\Admin\Livewire\IntegrationsSettings;
@@ -271,11 +270,12 @@ Route::prefix(config('admin.prefix', 'admin'))
         // Trình đơn: the component re-checks menus.manage on every request (boot) and per method.
         Route::get('/menus', MenusIndex::class)->middleware('can:menus.manage')->name('admin.menus.index');
 
-        // Lead inbox (contacts module). Read gated by forms.view; status changes inside the
-        // Detail component re-gate on forms.manage (the livewire/update endpoint bypasses this
-        // route middleware). Addressed by ulid (D2).
-        Route::get('/forms', FormsInbox::class)->middleware('can:forms.view')->name('admin.forms.index');
-        Route::get('/forms/{ulid}', FormsDetail::class)->middleware('can:forms.view')->name('admin.forms.show');
+        // Khách liên hệ (contacts module): the list and the lead being read on one screen; the old
+        // detail address opens that lead. No `can:` here: a member without forms.view sees the
+        // screen's own no-permission card; the component asks forms.view / forms.manage on every
+        // request (the livewire/update endpoint bypasses route middleware). Addressed by ulid (D2).
+        Route::get('/forms', FormsInbox::class)->name('admin.forms.index');
+        Route::get('/forms/{ulid}', FormsInbox::class)->name('admin.forms.show');
 
         // Media library (DAM). Read gated by media.view; upload/delete re-gate media.upload/.delete
         // inside the component (the livewire/update endpoint bypasses this route middleware).

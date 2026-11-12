@@ -1,6 +1,6 @@
 <?php
 
-use App\Modules\Admin\Livewire\Forms\Detail;
+use App\Modules\Admin\Livewire\Forms\Inbox;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Forms\Notifications\NewLeadNotification;
@@ -8,6 +8,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Notifications\AnonymousNotifiable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Livewire\Livewire;
 
@@ -23,6 +24,11 @@ beforeEach(function (): void {
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
+    // both websites' plans include the contacts module (a test that needs it off takes it away)
+    DB::connection('pgsql_admin')->table('site_modules')->insert([
+        ['site_id' => 1, 'module_key' => 'contacts', 'enabled' => true, 'created_at' => now(), 'updated_at' => now()],
+        ['site_id' => 2, 'module_key' => 'contacts', 'enabled' => true, 'created_at' => now(), 'updated_at' => now()],
+    ]);
 });
 
 /**
@@ -71,7 +77,7 @@ it('shows the consent sentence stored with the lead, not the box\'s current word
     [, $lead] = quoteLead(['name' => 'Khách A', 'consent' => 'Câu đồng ý lúc khách gửi.']);
 
     openLead($lead)
-        ->assertSee(__('forms.detail_ticked'))
+        ->assertSee(__('leads.consent_note'))
         ->assertSee('Câu đồng ý lúc khách gửi.')
         ->assertDontSee('Câu đồng ý hiện tại');
 });
@@ -94,8 +100,8 @@ it('keeps showing the labels after a manager changes the status', function (): v
     app(Tenancy::class)->enter(1, fn () => grantRole($manager, 'editor', ['forms.view', 'forms.manage']));
 
     app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($manager)
-        ->test(Detail::class, ['ulid' => $lead->ulid])
-        ->call('setStatus', 'archived')
+        ->test(Inbox::class, ['ulid' => $lead->ulid])
+        ->call('setStatus', $lead->ulid, 'archived')
         ->assertSee('Công ty')
         ->assertSee('ACME'));
 });
