@@ -188,9 +188,10 @@ it('renders the site’s 404 page with the full chrome within its query budget',
         ->and($count)->toBeLessThanOrEqual($budget);
 });
 
-it('renders the site’s 404 page within the same query budget when the site names a contact page', function (): void {
-    // The contact page is one more read of the site's settings plus its route lookup.
-    $budget = 15;
+it('renders the site’s 404 page within a smaller budget when the site names a contact page', function (): void {
+    // The design's 404 page has no contact button (the header carries the way on), so naming a
+    // contact page no longer costs it a settings read and a route lookup: two fewer than before.
+    $budget = 13;
 
     app(Tenancy::class)->enter(1, function (): void {
         $page = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()]);
@@ -204,7 +205,7 @@ it('renders the site’s 404 page within the same query budget when the site nam
         $html = $this->get('http://a.test/khong-co-trang-nay')->assertNotFound()->getContent();
     });
 
-    expect($html)->toContain('sf-404__btn--contact')->toContain('href="/lien-he"')
+    expect($html)->toContain('sf-404__title')->not->toContain('sf-404__btn')
         ->and($count)->toBeLessThanOrEqual($budget);
 });
 

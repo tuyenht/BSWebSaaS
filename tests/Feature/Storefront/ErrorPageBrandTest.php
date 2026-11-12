@@ -10,8 +10,8 @@ use Illuminate\Support\Facades\DB;
 /*
  * Every 404 names the site the visitor actually asked for — never a hardcoded tenant brand
  * (white-label). A page of a site that is not found gets the site's own 404 page (its brand, in
- * its context); the plain 404 view serves scanner paths, the operator host and unknown hosts, and
- * finds the name from the request host.
+ * its context); the plain 404 view serves scanner paths and the operator host, and finds the name
+ * from the request host; an unknown host gets the neutral page, which names no one.
  */
 
 beforeEach(function (): void {
@@ -61,11 +61,12 @@ it('names the requested site on the plain 404 a scanner path gets', function ():
         ->not->toContain('An Vinh');
 });
 
-it('falls back to the bare host on an unknown host', function (): void {
+it('names neither a brand nor the host on an unknown host', function (): void {
     $html = $this->get('http://chua-gan-website.test/bat-ky')->assertNotFound()->getContent();
 
     expect($html)
-        ->toContain('chua-gan-website.test')
+        ->toContain('Không tìm thấy website')
+        ->not->toContain('chua-gan-website')
         ->not->toContain('An Vinh');
 });
 

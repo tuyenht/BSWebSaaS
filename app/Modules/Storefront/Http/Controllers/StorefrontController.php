@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\Storefront\Http\Controllers;
 
 use App\Modules\Catalog\Models\Product;
-use App\Modules\Catalog\Support\ContactPageSetting;
 use App\Modules\Catalog\Support\ProductIndexLink;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
@@ -29,7 +28,6 @@ use App\Modules\Storefront\Support\JobPosting;
 use App\Modules\Storefront\Support\ListPage;
 use App\Modules\Storefront\Support\PageChrome;
 use App\Modules\Storefront\Support\PostDetail;
-use App\Modules\Storefront\Support\ProductDetail;
 use App\Modules\Storefront\Support\ProductPage;
 use App\Modules\Storefront\Support\SlotContext;
 use App\Modules\Storefront\Support\ThankYouPages;
@@ -38,7 +36,6 @@ use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Theme\Rendering\PageRenderer;
 use App\Modules\Theme\Rendering\TemplateCatalog;
 use App\Modules\Theme\Rendering\TemplateResolver;
-use App\Modules\Theme\Theming\StorefrontSettings;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\Query\JoinClause;
@@ -55,8 +52,8 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  */
 final readonly class StorefrontController
 {
-    /** The most links the 404 page suggests from the main menu. */
-    private const int SUGGESTIONS_MAX = 6;
+    /** The most links the 404 page suggests from the main menu (the design draws five). */
+    private const int SUGGESTIONS_MAX = 5;
 
     public function __construct(
         private RouteResolver $resolver,
@@ -64,12 +61,10 @@ final readonly class StorefrontController
         private SiteLocale $locale,
         private PathBuilder $paths,
         private MediaUrlResolver $media,
-        private StorefrontSettings $settings,
         private ListPage $lists,
         private TemplateResolver $templates,
         private Breadcrumbs $crumbs,
         private PostDetail $posts,
-        private ProductDetail $products,
         private CategoryTemplates $categoryTemplates,
         private JobPosting $jobs,
         private SlotContext $slots,
@@ -156,32 +151,30 @@ final readonly class StorefrontController
     }
 
     /**
-     * The site's 404 page: its own header, footer and menus around the "not here" message, a way
-     * home, a way to the site's contact page (when the site names one) and the first links of its
-     * main menu. A real 404 status (never a page that answers 200) and kept out of search engines;
-     * no canonical, share tags or alternates, since there is no page to point at.
+     * The site's 404 page: its own header, footer and menus around the "not here" message and the
+     * first links of its main menu (the header already carries the way home and the site's menu).
+     * A real 404 status (never a page that answers 200) and kept out of search engines; no
+     * canonical, share tags or alternates, since there is no page to point at.
      *
      * @param  array<string, mixed>  $chrome
      */
     private function notFound(array $chrome): Response
     {
-        $locale = is_string($chrome['lang'] ?? null) ? $chrome['lang'] : $this->locale->default();
         $extra = $chrome;
         $extra['hreflang'] = [];
         $extra['robots'] = 'noindex';
-        $extra['contactUrl'] = $this->products->quoteLink($locale, ContactPageSetting::ulid($this->settings->get(ContactPageSetting::GROUP, ContactPageSetting::KEY)));
         $extra['suggestions'] = self::suggestions(
             is_array($chrome['menu'] ?? null) ? $chrome['menu'] : [],
             is_string($chrome['homeUrl'] ?? null) ? $chrome['homeUrl'] : '/',
         );
 
-        return response($this->renderer->renderNotFound(__('storefront.not_found.title'), $extra), 404);
+        return response($this->renderer->renderNotice(__('storefront.not_found.title'), $extra), 404);
     }
 
     /**
      * The 404 page's "you may be looking for" links: the top level of the main menu already loaded
      * for the header (no query), keeping only the links to a page of this site and leaving out the
-     * home page (the page has its own button for it), at most six. Empty when the menu is.
+     * home page (the header's logo leads there), at most five. Empty when the menu is.
      *
      * @param  list<mixed>|array<mixed>  $menu  the resolved primary menu tree
      * @return list<array{label: string, url: string}>

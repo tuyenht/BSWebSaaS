@@ -576,14 +576,15 @@ final readonly class PageRenderer
     }
 
     /**
-     * Render the site's 404 page on its own layout (theme::layouts.not-found), in the same header,
+     * Render a page with nothing of the site's content to show — the 404 page, or the page of a
+     * site that is not open — on its own layout (theme::layouts.not-found), in the same header,
      * footer and tokens as every page. The <title> runs through the site's title template like any
-     * inner page, and the head carries whatever robots line the caller set (the controller asks
-     * for `noindex`; a site hidden from search engines keeps its own, stricter one).
+     * inner page, and the head carries whatever robots line the caller set (callers ask for
+     * `noindex`; a site hidden from search engines keeps its own, stricter one).
      *
-     * @param  array<string, mixed>  $extra  the page chrome, the contact page's address and the suggested links
+     * @param  array<string, mixed>  $extra  the page chrome, the message (`notice`, the 404's when absent) and the suggested links
      */
-    public function renderNotFound(string $title, array $extra = []): string
+    public function renderNotice(string $title, array $extra = []): string
     {
         return BlockStyles::narrow($this->views->make('theme::layouts.not-found', $this->head([], $title, $extra) + [
             'title' => $title,

@@ -53,157 +53,178 @@
     background: var(--color-primary-hover);
 }
 
-/* ───── 404 page (theme::layouts.not-found) ─────────────────────────────── */
+/* ───── Notice pages (theme::layouts.not-found, errors/404 neutral) ──────── */
 /*
- * The site's 404 page between its own header and footer: a big "404" (decoration, its middle digit
- * in the brand's text color, which clears contrast on the light surface where the plain brand fill
- * would not), the h1, a line of help, the home and contact buttons and the main menu's first links
- * as pills. Buttons are at least 44px tall; the pills 40px with a mouse and 44px on touch.
+ * One message centred on the page tint: the site's 404 page and the page of a site that is not open
+ * (both between the site's own header and footer), and the neutral page of a host no site owns.
+ * An icon in a soft brand circle, the small "404" (missing page only), the h1, a line of help, then
+ * the main menu's first links as pills (404) or one brand button (reload / email). Pills are 44px
+ * tall, the button 48px; below 40em the button spans the column.
  */
 .sf-404 {
     display: flex;
-    align-items: center;
     justify-content: center;
-    min-height: 34rem;
-    padding: 4rem 1rem;
-    background: var(--color-surface);
-    color: var(--color-text-strong);
+    padding: 4rem 2rem;
+    background: color-mix(in srgb, var(--color-surface) 97%, var(--color-dark));
+    color: var(--color-text);
     text-align: center;
 }
 
 .sf-404__inner {
-    max-width: 42rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    max-width: 37.5rem;
+}
+
+.sf-404__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.75rem;
+    height: 3.75rem;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--color-primary) 16%, var(--color-surface));
+    color: var(--color-primary-text);
 }
 
 .sf-404__code {
     margin: 0;
-    color: var(--color-dark);
-    font-size: 8rem;
-    font-weight: 800;
-    line-height: 1;
-}
-
-.sf-404__accent {
     color: var(--color-primary-text);
+    font-size: 0.875rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
 }
 
 .sf-404__title {
-    margin: 1rem 0 0;
-    font-size: 1.5rem;
-    font-weight: 600;
-    line-height: 1.3;
+    margin: 0;
+    color: var(--color-text-strong);
+    font-size: 1.625rem;
+    font-weight: 700;
+    line-height: 1.35;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
 }
 
 .sf-404__text {
-    margin: 0.5rem 0 2rem;
-    color: var(--color-text);
-}
-
-.sf-404__actions {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    justify-content: center;
-}
-
-.sf-404__btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 2.75rem;
-    padding: 0.75rem 2rem;
-    border-radius: 0.25rem;
-    font-weight: 600;
-    overflow-wrap: anywhere;
-    transition: background 0.2s;
-}
-
-.sf-404__btn--home {
-    background: var(--color-dark);
-    color: #fff;
-}
-
-.sf-404__btn--home:hover {
-    background: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 85%, white));
-}
-
-.sf-404__btn--contact {
-    background: var(--color-primary);
-    color: var(--color-on-primary);
-}
-
-.sf-404__btn--contact:hover {
-    background: var(--color-primary-hover);
+    margin: 0;
+    max-width: 56ch;
+    text-wrap: pretty;
 }
 
 .sf-404__more {
-    margin-top: 2.5rem;
-    padding-top: 2rem;
-    border-top: 1px solid color-mix(in srgb, var(--color-dark) 12%, transparent);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    max-width: 30rem;
+    margin-top: 0.5rem;
+    text-align: start;
 }
 
 .sf-404__more-label {
-    margin: 0 0 1rem;
-    color: color-mix(in srgb, var(--color-text) 80%, white);
+    margin: 0;
+    color: var(--color-text-strong);
     font-size: 0.875rem;
+    font-weight: 600;
 }
 
 .sf-404__links {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
-    justify-content: center;
     margin: 0;
     padding: 0;
     list-style: none;
 }
 
 .sf-404__link {
+    box-sizing: border-box;
     display: inline-flex;
     align-items: center;
-    min-height: 2.5rem;
-    padding: 0.5rem 1rem;
+    min-height: 2.75rem;
+    padding: 0 1rem;
+    border: 1px solid color-mix(in srgb, var(--color-text) 75%, var(--color-surface));
     border-radius: 9999px;
-    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
+    background: var(--color-surface);
     color: var(--color-text-strong);
-    font-size: 0.875rem;
     font-weight: 500;
     overflow-wrap: anywhere;
-    transition: background 0.2s, color 0.2s;
+    text-decoration: none;
 }
 
 .sf-404__link:hover {
+    background: color-mix(in srgb, var(--color-surface) 97%, var(--color-dark));
+    color: var(--color-text-strong);
+}
+
+.sf-404__btn {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    max-width: 100%;
+    min-height: 3rem;
+    margin-top: 0.25rem;
+    padding: 0 1rem;
+    border-radius: 0.5rem;
     background: var(--color-primary);
     color: var(--color-on-primary);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.sf-404__btn:hover {
+    background: var(--color-primary-hover, var(--color-primary));
+    color: var(--color-on-primary);
+}
+
+.sf-404__glyph {
+    flex: none;
 }
 
 .sf-404__btn:focus-visible,
 .sf-404__link:focus-visible {
-    outline: 3px solid var(--color-primary-text);
+    outline: 2px solid var(--color-primary-text);
     outline-offset: 2px;
 }
 
-@media (any-pointer: coarse) {
-    .sf-404__link {
-        min-height: 2.75rem;
-    }
+/* A host no site owns: no brand, so the page's own neutral colours (the theme's default ink, body
+   and surface) and the thin empty bar where a site's header would be. */
+.sf-404--neutral {
+    --color-primary: #111111;
+    --color-primary-hover: #333333;
+    --color-primary-text: #111111;
+    --color-on-primary: #ffffff;
+    --color-surface: #ffffff;
+    --color-dark: #111111;
+    --color-text: #333333;
+    --color-text-strong: #111111;
+
+    min-height: calc(100vh - 1rem);
+    min-height: calc(100dvh - 1rem);
+    box-sizing: border-box;
 }
 
-@media (min-width: 640px) {
-    .sf-404__actions {
-        flex-direction: row;
-    }
+.sf-404__bar {
+    height: 1rem;
+    border-bottom: 1px solid color-mix(in srgb, #111111 10%, #ffffff);
+    background: #ffffff;
 }
 
-@media (min-width: 768px) {
+@media (max-width: 40em) {
+    .sf-404 {
+        padding: 2.5rem 1rem;
+    }
+
     .sf-404__title {
-        font-size: 1.875rem;
+        font-size: 1.375rem;
     }
-}
 
-@media (prefers-reduced-motion: reduce) {
-    .sf-404__btn,
-    .sf-404__link {
-        transition: none;
+    .sf-404__btn {
+        width: 100%;
     }
 }

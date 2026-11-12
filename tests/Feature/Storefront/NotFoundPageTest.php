@@ -18,8 +18,8 @@ use Illuminate\Support\Facades\DB;
  * A page the storefront cannot find answers with the site's own 404 page: the site's header,
  * footer and menus around the message, rendered inside the site's context (never another site's
  * brand or menu), with a real 404 status and kept out of search engines. Scanner paths (a dot in
- * the path) get the plain 404 before any of the site's data is read; an unknown host keeps the
- * plain 404 with no site data at all.
+ * the path) get the plain 404 before any of the site's data is read; an unknown host gets the
+ * neutral page with no site data at all.
  */
 
 beforeEach(function (): void {
@@ -75,8 +75,10 @@ it('shows each site its own header, footer and menus on a 404, never the other s
             ->toContain('class="sf-404"')
             ->toContain('class="site-header"')
             ->toContain('class="site-footer"')
-            ->toContain('<h1 class="sf-404__title">Trang không tồn tại</h1>')
-            ->toContain('href="/">Về Trang Chủ</a>');
+            ->toContain('<p class="sf-404__code">404</p>')
+            ->toContain('<h1 class="sf-404__title">Không tìm thấy trang này</h1>')
+            ->toContain('<p class="sf-404__text">Trang bạn tìm có thể đã đổi địa chỉ hoặc không còn.</p>');
+        expect(substr_count($html, '<h1'))->toBe(1);
         foreach ($own as $text) {
             expect($html)->toContain($text);
         }
@@ -97,22 +99,34 @@ it('suggests the main menu’s links to the site’s pages, without the home pag
         ->not->toContain('Trang chủ');
 });
 
-it('leaves out the suggestions when the main menu has no links and the contact button when no contact page is named', function (): void {
+it('leaves out the suggestions when the main menu has no links', function (): void {
     app(Tenancy::class)->enter(2, fn () => MenuAssignment::query()->delete());
 
     $html = $this->get('http://b.test/khong-co-trang-nay')->assertNotFound()->getContent();
 
-    expect($html)->toContain('Về Trang Chủ')
-        ->not->toContain('sf-404__more')
-        ->not->toContain('sf-404__btn--contact');
+    expect($html)->toContain('Không tìm thấy trang này')
+        ->not->toContain('sf-404__more');
 });
 
-it('links the contact button to the site’s contact page, named after the site', function (): void {
+it('suggests at most five links, and draws no button, contact line or search box of its own', function (): void {
     notFoundContactPage(1);
+    app(Tenancy::class)->enter(1, function (): void {
+        $menu = Menu::query()->firstOrFail();
+        foreach (['Một', 'Hai', 'Ba', 'Bốn', 'Năm'] as $i => $label) {
+            $item = MenuItem::query()->create(['menu_id' => $menu->id, 'link_type' => 'url', 'url' => '/muc-'.($i + 1), 'position' => 10 + $i]);
+            $item->translations()->create(['locale' => 'vi', 'label' => $label]);
+        }
+    });
 
     $html = $this->get('http://a.test/khong-co-trang-nay')->assertNotFound()->getContent();
 
-    expect($html)->toContain('<a class="sf-404__btn sf-404__btn--contact" href="/lien-he-voi-chung-toi">Liên hệ Ánh Kim Hà</a>');
+    preg_match('~<ul class="sf-404__links">(.*?)</ul>~s', $html, $list);
+
+    expect(substr_count($list[1] ?? '', '<li>'))->toBe(5)
+        ->and($list[1] ?? '')->toContain('Ấn phẩm hè')->toContain('Ba')->not->toContain('Bốn')
+        ->and($html)->not->toContain('sf-404__btn')
+        ->not->toContain('Liên hệ Ánh Kim Hà')
+        ->not->toContain('role="search"');
 });
 
 it('keeps the 404 page out of search engines, with no address, share tags or alternates of its own', function (): void {
@@ -193,11 +207,12 @@ it('never follows a stored redirect that leaves the site, even for a path with a
     $this->get('http://a.test/ra.php')->assertNotFound();
 });
 
-it('keeps the plain 404 with no site’s data on an unknown host', function (): void {
+it('gives an unknown host the neutral page with no site’s data', function (): void {
     $html = $this->get('http://chua-co-website.test/khong-co-trang-nay')->assertNotFound()->getContent();
 
-    expect($html)->toContain('class="error-page"')
-        ->not->toContain('sf-404')
+    expect($html)->toContain('class="sf-404 sf-404--neutral"')
+        ->not->toContain('error-page')
+        ->not->toContain('chua-co-website')
         ->not->toContain('Ánh Kim Hà')
         ->not->toContain('Ước Mơ Sứ')
         ->not->toContain('Ấn phẩm hè');

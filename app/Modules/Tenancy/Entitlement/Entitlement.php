@@ -151,15 +151,24 @@ final class Entitlement
 
     public function siteIsActive(): bool
     {
+        return $this->siteStatus() === 'active';
+    }
+
+    /**
+     * The current site's lifecycle status (provisioning · active · suspended · archived), so the
+     * storefront can tell a visitor which of them keeps the site closed. Fail-closed: null with no
+     * resolved site or no row, which no caller reads as open.
+     */
+    public function siteStatus(): ?string
+    {
         $current = app(CurrentSite::class);
 
         if (! $current->hasId()) {
-            return false;
+            return null;
         }
 
-        return Site::query()
-            ->whereKey($current->id())
-            ->where('status', 'active')
-            ->exists();
+        $status = Site::query()->whereKey($current->id())->value('status');
+
+        return is_string($status) ? $status : null;
     }
 }
