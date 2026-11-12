@@ -486,14 +486,17 @@ jobs:
 
       # The richer storefront looks on real pages: /do-kiem (slider, card grids, contact cards)
       # and /ban-tin, a news card grid with child-category chips. The photos are the licensed
-      # fixtures in tests/Fixtures/cwv, served from this origin by the static media driver (the
+      # fixtures in tests/Fixtures/cwv, served from this origin with the production URL form
+      # (`?w=` widths, so pages print the same srcset as production) and answered by
+      # scripts/cwv-serve.php with the 320 px copies in w320/, as the media Worker resizes. The
       # serving steps below set MEDIA_DRIVER/MEDIA_CF_BASE; a media host equal to the site's host
-      # would make provisioning refuse the name, so it is not set job-wide).
+      # would make provisioning refuse the name, so it is not set job-wide.
       - name: Seed the measurement pages
         run: |
           php artisan site:seed-measurement --host="${CWV_HOST}"
-          mkdir -p public/cwv-media/cwv/library
+          mkdir -p public/cwv-media/cwv/library/w320
           cp tests/Fixtures/cwv/*.webp public/cwv-media/cwv/library/
+          cp tests/Fixtures/cwv/w320/*.webp public/cwv-media/cwv/library/w320/
 
       # Chrome (via Lighthouse/axe) resolves this by real hostname, same as production —
       # no Host-header spoofing needed, and the multi-tenant domain resolver sees a real domain.
@@ -519,7 +522,7 @@ jobs:
       # performance score only warns.
       - name: Lighthouse CI (performance + LCP + JS budget)
         env:
-          MEDIA_DRIVER: static
+          MEDIA_DRIVER: cloudflare
           MEDIA_CF_BASE: http://${{ env.CWV_HOST }}:${{ env.CWV_PORT }}/cwv-media
         run: pnpm exec lhci autorun --collect.chromePath="${{ steps.chrome.outputs.chrome-path }}"
 
@@ -589,7 +592,7 @@ jobs:
 
       - name: Boot a server for the axe pass
         env:
-          MEDIA_DRIVER: static
+          MEDIA_DRIVER: cloudflare
           MEDIA_CF_BASE: http://${{ env.CWV_HOST }}:${{ env.CWV_PORT }}/cwv-media
         run: |
           php artisan serve --host=0.0.0.0 --port="${CWV_PORT}" &

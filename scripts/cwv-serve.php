@@ -24,6 +24,21 @@ $types = [
     'ico' => 'image/x-icon',
 ];
 
+// The media Worker in production answers `?w=` with a copy resized to that width (never wider than
+// the stored photo). The measurement photos keep such copies under `w{width}/` next to each file;
+// a width without one gets the stored photo, as the Worker does when it would have to enlarge.
+$width = is_string($_GET['w'] ?? null) ? (int) $_GET['w'] : 0;
+if ($width > 0 && str_starts_with($path, '/cwv-media/') && ! str_contains($path, '..')) {
+    $resized = dirname($path).'/w'.$width.'/'.basename($path);
+    if (is_file($public.$resized)) {
+        header('Content-Type: image/webp');
+        header('Content-Length: '.filesize($public.$resized));
+        readfile($public.$resized);
+
+        return true;
+    }
+}
+
 if ($path !== '/' && ! str_contains($path, '..') && is_file($public.$path)) {
     $type = $types[strtolower(pathinfo($path, PATHINFO_EXTENSION))] ?? null;
     if ($type === null || ! $gzip || filesize($public.$path) < $minimum) {
