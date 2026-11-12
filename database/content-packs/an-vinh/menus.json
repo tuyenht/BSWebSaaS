@@ -156,9 +156,15 @@
      "children": [
       {
        "label": {
-        "vi": "Giới thiệu công ty"
+        "vi": "Về công ty"
        },
        "target": "page:/gioi-thieu"
+      },
+      {
+       "label": {
+        "vi": "Dự án"
+       },
+       "target": "tax:post_cat/du-an"
       },
       {
        "label": {
@@ -168,21 +174,15 @@
       },
       {
        "label": {
-        "vi": "Chứng chỉ & thành tựu"
-       },
-       "target": "page:/chung-chi-thanh-tuu"
-      },
-      {
-       "label": {
-        "vi": "Hồ sơ năng lực & tài liệu"
+        "vi": "Hồ sơ năng lực"
        },
        "target": "page:/ho-so-nang-luc"
       },
       {
        "label": {
-        "vi": "Dự án"
+        "vi": "Chứng chỉ & thành tựu"
        },
-       "target": "tax:post_cat/du-an"
+       "target": "page:/chung-chi-thanh-tuu"
       },
       {
        "label": {
