@@ -6,7 +6,8 @@
     tagline, opening hours and Bộ Công Thương lines start their directives at column 0, so a site
     without those values keeps its footer byte for byte.
     A site with the `storefront.footer` setting gets the rich footer instead ($footer, normalized).
-    The floating contact buttons follow it, once per page (every layout prints this footer).
+    The floating contact buttons and the site's analytics beacon follow it, once per page (every
+    layout prints this footer last in its body).
     The footer is dark, so it shows the logo for a dark background (BrandImages: the normal logo
     when the site has none).
 --}}
@@ -80,3 +81,4 @@
 </footer>
 @endif
 @include('theme::partials.floating-contact')
+@include('theme::partials.web-analytics')
