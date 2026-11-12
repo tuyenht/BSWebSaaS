@@ -41,9 +41,6 @@ final class FloatingContact
     /** Longest value (a link or an address). */
     public const int MAX_VALUE = 500;
 
-    /** Buttons the phone bottom bar holds at most; past the third they show only where the phone is wide enough. */
-    public const int BAR_MAX = 5;
-
     /** A channel of the site's own: `c` and a number. */
     public const string CUSTOM_KEY = '/\Ac[1-9]\d{0,5}\z/';
 
@@ -75,7 +72,7 @@ final class FloatingContact
     /** Channels added from "Chọn kênh có sẵn". */
     public const array PRESETS = ['whatsapp', 'telegram', 'viber', 'tiktok', 'youtube', 'instagram', 'maps'];
 
-    /** Channels the phone bottom bar leaves out (they read as a chat window, not a quick tap). */
+    /** Channels the board-style phone bar (`phone_bar` of a round-button site) leaves out; the horizontal bar keeps every channel. */
     public const array BAR_HIDDEN = ['messenger', 'email'];
 
     /** Ink of a mark on a light fill (a dark slate); white stays the ink wherever white reads. */
@@ -165,7 +162,7 @@ final class FloatingContact
      * has no channel to show. `label` is the hover label in the page's language (null = the
      * channel's own default, which the theme words); custom channels fall back to their name.
      * `buy` is the "Mua hàng" button at the end of the phone bar: only when its switch is on and
-     * the site has a product list to send people to ($shopHref); it then takes one of the five places.
+     * the site has a product list to send people to ($shopHref); it then always keeps one of the first three places.
      *
      * @param  mixed  $raw  the stored value (an array when set)
      * @param  string|null  $shopHref  the site's product list, or null when it has none
@@ -179,9 +176,8 @@ final class FloatingContact
     /**
      * The same shape for the admin preview: a channel switched on whose value is missing or does not
      * pass yet keeps its place there as an unfinished slot (`pending` = true, `href` = ''), so the
-     * member sees where its button goes once filled in. The bar keeps exactly the site's channels; a
-     * slot only takes a place left under the bar's five (the chat channels still left out), and the
-     * board-style phone bar stays the site's. Never used for the site itself.
+     * member sees where its button goes once filled in. The bar and the round buttons keep every channel
+     * at its place, and the board-style phone bar stays the site's. Never used for the site itself.
      *
      * @param  mixed  $raw  the stored value (an array when set)
      * @param  string|null  $shopHref  the site's product list, or null when it has none
@@ -205,7 +201,6 @@ final class FloatingContact
 
         $theme = in_array($raw['theme'] ?? null, self::THEMES, true) ? (string) $raw['theme'] : 'vertical';
         $buy = $shopHref !== null && self::wantsShop($raw) ? self::buy($raw['buy'], $shopHref) : null;
-        $barMax = $buy === null ? self::BAR_MAX : self::BAR_MAX - 1;
 
         $buttons = [];
         $seen = [];
@@ -218,25 +213,10 @@ final class FloatingContact
             $buttons[] = $button;
         }
 
-        // The bar holds the first $barMax finished channels, exactly as the site draws it; unfinished
-        // slots (preview only) take just the places left over, each at its place in the setting's order.
+        // The bar holds every channel in the setting's order (the theme drops the ones that do not fit
+        // the phone's width); unfinished slots (preview only) keep their places in it.
         $ready = array_values(array_filter($buttons, static fn (array $b): bool => ! isset($b['pending'])));
-        $quick = static fn (array $b): bool => ! in_array($b['key'], self::BAR_HIDDEN, true);
-        $room = $barMax - min($barMax, count(array_filter($ready, $quick)));
-        $bar = [];
-        $finished = 0;
-        $slots = 0;
-        foreach (array_filter($buttons, $quick) as $button) {
-            if (isset($button['pending'])) {
-                if ($slots < $room) {
-                    $bar[] = $button;
-                    $slots++;
-                }
-            } elseif ($finished < $barMax) {
-                $bar[] = $button;
-                $finished++;
-            }
-        }
+        $bar = $buttons;
 
         if ($buttons === [] || ($theme === 'horizontal' && $bar === [])) {
             return null;
@@ -257,7 +237,7 @@ final class FloatingContact
     /**
      * The board-style phone bar of a round-button site: on phones the round buttons give way to a
      * bar along the bottom of up to PHONE_BAR_MAX equal cells — the quick channels first, the call leading
-     * (messenger and e-mail left out, as in the other bar), then an optional cell of the site's own, such as
+     * (messenger and e-mail left out, BAR_HIDDEN), then an optional cell of the site's own, such as
      * "Yêu cầu báo giá". Null when the site did not switch it on or nothing is left to show.
      *
      * @param  list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, ink: string, bar_fill: string, bar_ink: string, pulse: bool}>  $buttons

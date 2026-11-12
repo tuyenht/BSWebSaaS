@@ -324,9 +324,9 @@ it('keeps the “Mua hàng” switch but shows the button nowhere while the site
             ->call('toggleChannel', 'sms');
         $lw->set('channels.'.fcsIndex($lw, 'sms').'.value', '0912345678');
 
-        // The preview draws what the site draws: three channels, no buy button.
+        // The preview draws what the site draws: no buy button.
         expect($lw->viewData('preview')['buy'])->toBeNull()
-            ->and(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo', 'sms']);
+            ->and(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo', 'messenger', 'email', 'sms']);
         $lw->call('save')->assertHasNoErrors();
     });
 
@@ -350,7 +350,7 @@ it('shows “Mua hàng” in the preview, after the channels, when the site has 
         $lw->set('channels.'.fcsIndex($lw, 'sms').'.value', '0912345678');
 
         expect($lw->viewData('preview')['buy'])->toMatchArray(['fill' => 'var(--color-primary)', 'ink' => 'var(--color-on-primary)'])
-            ->and(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo', 'sms']);
+            ->and(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo', 'messenger', 'email', 'sms']);
         $lw->assertSee('Mua hàng');
     });
 });
@@ -366,7 +366,7 @@ it('previews the bottom bar on a phone only, with no device switch', function ()
         $lw->call('setTheme', 'horizontal')
             ->assertDontSee('aria-label="Thiết bị xem trước"', false)
             ->assertSee('<span class="font-normal text-text-muted"> · trên điện thoại</span>', false)
-            ->assertSee('Điện thoại hẹp tự bớt nút ở cuối');
+            ->assertSee('màn hẹp tự bớt nút ở cuối');
 
         $lw->call('setTheme', 'vertical')->assertSee('aria-label="Thiết bị xem trước"', false);
     });
@@ -429,7 +429,7 @@ it('shows a channel switched on but not filled in at its place in the round-butt
     expect(collect(fcsStored()['channels'])->firstWhere('key', 'messenger'))->toMatchArray(['on' => true, 'value' => '']);
 });
 
-it('shows a channel switched on but not filled in at its cell of the bottom-bar preview, five cells at most, chat channels left out', function (): void {
+it('shows a channel switched on but not filled in at its cell of the bottom-bar preview, every channel kept', function (): void {
     $admin = fcsAdmin();
 
     app(Tenancy::class)->enter(1, function () use ($admin): void {
@@ -438,14 +438,13 @@ it('shows a channel switched on but not filled in at its cell of the bottom-bar 
             ->call('toggleChannel', 'sms')
             ->call('addPreset', 'whatsapp')->call('addPreset', 'telegram')->call('addPreset', 'viber');
 
-        expect(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo', 'sms', 'whatsapp', 'telegram']);
-        expect($lw->html())->toContain('data-fc-pending="zalo"', 'data-fc-pending="sms"', 'data-fc-pending="telegram"')
-            ->not->toContain('data-fc-pending="messenger"')->not->toContain('data-fc-pending="email"')
-            ->not->toContain('data-fc-pending="viber"')->not->toContain('data-fc-pending="phone"');
+        expect(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo', 'messenger', 'email', 'sms', 'whatsapp', 'telegram', 'viber']);
+        expect($lw->html())->toContain('data-fc-pending="zalo"', 'data-fc-pending="sms"', 'data-fc-pending="telegram"', 'data-fc-pending="viber"')
+            ->not->toContain('data-fc-pending="phone"')->not->toContain('ẩn ở kiểu thanh dưới');
 
         // A switched-off channel never takes a cell.
         $lw->call('toggleChannel', 'zalo');
-        expect(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'sms', 'whatsapp', 'telegram', 'viber'])
+        expect(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'messenger', 'email', 'sms', 'whatsapp', 'telegram', 'viber'])
             ->and($lw->html())->not->toContain('data-fc-pending="zalo"');
     });
 });

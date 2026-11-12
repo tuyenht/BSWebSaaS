@@ -287,14 +287,13 @@
                                     $color = $colorOf($c);
                                     $valueError = $errors->first("channels.$i.value");
                                     $hint = __('admin.fc.hint.'.($custom ? 'custom' : $key));
-                                    $dim = ! $isVertical && in_array($key, FloatingContact::BAR_HIDDEN, true);
                                     $text = FloatingContact::CHANNELS[$key]['text'] ?? null;
                                     $swState = $c['on'] ? __('admin.fc.on') : __('admin.fc.off');
                                     // Switched on with nothing typed: the site leaves the button out until it is filled in.
                                     $unfilled = $c['on'] && trim($c['value']) === '' && $valueError === '';
                                 @endphp
                                 <div wire:key="fc-ch-{{ $key }}" wire:sort:item="{{ $key }}"
-                                     @class(['flex items-start gap-2.5 rounded-lg border bg-surface p-3', 'border-border' => $c['on'], 'border-dashed border-border bg-surface-muted' => ! $c['on'], 'opacity-80' => $dim])>
+                                     @class(['flex items-start gap-2.5 rounded-lg border bg-surface p-3', 'border-border' => $c['on'], 'border-dashed border-border bg-surface-muted' => ! $c['on']])>
                                     <span wire:sort:handle class="mt-2 flex shrink-0 cursor-grab items-center text-text-faint any-pointer-coarse:hidden" title="{{ __('admin.fc.drag') }}">
                                         <x-bs-admin::icon name="ri-draggable" class="{{ $glyph }}" />
                                     </span>
@@ -325,7 +324,7 @@
                                                        aria-invalid="{{ $errors->has("channels.$i.name") ? 'true' : 'false' }}"
                                                        class="field field-row min-w-[min(10rem,100%)] max-w-70 flex-[1_1_10rem] rounded-md border border-border-input bg-surface px-2.5 font-semibold text-text-strong">
                                             @else
-                                                <span class="{{ $name }}">{{ $label }}@if ($dim)<span class="ms-1.5 text-caption font-medium text-text-muted">{{ __('admin.fc.bar_hidden') }}</span>@endif</span>
+                                                <span class="{{ $name }}">{{ $label }}</span>
                                             @endif
                                             <div class="flex shrink-0 items-center gap-2">
                                                 <button type="button" class="switch hit-area" role="switch" aria-checked="{{ $c['on'] ? 'true' : 'false' }}" wire:click="toggleChannel({{ Js::from($key) }})"
