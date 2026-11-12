@@ -77,7 +77,7 @@
       "css": 843
     },
     "resources/js/app.js": {
-      "js": 22644,
+      "js": 14787,
       "css": 0
     },
     "resources/js/sections.js": {
@@ -147,15 +147,15 @@
       "css": 0
     },
     "resources/js/admin-categories.js": {
-      "js": 29121,
+      "js": 21553,
       "css": 0
     },
     "resources/js/admin-rich-editor.js": {
-      "js": 223291,
+      "js": 215435,
       "css": 36159
     },
     "resources/js/admin-unsaved.js": {
-      "js": 24794,
+      "js": 2456,
       "css": 0
     },
     "resources/js/admin-editor.js": {
@@ -169,6 +169,10 @@
     "resources/js/media-uppy.js": {
       "js": 106668,
       "css": 10606
+    },
+    "resources/js/admin-menus.js": {
+      "js": 23515,
+      "css": 0
     }
   }
 }

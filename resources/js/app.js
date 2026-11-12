@@ -17,9 +17,6 @@ import './admin-workflow-settings.js';
 // The shared admin tree: collapse, the one drag rule and the keyboard moves (Alpine.data 'bsTree').
 import './admin-tree.js';
 
-// The Trình đơn screen: its draft, undo / redo, moves and preview (Alpine.data 'bsMenus').
-import './admin-menus.js';
-
 // The shared "Hiện thế nào trên Google" part: length meters + Google preview (Alpine.data 'bsSeoFields').
 import './admin-seo-fields.js';
 

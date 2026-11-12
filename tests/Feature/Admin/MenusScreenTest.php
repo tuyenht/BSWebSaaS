@@ -356,7 +356,14 @@ it('draws the screen with the menu it opens on, its labels as text only and no r
         ->assertSee(__('menus.ui_intro'))->assertSee(__('menus.ui_add'))->assertSee(__('menus.ui_preview'))
         ->assertSee($menu->ulid)
         ->assertDontSee('<b>ồ Giới thiệu ạ</b>', false)
+        // The screen's part downloads on this screen only: the root waits for it, the loading card shows meanwhile and a
+        // lost download has its own "Thử lại" message that works before any Alpine runs.
+        ->assertSee('x-ignore wire:ignore.self data-bs-lazy="bsMenus"', false)
+        ->assertSee('data-bs-lazy-wait', false)
+        ->assertSee('data-bs-lazy-retry', false)
         ->getContent();
+    expect((string) file_get_contents(resource_path('js/app.js')))->not->toContain('admin-menus.js')
+        ->and((string) file_get_contents(resource_path('js/admin-lazy.js')))->toContain("bsMenus: () => import('./admin-menus.js')");
     // The label reaches the page only inside the screen's data, with its markup escaped.
     expect($html)->toContain('u003Cb')
         ->and($html)->not->toContain('x-html');

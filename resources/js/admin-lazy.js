@@ -13,6 +13,7 @@
 // the same failure), the second try reloads the page.
 const PARTS = {
     bsCategories: () => import('./admin-categories.js'),
+    bsMenus: () => import('./admin-menus.js'),
     bsEditorSave: () => import('./admin-editor.js'),
     bsUnsaved: () => import('./admin-unsaved.js'),
 };
