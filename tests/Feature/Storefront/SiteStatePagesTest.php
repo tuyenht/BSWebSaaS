@@ -1,8 +1,13 @@
 <?php
 
+use App\Modules\Storefront\Http\Middleware\ShowSiteStatePage;
+use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteProfile;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /*
  * A site that is not open to visitors (still being set up, suspended, closed) answers its
@@ -40,6 +45,9 @@ it('answers each state with its own status, heading and way on', function (strin
     $response = $this->get('http://b.test/');
     $response->assertStatus($code);
     expect($response->headers->get('Retry-After'))->toBe($retryAfter);
+    // Never kept by the edge or a shared cache: the site may open again at any moment.
+    $cacheControl = (string) $response->headers->get('Cache-Control');
+    expect($cacheControl)->toContain('private')->toContain('no-store');
 
     $html = (string) $response->getContent();
     expect(siteStateH1s($html))->toBe([$heading])
@@ -124,6 +132,26 @@ it('keeps refusing writes and the admin of a site that is not open', function ()
 
     $this->post('http://b.test/forms/lien-he', [])->assertForbidden();
     $this->get('http://b.test/admin/login')->assertForbidden();
+});
+
+it('refuses with a 403 when the site’s status is not one it knows (fail-closed)', function (): void {
+    // The sites table's CHECK allows only the four known words, so the reachable unknown is none at
+    // all: no resolved site, or no row. The gate reads that as closed, never as open.
+    app(CurrentSite::class)->clear();
+    $reached = false;
+
+    try {
+        app(ShowSiteStatePage::class)->handle(Request::create('http://b.test/'), function () use (&$reached): Response {
+            $reached = true;
+
+            return response('open');
+        });
+        $status = null;
+    } catch (HttpException $e) {
+        $status = $e->getStatusCode();
+    }
+
+    expect($status)->toBe(403)->and($reached)->toBeFalse();
 });
 
 it('gives a host no site owns a neutral page: no brand, no host, a 404 kept out of search engines', function (): void {

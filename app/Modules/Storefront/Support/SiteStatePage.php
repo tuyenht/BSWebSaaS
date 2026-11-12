@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Storefront\Support;
 
+use App\Modules\Storefront\Http\Middleware\StorefrontSession;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Theme\Rendering\PageRenderer;
 use Illuminate\Http\Request;
@@ -13,7 +14,8 @@ use Symfony\Component\HttpFoundation\Response;
  * The page a visitor gets on a site that is not open (SiteState), inside the site's own context:
  * the site's header, footer, tokens and language around one short message, in the same layout as
  * the 404 page (theme::layouts.not-found). It reads nothing of the site's content, only the chrome
- * every page reads. Kept out of search engines, with no canonical, share tags or alternates.
+ * every page reads. Kept out of search engines, with no canonical, share tags or alternates, and
+ * out of every cache (`private, no-store`).
  */
 final readonly class SiteStatePage
 {
@@ -50,7 +52,12 @@ final readonly class SiteStatePage
             'action' => $action,
         ];
 
-        $headers = $state->retryAfter() === null ? [] : ['Retry-After' => (string) $state->retryAfter()];
+        // Answered before EdgeCacheHeaders runs, so it says itself that no cache may keep it: the
+        // site may open again at any moment.
+        $headers = ['Cache-Control' => StorefrontSession::PRIVATE];
+        if ($state->retryAfter() !== null) {
+            $headers['Retry-After'] = (string) $state->retryAfter();
+        }
 
         return response($this->renderer->renderNotice($state->heading(), $extra), $state->httpStatus(), $headers);
     }

@@ -2,10 +2,12 @@
 
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
+use App\Modules\Tenancy\Context\SiteDirectory;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteProfile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 
 /*
  * Every 404 names the site the visitor actually asked for — never a hardcoded tenant brand
@@ -79,4 +81,29 @@ it('shows the platform brand on the operator host', function (): void {
     expect($html)
         ->toContain('Nền Tảng Thử')
         ->not->toContain('An Vinh');
+});
+
+it('reports a fault while finding the site and never claims the host has no website', function (): void {
+    errorBrandProvision('Nội Thất Hoà Phát', 'hoaphat.platform.test');
+    Exceptions::fake();
+    // The lookup fails on a fault (the database unreachable…), not on a host no site owns.
+    app()->instance(SiteDirectory::class, new class
+    {
+        public function nameForHost(string $host): ?string
+        {
+            throw new RuntimeException('site lookup failed');
+        }
+    });
+
+    $html = (string) $this->get('http://hoaphat.platform.test/wp-login.php')->assertNotFound()->getContent();
+
+    expect($html)
+        ->toContain('Không tìm thấy trang này')
+        ->toContain('Trang bạn tìm có thể đã đổi địa chỉ hoặc không còn.')
+        ->toContain('<meta name="robots" content="noindex">')
+        ->not->toContain('Không tìm thấy website')
+        ->not->toContain('chưa gắn với website nào')
+        ->not->toContain('site lookup failed')
+        ->not->toContain('hoaphat');
+    Exceptions::assertReported(fn (RuntimeException $e): bool => $e->getMessage() === 'site lookup failed');
 });
