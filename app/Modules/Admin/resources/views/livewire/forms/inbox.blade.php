@@ -345,7 +345,7 @@
                 <div class="flex min-h-0 min-w-0 flex-col gap-4 p-4 @min-[58.75rem]/kl:flex-1 @min-[58.75rem]/kl:overflow-auto">
                     @if ($d['status'] === 'spam')
                         <x-bs-admin::alert color="danger" class="flex flex-wrap items-center gap-x-3 gap-y-2">
-                            <span class="min-w-0 flex-[1_1_15rem]">{{ __('leads.spam_note') }}</span>
+                            <span class="min-w-0 flex-[1_1_15rem] text-body">{{ __('leads.spam_note') }}</span>
                             @if ($canManage)
                                 <x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="setStatus({{ Js::from($open->ulid) }}, 'read')">
                                     <x-bs-admin::icon name="ri-mail-check" class="size-4" /> {{ __('leads.not_spam') }}
