@@ -57,10 +57,13 @@ final class ThemeServiceProvider extends ServiceProvider
                 'text' => ['type' => 'textarea'],
                 // A glyph key of theme::partials.icon (unknown → no icon); shown by the top-rule cards.
                 'icon' => ['type' => 'text'],
+                // Optional: where the card leads ("Xem chi tiết →", the whole card pressable), typed like a quick link's.
+                'url' => ['type' => 'url', 'action' => 'title'],
             ]],
             'variant' => ['type' => 'enum', 'options' => SectionProps::FEATURES_VARIANTS, 'default' => 'default'],
             'description' => ['type' => 'textarea'],
-        ],
+            // The display group shapes the icon-cards look only (a grid, or a swipe row on a phone); the other looks keep their grid.
+        ] + SectionProps::LIST_DISPLAY,
         'about' => [
             'heading' => ['type' => 'text'],
             'paragraphs' => ['type' => 'list', 'of' => ['type' => 'textarea']],

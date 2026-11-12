@@ -90,7 +90,8 @@ final class SectionProps
 
     public const array CONTACT_VARIANTS = ['list', 'cards'];
 
-    public const array FEATURES_VARIANTS = ['default', 'top-rule', 'icon-head'];
+    /** Append-only. `icon-cards` draws each item as the shared icon card (theme::partials.sf-card). */
+    public const array FEATURES_VARIANTS = ['default', 'top-rule', 'icon-head', 'icon-cards'];
 
     /** The glyphs of the quick-links tiles: keys of theme::partials.sf-icon that suit a link. */
     public const array QUICK_LINK_ICONS = ['link', 'phone', 'email', 'address', 'map', 'building', 'license', 'info', 'document', 'video', 'none'];

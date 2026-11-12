@@ -6,6 +6,8 @@
     "read more" are visual text only (aria-hidden). Titles and labels wrap, never clip; only an
     excerpt may be cut at four lines. `level` is h3 inside a block (h4 under a tab's heading) and h2 on a list page.
     `priority` (high / eager / lazy) and `sizes` go to the photo.
+    `link` (icon kind only): a block item's own button link (ButtonLink::of: href, blank, download), drawn in
+    place of `card.url` — a features card can lead to a phone number, a mail or a file, not only a page.
     `list` (a list page's card): a project gets its category tag on the photo and "view project",
     a product its "details" footer, and news and project cards turn into a compact row on a phone
     (photo left, title right; the excerpt of news, the tag and the footers are hidden there).
@@ -15,7 +17,8 @@
 --}}
 @php
     $sfKind = in_array($kind ?? 'news', ['icon', 'product', 'product-overlay', 'project', 'news', 'job'], true) ? $kind : 'news';
-    $sfUrl = \App\Modules\Shared\Support\SafeLink::href($card['url'] ?? null);
+    $sfLink = $sfKind === 'icon' && is_array($link ?? null) ? $link : null;
+    $sfUrl = $sfLink !== null ? $sfLink['href'] : \App\Modules\Shared\Support\SafeLink::href($card['url'] ?? null);
     $sfLevel = in_array($level ?? 'h3', ['h2', 'h4'], true) ? $level : 'h3';
     $sfTitle = (string) ($card['title'] ?? '');
     $sfExcerpt = (string) ($card['excerpt'] ?? '');
@@ -39,7 +42,7 @@
 @if (($card['icon'] ?? '') !== '')
     @include('theme::partials.icon', ['name' => $card['icon'], 'stroke' => 1.5, 'wrap' => 'sf-card__icon'])
 @endif
-    <{{ $sfLevel }} class="sf-card__title">@if ($sfUrl !== null)<a class="sf-card__link" href="{{ $sfUrl }}">{{ $sfTitle }}</a>@else{{ $sfTitle }}@endif</{{ $sfLevel }}>
+    <{{ $sfLevel }} class="sf-card__title">@if ($sfUrl !== null)<a class="sf-card__link" href="{{ $sfUrl }}"@if ($sfLink['blank'] ?? false) target="_blank" rel="noopener"@elseif ($sfLink['download'] ?? false) download=""@endif>{{ $sfTitle }}@if ($sfLink['blank'] ?? false)<span class="sr-only"> {{ __('storefront.new_tab') }}</span>@endif</a>@else{{ $sfTitle }}@endif</{{ $sfLevel }}>
 @if ($sfExcerpt !== '')
     <p class="sf-card__text">{{ $sfExcerpt }}</p>
 @endif
