@@ -355,15 +355,23 @@ final class Applier
         $desired = $planned->desired;
         $status = Cast::string($desired['status'] ?? null);
 
+        // the flag only when the pack item sets it: one that names none keeps the live flag
+        $featured = is_bool($desired['featured'] ?? null) ? ['is_featured' => $desired['featured']] : [];
+
         if ($planned->recordId === null) {
-            $product = Product::query()->create(['status' => $status, 'published_at' => $status === 'published' ? now() : null]);
+            $product = Product::query()->create(['status' => $status, 'published_at' => $this->publishedAt($planned->item, $status)] + $featured);
         } else {
             $product = Product::query()->findOrFail($planned->recordId);
             // the product row before its translations, like every write of a name or a SKU
             ProductSearchWords::lock($product->site_id, $product->id);
-            $product->status = $status;
+            $product->fill(['status' => $status] + $featured);
             if ($status === 'published' && $product->published_at === null) {
-                $product->published_at = now();
+                $product->published_at = $this->publishedAt($planned->item, $status);
+            }
+            // a date the pack item states wins over the live one (an item without a date keeps it)
+            if ($status === 'published' && is_string($desired['published_at'] ?? null)
+                && $product->published_at?->copy()->utc()->format('Y-m-d') !== $desired['published_at']) {
+                $product->published_at = $this->publishedAt($planned->item, $status);
             }
             $product->save();
         }

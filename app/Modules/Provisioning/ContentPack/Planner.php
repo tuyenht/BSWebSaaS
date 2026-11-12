@@ -533,7 +533,7 @@ final class Planner
 
     /**
      * The hashes a ledger line may hold for this live state: the state itself, and the state as
-     * the line recorded it while the item named no date or no parent page. The state without its
+     * the line recorded it while the item named no date, no featured flag or no parent page. The state without its
      * parent is accepted only from a line that does not record the page's parent (written before
      * parents were managed), or one whose recorded parent is still the live one: a page staff moved
      * since the last load is never taken for the loader's own write.
@@ -544,10 +544,12 @@ final class Planner
      */
     private static function ledgerHashes(array $current, array $ledger): array
     {
-        $states = [$current, array_diff_key($current, ['published_at' => true])];
+        $optional = [[], ['published_at' => true], ['featured' => true], ['published_at' => true, 'featured' => true]];
+        $states = array_map(fn (array $drop): array => array_diff_key($current, $drop), $optional);
         if (! array_key_exists('parent', $ledger) || (array_key_exists('parent', $current) && $ledger['parent'] === $current['parent'])) {
-            $states[] = array_diff_key($current, ['parent' => true]);
-            $states[] = array_diff_key($current, ['published_at' => true, 'parent' => true]);
+            foreach ($optional as $drop) {
+                $states[] = array_diff_key($current, $drop + ['parent' => true]);
+            }
         }
 
         return array_values(array_unique(array_map(CanonicalHash::of(...), $states)));
@@ -1177,7 +1179,17 @@ final class Planner
                 $this->productKeys[$this->matched[$item->key]] = $item->key;
             }
         }
-        $states = $this->productStates(array_values($ids));
+        $dated = [];
+        $flagged = [];
+        foreach ($items as $item) {
+            if (isset($ids[$item->key]) && self::packDate($item) !== null) {
+                $dated[] = $ids[$item->key];
+            }
+            if (isset($ids[$item->key]) && is_bool($item->data['featured'] ?? null)) {
+                $flagged[] = $ids[$item->key];
+            }
+        }
+        $states = $this->productStates(array_values($ids), $dated, $flagged);
 
         $planned = [];
         foreach ($items as $item) {
@@ -1198,16 +1210,23 @@ final class Planner
     }
 
     /**
+     * Managed fields of these products, as the ledger hashes them. Like an entry's date,
+     * `published_at` is part of the state only for the products in `$dated` (their pack item states
+     * a date) and `featured` only for those in `$flagged` (their pack item sets the flag), so an
+     * item that names neither never reports or rewrites the live value.
+     *
      * @param  list<int>  $ids
+     * @param  list<int>  $dated
+     * @param  list<int>  $flagged
      * @return array<int, array{ulid: string, state: array<string, mixed>}>
      */
-    public function productStates(array $ids): array
+    public function productStates(array $ids, array $dated = [], array $flagged = []): array
     {
         if ($ids === []) {
             return [];
         }
 
-        $products = $this->locked(Product::query()->whereIn('id', $ids))->get(['id', 'ulid', 'status']);
+        $products = $this->locked(Product::query()->whereIn('id', $ids))->get(['id', 'ulid', 'status', 'published_at', 'is_featured']);
         $translations = $this->locked(ProductTranslation::query()->whereIn('product_id', $ids)->whereIn('locale', $this->locales))
             ->get(['product_id', 'locale', 'name', 'slug', 'summary', 'description', 'seo_title', 'seo_description']);
         $byProduct = [];
@@ -1240,8 +1259,14 @@ final class Planner
                     'seo_description' => $translation->seo_description,
                 ];
             }
-            $state = [
-                'status' => $product->status,
+            $state = ['status' => $product->status];
+            if (in_array($product->id, $dated, true)) {
+                $state['published_at'] = $product->published_at?->copy()->utc()->format('Y-m-d');
+            }
+            if (in_array($product->id, $flagged, true)) {
+                $state['featured'] = $product->is_featured;
+            }
+            $state += [
                 'categories' => $categories[$product->id] ?? [],
                 'images' => $gallery[$product->id] ?? [],
                 'translations' => [],
@@ -1293,8 +1318,15 @@ final class Planner
             ];
         }
 
-        return [
-            'status' => Cast::string($item->data['status'] ?? null, 'draft'),
+        $state = ['status' => Cast::string($item->data['status'] ?? null, 'draft')];
+        if (self::packDate($item) !== null) {
+            $state['published_at'] = self::packDate($item);
+        }
+        if (is_bool($item->data['featured'] ?? null)) {
+            $state['featured'] = $item->data['featured'];
+        }
+
+        return $state + [
             'categories' => Cast::strings($item->data['categories'] ?? []),
             'images' => $images,
             'translations' => $translations,

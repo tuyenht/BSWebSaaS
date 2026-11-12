@@ -375,7 +375,8 @@ it('renders the rich footer: factories, dated licence with its issuer, copyright
         ->toContain('<footer class="sf-footer" role="contentinfo">')
         ->toContain('<p class="sf-footer__about">Giới thiệu ngắn.</p>')
         ->toContain('<h2 class="sf-footer__legal-name">Công ty TNHH Xưởng Mẫu</h2>')
-        ->toContain('GPĐKKD: 0100000001 do Sở KH&amp;ĐT Hà Nội cấp ngày 05/03/2010')
+        ->toContain('Mã số doanh nghiệp: 0100000001 do Sở KH&amp;ĐT Hà Nội cấp ngày 05/03/2010')
+        ->not->toContain('GPĐKKD')
         ->toContain('<h3 class="sf-factory__title">Nhà máy 1</h3>')
         ->toContain('<h3 class="sf-factory__title">Nhà máy 2</h3>')
         ->toContain('Diện tích: 12.000 m²')
@@ -394,6 +395,18 @@ it('renders the rich footer: factories, dated licence with its issuer, copyright
 
     expect($plain)->not->toContain('sf-footer__credit')
         ->toContain("Bản quyền © {$year} thuộc về <strong>Xưởng Mẫu</strong>");
+});
+
+it('writes the legal line with the enterprise code and its issuer when the issue date is unknown', function (): void {
+    $siteId = sfcSite();
+    sfcSetting($siteId, 'footer', sfcFooter());
+
+    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
+
+    expect($html)
+        ->toContain('Mã số doanh nghiệp: 0100000001 do Sở KH&amp;ĐT Hà Nội cấp')
+        ->not->toContain('cấp ngày')
+        ->not->toContain('GPĐKKD');
 });
 
 it('adds only a directions link to the footer when the factories carry branch coordinates', function (): void {
@@ -536,7 +549,7 @@ it('picks setting texts in the page language, falling back to the default langua
         ->toContain('<p class="sf-footer__about">Short about.</p>')
         ->toContain('<h3 class="sf-factory__title">Nhà máy 1</h3>')        // no en: the vi text
         ->toContain('aria-label="Text size: Medium. Press to change"')
-        ->toContain('Business registration no.: 0100000001, issued by Sở KH&amp;ĐT Hà Nội')
+        ->toContain('Enterprise code: 0100000001, issued by Sở KH&amp;ĐT Hà Nội')
         ->toMatch('#href="http://mau\.platform\.test/en/about" hreflang="en" lang="en"\s+aria-current="true"\s*>EN</a>#')
         ->toMatch('#hreflang="vi" lang="vi"\s*>VI</a>#')
         ->toContain('<nav class="sf-lang" aria-label="Language">')
