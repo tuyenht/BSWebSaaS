@@ -109,8 +109,10 @@
     // two channels fit, not three) — the normalizer decides both, as on the site.
     $word = static fn (array $b): string => $b['label'] ?? (array_key_exists($b['key'], FloatingContact::CHANNELS) ? __('storefront.fc_'.$b['key'], [], $lang) : __('storefront.fc_contact', [], $lang));
     $pvButtons = $preview['buttons'] ?? [];
-    $pvBar = $preview['bar'] ?? [];
+    // The preview phone is narrow (about 266px inside its frame): it draws the bar as a phone of that
+    // width would, four cells with "Mua hàng" counted, the ones further on dropped from the end.
     $pvBuy = $preview['buy'] ?? null;
+    $pvBar = array_slice($preview['bar'] ?? [], 0, $pvBuy === null ? 4 : 3);
     $buySafe = FloatingContact::color($buyColor) ?? FloatingContact::BUY_COLOR;
 @endphp
 <x-bs-admin::settings-shell active="floating" :hints="count($locales) > 1 ? [FirstHints::LANG_SOURCE => $srcHint] : []">
@@ -287,14 +289,13 @@
                                     $color = $colorOf($c);
                                     $valueError = $errors->first("channels.$i.value");
                                     $hint = __('admin.fc.hint.'.($custom ? 'custom' : $key));
-                                    $dim = ! $isVertical && in_array($key, FloatingContact::BAR_HIDDEN, true);
                                     $text = FloatingContact::CHANNELS[$key]['text'] ?? null;
                                     $swState = $c['on'] ? __('admin.fc.on') : __('admin.fc.off');
                                     // Switched on with nothing typed: the site leaves the button out until it is filled in.
                                     $unfilled = $c['on'] && trim($c['value']) === '' && $valueError === '';
                                 @endphp
                                 <div wire:key="fc-ch-{{ $key }}" wire:sort:item="{{ $key }}"
-                                     @class(['flex items-start gap-2.5 rounded-lg border bg-surface p-3', 'border-border' => $c['on'], 'border-dashed border-border bg-surface-muted' => ! $c['on'], 'opacity-80' => $dim])>
+                                     @class(['flex items-start gap-2.5 rounded-lg border bg-surface p-3', 'border-border' => $c['on'], 'border-dashed border-border bg-surface-muted' => ! $c['on']])>
                                     <span wire:sort:handle class="mt-2 flex shrink-0 cursor-grab items-center text-text-faint any-pointer-coarse:hidden" title="{{ __('admin.fc.drag') }}">
                                         <x-bs-admin::icon name="ri-draggable" class="{{ $glyph }}" />
                                     </span>
@@ -325,7 +326,7 @@
                                                        aria-invalid="{{ $errors->has("channels.$i.name") ? 'true' : 'false' }}"
                                                        class="field field-row min-w-[min(10rem,100%)] max-w-70 flex-[1_1_10rem] rounded-md border border-border-input bg-surface px-2.5 font-semibold text-text-strong">
                                             @else
-                                                <span class="{{ $name }}">{{ $label }}@if ($dim)<span class="ms-1.5 text-caption font-medium text-text-muted">{{ __('admin.fc.bar_hidden') }}</span>@endif</span>
+                                                <span class="{{ $name }}">{{ $label }}</span>
                                             @endif
                                             <div class="flex shrink-0 items-center gap-2">
                                                 <button type="button" class="switch hit-area" role="switch" aria-checked="{{ $c['on'] ? 'true' : 'false' }}" wire:click="toggleChannel({{ Js::from($key) }})"
@@ -556,7 +557,7 @@
                                                         <svg viewBox="0 0 24 24" fill="currentColor" class="size-[min(1.5rem,calc(0.8125rem+var(--user-text-boost)))]"><path d="{{ $b['icon'] }}"/></svg>
                                                     @endif
                                                 </span>
-                                                <span @class(['max-w-full text-center text-caption leading-[1.2] font-semibold [overflow-wrap:anywhere]', 'text-text' => ! $pending, 'text-text-muted' => $pending])>{{ $word($b) }}</span>
+                                                <span @class(['max-w-full text-center text-caption leading-[1.2] font-semibold [overflow-wrap:break-word]', 'text-text' => ! $pending, 'text-text-muted' => $pending])>{{ $word($b) }}</span>
                                             </span>
                                         @endforeach
                                         @if ($pvBuy !== null)
@@ -564,7 +565,7 @@
                                                 <span class="flex h-[22px] min-w-[22px] shrink-0 items-center justify-center rounded-full px-[3px]" style="background: {{ $pvBuy['fill'] }}; color: {{ $pvBuy['ink'] }}">
                                                     <svg viewBox="0 0 24 24" fill="currentColor" class="size-[min(1.5rem,calc(0.8125rem+var(--user-text-boost)))]"><path d="{{ $svg('ri-shopping-bag-fill') }}"/></svg>
                                                 </span>
-                                                <span class="max-w-full text-center text-caption leading-[1.2] font-semibold text-text [overflow-wrap:anywhere]">{{ __('storefront.fc_buy', [], $lang) }}</span>
+                                                <span class="max-w-full text-center text-caption leading-[1.2] font-semibold text-text [overflow-wrap:break-word]">{{ __('storefront.fc_buy', [], $lang) }}</span>
                                             </span>
                                         @endif
                                     </div>

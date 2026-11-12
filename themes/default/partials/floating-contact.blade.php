@@ -1,16 +1,16 @@
 {{--
     Floating contact buttons (`storefront.floating_contact`, normalized by FloatingContact; null =
     nothing printed). Plain links only — no script. "vertical": round buttons in a corner or along
-    the bottom on every screen; "horizontal": a bar along the bottom on phones only. An invisible
-    copy after the footer (same list classes, so the same size, cap and wrapping) keeps exactly the
+    the bottom on every screen; "horizontal": a bar along the bottom on phones (every channel in the
+    admin's order; place N from the 4th shows where its container is N x 4.5rem wide, sf-fc-bar__item--r4..r11,
+    and --rx from the 12th never shows) and the same channels as round buttons from 768px (sf-fc--wide).
+    An invisible copy after the footer (same list classes, so the same size and wrapping) keeps exactly the
     room they take, so the end of the page — footer links included — always scrolls clear of them:
-    for the bar and the bottom row at every width, for a side stack wherever it can cover the
-    footer's text (it reaches into the page, or wraps into a second column; elsewhere it sits in
-    the page margin and leaves no empty band under the footer). Labels may wrap, so a fixed padding could not match. The bar ends with "Mua hàng" when
-    the site has a product list. The bar holds up to five buttons; the fourth and fifth in line
-    (sf-fc-bar__item--r4/--r5) show only where the phone is wide enough (storefront.css), and
-    "Mua hàng" always takes one of the first three places, so a narrow phone drops channels from
-    the end and keeps it. Each link
+    for the bar below 768px and for the round buttons from 768px (sf-fc-ghost--wide), never both; in
+    the vertical theme for the bottom row at every width and for a side stack wherever it can cover the
+    footer's text. Labels wrap at spaces, so a fixed padding could not match. The bar ends with "Mua hàng"
+    when the site has a product list; it always takes one of the first three places, so a narrow phone drops
+    channels from the end and keeps it. Each link
     carries its name (aria-label), which also holds the word printed on the button (SMS), and the
     hover label repeats the name for the eye. Colours come from the normalizer (white marks at 3:1,
     words at 4.5:1; the brand fill uses the brand's own readable ink).
@@ -28,14 +28,15 @@
         ? $fcWord($b).' '.$b['text'] : $fcWord($b);
     $fcOffsets = '--fc-ox:'.$fc['offset_x'].'px;--fc-oy:'.$fc['offset_y'].'px';
     // Place of a bar channel in the order buttons drop out on narrow phones: "Mua hàng" stays third.
-    $fcRank = static fn (int $i): string => ($r = $i + 1 + ($fc['buy'] !== null && $i >= 2 ? 1 : 0)) > 3 ? ' sf-fc-bar__item--r'.$r : '';
+    // From the 12th place on a cell never shows (--rx): cells past the 11th (792px at 4.5rem) never fit under 768px.
+    $fcRank = static fn (int $i): string => ($r = $i + 1 + ($fc['buy'] !== null && $i >= 2 ? 1 : 0)) > 3 ? ' sf-fc-bar__item--'.($r > 11 ? 'rx' : 'r'.$r) : '';
+    $fcBarMode = $fc['theme'] === 'horizontal';
 @endphp
-@if ($fc['theme'] === 'vertical')
 @php($fcPb = $fc['phone_bar'])
-@if ($fcPb === null)
-<div class="sf-fc-ghost sf-fc-ghost--{{ $fc['position'] === 'bottom' ? 'row' : 'side' }}" aria-hidden="true" style="{{ $fcOffsets }};--fc-n:{{ count($fc['buttons']) }}"><div class="sf-fc__list sf-fc__list--{{ $fc['position'] }}">@foreach ($fc['buttons'] as $b)<span class="sf-fc__btn"></span>@endforeach</div></div>
+@if ($fcBarMode || $fcPb === null)
+<div class="sf-fc-ghost sf-fc-ghost--{{ $fc['position'] === 'bottom' ? 'row' : 'side' }}{{ $fcBarMode ? ' sf-fc-ghost--wide' : '' }}" aria-hidden="true" style="{{ $fcOffsets }};--fc-n:{{ count($fc['buttons']) }}"><div class="sf-fc__list sf-fc__list--{{ $fc['position'] }}">@foreach ($fc['buttons'] as $b)<span class="sf-fc__btn"></span>@endforeach</div></div>
 @endif
-<nav class="sf-fc sf-fc--{{ $fc['position'] }}{{ $fcPb !== null ? ' sf-fc--md' : '' }}" aria-label="{{ __('storefront.fc_nav') }}" style="{{ $fcOffsets }}">
+<nav class="sf-fc sf-fc--{{ $fc['position'] }}{{ $fcBarMode ? ' sf-fc--wide' : ($fcPb !== null ? ' sf-fc--md' : '') }}" aria-label="{{ __('storefront.fc_nav') }}" style="{{ $fcOffsets }}">
     <ul class="sf-fc__list sf-fc__list--{{ $fc['position'] }}" role="list">
         @foreach ($fc['buttons'] as $b)
             <li><a class="sf-fc__btn{{ $b['pulse'] ? ' sf-fc__btn--pulse' : '' }}" href="{{ $b['href'] }}" aria-label="{{ $fcName($b) }}" style="--fc-fill:{{ $b['fill'] }};--fc-ink:{{ $b['ink'] }}">
@@ -49,7 +50,7 @@
         @endforeach
     </ul>
 </nav>
-@if ($fcPb !== null)
+@if (! $fcBarMode && $fcPb !== null)
 <div class="sf-fc-bar sf-fc-bar--board sf-fc-bar--ghost" aria-hidden="true"><ul class="sf-fc-bar__list" role="list">@foreach ($fcPb['bar'] as $b)<li class="sf-fc-bar__item"><span class="sf-fc-bar__link"><span class="sf-fc-bar__dot"></span><span class="sf-fc-bar__label">{{ $fcWord($b) }}</span></span></li>@endforeach @if ($fcPb['cta'] !== null)<li class="sf-fc-bar__item"><span class="sf-fc-bar__link"><span class="sf-fc-bar__dot"></span><span class="sf-fc-bar__label">{{ $fcPb['cta']['label'] }}</span></span></li>@endif</ul></div>
 <nav class="sf-fc-bar sf-fc-bar--board" aria-label="{{ __('storefront.fc_nav') }}">
     <ul class="sf-fc-bar__list" role="list">
@@ -71,7 +72,7 @@
     </ul>
 </nav>
 @endif
-@else
+@if ($fcBarMode)
 <div class="sf-fc-bar sf-fc-bar--ghost" aria-hidden="true"><ul class="sf-fc-bar__list" role="list">@foreach ($fc['bar'] as $b)<li class="sf-fc-bar__item{{ $fcRank($loop->index) }}"><span class="sf-fc-bar__link"><span class="sf-fc-bar__dot">@if ($b['text'] !== null)<span class="sf-fc-bar__word">{{ $b['text'] }}</span>@endif</span><span class="sf-fc-bar__label">{{ $fcWord($b) }}</span></span></li>@endforeach @if ($fc['buy'] !== null)<li class="sf-fc-bar__item"><span class="sf-fc-bar__link"><span class="sf-fc-bar__dot"></span><span class="sf-fc-bar__label">{{ __('storefront.fc_buy') }}</span></span></li>@endif</ul></div>
 <nav class="sf-fc-bar" aria-label="{{ __('storefront.fc_nav') }}">
     <ul class="sf-fc-bar__list" role="list">

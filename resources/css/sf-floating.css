@@ -212,12 +212,13 @@
     }
 }
 
-/* Bottom bar (phones only): up to five equal buttons, each a small coloured disc with its label
-   under it, about 50px tall (a 44px tap target, the label at least 12px). Three always show; the
-   fourth and fifth in line (--r4, --r5) only where every button keeps 4.25rem — in rem, so a larger
-   text size shows fewer — e.g. at a 16px root four from 272px, five from 340px. Its ghost copy
-   stays in the page flow after the footer, invisible: exactly the bar's height and safe-area inset
-   at every text size (a label may wrap), so the end of the page scrolls clear. */
+/* Bottom bar (phones only): every channel, equal buttons, each a small coloured disc with its label
+   under it, about 50px tall (a 44px tap target, the label at least 12px). Three always show; place N
+   from the fourth (--r4 … --r11) shows only where the bar's own width holds N cells of 4.5rem (72px at a 16px root: the longest
+   real label, "Messenger", needs about 70px at 12px and never breaks inside a word) — in rem, so a larger
+   text size shows fewer — e.g. four from 288px, ten from 720px, eleven from 792px; from the twelfth on (--rx) never. From 768px the same channels are the round buttons (--wide, below). Its ghost
+   copy stays in the page flow after the footer, invisible: exactly the bar's height and safe-area inset
+   at every text size (a label may wrap at a space), so the end of the page scrolls clear. */
 .sf-fc-bar {
     display: none;
 }
@@ -243,6 +244,23 @@
     }
 }
 
+/* Round buttons of the bar theme: only from 768px (the bar does the job below it), with their
+   reserved room under the footer from the same width. */
+.sf-fc--wide,
+.sf-fc-ghost--wide {
+    display: none;
+}
+
+@media (min-width: 768px) {
+    .sf-fc--wide {
+        display: block;
+    }
+
+    .sf-fc-ghost--wide {
+        display: flex;
+    }
+}
+
 .sf-fc-bar__list {
     container-type: inline-size;
     display: flex;
@@ -252,18 +270,61 @@
 }
 
 .sf-fc-bar__item--r4,
-.sf-fc-bar__item--r5 {
+.sf-fc-bar__item--r5,
+.sf-fc-bar__item--r6,
+.sf-fc-bar__item--r7,
+.sf-fc-bar__item--r8,
+.sf-fc-bar__item--r9,
+.sf-fc-bar__item--r10,
+.sf-fc-bar__item--r11,
+.sf-fc-bar__item--rx {
     display: none;
 }
 
-@container (min-width: 17rem) {
+@container (min-width: 18rem) {
     .sf-fc-bar__item--r4 {
         display: block;
     }
 }
 
-@container (min-width: 21.25rem) {
+@container (min-width: 22.5rem) {
     .sf-fc-bar__item--r5 {
+        display: block;
+    }
+}
+
+@container (min-width: 27rem) {
+    .sf-fc-bar__item--r6 {
+        display: block;
+    }
+}
+
+@container (min-width: 31.5rem) {
+    .sf-fc-bar__item--r7 {
+        display: block;
+    }
+}
+
+@container (min-width: 36rem) {
+    .sf-fc-bar__item--r8 {
+        display: block;
+    }
+}
+
+@container (min-width: 40.5rem) {
+    .sf-fc-bar__item--r9 {
+        display: block;
+    }
+}
+
+@container (min-width: 45rem) {
+    .sf-fc-bar__item--r10 {
+        display: block;
+    }
+}
+
+@container (min-width: 49.5rem) {
+    .sf-fc-bar__item--r11 {
         display: block;
     }
 }
@@ -284,7 +345,7 @@
     justify-content: center;
     gap: 0.125rem;
     min-height: max(48px, 3rem);
-    padding: 0.3125rem 0.125rem;
+    padding: 0.3125rem 0;
     color: var(--color-text-strong);
     text-align: center;
     text-decoration: none;
@@ -325,7 +386,8 @@
     font-size: max(12px, 0.6875rem);
     font-weight: 600;
     line-height: 1.2;
-    overflow-wrap: anywhere;
+    /* Wraps at spaces; only a single word longer than the cell (a site's own label) breaks inside. */
+    overflow-wrap: break-word;
 }
 
 /* Board-style phone bar (a round-button site's `phone_bar`): below 768px the round buttons are
