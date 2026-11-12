@@ -3,6 +3,7 @@
 use App\Modules\Provisioning\Actions\SeedMeasurementSite;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Rendering\LayoutSlots;
+use Tests\Fixtures\StorefrontCards;
 
 /*
  * The CI speed and accessibility job measures only what the measurement site draws. A block kind the
@@ -55,7 +56,7 @@ it('names only registered kinds and puts slot blocks in slots that take them', f
 });
 
 it('serves every extra measurement page', function (): void {
-    $siteId = Tests\Fixtures\StorefrontCards::site('Đo tốc độ', 'cwv.platform.test');
+    $siteId = StorefrontCards::site('Đo tốc độ', 'cwv.platform.test');
     expect($siteId)->toBeInt();
     $this->artisan('site:seed-measurement', ['--host' => 'cwv.platform.test'])->assertSuccessful();
     config(['media.cloudflare.base' => 'http://cwv.platform.test/cwv-media']);

@@ -187,13 +187,9 @@ final readonly class SeedMeasurementSite
                 ['title' => 'Giá minh bạch', 'text' => 'Báo giá chi tiết từng hạng mục.'],
             ]]],
             ['type' => 'pricing', 'props' => ['heading' => 'Gói dịch vụ', 'plans' => [
-                ['name' => 'Cơ bản', 'price' => 1500000, 'unit' => 'đ/chi tiết', 'features' => "Gia công theo bản vẽ
-Đo kiểm cơ bản", 'cta_label' => 'Chọn gói', 'cta_url' => '/lien-he'],
-                ['name' => 'Tiêu chuẩn', 'price' => 4500000, 'unit' => 'đ/lô', 'features' => "Gia công nhiều chi tiết
-Biên bản đo kiểm
-Hỗ trợ thiết kế", 'cta_label' => 'Chọn gói', 'cta_url' => '/lien-he'],
-                ['name' => 'Dự án', 'price' => 0, 'unit' => '', 'features' => "Đồ gá và khuôn mẫu
-Kỹ sư riêng", 'cta_label' => 'Liên hệ', 'cta_url' => '/lien-he'],
+                ['name' => 'Cơ bản', 'price' => 1500000, 'unit' => 'đ/chi tiết', 'features' => "Gia công theo bản vẽ\nĐo kiểm cơ bản", 'cta_label' => 'Chọn gói', 'cta_url' => '/lien-he'],
+                ['name' => 'Tiêu chuẩn', 'price' => 4500000, 'unit' => 'đ/lô', 'features' => "Gia công nhiều chi tiết\nBiên bản đo kiểm\nHỗ trợ thiết kế", 'cta_label' => 'Chọn gói', 'cta_url' => '/lien-he'],
+                ['name' => 'Dự án', 'price' => 0, 'unit' => '', 'features' => "Đồ gá và khuôn mẫu\nKỹ sư riêng", 'cta_label' => 'Liên hệ', 'cta_url' => '/lien-he'],
             ]]],
             ['type' => 'cta', 'props' => ['heading' => 'Cần tư vấn giải pháp?', 'text' => 'Chúng tôi phản hồi trong 24 giờ.', 'button_label' => 'Liên hệ', 'button_url' => '/lien-he', 'variant' => 'default', 'side' => 'stats', 'side_items' => [
                 ['kind' => 'number', 'value' => 120, 'suffix' => '+', 'label' => 'Khách hàng'],
