@@ -2541,7 +2541,7 @@
     "storefront.text_size_xl": "Cực lớn",
     "storefront.language": "Ngôn ngữ",
     "storefront.head_office": "Trụ sở",
-    "storefront.license_full": "Mã số doanh nghiệp: :number do :issuer cấp lần đầu ngày :date",
+    "storefront.license_full": "Mã số doanh nghiệp: :number do :issuer cấp ngày :date",
     "storefront.license_no_date": "Mã số doanh nghiệp: :number do :issuer cấp",
     "storefront.factory_area": "Diện tích: :area m²",
     "storefront.view_map": "Xem bản đồ",

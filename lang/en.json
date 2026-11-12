@@ -2541,7 +2541,7 @@
     "storefront.text_size_xl": "Extra large",
     "storefront.language": "Language",
     "storefront.head_office": "Head office",
-    "storefront.license_full": "Enterprise code: :number, issued by :issuer, first registered on :date",
+    "storefront.license_full": "Enterprise code: :number, issued by :issuer on :date",
     "storefront.license_no_date": "Enterprise code: :number, issued by :issuer",
     "storefront.factory_area": "Area: :area m²",
     "storefront.view_map": "View map",

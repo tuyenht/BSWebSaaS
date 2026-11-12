@@ -375,7 +375,7 @@ it('renders the rich footer: factories, dated licence with its issuer, copyright
         ->toContain('<footer class="sf-footer" role="contentinfo">')
         ->toContain('<p class="sf-footer__about">Giới thiệu ngắn.</p>')
         ->toContain('<h2 class="sf-footer__legal-name">Công ty TNHH Xưởng Mẫu</h2>')
-        ->toContain('Mã số doanh nghiệp: 0100000001 do Sở KH&amp;ĐT Hà Nội cấp lần đầu ngày 05/03/2010')
+        ->toContain('Mã số doanh nghiệp: 0100000001 do Sở KH&amp;ĐT Hà Nội cấp ngày 05/03/2010')
         ->not->toContain('GPĐKKD')
         ->toContain('<h3 class="sf-factory__title">Nhà máy 1</h3>')
         ->toContain('<h3 class="sf-factory__title">Nhà máy 2</h3>')
@@ -397,7 +397,7 @@ it('renders the rich footer: factories, dated licence with its issuer, copyright
         ->toContain("Bản quyền © {$year} thuộc về <strong>Xưởng Mẫu</strong>");
 });
 
-it('writes the legal line with the enterprise code and its issuer when the first registration date is unknown', function (): void {
+it('writes the legal line with the enterprise code and its issuer when the issue date is unknown', function (): void {
     $siteId = sfcSite();
     sfcSetting($siteId, 'footer', sfcFooter());
 
@@ -405,7 +405,7 @@ it('writes the legal line with the enterprise code and its issuer when the first
 
     expect($html)
         ->toContain('Mã số doanh nghiệp: 0100000001 do Sở KH&amp;ĐT Hà Nội cấp')
-        ->not->toContain('cấp lần đầu ngày')
+        ->not->toContain('cấp ngày')
         ->not->toContain('GPĐKKD');
 });
 

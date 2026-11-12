@@ -2541,7 +2541,7 @@
     "storefront.text_size_xl": "特大",
     "storefront.language": "言語",
     "storefront.head_office": "本社",
-    "storefront.license_full": "企業コード: :number(:issuer 発行、初回登録日 :date)",
+    "storefront.license_full": "企業コード: :number(:issuer 発行、:date)",
     "storefront.license_no_date": "企業コード: :number(:issuer 発行)",
     "storefront.factory_area": "面積: :area m²",
     "storefront.view_map": "地図を見る",

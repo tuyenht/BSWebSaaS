@@ -200,7 +200,7 @@ it('prints the saved tagline, hours, notice link, Zalo and licence issuer in the
         ->toContain('Giờ làm việc: Thứ 2 – Thứ 7, 07:30 – 17:00 · Nghỉ trưa 12:00 – 13:00')
         ->toContain('<a href="http://online.gov.vn/Home/WebDetails/12345" rel="noopener">Đã thông báo Bộ Công Thương')
         ->toContain('href="https://zalo.me/0901234567"')
-        ->toContain('Mã số doanh nghiệp: 0312345678 do Sở KH&amp;ĐT TP Hà Nội cấp lần đầu ngày 14/03/2019')
+        ->toContain('Mã số doanh nghiệp: 0312345678 do Sở KH&amp;ĐT TP Hà Nội cấp ngày 14/03/2019')
         ->not->toContain('Sở cũ');
 });
 
@@ -248,7 +248,7 @@ it('prints the licence date in the site’s day format; “Tự động” keeps
     gisRichFooter($siteId);
     gisSave($siteId, ['licenseDate' => '14/03/2019', 'dateFormat' => $format]);
 
-    expect(gisFooter(gisHome()))->toContain('cấp lần đầu ngày '.$shown);
+    expect(gisFooter(gisHome()))->toContain('cấp ngày '.$shown);
 })->with([
     'auto' => ['auto', '14/03/2019'],
     'dmy' => ['dmy', '14/03/2019'],
