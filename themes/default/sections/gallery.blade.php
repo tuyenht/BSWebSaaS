@@ -1,6 +1,6 @@
 {{--
-    Gallery: pictures from the site's library in a grid of 2–4 columns (two on a phone), each with an
-    optional caption. A picture that did not resolve is skipped. A picture with a caption keeps
+    Gallery: pictures from the site's library in a grid of 2–4 columns (two on a phone; never more columns
+    than pictures), each with an optional caption. A picture that did not resolve is skipped. A picture with a caption keeps
     alt="" (the caption carries the text); one without takes the library's alt text.
     Each picture links to itself: without script the link opens the photo, with sf-viewer.js it opens
     the photo viewer, which steps through every gallery picture on the page. The link's name says it
@@ -15,6 +15,9 @@
         \App\Modules\Theme\Components\SectionProps::items($props, 'images'),
         static fn (array $item): bool => \App\Modules\Shared\Support\SafeLink::href($item['image'] ?? null) !== null,
     ));
+    // Never more columns than pictures (two at least): three pictures in a four-column gallery fill three
+    // columns instead of leaving the fourth empty.
+    $columns = (string) min((int) $columns, max(2, count($pictures)));
 @endphp
 @if ($pictures !== [])
 @component('theme::partials.sf-band', ['bg' => \App\Modules\Theme\Components\SectionProps::choice($props, 'bg', \App\Modules\Theme\Components\SectionProps::BG), 'class' => $sfOverlay ? 'sf-gallery sf-gallery--overlay' : 'sf-gallery'])

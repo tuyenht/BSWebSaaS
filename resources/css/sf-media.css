@@ -384,7 +384,8 @@ html:has(.sf-viewer[open]) {
     }
 }
 
-/* Gallery, caption on the photo: white on a dark fade at the photo's foot. */
+/* Gallery, caption on the photo: white on a dark fade at the photo's foot. The fade reaches 60% black
+   1rem down, above the text, so the white text keeps 4.5:1 even over a white photo (5.7:1 at 60%). */
 .sf-gallery__zoom {
     position: relative;
 }
@@ -395,7 +396,7 @@ html:has(.sf-viewer[open]) {
     bottom: 0;
     margin: 0;
     padding: 1.5rem 0.75rem 0.75rem;
-    background: linear-gradient(to top, rgb(0 0 0 / 0.75), transparent);
+    background: linear-gradient(to top, rgb(0 0 0 / 0.8), rgb(0 0 0 / 0.6) calc(100% - 1rem), transparent);
     color: #fff;
     font-size: 0.875rem;
     font-weight: 600;

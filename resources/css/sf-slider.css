@@ -97,6 +97,7 @@
     color: #fff;
     font-size: 1rem;
     text-shadow: 0 2px 4px rgb(0 0 0 / 0.5);
+    text-wrap: pretty; /* no lone word on the last line (where the browser supports it) */
 }
 
 /* A phone puts the two buttons side by side in equal halves (a lone one takes the row); from 640px

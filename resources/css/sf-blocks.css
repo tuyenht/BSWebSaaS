@@ -623,7 +623,21 @@
     }
 }
 
-/* Process, numeral look: grey cards with a big accent number (01, 02, 03) and a small title. */
+/* Process, numeral look: grey cards with a big accent number (01, 02, 03) and a small title, in a
+   column of 64rem at most (the thank-you board's width), not the full page width; the editor's width
+   choice (narrow, full) still applies. */
+.sf-steps--numeral > .sf-container {
+    max-width: 64rem;
+}
+
+.sf-s--w-narrow .sf-steps--numeral > .sf-container {
+    max-width: 48rem;
+}
+
+.sf-s--w-full .sf-steps--numeral > .sf-container {
+    max-width: none;
+}
+
 .sf-steps--numeral .sf-steps__list {
     display: grid;
     gap: 1.5rem;
@@ -679,9 +693,20 @@
 }
 
 /* Process, round-number look as the capability board draws it: an accent rule on the left of a phone
-   row and on top of a tablet card, two across from a tablet, the six steps three across. */
+   row and on top of a tablet card, two across from a tablet, the six steps three across. The number is
+   "01" in the accent on a raised-dark disc, 40px (48px from 1024px). */
 .sf-steps:not(.sf-steps--numeral) .sf-step {
+    padding-left: 4.5rem;
     border-left: 4px solid var(--color-primary);
+}
+
+.sf-steps:not(.sf-steps--numeral) .sf-step::before {
+    content: counter(sf-step, decimal-leading-zero);
+    width: 2.5rem;
+    height: 2.5rem;
+    background: var(--color-dark-raised, color-mix(in srgb, var(--color-dark) 88%, white));
+    color: var(--color-primary-on-dark, var(--color-primary));
+    font-weight: 800;
 }
 
 @media (min-width: 40rem) {
@@ -703,6 +728,16 @@
 
     .sf-steps:not(.sf-steps--numeral) .sf-steps__list {
         grid-template-columns: repeat(var(--steps, 3), minmax(0, 1fr));
+    }
+
+    .sf-steps:not(.sf-steps--numeral) .sf-step {
+        padding: 5rem 1rem 1.25rem;
+    }
+
+    .sf-steps:not(.sf-steps--numeral) .sf-step::before {
+        width: 3rem;
+        height: 3rem;
+        font-size: 1.125rem;
     }
 }
 @media (max-width: 639.98px) {

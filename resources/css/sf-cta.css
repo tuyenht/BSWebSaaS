@@ -49,6 +49,7 @@
     color: var(--sch-body, var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white)));
     font-size: 1.125rem;
     line-height: 1.5rem;
+    text-wrap: pretty; /* no lone word on the last line (where the browser supports it) */
 }
 
 .cta.cta--rounded {
@@ -217,12 +218,25 @@
     }
 }
 
-/* CTA, card look: a dark rounded card inside the page width with an accent rule on top, the text
-   on the left and pill buttons on the right (stacked on a phone). */
+/* CTA, card look: a dark rounded card inside the page width (64rem at most) with an accent rule on top,
+   the text on the left and pill buttons on the right (stacked on a phone). */
 .cta.cta--card {
     padding: 4rem 0;
     background: transparent;
     text-align: left;
+}
+
+.cta--card > .sf-container {
+    max-width: 64rem;
+}
+
+/* The editor's width choice still works on the card (the default stays 64rem). */
+.sf-s--w-narrow .cta--card > .sf-container {
+    max-width: 48rem;
+}
+
+.sf-s--w-full .cta--card > .sf-container {
+    max-width: none;
 }
 
 .cta__card {

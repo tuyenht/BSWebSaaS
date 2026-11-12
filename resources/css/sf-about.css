@@ -31,15 +31,8 @@
     }
 }
 
-.about__body {
-    order: 1;
-}
-
-@media (min-width: 768px) {
-    .about__body {
-        order: 0;
-    }
-}
+/* A phone reads the text first and the photo after it, as the markup has them (no reordering); from
+   768px the text stands on the left of the photo. */
 
 /* The size of every section title (.sf-section-head__title), on a phone too. */
 .about__heading {

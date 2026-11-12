@@ -159,6 +159,9 @@
     .sf-rail__list--m-two { --sf-c: 2; }
     .sf-rail__list--m-one { --sf-c: 1; }
     .sf-rail__list--m-slider { --sf-c: 3; }
+    /* Partner logos: two in view between the arrows, so a long logo is drawn about 100px wide at 390px
+       (three left it about 57px, its lettering about 6px tall). */
+    .partners .sf-rail__list--m-slider { --sf-c: 2; }
 
     .sf-rail__list--m-swipe,
     .sf-rail__list--m-slider {
@@ -179,11 +182,11 @@
     outline-offset: 4px;
 }
 
-/* region: sf-rail controls. On a tablet or laptop the controls are one row below the list: arrow, dots,
-   arrow. On a phone the arrows stand on the cards' left and right edges, halfway down the row, and
-   the dots stay alone, centred under it (the phone block below). From 1360px the page margin is wide
-   enough for the arrows to stand beside the list, outside its cards. They are always visible (never
-   hover-only) once the script shows them. */
+/* region: sf-rail controls. On a phone, tablet or laptop the controls are one row below the list: arrow,
+   dots, arrow, so an arrow never covers a card. From 1440px the page margin is wide enough for the
+   arrows to stand beside the list, outside its cards and inside the window (at 1366px it is 2rem, too
+   narrow for a 44px arrow standing 3.5rem out). They are always visible (never hover-only) once the
+   script shows them. */
 .sf-rail__controls {
     display: flex;
     align-items: center;
@@ -265,37 +268,13 @@
     background: rgb(255 255 255 / 0.5);
 }
 
-/* Phone: a row that scrolls keeps 12px inside each side, so an arrow (a 40px disc centred on the card's
-   edge, in a 44px hit area) covers only the card's own padding, never its text; the inset is there from
-   the first paint (not added by the script), so nothing shifts when the arrows appear. The next card
-   peeks on the right. Every card rail shares it: capabilities, news, projects, products, branches; the
-   partner logo strip keeps its own arrows beside the row (below), which never sit under it. */
+/* Phone: the row starts at the page margin, like the heading above it, and the next card peeks on the
+   right; the arrows sit in the row below with the dots (a 40px disc in the 44px hit area). Every card
+   rail shares it: capabilities, news, projects, products, branches; the partner logo strip keeps its
+   own arrows beside the row (below). */
 @media (max-width: 639.98px) {
-    .sf-rail:not([data-arrows="none"], .partners .sf-rail) :is(.sf-rail__list--slider, .sf-rail__list--m-swipe, .sf-rail__list--m-slider) {
-        padding-inline: 12px;
-        scroll-padding-inline: 12px;
-    }
-
     .sf-rail__controls {
-        min-height: 0.75rem;
         margin-top: 0.75rem;
-    }
-
-    .sf-rail__prev,
-    .sf-rail__next {
-        position: absolute;
-        top: calc(50% - 0.75rem - 22px);
-        z-index: 3;
-        width: 44px;
-        height: 44px;
-    }
-
-    .sf-rail__prev {
-        left: -10px;
-    }
-
-    .sf-rail__next {
-        right: -10px;
     }
 
     .sf-rail__btn::before {
@@ -304,7 +283,7 @@
     }
 }
 
-@media (min-width: 1360px) {
+@media (min-width: 1440px) {
     .sf-rail__controls {
         min-height: 1.5rem;
         margin-top: 0.75rem;
@@ -317,8 +296,10 @@
         z-index: 3;
     }
 
-    .sf-rail__prev { left: -3.5rem; }
-    .sf-rail__next { right: -3.5rem; }
+    /* A larger text size widens the page (rem) without widening the window: the arrow then stops 0.75rem
+       inside the window's edge (100vw counts a classic scrollbar, which the 0.75rem covers). */
+    .sf-rail__prev { left: max(-3.5rem, calc((100% - 100vw) / 2 + 0.75rem)); }
+    .sf-rail__next { right: max(-3.5rem, calc((100% - 100vw) / 2 + 0.75rem)); }
 }
 
 @media (prefers-reduced-motion: reduce) {

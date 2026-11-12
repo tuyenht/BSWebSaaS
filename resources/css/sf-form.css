@@ -683,6 +683,7 @@
 .sf-bmap__meta {
     font-size: 0.8125rem;
     overflow-wrap: anywhere;
+    text-wrap: pretty; /* no lone word on the last line (where the browser supports it) */
 }
 
 .sf-bmap__addr {

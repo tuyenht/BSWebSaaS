@@ -982,6 +982,21 @@
     color: var(--color-text);
 }
 
+/* Cards in one row line up: each card takes two rows of the list's grid (head, text) as a subgrid, so a
+   one-line title gets the head height of a two-line one and its glyph and text sit level with the others. */
+@supports (grid-template-rows: subgrid) {
+    .sf-grid > .sf-hcard {
+        display: grid;
+        grid-row: span 2;
+        grid-template-rows: subgrid;
+        row-gap: 1rem;
+    }
+
+    .sf-grid > .sf-hcard > .sf-hcard__head {
+        margin-bottom: 0;
+    }
+}
+
 @media (hover: hover) {
     .sf-hcard:hover {
         box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);

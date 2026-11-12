@@ -2148,6 +2148,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     margin-inline: auto;
     color: var(--sch-body, var(--color-on-dark, color-mix(in srgb, var(--color-dark) 40%, white)));
     font-size: 1.125rem;
+    text-wrap: pretty; /* no lone word on the last line (where the browser supports it) */
 }
 
 /* Over a photo the subtitle is white like the title: the light grey reads under 4.5:1 over a light
@@ -2334,6 +2335,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     margin-top: 1rem;
     color: var(--sch-body, var(--color-text));
     font-size: 1rem;
+    text-wrap: pretty; /* no lone word on the last line (where the browser supports it) */
 }
 
 .sf-band--dark .sf-section-head__title {
