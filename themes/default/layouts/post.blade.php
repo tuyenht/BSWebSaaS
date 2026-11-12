@@ -100,7 +100,7 @@
             </header>
 @if ($sfCover !== null)
             <figure class="post-cover">
-                @include('theme::partials.sf-img', ['src' => $sfCover['src'], 'srcset' => $sfCover['srcset'], 'sizes' => '(min-width:80rem) 78rem, calc(100vw - 2rem)', 'alt' => $sfCover['alt'], 'w' => $sfCover['width'], 'h' => $sfCover['height'], 'priority' => $sfCoverPriority, 'class' => 'post-cover__img'])
+                @include('theme::partials.sf-img', ['src' => $sfCover['src'], 'srcset' => $sfCover['srcset'], 'sizes' => '(min-width:80rem) 76rem, (min-width:64rem) calc(100vw - 4rem), calc(100vw - 2rem)', 'alt' => $sfCover['alt'], 'w' => $sfCover['width'], 'h' => $sfCover['height'], 'priority' => $sfCoverPriority, 'class' => 'post-cover__img'])
 @if ($sfCover['caption'] !== '')
                 <figcaption class="post-cover__caption">{{ $sfCover['caption'] }}</figcaption>
 @endif

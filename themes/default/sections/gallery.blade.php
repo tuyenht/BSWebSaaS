@@ -18,6 +18,13 @@
     // Never more columns than pictures (two at least): three pictures in a four-column gallery fill three
     // columns instead of leaving the fourth empty.
     $columns = (string) min((int) $columns, max(2, count($pictures)));
+    // the width each picture really takes at those columns (two from the start, three from 768 px, four from 1024 px)
+    $sfSizes = match ($columns) {
+        '4' => '(min-width: 64rem) 25vw, (min-width: 48rem) 33vw, 50vw',
+        '3' => '(min-width: 48rem) 33vw, 50vw',
+        '1' => '100vw',
+        default => '50vw',
+    };
 @endphp
 @if ($pictures !== [])
 @component('theme::partials.sf-band', ['bg' => \App\Modules\Theme\Components\SectionProps::choice($props, 'bg', \App\Modules\Theme\Components\SectionProps::BG), 'class' => $sfOverlay ? 'sf-gallery sf-gallery--overlay' : 'sf-gallery'])
@@ -31,7 +38,7 @@
 @endphp
 <li><figure class="sf-gallery__item">
 <a class="sf-gallery__zoom" href="{{ \App\Modules\Shared\Support\SafeLink::href($item['image']) }}" data-sf-zoom="gallery" aria-label="{{ $sfName === '' ? __('storefront.zoom_photo') : __('storefront.zoom_photo_named', ['name' => $sfName]) }}">
-@include('theme::partials.sf-img', ['src' => $item['image'], 'srcset' => ($srcsets ?? [])[$item['image']] ?? null, 'alt' => $sfAlt, 'sizes' => '(min-width: 64rem) 25vw, 50vw', 'w' => 800, 'h' => 600, 'priority' => ! empty($props['_high']) && $loop->first ? 'high' : 'lazy', 'class' => 'sf-gallery__img'])
+@include('theme::partials.sf-img', ['src' => $item['image'], 'srcset' => ($srcsets ?? [])[$item['image']] ?? null, 'alt' => $sfAlt, 'sizes' => $sfSizes, 'w' => 800, 'h' => 600, 'priority' => ! empty($props['_high']) && $loop->first ? 'high' : 'lazy', 'class' => 'sf-gallery__img'])
 @if ($sfOverlay && $caption !== '')
 <span class="sf-gallery__caption sf-gallery__caption--on">{{ $caption }}</span>
 @endif

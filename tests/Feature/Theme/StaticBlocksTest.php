@@ -214,6 +214,21 @@ describe('gallery', function (): void {
             ->and(staticBlock('gallery', ['columns' => '4', 'images' => $pictures(6)]))->toContain('sf-gallery__list--4');
     });
 
+    it('tells the browser the width each picture takes at the columns it really gets', function (): void {
+        $pictures = fn (int $n): array => array_map(fn (int $i): array => ['image' => "https://files.test/{$i}.webp"], range(1, $n));
+        // the browser reads `sizes` only beside a srcset, which the server builds for library pictures
+        $srcsets = array_combine(
+            array_map(fn (int $i): string => "https://files.test/{$i}.webp", range(1, 6)),
+            array_map(fn (int $i): string => "https://files.test/{$i}.webp?w=640 640w", range(1, 6)),
+        );
+        $gallery = fn (string $columns, int $n): string => staticBlock('gallery', ['columns' => $columns, 'images' => $pictures($n)], $srcsets);
+
+        expect($gallery('4', 6))->toContain('sizes="(min-width: 64rem) 25vw, (min-width: 48rem) 33vw, 50vw"')
+            ->and($gallery('4', 3))->toContain('sizes="(min-width: 48rem) 33vw, 50vw"')
+            ->and($gallery('4', 2))->toContain('sizes="50vw"')
+            ->and($gallery('1', 3))->toContain('sizes="100vw"');
+    });
+
     it('keeps alt empty under a caption and uses the library alt text, escaped, without one', function (): void {
         $a = 'https://files.test/a.webp';
         $b = 'https://files.test/b.webp';
