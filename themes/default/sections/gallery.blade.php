@@ -28,7 +28,7 @@
 @endphp
 <li><figure class="sf-gallery__item">
 <a class="sf-gallery__zoom" href="{{ \App\Modules\Shared\Support\SafeLink::href($item['image']) }}" data-sf-zoom="gallery" aria-label="{{ $sfName === '' ? __('storefront.zoom_photo') : __('storefront.zoom_photo_named', ['name' => $sfName]) }}">
-@include('theme::partials.sf-img', ['src' => $item['image'], 'srcset' => ($srcsets ?? [])[$item['image']] ?? null, 'alt' => $sfAlt, 'sizes' => '(min-width: 64rem) 25vw, 50vw', 'w' => 800, 'h' => 600, 'class' => 'sf-gallery__img'])
+@include('theme::partials.sf-img', ['src' => $item['image'], 'srcset' => ($srcsets ?? [])[$item['image']] ?? null, 'alt' => $sfAlt, 'sizes' => '(min-width: 64rem) 25vw, 50vw', 'w' => 800, 'h' => 600, 'priority' => ! empty($props['_high']) && $loop->first ? 'high' : 'lazy', 'class' => 'sf-gallery__img'])
 @if ($sfOverlay && $caption !== '')
 <span class="sf-gallery__caption sf-gallery__caption--on">{{ $caption }}</span>
 @endif

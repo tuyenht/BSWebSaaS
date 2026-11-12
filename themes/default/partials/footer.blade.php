@@ -24,7 +24,7 @@
         <div>
             @if (! empty($brand['logo_dark'] ?? $brand['logo'] ?? null))
                 <a href="{{ $homeUrl ?? '/' }}" aria-label="{{ $brand['name'] ?? __('storefront.home') }}">
-                    <img src="{{ $brand['logo_dark'] ?? $brand['logo'] }}" alt="{{ $brand['name'] ?? '' }}" width="140" height="36" loading="lazy" style="height:2.25rem;width:auto;margin-bottom:1rem;">
+                    <img src="{{ $brand['logo_dark'] ?? $brand['logo'] }}" alt="{{ $brand['name'] ?? '' }}" width="140" height="36" loading="lazy" decoding="async" fetchpriority="low" style="height:2.25rem;width:auto;margin-bottom:1rem;">
                 </a>
             @endif
             @if (! empty($brand['legal_name']))

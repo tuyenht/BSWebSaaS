@@ -151,6 +151,8 @@ final readonly class EntryGridComponent implements Component
                     'title' => $translation instanceof EntryTranslation ? $translation->title : '',
                     'url' => $route !== null ? $route->path : '',
                     'image' => $this->resolveImage($image),
+                    // A stored key offers smaller widths, so a phone fetches a phone-sized photo.
+                    'srcset' => $image !== '' && ! str_contains($image, '://') && str_contains($image, '/') ? $this->media->srcset($image, self::CARD_SRCSET_WIDTHS) : null,
                     'short_outcome' => $translation instanceof EntryTranslation ? ($translation->excerpt ?? '') : '',
                     'sector' => $sectorTranslation !== null ? $sectorTranslation->name : '',
                 ];

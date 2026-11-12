@@ -112,13 +112,15 @@ final readonly class ProductGridComponent implements Component
 
         $items = $products->map(function (Product $product) use ($locale, $paths): array {
             $translation = $product->translationFor($locale);
-            $image = $product->images->first()?->media?->storage_key;
+            $media = $product->images->first()?->media;
+            $image = $media?->storage_key;
             $path = $paths->get($product->id);
 
             return [
                 'title' => $translation !== null ? $translation->name : '',
                 'url' => is_string($path) ? $path : '',
                 'image' => is_string($image) && $image !== '' ? $this->media->url($image, self::CARD_WIDTH) : '',
+                'srcset' => is_string($image) && $image !== '' && $media !== null ? $this->media->srcset($image, self::CARD_SRCSET_WIDTHS, $media->width) : null,
                 'short_outcome' => $translation !== null ? ($translation->summary ?? '') : '',
                 'sector' => '',
             ];
