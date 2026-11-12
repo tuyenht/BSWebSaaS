@@ -19,7 +19,9 @@ use App\Modules\Tenancy\Registry\ModuleCatalog;
  * (a few dozen plans, a handful of website types), so each read is one query whatever the number
  * of plans: the plans, all their grants, the customers on each plan (one GROUP BY over `tenants`,
  * the CustomerDirectory precedent: about 9 ms at 50,000 customers), the website types and the
- * websites of each type. Never opens a tenant context.
+ * websites of each type. The two counts grow with the platform, so a screen reads them once and
+ * hands them back in (keyed by plan key and type key, never by id) instead of counting on every
+ * round trip. Never opens a tenant context.
  */
 final class PlanCatalog
 {
@@ -27,12 +29,13 @@ final class PlanCatalog
      * The plans in the order customers see them in "Đổi gói", with what each grants and how many
      * customers are on it. `status`: ok = on sale · off = no longer sold · new = never sold yet.
      *
+     * @param  array<string, int>|null  $customers  plan key → customers, as customerCounts() read it; null reads it now
      * @return list<array{id: int, key: string, name: string, sold: bool, status: 'ok'|'off'|'new', pos: int, customers: int, grants: array<string, bool|int>}>
      */
-    public function plans(): array
+    public function plans(?array $customers = null): array
     {
         $plans = Plan::query()->select(['id', 'key', 'name', 'is_active', 'sort_order', 'meta'])->orderBy('sort_order')->orderBy('id')->get();
-        $customers = $this->customers();
+        $customers ??= $this->customerCounts();
         $grants = [];
         foreach (PlanFeature::query()->select(['plan_id', 'feature_key', 'value'])->whereIn('plan_id', $plans->modelKeys())->get() as $row) {
             $value = $row->getAttribute('value');
@@ -43,7 +46,7 @@ final class PlanCatalog
 
         $rows = [];
         foreach ($plans->values() as $i => $plan) {
-            $count = $customers[$plan->id] ?? 0;
+            $count = $customers[$plan->key] ?? 0;
             $soldOnce = (Cast::arr($plan->meta)['sold_once'] ?? false) === true;
             $rows[] = [
                 'id' => $plan->id,
@@ -65,6 +68,46 @@ final class PlanCatalog
     public function customersOn(Plan $plan): int
     {
         return Tenant::query()->where('plan_id', $plan->id)->count();
+    }
+
+    /** @return array<string, bool|int> feature key → what one plan grants, as stored */
+    public static function grantsOf(Plan $plan): array
+    {
+        return self::grantsFrom(PlanFeature::query()->where('plan_id', $plan->id)->pluck('value', 'feature_key')->all());
+    }
+
+    /**
+     * A feature table handed back from the browser or the session: only switches and numbers.
+     *
+     * @param  array<array-key, mixed>  $table
+     * @return array<string, bool|int>
+     */
+    public static function grantsFrom(array $table): array
+    {
+        $grants = [];
+        foreach ($table as $key => $value) {
+            if (is_bool($value) || is_int($value)) {
+                $grants[(string) $key] = $value;
+            }
+        }
+
+        return $grants;
+    }
+
+    /**
+     * Whether two feature tables grant the same, whatever their order.
+     *
+     * @param  array<array-key, mixed>  $a
+     * @param  array<array-key, mixed>  $b
+     */
+    public static function sameGrants(array $a, array $b): bool
+    {
+        $a = self::grantsFrom($a);
+        $b = self::grantsFrom($b);
+        ksort($a);
+        ksort($b);
+
+        return $a === $b;
     }
 
     /**
@@ -107,14 +150,13 @@ final class PlanCatalog
      * The website types (read only): their name in each language, how many websites use each, the
      * modules a new website of the type gets and its role templates.
      *
+     * @param  array<string, int>|null  $sites  type key → websites, as siteCounts() read it; null reads it now
      * @return list<array{key: string, labels: array<string, string>, sites: int, modules: list<string>, roles: list<string>}>
      */
-    public function siteTypes(): array
+    public function siteTypes(?array $sites = null): array
     {
         $types = SiteType::query()->select(['id', 'key', 'label'])->orderBy('id')->get();
-        /** @var array<int, int> $sites */
-        $sites = Site::query()->whereNotNull('site_type_id')->selectRaw('site_type_id, count(*) as n')->groupBy('site_type_id')
-            ->pluck('n', 'site_type_id')->map(fn (mixed $n): int => Cast::int($n))->all();
+        $sites ??= $this->siteCounts();
         $catalog = array_column(ModuleCatalog::all(), 'label', 'key');
 
         $out = [];
@@ -127,7 +169,7 @@ final class PlanCatalog
             $out[] = [
                 'key' => $type->key,
                 'labels' => array_filter(Cast::arr($type->label), 'is_string'),
-                'sites' => $sites[$type->id] ?? 0,
+                'sites' => $sites[$type->key] ?? 0,
                 'modules' => $modules,
                 'roles' => array_map(fn (string $role): string => Cast::string(__('rbac.role.'.$role)), array_keys(PermissionRegistry::tenantRoleTemplates($type->key))),
             ];
@@ -136,12 +178,27 @@ final class PlanCatalog
         return $out;
     }
 
-    /** @return array<int, int> plan id → customers on it */
-    private function customers(): array
+    /** @return array<string, int> plan key → customers on it (removed ones aside) */
+    public function customerCounts(): array
     {
         $out = [];
-        foreach (Tenant::query()->whereNotNull('plan_id')->selectRaw('plan_id, count(*) as n')->groupBy('plan_id')->pluck('n', 'plan_id') as $plan => $n) {
-            $out[Cast::int($plan)] = Cast::int($n);
+        $rows = Tenant::query()->join('plans', 'plans.id', '=', 'tenants.plan_id')
+            ->selectRaw('plans.key as plan_key, count(*) as n')->groupBy('plans.key')->pluck('n', 'plan_key');
+        foreach ($rows as $plan => $n) {
+            $out[Cast::string($plan)] = Cast::int($n);
+        }
+
+        return $out;
+    }
+
+    /** @return array<string, int> website type key → websites of that type */
+    public function siteCounts(): array
+    {
+        $out = [];
+        $rows = Site::query()->join('site_types', 'site_types.id', '=', 'sites.site_type_id')
+            ->selectRaw('site_types.key as type_key, count(*) as n')->groupBy('site_types.key')->pluck('n', 'type_key');
+        foreach ($rows as $type => $n) {
+            $out[Cast::string($type)] = Cast::int($n);
         }
 
         return $out;

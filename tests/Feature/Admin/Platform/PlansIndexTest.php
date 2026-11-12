@@ -11,7 +11,6 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Exceptions\PlanChangeRejectedException;
 use App\Modules\Tenancy\Models\Plan;
 use App\Modules\Tenancy\Models\Tenant;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +18,7 @@ use Livewire\Livewire;
 
 /*
  * "Gói & tính năng" (design 30), the plan list: staff with platform.billing.manage switch a plan's
- * sale, reorder plans, duplicate one (and take the copy back with "Hoàn tác"), and switch the
+ * sale, reorder plans, duplicate one (a copy stays: plans are never deleted), and switch the
  * upgrade invitation for every website. Each change leaves an audit line; without the permission
  * every action is refused and nothing changes. Platform admins also see the website types, read only.
  */
@@ -190,43 +189,24 @@ it('moves a plan up and down with an audit line, refuses past the ends, and Hoà
         ->and(plAudits('tenancy.plan.reordered'))->toBe(2);
 });
 
-it('duplicates a plan as a copy not on sale, and Hoàn tác discards the copy with an audit line', function (): void {
+it('duplicates a plan as a copy not on sale with an audit line, offering no Hoàn tác', function (): void {
     $plan = plPlan('Cơ bản', true, ['sites.max' => 3]);
 
     $page = Livewire::actingAs(plStaff('billing'))->test(Index::class)
         ->call('duplicate', $plan->key)
-        ->assertSet('toast', __('admin.plans_toast_duplicated', ['name' => 'Bản sao của Cơ bản']));
+        ->assertSet('toast', __('admin.plans_toast_duplicated', ['name' => 'Bản sao của Cơ bản']))
+        ->assertSet('toastTone', 'success')
+        ->assertSet('undoAction', null);
 
     $copy = Plan::query()->where('name', 'Bản sao của Cơ bản')->firstOrFail();
     expect($copy->is_active)->toBeFalse()
         ->and($copy->features()->pluck('value', 'feature_key')->all())->toBe(['sites.max' => 3])
         ->and(plAudits('tenancy.plan.duplicated'))->toBe(1);
 
-    $page->call('undo')->assertSet('toast', '')->assertSet('undoAction', null);
-    expect(Plan::query()->whereKey($copy->id)->exists())->toBeFalse()
-        ->and(plAudits('tenancy.plan.discarded'))->toBe(1)
-        ->and(AuditLog::query()->where('action', 'tenancy.plan.discarded')->value('meta'))->toMatchArray(['plan' => $copy->key]);
-});
-
-it('never discards a plan that is or was on sale, or that a customer or the plan history names', function (): void {
-    $staff = plStaff('billing');
-    $sold = plPlan('Đang bán');
-    $once = plPlan('Từng bán');
-    app(PlatformPlans::class)->update($staff, $once, $once->name, false);
-    $held = plPlan('Có khách', false);
-    DB::connection('pgsql_admin')->table('tenants')->where('id', 1)->update(['plan_id' => $held->id]);
-
-    foreach ([$sold, $once, $held] as $plan) {
-        expect(fn () => app(PlatformPlans::class)->discardCopy($staff, $plan->fresh()))
-            ->toThrow(PlanChangeRejectedException::class, 'plan_in_use');
-    }
-    expect(Plan::query()->count())->toBe(3)
-        ->and(plAudits('tenancy.plan.discarded'))->toBe(0);
-
-    $free = plPlan('Trống', false);
-    expect(fn () => app(PlatformPlans::class)->discardCopy(plStaff('support'), $free))
-        ->toThrow(AuthorizationException::class);
-    expect(Plan::query()->whereKey($free->id)->exists())->toBeTrue();
+    // plans are never deleted: the copy stays, not on sale, until someone decides
+    $page->call('undo');
+    expect(Plan::query()->whereKey($copy->id)->exists())->toBeTrue()
+        ->and(Plan::query()->count())->toBe(2);
 });
 
 it('switches the upgrade invitation with an audit line, warns while the plans do not differ, and Hoàn tác switches it back', function (): void {
@@ -277,4 +257,23 @@ it('reads the list in the same number of queries whatever the number of plans', 
     }
 
     expect($count())->toBe($few);
+});
+
+it('counts customers and websites once, not again on a search, a filter or a page turn', function (): void {
+    $basic = plPlan('Cơ bản', true, ['sites.max' => 2]);
+    DB::connection('pgsql_admin')->table('tenants')->where('id', 1)->update(['plan_id' => $basic->id]);
+    $page = Livewire::actingAs(plStaff('super_admin'))->test(Index::class)
+        ->assertSee(__('admin.plans_customers_n', ['n' => 1]));
+
+    $counts = 0;
+    DB::listen(function (QueryExecuted $q) use (&$counts): void {
+        $counts += (int) (str_contains($q->sql, 'from "tenants"') || str_contains($q->sql, 'from "sites"'));
+    });
+    $page->set('search', 'co ban')->set('filter', 'sold')->set('per', 20)->call('clearFilters')
+        ->assertSee(__('admin.plans_customers_n', ['n' => 1]));
+    expect($counts)->toBe(0);
+
+    // a write counts again on the next render
+    $page->call('toggleSold', $basic->key)->assertSee(__('admin.plans_customers_n', ['n' => 1]));
+    expect($counts)->toBeGreaterThan(0);
 });

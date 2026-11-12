@@ -14,7 +14,6 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Exceptions\FeatureChangeRejectedException;
 use App\Modules\Tenancy\Exceptions\PlanChangeRejectedException;
 use App\Modules\Tenancy\Models\Plan;
-use App\Modules\Tenancy\Models\PlanFeature;
 use App\Modules\Tenancy\Registry\FeatureRegistry;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
@@ -34,6 +33,11 @@ use Livewire\Component;
  * one audit line for the name/sale and one for the feature table); each public method checks the
  * permission first. The draft lives in public properties and is cleaned on every request: a value
  * is '' (default), 'on' / 'off' for a switch, or up to 9 digits for a limit.
+ *
+ * A save is refused, keeping everything typed, when the plan is no longer as this page read it (its
+ * name, sale or feature table changed elsewhere since): the plan row is locked while it is compared
+ * and written, so a change made meanwhile is never silently undone. The customers on the plan are
+ * counted when the page opens and after a save, never on each keystroke.
  */
 #[Layout('admin::layouts.platform')]
 final class Edit extends Component
@@ -58,9 +62,13 @@ final class Edit extends Component
 
     public bool $tried = false;
 
-    /** The refusal shown above the form: name_required · num · unknown_feature · wrong_kind */
+    /** The refusal shown above the form: name_required · num · unknown_feature · wrong_kind · changed */
     #[Locked]
     public string $error = '';
+
+    /** How many customers are on the plan (counted on mount and after a save). */
+    #[Locked]
+    public int $customers = 0;
 
     public function boot(): void
     {
@@ -76,11 +84,8 @@ final class Edit extends Component
             $this->planKey = $plan->key;
             $this->name = $plan->name;
             $this->sold = $plan->is_active;
-            foreach (PlanFeature::query()->where('plan_id', $plan->id)->pluck('value', 'feature_key') as $feature => $value) {
-                if (array_key_exists(self::field(Cast::string($feature)), $this->features)) {
-                    $this->features[self::field(Cast::string($feature))] = is_bool($value) ? ($value ? 'on' : 'off') : (is_int($value) ? (string) $value : '');
-                }
-            }
+            $this->features = self::fieldsOf($plan);
+            $this->customers = app(PlanCatalog::class)->customersOn($plan);
         }
         $this->base = ['name' => $this->name, 'sold' => $this->sold, 'features' => $this->features];
     }
@@ -127,12 +132,13 @@ final class Edit extends Component
         }
     }
 
-    /** The save of the unsaved-changes dialog: the dialog itself goes on where the member was going. */
+    /**
+     * The save of the unsaved-changes dialog: the dialog itself goes on where the member was going.
+     * A refused save leaves the changes counted and the refusal on the page, so the dialog stays.
+     */
     public function saveQuietly(): void
     {
-        if (! $this->store()) {
-            throw new \RuntimeException('The plan was not saved.');
-        }
+        $this->store();
     }
 
     public function render(): View
@@ -145,7 +151,7 @@ final class Edit extends Component
         $view = view('admin::livewire.platform.plans.edit', [
             'canPlans' => $canPlans,
             'group' => $canPlans ? '' : app(PlanAccess::class)->groupName($user),
-            'customers' => $plan !== null && $canPlans ? app(PlanCatalog::class)->customersOn($plan) : 0,
+            'customers' => $plan !== null && $canPlans ? $this->customers : 0,
             'status' => $this->status($plan),
             'changes' => $this->changes(),
             'numErrors' => $this->numberErrors(),
@@ -178,58 +184,75 @@ final class Edit extends Component
 
         $plans = app(PlatformPlans::class);
         $grants = $this->grants();
-        $plan = $this->planKey !== null ? Plan::query()->where('key', $this->planKey)->first() : null;
-        if ($this->planKey !== null && $plan === null) {
-            abort(404);
+        $planId = null;
+        if ($this->planKey !== null) {
+            $id = Plan::query()->where('key', $this->planKey)->value('id');
+            abort_if($id === null, 404);
+            $planId = Cast::int($id);
         }
-        $before = $plan === null ? null : [
-            'name' => $plan->name, 'sold' => $plan->is_active,
-            'features' => PlanFeature::query()->where('plan_id', $plan->id)->pluck('value', 'feature_key')->all(),
-        ];
 
+        $before = null;
+        $after = null;
         try {
-            $saved = DB::transaction(function () use ($plans, $actor, $plan, $grants): Plan {
-                if ($plan === null) {
+            $saved = DB::transaction(function () use ($plans, $actor, $planId, $grants, &$before, &$after): Plan {
+                if ($planId === null) {
                     $plan = $plans->create($actor, $this->name, $this->sold);
                     $plans->setFeatures($actor, $plan, $grants);
 
                     return $plan;
                 }
+
+                // locked until the save commits: nothing changes the plan between the check and the write
+                $plan = Plan::query()->whereKey($planId)->lockForUpdate()->first();
+                abort_if($plan === null, 404);
+                $stored = PlanCatalog::grantsOf($plan);
+                if ($plan->name !== $this->base['name'] || $plan->is_active !== $this->base['sold'] || self::fieldsFrom($stored) !== $this->base['features']) {
+                    throw new PlanChangeRejectedException('plan_changed');
+                }
+                $before = ['name' => $plan->name, 'sold' => $plan->is_active, 'features' => $stored];
+
                 if (trim($this->name) !== $plan->name || $this->sold !== $plan->is_active) {
                     $plans->update($actor, $plan, $this->name, $this->sold);
                 }
                 if ($this->features !== $this->base['features']) {
                     $plans->setFeatures($actor, $plan, $grants);
                 }
+                $after = ['name' => $plan->name, 'sold' => $plan->is_active, 'features' => PlanCatalog::grantsOf($plan)];
 
                 return $plan;
             });
         } catch (AuthorizationException) {
             abort(403);
         } catch (PlanChangeRejectedException|FeatureChangeRejectedException $e) {
-            $this->error = in_array($e->reason, ['name_required', 'unknown_feature', 'wrong_kind'], true) ? $e->reason : 'wrong_kind';
+            $this->error = match (true) {
+                $e->reason === 'plan_changed' => 'changed',
+                in_array($e->reason, ['name_required', 'unknown_feature', 'wrong_kind'], true) => $e->reason,
+                default => 'wrong_kind',
+            };
 
             return false;
         }
 
         $this->error = '';
+        $this->features = self::fieldsOf($saved);
         $this->base = ['name' => $saved->name, 'sold' => $saved->is_active, 'features' => $this->features];
         $this->name = $saved->name;
         $this->planKey = $saved->key;
+        $this->customers = app(PlanCatalog::class)->customersOn($saved);
 
         if ($before === null) {
+            // no "Hoàn tác": a plan once added stays (one no longer wanted stops being sold)
             session()->flash('plans.toast', [
                 'text' => __($saved->is_active ? 'admin.plans_toast_added_sold' : 'admin.plans_toast_added', ['name' => $saved->name]),
-                // a plan just added and not on sale can be taken back; one on sale stays
-                'undo' => $saved->is_active ? null : ['kind' => 'discard', 'plan' => $saved->key],
+                'undo' => null,
             ]);
         } else {
-            $customers = app(PlanCatalog::class)->customersOn($saved);
             session()->flash('plans.toast', [
-                'text' => $customers > 0
-                    ? __('admin.plans_toast_saved_applied', ['name' => $saved->name, 'n' => $customers])
+                'text' => $this->customers > 0
+                    ? __('admin.plans_toast_saved_applied', ['name' => $saved->name, 'n' => $this->customers])
                     : __('admin.plans_toast_saved', ['name' => $saved->name]),
-                'undo' => ['kind' => 'restore', 'plan' => $saved->key] + $before,
+                // "Hoàn tác" puts $before back only while the plan is still as this save left it
+                'undo' => ['kind' => 'restore', 'plan' => $saved->key, 'after' => $after] + $before,
             ]);
         }
 
@@ -316,6 +339,27 @@ final class Edit extends Component
                 : (in_array($value, ['on', 'off'], true) ? $value : '');
         }
         $this->features = $features;
+    }
+
+    /** @return array<string, string> the form's values for what $plan grants now */
+    private static function fieldsOf(Plan $plan): array
+    {
+        return self::fieldsFrom(PlanCatalog::grantsOf($plan));
+    }
+
+    /**
+     * @param  array<string, bool|int>  $grants
+     * @return array<string, string> every feature's form field → '' (not granted) | 'on' | 'off' | digits
+     */
+    private static function fieldsFrom(array $grants): array
+    {
+        $fields = [];
+        foreach (array_keys(FeatureRegistry::all()) as $key) {
+            $value = $grants[$key] ?? null;
+            $fields[self::field($key)] = is_bool($value) ? ($value ? 'on' : 'off') : (is_int($value) ? (string) $value : '');
+        }
+
+        return $fields;
     }
 
     /** The form field of a feature: its key with "__" for each dot. */

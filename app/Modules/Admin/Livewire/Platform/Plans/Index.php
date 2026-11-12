@@ -18,6 +18,7 @@ use App\Modules\Tenancy\Models\Plan;
 use App\Modules\Tenancy\Registry\FeatureRegistry;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -34,7 +35,11 @@ use Livewire\Component;
  * audit line; each public method checks the permission first too (the livewire/update endpoint
  * skips route middleware) and accepts only plan keys it finds. A change says what it did in a toast
  * with "Hoàn tác" for 10 seconds; what the undo reverses is #[Locked], so the browser cannot rewrite
- * it. The plan editor (Edit) hands its toast and undo over through the session.
+ * it. The plan editor (Edit) hands its toast and undo over through the session. A new plan or a copy
+ * has no "Hoàn tác": plans are never deleted (one no longer wanted stops being sold).
+ *
+ * The customers on each plan and the websites of each type are counted once (the first render) and
+ * again after this page writes, never on a search, a filter or a page turn.
  */
 #[Layout('admin::layouts.platform')]
 final class Index extends Component
@@ -69,6 +74,14 @@ final class Index extends Component
     /** @var array<string, mixed>|null what "Hoàn tác" reverses */
     #[Locked]
     public ?array $undoAction = null;
+
+    /** @var array<string, int>|null plan key → customers on it; null = count on the next render */
+    #[Locked]
+    public ?array $customerCounts = null;
+
+    /** @var array<string, int>|null website type key → websites; null = count on the next render */
+    #[Locked]
+    public ?array $siteCounts = null;
 
     public function boot(): void
     {
@@ -126,6 +139,7 @@ final class Index extends Component
             $customers > 0 => __('admin.plans_toast_sold_off_kept', ['name' => $plan->name, 'n' => $customers]),
             default => __('admin.plans_toast_sold_off', ['name' => $plan->name]),
         };
+        $this->recount();
         $this->say(Cast::string($text), ['kind' => 'sold', 'plan' => $plan->key, 'sold' => $was]);
     }
 
@@ -150,12 +164,13 @@ final class Index extends Component
         array_splice($order, $to, 0, [$plan->key]);
 
         if ($this->reorder($actor, $order)) {
+            $this->recount();
             $text = __($step < 0 ? 'admin.plans_toast_moved_up' : 'admin.plans_toast_moved_down', ['name' => $plan->name, 'pos' => $to + 1]);
             $this->say(Cast::string($text), ['kind' => 'order', 'keys' => $keys]);
         }
     }
 
-    /** ⋯ Nhân bản: a copy that is not on sale; "Hoàn tác" takes it back. */
+    /** ⋯ Nhân bản: a copy that is not on sale (no "Hoàn tác": plans are never deleted). */
     public function duplicate(string $key): void
     {
         $actor = $this->operator();
@@ -169,7 +184,8 @@ final class Index extends Component
             return;
         }
 
-        $this->say(Cast::string(__('admin.plans_toast_duplicated', ['name' => $copy->name])), ['kind' => 'discard', 'plan' => $copy->key]);
+        $this->recount();
+        $this->say(Cast::string(__('admin.plans_toast_duplicated', ['name' => $copy->name])), null);
     }
 
     /** "Lời mời nâng gói" on or off, for every website on the platform. */
@@ -214,14 +230,13 @@ final class Index extends Component
                 throw new PlanChangeRejectedException('plan_missing');
             } elseif ($kind === 'sold') {
                 $plans->update($actor, $plan, $plan->name, (bool) ($undo['sold'] ?? false));
-            } elseif ($kind === 'discard') {
-                $plans->discardCopy($actor, $plan);
             } elseif ($kind === 'restore') {
                 $this->restore($actor, $plan, $undo);
             }
         }, 'admin.plans_toast_undo_failed');
         if ($done) {
             $this->toast = '';
+            $this->recount();
         }
     }
 
@@ -246,11 +261,21 @@ final class Index extends Component
         $types = [];
         $invitation = false;
         try {
-            [$all, $types, $invitation] = app(BoundedRead::class)->run(fn (): array => [
-                $canPlans ? app(PlanCatalog::class)->plans() : [],
-                $canTypes ? app(PlanCatalog::class)->siteTypes() : [],
-                $canPlans && app(UpgradeInvitation::class)->isOn(),
-            ]);
+            [$all, $types, $invitation] = app(BoundedRead::class)->run(function () use ($canPlans, $canTypes): array {
+                $catalog = app(PlanCatalog::class);
+                if ($canPlans) {
+                    $this->customerCounts ??= $catalog->customerCounts();
+                }
+                if ($canTypes) {
+                    $this->siteCounts ??= $catalog->siteCounts();
+                }
+
+                return [
+                    $canPlans ? $catalog->plans($this->customerCounts) : [],
+                    $canTypes ? $catalog->siteTypes($this->siteCounts) : [],
+                    $canPlans && app(UpgradeInvitation::class)->isOn(),
+                ];
+            });
         } catch (QueryException $e) {
             if (! BoundedRead::timedOut($e)) {
                 report($e);
@@ -338,19 +363,40 @@ final class Index extends Component
         }
     }
 
-    /** @param  array<string, mixed>  $undo */
+    /**
+     * Put a plan back as it was before the editor saved it: all of it or nothing, and only while the
+     * plan is still as that save left it (`after`). A change made since, here or elsewhere, is never
+     * overwritten: the undo is refused instead.
+     *
+     * @param  array<string, mixed>  $undo
+     *
+     * @throws PlanChangeRejectedException plan_changed
+     * @throws FeatureChangeRejectedException
+     */
     private function restore(User $actor, Plan $plan, array $undo): void
     {
         $plans = app(PlatformPlans::class);
-        $plans->update($actor, $plan, Cast::string($undo['name'] ?? $plan->name), (bool) ($undo['sold'] ?? $plan->is_active));
+        $after = Cast::arr($undo['after'] ?? null);
 
-        $grants = [];
-        foreach (Cast::arr($undo['features'] ?? []) as $key => $value) {
-            if (is_bool($value) || is_int($value)) {
-                $grants[$key] = $value;
+        DB::transaction(function () use ($plans, $actor, $plan, $undo, $after): void {
+            $locked = Plan::query()->whereKey($plan->id)->lockForUpdate()->first();
+            if ($locked === null || $after === []
+                || $locked->name !== ($after['name'] ?? null)
+                || $locked->is_active !== ($after['sold'] ?? null)
+                || ! PlanCatalog::sameGrants(PlanCatalog::grantsOf($locked), Cast::arr($after['features'] ?? []))) {
+                throw new PlanChangeRejectedException('plan_changed');
             }
-        }
-        $plans->setFeatures($actor, $plan, $grants);
+
+            $plans->update($actor, $locked, Cast::string($undo['name'] ?? $locked->name), (bool) ($undo['sold'] ?? $locked->is_active));
+            $plans->setFeatures($actor, $locked, PlanCatalog::grantsFrom(Cast::arr($undo['features'] ?? [])));
+        });
+    }
+
+    /** Count the customers and websites again on the next render. */
+    private function recount(): void
+    {
+        $this->customerCounts = null;
+        $this->siteCounts = null;
     }
 
     /** Run a write; a refusal of the plan rules becomes an error toast and false. */

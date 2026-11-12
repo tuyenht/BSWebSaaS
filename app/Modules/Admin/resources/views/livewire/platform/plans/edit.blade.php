@@ -14,7 +14,8 @@
     $isNew = $planKey === null;
     $statusPill = ['ok' => 'active', 'off' => 'suspended', 'new' => 'draft'];
     $statusText = ['ok' => __('admin.plans_status_ok'), 'off' => __('admin.plans_status_off'), 'new' => __('admin.plans_status_new')];
-    $errorText = $error === '' ? '' : __('admin.plans_err_'.$error);
+    // 'changed': the plan was changed elsewhere since this page read it; the list's own refusal says so
+    $errorText = match ($error) { '' => '', 'changed' => __('admin.plans_toast_refused'), default => __('admin.plans_err_'.$error) };
     $title = $isNew ? __('admin.plans_add') : __('admin.plans_edit_title', ['name' => $base['name']]);
     $leave = __('admin.plans_leave_body', ['n' => $changes, 'name' => $isNew ? __('admin.plans_leave_new') : __('admin.plans_leave_plan', ['name' => $base['name']])]);
 @endphp
