@@ -11,6 +11,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\ListDisplay;
 use App\Modules\Theme\Components\SectionProps;
+use App\Modules\Theme\Rendering\BlockRenderer;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Vite;
 use Illuminate\Support\Facades\DB;
@@ -216,13 +217,30 @@ it('reads the same number of queries with and without the display group', functi
     });
 });
 
+/**
+ * The display props a list block declares: a list of the site’s content adds the "view all" button.
+ *
+ * @return list<string>
+ */
+function listGroupKeys(string $type): array
+{
+    return array_keys(in_array($type, ['entry_grid', 'product_grid'], true) ? SectionProps::LIST_DISPLAY : SectionProps::LIST_LAYOUT);
+}
+
 it('declares the group on the five list blocks and refuses an unknown value when saving', function (string $type): void {
     $schema = app(ComponentRegistry::class)->schemaFor($type);
 
-    foreach (array_keys(SectionProps::LIST_DISPLAY) as $prop) {
+    foreach (listGroupKeys($type) as $prop) {
         expect($schema)->toHaveKey($prop);
     }
 })->with(['entry_grid', 'product_grid', 'partners', 'testimonial', 'team']);
+
+it('offers "view all" only on the lists that have a full list to lead to', function (string $type, bool $offered): void {
+    expect(array_key_exists('view_all', app(ComponentRegistry::class)->schemaFor($type)))->toBe($offered);
+})->with([
+    ['entry_grid', true], ['product_grid', true],
+    ['features', false], ['partners', false], ['testimonial', false], ['team', false], ['branches', false],
+]);
 
 it('validates the group in the page JSON', function (): void {
     seedTenancy();
@@ -231,10 +249,20 @@ it('validates the group in the page JSON', function (): void {
         ['blocks' => [app(ValidPageJson::class)]],
     )->fails();
 
-    expect($check(['layout' => 'slider', 'columns' => '4', 'mobile' => 'swipe', 'autoplay' => '8', 'arrows' => 'always', 'view_all' => 'hide']))->toBeTrue()
+    expect($check(['layout' => 'slider', 'columns' => '4', 'mobile' => 'swipe', 'autoplay' => '8', 'arrows' => 'always']))->toBeTrue()
         ->and($check(['layout' => 'carousel']))->toBeFalse()
         ->and($check(['autoplay' => '1']))->toBeFalse()
         ->and($check(['columns' => '5']))->toBeFalse();
+});
+
+it('still saves and draws a hand-typed list that kept a "view all" value from before, without the button', function (): void {
+    seedTenancy();
+    $block = ['type' => 'partners', 'props' => ['heading' => 'Đối tác Ấ', 'view_all' => 'show']];
+
+    expect(Validator::make(['blocks' => [$block]], ['blocks' => [app(ValidPageJson::class)]])->fails())->toBeFalse();
+    app(Tenancy::class)->enter(1, function () use ($block): void {
+        expect(app(BlockRenderer::class)->render(['blocks' => [$block]]))->toContain('Đối tác Ấ')->not->toContain('sf-view-all');
+    });
 });
 
 it('tells the editor the range when a list limit is out of it, not to type a whole number', function (int|string $limit): void {
@@ -406,7 +434,7 @@ describe('the builder', function (): void {
             $component = Livewire::actingAs($editor->fresh())->test(Editor::class)->call('addBlock', $type);
             $props = $component->get('blocks')[0]['props'];
 
-            foreach (array_keys(SectionProps::LIST_DISPLAY) as $prop) {
+            foreach (listGroupKeys($type) as $prop) {
                 expect($props[$prop])->toBe('auto');
             }
 
@@ -443,7 +471,7 @@ describe('the builder saving a list block', function (): void {
                 ->call('addBlock', $type)->call('save')->assertHasNoErrors();
 
             $props = $entry->translationFor('vi')?->body['blocks'][0]['props'] ?? [];
-            foreach (array_keys(SectionProps::LIST_DISPLAY) as $prop) {
+            foreach (listGroupKeys($type) as $prop) {
                 expect($props[$prop] ?? null)->toBe('auto');
             }
         });

@@ -126,18 +126,26 @@ final class SectionProps
     public const array QUICK_LINK_VARIANTS = ['grid-2x2', 'row', 'pill'];
 
     /**
-     * The "display" group of every list block (articles, products, partners, testimonials, team): how
-     * the items are laid out, how many across, what a phone does, whether it rotates by itself, the
-     * arrows and the "view all" button. Every value is stored as a string; the list order is
+     * The "display" group of every list block (articles, products, partners, testimonials, team,
+     * features, branches): how the items are laid out, how many across, what a phone does, whether it
+     * rotates by itself and the arrows. Every value is stored as a string; the list order is
      * append-only (a stored value is never renamed). `auto` is the block type's own rule, read from
      * the table in ListDisplay. The editor offers no control for the group yet (group `display`).
+     * A block whose items are typed by hand has no page to lead to, so it takes this group alone.
      */
-    public const array LIST_DISPLAY = [
+    public const array LIST_LAYOUT = [
         'layout' => ['type' => 'enum', 'options' => ['auto', 'grid', 'slider'], 'default' => 'auto', 'group' => 'display'],
         'columns' => ['type' => 'enum', 'options' => ['auto', '2', '3', '4'], 'default' => 'auto', 'group' => 'display'],
         'mobile' => ['type' => 'enum', 'options' => ['auto', 'swipe', 'two', 'one'], 'default' => 'auto', 'group' => 'display'],
         'autoplay' => ['type' => 'enum', 'options' => ['auto', 'off', '3', '5', '8'], 'default' => 'auto', 'group' => 'display'],
         'arrows' => ['type' => 'enum', 'options' => ['auto', 'always', 'none'], 'default' => 'auto', 'group' => 'display'],
+    ];
+
+    /**
+     * The group of a list read from the site's own content (articles, products): LIST_LAYOUT plus the
+     * "view all" button that leads to the full list.
+     */
+    public const array LIST_DISPLAY = self::LIST_LAYOUT + [
         'view_all' => ['type' => 'enum', 'options' => ['auto', 'show', 'hide'], 'default' => 'auto', 'group' => 'display'],
     ];
 

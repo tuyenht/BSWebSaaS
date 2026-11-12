@@ -27,6 +27,11 @@ it('declares the six props with "auto" first and as the default, and keeps them 
         ->and(SectionProps::LIST_DISPLAY['view_all']['options'])->toBe(['auto', 'show', 'hide']);
 });
 
+it('makes the group of a hand-typed list the same props without the "view all" button', function (): void {
+    expect(SectionProps::LIST_LAYOUT)->toBe(array_diff_key(SectionProps::LIST_DISPLAY, ['view_all' => true]))
+        ->and(array_keys(SectionProps::LIST_LAYOUT))->toBe(['layout', 'columns', 'mobile', 'autoplay', 'arrows']);
+});
+
 it('leaves a block without a layout key alone', function (): void {
     expect(ListDisplay::plan('news', ['limit' => 3], 3, 3))->toBeNull()
         ->and(ListDisplay::plan('news', ['limit' => 3, 'columns' => '4'], 3, 3))->toBeNull()

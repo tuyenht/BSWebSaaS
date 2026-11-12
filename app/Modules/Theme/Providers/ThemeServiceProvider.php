@@ -63,7 +63,7 @@ final class ThemeServiceProvider extends ServiceProvider
             'variant' => ['type' => 'enum', 'options' => SectionProps::FEATURES_VARIANTS, 'default' => 'default'],
             'description' => ['type' => 'textarea'],
             // The display group shapes the icon-cards look only (a grid, or a swipe row on a phone); the other looks keep their grid.
-        ] + SectionProps::LIST_DISPLAY,
+        ] + SectionProps::LIST_LAYOUT,
         'about' => [
             'heading' => ['type' => 'text'],
             'paragraphs' => ['type' => 'list', 'of' => ['type' => 'textarea']],
@@ -90,7 +90,7 @@ final class ThemeServiceProvider extends ServiceProvider
                 'name' => ['type' => 'text'],
                 'url' => ['type' => 'url', 'action' => 'name'],
             ]],
-        ] + SectionProps::LIST_DISPLAY,
+        ] + SectionProps::LIST_LAYOUT,
         'cta' => [
             'heading' => ['type' => 'text'],
             'button_label' => ['type' => 'text'],
@@ -228,7 +228,7 @@ final class ThemeServiceProvider extends ServiceProvider
                 'avatar' => ['type' => 'image'],
             ]],
             'variant' => ['type' => 'enum', 'options' => SectionProps::TESTIMONIAL_VARIANTS, 'default' => 'grid-2'],
-        ] + SectionProps::LIST_DISPLAY,
+        ] + SectionProps::LIST_LAYOUT,
         'team' => [
             'heading' => ['type' => 'text'],
             'members' => ['type' => 'list', 'max' => SectionProps::MAX_ITEMS, 'of' => [
@@ -237,7 +237,7 @@ final class ThemeServiceProvider extends ServiceProvider
                 'photo' => ['type' => 'image'],
             ]],
             'variant' => ['type' => 'enum', 'options' => SectionProps::TEAM_VARIANTS, 'default' => 'grid-3'],
-        ] + SectionProps::LIST_DISPLAY,
+        ] + SectionProps::LIST_LAYOUT,
         'process' => [
             'heading' => ['type' => 'text'],
             // The line under the heading in the shared section head.
