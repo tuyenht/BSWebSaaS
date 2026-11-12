@@ -120,7 +120,7 @@ final readonly class ProductGridComponent implements Component
                 'title' => $translation !== null ? $translation->name : '',
                 'url' => is_string($path) ? $path : '',
                 'image' => is_string($image) && $image !== '' ? $this->media->url($image, self::CARD_WIDTH) : '',
-                'srcset' => is_string($image) && $image !== '' && $media !== null ? $this->media->srcset($image, self::CARD_SRCSET_WIDTHS, $media->width) : null,
+                'srcset' => is_string($image) && $image !== '' ? $this->media->srcset($image, self::CARD_SRCSET_WIDTHS, $media->width) : null,
                 'short_outcome' => $translation !== null ? ($translation->summary ?? '') : '',
                 'sector' => '',
             ];
