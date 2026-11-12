@@ -101,7 +101,7 @@ Every table/list/query. Target 10,000+ **sites** × 100M+ rows; the isolation ke
 
 **Tier 2 · manual, by touched area (not merge-blocking — paste the output before reporting done, §10.4):**
 - Mutation baseline classes → `.claude/rules/mutation-baseline.md` (widen the list and raise `--min` over time, never lower).
-- Storefront/UI → LCP/JS from the `cwv` job summary ("Print Lighthouse measurements") after pushing: thresholds are calibrated on the CI runner and lhci boots PHP's built-in server with gzip like production (`scripts/cwv-serve.php`; no PHP on the host). Pages beyond the gated three: measure and paste too.
+- Storefront/UI → LCP/JS from the `cwv` job summary ("Print Lighthouse measurements") after pushing: thresholds are calibrated on the CI runner, and Lighthouse, axe and the tap check reach PHP's built-in server with gzip through Caddy over HTTP/2 + TLS like production (`scripts/cwv-serve.php` behind `scripts/cwv-Caddyfile`; no PHP on the host). Pages beyond the gated three: measure and paste too.
 - Admin UI → locally: `pnpm run build` → `docker compose run --rm --no-deps app vendor/bin/pest tests/Tools/RenderAdminPreviewTest.php` (must PASS, not skip) → `node scripts/admin-preview/axe.mjs` + `node scripts/contrast-check.mjs`.
 - Tenancy middleware / Octane lifecycle / site resolution → the real worker-pool hammer + D14 (`.claude/rules/tenancy-octane.md`).
 

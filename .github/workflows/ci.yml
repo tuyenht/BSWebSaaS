@@ -433,6 +433,7 @@ jobs:
       # site:provision only starts a site on a platform subdomain; same neutral base as phpunit.xml.
       BASE_DOMAINS: platform.test
       PRIMARY_BASE: platform.test
+      # PHP's built-in server, on loopback only; browsers reach it through Caddy on https://CWV_HOST.
       CWV_PORT: 8099
 
     steps:
@@ -487,7 +488,7 @@ jobs:
       # The richer storefront looks on real pages: /do-kiem (slider, card grids, contact cards)
       # and /ban-tin, a news card grid with child-category chips. The photos are the licensed
       # fixtures in tests/Fixtures/cwv, served from this origin by the static media driver (the
-      # serving steps below set MEDIA_DRIVER/MEDIA_CF_BASE; a media host equal to the site's host
+      # serving step below sets MEDIA_DRIVER/MEDIA_CF_BASE; a media host equal to the site's host
       # would make provisioning refuse the name, so it is not set job-wide).
       - name: Seed the measurement pages
         run: |
@@ -512,15 +513,39 @@ jobs:
           chrome-version: stable
           install-chromedriver: true
 
-      # Self-contained: lhci boots PHP's built-in server behind scripts/cwv-serve.php (gzip, as
-      # production's Caddy compresses), waits for it, runs Lighthouse 3x,
-      # asserts against .lighthouserc.cjs, then stops the server. LCP ≤ 1.5s and JS ≤ 30KB
-      # FAIL the job (calibrated 24/09 on 18 real samples — see that file); the overall
-      # performance score only warns.
-      - name: Lighthouse CI (performance + LCP + JS budget)
+      # The storefront as production serves it: over HTTP/2 + TLS. PHP's built-in server behind
+      # scripts/cwv-serve.php (gzip, as production's Caddy compresses) listens on CWV_PORT; Caddy
+      # (scripts/cwv-Caddyfile: `tls internal`, h1 + h2, no second compression) answers on
+      # https://CWV_HOST (443) in front of it. Over plain HTTP/1.1 Chrome opens six connections per
+      # origin and queues the font and the LCP image behind the CSS files, which no visitor sees.
+      # The image is pinned by digest (production runs the same 2.11.9 tag). Lighthouse, axe and
+      # the tap check below all use this one server; it lives until the job ends.
+      - name: Serve the storefront over HTTP/2 + TLS (PHP built-in server behind Caddy)
         env:
           MEDIA_DRIVER: static
-          MEDIA_CF_BASE: http://${{ env.CWV_HOST }}:${{ env.CWV_PORT }}/cwv-media
+          MEDIA_CF_BASE: https://${{ env.CWV_HOST }}/cwv-media
+        run: |
+          php -S "127.0.0.1:${CWV_PORT}" -t public scripts/cwv-serve.php > storage/logs/cwv-serve.log 2>&1 &
+          docker run -d --name cwv-caddy --network host -e CWV_HOST -e CWV_PORT \
+            -v "${PWD}/scripts/cwv-Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy:2.11.9@sha256:e40b94d0a43b5ff69cb20568d73f10c70703df7b0ffc2298eb3d723cdc9d0bd1
+          for _ in $(seq 1 30); do
+            curl -skf -o /dev/null "https://${CWV_HOST}/" && break
+            sleep 1
+          done
+          curl -skf -o /dev/null "https://${CWV_HOST}/" || { cat storage/logs/cwv-serve.log; docker logs cwv-caddy; exit 1; }
+
+      # Proof the pages are measured over HTTP/2, not a silent fall back to HTTP/1.1.
+      - name: Check the storefront answers over HTTP/2
+        run: |
+          version=$(curl -sk --http2 -o /dev/null -w '%{http_version}' "https://${CWV_HOST}/")
+          echo "http_version=${version}"
+          test "${version}" = "2"
+
+      # lhci runs Lighthouse 3x per page against the server above and asserts against
+      # .lighthouserc.cjs. LCP ≤ 1.5s and JS ≤ 30KB FAIL the job (calibrated 24/09 on 18 real
+      # samples — see that file); the overall performance score only warns.
+      - name: Lighthouse CI (performance + LCP + JS budget)
         run: pnpm exec lhci autorun --collect.chromePath="${{ steps.chrome.outputs.chrome-path }}"
 
       # The numbers the "warn" thresholds must be calibrated against, printed where they cannot
@@ -587,17 +612,6 @@ jobs:
           include-hidden-files: true
           retention-days: 7
 
-      - name: Boot a server for the axe pass
-        env:
-          MEDIA_DRIVER: static
-          MEDIA_CF_BASE: http://${{ env.CWV_HOST }}:${{ env.CWV_PORT }}/cwv-media
-        run: |
-          php artisan serve --host=0.0.0.0 --port="${CWV_PORT}" &
-          for i in $(seq 1 15); do
-            curl -sf -o /dev/null "http://${CWV_HOST}:${CWV_PORT}/" && break
-            sleep 1
-          done
-
       # axe-core is stricter than Lighthouse's built-in a11y category (full WCAG ruleset).
       # A gate since 24/09 on all three measured pages: the home baseline was clean five runs in a
       # row; widening to /lien-he + /tin-tuc surfaced one real failure (.category__empty contrast,
@@ -609,11 +623,11 @@ jobs:
       # every block (the sf-anchored switch), so axe checks the colours readers get.
       - name: axe accessibility scan
         run: >-
-          pnpm exec axe "http://${CWV_HOST}:${CWV_PORT}/#noi-dung" "http://${CWV_HOST}:${CWV_PORT}/lien-he#noi-dung" "http://${CWV_HOST}:${CWV_PORT}/tin-tuc#noi-dung" "http://${CWV_HOST}:${CWV_PORT}/do-kiem#noi-dung" "http://${CWV_HOST}:${CWV_PORT}/ban-tin#noi-dung"
+          pnpm exec axe "https://${CWV_HOST}/#noi-dung" "https://${CWV_HOST}/lien-he#noi-dung" "https://${CWV_HOST}/tin-tuc#noi-dung" "https://${CWV_HOST}/do-kiem#noi-dung" "https://${CWV_HOST}/ban-tin#noi-dung"
           --tags wcag2a,wcag2aa
           --chrome-path="${{ steps.chrome.outputs.chrome-path }}"
           --chromedriver-path="${{ steps.chrome.outputs.chromedriver-path }}"
-          --chrome-options="--headless=new,--no-sandbox"
+          --chrome-options="--headless=new,--no-sandbox,--ignore-certificate-errors"
           --exit
 
       # Tap check on a phone (320 and 390px, touch): every visible control must be what a finger hits at
@@ -622,7 +636,8 @@ jobs:
       - name: Tap check (phone · nothing drawn over a control)
         run: >-
           node scripts/storefront/tap-check.mjs --chrome="${{ steps.chrome.outputs.chrome-path }}" --widths=320,390 --expect-arrows=/do-kiem
-          "http://${CWV_HOST}:${CWV_PORT}/" "http://${CWV_HOST}:${CWV_PORT}/lien-he" "http://${CWV_HOST}:${CWV_PORT}/tin-tuc" "http://${CWV_HOST}:${CWV_PORT}/do-kiem" "http://${CWV_HOST}:${CWV_PORT}/ban-tin"
+          --ignore-certificate-errors
+          "https://${CWV_HOST}/" "https://${CWV_HOST}/lien-he" "https://${CWV_HOST}/tin-tuc" "https://${CWV_HOST}/do-kiem" "https://${CWV_HOST}/ban-tin"
 
       # Admin a11y: render the admin screens as a seeded owner (no login, no 2FA, no real env —
       # tests/Tools/RenderAdminPreviewTest.php) and gate them on STRUCTURAL WCAG 2A/2AA with axe in

@@ -1,9 +1,10 @@
-// Single source of truth for host/port: reads the same CWV_HOST/CWV_PORT the CI job's
-// `env:` block sets, so this file and .github/workflows/ci.yml can never drift apart
-// (a JSON config can't reference an env var at all — that was the previous, riskier shape).
+// Single source of truth for the host: reads the same CWV_HOST the CI job's `env:` block sets,
+// so this file and .github/workflows/ci.yml can never drift apart (a JSON config can't reference
+// an env var at all — that was the previous, riskier shape). The pages are loaded over HTTPS on
+// the standard port: the job serves them from PHP's built-in server on CWV_PORT behind Caddy
+// (scripts/cwv-Caddyfile, `tls internal`, HTTP/2), as production serves them over HTTP/2 + TLS.
 const host = process.env.CWV_HOST || 'cwv-ci.test';
-const port = process.env.CWV_PORT || '8099';
-const origin = `http://${host}:${port}`;
+const origin = `https://${host}`;
 
 // The storefront budgets CLAUDE.md fixes (LCP <= 1.5s, JS <= 30KB), per page, median of the 3 runs
 // (one slow run cannot fail it alone). A page joins at 'warn' and is promoted to 'error' only
@@ -23,14 +24,15 @@ module.exports = {
       // contact cards) and /ban-tin (a news card grid with child-category chips).
       url: [`${origin}/`, `${origin}/lien-he`, `${origin}/tin-tuc`, `${origin}/do-kiem`, `${origin}/ban-tin`],
       numberOfRuns: 3,
-      // PHP's built-in server behind a router that gzips HTML, CSS and JS the way production's
-      // Caddy does (`encode zstd gzip`), so the page weighs what a visitor downloads.
-      startServerCommand: `php -S 0.0.0.0:${port} -t public scripts/cwv-serve.php`,
-      startServerReadyPattern: 'Development Server',
-      startServerReadyTimeout: 15000,
+      // No startServerCommand: the job's "Serve the storefront over HTTP/2 + TLS" step has already
+      // started PHP's built-in server behind scripts/cwv-serve.php (gzips HTML, CSS and JS the way
+      // production's Caddy does, `encode zstd gzip`, so the page weighs what a visitor downloads)
+      // and Caddy in front of it, and checked that it answers over HTTP/2.
       settings: {
         onlyCategories: ['performance'],
-        chromeFlags: '--headless=new --no-sandbox --disable-gpu',
+        // --ignore-certificate-errors: Caddy's `tls internal` certificate is accepted by this
+        // Chrome only; nothing is added to the runner's trust store.
+        chromeFlags: '--headless=new --no-sandbox --disable-gpu --ignore-certificate-errors',
       },
     },
     assert: {
