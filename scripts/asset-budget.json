@@ -2,7 +2,7 @@
   "entries": {
     "resources/css/app.css": {
       "js": 0,
-      "css": 37483
+      "css": 40711
     },
     "resources/css/storefront.css": {
       "js": 0,
@@ -77,7 +77,7 @@
       "css": 996
     },
     "resources/js/app.js": {
-      "js": 20351,
+      "js": 22644,
       "css": 0
     },
     "resources/js/sections.js": {
@@ -143,19 +143,19 @@
   },
   "lazy": {
     "npm:sweetalert2/dist/sweetalert2.all.js": {
-      "js": 41022,
+      "js": 43315,
       "css": 0
     },
     "resources/js/admin-categories.js": {
-      "js": 26801,
+      "js": 29121,
       "css": 0
     },
     "resources/js/admin-rich-editor.js": {
-      "js": 220996,
+      "js": 223291,
       "css": 36159
     },
     "resources/js/admin-unsaved.js": {
-      "js": 22683,
+      "js": 24794,
       "css": 0
     },
     "resources/js/admin-editor.js": {
@@ -163,11 +163,11 @@
       "css": 0
     },
     "resources/js/media-picker-uploader.js": {
-      "js": 51908,
+      "js": 54204,
       "css": 920
     },
     "resources/js/media-uppy.js": {
-      "js": 104370,
+      "js": 106668,
       "css": 10606
     }
   }

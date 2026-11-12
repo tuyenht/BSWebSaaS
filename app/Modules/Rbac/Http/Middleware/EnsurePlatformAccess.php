@@ -30,6 +30,9 @@ final readonly class EnsurePlatformAccess
             403,
         );
 
+        // An error later in this request may be drawn inside the console's menu and top bar.
+        $request->attributes->set('admin.member', true);
+
         return $next($request);
     }
 }

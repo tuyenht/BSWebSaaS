@@ -9,6 +9,8 @@
     <meta name="robots" content="noindex, nofollow">
     {{-- CSRF token for fetch()-based endpoints (theme prefs). --}}
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    {{-- Where a request refused for an ended session sends the page (admin-session.js). --}}
+    <meta name="bs-session-expired" content="{{ \App\Modules\Admin\Support\AdminPlane::route('session.expired') }}">
     <title>{{ $title ?? __('admin.settings_system') }} — {{ config('admin.brand.name') }}</title>
     <link rel="icon" href="/favicon.ico" sizes="any">
     @include('admin::partials.theme-boot')
@@ -177,6 +179,7 @@
         </header>
 
         <main class="flex-1 p-4 lg:p-6">
+            @include('admin::partials.session-guard')
             {{ $slot }}
         </main>
 

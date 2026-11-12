@@ -1,0 +1,407 @@
+/*
+ | The admin's error pages and connection notices (design board 25 "Trang lỗi quản trị", the .te-*
+ | part): one centred state — icon, status number, heading, one line, the actions, the reason a
+ | button is off, the fault's reference and the support channels — drawn inside the admin frame
+ | (.te-in) or on a page of its own (.te-out, with the slim .te-top bar). Narrower than 600px
+ | (37.5rem, so it moves with the reader's text size) the actions stack full width and the state
+ | starts at the top. Also the "Mất kết nối" strip and the "Phiên sắp hết hạn" dialog of the frame
+ | (partials/session-guard). Every colour is a shared token; text follows --user-text-boost.
+ */
+@layer components {
+    .te-out {
+        margin: 0;
+        background: var(--color-bg);
+        color: var(--color-text);
+    }
+
+    .te-frame {
+        container: tefb / inline-size;
+        display: flex;
+        flex-direction: column;
+        min-height: 100dvh;
+    }
+
+    .te-in {
+        container: tefb / inline-size;
+    }
+
+    .te-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.5rem 1rem;
+        padding: 0.75rem 1.5rem;
+        background: var(--color-surface);
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .te-logo {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 0;
+
+        & img {
+            display: block;
+            height: 2rem;
+            width: auto;
+        }
+    }
+
+    .te-logo-light,
+    :root[data-bs-theme='dark'] .te-logo-dark { /* legacy-token-ok: AdminChromeResolver writes this attribute */
+        display: none !important;
+    }
+
+    :root[data-bs-theme='dark'] .te-logo-light { /* legacy-token-ok: same attribute */
+        display: block !important;
+    }
+
+    .te-logo-name {
+        font-weight: 700;
+        font-size: var(--text-lead);
+        color: var(--color-text-strong);
+    }
+
+    .te-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+
+    .te-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        min-height: var(--spacing-control);
+        padding: 0 0.625rem;
+        border-radius: 0.25rem;
+        color: var(--color-primary-text);
+        font-size: var(--text-body);
+        white-space: nowrap;
+        box-sizing: border-box;
+        text-decoration: none;
+
+        &:hover {
+            background: color-mix(in srgb, var(--color-primary-text) 8%, transparent);
+        }
+
+        @media (any-pointer: coarse) {
+            min-height: var(--spacing-hit);
+        }
+    }
+
+    .te-body {
+        flex: 1 1 auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 3rem 1.5rem;
+    }
+
+    .te-in.te-body {
+        padding: 2.5rem 1rem;
+    }
+
+    .te-v {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+        width: 100%;
+        max-width: 35rem;
+        text-align: center;
+    }
+
+    .te-ic {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 3.5rem;
+        height: 3.5rem;
+        border-radius: 50%;
+        background: color-mix(in srgb, var(--color-primary-text) 10%, var(--color-surface));
+        color: var(--color-primary-text);
+
+        &[data-tone='warn'] {
+            background: color-mix(in srgb, var(--color-warning-text) 14%, var(--color-surface));
+            color: var(--color-warning-text);
+        }
+
+        &[data-tone='danger'] {
+            background: color-mix(in srgb, var(--color-danger-text) 12%, var(--color-surface));
+            color: var(--color-danger-text);
+        }
+
+        &[data-tone='muted'] {
+            background: color-mix(in srgb, var(--color-text-muted) 12%, var(--color-surface));
+            color: var(--color-text-muted);
+        }
+    }
+
+    .te-num {
+        font-size: var(--text-small);
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        color: var(--color-text-muted);
+    }
+
+    .te-t {
+        margin: 0;
+        font-size: calc(1.25rem + var(--user-text-boost));
+        font-weight: 600;
+        line-height: 1.4;
+        color: var(--color-text-strong);
+        text-wrap: balance;
+        overflow-wrap: anywhere;
+    }
+
+    .te-l {
+        margin: 0;
+        max-width: 60ch;
+        font-size: var(--text-body);
+        line-height: var(--text-body--line-height);
+        color: var(--color-text);
+        text-wrap: pretty;
+        overflow-wrap: anywhere;
+    }
+
+    .te-grp {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        gap: 0.375rem;
+        font-size: var(--text-small);
+        color: var(--color-text-muted);
+    }
+
+    .te-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.125rem 0.625rem;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--color-primary-text) 10%, var(--color-surface));
+        color: var(--color-primary-text);
+        font-size: var(--text-small);
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .te-acts {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-top: 0.25rem;
+    }
+
+    /* "Thử lại" while the wait runs: still focusable (its reason is read with it), visibly off. */
+    .te-acts [aria-disabled='true'] {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .te-why {
+        margin: 0;
+        font-size: var(--text-small);
+        color: var(--color-text-muted);
+    }
+
+    .te-box {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--color-border);
+        border-radius: 0.375rem;
+        background: var(--color-surface);
+        text-align: start;
+    }
+
+    .te-box-t {
+        font-size: var(--text-small);
+        font-weight: 600;
+        color: var(--color-text-strong);
+    }
+
+    .te-code {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem 0.75rem;
+
+        & b {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: calc(1.125rem + var(--user-text-boost));
+            letter-spacing: 0.12em;
+            color: var(--color-text-strong);
+        }
+    }
+
+    .te-chs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem 0.5rem;
+
+        /* At the largest text size on a 320px phone a long number or address wraps inside the box. */
+        & .te-link {
+            max-width: 100%;
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
+    }
+
+    /* "Mất kết nối" / "Đã kết nối lại": under the top bar, above the page (never over its save bar). */
+    .te-strip {
+        position: sticky;
+        top: var(--topbar-height);
+        z-index: 15;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem 0.75rem;
+        margin-bottom: 1rem;
+        padding: 0.625rem 1rem;
+        border: 1px solid color-mix(in srgb, var(--color-warning-text) 30%, transparent);
+        border-radius: 0.375rem;
+        background: color-mix(in srgb, var(--color-warning-text) 14%, var(--color-surface));
+        color: var(--color-text-strong);
+        font-size: var(--text-body);
+
+        & > svg {
+            flex: none;
+            color: var(--color-warning-text);
+        }
+
+        & > span {
+            flex: 1 1 13.75rem;
+            min-width: 0;
+        }
+
+        &[data-ok='1'] {
+            border-color: color-mix(in srgb, var(--color-success-text) 30%, transparent);
+            background: color-mix(in srgb, var(--color-success-text) 12%, var(--color-surface));
+
+            & > svg {
+                color: var(--color-success-text);
+            }
+        }
+    }
+
+    /* "Phiên sắp hết hạn": one blocking dialog over a dimmed page; a sheet from the bottom on a phone. */
+    .te-ov {
+        position: fixed;
+        inset: 0;
+        z-index: 100; /* above the drawers, dialogs and unsaved-changes dialog (90): the session outranks them */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        background: color-mix(in srgb, var(--color-text-strong) 50%, transparent);
+    }
+
+    .te-dlg {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        width: min(27.5rem, 100%);
+        box-sizing: border-box;
+        padding: 1.5rem;
+        border-radius: 0.375rem;
+        background: var(--color-surface);
+        text-align: start;
+
+        @apply shadow-lg;
+    }
+
+    .te-dlg-t {
+        margin: 0;
+        font-size: calc(1.125rem + var(--user-text-boost));
+        font-weight: 600;
+        line-height: 1.4;
+        color: var(--color-text-strong);
+    }
+
+    .te-dlg-a {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        margin-top: 0.25rem;
+    }
+
+    .te-clock {
+        font-variant-numeric: tabular-nums;
+        font-weight: 700;
+        color: var(--color-text-strong);
+    }
+
+    @container tefb (max-width: 37.5rem) {
+        .te-top {
+            padding: 0.5rem 0.75rem;
+        }
+
+        .te-logo img {
+            height: 1.75rem;
+        }
+
+        .te-body {
+            align-items: flex-start;
+            padding: 2rem 1rem;
+        }
+
+        .te-t {
+            font-size: calc(1.125rem + var(--user-text-boost));
+        }
+
+        .te-acts {
+            flex-direction: column;
+            align-items: stretch;
+            width: 100%;
+
+            & > * {
+                width: 100%;
+                min-width: 0;
+                box-sizing: border-box;
+            }
+        }
+    }
+
+    /* A very narrow bar keeps the two links as icons (their names stay as aria-label + tooltip). */
+    @container tefb (max-width: 23.75rem) {
+        .te-link .te-lt {
+            display: none;
+        }
+
+        .te-link {
+            padding: 0 0.75rem;
+        }
+    }
+
+    @media (max-width: 599.98px) {
+        .te-ov {
+            align-items: flex-end;
+            padding: 0;
+        }
+
+        .te-ov .te-dlg {
+            width: 100%;
+            border-radius: 0.75rem 0.75rem 0 0;
+            padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+        }
+
+        .te-ov .te-dlg-a {
+            flex-direction: column-reverse;
+            align-items: stretch;
+
+            & > * {
+                width: 100%;
+            }
+        }
+    }
+}

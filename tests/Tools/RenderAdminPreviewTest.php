@@ -50,15 +50,18 @@ use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Shared\Http\SafeHttp;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Http\Middleware\SetCurrentSite;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Theming\AiCrawlerCheck;
 use Illuminate\Http\Client\Request;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -538,5 +541,37 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $invite = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($members()->call('openInvite')));
     file_put_contents($dir.'/members-invite.html', $swap($html, $invite, 'admin\\.users\\.index'));
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 30);
+    // The admin's error pages (design board 25): in the frame for a member — no permission, not
+    // found, a fault with its reference, too many requests — and on a page of their own: the
+    // session that ended, a website that is not open. Faults come from preview-only routes.
+    config(['app.debug' => false, 'support.phone' => '0900 000 111', 'support.zalo' => '0900000111']);
+    Route::middleware(['web', SetCurrentSite::class, 'site.active', 'auth', 'auth.session', 'tenant.member'])
+        ->prefix('admin/_preview-fault')->group(function (): void {
+            Route::get('/boom', fn () => throw new RuntimeException('preview fault'));
+            Route::get('/busy', fn () => throw new ThrottleRequestsException('Too Many Attempts.', null, ['Retry-After' => 30]));
+        });
+    $viewer = User::factory()->create(['name' => 'Lê Văn Xem']);
+    app(Tenancy::class)->enter(1, fn () => grantRole($viewer, 'media-viewer', ['media.view']));
+    $errors = [
+        'error-noperm' => [$viewer, '/admin/content', 403],
+        'error-notfound' => [$owner, '/admin/content/01JZZZZZZZZZZZZZZZZZZZZZZZ/edit', 404],
+        'error-e500' => [$owner, '/admin/_preview-fault/boom', 500],
+        'error-rate' => [$owner, '/admin/_preview-fault/busy', 429],
+    ];
+    foreach ($errors as $name => [$who, $path, $status]) {
+        $this->flushSession(); // a new member each time: their own session, as in a browser
+        $html = $this->actingAs($who)->get('http://'.ADMIN_PREVIEW_HOST.$path)->assertStatus($status)->getContent();
+        expect($html)->toContain('data-te-page=');
+        file_put_contents($dir.'/'.$name.'.html', $html);
+    }
+    app('auth')->forgetGuards();
+    $this->flushSession();
+    $html = $this->get('http://'.ADMIN_PREVIEW_HOST.'/admin/session-expired')->assertOk()->getContent();
+    file_put_contents($dir.'/error-expired.html', $html);
+    DB::connection('pgsql_admin')->table('sites')->where('id', 1)->update(['status' => 'suspended']);
+    $html = $this->get('http://'.ADMIN_PREVIEW_HOST.'/admin/login')->assertForbidden()->getContent();
+    expect($html)->toContain('data-te-page="suspended"');
+    file_put_contents($dir.'/error-suspended.html', $html);
+
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 36);
 });
