@@ -41,7 +41,7 @@ it('defers only below-the-fold blocks and the footer, on screen only', function 
     foreach ($rules as $rule) {
         expect($rule['media'])->toStartWith('@media screen');
         expect($rule['selectors'])->toContain(':not(.sf-anchored)');
-        expect($rule['selectors'])->not->toMatch('~header|\.sf-header|h1[^,)]*\{|:first-child|:nth-child~');
+        expect($rule['selectors'])->not->toMatch('~header|\.sf-header|:first-child|:nth-child~');
     }
 
     // the generic block rule needs two earlier sibling blocks: the first two are never deferred
@@ -55,4 +55,14 @@ it('keeps content-visibility out of the block stylesheets', function (): void {
     foreach (glob(dirname(__DIR__, 3).'/resources/css/sf-*.css') ?: [] as $file) {
         expect((string) file_get_contents($file))->not->toContain('content-visibility', basename($file));
     }
+});
+
+it('turns the deferral off before a jump to a #target', function (): void {
+    $js = (string) file_get_contents(dirname(__DIR__, 3).'/resources/js/storefront.js');
+
+    // the CSS rules are scoped with :not(.sf-anchored): the script is what adds the class
+    expect($js)->toContain("root.classList.add('sf-anchored')")
+        ->and($js)->toContain("addEventListener('hashchange'")
+        // a reload or a step back keeps the place the browser restores
+        ->and($js)->toContain("'back_forward'");
 });
