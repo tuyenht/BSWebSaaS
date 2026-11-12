@@ -258,10 +258,11 @@ it('plans the real pack on a fresh site with no conflict, and every internal lin
         ->and($this->get('http://'.ContentPacks::HOST.'/gia-cong-cat-day-xung-dien')->getContent())->toContain('nguồn kênh Kurt Bleyweert')->toContain('4IhkMgHkMEA');
 });
 
-it('loads the flourish heading decoration, a floating contact of Zalo and call only, and the post side column and product band', function (): void {
+it('loads the flourish heading decoration, round floating buttons of email, Zalo and call with no phone bar, and the post side column and product band', function (): void {
     $settings = collect(json_decode((string) file_get_contents((new PackReader)->read('an-vinh')->dir.'/settings.json'), true)['items'])->keyBy('key');
     expect($settings['setting:theme.heading_decor']['value'])->toBe(['style' => 'flourish'])
-        ->and(collect($settings['setting:storefront.floating_contact']['value']['channels'])->where('on', true)->pluck('key')->all())->toBe(['zalo', 'phone'])
+        ->and(collect($settings['setting:storefront.floating_contact']['value']['channels'])->where('on', true)->pluck('key')->all())->toBe(['email', 'zalo', 'phone'])
+        ->and($settings['setting:storefront.floating_contact']['value'])->not->toHaveKey('phone_bar')
         ->and($settings['setting:storefront.layout_blocks']['managed_keys'])->toBe(['post_aside', 'after_product', 'product_before_action', 'product_after_action'])
         ->and(collect($settings['setting:storefront.layout_blocks']['value']['post_aside']['vi']['blocks'])->pluck('type')->all())->toBe(['consult', 'recent_posts', 'category_list'])
         ->and(collect($settings['setting:storefront.layout_blocks']['value']['after_product']['vi']['blocks'])->pluck('type')->all())->toBe(['cta']);
@@ -277,11 +278,12 @@ it('loads the flourish heading decoration, a floating contact of Zalo and call o
         ->and(array_keys($stored('storefront', 'layout_blocks')))->toEqualCanonicalizing(['post_aside', 'after_product', 'product_before_action', 'product_after_action']);
 
     $home = $this->get('http://'.ContentPacks::HOST.'/')->assertOk()->getContent();
-    expect($home)->toContain('<nav class="sf-fc sf-fc--right sf-fc--md"')
+    expect($home)->toContain('<nav class="sf-fc sf-fc--right"')
         ->toContain('href="https://zalo.me/0915668383"')->toContain('href="tel:0915668383"')
-        ->not->toContain('mailto:quybv@ckanvinh.vn" class="sf-fc')
-        ->and(preg_match('/<nav class="sf-fc sf-fc--right sf-fc--md".*?<\/nav>/s', $home, $nav))->toBe(1)
-        ->and(preg_match_all('/<a /', $nav[0]))->toBe(2);
+        ->not->toContain('class="sf-fc-bar')
+        ->and(preg_match('/<nav class="sf-fc sf-fc--right".*?<\/nav>/s', $home, $nav))->toBe(1)
+        ->and($nav[0])->toContain('href="mailto:quybv@ckanvinh.vn"')
+        ->and(preg_match_all('/<a /', $nav[0]))->toBe(3);
 
     $post = $this->get('http://'.ContentPacks::HOST.'/gia-cong-phay-tien-cnc')->assertOk()->getContent();
     expect($post)->toContain('Tư vấn kỹ thuật')->toContain('Cần tư vấn hoặc báo giá?')->toContain('Năng lực của An Vinh')->toContain('Hồ sơ năng lực An Vinh');
