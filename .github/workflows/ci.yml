@@ -616,7 +616,7 @@ jobs:
       # card's link overlay once rose over the arrows). /do-kiem carries two card rails for this.
       - name: Tap check (phone · nothing drawn over a control)
         run: >-
-          node scripts/storefront/tap-check.mjs --chrome="${{ steps.chrome.outputs.chrome-path }}" --widths=320,390
+          node scripts/storefront/tap-check.mjs --chrome="${{ steps.chrome.outputs.chrome-path }}" --widths=320,390 --expect-arrows=/do-kiem
           "http://${CWV_HOST}:${CWV_PORT}/" "http://${CWV_HOST}:${CWV_PORT}/lien-he" "http://${CWV_HOST}:${CWV_PORT}/tin-tuc" "http://${CWV_HOST}:${CWV_PORT}/do-kiem" "http://${CWV_HOST}:${CWV_PORT}/ban-tin"
 
       # Admin a11y: render the admin screens as a seeded owner (no login, no 2FA, no real env —

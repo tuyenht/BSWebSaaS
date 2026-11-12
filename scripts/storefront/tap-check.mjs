@@ -2,9 +2,11 @@
 // its own centre (nothing drawn over it: a card's stretched-link overlay, a sticky bar, a slide), and a
 // real tap on a rail's arrow must turn the rail and never open the card under it.
 //
-//   node scripts/storefront/tap-check.mjs --chrome=<path> [--widths=320,390] [--add-css=<css>] <url> [<url>…]
+//   node scripts/storefront/tap-check.mjs --chrome=<path> [--widths=320,390] [--add-css=<css>] [--expect-arrows=<url>,…] <url> [<url>…]
 //
 // --add-css tries a style fix on a live site before it is deployed (the CSS is added to every page).
+// --expect-arrows names pages that must show at least one rail arrow, so a page that lost its rails
+// (or failed to load) cannot pass by having nothing to tap.
 //
 // Plain Node 22 (global WebSocket + fetch) talking to Chrome over the DevTools protocol: no dependency.
 // Exit 0 = clean, 1 = a covered control or a bad tap, 2 = could not run.
@@ -18,6 +20,7 @@ const opt = (name, fallback) => (args.find((a) => a.startsWith(`--${name}=`)) ??
 const chromePath = opt('chrome', process.env.CHROME_PATH ?? '');
 const widths = opt('widths', '320,390').split(',').map(Number);
 const addCss = opt('add-css', '');
+const expectArrows = opt('expect-arrows', '').split(',').filter(Boolean);
 const urls = args.filter((a) => !a.startsWith('--'));
 if (chromePath === '' || urls.length === 0) {
     console.error('usage: tap-check.mjs --chrome=<path> [--widths=320,390] <url>…');
@@ -28,10 +31,13 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const profile = mkdtempSync(join(tmpdir(), 'tap-check-'));
 const port = 9300 + Math.floor(Math.random() * 500);
 const chrome = spawn(chromePath, ['--headless=new', '--no-sandbox', '--disable-gpu', '--no-first-run', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, 'about:blank'], { stdio: 'ignore' });
+let chromeError;
+chrome.on('error', (e) => { chromeError = e; });
 
 let ws;
 let seq = 0;
 const pending = new Map();
+const waiters = [];
 const send = (method, params = {}, sessionId) => new Promise((resolve, reject) => {
     const id = ++seq;
     pending.set(id, { resolve, reject });
@@ -56,8 +62,9 @@ const probe = `(async () => {
         // The part a finger can reach: the line box cut to the window and to every scrolling or clipping
         // parent (a card half scrolled out of a rail is only tappable where it shows).
         const clips = [[0, 0, innerWidth, innerHeight]];
-        for (let a = el.parentElement; a; a = a.parentElement) {
+        for (let a = el.parentElement, fixed = cs.position === 'fixed'; a && !fixed; a = a.parentElement) {
             const c = getComputedStyle(a);
+            fixed = c.position === 'fixed';
             if (c.overflowX !== 'visible' || c.overflowY !== 'visible') { const b = a.getBoundingClientRect(); clips.push([b.left, b.top, b.right, b.bottom]); }
         }
         for (const r of el.getClientRects()) {
@@ -67,10 +74,11 @@ const probe = `(async () => {
             const x = (l + rr) / 2, y = (t + bb) / 2;
             const top = document.elementFromPoint(x, y);
             if (top === el || el.contains(top)) continue;
-            // A smaller control drawn on purpose over a bigger one (a rail's arrow on a card's edge) is fine:
-            // the small one is checked in its own turn and must be on top. A bigger thing over a smaller
-            // control is the fault: the finger lands on what is underneath.
-            const over = top && top.closest(sel);
+            // The arrows and slider controls are drawn on purpose over the edge of what they move (a card):
+            // a smaller one of those over a bigger control is fine, and it is checked in its own turn and
+            // must be on top. Anything else over a control, or a bigger thing over a smaller one, is the
+            // fault: the finger lands on what is underneath.
+            const over = top && top.closest('.sf-rail__btn, .sf-rot__arrow, .sf-slider__controls button');
             if (over && !over.contains(el)) {
                 const ob = over.getBoundingClientRect(), eb = el.getBoundingClientRect();
                 if (ob.width * ob.height < eb.width * eb.height) continue;
@@ -92,12 +100,25 @@ try {
         target = await fetch(`http://127.0.0.1:${port}/json/version`).then((r) => r.json()).catch(() => undefined);
     }
     if (!target) {
-        throw new Error('Chrome did not start');
+        throw new Error(chromeError ? `Chrome did not start: ${chromeError.message}` : 'Chrome did not start');
     }
     ws = new WebSocket(target.webSocketDebuggerUrl);
     await new Promise((r, j) => { ws.onopen = r; ws.onerror = j; });
+    // Chrome gone: fail every call still waiting instead of hanging until the job times out.
+    ws.onclose = () => {
+        for (const p of pending.values()) {
+            p.reject(new Error('Chrome closed the connection'));
+        }
+        pending.clear();
+    };
     ws.onmessage = (m) => {
         const msg = JSON.parse(m.data);
+        if (msg.method) {
+            for (const w of waiters.filter((w) => w.method === msg.method && w.sessionId === msg.sessionId)) {
+                waiters.splice(waiters.indexOf(w), 1);
+                w.resolve();
+            }
+        }
         if (msg.id && pending.has(msg.id)) {
             const p = pending.get(msg.id);
             pending.delete(msg.id);
@@ -121,12 +142,22 @@ try {
             await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 }, s);
             // Reduced motion holds every slider and rotator still, so what is on top cannot change mid-check.
             await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] }, s);
-            await send('Page.navigate', { url }, s);
-            await sleep(2500);
+            const loaded = new Promise((resolve) => waiters.push({ method: 'Page.loadEventFired', sessionId: s, resolve }));
+            const nav = await send('Page.navigate', { url }, s);
+            if (nav.errorText) {
+                throw new Error(`${url} did not load: ${nav.errorText}`);
+            }
+            await Promise.race([loaded, sleep(20000)]);
+            await sleep(800);
             await evaluate(s, `(async () => { const st = document.createElement('style'); st.textContent = ${JSON.stringify(addCss)}; document.head.append(st); document.documentElement.style.scrollBehavior = 'auto'; for (let y = 0; y < document.documentElement.scrollHeight; y += 400) { scrollTo(0, y); await new Promise((r) => setTimeout(r, 60)); } return '1'; })()`);
             await sleep(500);
 
+            const status = await evaluate(s, `JSON.stringify(performance.getEntriesByType('navigation')[0]?.responseStatus ?? 0)`);
+            const controls = await evaluate(s, `JSON.stringify(document.querySelectorAll('a[href], button').length)`);
             const covered = await evaluate(s, probe);
+            if ((status !== 0 && status !== 200) || controls === 0) {
+                covered.push({ control: 'page', text: `answered ${status} with ${controls} controls`, at: [0, 0], covered_by: 'nothing to check' });
+            }
             // Real taps on every rail arrow the page shows.
             const arrows = await evaluate(s, `JSON.stringify([...document.querySelectorAll('.sf-rail__btn')].map((b, i) => (b.hidden || getComputedStyle(b).display === 'none') ? null : i).filter((i) => i !== null))`);
             const taps = [];
@@ -152,6 +183,9 @@ try {
                 }
             }
             await send('Target.closeTarget', { targetId });
+            if (arrows.length === 0 && expectArrows.some((e) => url === e || url.endsWith(e))) {
+                taps.push('no rail arrow on a page that must have one');
+            }
 
             const line = `${width}px ${url}: ${covered.length} covered, ${arrows.length} arrows tapped, ${taps.length} bad taps`;
             console.log((covered.length || taps.length ? 'FAIL ' : 'ok   ') + line);
