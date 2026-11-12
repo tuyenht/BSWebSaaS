@@ -915,6 +915,8 @@
     "leads.toast_spam": "Moved to Spam",
     "leads.toast_not_spam": "Moved back to “Seen”",
     "leads.toast_undone": "Undone",
+    "leads.undo_changed": "Could not undo: someone else changed the status after you.",
+    "leads.undo_partial": "Undone: :count; changed by someone else after you, so left as they are: :left.",
     "leads.gone": "This request is no longer here — the list was reloaded.",
     "leads.back": "Back to the list",
     "leads.sent_via": "Sent through the form “:form”",

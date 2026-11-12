@@ -915,6 +915,8 @@
     "leads.toast_spam": "迷惑メールに移動しました",
     "leads.toast_not_spam": "「確認済み」に戻しました",
     "leads.toast_undone": "元に戻しました",
+    "leads.undo_changed": "元に戻せませんでした：その後、他の人がステータスを変更しました。",
+    "leads.undo_partial": ":count 件を元に戻しました。:left 件はその後他の人が変更したため、そのままです。",
     "leads.gone": "このお問い合わせはもうありません。一覧を再読み込みしました。",
     "leads.back": "一覧に戻る",
     "leads.sent_via": "フォーム「:form」から送信",
