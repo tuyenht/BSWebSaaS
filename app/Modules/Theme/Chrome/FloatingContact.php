@@ -173,6 +173,32 @@ final class FloatingContact
      */
     public static function for(mixed $raw, string $locale, ?string $shopHref = null): ?array
     {
+        return self::build($raw, $locale, $shopHref, false);
+    }
+
+    /**
+     * The same shape for the admin preview: a channel switched on whose value is missing or does not
+     * pass yet keeps its place there as an unfinished slot (`pending` = true, `href` = ''), so the
+     * member sees where its button goes once filled in. The bar keeps exactly the site's channels; a
+     * slot only takes a place left under the bar's five (the chat channels still left out), and the
+     * board-style phone bar stays the site's. Never used for the site itself.
+     *
+     * @param  mixed  $raw  the stored value (an array when set)
+     * @param  string|null  $shopHref  the site's product list, or null when it has none
+     * @return array{theme: string, position: string, offset_x: int, offset_y: int, buttons: list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, ink: string, bar_fill: string, bar_ink: string, pulse: bool, pending?: true}>, bar: list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, ink: string, bar_fill: string, bar_ink: string, pulse: bool, pending?: true}>, buy: array{href: string, fill: string, ink: string, icon: string}|null, phone_bar: array{bar: list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, ink: string, bar_fill: string, bar_ink: string, pulse: bool, pending?: true}>, cta: array{href: string, label: string}|null}|null}|null
+     */
+    public static function preview(mixed $raw, string $locale, ?string $shopHref = null): ?array
+    {
+        return self::build($raw, $locale, $shopHref, true);
+    }
+
+    /**
+     * The setting in the shape the theme prints; with $draft, unfinished slots kept (see preview()).
+     *
+     * @return array{theme: string, position: string, offset_x: int, offset_y: int, buttons: list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, ink: string, bar_fill: string, bar_ink: string, pulse: bool, pending?: true}>, bar: list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, ink: string, bar_fill: string, bar_ink: string, pulse: bool, pending?: true}>, buy: array{href: string, fill: string, ink: string, icon: string}|null, phone_bar: array{bar: list<array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, ink: string, bar_fill: string, bar_ink: string, pulse: bool, pending?: true}>, cta: array{href: string, label: string}|null}|null}|null
+     */
+    private static function build(mixed $raw, string $locale, ?string $shopHref, bool $draft): ?array
+    {
         if (! is_array($raw) || ($raw['enabled'] ?? false) !== true) {
             return null;
         }
@@ -182,17 +208,33 @@ final class FloatingContact
         $barMax = $buy === null ? self::BAR_MAX : self::BAR_MAX - 1;
 
         $buttons = [];
-        $bar = [];
         $seen = [];
         foreach (array_slice(is_array($raw['channels'] ?? null) ? array_values($raw['channels']) : [], 0, self::MAX_CHANNELS) as $channel) {
-            $button = is_array($channel) ? self::button($channel, $locale) : null;
+            $button = is_array($channel) ? self::button($channel, $locale, $draft) : null;
             if ($button === null || isset($seen[$button['key']])) {
                 continue;
             }
             $seen[$button['key']] = true;
             $buttons[] = $button;
-            if (! in_array($button['key'], self::BAR_HIDDEN, true) && count($bar) < $barMax) {
+        }
+
+        // The bar holds the first $barMax finished channels, exactly as the site draws it; unfinished
+        // slots (preview only) take just the places left over, each at its place in the setting's order.
+        $ready = array_values(array_filter($buttons, static fn (array $b): bool => ! isset($b['pending'])));
+        $quick = static fn (array $b): bool => ! in_array($b['key'], self::BAR_HIDDEN, true);
+        $room = $barMax - min($barMax, count(array_filter($ready, $quick)));
+        $bar = [];
+        $finished = 0;
+        $slots = 0;
+        foreach (array_filter($buttons, $quick) as $button) {
+            if (isset($button['pending'])) {
+                if ($slots < $room) {
+                    $bar[] = $button;
+                    $slots++;
+                }
+            } elseif ($finished < $barMax) {
                 $bar[] = $button;
+                $finished++;
             }
         }
 
@@ -201,7 +243,7 @@ final class FloatingContact
         }
 
         return [
-            'phone_bar' => $theme === 'vertical' ? self::phoneBar($raw['phone_bar'] ?? null, $buttons, $locale) : null,
+            'phone_bar' => $theme === 'vertical' ? self::phoneBar($raw['phone_bar'] ?? null, $ready, $locale) : null,
             'theme' => $theme,
             'position' => in_array($raw['position'] ?? null, self::POSITIONS, true) ? (string) $raw['position'] : 'right',
             'offset_x' => self::offset($raw['offset_x'] ?? null, self::MAX_OFFSET_X, self::DEFAULT_OFFSET_X),
@@ -285,12 +327,13 @@ final class FloatingContact
     }
 
     /**
-     * One shown button, or null when the channel is off, unknown or its value does not pass.
+     * One shown button, or null when the channel is off, unknown or its value does not pass — with
+     * $draft, a switched-on channel whose value does not pass yet is an unfinished slot instead.
      *
      * @param  array<array-key, mixed>  $channel
-     * @return array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, ink: string, bar_fill: string, bar_ink: string, pulse: bool}|null
+     * @return array{key: string, href: string, label: string|null, icon: string, text: string|null, fill: string, ink: string, bar_fill: string, bar_ink: string, pulse: bool, pending?: true}|null
      */
-    private static function button(array $channel, string $locale): ?array
+    private static function button(array $channel, string $locale, bool $draft = false): ?array
     {
         $key = is_string($channel['key'] ?? null) ? $channel['key'] : '';
         $type = self::typeOf($key);
@@ -299,7 +342,7 @@ final class FloatingContact
         }
         $clean = self::clean($type, $channel['value'] ?? null);
         $href = $clean === null ? null : self::href($type, $clean);
-        if ($href === null) {
+        if ($href === null && ! $draft) {
             return null;
         }
 
@@ -319,9 +362,9 @@ final class FloatingContact
         $need = $text !== null ? ReadableColor::AA_NORMAL_TEXT : 3.0;
         $light = self::color($channel['color'] ?? null) !== null && (ReadableColor::ratio($color, '#ffffff') ?? $need) < $need && (ReadableColor::ratio($color, self::DARK_INK) ?? 0.0) >= $need;
 
-        return [
+        return ($href === null ? ['pending' => true] : []) + [
             'key' => $key,
-            'href' => $href,
+            'href' => $href ?? '',
             'label' => $label,
             'icon' => ContactIcons::path($iconCode) ?? '',
             'text' => $text,

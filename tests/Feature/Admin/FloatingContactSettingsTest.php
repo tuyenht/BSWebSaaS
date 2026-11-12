@@ -394,6 +394,62 @@ it('lets a switched-off or empty channel through, as the page draws it', functio
     expect(fcsStored())->not->toBeNull();
 });
 
+it('shows a channel switched on but not filled in at its place in the round-button preview, with a hint under its field', function (): void {
+    $admin = fcsAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        // No brand phone or email: the call, Zalo, Messenger and email start switched on and empty.
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class);
+        $lw->set('channels.'.fcsIndex($lw, 'phone').'.value', '0912345678')
+            ->call('toggleChannel', 'sms');   // switched on, left empty
+        $lw->set('channels.'.fcsIndex($lw, 'zalo').'.value', 'abc');   // a value that does not pass
+
+        $preview = $lw->viewData('preview');
+        $pending = array_column(array_filter($preview['buttons'], fn (array $b): bool => $b['pending'] ?? false), 'key');
+        expect(array_column($preview['buttons'], 'key'))->toBe(['phone', 'zalo', 'messenger', 'email', 'sms'])
+            ->and($pending)->toBe(['zalo', 'messenger', 'email', 'sms']);
+
+        $html = $lw->html();
+        expect($html)->toContain('data-fc-pending="sms"', 'data-fc-pending="messenger"', 'data-fc-pending="zalo"')
+            ->not->toContain('data-fc-pending="phone"')
+            // the hint shows under the empty fields only (not under the filled call, nor under Zalo's error)
+            ->toContain('id="fc-empty-sms"', 'aria-describedby="fc-hint-sms fc-empty-sms"')
+            ->not->toContain('id="fc-empty-phone"')->not->toContain('id="fc-empty-zalo"')
+            ->and(substr_count($html, 'Chưa nhập — nút này chưa hiện trên website.'))->toBe(3);
+
+        // Switched off: gone from the preview, and its hint with it.
+        $lw->call('toggleChannel', 'sms');
+        expect($lw->html())->not->toContain('data-fc-pending="sms"')->not->toContain('id="fc-empty-sms"')
+            ->and(array_column($lw->viewData('preview')['buttons'], 'key'))->not->toContain('sms');
+
+        // Empty stays allowed on save.
+        $lw->set('channels.'.fcsIndex($lw, 'zalo').'.value', '')->call('save')->assertHasNoErrors();
+    });
+
+    expect(collect(fcsStored()['channels'])->firstWhere('key', 'messenger'))->toMatchArray(['on' => true, 'value' => '']);
+});
+
+it('shows a channel switched on but not filled in at its cell of the bottom-bar preview, five cells at most, chat channels left out', function (): void {
+    $admin = fcsAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)->call('setTheme', 'horizontal');
+        $lw->set('channels.'.fcsIndex($lw, 'phone').'.value', '0912345678')
+            ->call('toggleChannel', 'sms')
+            ->call('addPreset', 'whatsapp')->call('addPreset', 'telegram')->call('addPreset', 'viber');
+
+        expect(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo', 'sms', 'whatsapp', 'telegram']);
+        expect($lw->html())->toContain('data-fc-pending="zalo"', 'data-fc-pending="sms"', 'data-fc-pending="telegram"')
+            ->not->toContain('data-fc-pending="messenger"')->not->toContain('data-fc-pending="email"')
+            ->not->toContain('data-fc-pending="viber"')->not->toContain('data-fc-pending="phone"');
+
+        // A switched-off channel never takes a cell.
+        $lw->call('toggleChannel', 'zalo');
+        expect(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'sms', 'whatsapp', 'telegram', 'viber'])
+            ->and($lw->html())->not->toContain('data-fc-pending="zalo"');
+    });
+});
+
 it('refuses an icon outside the allowed set, an over-long name or label, and a bad colour', function (): void {
     $admin = fcsAdmin();
 

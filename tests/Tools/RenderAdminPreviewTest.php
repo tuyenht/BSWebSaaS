@@ -268,12 +268,13 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
 
     // The floating contact buttons: round buttons with a channel of the site's own, then the phone
     // bottom bar with the "Mua hàng" button (the site has two languages, so the language bar shows).
+    // SMS is switched on but not filled in: the preview draws its place as an unfinished slot.
     $channels = [
         ['key' => 'phone', 'on' => true, 'value' => '0912345678', 'tips' => ['vi' => 'Gọi ngay']],
         ['key' => 'zalo', 'on' => true, 'value' => '0912345678'],
         ['key' => 'messenger', 'on' => true, 'value' => 'congtydemo'],
         ['key' => 'email', 'on' => false, 'value' => ''],
-        ['key' => 'sms', 'on' => false, 'value' => ''],
+        ['key' => 'sms', 'on' => true, 'value' => ''],
         ['key' => 'c1', 'on' => true, 'value' => '/lien-he', 'icon' => 'ri-chat-3-line', 'name' => 'Đặt lịch', 'tips' => []],
     ];
     foreach (['floating-contact' => ['theme' => 'vertical'], 'floating-contact-bar' => ['theme' => 'horizontal', 'buy' => ['enabled' => true, 'color' => '#f7b84b']]] as $name => $look) {

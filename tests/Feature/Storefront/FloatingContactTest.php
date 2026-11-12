@@ -427,3 +427,19 @@ it('prints the readable ink on every link of the horizontal bar, a light colour 
         ->and($m[2])->toBe('#ffffff')
         ->and(ReadableColor::ratio($m[1], $m[2]))->toBeGreaterThanOrEqual(3.0);
 });
+
+it('prints no button for a channel switched on but not filled in, in either look', function (string $theme): void {
+    $siteId = flcSite();
+    flcSetting($siteId, flcConfig([
+        ['key' => 'phone', 'on' => true, 'value' => '0912345678'],
+        ['key' => 'zalo', 'on' => true, 'value' => ''],
+        ['key' => 'sms', 'on' => true, 'value' => '   '],
+        ['key' => 'whatsapp', 'on' => true, 'value' => 'abc'],
+    ], ['theme' => $theme]));
+
+    $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
+
+    expect($part)->toContain('href="tel:0912345678"')
+        ->not->toContain('zalo.me')->not->toContain('sms:')->not->toContain('wa.me')
+        ->not->toContain('pending')->not->toContain('href=""');
+})->with(['vertical', 'horizontal']);

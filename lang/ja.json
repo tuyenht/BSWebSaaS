@@ -2821,6 +2821,7 @@
     "admin.fc.desk": "パソコンで表示",
     "admin.fc.mob": "スマホで表示",
     "admin.fc.preview_empty": "表示するチャネルがまだありません — チャネルをオンにして連絡先を入力してください。",
+    "admin.fc.empty_value": "未入力 — このボタンはまだウェブサイトに表示されません。",
     "admin.fc.applied_title": "サイト全体に自動で適用",
     "admin.fc.applied_body": ":save を押すと、連絡ボタンがすべてのページに表示されます。コードを貼る必要はありません。",
     "admin.fc.saved": "保存済み",
