@@ -18,7 +18,7 @@
 <link rel="stylesheet" href="{{ \Illuminate\Support\Facades\Vite::asset('resources/css/sf-floating.css') }}">
 <style>:root{@foreach ($tokens as $name => $value)--{{ $name }}:{{ $value }};@endforeach}</style>
 <style>
-html{font-family:var(--font,system-ui),system-ui,sans-serif;color:var(--color-text,#334155);background:var(--color-surface,#fff)}
+html{font-family:var(--font-body,system-ui),system-ui,sans-serif;color:var(--color-text,#334155);background:var(--color-surface,#fff)}
 body{margin:0;min-height:100vh;background:color-mix(in srgb,var(--color-text-strong,#0f172a) 4%,var(--color-surface,#fff))}
 html[data-page="dark"] body{background:#0b1120}
 html{overflow:hidden}
