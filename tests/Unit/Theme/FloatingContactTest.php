@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Admin\Support\Settings\FloatingContactInput;
 use App\Modules\Theme\Chrome\ContactIcons;
 use App\Modules\Theme\Chrome\FloatingContact;
 use App\Modules\Theme\Theming\ReadableColor;
@@ -48,7 +49,8 @@ it('checks and tidies each value type', function (string $type, string $value, ?
     'hotline 1900 + 5' => ['phone', '1900 12345', null],
     'hotline other prefix' => ['phone', '1700 1234', null],
     'sms hotline' => ['sms', '1900.1234', '19001234'],
-    'call abroad refused' => ['phone', '+65 9123 4567', null],
+    'call abroad' => ['phone', '+65 9123 4567', '+6591234567'],
+    'sms abroad' => ['sms', '+65 9123 4567', '+6591234567'],
     'whatsapp abroad' => ['whatsapp', '+65 9123 4567', '+6591234567'],
     'viber abroad 15 digits' => ['viber', '+123456789012345', '+123456789012345'],
     'viber abroad too short' => ['viber', '+1234567', null],
@@ -305,3 +307,126 @@ it('keeps every slot at its place in the bar preview and the finished cells exac
         ['key' => 'sms', 'on' => true, 'value' => '0912345678'],
     ], null, ['phone', 'messenger', 'zalo', 'sms']],
 ]);
+
+it('keeps every number valid before cleaning to the same string, and refuses what was refused', function (string $type, string $value, ?string $clean): void {
+    expect(FloatingContact::clean($type, $value))->toBe($clean);
+})->with([
+    'mobile spaced' => ['phone', '0912 345 678', '0912345678'],
+    'mobile +84' => ['phone', '+84 912 345 678', '+84912345678'],
+    'hotline 1900' => ['phone', '1900 1234', '19001234'],
+    'hotline 1800' => ['phone', '1800 123456', '1800123456'],
+    'landline' => ['phone', '024 3123 4567', '02431234567'],
+    'sms mobile' => ['sms', '0912 345 678', '0912345678'],
+    'zalo stays Vietnamese mobile' => ['zalo', '+81 3-1234-5678', null],
+    'javascript' => ['phone', 'javascript:alert(1)', null],
+    'letters' => ['phone', 'abc', null],
+    'country code 0' => ['phone', '+0 123', null],
+    'too short' => ['phone', '12345', null],
+    'sms javascript' => ['sms', 'javascript:alert(1)', null],
+    'sms country code 0' => ['sms', '+0 123', null],
+]);
+
+it('accepts a number of another country for the call and SMS buttons and links it with tel: and sms:', function (string $value, string $clean): void {
+    expect(FloatingContact::clean('phone', $value))->toBe($clean)
+        ->and(FloatingContact::href('phone', $clean))->toBe('tel:'.$clean)
+        ->and(FloatingContact::clean('sms', $value))->toBe($clean)
+        ->and(FloatingContact::href('sms', $clean))->toBe('sms:'.$clean);
+})->with([
+    'Japan' => ['+81 3-1234-5678', '+81312345678'],
+    'United Kingdom' => ['+44 20 7946 0958', '+442079460958'],
+    'United States' => ['+1 (415) 555-0100', '+14155550100'],
+]);
+
+it('reads the layout of a stored setting, from its own field or from the theme and phone bar of an older save', function (mixed $raw, string $layout): void {
+    expect(FloatingContact::layout($raw))->toBe($layout);
+})->with([
+    'never saved' => [null, 'vertical'],
+    'not an array' => ['x', 'vertical'],
+    'own field' => [['layout' => 'horizontal', 'theme' => 'vertical'], 'horizontal'],
+    'own field wins over a phone bar' => [['layout' => 'vertical', 'phone_bar' => ['enabled' => true]], 'vertical'],
+    'bad own field falls back to the theme' => [['layout' => 'grid', 'theme' => 'horizontal'], 'combo'],
+    'older horizontal' => [['theme' => 'horizontal'], 'combo'],
+    'older vertical with the phone bar on' => [['theme' => 'vertical', 'phone_bar' => ['enabled' => true]], 'combo'],
+    'older vertical with the phone bar off' => [['theme' => 'vertical', 'phone_bar' => ['enabled' => false]], 'vertical'],
+    'older vertical alone' => [['theme' => 'vertical'], 'vertical'],
+    'theme missing, phone bar on' => [['phone_bar' => ['enabled' => true]], 'combo'],
+    'theme invalid, no phone bar' => [['theme' => 'diagonal'], 'vertical'],
+    'empty array' => [[], 'vertical'],
+]);
+
+it('gives older code the theme word a layout stands for', function (): void {
+    expect(FloatingContact::legacyTheme('combo'))->toBe('horizontal')
+        ->and(FloatingContact::legacyTheme('vertical'))->toBe('vertical')
+        ->and(FloatingContact::legacyTheme('horizontal'))->toBe('horizontal');
+});
+
+it('reads the fold, bar tone and click counting with their defaults', function (): void {
+    expect(FloatingContact::dial(null))->toBeTrue()
+        ->and(FloatingContact::dial([]))->toBeTrue()
+        ->and(FloatingContact::dial(['dial' => 0]))->toBeTrue()
+        ->and(FloatingContact::dial(['dial' => false]))->toBeFalse()
+        ->and(FloatingContact::track(null))->toBeTrue()
+        ->and(FloatingContact::track(['track' => 'no']))->toBeTrue()
+        ->and(FloatingContact::track(['track' => false]))->toBeFalse()
+        ->and(FloatingContact::barTone(null))->toBe('auto')
+        ->and(FloatingContact::barTone(['bar_tone' => 'dark']))->toBe('dark')
+        ->and(FloatingContact::barTone(['bar_tone' => 'light']))->toBe('light')
+        ->and(FloatingContact::barTone(['bar_tone' => 'purple']))->toBe('auto');
+});
+
+it('chooses the bottom bar cells, the sheet and the "Thêm" cell', function (array $ready, bool $buy, array $bar, array $sheet, bool $more): void {
+    expect(FloatingContact::barSlots($ready, $buy))->toBe(['bar' => $bar, 'sheet' => $sheet, 'more' => $more]);
+})->with([
+    'nothing ready' => [[], false, [], [], false],
+    'three channels, e-mail first, no shop' => [['email', 'zalo', 'phone'], false, ['email', 'zalo', 'phone'], [], false],
+    'three channels, e-mail first, with shop' => [['email', 'zalo', 'phone'], true, ['email', 'zalo', 'phone'], [], false],
+    'two sheet-only channels left over' => [['phone', 'zalo', 'messenger', 'email'], false, ['phone', 'zalo'], ['messenger', 'email'], true],
+    'six quick channels with shop' => [['phone', 'zalo', 'sms', 'whatsapp', 'viber', 'telegram'], true, ['phone', 'zalo', 'sms'], ['whatsapp', 'viber', 'telegram'], true],
+    'five quick channels and e-mail, bar full' => [['phone', 'zalo', 'sms', 'whatsapp', 'viber', 'email'], false, ['phone', 'zalo', 'sms', 'whatsapp'], ['viber', 'email'], true],
+    'four quick channels with shop' => [['phone', 'zalo', 'sms', 'whatsapp'], true, ['phone', 'zalo', 'sms', 'whatsapp'], [], false],
+    'five quick channels, no shop' => [['phone', 'zalo', 'sms', 'whatsapp', 'viber'], false, ['phone', 'zalo', 'sms', 'whatsapp', 'viber'], [], false],
+]);
+
+it('folds the round buttons of a phone into one button only on the vertical layout with the switch on and enough channels', function (): void {
+    expect(FloatingContact::dials('vertical', true, FloatingContact::DIAL_FROM))->toBeTrue()
+        ->and(FloatingContact::dials('vertical', true, FloatingContact::DIAL_FROM - 1))->toBeFalse()
+        ->and(FloatingContact::dials('vertical', false, 9))->toBeFalse()
+        ->and(FloatingContact::dials('combo', true, 9))->toBeFalse()
+        ->and(FloatingContact::dials('horizontal', true, 9))->toBeFalse();
+});
+
+it('checks the newer fields of a setting written from outside the form, with a plain message for a wrong one', function (array $value, array $errors): void {
+    expect(FloatingContactInput::errors($value + ['channels' => []], ['vi']))->toBe($errors);
+})->with([
+    'all valid' => [['layout' => 'horizontal', 'dial' => false, 'bar_tone' => 'dark', 'track' => true], []],
+    'older theme only' => [['theme' => 'horizontal'], []],
+    'layout and theme together' => [['layout' => 'vertical', 'theme' => 'horizontal'], []],
+    'unknown layout' => [['layout' => 'grid'], ["'layout' must be one of combo, vertical, horizontal."]],
+    'unknown tone' => [['bar_tone' => 'purple'], ["'bar_tone' must be one of auto, light, dark."]],
+    'dial not a bool' => [['dial' => 'yes'], ["'dial' must be true or false."]],
+    'track not a bool' => [['track' => 1], ["'track' must be true or false."]],
+]);
+
+it('stores the newer fields after the existing ones, and writes the older theme word that matches a given layout', function (): void {
+    $stored = FloatingContactInput::stored(['enabled' => true, 'theme' => 'vertical', 'layout' => 'horizontal', 'dial' => false, 'bar_tone' => 'light', 'track' => false], ['vi']);
+
+    expect($stored)->toMatchArray(['theme' => 'horizontal', 'layout' => 'horizontal', 'dial' => false, 'bar_tone' => 'light', 'track' => false])
+        ->and(array_slice(array_keys($stored), 0, 7))->toBe(['enabled', 'theme', 'position', 'offset_x', 'offset_y', 'layout', 'dial']);
+
+    $older = FloatingContactInput::stored(['enabled' => true, 'theme' => 'horizontal'], ['vi']);
+    expect($older)->toMatchArray(['theme' => 'horizontal', 'layout' => 'combo', 'dial' => true, 'bar_tone' => 'auto', 'track' => true])
+        ->and(FloatingContactInput::stored([], ['vi'])['theme'])->toBe('vertical');
+});
+
+it('keeps the round buttons of a site with the phone bar when its setting is stored again, layout given or not', function (): void {
+    $bar = ['enabled' => true, 'cta' => ['label' => ['vi' => 'Yêu cầu báo giá'], 'url' => '/lien-he']];
+
+    $again = FloatingContactInput::stored(['enabled' => true, 'theme' => 'vertical', 'phone_bar' => $bar], ['vi']);
+    $withLayout = FloatingContactInput::stored(['enabled' => true, 'theme' => 'vertical', 'layout' => 'combo', 'phone_bar' => $bar], ['vi']);
+    $noTheme = FloatingContactInput::stored(['enabled' => true, 'phone_bar' => $bar], ['vi']);
+
+    expect($again)->toMatchArray(['theme' => 'vertical', 'layout' => 'combo'])
+        ->and($again['phone_bar']['enabled'])->toBeTrue()
+        ->and($withLayout)->toMatchArray(['theme' => 'vertical', 'layout' => 'combo'])
+        ->and($noTheme)->toMatchArray(['theme' => 'vertical', 'layout' => 'combo']);
+});

@@ -46,6 +46,102 @@ final class ReadableColor
     }
 
     /**
+     * A fill darkened (in OKLab, toward a dark slate) just until white marks on it reach 3:1, with a small
+     * margin; a fill white already reads on, or anything that is not #rrggbb, is returned unchanged.
+     * Each step is rounded to a real 8-bit colour before it is tested, so the answer is what is painted.
+     */
+    public static function inkUnder(string $hex): string
+    {
+        if (preg_match('/\A#[0-9a-f]{6}\z/i', $hex) !== 1) {
+            return $hex;
+        }
+
+        $rgb = [self::toLinear(hexdec(substr($hex, 1, 2)) / 255), self::toLinear(hexdec(substr($hex, 3, 2)) / 255), self::toLinear(hexdec(substr($hex, 5, 2)) / 255)];
+        if (self::whiteContrast($rgb) >= 3) {
+            return $hex;
+        }
+
+        $from = self::toOklab($rgb);
+        $to = self::toOklab([self::toLinear(15 / 255), self::toLinear(23 / 255), self::toLinear(42 / 255)]);
+        for ($p = 1; $p < 60; $p++) {
+            $t = $p / 100;
+            $mixed = self::fromOklab([
+                $from[0] * (1 - $t) + $to[0] * $t,
+                $from[1] * (1 - $t) + $to[1] * $t,
+                $from[2] * (1 - $t) + $to[2] * $t,
+            ]);
+            $bytes = array_map(static fn (float $c): int => (int) round(self::fromLinear($c) * 255), $mixed);
+            $painted = [self::toLinear($bytes[0] / 255), self::toLinear($bytes[1] / 255), self::toLinear($bytes[2] / 255)];
+            if (self::whiteContrast($painted) >= 3.05) {
+                return sprintf('#%02x%02x%02x', $bytes[0], $bytes[1], $bytes[2]);
+            }
+        }
+
+        return $hex;
+    }
+
+    private static function toLinear(float $c): float
+    {
+        return $c <= 0.04045 ? $c / 12.92 : (($c + 0.055) / 1.055) ** 2.4;
+    }
+
+    private static function fromLinear(float $c): float
+    {
+        $c = max(0.0, min(1.0, $c));
+
+        return $c <= 0.0031308 ? 12.92 * $c : 1.055 * $c ** (1 / 2.4) - 0.055;
+    }
+
+    /**
+     * Contrast of white on a colour given as linear sRGB.
+     *
+     * @param  array{0: float, 1: float, 2: float}  $v
+     */
+    private static function whiteContrast(array $v): float
+    {
+        return 1.05 / (0.2126 * $v[0] + 0.7152 * $v[1] + 0.0722 * $v[2] + 0.05);
+    }
+
+    private static function cbrt(float $x): float
+    {
+        return $x < 0 ? -((-$x) ** (1 / 3)) : $x ** (1 / 3);
+    }
+
+    /**
+     * @param  array{0: float, 1: float, 2: float}  $v  linear sRGB
+     * @return array{0: float, 1: float, 2: float}
+     */
+    private static function toOklab(array $v): array
+    {
+        $l = self::cbrt(0.4122214708 * $v[0] + 0.5363325363 * $v[1] + 0.0514459929 * $v[2]);
+        $m = self::cbrt(0.2119034982 * $v[0] + 0.6806995451 * $v[1] + 0.1073969566 * $v[2]);
+        $q = self::cbrt(0.0883024619 * $v[0] + 0.2817188376 * $v[1] + 0.6299787005 * $v[2]);
+
+        return [
+            0.2104542553 * $l + 0.793617785 * $m - 0.0040720468 * $q,
+            1.9779984951 * $l - 2.428592205 * $m + 0.4505937099 * $q,
+            0.0259040371 * $l + 0.7827717662 * $m - 0.808675766 * $q,
+        ];
+    }
+
+    /**
+     * @param  array{0: float, 1: float, 2: float}  $a  OKLab
+     * @return array{0: float, 1: float, 2: float} linear sRGB, each channel kept within 0..1
+     */
+    private static function fromOklab(array $a): array
+    {
+        $l = ($a[0] + 0.3963377774 * $a[1] + 0.2158037573 * $a[2]) ** 3;
+        $m = ($a[0] - 0.1055613458 * $a[1] - 0.0638541728 * $a[2]) ** 3;
+        $q = ($a[0] - 0.0894841775 * $a[1] - 1.291485548 * $a[2]) ** 3;
+
+        return [
+            max(0.0, min(1.0, 4.0767416621 * $l - 3.3077115913 * $m + 0.2309699292 * $q)),
+            max(0.0, min(1.0, -1.2684380046 * $l + 2.6097574011 * $m - 0.3413193965 * $q)),
+            max(0.0, min(1.0, -0.0041960863 * $l - 0.7034186147 * $m + 1.707614701 * $q)),
+        ];
+    }
+
+    /**
      * $color moved toward black (on a light background) or white (on a dark one) until it reaches
      * $minimum contrast against $background — the hue kept, only the lightness shifted. Returned
      * unchanged (as lowercase #rrggbb) when it already reads well. Null when either input is not a

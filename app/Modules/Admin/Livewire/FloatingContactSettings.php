@@ -61,6 +61,30 @@ final class FloatingContactSettings extends Component
     public string $buyColor = FloatingContact::BUY_COLOR;
 
     /**
+     * The newer fields of the setting (layout, folding of round buttons on a phone, bar tone, click
+     * counting) have no control in the form yet: kept as stored and written back, so saving the form
+     * never drops them. `$loadedTheme` and `$loadedBarOn` remember what the layout was read from, so a
+     * change of the theme made in the form still decides the layout.
+     */
+    #[Locked]
+    public string $layout = 'vertical';
+
+    #[Locked]
+    public bool $dial = true;
+
+    #[Locked]
+    public string $barTone = 'auto';
+
+    #[Locked]
+    public bool $track = true;
+
+    #[Locked]
+    public string $loadedTheme = 'vertical';
+
+    #[Locked]
+    public bool $loadedBarOn = false;
+
+    /**
      * Whether the site has a product list for "Mua hàng" to open in the language being previewed:
      * without one the switch is kept but the button is shown nowhere on those pages (the preview
      * draws what the site draws in that language). Worked out again when the language changes.
@@ -324,10 +348,25 @@ final class FloatingContactSettings extends Component
             'position' => $this->position,
             'offset_x' => $this->offsetX,
             'offset_y' => $this->offsetY,
+            'layout' => $this->layoutToStore(),
+            'dial' => $this->dial,
+            'bar_tone' => $this->barTone,
+            'track' => $this->track,
             'buy' => ['enabled' => $this->buyOn, 'color' => $this->buyColor],
             ...($this->phoneBar === [] ? [] : ['phone_bar' => $this->phoneBar]),
             'channels' => array_map(FloatingContactInput::storedRow(...), $rows),
         ];
+    }
+
+    /** The loaded layout while the theme and phone-bar switch are as loaded; else the layout those two now give. */
+    private function layoutToStore(): string
+    {
+        $barOn = ($this->phoneBar['enabled'] ?? false) === true;
+        if ($this->theme === $this->loadedTheme && $barOn === $this->loadedBarOn) {
+            return $this->layout;
+        }
+
+        return FloatingContact::layout(['theme' => $this->theme, 'phone_bar' => ['enabled' => $barOn]]);
     }
 
     /**
@@ -366,6 +405,12 @@ final class FloatingContactSettings extends Component
         $this->offsetX = FloatingContact::offset($raw['offset_x'] ?? null, FloatingContact::MAX_OFFSET_X, FloatingContact::DEFAULT_OFFSET_X);
         $this->offsetY = FloatingContact::offset($raw['offset_y'] ?? null, FloatingContact::MAX_OFFSET_Y, FloatingContact::DEFAULT_OFFSET_Y);
         $this->phoneBar = isset($raw['phone_bar']) ? FloatingContactInput::storedPhoneBar($raw['phone_bar'], $this->locales()) : [];
+        $this->layout = FloatingContact::layout($raw);
+        $this->dial = FloatingContact::dial($raw);
+        $this->barTone = FloatingContact::barTone($raw);
+        $this->track = FloatingContact::track($raw);
+        $this->loadedTheme = $this->theme;
+        $this->loadedBarOn = ($this->phoneBar['enabled'] ?? false) === true;
         $buy = Cast::arr($raw['buy'] ?? null);
         $this->buyOn = ($buy['enabled'] ?? false) === true;
         $color = Cast::string($buy['color'] ?? null);
@@ -429,6 +474,12 @@ final class FloatingContactSettings extends Component
         $this->buyOn = false;
         $this->buyColor = FloatingContact::BUY_COLOR;
         $this->phoneBar = [];
+        $this->layout = 'vertical';
+        $this->dial = true;
+        $this->barTone = 'auto';
+        $this->track = true;
+        $this->loadedTheme = 'vertical';
+        $this->loadedBarOn = false;
         $this->channels = [];
         foreach (FloatingContact::CORE as $key) {
             $row = $this->row($key, $key !== 'sms');
