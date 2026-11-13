@@ -240,17 +240,23 @@ window.addEventListener('hashchange', () => {
 });
 
 // Floating contact: the links work with no script. A click on one with click tracking on announces
-// `bs:contact-click` at once (an app link can leave the page before anything else loads); only the
-// "Chép số" code is fetched, on the first touch of the widget or once the page has loaded and gone idle.
+// `bs:contact-click` at once (an app link can leave the page before anything else loads). Only the
+// "Chép số" code is fetched, where the page has that button (data-fc-js): on the first touch of the
+// widget, or once the page has loaded and gone idle on a computer (a phone never shows the button).
 const fc = document.querySelector('[data-fc-root]');
 if (fc) {
+    const src = fc.dataset.fcJs;
     let copy;
+    let ready;
     // Its address comes from the page (a Vite entry), so this file carries no loader of its own.
-    const more = () => (copy ??= import(/* @vite-ignore */ fc.dataset.fcJs).catch(() => (copy = null)));
+    const more = () => src && (copy ??= import(/* @vite-ignore */ src).then(() => (ready = 1), () => (copy = null)));
     fc.addEventListener('click', (event) => {
-        const copyButton = event.target.closest('[data-fc-copy]');
-        if (copyButton) {
-            more().then(() => document.dispatchEvent(new CustomEvent('bs:fc-copy', { detail: copyButton })));
+        const button = event.target.closest('[data-fc-copy]');
+        if (button) {
+            // Before the copy code has arrived, write while the click still counts as the visitor's.
+            const wrote = ready ? 0 : navigator.clipboard?.writeText(button.closest('li').querySelector('a').getAttribute('href').slice(4)).then(() => 1, () => 0);
+            // No copy code (the network failed): the number is selected, ready for Ctrl/Cmd+C.
+            more().then((ok) => (ok ? document.dispatchEvent(new CustomEvent('bs:fc-copy', { detail: { button, wrote } })) : getSelection().selectAllChildren(button.parentNode.querySelector('.sf-fc__num'))));
             return;
         }
         const link = event.target.closest('[data-fc]');
@@ -265,11 +271,13 @@ if (fc) {
             link_type: link.dataset.fcLt,
         } }));
     });
-    ['pointerover', 'focusin', 'touchstart'].forEach((type) => fc.addEventListener(type, more, { once: true, passive: true }));
-    const idle = () => (window.requestIdleCallback ?? ((f) => setTimeout(f, 3000)))(more);
-    if (document.readyState === 'complete') {
-        idle();
-    } else {
-        window.addEventListener('load', idle, { once: true });
+    if (src) {
+        ['pointerover', 'focusin', 'touchstart'].forEach((type) => fc.addEventListener(type, more, { once: true, passive: true }));
+        const idle = () => matchMedia('(min-width: 768px)').matches && (window.requestIdleCallback ?? ((f) => setTimeout(f, 3000)))(more);
+        if (document.readyState === 'complete') {
+            idle();
+        } else {
+            window.addEventListener('load', idle, { once: true });
+        }
     }
 }

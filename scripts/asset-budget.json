@@ -70,7 +70,7 @@
     },
     "resources/css/sf-floating.css": {
       "js": 0,
-      "css": 2803
+      "css": 2958
     },
     "resources/css/sf-404.css": {
       "js": 0,
@@ -129,7 +129,7 @@
       "css": 0
     },
     "resources/js/sf-fc-copy.js": {
-      "js": 521,
+      "js": 610,
       "css": 0
     },
     "resources/js/sf-video.js": {
@@ -141,7 +141,7 @@
       "css": 0
     },
     "resources/js/storefront.js": {
-      "js": 1868,
+      "js": 1987,
       "css": 0
     }
   },

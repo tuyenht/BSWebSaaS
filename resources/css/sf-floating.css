@@ -38,6 +38,8 @@
     flex-wrap: wrap-reverse;
     align-items: center;
     gap: var(--fc-gap, 0.625rem);
+    /* a tall stack (and the open dial) wraps into a further column rather than leave the screen */
+    max-height: calc(100vh - var(--fc-oy, 24px) - 5rem);
     max-height: calc(100dvh - var(--fc-oy, 24px) - 5rem);
     margin: 0;
     padding: 0;
@@ -384,7 +386,7 @@
     }
 }
 
-/* Without popover the dial's buttons simply stay out. */
+/* Without popover the dial's buttons simply stay out, every one in place. */
 @supports not selector(:popover-open) {
     .sf-fc__float--dial .sf-fc__dial {
         display: none;
@@ -463,9 +465,12 @@
 
 /* ───── Bottom bar (phones, up to 767px) ─────────────────────────────────── */
 /* Equal cells, each a small coloured disc over its label, with thin dividers; light or dark as the site
-   chose. Up to five cells ("Mua hàng" counted, always last). A cell needs 4.5rem, so a narrow phone or a
-   larger text size lets the fourth and fifth places go (r4, r5: channel cells only — "Thêm" and
-   "Mua hàng" stay) and the "Thêm" sheet lists them. Its ghost (same classes, invisible) keeps the room. */
+   chose. Up to five cells ("Mua hàng" counted, always last). A cell needs 4.5rem, so a bar narrower than
+   22.5rem (a narrow phone or a larger text size) shows four cells and one narrower than 18rem three:
+   channel cells go from the end (r5 below 22.5rem, r4 below 18rem — "Thêm" and "Mua hàng" stay) and the
+   "Thêm" sheet lists them. A bar that has no "Thêm" gets one exactly where a channel goes (m5 below
+   22.5rem, m4 below 18rem), so every channel stays one tap away. Its ghost (same classes, invisible)
+   keeps the room. */
 .sf-fc-bar {
     display: none;
 }
@@ -612,25 +617,30 @@ svg.sf-fc-bar__icon:has(.sf-fc__z) {
     display: none;
 }
 
-@container sf-fc-bar (min-width: 18rem) {
+@container sf-fc-bar (width >= 18rem) {
     .sf-fc-bar__item--r4 {
         display: block;
     }
 }
 
-@container sf-fc-bar (min-width: 22.5rem) {
+@container sf-fc-bar (width >= 22.5rem) {
     .sf-fc-bar__item--r5 {
         display: block;
     }
 }
 
-/* The "Thêm" sheet: a small panel just above the bar. */
+/* The "Thêm" sheet: a small panel just above the bar, scrolling inside when its channels outgrow a short
+   screen. */
 .sf-fc-sheet[popover] {
     position: fixed;
     inset: auto 8px calc(3.625rem + env(safe-area-inset-bottom, 0px));
     width: auto;
+    max-height: calc(100vh - 3.625rem - env(safe-area-inset-bottom, 0px) - 16px);
+    max-height: calc(100dvh - 3.625rem - env(safe-area-inset-bottom, 0px) - 16px);
     margin: 0;
     padding: 6px;
+    overflow: auto;
+    overscroll-behavior: contain;
     border: 0;
     border-radius: 12px;
     background: var(--color-surface, #fff);
@@ -716,37 +726,103 @@ svg.sf-fc-bar__icon:has(.sf-fc__z) {
     fill: #94a3b8;
 }
 
-/* A bar channel a narrow phone lets go is listed in the sheet instead. */
+/* A bar channel a narrow phone lets go is listed in the sheet instead, and the extra "Thêm" shows. */
 .sf-fc-sheet__item--r4,
-.sf-fc-sheet__item--r5 {
+.sf-fc-sheet__item--r5,
+.sf-fc-bar__item--m4,
+.sf-fc-bar__item--m5 {
     display: none;
 }
 
-@container sf-fc-bar (max-width: 17.99rem) {
-    .sf-fc-sheet__item--r4 {
+@container sf-fc-bar (width < 18rem) {
+    .sf-fc-sheet__item--r4,
+    .sf-fc-bar__item--m4 {
         display: block;
     }
 }
 
-@container sf-fc-bar (max-width: 22.49rem) {
-    .sf-fc-sheet__item--r5 {
+@container sf-fc-bar (width < 22.5rem) {
+    .sf-fc-sheet__item--r5,
+    .sf-fc-bar__item--m5 {
         display: block;
     }
 }
 
-/* Without popover the sheet's channels show in place, above the bar's cells: no dead "Thêm" button. */
+/* Without popover (an older Safari) "Thêm" could open nothing and a sheet left open would cover the page
+   for good: the sheet's channels become more cells of the same bar, which then scrolls sideways (one row,
+   the height its ghost keeps); every channel cell shows, so the sheet's copies of them stay out. */
 @supports not selector(:popover-open) {
-    .sf-fc-bar__item--more {
+    .sf-fc-bar__item--more,
+    .sf-fc-sheet__h,
+    .sf-fc-sheet__go,
+    .sf-fc-sheet__item--r4,
+    .sf-fc-sheet__item--r5 {
         display: none;
     }
 
-    .sf-fc-sheet {
-        padding: 0 6px;
-        background: none;
+    .sf-fc-bar:not(.sf-fc-bar--ghost) {
+        flex-direction: row;
+        overflow-x: auto;
     }
 
-    .sf-fc-sheet__h {
-        display: none;
+    .sf-fc-bar:not(.sf-fc-bar--ghost) :is(.sf-fc-sheet, .sf-fc-sheet__list, .sf-fc-bar__list) {
+        display: contents;
+    }
+
+    .sf-fc-bar__item--r4,
+    .sf-fc-bar__item--r5 {
+        display: block;
+    }
+
+    .sf-fc-bar:not(.sf-fc-bar--ghost) :is(.sf-fc-bar__item, .sf-fc-sheet__item) {
+        flex: 1 0 4.5rem;
+    }
+
+    .sf-fc-sheet__item {
+        order: 1;
+        border-left: 1px solid #f0f1f3;
+    }
+
+    .sf-fc-bar--dark .sf-fc-sheet__item {
+        border-left-color: rgb(255 255 255 / 8%);
+    }
+
+    .sf-fc-sheet__row {
+        flex-direction: column;
+        justify-content: center;
+        gap: 2px;
+        min-height: 48px;
+        padding: 5px 2px;
+        text-align: center;
+    }
+
+    .sf-fc-sheet__row .sf-fc-bar__dot {
+        width: 22px;
+        height: 22px;
+    }
+
+    .sf-fc-sheet__row .sf-fc-bar__icon {
+        width: 0.8125rem;
+        height: 0.8125rem;
+    }
+
+    .sf-fc-sheet__l {
+        flex: none;
+        font-size: 0.75rem;
+    }
+
+}
+
+/* Without popover the dial's buttons stand in place, so their room is kept in full. */
+@supports not selector(:popover-open) {
+    @media (max-width: 767.98px) {
+        .sf-fc-ghost--dial .sf-fc__btn {
+            display: block;
+        }
+
+        .sf-fc-ghost--dial .sf-fc-ghost__dial {
+            display: none;
+        }
     }
 }
 
