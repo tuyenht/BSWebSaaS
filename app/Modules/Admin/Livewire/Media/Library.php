@@ -27,7 +27,9 @@ use Livewire\Component;
  * grid/list), the files page by page from a cursor, selection with move / Trash / restore / purge,
  * and the upload panel. Files and folders are addressed by ulid and slug only — never a bigint id.
  * Read is gated by media.view (re-checked in boot(): the livewire/update endpoint bypasses route
- * middleware); every action re-checks its own right. The upload panes and the detail panel are the
+ * middleware); every action re-checks its own right: a new folder needs media.folders and deleting
+ * for good needs media.purge (both the website admin's), moving files into a folder stays with
+ * media.upload and the Trash with media.delete. The upload panes and the detail panel are the
  * shared picker's (WithMediaLibraryPicker in manage mode).
  */
 #[Layout('admin::layouts.app')]
@@ -277,7 +279,7 @@ final class Library extends Component
 
     public function openNewFolder(): void
     {
-        abort_unless(Gate::allows('media.upload'), 403);
+        abort_unless(Gate::allows('media.folders'), 403);
 
         $this->newFolderOpen = true;
         $this->newFolderName = '';
@@ -294,7 +296,7 @@ final class Library extends Component
 
     public function createFolder(): void
     {
-        abort_unless(Gate::allows('media.upload'), 403);
+        abort_unless(Gate::allows('media.folders'), 403);
 
         $name = trim($this->newFolderName);
         $this->resetErrorBag('newFolderName');
@@ -329,7 +331,7 @@ final class Library extends Component
 
     public function openFolderSheet(): void
     {
-        abort_unless(Gate::allows('media.upload'), 403);
+        abort_unless(Gate::allows('media.folders'), 403);
 
         $this->folderSheetOpen = true;
     }
@@ -427,9 +429,10 @@ final class Library extends Component
         $this->say(__('media.lib.restored', ['n' => $n]));
     }
 
+    /** Deleting for good is the website admin's right (media.purge); restore stays with media.delete. */
     public function askPurge(bool $all = false): void
     {
-        abort_unless(Gate::allows('media.delete'), 403);
+        abort_unless(Gate::allows('media.purge'), 403);
 
         $this->purgeAll = $all;
         $this->askPurgeOpen = $all || $this->picked !== [];
@@ -443,7 +446,7 @@ final class Library extends Component
 
     public function confirmPurge(): void
     {
-        abort_unless(Gate::allows('media.delete'), 403);
+        abort_unless(Gate::allows('media.purge'), 403);
 
         $query = $this->purgeAll ? Media::onlyTrashed() : Media::onlyTrashed()->whereIn('ulid', $this->picked);
         $rows = $query->get();
@@ -536,6 +539,7 @@ final class Library extends Component
     {
         $this->clean();
         $canDelete = Gate::allows('media.delete');
+        $canPurge = Gate::allows('media.purge');
         $trash = $this->status === 'trash' && $canDelete;
         $directory = app(MediaLibraryDirectory::class);
 
@@ -566,7 +570,7 @@ final class Library extends Component
         }
 
         $purge = ['n' => 0, 'bytes' => 0];
-        if ($this->askPurgeOpen && $canDelete && ! $failed) {
+        if ($this->askPurgeOpen && $canPurge && ! $failed) {
             $purge = $directory->totals($this->purgeAll ? Media::onlyTrashed() : Media::onlyTrashed()->whereIn('ulid', $this->picked));
         }
 
@@ -589,6 +593,8 @@ final class Library extends Component
             'trash' => $trash,
             'canUpload' => Gate::allows('media.upload'),
             'canDelete' => $canDelete,
+            'canFolders' => Gate::allows('media.folders'),
+            'canPurge' => $canPurge,
             'urls' => app(MediaUrlResolver::class),
             'purge' => $purge,
             'retention' => Cast::int(config('media.trash_retention_days', 30), 30),

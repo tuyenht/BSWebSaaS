@@ -28,7 +28,7 @@
                 <span class="text-[11px] {{ $pickerFolderId === $folder->id ? 'text-accent' : 'text-body-muted' }}">{{ $folder->media_count }}</span>
             </button>
         @endforeach
-        @can('media.upload')
+        @can('media.folders')
             @if ($pickerNewFolderOpen)
                 <div class="mt-1.5 flex flex-col gap-2 rounded-[9px] border border-border-strong bg-surface p-2.5">
                     <input type="text" wire:model.live.debounce.300ms="pickerNewFolderName" wire:keydown.enter="createPickerFolder"
@@ -132,7 +132,7 @@
                     @endforeach
                 </select>
             @else
-                @if (! $mp['page']->isEmpty())
+                @if (! $mp['page']->isEmpty() && auth()->user()?->can('media.purge'))
                     <button type="button"
                             x-on:click="$bsConfirm({ icon: 'trash-danger', text: @js(__('media.picker_trash_empty_confirm')), confirm: @js(__('media.picker_trash_empty')), cancel: @js(__('media.picker_cancel')) }).then(ok => ok && $wire.emptyPickerTrash())"
                             class="inline-flex items-center gap-1.5 rounded-lg border border-admin-danger/20 bg-surface px-3 py-2 text-[12.5px] font-semibold text-admin-danger-text">
@@ -163,6 +163,8 @@
                                     class="inline-flex items-center gap-1.5 rounded-[7px] border border-admin-success/30 bg-surface px-[11px] py-1.5 text-xs font-medium text-admin-success-text">
                                 <x-bs-admin::icon name="ri-refresh" class="size-[13px]" />{{ __('media.picker_trash_restore') }}
                             </button>
+                        @endcan
+                        @can('media.purge')
                             <button type="button"
                                     x-on:click="$bsConfirm({ icon: 'trash-danger', text: @js(__('media.picker_trash_purge_confirm', ['count' => count($pickerSelected)])), confirm: @js(__('media.picker_trash_purge')), cancel: @js(__('media.picker_cancel')) }).then(ok => ok && $wire.purgePickerSelection())"
                                     class="inline-flex items-center gap-1.5 rounded-[7px] border border-admin-danger/20 bg-surface px-[11px] py-1.5 text-xs text-admin-danger-text">

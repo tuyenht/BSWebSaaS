@@ -370,6 +370,8 @@
     "admin.members.perm.media.view": "画像を閲覧",
     "admin.members.perm.media.upload": "画像をアップロード",
     "admin.members.perm.media.delete": "画像を削除",
+    "admin.members.perm.media.folders": "画像フォルダを管理",
+    "admin.members.perm.media.purge": "画像を完全に削除",
     "admin.members.perm.taxonomies.manage": "カテゴリを管理",
     "admin.members.perm.menus.manage": "メニューを編集",
     "admin.members.perm.forms.view": "お問い合わせを閲覧",

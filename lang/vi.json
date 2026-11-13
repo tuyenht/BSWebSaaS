@@ -370,6 +370,8 @@
     "admin.members.perm.media.view": "Xem ảnh",
     "admin.members.perm.media.upload": "Tải ảnh lên",
     "admin.members.perm.media.delete": "Xóa ảnh",
+    "admin.members.perm.media.folders": "Quản lý thư mục ảnh",
+    "admin.members.perm.media.purge": "Xóa vĩnh viễn ảnh",
     "admin.members.perm.taxonomies.manage": "Quản lý chuyên mục",
     "admin.members.perm.menus.manage": "Sửa trình đơn",
     "admin.members.perm.forms.view": "Xem khách liên hệ",

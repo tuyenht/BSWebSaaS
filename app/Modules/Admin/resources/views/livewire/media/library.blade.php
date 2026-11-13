@@ -131,7 +131,7 @@
                 <button type="button" class="{{ $folderBtn }}" aria-current="{{ ! $trash && $folder === '-' ? 'true' : 'false' }}" wire:click="setFolder('-')">
                     <x-bs-admin::icon name="ri-inbox" class="size-4 shrink-0" /><span class="min-w-0 flex-1 truncate">{{ __('media.lib.unfiled') }}</span><span class="text-small text-text-muted">{{ $num($counts['unfiled']) }}</span>
                 </button>
-                @if ($canUpload)
+                @if ($canFolders)
                     <div class="my-1.5 border-t border-border"></div>
                     @if ($newFolderOpen)
                         @include('admin::livewire.media.library-new-folder', ['fid' => 'media-newf'])
@@ -159,11 +159,11 @@
                             @endif
                         </select>
                     </div>
-                    @if ($canUpload)
+                    @if ($canFolders)
                         <x-bs-admin::button variant="outline" color="secondary" icon :aria-label="__('media.lib.folder_more')" :title="__('media.lib.more')" wire:click="openFolderSheet"><x-bs-admin::icon name="ri-more-2-fill" class="size-4" /></x-bs-admin::button>
                     @endif
                 </div>
-                @if ($newFolderOpen && $canUpload)
+                @if ($newFolderOpen && $canFolders)
                     <div class="px-4 pt-3 min-[900px]:hidden">@include('admin::livewire.media.library-new-folder', ['fid' => 'media-newf-n'])</div>
                 @endif
 
@@ -200,7 +200,9 @@
                     <x-bs-admin::list.bulk :label="__('media.lib.bulk_region')" :status="__('media.lib.picked', ['n' => $num(count($picked))])" clear="clearPicked" :clear-label="__('media.lib.unpick')">
                         @if ($trash)
                             <x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="restorePicked"><x-bs-admin::icon name="ri-arrow-go-back" class="size-4" />{{ __('media.lib.restore_n', ['n' => $num(count($picked))]) }}</x-bs-admin::button>
-                            <x-bs-admin::button size="sm" variant="soft" color="danger" wire:click="askPurge(false)"><x-bs-admin::icon name="ri-delete-bin-2" class="size-4" />{{ __('media.lib.purge_n', ['n' => $num(count($picked))]) }}</x-bs-admin::button>
+                            @if ($canPurge)
+                                <x-bs-admin::button size="sm" variant="soft" color="danger" wire:click="askPurge(false)"><x-bs-admin::icon name="ri-delete-bin-2" class="size-4" />{{ __('media.lib.purge_n', ['n' => $num(count($picked))]) }}</x-bs-admin::button>
+                            @endif
                         @else
                             @if ($canUpload)
                                 <x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="openMove"><x-bs-admin::icon name="ri-folder-transfer" class="size-4" />{{ __('media.lib.move_n', ['n' => $num(count($picked))]) }}</x-bs-admin::button>
@@ -216,7 +218,7 @@
                     <p class="mx-4 mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-body text-text">
                         <x-bs-admin::icon name="ri-time" class="size-5 shrink-0 text-warning-text" />
                         <span class="min-w-0 flex-[1_1_16rem]">{{ __('media.lib.trash_note', ['days' => $retention]) }}</span>
-                        @if ($counts['trash'] > 0)
+                        @if ($counts['trash'] > 0 && $canPurge)
                             <x-bs-admin::button size="sm" variant="outline" color="danger" wire:click="askPurge(true)"><x-bs-admin::icon name="ri-delete-bin-2" class="size-4" />{{ __('media.lib.purge_all') }}</x-bs-admin::button>
                         @endif
                     </p>
@@ -387,7 +389,9 @@
                 </x-bs-admin::button>
             </x-slot:footer>
         </x-bs-admin::modal>
+    @endif
 
+    @if ($canFolders)
         <x-bs-admin::modal model="folderSheetOpen" :title="$placeName" :close-label="__('media.lib.cancel')">
             <button type="button" class="flex min-h-hit w-full items-center gap-3 rounded-md px-2 text-start text-body text-text hover:bg-surface-muted" wire:click="openNewFolder">
                 <x-bs-admin::icon name="ri-add" class="size-4" />{{ __('media.lib.new_folder') }}
@@ -401,7 +405,9 @@
             <x-bs-admin::confirm-line icon="ri-links">{{ __('media.lib.ask_trash_l1') }}</x-bs-admin::confirm-line>
             <x-bs-admin::confirm-line icon="ri-arrow-go-back">{{ __('media.lib.ask_trash_l2', ['days' => $retention]) }}</x-bs-admin::confirm-line>
         </x-bs-admin::confirm-dialog>
+    @endif
 
+    @if ($canPurge)
         <x-bs-admin::confirm-dialog model="askPurgeOpen" :title="$purgeAll ? __('media.lib.ask_purge_all_title') : __('media.lib.ask_purge_title', ['n' => $num($purge['n'])])" icon="ri-delete-bin-2" danger
             :ok="__('media.lib.ask_purge_ok', ['n' => $num($purge['n'])])" confirm="confirmPurge" cancel="cancelPurge">
             <x-bs-admin::confirm-line icon="ri-delete-bin-2">{{ __('media.lib.ask_purge_l1', ['n' => $num($purge['n']), 'size' => Library::bytes($purge['bytes'])]) }}</x-bs-admin::confirm-line>

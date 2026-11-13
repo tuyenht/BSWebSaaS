@@ -615,7 +615,8 @@ trait WithMediaLibraryPicker
     |------------------------------------------------------------------------
     | Trash actions (onlyTrashed) — restore / permanent purge
     |------------------------------------------------------------------------
-    | Trash management is gated to media.delete (same as sending to trash).
+    | Restore is gated to media.delete (same as sending to trash); deleting for
+    | good — a selection or the whole Trash — is the website admin's media.purge.
     | Purge is per-instance so MediaObserver fires (drops attachments + the R2
     | object); a mass forceDelete would bypass those events.
     */
@@ -633,7 +634,7 @@ trait WithMediaLibraryPicker
 
     public function purgePickerSelection(): void
     {
-        abort_unless(Gate::allows('media.delete'), 403);
+        abort_unless(Gate::allows('media.purge'), 403);
 
         Media::onlyTrashed()->whereIn('id', $this->pickerSelected)->get()->each->forceDelete();
         $this->pickerSelected = [];
@@ -642,7 +643,7 @@ trait WithMediaLibraryPicker
 
     public function emptyPickerTrash(): void
     {
-        abort_unless(Gate::allows('media.delete'), 403);
+        abort_unless(Gate::allows('media.purge'), 403);
 
         Media::onlyTrashed()->get()->each->forceDelete();
         $this->pickerSelected = [];
@@ -681,9 +682,10 @@ trait WithMediaLibraryPicker
         $this->pickerNewFolderSlugFallback = false;
     }
 
+    /** A new folder is the website admin's media.folders; moving files into one stays media.upload. */
     public function createPickerFolder(): void
     {
-        abort_unless(Gate::allows('media.upload'), 403);
+        abort_unless(Gate::allows('media.folders'), 403);
 
         $name = trim($this->pickerNewFolderName);
         if ($name === '' || mb_strlen($name) > 100) {

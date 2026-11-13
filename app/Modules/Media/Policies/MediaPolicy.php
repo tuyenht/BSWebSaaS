@@ -7,7 +7,7 @@ use App\Modules\Media\Models\Media;
 
 /**
  * Defense layer #2 for the media library — every action routes through a permission
- * (media.view/upload/delete), team-scoped by the spatie guard (= current site). Shipped with the
+ * (media.view/upload/delete/purge), team-scoped by the spatie guard (= current site). Shipped with the
  * resource at birth so a write surface can never appear ungated.
  */
 final class MediaPolicy
@@ -30,5 +30,11 @@ final class MediaPolicy
     public function delete(User $user): bool
     {
         return $user->can('media.delete');
+    }
+
+    /** Deleting a file in the Trash for good is the website admin's right, not the Trash's. */
+    public function forceDelete(User $user): bool
+    {
+        return $user->can('media.purge');
     }
 }

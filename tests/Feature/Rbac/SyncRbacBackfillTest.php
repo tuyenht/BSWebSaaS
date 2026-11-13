@@ -160,3 +160,41 @@ it('closes custom roles under the implied permissions, add-only and idempotent',
 
     expect($perms('custom-domains'))->toBe(['domains.manage', 'domains.view', 'entries.create', 'entries.view', 'media.view']);
 });
+
+it('gives an existing site\'s owner and admin the folder and delete-for-good media rights, and no other role', function (): void {
+    // A site provisioned before media.folders / media.purge existed.
+    foreach (['owner', 'admin'] as $name) {
+        Role::query()->where('site_id', 1)->where('name', $name)->firstOrFail()->revokePermissionTo(['media.folders', 'media.purge']);
+    }
+    $admin = User::factory()->create();
+    $editor = User::factory()->create();
+    $member = User::factory()->create();
+    app(Tenancy::class)->enter(1, function () use ($admin, $editor, $member): void {
+        $admin->assignRole(Role::query()->where('site_id', 1)->where('name', 'admin')->firstOrFail());
+        $editor->assignRole(Role::query()->where('site_id', 1)->where('name', 'editor')->firstOrFail());
+        grantRole($member, 'custom-media', ['media.view', 'media.upload', 'media.delete']); // is_system = false
+    });
+    $holds = fn (string $role, string $permission): bool => DB::table('role_has_permissions')
+        ->join('roles', 'roles.id', '=', 'role_has_permissions.role_id')
+        ->join('permissions', 'permissions.id', '=', 'role_has_permissions.permission_id')
+        ->where('roles.site_id', 1)->where('roles.name', $role)
+        ->where('permissions.name', $permission)
+        ->exists();
+    $can = fn (User $user, string $permission): bool => app(Tenancy::class)->enter(1, fn (): bool => $user->fresh()->can($permission));
+
+    expect($can($admin, 'media.folders'))->toBeFalse()->and($can($admin, 'media.purge'))->toBeFalse();
+
+    $this->artisan('rbac:sync')->assertSuccessful();
+    $this->artisan('rbac:sync')->expectsOutputToContain('0 tenant grants back-filled')->assertSuccessful(); // idempotent
+
+    foreach (['media.folders', 'media.purge'] as $permission) {
+        expect($holds('owner', $permission))->toBeTrue()
+            ->and($holds('admin', $permission))->toBeTrue()
+            ->and($can($admin, $permission))->toBeTrue()
+            ->and($can($editor, $permission))->toBeFalse()
+            ->and($can($member, $permission))->toBeFalse();
+        foreach (['editor', 'author', 'contributor', 'viewer', 'custom-media'] as $role) {
+            expect($holds($role, $permission))->toBeFalse("[{$role}] must not receive [{$permission}]");
+        }
+    }
+});
