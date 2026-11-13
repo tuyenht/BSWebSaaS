@@ -146,8 +146,10 @@ it('reads the two-step notice as turned off or turned on, each with its own link
 
     expect($html)
         ->toContain('Xác thực 2 lớp của tài khoản đã được tắt lúc 13/11/2026 09:00.')->toContain('Bật lại xác thực 2 lớp')
-        ->toContain('Xác thực 2 lớp của tài khoản đã được bật lúc 13/11/2026 10:00.')->toContain('Mở Bảo mật')
-        ->toContain('href="/admin/account?tab=security"');
+        ->toContain('Xác thực 2 lớp của tài khoản đã được bật lúc 13/11/2026 10:00.')->toContain('Mở Bảo mật tài khoản')
+        ->toContain('href="/admin/account?tab=security"')
+        // turned on reads as a check, not as the danger of turned off
+        ->toContain('data-t="warn"')->toContain('data-t="danger"');
 });
 
 it('marks one notice read when opened and follows its address', function (): void {

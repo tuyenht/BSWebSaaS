@@ -1498,7 +1498,7 @@
     "admin.bell.act.lead": "問い合わせを見る",
     "admin.bell.act.domains": "ドメインを開く",
     "admin.bell.act.two_factor": "2段階認証を再び有効にする",
-    "admin.bell.act.security": "セキュリティを開く",
+    "admin.bell.act.security": "アカウントのセキュリティを開く",
     "admin.bell.act.devices": "デバイスを見る",
     "admin.bell.act.media": "ライブラリを開く",
     "admin.greeting": "ようこそ、:name さん！",

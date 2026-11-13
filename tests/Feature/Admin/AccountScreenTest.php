@@ -252,6 +252,23 @@ it('pauses the password check of the two-step setup after five wrong tries', fun
     expect(session('account.tfa_secret'))->toBeNull();
 });
 
+it('drops a two-step setup left open for more than ten minutes', function (): void {
+    $user = accountMember();
+
+    app(Tenancy::class)->enter(1, fn () => accountPage($user)->call('openDialog', 'enable')->set('confirmPassword', 'old-password-123')
+        ->call('startTwoFactor')->assertSet('tfaStep', 1));
+    expect(session('account.tfa_secret'))->toBeString();
+
+    // Nine minutes later the setup is still there; past ten minutes the page opens without it.
+    $this->travel(9)->minutes();
+    app(Tenancy::class)->enter(1, fn () => accountPage($user)->assertSet('tfaStep', 1));
+    $this->travel(2)->minutes();
+    app(Tenancy::class)->enter(1, fn () => accountPage($user)->assertSet('tfaStep', 0));
+
+    expect(session('account.tfa_secret'))->toBeNull()
+        ->and($user->fresh()->two_factor_confirmed_at)->toBeNull();
+});
+
 it('cancels a started setup without turning anything on', function (): void {
     $user = accountMember();
 

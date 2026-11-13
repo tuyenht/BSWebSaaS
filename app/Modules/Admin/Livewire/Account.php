@@ -61,6 +61,11 @@ final class Account extends Component
     /** The pending two-factor secret lives in the session, never in the page's public state. */
     private const string TFA_SESSION = 'account.tfa_secret';
 
+    /** When the setup started; a setup left open longer than TFA_PENDING_SECONDS is dropped. */
+    private const string TFA_SESSION_AT = 'account.tfa_secret_at';
+
+    private const int TFA_PENDING_SECONDS = 600;
+
     /**
      * Kinds shown in the notification table and who receives each (a permission, `owner` for the
      * site owner role, null for everyone). Kinds the platform does not send yet stay out.
@@ -208,7 +213,7 @@ final class Account extends Component
 
         $user->forceFill(['password' => Hash::make($this->password)])->save();
         // A new session id with the new password: an id copied before the change is worth nothing.
-        session()->regenerate();
+        session()->regenerate(true);
         session()->put('password_hash_'.Cast::string(config('auth.defaults.guard')), $user->getAuthPassword());
         Audit::record('auth.password.changed', ['actor_id' => $user->getKey(), 'actor_label' => $user->email]);
 
@@ -237,6 +242,7 @@ final class Account extends Component
 
         $this->closeDialog();
         session()->put(self::TFA_SESSION, app(TwoFactorService::class)->generateSecret());
+        session()->put(self::TFA_SESSION_AT, now()->getTimestamp());
         $this->tfaStep = 1;
         $this->reset('tfaCode', 'recoveryCodes');
         $this->resetErrorBag('tfaCode');
@@ -260,7 +266,7 @@ final class Account extends Component
 
     public function cancelTwoFactor(): void
     {
-        session()->forget(self::TFA_SESSION);
+        session()->forget([self::TFA_SESSION, self::TFA_SESSION_AT]);
         $this->tfaStep = 0;
         $this->reset('tfaCode');
         $this->resetErrorBag('tfaCode');
@@ -298,7 +304,7 @@ final class Account extends Component
         }
 
         RateLimiter::clear($key);
-        session()->forget(self::TFA_SESSION);
+        session()->forget([self::TFA_SESSION, self::TFA_SESSION_AT]);
         // A new sign-in factor is a security event too: the member hears of it in the bell and by
         // mail (the same locked notice as turning it off), so it cannot be added quietly.
         Audit::record('auth.2fa.enabled', ['actor_id' => $user->getKey(), 'actor_label' => $user->email]);
@@ -554,6 +560,13 @@ final class Account extends Component
     private function pendingSecret(): ?string
     {
         $secret = session(self::TFA_SESSION);
+        // A setup left open (the member walked away) is dropped, so a session picked up later
+        // cannot finish it and read the recovery codes without the password.
+        if (now()->getTimestamp() - Cast::int(session(self::TFA_SESSION_AT)) > self::TFA_PENDING_SECONDS) {
+            session()->forget([self::TFA_SESSION, self::TFA_SESSION_AT]);
+
+            return null;
+        }
 
         return is_string($secret) && $secret !== '' ? $secret : null;
     }
