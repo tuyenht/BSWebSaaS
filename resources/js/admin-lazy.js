@@ -16,6 +16,7 @@ const PARTS = {
     bsMenus: () => import('./admin-menus.js'),
     bsEditorSave: () => import('./admin-editor.js'),
     bsUnsaved: () => import('./admin-unsaved.js'),
+    bsBell: () => import('./admin-bell.js'),
 };
 
 export function makeLazy({ parts, alpine, reload }) {

@@ -25,10 +25,7 @@
         :close-label="__('admin.customers_dlg_close_aria')">
         @if ($tenant !== null)
             @if ($failure !== '')
-                <div role="alert" class="flex items-start gap-2 rounded bg-danger-soft px-3.5 py-3 text-body text-danger-text">
-                    <x-bs-admin::icon name="ri-close-circle" class="mt-0.5 size-5 shrink-0" />
-                    <span>{{ __(match ($failure) { 'not_sold' => 'admin.customers_dlg_not_sold', 'same' => 'admin.customers_dlg_same_plan', default => 'admin.customers_dlg_failed' }) }}</span>
-                </div>
+                <x-bs-admin::alert color="danger" icon="ri-close-circle">{{ __(match ($failure) { 'not_sold' => 'admin.customers_dlg_not_sold', 'same' => 'admin.customers_dlg_same_plan', default => 'admin.customers_dlg_failed' }) }}</x-bs-admin::alert>
             @endif
 
             <div>

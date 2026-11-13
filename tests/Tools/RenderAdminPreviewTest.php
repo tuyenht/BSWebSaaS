@@ -22,6 +22,7 @@
  */
 
 use App\Modules\Admin\Livewire\Catalog\Index;
+use App\Modules\Admin\Livewire\NotificationBell;
 use App\Modules\Admin\Livewire\Platform\Audit\CleanupDialog;
 use App\Modules\Admin\Livewire\SeoSettings;
 use App\Modules\Admin\Livewire\Settings\Domains as DomainSettings;
@@ -64,6 +65,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -303,6 +305,53 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         ->call('openAdd')->set('addName', 'congtydemo.vn')->assertSet('addOpen', true)->html());
     expect($open)->toContain('role="switch"');
     file_put_contents($dir.'/domains-add.html', str_replace('</body>', $open.'</body>', $page));
+
+    // The top bar's bell with its list already read (design 01 "Thông báo"): the page's bell is swapped
+    // for the component after load(), so a click on the bell opens the drawn panel with no server. The
+    // plain pages keep the bell unread-but-not-loaded: a click there shows the "Thử lại" card.
+    $swapBell = function (string $page, string $bell): string {
+        $start = strrpos(substr($page, 0, (int) strpos($page, 'wire:name="admin.notification-bell"')), '<div');
+        expect($start)->not->toBeFalse();
+        $depth = 0;
+        $at = (int) $start;
+        do {
+            preg_match('~<div[\s>]|</div>~', $page, $tag, PREG_OFFSET_CAPTURE, $at);
+            $depth += str_starts_with($tag[0][0], '</') ? -1 : 1;
+            $at = $tag[0][1] + strlen($tag[0][0]);
+        } while ($depth > 0);
+
+        return substr($page, 0, (int) $start).$bell.substr($page, $at);
+    };
+    DB::connection('pgsql_admin')->statement('truncate site_notifications restart identity cascade');
+    $this->flushSession();
+    $bellPage = fn (): string => $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin')->assertOk()->getContent();
+    // A call's answer carries the component's state beside the HTML: put it back on the root, as the
+    // first page does, so Livewire starts the part in the browser.
+    $bellLoaded = function () use ($owner): string {
+        $bell = app(Tenancy::class)->enter(1, fn (): Testable => Livewire::actingAs($owner)->test(NotificationBell::class)->call('load'));
+
+        return (string) preg_replace('~^<div ~', '<div wire:snapshot="'.e((string) json_encode($bell->snapshot)).'" wire:effects="[]" ', trim($bell->html()), 1);
+    };
+    file_put_contents($dir.'/bell-empty.html', $swapBell($bellPage(), $bellLoaded()));
+    $entryUlid = app(Tenancy::class)->enter(1, fn (): mixed => Entry::query()->value('ulid'));
+    $notices = [
+        ['lead.new', ['name' => 'Trần Văn Hùng (Công ty Cơ khí Hưng Phát)', 'submission' => (string) str()->ulid()], 12, false],
+        ['workflow.pending_review', ['entry' => $entryUlid, 'title' => 'Gia công CNC cho linh kiện ô tô', 'actor' => 'Chị Lan', 'change' => true], 35, false],
+        ['system.domain_problem', ['sentence' => 'failing', 'domains' => 'anvinh.vn và www.anvinh.vn', 'until' => '14/10/2026'], 70, false],
+        ['workflow.assigned', ['entry' => $entryUlid, 'title' => 'An Vinh đầu tư máy phay 5 trục mới', 'actor' => 'Anh Nam'], 150, false],
+        ['workflow.returned', ['entry' => $entryUlid, 'title' => 'Sai số gia công: hiểu đúng để đặt hàng đúng', 'actor' => 'Chị Hà'], 60 * 22, false],
+        ['security.two_factor_disabled', ['at' => '08:12 12/11/2026'], 60 * 26, false],
+        ['workflow.published', ['entry' => $entryUlid, 'title' => '5 lưu ý khi chọn xưởng gia công CNC', 'actor' => 'Chị Hà'], 60 * 30, true],
+        ['security.support_sign_in', ['staff' => 'Lê Hoàng Phúc', 'platform' => 'Bảo Sơn', 'member' => 'Nguyễn Ngọc Anh', 'at' => '10:05 11/11/2026', 'reason' => 'Khách nhờ sửa trình đơn đầu trang'], 60 * 50, true],
+    ];
+    foreach (array_reverse($notices) as [$kind, $facts, $minutes, $read]) { // oldest first, as they arrive
+        DB::connection('pgsql_admin')->table('site_notifications')->insert([
+            'ulid' => (string) str()->ulid(), 'site_id' => 1, 'user_id' => $owner->id, 'kind' => $kind, 'data' => json_encode($facts),
+            'read_at' => $read ? now() : null, 'created_at' => now()->subMinutes($minutes),
+        ]);
+    }
+    $this->flushSession();
+    file_put_contents($dir.'/bell.html', $swapBell($bellPage(), $bellLoaded()));
 
     // The floating contact buttons: round buttons with a channel of the site's own, then the phone
     // bottom bar with the "Mua hàng" button (the site has two languages, so the language bar shows).
@@ -607,5 +656,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('data-te-page="suspended"');
     file_put_contents($dir.'/error-suspended.html', $html);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 39);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 41);
 });
