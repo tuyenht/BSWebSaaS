@@ -873,7 +873,7 @@ it('opens on a flat query budget, the taps read in one query', function (): void
     $count = countQueries(fn () => $this->actingAs($admin)->get($url)->assertOk()->assertSee('Hiệu quả nút liên hệ'));
 
     expect(array_values(array_filter($queries, fn (string $sql): bool => str_contains($sql, 'contact_click_daily'))))->toHaveCount(1)
-        // Flat: the shell's cached nav and permissions, the site's settings and languages, and the one
-        // grouped read of the last 30 days' taps (an index on site_id, day leads it).
-        ->and($count)->toBeLessThanOrEqual(9);
+        // Flat: the shell's cached nav and permissions, the top bar's notifications, the site's settings
+        // and languages, and the one grouped read of the last 30 days' taps (an index on site_id, day leads it).
+        ->and($count)->toBeLessThanOrEqual(10);
 });
