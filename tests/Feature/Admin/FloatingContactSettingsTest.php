@@ -751,6 +751,67 @@ it('opens and saves a site’s stored setting back unchanged when nothing was ed
     expect(fcsStored(1))->toEqual($value);
 });
 
+it('saves an older setting with no layout back as the layout it reads as, its theme and the site’s buttons unchanged', function (array $extra, string $layout): void {
+    $admin = fcsAdmin();
+    // The An Vinh content pack's shape: written before layouts, so it has the older `theme` only.
+    $value = [
+        'enabled' => true, 'theme' => 'vertical', 'position' => 'right',
+        'channels' => [
+            ['key' => 'email', 'on' => true, 'value' => 'lienhe@a.test', 'tips' => ['vi' => 'Gửi email'], 'color' => '#ea4335'],
+            ['key' => 'zalo', 'on' => true, 'value' => '0915668383', 'color' => '#0068ff', 'tips' => ['vi' => 'Chat Zalo']],
+            ['key' => 'phone', 'on' => true, 'value' => '0915 66 83 83', 'tips' => ['vi' => 'Gọi ngay'], 'color' => '#f59e0b'],
+        ],
+        'offset_x' => 16, 'offset_y' => 20,
+    ] + $extra;
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'floating_contact', 'value' => $value]));
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+        ->call('save')->assertHasNoErrors());
+
+    $stored = fcsStored(1);
+    $kept = array_values(array_filter($stored['channels'], fn (array $c): bool => in_array($c['key'], ['email', 'zalo', 'phone'], true)));
+    expect($stored)->toMatchArray(['enabled' => true, 'theme' => 'vertical', 'position' => 'right', 'offset_x' => 16, 'offset_y' => 20, 'layout' => $layout])
+        ->and(FloatingContact::layout($stored))->toBe(FloatingContact::layout($value))
+        ->and(array_map(fn (array $c): array => array_intersect_key($c, array_flip(['key', 'on', 'value', 'color', 'tips'])), $kept))
+        ->toEqual(array_map(fn (array $c): array => array_intersect_key($c, array_flip(['key', 'on', 'value', 'color', 'tips'])), $value['channels']))
+        ->and(FloatingContact::widget($stored, 'vi'))->toEqual(FloatingContact::widget($value, 'vi'))
+        ->and($stored['phone_bar']['enabled'] ?? null)->toBe($extra['phone_bar']['enabled'] ?? null);
+})->with([
+    'round buttons only' => [[], 'vertical'],
+    'with the phone bar on' => [['phone_bar' => ['enabled' => true, 'cta' => ['label' => ['vi' => 'Yêu cầu báo giá'], 'url' => '/lien-he']]], 'combo'],
+]);
+
+it('keeps a stored layout and its theme word exactly as they are when nothing was edited', function (string $layout, string $theme): void {
+    $admin = fcsAdmin();
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'floating_contact', 'value' => [
+        'enabled' => true, 'theme' => $theme, 'layout' => $layout,
+        'channels' => [['key' => 'phone', 'on' => true, 'value' => '0912345678']],
+    ]]));
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+        ->call('save')->assertHasNoErrors());
+
+    expect(fcsStored(1))->toMatchArray(['layout' => $layout, 'theme' => $theme]);
+})->with([
+    'combo with the round-button word' => ['combo', 'vertical'],
+    'vertical with the bar word' => ['vertical', 'horizontal'],
+    'horizontal with the round-button word' => ['horizontal', 'vertical'],
+    'combo with the bar word' => ['combo', 'horizontal'],
+]);
+
+it('runs the preview frame with no script of its own: sandboxed, its page carrying no script', function (): void {
+    $admin = fcsAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class);
+        $lw->set('channels.'.fcsIndex($lw, 'phone').'.value', '0987 654 321')
+            ->set('channels.'.fcsIndex($lw, 'phone').'.on', true);
+
+        expect($lw->viewData('srcdoc'))->toContain('data-fc-root')->not->toContain('<script')
+            ->and($lw->html())->toContain('sandbox="allow-same-origin"')->not->toContain('allow-scripts')->not->toContain('&lt;script');
+    });
+});
+
 it('draws the preview with the website’s own widget and shows an edit before it is saved', function (): void {
     $admin = fcsAdmin();
 

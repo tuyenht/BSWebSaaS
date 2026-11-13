@@ -93,8 +93,9 @@ final class FloatingContactSettings extends Component
     #[Locked]
     public string $loadedTheme = 'vertical';
 
+    /** The layout as loaded (the stored `layout`, else what the older `theme` and phone bar read as). */
     #[Locked]
-    public bool $loadedBarOn = false;
+    public string $loadedLayout = 'combo';
 
     /**
      * The site's taps of the last 30 days (total and per channel), read once when the page opens.
@@ -436,12 +437,10 @@ final class FloatingContactSettings extends Component
         ];
     }
 
-    /** The loaded theme while it reads as the chosen layout (with the phone bar as loaded); else the layout's own word. */
+    /** The theme exactly as loaded while the layout is the one loaded; else the chosen layout's own word. */
     private function themeToStore(): string
     {
-        $read = FloatingContact::layout(['theme' => $this->loadedTheme, 'phone_bar' => ['enabled' => $this->loadedBarOn]]);
-
-        return $read === $this->layout ? $this->loadedTheme : FloatingContact::legacyTheme($this->layout);
+        return $this->layout === $this->loadedLayout ? $this->loadedTheme : FloatingContact::legacyTheme($this->layout);
     }
 
     /**
@@ -485,7 +484,7 @@ final class FloatingContactSettings extends Component
         $this->barTone = FloatingContact::barTone($raw);
         $this->track = FloatingContact::track($raw);
         $this->loadedTheme = $this->theme;
-        $this->loadedBarOn = ($this->phoneBar['enabled'] ?? false) === true;
+        $this->loadedLayout = $this->layout;
         $buy = Cast::arr($raw['buy'] ?? null);
         $this->buyOn = ($buy['enabled'] ?? false) === true;
         $color = Cast::string($buy['color'] ?? null);
@@ -554,7 +553,7 @@ final class FloatingContactSettings extends Component
         $this->barTone = 'auto';
         $this->track = true;
         $this->loadedTheme = 'horizontal';
-        $this->loadedBarOn = false;
+        $this->loadedLayout = 'combo';
         $this->channels = [];
         foreach (FloatingContact::CORE as $key) {
             $row = $this->row($key, $key !== 'sms');
