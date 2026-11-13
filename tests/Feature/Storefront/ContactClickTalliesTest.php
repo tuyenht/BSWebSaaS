@@ -441,3 +441,27 @@ it('puts “Mua hàng” back in the channel check when a tally arrives while it
         ->and($definition())->toContain("'buy'::")->not->toContain('NOT VALID')
         ->and(clickTallies(1))->toBe(['2026-11-13|buy|bar' => 1]);
 });
+
+it('repairs a channel check left narrow by a run that stopped half way, and still refuses', function (): void {
+    /** @var Migration $migration */
+    $migration = require database_path('migrations/2057_01_01_000000_add_buy_to_contact_click_channels.php');
+    $admin = DB::connection('pgsql_admin');
+    $definition = fn (): string => (string) $admin->scalar(
+        "select pg_get_constraintdef(oid) from pg_constraint where conname = 'contact_click_daily_channel_check'",
+    );
+    seedClickTally(1, '2026-11-13', 'buy', 'bar', 2);
+    $narrow = "'".implode("', '", array_keys(FloatingContact::CHANNELS))."'";
+    $admin->statement('ALTER TABLE contact_click_daily DROP CONSTRAINT contact_click_daily_channel_check');
+    $admin->statement("ALTER TABLE contact_click_daily ADD CONSTRAINT contact_click_daily_channel_check CHECK (channel IN ({$narrow}) OR channel ~ '^c[1-9][0-9]{0,5}\$') NOT VALID");
+
+    $original = DB::getDefaultConnection();
+    DB::setDefaultConnection('pgsql_admin');
+    try {
+        expect(fn () => $migration->down())->toThrow(RuntimeException::class, 'channel = buy');
+    } finally {
+        DB::setDefaultConnection($original);
+    }
+
+    expect($definition())->toContain("'buy'::")->not->toContain('NOT VALID')
+        ->and(clickTallies(1))->toBe(['2026-11-13|buy|bar' => 2]);
+});

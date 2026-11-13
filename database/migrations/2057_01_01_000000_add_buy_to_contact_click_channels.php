@@ -46,6 +46,10 @@ return new class extends Migration
     public function down(): void
     {
         if (DB::table('contact_click_daily')->where('channel', self::ADDED)->exists()) {
+            // Repairs a run that stopped after narrowing the CHECK and could not restore it.
+            $this->swap([...self::CHANNELS, self::ADDED]);
+            $this->validate();
+
             throw new RuntimeException(self::REFUSED);
         }
 
