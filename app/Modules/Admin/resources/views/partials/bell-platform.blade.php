@@ -28,5 +28,9 @@
                 <span>{{ __('admin.notifications_empty') }}</span>
             </div>
         </div>
+        <div class="ntf-f">
+            <a href="{{ route('platform.notifications') }}" wire:navigate x-on:click="close(false)"
+               class="hit-area inline-flex min-h-control w-full items-center justify-center gap-1.5 rounded border border-border-input bg-surface px-3.5 py-1.5 text-body font-medium leading-tight text-text transition-colors hover:bg-surface-hover hover:text-text-strong">{{ __('admin.bell.see_all') }}</a>
+        </div>
     </div>
 </div>

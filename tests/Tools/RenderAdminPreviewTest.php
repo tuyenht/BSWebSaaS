@@ -339,7 +339,7 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         ['workflow.pending_review', ['entry' => $entryUlid, 'title' => 'Gia công CNC cho linh kiện ô tô', 'actor' => 'Chị Lan', 'change' => true], 35, false],
         ['system.domain_problem', ['sentence' => 'failing', 'domains' => 'anvinh.vn và www.anvinh.vn', 'until' => '14/10/2026'], 70, false],
         ['workflow.assigned', ['entry' => $entryUlid, 'title' => 'An Vinh đầu tư máy phay 5 trục mới', 'actor' => 'Anh Nam'], 150, false],
-        ['workflow.returned', ['entry' => $entryUlid, 'title' => 'Sai số gia công: hiểu đúng để đặt hàng đúng', 'actor' => 'Chị Hà'], 60 * 22, false],
+        ['workflow.returned', ['entry' => $entryUlid, 'title' => 'Sai số gia công: hiểu đúng để đặt hàng đúng', 'actor' => 'Chị Hà', 'note' => 'Thêm bảng dung sai và một ảnh chi tiết sau gia công.'], 60 * 22, false],
         ['security.two_factor_disabled', ['at' => '08:12 12/11/2026'], 60 * 26, false],
         ['workflow.published', ['entry' => $entryUlid, 'title' => '5 lưu ý khi chọn xưởng gia công CNC', 'actor' => 'Chị Hà'], 60 * 30, true],
         ['security.support_sign_in', ['staff' => 'Lê Hoàng Phúc', 'platform' => 'Bảo Sơn', 'member' => 'Nguyễn Ngọc Anh', 'at' => '10:05 11/11/2026', 'reason' => 'Khách nhờ sửa trình đơn đầu trang'], 60 * 50, true],
@@ -352,6 +352,13 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     }
     $this->flushSession();
     file_put_contents($dir.'/bell.html', $swapBell($bellPage(), $bellLoaded()));
+
+    // "Thông báo": the same notices on their page (design c-thong-bao), and the console's empty copy.
+    $this->flushSession();
+    file_put_contents($dir.'/notifications.html', $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/notifications')->assertOk()->getContent());
+    $this->flushSession();
+    $html = $this->actingAs($top)->get($platform.'/notifications')->assertOk()->getContent();
+    file_put_contents($dir.'/notifications-platform.html', str_replace($platform, 'http://'.ADMIN_PREVIEW_HOST, $html));
 
     // The floating contact buttons: round buttons with a channel of the site's own, then the phone
     // bottom bar with the "Mua hàng" button (the site has two languages, so the language bar shows).
@@ -656,5 +663,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('data-te-page="suspended"');
     file_put_contents($dir.'/error-suspended.html', $html);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 41);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 43);
 });

@@ -29,7 +29,9 @@ use App\Modules\Admin\Livewire\Login;
 use App\Modules\Admin\Livewire\LoginSecuritySettings;
 use App\Modules\Admin\Livewire\Media\Library as MediaLibrary;
 use App\Modules\Admin\Livewire\Menus\Index as MenusIndex;
+use App\Modules\Admin\Livewire\Notifications;
 use App\Modules\Admin\Livewire\Platform\Audit\Index as AuditIndex;
+use App\Modules\Admin\Livewire\Platform\Notifications as PlatformNotifications;
 use App\Modules\Admin\Livewire\Platform\Plans\Edit as PlanEdit;
 use App\Modules\Admin\Livewire\Platform\Plans\Index as PlansIndex;
 use App\Modules\Admin\Livewire\Platform\Sites\Detail as SiteDetail;
@@ -138,6 +140,8 @@ Route::domain((string) config('tenancy.platform_host'))
         // (checked by the component on every request, including Livewire updates).
         Route::get('/sites/{ulid}/domains', DomainSettings::class)->name('platform.sites.domains');
         Route::get('/audit', AuditIndex::class)->name('platform.audit.index');
+        // "Thông báo": the console has no notification store yet — the page shows its empty state.
+        Route::get('/notifications', PlatformNotifications::class)->name('platform.notifications');
         // Plans and features (+ the read-only website types at #loai-website); writes need platform.billing.manage
         Route::get('/plans', PlansIndex::class)->name('platform.plans.index');
         Route::get('/plans/new', PlanEdit::class)->name('platform.plans.create');
@@ -230,6 +234,8 @@ Route::prefix(config('admin.prefix', 'admin'))
     ->middleware(['web', SetCurrentSite::class, EnforceSupportSession::class, 'site.active', 'auth', 'auth.session', 'tenant.member', SetLocale::class])
     ->group(function (): void {
         Route::get('/', Dashboard::class)->name('admin.dashboard');
+        // "Thông báo": the reader's own notifications on this site (the bell's "Xem tất cả thông báo").
+        Route::get('/notifications', Notifications::class)->name('admin.notifications');
         Route::get('/settings', fn () => redirect()->route('admin.settings.security'))->name('admin.settings');
         Route::get('/settings/security', Settings::class)->name('admin.settings.security');
         // Site-wide settings — only roles with `settings.manage` (owner/admin/super_admin).
