@@ -10,7 +10,7 @@
 #   run <release copy> <engine blob> <release sha256> <commit> [step | dump | rollback]
 # Steps (the order of the clean run of 05/11, 58 s): 0 checks · 1 delta · 2 dump · 3 read-only checks ·
 # 4 migrate (old code still serves) · 5 code + composer · 6 build · 7 caches, pre-reload one-offs, reload,
-# one-off commands · 8 smoke. Rollback moves the code only (migrations must be expand-only; a non-additive
+# rbac:sync + a second reload, one-off commands · 8 smoke. Rollback moves the code only (migrations must be expand-only; a non-additive
 # one needs review).
 # Every changed path must belong to a known class (scripts/deploy/README.md); an unknown path, a server
 # file, or an edited or deleted migration stops. Classes that need a human look (migrations, schedule,
@@ -608,6 +608,12 @@ s7() {
     else expect "migration mới nhất đã chạy" "$(q "SELECT max(migration) FROM migrations")" "$(cat "$STATE/prev-migration")"; fi
     if has_class permission; then
         if [ -s "$STATE/rbac-ok" ]; then echo "Bỏ qua rbac:sync: đã chạy"; else art rbac:sync; date '+%F %T' > "$STATE/rbac-ok"; fi
+        # Each worker keeps the permission list it loaded first in its own memory (the package's Octane
+        # reset listener is off), so a worker that started before the sync would keep the old list until it
+        # retires: reload once more, now that the new code serves alone. Horizon's workers never retire either.
+        art octane:reload
+        docker restart "${PREFIX}horizon"
+        wait_up
     fi
     if has_class sanitizer; then
         x=$(art cms:resanitize-bodies --dry-run 2>&1) || { printf '%s\n' "$x"; die "cms:resanitize-bodies --dry-run lỗi"; }
@@ -666,6 +672,10 @@ rollback() { # CODE only: the schema stays (expand-only migrations; step 4 prove
     build
     reload
     MIXED=
+    if has_class permission && [ -s "$STATE/rbac-ok" ]; then
+        # the sync of step 7 may have removed grants the old code still uses: sync back to the old list
+        art rbac:sync; art octane:reload; docker restart "${PREFIX}horizon"; wait_up
+    fi
     for p in / /admin/login; do expect "trang $p" "$(code "$p" '%{http_code}')" "200"; done
     pending; expect "migration còn chờ" "${PENDING:-không}" "không"
     echo "Lưu ý: cơ sở dữ liệu giữ nguyên ${#MIGRATIONS[@]} migration của bản này (không lùi; bản cũ không dùng phần mới)."
@@ -711,7 +721,7 @@ mode_plan() { # git only, on the dev repo; prod is never touched (docker/gh/ssh/
         note "4 migrate từng tệp (code cũ vẫn phục vụ; tệp không khởi động lại PgBouncer không được đổi cột), rồi so cấu trúc bảng (bớt/đổi = đúng SCHEMA_REMOVED_OK), mọi trang của bước 0 như trước trên code cũ"
     else note "3–4 không có migration (chỉ kiểm không còn chờ)"; fi
     note "5 đổi code + composer install · 6 pnpm install + build ($(wc -w <<< "$VITE") input)"
-    note "7 view:clear, optimize,${ONEOFFS_PRE[*]:+ một lần trước khi nạp lại (code mới, worker cũ còn phục vụ): ${ONEOFFS_PRE[*]},} octane:reload, khởi động lại horizon + scheduler$(restart_needed_plan && echo ', PgBouncer')$(case " $CLASSES " in *" permission "*) echo ', rbac:sync' ;; esac)$(case " $CLASSES " in *" sanitizer "*) echo ", resanitize ${RESANITIZE}" ;; esac)${ONEOFFS[*]:+, một lần: ${ONEOFFS[*]}}"
+    note "7 view:clear, optimize,${ONEOFFS_PRE[*]:+ một lần trước khi nạp lại (code mới, worker cũ còn phục vụ): ${ONEOFFS_PRE[*]},} octane:reload, khởi động lại horizon + scheduler$(restart_needed_plan && echo ', PgBouncer')$(case " $CLASSES " in *" permission "*) echo ', rbac:sync rồi octane:reload lần nữa' ;; esac)$(case " $CLASSES " in *" sanitizer "*) echo ", resanitize ${RESANITIZE}" ;; esac)${ONEOFFS[*]:+, một lần: ${ONEOFFS[*]}}"
     note "8 kiểm sau: trang như trước, CSS mới, lịch chạy (+${SCHEDULE_ADDED[*]:-} −${SCHEDULE_REMOVED[*]:-}), mật khẩu superuser, cached plan"
     echo "Dòng anh chạy (giữ nguyên; muốn chạy tiếp từ một bước thì thêm số bước trước dấu ;):"
     local envp=; [ "$dev" = /opt/bswebsaas/dev ] || envp="DEPLOY_DEV_REPO=$dev "

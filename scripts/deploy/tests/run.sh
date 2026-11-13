@@ -134,6 +134,7 @@ Schedule::command('audit:months')->daily();
 Schedule::command('x:new')->daily();"; git -C "$SRC" add -A && gitc -m sched; SCHED=$(git -C "$SRC" rev-parse HEAD)
 branch t-env; w config/app.php "<?php return ['name' => env('APP_NAME', 'x'), 'k' => env('NEW_KEY', 'd')];"; git -C "$SRC" add -A && gitc -m env; ENVK=$(git -C "$SRC" rev-parse HEAD)
 branch t-worker; w deploy/media-worker/src/index.js "export default {};"; git -C "$SRC" add -A && gitc -m worker; WORKER=$(git -C "$SRC" rev-parse HEAD)
+branch t-perm; w app/Modules/Rbac/Registry/PermissionRegistry.php '<?php // a new permission'; git -C "$SRC" add -A && gitc -m perm; PERM=$(git -C "$SRC" rev-parse HEAD)
 branch t-kinds
 for p in database/content-packs/p/pages.json package.json resources/js/app.js routes/web.php config/octane.php \
     docker-compose.prod.yml deploy/Caddyfile deploy/media-worker/src/index.js app/Modules/Rbac/Registry/PermissionRegistry.php themes/default/y.blade.php \
@@ -494,6 +495,17 @@ fresh "$WORKER"; launch
 ok '[ "$RC" = 1 ] && says "nhóm cần khai báo: thấy '"'"'worker'"'"'"' "an undeclared media Worker change stops"
 fresh "$WORKER"; release 'DECLARED=(worker)'; launch
 ok '[ "$RC" = 0 ]' "a declared media Worker change lets the app deploy go on"
+fresh "$PERM"; release 'DECLARED=(permission)'; launch
+L1=$(line_of "artisan octane:reload"); S=$(line_of "artisan rbac:sync"); L2=$(line_of "artisan octane:reload" 2)
+ok '[ "$RC" = 0 ] && [ "$(calls "artisan rbac:sync")" = 1 ] && [ "$(calls "artisan octane:reload")" = 2 ] && [ -n "$L1" ] && [ -n "$S" ] && [ -n "$L2" ] && [ "$L1" -lt "$S" ] && [ "$S" -lt "$L2" ]' "a permission change syncs once after the reload, then reloads again so no worker keeps the old list ($L1 < $S < $L2)"
+fresh "$PERM"; release 'DECLARED=(permission)'; touch "$FAKE/fail-reload-after-sync"; launch
+ok '[ "$RC" = 1 ] && says "DỪNG (bước 7)" && [ "$(calls "artisan rbac:sync")" = 1 ]' "the reload after rbac:sync fails"
+launch 7
+ok '[ "$RC" = 0 ] && says "Bỏ qua rbac:sync: đã chạy" && [ "$(calls "artisan rbac:sync")" = 1 ] && [ "$(calls "artisan octane:reload")" = 4 ]' "resume at 7 skips the done rbac:sync and still reloads after it"
+launch rollback
+ok '[ "$RC" = 0 ] && head_is "$OLD" && [ "$(calls "artisan rbac:sync")" = 2 ] && [ "$(calls "artisan octane:reload")" = 6 ]' "a rollback after a permission sync syncs back to the old list and reloads again"
+( export PATH="$STUB:$PATH" FAKE; bash "$SRC/scripts/deploy/deploy.sh" plan "$REL" ) > "$PLAN" 2>&1; RC=$?
+ok '[ "$RC" = 0 ] && grep -q "octane:reload, khởi động lại horizon + scheduler, rbac:sync rồi octane:reload lần nữa" "$PLAN"' "the plan names the sync after the reload and the second reload"
 fresh "$ENVK"; launch
 ok '[ "$RC" = 1 ] && says "thiếu khóa mới: NEW_KEY"' "a new env key missing on prod stops"
 fresh "$ENVK"; release 'ENV_DEFAULT_OK=(NEW_KEY)'; launch
