@@ -36,6 +36,8 @@ async function start(html, { wide = false, clipboard = null } = {}) {
     if (clipboard) {
         Object.defineProperty(w.navigator, 'clipboard', { value: clipboard, configurable: true });
     }
+    const beacons = [];
+    Object.defineProperty(w.navigator, 'sendBeacon', { value: (url, body) => beacons.push([url, body]) && true, configurable: true });
     for (const name of ['window', 'document', 'location', 'navigator', 'CustomEvent', 'matchMedia', 'localStorage', 'getSelection', 'Element']) {
         Object.defineProperty(globalThis, name, { value: name === 'window' ? w : w[name], configurable: true, writable: true });
     }
@@ -50,7 +52,7 @@ async function start(html, { wide = false, clipboard = null } = {}) {
     w.document.addEventListener('click', (event) => event.preventDefault());
     const click = (id) => w.document.getElementById(id).dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true }));
 
-    return { w, doc: w.document, events, idle, click };
+    return { w, doc: w.document, events, beacons, idle, click };
 }
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 50));
@@ -91,12 +93,26 @@ test('the “Liên hệ” button counts its opening only, not its closing', asy
     assert.deepEqual(events, [{ channel: 'dial', placement: 'dial', device: 'phone', page_path: '/gioi-thieu', link_type: 'none' }]);
 });
 
-test('nothing is announced with click tracking off', async () => {
-    const { events, click } = await start(widget('', false));
+test('a tap on a contact channel is counted with one beacon naming only the channel and the place', async () => {
+    const { doc, beacons, click } = await start(widget());
+    doc.getElementById('sf-fc-dial').matches = () => false;
+
+    click('mail-icon');
+    click('zalo');
+    click('dial'); // opening the "Liên hệ" list is not a contact channel
+    assert.deepEqual(beacons, [
+        ['/_click', '{"channel":"email","placement":"dial"}'],
+        ['/_click', '{"channel":"zalo","placement":"dial"}'],
+    ]);
+});
+
+test('nothing is announced or counted with click tracking off', async () => {
+    const { events, beacons, click } = await start(widget('', false));
 
     click('call');
     click('dial');
     assert.deepEqual(events, []);
+    assert.deepEqual(beacons, []);
 });
 
 test('a page without the widget runs the script and clicks without an error', async () => {

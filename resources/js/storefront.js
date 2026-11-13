@@ -240,7 +240,8 @@ window.addEventListener('hashchange', () => {
 });
 
 // Floating contact: the links work with no script. A click on one with click tracking on announces
-// `bs:contact-click` at once (an app link can leave the page before anything else loads). Only the
+// `bs:contact-click` at once and counts the tap with a beacon (an app link can leave the page before
+// anything else loads). Only the
 // "Chép số" code is fetched, where the page has that button (data-fc-js): on the first touch of the
 // widget, or once the page has loaded and gone idle on a computer (a phone never shows the button).
 const fc = document.querySelector('[data-fc-root]');
@@ -270,6 +271,11 @@ if (fc) {
             page_path: location.pathname,
             link_type: link.dataset.fcLt,
         } }));
+        // The site's own tally (/_click: channel and place only, no cookie); the button that opens the
+        // "Liên hệ" list and "Mua hàng" are not contact channels.
+        if (!/^(dial|buy)$/.test(link.dataset.fc)) {
+            navigator.sendBeacon?.('/_click', JSON.stringify({ channel: link.dataset.fc, placement: link.dataset.fcAt }));
+        }
     });
     if (src) {
         ['pointerover', 'focusin', 'touchstart'].forEach((type) => fc.addEventListener(type, more, { once: true, passive: true }));
