@@ -4,19 +4,32 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Validation\UncompromisedVerifier;
+use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\NotPwnedVerifier;
 use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
 {
+    /** Seconds the breach check may wait for HaveIBeenPwned before the password is let through. */
+    public const int BREACH_CHECK_TIMEOUT = 5;
+
     /**
      * Register any application services.
      */
     #[\Override]
     public function register(): void
     {
-        //
+        // The breach check (Password::defaults()->uncompromised()) waits at most a few seconds
+        // instead of the framework's 30, so an outage at HaveIBeenPwned never holds a password
+        // change open. An extender, not a binding: the framework's validation provider is deferred
+        // and would replace a binding made here when it loads.
+        $this->app->extend(UncompromisedVerifier::class, fn (UncompromisedVerifier $verifier, Application $app): UncompromisedVerifier => $verifier instanceof NotPwnedVerifier
+            ? new NotPwnedVerifier($app->make(HttpFactory::class), self::BREACH_CHECK_TIMEOUT)
+            : $verifier);
     }
 
     /**

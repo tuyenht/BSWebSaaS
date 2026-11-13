@@ -832,5 +832,5 @@ it('has no Domains page or link on a site not entitled to its own domains', func
     $owner = dsMember(1, 'owner');
 
     $this->actingAs($owner)->get('http://a.test/admin/settings/domains')->assertForbidden();
-    $this->actingAs($owner)->get('http://a.test/admin/settings/security')->assertOk()->assertDontSee('/admin/settings/domains');
+    $this->actingAs($owner)->get('http://a.test/admin/account')->assertOk()->assertDontSee('/admin/settings/domains');
 });

@@ -37,6 +37,36 @@
     color-scheme: light;
 }
 
+/* The member's own text size (My account → Cỡ chữ, data-text-size on <html>): each step adds
+   2px, so body text goes 14 → 16 → 18 → 20px. On <html> itself, where the --text-* tokens
+   resolve, so every token follows. */
+:root[data-text-size='lg'] {
+    --user-text-boost: 0.125rem;
+}
+
+:root[data-text-size='xl'] {
+    --user-text-boost: 0.25rem;
+}
+
+:root[data-text-size='xxl'] {
+    --user-text-boost: 0.375rem;
+}
+
+/* "Luôn giảm" (My account → Giảm chuyển động, data-motion on <html>): no transition or animation
+   anywhere in the admin, as the device's own reduce setting would do. */
+:root[data-motion='reduce'] {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+}
+
+:root[data-motion='reduce'] *,
+:root[data-motion='reduce'] *::before,
+:root[data-motion='reduce'] *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
     :root {
         --duration-fast: 0ms;

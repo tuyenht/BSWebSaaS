@@ -235,8 +235,8 @@ final class AdminNav
                 new NavItem(
                     key: 'settings.security',
                     label: __('admin.security'),
-                    url: route('admin.settings.security'),
-                    active: $request->routeIs('admin.settings.security'),
+                    url: route('admin.account', ['tab' => 'security']),
+                    active: $request->routeIs('admin.account'),
                 ),
             ];
 
@@ -288,7 +288,8 @@ final class AdminNav
                 key: 'settings',
                 label: __('admin.settings'),
                 icon: 'settings',
-                active: $request->routeIs('admin.settings*'),
+                // The member's own account page sits under Settings › Bảo mật in this menu.
+                active: $request->routeIs('admin.settings*', 'admin.account'),
                 children: $settingsChildren,
             );
         }

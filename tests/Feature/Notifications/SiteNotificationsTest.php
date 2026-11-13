@@ -1,6 +1,6 @@
 <?php
 
-use App\Modules\Admin\Livewire\Settings;
+use App\Modules\Admin\Livewire\Account;
 use App\Modules\Admin\Notifications\TwoFactorDisabledNotification;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Models\Entry;
@@ -251,12 +251,12 @@ it('warns the account owner, on record, when two-step sign-in is switched off', 
     $secret = $service->generateSecret();
     $service->enable($user, $secret, (new Google2FA)->getCurrentOtp($secret));
 
-    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($user->fresh())->test(Settings::class)->call('disableTwoFactor'));
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($user->fresh())->test(Account::class)->call('openDialog', 'disable')->set('confirmPassword', 'password')->call('disableTwoFactor'));
 
     Notification::assertSentTo($user, TwoFactorDisabledNotification::class, function (TwoFactorDisabledNotification $note, array $channels): bool {
         return in_array('mail', $channels, true) && $note->tenantSiteId === 1;
     });
-    expect(DB::connection('pgsql_admin')->table('audit_logs')->where('action', 'auth.2fa.disabled')->count())->toBe(1);
+    expect(DB::connection('pgsql_admin')->table('audit_logs')->where('action', 'auth.2fa.disabled')->where('actor_id', $user->id)->count())->toBe(1);
 });
 
 it('removes notifications older than 90 days, on every site', function (): void {

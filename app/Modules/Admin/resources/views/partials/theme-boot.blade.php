@@ -41,4 +41,16 @@
             });
         } catch (e) { /* corrupt buffer → SSR attributes stand */ }
     })();
+    // "Theo máy" (My account): with data-scheme-auto on <html>, the device's light/dark
+    // replaces the site scheme the server rendered, before paint and on every OS switch.
+    // app.js calls it again after a live change.
+    window.__adminSchemeAuto = function () {
+        var html = document.documentElement;
+        if (!html.hasAttribute('data-scheme-auto') || !window.matchMedia) return;
+        html.setAttribute('data-bs-theme', window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); // legacy-token-ok: AdminChromeResolver still writes this attribute
+    };
+    window.__adminSchemeAuto();
+    if (window.matchMedia) {
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', window.__adminSchemeAuto);
+    }
 </script>

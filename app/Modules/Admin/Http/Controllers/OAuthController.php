@@ -322,7 +322,7 @@ final readonly class OAuthController
             ['sub' => $sub, 'email' => Cast::stringOrNull($info['email'] ?? null)],
         );
 
-        return redirect()->away($this->originPath($origin, 'settings/security').'?oauth=connected');
+        return redirect()->away($this->originPath($origin, 'account').'?tab=linked&oauth=connected');
     }
 
     private function subjectField(string $provider): string
@@ -389,22 +389,22 @@ final readonly class OAuthController
     private function failTo(string $origin, string $purpose, string $message): RedirectResponse
     {
         $path = match ($purpose) {
-            'email' => 'settings/email',
-            'connect' => 'settings/security',
-            default => 'login',
+            'email' => 'settings/email?',
+            'connect' => 'account?tab=linked&',
+            default => 'login?',
         };
 
-        return redirect()->away($this->originPath($origin, $path).'?oauth_error='.urlencode($message));
+        return redirect()->away($this->originPath($origin, $path).'oauth_error='.urlencode($message));
     }
 
     private function failLocal(string $purpose, string $message): RedirectResponse
     {
-        $route = match (true) {
-            $purpose === 'email' && Auth::check() => 'admin.settings.email',
-            $purpose === 'connect' && Auth::check() => 'admin.settings.security',
-            default => 'admin.login',
+        [$route, $params] = match (true) {
+            $purpose === 'email' && Auth::check() => ['admin.settings.email', []],
+            $purpose === 'connect' && Auth::check() => ['admin.account', ['tab' => 'linked']],
+            default => ['admin.login', []],
         };
 
-        return redirect()->route($route)->withErrors(['oauth' => $message]);
+        return redirect()->route($route, $params)->withErrors(['oauth' => $message]);
     }
 }

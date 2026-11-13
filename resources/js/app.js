@@ -175,6 +175,12 @@ function applyThemeAttributes(attributes) {
             document.documentElement.setAttribute(spec.attr, attributes[spec.attr]);
         }
     }
+    // "Theo máy" travels as its own flag: present → the device decides light/dark;
+    // absent from a full attribute set → the member's scheme is fixed again.
+    if ('data-bs-theme' in attributes) { // legacy-token-ok: AdminChromeResolver still writes this attribute
+        document.documentElement.toggleAttribute('data-scheme-auto', 'data-scheme-auto' in attributes);
+        window.__adminSchemeAuto?.();
+    }
 }
 
 async function postTheme(url, method, body) {
@@ -199,6 +205,10 @@ document.addEventListener('alpine:init', () => {
                 return;
             }
             this.state[field] = value;
+            if (field === 'scheme') {
+                // An explicit light/dark pick ends "Theo máy" (the saved value replaces 'auto').
+                document.documentElement.removeAttribute('data-scheme-auto');
+            }
             document.documentElement.setAttribute(spec.attr, value);
             if (field === 'sidebar_size') {
                 // A size chosen on a settings page shows at once instead of under the fold.
