@@ -22,12 +22,24 @@ final class NotificationFeed
     }
 
     /**
+     * The unread count, stopping at $cap: the bell on every admin page reads "99+" from 100 on,
+     * so one query that walks at most $cap entries of the partial unread index is enough.
+     */
+    public function unreadCountUpTo(User $user, int $cap): int
+    {
+        $unread = SiteNotification::query()->where('user_id', $user->getKey())->whereNull('read_at')->select('id')->limit($cap);
+
+        return $unread->getQuery()->newQuery()->fromSub($unread, 'unread')->count();
+    }
+
+    /**
      * @return Collection<int, SiteNotification>
      */
     public function latest(User $user, int $limit = 20, ?string $afterUlid = null): Collection
     {
         $query = SiteNotification::query()
             ->where('user_id', $user->getKey())
+            ->select(['id', 'ulid', 'kind', 'data', 'read_at', 'created_at'])
             ->orderByDesc('id')
             ->limit($limit);
 

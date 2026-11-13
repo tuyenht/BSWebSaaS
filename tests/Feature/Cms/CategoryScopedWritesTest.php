@@ -514,7 +514,8 @@ it('lists posts for a limited member on a flat query budget', function (): void 
     // A member without limits pays nothing for them (the list learns it from its own query). A
     // limited one adds a flat five — their limits, their role level, the rows' primary categories,
     // the names in the refusal sentence and the categories without a path — never one per row.
-    expect($unlimited)->toBeLessThanOrEqual(16)
+    // +1: the top bar's bell reads the unread count (one bounded query on every admin page).
+    expect($unlimited)->toBeLessThanOrEqual(17)
         ->and($limited)->toBeLessThanOrEqual($unlimited + 5);
 });
 

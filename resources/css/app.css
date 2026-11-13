@@ -27,6 +27,9 @@
 /* The admin's error pages, the "Mất kết nối" strip and the "Phiên sắp hết hạn" dialog. */
 @import './admin-errors.css';
 
+/* The top bar's bell: the unread badge and the "Thông báo" panel (a full screen on a phone). */
+@import './admin-bell.css';
+
 /* Scan module Blade + bundled theme Blade + framework/runtime views so utility classes aren't purged. */
 @source '../../app/Modules/**/*.blade.php';
 @source '../../themes/**/*.blade.php';

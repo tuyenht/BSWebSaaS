@@ -72,7 +72,8 @@ it('lists admin entries on the same budget for a member who may edit only their 
 
     $count = countQueries(fn () => $this->actingAs($author)->get('http://a.test/admin/content')->assertOk());
 
-    expect($count)->toBeLessThanOrEqual(22);
+    // +1: the top bar's bell reads the unread count (one bounded query on every admin page).
+    expect($count)->toBeLessThanOrEqual(23);
 });
 
 it('lists admin catalog on a flat query budget (no N+1 across rows)', function (): void {
@@ -145,7 +146,8 @@ it('keeps the catalog list flat with a search, a sort and a second page, whateve
 
     // 10 rows on the page either way: twice the products must not add a single query. The search adds
     // one statement to the list without it: the word counts that choose its shape (ProductListQuery::whereWords)
-    expect($more)->toBe($count)->and($count)->toBe(19);
+    // +1: the top bar's bell reads the unread count (one bounded query on every admin page).
+    expect($more)->toBe($count)->and($count)->toBe(20);
 });
 
 it('keeps the catalog list flat for a member who manages products, with every row menu drawn, on a second page, whatever the number of rows', function (): void {
@@ -179,7 +181,8 @@ it('keeps the catalog list flat for a member who manages products, with every ro
 
     // the status menu, the labels, the Trash, the quick edits and the Xem button are decided from the rows already loaded: twice the products adds no query
     // (the search adds one statement, its word counts, to the list without it)
-    expect($more)->toBe($count)->and($count)->toBe(18);
+    // +1: the top bar's bell reads the unread count (one bounded query on every admin page).
+    expect($more)->toBe($count)->and($count)->toBe(19);
 });
 
 it('keeps the catalog list flat with every filter on and a second page, whatever the number of rows and categories', function (): void {
@@ -236,7 +239,8 @@ it('keeps the catalog list flat with every filter on and a second page, whatever
     });
 
     // twice the products and categories must not add a single query, and the page still shows 10 rows
-    expect($rendered)->toBe(10)->and($more)->toBe($count)->and($count)->toBe(18);
+    // +1: the top bar's bell reads the unread count (one bounded query on every admin page).
+    expect($rendered)->toBe(10)->and($more)->toBe($count)->and($count)->toBe(19);
 });
 
 it('keeps the catalog list flat with every cell and column drawn, on a second page, whatever the number of rows', function (): void {
@@ -295,13 +299,15 @@ it('keeps the catalog list flat with every cell and column drawn, on a second pa
     });
 
     // twice the rows: not one more query, and the page still shows 10 rows
-    expect($shown)->toBe(10)->and($more)->toBe($count)->and($count)->toBe(17);
+    // +1: the top bar's bell reads the unread count (one bounded query on every admin page).
+    expect($shown)->toBe(10)->and($more)->toBe($count)->and($count)->toBe(18);
 
     // past the cap the value counts are skipped and the page costs exactly one statement less
     config(['admin.catalog_list_cap' => 20]);
     $this->actingAs($viewer)->get($url)->assertOk();
     $past = countQueries(fn () => $this->actingAs($viewer)->get($url)->assertOk());
-    expect($past)->toBe(16);
+    // +1: the top bar's bell reads the unread count (one bounded query on every admin page).
+    expect($past)->toBe(17);
 });
 
 it('reads the category chain of a full-path address in a fixed number of queries, with a three-level tree, whatever the number of rows', function (): void {
@@ -350,7 +356,8 @@ it('reads the category chain of a full-path address in a fixed number of queries
     });
 
     // the chain adds two queries per level above the main category (the parents, then their names): two levels, four queries, for the whole page
-    expect($shown)->toBe(10)->and($more)->toBe($count)->and($count)->toBe(20);
+    // +1: the top bar's bell reads the unread count (one bounded query on every admin page).
+    expect($shown)->toBe(10)->and($more)->toBe($count)->and($count)->toBe(21);
 });
 
 it('pages the Trash of products by cursor on the deletion time, forward and back, meeting each row once', function (): void {
@@ -402,7 +409,8 @@ it('lists admin members on a flat query budget (no N+1 across rows)', function (
     $this->actingAs($admin)->get('http://a.test/admin/users')->assertOk(); // the permission and settings caches fill on the first request
     $count = countQueries(fn () => $this->actingAs($admin)->get('http://a.test/admin/users')->assertOk());
 
-    expect($count)->toBe(14);
+    // +1: the top bar's bell reads the unread count (one bounded query on every admin page).
+    expect($count)->toBe(15);
 });
 
 it('keeps the members list flat with a search, a role filter and a second page, whatever the number of members', function (): void {
@@ -431,5 +439,6 @@ it('keeps the members list flat with a search, a role filter and a second page, 
     $many = $read();
 
     // 20 rows on the page either way: the site's membership growing more than six-fold adds no query
-    expect($many)->toBe($few)->and($few)->toBe(16);
+    // +1: the top bar's bell reads the unread count (one bounded query on every admin page).
+    expect($many)->toBe($few)->and($few)->toBe(17);
 });

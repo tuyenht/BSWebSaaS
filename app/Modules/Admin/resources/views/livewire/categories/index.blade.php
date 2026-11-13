@@ -442,7 +442,7 @@
                     </template>
                     <p x-show="mv && mv.groups && !mv.groups.some((g) => g.options.length)" class="text-small text-text-muted" x-text="mv ? fill({{ $j($u('mv_none')) }}, { q: mv.q }) : ''"></p>
                 </div>
-                <template x-if="mv && mv.err"><x-bs-admin::alert color="danger"><span role="alert" x-text="mv.err"></span></x-bs-admin::alert></template>
+                <template x-if="mv && mv.err"><x-bs-admin::alert color="danger"><span x-text="mv.err"></span></x-bs-admin::alert></template>
             </div>
             <x-slot:footer>
                 <x-bs-admin::button variant="outline" color="secondary" x-on:click="mvClose()">{{ __('admin.cancel') }}</x-bs-admin::button>
@@ -492,14 +492,14 @@
                             <x-bs-admin::alert color="info"><span x-text="fill({{ $j($u('merge_kids')) }}, { n: del.p.children, parent: del.parentName ? fill({{ $j($u('under_q')) }}, { name: del.parentName }) : {{ $j($u('outer')) }}, name: delTargetName || '…' })"></span></x-bs-admin::alert>
                         </template>
                         <template x-if="del.p && del.p.sectionChange">
-                            <x-bs-admin::alert color="warning"><span role="alert" x-text="fill({{ $j($u('cx_leave_line')) }}, { n: del.p.leavingItems, from: {{ $j($label) }} })"></span></x-bs-admin::alert>
+                            <x-bs-admin::alert color="warning"><span x-text="fill({{ $j($u('cx_leave_line')) }}, { n: del.p.leavingItems, from: {{ $j($label) }} })"></span></x-bs-admin::alert>
                         </template>
                         <x-bs-admin::alert color="info">
                             <b>{{ $u('after') }}</b>
                             <ul class="ms-4 list-disc"><template x-for="f in delFx"><li x-text="f"></li></template></ul>
                             <span class="mt-1.5 block text-small">{{ $u('no_undo') }}</span>
                         </x-bs-admin::alert>
-                        <template x-if="del.err"><x-bs-admin::alert color="danger"><span role="alert" x-text="del.err"></span></x-bs-admin::alert></template>
+                        <template x-if="del.err"><x-bs-admin::alert color="danger"><span x-text="del.err"></span></x-bs-admin::alert></template>
                     </div>
                 </template>
             </x-bs-admin::confirm-dialog>
