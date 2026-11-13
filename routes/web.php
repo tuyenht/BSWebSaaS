@@ -8,6 +8,7 @@ use App\Modules\Admin\Http\Controllers\ThemePreferenceController;
 use App\Modules\Admin\Http\Middleware\EnforceSupportSession;
 use App\Modules\Admin\Http\Middleware\SetLocale;
 use App\Modules\Admin\Livewire\AcceptInvitation;
+use App\Modules\Admin\Livewire\Account;
 use App\Modules\Admin\Livewire\AppearanceSettings;
 use App\Modules\Admin\Livewire\Catalog\Editor as CatalogEditor;
 use App\Modules\Admin\Livewire\Catalog\Index as CatalogIndex;
@@ -38,7 +39,6 @@ use App\Modules\Admin\Livewire\Platform\Tenants\Detail;
 use App\Modules\Admin\Livewire\Platform\Tenants\Index;
 use App\Modules\Admin\Livewire\ResetPassword;
 use App\Modules\Admin\Livewire\SeoSettings;
-use App\Modules\Admin\Livewire\Settings;
 use App\Modules\Admin\Livewire\Settings\Domains as DomainSettings;
 use App\Modules\Admin\Livewire\SocialSettings;
 use App\Modules\Admin\Livewire\TwoFactorChallenge;
@@ -48,6 +48,7 @@ use App\Modules\Admin\Support\Locales;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
+use App\Modules\Identity\Support\UserPreferences;
 use App\Modules\Media\Http\Controllers\MediaUploadController;
 use App\Modules\Storefront\Http\Controllers\FormSubmissionController;
 use App\Modules\Storefront\Http\Controllers\ProductPreviewController;
@@ -113,6 +114,11 @@ Route::domain((string) config('tenancy.platform_host'))
             $set = (string) request('set');
             if (in_array($set, Locales::codes(), true)) {
                 session(['locale' => $set]);
+                // A signed-in member keeps the choice on their account too (My account → Ngôn ngữ).
+                $member = auth()->user();
+                if ($member instanceof User) {
+                    UserPreferences::set($member, ['locale'], $set);
+                }
             }
 
             return back(fallback: route('platform.login'));
@@ -219,6 +225,11 @@ Route::prefix(config('admin.prefix', 'admin'))
             $set = (string) request('set');
             if (in_array($set, Locales::codes(), true)) {
                 session(['locale' => $set]);
+                // A signed-in member keeps the choice on their account too (My account → Ngôn ngữ).
+                $member = auth()->user();
+                if ($member instanceof User) {
+                    UserPreferences::set($member, ['locale'], $set);
+                }
             }
 
             return back(fallback: route('admin.login'));
@@ -230,8 +241,12 @@ Route::prefix(config('admin.prefix', 'admin'))
     ->middleware(['web', SetCurrentSite::class, EnforceSupportSession::class, 'site.active', 'auth', 'auth.session', 'tenant.member', SetLocale::class])
     ->group(function (): void {
         Route::get('/', Dashboard::class)->name('admin.dashboard');
-        Route::get('/settings', fn () => redirect()->route('admin.settings.security'))->name('admin.settings');
-        Route::get('/settings/security', Settings::class)->name('admin.settings.security');
+        // "Tài khoản của tôi": the signed-in member's own account, one tab at a time (?tab=…). Every
+        // member reaches it; the component scopes every read and write to auth()->user().
+        Route::get('/account', Account::class)->name('admin.account');
+        // The older addresses of the account page land on it (bookmarks, the settings menu).
+        Route::get('/settings', fn () => redirect()->route('admin.account'))->name('admin.settings');
+        Route::get('/settings/security', fn () => redirect()->route('admin.account', ['tab' => 'security']))->name('admin.settings.security');
         // Site-wide settings — only roles with `settings.manage` (owner/admin/super_admin).
         // The Livewire components ALSO guard in boot() because the livewire/update endpoint
         // does not pass through this route middleware.

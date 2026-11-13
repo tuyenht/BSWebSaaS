@@ -7,6 +7,7 @@ use App\Modules\Admin\Http\Middleware\EnforceSupportSession;
 use App\Modules\Admin\Http\Middleware\ResolveLivewireContext;
 use App\Modules\Admin\Listeners\SetTenantReplyTo;
 use App\Modules\Admin\Listeners\TellSiteAboutDomain;
+use App\Modules\Admin\Livewire\Account;
 use App\Modules\Admin\Livewire\AppearanceSettings;
 use App\Modules\Admin\Livewire\Catalog\Editor as CatalogEditor;
 use App\Modules\Admin\Livewire\Catalog\Index as CatalogIndex;
@@ -33,7 +34,6 @@ use App\Modules\Admin\Livewire\Platform\Tenants\ChangePlanDialog as PlatformChan
 use App\Modules\Admin\Livewire\Platform\Tenants\Detail as PlatformTenantsDetail;
 use App\Modules\Admin\Livewire\Platform\Tenants\Index as PlatformTenantsIndex;
 use App\Modules\Admin\Livewire\ResetPassword;
-use App\Modules\Admin\Livewire\Settings;
 use App\Modules\Admin\Livewire\SocialSettings;
 use App\Modules\Admin\Livewire\TwoFactorChallenge;
 use App\Modules\Admin\Livewire\Users\Index as UsersIndex;
@@ -111,7 +111,7 @@ final class AdminServiceProvider extends ServiceProvider
         Livewire::component('admin.reset-password', ResetPassword::class);
         Livewire::component('admin.two-factor-challenge', TwoFactorChallenge::class);
         Livewire::component('admin.otp-challenge', EmailOtpChallenge::class);
-        Livewire::component('admin.settings', Settings::class);
+        Livewire::component('admin.account', Account::class);
         Livewire::component('admin.email-settings', EmailSettings::class);
         Livewire::component('admin.login-security-settings', LoginSecuritySettings::class);
         Livewire::component('admin.social-settings', SocialSettings::class);

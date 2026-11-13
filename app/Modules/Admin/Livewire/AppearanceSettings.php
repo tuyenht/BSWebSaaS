@@ -38,6 +38,10 @@ final class AppearanceSettings extends Component
 
     public string $sidebar_image = '';
 
+    public string $text_size = '';
+
+    public string $motion = '';
+
     public bool $saved = false;
 
     public function boot(): void

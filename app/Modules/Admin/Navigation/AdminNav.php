@@ -235,8 +235,8 @@ final class AdminNav
                 new NavItem(
                     key: 'settings.security',
                     label: __('admin.security'),
-                    url: route('admin.settings.security'),
-                    active: $request->routeIs('admin.settings.security'),
+                    url: route('admin.account', ['tab' => 'security']),
+                    active: $request->routeIs('admin.account'),
                 ),
             ];
 

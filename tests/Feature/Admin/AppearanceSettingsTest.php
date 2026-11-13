@@ -101,11 +101,11 @@ it('appears in the settings nav only for settings.manage holders', function (): 
         grantRole($member, 'editor', ['entries.view']);
     });
 
-    $this->actingAs($owner->fresh())->get('http://a.test/admin/settings/security')
+    $this->actingAs($owner->fresh())->get('http://a.test/admin/account')
         ->assertOk()
         ->assertSee(route('admin.settings.appearance'));
 
-    $this->actingAs($member->fresh())->get('http://a.test/admin/settings/security')
+    $this->actingAs($member->fresh())->get('http://a.test/admin/account')
         ->assertOk()
         ->assertDontSee(route('admin.settings.appearance'));
 });

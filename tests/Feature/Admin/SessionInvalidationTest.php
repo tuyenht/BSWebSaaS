@@ -1,7 +1,7 @@
 <?php
 
 use App\Modules\Admin\Livewire\ResetPassword;
-use App\Modules\Admin\Livewire\Settings;
+use App\Modules\Admin\Livewire\Account;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Support\PlatformAccess;
@@ -61,7 +61,7 @@ it('re-seeds this session on a self password change so the changer is not kicked
     app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
 
     Livewire::actingAs($user->fresh())
-        ->test(Settings::class)
+        ->test(Account::class)
         ->set('current_password', 'old-password-123')
         ->set('password', 'brand-new-pass-456')
         ->set('password_confirmation', 'brand-new-pass-456')

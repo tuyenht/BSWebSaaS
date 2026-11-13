@@ -3,7 +3,7 @@
 use App\Modules\Admin\Livewire\Catalog\Editor as CatalogEditor;
 use App\Modules\Admin\Livewire\Login;
 use App\Modules\Admin\Livewire\ResetPassword;
-use App\Modules\Admin\Livewire\Settings;
+use App\Modules\Admin\Livewire\Account;
 use App\Modules\Admin\Livewire\Users\Index as UsersIndex;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
@@ -51,13 +51,13 @@ it('shows the Vietnamese max-length message on the own-profile form, not the Eng
     app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
 
     $component = Livewire::actingAs($user->fresh())
-        ->test(Settings::class)
+        ->test(Account::class)
         ->set('profileName', str_repeat('a', 130))
         ->call('saveProfile');
 
     $message = $component->errors()->first('profileName');
 
-    expect($message)->toBe('Họ và tên dài tối đa 120 ký tự.')
+    expect($message)->toBe('Họ tên tối đa 120 ký tự — bớt 10 ký tự.')
         ->and($message)->not->toContain('must not be greater than');
 });
 

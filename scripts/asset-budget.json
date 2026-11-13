@@ -2,7 +2,7 @@
   "entries": {
     "resources/css/app.css": {
       "js": 0,
-      "css": 40711
+      "css": 41275
     },
     "resources/css/storefront.css": {
       "js": 0,
@@ -77,7 +77,7 @@
       "css": 1007
     },
     "resources/js/app.js": {
-      "js": 14787,
+      "js": 14835,
       "css": 0
     },
     "resources/js/sections.js": {

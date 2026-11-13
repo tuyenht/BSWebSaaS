@@ -51,7 +51,7 @@ it('renders Dashboard as a leaf and Settings as an expandable group of tabs for 
         ->and($byKey->get('settings')?->url)->toBeNull();
 
     $security = collect($byKey->get('settings')->children)->firstWhere('key', 'settings.security');
-    expect($security?->url)->toContain('/admin/settings/security');
+    expect($security?->url)->toContain('/admin/account?tab=security');
 });
 
 it('nests each content section as a group of List + Add new for a creator', function (): void {

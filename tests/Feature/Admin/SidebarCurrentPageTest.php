@@ -46,10 +46,10 @@ it('marks the current page link, and only it, as the current page', function ():
 });
 
 it('marks a page inside a group on its own link, and the group row by shape only', function (): void {
-    $sidebar = sidebarOf((string) $this->actingAs(sidebarOwner())->get('http://demo.platform.test/admin/settings/security')->assertOk()->getContent());
+    $sidebar = sidebarOf((string) $this->actingAs(sidebarOwner())->get('http://demo.platform.test/admin/account')->assertOk()->getContent());
 
     expect(substr_count($sidebar, 'aria-current="page"'))->toBe(1)
-        ->and($sidebar)->toMatch('/<a href="[^"]*\/admin\/settings\/security"\s+wire:navigate\s+aria-current="page"/')
+        ->and($sidebar)->toMatch('/<a href="[^"]*\/admin\/account\?tab=security"\s+wire:navigate\s+aria-current="page"/')
         // The group row is a disclosure button, not a page: it shows the current-row look (so the
         // collapsed rail still shows where you are) without claiming aria-current.
         ->and($sidebar)->not->toMatch('/<button[^>]*aria-current/')

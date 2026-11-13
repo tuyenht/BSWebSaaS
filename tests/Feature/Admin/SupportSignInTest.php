@@ -408,14 +408,22 @@ it('locks membership changes and the support switch during a support session', f
     expect(fn () => $run(false))->not->toThrow(Throwable::class);
 })->with(['invite a member', 'give a role', 'take a role', 'the support switch']);
 
-it('locks the account, social sign-in and mail sender screens during a support session', function (string $path): void {
+it('locks the social sign-in and mail sender screens during a support session', function (string $path): void {
     $owner = supportMember(1, 'owner');
 
     $this->actingAs($owner)->get("http://a.test{$path}")->assertOk();
 
     enterSupport($this, supportToken(platformStaff('support'), $owner))->assertStatus(303);
     $this->get("http://a.test{$path}")->assertForbidden();
-})->with(['/admin/settings/security', '/admin/settings/social', '/admin/settings/email']);
+})->with(['/admin/settings/social', '/admin/settings/email']);
+
+it('opens the member\'s own account page read-only during a support session', function (): void {
+    $owner = supportMember(1, 'owner');
+
+    enterSupport($this, supportToken(platformStaff('support'), $owner))->assertStatus(303);
+    $this->get('http://a.test/admin/account')->assertOk()
+        ->assertSee('Không làm được việc này khi nhân viên hỗ trợ đang đăng nhập thay thành viên.');
+});
 
 it('locks linking a sign-in account or connecting a sender through OAuth during a support session', function (string $purpose): void {
     $owner = supportMember(1, 'owner');

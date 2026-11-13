@@ -76,6 +76,7 @@ const ADMIN_PREVIEW_SCREENS = [
     'form' => '/admin/settings/email',
     'gallery' => '/admin/_gallery',
     'menus' => '/admin/menus',
+    'account' => '/admin/account',
 ];
 
 const ADMIN_PREVIEW_HOST = 'preview.platform.test';

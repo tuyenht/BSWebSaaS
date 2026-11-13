@@ -50,5 +50,5 @@ it('lets any member open their personal security settings (no settings.manage ne
     $author = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($author, 'author', ['entries.view']));
 
-    $this->actingAs($author)->get('http://a.test/admin/settings/security')->assertOk();
+    $this->actingAs($author)->get('http://a.test/admin/account')->assertOk();
 });

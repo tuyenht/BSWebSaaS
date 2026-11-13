@@ -27,6 +27,9 @@
 /* The admin's error pages, the "Mất kết nối" strip and the "Phiên sắp hết hạn" dialog. */
 @import './admin-errors.css';
 
+/* My account (Tài khoản của tôi): its section menu, password fields, two-factor steps and notification table. */
+@import './admin-account.css';
+
 /* Scan module Blade + bundled theme Blade + framework/runtime views so utility classes aren't purged. */
 @source '../../app/Modules/**/*.blade.php';
 @source '../../themes/**/*.blade.php';

@@ -189,7 +189,7 @@ it('folds a wide menu to its icon rail on a settings page only, leaving the save
     $htmlTag = fn (string $html): string => (string) strstr((string) strstr($html, '<html'), '>', true);
     $member = themeMember();
 
-    $settings = $htmlTag((string) $this->actingAs($member)->get('http://a.test/admin/settings/security')->assertOk()->getContent());
+    $settings = $htmlTag((string) $this->actingAs($member)->get('http://a.test/admin/account')->assertOk()->getContent());
     $content = $htmlTag((string) $this->actingAs($member)->get('http://a.test/admin/content')->assertOk()->getContent());
 
     expect($settings)->toContain('data-sidebar-fold=""')->toContain('data-sidebar-size="lg"')
@@ -198,6 +198,6 @@ it('folds a wide menu to its icon rail on a settings page only, leaving the save
     // A member who keeps the small menu has nothing to fold.
     $member->preferences = ['theme' => ['sidebar_size' => 'sm']];
     $member->save();
-    expect($htmlTag((string) $this->actingAs($member->fresh())->get('http://a.test/admin/settings/security')->assertOk()->getContent()))
+    expect($htmlTag((string) $this->actingAs($member->fresh())->get('http://a.test/admin/account')->assertOk()->getContent()))
         ->toContain('data-sidebar-size="sm"')->not->toContain('data-sidebar-fold');
 });
