@@ -477,8 +477,8 @@ it('lets the editor send to the Trash and restore, but keeps deleting for good t
     });
 });
 
-it('lets the website admin delete for good, a selection and the whole Trash', function (): void {
-    $user = libTemplateUser('admin');
+it('lets the website admin and the owner delete for good, a selection and the whole Trash', function (string $role): void {
+    $user = libTemplateUser($role);
     $a = libFile(1, 'a.png');
     $b = libFile(1, 'b.png');
     $c = libFile(1, 'c.png');
@@ -501,5 +501,36 @@ it('lets the website admin delete for good, a selection and the whole Trash', fu
 
         $page->call('askPurge', true)->assertSet('askPurgeOpen', true)->call('confirmPurge');
         expect(Media::withTrashed()->count())->toBe(0);
+    });
+})->with(['admin', 'owner']);
+
+it('keeps the Trash closed to the author: no trash or restore control, and both are refused', function (): void {
+    $user = libTemplateUser('author');
+    $live = libFile(1, 'con-song.png');
+    $gone = libFile(1, 'da-xoa.png');
+    app(Tenancy::class)->enter(1, fn () => $gone->delete());
+
+    $this->actingAs($user)->get('http://a.test/admin/media')->assertOk()
+        ->assertDontSee('value="~trash"', false)
+        ->assertDontSee('da-xoa');
+
+    app(Tenancy::class)->enter(1, function () use ($user, $live, $gone): void {
+        // The author picks to move (media.upload): the bar shows Move but no Trash button.
+        $page = Livewire::actingAs($user)->test(Library::class)
+            ->call('togglePick', $live->ulid)
+            ->assertSeeHtml('wire:click="openMove"')
+            ->assertDontSeeHtml('wire:click="trashPicked"')
+            ->assertDontSeeHtml('wire:click="restorePicked"');
+        $page->call('trashPicked')->assertForbidden();
+        Livewire::actingAs($user)->test(Library::class)->set('picked', [$live->ulid])->call('confirmTrash')->assertForbidden();
+
+        // The Trash never opens, and a forged selection of a trashed file cannot restore it.
+        Livewire::actingAs($user)->test(Library::class)->call('setFolder', '~trash')->assertSet('status', 'live')
+            ->assertDontSeeHtml('wire:click="restorePicked"');
+        Livewire::actingAs($user)->test(Library::class)->set('picked', [$gone->ulid])->call('restorePicked')->assertForbidden();
+        Livewire::actingAs($user)->test(Library::class)->call('undo')->assertForbidden();
+
+        expect(Media::query()->whereKey($live->id)->exists())->toBeTrue()
+            ->and(Media::onlyTrashed()->whereKey($gone->id)->exists())->toBeTrue();
     });
 });

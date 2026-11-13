@@ -11,6 +11,7 @@ use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\MediaFolder;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -761,6 +762,117 @@ it('shows the delete-for-good controls in the picker Trash to media.purge', func
             ->call('togglePickerItem', $m->id)
             ->assertSeeHtml('$wire.purgePickerSelection()')
             ->assertSeeHtml('$wire.emptyPickerTrash()');
+    });
+});
+
+/**
+ * A member of site 1 holding the media rights of the shipped role template of that name, plus
+ * the catalog rights the picker's host (the product editor) needs to open at all.
+ */
+function pickerTemplateUser(string $role): User
+{
+    $spec = PermissionRegistry::tenantRoleTemplates('corporate')[$role]['permissions'];
+    $rights = array_values(array_unique(array_merge(
+        $spec === '*' ? PermissionRegistry::TENANT_PERMISSIONS : $spec,
+        ['catalog.view', 'catalog.manage'],
+    )));
+    $user = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, $role, $rights));
+
+    return $user->fresh() ?? $user;
+}
+
+it('gives each shipped role exactly its picker media actions, control and server alike', function (string $role, string $action, bool $allowed): void {
+    $user = pickerTemplateUser($role);
+
+    app(Tenancy::class)->enter(1, function () use ($user, $role, $action, $allowed): void {
+        Storage::fake('r2');
+        // The author holds no media.delete, so the Trash view itself stays shut to them (pinned below).
+        $inTrash = $role !== 'author';
+        $picker = fn () => Livewire::actingAs($user)->test(Editor::class)->call('openImagePicker', 'gallery');
+        $see = $allowed ? 'assertSeeHtml' : 'assertDontSeeHtml';
+
+        if ($action === 'folders') {
+            $component = $picker()->{$see}("\$set('pickerNewFolderOpen', true)")
+                ->set('pickerNewFolderName', 'Ảnh mới')->call('createPickerFolder');
+            $allowed ? $component->assertHasNoErrors() : $component->assertStatus(403);
+            expect(MediaFolder::query()->where('slug', 'anh-moi')->exists())->toBe($allowed);
+
+            return;
+        }
+
+        if ($action === 'trash') {
+            $m = seedPickerMedia('live');
+            $component = $picker()->call('togglePickerItem', $m->id)
+                ->{$see}('$wire.pickerBulkDelete()')
+                ->call('pickerBulkDelete');
+            $allowed ? $component->assertOk() : $component->assertStatus(403);
+            expect(Media::onlyTrashed()->whereKey($m->id)->exists())->toBe($allowed);
+
+            return;
+        }
+
+        $a = seedPickerMedia('bin-a');
+        $b = seedPickerMedia('bin-b');
+        $a->delete();
+        $b->delete();
+
+        $component = $picker();
+        if ($inTrash) {
+            $component->call('openPickerTrash')->assertSet('pickerTrash', true)->call('togglePickerItem', $a->id);
+        } else {
+            $component->assertDontSeeHtml('wire:click="openPickerTrash"')->set('pickerSelected', [$a->id]);
+        }
+
+        [$control, $method] = match ($action) {
+            'restore' => ['wire:click="restorePickerSelection"', 'restorePickerSelection'],
+            'purge' => ['$wire.purgePickerSelection()', 'purgePickerSelection'],
+            'empty trash' => ['$wire.emptyPickerTrash()', 'emptyPickerTrash'],
+        };
+        $component->{$see}($control)->call($method);
+        $allowed ? $component->assertOk() : $component->assertStatus(403);
+
+        [$restored, $purged] = match ($action) {
+            'restore' => [$allowed ? 1 : 0, 0],
+            'purge' => [0, $allowed ? 1 : 0],
+            'empty trash' => [0, $allowed ? 2 : 0],
+        };
+        expect(Media::query()->count())->toBe($restored)
+            ->and(Media::onlyTrashed()->count())->toBe(2 - $restored - $purged);
+    });
+})->with([
+    'author · folders' => ['author', 'folders', false],
+    'author · trash' => ['author', 'trash', false],
+    'author · restore' => ['author', 'restore', false],
+    'author · purge' => ['author', 'purge', false],
+    'author · empty trash' => ['author', 'empty trash', false],
+    'editor · folders' => ['editor', 'folders', false],
+    'editor · trash' => ['editor', 'trash', true],
+    'editor · restore' => ['editor', 'restore', true],
+    'editor · purge' => ['editor', 'purge', false],
+    'editor · empty trash' => ['editor', 'empty trash', false],
+    'admin · folders' => ['admin', 'folders', true],
+    'admin · trash' => ['admin', 'trash', true],
+    'admin · restore' => ['admin', 'restore', true],
+    'admin · purge' => ['admin', 'purge', true],
+    'admin · empty trash' => ['admin', 'empty trash', true],
+    'owner · folders' => ['owner', 'folders', true],
+    'owner · trash' => ['owner', 'trash', true],
+    'owner · restore' => ['owner', 'restore', true],
+    'owner · purge' => ['owner', 'purge', true],
+    'owner · empty trash' => ['owner', 'empty trash', true],
+]);
+
+it('keeps the picker Trash shut to the author: no Trash entry and opening it is refused', function (): void {
+    $user = pickerTemplateUser('author');
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        seedPickerMedia('bin')->delete();
+
+        Livewire::actingAs($user)->test(Editor::class)->call('openImagePicker', 'gallery')
+            ->assertDontSeeHtml('wire:click="openPickerTrash"')
+            ->call('openPickerTrash')->assertStatus(403);
+        expect(Media::onlyTrashed()->count())->toBe(1);
     });
 });
 
