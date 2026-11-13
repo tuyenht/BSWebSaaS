@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Http\Controllers;
 
+use App\Modules\Admin\Support\OAuthError;
 use App\Modules\Admin\Support\OAuthFlow;
 use App\Modules\Admin\Support\PlatformSettings;
 use App\Modules\Admin\Support\SecretCipher;
@@ -67,7 +68,7 @@ final readonly class OAuthController
         $cfg = config("oauth.providers.$provider");
 
         if (! is_array($cfg) || ! in_array($purpose, Cast::arr($cfg['supports'] ?? null), true)) {
-            return $this->failLocal($purpose, __('admin.oauth_provider_not_configured'));
+            return $this->failLocal($purpose, OAuthError::NotConfigured);
         }
 
         // 'email' (sender connect) and 'connect' (social link) act on the current account.
@@ -90,7 +91,7 @@ final readonly class OAuthController
         // start runs on the tenant host (tenant context resolved) — its OAuth app lives there.
         [$clientId, $clientSecret] = $this->creds($provider, $purpose);
         if ($clientId === null || $clientSecret === null) {
-            return $this->failLocal($purpose, __('admin.oauth_provider_not_configured'));
+            return $this->failLocal($purpose, OAuthError::NotConfigured);
         }
 
         $state = Str::random(40);
@@ -140,7 +141,7 @@ final readonly class OAuthController
         $host = (string) (parse_url($origin, PHP_URL_HOST) ?: '');
 
         if ($request->query('error') !== null || ! is_string($request->query('code'))) {
-            return $this->failTo($origin, $purpose, __('admin.oauth_failed'));
+            return $this->failTo($origin, $purpose, OAuthError::Failed);
         }
 
         // The origin rode along in server-side state, but it is still a redirect target: only a
@@ -193,13 +194,13 @@ final readonly class OAuthController
         if ($purpose === 'email') {
             $user = User::find($userId);
             if (! $user instanceof User || ! Gate::forUser($user)->allows('settings.manage')) {
-                return $this->failTo($origin, $purpose, __('admin.oauth_failed'));
+                return $this->failTo($origin, $purpose, OAuthError::Failed);
             }
         }
 
         [$clientId, $clientSecret] = $this->creds($provider, $purpose);
         if ($clientId === null || $clientSecret === null) {
-            return $this->failTo($origin, $purpose, __('admin.oauth_provider_not_configured'));
+            return $this->failTo($origin, $purpose, OAuthError::NotConfigured);
         }
 
         try {
@@ -208,7 +209,7 @@ final readonly class OAuthController
         } catch (Throwable $e) {
             report($e);
 
-            return $this->failTo($origin, $purpose, __('admin.oauth_failed'));
+            return $this->failTo($origin, $purpose, OAuthError::Failed);
         }
 
         return match ($purpose) {
@@ -243,17 +244,17 @@ final readonly class OAuthController
         $field = Cast::string(config("oauth.providers.$provider.email_field"), 'email');
         $email = $info[$field] ?? null;
         if (! is_string($email) || $email === '' || ($info['email_verified'] ?? false) !== true) {
-            return $this->failTo($origin, 'login', __('admin.oauth_failed'));
+            return $this->failTo($origin, 'login', OAuthError::Failed);
         }
 
         $user = User::query()->where('email', $email)->first();
         if (! $user instanceof User) {
-            return $this->failTo($origin, 'login', __('admin.oauth_login_no_account'));
+            return $this->failTo($origin, 'login', OAuthError::NoAccount);
         }
 
         // We are inside the origin site's tenant context — membership = a role there.
         if (! $this->memberOfOrigin($user)) {
-            return $this->failTo($origin, 'login', __('admin.oauth_login_not_member'));
+            return $this->failTo($origin, 'login', OAuthError::NotMember);
         }
 
         // Remember this verified identity so next time the fast path matches by sub.
@@ -275,7 +276,7 @@ final readonly class OAuthController
     {
         $refresh = $tokens['refresh_token'] ?? null;
         if (! is_string($refresh) || $refresh === '') {
-            return redirect()->away($this->originPath($origin, 'settings/email').'?oauth_error='.urlencode(__('admin.oauth_no_refresh_token')));
+            return $this->failTo($origin, 'email', OAuthError::NoRefreshToken);
         }
 
         $field = Cast::string(config("oauth.providers.$provider.email_field"), 'email');
@@ -307,14 +308,14 @@ final readonly class OAuthController
         $sub = Cast::string($info[$this->subjectField($provider)] ?? null);
 
         if (! $user instanceof User || $sub === '') {
-            return $this->failTo($origin, 'connect', __('admin.oauth_failed'));
+            return $this->failTo($origin, 'connect', OAuthError::Failed);
         }
 
         // A provider identity belongs to only ONE account — fail with a clear message rather
         // than letting the (provider, sub) unique index throw.
         $owner = SocialIdentity::query()->where('provider', $provider)->where('sub', $sub)->first();
         if ($owner !== null && $owner->user_id !== $user->getKey()) {
-            return $this->failTo($origin, 'connect', __('admin.social_already_linked'));
+            return $this->failTo($origin, 'connect', OAuthError::AlreadyLinked);
         }
 
         SocialIdentity::query()->updateOrCreate(
@@ -386,7 +387,7 @@ final readonly class OAuthController
         return rtrim($origin, '/').'/'.$prefix.'/'.ltrim($path, '/');
     }
 
-    private function failTo(string $origin, string $purpose, string $message): RedirectResponse
+    private function failTo(string $origin, string $purpose, OAuthError $error): RedirectResponse
     {
         $path = match ($purpose) {
             'email' => 'settings/email?',
@@ -394,10 +395,10 @@ final readonly class OAuthController
             default => 'login?',
         };
 
-        return redirect()->away($this->originPath($origin, $path).'oauth_error='.urlencode($message));
+        return redirect()->away($this->originPath($origin, $path).'oauth_error='.$error->value);
     }
 
-    private function failLocal(string $purpose, string $message): RedirectResponse
+    private function failLocal(string $purpose, OAuthError $error): RedirectResponse
     {
         [$route, $params] = match (true) {
             $purpose === 'email' && Auth::check() => ['admin.settings.email', []],
@@ -405,6 +406,6 @@ final readonly class OAuthController
             default => ['admin.login', []],
         };
 
-        return redirect()->route($route, $params)->withErrors(['oauth' => $message]);
+        return redirect()->route($route, $params)->withErrors(['oauth' => $error->message()]);
     }
 }
