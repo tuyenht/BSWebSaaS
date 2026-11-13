@@ -2,11 +2,14 @@
     The top bar's bell (design 01 "Thông báo", .ntf-*): the unread badge on every page, the panel
     under the bell (a full screen below 600px). Alpine part bsBell (resources/js/admin-bell.js,
     started by the shared lazy loader): opens and closes, moves focus into the panel and back to the
-    bell (Esc, "Đóng", a click outside, Tab past the end), asks for the list the first time, and
-    shows the error card with "Thử lại" when a request is lost. Until the part has loaded, a click on
-    the bell after a lost download tries again (data-bs-lazy-retry).
+    bell (Esc, "Đóng", a click outside, Tab past the end), asks for the list the first time and says
+    politely when it has arrived, and inserts the shared error alert with "Thử lại" when a request is
+    lost (inserted, so a screen reader reads it out). Below 600px the panel covers the screen and is
+    modal: the focus stays inside and the page behind holds still (the shared x-trap, as the modal);
+    wider, it stays a non-modal popover. Until the part has loaded, a click on the bell after a lost
+    download tries again (data-bs-lazy-retry).
 --}}
-<div class="relative" x-ignore wire:ignore.self data-bs-lazy="bsBell" x-data="bsBell"
+<div class="relative" x-ignore wire:ignore.self data-bs-lazy="bsBell" x-data="bsBell" data-loaded="{{ __('admin.bell.loaded') }}"
      x-on:keydown.escape="close(true)" x-on:focusout="leave($event)" x-on:click.outside="close(false)">
     <button type="button" x-ref="bell" data-bs-lazy-retry x-on:click="toggle()"
             aria-haspopup="dialog" aria-controls="bs-bell-panel" aria-expanded="false" x-bind:aria-expanded="open ? 'true' : 'false'"
@@ -18,7 +21,8 @@
         @endif
     </button>
 
-    <div id="bs-bell-panel" x-ref="panel" x-show="open" x-cloak role="dialog" aria-label="{{ __('admin.notifications') }}" tabindex="-1" class="ntf-pop">
+    <div id="bs-bell-panel" x-ref="panel" x-show="open" x-cloak role="dialog" aria-label="{{ __('admin.notifications') }}" tabindex="-1" class="ntf-pop"
+         x-trap.inert.noscroll.noautofocus.noreturn="open && narrow" x-bind:aria-modal="open && narrow ? 'true' : null">
         <div class="ntf-h">
             <span class="ntf-ht">{{ __('admin.notifications') }}</span>
             @if ($unread > 0)
@@ -41,14 +45,17 @@
         @endif
 
         <div class="ntf-list">
-            <div x-show="failed" x-cloak role="alert" class="ntf-err">
-                <x-bs-admin::icon name="ri-wifi-off" class="size-6 shrink-0" />
-                <span x-show="failed === 'load'">{{ __('admin.bell.error_load') }}</span>
-                <span x-show="failed === 'save'">{{ __('admin.bell.error_save') }}</span>
-                <x-bs-admin::button variant="outline" color="danger" size="sm" x-on:click="again()">
-                    <x-bs-admin::icon name="ri-refresh" class="size-4" /><span>{{ __('admin.bell.retry') }}</span>
-                </x-bs-admin::button>
-            </div>
+            <p class="sr-only" role="status" wire:ignore x-text="said"></p>
+            <template x-if="failed">
+                <x-bs-admin::alert color="danger" icon="ri-wifi-off" class="m-4">
+                    <span class="flex flex-wrap items-center gap-x-3 gap-y-2">
+                        <span class="min-w-0 flex-[1_1_200px]" x-text="failed === 'load' ? @js(__('admin.bell.error_load')) : @js(__('admin.bell.error_save'))"></span>
+                        <x-bs-admin::button variant="outline" color="danger" size="sm" x-on:click="again()">
+                            <x-bs-admin::icon name="ri-refresh" class="size-4" /><span>{{ __('admin.bell.retry') }}</span>
+                        </x-bs-admin::button>
+                    </span>
+                </x-bs-admin::alert>
+            </template>
 
             @if (! $loaded)
                 <div x-show="failed !== 'load'" aria-busy="true">

@@ -197,22 +197,19 @@
         text-align: center;
     }
 
-    /* Lost request: the danger card with "Thử lại" (the Notifications page's .tb-err). */
-    .ntf-err {
-        display: flex;
-        flex-wrap: wrap;
+    /* The board's "Chờ backend" note in the platform console's head (the canvas .sx-note). */
+    .ntf-note {
+        display: inline-flex;
         align-items: center;
-        gap: 8px 12px;
-        margin: 16px;
-        padding: 12px 14px;
+        gap: 4px;
+        min-height: 22px;
+        padding: 1px 8px;
+        border: 1px dashed var(--color-info-text);
         border-radius: 4px;
-        background: color-mix(in srgb, var(--color-danger-base) 10%, var(--color-surface));
-        color: var(--color-danger-text);
-    }
-
-    .ntf-err > span {
-        flex: 1 1 200px;
-        min-width: 0;
+        color: var(--color-info-text);
+        font-size: calc(0.75rem + var(--user-text-boost));
+        font-weight: 600;
+        line-height: 1.4;
     }
 
     /* Waiting rows (the Notifications page's .tb-sk): a round icon, a line, a short line. */

@@ -79,8 +79,12 @@ it('gives the platform console the shared tools but omits tenant account links',
         ->assertOk()
         ->assertSee('langOpen', false)                                            // shared topbar tools present
         ->assertSee("adminTheme.set('scheme'", false)
-        ->assertSee('notifOpen', false)                                           // no notification store on the console yet:
-        ->assertDontSee('bsBell', false)                                          // the honest empty panel, no bell component
+        ->assertSee('data-bs-lazy="bsBell"', false)                               // the same bell panel as a website's…
+        ->assertSee('class="ntf-note"', false)                                    // …with the board's "Chờ backend" note,
+        ->assertSee('Chờ backend', false)
+        ->assertDontSee('wire:name="admin.notification-bell"', false)            // no notification store on the console yet:
+        ->assertDontSee('ntf-badge', false)                                       // no component, no badge, no rows
+        ->assertDontSee('notifOpen', false)                                       // the old placeholder is gone
         ->assertSee('>Quản trị nền tảng</span>', false)                           // operator's primary-role label
         ->assertDontSee('Super Admin', false)
         ->assertSee(route('platform.logout', absolute: false), false)            // platform sign-out

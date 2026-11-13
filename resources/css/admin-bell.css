@@ -1,6 +1,7 @@
 /*
  | The top bar's bell (design board 01 "Thông báo", admin::livewire.notification-bell): the unread
- | badge, ringed in the bar's own colour, drawn on every admin page. The panel's rules download with
+ | badge, drawn on every admin page: a 2px ring in the surface colour (white; the night navy of
+ | the dark scheme, as the board draws it) and the white text every solid fill takes. The panel's rules download with
  | the bell's part (admin-bell-panel.css, imported by resources/js/admin-bell.js).
  */
 @layer components {
@@ -15,10 +16,10 @@
         min-width: 18px;
         min-height: 18px;
         padding: 1px 4px;
-        border: 2px solid var(--color-topbar-bg);
+        border: 2px solid var(--color-surface);
         border-radius: 9px;
         background: var(--color-danger);
-        color: #fff;
+        color: var(--color-on-primary);
         font-size: calc(0.75rem + var(--user-text-boost));
         font-weight: 700;
         line-height: 1;

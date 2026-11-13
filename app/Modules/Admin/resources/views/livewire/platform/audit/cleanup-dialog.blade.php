@@ -57,10 +57,7 @@
                     </div>
                     <p class="sr-only" role="status">{{ __('admin.audit.purge.loading') }}</p>
                 @elseif ($loadFailed)
-                    <div role="alert" class="{{ $danger }}">
-                        <x-bs-admin::icon name="ri-error-warning" class="mt-0.5 size-5 shrink-0" />
-                        <span class="min-w-0 [overflow-wrap:anywhere]">{{ __('admin.audit.purge.load_error') }}</span>
-                    </div>
+                    <x-bs-admin::alert color="danger" icon="ri-error-warning" class="border border-danger-base/25 [overflow-wrap:anywhere]">{{ __('admin.audit.purge.load_error') }}</x-bs-admin::alert>
                     <div>
                         <x-bs-admin::button variant="outline" color="secondary" wire:click="retry">
                             <x-bs-admin::icon name="ri-refresh" class="size-4" />{{ __('admin.audit.retry') }}
@@ -111,10 +108,7 @@
                     </div>
                     <p class="m-0 text-small text-text-muted" role="status">{{ __('admin.audit.purge.counting', ['month' => $label]) }}</p>
                 @elseif ($countFailed)
-                    <div role="alert" class="{{ $danger }}">
-                        <x-bs-admin::icon name="ri-error-warning" class="mt-0.5 size-5 shrink-0" />
-                        <span class="min-w-0 [overflow-wrap:anywhere]">{{ __('admin.audit.purge.count_error', ['month' => $label]) }}</span>
-                    </div>
+                    <x-bs-admin::alert color="danger" icon="ri-error-warning" class="border border-danger-base/25 [overflow-wrap:anywhere]">{{ __('admin.audit.purge.count_error', ['month' => $label]) }}</x-bs-admin::alert>
                     <div class="flex flex-wrap gap-2">
                         <x-bs-admin::button variant="outline" color="secondary" wire:click="retry">
                             <x-bs-admin::icon name="ri-refresh" class="size-4" />{{ __('admin.audit.retry') }}
@@ -156,17 +150,16 @@
                         @endif
                     </div>
                     @if ($monthError !== '')
-                        <div id="audit-cleanup-alert" role="alert" tabindex="-1" class="{{ $danger }} flex-col">
-                            <span class="flex items-start gap-2">
-                                <x-bs-admin::icon name="ri-error-warning" class="mt-0.5 size-5 shrink-0" />
-                                <span class="min-w-0 [overflow-wrap:anywhere]">{{ $monthError }}</span>
+                        <x-bs-admin::alert id="audit-cleanup-alert" tabindex="-1" color="danger" icon="ri-error-warning" class="border border-danger-base/25 [overflow-wrap:anywhere]">
+                            <span class="flex flex-col items-start gap-2">
+                                <span class="min-w-0">{{ $monthError }}</span>
+                                @if ($monthRefused)
+                                    <x-bs-admin::button variant="outline" color="secondary" x-on:click="toPick()">
+                                        <x-bs-admin::icon name="ri-arrow-left" class="size-4" />{{ __('admin.audit.purge.back') }}
+                                    </x-bs-admin::button>
+                                @endif
                             </span>
-                            @if ($monthRefused)
-                                <x-bs-admin::button variant="outline" color="secondary" x-on:click="toPick()">
-                                    <x-bs-admin::icon name="ri-arrow-left" class="size-4" />{{ __('admin.audit.purge.back') }}
-                                </x-bs-admin::button>
-                            @endif
-                        </div>
+                        </x-bs-admin::alert>
                     @endif
                 @endif
             @endif

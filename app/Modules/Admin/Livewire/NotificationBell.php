@@ -46,7 +46,11 @@ final class NotificationBell extends Component
         $this->loaded = true;
     }
 
-    /** One notification clicked: marked read (unless a support person is looking), then followed. */
+    /**
+     * One notification clicked: marked read (unless a support person is looking), then followed.
+     * One that is gone meanwhile (cleaned up while the panel stayed open; never another person's,
+     * which answers the same) is not an error page: the panel redraws without it and a toast says so.
+     */
     public function open(string $ulid): void
     {
         $user = $this->reader();
@@ -54,7 +58,11 @@ final class NotificationBell extends Component
 
         $notification = SiteNotification::query()->where('user_id', $user->getKey())->where('ulid', $ulid)
             ->select(['id', 'ulid', 'kind', 'data'])->first();
-        abort_if($notification === null, 404);
+        if ($notification === null) {
+            $this->dispatch('bs-toast', text: __('admin.bell.gone'));
+
+            return;
+        }
 
         if (! $this->supporting()) {
             app(NotificationFeed::class)->markRead($user, $ulid);

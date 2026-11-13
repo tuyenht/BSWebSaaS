@@ -148,18 +148,37 @@ it('marks one notice read when opened and follows its address', function (): voi
     expect(nbReadAt($ulid))->not->toBeNull();
 });
 
-it('refuses another person\'s notice, another site\'s notice and a malformed code', function (): void {
+it('never opens another person\'s notice or another site\'s, answering both as a notice that is gone', function (): void {
     $me = nbMember();
     app(Tenancy::class)->enter(2, fn () => grantRole($me, 'editor', ['entries.view']));
     $other = nbMember();
-    $theirs = nbNotice($other, 1);
-    $mineOnB = nbNotice($me, 2);
+    $theirs = nbNotice($other, 1, 'workflow.assigned', ['entry' => (string) Str::ulid(), 'title' => 'Của người khác']);
+    $mineOnB = nbNotice($me, 2, 'workflow.assigned', ['entry' => (string) Str::ulid(), 'title' => 'Ở trang B']);
 
-    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($me->fresh())->test(NotificationBell::class)->call('open', $theirs))->assertStatus(404);
-    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($me->fresh())->test(NotificationBell::class)->call('open', $mineOnB))->assertStatus(404);
+    foreach ([$theirs, $mineOnB] as $ulid) {
+        app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($me->fresh())->test(NotificationBell::class)->call('load')->call('open', $ulid))
+            ->assertOk()->assertNoRedirect()
+            ->assertDispatched('bs-toast', text: 'Thông báo này không còn nữa — danh sách đã được làm mới.')
+            ->assertDontSee('Của người khác')->assertDontSee('Ở trang B');
+    }
     app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($me->fresh())->test(NotificationBell::class)->call('open', '1 or 1=1'))->assertStatus(422);
 
     expect(nbReadAt($theirs))->toBeNull()->and(nbReadAt($mineOnB))->toBeNull();
+});
+
+it('redraws the panel without a notice removed while it was open, and says so in a toast', function (): void {
+    $me = nbMember();
+    $gone = nbNotice($me, 1, 'lead.new', ['name' => 'Khách đã xóa']);
+    nbNotice($me, 1, 'lead.new', ['name' => 'Khách còn lại']);
+
+    $bell = app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($me)->test(NotificationBell::class)->call('load')
+        ->assertSee('Khách đã xóa')->assertSee('<span class="ntf-badge" aria-hidden="true">2</span>', false));
+    DB::connection('pgsql_admin')->table('site_notifications')->where('ulid', $gone)->delete();
+
+    app(Tenancy::class)->enter(1, fn () => $bell->call('open', $gone))
+        ->assertOk()->assertNoRedirect()
+        ->assertDispatched('bs-toast', text: 'Thông báo này không còn nữa — danh sách đã được làm mới.')
+        ->assertDontSee('Khách đã xóa')->assertSee('Khách còn lại')->assertSee('<span class="ntf-badge" aria-hidden="true">1</span>', false);
 });
 
 it('marks all of the reader\'s notices on this site read, nobody else\'s', function (): void {
@@ -216,6 +235,23 @@ it('answers only a member of the site', function (): void {
 
     app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($stranger)->test(NotificationBell::class))->assertStatus(403);
 });
+
+it('reads the badge as the number up to 99 and as "99+" from 100 unread', function (int $count, string $badge): void {
+    $me = nbMember();
+    $rows = [];
+    foreach (range(1, $count) as $i) {
+        $rows[] = ['ulid' => (string) Str::ulid(), 'site_id' => 1, 'user_id' => $me->id, 'kind' => 'lead.new', 'data' => '{"name":"K"}', 'created_at' => now()];
+    }
+    DB::connection('pgsql_admin')->table('site_notifications')->insert($rows);
+
+    $this->actingAs($me)->withSession(['locale' => 'vi'])->get('http://a.test/admin/content')
+        ->assertOk()
+        ->assertSee('<span class="ntf-badge" aria-hidden="true">'.$badge.'</span>', false)
+        ->assertSee('aria-label="Thông báo — '.$badge.' chưa đọc"', false);
+})->with([
+    '99 unread' => [99, '99'],
+    '100 unread' => [100, '99+'],
+]);
 
 it('costs an admin page one bounded read of the notices, however many there are', function (): void {
     $me = nbMember();

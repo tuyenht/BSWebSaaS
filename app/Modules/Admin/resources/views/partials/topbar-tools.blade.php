@@ -72,28 +72,12 @@
 {{-- Notifications — a website's admin: the reader's own notices on this site (the bell component),
      except on an error page inside the frame (errorFrame: the bell would record the page's address,
      and that page never repeats the code it could not find). The platform console has no
-     notification store yet (the design marks it "Chờ backend"): it keeps the honest empty panel, no
-     fake badge. --}}
+     notification store yet: the same panel with the board's "Chờ backend" note and the empty state,
+     no badge, no request. --}}
 @if (! \App\Modules\Admin\Support\AdminPlane::isPlatform() && auth()->user() instanceof \App\Modules\Identity\Models\User)
 @if (empty($errorFrame))
 <livewire:admin.notification-bell />
 @endif
 @else
-<div class="relative" x-data="{ notifOpen: false }">
-    <button type="button" @click="notifOpen = ! notifOpen" :aria-expanded="notifOpen"
-            aria-label="{{ __('admin.notifications') }}"
-            class="grid size-control place-items-center rounded text-topbar-fg any-pointer-coarse:size-hit transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg">
-        <x-bs-admin::icon name="bell" class="size-5" />
-    </button>
-    <div x-show="notifOpen" @click.outside="notifOpen = false" x-transition x-cloak
-         class="absolute end-0 z-30 mt-1 w-72 rounded-md border border-border bg-surface shadow-card">
-        <p class="border-b border-border px-4 py-2.5 text-sm font-semibold text-body-text">{{ __('admin.notifications') }}</p>
-        <div class="grid place-items-center gap-2 px-4 py-8 text-center">
-            <span class="grid size-10 place-items-center rounded-full bg-surface-muted text-body-muted">
-                <x-bs-admin::icon name="bell" class="size-5" />
-            </span>
-            <p class="text-sm text-body-muted">{{ __('admin.notifications_empty') }}</p>
-        </div>
-    </div>
-</div>
+@include('admin::partials.bell-platform')
 @endif
