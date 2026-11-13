@@ -39,7 +39,7 @@
         <form method="POST" action="{{ route('admin.support.leave') }}" class="shrink-0">
             @csrf
             <button type="submit" aria-label="{{ __('admin.support.bar_back_aria') }}"
-                    class="hit-area inline-flex min-h-hit items-center gap-1.5 rounded border border-warning-text bg-surface px-3 text-small font-semibold text-warning-text transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning-text">
+                    class="hit-area inline-flex min-h-hit items-center gap-1.5 rounded border border-warning-text bg-surface px-3 text-small font-semibold text-warning-text transition-colors hover:bg-surface-hover">
                 <x-bs-admin::icon name="ri-arrow-go-back" class="size-4" />
                 <span class="max-[599.98px]:hidden">{{ __('admin.support.bar_back') }}</span>
                 <span class="min-[600px]:hidden">{{ __('admin.support.bar_back_short') }}</span>
