@@ -1,100 +1,93 @@
 {{--
-    Floating contact buttons (`storefront.floating_contact`, normalized by FloatingContact; null =
-    nothing printed). Plain links only — no script. "vertical": round buttons in a corner or along
-    the bottom on every screen; "horizontal": a bar along the bottom on phones (every channel in the
-    admin's order; place N from the 4th shows where its container is N x 4.5rem wide, sf-fc-bar__item--r4..r11,
-    and --rx from the 12th never shows) and the same channels as round buttons from 768px (sf-fc--wide).
-    An invisible copy after the footer (same list classes, so the same size and wrapping) keeps exactly the
-    room they take, so the end of the page — footer links included — always scrolls clear of them:
-    for the bar below 768px and for the round buttons from 768px (sf-fc-ghost--wide), never both; in
-    the vertical theme for the bottom row at every width and for a side stack wherever it can cover the
-    footer's text. Labels wrap at spaces, so a fixed padding could not match. The bar ends with "Mua hàng"
-    when the site has a product list; it always takes one of the first three places, so a narrow phone drops
-    channels from the end and keeps it. Each link
-    carries its name (aria-label), which also holds the word printed on the button (SMS), and the
-    hover label repeats the name for the eye. Colours come from the normalizer (white marks at 3:1,
-    words at 4.5:1; the brand fill uses the brand's own readable ink).
-    A round-button site may add a phone bar (`phone_bar`): below 768px the round buttons give way to a
-    dark bar of up to three equal cells (quick channels, then the site's own cell such as a quote
-    request, drawn with the design's send-a-file glyph) and above it the round buttons stay; no band is
-    reserved under the footer at the wider widths, and the invisible copy under it is dark, like the footer, so the page ends on the bar.
+    Floating contact (`storefront.floating_contact`, worked out by FloatingContact::widget(); null =
+    nothing printed). Every channel is a plain link printed here, so it works before any script.
+    Layouts: combo = round buttons from 768px and the bottom bar below it; vertical = round buttons at
+    every width (on a phone with many channels folded into one dark "Liên hệ" button that opens them);
+    horizontal = the bottom bar on phones only. The bar holds FloatingContact::barSlots(): its "Thêm"
+    cell opens a small sheet above the bar ("Kênh liên hệ khác"), "Mua hàng" always last; a narrow phone
+    drops channel cells from the end (from the fourth cell on, sf-fc-bar__item--r4/r5) and the sheet then
+    lists them. The dial and the sheet open with the browser's popover (Esc, a tap outside and focus
+    return are the browser's); a browser without popover shows their channels in place.
+    On a computer the call button's label shows the number and a "Chép số" button (sf-fc-copy.js,
+    fetched after the page has loaded). With click tracking on, each link names its channel, place and
+    kind of link (never the number or address) for the `bs:contact-click` event (storefront.js).
+    Invisible copies in the page flow after the footer keep the room the buttons and the bar take.
 --}}
 @if (! empty($floatingContact))
 @php
     $fc = $floatingContact;
+    $fcFloat = $fc['layout'] !== 'horizontal';
+    $fcBar = $fc['layout'] !== 'vertical';
     $fcWord = static fn (array $b): string => $b['label']
         ?? (array_key_exists($b['key'], \App\Modules\Theme\Chrome\FloatingContact::CHANNELS) ? __('storefront.fc_'.$b['key']) : __('storefront.fc_contact'));
-    $fcName = static fn (array $b): string => $b['text'] !== null && ! str_contains(mb_strtolower($fcWord($b)), mb_strtolower($b['text']))
-        ? $fcWord($b).' '.$b['text'] : $fcWord($b);
+    $fcEv = static fn (string $channel, string $at, string $link): string => $fc['track']
+        ? ' data-fc="'.e($channel).'" data-fc-at="'.e($at).'" data-fc-lt="'.e($link).'"' : '';
+    $fcRel = static fn (string $href): string => str_starts_with($href, 'http') ? ' rel="noopener"' : '';
+    $fcVars = static fn (array $b): string => '--fc-fill:'.$b['fill'].';--fc-tint:'.$b['tint'];
+    $fcGlyph = static fn (array $b, string $cls): string => $b['zalo']
+        ? '<svg class="'.$cls.'" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 2.5C6.2 2.5 1.5 6.3 1.5 11c0 2.6 1.4 4.9 3.7 6.5l-.9 3.4a.5.5 0 0 0 .7.6l3.9-2.1c1 .3 2 .4 3.1.4 5.8 0 10.5-3.8 10.5-8.5S17.8 2.5 12 2.5z"/><path class="sf-fc__z" d="M7.7 6.6h8.6v1.9l-5.8 5.9h5.8v1.9H7.7v-1.9l5.8-5.9H7.7z"/></svg>'
+        : '<svg class="'.$cls.'" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="'.e($b['icon']).'"/></svg>';
+    $fcIcon = static fn (string $code, string $cls): string => '<svg class="'.$cls.'" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="'.e(\App\Modules\Theme\Chrome\ContactIcons::solid($code) ?? '').'"/></svg>';
     $fcOffsets = '--fc-ox:'.$fc['offset_x'].'px;--fc-oy:'.$fc['offset_y'].'px';
-    // Place of a bar channel in the order buttons drop out on narrow phones: "Mua hàng" stays third.
-    // From the 12th place on a cell never shows (--rx): cells past the 11th (792px at 4.5rem) never fit under 768px.
-    $fcRank = static fn (int $i): string => ($r = $i + 1 + ($fc['buy'] !== null && $i >= 2 ? 1 : 0)) > 3 ? ' sf-fc-bar__item--'.($r > 11 ? 'rx' : 'r'.$r) : '';
-    $fcBarMode = $fc['theme'] === 'horizontal';
+    // Cells that stay on any phone: "Thêm" and "Mua hàng"; a channel cell's place counts them first, so
+    // the fourth and fifth places are the channels a narrow phone lets go (min. three cells).
+    $fcFixed = ($fc['more'] ? 1 : 0) + ($fc['buy'] !== null ? 1 : 0);
+    $fcRank = static fn (int $i): int => $i + 1 + $fcFixed;
+    $fcCells = count($fc['bar']) + $fcFixed;
 @endphp
-@php($fcPb = $fc['phone_bar'])
-@if ($fcBarMode || $fcPb === null)
-<div class="sf-fc-ghost sf-fc-ghost--{{ $fc['position'] === 'bottom' ? 'row' : 'side' }}{{ $fcBarMode ? ' sf-fc-ghost--wide' : '' }}" aria-hidden="true" style="{{ $fcOffsets }};--fc-n:{{ count($fc['buttons']) }}"><div class="sf-fc__list sf-fc__list--{{ $fc['position'] }}">@foreach ($fc['buttons'] as $b)<span class="sf-fc__btn"></span>@endforeach</div></div>
+@if ($fcFloat)
+<div class="sf-fc-ghost sf-fc-ghost--{{ $fc['position'] === 'bottom' ? 'row' : 'side' }}{{ $fc['layout'] === 'combo' ? ' sf-fc-ghost--wide' : '' }}{{ $fc['dial'] ? ' sf-fc-ghost--dial' : '' }}" aria-hidden="true" style="{{ $fcOffsets }};--fc-n:{{ count(array_filter($fc['buttons'], static fn (array $b): bool => $b['key'] !== 'sms')) }}"><div class="sf-fc__list sf-fc__list--{{ $fc['position'] }}">@foreach ($fc['buttons'] as $b)<span class="sf-fc__btn{{ $b['key'] === 'sms' ? ' sf-fc__item--sms' : '' }}"></span>@endforeach @if ($fc['dial'])<span class="sf-fc__btn sf-fc-ghost__dial"></span>@endif</div></div>
 @endif
-<nav class="sf-fc sf-fc--{{ $fc['position'] }}{{ $fcBarMode ? ' sf-fc--wide' : ($fcPb !== null ? ' sf-fc--md' : '') }}" aria-label="{{ __('storefront.fc_nav') }}" style="{{ $fcOffsets }}">
-    <ul class="sf-fc__list sf-fc__list--{{ $fc['position'] }}" role="list">
-        @foreach ($fc['buttons'] as $b)
-            <li><a class="sf-fc__btn{{ $b['pulse'] ? ' sf-fc__btn--pulse' : '' }}" href="{{ $b['href'] }}" aria-label="{{ $fcName($b) }}" style="--fc-fill:{{ $b['fill'] }};--fc-ink:{{ $b['ink'] }}">
-                @if ($b['text'] !== null)
-                    <span class="sf-fc__word" aria-hidden="true">{{ $b['text'] }}</span>
-                @else
-                    <svg class="sf-fc__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="{{ $b['icon'] }}"/></svg>
-                @endif
-                <span class="sf-fc__tip" aria-hidden="true">{{ $fcWord($b) }}</span>
-            </a></li>
-        @endforeach
-    </ul>
-</nav>
-@if (! $fcBarMode && $fcPb !== null)
-<div class="sf-fc-bar sf-fc-bar--board sf-fc-bar--ghost" aria-hidden="true"><ul class="sf-fc-bar__list" role="list">@foreach ($fcPb['bar'] as $b)<li class="sf-fc-bar__item"><span class="sf-fc-bar__link"><span class="sf-fc-bar__dot"></span><span class="sf-fc-bar__label">{{ $fcWord($b) }}</span></span></li>@endforeach @if ($fcPb['cta'] !== null)<li class="sf-fc-bar__item"><span class="sf-fc-bar__link"><span class="sf-fc-bar__dot"></span><span class="sf-fc-bar__label">{{ $fcPb['cta']['label'] }}</span></span></li>@endif</ul></div>
-<nav class="sf-fc-bar sf-fc-bar--board" aria-label="{{ __('storefront.fc_nav') }}">
-    <ul class="sf-fc-bar__list" role="list">
-        @foreach ($fcPb['bar'] as $b)
-            <li class="sf-fc-bar__item"><a class="sf-fc-bar__link" href="{{ $b['href'] }}" @if (str_starts_with($b['href'], 'http')) rel="noopener" @endif style="--fc-fill:{{ $b['fill'] }};--fc-ink:{{ $b['ink'] }}">
-                <span class="sf-fc-bar__dot{{ $b['text'] !== null ? ' sf-fc-bar__dot--chip' : '' }}" aria-hidden="true">
-                    @if ($b['text'] !== null)
-                        <span class="sf-fc-bar__word">{{ $b['text'] }}</span>
-                    @else
-                        <svg class="sf-fc-bar__icon" viewBox="0 0 24 24" focusable="false"><path d="{{ $b['icon'] }}"/></svg>
+@if ($fcBar)
+<div class="sf-fc-bar sf-fc-bar--ghost" aria-hidden="true"><ul class="sf-fc-bar__list">@foreach ($fc['bar'] as $b)<li class="sf-fc-bar__item{{ $fcRank($loop->index) > 3 ? ' sf-fc-bar__item--r'.$fcRank($loop->index) : '' }}"><span class="sf-fc-bar__link"><span class="sf-fc-bar__dot"></span><span class="sf-fc-bar__label">{{ $fcWord($b) }}</span></span></li>@endforeach @if ($fc['more'])<li class="sf-fc-bar__item"><span class="sf-fc-bar__link"><span class="sf-fc-bar__dot"></span><span class="sf-fc-bar__label">{{ __('storefront.fc_more') }}</span></span></li>@endif @if ($fc['buy'] !== null)<li class="sf-fc-bar__item"><span class="sf-fc-bar__link"><span class="sf-fc-bar__dot"></span><span class="sf-fc-bar__label">{{ __('storefront.fc_buy') }}</span></span></li>@endif</ul></div>
+@endif
+<div class="sf-fc sf-fc--{{ $fc['layout'] }}" data-fc-root data-fc-js="{{ \Illuminate\Support\Facades\Vite::asset('resources/js/sf-fc-copy.js') }}">
+@if ($fcFloat)
+    <nav class="sf-fc__float sf-fc__float--{{ $fc['position'] }}{{ $fc['dial'] ? ' sf-fc__float--dial' : '' }}" aria-label="{{ __('storefront.fc_nav') }}" style="{{ $fcOffsets }}">
+        <ul class="sf-fc__list sf-fc__list--{{ $fc['position'] }}" role="list"@if ($fc['dial']) id="sf-fc-dial" popover @endif>
+            @foreach ($fc['buttons'] as $b)
+                <li class="sf-fc__item{{ $b['key'] === 'sms' ? ' sf-fc__item--sms' : '' }}{{ $b['tel'] !== null && $b['key'] === 'phone' ? ' sf-fc__item--call' : '' }}{{ $b['pulse'] ? ' sf-fc__item--pulse' : '' }}" style="{{ $fcVars($b) }}">
+                    <a class="sf-fc__btn" href="{{ $b['href'] }}" aria-label="{{ $fcWord($b) }}"{!! $fcRel($b['href']) !!}{!! $fcEv($b['key'], $fc['dial'] ? 'dial' : 'floating', $b['link']) !!}>{!! $fcGlyph($b, 'sf-fc__icon') !!}<span class="sf-fc__tip" aria-hidden="true">{{ $fcWord($b) }}</span></a>
+                    @if ($b['tel'] !== null && $b['key'] === 'phone')
+                        <span class="sf-fc__label"><span class="sf-fc__label-in"><span class="sf-fc__label-t">{{ $fcWord($b) }} · {{ $b['tel'] }}</span><button type="button" class="sf-fc__copy" data-fc-copy data-done="{{ __('storefront.fc_copied') }}">{!! $fcIcon('ri-file-copy-line', 'sf-fc__copy-i') !!}<span class="sf-fc__copy-t">{{ __('storefront.fc_copy') }}</span></button><span class="sf-fc__sr" role="status"></span></span></span>
                     @endif
-                </span>
-                <span class="sf-fc-bar__label">{{ $fcWord($b) }}</span>
-            </a></li>
-        @endforeach
-        @if ($fcPb['cta'] !== null)
-            <li class="sf-fc-bar__item sf-fc-bar__item--cta"><a class="sf-fc-bar__link" href="{{ $fcPb['cta']['href'] }}"><span class="sf-fc-bar__dot" aria-hidden="true">@include('theme::partials.sf-icon', ['name' => 'upload', 'size' => 22])</span><span class="sf-fc-bar__label">{{ $fcPb['cta']['label'] }}</span></a></li>
+                </li>
+            @endforeach
+        </ul>
+        @if ($fc['dial'])
+            <button type="button" class="sf-fc__dial" popovertarget="sf-fc-dial"{!! $fcEv('dial', 'dial', 'none') !!}>{!! $fcIcon('ri-customer-service-2-fill', 'sf-fc__icon sf-fc__dial-open') !!}{!! $fcIcon('ri-close-line', 'sf-fc__icon sf-fc__dial-shut') !!}<span class="sf-fc__sr sf-fc__dial-open">{{ __('storefront.fc_dial', ['n' => count($fc['buttons'])]) }}</span><span class="sf-fc__sr sf-fc__dial-shut">{{ __('storefront.fc_close') }}</span></button>
         @endif
-    </ul>
-</nav>
+    </nav>
 @endif
-@if ($fcBarMode)
-<div class="sf-fc-bar sf-fc-bar--ghost" aria-hidden="true"><ul class="sf-fc-bar__list" role="list">@foreach ($fc['bar'] as $b)<li class="sf-fc-bar__item{{ $fcRank($loop->index) }}"><span class="sf-fc-bar__link"><span class="sf-fc-bar__dot">@if ($b['text'] !== null)<span class="sf-fc-bar__word">{{ $b['text'] }}</span>@endif</span><span class="sf-fc-bar__label">{{ $fcWord($b) }}</span></span></li>@endforeach @if ($fc['buy'] !== null)<li class="sf-fc-bar__item"><span class="sf-fc-bar__link"><span class="sf-fc-bar__dot"></span><span class="sf-fc-bar__label">{{ __('storefront.fc_buy') }}</span></span></li>@endif</ul></div>
-<nav class="sf-fc-bar" aria-label="{{ __('storefront.fc_nav') }}">
-    <ul class="sf-fc-bar__list" role="list">
-        @foreach ($fc['bar'] as $b)
-            <li class="sf-fc-bar__item{{ $fcRank($loop->index) }}"><a class="sf-fc-bar__link" href="{{ $b['href'] }}" style="--fc-fill:{{ $b['fill'] }};--fc-ink:{{ $b['ink'] }}">
-                <span class="sf-fc-bar__dot" aria-hidden="true">
-                    @if ($b['text'] !== null)
-                        <span class="sf-fc-bar__word">{{ $b['text'] }}</span>
-                    @else
-                        <svg class="sf-fc-bar__icon" viewBox="0 0 24 24" focusable="false"><path d="{{ $b['icon'] }}"/></svg>
-                    @endif
-                </span>
-                <span class="sf-fc-bar__label">{{ $fcWord($b) }}</span>
-            </a></li>
-        @endforeach
-        @if ($fc['buy'] !== null)
-            <li class="sf-fc-bar__item"><a class="sf-fc-bar__link" href="{{ $fc['buy']['href'] }}" style="--fc-fill:{{ $fc['buy']['fill'] }};--fc-ink:{{ $fc['buy']['ink'] }}">
-                <span class="sf-fc-bar__dot" aria-hidden="true"><svg class="sf-fc-bar__icon" viewBox="0 0 24 24" focusable="false"><path d="{{ $fc['buy']['icon'] }}"/></svg></span>
-                <span class="sf-fc-bar__label">{{ __('storefront.fc_buy') }}</span>
-            </a></li>
+@if ($fcBar)
+    <nav class="sf-fc-bar sf-fc-bar--{{ $fc['tone'] }}" aria-label="{{ __('storefront.fc_nav') }}">
+        @if ($fc['more'])
+            <div class="sf-fc-sheet" id="sf-fc-more" popover>
+                <p class="sf-fc-sheet__h">{{ __('storefront.fc_others') }}</p>
+                <ul class="sf-fc-sheet__list" role="list">
+                    @foreach ($fc['bar'] as $b)
+                        @if ($fcRank($loop->index) > 3)
+                            <li class="sf-fc-sheet__item sf-fc-sheet__item--r{{ $fcRank($loop->index) }}"><a class="sf-fc-sheet__row" href="{{ $b['href'] }}"{!! $fcRel($b['href']) !!}{!! $fcEv($b['key'], 'sheet', $b['link']) !!}><span class="sf-fc-bar__dot" style="{{ $fcVars($b) }}">{!! $fcGlyph($b, 'sf-fc-bar__icon') !!}</span><span class="sf-fc-sheet__l">{{ $fcWord($b) }}</span>{!! $fcIcon('ri-arrow-right-s-line', 'sf-fc-sheet__go') !!}</a></li>
+                        @endif
+                    @endforeach
+                    @foreach ($fc['sheet'] as $b)
+                        <li class="sf-fc-sheet__item"><a class="sf-fc-sheet__row" href="{{ $b['href'] }}"{!! $fcRel($b['href']) !!}{!! $fcEv($b['key'], 'sheet', $b['link']) !!}><span class="sf-fc-bar__dot" style="{{ $fcVars($b) }}">{!! $fcGlyph($b, 'sf-fc-bar__icon') !!}</span><span class="sf-fc-sheet__l">{{ $fcWord($b) }}</span>{!! $fcIcon('ri-arrow-right-s-line', 'sf-fc-sheet__go') !!}</a></li>
+                    @endforeach
+                </ul>
+            </div>
         @endif
-    </ul>
-</nav>
+        <ul class="sf-fc-bar__list" role="list" style="--fc-cells:{{ $fcCells }}">
+            @foreach ($fc['bar'] as $b)
+                <li class="sf-fc-bar__item{{ $fcRank($loop->index) > 3 ? ' sf-fc-bar__item--r'.$fcRank($loop->index) : '' }}"><a class="sf-fc-bar__link" href="{{ $b['href'] }}"{!! $fcRel($b['href']) !!}{!! $fcEv($b['key'], 'bar', $b['link']) !!}><span class="sf-fc-bar__dot" style="{{ $fcVars($b) }}">{!! $fcGlyph($b, 'sf-fc-bar__icon') !!}</span><span class="sf-fc-bar__label">{{ $fcWord($b) }}</span></a></li>
+            @endforeach
+            @if ($fc['more'])
+                <li class="sf-fc-bar__item sf-fc-bar__item--more"><button type="button" class="sf-fc-bar__link" popovertarget="sf-fc-more"><span class="sf-fc-bar__dot" style="--fc-fill:{{ \App\Modules\Theme\Chrome\FloatingContact::MORE_COLOR }};--fc-tint:{{ \App\Modules\Theme\Chrome\FloatingContact::MORE_COLOR }}">{!! $fcIcon('ri-more-2-fill', 'sf-fc-bar__icon') !!}</span><span class="sf-fc-bar__label">{{ __('storefront.fc_more') }}</span></button></li>
+            @endif
+            @if ($fc['buy'] !== null)
+                <li class="sf-fc-bar__item"><a class="sf-fc-bar__link" href="{{ $fc['buy']['href'] }}"{!! $fcEv('buy', 'bar', str_starts_with($fc['buy']['href'], '/') ? 'page' : 'web') !!}><span class="sf-fc-bar__dot" style="--fc-fill:{{ $fc['buy']['fill'] }};--fc-tint:{{ $fc['buy']['fill'] }};color:{{ $fc['buy']['ink'] }}">{!! $fcIcon('ri-shopping-bag-fill', 'sf-fc-bar__icon') !!}</span><span class="sf-fc-bar__label">{{ __('storefront.fc_buy') }}</span></a></li>
+            @endif
+        </ul>
+    </nav>
 @endif
+</div>
 @endif

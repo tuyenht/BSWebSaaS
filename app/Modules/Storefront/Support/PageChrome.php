@@ -79,7 +79,7 @@ final readonly class PageChrome
             'header' => $header,
             'footer' => $footer,
             // null = off or no channel to show.
-            'floatingContact' => FloatingContact::for($floating, $locale, $shopHref),
+            'floatingContact' => FloatingContact::widget($floating, $locale, $shopHref),
             'lang' => $locale,
             'hreflang' => $hreflang,
             'dir' => StorefrontChrome::dir($locale),

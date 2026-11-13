@@ -238,3 +238,38 @@ window.addEventListener('hashchange', () => {
         placeTarget();
     }
 });
+
+// Floating contact: the links work with no script. A click on one with click tracking on announces
+// `bs:contact-click` at once (an app link can leave the page before anything else loads); only the
+// "Chép số" code is fetched, on the first touch of the widget or once the page has loaded and gone idle.
+const fc = document.querySelector('[data-fc-root]');
+if (fc) {
+    let copy;
+    // Its address comes from the page (a Vite entry), so this file carries no loader of its own.
+    const more = () => (copy ??= import(/* @vite-ignore */ fc.dataset.fcJs).catch(() => (copy = null)));
+    fc.addEventListener('click', (event) => {
+        const copyButton = event.target.closest('[data-fc-copy]');
+        if (copyButton) {
+            more().then(() => document.dispatchEvent(new CustomEvent('bs:fc-copy', { detail: copyButton })));
+            return;
+        }
+        const link = event.target.closest('[data-fc]');
+        if (!link || document.getElementById(link.getAttribute('popovertarget'))?.matches(':popover-open')) {
+            return; // the dial counts its opening only
+        }
+        document.dispatchEvent(new CustomEvent('bs:contact-click', { detail: {
+            channel: link.dataset.fc,
+            placement: link.dataset.fcAt,
+            device: matchMedia('(max-width: 767.98px)').matches ? 'phone' : 'computer',
+            page_path: location.pathname,
+            link_type: link.dataset.fcLt,
+        } }));
+    });
+    ['pointerover', 'focusin', 'touchstart'].forEach((type) => fc.addEventListener(type, more, { once: true, passive: true }));
+    const idle = () => (window.requestIdleCallback ?? ((f) => setTimeout(f, 3000)))(more);
+    if (document.readyState === 'complete') {
+        idle();
+    } else {
+        window.addEventListener('load', idle, { once: true });
+    }
+}

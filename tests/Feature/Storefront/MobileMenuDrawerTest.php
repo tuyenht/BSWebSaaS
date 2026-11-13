@@ -195,9 +195,9 @@ it('shows the call in the header corner, and drops it while the phone bottom bar
     app(StorefrontSettings::class)->forget();   // the settings are memoized for the request
     $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
     // the header call stays for tablets and is hidden by CSS only where the bar shows (under 768px)
-    expect($html)->toContain('<a class="sf-bar__call sf-bar__call--hasbar" href="tel:')->toContain('class="sf-fc-bar"');
+    expect($html)->toContain('<a class="sf-bar__call sf-bar__call--hasbar" href="tel:')->toContain('class="sf-fc-bar sf-fc-bar--light"');
 
-    // a round-button site with the board-style phone bar does the same
+    // an older round-button site with the phone bar reads as combo and does the same
     app(Tenancy::class)->enter($siteId, fn () => SiteSetting::query()->where('key', 'floating_contact')->update(['value' => [
         'enabled' => true, 'theme' => 'vertical', 'position' => 'right', 'offset_x' => 20, 'offset_y' => 24,
         'channels' => [['key' => 'phone', 'on' => true, 'value' => '0912345678']], 'phone_bar' => ['enabled' => true],
