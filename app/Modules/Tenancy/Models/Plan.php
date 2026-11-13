@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $key
  * @property string $name
  * @property bool $is_active
+ * @property int $sort_order
+ * @property array<string, mixed>|null $meta
  */
 class Plan extends Model
 {

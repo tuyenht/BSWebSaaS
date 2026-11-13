@@ -27,6 +27,7 @@ use App\Modules\Admin\Livewire\SeoSettings;
 use App\Modules\Admin\Livewire\Settings\Domains as DomainSettings;
 use App\Modules\Admin\Livewire\Users\Index as MembersIndex;
 use App\Modules\Admin\Livewire\WorkflowSettings;
+use App\Modules\Admin\Support\PlatformPlans;
 use App\Modules\Admin\Support\Settings\SetBrandImages;
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Catalog\Models\Product;
@@ -52,6 +53,7 @@ use App\Modules\Shared\Http\SafeHttp;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Http\Middleware\SetCurrentSite;
 use App\Modules\Tenancy\Models\ContentSection;
+use App\Modules\Tenancy\Models\Plan;
 use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Theming\AiCrawlerCheck;
@@ -242,6 +244,38 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     foreach ($steps as $name => $open) {
         file_put_contents($dir.'/'.$name.'.html', str_replace([$platform, '</body>'], ['http://'.ADMIN_PREVIEW_HOST, $open.'</body>'], $html));
     }
+
+    // "Gói & tính năng": three plans (one with a customer on it) as the platform super-admin, who
+    // also sees the website types; the same list as a billing operator; and the plan editor.
+    $admin = DB::connection('pgsql_admin');
+    $admin->statement('truncate tenant_history restart identity cascade');
+    $admin->table('tenants')->update(['plan_id' => null]);
+    $admin->statement('delete from plans');
+    $billing = User::factory()->create(['name' => 'Phạm Minh Châu']);
+    app(PlatformAccess::class)->onPlatform(fn () => $billing->assignRole('billing'));
+    app(PlatformAccess::class)->forgetMemo();
+    $plans = app(PlatformPlans::class);
+    $planKeys = [];
+    foreach ([
+        ['Cơ bản', true, ['sites.max' => 1, 'locales.max' => 1, 'custom_domains.max' => 0]],
+        ['Chuyên nghiệp', true, ['workflow.editorial' => true, 'sites.max' => 3, 'locales.max' => 3, 'custom_domains.max' => 1, 'rbac.custom_roles' => true]],
+        ['Doanh nghiệp', false, ['workflow.editorial' => true, 'sites.max' => 10, 'rbac.custom_roles' => true, 'rbac.category_scopes' => true]],
+    ] as [$planName, $sold, $grants]) {
+        $plans->setFeatures($billing, $made = $plans->create($billing, $planName, $sold), $grants);
+        $planKeys[] = $made->key;
+    }
+    $admin->table('tenants')->update(['plan_id' => Plan::query()->where('key', $planKeys[0])->value('id')]);
+    $this->flushSession();
+    foreach (['plans' => [$top, '/plans'], 'plans-edit' => [$top, '/plans/'.$planKeys[1]]] as $name => [$who, $path]) {
+        app(PlatformAccess::class)->forgetMemo();
+        $html = $this->actingAs($who)->get($platform.$path)->assertOk()->getContent();
+        file_put_contents($dir.'/'.$name.'.html', str_replace($platform, 'http://'.ADMIN_PREVIEW_HOST, $html));
+    }
+    $this->flushSession();
+    app(PlatformAccess::class)->forgetMemo();
+    $html = $this->actingAs($billing)->get($platform.'/plans')->assertOk()->getContent();
+    file_put_contents($dir.'/plans-billing.html', str_replace($platform, 'http://'.ADMIN_PREVIEW_HOST, $html));
+    $admin->table('tenants')->update(['plan_id' => null]); // the screens below show the site's own limits, not the plan's
 
     // The approval workflow settings, one collection on and one off, as the platform super-admin.
     app(Tenancy::class)->enter(1, function () use ($top): void {
@@ -573,5 +607,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('data-te-page="suspended"');
     file_put_contents($dir.'/error-suspended.html', $html);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 36);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 39);
 });

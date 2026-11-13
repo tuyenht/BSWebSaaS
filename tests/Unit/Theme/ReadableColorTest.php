@@ -67,3 +67,28 @@ it('darkens on a mid-grey surface, where black contrasts more than white', funct
 
     expect(ReadableColor::ratio((string) $readable, '#949494'))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT);
 });
+
+it('darkens a fill just until white marks on it read at 3:1, as the design board does', function (string $fill, string $ink): void {
+    expect(ReadableColor::inkUnder($fill))->toBe($ink);
+})->with([
+    '#4caf50' => ['#4caf50', '#48a54f'],
+    '#0084ff' => ['#0084ff', '#0084ff'],
+    '#0078ff' => ['#0078ff', '#0078ff'],
+    '#ff4b4b' => ['#ff4b4b', '#ff4b4b'],
+    '#e91e63' => ['#e91e63', '#e91e63'],
+    '#25d366' => ['#25d366', '#25a85d'],
+    '#229ed9' => ['#229ed9', '#229ed9'],
+    '#7360f2' => ['#7360f2', '#7360f2'],
+    '#ff0000' => ['#ff0000', '#ff0000'],
+    '#e1306c' => ['#e1306c', '#e1306c'],
+    '#ea4335' => ['#ea4335', '#ea4335'],
+    '#f7b84b' => ['#f7b84b', '#b48b4c'],
+    '#0ab39c' => ['#0ab39c', '#12a592'],
+    '#ffffff' => ['#ffffff', '#8d929d'],
+    '#ffff00' => ['#ffff00', '#919843'],
+    '#1e40af' => ['#1e40af', '#1e40af'],
+    '#111111' => ['#111111', '#111111'],
+    'upper case reads the same' => ['#4CAF50', '#48a54f'],
+    'css variable untouched' => ['var(--brand)', 'var(--brand)'],
+    'short hex untouched' => ['#abc', '#abc'],
+]);
