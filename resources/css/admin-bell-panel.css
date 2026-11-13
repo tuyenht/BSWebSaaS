@@ -19,7 +19,7 @@
         border: 1px solid var(--color-border-strong);
         border-radius: 6px;
         background: var(--color-surface);
-        color: var(--color-body-text);
+        color: var(--color-text);
         box-shadow: 0 12px 34px rgb(30 32 37 / 0.22);
         font-size: calc(0.875rem + var(--user-text-boost));
         line-height: 1.5;
@@ -36,7 +36,7 @@
 
     .ntf-ht {
         margin-right: auto;
-        color: var(--color-heading);
+        color: var(--color-text-strong);
         font-size: calc(0.9375rem + var(--user-text-boost));
         font-weight: 600;
     }
@@ -61,7 +61,7 @@
         padding: 6px 16px;
         border-top: 1px solid var(--color-border);
         background: var(--color-surface-muted);
-        color: var(--color-body-muted);
+        color: var(--color-text-muted);
         font-size: calc(0.75rem + var(--user-text-boost));
         font-weight: 600;
     }
@@ -90,7 +90,7 @@
     }
 
     .ntf-it[data-unread='1'] {
-        background: color-mix(in srgb, var(--color-accent) 5%, var(--color-surface));
+        background: color-mix(in srgb, var(--color-primary-text) 5%, var(--color-surface));
     }
 
     .ntf-it:hover {
@@ -109,28 +109,28 @@
     }
 
     .ntf-ic[data-t='warn'] {
-        background: color-mix(in srgb, var(--color-admin-warning) 18%, var(--color-surface));
-        color: var(--color-admin-warning-text);
+        background: color-mix(in srgb, var(--color-warning-base) 18%, var(--color-surface));
+        color: var(--color-warning-text);
     }
 
     .ntf-ic[data-t='ok'] {
-        background: color-mix(in srgb, var(--color-admin-success) 14%, var(--color-surface));
-        color: var(--color-admin-success-text);
+        background: color-mix(in srgb, var(--color-success-base) 14%, var(--color-surface));
+        color: var(--color-success-text);
     }
 
     .ntf-ic[data-t='danger'] {
-        background: color-mix(in srgb, var(--color-admin-danger) 14%, var(--color-surface));
-        color: var(--color-admin-danger-text);
+        background: color-mix(in srgb, var(--color-danger-base) 14%, var(--color-surface));
+        color: var(--color-danger-text);
     }
 
     .ntf-ic[data-t='info'] {
-        background: color-mix(in srgb, var(--color-admin-info) 14%, var(--color-surface));
-        color: var(--color-admin-info-text);
+        background: color-mix(in srgb, var(--color-info-base) 14%, var(--color-surface));
+        color: var(--color-info-text);
     }
 
     .ntf-ic[data-t='brand'] {
-        background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
-        color: var(--color-accent);
+        background: color-mix(in srgb, var(--color-primary-text) 12%, var(--color-surface));
+        color: var(--color-primary-text);
     }
 
     .ntf-m {
@@ -141,7 +141,7 @@
     }
 
     .ntf-tx {
-        color: var(--color-heading);
+        color: var(--color-text-strong);
         font-size: calc(0.875rem + var(--user-text-boost));
         line-height: 1.45;
         overflow-wrap: anywhere;
@@ -157,7 +157,7 @@
         align-items: center;
         gap: 2px 8px;
         margin-top: 4px;
-        color: var(--color-body-muted);
+        color: var(--color-text-muted);
         font-size: calc(0.75rem + var(--user-text-boost));
     }
 
@@ -165,7 +165,7 @@
         display: inline-flex;
         align-items: center;
         gap: 4px;
-        color: var(--color-accent);
+        color: var(--color-primary-text);
         font-weight: 600;
     }
 
@@ -174,14 +174,14 @@
         width: 8px;
         height: 8px;
         border-radius: 50%;
-        background: var(--color-accent);
+        background: var(--color-primary-text);
     }
 
     .ntf-act {
         display: inline-flex;
         align-items: center;
         margin-left: auto;
-        color: var(--color-accent);
+        color: var(--color-primary-text);
         font-size: calc(0.8125rem + var(--user-text-boost));
         font-weight: 600;
         white-space: nowrap;
@@ -193,7 +193,7 @@
         align-items: center;
         gap: 6px;
         padding: 28px 16px;
-        color: var(--color-body-muted);
+        color: var(--color-text-muted);
         text-align: center;
     }
 
@@ -206,8 +206,8 @@
         margin: 16px;
         padding: 12px 14px;
         border-radius: 4px;
-        background: color-mix(in srgb, var(--color-admin-danger) 10%, var(--color-surface));
-        color: var(--color-admin-danger-text);
+        background: color-mix(in srgb, var(--color-danger-base) 10%, var(--color-surface));
+        color: var(--color-danger-text);
     }
 
     .ntf-err > span {
