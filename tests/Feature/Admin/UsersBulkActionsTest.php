@@ -180,8 +180,8 @@ it('changes or removes ticked members at a fixed cost per member, whatever the n
         ->and($ten - $five)->toBe(5 * $each)
         ->and($each)->toBe($perMember);
 })->with([
-    'new roles (one granted, one revoked)' => ['roles', 20],
-    'removal (one role revoked)' => ['remove', 14],
+    'new roles (one granted, one revoked)' => ['roles', 13],
+    'removal (one role revoked)' => ['remove', 7],
 ]);
 
 it('keeps at most 250 ticks on the server: a longer forged list is cut to its first 250', function (): void {
