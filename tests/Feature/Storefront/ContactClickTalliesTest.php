@@ -168,7 +168,7 @@ it('counts a site\'s own channel only while its floating contact setting has it'
         ->and(Redis::exists('contact_clicks:1', 'contact_clicks:2', 'contact_clicks:applying:1', 'contact_clicks:applying:2'))->toBe(0);
 });
 
-it('takes no new field once a site\'s buffer holds the cap, and still counts the fields it has', function (): void {
+it('takes no new field of a site\'s own channel once its buffer holds the cap, and still counts built-in channels and the fields it has', function (): void {
     $fields = [];
     for ($slot = 2_000_000; $slot < 2_000_000 + ContactClickCounter::FIELD_CAP; $slot++) {
         $fields["{$slot}|zalo|bar"] = 1;
@@ -177,13 +177,16 @@ it('takes no new field once a site\'s buffer holds the cap, and still counts the
     $counter = app(ContactClickCounter::class);
     $now = CarbonImmutable::parse('2026-11-13 10:00', 'UTC')->getTimestamp();
 
-    $counter->record(1, 'phone', 'bar', $now);                                    // a new field: refused
+    $slot = intdiv($now, ContactClickCounter::SLOT_SECONDS);
+    $counter->record(1, 'c3', 'bar', $now);                                       // a new field of a custom channel: refused
+    $counter->record(1, 'phone', 'bar', $now);                                    // a new field of a built-in channel: counted
     $counter->record(1, 'zalo', 'bar', 2_000_000 * ContactClickCounter::SLOT_SECONDS); // a field it has: counted
-    $counter->record(2, 'phone', 'bar', $now);                                    // another site is not affected
+    $counter->record(2, 'c3', 'bar', $now);                                       // another site is not affected
 
-    expect(Redis::hlen('contact_clicks:1'))->toBe(ContactClickCounter::FIELD_CAP)
+    expect(Redis::hlen('contact_clicks:1'))->toBe(ContactClickCounter::FIELD_CAP + 1)
         ->and((int) Redis::hget('contact_clicks:1', '2000000|zalo|bar'))->toBe(2)
-        ->and(Redis::hexists('contact_clicks:1', intdiv($now, ContactClickCounter::SLOT_SECONDS).'|phone|bar'))->toBeFalse()
+        ->and((int) Redis::hget('contact_clicks:1', "{$slot}|phone|bar"))->toBe(1)
+        ->and(Redis::hexists('contact_clicks:1', "{$slot}|c3|bar"))->toBeFalse()
         ->and(Redis::hlen('contact_clicks:2'))->toBe(1);
 });
 
@@ -244,6 +247,23 @@ it('drains taps a run that died left in its working key, with no new tap to mark
     expect(clickTallies(2))->toBe(['2026-11-13|phone|sheet' => 4])
         ->and(Redis::exists('contact_clicks:flushing:2', 'contact_clicks:applying:2'))->toBe(0)
         ->and(Redis::smembers('contact_clicks:dirty'))->toBe([]);
+});
+
+it('drains taps a run killed mid-batch left in a live buffer, with no new tap to mark the site', function (): void {
+    $slot = intdiv(CarbonImmutable::parse('2026-11-13 10:00', 'Asia/Ho_Chi_Minh')->getTimestamp(), ContactClickCounter::SLOT_SECONDS);
+    Redis::hincrby('contact_clicks:2', "{$slot}|zalo|floating", 3);   // buffered, but already popped off the dirty set
+
+    $this->artisan('contact:flush-clicks')->expectsOutputToContain('Flushed 1 contact click row(s) on 1 site(s), 0 failed.')->assertSuccessful();
+
+    expect(clickTallies(2))->toBe(['2026-11-13|zalo|floating' => 3])
+        ->and(Redis::exists('contact_clicks:2', 'contact_clicks:flushing:2'))->toBe(0);
+});
+
+it('refuses to claim or put back taps another run already moved, so they are never written twice', function (): void {
+    $counter = app(ContactClickCounter::class);
+
+    expect(fn () => $counter->claim(2))->toThrow(RuntimeException::class, 'another run has them')
+        ->and(fn () => $counter->release(2))->toThrow(RuntimeException::class, 'cannot be put back');
 });
 
 it('drops, once, the taps of a site that no longer exists', function (): void {

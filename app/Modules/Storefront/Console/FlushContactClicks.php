@@ -27,8 +27,10 @@ use Throwable;
  * still has it; the built-in channels always count.
  *
  * Each run first sweeps what an earlier run left behind (ContactClickCounter explains the keys): a
- * website whose taken taps were never written is marked dirty again, so they drain; taps that were
- * being written when that run stopped are dropped, because their write may have committed.
+ * website whose taps wait in a live hash or a taken key is marked dirty again, so they drain; taps
+ * that were being written when that run stopped are dropped, because their write may have
+ * committed. A run that finds its taken taps claimed by another run counts the site as failed and
+ * writes nothing: the taps are written once, by the run that claimed them.
  *
  * A website whose rows cannot be written gets its taken taps back in its working key and is marked
  * dirty again after the run, so the next run tries again and nothing is lost; one failing website
@@ -136,19 +138,21 @@ final class FlushContactClicks extends Command
     }
 
     /**
-     * What an earlier run left: taken taps that were never written drain again (marked dirty);
-     * taps whose write may have committed are dropped, never written twice.
+     * What an earlier run left: taps in a live hash or a working key drain again (marked dirty: a
+     * run killed mid-batch had already taken its websites off the dirty set); taps whose write may
+     * have committed are dropped, never written twice.
      */
     private function sweep(ContactClickCounter $counter): void
     {
-        $taken = $counter->leftoverTaken();
-        if ($taken !== []) {
-            $counter->markDirty(...$taken);
+        $left = $counter->leftovers();
+        $waiting = array_values(array_unique([...$left['live'], ...$left['taken']]));
+        if ($waiting !== []) {
+            $counter->markDirty(...$waiting);
         }
 
-        $dropped = $counter->dropLeftoverClaims();
-        if ($dropped > 0) {
-            Log::warning('contact clicks: dropped taps whose write may already have committed', ['sites' => $dropped]);
+        if ($left['applying'] !== []) {
+            $counter->dropClaims($left['applying']);
+            Log::warning('contact clicks: dropped taps whose write may already have committed', ['sites' => count($left['applying'])]);
         }
     }
 

@@ -8,6 +8,7 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Storefront\Models\ContactClickDaily;
 use App\Modules\Theme\Chrome\FloatingContact;
 use Illuminate\Support\Facades\Redis;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -21,9 +22,10 @@ use Throwable;
  * so the tap itself reads no setting (every UTC offset in use is a whole number of quarter hours).
  *
  * Recording is fail-OPEN: a Valkey hiccup must never surface on a visitor's tap, so it is
- * swallowed and the tap is simply not counted. A website's live hash takes at most FIELD_CAP
- * fields: a script sending made-up custom channels cannot grow it without bound (the flush then
- * drops the channels the website never saved).
+ * swallowed and the tap is simply not counted. A website's own channels (`c1`, `c2`, …) add new
+ * fields only while its live hash holds fewer than FIELD_CAP: a script sending made-up custom
+ * channels cannot grow it without bound (the flush then drops the channels the website never
+ * saved), and cannot stop the built-in channels from counting (they are bounded by themselves).
  *
  * Flushing moves a website's taps through two keys: `take()` renames the live hash to
  * `contact_clicks:flushing:{site}` (taken, not yet written), `claim()` renames that to
@@ -42,8 +44,9 @@ final class ContactClickCounter
     private const string APPLYING_PREFIX = 'contact_clicks:applying:';
 
     /**
-     * Most fields one website's live hash takes; a tap that would add one more is not counted, a tap
-     * on a field already there still is. A field is one (quarter hour, channel, placement): at most
+     * Most fields one website's live hash takes before a tap on one of the website's own channels
+     * may no longer add one (it is not counted; a tap on a field already there still is). Built-in
+     * channels are never capped: 12 keys × 4 placements per quarter hour bound them already. A field is one (quarter hour, channel, placement): at most
      * 20 channels (FloatingContact::MAX_CHANNELS) × the 2 placements one page draws (round buttons
      * or speed dial on a computer, phone bar or bottom sheet on a phone) = 40 per quarter hour, and
      * a five-minute flush leaves one or two quarter hours in the hash. 256 keeps a fully loaded
@@ -53,11 +56,12 @@ final class ContactClickCounter
     public const int FIELD_CAP = 256;
 
     /**
-     * Bump a field of the live hash and mark the website dirty, in one atomic step; a NEW field only
-     * while the hash holds fewer than the cap. KEYS: live hash, dirty set. ARGV: field, cap, site.
+     * Bump a field of the live hash and mark the website dirty, in one atomic step; a NEW field of a
+     * capped (custom) channel only while the hash holds fewer than the cap. KEYS: live hash, dirty
+     * set. ARGV: field, cap, site, capped ('1' or '0').
      */
     private const string RECORD_SCRIPT = <<<'LUA'
-        if redis.call('HEXISTS', KEYS[1], ARGV[1]) == 0 and redis.call('HLEN', KEYS[1]) >= tonumber(ARGV[2]) then
+        if ARGV[4] == '1' and redis.call('HEXISTS', KEYS[1], ARGV[1]) == 0 and redis.call('HLEN', KEYS[1]) >= tonumber(ARGV[2]) then
             return 0
         end
         redis.call('HINCRBY', KEYS[1], ARGV[1], 1)
@@ -90,6 +94,7 @@ final class ContactClickCounter
                 self::RECORD_SCRIPT, 2,
                 self::KEY_PREFIX.$siteId, self::DIRTY,
                 intdiv($at, self::SLOT_SECONDS).'|'.$channel.'|'.$placement, self::FIELD_CAP, $siteId,
+                FloatingContact::typeOf($channel) === 'custom' ? '1' : '0',
             );
         } catch (Throwable) {
             // best-effort tally: never let it break a visitor's tap
@@ -169,13 +174,18 @@ final class ContactClickCounter
      */
     public function claim(int $siteId): void
     {
-        Redis::rename(self::WORKING_PREFIX.$siteId, self::APPLYING_PREFIX.$siteId);
+        // RENAME of a missing key returns false (it does not throw): another run took these taps.
+        if (Redis::rename(self::WORKING_PREFIX.$siteId, self::APPLYING_PREFIX.$siteId) !== true) {
+            throw new RuntimeException("The taken taps of site {$siteId} are gone: another run has them.");
+        }
     }
 
     /** The write failed and rolled back: the taps go back to the working key for the next run. */
     public function release(int $siteId): void
     {
-        Redis::rename(self::APPLYING_PREFIX.$siteId, self::WORKING_PREFIX.$siteId);
+        if (Redis::rename(self::APPLYING_PREFIX.$siteId, self::WORKING_PREFIX.$siteId) !== true) {
+            throw new RuntimeException("The claimed taps of site {$siteId} are gone: they cannot be put back.");
+        }
     }
 
     /** The claimed taps are stored (or are to be dropped): delete them. */
@@ -185,42 +195,18 @@ final class ContactClickCounter
     }
 
     /**
-     * Websites with a working key left by a run that died after taking it (SCAN, cursor by cursor,
-     * never KEYS): they are marked dirty again so the next flush drains them.
+     * One SCAN pass over this counter's keys (cursor by cursor, never KEYS), sorted by kind: `live`
+     * and `taken` are websites whose taps wait in a live hash or a working key (a run that died may
+     * have taken them off the dirty set), `applying` are websites with an applying key left over.
      *
-     * @return list<int>
+     * @return array{live: list<int>, taken: list<int>, applying: list<int>}
      */
-    public function leftoverTaken(): array
-    {
-        return $this->scanSites(self::WORKING_PREFIX);
-    }
-
-    /**
-     * Websites with an applying key left over: its write may or may not have committed, so it is
-     * dropped, never written again. Returns how many were dropped.
-     */
-    public function dropLeftoverClaims(): int
-    {
-        $sites = $this->scanSites(self::APPLYING_PREFIX);
-        foreach (array_chunk($sites, self::SCAN_COUNT) as $chunk) {
-            Redis::del(...array_map(static fn (int $site): string => self::APPLYING_PREFIX.$site, $chunk));
-        }
-
-        return count($sites);
-    }
-
-    /**
-     * The website ids of the keys `{prefix}{site}`, read with SCAN. The connection's key prefix is
-     * added to the pattern (phpredis prefixes commands, not SCAN's MATCH) and read past in the keys.
-     *
-     * @return list<int>
-     */
-    private function scanSites(string $prefix): array
+    public function leftovers(): array
     {
         $connection = Redis::connection();
-        $full = Cast::string($connection->_prefix('')).$prefix;
-        $pattern = '/\A'.preg_quote($full, '/').'([1-9]\d*)\z/';
-        $sites = [];
+        $full = Cast::string($connection->_prefix('')).self::KEY_PREFIX;
+        $pattern = '/\A'.preg_quote($full, '/').'(?:(flushing|applying):)?([1-9]\d*)\z/';
+        $found = ['live' => [], 'taken' => [], 'applying' => []];
         $cursor = null;
 
         do {
@@ -231,12 +217,30 @@ final class ContactClickCounter
             [$cursor, $keys] = $step;
             foreach (is_array($keys) ? $keys : [] as $key) {
                 if (is_string($key) && preg_match($pattern, $key, $m) === 1) {
-                    $sites[(int) $m[1]] = (int) $m[1];
+                    $kind = match ($m[1]) {
+                        'flushing' => 'taken',
+                        'applying' => 'applying',
+                        default => 'live',
+                    };
+                    $found[$kind][(int) $m[2]] = (int) $m[2];
                 }
             }
         } while ($cursor !== 0 && $cursor !== '0' && $cursor !== null);
 
-        return array_values($sites);
+        return array_map(array_values(...), $found);
+    }
+
+    /**
+     * Drop the applying keys of these websites: their write may or may not have committed, so they
+     * are never written again.
+     *
+     * @param  list<int>  $sites
+     */
+    public function dropClaims(array $sites): void
+    {
+        foreach (array_chunk($sites, self::SCAN_COUNT) as $chunk) {
+            Redis::del(...array_map(static fn (int $site): string => self::APPLYING_PREFIX.$site, $chunk));
+        }
     }
 
     /**
