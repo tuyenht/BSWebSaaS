@@ -153,6 +153,28 @@ test('when no copy works, the number is selected and the button keeps saying “
     assert.equal(doc.querySelector('.sf-fc__copy-t').textContent, 'Chép số');
 });
 
+test('when the copy code never arrives but the click already wrote the number, it says “Đã chép” and then goes back', async () => {
+    const wrote = [];
+    const { doc, click } = await start(widget('/missing-chunk.js'), { wide: true, clipboard: { writeText: (text) => (wrote.push(text), Promise.resolve()) } });
+    const timers = [];
+    const real = globalThis.setTimeout;
+    globalThis.setTimeout = (fn, ms) => (ms === 2000 ? timers.push(fn) : real(fn, ms));
+
+    try {
+        click('copy');
+        await new Promise((resolve) => real(resolve, 50));
+        assert.deepEqual(wrote, ['0912345678']);
+        assert.equal(doc.querySelector('.sf-fc__copy-t').textContent, 'Đã chép');
+        assert.equal(doc.querySelector('[role="status"]').textContent, 'Đã chép');
+        assert.equal(timers.length, 1, 'goes back after about two seconds');
+        timers[0]();
+        assert.equal(doc.querySelector('.sf-fc__copy-t').textContent, 'Chép số');
+        assert.equal(doc.querySelector('[role="status"]').textContent, '');
+    } finally {
+        globalThis.setTimeout = real;
+    }
+});
+
 test('the copy code itself selects the number when the clipboard refuses', async () => {
     const { doc, click, w } = await start(widget(chunk()), { wide: true, clipboard: { writeText: () => Promise.reject(new Error('denied')) } });
     w.document.execCommand = () => false;

@@ -256,8 +256,17 @@ if (fc) {
         if (button) {
             // Before the copy code has arrived, write while the click still counts as the visitor's.
             const wrote = ready ? 0 : navigator.clipboard?.writeText(button.closest('li').querySelector('a').getAttribute('href').slice(4)).then(() => 1, () => 0);
-            // No copy code (the network failed): the number is selected, ready for Ctrl/Cmd+C.
-            more().then((ok) => (ok ? document.dispatchEvent(new CustomEvent('bs:fc-copy', { detail: { button, wrote } })) : getSelection().selectAllChildren(button.parentNode.querySelector('.sf-fc__num'))));
+            // No copy code (the network failed): the click's own write still says "Đã chép" if it worked,
+            // otherwise the number is selected, ready for Ctrl/Cmd+C.
+            more().then((ok) => (ok ? document.dispatchEvent(new CustomEvent('bs:fc-copy', { detail: { button, wrote } })) : Promise.resolve(wrote).then((did) => {
+                const [text, say] = ['.sf-fc__copy-t', '.sf-fc__sr'].map((q) => button.parentNode.querySelector(q));
+                if (!did) {
+                    return getSelection().selectAllChildren(button.parentNode.querySelector('.sf-fc__num'));
+                }
+                text.dataset.was ??= text.textContent;
+                text.textContent = say.textContent = button.dataset.done;
+                setTimeout(() => ((text.textContent = text.dataset.was), (say.textContent = '')), 2000);
+            })));
             return;
         }
         const link = event.target.closest('[data-fc]');
