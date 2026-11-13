@@ -177,3 +177,5 @@ release_smoke() {
 release_rollback() { # data the old code (d643516b) cannot read
     echo "     Không có dữ liệu mới: bản cũ chỉ không hiện câu ghi chú dưới các nút vị trí."
 }
+# Run 13/11/2026 18:10 (tmux deploy-3d003d9e-13181041, launched by the AI): XONG, prod at 3d003d9e; 158 OK, 0 LỖI/LỆCH;
+# 0 error lines in the app log after the reload. Log: plans/reports/deploy-runs/d643516-3d003d9e-run-20261113-181041.log
