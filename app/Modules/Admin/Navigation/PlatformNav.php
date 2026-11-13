@@ -46,6 +46,7 @@ final readonly class PlatformNav
                 ]],
                 'operations' => ['admin.platform_nav_operations', [
                     ['audit', $may('platform.audit.view'), 'platform.audit.index', 'platform.audit.*', 'admin.platform_audit', 'ri-file-shield-2'],
+                    ['support', $may('platform.sites.impersonate'), 'platform.support.index', 'platform.support.*', 'admin.platform_support', 'ri-login-circle'],
                     ['settings', $isSuper, 'platform.settings.email', 'platform.settings.*', 'admin.platform_settings', 'ri-settings-3'],
                 ]],
             ];

@@ -95,11 +95,11 @@ it('groups the console nav under headings with an icon per link, in the design o
         ->toBe([__('admin.platform_nav_customers'), __('admin.platform_nav_plans'), __('admin.platform_nav_operations')]);
 
     $links = array_merge(...array_map(fn (NavSection $s): array => $s->items, $sections));
-    expect(array_map(fn (NavItem $i): string => $i->key, $links))->toBe(['tenants', 'sites', 'plans', 'audit', 'settings'])
+    expect(array_map(fn (NavItem $i): string => $i->key, $links))->toBe(['tenants', 'sites', 'plans', 'audit', 'support', 'settings'])
         ->and(array_map(fn (NavItem $i): ?string => $i->icon, $links))
-        ->toBe(['ri-building-2', 'ri-window', 'ri-price-tag-3', 'ri-file-shield-2', 'ri-settings-3'])
+        ->toBe(['ri-building-2', 'ri-window', 'ri-price-tag-3', 'ri-file-shield-2', 'ri-login-circle', 'ri-settings-3'])
         ->and(array_map(fn (NavItem $i): ?string => $i->url, $links))
-        ->toBe([route('platform.tenants.index'), route('platform.sites.index'), route('platform.plans.index'), route('platform.audit.index'), route('platform.settings.email')]);
+        ->toBe([route('platform.tenants.index'), route('platform.sites.index'), route('platform.plans.index'), route('platform.audit.index'), route('platform.support.index'), route('platform.settings.email')]);
 });
 
 it('marks only the current page link active, its detail and sibling pages included', function (string $route, string $active): void {
@@ -113,6 +113,7 @@ it('marks only the current page link active, its detail and sibling pages includ
     'customer detail' => ['platform.tenants.show', 'tenants'],
     'website detail' => ['platform.sites.show', 'sites'],
     'audit log' => ['platform.audit.index', 'audit'],
+    'support sessions' => ['platform.support.index', 'support'],
     'plan editor' => ['platform.plans.edit', 'plans'],
     'security settings' => ['platform.settings.security', 'settings'],
 ]);

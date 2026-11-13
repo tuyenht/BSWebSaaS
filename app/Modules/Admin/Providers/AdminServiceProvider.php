@@ -31,6 +31,7 @@ use App\Modules\Admin\Livewire\Platform\Plans\Edit as PlatformPlansEdit;
 use App\Modules\Admin\Livewire\Platform\Plans\Index as PlatformPlansIndex;
 use App\Modules\Admin\Livewire\Platform\Sites\Detail as PlatformSitesDetail;
 use App\Modules\Admin\Livewire\Platform\Sites\Index as PlatformSitesIndex;
+use App\Modules\Admin\Livewire\Platform\Support\Index as PlatformSupportIndex;
 use App\Modules\Admin\Livewire\Platform\Tenants\ChangePlanDialog as PlatformChangePlanDialog;
 use App\Modules\Admin\Livewire\Platform\Tenants\Detail as PlatformTenantsDetail;
 use App\Modules\Admin\Livewire\Platform\Tenants\Index as PlatformTenantsIndex;
@@ -141,6 +142,7 @@ final class AdminServiceProvider extends ServiceProvider
         Livewire::component('admin.platform.sites.detail', PlatformSitesDetail::class);
         Livewire::component('admin.platform.audit.index', PlatformAuditIndex::class);
         Livewire::component('admin.platform.audit.cleanup-dialog', PlatformAuditCleanupDialog::class);
+        Livewire::component('admin.platform.support.index', PlatformSupportIndex::class);
         Livewire::component('admin.platform.plans.index', PlatformPlansIndex::class);
         Livewire::component('admin.platform.plans.edit', PlatformPlansEdit::class);
 

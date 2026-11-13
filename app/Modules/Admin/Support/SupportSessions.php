@@ -147,6 +147,72 @@ final readonly class SupportSessions
     }
 
     /**
+     * The "Nhân viên" choices: the staff members behind the sessions matching the period and the
+     * search (not the staff filter, not the tab), each with how many sessions they opened, in one
+     * grouped query over the support rows; the members already chosen are always named, at 0
+     * when nothing matches them now. Sorted by name, diacritics ignored.
+     *
+     * @param  list<string>  $chosen  ulids of the staff members already chosen
+     * @return list<array{value: string, label: string, count: int}>
+     *
+     * @throws AuthorizationException
+     */
+    public function staffChoices(User $viewer, ?int $days = null, string $search = '', array $chosen = []): array
+    {
+        $this->assertViewer($viewer);
+        $counts = [];
+        foreach ($this->filtered(CarbonImmutable::now(), [], $days, $search)->toBase()
+            ->whereNotNull('impersonator_id')
+            ->selectRaw('impersonator_id, count(*) AS n')->groupBy('impersonator_id')->get() as $row) {
+            $counts[Cast::int($row->impersonator_id)] = Cast::int($row->n);
+        }
+        if ($counts === [] && $chosen === []) {
+            return [];
+        }
+
+        $choices = [];
+        foreach (User::query()
+            ->where(fn (Builder $w) => $w->whereIn('id', array_keys($counts))->when($chosen !== [], fn (Builder $o) => $o->orWhereIn('ulid', $chosen)))
+            ->get(['id', 'ulid', 'name', 'email']) as $user) {
+            // a chosen code that is not a staff member's (a hand-made link) names nobody
+            if (! isset($counts[Cast::int($user->getKey())]) && ! $this->platform->isOperator($user)) {
+                continue;
+            }
+            $choices[] = [
+                'value' => Cast::string($user->getAttribute('ulid')),
+                'label' => SupportSession::labelOf($user),
+                'count' => $counts[Cast::int($user->getKey())] ?? 0,
+            ];
+        }
+        usort($choices, fn (array $a, array $b): int => strcmp(VietnameseFold::text($a['label']), VietnameseFold::text($b['label'])) ?: strcmp($a['value'], $b['value']));
+
+        return $choices;
+    }
+
+    /**
+     * One session as a row of the list, by its code, or null when no session has it.
+     *
+     * @return array{session: string, site_ulid: string|null, site_name: string|null,
+     *               member: string, member_roles: list<string>, staff: string, reason: string, minutes: int,
+     *               started_at: CarbonImmutable, ends_at: CarbonImmutable, status: string, why: string|null,
+     *               ended_by: string|null, can_end: bool}|null
+     *
+     * @throws AuthorizationException
+     */
+    public function row(User $viewer, string $sessionUlid): ?array
+    {
+        $this->assertViewer($viewer);
+        $entered = $sessionUlid === '' ? null : AuditLog::query()
+            ->whereRaw(self::HAS_CODE)
+            ->where('support_session_ulid', $sessionUlid)
+            ->where('action', self::ENTERED)
+            ->orderBy('created_at')->orderBy('id')
+            ->first(['id', 'created_at', 'actor_id', 'actor_label', 'impersonator_id', 'impersonator_label', 'site_id', 'meta', 'support_session_ulid']);
+
+        return $entered === null ? null : $this->shown($viewer, new Collection([$entered]), CarbonImmutable::now())[0];
+    }
+
+    /**
      * Whether the session with this code has an end row (written by the console, by a newer
      * session of the same staff member, or by the session itself). One indexed lookup; $since
      * (the earliest the session can have started) keeps it on the recent months.

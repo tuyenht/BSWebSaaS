@@ -41,6 +41,9 @@
         'invite-expired' => ['[--c:var(--color-danger-text)]', 'ri-time'],
         'invite-revoked' => ['[--c:var(--color-text-muted)]', 'ri-close-circle'],
         'invite-accepted' => ['[--c:var(--color-success-text)]', 'ri-checkbox-circle'],
+        // a support session: still open, or over (left, timed out, ended from the console…)
+        'support-open' => ['[--c:var(--color-info-text)]', 'ri-user-shared'],
+        'support-ended' => ['[--c:var(--color-text)]', 'ri-logout-box-r'],
     ];
     [$tone, $icon] = $tones[$status] ?? ['[--c:var(--color-text)]', null];
 

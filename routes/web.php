@@ -37,6 +37,7 @@ use App\Modules\Admin\Livewire\Platform\Plans\Edit as PlanEdit;
 use App\Modules\Admin\Livewire\Platform\Plans\Index as PlansIndex;
 use App\Modules\Admin\Livewire\Platform\Sites\Detail as SiteDetail;
 use App\Modules\Admin\Livewire\Platform\Sites\Index as SiteIndex;
+use App\Modules\Admin\Livewire\Platform\Support\Index as SupportSessionsIndex;
 use App\Modules\Admin\Livewire\Platform\Tenants\Detail;
 use App\Modules\Admin\Livewire\Platform\Tenants\Index;
 use App\Modules\Admin\Livewire\ResetPassword;
@@ -140,6 +141,9 @@ Route::domain((string) config('tenancy.platform_host'))
         // (checked by the component on every request, including Livewire updates).
         Route::get('/sites/{ulid}/domains', DomainSettings::class)->name('platform.sites.domains');
         Route::get('/audit', AuditIndex::class)->name('platform.audit.index');
+        // "Đăng nhập hỗ trợ": every support session, read out of the audit trail; needs
+        // platform.sites.impersonate (checked by the component on every request, actions included).
+        Route::get('/support', SupportSessionsIndex::class)->name('platform.support.index');
         // "Thông báo": the console has no notification store yet — the page shows its empty state.
         Route::get('/notifications', PlatformNotifications::class)->name('platform.notifications');
         // Plans and features (+ the read-only website types at #loai-website); writes need platform.billing.manage
