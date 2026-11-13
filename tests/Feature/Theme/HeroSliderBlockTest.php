@@ -102,6 +102,20 @@ it('drops a button whose link is unsafe and escapes slide text', function (strin
         ->and($html)->toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
 })->with(['javascript:alert(1)', '//evil.example/x', 'data:text/html,x']);
 
+it('keeps the arrows at the sides on a phone, with the text clear of them', function (): void {
+    $css = (string) file_get_contents(resource_path('css/sf-slider.css'));
+    preg_match('/@media \(max-width: 639\.98px\) \{\s*\.sf-slider__prev \{.*?\n\}/s', $css, $phone);
+
+    // A phone shows the arrows (never display: none), halfway down at each side, 0.25rem from the window;
+    // the slide's text keeps 3rem each side, wider than the arrow's 44px hit area, so none covers it.
+    expect($phone[0] ?? '')->not->toBe('')
+        ->and($css)->not->toMatch('/\.sf-slider__(prev|next)[^{]*\{[^}]*display: none/')
+        ->and($phone[0])->not->toContain('position: relative')
+        ->and($phone[0])->toMatch('/\.sf-slider__prev \{\s*left: 0\.25rem;/')
+        ->and($phone[0])->toMatch('/\.sf-slider__next \{\s*right: 0\.25rem;/')
+        ->and($phone[0])->toMatch('/\.sf-slide__content \{\s*padding: 2\.5rem 3rem 4\.5rem;/');
+});
+
 describe('on a page', function (): void {
     beforeEach(function (): void {
         StorefrontCards::reset();
