@@ -240,6 +240,8 @@
     "admin.support.bar_back": "返回管理后台",
     "admin.support.bar_back_short": "返回",
     "admin.support.bar_back_aria": "返回管理后台 — 结束支持会话",
+    "admin.support.session_unknown": "找不到此支持会话。",
+    "admin.support.end_not_yours": "只有平台管理员可以结束他人的会话。",
     "admin.oauth_no_refresh_token": "提供商未返回刷新令牌。请重新授予离线访问权限后重试。",
     "admin.oauth_connected_ok": "已连接邮件账户。",
     "admin.oauth_login_no_account": "没有与此邮箱匹配的账户。",

@@ -240,6 +240,8 @@
     "admin.support.bar_back": "Back to the console",
     "admin.support.bar_back_short": "Back",
     "admin.support.bar_back_aria": "Back to the console — ends the support session",
+    "admin.support.session_unknown": "This support session was not found.",
+    "admin.support.end_not_yours": "Only a platform administrator can end someone else's session.",
     "admin.oauth_no_refresh_token": "The provider didn't return a refresh token. Re-grant offline access and try again.",
     "admin.oauth_connected_ok": "Email account connected.",
     "admin.oauth_login_no_account": "No account matches this email.",

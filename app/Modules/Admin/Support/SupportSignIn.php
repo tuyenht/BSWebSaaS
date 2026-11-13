@@ -14,6 +14,7 @@ use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Models\Site;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -28,6 +29,9 @@ use Illuminate\Validation\ValidationException;
  *    sign-in, and the target is a member of the site — never the staff member, never platform staff.
  *  - Each link starts a session with its own code (a ulid): the "issued" row carries it, the link
  *    hands it to SupportSession, and every row of the session then carries it too.
+ *  - A session ends from the console too (end()), and a staff member has one open session at a
+ *    time: entering a new one ends the others (endOthers()). Either writes the session's
+ *    `support.session.ended` row, which EnforceSupportSession sees on the member's next request.
  */
 final readonly class SupportSignIn
 {
@@ -43,6 +47,7 @@ final readonly class SupportSignIn
         private PlatformAccess $platform,
         private SupportAccess $access,
         private Entitlement $entitlement,
+        private SupportSessions $sessions,
     ) {}
 
     /**
@@ -112,6 +117,72 @@ final readonly class SupportSignIn
             'minutes' => Cast::int($data['minutes'] ?? null),
             'session_ulid' => Cast::string($data['session_ulid'] ?? null) ?: null,
         ];
+    }
+
+    /**
+     * "Kết thúc phiên ngay" from the console: the staff member ends their own session, the
+     * platform super-admin anyone's. The end row is written in the same transaction as the check
+     * (under a lock on the session's code), so ending twice, or from two tabs at once, writes one
+     * row. Returns false when the session was already over (ended, or its time up): nothing is
+     * written then.
+     *
+     * @throws AuthorizationException no right to end it
+     * @throws ValidationException no session with this code
+     */
+    public function end(User $actor, string $sessionUlid): bool
+    {
+        $this->assertStaff($actor);
+
+        $entered = $this->sessions->entered($sessionUlid);
+        if ($entered === null) {
+            throw ValidationException::withMessages(['session' => __('admin.support.session_unknown')]);
+        }
+        if (Cast::int($entered->getAttribute('impersonator_id')) !== Cast::int($actor->getKey())
+            && ! $this->platform->isSuperAdmin($actor)) {
+            throw new AuthorizationException(__('admin.support.end_not_yours'));
+        }
+
+        return DB::transaction(function () use ($entered, $sessionUlid): bool {
+            DB::select('select pg_advisory_xact_lock(hashtextextended(?, 0))', ['support-session-end:'.$sessionUlid]);
+            if (! $this->sessions->isOpen($entered)) {
+                return false;
+            }
+
+            // Recorded or the whole end fails: this row is what ends the session on the site.
+            Audit::recordOrFail(AuditService::SUPPORT_SESSION_ENDED, [
+                'site_id' => $entered->getAttribute('site_id'),
+                'support_session_ulid' => $sessionUlid,
+                'meta' => ['why' => 'ended_by'],
+            ]);
+
+            return true;
+        });
+    }
+
+    /**
+     * Entering a new session ends the staff member's other open ones (on any site, in any
+     * browser) as replaced. Call it on the site host after the browser's own session data is gone
+     * and before the new session starts, so each row carries the code of the session it ends.
+     */
+    public function endOthers(User $staff, ?string $exceptUlid): void
+    {
+        // Two enters by the same staff member at once: the second waits here until the first
+        // request's transaction (which writes its entered row) commits, then sees it and ends it.
+        DB::select('select pg_advisory_xact_lock(hashtextextended(?, 0))', ['support-session-enter:'.Cast::int($staff->getKey())]);
+
+        foreach ($this->sessions->openCodesOf(Cast::int($staff->getKey())) as $code => $siteId) {
+            if ($code === $exceptUlid) {
+                continue;
+            }
+            // Recorded or the enter fails: this row is what ends the old session on its site.
+            Audit::recordOrFail(AuditService::SUPPORT_SESSION_ENDED, [
+                'site_id' => $siteId,
+                'actor_id' => $staff->getKey(),
+                'actor_label' => $staff->getAttribute('email'),
+                'support_session_ulid' => $code,
+                'meta' => ['why' => 'replaced'],
+            ]);
+        }
     }
 
     /** @throws AuthorizationException */

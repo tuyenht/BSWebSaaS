@@ -34,9 +34,17 @@ final class AuditService
     public const string SUPPORT_SESSION_ISSUED = 'support.session.issued';
 
     /**
+     * The end of a support session. Inside the session it carries the session's own code; written
+     * from outside any support session (the console's "Kết thúc phiên ngay", a newer session of the
+     * same staff member) the caller names the session it ends.
+     */
+    public const string SUPPORT_SESSION_ENDED = 'support.session.ended';
+
+    /**
      * @param  array<string, mixed>  $context  optional overrides: site_id, actor_id,
      *                                         actor_label, auditable_type, auditable_id, meta,
-     *                                         support_session_ulid (read only on SUPPORT_SESSION_ISSUED)
+     *                                         support_session_ulid (read only on SUPPORT_SESSION_ISSUED,
+     *                                         and on SUPPORT_SESSION_ENDED outside a support session)
      */
     public function record(string $action, array $context = []): void
     {
@@ -87,11 +95,17 @@ final class AuditService
             'actor_label' => $context['actor_label'] ?? ($user instanceof User ? $user->email : null),
             'impersonator_id' => $support['staff_id'] ?? null,
             'impersonator_label' => $support['staff_label'] ?? null,
-            // The caller names the code only on the console's "issued" row; everywhere else it comes
-            // from the session itself, so no caller can stamp a row with another session's code.
-            'support_session_ulid' => ($action === self::SUPPORT_SESSION_ISSUED ? $context['support_session_ulid'] ?? null : null)
-                ?? $support['session_ulid'] ?? null,
-            'site_id' => $context['site_id'] ?? ($current->hasId() ? $current->id() : null),
+            // The caller names the code only on the console's "issued" row and on an "ended" row
+            // written outside any support session; everywhere else it comes from the session itself,
+            // so no caller can stamp a row of a session with another session's code.
+            'support_session_ulid' => match (true) {
+                $action === self::SUPPORT_SESSION_ISSUED => $context['support_session_ulid'] ?? $support['session_ulid'] ?? null,
+                $action === self::SUPPORT_SESSION_ENDED && $support === null => $context['support_session_ulid'] ?? null,
+                default => $support['session_ulid'] ?? null,
+            },
+            // A caller that names the site (even none) is taken at its word; only an unnamed one
+            // falls back to the site of the request.
+            'site_id' => array_key_exists('site_id', $context) ? $context['site_id'] : ($current->hasId() ? $current->id() : null),
             'action' => $action,
             'auditable_type' => $context['auditable_type'] ?? null,
             'auditable_id' => $context['auditable_id'] ?? null,

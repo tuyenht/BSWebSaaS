@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Facade;
 
 /**
  * @method static void record(string $action, array<string, mixed> $context = [])
+ * @method static string recordOrFail(string $action, array<string, mixed> $context = [])
  *
  * @see AuditService
  */

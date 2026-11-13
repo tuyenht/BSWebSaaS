@@ -5,19 +5,25 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Http\Middleware;
 
 use App\Modules\Admin\Support\SupportAccess;
+use App\Modules\Admin\Support\SupportSessions;
+use App\Modules\Admin\Support\SupportSignIn;
+use App\Modules\Audit\AuditService;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Entitlement\Entitlement;
+use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Ends a support session at the first request after it stops being allowed: its time is up, it is
+ * Ends a support session at the first request after it stops being allowed: it was ended from the
+ * console or replaced by a newer session of the same staff member (an end row with its code
+ * exists: the member is signed out and nothing more is written), its time is up, it is
  * on another site's host, the staff member lost the right, the owner switched support sign-in off,
  * or the site is no longer active. Runs on the admin pages AND on /livewire/update, which skips
  * the admin route middleware.
@@ -30,6 +36,7 @@ final readonly class EnforceSupportSession
         private PlatformAccess $platform,
         private SupportAccess $access,
         private Entitlement $entitlement,
+        private SupportSessions $sessions,
     ) {}
 
     /**
@@ -38,12 +45,19 @@ final readonly class EnforceSupportSession
     public function handle(Request $request, Closure $next): Response
     {
         $session = $this->support->current();
-        $why = $session !== null ? $this->whyEnd($session) : null;
-        if ($why === null) {
+        if ($session === null) {
             return $next($request);
         }
 
-        Audit::record('support.session.ended', ['meta' => ['why' => $why]]);
+        $endedElsewhere = $this->endedElsewhere($session);
+        $why = $endedElsewhere ? null : $this->whyEnd($session);
+        if (! $endedElsewhere && $why === null) {
+            return $next($request);
+        }
+
+        if ($why !== null) {
+            Audit::record(AuditService::SUPPORT_SESSION_ENDED, ['meta' => ['why' => $why]]);
+        }
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
@@ -51,6 +65,24 @@ final readonly class EnforceSupportSession
         abort_if($request->hasHeader('X-Livewire') || $request->expectsJson(), 403, __('admin.support.ended'));
 
         return redirect()->route('admin.login')->with('status', __('admin.support.ended'));
+    }
+
+    /**
+     * Whether the session's end is already on record (one lookup on the session-code index; the
+     * session began at most the longest duration, plus the link's minute, before it expires).
+     *
+     * @param  array{staff_id: int, staff_label: string, reason: string, site_id: int, expires_at: int, session_ulid: string|null}  $session
+     */
+    private function endedElsewhere(array $session): bool
+    {
+        if ($session['session_ulid'] === null) {
+            return false;
+        }
+
+        $since = CarbonImmutable::createFromTimestamp($session['expires_at'])
+            ->subMinutes(SupportSessions::longest())->subSeconds(SupportSignIn::TOKEN_TTL);
+
+        return $this->sessions->hasEnded($session['session_ulid'], $since);
     }
 
     /**
