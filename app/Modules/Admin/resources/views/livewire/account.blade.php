@@ -33,7 +33,7 @@
             <span class="ac-av" aria-hidden="true">{{ $initials }}</span>
             <div class="flex min-w-0 flex-[1_1_220px] flex-col gap-0.5">
                 <span class="ac-nm">{{ $user->name }}</span>
-                <span class="text-body-muted [overflow-wrap:anywhere]">{{ $user->email }}</span>
+                <span class="text-text-muted [overflow-wrap:anywhere]">{{ $user->email }}</span>
             </div>
             <div class="flex max-w-full flex-none flex-wrap gap-1.5">
                 @if ($roleLabel)
@@ -94,7 +94,7 @@
                                 </div>
 
                                 <div x-data="{ max: {{ \App\Modules\Admin\Livewire\Account::NAME_MAX }} }">
-                                    <label class="ac-lab" for="ac-name">{{ $t('name') }} <span class="font-bold text-admin-danger-text" aria-hidden="true">*</span><span class="sr-only">{{ $t('required') }}</span></label>
+                                    <label class="ac-lab" for="ac-name">{{ $t('name') }} <span class="font-bold text-danger-text" aria-hidden="true">*</span><span class="sr-only">{{ $t('required') }}</span></label>
                                     <input id="ac-name" class="field ac-in" autocomplete="name" maxlength="140" placeholder="Nguyễn Ngọc Anh"
                                            wire:model.blur="profileName" @disabled($readOnly)
                                            @error('profileName') aria-invalid="true" @enderror aria-describedby="ac-name-h">
@@ -153,7 +153,7 @@
                                     <x-bs-admin::alert color="success" icon="ri-checkbox-circle">{{ $t('pw_done') }}</x-bs-admin::alert>
                                 @endif
                                 <div>
-                                    <label class="ac-lab" for="ac-pw-cur">{{ $t('pw_current') }} <span class="font-bold text-admin-danger-text" aria-hidden="true">*</span></label>
+                                    <label class="ac-lab" for="ac-pw-cur">{{ $t('pw_current') }} <span class="font-bold text-danger-text" aria-hidden="true">*</span></label>
                                     <div class="ac-pw">
                                         <input id="ac-pw-cur" class="field" :type="show.cur ? 'text' : 'password'" type="password" autocomplete="current-password"
                                                wire:model="current_password" @disabled($readOnly)
@@ -170,7 +170,7 @@
                                 </div>
                                 <div class="ac-f2">
                                     <div>
-                                        <label class="ac-lab" for="ac-pw-new">{{ $t('pw_new') }} <span class="font-bold text-admin-danger-text" aria-hidden="true">*</span></label>
+                                        <label class="ac-lab" for="ac-pw-new">{{ $t('pw_new') }} <span class="font-bold text-danger-text" aria-hidden="true">*</span></label>
                                         <div class="ac-pw">
                                             <input id="ac-pw-new" class="field" :type="show.nw ? 'text' : 'password'" type="password" autocomplete="new-password"
                                                    wire:model="password" @disabled($readOnly)
@@ -196,7 +196,7 @@
                                         @enderror
                                     </div>
                                     <div>
-                                        <label class="ac-lab" for="ac-pw-cf">{{ $t('pw_confirm') }} <span class="font-bold text-admin-danger-text" aria-hidden="true">*</span></label>
+                                        <label class="ac-lab" for="ac-pw-cf">{{ $t('pw_confirm') }} <span class="font-bold text-danger-text" aria-hidden="true">*</span></label>
                                         <div class="ac-pw">
                                             <input id="ac-pw-cf" class="field" :type="show.cf ? 'text' : 'password'" type="password" autocomplete="new-password"
                                                    wire:model="password_confirmation" @disabled($readOnly)
@@ -236,7 +236,7 @@
                                 @endif
                             </div>
                             <div class="ac-cb">
-                                <p class="ac-rule text-body-text">{{ $t('tfa_intro') }}</p>
+                                <p class="ac-rule text-text">{{ $t('tfa_intro') }}</p>
 
                                 @if (! $twoFactorOn && $tfaStep === 0)
                                     <div class="ac-tfa">
@@ -345,10 +345,10 @@
                                         <div class="px-4 py-1.5">
                                             @foreach ($providers as $p)
                                                 <div class="ac-lrow">
-                                                    <x-bs-admin::icon :name="$providerIcons[$p['key']] ?? 'ri-links'" class="size-6 text-heading" />
+                                                    <x-bs-admin::icon :name="$providerIcons[$p['key']] ?? 'ri-links'" class="size-6 text-text-strong" />
                                                     <div class="flex min-w-0 flex-col gap-0.5">
                                                         <div class="flex flex-wrap items-center gap-2">
-                                                            <span class="font-semibold text-heading">{{ $p['label'] }}</span>
+                                                            <span class="font-semibold text-text-strong">{{ $p['label'] }}</span>
                                                             <span class="ac-chip" @if ($p['linked']) data-t="ok" @endif>{{ $p['linked'] ? $t('linked_yes') : $t('linked_no') }}</span>
                                                         </div>
                                                         <span class="ac-rule">
@@ -403,7 +403,7 @@
                                                 <input type="radio" name="ac-uil" value="{{ $locale['code'] }}" @checked($prefs['locale'] === $locale['code'])
                                                        wire:click="setLocale('{{ $locale['code'] }}')" @disabled($readOnly)>
                                                 <img src="{{ asset('images/admin/flags/'.$locale['code'].'.svg') }}" alt="" width="22" height="22">
-                                                <span lang="{{ $locale['code'] }}" class="font-medium text-heading">{{ $locale['label'] }}</span>
+                                                <span lang="{{ $locale['code'] }}" class="font-medium text-text-strong">{{ $locale['label'] }}</span>
                                             </label>
                                         @endforeach
                                     </div>

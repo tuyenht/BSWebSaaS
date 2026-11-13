@@ -16,7 +16,7 @@
     container-name: ac;
     font-size: var(--text-body);
     line-height: 1.5;
-    color: var(--color-body-text);
+    color: var(--color-text);
 }
 
 .ac-h1 {
@@ -24,12 +24,12 @@
     font-size: calc(1.25rem + var(--user-text-boost));
     font-weight: 600;
     line-height: 1.4;
-    color: var(--color-heading);
+    color: var(--color-text-strong);
 }
 
 .ac-desc {
     margin: 4px 0 0;
-    color: var(--color-body-muted);
+    color: var(--color-text-muted);
     text-wrap: pretty;
 }
 
@@ -66,7 +66,7 @@
     font-size: calc(1rem + var(--user-text-boost));
     font-weight: 600;
     line-height: 1.4;
-    color: var(--color-heading);
+    color: var(--color-text-strong);
 }
 
 .ac-lab {
@@ -78,7 +78,7 @@
     font-size: var(--text-small);
     font-weight: 600;
     line-height: 1.45;
-    color: var(--color-heading);
+    color: var(--color-text-strong);
 }
 
 .ac-hint,
@@ -86,21 +86,21 @@
     margin: 6px 0 0;
     font-size: var(--text-small);
     line-height: 1.5;
-    color: var(--color-body-muted);
+    color: var(--color-text-muted);
 }
 
 .ac-err {
     display: flex;
     align-items: flex-start;
     gap: 6px;
-    color: var(--color-admin-danger-text);
+    color: var(--color-danger-text);
 }
 
 .ac-rule {
     margin: 0;
     font-size: var(--text-small);
     line-height: 1.55;
-    color: var(--color-body-muted);
+    color: var(--color-text-muted);
     text-wrap: pretty;
 }
 
@@ -108,7 +108,7 @@
     margin: 0;
     font-size: var(--text-small);
     font-weight: 600;
-    color: var(--color-heading);
+    color: var(--color-text-strong);
 }
 
 .ac-chip {
@@ -121,7 +121,7 @@
     padding: 2px 8px;
     border-radius: 12px;
     background: var(--color-surface-hover);
-    color: var(--color-body-text);
+    color: var(--color-text);
     font-size: var(--text-caption);
     font-weight: 600;
     line-height: 1.4;
@@ -129,18 +129,18 @@
 }
 
 .ac-chip[data-t='brand'] {
-    background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface));
-    color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-primary-text) 10%, var(--color-surface));
+    color: var(--color-primary-text);
 }
 
 .ac-chip[data-t='ok'] {
-    background: color-mix(in srgb, var(--color-admin-success) 12%, var(--color-surface));
-    color: var(--color-admin-success-text);
+    background: color-mix(in srgb, var(--color-success-base) 12%, var(--color-surface));
+    color: var(--color-success-text);
 }
 
 .ac-chip[data-t='warn'] {
-    background: color-mix(in srgb, var(--color-admin-warning) 18%, var(--color-surface));
-    color: var(--color-admin-warning-text);
+    background: color-mix(in srgb, var(--color-warning-base) 18%, var(--color-surface));
+    color: var(--color-warning-text);
 }
 
 .ac-al {
@@ -155,15 +155,15 @@
 }
 
 .ac-al[data-k='warning'] {
-    border-color: color-mix(in srgb, var(--color-admin-warning) 25%, transparent);
-    background: color-mix(in srgb, var(--color-admin-warning) 10%, transparent);
-    color: var(--color-admin-warning-text);
+    border-color: color-mix(in srgb, var(--color-warning-base) 25%, transparent);
+    background: color-mix(in srgb, var(--color-warning-base) 10%, transparent);
+    color: var(--color-warning-text);
 }
 
 .ac-al[data-k='success'] {
-    border-color: color-mix(in srgb, var(--color-admin-success) 25%, transparent);
-    background: color-mix(in srgb, var(--color-admin-success) 10%, transparent);
-    color: var(--color-admin-success-text);
+    border-color: color-mix(in srgb, var(--color-success-base) 25%, transparent);
+    background: color-mix(in srgb, var(--color-success-base) 10%, transparent);
+    color: var(--color-success-text);
 }
 
 .ac-in {
@@ -173,12 +173,12 @@
     border: 1px solid var(--color-border-input);
     border-radius: 4px;
     background: var(--color-surface);
-    color: var(--color-heading);
+    color: var(--color-text-strong);
     font-family: inherit;
 }
 
 .ac-in[aria-invalid='true'] {
-    border-color: var(--color-admin-danger-text);
+    border-color: var(--color-danger-text);
 }
 
 .ac-in:disabled {
@@ -211,8 +211,8 @@
 }
 
 .ac-opt:has(input:checked) {
-    border-color: var(--color-accent);
-    background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+    border-color: var(--color-primary-text);
+    background: color-mix(in srgb, var(--color-primary-text) 6%, transparent);
 }
 
 .ac-opt:has(input:disabled) {
@@ -226,7 +226,7 @@
     width: 18px;
     height: 18px;
     margin: 0;
-    accent-color: var(--color-admin-primary);
+    accent-color: var(--color-primary);
 }
 
 .ac-check {
@@ -235,7 +235,7 @@
     gap: 10px;
     min-height: var(--spacing-control);
     padding: 10px 0;
-    color: var(--color-heading);
+    color: var(--color-text-strong);
     cursor: pointer;
 }
 
@@ -255,7 +255,7 @@
 .ac-nm {
     font-size: calc(1rem + var(--user-text-boost));
     font-weight: 600;
-    color: var(--color-heading);
+    color: var(--color-text-strong);
     overflow-wrap: anywhere;
 }
 
@@ -267,8 +267,8 @@
     width: 48px;
     height: 48px;
     border-radius: 50%;
-    background: color-mix(in srgb, var(--color-accent) 14%, var(--color-surface));
-    color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-primary-text) 14%, var(--color-surface));
+    color: var(--color-primary-text);
     font-size: calc(1rem + var(--user-text-boost));
     font-weight: 700;
 }
@@ -322,7 +322,7 @@
     min-height: var(--spacing-control);
     padding: 6px 12px;
     border-radius: 4px;
-    color: var(--color-body-text);
+    color: var(--color-text);
     line-height: 1.4;
     text-align: start;
     cursor: pointer;
@@ -339,8 +339,8 @@
 }
 
 .ac-nav button[aria-selected='true'] {
-    background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface));
-    color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-primary-text) 10%, var(--color-surface));
+    color: var(--color-primary-text);
     font-weight: 600;
 }
 
@@ -352,7 +352,7 @@
     left: 0;
     width: 3px;
     border-radius: 2px;
-    background: var(--color-accent);
+    background: var(--color-primary-text);
 }
 
 .ac-udot {
@@ -361,7 +361,7 @@
     align-items: center;
     gap: 4px;
     margin-left: auto;
-    color: var(--color-admin-warning-text);
+    color: var(--color-warning-text);
     font-size: var(--text-caption);
     font-weight: 600;
     white-space: nowrap;
@@ -372,7 +372,7 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: var(--color-admin-warning);
+    background: var(--color-warning-base);
 }
 
 .ac-select {
@@ -382,7 +382,7 @@
     border: 1px solid var(--color-border-input);
     border-radius: 4px;
     background: var(--color-surface);
-    color: var(--color-heading);
+    color: var(--color-text-strong);
     font-family: inherit;
 }
 
@@ -405,12 +405,12 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    color: var(--color-body-muted);
+    color: var(--color-text-muted);
     font-size: var(--text-small);
 }
 
 .ac-sv[data-k='ok'] {
-    color: var(--color-admin-success-text);
+    color: var(--color-success-text);
 }
 
 .ac-why {
@@ -419,7 +419,7 @@
     align-items: flex-start;
     gap: 6px;
     margin: 0;
-    color: var(--color-body-muted);
+    color: var(--color-text-muted);
     font-size: var(--text-small);
 }
 
@@ -435,7 +435,7 @@
 }
 
 .ac-pw:has([aria-invalid='true']) {
-    border-color: var(--color-admin-danger-text);
+    border-color: var(--color-danger-text);
 }
 
 .ac-pw:has(input:disabled) {
@@ -449,7 +449,7 @@
     padding-inline: 12px;
     border: 0;
     background: transparent;
-    color: var(--color-heading);
+    color: var(--color-text-strong);
     font-family: inherit;
 }
 
@@ -460,11 +460,11 @@
     justify-content: center;
     width: var(--spacing-control);
     border-radius: 0 4px 4px 0;
-    color: var(--color-accent);
+    color: var(--color-primary-text);
 }
 
 .ac-pw button:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--color-admin-primary) 10%, transparent);
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
 }
 
 .ac-meter {
@@ -481,16 +481,16 @@
 }
 
 .ac-meter[data-s='1'] i:nth-child(-n + 1) {
-    background: var(--color-admin-danger);
+    background: var(--color-danger-base);
 }
 
 .ac-meter[data-s='2'] i:nth-child(-n + 2) {
-    background: var(--color-admin-warning);
+    background: var(--color-warning-base);
 }
 
 .ac-meter[data-s='3'] i:nth-child(-n + 3),
 .ac-meter[data-s='4'] i {
-    background: var(--color-admin-success);
+    background: var(--color-success-base);
 }
 
 .ac-stx {
@@ -503,16 +503,16 @@
 }
 
 .ac-stx[data-s='1'] {
-    color: var(--color-admin-danger-text);
+    color: var(--color-danger-text);
 }
 
 .ac-stx[data-s='2'] {
-    color: var(--color-admin-warning-text);
+    color: var(--color-warning-text);
 }
 
 .ac-stx[data-s='3'],
 .ac-stx[data-s='4'] {
-    color: var(--color-admin-success-text);
+    color: var(--color-success-text);
 }
 
 /* two-factor steps */
@@ -537,7 +537,7 @@
 }
 
 .ac-mono {
-    color: var(--color-heading);
+    color: var(--color-text-strong);
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-size: var(--text-body);
     letter-spacing: 0.04em;
@@ -615,7 +615,7 @@
 
 .ac-nt-hd {
     background: var(--color-surface-muted);
-    color: var(--color-body-muted);
+    color: var(--color-text-muted);
     font-size: var(--text-small);
     font-weight: 600;
 }
@@ -630,7 +630,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    color: var(--color-heading);
+    color: var(--color-text-strong);
     font-weight: 600;
 }
 
@@ -639,7 +639,7 @@
 }
 
 .ac-nt-l {
-    color: var(--color-heading);
+    color: var(--color-text-strong);
     font-weight: 600;
     overflow-wrap: anywhere;
 }
@@ -648,7 +648,7 @@
 .ac-nt-s,
 .ac-nt-z,
 .ac-nt-zm {
-    color: var(--color-body-muted);
+    color: var(--color-text-muted);
     font-size: var(--text-small);
     overflow-wrap: anywhere;
 }
@@ -657,7 +657,7 @@
     display: inline-flex;
     align-items: flex-start;
     gap: 4px;
-    color: var(--color-body-text);
+    color: var(--color-text);
     font-size: var(--text-small);
 }
 
@@ -743,7 +743,7 @@
     padding: 12px 16px;
     border-top: 1px solid var(--color-border);
     background: var(--color-surface-muted);
-    color: var(--color-body-muted);
+    color: var(--color-text-muted);
     font-size: var(--text-small);
     line-height: 1.6;
 }
@@ -756,13 +756,13 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
-    color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-primary-text) 12%, var(--color-surface));
+    color: var(--color-primary-text);
 }
 
 .ac-dic[data-k='danger'] {
-    background: color-mix(in srgb, var(--color-admin-danger) 12%, var(--color-surface));
-    color: var(--color-admin-danger-text);
+    background: color-mix(in srgb, var(--color-danger-base) 12%, var(--color-surface));
+    color: var(--color-danger-text);
 }
 
 /* Controls take the shared control height with a mouse (40px, 44px from the next text size up)

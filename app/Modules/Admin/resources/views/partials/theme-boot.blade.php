@@ -47,7 +47,7 @@
     window.__adminSchemeAuto = function () {
         var html = document.documentElement;
         if (!html.hasAttribute('data-scheme-auto') || !window.matchMedia) return;
-        html.setAttribute('data-bs-theme', window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        html.setAttribute('data-bs-theme', window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); // legacy-token-ok: AdminChromeResolver still writes this attribute
     };
     window.__adminSchemeAuto();
     if (window.matchMedia) {

@@ -177,7 +177,7 @@ function applyThemeAttributes(attributes) {
     }
     // "Theo máy" travels as its own flag: present → the device decides light/dark;
     // absent from a full attribute set → the member's scheme is fixed again.
-    if ('data-bs-theme' in attributes) {
+    if ('data-bs-theme' in attributes) { // legacy-token-ok: AdminChromeResolver still writes this attribute
         document.documentElement.toggleAttribute('data-scheme-auto', 'data-scheme-auto' in attributes);
         window.__adminSchemeAuto?.();
     }
