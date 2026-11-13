@@ -10,8 +10,15 @@ const origin = `https://${host}`;
 // (one slow run cannot fail it alone). A page joins at 'warn' and is promoted to 'error' only
 // after its own real measurements show headroom — the protocol the homepage went through 24/09.
 // The overall performance score is not a fixed budget and is noisier: always a warning.
+// Accessibility is the same on every run and must be 100 on every page from the day it joins (what
+// PageSpeed shows a site owner; the axe step after this one checks each page too, but not the way
+// Lighthouse renders it). Best practices and SEO are reported as warnings: the CI site runs on a test
+// host and certificate, which a real site does not.
 const budgets = (level) => ({
   'categories:performance': ['warn', { minScore: 0.7, aggregationMethod: 'median' }],
+  'categories:accessibility': ['error', { minScore: 1, aggregationMethod: 'median' }],
+  'categories:best-practices': ['warn', { minScore: 1, aggregationMethod: 'median' }],
+  'categories:seo': ['warn', { minScore: 1, aggregationMethod: 'median' }],
   'largest-contentful-paint': [level, { maxNumericValue: 1500, aggregationMethod: 'median' }],
   'resource-summary:script:size': [level, { maxNumericValue: 30720, aggregationMethod: 'median' }],
 });
@@ -30,7 +37,7 @@ module.exports = {
       // production's Caddy does, `encode zstd gzip`, so the page weighs what a visitor downloads)
       // and Caddy in front of it, and checked that it answers over HTTP/2.
       settings: {
-        onlyCategories: ['performance'],
+        onlyCategories: ['performance', 'accessibility', 'best-practices', 'seo'],
         // --ignore-certificate-errors: Caddy's `tls internal` certificate is accepted by this
         // Chrome only; nothing is added to the runner's trust store.
         chromeFlags: '--headless=new --no-sandbox --disable-gpu --ignore-certificate-errors',

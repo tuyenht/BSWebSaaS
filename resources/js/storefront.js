@@ -183,62 +183,6 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
     document.querySelectorAll('img[loading="lazy"]').forEach((img) => firstLook.observe(img));
 }
 
-// Blocks below the first screen are drawn on demand (CSS `content-visibility: auto`, storefront.css),
-// so the browser sizes the ones it has not drawn by an estimate, and a jump to a #target placed with
-// those estimates lands off the target. The page therefore asks to be drawn in full (`sf-anchored`
-// turns the deferral off) before such a jump: a click on a link to this page does it before the
-// browser scrolls; an address opened with a #target draws everything and places the target again
-// once photos and fonts have arrived, unless the reader has scrolled since. A reload or a step back
-// or forward keeps the place the browser restores.
-document.addEventListener('click', (event) => {
-    const link = event.target instanceof Element ? event.target.closest('a[href*="#"]') : null;
-    if (link && link.origin === location.origin && link.pathname === location.pathname && link.hash.length > 1) {
-        root.classList.add('sf-anchored');
-    }
-}, true);
-
-function hashTarget() {
-    let id = location.hash.slice(1);
-    try {
-        id = decodeURIComponent(id);
-    } catch {
-        // A malformed escape: use the text as it is.
-    }
-
-    return id === '' ? null : document.getElementById(id);
-}
-
-let placedAt = null;
-function placeTarget() {
-    const target = hashTarget();
-    if (target) {
-        root.classList.add('sf-anchored');
-        target.scrollIntoView({ block: 'start', behavior: 'instant' });
-        placedAt = window.scrollY;
-    }
-}
-
-const arrival = performance.getEntriesByType('navigation')[0]?.type;
-if (arrival === 'reload' || arrival === 'back_forward') {
-    if (hashTarget()) {
-        root.classList.add('sf-anchored');
-    }
-} else {
-    placeTarget();
-    window.addEventListener('load', () => { // photos and fonts that arrived since moved the blocks above
-        if (placedAt !== null && Math.abs(window.scrollY - placedAt) < 2) {
-            placeTarget();
-        }
-    }, { once: true });
-}
-// A #target typed into the address bar: the browser scrolled with the estimates. After a click (or a
-// step through the history of this page) the blocks were already drawn in full, so its place stands.
-window.addEventListener('hashchange', () => {
-    if (!root.classList.contains('sf-anchored')) {
-        placeTarget();
-    }
-});
-
 // Floating contact: the links work with no script. A click on one with click tracking on announces
 // `bs:contact-click` at once and counts the tap with a beacon (an app link can leave the page before
 // anything else loads). Only the

@@ -554,9 +554,10 @@ jobs:
           docker logs cwv-caddy || true
 
       # lhci runs Lighthouse 3x per page against the server above and asserts against
-      # .lighthouserc.cjs. LCP ≤ 1.5s and JS ≤ 30KB FAIL the job (calibrated 24/09 on 18 real
-      # samples — see that file); the overall performance score only warns.
-      - name: Lighthouse CI (performance + LCP + JS budget)
+      # .lighthouserc.cjs. LCP ≤ 1.5s, JS ≤ 30KB (calibrated 24/09 on 18 real samples — see that
+      # file) and an accessibility score of 100 FAIL the job; the performance, best-practices and
+      # SEO scores only warn.
+      - name: Lighthouse CI (performance + accessibility + LCP + JS budget)
         run: pnpm exec lhci autorun --collect.chromePath="${{ steps.chrome.outputs.chrome-path }}"
 
       # The numbers the "warn" thresholds must be calibrated against, printed where they cannot
@@ -585,6 +586,9 @@ jobs:
             return {
               url: lhr.finalDisplayedUrl ?? lhr.requestedUrl,
               performance: Math.round((lhr.categories.performance?.score ?? 0) * 100),
+              accessibility: Math.round((lhr.categories.accessibility?.score ?? 0) * 100),
+              best_practices: Math.round((lhr.categories['best-practices']?.score ?? 0) * 100),
+              seo: Math.round((lhr.categories.seo?.score ?? 0) * 100),
               lcp_ms: Math.round(metric('largest-contentful-paint') ?? NaN),
               cls: Number((metric('cumulative-layout-shift') ?? NaN).toFixed(3)),
               tbt_ms: Math.round(metric('total-blocking-time') ?? NaN),
@@ -595,8 +599,8 @@ jobs:
           console.table(rows);
 
           if (process.env.GITHUB_STEP_SUMMARY) {
-            const header = '| URL | Perf | LCP (ms) | CLS | TBT (ms) | JS (bytes) |\n|---|---|---|---|---|---|\n';
-            const body = rows.map((r) => `| ${r.url} | ${r.performance} | ${r.lcp_ms} | ${r.cls} | ${r.tbt_ms} | ${r.js_bytes} |`).join('\n');
+            const header = '| URL | Perf | A11y | BP | SEO | LCP (ms) | CLS | TBT (ms) | JS (bytes) |\n|---|---|---|---|---|---|---|---|---|\n';
+            const body = rows.map((r) => `| ${r.url} | ${r.performance} | ${r.accessibility} | ${r.best_practices} | ${r.seo} | ${r.lcp_ms} | ${r.cls} | ${r.tbt_ms} | ${r.js_bytes} |`).join('\n');
             appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Lighthouse measurements\n\n${header}${body}\n`);
           }
           JS
