@@ -336,9 +336,10 @@ it('keeps the admin "Tổng quan" flat however many sub-categories its rows are 
 });
 
 it('renders the member\'s own account page within its query budget', function (): void {
-    // Measured at 16 with two-step sign-in on, one linked account and every notification group
-    // shown: the linked accounts are one read and the notification rows add none per kind.
-    $budget = 16;
+    // Measured at 17 with two-step sign-in on, one linked account and every notification group
+    // shown (16 + the top bar bell's unread count, one read on every admin page): the linked
+    // accounts are one read and the notification rows add none per kind.
+    $budget = 17;
     truncateRbac();
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();

@@ -137,6 +137,19 @@ it('groups by the site\'s day, says how long ago, and links by ulid with the boa
         ->not->toMatch('~href="[^"]*/\d+(/|")~'); // no bigint id in any address
 });
 
+it('reads the two-step notice as turned off or turned on, each with its own link', function (): void {
+    $me = nbMember();
+    nbNotice($me, 1, 'security.two_factor_disabled', ['at' => '13/11/2026 09:00']);
+    nbNotice($me, 1, 'security.two_factor_disabled', ['sentence' => 'enabled', 'at' => '13/11/2026 10:00']);
+
+    $html = app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($me)->test(NotificationBell::class)->call('load')->html());
+
+    expect($html)
+        ->toContain('Xác thực 2 lớp của tài khoản đã được tắt lúc 13/11/2026 09:00.')->toContain('Bật lại xác thực 2 lớp')
+        ->toContain('Xác thực 2 lớp của tài khoản đã được bật lúc 13/11/2026 10:00.')->toContain('Mở Bảo mật')
+        ->toContain('href="/admin/account?tab=security"');
+});
+
 it('marks one notice read when opened and follows its address', function (): void {
     $me = nbMember();
     $entry = (string) Str::ulid();

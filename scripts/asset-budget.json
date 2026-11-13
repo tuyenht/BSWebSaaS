@@ -2,7 +2,11 @@
   "entries": {
     "resources/css/app.css": {
       "js": 0,
-      "css": 43643
+      "css": 40711
+    },
+    "resources/css/admin-account.css": {
+      "js": 0,
+      "css": 2568
     },
     "resources/css/storefront.css": {
       "js": 0,

@@ -163,6 +163,9 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     array_map('unlink', glob($dir.'/*.html') ?: []);
 
     foreach (ADMIN_PREVIEW_SCREENS as $name => $path) {
+        // Each screen is its own request, as Octane serves it: Livewire forgets the @assets it
+        // already put in an earlier page's head (the account tabs each link the account styles).
+        app('livewire')->flushState();
         $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.$path)->assertOk()->getContent();
         file_put_contents($dir.'/'.$name.'.html', $html);
     }

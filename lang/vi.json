@@ -1498,6 +1498,7 @@
     "admin.bell.act.lead": "Xem liên hệ",
     "admin.bell.act.domains": "Mở Tên miền",
     "admin.bell.act.two_factor": "Bật lại xác thực 2 lớp",
+    "admin.bell.act.security": "Mở Bảo mật",
     "admin.bell.act.devices": "Xem thiết bị",
     "admin.bell.act.media": "Mở thư viện",
     "admin.greeting": "Xin chào, :name!",

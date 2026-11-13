@@ -8,11 +8,14 @@ use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Identity\TwoFactor\TwoFactorService;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Foundation\Vite;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use PragmaRX\Google2FA\Google2FA;
 
@@ -71,6 +74,28 @@ it('opens at /admin/account and sends the old addresses there', function (): voi
         ->assertSee('Hồ sơ')->assertSee('Bảo mật')->assertSee('Tài khoản liên kết')->assertSee('Tùy chọn');
     $this->actingAs($user)->get('http://a.test/admin/settings')->assertRedirect('/admin/account');
     $this->actingAs($user)->get('http://a.test/admin/settings/security')->assertRedirect('/admin/account?tab=security');
+});
+
+it('links its own styles on the account page only, in the head', function (): void {
+    $user = accountMember();
+    // Name each Vite entry a page asks for (the suite's stub draws nothing).
+    $this->swap(Vite::class, new class extends Vite
+    {
+        public function __invoke($entrypoints, $buildDirectory = null): HtmlString
+        {
+            return new HtmlString('<link data-entry="'.implode(' ', (array) $entrypoints).'">');
+        }
+    });
+
+    // Each request starts clean, as Octane starts each one (Livewire puts an @assets block in a head once).
+    app('livewire')->flushState();
+    $account = $this->actingAs($user)->get('http://a.test/admin/account?tab=security')->assertOk()->getContent();
+    app('livewire')->flushState();
+    $dashboard = $this->actingAs($user)->get('http://a.test/admin')->assertOk()->getContent();
+
+    expect(Str::before((string) $account, '</head>'))->toContain('<link data-entry="resources/css/admin-account.css">')
+        ->and((string) $dashboard)->not->toContain('admin-account.css')
+        ->and((string) file_get_contents(resource_path('css/app.css')))->not->toContain('admin-account');
 });
 
 it('keeps an unknown tab on the profile', function (): void {

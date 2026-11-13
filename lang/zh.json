@@ -1498,6 +1498,7 @@
     "admin.bell.act.lead": "查看联系",
     "admin.bell.act.domains": "打开域名",
     "admin.bell.act.two_factor": "重新开启两步验证",
+    "admin.bell.act.security": "打开安全",
     "admin.bell.act.devices": "查看设备",
     "admin.bell.act.media": "打开媒体库",
     "admin.greeting": "欢迎，:name！",
