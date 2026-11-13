@@ -3103,6 +3103,7 @@
     "admin.fc.pos_right": "右侧",
     "admin.fc.pos_left": "左侧",
     "admin.fc.pos_bottom": "底部居中",
+    "admin.fc.pos_bottom_phone_only": "“底部居中”仅适用于手机；电脑上显示在右侧。",
     "admin.fc.offset_x": "侧边距",
     "admin.fc.offset_y": "底边距",
     "admin.fc.offset_text": ":n 像素",

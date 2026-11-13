@@ -3103,6 +3103,7 @@
     "admin.fc.pos_right": "Bên phải",
     "admin.fc.pos_left": "Bên trái",
     "admin.fc.pos_bottom": "Giữa dưới",
+    "admin.fc.pos_bottom_phone_only": "Giữa dưới chỉ áp dụng trên điện thoại; máy tính hiện bên phải.",
     "admin.fc.offset_x": "Cách lề ngang",
     "admin.fc.offset_y": "Cách lề dưới",
     "admin.fc.offset_text": ":n điểm ảnh",

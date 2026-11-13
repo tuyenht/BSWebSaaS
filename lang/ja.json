@@ -3103,6 +3103,7 @@
     "admin.fc.pos_right": "右",
     "admin.fc.pos_left": "左",
     "admin.fc.pos_bottom": "下中央",
+    "admin.fc.pos_bottom_phone_only": "「下中央」はスマートフォンのみに適用されます。パソコンでは右側に表示されます。",
     "admin.fc.offset_x": "横の余白",
     "admin.fc.offset_y": "下の余白",
     "admin.fc.offset_text": ":n ピクセル",

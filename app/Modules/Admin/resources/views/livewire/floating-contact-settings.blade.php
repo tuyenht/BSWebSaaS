@@ -261,7 +261,7 @@
                                         @endforeach
                                     </div>
                                 </div>
-                                <p class="text-caption leading-snug text-text-muted">@if ($isV){{ $dial ? __('admin.fc.dial_note_on', ['n' => FloatingContact::DIAL_FROM - 1]) : __('admin.fc.dial_note_off') }} @endif{{ __('admin.fc.offset_default', ['x' => FloatingContact::DEFAULT_OFFSET_X, 'y' => FloatingContact::DEFAULT_OFFSET_Y]) }}</p>
+                                <p class="text-caption leading-snug text-text-muted">@if ($isV){{ $dial ? __('admin.fc.dial_note_on', ['n' => FloatingContact::DIAL_FROM - 1]) : __('admin.fc.dial_note_off') }} @endif{{ __('admin.fc.offset_default', ['x' => FloatingContact::DEFAULT_OFFSET_X, 'y' => FloatingContact::DEFAULT_OFFSET_Y]) }}@if ($position === 'bottom') {{ __('admin.fc.pos_bottom_phone_only') }}@endif</p>
                                 <details class="group" wire:ignore.self @if ($offsetX !== FloatingContact::DEFAULT_OFFSET_X || $offsetY !== FloatingContact::DEFAULT_OFFSET_Y) open @endif>
                                     <summary class="hit-area inline-flex min-h-8 cursor-pointer list-none items-center gap-1 text-[calc(0.78125rem+var(--user-text-boost))] font-semibold text-text [&::-webkit-details-marker]:hidden">
                                         <x-bs-admin::icon name="ri-arrow-right-s" class="size-[min(1.5rem,calc(1rem+var(--user-text-boost)))] shrink-0 transition-transform group-open:rotate-90 motion-reduce:transition-none" />{{ __('admin.fc.more_settings') }}

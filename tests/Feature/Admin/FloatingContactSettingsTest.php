@@ -982,3 +982,20 @@ it('opens on a flat query budget, the taps read in one query', function (): void
         // and languages, and the one grouped read of the last 30 days' taps (an index on site_id, day leads it).
         ->and($count)->toBeLessThanOrEqual(10);
 });
+
+it('says the bottom position is a phone position only while that position is chosen', function (): void {
+    $admin = fcsAdmin();
+    $note = 'Giữa dưới chỉ áp dụng trên điện thoại; máy tính hiện bên phải.';
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $note): void {
+        Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+            ->call('toggleEnabled')
+            ->call('setLayout', 'combo')
+            ->call('setPosition', 'bottom')
+            ->assertSee($note)
+            ->call('setPosition', 'right')
+            ->assertDontSee($note)
+            ->call('setPosition', 'left')
+            ->assertDontSee($note);
+    });
+});
