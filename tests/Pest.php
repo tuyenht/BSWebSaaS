@@ -159,6 +159,23 @@ function menuEditor(int $site): User
     return $user->fresh() ?? $user;
 }
 
+/**
+ * A new member of $site holding the corporate role template $template (or exactly $permissions
+ * when given). Call OUTSIDE any site context.
+ *
+ * @param  list<string>|null  $permissions
+ */
+function blockLibraryUser(int $site, string $template, ?array $permissions = null): User
+{
+    $spec = PermissionRegistry::tenantRoleTemplates('corporate')[$template]['permissions'] ?? [];
+    $permissions ??= $spec === '*' ? PermissionRegistry::TENANT_PERMISSIONS : $spec;
+    $user = User::factory()->create();
+    app(Tenancy::class)->enter($site, fn () => grantRole($user, $template, $permissions));
+    app(TeamContext::class)->forget();
+
+    return $user->fresh() ?? $user;
+}
+
 /*
 |--------------------------------------------------------------------------
 | Storefront content seed helper (P1.3)

@@ -39,6 +39,10 @@ final class PermissionRegistry
         'media.purge',
         'taxonomies.manage',
         'menus.manage',
+        // Building, renaming, publishing, copying and deleting the website's reusable blocks (the
+        // block library): one change shows on every page that uses the block. Placing a block in a
+        // page or a menu needs no more than writing that page or menu.
+        'blocks.manage',
         'forms.view',
         'forms.manage',
         'catalog.view',
@@ -205,7 +209,7 @@ final class PermissionRegistry
                 'entries.view', 'entries.create', 'entries.edit.any', 'entries.delete.any',
                 'entries.submit', 'entries.review', 'entries.approve', 'entries.publish',
                 'media.view', 'media.upload', 'media.delete',
-                'taxonomies.manage', 'menus.manage', 'forms.view', 'forms.manage',
+                'taxonomies.manage', 'menus.manage', 'blocks.manage', 'forms.view', 'forms.manage',
                 'catalog.view', 'catalog.manage', 'domains.view',
             ]],
             'author' => ['level' => 30, 'permissions' => [

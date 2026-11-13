@@ -260,3 +260,36 @@ it('heals drift on many roles without reloading the permission catalog per role'
         ->and(Role::query()->whereIn('name', ['owner', 'admin'])->where('site_id', '>', 0)->get()
             ->every(fn (Role $r): bool => $r->hasPermissionTo('catalog.manage')))->toBeTrue();
 });
+
+it("gives an existing site's owner, admin and editor the block library right, and no other role", function (): void {
+    // A site provisioned before blocks.manage existed.
+    foreach (['owner', 'admin', 'editor'] as $name) {
+        Role::query()->where('site_id', 1)->where('name', $name)->firstOrFail()->revokePermissionTo('blocks.manage');
+    }
+    $editor = User::factory()->create();
+    $author = User::factory()->create();
+    app(Tenancy::class)->enter(1, function () use ($editor, $author): void {
+        $editor->assignRole(Role::query()->where('site_id', 1)->where('name', 'editor')->firstOrFail());
+        $author->assignRole(Role::query()->where('site_id', 1)->where('name', 'author')->firstOrFail());
+    });
+    $holds = fn (string $role): bool => DB::table('role_has_permissions')
+        ->join('roles', 'roles.id', '=', 'role_has_permissions.role_id')
+        ->join('permissions', 'permissions.id', '=', 'role_has_permissions.permission_id')
+        ->where('roles.site_id', 1)->where('roles.name', $role)
+        ->where('permissions.name', 'blocks.manage')
+        ->exists();
+    $can = fn (User $user): bool => app(Tenancy::class)->enter(1, fn (): bool => $user->fresh()->can('blocks.manage'));
+
+    expect($can($editor))->toBeFalse();
+
+    $this->artisan('rbac:sync')->assertSuccessful();
+    $this->artisan('rbac:sync')->expectsOutputToContain('0 tenant grants back-filled')->assertSuccessful(); // idempotent
+
+    expect($can($editor))->toBeTrue()->and($can($author))->toBeFalse();
+    foreach (['owner', 'admin', 'editor'] as $role) {
+        expect($holds($role))->toBeTrue("[{$role}] must receive [blocks.manage]");
+    }
+    foreach (['author', 'contributor', 'viewer'] as $role) {
+        expect($holds($role))->toBeFalse("[{$role}] must not receive [blocks.manage]");
+    }
+});

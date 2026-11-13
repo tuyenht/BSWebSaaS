@@ -99,3 +99,15 @@ it('keeps every implication list closed, so one level of withImplied is enough',
         expect(PermissionRegistry::withImplied($once))->toEqualCanonicalizing($once, "[{$permission}] implies a permission that implies more");
     }
 });
+
+it('gives the block library right to the owner, the website admin and the editor only', function (): void {
+    $templates = PermissionRegistry::tenantRoleTemplates('corporate');
+    $holders = array_keys(array_filter(
+        $templates,
+        fn (array $t): bool => in_array('blocks.manage', $t['permissions'] === '*' ? PermissionRegistry::TENANT_PERMISSIONS : $t['permissions'], true),
+    ));
+
+    expect($holders)->toBe(['owner', 'admin', 'editor'])
+        ->and(PermissionRegistry::TENANT_PERMISSIONS)->toContain('blocks.manage')
+        ->and(collect(ModuleCatalog::all())->firstWhere('key', 'blocks')['permission_prefix'] ?? null)->toBe('blocks');
+});
