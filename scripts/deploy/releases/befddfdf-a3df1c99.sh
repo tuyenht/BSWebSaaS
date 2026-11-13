@@ -180,3 +180,6 @@ release_rollback() { # data the old code (befddfdf) cannot read
     echo "     - migration 2057 ở lại (không lùi): ràng buộc rộng hơn chỉ cho thêm buy; bản cũ không gửi buy."
     echo "     - các dòng buy đã đếm còn trong bảng; thẻ Hiệu quả của bản cũ không hiện dòng Mua hàng, tổng vẫn cộng chúng."
 }
+# Run 13/11/2026 16:44 (tmux deploy-a3df1c99-13164430, launched by the AI): XONG, prod at a3df1c99; 187 OK, 0 LỖI/LỆCH;
+# 2057 ran in 9.61ms, PgBouncer not restarted (PGB_SKIP); 0 error lines in the app log after the reload.
+# Log: plans/reports/deploy-runs/befddfd-a3df1c99-run-20261113-164430.log
