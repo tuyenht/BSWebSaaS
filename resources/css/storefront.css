@@ -2808,37 +2808,10 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 }
 
 /*
- * Below the first screen the browser skips layout and paint of a block until it is near the window,
- * so the first frame lays out the header and the first two blocks, not the whole page and the footer
- * (measured at 4x CPU, Lighthouse mobile: layout 159 → 119 ms on a home page, 158 → 96 ms on a product).
- *  - blocks of a page: the third and later children of <main> that are not the title or the
- *    breadcrumb (the first two blocks are never deferred); a block with a look has the .sf-s wrapper,
- *    one without has its own root, so the rule names no block class;
- *  - on a post or product: everything after the main <article>;
- *  - the site footer.
- * `contain-intrinsic-size: auto` keeps the size a block had once drawn, so scrolling back does not
- * jump; the length is the typical block (median 773 px on a phone, 540 px on a desktop) and footer.
- * A click on a link to this page, or an address opened with a #target, draws everything first
- * (storefront.js adds `sf-anchored`), so the browser scrolls to the target with the real sizes of
- * the blocks above it, not their estimates.
- * Only on screen: printing draws everything.
+ * No block and no footer is drawn on demand (`content-visibility: auto`). An accessibility checker
+ * (axe, inside Lighthouse and PageSpeed) sizes a block the browser has not drawn by its estimate, so
+ * a dark block taller than the estimate is taken for the background of the text in the block below
+ * it and fails a contrast check visitors never see. Measured on a home page, Lighthouse 13: the
+ * accessibility score 97 → 100 on a phone and a computer without the deferral, and no change in
+ * speed beyond the run-to-run noise.
  */
-@media screen {
-
-    html:not(.sf-anchored) :is(main > :not(h1, .page__crumbs) ~ :not(h1, .page__crumbs) ~ :not(h1, .page__crumbs), main > article ~ *) {
-        content-visibility: auto;
-        contain-intrinsic-size: auto 640px;
-    }
-
-    html:not(.sf-anchored) body > footer {
-        content-visibility: auto;
-        contain-intrinsic-size: auto 1200px;
-    }
-}
-
-@media screen and (max-width: 767.98px) {
-
-    html:not(.sf-anchored) body > footer {
-        contain-intrinsic-size: auto 2000px;
-    }
-}
