@@ -540,7 +540,7 @@ it('keeps hover labels per language and names each language', function (): void 
         $lw->set("channels.$phone.tips.vi", 'Gọi ngay')
             ->call('setLang', 'en')
             ->assertSet('lang', 'en')
-            ->assertSee('Nhãn hover · Phone');   // the channel's own word in English
+            ->assertSee('Mặc định: Phone');   // the channel's own word in English
         $lw->set("channels.$phone.tips.en", 'Call now')
             ->call('setLang', 'fr')            // not a site language: ignored
             ->assertSet('lang', 'en')

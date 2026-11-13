@@ -260,6 +260,57 @@ it('drops the library’s “in use” row when the icon is replaced, cleared or
     expect(app(Tenancy::class)->enter(1, $rows))->toBe([]);
 });
 
+it('opens a channel’s “Tùy chỉnh nút” group from its icon disc: the colour, the words on the button and its own icon', function (): void {
+    $admin = fciAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)->call('addCustom');
+        $read = static function (string $html): DOMXPath {
+            $doc = new DOMDocument;
+            @$doc->loadHTML('<?xml encoding="utf-8"?>'.$html);
+
+            return new DOMXPath($doc);
+        };
+        $xp = $read($lw->html());
+
+        // The disc is a button naming the channel, closed at first, that controls the group.
+        $disc = $xp->query('//button[@id="fc-ico-t-zalo"]')->item(0);
+        expect($disc)->not->toBeNull()
+            ->and($disc->getAttribute('aria-expanded'))->toBe('false')
+            ->and($disc->getAttribute('aria-controls'))->toBe('fc-ico-p-zalo')
+            ->and($disc->getAttribute('aria-label'))->toBe('Tùy chỉnh nút · Zalo')
+            ->and($disc->getAttribute('title'))->toBe('Tùy chỉnh nút')
+            ->and($disc->getAttribute('class'))->toContain('hit-area');
+
+        $group = $xp->query('//*[@id="fc-ico-p-zalo"]')->item(0);
+        expect($group->getAttribute('role'))->toBe('group')
+            ->and($group->getAttribute('aria-label'))->toBe('Tùy chỉnh nút · Zalo')
+            ->and($group->hasAttribute('x-cloak'))->toBeTrue()
+            ->and(preg_replace('/\s+/u', ' ', $group->textContent))->toContain(
+                'Màu nút', 'Màu quá nhạt tự đậm lên để biểu tượng luôn rõ',
+                'Chữ trên nút', 'Hiện khi rê chuột (máy tính) và dưới nút ở thanh dưới · để trống dùng chữ mặc định',
+                'Biểu tượng', 'Tải biểu tượng riêng', 'PNG hoặc WebP · ảnh vuông · tối đa 50 KB.', 'Xong',
+            );
+        // The channel's default colour (chosen), seven colours, a colour of one's own; the hover label; the upload.
+        expect($xp->query('.//button[@aria-pressed]', $group)->length)->toBe(8)
+            ->and($xp->query('.//button[@aria-pressed="true"]/@aria-label', $group)->item(0)?->nodeValue)->toBe('Màu mặc định của kênh')
+            ->and($xp->query('.//input[@type="color"][@aria-label="Chọn màu tùy chọn"]', $group)->length)->toBe(1)
+            ->and($xp->query('.//input[@aria-label="Nhãn khi di chuột của Zalo"][@placeholder="Mặc định: Zalo"]', $group)->length)->toBe(1)
+            ->and($xp->query('.//input[@type="file"][@accept="image/png,image/webp"]', $group)->length)->toBe(1);
+
+        // A custom channel keeps its icon grid and the "mã Remix Icon" field in its row, outside its group.
+        $own = $xp->query('//*[@id="fc-ico-p-c1"]')->item(0);
+        expect($own)->not->toBeNull()
+            ->and($xp->query('.//*[@role="group"][starts-with(@aria-label, "Biểu tượng của")]', $own)->length)->toBe(0)
+            ->and($xp->query('//details[summary[contains(., "Dùng biểu tượng khác (mã Remix Icon)")]]//input[@placeholder="vd: ri-telegram-line"]')->length)->toBe(1);
+
+        // A swatch sets the channel's colour; the chosen one shows pressed.
+        $lw->set('channels.1.color', '#16a34a');
+        $group = $read($lw->html());
+        expect($group->query('//*[@id="fc-ico-p-zalo"]//button[@aria-pressed="true"]/@aria-label')->item(0)?->nodeValue)->toBe('Màu #16a34a');
+    });
+});
+
 it('refuses a JPEG and a GIF as an icon, whatever the file is called', function (string $name, string $kind): void {
     $admin = fciAdmin();
     $ulid = fciUpload($admin, $name, $kind)->assertOk()->json('ulid');
