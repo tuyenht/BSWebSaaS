@@ -53,7 +53,7 @@ it('describes every kind of page from its own words when the site says nothing a
         StorefrontCards::product('Khuôn ép nhựa', 'khuon-ep-nhua', summary: 'Khuôn ép nhựa nhiều lòng khuôn, thép P20, tuổi thọ 500.000 lần ép.');
         StorefrontCards::product('Đồ gá kiểm', 'do-ga-kiem');
         StorefrontCards::product('Khuôn dập liên hoàn', 'khuon-dap-lien-hoan')->translations()
-            ->update(['description' => '<ul><li>Thép SKD11</li></ul><p>Khuôn dập liên hoàn nhiều trạm cho chi tiết ô tô.</p>']);
+            ->update(['description' => '<ul><li><p>Thép SKD11 tôi chân không, độ cứng 60 HRC</p></li></ul><p>Khuôn dập liên hoàn nhiều trạm cho chi tiết ô tô.</p>']);
     });
 
     $page = dfDescription($this->get(DF_HOST.'/gioi-thieu')->assertOk()->getContent());
@@ -105,7 +105,9 @@ it('never takes another entry’s card or a list for the page’s words, nested 
         .'<li><p>Mục thứ hai của danh sách, sau danh sách lồng.</p></li></ul></section>'
         .'<p>Đoạn văn riêng của trang nằm sau danh sách.</p>';
 
-    expect(DescriptionFallback::fromHtml($html, 'Trang'))->toBe('Đoạn văn riêng của trang nằm sau danh sách.');
+    expect(DescriptionFallback::fromHtml($html, 'Trang'))->toBe('Đoạn văn riêng của trang nằm sau danh sách.')
+        // Deeper than any drawn page: the title, never a paragraph an outer list may still hold.
+        ->and(DescriptionFallback::fromHtml(str_repeat('<ul><li><p>Một dòng trong danh sách lồng rất sâu.</p>', 9).str_repeat('</li></ul>', 9), 'Trang'))->toBe('Trang');
 });
 
 it('keeps every description the page already has ahead of its own words', function (): void {

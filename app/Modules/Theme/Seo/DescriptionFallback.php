@@ -32,16 +32,18 @@ final class DescriptionFallback
         // and lists and cards (another entry's excerpt) are dropped, innermost first so a list inside
         // a list goes whole. A page nests them a few levels deep at most.
         $inner = '~<('.self::SKIP.')\b[^>]*>(?:(?!<(?:'.self::SKIP.')\b).)*?</\1>~is';
-        for ($depth = 0; $depth < 8; $depth++) {
+        $count = 1;
+        for ($depth = 0; $depth < 8 && $count > 0; $depth++) {
             $next = preg_replace($inner, ' ', $html, -1, $count);
             if ($next === null) {
                 // The pattern engine gave up (a page beyond its limits): the title, never a guess.
                 return self::cut(trim($title));
             }
             $html = $next;
-            if ($count === 0) {
-                break;
-            }
+        }
+        if ($count > 0) {
+            // Nested deeper than any drawn page: an outer list may still be there, so the title.
+            return self::cut(trim($title));
         }
         if (preg_match_all('~<p\b[^>]*>(.*?)</p>~is', $html, $paragraphs) > 0) {
             foreach ($paragraphs[1] as $paragraph) {
