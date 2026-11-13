@@ -273,6 +273,7 @@
     "admin.support.list.open_note": ":n sessions open",
     "admin.support.list.open_see": "See",
     "admin.support.list.error_title": "The support sessions could not be loaded",
+    "admin.support.list.loading": "Loading the support sessions…",
     "admin.support.list.error_text": "The network is slow or the server is busy. Your filters are kept.",
     "admin.support.list.retry": "Try again",
     "admin.support.list.empty_title": "No support sessions yet",

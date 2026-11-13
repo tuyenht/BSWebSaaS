@@ -273,6 +273,7 @@
     "admin.support.list.open_note": ":n 个会话进行中",
     "admin.support.list.open_see": "查看",
     "admin.support.list.error_title": "无法加载支持会话",
+    "admin.support.list.loading": "正在加载支持会话…",
     "admin.support.list.error_text": "网络较慢或服务器繁忙。您选择的筛选条件保持不变。",
     "admin.support.list.retry": "重试",
     "admin.support.list.empty_title": "暂无支持会话",

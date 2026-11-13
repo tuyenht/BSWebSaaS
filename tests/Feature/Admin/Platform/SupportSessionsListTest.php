@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 
 /*
@@ -198,6 +199,9 @@ it('shows staff without the right the no-right card, reads nothing and refuses e
     $page->call('askEnd', $code)->assertForbidden();
     Livewire::actingAs($billing)->test(Index::class)->call('older', $code)->assertForbidden();
     Livewire::actingAs($billing)->test(Index::class)->call('clearFilters')->assertForbidden();
+    Livewire::actingAs($billing)->test(Index::class)->call('endNow')->assertForbidden();
+    Livewire::actingAs($billing)->test(Index::class)->call('dismissToast')->assertForbidden();
+    Livewire::actingAs($billing)->test(Index::class)->set('search', 'An Vinh')->assertForbidden();
     expect(AuditLog::query()->where('action', SupportSessions::ENDED)->count())->toBe(0);
 });
 
@@ -247,8 +251,7 @@ it('refuses a colleague\'s session to staff who are not the platform super-admin
         ->call('askEnd', $code)
         ->assertSet('endOpen', false)->assertSet('ending', '')
         ->assertSet('toastTone', 'error')
-        ->assertSet('toast', 'Chỉ Quản trị nền tảng kết thúc được phiên của người khác.')
-        ->call('endNow');
+        ->assertSet('toast', 'Chỉ Quản trị nền tảng kết thúc được phiên của người khác.');
 
     expect(AuditLog::query()->where('action', SupportSessions::ENDED)->count())->toBe(0);
 });
@@ -288,8 +291,20 @@ it('keeps the end question and the toast out of the browser\'s hands', function 
     $code = slSession(slStaff('support'));
 
     $page = Livewire::actingAs($staff)->test(Index::class);
-    expect(fn () => $page->set('ending', $code))->toThrow(Exception::class);
-    expect(fn () => $page->set('toast', 'x'))->toThrow(Exception::class);
+    expect(fn () => $page->set('ending', $code))->toThrow(CannotUpdateLockedPropertyException::class);
+    expect(fn () => $page->set('toast', 'x'))->toThrow(CannotUpdateLockedPropertyException::class);
+});
+
+it('names a chosen staff member with no session at 0, and nobody for a code that is not staff', function (): void {
+    $phuc = slStaff('support', 'Lê Hoàng Phúc');
+    $idle = slStaff('support', 'Trần Thu Hà');
+    slSession($phuc);
+    $member = User::factory()->create(['name' => 'Khách Võ Thị Mai']);
+
+    $page = Livewire::actingAs($phuc)->test(Index::class)->set('staff', [$idle->ulid, $member->ulid]);
+
+    expect(array_column($page->viewData('staffChoices'), 'count', 'label'))->toBe(['Lê Hoàng Phúc' => 1, 'Trần Thu Hà' => 0]);
+    $page->assertDontSee('Khách Võ Thị Mai');
 });
 
 it('shows the empty state with the way to the websites', function (): void {

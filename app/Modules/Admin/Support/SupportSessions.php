@@ -174,6 +174,10 @@ final readonly class SupportSessions
         foreach (User::query()
             ->where(fn (Builder $w) => $w->whereIn('id', array_keys($counts))->when($chosen !== [], fn (Builder $o) => $o->orWhereIn('ulid', $chosen)))
             ->get(['id', 'ulid', 'name', 'email']) as $user) {
+            // a chosen code that is not a staff member's (a hand-made link) names nobody
+            if (! isset($counts[Cast::int($user->getKey())]) && ! $this->platform->isOperator($user)) {
+                continue;
+            }
             $choices[] = [
                 'value' => Cast::string($user->getAttribute('ulid')),
                 'label' => SupportSession::labelOf($user),

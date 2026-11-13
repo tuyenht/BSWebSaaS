@@ -273,6 +273,7 @@
     "admin.support.list.open_note": ":n件のセッションが進行中",
     "admin.support.list.open_see": "表示",
     "admin.support.list.error_title": "サポートセッションを読み込めませんでした",
+    "admin.support.list.loading": "サポートセッションを読み込んでいます…",
     "admin.support.list.error_text": "ネットワークが遅いか、サーバーが混み合っています。選んだ絞り込みはそのままです。",
     "admin.support.list.retry": "再試行",
     "admin.support.list.empty_title": "サポートセッションはまだありません",

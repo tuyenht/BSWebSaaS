@@ -102,6 +102,7 @@
                 </p>
             @endif
 
+            <p wire:loading.delay wire:target="search,tab,staff,days,per,older,newer,clearFilters,clearSearch,clearDays,removeStaff,showOpen,endNow" class="sr-only" role="status">{{ __('admin.support.list.loading') }}</p>
             <div class="min-w-0 transition-opacity max-[599.98px]:rounded-md max-[599.98px]:border max-[599.98px]:border-border max-[599.98px]:bg-surface max-[599.98px]:[&_.list-g]:border-t-0"
                  wire:loading.class="opacity-60" wire:loading.attr="aria-busy" wire:target="search,tab,staff,days,per,older,newer,clearFilters,clearSearch,clearDays,removeStaff,showOpen,endNow">
                 @if ($failed)

@@ -273,6 +273,7 @@
     "admin.support.list.open_note": ":n phiên đang mở",
     "admin.support.list.open_see": "Xem",
     "admin.support.list.error_title": "Chưa tải được các phiên hỗ trợ",
+    "admin.support.list.loading": "Đang tải các phiên hỗ trợ…",
     "admin.support.list.error_text": "Mạng chậm hoặc máy chủ đang bận. Bộ lọc bạn chọn vẫn giữ nguyên.",
     "admin.support.list.retry": "Thử lại",
     "admin.support.list.empty_title": "Chưa có phiên hỗ trợ nào",
