@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Catalog\Actions;
 
+use App\Modules\Catalog\Actions\Concerns\AuthorizesCatalogChange;
 use App\Modules\Catalog\Exceptions\ProductEditRefused;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
@@ -17,6 +18,8 @@ use App\Modules\Shared\Support\PlainText;
  */
 final class RenameProduct
 {
+    use AuthorizesCatalogChange;
+
     public const int MAX = 200;
 
     /**
@@ -55,6 +58,7 @@ final class RenameProduct
      */
     public function handle(Product $product, string $input, string $locale): string
     {
+        $this->authorizeCatalog('update', $product);
         $name = $this->clean($input);
 
         ProductSearchWords::lock($product->site_id, $product->id);
