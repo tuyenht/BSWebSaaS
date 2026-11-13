@@ -19,7 +19,8 @@ use Illuminate\Support\Facades\DB;
  *
  * down() puts the old list back, and never deletes a tally: while any `buy` row exists it refuses
  * (the rows would break the old CHECK). A `buy` row written between that look and the swap makes
- * the validation fail; the wider CHECK then goes back and down() refuses the same way.
+ * the validation fail; the wider CHECK then goes back and down() refuses the same way. Any other
+ * failed validation also puts the wider CHECK back, then reports its own error.
  */
 return new class extends Migration
 {
@@ -51,9 +52,15 @@ return new class extends Migration
         $this->swap(self::CHANNELS);
         try {
             $this->validate();
-        } catch (QueryException) {
+        } catch (QueryException $e) {
             $this->swap([...self::CHANNELS, self::ADDED]);
             $this->validate();
+
+            // Only a row the old list cannot hold (check_violation) means "Mua hàng" taps exist; any other
+            // failure (a lock wait that gave up, say) is reported as itself.
+            if ($e->getCode() !== '23514') {
+                throw $e;
+            }
 
             throw new RuntimeException(self::REFUSED);
         }

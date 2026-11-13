@@ -7,6 +7,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Chrome\FloatingContact;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\QueryException;
 use Illuminate\Redis\RedisManager;
@@ -409,4 +410,34 @@ it('takes “Mua hàng” out of the channel check only while no “Mua hàng”
         ->and($definition())->toContain("'buy'::")->not->toContain('NOT VALID')
         ->and($insertBuy)->not->toThrow(QueryException::class)
         ->and(clickTallies(2))->toBe(['2026-11-13|buy|bar' => 1]);
+});
+
+it('puts “Mua hàng” back in the channel check when a tally arrives while it is being taken out', function (): void {
+    /** @var Migration $migration */
+    $migration = require database_path('migrations/2057_01_01_000000_add_buy_to_contact_click_channels.php');
+    $admin = DB::connection('pgsql_admin');
+    $definition = fn (): string => (string) $admin->scalar(
+        "select pg_get_constraintdef(oid) from pg_constraint where conname = 'contact_click_daily_channel_check'",
+    );
+
+    // A visitor's tap is flushed right after down() looked and found no "Mua hàng" tally.
+    $arrived = false;
+    DB::listen(function (QueryExecuted $query) use ($admin, &$arrived): void {
+        if (! $arrived && $query->connectionName === 'pgsql_admin' && str_contains($query->sql, 'exists') && str_contains($query->sql, 'contact_click_daily')) {
+            $arrived = true;
+            $admin->table('contact_click_daily')->insert(['site_id' => 1, 'day' => '2026-11-13', 'channel' => 'buy', 'placement' => 'bar', 'clicks' => 1]);
+        }
+    });
+
+    $original = DB::getDefaultConnection();
+    DB::setDefaultConnection('pgsql_admin');
+    try {
+        expect(fn () => $migration->down())->toThrow(RuntimeException::class, 'channel = buy');
+    } finally {
+        DB::setDefaultConnection($original);
+    }
+
+    expect($arrived)->toBeTrue()
+        ->and($definition())->toContain("'buy'::")->not->toContain('NOT VALID')
+        ->and(clickTallies(1))->toBe(['2026-11-13|buy|bar' => 1]);
 });
