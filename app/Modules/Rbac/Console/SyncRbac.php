@@ -10,6 +10,7 @@ use App\Modules\Shared\Support\Cast;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use LogicException;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
@@ -85,6 +86,8 @@ final class SyncRbac extends Command
             // resolver for everything that runs next in this process (console/queue), e.g. a
             // provisioning call would silently create its tenant roles on team 0.
             app(TeamContext::class)->forget();
+            // grants attached before a failure are committed: never leave the cached catalog without them
+            $registrar->forgetCachedPermissions();
         }
     }
 
@@ -191,6 +194,10 @@ final class SyncRbac extends Command
     private static function grant(Role $role, array $missing, array $ids): int
     {
         $attach = array_values(array_intersect_key($ids, array_flip($missing)));
+        if (count($attach) !== count($missing)) {
+            throw new LogicException('rbac:sync: a template names permissions missing from the catalog: '
+                .implode(', ', array_diff($missing, array_keys($ids))));
+        }
         if ($attach === []) {
             return 0;
         }
