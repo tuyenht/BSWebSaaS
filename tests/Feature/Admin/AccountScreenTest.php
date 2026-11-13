@@ -118,6 +118,8 @@ it('puts the board wording on each password mistake, in the board order', functi
 
 it('changes the password on record and keeps this session signed in', function (): void {
     $user = accountMember();
+    session()->start();
+    $before = session()->getId();
 
     app(Tenancy::class)->enter(1, fn () => accountPage($user)
         ->set('current_password', 'old-password-123')
@@ -130,7 +132,12 @@ it('changes the password on record and keeps this session signed in', function (
 
     expect(Hash::check('mua-ca-phe-luc-7-gio', $user->fresh()->password))->toBeTrue()
         ->and(session('password_hash_web'))->toBe($user->fresh()->getAuthPassword())
+        ->and(session()->getId())->not->toBe($before)
+        ->and(auth()->id())->toBe($user->id)
         ->and(auditCount('auth.password.changed', $user))->toBe(1);
+
+    // Still signed in on the next page: the session's saved hash matches the new password.
+    $this->get('http://a.test/admin/account')->assertOk();
 });
 
 it('pauses the current-password check after five wrong tries', function (): void {
@@ -152,11 +159,15 @@ it('pauses the current-password check after five wrong tries', function (): void
     expect(Hash::check('old-password-123', $user->fresh()->password))->toBeTrue();
 });
 
-it('turns two-step sign-in on in three steps, on record, and shows the codes once', function (): void {
+it('turns two-step sign-in on in three steps, on record, warns the member and shows the codes once', function (): void {
+    Notification::fake();
     $user = accountMember();
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
-        $page = accountPage($user)->set('tab', 'security')->call('startTwoFactor')->assertSet('tfaStep', 1)
+        $page = accountPage($user)->set('tab', 'security')
+            ->call('openDialog', 'enable')->assertSet('dialog', 'enable')->assertSee('Bật xác thực 2 lớp?')
+            ->set('confirmPassword', 'old-password-123')->call('startTwoFactor')
+            ->assertHasNoErrors()->assertSet('dialogOpen', false)->assertSet('tfaStep', 1)
             ->assertSee('Bước 1/3 · Quét mã')
             ->call('twoFactorNext')->assertSet('tfaStep', 2);
 
@@ -174,12 +185,53 @@ it('turns two-step sign-in on in three steps, on record, and shows the codes onc
     expect($user->fresh()->two_factor_confirmed_at)->not->toBeNull()
         ->and(session('account.tfa_secret'))->toBeNull()
         ->and(auditCount('auth.2fa.enabled', $user))->toBe(1);
+    Notification::assertSentTo($user, TwoFactorDisabledNotification::class, function (TwoFactorDisabledNotification $notice) use ($user): bool {
+        $row = $notice->toSiteDatabase($user);
+
+        return $row['kind'] === 'security.two_factor_disabled' && ($row['data']['sentence'] ?? null) === 'enabled'
+            && $notice->toMail($user)->subject === 'Xác thực 2 lớp đã được bật';
+    });
+});
+
+it('starts two-step setup only after the password is typed again', function (): void {
+    $user = accountMember();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        // Straight to the setup, without the dialog: nothing starts.
+        accountPage($user)->set('confirmPassword', 'old-password-123')->call('startTwoFactor')->assertSet('tfaStep', 0);
+
+        // The dialog with no password, then a wrong one: refused, still nothing started.
+        accountPage($user)->call('openDialog', 'enable')
+            ->call('startTwoFactor')->assertHasErrors(['confirmPassword'])->assertSet('tfaStep', 0)
+            ->set('confirmPassword', 'wrong-password')->call('startTwoFactor')
+            ->assertHasErrors(['confirmPassword'])->assertSee('Mật khẩu chưa đúng')->assertSet('tfaStep', 0)->assertSet('dialogOpen', true);
+    });
+
+    expect(session('account.tfa_secret'))->toBeNull();
+});
+
+it('pauses the password check of the two-step setup after five wrong tries', function (): void {
+    $user = accountMember();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $page = accountPage($user)->call('openDialog', 'enable');
+        foreach (range(1, 5) as $_) {
+            $page->set('confirmPassword', 'wrong-password')->call('startTwoFactor')->assertHasErrors(['confirmPassword']);
+        }
+
+        // Even the right password waits now.
+        $page->set('confirmPassword', 'old-password-123')->call('startTwoFactor')->assertSet('tfaStep', 0);
+        expect($page->errors()->first('confirmPassword'))->toContain('Bạn đã thử sai nhiều lần');
+    });
+
+    expect(session('account.tfa_secret'))->toBeNull();
 });
 
 it('cancels a started setup without turning anything on', function (): void {
     $user = accountMember();
 
-    app(Tenancy::class)->enter(1, fn () => accountPage($user)->call('startTwoFactor')->call('cancelTwoFactor')->assertSet('tfaStep', 0));
+    app(Tenancy::class)->enter(1, fn () => accountPage($user)->call('openDialog', 'enable')->set('confirmPassword', 'old-password-123')
+        ->call('startTwoFactor')->assertSet('tfaStep', 1)->call('cancelTwoFactor')->assertSet('tfaStep', 0));
 
     expect(session('account.tfa_secret'))->toBeNull()
         ->and($user->fresh()->two_factor_confirmed_at)->toBeNull();
@@ -220,12 +272,16 @@ it('turns two-step sign-in off only with the password, on record, and warns the 
     Notification::assertSentTo($user, TwoFactorDisabledNotification::class);
 });
 
-it('opens no two-step dialog while two-step sign-in is off', function (): void {
-    $user = accountMember();
+it('opens no two-step dialog that does not fit whether two-step sign-in is on', function (): void {
+    $off = accountMember();
+    $on = withTwoFactor(accountMember());
 
-    app(Tenancy::class)->enter(1, fn () => accountPage($user)->call('openDialog', 'disable')->assertSet('dialogOpen', false)
-        ->call('openDialog', 'regen')->assertSet('dialogOpen', false)
-        ->call('openDialog', 'anything')->assertSet('dialogOpen', false));
+    app(Tenancy::class)->enter(1, function () use ($off, $on): void {
+        accountPage($on)->call('openDialog', 'enable')->assertSet('dialogOpen', false);
+        accountPage($off)->call('openDialog', 'disable')->assertSet('dialogOpen', false)
+            ->call('openDialog', 'regen')->assertSet('dialogOpen', false)
+            ->call('openDialog', 'anything')->assertSet('dialogOpen', false);
+    });
 });
 
 it('unlinks the member\'s own sign-in account, on record, and nobody else\'s', function (): void {
@@ -246,6 +302,22 @@ it('unlinks the member\'s own sign-in account, on record, and nobody else\'s', f
         ->and(DB::connection('pgsql_admin')->table('audit_logs')->where('action', 'auth.social.unlinked')->where('actor_id', $user->id)->value('meta'))->toContain('google');
 });
 
+it('keeps the last linked sign-in account of a member who has no password', function (): void {
+    $user = accountMember();
+    // No password on record (written past the hashing cast): the link is the only way in.
+    User::query()->whereKey($user->id)->update(['password' => '']);
+    $user = $user->fresh();
+    SocialIdentity::query()->create(['user_id' => $user->id, 'provider' => 'google', 'sub' => 'g-'.$user->ulid, 'email' => $user->email]);
+
+    app(Tenancy::class)->enter(1, fn () => accountPage($user)->set('tab', 'linked')
+        ->call('openDialog', 'unlink', 'google')->assertSet('dialogProvider', 'google')
+        ->call('unlinkProvider')->assertSet('dialogOpen', false));
+
+    expect($user->getAuthPassword())->toBe('')
+        ->and($user->socialIdentities()->count())->toBe(1)
+        ->and(auditCount('auth.social.unlinked', $user))->toBe(0);
+});
+
 it('saves the member\'s language and uses it when the session has none', function (): void {
     $user = accountMember();
 
@@ -258,13 +330,15 @@ it('saves the member\'s language and uses it when the session has none', functio
     $this->actingAs($user->fresh())->get('http://a.test/admin/account')->assertOk()->assertSee('My account');
 });
 
-it('keeps the top-bar language switch on the member\'s account', function (): void {
-    $user = accountMember();
+it('lets the top-bar language link change this session only, never the saved language', function (): void {
+    // A plain GET link can be fired from another site (an <img>), so it must not write the account:
+    // the saved language changes only from the Tùy chọn tab.
+    $user = accountMember(attributes: ['preferences' => ['locale' => 'en']]);
 
-    $this->actingAs($user)->get('http://a.test/admin/locale?set=ja')->assertRedirect();
+    $this->actingAs($user)->get('http://a.test/admin/locale?set=ja')->assertRedirect()->assertSessionHas('locale', 'ja');
     $this->actingAs($user)->get('http://a.test/admin/locale?set=xx')->assertRedirect();
 
-    expect($user->fresh()->preferences['locale'] ?? null)->toBe('ja');
+    expect($user->fresh()->preferences)->toBe(['locale' => 'en']);
 });
 
 it('saves scheme, text size and motion as the member\'s own and paints them on the page', function (): void {

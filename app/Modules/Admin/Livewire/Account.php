@@ -117,7 +117,7 @@ final class Account extends Component
 
     public bool $dialogOpen = false;
 
-    /** '' | 'regen' | 'codes' | 'disable' | 'unlink' */
+    /** '' | 'enable' | 'regen' | 'codes' | 'disable' | 'unlink' */
     #[Locked]
     public string $dialog = '';
 
@@ -207,6 +207,8 @@ final class Account extends Component
         }
 
         $user->forceFill(['password' => Hash::make($this->password)])->save();
+        // A new session id with the new password: an id copied before the change is worth nothing.
+        session()->regenerate();
         session()->put('password_hash_'.Cast::string(config('auth.defaults.guard')), $user->getAuthPassword());
         Audit::record('auth.password.changed', ['actor_id' => $user->getKey(), 'actor_label' => $user->email]);
 
@@ -216,13 +218,24 @@ final class Account extends Component
 
     // ───────────────────────────── two-factor ─────────────────────────────
 
+    /**
+     * Start the setup from the "Bật xác thực 2 lớp" dialog, once the member typed their password
+     * again: adding a sign-in factor (and getting its recovery codes) must not be open to someone
+     * who only holds a session.
+     */
     public function startTwoFactor(): void
     {
         $this->writable();
-        if ($this->member()->two_factor_confirmed_at !== null) {
+        $this->resetErrorBag('confirmPassword');
+        $user = $this->member();
+        if ($this->dialog !== 'enable' || $user->two_factor_confirmed_at !== null) {
+            return;
+        }
+        if (! $this->passwordMatches($user, $this->confirmPassword, 'confirmPassword', __('admin.account.dlg_pw_wrong'))) {
             return;
         }
 
+        $this->closeDialog();
         session()->put(self::TFA_SESSION, app(TwoFactorService::class)->generateSecret());
         $this->tfaStep = 1;
         $this->reset('tfaCode', 'recoveryCodes');
@@ -286,7 +299,13 @@ final class Account extends Component
 
         RateLimiter::clear($key);
         session()->forget(self::TFA_SESSION);
+        // A new sign-in factor is a security event too: the member hears of it in the bell and by
+        // mail (the same locked notice as turning it off), so it cannot be added quietly.
         Audit::record('auth.2fa.enabled', ['actor_id' => $user->getKey(), 'actor_label' => $user->email]);
+        $user->notify((new TwoFactorDisabledNotification(
+            app(SiteTime::class)->now()->format('d/m/Y H:i'),
+            turnedOn: true,
+        ))->forCurrentSite());
 
         $this->recoveryCodes = Cast::strings($user->refresh()->two_factor_recovery_codes);
         $this->tfaStep = 3;
@@ -302,7 +321,7 @@ final class Account extends Component
 
     // ───────────────────────────── dialogs ─────────────────────────────
 
-    /** Open a confirm dialog: regenerate codes / turn two-factor off (both ask for the password) or unlink a provider. */
+    /** Open a confirm dialog: turn two-factor on / regenerate codes / turn it off (all ask for the password) or unlink a provider. */
     public function openDialog(string $kind, string $provider = ''): void
     {
         $this->writable();
@@ -310,6 +329,7 @@ final class Account extends Component
         $twoFactorOn = $user->two_factor_confirmed_at !== null;
 
         $allowed = match ($kind) {
+            'enable' => ! $twoFactorOn,
             'regen', 'disable' => $twoFactorOn,
             'unlink' => $user->socialIdentities()->where('provider', $provider)->exists(),
             default => false,

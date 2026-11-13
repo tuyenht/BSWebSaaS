@@ -48,7 +48,6 @@ use App\Modules\Admin\Support\Locales;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
-use App\Modules\Identity\Support\UserPreferences;
 use App\Modules\Media\Http\Controllers\MediaUploadController;
 use App\Modules\Storefront\Http\Controllers\FormSubmissionController;
 use App\Modules\Storefront\Http\Controllers\ProductPreviewController;
@@ -114,12 +113,6 @@ Route::domain((string) config('tenancy.platform_host'))
             $set = (string) request('set');
             if (in_array($set, Locales::codes(), true)) {
                 session(['locale' => $set]);
-                // A signed-in member keeps the choice on their account too (My account → Ngôn ngữ);
-                // staff signed in for support change only their own session, never the member's account.
-                $member = auth()->user();
-                if ($member instanceof User && ! app(SupportSession::class)->active()) {
-                    UserPreferences::set($member, ['locale'], $set);
-                }
             }
 
             return back(fallback: route('platform.login'));
@@ -226,12 +219,6 @@ Route::prefix(config('admin.prefix', 'admin'))
             $set = (string) request('set');
             if (in_array($set, Locales::codes(), true)) {
                 session(['locale' => $set]);
-                // A signed-in member keeps the choice on their account too (My account → Ngôn ngữ);
-                // staff signed in for support change only their own session, never the member's account.
-                $member = auth()->user();
-                if ($member instanceof User && ! app(SupportSession::class)->active()) {
-                    UserPreferences::set($member, ['locale'], $set);
-                }
             }
 
             return back(fallback: route('admin.login'));

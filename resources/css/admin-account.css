@@ -1,9 +1,15 @@
 /*
- | My account (Tài khoản của tôi) — ported 1:1 from the design board's `.ac-*` rules. The screen is
+ | My account (Tài khoản của tôi) — ported 1:1 from the design board's `.ac-*` rules. Its own Vite
+ | entry, linked by the account view only (@assets), so no other admin page downloads it; plain
+ | layout lives in Tailwind utilities on the markup, this file keeps what utilities cannot say
+ | (container queries, :has() states, the password field, the notification table). The screen is
  | a container (`ac`) so its layout follows the space it gets, not the window: the section menu
  | becomes a column from 760px of room, the notification table stacks below 680px. Every colour is a
  | shared token; text follows --user-text-boost.
  */
+
+/* The admin theme and utilities for @apply, without emitting app.css a second time. */
+@reference './app.css';
 
 .ac-c {
     container-type: inline-size;
@@ -11,14 +17,6 @@
     font-size: var(--text-body);
     line-height: 1.5;
     color: var(--color-body-text);
-}
-
-.ac-wrap {
-    max-width: 1120px;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
 }
 
 .ac-h1 {
@@ -113,11 +111,6 @@
     color: var(--color-heading);
 }
 
-.ac-req {
-    font-weight: 700;
-    color: var(--color-admin-danger-text);
-}
-
 .ac-chip {
     display: inline-flex;
     flex: 0 0 auto;
@@ -206,18 +199,11 @@
     }
 }
 
-.ac-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-}
-
 .ac-opt {
     display: flex;
     align-items: center;
     gap: 10px;
-    min-height: 44px;
+    min-height: var(--spacing-control);
     padding: 10px 12px;
     border: 1px solid var(--color-border-strong);
     border-radius: 6px;
@@ -247,7 +233,7 @@
     display: flex;
     align-items: flex-start;
     gap: 10px;
-    min-height: 44px;
+    min-height: var(--spacing-control);
     padding: 10px 0;
     color: var(--color-heading);
     cursor: pointer;
@@ -266,32 +252,11 @@
     padding: 16px;
 }
 
-.ac-idt {
-    display: flex;
-    flex: 1 1 220px;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-}
-
 .ac-nm {
     font-size: calc(1rem + var(--user-text-boost));
     font-weight: 600;
     color: var(--color-heading);
     overflow-wrap: anywhere;
-}
-
-.ac-mut {
-    color: var(--color-body-muted);
-    overflow-wrap: anywhere;
-}
-
-.ac-chips {
-    display: flex;
-    flex: 0 0 auto;
-    flex-wrap: wrap;
-    gap: 6px;
-    max-width: 100%;
 }
 
 .ac-av {
@@ -408,13 +373,6 @@
     height: 8px;
     border-radius: 50%;
     background: var(--color-admin-warning);
-}
-
-.ac-pane {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    min-width: 0;
 }
 
 .ac-select {
@@ -558,19 +516,6 @@
 }
 
 /* two-factor steps */
-.ac-step {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.ac-qrw {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 16px;
-}
-
 .ac-qr {
     display: flex;
     flex: 0 0 auto;
@@ -589,21 +534,6 @@
 .ac-qr svg {
     width: 100%;
     height: 100%;
-}
-
-.ac-qrt {
-    display: flex;
-    flex: 1 1 240px;
-    flex-direction: column;
-    gap: 8px;
-    min-width: 0;
-}
-
-.ac-key {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
 }
 
 .ac-mono {
@@ -632,15 +562,6 @@
     }
 }
 
-.ac-ol {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    margin: 0;
-    padding-left: 20px;
-    list-style: decimal;
-}
-
 .ac-tfa {
     display: flex;
     flex-wrap: wrap;
@@ -651,12 +572,6 @@
 .ac-tfa > div {
     flex: 1 1 260px;
     min-width: 0;
-}
-
-.ac-sep {
-    height: 1px;
-    margin: 0;
-    background: var(--color-border);
 }
 
 /* preferences */
@@ -678,13 +593,6 @@
     height: 22px;
     border-radius: 50%;
     object-fit: cover;
-}
-
-.ac-fl {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    min-width: 0;
 }
 
 /* notification table: kinds × channels; stacks below 680px of room */
@@ -728,13 +636,6 @@
 
 .ac-nt-r {
     border-top: 1px solid var(--color-border);
-}
-
-.ac-nt-n {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
 }
 
 .ac-nt-l {
@@ -794,7 +695,7 @@
 
     .ac-nt-c {
         justify-content: space-between;
-        min-height: 44px;
+        min-height: var(--spacing-control);
     }
 
     .ac-nt-cl {
@@ -862,4 +763,20 @@
 .ac-dic[data-k='danger'] {
     background: color-mix(in srgb, var(--color-admin-danger) 12%, var(--color-surface));
     color: var(--color-admin-danger-text);
+}
+
+/* Controls take the shared control height with a mouse (40px, 44px from the next text size up)
+   and the shared touch size on a touch screen; last in the file so it wins over the rules above. */
+@media (any-pointer: coarse) {
+    .ac-opt,
+    .ac-check,
+    .ac-nav button {
+        min-height: var(--spacing-hit);
+    }
+
+    @container (max-width: 679px) {
+        .ac-nt-c {
+            min-height: var(--spacing-hit);
+        }
+    }
 }

@@ -11,7 +11,7 @@
             <li>{{ $code }}</li>
         @endforeach
     </ul>
-    <div class="ac-row">
+    <div class="flex flex-wrap items-center gap-2">
         <x-bs-admin::button variant="outline" color="secondary"
                             @click="const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' })); a.download = 'ma-khoi-phuc.txt'; a.click(); URL.revokeObjectURL(a.href)">
             <x-bs-admin::icon name="ri-download-2" class="size-[1.15em] shrink-0" />{{ __('admin.account.download') }}
