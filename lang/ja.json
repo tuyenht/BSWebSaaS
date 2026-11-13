@@ -3097,6 +3097,7 @@
     "admin.fc.kpi_sub": "過去30日 · 自動で集計、追加の設定は不要",
     "admin.fc.kpi_taps": "タップ",
     "admin.fc.kpi_empty": "まだタップはありません。訪問者がウェブサイトのボタンを押し始めると、ここに数字が表示されます。",
+    "admin.fc.kpi_buy": "購入する",
     "admin.fc.in_use": "使用中",
     "admin.fc.pos_label": "表示位置",
     "admin.fc.pos_right": "右",

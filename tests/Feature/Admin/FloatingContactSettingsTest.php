@@ -12,7 +12,9 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Chrome\FloatingContact;
+use App\Modules\Theme\Theming\ReadableColor;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 
@@ -891,6 +893,47 @@ it('shows only the current site’s taps of the last 30 days in “Hiệu quả�
     app(TeamContext::class)->forget();
     app(Tenancy::class)->enter(2, function () use ($other): void {
         Livewire::actingAs($other)->test(FloatingContactSettings::class)->assertSet('stats', ['total' => 4321, 'channels' => ['phone' => 4321]]);
+    });
+});
+
+it('shows “Mua hàng” last in “Hiệu quả”, in its own colour, while its switch is on in a layout with the phone bar', function (): void {
+    $admin = fcsAdmin();
+    $today = now('Asia/Ho_Chi_Minh')->toDateString();
+    app(Tenancy::class)->enter(1, function () use ($today): void {
+        ContactClickDaily::query()->create(['day' => $today, 'channel' => 'zalo', 'placement' => 'floating', 'clicks' => 7]);
+        ContactClickDaily::query()->create(['day' => $today, 'channel' => 'buy', 'placement' => 'bar', 'clicks' => 3]);
+    });
+    app(Tenancy::class)->enter(2, fn () => ContactClickDaily::query()->create(['day' => $today, 'channel' => 'buy', 'placement' => 'bar', 'clicks' => 4321]));
+    // The "Hiệu quả" card of the page as drawn now: its total and its rows' labels and counts, in order.
+    $card = function (Testable $lw): array {
+        $html = Str::before(Str::after($lw->html(), 'Hiệu quả nút liên hệ'), 'bg-success-soft');
+        preg_match('/<b class="text-\[calc\(1\.375rem[^"]*">([^<]*)<\/b>/', $html, $total);
+        preg_match_all('/<li class="grid[^"]*">.*?<span class="min-w-0[^"]*">([^<]*)<\/span>.*?<b[^>]*>([^<]*)<\/b>/s', $html, $rows, PREG_SET_ORDER);
+
+        return ['total' => $total[1] ?? null, 'rows' => array_map(fn (array $r): string => trim($r[1]).' '.trim($r[2]), $rows), 'html' => $html];
+    };
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $card): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+            ->call('setLayout', 'combo')->set('buyOn', true)->call('setBuyColor', '#f7b84b');
+        expect($lw->get('stats'))->toBe(['total' => 10, 'channels' => ['zalo' => 7, 'buy' => 3]]);
+        $shown = $card($lw);
+        expect($shown['total'])->toBe('10')
+            ->and(end($shown['rows']))->toBe('Mua hàng 3')
+            ->and($shown['html'])->toContain('background: '.ReadableColor::inkUnder('#f7b84b'))->not->toContain('4.321');
+
+        $lw->call('setLayout', 'horizontal');
+        expect(end($card($lw)['rows']))->toBe('Mua hàng 3');
+
+        $lw->call('setBuyColor', 'brand');
+        expect($card($lw)['html'])->toContain('background: var(--color-primary)');
+
+        $lw->call('setLayout', 'vertical');   // no phone bar: no "Mua hàng" row, its taps still in the total
+        expect($card($lw)['rows'])->not->toContain('Mua hàng 3')
+            ->and($card($lw)['total'])->toBe('10');
+
+        $lw->call('setLayout', 'combo')->call('toggleBuy');   // switched off
+        expect(implode('|', $card($lw)['rows']))->not->toContain('Mua hàng');
     });
 });
 

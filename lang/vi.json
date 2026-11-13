@@ -3097,6 +3097,7 @@
     "admin.fc.kpi_sub": "30 ngày qua · tự đếm, không cần cài thêm gì",
     "admin.fc.kpi_taps": "lượt bấm",
     "admin.fc.kpi_empty": "Chưa có lượt bấm nào. Số liệu hiện tại đây khi khách bắt đầu bấm nút trên website.",
+    "admin.fc.kpi_buy": "Mua hàng",
     "admin.fc.in_use": "Đang dùng",
     "admin.fc.pos_label": "Vị trí hiển thị",
     "admin.fc.pos_right": "Bên phải",

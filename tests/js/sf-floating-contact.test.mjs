@@ -1,9 +1,9 @@
 // The floating contact's part of the storefront script (resources/js/storefront.js), in a DOM without a
 // browser: with click tracking on, a click on a contact link announces `bs:contact-click` at once (before
 // the link leaves the page), naming the channel, place, device, page path and kind of link — never the
-// number or the address; the "Liên hệ" button counts only its opening; the "Chép số" code is fetched at
-// idle on a computer only; a first "Chép số" click before that code arrived still copies, and if the code
-// never comes the number is selected. `node --test tests/js/sf-floating-contact.test.mjs`.
+// number or the address; the "Liên hệ" button counts only its opening and sends no beacon, "Mua hàng"
+// does; the "Chép số" code is fetched at idle on a computer only; a first "Chép số" click before that code
+// arrived still copies, and if the code never comes the number is selected. `node --test tests/js/sf-floating-contact.test.mjs`.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { JSDOM } from 'jsdom';
@@ -104,6 +104,24 @@ test('a tap on a contact channel is counted with one beacon naming only the chan
         ['/_click', '{"channel":"email","placement":"dial"}'],
         ['/_click', '{"channel":"zalo","placement":"dial"}'],
     ]);
+});
+
+test('a tap on “Mua hàng” in the phone bar is counted with its beacon, the “Liên hệ” button still is not', async () => {
+    const bar = `<div class="sf-fc sf-fc--horizontal" data-fc-root><nav class="sf-fc-bar"><ul class="sf-fc-bar__list">
+        <li class="sf-fc-bar__item"><a id="bar-zalo" class="sf-fc-bar__link" href="https://zalo.me/0912345678" data-fc="zalo" data-fc-at="bar" data-fc-lt="web">Zalo</a></li>
+        <li class="sf-fc-bar__item"><a id="buy" class="sf-fc-bar__link" href="/san-pham" data-fc="buy" data-fc-at="bar" data-fc-lt="page"><span id="buy-label">Mua hàng</span></a></li>
+    </ul></nav></div>`;
+    const { doc, events, beacons, click } = await start(bar + widget());
+    doc.getElementById('sf-fc-dial').matches = () => false;
+
+    click('buy-label'); // a click inside the link counts for the link
+    click('bar-zalo');
+    click('dial');
+    assert.deepEqual(beacons, [
+        ['/_click', '{"channel":"buy","placement":"bar"}'],
+        ['/_click', '{"channel":"zalo","placement":"bar"}'],
+    ]);
+    assert.deepEqual(events[0], { channel: 'buy', placement: 'bar', device: 'phone', page_path: '/gioi-thieu', link_type: 'page' });
 });
 
 test('nothing is announced or counted with click tracking off', async () => {

@@ -3097,6 +3097,7 @@
     "admin.fc.kpi_sub": "最近 30 天 · 自动统计，无需额外安装",
     "admin.fc.kpi_taps": "次点击",
     "admin.fc.kpi_empty": "还没有点击。访客开始点击网站上的按钮后，数据会显示在这里。",
+    "admin.fc.kpi_buy": "立即购买",
     "admin.fc.in_use": "使用中",
     "admin.fc.pos_label": "显示位置",
     "admin.fc.pos_right": "右侧",

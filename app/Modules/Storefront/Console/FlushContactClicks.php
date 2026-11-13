@@ -24,7 +24,7 @@ use Throwable;
  * renamed away in one step, grouped by the website's calendar day (its own timezone), then added to
  * its rows with ONE upsert inside its tenant context (RLS) — clicks add up, never overwrite. A
  * website's own channel (`c1`, `c2`, …) counts only while the website's floating contact setting
- * still has it; the built-in channels always count.
+ * still has it; the built-in channels and the "Mua hàng" button always count.
  *
  * Each run first sweeps what an earlier run left behind (ContactClickCounter explains the keys): a
  * website whose taps wait in a live hash or a taken key is marked dirty again, so they drain; taps
@@ -204,7 +204,7 @@ final class FlushContactClicks extends Command
             if ($tap === null || $count <= 0) {
                 continue;
             }
-            if (! isset(FloatingContact::CHANNELS[$tap['channel']]) && ! isset($saved[$tap['channel']])) {
+            if (! ContactClickCounter::isBuiltIn($tap['channel']) && ! isset($saved[$tap['channel']])) {
                 $unsaved++;
 
                 continue;
