@@ -41,6 +41,9 @@ final readonly class PlatformNav
                     ['tenants', $may('platform.tenants.view'), 'platform.tenants.index', 'platform.tenants.*', 'admin.platform_tenants', 'ri-building-2'],
                     ['sites', $may('platform.sites.view'), 'platform.sites.index', 'platform.sites.*', 'admin.platform_sites', 'ri-window'],
                 ]],
+                'plans' => ['admin.platform_nav_plans', [
+                    ['plans', $may('platform.billing.manage') || $may('platform.site_types.manage'), 'platform.plans.index', 'platform.plans.*', 'admin.platform_plans', 'ri-price-tag-3'],
+                ]],
                 'operations' => ['admin.platform_nav_operations', [
                     ['audit', $may('platform.audit.view'), 'platform.audit.index', 'platform.audit.*', 'admin.platform_audit', 'ri-file-shield-2'],
                     ['settings', $isSuper, 'platform.settings.email', 'platform.settings.*', 'admin.platform_settings', 'ri-settings-3'],

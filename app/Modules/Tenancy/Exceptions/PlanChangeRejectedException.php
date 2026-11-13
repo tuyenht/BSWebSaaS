@@ -10,7 +10,8 @@ use DomainException;
  * A change to the plan catalog, or to the plan a customer is on, refused for a BUSINESS reason the
  * caller should explain in plain words. Its own type so no broad `catch (RuntimeException)`
  * swallows it. The message IS the reason key, one of:
- * name_required · not_all_plans · plan_not_sold · reason_required (empty, or over 500 characters).
+ * name_required · not_all_plans · plan_not_sold · reason_required (empty, or over 500 characters) ·
+ * plan_changed (the plan is no longer as the person changing it last saw it).
  */
 final class PlanChangeRejectedException extends DomainException
 {

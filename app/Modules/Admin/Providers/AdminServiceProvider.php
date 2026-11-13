@@ -25,6 +25,8 @@ use App\Modules\Admin\Livewire\Menus\Index as MenusIndex;
 use App\Modules\Admin\Livewire\Placeholder;
 use App\Modules\Admin\Livewire\Platform\Audit\CleanupDialog as PlatformAuditCleanupDialog;
 use App\Modules\Admin\Livewire\Platform\Audit\Index as PlatformAuditIndex;
+use App\Modules\Admin\Livewire\Platform\Plans\Edit as PlatformPlansEdit;
+use App\Modules\Admin\Livewire\Platform\Plans\Index as PlatformPlansIndex;
 use App\Modules\Admin\Livewire\Platform\Sites\Detail as PlatformSitesDetail;
 use App\Modules\Admin\Livewire\Platform\Sites\Index as PlatformSitesIndex;
 use App\Modules\Admin\Livewire\Platform\Tenants\ChangePlanDialog as PlatformChangePlanDialog;
@@ -132,6 +134,8 @@ final class AdminServiceProvider extends ServiceProvider
         Livewire::component('admin.platform.sites.detail', PlatformSitesDetail::class);
         Livewire::component('admin.platform.audit.index', PlatformAuditIndex::class);
         Livewire::component('admin.platform.audit.cleanup-dialog', PlatformAuditCleanupDialog::class);
+        Livewire::component('admin.platform.plans.index', PlatformPlansIndex::class);
+        Livewire::component('admin.platform.plans.edit', PlatformPlansEdit::class);
 
         // Password-reset mail is NOT the framework default notification: ForgotPassword dispatches
         // the queued ResetPasswordLinkNotification with a request-built URL (plane + host resolve
