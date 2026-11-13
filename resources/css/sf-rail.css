@@ -39,26 +39,30 @@
     padding: 0.75rem 0.5rem;
 }
 
-/* A logo's height follows its ratio (--logo-r = width / height, printed from the library): 3.25rem
-   over its square root, between 1.625rem and 3.25rem, so a square and a long logo weigh the same. */
+/* A logo's height follows its ratio (--logo-r = width / height, printed from the library): 2.75rem
+   over its square root, so a square and a long logo weigh about the same. Every logo stays inside one
+   box, at most 2.75rem tall and 8.5rem wide (at least 1.25rem tall), so a long or heavy wordmark never
+   fills its cell while a square one sits small: the row reads as one even band, whatever the cell width.
+   A logo wider than the box is drawn smaller inside it (object-fit), never stretched. */
 .partners__logo {
     display: block;
     width: auto;
-    max-width: 100%;
+    max-width: min(100%, 8.5rem);
     height: 2.25rem;
-    height: clamp(1.625rem, calc(3.25rem / sqrt(var(--logo-r, 2.5))), 3.25rem);
+    height: clamp(1.25rem, calc(2.75rem / sqrt(var(--logo-r, 2.5))), 2.75rem);
     object-fit: contain;
     filter: grayscale(1) opacity(0.6);
     transition: filter 0.25s;
 }
 
-/* A partner with no logo yet: its name, in the band's own text colour (never greyed below 4.5:1), never cut.
+/* A partner with no logo yet: its name, in the band's own text colour (never greyed below 4.5:1), never cut,
+   about as tall as the logos beside it (1–1.125rem, bold, not black) so it does not outweigh them.
    A long name (a full company name) is set smaller, so a narrow frame on a phone stays a few lines tall. */
 .partners__name {
     max-width: 100%;
     color: var(--sch-body, var(--color-text));
-    font-size: clamp(1rem, 0.75rem + 1vw, 1.25rem);
-    font-weight: 800;
+    font-size: clamp(1rem, 0.875rem + 0.4vw, 1.125rem);
+    font-weight: 700;
     line-height: 1.25;
     text-align: center;
     text-wrap: balance;
