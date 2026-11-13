@@ -6,9 +6,11 @@ use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Models\Permission;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
+use App\Modules\Shared\Support\Cast;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use LogicException;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
@@ -35,6 +37,9 @@ final class SyncRbac extends Command
     #[\Override]
     protected $description = 'Sync permissions + platform roles, back-fill system tenant roles (idempotent).';
 
+    /** System roles read at a time by the back-fill. */
+    public const int CHUNK = 500;
+
     public function handle(PermissionRegistrar $registrar): int
     {
         try {
@@ -58,8 +63,12 @@ final class SyncRbac extends Command
                 $role->syncPermissions($permissions);
             }
 
-            $backfilled = $this->backfillSystemTenantRoles();
-            $closed = $this->closeCustomRolesUnderImplies();
+            // one name → id map for both passes: a grant through givePermissionTo would clear the
+            // package's cache and reload the whole catalog (every permission with its roles) per role
+            /** @var array<string, int> $ids */
+            $ids = Permission::query()->where('guard_name', PermissionRegistry::GUARD)->pluck('id', 'name')->map(fn ($id): int => Cast::int($id))->all();
+            $backfilled = $this->backfillSystemTenantRoles($ids);
+            $closed = $this->closeCustomRolesUnderImplies($ids);
 
             $registrar->forgetCachedPermissions();
 
@@ -77,6 +86,8 @@ final class SyncRbac extends Command
             // resolver for everything that runs next in this process (console/queue), e.g. a
             // provisioning call would silently create its tenant roles on team 0.
             app(TeamContext::class)->forget();
+            // grants attached before a failure are committed: never leave the cached catalog without them
+            $registrar->forgetCachedPermissions();
         }
     }
 
@@ -88,8 +99,10 @@ final class SyncRbac extends Command
      * (owner/admin/editor/…) never collide with platform role names, and role_has_permissions
      * carries no team column, so grants are context-free. When tier-2 inc-4 formalizes
      * per-site copy-on-write roles, this back-fill follows that shape.
+     *
+     * @param  array<string, int>  $ids
      */
-    private function backfillSystemTenantRoles(): int
+    private function backfillSystemTenantRoles(array $ids): int
     {
         $granted = 0;
 
@@ -103,40 +116,42 @@ final class SyncRbac extends Command
 
         $everyTypeInUse = array_values(array_unique(array_values($siteTypeBySiteId)));
 
-        foreach (Role::query()->where('is_system', true)->get() as $role) {
-            $roleName = $role->getAttribute('name');
-            $rawSiteId = $role->getAttribute('site_id');
-            if (! is_string($roleName) || ! is_numeric($rawSiteId)) {
-                continue;
-            }
+        // In pages by id with each page's permissions loaded in one query: at 10,000+ sites the
+        // system roles are tens of thousands, and this runs on every deploy that changes permissions.
+        Role::query()->where('is_system', true)->with('permissions')
+            ->chunkById(self::CHUNK, function (Collection $roles) use ($siteTypeBySiteId, $everyTypeInUse, $ids, &$granted): void {
+                foreach ($roles as $role) {
+                    $roleName = $role->getAttribute('name');
+                    $rawSiteId = $role->getAttribute('site_id');
+                    if (! is_string($roleName) || ! is_numeric($rawSiteId)) {
+                        continue;
+                    }
 
-            // A per-site role follows its own site's type; a shared (team-0) role serves every
-            // site, so every type in use contributes (GĐ1: only `corporate` exists).
-            $siteId = (int) $rawSiteId;
-            $typeKeys = $siteId === PermissionRegistry::PLATFORM_TEAM_ID
-                ? $everyTypeInUse
-                : array_filter([$siteTypeBySiteId[$siteId] ?? null], is_string(...));
+                    // A per-site role follows its own site's type; a shared (team-0) role serves every
+                    // site, so every type in use contributes (GĐ1: only `corporate` exists).
+                    $siteId = (int) $rawSiteId;
+                    $typeKeys = $siteId === PermissionRegistry::PLATFORM_TEAM_ID
+                        ? $everyTypeInUse
+                        : array_filter([$siteTypeBySiteId[$siteId] ?? null], is_string(...));
 
-            foreach ($typeKeys as $typeKey) {
-                $spec = PermissionRegistry::tenantRoleTemplates($typeKey)[$roleName] ?? null;
-                if ($spec === null) {
-                    continue; // platform roles / names outside the template
+                    foreach ($typeKeys as $typeKey) {
+                        $spec = PermissionRegistry::tenantRoleTemplates($typeKey)[$roleName] ?? null;
+                        if ($spec === null) {
+                            continue; // platform roles / names outside the template
+                        }
+
+                        $template = $spec['permissions'] === '*'
+                            ? PermissionRegistry::TENANT_PERMISSIONS
+                            : $spec['permissions'];
+
+                        $current = $role->permissions->pluck('name')
+                            ->map(fn ($name): string => is_string($name) ? $name : '')
+                            ->all();
+                        $missing = array_values(array_diff($template, $current));
+                        $granted += self::grant($role, $missing, $ids);
+                    }
                 }
-
-                $template = $spec['permissions'] === '*'
-                    ? PermissionRegistry::TENANT_PERMISSIONS
-                    : $spec['permissions'];
-
-                $current = $role->permissions->pluck('name')
-                    ->map(fn ($name): string => is_string($name) ? $name : '')
-                    ->all();
-                $missing = array_values(array_diff($template, $current));
-                if ($missing !== []) {
-                    $role->givePermissionTo($missing);
-                    $granted += count($missing);
-                }
-            }
-        }
+            });
 
         return $granted;
     }
@@ -147,11 +162,14 @@ final class SyncRbac extends Command
      * never a revocation. Roles are read by keyset, 500 at a time, each chunk with its permissions
      * in one eager load: every website's custom roles never sit in memory at once.
      */
-    private function closeCustomRolesUnderImplies(): int
+    /**
+     * @param  array<string, int>  $ids
+     */
+    private function closeCustomRolesUnderImplies(array $ids): int
     {
         $granted = 0;
 
-        Role::query()->where('is_system', false)->with('permissions')->chunkById(500, function (Collection $roles) use (&$granted): void {
+        Role::query()->where('is_system', false)->with('permissions')->chunkById(500, function (Collection $roles) use ($ids, &$granted): void {
             foreach ($roles as $role) {
                 $current = array_values(array_map(
                     fn ($name): string => is_string($name) ? $name : '',
@@ -159,13 +177,33 @@ final class SyncRbac extends Command
                 ));
                 $missing = array_values(array_diff(PermissionRegistry::withImplied($current), $current));
 
-                if ($missing !== []) {
-                    $role->givePermissionTo($missing);
-                    $granted += count($missing);
-                }
+                $granted += self::grant($role, $missing, $ids);
             }
         });
 
         return $granted;
+    }
+
+    /**
+     * Attach the missing permissions to the role in one insert, without the package's per-grant
+     * cache clear (handle() clears it once at the end). Returns how many were granted.
+     *
+     * @param  list<string>  $missing
+     * @param  array<string, int>  $ids
+     */
+    private static function grant(Role $role, array $missing, array $ids): int
+    {
+        $attach = array_values(array_intersect_key($ids, array_flip($missing)));
+        if (count($attach) !== count($missing)) {
+            throw new LogicException('rbac:sync: a template names permissions missing from the catalog: '
+                .implode(', ', array_diff($missing, array_keys($ids))));
+        }
+        if ($attach === []) {
+            return 0;
+        }
+        $role->permissions()->attach($attach);
+        $role->unsetRelation('permissions');
+
+        return count($attach);
     }
 }
