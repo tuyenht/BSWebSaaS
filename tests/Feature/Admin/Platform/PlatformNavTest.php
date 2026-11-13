@@ -45,6 +45,7 @@ it('shows super_admin every console section', function (): void {
         ->assertSee(route('platform.tenants.index'))
         ->assertSee(route('platform.sites.index'))
         ->assertSee(route('platform.audit.index'))
+        ->assertSee(route('platform.plans.index'))
         ->assertSee(route('platform.settings.email')); // super-only
 });
 
@@ -56,15 +57,17 @@ it('shows support tenants+sites+audit but not the super-only Settings', function
         ->assertSee(route('platform.tenants.index'))
         ->assertSee(route('platform.sites.index'))
         ->assertSee(route('platform.audit.index'))
+        ->assertDontSee(route('platform.plans.index'))
         ->assertDontSee(route('platform.settings.email'));
 });
 
-it('shows billing only the Tenants section', function (): void {
+it('shows billing only the Tenants and Plans sections', function (): void {
     $host = (string) config('tenancy.platform_host');
 
     $this->actingAs(navAs('billing'))->get("http://{$host}/tenants")
         ->assertOk()
         ->assertSee(route('platform.tenants.index'))
+        ->assertSee(route('platform.plans.index'))
         ->assertDontSee(route('platform.sites.index'))
         ->assertDontSee(route('platform.audit.index'))
         ->assertDontSee(route('platform.settings.email'));
@@ -87,16 +90,16 @@ it('redirects a guest on the platform host to the platform login', function (): 
 it('groups the console nav under headings with an icon per link, in the design order', function (): void {
     $sections = app(PlatformNav::class)->sections(navAs('super_admin'), 'platform.tenants.index');
 
-    expect(array_map(fn (NavSection $s): string => $s->key, $sections))->toBe(['customers', 'operations'])
+    expect(array_map(fn (NavSection $s): string => $s->key, $sections))->toBe(['customers', 'plans', 'operations'])
         ->and(array_map(fn (NavSection $s): ?string => $s->label, $sections))
-        ->toBe([__('admin.platform_nav_customers'), __('admin.platform_nav_operations')]);
+        ->toBe([__('admin.platform_nav_customers'), __('admin.platform_nav_plans'), __('admin.platform_nav_operations')]);
 
     $links = array_merge(...array_map(fn (NavSection $s): array => $s->items, $sections));
-    expect(array_map(fn (NavItem $i): string => $i->key, $links))->toBe(['tenants', 'sites', 'audit', 'settings'])
+    expect(array_map(fn (NavItem $i): string => $i->key, $links))->toBe(['tenants', 'sites', 'plans', 'audit', 'settings'])
         ->and(array_map(fn (NavItem $i): ?string => $i->icon, $links))
-        ->toBe(['ri-building-2', 'ri-window', 'ri-file-shield-2', 'ri-settings-3'])
+        ->toBe(['ri-building-2', 'ri-window', 'ri-price-tag-3', 'ri-file-shield-2', 'ri-settings-3'])
         ->and(array_map(fn (NavItem $i): ?string => $i->url, $links))
-        ->toBe([route('platform.tenants.index'), route('platform.sites.index'), route('platform.audit.index'), route('platform.settings.email')]);
+        ->toBe([route('platform.tenants.index'), route('platform.sites.index'), route('platform.plans.index'), route('platform.audit.index'), route('platform.settings.email')]);
 });
 
 it('marks only the current page link active, its detail and sibling pages included', function (string $route, string $active): void {
@@ -110,15 +113,20 @@ it('marks only the current page link active, its detail and sibling pages includ
     'customer detail' => ['platform.tenants.show', 'tenants'],
     'website detail' => ['platform.sites.show', 'sites'],
     'audit log' => ['platform.audit.index', 'audit'],
+    'plan editor' => ['platform.plans.edit', 'plans'],
     'security settings' => ['platform.settings.security', 'settings'],
 ]);
 
 it('drops a heading whose links the operator may not see', function (): void {
     $sections = app(PlatformNav::class)->sections(navAs('billing'), null);
 
-    expect($sections)->toHaveCount(1)
+    expect($sections)->toHaveCount(2)
         ->and($sections[0]->key)->toBe('customers')
-        ->and(array_map(fn (NavItem $i): string => $i->key, $sections[0]->items))->toBe(['tenants']);
+        ->and(array_map(fn (NavItem $i): string => $i->key, $sections[0]->items))->toBe(['tenants'])
+        ->and($sections[1]->key)->toBe('plans');
+
+    expect(array_map(fn (NavSection $s): string => $s->key, app(PlatformNav::class)->sections(navAs('support'), null)))
+        ->toBe(['customers', 'operations']);
 });
 
 it('returns no sections for a guest', function (): void {
@@ -141,7 +149,7 @@ it('renders the sidebar with headings, the current page marked, and no link with
         ->and($html)->toMatch('~<a href="'.preg_quote(route('platform.audit.index'), '~').'"[^>]*aria-current="page"~');
 
     // Screens the design still waits on have no route, so nothing points at them.
-    foreach (['/plans', '/site-types', '/staff', '/impersonate'] as $path) {
+    foreach (['/site-types', '/staff', '/impersonate'] as $path) {
         expect($html)->not->toContain('href="http://'.$host.$path);
     }
 });
