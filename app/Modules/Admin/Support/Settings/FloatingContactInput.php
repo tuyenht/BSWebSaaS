@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Support\Settings;
 
 use App\Modules\Admin\Livewire\FloatingContactSettings;
+use App\Modules\Media\Models\Media;
+use App\Modules\Media\Models\Mediable;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\SafeLink;
+use App\Modules\Storefront\Support\ContactIconImages;
 use App\Modules\Theme\Chrome\ContactIcons;
 use App\Modules\Theme\Chrome\FloatingContact;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * The checks of the floating-contact setting (`storefront.floating_contact`) for a value written
@@ -17,9 +21,16 @@ use App\Modules\Theme\Chrome\FloatingContact;
  * position, icon and "Mua hàng" colour lists). A value the storefront would drop silently is an
  * error here: a channel that is on needs a value that passes its type's check, whatever the type
  * (a phone, a Zalo number or link, an email, a web link without javascript: or //host).
+ *
+ * syncIconUsage() writes the library's "in use" rows of the channels' own icon pictures
+ * (`mediables`, owner the setting row `site_setting`, collection ICON_COLLECTION), in the caller's
+ * transaction, so a picture a channel draws is never listed as unused or offered for purging.
  */
 final class FloatingContactInput
 {
+    /** The collection of the library's "in use" rows a channel's own icon picture is recorded under. */
+    public const string ICON_COLLECTION = 'contact_icon';
+
     /**
      * @param  array<array-key, mixed>  $value  the setting as it would be stored
      * @param  list<string>  $locales  the languages a label may be given in
@@ -100,7 +111,7 @@ final class FloatingContactInput
      * One channel row cast to the shape the form works with: texts trimmed, the colour lower-cased,
      * a label per language trimmed.
      *
-     * @return array{key: string, on: bool, value: string, color: string, icon: string, name: string, tips: array<string, string>}
+     * @return array{key: string, on: bool, value: string, color: string, icon: string, name: string, tips: array<string, string>, img: string}
      */
     public static function castRow(mixed $row): array
     {
@@ -118,14 +129,16 @@ final class FloatingContactInput
             'icon' => Cast::string($c['icon'] ?? null),
             'name' => trim(Cast::string($c['name'] ?? null)),
             'tips' => $tips,
+            'img' => trim(Cast::string($c['img'] ?? null)),
         ];
     }
 
     /**
      * One channel in the stored shape: a colour only when chosen, an icon and name only on a
-     * channel of the site's own, and the labels that are not empty.
+     * channel of the site's own, the labels that are not empty, and its own icon picture (the media
+     * library picture's ulid) only when one is chosen.
      *
-     * @param  array{key: string, on: bool, value: string, color: string, icon: string, name: string, tips: array<string, string>}  $c
+     * @param  array{key: string, on: bool, value: string, color: string, icon: string, name: string, tips: array<string, string>, img: string}  $c
      * @return array<string, mixed>
      */
     public static function storedRow(array $c): array
@@ -139,8 +152,68 @@ final class FloatingContactInput
             $row['name'] = $c['name'];
         }
         $row['tips'] = array_filter($c['tips'], fn (string $t): bool => $t !== '');
+        if ($c['img'] !== '') {
+            $row['img'] = $c['img'];
+        }
 
         return $row;
+    }
+
+    /**
+     * Make the setting row's "in use" rows match the icon pictures its channels name (`img`, a
+     * library picture's ulid): rows for pictures no longer named are removed, missing ones added
+     * (idempotent). A ulid that names no picture of this site is skipped; one in the trash keeps its
+     * row (restored, the site draws it again). One lookup, site-scoped; runs inside the caller's
+     * transaction.
+     */
+    public static function syncIconUsage(int $settingId, mixed $value): void
+    {
+        $ulids = ContactIconImages::ulids($value);
+        $mediaIds = [];
+        if ($ulids !== []) {
+            foreach (Media::withTrashed()->whereIn('ulid', $ulids)->pluck('id') as $id) {
+                $mediaIds[] = Cast::int($id);
+            }
+        }
+
+        $rows = fn (): Builder => Mediable::query()
+            ->where('mediable_type', 'site_setting')
+            ->where('mediable_id', $settingId)
+            ->where('collection', self::ICON_COLLECTION);
+
+        $rows()->when($mediaIds !== [], fn (Builder $query) => $query->whereNotIn('media_id', $mediaIds))->delete();
+        if ($mediaIds === []) {
+            return;
+        }
+
+        $recorded = [];
+        foreach ($rows()->pluck('media_id') as $id) {
+            $recorded[] = Cast::int($id);
+        }
+        foreach (array_diff($mediaIds, $recorded) as $id) {
+            Mediable::query()->createOrFirst([
+                'media_id' => $id,
+                'mediable_type' => 'site_setting',
+                'mediable_id' => $settingId,
+                'collection' => self::ICON_COLLECTION,
+            ]);
+        }
+    }
+
+    /**
+     * Why a channel's own icon picture cannot be used, in plain words for the member: the picture is
+     * not in this site's library (removed since, or another site's), is not a PNG or WebP by its
+     * content, or is larger than 50 KB. The library check is ContactIconImages::problems().
+     *
+     * @param  'missing'|'type'|'size'  $problem
+     */
+    public static function iconMessage(string $problem): string
+    {
+        return match ($problem) {
+            'type' => __('admin.fc.ico_err_type'),
+            'size' => __('admin.fc.ico_err_size'),
+            default => __('admin.fc.ico_err_missing'),
+        };
     }
 
     /**

@@ -459,3 +459,21 @@ it('keeps the round buttons of a site with the phone bar when its setting is sto
         ->and($withLayout)->toMatchArray(['theme' => 'vertical', 'layout' => 'combo'])
         ->and($noTheme)->toMatchArray(['theme' => 'vertical', 'layout' => 'combo']);
 });
+
+it('gives a channel its own picture only when the page resolved the one it names, everywhere it is drawn', function (): void {
+    $pic = ['src' => 'https://files.test/s/library/goi-abc.png', 'w' => 64, 'h' => 64];
+    $out = FloatingContact::widget(['enabled' => true, 'layout' => 'combo', 'channels' => [
+        ['key' => 'phone', 'on' => true, 'value' => '0912345678', 'img' => '01JC00000000000000000000AA'],
+        ['key' => 'zalo', 'on' => true, 'value' => '0912345678', 'img' => '01JC00000000000000000000ZZ'],
+        ['key' => 'email', 'on' => true, 'value' => 'lienhe@a.test'],
+    ]], 'vi', images: ['01JC00000000000000000000AA' => $pic]);
+
+    $byKey = static fn (array $items): array => array_column($items, 'img', 'key');
+    // The call's picture is resolved; Zalo names one the page did not find (removed, another site's):
+    // its glyph stays. A channel with no picture has none.
+    expect($byKey($out['buttons']))->toBe(['phone' => $pic, 'zalo' => null, 'email' => null])
+        ->and($byKey($out['bar'])['phone'])->toBe($pic)
+        ->and(FloatingContact::widget(['enabled' => true, 'channels' => [
+            ['key' => 'phone', 'on' => true, 'value' => '0912345678', 'img' => ['x']],
+        ]], 'vi', images: ['x' => $pic])['buttons'][0]['img'])->toBeNull();
+});

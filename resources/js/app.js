@@ -26,6 +26,10 @@ import './admin-lazy.js';
 // The shared name-column rule of table-style lists (window.bsListFold): side columns fold under the name.
 import './admin-list-fold.js';
 
+// The "Nút liên hệ nổi" screen (window.bsFloatingContact): a channel's own icon picture, uploaded to the
+// media library, and the preview frame's reopening of the dial or the "Thêm" sheet.
+import './admin-floating-contact.js';
+
 // The admin's error pages (wait countdown, copy the reference) + the session-ending dialog and the
 // offline strip of the frame (Alpine.data 'bsSession'); a Livewire 419 opens "Phiên đã hết hạn".
 import './admin-session.js';

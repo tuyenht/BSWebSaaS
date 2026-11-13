@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Provisioning\ContentPack;
 
 use App\Modules\Admin\Support\Settings\BranchList;
+use App\Modules\Admin\Support\Settings\FloatingContactInput;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Support\ProductGallery;
 use App\Modules\Catalog\Support\ProductSearchWords;
@@ -140,6 +141,9 @@ final class Applier
         }
         if ($planned->item->key === 'setting:storefront.footer') {
             BranchList::syncUsage(Cast::int($saved->getKey()), Cast::arr($saved->value)['factories'] ?? null);
+        }
+        if ($planned->item->key === 'setting:storefront.floating_contact') {
+            FloatingContactInput::syncIconUsage(Cast::int($saved->getKey()), $saved->value);
         }
     }
 

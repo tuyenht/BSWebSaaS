@@ -80,8 +80,12 @@
 
     // A channel's errors that no field on screen shows: on a switched-off row every field but the
     // name is folded away; on a row switched on, only the labels of the other languages are.
-    $hiddenErrors = static function (int|string $i, bool $on) use ($errors, $lang): array {
-        $shown = $on ? ['value', 'icon', 'color', 'name', 'tips', 'tips.'.$lang] : ['name'];
+    // The fields of the channel's "Tùy chỉnh nút" group (colour, the hover label in the language being
+    // edited, its own icon picture) are on screen whether the channel is on or off; while the group is
+    // closed their errors are repeated under the row ($groupErrors), so a closed group hides none.
+    $groupFields = ['color', 'tips', 'tips.'.$lang, 'img'];
+    $hiddenErrors = static function (int|string $i, bool $on) use ($errors, $groupFields): array {
+        $shown = $on ? ['value', 'icon', 'name', ...$groupFields] : ['name', ...$groupFields];
         $out = [];
         foreach ($errors->getMessages() as $field => $messages) {
             $rest = str_starts_with((string) $field, "channels.$i.") ? substr((string) $field, strlen("channels.$i.")) : null;
@@ -92,9 +96,25 @@
 
         return $out;
     };
+    $groupErrors = static function (int|string $i) use ($errors, $groupFields): array {
+        $out = [];
+        foreach ($groupFields as $field) {
+            foreach ($errors->get("channels.$i.$field") as $message) {
+                $out[] = [$field, (string) $message];
+            }
+        }
+
+        return $out;
+    };
+    // The colours the group offers besides the channel's own default (the custom colour picks any other).
+    $palette = ['#0ea5e9', '#16a34a', '#dc2626', '#f97316', '#7c3aed', '#db2777', '#111827'];
+    $icoH = 'flex flex-wrap items-baseline gap-x-2.5 gap-y-1 text-[calc(0.78125rem+var(--user-text-boost))] font-semibold text-text-strong';
+    $icoN = 'text-[calc(0.75rem+var(--user-text-boost))] font-normal leading-[1.45] text-text-muted';
+    // A swatch: 28px with a mouse at the default text size, a 44px target on touch and from the next text size up.
+    $swatch = 'inline-flex size-[max(1.75rem,var(--spacing-tap-cell))] shrink-0 cursor-pointer items-center justify-center rounded-full any-pointer-coarse:size-hit';
     $fieldName = static fn (string $field): string => match (true) {
         str_starts_with($field, 'tips.') => __('admin.fc.f_tip_in', ['lang' => $nameOf(substr($field, 5))]),
-        in_array($field, ['value', 'icon', 'color', 'tips'], true) => __('admin.fc.f_'.$field),
+        in_array($field, ['value', 'icon', 'color', 'tips', 'img'], true) => __('admin.fc.f_'.$field),
         default => __('admin.fc.f_value'),
     };
 
@@ -109,7 +129,11 @@
     $buySafe = FloatingContact::color($buyColor) ?? FloatingContact::BUY_COLOR;
 @endphp
 <x-bs-admin::settings-shell active="floating" :hints="count($locales) > 1 ? [FirstHints::LANG_SOURCE => $srcHint] : []">
-    <div class="@container/fc flex flex-col gap-4" x-data x-on:fc-first-error.window="$nextTick(() => $el.querySelector('[aria-invalid=true]')?.focus())">
+    {{-- `ico`: the channel whose "Tùy chỉnh nút" group is open (one at a time). The first field in error
+         gets the focus after a refused save, its group or folded "mã Remix Icon" opened first. --}}
+    <div class="@container/fc flex flex-col gap-4"
+         x-data="{ ico: null }"
+         x-on:fc-first-error.window="$nextTick(() => { const el = $el.querySelector('[aria-invalid=true]'); if (! el) { return; } const g = el.closest('[data-fc-ico]'); if (g) { ico = g.dataset.fcIco; } const d = el.closest('details'); if (d) { d.open = true; } $nextTick(() => el.focus()); })">
 
         {{-- Language of the hover labels (only on a site with more than one) --}}
         @if (count($locales) > 1)
@@ -303,6 +327,8 @@
                                     $swState = $c['on'] ? __('admin.fc.on') : __('admin.fc.off');
                                     // Switched on with nothing typed: the site leaves the button out until it is filled in.
                                     $unfilled = $c['on'] && trim($c['value']) === '' && $valueError === '';
+                                    // The channel's own icon picture, when the draft names one of this site's library (ContactIconImages).
+                                    $pic = $c['img'] !== '' ? ($icons[$c['img']] ?? null) : null;
                                 @endphp
                                 <div wire:key="fc-ch-{{ $key }}" wire:sort:item="{{ $key }}"
                                      @class(['flex items-start gap-2.5 rounded-lg border bg-surface p-3', 'border-border' => $c['on'], 'border-dashed border-border bg-surface-muted' => ! $c['on']])>
@@ -318,15 +344,23 @@
                                             </button>
                                         @endforeach
                                     </div>
-                                    <label class="relative mt-px inline-flex size-[2.125rem] shrink-0 cursor-pointer items-center justify-center rounded-lg text-white focus-ring-within" style="background: {{ $color }}" title="{{ __('admin.fc.color') }}" wire:sort:ignore>
-                                        @if ($text !== null)
+                                    {{-- The channel's icon disc opens its "Tùy chỉnh nút" group (one open at a time; "Xong" or the disc closes it). --}}
+                                    <button type="button" id="fc-ico-t-{{ $key }}" wire:sort:ignore
+                                            x-on:click="ico = ico === {{ Js::from($key) }} ? null : {{ Js::from($key) }}"
+                                            aria-expanded="false" x-bind:aria-expanded="ico === {{ Js::from($key) }} ? 'true' : 'false'" aria-controls="fc-ico-p-{{ $key }}"
+                                            aria-label="{{ __('admin.fc.ico_t_aria', ['name' => $label]) }}" title="{{ __('admin.fc.ico_t') }}"
+                                            class="hit-area relative mt-px inline-flex size-[2.125rem] shrink-0 cursor-pointer items-center justify-center rounded-lg border-0 p-0 text-white" style="background: {{ $pic !== null ? 'var(--color-surface)' : $color }}">
+                                        @if ($pic !== null)
+                                            <img src="{{ $pic['src'] }}" alt="" width="{{ $pic['w'] }}" height="{{ $pic['h'] }}" class="absolute inset-0 size-full rounded-[inherit] object-cover" decoding="async">
+                                        @elseif ($text !== null)
                                             <span class="text-[0.6875rem] font-extrabold" aria-hidden="true">{{ $text }}</span>
                                         @else
                                             <svg viewBox="0 0 24 24" class="size-[min(1.5rem,calc(1.0625rem+var(--user-text-boost)))]" fill="currentColor" aria-hidden="true" focusable="false"><path d="{{ $svg($custom ? $c['icon'] : (FloatingContact::CHANNELS[$key]['icon'] ?? null)) }}"/></svg>
                                         @endif
-                                        <input type="color" value="{{ $color }}" x-on:change="$wire.set({{ Js::from("channels.$i.color") }}, $event.target.value)"
-                                               aria-label="{{ __('admin.fc.color_aria', ['name' => $label]) }}" class="absolute inset-0 size-full min-h-0 min-w-0 cursor-pointer border-0 p-0 opacity-0">
-                                    </label>
+                                        <span class="absolute -end-[5px] -bottom-[5px] inline-flex size-4 items-center justify-center rounded-full bg-surface text-text shadow-[0_0_0_1px_var(--color-border-strong)]" aria-hidden="true">
+                                            <x-bs-admin::icon name="ri-pencil" class="size-2.5" />
+                                        </span>
+                                    </button>
 
                                     <div class="flex min-w-0 flex-1 flex-col gap-1.5" wire:sort:ignore>
                                         <div class="flex flex-wrap items-center justify-between gap-2">
@@ -351,6 +385,89 @@
                                         </div>
                                         @error("channels.$i.name") <p class="text-caption text-danger-text">{{ $message }}</p> @enderror
 
+                                        {{-- "Tùy chỉnh nút": the button's colour, the words on it (hover label, in the language being
+                                             edited) and its own icon picture (PNG or WebP, at most 50 KB: the browser checks the file,
+                                             uploads it to the site's media library and hands its ulid to useIcon(); "Dùng mặc định" goes
+                                             back to the glyph; the outcome is read out by the shared toast). Opened by the icon disc. --}}
+                                        <div id="fc-ico-p-{{ $key }}" role="group" aria-label="{{ __('admin.fc.ico_t_aria', ['name' => $label]) }}" data-fc-ico="{{ $key }}"
+                                             x-show="ico === {{ Js::from($key) }}" x-cloak
+                                             class="mt-0.5 flex flex-col gap-2.5 rounded-[10px] border border-border bg-surface-muted px-3.5 py-3">
+                                            <p class="{{ $icoH }}"><span>{{ __('admin.fc.ico_color_h') }}</span><span class="{{ $icoN }}">{{ __('admin.fc.ico_color_n') }}</span></p>
+                                            @php
+                                                $ownColor = $c['color'] !== '' && ! in_array($c['color'], $palette, true) ? FloatingContact::color($c['color']) : null;
+                                                $defaultFill = $key === 'messenger' ? FloatingContact::MESSENGER_FILL : (FloatingContact::CHANNELS[$key]['color'] ?? FloatingContact::CUSTOM_COLOR);
+                                                $ring = '0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-primary-text)';
+                                            @endphp
+                                            <div class="flex flex-wrap items-center gap-2.5">
+                                                @foreach ([['', $defaultFill, __('admin.fc.ico_sw_default')], ...array_map(fn (string $v): array => [$v, $v, __('admin.fc.ico_sw', ['color' => $v])], $palette)] as [$swValue, $fill, $swTitle])
+                                                    <button type="button" wire:click="$set({{ Js::from("channels.$i.color") }}, {{ Js::from($swValue) }})" aria-pressed="{{ $c['color'] === $swValue ? 'true' : 'false' }}"
+                                                            aria-label="{{ $swTitle }}" title="{{ $swTitle }}" class="{{ $swatch }}">
+                                                        <span class="block size-7 rounded-full" style="background: {{ $fill }}; box-shadow: {{ $c['color'] === $swValue ? $ring : 'inset 0 0 0 1px rgb(0 0 0 / 0.15)' }}" aria-hidden="true"></span>
+                                                    </button>
+                                                @endforeach
+                                                <label class="{{ $swatch }} focus-ring-within relative" title="{{ __('admin.fc.ico_cc') }}">
+                                                    <span class="inline-flex size-7 items-center justify-center rounded-full text-white [text-shadow:0_0_3px_rgb(0_0_0/0.6)]" aria-hidden="true"
+                                                          style="{{ $ownColor !== null ? 'background: '.$ownColor.'; box-shadow: '.$ring : 'background: conic-gradient(from 0deg, #f43f5e, #f59e0b, #22c55e, #06b6d4, #3b82f6, #a855f7, #f43f5e); box-shadow: inset 0 0 0 1px var(--color-border-strong)' }}">
+                                                        <x-bs-admin::icon name="ri-add" class="size-3.5" />
+                                                    </span>
+                                                    <input type="color" value="{{ $color }}" x-on:change="$wire.set({{ Js::from("channels.$i.color") }}, $event.target.value)"
+                                                           aria-label="{{ __('admin.fc.ico_cc_aria') }}" class="absolute inset-0 size-full min-h-0 min-w-0 cursor-pointer border-0 p-0 opacity-0">
+                                                </label>
+                                            </div>
+                                            @error("channels.$i.color") <p class="text-caption text-danger-text">{{ $message }}</p> @enderror
+
+                                            <p class="{{ $icoH }}"><span>{{ __('admin.fc.ico_tip_h') }}</span><span class="{{ $icoN }}">{{ __('admin.fc.ico_tip_n') }}</span></p>
+                                            <span class="flex w-full max-w-[26rem] items-center gap-1.5">
+                                                <x-bs-admin::icon name="ri-price-tag-3" class="size-[min(1.5rem,calc(0.8125rem+var(--user-text-boost)))] shrink-0 text-text-muted" title="{{ __('admin.fc.tip_title') }}" />
+                                                <input type="text" wire:model.live.blur="channels.{{ $i }}.tips.{{ $lang }}" wire:key="fc-tip-{{ $key }}-{{ $lang }}" maxlength="{{ FloatingContact::MAX_LABEL }}"
+                                                       placeholder="{{ __('admin.fc.tip_ph', ['default' => $defaultTip($c, $lang)]) }}" aria-label="{{ __('admin.fc.tip_aria', ['name' => $label]) }}"
+                                                       aria-invalid="{{ $errors->has("channels.$i.tips.$lang") ? 'true' : 'false' }}" lang="{{ $lang }}"
+                                                       class="field w-full min-w-0 rounded-md border bg-surface px-2.5 text-text placeholder:text-placeholder {{ $errors->has("channels.$i.tips.$lang") ? 'border-danger-text' : 'border-border-input' }}">
+                                                @if (count($locales) > 1)
+                                                    <span class="inline-flex shrink-0 items-center rounded-sm bg-primary-soft px-1.5 py-px text-caption font-bold text-primary-text uppercase" title="{{ __('admin.fc.lang_chip_title') }}">{{ $lang }}</span>
+                                                @endif
+                                            </span>
+                                            @error("channels.$i.tips.$lang") <p class="text-caption text-danger-text">{{ $message }}</p> @enderror
+                                            @error("channels.$i.tips") <p class="text-caption text-danger-text">{{ $message }}</p> @enderror
+
+                                            <div class="flex flex-col gap-2" x-data="{ busy: false }">
+                                                <p class="{{ $icoH }}"><span>{{ __('admin.fc.ico_h') }}</span></p>
+                                                <div class="flex flex-wrap items-center gap-3">
+                                                    <span class="relative inline-flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full text-white shadow-[0_3px_8px_rgb(0_0_0/0.18)]" style="background: {{ $pic !== null ? 'var(--color-surface)' : $color }}" aria-hidden="true">
+                                                        @if ($pic !== null)
+                                                            <img src="{{ $pic['src'] }}" alt="" width="{{ $pic['w'] }}" height="{{ $pic['h'] }}" class="absolute inset-0 size-full object-cover" decoding="async">
+                                                        @elseif ($text !== null)
+                                                            <span class="text-caption font-extrabold">{{ $text }}</span>
+                                                        @else
+                                                            <svg viewBox="0 0 24 24" class="size-[min(1.5rem,calc(1.25rem+var(--user-text-boost)))]" fill="currentColor" focusable="false"><path d="{{ $svg($custom ? $c['icon'] : (FloatingContact::CHANNELS[$key]['icon'] ?? null)) }}"/></svg>
+                                                        @endif
+                                                    </span>
+                                                    <div class="flex flex-wrap gap-2">
+                                                        <label class="hit-area focus-ring-within relative inline-flex min-h-control-row cursor-pointer items-center gap-1.5 rounded-[7px] border border-border-input bg-surface px-3 text-[calc(0.8125rem+var(--user-text-boost))] font-semibold text-text-strong hover:border-primary-text"
+                                                               x-bind:aria-busy="busy ? 'true' : 'false'">
+                                                            <x-bs-admin::icon name="ri-upload-2" class="size-[min(1.5rem,calc(0.9375rem+var(--user-text-boost)))] shrink-0" />
+                                                            <span x-show="! busy">{{ $pic !== null ? __('admin.fc.ico_change') : __('admin.fc.ico_upload') }}</span>
+                                                            <span x-show="busy" x-cloak>{{ __('admin.fc.ico_busy') }}</span>
+                                                            <input type="file" accept="image/png,image/webp" aria-label="{{ __('admin.fc.ico_upload_aria', ['name' => $label]) }}" x-bind:disabled="busy"
+                                                                   class="absolute inset-0 size-full min-h-0 min-w-0 cursor-pointer opacity-0"
+                                                                   x-on:change="window.bsFloatingContact.pickIcon($event, $wire, {{ Js::from($key) }}, {{ Js::from(route('admin.media.upload')) }}, $data)">
+                                                        </label>
+                                                        @if ($pic !== null)
+                                                            <button type="button" wire:click="clearIcon({{ Js::from($key) }})" aria-label="{{ __('admin.fc.ico_default_aria', ['name' => $label]) }}"
+                                                                    class="hit-area inline-flex min-h-control-row items-center gap-1.5 rounded-[7px] border border-transparent px-3 text-[calc(0.8125rem+var(--user-text-boost))] font-semibold text-text hover:bg-primary-soft">
+                                                                <x-bs-admin::icon name="ri-arrow-go-back" class="size-[min(1.5rem,calc(0.9375rem+var(--user-text-boost)))] shrink-0" />{{ __('admin.fc.ico_default') }}
+                                                            </button>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                                <p class="{{ $icoN }}">{{ __('admin.fc.ico_note') }}</p>
+                                                @error("channels.$i.img") <p class="text-caption text-danger-text">{{ $message }}</p> @enderror
+                                            </div>
+                                            <div class="flex justify-end">
+                                                <x-bs-admin::button size="sm" x-on:click="ico = null; $nextTick(() => document.getElementById('fc-ico-t-{{ $key }}')?.focus())">{{ __('admin.fc.ico_done') }}</x-bs-admin::button>
+                                            </div>
+                                        </div>
+
                                         @if ($c['on'])
                                             @if ($custom)
                                                 <div class="grid grid-cols-[repeat(auto-fill,minmax(2.25rem,1fr))] gap-2 any-pointer-coarse:grid-cols-[repeat(auto-fill,minmax(2.75rem,1fr))]" role="group" aria-label="{{ __('admin.fc.pick_icon_group', ['name' => $label]) }}">
@@ -362,9 +479,16 @@
                                                         </button>
                                                     @endforeach
                                                 </div>
-                                                <input type="text" wire:model.live.blur="channels.{{ $i }}.icon" placeholder="{{ __('admin.fc.icon_code_ph') }}" aria-label="{{ __('admin.fc.icon_code_aria', ['name' => $label]) }}"
-                                                       aria-invalid="{{ $errors->has("channels.$i.icon") ? 'true' : 'false' }}" spellcheck="false" autocomplete="off"
-                                                       class="field w-full min-w-0 rounded-md border bg-surface px-2.5 text-text placeholder:text-placeholder font-mono {{ $errors->has("channels.$i.icon") ? 'border-danger-text' : 'border-border-input' }}">
+                                                <details class="group" wire:ignore.self @if ($errors->has("channels.$i.icon") || ! in_array($c['icon'], ContactIcons::CUSTOM, true)) open @endif>
+                                                    <summary class="hit-area inline-flex min-h-8 cursor-pointer list-none items-center gap-1 text-[calc(0.78125rem+var(--user-text-boost))] font-semibold text-text [&::-webkit-details-marker]:hidden">
+                                                        <x-bs-admin::icon name="ri-arrow-right-s" class="size-[min(1.5rem,calc(1rem+var(--user-text-boost)))] shrink-0 transition-transform group-open:rotate-90 motion-reduce:transition-none" />{{ __('admin.fc.icon_more') }}
+                                                    </summary>
+                                                    <div class="pt-2">
+                                                        <input type="text" wire:model.live.blur="channels.{{ $i }}.icon" placeholder="{{ __('admin.fc.icon_code_ph') }}" aria-label="{{ __('admin.fc.icon_code_aria', ['name' => $label]) }}"
+                                                               aria-invalid="{{ $errors->has("channels.$i.icon") ? 'true' : 'false' }}" spellcheck="false" autocomplete="off"
+                                                               class="field w-full min-w-0 rounded-md border bg-surface px-2.5 text-text placeholder:text-placeholder font-mono {{ $errors->has("channels.$i.icon") ? 'border-danger-text' : 'border-border-input' }}">
+                                                    </div>
+                                                </details>
                                                 @error("channels.$i.icon") <p class="text-caption text-danger-text">{{ $message }}</p> @enderror
                                             @endif
                                             <div class="flex flex-wrap items-start gap-2">
@@ -385,25 +509,16 @@
                                                         </button>
                                                     @endif
                                                 </div>
-                                                <span class="flex min-w-[min(10rem,100%)] flex-[1_1_calc(13rem+2*var(--user-text-boost))] items-center gap-1.5">
-                                                    <x-bs-admin::icon name="ri-price-tag-3" class="size-[min(1.5rem,calc(0.8125rem+var(--user-text-boost)))] shrink-0 text-text-muted" title="{{ __('admin.fc.tip_title') }}" />
-                                                    <input type="text" wire:model.live.blur="channels.{{ $i }}.tips.{{ $lang }}" wire:key="fc-tip-{{ $key }}-{{ $lang }}" maxlength="{{ FloatingContact::MAX_LABEL }}"
-                                                           placeholder="{{ __('admin.fc.tip_ph', ['default' => $defaultTip($c, $lang)]) }}" aria-label="{{ __('admin.fc.tip_aria', ['name' => $label]) }}"
-                                                           aria-invalid="{{ $errors->has("channels.$i.tips.$lang") ? 'true' : 'false' }}" lang="{{ $lang }}"
-                                                           class="field w-full min-w-0 rounded-md border bg-surface px-2.5 text-text placeholder:text-placeholder {{ $errors->has("channels.$i.tips.$lang") ? 'border-danger-text' : 'border-border-input' }}">
-                                                    @if (count($locales) > 1)
-                                                        <span class="inline-flex shrink-0 items-center rounded-sm bg-primary-soft px-1.5 py-px text-caption font-bold text-primary-text uppercase" title="{{ __('admin.fc.lang_chip_title') }}">{{ $lang }}</span>
-                                                    @endif
-                                                </span>
                                             </div>
-                                            @error("channels.$i.tips.$lang") <p class="text-caption text-danger-text">{{ $message }}</p> @enderror
-                                            @error("channels.$i.tips") <p class="text-caption text-danger-text">{{ $message }}</p> @enderror
-                                            @error("channels.$i.color") <p class="text-caption text-danger-text">{{ $message }}</p> @enderror
                                         @endif
                                         {{-- What blocks the save but has no field on screen (a switched-off channel's folded
-                                             fields, a hover label in another language) still shows, named in plain words. --}}
+                                             fields, a hover label in another language) still shows, named in plain words; and,
+                                             while the "Tùy chỉnh nút" group is closed, what is wrong inside it. --}}
                                         @foreach ($hiddenErrors($i, $c['on']) as $field => $message)
                                             <p class="text-caption text-danger-text">{{ $c['on'] ? '' : $label.' · ' }}{{ $fieldName($field) }}: {{ $message }}</p>
+                                        @endforeach
+                                        @foreach ($groupErrors($i) as [$field, $message])
+                                            <p class="text-caption text-danger-text" x-show="ico !== {{ Js::from($key) }}">{{ $c['on'] ? '' : $label.' · ' }}{{ $fieldName($field) }}: {{ $message }}</p>
                                         @endforeach
                                     </div>
                                 </div>
@@ -520,7 +635,8 @@
                      allow-scripts); this card drives it on each load: every link keeps its address only as
                      data-href (href="#"), so no click, middle click or "open in a new tab" leaves the page;
                      "Chép số" shows its "copied" word for about two seconds; the dial or "Thêm" sheet left
-                     open is opened again after the frame is redrawn. --}}
+                     open is opened again after the frame is redrawn, only when the new one still shows a
+                     channel (bsFloatingContact.reopenable: a sheet whose cells all fit on the bar is empty). --}}
                 <div class="rounded-md border border-border bg-surface shadow-card"
                      x-data="{
                          pick: 'desktop', dark: false, k: 1, h: 600,
@@ -544,7 +660,7 @@
                              d.addEventListener('auxclick', stay);
                              d.addEventListener('toggle', (e) => { if (e.target.id && this.$refs.frame && this.$refs.frame.contentDocument === d) { this.open = e.newState === 'open' ? e.target.id : null; } }, true);
                              const el = this.open ? d.getElementById(this.open) : null;
-                             if (el && el.showPopover) { try { el.showPopover(); } catch (err) { this.open = null; } }
+                             if (el && el.showPopover && window.bsFloatingContact.reopenable(el, d.defaultView)) { try { el.showPopover(); } catch (err) { this.open = null; } } else { this.open = null; }
                          },
                          copied(e) {
                              const c = e.target.closest ? e.target.closest('[data-fc-copy]') : null;

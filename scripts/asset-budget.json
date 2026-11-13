@@ -186,6 +186,10 @@
       "js": 758,
       "css": 1264
     },
+    "resources/js/admin-floating-contact-icon.js": {
+      "js": 735,
+      "css": 0
+    },
     "resources/js/admin-notifications.js": {
       "js": 674,
       "css": 0

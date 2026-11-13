@@ -9,13 +9,17 @@ use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Catalog\Support\ProductIndexLink;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Storefront\Support\ContactClickStats;
+use App\Modules\Storefront\Support\ContactIconImages;
 use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
+use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Chrome\ContactIcons;
 use App\Modules\Theme\Chrome\FloatingContact;
 use App\Modules\Theme\Theming\ThemeResolver;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Attributes\Authorize;
 use Livewire\Attributes\Layout;
@@ -31,6 +35,10 @@ use Livewire\Component;
  * ({locale: text}); a language left blank shows the channel's own wording in that language.
  * The preview is the website's own widget (theme::partials.floating-contact with sf-floating.css
  * and the site's colours) in a frame; "Hiệu quả" shows the site's taps of the last 30 days.
+ * A channel may draw its own icon picture: the browser uploads it to the site's media library
+ * (the library's own upload, with its content sniffing), then useIcon() keeps the picture's ulid
+ * in the draft once it is a PNG or WebP of at most 50 KB of this site's library; the preview shows
+ * it at once and save() checks every picture again.
  * Writes are settings.manage-gated like every site-wide settings tab.
  */
 #[Layout('admin::layouts.app')]
@@ -113,7 +121,7 @@ final class FloatingContactSettings extends Component
     #[Locked]
     public bool $hasShop = false;
 
-    /** @var list<array{key: string, on: bool, value: string, color: string, icon: string, name: string, tips: array<string, string>}> */
+    /** @var list<array{key: string, on: bool, value: string, color: string, icon: string, name: string, tips: array<string, string>, img: string}> */
     public array $channels = [];
 
     /** The language whose hover labels are being edited. */
@@ -278,7 +286,58 @@ final class FloatingContactSettings extends Component
         while ($this->indexOf('c'.$n) !== null) {
             $n++;
         }
-        $this->channels[] = ['key' => 'c'.$n, 'on' => true, 'value' => '', 'color' => $color, 'icon' => 'ri-global-line', 'name' => '', 'tips' => []];
+        $this->channels[] = ['key' => 'c'.$n, 'on' => true, 'value' => '', 'color' => $color, 'icon' => 'ri-global-line', 'name' => '', 'tips' => [], 'img' => ''];
+    }
+
+    /**
+     * "Tải biểu tượng riêng": the picture just uploaded to the site's media library becomes the
+     * channel's icon, when it is this site's PNG or WebP of at most 50 KB; otherwise the plain reason.
+     */
+    #[Authorize('settings.manage')]
+    public function useIcon(string $key, string $ulid): void
+    {
+        $i = $this->indexOf($key);
+        if ($i === null) {
+            return;
+        }
+        $problem = Str::isUlid($ulid) ? (app(ContactIconImages::class)->problems([$ulid])[$ulid] ?? null) : 'missing';
+        if ($problem !== null) {
+            $this->notify(FloatingContactInput::iconMessage($problem), 'error');
+
+            return;
+        }
+        $this->channels[$i]['img'] = $ulid;
+        $this->resetErrorBag("channels.{$i}.img");
+        $this->notify(__('admin.fc.ico_used'));
+    }
+
+    /** "Dùng mặc định": the channel draws its own glyph again. */
+    #[Authorize('settings.manage')]
+    public function clearIcon(string $key): void
+    {
+        $i = $this->indexOf($key);
+        if ($i !== null) {
+            $this->channels[$i]['img'] = '';
+            $this->resetErrorBag("channels.{$i}.img");
+        }
+    }
+
+    /**
+     * The browser refused a file before uploading it (not a PNG or WebP, larger than 50 KB), the
+     * library refused it (its own reason: in its trash, not a type or size it takes) or the upload
+     * failed: the plain message, in the page's own notice. Nothing else changes.
+     */
+    #[Authorize('settings.manage')]
+    public function iconRefused(string $reason): void
+    {
+        $this->notify(match ($reason) {
+            'type', 'unsupported_type' => __('admin.fc.ico_err_type'),
+            'size', 'too_large', 'image_too_large' => __('admin.fc.ico_err_size'),
+            'in_trash' => __('media.err_in_trash'),
+            'denied' => __('admin.fc.ico_err_denied'),
+            'rejected' => __('admin.fc.ico_err_rejected'),
+            default => __('admin.fc.ico_err_upload'),
+        }, 'error');
     }
 
     public function pickIcon(string $key, string $icon): void
@@ -331,7 +390,13 @@ final class FloatingContactSettings extends Component
             return;
         }
 
-        app(SettingsRepository::class)->put('storefront', 'floating_contact', $this->stored());
+        // The setting and the library's "in use" rows of its icon pictures change together.
+        DB::transaction(function (): void {
+            $stored = $this->stored();
+            app(SettingsRepository::class)->put('storefront', 'floating_contact', $stored);
+            $row = SiteSetting::query()->where('group_name', 'storefront')->where('key', 'floating_contact')->value('id');
+            FloatingContactInput::syncIconUsage(Cast::int($row), $stored);
+        });
         $this->savedSig = $this->signature();
         $this->notify(__('admin.fc.toast_saved'));
     }
@@ -367,7 +432,9 @@ final class FloatingContactSettings extends Component
         $stored = $this->shape($rows);
         // The draft as the site would show it, switched on, in the language being edited; a channel
         // switched on but not filled in yet keeps its place as an unfinished slot (the site never shows it).
-        $widget = FloatingContact::widget(['enabled' => true] + $stored, $this->lang, $this->hasShop ? '#' : null, pending: true);
+        // Each channel's own icon picture, so the preview shows it as soon as it is uploaded (one query, none without one).
+        $icons = app(ContactIconImages::class)->for($stored);
+        $widget = FloatingContact::widget(['enabled' => true] + $stored, $this->lang, $this->hasShop ? '#' : null, pending: true, images: $icons);
 
         $view = view('admin::livewire.floating-contact-settings', [
             'rows' => $rows,
@@ -378,6 +445,7 @@ final class FloatingContactSettings extends Component
             'preview' => $widget,
             'srcdoc' => $widget === null ? null : $this->previewDocument($widget),
             'reuse' => $this->reusableNumber(),
+            'icons' => $icons,
         ]);
         $view->title(__('admin.fc.title'));
 
@@ -416,7 +484,7 @@ final class FloatingContactSettings extends Component
     }
 
     /**
-     * @param  array<int|string, array{key: string, on: bool, value: string, color: string, icon: string, name: string, tips: array<string, string>}>  $rows
+     * @param  array<int|string, array{key: string, on: bool, value: string, color: string, icon: string, name: string, tips: array<string, string>, img: string}>  $rows
      * @return array<string, mixed>
      */
     private function shape(array $rows): array
@@ -449,7 +517,7 @@ final class FloatingContactSettings extends Component
      * fingerprinted, previewed and drawn on every render — save() then refuses it with the plain
      * message. Everything that reads a row goes through this copy, never the raw property.
      *
-     * @return array<int|string, array{key: string, on: bool, value: string, color: string, icon: string, name: string, tips: array<string, string>}>
+     * @return array<int|string, array{key: string, on: bool, value: string, color: string, icon: string, name: string, tips: array<string, string>, img: string}>
      */
     private function rows(): array
     {
@@ -518,7 +586,16 @@ final class FloatingContactSettings extends Component
                 'icon' => in_array($c['icon'] ?? null, ContactIcons::CUSTOM, true) ? Cast::string($c['icon']) : 'ri-global-line',
                 'name' => Cast::string($c['name'] ?? null),
                 'tips' => $tips,
+                'img' => is_string($c['img'] ?? null) && Str::isUlid($c['img']) ? $c['img'] : '',
             ];
+        }
+        // A picture no longer in the library (removed since) is dropped from the draft: the site already
+        // draws the glyph for it, and keeping it would block the next save. One query, none without one.
+        $gone = app(ContactIconImages::class)->problems(array_values(array_filter(array_column($this->channels, 'img'))));
+        foreach ($this->channels as $n => $row) {
+            if ($row['img'] !== '' && isset($gone[$row['img']])) {
+                $this->channels[$n]['img'] = '';
+            }
         }
         // The built-in five are always listed (switched off when missing), so they can be turned on.
         foreach (FloatingContact::CORE as $key) {
@@ -567,10 +644,10 @@ final class FloatingContactSettings extends Component
         }
     }
 
-    /** @return array{key: string, on: bool, value: string, color: string, icon: string, name: string, tips: array<string, string>} */
+    /** @return array{key: string, on: bool, value: string, color: string, icon: string, name: string, tips: array<string, string>, img: string} */
     private function row(string $key, bool $on): array
     {
-        return ['key' => $key, 'on' => $on, 'value' => '', 'color' => '', 'icon' => '', 'name' => '', 'tips' => []];
+        return ['key' => $key, 'on' => $on, 'value' => '', 'color' => '', 'icon' => '', 'name' => '', 'tips' => [], 'img' => ''];
     }
 
     private function indexOf(string $key): ?int
@@ -587,7 +664,7 @@ final class FloatingContactSettings extends Component
 
     private function checkChannel(int $i): void
     {
-        $this->resetErrorBag(["channels.{$i}.value", "channels.{$i}.icon", "channels.{$i}.name", "channels.{$i}.color", "channels.{$i}.tips"]);
+        $this->resetErrorBag(["channels.{$i}.value", "channels.{$i}.icon", "channels.{$i}.name", "channels.{$i}.color", "channels.{$i}.tips", "channels.{$i}.img"]);
         foreach ($this->channelErrors($i) as $field => $message) {
             $this->addError($field, $message);
         }
@@ -613,16 +690,29 @@ final class FloatingContactSettings extends Component
             || count($this->channels) > FloatingContact::MAX_CHANNELS;
 
         $keys = [];
+        $pictures = [];
         foreach ($this->sent() as $i => $c) {
             if (! is_array($c) || ! is_string($c['key'] ?? null) || FloatingContact::typeOf($c['key']) === null || isset($keys[$c['key']])
                 || ! is_bool($c['on'] ?? null) || ! is_string($c['value'] ?? null) || ! is_string($c['color'] ?? null)
-                || ! is_string($c['icon'] ?? null) || ! is_string($c['name'] ?? null) || ! is_array($c['tips'] ?? null)) {
+                || ! is_string($c['icon'] ?? null) || ! is_string($c['name'] ?? null) || ! is_array($c['tips'] ?? null)
+                || ! is_string($c['img'] ?? null)) {
                 $tampered = true;
 
                 continue;
             }
             $keys[$c['key']] = true;
             $errors += $this->channelErrors($i);
+            if ($c['img'] !== '') {
+                $pictures[$i] = $c['img'];
+            }
+        }
+        // Each channel's own icon picture, all checked in one query: this site's library, PNG or WebP, ≤ 50 KB.
+        $problems = app(ContactIconImages::class)->problems(array_values(array_filter($pictures, Str::isUlid(...))));
+        foreach ($pictures as $i => $ulid) {
+            $problem = Str::isUlid($ulid) ? ($problems[$ulid] ?? null) : 'missing';
+            if ($problem !== null) {
+                $errors["channels.{$i}.img"] = FloatingContactInput::iconMessage($problem);
+            }
         }
         foreach (FloatingContact::CORE as $core) {
             $tampered = $tampered || ! isset($keys[$core]);
