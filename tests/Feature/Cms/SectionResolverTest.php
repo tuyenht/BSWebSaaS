@@ -6,6 +6,7 @@ use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Identity\Models\User;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
+use Illuminate\Support\Facades\DB;
 
 /*
  * SectionResolver derives a post's permalink section (key + type) from its PRIMARY category
@@ -82,5 +83,77 @@ it('keeps the memo isolated per site — a resolver never leaks a section across
     // Site 2: a fresh category with no section → null (RLS hides site 1's rows; memo keyed by site).
     $tenancy->enter(2, function () use ($resolver): void {
         expect($resolver->forEntry(srPost(srTaxonomy()->id)))->toBeNull();
+    });
+});
+
+/** Overwrite a category's stored path / parent on the test's own connection (the model would rewrite them). */
+function srRaw(int $id, array $set): void
+{
+    DB::table('taxonomies')->where('id', $id)->update($set);
+}
+
+it('walks the parent chain when the stored path disagrees with parent_id', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $parent = srTaxonomy();
+        $child = srTaxonomy($parent->id);
+        ContentSection::query()->create(['key' => 'products', 'label' => 'SP', 'entry_type' => 'post', 'taxonomy_id' => $parent->id]);
+        srRaw($child->id, ['path' => '999']);
+
+        $resolver = app(SectionResolver::class);
+
+        expect($resolver->forCategory(Taxonomy::query()->findOrFail($child->id)))->toBe(['key' => 'products', 'type' => 'posts']);
+    });
+});
+
+it('stops a parent cycle instead of walking it forever', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $a = srTaxonomy();
+        $b = srTaxonomy($a->id);
+        srRaw($a->id, ['parent_id' => $b->id, 'path' => '999']);
+        srRaw($b->id, ['path' => '998']);
+
+        expect(app(SectionResolver::class)->forCategory(Taxonomy::query()->findOrFail($b->id)))->toBeNull();
+    });
+});
+
+it('keeps a post whose category path is unusable in the SQL filter, and drops a usable one on the wrong stage', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $root = srTaxonomy();
+        $stale = srTaxonomy($root->id);
+        ContentSection::query()->create(['key' => 'posts', 'label' => 'Tin', 'entry_type' => 'post', 'taxonomy_id' => $root->id]);
+        srRaw($root->id, ['path' => (string) $root->id]);
+        srRaw($stale->id, ['path' => '999']);
+        $kept = srPost($stale->id);
+        $wrongStage = srPost($root->id);
+        DB::table('entries')->whereIn('id', [$kept->id, $wrongStage->id])->update(['workflow_state' => 'draft']);
+
+        $query = Entry::query();
+        app(SectionResolver::class)->whereOnSectionStage($query, ['posts' => ['pending']]);
+
+        expect($query->pluck('id')->all())->toBe([$kept->id]);
+    });
+});
+
+it('reads a loaded, agreeing category without another query, and a changed one fresh', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $root = srTaxonomy();
+        $loaded = Taxonomy::query()->findOrFail($root->id);
+        $resolver = app(SectionResolver::class);
+
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+        $resolver->forCategory($loaded);
+        $trusted = count(DB::getQueryLog());
+
+        $sub = srTaxonomy($root->id);
+        $dirty = Taxonomy::query()->findOrFail($sub->id);
+        $dirty->path = '999';
+        DB::flushQueryLog();
+        $resolver->flush();
+        $resolver->forCategory($dirty);
+        $dirtyQueries = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        expect($dirtyQueries)->toBeGreaterThan($trusted);
     });
 });

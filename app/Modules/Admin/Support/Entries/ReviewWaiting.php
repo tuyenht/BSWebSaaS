@@ -25,8 +25,9 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
  * older rows the SQL cannot judge. A member limited to some categories reviews only posts filed
  * inside them.
  *
- * Bounded by the caller's $limit: the SQL reads at most $limit + 1 rows, and `full` says more than
- * $limit are waiting (decided from the filtered rows), so a count drawn from it reads "at least".
+ * Bounded by the caller's $limit: the SQL reads at most $limit + 1 rows, and `full` says it found
+ * more than $limit (judged on the rows SQL returned, before the per-row check drops any, so a
+ * dropped stale row never hides "more"), so a count drawn from it reads "at least".
  * The caller names the relations and columns its rows show. Stateless (Octane): every per-request
  * memo lives in the scoped services it asks.
  */
@@ -78,6 +79,6 @@ final readonly class ReviewWaiting
         /** @var EloquentCollection<int, Entry> $kept */
         $kept = $waiting->take($limit);
 
-        return ['entries' => $kept, 'full' => $waiting->count() > $limit];
+        return ['entries' => $kept, 'full' => $rows->count() > $limit];
     }
 }

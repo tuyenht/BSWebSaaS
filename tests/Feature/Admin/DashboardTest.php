@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Livewire\Dashboard;
+use App\Modules\Admin\Support\Entries\ReviewWaiting;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
 use App\Modules\Cms\Data\TaxonomyData;
@@ -425,4 +426,31 @@ it('offers only the shortcuts the member can use', function (): void {
         ->assertDontSee(__('dash.quick_invite'))
         ->assertDontSee(__('dash.quick_menus'))
         ->assertDontSee(__('dash.quick_product'));
+});
+
+it('still says "more" when a row of another section is dropped after the SQL read', function (): void {
+    $author = dashMember(['entries.view', 'entries.create', 'entries.edit.own', 'entries.submit'], 'Người viết');
+    $reviewer = dashMember(['entries.view', 'entries.review', 'entries.approve'], 'Người duyệt');
+
+    app(Tenancy::class)->enter(1, function () use ($author, $reviewer): void {
+        $root = Taxonomy::query()->findOrFail(dashCollection());
+        foreach (range(1, 3) as $i) {
+            dashSubmitted($root->id, $author, "Bài {$i}", "bai-{$i}");
+        }
+        // a newer row on a stage key of the reviewer, filed under another section by its parent chain
+        // while its stored path is stale: the SQL keeps it, the per-row check drops it
+        $other = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 1]);
+        ContentSection::query()->create(['key' => 'projects', 'label' => 'Dự án', 'entry_type' => 'post', 'taxonomy_id' => $other->id,
+            'permission_prefix' => 'entries', 'sort_order' => 2]);
+        $sub = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0, 'parent_id' => $other->id]);
+        DB::table('taxonomies')->where('id', $sub->id)->update(['path' => '999']);
+        $stale = dashPost($sub->id, $author, 'Bài dự án', 'bai-du-an');
+        DB::table('entries')->where('id', $stale->id)->update(['workflow_state' => 'pending', 'updated_at' => now()->addDay()]);
+
+        $read = app(ReviewWaiting::class)->read($reviewer, 2);
+
+        expect($read['entries'])->toHaveCount(2)
+            ->and($read['entries']->pluck('id')->all())->not->toContain($stale->id)
+            ->and($read['full'])->toBeTrue();
+    });
 });

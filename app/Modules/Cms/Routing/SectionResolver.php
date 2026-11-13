@@ -71,17 +71,54 @@ final class SectionResolver
      */
     public function forCategory(Taxonomy $primary): ?array
     {
+        $known = $this->trusted($primary);
+
         if (! $this->current->hasId()) {
-            return $this->resolveMany([$primary->id])[$primary->id] ?? null;
+            return $this->resolveMany([$primary->id], $known)[$primary->id] ?? null;
         }
 
         $key = $this->current->id().':'.$primary->id;
 
         if (! array_key_exists($key, $this->memo)) {
-            $this->memo[$key] = $this->resolveMany([$primary->id])[$primary->id] ?? null;
+            $this->memo[$key] = $this->resolveMany([$primary->id], $known)[$primary->id] ?? null;
         }
 
         return $this->memo[$key];
+    }
+
+    /**
+     * The passed category as a row to trust without reading it again: stored, with its parent_id
+     * and path loaded and unchanged in memory, and a root or a path that agrees with its parent_id.
+     * Anything else is read fresh (a path rewritten earlier in this transaction counts).
+     *
+     * @return array<int, Taxonomy>
+     */
+    private function trusted(Taxonomy $category): array
+    {
+        $attributes = $category->getAttributes();
+        if (! $category->exists || ! array_key_exists('parent_id', $attributes) || ! array_key_exists('path', $attributes)
+            || $category->isDirty(['parent_id', 'path'])) {
+            return [];
+        }
+
+        return $category->parent_id === null || $this->chainOf($category) !== null ? [$category->id => $category] : [];
+    }
+
+    /**
+     * The ancestors (nearest first) the stored path gives for a category whose path agrees with its
+     * id and parent_id; null when the path is missing or disagrees.
+     *
+     * @return list<int>|null
+     */
+    private function chainOf(Taxonomy $row): ?array
+    {
+        $labels = is_string($row->path) && preg_match('/^\d+(\.\d+)*$/', $row->path) === 1
+            ? array_map('intval', explode('.', $row->path)) : [];
+        $own = array_pop($labels);
+        $parent = $labels === [] ? null : $labels[array_key_last($labels)];
+        $parentId = $row->parent_id === null ? null : (int) $row->parent_id;
+
+        return $own === (int) $row->id && $parent === $parentId ? array_reverse($labels) : null;
     }
 
     /**
@@ -198,9 +235,10 @@ final class SectionResolver
      * one query per level for all such categories together; a visited-set guards against a loop.
      *
      * @param  list<int>  $ids
+     * @param  array<int, Taxonomy>  $known  rows of $ids already loaded and trusted (see trusted()), not read again
      * @return array<int, array{key: string, type: string}|null>
      */
-    private function resolveMany(array $ids): array
+    private function resolveMany(array $ids, array $known = []): array
     {
         if ($ids === []) {
             return [];
@@ -223,14 +261,16 @@ final class SectionResolver
         /** @var array<int, list<int>> $chains category id => its ancestors, nearest first */
         $chains = [];
         $walk = [];
-        foreach (Taxonomy::query()->whereKey($rest)->get(['id', 'parent_id', 'path']) as $row) {
-            $labels = is_string($row->path) && preg_match('/^\d+(\.\d+)*$/', $row->path) === 1
-                ? array_map('intval', explode('.', $row->path)) : [];
-            $own = array_pop($labels);
-            $parent = $labels === [] ? null : $labels[array_key_last($labels)];
+        $missing = array_values(array_diff($rest, array_keys($known)));
+        $rows = array_values(array_intersect_key($known, array_flip($rest)));
+        if ($missing !== []) {
+            array_push($rows, ...Taxonomy::query()->whereKey($missing)->get(['id', 'parent_id', 'path'])->all());
+        }
+        foreach ($rows as $row) {
+            $chain = $this->chainOf($row);
             $parentId = $row->parent_id === null ? null : (int) $row->parent_id;
-            if ($own === (int) $row->id && $parent === $parentId) {
-                $chains[(int) $row->id] = array_reverse($labels);
+            if ($chain !== null) {
+                $chains[(int) $row->id] = $chain;
             } elseif ($parentId !== null) {
                 $walk[(int) $row->id] = $parentId;
             } else {
