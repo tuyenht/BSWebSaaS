@@ -1,6 +1,6 @@
 <?php
 
-use App\Modules\Admin\Livewire\Settings;
+use App\Modules\Admin\Livewire\Account;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
@@ -27,7 +27,7 @@ it('updates the own display name and the topbar shows its short form', function 
     app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
 
     Livewire::actingAs($user->fresh())
-        ->test(Settings::class)
+        ->test(Account::class)
         ->assertSet('profileName', 'Cũ Lắm Rồi Đây')
         ->set('profileName', 'Trần Huy Tuyền')
         ->call('saveProfile')
@@ -47,7 +47,7 @@ it('changes the own password only with the correct current password', function (
 
     // Wrong current password → friendly error, nothing changes.
     Livewire::actingAs($user->fresh())
-        ->test(Settings::class)
+        ->test(Account::class)
         ->set('current_password', 'not-the-password')
         ->set('password', 'brand-new-pass-456')
         ->set('password_confirmation', 'brand-new-pass-456')
@@ -58,7 +58,7 @@ it('changes the own password only with the correct current password', function (
 
     // Correct current password → the new one is stored (hashed), inputs reset.
     Livewire::actingAs($user->fresh())
-        ->test(Settings::class)
+        ->test(Account::class)
         ->set('current_password', 'old-password-123')
         ->set('password', 'brand-new-pass-456')
         ->set('password_confirmation', 'brand-new-pass-456')
@@ -74,12 +74,12 @@ it('rejects a mismatched confirmation', function (): void {
     app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
 
     Livewire::actingAs($user->fresh())
-        ->test(Settings::class)
+        ->test(Account::class)
         ->set('current_password', 'old-password-123')
         ->set('password', 'brand-new-pass-456')
         ->set('password_confirmation', 'khác-hẳn')
         ->call('changePassword')
-        ->assertHasErrors('password');
+        ->assertHasErrors('password_confirmation');
 
     expect(Hash::check('old-password-123', $user->fresh()->password))->toBeTrue();
 });
@@ -94,7 +94,7 @@ it('rejects a password found in a known breach', function (): void {
     fakePwnedVerifier(compromised: true);
 
     Livewire::actingAs($user->fresh())
-        ->test(Settings::class)
+        ->test(Account::class)
         ->set('current_password', 'old-password-123')
         ->set('password', $breached)
         ->set('password_confirmation', $breached)

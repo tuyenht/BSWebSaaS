@@ -6,6 +6,7 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Storefront\Models\ContactClickDaily;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
@@ -61,6 +62,12 @@ function fcsShop(int $siteId, bool $entitled = true): void
     });
 }
 
+/** The rendered page without Livewire's block markers. */
+function fcsBare(Testable $lw): string
+{
+    return str_replace(['<!--[if BLOCK]><![endif]-->', '<!--[if ENDBLOCK]><![endif]-->'], '', $lw->html());
+}
+
 /** The draft index of a channel. */
 function fcsIndex(Testable $lw, string $key): int
 {
@@ -81,7 +88,7 @@ it('starts off with the five built-in channels, the site’s own phone and email
         $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)
             ->assertOk()
             ->assertSet('enabled', false)
-            ->assertSet('theme', 'vertical')
+            ->assertSet('layout', 'combo')
             ->assertSet('position', 'right')
             ->assertSee('Kích hoạt nút liên hệ nổi')
             ->assertSee('Đã lưu');
@@ -99,7 +106,7 @@ it('saves the draft for the current site only and loads it back', function (): v
     app(Tenancy::class)->enter(1, function () use ($admin): void {
         $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)
             ->call('toggleEnabled')
-            ->call('setTheme', 'horizontal')
+            ->call('setLayout', 'combo')
             ->call('setPosition', 'left')
             ->set('offsetX', 40)
             ->set('offsetY', 100);
@@ -285,7 +292,7 @@ it('keeps working on the page after a value of the wrong type', function (): voi
             ->call('toggleChannel', '')
             ->call('pickIcon', '', 'ri-global-line')
             ->call('move', 'zalo', 1)
-            ->call('setTheme', 'horizontal')
+            ->call('setLayout', 'combo')
             ->assertOk()
             ->assertSee('Zalo');
     });
@@ -315,7 +322,7 @@ it('keeps the “Mua hàng” switch but shows the button nowhere while the site
 
     app(Tenancy::class)->enter(1, function () use ($admin): void {
         $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)
-            ->call('setTheme', 'horizontal')
+            ->call('setLayout', 'combo')
             ->call('toggleBuy')
             ->assertSet('hasShop', false)
             ->assertSee('Nút này hiện khi website có trang sản phẩm.');
@@ -324,9 +331,11 @@ it('keeps the “Mua hàng” switch but shows the button nowhere while the site
             ->call('toggleChannel', 'sms');
         $lw->set('channels.'.fcsIndex($lw, 'sms').'.value', '0912345678');
 
-        // The preview draws what the site draws: no buy button.
+        // The preview draws what the site draws: no buy button; the bar holds the quick channels, Messenger and email wait in "Thêm".
         expect($lw->viewData('preview')['buy'])->toBeNull()
-            ->and(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo', 'messenger', 'email', 'sms']);
+            ->and(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo', 'sms'])
+            ->and(array_column($lw->viewData('preview')['sheet'], 'key'))->toBe(['messenger', 'email'])
+            ->and($lw->viewData('srcdoc'))->not->toContain('sf-fc__buy')->not->toContain('Mua hàng');
         $lw->call('save')->assertHasNoErrors();
     });
 
@@ -341,7 +350,7 @@ it('shows “Mua hàng” in the preview, after the channels, when the site has 
         $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)
             ->assertSet('hasShop', true)
             ->assertDontSee('Nút này hiện khi website có trang sản phẩm.')
-            ->call('setTheme', 'horizontal')
+            ->call('setLayout', 'combo')
             ->call('toggleBuy')
             ->call('setBuyColor', 'brand');
         $lw->set('channels.'.fcsIndex($lw, 'phone').'.value', '0912345678')
@@ -350,8 +359,8 @@ it('shows “Mua hàng” in the preview, after the channels, when the site has 
         $lw->set('channels.'.fcsIndex($lw, 'sms').'.value', '0912345678');
 
         expect($lw->viewData('preview')['buy'])->toMatchArray(['fill' => 'var(--color-primary)', 'ink' => 'var(--color-on-primary)'])
-            ->and(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo', 'messenger', 'email', 'sms']);
-        $lw->assertSee('Mua hàng');
+            ->and(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo', 'sms'])
+            ->and($lw->viewData('srcdoc'))->toContain('Mua hàng');
     });
 });
 
@@ -360,15 +369,20 @@ it('previews the bottom bar on a phone only, with no device switch', function ()
 
     app(Tenancy::class)->enter(1, function () use ($admin): void {
         $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)
-            ->assertSee('aria-label="Thiết bị xem trước"', false)
-            ->assertDontSee('<span class="font-normal text-text-muted"> · trên điện thoại</span>', false);
+            ->assertSee('aria-label="Thiết bị xem trước"', false);
 
-        $lw->call('setTheme', 'horizontal')
-            ->assertDontSee('aria-label="Thiết bị xem trước"', false)
-            ->assertSee('<span class="font-normal text-text-muted"> · trên điện thoại</span>', false)
-            ->assertSee('màn hẹp tự bớt nút ở cuối');
+        // Combo: the bar options say they are for phones; the preview still switches device.
+        $lw->call('setLayout', 'combo');
+        expect(fcsBare($lw))->toContain('Tùy chọn thanh dưới<span class="font-normal text-text-muted"> · trên điện thoại</span>');
+        $lw
+            ->assertSee('Điện thoại hẹp tự bớt nút ở cuối')
+            ->assertDontSee('style="display: none"', false);
 
-        $lw->call('setTheme', 'vertical')->assertSee('aria-label="Thiết bị xem trước"', false);
+        // The bottom bar only: phones only, so the device switch starts hidden and the preview says so.
+        $lw->call('setLayout', 'horizontal')->assertSee('style="display: none"', false);
+        expect(fcsBare($lw))->toContain('Xem trước<span class="font-normal text-text-muted"> · trên điện thoại</span>');
+
+        $lw->call('setLayout', 'vertical')->assertDontSee('style="display: none"', false)->assertDontSee('Tùy chọn thanh dưới');
     });
 });
 
@@ -399,7 +413,7 @@ it('shows a channel switched on but not filled in at its place in the round-butt
 
     app(Tenancy::class)->enter(1, function () use ($admin): void {
         // No brand phone or email: the call, Zalo, Messenger and email start switched on and empty.
-        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class);
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)->call('setLayout', 'vertical');
         $lw->set('channels.'.fcsIndex($lw, 'phone').'.value', '0912345678')
             ->call('toggleChannel', 'sms');   // switched on, left empty
         $lw->set('channels.'.fcsIndex($lw, 'zalo').'.value', 'abc');   // a value that does not pass
@@ -409,9 +423,12 @@ it('shows a channel switched on but not filled in at its place in the round-butt
         expect(array_column($preview['buttons'], 'key'))->toBe(['phone', 'zalo', 'messenger', 'email', 'sms'])
             ->and($pending)->toBe(['zalo', 'messenger', 'email', 'sms']);
 
+        // The frame draws the website's own buttons; the unfinished ones carry the admin-only mark and no link.
+        $frame = (string) $lw->viewData('srcdoc');
+        expect(preg_match_all('/ data-fc-pending>\s*<a class="sf-fc__btn" href="#"/', $frame))->toBe(4)
+            ->and($frame)->toContain('<a class="sf-fc__btn" href="tel:0912345678" aria-label="Gọi điện"');
         $html = $lw->html();
-        expect($html)->toContain('data-fc-pending="sms"', 'data-fc-pending="messenger"', 'data-fc-pending="zalo"')
-            ->not->toContain('data-fc-pending="phone"')
+        expect($html)
             // the hint shows under the empty fields only (not under the filled call, nor under Zalo's error)
             ->toContain('id="fc-empty-sms"', 'aria-describedby="fc-hint-sms fc-empty-sms"')
             ->not->toContain('id="fc-empty-phone"')->not->toContain('id="fc-empty-zalo"')
@@ -419,8 +436,9 @@ it('shows a channel switched on but not filled in at its place in the round-butt
 
         // Switched off: gone from the preview, and its hint with it.
         $lw->call('toggleChannel', 'sms');
-        expect($lw->html())->not->toContain('data-fc-pending="sms"')->not->toContain('id="fc-empty-sms"')
-            ->and(array_column($lw->viewData('preview')['buttons'], 'key'))->not->toContain('sms');
+        expect($lw->html())->not->toContain('id="fc-empty-sms"')
+            ->and(array_column($lw->viewData('preview')['buttons'], 'key'))->not->toContain('sms')
+            ->and(preg_match_all('/ data-fc-pending>\s*<a class="sf-fc__btn"/', (string) $lw->viewData('srcdoc')))->toBe(3);
 
         // Empty stays allowed on save.
         $lw->set('channels.'.fcsIndex($lw, 'zalo').'.value', '')->call('save')->assertHasNoErrors();
@@ -429,26 +447,25 @@ it('shows a channel switched on but not filled in at its place in the round-butt
     expect(collect(fcsStored()['channels'])->firstWhere('key', 'messenger'))->toMatchArray(['on' => true, 'value' => '']);
 });
 
-it('keeps every channel in the bottom bar and draws the first four cells on the narrow preview phone, unfilled ones at their place', function (): void {
+it('puts every channel switched on in the bottom bar or its “Thêm” sheet, unfilled ones at their place', function (): void {
     $admin = fcsAdmin();
 
     app(Tenancy::class)->enter(1, function () use ($admin): void {
-        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)->call('setTheme', 'horizontal');
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)->call('setLayout', 'horizontal');
         $lw->set('channels.'.fcsIndex($lw, 'phone').'.value', '0912345678')
             ->call('toggleChannel', 'sms')
             ->call('addPreset', 'whatsapp')->call('addPreset', 'telegram')->call('addPreset', 'viber');
 
-        expect(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo', 'messenger', 'email', 'sms', 'whatsapp', 'telegram', 'viber']);
-        // The preview phone is about 266px wide: four cells, the rest dropped from the end as on a phone that narrow.
-        expect($lw->html())->toContain('data-fc-pending="zalo"')
-            ->not->toContain('data-fc-pending="phone"')->not->toContain('data-fc-pending="sms"')
-            ->not->toContain('data-fc-pending="telegram"')->not->toContain('data-fc-pending="viber"')
-            ->not->toContain('ẩn ở kiểu thanh dưới');
+        // Five places: four quick channels and "Thêm", which holds the rest in saved order.
+        expect(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo', 'sms', 'whatsapp'])
+            ->and(array_column($lw->viewData('preview')['sheet'], 'key'))->toBe(['messenger', 'email', 'telegram', 'viber'])
+            ->and($lw->viewData('srcdoc'))->toContain('popovertarget="sf-fc-more"', 'sf-fc-bar__item" data-fc-pending><a class="sf-fc-bar__link" href="#"')
+            ->not->toContain('sf-fc__float');
 
         // A switched-off channel never takes a cell.
         $lw->call('toggleChannel', 'zalo');
-        expect(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'messenger', 'email', 'sms', 'whatsapp', 'telegram', 'viber'])
-            ->and($lw->html())->not->toContain('data-fc-pending="zalo"')->toContain('data-fc-pending="sms"');
+        expect(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'sms', 'whatsapp', 'telegram'])
+            ->and(array_column($lw->viewData('preview')['sheet'], 'key'))->toBe(['messenger', 'email', 'viber']);
     });
 });
 
@@ -491,7 +508,6 @@ it('refuses a tampered draft: unknown, repeated or missing channels and out-of-r
     'unknown channel' => ['channels.0.key', 'skype'],
     'repeated channel' => ['channels.1.key', 'phone'],
     'missing core channel' => ['channels', [['key' => 'phone', 'on' => true, 'value' => '', 'color' => '', 'icon' => '', 'name' => '', 'tips' => []]]],
-    'theme' => ['theme', 'popup'],
     'position' => ['position', 'top'],
     'buy colour' => ['buyColor', 'url(x)'],
 ]);
@@ -598,7 +614,7 @@ it('previews “Mua hàng” only in a language whose product list has an addres
     app(Tenancy::class)->enter(1, function () use ($admin): void {
         app(SiteLocale::class)->forget();
         $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)
-            ->call('setTheme', 'horizontal')
+            ->call('setLayout', 'combo')
             ->call('toggleBuy');
         $lw->set('channels.'.fcsIndex($lw, 'phone').'.value', '0912345678');
         expect($lw->get('hasShop'))->toBeTrue()
@@ -683,7 +699,7 @@ it('keeps a round-button site with the phone bar as it is when the form saves wi
         ->and($stored['phone_bar']['enabled'] ?? null)->toBeTrue();
 });
 
-it('stores the layout the new theme gives when the theme is changed in the form', function (): void {
+it('stores the chosen layout with the older theme word it reads as', function (): void {
     $admin = fcsAdmin();
     app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'floating_contact', 'value' => [
         'enabled' => true, 'theme' => 'vertical', 'layout' => 'vertical', 'dial' => false, 'bar_tone' => 'light', 'track' => false,
@@ -691,16 +707,234 @@ it('stores the layout the new theme gives when the theme is changed in the form'
     ]]));
 
     app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(FloatingContactSettings::class)
-        ->call('setTheme', 'horizontal')->call('save')->assertHasNoErrors());
+        ->call('setLayout', 'combo')->call('save')->assertHasNoErrors());
 
     expect(fcsStored(1))->toMatchArray(['layout' => 'combo', 'theme' => 'horizontal', 'dial' => false, 'bar_tone' => 'light', 'track' => false]);
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+        ->call('setLayout', 'horizontal')->call('save')->assertHasNoErrors());
+    expect(fcsStored(1))->toMatchArray(['layout' => 'horizontal', 'theme' => 'horizontal']);
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+        ->call('setLayout', 'vertical')->call('save')->assertHasNoErrors());
+    expect(fcsStored(1))->toMatchArray(['layout' => 'vertical', 'theme' => 'vertical']);
 });
 
-it('stores the default newer fields for a site that never saved, matching the form defaults', function (): void {
+it('starts a site that never saved on the combined layout', function (): void {
     $admin = fcsAdmin();
 
     app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(FloatingContactSettings::class)
         ->call('toggleEnabled')->call('save')->assertHasNoErrors());
 
-    expect(fcsStored(1))->toMatchArray(['theme' => 'vertical', 'layout' => 'vertical', 'dial' => true, 'bar_tone' => 'auto', 'track' => true]);
+    expect(fcsStored(1))->toMatchArray(['theme' => 'horizontal', 'layout' => 'combo', 'dial' => true, 'bar_tone' => 'auto', 'track' => true]);
+});
+
+it('opens and saves a site’s stored setting back unchanged when nothing was edited', function (): void {
+    $admin = fcsAdmin();
+    $value = [
+        'enabled' => true, 'theme' => 'vertical', 'position' => 'left', 'offset_x' => 24, 'offset_y' => 40,
+        'layout' => 'vertical', 'dial' => false, 'bar_tone' => 'dark', 'track' => false,
+        'buy' => ['enabled' => false, 'color' => FloatingContact::BUY_COLOR],
+        'channels' => [
+            ['key' => 'email', 'on' => true, 'value' => 'lienhe@a.test', 'color' => '#ea4335', 'tips' => ['vi' => 'Gửi email']],
+            ['key' => 'zalo', 'on' => true, 'value' => '0915668383', 'tips' => []],
+            ['key' => 'phone', 'on' => true, 'value' => '0915 66 83 83', 'tips' => ['vi' => 'Gọi ngay']],
+            ['key' => 'messenger', 'on' => false, 'value' => '', 'tips' => []],
+            ['key' => 'sms', 'on' => false, 'value' => '', 'tips' => []],
+        ],
+    ];
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'floating_contact', 'value' => $value]));
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+        ->call('save')->assertHasNoErrors());
+
+    expect(fcsStored(1))->toEqual($value);
+});
+
+it('saves an older setting with no layout back as the layout it reads as, its theme and the site’s buttons unchanged', function (array $extra, string $layout): void {
+    $admin = fcsAdmin();
+    // The An Vinh content pack's shape: written before layouts, so it has the older `theme` only.
+    $value = [
+        'enabled' => true, 'theme' => 'vertical', 'position' => 'right',
+        'channels' => [
+            ['key' => 'email', 'on' => true, 'value' => 'lienhe@a.test', 'tips' => ['vi' => 'Gửi email'], 'color' => '#ea4335'],
+            ['key' => 'zalo', 'on' => true, 'value' => '0915668383', 'color' => '#0068ff', 'tips' => ['vi' => 'Chat Zalo']],
+            ['key' => 'phone', 'on' => true, 'value' => '0915 66 83 83', 'tips' => ['vi' => 'Gọi ngay'], 'color' => '#f59e0b'],
+        ],
+        'offset_x' => 16, 'offset_y' => 20,
+    ] + $extra;
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'floating_contact', 'value' => $value]));
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+        ->call('save')->assertHasNoErrors());
+
+    $stored = fcsStored(1);
+    $kept = array_values(array_filter($stored['channels'], fn (array $c): bool => in_array($c['key'], ['email', 'zalo', 'phone'], true)));
+    expect($stored)->toMatchArray(['enabled' => true, 'theme' => 'vertical', 'position' => 'right', 'offset_x' => 16, 'offset_y' => 20, 'layout' => $layout])
+        ->and(FloatingContact::layout($stored))->toBe(FloatingContact::layout($value))
+        ->and(array_map(fn (array $c): array => array_intersect_key($c, array_flip(['key', 'on', 'value', 'color', 'tips'])), $kept))
+        ->toEqual(array_map(fn (array $c): array => array_intersect_key($c, array_flip(['key', 'on', 'value', 'color', 'tips'])), $value['channels']))
+        ->and(FloatingContact::widget($stored, 'vi'))->toEqual(FloatingContact::widget($value, 'vi'))
+        ->and($stored['phone_bar']['enabled'] ?? null)->toBe($extra['phone_bar']['enabled'] ?? null);
+})->with([
+    'round buttons only' => [[], 'vertical'],
+    'with the phone bar on' => [['phone_bar' => ['enabled' => true, 'cta' => ['label' => ['vi' => 'Yêu cầu báo giá'], 'url' => '/lien-he']]], 'combo'],
+]);
+
+it('keeps a stored layout and its theme word exactly as they are when nothing was edited', function (string $layout, string $theme): void {
+    $admin = fcsAdmin();
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'floating_contact', 'value' => [
+        'enabled' => true, 'theme' => $theme, 'layout' => $layout,
+        'channels' => [['key' => 'phone', 'on' => true, 'value' => '0912345678']],
+    ]]));
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+        ->call('save')->assertHasNoErrors());
+
+    expect(fcsStored(1))->toMatchArray(['layout' => $layout, 'theme' => $theme]);
+})->with([
+    'combo with the round-button word' => ['combo', 'vertical'],
+    'vertical with the bar word' => ['vertical', 'horizontal'],
+    'horizontal with the round-button word' => ['horizontal', 'vertical'],
+    'combo with the bar word' => ['combo', 'horizontal'],
+]);
+
+it('runs the preview frame with no script of its own: sandboxed, its page carrying no script', function (): void {
+    $admin = fcsAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class);
+        $lw->set('channels.'.fcsIndex($lw, 'phone').'.value', '0987 654 321')
+            ->set('channels.'.fcsIndex($lw, 'phone').'.on', true);
+
+        expect($lw->viewData('srcdoc'))->toContain('data-fc-root')->not->toContain('<script')
+            ->and($lw->html())->toContain('sandbox="allow-same-origin"')->not->toContain('allow-scripts')->not->toContain('&lt;script');
+    });
+});
+
+it('draws the preview with the website’s own widget and shows an edit before it is saved', function (): void {
+    $admin = fcsAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class);
+        $lw->set('channels.'.fcsIndex($lw, 'phone').'.value', '0987 654 321')
+            ->set('channels.'.fcsIndex($lw, 'phone').'.on', true);
+
+        $srcdoc = $lw->viewData('srcdoc');
+        expect($srcdoc)->toContain('data-fc-root')
+            ->toContain('href="tel:0987654321"')
+            ->toContain('<link rel="stylesheet"')
+            ->and($lw->html())->toContain('srcdoc="')->toContain('data-fc-preview');
+    });
+    expect(fcsStored())->toBeNull();
+});
+
+it('hides the measuring switch, the “Kết nối” row and “Dịch bằng AI”, and keeps the stored measuring choice', function (): void {
+    $admin = fcsAdmin();
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'floating_contact', 'value' => [
+        'enabled' => true, 'theme' => 'horizontal', 'layout' => 'combo', 'track' => false,
+        'channels' => [['key' => 'phone', 'on' => true, 'value' => '0912345678']],
+    ]]));
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+            ->assertDontSee('Dịch bằng AI')->assertDontSee('Kết nối')->assertDontSee('Chi tiết kỹ thuật')
+            ->assertDontSee('đo lường')->assertDontSeeHtml('toggleTrack');
+        $lw->call('save')->assertHasNoErrors();
+    });
+    expect(fcsStored(1)['track'] ?? null)->toBeFalse();
+});
+
+it('offers “Dùng số …” on an empty number channel and fills it with the call channel’s number', function (): void {
+    $admin = fcsAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class);
+        $lw->set('channels.'.fcsIndex($lw, 'phone').'.value', '0912 345 678');
+        $lw->assertSee('Dùng số 0912 345 678');
+        $offers = substr_count($lw->html(), 'wire:click="reuseNumber(');
+
+        $lw->call('reuseNumber', 'zalo')->call('reuseNumber', 'email');
+        expect($offers)->toBeGreaterThan(0)
+            ->and($lw->get('channels')[fcsIndex($lw, 'zalo')]['value'])->toBe('0912 345 678')
+            ->and($lw->get('channels')[fcsIndex($lw, 'email')]['value'])->toBe('')
+            ->and(substr_count($lw->html(), 'wire:click="reuseNumber('))->toBe($offers - 1);
+    });
+});
+
+it('saves the dial and bar background choices', function (): void {
+    $admin = fcsAdmin();
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+        ->call('setLayout', 'vertical')->call('toggleDial')->call('setBarTone', 'dark')->call('setBarTone', 'purple')
+        ->call('save')->assertHasNoErrors());
+
+    expect(fcsStored(1))->toMatchArray(['layout' => 'vertical', 'dial' => false, 'bar_tone' => 'dark']);
+});
+
+it('shows only the current site’s taps of the last 30 days in “Hiệu quả”', function (): void {
+    $admin = fcsAdmin();
+    $today = now('Asia/Ho_Chi_Minh')->toDateString();
+    app(Tenancy::class)->enter(1, function () use ($today): void {
+        ContactClickDaily::query()->create(['day' => $today, 'channel' => 'zalo', 'placement' => 'floating', 'clicks' => 7]);
+        ContactClickDaily::query()->create(['day' => $today, 'channel' => 'phone', 'placement' => 'bar', 'clicks' => 5]);
+    });
+    app(Tenancy::class)->enter(2, fn () => ContactClickDaily::query()->create(['day' => $today, 'channel' => 'phone', 'placement' => 'bar', 'clicks' => 4321]));
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class);
+        expect($lw->get('stats'))->toBe(['total' => 12, 'channels' => ['zalo' => 7, 'phone' => 5]]);
+        $lw->assertSee('Hiệu quả nút liên hệ')->assertDontSee('4.321')->assertDontSee('Chưa có lượt bấm nào');
+    });
+
+    $other = fcsAdmin(2);
+    app(TeamContext::class)->forget();
+    app(Tenancy::class)->enter(2, function () use ($other): void {
+        Livewire::actingAs($other)->test(FloatingContactSettings::class)->assertSet('stats', ['total' => 4321, 'channels' => ['phone' => 4321]]);
+    });
+});
+
+it('says plainly that no taps were counted yet', function (): void {
+    $admin = fcsAdmin();
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+        ->assertSet('stats', ['total' => 0, 'channels' => []])
+        ->assertSee('Chưa có lượt bấm nào. Số liệu hiện tại đây khi khách bắt đầu bấm nút trên website.'));
+});
+
+it('refuses every action to a user who lost the settings permission', function (string $method, array $args): void {
+    $admin = fcsAdmin();
+    $member = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($member, 'plain-member', ['entries.view']));
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $member, $method, $args): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class);
+        $this->actingAs($member->fresh());
+        app(TeamContext::class)->forget();
+        $lw->call($method, ...$args)->assertForbidden();
+    });
+    expect(fcsStored())->toBeNull();
+})->with([
+    ['toggleEnabled', []], ['setLayout', ['vertical']], ['toggleDial', []], ['setBarTone', ['dark']],
+    ['reuseNumber', ['zalo']], ['setPosition', ['left']], ['setLang', ['vi']], ['toggleChannel', ['phone']],
+    ['move', ['phone', 1]], ['sortChannel', ['phone', 2]], ['deleteChannel', ['phone']], ['togglePresetMenu', []],
+    ['addPreset', ['telegram']], ['addCustom', []], ['pickIcon', ['phone', 'ri-phone']], ['toggleBuy', []],
+    ['setBuyColor', ['#000000']], ['save', []], ['resetChanges', []], ['dismissToast', [1]], ['stored', []],
+]);
+
+it('opens on a flat query budget, the taps read in one query', function (): void {
+    $admin = fcsAdmin();
+    $url = 'http://a.test/admin/settings/floating-contact';
+
+    $this->actingAs($admin)->get($url)->assertOk(); // the permission and settings caches fill on the first request
+    $queries = [];
+    DB::listen(function ($query) use (&$queries): void {
+        $queries[] = $query->sql;
+    });
+    $count = countQueries(fn () => $this->actingAs($admin)->get($url)->assertOk()->assertSee('Hiệu quả nút liên hệ'));
+
+    expect(array_values(array_filter($queries, fn (string $sql): bool => str_contains($sql, 'contact_click_daily'))))->toHaveCount(1)
+        // Flat: the shell's cached nav and permissions, the top bar's notifications, the site's settings
+        // and languages, and the one grouped read of the last 30 days' taps (an index on site_id, day leads it).
+        ->and($count)->toBeLessThanOrEqual(10);
 });

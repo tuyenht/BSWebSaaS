@@ -49,8 +49,8 @@
                     <button type="button" role="tab" id="tb-tab-{{ $t['key'] }}" aria-controls="tb-panel" title="{{ $t['label'] }}"
                             aria-selected="{{ $on ? 'true' : 'false' }}" tabindex="{{ $on ? 0 : -1 }}"
                             wire:key="tb-tab-{{ $t['key'] }}" wire:click="show('{{ $t['key'] }}')"
-                            class="group inline-flex min-h-control shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 border-transparent px-2.5 text-body font-medium text-text-muted transition-colors hover:text-text-strong aria-selected:border-accent aria-selected:font-semibold aria-selected:text-accent any-pointer-coarse:min-h-hit @max-[37.4375rem]/tb:gap-1 @max-[37.4375rem]/tb:px-2">
-                        {{ $t['label'] }}<span class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-surface-hover px-1.5 text-[calc(0.75rem+var(--user-text-boost))] font-semibold text-text group-aria-selected:bg-[color-mix(in_srgb,var(--color-accent)_12%,var(--color-surface))] group-aria-selected:text-accent">{{ $t['n'] }}</span>
+                            class="group inline-flex min-h-control shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 border-transparent px-2.5 text-body font-medium text-text-muted transition-colors hover:text-text-strong aria-selected:border-primary-text aria-selected:font-semibold aria-selected:text-primary-text any-pointer-coarse:min-h-hit @max-[37.4375rem]/tb:gap-1 @max-[37.4375rem]/tb:px-2">
+                        {{ $t['label'] }}<span class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-surface-hover px-1.5 text-[calc(0.75rem+var(--user-text-boost))] font-semibold text-text group-aria-selected:bg-[color-mix(in_srgb,var(--color-primary-text)_12%,var(--color-surface))] group-aria-selected:text-primary-text">{{ $t['n'] }}</span>
                     </button>
                 @endforeach
             </div>
@@ -104,7 +104,7 @@
                                      @class([
                                          'grid cursor-pointer grid-cols-[2.5rem_minmax(0,1fr)_auto] items-start gap-3 border-t border-border px-4 py-3 transition-colors hover:bg-surface-hover',
                                          '@max-[37.4375rem]/tb:grid-cols-[2.25rem_minmax(0,1fr)] @max-[37.4375rem]/tb:gap-x-3 @max-[37.4375rem]/tb:gap-y-2 @max-[37.4375rem]/tb:p-3',
-                                         'bg-[color-mix(in_srgb,var(--color-accent)_5%,var(--color-surface))]' => $item['unread'],
+                                         'bg-[color-mix(in_srgb,var(--color-primary-text)_5%,var(--color-surface))]' => $item['unread'],
                                          'bg-surface' => ! $item['unread'],
                                      ])>
                                     <span class="inline-flex size-10 shrink-0 items-center justify-center rounded-full @max-[37.4375rem]/tb:size-9 {{ $tones[$item['tone']] ?? $tones['info'] }}" aria-hidden="true">
@@ -117,7 +117,7 @@
                                         @endif
                                         <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-small text-text-muted">
                                             @if ($item['unread'])
-                                                <span class="inline-flex items-center gap-1 font-semibold text-accent"><span class="size-2 rounded-full bg-accent" aria-hidden="true"></span>{{ __('admin.bell.new') }}</span>
+                                                <span class="inline-flex items-center gap-1 font-semibold text-primary-text"><span class="size-2 rounded-full bg-primary-text" aria-hidden="true"></span>{{ __('admin.bell.new') }}</span>
                                             @endif
                                             <span>{{ $item['meta'] }}</span>
                                         </div>

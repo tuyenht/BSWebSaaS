@@ -44,7 +44,7 @@
         {{-- Personal items ONLY — this menu belongs to the signed-in user. Site-wide
              configuration lives under the sidebar's Cài đặt group, not here. --}}
         @unless ($isPlatform)
-            <a href="{{ route('admin.settings.security') }}" wire:navigate role="menuitem"
+            <a href="{{ route('admin.account') }}" wire:navigate role="menuitem"
                class="flex min-h-menu-row items-center gap-2.5 px-4 py-2 text-body text-text transition-colors hover:bg-surface-hover any-pointer-coarse:min-h-menu-row-touch">
                 <x-bs-admin::icon name="user" class="size-4 text-body-muted" />
                 {{ __('admin.settings_account') }}

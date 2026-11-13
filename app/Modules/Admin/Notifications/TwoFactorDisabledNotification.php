@@ -15,9 +15,11 @@ use Illuminate\Notifications\Notification;
 use Throwable;
 
 /**
- * Security notice: two-step sign-in was just switched off on the account. It goes to the account
- * itself — in the bell AND by mail, and cannot be switched off (NotificationKinds: locked) — so
- * someone who took over a session cannot quietly weaken the account without its owner hearing.
+ * Security notice: two-step sign-in was just switched off on the account — or, with $turnedOn,
+ * just switched on (a new sign-in factor). It goes to the account itself — in the bell AND by
+ * mail, and cannot be switched off (NotificationKinds: locked) — so someone who took over a
+ * session cannot quietly change how the account signs in without its owner hearing. Both read
+ * the one locked kind `security.two_factor_disabled`; switching on reads its `enabled` sentence.
  *
  * Queued like the other tenant mails (WithinSite isolation + re-applied tenant mailer); the
  * in-app row is written by the worker inside that same site context.
@@ -29,7 +31,10 @@ final class TwoFactorDisabledNotification extends Notification implements Should
 
     public int $tries = 3;
 
-    public function __construct(private readonly string $disabledAt) {}
+    public function __construct(
+        private readonly string $disabledAt,
+        private readonly bool $turnedOn = false,
+    ) {}
 
     /**
      * @return list<int>
@@ -41,7 +46,7 @@ final class TwoFactorDisabledNotification extends Notification implements Should
 
     public function failed(Throwable $e): void
     {
-        Audit::record('auth.2fa.disabled_notice_failed', [
+        Audit::record($this->turnedOn ? 'auth.2fa.enabled_notice_failed' : 'auth.2fa.disabled_notice_failed', [
             'meta' => ['site_id' => $this->tenantSiteId, 'error' => $e::class],
         ]);
     }
@@ -56,17 +61,21 @@ final class TwoFactorDisabledNotification extends Notification implements Should
 
     public function toSiteDatabase(object $notifiable): array
     {
-        return ['kind' => 'security.two_factor_disabled', 'data' => ['at' => $this->disabledAt]];
+        $sentence = $this->turnedOn ? ['sentence' => 'enabled'] : [];
+
+        return ['kind' => 'security.two_factor_disabled', 'data' => [...$sentence, 'at' => $this->disabledAt]];
     }
 
     public function toMail(object $notifiable): MailMessage
     {
         $this->applyTenantMailer();
 
+        $mail = $this->turnedOn ? 'two_factor_enabled' : 'two_factor_disabled';
+
         return (new MailMessage)
-            ->subject(__('notifications.mail.two_factor_disabled_subject'))
+            ->subject(__("notifications.mail.{$mail}_subject"))
             ->greeting(__('rbac.invitation.mail_greeting'))
-            ->line(__('notifications.mail.two_factor_disabled_intro', ['at' => $this->disabledAt]))
-            ->line(__('notifications.mail.two_factor_disabled_action'));
+            ->line(__("notifications.mail.{$mail}_intro", ['at' => $this->disabledAt]))
+            ->line(__("notifications.mail.{$mail}_action"));
     }
 }

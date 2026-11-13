@@ -34,7 +34,10 @@ final class NotificationLink
             'lead.new' => ($lead = self::ulid($data['submission'] ?? null)) !== null
                 ? self::to(route('admin.forms.show', ['ulid' => $lead], false), 'lead') : null,
             'system.domain_problem', 'security.domain_taken_over' => self::to(route('admin.settings.domains', absolute: false), 'domains'),
-            'security.two_factor_disabled' => self::to(route('admin.settings.security', absolute: false), 'two_factor'),
+            // The one kind also tells of two-step sign-in turned ON ('enabled'): nothing to turn back on there.
+            'security.two_factor_disabled' => ($data['sentence'] ?? null) === 'enabled'
+                ? self::to(route('admin.account', ['tab' => 'security'], false), 'security')
+                : self::to(route('admin.settings.security', absolute: false), 'two_factor'),
             'security.new_device_login' => self::to(route('admin.settings.security', absolute: false), 'devices'),
             'system.storage_near_limit' => self::to(route('admin.media.index', absolute: false), 'media'),
             default => null,

@@ -87,7 +87,7 @@ final class NotificationRows
             'workflow.published' => ['ri-global', 'ok'],
             'lead.new' => ['ri-mail', 'ok'],
             'security.new_device_login' => ['ri-device', 'danger'],
-            'security.two_factor_disabled' => ['ri-shield-cross', 'danger'],
+            'security.two_factor_disabled' => $sentence === 'enabled' ? ['ri-shield-check', 'warn'] : ['ri-shield-cross', 'danger'],
             'security.support_sign_in' => ['ri-user-shared', 'danger'],
             'security.domain_taken_over' => ['ri-error-warning', 'danger'],
             'system.storage_near_limit' => ['ri-hard-drive-3', 'warn'],

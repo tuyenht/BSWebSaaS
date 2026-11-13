@@ -37,6 +37,12 @@ final readonly class AdminChromeResolver
         'layout_width' => ['fluid', 'boxed'],
         'sidebar_size' => ['lg', 'sm'],
         'sidebar_image' => ['none', 'img-1', 'img-2', 'img-3', 'img-4'],
+        // Per-user text size (My account → Cỡ chữ): md is today's size; each step adds 2px to
+        // body text through --user-text-boost (design-tokens §2.4).
+        'text_size' => ['md', 'lg', 'xl', 'xxl'],
+        // Per-user motion (My account → Giảm chuyển động): auto follows the device setting;
+        // reduce stops transitions and animations in the admin whatever the device says.
+        'motion' => ['auto', 'reduce'],
     ];
 
     /** Axis → the <html> data-attribute it drives (Velzon/Bootstrap 5.3 names). */
@@ -49,15 +55,27 @@ final readonly class AdminChromeResolver
         'layout_width' => 'data-layout-width',
         'sidebar_size' => 'data-sidebar-size',
         'sidebar_image' => 'data-sidebar-image',
+        'text_size' => 'data-text-size',
+        'motion' => 'data-motion',
     ];
+
+    /**
+     * A member's own "follow the device" scheme (My account → Theo máy). Stored as
+     * preferences.theme.scheme = 'auto' and accepted from the user tier only: the server
+     * still renders the site's scheme into data-bs-theme and adds this flag, and theme-boot
+     * swaps in the device's light/dark before paint.
+     */
+    public const string SCHEME_AUTO = 'auto';
+
+    public const string SCHEME_AUTO_ATTRIBUTE = 'data-scheme-auto';
 
     /**
      * The axes the platform console renders. Its sidebar, topbar and position never follow
      * tenant-admin variants; the sidebar size is the one exception — the console's menu
      * button collapses its sidebar to the icon rail from 1280px, using the same per-user
-     * preference as the tenant shell.
+     * preference as the tenant shell. The text size and the motion setting are a person's needs, so they follow them too.
      */
-    public const array PLATFORM_FIELDS = ['scheme', 'sidebar_size'];
+    public const array PLATFORM_FIELDS = ['scheme', 'sidebar_size', 'text_size', 'motion'];
 
     public function __construct(private SettingsRepository $settings) {}
 
@@ -99,8 +117,17 @@ final readonly class AdminChromeResolver
         foreach (self::planeFields() as $field) {
             $attributes[self::ATTRIBUTES[$field]] = $resolved[$field];
         }
+        if (self::followsDevice($user)) {
+            $attributes[self::SCHEME_AUTO_ATTRIBUTE] = 'true';
+        }
 
         return $attributes;
+    }
+
+    /** Whether the member chose "follow the device" for light/dark. */
+    public static function followsDevice(?User $user): bool
+    {
+        return (Cast::arr($user?->preferences['theme'] ?? null)['scheme'] ?? null) === self::SCHEME_AUTO;
     }
 
     /**

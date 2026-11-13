@@ -36,6 +36,11 @@
         'active' => ['[--c:var(--color-success-text)]', 'ri-checkbox-circle'],
         'suspended' => ['[--c:var(--color-warning-text)]', 'ri-pause-circle'],
         'provisioning' => ['[--c:var(--color-info-text)]', 'ri-loader-4'],
+        // a member invitation: waiting for an answer, past its expiry, withdrawn, taken up
+        'invite-pending' => ['[--c:var(--color-warning-text)]', 'ri-mail-send'],
+        'invite-expired' => ['[--c:var(--color-danger-text)]', 'ri-time'],
+        'invite-revoked' => ['[--c:var(--color-text-muted)]', 'ri-close-circle'],
+        'invite-accepted' => ['[--c:var(--color-success-text)]', 'ri-checkbox-circle'],
     ];
     [$tone, $icon] = $tones[$status] ?? ['[--c:var(--color-text)]', null];
 

@@ -49,7 +49,7 @@ it('wires the user menu to real routes and puts the notification bell in the web
 
     $this->actingAs($user->fresh())->get('http://a.test/admin/content')
         ->assertOk()
-        ->assertSee(route('admin.settings.security', absolute: false), false) // "My Account" → own-account security (no profile route exists)
+        ->assertSee(route('admin.account', absolute: false), false) // "My Account" → the own-account page
         ->assertSee(route('admin.logout', absolute: false), false)            // sign-out posts to the real logout route
         ->assertSee('data-bs-lazy="bsBell"', false)                           // the bell (NotificationBellTest)
         ->assertDontSee('ntf-badge', false)                                   // nothing unread: no badge
@@ -88,7 +88,7 @@ it('gives the platform console the shared tools but omits tenant account links',
         ->assertSee('>Quản trị nền tảng</span>', false)                           // operator's primary-role label
         ->assertDontSee('Super Admin', false)
         ->assertSee(route('platform.logout', absolute: false), false)            // platform sign-out
-        ->assertDontSee(route('admin.settings.security', absolute: false), false); // no tenant account link on the operator plane
+        ->assertDontSee(route('admin.account', absolute: false), false); // no tenant account link on the operator plane
 });
 
 /** The page as an HTML5 document, so a test can check the shell's structure and attributes. */

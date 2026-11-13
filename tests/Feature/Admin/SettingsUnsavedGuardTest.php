@@ -62,5 +62,5 @@ it('leaves a section that passes no change count without the dialog', function (
     'integrations' => ['/admin/settings/integrations'],
     'appearance' => ['/admin/settings/appearance'],
     'catalog' => ['/admin/settings/catalog'],
-    'security' => ['/admin/settings/security'],
+    'account' => ['/admin/account'],
 ]);

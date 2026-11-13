@@ -187,9 +187,11 @@ it('prints the brand colour on the platform console too', function (): void {
 
 it('folds a wide menu to its icon rail on a settings page only, leaving the saved size alone', function (): void {
     $htmlTag = fn (string $html): string => (string) strstr((string) strstr($html, '<html'), '>', true);
-    $member = themeMember();
+    $member = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($member, 'owner', ['entries.view', 'settings.manage']));
+    $member = $member->fresh();
 
-    $settings = $htmlTag((string) $this->actingAs($member)->get('http://a.test/admin/settings/security')->assertOk()->getContent());
+    $settings = $htmlTag((string) $this->actingAs($member)->get('http://a.test/admin/settings/appearance')->assertOk()->getContent());
     $content = $htmlTag((string) $this->actingAs($member)->get('http://a.test/admin/content')->assertOk()->getContent());
 
     expect($settings)->toContain('data-sidebar-fold=""')->toContain('data-sidebar-size="lg"')
@@ -198,6 +200,6 @@ it('folds a wide menu to its icon rail on a settings page only, leaving the save
     // A member who keeps the small menu has nothing to fold.
     $member->preferences = ['theme' => ['sidebar_size' => 'sm']];
     $member->save();
-    expect($htmlTag((string) $this->actingAs($member->fresh())->get('http://a.test/admin/settings/security')->assertOk()->getContent()))
+    expect($htmlTag((string) $this->actingAs($member->fresh())->get('http://a.test/admin/settings/appearance')->assertOk()->getContent()))
         ->toContain('data-sidebar-size="sm"')->not->toContain('data-sidebar-fold');
 });

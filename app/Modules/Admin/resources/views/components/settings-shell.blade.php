@@ -24,7 +24,7 @@
         $nav = [[
             'group' => __('admin.settings_account'),
             'items' => [
-                ['key' => 'security', 'route' => 'admin.settings.security', 'label' => __('admin.security')],
+                ['key' => 'security', 'route' => 'admin.account', 'label' => __('admin.security')],
             ],
         ]];
 

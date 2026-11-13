@@ -15,6 +15,8 @@
     computer, or on the first touch of the widget). With click tracking on, each link names its channel,
     place and kind of link (never the number or address) for the `bs:contact-click` event (storefront.js).
     Invisible copies in the page flow after the footer keep the room the buttons and the bar take.
+    The admin preview prints this same partial; only there a channel not filled in yet carries
+    data-fc-pending (FloatingContact::widget(…, pending: true)), styled by the admin page alone.
 --}}
 @if (! empty($floatingContact))
 @php
@@ -54,7 +56,7 @@
     <nav class="sf-fc__float sf-fc__float--{{ $fc['position'] }}{{ $fc['dial'] ? ' sf-fc__float--dial' : '' }}" aria-label="{{ __('storefront.fc_nav') }}" style="{{ $fcOffsets }}">
         <ul class="sf-fc__list sf-fc__list--{{ $fc['position'] }}" role="list"@if ($fc['dial']) id="sf-fc-dial" popover @endif>
             @foreach ($fc['buttons'] as $b)
-                <li class="sf-fc__item{{ $b['key'] === 'sms' ? ' sf-fc__item--sms' : '' }}{{ $b['tel'] !== null && $b['key'] === 'phone' ? ' sf-fc__item--call' : '' }}{{ $b['pulse'] ? ' sf-fc__item--pulse' : '' }}" style="{{ $fcVars($b) }}">
+                <li class="sf-fc__item{{ $b['key'] === 'sms' ? ' sf-fc__item--sms' : '' }}{{ $b['tel'] !== null && $b['key'] === 'phone' ? ' sf-fc__item--call' : '' }}{{ $b['pulse'] ? ' sf-fc__item--pulse' : '' }}" style="{{ $fcVars($b) }}"{!! empty($b['pending']) ? '' : ' data-fc-pending' !!}>
                     <a class="sf-fc__btn" href="{{ $b['href'] }}" aria-label="{{ $fcWord($b) }}"{!! $fcRel($b['href']) !!}{!! $fcEv($b['key'], $fc['dial'] ? 'dial' : 'floating', $b['link']) !!}>{!! $fcGlyph($b, 'sf-fc__icon') !!}<span class="sf-fc__tip" aria-hidden="true">{{ $fcWord($b) }}</span></a>
                     @if ($b['tel'] !== null && $b['key'] === 'phone')
                         <span class="sf-fc__label"><span class="sf-fc__label-in"><span class="sf-fc__label-t">{{ $fcWord($b) }} · <span class="sf-fc__num">{{ $b['tel'] }}</span></span><button type="button" class="sf-fc__copy" data-fc-copy data-done="{{ __('storefront.fc_copied') }}">{!! $fcIcon('ri-file-copy-line', 'sf-fc__copy-i') !!}<span class="sf-fc__copy-t">{{ __('storefront.fc_copy') }}</span></button><span class="sf-fc__sr" role="status"></span></span></span>
@@ -75,18 +77,18 @@
                 <ul class="sf-fc-sheet__list" role="list">
                     @foreach ($fc['bar'] as $b)
                         @if ($fcRank($loop->index) > 3)
-                            <li class="sf-fc-sheet__item sf-fc-sheet__item--r{{ $fcRank($loop->index) }}"><a class="sf-fc-sheet__row" href="{{ $b['href'] }}"{!! $fcRel($b['href']) !!}{!! $fcEv($b['key'], 'sheet', $b['link']) !!}><span class="sf-fc-bar__dot" style="{{ $fcVars($b) }}">{!! $fcGlyph($b, 'sf-fc-bar__icon') !!}</span><span class="sf-fc-sheet__l">{{ $fcWord($b) }}</span>{!! $fcIcon('ri-arrow-right-s-line', 'sf-fc-sheet__go') !!}</a></li>
+                            <li class="sf-fc-sheet__item sf-fc-sheet__item--r{{ $fcRank($loop->index) }}"{!! empty($b['pending']) ? '' : ' data-fc-pending' !!}><a class="sf-fc-sheet__row" href="{{ $b['href'] }}"{!! $fcRel($b['href']) !!}{!! $fcEv($b['key'], 'sheet', $b['link']) !!}><span class="sf-fc-bar__dot" style="{{ $fcVars($b) }}">{!! $fcGlyph($b, 'sf-fc-bar__icon') !!}</span><span class="sf-fc-sheet__l">{{ $fcWord($b) }}</span>{!! $fcIcon('ri-arrow-right-s-line', 'sf-fc-sheet__go') !!}</a></li>
                         @endif
                     @endforeach
                     @foreach ($fc['sheet'] as $b)
-                        <li class="sf-fc-sheet__item"><a class="sf-fc-sheet__row" href="{{ $b['href'] }}"{!! $fcRel($b['href']) !!}{!! $fcEv($b['key'], 'sheet', $b['link']) !!}><span class="sf-fc-bar__dot" style="{{ $fcVars($b) }}">{!! $fcGlyph($b, 'sf-fc-bar__icon') !!}</span><span class="sf-fc-sheet__l">{{ $fcWord($b) }}</span>{!! $fcIcon('ri-arrow-right-s-line', 'sf-fc-sheet__go') !!}</a></li>
+                        <li class="sf-fc-sheet__item"{!! empty($b['pending']) ? '' : ' data-fc-pending' !!}><a class="sf-fc-sheet__row" href="{{ $b['href'] }}"{!! $fcRel($b['href']) !!}{!! $fcEv($b['key'], 'sheet', $b['link']) !!}><span class="sf-fc-bar__dot" style="{{ $fcVars($b) }}">{!! $fcGlyph($b, 'sf-fc-bar__icon') !!}</span><span class="sf-fc-sheet__l">{{ $fcWord($b) }}</span>{!! $fcIcon('ri-arrow-right-s-line', 'sf-fc-sheet__go') !!}</a></li>
                     @endforeach
                 </ul>
             </div>
         @endif
         <ul class="sf-fc-bar__list" role="list">
             @foreach ($fc['bar'] as $b)
-                <li class="sf-fc-bar__item{{ $fcRank($loop->index) > 3 ? ' sf-fc-bar__item--r'.$fcRank($loop->index) : '' }}"><a class="sf-fc-bar__link" href="{{ $b['href'] }}"{!! $fcRel($b['href']) !!}{!! $fcEv($b['key'], 'bar', $b['link']) !!}><span class="sf-fc-bar__dot" style="{{ $fcVars($b) }}">{!! $fcGlyph($b, 'sf-fc-bar__icon') !!}</span><span class="sf-fc-bar__label">{{ $fcWord($b) }}</span></a></li>
+                <li class="sf-fc-bar__item{{ $fcRank($loop->index) > 3 ? ' sf-fc-bar__item--r'.$fcRank($loop->index) : '' }}"{!! empty($b['pending']) ? '' : ' data-fc-pending' !!}><a class="sf-fc-bar__link" href="{{ $b['href'] }}"{!! $fcRel($b['href']) !!}{!! $fcEv($b['key'], 'bar', $b['link']) !!}><span class="sf-fc-bar__dot" style="{{ $fcVars($b) }}">{!! $fcGlyph($b, 'sf-fc-bar__icon') !!}</span><span class="sf-fc-bar__label">{{ $fcWord($b) }}</span></a></li>
             @endforeach
             @if ($fcSheet)
                 <li class="sf-fc-bar__item sf-fc-bar__item--more{{ $fcSpare }}"><button type="button" class="sf-fc-bar__link" popovertarget="sf-fc-more"><span class="sf-fc-bar__dot" style="--fc-fill:{{ \App\Modules\Theme\Chrome\FloatingContact::MORE_COLOR }};--fc-tint:{{ \App\Modules\Theme\Chrome\FloatingContact::MORE_COLOR }}">{!! $fcIcon('ri-more-2-fill', 'sf-fc-bar__icon') !!}</span><span class="sf-fc-bar__label">{{ __('storefront.fc_more') }}</span></button></li>

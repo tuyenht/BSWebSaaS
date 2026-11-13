@@ -8,6 +8,7 @@ use App\Modules\Admin\Http\Controllers\ThemePreferenceController;
 use App\Modules\Admin\Http\Middleware\EnforceSupportSession;
 use App\Modules\Admin\Http\Middleware\SetLocale;
 use App\Modules\Admin\Livewire\AcceptInvitation;
+use App\Modules\Admin\Livewire\Account;
 use App\Modules\Admin\Livewire\AppearanceSettings;
 use App\Modules\Admin\Livewire\Catalog\Editor as CatalogEditor;
 use App\Modules\Admin\Livewire\Catalog\Index as CatalogIndex;
@@ -40,7 +41,6 @@ use App\Modules\Admin\Livewire\Platform\Tenants\Detail;
 use App\Modules\Admin\Livewire\Platform\Tenants\Index;
 use App\Modules\Admin\Livewire\ResetPassword;
 use App\Modules\Admin\Livewire\SeoSettings;
-use App\Modules\Admin\Livewire\Settings;
 use App\Modules\Admin\Livewire\Settings\Domains as DomainSettings;
 use App\Modules\Admin\Livewire\SocialSettings;
 use App\Modules\Admin\Livewire\TwoFactorChallenge;
@@ -236,8 +236,12 @@ Route::prefix(config('admin.prefix', 'admin'))
         Route::get('/', Dashboard::class)->name('admin.dashboard');
         // "Thông báo": the reader's own notifications on this site (the bell's "Xem tất cả thông báo").
         Route::get('/notifications', Notifications::class)->name('admin.notifications');
-        Route::get('/settings', fn () => redirect()->route('admin.settings.security'))->name('admin.settings');
-        Route::get('/settings/security', Settings::class)->name('admin.settings.security');
+        // "Tài khoản của tôi": the signed-in member's own account, one tab at a time (?tab=…). Every
+        // member reaches it; the component scopes every read and write to auth()->user().
+        Route::get('/account', Account::class)->name('admin.account');
+        // The older addresses of the account page land on it (bookmarks, the settings menu).
+        Route::get('/settings', fn () => redirect()->route('admin.account'))->name('admin.settings');
+        Route::get('/settings/security', fn () => redirect()->route('admin.account', ['tab' => 'security']))->name('admin.settings.security');
         // Site-wide settings — only roles with `settings.manage` (owner/admin/super_admin).
         // The Livewire components ALSO guard in boot() because the livewire/update endpoint
         // does not pass through this route middleware.

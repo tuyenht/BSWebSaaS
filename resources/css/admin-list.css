@@ -987,7 +987,7 @@
     }
 
     /* ── A list of facts (list kind="facts"; design 03 "Khách hàng") ──────────────────────────
-       Records with no select box and up to three short fact columns (col="f1"…"f3") between the
+       Records with an optional select box (col="chk") and up to three short fact columns (col="f1"…"f3") between the
        name and the status. The list's width picks the layout, as for every list:
          below 600   a card: [name … ⋮] then one line "status · facts" (.list-line);
          600–767     [name … ⋮] / [status] / [facts joined by " · "];
@@ -1243,6 +1243,108 @@
 
         .list-rows[data-kind='facts'][data-cols='people'] .list-c-act {
             flex: 0 0 max(12.5rem, calc(10.5 * var(--text-body)));
+        }
+    }
+
+    /* data-cols="invites" (the members screen's invitations): the state is the chosen tab, so from
+       768 the status column is not drawn (the card line below 600 and the 600–767 status row keep
+       it); the sent and end times hold "dd/mm/yyyy hh:mm" on one line at every text size, the end
+       time with its "Còn N giờ" chip under it (board 22 .tv-irow). */
+    @container list (width >= 48rem) {
+        .list-rows[data-kind='facts'][data-cols='invites'] .list-c-st {
+            display: none;
+        }
+
+        .list-rows[data-kind='facts'][data-cols='invites'] .list-c-f1 {
+            flex: 1 1 0;
+            min-width: 7.5rem;
+        }
+
+        .list-rows[data-kind='facts'][data-cols='invites'] .list-c-f2 {
+            flex: 0 0 max(8rem, calc(9.2 * var(--text-body)));
+            white-space: nowrap;
+        }
+
+        .list-rows[data-kind='facts'][data-cols='invites'] .list-c-f3 {
+            flex: 0 0 max(8.75rem, calc(9.6 * var(--text-body)));
+        }
+
+        /* "Gửi lại sau 60 giây" + ⋮ on one line */
+        .list-rows[data-kind='facts'][data-cols='invites'] .list-c-act {
+            flex: 0 0 max(14rem, calc(12.5 * var(--text-body)));
+        }
+    }
+
+    /* 600–767 the invitations keep the phone card: the times need their words ("gửi …", "hết hạn …"),
+       which only the meta line under the address carries (board 22 .tv-icardm up to 767). */
+    @container list (37.5rem <= width < 48rem) {
+        .list-rows[data-kind='facts'][data-cols='invites'] :is(.list-c-st, .list-c-f) {
+            display: none;
+        }
+
+        .list-rows[data-kind='facts'][data-cols='invites'] .list-line {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0 0.25rem;
+            margin-top: 0.125rem;
+            font-size: var(--text-small);
+            line-height: 1.4;
+            color: var(--color-text-muted);
+            overflow-wrap: anywhere;
+        }
+
+        .list-rows[data-kind='facts'][data-cols='invites'] .list-line > * + *::before {
+            content: '·';
+            margin-inline-end: 0.25rem;
+        }
+
+        .list-rows[data-kind='facts'][data-cols='invites'] .list-line [data-s] {
+            min-height: 0;
+            padding-block: 0;
+            line-height: 1.4;
+            font-size: var(--text-caption);
+        }
+    }
+
+    /* A facts list whose rows can be ticked (the members list): the select box leads every row. Its
+       44 frame is centred on the 18px box, which starts at the card's inner edge; the card's status
+       and fact lines (600–767) start under the name, not under the box. */
+    .list-rows[data-kind='facts'] .list-c-chk {
+        order: 0;
+        display: flex;
+        flex: 0 0 var(--spacing-hit);
+        margin-inline-start: calc((1.125rem - var(--spacing-hit)) / 2);
+    }
+
+    @container list (width < 37.5rem) {
+        .list-rows[data-kind='facts'] .list-r:not(.list-hd):has(> .list-c-chk) {
+            grid-template-columns: var(--spacing-hit) minmax(0, 1fr) var(--spacing-hit);
+        }
+
+        .list-rows[data-kind='facts'] .list-r:has(> .list-c-chk) > .list-c-chk {
+            grid-column: 1;
+            align-self: start;
+        }
+
+        .list-rows[data-kind='facts'] .list-r:has(> .list-c-chk) > .list-c-main {
+            grid-column: 2;
+        }
+
+        .list-rows[data-kind='facts'] .list-r:has(> .list-c-chk) > .list-c-act {
+            grid-column: 3;
+            grid-row: 1;
+        }
+    }
+
+    @container list (37.5rem <= width < 48rem) {
+        .list-rows[data-kind='facts'] .list-c-chk ~ :is(.list-c-st, .list-c-f1) {
+            --list-under-name: calc(var(--spacing-hit) + (1.125rem - var(--spacing-hit)) / 2 + 0.5rem);
+            margin-inline-start: var(--list-under-name);
+        }
+
+        .list-rows[data-kind='facts'] .list-c-chk ~ .list-c-st {
+            flex-basis: calc(100% - var(--list-under-name));
         }
     }
 
