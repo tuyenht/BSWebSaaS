@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Catalog\Actions;
 
+use App\Modules\Catalog\Actions\Concerns\AuthorizesCatalogChange;
 use App\Modules\Catalog\Exceptions\ProductEditRefused;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
@@ -35,6 +36,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class ChangeProductSlug
 {
+    use AuthorizesCatalogChange;
+
     /** The longest address a product keeps. */
     public const int MAX = 200;
 
@@ -124,6 +127,7 @@ final class ChangeProductSlug
      */
     public function handle(Product $product, string $input, string $locale): array
     {
+        $this->authorizeCatalog('update', $product);
         $slug = $this->clean($input, $locale);
 
         $translation = $product->translations()->where('locale', $locale)->first();

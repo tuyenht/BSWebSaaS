@@ -7,11 +7,15 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Rbac\Models\Invitation;
+use App\Modules\Rbac\Models\Role;
+use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteSetting;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /*
@@ -409,8 +413,9 @@ it('lists admin members on a flat query budget (no N+1 across rows)', function (
     $this->actingAs($admin)->get('http://a.test/admin/users')->assertOk(); // the permission and settings caches fill on the first request
     $count = countQueries(fn () => $this->actingAs($admin)->get('http://a.test/admin/users')->assertOk());
 
-    // +1: the top bar's bell reads the unread count (one bounded query on every admin page).
-    expect($count)->toBe(15);
+    // 14 for the list itself + 1 for the "Lời mời" tab label (its waiting invitations, read up to 99 + 1)
+    // + 1: the top bar's bell reads the unread count (one bounded query on every admin page)
+    expect($count)->toBe(16);
 });
 
 it('keeps the members list flat with a search, a role filter and a second page, whatever the number of members', function (): void {
@@ -438,7 +443,43 @@ it('keeps the members list flat with a search, a role filter and a second page, 
     $seed(46, 300);
     $many = $read();
 
-    // 20 rows on the page either way: the site's membership growing more than six-fold adds no query
-    // +1: the top bar's bell reads the unread count (one bounded query on every admin page).
-    expect($many)->toBe($few)->and($few)->toBe(17);
+    // 20 rows on the page either way: the site's membership growing more than six-fold adds no query.
+    // 16 for the list + the "Lời mời" tab label (up to 99 + 1 rows) + the mails of the last 24 hours (an inviter's near-limit note)
+    // + 1: the top bar's bell reads the unread count
+    expect($many)->toBe($few)->and($few)->toBe(19);
+});
+
+it('keeps the invitations view flat whatever the number of invitations', function (): void {
+    DB::connection('pgsql_admin')->statement('truncate invitations, invitation_roles, audit_logs restart identity cascade');
+    $admin = User::factory()->create(['name' => 'Ánh Quản Trị']);
+    $seed = function (int $from, int $to) use ($admin): void {
+        app(Tenancy::class)->enter(1, function () use ($from, $to, $admin): void {
+            grantRole($admin, 'admin', ['users.manage', 'users.invite', 'entries.view']);
+            grantRole(User::factory()->create(), 'editor', ['entries.view']);
+            $editor = Role::findByName('editor', PermissionRegistry::GUARD);
+            foreach (range($from, $to) as $i) {
+                $invitation = Invitation::query()->forceCreate([
+                    'email' => sprintf('moi-%03d@example.test', $i), 'token_hash' => hash('sha256', 'moi-'.$i),
+                    'invited_by' => $admin->id, 'expires_at' => now()->addDays(5), 'sent_at' => now()->subMinutes($i),
+                    'created_at' => now()->subMinutes($i),
+                ]);
+                $invitation->roles()->syncWithPivotValues([$editor->id], ['site_id' => 1]);
+            }
+        });
+    };
+    $read = function () use ($admin): int {
+        $url = 'http://a.test/admin/users?xem=loi-moi&q=moi';
+        $this->actingAs($admin)->get($url)->assertOk(); // the permission and settings caches fill on the first request
+
+        return countQueries(fn () => $this->actingAs($admin)->get($url)->assertOk()->assertSee('moi-001@'));
+    };
+
+    $seed(1, 30);
+    $few = $read();
+    $seed(31, 200);
+    $many = $read();
+
+    // the counts per state, the role filter's counts, one keyset page with its roles and inviters, and
+    // the inviters still on the site, and the top bar's bell: 170 more invitations add no query
+    expect($many)->toBe($few)->and($few)->toBe(20);
 });

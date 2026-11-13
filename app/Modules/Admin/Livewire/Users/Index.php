@@ -2,8 +2,11 @@
 
 namespace App\Modules\Admin\Livewire\Users;
 
+use App\Modules\Admin\Livewire\Users\Concerns\ManagesInvitations;
+use App\Modules\Admin\Livewire\Users\Concerns\SelectsMembers;
 use App\Modules\Admin\Notifications\MemberInvitationNotification;
 use App\Modules\Admin\Support\FirstHints;
+use App\Modules\Admin\Support\Members\InvitationDirectory;
 use App\Modules\Admin\Support\Members\MemberDirectory;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Identity\Models\User;
@@ -56,6 +59,9 @@ use Livewire\Component;
 #[Layout('admin::layouts.app')]
 final class Index extends Component
 {
+    use ManagesInvitations;
+    use SelectsMembers;
+
     /** Where this list's page size lives in the member's preferences. */
     public const string PREFS = 'site.members';
 
@@ -129,7 +135,7 @@ final class Index extends Component
         $this->ensureOpen();
         $name = Str::before($property, '.');
         $this->clean();
-        if (in_array($name, ['search', 'groups', 'per'], true)) {
+        if (in_array($name, ['search', 'groups', 'per', 'tab', 'state'], true)) {
             $this->after = $this->before = '';
         }
         if ($name === 'per') {
@@ -210,6 +216,7 @@ final class Index extends Component
     public function closePanel(): void
     {
         $this->panelFor = '';
+        $this->panelBulk = false;
         $this->panelRoles = [];
         $this->panelError = '';
     }
@@ -223,6 +230,17 @@ final class Index extends Component
             'panelRoles.*' => 'string|max:125|distinct',
         ]);
         if ($this->refusedWhileSupport()) {
+            return;
+        }
+        if ($this->panelBulk) {
+            $roles = $this->siteRoles($this->panelRoles);
+            if ($roles->isEmpty()) {
+                $this->panelError = __('admin.members.panel_need_one');
+
+                return;
+            }
+            $this->saveBulkRoles($roles);
+
             return;
         }
         $target = $this->siteMember($this->panelFor);
@@ -314,6 +332,7 @@ final class Index extends Component
     {
         $this->confirmOpen = false;
         $this->removeFor = '';
+        $this->removeBulk = false;
     }
 
     /** Remove the member asked about: every role they hold on this site goes, or none does. */
@@ -321,8 +340,14 @@ final class Index extends Component
     {
         $this->ensureOpen();
         $ulid = $this->removeFor;
+        $bulk = $this->removeBulk;
         $this->cancelRemove();
         if ($this->refusedWhileSupport()) {
+            return;
+        }
+        if ($bulk) {
+            $this->removePicked();
+
             return;
         }
         $actor = $this->actor();
@@ -361,6 +386,11 @@ final class Index extends Component
     {
         $this->ensureOpen();
         if (! Gate::allows('users.invite') || $this->refusedWhileSupport()) {
+            return;
+        }
+        if ($this->siteFull()) {
+            $this->say(__('admin.members.inv_full', ['max' => InviteMember::DAILY_LIMIT]), 'error');
+
             return;
         }
         $this->inviteResults = [];
@@ -441,9 +471,8 @@ final class Index extends Component
 
         $message = trim($this->inviteMessage) === '' ? null : trim($this->inviteMessage);
         // read once for every address: the mail names the site and the roles the invitation carries ($roles, synced as is)
-        $siteName = Site::query()->whereKey($siteId)->value('name');
-        $siteName = is_string($siteName) && $siteName !== '' ? $siteName : request()->getHost();
-        $roleList = array_values($roles->map(fn (Role $role): array => ['name' => $role->name, 'system' => $role->is_system])->all());
+        $siteName = $this->siteName($siteId);
+        $roleList = $this->mailRoles($roles->all());
         $results = [];
         foreach ($valid as $email) {
             try {
@@ -477,35 +506,69 @@ final class Index extends Component
 
         $this->clean();
         $directory = app(MemberDirectory::class);
+        $invitations = app(InvitationDirectory::class);
         $guard = app(RoleHierarchyGuard::class);
         $siteId = app(CurrentSite::class)->id();
+        $onInvites = $this->tab === 'loi-moi';
+        $canInvite = Gate::allows('users.invite');
+        $support = app(SupportSession::class)->active();
 
         $failed = false;
         $rows = new Collection;
+        $invRows = new Collection;
         $older = $newer = null;
         $counts = ['total' => 0, 'roles' => []];
+        $invCounts = array_fill_keys(InvitationDirectory::STATES, 0);
+        $invPending = 0;
+        $invRoleCounts = [];
         $matched = 0;
         $scopes = [];
+        $stayed = [];
         try {
             // a savepoint inside the request's tenancy transaction: a failed read leaves it usable for the rest of the page
-            $read = DB::transaction(function () use ($directory, $siteId): array {
-                $page = $directory->page($this->search, $this->groups, $this->per, $this->after, $this->before);
+            $read = DB::transaction(function () use ($directory, $invitations, $siteId, $onInvites): array {
                 $counts = $directory->counts();
                 $narrowed = MemberDirectory::searches($this->search) || $this->groups !== [];
+                if ($onInvites) {
+                    // the per-state counts (the state row) are read only here; the tab label reuses the waiting one
+                    $invCounts = $invitations->counts();
+                    $page = $invitations->page($this->state, $this->search, $this->groups, $this->per, $this->after, $this->before);
+                    $inviters = array_values(array_unique(array_filter($page['rows']->pluck('invited_by')->all(), 'is_int')));
+
+                    return [
+                        'page' => $page,
+                        'counts' => $counts,
+                        'invCounts' => $invCounts,
+                        'invPending' => min($invCounts['pending'], InvitationDirectory::TAB_CAP + 1),
+                        'invRoleCounts' => $invitations->roleCounts($this->state),
+                        'matched' => $narrowed ? $invitations->matchCount($this->state, $this->search, $this->groups) : $invCounts[$this->state],
+                        'stayed' => $invitations->stillMembers($inviters),
+                    ];
+                }
+                $page = $directory->page($this->search, $this->groups, $this->per, $this->after, $this->before);
 
                 return [
                     'page' => $page,
                     'counts' => $counts,
+                    'invPending' => $invitations->pendingUpTo(),
                     'matched' => $narrowed ? $directory->matchCount($this->search, $this->groups) : $counts['total'],
                     'scopes' => $this->scopeNames($page['rows'], $siteId),
                 ];
             });
-            $rows = $read['page']['rows'];
+            if ($onInvites) {
+                $invRows = $read['page']['rows'];
+            } else {
+                $rows = $read['page']['rows'];
+            }
             $older = $read['page']['older'];
             $newer = $read['page']['newer'];
             $counts = $read['counts'];
+            $invCounts = $read['invCounts'] ?? $invCounts;
+            $invPending = $read['invPending'];
+            $invRoleCounts = $read['invRoleCounts'] ?? [];
             $matched = $read['matched'];
-            $scopes = $read['scopes'];
+            $scopes = $read['scopes'] ?? [];
+            $stayed = $read['stayed'] ?? [];
         } catch (QueryException $e) {
             report($e);
             $failed = true;
@@ -515,39 +578,56 @@ final class Index extends Component
         $assignable = $guard->assignableRoles($actor)->loadMissing('permissions')->sortByDesc('level')->values();
         $ceiling = $guard->levelCeiling($actor);
 
+        // the site's invitation mail over the last 24 hours: the quota line (invitations), the near-limit note (an inviter)
+        $sent = ($onInvites || ($canInvite && ! $support)) ? app(InviteMember::class)->sentToday($siteId) : 0;
+        $reopens = $sent >= InviteMember::DAILY_LIMIT ? app(InviteMember::class)->reopensAt($siteId, $sent) : null;
+
+        $picked = ! $onInvites && $this->picked !== [] ? $this->pickedMembers() : new Collection;
+        $pickedOk = $picked->isEmpty() ? $picked : $this->pickedTouchable($picked);
+
         $panelMember = $this->panelFor !== '' ? $this->siteMember($this->panelFor) : null;
         if ($this->panelFor !== '' && ! $panelMember instanceof User) {
             $this->closePanel();
         }
+        if ($this->panelBulk && $pickedOk->isEmpty()) {
+            $this->closePanel();
+        }
         $panelBefore = $panelMember instanceof User ? $panelMember->roles()->with('permissions')->get() : new Collection;
         $removeMember = $this->confirmOpen && $this->removeFor !== '' ? $this->siteMember($this->removeFor) : null;
-
-        $inviteSent = 0;
-        if ($this->inviteOpen) {
-            $inviteSent = app(InviteMember::class)->sentToday($siteId);
-        }
+        $revoking = $this->revokeOpen && $this->revokeFor !== '' ? $this->siteInvitation($this->revokeFor) : null;
 
         return $this->page('admin::livewire.users.index', $title, [
             'failed' => $failed,
+            'onInvites' => $onInvites,
             'rows' => $rows,
+            'invRows' => $invRows,
             'older' => $older,
             'newer' => $newer,
             'total' => $counts['total'],
-            'roleCounts' => $counts['roles'],
+            'roleCounts' => $onInvites ? $invRoleCounts : $counts['roles'],
+            'invCounts' => $invCounts,
+            'invPending' => $invPending,
+            'invCap' => InvitationDirectory::TAB_CAP,
             'matched' => $matched,
             'searching' => MemberDirectory::searches($this->search),
             'scopes' => $scopes,
+            'stayed' => $stayed,
             'siteRoles' => $siteRoles,
             'assignable' => $assignable,
             'ceiling' => $ceiling,
             'me' => $actor,
-            'support' => app(SupportSession::class)->active(),
-            'canInvite' => Gate::allows('users.invite'),
+            'support' => $support,
+            'canInvite' => $canInvite,
             'youHint' => ! FirstHints::dismissed(FirstHints::MEMBERS_YOU, $actor),
+            'pickedRows' => $picked,
+            'pickedOk' => $pickedOk,
             'panelMember' => $panelMember,
             'panelBefore' => $panelBefore,
             'removeMember' => $removeMember,
-            'inviteLeft' => max(0, InviteMember::DAILY_LIMIT - $inviteSent),
+            'revoking' => $revoking,
+            'sent' => $sent,
+            'reopens' => $reopens,
+            'inviteLeft' => max(0, InviteMember::DAILY_LIMIT - $sent),
         ]);
     }
 
@@ -586,20 +666,7 @@ final class Index extends Component
     {
         $actor = $this->actor();
         try {
-            DB::transaction(function () use ($actor, $target, $roles): void {
-                $held = $target->roles()->get();
-                $wanted = $roles->pluck('id')->all();
-                foreach ($roles as $role) {
-                    if (! $held->contains('id', $role->id)) {
-                        app(AssignRole::class)->handle($actor, $target, $role);
-                    }
-                }
-                foreach ($held as $existing) {
-                    if ($existing instanceof Role && ! in_array($existing->id, $wanted, true)) {
-                        app(RevokeRole::class)->handle($actor, $target, $existing);
-                    }
-                }
-            });
+            DB::transaction(fn () => $this->giveRoles($target, $roles));
         } catch (AuthorizationException) {
             if (app(SupportSession::class)->active()) {
                 $this->say(__('admin.support.locked'), 'error');
@@ -609,6 +676,44 @@ final class Index extends Component
         }
 
         return true;
+    }
+
+    /**
+     * Grant $target the roles of $roles they lack, then revoke the others (the caller holds the transaction).
+     *
+     * @param  Collection<int, Role>  $roles
+     *
+     * @throws AuthorizationException a step the actor may not take
+     */
+    private function giveRoles(User $target, Collection $roles): void
+    {
+        $actor = $this->actor();
+        $held = $target->roles()->get();
+        $wanted = $roles->pluck('id')->all();
+        foreach ($roles as $role) {
+            if (! $held->contains('id', $role->id)) {
+                app(AssignRole::class)->handle($actor, $target, $role);
+            }
+        }
+        foreach ($held as $existing) {
+            if ($existing instanceof Role && ! in_array($existing->id, $wanted, true)) {
+                app(RevokeRole::class)->handle($actor, $target, $existing);
+            }
+        }
+    }
+
+    /** The site's name for the invitation mail (its host when it has none). */
+    private function siteName(int $siteId): string
+    {
+        $name = Site::query()->whereKey($siteId)->value('name');
+
+        return is_string($name) && $name !== '' ? $name : request()->getHost();
+    }
+
+    /** The site has mailed DAILY_LIMIT invitations in the last 24 hours: inviting and re-sending wait. */
+    private function siteFull(): bool
+    {
+        return app(InviteMember::class)->sentToday(app(CurrentSite::class)->id()) >= InviteMember::DAILY_LIMIT;
     }
 
     /** Whether the actor may change $target at all: not themselves, and every role strictly below their own level. */
@@ -747,6 +852,8 @@ final class Index extends Component
         $this->per = in_array($this->per, MemberDirectory::PER_PAGE, true) ? $this->per : 20;
         $this->after = self::ulidOr($this->after);
         $this->before = self::ulidOr($this->before);
+        $this->tab = $this->tab === 'loi-moi' ? 'loi-moi' : '';
+        $this->state = in_array($this->state, InvitationDirectory::STATES, true) ? $this->state : 'pending';
     }
 
     private static function ulidOr(string $value): string

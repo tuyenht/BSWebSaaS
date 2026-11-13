@@ -313,8 +313,10 @@ it('sends invitations on a fixed number of queries per address: the screen reads
 
     // each further address costs only what InviteMember needs: the level check per role (2), the
     // account lookup, the lock, the open invitation, the two mail counts, the invitation, its role
-    // rows (read + one insert per role) and the audit row — nothing the screen reads again
+    // rows (read + one insert per role) and the audit row — nothing the screen reads again. The fixed
+    // part includes the page's two tab counts: the invitations per state (one statement) and the
+    // mails of the last 24 hours behind the near-limit note.
     expect($twenty - $one)->toBe(19 * 12)
-        ->and($one)->toBe(72);
+        ->and($one)->toBe(74);
     Notification::assertSentOnDemandTimes(MemberInvitationNotification::class, 22);
 });

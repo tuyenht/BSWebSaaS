@@ -32,7 +32,18 @@ final readonly class RevokeInvitation
             throw new InvitationRejectedException('invalid');
         }
 
-        $invitation->forceFill(['revoked_at' => now()])->save();
+        // Stamped only while still open, in one statement: an acceptance that commits first (it holds
+        // the row lock while it joins) leaves nothing to withdraw, and the copy read earlier is stale.
+        $now = now();
+        $withdrawn = Invitation::query()
+            ->whereKey($invitation->getKey())
+            ->whereNull('accepted_at')
+            ->whereNull('revoked_at')
+            ->update(['revoked_at' => $now]);
+        if ($withdrawn === 0) {
+            throw new InvitationRejectedException('invalid');
+        }
+        $invitation->forceFill(['revoked_at' => $now])->syncOriginalAttribute('revoked_at');
 
         Audit::record('rbac.invitation.revoked', [
             'auditable_type' => Invitation::class,
