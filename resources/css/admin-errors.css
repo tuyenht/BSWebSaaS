@@ -259,7 +259,7 @@
     /* "Mất kết nối" / "Đã kết nối lại": under the top bar, above the page (never over its save bar). */
     .te-strip {
         position: sticky;
-        top: var(--topbar-height);
+        top: calc(var(--topbar-height) + var(--support-bar-h, 0px));
         z-index: 15;
         display: flex;
         align-items: center;

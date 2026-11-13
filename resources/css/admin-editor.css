@@ -3,14 +3,14 @@
    the same buttons in a bar along the bottom. */
 .ped-bar {
     position: sticky;
-    top: var(--topbar-height);
+    top: calc(var(--topbar-height) + var(--support-bar-h, 0px));
     z-index: 10;
 }
 
 /* The admin's top bar scrolls away (Layout position: scrollable): nothing to stay under. */
 @media (min-width: 64rem) {
     :root[data-layout-position='scrollable'] .ped-bar {
-        top: 0;
+        top: var(--support-bar-h, 0px);
     }
 }
 

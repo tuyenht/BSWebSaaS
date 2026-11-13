@@ -263,8 +263,45 @@ function sessionGuard(cfg) {
     };
 }
 
+// 2. Alpine.data('bsSupportBar') — partials/support-bar.blade.php, while platform staff are signed in
+// as a member: counts down the seconds the server says are left (never the device clock), turns into "Sắp hết giờ" for the
+// last two minutes, and at 0:00 reloads the page so the server ends the session on record.
+function supportBar({ left, words }) {
+    const start = performance.now();
+    return {
+        words,
+        left,
+        timer: null,
+        init() {
+            this.tick();
+            this.timer = setInterval(() => this.tick(), 1000);
+        },
+        destroy() {
+            clearInterval(this.timer);
+        },
+        tick() {
+            this.left = Math.max(0, left - Math.floor((performance.now() - start) / 1000));
+            if (this.left === 0) {
+                clearInterval(this.timer);
+                window.location.reload();
+            }
+        },
+        get warn() {
+            return this.left <= 120;
+        },
+        get clock() {
+            const mm = String(Math.floor(this.left / 60)).padStart(2, '0');
+            return mm + ':' + String(this.left % 60).padStart(2, '0');
+        },
+        get aria() {
+            return this.words.aria.replace(':m', String(Math.floor(this.left / 60))).replace(':s', String(this.left % 60));
+        },
+    };
+}
+
 document.addEventListener('alpine:init', () => {
     window.Alpine.data('bsSession', sessionGuard);
+    window.Alpine.data('bsSupportBar', supportBar);
 });
 
 // A Livewire answer is a request the server counted; a 419 means the form token expired with the
