@@ -224,3 +224,39 @@ it('reads the system roles in pages with their permissions, not one query per ro
 
     expect($reads())->toBe($one); // four sites' system roles cost what one site's did
 });
+
+it('heals drift on many roles without reloading the permission catalog per role', function (): void {
+    foreach ([2, 3, 4] as $i) {
+        app(ProvisionSite::class)->handle(new ProvisionSiteData(
+            tenantName: "Site {$i}", siteName: "Site {$i}", hostname: "site{$i}.platform.test",
+            ownerEmail: "owner{$i}@site.test", ownerName: "Owner {$i}",
+            ownerPassword: 'a-strong-password', locales: ['vi'], modules: ['cms'],
+        ));
+    }
+    app(TeamContext::class)->forget();
+    $drift = function (array $sites): void {
+        foreach (Role::query()->whereIn('site_id', $sites)->whereIn('name', ['owner', 'admin'])->get() as $role) {
+            $role->revokePermissionTo(['catalog.view', 'catalog.manage']);
+        }
+    };
+    $catalogReads = function (): int {
+        $n = 0;
+        DB::listen(function ($q) use (&$n): void {
+            if (preg_match('/^\s*select .* from "permissions"/i', $q->sql) === 1) {
+                $n++;
+            }
+        });
+        $this->artisan('rbac:sync')->assertSuccessful();
+
+        return $n;
+    };
+
+    $drift([1]);
+    $one = $catalogReads();
+    $drift([1, 2, 3, 4]);
+    $four = $catalogReads();
+
+    expect($four)->toBe($one)
+        ->and(Role::query()->whereIn('name', ['owner', 'admin'])->where('site_id', '>', 0)->get()
+            ->every(fn (Role $r): bool => $r->hasPermissionTo('catalog.manage')))->toBeTrue();
+});
