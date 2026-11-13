@@ -6,12 +6,17 @@ use App\Modules\Cms\Actions\ContentBlocks\DuplicateContentBlock;
 use App\Modules\Cms\Actions\ContentBlocks\PublishContentBlock;
 use App\Modules\Cms\Actions\ContentBlocks\SaveContentBlockBody;
 use App\Modules\Cms\Actions\ContentBlocks\UpdateContentBlock;
+use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
 use App\Modules\Cms\ContentBlocks\ContentBlockVersion;
+use App\Modules\Cms\Data\TaxonomyData;
 use App\Modules\Cms\Models\ContentBlock;
+use App\Modules\Cms\Models\MemberCategoryScope;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\DB;
 
 /*
  * Who may see and change the block library (ContentBlockPolicy), role by role. Changing a block
@@ -125,4 +130,38 @@ it('lets an editor run every block action', function (): void {
 
         expect(ContentBlock::query()->sole()->only(['name', 'region', 'status']))->toBe(['name' => 'Chân trang chính', 'region' => 'footer', 'status' => 'published']);
     });
+});
+
+/** Limit $user on site 1 to one new category, as the members screen would. */
+function blockLimitedTo(User $user): void
+{
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $category = app(CreateTaxonomy::class)->handle('post_cat', null, new TaxonomyData(names: ['vi' => 'Tin tức']));
+        MemberCategoryScope::query()->create(['user_id' => $user->id, 'taxonomy_id' => $category->id]);
+    });
+}
+
+it('lets a member limited to some categories see and place blocks but never change one', function (): void {
+    $editor = blockLibraryUser(1, 'editor');
+    blockLimitedTo($editor);
+    $block = app(Tenancy::class)->enter(1, fn () => ContentBlock::query()->create(['key' => 'footer', 'name' => 'Chân trang']));
+
+    // one change to a block shows on every page and menu using it, also outside the member's limits
+    expect(blockAbilities($editor, $block))->toBe([
+        'viewAny' => true, 'view' => true,
+        'create' => false, 'update' => false, 'publish' => false, 'duplicate' => false, 'delete' => false,
+    ]);
+    app(Tenancy::class)->enter(1, fn () => expect(fn () => app(CreateContentBlock::class)->handle($editor, 'Chân trang phụ', 'footer'))
+        ->toThrow(AuthorizationException::class));
+});
+
+it('keeps a website admin with leftover limit rows free to change blocks (admins are never limited)', function (): void {
+    $admin = blockLibraryUser(1, 'admin');
+    DB::connection('pgsql_admin')->table('roles')->where('site_id', 1)->where('name', 'admin')
+        ->update(['level' => PermissionRegistry::tenantRoleTemplates('corporate')['admin']['level']]);
+    blockLimitedTo($admin);
+    $block = app(Tenancy::class)->enter(1, fn () => ContentBlock::query()->create(['key' => 'footer', 'name' => 'Chân trang']));
+
+    expect(blockAbilities($admin, $block)['update'])->toBeTrue()
+        ->and(blockAbilities($admin, $block)['delete'])->toBeTrue();
 });

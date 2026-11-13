@@ -33,6 +33,9 @@ final readonly class ContentBlockList
     public function page(?string $status = null, ?string $region = null, ?array $after = null, int $limit = self::PAGE_SIZE): array
     {
         $limit = max(1, $limit);
+        if ($after !== null && ! self::isCursor($after)) {
+            $after = null; // a cursor that was not ours (edited, cut short): start from the first page
+        }
         $anchorId = null;
         if ($after !== null) {
             $found = ContentBlock::query()->where('ulid', $after['ulid'])->value('id');
@@ -59,6 +62,21 @@ final readonly class ContentBlockList
         }
 
         return ['rows' => array_values($rows->all()), 'next' => $next];
+    }
+
+    /**
+     * Is this a cursor page() gave out: a PostgreSQL timestamptz text and a ulid?
+     *
+     * @param  array<array-key, mixed>  $after
+     */
+    private static function isCursor(array $after): bool
+    {
+        $at = $after['at'] ?? null;
+        $ulid = $after['ulid'] ?? null;
+
+        return is_string($at) && is_string($ulid)
+            && preg_match('/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(\.\d{1,6})?([+-]\d{2}(:\d{2})?|Z)$/', $at) === 1
+            && preg_match('/^[0-9A-Z]{26}$/i', $ulid) === 1;
     }
 
     /**
