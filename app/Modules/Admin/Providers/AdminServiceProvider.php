@@ -22,6 +22,7 @@ use App\Modules\Admin\Livewire\ForgotPassword;
 use App\Modules\Admin\Livewire\Login;
 use App\Modules\Admin\Livewire\LoginSecuritySettings;
 use App\Modules\Admin\Livewire\Menus\Index as MenusIndex;
+use App\Modules\Admin\Livewire\NotificationBell;
 use App\Modules\Admin\Livewire\Placeholder;
 use App\Modules\Admin\Livewire\Platform\Audit\CleanupDialog as PlatformAuditCleanupDialog;
 use App\Modules\Admin\Livewire\Platform\Audit\Index as PlatformAuditIndex;
@@ -119,6 +120,7 @@ final class AdminServiceProvider extends ServiceProvider
         Livewire::component('admin.dashboard', Dashboard::class);
         Livewire::component('admin.component-gallery', ComponentGallery::class);
         Livewire::component('admin.placeholder', Placeholder::class);
+        Livewire::component('admin.notification-bell', NotificationBell::class);
         Livewire::component('admin.catalog.index', CatalogIndex::class);
         Livewire::component('admin.catalog.editor', CatalogEditor::class);
         Livewire::component('admin.catalog-settings', CatalogSettings::class);

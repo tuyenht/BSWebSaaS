@@ -7,7 +7,8 @@
     // Mirrors Velzon soft .alert (bg-*-subtle + text-*). Reuses the same subtle token map as
     // the badge so colours stay consistent. Dismiss is a per-instance x-data toggle (Alpine
     // is Livewire-bundled) — transient, so a wire:navigate morph resetting it (re-showing) is
-    // acceptable for a page-level alert.
+    // acceptable for a page-level alert. Its text is the body role, so it follows the member's
+    // text-size setting.
     $subtle = [
         'primary' => 'bg-admin-primary/10 text-accent',
         'success' => 'bg-admin-success/10 text-admin-success-text',
@@ -19,9 +20,9 @@
 @endphp
 <div role="alert"
      @if ($dismissible) x-data="{ show: true }" x-show="show" @endif
-     {{ $attributes->merge(['class' => 'flex items-start gap-2.5 rounded px-3.5 py-3 text-sm '.$tone]) }}>
+     {{ $attributes->merge(['class' => 'flex items-start gap-2.5 rounded px-3.5 py-3 text-body '.$tone]) }}>
     @if ($icon)
-        <x-bs-admin::icon :name="$icon" class="mt-0.5 size-5 shrink-0" />
+        <x-bs-admin::icon :name="$icon" class="mt-0.5 size-[calc(1.25rem+var(--user-text-boost))] shrink-0" />
     @endif
     <div class="flex-1">{{ $slot }}</div>
     @if ($dismissible)

@@ -193,6 +193,7 @@ it('lists leads on a flat query budget (no N+1 across rows or forms)', function 
     // the page, the shell and the list: forms + their fields, the group counts, the form and time
     // counts, the rows and the open lead — the same with 5 leads on one form as
     // with 17 on two; a query per row or per form would grow it
-    expect($cold)->toBeLessThanOrEqual(22)
+    // +1: the top bar's bell reads the unread count (one bounded query on every admin page).
+    expect($cold)->toBeLessThanOrEqual(23)
         ->and($many)->toBe($few)->toBeLessThanOrEqual(14);
 });

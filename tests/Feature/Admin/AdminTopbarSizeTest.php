@@ -3,6 +3,7 @@
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use Dom\Element;
 use Dom\HTMLDocument;
 
 /*
@@ -32,10 +33,14 @@ function topbarShell(): HTMLDocument
 }
 
 it('sizes every topbar icon button as a main control, 44 on touch', function (): void {
-    $buttons = topbarShell()->querySelectorAll('header.admin-topbar button[aria-label]');
+    // The bell's panel hangs under the topbar: its own buttons are the panel's, not the bar's.
+    $buttons = array_filter(
+        iterator_to_array(topbarShell()->querySelectorAll('header.admin-topbar button[aria-label]')),
+        fn (Element $button): bool => $button->closest('[role=dialog]') === null,
+    );
 
     // menu (phone) · collapse (desktop) · language · fullscreen · light/dark · notifications
-    expect($buttons->length)->toBe(6);
+    expect($buttons)->toHaveCount(6);
     foreach ($buttons as $button) {
         expect(explode(' ', (string) $button->getAttribute('class')))
             ->toContain('size-control', 'any-pointer-coarse:size-hit')

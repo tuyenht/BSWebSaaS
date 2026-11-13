@@ -1,0 +1,271 @@
+/*
+ | The bell's panel (design board 01 "Thông báo", the .ntf-* part; admin::livewire.notification-bell),
+ | downloaded with the bell's part (resources/js/admin-bell.js) since the panel stays hidden until
+ | that part runs: under the bell (380px) and, narrower than 600px, a full screen. Every colour is a
+ | shared token; text follows --user-text-boost. The waiting rows hold still when the reader asks
+ | for less motion.
+ */
+@layer components {
+    .ntf-pop {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        z-index: 80;
+        display: flex;
+        flex-direction: column;
+        width: 380px;
+        max-width: calc(100vw - 32px);
+        overflow: hidden;
+        border: 1px solid var(--color-border-strong);
+        border-radius: 6px;
+        background: var(--color-surface);
+        color: var(--color-text);
+        box-shadow: 0 12px 34px rgb(30 32 37 / 0.22);
+        font-size: calc(0.875rem + var(--user-text-boost));
+        line-height: 1.5;
+    }
+
+    .ntf-h {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 8px 8px 16px;
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .ntf-ht {
+        margin-right: auto;
+        color: var(--color-text-strong);
+        font-size: calc(0.9375rem + var(--user-text-boost));
+        font-weight: 600;
+    }
+
+    .ntf-tools {
+        display: flex;
+        flex: 0 0 auto;
+        justify-content: flex-end;
+        padding: 4px 8px;
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .ntf-list {
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: 440px;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .ntf-day {
+        padding: 6px 16px;
+        border-top: 1px solid var(--color-border);
+        background: var(--color-surface-muted);
+        color: var(--color-text-muted);
+        font-size: calc(0.75rem + var(--user-text-boost));
+        font-weight: 600;
+    }
+
+    .ntf-day:first-child {
+        border-top: 0;
+    }
+
+    .ntf-it {
+        display: flex;
+        gap: 12px;
+        width: 100%;
+        padding: 12px 16px;
+        border: 0;
+        border-top: 1px solid var(--color-border);
+        background: var(--color-surface);
+        color: inherit;
+        font: inherit;
+        text-align: left;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .ntf-day + .ntf-it {
+        border-top: 0;
+    }
+
+    .ntf-it[data-unread='1'] {
+        background: color-mix(in srgb, var(--color-primary-text) 5%, var(--color-surface));
+    }
+
+    .ntf-it:hover {
+        background: var(--color-surface-hover);
+    }
+
+    .ntf-ic {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        font-size: calc(1.0625rem + var(--user-text-boost));
+    }
+
+    .ntf-ic[data-t='warn'] {
+        background: color-mix(in srgb, var(--color-warning-base) 18%, var(--color-surface));
+        color: var(--color-warning-text);
+    }
+
+    .ntf-ic[data-t='ok'] {
+        background: color-mix(in srgb, var(--color-success-base) 14%, var(--color-surface));
+        color: var(--color-success-text);
+    }
+
+    .ntf-ic[data-t='danger'] {
+        background: color-mix(in srgb, var(--color-danger-base) 14%, var(--color-surface));
+        color: var(--color-danger-text);
+    }
+
+    .ntf-ic[data-t='info'] {
+        background: color-mix(in srgb, var(--color-info-base) 14%, var(--color-surface));
+        color: var(--color-info-text);
+    }
+
+    .ntf-ic[data-t='brand'] {
+        background: color-mix(in srgb, var(--color-primary-text) 12%, var(--color-surface));
+        color: var(--color-primary-text);
+    }
+
+    .ntf-m {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        min-width: 0;
+    }
+
+    .ntf-tx {
+        color: var(--color-text-strong);
+        font-size: calc(0.875rem + var(--user-text-boost));
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+    }
+
+    .ntf-it[data-unread='1'] .ntf-tx {
+        font-weight: 600;
+    }
+
+    .ntf-meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 2px 8px;
+        margin-top: 4px;
+        color: var(--color-text-muted);
+        font-size: calc(0.75rem + var(--user-text-boost));
+    }
+
+    .ntf-new {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        color: var(--color-primary-text);
+        font-weight: 600;
+    }
+
+    .ntf-new::before {
+        content: '';
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--color-primary-text);
+    }
+
+    .ntf-act {
+        display: inline-flex;
+        align-items: center;
+        margin-left: auto;
+        color: var(--color-primary-text);
+        font-size: calc(0.8125rem + var(--user-text-boost));
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .ntf-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        padding: 28px 16px;
+        color: var(--color-text-muted);
+        text-align: center;
+    }
+
+    /* Waiting rows (the Notifications page's .tb-sk): a round icon, a line, a short line. */
+    .ntf-sk {
+        display: grid;
+        grid-template-columns: 34px minmax(0, 1fr);
+        gap: 12px;
+        padding: 12px 16px;
+        border-top: 1px solid var(--color-border);
+    }
+
+    .ntf-sk:first-child {
+        border-top: 0;
+    }
+
+    .ntf-skl {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .ntf-skb {
+        display: block;
+        height: 14px;
+        border-radius: 4px;
+        background: var(--color-surface-muted);
+        animation: ntf-wait 1.4s ease-in-out infinite;
+    }
+
+    .ntf-skr {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+    }
+
+    .ntf-sks {
+        width: 40%;
+        height: 12px;
+    }
+
+    @keyframes ntf-wait {
+        50% {
+            opacity: 0.45;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .ntf-skb {
+            animation: none;
+        }
+    }
+
+    @media (max-width: 37.49875rem) {
+        .ntf-pop {
+            position: fixed;
+            inset: 0;
+            z-index: 400;
+            width: auto;
+            max-width: none;
+            height: 100dvh;
+            padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+            border: 0;
+            border-radius: 0;
+        }
+
+        .ntf-list {
+            max-height: none;
+        }
+
+        .ntf-it {
+            min-height: 64px;
+        }
+    }
+}
