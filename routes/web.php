@@ -114,9 +114,10 @@ Route::domain((string) config('tenancy.platform_host'))
             $set = (string) request('set');
             if (in_array($set, Locales::codes(), true)) {
                 session(['locale' => $set]);
-                // A signed-in member keeps the choice on their account too (My account → Ngôn ngữ).
+                // A signed-in member keeps the choice on their account too (My account → Ngôn ngữ);
+                // staff signed in for support change only their own session, never the member's account.
                 $member = auth()->user();
-                if ($member instanceof User) {
+                if ($member instanceof User && ! app(SupportSession::class)->active()) {
                     UserPreferences::set($member, ['locale'], $set);
                 }
             }
@@ -225,9 +226,10 @@ Route::prefix(config('admin.prefix', 'admin'))
             $set = (string) request('set');
             if (in_array($set, Locales::codes(), true)) {
                 session(['locale' => $set]);
-                // A signed-in member keeps the choice on their account too (My account → Ngôn ngữ).
+                // A signed-in member keeps the choice on their account too (My account → Ngôn ngữ);
+                // staff signed in for support change only their own session, never the member's account.
                 $member = auth()->user();
-                if ($member instanceof User) {
+                if ($member instanceof User && ! app(SupportSession::class)->active()) {
                     UserPreferences::set($member, ['locale'], $set);
                 }
             }

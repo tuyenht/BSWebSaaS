@@ -35,7 +35,9 @@
                 @if ($roleLabel)
                     <span class="ac-chip" data-t="brand"><x-bs-admin::icon name="ri-shield-user" class="{{ $small }}" />{{ $roleLabel }}</span>
                 @endif
-                <span class="ac-chip"><x-bs-admin::icon name="ri-store-2" class="{{ $small }}" />{{ $t('plane_site', ['site' => $siteName]) }}</span>
+                @if ($siteName !== '')
+                    <span class="ac-chip"><x-bs-admin::icon name="ri-store-2" class="{{ $small }}" />{{ $t('plane_site', ['site' => $siteName]) }}</span>
+                @endif
             </div>
         </div>
 
@@ -66,7 +68,7 @@
             <div class="ac-pane">
                 <label class="ac-sel">
                     <span class="ac-lab">{{ $t('tabs_select') }}</span>
-                    <select class="ac-select" wire:model.live="tab" aria-label="{{ $t('tabs_label') }}">
+                    <select class="field ac-select" wire:model.live="tab" aria-label="{{ $t('tabs_label') }}">
                         @foreach ($tabs as $key => [$icon, $label])
                             <option value="{{ $key }}">{{ $label }}</option>
                         @endforeach
@@ -89,7 +91,7 @@
 
                                 <div x-data="{ max: {{ \App\Modules\Admin\Livewire\Account::NAME_MAX }} }">
                                     <label class="ac-lab" for="ac-name">{{ $t('name') }} <span class="ac-req" aria-hidden="true">*</span><span class="sr-only">{{ $t('required') }}</span></label>
-                                    <input id="ac-name" class="ac-in" autocomplete="name" maxlength="140" placeholder="Nguyễn Ngọc Anh"
+                                    <input id="ac-name" class="field ac-in" autocomplete="name" maxlength="140" placeholder="Nguyễn Ngọc Anh"
                                            wire:model.blur="profileName" @disabled($readOnly)
                                            @error('profileName') aria-invalid="true" @enderror aria-describedby="ac-name-h">
                                     @error('profileName')
@@ -117,11 +119,7 @@
                                         <x-bs-admin::icon name="ri-arrow-go-back" class="{{ $small }}" />{{ $t('discard') }}
                                     </x-bs-admin::button>
                                 </span>
-                                <span class="ac-sv" role="status" aria-live="polite" @if ($profileSavedAt !== '') data-k="ok" @endif>
-                                    @if ($profileSavedAt !== '')
-                                        <x-bs-admin::icon name="ri-checkbox-circle" class="{{ $small }}" />{{ $t('saved_at', ['time' => $profileSavedAt]) }}
-                                    @endif
-                                </span>
+                                <x-bs-admin::saved-note>{{ $profileSavedAt !== '' ? $t('saved_at', ['time' => $profileSavedAt]) : '' }}</x-bs-admin::saved-note>
                                 @if ($readOnly)
                                     <span class="ac-why"><x-bs-admin::icon name="ri-lock" class="mt-0.5 {{ $small }}" />{{ $t('ro_body') }}</span>
                                 @endif
@@ -148,18 +146,16 @@
                             <div class="ac-ch"><h2 class="ac-h3" id="ac-h-pw">{{ $t('pw_title') }}</h2></div>
                             <div class="ac-cb">
                                 @if ($passwordChanged)
-                                    <div class="ac-al" data-k="success" role="status">
-                                        <x-bs-admin::icon name="ri-checkbox-circle" class="mt-0.5 {{ $glyph }}" /><span>{{ $t('pw_done') }}</span>
-                                    </div>
+                                    <x-bs-admin::alert color="success" icon="ri-checkbox-circle">{{ $t('pw_done') }}</x-bs-admin::alert>
                                 @endif
                                 <div>
                                     <label class="ac-lab" for="ac-pw-cur">{{ $t('pw_current') }} <span class="ac-req" aria-hidden="true">*</span></label>
                                     <div class="ac-pw">
-                                        <input id="ac-pw-cur" :type="show.cur ? 'text' : 'password'" type="password" autocomplete="current-password"
+                                        <input id="ac-pw-cur" class="field" :type="show.cur ? 'text' : 'password'" type="password" autocomplete="current-password"
                                                wire:model="current_password" @disabled($readOnly)
                                                @error('current_password') aria-invalid="true" aria-describedby="ac-pw-cur-h" @enderror>
                                         <button type="button" @click="show.cur = ! show.cur" :aria-pressed="show.cur" @disabled($readOnly)
-                                                :aria-label="show.cur ? @js($t('pw_hide')) : @js($t('pw_show'))" :title="show.cur ? @js($t('pw_hide')) : @js($t('pw_show'))">
+                                                aria-label="{{ $t('pw_show') }}" :title="show.cur ? @js($t('pw_hide')) : @js($t('pw_show'))">
                                             <x-bs-admin::icon name="ri-eye" class="{{ $glyph }}" x-show="! show.cur" />
                                             <x-bs-admin::icon name="ri-eye-off" class="{{ $glyph }}" x-show="show.cur" x-cloak />
                                         </button>
@@ -172,11 +168,11 @@
                                     <div>
                                         <label class="ac-lab" for="ac-pw-new">{{ $t('pw_new') }} <span class="ac-req" aria-hidden="true">*</span></label>
                                         <div class="ac-pw">
-                                            <input id="ac-pw-new" :type="show.nw ? 'text' : 'password'" type="password" autocomplete="new-password"
+                                            <input id="ac-pw-new" class="field" :type="show.nw ? 'text' : 'password'" type="password" autocomplete="new-password"
                                                    wire:model="password" @disabled($readOnly)
                                                    @error('password') aria-invalid="true" @enderror aria-describedby="ac-pw-new-h ac-pw-new-s">
                                             <button type="button" @click="show.nw = ! show.nw" :aria-pressed="show.nw" @disabled($readOnly)
-                                                    :aria-label="show.nw ? @js($t('pw_hide')) : @js($t('pw_show'))" :title="show.nw ? @js($t('pw_hide')) : @js($t('pw_show'))">
+                                                    aria-label="{{ $t('pw_show') }}" :title="show.nw ? @js($t('pw_hide')) : @js($t('pw_show'))">
                                                 <x-bs-admin::icon name="ri-eye" class="{{ $glyph }}" x-show="! show.nw" />
                                                 <x-bs-admin::icon name="ri-eye-off" class="{{ $glyph }}" x-show="show.nw" x-cloak />
                                             </button>
@@ -184,7 +180,7 @@
                                         <template x-if="$wire.password">
                                             <div>
                                                 <div class="ac-meter" :data-s="strength($wire.password)" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-                                                <p class="ac-stx" id="ac-pw-new-s" :data-s="strength($wire.password)" aria-live="polite">
+                                                <p class="ac-stx" id="ac-pw-new-s" :data-s="strength($wire.password)">
                                                     <span><strong x-text="labels[strength($wire.password)][0]"></strong> — <span x-text="labels[strength($wire.password)][1]"></span></span>
                                                 </p>
                                             </div>
@@ -198,11 +194,11 @@
                                     <div>
                                         <label class="ac-lab" for="ac-pw-cf">{{ $t('pw_confirm') }} <span class="ac-req" aria-hidden="true">*</span></label>
                                         <div class="ac-pw">
-                                            <input id="ac-pw-cf" :type="show.cf ? 'text' : 'password'" type="password" autocomplete="new-password"
+                                            <input id="ac-pw-cf" class="field" :type="show.cf ? 'text' : 'password'" type="password" autocomplete="new-password"
                                                    wire:model="password_confirmation" @disabled($readOnly)
                                                    @error('password_confirmation') aria-invalid="true" aria-describedby="ac-pw-cf-h" @enderror>
                                             <button type="button" @click="show.cf = ! show.cf" :aria-pressed="show.cf" @disabled($readOnly)
-                                                    :aria-label="show.cf ? @js($t('pw_hide')) : @js($t('pw_show'))" :title="show.cf ? @js($t('pw_hide')) : @js($t('pw_show'))">
+                                                    aria-label="{{ $t('pw_show') }}" :title="show.cf ? @js($t('pw_hide')) : @js($t('pw_show'))">
                                                 <x-bs-admin::icon name="ri-eye" class="{{ $glyph }}" x-show="! show.cf" />
                                                 <x-bs-admin::icon name="ri-eye-off" class="{{ $glyph }}" x-show="show.cf" x-cloak />
                                             </button>
@@ -260,7 +256,7 @@
                                                 <div class="ac-key">
                                                     <span class="ac-mono">{{ $tfaKey }}</span>
                                                     <x-bs-admin::button variant="outline" color="secondary" size="sm"
-                                                                        @click="navigator.clipboard?.writeText(@js($tfaRawKey)).then(() => copied = true)">
+                                                                        @click="navigator.clipboard?.writeText({{ \Illuminate\Support\Js::from($tfaRawKey) }}).then(() => copied = true)">
                                                         <x-bs-admin::icon name="ri-file-copy" class="{{ $small }}" />
                                                         <span x-text="copied ? @js($t('copied')) : @js($t('tfa_copy_key'))">{{ $t('tfa_copy_key') }}</span>
                                                     </x-bs-admin::button>
@@ -277,7 +273,7 @@
                                         <span class="ac-chip self-start" data-t="brand">{{ $t('tfa_step2') }}</span>
                                         <div class="max-w-80">
                                             <label class="ac-lab" for="ac-tfa-code">{{ $t('tfa_code_label') }}</label>
-                                            <input id="ac-tfa-code" class="ac-in ac-mono" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123 456"
+                                            <input id="ac-tfa-code" class="field ac-in ac-mono" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123 456"
                                                    wire:model="tfaCode" wire:keydown.enter="confirmTwoFactor" autofocus
                                                    @error('tfaCode') aria-invalid="true" @enderror aria-describedby="ac-tfa-h">
                                             @error('tfaCode')
@@ -334,9 +330,9 @@
                             <div class="ac-cb">
                                 <p class="ac-rule">{{ $t('linked_intro') }}</p>
                                 @if (request()->query('oauth') === 'connected')
-                                    <div class="ac-al" data-k="success" role="status"><x-bs-admin::icon name="ri-checkbox-circle" class="mt-0.5 {{ $glyph }}" /><span>{{ $t('linked_done') }}</span></div>
+                                    <x-bs-admin::alert color="success" icon="ri-checkbox-circle">{{ $t('linked_done') }}</x-bs-admin::alert>
                                 @elseif (is_string(request()->query('oauth_error')))
-                                    <div class="ac-al" data-k="warning" role="alert"><x-bs-admin::icon name="ri-error-warning" class="mt-0.5 {{ $glyph }}" /><span>{{ request()->query('oauth_error') }}</span></div>
+                                    <x-bs-admin::alert color="warning" icon="ri-error-warning">{{ request()->query('oauth_error') }}</x-bs-admin::alert>
                                 @endif
                                 @if ($providers === [])
                                     <p class="ac-rule">{{ $t('linked_none') }}</p>
@@ -391,8 +387,7 @@
                         <section class="ac-card" aria-labelledby="ac-h-ui">
                             <div class="ac-ch">
                                 <h2 class="ac-h3" id="ac-h-ui">{{ $t('ui_title') }}</h2>
-                                <span class="ac-sv" data-k="ok" role="status" aria-live="polite" wire:loading.remove
-                                      wire:target="setScheme, setTextSize, resetTextSize, setMotion">{{ $t('applied') }}</span>
+                                <x-bs-admin::saved-note wire:loading.class="invisible" wire:target="setScheme, setTextSize, resetTextSize, setMotion">{{ $savedNote === 'ui' ? $t('applied') : '' }}</x-bs-admin::saved-note>
                             </div>
                             <div class="ac-cb">
                                 <p class="ac-rule">{{ $t('ui_intro') }}</p>
@@ -413,9 +408,9 @@
                                 <div class="ac-f2">
                                     <div class="ac-fl">
                                         <span class="ac-lab m-0" id="ac-l-sch">{{ $t('scheme') }}</span>
-                                        <div class="seg" role="radiogroup" aria-labelledby="ac-l-sch">
+                                        <div class="seg" role="group" aria-labelledby="ac-l-sch">
                                             @foreach (['light' => ['ri-sun', $t('scheme_light')], 'dark' => ['ri-moon', $t('scheme_dark')], 'auto' => ['ri-computer', $t('scheme_auto')]] as $value => [$icon, $label])
-                                                <button type="button" role="radio" aria-checked="{{ $prefs['scheme'] === $value ? 'true' : 'false' }}" aria-pressed="{{ $prefs['scheme'] === $value ? 'true' : 'false' }}"
+                                                <button type="button" aria-pressed="{{ $prefs['scheme'] === $value ? 'true' : 'false' }}"
                                                         class="inline-flex items-center justify-center gap-1.5" wire:click="setScheme('{{ $value }}')" @disabled($readOnly)>
                                                     <x-bs-admin::icon :name="$icon" class="{{ $small }}" />{{ $label }}
                                                 </button>
@@ -424,9 +419,9 @@
                                     </div>
                                     <div class="ac-fl">
                                         <span class="ac-lab m-0" id="ac-l-fs">{{ $t('text_size') }}</span>
-                                        <div class="seg" role="radiogroup" aria-labelledby="ac-l-fs" aria-describedby="ac-fs-h">
+                                        <div class="seg" role="group" aria-labelledby="ac-l-fs" aria-describedby="ac-fs-h">
                                             @foreach (['md' => [$t('fs_md'), '0.875rem'], 'lg' => [$t('fs_lg'), '1rem'], 'xl' => [$t('fs_xl'), '1.125rem'], 'xxl' => [$t('fs_xxl'), '1.25rem']] as $value => [$label, $size])
-                                                <button type="button" role="radio" aria-checked="{{ $prefs['textSize'] === $value ? 'true' : 'false' }}" aria-pressed="{{ $prefs['textSize'] === $value ? 'true' : 'false' }}"
+                                                <button type="button" aria-pressed="{{ $prefs['textSize'] === $value ? 'true' : 'false' }}"
                                                         style="font-size: {{ $size }}" wire:click="setTextSize('{{ $value }}')" @disabled($readOnly)>
                                                     {{ $label }}@if (! $prefs['ownTextSize'] && $prefs['siteTextSize'] === $value)<span class="whitespace-nowrap">&nbsp;{{ $t('fs_site') }}</span>@endif
                                                 </button>
@@ -443,9 +438,9 @@
                                     </div>
                                     <div class="ac-fl">
                                         <span class="ac-lab m-0" id="ac-l-mo">{{ $t('motion') }}</span>
-                                        <div class="seg" role="radiogroup" aria-labelledby="ac-l-mo" aria-describedby="ac-mo-h">
+                                        <div class="seg" role="group" aria-labelledby="ac-l-mo" aria-describedby="ac-mo-h">
                                             @foreach (['auto' => $t('motion_auto'), 'reduce' => $t('motion_reduce')] as $value => $label)
-                                                <button type="button" role="radio" aria-checked="{{ $prefs['motion'] === $value ? 'true' : 'false' }}" aria-pressed="{{ $prefs['motion'] === $value ? 'true' : 'false' }}"
+                                                <button type="button" aria-pressed="{{ $prefs['motion'] === $value ? 'true' : 'false' }}"
                                                         wire:click="setMotion('{{ $value }}')" @disabled($readOnly)>{{ $label }}</button>
                                             @endforeach
                                         </div>
@@ -458,7 +453,7 @@
                         <section class="ac-card" aria-labelledby="ac-h-ntf">
                             <div class="ac-ch">
                                 <h2 class="ac-h3" id="ac-h-ntf">{{ $t('ntf_title') }}</h2>
-                                <span class="ac-sv" data-k="ok" role="status" aria-live="polite" wire:loading.remove wire:target="setNotification">{{ $t('applied') }}</span>
+                                <x-bs-admin::saved-note wire:loading.class="invisible" wire:target="setNotification">{{ $savedNote === 'ntf' ? $t('applied') : '' }}</x-bs-admin::saved-note>
                             </div>
                             <div class="ac-cb">
                                 <p class="ac-rule">{{ $t('ntf_intro') }}</p>
@@ -538,7 +533,7 @@
             <div>
                 <label class="ac-lab" for="ac-dlg-pw">{{ $t('dlg_pw') }}</label>
                 <div class="ac-pw">
-                    <input id="ac-dlg-pw" type="password" autocomplete="current-password" autofocus
+                    <input id="ac-dlg-pw" class="field" type="password" autocomplete="current-password" autofocus
                            wire:model="confirmPassword" wire:keydown.enter="{{ $dialog === 'disable' ? 'disableTwoFactor' : 'regenerateRecoveryCodes' }}"
                            @error('confirmPassword') aria-invalid="true" aria-describedby="ac-dlg-h" @enderror>
                 </div>

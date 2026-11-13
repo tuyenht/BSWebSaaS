@@ -425,6 +425,16 @@ it('opens the member\'s own account page read-only during a support session', fu
         ->assertSee('Không làm được việc này khi nhân viên hỗ trợ đang đăng nhập thay thành viên.');
 });
 
+it('switches only the session\'s language for support staff, never the member\'s saved one', function (): void {
+    $owner = supportMember(1, 'owner');
+
+    enterSupport($this, supportToken(platformStaff('support'), $owner))->assertStatus(303);
+    $this->get('http://a.test/admin/locale?set=en')->assertRedirect();
+
+    expect($owner->fresh()->preferences['locale'] ?? null)->toBeNull()
+        ->and(session('locale'))->toBe('en');
+});
+
 it('locks linking a sign-in account or connecting a sender through OAuth during a support session', function (string $purpose): void {
     $owner = supportMember(1, 'owner');
     enterSupport($this, supportToken(platformStaff('support'), $owner))->assertStatus(303);

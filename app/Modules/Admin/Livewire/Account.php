@@ -92,6 +92,10 @@ final class Account extends Component
     #[Locked]
     public string $profileSavedAt = '';
 
+    /** Which preferences card shows "Đã lưu — áp dụng ngay": '' (none yet), 'ui' or 'ntf'. */
+    #[Locked]
+    public string $savedNote = '';
+
     public string $current_password = '';
 
     public string $password = '';
@@ -479,6 +483,7 @@ final class Account extends Component
 
         UserPreferences::set($user, ['notifications', $kind, $channel], $on);
         UserPreferences::reload($user);
+        $this->savedNote = 'ntf';
     }
 
     public function render(): View
@@ -493,7 +498,7 @@ final class Account extends Component
             'readOnly' => $readOnly,
             'initials' => self::initials($user->name),
             'roleLabel' => RoleLabel::topOf($user),
-            'siteName' => app(SiteDirectory::class)->nameOfCurrent(app(CurrentSite::class)),
+            'siteName' => app(CurrentSite::class)->hasId() ? app(SiteDirectory::class)->nameOfCurrent(app(CurrentSite::class)) : '',
             'twoFactorOn' => $twoFactorOn,
             'twoFactorSince' => $twoFactorOn ? app(SiteTime::class)->forDisplay($user->two_factor_confirmed_at)?->format('d/m/Y') : null,
             'codesLeft' => count(Cast::strings($user->two_factor_recovery_codes)),
@@ -618,6 +623,7 @@ final class Account extends Component
         $user = $this->member();
         UserPreferences::reload($user);
         $this->dispatch('admin-chrome-changed', attributes: app(AdminChromeResolver::class)->attributes($user));
+        $this->savedNote = 'ui';
     }
 
     private function receives(User $user, string $kind): bool

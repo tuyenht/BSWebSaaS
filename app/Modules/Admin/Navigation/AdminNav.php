@@ -288,7 +288,8 @@ final class AdminNav
                 key: 'settings',
                 label: __('admin.settings'),
                 icon: 'settings',
-                active: $request->routeIs('admin.settings*'),
+                // The member's own account page sits under Settings › Bảo mật in this menu.
+                active: $request->routeIs('admin.settings*', 'admin.account'),
                 children: $settingsChildren,
             );
         }

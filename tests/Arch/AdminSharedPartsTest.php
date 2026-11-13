@@ -30,7 +30,6 @@ const ADMIN_HAND_BUILT_PARTS = [
     'platform/audit/index.blade.php' => [0, 1, 0],
     'platform/tenants/index.blade.php' => [0, 2, 0],
     'seo-settings.blade.php' => [0, 1, 0],
-    'settings.blade.php' => [0, 0, 1],
     'settings/domains.blade.php' => [0, 2, 0],
     'workflow-settings.blade.php' => [4, 1, 0],
 ];

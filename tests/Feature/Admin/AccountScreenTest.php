@@ -48,9 +48,10 @@ function accountPage(User $user): mixed
     return Livewire::actingAs($user)->test(Account::class);
 }
 
-function auditCount(string $action): int
+/** The member's own audit rows for $action (the shared test database keeps older runs' rows). */
+function auditCount(string $action, User $user): int
 {
-    return DB::connection('pgsql_admin')->table('audit_logs')->where('action', $action)->count();
+    return DB::connection('pgsql_admin')->table('audit_logs')->where('action', $action)->where('actor_id', $user->id)->count();
 }
 
 function withTwoFactor(User $user): User
@@ -129,7 +130,7 @@ it('changes the password on record and keeps this session signed in', function (
 
     expect(Hash::check('mua-ca-phe-luc-7-gio', $user->fresh()->password))->toBeTrue()
         ->and(session('password_hash_web'))->toBe($user->fresh()->getAuthPassword())
-        ->and(auditCount('auth.password.changed'))->toBe(1);
+        ->and(auditCount('auth.password.changed', $user))->toBe(1);
 });
 
 it('pauses the current-password check after five wrong tries', function (): void {
@@ -172,7 +173,7 @@ it('turns two-step sign-in on in three steps, on record, and shows the codes onc
 
     expect($user->fresh()->two_factor_confirmed_at)->not->toBeNull()
         ->and(session('account.tfa_secret'))->toBeNull()
-        ->and(auditCount('auth.2fa.enabled'))->toBe(1);
+        ->and(auditCount('auth.2fa.enabled', $user))->toBe(1);
 });
 
 it('cancels a started setup without turning anything on', function (): void {
@@ -200,7 +201,7 @@ it('makes new recovery codes only with the password, on record', function (): vo
     });
 
     expect($user->fresh()->two_factor_recovery_codes)->not->toBe($old)
-        ->and(auditCount('auth.2fa.recovery_regenerated'))->toBe(1);
+        ->and(auditCount('auth.2fa.recovery_regenerated', $user))->toBe(1);
 });
 
 it('turns two-step sign-in off only with the password, on record, and warns the member', function (): void {
@@ -215,7 +216,7 @@ it('turns two-step sign-in off only with the password, on record, and warns the 
 
     expect($user->fresh()->two_factor_confirmed_at)->toBeNull()
         ->and($user->fresh()->two_factor_secret)->toBeNull()
-        ->and(auditCount('auth.2fa.disabled'))->toBe(1);
+        ->and(auditCount('auth.2fa.disabled', $user))->toBe(1);
     Notification::assertSentTo($user, TwoFactorDisabledNotification::class);
 });
 
@@ -230,8 +231,8 @@ it('opens no two-step dialog while two-step sign-in is off', function (): void {
 it('unlinks the member\'s own sign-in account, on record, and nobody else\'s', function (): void {
     $user = accountMember();
     $other = accountMember();
-    SocialIdentity::query()->create(['user_id' => $user->id, 'provider' => 'google', 'sub' => 'g-1', 'email' => $user->email]);
-    SocialIdentity::query()->create(['user_id' => $other->id, 'provider' => 'facebook', 'sub' => 'f-1', 'email' => $other->email]);
+    SocialIdentity::query()->create(['user_id' => $user->id, 'provider' => 'google', 'sub' => 'g-'.$user->ulid, 'email' => $user->email]);
+    SocialIdentity::query()->create(['user_id' => $other->id, 'provider' => 'facebook', 'sub' => 'f-'.$other->ulid, 'email' => $other->email]);
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
         accountPage($user)->set('tab', 'linked')->assertSee('Đã liên kết')
@@ -242,7 +243,7 @@ it('unlinks the member\'s own sign-in account, on record, and nobody else\'s', f
 
     expect($user->socialIdentities()->count())->toBe(0)
         ->and($other->socialIdentities()->count())->toBe(1)
-        ->and(DB::connection('pgsql_admin')->table('audit_logs')->where('action', 'auth.social.unlinked')->value('meta'))->toContain('google');
+        ->and(DB::connection('pgsql_admin')->table('audit_logs')->where('action', 'auth.social.unlinked')->where('actor_id', $user->id)->value('meta'))->toContain('google');
 });
 
 it('saves the member\'s language and uses it when the session has none', function (): void {
@@ -255,6 +256,15 @@ it('saves the member\'s language and uses it when the session has none', functio
 
     session()->forget('locale');
     $this->actingAs($user->fresh())->get('http://a.test/admin/account')->assertOk()->assertSee('My account');
+});
+
+it('keeps the top-bar language switch on the member\'s account', function (): void {
+    $user = accountMember();
+
+    $this->actingAs($user)->get('http://a.test/admin/locale?set=ja')->assertRedirect();
+    $this->actingAs($user)->get('http://a.test/admin/locale?set=xx')->assertRedirect();
+
+    expect($user->fresh()->preferences['locale'] ?? null)->toBe('ja');
 });
 
 it('saves scheme, text size and motion as the member\'s own and paints them on the page', function (): void {
@@ -345,14 +355,4 @@ it('only lets support staff look: every change is refused during a support sessi
 
 it('refuses a visitor who is not signed in', function (): void {
     $this->get('http://a.test/admin/account')->assertRedirect();
-});
-
-it('renders the account page within its query budget', function (): void {
-    $user = withTwoFactor(accountMember(['entries.view', 'entries.review', 'forms.view', 'domains.manage']));
-    SocialIdentity::query()->create(['user_id' => $user->id, 'provider' => 'google', 'sub' => 'g-1', 'email' => $user->email]);
-
-    $this->actingAs($user)->get('http://a.test/admin/account')->assertOk(); // warm the caches a real member has
-    $count = countQueries(fn () => $this->actingAs($user)->get('http://a.test/admin/account?tab=prefs')->assertOk());
-
-    expect($count)->toBeLessThanOrEqual(30);
 });

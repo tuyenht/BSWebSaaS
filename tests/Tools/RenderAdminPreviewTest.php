@@ -77,6 +77,9 @@ const ADMIN_PREVIEW_SCREENS = [
     'gallery' => '/admin/_gallery',
     'menus' => '/admin/menus',
     'account' => '/admin/account',
+    'account-security' => '/admin/account?tab=security',
+    'account-linked' => '/admin/account?tab=linked',
+    'account-prefs' => '/admin/account?tab=prefs',
 ];
 
 const ADMIN_PREVIEW_HOST = 'preview.platform.test';

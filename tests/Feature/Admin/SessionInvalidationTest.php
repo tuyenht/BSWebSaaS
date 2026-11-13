@@ -1,7 +1,7 @@
 <?php
 
-use App\Modules\Admin\Livewire\ResetPassword;
 use App\Modules\Admin\Livewire\Account;
+use App\Modules\Admin\Livewire\ResetPassword;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Support\PlatformAccess;

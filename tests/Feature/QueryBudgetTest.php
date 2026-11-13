@@ -12,7 +12,9 @@ use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
+use App\Modules\Identity\Models\SocialIdentity;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\TwoFactor\TwoFactorService;
 use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
@@ -22,6 +24,7 @@ use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Workflow\Actions\InstantiateWorkflow;
 use Illuminate\Support\Facades\View;
+use PragmaRX\Google2FA\Google2FA;
 
 /*
  * Query Budget guardrail (CLAUDE.md §6): assert a hard ceiling of DB queries per
@@ -330,4 +333,25 @@ it('keeps the admin "Tổng quan" flat however many sub-categories its rows are 
     $thirty = $measure();
 
     expect($thirty)->toBe($one);
+});
+
+it('renders the member\'s own account page within its query budget', function (): void {
+    // Measured at 16 with two-step sign-in on, one linked account and every notification group
+    // shown: the linked accounts are one read and the notification rows add none per kind.
+    $budget = 16;
+    truncateRbac();
+    $this->artisan('rbac:sync')->assertSuccessful();
+    app(TeamContext::class)->forget();
+    $user = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view', 'entries.review', 'forms.view', 'domains.manage']));
+    $service = app(TwoFactorService::class);
+    $secret = $service->generateSecret();
+    $service->enable($user, $secret, (new Google2FA)->getCurrentOtp($secret));
+    SocialIdentity::query()->create(['user_id' => $user->id, 'provider' => 'google', 'sub' => 'g-'.$user->ulid, 'email' => $user->email]);
+    $user = $user->fresh();
+
+    $this->actingAs($user)->get('http://a.test/admin/account')->assertOk(); // warm the caches a signed-in member has
+    $count = countQueries(fn () => $this->actingAs($user)->get('http://a.test/admin/account?tab=prefs')->assertOk());
+
+    expect($count)->toBeLessThanOrEqual($budget);
 });

@@ -1,9 +1,9 @@
 <?php
 
+use App\Modules\Admin\Livewire\Account;
 use App\Modules\Admin\Livewire\Catalog\Editor as CatalogEditor;
 use App\Modules\Admin\Livewire\Login;
 use App\Modules\Admin\Livewire\ResetPassword;
-use App\Modules\Admin\Livewire\Account;
 use App\Modules\Admin\Livewire\Users\Index as UsersIndex;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
