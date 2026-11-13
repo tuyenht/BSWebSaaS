@@ -37,6 +37,17 @@ final class NotificationKinds
         ];
     }
 
+    /**
+     * The kinds of one group (workflow, lead, security, system): what a group tab on the
+     * Notifications page lists.
+     *
+     * @return list<string>
+     */
+    public static function ofGroup(string $group): array
+    {
+        return array_keys(array_filter(self::all(), fn (array $kind): bool => $kind['group'] === $group));
+    }
+
     public static function has(string $kind): bool
     {
         return array_key_exists($kind, self::all());

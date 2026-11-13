@@ -6,6 +6,8 @@
 # actions), #592/#593 (release file of the last deploy), #595 (catalog actions ask CatalogPolicy before writing),
 # #596 (admin floating contact screen: layout choice, preview iframe with the site's own widget, "Hiệu quả" card
 # reading contact_click_daily, created by the last deploy). No migration, no schedule, no library, no env key.
+# Run 13/11 12:20 (log plans/reports/deploy-runs/50e2f29-d8ae9c57-run-20261113-122040.log): no migration, every step
+# and every release_smoke check passed (125 OK), 0 app error lines.
 # shellcheck shell=bash disable=SC2034
 OLD=50e2f290c765b3583d8b799ab83c47d9c11414dd
 TARGET=d8ae9c57a02df6183bdf3e9a4bc573123dbfadea

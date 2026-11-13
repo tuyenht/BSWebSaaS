@@ -189,6 +189,10 @@
     "resources/js/admin-floating-contact-icon.js": {
       "js": 643,
       "css": 0
+    },
+    "resources/js/admin-notifications.js": {
+      "js": 674,
+      "css": 0
     }
   }
 }

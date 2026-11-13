@@ -57,6 +57,13 @@
         overscroll-behavior: contain;
     }
 
+    /* The foot: "Xem tất cả thông báo", the Notifications page (design 01 .ntf-f). */
+    .ntf-f {
+        flex: 0 0 auto;
+        padding: 8px;
+        border-top: 1px solid var(--color-border);
+    }
+
     .ntf-day {
         padding: 6px 16px;
         border-top: 1px solid var(--color-border);

@@ -2,8 +2,8 @@
     @if (session('status'))
         <div class="rounded border border-admin-success/30 bg-admin-success/10 px-4 py-3 text-sm text-admin-success-text">{{ session('status') }}</div>
     @endif
-    @if (request('oauth_error'))
-        <div class="rounded border border-admin-danger/30 bg-admin-danger/10 px-4 py-3 text-sm text-admin-danger-text">{{ request('oauth_error') }}</div>
+    @if ($oauthError = \App\Modules\Admin\Support\OAuthError::messageFor(request()->query('oauth_error')))
+        <div class="rounded border border-danger-base/25 bg-danger-soft px-4 py-3 text-sm text-danger-text">{{ $oauthError }}</div>
     @endif
 
     <div class="overflow-hidden rounded-md border border-border bg-surface shadow-card">
