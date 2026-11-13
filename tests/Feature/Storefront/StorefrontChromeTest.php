@@ -390,6 +390,26 @@ it('renders the rich footer: factories, dated licence with its issuer, copyright
         ->not->toContain('Chưa có trang')
         ->not->toContain('site-footer');
 
+    // A site with no company or brand name yet prints no company heading: the factory names are then h2
+    // themselves, so the footer never skips a heading level after a page whose last heading is its h1.
+    $names = app(Tenancy::class)->enter($siteId, function (): array {
+        $profile = SiteProfile::query()->firstOrFail();
+        $brand = SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->firstOrFail();
+        $kept = [$profile->brand_name, $brand->value];
+        $profile->update(['legal_name' => null, 'brand_name' => null]);
+        $brand->update(['value' => array_diff_key((array) $brand->value, ['name' => true])]);
+
+        return $kept;
+    });
+    expect($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent())
+        ->not->toContain('sf-footer__legal-name')
+        ->toContain('<h2 class="sf-factory__title">Nhà máy 1</h2>')
+        ->not->toContain('<h3 class="sf-factory__title">');
+    app(Tenancy::class)->enter($siteId, function () use ($names): void {
+        SiteProfile::query()->firstOrFail()->update(['legal_name' => 'Công ty TNHH Xưởng Mẫu', 'brand_name' => $names[0]]);
+        SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->firstOrFail()->update(['value' => $names[1]]);
+    });
+
     sfcSetting($siteId, 'footer', sfcFooter(['credit' => null, 'copyright' => ['start_year' => (int) $year]]));
     $plain = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
 

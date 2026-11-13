@@ -126,6 +126,8 @@
                 @if ($footer['factories'] !== [])
                     {{-- The cards and their turning controls share one box: on a phone the arrows stand on the card's edges, halfway down. --}}
                     <div class="sf-rot">
+                    {{-- A factory's name sits under the company name (h2) when the site gives one; without it the name is an h2 itself, so the footer never skips a heading level after a page whose last heading is its h1. --}}
+                    @php($sfFactoryTag = $sfLegal !== null ? 'h3' : 'h2')
                     <ul class="sf-footer__factories" data-sf-rot role="list" aria-label="{{ __('storefront.factories_label') }}">
                         @foreach ($footer['factories'] as $factory)
                             <li class="sf-factory">
@@ -133,7 +135,7 @@
                                     <span class="sf-factory__icon">@include('theme::partials.sf-icon', ['name' => 'building', 'size' => 32, 'stroke' => 1.5])</span>
                                     <div class="sf-factory__titles">
                                         <div class="sf-factory__title-row">
-                                            <h3 class="sf-factory__title">{{ $factory['title'] }}</h3>
+                                            <{{ $sfFactoryTag }} class="sf-factory__title">{{ $factory['title'] }}</{{ $sfFactoryTag }}>
                                             @if ($factory['area'] !== null)
                                                 <span class="sf-factory__chip">{{ __('storefront.factory_area', ['area' => number_format($factory['area'], 0, ',', '.')]) }}</span>
                                             @endif
