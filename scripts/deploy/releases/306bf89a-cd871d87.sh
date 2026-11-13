@@ -35,3 +35,5 @@ release_smoke() {
     html=$(curl -s -m 20 "https://$HOST/?bp=$RANDOM")
     expect "trang chủ av1 vẫn có thanh liên hệ dưới (#634)" "$({ grep -oF 'class="sf-fc-bar__dot"' <<< "$html" || true; } | wc -l | awk '{print ($1 > 0)}')" "1"
 }
+# Run 13/11/2026 21:45 (tmux deploy-cd871d87-13214532, launched by the AI): XONG, prod at cd871d87; 100 OK, 0 LỖI/LỆCH.
+# Log: plans/reports/deploy-runs/306bf89-cd871d87-run-20261113-214533.log
