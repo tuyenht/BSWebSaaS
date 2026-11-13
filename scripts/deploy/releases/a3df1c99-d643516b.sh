@@ -176,3 +176,6 @@ release_smoke() {
 release_rollback() { # data the old code (a3df1c99) cannot read
     echo "     Không có dữ liệu mới: bản cũ lại đặt nút giữa dưới ở cả máy tính (và nâng chấm chuyển ảnh)."
 }
+# Run 13/11/2026 17:31 (tmux deploy-d643516b-13173118, launched by the AI): XONG, prod at d643516b; 157 OK, 0 LỖI/LỆCH;
+# 0 error lines in the app log after the reload. av1 at 1366: the three round buttons in the right column, slider dots clear.
+# Log: plans/reports/deploy-runs/a3df1c9-d643516b-run-20261113-173119.log
