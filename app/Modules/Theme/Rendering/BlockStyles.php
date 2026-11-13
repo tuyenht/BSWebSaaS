@@ -39,7 +39,7 @@ final class BlockStyles
         'resources/css/sf-form.css' => ['lead-form', 'contact', 'sf-contact-card', 'sf-contact-cards', 'sf-map', 'sf-bmap', 'cf-turnstile'],
         'resources/css/sf-media.css' => ['sf-gallery', 'sf-video', 'sf-video-block', 'sf-viewer'],
         'resources/css/sf-stats.css' => ['sf-stat', 'sf-stats'],
-        'resources/css/sf-floating.css' => ['sf-fc', 'sf-fc-bar', 'sf-fc-ghost'],
+        'resources/css/sf-floating.css' => ['sf-fc', 'sf-fc-bar', 'sf-fc-ghost', 'sf-fc-sheet'],
         'resources/css/sf-404.css' => ['sf-404', 'error-page'],
     ];
 

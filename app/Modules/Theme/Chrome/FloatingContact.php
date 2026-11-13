@@ -108,6 +108,163 @@ final class FloatingContact
     /** Colour of the "Mua hàng" button when none (or a bad one) is stored. */
     public const string BUY_COLOR = '#ff7a46';
 
+    /** Messenger's own colour band, used unless the site chose a colour for it. */
+    public const string MESSENGER_FILL = 'linear-gradient(45deg,#0099FF,#A033FF 70%,#FF5280)';
+
+    /** Fill of the "Thêm" cell. */
+    public const string MORE_COLOR = '#475569';
+
+    /** The website draws e-mail with the open envelope of the design (the panel keeps its own code). */
+    private const array WIDGET_ICONS = ['email' => 'ri-mail-open-fill'];
+
+    /**
+     * The website's widget for a page in $locale: what the theme prints, every colour and link already
+     * worked out; null when the setting is off or no channel passes. Each site keeps the meaning of what
+     * it saved (layout(): an older horizontal or round-buttons-plus-phone-bar setting reads as combo),
+     * and an older phone bar's own cell ("Yêu cầu báo giá") reads as one more channel of the site's own
+     * at the end of the list (where older code drew it, and only while the list has room for it). Fills are the stored colours darkened under white marks (inkUnder);
+     * Messenger keeps its colour band unless the site chose a colour. `link` names the kind of link
+     * (for the click event: never the number or the address itself).
+     *
+     * @param  mixed  $raw  the stored value (an array when set)
+     * @param  string|null  $shopHref  the site's product list, or null when it has none
+     * @return array{layout: string, position: string, offset_x: int, offset_y: int, tone: string, track: bool, dial: bool, buttons: list<array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null}>, bar: list<array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null}>, sheet: list<array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null}>, more: bool, buy: array{href: string, fill: string, ink: string, icon: string}|null}|null
+     */
+    public static function widget(mixed $raw, string $locale, ?string $shopHref = null): ?array
+    {
+        if (! is_array($raw) || ($raw['enabled'] ?? false) !== true) {
+            return null;
+        }
+
+        $layout = self::layout($raw);
+        $items = [];
+        foreach (array_slice(is_array($raw['channels'] ?? null) ? array_values($raw['channels']) : [], 0, self::MAX_CHANNELS) as $channel) {
+            $item = is_array($channel) ? self::item($channel, $locale) : null;
+            if ($item !== null && ! isset($items[$item['key']])) {
+                $items[$item['key']] = $item;
+            }
+        }
+        // The older phone bar's own cell, only where older code drew it (round buttons with the phone bar
+        // on: a stale `phone_bar` under the bar theme never showed), and only while the list has room.
+        $pb = $raw['phone_bar'] ?? null;
+        $cta = self::storedTheme($raw) === 'vertical' && is_array($pb) && ($pb['enabled'] ?? false) === true
+            && count($items) < self::MAX_CHANNELS ? self::cta($pb['cta'] ?? null, $locale) : null;
+        $ctaHref = $cta === null ? null : self::clean('custom', $cta['href']);
+        $ctaItem = $cta === null || $ctaHref === null ? null : self::item(['key' => 'cta', 'on' => true, 'value' => $ctaHref, 'name' => $cta['label']], $locale, 'custom');
+        if ($ctaItem !== null) {
+            $items['cta'] = $ctaItem;
+        }
+        $items = array_values($items);
+        if ($items === []) {
+            return null;
+        }
+
+        $buy = $shopHref !== null && self::wantsShop($raw) ? self::buy($raw['buy'], $shopHref, true) : null;
+        $byKey = array_column($items, null, 'key');
+        $slots = self::barSlots(array_column($items, 'key'), $buy !== null);
+
+        return [
+            'layout' => $layout,
+            'position' => in_array($raw['position'] ?? null, self::POSITIONS, true) ? (string) $raw['position'] : 'right',
+            'offset_x' => self::offset($raw['offset_x'] ?? null, self::MAX_OFFSET_X, self::DEFAULT_OFFSET_X),
+            'offset_y' => self::offset($raw['offset_y'] ?? null, self::MAX_OFFSET_Y, self::DEFAULT_OFFSET_Y),
+            // "auto" follows the theme's dark flag, which no theme has yet: light.
+            'tone' => self::barTone($raw) === 'dark' ? 'dark' : 'light',
+            'track' => self::track($raw),
+            'dial' => self::dials($layout, self::dial($raw), count($items)),
+            'buttons' => $items,
+            'bar' => $layout === 'vertical' ? [] : self::pick($byKey, $slots['bar']),
+            'sheet' => $layout === 'vertical' ? [] : self::pick($byKey, $slots['sheet']),
+            'more' => $layout !== 'vertical' && $slots['more'],
+            'buy' => $buy,
+        ];
+    }
+
+    /**
+     * The widget channels for the given keys, in that order.
+     *
+     * @template T of array<string, mixed>
+     *
+     * @param  array<string, T>  $byKey
+     * @param  list<string>  $keys
+     * @return list<T>
+     */
+    private static function pick(array $byKey, array $keys): array
+    {
+        $picked = [];
+        foreach ($keys as $key) {
+            $picked[] = $byKey[$key];
+        }
+
+        return $picked;
+    }
+
+    /**
+     * One channel of the website's widget, or null when it is off, unknown or its value does not pass.
+     *
+     * @param  array<array-key, mixed>  $channel
+     * @return array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null}|null
+     */
+    private static function item(array $channel, string $locale, ?string $type = null): ?array
+    {
+        $key = is_string($channel['key'] ?? null) ? $channel['key'] : '';
+        $type ??= self::typeOf($key);
+        if ($type === null || ($channel['on'] ?? false) !== true) {
+            return null;
+        }
+        $clean = self::clean($type, $channel['value'] ?? null);
+        $href = $clean === null ? null : self::href($type, $clean);
+        if ($href === null) {
+            return null;
+        }
+
+        $meta = self::CHANNELS[$key] ?? null;
+        $own = self::color($channel['color'] ?? null);
+        $color = $own ?? ($meta['color'] ?? self::CUSTOM_COLOR);
+        $icon = self::WIDGET_ICONS[$key] ?? $meta['icon'] ?? (in_array($channel['icon'] ?? null, ContactIcons::CUSTOM, true) ? (string) $channel['icon'] : 'ri-global-line');
+
+        $tips = is_array($channel['tips'] ?? null) ? $channel['tips'] : [];
+        $label = self::label($tips[$locale] ?? null);
+        if ($label === null && $meta === null) {
+            $label = self::label($channel['name'] ?? null);
+        }
+
+        return [
+            'key' => $key,
+            'href' => $href,
+            'label' => $label,
+            'icon' => ContactIcons::solid($icon) ?? '',
+            'zalo' => $key === 'zalo',
+            'fill' => $key === 'messenger' && $own === null ? self::MESSENGER_FILL : ReadableColor::inkUnder($color),
+            // The hue itself, for the soft glow under a disc of the bar and the call button's pulse.
+            'tint' => $color,
+            'pulse' => ($meta['pulse'] ?? false) === true,
+            'link' => self::linkType($href),
+            'tel' => $type === 'phone' ? self::spaced($clean) : null,
+        ];
+    }
+
+    /** The kind of link, for the click event: tel, sms, mailto, app (viber://), web or page (a path on the site). */
+    private static function linkType(string $href): string
+    {
+        return match (true) {
+            str_starts_with($href, 'tel:') => 'tel',
+            str_starts_with($href, 'sms:') => 'sms',
+            str_starts_with($href, 'mailto:') => 'mailto',
+            str_starts_with($href, '/') => 'page',
+            str_starts_with($href, 'http') => 'web',
+            default => 'app',
+        };
+    }
+
+    /** A ten-digit number grouped 4 3 3 for reading (0912 345 678); any other as it is. */
+    public static function spaced(string $number): string
+    {
+        $digits = (string) preg_replace('/\D/', '', $number);
+
+        return strlen($digits) === 10 ? substr($digits, 0, 4).' '.substr($digits, 4, 3).' '.substr($digits, 7) : $number;
+    }
+
     /** The stored value checked and tidied for its type, or null when it does not pass. */
     public static function clean(string $type, mixed $value): ?string
     {
@@ -257,13 +414,27 @@ final class FloatingContact
     }
 
     /**
-     * Whether the stored setting would show the "Mua hàng" button (on, the phone bar, its switch
-     * on) — the only case where the caller needs to look up the site's product list.
+     * Whether the stored setting would show the "Mua hàng" button (on, a layout with the bottom bar,
+     * its switch on, and the bar theme stored, as older code required: a round-button site with the
+     * phone bar never showed it, whatever its stale `buy` says) — the only case where the caller needs
+     * to look up the site's product list.
      */
     public static function wantsShop(mixed $raw): bool
     {
-        return is_array($raw) && ($raw['enabled'] ?? false) === true && ($raw['theme'] ?? null) === 'horizontal'
+        return is_array($raw) && ($raw['enabled'] ?? false) === true && self::storedTheme($raw) === 'horizontal'
+            && self::layout($raw) !== 'vertical'
             && is_array($raw['buy'] ?? null) && ($raw['buy']['enabled'] ?? false) === true;
+    }
+
+    /**
+     * The older `theme` word as stored (vertical when missing or unknown, as older code read it).
+     *
+     * @param  array<array-key, mixed>  $raw
+     * @return 'vertical'|'horizontal'
+     */
+    private static function storedTheme(array $raw): string
+    {
+        return ($raw['theme'] ?? null) === 'horizontal' ? 'horizontal' : 'vertical';
     }
 
     /**
@@ -309,7 +480,7 @@ final class FloatingContact
         }
 
         $theme = in_array($raw['theme'] ?? null, self::THEMES, true) ? (string) $raw['theme'] : 'vertical';
-        $buy = $shopHref !== null && self::wantsShop($raw) ? self::buy($raw['buy'], $shopHref) : null;
+        $buy = $shopHref !== null && $theme === 'horizontal' && self::wantsShop($raw) ? self::buy($raw['buy'], $shopHref) : null;
 
         $buttons = [];
         $seen = [];
@@ -394,11 +565,12 @@ final class FloatingContact
 
     /**
      * The "Mua hàng" button: the site's brand fill with the brand's own readable ink, or a chosen
-     * colour darkened until the white bag reads on it at 3:1.
+     * colour darkened until the white bag reads on it at 3:1 (with $under, toward the slate in OKLab:
+     * ReadableColor::inkUnder, as the website draws every fill).
      *
      * @return array{href: string, fill: string, ink: string, icon: string}
      */
-    private static function buy(mixed $buy, string $href): array
+    private static function buy(mixed $buy, string $href, bool $under = false): array
     {
         $color = is_array($buy) ? ($buy['color'] ?? null) : null;
         if ($color === 'brand') {
@@ -406,7 +578,7 @@ final class FloatingContact
         }
         $hex = self::color($color) ?? self::BUY_COLOR;
 
-        return ['href' => $href, 'fill' => ReadableColor::on($hex, '#ffffff', 3.0) ?? $hex, 'ink' => '#ffffff', 'icon' => ContactIcons::path('ri-shopping-bag-fill') ?? ''];
+        return ['href' => $href, 'fill' => $under ? ReadableColor::inkUnder($hex) : (ReadableColor::on($hex, '#ffffff', 3.0) ?? $hex), 'ink' => '#ffffff', 'icon' => ContactIcons::path('ri-shopping-bag-fill') ?? ''];
     }
 
     /** An offset in px: an even whole number from 0 to $max, else the default. */

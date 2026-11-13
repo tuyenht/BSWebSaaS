@@ -3,8 +3,8 @@
 use Tests\Fixtures\StorefrontCss;
 
 /*
- * Style contracts of the shared chrome that no render can show: the dark phone bar that ends the page
- * without a light strip, the one-row branch chooser, and the footer cards that turn one at a time.
+ * Style contracts of the shared chrome that no render can show: the phone bottom bar whose copy ends
+ * the page without a light strip, the one-row branch chooser, and the footer cards that turn one at a time.
  * They read the stylesheet the pages load.
  */
 
@@ -13,15 +13,14 @@ function chromeCss(): string
     return (string) StorefrontCss::all();
 }
 
-it('hides the round buttons and shows a dark phone bar below 768px, its copy painted so no light strip shows', function (): void {
+it('hides a combo site’s round buttons and shows the bottom bar below 768px, its copy painted so no light strip shows', function (): void {
     $css = chromeCss();
-    preg_match('~@media \(max-width: 767\.98px\) \{\n    \.sf-fc--md \{(.*?)\n\}~s', $css, $block);
+    preg_match('~@media \(max-width: 767\.98px\) \{\n    /\* combo: the bar does the job below 768px \*/\n    \.sf-fc--combo \.sf-fc__float \{\n        display: none;\n    \}~s', $css, $block);
+    preg_match('~    \.sf-fc-bar--ghost \{(.*?)\n    \}~s', $css, $ghost);
 
-    expect($css)->toContain("    .sf-fc--md {\n        display: none;\n    }")
-        ->toContain("    .sf-fc-bar--board.sf-fc-bar--ghost {\n        visibility: visible;\n    }")
-        ->toContain("    .sf-fc-bar--board.sf-fc-bar--ghost .sf-fc-bar__list {\n        visibility: hidden;\n    }")
-        ->toContain('background: var(--color-dark);')
-        ->and($block)->not->toBeEmpty();
+    expect($block)->not->toBeEmpty()
+        ->and($ghost[1] ?? '')->toContain('position: static;')->toContain('background: var(--color-dark);')
+        ->and($css)->toContain("    .sf-fc-bar--ghost .sf-fc-bar__list {\n        visibility: hidden;\n    }");
 });
 
 it('keeps the branch chooser in one row whatever the number of branches', function (): void {

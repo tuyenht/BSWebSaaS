@@ -13,15 +13,16 @@ use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Chrome\FloatingContact;
 use App\Modules\Theme\Theming\ReadableColor;
 use Illuminate\Support\Facades\DB;
-use Tests\Fixtures\StorefrontCss;
 
 /*
- * The floating contact buttons (`storefront.floating_contact`): printed once per page after the
- * footer, as plain links (tel:, sms:, mailto:, https), only while the setting is on and at least
- * one channel passes its check. "vertical" = round buttons on the chosen side; "horizontal" = the
- * phone bottom bar (without the chat-window channels). Values are rebuilt from what passed the
+ * The floating contact (`storefront.floating_contact`): printed once per page after the footer, as
+ * plain links (tel:, sms:, mailto:, https), only while the setting is on and at least one channel
+ * passes its check. Layouts: combo = round buttons on a computer + the bottom bar on a phone;
+ * vertical = round buttons everywhere (folded into one "Liên hệ" button on a phone with many
+ * channels); horizontal = the bottom bar on phones only. Values are rebuilt from what passed the
  * check, never printed as typed.
  */
 
@@ -74,7 +75,7 @@ function flcConfig(array $channels, array $extra = []): array
 /** The floating-contact markup of a page (the nav and its spacer). */
 function flcPart(string $html): string
 {
-    preg_match_all('~<div class="sf-fc-ghost.*?</div></div>|<div class="sf-fc-bar sf-fc-bar--ghost".*?</ul></div>|<nav class="sf-fc[ -].*?</nav>~s', $html, $m);
+    preg_match_all('~<div class="sf-fc-ghost.*?</div></div>|<div class="sf-fc-bar sf-fc-bar--ghost".*?</ul></div>|<div class="sf-fc sf-fc--.*?</nav>\s*</div>~s', $html, $m);
 
     return implode("\n", $m[0]);
 }
@@ -139,140 +140,6 @@ it('never prints a script or data link, even in a channel of the site’s own', 
         ->and(strtolower($part))->not->toContain('javascript')->not->toContain('data:');
 })->with(['javascript:alert(1)', 'JaVaScRiPt:alert(1)', 'data:text/html,<b>x</b>', '//evil.test/x']);
 
-it('puts the buttons on the chosen side with the offsets, each named and drawn readable', function (): void {
-    $siteId = flcSite();
-    flcSetting($siteId, flcConfig([
-        ['key' => 'phone', 'on' => true, 'value' => '0912345678'],
-        ['key' => 'zalo', 'on' => true, 'value' => '0912345678', 'tips' => ['vi' => 'Chat ngay']],
-        ['key' => 'sms', 'on' => true, 'value' => '0912345678'],
-    ], ['position' => 'left', 'offset_x' => 40, 'offset_y' => 100]));
-
-    $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
-
-    expect($part)->toContain('<nav class="sf-fc sf-fc--left" aria-label="Liên hệ nhanh" style="--fc-ox:40px;--fc-oy:100px">')
-        ->toContain('sf-fc__list--left')
-        ->toContain('class="sf-fc__btn sf-fc__btn--pulse" href="tel:0912345678" aria-label="Gọi điện"')
-        // a word printed on the button is part of its name, so speech input can reach it
-        ->toContain('aria-label="Chat ngay Zalo"')
-        ->toContain('<span class="sf-fc__word" aria-hidden="true">Zalo</span>')
-        ->toContain('href="sms:0912345678" aria-label="Nhắn tin SMS"')
-        // the spacer copies the buttons (same list classes), hidden from assistive tech
-        ->toContain('<div class="sf-fc-ghost sf-fc-ghost--side" aria-hidden="true" style="--fc-ox:40px;--fc-oy:100px;--fc-n:3"><div class="sf-fc__list sf-fc__list--left">')
-        ->and(substr_count($part, 'sf-fc__btn"></span>'))->toBe(3)
-        ->and($part)->not->toContain('sf-fc-bar--ghost');
-});
-
-it('keeps a side stack’s room under the footer wherever it can cover the footer’s text, and the bottom row’s at every width', function (): void {
-    // Below 768px the room always stays. From 768px it stays while the stack reaches into the 80rem
-    // page (its offset + a 50px button > the margin beside the page's 2rem padding: up to about
-    // 1357px at a 16px root and the default offset, 1440px at An Vinh's 17px root, measured) or wraps into a
-    // second column; elsewhere the stack sits in the margin and no empty band is left. With the
-    // safe-area inset, so the stack never covers the last footer line.
-    $css = (string) StorefrontCss::all();
-    preg_match('/@media \(min-width: 768px\) \{\n    \.sf-fc-ghost--side \{(.*?)\n    \}\n\}/s', $css, $side);
-
-    expect($css)->toContain('padding: 0.625rem var(--fc-ox, 20px) calc(var(--fc-oy, 24px) + env(safe-area-inset-bottom, 0px));')
-        ->and($side[1] ?? '')->toContain('--fc-over: calc(var(--fc-n, 0) * (max(50px, 3.125rem) + 0.75rem) - 0.75rem - (100dvh - var(--fc-oy, 24px) - 5rem) + 1px);')
-        ->toContain('--fc-cover: calc(var(--fc-ox, 20px) + max(50px, 3.125rem) + 38rem - 50vw + 1px);')
-        ->toContain('max-height: clamp(0px, max(var(--fc-over), var(--fc-cover)) * 9999, 300vh);')
-        ->toContain('padding-bottom: clamp(0px, max(var(--fc-over), var(--fc-cover)) * 9999, calc(var(--fc-oy, 24px) + env(safe-area-inset-bottom, 0px)));')
-        ->not->toContain('display: none')
-        // the page the cover term measures against: 80rem with 2rem side padding from lg
-        ->and($css)->toContain(".sf-container {\n    max-width: 80rem;")
-        ->and(preg_match('~\.sf-fc-ghost--row\s*\{[^}]*display:\s*none~', $css))->toBe(0)
-        ->and(preg_match('~\.sf-fc-ghost--side\s*\{[^}]*display:\s*none~', $css))->toBe(0);
-});
-
-it('reserves the bottom row’s room as a row', function (): void {
-    $siteId = flcSite();
-    flcSetting($siteId, flcConfig([['key' => 'phone', 'on' => true, 'value' => '0912345678']], ['position' => 'bottom']));
-
-    expect(flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent()))
-        ->toContain('<div class="sf-fc-ghost sf-fc-ghost--row" aria-hidden="true"')
-        ->toContain('<div class="sf-fc__list sf-fc__list--bottom"><span class="sf-fc__btn"></span></div>');
-});
-
-it('falls back to the default side and offsets on unknown or odd values', function (): void {
-    $siteId = flcSite();
-    flcSetting($siteId, flcConfig([['key' => 'phone', 'on' => true, 'value' => '0912345678']], ['position' => 'top', 'offset_x' => 31, 'offset_y' => 999]));
-
-    $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
-
-    expect($part)->toContain('<nav class="sf-fc sf-fc--right" aria-label="Liên hệ nhanh" style="--fc-ox:20px;--fc-oy:24px">');
-});
-
-it('draws every channel in the phone bottom bar, chat channels included, with a rank class from the fourth place', function (): void {
-    $siteId = flcSite();
-    flcSetting($siteId, flcConfig([
-        ['key' => 'messenger', 'on' => true, 'value' => 'trang.mau'],
-        ['key' => 'phone', 'on' => true, 'value' => '0912345678'],
-        ['key' => 'email', 'on' => true, 'value' => 'lienhe@mau.test'],
-        ['key' => 'zalo', 'on' => true, 'value' => '0912345678'],
-        ['key' => 'sms', 'on' => true, 'value' => '0912345678'],
-        ['key' => 'whatsapp', 'on' => true, 'value' => '0912345678'],
-        ['key' => 'telegram', 'on' => true, 'value' => 'trangmau'],
-        ['key' => 'viber', 'on' => true, 'value' => '0912345678'],
-    ], ['theme' => 'horizontal']));
-
-    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
-    preg_match('~<nav class="sf-fc-bar".*?</nav>~s', $html, $bar);
-    preg_match('~<div class="sf-fc-bar sf-fc-bar--ghost".*?</ul></div>~s', $html, $ghost);
-
-    expect($bar[0] ?? '')->toContain('href="https://m.me/trang.mau"')->toContain('href="mailto:lienhe@mau.test"')
-        ->toContain('<li class="sf-fc-bar__item sf-fc-bar__item--r4"><a class="sf-fc-bar__link" href="https://zalo.me/')
-        ->toContain('<li class="sf-fc-bar__item sf-fc-bar__item--r8"><a class="sf-fc-bar__link" href="viber:')
-        ->not->toContain('sf-fc-bar__item--r9')->not->toContain('sf-fc-bar__item--rx')
-        ->and(substr_count($bar[0] ?? '', '<a '))->toBe(8)
-        ->and(substr_count($bar[0] ?? '', '<li class="sf-fc-bar__item">'))->toBe(3)
-        ->and(substr_count($ghost[0] ?? '', 'sf-fc-bar__item--r'))->toBe(5);
-});
-
-it('gives the twelfth place of the bar and every later one a class that never shows', function (): void {
-    $siteId = flcSite();
-    $keys = ['phone', 'zalo', 'messenger', 'email', 'sms', 'whatsapp', 'viber', 'telegram', 'tiktok', 'youtube', 'instagram', 'maps'];
-    flcSetting($siteId, flcConfig(array_map(
-        static fn (string $key): array => ['key' => $key, 'on' => true, 'value' => match (true) {
-            $key === 'email' => 'lienhe@mau.test',
-            $key === 'messenger' => 'trang.mau',
-            $key === 'telegram' => 'trangmau',
-            in_array($key, ['tiktok', 'youtube', 'instagram', 'maps'], true) => 'https://example.com/'.$key,
-            default => '0912345678',
-        }],
-        $keys,
-    ), ['theme' => 'horizontal']));
-
-    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
-    preg_match('~<nav class="sf-fc-bar".*?</nav>~s', $html, $bar);
-
-    expect(substr_count($bar[0] ?? '', '<a '))->toBe(12)
-        ->and($bar[0] ?? '')->toContain('sf-fc-bar__item--r11"')->toContain('sf-fc-bar__item sf-fc-bar__item--rx"><a')
-        ->and(substr_count($bar[0] ?? '', 'sf-fc-bar__item--rx'))->toBe(1);
-});
-
-it('prints the same channels as round buttons from 768px in the bar theme, each ghost for its own width only', function (): void {
-    $siteId = flcSite();
-    flcSetting($siteId, flcConfig([
-        ['key' => 'phone', 'on' => true, 'value' => '0912345678'],
-        ['key' => 'email', 'on' => true, 'value' => 'lienhe@mau.test'],
-    ], ['theme' => 'horizontal', 'position' => 'left', 'offset_x' => 40, 'offset_y' => 100]));
-
-    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
-    preg_match('~<nav class="sf-fc sf-fc--left sf-fc--wide".*?</nav>~s', $html, $nav);
-    preg_match('~<div class="sf-fc-ghost sf-fc-ghost--side sf-fc-ghost--wide".*?</div></div>~s', $html, $wideGhost);
-
-    expect($nav[0] ?? '')->toContain('style="--fc-ox:40px;--fc-oy:100px"')->toContain('href="tel:0912345678"')->toContain('href="mailto:lienhe@mau.test"')
-        ->and($wideGhost[0] ?? '')->toContain('--fc-n:2')
-        // the bar and its ghost are the phone's; no second ghost without the wide class
-        ->and($html)->toContain('<nav class="sf-fc-bar"')->toContain('sf-fc-bar sf-fc-bar--ghost')
-        ->and(substr_count($html, 'sf-fc-ghost sf-fc-ghost--'))->toBe(1);
-
-    $css = (string) file_get_contents(resource_path('css/sf-floating.css'));
-    expect(preg_match('~\.sf-fc--wide,\s*\.sf-fc-ghost--wide\s*\{[^}]*display:\s*none~', $css))->toBe(1)
-        ->and(preg_match('~@media \(min-width: 768px\)\s*\{\s*\.sf-fc--wide\s*\{[^}]*display:\s*block~', $css))->toBe(1)
-        ->and($css)->not->toContain('overflow-wrap: anywhere');
-});
-
-/** A product list for the site at /san-pham: a products section on a category, one published product. */
 function flcShop(int $siteId): void
 {
     app(Tenancy::class)->enter($siteId, function (): void {
@@ -285,101 +152,329 @@ function flcShop(int $siteId): void
     });
 }
 
-/** @return array<string, mixed> */
-function flcBarWithBuy(string $color = '#0ab39c'): array
+/** The five channels a new site lists, all filled in. */
+function flcFive(array $extra = []): array
 {
     return flcConfig([
         ['key' => 'phone', 'on' => true, 'value' => '0912345678'],
         ['key' => 'zalo', 'on' => true, 'value' => '0912345678'],
-        ['key' => 'sms', 'on' => true, 'value' => '0912345678'],
-    ], ['theme' => 'horizontal', 'buy' => ['enabled' => true, 'color' => $color]]);
+        ['key' => 'messenger', 'on' => true, 'value' => 'trang.mau'],
+        ['key' => 'email', 'on' => true, 'value' => 'lienhe@mau.test'],
+        ['key' => 'sms', 'on' => true, 'value' => '0987654321'],
+    ], $extra);
 }
 
-it('keeps “Mua hàng” within the first three places of the bar however many channels there are', function (): void {
+/** @return list<string> the labels of the bar's cells, in order */
+function flcBarLabels(string $part): array
+{
+    preg_match('~<nav class="sf-fc-bar sf-fc-bar--(?:light|dark)".*?<ul class="sf-fc-bar__list".*?</ul>~s', $part, $bar);
+    preg_match_all('~<span class="sf-fc-bar__label">([^<]*)</span>~', $bar[0] ?? '', $m);
+
+    return $m[1];
+}
+
+it('draws each layout for the widths it belongs to, reading an older setting as the layout it meant', function (array $extra, string $layout, bool $round, bool $bar): void {
     $siteId = flcSite();
-    flcShop($siteId);
-    flcSetting($siteId, array_replace(flcBarWithBuy(), ['channels' => array_map(
-        static fn (string $key): array => ['key' => $key, 'on' => true, 'value' => '0912345678'],
-        ['phone', 'zalo', 'sms', 'whatsapp', 'viber'],
-    )]));
+    flcSetting($siteId, flcConfig([['key' => 'phone', 'on' => true, 'value' => '0912345678']], $extra));
 
-    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
-    preg_match('~<nav class="sf-fc-bar".*?</nav>~s', $html, $bar);
+    $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
 
-    // Two channels and the buy cell are the always-shown places; the rest start at rank 4, in order.
-    expect($bar[0] ?? '')->toContain('sf-fc-bar__item--r4"><a class="sf-fc-bar__link" href="sms:')
-        ->toContain('sf-fc-bar__item--r5"><a class="sf-fc-bar__link" href="https://wa.me/')
-        ->toContain('sf-fc-bar__item--r6"><a class="sf-fc-bar__link" href="viber:')
-        ->toContain('<li class="sf-fc-bar__item"><a class="sf-fc-bar__link" href="/san-pham"')
-        ->and(substr_count($bar[0] ?? '', '<li class="sf-fc-bar__item">'))->toBe(3);
-});
+    expect($part)->toContain('<div class="sf-fc sf-fc--'.$layout.'" data-fc-root')
+        // The copy code's address only where its "Chép số" button is printed (the round call button).
+        ->and(str_contains($part, 'data-fc-js="'))->toBe($round)
+        ->and(str_contains($part, '<nav class="sf-fc__float'))->toBe($round)
+        ->and(str_contains($part, '<nav class="sf-fc-bar'))->toBe($bar)
+        ->and(str_contains($part, 'sf-fc-ghost--wide'))->toBe($layout === 'combo');
+})->with([
+    'combo' => [['layout' => 'combo'], 'combo', true, true],
+    'vertical' => [['layout' => 'vertical'], 'vertical', true, false],
+    'horizontal' => [['layout' => 'horizontal'], 'horizontal', false, true],
+    'older horizontal theme' => [['theme' => 'horizontal'], 'combo', true, true],
+    'older round buttons with the phone bar' => [['phone_bar' => ['enabled' => true]], 'combo', true, true],
+    'older plain round buttons' => [[], 'vertical', true, false],
+]);
 
-it('ends the phone bar with “Mua hàng” opening the product list, and keeps its room in the spacer', function (): void {
+it('folds a phone’s round buttons into one “Liên hệ” button only for a vertical site with four ready channels and the switch on', function (array $extra, bool $dial): void {
     $siteId = flcSite();
-    flcShop($siteId);
-    flcSetting($siteId, flcBarWithBuy());
+    flcSetting($siteId, flcFive($extra));
 
-    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
-    preg_match('~<nav class="sf-fc-bar".*?</nav>~s', $html, $bar);
-    preg_match('~<div class="sf-fc-bar sf-fc-bar--ghost".*?</ul></div>~s', $html, $ghost);
+    $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
 
-    expect($bar[0] ?? '')->toContain('href="tel:0912345678"')->toContain('href="https://zalo.me/0912345678"')
-        ->toContain('<li class="sf-fc-bar__item sf-fc-bar__item--r4"><a class="sf-fc-bar__link" href="sms:0912345678"')
-        ->toContain('href="/san-pham" style="--fc-fill:')
-        ->toContain(';--fc-ink:#ffffff"')
-        ->toContain('<span class="sf-fc-bar__label">Mua hàng</span>')
-        ->and(substr_count($bar[0] ?? '', '<a '))->toBe(4)
-        ->and(substr_count($ghost[0] ?? '', '<li class="sf-fc-bar__item">'))->toBe(3)
-        ->and(substr_count($ghost[0] ?? '', '<li class="sf-fc-bar__item sf-fc-bar__item--r4">'))->toBe(1)
-        ->and($ghost[0] ?? '')->toContain('Mua hàng');
+    expect(str_contains($part, 'popovertarget="sf-fc-dial"'))->toBe($dial)
+        ->and(str_contains($part, 'id="sf-fc-dial" popover'))->toBe($dial);
+    if ($dial) {
+        expect($part)->toContain('Liên hệ · 5')->toContain('>Đóng</span>')->toContain('sf-fc-ghost--dial');
+    }
+})->with([
+    'vertical, five channels' => [['layout' => 'vertical'], true],
+    'vertical, switched off' => [['layout' => 'vertical', 'dial' => false], false],
+    'combo' => [['layout' => 'combo'], false],
+]);
 
-    // The product list itself is reachable at that address.
-    $this->get('http://mau.platform.test/san-pham')->assertOk()->assertSee('Sản phẩm 1');
-});
-
-it('uses the site’s brand fill and ink for a brand-coloured “Mua hàng”', function (): void {
-    $siteId = flcSite();
-    flcShop($siteId);
-    flcSetting($siteId, flcBarWithBuy('brand'));
-
-    expect($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent())
-        ->toContain('href="/san-pham" style="--fc-fill:var(--color-primary);--fc-ink:var(--color-on-primary)"');
-});
-
-it('shows no “Mua hàng” and three channels while the site has no product list', function (): void {
-    $siteId = flcSite();
-    flcSetting($siteId, flcBarWithBuy());
-
-    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
-    preg_match('~<nav class="sf-fc-bar".*?</nav>~s', $html, $bar);
-
-    expect($bar[0] ?? '')->toContain('href="sms:0912345678"')->not->toContain('Mua hàng')
-        ->and(substr_count($bar[0] ?? '', '<a '))->toBe(3);
-});
-
-it('prints the hover label of the page’s language and escapes every label', function (): void {
+it('puts Email, Zalo and the call on the bar with no “Thêm” for a site like An Vinh', function (): void {
     $siteId = flcSite();
     flcSetting($siteId, flcConfig([
-        ['key' => 'phone', 'on' => true, 'value' => '0912345678', 'tips' => ['vi' => '<script>alert(1)</script>"x']],
-        ['key' => 'c3', 'on' => true, 'value' => 'https://example.com/a?b=1&c=2', 'icon' => 'ri-not-allowed', 'name' => 'Kênh <b>riêng</b>'],
+        ['key' => 'email', 'on' => true, 'value' => 'lienhe@mau.test'],
+        ['key' => 'zalo', 'on' => true, 'value' => '0912345678'],
+        ['key' => 'phone', 'on' => true, 'value' => '0912345678'],
+    ], ['layout' => 'combo']));
+
+    $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
+
+    expect(flcBarLabels($part))->toBe(['Gửi Email', 'Zalo', 'Gọi điện'])
+        ->and($part)->not->toContain('popovertarget')->not->toContain('sf-fc-sheet');
+});
+
+it('fills the bar with the call, Zalo and SMS and opens Messenger and Email from “Thêm”, “Mua hàng” last', function (bool $shop): void {
+    $siteId = flcSite();
+    if ($shop) {
+        flcShop($siteId);
+    }
+    flcSetting($siteId, flcFive(['theme' => 'horizontal', 'layout' => 'combo', 'buy' => ['enabled' => true, 'color' => '#0ab39c']]));
+
+    $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
+    preg_match('~<div class="sf-fc-sheet" id="sf-fc-more" popover>.*?</div>~s', $part, $sheet);
+
+    expect(flcBarLabels($part))->toBe($shop ? ['Gọi điện', 'Zalo', 'Nhắn tin', 'Thêm', 'Mua hàng'] : ['Gọi điện', 'Zalo', 'Nhắn tin', 'Thêm'])
+        ->and($sheet[0])->toContain('Kênh liên hệ khác')->toContain('href="https://m.me/trang.mau"')->toContain('href="mailto:lienhe@mau.test"')
+        ->and(substr_count($sheet[0], '<li class="sf-fc-sheet__item">'))->toBe(2)
+        // The bar cells a narrow phone lets go (fourth place on, "Thêm" and "Mua hàng" counted) wait in the sheet too.
+        ->and(substr_count($sheet[0], '<li class="sf-fc-sheet__item sf-fc-sheet__item--r'))->toBe($shop ? 2 : 1)
+        ->and($part)->toContain('<li class="sf-fc-bar__item sf-fc-bar__item--more"><button type="button" class="sf-fc-bar__link" popovertarget="sf-fc-more">');
+})->with(['with a product list' => true, 'without one' => false]);
+
+/** @return list<string> each bar cell as "label" or "label:place class" (r4/r5/m4/m5), in order */
+function flcBarCells(string $part): array
+{
+    preg_match('~<nav class="sf-fc-bar sf-fc-bar--(?:light|dark)".*?<ul class="sf-fc-bar__list".*?</ul>~s', $part, $bar);
+    preg_match_all('~<li class="sf-fc-bar__item([^"]*)">.*?<span class="sf-fc-bar__label">([^<]*)</span>~s', $bar[0] ?? '', $m, PREG_SET_ORDER);
+
+    return array_map(static function (array $cell): string {
+        preg_match('~--([rm][45])~', $cell[1], $place);
+
+        return $cell[2].(isset($place[1]) ? ':'.$place[1] : '');
+    }, $m);
+}
+
+/** @return list<string> the sheet's rows as "label" or "label:place class", in order; [] without a sheet */
+function flcSheetRows(string $part): array
+{
+    preg_match('~<div class="sf-fc-sheet" id="sf-fc-more" popover>.*?</ul>~s', $part, $sheet);
+    preg_match_all('~<li class="sf-fc-sheet__item(?: sf-fc-sheet__item--(r[45]))?">.*?<span class="sf-fc-sheet__l">([^<]*)</span>~s', $sheet[0] ?? '', $m, PREG_SET_ORDER);
+
+    return array_map(static fn (array $row): string => $row[2].($row[1] !== '' ? ':'.$row[1] : ''), $m);
+}
+
+it('keeps every channel one tap away on a narrow phone: the cells it lets go wait in the sheet behind a “Thêm” shown just there', function (array $keys, bool $shop, array $cells, array $rows): void {
+    $siteId = flcSite();
+    if ($shop) {
+        flcShop($siteId);
+    }
+    $values = ['phone' => '0912345678', 'zalo' => '0912345678', 'sms' => '0912345678', 'whatsapp' => '0912345678', 'telegram' => '@mau_shop', 'email' => 'lienhe@mau.test'];
+    flcSetting($siteId, flcConfig(
+        array_map(static fn (string $key): array => ['key' => $key, 'on' => true, 'value' => $values[$key]], $keys),
+        ['theme' => 'horizontal', 'layout' => 'horizontal'] + ($shop ? ['buy' => ['enabled' => true, 'color' => '#0ab39c']] : []),
+    ));
+
+    $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
+
+    // r5 goes below 22.5rem (four cells), r4 below 18rem (three); "Thêm" (m5/m4) shows exactly there.
+    expect(flcBarCells($part))->toBe($cells)
+        ->and(flcSheetRows($part))->toBe($rows)
+        ->and($part)->toContain('popovertarget="sf-fc-more"')
+        ->and(substr_count($part, 'id="sf-fc-more"'))->toBe(1);
+    // The ghost keeps the same cells, so the room it reserves matches the bar at every width.
+    preg_match('~<div class="sf-fc-bar sf-fc-bar--ghost".*?</ul></div>~s', $part, $ghost);
+    expect(substr_count($ghost[0], 'sf-fc-bar__item--'))->toBe(count(array_filter($cells, static fn (string $c): bool => str_contains($c, ':'))) + 1);
+})->with([
+    'five quick channels, no “Mua hàng”' => [['phone', 'zalo', 'sms', 'whatsapp', 'telegram'], false,
+        ['Gọi điện', 'Zalo', 'Nhắn tin:r4', 'WhatsApp:r5', 'Telegram:r5', 'Thêm:m5'], ['Nhắn tin:r4', 'WhatsApp:r5', 'Telegram:r5']],
+    'four quick channels and “Mua hàng”' => [['phone', 'zalo', 'sms', 'whatsapp'], true,
+        ['Gọi điện', 'Zalo:r4', 'Nhắn tin:r5', 'WhatsApp:r5', 'Thêm:m5', 'Mua hàng'], ['Zalo:r4', 'Nhắn tin:r5', 'WhatsApp:r5']],
+    'three quick channels and one more joining the bar' => [['phone', 'zalo', 'sms', 'email'], false,
+        ['Gọi điện', 'Zalo', 'Nhắn tin:r4', 'Gửi Email:r4', 'Thêm:m4'], ['Nhắn tin:r4', 'Gửi Email:r4']],
+    'four quick channels and one more joining the bar' => [['phone', 'zalo', 'sms', 'whatsapp', 'email'], false,
+        ['Gọi điện', 'Zalo', 'Nhắn tin:r4', 'WhatsApp:r5', 'Gửi Email:r5', 'Thêm:m5'], ['Nhắn tin:r4', 'WhatsApp:r5', 'Gửi Email:r5']],
+    'three quick channels, one more joining, and “Mua hàng”' => [['phone', 'zalo', 'sms', 'email'], true,
+        ['Gọi điện', 'Zalo:r4', 'Nhắn tin:r5', 'Gửi Email:r5', 'Thêm:m5', 'Mua hàng'], ['Zalo:r4', 'Nhắn tin:r5', 'Gửi Email:r5']],
+    'a full bar with its own “Thêm” and “Mua hàng”' => [['phone', 'zalo', 'sms', 'whatsapp', 'telegram', 'email'], true,
+        ['Gọi điện', 'Zalo:r4', 'Nhắn tin:r5', 'Thêm', 'Mua hàng'], ['Zalo:r4', 'Nhắn tin:r5', 'WhatsApp', 'Telegram', 'Gửi Email']],
+]);
+
+it('prints no “Thêm” and no sheet for a bar of three cells, which every phone fits', function (): void {
+    $siteId = flcSite();
+    flcShop($siteId);
+    flcSetting($siteId, flcConfig([
+        ['key' => 'phone', 'on' => true, 'value' => '0912345678'],
+        ['key' => 'zalo', 'on' => true, 'value' => '0912345678'],
+    ], ['theme' => 'horizontal', 'layout' => 'combo', 'buy' => ['enabled' => true, 'color' => '#0ab39c']]));
+
+    $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
+
+    expect(flcBarCells($part))->toBe(['Gọi điện', 'Zalo', 'Mua hàng'])
+        ->and($part)->not->toContain('sf-fc-sheet')->not->toContain('popovertarget')->not->toContain('sf-fc-bar__item--');
+});
+
+it('lists in the sheet the bar channels a narrow phone lets go, and gives them the same place class', function (): void {
+    $siteId = flcSite();
+    flcSetting($siteId, flcConfig([
+        ['key' => 'phone', 'on' => true, 'value' => '0912345678'],
+        ['key' => 'zalo', 'on' => true, 'value' => '0912345678'],
+        ['key' => 'sms', 'on' => true, 'value' => '0912345678'],
+        ['key' => 'whatsapp', 'on' => true, 'value' => '0912345678'],
+        ['key' => 'telegram', 'on' => true, 'value' => '@mau_shop'],
+        ['key' => 'email', 'on' => true, 'value' => 'lienhe@mau.test'],
+    ], ['layout' => 'horizontal']));
+
+    $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
+
+    // Five places: four channels and "Thêm"; WhatsApp is fourth after "Thêm" is counted → r5.
+    expect(flcBarLabels($part))->toBe(['Gọi điện', 'Zalo', 'Nhắn tin', 'WhatsApp', 'Thêm'])
+        ->and($part)->toContain('sf-fc-bar__item sf-fc-bar__item--r4"><a class="sf-fc-bar__link" href="sms:')
+        ->toContain('sf-fc-bar__item sf-fc-bar__item--r5"><a class="sf-fc-bar__link" href="https://wa.me/')
+        ->toContain('sf-fc-sheet__item sf-fc-sheet__item--r5"><a class="sf-fc-sheet__row" href="https://wa.me/');
+});
+
+it('turns an older phone bar’s own cell into a channel at the end with its label, and never prints an unsafe one', function (string $url, ?string $href): void {
+    $siteId = flcSite();
+    flcSetting($siteId, flcConfig([['key' => 'phone', 'on' => true, 'value' => '0912345678']], [
+        'phone_bar' => ['enabled' => true, 'cta' => ['label' => ['vi' => 'Yêu cầu báo giá', 'en' => 'Get a quote'], 'url' => $url]],
     ]));
 
     $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
 
-    expect($part)->not->toContain('<script>')->not->toContain('<b>')
-        ->toContain('aria-label="&lt;script&gt;alert(1)&lt;/script&gt;&quot;x"')
-        ->toContain('aria-label="Kênh &lt;b&gt;riêng&lt;/b&gt;"')
-        ->toContain('href="https://example.com/a?b=1&amp;c=2"');
+    if ($href === null) {
+        expect($part)->not->toContain('Yêu cầu báo giá')->and(strtolower($part))->not->toContain('javascript');
+
+        return;
+    }
+    expect(flcBarLabels($part))->toBe(['Gọi điện', 'Yêu cầu báo giá'])
+        ->and($part)->toContain('<a class="sf-fc__btn" href="'.$href.'" aria-label="Yêu cầu báo giá"');
+})->with([
+    'a page of the site' => ['/lien-he', '/lien-he'],
+    'a web link' => ['https://mau.test/bao-gia', 'https://mau.test/bao-gia'],
+    'a script link' => ['javascript:alert(1)', null],
+]);
+
+it('adds the older phone bar’s own cell only where older code drew it, never from a phone bar left under the bar theme', function (): void {
+    $siteId = flcSite();
+    $cta = ['enabled' => true, 'cta' => ['label' => ['vi' => 'Yêu cầu báo giá'], 'url' => '/lien-he']];
+    flcSetting($siteId, flcConfig([['key' => 'phone', 'on' => true, 'value' => '0912345678']], ['theme' => 'horizontal', 'phone_bar' => $cta]));
+
+    $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
+
+    expect(flcBarLabels($part))->toBe(['Gọi điện'])
+        ->and($part)->not->toContain('Yêu cầu báo giá')->not->toContain('href="/lien-he"');
+});
+
+it('fills each disc with its colour darkened under the white mark, Messenger with its band unless the site chose a colour', function (): void {
+    $siteId = flcSite();
+    flcSetting($siteId, flcConfig([
+        ['key' => 'messenger', 'on' => true, 'value' => 'trang.mau'],
+        ['key' => 'c1', 'on' => true, 'value' => '/lien-he', 'name' => 'Báo giá', 'color' => '#ffd400', 'icon' => 'ri-global-line'],
+        ['key' => 'phone', 'on' => true, 'value' => '0912345678'],
+    ], ['layout' => 'vertical']));
+    $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
+
+    expect($part)->toContain('--fc-fill:'.FloatingContact::MESSENGER_FILL.';--fc-tint:#0078ff')
+        ->toContain('--fc-fill:'.ReadableColor::inkUnder('#ffd400').';--fc-tint:#ffd400')
+        ->toContain('--fc-fill:'.ReadableColor::inkUnder('#4caf50').';--fc-tint:#4caf50')
+        ->and(ReadableColor::ratio(ReadableColor::inkUnder('#ffd400'), '#ffffff'))->toBeGreaterThanOrEqual(3.0);
+
+    flcSetting($siteId, flcConfig([['key' => 'messenger', 'on' => true, 'value' => 'trang.mau', 'color' => '#7c3aed']]));
+    $own = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
+
+    expect($own)->toContain('--fc-fill:'.ReadableColor::inkUnder('#7c3aed').';')->not->toContain('linear-gradient');
+});
+
+it('names each click’s channel, place and kind of link, never the number or the address, and nothing with tracking off', function (): void {
+    $siteId = flcSite();
+    flcSetting($siteId, flcFive(['layout' => 'combo']));
+    $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
+    preg_match_all('~data-fc[a-z-]*="([^"]*)"~', $part, $data);
+
+    expect($part)->toContain('href="tel:0912345678" aria-label="Gọi điện" data-fc="phone" data-fc-at="floating" data-fc-lt="tel"')
+        ->toContain('href="tel:0912345678" data-fc="phone" data-fc-at="bar" data-fc-lt="tel"')
+        ->toContain('href="mailto:lienhe@mau.test" data-fc="email" data-fc-at="sheet" data-fc-lt="mailto"')
+        ->and(implode(' ', $data[1]))->not->toContain('0912')->not->toContain('0987')->not->toContain('@')->not->toContain('trang.mau');
+
+    flcSetting($siteId, flcFive(['layout' => 'combo', 'track' => false]));
+    $off = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
+
+    expect($off)->not->toContain('data-fc=')->toContain('data-fc-root');
+});
+
+it('points every popover button at one element of that id', function (array $extra): void {
+    $siteId = flcSite();
+    flcSetting($siteId, flcFive($extra));
+    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
+
+    preg_match_all('~popovertarget="([^"]+)"~', $html, $targets);
+    expect($targets[1])->not->toBeEmpty();
+    foreach ($targets[1] as $id) {
+        expect(substr_count($html, 'id="'.$id.'"'))->toBe(1)
+            ->and($html)->toMatch('~id="'.$id.'"[^>]* popover~');
+    }
+})->with([
+    'the sheet' => [['layout' => 'combo']],
+    'the dial' => [['layout' => 'vertical']],
+]);
+
+it('shows the call button’s number with a “Chép số” button on a computer, and hides SMS there', function (): void {
+    $siteId = flcSite();
+    flcSetting($siteId, flcFive(['layout' => 'vertical', 'dial' => false]));
+    $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
+
+    expect($part)->toContain('<li class="sf-fc__item sf-fc__item--call sf-fc__item--pulse"')
+        ->toContain('<span class="sf-fc__label-t">Gọi điện · <span class="sf-fc__num">0912 345 678</span></span><button type="button" class="sf-fc__copy" data-fc-copy data-done="Đã chép">')
+        ->toContain('<span class="sf-fc__copy-t">Chép số</span>')
+        ->toContain('<li class="sf-fc__item sf-fc__item--sms"')
+        ->and(substr_count($part, 'sf-fc__copy"'))->toBe(1);
+});
+
+it('gives the page the copy code’s address only when a round call button has its “Chép số” button', function (): void {
+    $siteId = flcSite();
+    flcSetting($siteId, flcConfig([['key' => 'zalo', 'on' => true, 'value' => '0912345678']], ['layout' => 'combo']));
+    $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
+
+    expect($part)->toContain('data-fc-root>')->not->toContain('data-fc-js')->not->toContain('data-fc-copy');
+});
+
+it('puts the buttons on the chosen side with the offsets and keeps their room under the footer', function (string $position): void {
+    $siteId = flcSite();
+    flcSetting($siteId, flcConfig([['key' => 'phone', 'on' => true, 'value' => '0912345678']], ['position' => $position, 'offset_x' => 40, 'offset_y' => 60]));
+    $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
+
+    expect($part)->toContain('<nav class="sf-fc__float sf-fc__float--'.$position.'" aria-label="Liên hệ nhanh" style="--fc-ox:40px;--fc-oy:60px">')
+        ->toContain('<div class="sf-fc-ghost sf-fc-ghost--'.($position === 'bottom' ? 'row' : 'side').'" aria-hidden="true"');
+})->with(['right', 'left', 'bottom']);
+
+it('draws the bar dark when the site chose it, and light otherwise', function (string $tone, string $class): void {
+    $siteId = flcSite();
+    flcSetting($siteId, flcFive(['layout' => 'horizontal', 'bar_tone' => $tone]));
+    $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
+
+    expect($part)->toContain('<nav class="sf-fc-bar sf-fc-bar--'.$class.'"');
+})->with([['auto', 'light'], ['light', 'light'], ['dark', 'dark']]);
+
+it('prints the label of the page’s language and escapes every label', function (): void {
+    $siteId = flcSite();
+    flcSetting($siteId, flcConfig([
+        ['key' => 'phone', 'on' => true, 'value' => '0912345678', 'tips' => ['vi' => 'Gọi <b>ngay</b>']],
+        ['key' => 'c1', 'on' => true, 'value' => '/lien-he', 'name' => 'Đặt "lịch"'],
+    ], ['layout' => 'combo']));
+    $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
+
+    expect($part)->toContain('Gọi &lt;b&gt;ngay&lt;/b&gt;')->toContain('Đặt &quot;lịch&quot;')->not->toContain('<b>ngay');
 });
 
 it('shows a site only its own buttons', function (): void {
-    $a = flcSite('Xưởng A', 'a.platform.test');
-    $b = flcSite('Xưởng B', 'b.platform.test');
+    $a = flcSite();
+    $b = flcSite('Xưởng Khác', 'khac.platform.test');
     flcSetting($a, flcConfig([['key' => 'phone', 'on' => true, 'value' => '0911111111']]));
     flcSetting($b, flcConfig([['key' => 'phone', 'on' => true, 'value' => '0922222222']]));
 
-    expect($this->get('http://a.platform.test/gioi-thieu')->getContent())->toContain('tel:0911111111')->not->toContain('0922222222')
-        ->and($this->get('http://b.platform.test/gioi-thieu')->getContent())->toContain('tel:0922222222')->not->toContain('0911111111');
+    expect($this->get('http://khac.platform.test/gioi-thieu')->getContent())->toContain('tel:0922222222')->not->toContain('0911111111');
 });
 
 it('adds no query to a page, and for “Mua hàng” only the product list lookup, once', function (): void {
@@ -425,81 +520,18 @@ it('adds no query to a page, and for “Mua hàng” only the product list looku
     $pageBuy = $count('/gioi-thieu');
     $listBuy = $count('/san-pham');
     $html = $this->get('http://mau.platform.test/gioi-thieu')->getContent();
+    // A round-button site with the phone bar never showed "Mua hàng": a stale switch neither adds it
+    // nor looks the product list up.
+    flcSetting($siteId, ['buy' => ['enabled' => true, 'color' => '#0ab39c'], 'phone_bar' => ['enabled' => true]]
+        + flcConfig([['key' => 'phone', 'on' => true, 'value' => '0912345678']]));
+    $pageStale = $count('/gioi-thieu');
+    $stale = flcPart($this->get('http://mau.platform.test/gioi-thieu')->getContent());
     DB::disableQueryLog();
 
-    expect($html)->toContain('href="/san-pham" style="--fc-fill:')
+    expect($html)->toContain('<a class="sf-fc-bar__link" href="/san-pham"')
         ->and($pageBuy - $page)->toBe(5)
-        ->and($listBuy - $list)->toBe(3);
+        ->and($listBuy - $list)->toBe(3)
+        ->and($pageStale)->toBe($page)
+        ->and(flcBarLabels($stale))->toBe(['Gọi điện'])
+        ->and($stale)->not->toContain('href="/san-pham"');
 });
-
-it('swaps the round buttons for the dark phone bar below 768px when the site switches it on, and reserves no band under the footer', function (): void {
-    $siteId = flcSite();
-    flcSetting($siteId, flcConfig([
-        ['key' => 'zalo', 'on' => true, 'value' => '0912345678', 'tips' => ['vi' => 'Chat Zalo']],
-        ['key' => 'phone', 'on' => true, 'value' => '0912345678', 'color' => '#f59e0b', 'tips' => ['vi' => 'Gọi']],
-    ], ['phone_bar' => ['enabled' => true, 'cta' => ['label' => ['vi' => 'Yêu cầu báo giá'], 'url' => '/gioi-thieu']]]));
-
-    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
-    preg_match('~<nav class="sf-fc sf-fc--right sf-fc--md".*?</nav>~s', $html, $round);
-    preg_match('~<nav class="sf-fc-bar sf-fc-bar--board".*?</nav>~s', $html, $bar);
-    preg_match('~<div class="sf-fc-bar sf-fc-bar--board sf-fc-bar--ghost".*?</ul></div>~s', $html, $ghost);
-
-    expect($round[0] ?? '')->toContain('href="tel:0912345678"')->not->toContain('--fc-fill:#f59e0b')->toContain('--fc-ink:#ffffff')
-        ->and($bar[0] ?? '')->toContain('--fc-fill:#f59e0b;--fc-ink:#0f172a')
-        ->and($bar[0] ?? '')->toContain('href="https://zalo.me/0912345678"')->toContain('>Chat Zalo<')
-        ->toContain('href="tel:0912345678"')->toContain('>Gọi<')
-        ->toContain('sf-fc-bar__item--cta')->toContain('href="/gioi-thieu"')->toContain('>Yêu cầu báo giá<')
-        // every cell draws its mark above its label, the quote cell too
-        ->and(substr_count($bar[0] ?? '', '<span class="sf-fc-bar__dot'))->toBe(3)
-        ->and($bar[0] ?? '')->toMatch('~sf-fc-bar__item--cta.*?<span class="sf-fc-bar__dot" aria-hidden="true"><svg~s')
-        ->and($ghost[0] ?? '')->toContain('Yêu cầu báo giá')
-        // the call leads, the quote cell is last
-        ->and(strpos($bar[0] ?? '', '>Gọi<'))->toBeLessThan(strpos($bar[0] ?? '', 'Chat Zalo'))
-        ->and(strpos($bar[0] ?? '', 'Chat Zalo'))->toBeLessThan(strpos($bar[0] ?? '', 'Yêu cầu báo giá'))
-        // no invisible copy of the side stack: nothing is reserved at the wider widths
-        ->and($html)->not->toContain('sf-fc-ghost');
-
-    // Without the switch the page keeps the side stack and its reserved room, and no bar.
-    flcSetting($siteId, flcConfig([['key' => 'phone', 'on' => true, 'value' => '0912345678']]));
-    $plain = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
-    expect($plain)->toContain('sf-fc-ghost')->not->toContain('sf-fc-bar')->not->toContain('sf-fc--md');
-});
-
-it('draws the phone bar with the channels alone when its own cell has no safe link', function (): void {
-    $siteId = flcSite();
-    flcSetting($siteId, flcConfig([['key' => 'phone', 'on' => true, 'value' => '0912345678']],
-        ['phone_bar' => ['enabled' => true, 'cta' => ['label' => ['vi' => 'Báo giá'], 'url' => 'javascript:alert(1)']]]));
-
-    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
-
-    expect($html)->toContain('sf-fc-bar--board')->not->toContain('sf-fc-bar__item--cta')->not->toContain('javascript:');
-});
-
-it('prints the readable ink on every link of the horizontal bar, a light colour of the site included', function (): void {
-    $siteId = flcSite();
-    flcSetting($siteId, flcConfig([['key' => 'phone', 'on' => true, 'value' => '0912345678', 'color' => '#f59e0b']], ['theme' => 'horizontal']));
-
-    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
-    preg_match('~<nav class="sf-fc-bar".*?</nav>~s', $html, $bar);
-    preg_match('~href="tel:0912345678" style="--fc-fill:(#[0-9a-f]{6});--fc-ink:(#[0-9a-f]{6})"~', $bar[0] ?? '', $m);
-
-    expect($m)->not->toBe([])
-        ->and($m[2])->toBe('#ffffff')
-        ->and(ReadableColor::ratio($m[1], $m[2]))->toBeGreaterThanOrEqual(3.0);
-});
-
-it('prints no button for a channel switched on but not filled in, in either look', function (string $theme): void {
-    $siteId = flcSite();
-    flcSetting($siteId, flcConfig([
-        ['key' => 'phone', 'on' => true, 'value' => '0912345678'],
-        ['key' => 'zalo', 'on' => true, 'value' => ''],
-        ['key' => 'sms', 'on' => true, 'value' => '   '],
-        ['key' => 'whatsapp', 'on' => true, 'value' => 'abc'],
-    ], ['theme' => $theme]));
-
-    $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
-
-    expect($part)->toContain('href="tel:0912345678"')
-        ->not->toContain('zalo.me')->not->toContain('sms:')->not->toContain('wa.me')
-        ->not->toContain('pending')->not->toContain('href=""');
-})->with(['vertical', 'horizontal']);

@@ -17,8 +17,8 @@
     $sfFsTop = $header['text_size'] && empty($drawerMenu);
     // The phone bottom bar (under 768px) and whether it carries the call: then the header's own copies
     // of the call (the corner icon, the top bar's phone items) step aside there.
-    $sfBar = ! empty($floatingContact) && ($floatingContact['theme'] === 'horizontal' || ($floatingContact['phone_bar'] ?? null) !== null);
-    $sfBarCells = $sfBar ? ($floatingContact['theme'] === 'horizontal' ? $floatingContact['bar'] : $floatingContact['phone_bar']['bar']) : [];
+    $sfBar = ! empty($floatingContact) && $floatingContact['layout'] !== 'vertical';
+    $sfBarCells = $sfBar ? $floatingContact['bar'] : [];
     $sfBarCalls = in_array('phone', array_column($sfBarCells, 'key'), true);
     // Which width bands the top bar has something to show in: xs <640, sm 640–767, md 768–1023, lg ≥1024.
     $sfBands = ['xs' => ['xs'], 'sm' => ['xs', 'sm'], 'md' => ['xs', 'sm', 'md'], 'lg' => ['xs', 'sm', 'md', 'lg']];

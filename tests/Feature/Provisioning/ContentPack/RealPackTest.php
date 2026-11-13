@@ -297,10 +297,10 @@ it('loads the flourish heading decoration, round floating buttons of email, Zalo
         ->and(array_keys($stored('storefront', 'layout_blocks')))->toEqualCanonicalizing(['post_aside', 'after_product', 'product_before_action', 'product_after_action']);
 
     $home = $this->get('http://'.ContentPacks::HOST.'/')->assertOk()->getContent();
-    expect($home)->toContain('<nav class="sf-fc sf-fc--right"')
+    expect($home)->toContain('<nav class="sf-fc__float sf-fc__float--right"')
         ->toContain('href="https://zalo.me/0915668383"')->toContain('href="tel:0915668383"')
         ->not->toContain('class="sf-fc-bar')
-        ->and(preg_match('/<nav class="sf-fc sf-fc--right".*?<\/nav>/s', $home, $nav))->toBe(1)
+        ->and(preg_match('/<nav class="sf-fc__float sf-fc__float--right".*?<\/nav>/s', $home, $nav))->toBe(1)
         ->and($nav[0])->toContain('href="mailto:quybv@ckanvinh.vn"')
         ->and(preg_match_all('/<a /', $nav[0]))->toBe(3)
         ->and(substr_count($home, 'src="https://static.cloudflareinsights.com/beacon.min.js"'))->toBe(1)

@@ -238,3 +238,46 @@ window.addEventListener('hashchange', () => {
         placeTarget();
     }
 });
+
+// Floating contact: the links work with no script. A click on one with click tracking on announces
+// `bs:contact-click` at once (an app link can leave the page before anything else loads). Only the
+// "Chép số" code is fetched, where the page has that button (data-fc-js): on the first touch of the
+// widget, or once the page has loaded and gone idle on a computer (a phone never shows the button).
+const fc = document.querySelector('[data-fc-root]');
+if (fc) {
+    const src = fc.dataset.fcJs;
+    let copy;
+    let ready;
+    // Its address comes from the page (a Vite entry), so this file carries no loader of its own.
+    const more = () => src && (copy ??= import(/* @vite-ignore */ src).then(() => (ready = 1), () => (copy = null)));
+    fc.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-fc-copy]');
+        if (button) {
+            // Before the copy code has arrived, write while the click still counts as the visitor's.
+            const wrote = ready ? 0 : navigator.clipboard?.writeText(button.closest('li').querySelector('a').getAttribute('href').slice(4)).then(() => 1, () => 0);
+            // No copy code (the network failed): the number is selected, ready for Ctrl/Cmd+C.
+            more().then((ok) => (ok ? document.dispatchEvent(new CustomEvent('bs:fc-copy', { detail: { button, wrote } })) : getSelection().selectAllChildren(button.parentNode.querySelector('.sf-fc__num'))));
+            return;
+        }
+        const link = event.target.closest('[data-fc]');
+        if (!link || document.getElementById(link.getAttribute('popovertarget'))?.matches(':popover-open')) {
+            return; // the dial counts its opening only
+        }
+        document.dispatchEvent(new CustomEvent('bs:contact-click', { detail: {
+            channel: link.dataset.fc,
+            placement: link.dataset.fcAt,
+            device: matchMedia('(max-width: 767.98px)').matches ? 'phone' : 'computer',
+            page_path: location.pathname,
+            link_type: link.dataset.fcLt,
+        } }));
+    });
+    if (src) {
+        ['pointerover', 'focusin', 'touchstart'].forEach((type) => fc.addEventListener(type, more, { once: true, passive: true }));
+        const idle = () => matchMedia('(min-width: 768px)').matches && (window.requestIdleCallback ?? ((f) => setTimeout(f, 3000)))(more);
+        if (document.readyState === 'complete') {
+            idle();
+        } else {
+            window.addEventListener('load', idle, { once: true });
+        }
+    }
+}

@@ -7,24 +7,27 @@
  */
 
 /* ───── Floating contact (theme::partials.floating-contact) ──────────────── */
-/* Round buttons fixed in a corner or along the bottom, or a bottom bar on phones. Every target is
-   at least 44 × 44 at every text size; fills come from the page (--fc-fill, contrast-fitted to the
-   white marks). An invisible copy after the footer keeps their room (below). No script. */
-.sf-fc {
+/* Round buttons fixed in a corner or along the bottom: 44px on a phone, 50px from 768px, each a disc of
+   its channel's colour (--fc-fill, already darkened on the server so the white mark reads at 3:1) with a
+   white ring and a soft shadow. Labels show on hover and keyboard focus. */
+.sf-fc__float {
     position: fixed;
     z-index: 40;
     bottom: calc(var(--fc-oy, 24px) + env(safe-area-inset-bottom, 0px));
+    --fc-size: max(44px, 2.75rem);
+    --fc-gap: 0.625rem;
+    --fc-glyph: 1.5rem;
 }
 
-.sf-fc--right {
+.sf-fc__float--right {
     right: calc(var(--fc-ox, 20px) + env(safe-area-inset-right, 0px));
 }
 
-.sf-fc--left {
+.sf-fc__float--left {
     left: calc(var(--fc-ox, 20px) + env(safe-area-inset-left, 0px));
 }
 
-.sf-fc--bottom {
+.sf-fc__float--bottom {
     left: 50%;
     transform: translateX(-50%);
 }
@@ -34,7 +37,9 @@
     flex-direction: column;
     flex-wrap: wrap-reverse;
     align-items: center;
-    gap: 0.625rem;
+    gap: var(--fc-gap, 0.625rem);
+    /* a tall stack (and the open dial) wraps into a further column rather than leave the screen */
+    max-height: calc(100vh - var(--fc-oy, 24px) - 5rem);
     max-height: calc(100dvh - var(--fc-oy, 24px) - 5rem);
     margin: 0;
     padding: 0;
@@ -54,65 +59,93 @@
     max-height: none;
 }
 
-.sf-fc__btn {
+.sf-fc__item {
+    position: relative;
+    display: flex;
+}
+
+.sf-fc__btn,
+.sf-fc__dial {
     position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: max(44px, 2.75rem);
-    height: max(44px, 2.75rem);
+    width: var(--fc-size, 44px);
+    height: var(--fc-size, 44px);
     border-radius: 50%;
-    background: var(--fc-fill, var(--color-dark));
-    color: var(--fc-ink, #fff);
+    background: var(--fc-fill, #475569);
+    color: #fff;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 25%);
+    outline: 2px solid rgb(255 255 255 / 90%);
+    outline-offset: 0;
     text-decoration: none;
-    box-shadow: 0 4px 12px rgb(0 0 0 / 0.25);
     transition: transform 0.25s, filter 0.25s;
+    -webkit-tap-highlight-color: transparent;
 }
 
-.sf-fc__btn:focus-visible {
-    outline: 3px solid var(--color-text-strong);
+.sf-fc__btn:focus-visible,
+.sf-fc__dial:focus-visible {
+    outline: 3px solid var(--color-text-strong, #0f172a);
     outline-offset: 3px;
 }
 
-.sf-fc__btn--pulse {
-    animation: sf-fc-pulse 2.5s infinite;
+.sf-fc__icon {
+    width: min(28px, var(--fc-glyph, 1.5rem));
+    height: min(28px, var(--fc-glyph, 1.5rem));
+    fill: currentcolor;
+}
+
+/* Zalo's bubble is white; its Z takes the disc's own colour. */
+.sf-fc__z {
+    fill: var(--fc-fill);
+}
+
+/* The call button's pulse: three soft rings, starting about 3 s after the page shows, then still.
+   Only a ring behind the button scales and fades (no layout or shadow animation). */
+.sf-fc__item--pulse::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: -1;
+    width: var(--fc-size, 44px);
+    height: var(--fc-size, 44px);
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--fc-tint, #4caf50) 70%, transparent);
+    opacity: 0;
+    pointer-events: none;
+    animation: sf-fc-pulse 2.5s ease-out 3s 3;
 }
 
 @keyframes sf-fc-pulse {
-    0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--fc-fill) 70%, transparent); }
-    70% { box-shadow: 0 0 0 0.8125rem transparent; }
-    100% { box-shadow: 0 0 0 0 transparent; }
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    70%,
+    100% {
+        opacity: 0;
+        transform: scale(1.52);
+    }
 }
 
-.sf-fc__icon {
-    width: 1.4375rem;
-    height: 1.4375rem;
-    fill: currentColor;
-}
-
-.sf-fc__word {
-    font-size: 0.75rem;
-    font-weight: 800;
-    letter-spacing: -0.01em;
-    line-height: 1;
-}
-
-/* The hover label: beside the button (above it in the bottom row), shown on hover and on keyboard
-   focus; the link's own name is what assistive technology reads. */
+/* The hover label: beside the button (above it in the bottom row). */
 .sf-fc__tip {
     position: absolute;
     top: 50%;
-    right: calc(100% + 0.75rem);
-    width: max-content;
-    max-width: min(15rem, 60vw);
+    right: 100%;
+    z-index: 1;
+    margin-right: 0.75rem;
     padding: 0.375rem 0.75rem;
     border-radius: 1.25rem;
-    background: var(--color-surface);
-    color: var(--color-text-strong);
+    background: var(--color-surface, #fff);
+    color: var(--color-text-strong, #1f2937);
+    box-shadow: 0 4px 14px rgb(0 0 0 / 16%);
     font-size: 0.75rem;
     font-weight: 600;
     line-height: 1.4;
-    box-shadow: 0 4px 14px rgb(0 0 0 / 0.16);
+    white-space: nowrap;
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
@@ -120,16 +153,19 @@
     transition: opacity 0.2s, visibility 0.2s;
 }
 
-.sf-fc--left .sf-fc__tip {
+.sf-fc__float--left .sf-fc__tip {
     right: auto;
-    left: calc(100% + 0.75rem);
+    left: 100%;
+    margin-right: 0;
+    margin-left: 0.75rem;
 }
 
-.sf-fc--bottom .sf-fc__tip {
+.sf-fc__float--bottom .sf-fc__tip {
     top: auto;
     right: auto;
-    bottom: calc(100% + 0.625rem);
+    bottom: 100%;
     left: 50%;
+    margin: 0 0 0.625rem;
     transform: translateX(-50%);
 }
 
@@ -138,8 +174,147 @@
     visibility: visible;
 }
 
+/* The call button's label on a computer: the number and a real "Chép số" button. It opens on hover and
+   on keyboard focus and stays open while focus is inside it; a clear strip joins it to the button so
+   the pointer can travel across. */
+.sf-fc__label {
+    position: absolute;
+    top: 50%;
+    right: 100%;
+    z-index: 1;
+    display: none;
+    padding-right: 0.75rem;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-50%);
+    transition: opacity 0.2s, visibility 0.2s;
+}
+
+.sf-fc__float--left .sf-fc__label {
+    right: auto;
+    left: 100%;
+    padding-right: 0;
+    padding-left: 0.75rem;
+}
+
+.sf-fc__float--bottom .sf-fc__label {
+    top: auto;
+    right: auto;
+    bottom: 100%;
+    left: 50%;
+    padding: 0 0 0.625rem;
+    transform: translateX(-50%);
+}
+
+.sf-fc__item--call:focus-within > .sf-fc__label {
+    opacity: 1;
+    visibility: visible;
+}
+
+.sf-fc__label-in {
+    display: inline-flex;
+    flex-wrap: wrap;
+    row-gap: 0.25rem;
+    align-items: center;
+    gap: 0.5rem;
+    width: max-content;
+    max-width: calc(100vw - 5.25rem - var(--fc-ox, 20px));
+    padding: 0.25rem 0.25rem 0.25rem 0.875rem;
+    border-radius: 1.5rem;
+    background: var(--color-surface, #fff);
+    color: var(--color-text-strong, #1f2937);
+    box-shadow: 0 0.25rem 0.875rem rgb(0 0 0 / 16%);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.sf-fc__label-t {
+    padding: 0.375rem 0;
+}
+
+.sf-fc__copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3125rem;
+    min-height: max(40px, 2.5rem);
+    padding: 0 0.75rem;
+    border: 1px solid #878a99;
+    border-radius: 1.25rem;
+    background: var(--color-surface, #fff);
+    color: var(--color-primary-text, var(--color-text-strong, #1f2937));
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.sf-fc__copy:focus-visible {
+    outline: 2px solid var(--color-text-strong, #0f172a);
+    outline-offset: 2px;
+}
+
+.sf-fc__copy-i {
+    width: 1rem;
+    height: 1rem;
+    fill: currentcolor;
+}
+
+@media (any-pointer: coarse) {
+    .sf-fc__copy {
+        min-height: max(44px, 2.75rem);
+    }
+}
+
+.sf-fc__sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+/* The dial: on a phone a vertical site with many channels shows one dark "Liên hệ" button; it opens the
+   round buttons above it (a popover) and turns into a close button. */
+.sf-fc__dial {
+    display: none;
+    width: calc(var(--fc-size, 44px) + 4px);
+    height: calc(var(--fc-size, 44px) + 4px);
+    padding: 0;
+    border: 0;
+    background: #0f172a;
+    box-shadow: 0 4px 14px rgb(0 0 0 / 30%);
+    font: inherit;
+    cursor: pointer;
+}
+
+.sf-fc__dial .sf-fc__dial-shut {
+    display: none;
+}
+
+.sf-fc__float:has(:popover-open) .sf-fc__dial-open {
+    display: none;
+}
+
+.sf-fc__float:has(:popover-open) .sf-fc__dial-shut {
+    display: block;
+}
+
+.sf-fc__list[popover] {
+    position: static;
+    inset: auto;
+    width: auto;
+    height: auto;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    overflow: visible;
+    background: none;
+    color: inherit;
+}
+
 @media (hover: hover) {
-    .sf-fc__btn:hover {
+    .sf-fc__btn:hover,
+    .sf-fc__dial:hover {
         transform: scale(1.08);
         filter: brightness(1.08);
     }
@@ -148,33 +323,86 @@
         opacity: 1;
         visibility: visible;
     }
+
+    .sf-fc__item--call:hover > .sf-fc__label {
+        opacity: 1;
+        visibility: visible;
+    }
+}
+
+@media (max-width: 767.98px) {
+    /* combo: the bar does the job below 768px */
+    .sf-fc--combo .sf-fc__float {
+        display: none;
+    }
+
+    .sf-fc__float--dial .sf-fc__dial {
+        display: flex;
+    }
+
+    .sf-fc__list[popover]:not(:popover-open) {
+        display: none;
+    }
+
+    .sf-fc__list[popover]:popover-open {
+        position: fixed;
+        top: auto;
+        right: calc(var(--fc-ox, 20px) + env(safe-area-inset-right, 0px));
+        bottom: calc(var(--fc-oy, 24px) + env(safe-area-inset-bottom, 0px) + var(--fc-size, 44px) + 4px + var(--fc-gap, 0.625rem));
+        left: auto;
+        padding: 0.5rem;
+    }
+
+    .sf-fc__float--left .sf-fc__list[popover]:popover-open {
+        right: auto;
+        left: calc(var(--fc-ox, 20px) + env(safe-area-inset-left, 0px));
+    }
+
+    .sf-fc__float--bottom .sf-fc__list[popover]:popover-open {
+        right: 0;
+        left: 0;
+        margin-inline: auto;
+    }
 }
 
 @media (min-width: 768px) {
-    .sf-fc__list {
-        gap: 0.75rem;
+    .sf-fc__float {
+        --fc-size: max(50px, 3.125rem);
+        --fc-gap: 0.75rem;
+        --fc-glyph: 1.75rem;
     }
 
-    .sf-fc__btn {
-        width: max(50px, 3.125rem);
-        height: max(50px, 3.125rem);
+    /* a computer sends no SMS */
+    .sf-fc__item--sms {
+        display: none;
     }
 
-    .sf-fc__icon {
-        width: 1.6875rem;
-        height: 1.6875rem;
+    .sf-fc__label {
+        display: block;
+    }
+
+    .sf-fc__item--call .sf-fc__tip {
+        display: none;
+    }
+}
+
+/* Without popover the dial's buttons simply stay out, every one in place. */
+@supports not selector(:popover-open) {
+    .sf-fc__float--dial .sf-fc__dial {
+        display: none;
     }
 }
 
 /* The reserved room: the same buttons, invisible, in the page flow after the footer and in its
-   colour. The copy keeps the real list's max-height and wrapping, so it is exactly as tall as what
-   is drawn (plus the gap above and the offset below). The bottom row reserves it at every width; a
-   side stack wherever it can cover the footer's text (below). */
+   colour, so the end of the page always scrolls clear of them. The bottom row reserves it at every
+   width; a side stack wherever it can cover the footer's text (below). */
 .sf-fc-ghost {
     display: flex;
     justify-content: flex-end;
     padding: 0.625rem var(--fc-ox, 20px) calc(var(--fc-oy, 24px) + env(safe-area-inset-bottom, 0px));
     background: var(--color-dark);
+    --fc-size: max(44px, 2.75rem);
+    --fc-gap: 0.625rem;
 }
 
 .sf-fc-ghost .sf-fc__list {
@@ -182,26 +410,49 @@
 }
 
 .sf-fc-ghost .sf-fc__btn {
-    animation: none;
+    outline: 0;
     box-shadow: none;
 }
 
-/* The real row is centred on the screen and capped by its own max-width: no side padding here. */
 .sf-fc-ghost--row {
     justify-content: center;
     padding-inline: 0;
 }
 
-/* From 768px a side stack keeps its room only where it can cover the footer's text: where it
-   reaches into the 80rem page (--fc-cover > 0: its offset and a 50px button against the margin
-   beside the page's 2rem padding — at a 16px root up to about 1357px at the default 20px offset,
-   1437px at 60px; at An Vinh's 17px root 1440px, measured), or
-   where it wraps into a second column (--fc-over > 0: its buttons, from --fc-n, and gaps against
-   the list's max-height above; capping it to one column would push buttons off a short screen).
-   Elsewhere a one-column stack sits in the page margin and an empty band would only push the
-   page's end away. clamp(0px, x × 9999, room) turns either sum into a switch (0 or the full room)
-   without script; the 1px leans to keeping the room when it only just fits. */
+.sf-fc-ghost__dial {
+    display: none;
+}
+
+@media (max-width: 767.98px) {
+    .sf-fc-ghost--wide {
+        display: none;
+    }
+
+    .sf-fc-ghost--dial .sf-fc__btn {
+        display: none;
+    }
+
+    .sf-fc-ghost--dial .sf-fc-ghost__dial {
+        display: block;
+        width: calc(var(--fc-size) + 4px);
+        height: calc(var(--fc-size) + 4px);
+    }
+}
+
+/* From 768px a side stack keeps its room only where it can cover the footer's text: where it reaches
+   into the 80rem page (--fc-cover > 0) or wraps into a second column (--fc-over > 0, from --fc-n, the
+   buttons a computer shows). Elsewhere it sits in the page margin and an empty band would only push
+   the page's end away. clamp(0px, x × 9999, room) turns either sum into a switch without script. */
 @media (min-width: 768px) {
+    .sf-fc-ghost {
+        --fc-size: max(50px, 3.125rem);
+        --fc-gap: 0.75rem;
+    }
+
+    .sf-fc-ghost .sf-fc__item--sms {
+        display: none;
+    }
+
     .sf-fc-ghost--side {
         --fc-over: calc(var(--fc-n, 0) * (max(50px, 3.125rem) + 0.75rem) - 0.75rem - (100dvh - var(--fc-oy, 24px) - 5rem) + 1px);
         --fc-cover: calc(var(--fc-ox, 20px) + max(50px, 3.125rem) + 38rem - 50vw + 1px);
@@ -212,13 +463,14 @@
     }
 }
 
-/* Bottom bar (phones only): every channel, equal buttons, each a small coloured disc with its label
-   under it, about 50px tall (a 44px tap target, the label at least 12px). Three always show; place N
-   from the fourth (--r4 … --r11) shows only where the bar's own width holds N cells of 4.5rem (72px at a 16px root: the longest
-   real label, "Messenger", needs about 70px at 12px and never breaks inside a word) — in rem, so a larger
-   text size shows fewer — e.g. four from 288px, ten from 720px, eleven from 792px; from the twelfth on (--rx) never. From 768px the same channels are the round buttons (--wide, below). Its ghost
-   copy stays in the page flow after the footer, invisible: exactly the bar's height and safe-area inset
-   at every text size (a label may wrap at a space), so the end of the page scrolls clear. */
+/* ───── Bottom bar (phones, up to 767px) ─────────────────────────────────── */
+/* Equal cells, each a small coloured disc over its label, with thin dividers; light or dark as the site
+   chose. Up to five cells ("Mua hàng" counted, always last). A cell needs 4.5rem, so a bar narrower than
+   22.5rem (a narrow phone or a larger text size) shows four cells and one narrower than 18rem three:
+   channel cells go from the end (r5 below 22.5rem, r4 below 18rem — "Thêm" and "Mua hàng" stay) and the
+   "Thêm" sheet lists them. A bar that has no "Thêm" gets one exactly where a channel goes (m5 below
+   22.5rem, m4 below 18rem), so every channel stays one tap away. Its ghost (same classes, invisible)
+   keeps the room. */
 .sf-fc-bar {
     display: none;
 }
@@ -230,103 +482,42 @@
         bottom: 0;
         left: 0;
         z-index: 40;
-        display: block;
-        padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
-        background: var(--color-surface);
-        border-top: 1px solid color-mix(in srgb, var(--color-text) 14%, var(--color-surface));
-        box-shadow: 0 -3px 16px rgb(32 21 18 / 0.13);
+        display: flex;
+        flex-direction: column;
+        container: sf-fc-bar / inline-size;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        border-top: 1px solid #eef0f3;
+        background: var(--color-surface, #fff);
+        box-shadow: 0 -3px 16px rgb(32 21 18 / 13%);
     }
 
     .sf-fc-bar--ghost {
         position: static;
-        visibility: hidden;
+        display: flex;
+        border-top: 0;
+        background: var(--color-dark);
         box-shadow: none;
     }
-}
 
-/* Round buttons of the bar theme: only from 768px (the bar does the job below it), with their
-   reserved room under the footer from the same width. */
-.sf-fc--wide,
-.sf-fc-ghost--wide {
-    display: none;
-}
-
-@media (min-width: 768px) {
-    .sf-fc--wide {
-        display: block;
+    .sf-fc-bar--ghost .sf-fc-bar__list {
+        visibility: hidden;
     }
 
-    .sf-fc-ghost--wide {
-        display: flex;
+    /* Out of the way while a text field has focus (the keyboard is up), and under the mobile menu, a
+       dialog or the photo viewer. */
+    :root:has(:is(input:not([type="checkbox"], [type="radio"], [type="button"], [type="submit"], [type="reset"], [type="range"], [type="color"], [type="file"]), textarea, select, [contenteditable]):focus) .sf-fc-bar:not(.sf-fc-bar--ghost),
+    :root:has(dialog[open]) .sf-fc-bar:not(.sf-fc-bar--ghost),
+    :root.sf-menu-open .sf-fc-bar:not(.sf-fc-bar--ghost) {
+        visibility: hidden;
     }
 }
 
 .sf-fc-bar__list {
-    container-type: inline-size;
     display: flex;
+    min-height: 48px;
     margin: 0;
     padding: 0;
     list-style: none;
-}
-
-.sf-fc-bar__item--r4,
-.sf-fc-bar__item--r5,
-.sf-fc-bar__item--r6,
-.sf-fc-bar__item--r7,
-.sf-fc-bar__item--r8,
-.sf-fc-bar__item--r9,
-.sf-fc-bar__item--r10,
-.sf-fc-bar__item--r11,
-.sf-fc-bar__item--rx {
-    display: none;
-}
-
-@container (min-width: 18rem) {
-    .sf-fc-bar__item--r4 {
-        display: block;
-    }
-}
-
-@container (min-width: 22.5rem) {
-    .sf-fc-bar__item--r5 {
-        display: block;
-    }
-}
-
-@container (min-width: 27rem) {
-    .sf-fc-bar__item--r6 {
-        display: block;
-    }
-}
-
-@container (min-width: 31.5rem) {
-    .sf-fc-bar__item--r7 {
-        display: block;
-    }
-}
-
-@container (min-width: 36rem) {
-    .sf-fc-bar__item--r8 {
-        display: block;
-    }
-}
-
-@container (min-width: 40.5rem) {
-    .sf-fc-bar__item--r9 {
-        display: block;
-    }
-}
-
-@container (min-width: 45rem) {
-    .sf-fc-bar__item--r10 {
-        display: block;
-    }
-}
-
-@container (min-width: 49.5rem) {
-    .sf-fc-bar__item--r11 {
-        display: block;
-    }
 }
 
 .sf-fc-bar__item {
@@ -335,7 +526,7 @@
 }
 
 .sf-fc-bar__item + .sf-fc-bar__item {
-    border-left: 1px solid color-mix(in srgb, var(--color-text) 10%, var(--color-surface));
+    border-left: 1px solid #f0f1f3;
 }
 
 .sf-fc-bar__link {
@@ -343,162 +534,312 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.125rem;
-    min-height: max(48px, 3rem);
-    padding: 0.3125rem 0;
-    color: var(--color-text-strong);
-    text-align: center;
+    gap: 2px;
+    width: 100%;
+    height: 100%;
+    min-height: 48px;
+    padding: 5px 2px;
+    border: 0;
+    background: none;
+    color: var(--color-text-strong, #3c4765);
+    font: inherit;
     text-decoration: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .sf-fc-bar__link:focus-visible {
-    outline: 3px solid var(--color-text-strong);
+    outline: 3px solid var(--color-text-strong, #0f172a);
     outline-offset: -3px;
 }
 
 .sf-fc-bar__dot {
     display: flex;
+    flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    min-width: 1.375rem;
-    height: 1.375rem;
-    padding: 0 0.1875rem;
-    border-radius: 0.6875rem;
-    background: var(--fc-fill, var(--color-dark));
-    color: var(--fc-ink, #fff);
-    box-shadow: 0 2px 5px -1px color-mix(in srgb, var(--fc-fill, var(--color-dark)) 67%, transparent);
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--fc-fill, #475569);
+    color: #fff;
+    box-shadow: 0 2px 5px -1px color-mix(in srgb, var(--fc-tint, #475569) 67%, transparent);
 }
 
 .sf-fc-bar__icon {
     width: 0.8125rem;
     height: 0.8125rem;
-    fill: currentColor;
+    fill: currentcolor;
 }
 
-.sf-fc-bar__word {
-    font-size: 0.75rem;
-    font-weight: 800;
-    line-height: 1;
+.sf-fc-bar__dot .sf-fc__z {
+    fill: var(--fc-fill);
+}
+
+svg.sf-fc-bar__icon:has(.sf-fc__z) {
+    width: min(18px, 0.875rem);
+    height: min(18px, 0.875rem);
 }
 
 .sf-fc-bar__label {
     max-width: 100%;
-    font-size: max(12px, 0.6875rem);
+    font-size: 0.75rem;
     font-weight: 600;
     line-height: 1.2;
-    /* Wraps at spaces; only a single word longer than the cell (a site's own label) breaks inside. */
-    overflow-wrap: break-word;
+    text-align: center;
+    overflow-wrap: anywhere;
 }
 
-/* Board-style phone bar (a round-button site's `phone_bar`): below 768px the round buttons are
-   replaced by a dark bar of up to three equal 64px cells in the footer's colour, so the page ends on
-   it; its invisible copy is painted in the same colour (not hidden), which leaves no light strip or
-   empty dark band under the copyright line. From 768px only the round buttons are drawn. */
-@media (max-width: 767.98px) {
-    .sf-fc--md {
+.sf-fc-bar--dark {
+    border-top-color: rgb(255 255 255 / 8%);
+    background: #1e293b;
+    box-shadow: 0 -4px 18px rgb(0 0 0 / 50%);
+}
+
+.sf-fc-bar--dark .sf-fc-bar__item + .sf-fc-bar__item {
+    border-left-color: rgb(255 255 255 / 8%);
+}
+
+.sf-fc-bar--dark .sf-fc-bar__link {
+    color: #e2e8f0;
+}
+
+.sf-fc-bar--dark .sf-fc-bar__list .sf-fc-bar__dot {
+    outline: 1.5px solid rgb(255 255 255 / 85%);
+}
+
+.sf-fc-bar--dark .sf-fc-bar__link:focus-visible {
+    outline-color: #e2e8f0;
+}
+
+.sf-fc-bar__item--r4,
+.sf-fc-bar__item--r5 {
+    display: none;
+}
+
+@container sf-fc-bar (width >= 18rem) {
+    .sf-fc-bar__item--r4 {
+        display: block;
+    }
+}
+
+@container sf-fc-bar (width >= 22.5rem) {
+    .sf-fc-bar__item--r5 {
+        display: block;
+    }
+}
+
+/* The "Thêm" sheet: a small panel just above the bar, scrolling inside when its channels outgrow a short
+   screen. */
+.sf-fc-sheet[popover] {
+    position: fixed;
+    inset: auto 8px calc(3.625rem + env(safe-area-inset-bottom, 0px));
+    width: auto;
+    max-height: calc(100vh - 3.625rem - env(safe-area-inset-bottom, 0px) - 16px);
+    max-height: calc(100dvh - 3.625rem - env(safe-area-inset-bottom, 0px) - 16px);
+    margin: 0;
+    padding: 6px;
+    overflow: auto;
+    overscroll-behavior: contain;
+    border: 0;
+    border-radius: 12px;
+    background: var(--color-surface, #fff);
+    color: var(--color-text-strong, #3c4765);
+    box-shadow: 0 10px 30px -6px rgb(15 23 42 / 35%);
+}
+
+.sf-fc-sheet__h {
+    margin: 0;
+    padding: 6px 8px 4px;
+    color: #5b6275;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.sf-fc-sheet__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.sf-fc-sheet__row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    padding: 0 8px;
+    border-radius: 8px;
+    color: inherit;
+    text-decoration: none;
+}
+
+.sf-fc-sheet__row:focus-visible {
+    outline: 3px solid currentcolor;
+    outline-offset: -3px;
+}
+
+.sf-fc-sheet__row .sf-fc-bar__dot {
+    width: 30px;
+    height: 30px;
+}
+
+.sf-fc-sheet__row .sf-fc-bar__icon {
+    width: 1rem;
+    height: 1rem;
+}
+
+.sf-fc-sheet__l {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+.sf-fc-sheet__go {
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: #5b6275;
+}
+
+@media (hover: hover) {
+    .sf-fc-sheet__row:hover {
+        background: #f3f6f9;
+    }
+
+    .sf-fc-bar--dark .sf-fc-sheet__row:hover {
+        background: rgb(255 255 255 / 8%);
+    }
+}
+
+.sf-fc-bar--dark .sf-fc-sheet {
+    background: #1e293b;
+    color: #e2e8f0;
+    box-shadow: 0 10px 30px -6px rgb(0 0 0 / 60%);
+}
+
+.sf-fc-bar--dark .sf-fc-sheet__h {
+    color: #94a3b8;
+}
+
+.sf-fc-bar--dark .sf-fc-sheet__go {
+    fill: #94a3b8;
+}
+
+/* A bar channel a narrow phone lets go is listed in the sheet instead, and the extra "Thêm" shows. */
+.sf-fc-sheet__item--r4,
+.sf-fc-sheet__item--r5,
+.sf-fc-bar__item--m4,
+.sf-fc-bar__item--m5 {
+    display: none;
+}
+
+@container sf-fc-bar (width < 18rem) {
+    .sf-fc-sheet__item--r4,
+    .sf-fc-bar__item--m4 {
+        display: block;
+    }
+}
+
+@container sf-fc-bar (width < 22.5rem) {
+    .sf-fc-sheet__item--r5,
+    .sf-fc-bar__item--m5 {
+        display: block;
+    }
+}
+
+/* Without popover (an older Safari) "Thêm" could open nothing and a sheet left open would cover the page
+   for good: the sheet's channels become more cells of the same bar, which then scrolls sideways (one row,
+   the height its ghost keeps); every channel cell shows, so the sheet's copies of them stay out. */
+@supports not selector(:popover-open) {
+    .sf-fc-bar__item--more,
+    .sf-fc-sheet__h,
+    .sf-fc-sheet__go,
+    .sf-fc-sheet__item--r4,
+    .sf-fc-sheet__item--r5 {
         display: none;
     }
 
-    .sf-fc-bar--board {
-        background: var(--color-dark);
-        border-top: 1px solid var(--color-dark-line, color-mix(in srgb, var(--color-dark) 75%, white));
-        box-shadow: none;
+    .sf-fc-bar:not(.sf-fc-bar--ghost) {
+        flex-direction: row;
+        overflow-x: auto;
     }
 
-    .sf-fc-bar--board.sf-fc-bar--ghost {
-        visibility: visible;
+    .sf-fc-bar:not(.sf-fc-bar--ghost) :is(.sf-fc-sheet, .sf-fc-sheet__list, .sf-fc-bar__list) {
+        display: contents;
     }
 
-    .sf-fc-bar--board.sf-fc-bar--ghost .sf-fc-bar__list {
-        visibility: hidden;
+    .sf-fc-bar__item--r4,
+    .sf-fc-bar__item--r5 {
+        display: block;
     }
+
+    .sf-fc-bar:not(.sf-fc-bar--ghost) :is(.sf-fc-bar__item, .sf-fc-sheet__item) {
+        flex: 1 0 4.5rem;
+    }
+
+    .sf-fc-sheet__item {
+        order: 1;
+        border-left: 1px solid #f0f1f3;
+    }
+
+    .sf-fc-bar--dark .sf-fc-sheet__item {
+        border-left-color: rgb(255 255 255 / 8%);
+    }
+
+    .sf-fc-sheet__row {
+        flex-direction: column;
+        justify-content: center;
+        gap: 2px;
+        min-height: 48px;
+        padding: 5px 2px;
+        text-align: center;
+    }
+
+    .sf-fc-sheet__row .sf-fc-bar__dot {
+        width: 22px;
+        height: 22px;
+    }
+
+    .sf-fc-sheet__row .sf-fc-bar__icon {
+        width: 0.8125rem;
+        height: 0.8125rem;
+    }
+
+    .sf-fc-sheet__l {
+        flex: none;
+        font-size: 0.75rem;
+    }
+
 }
 
-/* As the design boards draw it (MenuDiDong, Footer): three equal cells with no dividers, each a 22px glyph
-   over a 13px label (12px at the least); the quote cell is the brand fill with its own glyph. */
-.sf-fc-bar--board .sf-fc-bar__item + .sf-fc-bar__item {
-    border-left: 0;
-}
+/* Without popover the dial's buttons stand in place, so their room is kept in full. */
+@supports not selector(:popover-open) {
+    @media (max-width: 767.98px) {
+        .sf-fc-ghost--dial .sf-fc__btn {
+            display: block;
+        }
 
-.sf-fc-bar--board .sf-fc-bar__link {
-    gap: 3px;
-    min-height: max(64px, 4rem);
-    padding: 0.25rem 0.375rem;
-    color: var(--color-on-dark, color-mix(in srgb, var(--color-dark) 25%, white));
-}
-
-.sf-fc-bar--board .sf-fc-bar__label {
-    font-size: max(12px, 0.8125rem);
-    font-weight: 600;
-}
-
-.sf-fc-bar--board .sf-fc-bar__link:focus-visible {
-    outline-color: #fff;
-}
-
-.sf-fc-bar--board .sf-fc-bar__dot {
-    min-width: 1.375rem;
-    height: 1.375rem;
-    padding: 0;
-    background: transparent;
-    box-shadow: none;
-    /* The glyph sits on the dark bar: a dark brand colour is lifted with white so it keeps 3:1. */
-    color: color-mix(in srgb, var(--fc-fill, var(--color-primary)) 55%, white);
-}
-
-.sf-fc-bar--board .sf-fc-bar__dot--chip {
-    min-width: 0;
-    height: 1.25rem;
-    margin-block: 1px;
-    padding: 0 0.25rem;
-    border-radius: 0.3125rem;
-    background: var(--fc-fill, var(--color-dark));
-    color: var(--fc-ink, #fff);
-}
-
-.sf-fc-bar--board .sf-fc-bar__word {
-    font-size: 12px;
-    letter-spacing: -0.01em;
-}
-
-.sf-fc-bar--board .sf-fc-bar__icon,
-.sf-fc-bar--board .sf-fc-bar__dot .sf-icon {
-    width: 1.375rem;
-    height: 1.375rem;
-}
-
-.sf-fc-bar--board .sf-fc-bar__item--cta {
-    border-left: 0;
-}
-
-.sf-fc-bar--board .sf-fc-bar__item--cta .sf-fc-bar__link {
-    background: var(--color-primary);
-    color: var(--color-on-primary, #fff);
-}
-
-.sf-fc-bar--board .sf-fc-bar__item--cta .sf-fc-bar__label {
-    font-weight: 700;
-}
-
-.sf-fc-bar--board .sf-fc-bar__item--cta .sf-fc-bar__dot {
-    color: inherit;
-}
-
-.sf-fc-bar--board .sf-fc-bar__item--cta .sf-fc-bar__link:focus-visible {
-    outline-color: var(--color-dark);
+        .sf-fc-ghost--dial .sf-fc-ghost__dial {
+            display: none;
+        }
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .sf-fc__btn,
-    .sf-fc__tip {
+    .sf-fc__dial,
+    .sf-fc__tip,
+    .sf-fc__label {
         transition: none;
     }
 
-    .sf-fc__btn--pulse {
+    .sf-fc__item--pulse::before {
         animation: none;
     }
 
-    .sf-fc__btn:hover {
+    .sf-fc__btn:hover,
+    .sf-fc__dial:hover {
         transform: none;
     }
 }

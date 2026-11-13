@@ -185,7 +185,7 @@
 @endif
 {{-- Storefront stylesheet (Vite-managed; faked in tests via withoutVite()), then the block stylesheets: all of them here, narrowed to the ones the page uses once it is drawn (BlockStyles). --}}
 @vite(['resources/css/storefront.css'])@php echo \App\Modules\Theme\Rendering\BlockStyles::all(); @endphp
-@if (! empty($header) || \App\Modules\Theme\Chrome\StorefrontChrome::hasSubmenus($menu ?? []))
+@if (! empty($header) || \App\Modules\Theme\Chrome\StorefrontChrome::hasSubmenus($menu ?? []) || ! empty($floatingContact))
 @vite(['resources/js/storefront.js'])
 @endif
 @if (! empty($sliderScript))
