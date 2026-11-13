@@ -85,7 +85,7 @@ final readonly class SupportSessions
         }
 
         $newer = $before !== '';
-        $anchor = $this->anchor($newer ? $before : $after);
+        $anchor = $this->entered($newer ? $before : $after);
         if ($anchor === null) {
             $newer = false;
         }
@@ -202,12 +202,7 @@ final readonly class SupportSessions
     public function row(User $viewer, string $sessionUlid): ?array
     {
         $this->assertViewer($viewer);
-        $entered = $sessionUlid === '' ? null : AuditLog::query()
-            ->whereRaw(self::HAS_CODE)
-            ->where('support_session_ulid', $sessionUlid)
-            ->where('action', self::ENTERED)
-            ->orderBy('created_at')->orderBy('id')
-            ->first(['id', 'created_at', 'actor_id', 'actor_label', 'impersonator_id', 'impersonator_label', 'site_id', 'meta', 'support_session_ulid']);
+        $entered = $this->entered($sessionUlid);
 
         return $entered === null ? null : $this->shown($viewer, new Collection([$entered]), CarbonImmutable::now())[0];
     }
@@ -241,7 +236,7 @@ final readonly class SupportSessions
             ->where('support_session_ulid', $sessionUlid)
             ->where('action', self::ENTERED)
             ->orderBy('created_at')->orderBy('id')
-            ->first(['id', 'created_at', 'actor_id', 'impersonator_id', 'site_id', 'meta', 'support_session_ulid']);
+            ->first(['id', 'created_at', 'actor_id', 'actor_label', 'impersonator_id', 'impersonator_label', 'site_id', 'meta', 'support_session_ulid']);
     }
 
     /**
@@ -355,11 +350,6 @@ final readonly class SupportSessions
             ." AND ended.created_at <= audit_logs.created_at + make_interval(mins => coalesce((audit_logs.meta->>'minutes')::int, ?))))";
 
         return [$sql, [$now->subMinutes(self::longest()), self::longest(), $now, self::ENDED, self::longest()]];
-    }
-
-    private function anchor(string $sessionUlid): ?AuditLog
-    {
-        return $sessionUlid === '' ? null : $this->entered($sessionUlid);
     }
 
     private static function at(AuditLog $row): CarbonImmutable
