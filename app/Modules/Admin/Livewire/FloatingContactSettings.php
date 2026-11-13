@@ -13,8 +13,10 @@ use App\Modules\Storefront\Support\ContactIconImages;
 use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Chrome\BranchMap;
 use App\Modules\Theme\Chrome\ContactIcons;
 use App\Modules\Theme\Chrome\FloatingContact;
+use App\Modules\Theme\Chrome\StorefrontChrome;
 use App\Modules\Theme\Theming\ThemeResolver;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\DB;
@@ -639,12 +641,20 @@ final class FloatingContactSettings extends Component
         return false;
     }
 
-    /** The first branch or factory of the site that has a map link which passes the check (the footer's list), or ''. */
+    /**
+     * The directions link of the site's first branch or factory that has one, read as the footer and the branch
+     * map read them (titled items, the allowed map hosts): its own map link, else a route planner to its
+     * coordinates or map search text; '' when none has any.
+     */
     private function firstBranchMapLink(): string
     {
-        $footer = Cast::arr(app(SettingsRepository::class)->get('storefront', 'footer'));
-        foreach (Cast::arr($footer['factories'] ?? null) as $factory) {
-            $link = FloatingContact::clean(FloatingContact::CHANNELS['maps']['type'], Cast::arr($factory)['map_url'] ?? null);
+        $locale = app(SiteLocale::class)->default();
+        /** @var list<string> $mapHosts */
+        $mapHosts = config('cms.map_hosts', []);
+        $branches = StorefrontChrome::branches(app(SettingsRepository::class)->get('storefront', 'footer'), $locale, $locale, $mapHosts);
+        foreach ($branches as $branch) {
+            $candidate = $branch['map_url'] ?? (BranchMap::urls(['map_query' => $branch['map_query'], 'lat' => $branch['lat'], 'lng' => $branch['lng'], 'approximate' => $branch['approximate']], $locale)['dir'] ?? null);
+            $link = FloatingContact::clean(FloatingContact::CHANNELS['maps']['type'], $candidate);
             if ($link !== null) {
                 return $link;
             }

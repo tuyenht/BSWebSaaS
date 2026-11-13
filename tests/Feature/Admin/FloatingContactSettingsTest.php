@@ -1165,6 +1165,9 @@ it('fills directions on a first visit from the first branch or factory that has 
     'the first factory with a link' => [[['title' => 'Nhà máy 1'], ['title' => 'Nhà máy 2', 'map_url' => 'https://maps.google.com/?q=2'], ['title' => 'Chi nhánh', 'map_url' => 'https://maps.google.com/?q=3']], 'https://maps.google.com/?q=2'],
     'a link that is not http is skipped' => [[['title' => 'A', 'map_url' => 'javascript:alert(1)'], ['title' => 'B', 'map_url' => 'https://maps.app.goo.gl/abc']], 'https://maps.app.goo.gl/abc'],
     'no factory has a link' => [[['title' => 'A']], ''],
+    'a route planner to the first factory with coordinates when none has a link' => [[['title' => 'A'], ['title' => 'B', 'lat' => 21.3, 'lng' => 105.86, 'map_query' => 'Nhà máy B']], 'https://www.google.com/maps/dir/?api=1&destination=21.3%2C105.86'],
+    'a route planner to the map search text' => [[['title' => 'A', 'map_query' => 'Cơ khí An Vinh']], 'https://www.google.com/maps/dir/?api=1&destination='.rawurlencode('Cơ khí An Vinh')],
+    'an untitled factory is left out, as the footer does' => [[['map_url' => 'https://maps.google.com/?q=0'], ['title' => 'B', 'map_url' => 'https://maps.google.com/?q=1']], 'https://maps.google.com/?q=1'],
     'no factories' => [[], ''],
 ]);
 
