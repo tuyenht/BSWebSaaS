@@ -385,6 +385,7 @@
     "admin.members.lim_full_title": "The website has sent :max invitation emails in the last 24 hours.",
     "admin.members.lim_full_text": "Inviting and re-sending open again at :time. Invitations already sent still work.",
     "admin.members.lim_full_later": "Inviting and re-sending open again once older emails are 24 hours old. Invitations already sent still work.",
+    "admin.members.reopen_day": ":time on :day",
     "admin.members.inv_noperm": "The “:role” role can see invitations but cannot “Invite a member” — it cannot send, re-send or withdraw them. Ask the website owner if you need it.",
     "admin.members.inv_resend_note": "Re-sending makes a new link — the link in the earlier email stops working; the new one is valid for :days days from the re-send.",
     "admin.members.inv_search_label": "Search by email",

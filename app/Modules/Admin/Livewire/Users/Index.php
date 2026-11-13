@@ -519,6 +519,7 @@ final class Index extends Component
         $older = $newer = null;
         $counts = ['total' => 0, 'roles' => []];
         $invCounts = array_fill_keys(InvitationDirectory::STATES, 0);
+        $invPending = 0;
         $invRoleCounts = [];
         $matched = 0;
         $scopes = [];
@@ -527,9 +528,10 @@ final class Index extends Component
             // a savepoint inside the request's tenancy transaction: a failed read leaves it usable for the rest of the page
             $read = DB::transaction(function () use ($directory, $invitations, $siteId, $onInvites): array {
                 $counts = $directory->counts();
-                $invCounts = $invitations->counts();
                 $narrowed = MemberDirectory::searches($this->search) || $this->groups !== [];
                 if ($onInvites) {
+                    // the per-state counts (the state row) are read only here; the tab label reuses the waiting one
+                    $invCounts = $invitations->counts();
                     $page = $invitations->page($this->state, $this->search, $this->groups, $this->per, $this->after, $this->before);
                     $inviters = array_values(array_unique(array_filter($page['rows']->pluck('invited_by')->all(), 'is_int')));
 
@@ -537,6 +539,7 @@ final class Index extends Component
                         'page' => $page,
                         'counts' => $counts,
                         'invCounts' => $invCounts,
+                        'invPending' => min($invCounts['pending'], InvitationDirectory::TAB_CAP + 1),
                         'invRoleCounts' => $invitations->roleCounts($this->state),
                         'matched' => $narrowed ? $invitations->matchCount($this->state, $this->search, $this->groups) : $invCounts[$this->state],
                         'stayed' => $invitations->stillMembers($inviters),
@@ -547,7 +550,7 @@ final class Index extends Component
                 return [
                     'page' => $page,
                     'counts' => $counts,
-                    'invCounts' => $invCounts,
+                    'invPending' => $invitations->pendingUpTo(),
                     'matched' => $narrowed ? $directory->matchCount($this->search, $this->groups) : $counts['total'],
                     'scopes' => $this->scopeNames($page['rows'], $siteId),
                 ];
@@ -560,7 +563,8 @@ final class Index extends Component
             $older = $read['page']['older'];
             $newer = $read['page']['newer'];
             $counts = $read['counts'];
-            $invCounts = $read['invCounts'];
+            $invCounts = $read['invCounts'] ?? $invCounts;
+            $invPending = $read['invPending'];
             $invRoleCounts = $read['invRoleCounts'] ?? [];
             $matched = $read['matched'];
             $scopes = $read['scopes'] ?? [];
@@ -576,7 +580,7 @@ final class Index extends Component
 
         // the site's invitation mail over the last 24 hours: the quota line (invitations), the near-limit note (an inviter)
         $sent = ($onInvites || ($canInvite && ! $support)) ? app(InviteMember::class)->sentToday($siteId) : 0;
-        $reopens = $sent >= InviteMember::DAILY_LIMIT ? app(InviteMember::class)->reopensAt($siteId) : null;
+        $reopens = $sent >= InviteMember::DAILY_LIMIT ? app(InviteMember::class)->reopensAt($siteId, $sent) : null;
 
         $picked = ! $onInvites && $this->picked !== [] ? $this->pickedMembers() : new Collection;
         $pickedOk = $picked->isEmpty() ? $picked : $this->pickedTouchable($picked);
@@ -602,6 +606,8 @@ final class Index extends Component
             'total' => $counts['total'],
             'roleCounts' => $onInvites ? $invRoleCounts : $counts['roles'],
             'invCounts' => $invCounts,
+            'invPending' => $invPending,
+            'invCap' => InvitationDirectory::TAB_CAP,
             'matched' => $matched,
             'searching' => MemberDirectory::searches($this->search),
             'scopes' => $scopes,

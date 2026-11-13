@@ -7,6 +7,7 @@ use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 
@@ -88,7 +89,11 @@ it('never lets the bulk panel grant a role at or above the actor', function (): 
         ->call('togglePick', [$author->ulid])
         ->call('openBulkPanel')
         ->set('panelRoles', ['owner'])
-        ->call('saveRoles'));
+        ->call('saveRoles')
+        // refused and said so in the panel, which stays open with the member still ticked
+        ->assertSet('panelError', __('admin.role_change_denied'))
+        ->assertSet('panelBulk', true)
+        ->assertSet('picked', [$author->ulid]));
 
     expect(bulkPickRoles($author))->toBe(['author']);
 });
@@ -141,4 +146,62 @@ it('unticks the whole page when every member on it is ticked already', function 
         ->assertCount('picked', 2)
         ->call('togglePick', [$a->ulid, $b->ulid])
         ->assertSet('picked', []));
+});
+
+it('changes or removes ticked members at a fixed cost per member, whatever the number ticked', function (string $action, int $perMember): void {
+    $owner = bulkPickMember('owner');
+    bulkPickMember('viewer');
+    // the queries one bulk action takes for $n freshly ticked authors (the panel or question already open)
+    $run = function (int $n) use ($owner, $action): int {
+        $targets = array_map(fn (): string => bulkPickMember('author')->ulid, range(1, $n));
+
+        return bulkPickPage($owner, function (Testable $page) use ($targets, $action): int {
+            $page->call('togglePick', $targets);
+            if ($action === 'roles') {
+                $page->call('openBulkPanel')->set('panelRoles', ['viewer']);
+
+                return countQueries(fn () => $page->call('saveRoles')->assertSet('picked', []));
+            }
+            $page->call('askRemovePicked');
+
+            return countQueries(fn () => $page->call('confirmRemove')->assertSet('picked', []));
+        });
+    };
+
+    $run(1); // the permission and settings caches fill on the first run
+    $one = $run(1);
+    $five = $run(5);
+    $ten = $run(10);
+    $each = intdiv($five - $one, 4);
+
+    // the same cost for each further member, whatever the number ticked: AssignRole / RevokeRole per
+    // role (their grant checks, the write, the audit row), and nothing that grows with the selection
+    expect($five - $one)->toBe(4 * $each)
+        ->and($ten - $five)->toBe(5 * $each)
+        ->and($each)->toBe($perMember);
+})->with([
+    'new roles (one granted, one revoked)' => ['roles', 20],
+    'removal (one role revoked)' => ['remove', 14],
+]);
+
+it('keeps at most 250 ticks on the server: a longer forged list is cut to its first 250', function (): void {
+    $owner = bulkPickMember('owner');
+    $author = bulkPickMember('author');
+    bulkPickMember('viewer');
+    // 250 ticks that are nobody, then a real member at place 251
+    $forged = [...array_map(fn (): string => strtoupper((string) Str::ulid()), range(1, Index::PICK_MAX)), $author->ulid];
+
+    bulkPickPage($owner, fn (Testable $page) => $page
+        ->call('togglePick', $forged)
+        ->assertSet('picked', [])
+        // sent straight with the save, past togglePick: cut the same way before anything changes
+        ->update(
+            calls: [['method' => 'saveRoles', 'params' => [], 'path' => '']],
+            updates: ['picked' => $forged, 'panelBulk' => true, 'panelRoles' => ['viewer']],
+        )
+        ->assertSet('picked', [])
+        ->assertSet('toast', __('admin.members.cannot_touch')));
+
+    expect(bulkPickRoles($author))->toBe(['author'])
+        ->and(Index::PICK_MAX)->toBe(250);
 });

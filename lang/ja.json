@@ -385,6 +385,7 @@
     "admin.members.lim_full_title": "このサイトは過去24時間に :max 通の招待メールを送信しました。",
     "admin.members.lim_full_text": ":time に招待と再送が再開します。送信済みの招待は引き続き有効です。",
     "admin.members.lim_full_later": "以前のメールが24時間を過ぎると招待と再送が再開します。送信済みの招待は引き続き有効です。",
+    "admin.members.reopen_day": ":day :time",
     "admin.members.inv_noperm": "「:role」は招待を見られますが「メンバーを招待」はできません — 送信・再送・取り消しはできません。必要ならサイトのオーナーに依頼してください。",
     "admin.members.inv_resend_note": "再送すると新しいリンクになります — 前のメールのリンクは使えなくなり、再送から :days 日間有効です。",
     "admin.members.inv_search_label": "メールで検索",

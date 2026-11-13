@@ -60,6 +60,12 @@ trait ManagesInvitations
         }
         // the roles in full: the grant check reads each one's guard and permissions
         $roles = $invitation->roles()->get()->all();
+        if ($roles === []) {
+            // every role it carried was deleted since: nothing is left to invite to
+            $this->say(__('admin.members.inv_gone'), 'error');
+
+            return;
+        }
         try {
             $issued = app(InviteMember::class)->handle($this->actor(), $invitation->email, array_values($roles), $invitation->message);
             $siteId = app(CurrentSite::class)->id();
@@ -132,6 +138,12 @@ trait ManagesInvitations
         $invitation = $this->siteInvitation($ulid);
         if (! $invitation instanceof Invitation || InvitationDirectory::stateOf($invitation) !== 'revoked') {
             $this->say(__('admin.members.inv_gone'), 'error');
+
+            return;
+        }
+        // the same daily share as "Mời thành viên": the dialog would only refuse at "Gửi"
+        if ($this->siteFull()) {
+            $this->say(__('admin.members.inv_full', ['max' => InviteMember::DAILY_LIMIT]), 'error');
 
             return;
         }

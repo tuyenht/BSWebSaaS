@@ -406,7 +406,7 @@ it('lists admin members on a flat query budget (no N+1 across rows)', function (
     $this->actingAs($admin)->get('http://a.test/admin/users')->assertOk(); // the permission and settings caches fill on the first request
     $count = countQueries(fn () => $this->actingAs($admin)->get('http://a.test/admin/users')->assertOk());
 
-    // 14 for the list itself + 1 for the "Lời mời" tab's counts per state (one statement)
+    // 14 for the list itself + 1 for the "Lời mời" tab label (its waiting invitations, read up to 99 + 1)
     expect($count)->toBe(15);
 });
 
@@ -436,7 +436,7 @@ it('keeps the members list flat with a search, a role filter and a second page, 
     $many = $read();
 
     // 20 rows on the page either way: the site's membership growing more than six-fold adds no query.
-    // 16 for the list + the "Lời mời" tab's counts per state + the mails of the last 24 hours (an inviter's near-limit note)
+    // 16 for the list + the "Lời mời" tab label (up to 99 + 1 rows) + the mails of the last 24 hours (an inviter's near-limit note)
     expect($many)->toBe($few)->and($few)->toBe(18);
 });
 
@@ -452,6 +452,7 @@ it('keeps the invitations view flat whatever the number of invitations', functio
                 $invitation = Invitation::query()->forceCreate([
                     'email' => sprintf('moi-%03d@example.test', $i), 'token_hash' => hash('sha256', 'moi-'.$i),
                     'invited_by' => $admin->id, 'expires_at' => now()->addDays(5), 'sent_at' => now()->subMinutes($i),
+                    'created_at' => now()->subMinutes($i),
                 ]);
                 $invitation->roles()->syncWithPivotValues([$editor->id], ['site_id' => 1]);
             }

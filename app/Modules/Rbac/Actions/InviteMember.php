@@ -154,11 +154,12 @@ final readonly class InviteMember
 
     /**
      * When $siteId may mail invitations again after reaching DAILY_LIMIT: the moment enough of the
-     * window's mails are 24 hours old. Null while the site is under the limit.
+     * window's mails are 24 hours old. Null while the site is under the limit. $sent: the count
+     * sentToday() just returned, so the screen does not count the window twice.
      */
-    public function reopensAt(int $siteId): ?CarbonImmutable
+    public function reopensAt(int $siteId, ?int $sent = null): ?CarbonImmutable
     {
-        $sent = $this->mailsSentToday($siteId);
+        $sent ??= $this->mailsSentToday($siteId);
         if ($sent < self::DAILY_LIMIT) {
             return null;
         }

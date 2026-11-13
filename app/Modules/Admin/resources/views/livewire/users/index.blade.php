@@ -56,12 +56,17 @@
     $locked = $support;
     $limit = \App\Modules\Rbac\Actions\InviteMember::DAILY_LIMIT;
     $full = $sent >= $limit;
-    $reopenAt = $reopens !== null ? app(\App\Modules\Tenancy\Context\SiteTime::class)->forDisplay($reopens)?->format('H:i') : null;
+    // when inviting reopens, in the site's clock: the time alone today, with the day when it is tomorrow
+    $siteTime = app(\App\Modules\Tenancy\Context\SiteTime::class);
+    $reopenLocal = $siteTime->forDisplay($reopens);
+    $reopenAt = $reopenLocal === null ? null : ($reopenLocal->isSameDay($siteTime->now())
+        ? $reopenLocal->format('H:i')
+        : __('admin.members.reopen_day', ['time' => $reopenLocal->format('H:i'), 'day' => $reopenLocal->format('d/m/Y')]));
     // inviting and re-sending wait while support staff are signed in, or once the site has mailed its daily share
     $inviteWhy = $locked ? __('admin.support.locked') : ($full ? __('admin.members.inv_full', ['max' => $limit]) : null);
     $tabs = [
         ['key' => '', 'label' => __('admin.members.tab_members'), 'count' => $total],
-        ['key' => 'loi-moi', 'label' => __('admin.members.tab_invites'), 'count' => $invCounts['pending'] ?? 0],
+        ['key' => 'loi-moi', 'label' => __('admin.members.tab_invites'), 'count' => $invPending, 'cap' => $invCap],
     ];
     $listTotal = $onInvites ? ($invCounts[$state] ?? 0) : $total;
     if ($onInvites) {

@@ -13,8 +13,9 @@
     // ← → Home End move between tabs and open the one reached. At most three; below 600 they share
     // the row evenly and their names wrap, never cut.
     //
-    // $tabs: list<array{key: string, label: string, count?: int|null}>
-    $fmt = fn (?int $n): ?string => $n === null ? null : \Illuminate\Support\Number::format($n, locale: app()->getLocale());
+    // $tabs: list<array{key: string, label: string, count?: int|null, cap?: int}>; a count above its cap reads "{cap}+"
+    $fmt = fn (?int $n, ?int $cap = null): ?string => $n === null ? null
+        : ($cap !== null && $n > $cap ? \Illuminate\Support\Number::format($cap, locale: app()->getLocale()).'+' : \Illuminate\Support\Number::format($n, locale: app()->getLocale()));
     $setter = fn (string $key): string => '$set('.\Illuminate\Support\Js::from($model).', '.\Illuminate\Support\Js::from($key).')';
 @endphp
 <div role="tablist" aria-label="{{ $label }}"
@@ -31,7 +32,7 @@
                     'border-primary-text font-semibold text-primary-text' => $on,
                 ])>
             <span class="[overflow-wrap:anywhere]">{{ $tab['label'] }}</span>
-            @if (($n = $fmt($tab['count'] ?? null)) !== null)
+            @if (($n = $fmt($tab['count'] ?? null, $tab['cap'] ?? null)) !== null)
                 <span class="inline-flex min-w-5 shrink-0 items-center justify-center rounded-full bg-surface-hover px-1.5 text-caption font-semibold leading-normal text-text">{{ $n }}</span>
             @endif
         </button>

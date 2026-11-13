@@ -2,6 +2,7 @@
 
 use App\Modules\Admin\Livewire\Users\Index;
 use App\Modules\Admin\Notifications\MemberInvitationNotification;
+use App\Modules\Admin\Support\Members\InvitationDirectory;
 use App\Modules\Admin\Support\Members\MemberDirectory;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
@@ -12,6 +13,7 @@ use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -98,6 +100,11 @@ it('lists the invitations of the chosen state with each state counted', function
         ->set('state', 'expired')->assertSee('het@<wbr>example', false)->assertDontSee('cho@<wbr>example', false)
         ->set('state', 'revoked')->assertSee('huy@<wbr>example', false)->assertSee(__('admin.members.inv_reinvite'))
         ->set('state', 'accepted')->assertSee('nhan@<wbr>example', false)->assertSee(__('admin.members.inv_view')));
+
+    // withdrawn means withdrawn and never accepted (the table refuses both stamps; the rule holds without it)
+    $both = new Invitation(['email' => 'x@example.test']);
+    $both->forceFill(['expires_at' => now()->addDay(), 'accepted_at' => now(), 'revoked_at' => now()]);
+    expect(InvitationDirectory::stateOf($both))->toBe('accepted');
 });
 
 it('mails an invitation again with a new link, and makes the old link useless', function (): void {
@@ -237,7 +244,7 @@ it('fills the invite dialog from a withdrawn invitation, and opens the member of
         ->assertSee($joined->name), 'accepted');
 });
 
-it('pages through the invitations by keyset, newest mail first', function (): void {
+it('pages through the invitations by keyset, newest invitation first', function (): void {
     $owner = invTabMember('owner');
     invTabMember('viewer');
     $per = MemberDirectory::PER_PAGE[0];
@@ -246,6 +253,8 @@ it('pages through the invitations by keyset, newest mail first', function (): vo
         $this->travel(1)->seconds();
     }
     $newest = sprintf('m%02d@', $per + 3);
+    // mailed again just now: it keeps its place (the order is when it was created, which the index serves)
+    invTabSet('m01@example.test', ['sent_at' => now()]);
 
     // the pager's own links carry the cursor (an invitation ulid), as the browser would send it
     $cursor = function (Testable $page, string $way): string {
@@ -269,6 +278,10 @@ it('pages through the invitations by keyset, newest mail first', function (): vo
 it('stops inviting once the site has mailed its daily share, and says when it may again', function (): void {
     $owner = invTabMember('owner');
     invTabMember('viewer');
+    app(Tenancy::class)->enter(1, fn () => app(InviteMember::class)->handle($owner->fresh(), 'huy@example.test', [Role::findByName('viewer', PermissionRegistry::GUARD)]));
+    invTabSet('huy@example.test', ['revoked_at' => now()]);
+    DB::connection('pgsql_admin')->table('audit_logs')->delete();
+    $revoked = invTabRow('huy@example.test')->ulid;
     DB::connection('pgsql_admin')->statement(<<<'SQL'
         insert into audit_logs (ulid, action, site_id, meta, created_at)
         select lpad(g::text, 26, '0'), 'rbac.invitation.sent', 1, jsonb_build_object('email', 'cu-' || g || '@example.test'), now() - interval '1 hour'
@@ -279,7 +292,80 @@ it('stops inviting once the site has mailed its daily share, and says when it ma
         ->assertSee(__('admin.members.lim_full_title', ['max' => InviteMember::DAILY_LIMIT]))
         ->call('openInvite')
         ->assertSet('inviteOpen', false)
-        ->assertSet('toast', __('admin.members.inv_full', ['max' => InviteMember::DAILY_LIMIT])));
+        ->assertSet('toast', __('admin.members.inv_full', ['max' => InviteMember::DAILY_LIMIT]))
+        // "Mời lại" waits for the same daily share instead of opening a dialog that would refuse at "Gửi"
+        ->set('toast', null)
+        ->call('reinvite', $revoked)
+        ->assertSet('inviteOpen', false)
+        ->assertSet('inviteEmail', '')
+        ->assertSet('toast', __('admin.members.inv_full', ['max' => InviteMember::DAILY_LIMIT])), 'revoked');
+});
+
+it('says when inviting reopens in the site clock, naming the day when it is not today', function (): void {
+    $owner = invTabMember('owner');
+    invTabMember('viewer');
+    $fill = function (CarbonImmutable $at): void {
+        DB::connection('pgsql_admin')->table('audit_logs')->delete();
+        DB::connection('pgsql_admin')->statement(<<<'SQL'
+            insert into audit_logs (ulid, action, site_id, meta, created_at)
+            select lpad(g::text, 26, '0'), 'rbac.invitation.sent', 1, jsonb_build_object('email', 'cu-' || g || '@example.test'), ?::timestamptz
+            from generate_series(1, ?) g
+        SQL, [$at->toIso8601String(), InviteMember::DAILY_LIMIT]);
+    };
+
+    // 20:00 in Hà Nội; the mails went out an hour ago, so the share comes back at 19:00 tomorrow
+    $this->travelTo(CarbonImmutable::parse('2026-11-13 20:00', 'Asia/Ho_Chi_Minh'));
+    $fill(now()->toImmutable()->subHour());
+    invTabPage($owner, fn (Testable $page) => $page
+        ->assertSee(__('admin.members.lim_full_text', ['time' => '19:00 ngày 14/11/2026'])));
+
+    // mailed 23 hours ago: back at 21:00 the same evening, the time alone
+    $fill(now()->toImmutable()->subHours(23));
+    invTabPage($owner, fn (Testable $page) => $page
+        ->assertSee(__('admin.members.lim_full_text', ['time' => '21:00'])));
+});
+
+it('treats an invitation whose roles were all deleted as gone when it is mailed again', function (): void {
+    $owner = invTabMember('owner');
+    invTabMember('viewer');
+    invTabInvite($owner, 'tam@example.test');
+    $row = invTabRow('tam@example.test');
+    DB::connection('pgsql_admin')->table('invitation_roles')->where('invitation_id', $row->id)->delete();
+    $this->travel(InviteMember::RESEND_COOLDOWN_SECONDS + 1)->seconds();
+
+    invTabPage($owner, fn (Testable $page) => $page
+        ->call('resendInvitation', $row->ulid)
+        ->assertSet('toast', __('admin.members.inv_gone')));
+
+    expect(invTabRow('tam@example.test')->token_hash)->toBe($row->token_hash);
+    Notification::assertNothingSent();
+});
+
+it('shows the waiting count on the "Lời mời" tab from either tab, capped at 99+, and the state counts only on the invitations', function (): void {
+    $owner = invTabMember('owner');
+    invTabMember('viewer');
+    $viewer = DB::connection('pgsql_admin')->table('roles')->where('site_id', 1)->where('name', 'viewer')->value('id');
+    DB::connection('pgsql_admin')->statement(<<<'SQL'
+        insert into invitations (ulid, site_id, email, token_hash, invited_by, expires_at, sent_at, created_at, updated_at)
+        select lpad(g::text, 26, '0'), 1, 'cho-' || g || '@example.test', md5(g::text) || md5(g::text), ?, now() + interval '3 days', now(), now(), now()
+        from generate_series(1, ?) g
+    SQL, [$owner->id, InvitationDirectory::TAB_CAP + 5]);
+    DB::connection('pgsql_admin')->statement('insert into invitation_roles (site_id, invitation_id, role_id) select 1, id, ? from invitations', [$viewer]);
+
+    // the "Lời mời" tab button, up to its end, holds the capped count
+    $label = '/id="members-view-tab-loi-moi"(?:(?!<\/button>).)*>'.preg_quote(InvitationDirectory::TAB_CAP.'+', '/').'<\/span>/s';
+    app(Tenancy::class)->enter(1, function () use ($owner, $label): void {
+        $page = Livewire::actingAs($owner->fresh())->test(Index::class)
+            ->assertViewHas('invPending', InvitationDirectory::TAB_CAP + 1)
+            // the members tab reads no per-state count
+            ->assertViewHas('invCounts', array_fill_keys(InvitationDirectory::STATES, 0));
+        expect($page->html())->toMatch($label);
+
+        $page->set('tab', 'loi-moi')
+            ->assertViewHas('invPending', InvitationDirectory::TAB_CAP + 1)
+            ->assertViewHas('invCounts', ['pending' => InvitationDirectory::TAB_CAP + 5, 'expired' => 0, 'revoked' => 0, 'accepted' => 0]);
+        expect($page->html())->toMatch($label);
+    });
 });
 
 it('mails and withdraws nothing while support staff are signed in as the member', function (): void {

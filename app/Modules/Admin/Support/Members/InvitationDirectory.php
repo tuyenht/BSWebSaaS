@@ -19,15 +19,23 @@ use Illuminate\Support\Facades\DB;
  * `invitations` is a tenant table (RLS on site_id); every read here also names the site, so the
  * planner keeps to the site's own rows.
  *
- * An invitation is in exactly one state: accepted, revoked, expired (neither, and past its expiry)
- * or pending. Newest mail first: sorted by sent_at, then id, and paged by a keyset cursor on that
- * pair addressed by the boundary invitation's ulid, so a page never counts the rows it skips. The
- * search matches the email as typed, case-insensitively (`%` and `_` only match themselves).
+ * An invitation is in exactly one state: accepted, revoked (withdrawn and never accepted), expired
+ * (neither, and past its expiry) or pending. Newest invitation first: sorted by created_at, then id,
+ * and paged by a keyset cursor on that pair addressed by the boundary invitation's ulid, so the
+ * (site_id, created_at, id) index serves the page and a page never counts the rows it skips (the rows
+ * still show when each was last mailed). The search matches the email as typed, case-insensitively
+ * (`%` and `_` only match themselves).
+ *
+ * The per-state counts are live and read only on the invitations tab; the "Lời mời" tab label
+ * counts the waiting invitations only up to TAB_CAP + 1 ("99+").
  */
 final class InvitationDirectory
 {
     /** @var list<string> the states, in the order the screen offers them */
     public const array STATES = ['pending', 'expired', 'revoked', 'accepted'];
+
+    /** The "Lời mời" tab label counts the waiting invitations up to this, then reads "99+". */
+    public const int TAB_CAP = 99;
 
     public function __construct(private readonly CurrentSite $site) {}
 
@@ -47,12 +55,12 @@ final class InvitationDirectory
         $cursor = $after !== '' ? $this->cursorOf($after) : ($before !== '' ? $this->cursorOf($before) : null);
         $backwards = $after === '' && $before !== '' && $cursor !== null;
         if ($cursor !== null) {
-            // newest first: the next page holds older mail (smaller pairs), the previous page newer
-            $query->whereRaw('(invitations.sent_at, invitations.id) '.($backwards ? '>' : '<').' (?, ?)', [$cursor['sent_at'], $cursor['id']]);
+            // newest first: the next page holds older invitations (smaller pairs), the previous page newer
+            $query->whereRaw('(invitations.created_at, invitations.id) '.($backwards ? '>' : '<').' (?, ?)', [$cursor['created_at'], $cursor['id']]);
         }
 
         $direction = $backwards ? 'asc' : 'desc';
-        $rows = $query->orderBy('invitations.sent_at', $direction)->orderBy('invitations.id', $direction)->limit($per + 1)->get();
+        $rows = $query->orderBy('invitations.created_at', $direction)->orderBy('invitations.id', $direction)->limit($per + 1)->get();
         $more = $rows->count() > $per;
         $rows = $rows->take($per);
         if ($backwards) {
@@ -85,7 +93,7 @@ final class InvitationDirectory
             ->selectRaw(
                 'count(*) filter (where accepted_at is null and revoked_at is null and expires_at > ?) as pending,
                  count(*) filter (where accepted_at is null and revoked_at is null and expires_at <= ?) as expired,
-                 count(*) filter (where revoked_at is not null) as revoked,
+                 count(*) filter (where revoked_at is not null and accepted_at is null) as revoked,
                  count(*) filter (where accepted_at is not null) as accepted',
                 [$now, $now],
             )
@@ -97,6 +105,19 @@ final class InvitationDirectory
         }
 
         return $counts;
+    }
+
+    /**
+     * How many invitations wait for an answer, counted up to TAB_CAP + 1 (the "Lời mời" tab label,
+     * shown on both tabs): a read of at most TAB_CAP + 1 rows, served by the partial index on the
+     * site's open invitations, whatever the site's history holds.
+     */
+    public function pendingUpTo(): int
+    {
+        $rows = DB::table('invitations')->where('site_id', $this->site->id())->selectRaw('1');
+        $this->inState($rows, 'pending');
+
+        return Cast::int(DB::query()->fromSub($rows->limit(self::TAB_CAP + 1), 'bounded')->count());
     }
 
     /**
@@ -159,6 +180,7 @@ final class InvitationDirectory
     {
         return match (true) {
             $invitation->accepted_at !== null => 'accepted',
+            // reached only when accepted_at is null: withdrawn and never accepted, as inState() and counts() read it
             $invitation->revoked_at !== null => 'revoked',
             $invitation->expires_at->isFuture() => 'pending',
             default => 'expired',
@@ -197,22 +219,22 @@ final class InvitationDirectory
         $now = now();
         match ($state) {
             'accepted' => $query->whereNotNull('invitations.accepted_at'),
-            'revoked' => $query->whereNotNull('invitations.revoked_at'),
+            'revoked' => $query->whereNotNull('invitations.revoked_at')->whereNull('invitations.accepted_at'),
             'expired' => $query->whereNull('invitations.accepted_at')->whereNull('invitations.revoked_at')->where('invitations.expires_at', '<=', $now),
             default => $query->whereNull('invitations.accepted_at')->whereNull('invitations.revoked_at')->where('invitations.expires_at', '>', $now),
         };
     }
 
     /**
-     * The (sent_at, id) of an invitation of this site addressed by ulid: the page boundary. Null
+     * The (created_at, id) of an invitation of this site addressed by ulid: the page boundary. Null
      * when the ulid is not one of the site's invitations (a stale or forged cursor reads the first page).
      *
-     * @return array{sent_at: string, id: int}|null
+     * @return array{created_at: string, id: int}|null
      */
     private function cursorOf(string $ulid): ?array
     {
-        $row = DB::table('invitations')->where('site_id', $this->site->id())->where('ulid', $ulid)->first(['id', 'sent_at']);
+        $row = DB::table('invitations')->where('site_id', $this->site->id())->where('ulid', $ulid)->first(['id', 'created_at']);
 
-        return $row === null ? null : ['sent_at' => Cast::string($row->sent_at), 'id' => Cast::int($row->id)];
+        return $row === null ? null : ['created_at' => Cast::string($row->created_at), 'id' => Cast::int($row->id)];
     }
 }

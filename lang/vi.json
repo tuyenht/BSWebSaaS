@@ -385,6 +385,7 @@
     "admin.members.lim_full_title": "Website đã gửi đủ :max thư mời trong 24 giờ qua.",
     "admin.members.lim_full_text": "Mời và Gửi lại mở lại lúc :time. Lời mời đã gửi vẫn dùng được.",
     "admin.members.lim_full_later": "Mời và Gửi lại mở lại khi thư cũ đủ 24 giờ. Lời mời đã gửi vẫn dùng được.",
+    "admin.members.reopen_day": ":time ngày :day",
     "admin.members.inv_noperm": "Nhóm “:role” xem được lời mời nhưng chưa có việc “Mời thành viên” — không gửi, gửi lại hay hủy được. Nhờ Chủ website cấp thêm nếu cần.",
     "admin.members.inv_resend_note": "Gửi lại tạo liên kết mới — liên kết trong thư trước không dùng được nữa, hạn mới là :days ngày từ lúc gửi lại.",
     "admin.members.inv_search_label": "Tìm theo email",

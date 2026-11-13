@@ -181,6 +181,37 @@ it('stops working once withdrawn', function (): void {
     expect($refusal)->toBe('invalid');
 });
 
+it('withdraws nothing once the invitation was accepted after it was read', function (): void {
+    $owner = invitationMember(1, 'owner');
+    $issued = invite(1, $owner, 'moi@example.test');
+    $read = app(Tenancy::class)->enter(1, fn (): Invitation => $issued->invitation->fresh());
+
+    // the acceptance commits between the screen's read and the withdrawal
+    $user = app(Tenancy::class)->enter(1, fn (): User => app(AcceptInvitation::class)
+        ->withNewAccount($issued->token, 'Nguyễn Văn An', 'Mat-khau-rat-manh-2026'));
+    $refusal = invitationRefusal(fn () => app(Tenancy::class)->enter(1, fn () => app(RevokeInvitation::class)->handle($owner->fresh(), $read)));
+
+    $row = DB::connection('pgsql_admin')->table('invitations')->first();
+    expect($refusal)->toBe('invalid')
+        ->and($row->revoked_at)->toBeNull()
+        ->and($row->accepted_user_id)->toBe($user->id)
+        ->and(invitationRoles(1, $user))->toBe(['viewer']);
+});
+
+it('accepts nothing once the invitation was withdrawn after it was read', function (): void {
+    $owner = invitationMember(1, 'owner');
+    $issued = invite(1, $owner, 'moi@example.test');
+    $read = app(Tenancy::class)->enter(1, fn (): Invitation => app(AcceptInvitation::class)->find($issued->token));
+
+    app(Tenancy::class)->enter(1, fn () => app(RevokeInvitation::class)->handle($owner->fresh(), $read));
+    $refusal = invitationRefusal(fn () => app(Tenancy::class)->enter(1, fn () => app(AcceptInvitation::class)
+        ->withNewAccount($issued->token, 'Nguyễn Văn An', 'Mat-khau-rat-manh-2026')));
+
+    expect($refusal)->toBe('invalid')
+        ->and(User::query()->where('email', 'moi@example.test')->exists())->toBeFalse()
+        ->and(DB::connection('pgsql_admin')->table('invitations')->value('accepted_at'))->toBeNull();
+});
+
 it('only works on the site it was issued for', function (): void {
     $issued = invite(1, invitationMember(1, 'owner'), 'moi@example.test');
 

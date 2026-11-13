@@ -385,6 +385,7 @@
     "admin.members.lim_full_title": "网站在过去 24 小时已发送 :max 封邀请邮件。",
     "admin.members.lim_full_text": ":time 起可以重新邀请和重新发送。已发送的邀请仍然有效。",
     "admin.members.lim_full_later": "较早的邮件满 24 小时后可以重新邀请和重新发送。已发送的邀请仍然有效。",
+    "admin.members.reopen_day": ":day :time",
     "admin.members.inv_noperm": "“:role”可以查看邀请,但没有“邀请成员”权限 — 不能发送、重新发送或撤销。如有需要,请联系网站所有者。",
     "admin.members.inv_resend_note": "重新发送会生成新链接 — 之前邮件中的链接将失效,新链接自重新发送起 :days 天内有效。",
     "admin.members.inv_search_label": "按邮箱搜索",
