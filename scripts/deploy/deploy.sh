@@ -10,7 +10,7 @@
 #   run <release copy> <engine blob> <release sha256> <commit> [step | dump | rollback]
 # Steps (the order of the clean run of 05/11, 58 s): 0 checks · 1 delta · 2 dump · 3 read-only checks ·
 # 4 migrate (old code still serves) · 5 code + composer · 6 build · 7 caches, pre-reload one-offs, reload,
-# one-off commands · 8 smoke. Rollback moves the code only (migrations must be expand-only; a non-additive
+# rbac:sync + a second reload, one-off commands · 8 smoke. Rollback moves the code only (migrations must be expand-only; a non-additive
 # one needs review).
 # Every changed path must belong to a known class (scripts/deploy/README.md); an unknown path, a server
 # file, or an edited or deleted migration stops. Classes that need a human look (migrations, schedule,
@@ -610,8 +610,9 @@ s7() {
         if [ -s "$STATE/rbac-ok" ]; then echo "Bỏ qua rbac:sync: đã chạy"; else art rbac:sync; date '+%F %T' > "$STATE/rbac-ok"; fi
         # Each worker keeps the permission list it loaded first in its own memory (the package's Octane
         # reset listener is off), so a worker that started before the sync would keep the old list until it
-        # retires: reload once more, now that the new code serves alone.
+        # retires: reload once more, now that the new code serves alone. Horizon's workers never retire either.
         art octane:reload
+        docker restart "${PREFIX}horizon"
         wait_up
     fi
     if has_class sanitizer; then
@@ -671,6 +672,10 @@ rollback() { # CODE only: the schema stays (expand-only migrations; step 4 prove
     build
     reload
     MIXED=
+    if has_class permission && [ -s "$STATE/rbac-ok" ]; then
+        # the sync of step 7 may have removed grants the old code still uses: sync back to the old list
+        art rbac:sync; art octane:reload; docker restart "${PREFIX}horizon"; wait_up
+    fi
     for p in / /admin/login; do expect "trang $p" "$(code "$p" '%{http_code}')" "200"; done
     pending; expect "migration còn chờ" "${PENDING:-không}" "không"
     echo "Lưu ý: cơ sở dữ liệu giữ nguyên ${#MIGRATIONS[@]} migration của bản này (không lùi; bản cũ không dùng phần mới)."

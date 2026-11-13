@@ -502,6 +502,8 @@ fresh "$PERM"; release 'DECLARED=(permission)'; touch "$FAKE/fail-reload-after-s
 ok '[ "$RC" = 1 ] && says "DỪNG (bước 7)" && [ "$(calls "artisan rbac:sync")" = 1 ]' "the reload after rbac:sync fails"
 launch 7
 ok '[ "$RC" = 0 ] && says "Bỏ qua rbac:sync: đã chạy" && [ "$(calls "artisan rbac:sync")" = 1 ] && [ "$(calls "artisan octane:reload")" = 4 ]' "resume at 7 skips the done rbac:sync and still reloads after it"
+launch rollback
+ok '[ "$RC" = 0 ] && head_is "$OLD" && [ "$(calls "artisan rbac:sync")" = 2 ] && [ "$(calls "artisan octane:reload")" = 6 ]' "a rollback after a permission sync syncs back to the old list and reloads again"
 ( export PATH="$STUB:$PATH" FAKE; bash "$SRC/scripts/deploy/deploy.sh" plan "$REL" ) > "$PLAN" 2>&1; RC=$?
 ok '[ "$RC" = 0 ] && grep -q "octane:reload, khởi động lại horizon + scheduler, rbac:sync rồi octane:reload lần nữa" "$PLAN"' "the plan names the sync after the reload and the second reload"
 fresh "$ENVK"; launch
