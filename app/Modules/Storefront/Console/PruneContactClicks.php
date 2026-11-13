@@ -5,14 +5,16 @@ declare(strict_types=1);
 namespace App\Modules\Storefront\Console;
 
 use App\Modules\Storefront\Models\ContactClickDaily;
+use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Console\Command;
 use Throwable;
 
 /**
  * Retention: contact button tallies are kept 90 days, then removed — website by website, inside each
- * website's tenant context (RLS), through the (site_id, day, …) unique index. A website that fails
- * is reported and the sweep moves on. Scheduled daily (routes/console.php).
+ * website's tenant context (RLS), through the (site_id, day, …) unique index. The 90 days count back
+ * from the website's own today (SiteTime, the clock its days were filed under), not the UTC date. A
+ * website that fails is reported and the sweep moves on. Scheduled daily (routes/console.php).
  */
 final class PruneContactClicks extends Command
 {
@@ -22,17 +24,18 @@ final class PruneContactClicks extends Command
     #[\Override]
     protected $description = 'Remove contact button tallies older than the retention period, on every site.';
 
-    public function handle(Tenancy $tenancy): int
+    public function handle(Tenancy $tenancy, SiteTime $time): int
     {
         $days = max(1, is_numeric($this->option('days')) ? (int) $this->option('days') : 90);
-        $cutoff = now()->subDays($days)->toDateString();
         $deleted = 0;
         $sites = 0;
         $failed = 0;
 
         foreach ($tenancy->siteIds() as $siteId) {
             try {
-                $removed = $tenancy->enter($siteId, fn (): mixed => ContactClickDaily::query()->where('day', '<', $cutoff)->delete());
+                $removed = $tenancy->enter($siteId, fn (): mixed => ContactClickDaily::query()
+                    ->where('day', '<', $time->now()->subDays($days)->toDateString())
+                    ->delete());
                 $deleted += is_int($removed) ? $removed : 0;
                 $sites++;
             } catch (Throwable $e) {

@@ -111,14 +111,18 @@ it('does not count crawlers, link previews or a request with no browser name', f
     'nothing' => [''],
 ]);
 
-it('stops counting an address past its limit and answers 429', function (): void {
+it('stops counting an address past its limit on a site and answers 429, other sites still count it', function (): void {
+    expect(RecordContactClick::MAX_ATTEMPTS)->toBe(60);   // as many as page views: carriers share addresses
+
     for ($i = 0; $i < RecordContactClick::MAX_ATTEMPTS; $i++) {
         sendClickBeacon('a.test', '{"channel":"zalo","placement":"bar"}')->assertNoContent();
     }
 
     sendClickBeacon('a.test', '{"channel":"zalo","placement":"bar"}')->assertStatus(429);
+    sendClickBeacon('b.test', '{"channel":"zalo","placement":"bar"}')->assertNoContent();   // the key is the site and the address
 
-    expect(bufferedClicks(1))->toBe(['zalo|bar' => RecordContactClick::MAX_ATTEMPTS]);
+    expect(bufferedClicks(1))->toBe(['zalo|bar' => RecordContactClick::MAX_ATTEMPTS])
+        ->and(bufferedClicks(2))->toBe(['zalo|bar' => 1]);
 });
 
 it('reads and writes no table beyond resolving the host', function (): void {

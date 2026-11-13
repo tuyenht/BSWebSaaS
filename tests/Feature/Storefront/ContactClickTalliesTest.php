@@ -7,14 +7,17 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Chrome\FloatingContact;
 use Carbon\CarbonImmutable;
+use Illuminate\Redis\RedisManager;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
 
 /*
  * The buffered contact button taps become daily tallies: contact:flush-clicks adds each tapped
  * site's buffer to its contact_click_daily rows (the site's own calendar day), keeps what it could
- * not write for the next run, and never lets one site stop the others; contact:prune-clicks keeps
- * 90 days; ContactClickStats reads the last days of the current site.
+ * not write for the next run, never writes the same taps twice, and never lets one site stop the
+ * others; contact:prune-clicks keeps 90 days of each site's own calendar; ContactClickStats reads
+ * the last days of the current site.
  */
 
 beforeEach(function (): void {
@@ -40,6 +43,19 @@ function clickTallies(int $site): array
     });
 }
 
+/** Save the site's floating contact setting with its own channels `keys` (key → switched on). */
+function saveContactChannels(int $site, array $keys): void
+{
+    $channels = [];
+    foreach ($keys as $key => $on) {
+        $channels[] = ['key' => $key, 'on' => $on, 'value' => 'https://example.com/'.$key, 'name' => 'Kênh '.$key];
+    }
+    app(Tenancy::class)->enter($site, fn () => SiteSetting::query()->updateOrCreate(
+        ['group_name' => 'storefront', 'key' => 'floating_contact'],
+        ['value' => ['enabled' => true, 'channels' => $channels]],
+    ));
+}
+
 /** A tally row written straight into the site's table. */
 function seedClickTally(int $site, string $day, string $channel, string $placement, int $clicks): void
 {
@@ -49,6 +65,7 @@ function seedClickTally(int $site, string $day, string $channel, string $placeme
 }
 
 it('adds the buffered taps to the site\'s daily tallies and empties the buffer', function (): void {
+    saveContactChannels(1, ['c3' => true]);
     $counter = app(ContactClickCounter::class);
     $noonHanoi = CarbonImmutable::parse('2026-11-13 12:00', 'Asia/Ho_Chi_Minh')->getTimestamp();
     $counter->record(1, 'zalo', 'bar', $noonHanoi);
@@ -134,6 +151,115 @@ it('drops a buffered field it never writes instead of failing the site', functio
         ->and(Redis::exists('contact_clicks:1', 'contact_clicks:flushing:1'))->toBe(0);
 });
 
+it('counts a site\'s own channel only while its floating contact setting has it', function (): void {
+    saveContactChannels(1, ['c3' => true, 'c7' => false]);   // c7 switched off keeps its taps
+    $counter = app(ContactClickCounter::class);
+    $at = CarbonImmutable::parse('2026-11-13 10:00', 'Asia/Ho_Chi_Minh')->getTimestamp();
+    $counter->record(1, 'c3', 'floating', $at);
+    $counter->record(1, 'c7', 'floating', $at);
+    $counter->record(1, 'c9', 'floating', $at);   // never saved: a made-up channel
+    $counter->record(1, 'zalo', 'bar', $at);      // a built-in channel always counts
+    $counter->record(2, 'c3', 'bar', $at);        // site 2 has no channel of its own
+
+    $this->artisan('contact:flush-clicks')->expectsOutputToContain('Flushed 3 contact click row(s) on 2 site(s), 0 failed.')->assertSuccessful();
+
+    expect(clickTallies(1))->toBe(['2026-11-13|c3|floating' => 1, '2026-11-13|c7|floating' => 1, '2026-11-13|zalo|bar' => 1])
+        ->and(clickTallies(2))->toBe([])
+        ->and(Redis::exists('contact_clicks:1', 'contact_clicks:2', 'contact_clicks:applying:1', 'contact_clicks:applying:2'))->toBe(0);
+});
+
+it('takes no new field once a site\'s buffer holds the cap, and still counts the fields it has', function (): void {
+    $fields = [];
+    for ($slot = 2_000_000; $slot < 2_000_000 + ContactClickCounter::FIELD_CAP; $slot++) {
+        $fields["{$slot}|zalo|bar"] = 1;
+    }
+    Redis::hmset('contact_clicks:1', $fields);
+    $counter = app(ContactClickCounter::class);
+    $now = CarbonImmutable::parse('2026-11-13 10:00', 'UTC')->getTimestamp();
+
+    $counter->record(1, 'phone', 'bar', $now);                                    // a new field: refused
+    $counter->record(1, 'zalo', 'bar', 2_000_000 * ContactClickCounter::SLOT_SECONDS); // a field it has: counted
+    $counter->record(2, 'phone', 'bar', $now);                                    // another site is not affected
+
+    expect(Redis::hlen('contact_clicks:1'))->toBe(ContactClickCounter::FIELD_CAP)
+        ->and((int) Redis::hget('contact_clicks:1', '2000000|zalo|bar'))->toBe(2)
+        ->and(Redis::hexists('contact_clicks:1', intdiv($now, ContactClickCounter::SLOT_SECONDS).'|phone|bar'))->toBeFalse()
+        ->and(Redis::hlen('contact_clicks:2'))->toBe(1);
+});
+
+it('never writes the same taps twice when Valkey fails right after the write committed', function (): void {
+    $counter = app(ContactClickCounter::class);
+    $at = CarbonImmutable::parse('2026-11-13 10:00', 'Asia/Ho_Chi_Minh')->getTimestamp();
+    $counter->record(1, 'zalo', 'bar', $at);
+    $counter->record(1, 'zalo', 'bar', $at);
+
+    // The same Valkey, except that clearing the written taps fails once: the upsert has committed by then.
+    $config = config('database.redis');
+    $flaky = new class(app(), Arr::pull($config, 'client', 'phpredis'), $config) extends RedisManager
+    {
+        public bool $failClear = true;
+
+        public function __call($method, $parameters)
+        {
+            if ($this->failClear && strtolower($method) === 'del' && str_starts_with((string) ($parameters[0] ?? ''), 'contact_clicks:applying:')) {
+                $this->failClear = false;
+
+                throw new RuntimeException('Valkey went away');
+            }
+
+            return parent::__call($method, $parameters);
+        }
+    };
+    $real = app('redis');
+    app()->instance('redis', $flaky);
+    Redis::clearResolvedInstance('redis');
+    try {
+        $this->artisan('contact:flush-clicks')
+            ->expectsOutputToContain('the written taps could not be cleared; the next run drops them.')
+            ->assertSuccessful();
+    } finally {
+        app()->instance('redis', $real);
+        Redis::clearResolvedInstance('redis');
+    }
+
+    expect($flaky->failClear)->toBeFalse()
+        ->and(clickTallies(1))->toBe(['2026-11-13|zalo|bar' => 2])
+        ->and(Redis::smembers('contact_clicks:dirty'))->toBe([]);
+
+    // The next runs find the written taps left behind and drop them: still 2, not 4.
+    $this->artisan('contact:flush-clicks')->assertSuccessful();
+    $this->artisan('contact:flush-clicks')->assertSuccessful();
+
+    expect(clickTallies(1))->toBe(['2026-11-13|zalo|bar' => 2])
+        ->and(Redis::exists('contact_clicks:1', 'contact_clicks:flushing:1', 'contact_clicks:applying:1'))->toBe(0)
+        ->and(Redis::smembers('contact_clicks:dirty'))->toBe([]);
+});
+
+it('drains taps a run that died left in its working key, with no new tap to mark the site', function (): void {
+    $slot = intdiv(CarbonImmutable::parse('2026-11-13 10:00', 'Asia/Ho_Chi_Minh')->getTimestamp(), ContactClickCounter::SLOT_SECONDS);
+    Redis::hincrby('contact_clicks:flushing:2', "{$slot}|phone|sheet", 4);   // taken, never written, not in the dirty set
+
+    $this->artisan('contact:flush-clicks')->expectsOutputToContain('Flushed 1 contact click row(s) on 1 site(s), 0 failed.')->assertSuccessful();
+
+    expect(clickTallies(2))->toBe(['2026-11-13|phone|sheet' => 4])
+        ->and(Redis::exists('contact_clicks:flushing:2', 'contact_clicks:applying:2'))->toBe(0)
+        ->and(Redis::smembers('contact_clicks:dirty'))->toBe([]);
+});
+
+it('drops, once, the taps of a site that no longer exists', function (): void {
+    $at = CarbonImmutable::parse('2026-11-13 10:00', 'Asia/Ho_Chi_Minh')->getTimestamp();
+    app(ContactClickCounter::class)->record(999, 'zalo', 'bar', $at);   // no site 999: deleted
+    app(ContactClickCounter::class)->record(1, 'phone', 'bar', $at);
+
+    $this->artisan('contact:flush-clicks')->expectsOutputToContain('Dropped the taps of 1 site(s) that no longer exist.')->assertSuccessful();
+
+    expect(clickTallies(1))->toBe(['2026-11-13|phone|bar' => 1])
+        ->and(Redis::exists('contact_clicks:999', 'contact_clicks:flushing:999', 'contact_clicks:applying:999'))->toBe(0)
+        ->and(Redis::smembers('contact_clicks:dirty'))->toBe([]);
+
+    $this->artisan('contact:flush-clicks')->expectsOutputToContain('Flushed 0 contact click row(s) on 0 site(s), 0 failed.')->assertSuccessful();
+});
+
 it('shows a site only its own tallies, whatever the query asks (RLS)', function (): void {
     seedClickTally(1, '2026-11-10', 'zalo', 'bar', 4);
     seedClickTally(2, '2026-11-10', 'zalo', 'bar', 9);
@@ -158,6 +284,18 @@ it('keeps 90 days of tallies and removes older ones on every site', function ():
 
     expect(clickTallies(1))->toBe(['2026-08-15|zalo|bar' => 2, '2026-11-13|zalo|bar' => 3])
         ->and(clickTallies(2))->toBe([]);
+});
+
+it('counts the 90 days back from each site\'s own today', function (): void {
+    app(Tenancy::class)->enter(2, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'general', 'key' => 'timezone'], ['value' => ['tz' => 'UTC']]));
+    $this->travelTo(CarbonImmutable::parse('2026-11-13 18:30', 'UTC'));   // already the 14th in Hanoi
+    seedClickTally(1, '2026-08-15', 'zalo', 'bar', 1);   // 91 days before Hanoi's today
+    seedClickTally(2, '2026-08-15', 'zalo', 'bar', 2);   // 90 days before UTC's today: kept
+
+    $this->artisan('contact:prune-clicks')->expectsOutputToContain('Removed 1 contact click row(s) older than 90 days on 2 site(s), 0 failed.')->assertSuccessful();
+
+    expect(clickTallies(1))->toBe([])
+        ->and(clickTallies(2))->toBe(['2026-08-15|zalo|bar' => 2]);
 });
 
 it('sums the current site\'s last days per channel, placement and day in one query', function (): void {

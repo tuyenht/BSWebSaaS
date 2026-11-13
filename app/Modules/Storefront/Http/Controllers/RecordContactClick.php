@@ -20,13 +20,16 @@ use Symfony\Component\HttpFoundation\Response;
  * The website is the one of the host (SetCurrentSite) — a website named in the body is ignored. The
  * channel must be a built-in one or a website's own (`c1`, `c2`, …), the placement one of the four;
  * anything else, a crawler or a request with no browser name answers 204 and counts nothing. Never
- * a cookie or a session; an address past the limit gets 429 and is not counted (the address is a
- * rate-limit key only, it never reaches the database).
+ * a cookie or a session; an address past its limit on that website gets 429 and is not counted (the
+ * address is a rate-limit key only, it never reaches the database).
  */
 final readonly class RecordContactClick
 {
-    /** Taps one address may send in DECAY_SECONDS; a person reaching out stays far below it. */
-    public const int MAX_ATTEMPTS = 20;
+    /**
+     * Taps one address may send to one website in DECAY_SECONDS, as many as page views (/_view):
+     * Vietnamese mobile carriers put many visitors behind one address.
+     */
+    public const int MAX_ATTEMPTS = 60;
 
     private const int DECAY_SECONDS = 60;
 
@@ -38,7 +41,7 @@ final readonly class RecordContactClick
     /** The current site arrives per call, never through the constructor: it is request-scoped (Octane). */
     public function __invoke(Request $request, CurrentSite $site): Response
     {
-        $throttle = 'contact-click:'.($request->ip() ?? 'unknown');
+        $throttle = 'contact-click:'.$site->id().':'.($request->ip() ?? 'unknown');
         if (RateLimiter::tooManyAttempts($throttle, self::MAX_ATTEMPTS)) {
             return response()->noContent(Response::HTTP_TOO_MANY_REQUESTS);
         }

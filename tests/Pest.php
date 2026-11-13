@@ -358,10 +358,15 @@ function expectProductSearchWordsCurrent(int $siteId): void
 }
 
 /**
- * Empty the contact button tap buffer (ContactClickCounter) of the two test sites, and the set of
- * sites with buffered taps. Valkey is shared by every test and outlives a test's tables.
+ * Empty the contact button tap buffer (ContactClickCounter) of the two test sites and of site 999
+ * (a site that does not exist), and the set of sites with buffered taps. Valkey is shared by every
+ * test and outlives a test's tables.
  */
 function forgetContactClicks(): void
 {
-    Redis::del('contact_clicks:1', 'contact_clicks:2', 'contact_clicks:flushing:1', 'contact_clicks:flushing:2', 'contact_clicks:dirty');
+    $keys = ['contact_clicks:dirty'];
+    foreach ([1, 2, 999] as $site) {
+        array_push($keys, "contact_clicks:{$site}", "contact_clicks:flushing:{$site}", "contact_clicks:applying:{$site}");
+    }
+    Redis::del(...$keys);
 }

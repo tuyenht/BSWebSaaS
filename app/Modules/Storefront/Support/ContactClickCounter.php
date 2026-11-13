@@ -21,7 +21,15 @@ use Throwable;
  * so the tap itself reads no setting (every UTC offset in use is a whole number of quarter hours).
  *
  * Recording is fail-OPEN: a Valkey hiccup must never surface on a visitor's tap, so it is
- * swallowed and the tap is simply not counted.
+ * swallowed and the tap is simply not counted. A website's live hash takes at most FIELD_CAP
+ * fields: a script sending made-up custom channels cannot grow it without bound (the flush then
+ * drops the channels the website never saved).
+ *
+ * Flushing moves a website's taps through two keys: `take()` renames the live hash to
+ * `contact_clicks:flushing:{site}` (taken, not yet written), `claim()` renames that to
+ * `contact_clicks:applying:{site}` right before the database write, and `done()` deletes it once
+ * the write committed. A taken key is safe to write again; an applying key never is (its write
+ * may have committed), so a run that finds one left over drops it instead of writing it twice.
  */
 final class ContactClickCounter
 {
@@ -30,6 +38,35 @@ final class ContactClickCounter
     private const string DIRTY = 'contact_clicks:dirty';
 
     private const string WORKING_PREFIX = 'contact_clicks:flushing:';
+
+    private const string APPLYING_PREFIX = 'contact_clicks:applying:';
+
+    /**
+     * Most fields one website's live hash takes; a tap that would add one more is not counted, a tap
+     * on a field already there still is. A field is one (quarter hour, channel, placement): at most
+     * 20 channels (FloatingContact::MAX_CHANNELS) × the 2 placements one page draws (round buttons
+     * or speed dial on a computer, phone bar or bottom sheet on a phone) = 40 per quarter hour, and
+     * a five-minute flush leaves one or two quarter hours in the hash. 256 keeps a fully loaded
+     * website counting through more than an hour of flushes that did not run (6 quarter hours),
+     * while bounding what a script can add to ~256 small fields per website between two flushes.
+     */
+    public const int FIELD_CAP = 256;
+
+    /**
+     * Bump a field of the live hash and mark the website dirty, in one atomic step; a NEW field only
+     * while the hash holds fewer than the cap. KEYS: live hash, dirty set. ARGV: field, cap, site.
+     */
+    private const string RECORD_SCRIPT = <<<'LUA'
+        if redis.call('HEXISTS', KEYS[1], ARGV[1]) == 0 and redis.call('HLEN', KEYS[1]) >= tonumber(ARGV[2]) then
+            return 0
+        end
+        redis.call('HINCRBY', KEYS[1], ARGV[1], 1)
+        redis.call('SADD', KEYS[2], ARGV[3])
+        return 1
+        LUA;
+
+    /** Keys looked at per SCAN step of the leftover sweep. */
+    private const int SCAN_COUNT = 500;
 
     /** Seconds in one time slot of the buffer (a quarter hour). */
     public const int SLOT_SECONDS = 900;
@@ -49,8 +86,11 @@ final class ContactClickCounter
     public function record(int $siteId, string $channel, string $placement, int $at): void
     {
         try {
-            Redis::hincrby(self::KEY_PREFIX.$siteId, intdiv($at, self::SLOT_SECONDS).'|'.$channel.'|'.$placement, 1);
-            Redis::sadd(self::DIRTY, (string) $siteId);
+            Redis::eval(
+                self::RECORD_SCRIPT, 2,
+                self::KEY_PREFIX.$siteId, self::DIRTY,
+                intdiv($at, self::SLOT_SECONDS).'|'.$channel.'|'.$placement, self::FIELD_CAP, $siteId,
+            );
         } catch (Throwable) {
             // best-effort tally: never let it break a visitor's tap
         }
@@ -123,10 +163,80 @@ final class ContactClickCounter
         return ['counts' => $counts, 'more' => $more];
     }
 
-    /** The taken taps are stored: drop the working key. */
+    /**
+     * The taken taps are about to be written: from here on the key must never be written again, so
+     * it moves to the applying key (one RENAME). Call it right before the database write.
+     */
+    public function claim(int $siteId): void
+    {
+        Redis::rename(self::WORKING_PREFIX.$siteId, self::APPLYING_PREFIX.$siteId);
+    }
+
+    /** The write failed and rolled back: the taps go back to the working key for the next run. */
+    public function release(int $siteId): void
+    {
+        Redis::rename(self::APPLYING_PREFIX.$siteId, self::WORKING_PREFIX.$siteId);
+    }
+
+    /** The claimed taps are stored (or are to be dropped): delete them. */
     public function done(int $siteId): void
     {
-        Redis::del(self::WORKING_PREFIX.$siteId);
+        Redis::del(self::APPLYING_PREFIX.$siteId);
+    }
+
+    /**
+     * Websites with a working key left by a run that died after taking it (SCAN, cursor by cursor,
+     * never KEYS): they are marked dirty again so the next flush drains them.
+     *
+     * @return list<int>
+     */
+    public function leftoverTaken(): array
+    {
+        return $this->scanSites(self::WORKING_PREFIX);
+    }
+
+    /**
+     * Websites with an applying key left over: its write may or may not have committed, so it is
+     * dropped, never written again. Returns how many were dropped.
+     */
+    public function dropLeftoverClaims(): int
+    {
+        $sites = $this->scanSites(self::APPLYING_PREFIX);
+        foreach (array_chunk($sites, self::SCAN_COUNT) as $chunk) {
+            Redis::del(...array_map(static fn (int $site): string => self::APPLYING_PREFIX.$site, $chunk));
+        }
+
+        return count($sites);
+    }
+
+    /**
+     * The website ids of the keys `{prefix}{site}`, read with SCAN. The connection's key prefix is
+     * added to the pattern (phpredis prefixes commands, not SCAN's MATCH) and read past in the keys.
+     *
+     * @return list<int>
+     */
+    private function scanSites(string $prefix): array
+    {
+        $connection = Redis::connection();
+        $full = Cast::string($connection->_prefix('')).$prefix;
+        $pattern = '/\A'.preg_quote($full, '/').'([1-9]\d*)\z/';
+        $sites = [];
+        $cursor = null;
+
+        do {
+            $step = $connection->scan($cursor, ['match' => $full.'*', 'count' => self::SCAN_COUNT]);
+            if (! is_array($step)) {
+                break;
+            }
+            [$cursor, $keys] = $step;
+            foreach (is_array($keys) ? $keys : [] as $key) {
+                if (is_string($key) && preg_match($pattern, $key, $m) === 1) {
+                    $sites[(int) $m[1]] = (int) $m[1];
+                }
+            }
+        } while ($cursor !== 0 && $cursor !== '0' && $cursor !== null);
+
+        return array_values($sites);
     }
 
     /**
