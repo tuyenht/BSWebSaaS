@@ -9,6 +9,8 @@
 # contact:flush-clicks every 5 minutes and contact:prune-clicks daily), #589 (floating contact widget's new look:
 # the root is now <div class="sf-fc sf-fc--combo" data-fc-root>, a bottom sheet, and the "Chép số" chunk
 # resources/js/sf-fc-copy.js, a Vite input the widget imports on first touch). No library change, no env key.
+# Run 13/11 10:06 (log plans/reports/deploy-runs/9b11dd2-50e2f290-run-20261113-100656.log): migration 2056 ran in
+# 27.51 ms, every step and every release_smoke check passed (156 OK), 0 app error lines.
 # shellcheck shell=bash disable=SC2034
 OLD=9b11dd2e676a525a1714214e96d8361e3cd39c36
 TARGET=50e2f290c765b3583d8b799ab83c47d9c11414dd
