@@ -267,7 +267,8 @@ it('counts customers and websites once, not again on a search, a filter or a pag
 
     $counts = 0;
     DB::listen(function (QueryExecuted $q) use (&$counts): void {
-        $counts += (int) (str_contains($q->sql, 'from "tenants"') || str_contains($q->sql, 'from "sites"'));
+        // the grouped counts of the list only (a write also counts one plan's customers on its own)
+        $counts += (int) (str_contains($q->sql, 'group by') && (str_contains($q->sql, '"tenants"') || str_contains($q->sql, '"sites"')));
     });
     $page->set('search', 'co ban')->set('filter', 'sold')->set('per', 20)->call('clearFilters')
         ->assertSee(__('admin.plans_customers_n', ['n' => 1]));
@@ -276,4 +277,23 @@ it('counts customers and websites once, not again on a search, a filter or a pag
     // a write counts again on the next render
     $page->call('toggleSold', $basic->key)->assertSee(__('admin.plans_customers_n', ['n' => 1]));
     expect($counts)->toBeGreaterThan(0);
+});
+
+it('refuses, without an error page, a copy whose key another staffer took at that same moment', function (): void {
+    $basic = plPlan('Cơ bản');
+    $raced = false;
+    Plan::creating(function (Plan $plan) use (&$raced): void {
+        if (! $raced) {
+            $raced = true;
+            Plan::query()->insert(['key' => $plan->key, 'name' => 'Gói của người khác', 'is_active' => false, 'sort_order' => 999]);
+        }
+    });
+
+    Livewire::actingAs(plStaff('super_admin'))->test(Index::class)
+        ->call('duplicate', $basic->key)
+        ->assertStatus(200)
+        ->assertSee(__('admin.plans_toast_refused'));
+
+    expect($raced)->toBeTrue()
+        ->and(Plan::query()->where('name', 'Gói của người khác')->exists())->toBeFalse();
 });

@@ -8,6 +8,7 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\Slugger;
 use App\Modules\Tenancy\Exceptions\PlanChangeRejectedException;
 use App\Modules\Tenancy\Models\Plan;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Str;
 
 /**
@@ -38,7 +39,7 @@ final readonly class SavePlan
     private const int SUFFIX = 5;
 
     /**
-     * @throws PlanChangeRejectedException name_required
+     * @throws PlanChangeRejectedException name_required, or plan_changed when another staffer took the same key at that moment
      */
     public function handle(?Plan $plan, string $name, bool $isActive): Plan
     {
@@ -56,7 +57,12 @@ final readonly class SavePlan
         if ($isActive) {
             $plan->forceFill(['meta' => ['sold_once' => true] + Cast::arr($plan->meta)]);
         }
-        $plan->save();
+        try {
+            $plan->save();
+        } catch (UniqueConstraintViolationException) {
+            // Another staffer took the same free key between the check and this insert.
+            throw new PlanChangeRejectedException('plan_changed');
+        }
 
         return $plan;
     }
