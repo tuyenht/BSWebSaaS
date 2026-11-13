@@ -330,6 +330,11 @@
     .sf-rail__btn::before {
         box-shadow: 0 2px 10px rgb(0 0 0 / 0.22);
     }
+
+    /* The hit area touches the window's edge here, so the focus ring is drawn inside it, on the disc. */
+    .sf-rail__btn:focus-visible {
+        outline-offset: -2px;
+    }
 }
 
 @media (min-width: 1440px) {
