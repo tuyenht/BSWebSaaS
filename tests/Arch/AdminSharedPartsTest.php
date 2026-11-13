@@ -55,6 +55,8 @@ const ADMIN_HAND_BUILT_PARTS = [
     'platform/audit/index.blade.php' => [0, 2, 0],
     // the lists' error states
     'platform/plans/index.blade.php' => [0, 2, 0],
+    // the list's loading line, read out while it loads, as board 20 draws it
+    'platform/support/index.blade.php' => [0, 1, 0],
     // + the list's error state
     'platform/tenants/index.blade.php' => [0, 3, 0],
     'seo-settings.blade.php' => [0, 1, 0],
