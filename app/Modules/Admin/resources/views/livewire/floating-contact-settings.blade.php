@@ -352,6 +352,8 @@
                                             class="hit-area relative mt-px inline-flex size-[2.125rem] shrink-0 cursor-pointer items-center justify-center rounded-lg border-0 p-0 text-white" style="background: {{ $pic !== null ? 'var(--color-surface)' : $color }}">
                                         @if ($pic !== null)
                                             <img src="{{ $pic['src'] }}" alt="" width="{{ $pic['w'] }}" height="{{ $pic['h'] }}" class="absolute inset-0 size-full rounded-[inherit] object-cover" decoding="async">
+                                        @elseif ($key === 'zalo')
+                                            <svg viewBox="0 0 24 24" class="size-[min(1.5rem,calc(1.0625rem+var(--user-text-boost)))]" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 2.5C6.2 2.5 1.5 6.3 1.5 11c0 2.6 1.4 4.9 3.7 6.5l-.9 3.4a.5.5 0 0 0 .7.6l3.9-2.1c1 .3 2 .4 3.1.4 5.8 0 10.5-3.8 10.5-8.5S17.8 2.5 12 2.5z"/><path style="fill: {{ $color }}" d="M7.7 6.6h8.6v1.9l-5.8 5.9h5.8v1.9H7.7v-1.9l5.8-5.9H7.7z"/></svg>
                                         @elseif ($text !== null)
                                             <span class="text-[0.6875rem] font-extrabold" aria-hidden="true">{{ $text }}</span>
                                         @else
@@ -436,6 +438,8 @@
                                                     <span class="relative inline-flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full text-white shadow-[0_3px_8px_rgb(0_0_0/0.18)]" style="background: {{ $pic !== null ? 'var(--color-surface)' : $color }}" aria-hidden="true">
                                                         @if ($pic !== null)
                                                             <img src="{{ $pic['src'] }}" alt="" width="{{ $pic['w'] }}" height="{{ $pic['h'] }}" class="absolute inset-0 size-full object-cover" decoding="async">
+                                                        @elseif ($key === 'zalo')
+                                                            <svg viewBox="0 0 24 24" class="size-[min(1.5rem,calc(1.25rem+var(--user-text-boost)))]" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 2.5C6.2 2.5 1.5 6.3 1.5 11c0 2.6 1.4 4.9 3.7 6.5l-.9 3.4a.5.5 0 0 0 .7.6l3.9-2.1c1 .3 2 .4 3.1.4 5.8 0 10.5-3.8 10.5-8.5S17.8 2.5 12 2.5z"/><path style="fill: {{ $color }}" d="M7.7 6.6h8.6v1.9l-5.8 5.9h5.8v1.9H7.7v-1.9l5.8-5.9H7.7z"/></svg>
                                                         @elseif ($text !== null)
                                                             <span class="text-caption font-extrabold">{{ $text }}</span>
                                                         @else
