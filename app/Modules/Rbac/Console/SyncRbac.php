@@ -35,6 +35,9 @@ final class SyncRbac extends Command
     #[\Override]
     protected $description = 'Sync permissions + platform roles, back-fill system tenant roles (idempotent).';
 
+    /** System roles read at a time by the back-fill. */
+    public const int CHUNK = 500;
+
     public function handle(PermissionRegistrar $registrar): int
     {
         try {
@@ -103,40 +106,45 @@ final class SyncRbac extends Command
 
         $everyTypeInUse = array_values(array_unique(array_values($siteTypeBySiteId)));
 
-        foreach (Role::query()->where('is_system', true)->get() as $role) {
-            $roleName = $role->getAttribute('name');
-            $rawSiteId = $role->getAttribute('site_id');
-            if (! is_string($roleName) || ! is_numeric($rawSiteId)) {
-                continue;
-            }
+        // In pages by id with each page's permissions loaded in one query: at 10,000+ sites the
+        // system roles are tens of thousands, and this runs on every deploy that changes permissions.
+        Role::query()->where('is_system', true)->with('permissions')
+            ->chunkById(self::CHUNK, function (Collection $roles) use ($siteTypeBySiteId, $everyTypeInUse, &$granted): void {
+                foreach ($roles as $role) {
+                    $roleName = $role->getAttribute('name');
+                    $rawSiteId = $role->getAttribute('site_id');
+                    if (! is_string($roleName) || ! is_numeric($rawSiteId)) {
+                        continue;
+                    }
 
-            // A per-site role follows its own site's type; a shared (team-0) role serves every
-            // site, so every type in use contributes (GĐ1: only `corporate` exists).
-            $siteId = (int) $rawSiteId;
-            $typeKeys = $siteId === PermissionRegistry::PLATFORM_TEAM_ID
-                ? $everyTypeInUse
-                : array_filter([$siteTypeBySiteId[$siteId] ?? null], is_string(...));
+                    // A per-site role follows its own site's type; a shared (team-0) role serves every
+                    // site, so every type in use contributes (GĐ1: only `corporate` exists).
+                    $siteId = (int) $rawSiteId;
+                    $typeKeys = $siteId === PermissionRegistry::PLATFORM_TEAM_ID
+                        ? $everyTypeInUse
+                        : array_filter([$siteTypeBySiteId[$siteId] ?? null], is_string(...));
 
-            foreach ($typeKeys as $typeKey) {
-                $spec = PermissionRegistry::tenantRoleTemplates($typeKey)[$roleName] ?? null;
-                if ($spec === null) {
-                    continue; // platform roles / names outside the template
+                    foreach ($typeKeys as $typeKey) {
+                        $spec = PermissionRegistry::tenantRoleTemplates($typeKey)[$roleName] ?? null;
+                        if ($spec === null) {
+                            continue; // platform roles / names outside the template
+                        }
+
+                        $template = $spec['permissions'] === '*'
+                            ? PermissionRegistry::TENANT_PERMISSIONS
+                            : $spec['permissions'];
+
+                        $current = $role->permissions->pluck('name')
+                            ->map(fn ($name): string => is_string($name) ? $name : '')
+                            ->all();
+                        $missing = array_values(array_diff($template, $current));
+                        if ($missing !== []) {
+                            $role->givePermissionTo($missing);
+                            $granted += count($missing);
+                        }
+                    }
                 }
-
-                $template = $spec['permissions'] === '*'
-                    ? PermissionRegistry::TENANT_PERMISSIONS
-                    : $spec['permissions'];
-
-                $current = $role->permissions->pluck('name')
-                    ->map(fn ($name): string => is_string($name) ? $name : '')
-                    ->all();
-                $missing = array_values(array_diff($template, $current));
-                if ($missing !== []) {
-                    $role->givePermissionTo($missing);
-                    $granted += count($missing);
-                }
-            }
-        }
+            });
 
         return $granted;
     }

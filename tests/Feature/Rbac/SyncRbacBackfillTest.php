@@ -198,3 +198,29 @@ it('gives an existing site\'s owner and admin the folder and delete-for-good med
         }
     }
 });
+
+it('reads the system roles in pages with their permissions, not one query per role', function (): void {
+    $reads = function (): int {
+        $n = 0;
+        DB::listen(function ($q) use (&$n): void {
+            if (str_starts_with(strtolower(ltrim($q->sql)), 'select') && str_contains($q->sql, '"role_has_permissions"')) {
+                $n++;
+            }
+        });
+        $this->artisan('rbac:sync')->assertSuccessful();
+
+        return $n;
+    };
+    $one = $reads();
+
+    foreach ([2, 3, 4] as $i) {
+        app(ProvisionSite::class)->handle(new ProvisionSiteData(
+            tenantName: "Site {$i}", siteName: "Site {$i}", hostname: "site{$i}.platform.test",
+            ownerEmail: "owner{$i}@site.test", ownerName: "Owner {$i}",
+            ownerPassword: 'a-strong-password', locales: ['vi'], modules: ['cms'],
+        ));
+    }
+    app(TeamContext::class)->forget();
+
+    expect($reads())->toBe($one); // four sites' system roles cost what one site's did
+});
