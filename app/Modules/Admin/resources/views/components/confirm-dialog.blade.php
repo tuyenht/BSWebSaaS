@@ -7,6 +7,7 @@
     'ok' => '',
     'confirm',
     'cancel',
+    'cancelLabel' => null,
 ])
 @php
     // A question before a change (design 21 .tm-dlg.sm, role=alertdialog): an icon box, the
@@ -16,7 +17,8 @@
     // red button with the bin) and says so in its lines. `model` is the host's open flag
     // (entangled); `confirm` and `cancel` are the host's public methods. Below 600px it is a sheet
     // from the bottom with its buttons stacked, the change on top. The `alt` slot holds a second
-    // way through (buttons between Hủy and the change).
+    // way through (buttons between Hủy and the change). `cancel-label` renames Hủy where the
+    // question itself is about cancelling something ("Giữ lời mời").
     //
     // A screen that keeps its state in the browser passes `state` instead of `model`: an Alpine
     // expression for its question object { title, ok, danger } — the dialog is open while it is set
@@ -61,7 +63,7 @@
             </div>
             <div class="flex flex-wrap justify-end gap-2 border-t border-border bg-surface-muted px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] max-[599.98px]:flex-col-reverse max-[599.98px]:*:w-full">
                 @if ($alpine)
-                    <x-bs-admin::button variant="outline" color="secondary" autofocus x-on:click="{{ $cancel }}">{{ __('admin.cancel') }}</x-bs-admin::button>
+                    <x-bs-admin::button variant="outline" color="secondary" autofocus x-on:click="{{ $cancel }}">{{ $cancelLabel ?? __('admin.cancel') }}</x-bs-admin::button>
                     {{ $alt ?? '' }}
                     {{-- two buttons, so a danger confirm keeps the danger colours for hover and press too --}}
                     <x-bs-admin::button x-show="!({{ $state }})?.danger" x-on:click="{{ $confirm }}">
@@ -72,7 +74,7 @@
                         <span x-text="({{ $state }})?.ok || @js(__('admin.confirm'))">{{ __('admin.confirm') }}</span>
                     </x-bs-admin::button>
                 @else
-                    <x-bs-admin::button variant="outline" color="secondary" autofocus wire:click="{{ $cancel }}">{{ __('admin.cancel') }}</x-bs-admin::button>
+                    <x-bs-admin::button variant="outline" color="secondary" autofocus wire:click="{{ $cancel }}">{{ $cancelLabel ?? __('admin.cancel') }}</x-bs-admin::button>
                     {{ $alt ?? '' }}
                     <x-bs-admin::button :color="$danger ? 'danger' : 'primary'" wire:click="{{ $confirm }}">
                         @if ($danger)<x-bs-admin::icon name="ri-delete-bin" class="size-[calc(1rem+var(--user-text-boost))]" />@endif
