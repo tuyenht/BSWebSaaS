@@ -521,14 +521,14 @@ it('opens the detail panel for a library image and loads its alt in the site loc
 
         $component = Livewire::actingAs($user)->test(Editor::class)
             ->call('openImagePicker', 'gallery')
-            ->call('openPickerDetail', $media->id);
+            ->call('openPickerDetail', $media->ulid);
 
-        expect($component->get('pickerDetailId'))->toBe($media->id)
+        expect($component->get('pickerDetailUlid'))->toBe($media->ulid)
             ->and($component->get('pickerDetailAlt'))->toBe('Đồ gá phay CNC'); // site default = vi
         expect($component->instance()->mediaPickerState()['detail']?->id)->toBe($media->id);
 
         $component->call('closePickerDetail');
-        expect($component->get('pickerDetailId'))->toBeNull();
+        expect($component->get('pickerDetailUlid'))->toBeNull();
     });
 });
 
@@ -540,7 +540,7 @@ it('saves alt for the site locale without touching other locales (media.upload)'
 
         Livewire::actingAs($user)->test(Editor::class)
             ->call('openImagePicker', 'gallery')
-            ->call('openPickerDetail', $media->id)
+            ->call('openPickerDetail', $media->ulid)
             ->set('pickerDetailAlt', '  Bàn gá khoan  ')
             ->call('savePickerDetailAlt');
 
@@ -557,7 +557,7 @@ it('refuses an alt text longer than the SEO hard cap and saves one at the cap', 
 
         $component = Livewire::actingAs($user)->test(Editor::class)
             ->call('openImagePicker', 'gallery')
-            ->call('openPickerDetail', $media->id)
+            ->call('openPickerDetail', $media->ulid)
             ->set('pickerDetailAlt', str_repeat('ả', 189))
             ->call('savePickerDetailAlt');
 
@@ -580,7 +580,7 @@ it('403s saving alt without media.upload', function (): void {
 
         Livewire::actingAs($user)->test(Editor::class)
             ->call('openImagePicker', 'gallery')
-            ->call('openPickerDetail', $media->id)
+            ->call('openPickerDetail', $media->ulid)
             ->set('pickerDetailAlt', 'nope')
             ->call('savePickerDetailAlt')
             ->assertStatus(403);
@@ -592,13 +592,13 @@ it('403s saving alt without media.upload', function (): void {
 it('never opens the detail of another site\'s image', function (): void {
     $user = pickerManager();
 
-    $foreign = app(Tenancy::class)->enter(2, fn (): int => seedPickerMedia('foreign2')->id);
+    $foreign = app(Tenancy::class)->enter(2, fn (): string => seedPickerMedia('foreign2')->ulid);
 
     app(Tenancy::class)->enter(1, function () use ($user, $foreign): void {
         Livewire::actingAs($user)->test(Editor::class)
             ->call('openImagePicker', 'gallery')
             ->call('openPickerDetail', $foreign)
-            ->assertSet('pickerDetailId', null); // RLS-scoped resolve → nothing
+            ->assertSet('pickerDetailUlid', null); // RLS-scoped resolve → nothing
     });
 });
 
@@ -870,7 +870,7 @@ it('shows the uploader and every product/post using the image in the detail pane
 
         $component = Livewire::actingAs($user)->test(Editor::class)
             ->call('openImagePicker', 'gallery')
-            ->call('openPickerDetail', $media->id);
+            ->call('openPickerDetail', $media->ulid);
 
         $state = $component->instance()->mediaPickerState();
         expect($state['detailUploader'])->toBe($user->name)
