@@ -1255,8 +1255,8 @@ html:not(.sf-js) .sf-nav--desk .sf-nav__item--parent:focus-within > .sf-nav__pan
 }
 
 /* The phone menu is a dialog drawer (theme::partials.header-bar): its `hidden` attribute is the
-   open/closed state, never a display set here. A light panel from the site's tokens, 3rem rows
-   (16px top items, 15px sub items), text that wraps (never "…"), the 4px bar at the start marks where the
+   open/closed state, never a display set here. A light panel from the site's tokens, rows of 3rem and
+   never under 48px (a site may set its base text below 16px), 16px top items and 15px sub items, text that wraps (never "…"), the 4px bar at the start marks where the
    visitor is, logical properties throughout so a right-to-left language mirrors it. */
 .sf-nav--mob {
     padding: 0.25rem 0;
@@ -1418,7 +1418,7 @@ html.sf-menu-open {
     position: relative;
     display: flex;
     flex: 1;
-    min-height: 3rem;
+    min-height: max(48px, 3rem);
     padding: 0.5rem 1rem;
     border-radius: 0;
     color: var(--color-text-strong);
@@ -1431,7 +1431,7 @@ html.sf-menu-open {
 }
 
 .sf-nav--mob .sf-nav__sublink {
-    min-height: 3rem;
+    min-height: max(48px, 3rem);
     border-radius: 0.625rem;
     color: var(--color-text);
     font-size: 0.9375rem;
@@ -1442,8 +1442,8 @@ html.sf-menu-open {
 }
 
 .sf-nav--mob .sf-nav__chev {
-    min-width: 3rem;
-    min-height: 3rem;
+    min-width: max(48px, 3rem);
+    min-height: max(48px, 3rem);
     border-radius: 0;
     color: var(--color-text-strong);
 }
