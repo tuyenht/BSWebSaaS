@@ -43,16 +43,23 @@
    over its square root, so a square and a long logo weigh about the same. Every logo stays inside one
    box, at most 2.75rem tall and 8.5rem wide (at least 1.25rem tall), so a long or heavy wordmark never
    fills its cell while a square one sits small: the row reads as one even band, whatever the cell width.
-   A logo wider than the box is drawn smaller inside it (object-fit), never stretched. */
+   The width cap is folded into the height (8.5rem over the ratio), so the logo's own width never passes
+   it and a cell sized by its content (the plain list) is never wider than the logo it holds. A logo with
+   no stored ratio is held by max-width alone, drawn smaller inside the box (object-fit), never stretched. */
 .partners__logo {
     display: block;
     width: auto;
     max-width: min(100%, 8.5rem);
     height: 2.25rem;
-    height: clamp(1.25rem, calc(2.75rem / sqrt(var(--logo-r, 2.5))), 2.75rem);
+    height: min(clamp(1.25rem, calc(2.75rem / sqrt(var(--logo-r, 2.5))), 2.75rem), calc(8.5rem / var(--logo-r, 2.5)));
     object-fit: contain;
     filter: grayscale(1) opacity(0.6);
     transition: filter 0.25s;
+}
+
+/* In the plain list a cell takes its content's width, where a percentage cap does not count. */
+.partners__list .partners__logo {
+    max-width: 8.5rem;
 }
 
 /* A partner with no logo yet: its name, in the band's own text colour (never greyed below 4.5:1), never cut,
