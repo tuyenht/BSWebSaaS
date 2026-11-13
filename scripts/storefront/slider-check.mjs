@@ -16,7 +16,7 @@ const html = `<!doctype html><body><section class="sf-slider" data-sf-slider dat
 <div class="sf-slider__viewport" aria-live="off">${slide(1, true)}${slide(2)}${slide(3)}</div></section></body>`;
 
 let run = 0;
-async function mount({ reduced = false } = {}) {
+async function mount({ reduced = false, still = false } = {}) {
     const dom = new JSDOM(html);
     const { window } = dom;
     let now = 0;
@@ -34,6 +34,10 @@ async function mount({ reduced = false } = {}) {
     };
     globalThis.clearTimeout = (id) => queue.delete(id);
     await import(`${script}?run=${++run}`);
+    // The visitor is here (a mouse move) unless the case is about the page nobody has touched yet.
+    if (!still) {
+        window.dispatchEvent(new window.Event('pointermove'));
+    }
     const doc = window.document;
     const root = doc.querySelector('[data-sf-slider]');
     return {
@@ -104,6 +108,23 @@ const check = (name, ok) => {
     check('autoplay advances at the interval', s.active() === 1);
     s.tick(5000);
     check('autoplay keeps going', s.active() === 2);
+}
+{
+    const s = await mount({ still: true });
+    s.tick(20000);
+    check('nobody has touched the page yet: no autoplay', s.active() === 0);
+    check('still page: the next photo stays hidden', s.media(1).hidden === true);
+    check('still page: live region polite', s.doc.querySelector('.sf-slider__viewport').getAttribute('aria-live') === 'polite');
+    s.window.dispatchEvent(new s.window.Event('scroll'));
+    check('the first scroll starts rotation: live region off', s.doc.querySelector('.sf-slider__viewport').getAttribute('aria-live') === 'off');
+    s.tick(5000);
+    check('the first scroll starts rotation at the interval', s.active() === 1);
+}
+{
+    const s = await mount({ still: true });
+    s.window.dispatchEvent(new s.window.Event('keydown'));
+    s.tick(5000);
+    check('a key press also starts rotation', s.active() === 1);
 }
 {
     const s = await mount({ reduced: true });
