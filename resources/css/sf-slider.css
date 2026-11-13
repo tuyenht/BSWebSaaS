@@ -255,13 +255,33 @@
     transform: scale(1.25);
 }
 
-/* A phone has no hero arrows: at 360–412px they stood beside the heading and paragraph and took 3rem of
-   each side from the text. A finger swipes the slide (sf-slider.js) and the dots are the buttons, each a
-   44px target; the keyboard keeps the arrow keys and the dots. The text then uses the page's own 1rem gutter. */
+/* A phone keeps the hero arrows, in the bottom row beside the dots (‹ • • • ›) rather than at the sides: at
+   360–412px side arrows stood beside the heading and paragraph and took 3rem of each side from the text. A
+   swipe alone is not found by everyone, so the visible buttons stay; the dots are 44px targets and the text
+   uses the page's own 1rem gutter. */
 @media (max-width: 639.98px) {
+    .sf-slider__controls {
+        align-items: flex-end;
+    }
+
     .sf-slider__prev,
     .sf-slider__next {
-        display: none;
+        position: relative;
+        top: auto;
+        left: auto;
+        right: auto;
+        margin-bottom: 0.125rem;
+        transform: none;
+    }
+
+    .sf-slider__prev {
+        order: -1;
+        margin-right: 0.25rem;
+    }
+
+    .sf-slider__next {
+        order: 1;
+        margin-left: 0.25rem;
     }
 
     .sf-slider__dot {
