@@ -605,8 +605,18 @@ svg.sf-fc-bar__icon:has(.sf-fc__z) {
     height: min(22px, 1.125rem);
 }
 
+.sf-fc-bar__label {
+    max-width: 100%;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+
 /* A wide cell (three channels or fewer on most phones) gets a larger disc and label, so a short bar does
-   not look sparse; the disc size follows the cell, not the channel count. */
+   not look sparse; the disc size follows the cell, not the channel count. Kept after the base label rule,
+   which it overrides at equal specificity. */
 @container sf-fc-cell (width >= 100px) {
     .sf-fc-bar__dot {
         width: 32px;
@@ -626,15 +636,6 @@ svg.sf-fc-bar__icon:has(.sf-fc__z) {
     .sf-fc-bar__label {
         font-size: 0.8125rem;
     }
-}
-
-.sf-fc-bar__label {
-    max-width: 100%;
-    font-size: 0.75rem;
-    font-weight: 600;
-    line-height: 1.2;
-    text-align: center;
-    overflow-wrap: anywhere;
 }
 
 .sf-fc-bar--dark {
