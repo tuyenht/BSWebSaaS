@@ -69,7 +69,16 @@
     <x-bs-admin::icon name="sun" class="size-5" x-show="$store.adminTheme.state.scheme === 'dark'" x-cloak />
 </button>
 
-{{-- Notifications — GĐ1 placeholder (no notification system yet → no fake badge) --}}
+{{-- Notifications — a website's admin: the reader's own notices on this site (the bell component),
+     except on an error page inside the frame (errorFrame: the bell would record the page's address,
+     and that page never repeats the code it could not find). The platform console has no
+     notification store yet (the design marks it "Chờ backend"): it keeps the honest empty panel, no
+     fake badge. --}}
+@if (! \App\Modules\Admin\Support\AdminPlane::isPlatform() && auth()->user() instanceof \App\Modules\Identity\Models\User)
+@if (empty($errorFrame))
+<livewire:admin.notification-bell />
+@endif
+@else
 <div class="relative" x-data="{ notifOpen: false }">
     <button type="button" @click="notifOpen = ! notifOpen" :aria-expanded="notifOpen"
             aria-label="{{ __('admin.notifications') }}"
@@ -87,3 +96,4 @@
         </div>
     </div>
 </div>
+@endif

@@ -370,7 +370,8 @@ it('reads a large posts list on the flat query budget', function (): void {
 
     foreach (['', '&sort=name', '&sort=creator', '&tab=trash', '&q=abc', '&page=201&per_page=50'] as $query) {
         $count = countQueries(fn () => $this->actingAs($user)->get('http://a.test/admin/content?section=posts'.$query)->assertOk());
-        expect($count)->toBeLessThanOrEqual(22, "query string {$query}");
+        // +1: the top bar's bell reads the unread count (one bounded query on every admin page).
+        expect($count)->toBeLessThanOrEqual(23, "query string {$query}");
     }
 });
 

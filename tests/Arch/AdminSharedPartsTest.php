@@ -26,6 +26,9 @@ const ADMIN_HAND_BUILT_PARTS = [
     'general-settings.blade.php' => [0, 1, 0],
     'login.blade.php' => [0, 1, 0],
     'menus/index.blade.php' => [0, 3, 0],
+    // the top bar bell's panel: a non-modal popover under the bell (design 01 .ntf-pop), which
+    // neither the modal (a dimmed, trapping dialog) nor the drawer (a side panel) draws
+    'notification-bell.blade.php' => [1, 0, 0],
     'platform/audit/cleanup-dialog.blade.php' => [0, 2, 0],
     'platform/audit/index.blade.php' => [0, 1, 0],
     'platform/tenants/index.blade.php' => [0, 2, 0],

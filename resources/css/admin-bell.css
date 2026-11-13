@@ -1,0 +1,26 @@
+/*
+ | The top bar's bell (design board 01 "Thông báo", admin::livewire.notification-bell): the unread
+ | badge, ringed in the bar's own colour, drawn on every admin page. The panel's rules download with
+ | the bell's part (admin-bell-panel.css, imported by resources/js/admin-bell.js).
+ */
+@layer components {
+    .ntf-badge {
+        position: absolute;
+        top: 6px;
+        right: 3px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        min-width: 18px;
+        min-height: 18px;
+        padding: 1px 4px;
+        border: 2px solid var(--color-topbar-bg);
+        border-radius: 9px;
+        background: var(--color-admin-danger-solid);
+        color: #fff;
+        font-size: calc(0.75rem + var(--user-text-boost));
+        font-weight: 700;
+        line-height: 1;
+    }
+}
