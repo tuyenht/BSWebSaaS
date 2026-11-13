@@ -315,8 +315,10 @@ it('sends invitations on a fixed number of queries per address: the screen reads
     // account lookup, the lock, the open invitation, the two mail counts, the invitation, its role
     // rows (read + one insert per role) and the audit row — nothing the screen reads again. The fixed
     // part includes the page's two tab counts: the invitations per state (one statement) and the
-    // mails of the last 24 hours behind the near-limit note.
+    // mails of the last 24 hours behind the near-limit note. It also holds one roles read per
+    // permission the invited roles carry (the "actor holds every permission" check, on the send and
+    // on the re-render), so a permission added to the editor template adds two.
     expect($twenty - $one)->toBe(19 * 12)
-        ->and($one)->toBe(74);
+        ->and($one)->toBe(76);
     Notification::assertSentOnDemandTimes(MemberInvitationNotification::class, 22);
 });

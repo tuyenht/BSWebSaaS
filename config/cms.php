@@ -32,4 +32,11 @@ return [
     // while the site has none. The site template creates the page under the first slug.
     'privacy_page_slugs' => ['chinh-sach-bao-mat', 'privacy-policy'],
 
+    // The reusable block library ("Thư viện khối"): how many blocks one website may keep. Creating
+    // or copying a block past it is refused (library_full); the list, its counts and "used in N
+    // places" stay small reads because of it.
+    'blocks' => [
+        'max_per_site' => (int) env('CMS_BLOCKS_MAX_PER_SITE', 200),
+    ],
+
 ];

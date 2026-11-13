@@ -34,6 +34,9 @@ final class ModuleCatalog
             // fall inside a site's role ceiling (INV-R1); taxonomies stays hidden (route null) until
             // its screen ships. Domains is a page under Settings, seen with `domains.view`.
             ['key' => 'taxonomies', 'label' => ['vi' => 'Chuyên mục', 'en' => 'Categories', 'ja' => 'カテゴリ'], 'permission_prefix' => 'taxonomies', 'route' => null, 'nav_permission' => null, 'sort_order' => 5, 'icon' => 'folder', 'needs_tier3' => false],
+            // blocks owns `blocks.manage` (the reusable block library); hidden (route null) until its
+            // screen ships.
+            ['key' => 'blocks', 'label' => ['vi' => 'Thư viện khối', 'en' => 'Block library', 'ja' => 'ブロックライブラリ'], 'permission_prefix' => 'blocks', 'route' => null, 'nav_permission' => null, 'sort_order' => 5, 'icon' => 'layout', 'needs_tier3' => false],
             ['key' => 'banners', 'label' => ['vi' => 'Banner', 'en' => 'Banners', 'ja' => 'バナー'], 'permission_prefix' => null, 'route' => null, 'nav_permission' => null, 'sort_order' => 6, 'icon' => 'megaphone', 'needs_tier3' => false],
             ['key' => 'users', 'label' => ['vi' => 'Người dùng', 'en' => 'Users', 'ja' => 'ユーザー'], 'permission_prefix' => 'users', 'route' => 'admin.users.index', 'nav_permission' => 'users.manage', 'sort_order' => 7, 'icon' => 'users', 'needs_tier3' => false],
             ['key' => 'roles', 'label' => ['vi' => 'Vai trò', 'en' => 'Roles', 'ja' => 'ロール'], 'permission_prefix' => 'roles', 'route' => null, 'nav_permission' => null, 'sort_order' => 8, 'icon' => 'shield', 'needs_tier3' => false],

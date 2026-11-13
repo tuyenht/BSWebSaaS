@@ -5,7 +5,8 @@ use Tests\Fixtures\ModelWriteBypasses;
 
 /*
  * A page or post body is sanitized on write by the casts on entry_translations.body and
- * entry_drafts.content (ADR-19). The cast runs only when the write goes through the model, so the
+ * entry_drafts.content (ADR-19), and a reusable block's body by the same cast on
+ * content_block_translations.body. The cast runs only when the write goes through the model, so the
  * writes that skip it are banned here: query-builder inserts/updates on the two tables (DB::table,
  * raw SQL, a model's or a relation's bulk update/insert/upsert, toBase()/getQuery()/newQuery()/
  * toQuery(), the table name read from the model), raw attributes, and JSON-path keys. A builder kept
@@ -28,9 +29,9 @@ use Tests\Fixtures\ModelWriteBypasses;
 function pageBodyBypasses(string $source): array
 {
     return (new ModelWriteBypasses(
-        tables: '(?:entry_translations|entry_drafts)',
+        tables: '(?:entry_translations|entry_drafts|content_block_translations)',
         columns: 'body|content',
-        models: 'EntryTranslation|EntryDraft',
+        models: 'EntryTranslation|EntryDraft|ContentBlockTranslation',
         relations: 'translations|draft',
         collection: 'translations',
     ))->find($source);
@@ -89,6 +90,8 @@ it('catches each banned way of writing a body', function (string $source): void 
     'interpolated SQL' => "DB::statement(\"UPDATE {\$table} SET body = '{}'\"); // entry_translations",
     'computed table and column' => "DB::update(sprintf('UPDATE %s SET %s = ?', \$table, \$column), [\$json]); // EntryTranslation",
     'SQL all computed' => 'DB::statement($sql); // entry_drafts',
+    'block body bulk update' => "ContentBlockTranslation::query()->where('content_block_id', \$id)->update(['body' => \$body]);",
+    'block body raw insert' => "DB::table('content_block_translations')->insert(['locale' => 'vi', 'body' => \$json]);",
 ]);
 
 it('lets the model roads through', function (string $source): void {

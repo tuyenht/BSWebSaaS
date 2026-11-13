@@ -17,6 +17,7 @@ use App\Modules\Cms\Console\SnapshotPublishedEntries;
 use App\Modules\Cms\Events\EntryPublished;
 use App\Modules\Cms\Listeners\AddPublishedPageToMenu;
 use App\Modules\Cms\Listeners\ForgetMemberCategoryScopes;
+use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\Taxonomy;
@@ -24,6 +25,7 @@ use App\Modules\Cms\Navigation\MenuTargets;
 use App\Modules\Cms\Navigation\SpecialLinks;
 use App\Modules\Cms\Observers\EntryObserver;
 use App\Modules\Cms\Observers\TaxonomyObserver;
+use App\Modules\Cms\Policies\ContentBlockPolicy;
 use App\Modules\Cms\Policies\EntryPolicy;
 use App\Modules\Cms\Policies\MenuPolicy;
 use App\Modules\Cms\Policies\TaxonomyPolicy;
@@ -102,6 +104,7 @@ final class CmsServiceProvider extends ServiceProvider
         Gate::policy(Entry::class, EntryPolicy::class);
         Gate::policy(Menu::class, MenuPolicy::class);
         Gate::policy(Taxonomy::class, TaxonomyPolicy::class);
+        Gate::policy(ContentBlock::class, ContentBlockPolicy::class);
 
         // Purging an entry drops its block image usage rows (polymorphic, no FK cascade).
         Entry::observe(EntryObserver::class);

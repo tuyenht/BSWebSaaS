@@ -5,21 +5,22 @@ use App\Modules\Tenancy\Registry\ModuleCatalog;
 
 /*
  * T2 increment-2 — ModuleCatalog is the source of truth for the admin-nav modules (design.md
- * §15.2). 15 modules, snake_case keys (D7), tri-locale labels, sort order, and a permission_prefix
+ * §15.2). 16 modules, snake_case keys (D7), tri-locale labels, sort order, and a permission_prefix
  * that must resolve to a real permission (catalog ⊆ PermissionRegistry — no orphan gates). The
  * render consumer (AdminNav) lands in increment-3; here the catalog is pinned as a tested contract.
  * `taxonomies` + `domains` joined for the RBAC Console: a role's ceiling is "the permissions of the
- * modules the site is entitled to", so every permission needs an owning module (PermissionCatalogTest).
+ * modules the site is entitled to", so every permission needs an owning module (PermissionCatalogTest);
+ * `blocks` owns the block library's `blocks.manage` the same way.
  */
 
-it('defines exactly the 15 canonical admin-nav modules with unique snake_case keys', function (): void {
+it('defines exactly the 16 canonical admin-nav modules with unique snake_case keys', function (): void {
     $keys = array_column(ModuleCatalog::all(), 'key');
     sort($keys);
 
     expect($keys)->toBe([
-        'banners', 'catalog', 'contacts', 'dashboard', 'domains', 'media', 'menus', 'pages',
+        'banners', 'blocks', 'catalog', 'contacts', 'dashboard', 'domains', 'media', 'menus', 'pages',
         'posts', 'profile', 'roles', 'settings', 'taxonomies', 'trash', 'users',
-    ])->and(array_unique($keys))->toHaveCount(15);
+    ])->and(array_unique($keys))->toHaveCount(16);
 
     foreach ($keys as $key) {
         expect($key)->toMatch('/^[a-z][a-z0-9_]*$/'); // D7 snake_case
