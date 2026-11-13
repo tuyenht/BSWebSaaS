@@ -356,3 +356,12 @@ function expectProductSearchWordsCurrent(int $siteId): void
 
     test()->artisan('catalog:search-words', ['--site' => $siteId])->expectsOutputToContain('corrected 0.')->assertSuccessful();
 }
+
+/**
+ * Empty the contact button tap buffer (ContactClickCounter) of the two test sites, and the set of
+ * sites with buffered taps. Valkey is shared by every test and outlives a test's tables.
+ */
+function forgetContactClicks(): void
+{
+    Redis::del('contact_clicks:1', 'contact_clicks:2', 'contact_clicks:flushing:1', 'contact_clicks:flushing:2', 'contact_clicks:dirty');
+}

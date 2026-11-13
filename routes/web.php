@@ -51,6 +51,7 @@ use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Media\Http\Controllers\MediaUploadController;
 use App\Modules\Storefront\Http\Controllers\FormSubmissionController;
 use App\Modules\Storefront\Http\Controllers\ProductPreviewController;
+use App\Modules\Storefront\Http\Controllers\RecordContactClick;
 use App\Modules\Storefront\Http\Controllers\RecordEntryView;
 use App\Modules\Storefront\Http\Controllers\SitemapController;
 use App\Modules\Storefront\Http\Controllers\StorefrontController;
@@ -354,6 +355,14 @@ Route::post('/_view/{entry}', RecordEntryView::class)
     ->withoutMiddleware([StartSession::class, ShareErrorsFromSession::class, PreventRequestForgery::class])
     ->middleware([SetCurrentSite::class, 'site.active'])
     ->name('storefront.views.record');
+
+// ── Storefront contact button taps — POST /_click, sent by the visitor's browser (sendBeacon) when a
+//    contact button is tapped. Public like the page views: no session, no cookie, no CSRF token; the
+//    website is the host's, never one named in the body; per-IP rate limit, bots ignored. ──
+Route::post('/_click', RecordContactClick::class)
+    ->withoutMiddleware([StartSession::class, ShareErrorsFromSession::class, PreventRequestForgery::class])
+    ->middleware([SetCurrentSite::class, 'site.active'])
+    ->name('storefront.contact-clicks.record');
 
 // ── Public pages (sitemap, robots, the storefront) — no session for a visitor who brings no
 //    session cookie, so the edge may keep the page (StorefrontSession, EdgeCacheHeaders); the web
