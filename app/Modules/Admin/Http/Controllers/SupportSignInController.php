@@ -9,6 +9,7 @@ use App\Modules\Admin\Support\SupportSignIn;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
+use App\Modules\Rbac\Models\Role;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Models\Site;
@@ -60,11 +61,21 @@ final readonly class SupportSignInController
         }
         Auth::logout();
         $request->session()->invalidate();
+        // One open session per staff member: the others they still have (any site, any browser) end
+        // here, before this one starts, so each end row carries the code of the session it ends.
+        $this->signIn->endOthers($staff, $link['session_ulid']);
         Auth::login($member);
         $request->session()->regenerate();
 
         $this->support->start($staff, $member, $this->current->id(), $link['reason'], now()->addMinutes($link['minutes']), $link['session_ulid']);
-        Audit::record('support.session.entered', ['meta' => ['reason' => $link['reason'], 'minutes' => $link['minutes']]]);
+        // The member as the site knows them now, written here in the site's context: the console's
+        // list reads them from this row and never from another site's role tables.
+        Audit::record('support.session.entered', ['meta' => [
+            'reason' => $link['reason'],
+            'minutes' => $link['minutes'],
+            'member_name' => SupportSession::labelOf($member),
+            'member_roles' => $this->rolesOf($member),
+        ]]);
         $this->tellOwners($staff, $member, $link['reason']);
 
         return redirect()->route('admin.dashboard', [], 303);
@@ -85,6 +96,24 @@ final readonly class SupportSignInController
         return $wasSupport && $site instanceof Site
             ? redirect()->away(route('platform.sites.show', ['ulid' => $site->getAttribute('ulid')]))
             : redirect()->route('admin.login');
+    }
+
+    /**
+     * The member's roles on the current site, highest first, as plain data (the console names
+     * them in the reader's language).
+     *
+     * @return list<array{name: string, system: bool}>
+     */
+    private function rolesOf(User $member): array
+    {
+        $roles = [];
+        foreach ($member->roles()->orderByDesc('roles.level')->orderBy('roles.id')->get(['roles.name', 'roles.is_system']) as $role) {
+            if ($role instanceof Role) {
+                $roles[] = ['name' => $role->name, 'system' => $role->is_system];
+            }
+        }
+
+        return $roles;
     }
 
     private function refuse(): RedirectResponse

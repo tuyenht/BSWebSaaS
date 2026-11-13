@@ -240,6 +240,8 @@
     "admin.support.bar_back": "Quay lại quản trị",
     "admin.support.bar_back_short": "Quay lại",
     "admin.support.bar_back_aria": "Quay lại quản trị — kết thúc phiên hỗ trợ",
+    "admin.support.session_unknown": "Không tìm thấy phiên hỗ trợ này.",
+    "admin.support.end_not_yours": "Chỉ Quản trị nền tảng kết thúc được phiên của người khác.",
     "admin.oauth_no_refresh_token": "Nhà cung cấp không trả về refresh token. Hãy cấp lại quyền offline và thử lại.",
     "admin.oauth_connected_ok": "Đã kết nối tài khoản email.",
     "admin.oauth_login_no_account": "Không có tài khoản nào khớp email này.",
