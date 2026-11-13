@@ -4,10 +4,10 @@
         <div class="rounded border border-admin-success/30 bg-admin-success/10 px-4 py-3 text-sm text-admin-success-text">{{ session('status') }}</div>
     @endif
     @error('oauth')
-        <div class="rounded border border-admin-danger/30 bg-admin-danger/10 px-4 py-3 text-sm text-admin-danger-text">{{ $message }}</div>
+        <div class="rounded border border-danger-base/25 bg-danger-soft px-4 py-3 text-sm text-danger-text">{{ $message }}</div>
     @enderror
-    @if (request('oauth_error'))
-        <div class="rounded border border-admin-danger/30 bg-admin-danger/10 px-4 py-3 text-sm text-admin-danger-text">{{ request('oauth_error') }}</div>
+    @if ($oauthError = \App\Modules\Admin\Support\OAuthError::messageFor(request()->query('oauth_error')))
+        <div class="rounded border border-danger-base/25 bg-danger-soft px-4 py-3 text-sm text-danger-text">{{ $oauthError }}</div>
     @endif
     @if (request('oauth') === 'connected')
         <div class="rounded border border-admin-success/30 bg-admin-success/10 px-4 py-3 text-sm text-admin-success-text">{{ __('admin.oauth_connected_ok') }}</div>

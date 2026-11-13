@@ -335,8 +335,8 @@
                                 <p class="ac-rule">{{ $t('linked_intro') }}</p>
                                 @if (request()->query('oauth') === 'connected')
                                     <x-bs-admin::alert color="success" icon="ri-checkbox-circle">{{ $t('linked_done') }}</x-bs-admin::alert>
-                                @elseif (is_string(request()->query('oauth_error')))
-                                    <x-bs-admin::alert color="warning" icon="ri-error-warning">{{ request()->query('oauth_error') }}</x-bs-admin::alert>
+                                @elseif ($oauthError = $errors->first('oauth') ?: \App\Modules\Admin\Support\OAuthError::messageFor(request()->query('oauth_error')))
+                                    <x-bs-admin::alert color="warning" icon="ri-error-warning">{{ $oauthError }}</x-bs-admin::alert>
                                 @endif
                                 @if ($providers === [])
                                     <p class="ac-rule">{{ $t('linked_none') }}</p>
