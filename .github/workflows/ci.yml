@@ -555,9 +555,9 @@ jobs:
 
       # lhci runs Lighthouse 3x per page against the server above and asserts against
       # .lighthouserc.cjs. LCP ≤ 1.5s, JS ≤ 30KB (calibrated 24/09 on 18 real samples — see that
-      # file) and an accessibility score of 100 FAIL the job; the performance, best-practices and
-      # SEO scores only warn.
-      - name: Lighthouse CI (performance + accessibility + LCP + JS budget)
+      # file) and accessibility, best-practices and SEO scores of 100 FAIL the job; the
+      # performance score only warns.
+      - name: Lighthouse CI (performance + accessibility + best practices + SEO + LCP + JS budget)
         run: pnpm exec lhci autorun --collect.chromePath="${{ steps.chrome.outputs.chrome-path }}"
 
       # The numbers the "warn" thresholds must be calibrated against, printed where they cannot

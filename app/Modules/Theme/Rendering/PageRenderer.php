@@ -9,6 +9,7 @@ use App\Modules\Theme\Chrome\BranchMap;
 use App\Modules\Theme\Chrome\StorefrontChrome;
 use App\Modules\Theme\Components\ListDisplay;
 use App\Modules\Theme\Components\SectionProps;
+use App\Modules\Theme\Seo\DescriptionFallback;
 use App\Modules\Theme\Theming\SiteSeo;
 use App\Modules\Theme\Theming\ThemeResolver;
 use Illuminate\Contracts\View\Factory as ViewFactory;
@@ -130,7 +131,7 @@ final readonly class PageRenderer
             }
         }
 
-        return BlockStyles::narrow($this->views->make($layout, $this->head($seo, $title, $extra) + [
+        return BlockStyles::narrow($this->views->make($layout, $this->head($seo, $title, $extra, DescriptionFallback::fromHtml($band.$sections, $title)) + [
             'title' => $title,
             'tokens' => $tokens,
             'sections' => $sections,
@@ -275,14 +276,16 @@ final readonly class PageRenderer
      *
      * @param  array{title?: string|null, description?: string|null, home?: bool, pageTitle?: string}  $seo  `pageTitle`: the name the title template is given when it differs from the heading (a parent added to keep titles unique)
      * @param  array<string, mixed>  $extra
-     * @return array{seoTitle: string, seoDescription: string|null, robots?: string}
+     * @param  string|null  $fallback  the page's own words (DescriptionFallback), the head's last choice of description
+     * @return array{seoTitle: string, seoDescription: string|null, seoFallback: string|null, robots?: string}
      */
-    private function head(array $seo, string $title, array $extra): array
+    private function head(array $seo, string $title, array $extra, ?string $fallback = null): array
     {
         $locale = Cast::string($extra['lang'] ?? null, app()->getLocale());
         $head = [
             'seoTitle' => $this->seo->title($seo['title'] ?? null, $seo['pageTitle'] ?? $title, $seo['home'] ?? false, $locale, Cast::string(data_get($extra, 'brand.name'))),
             'seoDescription' => $this->seo->description($seo['description'] ?? null, $locale),
+            'seoFallback' => $fallback === null || $fallback === '' ? null : $fallback,
         ];
         if (! $this->seo->indexable()) {
             $head['robots'] = SiteSeo::HIDDEN;
@@ -533,7 +536,9 @@ final readonly class PageRenderer
         $layout = $this->templates->layoutFor('category', null, $listTemplate);
         $extra = StorefrontChrome::withTrail($this->withSlots($extra));
 
-        return BlockStyles::narrow($this->views->make($layout, $this->head($seo, $title, $extra) + [
+        $fallback = DescriptionFallback::forList($title, array_column($posts, 'title'));
+
+        return BlockStyles::narrow($this->views->make($layout, $this->head($seo, $title, $extra, $fallback) + [
             'title' => $title,
             'tokens' => $this->theme->cssVariables(),
             'posts' => $posts,
@@ -567,8 +572,11 @@ final readonly class PageRenderer
         $slotHtml = is_array($extra['slotHtml'] ?? null) ? $extra['slotHtml'] : [];
         $shared = Cast::string($slotHtml['product_tabs'] ?? '');
         $parts = ArticleToc::parts($descriptionHtml, $shared, self::PRODUCT_IDS);
+        // Without a Google description, the product's summary, else its own description, says what it is.
+        $summary = DescriptionFallback::plain(Cast::string(data_get($extra, 'product.summary')));
+        $fallback = $summary !== '' ? DescriptionFallback::cut($summary) : DescriptionFallback::fromHtml($descriptionHtml, $name);
 
-        return BlockStyles::narrow($this->views->make($layout, $this->head($seo, $name, $extra) + [
+        return BlockStyles::narrow($this->views->make($layout, $this->head($seo, $name, $extra, $fallback) + [
             'title' => $name,
             'tokens' => $this->theme->cssVariables(),
             'description' => $parts['html'],
