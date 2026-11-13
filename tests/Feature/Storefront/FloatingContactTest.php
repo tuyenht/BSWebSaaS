@@ -462,7 +462,7 @@ it('puts the buttons on the chosen side with the offsets and keeps their room un
     $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
 
     expect($part)->toContain('<nav class="sf-fc__float sf-fc__float--'.$position.'" aria-label="Liên hệ nhanh" style="--fc-ox:40px;--fc-oy:60px">')
-        ->toContain('<div class="sf-fc-ghost sf-fc-ghost--'.($position === 'bottom' ? 'row' : 'side').'" aria-hidden="true"');
+        ->toContain('<div class="sf-fc-ghost sf-fc-ghost--side'.($position === 'bottom' ? ' sf-fc-ghost--row' : '').'" aria-hidden="true"');
 })->with(['right', 'left', 'bottom']);
 
 it('draws the bar dark when the site chose it, and light otherwise', function (string $tone, string $class): void {
