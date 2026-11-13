@@ -3103,6 +3103,7 @@
     "admin.fc.pos_right": "Right",
     "admin.fc.pos_left": "Left",
     "admin.fc.pos_bottom": "Bottom centre",
+    "admin.fc.pos_bottom_phone_only": "Bottom centre applies on phones only; computers show it on the right.",
     "admin.fc.offset_x": "Side margin",
     "admin.fc.offset_y": "Bottom margin",
     "admin.fc.offset_text": ":n pixels",
