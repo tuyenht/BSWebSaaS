@@ -423,3 +423,45 @@ it('offers a send move only to a reviewer who could also edit the post', functio
             ->assertSeeHtml('wire:key="act-send_on"');
     });
 });
+
+it('opens the post a link names (?bai=…) — only one waiting for this reviewer, else just the inbox', function (): void {
+    $author = User::factory()->create(['name' => 'Người viết']);
+    $reviewer = User::factory()->create();
+    $tenancy = app(Tenancy::class);
+
+    $foreign = $tenancy->enter(2, function (): string {
+        $other = User::factory()->create();
+        grantRole($other, 'author', ['entries.edit.own', 'entries.submit']);
+
+        return submittedPost(inboxCollection(), $other->fresh(), 'Bài site khác', 'bai-site-khac')->ulid;
+    });
+
+    $tenancy->enter(1, function () use ($author, $reviewer, $foreign): void {
+        grantRole($author, 'author', ['entries.create', 'entries.edit.own', 'entries.submit']);
+        grantRole($reviewer, 'reviewer', ['entries.review', 'entries.approve']);
+        $category = inboxCollection();
+        // the first one sent waits longest: seventh in the list, past its first five rows
+        $oldest = submittedPost($category, $author->fresh(), 'Bài gửi sớm nhất', 'bai-som-nhat');
+        Entry::query()->whereKey($oldest->id)->update(['updated_at' => now()->subDays(2)]);
+        foreach (range(1, 6) as $i) {
+            submittedPost($category, $author->fresh(), "Bài {$i}", "bai-{$i}");
+        }
+        $draft = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $author->id]);
+        $draft->translations()->create(['locale' => 'vi', 'title' => 'Nháp chưa gửi', 'slug' => 'nhap-chua-gui', 'status' => 'draft', 'body' => ['blocks' => []]]);
+        $draft->assignCategories([$category]);
+
+        Livewire::withQueryParams(['bai' => $oldest->ulid])->actingAs($reviewer->fresh())->test(ReviewInbox::class)
+            ->assertSet('current', $oldest->ulid)
+            ->assertSet('shown', 10)
+            ->assertSee('Bài gửi sớm nhất')
+            ->assertSee('Nội dung bài');
+
+        foreach ([$foreign, $draft->ulid, 'khong-co-bai-nay', ''] as $ulid) {
+            Livewire::withQueryParams(['bai' => $ulid])->actingAs($reviewer->fresh())->test(ReviewInbox::class)
+                ->assertOk()
+                ->assertSet('current', null)
+                ->assertSet('shown', 5)
+                ->assertDontSee('Bài site khác');
+        }
+    });
+});

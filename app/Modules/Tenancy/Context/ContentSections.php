@@ -69,6 +69,32 @@ final readonly class ContentSections
     }
 
     /**
+     * boundTo() for many categories in one query: for each of $taxonomyIds a section is built on,
+     * that section (the first by display order when several are), keyed by the category's id.
+     *
+     * @param  list<int>  $taxonomyIds
+     * @return array<int, array{key: string, entry_type: string|null}>
+     */
+    public function boundToEach(array $taxonomyIds): array
+    {
+        if ($taxonomyIds === []) {
+            return [];
+        }
+
+        $out = [];
+        $rows = ContentSection::query()
+            ->whereIn('taxonomy_id', array_values(array_unique($taxonomyIds)))
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get(['key', 'entry_type', 'taxonomy_id']);
+        foreach ($rows as $section) {
+            $out[Cast::int($section->taxonomy_id)] ??= ['key' => $section->key, 'entry_type' => $section->entry_type];
+        }
+
+        return $out;
+    }
+
+    /**
      * The category the section with $key is built on, or null when there is no such section or it
      * is not built on one.
      */
