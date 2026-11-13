@@ -275,7 +275,7 @@
                         </div>
                     @endif
                     @error('channels')
-                        <x-bs-admin::alert color="danger" class="mx-4 mt-3.5">{{ $message }}</x-bs-admin::alert>
+                        <p class="mx-4 mt-3.5 rounded-md bg-danger-soft px-3 py-2.5 text-small text-danger-text" role="alert">{{ $message }}</p>
                     @enderror
 
                     <div class="flex flex-col gap-2.5 px-4 pt-3 pb-4">

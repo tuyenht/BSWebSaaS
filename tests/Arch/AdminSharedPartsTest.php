@@ -35,7 +35,8 @@ const ADMIN_HAND_BUILT_PARTS = [
     // error lines under the button editor's fields
     'entries/partials/button-action.blade.php' => [0, 9, 0],
     'entries/partials/workflow-status.blade.php' => [1, 0, 0],
-    'floating-contact-settings.blade.php' => [0, 1, 0],
+    // The floating contact screen is being redesigned; its channel error box moves to the shared alert with that work.
+    'floating-contact-settings.blade.php' => [0, 2, 0],
     'general-settings.blade.php' => [0, 1, 0],
     'login.blade.php' => [0, 1, 0],
     // + the screen's error state (heading, words, "Thử lại", as its board draws it, not a tinted alert)
