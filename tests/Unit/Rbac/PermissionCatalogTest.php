@@ -78,3 +78,24 @@ it('registers custom roles as a boolean feature that is off by default', functio
         ->and(FeatureRegistry::all()['rbac.custom_roles']['kind'])->toBe('boolean')
         ->and(FeatureRegistry::default('rbac.custom_roles'))->toBeFalse();
 });
+
+it('gives the folder and delete-for-good media rights to the owner and the website admin only', function (): void {
+    $templates = PermissionRegistry::tenantRoleTemplates('corporate');
+    $holders = fn (string $permission): array => array_keys(array_filter(
+        $templates,
+        fn (array $t): bool => in_array($permission, $t['permissions'] === '*' ? PermissionRegistry::TENANT_PERMISSIONS : $t['permissions'], true),
+    ));
+
+    expect($holders('media.folders'))->toBe(['owner', 'admin'])
+        ->and($holders('media.purge'))->toBe(['owner', 'admin'])
+        ->and(PermissionRegistry::withImplied(['media.folders']))->toEqualCanonicalizing(['media.folders', 'media.view'])
+        ->and(PermissionRegistry::withImplied(['media.purge']))->toEqualCanonicalizing(['media.purge', 'media.delete', 'media.view']);
+});
+
+it('keeps every implication list closed, so one level of withImplied is enough', function (): void {
+    foreach (array_keys(PermissionRegistry::IMPLIES) as $permission) {
+        $once = PermissionRegistry::withImplied([$permission]);
+
+        expect(PermissionRegistry::withImplied($once))->toEqualCanonicalizing($once, "[{$permission}] implies a permission that implies more");
+    }
+});

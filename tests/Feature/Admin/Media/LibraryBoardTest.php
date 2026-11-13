@@ -5,6 +5,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\MediaFolder;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -51,6 +52,16 @@ function libUser(array $rights): User
 {
     $user = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', $rights));
+
+    return $user->fresh();
+}
+
+/** A member of site 1 holding exactly what the shipped role template of that name grants. */
+function libTemplateUser(string $role): User
+{
+    $spec = PermissionRegistry::tenantRoleTemplates('corporate')[$role]['permissions'];
+    $user = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, $role, $spec === '*' ? PermissionRegistry::TENANT_PERMISSIONS : $spec));
 
     return $user->fresh();
 }
@@ -131,7 +142,7 @@ it('keeps the Trash closed to someone without media.delete', function (): void {
 });
 
 it('creates a folder, moves files into it and lists folder and unfiled files apart', function (): void {
-    $user = libUser(['media.view', 'media.upload']);
+    $user = libUser(['media.view', 'media.upload', 'media.folders']);
     $a = libFile(1, 'a.png');
     libFile(1, 'b.png');
 
@@ -162,7 +173,7 @@ it('creates a folder, moves files into it and lists folder and unfiled files apa
 });
 
 it('sends to the Trash with undo, restores and purges for good', function (): void {
-    $user = libUser(['media.view', 'media.delete']);
+    $user = libUser(['media.view', 'media.delete', 'media.purge']);
     $a = libFile(1, 'a.png');
     $b = libFile(1, 'b.png');
 
@@ -368,7 +379,7 @@ it('pages forward and back without a repeat or a gap', function (string $sort, C
 ]);
 
 it('never restores or purges another site\'s file from the Trash', function (): void {
-    $user = libUser(['media.view', 'media.delete']);
+    $user = libUser(['media.view', 'media.delete', 'media.purge']);
     $mine = libFile(1, 'cua-toi.png');
     $theirs = libFile(2, 'cua-site-b.png');
     app(Tenancy::class)->enter(1, fn () => $mine->delete());
@@ -390,4 +401,105 @@ it('never restores or purges another site\'s file from the Trash', function (): 
 
     $left = app(Tenancy::class)->enter(2, fn () => Media::withTrashed()->where('ulid', $theirs->ulid)->first());
     expect($left)->not->toBeNull()->and($left?->trashed())->toBeTrue();
+});
+
+it('keeps new folders to the website admin: author and editor are refused and see no control', function (string $role): void {
+    $user = libTemplateUser($role);
+    $folder = libFolder(1, 'Ảnh xưởng', 'anh-xuong');
+    $file = libFile(1, 'a.png');
+
+    $this->actingAs($user)->get('http://a.test/admin/media')->assertOk()
+        ->assertDontSee('wire:click="openNewFolder"', false)
+        ->assertDontSee('wire:click="openFolderSheet"', false);
+
+    app(Tenancy::class)->enter(1, function () use ($user, $file, $folder): void {
+        foreach (['openNewFolder', 'createFolder', 'openFolderSheet'] as $method) {
+            Livewire::actingAs($user)->test(Library::class)->set('newFolderName', 'Cấm')->call($method)->assertForbidden();
+        }
+        expect(MediaFolder::query()->count())->toBe(1);
+
+        // Moving files into a folder that exists stays theirs (media.upload).
+        Livewire::actingAs($user)->test(Library::class)
+            ->call('togglePick', $file->ulid)
+            ->call('openMove')
+            ->set('moveTo', 'anh-xuong')
+            ->call('confirmMove');
+        expect(Media::query()->find($file->id)?->folder_id)->toBe($folder->id);
+    });
+})->with(['author', 'editor']);
+
+it('lets the website admin and the owner create folders', function (string $role): void {
+    $user = libTemplateUser($role);
+    libFile(1, 'a.png');
+
+    $this->actingAs($user)->get('http://a.test/admin/media')->assertOk()
+        ->assertSee('wire:click="openNewFolder"', false)
+        ->assertSee('wire:click="openFolderSheet"', false);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        Livewire::actingAs($user)->test(Library::class)
+            ->call('openFolderSheet')->assertSet('folderSheetOpen', true)
+            ->call('openNewFolder')->assertSet('newFolderOpen', true)
+            ->set('newFolderName', 'Ảnh công trình')
+            ->call('createFolder')
+            ->assertHasNoErrors()
+            ->assertSet('folder', 'anh-cong-trinh');
+    });
+})->with(['admin', 'owner']);
+
+it('lets the editor send to the Trash and restore, but keeps deleting for good to the website admin', function (): void {
+    $user = libTemplateUser('editor');
+    $a = libFile(1, 'a.png');
+    $b = libFile(1, 'b.png');
+
+    app(Tenancy::class)->enter(1, function () use ($user, $a, $b): void {
+        $page = Livewire::actingAs($user)->test(Library::class)
+            ->call('togglePick', $a->ulid)
+            ->call('togglePick', $b->ulid)
+            ->call('trashPicked')
+            ->call('setFolder', '~trash')
+            ->assertSet('status', 'trash')
+            ->call('togglePick', $a->ulid)
+            ->assertSee(__('media.lib.restore_n', ['n' => 1]))
+            ->assertDontSeeHtml('askPurge(')
+            ->assertDontSeeHtml('confirmPurge');
+
+        $page->call('askPurge', true)->assertForbidden();
+        Livewire::actingAs($user)->test(Library::class)->call('setFolder', '~trash')->call('askPurge', false)->assertForbidden();
+        Livewire::actingAs($user)->test(Library::class)->call('setFolder', '~trash')
+            ->set('picked', [$a->ulid])->call('confirmPurge')->assertForbidden();
+        expect(Media::onlyTrashed()->count())->toBe(2); // nothing went for good
+
+        Livewire::actingAs($user)->test(Library::class)->call('setFolder', '~trash')
+            ->call('togglePick', $a->ulid)->call('restorePicked');
+        expect(Media::query()->whereKey($a->id)->exists())->toBeTrue()
+            ->and(Media::onlyTrashed()->whereKey($b->id)->exists())->toBeTrue();
+    });
+});
+
+it('lets the website admin delete for good, a selection and the whole Trash', function (): void {
+    $user = libTemplateUser('admin');
+    $a = libFile(1, 'a.png');
+    $b = libFile(1, 'b.png');
+    $c = libFile(1, 'c.png');
+    app(Tenancy::class)->enter(1, function () use ($a, $b, $c): void {
+        $a->delete();
+        $b->delete();
+        $c->delete();
+    });
+
+    app(Tenancy::class)->enter(1, function () use ($user, $a): void {
+        $page = Livewire::actingAs($user)->test(Library::class)
+            ->call('setFolder', '~trash')
+            ->assertSeeHtml('askPurge(true)')
+            ->call('togglePick', $a->ulid)
+            ->assertSeeHtml('askPurge(false)')
+            ->call('askPurge', false)
+            ->assertSet('askPurgeOpen', true)
+            ->call('confirmPurge');
+        expect(Media::withTrashed()->count())->toBe(2);
+
+        $page->call('askPurge', true)->assertSet('askPurgeOpen', true)->call('confirmPurge');
+        expect(Media::withTrashed()->count())->toBe(0);
+    });
 });

@@ -31,6 +31,12 @@ final class PermissionRegistry
         'media.view',
         'media.upload',
         'media.delete',
+        // Creating (and later renaming, moving or removing) media folders: only whoever runs the
+        // website — moving files into a folder that exists stays with media.upload.
+        'media.folders',
+        // Deleting files in the Trash for good, one by one or all at once: only whoever runs the
+        // website; anyone else's trashed files go by themselves after the retention period.
+        'media.purge',
         'taxonomies.manage',
         'menus.manage',
         'forms.view',
@@ -81,6 +87,10 @@ final class PermissionRegistry
         'entries.publish' => ['entries.view'],
         'media.upload' => ['media.view'],
         'media.delete' => ['media.view'],
+        'media.folders' => ['media.view'],
+        // Purging acts on the Trash, and only those who may send files there see it. Implied
+        // lists stay flat (withImplied() goes one level), so media.view is named here too.
+        'media.purge' => ['media.delete', 'media.view'],
         'forms.manage' => ['forms.view'],
         'catalog.manage' => ['catalog.view'],
         'domains.manage' => ['domains.view'],

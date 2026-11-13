@@ -223,7 +223,7 @@ it('bulk delete soft-deletes the selection behind media.delete', function (): vo
     });
 });
 
-it('403s bulk delete without media.delete and folder create without media.upload', function (): void {
+it('403s bulk delete without media.delete and folder create without media.folders', function (): void {
     $user = pickerManager(); // media.view only
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
@@ -240,6 +240,39 @@ it('403s bulk delete without media.delete and folder create without media.upload
             ->set('pickerNewFolderName', 'Cấm')
             ->call('createPickerFolder')
             ->assertStatus(403);
+    });
+});
+
+it('refuses a new folder to media.upload alone, which still moves files into an existing one', function (): void {
+    $user = pickerManager(['media.upload']); // the author's media rights: no media.folders
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $folder = MediaFolder::query()->create(['name' => 'Banner', 'slug' => 'banner']);
+        $m = seedPickerMedia('mv');
+
+        $component = Livewire::actingAs($user)->test(Editor::class)
+            ->call('openImagePicker', 'gallery')
+            ->assertDontSeeHtml("\$set('pickerNewFolderOpen', true)")
+            ->set('pickerNewFolderName', 'Cấm')
+            ->call('createPickerFolder')
+            ->assertStatus(403);
+        expect(MediaFolder::query()->count())->toBe(1);
+
+        Livewire::actingAs($user)->test(Editor::class)
+            ->call('openImagePicker', 'gallery')
+            ->call('togglePickerItem', $m->id)
+            ->call('pickerBulkMove', $folder->id);
+        expect($m->fresh()?->folder_id)->toBe($folder->id);
+    });
+});
+
+it('shows the new-folder control in the picker to media.folders', function (): void {
+    $user = pickerManager(['media.upload', 'media.folders']);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        Livewire::actingAs($user)->test(Editor::class)
+            ->call('openImagePicker', 'gallery')
+            ->assertSeeHtml("\$set('pickerNewFolderOpen', true)");
     });
 });
 
@@ -261,8 +294,8 @@ it('bulk move re-folders the selection and move-to-root clears it', function ():
     });
 });
 
-it('creates a folder behind media.upload and selects the new folder', function (): void {
-    $user = pickerManager(['media.upload']);
+it('creates a folder behind media.folders and selects the new folder', function (): void {
+    $user = pickerManager(['media.upload', 'media.folders']);
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
         $component = Livewire::actingAs($user)->test(Editor::class)
@@ -278,7 +311,7 @@ it('creates a folder behind media.upload and selects the new folder', function (
 });
 
 it('transliterates the slug from the name, previews it live, and de-dups WP-style', function (): void {
-    $user = pickerManager(['media.upload']);
+    $user = pickerManager(['media.upload', 'media.folders']);
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
         $component = Livewire::actingAs($user)->test(Editor::class)->call('openImagePicker', 'gallery');
@@ -297,7 +330,7 @@ it('transliterates the slug from the name, previews it live, and de-dups WP-styl
 });
 
 it('falls back to an auto slug for an all-ideograph name and flags it for editing', function (): void {
-    $user = pickerManager(['media.upload']);
+    $user = pickerManager(['media.upload', 'media.folders']);
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
         $component = Livewire::actingAs($user)->test(Editor::class)->call('openImagePicker', 'gallery')
@@ -314,7 +347,7 @@ it('falls back to an auto slug for an all-ideograph name and flags it for editin
 });
 
 it('honours a hand-edited slug over the derived one', function (): void {
-    $user = pickerManager(['media.upload']);
+    $user = pickerManager(['media.upload', 'media.folders']);
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
         Livewire::actingAs($user)->test(Editor::class)->call('openImagePicker', 'gallery')
@@ -647,7 +680,7 @@ it('restores a trashed image to its original folder', function (): void {
 });
 
 it('permanently deletes a trashed image + its R2 object (purge fires the observer)', function (): void {
-    $user = pickerManager(['media.delete']);
+    $user = pickerManager(['media.delete', 'media.purge']);
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
         Storage::fake('r2');
@@ -667,7 +700,7 @@ it('permanently deletes a trashed image + its R2 object (purge fires the observe
 });
 
 it('empties the whole trash but never touches live media', function (): void {
-    $user = pickerManager(['media.delete']);
+    $user = pickerManager(['media.delete', 'media.purge']);
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
         Storage::fake('r2');
@@ -683,6 +716,51 @@ it('empties the whole trash but never touches live media', function (): void {
 
         expect(Media::withTrashed()->count())->toBe(1)                 // only the live one remains
             ->and(Media::query()->whereKey($live->id)->exists())->toBeTrue();
+    });
+});
+
+it('lets media.delete restore from the picker Trash but keeps deleting for good to media.purge', function (): void {
+    $user = pickerManager(['media.delete']); // the editor's media rights: no media.purge
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        Storage::fake('r2');
+        $a = seedPickerMedia('keep-a');
+        $b = seedPickerMedia('keep-b');
+        $a->delete();
+        $b->delete();
+
+        $component = Livewire::actingAs($user)->test(Editor::class)
+            ->call('openImagePicker', 'gallery')
+            ->call('openPickerTrash')
+            ->call('togglePickerItem', $a->id)
+            ->assertDontSeeHtml('$wire.purgePickerSelection()')
+            ->assertDontSeeHtml('$wire.emptyPickerTrash()')
+            ->assertSeeHtml('wire:click="restorePickerSelection"');
+
+        $component->call('purgePickerSelection')->assertStatus(403);
+        Livewire::actingAs($user)->test(Editor::class)->call('openImagePicker', 'gallery')
+            ->call('openPickerTrash')->call('emptyPickerTrash')->assertStatus(403);
+        expect(Media::onlyTrashed()->count())->toBe(2); // nothing went for good
+
+        Livewire::actingAs($user)->test(Editor::class)->call('openImagePicker', 'gallery')
+            ->call('openPickerTrash')->call('togglePickerItem', $a->id)->call('restorePickerSelection');
+        expect($a->fresh()?->trashed())->toBeFalse();
+    });
+});
+
+it('shows the delete-for-good controls in the picker Trash to media.purge', function (): void {
+    $user = pickerManager(['media.delete', 'media.purge']);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $m = seedPickerMedia('bin');
+        $m->delete();
+
+        Livewire::actingAs($user)->test(Editor::class)
+            ->call('openImagePicker', 'gallery')
+            ->call('openPickerTrash')
+            ->call('togglePickerItem', $m->id)
+            ->assertSeeHtml('$wire.purgePickerSelection()')
+            ->assertSeeHtml('$wire.emptyPickerTrash()');
     });
 });
 

@@ -370,6 +370,8 @@
     "admin.members.perm.media.view": "View images",
     "admin.members.perm.media.upload": "Upload images",
     "admin.members.perm.media.delete": "Delete images",
+    "admin.members.perm.media.folders": "Manage image folders",
+    "admin.members.perm.media.purge": "Delete images for good",
     "admin.members.perm.taxonomies.manage": "Manage categories",
     "admin.members.perm.menus.manage": "Edit menus",
     "admin.members.perm.forms.view": "View contact requests",

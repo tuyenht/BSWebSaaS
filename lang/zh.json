@@ -370,6 +370,8 @@
     "admin.members.perm.media.view": "查看图片",
     "admin.members.perm.media.upload": "上传图片",
     "admin.members.perm.media.delete": "删除图片",
+    "admin.members.perm.media.folders": "管理图片文件夹",
+    "admin.members.perm.media.purge": "永久删除图片",
     "admin.members.perm.taxonomies.manage": "管理分类",
     "admin.members.perm.menus.manage": "编辑菜单",
     "admin.members.perm.forms.view": "查看客户联系",
