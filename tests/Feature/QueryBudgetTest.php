@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuAssignment;
@@ -8,12 +9,18 @@ use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Cms\Taxonomy\TaxonomyPaths;
+use App\Modules\Forms\Models\Form;
+use App\Modules\Forms\Models\FormSubmission;
+use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
+use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Workflow\Actions\InstantiateWorkflow;
 use Illuminate\Support\Facades\View;
 
 /*
@@ -219,4 +226,108 @@ it('renders a stats block of plain numbers with no query of its own, and a years
             ->and(countQueries($years))->toBe(1)
             ->and(countQueries($years))->toBe(0);
     });
+});
+
+it('renders the admin "Tổng quan" with every card on a flat query budget', function (): void {
+    truncateRbac();
+    $this->artisan('rbac:sync')->assertSuccessful();
+    app(TeamContext::class)->forget();
+    // A writer who also reviews and runs the website: every card of the screen is on.
+    $member = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($member): void {
+        grantRole($member, 'everything', ['entries.view', 'entries.create', 'entries.edit.own', 'entries.submit', 'entries.review', 'entries.approve',
+            'settings.manage', 'forms.view', 'domains.manage', 'media.upload', 'menus.manage']);
+        SiteModule::query()->create(['module_key' => 'contacts', 'enabled' => true]);
+
+        $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
+        $category->translations()->create(['locale' => 'vi', 'name' => 'Tin tức', 'slug' => 'tin-tuc']);
+        ContentSection::query()->create(['key' => 'posts', 'label' => 'Tin tức', 'entry_type' => 'post', 'taxonomy_id' => $category->id, 'permission_prefix' => 'entries', 'sort_order' => 1]);
+        SiteSetting::query()->create(['group_name' => 'permalinks', 'key' => 'posts', 'value' => ['pattern' => 'category']]);
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
+
+        // Enough rows of every kind that a query per row would blow the ceiling.
+        $other = User::factory()->create();
+        grantRole($other, 'reviewer', ['entries.view', 'entries.edit.own', 'entries.submit', 'entries.review', 'entries.approve']);
+        foreach (range(1, 12) as $i) {
+            $author = $i % 2 ? $member : $other;
+            $post = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $author->id]);
+            $post->translations()->create(['locale' => 'vi', 'title' => "Bài {$i}", 'slug' => "bai-{$i}", 'status' => 'draft', 'body' => ['blocks' => []]]);
+            $post->assignCategories([$category->id]);
+            if ($i % 3 !== 0) {
+                app(ApplyEntryWorkflowTransition::class)->handle($post->fresh(), 'vi', $author->fresh(), 'submit');
+            }
+            if ($i % 4 === 1 && $i % 3 !== 0) {
+                app(ApplyEntryWorkflowTransition::class)->handle($post->fresh(), 'vi', $other->fresh(), 'reject', "Lý do {$i}");
+            }
+        }
+        $form = Form::query()->create(['key' => 'contact', 'name' => ['vi' => 'Liên hệ'], 'status' => 'active']);
+        foreach (range(1, 12) as $i) {
+            FormSubmission::query()->create(['form_id' => $form->id, 'data' => ['message' => 'x'], 'name' => "Khách {$i}", 'status' => 'new']);
+        }
+    });
+
+    $this->actingAs($member)->get('http://a.test/admin')->assertOk(); // the permission and settings caches fill on the first request
+    $html = '';
+    $count = countQueries(function () use ($member, &$html): void {
+        $html = $this->actingAs($member)->get('http://a.test/admin')->assertOk()->getContent();
+    });
+
+    expect($html)->toContain(__('dash.rev_title'))->toContain(__('dash.wr_title'))->toContain(__('dash.wr_returned_title'))
+        ->toContain(__('dash.start_title'))->toContain(__('dash.todo_leads', ['n' => 12]))
+        // The shell (tenancy, nav, entitlement) and one bounded read per card: the newest unread
+        // leads, the domains, the first steps, the review queue (with its rows' relations), the
+        // member's own posts counted up to 99+ in one statement, and five recent pages and posts.
+        // Every list is capped, so the count does not grow with the website's size.
+        ->and($count)->toBeLessThanOrEqual(41);
+});
+
+it('keeps the admin "Tổng quan" flat however many sub-categories its rows are filed under', function (): void {
+    truncateRbac();
+    $this->artisan('rbac:sync')->assertSuccessful();
+    app(TeamContext::class)->forget();
+    $member = User::factory()->create();
+    $author = User::factory()->create();
+
+    // Posts filed under sub-categories of the section's category: each row's section is found
+    // by going up the category tree, which must not cost a query per category on the page.
+    $fileUnder = function (int $count, int $from) use ($author): void {
+        app(Tenancy::class)->enter(1, function () use ($count, $from, $author): void {
+            $root = Taxonomy::query()->where('vocabulary', 'post_cat')->whereNull('parent_id')->firstOrFail();
+            foreach (range($from, $from + $count - 1) as $i) {
+                $sub = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'parent_id' => $root->id, 'position' => $i]);
+                $sub->translations()->create(['locale' => 'vi', 'name' => "Mục {$i}", 'slug' => "muc-{$i}"]);
+                app(TaxonomyPaths::class)->refreshBranch($sub->id);
+                $post = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $author->id]);
+                $post->translations()->create(['locale' => 'vi', 'title' => "Bài mục {$i}", 'slug' => "bai-muc-{$i}", 'status' => 'draft', 'body' => ['blocks' => []]]);
+                $post->assignCategories([$sub->id]);
+                app(ApplyEntryWorkflowTransition::class)->handle($post->fresh(), 'vi', $author->fresh(), 'submit');
+            }
+        });
+    };
+
+    app(Tenancy::class)->enter(1, function () use ($member, $author): void {
+        grantRole($member, 'reviewer', ['entries.view', 'entries.create', 'entries.edit.any', 'entries.review', 'entries.approve']);
+        grantRole($author, 'author', ['entries.view', 'entries.create', 'entries.edit.own', 'entries.submit']);
+        $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
+        $category->translations()->create(['locale' => 'vi', 'name' => 'Tin tức', 'slug' => 'tin-tuc']);
+        app(TaxonomyPaths::class)->refreshBranch($category->id);
+        ContentSection::query()->create(['key' => 'posts', 'label' => 'Tin tức', 'entry_type' => 'post', 'taxonomy_id' => $category->id, 'permission_prefix' => 'entries', 'sort_order' => 1]);
+        SiteSetting::query()->create(['group_name' => 'permalinks', 'key' => 'posts', 'value' => ['pattern' => 'category']]);
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
+    });
+
+    $measure = function () use ($member): int {
+        $this->actingAs($member)->get('http://a.test/admin')->assertOk(); // caches fill on the first request
+        app()->forgetScopedInstances(); // a new request: the per-request memos (sections among them) start empty
+
+        return countQueries(fn () => $this->actingAs($member)->get('http://a.test/admin')->assertOk()->assertSee(__('dash.rev_title')));
+    };
+
+    $fileUnder(1, 1);
+    $one = $measure();
+    $fileUnder(29, 2);
+    $thirty = $measure();
+
+    expect($thirty)->toBe($one);
 });
