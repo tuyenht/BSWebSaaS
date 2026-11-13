@@ -46,6 +46,8 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
+use App\Modules\Rbac\Actions\InviteMember;
+use App\Modules\Rbac\Models\Invitation;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Rbac\Support\PlatformAccess;
@@ -574,6 +576,28 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     file_put_contents($dir.'/members-panel.html', $swap($html, $panel, 'admin\\.users\\.index'));
     $invite = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($members()->call('openInvite')));
     file_put_contents($dir.'/members-invite.html', $swap($html, $invite, 'admin\\.users\\.index'));
+    // The ticked members with the bulk bar, then the bulk roles panel for the ones the owner may change.
+    $bulk = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($members()
+        ->call('togglePick', [$people['Trần Thị Thu Hà'], $people['Phạm Minh Tâm'], $people['Võ Quốc Việt']])->call('openBulkPanel')->set('panelRoles', ['author'])));
+    expect($bulk)->toContain(__('admin.members.panel_title_many', ['n' => 2]));
+    file_put_contents($dir.'/members-bulk.html', $swap($html, $bulk, 'admin\\.users\\.index'));
+
+    // The invitations: one waiting with a message, one about to expire, one carrying a role at the
+    // owner's level (says why it cannot be re-sent), one withdrawn.
+    app(Tenancy::class)->enter(1, function () use ($owner): void {
+        $invite = app(InviteMember::class);
+        $role = fn (string $name): Role => Role::findByName($name, PermissionRegistry::GUARD);
+        $invite->handle($owner, 'tam.ngo@gmail.com', [$role('author')], 'Chị Tâm phụ trách mục Tin tức và Sự kiện giúp em nhé.');
+        $invite->handle($owner, 'khanhlinh.tonnu.hoangphuongthao@gmail.com', [$role('viewer')]);
+        $invite->handle($owner, 'minh.chau@anvinh.vn', [$role('editor'), $role('author')]);
+        $invite->handle($owner, 'dat.vo@gmail.com', [$role('author')]);
+        Invitation::query()->where('email', 'khanhlinh.tonnu.hoangphuongthao@gmail.com')->update(['expires_at' => now()->addHours(20), 'sent_at' => now()->subDays(6)]);
+        Invitation::query()->where('email', 'dat.vo@gmail.com')->update(['revoked_at' => now()]);
+    });
+    $this->flushSession();
+    $invitations = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/users?xem=loi-moi')->assertOk()->getContent();
+    expect($invitations)->toContain('tam.ngo@', __('admin.members.inv_resend_note', ['days' => InviteMember::VALID_DAYS]));
+    file_put_contents($dir.'/members-invitations.html', $invitations);
 
     // The admin's error pages (design board 25): in the frame for a member — no permission, not
     // found, a fault with its reference, too many requests — and on a page of their own: the
@@ -607,5 +631,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('data-te-page="suspended"');
     file_put_contents($dir.'/error-suspended.html', $html);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 39);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 41);
 });

@@ -13,7 +13,9 @@ use App\Modules\Rbac\Models\Invitation;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Support\IssuedInvitation;
 use App\Modules\Rbac\Support\RoleHierarchyGuard;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
+use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -148,6 +150,32 @@ final readonly class InviteMember
     public function sentToday(int $siteId): int
     {
         return $this->mailsSentToday($siteId);
+    }
+
+    /**
+     * When $siteId may mail invitations again after reaching DAILY_LIMIT: the moment enough of the
+     * window's mails are 24 hours old. Null while the site is under the limit.
+     */
+    public function reopensAt(int $siteId): ?CarbonImmutable
+    {
+        $sent = $this->mailsSentToday($siteId);
+        if ($sent < self::DAILY_LIMIT) {
+            return null;
+        }
+        // the oldest (sent - limit + 1) mails must leave the window; the last of them sets the time
+        $at = AuditLog::query()
+            ->where('site_id', $siteId)
+            ->where('action', 'rbac.invitation.sent')
+            ->where('created_at', '>=', now()->subDay())
+            ->orderBy('created_at')
+            ->offset($sent - self::DAILY_LIMIT)
+            ->value('created_at');
+
+        if ($at === null) {
+            return null;
+        }
+
+        return ($at instanceof \DateTimeInterface ? CarbonImmutable::instance($at) : CarbonImmutable::parse(Cast::string($at)))->addDay();
     }
 
     /** The advisory-lock key every invitation write on $siteId waits on. */
