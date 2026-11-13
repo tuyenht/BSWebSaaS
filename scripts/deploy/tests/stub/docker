@@ -25,7 +25,9 @@ answer_sql() {
 artisan() {
     case "$1" in
         --version) echo "Laravel Framework 13.1.0" ;;
-        octane:reload) if [ -e "$FAKE/fail-reload-once" ]; then rm -f "$FAKE/fail-reload-once"; echo "reload failed"; exit 1; fi; echo "ok $1" ;;
+        octane:reload) if [ -e "$FAKE/fail-reload-once" ]; then rm -f "$FAKE/fail-reload-once"; echo "reload failed"; exit 1; fi
+            if [ -e "$FAKE/fail-reload-after-sync" ] && grep -q "artisan rbac:sync" "$FAKE/calls.log" 2>/dev/null; then rm -f "$FAKE/fail-reload-after-sync"; echo "reload failed"; exit 1; fi
+            echo "ok $1" ;;
         view:clear|optimize|rbac:sync|media:reconcile-content-usage|fake:oneoff|fake:pre) echo "ok $1" ;;
         schedule:list) grep -oE "Schedule::command\('[^']+'" "$FAKE_PROD/routes/console.php" | sed -E "s/^Schedule::command\('//; s/'$//" \
             | while read -r c; do printf '  0 0 * * *  php artisan %s ........ Next Due: 1 hour from now\n' "$c"; done ;;

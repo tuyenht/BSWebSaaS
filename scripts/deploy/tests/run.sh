@@ -496,8 +496,14 @@ ok '[ "$RC" = 1 ] && says "nhóm cần khai báo: thấy '"'"'worker'"'"'"' "an 
 fresh "$WORKER"; release 'DECLARED=(worker)'; launch
 ok '[ "$RC" = 0 ]' "a declared media Worker change lets the app deploy go on"
 fresh "$PERM"; release 'DECLARED=(permission)'; launch
-S=$(line_of "artisan rbac:sync"); L=$(line_of "artisan octane:reload")
-ok '[ "$RC" = 0 ] && [ "$(calls "artisan rbac:sync")" = 1 ] && [ -n "$S" ] && [ -n "$L" ] && [ "$S" -lt "$L" ] && says "OK   rbac:sync đã chạy trước khi nạp lại = có"' "a permission change syncs once, before octane:reload, so no worker keeps the old list ($S < $L)"
+L1=$(line_of "artisan octane:reload"); S=$(line_of "artisan rbac:sync"); L2=$(line_of "artisan octane:reload" 2)
+ok '[ "$RC" = 0 ] && [ "$(calls "artisan rbac:sync")" = 1 ] && [ "$(calls "artisan octane:reload")" = 2 ] && [ -n "$L1" ] && [ -n "$S" ] && [ -n "$L2" ] && [ "$L1" -lt "$S" ] && [ "$S" -lt "$L2" ]' "a permission change syncs once after the reload, then reloads again so no worker keeps the old list ($L1 < $S < $L2)"
+fresh "$PERM"; release 'DECLARED=(permission)'; touch "$FAKE/fail-reload-after-sync"; launch
+ok '[ "$RC" = 1 ] && says "DỪNG (bước 7)" && [ "$(calls "artisan rbac:sync")" = 1 ]' "the reload after rbac:sync fails"
+launch 7
+ok '[ "$RC" = 0 ] && says "Bỏ qua rbac:sync: đã chạy" && [ "$(calls "artisan rbac:sync")" = 1 ] && [ "$(calls "artisan octane:reload")" = 4 ]' "resume at 7 skips the done rbac:sync and still reloads after it"
+( export PATH="$STUB:$PATH" FAKE; bash "$SRC/scripts/deploy/deploy.sh" plan "$REL" ) > "$PLAN" 2>&1; RC=$?
+ok '[ "$RC" = 0 ] && grep -q "octane:reload, khởi động lại horizon + scheduler, rbac:sync rồi octane:reload lần nữa" "$PLAN"' "the plan names the sync after the reload and the second reload"
 fresh "$ENVK"; launch
 ok '[ "$RC" = 1 ] && says "thiếu khóa mới: NEW_KEY"' "a new env key missing on prod stops"
 fresh "$ENVK"; release 'ENV_DEFAULT_OK=(NEW_KEY)'; launch
