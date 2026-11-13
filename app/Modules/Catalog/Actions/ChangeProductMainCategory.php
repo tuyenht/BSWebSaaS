@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Catalog\Actions;
 
+use App\Modules\Catalog\Actions\Concerns\AuthorizesCatalogChange;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Support\UniqueViolation;
 use App\Modules\Cms\Exceptions\RouteConflictException;
@@ -33,6 +34,8 @@ use InvalidArgumentException;
  */
 final class ChangeProductMainCategory
 {
+    use AuthorizesCatalogChange;
+
     /**
      * Give every product $to as its main category.
      *
@@ -41,6 +44,7 @@ final class ChangeProductMainCategory
      */
     public function handle(EloquentCollection $products, Taxonomy $to): array
     {
+        $this->authorizeCatalog('update');
         if ($to->vocabulary !== 'product_cat') {
             throw new InvalidArgumentException('The main category of a product is a product category.');
         }
@@ -92,6 +96,7 @@ final class ChangeProductMainCategory
      */
     public function markMoved(array $productIds): void
     {
+        $this->authorizeCatalog('update');
         Product::markContentChanged($productIds);
     }
 
@@ -107,6 +112,7 @@ final class ChangeProductMainCategory
      */
     public function file(Product $product, array $ids, ?Taxonomy $main, array $before): array
     {
+        $this->authorizeCatalog('update', $product);
         $mainChanged = $product->assignCategories($ids, markContent: false);
         $product->touch();
         if ($product->status !== 'published') {
