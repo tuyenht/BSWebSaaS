@@ -324,6 +324,7 @@ it('draws the rail controls as one row below the list: arrow, dots, arrow, all h
     expect($html)->toMatch('#<div class="sf-rail__controls">\s*<button type="button" class="sf-rail__btn sf-rail__prev" data-sf-rail-prev hidden aria-label="[^"]+" title="[^"]+">.*?<span class="sf-rail__dots" data-sf-rail-dots hidden aria-hidden="true"></span>\s*<button type="button" class="sf-rail__btn sf-rail__next" data-sf-rail-next hidden aria-label="[^"]+"#s')
         ->and($css)->toMatch('/\.sf-rail__controls \{[^}]*display: flex;[^}]*justify-content: center;/s')
         ->and($css)->toMatch('/@media \(min-width: 1440px\) \{\s*\.sf-rail__controls \{[^}]*\}\s*\.sf-rail__prev,\s*\.sf-rail__next \{\s*position: absolute;/s')
+        ->and($css)->toContain('top: calc(50% - 1.375rem - 1.125rem);')
         ->and($css)->not->toContain('.sf-rail__bar')->and($css)->not->toContain('sf-slider__pause');
 });
 

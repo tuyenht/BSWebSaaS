@@ -357,7 +357,8 @@
     .sf-rail__prev,
     .sf-rail__next {
         position: absolute;
-        top: calc(50% - 1.375rem);
+        /* Centred on the cards: half the dots row under the list (1.5rem + its 0.75rem margin) is taken off. */
+        top: calc(50% - 1.375rem - 1.125rem);
         z-index: 3;
     }
 
