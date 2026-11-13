@@ -122,7 +122,7 @@ final class FloatingContact
      * worked out; null when the setting is off or no channel passes. Each site keeps the meaning of what
      * it saved (layout(): an older horizontal or round-buttons-plus-phone-bar setting reads as combo),
      * and an older phone bar's own cell ("Yêu cầu báo giá") reads as one more channel of the site's own
-     * at the end of the list. Fills are the stored colours darkened under white marks (inkUnder);
+     * at the end of the list (where older code drew it, and only while the list has room for it). Fills are the stored colours darkened under white marks (inkUnder);
      * Messenger keeps its colour band unless the site chose a colour. `link` names the kind of link
      * (for the click event: never the number or the address itself).
      *
@@ -144,13 +144,17 @@ final class FloatingContact
                 $items[$item['key']] = $item;
             }
         }
+        // The older phone bar's own cell, only where older code drew it (round buttons with the phone bar
+        // on: a stale `phone_bar` under the bar theme never showed), and only while the list has room.
         $pb = $raw['phone_bar'] ?? null;
-        $cta = is_array($pb) && ($pb['enabled'] ?? false) === true ? self::cta($pb['cta'] ?? null, $locale) : null;
+        $cta = self::storedTheme($raw) === 'vertical' && is_array($pb) && ($pb['enabled'] ?? false) === true
+            && count($items) < self::MAX_CHANNELS ? self::cta($pb['cta'] ?? null, $locale) : null;
         $ctaHref = $cta === null ? null : self::clean('custom', $cta['href']);
-        if ($cta !== null && $ctaHref !== null) {
-            $items['cta'] = self::item(['key' => 'cta', 'on' => true, 'value' => $ctaHref, 'name' => $cta['label']], $locale, 'custom');
+        $ctaItem = $cta === null || $ctaHref === null ? null : self::item(['key' => 'cta', 'on' => true, 'value' => $ctaHref, 'name' => $cta['label']], $locale, 'custom');
+        if ($ctaItem !== null) {
+            $items['cta'] = $ctaItem;
         }
-        $items = array_values(array_filter($items));
+        $items = array_values($items);
         if ($items === []) {
             return null;
         }
@@ -411,12 +415,26 @@ final class FloatingContact
 
     /**
      * Whether the stored setting would show the "Mua hàng" button (on, a layout with the bottom bar,
-     * its switch on) — the only case where the caller needs to look up the site's product list.
+     * its switch on, and the bar theme stored, as older code required: a round-button site with the
+     * phone bar never showed it, whatever its stale `buy` says) — the only case where the caller needs
+     * to look up the site's product list.
      */
     public static function wantsShop(mixed $raw): bool
     {
-        return is_array($raw) && ($raw['enabled'] ?? false) === true && self::layout($raw) !== 'vertical'
+        return is_array($raw) && ($raw['enabled'] ?? false) === true && self::storedTheme($raw) === 'horizontal'
+            && self::layout($raw) !== 'vertical'
             && is_array($raw['buy'] ?? null) && ($raw['buy']['enabled'] ?? false) === true;
+    }
+
+    /**
+     * The older `theme` word as stored (vertical when missing or unknown, as older code read it).
+     *
+     * @param  array<array-key, mixed>  $raw
+     * @return 'vertical'|'horizontal'
+     */
+    private static function storedTheme(array $raw): string
+    {
+        return ($raw['theme'] ?? null) === 'horizontal' ? 'horizontal' : 'vertical';
     }
 
     /**
