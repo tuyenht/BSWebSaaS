@@ -30,7 +30,7 @@
 }
 
 .contact__address {
-    color: var(--sch-body, color-mix(in srgb, var(--color-text) 80%, white));
+    color: var(--sch-body, var(--color-text-secondary));
     line-height: 1.65;
     margin-bottom: 0.75rem;
 }

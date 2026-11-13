@@ -18,7 +18,7 @@
     },
     "resources/css/sf-slider.css": {
       "js": 0,
-      "css": 1379
+      "css": 1383
     },
     "resources/css/sf-about.css": {
       "js": 0,
@@ -46,7 +46,7 @@
     },
     "resources/css/sf-rail.css": {
       "js": 0,
-      "css": 1910
+      "css": 1948
     },
     "resources/css/sf-prose.css": {
       "js": 0,
@@ -109,7 +109,7 @@
       "css": 0
     },
     "resources/js/sf-slider.js": {
-      "js": 1643,
+      "js": 1797,
       "css": 0
     },
     "resources/js/sf-stats.js": {

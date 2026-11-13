@@ -17,8 +17,10 @@
  *              secondary/muted text shades are `color-mix()` off this
  *
  * Contrast floor (WCAG 2 AA, 4.5:1 — computed for the default AND An Vinh seeds, 24/09):
- *   muted text on a light surface = `color-mix(in srgb, var(--color-text) 80%, white)` (≥5.4:1);
- *   anything lighter (--body 65%, --ink 40%) fails there. Light text on the dark header/
+ *   secondary text on a light surface = `var(--color-text-secondary)`: ThemeResolver mixes the body
+ *   color a fifth toward white and darkens it back (hue kept) until it clears 4.5:1 on the surface,
+ *   the page and the tinted band — never a `color-mix()` of --color-text here, which a light body
+ *   color (#4b5563 → 4.3:1 on the page) breaks. Light text on the dark header/
  *   footer = `color-mix(in srgb, var(--color-dark) 40%, white)` (≥7:1). Brand-colored TEXT on a light
  *   surface = `var(--color-primary-text)` — ThemeResolver darkens the brand seed (hue kept) until it
  *   clears 4.5:1 against --surface AND the page background below, since breadcrumb and contact
@@ -152,7 +154,7 @@ body {
    never the browser default (~2.7:1). A placeholder holds only an example value; instructions belong
    in a hint line under the field. */
 ::placeholder {
-    color: color-mix(in srgb, var(--color-text) 80%, white);
+    color: var(--color-text-secondary);
     opacity: 1; /* Firefox dims placeholders by default */
 }
 
@@ -467,7 +469,7 @@ main:has(.hero, .sf-slider) .page__title {
 .sf-crumbs {
     font-size: 0.875rem;
     line-height: 1.5;
-    color: color-mix(in srgb, var(--color-text) 80%, white);
+    color: var(--color-text-secondary);
 }
 
 .sf-crumbs__list {
@@ -1253,8 +1255,8 @@ html:not(.sf-js) .sf-nav--desk .sf-nav__item--parent:focus-within > .sf-nav__pan
 }
 
 /* The phone menu is a dialog drawer (theme::partials.header-bar): its `hidden` attribute is the
-   open/closed state, never a display set here. A light panel from the site's tokens, 3.25rem top
-   rows and 3rem sub rows, text that wraps (never "…"), the 4px bar at the start marks where the
+   open/closed state, never a display set here. A light panel from the site's tokens, rows of 3rem and
+   never under 48px (a site may set its base text below 16px), 16px top items and 15px sub items, text that wraps (never "…"), the 4px bar at the start marks where the
    visitor is, logical properties throughout so a right-to-left language mirrors it. */
 .sf-nav--mob {
     padding: 0.25rem 0;
@@ -1334,22 +1336,35 @@ html.sf-menu-open {
 }
 
 /* The ✕ sits in the dimmed strip beside the panel (at least 64px stays free, even at 320px). In px, so a
-   larger text size never pushes it past the screen's edge: 8 + 48 + its 2px ring stay inside the 64px. */
+   larger text size never pushes it past the screen's edge. A 40px disc with a hairline ring, light on the
+   dimmed page; its tap area reaches 48px (the ::after ring), 8 to 56px from the panel's edge. */
 .sf-drawer__close {
     position: absolute;
-    top: calc(8px + env(safe-area-inset-top, 0px));
-    inset-inline-start: calc(var(--sf-drawer-w) + 6px);
+    top: calc(12px + env(safe-area-inset-top, 0px));
+    inset-inline-start: calc(var(--sf-drawer-w) + 12px);
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 48px;
-    height: 48px;
+    width: 40px;
+    height: 40px;
     border: 0;
     border-radius: 999px;
-    background: var(--color-dark);
+    background: color-mix(in srgb, var(--color-dark) 72%, transparent);
     color: var(--color-on-dark, #fff);
-    box-shadow: 0 0 0 2px color-mix(in srgb, #fff 30%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, #fff 28%, transparent);
     cursor: pointer;
+}
+
+.sf-drawer__close::after {
+    content: "";
+    position: absolute;
+    inset: -4px;
+    border-radius: 999px;
+}
+
+.sf-drawer__close svg {
+    width: 20px;
+    height: 20px;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -1403,11 +1418,11 @@ html.sf-menu-open {
     position: relative;
     display: flex;
     flex: 1;
-    min-height: 3.25rem;
+    min-height: max(48px, 3rem);
     padding: 0.5rem 1rem;
     border-radius: 0;
     color: var(--color-text-strong);
-    font-size: 1.0625rem;
+    font-size: 1rem;
     font-weight: 500;
     line-height: 1.35;
     text-align: start;
@@ -1416,10 +1431,10 @@ html.sf-menu-open {
 }
 
 .sf-nav--mob .sf-nav__sublink {
-    min-height: 3rem;
+    min-height: max(48px, 3rem);
     border-radius: 0.625rem;
     color: var(--color-text);
-    font-size: 1rem;
+    font-size: 0.9375rem;
 }
 
 .sf-nav--mob .sf-nav__toggle {
@@ -1427,8 +1442,8 @@ html.sf-menu-open {
 }
 
 .sf-nav--mob .sf-nav__chev {
-    min-width: 3rem;
-    min-height: 3.25rem;
+    min-width: max(48px, 3rem);
+    min-height: max(48px, 3rem);
     border-radius: 0;
     color: var(--color-text-strong);
 }

@@ -72,7 +72,7 @@
 }
 
 .category__empty {
-    color: color-mix(in srgb, var(--color-text) 80%, white);
+    color: var(--color-text-secondary);
     font-style: italic;
 }
 

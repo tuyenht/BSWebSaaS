@@ -28,7 +28,7 @@
 
 .sf-prose--article .sf-gallery__list--1 .sf-gallery__caption {
     margin-top: 0.6rem;
-    color: color-mix(in srgb, var(--color-text) 80%, white);
+    color: var(--color-text-secondary);
     text-align: center;
 }
 

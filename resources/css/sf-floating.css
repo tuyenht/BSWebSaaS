@@ -605,7 +605,7 @@ svg.sf-fc-bar__icon:has(.sf-fc__z) {
     height: min(22px, 1.125rem);
 }
 
-/* A wide cell (three channels or fewer on most phones) gets a larger disc and label, so a short bar does
+/* A wide cell (three channels or fewer on most phones) gets a larger disc, so a short bar does
    not look sparse; the disc size follows the cell, not the channel count. */
 @container sf-fc-cell (width >= 100px) {
     .sf-fc-bar__dot {
@@ -621,10 +621,6 @@ svg.sf-fc-bar__icon:has(.sf-fc__z) {
     svg.sf-fc-bar__icon:has(.sf-fc__z) {
         width: min(24px, 1.25rem);
         height: min(24px, 1.25rem);
-    }
-
-    .sf-fc-bar__label {
-        font-size: 0.8125rem;
     }
 }
 

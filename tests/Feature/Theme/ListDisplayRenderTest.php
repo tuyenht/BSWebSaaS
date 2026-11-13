@@ -327,15 +327,27 @@ it('draws the rail controls as one row below the list: arrow, dots, arrow, all h
         ->and($css)->not->toContain('.sf-rail__bar')->and($css)->not->toContain('sf-slider__pause');
 });
 
-it('never draws a rail arrow over a card on a phone, nor past the window edge on a laptop', function (): void {
+it('floats the rail arrows over the list edges under 1440px, centred on the cards, never past the window edge', function (): void {
     $rail = (string) file_get_contents(resource_path('css/sf-rail.css'));
-    preg_match('/@media \(max-width: 639\.98px\) \{\s*\.sf-rail__controls \{.*?\n\}/s', $rail, $phone);
+    preg_match('/@media \(max-width: 1439\.98px\) \{.*?\n\}/s', $rail, $floating);
+    preg_match('/@media \(max-width: 639\.98px\) \{\s*\.sf-rail__prev \{.*?\n\}/s', $rail, $phone);
 
-    // On a phone the arrows stay in the controls row below the list (nothing positions them over the
-    // cards), and the row of cards starts at the page margin, with no inset kept for arrows.
-    expect($phone[0] ?? '')->not->toBe('')
-        ->and($phone[0])->not->toContain('position: absolute')
-        ->and($phone[0])->not->toContain('.sf-rail__prev')
+    // Under 1440px each arrow sits in the list's own grid cell, vertically centred on the cards (not on
+    // cards + dots), above a card's stretched link; the dots keep a row of their own below the list. The
+    // disc's centre stands on the list's edge, the hit area half a rem or more inside the window; on a
+    // phone the hit area reaches the window's edge (the disc 0.25rem from it). The row of cards starts
+    // at the page margin, with no inset kept for arrows.
+    expect($floating[0] ?? '')->not->toBe('')
+        ->and($floating[0])->toContain('.sf-rail__controls:not([hidden]) {
+        display: contents;')
+        ->and($floating[0])->toMatch('/\.sf-rail__prev,\s*\.sf-rail__next \{\s*z-index: 3;\s*grid-area: 1 \/ 1;\s*align-self: center;/')
+        ->and($floating[0])->toContain('left: max(-1.375rem, calc((100% - 100vw) / 2 + 0.5rem));')
+        ->and($floating[0])->toContain('right: max(-1.375rem, calc((100% - 100vw) / 2 + 0.5rem));')
+        ->and($floating[0])->toMatch('/\.sf-rail__dots \{\s*grid-area: 2 \/ 1;/')
+        ->and($phone[0] ?? '')->toContain('left: calc((100% - 100vw) / 2);')
+        ->and($phone[0] ?? '')->toContain('right: calc((100% - 100vw) / 2);')
+        // One 36px disc on every width (a 40px disc touched a card's title at 320px).
+        ->and($phone[0] ?? '')->not->toContain('inset:')
         ->and($rail)->not->toContain('padding-inline: 12px')
         // Beside the row only from 1440px (at 1366px the 2rem margin cut the arrows in half and scrolled the
         // page sideways), and never further out than the window's edge when a larger text size widens the page.

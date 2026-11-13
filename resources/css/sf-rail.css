@@ -182,11 +182,11 @@
     outline-offset: 4px;
 }
 
-/* region: sf-rail controls. On a phone, tablet or laptop the controls are one row below the list: arrow,
-   dots, arrow, so an arrow never covers a card. From 1440px the page margin is wide enough for the
-   arrows to stand beside the list, outside its cards and inside the window (at 1366px it is 2rem, too
-   narrow for a 44px arrow standing 3.5rem out). They are always visible (never hover-only) once the
-   script shows them. */
+/* region: sf-rail controls. From 1440px the page margin is wide enough for the arrows to stand beside the
+   list, outside its cards and inside the window, with the dots in a row below. Under 1440px (at 1366px the
+   margin is 2rem, too narrow for a 44px arrow standing 3.5rem out) the arrows float over the list's left
+   and right edges, centred on the cards, and the row below holds the dots alone (see the block after the
+   1440px one). They are always visible (never hover-only) once the script shows them. */
 .sf-rail__controls {
     display: flex;
     align-items: center;
@@ -268,18 +268,72 @@
     background: rgb(255 255 255 / 0.5);
 }
 
-/* Phone: the row starts at the page margin, like the heading above it, and the next card peeks on the
-   right; the arrows sit in the row below with the dots (a 40px disc in the 44px hit area). Every card
-   rail shares it: capabilities, news, projects, products, branches; the partner logo strip keeps its
-   own arrows beside the row (below). */
-@media (max-width: 639.98px) {
-    .sf-rail__controls {
+/* Under 1440px the rail is a one-column grid: the list in the first row, the dots alone in the second. The
+   controls box dissolves into it, and each arrow sits in the list's own cell, at its left or right and
+   vertically centred on the cards (never on cards + dots), drawn above every layer of a card (its
+   stretched link). The disc is the 36px of every width (a 40px one touched a card's title at 320px). Its
+   centre stands on the list's edge, with the 44px hit area at least 0.5rem inside the window's edge (100vw
+   counts a classic scrollbar, which shifts each side by half its width, and the 0.5rem covers that), so
+   neither leaves the window or the page. A phone's page margin is narrower than half an arrow: there the
+   disc's outer edge is 0.25rem from the window. Every
+   card rail shares it: capabilities, news, projects, products, branches, team, quotes; the partner logo
+   strip keeps its own grid of arrow · row · arrow (below), which overrides these placements. */
+@media (max-width: 1439.98px) {
+    .sf-rail {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .sf-rail__list {
+        grid-area: 1 / 1;
+    }
+
+    .sf-rail__controls:not([hidden]) {
+        display: contents;
+    }
+
+    .sf-rail__prev,
+    .sf-rail__next {
+        z-index: 3;
+        grid-area: 1 / 1;
+        align-self: center;
+    }
+
+    .sf-rail__prev {
+        justify-self: start;
+        left: max(-1.375rem, calc((100% - 100vw) / 2 + 0.5rem));
+    }
+
+    .sf-rail__next {
+        justify-self: end;
+        right: max(-1.375rem, calc((100% - 100vw) / 2 + 0.5rem));
+    }
+
+    .sf-rail__dots {
+        grid-area: 2 / 1;
+        min-height: 1.5rem;
         margin-top: 0.75rem;
+    }
+}
+
+/* Phone: the row starts at the page margin, like the heading above it, and the next card peeks on the
+   right; the arrows float over its edges with a deeper shadow. */
+@media (max-width: 639.98px) {
+    .sf-rail__prev {
+        left: calc((100% - 100vw) / 2);
+    }
+
+    .sf-rail__next {
+        right: calc((100% - 100vw) / 2);
     }
 
     .sf-rail__btn::before {
-        inset: 2px;
         box-shadow: 0 2px 10px rgb(0 0 0 / 0.22);
+    }
+
+    /* The hit area touches the window's edge here, so the focus ring is drawn inside it, on the disc. */
+    .sf-rail__btn:focus-visible {
+        outline-offset: -2px;
     }
 }
 
@@ -325,7 +379,7 @@
 
 /* Partner logos: the arrows stand outside the row of logos, beside it and centred on it (a grid of
    arrow · row · arrow; the controls row dissolves into the grid and its dots are not drawn), as dark
-   discs with a light ring: 36px on a phone, 40px from 640px, inside the 44px hit area. An arrow the script
+   discs with a light ring, 40px inside the 44px hit area. An arrow the script
    keeps hidden (a row that does not scroll) leaves no room behind. */
 .partners .sf-rail {
     display: grid;
@@ -359,6 +413,7 @@
 }
 
 .partners .sf-rail__btn::before {
+    inset: 0.125rem;
     background: color-mix(in srgb, var(--color-dark) 90%, transparent);
     box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1), inset 0 0 0 1px rgb(255 255 255 / 0.3);
 }
@@ -366,10 +421,6 @@
 @media (min-width: 640px) {
     .partners .sf-rail {
         column-gap: 0.25rem;
-    }
-
-    .partners .sf-rail__btn::before {
-        inset: 0.125rem;
     }
 }
 
