@@ -578,7 +578,15 @@ reload() { # reload [pre]: "pre" (step 7 only, never the rollback) runs ONEOFFS_
     art optimize
     # a fresh artisan exec here runs the new code with the new config cache while the old workers still serve:
     # data the new code needs from its first request; what it writes must be harmless to the old code
-    if [ "${1:-}" = pre ]; then for k in "${ONEOFFS_PRE[@]}"; do oneoff "$k" pre; done; fi
+    if [ "${1:-}" = pre ]; then
+        # Before the reload: each worker keeps the permission list it loaded first in its own memory (no
+        # Octane reset listener), so a worker that starts before the sync would keep the old list until it
+        # retires. New permission rows are harmless to the old workers still serving.
+        if has_class permission; then
+            if [ -s "$STATE/rbac-ok" ]; then echo "Bỏ qua rbac:sync: đã chạy"; else art rbac:sync; date '+%F %T' > "$STATE/rbac-ok"; fi
+        fi
+        for k in "${ONEOFFS_PRE[@]}"; do oneoff "$k" pre; done
+    fi
     art octane:reload
     docker restart "${PREFIX}horizon" "${PREFIX}scheduler"
     if restart_needed; then pgb_drop; fi
@@ -606,9 +614,7 @@ s7() {
     pending; expect "migration còn chờ" "${PENDING:-không}" "không"
     if [ "${#MIGRATIONS[@]}" -gt 0 ]; then expect "migration mới nhất đã chạy" "$(q "SELECT max(migration) FROM migrations")" "${MIGRATIONS[-1]}"
     else expect "migration mới nhất đã chạy" "$(q "SELECT max(migration) FROM migrations")" "$(cat "$STATE/prev-migration")"; fi
-    if has_class permission; then
-        if [ -s "$STATE/rbac-ok" ]; then echo "Bỏ qua rbac:sync: đã chạy"; else art rbac:sync; date '+%F %T' > "$STATE/rbac-ok"; fi
-    fi
+    if has_class permission; then expect "rbac:sync đã chạy trước khi nạp lại" "$([ -s "$STATE/rbac-ok" ] && echo có || echo không)" "có"; fi
     if has_class sanitizer; then
         x=$(art cms:resanitize-bodies --dry-run 2>&1) || { printf '%s\n' "$x"; die "cms:resanitize-bodies --dry-run lỗi"; }
         printf '%s\n' "$x" | tail -3
@@ -711,7 +717,7 @@ mode_plan() { # git only, on the dev repo; prod is never touched (docker/gh/ssh/
         note "4 migrate từng tệp (code cũ vẫn phục vụ; tệp không khởi động lại PgBouncer không được đổi cột), rồi so cấu trúc bảng (bớt/đổi = đúng SCHEMA_REMOVED_OK), mọi trang của bước 0 như trước trên code cũ"
     else note "3–4 không có migration (chỉ kiểm không còn chờ)"; fi
     note "5 đổi code + composer install · 6 pnpm install + build ($(wc -w <<< "$VITE") input)"
-    note "7 view:clear, optimize,${ONEOFFS_PRE[*]:+ một lần trước khi nạp lại (code mới, worker cũ còn phục vụ): ${ONEOFFS_PRE[*]},} octane:reload, khởi động lại horizon + scheduler$(restart_needed_plan && echo ', PgBouncer')$(case " $CLASSES " in *" permission "*) echo ', rbac:sync' ;; esac)$(case " $CLASSES " in *" sanitizer "*) echo ", resanitize ${RESANITIZE}" ;; esac)${ONEOFFS[*]:+, một lần: ${ONEOFFS[*]}}"
+    note "7 view:clear, optimize,${ONEOFFS_PRE[*]:+ một lần trước khi nạp lại (code mới, worker cũ còn phục vụ): ${ONEOFFS_PRE[*]},} $(case " $CLASSES " in *" permission "*) echo 'rbac:sync (trước khi nạp lại), ' ;; esac)octane:reload, khởi động lại horizon + scheduler$(restart_needed_plan && echo ', PgBouncer')$(case " $CLASSES " in *" sanitizer "*) echo ", resanitize ${RESANITIZE}" ;; esac)${ONEOFFS[*]:+, một lần: ${ONEOFFS[*]}}"
     note "8 kiểm sau: trang như trước, CSS mới, lịch chạy (+${SCHEDULE_ADDED[*]:-} −${SCHEDULE_REMOVED[*]:-}), mật khẩu superuser, cached plan"
     echo "Dòng anh chạy (giữ nguyên; muốn chạy tiếp từ một bước thì thêm số bước trước dấu ;):"
     local envp=; [ "$dev" = /opt/bswebsaas/dev ] || envp="DEPLOY_DEV_REPO=$dev "

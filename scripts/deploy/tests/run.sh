@@ -134,6 +134,7 @@ Schedule::command('audit:months')->daily();
 Schedule::command('x:new')->daily();"; git -C "$SRC" add -A && gitc -m sched; SCHED=$(git -C "$SRC" rev-parse HEAD)
 branch t-env; w config/app.php "<?php return ['name' => env('APP_NAME', 'x'), 'k' => env('NEW_KEY', 'd')];"; git -C "$SRC" add -A && gitc -m env; ENVK=$(git -C "$SRC" rev-parse HEAD)
 branch t-worker; w deploy/media-worker/src/index.js "export default {};"; git -C "$SRC" add -A && gitc -m worker; WORKER=$(git -C "$SRC" rev-parse HEAD)
+branch t-perm; w app/Modules/Rbac/Registry/PermissionRegistry.php '<?php // a new permission'; git -C "$SRC" add -A && gitc -m perm; PERM=$(git -C "$SRC" rev-parse HEAD)
 branch t-kinds
 for p in database/content-packs/p/pages.json package.json resources/js/app.js routes/web.php config/octane.php \
     docker-compose.prod.yml deploy/Caddyfile deploy/media-worker/src/index.js app/Modules/Rbac/Registry/PermissionRegistry.php themes/default/y.blade.php \
@@ -494,6 +495,9 @@ fresh "$WORKER"; launch
 ok '[ "$RC" = 1 ] && says "nhóm cần khai báo: thấy '"'"'worker'"'"'"' "an undeclared media Worker change stops"
 fresh "$WORKER"; release 'DECLARED=(worker)'; launch
 ok '[ "$RC" = 0 ]' "a declared media Worker change lets the app deploy go on"
+fresh "$PERM"; release 'DECLARED=(permission)'; launch
+S=$(line_of "artisan rbac:sync"); L=$(line_of "artisan octane:reload")
+ok '[ "$RC" = 0 ] && [ "$(calls "artisan rbac:sync")" = 1 ] && [ -n "$S" ] && [ -n "$L" ] && [ "$S" -lt "$L" ] && says "OK   rbac:sync đã chạy trước khi nạp lại = có"' "a permission change syncs once, before octane:reload, so no worker keeps the old list ($S < $L)"
 fresh "$ENVK"; launch
 ok '[ "$RC" = 1 ] && says "thiếu khóa mới: NEW_KEY"' "a new env key missing on prod stops"
 fresh "$ENVK"; release 'ENV_DEFAULT_OK=(NEW_KEY)'; launch

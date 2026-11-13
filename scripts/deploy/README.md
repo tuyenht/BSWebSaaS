@@ -30,7 +30,7 @@ before the dump.
 | declare (must be listed in `DECLARED`) | migration | stage each file from TARGET (blob checked) and run it alone while the old code serves; PgBouncer `restart -t 2` after every attempt of a flagged file; retry a lock timeout 3 times; schema delta before/after (new indexes valid, new FKs validated); every page of step 0 (`PAGES` plus `release_pages`) answers as before on the old code; removed or changed snapshot lines must equal `SCHEMA_REMOVED_OK` exactly (lines as the snapshot prints them: `col\|table\|column\|type\|null`, `idx\|table\|index\|valid`, `con\|table\|name\|type\|validated`; a column type keeps its spaces, e.g. `timestamp(0) with time zone`) |
 | | schedule | `schedule:list` before and after: the added and removed jobs must equal `SCHEDULE_ADDED` / `SCHEDULE_REMOVED` |
 | | sanitizer | `cms:resanitize-bodies --dry-run`; it writes only with `RESANITIZE=apply`, then runs `media:reconcile-content-usage` |
-| | permission | `rbac:sync` after the reload |
+| | permission | `rbac:sync` before the reload (each worker keeps the permission list it first loads) |
 | | composer-lock, npm, data, content-pack, ops-script | listed for review; content packs are reported only, never loaded |
 | | worker (`deploy/media-worker/`) | listed for review only: the media Worker on Cloudflare is deployed apart (`docs/runbooks/media-worker-deploy.md`), never by this engine |
 | stop | migration-edit (edited or deleted migration), server (docker, deploy/ other than deploy/media-worker/, compose, Dockerfile, octane, artisan, any `public/*.php`, `.phtml`, `.phar` or `.htaccess`), unknown (also a name with a tab or newline) | stop |
