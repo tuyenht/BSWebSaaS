@@ -7,6 +7,8 @@
 # contact_icon); the admin channel row opens a "Tùy chỉnh nút" group; lazy chunk admin-floating-contact-icon.js;
 # the media upload's 422 carries a `reason`), #603 (release file of the last deploy). No migration, no schedule,
 # no library, no env key.
+# Run 13/11 14:36 (log plans/reports/deploy-runs/cc5229b-3db50cd2-run-20261113-143633.log): no migration, every step
+# and every release_smoke check passed (138 OK), 0 app error lines.
 # shellcheck shell=bash disable=SC2034
 OLD=cc5229b6adb292e9a7048517f9f3d5451234d227
 TARGET=3db50cd2a10b3123f637b2584e0245ea677e3c38
