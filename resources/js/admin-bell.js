@@ -4,7 +4,7 @@
 //    for the list the first time (load); Esc, "Đóng" and the bell close it and put the focus back on
 //    the bell; a click outside or Tab past its end closes it, leaving the focus where it went;
 //  - a lost request (no connection, a server error) shows the panel's error card, and "Thử lại" sends
-//    the same request again. An expired page (419) is left to Livewire, which offers a reload.
+//    the same request again. A refusal or an expired page (any 4xx) is left to Livewire.
 
 import '../css/admin-bell-panel.css';
 
@@ -27,7 +27,8 @@ export function bsBell() {
                 };
                 onFailure(fail);
                 onError(({ response, preventDefault }) => {
-                    if (response?.status === 419) {
+                    // A refusal (403, 404, 419 …) is not a lost connection: Livewire shows its page.
+                    if (response && response.status < 500) {
                         return;
                     }
                     preventDefault();
@@ -60,6 +61,16 @@ export function bsBell() {
             if (!this.$wire.loaded && this.failed !== 'load') {
                 this.$wire.load();
             }
+        },
+
+        // A notice's link: a plain click marks it read on the server, which then opens it; Ctrl/Cmd/
+        // Shift-click keeps the browser's own new tab or window (the notice stays unread).
+        follow(e, ulid) {
+            if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0) {
+                return;
+            }
+            e.preventDefault();
+            this.$wire.open(ulid);
         },
 
         again() {

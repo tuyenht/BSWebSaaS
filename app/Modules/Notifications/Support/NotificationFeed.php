@@ -39,6 +39,7 @@ final class NotificationFeed
     {
         $query = SiteNotification::query()
             ->where('user_id', $user->getKey())
+            ->select(['id', 'ulid', 'kind', 'data', 'read_at', 'created_at'])
             ->orderByDesc('id')
             ->limit($limit);
 

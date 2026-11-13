@@ -68,7 +68,7 @@
                     @foreach ($day['items'] as $item)
                         @php($tag = $item['url'] !== null ? 'a' : 'button')
                         <{{ $tag }} wire:key="ntf-{{ $item['ulid'] }}" class="ntf-it" data-unread="{{ $item['unread'] ? '1' : '0' }}"
-                            @if ($item['url'] !== null) href="{{ $item['url'] }}" wire:click.prevent="open('{{ $item['ulid'] }}')" @else type="button" wire:click="open('{{ $item['ulid'] }}')" @endif>
+                            @if ($item['url'] !== null) href="{{ $item['url'] }}" x-on:click="follow($event, '{{ $item['ulid'] }}')" @else type="button" wire:click="open('{{ $item['ulid'] }}')" @endif>
                             <span class="ntf-ic" data-t="{{ $item['tone'] }}"><x-bs-admin::icon :name="$item['icon']" class="size-[1.0625em]" /></span>
                             <span class="ntf-m">
                                 <span class="ntf-tx">{{ $item['text'] }}</span>
