@@ -639,7 +639,19 @@ jobs:
           --chrome-path="${{ steps.chrome.outputs.chrome-path }}"
           --chromedriver-path="${{ steps.chrome.outputs.chromedriver-path }}"
           --chrome-options="--headless=new,--no-sandbox,--ignore-certificate-errors"
+          --save axe-results.json --dir axe-results
           --exit
+
+      # The colours and the element axe measured on a failing run (a flaky contrast failure on the footer's
+      # map link, 13/11, could not be reproduced without them). Never the reason the job goes red.
+      - name: Upload axe results
+        if: failure()
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: axe-results
+          path: axe-results
+          retention-days: 7
 
       # Tap check on a phone (320 and 390px, touch): every visible control must be what a finger hits at
       # its centre, and a tap on each rail arrow must turn the rail, never open the card under it (a
