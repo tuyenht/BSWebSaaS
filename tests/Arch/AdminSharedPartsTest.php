@@ -39,6 +39,10 @@ const ADMIN_HAND_BUILT_PARTS = [
     'floating-contact-settings.blade.php' => [0, 2, 0],
     'general-settings.blade.php' => [0, 1, 0],
     'login.blade.php' => [0, 1, 0],
+    // the library's error state and its loading line, as board 12 draws them
+    'media/library.blade.php' => [0, 2, 0],
+    // the error line under the new folder's name field
+    'media/library-new-folder.blade.php' => [0, 1, 0],
     // + the screen's error state (heading, words, "Thử lại", as its board draws it, not a tinted alert)
     'menus/index.blade.php' => [0, 5, 0],
     // the top bar bell's panel: a popover under the bell (design 01 .ntf-pop) that turns modal only

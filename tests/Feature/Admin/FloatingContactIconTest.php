@@ -116,6 +116,25 @@ function fciIndex(array $channels, string $key): int
     throw new RuntimeException("no channel $key");
 }
 
+it('draws Zalo’s speech bubble with its Z in the channel colour on the channel disc and in its icon group, and a picture replaces it', function (): void {
+    $admin = fciAdmin();
+    $png = fciUpload($admin, 'logo-zalo.png', 'png')->assertOk()->json('ulid');
+    $bubble = 'M12 2.5C6.2 2.5 1.5 6.3 1.5 11';
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $png, $bubble): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)->call('toggleEnabled')->set('channels.1.value', '0912345678');
+        $html = (string) $lw->html();
+        // Once on the disc, once in the open group's preview, each with a Z painted in the channel colour; the word is gone.
+        expect(substr_count($html, $bubble))->toBeGreaterThanOrEqual(2)
+            ->and($html)->toContain('style="fill: #0084ff" d="M7.7 6.6h8.6')
+            ->and($html)->not->toContain('font-extrabold" aria-hidden="true">Zalo</span>');
+
+        $lw->call('useIcon', 'zalo', $png);
+        $disc = (string) $lw->html();
+        expect(substr_count($disc, $bubble))->toBe(0);
+    });
+});
+
 it('takes a PNG and a WebP under 50 KB uploaded to the library as channel icons, shown on the website as pictures', function (): void {
     $admin = fciAdmin();
     $png = fciUpload($admin, 'logo-zalo.png', 'png')->assertOk()->json('ulid');

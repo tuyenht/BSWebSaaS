@@ -64,7 +64,7 @@ trait WithMediaLibraryPicker
             'pickerTrash', 'pickerSelected', 'pickerPage', 'pickerNewFolderOpen', 'pickerNewFolderName',
             'pickerNewFolderSlug', 'pickerNewFolderSlugEdited', 'pickerNewFolderSlugFallback',
             'pickerSource', 'pickerUrlInput', 'pickerUrlPreview', 'pickerUrlSaveCopy',
-            'pickerDetailId', 'pickerDetailAlt');
+            'pickerDetailUlid', 'pickerDetailAlt');
         $this->showImagePicker = true;
     }
 
@@ -201,8 +201,13 @@ trait WithMediaLibraryPicker
 
     public string $pickerNewFolderName = '';
 
-    /** The media whose detail panel is open (null = closed). */
-    public ?int $pickerDetailId = null;
+    /**
+     * The ulid of the media whose detail panel is open (null = closed). Locked and set only by
+     * openPickerDetail() after a site-scoped lookup: the alt save writes to this row, so the
+     * browser must not be able to point it elsewhere — and it never carries the bigint id.
+     */
+    #[Locked]
+    public ?string $pickerDetailUlid = null;
 
     /** Editable alt text for the open detail, in the site's default content locale. */
     public string $pickerDetailAlt = '';
@@ -329,24 +334,24 @@ trait WithMediaLibraryPicker
     |------------------------------------------------------------------------
     */
 
-    public function openPickerDetail(int $mediaId): void
+    public function openPickerDetail(string $ulid): void
     {
         abort_unless(Gate::allows('media.view'), 403);
 
-        // RLS-scoped: never an arbitrary id from the wire — a foreign/trashed id resolves to null.
-        $media = Media::query()->whereKey($mediaId)->first();
+        // RLS-scoped: never trusted from the wire — a foreign/trashed/malformed ulid resolves to null.
+        $media = $this->pickerDetailMedia($ulid);
         if ($media === null) {
             return;
         }
 
-        $this->pickerDetailId = $media->id;
+        $this->pickerDetailUlid = (string) $media->ulid;
         $this->pickerDetailAlt = $media->alt[$this->pickerContentLocale()] ?? '';
         $this->resetErrorBag('pickerDetailAlt');   // a refusal shown for the previous image
     }
 
     public function closePickerDetail(): void
     {
-        $this->pickerDetailId = null;
+        $this->pickerDetailUlid = null;
         $this->pickerDetailAlt = '';
     }
 
@@ -355,10 +360,7 @@ trait WithMediaLibraryPicker
     {
         abort_unless(Gate::allows('media.upload'), 403);
 
-        if ($this->pickerDetailId === null) {
-            return;
-        }
-        $media = Media::query()->whereKey($this->pickerDetailId)->first();
+        $media = $this->pickerDetailMedia($this->pickerDetailUlid);
         if ($media === null) {
             return;
         }
@@ -377,6 +379,17 @@ trait WithMediaLibraryPicker
         $media->update(['alt' => $alt]);
 
         session()->flash('media-status', __('media.picker_detail_saved'));
+    }
+
+    /** The live media of this site the detail panel shows, by ulid (null when it does not resolve). */
+    protected function pickerDetailMedia(?string $ulid, bool $withFolder = false): ?Media
+    {
+        if ($ulid === null || ! Str::isUlid($ulid)) {
+            return null;
+        }
+        $query = Media::query()->where('ulid', $ulid);
+
+        return ($withFolder ? $query->with('folder') : $query)->first();
     }
 
     /** The site's default content locale — alt is storefront copy, not the admin UI language. */
@@ -724,7 +737,7 @@ trait WithMediaLibraryPicker
             ->filter(fn (string $ext): bool => $ext !== '')
             ->unique()->sort()->values()->all();
 
-        $detail = $this->pickerDetailId === null ? null : Media::query()->with('folder')->whereKey($this->pickerDetailId)->first();
+        $detail = $this->pickerDetailMedia($this->pickerDetailUlid, withFolder: true);
         $uploaderName = null;
         if ($detail?->created_by !== null) {
             $name = User::query()->whereKey($detail->created_by)->value('name');

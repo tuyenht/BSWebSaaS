@@ -79,9 +79,9 @@ it('bulk soft-deletes a selected master with media.delete (sends it to the Thùn
 
         Livewire::actingAs($manager->fresh())
             ->test(Library::class)
-            ->assertSet('pickerManageMode', true)   // the page is the picker in manage mode
-            ->call('togglePickerItem', $asset->id)
-            ->call('pickerBulkDelete');
+            ->assertSet('pickerManageMode', true)   // the upload panes are the picker's, in manage mode
+            ->call('togglePick', $asset->ulid)      // the page picks by ulid, never by bigint id
+            ->call('trashPicked');
 
         expect(Media::query()->find($asset->id))->toBeNull()
             ->and(Media::withTrashed()->find($asset->id))->not->toBeNull();
@@ -97,8 +97,12 @@ it('forbids bulk delete without media.delete', function (): void {
 
         Livewire::actingAs($viewer->fresh())
             ->test(Library::class)
-            ->call('togglePickerItem', $asset->id)   // selecting only needs media.view
-            ->call('pickerBulkDelete')
+            ->set('picked', [$asset->ulid])
+            ->call('confirmTrash')
+            ->assertForbidden();
+        Livewire::actingAs($viewer->fresh())
+            ->test(Library::class)
+            ->call('pickerBulkDelete')   // the shared picker's id-based endpoint is closed here
             ->assertForbidden();
 
         expect(Media::query()->find($asset->id))->not->toBeNull();
