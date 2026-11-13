@@ -1,6 +1,6 @@
 // The "Nút liên hệ nổi" screen's script (resources/js/admin-floating-contact.js) in a DOM without a
 // browser: the browser's own check of a channel's icon picture (PNG or WebP, at most 50 KB), what each
-// answer of the library's upload becomes, the hand-over to the page, and when the preview may open
+// answer of the library's upload becomes (its own reason when the page words it), the hand-over to the page, and when the preview may open
 // the dial or the "Thêm" sheet again after a redraw (only when it still shows a channel).
 // (resources/js/admin-floating-contact-icon.js holds the picture's part, loaded on first use.)
 // `node --test tests/js/admin-floating-contact.test.mjs`.
@@ -27,10 +27,15 @@ test('lets a PNG or a WebP of at most 50 KB go, and names why anything else is r
     assert.equal(iconRefusal(file('image/png', 51200)), null);
     assert.equal(iconRefusal(file('image/webp', 10)), null);
     assert.equal(iconRefusal(file('image/png', 51201)), 'size');
-    for (const type of ['image/jpeg', 'image/gif', 'image/svg+xml', 'application/x-php', '']) {
+    for (const type of ['image/jpeg', 'image/gif', 'image/svg+xml', 'application/x-php']) {
         assert.equal(iconRefusal(file(type, 10)), 'type', type);
     }
     assert.equal(iconRefusal(null), null);
+});
+
+test('lets a file the browser cannot type go up, so the library sniffs its content, but still keeps the size', () => {
+    assert.equal(iconRefusal(file('', 10, 'logo')), null);
+    assert.equal(iconRefusal(file('', 51201, 'logo')), 'size');
 });
 
 test('posts the file to the library with the page token and reads the picture back, or why not', async () => {
@@ -52,6 +57,12 @@ test('posts the file to the library with the page token and reads the picture ba
     assert.deepEqual(await uploadIcon(f, '/u', { token: 't', fetchFn: reply(403, {}) }), { error: 'denied' });
     assert.deepEqual(await uploadIcon(f, '/u', { token: 't', fetchFn: reply(401, {}) }), { error: 'denied' });
     assert.deepEqual(await uploadIcon(f, '/u', { token: 't', fetchFn: reply(422, { message: 'x' }) }), { error: 'rejected' });
+    // The library's own reason travels when the page has its own sentence for it; any other stays 'rejected'.
+    assert.deepEqual(await uploadIcon(f, '/u', { token: 't', fetchFn: reply(422, { message: 'x', reason: 'in_trash' }) }), { error: 'in_trash' });
+    assert.deepEqual(await uploadIcon(f, '/u', { token: 't', fetchFn: reply(422, { message: 'x', reason: 'unsupported_type' }) }), { error: 'unsupported_type' });
+    assert.deepEqual(await uploadIcon(f, '/u', { token: 't', fetchFn: reply(422, { message: 'x', reason: 'storage_failed' }) }), { error: 'rejected' });
+    assert.deepEqual(await uploadIcon(f, '/u', { token: 't', fetchFn: reply(422, { message: 'x', reason: ['in_trash'] }) }), { error: 'rejected' });
+    assert.deepEqual(await uploadIcon(f, '/u', { token: 't', fetchFn: async () => ({ status: 422, ok: false, json: async () => { throw new SyntaxError('html'); } }) }), { error: 'rejected' });
     assert.deepEqual(await uploadIcon(f, '/u', { token: 't', fetchFn: reply(500, {}) }), { error: 'upload' });
     assert.deepEqual(await uploadIcon(f, '/u', { token: 't', fetchFn: reply(200, { ulid: '' }) }), { error: 'upload' });
     assert.deepEqual(await uploadIcon(f, '/u', { token: 't', fetchFn: async () => { throw new TypeError('offline'); } }), { error: 'upload' });
@@ -81,6 +92,8 @@ test('hands the uploaded picture to the page, or the reason to show, and is busy
 
     await pickIcon(input(file('image/png', 10)), wire, 'zalo', '/u', state, { token: 't', fetchFn: reply(422, {}) });
     assert.deepEqual(calls.at(-1), ['iconRefused', 'rejected']);
+    await pickIcon(input(file('image/png', 10)), wire, 'zalo', '/u', state, { token: 't', fetchFn: reply(422, { reason: 'in_trash' }) });
+    assert.deepEqual(calls.at(-1), ['iconRefused', 'in_trash']);
     assert.equal(state.busy, false);
 
     const n = calls.length;

@@ -11,12 +11,22 @@ const csrfToken = () => document.querySelector('meta[name="csrf-token"]')?.getAt
 export const ICON_TYPES = ['image/png', 'image/webp'];
 export const ICON_MAX_BYTES = 51200;
 
-/** Why the browser refuses a file before uploading it: 'type', 'size', or null when it may go. */
+/**
+ * The library's own refusals (its JSON `reason`) the page words for itself; any other refusal is
+ * 'rejected' (one fixed sentence).
+ */
+export const LIBRARY_REASONS = ['in_trash', 'unsupported_type', 'too_large', 'image_too_large'];
+
+/**
+ * Why the browser refuses a file before uploading it: 'type', 'size', or null when it may go. A file
+ * the browser cannot type (an empty `type`, as some systems report a renamed or unusual file) goes
+ * up: the library's sniff of its content decides.
+ */
 export function iconRefusal(file) {
     if (!file) {
         return null;
     }
-    if (!ICON_TYPES.includes(file.type)) {
+    if (file.type !== '' && !ICON_TYPES.includes(file.type)) {
         return 'type';
     }
     if (file.size > ICON_MAX_BYTES) {
@@ -28,7 +38,9 @@ export function iconRefusal(file) {
 
 /**
  * Upload the file to the media library. Resolves { ulid } or { error }: 'denied' (no right to add
- * pictures to the library), 'rejected' (the library refused the file) or 'upload' (anything else).
+ * pictures to the library), the library's own reason when it is one of LIBRARY_REASONS (e.g.
+ * 'in_trash': the same file sits in the library's trash), 'rejected' (any other refusal) or 'upload'
+ * (anything else).
  */
 export async function uploadIcon(file, url, { fetchFn = fetch, token = csrfToken() } = {}) {
     const body = new FormData();
@@ -43,7 +55,10 @@ export async function uploadIcon(file, url, { fetchFn = fetch, token = csrfToken
         return { error: 'denied' };
     }
     if (res.status === 422) {
-        return { error: 'rejected' };
+        const refusal = await res.json().catch(() => null);
+        const reason = refusal && typeof refusal.reason === 'string' ? refusal.reason : '';
+
+        return { error: LIBRARY_REASONS.includes(reason) ? reason : 'rejected' };
     }
     const data = res.ok ? await res.json().catch(() => null) : null;
 

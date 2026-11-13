@@ -25,7 +25,8 @@ use RuntimeException;
  * These are a fetch()/JSON API for the Uppy island, so validation + domain errors are returned as
  * JSON 422 here — the app renders framework ValidationExceptions as JSON only for api/* (see
  * bootstrap/app.php), and a redirect-back would be meaningless to a fetch client. Only a refusal
- * (MediaRejectedException) is shown as it is, in the admin's language; any other failure is logged
+ * (MediaRejectedException) is shown as it is, in the admin's language, with its `reason` key so a
+ * screen may word it for itself; any other failure is logged
  * and answered with a plain "try again" (500) — a storage SDK's message can name buckets and paths.
  */
 final class MediaUploadController
@@ -48,7 +49,7 @@ final class MediaUploadController
         } catch (ValidationException $e) {
             return response()->json(['message' => $e->getMessage(), 'errors' => $e->errors()], 422);
         } catch (MediaRejectedException $e) {
-            return response()->json(['message' => $e->userMessage()], 422);
+            return response()->json(['message' => $e->userMessage(), 'reason' => $e->reason], 422);
         } catch (RuntimeException $e) {
             return $this->unexpected($e);
         }
@@ -77,7 +78,7 @@ final class MediaUploadController
         } catch (ValidationException $e) {
             return response()->json(['message' => $e->getMessage(), 'errors' => $e->errors()], 422);
         } catch (MediaRejectedException $e) {
-            return response()->json(['message' => $e->userMessage()], 422);
+            return response()->json(['message' => $e->userMessage(), 'reason' => $e->reason], 422);
         } catch (RuntimeException $e) {
             return $this->unexpected($e);
         }
@@ -101,7 +102,7 @@ final class MediaUploadController
         } catch (ValidationException $e) {
             return response()->json(['message' => $e->getMessage(), 'errors' => $e->errors()], 422);
         } catch (MediaRejectedException $e) {
-            return response()->json(['message' => $e->userMessage()], 422);
+            return response()->json(['message' => $e->userMessage(), 'reason' => $e->reason], 422);
         } catch (RuntimeException $e) {
             return $this->unexpected($e);
         }

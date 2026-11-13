@@ -3,6 +3,7 @@
 namespace App\Modules\Admin\Console;
 
 use App\Modules\Admin\Support\Settings\BranchList;
+use App\Modules\Admin\Support\Settings\FloatingContactInput;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\BlockMediaUsage;
@@ -19,7 +20,8 @@ use Illuminate\Console\Command;
  * Rebuilds the block image usage index (mediables collection='content') per site, for every owner
  * of blocks: each entry, the site's block slots setting and each category with blocks of its own
  * for those slots; and the site's branch and factory pictures (collection 'branch', owner the
- * `storefront.footer` setting row, BranchList). Every save reconciles, so this covers content that never passed through a save —
+ * `storefront.footer` setting row, BranchList) and the floating contact's own icon pictures
+ * (collection 'contact_icon', owner the `storefront.floating_contact` row). Every save reconciles, so this covers content that never passed through a save —
  * seeded pages, a fresh deploy, or self-healing after a drift — and drops the rows of a slot owner
  * that no longer holds slot blocks (a setting or category deleted, or emptied, by a road that
  * skipped the save). Idempotent (it upserts/prunes to match the current content), so it is safe to
@@ -92,6 +94,15 @@ class ReconcileContentUsage extends Command
             ->delete();
         if ($footer !== null) {
             BranchList::syncUsage(Cast::int($footer->getKey()), Cast::arr($footer->value)['factories'] ?? null);
+            $count++;
+        }
+
+        $floating = SiteSetting::query()->where('group_name', 'storefront')->where('key', 'floating_contact')->first(['id', 'value']);
+        Mediable::query()->where('mediable_type', 'site_setting')->where('collection', FloatingContactInput::ICON_COLLECTION)
+            ->when($floating !== null, fn ($query) => $query->where('mediable_id', '!=', $floating?->getKey()))
+            ->delete();
+        if ($floating !== null) {
+            FloatingContactInput::syncIconUsage(Cast::int($floating->getKey()), $floating->value);
             $count++;
         }
 

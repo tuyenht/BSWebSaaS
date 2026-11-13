@@ -75,7 +75,7 @@ it('rejects an unsupported declared mime on presign (422 with the sentence in th
     $this->actingAs(mediaMember(['media.view', 'media.upload']))
         ->postJson('http://a.test/admin/media/presign', ['filename' => 'a.svg', 'mime' => 'image/svg+xml', 'size' => 10])
         ->assertStatus(422)
-        ->assertExactJson(['message' => __('media.err_mimes')]);
+        ->assertExactJson(['message' => __('media.err_mimes'), 'reason' => 'unsupported_type']);
 });
 
 it('answers an unexpected failure with a plain sentence and keeps its own text out of the response', function (): void {
@@ -195,7 +195,7 @@ it('refuses a register that would take a trashed file out of the Trash for an up
     $this->actingAs(mediaMember(['media.view', 'media.upload']))
         ->postJson('http://a.test/admin/media/register', ['tempKey' => $tempKey, 'filename' => 'lai.png'])
         ->assertStatus(422)
-        ->assertExactJson(['message' => __('media.err_in_trash')]);
+        ->assertExactJson(['message' => __('media.err_in_trash'), 'reason' => 'in_trash']);
 
     expect(isTrashedInSiteOne($master))->toBeTrue();
 });
@@ -220,7 +220,7 @@ it('refuses a local-fallback upload that would take a trashed file out of the Tr
     $this->actingAs(mediaMember(['media.view', 'media.upload']))
         ->post('http://a.test/admin/media/upload', ['file' => UploadedFile::fake()->createWithContent('lai.png', endpointPng())], ['Accept' => 'application/json'])
         ->assertStatus(422)
-        ->assertExactJson(['message' => __('media.err_in_trash')]);
+        ->assertExactJson(['message' => __('media.err_in_trash'), 'reason' => 'in_trash']);
 
     expect(isTrashedInSiteOne($master))->toBeTrue();
 });

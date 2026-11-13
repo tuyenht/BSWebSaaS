@@ -42,6 +42,7 @@ use App\Modules\Admin\Navigation\AdminNav;
 use App\Modules\Admin\Navigation\PlatformNav;
 use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Admin\Support\Settings\BranchList;
+use App\Modules\Admin\Support\Settings\FloatingContactInput;
 use App\Modules\Admin\Support\TenantMailer;
 use App\Modules\Admin\Theme\AdminBrandColor;
 use App\Modules\Admin\Theme\AdminChromeResolver;
@@ -92,7 +93,8 @@ final class AdminServiceProvider extends ServiceProvider
             $this->commands([ReconcileContentUsage::class]);
         }
 
-        // The block slots setting and the footer (its branch pictures) own "in use" rows in the
+        // The block slots setting, the footer (its branch pictures) and the floating contact (its
+        // channels' icon pictures) own "in use" rows in the
         // library (polymorphic, no FK cascade): a deleted row takes them with it. app(), not
         // $this->app: under Octane each request runs in a clone of the booted app.
         SiteSetting::deleted(function (SiteSetting $setting): void {
@@ -101,6 +103,9 @@ final class AdminServiceProvider extends ServiceProvider
             }
             if ($setting->group_name === 'storefront' && $setting->key === 'footer') {
                 BranchList::syncUsage(Cast::int($setting->getKey()), []);
+            }
+            if ($setting->group_name === 'storefront' && $setting->key === 'floating_contact') {
+                FloatingContactInput::syncIconUsage(Cast::int($setting->getKey()), []);
             }
         });
 

@@ -1,8 +1,11 @@
 <?php
 
 use App\Modules\Admin\Livewire\FloatingContactSettings;
+use App\Modules\Admin\Support\MediaUsageLocator;
+use App\Modules\Admin\Support\Settings\FloatingContactInput;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
+use App\Modules\Media\Models\Mediable;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
@@ -50,6 +53,9 @@ function fciBytes(string $kind): string
         'jpg' => (string) base64_decode('/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=', true),
         // A PNG padded past 50 KB (52 000 bytes): still a PNG by its content.
         'png51' => str_pad((string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', true), 52_000, "\0"),
+        // Exactly 50 KB (51 200 bytes), and one byte more.
+        'png50k' => str_pad((string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', true), 51_200, "\0"),
+        'png50k1' => str_pad((string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', true), 51_201, "\0"),
         'svg' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><script>alert(1)</script></svg>',
         default => '<?php echo "x";',
     };
@@ -165,6 +171,95 @@ it('refuses a picture larger than 50 KB with the plain message', function (): vo
         ->assertSet('channels.1.img', ''));
 });
 
+it('takes a picture of exactly 50 KB and refuses one byte more, on the server', function (): void {
+    $admin = fciAdmin();
+    $edge = fciUpload($admin, 'vua-du.png', 'png50k')->assertOk()->json('ulid');
+    $over = fciUpload($admin, 'qua-1-byte.png', 'png50k1')->assertOk()->json('ulid');
+    expect(app(Tenancy::class)->enter(1, fn () => Media::query()->whereIn('ulid', [$edge, $over])->orderBy('size')->pluck('size')->all()))->toBe([51_200, 51_201]);
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $edge, $over): void {
+        Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+            ->call('useIcon', 'zalo', $edge)->assertSet('toastTone', 'success')->assertSet('channels.1.img', $edge)
+            ->call('useIcon', 'phone', $over)->assertSet('toast', 'Ảnh lớn hơn 50 KB — hãy nén ảnh')->assertSet('toastTone', 'error')
+            ->assertSet('channels.0.img', '');
+    });
+});
+
+it('refuses a picture that sits in the library’s trash', function (): void {
+    $admin = fciAdmin();
+    $pic = fciMedia(1, 'trong-thung-rac');
+    app(Tenancy::class)->enter(1, fn () => $pic->delete());
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+        ->call('useIcon', 'zalo', $pic->ulid)
+        ->assertSet('toast', 'Ảnh biểu tượng không còn trong thư viện ảnh của website — hãy tải ảnh lại hoặc bấm “Dùng mặc định”.')
+        ->assertSet('toastTone', 'error')->assertSet('channels.1.img', ''));
+});
+
+it('prints no picture on the website when the setting names another site’s picture', function (): void {
+    $foreign = fciMedia(2, 'cua-site-khac');
+    fciSetting(1, ['phone' => $foreign->ulid]);
+
+    $html = $this->get('http://a.test/')->assertOk()->getContent();
+    expect($html)->toContain('class="sf-fc__icon"')->not->toContain('sf-fc__img')
+        ->not->toContain(e(app(MediaUrlResolver::class)->url($foreign->storage_key)));
+});
+
+it('lists a channel’s icon picture as used in the library, under the floating contact screen, and site B sees nothing', function (): void {
+    $admin = fciAdmin();
+    $pic = fciMedia(1, 'logo-zalo');
+    $loose = fciMedia(1, 'chua-dung');
+    $otherPic = fciMedia(2, 'logo-site-b');
+    fciSetting(1, ['zalo' => $pic->ulid]);
+    fciSetting(2, ['zalo' => $otherPic->ulid]);   // written directly: site B never saved through the screen
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(FloatingContactSettings::class)->call('save')->assertHasNoErrors());
+
+    $read = static fn (int $siteId, Media $media): array => app(Tenancy::class)->enter($siteId, function () use ($media): array {
+        $locator = app(MediaUsageLocator::class);
+        $used = Media::query();
+        $locator->constrain($used, true);
+        $unused = Media::query();
+        $locator->constrain($unused, false);
+
+        return [$used->orderBy('id')->pluck('id')->all(), $unused->orderBy('id')->pluck('id')->all(), $locator->usagesFor($media, 'vi'), Mediable::query()->count()];
+    });
+
+    [$used, $unused, $usages] = $read(1, $pic);
+    expect($used)->toBe([$pic->id])->and($unused)->toBe([$loose->id])
+        ->and($usages)->toBe([['kind' => 'site', 'role' => 'content', 'label' => 'Nút liên hệ nổi', 'url' => route('admin.settings.floating-contact')]]);
+
+    // Site B's rows are its own: its picture was never saved through the screen, so nothing marks it.
+    [$used, $unused, $usages, $rows] = $read(2, $otherPic);
+    expect($used)->toBe([])->and($unused)->toBe([$otherPic->id])->and($usages)->toBe([])->and($rows)->toBe(0);
+});
+
+it('drops the library’s “in use” row when the icon is replaced, cleared or the setting removed', function (): void {
+    $admin = fciAdmin();
+    $first = fciMedia(1, 'logo-1');
+    $second = fciMedia(1, 'logo-2', 'image/webp');
+    fciSetting(1, ['zalo' => $first->ulid]);
+    // Read inside the site's context (a nested Tenancy::enter would end it for the rest of the closure).
+    $rows = static fn (): array => Mediable::query()
+        ->where('collection', FloatingContactInput::ICON_COLLECTION)->where('mediable_type', 'site_setting')->orderBy('media_id')->pluck('media_id')->all();
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $first, $second, $rows): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)->call('save');
+        expect($rows())->toBe([$first->id]);
+        $lw->call('useIcon', 'zalo', $second->ulid)->call('useIcon', 'phone', $first->ulid)->call('save')->assertHasNoErrors();
+        expect($rows())->toBe([$first->id, $second->id]);
+        $lw->call('clearIcon', 'phone')->call('save');
+        expect($rows())->toBe([$second->id]);
+        $lw->call('clearIcon', 'zalo')->call('save');
+        expect($rows())->toBe([]);
+        $lw->call('useIcon', 'zalo', $second->ulid)->call('save');
+        expect($rows())->toBe([$second->id]);
+    });
+
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->where('group_name', 'storefront')->where('key', 'floating_contact')->first()?->delete());
+    expect(app(Tenancy::class)->enter(1, $rows))->toBe([]);
+});
+
 it('refuses a JPEG and a GIF as an icon, whatever the file is called', function (string $name, string $kind): void {
     $admin = fciAdmin();
     $ulid = fciUpload($admin, $name, $kind)->assertOk()->json('ulid');
@@ -241,6 +336,9 @@ it('tells the member in plain words when the browser refused the file or the upl
     ['size', 'Ảnh lớn hơn 50 KB — hãy nén ảnh'],
     ['denied', 'Tài khoản của bạn chưa được thêm ảnh vào thư viện ảnh — hãy nhờ quản trị website cấp quyền.'],
     ['rejected', 'Thư viện ảnh không nhận tệp này — hãy chọn ảnh PNG hoặc WebP khác.'],
+    ['in_trash', 'Tệp này đang nằm trong Thùng rác — nhờ người có quyền xóa (Quản trị) khôi phục.'],
+    ['unsupported_type', 'Chỉ nhận ảnh PNG hoặc WebP'],
+    ['image_too_large', 'Ảnh lớn hơn 50 KB — hãy nén ảnh'],
     ['upload', 'Chưa tải được ảnh lên — hãy kiểm tra mạng rồi thử lại.'],
     ['<b>bất kỳ</b>', 'Chưa tải được ảnh lên — hãy kiểm tra mạng rồi thử lại.'],
 ]);

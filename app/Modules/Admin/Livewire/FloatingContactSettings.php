@@ -12,10 +12,12 @@ use App\Modules\Storefront\Support\ContactClickStats;
 use App\Modules\Storefront\Support\ContactIconImages;
 use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
+use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Chrome\ContactIcons;
 use App\Modules\Theme\Chrome\FloatingContact;
 use App\Modules\Theme\Theming\ThemeResolver;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -321,15 +323,17 @@ final class FloatingContactSettings extends Component
     }
 
     /**
-     * The browser refused a file before uploading it (not a PNG or WebP, larger than 50 KB) or the
-     * upload failed: the plain message, in the page's own notice. Nothing else changes.
+     * The browser refused a file before uploading it (not a PNG or WebP, larger than 50 KB), the
+     * library refused it (its own reason: in its trash, not a type or size it takes) or the upload
+     * failed: the plain message, in the page's own notice. Nothing else changes.
      */
     #[Authorize('settings.manage')]
     public function iconRefused(string $reason): void
     {
         $this->notify(match ($reason) {
-            'type' => __('admin.fc.ico_err_type'),
-            'size' => __('admin.fc.ico_err_size'),
+            'type', 'unsupported_type' => __('admin.fc.ico_err_type'),
+            'size', 'too_large', 'image_too_large' => __('admin.fc.ico_err_size'),
+            'in_trash' => __('media.err_in_trash'),
             'denied' => __('admin.fc.ico_err_denied'),
             'rejected' => __('admin.fc.ico_err_rejected'),
             default => __('admin.fc.ico_err_upload'),
@@ -386,7 +390,13 @@ final class FloatingContactSettings extends Component
             return;
         }
 
-        app(SettingsRepository::class)->put('storefront', 'floating_contact', $this->stored());
+        // The setting and the library's "in use" rows of its icon pictures change together.
+        DB::transaction(function (): void {
+            $stored = $this->stored();
+            app(SettingsRepository::class)->put('storefront', 'floating_contact', $stored);
+            $row = SiteSetting::query()->where('group_name', 'storefront')->where('key', 'floating_contact')->value('id');
+            FloatingContactInput::syncIconUsage(Cast::int($row), $stored);
+        });
         $this->savedSig = $this->signature();
         $this->notify(__('admin.fc.toast_saved'));
     }
