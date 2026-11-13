@@ -13,7 +13,7 @@
         </button>
     </div>
     <div wire:loading.flex wire:target="retry('{{ $card }}')" aria-busy="true" class="flex-col gap-2.5">
-        <span role="status" class="sr-only">{{ __('dash.loading', ['card' => $label]) }}</span>
+        <span class="sr-only">{{ __('dash.loading', ['card' => $label]) }}</span>
         <span class="h-[1.125rem] w-1/2 animate-pulse rounded bg-surface-hover"></span>
         <span class="h-3.5 w-[90%] animate-pulse rounded bg-surface-hover"></span>
         <span class="h-3.5 w-3/4 animate-pulse rounded bg-surface-hover"></span>

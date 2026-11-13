@@ -29,9 +29,9 @@
     // The board's shared pieces, on the admin tokens.
     $card = 'min-w-0 rounded-md border border-border bg-surface shadow-card @container';
     $ch = 'flex flex-wrap items-center gap-2 border-b border-border px-4 py-3';
-    $h2 = 'text-[calc(1rem+var(--user-text-boost))] font-semibold leading-[1.4] text-heading';
-    $btn = 'hit-area inline-flex min-h-control max-w-full shrink-0 items-center justify-center gap-1.5 rounded border border-border-input bg-surface px-3.5 py-1.5 text-body font-medium leading-tight text-body-text transition-colors hover:bg-surface-hover hover:text-heading';
-    $ghost = 'hit-area inline-flex min-h-control max-w-full shrink-0 items-center justify-center gap-1.5 rounded px-3.5 py-1.5 text-body font-medium leading-tight text-accent transition-colors hover:bg-admin-primary/10';
+    $h2 = 'text-[calc(1rem+var(--user-text-boost))] font-semibold leading-[1.4] text-text-strong';
+    $btn = 'hit-area inline-flex min-h-control max-w-full shrink-0 items-center justify-center gap-1.5 rounded border border-border-input bg-surface px-3.5 py-1.5 text-body font-medium leading-tight text-text transition-colors hover:bg-surface-hover hover:text-text-strong';
+    $ghost = 'hit-area inline-flex min-h-control max-w-full shrink-0 items-center justify-center gap-1.5 rounded px-3.5 py-1.5 text-body font-medium leading-tight text-primary-text transition-colors hover:bg-primary/10';
     $chip = 'inline-flex min-h-[1.375rem] items-center gap-1 rounded-full px-2 text-caption font-semibold leading-snug';
     $tones = [
         'info' => 'bg-info-soft text-info-text',
@@ -41,12 +41,12 @@
         '' => 'bg-primary-soft text-primary-text',
     ];
     $tic = 'inline-flex size-9 shrink-0 items-center justify-center rounded-full';
-    $tt = 'font-semibold leading-[1.45] text-heading [overflow-wrap:break-word]';
-    $ts = 'text-small leading-normal text-body-muted [overflow-wrap:anywhere]';
-    $li = 'grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2.5 border-t border-border px-4 py-2.5 first:border-t-0 @max-[439px]:grid-cols-[auto_minmax(0,1fr)] @max-[439px]:[&>a]:col-start-2 @max-[439px]:[&>a]:justify-self-start';
-    $lm = 'flex flex-wrap items-center gap-x-2 gap-y-1 text-small text-body-muted';
+    $tt = 'font-semibold leading-[1.45] text-text-strong [overflow-wrap:break-word]';
+    $ts = 'text-small leading-normal text-text-muted [overflow-wrap:anywhere]';
+    $li = 'grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2.5 border-t border-border px-4 py-2.5 first:border-t-0 @max-[27.4375rem]:grid-cols-[auto_minmax(0,1fr)] @max-[27.4375rem]:[&>a]:col-start-2 @max-[27.4375rem]:[&>a]:justify-self-start';
+    $lm = 'flex flex-wrap items-center gap-x-2 gap-y-1 text-small text-text-muted';
     $foot = 'flex flex-wrap gap-2 border-t border-border px-4 py-3';
-    $empty = 'flex flex-col items-start gap-2 p-4 text-body-muted';
+    $empty = 'flex flex-col items-start gap-2 p-4 text-text-muted';
 
     // 1 · Việc cần làm hôm nay
     $todoItems = [];
@@ -121,9 +121,9 @@
 <div class="@container/tq mx-auto flex w-full max-w-[80rem] flex-col gap-4">
     <div class="flex flex-wrap items-start gap-x-4 gap-y-3">
         <div class="min-w-0 flex-[1_1_20rem]">
-            <h1 class="text-title font-semibold leading-[1.4] text-heading">{{ __('admin.dashboard') }}</h1>
+            <h1 class="text-title font-semibold leading-[1.4] text-text-strong">{{ __('admin.dashboard') }}</h1>
             @if ($siteName !== '')
-                <p class="mt-1 text-body-muted [text-wrap:pretty]">{!! __('dash.desc', ['site' => '<strong class="font-semibold text-body-text">'.e($siteName).'</strong>']) !!}</p>
+                <p class="mt-1 text-text-muted [text-wrap:pretty]">{!! __('dash.desc', ['site' => '<strong class="font-semibold text-text">'.e($siteName).'</strong>']) !!}</p>
             @endif
         </div>
     </div>
@@ -142,7 +142,7 @@
             @endif
             <div>
                 @foreach ($todoItems as $t)
-                    <div class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-t border-border px-4 py-3 first:border-t-0 @max-[519px]:grid-cols-[auto_minmax(0,1fr)] @max-[519px]:[&>a]:col-span-full @max-[519px]:[&>a]:w-full">
+                    <div class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-t border-border px-4 py-3 first:border-t-0 @max-[32.4375rem]:grid-cols-[auto_minmax(0,1fr)] @max-[32.4375rem]:[&>a]:col-span-full @max-[32.4375rem]:[&>a]:w-full">
                         <span class="{{ $tic }} {{ $tones[$t['tone']] }}" aria-hidden="true"><x-bs-admin::icon :name="$t['icon']" class="size-[calc(1.0625rem+var(--user-text-boost))]" /></span>
                         <div class="flex min-w-0 flex-col gap-0.5">
                             <div class="{{ $tt }}">{{ $t['text'] }}</div>
@@ -178,9 +178,9 @@
                         <div class="relative size-16 shrink-0" role="img" aria-label="{{ __('dash.start_aria', ['done' => $stepsDone, 'total' => count($steps)]) }}">
                             <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true" class="block -rotate-90">
                                 <circle cx="32" cy="32" r="26" fill="none" stroke-width="7" class="stroke-surface-hover"></circle>
-                                <circle cx="32" cy="32" r="26" fill="none" stroke-width="7" stroke-linecap="round" class="stroke-admin-primary" stroke-dasharray="{{ number_format($ringDash, 1, '.', '') }} {{ number_format($ringC, 1, '.', '') }}"></circle>
+                                <circle cx="32" cy="32" r="26" fill="none" stroke-width="7" stroke-linecap="round" class="stroke-primary" stroke-dasharray="{{ number_format($ringDash, 1, '.', '') }} {{ number_format($ringC, 1, '.', '') }}"></circle>
                             </svg>
-                            <b aria-hidden="true" class="absolute inset-0 flex items-center justify-center text-body font-bold text-heading">{{ $stepsDone }}/{{ count($steps) }}</b>
+                            <b aria-hidden="true" class="absolute inset-0 flex items-center justify-center text-body font-bold text-text-strong">{{ $stepsDone }}/{{ count($steps) }}</b>
                         </div>
                         <div class="min-w-0">
                             <div class="{{ $tt }}">{{ __('dash.start_progress', ['done' => $stepsDone, 'total' => count($steps)]) }}</div>
@@ -224,16 +224,16 @@
                 @foreach ([['tel', 'phone', 'ri-phone', 'dash.help_call', false], ['zaloHref', 'zalo', 'ri-chat-3', 'dash.help_zalo', true], ['mailto', 'email', 'ri-mail', 'dash.help_mail', false]] as [$href, $value, $icon, $label, $blank])
                     @if ($help[$href] !== '')
                         <a href="{{ $help[$href] }}" @if ($blank) target="_blank" rel="noopener" @endif
-                           class="flex min-h-hit min-w-0 items-center gap-2.5 rounded-md border border-border px-3 py-2 text-body-text transition-colors hover:bg-surface-hover hover:text-heading">
-                            <x-bs-admin::icon :name="$icon" class="size-[calc(1.0625rem+var(--user-text-boost))] shrink-0 text-accent" />
+                           class="flex min-h-hit min-w-0 items-center gap-2.5 rounded-md border border-border px-3 py-2 text-text transition-colors hover:bg-surface-hover hover:text-text-strong">
+                            <x-bs-admin::icon :name="$icon" class="size-[calc(1.0625rem+var(--user-text-boost))] shrink-0 text-primary-text" />
                             <span class="min-w-0 flex-auto">{{ __($label) }}</span>
-                            <strong class="text-right font-semibold text-heading [overflow-wrap:anywhere]">{{ $help[$value] }}</strong>
+                            <strong class="text-right font-semibold text-text-strong [overflow-wrap:anywhere]">{{ $help[$value] }}</strong>
                         </a>
                     @endif
                 @endforeach
                 @if ($start !== null && $startHidden)
                     <button type="button" wire:click="showStart" wire:loading.attr="disabled" wire:target="showStart"
-                            class="min-h-hit self-start px-1 text-body font-semibold text-accent underline underline-offset-2">{{ __('dash.start_show') }}</button>
+                            class="min-h-hit self-start px-1 text-body font-semibold text-primary-text underline underline-offset-2">{{ __('dash.start_show') }}</button>
                 @endif
             </div>
         </section>
@@ -241,7 +241,7 @@
 
     {{-- Duyệt bài · Bài của tôi · Nội dung gần đây --}}
     @if ($review !== null || $mine !== null || $recent !== null)
-        <div class="grid grid-cols-1 items-start gap-4 @min-[720px]/tq:grid-cols-2">
+        <div class="grid grid-cols-1 items-start gap-4 @min-[45rem]/tq:grid-cols-2">
             @if ($review !== null)
                 <section class="{{ $card }}" aria-labelledby="tq-h-rev" x-data="{ tab: 'queue', keys: ['queue', 'mine', 'sched'], go(d) { const i = (this.keys.indexOf(this.tab) + d + this.keys.length) % this.keys.length; this.tab = this.keys[i]; this.$nextTick(() => document.getElementById('tq-tab-' + this.tab)?.focus()) }, to(i) { this.tab = this.keys[i]; this.$nextTick(() => document.getElementById('tq-tab-' + this.tab)?.focus()) } }">
                     <div class="{{ $ch }}">
@@ -260,8 +260,8 @@
                                         aria-selected="{{ $key === 'queue' ? 'true' : 'false' }}" tabindex="{{ $key === 'queue' ? 0 : -1 }}"
                                         x-on:click="tab = @js($key)" x-on:keydown.right.prevent="go(1)" x-on:keydown.left.prevent="go(-1)"
                                         x-on:keydown.home.prevent="to(0)" x-on:keydown.end.prevent="to(keys.length - 1)"
-                                        class="-mb-px inline-flex min-h-control items-center gap-1.5 whitespace-nowrap border-b-2 border-transparent px-2 text-body font-semibold text-body-muted aria-selected:border-accent aria-selected:text-accent any-pointer-coarse:min-h-hit">
-                                    {{ $t['label'] }}<span class="inline-flex min-h-[1.375rem] min-w-[1.375rem] items-center justify-center rounded-full bg-surface-hover px-1.5 text-caption font-bold text-body-text">{{ $t['n'] }}</span>
+                                        class="-mb-px inline-flex min-h-control items-center gap-1.5 whitespace-nowrap border-b-2 border-transparent px-2 text-body font-semibold text-text-muted aria-selected:border-primary-text aria-selected:text-primary-text any-pointer-coarse:min-h-hit">
+                                    {{ $t['label'] }}<span class="inline-flex min-h-[1.375rem] min-w-[1.375rem] items-center justify-center rounded-full bg-surface-hover px-1.5 text-caption font-bold text-text">{{ $t['n'] }}</span>
                                 </button>
                             @endforeach
                         </div>
@@ -320,14 +320,14 @@
                                         <a href="{{ $postsList(['tab' => $status, 'author' => [$me->ulid]]) }}" wire:navigate
                                            aria-label="{{ __('dash.wr_tile_aria', ['label' => __('entries.status_'.$status), 'n' => $num($n)]) }}"
                                            class="flex min-h-hit min-w-0 flex-col items-start gap-1.5 rounded-md border border-border bg-surface p-3 text-left transition-colors hover:bg-surface-hover">
-                                            <span class="text-title font-bold leading-[1.3] text-heading" aria-hidden="true">{{ $num($n) }}</span>
+                                            <span class="text-title font-bold leading-[1.3] text-text-strong" aria-hidden="true">{{ $num($n) }}</span>
                                             <span class="{{ $chip }} {{ $tones[$tileTone[$status] ?? ''] }}" aria-hidden="true"><x-bs-admin::icon :name="$tileIcon[$status] ?? 'ri-draft'" class="size-[calc(0.875rem+var(--user-text-boost))]" />{{ __('entries.status_'.$status) }}</span>
                                         </a>
                                     @endforeach
                                     @if ($wr['returned'] !== [])
                                         <a href="#tq-h-ret" aria-label="{{ __('dash.wr_tile_aria', ['label' => __('dash.wr_returned'), 'n' => $num(count($wr['returned']))]) }}"
                                            class="flex min-h-hit min-w-0 flex-col items-start gap-1.5 rounded-md border border-border bg-surface p-3 text-left transition-colors hover:bg-surface-hover">
-                                            <span class="text-title font-bold leading-[1.3] text-heading" aria-hidden="true">{{ $num(count($wr['returned'])) }}</span>
+                                            <span class="text-title font-bold leading-[1.3] text-text-strong" aria-hidden="true">{{ $num(count($wr['returned'])) }}</span>
                                             <span class="{{ $chip }} {{ $tones['danger'] }}" aria-hidden="true"><x-bs-admin::icon name="ri-arrow-go-back" class="size-[calc(0.875rem+var(--user-text-boost))]" />{{ __('dash.wr_returned') }}</span>
                                         </a>
                                     @endif
@@ -335,7 +335,7 @@
                             @endif
                             @if ($wr['returned'] !== [])
                                 <div class="flex flex-col gap-2">
-                                    <h3 id="tq-h-ret" class="text-body font-semibold text-heading">{{ __('dash.wr_returned_title') }}</h3>
+                                    <h3 id="tq-h-ret" class="text-body font-semibold text-text-strong">{{ __('dash.wr_returned_title') }}</h3>
                                     <div class="rounded-md border border-border">
                                         @foreach ($wr['returned'] as $r)
                                             <div class="{{ $li }}">
@@ -343,7 +343,7 @@
                                                 <div class="flex min-w-0 flex-col gap-1">
                                                     <div class="{{ $tt }}">{{ $r['title'] }}</div>
                                                     @if ($r['reason'] !== '')
-                                                        <div class="text-small leading-normal text-body-text [overflow-wrap:anywhere]">{{ __('dash.wr_reason', ['reason' => $r['reason']]) }}</div>
+                                                        <div class="text-small leading-normal text-text [overflow-wrap:anywhere]">{{ __('dash.wr_reason', ['reason' => $r['reason']]) }}</div>
                                                     @endif
                                                     <div class="{{ $lm }}"><span>{{ $r['by'] !== '' ? __('dash.wr_by', ['name' => $r['by'], 'when' => $ago($r['at'])]) : __('dash.wr_by_gone', ['when' => $ago($r['at'])]) }}</span></div>
                                                 </div>

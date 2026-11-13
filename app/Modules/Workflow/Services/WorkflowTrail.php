@@ -88,6 +88,40 @@ final readonly class WorkflowTrail
         ];
     }
 
+    /**
+     * The newest move of each listed entry itself (not of a pending change to it), keyed by entry id —
+     * one row per entry at most, so a caller can tell which of a short list was just sent back.
+     *
+     * @param  list<int>  $entryIds
+     * @return array<int, array{actor_id: int|null, from: string, to: string, note: string|null, at: CarbonInterface|null}>
+     */
+    public function lastMoves(array $entryIds): array
+    {
+        if ($entryIds === []) {
+            return [];
+        }
+
+        $logs = WorkflowLog::query()
+            ->selectRaw('distinct on (entry_id) entry_id, actor_id, from_state, to_state, note, created_at')
+            ->whereIn('entry_id', $entryIds)
+            ->where('target', WorkflowEngine::TARGET_ENTRY)
+            ->orderBy('entry_id')->orderByDesc('created_at')->orderByDesc('id')
+            ->get();
+
+        $moves = [];
+        foreach ($logs as $log) {
+            $moves[(int) $log->entry_id] = [
+                'actor_id' => $log->actor_id,
+                'from' => $log->from_state,
+                'to' => $log->to_state,
+                'note' => $log->note,
+                'at' => $log->created_at instanceof CarbonInterface ? $log->created_at : null,
+            ];
+        }
+
+        return $moves;
+    }
+
     private function encodeCursor(CarbonInterface $at, int $id): string
     {
         return $at->format(self::CURSOR_TIME).'|'.$id;

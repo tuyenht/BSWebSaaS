@@ -20,7 +20,7 @@ use App\Modules\Tenancy\Domains\DomainGroup;
 use App\Modules\Tenancy\Domains\DomainGroups;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Workflow\Models\Workflow;
-use App\Modules\Workflow\Models\WorkflowLog;
+use App\Modules\Workflow\Services\WorkflowTrail;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -289,39 +289,31 @@ final class DashboardReader
             return [];
         }
 
-        /** @var EloquentCollection<int, WorkflowLog> $logs */
-        $logs = WorkflowLog::query()
-            ->selectRaw('distinct on (entry_id) entry_id, actor_id, from_state, to_state, note, created_at')
-            ->whereIn('entry_id', $drafts->pluck('id')->all())
-            ->where('target', 'entry')
-            ->orderBy('entry_id')->orderByDesc('created_at')->orderByDesc('id')
-            ->get();
-        $last = $logs->keyBy('entry_id');
+        $last = app(WorkflowTrail::class)->lastMoves(array_values($drafts->map(fn (Entry $entry): int => $entry->id)->all()));
 
         $back = [];
         foreach ($drafts as $entry) {
-            $log = $last->get($entry->id);
-            if ($log instanceof WorkflowLog && trim((string) $log->note) !== '' && $log->actor_id !== $user->id
-                && $log->to_state === $entry->workflow_state && $log->from_state !== $log->to_state) {
-                $back[] = [$entry, $log];
+            $move = $last[$entry->id] ?? null;
+            if ($move !== null && trim((string) $move['note']) !== '' && $move['actor_id'] !== $user->id
+                && $move['to'] === $entry->workflow_state && $move['from'] !== $move['to']) {
+                $back[] = [$entry, $move];
             }
         }
         if ($back === []) {
             return [];
         }
 
-        $actors = User::query()->whereIn('id', array_values(array_unique(array_filter(array_map(fn (array $pair): ?int => $pair[1]->actor_id, $back)))))
+        $actors = User::query()->whereIn('id', array_values(array_unique(array_filter(array_map(fn (array $pair): ?int => $pair[1]['actor_id'], $back)))))
             ->pluck('name', 'id');
 
         $out = [];
-        foreach ($back as [$entry, $log]) {
-            $at = $log->getAttribute('created_at');
+        foreach ($back as [$entry, $move]) {
             $out[] = [
                 'ulid' => $entry->ulid,
                 'title' => $this->title($entry),
-                'reason' => trim((string) $log->note),
-                'by' => $log->actor_id !== null ? Cast::string($actors->get($log->actor_id)) : '',
-                'at' => $at instanceof DateTimeInterface ? $at : null,
+                'reason' => trim((string) $move['note']),
+                'by' => $move['actor_id'] !== null ? Cast::string($actors->get($move['actor_id'])) : '',
+                'at' => $move['at'],
                 'url' => route('admin.entries.edit', ['ulid' => $entry->ulid]),
             ];
         }
