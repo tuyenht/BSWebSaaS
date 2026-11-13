@@ -2,6 +2,7 @@
 
 namespace App\Modules\Catalog\Actions;
 
+use App\Modules\Catalog\Actions\Concerns\AuthorizesCatalogChange;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Routing\RouteSync;
@@ -17,6 +18,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class ChangeProductStatus
 {
+    use AuthorizesCatalogChange;
+
     public const array STATUSES = ['draft', 'published', 'archived'];
 
     /**
@@ -26,6 +29,8 @@ final class ChangeProductStatus
      */
     public function handle(Product $product, string $status): Product
     {
+        $this->authorizeCatalog('update', $product);
+
         return DB::transaction(function () use ($product, $status): Product {
             $product->forceFill(['status' => $status])->save();
 
@@ -46,6 +51,7 @@ final class ChangeProductStatus
      */
     public function publishEffects(Product $product, ?string $locale = null, ?string $slug = null): void
     {
+        $this->authorizeCatalog('update', $product);
         if ($product->published_at === null) {
             $product->forceFill(['published_at' => now()])->save();
         }
