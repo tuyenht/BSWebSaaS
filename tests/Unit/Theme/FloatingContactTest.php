@@ -387,6 +387,35 @@ it('chooses the bottom bar cells, the sheet and the "Thêm" cell', function (arr
     'five quick channels, no shop' => [['phone', 'zalo', 'sms', 'whatsapp', 'viber'], false, ['phone', 'zalo', 'sms', 'whatsapp', 'viber'], [], false],
 ]);
 
+it('reads "Mua hàng" only where older code showed it: the bar theme stored, a layout with the bar, its switch on', function (array $raw, bool $wants): void {
+    expect(FloatingContact::wantsShop($raw + ['enabled' => true, 'buy' => ['enabled' => true]]))->toBe($wants);
+})->with([
+    'the bar theme' => [['theme' => 'horizontal'], true],
+    'the bar theme, combo layout' => [['theme' => 'horizontal', 'layout' => 'combo'], true],
+    'round buttons with the phone bar (combo)' => [['theme' => 'vertical', 'phone_bar' => ['enabled' => true]], false],
+    'theme missing, phone bar on' => [['phone_bar' => ['enabled' => true]], false],
+    'the bar theme, vertical layout' => [['theme' => 'horizontal', 'layout' => 'vertical'], false],
+    'plain round buttons' => [['theme' => 'vertical'], false],
+]);
+
+it('adds the older phone bar’s own cell last only while the list has room, never past the most channels a site keeps', function (int $own, bool $cta): void {
+    $channels = [];
+    for ($i = 1; $i <= $own; $i++) {
+        $channels[] = ['key' => 'c'.$i, 'on' => true, 'value' => '/trang-'.$i, 'name' => 'Trang '.$i];
+    }
+    $raw = ['enabled' => true, 'theme' => 'vertical', 'channels' => $channels,
+        'phone_bar' => ['enabled' => true, 'cta' => ['label' => ['vi' => 'Yêu cầu báo giá'], 'url' => '/lien-he']]];
+
+    $keys = array_column(FloatingContact::widget($raw, 'vi')['buttons'], 'key');
+
+    expect(count($keys))->toBeLessThanOrEqual(FloatingContact::MAX_CHANNELS)
+        ->and(end($keys) === 'cta')->toBe($cta)
+        ->and(count($keys))->toBe(min($own + 1, FloatingContact::MAX_CHANNELS));
+})->with([
+    'room left' => [FloatingContact::MAX_CHANNELS - 1, true],
+    'list full' => [FloatingContact::MAX_CHANNELS, false],
+]);
+
 it('folds the round buttons of a phone into one button only on the vertical layout with the switch on and enough channels', function (): void {
     expect(FloatingContact::dials('vertical', true, FloatingContact::DIAL_FROM))->toBeTrue()
         ->and(FloatingContact::dials('vertical', true, FloatingContact::DIAL_FROM - 1))->toBeFalse()

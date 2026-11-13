@@ -58,7 +58,7 @@ it('draws only the floating contact channels the pack switched on', function ():
     expect($exit)->toBe(0, $output);
 
     $html = sfPage('/');
-    expect($html)->toContain('<nav class="sf-fc sf-fc--left"')
+    expect($html)->toContain('<nav class="sf-fc__float sf-fc__float--left"')
         ->toContain('href="tel:0901234567"')
         ->toContain('href="https://zalo.me/0901234567"')
         ->toContain('href="https://maps.google.com/?q=demo"')
