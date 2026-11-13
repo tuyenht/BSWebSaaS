@@ -462,7 +462,8 @@ it('puts every channel switched on in the bottom bar or its “Thêm” sheet, u
         // Five places: four quick channels and "Thêm", which holds the rest in saved order.
         expect(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo', 'sms', 'whatsapp'])
             ->and(array_column($lw->viewData('preview')['sheet'], 'key'))->toBe(['messenger', 'email', 'telegram', 'viber'])
-            ->and($lw->viewData('srcdoc'))->toContain('popovertarget="sf-fc-more"', 'sf-fc-bar__item" data-fc-pending><a class="sf-fc-bar__link" href="#"')
+            ->and($lw->viewData('srcdoc'))->toContain('popovertarget="sf-fc-more"')
+            ->toMatch('#class="sf-fc-bar__item[^"]*"(?: style="[^"]*")? data-fc-pending><a class="sf-fc-bar__link" href="\#"#')
             ->not->toContain('sf-fc__float');
 
         // A switched-off channel never takes a cell.
