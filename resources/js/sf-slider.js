@@ -5,10 +5,25 @@
 // is over the block (and runs on when it leaves, also after an arrow click), while keyboard focus is
 // inside, and for 10 s after a touch or swipe. There is no pause button. Photos of later slides sit in
 // a hidden wrapper; each is revealed about 1.5 s before its turn, or when a control is hovered or focused.
+// Nothing rotates (slider or rail) before the visitor's first sign of being there: a scroll, a touch, a
+// mouse move or a key. Until then the page holds still, so it is finished as soon as it is drawn; a
+// page-speed test, which never touches the page, would otherwise count each slide change as the page
+// still drawing.
 import { railDot, railPages, railTarget, swipe, wrap } from './sf-slider-math.js';
 
 const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
 const HOLD = 10000;
+let present = false;
+const waiting = [];
+const arrive = () => {
+    if (!present) {
+        present = true;
+        waiting.splice(0).forEach((fn) => fn());
+    }
+};
+['pointerdown', 'pointermove', 'keydown', 'scroll', 'wheel', 'touchstart'].forEach((type) => window.addEventListener(type, arrive, { capture: true, passive: true, once: true }));
+// Runs fn now when the visitor is already here, else once they arrive.
+const whenPresent = (fn) => (present ? fn() : waiting.push(fn));
 
 function init(root) {
     const slides = [...root.querySelectorAll('.sf-slide')];
@@ -34,7 +49,7 @@ function init(root) {
             media.hidden = false;
         }
     };
-    const running = () => interval > 0 && !reduce.matches && !hovered && !focused && !held && !document.hidden;
+    const running = () => present && interval > 0 && !reduce.matches && !hovered && !focused && !held && !document.hidden;
     const schedule = () => {
         clearTimeout(timer);
         clearTimeout(early);
@@ -120,6 +135,7 @@ function init(root) {
     document.addEventListener('visibilitychange', schedule);
     reduce.addEventListener?.('change', schedule);
     schedule();
+    whenPresent(schedule);
 }
 
 document.querySelectorAll('[data-sf-slider]').forEach(init);
@@ -156,7 +172,7 @@ function initRail(root) {
 
     const overflows = () => track.scrollWidth > track.clientWidth + 1;
     const rotates = () => interval > 0 && !reduce.matches && !(phone.matches && root.dataset.mobile === 'swipe') && over;
-    const running = () => rotates() && !hovered && !focused && !held && !document.hidden;
+    const running = () => present && rotates() && !hovered && !focused && !held && !document.hidden;
     const step = () => (track.children.length > 1 ? track.children[1].offsetLeft - track.children[0].offsetLeft : track.clientWidth);
     const move = (dir) => {
         const left = railTarget(dir, track.scrollLeft, track.clientWidth, track.scrollWidth, step());
@@ -246,6 +262,7 @@ function initRail(root) {
     phone.addEventListener?.('change', sync);
     reduce.addEventListener?.('change', sync);
     sync();
+    whenPresent(schedule);
 }
 
 document.querySelectorAll('[data-sf-rail]').forEach(initRail);
