@@ -216,7 +216,7 @@ it('prints exactly the same variables as before for a site with no settings', fu
         'primary' => '#3b82f6', 'surface' => '#ffffff', 'font' => 'system-ui, sans-serif',
         'ink' => '#111111', 'body' => '#333333', 'primary-text' => '#326fd1', 'primary-on-ink' => '#5895f7',
         'color-primary' => '#3b82f6', 'color-on-primary' => '#031c44', 'color-primary-hover' => '#5895f7', 'color-primary-text' => '#326fd1',
-        'color-primary-on-dark' => '#5895f7', 'color-surface' => '#ffffff', 'color-text' => '#333333',
+        'color-primary-on-dark' => '#5895f7', 'color-surface' => '#ffffff', 'color-text' => '#333333', 'color-text-secondary' => '#5c5c5c',
         'color-text-strong' => '#111111', 'color-dark' => '#111111', 'font-body' => 'system-ui, sans-serif',
     ];
     $palette = ['50' => '#f0f6ff', '100' => '#deebff', '200' => '#c4dbff', '300' => '#9cc2ff', '400' => '#659fff',
@@ -441,5 +441,75 @@ it('keeps white on a dark brand and its hover fill still reads', function (): vo
 
         expect($variables['color-on-primary'])->toBe('#ffffff')
             ->and(ReadableColor::ratio($variables['color-on-primary'], $variables['color-primary-hover']))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT);
+    });
+});
+
+it('makes secondary text readable on the surface, the page and the tinted band, whatever the body color', function (string $body): void {
+    app(Tenancy::class)->enter(1, function () use ($body): void {
+        SiteSetting::query()->updateOrCreate(
+            ['group_name' => 'theme', 'key' => 'tokens'],
+            ['value' => ['primary' => '#f59e0b', 'ink' => '#0f172a', 'body' => $body]],
+        );
+
+        $variables = app(ThemeResolver::class)->cssVariables();
+        $page = (string) ReadableColor::mix($variables['surface'], $variables['ink'], ThemeResolver::PAGE_SURFACE_SHARE);
+        $tint = (string) ReadableColor::mix($variables['surface'], $variables['ink'], ThemeResolver::TINT_SURFACE_SHARE);
+        $secondary = $variables['color-text-secondary'];
+
+        foreach ([$variables['surface'], $page, $tint, '#f8fafc'] as $background) {
+            expect(ReadableColor::ratio($secondary, $background))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT);
+        }
+        // Still a step lighter than body copy where the body color leaves room for one.
+        expect($secondary)->not->toBe($variables['body']);
+    });
+})->with([
+    'a light body color, as on An Vinh (lightened a fifth it reads 4.3:1 on the page)' => ['#4b5563'],
+    'the default body color' => ['#333333'],
+    'a dark slate body color' => ['#334155'],
+]);
+
+it('paints no secondary text by lightening the body color in the stylesheet', function (): void {
+    $css = dirname(__DIR__, 3).'/resources/css';
+    foreach ([$css.'/storefront.css', ...glob($css.'/sf-*.css') ?: []] as $file) {
+        foreach (preg_split('/\R/', (string) file_get_contents($file)) ?: [] as $number => $line) {
+            if (preg_match('/^\s*color:/', $line) === 1) {
+                expect($line)->not->toMatch('/color-mix\(in srgb, var\(--color-text\) \d+%, white\)/', basename($file).':'.($number + 1));
+            }
+        }
+    }
+});
+
+it('reads secondary text against a tint the site set itself', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteSetting::query()->updateOrCreate(
+            ['group_name' => 'theme', 'key' => 'tokens'],
+            ['value' => ['ink' => '#0f172a', 'body' => '#4b5563', 'color-surface-tint' => '#e2e8f0', 'color-text-secondary' => '#eeeeee']],
+        );
+        $variables = app(ThemeResolver::class)->cssVariables();
+
+        // A stored value never wins over the derived one.
+        expect($variables['color-text-secondary'])->not->toBe('#eeeeee')
+            ->and(ReadableColor::ratio($variables['color-text-secondary'], '#e2e8f0'))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT);
+    });
+});
+
+it('falls back to the body color when it cannot read the body color it would lighten', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteSetting::query()->updateOrCreate(['group_name' => 'theme', 'key' => 'tokens'], ['value' => ['body' => 'slategray']]);
+
+        expect(app(ThemeResolver::class)->cssVariables()['color-text-secondary'])->toBe('slategray');
+    });
+});
+
+it('reads secondary text on a form field even when the site paints its page and tint lighter than the field', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteSetting::query()->updateOrCreate(
+            ['group_name' => 'theme', 'key' => 'tokens'],
+            ['value' => ['ink' => '#0f172a', 'body' => '#4b5563', 'page' => '#ffffff', 'color-surface-tint' => '#ffffff']],
+        );
+        $variables = app(ThemeResolver::class)->cssVariables();
+        $field = (string) ReadableColor::mix($variables['surface'], '#0f172a', 0.97);
+
+        expect(ReadableColor::ratio($variables['color-text-secondary'], $field))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT);
     });
 });

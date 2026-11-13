@@ -27,7 +27,7 @@
 }
 
 .richtext p {
-    color: var(--sch-body, color-mix(in srgb, var(--color-text) 80%, white));
+    color: var(--sch-body, var(--color-text-secondary));
     line-height: 1.75;
     margin-bottom: 0.75rem;
 }
@@ -550,7 +550,7 @@
 
 .sf-prose--article :is(.richtext, .sf-prose) figcaption {
     margin-top: 0.6rem;
-    color: color-mix(in srgb, var(--color-text) 80%, white);
+    color: var(--color-text-secondary);
     font-size: 0.875rem;
 }
 

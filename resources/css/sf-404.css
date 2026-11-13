@@ -33,7 +33,7 @@
 }
 
 .error-page__message {
-    color: color-mix(in srgb, var(--color-text) 80%, white);
+    color: var(--color-text-secondary);
     max-width: 28rem;
     line-height: 1.65;
     margin: 0 0 2rem;
