@@ -96,7 +96,9 @@ final readonly class RoleHierarchyGuard
     private function actorCovers(User $actor, Role $role): bool
     {
         foreach ($role->permissions as $permission) {
-            if (! $actor->hasPermissionTo($permission)) {
+            // By name: spatie then reads the permission and the roles holding it from its cached
+            // catalog. Passing the loaded model would lazy-load its roles, across every site, once per permission.
+            if (! $actor->hasPermissionTo($permission->name)) {
                 return false;
             }
         }
