@@ -516,7 +516,11 @@
                      (where the site switches to its computer look), drawn smaller to fit the card. The bottom bar
                      only exists on phones: its preview is always the phone, with no device switch. The frame's
                      size, the device and the page background are this card's own (wire:ignore), so a redraw of
-                     the page only swaps the frame's page. --}}
+                     the page only swaps the frame's page. The frame runs no script (sandbox without
+                     allow-scripts); this card drives it on each load: every link keeps its address only as
+                     data-href (href="#"), so no click, middle click or "open in a new tab" leaves the page;
+                     "Chép số" shows its "copied" word for about two seconds; the dial or "Thêm" sheet left
+                     open is opened again after the frame is redrawn. --}}
                 <div class="rounded-md border border-border bg-surface shadow-card"
                      x-data="{
                          pick: 'desktop', dark: false, k: 1, h: 600,
@@ -529,17 +533,38 @@
                              this.h = n ? Math.max(base, Math.ceil(n.getBoundingClientRect().height) + 220) : base;
                          },
                          paint() { const d = this.$refs.frame ? this.$refs.frame.contentDocument : null; if (d && d.documentElement) { d.documentElement.dataset.page = this.dark ? 'dark' : 'light'; } },
+                         open: null,
+                         drive() {
+                             const d = this.$refs.frame ? this.$refs.frame.contentDocument : null;
+                             if (! d || ! d.body || d.body.dataset.fcDriven) { return; }
+                             d.body.dataset.fcDriven = '1';
+                             d.querySelectorAll('a[href]').forEach((a) => { a.dataset.href = a.getAttribute('href'); a.setAttribute('href', '#'); });
+                             const stay = (e) => { if (e.target.closest && e.target.closest('a')) { e.preventDefault(); } };
+                             d.addEventListener('click', (e) => { stay(e); this.copied(e); });
+                             d.addEventListener('auxclick', stay);
+                             d.addEventListener('toggle', (e) => { if (e.target.id && this.$refs.frame && this.$refs.frame.contentDocument === d) { this.open = e.newState === 'open' ? e.target.id : null; } }, true);
+                             const el = this.open ? d.getElementById(this.open) : null;
+                             if (el && el.showPopover) { try { el.showPopover(); } catch (err) { this.open = null; } }
+                         },
+                         copied(e) {
+                             const c = e.target.closest ? e.target.closest('[data-fc-copy]') : null;
+                             if (! c) { return; }
+                             const w = c.querySelector('.sf-fc__copy-t'), was = w ? w.textContent : '', sr = c.parentNode.querySelector('[role=status]');
+                             if (w) { w.textContent = c.dataset.done; }
+                             if (sr) { sr.textContent = c.dataset.done; }
+                             setTimeout(() => { if (w) { w.textContent = was; } if (sr) { sr.textContent = ''; } }, 2000);
+                         },
                      }"
-                     x-init="$nextTick(() => fit()); new ResizeObserver(() => fit()).observe($refs.box); $watch('dev', () => $nextTick(() => fit())); $watch('dark', () => paint())">
+                     x-init="$nextTick(() => { paint(); drive(); fit(); }); new ResizeObserver(() => fit()).observe($refs.box); $watch('dev', () => $nextTick(() => fit())); $watch('dark', () => paint())">
                     <div class="flex items-center justify-between gap-2.5 border-b border-border px-4 py-3">
                         <h2 class="{{ $name }}">{{ __('admin.fc.preview') }}@if ($isH)<span class="font-normal text-text-muted"> · {{ __('admin.fc.on_phone') }}</span>@endif</h2>
                         <div class="flex items-center gap-2" wire:ignore>
                             <div class="seg" role="group" aria-label="{{ __('admin.fc.pv_page') }}">
                                 <button type="button" x-on:click="dark = false" x-bind:aria-pressed="dark ? 'false' : 'true'" aria-pressed="true" aria-label="{{ __('admin.fc.pv_light') }}" title="{{ __('admin.fc.pv_light') }}" class="inline-flex items-center justify-center">
-                                    <x-bs-admin::icon name="ri-sun" class="size-[min(1.5rem,calc(0.9375rem+var(--user-text-boost)))]" />
+                                    <x-bs-admin::icon name="sun" class="size-[min(1.5rem,calc(0.9375rem+var(--user-text-boost)))]" />
                                 </button>
                                 <button type="button" x-on:click="dark = true" x-bind:aria-pressed="dark ? 'true' : 'false'" aria-pressed="false" aria-label="{{ __('admin.fc.pv_dark') }}" title="{{ __('admin.fc.pv_dark') }}" class="inline-flex items-center justify-center">
-                                    <x-bs-admin::icon name="ri-moon" class="size-[min(1.5rem,calc(0.9375rem+var(--user-text-boost)))]" />
+                                    <x-bs-admin::icon name="moon" class="size-[min(1.5rem,calc(0.9375rem+var(--user-text-boost)))]" />
                                 </button>
                             </div>
                             <div class="seg" role="group" aria-label="{{ __('admin.fc.device') }}" x-show="$wire.layout !== 'horizontal'" @if ($isH) style="display: none" @endif>
@@ -561,8 +586,8 @@
                             <div x-ref="box" wire:ignore.self class="relative overflow-hidden bg-surface-muted" style="height: 300px"
                                  x-bind:style="'--fcp-w:' + vw + 'px;--fcp-h:' + h + 'px;--fcp-k:' + k + ';height:' + Math.round(h * k) + 'px'">
                                 @if ($srcdoc !== null)
-                                    <iframe x-ref="frame" srcdoc="{{ $srcdoc }}" title="{{ __('admin.fc.preview_frame') }}" data-fc-preview
-                                            x-on:load="paint(); measure()"
+                                    <iframe x-ref="frame" srcdoc="{{ $srcdoc }}" sandbox="allow-same-origin" title="{{ __('admin.fc.preview_frame') }}" data-fc-preview
+                                            x-on:load="paint(); drive(); measure()"
                                             class="absolute top-0 left-0 block border-0 bg-surface"
                                             style="width: var(--fcp-w, 768px); height: var(--fcp-h, 480px); transform: scale(var(--fcp-k, 1)); transform-origin: 0 0"></iframe>
                                 @else

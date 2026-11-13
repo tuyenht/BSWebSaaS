@@ -5,8 +5,10 @@
     lives only here: the page sketch behind the buttons, the light / dark page background
     (html[data-page], set by the admin page), the room the site keeps under its footer for the
     buttons (.sf-fc-ghost, .sf-fc-bar--ghost: the frame never scrolls, so they are left out) and the unfinished slot of a channel not filled in yet
-    ([data-fc-pending]). Links never leave the frame; "Chép số" only shows its "copied" word for about
-    two seconds; the open dial or "Thêm" sheet is reopened after the frame is redrawn (window.parent).
+    ([data-fc-pending]: the site prints each channel's colour inline, so the slot paints its own
+    background rather than the colour variable). The frame is sandboxed with no script: the admin
+    page drives it (floating-contact-settings: links never leave the frame, "Chép số" shows its
+    "copied" word, the open dial or "Thêm" sheet is reopened after the frame is redrawn).
 --}}
 <!doctype html>
 <html lang="{{ $lang }}" data-page="light">
@@ -26,8 +28,7 @@ html{overflow:hidden}
 .fcp-page>span:nth-child(1){width:55%;height:16px}.fcp-page>span:nth-child(2){width:88%}.fcp-page>span:nth-child(3){width:78%}
 .fcp-page>span:nth-child(4){height:96px;border-radius:10px}.fcp-page>span:nth-child(5){width:70%}
 html[data-page="dark"] .fcp-page>span{background:rgb(255 255 255 / 10%)}
-[data-fc-pending]{--fc-fill:var(--color-surface,#fff);--fc-tint:transparent}
-[data-fc-pending] .sf-fc__btn,[data-fc-pending] .sf-fc-bar__dot{box-sizing:border-box;border:2px dashed #878a99;box-shadow:none;outline:0;color:#5b6275}
+[data-fc-pending] .sf-fc__btn,[data-fc-pending] .sf-fc-bar__dot{box-sizing:border-box;background:var(--color-surface,#fff);border:2px dashed #878a99;box-shadow:none;outline:0;color:#5b6275}
 [data-fc-pending] .sf-fc__z{fill:var(--color-surface,#fff)}
 [data-fc-pending] .sf-fc-bar__label,[data-fc-pending] .sf-fc-sheet__l{color:#5b6275}
 </style>
@@ -35,27 +36,5 @@ html[data-page="dark"] .fcp-page>span{background:rgb(255 255 255 / 10%)}
 <body>
 <div class="fcp-page" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
 @include('theme::partials.floating-contact')
-<script>
-(function () {
-    var host = window.parent, frame = window.frameElement;
-    if (frame && frame.dataset.page) { document.documentElement.dataset.page = frame.dataset.page; }
-    document.addEventListener('click', function (e) {
-        var a = e.target.closest('a');
-        if (a) { e.preventDefault(); }
-        var copy = e.target.closest('[data-fc-copy]');
-        if (copy) {
-            var word = copy.querySelector('.sf-fc__copy-t'), was = word ? word.textContent : '', sr = copy.parentNode.querySelector('[role=status]');
-            if (word) { word.textContent = copy.dataset.done; }
-            if (sr) { sr.textContent = copy.dataset.done; }
-            setTimeout(function () { if (word) { word.textContent = was; } if (sr) { sr.textContent = ''; } }, 2000);
-        }
-    });
-    document.addEventListener('toggle', function (e) {
-        if (e.target.id) { host.__fcPreviewOpen = e.newState === 'open' ? e.target.id : null; }
-    }, true);
-    var open = host.__fcPreviewOpen && document.getElementById(host.__fcPreviewOpen);
-    if (open && open.showPopover) { try { open.showPopover(); } catch (err) {} }
-})();
-</script>
 </body>
 </html>
