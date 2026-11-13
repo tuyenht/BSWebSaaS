@@ -6,6 +6,7 @@ namespace App\Modules\Storefront\Http\Controllers;
 
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Support\EntryViewCounter;
+use App\Modules\Storefront\Support\BotAgent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Symfony\Component\HttpFoundation\Response;
@@ -26,9 +27,6 @@ final readonly class RecordEntryView
 
     private const int DECAY_SECONDS = 60;
 
-    /** User agents of crawlers, link previews and measuring tools: their visits are not views. */
-    private const string BOT_AGENT = '/bot|crawl|spider|slurp|preview|facebookexternalhit|embedly|headless|lighthouse|pingdom|uptime|monitor|curl|wget|python|go-http|java\/|httpclient|okhttp|axios|node-fetch|php/i';
-
     public function __construct(private EntryViewCounter $views) {}
 
     public function __invoke(Request $request, string $entry): Response
@@ -39,8 +37,8 @@ final readonly class RecordEntryView
         }
         RateLimiter::hit($throttle, self::DECAY_SECONDS);
 
-        $agent = (string) $request->userAgent();
-        if ($agent === '' || preg_match(self::BOT_AGENT, $agent) === 1) {
+        // Crawlers, link previews and measuring tools: their visits are not views.
+        if (BotAgent::is($request->userAgent())) {
             return response()->noContent();
         }
 

@@ -38,6 +38,12 @@ Schedule::command('entries:publish-due')->everyMinute()->withoutOverlapping();
 // Drain each site's Valkey-buffered storefront views into entries.view_count.
 Schedule::command('entries:flush-views')->everyFiveMinutes()->withoutOverlapping();
 
+// Turn each tapped site's Valkey-buffered contact button taps into its daily tallies (contact_click_daily).
+Schedule::command('contact:flush-clicks')->everyFiveMinutes()->withoutOverlapping();
+
+// Retention: contact button tallies are kept 90 days (contact_click_daily).
+Schedule::command('contact:prune-clicks')->daily()->withoutOverlapping();
+
 // Retention: in-app notifications are kept 90 days (site_notifications).
 Schedule::command('notifications:prune')->daily()->withoutOverlapping();
 
