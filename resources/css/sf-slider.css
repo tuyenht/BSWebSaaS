@@ -151,9 +151,9 @@
     }
 }
 
-/* Controls. The arrows sit at the sides, halfway down, on every width: outlined discs (a dark wash
- * with a light ring), 40px on a phone and 48px from 640px, so a phone keeps 3rem of side room for the
- * text (.sf-slide__content). The bottom row holds the dots. */
+/* Controls. The arrows sit at the sides, halfway down the slide, on every width: outlined discs (a dark
+ * wash with a light ring), 40px on a phone and 48px from 640px, so the text keeps 3rem of side room
+ * (.sf-slide__content). The bottom row holds the dots. */
 .sf-slider__controls {
     position: absolute;
     inset: 0;
@@ -255,13 +255,16 @@
     transform: scale(1.25);
 }
 
-/* A phone has no hero arrows: at 360–412px they stood beside the heading and paragraph and took 3rem of
-   each side from the text. A finger swipes the slide (sf-slider.js) and the dots are the buttons, each a
-   44px target; the keyboard keeps the arrow keys and the dots. The text then uses the page's own 1rem gutter. */
+/* A phone keeps the hero arrows at the sides, halfway down, as on every width: a 40px disc 0.25rem from the
+   window's edge, inside the 44px hit area. The slide's text keeps 3rem each side, so no arrow ever stands
+   over the heading, the paragraph or the buttons; the dots, in the bottom row, are 44px targets. */
 @media (max-width: 639.98px) {
-    .sf-slider__prev,
+    .sf-slider__prev {
+        left: 0.25rem;
+    }
+
     .sf-slider__next {
-        display: none;
+        right: 0.25rem;
     }
 
     .sf-slider__dot {
@@ -270,7 +273,7 @@
     }
 
     .sf-slide__content {
-        padding: 2.5rem 1rem 4.5rem;
+        padding: 2.5rem 3rem 4.5rem;
     }
 }
 
