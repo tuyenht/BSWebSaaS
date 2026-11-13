@@ -185,6 +185,10 @@
     "resources/js/admin-bell.js": {
       "js": 758,
       "css": 1264
+    },
+    "resources/js/admin-floating-contact-icon.js": {
+      "js": 643,
+      "css": 0
     }
   }
 }

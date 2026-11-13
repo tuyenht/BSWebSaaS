@@ -15,6 +15,8 @@
     computer, or on the first touch of the widget). With click tracking on, each link names its channel,
     place and kind of link (never the number or address) for the `bs:contact-click` event (storefront.js).
     Invisible copies in the page flow after the footer keep the room the buttons and the bar take.
+    A channel with its own icon picture (a PNG or WebP of the site's media library) prints it as an <img>
+    covering the disc, in the round buttons, the bar, the sheet and the dial alike.
     The admin preview prints this same partial; only there a channel not filled in yet carries
     data-fc-pending (FloatingContact::widget(…, pending: true)), styled by the admin page alone.
 --}}
@@ -29,9 +31,13 @@
         ? ' data-fc="'.e($channel).'" data-fc-at="'.e($at).'" data-fc-lt="'.e($link).'"' : '';
     $fcRel = static fn (string $href): string => str_starts_with($href, 'http') ? ' rel="noopener"' : '';
     $fcVars = static fn (array $b): string => '--fc-fill:'.$b['fill'].';--fc-tint:'.$b['tint'];
-    $fcGlyph = static fn (array $b, string $cls): string => $b['zalo']
+    // A channel's own icon picture (ContactIconImages) fills the disc instead of the glyph; it says nothing
+    // the link's label does not (alt=""), and its size is printed so the disc never shifts.
+    $fcGlyph = static fn (array $b, string $cls): string => ($b['img'] ?? null) !== null
+        ? '<img class="sf-fc__img" src="'.e($b['img']['src']).'" alt="" width="'.(int) $b['img']['w'].'" height="'.(int) $b['img']['h'].'" loading="lazy" decoding="async">'
+        : ($b['zalo']
         ? '<svg class="'.$cls.'" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 2.5C6.2 2.5 1.5 6.3 1.5 11c0 2.6 1.4 4.9 3.7 6.5l-.9 3.4a.5.5 0 0 0 .7.6l3.9-2.1c1 .3 2 .4 3.1.4 5.8 0 10.5-3.8 10.5-8.5S17.8 2.5 12 2.5z"/><path class="sf-fc__z" d="M7.7 6.6h8.6v1.9l-5.8 5.9h5.8v1.9H7.7v-1.9l5.8-5.9H7.7z"/></svg>'
-        : '<svg class="'.$cls.'" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="'.e($b['icon']).'"/></svg>';
+        : '<svg class="'.$cls.'" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="'.e($b['icon']).'"/></svg>');
     $fcIcon = static fn (string $code, string $cls): string => '<svg class="'.$cls.'" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="'.e(\App\Modules\Theme\Chrome\ContactIcons::solid($code) ?? '').'"/></svg>';
     $fcOffsets = '--fc-ox:'.$fc['offset_x'].'px;--fc-oy:'.$fc['offset_y'].'px';
     // The bar fits five cells from 22.5rem, four from 18rem, three below. "Thêm" and "Mua hàng" stay on

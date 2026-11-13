@@ -100,7 +100,7 @@ final class FloatingContactInput
      * One channel row cast to the shape the form works with: texts trimmed, the colour lower-cased,
      * a label per language trimmed.
      *
-     * @return array{key: string, on: bool, value: string, color: string, icon: string, name: string, tips: array<string, string>}
+     * @return array{key: string, on: bool, value: string, color: string, icon: string, name: string, tips: array<string, string>, img: string}
      */
     public static function castRow(mixed $row): array
     {
@@ -118,14 +118,16 @@ final class FloatingContactInput
             'icon' => Cast::string($c['icon'] ?? null),
             'name' => trim(Cast::string($c['name'] ?? null)),
             'tips' => $tips,
+            'img' => trim(Cast::string($c['img'] ?? null)),
         ];
     }
 
     /**
      * One channel in the stored shape: a colour only when chosen, an icon and name only on a
-     * channel of the site's own, and the labels that are not empty.
+     * channel of the site's own, the labels that are not empty, and its own icon picture (the media
+     * library picture's ulid) only when one is chosen.
      *
-     * @param  array{key: string, on: bool, value: string, color: string, icon: string, name: string, tips: array<string, string>}  $c
+     * @param  array{key: string, on: bool, value: string, color: string, icon: string, name: string, tips: array<string, string>, img: string}  $c
      * @return array<string, mixed>
      */
     public static function storedRow(array $c): array
@@ -139,8 +141,27 @@ final class FloatingContactInput
             $row['name'] = $c['name'];
         }
         $row['tips'] = array_filter($c['tips'], fn (string $t): bool => $t !== '');
+        if ($c['img'] !== '') {
+            $row['img'] = $c['img'];
+        }
 
         return $row;
+    }
+
+    /**
+     * Why a channel's own icon picture cannot be used, in plain words for the member: the picture is
+     * not in this site's library (removed since, or another site's), is not a PNG or WebP by its
+     * content, or is larger than 50 KB. The library check is ContactIconImages::problems().
+     *
+     * @param  'missing'|'type'|'size'  $problem
+     */
+    public static function iconMessage(string $problem): string
+    {
+        return match ($problem) {
+            'type' => __('admin.fc.ico_err_type'),
+            'size' => __('admin.fc.ico_err_size'),
+            default => __('admin.fc.ico_err_missing'),
+        };
     }
 
     /**

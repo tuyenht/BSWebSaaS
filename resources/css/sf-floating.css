@@ -95,6 +95,15 @@
     fill: currentcolor;
 }
 
+/* A channel's own icon picture covers the whole disc, round buttons and bar alike (a square logo is advised). */
+.sf-fc__img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    object-fit: cover;
+}
+
 /* Zalo's bubble is white; its Z takes the disc's own colour. */
 .sf-fc__z {
     fill: var(--fc-fill);

@@ -30,6 +30,7 @@ final readonly class PageChrome
         private BrandImages $brandImages,
         private StorefrontSettings $settings,
         private SiteLocale $siteLocale,
+        private ContactIconImages $contactIcons,
     ) {}
 
     /**
@@ -79,7 +80,8 @@ final readonly class PageChrome
             'header' => $header,
             'footer' => $footer,
             // null = off or no channel to show.
-            'floatingContact' => FloatingContact::widget($floating, $locale, $shopHref),
+            // A channel's own icon picture costs one media query for the page (none when no channel has one).
+            'floatingContact' => FloatingContact::widget($floating, $locale, $shopHref, images: is_array($floating) && ($floating['enabled'] ?? false) === true ? $this->contactIcons->for($floating) : []),
             'lang' => $locale,
             'hreflang' => $hreflang,
             'dir' => StorefrontChrome::dir($locale),

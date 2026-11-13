@@ -16,6 +16,7 @@ use App\Modules\Identity\Models\SocialIdentity;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\TwoFactor\TwoFactorService;
 use App\Modules\Media\Models\Media;
+use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
@@ -122,6 +123,39 @@ it('renders the storefront home with the phone bar and its “Mua hàng” butto
     });
 
     expect($html)->toContain('tel:0912345678')->toContain('href="/san-pham"')
+        ->and($count)->toBeLessThanOrEqual($budget);
+});
+
+it('renders the storefront home with contact buttons drawn by their own pictures within the budget plus one', function (): void {
+    // Every channel's own icon picture resolves in ONE media query (Storefront ContactIconImages);
+    // with none set the floating contact adds no query, so this is the home budget + 1.
+    $budget = 12;
+    $keys = app(Tenancy::class)->enter(1, function (): array {
+        $pictures = [];
+        foreach (['goi', 'zalo'] as $slug) {
+            $hash = hash('sha256', 'icon-'.$slug);
+            $pictures[$slug] = Media::query()->create([
+                'collection' => 'library', 'slug' => $slug, 'hash' => $hash, 'storage_key' => "s/library/{$slug}-".substr($hash, 0, 12).'.png',
+                'mime' => 'image/png', 'size' => 2_000, 'width' => 64, 'height' => 64,
+            ]);
+        }
+        SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'floating_contact', 'value' => [
+            'enabled' => true, 'theme' => 'horizontal', 'position' => 'right',
+            'channels' => [
+                ['key' => 'phone', 'on' => true, 'value' => '0912345678', 'img' => $pictures['goi']->ulid],
+                ['key' => 'zalo', 'on' => true, 'value' => '0912345678', 'img' => $pictures['zalo']->ulid],
+            ],
+        ]]);
+
+        return array_map(static fn (Media $m): string => e(app(MediaUrlResolver::class)->url($m->storage_key)), $pictures);
+    });
+
+    $html = '';
+    $count = countQueries(function () use (&$html): void {
+        $html = $this->get('http://a.test/')->assertOk()->getContent();
+    });
+
+    expect($html)->toContain('sf-fc__img')->toContain($keys['goi'])->toContain($keys['zalo'])
         ->and($count)->toBeLessThanOrEqual($budget);
 });
 

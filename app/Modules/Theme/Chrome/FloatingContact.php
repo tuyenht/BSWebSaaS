@@ -84,6 +84,14 @@ final class FloatingContact
         'maps' => ['type' => 'url', 'icon' => 'ri-map-pin-line', 'color' => '#ea4335'],
     ];
 
+    /**
+     * A channel's own icon picture (`img`: the media library picture's ulid): the kinds and the largest
+     * file accepted. PNG and WebP only (an SVG needs a sanitizer first); square is advised, not required.
+     */
+    public const array ICON_MIMES = ['image/png', 'image/webp'];
+
+    public const int ICON_MAX_BYTES = 51200;
+
     /** Channels every site keeps in its list (they can be switched off, not removed). */
     public const array CORE = ['phone', 'zalo', 'messenger', 'email', 'sms'];
 
@@ -132,12 +140,16 @@ final class FloatingContact
      * With $pending (the admin preview only, never the site) a channel switched on whose value is
      * missing or does not pass yet keeps its place as an unfinished slot (`pending` = true, href "#"),
      * counted like a ready one, so the member sees where its button goes once filled in.
+     * A channel whose `img` names a picture in $images draws that picture instead of its glyph; a
+     * picture not in the map (removed from the library since, or never one of this site's) leaves the
+     * glyph, so the page never shows a broken image.
      *
      * @param  mixed  $raw  the stored value (an array when set)
      * @param  string|null  $shopHref  the site's product list, or null when it has none
-     * @return array{layout: string, position: string, offset_x: int, offset_y: int, tone: string, track: bool, dial: bool, buttons: list<array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null, pending?: true}>, bar: list<array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null, pending?: true}>, sheet: list<array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null, pending?: true}>, more: bool, buy: array{href: string, fill: string, ink: string, icon: string}|null}|null
+     * @param  array<string, array{src: string, w: int, h: int}>  $images  icon pictures by ulid (ContactIconImages)
+     * @return array{layout: string, position: string, offset_x: int, offset_y: int, tone: string, track: bool, dial: bool, buttons: list<array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null, img: array{src: string, w: int, h: int}|null, pending?: true}>, bar: list<array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null, img: array{src: string, w: int, h: int}|null, pending?: true}>, sheet: list<array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null, img: array{src: string, w: int, h: int}|null, pending?: true}>, more: bool, buy: array{href: string, fill: string, ink: string, icon: string}|null}|null
      */
-    public static function widget(mixed $raw, string $locale, ?string $shopHref = null, bool $pending = false): ?array
+    public static function widget(mixed $raw, string $locale, ?string $shopHref = null, bool $pending = false, array $images = []): ?array
     {
         if (! is_array($raw) || ($raw['enabled'] ?? false) !== true) {
             return null;
@@ -146,7 +158,7 @@ final class FloatingContact
         $layout = self::layout($raw);
         $items = [];
         foreach (array_slice(is_array($raw['channels'] ?? null) ? array_values($raw['channels']) : [], 0, self::MAX_CHANNELS) as $channel) {
-            $item = is_array($channel) ? (self::item($channel, $locale) ?? ($pending ? self::pending($channel, $locale) : null)) : null;
+            $item = is_array($channel) ? (self::item($channel, $locale, null, $images) ?? ($pending ? self::pending($channel, $locale, $images) : null)) : null;
             if ($item !== null && ! isset($items[$item['key']])) {
                 $items[$item['key']] = $item;
             }
@@ -210,9 +222,10 @@ final class FloatingContact
      * One channel of the website's widget, or null when it is off, unknown or its value does not pass.
      *
      * @param  array<array-key, mixed>  $channel
-     * @return array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null}|null
+     * @param  array<string, array{src: string, w: int, h: int}>  $images
+     * @return array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null, img: array{src: string, w: int, h: int}|null}|null
      */
-    private static function item(array $channel, string $locale, ?string $type = null): ?array
+    private static function item(array $channel, string $locale, ?string $type = null, array $images = []): ?array
     {
         $key = is_string($channel['key'] ?? null) ? $channel['key'] : '';
         $type ??= self::typeOf($key);
@@ -248,6 +261,7 @@ final class FloatingContact
             'pulse' => ($meta['pulse'] ?? false) === true,
             'link' => self::linkType($href),
             'tel' => $type === 'phone' ? self::spaced($clean) : null,
+            'img' => is_string($channel['img'] ?? null) ? ($images[$channel['img']] ?? null) : null,
         ];
     }
 
@@ -256,16 +270,17 @@ final class FloatingContact
      * unfinished slot (its own colour and icon, no link); null when it is off or unknown.
      *
      * @param  array<array-key, mixed>  $channel
-     * @return array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null, pending: true}|null
+     * @param  array<string, array{src: string, w: int, h: int}>  $images
+     * @return array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null, img: array{src: string, w: int, h: int}|null, pending: true}|null
      */
-    private static function pending(array $channel, string $locale): ?array
+    private static function pending(array $channel, string $locale, array $images = []): ?array
     {
         $key = is_string($channel['key'] ?? null) ? $channel['key'] : '';
         $type = self::typeOf($key);
         if ($type === null || ($channel['on'] ?? false) !== true) {
             return null;
         }
-        $item = self::item(['value' => self::SAMPLE[$type] ?? 'https://example.com'] + $channel, $locale);
+        $item = self::item(['value' => self::SAMPLE[$type] ?? 'https://example.com'] + $channel, $locale, null, $images);
 
         return $item === null ? null : ['href' => '#', 'link' => 'none', 'tel' => null, 'pulse' => false, 'pending' => true] + $item;
     }

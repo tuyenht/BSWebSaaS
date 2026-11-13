@@ -81,7 +81,7 @@
     // A channel's errors that no field on screen shows: on a switched-off row every field but the
     // name is folded away; on a row switched on, only the labels of the other languages are.
     $hiddenErrors = static function (int|string $i, bool $on) use ($errors, $lang): array {
-        $shown = $on ? ['value', 'icon', 'color', 'name', 'tips', 'tips.'.$lang] : ['name'];
+        $shown = $on ? ['value', 'icon', 'color', 'name', 'tips', 'tips.'.$lang, 'img'] : ['name'];
         $out = [];
         foreach ($errors->getMessages() as $field => $messages) {
             $rest = str_starts_with((string) $field, "channels.$i.") ? substr((string) $field, strlen("channels.$i.")) : null;
@@ -94,7 +94,7 @@
     };
     $fieldName = static fn (string $field): string => match (true) {
         str_starts_with($field, 'tips.') => __('admin.fc.f_tip_in', ['lang' => $nameOf(substr($field, 5))]),
-        in_array($field, ['value', 'icon', 'color', 'tips'], true) => __('admin.fc.f_'.$field),
+        in_array($field, ['value', 'icon', 'color', 'tips', 'img'], true) => __('admin.fc.f_'.$field),
         default => __('admin.fc.f_value'),
     };
 
@@ -303,6 +303,8 @@
                                     $swState = $c['on'] ? __('admin.fc.on') : __('admin.fc.off');
                                     // Switched on with nothing typed: the site leaves the button out until it is filled in.
                                     $unfilled = $c['on'] && trim($c['value']) === '' && $valueError === '';
+                                    // The channel's own icon picture, when the draft names one of this site's library (ContactIconImages).
+                                    $pic = $c['img'] !== '' ? ($icons[$c['img']] ?? null) : null;
                                 @endphp
                                 <div wire:key="fc-ch-{{ $key }}" wire:sort:item="{{ $key }}"
                                      @class(['flex items-start gap-2.5 rounded-lg border bg-surface p-3', 'border-border' => $c['on'], 'border-dashed border-border bg-surface-muted' => ! $c['on']])>
@@ -318,8 +320,10 @@
                                             </button>
                                         @endforeach
                                     </div>
-                                    <label class="relative mt-px inline-flex size-[2.125rem] shrink-0 cursor-pointer items-center justify-center rounded-lg text-white focus-ring-within" style="background: {{ $color }}" title="{{ __('admin.fc.color') }}" wire:sort:ignore>
-                                        @if ($text !== null)
+                                    <label class="relative mt-px inline-flex size-[2.125rem] shrink-0 cursor-pointer items-center justify-center rounded-lg text-white focus-ring-within" style="background: {{ $pic !== null ? 'var(--color-surface)' : $color }}" title="{{ __('admin.fc.color') }}" wire:sort:ignore>
+                                        @if ($pic !== null)
+                                            <img src="{{ $pic['src'] }}" alt="" width="{{ $pic['w'] }}" height="{{ $pic['h'] }}" class="absolute inset-0 size-full rounded-[inherit] object-cover" decoding="async">
+                                        @elseif ($text !== null)
                                             <span class="text-[0.6875rem] font-extrabold" aria-hidden="true">{{ $text }}</span>
                                         @else
                                             <svg viewBox="0 0 24 24" class="size-[min(1.5rem,calc(1.0625rem+var(--user-text-boost)))]" fill="currentColor" aria-hidden="true" focusable="false"><path d="{{ $svg($custom ? $c['icon'] : (FloatingContact::CHANNELS[$key]['icon'] ?? null)) }}"/></svg>
@@ -399,6 +403,43 @@
                                             @error("channels.$i.tips.$lang") <p class="text-caption text-danger-text">{{ $message }}</p> @enderror
                                             @error("channels.$i.tips") <p class="text-caption text-danger-text">{{ $message }}</p> @enderror
                                             @error("channels.$i.color") <p class="text-caption text-danger-text">{{ $message }}</p> @enderror
+
+                                            {{-- "Biểu tượng": the channel's own picture (PNG or WebP, at most 50 KB) instead of its glyph. The
+                                                 browser checks the file, uploads it to the site's media library and hands its ulid to useIcon();
+                                                 "Dùng mặc định" goes back to the glyph. The outcome is read out by the shared toast. --}}
+                                            <div class="flex flex-col gap-2 border-t border-border-soft pt-2.5" x-data="{ busy: false }">
+                                                <p class="text-[calc(0.78125rem+var(--user-text-boost))] font-semibold text-text-strong">{{ __('admin.fc.ico_h') }}</p>
+                                                <div class="flex flex-wrap items-center gap-3">
+                                                    <span class="relative inline-flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full text-white shadow-[0_3px_8px_rgb(0_0_0/0.18)]" style="background: {{ $pic !== null ? 'var(--color-surface)' : $color }}" aria-hidden="true">
+                                                        @if ($pic !== null)
+                                                            <img src="{{ $pic['src'] }}" alt="" width="{{ $pic['w'] }}" height="{{ $pic['h'] }}" class="absolute inset-0 size-full object-cover" decoding="async">
+                                                        @elseif ($text !== null)
+                                                            <span class="text-caption font-extrabold">{{ $text }}</span>
+                                                        @else
+                                                            <svg viewBox="0 0 24 24" class="size-[min(1.5rem,calc(1.25rem+var(--user-text-boost)))]" fill="currentColor" focusable="false"><path d="{{ $svg($custom ? $c['icon'] : (FloatingContact::CHANNELS[$key]['icon'] ?? null)) }}"/></svg>
+                                                        @endif
+                                                    </span>
+                                                    <div class="flex flex-wrap gap-2">
+                                                        <label class="hit-area focus-ring-within relative inline-flex min-h-control-row cursor-pointer items-center gap-1.5 rounded-[7px] border border-border-input bg-surface px-3 text-[calc(0.8125rem+var(--user-text-boost))] font-semibold text-text-strong hover:border-primary-text"
+                                                               x-bind:aria-busy="busy ? 'true' : 'false'">
+                                                            <x-bs-admin::icon name="ri-upload-2" class="size-[min(1.5rem,calc(0.9375rem+var(--user-text-boost)))] shrink-0" />
+                                                            <span x-show="! busy">{{ $pic !== null ? __('admin.fc.ico_change') : __('admin.fc.ico_upload') }}</span>
+                                                            <span x-show="busy" x-cloak>{{ __('admin.fc.ico_busy') }}</span>
+                                                            <input type="file" accept="image/png,image/webp" aria-label="{{ __('admin.fc.ico_upload_aria', ['name' => $label]) }}" x-bind:disabled="busy"
+                                                                   class="absolute inset-0 size-full min-h-0 min-w-0 cursor-pointer opacity-0"
+                                                                   x-on:change="window.bsFloatingContact.pickIcon($event, $wire, {{ Js::from($key) }}, {{ Js::from(route('admin.media.upload')) }}, $data)">
+                                                        </label>
+                                                        @if ($pic !== null)
+                                                            <button type="button" wire:click="clearIcon({{ Js::from($key) }})" aria-label="{{ __('admin.fc.ico_default_aria', ['name' => $label]) }}"
+                                                                    class="hit-area inline-flex min-h-control-row items-center gap-1.5 rounded-[7px] border border-transparent px-3 text-[calc(0.8125rem+var(--user-text-boost))] font-semibold text-text hover:bg-primary-soft">
+                                                                <x-bs-admin::icon name="ri-arrow-go-back" class="size-[min(1.5rem,calc(0.9375rem+var(--user-text-boost)))] shrink-0" />{{ __('admin.fc.ico_default') }}
+                                                            </button>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                                <p class="text-caption leading-normal text-text-muted">{{ __('admin.fc.ico_note') }}</p>
+                                                @error("channels.$i.img") <p class="text-caption text-danger-text">{{ $message }}</p> @enderror
+                                            </div>
                                         @endif
                                         {{-- What blocks the save but has no field on screen (a switched-off channel's folded
                                              fields, a hover label in another language) still shows, named in plain words. --}}
@@ -520,7 +561,8 @@
                      allow-scripts); this card drives it on each load: every link keeps its address only as
                      data-href (href="#"), so no click, middle click or "open in a new tab" leaves the page;
                      "Chép số" shows its "copied" word for about two seconds; the dial or "Thêm" sheet left
-                     open is opened again after the frame is redrawn. --}}
+                     open is opened again after the frame is redrawn, only when the new one still shows a
+                     channel (bsFloatingContact.reopenable: a sheet whose cells all fit on the bar is empty). --}}
                 <div class="rounded-md border border-border bg-surface shadow-card"
                      x-data="{
                          pick: 'desktop', dark: false, k: 1, h: 600,
@@ -544,7 +586,7 @@
                              d.addEventListener('auxclick', stay);
                              d.addEventListener('toggle', (e) => { if (e.target.id && this.$refs.frame && this.$refs.frame.contentDocument === d) { this.open = e.newState === 'open' ? e.target.id : null; } }, true);
                              const el = this.open ? d.getElementById(this.open) : null;
-                             if (el && el.showPopover) { try { el.showPopover(); } catch (err) { this.open = null; } }
+                             if (el && el.showPopover && window.bsFloatingContact.reopenable(el, d.defaultView)) { try { el.showPopover(); } catch (err) { this.open = null; } } else { this.open = null; }
                          },
                          copied(e) {
                              const c = e.target.closest ? e.target.closest('[data-fc-copy]') : null;

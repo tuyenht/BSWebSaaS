@@ -920,6 +920,7 @@ it('refuses every action to a user who lost the settings permission', function (
     ['move', ['phone', 1]], ['sortChannel', ['phone', 2]], ['deleteChannel', ['phone']], ['togglePresetMenu', []],
     ['addPreset', ['telegram']], ['addCustom', []], ['pickIcon', ['phone', 'ri-phone']], ['toggleBuy', []],
     ['setBuyColor', ['#000000']], ['save', []], ['resetChanges', []], ['dismissToast', [1]], ['stored', []],
+    ['useIcon', ['phone', '01JC0000000000000000000000']], ['clearIcon', ['phone']], ['iconRefused', ['type']],
 ]);
 
 it('opens on a flat query budget, the taps read in one query', function (): void {
