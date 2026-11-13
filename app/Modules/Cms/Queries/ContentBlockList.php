@@ -74,9 +74,13 @@ final readonly class ContentBlockList
         $at = $after['at'] ?? null;
         $ulid = $after['ulid'] ?? null;
 
-        return is_string($at) && is_string($ulid)
-            && preg_match('/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(\.\d{1,6})?([+-]\d{2}(:\d{2})?|Z)$/', $at) === 1
-            && preg_match('/^[0-9A-Z]{26}$/i', $ulid) === 1;
+        if (! is_string($at) || ! is_string($ulid) || preg_match('/^[0-9A-Z]{26}$/iD', $ulid) !== 1
+            || preg_match('/^(\d{4})-(\d{2})-(\d{2})[ T]([01]\d|2[0-3]):[0-5]\d:[0-5]\d(\.\d{1,6})?([+-](0\d|1[0-5])(:[0-5]\d)?|Z)$/D', $at, $part) !== 1) {
+            return false;
+        }
+
+        // the shape alone lets "2026-02-31" through, which PostgreSQL refuses
+        return checkdate((int) $part[2], (int) $part[3], (int) $part[1]);
     }
 
     /**

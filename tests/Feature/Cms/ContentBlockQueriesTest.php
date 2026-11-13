@@ -249,4 +249,7 @@ it('starts from the first page when the cursor was not one it gave out', functio
     'empty time' => [['at' => '', 'ulid' => '01JLISTED00000000000000003']],
     'not a time' => [['at' => 'hôm qua', 'ulid' => '01JLISTED00000000000000003']],
     'short code' => [['at' => '2026-11-01 08:03:00+00', 'ulid' => 'abc']],
+    'no such day' => [['at' => '2026-02-31 08:03:00+00', 'ulid' => '01JLISTED00000000000000003']],
+    'no such hour' => [['at' => '2026-11-01 99:03:00+00', 'ulid' => '01JLISTED00000000000000003']],
+    'no such offset' => [['at' => '2026-11-01 08:03:00+99', 'ulid' => '01JLISTED00000000000000003']],
 ]);
