@@ -161,8 +161,8 @@ final class FloatingContact
 
     /**
      * The layout of a stored setting. A value saved before layouts existed is read from its theme and
-     * phone-bar switch (today's horizontal = bar on phones + round buttons on a computer = combo); a site
-     * that never saved gets the default, combo.
+     * phone-bar switch (today's horizontal = bar on phones + round buttons on a computer = combo); anything
+     * else reads as the older default, vertical (what the form and stored() give a site that never saved).
      *
      * @param  mixed  $raw  the stored value (an array when set)
      * @return 'combo'|'vertical'|'horizontal'
@@ -170,7 +170,7 @@ final class FloatingContact
     public static function layout(mixed $raw): string
     {
         if (! is_array($raw)) {
-            return 'combo';
+            return 'vertical';
         }
         if (is_string($raw['layout'] ?? null) && in_array($raw['layout'], self::LAYOUTS, true)) {
             return $raw['layout'];

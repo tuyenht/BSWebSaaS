@@ -340,8 +340,8 @@ it('accepts a number of another country for the call and SMS buttons and links i
 it('reads the layout of a stored setting, from its own field or from the theme and phone bar of an older save', function (mixed $raw, string $layout): void {
     expect(FloatingContact::layout($raw))->toBe($layout);
 })->with([
-    'never saved' => [null, 'combo'],
-    'not an array' => ['x', 'combo'],
+    'never saved' => [null, 'vertical'],
+    'not an array' => ['x', 'vertical'],
     'own field' => [['layout' => 'horizontal', 'theme' => 'vertical'], 'horizontal'],
     'own field wins over a phone bar' => [['layout' => 'vertical', 'phone_bar' => ['enabled' => true]], 'vertical'],
     'bad own field falls back to the theme' => [['layout' => 'grid', 'theme' => 'horizontal'], 'combo'],
@@ -416,4 +416,17 @@ it('stores the newer fields after the existing ones, and writes the older theme 
     $older = FloatingContactInput::stored(['enabled' => true, 'theme' => 'horizontal'], ['vi']);
     expect($older)->toMatchArray(['theme' => 'horizontal', 'layout' => 'combo', 'dial' => true, 'bar_tone' => 'auto', 'track' => true])
         ->and(FloatingContactInput::stored([], ['vi'])['theme'])->toBe('vertical');
+});
+
+it('keeps the round buttons of a site with the phone bar when its setting is stored again, layout given or not', function (): void {
+    $bar = ['enabled' => true, 'cta' => ['label' => ['vi' => 'Yêu cầu báo giá'], 'url' => '/lien-he']];
+
+    $again = FloatingContactInput::stored(['enabled' => true, 'theme' => 'vertical', 'phone_bar' => $bar], ['vi']);
+    $withLayout = FloatingContactInput::stored(['enabled' => true, 'theme' => 'vertical', 'layout' => 'combo', 'phone_bar' => $bar], ['vi']);
+    $noTheme = FloatingContactInput::stored(['enabled' => true, 'phone_bar' => $bar], ['vi']);
+
+    expect($again)->toMatchArray(['theme' => 'vertical', 'layout' => 'combo'])
+        ->and($again['phone_bar']['enabled'])->toBeTrue()
+        ->and($withLayout)->toMatchArray(['theme' => 'vertical', 'layout' => 'combo'])
+        ->and($noTheme)->toMatchArray(['theme' => 'vertical', 'layout' => 'combo']);
 });

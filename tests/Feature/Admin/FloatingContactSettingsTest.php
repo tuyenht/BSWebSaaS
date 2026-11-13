@@ -667,6 +667,22 @@ it('keeps the newer fields of a saved setting when the form saves with no change
     expect(fcsStored(1))->toMatchArray(['layout' => 'horizontal', 'dial' => false, 'bar_tone' => 'dark', 'track' => false, 'theme' => 'horizontal']);
 });
 
+it('keeps a round-button site with the phone bar as it is when the form saves with no change', function (): void {
+    $admin = fcsAdmin();
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'floating_contact', 'value' => [
+        'enabled' => true, 'theme' => 'vertical',
+        'phone_bar' => ['enabled' => true, 'cta' => ['label' => ['vi' => 'Yêu cầu báo giá'], 'url' => '/lien-he']],
+        'channels' => [['key' => 'phone', 'on' => true, 'value' => '0912345678']],
+    ]]));
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+        ->set('offsetX', 30)->call('save')->assertHasNoErrors());
+
+    $stored = fcsStored(1);
+    expect($stored)->toMatchArray(['theme' => 'vertical', 'layout' => 'combo'])
+        ->and($stored['phone_bar']['enabled'] ?? null)->toBeTrue();
+});
+
 it('stores the layout the new theme gives when the theme is changed in the form', function (): void {
     $admin = fcsAdmin();
     app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'floating_contact', 'value' => [

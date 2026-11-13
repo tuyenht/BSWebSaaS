@@ -251,12 +251,17 @@ final class FloatingContactInput
         // The phone bar is kept only where a site set it, so a site that never did stores what it always did.
         $phoneBar = isset($raw['phone_bar']) ? ['phone_bar' => self::storedPhoneBar($raw['phone_bar'], $locales)] : [];
 
+        // A given theme is kept while it reads as the same layout (a round-button site with the phone bar
+        // is combo and must stay `vertical` for the code that draws it today); otherwise the layout's own word.
         $layout = FloatingContact::layout($raw);
-        $givenLayout = in_array($raw['layout'] ?? null, FloatingContact::LAYOUTS, true);
+        $theme = in_array($raw['theme'] ?? null, FloatingContact::THEMES, true) ? Cast::string($raw['theme']) : 'vertical';
+        if (FloatingContact::layout(['theme' => $theme, 'phone_bar' => $raw['phone_bar'] ?? null]) !== $layout) {
+            $theme = FloatingContact::legacyTheme($layout);
+        }
 
         return [
             'enabled' => ($raw['enabled'] ?? false) === true,
-            'theme' => $givenLayout ? FloatingContact::legacyTheme($layout) : (in_array($raw['theme'] ?? null, FloatingContact::THEMES, true) ? Cast::string($raw['theme']) : 'vertical'),
+            'theme' => $theme,
             'position' => in_array($raw['position'] ?? null, FloatingContact::POSITIONS, true) ? Cast::string($raw['position']) : 'right',
             'offset_x' => FloatingContact::offset($raw['offset_x'] ?? null, FloatingContact::MAX_OFFSET_X, FloatingContact::DEFAULT_OFFSET_X),
             'offset_y' => FloatingContact::offset($raw['offset_y'] ?? null, FloatingContact::MAX_OFFSET_Y, FloatingContact::DEFAULT_OFFSET_Y),
