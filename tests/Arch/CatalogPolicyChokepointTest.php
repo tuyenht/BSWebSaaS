@@ -4,17 +4,23 @@ use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Policies\CatalogPolicy;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Gate;
+use Symfony\Component\Finder\SplFileInfo;
 
 /*
- * Every product change asks CatalogPolicy first, however it was reached: the product model has the
- * policy bound, and every public method of every action under Catalog/Actions that can write opens
- * with the shared authorizeCatalog() check (a person signed in without the permission is refused
+ * Every catalog action asks CatalogPolicy first, however it was reached: the product model has the
+ * policy bound, and every public method of every action under Catalog/Actions (subfolders included)
+ * that can write opens with the shared authorizeCatalog() check for a write ability (a person signed in without the permission is refused
  * there; with nobody signed in — the console, the nightly Trash purge — there is nobody to ask). The
  * methods that only read or tidy text are named below; a new action, or a new public method on one,
  * fails here until it either asks the policy first or is added to that list as read-only.
+ * The admin catalog list's own trash, restore, flag and undo writes do not go through an action;
+ * they are guarded by that screen's write check before each one.
  */
 
 /** Public methods that write nothing: text tidying, lookups, an advisory lock, a read of the loaded list. */
+/** The abilities that mean a write; a check for any other (view, viewAny) would let a viewer write. */
+const CATALOG_WRITE_ABILITIES = ['update', 'create', 'delete', 'restore', 'forceDelete'];
+
 const CATALOG_ACTION_READ_ONLY = [
     'ChangeProductMainCategory::categoryIds',
     'ChangeProductMainCategory::routePaths',
@@ -39,11 +45,14 @@ test('the product model is guarded by CatalogPolicy', function (): void {
 function catalogActionsWithoutPolicyCheck(): array
 {
     $offenders = [];
-    $actions = File::files(app_path('Modules/Catalog/Actions'));
+    $actions = array_filter(
+        File::allFiles(app_path('Modules/Catalog/Actions')),
+        static fn (SplFileInfo $file): bool => ! str_starts_with(str_replace('\\', '/', $file->getRelativePath()), 'Concerns'),
+    );
     expect($actions)->not->toBeEmpty();
 
     foreach ($actions as $file) {
-        $short = $file->getFilenameWithoutExtension();
+        $short = ltrim(str_replace('/', '\\', $file->getRelativePath()).'\\'.$file->getFilenameWithoutExtension(), '\\');
         $class = 'App\\Modules\\Catalog\\Actions\\'.$short;
         $lines = file($file->getPathname()) ?: [];
         $methods = array_filter(
@@ -59,7 +68,8 @@ function catalogActionsWithoutPolicyCheck(): array
             }
             $body = implode('', array_slice($lines, $method->getStartLine() - 1, $method->getEndLine() - $method->getStartLine() + 1));
             $opening = (int) strpos($body, '{', (int) strpos($body, ')'));
-            if (preg_match('/^\{\s*\$this->authorizeCatalog\([^;]*\);/su', substr($body, $opening)) !== 1) {
+            $check = preg_match('/^\{\s*\$this->authorizeCatalog\(\s*[\'"](\w+)[\'"][^;]*\);/su', substr($body, $opening), $match);
+            if ($check !== 1 || ! in_array($match[1], CATALOG_WRITE_ABILITIES, true)) {
                 $offenders[] = $name;
             }
         }

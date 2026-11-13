@@ -127,14 +127,18 @@ it('lets a member who manages the catalog make every catalog write', function (s
     });
 })->with(array_keys(gateWrites()));
 
-it('runs the catalog actions with nobody signed in, as the console and the nightly purge do', function (): void {
-    app(Tenancy::class)->enter(1, function (): void {
+it('runs every catalog write with nobody signed in, as the console and the nightly purge do', function (string $write): void {
+    app(Tenancy::class)->enter(1, function () use ($write): void {
+        $category = gateCategory('Đồ gá');
         $product = gateProduct();
+        if ($write === 'delete for good') {
+            $product->delete();
+        }
 
-        expect(app(RenameProduct::class)->handle($product, 'Tên mới', 'vi'))->toBe('Tên mới');
+        $before = gateSnapshot($product->id);
+        $this->travel(1)->minutes();
 
-        $product->delete();
-        expect(app(ForceDeleteProducts::class)->handle([Product::onlyTrashed()->findOrFail($product->id)], scheduled: true))->toBe(1)
-            ->and(Product::withTrashed()->whereKey($product->id)->exists())->toBeFalse();
+        gateWrites()[$write]($product->fresh() ?? Product::withTrashed()->findOrFail($product->id), $category);
+        expect(gateSnapshot($product->id))->not->toEqual($before);
     });
-});
+})->with(array_keys(gateWrites()));
