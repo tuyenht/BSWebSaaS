@@ -3026,6 +3026,7 @@
     "admin.fc.kpi_sub": "Last 30 days · counted automatically, nothing to install",
     "admin.fc.kpi_taps": "taps",
     "admin.fc.kpi_empty": "No taps yet. Numbers show here once visitors start tapping the buttons on the website.",
+    "admin.fc.kpi_buy": "Buy now",
     "admin.fc.in_use": "In use",
     "admin.fc.pos_label": "Position",
     "admin.fc.pos_right": "Right",

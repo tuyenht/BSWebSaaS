@@ -7,6 +7,8 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Chrome\FloatingContact;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\QueryException;
 use Illuminate\Redis\RedisManager;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -166,6 +168,21 @@ it('counts a site\'s own channel only while its floating contact setting has it'
     expect(clickTallies(1))->toBe(['2026-11-13|c3|floating' => 1, '2026-11-13|c7|floating' => 1, '2026-11-13|zalo|bar' => 1])
         ->and(clickTallies(2))->toBe([])
         ->and(Redis::exists('contact_clicks:1', 'contact_clicks:2', 'contact_clicks:applying:1', 'contact_clicks:applying:2'))->toBe(0);
+});
+
+it('counts “Mua hàng” taps on every site like a built-in channel, in the phone bar only', function (): void {
+    $counter = app(ContactClickCounter::class);
+    $at = CarbonImmutable::parse('2026-11-13 10:00', 'Asia/Ho_Chi_Minh')->getTimestamp();
+    $counter->record(1, 'buy', 'bar', $at);
+    $counter->record(1, 'buy', 'bar', $at + 60);
+    $counter->record(1, 'buy', 'floating', $at);   // "Mua hàng" is drawn in the phone bar only
+    $counter->record(2, 'buy', 'bar', $at);        // no setting saved: still counted
+
+    $this->artisan('contact:flush-clicks')->expectsOutputToContain('Flushed 2 contact click row(s) on 2 site(s), 0 failed.')->assertSuccessful();
+
+    expect(clickTallies(1))->toBe(['2026-11-13|buy|bar' => 2])
+        ->and(clickTallies(2))->toBe(['2026-11-13|buy|bar' => 1])
+        ->and(app(Tenancy::class)->enter(1, fn (): array => app(ContactClickStats::class)->lastDays(30)['channels']))->toBe(['buy' => 2]);
 });
 
 it('takes no new field of a site\'s own channel once its buffer holds the cap, and still counts built-in channels and the fields it has', function (): void {
@@ -346,12 +363,50 @@ it('sums the current site\'s last days per channel, placement and day in one que
     expect($sql)->toContain('"contact_click_daily"."site_id" = ?')->not->toContain('*');
 });
 
-it('accepts exactly the built-in channels and the custom keys in its channel check', function (): void {
+it('accepts exactly the built-in channels, “Mua hàng” and the custom keys in its channel check', function (): void {
     $definition = (string) DB::connection('pgsql_admin')->scalar(
         "select pg_get_constraintdef(oid) from pg_constraint where conname = 'contact_click_daily_channel_check'",
     );
     preg_match_all("/'([a-z]+)'::/", $definition, $m);
 
-    expect($m[1])->toEqualCanonicalizing(array_keys(FloatingContact::CHANNELS))
+    expect($m[1])->toEqualCanonicalizing([...array_keys(FloatingContact::CHANNELS), ContactClickCounter::BUY])
         ->and($definition)->toContain('^c[1-9][0-9]{0,5}$');
+});
+
+it('takes “Mua hàng” out of the channel check only while no “Mua hàng” tally exists, and puts it back', function (): void {
+    /** @var Migration $migration */
+    $migration = require database_path('migrations/2057_01_01_000000_add_buy_to_contact_click_channels.php');
+    seedClickTally(1, '2026-11-13', 'buy', 'bar', 4);
+    $admin = DB::connection('pgsql_admin');
+    $definition = fn (): string => (string) $admin->scalar(
+        "select pg_get_constraintdef(oid) from pg_constraint where conname = 'contact_click_daily_channel_check'",
+    );
+    $insertBuy = fn () => $admin->table('contact_click_daily')->insert(['site_id' => 2, 'day' => '2026-11-13', 'channel' => 'buy', 'placement' => 'bar', 'clicks' => 1]);
+
+    $original = DB::getDefaultConnection();
+    DB::setDefaultConnection('pgsql_admin');
+    try {
+        expect(fn () => $migration->down())->toThrow(RuntimeException::class, 'channel = buy');
+        $refused = $definition();
+
+        $admin->table('contact_click_daily')->where('channel', 'buy')->delete();
+        $migration->down();
+        $narrow = $definition();
+        $buyRefused = false;
+        try {
+            $insertBuy();
+        } catch (QueryException) {
+            $buyRefused = true;
+        }
+    } finally {
+        $migration->up();
+        DB::setDefaultConnection($original);
+    }
+
+    expect($refused)->toContain("'buy'::")
+        ->and($narrow)->not->toContain("'buy'")->toContain('^c[1-9][0-9]{0,5}$')
+        ->and($buyRefused)->toBeTrue()
+        ->and($definition())->toContain("'buy'::")->not->toContain('NOT VALID')
+        ->and($insertBuy)->not->toThrow(QueryException::class)
+        ->and(clickTallies(2))->toBe(['2026-11-13|buy|bar' => 1]);
 });

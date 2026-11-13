@@ -18,8 +18,9 @@ use Symfony\Component\HttpFoundation\Response;
  * contact:flush-clicks); the request itself reads and writes no table.
  *
  * The website is the one of the host (SetCurrentSite) — a website named in the body is ignored. The
- * channel must be a built-in one or a website's own (`c1`, `c2`, …), the placement one of the four;
- * anything else, a crawler or a request with no browser name answers 204 and counts nothing. Never
+ * channel must be a built-in one or a website's own (`c1`, `c2`, …) with the placement one of the
+ * four, or `buy` (the "Mua hàng" button) with `bar`, where it is drawn; anything else, a crawler or a
+ * request with no browser name answers 204 and counts nothing. Never
  * a cookie or a session; an address past its limit on that website gets 429 and is not counted (the
  * address is a rate-limit key only, it never reaches the database).
  */
@@ -52,7 +53,7 @@ final readonly class RecordContactClick
         }
 
         [$channel, $placement] = $this->fields($request);
-        if (ContactClickCounter::isChannel($channel) && ContactClickCounter::isPlacement($placement)) {
+        if (ContactClickCounter::accepts($channel, $placement)) {
             $this->clicks->record($site->id(), $channel, $placement, now()->getTimestamp());
         }
 

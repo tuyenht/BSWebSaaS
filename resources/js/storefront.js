@@ -280,9 +280,9 @@ if (fc) {
             page_path: location.pathname,
             link_type: link.dataset.fcLt,
         } }));
-        // The site's own tally (/_click: channel and place only, no cookie); the button that opens the
-        // "Liên hệ" list and "Mua hàng" are not contact channels.
-        if (!/^(dial|buy)$/.test(link.dataset.fc)) {
+        // The site's own tally (/_click: channel and place only, no cookie), "Mua hàng" included; the
+        // button that opens the "Liên hệ" list counts nothing.
+        if (link.dataset.fc !== 'dial') {
             navigator.sendBeacon?.('/_click', JSON.stringify({ channel: link.dataset.fc, placement: link.dataset.fcAt }));
         }
     });

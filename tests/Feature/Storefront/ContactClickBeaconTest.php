@@ -57,6 +57,18 @@ it('counts a tap into the site of the Host, with no session and no cookie', func
         ->and(array_map(intval(...), Redis::smembers('contact_clicks:dirty')))->toBe([1]);
 });
 
+it('counts a tap on “Mua hàng” in the phone bar, the one place it is drawn', function (string $placement, array $counted): void {
+    sendClickBeacon('a.test', '{"channel":"buy","placement":"'.$placement.'"}')->assertNoContent();
+
+    expect(bufferedClicks(1))->toBe($counted)
+        ->and(bufferedClicks(2))->toBe([]);
+})->with([
+    'the phone bar' => ['bar', ['buy|bar' => 1]],
+    'the round buttons' => ['floating', []],
+    'the speed dial' => ['dial', []],
+    'the bottom sheet' => ['sheet', []],
+]);
+
 it('reads a form-encoded body too', function (): void {
     $this->withHeaders(['User-Agent' => 'Mozilla/5.0 Firefox/140.0'])
         ->post('http://a.test/_click', ['channel' => 'phone', 'placement' => 'dial'])
@@ -101,6 +113,7 @@ it('answers 204 and counts nothing for an unknown channel or placement', functio
 
 it('does not count crawlers, link previews or a request with no browser name', function (string $agent): void {
     sendClickBeacon('a.test', '{"channel":"zalo","placement":"bar"}', ['User-Agent' => $agent])->assertNoContent();
+    sendClickBeacon('a.test', '{"channel":"buy","placement":"bar"}', ['User-Agent' => $agent])->assertNoContent();
 
     expect(bufferedClicks(1))->toBe([]);
 })->with([
@@ -133,6 +146,8 @@ it('reads and writes no table beyond resolving the host', function (): void {
         $queries[] = $query->sql;
     });
     sendClickBeacon('a.test', '{"channel":"messenger","placement":"floating"}')->assertNoContent();
+    $one = count($queries);
+    sendClickBeacon('a.test', '{"channel":"buy","placement":"bar"}')->assertNoContent();
 
     // The site context (set + check) and the open-site check — nothing else (after the warm-up the
     // host's site comes from the resolver's cache).
@@ -142,10 +157,11 @@ it('reads and writes no table beyond resolving the host', function (): void {
         array_push($tables, ...$m[1]);
     }
 
-    expect($queries)->toHaveCount(3)
+    expect($one)->toBe(3)
+        ->and($queries)->toHaveCount(6)   // a "Mua hàng" tap costs the same
         ->and(array_values(array_unique($tables)))->toBe(['sites'])
         ->and(implode("\n", $queries))->not->toContain('contact_click')
-        ->and(bufferedClicks(1))->toBe(['messenger|floating' => 1, 'zalo|bar' => 1]);
+        ->and(bufferedClicks(1))->toBe(['buy|bar' => 1, 'messenger|floating' => 1, 'zalo|bar' => 1]);
 });
 
 it('answers only a POST', function (): void {

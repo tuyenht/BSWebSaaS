@@ -718,10 +718,23 @@
                     </div>
                 </div>
 
-                {{-- "Hiệu quả": the site's taps of the last 30 days, per channel switched on (the counter records
-                     the contact channels only: the "Mua hàng" button and opening the "Liên hệ" button are not counted). --}}
+                {{-- "Hiệu quả": the site's taps of the last 30 days, per channel switched on, then "Mua hàng" while
+                     its switch is on in a layout with the phone bar (the board's order; opening the "Liên hệ"
+                     button is not counted). The total is every counted tap, "Mua hàng" included. --}}
                 @php
-                    $tapMax = max(1, ...array_map(fn (array $c): int => $stats['channels'][$c['key']] ?? 0, $onChannels ?: [['key' => '']]));
+                    $kpiRows = array_map(fn (array $c): array => [
+                        'label' => $chName($c),
+                        'dot' => $c['key'] === 'messenger' && FloatingContact::color($c['color']) === null ? FloatingContact::MESSENGER_FILL : $colorOf($c),
+                        'taps' => $stats['channels'][$c['key']] ?? 0,
+                    ], $onChannels);
+                    if ($buyOn && ($isH || $isC)) {
+                        $kpiRows[] = [
+                            'label' => __('admin.fc.kpi_buy'),
+                            'dot' => $buyColor === 'brand' ? 'var(--color-primary)' : \App\Modules\Theme\Theming\ReadableColor::inkUnder($buySafe),
+                            'taps' => $stats['channels'][\App\Modules\Storefront\Support\ContactClickCounter::BUY] ?? 0,
+                        ];
+                    }
+                    $tapMax = max(1, ...(array_column($kpiRows, 'taps') ?: [0]));
                     $vnNumber = static fn (int $n): string => number_format($n, 0, ',', '.');
                 @endphp
                 <div class="rounded-md border border-border bg-surface shadow-card">
@@ -736,18 +749,14 @@
                         </p>
                     </div>
                     <div class="flex flex-col gap-2.5 px-4 pt-3 pb-3.5">
-                        @if ($onChannels !== [])
+                        @if ($kpiRows !== [])
                             <ul class="flex flex-col gap-[7px]" role="list">
-                                @foreach ($onChannels as $c)
-                                    @php
-                                        $taps = $stats['channels'][$c['key']] ?? 0;
-                                        $dot = $c['key'] === 'messenger' && FloatingContact::color($c['color']) === null ? FloatingContact::MESSENGER_FILL : $colorOf($c);
-                                    @endphp
+                                @foreach ($kpiRows as $r)
                                     <li class="grid grid-cols-[0.625rem_minmax(5.5rem,auto)_1fr_2.5rem] items-center gap-[9px] text-[calc(0.78125rem+var(--user-text-boost))] text-text">
-                                        <span class="size-2.5 rounded-full" style="background: {{ $dot }}" aria-hidden="true"></span>
-                                        <span class="min-w-0 [overflow-wrap:anywhere]">{{ $chName($c) }}</span>
-                                        <span class="h-1.5 overflow-hidden rounded-[3px] bg-surface-muted" aria-hidden="true"><span class="block h-full rounded-[3px]" style="width: {{ $stats['total'] > 0 ? round($taps / $tapMax * 100, 1) : 0 }}%; background: {{ $dot }}"></span></span>
-                                        <b class="text-end font-semibold text-text-muted">{{ $stats['total'] > 0 ? $vnNumber($taps) : '—' }}</b>
+                                        <span class="size-2.5 rounded-full" style="background: {{ $r['dot'] }}" aria-hidden="true"></span>
+                                        <span class="min-w-0 [overflow-wrap:anywhere]">{{ $r['label'] }}</span>
+                                        <span class="h-1.5 overflow-hidden rounded-[3px] bg-surface-muted" aria-hidden="true"><span class="block h-full rounded-[3px]" style="width: {{ $stats['total'] > 0 ? round($r['taps'] / $tapMax * 100, 1) : 0 }}%; background: {{ $r['dot'] }}"></span></span>
+                                        <b class="text-end font-semibold text-text-muted">{{ $stats['total'] > 0 ? $vnNumber($r['taps']) : '—' }}</b>
                                     </li>
                                 @endforeach
                             </ul>

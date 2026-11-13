@@ -25,7 +25,8 @@ use Throwable;
  * swallowed and the tap is simply not counted. A website's own channels (`c1`, `c2`, …) add new
  * fields only while its live hash holds fewer than FIELD_CAP: a script sending made-up custom
  * channels cannot grow it without bound (the flush then drops the channels the website never
- * saved), and cannot stop the built-in channels from counting (they are bounded by themselves).
+ * saved), and cannot stop the built-in channels or "Mua hàng" from counting (they are bounded by
+ * themselves).
  *
  * Flushing moves a website's taps through two keys: `take()` renames the live hash to
  * `contact_clicks:flushing:{site}` (taken, not yet written), `claim()` renames that to
@@ -46,7 +47,7 @@ final class ContactClickCounter
     /**
      * Most fields one website's live hash takes before a tap on one of the website's own channels
      * may no longer add one (it is not counted; a tap on a field already there still is). Built-in
-     * channels are never capped: 12 keys × 4 placements per quarter hour bound them already. A field is one (quarter hour, channel, placement): at most
+     * channels are never capped: 12 keys × 4 placements (+ "Mua hàng" in the bar) per quarter hour bound them already. A field is one (quarter hour, channel, placement): at most
      * 20 channels (FloatingContact::MAX_CHANNELS) × the 2 placements one page draws (round buttons
      * or speed dial on a computer, phone bar or bottom sheet on a phone) = 40 per quarter hour, and
      * a five-minute flush leaves one or two quarter hours in the hash. 256 keeps a fully loaded
@@ -75,15 +76,32 @@ final class ContactClickCounter
     /** Seconds in one time slot of the buffer (a quarter hour). */
     public const int SLOT_SECONDS = 900;
 
-    /** A channel the counter accepts: a built-in channel or one of a website's own (`c1`, `c2`, …). */
-    public static function isChannel(string $channel): bool
+    /**
+     * The "Mua hàng" button at the end of the phone bar: counted like a built-in channel, but it is
+     * no contact channel (no setting has it) and is drawn in the phone bar only.
+     */
+    public const string BUY = 'buy';
+
+    /** Where the "Mua hàng" button is drawn: the phone bar only. */
+    private const string BUY_PLACEMENT = 'bar';
+
+    /**
+     * A tap the counter accepts: a built-in channel or one of a website's own (`c1`, `c2`, …) in
+     * one of the four placements, or the "Mua hàng" button in the phone bar.
+     */
+    public static function accepts(string $channel, string $placement): bool
     {
-        return FloatingContact::typeOf($channel) !== null;
+        if ($channel === self::BUY) {
+            return $placement === self::BUY_PLACEMENT;
+        }
+
+        return FloatingContact::typeOf($channel) !== null && in_array($placement, ContactClickDaily::PLACEMENTS, true);
     }
 
-    public static function isPlacement(string $placement): bool
+    /** A channel counted on every website, whatever its setting holds: a built-in one or "Mua hàng". */
+    public static function isBuiltIn(string $channel): bool
     {
-        return in_array($placement, ContactClickDaily::PLACEMENTS, true);
+        return $channel === self::BUY || isset(FloatingContact::CHANNELS[$channel]);
     }
 
     /** Count one tap on `channel` drawn at `placement` on the website `siteId`, at unix time `at`. */
@@ -253,7 +271,7 @@ final class ContactClickCounter
     {
         $parts = explode('|', $field);
         if (count($parts) !== 3 || preg_match('/\A[1-9]\d{0,11}\z/', $parts[0]) !== 1
-            || ! self::isChannel($parts[1]) || ! self::isPlacement($parts[2])) {
+            || ! self::accepts($parts[1], $parts[2])) {
             return null;
         }
 

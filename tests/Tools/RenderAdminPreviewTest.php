@@ -381,17 +381,19 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         ['key' => 'sms', 'on' => true, 'value' => ''],
         ['key' => 'c1', 'on' => true, 'value' => '/lien-he', 'icon' => 'ri-chat-3-line', 'name' => 'Đặt lịch', 'tips' => []],
     ];
-    // Then the combined layout (round buttons on a computer, the bar on a phone) with a few taps counted.
+    // Then the combined layout (round buttons on a computer, the bar on a phone, "Mua hàng" on) with a few
+    // taps counted, "Mua hàng" among them.
     $looks = [
         'floating-contact' => ['theme' => 'vertical', 'layout' => 'vertical'],
         'floating-contact-bar' => ['theme' => 'horizontal', 'layout' => 'horizontal', 'buy' => ['enabled' => true, 'color' => '#f7b84b']],
-        'floating-contact-combo' => ['theme' => 'horizontal', 'layout' => 'combo'],
+        'floating-contact-combo' => ['theme' => 'horizontal', 'layout' => 'combo', 'buy' => ['enabled' => true, 'color' => '#f7b84b']],
     ];
     foreach ($looks as $name => $look) {
         if ($name === 'floating-contact-combo') {
             app(Tenancy::class)->enter(1, function (): void {
                 ContactClickDaily::query()->create(['day' => now('Asia/Ho_Chi_Minh')->toDateString(), 'channel' => 'zalo', 'placement' => 'bar', 'clicks' => 18]);
                 ContactClickDaily::query()->create(['day' => now('Asia/Ho_Chi_Minh')->toDateString(), 'channel' => 'phone', 'placement' => 'floating', 'clicks' => 7]);
+                ContactClickDaily::query()->create(['day' => now('Asia/Ho_Chi_Minh')->toDateString(), 'channel' => 'buy', 'placement' => 'bar', 'clicks' => 5]);
             });
         }
         app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'storefront', 'key' => 'floating_contact'],
