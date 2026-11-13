@@ -35,13 +35,13 @@
 <meta name="{{ $verify['name'] }}" content="{{ $verify['content'] }}">
 @endforeach
 @php
-    // Brand description fallback: category-list and other pages without a per-page description
-    // (seoDescription = null/empty) fall back to the tenant's brand short description so the
-    // <meta name="description"> is never empty. $brand is injected via $chrome on every request
-    // and adds no new query here.
+    // A page without its own description (seoDescription = null/empty) takes the site's brand short
+    // description; a site with none yet (every new site) takes the page's own words (seoFallback,
+    // DescriptionFallback), so the <meta name="description"> is never missing. $brand is injected
+    // via $chrome on every request and adds no new query here.
     $effectiveDescription = ! empty($seoDescription)
         ? $seoDescription
-        : data_get($brand ?? null, 'description', '');
+        : (trim((string) data_get($brand ?? null, 'description', '')) ?: (string) ($seoFallback ?? ''));
 
     // Per-entry ogImage (set by StorefrontController for posts with a featured image) takes
     // priority over the site-wide brand og_image; a site without a share image shares its logo.
