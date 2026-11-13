@@ -97,6 +97,22 @@ it('prints nothing without the setting, when it is off, or when no channel passe
     'not an array' => [['enabled' => true, 'channels' => 'phone']],
 ]);
 
+it('never prints the admin preview’s unfinished slot for a channel switched on but not filled in', function (string $layout): void {
+    $siteId = flcSite();
+    flcSetting($siteId, flcConfig([
+        ['key' => 'phone', 'on' => true, 'value' => '0912345678'],
+        ['key' => 'zalo', 'on' => true, 'value' => ''],
+        ['key' => 'messenger', 'on' => true, 'value' => ''],
+        ['key' => 'email', 'on' => true, 'value' => 'not-an-email'],
+        ['key' => 'sms', 'on' => true, 'value' => ''],
+    ], ['layout' => $layout]));
+
+    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
+
+    expect($html)->toContain('data-fc-root')->toContain('href="tel:0912345678"')->not->toContain('data-fc-pending')
+        ->and(flcPart($html))->not->toContain('href="#"');
+})->with(['combo', 'vertical', 'horizontal']);
+
 it('links each channel exactly', function (string $key, string $value, string $href): void {
     $siteId = flcSite();
     flcSetting($siteId, flcConfig([['key' => $key, 'on' => true, 'value' => $value]]));

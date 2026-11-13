@@ -53,6 +53,7 @@ use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Shared\Http\SafeHttp;
+use App\Modules\Storefront\Models\ContactClickDaily;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Http\Middleware\SetCurrentSite;
 use App\Modules\Tenancy\Models\ContentSection;
@@ -366,7 +367,19 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         ['key' => 'sms', 'on' => true, 'value' => ''],
         ['key' => 'c1', 'on' => true, 'value' => '/lien-he', 'icon' => 'ri-chat-3-line', 'name' => 'Đặt lịch', 'tips' => []],
     ];
-    foreach (['floating-contact' => ['theme' => 'vertical'], 'floating-contact-bar' => ['theme' => 'horizontal', 'buy' => ['enabled' => true, 'color' => '#f7b84b']]] as $name => $look) {
+    // Then the combined layout (round buttons on a computer, the bar on a phone) with a few taps counted.
+    $looks = [
+        'floating-contact' => ['theme' => 'vertical', 'layout' => 'vertical'],
+        'floating-contact-bar' => ['theme' => 'horizontal', 'layout' => 'horizontal', 'buy' => ['enabled' => true, 'color' => '#f7b84b']],
+        'floating-contact-combo' => ['theme' => 'horizontal', 'layout' => 'combo'],
+    ];
+    foreach ($looks as $name => $look) {
+        if ($name === 'floating-contact-combo') {
+            app(Tenancy::class)->enter(1, function (): void {
+                ContactClickDaily::query()->create(['day' => now('Asia/Ho_Chi_Minh')->toDateString(), 'channel' => 'zalo', 'placement' => 'bar', 'clicks' => 18]);
+                ContactClickDaily::query()->create(['day' => now('Asia/Ho_Chi_Minh')->toDateString(), 'channel' => 'phone', 'placement' => 'floating', 'clicks' => 7]);
+            });
+        }
         app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'storefront', 'key' => 'floating_contact'],
             ['value' => $look + ['enabled' => true, 'position' => 'right', 'offset_x' => 20, 'offset_y' => 24, 'channels' => $channels]]));
         $this->flushSession();
@@ -680,5 +693,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('data-te-page="suspended"');
     file_put_contents($dir.'/error-suspended.html', $html);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 43);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 44);
 });
