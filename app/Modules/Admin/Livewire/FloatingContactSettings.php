@@ -8,10 +8,13 @@ use App\Modules\Admin\Support\Settings\FloatingContactInput;
 use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Catalog\Support\ProductIndexLink;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Storefront\Support\ContactClickStats;
 use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Theme\Chrome\ContactIcons;
 use App\Modules\Theme\Chrome\FloatingContact;
+use App\Modules\Theme\Theming\ThemeResolver;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use Livewire\Attributes\Authorize;
@@ -26,6 +29,8 @@ use Livewire\Component;
  * values are checked when a field is left and again on save, with the same rules the storefront
  * applies, so what is saved is what the site shows. Hover labels are kept per language
  * ({locale: text}); a language left blank shows the channel's own wording in that language.
+ * The preview is the website's own widget (theme::partials.floating-contact with sf-floating.css
+ * and the site's colours) in a frame; "Hiệu quả" shows the site's taps of the last 30 days.
  * Writes are settings.manage-gated like every site-wide settings tab.
  */
 #[Layout('admin::layouts.app')]
@@ -34,11 +39,19 @@ final class FloatingContactSettings extends Component
     /** Colours offered for the "Mua hàng" button (`brand` = the site's brand colour). */
     public const array BUY_SWATCHES = ['#f7b84b', 'brand', '#16223f', '#0ab39c', '#f06548', '#ffffff'];
 
+    /** The channels "Dùng số …" can fill from the call channel. */
+    public const array REUSE = ['zalo', 'sms', 'whatsapp', 'viber'];
+
     /** New channels of the site's own take the first colour not yet used. */
     private const array CUSTOM_COLORS = ['#7c3aed', '#0ea5e9', '#f59e0b', '#14b8a6', '#ec4899', '#64748b', '#84cc16', '#1e40af'];
 
     public bool $enabled = false;
 
+    /**
+     * The older `theme` word as loaded: kept while it reads as the chosen layout (a round-button site
+     * with the phone bar is combo and stays `vertical` for older code), else the layout's own word.
+     */
+    #[Locked]
     public string $theme = 'vertical';
 
     public string $position = 'right';
@@ -61,13 +74,12 @@ final class FloatingContactSettings extends Component
     public string $buyColor = FloatingContact::BUY_COLOR;
 
     /**
-     * The newer fields of the setting (layout, folding of round buttons on a phone, bar tone, click
-     * counting) have no control in the form yet: kept as stored and written back, so saving the form
-     * never drops them. `$loadedTheme` and `$loadedBarOn` remember what the layout was read from, so a
-     * change of the theme made in the form still decides the layout.
+     * The layout (combo, vertical, horizontal), the folding of round buttons on a phone and the bar's
+     * tone change only through their actions. Click counting has no control yet (it waits for the
+     * measurement tools): kept as stored and written back, so saving the form never drops it.
      */
     #[Locked]
-    public string $layout = 'vertical';
+    public string $layout = 'combo';
 
     #[Locked]
     public bool $dial = true;
@@ -83,6 +95,14 @@ final class FloatingContactSettings extends Component
 
     #[Locked]
     public bool $loadedBarOn = false;
+
+    /**
+     * The site's taps of the last 30 days (total and per channel), read once when the page opens.
+     *
+     * @var array{total: int, channels: array<string, int>}
+     */
+    #[Locked]
+    public array $stats = ['total' => 0, 'channels' => []];
 
     /**
      * Whether the site has a product list for "Mua hàng" to open in the language being previewed:
@@ -122,6 +142,8 @@ final class FloatingContactSettings extends Component
         $this->hasShop = $this->shopIn($this->lang);
         $this->load(app(SettingsRepository::class)->get('storefront', 'floating_contact'));
         $this->savedSig = $this->signature();
+        $taps = app(ContactClickStats::class)->lastDays(30);
+        $this->stats = ['total' => $taps['total'], 'channels' => $taps['channels']];
     }
 
     public function toggleEnabled(): void
@@ -129,11 +151,43 @@ final class FloatingContactSettings extends Component
         $this->enabled = ! $this->enabled;
     }
 
-    public function setTheme(string $theme): void
+    public function setLayout(string $layout): void
     {
-        if (in_array($theme, FloatingContact::THEMES, true)) {
-            $this->theme = $theme;
+        if (in_array($layout, FloatingContact::LAYOUTS, true)) {
+            $this->layout = $layout;
         }
+    }
+
+    public function toggleDial(): void
+    {
+        $this->dial = ! $this->dial;
+    }
+
+    public function setBarTone(string $tone): void
+    {
+        if (in_array($tone, FloatingContact::BAR_TONES, true)) {
+            $this->barTone = $tone;
+        }
+    }
+
+    /** "Dùng số …": fill an empty number channel (Zalo, SMS, WhatsApp, Viber) with the call channel's number. */
+    public function reuseNumber(string $key): void
+    {
+        $i = $this->indexOf($key);
+        $number = $this->reusableNumber();
+        if ($i !== null && $number !== null && in_array($key, self::REUSE, true) && trim($this->rows()[$i]['value']) === '') {
+            $this->channels[$i]['value'] = $number;
+            $this->checkChannel($i);
+        }
+    }
+
+    /** The call channel's number as typed, when it passes; null otherwise. */
+    private function reusableNumber(): ?string
+    {
+        $phone = collect($this->rows())->firstWhere('key', 'phone');
+        $value = $phone === null ? '' : trim($phone['value']);
+
+        return $value !== '' && FloatingContact::clean('phone', $value) !== null ? $value : null;
     }
 
     public function setPosition(string $position): void
@@ -310,6 +364,9 @@ final class FloatingContactSettings extends Component
         // property), and the fingerprint and the preview are built from the same copy.
         $rows = $this->rows();
         $stored = $this->shape($rows);
+        // The draft as the site would show it, switched on, in the language being edited; a channel
+        // switched on but not filled in yet keeps its place as an unfinished slot (the site never shows it).
+        $widget = FloatingContact::widget(['enabled' => true] + $stored, $this->lang, $this->hasShop ? '#' : null, pending: true);
 
         $view = view('admin::livewire.floating-contact-settings', [
             'rows' => $rows,
@@ -317,13 +374,34 @@ final class FloatingContactSettings extends Component
             'defaultLocale' => $siteLocale->default(),
             'locales' => $locales,
             'publicLocales' => $siteLocale->public(),
-            // The draft as the site would show it, in the language being edited; a channel switched on
-            // but not filled in yet keeps its place as an unfinished slot (the site never shows it).
-            'preview' => FloatingContact::preview(['enabled' => true] + $stored, $this->lang, $this->hasShop ? '#' : null),
+            'preview' => $widget,
+            'srcdoc' => $widget === null ? null : $this->previewDocument($widget),
+            'reuse' => $this->reusableNumber(),
         ]);
         $view->title(__('admin.fc.title'));
 
         return $view;
+    }
+
+    /**
+     * The preview frame's page: the website's own partial for the widget, in the language being
+     * edited (its words), with sf-floating.css and the site's colours.
+     *
+     * @param  array<string, mixed>  $widget
+     */
+    private function previewDocument(array $widget): string
+    {
+        $was = App::getLocale();
+        App::setLocale($this->lang);
+        try {
+            return view('admin::partials.fc-preview-frame', [
+                'floatingContact' => $widget,
+                'tokens' => app(ThemeResolver::class)->cssVariables(),
+                'lang' => $this->lang,
+            ])->render();
+        } finally {
+            App::setLocale($was);
+        }
     }
 
     /**
@@ -344,11 +422,11 @@ final class FloatingContactSettings extends Component
     {
         return [
             'enabled' => $this->enabled,
-            'theme' => $this->theme,
+            'theme' => $this->themeToStore(),
             'position' => $this->position,
             'offset_x' => $this->offsetX,
             'offset_y' => $this->offsetY,
-            'layout' => $this->layoutToStore(),
+            'layout' => $this->layout,
             'dial' => $this->dial,
             'bar_tone' => $this->barTone,
             'track' => $this->track,
@@ -358,15 +436,12 @@ final class FloatingContactSettings extends Component
         ];
     }
 
-    /** The loaded layout while the theme and phone-bar switch are as loaded; else the layout those two now give. */
-    private function layoutToStore(): string
+    /** The loaded theme while it reads as the chosen layout (with the phone bar as loaded); else the layout's own word. */
+    private function themeToStore(): string
     {
-        $barOn = ($this->phoneBar['enabled'] ?? false) === true;
-        if ($this->theme === $this->loadedTheme && $barOn === $this->loadedBarOn) {
-            return $this->layout;
-        }
+        $read = FloatingContact::layout(['theme' => $this->loadedTheme, 'phone_bar' => ['enabled' => $this->loadedBarOn]]);
 
-        return FloatingContact::layout(['theme' => $this->theme, 'phone_bar' => ['enabled' => $barOn]]);
+        return $read === $this->layout ? $this->loadedTheme : FloatingContact::legacyTheme($this->layout);
     }
 
     /**
@@ -455,7 +530,7 @@ final class FloatingContactSettings extends Component
     }
 
     /**
-     * A first visit: off, the call, Zalo, Messenger and email channels ready, SMS off; the site's
+     * A first visit: off, combo (round buttons on a computer, the bottom bar on a phone), the call, Zalo, Messenger and email channels ready, SMS off; the site's
      * own phone (a mobile, landline or hotline) fills the call channel, Zalo only when it is a
      * mobile, and the site's email the email channel.
      */
@@ -467,18 +542,18 @@ final class FloatingContactSettings extends Component
         $email = FloatingContact::clean('email', Cast::string($brand['email'] ?? null)) ?? '';
 
         $this->enabled = false;
-        $this->theme = 'vertical';
+        $this->theme = 'horizontal';
         $this->position = 'right';
         $this->offsetX = FloatingContact::DEFAULT_OFFSET_X;
         $this->offsetY = FloatingContact::DEFAULT_OFFSET_Y;
         $this->buyOn = false;
         $this->buyColor = FloatingContact::BUY_COLOR;
         $this->phoneBar = [];
-        $this->layout = 'vertical';
+        $this->layout = 'combo';
         $this->dial = true;
         $this->barTone = 'auto';
         $this->track = true;
-        $this->loadedTheme = 'vertical';
+        $this->loadedTheme = 'horizontal';
         $this->loadedBarOn = false;
         $this->channels = [];
         foreach (FloatingContact::CORE as $key) {
@@ -530,6 +605,8 @@ final class FloatingContactSettings extends Component
     {
         $errors = [];
         $tampered = ! in_array($this->theme, FloatingContact::THEMES, true)
+            || ! in_array($this->layout, FloatingContact::LAYOUTS, true)
+            || ! in_array($this->barTone, FloatingContact::BAR_TONES, true)
             || ! in_array($this->position, FloatingContact::POSITIONS, true)
             || FloatingContact::offset($this->offsetX, FloatingContact::MAX_OFFSET_X, -1) === -1
             || FloatingContact::offset($this->offsetY, FloatingContact::MAX_OFFSET_Y, -1) === -1

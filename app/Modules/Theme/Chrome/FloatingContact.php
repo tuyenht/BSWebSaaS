@@ -117,6 +117,10 @@ final class FloatingContact
     /** The website draws e-mail with the open envelope of the design (the panel keeps its own code). */
     private const array WIDGET_ICONS = ['email' => 'ri-mail-open-fill'];
 
+    /** A value of each type that passes, for drawing an unfinished slot of the admin preview (never printed). */
+    private const array SAMPLE = ['phone' => '0912345678', 'sms' => '0912345678', 'whatsapp' => '0912345678', 'viber' => '0912345678',
+        'zalo' => '0912345678', 'messenger' => 'example', 'email' => 'a@example.com', 'telegram' => 'example', 'url' => 'https://example.com', 'custom' => '/'];
+
     /**
      * The website's widget for a page in $locale: what the theme prints, every colour and link already
      * worked out; null when the setting is off or no channel passes. Each site keeps the meaning of what
@@ -125,12 +129,15 @@ final class FloatingContact
      * at the end of the list (where older code drew it, and only while the list has room for it). Fills are the stored colours darkened under white marks (inkUnder);
      * Messenger keeps its colour band unless the site chose a colour. `link` names the kind of link
      * (for the click event: never the number or the address itself).
+     * With $pending (the admin preview only, never the site) a channel switched on whose value is
+     * missing or does not pass yet keeps its place as an unfinished slot (`pending` = true, href "#"),
+     * counted like a ready one, so the member sees where its button goes once filled in.
      *
      * @param  mixed  $raw  the stored value (an array when set)
      * @param  string|null  $shopHref  the site's product list, or null when it has none
-     * @return array{layout: string, position: string, offset_x: int, offset_y: int, tone: string, track: bool, dial: bool, buttons: list<array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null}>, bar: list<array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null}>, sheet: list<array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null}>, more: bool, buy: array{href: string, fill: string, ink: string, icon: string}|null}|null
+     * @return array{layout: string, position: string, offset_x: int, offset_y: int, tone: string, track: bool, dial: bool, buttons: list<array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null, pending?: true}>, bar: list<array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null, pending?: true}>, sheet: list<array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null, pending?: true}>, more: bool, buy: array{href: string, fill: string, ink: string, icon: string}|null}|null
      */
-    public static function widget(mixed $raw, string $locale, ?string $shopHref = null): ?array
+    public static function widget(mixed $raw, string $locale, ?string $shopHref = null, bool $pending = false): ?array
     {
         if (! is_array($raw) || ($raw['enabled'] ?? false) !== true) {
             return null;
@@ -139,7 +146,7 @@ final class FloatingContact
         $layout = self::layout($raw);
         $items = [];
         foreach (array_slice(is_array($raw['channels'] ?? null) ? array_values($raw['channels']) : [], 0, self::MAX_CHANNELS) as $channel) {
-            $item = is_array($channel) ? self::item($channel, $locale) : null;
+            $item = is_array($channel) ? (self::item($channel, $locale) ?? ($pending ? self::pending($channel, $locale) : null)) : null;
             if ($item !== null && ! isset($items[$item['key']])) {
                 $items[$item['key']] = $item;
             }
@@ -242,6 +249,25 @@ final class FloatingContact
             'link' => self::linkType($href),
             'tel' => $type === 'phone' ? self::spaced($clean) : null,
         ];
+    }
+
+    /**
+     * A channel switched on whose value is missing or does not pass, as the admin preview's
+     * unfinished slot (its own colour and icon, no link); null when it is off or unknown.
+     *
+     * @param  array<array-key, mixed>  $channel
+     * @return array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null, pending: true}|null
+     */
+    private static function pending(array $channel, string $locale): ?array
+    {
+        $key = is_string($channel['key'] ?? null) ? $channel['key'] : '';
+        $type = self::typeOf($key);
+        if ($type === null || ($channel['on'] ?? false) !== true) {
+            return null;
+        }
+        $item = self::item(['value' => self::SAMPLE[$type] ?? 'https://example.com'] + $channel, $locale);
+
+        return $item === null ? null : ['href' => '#', 'link' => 'none', 'tel' => null, 'pulse' => false, 'pending' => true] + $item;
     }
 
     /** The kind of link, for the click event: tel, sms, mailto, app (viber://), web or page (a path on the site). */

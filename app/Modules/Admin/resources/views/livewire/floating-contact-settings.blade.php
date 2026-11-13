@@ -100,19 +100,12 @@
 
     $phone = collect($rows)->firstWhere('key', 'phone');
     $phoneWarn = ! ($phone !== null && $phone['on'] && FloatingContact::clean('phone', $phone['value']) !== null);
-    $isVertical = $theme === 'vertical';
+    $isV = $layout === 'vertical';
+    $isC = $layout === 'combo';
+    $isH = $layout === 'horizontal';
     $hasPresets = array_values(array_filter(FloatingContact::PRESETS, fn (string $k): bool => collect($rows)->firstWhere('key', $k) === null));
     $full = count($rows) >= FloatingContact::MAX_CHANNELS;
 
-    // The preview: the draft as the site would show it in the language being edited, with the
-    // "Mua hàng" button at the end of the bar when it is on and the site has a product list (then
-    // two channels fit, not three) — the normalizer decides both, as on the site.
-    $word = static fn (array $b): string => $b['label'] ?? (array_key_exists($b['key'], FloatingContact::CHANNELS) ? __('storefront.fc_'.$b['key'], [], $lang) : __('storefront.fc_contact', [], $lang));
-    $pvButtons = $preview['buttons'] ?? [];
-    // The preview phone is narrow (about 266px inside its frame): it draws the bar as a phone of that
-    // width would, four cells with "Mua hàng" counted, the ones further on dropped from the end.
-    $pvBuy = $preview['buy'] ?? null;
-    $pvBar = array_slice($preview['bar'] ?? [], 0, $pvBuy === null ? 4 : 3);
     $buySafe = FloatingContact::color($buyColor) ?? FloatingContact::BUY_COLOR;
 @endphp
 <x-bs-admin::settings-shell active="floating" :hints="count($locales) > 1 ? [FirstHints::LANG_SOURCE => $srcHint] : []">
@@ -226,13 +219,14 @@
                     <div class="flex flex-col gap-4.5 p-4">
                         <div>
                             <span id="fc-theme-l" class="{{ $lbl }}">{{ __('admin.fc.theme_label') }}</span>
-                            <x-bs-admin::choice-cards labelledby="fc-theme-l" pick="setTheme" class="!grid-cols-[repeat(auto-fit,minmax(min(100%,11em),1fr))] !gap-3" :options="[
-                                ['value' => 'vertical', 'icon' => 'ri-apps-2', 'label' => __('admin.fc.theme_v'), 'sub' => __('admin.fc.theme_v_sub'), 'tag' => $isVertical ? '✓ '.__('admin.fc.in_use') : null, 'checked' => $isVertical],
-                                ['value' => 'horizontal', 'icon' => 'ri-layout-bottom-2', 'label' => __('admin.fc.theme_h'), 'sub' => __('admin.fc.theme_h_sub'), 'tag' => ! $isVertical ? '✓ '.__('admin.fc.in_use') : null, 'checked' => ! $isVertical],
+                            <x-bs-admin::choice-cards labelledby="fc-theme-l" pick="setLayout" class="!grid-cols-[repeat(auto-fit,minmax(min(100%,11em),1fr))] !gap-3" :options="[
+                                ['value' => 'combo', 'icon' => 'ri-device', 'label' => __('admin.fc.layout_c'), 'badge' => __('admin.fc.recommended'), 'sub' => __('admin.fc.layout_c_sub'), 'tag' => $isC ? '✓ '.__('admin.fc.in_use') : null, 'checked' => $isC],
+                                ['value' => 'vertical', 'icon' => 'ri-apps-2', 'label' => __('admin.fc.theme_v'), 'sub' => __('admin.fc.layout_v_sub'), 'tag' => $isV ? '✓ '.__('admin.fc.in_use') : null, 'checked' => $isV],
+                                ['value' => 'horizontal', 'icon' => 'ri-layout-bottom-2', 'label' => __('admin.fc.layout_h'), 'sub' => __('admin.fc.layout_h_sub'), 'tag' => $isH ? '✓ '.__('admin.fc.in_use') : null, 'checked' => $isH],
                             ]" />
                         </div>
-                        @if ($isVertical)
-                            <div class="flex flex-col gap-4">
+                        @unless ($isH)
+                            <div class="flex flex-col gap-2.5">
                                 <div>
                                     <span id="fc-pos-l" class="{{ $lbl }}">{{ __('admin.fc.pos_label') }}</span>
                                     <div class="seg" role="group" aria-labelledby="fc-pos-l">
@@ -243,22 +237,38 @@
                                         @endforeach
                                     </div>
                                 </div>
-                                <div class="grid grid-cols-1 gap-3.5 @min-[28rem]/fc:grid-cols-2">
-                                    @foreach (['offsetX' => [FloatingContact::MAX_OFFSET_X, 'offset_x'], 'offsetY' => [FloatingContact::MAX_OFFSET_Y, 'offset_y']] as $prop => [$max, $key])
-                                        <div>
-                                            <div class="mb-2 flex items-center justify-between">
-                                                <label for="fc-{{ $key }}" class="text-caption font-semibold text-text">{{ __('admin.fc.'.$key) }}</label>
-                                                <span class="text-caption text-text-muted">{{ $this->{$prop} }}px</span>
-                                            </div>
-                                            <input id="fc-{{ $key }}" type="range" min="0" max="{{ $max }}" step="2" wire:model.live.debounce.150ms="{{ $prop }}"
-                                                   aria-valuetext="{{ __('admin.fc.offset_text', ['n' => $this->{$prop}]) }}"
-                                                   class="block h-hit w-full cursor-pointer accent-primary">
+                                <p class="text-caption leading-snug text-text-muted">@if ($isV){{ $dial ? __('admin.fc.dial_note_on', ['n' => FloatingContact::DIAL_FROM - 1]) : __('admin.fc.dial_note_off') }} @endif{{ __('admin.fc.offset_default', ['x' => FloatingContact::DEFAULT_OFFSET_X, 'y' => FloatingContact::DEFAULT_OFFSET_Y]) }}</p>
+                                <details class="group" wire:ignore.self @if ($offsetX !== FloatingContact::DEFAULT_OFFSET_X || $offsetY !== FloatingContact::DEFAULT_OFFSET_Y) open @endif>
+                                    <summary class="hit-area inline-flex min-h-8 cursor-pointer list-none items-center gap-1 text-[calc(0.78125rem+var(--user-text-boost))] font-semibold text-text [&::-webkit-details-marker]:hidden">
+                                        <x-bs-admin::icon name="ri-arrow-right-s" class="size-[min(1.5rem,calc(1rem+var(--user-text-boost)))] shrink-0 transition-transform group-open:rotate-90 motion-reduce:transition-none" />{{ __('admin.fc.more_settings') }}
+                                    </summary>
+                                    <div class="flex flex-col gap-3.5 pt-2.5">
+                                        <div class="grid grid-cols-1 gap-3.5 @min-[28rem]/fc:grid-cols-2">
+                                            @foreach (['offsetX' => [FloatingContact::MAX_OFFSET_X, 'offset_x'], 'offsetY' => [FloatingContact::MAX_OFFSET_Y, 'offset_y']] as $prop => [$max, $key])
+                                                <div>
+                                                    <div class="mb-2 flex items-center justify-between">
+                                                        <label for="fc-{{ $key }}" class="text-caption font-semibold text-text">{{ __('admin.fc.'.$key) }}</label>
+                                                        <span class="text-caption text-text-muted">{{ $this->{$prop} }}px</span>
+                                                    </div>
+                                                    <input id="fc-{{ $key }}" type="range" min="0" max="{{ $max }}" step="2" wire:model.live.debounce.150ms="{{ $prop }}"
+                                                           aria-valuetext="{{ __('admin.fc.offset_text', ['n' => $this->{$prop}]) }}"
+                                                           class="block h-hit w-full cursor-pointer accent-primary">
+                                                </div>
+                                            @endforeach
                                         </div>
-                                    @endforeach
-                                </div>
-                                <p class="text-caption leading-snug text-text-muted">{{ __('admin.fc.offset_hint', ['x' => FloatingContact::DEFAULT_OFFSET_X, 'y' => FloatingContact::DEFAULT_OFFSET_Y]) }}</p>
+                                        @if ($isV)
+                                            <div class="flex items-center justify-between gap-3 border-t border-border-soft pt-3">
+                                                <div class="min-w-0">
+                                                    <p id="fc-dial-l" class="text-[calc(0.78125rem+var(--user-text-boost))] font-semibold text-text">{{ __('admin.fc.dial') }}</p>
+                                                    <p class="text-caption leading-normal text-text-muted">{{ __('admin.fc.dial_sub') }}</p>
+                                                </div>
+                                                <button type="button" class="switch hit-area" role="switch" aria-checked="{{ $dial ? 'true' : 'false' }}" aria-labelledby="fc-dial-l" wire:click="toggleDial"></button>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </details>
                             </div>
-                        @endif
+                        @endunless
                     </div>
                 </div>
 
@@ -369,6 +379,11 @@
                                                         {{-- The grey text in the field is only an example: say plainly that nothing is filled in yet. --}}
                                                         <p id="fc-empty-{{ $key }}" class="mt-0.5 text-caption leading-snug font-semibold text-warning-text">{{ __('admin.fc.empty_value') }}</p>
                                                     @endif
+                                                    @if ($reuse !== null && in_array($key, \App\Modules\Admin\Livewire\FloatingContactSettings::REUSE, true) && trim($c['value']) === '')
+                                                        <button type="button" wire:click="reuseNumber({{ Js::from($key) }})" class="hit-area mt-1.5 inline-flex min-h-[1.875rem] items-center gap-1.5 rounded-[7px] border border-dashed border-border-input bg-transparent px-2.5 text-caption font-semibold text-primary-text">
+                                                            <x-bs-admin::icon name="ri-file-copy" class="size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))] shrink-0" />{{ __('admin.fc.reuse', ['number' => $reuse]) }}
+                                                        </button>
+                                                    @endif
                                                 </div>
                                                 <span class="flex min-w-[min(10rem,100%)] flex-[1_1_calc(13rem+2*var(--user-text-boost))] items-center gap-1.5">
                                                     <x-bs-admin::icon name="ri-price-tag-3" class="size-[min(1.5rem,calc(0.8125rem+var(--user-text-boost)))] shrink-0 text-text-muted" title="{{ __('admin.fc.tip_title') }}" />
@@ -435,9 +450,9 @@
                 </div>
 
                 {{-- Bottom-bar options --}}
-                @unless ($isVertical)
+                @unless ($isV)
                     <div class="rounded-md border border-border bg-surface shadow-card">
-                        <h2 class="border-b border-border px-4 py-3.5 {{ $title }}">{{ __('admin.fc.bar_card') }}</h2>
+                        <h2 class="border-b border-border px-4 py-3.5 {{ $title }}">{{ __('admin.fc.bar_card') }}@if ($isC)<span class="font-normal text-text-muted"> · {{ __('admin.fc.on_phone') }}</span>@endif</h2>
                         <div class="flex flex-col gap-4 p-4">
                             <div class="flex items-center justify-between gap-3">
                                 <div class="min-w-0">
@@ -474,8 +489,22 @@
                                 </div>
                             @endif
                             <p class="flex items-start gap-2 text-caption leading-normal text-text-muted">
-                                <x-bs-admin::icon name="ri-information" class="mt-px size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))] shrink-0 text-info-text" />{{ __('admin.fc.bar_note') }}
+                                <x-bs-admin::icon name="ri-information" class="mt-px size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))] shrink-0 text-info-text" />{{ __('admin.fc.bar_note_v2', ['n' => FloatingContact::BAR_CAP]) }}
                             </p>
+                            <details class="group border-t border-border-soft pt-3" wire:ignore.self>
+                                <summary class="hit-area inline-flex min-h-8 cursor-pointer list-none items-center gap-1 text-[calc(0.78125rem+var(--user-text-boost))] font-semibold text-text [&::-webkit-details-marker]:hidden">
+                                    <x-bs-admin::icon name="ri-arrow-right-s" class="size-[min(1.5rem,calc(1rem+var(--user-text-boost)))] shrink-0 transition-transform group-open:rotate-90 motion-reduce:transition-none" />{{ __('admin.fc.tone') }} · <span class="font-medium text-text-muted">{{ __('admin.fc.tone_'.$barTone) }}</span>
+                                </summary>
+                                <div class="flex flex-col gap-2 pt-2.5">
+                                    <span id="fc-tone-l" class="sr-only">{{ __('admin.fc.tone') }}</span>
+                                    <div class="seg" role="group" aria-labelledby="fc-tone-l">
+                                        @foreach (FloatingContact::BAR_TONES as $tone)
+                                            <button type="button" aria-pressed="{{ $barTone === $tone ? 'true' : 'false' }}" wire:click="setBarTone({{ Js::from($tone) }})">{{ __('admin.fc.tone_'.$tone) }}</button>
+                                        @endforeach
+                                    </div>
+                                    <p class="text-caption leading-normal text-text-muted">{{ __('admin.fc.tone_note') }}</p>
+                                </div>
+                            </details>
                         </div>
                     </div>
                 @endunless
@@ -483,95 +512,104 @@
 
             {{-- Preview and the "applies everywhere" note --}}
             <div class="flex min-w-0 flex-col gap-4 @min-[56rem]/fc:sticky @min-[56rem]/fc:top-[calc(var(--topbar-height)+1.375rem)]">
-                {{-- The bottom bar only exists on phones: its preview is always the phone, with no device switch. --}}
-                <div class="rounded-md border border-border bg-surface shadow-card" x-data="{ pick: 'desktop', get dev() { return this.$wire.theme === 'horizontal' ? 'mobile' : this.pick } }">
+                {{-- The website's own widget in a frame (fc-preview-frame): a phone is 390px wide, a computer 768px
+                     (where the site switches to its computer look), drawn smaller to fit the card. The bottom bar
+                     only exists on phones: its preview is always the phone, with no device switch. The frame's
+                     size, the device and the page background are this card's own (wire:ignore), so a redraw of
+                     the page only swaps the frame's page. --}}
+                <div class="rounded-md border border-border bg-surface shadow-card"
+                     x-data="{
+                         pick: 'desktop', dark: false, k: 1, h: 600,
+                         get dev() { return $wire.layout === 'horizontal' ? 'mobile' : this.pick },
+                         get vw() { return this.dev === 'mobile' ? 390 : 768 },
+                         fit() { const w = this.$refs.box ? this.$refs.box.clientWidth : 0; this.k = w > 0 ? Math.min(1, w / this.vw) : 1; this.measure(); },
+                         measure() {
+                             const d = this.$refs.frame ? this.$refs.frame.contentDocument : null, n = d ? d.querySelector('.sf-fc__float') : null;
+                             const base = this.dev === 'mobile' ? 600 : 480;
+                             this.h = n ? Math.max(base, Math.ceil(n.getBoundingClientRect().height) + 220) : base;
+                         },
+                         paint() { const d = this.$refs.frame ? this.$refs.frame.contentDocument : null; if (d && d.documentElement) { d.documentElement.dataset.page = this.dark ? 'dark' : 'light'; } },
+                     }"
+                     x-init="$nextTick(() => fit()); new ResizeObserver(() => fit()).observe($refs.box); $watch('dev', () => $nextTick(() => fit())); $watch('dark', () => paint())">
                     <div class="flex items-center justify-between gap-2.5 border-b border-border px-4 py-3">
-                        <h2 class="{{ $name }}">{{ __('admin.fc.preview') }}@unless ($isVertical)<span class="font-normal text-text-muted"> · {{ __('admin.fc.on_phone') }}</span>@endunless</h2>
-                        @if ($isVertical)
-                        <div class="seg" role="group" aria-label="{{ __('admin.fc.device') }}">
-                            <button type="button" x-on:click="pick = 'desktop'" x-bind:aria-pressed="dev === 'desktop' ? 'true' : 'false'" aria-pressed="true" aria-label="{{ __('admin.fc.desk') }}" title="{{ __('admin.fc.desk') }}" class="inline-flex items-center justify-center">
-                                <x-bs-admin::icon name="ri-computer" class="size-[min(1.5rem,calc(0.9375rem+var(--user-text-boost)))]" />
-                            </button>
-                            <button type="button" x-on:click="pick = 'mobile'" x-bind:aria-pressed="dev === 'mobile' ? 'true' : 'false'" aria-pressed="false" aria-label="{{ __('admin.fc.mob') }}" title="{{ __('admin.fc.mob') }}" class="inline-flex items-center justify-center">
-                                <x-bs-admin::icon name="ri-smartphone" class="size-[min(1.5rem,calc(0.9375rem+var(--user-text-boost)))]" />
-                            </button>
+                        <h2 class="{{ $name }}">{{ __('admin.fc.preview') }}@if ($isH)<span class="font-normal text-text-muted"> · {{ __('admin.fc.on_phone') }}</span>@endif</h2>
+                        <div class="flex items-center gap-2" wire:ignore>
+                            <div class="seg" role="group" aria-label="{{ __('admin.fc.pv_page') }}">
+                                <button type="button" x-on:click="dark = false" x-bind:aria-pressed="dark ? 'false' : 'true'" aria-pressed="true" aria-label="{{ __('admin.fc.pv_light') }}" title="{{ __('admin.fc.pv_light') }}" class="inline-flex items-center justify-center">
+                                    <x-bs-admin::icon name="ri-sun" class="size-[min(1.5rem,calc(0.9375rem+var(--user-text-boost)))]" />
+                                </button>
+                                <button type="button" x-on:click="dark = true" x-bind:aria-pressed="dark ? 'true' : 'false'" aria-pressed="false" aria-label="{{ __('admin.fc.pv_dark') }}" title="{{ __('admin.fc.pv_dark') }}" class="inline-flex items-center justify-center">
+                                    <x-bs-admin::icon name="ri-moon" class="size-[min(1.5rem,calc(0.9375rem+var(--user-text-boost)))]" />
+                                </button>
+                            </div>
+                            <div class="seg" role="group" aria-label="{{ __('admin.fc.device') }}" x-show="$wire.layout !== 'horizontal'" @if ($isH) style="display: none" @endif>
+                                <button type="button" x-on:click="pick = 'desktop'" x-bind:aria-pressed="dev === 'desktop' ? 'true' : 'false'" aria-pressed="true" aria-label="{{ __('admin.fc.desk') }}" title="{{ __('admin.fc.desk') }}" class="inline-flex items-center justify-center">
+                                    <x-bs-admin::icon name="ri-computer" class="size-[min(1.5rem,calc(0.9375rem+var(--user-text-boost)))]" />
+                                </button>
+                                <button type="button" x-on:click="pick = 'mobile'" x-bind:aria-pressed="dev === 'mobile' ? 'true' : 'false'" aria-pressed="false" aria-label="{{ __('admin.fc.mob') }}" title="{{ __('admin.fc.mob') }}" class="inline-flex items-center justify-center">
+                                    <x-bs-admin::icon name="ri-smartphone" class="size-[min(1.5rem,calc(0.9375rem+var(--user-text-boost)))]" />
+                                </button>
+                            </div>
                         </div>
-                        @endif
                     </div>
-                    <div class="flex justify-center bg-surface-muted p-5" aria-hidden="true">
-                        <div class="flex flex-col overflow-hidden bg-surface"
-                             x-bind:class="dev === 'mobile' ? 'min-h-[25.625rem] w-[min(17.5rem,100%)] rounded-[26px] border-[7px] border-text-strong shadow-[0_12px_30px_-10px_rgb(0_0_0/0.35)]' : 'min-h-[18.125rem] w-full rounded-[10px] shadow-[0_10px_30px_-12px_rgb(0_0_0/0.3)]'"
-                             @class([
-                                 'min-h-[18.125rem] w-full rounded-[10px] shadow-[0_10px_30px_-12px_rgb(0_0_0/0.3)]' => $isVertical,
-                                 'min-h-[25.625rem] w-[min(17.5rem,100%)] rounded-[26px] border-[7px] border-text-strong shadow-[0_12px_30px_-10px_rgb(0_0_0/0.35)]' => ! $isVertical,
-                             ])>
-                            <div class="flex h-7 shrink-0 items-center gap-1.5 border-b border-border bg-surface px-3">
+                    <div class="flex justify-center bg-surface-muted p-5">
+                        <div class="flex w-full flex-col overflow-hidden bg-surface" wire:ignore.self
+                             x-bind:class="dev === 'mobile' ? 'max-w-[20rem] rounded-[26px] border-[7px] border-text-strong shadow-[0_12px_30px_-10px_rgb(0_0_0/0.35)]' : 'rounded-[10px] shadow-[0_10px_30px_-12px_rgb(0_0_0/0.3)]'">
+                            <div class="flex h-7 shrink-0 items-center gap-1.5 border-b border-border bg-surface px-3" aria-hidden="true" wire:ignore x-show="dev === 'desktop'">
                                 <span class="size-2 rounded-full bg-danger-base"></span><span class="size-2 rounded-full bg-warning-base"></span><span class="size-2 rounded-full bg-success-base"></span>
                             </div>
-                            {{-- The frame keeps its size at least and grows to hold the whole stack (every button, any text size):
-                                 the page sketch lies under it, the buttons sit in the flow at the bottom, never cut off. --}}
-                            <div class="relative flex flex-1 flex-col bg-surface-muted">
-                                <div class="absolute inset-x-0 top-0 flex flex-col gap-2 p-4">
-                                    <div class="h-[11px] w-[55%] rounded bg-border-strong"></div><div class="h-2 w-[88%] rounded bg-border"></div><div class="h-2 w-[78%] rounded bg-border"></div>
-                                    <div class="mt-1 h-16 rounded-lg bg-border"></div><div class="mt-1 h-2 w-[70%] rounded bg-border"></div>
-                                </div>
-                                @if ($preview === null)
-                                    <p class="absolute inset-x-3.5 bottom-3.5 rounded-md border border-border bg-surface px-3 py-2.5 text-caption leading-snug text-text-muted">{{ __('admin.fc.preview_empty') }}</p>
-                                @elseif ($isVertical)
-                                    @php
-                                        // The side and offsets as the normalizer read them (a tampered draft can hold anything).
-                                        $pvSide = $preview['position'];
-                                        $tipSide = ['left' => 'left-full ml-2', 'bottom' => 'bottom-full mb-2 left-1/2 -translate-x-1/2', 'right' => 'right-full mr-2'][$pvSide] ?? 'right-full mr-2';
-                                        // A row at the bottom wraps as on the site (1rem in from each edge).
-                                        $wrap = match ($pvSide) {
-                                            'bottom' => 'w-full flex-row flex-wrap justify-center px-4',
-                                            'left' => 'flex-col self-start ml-[var(--ox)]',
-                                            default => 'flex-col self-end mr-[var(--ox)]',
-                                        };
-                                    @endphp
-                                    <div class="relative z-5 mt-auto mb-[var(--oy)] flex items-center pt-3 {{ $wrap }}" x-bind:class="dev === 'mobile' ? 'gap-2.5' : 'gap-3'"
-                                         style="--ox: {{ $preview['offset_x'] }}px; --oy: {{ $preview['offset_y'] }}px">
-                                        @foreach ($pvButtons as $b)
-                                            {{-- Switched on but not filled in yet: its place, drawn unfinished (dashed, no brand fill) — the site does not show it. --}}
-                                            @php $pending = $b['pending'] ?? false; @endphp
-                                            <span @class(['group relative flex items-center justify-center rounded-full', 'text-white shadow-[0_4px_12px_rgb(0_0_0/0.25)]' => ! $pending, 'border-2 border-dashed border-border-input bg-surface text-text-muted' => $pending])
-                                                  x-bind:class="dev === 'mobile' ? 'size-11' : 'size-[50px]'" @if ($pending) data-fc-pending="{{ $b['key'] }}" @else style="background: {{ $b['fill'] }}" @endif>
-                                                @if ($b['text'] !== null)
-                                                    <span class="text-caption font-extrabold tracking-[-.01em]">{{ $b['text'] }}</span>
-                                                @else
-                                                    <svg viewBox="0 0 24 24" fill="currentColor" x-bind:class="dev === 'mobile' ? 'size-[23px]' : 'size-[27px]'" class="size-[27px]"><path d="{{ $b['icon'] }}"/></svg>
-                                                @endif
-                                                <span class="pointer-events-none absolute {{ $tipSide }} hidden rounded bg-text-strong px-2 py-1 text-caption whitespace-nowrap text-surface group-hover:block">{{ $word($b) }}</span>
-                                            </span>
-                                        @endforeach
-                                    </div>
+                            <div x-ref="box" wire:ignore.self class="relative overflow-hidden bg-surface-muted" style="height: 300px"
+                                 x-bind:style="'--fcp-w:' + vw + 'px;--fcp-h:' + h + 'px;--fcp-k:' + k + ';height:' + Math.round(h * k) + 'px'">
+                                @if ($srcdoc !== null)
+                                    <iframe x-ref="frame" srcdoc="{{ $srcdoc }}" title="{{ __('admin.fc.preview_frame') }}" data-fc-preview
+                                            x-on:load="paint(); measure()"
+                                            class="absolute top-0 left-0 block border-0 bg-surface"
+                                            style="width: var(--fcp-w, 768px); height: var(--fcp-h, 480px); transform: scale(var(--fcp-k, 1)); transform-origin: 0 0"></iframe>
                                 @else
-                                    <div class="absolute inset-x-0 bottom-0 flex min-h-12 border-t border-border bg-surface shadow-[0_-3px_16px_rgb(32_21_18/0.13)]">
-                                        @foreach ($pvBar as $b)
-                                            @php $pending = $b['pending'] ?? false; @endphp
-                                            <span @class(['flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-[5px]', 'border-l border-border-soft' => ! $loop->first]) @if ($pending) data-fc-pending="{{ $b['key'] }}" @endif>
-                                                <span @class(['flex h-[22px] min-w-[22px] shrink-0 items-center justify-center rounded-full px-[3px]', 'text-white' => ! $pending, 'border-[1.5px] border-dashed border-border-input bg-surface text-text-muted' => $pending]) @unless ($pending) style="background: {{ $b['fill'] }}" @endunless>
-                                                    @if ($b['text'] !== null)
-                                                        <span class="text-caption leading-none font-extrabold">{{ $b['text'] }}</span>
-                                                    @else
-                                                        <svg viewBox="0 0 24 24" fill="currentColor" class="size-[min(1.5rem,calc(0.8125rem+var(--user-text-boost)))]"><path d="{{ $b['icon'] }}"/></svg>
-                                                    @endif
-                                                </span>
-                                                <span @class(['max-w-full text-center text-caption leading-[1.2] font-semibold [overflow-wrap:break-word]', 'text-text' => ! $pending, 'text-text-muted' => $pending])>{{ $word($b) }}</span>
-                                            </span>
-                                        @endforeach
-                                        @if ($pvBuy !== null)
-                                            <span @class(['flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-[5px]', 'border-l border-border-soft' => $pvBar !== []])>
-                                                <span class="flex h-[22px] min-w-[22px] shrink-0 items-center justify-center rounded-full px-[3px]" style="background: {{ $pvBuy['fill'] }}; color: {{ $pvBuy['ink'] }}">
-                                                    <svg viewBox="0 0 24 24" fill="currentColor" class="size-[min(1.5rem,calc(0.8125rem+var(--user-text-boost)))]"><path d="{{ $svg('ri-shopping-bag-fill') }}"/></svg>
-                                                </span>
-                                                <span class="max-w-full text-center text-caption leading-[1.2] font-semibold text-text [overflow-wrap:break-word]">{{ __('storefront.fc_buy', [], $lang) }}</span>
-                                            </span>
-                                        @endif
-                                    </div>
+                                    <p class="absolute inset-x-3.5 bottom-3.5 rounded-md border border-border bg-surface px-3 py-2.5 text-caption leading-snug text-text-muted">{{ __('admin.fc.preview_empty') }}</p>
                                 @endif
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                {{-- "Hiệu quả": the site's taps of the last 30 days, per channel switched on (the counter records
+                     the contact channels only: the "Mua hàng" button and opening the "Liên hệ" button are not counted). --}}
+                @php
+                    $tapMax = max(1, ...array_map(fn (array $c): int => $stats['channels'][$c['key']] ?? 0, $onChannels ?: [['key' => '']]));
+                    $vnNumber = static fn (int $n): string => number_format($n, 0, ',', '.');
+                @endphp
+                <div class="rounded-md border border-border bg-surface shadow-card">
+                    <div class="flex items-start justify-between gap-3 border-b border-border px-4 py-3.5">
+                        <div class="min-w-0">
+                            <h2 class="{{ $title }}">{{ __('admin.fc.kpi_title') }}</h2>
+                            <p class="text-caption leading-normal text-text-muted">{{ __('admin.fc.kpi_sub') }}</p>
+                        </div>
+                        <p class="flex shrink-0 flex-col items-end leading-tight">
+                            <b class="text-[calc(1.375rem+var(--user-text-boost))] font-semibold text-text-strong">{{ $stats['total'] > 0 ? $vnNumber($stats['total']) : '—' }}</b>
+                            <span class="text-small text-text-muted">{{ __('admin.fc.kpi_taps') }}</span>
+                        </p>
+                    </div>
+                    <div class="flex flex-col gap-2.5 px-4 pt-3 pb-3.5">
+                        @if ($onChannels !== [])
+                            <ul class="flex flex-col gap-[7px]" role="list">
+                                @foreach ($onChannels as $c)
+                                    @php
+                                        $taps = $stats['channels'][$c['key']] ?? 0;
+                                        $dot = $c['key'] === 'messenger' && FloatingContact::color($c['color']) === null ? FloatingContact::MESSENGER_FILL : $colorOf($c);
+                                    @endphp
+                                    <li class="grid grid-cols-[0.625rem_minmax(5.5rem,auto)_1fr_2.5rem] items-center gap-[9px] text-[calc(0.78125rem+var(--user-text-boost))] text-text">
+                                        <span class="size-2.5 rounded-full" style="background: {{ $dot }}" aria-hidden="true"></span>
+                                        <span class="min-w-0 [overflow-wrap:anywhere]">{{ $chName($c) }}</span>
+                                        <span class="h-1.5 overflow-hidden rounded-[3px] bg-surface-muted" aria-hidden="true"><span class="block h-full rounded-[3px]" style="width: {{ $stats['total'] > 0 ? round($taps / $tapMax * 100, 1) : 0 }}%; background: {{ $dot }}"></span></span>
+                                        <b class="text-end font-semibold text-text-muted">{{ $stats['total'] > 0 ? $vnNumber($taps) : '—' }}</b>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                        @if ($stats['total'] === 0)
+                            <p class="text-caption leading-normal text-text-muted">{{ __('admin.fc.kpi_empty') }}</p>
+                        @endif
                     </div>
                 </div>
 
