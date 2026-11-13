@@ -118,10 +118,11 @@
     $tileTone = ['draft' => '', 'pending' => 'warn', 'scheduled' => 'info', 'published' => 'ok'];
     $tileIcon = ['draft' => 'ri-draft', 'pending' => 'ri-inbox-unarchive', 'scheduled' => 'ri-calendar-schedule', 'published' => 'ri-global'];
 @endphp
-<div class="@container/tq mx-auto flex w-full max-w-[80rem] flex-col gap-4">
+<div class="@container/tq mx-auto flex w-full max-w-[80rem] flex-col gap-4"
+     x-data x-on:dash-focus.window="$nextTick(() => (document.getElementById($event.detail.id) ?? document.getElementById('tq-h1'))?.focus())">
     <div class="flex flex-wrap items-start gap-x-4 gap-y-3">
         <div class="min-w-0 flex-[1_1_20rem]">
-            <h1 class="text-title font-semibold leading-[1.4] text-text-strong">{{ __('admin.dashboard') }}</h1>
+            <h1 id="tq-h1" tabindex="-1" class="text-title font-semibold leading-[1.4] text-text-strong">{{ __('admin.dashboard') }}</h1>
             @if ($siteName !== '')
                 <p class="mt-1 text-text-muted [text-wrap:pretty]">{!! __('dash.desc', ['site' => '<strong class="font-semibold text-text">'.e($siteName).'</strong>']) !!}</p>
             @endif
@@ -132,7 +133,7 @@
     @if ($todoItems !== [] || $todoFailed)
         <section class="{{ $card }}" aria-labelledby="tq-h-todo">
             <div class="{{ $ch }}">
-                <h2 id="tq-h-todo" class="{{ $h2 }}">{{ __('dash.todo_title') }}</h2>
+                <h2 id="tq-h-todo" tabindex="-1" class="{{ $h2 }}">{{ __('dash.todo_title') }}</h2>
                 @if ($todoItems !== [])
                     <span class="{{ $chip }} {{ $tones['warn'] }}"><x-bs-admin::icon name="ri-checkbox-multiple" class="size-[calc(0.875rem+var(--user-text-boost))]" />{{ __('dash.todo_count', ['n' => $num(count($todoItems))]) }}</span>
                 @endif
@@ -163,7 +164,7 @@
     @if ($startShow)
         <section class="{{ $card }}" aria-labelledby="tq-h-start">
             <div class="{{ $ch }}">
-                <h2 id="tq-h-start" class="{{ $h2 }}">{{ __('dash.start_title') }}</h2>
+                <h2 id="tq-h-start" tabindex="-1" class="{{ $h2 }}">{{ __('dash.start_title') }}</h2>
                 <div class="ml-auto flex flex-wrap items-center gap-2">
                     <button type="button" wire:click="hideStart" wire:loading.attr="disabled" wire:target="hideStart" class="{{ $ghost }}">
                         <x-bs-admin::icon name="ri-eye-off" class="size-[calc(1rem+var(--user-text-boost))]" /><span>{{ __('dash.start_hide') }}</span>
@@ -245,7 +246,7 @@
             @if ($review !== null)
                 <section class="{{ $card }}" aria-labelledby="tq-h-rev" x-data="{ tab: 'queue', keys: ['queue', 'mine', 'sched'], go(d) { const i = (this.keys.indexOf(this.tab) + d + this.keys.length) % this.keys.length; this.tab = this.keys[i]; this.$nextTick(() => document.getElementById('tq-tab-' + this.tab)?.focus()) }, to(i) { this.tab = this.keys[i]; this.$nextTick(() => document.getElementById('tq-tab-' + this.tab)?.focus()) } }">
                     <div class="{{ $ch }}">
-                        <h2 id="tq-h-rev" class="{{ $h2 }}">{{ __('dash.rev_title') }}</h2>
+                        <h2 id="tq-h-rev" tabindex="-1" class="{{ $h2 }}">{{ __('dash.rev_title') }}</h2>
                         @if ($rev !== null)
                             <span class="{{ $chip }} {{ $tones['warn'] }}"><x-bs-admin::icon name="ri-time" class="size-[calc(0.875rem+var(--user-text-boost))]" />{{ __('dash.rev_badge', ['n' => $revTabs['queue']['n']]) }}</span>
                         @endif
@@ -285,7 +286,7 @@
                                         @if ($key === 'sched')
                                             <a href="{{ $row['url'] }}" wire:navigate class="{{ $btn }}" aria-label="{{ __($row['edit'] ? 'dash.edit_aria' : 'dash.view_aria', ['title' => $row['title']]) }}">{{ __($row['edit'] ? 'dash.edit' : 'dash.view') }}</a>
                                         @else
-                                            <a href="{{ route('admin.entries.review') }}" wire:navigate class="{{ $btn }}" aria-label="{{ __('dash.rev_btn_aria', ['title' => $row['title']]) }}">{{ __('dash.rev_btn') }}</a>
+                                            <a href="{{ route('admin.entries.review', ['bai' => $row['ulid']]) }}" wire:navigate class="{{ $btn }}" aria-label="{{ __('dash.rev_btn_aria', ['title' => $row['title']]) }}">{{ __('dash.rev_btn') }}</a>
                                         @endif
                                     </div>
                                 @empty
@@ -309,7 +310,7 @@
 
             @if ($mine !== null)
                 <section class="{{ $card }}" aria-labelledby="tq-h-wr">
-                    <div class="{{ $ch }}"><h2 id="tq-h-wr" class="{{ $h2 }}">{{ __('dash.wr_title') }}</h2></div>
+                    <div class="{{ $ch }}"><h2 id="tq-h-wr" tabindex="-1" class="{{ $h2 }}">{{ __('dash.wr_title') }}</h2></div>
                     @if ($wr === null)
                         @include('admin::livewire.dashboard.card-error', ['card' => 'mine', 'label' => __('dash.wr_title'), 'btn' => $btn])
                     @else
@@ -369,7 +370,7 @@
 
             @if ($recent !== null)
                 <section class="{{ $card }}" aria-labelledby="tq-h-rec">
-                    <div class="{{ $ch }}"><h2 id="tq-h-rec" class="{{ $h2 }}">{{ __($editor ? 'dash.rec_title_edit' : 'dash.rec_title_view') }}</h2></div>
+                    <div class="{{ $ch }}"><h2 id="tq-h-rec" tabindex="-1" class="{{ $h2 }}">{{ __($editor ? 'dash.rec_title_edit' : 'dash.rec_title_view') }}</h2></div>
                     @if (! $recent['ok'])
                         @include('admin::livewire.dashboard.card-error', ['card' => 'recent', 'label' => __($editor ? 'dash.rec_title_edit' : 'dash.rec_title_view'), 'btn' => $btn])
                     @else
@@ -404,5 +405,5 @@
         </div>
     @endif
 
-    <x-bs-admin::toast :message="$toastMsg" :seq="$toastSeq" dismiss="closeToast" :undo="$toastUndo ? 'showStart' : null" />
+    <x-bs-admin::toast :message="$toastMsg" :seq="$toastSeq" :tone="$toastTone" dismiss="closeToast" :undo="$toastUndo ? 'showStart' : null" />
 </div>

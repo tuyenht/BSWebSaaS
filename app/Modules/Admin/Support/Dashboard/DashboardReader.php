@@ -20,10 +20,15 @@ use App\Modules\Tenancy\Domains\DomainGroup;
 use App\Modules\Tenancy\Domains\DomainGroups;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Workflow\Models\Workflow;
+use App\Modules\Workflow\Services\ReviewQueue;
 use App\Modules\Workflow\Services\WorkflowTrail;
+use Closure;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
@@ -47,6 +52,20 @@ final class DashboardReader
      */
     private ?array $sectionNames = null;
 
+    /**
+     * The site's sections (key, name, type, category), read once per reader.
+     *
+     * @var EloquentCollection<int, ContentSection>|null
+     */
+    private ?EloquentCollection $sectionRows = null;
+
+    /**
+     * The active approval flows with their stages and moves, read once per reader.
+     *
+     * @var EloquentCollection<int, Workflow>|null
+     */
+    private ?EloquentCollection $workflows = null;
+
     /** A count stops here: one more row means "more than this". */
     public const int CAP = 99;
 
@@ -58,11 +77,14 @@ final class DashboardReader
 
     public const int SCHEDULED_ROWS = 6;
 
-    /** How much of a review queue one dashboard read hydrates (Hộp duyệt reads up to 500). */
-    private const int QUEUE_READ = 100;
-
-    /** A member's newest drafts looked at for "Bị trả lại". */
-    private const int DRAFTS_READ = 20;
+    /**
+     * A member's newest drafts looked at for "Bị trả lại": the drafts come off the author index
+     * (entries_post_author_idx, migration 2040), and their last moves off the entry-history index
+     * (site_id, entry_id, created_at) of workflow_log (migration 2015, line 111). No index serves
+     * "the moves that sent this member's posts back" (workflow_log has no author column), so the
+     * read stays bounded: a return older than the member's 50 newest drafts is not listed.
+     */
+    private const int DRAFTS_READ = 50;
 
     private const array ENTRY_COLUMNS = ['id', 'ulid', 'site_id', 'type', 'status', 'workflow_state', 'author_id', 'assigned_to', 'published_at', 'updated_at', 'deleted_at'];
 
@@ -162,19 +184,29 @@ final class DashboardReader
      */
     public function review(User $user): array
     {
-        ['entries' => $waiting, 'full' => $full] = app(ReviewWaiting::class)->read($user, self::QUEUE_READ);
+        // What waits for this reviewer, filtered per (section, stage) in SQL before the cap; a
+        // count past CAP reads "99+". Only what the rows show is loaded.
+        $reader = app(ReviewWaiting::class);
+        $stages = app(ReviewQueue::class)->actionableStagesIn($this->workflows(), $user);
+        $relations = $this->rowRelations();
+        ['entries' => $waiting, 'full' => $full] = $reader->read($user, self::CAP, $relations, self::ENTRY_COLUMNS, $stages);
         $mine = $waiting->filter(fn (Entry $entry): bool => $entry->assigned_to === $user->id)->values();
+        $mineMore = false;
+        if ($full) {
+            // the queue was cut at CAP: what is handed to this reviewer is read on its own
+            ['entries' => $mine, 'full' => $mineMore] = $reader->read($user, self::CAP, $relations, self::ENTRY_COLUMNS, $stages, $user->id);
+        }
         $sched = $this->scheduled();
-        $stages = $this->stageLabels();
+        $labels = $this->stageLabels();
         $oldest = $waiting->last();
 
         return [
-            'queue' => $this->rows($waiting->take(self::REVIEW_ROWS), $user, $stages),
-            'queue_n' => $waiting->count(),
+            'queue' => $this->rows($waiting->take(self::REVIEW_ROWS), $user, $labels),
+            'queue_n' => $full ? self::CAP + 1 : $waiting->count(),
             'queue_more' => $full,
-            'mine' => $this->rows($mine->take(self::REVIEW_ROWS), $user, $stages),
-            'mine_n' => $mine->count(),
-            'sched' => $this->rows($sched->take(self::SCHEDULED_ROWS), $user, $stages),
+            'mine' => $this->rows($mine->take(self::REVIEW_ROWS), $user, $labels),
+            'mine_n' => $mineMore ? self::CAP + 1 : $mine->count(),
+            'sched' => $this->rows($sched->take(self::SCHEDULED_ROWS), $user, $labels),
             'sched_n' => $sched->count(),
             'oldest' => $oldest instanceof Entry ? $this->title($oldest) : null,
         ];
@@ -184,26 +216,46 @@ final class DashboardReader
      * "Bài của tôi": how many of the member's posts sit in each status (each up to CAP + 1), and
      * those a reviewer sent back with a reason.
      *
+     * Each tile opens the posts list of the section postsSection() names, filtered to the member
+     * and the status, and that list holds the posts whose primary category IS the section's
+     * category (EntryListQuery::scoped(); a section built on no category lists every post). So
+     * the tiles count exactly that set: a post filed in another section, or under a sub-category,
+     * is in neither the number nor the list. The draft tile leaves out the returned posts it
+     * counted (the board lists those on their own tile); only returned posts of that same set,
+     * among those read, are taken off.
+     *
      * @return array{tiles: array<string, int>, returned: list<array<string, mixed>>, any: bool}
      */
     public function mine(User $user, bool $workflowOn): array
     {
         $statuses = $workflowOn ? ['draft', 'pending', 'scheduled', 'published'] : ['draft', 'scheduled', 'published'];
+        $listed = $this->postsSectionRow()?->taxonomy_id;
+        $listed = $listed === null ? null : Cast::int($listed);
         $parts = [];
         foreach ($statuses as $status) {
-            $parts[$status] = $this->ownPosts($user)->where('status', $status);
+            $parts[$status] = $this->inList($this->ownPosts($user)->where('status', $status), $listed);
         }
         $parts['any'] = $this->ownPosts($user);
         $tiles = $this->bounded($parts);
-        $returned = $this->returned($user);
+        ['rows' => $returned, 'listed' => $returnedListed] = $this->returned($user, $listed);
 
         $any = $tiles['any'] > 0;
         unset($tiles['any']);
         if ($tiles['draft'] <= self::CAP) {
-            $tiles['draft'] = max(0, $tiles['draft'] - count($returned));
+            $tiles['draft'] = max(0, $tiles['draft'] - $returnedListed);
         }
 
         return ['tiles' => $tiles, 'returned' => $returned, 'any' => $any];
+    }
+
+    /**
+     * The section "Mở danh sách bài" and the tiles open: the first that holds posts.
+     */
+    public function postsSection(): ?string
+    {
+        $row = $this->postsSectionRow();
+
+        return $row instanceof ContentSection ? (string) $row->key : null;
     }
 
     /**
@@ -220,7 +272,9 @@ final class DashboardReader
                 $query->where('status', 'published');
             }
 
-            return $this->withRow($query)->orderByRaw('updated_at desc nulls last')->orderByDesc('id')->limit(self::ROWS)->get(self::ENTRY_COLUMNS);
+            // a page is filed in no category, but the row's edit check asks: an empty load, not a query per row
+            return $query->with($this->rowRelations())
+                ->orderByRaw('updated_at desc nulls last')->orderByDesc('id')->limit(self::ROWS)->get(self::ENTRY_COLUMNS);
         };
 
         /** @var EloquentCollection<int, Entry> $rows */
@@ -234,7 +288,18 @@ final class DashboardReader
     /** Is an approval flow switched on for any content type of this website? */
     public function workflowOn(): bool
     {
-        return Workflow::query()->where('is_active', true)->exists();
+        return $this->workflows()->isNotEmpty();
+    }
+
+    /**
+     * The active approval flows (ReviewQueue's own read, kept for the review card and the stage
+     * names: one read for the three).
+     *
+     * @return EloquentCollection<int, Workflow>
+     */
+    private function workflows(): EloquentCollection
+    {
+        return $this->workflows ??= app(ReviewQueue::class)->activeWorkflows();
     }
 
     /**
@@ -268,25 +333,28 @@ final class DashboardReader
      */
     private function scheduled(): EloquentCollection
     {
-        return $this->withRow(Entry::query()->whereIn('type', ['page', 'post'])->where('status', 'scheduled'))
+        return Entry::query()->whereIn('type', ['page', 'post'])->where('status', 'scheduled')->with($this->rowRelations())
             ->orderByRaw('published_at asc nulls last')->orderBy('id')
             ->limit(self::CAP + 1)
             ->get(self::ENTRY_COLUMNS);
     }
 
     /**
-     * The member's drafts a reviewer sent back: the newest drafts, each with its last move — a
-     * return when it brought the post back to the stage it is on, with a reason, by someone else.
+     * The member's drafts a reviewer sent back: the newest drafts (DRAFTS_READ), each with its
+     * last move — a return when it brought the post back to the stage it is on, with a reason, by
+     * someone else. A pending change to a published post that was turned down is not one: the
+     * post stays published, and the board lists drafts only. `listed` counts the returned posts
+     * whose primary category is $listed (the set the draft tile counts; null: every post).
      *
-     * @return list<array<string, mixed>>
+     * @return array{rows: list<array<string, mixed>>, listed: int}
      */
-    private function returned(User $user): array
+    private function returned(User $user, ?int $listed): array
     {
-        $drafts = $this->withRow($this->ownPosts($user)->where('status', 'draft'))
+        $drafts = $this->ownPosts($user)->where('status', 'draft')->with($this->rowRelations())
             ->orderByRaw('updated_at desc nulls last')->orderByDesc('id')
             ->limit(self::DRAFTS_READ)->get(self::ENTRY_COLUMNS);
         if ($drafts->isEmpty()) {
-            return [];
+            return ['rows' => [], 'listed' => 0];
         }
 
         $last = app(WorkflowTrail::class)->lastMoves(array_values($drafts->map(fn (Entry $entry): int => $entry->id)->all()));
@@ -300,14 +368,18 @@ final class DashboardReader
             }
         }
         if ($back === []) {
-            return [];
+            return ['rows' => [], 'listed' => 0];
         }
 
         $actors = User::query()->whereIn('id', array_values(array_unique(array_filter(array_map(fn (array $pair): ?int => $pair[1]['actor_id'], $back)))))
             ->pluck('name', 'id');
 
         $out = [];
+        $inList = 0;
         foreach ($back as [$entry, $move]) {
+            if ($listed === null || $entry->primaryCategory()?->id === $listed) {
+                $inList++;
+            }
             $out[] = [
                 'ulid' => $entry->ulid,
                 'title' => $this->title($entry),
@@ -318,7 +390,7 @@ final class DashboardReader
             ];
         }
 
-        return $out;
+        return ['rows' => $out, 'listed' => $inList];
     }
 
     /**
@@ -332,32 +404,57 @@ final class DashboardReader
     }
 
     /**
-     * What a row shows: its title in the default language, its author and its primary category
-     * (its section, and whether a member limited to some categories may edit it).
+     * Posts of the member that the posts list of the linked section shows: primary category
+     * $taxonomyId (the list's own test, EntryListQuery::scoped()), or every post when null.
      *
      * @param  Builder<Entry>  $query
      * @return Builder<Entry>
      */
-    private function withRow(Builder $query): Builder
+    private function inList(Builder $query, ?int $taxonomyId): Builder
     {
-        $locale = app(SiteLocale::class)->default();
+        if ($taxonomyId === null) {
+            return $query;
+        }
+        $site = app(CurrentSite::class)->id();
 
-        return $query->with([
-            'translations' => fn ($q) => $q->where('locale', $locale)->select(['id', 'entry_id', 'site_id', 'locale', 'title']),
-            'author:id,name',
-            'taxonomies',
-        ]);
+        return $query->whereExists(fn (QueryBuilder $primary) => $primary->selectRaw('1')->from('entry_taxonomies')
+            ->where('entry_taxonomies.site_id', $site)
+            ->whereColumn('entry_taxonomies.entry_id', 'entries.id')
+            ->where('entry_taxonomies.taxonomy_id', $taxonomyId)
+            ->where('entry_taxonomies.position', 0));
     }
 
     /**
-     * @param  iterable<Entry>  $entries
+     * What a row shows, and no more: its title in the default language, its author's name and its
+     * primary category (its section, and whether a member limited to some categories may edit it).
+     *
+     * @return array<int|string, string|Closure>
+     */
+    private function rowRelations(): array
+    {
+        $locale = app(SiteLocale::class)->default();
+
+        return [
+            'translations' => fn (Relation $q) => $q->where('locale', $locale)->select(['id', 'entry_id', 'site_id', 'locale', 'title']),
+            'author:id,name',
+            'taxonomies' => static function (Relation $primary): void {
+                if ($primary instanceof BelongsToMany) {
+                    $primary->wherePivot('position', 0)->select(['taxonomies.id', 'taxonomies.site_id', 'taxonomies.parent_id', 'taxonomies.vocabulary', 'taxonomies.path']);
+                }
+            },
+        ];
+    }
+
+    /**
+     * @param  EloquentCollection<int, Entry>  $entries
      * @param  array<string, array<string, string>>  $stages  type => state key => label
      * @return list<array<string, mixed>>
      */
-    private function rows(iterable $entries, User $user, array $stages): array
+    private function rows(EloquentCollection $entries, User $user, array $stages): array
     {
         $sections = $this->sectionLabels();
         $resolver = app(SectionResolver::class);
+        $resolver->prime($entries);
         $rows = [];
         foreach ($entries as $entry) {
             $section = $entry->type === 'page' ? 'pages' : ($resolver->forEntry($entry)['key'] ?? null);
@@ -397,9 +494,25 @@ final class DashboardReader
      */
     private function sectionLabels(): array
     {
-        return $this->sectionNames ??= ContentSection::query()->orderBy('sort_order')->orderBy('id')->limit(200)->get(['id', 'key', 'label'])
+        return $this->sectionNames ??= $this->sections()
             ->mapWithKeys(fn (ContentSection $section): array => [(string) $section->key => __('section.'.$section->key) === 'section.'.$section->key ? (string) $section->label : (string) __('section.'.$section->key)])
             ->all();
+    }
+
+    /**
+     * The site's sections in menu order (a site has a handful; 200 is a ceiling, not a page).
+     *
+     * @return EloquentCollection<int, ContentSection>
+     */
+    private function sections(): EloquentCollection
+    {
+        return $this->sectionRows ??= ContentSection::query()->orderBy('sort_order')->orderBy('id')->limit(200)
+            ->get(['id', 'key', 'label', 'entry_type', 'taxonomy_id']);
+    }
+
+    private function postsSectionRow(): ?ContentSection
+    {
+        return $this->sections()->first(fn (ContentSection $section): bool => $section->entry_type === 'post');
     }
 
     /**
@@ -410,7 +523,7 @@ final class DashboardReader
     private function stageLabels(): array
     {
         $out = [];
-        foreach (Workflow::query()->where('is_active', true)->with('states')->get() as $workflow) {
+        foreach ($this->workflows() as $workflow) {
             foreach ($workflow->states as $state) {
                 $out[(string) $workflow->applies_to_type][$state->key] = (string) __($state->label);
             }

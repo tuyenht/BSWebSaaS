@@ -107,6 +107,26 @@ final class ReviewInbox extends Component
         $this->authorize('review', Entry::class);
     }
 
+    /**
+     * A link may name one post (`?bai=<ulid>`, from "Đọc và duyệt" on Tổng quan): it opens in the
+     * reader, and the list grows far enough to show its row. Only a post in this person's own
+     * queue opens — the same check as open() — so an unknown ulid, another website's, or one
+     * they may not act on just shows the inbox.
+     */
+    public function mount(): void
+    {
+        $ulid = request()->query('bai');
+        if (! is_string($ulid) || $ulid === '') {
+            return;
+        }
+
+        $this->open($ulid);
+        if ($this->current !== null) {
+            $at = $this->visible()->search(fn (Entry $entry): bool => $entry->ulid === $this->current);
+            $this->shown = max(self::PAGE, (intdiv(is_int($at) ? $at : 0, self::PAGE) + 1) * self::PAGE);
+        }
+    }
+
     public function setTab(string $tab): void
     {
         $this->tab = in_array($tab, ['queue', 'mine'], true) ? $tab : 'queue';

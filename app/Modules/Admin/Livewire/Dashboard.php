@@ -10,7 +10,6 @@ use App\Modules\Identity\Support\UserPreferences;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Entitlement\Entitlement;
-use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\Site;
 use Closure;
 use Illuminate\Database\QueryException;
@@ -33,8 +32,8 @@ use Livewire\Component;
 #[Layout('admin::layouts.app')]
 final class Dashboard extends Component
 {
-    /** The cards that read the database, each retried on its own. */
-    private const array CARDS = ['todo', 'start', 'review', 'mine', 'recent'];
+    /** The cards that read the database, each retried on its own, with the id of its heading. */
+    private const array CARDS = ['todo' => 'tq-h-todo', 'start' => 'tq-h-start', 'review' => 'tq-h-rev', 'mine' => 'tq-h-wr', 'recent' => 'tq-h-rec'];
 
     public string $toastMsg = '';
 
@@ -42,10 +41,21 @@ final class Dashboard extends Component
 
     public bool $toastUndo = false;
 
-    /** "Thử lại" on a card: the next render reads it again (every card is read on each render). */
+    /** 'success', or 'error' for a card that still does not read after "Thử lại" (it stays until closed). */
+    public string $toastTone = 'success';
+
+    /** The card "Thử lại" was pressed on, for this request only (render() says how it went). */
+    private ?string $retried = null;
+
+    /**
+     * "Thử lại" on a card: the next render reads it again (every card is read on each render).
+     * When it reads now, the shared toast says so and the focus moves to the card's heading
+     * (the button it was on is gone); when it fails again, the card's alert is read out anew.
+     */
     public function retry(string $card): void
     {
-        abort_unless(in_array($card, self::CARDS, true), 404);
+        abort_unless(array_key_exists($card, self::CARDS), 404);
+        $this->retried = $card;
     }
 
     /** "Ẩn danh sách này": the member puts the first-steps list away on this website. */
@@ -67,6 +77,7 @@ final class Dashboard extends Component
         UserPreferences::reload($user);
         $this->toastMsg = '';
         $this->toastUndo = false;
+        $this->toastTone = 'success';
     }
 
     public function closeToast(int $seq): void
@@ -110,6 +121,8 @@ final class Dashboard extends Component
         $mine = $isWriter ? $this->read(fn (): array => $reader->mine($user, $workflowOn)) : null;
         $recent = $user->can('entries.view') ? $this->read(fn (): array => $reader->recent($user, $editor)) : null;
 
+        $this->afterRetry(['todo' => $todo, 'start' => $start, 'review' => $review, 'mine' => $mine, 'recent' => $recent], $editor);
+
         $view = view('admin::livewire.dashboard', [
             'siteName' => $site instanceof Site ? $site->name : '',
             'todo' => $todo,
@@ -124,7 +137,7 @@ final class Dashboard extends Component
             'canCreate' => $user->can('entries.create'),
             'quick' => $this->quickActions($user, $modules),
             'help' => SupportChannels::all(),
-            'postsSection' => $this->postsSection(),
+            'postsSection' => $reader->postsSection(),
             'me' => $user,
             'cap' => DashboardReader::CAP,
         ]);
@@ -182,12 +195,36 @@ final class Dashboard extends Component
         return $quick;
     }
 
-    /** The first section that holds posts — where "Mở danh sách bài" lands. */
-    private function postsSection(): ?string
+    /**
+     * After "Thử lại": a card that reads now is announced through the shared toast (a polite live
+     * region) and its heading takes the focus — or the page title, when the card has nothing left
+     * to show (a "Việc cần làm" list now empty, a "Bắt đầu" list now done).
+     *
+     * @param  array<string, array{ok: bool, data: mixed}|null>  $cards
+     */
+    private function afterRetry(array $cards, bool $editor): void
     {
-        $key = ContentSection::query()->where('entry_type', 'post')->orderBy('sort_order')->orderBy('id')->value('key');
+        $card = $this->retried;
+        $this->retried = null;
+        if ($card === null || ! isset($cards[$card])) {
+            return;
+        }
 
-        return is_string($key) ? $key : null;
+        $label = match ($card) {
+            'todo' => __('dash.todo_title'),
+            'start' => __('dash.start_title'),
+            'review' => __('dash.rev_title'),
+            'mine' => __('dash.wr_title'),
+            default => __($editor ? 'dash.rec_title_edit' : 'dash.rec_title_view'),
+        };
+        if ($cards[$card]['ok'] !== true) {
+            // the focus stays on "Thử lại", which is still there
+            $this->say(__('dash.retry_failed', ['card' => $label]), tone: 'error');
+
+            return;
+        }
+        $this->say(__('dash.retry_done', ['card' => $label]));
+        $this->dispatch('dash-focus', id: self::CARDS[$card]);
     }
 
     private function startHidden(User $user, string $siteUlid): bool
@@ -216,10 +253,11 @@ final class Dashboard extends Component
         return Cast::string(Site::query()->whereKey(app(CurrentSite::class)->id())->value('ulid'));
     }
 
-    private function say(string $message, bool $undo = false): void
+    private function say(string $message, bool $undo = false, string $tone = 'success'): void
     {
         $this->toastMsg = $message;
         $this->toastUndo = $undo;
+        $this->toastTone = $tone;
         $this->toastSeq++;
     }
 

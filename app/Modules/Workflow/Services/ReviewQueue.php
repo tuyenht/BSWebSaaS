@@ -7,6 +7,7 @@ namespace App\Modules\Workflow\Services;
 use App\Modules\Identity\Models\User;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowState;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
 /**
  * Which content is waiting for THIS person to act (design_handoff_workflow screen 3).
@@ -33,11 +34,31 @@ final readonly class ReviewQueue
      */
     public function actionableStages(User $actor): array
     {
-        $stages = [];
-
         // Ordered so the caller's type filter and any listing built on this keep a stable
         // order between requests.
-        $active = Workflow::query()->where('is_active', true)->orderBy('applies_to_type')->with(['states', 'transitions'])->get();
+        return $this->actionableStagesIn($this->activeWorkflows(), $actor);
+    }
+
+    /**
+     * The site's active workflows with their stages and moves, in the order actionableStages()
+     * reads them — for a caller that also needs them for something else (one read, not two).
+     *
+     * @return EloquentCollection<int, Workflow>
+     */
+    public function activeWorkflows(): EloquentCollection
+    {
+        return Workflow::query()->where('is_active', true)->orderBy('applies_to_type')->with(['states', 'transitions'])->get();
+    }
+
+    /**
+     * actionableStages() over workflows the caller already read (activeWorkflows()).
+     *
+     * @param  iterable<Workflow>  $active  with `states` and `transitions` loaded
+     * @return array<string, list<string>> applies_to_type => stage keys
+     */
+    public function actionableStagesIn(iterable $active, User $actor): array
+    {
+        $stages = [];
 
         foreach ($active as $workflow) {
             $keys = $this->stagesFor($workflow, $actor);

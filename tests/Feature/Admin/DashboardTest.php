@@ -2,8 +2,12 @@
 
 use App\Modules\Admin\Livewire\Dashboard;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
+use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
+use App\Modules\Cms\Data\TaxonomyData;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\MemberCategoryScope;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Identity\Models\User;
@@ -13,6 +17,7 @@ use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Workflow\Actions\InstantiateWorkflow;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
@@ -269,9 +274,146 @@ it('retries a known card and refuses an unknown one', function (): void {
     $member = dashMember(['entries.view']);
 
     app(Tenancy::class)->enter(1, function () use ($member): void {
-        Livewire::actingAs($member)->test(Dashboard::class)->call('retry', 'recent')->assertOk();
+        Livewire::actingAs($member)->test(Dashboard::class)->call('retry', 'recent')->assertOk()
+            ->assertSee(__('dash.retry_done', ['card' => __('dash.rec_title_view')]))
+            ->assertDispatched('dash-focus', id: 'tq-h-rec');
         Livewire::actingAs($member)->test(Dashboard::class)->call('retry', 'nope')->assertNotFound();
     });
+});
+
+it('keeps the page up when one card cannot read, and says how its retry went', function (): void {
+    $member = dashMember(['entries.view', 'entries.review', 'entries.approve', 'forms.view'], 'Người duyệt');
+    $author = dashMember(['entries.view', 'entries.create', 'entries.edit.own', 'entries.submit'], 'Người viết');
+    app(Tenancy::class)->enter(1, function () use ($author): void {
+        dashSubmitted(dashCollection(), $author, 'Bài chờ duyệt', 'bai-cho-duyet');
+        dashLead('Nguyễn Văn An');
+    });
+
+    // The leads read fails (as a dropped connection would), inside its card's savepoint.
+    $broken = true;
+    DB::listen(function ($query) use (&$broken): void {
+        if ($broken && str_contains($query->sql, 'from "form_submissions"')) {
+            throw new QueryException('pgsql', $query->sql, [], new RuntimeException('connection lost'));
+        }
+    });
+
+    $this->actingAs($member)->get('http://a.test/admin')
+        ->assertOk()
+        ->assertSee(__('dash.card_error'))
+        ->assertDontSee('Nguyễn Văn An')
+        // the other cards read on the same request's transaction
+        ->assertSee('Bài chờ duyệt')
+        ->assertSee(__('dash.rec_title_view'));
+
+    app(Tenancy::class)->enter(1, function () use ($member, &$broken): void {
+        $page = Livewire::actingAs($member)->test(Dashboard::class)
+            ->assertSee(__('dash.card_error'))
+            ->call('retry', 'todo')
+            ->assertSee(__('dash.retry_failed', ['card' => __('dash.todo_title')]))
+            ->assertSet('toastTone', 'error')
+            ->assertNotDispatched('dash-focus');
+
+        $broken = false;
+        $page->call('retry', 'todo')
+            ->assertDontSee(__('dash.card_error'))
+            ->assertSee('Nguyễn Văn An')
+            ->assertSee(__('dash.retry_done', ['card' => __('dash.todo_title')]))
+            ->assertSet('toastTone', 'success')
+            ->assertDispatched('dash-focus', id: 'tq-h-todo');
+    });
+});
+
+it('fills the "Giao cho tôi" and "Đã hẹn giờ" tabs, and opens a waiting post straight in Hộp duyệt', function (): void {
+    $author = dashMember(['entries.view', 'entries.create', 'entries.edit.own', 'entries.submit'], 'Người viết');
+    $reviewer = dashMember(['entries.view', 'entries.review', 'entries.approve'], 'Người duyệt');
+
+    $handed = app(Tenancy::class)->enter(1, function () use ($author, $reviewer): Entry {
+        $category = dashCollection();
+        $handed = dashSubmitted($category, $author, 'Bài giao cho tôi', 'bai-giao-cho-toi');
+        Entry::query()->whereKey($handed->id)->update(['assigned_to' => $reviewer->id]);
+        dashSubmitted($category, $author, 'Bài chờ chung', 'bai-cho-chung');
+        $later = dashPost($category, $author, 'Bài hẹn giờ', 'bai-hen-gio');
+        Entry::query()->whereKey($later->id)->update(['status' => 'scheduled', 'published_at' => now()->addDays(3)]);
+
+        return $handed;
+    });
+
+    app(Tenancy::class)->enter(1, function () use ($reviewer, $handed): void {
+        $review = Livewire::actingAs($reviewer)->test(Dashboard::class)->viewData('review');
+        expect($review['ok'])->toBeTrue()
+            ->and(array_column($review['data']['queue'], 'title'))->toEqualCanonicalizing(['Bài giao cho tôi', 'Bài chờ chung'])
+            ->and($review['data']['queue_n'])->toBe(2)
+            ->and(array_column($review['data']['mine'], 'title'))->toBe(['Bài giao cho tôi'])
+            ->and($review['data']['mine_n'])->toBe(1)
+            ->and(array_column($review['data']['sched'], 'title'))->toBe(['Bài hẹn giờ'])
+            ->and($review['data']['sched_n'])->toBe(1);
+
+        Livewire::actingAs($reviewer)->test(Dashboard::class)
+            ->assertSeeHtml(e(route('admin.entries.review', ['bai' => $handed->ulid])));
+    });
+});
+
+it('leaves a reviewer limited to some categories only the posts filed inside them', function (): void {
+    $author = dashMember(['entries.view', 'entries.create', 'entries.edit.own', 'entries.submit'], 'Người viết');
+    $reviewer = dashMember(['entries.view', 'entries.review', 'entries.approve'], 'Người duyệt');
+
+    app(Tenancy::class)->enter(1, function () use ($author, $reviewer): void {
+        $root = Taxonomy::query()->findOrFail(dashCollection());
+        $mine = app(CreateTaxonomy::class)->handle('post_cat', $root, new TaxonomyData(names: ['vi' => 'Tin nội bộ']));
+        $theirs = app(CreateTaxonomy::class)->handle('post_cat', $root, new TaxonomyData(names: ['vi' => 'Tin thị trường']));
+        dashSubmitted($mine->id, $author, 'Bài trong phạm vi', 'bai-trong-pham-vi');
+        dashSubmitted($theirs->id, $author, 'Bài ngoài phạm vi', 'bai-ngoai-pham-vi');
+        MemberCategoryScope::query()->create(['user_id' => $reviewer->id, 'taxonomy_id' => $mine->id]);
+        app(CategoryScopes::class)->forget();
+    });
+
+    app(Tenancy::class)->enter(1, function () use ($reviewer): void {
+        $review = Livewire::actingAs($reviewer)->test(Dashboard::class)->viewData('review');
+        expect(array_column($review['data']['queue'], 'title'))->toBe(['Bài trong phạm vi'])
+            ->and($review['data']['queue_n'])->toBe(1)
+            ->and($review['data']['queue'][0]['section'])->toBe(__('section.posts'));
+    });
+});
+
+it('shows a member of two websites only this website\'s posts in "Bài của tôi" and "Nội dung gần đây"', function (): void {
+    $writer = dashMember(['entries.view', 'entries.create', 'entries.edit.own'], 'Người viết');
+    app(Tenancy::class)->enter(2, function () use ($writer): void {
+        grantRole($writer, 'writer-b', ['entries.view', 'entries.create', 'entries.edit.own']);
+        $category = dashCollection(approvalFlow: false);
+        dashPost($category, $writer, 'Bài site B', 'bai-site-b');
+        dashPost($category, $writer, 'Bài site B đã đăng', 'bai-site-b-da-dang', 'published');
+    });
+    app(Tenancy::class)->enter(1, function () use ($writer): void {
+        dashPost(dashCollection(approvalFlow: false), $writer, 'Bài site A', 'bai-site-a');
+    });
+
+    $html = $this->actingAs($writer->fresh())->get('http://a.test/admin')
+        ->assertOk()
+        ->assertSee('Bài site A')
+        ->assertDontSee('Bài site B')
+        ->getContent();
+
+    expect($html)->toContain(__('dash.wr_tile_aria', ['label' => __('entries.status_draft'), 'n' => 1]))
+        ->and($html)->toContain(__('dash.wr_tile_aria', ['label' => __('entries.status_published'), 'n' => 0]));
+});
+
+it('counts in "Bài của tôi" only the posts the linked list shows', function (): void {
+    $writer = dashMember(['entries.view', 'entries.create', 'entries.edit.own'], 'Người viết');
+    app(Tenancy::class)->enter(1, function () use ($writer): void {
+        $listed = dashCollection(approvalFlow: false);
+        dashPost($listed, $writer, 'Bài trong danh sách', 'bai-trong-danh-sach');
+        // a second post section, after the first: its posts are in another list
+        $other = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 1]);
+        $other->translations()->create(['locale' => 'vi', 'name' => 'Dự án', 'slug' => 'du-an']);
+        ContentSection::query()->create(['key' => 'projects', 'label' => 'Dự án', 'entry_type' => 'post', 'taxonomy_id' => $other->id,
+            'permission_prefix' => 'entries', 'sort_order' => 2]);
+        dashPost($other->id, $writer, 'Bài dự án', 'bai-du-an');
+    });
+
+    $html = $this->actingAs($writer)->get('http://a.test/admin')->assertOk()->getContent();
+
+    expect($html)->toContain(__('dash.wr_tile_aria', ['label' => __('entries.status_draft'), 'n' => 1]))
+        ->and($html)->toContain(e(route('admin.entries.index', ['section' => 'posts', 'tab' => 'draft', 'author' => [$writer->ulid]])));
 });
 
 it('offers only the shortcuts the member can use', function (): void {
