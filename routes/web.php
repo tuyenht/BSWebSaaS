@@ -30,6 +30,8 @@ use App\Modules\Admin\Livewire\LoginSecuritySettings;
 use App\Modules\Admin\Livewire\Media\Library as MediaLibrary;
 use App\Modules\Admin\Livewire\Menus\Index as MenusIndex;
 use App\Modules\Admin\Livewire\Platform\Audit\Index as AuditIndex;
+use App\Modules\Admin\Livewire\Platform\Plans\Edit as PlanEdit;
+use App\Modules\Admin\Livewire\Platform\Plans\Index as PlansIndex;
 use App\Modules\Admin\Livewire\Platform\Sites\Detail as SiteDetail;
 use App\Modules\Admin\Livewire\Platform\Sites\Index as SiteIndex;
 use App\Modules\Admin\Livewire\Platform\Tenants\Detail;
@@ -135,6 +137,10 @@ Route::domain((string) config('tenancy.platform_host'))
         // (checked by the component on every request, including Livewire updates).
         Route::get('/sites/{ulid}/domains', DomainSettings::class)->name('platform.sites.domains');
         Route::get('/audit', AuditIndex::class)->name('platform.audit.index');
+        // Plans and features (+ the read-only website types at #loai-website); writes need platform.billing.manage
+        Route::get('/plans', PlansIndex::class)->name('platform.plans.index');
+        Route::get('/plans/new', PlanEdit::class)->name('platform.plans.create');
+        Route::get('/plans/{key}', PlanEdit::class)->where('key', '[A-Za-z0-9_-]{1,64}')->name('platform.plans.edit');
 
         Route::get('/settings/email', EmailSettings::class)->defaults('scope', 'platform')->name('platform.settings.email');
         Route::get('/settings/security', LoginSecuritySettings::class)->name('platform.settings.security');
