@@ -10,6 +10,8 @@ use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Rbac\Support\RoleHierarchyGuard;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\DB;
+use Spatie\Permission\PermissionRegistrar;
 
 /*
  * Tầng-2 spine — the role.level grant≤self guard. Escalation invariant (design.md §15.1/§15.3, §2):
@@ -138,4 +140,18 @@ it('AssignRole grants the role through the guard and writes an audit trail', fun
 
     expect($assigned)->toBeTrue()
         ->and(AuditLog::query()->where('action', 'rbac.role.assigned')->exists())->toBeTrue();
+});
+
+it('refuses, without an error, a role carrying a permission newer than the cached catalog', function (): void {
+    $owner = userWithRole(1, 'owner');
+    $editor = templateRole(1, 'editor');
+    app(PermissionRegistrar::class)->getPermissions(); // this worker's catalog, loaded once
+
+    // rbac:sync on another process adds a permission and gives it to the editor; this worker has not reloaded
+    $id = DB::connection('pgsql_admin')->table('permissions')
+        ->insertGetId(['name' => 'later.permission', 'guard_name' => PermissionRegistry::GUARD, 'created_at' => now(), 'updated_at' => now()]);
+    DB::connection('pgsql_admin')->table('role_has_permissions')->insert(['permission_id' => $id, 'role_id' => $editor->id]);
+
+    app(Tenancy::class)->enter(1, fn () => expect(fn () => app(RoleHierarchyGuard::class)->assertCanGrant($owner->fresh(), $editor->fresh()))
+        ->toThrow(AuthorizationException::class));
 });

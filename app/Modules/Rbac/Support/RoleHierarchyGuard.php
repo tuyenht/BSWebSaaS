@@ -8,6 +8,7 @@ use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\CurrentSite;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Collection;
+use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 /**
  * Hierarchy guard for role grants (design.md §15.1/§15.3, §2). Enforces the no-escalation
@@ -98,7 +99,12 @@ final readonly class RoleHierarchyGuard
         foreach ($role->permissions as $permission) {
             // By name: spatie then reads the permission and the roles holding it from its cached
             // catalog. Passing the loaded model would lazy-load its roles, across every site, once per permission.
-            if (! $actor->hasPermissionTo($permission->name)) {
+            try {
+                if (! $actor->hasPermissionTo($permission->name)) {
+                    return false;
+                }
+            } catch (PermissionDoesNotExist) {
+                // a permission newer than this worker's catalog (between rbac:sync and the reload): refuse
                 return false;
             }
         }
