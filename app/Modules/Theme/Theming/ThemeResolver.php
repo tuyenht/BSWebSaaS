@@ -174,7 +174,10 @@ final readonly class ThemeResolver
             return $variables['body'];
         }
 
-        return ReadableColor::onAll($lighter, [...$backgrounds, $tint]) ?? $variables['body'];
+        // A form field paints its own fill (the surface with a 3% ink tint) whatever page color the site set.
+        $field = ReadableColor::mix($variables['surface'], $variables['ink'], self::PAGE_SURFACE_SHARE);
+
+        return ReadableColor::onAll($lighter, array_values(array_filter([...$backgrounds, $tint, $field]))) ?? $variables['body'];
     }
 
     /**

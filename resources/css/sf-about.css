@@ -256,7 +256,7 @@
 
 .about__link-icon {
     display: inline-flex;
-    color: var(--color-text-secondary);
+    color: var(--color-text);
     transition: color 0.2s;
 }
 

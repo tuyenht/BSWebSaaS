@@ -478,3 +478,25 @@ it('paints no secondary text by lightening the body color in the stylesheet', fu
         }
     }
 });
+
+it('reads secondary text against a tint the site set itself', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteSetting::query()->updateOrCreate(
+            ['group_name' => 'theme', 'key' => 'tokens'],
+            ['value' => ['ink' => '#0f172a', 'body' => '#4b5563', 'color-surface-tint' => '#e2e8f0', 'color-text-secondary' => '#eeeeee']],
+        );
+        $variables = app(ThemeResolver::class)->cssVariables();
+
+        // A stored value never wins over the derived one.
+        expect($variables['color-text-secondary'])->not->toBe('#eeeeee')
+            ->and(ReadableColor::ratio($variables['color-text-secondary'], '#e2e8f0'))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT);
+    });
+});
+
+it('falls back to the body color when it cannot read the body color it would lighten', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteSetting::query()->updateOrCreate(['group_name' => 'theme', 'key' => 'tokens'], ['value' => ['body' => 'slategray']]);
+
+        expect(app(ThemeResolver::class)->cssVariables()['color-text-secondary'])->toBe('slategray');
+    });
+});
