@@ -265,7 +265,7 @@ it('fills the bar with the call, Zalo and SMS and opens Messenger and Email from
 function flcBarCells(string $part): array
 {
     preg_match('~<nav class="sf-fc-bar sf-fc-bar--(?:light|dark)".*?<ul class="sf-fc-bar__list".*?</ul>~s', $part, $bar);
-    preg_match_all('~<li class="sf-fc-bar__item([^"]*)">.*?<span class="sf-fc-bar__label">([^<]*)</span>~s', $bar[0] ?? '', $m, PREG_SET_ORDER);
+    preg_match_all('~<li class="sf-fc-bar__item([^"]*)"[^>]*>.*?<span class="sf-fc-bar__label">([^<]*)</span>~s', $bar[0] ?? '', $m, PREG_SET_ORDER);
 
     return array_map(static function (array $cell): string {
         preg_match('~--([rm][45])~', $cell[1], $place);
@@ -579,13 +579,32 @@ it('raises the call into the middle of the bar for a setting saved before the op
         ->and(substr_count($part, ' data-up>'))->toBe(2)
         ->and(substr_count($part, 'sf-fc-bar__item--up'))->toBe(2)
         // The whole cell is the call link: the disc and its label sit inside the one tel: link.
-        ->and($part)->toMatch('~<li class="sf-fc-bar__item sf-fc-bar__item--up"><a class="sf-fc-bar__link" href="tel:[^"]+"[^>]*><span class="sf-fc-bar__dot"[^>]*>.*?</span><span class="sf-fc-bar__label">Gọi điện</span></a></li>~s');
+        ->and($part)->toMatch('~<li class="sf-fc-bar__item sf-fc-bar__item--up"[^>]*><a class="sf-fc-bar__link" href="tel:[^"]+"[^>]*><span class="sf-fc-bar__dot"[^>]*>.*?</span><span class="sf-fc-bar__label">Gọi điện</span></a></li>~s');
 })->with([
     'three cells' => [['phone', 'zalo', 'sms'], ['Zalo', 'Gọi điện', 'Nhắn tin']],
     'four cells' => [['phone', 'zalo', 'sms', 'whatsapp'], ['Zalo', 'Nhắn tin', 'Gọi điện', 'WhatsApp', 'Thêm']],
     'five cells' => [['phone', 'zalo', 'sms', 'whatsapp', 'telegram'], ['Zalo', 'Nhắn tin', 'Gọi điện', 'WhatsApp', 'Telegram', 'Thêm']],
     'the call saved last' => [['zalo', 'sms', 'whatsapp', 'phone'], ['Zalo', 'Nhắn tin', 'Gọi điện', 'WhatsApp', 'Thêm']],
 ]);
+
+it('prints each cell\'s narrow-width order on the bar and on its spacer alike, only when the call is raised', function (): void {
+    $siteId = flcSite();
+    flcShop($siteId);
+    flcSetting($siteId, flcRaw(['zalo', 'phone', 'sms', 'whatsapp'], ['buy' => ['enabled' => true, 'color' => '#0ab39c']]));
+
+    $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
+    preg_match_all('~<li class="sf-fc-bar__item[^"]*" style="(--fc-o4:\d+;--fc-o3:\d+)"~', $part, $all);
+    $half = intdiv(count($all[1]), 2);
+
+    // The bar and its spacer both list the same cells with the same orders, so their widths match.
+    expect($all[1])->not->toBe([])
+        ->and(array_slice($all[1], 0, $half))->toBe(array_slice($all[1], $half));
+
+    flcSetting($siteId, flcRaw(['zalo', 'phone', 'sms'], ['bar_raise_call' => false]));
+    $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
+
+    expect($part)->not->toContain('--fc-o4');
+});
 
 it('keeps a place for the call even when it is saved after the channels that fill the bar', function (): void {
     $siteId = flcSite();
