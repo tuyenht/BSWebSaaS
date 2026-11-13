@@ -271,6 +271,17 @@ it('keeps a website at 200 blocks, for a new block and for a copy', function ():
     expect(inBlockSite(fn () => app(CreateContentBlock::class)->handle($other, 'Chân trang')->key, 2))->toBe('chan-trang');
 });
 
+it('keeps every reference code within 64 characters when the block limit is raised', function (): void {
+    config(['cms.blocks.max_per_site' => 100000]); // the longest suffix becomes "-100002"
+    $name = str_repeat('a', 64);
+
+    $keys = inBlockSite(fn (): array => [newLibraryBlock($name)->key, newLibraryBlock($name)->key]);
+    $base = str_repeat('a', ContentBlock::KEY_MAX - strlen('-100002'));
+
+    expect($keys)->toBe([$base, $base.'-2'])
+        ->and(strlen($base.'-100002'))->toBe(ContentBlock::KEY_MAX);
+});
+
 it("cannot touch another website's block", function (): void {
     $theirs = inBlockSite(fn () => ContentBlock::query()->create(['key' => 'footer', 'name' => 'Của B']), 2);
 

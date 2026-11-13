@@ -12,8 +12,11 @@ use Illuminate\Support\Facades\DB;
 /**
  * The block library's list reads, within the current site (BelongsToSite + RLS):
  *  - page(): newest change first, in keyset pages on (site_id, updated_at DESC, id DESC), filtered
- *    by status and region. The cursor names the last row of a page (its time as stored, and its id)
- *    and stays on the server; nothing here leaves it.
+ *    by status and region. The cursor names the last row of a page by its time as stored and its
+ *    ulid, never its bigint id, so it may go to the browser; the next page looks the anchor's id up
+ *    by ulid (one indexed read on this website) and keeps the tie-break on id. An anchor deleted
+ *    between pages is treated as the highest id at its time: a block changed at that same instant
+ *    may show again, none is skipped.
  *  - counts(): how many blocks each status × region holds, for the status tabs and region chips, in
  *    one GROUP BY (a website keeps at most `cms.blocks.max_per_site` blocks).
  *  - locales(): the languages each listed block has content in, in one whereIn read.
@@ -24,18 +27,23 @@ final readonly class ContentBlockList
     public const int PAGE_SIZE = 50;
 
     /**
-     * @param  array{at: string, id: int}|null  $after  the cursor of the previous page
-     * @return array{rows: list<ContentBlock>, next: array{at: string, id: int}|null}
+     * @param  array{at: string, ulid: string}|null  $after  the cursor of the previous page
+     * @return array{rows: list<ContentBlock>, next: array{at: string, ulid: string}|null}
      */
     public function page(?string $status = null, ?string $region = null, ?array $after = null, int $limit = self::PAGE_SIZE): array
     {
         $limit = max(1, $limit);
+        $anchorId = null;
+        if ($after !== null) {
+            $found = ContentBlock::query()->where('ulid', $after['ulid'])->value('id');
+            $anchorId = $found === null ? PHP_INT_MAX : Cast::int($found);
+        }
         $rows = ContentBlock::query()
             ->select(['id', 'ulid', 'key', 'name', 'region', 'status', 'updated_at'])
             ->selectRaw('updated_at::text as list_at')
             ->when($status !== null, fn ($query) => $query->where('status', $status))
             ->when($region !== null, fn ($query) => $query->where('region', $region))
-            ->when($after !== null, fn ($query) => $query->whereRaw('(updated_at, id) < (?::timestamptz, ?)', [$after['at'] ?? '', $after['id'] ?? 0]))
+            ->when($after !== null, fn ($query) => $query->whereRaw('(updated_at, id) < (?::timestamptz, ?)', [$after['at'] ?? '', $anchorId]))
             ->orderByDesc('updated_at')
             ->orderByDesc('id')
             ->limit($limit + 1)
@@ -46,7 +54,7 @@ final readonly class ContentBlockList
             $rows = $rows->take($limit);
             $last = $rows->last();
             if ($last instanceof ContentBlock) {
-                $next = ['at' => Cast::string($last->getAttribute('list_at')), 'id' => $last->id];
+                $next = ['at' => Cast::string($last->getAttribute('list_at')), 'ulid' => $last->ulid];
             }
         }
 

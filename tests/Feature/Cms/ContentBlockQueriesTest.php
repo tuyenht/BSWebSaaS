@@ -47,20 +47,47 @@ it('lists blocks newest change first in keyset pages, ties broken by id', functi
     // two blocks changed at the same instant: the later id comes first
     DB::connection('pgsql_admin')->table('content_blocks')->whereIn('key', ['b6', 'b7'])->update(['updated_at' => '2026-11-02 08:00:00.123456+00']);
 
-    $keys = app(Tenancy::class)->enter(1, function (): array {
+    [$keys, $cursors] = app(Tenancy::class)->enter(1, function (): array {
         $list = app(ContentBlockList::class);
         $pages = [];
+        $cursors = [];
         $after = null;
         do {
             $page = $list->page(after: $after, limit: 3);
             $pages[] = array_map(fn (ContentBlock $block): string => $block->key, $page['rows']);
             $after = $page['next'];
+            $cursors[] = $after;
         } while ($after !== null);
 
-        return $pages;
+        return [$pages, $cursors];
     });
 
-    expect($keys)->toBe([['b7', 'b6', 'b5'], ['b4', 'b3', 'b2'], ['b1']]);
+    // the cursor names the last row by its time and ulid; no bigint id leaves the server
+    expect($keys)->toBe([['b7', 'b6', 'b5'], ['b4', 'b3', 'b2'], ['b1']])
+        ->and(array_keys($cursors[0] ?? []))->toBe(['at', 'ulid'])
+        ->and($cursors[0]['ulid'] ?? null)->toBe(sprintf('01JLISTED%017d', 5))
+        ->and($cursors[1]['ulid'] ?? null)->toBe(sprintf('01JLISTED%017d', 2))
+        ->and($cursors[2])->toBeNull();
+});
+
+it('goes on after an anchor deleted between pages, repeating a same-instant block rather than skipping one', function (): void {
+    listedBlocks(5);
+    DB::connection('pgsql_admin')->table('content_blocks')->whereIn('key', ['b3', 'b4'])->update(['updated_at' => '2026-11-02 08:00:00+00']);
+
+    [$first, $second] = app(Tenancy::class)->enter(1, function (): array {
+        $list = app(ContentBlockList::class);
+        $first = $list->page(limit: 2); // b4, b3 (same instant, higher id first)
+        ContentBlock::query()->where('key', 'b3')->delete();
+        $second = $list->page(after: $first['next'], limit: 3);
+
+        return [
+            array_map(fn (ContentBlock $block): string => $block->key, $first['rows']),
+            array_map(fn (ContentBlock $block): string => $block->key, $second['rows']),
+        ];
+    });
+
+    expect($first)->toBe(['b4', 'b3'])
+        ->and($second)->toBe(['b4', 'b5', 'b2']);
 });
 
 it('filters the list by status and region', function (): void {

@@ -18,9 +18,6 @@ use Illuminate\Support\Facades\DB;
  */
 final class ContentBlockRules
 {
-    /** A suffix ("-200") always fits after a base this long. */
-    private const int KEY_BASE_MAX = ContentBlock::KEY_MAX - 4;
-
     /** The reference code for a name with no usable letters (only symbols). */
     private const string KEY_FALLBACK = 'khoi';
 
@@ -77,7 +74,8 @@ final class ContentBlockRules
      */
     public static function freeKey(string $text): string
     {
-        $base = Slugger::make($text, max: self::KEY_BASE_MAX);
+        $limit = self::max() + 2;
+        $base = Slugger::make($text, max: self::keyBaseMax($limit));
         if ($base === '') {
             $base = self::KEY_FALLBACK;
         }
@@ -86,7 +84,6 @@ final class ContentBlockRules
             ContentBlock::query()->where('key', 'like', $base.'%')->pluck('key')->all(),
         );
 
-        $limit = self::max() + 2;
         $key = $base;
         for ($suffix = 2; in_array($key, $taken, true); $suffix++) {
             if ($suffix > $limit) {
@@ -96,6 +93,12 @@ final class ContentBlockRules
         }
 
         return $key;
+    }
+
+    /** How long a base may be so that the longest suffix freeKey() may add ("-{$limit}") still fits. */
+    private static function keyBaseMax(int $limit): int
+    {
+        return max(1, ContentBlock::KEY_MAX - strlen('-'.$limit));
     }
 
     /**
