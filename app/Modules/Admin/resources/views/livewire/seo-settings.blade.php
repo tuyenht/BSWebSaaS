@@ -79,10 +79,7 @@
         @endif
 
         @if ($errorCount > 0)
-            <div class="flex items-start gap-2 rounded-md bg-danger-soft px-3 py-2.5 text-small text-danger-text" role="alert">
-                <x-bs-admin::icon name="ri-error-warning" class="{{ $glyph }} mt-px" />
-                <span class="min-w-0">{{ __('admin.gs.banner', ['count' => $errorCount]) }}</span>
-            </div>
+            <x-bs-admin::alert color="danger" icon="ri-error-warning">{{ __('admin.gs.banner', ['count' => $errorCount]) }}</x-bs-admin::alert>
         @endif
 
         <div class="flex flex-col gap-3">

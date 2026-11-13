@@ -177,6 +177,10 @@
     "resources/js/admin-menus.js": {
       "js": 23515,
       "css": 0
+    },
+    "resources/js/admin-bell.js": {
+      "js": 758,
+      "css": 1264
     }
   }
 }

@@ -43,7 +43,7 @@ it('shows the user name, primary-role label, and a real-flag language switcher',
         ->assertSee('images/admin/flags/', false);   // a vendored flag image, not an emoji
 });
 
-it('wires the user menu to real routes and keeps notifications an honest placeholder', function (): void {
+it('wires the user menu to real routes and puts the notification bell in the website\'s top bar', function (): void {
     $user = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
 
@@ -51,8 +51,8 @@ it('wires the user menu to real routes and keeps notifications an honest placeho
         ->assertOk()
         ->assertSee(route('admin.account', absolute: false), false) // "My Account" → the own-account page
         ->assertSee(route('admin.logout', absolute: false), false)            // sign-out posts to the real logout route
-        ->assertSee('notifOpen', false)                                       // notifications button present
-        ->assertDontSee('topbar-badge', false)                                // NO Velzon fake unread-count badge
+        ->assertSee('data-bs-lazy="bsBell"', false)                           // the bell (NotificationBellTest)
+        ->assertDontSee('ntf-badge', false)                                   // nothing unread: no badge
         ->assertSee("adminTheme.set('scheme'", false)                         // light/dark toggle shares the Customizer store
         ->assertSee('requestFullscreen', false)                               // fullscreen toggle present
         ->assertSee('$store.adminTheme.open = true', false)                   // "Giao diện" opens the Customizer
@@ -79,6 +79,12 @@ it('gives the platform console the shared tools but omits tenant account links',
         ->assertOk()
         ->assertSee('langOpen', false)                                            // shared topbar tools present
         ->assertSee("adminTheme.set('scheme'", false)
+        ->assertSee('data-bs-lazy="bsBell"', false)                               // the same bell panel as a website's…
+        ->assertDontSee('ntf-note', false)                                        // …without the canvas's "Chờ backend" annotation,
+        ->assertDontSee('Chờ backend', false)
+        ->assertDontSee('wire:name="admin.notification-bell"', false)            // no notification store on the console yet:
+        ->assertDontSee('ntf-badge', false)                                       // no component, no badge, no rows
+        ->assertDontSee('notifOpen', false)                                       // the old placeholder is gone
         ->assertSee('>Quản trị nền tảng</span>', false)                           // operator's primary-role label
         ->assertDontSee('Super Admin', false)
         ->assertSee(route('platform.logout', absolute: false), false)            // platform sign-out
