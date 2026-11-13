@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Media\Console\PurgeTrashedMedia;
 use App\Modules\Media\Models\Media;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\Storage;
@@ -95,5 +96,25 @@ it('keeps trash for 30 days when no retention is configured', function (): void 
     app(Tenancy::class)->enter(1, function () use ($keptId, $goneId): void {
         expect(Media::withTrashed()->whereKey($keptId)->exists())->toBeTrue()
             ->and(Media::withTrashed()->whereKey($goneId)->exists())->toBeFalse();
+    });
+});
+
+it('purges a stale Trash larger than one page, page by page', function (): void {
+    config(['media.trash_retention_days' => 15]);
+    $total = PurgeTrashedMedia::CHUNK + 1;
+
+    app(Tenancy::class)->enter(1, function () use ($total): void {
+        for ($i = 0; $i < $total; $i++) {
+            seedTrashMedia("page-{$i}")->delete();
+        }
+        Media::onlyTrashed()->update(['deleted_at' => now()->subDays(20)]);
+    });
+
+    $this->artisan('media:purge-trash')
+        ->expectsOutputToContain("Purged {$total} trashed media")
+        ->assertSuccessful();
+
+    app(Tenancy::class)->enter(1, function (): void {
+        expect(Media::withTrashed()->count())->toBe(0);
     });
 });
