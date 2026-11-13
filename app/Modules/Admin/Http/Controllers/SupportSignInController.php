@@ -19,6 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Exceptions\RoleDoesNotExist;
+use Throwable;
 
 /**
  * The website side of support sign-in (design.md v2.34): redeem the console's link, and leave.
@@ -64,19 +65,30 @@ final readonly class SupportSignInController
         // One open session per staff member: the others they still have (any site, any browser) end
         // here, before this one starts, so each end row carries the code of the session it ends.
         $this->signIn->endOthers($staff, $link['session_ulid']);
-        Auth::login($member);
-        $request->session()->regenerate();
+        // The entered row is what the console lists and ends, and what the next enter ends: no row,
+        // no session. Anything that fails from here signs the browser out again before the error
+        // travels on, so the request's transaction rolls back with nobody signed in.
+        try {
+            Auth::login($member);
+            $request->session()->regenerate();
 
-        $this->support->start($staff, $member, $this->current->id(), $link['reason'], now()->addMinutes($link['minutes']), $link['session_ulid']);
-        // The member as the site knows them now, written here in the site's context: the console's
-        // list reads them from this row and never from another site's role tables.
-        Audit::record('support.session.entered', ['meta' => [
-            'reason' => $link['reason'],
-            'minutes' => $link['minutes'],
-            'member_name' => SupportSession::labelOf($member),
-            'member_roles' => $this->rolesOf($member),
-        ]]);
-        $this->tellOwners($staff, $member, $link['reason']);
+            $this->support->start($staff, $member, $this->current->id(), $link['reason'], now()->addMinutes($link['minutes']), $link['session_ulid']);
+            // The member as the site knows them now, written here in the site's context: the console's
+            // list reads them from this row and never from another site's role tables.
+            Audit::recordOrFail('support.session.entered', ['meta' => [
+                'reason' => $link['reason'],
+                'minutes' => $link['minutes'],
+                'member_name' => SupportSession::labelOf($member),
+                'member_roles' => $this->rolesOf($member),
+            ]]);
+            $this->tellOwners($staff, $member, $link['reason']);
+        } catch (Throwable $e) {
+            // Not logout(): it may write the member's remember token, and the transaction may be aborted.
+            Auth::guard()->logoutCurrentDevice();
+            $request->session()->invalidate();
+
+            throw $e;
+        }
 
         return redirect()->route('admin.dashboard', [], 303);
     }

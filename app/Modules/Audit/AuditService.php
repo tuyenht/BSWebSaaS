@@ -103,7 +103,9 @@ final class AuditService
                 $action === self::SUPPORT_SESSION_ENDED && $support === null => $context['support_session_ulid'] ?? null,
                 default => $support['session_ulid'] ?? null,
             },
-            'site_id' => $context['site_id'] ?? ($current->hasId() ? $current->id() : null),
+            // A caller that names the site (even none) is taken at its word; only an unnamed one
+            // falls back to the site of the request.
+            'site_id' => array_key_exists('site_id', $context) ? $context['site_id'] : ($current->hasId() ? $current->id() : null),
             'action' => $action,
             'auditable_type' => $context['auditable_type'] ?? null,
             'auditable_id' => $context['auditable_id'] ?? null,

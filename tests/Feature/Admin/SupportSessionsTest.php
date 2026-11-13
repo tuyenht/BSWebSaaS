@@ -287,6 +287,19 @@ it('narrows by staff member and by period, the counts too', function (): void {
         ->and(ssCodes(sessions()->page($a, days: 3)))->toHaveCount(4);
 });
 
+it('reaches back with no period chosen only as far as the log keeps rows: 24 full months before the running one', function (): void {
+    $staff = ssStaff('support');
+    $code = ssSession($staff, ssMember(1, 'editor'));
+
+    $this->travelTo(now()->addMonthsNoOverflow(24));
+    expect(ssCodes(sessions()->page($staff)))->toBe([$code])
+        ->and(sessions()->counts($staff))->toBe(['all' => 1, 'open' => 0, 'ended' => 1]);
+
+    $this->travelTo(now()->addMonthsNoOverflow(1));
+    expect(sessions()->page($staff)['rows'])->toBe([])
+        ->and(sessions()->counts($staff))->toBe(['all' => 0, 'open' => 0, 'ended' => 0]);
+});
+
 it('searches site, member, staff member and reason without diacritics or case', function (string $needle, string $expected): void {
     $staff = ssStaff('support', 'Lê Hoàng Phúc');
     $other = ssStaff('support', 'Phạm Thu');
@@ -514,6 +527,24 @@ it('ends the staff member\'s other open session, on another site and browser, wh
         ->and($rows[$first]['why'])->toBe('replaced')
         ->and($rows[$second]['status'])->toBe('open')
         ->and($rows[$colleagues]['status'])->toBe('open');
+});
+
+it('starts no session when its entered row cannot be written, and leaves the browser signed out', function (): void {
+    $staff = ssStaff('support');
+    $member = ssMember(1, 'editor');
+    // The log refuses the row (a missing month table, a full disk): the enter must not go on without it.
+    AuditLog::creating(function (AuditLog $row): void {
+        if ($row->action === SupportSessions::ENTERED) {
+            throw new RuntimeException('audit log unavailable');
+        }
+    });
+
+    ssEnter($this, $staff, $member, 1, 'a.test')->assertServerError();
+
+    $this->assertGuest();
+    expect(app('session')->driver()->all())->not->toHaveKey('support_session')
+        ->and(AuditLog::query()->where('action', SupportSessions::ENTERED)->count())->toBe(0);
+    $this->get('http://a.test/admin')->assertRedirectContains('/admin/login');
 });
 
 // ── the audit row's session code ────────────────────────────────────────────────────

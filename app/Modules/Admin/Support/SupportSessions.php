@@ -283,9 +283,12 @@ final readonly class SupportSessions
             ." AND audit_logs.created_at + make_interval(mins => coalesce((audit_logs.meta->>'minutes')::int, ?)) > ?"
             .' AND NOT EXISTS (SELECT 1 FROM audit_logs AS ended WHERE ended.support_session_ulid IS NOT NULL'
             .' AND ended.support_session_ulid = audit_logs.support_session_ulid'
-            .' AND ended.action = ? AND ended.created_at >= audit_logs.created_at))';
+            .' AND ended.action = ? AND ended.created_at >= audit_logs.created_at'
+            // An end after the session's own deadline changes nothing, and the bound keeps the probe
+            // to the month tables the session can reach.
+            ." AND ended.created_at <= audit_logs.created_at + make_interval(mins => coalesce((audit_logs.meta->>'minutes')::int, ?))))";
 
-        return [$sql, [$now->subMinutes(self::longest()), self::longest(), $now, self::ENDED]];
+        return [$sql, [$now->subMinutes(self::longest()), self::longest(), $now, self::ENDED, self::longest()]];
     }
 
     private function anchor(string $sessionUlid): ?AuditLog
