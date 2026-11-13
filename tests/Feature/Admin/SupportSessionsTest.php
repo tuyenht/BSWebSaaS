@@ -16,6 +16,7 @@ use App\Modules\Tenancy\Models\Site;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
+use Illuminate\Notifications\ChannelManager;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -529,13 +530,17 @@ it('ends the staff member\'s other open session, on another site and browser, wh
         ->and($rows[$colleagues]['status'])->toBe('open');
 });
 
-it('starts no session when its entered row cannot be written, and leaves the browser signed out', function (): void {
+it('starts no session and keeps no entered row when the enter fails after writing it, and leaves the browser signed out', function (): void {
     $staff = ssStaff('support');
     $member = ssMember(1, 'editor');
-    // The log refuses the row (a missing month table, a full disk): the enter must not go on without it.
-    AuditLog::creating(function (AuditLog $row): void {
-        if ($row->action === SupportSessions::ENTERED) {
-            throw new RuntimeException('audit log unavailable');
+    // The row is written, then the step after it fails (the owners' notices cannot be queued):
+    // the row must not stay behind for the console to list as open.
+    ssMember(1, 'owner');
+    app()->instance(ChannelManager::class, new class(app()) extends ChannelManager
+    {
+        public function send($notifiables, $notification): void
+        {
+            throw new RuntimeException('queue unavailable');
         }
     });
 

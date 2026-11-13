@@ -17,6 +17,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Exceptions\RoleDoesNotExist;
 use Throwable;
@@ -66,8 +67,9 @@ final readonly class SupportSignInController
         // here, before this one starts, so each end row carries the code of the session it ends.
         $this->signIn->endOthers($staff, $link['session_ulid']);
         // The entered row is what the console lists and ends, and what the next enter ends: no row,
-        // no session. Anything that fails from here signs the browser out again before the error
-        // travels on, so the request's transaction rolls back with nobody signed in.
+        // no session. The row and the owners' notices share one savepoint, so a failure in either
+        // leaves no row behind (the request's own transaction still commits: the router turns the
+        // error into a response first), and the browser is signed out again before the error goes on.
         try {
             Auth::login($member);
             $request->session()->regenerate();
@@ -75,13 +77,15 @@ final readonly class SupportSignInController
             $this->support->start($staff, $member, $this->current->id(), $link['reason'], now()->addMinutes($link['minutes']), $link['session_ulid']);
             // The member as the site knows them now, written here in the site's context: the console's
             // list reads them from this row and never from another site's role tables.
-            Audit::recordOrFail('support.session.entered', ['meta' => [
-                'reason' => $link['reason'],
-                'minutes' => $link['minutes'],
-                'member_name' => SupportSession::labelOf($member),
-                'member_roles' => $this->rolesOf($member),
-            ]]);
-            $this->tellOwners($staff, $member, $link['reason']);
+            DB::transaction(function () use ($staff, $member, $link): void {
+                Audit::recordOrFail('support.session.entered', ['meta' => [
+                    'reason' => $link['reason'],
+                    'minutes' => $link['minutes'],
+                    'member_name' => SupportSession::labelOf($member),
+                    'member_roles' => $this->rolesOf($member),
+                ]]);
+                $this->tellOwners($staff, $member, $link['reason']);
+            });
         } catch (Throwable $e) {
             // Not logout(): it may write the member's remember token, and the transaction may be aborted.
             Auth::guard()->logoutCurrentDevice();
