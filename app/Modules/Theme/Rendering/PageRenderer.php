@@ -573,7 +573,7 @@ final readonly class PageRenderer
         $shared = Cast::string($slotHtml['product_tabs'] ?? '');
         $parts = ArticleToc::parts($descriptionHtml, $shared, self::PRODUCT_IDS);
         // Without a Google description, the product's summary, else its own description, says what it is.
-        $summary = DescriptionFallback::text(Cast::string(data_get($extra, 'product.summary')));
+        $summary = DescriptionFallback::plain(Cast::string(data_get($extra, 'product.summary')));
         $fallback = $summary !== '' ? DescriptionFallback::cut($summary) : DescriptionFallback::fromHtml($descriptionHtml, $name);
 
         return BlockStyles::narrow($this->views->make($layout, $this->head($seo, $name, $extra, $fallback) + [
