@@ -236,6 +236,7 @@
     "admin.support.bar_left": ":clock left",
     "admin.support.bar_soon": "Almost out of time",
     "admin.support.bar_aria": ":m min :s s left",
+    "admin.support.bar_region": "Support sign-in session",
     "admin.support.bar_back": "Back to the console",
     "admin.support.bar_back_short": "Back",
     "admin.support.bar_back_aria": "Back to the console — ends the support session",

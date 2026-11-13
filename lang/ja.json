@@ -236,6 +236,7 @@
     "admin.support.bar_left": "残り :clock",
     "admin.support.bar_soon": "まもなく終了",
     "admin.support.bar_aria": "残り :m 分 :s 秒",
+    "admin.support.bar_region": "サポートログイン中",
     "admin.support.bar_back": "管理画面に戻る",
     "admin.support.bar_back_short": "戻る",
     "admin.support.bar_back_aria": "管理画面に戻る — サポートセッションを終了します",

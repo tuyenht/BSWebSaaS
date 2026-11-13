@@ -236,6 +236,7 @@
     "admin.support.bar_left": "còn :clock",
     "admin.support.bar_soon": "Sắp hết giờ",
     "admin.support.bar_aria": "Còn :m phút :s giây",
+    "admin.support.bar_region": "Phiên đăng nhập hỗ trợ",
     "admin.support.bar_back": "Quay lại quản trị",
     "admin.support.bar_back_short": "Quay lại",
     "admin.support.bar_back_aria": "Quay lại quản trị — kết thúc phiên hỗ trợ",

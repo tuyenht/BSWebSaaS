@@ -18,7 +18,7 @@
         $clock = sprintf('%02d:%02d', intdiv($left, 60), $left % 60);
     @endphp
     <div class="sticky top-0 z-30 flex h-12 shrink-0 items-center gap-2 border-b border-warning-text bg-[color-mix(in_srgb,var(--color-warning)_24%,var(--color-surface))] ps-3 pe-2 text-body text-text-strong min-[600px]:gap-2.5 min-[600px]:ps-4 min-[600px]:pe-3"
-         role="status" aria-live="polite" data-support-bar="1"
+         role="region" aria-label="{{ __('admin.support.bar_region') }}" data-support-bar="1"
          x-data="bsSupportBar(@js(['left' => $left, 'words' => [
              'left' => __('admin.support.bar_left'),
              'soon' => __('admin.support.bar_soon'),

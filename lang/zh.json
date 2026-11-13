@@ -236,6 +236,7 @@
     "admin.support.bar_left": "剩余 :clock",
     "admin.support.bar_soon": "即将到时",
     "admin.support.bar_aria": "剩余 :m 分 :s 秒",
+    "admin.support.bar_region": "支持登录会话",
     "admin.support.bar_back": "返回管理后台",
     "admin.support.bar_back_short": "返回",
     "admin.support.bar_back_aria": "返回管理后台 — 结束支持会话",
