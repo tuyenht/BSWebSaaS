@@ -7,6 +7,8 @@ namespace App\Modules\Storefront\Providers;
 use App\Modules\Shared\Contracts\EdgeCache;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\EdgeCachePause;
+use App\Modules\Storefront\Console\FlushContactClicks;
+use App\Modules\Storefront\Console\PruneContactClicks;
 use App\Modules\Storefront\EdgeCache\CloudflareEdgeCache;
 use App\Modules\Storefront\EdgeCache\EdgeCachePurges;
 use App\Modules\Storefront\EdgeCache\NullEdgeCache;
@@ -41,6 +43,10 @@ final class StorefrontServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        if ($this->app->runningInConsole()) {
+            $this->commands([FlushContactClicks::class, PruneContactClicks::class]);
+        }
+
         // app(), not $this->app: under Octane each request runs in a clone of the booted app.
         DB::listen(static function (QueryExecuted $query): void {
             if (EdgeCachePurges::writesPublicTable($query->sql)) {
