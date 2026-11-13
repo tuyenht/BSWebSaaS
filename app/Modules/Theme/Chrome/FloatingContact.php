@@ -489,10 +489,11 @@ final class FloatingContact
      * the extra one when the count is uneven (four cells: X, Y, call, Z). `at` is a channel's index in
      * $keys; `place` ranks a channel for a narrow phone, which lets the last ones go (the call is first);
      * `up` marks the raised call. A "spare" cell is the "Thêm" a narrow phone adds when the bar has none
-     * (it shows only there, so it never takes part in the centring).
+     * (it shows only there). With the raised call, `o4` and `o3` are each cell's flex order in the two
+     * narrow widths (see narrowOrders), so the call stays in the middle of the cells that show.
      *
      * @param  list<string>  $keys  the bar's channel keys in saved order
-     * @return list<array{kind: 'channel'|'more'|'spare'|'buy', at: int|null, place: int, up: bool}>
+     * @return list<array{kind: 'channel'|'more'|'spare'|'buy', at: int|null, place: int, up: bool, o4: int, o3: int}>
      */
     public static function barCells(array $keys, bool $more, bool $buy, bool $raise): array
     {
@@ -521,7 +522,54 @@ final class FloatingContact
             array_splice($cells, count($cells) - ($buy ? 1 : 0), 0, [['kind' => 'spare', 'at' => null, 'place' => -1, 'up' => false]]);
         }
 
-        return $cells;
+        return $callCell === null ? array_map(static fn (array $c): array => $c + ['o4' => 0, 'o3' => 0], $cells) : self::narrowOrders($cells, $buy);
+    }
+
+    /**
+     * Gives every cell of a bar with the raised call its flex order in the two narrow widths, so the call
+     * stays in the middle of the cells that are visible there: `o4` from 18rem to 22.5rem (the channel that
+     * ranks fifth is gone, the spare "Thêm" of a five-cell bar shows) and `o3` below 18rem (ranks four and
+     * five are gone, the spare shows). Visible cells other than the call keep their drawn order, the left
+     * side taking the extra one. A hidden cell gets 0 (its order does not matter). The wide width keeps
+     * the drawn order.
+     *
+     * @param  list<array{kind: 'channel'|'more'|'spare'|'buy', at: int|null, place: int, up: bool}>  $cells
+     * @return list<array{kind: 'channel'|'more'|'spare'|'buy', at: int|null, place: int, up: bool, o4: int, o3: int}>
+     */
+    private static function narrowOrders(array $cells, bool $buy): array
+    {
+        $count = count(array_filter($cells, static fn (array $c): bool => $c['kind'] !== 'spare'));
+        $extra = $buy ? 1 : 0;
+        // A cell's visibility in each narrow width: 18rem to 22.5rem loses only the fifth place (the spare
+        // shows when the bar has five cells); below 18rem places four and five are gone (the spare shows).
+        $shows = ['o4' => [], 'o3' => []];
+        foreach ($cells as $k => $c) {
+            $rank = $c['kind'] === 'channel' ? min($c['place'] + 2 + $extra, $count) : 0;
+            $shows['o4'][$k] = $c['kind'] === 'spare' ? $count === 5 : $rank < 5;
+            $shows['o3'][$k] = $c['kind'] !== 'channel' || $rank <= 3;
+        }
+        $orders = ['o4' => [], 'o3' => []];
+        foreach ($shows as $band => $on) {
+            $seen = array_keys(array_filter($on));
+            $left = intdiv(count($seen), 2);
+            $i = 0;
+            foreach ($seen as $k) {
+                if ($cells[$k]['up']) {
+                    $orders[$band][$k] = $left;
+
+                    continue;
+                }
+                $orders[$band][$k] = $i < $left ? $i : $i + 1;
+                $i++;
+            }
+        }
+
+        $out = [];
+        foreach ($cells as $k => $c) {
+            $out[] = $c + ['o4' => $orders['o4'][$k] ?? 0, 'o3' => $orders['o3'][$k] ?? 0];
+        }
+
+        return $out;
     }
 
     /** Whether a phone folds the round buttons into one "Liên hệ" button: vertical layout, switch on, enough ready channels. */

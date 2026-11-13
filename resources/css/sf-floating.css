@@ -730,6 +730,21 @@ svg.sf-fc-bar__icon:has(.sf-fc__z) {
     }
 }
 
+/* The raised call stays in the middle of the cells a narrow bar still shows: each cell carries its order for
+   the two narrow widths (--fc-o4 from 18rem to 22.5rem, --fc-o3 below 18rem); the wide bar keeps the drawn order.
+   The narrower width comes last so it wins. */
+@container sf-fc-bar (width < 22.5rem) {
+    .sf-fc-bar[data-up] .sf-fc-bar__item {
+        order: var(--fc-o4, 0);
+    }
+}
+
+@container sf-fc-bar (width < 18rem) {
+    .sf-fc-bar[data-up] .sf-fc-bar__item {
+        order: var(--fc-o3, 0);
+    }
+}
+
 /* The "Thêm" sheet: a small panel just above the bar, scrolling inside when its channels outgrow a short
    screen. A popover sits in the browser's top layer, so it cannot join the bar's own stack: its offset is
    the bar's height plus the gap (0.75rem; 1.75rem with the raised call, whose disc rises about 1rem). */
@@ -894,6 +909,11 @@ svg.sf-fc-bar__icon:has(.sf-fc__z) {
     /* Bar and sheet cells share one row here: one disc size for all, and the ghost keeps the same height. */
     .sf-fc-bar__item {
         container-type: normal;
+    }
+
+    /* Every cell shows in this row, so the narrow-width orders (made for the cells a narrow bar keeps) do not apply. */
+    .sf-fc-bar[data-up] .sf-fc-bar__item {
+        order: 0;
     }
 
     .sf-fc-sheet__item {

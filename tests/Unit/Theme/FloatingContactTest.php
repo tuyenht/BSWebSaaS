@@ -514,6 +514,56 @@ it('draws the call in the middle of the bar, the other cells keeping their order
     '“Thêm” and “Mua hàng” count as cells' => [['phone', 'zalo', 'sms'], true, true, ['zalo', 'sms', 'phone', 'more', 'buy']],
 ]);
 
+/**
+ * The cells of a raised bar left to right in one narrow width, by their flex order, among the cells that show there.
+ *
+ * @param  list<string>  $keys
+ * @return list<string>
+ */
+function narrowBarOrder(array $keys, bool $more, bool $buy, string $band): array
+{
+    $cells = FloatingContact::barCells($keys, $more, $buy, true);
+    $count = count($keys) + ($more ? 1 : 0) + ($buy ? 1 : 0);
+    $shown = [];
+    foreach ($cells as $i => $c) {
+        $rank = $c['kind'] === 'channel' ? min($c['place'] + 2 + ($buy ? 1 : 0), $count) : 0;
+        $on = match (true) {
+            $c['kind'] === 'spare' => $band === 'o3' || $count === 5,
+            $rank === 5 => false,
+            $rank === 4 => $band === 'o4',
+            default => true,
+        };
+        if ($on) {
+            $shown[] = [$c[$band], $c['kind'] === 'channel' ? $keys[$c['at']] : $c['kind'], $i];
+        }
+    }
+    usort($shown, static fn (array $a, array $b): int => [$a[0], $a[2]] <=> [$b[0], $b[2]]);
+
+    return array_column($shown, 1);
+}
+
+it('keeps the raised call in the middle of the cells a narrow bar still shows', function (): void {
+    // Zalo, call, text message, "Thêm" and "Mua hàng": drawn Zalo · text · call · Thêm · Mua hàng.
+    $keys = ['zalo', 'phone', 'sms'];
+
+    expect(narrowBarOrder($keys, true, true, 'o4'))->toBe(['zalo', 'more', 'phone', 'buy'])
+        ->and(narrowBarOrder($keys, true, true, 'o3'))->toBe(['more', 'phone', 'buy']);
+});
+
+it('orders a bar without "Thêm" and "Mua hàng" for the narrow widths, the spare "Thêm" included', function (): void {
+    $keys = ['zalo', 'sms', 'phone', 'whatsapp'];
+
+    // Four channel cells: the fourth place and the spare are the narrow phone's swap.
+    expect(narrowBarOrder($keys, false, false, 'o3'))->toBe(['zalo', 'phone', 'spare'])
+        ->and(narrowBarOrder(['phone', 'zalo', 'sms'], false, false, 'o3'))->toBe(['zalo', 'phone', 'sms']);
+});
+
+it('gives a bar without the raised call no narrow orders', function (): void {
+    $cells = FloatingContact::barCells(['zalo', 'phone', 'sms'], true, true, false);
+
+    expect(array_unique(array_merge(array_column($cells, 'o4'), array_column($cells, 'o3'))))->toBe([0]);
+});
+
 it('ranks the channels for a narrow phone with the call first and never lets it go', function (): void {
     $cells = FloatingContact::barCells(['zalo', 'sms', 'phone', 'whatsapp'], false, false, true);
     $places = [];
