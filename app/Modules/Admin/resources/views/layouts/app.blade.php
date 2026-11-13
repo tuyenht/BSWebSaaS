@@ -169,6 +169,9 @@
     {{-- Content column --}}
     <div class="admin-content flex min-h-screen flex-col pl-0 transition-all duration-200 motion-reduce:transition-none lg:pl-(--sidebar-width)">
 
+        {{-- Support session: the bar stays above the topbar, which then sticks under it. --}}
+        @include('admin::partials.support-bar')
+
         {{-- Topbar. `admin-topbar` is the [data-layout-position] flip hook.
              Reference paddings: .75rem start · 1.5rem end (navbar-header), so the user slab
              keeps the same balanced right gap as the content gutter below. --}}

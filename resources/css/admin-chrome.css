@@ -594,3 +594,8 @@
         display: block;
     }
 }
+
+/* A support session's bar (partials/support-bar) sits above the topbar, which then sticks under it. */
+.admin-content:has(> [data-support-bar='1']) > .admin-topbar {
+    top: 3rem;
+}
