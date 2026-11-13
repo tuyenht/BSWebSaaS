@@ -93,6 +93,10 @@ final class Notifications extends Component
     #[Locked]
     public ?string $undoStamp = null;
 
+    /** @var list<string>|null the notices the last "Đánh dấu đã đọc tất cả" marked, for its "Hoàn tác" */
+    #[Locked]
+    public ?array $undoUlids = null;
+
     public function mount(): void
     {
         $this->reader();
@@ -138,6 +142,7 @@ final class Notifications extends Component
         if (app(NotificationFeed::class)->markRead($user, $ulid) === 1) {
             $this->undoUlid = $ulid;
             $this->undoStamp = null;
+            $this->undoUlids = null;
             $this->say(__('admin.ntf.read_done'), undo: true);
         } elseif (! $this->mine($user, $ulid)) {
             $this->say(__('admin.bell.gone'), tone: 'info');
@@ -154,17 +159,18 @@ final class Notifications extends Component
             return;
         }
 
-        // read_at keeps whole seconds (timestampTz, precision 0): "Hoàn tác" puts back the rows that
-        // carry this second, i.e. these ones plus any the reader marked in the same second.
+        // "Hoàn tác" puts back exactly the notices marked here (by ulid); only above the feed's limit
+        // does it fall back to the read time, which keeps whole seconds.
         $stamp = now()->startOfSecond()->format('Y-m-d H:i:sP');
-        $count = app(NotificationFeed::class)->markAllRead($user, $stamp);
+        [$count, $ulids] = app(NotificationFeed::class)->markAllReadForUndo($user, $stamp);
         if ($count === 0) {
             $this->say(__('admin.ntf.none_unread'), tone: 'info');
 
             return;
         }
         $this->undoUlid = null;
-        $this->undoStamp = $stamp;
+        $this->undoUlids = $ulids;
+        $this->undoStamp = $ulids === null ? $stamp : null;
         $this->say(__('admin.ntf.read_all_done', ['count' => $count]), undo: true);
     }
 
@@ -179,11 +185,14 @@ final class Notifications extends Component
         $feed = app(NotificationFeed::class);
         if ($this->undoUlid !== null) {
             $feed->markUnread($user, $this->undoUlid);
+        } elseif ($this->undoUlids !== null) {
+            $feed->markUnreadMany($user, $this->undoUlids);
         } elseif ($this->undoStamp !== null) {
             $feed->restoreRead($user, $this->undoStamp);
         }
         $this->undoUlid = null;
         $this->undoStamp = null;
+        $this->undoUlids = null;
         $this->say(__('admin.ntf.undone'));
     }
 

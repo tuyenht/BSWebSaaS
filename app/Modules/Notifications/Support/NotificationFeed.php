@@ -6,6 +6,7 @@ namespace App\Modules\Notifications\Support;
 
 use App\Modules\Identity\Models\User;
 use App\Modules\Notifications\Models\SiteNotification;
+use App\Modules\Shared\Support\Cast;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -118,9 +119,12 @@ final class NotificationFeed
             ->update(['read_at' => now()]);
     }
 
+    /** How many notices "Hoàn tác" after "Đánh dấu đã đọc tất cả" puts back one by one. */
+    public const int UNDO_EXACT_LIMIT = 200;
+
     /**
-     * Mark every unread notice of the reader read. $stamp (a timestamp with microseconds) is the
-     * read time they all get, so "Hoàn tác" can put back exactly these (restoreRead).
+     * Mark every unread notice of the reader read, all with the read time $stamp (read_at keeps whole
+     * seconds, rounded).
      */
     public function markAllRead(User $user, ?string $stamp = null): int
     {
@@ -140,7 +144,60 @@ final class NotificationFeed
             ->update(['read_at' => null]);
     }
 
-    /** "Hoàn tác" after "Đánh dấu đã đọc tất cả": the notices it marked (its $stamp) are unread again. */
+    /**
+     * "Đánh dấu đã đọc tất cả" that "Hoàn tác" can undo exactly: up to UNDO_EXACT_LIMIT unread notices
+     * are marked by their ulids, which come back so that undo puts back these and nothing else (a
+     * notice that arrives meanwhile stays unread: the reader has not seen it). Above the limit every
+     * unread notice is marked with $stamp and the ulids are null: undo then puts back the rows that
+     * carry that second.
+     *
+     * @return array{0: int, 1: list<string>|null}
+     */
+    public function markAllReadForUndo(User $user, string $stamp): array
+    {
+        $ulids = array_values(SiteNotification::query()
+            ->where('user_id', $user->getKey())
+            ->whereNull('read_at')
+            ->orderByDesc('id')
+            ->limit(self::UNDO_EXACT_LIMIT + 1)
+            ->pluck('ulid')
+            ->map(fn (mixed $ulid): string => Cast::string($ulid))
+            ->all());
+        if (count($ulids) > self::UNDO_EXACT_LIMIT) {
+            return [$this->markAllRead($user, $stamp), null];
+        }
+        if ($ulids === []) {
+            return [0, []];
+        }
+
+        $count = SiteNotification::query()
+            ->where('user_id', $user->getKey())
+            ->whereIn('ulid', $ulids)
+            ->whereNull('read_at')
+            ->update(['read_at' => $stamp]);
+
+        return [$count, $ulids];
+    }
+
+    /**
+     * "Hoàn tác" after an exact "Đánh dấu đã đọc tất cả": these notices are unread again (the reader's own only).
+     *
+     * @param  list<string>  $ulids
+     */
+    public function markUnreadMany(User $user, array $ulids): int
+    {
+        if ($ulids === []) {
+            return 0;
+        }
+
+        return SiteNotification::query()
+            ->where('user_id', $user->getKey())
+            ->whereIn('ulid', array_slice($ulids, 0, self::UNDO_EXACT_LIMIT))
+            ->whereNotNull('read_at')
+            ->update(['read_at' => null]);
+    }
+
+    /** "Hoàn tác" after a large "Đánh dấu đã đọc tất cả": the notices that carry its $stamp are unread again. */
     public function restoreRead(User $user, string $stamp): int
     {
         return SiteNotification::query()

@@ -167,6 +167,33 @@ it('marks all read and "Hoàn tác" puts back exactly those', function (): void 
     npCall(npCall($page, 'readAll'), 'readAll')->assertSet('toast', 'Không còn thông báo chưa đọc.');
 });
 
+it('puts back after "Đánh dấu đã đọc tất cả" only what it marked, not one the reader read in that same second', function (): void {
+    $me = npMember();
+    $this->freezeTime();
+    $single = npNotice($me, 1);
+    $a = npNotice($me, 1);
+    $b = npNotice($me, 1);
+
+    $page = npCall(npPage($me), 'read', $single);
+    $page = npCall($page, 'readAll')->assertSet('toast', 'Đã đánh dấu đã đọc 2 thông báo.');
+    expect(npReadAt($single))->toBe(npReadAt($a)); // the same second on record
+
+    $late = npNotice($me, 1); // arrives after the click: the reader has not seen it
+    npCall($page, 'undo');
+    expect(npReadAt($a))->toBeNull()->and(npReadAt($b))->toBeNull()
+        ->and(npReadAt($single))->not->toBeNull()->and(npReadAt($late))->toBeNull();
+});
+
+it('neither marks nor opens another site\'s notice of the same reader from this site\'s page', function (): void {
+    $me = npMember();
+    app(Tenancy::class)->enter(2, fn () => grantRole($me, 'editor', ['entries.view']));
+    $there = npNotice($me, 2);
+
+    $page = npCall(npPage($me), 'read', $there)->assertSet('toast', 'Thông báo này không còn nữa — danh sách đã được làm mới.');
+    npCall($page, 'open', $there)->assertNoRedirect()->assertSet('toast', 'Thông báo này không còn nữa — danh sách đã được làm mới.');
+    expect(npReadAt($there))->toBeNull();
+});
+
 it('opens a notice where it leads and marks it read; a notice gone meanwhile only redraws the list', function (): void {
     $me = npMember();
     $entry = (string) Str::ulid();
@@ -220,7 +247,14 @@ it('never marks anything read for the member while a support person is signed in
         ->assertSee('aria-disabled="true"', false)->assertDontSee('Đánh dấu đã đọc: ');
     app(Tenancy::class)->enter(1, fn () => $page->call('read', $one)->call('readAll'))
         ->assertSet('toast', 'Đang đăng nhập hỗ trợ — không đánh dấu đã đọc thay thành viên');
+    expect(npReadAt($one))->toBeNull();
 
+    // Opening a notice follows it without marking it; "Hoàn tác" changes nothing either.
+    DB::connection('pgsql_admin')->table('site_notifications')->where('ulid', $one)->update(['read_at' => now()]);
+    app(Tenancy::class)->enter(1, fn () => $page->call('undo'));
+    expect(npReadAt($one))->not->toBeNull();
+    DB::connection('pgsql_admin')->table('site_notifications')->where('ulid', $one)->update(['read_at' => null]);
+    app(Tenancy::class)->enter(1, fn () => $page->call('open', $one));
     expect(npReadAt($one))->toBeNull();
 });
 
