@@ -30,7 +30,7 @@ final readonly class SupportBar
     {
         $session = $this->support->current();
         $user = auth()->user();
-        if ($session === null || ! $user instanceof User || ! $this->current->hasId()) {
+        if ($session === null || ! $user instanceof User || ! $this->current->hasId() || $session['site_id'] !== $this->current->id()) {
             return null;
         }
 

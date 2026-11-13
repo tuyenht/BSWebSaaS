@@ -204,7 +204,7 @@
 
     /* A topbar that scrolls away covers nothing: no scroll padding (app.css). */
     :root[data-layout-position='scrollable'] {
-        scroll-padding-top: 0;
+        scroll-padding-top: var(--support-bar-h, 0px);
     }
 }
 
@@ -595,7 +595,13 @@
     }
 }
 
-/* A support session's bar (partials/support-bar) sits above the topbar, which then sticks under it. */
+/* A support session's bar (partials/support-bar, 3rem tall) sits above the topbar, which then sticks
+   under it; everything else that sticks under the topbar (the product editor's bar, the "Mất kết nối"
+   strip) and the scroll padding add --support-bar-h, which is 0 outside a session. */
+:root:has([data-support-bar='1']) {
+    --support-bar-h: 3rem;
+}
+
 .admin-content:has(> [data-support-bar='1']) > .admin-topbar {
-    top: 3rem;
+    top: var(--support-bar-h);
 }

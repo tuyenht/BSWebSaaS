@@ -64,6 +64,7 @@ function barEnter(mixed $test, User $member, int $minutes = 30): void
 }
 
 it('shows the member, the customer, the role, the time left and the way back during a support session', function (): void {
+    $this->freezeSecond();
     $editor = barMember(1, 'editor', 'Nguyễn Ngọc Anh');
     barEnter($this, $editor);
 

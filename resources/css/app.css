@@ -544,7 +544,7 @@
    it sticks there (--bulk-bar-h, set by the bar). Zero specificity: a topbar that scrolls away resets
    it (admin-chrome.css). */
 :where(:root:has(> body.admin-shell)) {
-    scroll-padding-top: var(--topbar-height);
+    scroll-padding-top: calc(var(--topbar-height) + var(--support-bar-h, 0px));
     scroll-padding-bottom: var(--bulk-bar-h, 0px);
 }
 
