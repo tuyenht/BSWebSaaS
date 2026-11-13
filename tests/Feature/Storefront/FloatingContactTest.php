@@ -13,6 +13,7 @@ use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Chrome\ContactIcons;
 use App\Modules\Theme\Chrome\FloatingContact;
 use App\Modules\Theme\Theming\ReadableColor;
 use Illuminate\Support\Facades\DB;
@@ -69,7 +70,8 @@ function flcSetting(int $siteId, array $value): void
  */
 function flcConfig(array $channels, array $extra = []): array
 {
-    return $extra + ['enabled' => true, 'theme' => 'vertical', 'position' => 'right', 'offset_x' => 20, 'offset_y' => 24, 'channels' => $channels];
+    // The raised call is off here so the tests of the bar's order keep the saved order; its own tests switch it on.
+    return $extra + ['bar_raise_call' => false, 'enabled' => true, 'theme' => 'vertical', 'position' => 'right', 'offset_x' => 20, 'offset_y' => 24, 'channels' => $channels];
 }
 
 /** The floating-contact markup of a page (the nav and its spacer). */
@@ -550,4 +552,98 @@ it('adds no query to a page, and for “Mua hàng” only the product list looku
         ->and($pageStale)->toBe($page)
         ->and(flcBarLabels($stale))->toBe(['Gọi điện'])
         ->and($stale)->not->toContain('href="/san-pham"');
+});
+
+/**
+ * A setting as an older site saved it: no `bar_raise_call` key.
+ *
+ * @param  list<string>  $keys
+ * @return array<string, mixed>
+ */
+function flcRaw(array $keys, array $extra = []): array
+{
+    $values = ['phone' => '0912345678', 'zalo' => '0912345678', 'sms' => '0912345678', 'whatsapp' => '0912345678', 'telegram' => '@mau_shop', 'email' => 'lienhe@mau.test', 'maps' => 'https://maps.app.goo.gl/abc'];
+
+    return $extra + ['enabled' => true, 'theme' => 'horizontal', 'layout' => 'combo', 'position' => 'right', 'offset_x' => 20, 'offset_y' => 24,
+        'channels' => array_map(static fn (string $key): array => ['key' => $key, 'on' => true, 'value' => $values[$key]], $keys)];
+}
+
+it('raises the call into the middle of the bar for a setting saved before the option, with the cell one link', function (array $keys, array $labels): void {
+    $siteId = flcSite();
+    flcSetting($siteId, flcRaw($keys));
+
+    $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
+
+    expect(flcBarLabels($part))->toBe($labels)
+        // The bar and its spacer both carry the raise, so the spacer keeps the room of the rise too.
+        ->and(substr_count($part, ' data-up>'))->toBe(2)
+        ->and(substr_count($part, 'sf-fc-bar__item--up'))->toBe(2)
+        // The whole cell is the call link: the disc and its label sit inside the one tel: link.
+        ->and($part)->toMatch('~<li class="sf-fc-bar__item sf-fc-bar__item--up"><a class="sf-fc-bar__link" href="tel:[^"]+"[^>]*><span class="sf-fc-bar__dot"[^>]*>.*?</span><span class="sf-fc-bar__label">Gọi điện</span></a></li>~s');
+})->with([
+    'three cells' => [['phone', 'zalo', 'sms'], ['Zalo', 'Gọi điện', 'Nhắn tin']],
+    'four cells' => [['phone', 'zalo', 'sms', 'whatsapp'], ['Zalo', 'Nhắn tin', 'Gọi điện', 'WhatsApp', 'Thêm']],
+    'five cells' => [['phone', 'zalo', 'sms', 'whatsapp', 'telegram'], ['Zalo', 'Nhắn tin', 'Gọi điện', 'WhatsApp', 'Telegram', 'Thêm']],
+    'the call saved last' => [['zalo', 'sms', 'whatsapp', 'phone'], ['Zalo', 'Nhắn tin', 'Gọi điện', 'WhatsApp', 'Thêm']],
+]);
+
+it('keeps a place for the call even when it is saved after the channels that fill the bar', function (): void {
+    $siteId = flcSite();
+    flcShop($siteId);
+    flcSetting($siteId, flcRaw(['zalo', 'sms', 'whatsapp', 'telegram', 'phone'], ['buy' => ['enabled' => true, 'color' => '#0ab39c']]));
+
+    $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
+
+    // Four places with “Mua hàng”: the call, then the first two quick channels, and “Thêm”; the rest wait in the sheet.
+    expect(flcBarLabels($part))->toBe(['Zalo', 'Nhắn tin', 'Gọi điện', 'Thêm', 'Mua hàng'])
+        ->and(flcSheetRows($part))->toContain('WhatsApp')->toContain('Telegram');
+});
+
+it('keeps the saved order and draws no raised cell when the option is off, the call is off or its number does not pass, and on round buttons only', function (array $extra, array $keys, ?array $phone, array $labels): void {
+    $siteId = flcSite();
+    $raw = flcRaw($keys, $extra);
+    if ($phone !== null) {
+        $raw['channels'][0] = ['key' => 'phone'] + $phone;
+    }
+    flcSetting($siteId, $raw);
+
+    $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
+
+    expect($part)->not->toContain('sf-fc-bar__item--up')->not->toContain('data-up')
+        ->and(flcBarLabels($part))->toBe($labels);
+})->with([
+    'the option off' => [['bar_raise_call' => false], ['phone', 'zalo', 'sms'], null, ['Gọi điện', 'Zalo', 'Nhắn tin']],
+    'the call switched off' => [[], ['phone', 'zalo', 'sms'], ['on' => false, 'value' => '0912345678'], ['Zalo', 'Nhắn tin']],
+    'a number that does not pass' => [[], ['phone', 'zalo', 'sms'], ['on' => true, 'value' => 'abc'], ['Zalo', 'Nhắn tin']],
+    'no call channel' => [[], ['zalo', 'sms', 'whatsapp'], null, ['Zalo', 'Nhắn tin', 'WhatsApp']],
+    'round buttons only' => [['layout' => 'vertical', 'theme' => 'vertical'], ['phone', 'zalo', 'sms'], null, []],
+]);
+
+it('lists directions switched off for a site that has not turned it on, and prints a map pin link when it is on', function (): void {
+    $siteId = flcSite();
+    $raw = flcRaw(['phone', 'zalo'], ['bar_raise_call' => false]);
+    $raw['channels'][] = ['key' => 'maps', 'on' => false, 'value' => 'https://maps.app.goo.gl/abc'];
+    flcSetting($siteId, $raw);
+
+    $off = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
+    expect($off)->not->toContain('maps.app.goo.gl')->not->toContain('Chỉ đường');
+
+    $raw['channels'][2]['on'] = true;
+    flcSetting($siteId, $raw);
+    $on = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
+
+    expect($on)->toContain('href="https://maps.app.goo.gl/abc" rel="noopener"')->toContain('Chỉ đường')
+        ->and($on)->toContain(substr((string) ContactIcons::solid('ri-map-pin-fill'), 0, 30))
+        ->and($on)->toContain('--fc-fill:'.ReadableColor::inkUnder('#ea4335'));
+});
+
+it('never prints a maps link that is not http or https', function (): void {
+    $siteId = flcSite();
+    $raw = flcRaw(['phone', 'zalo'], ['bar_raise_call' => false]);
+    $raw['channels'][] = ['key' => 'maps', 'on' => true, 'value' => 'javascript:alert(1)'];
+    flcSetting($siteId, $raw);
+
+    $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
+
+    expect(strtolower($part))->not->toContain('javascript')->and($part)->not->toContain('Chỉ đường');
 });

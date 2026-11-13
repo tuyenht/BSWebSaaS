@@ -151,7 +151,7 @@ it('stores the floating contact as the admin form does, so an unchanged admin sa
     expect($exit)->toBe(0, $output);
 
     $stored = sfStored($this->siteId, 'storefront', 'floating_contact');
-    expect(array_column($stored['channels'], 'key'))->toBe(['zalo', 'phone', 'c1', 'messenger', 'email', 'sms'])
+    expect(array_column($stored['channels'], 'key'))->toBe(['zalo', 'phone', 'c1', 'messenger', 'email', 'sms', 'maps'])
         ->and($stored['channels'][0])->toEqual(['key' => 'zalo', 'on' => true, 'value' => '0901234567', 'color' => '#aabbcc', 'tips' => ['vi' => 'Nhắn Zalo']])
         ->and($stored['channels'][1]['tips'])->toBe([])
         ->and($stored['channels'][2]['name'])->toBe('Cửa hàng')

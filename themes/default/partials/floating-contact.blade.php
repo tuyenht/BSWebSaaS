@@ -49,13 +49,22 @@
     $fcRank = static fn (int $i): int => min($i + 2 + $fcBuy, $fcCells);
     $fcSpare = ! $fc['more'] && $fcCells >= 4 ? ' sf-fc-bar__item--m'.$fcCells : '';
     $fcSheet = $fc['more'] || $fcSpare !== '';
+    // The bar's cells in the order they are drawn (the raised call stands in the middle); a channel's place
+    // ranks it for a narrow phone, which lets the later ones go.
+    $fcPlace = [];
+    foreach ($fc['cells'] as $fcCell) {
+        if ($fcCell['at'] !== null) {
+            $fcPlace[$fcCell['at']] = $fcCell['place'];
+        }
+    }
+    $fcUp = $fc['raise'] ? ' data-up' : '';
     $fcCopy = $fcFloat && array_filter($fc['buttons'], static fn (array $b): bool => $b['tel'] !== null && $b['key'] === 'phone') !== [];
 @endphp
 @if ($fcFloat)
 <div class="sf-fc-ghost sf-fc-ghost--side{{ $fc['position'] === 'bottom' ? ' sf-fc-ghost--row' : '' }}{{ $fc['layout'] === 'combo' ? ' sf-fc-ghost--wide' : '' }}{{ $fc['dial'] ? ' sf-fc-ghost--dial' : '' }}" aria-hidden="true" style="{{ $fcOffsets }};--fc-n:{{ count(array_filter($fc['buttons'], static fn (array $b): bool => $b['key'] !== 'sms')) }}"><div class="sf-fc__list sf-fc__list--{{ $fc['position'] }}">@foreach ($fc['buttons'] as $b)<span class="sf-fc__btn{{ $b['key'] === 'sms' ? ' sf-fc__item--sms' : '' }}"></span>@endforeach @if ($fc['dial'])<span class="sf-fc__btn sf-fc-ghost__dial"></span>@endif</div></div>
 @endif
 @if ($fcBar)
-<div class="sf-fc-bar sf-fc-bar--ghost" aria-hidden="true"><ul class="sf-fc-bar__list">@foreach ($fc['bar'] as $b)<li class="sf-fc-bar__item{{ $fcRank($loop->index) > 3 ? ' sf-fc-bar__item--r'.$fcRank($loop->index) : '' }}"><span class="sf-fc-bar__link"><span class="sf-fc-bar__dot"></span><span class="sf-fc-bar__label">{{ $fcWord($b) }}</span></span></li>@endforeach @if ($fcSheet)<li class="sf-fc-bar__item sf-fc-bar__item--more{{ $fcSpare }}"><span class="sf-fc-bar__link"><span class="sf-fc-bar__dot"></span><span class="sf-fc-bar__label">{{ __('storefront.fc_more') }}</span></span></li>@endif @if ($fc['buy'] !== null)<li class="sf-fc-bar__item"><span class="sf-fc-bar__link"><span class="sf-fc-bar__dot"></span><span class="sf-fc-bar__label">{{ __('storefront.fc_buy') }}</span></span></li>@endif</ul></div>
+<div class="sf-fc-bar sf-fc-bar--ghost" aria-hidden="true"{!! $fcUp !!}><ul class="sf-fc-bar__list">@foreach ($fc['cells'] as $cell)@if ($cell['kind'] === 'channel')<li class="sf-fc-bar__item{{ $fcRank($cell['place']) > 3 ? ' sf-fc-bar__item--r'.$fcRank($cell['place']) : '' }}{{ $cell['up'] ? ' sf-fc-bar__item--up' : '' }}"><span class="sf-fc-bar__link"><span class="sf-fc-bar__dot"></span><span class="sf-fc-bar__label">{{ $fcWord($fc['bar'][$cell['at']]) }}</span></span></li>@elseif ($cell['kind'] === 'buy')<li class="sf-fc-bar__item"><span class="sf-fc-bar__link"><span class="sf-fc-bar__dot"></span><span class="sf-fc-bar__label">{{ __('storefront.fc_buy') }}</span></span></li>@else<li class="sf-fc-bar__item sf-fc-bar__item--more{{ $cell['kind'] === 'spare' ? $fcSpare : '' }}"><span class="sf-fc-bar__link"><span class="sf-fc-bar__dot"></span><span class="sf-fc-bar__label">{{ __('storefront.fc_more') }}</span></span></li>@endif @endforeach</ul></div>
 @endif
 <div class="sf-fc sf-fc--{{ $fc['layout'] }}" data-fc-root{!! $fcCopy ? ' data-fc-js="'.e(\Illuminate\Support\Facades\Vite::asset('resources/js/sf-fc-copy.js')).'"' : '' !!}>
 @if ($fcFloat)
@@ -76,14 +85,14 @@
     </nav>
 @endif
 @if ($fcBar)
-    <nav class="sf-fc-bar sf-fc-bar--{{ $fc['tone'] }}" aria-label="{{ __('storefront.fc_nav') }}">
+    <nav class="sf-fc-bar sf-fc-bar--{{ $fc['tone'] }}" aria-label="{{ __('storefront.fc_nav') }}"{!! $fcUp !!}>
         @if ($fcSheet)
             <div class="sf-fc-sheet" id="sf-fc-more" popover>
                 <p class="sf-fc-sheet__h">{{ __('storefront.fc_others') }}</p>
                 <ul class="sf-fc-sheet__list" role="list">
                     @foreach ($fc['bar'] as $b)
-                        @if ($fcRank($loop->index) > 3)
-                            <li class="sf-fc-sheet__item sf-fc-sheet__item--r{{ $fcRank($loop->index) }}"{!! empty($b['pending']) ? '' : ' data-fc-pending' !!}><a class="sf-fc-sheet__row" href="{{ $b['href'] }}"{!! $fcRel($b['href']) !!}{!! $fcEv($b['key'], 'sheet', $b['link']) !!}><span class="sf-fc-bar__dot" style="{{ $fcVars($b) }}">{!! $fcGlyph($b, 'sf-fc-bar__icon') !!}</span><span class="sf-fc-sheet__l">{{ $fcWord($b) }}</span>{!! $fcIcon('ri-arrow-right-s-line', 'sf-fc-sheet__go') !!}</a></li>
+                        @if ($fcRank($fcPlace[$loop->index]) > 3)
+                            <li class="sf-fc-sheet__item sf-fc-sheet__item--r{{ $fcRank($fcPlace[$loop->index]) }}"{!! empty($b['pending']) ? '' : ' data-fc-pending' !!}><a class="sf-fc-sheet__row" href="{{ $b['href'] }}"{!! $fcRel($b['href']) !!}{!! $fcEv($b['key'], 'sheet', $b['link']) !!}><span class="sf-fc-bar__dot" style="{{ $fcVars($b) }}">{!! $fcGlyph($b, 'sf-fc-bar__icon') !!}</span><span class="sf-fc-sheet__l">{{ $fcWord($b) }}</span>{!! $fcIcon('ri-arrow-right-s-line', 'sf-fc-sheet__go') !!}</a></li>
                         @endif
                     @endforeach
                     @foreach ($fc['sheet'] as $b)
@@ -93,15 +102,16 @@
             </div>
         @endif
         <ul class="sf-fc-bar__list" role="list">
-            @foreach ($fc['bar'] as $b)
-                <li class="sf-fc-bar__item{{ $fcRank($loop->index) > 3 ? ' sf-fc-bar__item--r'.$fcRank($loop->index) : '' }}"{!! empty($b['pending']) ? '' : ' data-fc-pending' !!}><a class="sf-fc-bar__link" href="{{ $b['href'] }}"{!! $fcRel($b['href']) !!}{!! $fcEv($b['key'], 'bar', $b['link']) !!}><span class="sf-fc-bar__dot" style="{{ $fcVars($b) }}">{!! $fcGlyph($b, 'sf-fc-bar__icon') !!}</span><span class="sf-fc-bar__label">{{ $fcWord($b) }}</span></a></li>
+            @foreach ($fc['cells'] as $cell)
+                @if ($cell['kind'] === 'channel')
+                    @php($b = $fc['bar'][$cell['at']])
+                    <li class="sf-fc-bar__item{{ $fcRank($cell['place']) > 3 ? ' sf-fc-bar__item--r'.$fcRank($cell['place']) : '' }}{{ $cell['up'] ? ' sf-fc-bar__item--up' : '' }}"{!! empty($b['pending']) ? '' : ' data-fc-pending' !!}><a class="sf-fc-bar__link" href="{{ $b['href'] }}"{!! $fcRel($b['href']) !!}{!! $fcEv($b['key'], 'bar', $b['link']) !!}><span class="sf-fc-bar__dot" style="{{ $fcVars($b) }}">{!! $fcGlyph($b, 'sf-fc-bar__icon') !!}</span><span class="sf-fc-bar__label">{{ $fcWord($b) }}</span></a></li>
+                @elseif ($cell['kind'] === 'buy')
+                    <li class="sf-fc-bar__item"><a class="sf-fc-bar__link" href="{{ $fc['buy']['href'] }}"{!! $fcEv('buy', 'bar', str_starts_with($fc['buy']['href'], '/') ? 'page' : 'web') !!}><span class="sf-fc-bar__dot" style="--fc-fill:{{ $fc['buy']['fill'] }};--fc-tint:{{ $fc['buy']['fill'] }};color:{{ $fc['buy']['ink'] }}">{!! $fcIcon('ri-shopping-bag-fill', 'sf-fc-bar__icon') !!}</span><span class="sf-fc-bar__label">{{ __('storefront.fc_buy') }}</span></a></li>
+                @else
+                    <li class="sf-fc-bar__item sf-fc-bar__item--more{{ $cell['kind'] === 'spare' ? $fcSpare : '' }}"><button type="button" class="sf-fc-bar__link" popovertarget="sf-fc-more"><span class="sf-fc-bar__dot" style="--fc-fill:{{ \App\Modules\Theme\Chrome\FloatingContact::MORE_COLOR }};--fc-tint:{{ \App\Modules\Theme\Chrome\FloatingContact::MORE_COLOR }}">{!! $fcIcon('ri-more-2-fill', 'sf-fc-bar__icon') !!}</span><span class="sf-fc-bar__label">{{ __('storefront.fc_more') }}</span></button></li>
+                @endif
             @endforeach
-            @if ($fcSheet)
-                <li class="sf-fc-bar__item sf-fc-bar__item--more{{ $fcSpare }}"><button type="button" class="sf-fc-bar__link" popovertarget="sf-fc-more"><span class="sf-fc-bar__dot" style="--fc-fill:{{ \App\Modules\Theme\Chrome\FloatingContact::MORE_COLOR }};--fc-tint:{{ \App\Modules\Theme\Chrome\FloatingContact::MORE_COLOR }}">{!! $fcIcon('ri-more-2-fill', 'sf-fc-bar__icon') !!}</span><span class="sf-fc-bar__label">{{ __('storefront.fc_more') }}</span></button></li>
-            @endif
-            @if ($fc['buy'] !== null)
-                <li class="sf-fc-bar__item"><a class="sf-fc-bar__link" href="{{ $fc['buy']['href'] }}"{!! $fcEv('buy', 'bar', str_starts_with($fc['buy']['href'], '/') ? 'page' : 'web') !!}><span class="sf-fc-bar__dot" style="--fc-fill:{{ $fc['buy']['fill'] }};--fc-tint:{{ $fc['buy']['fill'] }};color:{{ $fc['buy']['ink'] }}">{!! $fcIcon('ri-shopping-bag-fill', 'sf-fc-bar__icon') !!}</span><span class="sf-fc-bar__label">{{ __('storefront.fc_buy') }}</span></a></li>
-            @endif
         </ul>
     </nav>
 @endif

@@ -16,7 +16,7 @@
     // Placeholders show the shape of a value; they are examples, not words to translate.
     $examples = ['phone' => '0912345678', 'zalo' => '0912345678', 'messenger' => '100063789074118', 'email' => __('admin.fc.ph_email'), 'sms' => '0912345678',
         'whatsapp' => '0912345678', 'telegram' => '@username', 'viber' => '0912345678', 'tiktok' => 'https://tiktok.com/@…', 'youtube' => 'https://youtube.com/@…',
-        'instagram' => 'https://instagram.com/…', 'maps' => 'https://maps.google.com/…'];
+        'instagram' => 'https://instagram.com/…', 'maps' => 'https://maps.app.goo.gl/…'];
     $localeNames = (array) config('locales.labels');
     $nameOf = static fn (string $lc): string => (string) ($localeNames[$lc] ?? strtoupper($lc));
 
@@ -573,6 +573,13 @@
                     <div class="rounded-md border border-border bg-surface shadow-card">
                         <h2 class="border-b border-border px-4 py-3.5 {{ $title }}">{{ __('admin.fc.bar_card') }}@if ($isC)<span class="font-normal text-text-muted"> · {{ __('admin.fc.on_phone') }}</span>@endif</h2>
                         <div class="flex flex-col gap-4 p-4">
+                            <div class="flex items-center justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p id="fc-raise-l" class="{{ $name }}">{{ __('admin.fc.raise') }}</p>
+                                    <p id="fc-raise-d" class="text-caption leading-normal text-text-muted">{{ __('admin.fc.raise_sub') }}@if ($phoneWarn)<span class="font-semibold text-warning-text"> {{ __('admin.fc.raise_off') }}</span>@endif</p>
+                                </div>
+                                <button type="button" class="switch hit-area" role="switch" aria-checked="{{ $barRaiseCall && ! $phoneWarn ? 'true' : 'false' }}" aria-labelledby="fc-raise-l" aria-describedby="fc-raise-d" @disabled($phoneWarn) wire:click="toggleRaise"></button>
+                            </div>
                             <div class="flex items-center justify-between gap-3">
                                 <div class="min-w-0">
                                     <p id="fc-buy-l" class="{{ $name }}">{{ __('admin.fc.buy') }}</p>

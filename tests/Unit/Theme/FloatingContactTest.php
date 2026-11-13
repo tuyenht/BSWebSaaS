@@ -477,3 +477,73 @@ it('gives a channel its own picture only when the page resolved the one it names
             ['key' => 'phone', 'on' => true, 'value' => '0912345678', 'img' => ['x']],
         ]], 'vi', images: ['x' => $pic])['buttons'][0]['img'])->toBeNull();
 });
+
+it('reads the raised call as on unless the setting says false', function (): void {
+    expect(FloatingContact::raiseCall(null))->toBeTrue()
+        ->and(FloatingContact::raiseCall([]))->toBeTrue()
+        ->and(FloatingContact::raiseCall(['bar_raise_call' => 0]))->toBeTrue()
+        ->and(FloatingContact::raiseCall(['bar_raise_call' => true]))->toBeTrue()
+        ->and(FloatingContact::raiseCall(['bar_raise_call' => false]))->toBeFalse();
+});
+
+it('gives the raised call a place before the other quick channels, keeping the saved order on the bar', function (): void {
+    // Without it the fourth quick channel is the one that waits in the sheet; with it the call is picked first.
+    $ready = ['zalo', 'sms', 'whatsapp', 'telegram', 'phone', 'viber'];
+
+    expect(FloatingContact::barSlots($ready, false)['bar'])->toBe(['zalo', 'sms', 'whatsapp', 'telegram'])
+        ->and(FloatingContact::barSlots($ready, false, true))->toBe(['bar' => ['zalo', 'sms', 'whatsapp', 'phone'], 'sheet' => ['telegram', 'viber'], 'more' => true])
+        ->and(FloatingContact::barSlots($ready, true, true))->toBe(['bar' => ['zalo', 'sms', 'phone'], 'sheet' => ['whatsapp', 'telegram', 'viber'], 'more' => true]);
+});
+
+it('draws the call in the middle of the bar, the other cells keeping their order with the extra one on the left', function (array $keys, bool $more, bool $buy, array $expected): void {
+    $cells = FloatingContact::barCells($keys, $more, $buy, true);
+    $label = static fn (array $c): string => match ($c['kind']) {
+        'channel' => $keys[$c['at']],
+        default => $c['kind'],
+    };
+
+    expect(array_map($label, $cells))->toBe($expected)
+        ->and(array_values(array_filter($cells, static fn (array $c): bool => $c['up'])))->toHaveCount(1)
+        ->and($cells[array_search('phone', $expected, true)]['up'])->toBeTrue();
+})->with([
+    'two cells' => [['phone', 'zalo'], false, false, ['zalo', 'phone']],
+    'three cells' => [['phone', 'zalo', 'sms'], false, false, ['zalo', 'phone', 'sms']],
+    'four cells: the left takes the extra one' => [['phone', 'zalo', 'sms', 'whatsapp'], false, false, ['zalo', 'sms', 'phone', 'whatsapp', 'spare']],
+    'five cells' => [['phone', 'zalo', 'sms', 'whatsapp', 'telegram'], false, false, ['zalo', 'sms', 'phone', 'whatsapp', 'telegram', 'spare']],
+    'the call saved last' => [['zalo', 'sms', 'whatsapp', 'phone'], false, false, ['zalo', 'sms', 'phone', 'whatsapp', 'spare']],
+    '“Thêm” and “Mua hàng” count as cells' => [['phone', 'zalo', 'sms'], true, true, ['zalo', 'sms', 'phone', 'more', 'buy']],
+]);
+
+it('ranks the channels for a narrow phone with the call first and never lets it go', function (): void {
+    $cells = FloatingContact::barCells(['zalo', 'sms', 'phone', 'whatsapp'], false, false, true);
+    $places = [];
+    foreach ($cells as $c) {
+        if ($c['at'] !== null) {
+            $places[$c['at']] = $c['place'];
+        }
+    }
+    // Saved order zalo, sms, phone, whatsapp → call 0, then zalo 1, sms 2, whatsapp 3.
+    expect($places)->toBe([0 => 1, 1 => 2, 2 => 0, 3 => 3])
+        ->and(array_column(FloatingContact::barCells(['zalo', 'sms', 'phone', 'whatsapp'], false, false, false), 'place'))->toBe([0, 1, 2, 3, -1]);
+});
+
+it('adds the built-in channels a list lacks only while the list has room', function (): void {
+    $custom = static fn (int $n): array => array_map(static fn (int $i): string => 'c'.$i, range(1, $n));
+
+    expect(FloatingContact::coreToAdd([]))->toBe(FloatingContact::CORE)
+        ->and(FloatingContact::coreToAdd(['phone', 'zalo', 'messenger', 'email', 'sms']))->toBe(['maps'])
+        ->and(FloatingContact::coreToAdd(['maps', 'phone', 'zalo', 'messenger', 'email', 'sms']))->toBe([])
+        ->and(FloatingContact::coreToAdd([...FloatingContact::CORE, ...$custom(2)]))->toBe([])
+        ->and(FloatingContact::coreToAdd([...array_slice(FloatingContact::CORE, 0, 5), ...$custom(FloatingContact::MAX_CHANNELS - 5)]))->toBe([])
+        ->and(FloatingContact::coreToAdd([...array_slice(FloatingContact::CORE, 0, 5), ...$custom(FloatingContact::MAX_CHANNELS - 6)]))->toBe(['maps']);
+});
+
+it('lists directions as a built-in channel that is not a preset, as a map pin, with http links only', function (): void {
+    expect(FloatingContact::CORE)->toContain('maps')
+        ->and(FloatingContact::PRESETS)->not->toContain('maps')
+        ->and(FloatingContact::CHANNELS['maps']['icon'])->toBe('ri-map-pin-fill')
+        ->and(strtolower(FloatingContact::CHANNELS['maps']['color']))->toBe('#ea4335')
+        ->and(FloatingContact::clean('url', 'https://maps.app.goo.gl/abc'))->toBe('https://maps.app.goo.gl/abc')
+        ->and(FloatingContact::clean('url', 'javascript:alert(1)'))->toBeNull()
+        ->and(FloatingContact::clean('url', 'geo:21.0,105.8'))->toBeNull();
+});

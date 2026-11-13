@@ -81,7 +81,7 @@ final class FloatingContact
         'tiktok' => ['type' => 'url', 'icon' => 'ri-tiktok-line', 'color' => '#111111'],
         'youtube' => ['type' => 'url', 'icon' => 'ri-youtube-line', 'color' => '#ff0000'],
         'instagram' => ['type' => 'url', 'icon' => 'ri-instagram-line', 'color' => '#e1306c'],
-        'maps' => ['type' => 'url', 'icon' => 'ri-map-pin-line', 'color' => '#ea4335'],
+        'maps' => ['type' => 'url', 'icon' => 'ri-map-pin-fill', 'color' => '#ea4335'],
     ];
 
     /**
@@ -92,11 +92,17 @@ final class FloatingContact
 
     public const int ICON_MAX_BYTES = 51200;
 
-    /** Channels every site keeps in its list (they can be switched off, not removed). */
-    public const array CORE = ['phone', 'zalo', 'messenger', 'email', 'sms'];
+    /**
+     * Channels every site keeps in its list (they can be switched off, not removed). "maps" ("Chỉ đường")
+     * joined the list later and starts switched off.
+     */
+    public const array CORE = ['phone', 'zalo', 'messenger', 'email', 'sms', 'maps'];
+
+    /** Channels a new site lists switched on; the other built-in channels start off. */
+    public const array ON_BY_DEFAULT = ['phone', 'zalo', 'messenger', 'email'];
 
     /** Channels added from "Chọn kênh có sẵn". */
-    public const array PRESETS = ['whatsapp', 'telegram', 'viber', 'tiktok', 'youtube', 'instagram', 'maps'];
+    public const array PRESETS = ['whatsapp', 'telegram', 'viber', 'tiktok', 'youtube', 'instagram'];
 
     /** Channels the board-style phone bar (`phone_bar` of a round-button site) leaves out; the horizontal bar keeps every channel. */
     public const array BAR_HIDDEN = ['messenger', 'email'];
@@ -147,7 +153,7 @@ final class FloatingContact
      * @param  mixed  $raw  the stored value (an array when set)
      * @param  string|null  $shopHref  the site's product list, or null when it has none
      * @param  array<string, array{src: string, w: int, h: int}>  $images  icon pictures by ulid (ContactIconImages)
-     * @return array{layout: string, position: string, offset_x: int, offset_y: int, tone: string, track: bool, dial: bool, buttons: list<array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null, img: array{src: string, w: int, h: int}|null, pending?: true}>, bar: list<array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null, img: array{src: string, w: int, h: int}|null, pending?: true}>, sheet: list<array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null, img: array{src: string, w: int, h: int}|null, pending?: true}>, more: bool, buy: array{href: string, fill: string, ink: string, icon: string}|null}|null
+     * @return array{layout: string, position: string, offset_x: int, offset_y: int, tone: string, track: bool, dial: bool, buttons: list<array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null, img: array{src: string, w: int, h: int}|null, pending?: true}>, bar: list<array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null, img: array{src: string, w: int, h: int}|null, pending?: true}>, sheet: list<array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null, img: array{src: string, w: int, h: int}|null, pending?: true}>, more: bool, raise: bool, cells: list<array{kind: 'channel'|'more'|'spare'|'buy', at: int|null, place: int, up: bool}>, buy: array{href: string, fill: string, ink: string, icon: string}|null}|null
      */
     public static function widget(mixed $raw, string $locale, ?string $shopHref = null, bool $pending = false, array $images = []): ?array
     {
@@ -180,7 +186,10 @@ final class FloatingContact
 
         $buy = $shopHref !== null && self::wantsShop($raw) ? self::buy($raw['buy'], $shopHref, true) : null;
         $byKey = array_column($items, null, 'key');
-        $slots = self::barSlots(array_column($items, 'key'), $buy !== null);
+        // The phone bar's raised call button: only on a layout with the bar, only while the call channel is on with a number that passes.
+        $raise = $layout !== 'vertical' && self::raiseCall($raw) && isset($byKey['phone']) && ! isset($byKey['phone']['pending']);
+        $slots = self::barSlots(array_column($items, 'key'), $buy !== null, $raise);
+        $bar = $layout === 'vertical' ? [] : self::pick($byKey, $slots['bar']);
 
         return [
             'layout' => $layout,
@@ -192,9 +201,11 @@ final class FloatingContact
             'track' => self::track($raw),
             'dial' => self::dials($layout, self::dial($raw), count($items)),
             'buttons' => $items,
-            'bar' => $layout === 'vertical' ? [] : self::pick($byKey, $slots['bar']),
+            'bar' => $bar,
             'sheet' => $layout === 'vertical' ? [] : self::pick($byKey, $slots['sheet']),
             'more' => $layout !== 'vertical' && $slots['more'],
+            'raise' => $raise,
+            'cells' => $layout === 'vertical' ? [] : self::barCells($slots['bar'], $slots['more'], $buy !== null, $raise),
             'buy' => $buy,
         ];
     }
@@ -409,6 +420,31 @@ final class FloatingContact
         return is_string($tone) && in_array($tone, self::BAR_TONES, true) ? $tone : 'auto';
     }
 
+    /**
+     * The built-in channels missing from a list of channel keys that still fit within MAX_CHANNELS, in the
+     * order of CORE: a list already at the most a site keeps takes none (nothing saved is dropped to make room).
+     *
+     * @param  list<string>  $keys  the keys a list already holds
+     * @return list<string>
+     */
+    public static function coreToAdd(array $keys): array
+    {
+        $add = [];
+        foreach (self::CORE as $core) {
+            if (! in_array($core, $keys, true) && count($keys) + count($add) < self::MAX_CHANNELS) {
+                $add[] = $core;
+            }
+        }
+
+        return $add;
+    }
+
+    /** Whether the phone bar draws the call as a raised button in the middle (default on; only false turns it off). */
+    public static function raiseCall(mixed $raw): bool
+    {
+        return ! is_array($raw) || ($raw['bar_raise_call'] ?? true) !== false;
+    }
+
     /** Whether a click on a button is counted (default on; only false turns it off). */
     public static function track(mixed $raw): bool
     {
@@ -422,13 +458,15 @@ final class FloatingContact
      *
      * @param  list<string>  $ready  keys of the channels that are on and have a value that passes, in saved order
      * @param  bool  $buy  whether the "Mua hàng" cell takes one place
+     * @param  bool  $raise  whether the call is raised: it is then picked before the other quick channels, so it always has a place
      * @return array{bar: list<string>, sheet: list<string>, more: bool}
      */
-    public static function barSlots(array $ready, bool $buy): array
+    public static function barSlots(array $ready, bool $buy, bool $raise = false): array
     {
         $cap = self::BAR_CAP - ($buy ? 1 : 0);
         $quick = array_values(array_filter($ready, static fn (string $k): bool => ! in_array($k, self::SHEET_ONLY, true)));
-        $left = array_values(array_diff($ready, array_slice($quick, 0, $cap)));
+        $picking = $raise && in_array('phone', $quick, true) ? ['phone', ...array_values(array_diff($quick, ['phone']))] : $quick;
+        $left = array_values(array_diff($ready, array_slice($picking, 0, $cap)));
 
         if ($left === []) {
             return ['bar' => $quick, 'sheet' => [], 'more' => false];
@@ -437,9 +475,53 @@ final class FloatingContact
             return ['bar' => $ready, 'sheet' => [], 'more' => false];
         }
 
-        $bar = array_slice($quick, 0, $cap - 1);
+        $taken = array_slice($picking, 0, $cap - 1);
+        // The bar keeps the saved order whichever channels were picked first.
+        $bar = array_values(array_filter($quick, static fn (string $k): bool => in_array($k, $taken, true)));
 
         return ['bar' => $bar, 'sheet' => array_values(array_diff($ready, $bar)), 'more' => true];
+    }
+
+    /**
+     * The cells of the phone's bottom bar in the order they are drawn. Without the raised call it is the
+     * saved order, "Thêm" then "Mua hàng" last. With it the call stands in the middle and the other cells
+     * ("Thêm" and "Mua hàng" included) keep their order, split left and right of it, the left side taking
+     * the extra one when the count is uneven (four cells: X, Y, call, Z). `at` is a channel's index in
+     * $keys; `place` ranks a channel for a narrow phone, which lets the last ones go (the call is first);
+     * `up` marks the raised call. A "spare" cell is the "Thêm" a narrow phone adds when the bar has none
+     * (it shows only there, so it never takes part in the centring).
+     *
+     * @param  list<string>  $keys  the bar's channel keys in saved order
+     * @return list<array{kind: 'channel'|'more'|'spare'|'buy', at: int|null, place: int, up: bool}>
+     */
+    public static function barCells(array $keys, bool $more, bool $buy, bool $raise): array
+    {
+        $call = $raise ? array_search('phone', $keys, true) : false;
+        $cells = [];
+        $place = 0;
+        $callCell = null;
+        foreach ($keys as $at => $key) {
+            if ($call !== false && $at === $call) {
+                $callCell = ['kind' => 'channel', 'at' => $at, 'place' => 0, 'up' => true];
+
+                continue;
+            }
+            $cells[] = ['kind' => 'channel', 'at' => $at, 'place' => $call === false ? $at : ++$place, 'up' => false];
+        }
+        if ($more) {
+            $cells[] = ['kind' => 'more', 'at' => null, 'place' => -1, 'up' => false];
+        }
+        if ($buy) {
+            $cells[] = ['kind' => 'buy', 'at' => null, 'place' => -1, 'up' => false];
+        }
+        if ($callCell !== null) {
+            array_splice($cells, (int) ceil(count($cells) / 2), 0, [$callCell]);
+        }
+        if (! $more && count($cells) >= 4) {
+            array_splice($cells, count($cells) - ($buy ? 1 : 0), 0, [['kind' => 'spare', 'at' => null, 'place' => -1, 'up' => false]]);
+        }
+
+        return $cells;
     }
 
     /** Whether a phone folds the round buttons into one "Liên hệ" button: vertical layout, switch on, enough ready channels. */

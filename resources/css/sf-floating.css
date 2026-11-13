@@ -628,6 +628,60 @@ svg.sf-fc-bar__icon:has(.sf-fc__z) {
     }
 }
 
+/* The raised call (data-up on the bar, --up on its cell): a bigger disc in the middle of the bar that
+   rises above its top edge. The cell is one link, the disc inside it. The negative margin makes the disc
+   take only as much room as a normal one (a 2.75rem disc and its 0.1875rem ring, minus 1.375rem), so the
+   bar is no taller and the labels stay on one line, and the disc rises about 1rem above the bar. Every
+   cell then lays out top-down, so the discs stay in one row when a label wraps. */
+.sf-fc-bar[data-up] .sf-fc-bar__link {
+    justify-content: flex-start;
+}
+
+.sf-fc-bar__item--up .sf-fc-bar__dot {
+    position: relative;
+    box-sizing: content-box;
+    width: 2.75rem;
+    height: 2.75rem;
+    margin-top: -1.375rem;
+    border: 0.1875rem solid #fff;
+    box-shadow: 0 0.25rem 0.75rem -0.125rem rgb(15 23 42 / 24%);
+}
+
+.sf-fc-bar__item--up .sf-fc-bar__icon {
+    width: 1.375rem;
+    height: 1.375rem;
+}
+
+@container sf-fc-cell (width >= 100px) {
+    .sf-fc-bar__item--up .sf-fc-bar__dot {
+        width: 3rem;
+        height: 3rem;
+    }
+
+    .sf-fc-bar__item--up .sf-fc-bar__icon {
+        width: 1.5rem;
+        height: 1.5rem;
+    }
+}
+
+/* The ring of the raised call: three soft pulses like the round call button's, then still. */
+.sf-fc-bar__item--up .sf-fc-bar__dot::before {
+    content: "";
+    position: absolute;
+    inset: -0.1875rem;
+    z-index: -1;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--fc-tint, #4caf50) 70%, transparent);
+    opacity: 0;
+    pointer-events: none;
+    animation: sf-fc-pulse 2.5s ease-out 3s 3;
+}
+
+/* Its spacer at the page end keeps the rise clear too, so the last line of the page is never under the disc. */
+.sf-fc-bar--ghost[data-up] {
+    padding-top: 1rem;
+}
+
 .sf-fc-bar__label {
     max-width: 100%;
     font-size: 0.75rem;
@@ -655,6 +709,10 @@ svg.sf-fc-bar__icon:has(.sf-fc__z) {
     outline: 1.5px solid rgb(255 255 255 / 85%);
 }
 
+.sf-fc-bar--dark .sf-fc-bar__list .sf-fc-bar__item--up .sf-fc-bar__dot {
+    outline: 0;
+}
+
 .sf-fc-bar--dark .sf-fc-bar__link:focus-visible {
     outline-color: #e2e8f0;
 }
@@ -677,7 +735,8 @@ svg.sf-fc-bar__icon:has(.sf-fc__z) {
 }
 
 /* The "Thêm" sheet: a small panel just above the bar, scrolling inside when its channels outgrow a short
-   screen. */
+   screen. A popover sits in the browser's top layer, so it cannot join the bar's own stack: its offset is
+   the bar's height plus the gap (0.75rem; 1.75rem with the raised call, whose disc rises about 1rem). */
 .sf-fc-sheet[popover] {
     position: fixed;
     inset: auto 8px calc(4.375rem + env(safe-area-inset-bottom, 0px));
@@ -693,6 +752,12 @@ svg.sf-fc-bar__icon:has(.sf-fc__z) {
     background: var(--color-surface, #fff);
     color: var(--color-text-strong, #3c4765);
     box-shadow: 0 10px 30px -6px rgb(15 23 42 / 35%);
+}
+
+.sf-fc-bar[data-up] .sf-fc-sheet[popover] {
+    bottom: calc(5.375rem + env(safe-area-inset-bottom, 0px));
+    max-height: calc(100vh - 4.625rem - env(safe-area-inset-bottom, 0px) - 16px);
+    max-height: calc(100dvh - 4.625rem - env(safe-area-inset-bottom, 0px) - 16px);
 }
 
 .sf-fc-sheet__h {
@@ -812,6 +877,11 @@ svg.sf-fc-bar__icon:has(.sf-fc__z) {
         overflow-x: auto;
     }
 
+    /* The sideways scroll would clip a disc that rises above the bar: the bar makes the room itself (as its ghost does). */
+    .sf-fc-bar[data-up]:not(.sf-fc-bar--ghost) {
+        padding-top: 1rem;
+    }
+
     .sf-fc-bar:not(.sf-fc-bar--ghost) :is(.sf-fc-sheet, .sf-fc-sheet__list, .sf-fc-bar__list) {
         display: contents;
     }
@@ -886,7 +956,8 @@ svg.sf-fc-bar__icon:has(.sf-fc__z) {
         transition: none;
     }
 
-    .sf-fc__item--pulse::before {
+    .sf-fc__item--pulse::before,
+    .sf-fc-bar__item--up .sf-fc-bar__dot::before {
         animation: none;
     }
 

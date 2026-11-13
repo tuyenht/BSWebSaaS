@@ -40,7 +40,7 @@ final class FloatingContactInput
     {
         $errors = [];
         foreach (array_keys($value) as $field) {
-            if (! in_array($field, ['enabled', 'theme', 'position', 'offset_x', 'offset_y', 'layout', 'dial', 'bar_tone', 'track', 'buy', 'phone_bar', 'channels'], true)) {
+            if (! in_array($field, ['enabled', 'theme', 'position', 'offset_x', 'offset_y', 'layout', 'dial', 'bar_tone', 'track', 'bar_raise_call', 'buy', 'phone_bar', 'channels'], true)) {
                 $errors[] = "'{$field}' is not a floating-contact field.";
             }
         }
@@ -59,7 +59,7 @@ final class FloatingContactInput
         if (isset($value['bar_tone']) && ! in_array($value['bar_tone'], FloatingContact::BAR_TONES, true)) {
             $errors[] = "'bar_tone' must be one of ".implode(', ', FloatingContact::BAR_TONES).'.';
         }
-        foreach (['dial', 'track'] as $field) {
+        foreach (['dial', 'track', 'bar_raise_call'] as $field) {
             if (isset($value[$field]) && ! is_bool($value[$field])) {
                 $errors[] = "'{$field}' must be true or false.";
             }
@@ -315,10 +315,8 @@ final class FloatingContactInput
                 'tips' => $tips,
             ]);
         }
-        foreach (FloatingContact::CORE as $key) {
-            if (! isset($seen[$key])) {
-                $rows[] = self::castRow(['key' => $key]);
-            }
+        foreach (FloatingContact::coreToAdd(array_keys($seen)) as $key) {
+            $rows[] = self::castRow(['key' => $key]);
         }
 
         // The phone bar is kept only where a site set it, so a site that never did stores what it always did.
@@ -342,6 +340,8 @@ final class FloatingContactInput
             'dial' => FloatingContact::dial($raw),
             'bar_tone' => FloatingContact::barTone($raw),
             'track' => FloatingContact::track($raw),
+            // Only the off state is stored: a setting without the key reads as on.
+            ...(FloatingContact::raiseCall($raw) ? [] : ['bar_raise_call' => false]),
             'buy' => [
                 'enabled' => ($buy['enabled'] ?? false) === true,
                 'color' => in_array($buyColor, FloatingContactSettings::BUY_SWATCHES, true) || FloatingContact::color($buyColor) !== null ? $buyColor : FloatingContact::BUY_COLOR,
