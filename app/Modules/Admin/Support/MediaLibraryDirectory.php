@@ -95,10 +95,12 @@ final class MediaLibraryDirectory
     }
 
     /**
-     * One page after (older) or before (newer) a row, in the chosen order.
+     * One page after (older) or before (newer) a row, in the chosen order. A cursor that no longer
+     * resolves in this list (trashed in another tab, filtered out, forged) gives the first page and
+     * `lost` = true, so the caller can say "page 1" again.
      *
      * @param  Builder<Media>  $query
-     * @return array{rows: Collection<int, Media>, older: string|null, newer: string|null}
+     * @return array{rows: Collection<int, Media>, older: string|null, newer: string|null, lost: bool}
      */
     public function page(Builder $query, string $sort, int $per, string $after, string $before): array
     {
@@ -133,6 +135,7 @@ final class MediaLibraryDirectory
             'rows' => $rows,
             'older' => $hasNext && $last instanceof Media ? $last->ulid : null,
             'newer' => $hasPrev && $first instanceof Media ? $first->ulid : null,
+            'lost' => $cursorUlid !== '' && $cursor === null,
         ];
     }
 

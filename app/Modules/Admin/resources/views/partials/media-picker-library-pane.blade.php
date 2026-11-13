@@ -214,7 +214,7 @@
                         @php($selected = in_array($m->id, $pickerSelected, true))
                         {{-- A div, not a button, so the ⓘ detail button can nest without invalid markup. --}}
                         <div wire:key="mp-item-{{ $m->id }}" role="button" tabindex="0"
-                                wire:click="{{ $manage ? 'openPickerDetail' : 'togglePickerItem' }}({{ $m->id }})" title="{{ $m->original_filename }}"
+                                wire:click="{{ $manage ? "openPickerDetail('{$m->ulid}')" : "togglePickerItem({$m->id})" }}" title="{{ $m->original_filename }}"
                                 @class(['relative aspect-square cursor-pointer overflow-hidden rounded-[11px] border border-border bg-surface-hover', 'pointer-events-none opacity-60' => $picked])>
                             @if (str_starts_with($m->mime, 'image/'))
                                 <img src="{{ $mp['urls']->url($m->storage_key, 320) }}" alt="{{ $m->original_filename }}" loading="lazy"
@@ -230,7 +230,7 @@
                             <span class="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/55 to-transparent px-2 pb-1.5 pt-3.5 text-left text-[10px] text-white">{{ $m->original_filename }}</span>
                             {{-- ⓘ only in the picker (manage-mode tile click already opens detail; trash hides it). --}}
                             @unless ($pickerTrash || $manage)
-                                <button type="button" wire:click.stop="openPickerDetail({{ $m->id }})" title="{{ __('media.picker_detail') }}"
+                                <button type="button" wire:click.stop="openPickerDetail('{{ $m->ulid }}')" title="{{ __('media.picker_detail') }}"
                                         aria-label="{{ __('media.picker_detail') }}"
                                         class="group absolute start-[3px] top-[3px] grid size-control any-pointer-coarse:size-hit place-items-center">
                                     <span class="grid size-[calc(1.375rem+var(--user-text-boost))] place-items-center rounded-md bg-black/30 text-white transition-colors group-hover:bg-black/50">
@@ -245,7 +245,7 @@
                                 <span class="pointer-events-none absolute inset-0 rounded-[11px] border-[3px] border-accent"></span>
                             {{-- "Currently viewing" (manage-mode detail open on this tile): a soft ring, distinct
                                  from the solid selected border, so you can see which one the panel is showing. --}}
-                            @elseif (($pickerDetailId ?? null) === $m->id)
+                            @elseif (($pickerDetailUlid ?? null) === $m->ulid)
                                 <span class="pointer-events-none absolute inset-0 rounded-[11px] bg-admin-primary/10"></span>
                                 <span class="pointer-events-none absolute inset-0 rounded-[11px] ring-2 ring-inset ring-admin-primary/60"></span>
                             @endif
@@ -273,9 +273,9 @@
                     @foreach ($mp['page'] as $m)
                         @php($picked = in_array($m->id, $pickedIds ?? [], true))
                         @php($selected = in_array($m->id, $pickerSelected, true))
-                        @php($viewing = ($pickerDetailId ?? null) === $m->id)
+                        @php($viewing = ($pickerDetailUlid ?? null) === $m->ulid)
                         <div wire:key="mp-row-{{ $m->id }}" role="button" tabindex="0"
-                                wire:click="{{ $manage ? 'openPickerDetail' : 'togglePickerItem' }}({{ $m->id }})"
+                                wire:click="{{ $manage ? "openPickerDetail('{$m->ulid}')" : "togglePickerItem({$m->id})" }}"
                                 @class(['flex cursor-pointer items-center gap-3 rounded-[9px] px-2.5 py-2 text-left', 'bg-admin-primary/10 shadow-[inset_3px_0_0_var(--color-admin-primary)]' => $selected, 'bg-admin-primary/5 shadow-[inset_2px_0_0_var(--color-admin-primary)]' => $viewing && ! $selected, 'hover:bg-surface-hover' => ! $selected && ! $viewing, 'pointer-events-none opacity-60' => $picked])>
                             @php($rowCheckClass = 'flex size-[22px] shrink-0 items-center justify-center rounded-md border-[1.5px] '.($selected || $picked ? 'border-admin-primary bg-admin-primary text-white' : 'border-placeholder bg-surface text-transparent'))
                             @if ($manage)
@@ -300,7 +300,7 @@
                             <span class="w-[70px] text-[12.5px] text-body-muted">{{ number_format($m->size / 1048576, 1) }} MB</span>
                             <span class="w-[52px]"><span class="rounded-[5px] bg-admin-primary/8 px-[7px] py-0.5 text-[10px] font-semibold uppercase text-accent">{{ $m->extLabel() }}</span></span>
                             @unless ($pickerTrash)
-                                <button type="button" wire:click.stop="openPickerDetail({{ $m->id }})" title="{{ __('media.picker_detail') }}"
+                                <button type="button" wire:click.stop="openPickerDetail('{{ $m->ulid }}')" title="{{ __('media.picker_detail') }}"
                                         class="hit-area flex size-control-row shrink-0 items-center justify-center rounded text-text-muted hover:text-primary-text">
                                     <x-bs-admin::icon name="ri-information" class="size-4" />
                                 </button>

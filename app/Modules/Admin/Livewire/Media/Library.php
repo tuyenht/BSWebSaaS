@@ -456,10 +456,72 @@ final class Library extends Component
 
     public function openDetail(string $ulid): void
     {
-        $media = Media::query()->where('ulid', self::ulidOr($ulid))->first();
-        if ($media !== null) {
-            $this->openPickerDetail($media->id);
-        }
+        $this->openPickerDetail($ulid);
+    }
+
+    /*
+    | The shared picker's own endpoints take bigint ids and its own selection; this page addresses
+    | files by ulid and folders by slug through the methods above, so they are closed here.
+    */
+
+    public function pickImage(int $mediaId): void
+    {
+        abort(403);
+    }
+
+    public function setPickerFolder(?int $folderId): void
+    {
+        abort(403);
+    }
+
+    public function updatedPickerFolderId(mixed $value): void
+    {
+        abort(403);
+    }
+
+    public function openPickerTrash(): void
+    {
+        abort(403);
+    }
+
+    public function togglePickerItem(int $mediaId): void
+    {
+        abort(403);
+    }
+
+    public function insertPicked(): void
+    {
+        abort(403);
+    }
+
+    public function pickerBulkDelete(): void
+    {
+        abort(403);
+    }
+
+    public function restorePickerSelection(): void
+    {
+        abort(403);
+    }
+
+    public function purgePickerSelection(): void
+    {
+        abort(403);
+    }
+
+    public function emptyPickerTrash(): void
+    {
+        abort(403);
+    }
+
+    public function pickerBulkMove(?int $folderId): void
+    {
+        abort(403);
+    }
+
+    public function createPickerFolder(): void
+    {
+        abort(403);
     }
 
     public function dismissToast(int $seq = 0): void
@@ -480,7 +542,7 @@ final class Library extends Component
         $failed = false;
         $folders = new Collection;
         $counts = ['byFolder' => [], 'unfiled' => 0, 'all' => 0, 'trash' => 0];
-        $page = ['rows' => new Collection, 'older' => null, 'newer' => null];
+        $page = ['rows' => new Collection, 'older' => null, 'newer' => null, 'lost' => false];
         $totals = ['n' => 0, 'bytes' => 0];
         $current = null;
         try {
@@ -497,13 +559,18 @@ final class Library extends Component
             report($e);
             $failed = true;
         }
+        if ($page['lost']) {
+            // the row the cursor named is gone from this list: the first page is what is shown
+            $this->after = $this->before = '';
+            $this->pageNo = 1;
+        }
 
         $purge = ['n' => 0, 'bytes' => 0];
         if ($this->askPurgeOpen && $canDelete && ! $failed) {
             $purge = $directory->totals($this->purgeAll ? Media::onlyTrashed() : Media::onlyTrashed()->whereIn('ulid', $this->picked));
         }
 
-        $detail = $this->pickerDetailId === null ? null : Media::query()->with('folder')->whereKey($this->pickerDetailId)->first();
+        $detail = $this->pickerDetailMedia($this->pickerDetailUlid, withFolder: true);
         $uploader = null;
         if ($detail?->created_by !== null) {
             $name = User::query()->whereKey($detail->created_by)->value('name');

@@ -7,6 +7,8 @@ use App\Modules\Media\Models\MediaFolder;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 
 /*
@@ -83,7 +85,7 @@ it('never lists, picks, opens or moves into another site', function (): void {
             ->call('togglePick', $theirs->ulid)
             ->assertSet('picked', [])
             ->call('openDetail', $theirs->ulid)
-            ->assertSet('pickerDetailId', null)
+            ->assertSet('pickerDetailUlid', null)
             ->call('togglePick', $mine->ulid)
             ->call('openMove')
             ->set('moveTo', 'site-b')
@@ -251,4 +253,141 @@ it('reads the library on a flat number of queries', function (): void {
     $many = countQueries(fn () => $this->actingAs($user)->get('http://a.test/admin/media')->assertOk());
 
     expect($many)->toBe($one);
+});
+
+it('opens the detail by ulid and keeps the bigint id out of the wire data', function (): void {
+    $user = libUser(['media.view', 'media.upload']);
+    foreach (range(1, 40) as $i) {
+        libFile(1, "dem-{$i}.png"); // so the file's id is not a small number the page uses anyway
+    }
+    $file = libFile(1, 'chi-tiet.png', ['alt' => ['vi' => 'Máy tiện']]);
+    $theirs = libFile(2, 'cua-site-b.png');
+
+    app(Tenancy::class)->enter(1, function () use ($user, $file, $theirs): void {
+        $page = Livewire::actingAs($user)->test(Library::class)
+            ->call('openDetail', $file->ulid)
+            ->assertSet('pickerDetailUlid', $file->ulid)
+            ->assertSet('pickerDetailAlt', 'Máy tiện')
+            ->assertSee('chi-tiet.png');
+
+        $data = $page->getData();
+        $ints = collect($data)->except(['per', 'pageNo', 'toastSeq', 'pickerPage'])->flatten()
+            ->filter(fn (mixed $v): bool => is_int($v))->all();
+        expect($data)->not->toHaveKey('pickerDetailId')
+            ->and($ints)->not->toContain($file->id)
+            ->and($page->html())->not->toContain('"pickerDetailId"')
+            ->and($page->html())->not->toMatch('/openPickerDetail\(\s*\d+\s*\)/');
+
+        $page->call('openDetail', $theirs->ulid)->assertSet('pickerDetailUlid', $file->ulid)
+            ->call('closePickerDetail')
+            ->call('openDetail', $theirs->ulid)->assertSet('pickerDetailUlid', null)
+            ->call('openDetail', 'khong-phai-ulid')->assertSet('pickerDetailUlid', null)
+            ->call('savePickerDetailAlt');
+
+        expect(fn () => Livewire::actingAs($user)->test(Library::class)->set('pickerDetailUlid', $theirs->ulid))
+            ->toThrow(CannotUpdateLockedPropertyException::class);
+    });
+    expect(app(Tenancy::class)->enter(2, fn () => Media::query()->find($theirs->id)?->alt))->toBe([]);
+});
+
+it('closes the shared picker\'s bigint-id endpoints on this page', function (string $method, array $args): void {
+    $user = libUser(['media.view', 'media.upload', 'media.delete']);
+    $file = libFile(1, 'giu.png');
+
+    app(Tenancy::class)->enter(1, function () use ($user, $method, $args, $file): void {
+        Livewire::actingAs($user)->test(Library::class)->call($method, ...$args)->assertForbidden();
+        expect(Media::query()->find($file->id))->not->toBeNull();
+    });
+})->with([
+    'toggle item by id' => ['togglePickerItem', [1]],
+    'move by folder id' => ['pickerBulkMove', [null]],
+    'folder by id' => ['setPickerFolder', [1]],
+    'purge selection' => ['purgePickerSelection', []],
+    'empty trash' => ['emptyPickerTrash', []],
+    'create folder' => ['createPickerFolder', []],
+    'insert' => ['insertPicked', []],
+]);
+
+it('starts again at page 1 when the cursor file is gone or forged', function (): void {
+    $user = libUser(['media.view', 'media.delete']);
+    foreach (range(1, 30) as $i) {
+        libFile(1, sprintf('tep-%02d.png', $i), ['created_at' => now()->subMinutes(100 - $i)]);
+    }
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $cut = Media::query()->where('original_filename', 'tep-07.png')->firstOrFail();
+        $page = Livewire::actingAs($user)->test(Library::class)
+            ->call('older', $cut->ulid)
+            ->assertSet('pageNo', 2)
+            ->assertSee(__('media.lib.foot_range', ['from' => 25, 'to' => 30, 'n' => 30]));
+
+        $cut->delete(); // trashed in another tab
+        $page->call('setView', 'list')
+            ->assertSet('pageNo', 1)->assertSet('after', '')
+            ->assertSee('tep-30')
+            ->assertSee(__('media.lib.foot_range', ['from' => 1, 'to' => 24, 'n' => 29]));
+
+        $page->call('older', (string) Str::ulid())
+            ->assertSet('pageNo', 1)->assertSet('after', '')
+            ->assertSee(__('media.lib.foot_range', ['from' => 1, 'to' => 24, 'n' => 29]));
+
+        $page->call('newer', (string) Str::ulid())
+            ->assertSet('pageNo', 1)->assertSet('before', '');
+    });
+});
+
+it('pages forward and back without a repeat or a gap', function (string $sort, Closure $attrs): void {
+    $user = libUser(['media.view']);
+    $at = now()->subHour();
+    foreach (range(1, 30) as $i) {
+        libFile(1, sprintf('k-%02d.png', $i), $attrs($i, $at));
+    }
+
+    app(Tenancy::class)->enter(1, function () use ($user, $sort): void {
+        $page = Livewire::actingAs($user)->test(Library::class)->call('setSort', $sort);
+        $first = $page->viewData('rows')->pluck('ulid')->all();
+        $older = $page->viewData('olderUlid');
+        expect($first)->toHaveCount(24)->and($older)->toBe(end($first));
+
+        $page->call('older', $older);
+        $second = $page->viewData('rows')->pluck('ulid')->all();
+        expect($second)->toHaveCount(6)
+            ->and(array_intersect($first, $second))->toBe([])
+            ->and(array_unique([...$first, ...$second]))->toHaveCount(30)
+            ->and($page->viewData('olderUlid'))->toBeNull();
+
+        $page->call('newer', $page->viewData('newerUlid'));
+        expect($page->viewData('rows')->pluck('ulid')->all())->toBe($first)
+            ->and($page->viewData('newerUlid'))->toBeNull();
+        $page->assertSet('pageNo', 1);
+    });
+})->with([
+    'newest, all at the same time' => ['new', fn (int $i, $at): array => ['created_at' => $at]],
+    'name a-z' => ['az', fn (int $i, $at): array => []],
+    'size, with equal sizes' => ['size', fn (int $i, $at): array => ['size' => 1000 * ($i % 3 + 1)]],
+]);
+
+it('never restores or purges another site\'s file from the Trash', function (): void {
+    $user = libUser(['media.view', 'media.delete']);
+    $mine = libFile(1, 'cua-toi.png');
+    $theirs = libFile(2, 'cua-site-b.png');
+    app(Tenancy::class)->enter(1, fn () => $mine->delete());
+    app(Tenancy::class)->enter(2, fn () => $theirs->delete());
+
+    app(Tenancy::class)->enter(1, function () use ($user, $mine, $theirs): void {
+        $page = Livewire::actingAs($user)->test(Library::class)
+            ->call('setFolder', '~trash')
+            ->set('picked', [$theirs->ulid])
+            ->call('restorePicked')
+            ->assertSee(__('media.lib.restored', ['n' => 0]));
+
+        $page->set('picked', [$mine->ulid, $theirs->ulid])
+            ->call('askPurge')
+            ->assertSet('askPurgeOpen', true)
+            ->call('confirmPurge');
+        expect(Media::withTrashed()->where('ulid', $mine->ulid)->exists())->toBeFalse();
+    });
+
+    $left = app(Tenancy::class)->enter(2, fn () => Media::withTrashed()->where('ulid', $theirs->ulid)->first());
+    expect($left)->not->toBeNull()->and($left?->trashed())->toBeTrue();
 });
