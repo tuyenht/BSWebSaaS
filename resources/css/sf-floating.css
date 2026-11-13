@@ -395,6 +395,21 @@
     }
 }
 
+/* Round buttons along the bottom (from 768px; below it the bar replaces them) sit over the centre of a
+   hero slider's bottom row, where its dots are. The page lifts the dots (and the slide text's bottom room)
+   above the row: offset 24px (default) + disc 50px + 12px gap = 86px; text room 86px + the 40px dots + 12px.
+   A custom offset above the default raises the row by the difference and can touch the dots again; the
+   offset is capped at 120px, and the widget's inline value is not readable from the slider. */
+@media (min-width: 768px) {
+    :root:has(.sf-fc__float--bottom) .sf-slider__controls {
+        padding-bottom: 5.375rem;
+    }
+
+    :root:has(.sf-fc__float--bottom) .sf-slide__content {
+        padding-bottom: 8.5rem;
+    }
+}
+
 /* Without popover the dial's buttons simply stay out, every one in place. */
 @supports not selector(:popover-open) {
     .sf-fc__float--dial .sf-fc__dial {
