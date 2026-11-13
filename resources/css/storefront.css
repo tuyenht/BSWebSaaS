@@ -17,8 +17,10 @@
  *              secondary/muted text shades are `color-mix()` off this
  *
  * Contrast floor (WCAG 2 AA, 4.5:1 — computed for the default AND An Vinh seeds, 24/09):
- *   muted text on a light surface = `color-mix(in srgb, var(--color-text) 80%, white)` (≥5.4:1);
- *   anything lighter (--body 65%, --ink 40%) fails there. Light text on the dark header/
+ *   secondary text on a light surface = `var(--color-text-secondary)`: ThemeResolver mixes the body
+ *   color a fifth toward white and darkens it back (hue kept) until it clears 4.5:1 on the surface,
+ *   the page and the tinted band — never a `color-mix()` of --color-text here, which a light body
+ *   color (#4b5563 → 4.3:1 on the page) breaks. Light text on the dark header/
  *   footer = `color-mix(in srgb, var(--color-dark) 40%, white)` (≥7:1). Brand-colored TEXT on a light
  *   surface = `var(--color-primary-text)` — ThemeResolver darkens the brand seed (hue kept) until it
  *   clears 4.5:1 against --surface AND the page background below, since breadcrumb and contact
@@ -152,7 +154,7 @@ body {
    never the browser default (~2.7:1). A placeholder holds only an example value; instructions belong
    in a hint line under the field. */
 ::placeholder {
-    color: color-mix(in srgb, var(--color-text) 80%, white);
+    color: var(--color-text-secondary);
     opacity: 1; /* Firefox dims placeholders by default */
 }
 
@@ -467,7 +469,7 @@ main:has(.hero, .sf-slider) .page__title {
 .sf-crumbs {
     font-size: 0.875rem;
     line-height: 1.5;
-    color: color-mix(in srgb, var(--color-text) 80%, white);
+    color: var(--color-text-secondary);
 }
 
 .sf-crumbs__list {

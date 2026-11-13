@@ -107,13 +107,13 @@
 .entry-grid__outcome {
     padding: 0 1rem 1rem;
     font-size: 0.875rem;
-    color: color-mix(in srgb, var(--color-text) 80%, white);
+    color: var(--color-text-secondary);
     line-height: 1.55;
     flex: 1;
 }
 
 .entry-grid__empty {
-    color: var(--sch-body, color-mix(in srgb, var(--color-text) 80%, white));
+    color: var(--sch-body, var(--color-text-secondary));
     font-style: italic;
 }
 
@@ -494,7 +494,7 @@
 }
 
 .sf-card__date {
-    color: color-mix(in srgb, var(--color-text) 80%, white);
+    color: var(--color-text-secondary);
     font-size: 0.75rem;
 }
 

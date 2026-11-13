@@ -44,7 +44,7 @@
 }
 
 .about__paragraph {
-    color: var(--sch-body, color-mix(in srgb, var(--color-text) 80%, white));
+    color: var(--sch-body, var(--color-text-secondary));
     line-height: 1.75;
     margin: 0 0 0.875rem;
 }
@@ -204,7 +204,7 @@
 
 .about__signer-role {
     font-size: 0.875rem;
-    color: var(--sch-body, color-mix(in srgb, var(--color-text) 80%, white));
+    color: var(--sch-body, var(--color-text-secondary));
 }
 
 /* Letter: the text first on a phone, the photo on the left on a wide screen (its frame: .about__media). */
@@ -256,7 +256,7 @@
 
 .about__link-icon {
     display: inline-flex;
-    color: color-mix(in srgb, var(--color-text) 85%, white);
+    color: var(--color-text-secondary);
     transition: color 0.2s;
 }
 

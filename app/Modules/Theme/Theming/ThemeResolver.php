@@ -23,6 +23,12 @@ final readonly class ThemeResolver
      */
     public const float PAGE_SURFACE_SHARE = 0.97;
 
+    /** The tinted band: the surface with this share, the rest ink (storefront.css `.sf-band--tint`). */
+    public const float TINT_SURFACE_SHARE = 0.94;
+
+    /** Secondary text starts as the body color with this share, the rest white. */
+    public const float SECONDARY_TEXT_SHARE = 0.8;
+
     /** Every spacing step is a multiple of this many px, whatever the density. */
     public const int SPACE_GRID = 4;
 
@@ -127,6 +133,10 @@ final readonly class ThemeResolver
         $variables['color-primary-on-dark'] = $primaryOnDark ?? $variables['surface'];
         $variables['color-surface'] = $variables['surface'];
         $variables['color-text'] = $variables['body'];
+        // Secondary text (lead paragraphs, dates, captions, counts): the body color a fifth lighter,
+        // darkened back (hue kept) until it reads 4.5:1 on the surface, the page and the tinted band.
+        // A light body color (#4b5563) lightened a fifth reads only 4.3:1 on the page.
+        $variables['color-text-secondary'] = $this->secondaryText($variables, $backgrounds);
         $variables['color-text-strong'] = $variables['ink'];
         $variables['color-dark'] = $variables['ink'];
         $variables['font-body'] = $variables['font'];
@@ -146,6 +156,25 @@ final readonly class ThemeResolver
 
         // The heading decoration's own variables (colour, mask picture) come from its setting, never from a token.
         return array_merge($variables, $this->scales($variables['density'] ?? 'normal'), $this->schemes($variables), $this->headingDecor->variables());
+    }
+
+    /**
+     * The secondary text color: the body color mixed a fifth toward white (what the stylesheet used to
+     * paint), made readable on every light background a block sits on. The body color itself when it
+     * is not a hex color (the stylesheet cannot be checked then).
+     *
+     * @param  array<string, string>  $variables
+     * @param  list<string>  $backgrounds  the surface and the page
+     */
+    private function secondaryText(array $variables, array $backgrounds): string
+    {
+        $tint = $variables['color-surface-tint'] ?? ReadableColor::mix($variables['surface'], $variables['ink'], self::TINT_SURFACE_SHARE);
+        $lighter = ReadableColor::mix($variables['body'], '#ffffff', self::SECONDARY_TEXT_SHARE);
+        if ($lighter === null || $tint === null) {
+            return $variables['body'];
+        }
+
+        return ReadableColor::onAll($lighter, [...$backgrounds, $tint]) ?? $variables['body'];
     }
 
     /**
