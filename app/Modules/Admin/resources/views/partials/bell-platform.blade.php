@@ -17,7 +17,6 @@
          x-trap.inert.noscroll.noautofocus.noreturn="open && narrow" x-bind:aria-modal="open && narrow ? 'true' : null">
         <div class="ntf-h">
             <span class="ntf-ht">{{ __('admin.notifications') }}</span>
-            <span class="ntf-note"><x-bs-admin::icon name="ri-tools" class="size-[1.1em] shrink-0" />{{ __('admin.bell.platform_note') }}</span>
             <x-bs-admin::button icon variant="ghost" color="secondary" size="sm" x-on:click="close(true)"
                                 aria-label="{{ __('admin.bell.close') }}" title="{{ __('admin.bell.close_tip') }}">
                 <x-bs-admin::icon name="ri-close" class="size-5" />

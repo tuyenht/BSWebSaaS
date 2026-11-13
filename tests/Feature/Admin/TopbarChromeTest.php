@@ -80,8 +80,8 @@ it('gives the platform console the shared tools but omits tenant account links',
         ->assertSee('langOpen', false)                                            // shared topbar tools present
         ->assertSee("adminTheme.set('scheme'", false)
         ->assertSee('data-bs-lazy="bsBell"', false)                               // the same bell panel as a website's…
-        ->assertSee('class="ntf-note"', false)                                    // …with the board's "Chờ backend" note,
-        ->assertSee('Chờ backend', false)
+        ->assertDontSee('ntf-note', false)                                        // …without the canvas's "Chờ backend" annotation,
+        ->assertDontSee('Chờ backend', false)
         ->assertDontSee('wire:name="admin.notification-bell"', false)            // no notification store on the console yet:
         ->assertDontSee('ntf-badge', false)                                       // no component, no badge, no rows
         ->assertDontSee('notifOpen', false)                                       // the old placeholder is gone

@@ -1487,7 +1487,6 @@
     "admin.bell.retry": "Thử lại",
     "admin.bell.gone": "Thông báo này không còn nữa — danh sách đã được làm mới.",
     "admin.bell.loaded": "Đã tải danh sách thông báo.",
-    "admin.bell.platform_note": "Chờ backend",
     "admin.bell.act.open_entry": "Mở bài",
     "admin.bell.act.edit_entry": "Sửa bài",
     "admin.bell.act.review": "Mở hộp duyệt",

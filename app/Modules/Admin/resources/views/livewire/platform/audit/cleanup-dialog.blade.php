@@ -150,15 +150,16 @@
                         @endif
                     </div>
                     @if ($monthError !== '')
-                        <x-bs-admin::alert id="audit-cleanup-alert" tabindex="-1" color="danger" icon="ri-error-warning" class="border border-danger-base/25 [overflow-wrap:anywhere]">
-                            <span class="flex flex-col items-start gap-2">
+                        <x-bs-admin::alert id="audit-cleanup-alert" tabindex="-1" color="danger" class="flex-col border border-danger-base/25 !gap-2 !px-4 !py-3 [overflow-wrap:anywhere]">
+                            <span class="flex items-start gap-2">
+                                <x-bs-admin::icon name="ri-error-warning" class="mt-0.5 size-[calc(1.25rem+var(--user-text-boost))] shrink-0" />
                                 <span class="min-w-0">{{ $monthError }}</span>
-                                @if ($monthRefused)
-                                    <x-bs-admin::button variant="outline" color="secondary" x-on:click="toPick()">
-                                        <x-bs-admin::icon name="ri-arrow-left" class="size-4" />{{ __('admin.audit.purge.back') }}
-                                    </x-bs-admin::button>
-                                @endif
                             </span>
+                            @if ($monthRefused)
+                                <x-bs-admin::button variant="outline" color="secondary" x-on:click="toPick()">
+                                    <x-bs-admin::icon name="ri-arrow-left" class="size-4" />{{ __('admin.audit.purge.back') }}
+                                </x-bs-admin::button>
+                            @endif
                         </x-bs-admin::alert>
                     @endif
                 @endif

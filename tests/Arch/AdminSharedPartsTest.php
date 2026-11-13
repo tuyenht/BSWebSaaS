@@ -28,7 +28,7 @@ const ADMIN_HAND_BUILT_PARTS = [
     // error lines under the inline name and slug fields
     'catalog/index.blade.php' => [0, 2, 0],
     // error lines under the panel's fields, the tree's error state, and lines read out inside a shared alert
-    'categories/index.blade.php' => [0, 8, 0],
+    'categories/index.blade.php' => [0, 5, 0],
     // a dashboard card's error line above its "Thử lại"
     'dashboard/card-error.blade.php' => [0, 1, 0],
     'entries/editor.blade.php' => [2, 0, 0],
