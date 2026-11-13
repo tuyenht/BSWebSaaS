@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Cms\Policies;
 
 use App\Modules\Cms\Models\ContentBlock;
+use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Identity\Models\User;
 
 /**
@@ -15,8 +16,10 @@ use App\Modules\Identity\Models\User;
  *    block picker works for them: the menu screen (`menus.manage`) and the page editor (writing a
  *    page: `entries.create`, `entries.edit.own`, `entries.edit.any`). An author or contributor may
  *    therefore list the blocks and place one in their own page; placing a block does not change it.
- *  - Every change to a block (create, update, publish, duplicate, delete): `blocks.manage` only,
- *    since one change shows on every page that uses the block.
+ *  - Every change to a block (create, update, publish, duplicate, delete): `blocks.manage`, and only
+ *    for a member not limited to some categories (CategoryScopes): one change shows on every page and
+ *    menu that uses the block, including pages outside those limits. A limited member still sees and
+ *    places blocks like any placer.
  *
  * Every action in Cms\Actions\ContentBlocks asks this policy first (ContentBlockPolicyChokepointTest).
  */
@@ -25,10 +28,12 @@ final class ContentBlockPolicy
     /** The permissions that let someone place a block somewhere, and so see the library. */
     private const array PLACERS = ['menus.manage', 'entries.create', 'entries.edit.own', 'entries.edit.any'];
 
+    public function __construct(private CategoryScopes $scopes) {}
+
     /** Any change to the website's blocks. */
     public function manage(User $user): bool
     {
-        return $user->can('blocks.manage');
+        return $user->can('blocks.manage') && ! $this->scopes->isLimited($user);
     }
 
     public function viewAny(User $user): bool

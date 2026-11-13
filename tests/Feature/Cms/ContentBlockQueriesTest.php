@@ -235,3 +235,21 @@ it('lists the places of a block with their names, in a fixed number of queries',
         ->and(app(Tenancy::class)->enter(1, fn () => app(ContentBlockUsages::class)->placesOf($used['blocks'][0])))->toHaveCount(9)
         ->and(app(Tenancy::class)->enter(1, fn () => app(ContentBlockUsages::class)->placesOf($used['blocks'][2])))->toBe([]);
 });
+
+it('starts from the first page when the cursor was not one it gave out', function (array $cursor): void {
+    listedBlocks(4);
+
+    $keys = app(Tenancy::class)->enter(1, fn (): array => array_map(
+        fn (ContentBlock $block): string => $block->key,
+        app(ContentBlockList::class)->page(after: $cursor, limit: 2)['rows'],
+    ));
+
+    expect($keys)->toBe(['b4', 'b3']);
+})->with([
+    'empty time' => [['at' => '', 'ulid' => '01JLISTED00000000000000003']],
+    'not a time' => [['at' => 'hôm qua', 'ulid' => '01JLISTED00000000000000003']],
+    'short code' => [['at' => '2026-11-01 08:03:00+00', 'ulid' => 'abc']],
+    'no such day' => [['at' => '2026-02-31 08:03:00+00', 'ulid' => '01JLISTED00000000000000003']],
+    'no such hour' => [['at' => '2026-11-01 99:03:00+00', 'ulid' => '01JLISTED00000000000000003']],
+    'no such offset' => [['at' => '2026-11-01 08:03:00+99', 'ulid' => '01JLISTED00000000000000003']],
+]);
