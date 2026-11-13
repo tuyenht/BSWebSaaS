@@ -247,6 +247,10 @@ final readonly class SupportSessions
 
         if ($days !== null && in_array($days, self::PERIODS, true)) {
             $query->where('created_at', '>=', $now->subDays($days));
+        } else {
+            // "Mọi lúc" reaches back only as far as the log keeps rows (the 24 full months before
+            // the running one, PruneAuditMonths), so the count and the search stay bounded.
+            $query->where('created_at', '>=', $now->startOfMonth()->subMonths(24));
         }
 
         $needle = VietnameseFold::text(trim($search));

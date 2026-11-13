@@ -166,11 +166,16 @@ final readonly class SupportSignIn
      */
     public function endOthers(User $staff, ?string $exceptUlid): void
     {
+        // Two enters by the same staff member at once: the second waits here until the first
+        // request's transaction (which writes its entered row) commits, then sees it and ends it.
+        DB::select('select pg_advisory_xact_lock(hashtextextended(?, 0))', ['support-session-enter:'.Cast::int($staff->getKey())]);
+
         foreach ($this->sessions->openCodesOf(Cast::int($staff->getKey())) as $code => $siteId) {
             if ($code === $exceptUlid) {
                 continue;
             }
-            Audit::record(AuditService::SUPPORT_SESSION_ENDED, [
+            // Recorded or the enter fails: this row is what ends the old session on its site.
+            Audit::recordOrFail(AuditService::SUPPORT_SESSION_ENDED, [
                 'site_id' => $siteId,
                 'actor_id' => $staff->getKey(),
                 'actor_label' => $staff->getAttribute('email'),
