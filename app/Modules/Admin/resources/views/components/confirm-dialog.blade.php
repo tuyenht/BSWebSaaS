@@ -8,6 +8,7 @@
     'confirm',
     'cancel',
     'cancelLabel' => null,
+    'okIcon' => 'ri-delete-bin',
 ])
 @php
     // A question before a change (design 21 .tm-dlg.sm, role=alertdialog): an icon box, the
@@ -18,7 +19,8 @@
     // (entangled); `confirm` and `cancel` are the host's public methods. Below 600px it is a sheet
     // from the bottom with its buttons stacked, the change on top. The `alt` slot holds a second
     // way through (buttons between Hủy and the change). `cancel-label` renames Hủy where the
-    // question itself is about cancelling something ("Giữ lời mời").
+    // question itself is about cancelling something ("Giữ lời mời"). `ok-icon` names the danger
+    // button's icon when the change is not a delete ("Kết thúc phiên": ri-logout-box-r).
     //
     // A screen that keeps its state in the browser passes `state` instead of `model`: an Alpine
     // expression for its question object { title, ok, danger } — the dialog is open while it is set
@@ -70,14 +72,14 @@
                         <span x-text="({{ $state }})?.ok || @js(__('admin.confirm'))">{{ __('admin.confirm') }}</span>
                     </x-bs-admin::button>
                     <x-bs-admin::button color="danger" x-show="({{ $state }})?.danger" x-cloak x-on:click="{{ $confirm }}">
-                        <x-bs-admin::icon name="ri-delete-bin" class="size-[calc(1rem+var(--user-text-boost))]" />
+                        <x-bs-admin::icon :name="$okIcon" class="size-[calc(1rem+var(--user-text-boost))]" />
                         <span x-text="({{ $state }})?.ok || @js(__('admin.confirm'))">{{ __('admin.confirm') }}</span>
                     </x-bs-admin::button>
                 @else
                     <x-bs-admin::button variant="outline" color="secondary" autofocus wire:click="{{ $cancel }}">{{ $cancelLabel ?? __('admin.cancel') }}</x-bs-admin::button>
                     {{ $alt ?? '' }}
                     <x-bs-admin::button :color="$danger ? 'danger' : 'primary'" wire:click="{{ $confirm }}">
-                        @if ($danger)<x-bs-admin::icon name="ri-delete-bin" class="size-[calc(1rem+var(--user-text-boost))]" />@endif
+                        @if ($danger)<x-bs-admin::icon :name="$okIcon" class="size-[calc(1rem+var(--user-text-boost))]" />@endif
                         {{-- a host fills its labels only when it opens the dialog: closed, the button still has a name --}}
                         <span>{{ $ok !== '' ? $ok : __('admin.confirm') }}</span>
                     </x-bs-admin::button>

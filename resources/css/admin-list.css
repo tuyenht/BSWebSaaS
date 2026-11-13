@@ -1307,6 +1307,86 @@
         }
     }
 
+    /* data-cols="support" (the console's support sessions, board 20): "Dưới tên …" stays under the
+       website at every width; the reason is data to read in full (never clipped), so it has its own
+       line under the name wherever its column is not drawn (the phone card, and 768–1023); the reason
+       a session ended is muted text under the status pill. From 768 the columns share the row as the
+       board's grid does: the reason takes the room left, the time wraps, the ⋮ is one hit wide. */
+    .list-rows[data-kind='facts'][data-cols='support'] .list-sub {
+        display: block;
+    }
+
+    .list-rows[data-kind='facts'][data-cols='support'] .list-rsn {
+        display: none;
+        margin-top: 0.125rem;
+        font-size: var(--text-small);
+        line-height: 1.4;
+        color: var(--color-text);
+        overflow-wrap: anywhere;
+    }
+
+    .list-rows[data-kind='facts'][data-cols='support'] .list-why {
+        display: block;
+        margin-top: 0.25rem;
+        font-size: var(--text-small);
+        color: var(--color-text-muted);
+    }
+
+    .list-rows[data-kind='facts'][data-cols='support'] .list-dur {
+        font-size: var(--text-small);
+        color: var(--color-text-muted);
+        white-space: nowrap; /* "· tối đa 30 phút" wraps as one piece */
+    }
+
+    @container list (width < 37.5rem) {
+        .list-rows[data-kind='facts'][data-cols='support'] .list-rsn {
+            display: block;
+        }
+    }
+
+    @container list (width >= 48rem) {
+        .list-rows[data-kind='facts'][data-cols='support'] .list-c-main {
+            flex: 1.3 1 0;
+            min-width: 10rem;
+        }
+
+        .list-rows[data-kind='facts'][data-cols='support'] .list-c-f1 {
+            flex: 0 1 9.375rem;
+            min-width: 6.25rem;
+        }
+
+        .list-rows[data-kind='facts'][data-cols='support'] .list-c-f2 {
+            flex: 1.5 1 0;
+            min-width: 7.5rem;
+            overflow-wrap: anywhere;
+        }
+
+        .list-rows[data-kind='facts'][data-cols='support'] .list-c-f3 {
+            flex: 0 1 10.625rem;
+            min-width: 7.5rem;
+            white-space: normal;
+        }
+
+        .list-rows[data-kind='facts'][data-cols='support'] .list-c-st {
+            flex: 0 0 max(8.75rem, 7.5em);
+            min-width: 0;
+        }
+
+        .list-rows[data-kind='facts'][data-cols='support'] .list-c-act {
+            flex: 0 0 var(--spacing-hit);
+        }
+    }
+
+    @container list (48rem <= width < 64rem) {
+        .list-rows[data-kind='facts'][data-cols='support'] .list-c-f2 {
+            display: none;
+        }
+
+        .list-rows[data-kind='facts'][data-cols='support'] .list-rsn {
+            display: block;
+        }
+    }
+
     /* A facts list whose rows can be ticked (the members list): the select box leads every row. Its
        44 frame is centred on the 18px box, which starts at the card's inner edge; the card's status
        and fact lines (600–767) start under the name, not under the box. */
