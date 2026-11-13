@@ -13,8 +13,10 @@ use App\Modules\Storefront\Support\ContactIconImages;
 use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Chrome\BranchMap;
 use App\Modules\Theme\Chrome\ContactIcons;
 use App\Modules\Theme\Chrome\FloatingContact;
+use App\Modules\Theme\Chrome\StorefrontChrome;
 use App\Modules\Theme\Theming\ThemeResolver;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\DB;
@@ -69,6 +71,9 @@ final class FloatingContactSettings extends Component
     public int $offsetY = FloatingContact::DEFAULT_OFFSET_Y;
 
     public bool $buyOn = false;
+
+    /** The phone bar draws the call as a raised button in the middle (default on; it needs the call channel on with a number that passes). */
+    public bool $barRaiseCall = true;
 
     /**
      * The board-style phone bar a content pack may switch on (no control for it in the form yet):
@@ -257,6 +262,8 @@ final class FloatingContactSettings extends Component
         $i = $this->indexOf($key);
         if ($i !== null && ! in_array($key, FloatingContact::CORE, true)) {
             array_splice($this->channels, $i, 1);
+            // A built-in channel that had no room when the list was loaded comes back now there is.
+            $this->addMissingCore();
             $this->resetErrorBag();
         }
     }
@@ -346,6 +353,14 @@ final class FloatingContactSettings extends Component
         if ($i !== null && FloatingContact::typeOf($key) === 'custom' && in_array($icon, ContactIcons::CUSTOM, true)) {
             $this->channels[$i]['icon'] = $icon;
             $this->resetErrorBag("channels.{$i}.icon");
+        }
+    }
+
+    /** The raised call button: only while the call channel is on with a number that passes (the switch is off otherwise). */
+    public function toggleRaise(): void
+    {
+        if ($this->raiseUsable()) {
+            $this->barRaiseCall = ! $this->barRaiseCall;
         }
     }
 
@@ -499,6 +514,8 @@ final class FloatingContactSettings extends Component
             'dial' => $this->dial,
             'bar_tone' => $this->barTone,
             'track' => $this->track,
+            // Only the off state is stored: a setting without the key reads as on.
+            ...($this->barRaiseCall ? [] : ['bar_raise_call' => false]),
             'buy' => ['enabled' => $this->buyOn, 'color' => $this->buyColor],
             ...($this->phoneBar === [] ? [] : ['phone_bar' => $this->phoneBar]),
             'channels' => array_map(FloatingContactInput::storedRow(...), $rows),
@@ -551,6 +568,7 @@ final class FloatingContactSettings extends Component
         $this->dial = FloatingContact::dial($raw);
         $this->barTone = FloatingContact::barTone($raw);
         $this->track = FloatingContact::track($raw);
+        $this->barRaiseCall = FloatingContact::raiseCall($raw);
         $this->loadedTheme = $this->theme;
         $this->loadedLayout = $this->layout;
         $buy = Cast::arr($raw['buy'] ?? null);
@@ -597,12 +615,52 @@ final class FloatingContactSettings extends Component
                 $this->channels[$n]['img'] = '';
             }
         }
-        // The built-in five are always listed (switched off when missing), so they can be turned on.
-        foreach (FloatingContact::CORE as $key) {
-            if (! isset($seen[$key])) {
-                $this->channels[] = $this->row($key, false);
+        $this->addMissingCore();
+    }
+
+    /**
+     * The built-in channels are always listed (switched off when missing), so they can be turned on;
+     * one that would push the list past the most a site keeps waits until a channel is removed.
+     */
+    private function addMissingCore(): void
+    {
+        foreach (FloatingContact::coreToAdd(array_column($this->rows(), 'key')) as $key) {
+            $this->channels[] = $this->row($key, false);
+        }
+    }
+
+    /** Whether the raised call can apply: the call channel is on and its number passes. */
+    private function raiseUsable(): bool
+    {
+        foreach ($this->rows() as $row) {
+            if ($row['key'] === 'phone') {
+                return $row['on'] && FloatingContact::clean('phone', $row['value']) !== null;
             }
         }
+
+        return false;
+    }
+
+    /**
+     * The directions link of the site's first branch or factory that has one, read as the footer and the branch
+     * map read them (titled items, the allowed map hosts): its own map link, else a route planner to its
+     * coordinates or map search text; '' when none has any.
+     */
+    private function firstBranchMapLink(): string
+    {
+        $locale = app(SiteLocale::class)->default();
+        /** @var list<string> $mapHosts */
+        $mapHosts = config('cms.map_hosts', []);
+        $branches = StorefrontChrome::branches(app(SettingsRepository::class)->get('storefront', 'footer'), $locale, $locale, $mapHosts);
+        foreach ($branches as $branch) {
+            $candidate = $branch['map_url'] ?? (BranchMap::urls(['map_query' => $branch['map_query'], 'lat' => $branch['lat'], 'lng' => $branch['lng'], 'approximate' => $branch['approximate']], $locale)['dir'] ?? null);
+            $link = FloatingContact::clean(FloatingContact::CHANNELS['maps']['type'], $candidate);
+            if ($link !== null) {
+                return $link;
+            }
+        }
+
+        return '';
     }
 
     /**
@@ -623,6 +681,7 @@ final class FloatingContactSettings extends Component
         $this->offsetX = FloatingContact::DEFAULT_OFFSET_X;
         $this->offsetY = FloatingContact::DEFAULT_OFFSET_Y;
         $this->buyOn = false;
+        $this->barRaiseCall = true;
         $this->buyColor = FloatingContact::BUY_COLOR;
         $this->phoneBar = [];
         $this->layout = 'combo';
@@ -633,11 +692,12 @@ final class FloatingContactSettings extends Component
         $this->loadedLayout = 'combo';
         $this->channels = [];
         foreach (FloatingContact::CORE as $key) {
-            $row = $this->row($key, $key !== 'sms');
+            $row = $this->row($key, in_array($key, FloatingContact::ON_BY_DEFAULT, true));
             $row['value'] = match ($key) {
                 'phone' => $phone,
                 'zalo' => $zalo,
                 'email' => $email,
+                'maps' => $this->firstBranchMapLink(),
                 default => '',
             };
             $this->channels[] = $row;
@@ -714,9 +774,8 @@ final class FloatingContactSettings extends Component
                 $errors["channels.{$i}.img"] = FloatingContactInput::iconMessage($problem);
             }
         }
-        foreach (FloatingContact::CORE as $core) {
-            $tampered = $tampered || ! isset($keys[$core]);
-        }
+        // A built-in channel is always in the list, except one the full list had no room for.
+        $tampered = $tampered || FloatingContact::coreToAdd(array_keys($keys)) !== [];
 
         if ($tampered) {
             $errors['channels'] = __('admin.fc.err_tampered');

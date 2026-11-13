@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Livewire\FloatingContactSettings;
+use App\Modules\Admin\Support\Settings\FloatingContactInput;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\RouteSync;
@@ -81,7 +82,7 @@ function fcsIndex(Testable $lw, string $key): int
     throw new RuntimeException("no channel $key");
 }
 
-it('starts off with the five built-in channels, the site’s own phone and email filled in', function (): void {
+it('starts off with the six built-in channels, the site’s own phone and email filled in', function (): void {
     $admin = fcsAdmin();
 
     app(Tenancy::class)->enter(1, function () use ($admin): void {
@@ -95,8 +96,8 @@ it('starts off with the five built-in channels, the site’s own phone and email
             ->assertSee('Kích hoạt nút liên hệ nổi')
             ->assertSee('Đã lưu');
 
-        expect(array_column($lw->get('channels'), 'key'))->toBe(['phone', 'zalo', 'messenger', 'email', 'sms'])
-            ->and(array_column($lw->get('channels'), 'on'))->toBe([true, true, true, true, false])
+        expect(array_column($lw->get('channels'), 'key'))->toBe(['phone', 'zalo', 'messenger', 'email', 'sms', 'maps'])
+            ->and(array_column($lw->get('channels'), 'on'))->toBe([true, true, true, true, false, false])
             ->and($lw->get('channels')[0]['value'])->toBe('0901234567')
             ->and($lw->get('channels')[3]['value'])->toBe('lienhe@a.test');
     });
@@ -131,16 +132,16 @@ it('saves the draft for the current site only and loads it back', function (): v
 
     $stored = fcsStored(1);
     expect($stored)->toMatchArray(['enabled' => true, 'theme' => 'horizontal', 'position' => 'left', 'offset_x' => 40, 'offset_y' => 100])
-        ->and(array_column($stored['channels'], 'key'))->toBe(['phone', 'zalo', 'messenger', 'email', 'telegram', 'sms', 'c1'])
+        ->and(array_column($stored['channels'], 'key'))->toBe(['phone', 'zalo', 'messenger', 'email', 'sms', 'telegram', 'maps', 'c1'])
         ->and($stored['channels'][0])->toMatchArray(['key' => 'phone', 'on' => true, 'value' => '0912 345 678', 'tips' => ['vi' => 'Gọi ngay']])
-        ->and($stored['channels'][6])->toMatchArray(['key' => 'c1', 'icon' => 'ri-chat-3-line', 'name' => 'Liên hệ', 'value' => '/lien-he'])
+        ->and($stored['channels'][7])->toMatchArray(['key' => 'c1', 'icon' => 'ri-chat-3-line', 'name' => 'Liên hệ', 'value' => '/lien-he'])
         ->and(fcsStored(2))->toBeNull();
 
     // Loaded back as saved; the other site still sees its own (empty) setting.
     app(Tenancy::class)->enter(1, function () use ($admin): void {
         $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)
             ->assertSet('enabled', true)->assertSet('theme', 'horizontal')->assertSet('offsetX', 40);
-        expect(array_column($lw->get('channels'), 'key'))->toBe(['phone', 'zalo', 'messenger', 'email', 'telegram', 'sms', 'c1']);
+        expect(array_column($lw->get('channels'), 'key'))->toBe(['phone', 'zalo', 'messenger', 'email', 'sms', 'telegram', 'maps', 'c1']);
     });
     $other = fcsAdmin(2);
     app(Tenancy::class)->enter(2, fn () => Livewire::actingAs($other)->test(FloatingContactSettings::class)->assertSet('enabled', false));
@@ -743,6 +744,7 @@ it('opens and saves a site’s stored setting back unchanged when nothing was ed
             ['key' => 'phone', 'on' => true, 'value' => '0915 66 83 83', 'tips' => ['vi' => 'Gọi ngay']],
             ['key' => 'messenger', 'on' => false, 'value' => '', 'tips' => []],
             ['key' => 'sms', 'on' => false, 'value' => '', 'tips' => []],
+            ['key' => 'maps', 'on' => false, 'value' => '', 'tips' => []],
         ],
     ];
     app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'floating_contact', 'value' => $value]));
@@ -980,7 +982,8 @@ it('opens on a flat query budget, the taps read in one query', function (): void
     expect(array_values(array_filter($queries, fn (string $sql): bool => str_contains($sql, 'contact_click_daily'))))->toHaveCount(1)
         // Flat: the shell's cached nav and permissions, the top bar's notifications, the site's settings
         // and languages, and the one grouped read of the last 30 days' taps (an index on site_id, day leads it).
-        ->and($count)->toBeLessThanOrEqual(10);
+        // (a first visit with nothing saved also reads the footer's list once, for the map link the maps channel starts with.)
+        ->and($count)->toBeLessThanOrEqual(11);
 });
 
 it('says the bottom position is a phone position only while that position is chosen', function (): void {
@@ -998,4 +1001,204 @@ it('says the bottom position is a phone position only while that position is cho
             ->call('setPosition', 'left')
             ->assertDontSee($note);
     });
+});
+
+/** @param  array<string, mixed>  $value */
+function fcsSave(array $value): void
+{
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'storefront', 'key' => 'floating_contact'], ['value' => $value]));
+}
+
+it('offers the raised call switch on, stores only its off state, and reads a setting without the key as on', function (): void {
+    $admin = fcsAdmin();
+    fcsSave(['enabled' => true, 'layout' => 'combo', 'channels' => [['key' => 'phone', 'on' => true, 'value' => '0912345678']]]);
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+            ->assertSet('barRaiseCall', true)
+            ->assertSee('Làm nổi nút Gọi ở giữa thanh')
+            ->assertSee('Nút Gọi to hơn, nằm giữa và nhô lên trên thanh — dễ thấy, dễ bấm bằng ngón cái.')
+            ->assertDontSee('Chưa dùng được: hãy bật kênh');
+        expect(fcsBare($lw))->toContain('aria-labelledby="fc-raise-l"')->toMatch('~<button[^>]*aria-checked="true"[^>]*aria-labelledby="fc-raise-l"~');
+
+        $lw->call('save')->assertHasNoErrors();
+    });
+    expect(fcsStored(1))->not->toHaveKey('bar_raise_call');
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+        ->call('toggleRaise')->assertSet('barRaiseCall', false)->call('save')->assertHasNoErrors());
+    expect(fcsStored(1)['bar_raise_call'])->toBeFalse();
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+        ->assertSet('barRaiseCall', false)->call('toggleRaise')->assertSet('barRaiseCall', true)->call('save')->assertHasNoErrors());
+    expect(fcsStored(1))->not->toHaveKey('bar_raise_call');
+});
+
+it('disables the raised call switch with its reason while the call channel is off or has no valid number, and ignores a toggle then', function (array $phone): void {
+    $admin = fcsAdmin();
+    fcsSave(['enabled' => true, 'layout' => 'combo', 'channels' => [['key' => 'phone'] + $phone, ['key' => 'zalo', 'on' => true, 'value' => '0912345678']]]);
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)
+            ->assertSee('Chưa dùng được: hãy bật kênh “Gọi điện” và nhập đúng số ở trên.');
+        expect(fcsBare($lw))->toMatch('~<button[^>]*aria-checked="false"[^>]*aria-labelledby="fc-raise-l"[^>]*disabled~');
+
+        $lw->call('toggleRaise')->assertSet('barRaiseCall', true);
+    });
+})->with([
+    'switched off' => [['on' => false, 'value' => '0912345678']],
+    'no number' => [['on' => true, 'value' => '']],
+    'a number that does not pass' => [['on' => true, 'value' => 'abc']],
+]);
+
+it('shows the raised call switch only where the layout has the phone bar', function (string $layout, bool $shown): void {
+    $admin = fcsAdmin();
+    fcsSave(['enabled' => true, 'layout' => $layout, 'channels' => [['key' => 'phone', 'on' => true, 'value' => '0912345678']]]);
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $shown): void {
+        $html = fcsBare(Livewire::actingAs($admin)->test(FloatingContactSettings::class));
+        expect(str_contains($html, 'fc-raise-l'))->toBe($shown);
+    });
+})->with(['combo' => ['combo', true], 'horizontal' => ['horizontal', true], 'vertical' => ['vertical', false]]);
+
+it('draws the preview with the call raised in the middle while the switch is on, and in the saved order when it is off', function (): void {
+    $admin = fcsAdmin();
+    fcsSave(['enabled' => true, 'layout' => 'combo', 'channels' => [
+        ['key' => 'phone', 'on' => true, 'value' => '0912345678'], ['key' => 'zalo', 'on' => true, 'value' => '0912345678'], ['key' => 'sms', 'on' => true, 'value' => '0912345678'],
+    ]]);
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class);
+        $labels = static function (Testable $lw): array {
+            preg_match('~<ul class="sf-fc-bar__list" role="list">.*?</ul>~s', html_entity_decode(fcsBare($lw), ENT_QUOTES), $m);
+            preg_match_all('~<span class="sf-fc-bar__label">([^<]*)</span>~', $m[0] ?? '', $l);
+
+            return $l[1];
+        };
+        expect($labels($lw))->toBe(['Zalo', 'Gọi điện', 'Nhắn tin']);
+        expect($labels($lw->call('toggleRaise')))->toBe(['Gọi điện', 'Zalo', 'Nhắn tin']);
+    });
+});
+
+it('always lists directions, switched off, and never lets it be removed', function (): void {
+    $admin = fcsAdmin();
+    fcsSave(['enabled' => true, 'layout' => 'combo', 'channels' => [['key' => 'phone', 'on' => true, 'value' => '0912345678']]]);
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class);
+        $maps = fn (Testable $t): array => array_values(array_filter($t->get('channels'), fn (array $c): bool => $c['key'] === 'maps'));
+        expect($maps($lw))->toHaveCount(1)->and($maps($lw)[0]['on'])->toBeFalse();
+
+        $lw->call('deleteChannel', 'maps')->call('addPreset', 'maps');
+        expect($maps($lw))->toHaveCount(1);
+
+        $lw->call('save')->assertHasNoErrors();
+        expect(array_column(fcsStored(1)['channels'], 'key'))->toContain('maps');
+    });
+});
+
+it('does not offer directions among the ready-made channels', function (): void {
+    $admin = fcsAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)->call('togglePresetMenu');
+        expect(fcsBare($lw))->not->toMatch('~addPreset\([^)]*maps~')->toMatch('~addPreset\([^)]*telegram~');
+    });
+});
+
+it('keeps a maps row a site added from the old list as the one maps row, with its value and switch', function (): void {
+    $admin = fcsAdmin();
+    fcsSave(['enabled' => true, 'layout' => 'combo', 'channels' => [
+        ['key' => 'phone', 'on' => true, 'value' => '0912345678'],
+        ['key' => 'maps', 'on' => true, 'value' => 'https://maps.google.com/?q=Ha+Noi', 'tips' => ['vi' => 'Tới xưởng']],
+        ['key' => 'zalo', 'on' => false, 'value' => ''],
+    ]]);
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class);
+        expect(array_column($lw->get('channels'), 'key'))->toBe(['phone', 'maps', 'zalo', 'messenger', 'email', 'sms']);
+
+        $lw->call('save')->assertHasNoErrors();
+    });
+
+    $rows = array_values(array_filter(fcsStored(1)['channels'], fn (array $c): bool => $c['key'] === 'maps'));
+    expect($rows)->toHaveCount(1)
+        ->and($rows[0])->toMatchArray(['on' => true, 'value' => 'https://maps.google.com/?q=Ha+Noi', 'tips' => ['vi' => 'Tới xưởng']]);
+});
+
+it('adds directions to a full list only when there is room, never passing the most channels a site keeps', function (): void {
+    $admin = fcsAdmin();
+    $own = static fn (int $n): array => array_map(static fn (int $i): array => ['key' => 'c'.$i, 'on' => false, 'value' => '/trang-'.$i, 'name' => 'Trang '.$i, 'icon' => 'ri-global-line'], range(1, $n));
+    $core = array_map(static fn (string $k): array => ['key' => $k, 'on' => false, 'value' => ''], ['phone', 'zalo', 'messenger', 'email', 'sms']);
+    fcsSave(['enabled' => false, 'layout' => 'combo', 'channels' => [...$core, ...$own(FloatingContact::MAX_CHANNELS - 5)]]);
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class);
+        expect($lw->get('channels'))->toHaveCount(FloatingContact::MAX_CHANNELS)
+            ->and(array_column($lw->get('channels'), 'key'))->not->toContain('maps');
+
+        // A full list saves as it is: nothing saved is dropped, nothing refused.
+        $lw->call('save')->assertHasNoErrors();
+    });
+    expect(fcsStored(1)['channels'])->toHaveCount(FloatingContact::MAX_CHANNELS);
+
+    // Directions joins the list as soon as a channel is removed.
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)->call('deleteChannel', 'c15');
+        expect(array_column($lw->get('channels'), 'key'))->toContain('maps')->and($lw->get('channels'))->toHaveCount(FloatingContact::MAX_CHANNELS);
+        $lw->call('save')->assertHasNoErrors();
+    });
+    expect(array_column(fcsStored(1)['channels'], 'key'))->toContain('maps')->not->toContain('c15');
+});
+
+it('fills directions on a first visit from the first branch or factory that has a usable map link', function (array $factories, string $expected): void {
+    $admin = fcsAdmin();
+    app(Tenancy::class)->enter(1, function () use ($admin, $factories, $expected): void {
+        SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'footer', 'value' => ['factories' => $factories]]);
+
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class);
+        $maps = array_values(array_filter($lw->get('channels'), fn (array $c): bool => $c['key'] === 'maps'))[0];
+
+        expect($maps['value'])->toBe($expected)->and($maps['on'])->toBeFalse();
+    });
+})->with([
+    'the first factory with a link' => [[['title' => 'Nhà máy 1'], ['title' => 'Nhà máy 2', 'map_url' => 'https://maps.google.com/?q=2'], ['title' => 'Chi nhánh', 'map_url' => 'https://maps.google.com/?q=3']], 'https://maps.google.com/?q=2'],
+    'a link that is not http is skipped' => [[['title' => 'A', 'map_url' => 'javascript:alert(1)'], ['title' => 'B', 'map_url' => 'https://maps.app.goo.gl/abc']], 'https://maps.app.goo.gl/abc'],
+    'no factory has a link' => [[['title' => 'A']], ''],
+    'a route planner to the first factory with coordinates when none has a link' => [[['title' => 'A'], ['title' => 'B', 'lat' => 21.3, 'lng' => 105.86, 'map_query' => 'Nhà máy B']], 'https://www.google.com/maps/dir/?api=1&destination=21.3%2C105.86'],
+    'a route planner to the map search text' => [[['title' => 'A', 'map_query' => 'Cơ khí An Vinh']], 'https://www.google.com/maps/dir/?api=1&destination='.rawurlencode('Cơ khí An Vinh')],
+    'an untitled factory is left out, as the footer does' => [[['map_url' => 'https://maps.google.com/?q=0'], ['title' => 'B', 'map_url' => 'https://maps.google.com/?q=1']], 'https://maps.google.com/?q=1'],
+    'no factories' => [[], ''],
+]);
+
+it('leaves directions empty on a first visit when the site has no footer settings, and never overwrites a saved value', function (): void {
+    $admin = fcsAdmin();
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class);
+        expect(array_values(array_filter($lw->get('channels'), fn (array $c): bool => $c['key'] === 'maps'))[0]['value'])->toBe('');
+
+        SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'footer', 'value' => ['factories' => [['title' => 'A', 'map_url' => 'https://maps.google.com/?q=1']]]]);
+        SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'floating_contact', 'value' => ['enabled' => true, 'channels' => [['key' => 'phone', 'on' => true, 'value' => '0912345678']]]]);
+
+        $saved = Livewire::actingAs($admin)->test(FloatingContactSettings::class);
+        expect(array_values(array_filter($saved->get('channels'), fn (array $c): bool => $c['key'] === 'maps'))[0]['value'])->toBe('');
+    });
+});
+
+it('checks the raised call option as a true-or-false field and writes only its off state', function (): void {
+    $base = ['enabled' => true, 'channels' => [['key' => 'phone', 'on' => true, 'value' => '0912345678']]];
+
+    expect(FloatingContactInput::errors($base + ['bar_raise_call' => true], ['vi']))->toBe([])
+        ->and(FloatingContactInput::errors($base + ['bar_raise_call' => false], ['vi']))->toBe([])
+        ->and(FloatingContactInput::errors($base + ['bar_raise_call' => 'no'], ['vi']))->toBe(["'bar_raise_call' must be true or false."])
+        ->and(FloatingContactInput::stored($base, ['vi']))->not->toHaveKey('bar_raise_call')
+        ->and(FloatingContactInput::stored($base + ['bar_raise_call' => true], ['vi']))->not->toHaveKey('bar_raise_call')
+        ->and(FloatingContactInput::stored($base + ['bar_raise_call' => false], ['vi'])['bar_raise_call'])->toBeFalse()
+        ->and(array_column(FloatingContactInput::stored($base, ['vi'])['channels'], 'key'))->toBe(['phone', 'zalo', 'messenger', 'email', 'sms', 'maps']);
+});
+
+it('stores a full list of channels without adding a built-in one past the most a site keeps', function (): void {
+    $channels = array_map(static fn (int $i): array => ['key' => 'c'.$i, 'on' => false, 'value' => '/trang-'.$i, 'name' => 'T'.$i], range(1, FloatingContact::MAX_CHANNELS));
+
+    expect(FloatingContactInput::stored(['enabled' => true, 'channels' => $channels], ['vi'])['channels'])->toHaveCount(FloatingContact::MAX_CHANNELS);
 });
