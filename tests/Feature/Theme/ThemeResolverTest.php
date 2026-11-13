@@ -500,3 +500,16 @@ it('falls back to the body color when it cannot read the body color it would lig
         expect(app(ThemeResolver::class)->cssVariables()['color-text-secondary'])->toBe('slategray');
     });
 });
+
+it('reads secondary text on a form field even when the site paints its page and tint lighter than the field', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteSetting::query()->updateOrCreate(
+            ['group_name' => 'theme', 'key' => 'tokens'],
+            ['value' => ['ink' => '#0f172a', 'body' => '#4b5563', 'page' => '#ffffff', 'color-surface-tint' => '#ffffff']],
+        );
+        $variables = app(ThemeResolver::class)->cssVariables();
+        $field = (string) ReadableColor::mix($variables['surface'], '#0f172a', 0.97);
+
+        expect(ReadableColor::ratio($variables['color-text-secondary'], $field))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT);
+    });
+});
