@@ -5,8 +5,9 @@
 // - GET /{key}?w=320  → cf.image transform to the client's best format (avif/webp/jpeg), edge-cached
 // - GET /__origin/{key} → internal raw path that feeds cf.image (breaks the transform→fetch loop)
 // Width is whitelisted (anti resize-DoS). A transform failure degrades to the raw master (image never
-// disappears). The key is content-addressed ({tenant}/{collection}/{slug}-{hash}.ext) so the immutable
-// cache never goes stale: changed content = new hash = new key.
+// disappears), cached for five minutes only. The key is content-addressed
+// ({tenant}/{collection}/{slug}-{hash}.ext) so the immutable cache never goes stale: changed content =
+// new hash = new key.
 //
 // What the host may serve is decided here, never by the object's stored metadata: an uploader controls
 // the Content-Type of the temporary object it PUTs, so trusting R2 metadata would let anyone with an
@@ -18,6 +19,9 @@ import { publicKey, typeOf } from './keys.js';
 
 const ALLOWED_WIDTHS = new Set([320, 640, 960, 1280, 1600, 2048]);
 const CACHE_CONTROL = 'public, max-age=31536000, immutable';
+// A transform that failed (a usage limit reached, a Cloudflare fault) is served the master for a few
+// minutes only, so a browser asks again for the small image instead of keeping the large one for a year.
+const FALLBACK_CACHE_CONTROL = 'public, max-age=300';
 const RASTER = new Set(['image/avif', 'image/webp', 'image/jpeg', 'image/png', 'image/gif']);
 const ORIGIN_PREFIX = '/__origin/'; // internal raw path — source for cf.image, avoids a fetch loop
 // Sent on every response: no sniffing, and a sandbox so even a mislabelled body can never run script
@@ -69,15 +73,23 @@ export default {
     const resp = await fetch(originUrl, {
       cf: { image: { width, format, fit: 'scale-down' } },
     });
-    if (!resp.ok) return serveRaw(request, env, key, type); // transform failed → L2: serve the master, image survives
+    // Cloudflare marks every transform it attempted with a Cf-Resized header (`internal=ok/…` when it
+    // worked, `err=…` when it failed). A failure or an error status → the master stands in, briefly.
+    const resized = resp.headers.get('Cf-Resized');
+    if (!resp.ok || /err=/.test(resized ?? '')) {
+      return shortLived(await serveRaw(request, env, key, type));
+    }
 
     // Only raster output we asked for or that cf.image passes through; anything else (an svg, a
     // body that is not an image) falls back to the master under its extension's type.
     const outType = (resp.headers.get('Content-Type') || '').split(';')[0].trim().toLowerCase();
-    if (!RASTER.has(outType)) return serveRaw(request, env, key, type);
+    if (!RASTER.has(outType)) return shortLived(await serveRaw(request, env, key, type));
     const headers = new Headers();
     headers.set('Content-Type', outType);
-    headers.set('Cache-Control', CACHE_CONTROL);
+    // Only a transform that ran is the lasting answer for this URL (its type may differ from the one
+    // asked for: a photo too large for AVIF comes back as WebP). Without `internal=ok` no transform is
+    // known to have run (transformations off on the zone), so the browser asks again soon.
+    headers.set('Cache-Control', /internal=ok/.test(resized ?? '') ? CACHE_CONTROL : FALLBACK_CACHE_CONTROL);
     headers.set('Vary', 'Accept');
     for (const [k, v] of Object.entries(SAFETY_HEADERS)) headers.set(k, v);
     return new Response(resp.body, { status: resp.status, headers });
@@ -132,6 +144,13 @@ async function serveRaw(request, env, key, type) {
   }
 
   return new Response(obj.body, { headers });
+}
+
+// The master standing in for a transform that did not happen: kept a few minutes, not a year. An
+// error answer (a missing key's 404) keeps no cache header, as it has on the master's own URL.
+function shortLived(res) {
+  if (res.ok || res.status === 304) res.headers.set('Cache-Control', FALLBACK_CACHE_CONTROL);
+  return res;
 }
 
 // Only the type from the extension and our own caching and safety headers.

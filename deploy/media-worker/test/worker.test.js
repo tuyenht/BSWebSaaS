@@ -156,7 +156,8 @@ test('a width on a pdf serves the file itself instead of asking for a transform'
 
 test('a transformed image keeps only an image type and the safety headers', async () => {
   const realFetch = globalThis.fetch;
-  globalThis.fetch = async () => new Response('img', { headers: { 'Content-Type': 'image/webp', 'Set-Cookie': 'a=b' } });
+  globalThis.fetch = async () =>
+    new Response('img', { headers: { 'Content-Type': 'image/webp', 'Set-Cookie': 'a=b', 'Cf-Resized': 'internal=ok/- q=0' } });
   try {
     const res = await get('/a/library/x-1a2b.jpg?w=320', env({}), { Accept: 'image/webp' });
     assert.equal(res.headers.get('Content-Type'), 'image/webp');
@@ -174,10 +175,79 @@ test('a transform that returns svg or html falls back to the master with its ext
       globalThis.fetch = async () => new Response('<svg onload=alert(1)>', { headers: { 'Content-Type': t } });
       const res = await get('/a/library/x-1a2b.jpg?w=320', env({ 'a/library/x-1a2b.jpg': 'x' }));
       assert.equal(res.headers.get('Content-Type'), 'image/jpeg', t);
+      assert.equal(res.headers.get('Cache-Control'), 'public, max-age=300', t);
     }
   } finally {
     globalThis.fetch = realFetch;
   }
+});
+
+test('a failed transform serves the master for a few minutes only, a working one for a year', async () => {
+  const realFetch = globalThis.fetch;
+  const objects = { 'a/library/x-1a2b.jpg': 'master' };
+  try {
+    globalThis.fetch = async () => new Response('limit reached', { status: 403, headers: { 'Content-Type': 'text/plain' } });
+    const failed = await get('/a/library/x-1a2b.jpg?w=320', env(objects), { Accept: 'image/avif' });
+    assert.equal(failed.status, 200);
+    assert.equal(failed.headers.get('Content-Type'), 'image/jpeg');
+    assert.equal(await failed.text(), 'master');
+    assert.equal(failed.headers.get('Cache-Control'), 'public, max-age=300');
+    assertSafe(failed, 'fallback');
+
+    // A failure can also come back as 200 with the source and an error in Cf-Resized.
+    globalThis.fetch = async () => new Response('source', { headers: { 'Content-Type': 'image/jpeg', 'Cf-Resized': 'err=9422' } });
+    const marked = await get('/a/library/x-1a2b.jpg?w=320', env(objects), { Accept: 'image/avif' });
+    assert.equal(await marked.text(), 'master');
+    assert.equal(marked.headers.get('Cache-Control'), 'public, max-age=300');
+
+    // HEAD and a revalidation of the stand-in are short-lived too.
+    globalThis.fetch = async () => new Response('limit reached', { status: 403 });
+    const head = await get('/a/library/x-1a2b.jpg?w=320', env(objects), { Accept: 'image/avif' }, 'HEAD');
+    assert.equal(head.headers.get('Cache-Control'), 'public, max-age=300');
+    const again = await get('/a/library/x-1a2b.jpg?w=320', env(objects), { Accept: 'image/avif', 'If-None-Match': '"e1"' });
+    assert.equal(again.status, 304);
+    assert.equal(again.headers.get('Cache-Control'), 'public, max-age=300');
+
+    // No transform ran (transformations off, no Cf-Resized): short-lived, whatever the format.
+    globalThis.fetch = async () => new Response('source', { headers: { 'Content-Type': 'image/jpeg' } });
+    for (const accept of ['image/avif', '*/*']) {
+      const untouched = await get('/a/library/x-1a2b.jpg?w=320', env(objects), { Accept: accept });
+      assert.equal(untouched.headers.get('Cache-Control'), 'public, max-age=300', accept);
+    }
+    globalThis.fetch = async () => new Response('source', { headers: { 'Content-Type': 'image/jpeg', 'Cf-Resized': '' } });
+    const blank = await get('/a/library/x-1a2b.jpg?w=320', env(objects), { Accept: 'image/avif' });
+    assert.equal(blank.headers.get('Cache-Control'), 'public, max-age=300', 'empty Cf-Resized');
+
+    const ran = { 'Cf-Resized': 'internal=ok/- q=0' };
+    globalThis.fetch = async () => new Response('img', { headers: { 'Content-Type': 'image/avif', ...ran } });
+    const ok = await get('/a/library/x-1a2b.jpg?w=320', env(objects), { Accept: 'image/avif' });
+    assert.match(ok.headers.get('Cache-Control'), /immutable/);
+
+    // A transform that ran but gave another format (too large for AVIF → WebP) is still lasting.
+    globalThis.fetch = async () => new Response('img', { headers: { 'Content-Type': 'image/webp', ...ran } });
+    const other = await get('/a/library/x-1a2b.jpg?w=2048', env(objects), { Accept: 'image/avif' });
+    assert.equal(other.headers.get('Content-Type'), 'image/webp');
+    assert.match(other.headers.get('Cache-Control'), /immutable/);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test('a missing master behind a width is a 404 without a cache header, as without the width', async () => {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response('Not found', { status: 404 });
+  try {
+    const res = await get('/a/library/gone-1a2b.jpg?w=320', env({}), { Accept: 'image/avif' });
+    assert.equal(res.status, 404);
+    assert.equal(res.headers.get('Cache-Control'), null);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test('the master itself, without a width, stays cached for a year', async () => {
+  const res = await get('/a/library/x-1a2b.jpg', env({ 'a/library/x-1a2b.jpg': 'master' }));
+  assert.match(res.headers.get('Cache-Control'), /max-age=31536000, immutable/);
 });
 
 test('writes are refused', async () => {
