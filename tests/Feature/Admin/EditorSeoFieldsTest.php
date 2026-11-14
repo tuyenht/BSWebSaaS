@@ -539,6 +539,8 @@ it('saves the product Google fields through the shared part into the same column
  * Measured on main before the fields were added (the same page, the same calls: open 2, save 5).
  * Opening is 3 since the Google preview shows the real public address: the page's permalink preset
  * (one site_settings read) decides the path before the slug, and nothing else on the screen reads it.
+ * Saving is 6 since the save locks the entry row before it writes the translation (measured 6), so a
+ * check of the storefront search words waits for it instead of writing the old title's words back.
  */
 const SEO_FIELDS_OPEN_BUDGET = 3;
-const SEO_FIELDS_SAVE_BUDGET = 5;
+const SEO_FIELDS_SAVE_BUDGET = 6;

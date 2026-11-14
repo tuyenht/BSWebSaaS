@@ -31,6 +31,11 @@ Schedule::command('cms:reconcile-category-counts')->dailyAt('20:15')->timezone('
 // 20:45 UTC is 03:45 in Vietnam, after the category re-count.
 Schedule::command('catalog:search-words --recent=500 --rolling=10000')->dailyAt('20:45')->timezone('UTC')->withoutOverlapping();
 
+// Check the storefront search words of the next 10,000 posts/pages, products and categories of each
+// site after where the previous night stopped, and write again the ones that differ (one warning per
+// site and kind that had any). 21:00 UTC is 04:00 in Vietnam, after the admin product words.
+Schedule::command('search:words --rolling=10000')->dailyAt('21:00')->timezone('UTC')->withoutOverlapping();
+
 // Publish scheduled entries the moment their slot arrives (status=scheduled, published_at<=now).
 // Runs on the `scheduler` container (docker compose schedule:work).
 Schedule::command('entries:publish-due')->everyMinute()->withoutOverlapping();

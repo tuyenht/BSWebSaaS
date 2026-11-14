@@ -511,6 +511,17 @@ final class Index extends Component
         }
         $this->authorize('update', $entry);
 
+        // The entry row first, as every entry action takes it: a check of the search words running
+        // meanwhile waits for this rename instead of writing the old title's words back.
+        // A row trashed while this waited is stale; otherwise its locked values replace the ones read before.
+        $locked = Entry::withTrashed()->whereKey($entry->id)->lockForUpdate()->firstOrFail();
+        if ($locked->trashed()) {
+            $this->toastStaleRow();
+
+            return;
+        }
+        $entry->setRawAttributes($locked->getAttributes(), true);
+
         $value = trim($value);
         $translation = $entry->translationFor(app(SiteLocale::class)->default());
         if ($value === '' || $translation === null || $translation->title === $value) {

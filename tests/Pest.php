@@ -10,6 +10,7 @@ use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Models\Permission;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
+use App\Modules\Shared\Support\SiteSearchWords;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Contracts\Validation\UncompromisedVerifier;
 use Illuminate\Mail\Transport\ArrayTransport;
@@ -372,6 +373,32 @@ function expectProductSearchWordsCurrent(int $siteId): void
     expect($products)->toBeGreaterThan(0)->and($words)->toBeGreaterThanOrEqual($products);
 
     test()->artisan('catalog:search-words', ['--site' => $siteId])->expectsOutputToContain('corrected 0.')->assertSuccessful();
+}
+
+/**
+ * The storefront search words (SiteSearchWords) of the site are exactly the words its stored titles,
+ * names, codes and short descriptions make now: `search:words` finds nothing to correct, and at least
+ * one row exists in each of $tables.
+ *
+ * @param  list<string>  $tables
+ */
+function expectSiteSearchWordsCurrent(int $siteId, array $tables = ['entry_search_words', 'product_site_words', 'taxonomy_search_words']): void
+{
+    foreach ($tables as $table) {
+        expect((int) DB::connection('pgsql_admin')->table($table)->where('site_id', $siteId)->count())->toBeGreaterThan(0, $table);
+    }
+
+    test()->artisan('search:words', ['--site' => $siteId])->expectsOutputToContain('corrected 0.')->assertSuccessful();
+}
+
+/**
+ * The stored storefront words of one item: locale => word => weight (every weight 1 for categories).
+ *
+ * @return array<string, array<string, int>>
+ */
+function siteWordsOf(string $table, int $siteId, int $itemId): array
+{
+    return SiteSearchWords::stored($table, $siteId, [$itemId])[$itemId] ?? [];
 }
 
 /**

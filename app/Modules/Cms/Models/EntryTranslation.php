@@ -6,6 +6,8 @@ namespace App\Modules\Cms\Models;
 
 use App\Modules\Cms\Casts\SanitizedPageBody;
 use App\Modules\Cms\Concerns\TracksContentChange;
+use App\Modules\Cms\Support\EntrySearchWords;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
@@ -38,6 +40,37 @@ class EntryTranslation extends Model
 
     #[\Override]
     protected $guarded = [];
+
+    /**
+     * A language added or removed, a changed title or excerpt, or a row moved to another language or
+     * entry rewrites this language's storefront search words in the same transaction
+     * (EntrySearchWords): from the values just saved when the model holds both, else from the saved
+     * row read back; a moved row first takes its words off where it was. Other saves write nothing.
+     */
+    #[\Override]
+    protected static function booted(): void
+    {
+        $sync = static function (self $row): void {
+            $attributes = $row->getAttributes();
+            if (array_key_exists('title', $attributes) && array_key_exists('excerpt', $attributes)) {
+                EntrySearchWords::put($row->site_id, $row->entry_id, $row->locale, $row->title, $row->excerpt);
+            } else {
+                EntrySearchWords::putSaved($row->site_id, $row->id);
+            }
+        };
+        static::created($sync);
+        static::updated(static function (self $row) use ($sync): void {
+            if ($row->wasChanged(['locale', 'entry_id'])) {
+                EntrySearchWords::put($row->site_id, Cast::int($row->getOriginal('entry_id')), Cast::string($row->getOriginal('locale')), null, null);
+                $sync($row);
+            } elseif ($row->wasChanged(['title', 'excerpt'])) {
+                $sync($row);
+            }
+        });
+        static::deleted(static function (self $row): void {
+            EntrySearchWords::put($row->site_id, $row->entry_id, $row->locale, null, null);
+        });
+    }
 
     /** The columns a post or page shows as its main content: heading, text, summary, Google's title and description. */
     public function contentFields(): array

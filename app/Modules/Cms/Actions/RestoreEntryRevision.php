@@ -72,6 +72,14 @@ final readonly class RestoreEntryRevision
 
         try {
             DB::transaction(function () use ($entry, $revision, $content, $actor): void {
+                // The entry row first, as every entry action takes it, before its translation is
+                // written back (a check of the search words running meanwhile waits for it).
+                // A trash committed while this waited still refuses the restore.
+                $locked = Entry::withTrashed()->whereKey($entry->id)->lockForUpdate()->firstOrFail();
+                if ($locked->trashed()) {
+                    throw new RevisionRestoreRejectedException('entry_trashed');
+                }
+                $entry->setRawAttributes($locked->getAttributes(), true);
                 $written = $this->writer->write($entry, $revision->locale, $content);
 
                 // The shared fields (template, cover, meta) belong to every language's page: when the

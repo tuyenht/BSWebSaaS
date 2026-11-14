@@ -29,6 +29,9 @@ final class ModelWriteBypasses
      * @param  bool  $columnAware  a raw SQL or table write counts only when it names the columns (or hides its values)
      * @param  string|null  $deleteAnchor  regex of a builder whose bulk delete skips the events, when that matters (in a file that names the models)
      * @param  bool  $quietSaves  a quiet save (…Quietly, withoutEvents) in a file that names the models counts
+     * @param  bool  $rowDeletes  a row delete counts whatever columns it names: a query builder's delete on the tables, raw SQL that deletes from them (or from a computed table, in a file that names them)
+     * @param  string|null  $deleteOwners  regex of a source (the parent models, their variables) in which a bulk delete through the relation counts even when the file names neither the models nor the tables
+     * @param  string|null  $moveKeys  regex alternation of the columns that place a row (its language, its parent): a bulk update or raw SQL that sets one counts
      */
     public function __construct(
         public readonly string $tables,
@@ -39,6 +42,9 @@ final class ModelWriteBypasses
         public readonly bool $columnAware = false,
         public readonly ?string $deleteAnchor = null,
         public readonly bool $quietSaves = false,
+        public readonly bool $rowDeletes = false,
+        public readonly ?string $deleteOwners = null,
+        public readonly ?string $moveKeys = null,
     ) {}
 
     /**
@@ -67,11 +73,12 @@ final class ModelWriteBypasses
         // …that writes a body: names the column, or computes the column too
         $bodyColumn = '~\b(?:'.$spec->columns.')\b|\bset\s+(?!"?[a-z_])~i';
         $namesTheTables = preg_match('~\b(?:'.$spec->models.')\b|'.$tables.'~', $source) === 1;
+        $namesTheOwners = $spec->deleteOwners !== null && preg_match($spec->deleteOwners, $source) === 1;
 
         /** @var array<string, true> $builders variables holding a builder of the two tables, in the current function */
         $builders = [];
         $violations = [];
-        $check = function (string $code, string $strings, int $line) use (&$violations, &$builders, $spec, $tables, $columns, $anchor, $onTable, $bulkInsert, $bulkWrite, $instanceUpdate, $builderEnd, $rawCall, $computedTable, $bodyColumn, $namesTheTables): void {
+        $check = function (string $code, string $strings, int $line) use (&$violations, &$builders, $spec, $tables, $columns, $anchor, $onTable, $bulkInsert, $bulkWrite, $instanceUpdate, $builderEnd, $rawCall, $computedTable, $bodyColumn, $namesTheTables, $namesTheOwners): void {
             if ($code === '') {
                 return;
             }
@@ -79,6 +86,7 @@ final class ModelWriteBypasses
             $anchored = preg_match($anchor, $code) === 1 || ($variables !== null && preg_match($variables, $code) === 1);
             $bulkUpdate = preg_match_all('~->update\(~', $code) > preg_match_all($instanceUpdate, $code);
             $computedKey = false;
+            $keys = [[], []];
             if ($bulkUpdate && preg_match('~->update\((.)(.*)$~', $code, $call) === 1) {
                 // the column names of the update: a non-literal one may be the body (a string argument is
                 // SQL handed to a connection, which the raw SQL rules read)
@@ -87,6 +95,9 @@ final class ModelWriteBypasses
                         && array_filter($keys[1], fn (string $key): bool => preg_match('~^([\'"]).*\1$~', $key) !== 1) !== []
                     : ! in_array($call[1], ['\'', '"', '<'], true);
             }
+            // a bulk update that sets a column placing the row (another language, another parent)
+            $moves = $spec->moveKeys !== null && $bulkUpdate
+                && array_filter($keys[1], fn (string $key): bool => preg_match('~^([\'"])(?:'.$spec->moveKeys.')\1$~', $key) === 1) !== [];
             // with columnAware, a write counts when it names the columns or does not write its values out
             $namesColumns = ! $spec->columnAware || preg_match('~'.$columns.'~', $code) === 1 || preg_match('~->(?:insert\w*|upsert|update|updateOrInsert)\(\s*\$~', $code) === 1;
             $rules = [
@@ -101,8 +112,16 @@ final class ModelWriteBypasses
                 'raw attributes' => str_contains($code, 'setRawAttributes(') && preg_match('~'.$columns.'~', $code) === 1,
                 'JSON-path key' => preg_match("~['\"](?:".$spec->columns.')->~', $code) === 1,
                 'forceFill with raw JSON' => str_contains($code, 'forceFill(') && str_contains($code, 'json_encode(') && preg_match('~'.$columns.'~', $code) === 1,
-                'bulk delete on the model' => $spec->deleteAnchor !== null && $namesTheTables && preg_match($spec->deleteAnchor, $code) === 1
+                'bulk delete on the model' => $spec->deleteAnchor !== null && ($namesTheTables || $namesTheOwners) && preg_match($spec->deleteAnchor, $code) === 1
                     && preg_match_all('~->(?:delete|forceDelete)\(~', $code) > preg_match_all(str_replace('->update\\(', '->(?:delete|forceDelete)\\(', $instanceUpdate), $code),
+                'query-builder delete on the table' => $spec->rowDeletes && preg_match($onTable, $code) === 1 && preg_match('~->(?:delete|forceDelete|truncate)\(~', $code) === 1,
+                'raw SQL delete' => $spec->rowDeletes && preg_match('~\b(?:delete\s+from|truncate(?:\s+table)?)\s+(?:only\s+)?(?:public\.)?"?'.$tables.'\b~i', $strings) === 1,
+                'raw SQL delete from a computed table' => $spec->rowDeletes && $namesTheTables && preg_match('~\bDB::delete\(|->delete\((?:[\'"]|<<<)~', $code) === 1
+                    && ($strings === '' || preg_match('~\bdelete\s+from\s+(?:only\s+)?(?!(?:public\.)?"?[a-z_])~i', $strings) === 1),
+                'bulk move of a row on the model' => $anchored && $moves,
+                'query-builder move on the table' => preg_match($onTable, $code) === 1 && $moves,
+                'raw SQL move' => $spec->moveKeys !== null
+                    && preg_match('~\bupdate\s+(?:only\s+)?(?:public\.)?"?'.$tables.'\b"?\s+set\b(?:(?!\bwhere\b).)*?\b"?(?:'.$spec->moveKeys.')"?\s*=~is', $strings) === 1,
                 'save without events' => $spec->quietSaves && $namesTheTables && preg_match('~(?:->|::)(?:\w+Quietly|withoutEvents|unsetEventDispatcher)\(~', $code) === 1,
             ];
             foreach ($rules as $rule => $hit) {

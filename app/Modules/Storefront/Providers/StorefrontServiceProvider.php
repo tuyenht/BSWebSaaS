@@ -9,6 +9,7 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\EdgeCachePause;
 use App\Modules\Storefront\Console\FlushContactClicks;
 use App\Modules\Storefront\Console\PruneContactClicks;
+use App\Modules\Storefront\Console\RebuildSiteSearchWords;
 use App\Modules\Storefront\EdgeCache\CloudflareEdgeCache;
 use App\Modules\Storefront\EdgeCache\EdgeCachePurges;
 use App\Modules\Storefront\EdgeCache\NullEdgeCache;
@@ -47,7 +48,7 @@ final class StorefrontServiceProvider extends ServiceProvider
     public function boot(): void
     {
         if ($this->app->runningInConsole()) {
-            $this->commands([FlushContactClicks::class, PruneContactClicks::class]);
+            $this->commands([FlushContactClicks::class, PruneContactClicks::class, RebuildSiteSearchWords::class]);
         }
 
         // app(), not $this->app: under Octane each request runs in a clone of the booted app.
