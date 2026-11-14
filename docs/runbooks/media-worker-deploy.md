@@ -35,10 +35,19 @@ Then: `export CLOUDFLARE_API_TOKEN=<the token>` before running wrangler.
 sole reader. The existing objects stay and keep serving (via the Worker); they are re-keyed to the
 content-hash scheme when the launch is seeded.
 
-## 2. 🔴 Make `baoson-media` private — remove its public custom domain
-Dashboard → R2 → `baoson-media` → Settings → Public access / Custom domains → **remove**
-`files.baoson.net`. (Frees the hostname for the Worker route in step 3; the Worker then becomes the
-bucket's only reader.) Brief window where `files.baoson.net` 404s — fine, no live page uses it yet.
+## 2. 🔴 Make `baoson-media` private — the media host is a plain proxied record, never an R2 custom domain
+Done for `files.baoson.net` on 14/11/2026 (`docs/ops-log.md`). For any media host (a new platform host,
+or the media host of a site exported to run on its own):
+- Remove the bucket's public custom domain (Dashboard → R2 → bucket → Settings → Custom domains), so the
+  Worker is the bucket's only reader.
+- Point the host at the Worker with a **proxied `AAAA 100::`** record (a placeholder address: the Worker
+  route answers every request). This is what gives the host HTTP/3: an R2 custom domain is served
+  HTTP/2 only and its DNS record does not advertise h3, even when the zone has HTTP/3 on.
+- The R2-owned record must be gone before the AAAA can be created, so there is a gap of about a second
+  in which resolvers may cache "no such name" for the zone's SOA minimum (1800 s here). Do it when few
+  visitors are on, after a rehearsal on a throwaway host (record + route, check `?w=640` returns
+  `image/avif`, raw GET 200, Range 206, `w=999` → 400 and `alpn=h3`).
+- Rollback: delete the AAAA, re-attach the custom domain; SSL becomes active after about 3–4 minutes.
 
 ## 3. Deploy the Worker (creates the route + R2 binding)
 ```bash

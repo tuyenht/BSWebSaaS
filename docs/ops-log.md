@@ -7,6 +7,15 @@
 
 ## 2026
 
+### 2026-11-14 — Máy chủ ảnh files.baoson.net chuyển sang HTTP/3 (Cloudflare, không đổi code)
+
+- **Vì sao:** av1 dùng HTTP/3 ngay lần xem đầu (bản ghi DNS HTTPS `alpn=h3,h2`), còn `files.baoson.net` chỉ `h2`, vì nó vẫn là tên miền công khai của R2 (R2 không quảng bá h3), Worker `baoson-media` chỉ nằm đè lên qua route. Đo netem 150 ms/1,6 Mbit, Chrome, 7 lần: LCP trung vị 2264 → 2064 ms khi máy chủ ảnh có h3. Chủ dự án duyệt làm theo khuyến nghị (audit Fable 5.2 + Opus 5.5, 14/11).
+- **Đổi gì (11:26:35 → 11:26:37 +07):** gỡ tên miền công khai `files.baoson.net` khỏi bucket `baoson-media` → tạo bản ghi `AAAA 100::` proxied, comment "media host: Worker baoson-media serves it (HTTP/3)…". Route `files.baoson.net/*` → `baoson-media` giữ nguyên. Quãng không phân giải ~1 s. Bucket giờ chỉ còn Worker đọc (đúng bước 2 runbook, trước đây chưa làm).
+- **Kiểm sau:** ảnh `?w=640` 200 `image/avif` 15 086 B, ảnh gốc 200, HEAD 200, Range 206, `w=999` → 400, `alpn=h3,h2`; Chrome thật: lần xem thứ hai đã `h3`.
+- **Diễn tập trước:** host tạm `h3probe.baoson.net` (bản ghi + route, PASS rồi tự xoá); gắn/gỡ tên miền R2 trên host tạm (gắn 196 s tới SSL active, gỡ xoá bản ghi sau 3 s). SOA min TTL 1800 không đổi được trên gói này ("Custom SOA records are not available").
+- **Quay lại:** gỡ bản ghi AAAA 100:: có comment trên, gắn lại tên miền công khai cho bucket (mất ~3–4 phút tới SSL active). Kịch bản dùng cho lần này nằm ở thư mục nháp của phiên (không đưa vào repo vì chứa đường dẫn token máy chủ); bước tay ở `docs/runbooks/media-worker-deploy.md` §2.
+- **Token:** token DNS của chủ dự án (`/root/.config/bswebsaas/cf-dns-token`, 600) + token R2/route trong môi trường app dev. Nên thu hồi token DNS khi không còn dùng; nên tách token chỉ-purge cho app (token app hiện sửa được route Worker).
+
 ### 2026-10-29 — Gỡ ClaudeKit khỏi cấu hình Claude Code (quay lại được); MEMORY.md tiếng Anh
 
 - **Owner duyệt trong phiên (29/10, "Làm cả hai"):** gỡ bộ ClaudeKit khỏi `~/.claude` của root theo cách quay lại được. Lý do: 0 lần dùng skill của kit trong 30 ngày; tốn khoảng 8K token mỗi phiên và mỗi tác tử phụ; `scout-block` chặn `vendor/bin/pest`, `phpstan` và `pint`; `session-init` chèn thông tin sai ("monorepo, pnpm").
