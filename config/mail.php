@@ -1,6 +1,5 @@
 <?php
 
-
 // The connection the platform error notices use: their own MONITORING_MAIL_* settings when a host
 // is set there, otherwise the platform sender's MAIL_* settings as one group (see the mailer below).
 $monitoringMail = filled(env('MONITORING_MAIL_HOST')) ? 'MONITORING_MAIL_' : 'MAIL_';
