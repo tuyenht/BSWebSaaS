@@ -1,7 +1,7 @@
 # Runbook — Deploy the media serving Worker (ADR-17, PR-3)
 
-> One-time platform setup. Touches **LIVE `files.baoson.net`** (currently the public custom domain
-> of the existing `baoson-media` R2 bucket). Run the steps **in order** — step 2 (make the bucket
+> One-time platform setup. Touches **LIVE `files.baoson.net`** (since 14/11/2026 a proxied record in
+> front of this Worker; before that the public custom domain of the `baoson-media` R2 bucket). Run the steps **in order** — step 2 (make the bucket
 > private) MUST precede step 3 (Worker route); the epic forbids public+private coexistence.
 > Code: `deploy/media-worker/`. Bucket: existing `baoson-media`.
 
@@ -47,7 +47,9 @@ or the media host of a site exported to run on its own):
   in which resolvers may cache "no such name" for the zone's SOA minimum (1800 s here). Do it when few
   visitors are on, after a rehearsal on a throwaway host (record + route, check `?w=640` returns
   `image/avif`, raw GET 200, Range 206, `w=999` → 400 and `alpn=h3`).
-- Rollback: delete the AAAA, re-attach the custom domain; SSL becomes active after about 3–4 minutes.
+- Rollback: delete the AAAA, re-attach the custom domain; SSL becomes active after about 3–4 minutes,
+  with the same short gap and negative caching as above. This makes every key of the bucket public again,
+  uploads in flight under `_incoming/` included, so it is a last resort.
 
 ## 3. Deploy the Worker (creates the route + R2 binding)
 ```bash
@@ -64,8 +66,17 @@ sandbox CSP; a PDF is `Content-Disposition: attachment`.
 
 ## 4. Enable Image Transformations on the zone
 Dashboard → `baoson.net` → **Speed → Optimization → Image Transformations → Enable** (covers
-`cf.image`; free tier ~5k unique transforms/mo — ample for An Vinh). Without it, `?w=` still works
-but returns the raw master (no resize).
+`cf.image`). Without it, `?w=` still works but returns the raw master (no resize).
+
+**Plan limits for the whole platform** (Cloudflare docs, read 14/11/2026). Every site's images go
+through this one Worker, so the limits are shared by all sites:
+- Workers Free: 100,000 requests a day (resets 00:00 UTC). Past it the route answers error 1027 —
+  the route is *fail closed*, and *fail open* would not help, since nothing stands behind the `AAAA 100::`.
+  Measured 07–14/11 with one demo site: 133–15,227 requests a day.
+- Image Transformations Free: 5,000 unique transformations a calendar month (image + width; the format
+  is not counted). Past it, sizes already cached keep working and a new size answers 9422, which the
+  Worker turns into the raw master.
+- Both need the paid plans before the platform carries many sites; that is the owner's decision.
 
 ## 5. Verify (an existing temp image already in the bucket)
 ```bash
@@ -82,9 +93,12 @@ curl -s -r 0-1 -D - -o range.bin https://files.baoson.net/sites/1/media/about-ba
 
 ## 6. Rollback
 ```bash
-wrangler delete                  # remove the Worker (frees the route)
+cd deploy/media-worker && wrangler rollback   # back to the previous Worker version; the host keeps answering
 ```
-Then re-attach `files.baoson.net` as the `baoson-media` public custom domain (step 2 reversed).
+Do not `wrangler delete`: the host is a placeholder record (step 2), so without the Worker it answers
+nothing. To give up the Worker altogether, first delete the `AAAA 100::` record, then re-attach the
+public custom domain (step 2 reversed), knowing that this makes every key of the bucket public,
+uploads in flight under `_incoming/` included.
 
 ## After this runbook
 Tell the session **"Worker deployed"** → it re-keys the brand images to
