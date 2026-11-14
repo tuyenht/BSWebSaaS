@@ -115,18 +115,40 @@ it('rejects granting a role that belongs to another site team', function (): voi
     app(Tenancy::class)->enter(1, fn () => app(RoleHierarchyGuard::class)->assertCanGrant($owner1->fresh(), $editorSite2));
 })->throws(AuthorizationException::class);
 
-it('lets a platform super_admin grant any role (bypass)', function (): void {
+it('refuses a platform super_admin with no role on the site a grant of the site\'s roles', function (): void {
     $super = User::factory()->create();
     app(PlatformAccess::class)->onPlatform(fn () => $super->assignRole('super_admin'));
     $owner = templateRole(1, 'owner');
 
-    $granted = app(Tenancy::class)->enter(1, function () use ($super, $owner): true {
-        app(RoleHierarchyGuard::class)->assertCanGrant($super->fresh(), $owner);
+    expect(fn () => app(Tenancy::class)->enter(1, fn () => app(RoleHierarchyGuard::class)->assertCanGrant($super->fresh(), $owner)))
+        ->toThrow(AuthorizationException::class, __('admin.staff.locked'));
+});
 
-        return true;
+it('lets a platform super_admin grant a platform role', function (): void {
+    $super = User::factory()->create();
+    app(PlatformAccess::class)->onPlatform(fn () => $super->assignRole('super_admin'));
+    $support = app(PlatformAccess::class)->onPlatform(fn () => Role::query()->withoutGlobalScopes()->where('site_id', 0)->where('name', 'support')->firstOrFail());
+
+    app(PlatformAccess::class)->onPlatform(fn () => app(RoleHierarchyGuard::class)->assertCanGrant($super->fresh(), $support));
+
+    expect(true)->toBeTrue();
+});
+
+it('measures a platform super_admin who is a member of the site by that membership', function (): void {
+    $super = userWithRole(1, 'editor');
+    app(PlatformAccess::class)->onPlatform(fn () => $super->assignRole('super_admin'));
+    $viewer = templateRole(1, 'viewer');
+    $owner = templateRole(1, 'owner');
+
+    $names = app(Tenancy::class)->enter(1, function () use ($super, $viewer): array {
+        app(RoleHierarchyGuard::class)->assertCanGrant($super->fresh(), $viewer);
+
+        return app(RoleHierarchyGuard::class)->assignableRoles($super->fresh())->pluck('name')->all();
     });
 
-    expect($granted)->toBeTrue();
+    expect($names)->not->toContain('owner')->not->toContain('editor')
+        ->and(fn () => app(Tenancy::class)->enter(1, fn () => app(RoleHierarchyGuard::class)->assertCanGrant($super->fresh(), $owner)))
+        ->toThrow(AuthorizationException::class);
 });
 
 it('AssignRole grants the role through the guard and writes an audit trail', function (): void {

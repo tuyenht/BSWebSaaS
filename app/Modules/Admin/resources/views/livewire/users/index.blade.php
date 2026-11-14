@@ -53,7 +53,7 @@
     }
     $unit = $onInvites ? __('admin.members.inv_unit') : __('admin.members.unit');
     $hasMe = $rows->contains(fn ($u): bool => $u->id === $me->id);
-    $locked = $support;
+    $locked = $lockedWhy !== null;
     $limit = \App\Modules\Rbac\Actions\InviteMember::DAILY_LIMIT;
     $full = $sent >= $limit;
     // when inviting reopens, in the site's clock: the time alone today, with the day when it is tomorrow
@@ -62,8 +62,8 @@
     $reopenAt = $reopenLocal === null ? null : ($reopenLocal->isSameDay($siteTime->now())
         ? $reopenLocal->format('H:i')
         : __('admin.members.reopen_day', ['time' => $reopenLocal->format('H:i'), 'day' => $reopenLocal->format('d/m/Y')]));
-    // inviting and re-sending wait while support staff are signed in, or once the site has mailed its daily share
-    $inviteWhy = $locked ? __('admin.support.locked') : ($full ? __('admin.members.inv_full', ['max' => $limit]) : null);
+    // inviting and re-sending wait while members cannot be changed here (support or platform staff), or once the site has mailed its daily share
+    $inviteWhy = $locked ? $lockedWhy : ($full ? __('admin.members.inv_full', ['max' => $limit]) : null);
     $tabs = [
         ['key' => '', 'label' => __('admin.members.tab_members'), 'count' => $total],
         ['key' => 'loi-moi', 'label' => __('admin.members.tab_invites'), 'count' => $invPending, 'cap' => $invCap],
@@ -169,11 +169,11 @@
             <x-bs-admin::list.bulk :label="__('admin.members.bulk_region')" :status="__('admin.members.bulk_selected', ['n' => $num($pickedRows->count())])"
                 clear="clearPicked" :clear-label="__('admin.members.bulk_clear')" :skip="$skipText">
                 <x-bs-admin::button size="sm" variant="soft" color="primary" id="members-bulk-roles" aria-disabled="{{ $locked || $okN === 0 ? 'true' : 'false' }}" class="aria-disabled:opacity-60"
-                    :title="$locked ? __('admin.support.locked') : null" wire:click="openBulkPanel">
+                    :title="$locked ? $lockedWhy : null" wire:click="openBulkPanel">
                     <x-bs-admin::icon name="ri-shield-user" class="size-4" /> {{ __('admin.members.bulk_groups', ['n' => $num($okN)]) }}
                 </x-bs-admin::button>
                 <x-bs-admin::button size="sm" variant="soft" color="danger" aria-disabled="{{ $locked || $okN === 0 ? 'true' : 'false' }}" class="aria-disabled:opacity-60"
-                    :title="$locked ? __('admin.support.locked') : null" wire:click="askRemovePicked">
+                    :title="$locked ? $lockedWhy : null" wire:click="askRemovePicked">
                     <x-bs-admin::icon name="ri-user-unfollow" class="size-4" /> {{ __('admin.members.bulk_remove', ['n' => $num($okN)]) }}
                 </x-bs-admin::button>
             </x-bs-admin::list.bulk>
@@ -260,9 +260,9 @@
                                             <x-bs-admin::icon name="ri-shield-user" class="size-4" /> {{ __('admin.members.edit') }}
                                         </x-bs-admin::button>
                                         <x-slot:menu>
-                                            <x-bs-admin::list.menu-item icon="ri-shield-user" :why="$locked ? __('admin.support.locked') : null" wire:click="openPanel({{ Js::from($member->ulid) }})">{{ __('admin.members.edit') }}</x-bs-admin::list.menu-item>
+                                            <x-bs-admin::list.menu-item icon="ri-shield-user" :why="$locked ? $lockedWhy : null" wire:click="openPanel({{ Js::from($member->ulid) }})">{{ __('admin.members.edit') }}</x-bs-admin::list.menu-item>
                                             <x-bs-admin::list.menu-sep />
-                                            <x-bs-admin::list.menu-item icon="ri-user-unfollow" danger :why="$locked ? __('admin.support.locked') : null" wire:click="askRemove({{ Js::from($member->ulid) }})">{{ __('admin.members.remove') }}</x-bs-admin::list.menu-item>
+                                            <x-bs-admin::list.menu-item icon="ri-user-unfollow" danger :why="$locked ? $lockedWhy : null" wire:click="askRemove({{ Js::from($member->ulid) }})">{{ __('admin.members.remove') }}</x-bs-admin::list.menu-item>
                                         </x-slot:menu>
                                     </x-bs-admin::list.actions>
                                 @else

@@ -15,6 +15,7 @@ it('routes every role mutation through a guarded role action', function (): void
         'app/Modules/Rbac/Actions/RevokeRole.php',            // guarded revoke chokepoint
         'app/Modules/Rbac/Console/BootstrapSuperAdmin.php',   // system bootstrap (verified)
         'app/Modules/Provisioning/Actions/ProvisionSite.php', // system provisioning (verified)
+        'app/Modules/Rbac/Actions/RecoverSiteOwner.php',      // operator console: reason + audit in the same transaction
     ];
 
     $pattern = '/->\s*(assignRole|removeRole|syncRoles)\s*\(/';

@@ -3,6 +3,7 @@
 namespace App\Modules\Admin\Providers;
 
 use App\Modules\Admin\Console\ReconcileContentUsage;
+use App\Modules\Admin\Console\RecoverSiteOwnerCommand;
 use App\Modules\Admin\Http\Middleware\EnforceSupportSession;
 use App\Modules\Admin\Http\Middleware\ResolveLivewireContext;
 use App\Modules\Admin\Listeners\SetTenantReplyTo;
@@ -91,7 +92,7 @@ final class AdminServiceProvider extends ServiceProvider
         View::addNamespace('admin', $this->app->basePath('app/Modules/Admin/resources/views'));
 
         if ($this->app->runningInConsole()) {
-            $this->commands([ReconcileContentUsage::class]);
+            $this->commands([ReconcileContentUsage::class, RecoverSiteOwnerCommand::class]);
         }
 
         // The block slots setting, the footer (its branch pictures) and the floating contact (its

@@ -11,8 +11,7 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Identity\Models\User;
-use App\Modules\Identity\Support\SupportSession;
-use App\Modules\Rbac\Support\PlatformAccess;
+use App\Modules\Rbac\Support\MembershipLock;
 use App\Modules\Rbac\Support\RoleHierarchyGuard;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
@@ -27,7 +26,7 @@ use Illuminate\Support\Facades\Gate;
  * someone choosing it. The given list replaces the member's whole set, atomically.
  *
  * Who may: someone holding `users.manage`, for a member strictly below their own role level and
- * never themselves (a platform super_admin may set anyone's). Setting limits needs the site's
+ * never themselves; platform staff set nobody's (MembershipLock). Setting limits needs the site's
  * `rbac.category_scopes` feature; clearing them does not, so a site whose plan lapsed can still
  * lift limits that keep applying. A limited actor hands out only categories inside their own limits, so never "every
  * category". Members who are never limited (role level ≥ CategoryScopes::EXEMPT_LEVEL) cannot be
@@ -39,7 +38,6 @@ final readonly class SetMemberCategoryScopes
     public function __construct(
         private CategoryScopes $scopes,
         private RoleHierarchyGuard $levels,
-        private PlatformAccess $platform,
         private Entitlement $entitlement,
         private CurrentSite $site,
     ) {}
@@ -52,7 +50,7 @@ final readonly class SetMemberCategoryScopes
      */
     public function handle(User $actor, User $target, array $taxonomyIds): void
     {
-        app(SupportSession::class)->forbid();   // membership never changes on someone's behalf
+        app(MembershipLock::class)->forbid($actor, $this->site->id());   // membership never changes on someone's behalf, nor from outside the site
 
         if (! Gate::forUser($actor)->allows('users.manage')) {
             throw new AuthorizationException('Managing members needs users.manage.');
@@ -124,7 +122,7 @@ final readonly class SetMemberCategoryScopes
         if ($target->roles()->doesntExist()) {
             throw new CategoryScopeRejectedException('not_member');
         }
-        if (! $this->platform->isSuperAdmin($actor) && $this->levels->maxLevel($target) >= $this->levels->maxLevel($actor)) {
+        if ($this->levels->maxLevel($target) >= $this->levels->maxLevel($actor)) {
             throw new AuthorizationException('Category limits are set only for members below your own level.');
         }
         if ($ids !== [] && $this->scopes->isExempt($target)) {

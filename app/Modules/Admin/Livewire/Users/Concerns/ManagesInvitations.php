@@ -6,7 +6,6 @@ namespace App\Modules\Admin\Livewire\Users\Concerns;
 
 use App\Modules\Admin\Support\Members\InvitationDirectory;
 use App\Modules\Admin\Support\Members\MemberDirectory;
-use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Actions\InviteMember;
 use App\Modules\Rbac\Actions\RevokeInvitation;
 use App\Modules\Rbac\Exceptions\InvitationRejectedException;
@@ -51,7 +50,7 @@ trait ManagesInvitations
     public function resendInvitation(string $ulid): void
     {
         $this->ensureInviter();
-        if ($this->refusedWhileSupport()) {
+        if ($this->refusedLocked()) {
             return;
         }
         $invitation = $this->liveInvitation($ulid);
@@ -86,7 +85,7 @@ trait ManagesInvitations
     public function askRevoke(string $ulid): void
     {
         $this->ensureInviter();
-        if ($this->refusedWhileSupport()) {
+        if ($this->refusedLocked()) {
             return;
         }
         $invitation = $this->liveInvitation($ulid);
@@ -107,7 +106,7 @@ trait ManagesInvitations
         $this->ensureInviter();
         $ulid = $this->revokeFor;
         $this->cancelRevoke();
-        if ($this->refusedWhileSupport()) {
+        if ($this->refusedLocked()) {
             return;
         }
         $invitation = $this->liveInvitation($ulid);
@@ -117,7 +116,7 @@ trait ManagesInvitations
         try {
             app(RevokeInvitation::class)->handle($this->actor(), $invitation);
         } catch (AuthorizationException) {
-            $this->say(app(SupportSession::class)->active() ? __('admin.support.locked') : __('admin.role_change_denied'), 'error');
+            $this->say($this->lockReason() ?? __('admin.role_change_denied'), 'error');
 
             return;
         } catch (InvitationRejectedException) {
@@ -132,7 +131,7 @@ trait ManagesInvitations
     public function reinvite(string $ulid): void
     {
         $this->ensureInviter();
-        if ($this->refusedWhileSupport()) {
+        if ($this->refusedLocked()) {
             return;
         }
         $invitation = $this->siteInvitation($ulid);

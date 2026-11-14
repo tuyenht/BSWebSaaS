@@ -1,0 +1,251 @@
+<?php
+
+use App\Modules\Admin\Livewire\Users\Index;
+use App\Modules\Identity\Models\User;
+use App\Modules\Rbac\Actions\AssignRole;
+use App\Modules\Rbac\Actions\InviteMember;
+use App\Modules\Rbac\Actions\RevokeInvitation;
+use App\Modules\Rbac\Actions\RevokeRole;
+use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Rbac\Models\Invitation;
+use App\Modules\Rbac\Models\Role;
+use App\Modules\Rbac\Registry\PermissionRegistry;
+use App\Modules\Rbac\Support\MembershipLock;
+use App\Modules\Rbac\Support\PlatformAccess;
+use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
+use Livewire\Features\SupportTesting\Testable;
+use Livewire\Livewire;
+
+/*
+ * Platform staff who open a customer website's admin directly — not through a support session —
+ * pass every tenant gate (super_admin, Gate::before). They still invite, remove, re-role and make
+ * nobody an owner there, alone or in a bulk selection: the screen says why, and the actions refuse
+ * on their own too. Staff who hold a real role on the website act as that member, no more. The
+ * website's own owner and admins keep doing all of it.
+ */
+
+beforeEach(function (): void {
+    truncateRbac();
+    seedTenancy();
+    DB::connection('pgsql_admin')->statement('truncate users restart identity cascade');
+    $this->artisan('rbac:sync')->assertSuccessful();
+    app(TeamContext::class)->forget();
+    app()->setLocale('vi');
+    Notification::fake();
+});
+
+function staffLockMember(string $name, int $site = 1): User
+{
+    $tpl = PermissionRegistry::tenantRoleTemplates('corporate')[$name];
+    $perms = $tpl['permissions'] === '*' ? PermissionRegistry::TENANT_PERMISSIONS : $tpl['permissions'];
+    $user = User::factory()->create();
+
+    app(Tenancy::class)->enter($site, function () use ($name, $tpl, $perms, $user): void {
+        $role = Role::findOrCreate($name, PermissionRegistry::GUARD);
+        $role->forceFill(['level' => $tpl['level'], 'is_system' => true])->save();
+        $role->syncPermissions($perms);
+        $user->assignRole($role);
+    });
+
+    return $user;
+}
+
+/** A platform super_admin; with $memberAs, also a member of site 1 holding that role. */
+function staffLockStaff(?string $memberAs = null): User
+{
+    $staff = $memberAs === null ? User::factory()->create() : staffLockMember($memberAs);
+    app(PlatformAccess::class)->onPlatform(fn () => $staff->assignRole('super_admin'));
+    app(PlatformAccess::class)->forgetMemo();
+
+    return $staff;
+}
+
+function staffLockRoles(User $user, int $site = 1): array
+{
+    return app(Tenancy::class)->enter($site, fn (): array => $user->fresh()?->roles()->orderBy('name')->pluck('name')->all() ?? []);
+}
+
+function staffLockPage(User $actor, Closure $then): mixed
+{
+    return app(Tenancy::class)->enter(1, fn () => $then(Livewire::actingAs($actor->fresh())->test(Index::class)));
+}
+
+function staffLockRole(string $name, int $site = 1): Role
+{
+    return app(Tenancy::class)->enter($site, fn (): Role => Role::query()->where('site_id', $site)->where('name', $name)->firstOrFail());
+}
+
+it('refuses direct platform staff every member change on the screen, saying why', function (): void {
+    $owner = staffLockMember('owner');
+    $member = staffLockMember('viewer');
+    staffLockMember('editor');
+    $staff = staffLockStaff();
+
+    staffLockPage($staff, fn (Testable $page) => $page
+        // the rows show the reason instead of opening anything
+        ->assertSee(__('admin.staff.locked'))
+        // change a role
+        ->call('openPanel', $member->ulid)
+        ->assertSet('panelFor', '')
+        ->assertSet('toast', __('admin.staff.locked'))
+        ->set('panelFor', $member->ulid)->set('panelRoles', ['editor'])->call('saveRoles')
+        // grant "Chủ website"
+        ->set('panelFor', $member->ulid)->set('panelRoles', ['owner'])->call('saveRoles')
+        // a forged undo
+        ->set('undoRoles', ['ulid' => $member->ulid, 'roles' => ['owner']])->call('undo')
+        // remove
+        ->call('askRemove', $member->ulid)
+        ->assertSet('confirmOpen', false)
+        ->set('removeFor', $member->ulid)->call('confirmRemove')
+        ->set('removeFor', $owner->ulid)->call('confirmRemove')
+        // invite
+        ->call('openInvite')
+        ->assertSet('inviteOpen', false)
+        ->set('inviteEmail', 'nguoi-moi-'.Str::lower(Str::random(8)).'@example.test')->set('inviteRoles', ['owner'])->call('sendInvites')
+        ->assertSet('inviteResults', []));
+
+    expect(staffLockRoles($member))->toBe(['viewer'])
+        ->and(staffLockRoles($owner))->toBe(['owner'])
+        ->and(staffLockRoles($staff))->toBe([])
+        ->and(app(Tenancy::class)->enter(1, fn (): int => Invitation::query()->count()))->toBe(0);
+    Notification::assertNothingSent();
+});
+
+it('refuses direct platform staff a bulk change, whatever mix of rows is ticked', function (): void {
+    $owner = staffLockMember('owner');
+    $admin = staffLockMember('admin');
+    $viewer = staffLockMember('viewer');
+    staffLockMember('editor');
+    $staff = staffLockStaff();
+
+    staffLockPage($staff, fn (Testable $page) => $page
+        ->call('togglePick', [$owner->ulid, $admin->ulid, $viewer->ulid])
+        ->call('openBulkPanel')
+        ->assertSet('panelBulk', false)
+        ->assertSet('toast', __('admin.staff.locked'))
+        // forged: the bulk panel "open" and saved anyway, then a forged bulk removal
+        ->set('panelBulk', true)->set('panelRoles', ['owner'])->call('saveRoles')
+        ->call('askRemovePicked')
+        ->assertSet('confirmOpen', false)
+        ->set('removeBulk', true)->call('confirmRemove'));
+
+    expect(staffLockRoles($owner))->toBe(['owner'])
+        ->and(staffLockRoles($admin))->toBe(['admin'])
+        ->and(staffLockRoles($viewer))->toBe(['viewer']);
+});
+
+it('refuses direct platform staff on the invitations tab: no mail again, no withdrawal', function (): void {
+    $owner = staffLockMember('owner');
+    staffLockMember('viewer');
+    $viewerRole = staffLockRole('viewer');
+    app(Tenancy::class)->enter(1, fn () => app(InviteMember::class)->handle($owner->fresh(), 'cho-'.Str::lower(Str::random(8)).'@example.test', [$viewerRole]));
+    $invitation = app(Tenancy::class)->enter(1, fn (): Invitation => Invitation::query()->firstOrFail());
+    $staff = staffLockStaff();
+
+    staffLockPage($staff, fn (Testable $page) => $page
+        ->set('tab', 'loi-moi')
+        ->call('resendInvitation', $invitation->ulid)
+        ->assertSet('toast', __('admin.staff.locked'))
+        ->call('reinvite', $invitation->ulid)
+        ->call('askRevoke', $invitation->ulid)
+        ->set('revokeFor', $invitation->ulid)->call('confirmRevoke'));
+
+    $after = app(Tenancy::class)->enter(1, fn (): Invitation => Invitation::query()->firstOrFail());
+    expect($after->revoked_at)->toBeNull()
+        ->and($after->sent_at->equalTo($invitation->sent_at))->toBeTrue();
+    Notification::assertNothingSent();
+});
+
+it('refuses direct platform staff in the actions themselves, not only on the screen', function (string $path): void {
+    $owner = staffLockMember('owner');
+    $member = staffLockMember('viewer');
+    $viewerRole = staffLockRole('viewer');
+    app(Tenancy::class)->enter(1, fn () => app(InviteMember::class)->handle($owner->fresh(), 'cho-'.Str::lower(Str::random(8)).'@example.test', [$viewerRole]));
+    $staff = staffLockStaff();
+
+    $ownerRole = staffLockRole('owner');
+
+    expect(fn () => app(Tenancy::class)->enter(1, fn () => match ($path) {
+        'assign owner' => app(AssignRole::class)->handle($staff->fresh(), $member->fresh(), $ownerRole),
+        'revoke' => app(RevokeRole::class)->handle($staff->fresh(), $owner->fresh(), $ownerRole),
+        'invite' => app(InviteMember::class)->handle($staff->fresh(), 'khac-'.Str::lower(Str::random(8)).'@example.test', [$ownerRole]),
+        'withdraw' => app(RevokeInvitation::class)->handle($staff->fresh(), Invitation::query()->firstOrFail()),
+    }))->toThrow(AuthorizationException::class, __('admin.staff.locked'));
+
+    expect(staffLockRoles($member))->toBe(['viewer'])
+        ->and(staffLockRoles($owner))->toBe(['owner']);
+})->with(['assign owner', 'revoke', 'invite', 'withdraw']);
+
+it('refuses a grant of another website\'s role made from a site where the staff member belongs', function (): void {
+    $staff = staffLockStaff('owner');               // a real owner of site 1
+    $member = staffLockMember('viewer', 2);
+    staffLockMember('owner', 2);
+
+    $ownerB = staffLockRole('owner', 2);
+
+    expect(fn () => app(Tenancy::class)->enter(1, fn () => app(AssignRole::class)->handle($staff->fresh(), $member->fresh(), $ownerB)))
+        ->toThrow(AuthorizationException::class);
+    expect(staffLockRoles($member, 2))->toBe(['viewer']);
+});
+
+it('lets staff who are a real member of the site act as that member, and no more', function (): void {
+    staffLockMember('owner');
+    $staff = staffLockStaff('admin');
+    $member = staffLockMember('viewer');
+    staffLockMember('editor');
+
+    staffLockPage($staff, fn (Testable $page) => $page
+        ->assertDontSee(__('admin.staff.locked'))
+        ->call('openPanel', $member->ulid)
+        ->assertSet('panelFor', $member->ulid)
+        // above their own level as a member: refused like any admin
+        ->set('panelRoles', ['owner'])->call('saveRoles')
+        ->assertSet('panelError', __('admin.role_change_denied'))
+        ->set('panelRoles', ['editor'])->call('saveRoles')
+        ->assertHasNoErrors());
+
+    expect(staffLockRoles($member))->toBe(['editor']);
+});
+
+it('keeps the site\'s own owner able to invite, re-role, make an owner and remove', function (): void {
+    $owner = staffLockMember('owner');
+    $member = staffLockMember('viewer');
+    $leaver = staffLockMember('viewer');
+    staffLockMember('admin');
+
+    staffLockPage($owner, fn (Testable $page) => $page
+        ->assertDontSee(__('admin.staff.locked'))
+        ->call('openPanel', $member->ulid)
+        ->set('panelRoles', ['admin'])->call('saveRoles')
+        ->assertSet('panelError', '')
+        ->call('askRemove', $leaver->ulid)
+        ->assertSet('confirmOpen', true)
+        ->call('confirmRemove')
+        ->call('openInvite')
+        ->set('inviteEmail', 'nguoi-moi-'.Str::lower(Str::random(8)).'@example.test')->set('inviteRoles', ['viewer'])->call('sendInvites')
+        ->assertHasNoErrors());
+
+    expect(staffLockRoles($member))->toBe(['admin'])
+        ->and(staffLockRoles($leaver))->toBe([])
+        ->and(app(Tenancy::class)->enter(1, fn (): int => Invitation::query()->count()))->toBe(1);
+});
+
+it('names staff on a site as outside only when they hold no role there', function (): void {
+    $outside = staffLockStaff();
+    $inside = staffLockStaff('editor');
+    $owner = staffLockMember('owner');
+    $lock = app(MembershipLock::class);
+
+    $verdicts = app(Tenancy::class)->enter(1, fn (): array => [
+        $lock->outsideStaff($outside->fresh(), 1),
+        $lock->outsideStaff($inside->fresh(), 1),
+        $lock->outsideStaff($owner->fresh(), 1),
+        $lock->outsideStaff($outside->fresh(), PermissionRegistry::PLATFORM_TEAM_ID),
+    ]);
+
+    expect($verdicts)->toBe([true, false, false, false]);
+});

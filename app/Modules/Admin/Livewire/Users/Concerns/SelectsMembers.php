@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Livewire\Users\Concerns;
 
 use App\Modules\Identity\Models\User;
-use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Actions\RevokeRole;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Support\RoleHierarchyGuard;
@@ -67,7 +66,7 @@ trait SelectsMembers
     public function openBulkPanel(): void
     {
         $this->ensureOpen();
-        if ($this->refusedWhileSupport()) {
+        if ($this->refusedLocked()) {
             return;
         }
         if ($this->pickedTouchable()->isEmpty()) {
@@ -85,7 +84,7 @@ trait SelectsMembers
     public function askRemovePicked(): void
     {
         $this->ensureOpen();
-        if ($this->refusedWhileSupport()) {
+        if ($this->refusedLocked()) {
             return;
         }
         if ($this->pickedTouchable()->isEmpty()) {
@@ -162,7 +161,7 @@ trait SelectsMembers
                 }
             });
         } catch (AuthorizationException) {
-            $this->panelError = app(SupportSession::class)->active() ? __('admin.support.locked') : __('admin.role_change_denied');
+            $this->panelError = $this->lockReason() ?? __('admin.role_change_denied');
 
             return;
         }
@@ -192,7 +191,7 @@ trait SelectsMembers
                 }
             });
         } catch (AuthorizationException) {
-            $this->say(app(SupportSession::class)->active() ? __('admin.support.locked') : __('admin.member_remove_denied'), 'error');
+            $this->say($this->lockReason() ?? __('admin.member_remove_denied'), 'error');
 
             return;
         }

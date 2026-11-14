@@ -18,6 +18,7 @@ use App\Modules\Rbac\Actions\RevokeRole;
 use App\Modules\Rbac\Exceptions\InvitationRejectedException;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Support\IssuedInvitation;
+use App\Modules\Rbac\Support\MembershipLock;
 use App\Modules\Rbac\Support\RoleHierarchyGuard;
 use App\Modules\Rbac\Support\RoleLabel;
 use App\Modules\Shared\Support\Cast;
@@ -194,7 +195,7 @@ final class Index extends Component
     public function openPanel(string $memberUlid): void
     {
         $this->ensureOpen();
-        if ($this->refusedWhileSupport()) {
+        if ($this->refusedLocked()) {
             return;
         }
         $target = $this->siteMember($memberUlid);
@@ -229,7 +230,7 @@ final class Index extends Component
             'panelRoles' => 'array|max:50',
             'panelRoles.*' => 'string|max:125|distinct',
         ]);
-        if ($this->refusedWhileSupport()) {
+        if ($this->refusedLocked()) {
             return;
         }
         if ($this->panelBulk) {
@@ -293,7 +294,7 @@ final class Index extends Component
         }
         $undo = $this->undoRoles;
         $this->undoRoles = null;
-        if ($undo === null || $this->refusedWhileSupport()) {
+        if ($undo === null || $this->refusedLocked()) {
             return;
         }
         $target = $this->siteMember(Cast::string($undo['ulid'] ?? ''));
@@ -310,7 +311,7 @@ final class Index extends Component
     public function askRemove(string $memberUlid): void
     {
         $this->ensureOpen();
-        if ($this->refusedWhileSupport()) {
+        if ($this->refusedLocked()) {
             return;
         }
         $target = $this->siteMember($memberUlid);
@@ -342,7 +343,7 @@ final class Index extends Component
         $ulid = $this->removeFor;
         $bulk = $this->removeBulk;
         $this->cancelRemove();
-        if ($this->refusedWhileSupport()) {
+        if ($this->refusedLocked()) {
             return;
         }
         if ($bulk) {
@@ -373,7 +374,7 @@ final class Index extends Component
                 }
             });
         } catch (AuthorizationException) {
-            $this->say(app(SupportSession::class)->active() ? __('admin.support.locked') : __('admin.member_remove_denied'), 'error');
+            $this->say($this->lockReason() ?? __('admin.member_remove_denied'), 'error');
 
             return;
         }
@@ -385,7 +386,7 @@ final class Index extends Component
     public function openInvite(): void
     {
         $this->ensureOpen();
-        if (! Gate::allows('users.invite') || $this->refusedWhileSupport()) {
+        if (! Gate::allows('users.invite') || $this->refusedLocked()) {
             return;
         }
         if ($this->siteFull()) {
@@ -432,7 +433,7 @@ final class Index extends Component
         ], [], ['inviteEmail' => __('admin.members.inv_email'), 'inviteMessage' => __('admin.members.inv_msg')]);
 
         $actor = $this->actor();
-        if (! Gate::allows('users.invite') || $this->refusedWhileSupport()) {
+        if (! Gate::allows('users.invite') || $this->refusedLocked()) {
             return;
         }
 
@@ -512,6 +513,7 @@ final class Index extends Component
         $onInvites = $this->tab === 'loi-moi';
         $canInvite = Gate::allows('users.invite');
         $support = app(SupportSession::class)->active();
+        $lockedWhy = $this->lockReason();
 
         $failed = false;
         $rows = new Collection;
@@ -579,7 +581,7 @@ final class Index extends Component
         $ceiling = $guard->levelCeiling($actor);
 
         // the site's invitation mail over the last 24 hours: the quota line (invitations), the near-limit note (an inviter)
-        $sent = ($onInvites || ($canInvite && ! $support)) ? app(InviteMember::class)->sentToday($siteId) : 0;
+        $sent = ($onInvites || ($canInvite && $lockedWhy === null)) ? app(InviteMember::class)->sentToday($siteId) : 0;
         $reopens = $sent >= InviteMember::DAILY_LIMIT ? app(InviteMember::class)->reopensAt($siteId, $sent) : null;
 
         $picked = ! $onInvites && $this->picked !== [] ? $this->pickedMembers() : new Collection;
@@ -617,6 +619,7 @@ final class Index extends Component
             'ceiling' => $ceiling,
             'me' => $actor,
             'support' => $support,
+            'lockedWhy' => $lockedWhy,
             'canInvite' => $canInvite,
             'youHint' => ! FirstHints::dismissed(FirstHints::MEMBERS_YOU, $actor),
             'pickedRows' => $picked,
@@ -668,8 +671,9 @@ final class Index extends Component
         try {
             DB::transaction(fn () => $this->giveRoles($target, $roles));
         } catch (AuthorizationException) {
-            if (app(SupportSession::class)->active()) {
-                $this->say(__('admin.support.locked'), 'error');
+            $locked = $this->lockReason();
+            if ($locked !== null) {
+                $this->say($locked, 'error');
             }
 
             return false;
@@ -813,16 +817,26 @@ final class Index extends Component
         $this->toastSeq++;
     }
 
-    /** Support staff signed in as a member change nobody's membership: say so and stop. */
-    private function refusedWhileSupport(): bool
+    /**
+     * Support staff signed in as a member, and platform staff with no role on this website, change
+     * nobody's membership (MembershipLock — the actions refuse too): say so and stop.
+     */
+    private function refusedLocked(): bool
     {
-        if (app(SupportSession::class)->active()) {
-            $this->say(__('admin.support.locked'), 'error');
+        $locked = $this->lockReason();
+        if ($locked !== null) {
+            $this->say($locked, 'error');
 
             return true;
         }
 
         return false;
+    }
+
+    /** Why members cannot be changed here by this person, in the screen's words; null when they can. */
+    private function lockReason(): ?string
+    {
+        return app(MembershipLock::class)->reason($this->actor(), app(CurrentSite::class)->id());
     }
 
     private function open(): bool

@@ -64,11 +64,11 @@
                     $coolLeft = $live ? max(0, InviteMember::RESEND_COOLDOWN_SECONDS - (int) $inv->sent_at->diffInSeconds($now)) : 0;
                     $why = null;
                     if ($canInvite && $live) {
-                        $why = $locked ? __('admin.support.locked')
+                        $why = $locked ? $lockedWhy
                             : (! $grant ? __('admin.members.inv_why_level', ['name' => $askName])
                             : ($full ? __('admin.members.inv_why_full', ['max' => $limit, 'time' => $reopenAt ?? '—']) : null));
                     } elseif ($canInvite && $k === 'revoked' && $locked) {
-                        $why = __('admin.support.locked');
+                        $why = $lockedWhy;
                     }
                     $meta = array_filter([
                         implode(', ', $roleNames),
@@ -148,10 +148,10 @@
                                     @if ($canInvite && $live)
                                         <x-bs-admin::list.menu-item icon="ri-mail-send" :why="$why" wire:click="resendInvitation({{ Js::from($inv->ulid) }})">{{ __('admin.members.inv_resend') }}</x-bs-admin::list.menu-item>
                                         <x-bs-admin::list.menu-sep />
-                                        <x-bs-admin::list.menu-item icon="ri-mail-close" danger :why="$locked ? __('admin.support.locked') : (! $grant ? __('admin.members.inv_why_level', ['name' => $askName]) : null)"
+                                        <x-bs-admin::list.menu-item icon="ri-mail-close" danger :why="$locked ? $lockedWhy : (! $grant ? __('admin.members.inv_why_level', ['name' => $askName]) : null)"
                                             wire:click="askRevoke({{ Js::from($inv->ulid) }})">{{ __('admin.members.inv_revoke') }}</x-bs-admin::list.menu-item>
                                     @elseif ($canInvite && $k === 'revoked')
-                                        <x-bs-admin::list.menu-item icon="ri-user-add" :why="$locked ? __('admin.support.locked') : ($full ? __('admin.members.inv_full', ['max' => $limit]) : null)"
+                                        <x-bs-admin::list.menu-item icon="ri-user-add" :why="$locked ? $lockedWhy : ($full ? __('admin.members.inv_full', ['max' => $limit]) : null)"
                                             wire:click="reinvite({{ Js::from($inv->ulid) }})">{{ __('admin.members.inv_reinvite') }}</x-bs-admin::list.menu-item>
                                     @elseif ($k === 'accepted')
                                         <x-bs-admin::list.menu-item icon="ri-user" wire:click="viewMember({{ Js::from($inv->ulid) }})">{{ __('admin.members.inv_view') }}</x-bs-admin::list.menu-item>

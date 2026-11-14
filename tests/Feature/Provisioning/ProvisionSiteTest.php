@@ -11,6 +11,8 @@ use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
+use App\Modules\Rbac\Support\MembershipLock;
+use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\Domain;
@@ -63,6 +65,25 @@ it('provisions a full, active site stack', function (): void {
     // Owner can manage content within the site (owner role = all tenant permissions).
     $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
     expect($tenancy->enter($site->id, fn () => $owner->fresh()->can('entries.publish')))->toBeTrue();
+});
+
+it('gives the first owner the owner role, though platform staff change no member of the site', function (): void {
+    $site = provisionAnVinh();
+    $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
+    $this->artisan('rbac:sync')->assertSuccessful();
+    $staff = User::factory()->create();
+    app(PlatformAccess::class)->onPlatform(fn () => $staff->assignRole('super_admin'));
+    $lock = app(MembershipLock::class);
+
+    [$roles, $ownerLocked, $staffLocked] = app(Tenancy::class)->enter($site->id, fn (): array => [
+        $owner->fresh()?->roles()->pluck('name')->all(),
+        $lock->outsideStaff($owner->fresh(), $site->id),
+        $lock->outsideStaff($staff->fresh(), $site->id),
+    ]);
+
+    expect($roles)->toBe(['owner'])
+        ->and($ownerLocked)->toBeFalse()
+        ->and($staffLocked)->toBeTrue();
 });
 
 it('creates the platform subdomain already verified and primary', function (): void {

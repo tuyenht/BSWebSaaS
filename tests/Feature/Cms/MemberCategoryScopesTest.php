@@ -312,7 +312,7 @@ it('refuses limits for someone who is not a member here or is never limited', fu
 
     expect(csSet(1, $owner, $outsider, [$news]))->toBe('not_member')
         ->and(csSet(1, $owner, $admin, [$news]))->toBe('target_exempt')
-        ->and(csSet(1, $staff, $admin, [$news]))->toBe('target_exempt')
+        ->and(csSet(1, $staff, $admin, [$news]))->toBe('denied')       // platform staff with no role here change nobody's limits
         ->and(csRows(1, $admin))->toBe([]);
 });
 
@@ -564,19 +564,20 @@ it('leaves limits alone for a role granted or revoked on another site', function
     $newsB = csCategory(2, 'Tin tức B');
     csLimit(1, $member, $newsA);
     csLimit(2, $member, $newsB);
-    $staff = User::factory()->create();
-    app(PlatformAccess::class)->onPlatform(fn () => $staff->assignRole('super_admin'));
+    $ownerB = csMember(2, 'owner');
     $adminB = csRole(2, 'admin');
     $editorB = csRole(2, 'editor');
 
-    // Working on site 1, a platform super_admin grants and revokes site 2 roles: neither site's limits move.
-    csIn(1, function () use ($staff, $member, $adminB, $editorB): void {
-        app(AssignRole::class)->handle($staff, $member, $adminB);
-        app(RevokeRole::class)->handle($staff, $member, $editorB);
+    // Site 2's owner grants and revokes site 2 roles: site 1's limits do not move, while site 2's
+    // follow the member there (an admin is never limited). Nobody can change a site's roles from
+    // another site any more: platform staff with no role there are refused (MembershipLock).
+    csIn(2, function () use ($ownerB, $member, $adminB, $editorB): void {
+        app(AssignRole::class)->handle($ownerB->fresh() ?? $ownerB, $member, $adminB);
+        app(RevokeRole::class)->handle($ownerB->fresh() ?? $ownerB, $member, $editorB);
     });
 
     expect(csRows(1, $member))->toBe([$newsA->id])
-        ->and(csRows(2, $member))->toBe([$newsB->id]);
+        ->and(csRows(2, $member))->toBe([]);
 });
 
 it('grants and revokes a platform role without announcing a site membership', function (): void {

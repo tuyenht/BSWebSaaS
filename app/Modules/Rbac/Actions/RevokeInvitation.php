@@ -6,9 +6,10 @@ namespace App\Modules\Rbac\Actions;
 
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
-use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Exceptions\InvitationRejectedException;
 use App\Modules\Rbac\Models\Invitation;
+use App\Modules\Rbac\Support\MembershipLock;
+use App\Modules\Shared\Support\Cast;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Gate;
 
@@ -25,7 +26,7 @@ final readonly class RevokeInvitation
      */
     public function handle(User $actor, Invitation $invitation): void
     {
-        app(SupportSession::class)->forbid();   // membership never changes on someone's behalf
+        app(MembershipLock::class)->forbid($actor, Cast::int($invitation->site_id));   // membership never changes on someone's behalf, nor from outside the site
         Gate::forUser($actor)->authorize('users.invite');
 
         if ($invitation->accepted_at !== null || $invitation->revoked_at !== null) {
