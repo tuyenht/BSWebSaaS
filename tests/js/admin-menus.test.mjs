@@ -2,7 +2,7 @@
 // (resources/js/admin-menus.js), without a browser: `node --test tests/js/admin-menus.test.mjs`.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildDraft, goneKeysOf, goneSpanOf, iconGroupsOf, treeRowsOf } from '../../resources/js/admin-menus.js';
+import { buildDraft, goneKeysOf, goneSpanOf, iconGroupsOf, suggestIconOf, treeRowsOf } from '../../resources/js/admin-menus.js';
 
 const opts = (more = {}) => ({ hidden: false, new_tab: false, icon: null, description: {}, cta: false, mega: null, badge: null, device: 'all', ...more });
 const row = (key, parent, labels, more = {}) => ({ key, parent, link: { type: 'url', url: '/' + key }, labels, options: opts(more) });
@@ -99,6 +99,27 @@ const groups = [
     { group: 'Nội dung', icons: [] },
     { group: 'Liên hệ', icons: [{ name: 'zalo', label: 'Zalo' }, { name: 'clock', label: 'Giờ mở cửa' }] },
 ];
+
+const worded = [
+    { group: 'Hay dùng', icons: [{ name: 'factory', label: 'Nhà máy', words: 'nhà máy xưởng sản xuất' }, { name: 'phone', label: 'Điện thoại', words: 'điện thoại gọi hotline' }] },
+    { group: 'Liên hệ', icons: [{ name: 'phone', label: 'Điện thoại', words: 'điện thoại gọi hotline' }, { name: 'truck', label: 'Vận chuyển', words: 'vận chuyển giao hàng' }] },
+];
+
+test('the icon picker also finds an icon by its search words and lists a repeated icon once', () => {
+    assert.deepEqual(iconGroupsOf(worded, 'XUONG', ':n khớp'), [{ group: '1 khớp', icons: [worded[0].icons[0]] }]);
+    assert.deepEqual(iconGroupsOf(worded, 'hotline', ':n khớp')[0].icons.map((ic) => ic.name), ['phone']);
+    assert.deepEqual(iconGroupsOf(worded, 'o', ':n khớp')[0].icons.map((ic) => ic.name), ['factory', 'phone', 'truck']);
+});
+
+test('the icon suggested for an item name is the longest search word it holds, accents ignored', () => {
+    assert.equal(suggestIconOf(worded, 'Nhà máy Bắc Ninh'), 'factory');
+    assert.equal(suggestIconOf(worded, 'GIAO HANG nhanh'), 'truck');
+    assert.equal(suggestIconOf(worded, 'Gọi hotline ngay'), 'phone');
+    assert.equal(suggestIconOf(worded, 'Giao hàng và xưởng'), 'factory');
+    assert.equal(suggestIconOf(worded, 'Liên hệ'), '');
+    assert.equal(suggestIconOf(worded, '  '), '');
+    assert.equal(suggestIconOf(groups, 'Điện thoại'), '');
+});
 
 test('the icon picker shows every group with icons, or one group of the matches', () => {
     assert.deepEqual(iconGroupsOf(groups, '  ', ':n khớp').map((g) => g.group), ['Hay dùng', 'Liên hệ']);

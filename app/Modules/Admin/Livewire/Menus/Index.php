@@ -50,14 +50,16 @@ final class Index extends Component
 {
     /**
      * The website icons that suit a menu item, in the groups and order the picker shows them
-     * (group names: menus.icon_group_*). Each name is one of StorefrontIcons, listed once.
+     * (group names: menus.icon_group_*). Each name is one of StorefrontIcons; a name may sit in two groups.
      */
     public const array ICON_GROUPS = [
-        'common' => ['phone', 'email', 'address', 'map', 'building'],
-        'content' => ['play'],
-        'company' => ['verified', 'license', 'quote'],
-        'contact' => ['clock', 'facebook', 'zalo', 'youtube', 'tiktok', 'linkedin', 'x'],
-        'other' => ['link'],
+        'common' => ['home', 'info', 'building', 'factory', 'tools', 'hammer', 'box', 'price-tag', 'newspaper', 'phone', 'email', 'address'],
+        'shop' => ['cart', 'shopping-bag', 'store', 'coupon', 'percent', 'wallet', 'card', 'refund', 'truck', 'warehouse', 'barcode', 'compare'],
+        'industry' => ['settings', 'cpu', 'ruler', 'compass', 'flask', 'quality', 'recycle', 'flame', 'scissors', 'focus', 'layers', 'droplet'],
+        'content' => ['project', 'document', 'image', 'gallery', 'video', 'play', 'download', 'book', 'help', 'lightbulb', 'presentation', 'newspaper'],
+        'company' => ['support', 'team', 'user', 'vip', 'briefcase', 'award', 'medal', 'handshake', 'community', 'heart', 'star', 'testimonial', 'quote', 'license'],
+        'contact' => ['phone', 'whatsapp', 'messenger', 'facebook', 'youtube', 'instagram', 'linkedin', 'tiktok', 'send', 'calendar-check', 'clock', 'globe', 'zalo', 'x', 'map'],
+        'other' => ['search', 'link', 'zap', 'gift', 'privacy', 'legal', 'sitemap', 'route', 'leaf', 'hours-24', 'verified', 'more'],
     ];
 
     public function boot(): void
@@ -362,7 +364,7 @@ final class Index extends Component
             'siteName' => $this->siteName($main),
             'icons' => array_map(fn (string $group): array => [
                 'group' => __('menus.icon_group_'.$group),
-                'icons' => array_map(fn (string $name): array => ['name' => $name, 'label' => __('menus.icon_'.$name)], self::ICON_GROUPS[$group]),
+                'icons' => array_map(fn (string $name): array => ['name' => $name, 'label' => __('menus.icon_'.$name), 'words' => __('menus.icon_kw_'.$name)], self::ICON_GROUPS[$group]),
             ], array_keys(self::ICON_GROUPS)),
         ]);
     }
