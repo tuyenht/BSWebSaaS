@@ -148,7 +148,7 @@ final readonly class PlatformPlans
             if ($used) {
                 throw new PlanChangeRejectedException('plan_in_use');
             }
-            if (! array_key_exists('name', $asLeft) || $locked->name !== $asLeft['name']
+            if (! array_key_exists('name', $asLeft) || ! array_key_exists('features', $asLeft) || $locked->name !== $asLeft['name']
                 || ! PlanCatalog::sameGrants(PlanCatalog::grantsOf($locked), Cast::arr($asLeft['features'] ?? null))) {
                 throw new PlanChangeRejectedException('plan_changed');
             }

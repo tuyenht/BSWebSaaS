@@ -40,6 +40,9 @@ final readonly class SetPlanFeatures
         }
 
         DB::transaction(function () use ($plan, $features): void {
+            // the plan row is locked first, like every other writer of a plan, so a table written
+            // here can never interleave with a discard that is comparing it
+            Plan::query()->whereKey($plan->id)->lockForUpdate()->value('id');
             PlanFeature::query()->where('plan_id', $plan->id)->whereNotIn('feature_key', array_keys($features))->delete();
 
             foreach ($features as $key => $value) {

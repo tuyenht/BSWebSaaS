@@ -274,6 +274,9 @@ it('keeps a copy someone renamed or gave other features to before Hoàn tác', f
     // an undo that does not say how the copy was left deletes nothing
     expect(fn () => app(PlatformPlans::class)->discardCopy($other, $second->fresh(), []))
         ->toThrow(PlanChangeRejectedException::class, 'plan_changed');
+    $bare = plPlan('Trống hẳn', false);
+    expect(fn () => app(PlatformPlans::class)->discardCopy($other, $bare, ['name' => 'Trống hẳn']))
+        ->toThrow(PlanChangeRejectedException::class, 'plan_changed');
     expect(plAudits('tenancy.plan.discarded'))->toBe(0);
 });
 
