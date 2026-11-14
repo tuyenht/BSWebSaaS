@@ -371,6 +371,9 @@ final class Notifications extends Component
         if ($next !== null) {
             $this->nextUntil = $rows->first(fn (SiteNotification $row): bool => Cast::int($row->getKey()) === $next)?->ulid;
             $rows = $rows->reject(fn (SiteNotification $row): bool => Cast::int($row->getKey()) === $next)->values();
+            // The notice the next page ends at was cleaned up between the walk and this read: no
+            // "Tải thêm" this time (it could not move), the next draw walks again.
+            $more = $this->nextUntil !== null;
         }
 
         return [$rows, $more, min(count($hits), self::CAP)];

@@ -475,4 +475,10 @@ it('reads a search in a fixed number of queries, one walk of the reader\'s notic
     // the walk, the rows shown by id, the six tab counts
     expect($sql)->toHaveCount(3)
         ->and(collect($sql)->filter(fn (string $q): bool => str_contains($q, '"search_text"'))->count())->toBe(1);
+
+    // "Tải thêm": the same three and the lookup of the cursor's id, still one walk
+    $sql = [];
+    npCall($page, 'more');
+    expect($sql)->toHaveCount(4)
+        ->and(collect($sql)->filter(fn (string $q): bool => str_contains($q, '"search_text"'))->count())->toBe(1);
 });
