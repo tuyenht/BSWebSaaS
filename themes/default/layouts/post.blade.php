@@ -29,10 +29,12 @@
     $sfToc = $toc ?? [];
     $sfAside = trim((string) (($slotHtml ?? [])['post_aside'] ?? ''));
     // The news look: who wrote it and how long it takes (under the title), a share bar beside the text and a reading
-    // progress line at the top of the window. The author is the site's business (no staff name leaves the admin).
+    // progress line at the top of the window. The author is the post's own byline in this language (a team or
+    // department an editor typed), else the site's business: no staff account's name leaves the admin.
     $sfNews = ! $sfPlain && ! $sfJobBand;
     $sfShareUrl = $sfNews && ! empty($canonical) ? (string) $canonical : '';
-    $sfAuthor = $sfNews ? trim((string) (($brand ?? [])['name'] ?? '')) : '';
+    $sfByline = trim((string) ($sfPost['author'] ?? ''));
+    $sfAuthor = $sfNews ? ($sfByline !== '' ? $sfByline : trim((string) (($brand ?? [])['name'] ?? ''))) : '';
     $sfMinutes = $sfNews ? \App\Modules\Theme\Components\ReadingTime::minutes((string) $sections) : 0;
     $sfInitials = $sfAuthor !== '' ? \App\Modules\Theme\Components\ReadingTime::initials($sfAuthor) : '';
     $sfRail = $sfShareUrl !== '';

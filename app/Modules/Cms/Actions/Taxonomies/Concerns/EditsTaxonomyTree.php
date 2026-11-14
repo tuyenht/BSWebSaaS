@@ -103,12 +103,13 @@ trait EditsTaxonomyTree
      * valid, each slug valid — a slug not given keeps the current one, or is made from the name for
      * a language the category is not written in yet. A current slug is kept as it is even when older
      * than today's slug rules, so renaming a category never forces its address to change. A
-     * description or Google title/description given for a language is cleaned and checked
-     * (description_invalid, seo_invalid) and saved, '' clearing it; one not given is left as it is.
+     * description, Google title/description or card label given for a language is cleaned and checked
+     * (description_invalid, seo_invalid, card_label_invalid) and saved, '' clearing it; one not given
+     * is left as it is.
      *
      * @param  array<string, TaxonomyTranslation>  $existing  locale → current translation
      * @param  list<string>  $enabled  the languages the site writes in
-     * @return array<string, array{name: string, slug: string, description?: string|null, seo_title?: string|null, seo_description?: string|null}>
+     * @return array<string, array{name: string, slug: string, description?: string|null, seo_title?: string|null, seo_description?: string|null, card_label?: string|null}>
      *
      * @throws TaxonomyChangeRejectedException
      */
@@ -117,7 +118,7 @@ trait EditsTaxonomyTree
         $clean = [];
         $locales = array_unique([
             ...array_keys($data->names), ...array_keys($data->slugs), ...array_keys($data->descriptions),
-            ...array_keys($data->seoTitles), ...array_keys($data->seoDescriptions),
+            ...array_keys($data->seoTitles), ...array_keys($data->seoDescriptions), ...array_keys($data->cardLabels),
         ]);
 
         foreach ($locales as $locale) {
@@ -150,6 +151,11 @@ trait EditsTaxonomyTree
                     $text = TaxonomyRules::seoText($values[$locale]) ?? throw new TaxonomyChangeRejectedException('seo_invalid');
                     $clean[$locale][$column] = $text === '' ? null : $text;
                 }
+            }
+            if (array_key_exists($locale, $data->cardLabels)) {
+                $label = TaxonomyRules::cardLabel($data->cardLabels[$locale])
+                    ?? throw new TaxonomyChangeRejectedException('card_label_invalid');
+                $clean[$locale]['card_label'] = $label === '' ? null : $label;
             }
         }
 
@@ -218,7 +224,7 @@ trait EditsTaxonomyTree
      * 301 when the slug changed. Another category using the slug in that language, or anything else
      * already at the path, is refused as slug_taken. Returns the languages whose slug changed.
      *
-     * @param  array<string, array{name: string, slug: string, description?: string|null, seo_title?: string|null, seo_description?: string|null}>  $translations
+     * @param  array<string, array{name: string, slug: string, description?: string|null, seo_title?: string|null, seo_description?: string|null, card_label?: string|null}>  $translations
      * @return array<string, string> locale → new slug
      *
      * @throws TaxonomyChangeRejectedException

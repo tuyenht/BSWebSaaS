@@ -207,7 +207,9 @@ final class StructuredData
 
     /**
      * A node the controllers built, with the business it names replaced by the Organization's `@id`.
-     * Without a business name there is no Organization to point to, so the node stays as built.
+     * An Article whose author is its own team or department (ArticleData) keeps that author, and the
+     * business it belongs to (`parentOrganization`) becomes the reference instead. Without a business
+     * name there is no Organization to point to, so the node stays as built.
      *
      * @param  array<string, mixed>  $node
      * @return array<string, mixed>
@@ -221,7 +223,10 @@ final class StructuredData
         $ref = ['@type' => 'Organization', '@id' => $orgId, 'name' => $name];
         $type = $node['@type'] ?? null;
         if ($type === 'Article') {
-            $node['author'] = $ref;
+            $author = $node['author'] ?? null;
+            $node['author'] = is_array($author) && isset($author['parentOrganization'])
+                ? array_replace($author, ['parentOrganization' => $ref])
+                : $ref;
             $node['publisher'] = $logo !== '' ? $ref + ['logo' => ['@type' => 'ImageObject', 'url' => $logo]] : $ref;
         } elseif ($type === 'JobPosting') {
             $node['hiringOrganization'] = $ref;

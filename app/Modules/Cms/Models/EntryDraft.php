@@ -22,7 +22,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * `content` mirrors the revision snapshot field names:
  * {v, shared: {template_override, cover_media_id, meta, primary_category_id},
- *  locales: {<locale>: {title, slug, body, excerpt, seo_title, seo_description, og_image_id}}}.
+ *  locales: {<locale>: {title, slug, body, excerpt, seo_title, seo_description, og_image_id, author_name}}}.
+ * A change saved before author_name existed has no such key; applying it leaves the author as it is.
  *
  * site_id is not mass-assignable: BelongsToSite stamps it from the tenant context.
  *
@@ -42,7 +43,7 @@ class EntryDraft extends Model
     use BelongsToSite;
 
     /** The fields one language of a change holds (the revision snapshot's per-locale fields). */
-    public const array LOCALE_FIELDS = ['title', 'slug', 'body', 'excerpt', 'seo_title', 'seo_description', 'og_image_id'];
+    public const array LOCALE_FIELDS = ['title', 'slug', 'body', 'excerpt', 'seo_title', 'seo_description', 'og_image_id', 'author_name'];
 
     /** The fields every language of a change shares (the snapshot's entry fields + the primary category). */
     public const array SHARED_FIELDS = ['template_override', 'cover_media_id', 'meta', 'primary_category_id'];

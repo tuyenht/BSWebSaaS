@@ -24,6 +24,25 @@ final class PlainText
     }
 
     /**
+     * A short label (a card's badge, a byline): one line as line() makes it, every run of spaces
+     * squeezed to one. Invisible format characters (a direction mark, a zero-width space) are removed
+     * too, the joiners that hold emoji and some scripts together kept. Markup is not removed here
+     * (removing it could cut real text such as "<50mm"): a caller refuses it with hasMarkup().
+     */
+    public static function label(string $value): string
+    {
+        $value = self::replace('/(?![\x{200C}\x{200D}])\p{Cf}/u', '', self::line($value));
+
+        return trim(self::replace('/\s+/u', ' ', $value));
+    }
+
+    /** Whether the text holds an HTML tag or comment (`<b>`, `</i>`, `<!-- -->`); a bare `<` or `>` is not one. */
+    public static function hasMarkup(string $value): bool
+    {
+        return preg_match('/<\/?[a-z!][^>]*>/i', $value) === 1;
+    }
+
+    /**
      * A multi-line field (an excerpt, block text): control characters are removed, except line breaks
      * (written as \n) and tabs. The ends are trimmed when $trim is true.
      */

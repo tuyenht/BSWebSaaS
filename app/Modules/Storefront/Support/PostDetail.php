@@ -51,12 +51,16 @@ final readonly class PostDetail
     ) {}
 
     /**
-     * @return array{date: string, datetime: string, updated: string, updatedDatetime: string, excerpt: string, cover: Cover|null}
+     * `author` is this language's own byline (a team or department), '' when it has none: the page
+     * then names the site's business, never another language's text.
+     *
+     * @return array{date: string, datetime: string, updated: string, updatedDatetime: string, excerpt: string, author: string, cover: Cover|null}
      */
     public function band(Entry $post, EntryTranslation $translation, string $locale): array
     {
         return $this->dates($post, $translation, $locale) + [
             'excerpt' => trim((string) $translation->excerpt),
+            'author' => trim((string) $translation->author_name),
             'cover' => $this->cover($post, $locale),
         ];
     }

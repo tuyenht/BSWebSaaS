@@ -45,6 +45,7 @@ it('reads the snapshot shape the revision recorder writes, unchanged', function 
             'template_override' => null,
             'cover_media_id' => null,
             'meta' => ['layout' => 'wide'],
+            'author_name' => null,
         ]);
     });
 });
@@ -61,6 +62,23 @@ it('reads content that cannot be written today as null', function (array $change
     'a missing title' => [['title' => null]],
     'a retired block type' => [['body' => ['blocks' => [['type' => 'retired_slider', 'props' => []]]]]],
     'meta that is not an object' => [['meta' => 'wide']],
+    'a byline longer than its column' => [['author_name' => str_repeat('a', 81)]],
+    'a byline that is not text' => [['author_name' => 5]],
+    'a byline holding markup' => [['author_name' => 'Phòng <b>Kỹ thuật</b>']],
+]);
+
+it('reads a byline as one line of plain text, an empty one as none', function (string $typed, ?string $read): void {
+    app(Tenancy::class)->enter(1, function () use ($typed, $read): void {
+        $page = writerPage();
+        $snapshot = array_replace(RecordEntryRevision::snapshot($page, $page->translationFor('vi')), ['author_name' => $typed]);
+
+        $content = app(EntryContentWriter::class)->read($snapshot, 'page');
+        expect($content)->toHaveKey('author_name')
+            ->and($content['author_name'] ?? null)->toBe($read);
+    });
+})->with([
+    'spaces squeezed' => ["  Phòng\n  Kỹ thuật ", 'Phòng Kỹ thuật'],
+    'only spaces' => ['   ', null],
 ]);
 
 it('writes one language, reports whether the shared fields changed, and records no revision', function (): void {

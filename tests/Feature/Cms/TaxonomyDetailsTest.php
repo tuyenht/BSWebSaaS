@@ -298,3 +298,30 @@ it('removes invisible format characters from a Google title or description, keep
         expect(tdTranslation($category)?->seo_title)->toBe('Tiêu đề');
     });
 });
+
+it('saves a short card label per language as one line of plain text, keeps it when left out and clears it with an empty value', function (): void {
+    tdIn(1, function (): void {
+        $category = tdCreate('Đồ gá', extra: ['cardLabels' => ['vi' => "  Jig\u{200B}   gá\n "]]);
+        expect(tdTranslation($category)?->card_label)->toBe('Jig gá')
+            ->and(tdTranslation($category)?->cardLabel())->toBe('Jig gá')
+            ->and(tdTranslation($category)?->name)->toBe('Đồ gá');
+
+        app(UpdateTaxonomy::class)->handle($category, new TaxonomyData(names: ['vi' => 'Đồ gá chính xác']));
+        expect(tdTranslation($category)?->card_label)->toBe('Jig gá');
+
+        app(UpdateTaxonomy::class)->handle($category, new TaxonomyData(cardLabels: ['vi' => '']));
+        expect(tdTranslation($category)?->card_label)->toBeNull()
+            ->and(tdTranslation($category)?->cardLabel())->toBe('Đồ gá chính xác');
+    });
+});
+
+it('refuses a card label longer than its column or holding markup, keeping a bare less-than sign', function (): void {
+    tdIn(1, function (): void {
+        expect(tdRefusal(fn () => tdCreate('Một', extra: ['cardLabels' => ['vi' => str_repeat('ạ', TaxonomyRules::CARD_LABEL_MAX + 1)]])))->toBe('card_label_invalid')
+            ->and(tdRefusal(fn () => tdCreate('Hai', extra: ['cardLabels' => ['vi' => str_repeat('ạ', TaxonomyRules::CARD_LABEL_MAX)]])))->toBeNull()
+            ->and(tdRefusal(fn () => tdCreate('Ba', extra: ['cardLabels' => ['vi' => 'Jig <b>gá</b>']])))->toBe('card_label_invalid');
+
+        $category = tdCreate('Bốn', extra: ['cardLabels' => ['vi' => 'Trục <50mm']]);
+        expect(tdTranslation($category)?->card_label)->toBe('Trục <50mm');
+    });
+});

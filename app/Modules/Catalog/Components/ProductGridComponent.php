@@ -217,7 +217,8 @@ final readonly class ProductGridComponent implements Component
                 'excerpt' => $translation !== null ? ($translation->summary ?? '') : '',
                 'date' => '',
                 'datetime' => '',
-                'label' => $category?->translationFor($locale)->name ?? '',
+                // The category's short card label when it has one, else its name (breadcrumbs and lists keep the name).
+                'label' => $category?->translationFor($locale)?->cardLabel() ?? '',
             ];
         }
 

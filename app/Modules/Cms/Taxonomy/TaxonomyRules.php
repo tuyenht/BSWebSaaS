@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Cms\Taxonomy;
 
+use App\Modules\Shared\Support\PlainText;
 use App\Modules\Shared\Support\Slugger;
 use App\Modules\Theme\Rendering\TemplateCatalog;
 use Illuminate\Support\Facades\View;
@@ -31,6 +32,12 @@ final class TaxonomyRules
      * its descriptions) small, and long-form writing belongs in a post or a page.
      */
     public const int DESCRIPTION_MAX = 1000;
+
+    /**
+     * The short label a category puts on its cards (taxonomy_translations.card_label, varchar(40)):
+     * a badge, a word or two.
+     */
+    public const int CARD_LABEL_MAX = 40;
 
     /** The Google title and description columns are varchar(255), as on posts (EntryContentRules). */
     public const int SEO_MAX = 255;
@@ -89,6 +96,18 @@ final class TaxonomyRules
         $text = trim($text);
 
         return mb_strlen($text) > self::SEO_MAX ? null : $text;
+    }
+
+    /**
+     * The card label to store — one line of plain text (PlainText::label: spaces squeezed, invisible
+     * characters removed), at most CARD_LABEL_MAX characters; '' when empty (cleared, the cards show
+     * the name again). Null when it is too long or holds markup.
+     */
+    public static function cardLabel(string $text): ?string
+    {
+        $text = PlainText::label($text);
+
+        return mb_strlen($text) > self::CARD_LABEL_MAX || PlainText::hasMarkup($text) ? null : $text;
     }
 
     /** The slug to store — trimmed, SLUG_PATTERN, at most SLUG_MAX characters — or null. */

@@ -29,7 +29,7 @@ use Illuminate\Support\Facades\Validator;
  * decision, made from what write() returns. write() runs in the caller's transaction and takes no
  * lock of its own.
  *
- * @phpstan-type EntryContent array{title: string, slug: string, blocks: list<array{type: string, props: array<array-key, mixed>}>, excerpt: string|null, seo_title: string|null, seo_description: string|null, og_image_id: int|null, template_override: string|null, cover_media_id: int|null, meta: array<array-key, mixed>}
+ * @phpstan-type EntryContent array{title: string, slug: string, blocks: list<array{type: string, props: array<array-key, mixed>}>, excerpt: string|null, seo_title: string|null, seo_description: string|null, og_image_id: int|null, author_name?: string|null, template_override: string|null, cover_media_id: int|null, meta: array<array-key, mixed>}
  */
 final readonly class EntryContentWriter
 {
@@ -94,6 +94,19 @@ final readonly class EntryContentWriter
             $ids[$key] = $value;
         }
 
+        // The byline is carried only when the snapshot has the key: one written before it existed
+        // leaves the post's author as it is rather than clearing it. Stored as one line of plain
+        // text, empty as null (EntryContentRules::authorName).
+        $author = [];
+        if (array_key_exists('author_name', $snapshot)) {
+            $value = $snapshot['author_name'];
+            $value = is_string($value) ? EntryContentRules::authorName($value) : ($value === null ? null : false);
+            if ($value === false) {
+                return null;
+            }
+            $author['author_name'] = $value;
+        }
+
         if (($snapshot['v'] ?? null) !== RecordEntryRevision::FORMAT
             || ! is_string($title) || ! is_string($slug) || ! is_array($blocks) || ! is_array($meta)
             || $this->rules->metaErrors($meta) !== []
@@ -123,7 +136,7 @@ final readonly class EntryContentWriter
             'template_override' => $strings['template_override'],
             'cover_media_id' => $ids['cover_media_id'],
             'meta' => $meta,
-        ];
+        ] + $author;
     }
 
     /**
@@ -229,7 +242,7 @@ final readonly class EntryContentWriter
             'seo_title' => $content['seo_title'],
             'seo_description' => $content['seo_description'],
             'og_image_id' => $content['og_image_id'],
-        ]);
+        ] + (array_key_exists('author_name', $content) ? ['author_name' => $content['author_name']] : []));
         if (! $translation->exists) {
             // A language the entry lost since: it comes back in the entry's status, as an editor save
             // creates it — within the states a translation can hold (no scheduled/private there).

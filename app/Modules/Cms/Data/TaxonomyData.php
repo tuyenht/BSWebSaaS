@@ -13,7 +13,9 @@ namespace App\Modules\Cms\Data;
  * `descriptions`, `seoTitles` and `seoDescriptions` work like `names`: per language, a language
  * left out keeps what it has, an empty value clears it (TaxonomyRules::description / seoText say
  * what is accepted). `cover` is the picture shared by every language, named by its media key
- * (`media.storage_key`, never an id): null keeps the current picture, '' removes it.
+ * (`media.storage_key`, never an id): null keeps the current picture, '' removes it. `cardLabels`
+ * (the short label the category's cards show instead of its name) works like `descriptions`
+ * (TaxonomyRules::cardLabel says what is accepted).
  */
 final readonly class TaxonomyData
 {
@@ -23,6 +25,7 @@ final readonly class TaxonomyData
      * @param  array<string, string>  $descriptions
      * @param  array<string, string>  $seoTitles
      * @param  array<string, string>  $seoDescriptions
+     * @param  array<string, string>  $cardLabels
      */
     public function __construct(
         public array $names = [],
@@ -33,5 +36,6 @@ final readonly class TaxonomyData
         public array $seoTitles = [],
         public array $seoDescriptions = [],
         public ?string $cover = null,
+        public array $cardLabels = [],
     ) {}
 }

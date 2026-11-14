@@ -197,10 +197,13 @@ final class Applier
             }
             // A pack that names the intro for this language sets it (an empty one clears it); a pack that does not keeps the live one.
             $stated = array_key_exists((string) $locale, Cast::arr($planned->item->data['description'] ?? null));
+            // The card label the same way.
+            $labelStated = array_key_exists((string) $locale, Cast::arr($planned->item->data['card_label'] ?? null));
             $taxonomy->translations()->updateOrCreate(['locale' => (string) $locale], [
                 'name' => Cast::string($row['name'] ?? null),
                 'slug' => Cast::string($row['slug'] ?? null),
-            ] + ($stated ? ['description' => Cast::stringOrNull($row['description'] ?? null)] : (is_string($row['description'] ?? null) ? ['description' => $row['description']] : [])));
+            ] + ($stated ? ['description' => Cast::stringOrNull($row['description'] ?? null)] : (is_string($row['description'] ?? null) ? ['description' => $row['description']] : []))
+              + ($labelStated ? ['card_label' => Cast::stringOrNull($row['card_label'] ?? null)] : (is_string($row['card_label'] ?? null) ? ['card_label' => $row['card_label']] : [])));
             $this->routes->syncTaxonomy($taxonomy, (string) $locale, Cast::string($row['slug'] ?? null));
         }
         $this->paths->refreshBranch($taxonomy->id);
@@ -306,7 +309,7 @@ final class Applier
                 'seo_title' => Cast::stringOrNull($row['seo_title'] ?? null),
                 'seo_description' => Cast::stringOrNull($row['seo_description'] ?? null),
                 'status' => Cast::string($row['status'] ?? null, $status),
-            ]);
+            ] + ($isPost ? ['author_name' => Cast::stringOrNull($row['author'] ?? null)] : []));
 
             $routed = SiteRoute::query()->where('entry_id', $entry->id)->where('locale', $locale)->exists();
             if (! $isPost || $status === 'published' || $routed) {

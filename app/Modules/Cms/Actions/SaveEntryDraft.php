@@ -232,7 +232,7 @@ final readonly class SaveEntryDraft
         if ($translation === null) {
             return [
                 'title' => '', 'slug' => '', 'body' => ['blocks' => []], 'excerpt' => null,
-                'seo_title' => null, 'seo_description' => null, 'og_image_id' => null,
+                'seo_title' => null, 'seo_description' => null, 'og_image_id' => null, 'author_name' => null,
             ];
         }
 

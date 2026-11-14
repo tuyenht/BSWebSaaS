@@ -306,6 +306,8 @@ final readonly class StorefrontController
                 $extra['articleLd'] = ArticleData::ld(
                     $entry, $content->translation, $canonical, url($this->paths->publicUrl('/', $locale)), $locale,
                     is_string($extra['ogImage'] ?? null) ? $extra['ogImage'] : null, is_array($brand) ? $brand : null,
+                    // The capability look prints no author line, so its data names no byline either.
+                    $postTemplate !== 'capability',
                 );
             }
 

@@ -156,7 +156,8 @@ final readonly class EntryGridComponent implements Component
                     // A stored key offers smaller widths, so a phone fetches a phone-sized photo.
                     'srcset' => $image !== '' && ! str_contains($image, '://') && str_contains($image, '/') ? $this->media->srcset($image, self::CARD_SRCSET_WIDTHS, $widths[$image] ?? null) : null,
                     'short_outcome' => $translation instanceof EntryTranslation ? ($translation->excerpt ?? '') : '',
-                    'sector' => $sectorTranslation !== null ? $sectorTranslation->name : '',
+                    // The category's short card label when it has one, else its name.
+                    'sector' => $sectorTranslation !== null ? $sectorTranslation->cardLabel() : '',
                 ];
             })
             ->all();
@@ -367,7 +368,8 @@ final readonly class EntryGridComponent implements Component
                 'excerpt' => $translation instanceof EntryTranslation ? ($translation->excerpt ?? '') : '',
                 'date' => $published?->format('d/m/Y') ?? '',
                 'datetime' => $published?->format('Y-m-d') ?? '',
-                'label' => $sector !== null ? ($sector->translationFor($locale)->name ?? '') : '',
+                // The category's short card label when it has one, else its name.
+                'label' => $sector?->translationFor($locale)?->cardLabel() ?? '',
             ] + ($variant === 'job' ? JobFacts::read($meta, $locale) + ['group' => $groups[$entry->id] ?? ''] : []);
         }
 

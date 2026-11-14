@@ -3553,6 +3553,7 @@
     "categories.reason_changes_member_limits": "移到这里会改变其他成员的写作范围 — 请联系成员管理者。",
     "categories.reason_description_invalid": "描述太长 — 请控制在 1000 个字符以内，几句话即可。",
     "categories.reason_seo_invalid": "Google 标题和描述各只能一行，最多 255 个字符 — 请缩短后再保存。",
+    "categories.reason_card_label_invalid": "卡片短标签只能一行，最多 40 个字符 — 请缩短后再保存。",
     "categories.reason_cover_invalid": "无法使用此图片（可能刚从媒体库删除，或不是图片）— 请选择其他图片。",
     "categories.reason_move_stale": "此次移动后分类已有变化，无法撤销 — 请重新加载页面查看最新内容。",
     "categories.reason_section_invalid": "找不到此内容类型 — 请从左侧菜单打开“分类”。",

@@ -17,7 +17,8 @@ use Illuminate\Support\Facades\DB;
  * a pending change put on the website (ApplyEntryDraftTransition, ApplyEntryDraft) and a restore
  * call it — an arch test holds those roads to it.
  *
- * What a snapshot holds: the locale's title, slug, body, excerpt, SEO fields and OG image, plus
+ * What a snapshot holds: the locale's title, slug, body, excerpt, SEO fields, OG image and author
+ * name (the byline readers see, free text; a snapshot from before it existed has no such key), plus
  * the entry's shared template_override, cover_media_id and meta. NOT status / workflow_state /
  * published_at (restoring content is not a change of status), categories (a category can move
  * the entry into another section and so under another approval workflow — that stays the job of
@@ -81,7 +82,7 @@ final readonly class RecordEntryRevision
     /**
      * The content of one locale as it stands now.
      *
-     * @return array{v: int, title: string, slug: string, body: array<array-key, mixed>, excerpt: string|null, seo_title: string|null, seo_description: string|null, og_image_id: int|null, template_override: string|null, cover_media_id: int|null, meta: array<array-key, mixed>}
+     * @return array{v: int, title: string, slug: string, body: array<array-key, mixed>, excerpt: string|null, seo_title: string|null, seo_description: string|null, og_image_id: int|null, author_name: string|null, template_override: string|null, cover_media_id: int|null, meta: array<array-key, mixed>}
      */
     public static function snapshot(Entry $entry, EntryTranslation $translation): array
     {
@@ -97,6 +98,7 @@ final readonly class RecordEntryRevision
             'seo_title' => self::stringOrNull($translation->getAttribute('seo_title')),
             'seo_description' => self::stringOrNull($translation->getAttribute('seo_description')),
             'og_image_id' => self::intOrNull($translation->getAttribute('og_image_id')),
+            'author_name' => self::stringOrNull($translation->getAttribute('author_name')),
             'template_override' => self::stringOrNull($entry->getAttribute('template_override')),
             'cover_media_id' => self::intOrNull($entry->getAttribute('cover_media_id')),
             'meta' => is_array($meta) ? $meta : [],
