@@ -60,10 +60,13 @@ final class ContactPhone
         return $number;
     }
 
-    /** How staff read a stored number: the home country in its national form, any other as stored. */
-    public static function display(string $stored): string
+    /**
+     * How staff read a stored number: the home country in its national form, any other as stored.
+     * $home is the country read in its national form (digits only); null reads it from config.
+     */
+    public static function display(string $stored, ?string $home = null): string
     {
-        $home = '+'.self::homeCode();
+        $home = '+'.($home ?? self::homeCode());
         if (! str_starts_with($stored, $home)) {
             return $stored;
         }

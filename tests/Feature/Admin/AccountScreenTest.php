@@ -445,7 +445,7 @@ it('only lets support staff look: every change is refused during a support sessi
     app(Tenancy::class)->enter(1, function () use ($user, $method, $args): void {
 
         accountPage($user)->assertSee('Chỉ xem.')
-            ->set('profileName', 'Đổi Trộm')
+            ->set('profileName', 'Đổi Trộm')->set('profileTitle', 'Giả danh')->set('profilePhone', '0901 234 567')
             ->set('current_password', 'old-password-123')->set('password', 'mua-ca-phe-luc-7-gio')->set('password_confirmation', 'mua-ca-phe-luc-7-gio')
             ->set('confirmPassword', 'old-password-123')
             ->call($method, ...$args)

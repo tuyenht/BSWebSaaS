@@ -21,6 +21,7 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteDirectory;
 use App\Modules\Tenancy\Context\SiteTime;
+use App\Modules\Tenancy\Support\ContactPhone;
 use DateTimeInterface;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
@@ -34,8 +35,8 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 
 /**
- * My account (Tài khoản của tôi): the signed-in member's own profile, password, two-factor
- * sign-in, linked sign-in accounts, appearance and notification choices. Everything here
+ * My account (Tài khoản của tôi): the signed-in member's own profile (name, job title, phone),
+ * password, two-factor sign-in, linked sign-in accounts, appearance and notification choices. Everything here
  * scopes to auth()->user() only; no role is needed, the member's own password gates the
  * sensitive changes.
  *
@@ -50,6 +51,16 @@ final class Account extends Component
     public const array TABS = ['profile', 'security', 'linked', 'prefs'];
 
     public const int NAME_MAX = 120;
+
+    public const int TITLE_MAX = 80;
+
+    /**
+     * The country a member's phone is read in: a number typed with a leading 0 is Vietnamese (10
+     * digits for a mobile, 11 for a landline), any other is typed with its own +country code. Fixed
+     * rather than customers.phone_country_code: the signed rule names Vietnamese numbers, as the
+     * floating contact button does.
+     */
+    private const string PHONE_HOME = '84';
 
     public const int PASSWORD_MIN = 10;
 
@@ -93,6 +104,17 @@ final class Account extends Component
     /** The saved name, so the page can tell an unsaved edit ("Chưa lưu"). */
     #[Locked]
     public string $savedName = '';
+
+    public string $profileTitle = '';
+
+    #[Locked]
+    public string $savedTitle = '';
+
+    /** As typed; stored as E.164 and shown back in the national form for a Vietnamese number. */
+    public string $profilePhone = '';
+
+    #[Locked]
+    public string $savedPhone = '';
 
     #[Locked]
     public string $profileSavedAt = '';
@@ -140,7 +162,7 @@ final class Account extends Component
 
     public function mount(): void
     {
-        $this->profileName = $this->savedName = $this->member()->name;
+        $this->fillProfile($this->member());
         $this->tab = in_array($this->tab, self::TABS, true) ? $this->tab : 'profile';
         $this->tfaStep = $this->pendingSecret() !== null && $this->member()->two_factor_confirmed_at === null ? 1 : 0;
     }
@@ -159,24 +181,59 @@ final class Account extends Component
         $this->checkName();
     }
 
+    public function updatedProfileTitle(): void
+    {
+        $this->resetErrorBag('profileTitle');
+        $this->checkTitle();
+    }
+
+    public function updatedProfilePhone(): void
+    {
+        $this->resetErrorBag('profilePhone');
+        $this->checkPhone();
+    }
+
+    /**
+     * Save the name, job title and phone together, once all three pass. The phone is stored in one
+     * international form. A change goes on record with the names of the fields changed only: the
+     * values (the phone is personal data) stay out of the long-kept activity log.
+     */
     public function saveProfile(): void
     {
         $this->writable();
-        $this->resetErrorBag('profileName');
-        if (! $this->checkName()) {
+        $this->resetErrorBag(['profileName', 'profileTitle', 'profilePhone']);
+        $nameOk = $this->checkName();
+        $titleOk = $this->checkTitle();
+        $phone = $this->checkPhone();
+        if (! $nameOk || ! $titleOk || $phone === false) {
             return;
         }
 
         $user = $this->member();
-        $user->forceFill(['name' => trim($this->profileName)])->save();
-        $this->profileName = $this->savedName = $user->name;
+        $title = self::plain($this->profileTitle);
+        $user->forceFill([
+            'name' => self::plain($this->profileName),
+            'job_title' => $title !== '' ? $title : null,
+            'phone' => $phone,
+        ]);
+        $changed = array_keys($user->getDirty());
+        $user->save();
+        if ($changed !== []) {
+            Audit::record('identity.profile.updated', [
+                'actor_id' => $user->getKey(),
+                'actor_label' => $user->email,
+                'meta' => ['fields' => $changed],
+            ]);
+        }
+
+        $this->fillProfile($user);
         $this->profileSavedAt = app(SiteTime::class)->now()->format('H:i');
     }
 
     public function resetProfile(): void
     {
-        $this->profileName = $this->member()->name;
-        $this->resetErrorBag('profileName');
+        $this->fillProfile($this->member());
+        $this->resetErrorBag(['profileName', 'profileTitle', 'profilePhone']);
     }
 
     // ───────────────────────────── password ─────────────────────────────
@@ -571,9 +628,72 @@ final class Account extends Component
         return is_string($secret) && $secret !== '' ? $secret : null;
     }
 
+    /** The form fields and their "saved" twins from what is stored. */
+    private function fillProfile(User $user): void
+    {
+        $this->profileName = $this->savedName = $user->name;
+        $this->profileTitle = $this->savedTitle = (string) $user->job_title;
+        $this->profilePhone = $this->savedPhone = $user->phone === null ? '' : ContactPhone::display($user->phone, self::PHONE_HOME);
+    }
+
+    /**
+     * A name or title as stored: any run of spaces, tabs or line breaks (Unicode ones too) becomes one
+     * space, invisible format and control characters (zero-width spaces, a right-to-left override
+     * that would show the text reversed to colleagues) are dropped, and the ends are trimmed.
+     * Invalid UTF-8 comes back as typed, for the check to refuse.
+     */
+    private static function plain(string $text): string
+    {
+        $spaced = preg_replace('/[\s\p{Z}]+/u', ' ', $text);
+        $clean = $spaced === null ? null : preg_replace('/[\p{Cc}\p{Cf}]/u', '', $spaced);
+
+        return $clean === null ? $text : trim($clean);
+    }
+
+    /** Optional, at most TITLE_MAX characters once cleaned (plain()), plain text only (no markup). */
+    private function checkTitle(): bool
+    {
+        $title = self::plain($this->profileTitle);
+        if (! mb_check_encoding($title, 'UTF-8') || preg_match('/[<>]/', $title) === 1) {
+            $this->addError('profileTitle', __('admin.account.title_markup'));
+
+            return false;
+        }
+
+        $over = mb_strlen($title) - self::TITLE_MAX;
+        if ($over > 0) {
+            $this->addError('profileTitle', __('admin.account.title_too_long', ['count' => $over]));
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * The phone to store: null when left empty, the E.164 form of a Vietnamese number (10 or 11
+     * digits from 0, or +84) or of a +country number, false (with the error shown) for anything else.
+     */
+    private function checkPhone(): string|false|null
+    {
+        $typed = trim($this->profilePhone);
+        if ($typed === '') {
+            return null;
+        }
+
+        $phone = mb_check_encoding($typed, 'UTF-8') ? ContactPhone::normalize($typed, self::PHONE_HOME) : null;
+        if ($phone === null) {
+            $this->addError('profilePhone', __('admin.account.phone_bad'));
+
+            return false;
+        }
+
+        return $phone;
+    }
+
     private function checkName(): bool
     {
-        $name = trim($this->profileName);
+        $name = self::plain($this->profileName);
         if ($name === '') {
             $this->addError('profileName', __('admin.account.name_required'));
 
