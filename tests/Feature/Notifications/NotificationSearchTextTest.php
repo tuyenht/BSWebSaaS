@@ -62,7 +62,15 @@ it('splits what is typed into folded words, at most eight, from the first 100 ch
         ->and(NotificationSearchText::words('a b c d e f g h i j'))->toHaveCount(8)
         ->and(NotificationSearchText::words(str_repeat('x', 150)))->toBe([str_repeat('x', 100)])
         // a Mac keyboard may send combining marks: folded the same as the precomposed letters
-        ->and(NotificationSearchText::words("Nguye\u{0302}\u{0303}n"))->toBe(['nguyen']);
+        ->and(NotificationSearchText::words("Nguye\u{0302}\u{0303}n"))->toBe(['nguyen'])
+        // control characters split like a space: a NUL would make PostgreSQL refuse the bound word
+        ->and(NotificationSearchText::words("nam\u{0000}phay\u{001F}x\u{007F}"))->toBe(['nam', 'phay', 'x']);
+});
+
+it('refuses a --site that is not the id of an existing site, instead of filling nothing and passing', function (): void {
+    $this->artisan('notifications:search-text', ['--site' => 'av1.baoson.net'])->expectsOutputToContain('--site takes the id of an existing site.')->assertFailed();
+    $this->artisan('notifications:search-text', ['--site' => '0'])->assertFailed();
+    $this->artisan('notifications:search-text', ['--site' => '2147483000'])->assertFailed();
 });
 
 it('writes the line with every notice, and rewrites it when the notice\'s data changes', function (): void {

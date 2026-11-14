@@ -62,7 +62,9 @@ final class NotificationSearchText
      */
     public static function words(string $query): array
     {
-        $folded = VietnameseFold::text(mb_substr($query, 0, self::QUERY_MAX));
+        // Control characters split words like a space: PostgreSQL refuses a NUL in a bound string.
+        $plain = preg_replace('/[\x00-\x1F\x7F]/u', ' ', mb_substr($query, 0, self::QUERY_MAX)) ?? '';
+        $folded = VietnameseFold::text($plain);
         $words = preg_split('/\s+/u', trim($folded), -1, PREG_SPLIT_NO_EMPTY);
 
         return array_slice(array_values(array_unique($words === false ? [] : $words)), 0, self::WORDS_MAX);

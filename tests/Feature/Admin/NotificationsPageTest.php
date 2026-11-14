@@ -358,6 +358,20 @@ it('finds the reader\'s notices by their facts with accents and case ignored, ne
     npCall($page, 'clearSearch')->assertSet('q', '')->assertSee('Nguyễn Văn Nam')->assertSee('Máy phay 5 trục');
 });
 
+it('matches %, _ and \\ typed in the search as plain characters, and a NUL as a space', function (): void {
+    $me = npMember(extra: ['forms.view']);
+    npNotice($me, 1, 'lead.new', ['name' => 'Giảm 50% Phúc'], now()->subMinutes(3)->toDateTimeString());
+    npNotice($me, 1, 'lead.new', ['name' => 'Ông A_B'], now()->subMinutes(2)->toDateTimeString());
+    npNotice($me, 1, 'lead.new', ['name' => 'Thư mục C\\D'], now()->subMinutes(1)->toDateTimeString());
+    npNotice($me, 1, 'lead.new', ['name' => 'Ông AxB 500 Phúc'], now()->toDateTimeString());
+
+    $page = npPage($me, ['tab' => 'khach-lien-he']);
+    npSet($page, '50%')->assertSee('Giảm 50% Phúc')->assertDontSee('Ông AxB 500 Phúc');
+    npSet($page, 'a_b')->assertSee('Ông A_B')->assertDontSee('Ông AxB');
+    npSet($page, 'c\\d')->assertSee('Thư mục C\\D')->assertDontSee('Giảm 50%');
+    npSet($page, "ph\u{0000}50%")->assertOk()->assertSee('Giảm 50% Phúc')->assertDontSee('Ông AxB 500 Phúc');
+});
+
 it('searches within the tab and pages the matches eight at a time', function (): void {
     $me = npMember(extra: ['forms.view']);
     foreach (range(1, 20) as $i) {

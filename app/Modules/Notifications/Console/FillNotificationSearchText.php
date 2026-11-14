@@ -45,7 +45,17 @@ final class FillNotificationSearchText extends Command
         $chunk = max(1, min(5000, Cast::int($this->option('chunk'), 1000)));
         $all = (bool) $this->option('all');
         $only = $this->option('site');
-        $siteIds = $only !== null ? [Cast::int($only)] : $tenancy->siteIds();
+        $siteIds = $tenancy->siteIds();
+        if ($only !== null) {
+            // a whole number only: Cast::int would read "av1.baoson.net" as 0 and quietly fill nothing
+            $id = filter_var($only, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            if ($id === false || ! DB::table('sites')->where('id', $id)->exists()) {
+                $this->error('--site takes the id of an existing site.');
+
+                return self::FAILURE;
+            }
+            $siteIds = [$id];
+        }
         $sites = 0;
         $written = 0;
         $failed = 0;
