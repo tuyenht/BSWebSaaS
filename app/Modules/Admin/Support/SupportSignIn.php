@@ -160,6 +160,39 @@ final readonly class SupportSignIn
     }
 
     /**
+     * The member ends a support session signed in as them ("Phiên đăng nhập" on My account). Only
+     * a session whose entered row names this member; the end row goes on the session's own
+     * website, whichever website the member is on, under the same lock as the console's end, so
+     * either side ending it writes one row. Returns false when there was nothing to end (not the
+     * member's, unknown, or already over).
+     */
+    public function endAsMember(User $member, string $sessionUlid): bool
+    {
+        $entered = $this->sessions->entered($sessionUlid);
+        if ($entered === null || Cast::int($entered->getAttribute('actor_id')) !== Cast::int($member->getKey())) {
+            return false;
+        }
+
+        return DB::transaction(function () use ($entered, $member, $sessionUlid): bool {
+            DB::select('select pg_advisory_xact_lock(hashtextextended(?, 0))', ['support-session-end:'.$sessionUlid]);
+            if (! $this->sessions->isOpen($entered)) {
+                return false;
+            }
+
+            // Recorded or the whole end fails: this row is what ends the session on the site.
+            Audit::recordOrFail(AuditService::SUPPORT_SESSION_ENDED, [
+                'site_id' => $entered->getAttribute('site_id'),
+                'actor_id' => $member->getKey(),
+                'actor_label' => $member->getAttribute('email'),
+                'support_session_ulid' => $sessionUlid,
+                'meta' => ['why' => 'member_ended'],
+            ]);
+
+            return true;
+        });
+    }
+
+    /**
      * Entering a new session ends the staff member's other open ones (on any site, in any
      * browser) as replaced. Call it on the site host after the browser's own session data is gone
      * and before the new session starts, so each row carries the code of the session it ends.

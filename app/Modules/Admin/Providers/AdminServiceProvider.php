@@ -6,6 +6,7 @@ use App\Modules\Admin\Console\ReconcileContentUsage;
 use App\Modules\Admin\Console\RecoverSiteOwnerCommand;
 use App\Modules\Admin\Http\Middleware\EnforceSupportSession;
 use App\Modules\Admin\Http\Middleware\ResolveLivewireContext;
+use App\Modules\Admin\Http\Middleware\TrackSignedInDevice;
 use App\Modules\Admin\Listeners\SetTenantReplyTo;
 use App\Modules\Admin\Listeners\TellSiteAboutDomain;
 use App\Modules\Admin\Livewire\Account;
@@ -222,8 +223,9 @@ final class AdminServiceProvider extends ServiceProvider
         // Livewire's AJAX update endpoint must run inside the tenant context so component
         // interactions stay RLS-isolated (SetCurrentSite resolves the site by host —
         // the admin is on the tenant's own domain). Auth stays at the component/page
-        // level: the guest login and the authed admin share this single route.
+        // level: the guest login and the authed admin share this single route. auth.session (a no-op
+        // for a guest) signs out a session whose password changed elsewhere, as on the admin pages.
         Livewire::setUpdateRoute(fn (array $handle) => Route::post('/livewire/update', $handle)
-            ->middleware(['web', ResolveLivewireContext::class, EnforceSupportSession::class]));
+            ->middleware(['web', ResolveLivewireContext::class, EnforceSupportSession::class, 'auth.session', TrackSignedInDevice::class]));
     }
 }

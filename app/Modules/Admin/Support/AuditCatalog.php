@@ -24,7 +24,7 @@ final class AuditCatalog
             'auth.login.succeeded', 'auth.login.failed', 'auth.login.throttled', 'auth.login.captcha_failed',
             'auth.login.platform_denied', 'auth.otp.locked', 'auth.otp.send_failed', 'auth.otp.throttled',
             'auth.password.reset', 'auth.password.forgot_throttled', 'auth.password.reset_send_failed',
-            'auth.password.changed', 'auth.2fa.enabled', 'auth.2fa.disabled', 'auth.2fa.recovery_regenerated', 'auth.social.unlinked',
+            'auth.password.changed', 'auth.session.signed_out', 'auth.2fa.enabled', 'auth.2fa.disabled', 'auth.2fa.recovery_regenerated', 'auth.social.unlinked',
         ],
         'members' => [
             'rbac.role.assigned', 'rbac.role.revoked', 'rbac.role.created', 'rbac.role.updated', 'rbac.role.deleted',

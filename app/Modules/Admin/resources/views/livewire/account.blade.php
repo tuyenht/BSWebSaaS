@@ -1,15 +1,18 @@
 {{--
     My account (Tài khoản của tôi) — ported 1:1 from design board 23 and its linked-accounts child.
-    Sections: profile, security (password + two-factor), linked sign-in accounts, preferences
+    Sections: profile, security (password + two-factor), signed-in devices, linked sign-in accounts, preferences
     (language, light/dark, text size, motion, notifications). Layout and type: resources/css/admin-account.css,
     its own Vite entry linked below (@assets puts it in the head once, on a full load and after wire:navigate).
     During a support session every control is disabled and the server refuses each change.
+    The signed-in devices list leaves a support session out: its "Nhân viên hỗ trợ" row and end
+    button wait for their design (the server already ends it with "Đăng xuất mọi thiết bị khác").
 --}}
 @php
     $t = fn (string $key, array $replace = []): string => __('admin.account.'.$key, $replace);
     $tabs = [
         'profile' => ['ri-user-3', $t('tab_profile')],
         'security' => ['ri-shield-keyhole', $t('tab_security')],
+        'sessions' => ['ri-computer', $t('tab_sessions')],
         'linked' => ['ri-links', $t('tab_linked')],
         'prefs' => ['ri-settings-3', $t('tab_prefs')],
     ];
@@ -175,7 +178,7 @@
                             <div class="ac-ch"><h2 class="ac-h3" id="ac-h-pw">{{ $t('pw_title') }}</h2></div>
                             <div class="ac-cb">
                                 @if ($passwordChanged)
-                                    <x-bs-admin::alert color="success" icon="ri-checkbox-circle">{{ $t('pw_done') }}</x-bs-admin::alert>
+                                    <x-bs-admin::alert color="success" icon="ri-checkbox-circle">{{ $passwordOthers > 0 ? $t('pw_done_others', ['count' => $passwordOthers]) : $t('pw_done') }}</x-bs-admin::alert>
                                 @endif
                                 <div>
                                     <label class="ac-lab" for="ac-pw-cur">{{ $t('pw_current') }} <span class="font-bold text-danger-text" aria-hidden="true">*</span></label>
@@ -349,6 +352,50 @@
                                     <span class="ac-why"><x-bs-admin::icon name="ri-lock" class="mt-0.5 {{ $small }}" />{{ $t('ro_body') }}</span>
                                 @endif
                             </div>
+                        </section>
+                    @endif
+
+                    {{-- ─────────────── signed-in devices ─────────────── --}}
+                    @if ($tab === 'sessions')
+                        @php $others = $deviceOthers; @endphp
+                        <section class="ac-card" aria-labelledby="ac-h-ses">
+                            <div class="ac-ch justify-between">
+                                <h2 class="ac-h3" id="ac-h-ses">{{ $t('tab_sessions') }}</h2>
+                                <x-bs-admin::button variant="outline" color="danger" size="sm"
+                                                    wire:click="signOutOtherDevices" wire:loading.attr="disabled" wire:target="signOutOtherDevices"
+                                                    :disabled="$readOnly || $others === 0" :aria-describedby="trim(($lockId ?? '').' ac-ses-why')">
+                                    <x-bs-admin::icon name="ri-logout-box-r" class="{{ $small }}" />{{ $t('ses_out_all_btn') }}
+                                </x-bs-admin::button>
+                            </div>
+                            <p class="ac-rule px-4 pt-3" id="ac-ses-why">{{ $others > 0 ? $t('ses_intro') : $t('ses_intro_none') }}</p>
+                            <div role="list" class="mt-2">
+                                @foreach ($devices as $d)
+                                    <div class="ac-ses" role="listitem" wire:key="ses-{{ $d['key'] }}">
+                                        <span class="ac-sic" aria-hidden="true"><x-bs-admin::icon :name="$d['icon']" class="size-[calc(1.25rem+var(--user-text-boost))]" /></span>
+                                        <div class="ac-sm">
+                                            <div class="ac-st">
+                                                <span class="ac-sn">{{ $d['device'] }}</span>
+                                                @if ($d['current'])
+                                                    <span class="ac-chip" data-t="ok"><x-bs-admin::icon name="ri-checkbox-circle-line" class="{{ $small }}" />{{ $t('ses_this') }}</span>
+                                                @endif
+                                            </div>
+                                            <span class="ac-rule">{{ $d['meta'] }}</span>
+                                        </div>
+                                        @unless ($d['current'])
+                                            <x-bs-admin::button variant="outline" color="secondary" size="sm" class="ac-sb"
+                                                                wire:click="signOutDevice('{{ $d['key'] }}')" wire:loading.attr="disabled" wire:target="signOutDevice"
+                                                                :disabled="$readOnly" :aria-describedby="$lockId" aria-label="{{ $d['out'] }}">
+                                                <x-bs-admin::icon name="ri-logout-box-r" class="{{ $small }}" />{{ $t('ses_out_btn') }}
+                                            </x-bs-admin::button>
+                                        @endunless
+                                    </div>
+                                @endforeach
+                            </div>
+                            @if ($others === 0)
+                                <div class="ac-foot">
+                                    <span class="ac-sv" data-k="ok"><x-bs-admin::icon name="ri-checkbox-circle-line" class="{{ $small }}" />{{ $t('ses_only_me') }}</span>
+                                </div>
+                            @endif
                         </section>
                     @endif
 
@@ -613,4 +660,6 @@
             @endif
         </x-slot:footer>
     </x-bs-admin::modal>
+
+    <x-bs-admin::toast :message="$toast" :tone="$toastTone" dismiss="dismissToast" :seq="$toastSeq" />
 </div>

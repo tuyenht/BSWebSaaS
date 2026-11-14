@@ -405,6 +405,55 @@
     }
 }
 
+/* one signed-in device: icon, name + "Thiết bị này", meta, its sign-out button */
+.ac-ses {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--color-border);
+}
+
+.ac-sic {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--color-surface-hover);
+    color: var(--color-text-strong);
+}
+
+.ac-sm {
+    display: flex;
+    flex: 1 1 200px;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.ac-st {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+}
+
+.ac-sn {
+    font-weight: 600;
+    color: var(--color-text-strong);
+    overflow-wrap: anywhere;
+}
+
+@container (max-width: 599px) {
+    .ac-ses .ac-sb {
+        flex: 1 1 100%;
+    }
+}
+
 .ac-sv {
     display: inline-flex;
     align-items: center;

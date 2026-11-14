@@ -7,6 +7,7 @@ use App\Modules\Admin\Http\Controllers\SupportSignInController;
 use App\Modules\Admin\Http\Controllers\ThemePreferenceController;
 use App\Modules\Admin\Http\Middleware\EnforceSupportSession;
 use App\Modules\Admin\Http\Middleware\SetLocale;
+use App\Modules\Admin\Http\Middleware\TrackSignedInDevice;
 use App\Modules\Admin\Livewire\AcceptInvitation;
 use App\Modules\Admin\Livewire\Account;
 use App\Modules\Admin\Livewire\AppearanceSettings;
@@ -125,7 +126,7 @@ Route::domain((string) config('tenancy.platform_host'))
 // Protected: platform operators only (EnsurePlatformAccess). 2FA is enforced at login
 // (TOTP or email-OTP), so the TOTP-enrollment ' 2fa' gate is not layered here.
 Route::domain((string) config('tenancy.platform_host'))
-    ->middleware(['web', 'auth', 'auth.session', 'platform', SetLocale::class])
+    ->middleware(['web', 'auth', 'auth.session', 'platform', SetLocale::class, TrackSignedInDevice::class])
     ->group(function (): void {
         Route::get('/', fn () => redirect()->route('platform.tenants.index'))->name('platform.dashboard');
 
@@ -235,7 +236,7 @@ Route::prefix(config('admin.prefix', 'admin'))
 
 // ── Tenant admin plane — protected (auth + tenant context + site membership) ───
 Route::prefix(config('admin.prefix', 'admin'))
-    ->middleware(['web', SetCurrentSite::class, EnforceSupportSession::class, 'site.active', 'auth', 'auth.session', 'tenant.member', SetLocale::class])
+    ->middleware(['web', SetCurrentSite::class, EnforceSupportSession::class, 'site.active', 'auth', 'auth.session', 'tenant.member', SetLocale::class, TrackSignedInDevice::class])
     ->group(function (): void {
         Route::get('/', Dashboard::class)->name('admin.dashboard');
         // "Thông báo": the reader's own notifications on this site (the bell's "Xem tất cả thông báo").
