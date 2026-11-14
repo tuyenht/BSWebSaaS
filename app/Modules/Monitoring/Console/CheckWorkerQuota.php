@@ -58,7 +58,8 @@ final class CheckWorkerQuota extends Command
         }
 
         $highest = max($crossed);
-        if (Cache::has($this->key("sent:{$date}:{$highest}"))) {
+        // add() is atomic: two runs at the same moment (a manual one beside the hourly one) send once
+        if (! Cache::add($this->key("sent:{$date}:{$highest}"), 1, self::TTL_SECONDS)) {
             return self::SUCCESS;
         }
 
@@ -68,14 +69,14 @@ final class CheckWorkerQuota extends Command
         }
 
         $reached = $percent >= 100;
-        $mailer->sendPlain(
+        $this->send(fn () => $mailer->sendPlain(
             $mailer->t($reached ? 'monitoring.quota.subject.reached' : 'monitoring.quota.subject.warn', ['percent' => (string) $percent]),
             $mailer->t($reached ? 'monitoring.quota.body.reached' : 'monitoring.quota.body.warn', [
                 'used' => $mailer->number($used),
                 'limit' => $mailer->number($limit),
                 'percent' => (string) $percent,
             ]),
-        );
+        ), array_map(fn (int $t): string => "sent:{$date}:{$t}", $crossed));
 
         return self::SUCCESS;
     }
@@ -90,10 +91,28 @@ final class CheckWorkerQuota extends Command
         $needed = Cast::int(config('monitoring.worker_quota.failure_hours'), 6);
 
         if ($failures >= max(1, $needed) && Cache::add($this->key("failure-mail:{$date}"), 1, self::TTL_SECONDS)) {
-            $mailer->sendPlain(
+            $this->send(fn () => $mailer->sendPlain(
                 $mailer->t('monitoring.quota.subject.unreadable'),
                 $mailer->t('monitoring.quota.body.unreadable', ['hours' => (string) $failures]),
-            );
+            ), ["failure-mail:{$date}"]);
+        }
+    }
+
+    /**
+     * Send one mail; when the mail server refuses it, log it and drop the marks so the next hourly
+     * run tries again, instead of failing the scheduler or losing the warning for the day.
+     *
+     * @param  list<string>  $marks
+     */
+    private function send(callable $mail, array $marks): void
+    {
+        try {
+            $mail();
+        } catch (\Throwable $e) {
+            Log::warning('monitoring: worker quota mail could not be sent', ['error' => $e->getMessage()]);
+            foreach ($marks as $mark) {
+                Cache::forget($this->key($mark));
+            }
         }
     }
 

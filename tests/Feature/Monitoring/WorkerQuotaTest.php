@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Monitoring\Support\WorkerQuotaReader;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 
 /*
  * Hourly check of the Cloudflare Workers free allowance (100,000 requests per UTC day, whole
@@ -86,6 +87,22 @@ it('mails once each when 50, then 80, then 100 percent are crossed, with plain V
     expect($first)->toContain('50.000')->toContain('100.000')->toContain('50%')->toContain('07:00')
         ->and((string) $mails[1]->getSubject())->toContain('80%')
         ->and($last)->toContain('không tải được')->toContain('07:00');
+});
+
+it('exits 0 and tries again next hour when the mail server refuses the warning', function (): void {
+    fakeWorkerQuota(85_000);
+    config(['mail.mailers.monitoring.transport' => 'smtp', 'mail.mailers.monitoring.host' => '127.0.0.1', 'mail.mailers.monitoring.port' => 1, 'mail.mailers.monitoring.timeout' => 2]);
+    Mail::purge('monitoring');
+
+    $this->artisan('monitoring:worker-quota')->assertSuccessful();
+
+    config(['mail.mailers.monitoring.transport' => 'array']);
+    Mail::purge('monitoring');
+    $before = count(monitoringMails());
+    $this->artisan('monitoring:worker-quota')->assertSuccessful();
+
+    $mails = array_slice(monitoringMails(), $before);
+    expect($mails)->toHaveCount(1)->and((string) $mails[0]->getSubject())->toContain('85%');
 });
 
 it('does not repeat a mail on the same day', function (): void {

@@ -18,7 +18,7 @@ final class WorkerQuotaReader
 {
     private const ENDPOINT = 'https://api.cloudflare.com/client/v4/graphql';
 
-    private const QUERY = 'query($acct: String!, $d: Date!) { viewer { accounts(filter: {accountTag: $acct}) { workersInvocationsAdaptive(limit: 100, filter: {date_geq: $d, date_leq: $d}) { sum { requests } } } } }';
+    private const QUERY = 'query($acct: String!, $d: Date!) { viewer { accounts(filter: {accountTag: $acct}) { workersInvocationsAdaptive(limit: 1000, filter: {date_geq: $d, date_leq: $d}) { sum { requests } } } } }';
 
     public static function token(): string
     {

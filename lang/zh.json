@@ -4827,10 +4827,10 @@
     "media.lib.ask_purge_l1": "永久删除 :n 个文件（:size）——无法恢复。",
     "media.lib.ask_purge_l2": "产品图集中的图片也会从该产品中移除。",
     "media.lib.ask_purge_ok": "永久删除 :n 个文件",
-    "monitoring.quota.subject.warn": "Cloudflare Workers: :percent% of today's free requests used",
-    "monitoring.quota.subject.reached": "Cloudflare Workers: today's free requests are used up",
-    "monitoring.quota.subject.unreadable": "Cannot read the Cloudflare Workers request count",
-    "monitoring.quota.body.warn": "Today (UTC day), the Cloudflare account has used :used of :limit free Workers requests (:percent%).\n\nThe counter resets at 07:00 Vietnam time tomorrow morning.\n\nNothing to do right now. If the number climbs fast, ask the AI where the requests go. Moving to a paid plan is your call.",
-    "monitoring.quota.body.reached": "Today (UTC day), the Cloudflare account has used :used of :limit free Workers requests (:percent%).\n\nImages on customer websites may stop loading until the counter resets at 07:00 Vietnam time tomorrow morning.\n\nWhat to do: reply to this mail or ask the AI to choose a fix. Moving to a paid plan is your call.",
-    "monitoring.quota.body.unreadable": "The system could not read the Cloudflare Workers request count for :hours hours in a row, so it may not warn in time when the free requests run low.\n\nAsk the AI to check the Cloudflare access token. This mail is sent once a day."
+    "monitoring.quota.subject.warn": "Cloudflare Workers：今天已使用 :percent% 的免费请求",
+    "monitoring.quota.subject.reached": "Cloudflare Workers：今天的免费请求已用完",
+    "monitoring.quota.subject.unreadable": "无法读取 Cloudflare Workers 请求数",
+    "monitoring.quota.body.warn": "今天（按 UTC 日期），Cloudflare 账户已使用 :limit 次免费 Workers 请求中的 :used 次（:percent%）。\n\n计数器将在明天早上 7:00（越南时间）清零。\n\n现在无需操作。如果数字增长很快，请让 AI 查看请求去向。是否升级到付费方案由您决定。",
+    "monitoring.quota.body.reached": "今天（按 UTC 日期），Cloudflare 账户已使用 :limit 次免费 Workers 请求中的 :used 次（:percent%）。\n\n在明天早上 7:00（越南时间）计数器清零之前，客户网站上的图片可能无法加载。\n\n处理方法：回复此邮件，或请 AI 选择处理方式。是否升级到付费方案由您决定。",
+    "monitoring.quota.body.unreadable": "系统已连续 :hours 小时无法读取 Cloudflare Workers 的请求数，因此免费请求快用完时可能无法及时提醒。\n\n请让 AI 检查 Cloudflare 访问令牌。此邮件每天只发送一次。"
 }

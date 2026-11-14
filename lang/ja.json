@@ -4827,10 +4827,10 @@
     "media.lib.ask_purge_l1": ":n 件 (:size) を完全に削除します — 元に戻せません。",
     "media.lib.ask_purge_l2": "商品ギャラリー内の画像もその商品から外れます。",
     "media.lib.ask_purge_ok": ":n 件を完全に削除",
-    "monitoring.quota.subject.warn": "Cloudflare Workers: :percent% of today's free requests used",
-    "monitoring.quota.subject.reached": "Cloudflare Workers: today's free requests are used up",
-    "monitoring.quota.subject.unreadable": "Cannot read the Cloudflare Workers request count",
-    "monitoring.quota.body.warn": "Today (UTC day), the Cloudflare account has used :used of :limit free Workers requests (:percent%).\n\nThe counter resets at 07:00 Vietnam time tomorrow morning.\n\nNothing to do right now. If the number climbs fast, ask the AI where the requests go. Moving to a paid plan is your call.",
-    "monitoring.quota.body.reached": "Today (UTC day), the Cloudflare account has used :used of :limit free Workers requests (:percent%).\n\nImages on customer websites may stop loading until the counter resets at 07:00 Vietnam time tomorrow morning.\n\nWhat to do: reply to this mail or ask the AI to choose a fix. Moving to a paid plan is your call.",
-    "monitoring.quota.body.unreadable": "The system could not read the Cloudflare Workers request count for :hours hours in a row, so it may not warn in time when the free requests run low.\n\nAsk the AI to check the Cloudflare access token. This mail is sent once a day."
+    "monitoring.quota.subject.warn": "Cloudflare Workers: 本日の無料リクエストの :percent% を使用しました",
+    "monitoring.quota.subject.reached": "Cloudflare Workers: 本日の無料リクエストを使い切りました",
+    "monitoring.quota.subject.unreadable": "Cloudflare Workers のリクエスト数を読み取れません",
+    "monitoring.quota.body.warn": "本日（UTC の日付）、Cloudflare アカウントは無料の Workers リクエスト :limit 件のうち :used 件（:percent%）を使用しました。\n\nカウンターは明朝 7:00（ベトナム時間）にリセットされます。\n\n今すぐ行うことはありません。数が急に増える場合は、リクエストがどこへ向かっているか AI に確認してください。有料プランへの切り替えはご自身の判断です。",
+    "monitoring.quota.body.reached": "本日（UTC の日付）、Cloudflare アカウントは無料の Workers リクエスト :limit 件のうち :used 件（:percent%）を使用しました。\n\n明朝 7:00（ベトナム時間）にカウンターがリセットされるまで、顧客のウェブサイトの画像が表示されなくなる可能性があります。\n\n対応: このメールに返信するか、AI に対処方法を相談してください。有料プランへの切り替えはご自身の判断です。",
+    "monitoring.quota.body.unreadable": "システムは :hours 時間続けて Cloudflare Workers のリクエスト数を読み取れなかったため、無料リクエストが少なくなっても間に合うように知らせられない可能性があります。\n\nCloudflare のアクセストークンの確認を AI に依頼してください。このメールは1日に1回だけ送信されます。"
 }
