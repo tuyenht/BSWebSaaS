@@ -81,3 +81,28 @@ test('a click elsewhere, or on a root that has not failed, does nothing', async 
     assert.equal(seen.loads, 0);
     assert.equal(root.hasAttribute('x-ignore'), true);
 });
+
+test('a Livewire redraw of a started part takes the server root without x-ignore; a waiting part keeps it', () => {
+    const { doc, root } = page();
+    const { lazy } = loader([]);
+    const incoming = () => {
+        const el = doc.createElement('div');
+        el.setAttribute('x-ignore', '');
+        el.setAttribute('data-bs-lazy', 'part');
+        return el;
+    };
+
+    const waiting = incoming();
+    lazy.keepStarted(root, waiting); // not started yet: Alpine must keep skipping it
+    assert.equal(waiting.hasAttribute('x-ignore'), true);
+
+    root.removeAttribute('x-ignore'); // what start() does once the part runs
+    const started = incoming();
+    lazy.keepStarted(root, started);
+    assert.equal(started.hasAttribute('x-ignore'), false);
+
+    const other = doc.createElement('div'); // any other element of the redraw is left alone
+    const otherTo = incoming();
+    lazy.keepStarted(other, otherTo);
+    assert.equal(otherTo.hasAttribute('x-ignore'), true);
+});
