@@ -7,6 +7,9 @@ use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
+use App\Modules\Cms\Models\Menu;
+use App\Modules\Cms\Models\MenuAssignment;
+use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
@@ -25,7 +28,8 @@ use Carbon\CarbonImmutable;
  * at the CI fixture files (`tests/Fixtures/cwv`, served by the static media driver), a `/do-kiem`
  * page (slider, service icon cards and product photo cards as card rails with arrows, which the
  * job's tap check needs on a phone, top-rule features, a rounded call to action, contact cards) and
- * `/ban-tin`, a news card grid with two child categories. The
+ * `/ban-tin`, a news card grid with two child categories, and a "Dịch vụ" main-menu item with two
+ * sub-items (so the job's phone-menu pass measures parent rows, their arrows and sub-links). The
  * provisioned `/tin-tuc` list is left as it is.
  *
  * White-label: neutral sample text, no brand. Idempotent: rows are looked up by slug, storage key,
@@ -71,7 +75,7 @@ final readonly class SeedMeasurementSite
 
         $this->seedSettings();
         $photos = $this->seedPhotos();
-        $this->seedServices($locale);
+        $services = $this->seedServices($locale);
         $this->seedProducts($locale, $photos);
         $this->seedNews($locale, $photos);
         $this->seedPage($locale, $photos);
@@ -81,6 +85,7 @@ final readonly class SeedMeasurementSite
             $this->seedBlockPage($locale, $path, $title, $blocks);
         }
         $this->seedNewsSlots($locale);
+        $this->seedMenu($locale, $services);
     }
 
     /**
@@ -296,7 +301,7 @@ final readonly class SeedMeasurementSite
     }
 
     /** Four services whose cards draw a glyph (the post's `image_url` is a glyph key). */
-    private function seedServices(string $locale): void
+    private function seedServices(string $locale): Taxonomy
     {
         $services = $this->category($locale, 'Dịch vụ', 'dich-vu', 'post_cat');
         $at = CarbonImmutable::parse('2026-10-01 08:00', 'UTC');
@@ -307,6 +312,42 @@ final readonly class SeedMeasurementSite
             ['Gia công CNC', 'gia-cong-cnc', 'machine', 'Phay, tiện CNC nhiều trục với dung sai nhỏ.'],
         ] as $n => [$title, $slug, $glyph, $excerpt]) {
             $this->post($locale, $services, $title, $slug, $glyph, $excerpt, $at->subDays($n));
+        }
+
+        return $services;
+    }
+
+    /**
+     * Add "Dịch vụ" with two service posts under it to the menu the main area shows (the provisioned
+     * one; created and bound only when the area has none). Idempotent: each item is anchored on its
+     * target, and an item staff moved to the trash stays there.
+     */
+    private function seedMenu(string $locale, Taxonomy $services): void
+    {
+        $menuId = MenuAssignment::query()->where('region_key', 'primary')->where('locale', $locale)->value('menu_id');
+        $menu = is_numeric($menuId) ? Menu::query()->find((int) $menuId) : null;
+        if ($menu === null) {
+            // No menu of its own (none, or the area follows another one): bind main-<locale> to it.
+            $menu = Menu::query()->firstOrCreate(['handle' => 'main-'.$locale], ['name' => 'Menu chính', 'locales' => null]);
+            MenuAssignment::query()->updateOrCreate(['region_key' => 'primary', 'locale' => $locale], ['menu_id' => $menu->id, 'same_as_region' => null]);
+        }
+
+        $parent = MenuItem::withTrashed()->firstOrCreate(
+            ['menu_id' => $menu->id, 'link_type' => 'taxonomy', 'routable_type' => 'taxonomy', 'routable_id' => $services->id],
+            ['position' => 2],
+        );
+        $parent->translations()->firstOrCreate(['locale' => $locale], ['label' => 'Dịch vụ']);
+
+        foreach (['thiet-ke-do-ga' => 'Thiết kế đồ gá', 'gia-cong-cnc' => 'Gia công CNC'] as $slug => $label) {
+            $entryId = EntryTranslation::query()->where('locale', $locale)->where('slug', $slug)->value('entry_id');
+            if (! is_numeric($entryId)) {
+                continue;
+            }
+            $child = MenuItem::withTrashed()->firstOrCreate(
+                ['menu_id' => $menu->id, 'link_type' => 'entry', 'routable_type' => 'entry', 'routable_id' => (int) $entryId],
+                ['parent_id' => $parent->id, 'position' => $slug === 'gia-cong-cnc' ? 1 : 0],
+            );
+            $child->translations()->firstOrCreate(['locale' => $locale], ['label' => $label]);
         }
     }
 

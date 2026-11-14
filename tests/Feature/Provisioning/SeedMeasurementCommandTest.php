@@ -2,6 +2,8 @@
 
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\MenuItem;
+use App\Modules\Cms\Models\MenuItemTranslation;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Media\Models\Media;
 use App\Modules\Provisioning\Actions\SeedMeasurementSite;
@@ -29,6 +31,8 @@ function measurementCounts(int $siteId): array
         'products' => Product::query()->count(),
         'media' => Media::query()->count(),
         'settings' => SiteSetting::query()->count(),
+        'menu_items' => MenuItem::withTrashed()->count(),
+        'menu_item_translations' => MenuItemTranslation::query()->count(),
     ]);
 }
 
@@ -58,6 +62,10 @@ it('seeds the measurement page and the news card grid', function (): void {
         ->and($news)->toContain('<a class="sf-chips__chip" href="/tin-cong-ty">Tin công ty</a>')
         ->and($news)->toContain('<a class="sf-chips__chip" href="/tin-nganh">Tin ngành</a>');
     $this->get('http://cwv.platform.test/tin-cong-ty')->assertOk();
+
+    // The main menu has a parent with two sub-links: the phone-menu contrast pass needs them (tap-check.mjs).
+    $home = $this->get('http://cwv.platform.test/')->assertOk()->getContent();
+    expect($home)->toMatch('#<div class="sf-nav__panel" id="msm-\\d+">.*?<a class="sf-nav__sublink"\\s+href="/thiet-ke-do-ga"\\s*>Thiết kế đồ gá</a>.*?<a class="sf-nav__sublink"\\s+href="/gia-cong-cnc"\\s*>Gia công CNC</a>#s');
     expectProductSearchWordsCurrent($siteId);
     expectSiteSearchWordsCurrent($siteId);
 });
