@@ -1574,6 +1574,7 @@
     "catalog.category_label": "Danh mục",
     "catalog.category_placeholder": "— Chọn danh mục —",
     "catalog.category_invalid": "Danh mục không hợp lệ.",
+    "catalog.category_scope_only": "Bạn chỉ được sửa sản phẩm trong: :categories.",
     "catalog.description_label": "Chi tiết sản phẩm / thông số kỹ thuật",
     "catalog.card_product": "Thông tin sản phẩm",
     "catalog.card_publish": "Đăng",

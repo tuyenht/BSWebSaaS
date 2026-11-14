@@ -6,13 +6,12 @@ namespace App\Modules\Cms\Policies;
 
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\CategoryScopes;
-use App\Modules\Cms\Taxonomy\CategoryLimitGuard;
 use App\Modules\Identity\Models\User;
 
 /**
  * Defense layer #2 for categories: one coarse permission, `taxonomies.manage`, team-scoped by the
  * spatie guard (= current site), plus the member's category limits (CategoryScopes) for post
- * categories. Every category write path (Cms\Actions\Taxonomies) asks `manage` for the person
+ * categories and product categories, each judged on its own axis (the category's vocabulary). Every category write path (Cms\Actions\Taxonomies) asks `manage` for the person
  * signed in, and the Chuyên mục screen asks through this policy too; super_admin passes through
  * Gate::before.
  *
@@ -21,7 +20,7 @@ use App\Modules\Identity\Models\User;
  *  - update (names, templates, picture): only a category inside the member's limits;
  *  - move and delete (which merge is): inside them and never a category the limits name, which
  *    would move or remove the limit itself.
- * Other vocabularies (product categories, facet terms) are not limited.
+ * Other vocabularies (facet terms…) are not limited.
  */
 final readonly class TaxonomyPolicy
 {
@@ -61,13 +60,13 @@ final readonly class TaxonomyPolicy
     /** Is the category inside the member's limits (always, for a member who is not limited)? */
     private function inside(User $user, Taxonomy $taxonomy): bool
     {
-        return $taxonomy->vocabulary !== CategoryLimitGuard::VOCABULARY || $this->scopes->coversId($user, $taxonomy->id);
+        return ! CategoryScopes::isAxis($taxonomy->vocabulary) || $this->scopes->coversId($user, $taxonomy->id, $taxonomy->vocabulary);
     }
 
     /** Is the category one the member's limits name? */
     private function named(User $user, Taxonomy $taxonomy): bool
     {
-        return $taxonomy->vocabulary === CategoryLimitGuard::VOCABULARY
-            && in_array($taxonomy->id, $this->scopes->rootIds($user) ?? [], true);
+        return CategoryScopes::isAxis($taxonomy->vocabulary)
+            && in_array($taxonomy->id, $this->scopes->rootIds($user, $taxonomy->vocabulary) ?? [], true);
     }
 }

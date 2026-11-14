@@ -12,6 +12,7 @@ use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Theme\Chrome\StorefrontCsp;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -22,8 +23,8 @@ use Symfony\Component\HttpFoundation\Response;
  * product's ulid: a draft has no public address yet.
  *
  * Fails closed and quietly: a site whose plan has no catalog, a product of another site (RLS), one
- * in the Trash, a language the site does not have or a product without that language all answer
- * 404, never a hint that the product exists. The page is never cached or indexed, sends no referrer,
+ * in the Trash, one outside the member's product-category limits, a language the site does not have
+ * or a product without that language all answer 404, never a hint that the product exists. The page is never cached or indexed, sends no referrer,
  * carries the storefront's own Content-Security-Policy (the admin plane sends none) and may be
  * framed only by the admin itself; its lead forms are drawn switched off (PreviewMode), so a
  * preview never records a contact.
@@ -48,6 +49,8 @@ final readonly class ProductPreviewController
 
         $product = $this->page->forPreview($ulid, $locale);
         abort_if($product === null, 404);
+        // A member limited to some product categories previews only products inside them (CatalogPolicy).
+        abort_unless(Gate::allows('update', $product), 404);
         $translation = $product->translationFor($locale);
         abort_if($translation === null, 404);
 

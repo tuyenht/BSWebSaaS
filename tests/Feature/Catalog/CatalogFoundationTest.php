@@ -38,12 +38,13 @@ it('gates the catalog: view needs catalog.view, writes need catalog.manage', fun
         grantRole($manager, 'cat-manager', ['catalog.view', 'catalog.manage']);
     });
 
-    $policy = new CatalogPolicy;
+    $policy = app(CatalogPolicy::class);
     app(Tenancy::class)->enter(1, function () use ($policy, $viewer, $manager): void {
         expect($policy->viewAny($viewer->fresh()))->toBeTrue()   // view-only can look
             ->and($policy->create($viewer->fresh()))->toBeFalse() // …but not write
-            ->and($policy->update($manager->fresh()))->toBeTrue() // manager can write
-            ->and($policy->delete($manager->fresh()))->toBeTrue();
+            ->and($policy->update($viewer->fresh())->allowed())->toBeFalse()
+            ->and($policy->update($manager->fresh())->allowed())->toBeTrue() // manager can write
+            ->and($policy->delete($manager->fresh())->allowed())->toBeTrue();
     });
 });
 

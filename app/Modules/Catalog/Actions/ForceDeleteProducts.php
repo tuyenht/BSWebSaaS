@@ -16,7 +16,9 @@ use Illuminate\Support\Facades\DB;
  * the SKU and the address are free again; the category totals already left the trashed product's
  * categories when it went to the Trash. The caller picks the products (inside the website's context);
  * the action itself asks CatalogPolicy (forceDelete) of whoever is signed in before anything is
- * deleted, the purge running with nobody signed in. One audit row per call, best-effort.
+ * deleted — about each product too, so a member limited to some product categories never deletes one
+ * outside them (all or nothing: one refused product deletes none) — the purge running with nobody
+ * signed in. One audit row per call, best-effort.
  */
 final class ForceDeleteProducts
 {
@@ -33,6 +35,7 @@ final class ForceDeleteProducts
         return DB::transaction(function () use ($products, $scheduled): int {
             $deleted = 0;
             foreach ($products as $product) {
+                $this->authorizeCatalog('forceDelete', $product);
                 $product->forceDelete();
                 $deleted++;
             }

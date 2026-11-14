@@ -1574,6 +1574,7 @@
     "catalog.category_label": "カテゴリー",
     "catalog.category_placeholder": "— カテゴリーを選択 —",
     "catalog.category_invalid": "カテゴリーが正しくありません。",
+    "catalog.category_scope_only": "編集できるのは次のカテゴリーの商品だけです：:categories。",
     "catalog.description_label": "商品の詳細・仕様",
     "catalog.card_product": "商品情報",
     "catalog.card_publish": "公開",

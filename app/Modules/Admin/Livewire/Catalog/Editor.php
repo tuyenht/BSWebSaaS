@@ -20,6 +20,8 @@ use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\PathBuilder;
+use App\Modules\Cms\Support\CategoryScopes;
+use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\PlainText;
@@ -46,8 +48,10 @@ use Livewire\Component;
  * price/sku/SEO), not the entries block-builder: a product is commerce-typed fields, not
  * Page-JSON. The detail description comes in as Jodit HTML and passes through RichTextSanitizer
  * ON WRITE; the short summary is plain text (the storefront prints it as text). Every action
- * authorizes through CatalogPolicy (coarse catalog.manage) and the product is addressed by ulid,
- * never its raw id. The site's default locale drives which translation row is edited.
+ * authorizes through CatalogPolicy (catalog.manage, asked about the stored product itself) and the
+ * product is addressed by ulid, never its raw id. A member limited to some product categories
+ * (CategoryScopes) opens and saves only products whose main category is inside the limits, picks
+ * only such a category (one is required for them), and never files a product under no category. The site's default locale drives which translation row is edited.
  *
  * The status is never taken from the browser: "Lưu nháp" / "Lưu" save keeping it, "Đăng" /
  * "Cập nhật" save it published. A draft (a new product too) also saves itself a few seconds after
@@ -191,6 +195,9 @@ final class Editor extends Component
 
     /** Set while saving: a draft saving itself found the product no longer a draft; the stored product. */
     private ?Product $skippedFor = null;
+
+    /** The stored product this request's checks were asked about (authorizeEdit), read once per request. */
+    private ?Product $checked = null;
 
     public function mount(?string $ulid = null): void
     {
@@ -384,7 +391,9 @@ final class Editor extends Component
             'summary' => ['nullable', 'string', ...($this->keepsStoredSummary() ? [] : ['max:'.self::SUMMARY_MAX])],
             'seoTitle' => ['nullable', 'string', 'max:255'],
             'seoDescription' => ['nullable', 'string', 'max:255'],
-            'categoryId' => ['nullable', 'integer', Rule::exists('taxonomies', 'id')->where('vocabulary', 'product_cat')],
+            // a member limited to some product categories must pick one inside them (CatalogPolicy::fileUnder)
+            'categoryId' => [Rule::requiredIf(fn (): bool => $this->limitedOnProducts()), 'nullable', 'integer',
+                Rule::exists('taxonomies', 'id')->where('vocabulary', 'product_cat'), $this->categoryIsInsideLimits(...)],
             'price' => ['nullable', 'integer', 'min:0'],
             'sku' => ['nullable', 'string', 'max:255', $uniqueSku],
             'status' => ['required', Rule::in(['draft', 'published', 'archived'])],
@@ -406,6 +415,7 @@ final class Editor extends Component
             'slug.regex' => __('catalog.slug_format'),
             'sku.unique' => __('catalog.sku_taken'),
             'categoryId.exists' => __('catalog.category_invalid'),
+            ...($this->limitedOnProducts() ? ['categoryId.required' => $this->limitsRefusal()] : []),
             'imageMediaIds.*.exists' => __('catalog.gallery_invalid'),
             'imageMediaIds.*.integer' => __('catalog.gallery_invalid'),
             'seoTitle.max' => __('catalog.seo_title_too_long'),
@@ -414,10 +424,43 @@ final class Editor extends Component
         ];
     }
 
-    /** Every action re-checks the right to manage products (the update endpoint skips route middleware). */
+    /**
+     * Every action re-checks the right to manage products (the update endpoint skips route
+     * middleware) — about the stored product itself, so a member limited to some product categories
+     * is refused one outside them.
+     */
     private function authorizeEdit(): void
     {
-        $this->authorize($this->ulid === null ? 'create' : 'update', Product::class);
+        if ($this->ulid === null) {
+            $this->authorize('create', Product::class);
+
+            return;
+        }
+        $this->checked ??= $this->resolveOrFail($this->ulid);
+        $this->authorize('update', $this->checked);
+    }
+
+    private function limitedOnProducts(): bool
+    {
+        $user = auth()->user();
+
+        return $user instanceof User && app(CategoryScopes::class)->isLimited($user, CategoryScopes::PRODUCTS);
+    }
+
+    private function limitsRefusal(): string
+    {
+        $user = auth()->user();
+
+        return $user instanceof User ? app(CategoryScopes::class)->refusal($user, CategoryScopes::PRODUCTS) : __('catalog.category_invalid');
+    }
+
+    /** The picked category is inside the member's product limits (always, for a member not limited on products). */
+    private function categoryIsInsideLimits(string $attribute, mixed $value, \Closure $fail): void
+    {
+        $user = auth()->user();
+        if ($user instanceof User && is_numeric($value) && ! app(CategoryScopes::class)->coversId($user, (int) $value, CategoryScopes::PRODUCTS)) {
+            $fail($this->limitsRefusal());
+        }
     }
 
     /** Fill the form from a saved product. */
@@ -949,6 +992,8 @@ final class Editor extends Component
             'price' => $this->price !== null ? (int) $this->price : null,
         ];
 
+        // where the product goes: inside the person's product limits (validated above; held here too)
+        $this->authorize('fileUnder', [Product::class, $this->categoryId]);
         if ($this->ulid === null) {
             $this->authorize('create', Product::class);
             $product = Product::query()->create($attributes + ['status' => $this->status]);
@@ -1050,8 +1095,12 @@ final class Editor extends Component
      */
     private function availableCategories(): array
     {
+        $user = auth()->user();
+        // a member limited to some product categories is offered only those inside the limits
+        $within = $user instanceof User ? app(CategoryScopes::class)->allowedTaxonomyIds($user, CategoryScopes::PRODUCTS) : null;
         $categories = Taxonomy::query()
             ->where('vocabulary', 'product_cat')
+            ->when($within !== null, static fn ($query) => $query->whereKey($within ?? []))
             ->with('translations:id,taxonomy_id,locale,name,slug')
             ->get()
             ->map(function (Taxonomy $taxonomy): array {

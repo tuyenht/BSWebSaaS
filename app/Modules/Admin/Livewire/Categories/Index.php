@@ -345,7 +345,8 @@ final class Index extends Component
         $locales = app(SiteLocale::class);
         $main = $locales->default();
         $actor = $this->actor();
-        $limits = app(CategoryScopes::class)->rootIds($actor);
+        // the viewer's limits on this section's axis (post categories, product categories)
+        $limits = app(CategoryScopes::class)->rootIds($actor, $found !== null && CategoryScopes::isAxis($found['vocabulary']) ? $found['vocabulary'] : CategoryScopes::POSTS);
         $host = SeoFields::publicHost();
         $bases = [];
         foreach ($locales->enabled() as $locale) {

@@ -22,6 +22,7 @@ use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Support\CategoryItemCounts;
+use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Taxonomy\TaxonomyRules;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
@@ -36,6 +37,8 @@ use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use Closure;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -444,6 +447,7 @@ final class Index extends Component
         if ($product === null) {
             return;
         }
+        $this->guardRow('delete', $product);
         $product->delete();
         $this->say(__('catalog.toast_trashed', ['name' => $this->nameOf($product)]), 'success', ['kind' => 'untrash', 'ulid' => $ulid]);
     }
@@ -452,12 +456,13 @@ final class Index extends Component
     public function restore(string $ulid): void
     {
         $this->guardWrite('restore');
-        $product = Product::onlyTrashed()->where('ulid', $ulid)->lockForUpdate()->first();
+        $product = $this->products(trashed: true)->where('ulid', $ulid)->lockForUpdate()->first();
         if ($product === null) {
             $this->say(__('catalog.row_gone'), 'error');
 
             return;
         }
+        $this->guardRow('restore', $product);
         $before = $product->status;
         $product->restore();
         $product->forceFill(['status' => 'draft'])->save();
@@ -582,6 +587,7 @@ final class Index extends Component
         if ($product === null) {
             return;
         }
+        $this->guardRow('update', $product);
         $column = self::FLAGS[$flag];
         $was = (bool) $product->getAttribute($column);
         $message = __($on ? 'catalog.toast_flag_on' : 'catalog.toast_flag_off', ['label' => __('catalog.tag_'.$flag), 'name' => $this->nameOf($product)]);
@@ -608,13 +614,17 @@ final class Index extends Component
         switch ($op['kind'] ?? null) {
             case 'untrash':
                 $this->guardWrite('restore');
-                $product = Product::onlyTrashed()->where('ulid', $ulid)->lockForUpdate()->first();
-                $product?->restore();
+                $product = $this->products(trashed: true)->where('ulid', $ulid)->lockForUpdate()->first();
+                if ($product !== null) {
+                    $this->guardRow('restore', $product);
+                    $product->restore();
+                }
                 break;
             case 'retrash':
                 $this->guardWrite('delete');
                 $product = $this->live($ulid, quiet: true);
                 if ($product !== null) {
+                    $this->guardRow('delete', $product);
                     $status = Cast::string($op['status'] ?? '');
                     abort_unless(in_array($status, ChangeProductStatus::STATUSES, true), 422);
                     $product->forceFill(['status' => $status])->save();
@@ -672,7 +682,10 @@ final class Index extends Component
                 $flag = Cast::string($op['flag'] ?? '');
                 abort_unless(isset(self::FLAGS[$flag]), 422);
                 $product = $this->live($ulid, quiet: true);
-                $product?->forceFill([self::FLAGS[$flag] => (bool) ($op['was'] ?? false)])->save();
+                if ($product !== null) {
+                    $this->guardRow('update', $product);
+                    $product->forceFill([self::FLAGS[$flag] => (bool) ($op['was'] ?? false)])->save();
+                }
                 break;
             case 'bulk_status':
             case 'bulk_untrash':
@@ -718,7 +731,7 @@ final class Index extends Component
     /** A product that is not in the Trash, by its ulid; a message says so when it is gone (unless asked to stay quiet). */
     private function live(string $ulid, bool $quiet = false): ?Product
     {
-        $product = Product::query()->where('ulid', $ulid)->first();
+        $product = $this->products()->where('ulid', $ulid)->first();
         if ($product === null && ! $quiet) {
             $this->say(__('catalog.row_gone'), 'error');
         }
@@ -776,6 +789,7 @@ final class Index extends Component
         $last = null;
         if (! $this->atomic(function () use (&$done, &$undo, &$last): void {
             foreach ($this->pickRows($this->selected, false) as $product) {
+                $this->guardRow('delete', $product);
                 $product->delete();
                 $undo[] = $product->ulid;
                 $last = $product;
@@ -805,6 +819,7 @@ final class Index extends Component
         $undo = [];
         if (! $this->atomic(function () use (&$done, &$undo): void {
             foreach ($this->pickRows($this->selected, true) as $product) {
+                $this->guardRow('restore', $product);
                 $undo[$product->ulid] = $product->status;
                 $product->restore();
                 $product->forceFill(['status' => 'draft'])->save();
@@ -889,6 +904,13 @@ final class Index extends Component
         $category = Taxonomy::query()->where('vocabulary', 'product_cat')->where('ulid', $categoryUlid)->with('translations')->first();
         if ($category === null) {
             $this->say(__('catalog.bulk_cat_gone'), 'error');
+
+            return;
+        }
+        // A member limited to some product categories files products only inside them: said on screen, nothing changes.
+        $filing = Gate::inspect('fileUnder', [Product::class, $category->id]);
+        if ($filing->denied()) {
+            $this->say(Cast::string($filing->message(), __('catalog.category_invalid')), 'error');
 
             return;
         }
@@ -1018,6 +1040,7 @@ final class Index extends Component
                 case 'bulk_untrash':
                     $this->guardWrite('restore');
                     foreach ($this->pickRows($ulids, true, inView: false) as $product) {
+                        $this->guardRow('restore', $product);
                         $product->restore();
                         $back++;
                     }
@@ -1025,6 +1048,7 @@ final class Index extends Component
                 case 'bulk_retrash':
                     $this->guardWrite('delete');
                     foreach ($this->pickRows($ulids, false, inView: false) as $product) {
+                        $this->guardRow('delete', $product);
                         $status = Cast::string($items[$product->ulid] ?? '');
                         abort_unless(in_array($status, ChangeProductStatus::STATUSES, true), 422);
                         $product->forceFill(['status' => $status])->save();
@@ -1082,7 +1106,8 @@ final class Index extends Component
                 if ($filed['mainChanged']) {
                     $marked[] = $product->id;
                 }
-            } catch (RouteConflictException) {
+            } catch (RouteConflictException|AuthorizationException) {
+                // AuthorizationException: the categories to put back are outside the member's product limits now
                 $blocked++;
             } catch (UniqueConstraintViolationException $e) {
                 UniqueViolation::refusal($e);
@@ -1155,7 +1180,7 @@ final class Index extends Component
             $this->catF = $tree->known($this->catF);
             $base = $this->listQuery($this->listFilter($tree))->filtered();
         } else {
-            $base = $trashed ? Product::onlyTrashed() : Product::query();
+            $base = $this->products($trashed);
         }
 
         return $base->whereIn('products.ulid', $ulids)->orderBy('products.id')->lockForUpdate()
@@ -1181,7 +1206,7 @@ final class Index extends Component
     {
         $this->guardWrite('forceDelete');
         // FK cascade removes translations/images; frees sku + slug
-        app(ForceDeleteProducts::class)->handle([Product::onlyTrashed()->where('ulid', $ulid)->lockForUpdate()->firstOrFail()]);
+        app(ForceDeleteProducts::class)->handle([$this->products(trashed: true)->where('ulid', $ulid)->lockForUpdate()->firstOrFail()]);
         $this->toastMsg = '';
         $this->undoOp = null;
     }
@@ -1289,7 +1314,7 @@ final class Index extends Component
      */
     private function categoryDialog(ProductCategoryTree $tree): array
     {
-        $products = Product::query()->whereIn('ulid', $this->catTargets)->orderBy('id')
+        $products = $this->products()->whereIn('ulid', $this->catTargets)->orderBy('id')
             ->with(['translations:id,product_id,locale,name', 'taxonomies' => static function (BelongsToMany $primary): void {
                 $primary->wherePivot('position', 0)->select(['taxonomies.id']);
             }])->get(['id', 'ulid', 'status']);
@@ -1361,7 +1386,7 @@ final class Index extends Component
     {
         $cap = max(1, Cast::int(config('admin.catalog_list_cap', ProductListQuery::CAP)));
 
-        return new ProductListQuery(app(CurrentSite::class)->id(), $this->tab, $this->search, app(SiteLocale::class)->default(), $cap, $filter);
+        return new ProductListQuery(app(CurrentSite::class)->id(), $this->tab, $this->search, app(SiteLocale::class)->default(), $cap, $filter, within: $this->within());
     }
 
     /**
@@ -1746,6 +1771,33 @@ final class Index extends Component
     {
         abort_unless($this->entitled(), 403);
         Gate::authorize($ability, Product::class);
+    }
+
+    /**
+     * The one road by which this screen looks a product up outside the list: this website's live
+     * products (or those in the Trash), and for a member limited to some product categories only those
+     * whose main category is inside the limits (CategoryScopes) — a product outside them reads as gone.
+     *
+     * @return Builder<Product>
+     */
+    private function products(bool $trashed = false): Builder
+    {
+        $query = $trashed ? Product::onlyTrashed() : Product::query();
+        $within = $this->within();
+
+        return $within === null ? $query : ProductListQuery::whereMainCategoryIn($query, app(CurrentSite::class)->id(), $within);
+    }
+
+    /** @return list<int>|null the main categories the signed-in member may see and change products in; null = every one */
+    private function within(): ?array
+    {
+        return app(CategoryScopes::class)->allowedTaxonomyIds($this->actingUser(), CategoryScopes::PRODUCTS);
+    }
+
+    /** A write on one product found by products(): the policy asked about the product itself (its category limits). */
+    private function guardRow(string $ability, Product $product): void
+    {
+        Gate::authorize($ability, $product);
     }
 
     private function actingUser(): User

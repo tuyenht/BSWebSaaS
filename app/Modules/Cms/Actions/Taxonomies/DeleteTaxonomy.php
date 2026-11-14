@@ -104,7 +104,7 @@ final readonly class DeleteTaxonomy
         return DB::transaction(function () use ($taxonomy, $items, $target, $children, $evenIfSectionChanges): array {
             $this->lockTree($this->site->id());
             $taxonomy = $this->reload($taxonomy, 'taxonomy_invalid');
-            $this->limits->delete($taxonomy, $items === CategoryItemsOnDelete::Reassign ? $target?->id : null);
+            $this->limits->delete($taxonomy, $items === CategoryItemsOnDelete::Reassign ? $target?->id : null, $children === CategoryChildrenOnDelete::Delete);
 
             $branch = TaxonomyTree::branchOf($taxonomy->id);
             $childIds = array_keys(array_filter($branch, static fn (int $depth): bool => $depth === 1));
