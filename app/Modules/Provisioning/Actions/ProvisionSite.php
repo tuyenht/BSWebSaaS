@@ -179,7 +179,8 @@ final readonly class ProvisionSite
         }
 
         // Before any account or role is touched: a re-run never hands the website to someone new.
-        $this->assertOwnerUnchanged($site, $hostname, $data->ownerEmail);
+        // Asked again under the owner lock below, where the owner is actually given.
+        $this->tenancy->enter($site->id, fn () => $this->assertOwnerUnchanged($site->id, $hostname, $data->ownerEmail));
 
         // Functional shape (design.md §15.2): GĐ1 ships only `corporate`. Stamp it idempotently so a
         // re-run also backfills a site provisioned before the type axis existed.
@@ -189,22 +190,28 @@ final readonly class ProvisionSite
         }
         $siteTypeKey = $siteType->key;
 
-        $owner = User::query()->firstWhere('email', $data->ownerEmail) ?? User::query()->create([
-            'name' => $data->ownerName,
-            'email' => $data->ownerEmail,
-            'password' => Hash::make($data->ownerPassword ?? Str::password(20)),
-            'email_verified_at' => now(),
-        ]);
-        // Attach membership from the User side (Tenancy must not depend on Identity).
-        $owner->tenants()->syncWithoutDetaching([$tenant->id]);
-
         // Make sure the permission catalog exists (idempotent; team-agnostic).
         foreach (PermissionRegistry::permissions() as $permission) {
             Permission::findOrCreate($permission, PermissionRegistry::GUARD);
         }
 
         // 2) Per-site setup INSIDE the tenant context (RLS + spatie team = this site).
-        $this->tenancy->enter($site->id, function () use ($data, $owner, $siteTypeKey): void {
+        $this->tenancy->enter($site->id, function () use ($data, $site, $hostname, $tenant, $siteTypeKey): void {
+            // Two runs for one website at once (different owner emails, neither owner yet) both pass
+            // the check above: they queue here, and the second finds the first one's owner and is
+            // refused before its account or role exists.
+            DB::select('select pg_advisory_xact_lock(hashtextextended(?, 0))', ['site-owner:'.$site->id]);
+            $this->assertOwnerUnchanged($site->id, $hostname, $data->ownerEmail);
+
+            $owner = User::query()->firstWhere('email', $data->ownerEmail) ?? User::query()->create([
+                'name' => $data->ownerName,
+                'email' => $data->ownerEmail,
+                'password' => Hash::make($data->ownerPassword ?? Str::password(20)),
+                'email_verified_at' => now(),
+            ]);
+            // Attach membership from the User side (Tenancy must not depend on Identity).
+            $owner->tenants()->syncWithoutDetaching([$tenant->id]);
+
             foreach ($data->locales as $locale) {
                 SiteLocale::query()->firstOrCreate(
                     ['locale' => $locale],
@@ -277,31 +284,25 @@ final readonly class ProvisionSite
      * an owner, the email must be one of them (a re-run that finishes or refreshes it). A website
      * with no owner yet takes one only while it is still being provisioned (a first run that failed
      * midway); a live website whose owners are gone is recovered with `site:recover-owner`, which is
-     * audited and mailed — never here.
+     * audited and mailed — never here. Runs inside the website's tenant context; the website's status
+     * is read afresh, as it is now.
      *
      * @throws OwnerChangeRefusedException
      */
-    private function assertOwnerUnchanged(Site $site, string $hostname, string $email): void
+    private function assertOwnerUnchanged(int $siteId, string $hostname, string $email): void
     {
-        $siteId = $site->id;
+        $owners = DB::table('model_has_roles')
+            ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+            ->where('model_has_roles.site_id', $siteId)
+            ->where('model_has_roles.model_type', User::class)
+            ->where('roles.site_id', $siteId)
+            ->where('roles.name', 'owner')
+            ->limit(100)
+            ->pluck('model_has_roles.model_id');
+        $hasOwner = $owners->isNotEmpty();
+        $isOwner = $hasOwner && User::query()->whereIn('id', $owners)->where('email', $email)->exists();
 
-        [$hasOwner, $isOwner] = $this->tenancy->enter($siteId, function () use ($siteId, $email): array {
-            $owners = DB::table('model_has_roles')
-                ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
-                ->where('model_has_roles.site_id', $siteId)
-                ->where('model_has_roles.model_type', User::class)
-                ->where('roles.site_id', $siteId)
-                ->where('roles.name', 'owner')
-                ->limit(100)
-                ->pluck('model_has_roles.model_id');
-
-            return [
-                $owners->isNotEmpty(),
-                $owners->isNotEmpty() && User::query()->whereIn('id', $owners)->where('email', $email)->exists(),
-            ];
-        });
-
-        if ($isOwner || (! $hasOwner && $site->status === 'provisioning')) {
+        if ($isOwner || (! $hasOwner && Site::query()->whereKey($siteId)->value('status') === 'provisioning')) {
             return;
         }
 

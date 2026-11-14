@@ -129,6 +129,34 @@ it('still finishes a first run that stopped before its owner was given', functio
         ->and(provisionOwners($site))->toBe(['chu-moi@example.test']);
 });
 
+it('refuses the second of two unfinished runs with different owners once the first has given its owner', function (): void {
+    $site = provisionAnVinh();
+    app(Tenancy::class)->enter($site->id, fn () => User::query()->firstWhere('email', 'owner@anvinh.test')?->removeRole('owner'));
+    $site->update(['status' => 'provisioning']);
+
+    // The other run (another connection, committed at once) gives its owner while this one waits on
+    // the owner lock, after this one's first check passed.
+    $admin = DB::connection('pgsql_admin');
+    $grant = [
+        'role_id' => $admin->table('roles')->where('site_id', $site->id)->where('name', 'owner')->value('id'),
+        'model_type' => User::class,
+        'model_id' => User::query()->where('email', 'owner@anvinh.test')->value('id'),
+        'site_id' => $site->id,
+    ];
+    $done = false;
+    DB::listen(function ($query) use (&$done, $site, $admin, $grant): void {
+        if (! $done && str_contains($query->sql, 'pg_advisory_xact_lock') && ($query->bindings[0] ?? null) === 'site-owner:'.$site->id) {
+            $done = true;
+            $admin->table('model_has_roles')->insert($grant);
+        }
+    });
+
+    expect(fn () => provisionAnVinh('chu-moi@example.test'))->toThrow(OwnerChangeRefusedException::class);
+    expect($done)->toBeTrue()
+        ->and(provisionOwners($site))->toBe(['owner@anvinh.test'])
+        ->and(User::query()->where('email', 'chu-moi@example.test')->exists())->toBeFalse();
+});
+
 it('creates the platform subdomain already verified and primary', function (): void {
     $site = provisionAnVinh();
 
