@@ -73,10 +73,11 @@ export default {
     const resp = await fetch(originUrl, {
       cf: { image: { width, format, fit: 'scale-down' } },
     });
-    // Cloudflare marks every transform it attempted with a Cf-Resized header (`internal=ok/…` when it
-    // worked, `err=…` when it failed). A failure or an error status → the master stands in, briefly.
-    const resized = resp.headers.get('Cf-Resized');
-    if (!resp.ok || /err=/.test(resized ?? '')) {
+    // A failed transform answers an error status or `Cf-Resized: err=…`; the master then stands in,
+    // briefly. A working one does not always carry Cf-Resized on this subrequest (measured 14/11/2026:
+    // real resized AVIFs without it), so its absence is not taken as a failure. The cost: with image
+    // transformations switched off on the zone, the passed-through master is kept a year too.
+    if (!resp.ok || /err=/.test(resp.headers.get('Cf-Resized') ?? '')) {
       return shortLived(await serveRaw(request, env, key, type));
     }
 
@@ -86,10 +87,7 @@ export default {
     if (!RASTER.has(outType)) return shortLived(await serveRaw(request, env, key, type));
     const headers = new Headers();
     headers.set('Content-Type', outType);
-    // Only a transform that ran is the lasting answer for this URL (its type may differ from the one
-    // asked for: a photo too large for AVIF comes back as WebP). Without `internal=ok` no transform is
-    // known to have run (transformations off on the zone), so the browser asks again soon.
-    headers.set('Cache-Control', /internal=ok/.test(resized ?? '') ? CACHE_CONTROL : FALLBACK_CACHE_CONTROL);
+    headers.set('Cache-Control', CACHE_CONTROL);
     headers.set('Vary', 'Accept');
     for (const [k, v] of Object.entries(SAFETY_HEADERS)) headers.set(k, v);
     return new Response(resp.body, { status: resp.status, headers });
