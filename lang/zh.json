@@ -4439,7 +4439,7 @@
     "admin.plans_toast_added": "已添加套餐 :name — 未销售,准备好后开启“在售”。",
     "admin.plans_toast_added_sold": "已添加套餐 :name — 在售。",
     "admin.plans_toast_refused": "更改未保存 — 套餐刚在别处被更改。请刷新页面后重试。",
-    "admin.plans_toast_undo_failed": "无法撤销 — 套餐之后已有其他更改。请刷新页面查看。",
+    "admin.plans_toast_undo_failed": "无法撤销 — 套餐之后已有其他更改或已有客户。请刷新页面查看。",
     "admin.plans_types_title": "网站类型",
     "admin.plans_types_desc": "创建网站时的模板:各语言名称、默认开启的模块和权限组模板。目前仅可查看。",
     "admin.plans_types_failed": "无法加载网站类型",

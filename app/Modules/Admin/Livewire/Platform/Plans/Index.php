@@ -35,8 +35,9 @@ use Livewire\Component;
  * audit line; each public method checks the permission first too (the livewire/update endpoint
  * skips route middleware) and accepts only plan keys it finds. A change says what it did in a toast
  * with "Hoàn tác" for 10 seconds; what the undo reverses is #[Locked], so the browser cannot rewrite
- * it. The plan editor (Edit) hands its toast and undo over through the session. A new plan or a copy
- * has no "Hoàn tác": plans are never deleted (one no longer wanted stops being sold).
+ * it. The plan editor (Edit) hands its toast and undo over through the session. "Hoàn tác" of a new
+ * plan or a copy deletes it, only while nobody has had it (PlatformPlans::discardCopy); any other
+ * plan is never deleted (one no longer wanted stops being sold).
  *
  * The customers on each plan and the websites of each type are counted once (the first render) and
  * again after this page writes, never on a search, a filter or a page turn.
@@ -170,7 +171,7 @@ final class Index extends Component
         }
     }
 
-    /** ⋯ Nhân bản: a copy that is not on sale (no "Hoàn tác": plans are never deleted). */
+    /** ⋯ Nhân bản: a copy that is not on sale; "Hoàn tác" takes it back while nobody has had it. */
     public function duplicate(string $key): void
     {
         $actor = $this->operator();
@@ -185,7 +186,7 @@ final class Index extends Component
         }
 
         $this->recount();
-        $this->say(Cast::string(__('admin.plans_toast_duplicated', ['name' => $copy->name])), null);
+        $this->say(Cast::string(__('admin.plans_toast_duplicated', ['name' => $copy->name])), ['kind' => 'discard', 'plan' => $copy->key]);
     }
 
     /** "Lời mời nâng gói" on or off, for every website on the platform. */
@@ -230,6 +231,8 @@ final class Index extends Component
                 throw new PlanChangeRejectedException('plan_missing');
             } elseif ($kind === 'sold') {
                 $plans->update($actor, $plan, $plan->name, (bool) ($undo['sold'] ?? false));
+            } elseif ($kind === 'discard') {
+                $plans->discardCopy($actor, $plan);
             } elseif ($kind === 'restore') {
                 $this->restore($actor, $plan, $undo);
             }

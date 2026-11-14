@@ -17,6 +17,7 @@ use App\Modules\Tenancy\Exceptions\PlanChangeRejectedException;
 use App\Modules\Tenancy\Models\Plan;
 use App\Modules\Tenancy\Models\PlanFeature;
 use App\Modules\Tenancy\Models\Tenant;
+use App\Modules\Tenancy\Models\TenantHistory;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 
@@ -112,6 +113,45 @@ final readonly class PlatformPlans
         $this->audit($actor, 'tenancy.plan.duplicated', ['plan' => $copy->key, 'from' => $plan->key]);
 
         return $copy;
+    }
+
+    /**
+     * Take back a plan nobody has had: the "Hoàn tác" right after "Thêm gói" or "Nhân bản". Plans
+     * are never deleted otherwise (a plan no longer wanted stops being sold), so this refuses a plan
+     * that is or was on sale, one a customer is on (a removed customer included), and one the
+     * customers' plan history names. The plan row stays locked from the check to the delete, so
+     * nobody can be put on it meanwhile.
+     *
+     * @throws AuthorizationException
+     * @throws PlanChangeRejectedException plan_in_use
+     */
+    public function discardCopy(User $actor, Plan $plan): void
+    {
+        $this->authorize($actor);
+
+        $gone = DB::transaction(function () use ($plan): bool {
+            $locked = Plan::query()->whereKey($plan->id)->lockForUpdate()->first();
+            if ($locked === null) {
+                return false;
+            }
+
+            $used = $locked->is_active
+                || (Cast::arr($locked->meta)['sold_once'] ?? false) === true
+                || Tenant::withTrashed()->where('plan_id', $locked->id)->exists()
+                || TenantHistory::query()->where('from_plan_id', $locked->id)->exists()
+                || TenantHistory::query()->where('to_plan_id', $locked->id)->exists();
+            if ($used) {
+                throw new PlanChangeRejectedException('plan_in_use');
+            }
+
+            return (bool) $locked->delete();
+        });
+
+        if (! $gone) {
+            return;
+        }
+
+        $this->audit($actor, 'tenancy.plan.discarded', ['plan' => $plan->key, 'name' => $plan->name]);
     }
 
     /**

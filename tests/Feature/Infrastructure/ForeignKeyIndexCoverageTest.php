@@ -39,10 +39,8 @@ it('gives every foreign key an index that its parent-delete lookup can use', fun
         'forms' => ['form_submissions.form_id'],
         // Media folders have no delete action yet.
         'media_folders' => ['media.folder_id'],
-        // Reference catalogs: synced or imported, never deleted. A plan a customer's history
-        // names cannot be deleted at all (tenant_history's plan keys are ON DELETE RESTRICT).
+        // Reference catalogs: synced or imported, never deleted.
         'permissions' => ['model_has_permissions.permission_id'],
-        'plans' => ['tenant_history.from_plan_id', 'tenant_history.to_plan_id', 'tenants.plan_id'],
         'provinces' => ['site_profiles.province_id'],
         'wards' => ['site_profiles.ward_id'],
         // InstantiateWorkflow replaces a workflow's states and transitions, never the workflow.
