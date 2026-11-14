@@ -11,9 +11,10 @@
         @if (! empty($brand['logo']))
             {{-- Brand logo = a server-resolved media URL (Storefront BrandImages: the site
                  profile's logo, or the older brand setting's URL until it is first saved; not
-                 author Page-JSON), linked home. width/height reserve space (no CLS). --}}
+                 author Page-JSON), linked home. width/height reserve space (no CLS). Low priority, as in the
+                 rich header: it loads at once but lets the page's main photo go first. --}}
             <a class="site-header__brand" href="{{ $homeUrl ?? '/' }}" aria-label="{{ $brand['name'] ?? __('storefront.home') }}">
-                <img class="site-header__logo" src="{{ $brand['logo'] }}" alt="{{ $brand['name'] ?? '' }}" width="156" height="40">
+                <img class="site-header__logo" src="{{ $brand['logo'] }}" alt="{{ $brand['name'] ?? '' }}" width="156" height="40" fetchpriority="low">
             </a>
         @endif
         @if (! empty($menu))
