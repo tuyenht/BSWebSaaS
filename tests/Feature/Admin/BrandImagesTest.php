@@ -175,6 +175,11 @@ it('shows the saved images once the old URLs are gone, the dark logo in the foot
     $html = brandHome();
     expect($html)->toContain('sf-bar__logo" src="https://files.test/'.$logo->storage_key.'"')
         ->toContain('sf-footer__logo" src="https://files.test/'.$dark->storage_key.'"');
+    // The header logo loads at once but yields to the page's main photo, which then gets the
+    // media host's connection first (the logo is small; the photo is what the visitor waits for).
+    expect(preg_match('~<img class="sf-bar__logo"[^>]*>~', $html, $tag))->toBe(1)
+        ->and($tag[0])->toContain('fetchpriority="low"')
+        ->not->toContain('loading="lazy"');
 
     // A picture moved to the trash is no longer shown.
     app(Tenancy::class)->enter(1, fn () => Media::query()->whereKey($logo->id)->first()->delete());

@@ -94,8 +94,10 @@
                 </button>
             @endif
             @if (! empty($brand['logo']))
+                {{-- The logo loads at once (no lazy) but at low priority: on the media host it would otherwise take the
+                     connection ahead of the page's main photo, which is what the visitor waits for (measured on a phone profile). --}}
                 <a class="sf-bar__brand" href="{{ $homeUrl ?? '/' }}">
-                    <img class="sf-bar__logo" src="{{ $brand['logo'] }}" alt="{{ $brand['name'] ?? __('storefront.home') }}" width="156" height="40">
+                    <img class="sf-bar__logo" src="{{ $brand['logo'] }}" alt="{{ $brand['name'] ?? __('storefront.home') }}" width="156" height="40" fetchpriority="low">
                 </a>
             @endif
             @if (! empty($menu))
