@@ -205,14 +205,14 @@ jobs:
         run: php artisan lang:check
 
   pest:
-    name: Pest shard ${{ matrix.shard }}/4
+    name: Pest shard ${{ matrix.shard }}/5
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     strategy:
       # One red shard must not hide the others.
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
@@ -292,12 +292,14 @@ jobs:
       - name: Migrate (PostgreSQL + extensions + restricted app role)
         run: php artisan migrate --database=pgsql_admin --force
 
-      # The suite is split by test count into four shards that run side by side, each on its own
+      # The suite is split by test count into five shards that run side by side, each on its own
       # database. One process used to run every suite and reached the job's 30-minute limit. Its
       # memory grows with the test count and the code the arch rules parse (it died at 256M near
-      # 1190 tests, peaked at 530M near 2880 and died at 768M near 4540), so the limit stays raised.
-      - name: Pest (unit · feature · arch · query-budget) shard ${{ matrix.shard }}/4
-        run: php -d memory_limit=1G vendor/bin/pest --shard=${{ matrix.shard }}/4
+      # 1190 tests, peaked at 530M near 2880 and died at 768M near 4540). With four shards the last
+      # one ran out of 1G in the Concurrency suite (15/11/2026), so a fifth shard took the load
+      # instead of a higher limit.
+      - name: Pest (unit · feature · arch · query-budget) shard ${{ matrix.shard }}/5
+        run: php -d memory_limit=1G vendor/bin/pest --shard=${{ matrix.shard }}/5
 
   # The check name that existed before the split; branch protection may require it (deploy scripts read the run conclusion):
   # it is green only when the static job and every Pest shard are green. It skips under the same
