@@ -388,9 +388,10 @@
 
 @media (min-width: 768px) {
     .sf-fc__float {
-        --fc-size: max(50px, 3.125rem);
+        /* fixed on a computer: a mouse needs no more, and a site's larger root text must not swell the column */
+        --fc-size: 50px;
         --fc-gap: 0.75rem;
-        --fc-glyph: 1.75rem;
+        --fc-glyph: 28px;
     }
 
     /* a computer sends no SMS */
@@ -468,7 +469,7 @@
    the page's end away. clamp(0px, x × 9999, room) turns either sum into a switch without script. */
 @media (min-width: 768px) {
     .sf-fc-ghost {
-        --fc-size: max(50px, 3.125rem);
+        --fc-size: 50px;
         --fc-gap: 0.75rem;
     }
 
@@ -477,8 +478,8 @@
     }
 
     .sf-fc-ghost--side {
-        --fc-over: calc(var(--fc-n, 0) * (max(50px, 3.125rem) + 0.75rem) - 0.75rem - (100dvh - var(--fc-oy, 24px) - 5rem) + 1px);
-        --fc-cover: calc(var(--fc-ox, 20px) + max(50px, 3.125rem) + 38rem - 50vw + 1px);
+        --fc-over: calc(var(--fc-n, 0) * (50px + 0.75rem) - 0.75rem - (100dvh - var(--fc-oy, 24px) - 5rem) + 1px);
+        --fc-cover: calc(var(--fc-ox, 20px) + 50px + 38rem - 50vw + 1px);
         overflow: hidden;
         max-height: clamp(0px, max(var(--fc-over), var(--fc-cover)) * 9999, 300vh);
         padding-top: clamp(0px, max(var(--fc-over), var(--fc-cover)) * 9999, 0.625rem);
