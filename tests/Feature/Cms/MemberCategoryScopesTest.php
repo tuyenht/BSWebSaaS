@@ -504,7 +504,7 @@ it('moves limits onto a merge target only for someone who could set those limits
         ->and(csRows(1, $lan))->toBe([$jobs->id]);
 });
 
-it('lets a platform super_admin move limits onto a merge target', function (): void {
+it('refuses a platform super_admin with no role on the website moving limits onto a merge target', function (): void {
     $lan = csMember(1, 'editor');
     $jobs = csCategory(1, 'Tuyển dụng');
     $it = csCategory(1, 'Kỹ thuật', $jobs);
@@ -513,8 +513,9 @@ it('lets a platform super_admin move limits onto a merge target', function (): v
     app(PlatformAccess::class)->onPlatform(fn () => $staff->assignRole('super_admin'));
     $this->actingAs($staff);
 
-    expect(csDeleteRefusal(fn () => app(DeleteTaxonomy::class)->handle($it, CategoryItemsOnDelete::Reassign, $jobs)))->toBeNull()
-        ->and(csRows(1, $lan))->toBe([$jobs->id]);
+    // Staff keep only what a membership on the website gives them: none here, so they set no limit.
+    expect(csDeleteRefusal(fn () => app(DeleteTaxonomy::class)->handle($it, CategoryItemsOnDelete::Reassign, $jobs)))->toBe('has_scoped_members')
+        ->and(csRows(1, $lan))->toBe([$it->id]);
 });
 
 it('re-reads the member under the lock, so a promotion that lands while limits are being set wins', function (): void {
