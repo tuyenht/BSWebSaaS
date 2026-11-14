@@ -1526,8 +1526,18 @@ html.sf-menu-open {
     padding-inline: 0 0;
 }
 
+/* A second-level group in the product tree is a button: no browser border, the row look of its links. */
 .sf-nav--mob .sf-nav__nested .sf-nav__item--parent > .sf-nav__sublink {
     justify-content: space-between;
+    width: 100%;
+    border: 0;
+    background: none;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.sf-nav--mob .sf-nav__nested .sf-nav__item--parent.is-open > .sf-nav__sublink {
+    background: var(--sf-drawer-tint);
 }
 
 .sf-nav--mob .sf-nav__item--parent.is-open > .sf-nav__panel,
