@@ -314,7 +314,7 @@ it('makes submenus disclosures: a # parent is a button, a page parent keeps its 
         ->toContain('<div class="sf-nav__panel" id="dsm-1">')
         ->toContain('<div class="sf-nav__panel" id="msm-1">')
         ->toMatch('#<a class="sf-nav__sublink" href="/gioi-thieu"\s+aria-current="page"\s*>Giới thiệu</a>#')
-        ->toContain('<div id="mobile-menu" class="sf-drawer" role="dialog" aria-modal="true" aria-label="Menu" hidden>')
+        ->toContain('<div id="mobile-menu" class="sf-drawer sf-drawer--dark" role="dialog" aria-modal="true" aria-label="Menu" hidden>')
         ->toContain('aria-controls="mobile-menu"');
 });
 

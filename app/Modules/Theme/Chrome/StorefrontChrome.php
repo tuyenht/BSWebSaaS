@@ -40,6 +40,9 @@ final class StorefrontChrome
 
     private const array MOBILE_CORNERS = ['call', 'search', 'cart', 'none'];
 
+    /** The phone menu's tone: auto follows the header bar (see drawerDark). */
+    private const array DRAWER_TONES = ['auto', 'light', 'dark'];
+
     private const array TOP_BAR_KINDS = ['address', 'phone', 'email', 'link'];
 
     /** Social networks the footer has an icon for → their display name. Others are not shown. */
@@ -78,7 +81,7 @@ final class StorefrontChrome
 
     /**
      * @param  mixed  $raw  the stored `storefront.header` value (an array when set)
-     * @return array{top_bar: list<array{kind: string, text: string, href: string|null, from: string, below: string|null}>, text_size: bool, sticky: bool, mobile_corner: string, drawer_products: bool}|null
+     * @return array{top_bar: list<array{kind: string, text: string, href: string|null, from: string, below: string|null}>, text_size: bool, sticky: bool, mobile_corner: string, drawer_products: bool, drawer_tone: string}|null
      */
     public static function header(mixed $raw, string $locale, string $default): ?array
     {
@@ -123,9 +126,22 @@ final class StorefrontChrome
             'sticky' => ($raw['sticky'] ?? true) !== false,
             // The phone menu's "Sản phẩm" tab: on unless the site switches it off.
             'drawer_products' => ($raw['drawer_products'] ?? true) !== false,
+            // The phone menu's tone: auto (the header bar's), light or dark; anything else is auto.
+            'drawer_tone' => in_array($raw['drawer_tone'] ?? null, self::DRAWER_TONES, true) ? (string) $raw['drawer_tone'] : 'auto',
             // What the phone header's right corner offers: call, search, cart or nothing (search and cart draw nothing until the site has them).
             'mobile_corner' => in_array($raw['mobile_corner'] ?? null, self::MOBILE_CORNERS, true) ? (string) $raw['mobile_corner'] : 'call',
         ];
+    }
+
+    /**
+     * Whether the phone menu is drawn dark. `auto` takes the header bar's tone, and the bar is dark
+     * (--color-dark) on every site, so only an explicit `light` gives the light drawer.
+     *
+     * @param  array<string, mixed>  $header  a normalised header (header())
+     */
+    public static function drawerDark(array $header): bool
+    {
+        return ($header['drawer_tone'] ?? 'auto') !== 'light';
     }
 
     /**
@@ -556,7 +572,7 @@ final class StorefrontChrome
      *
      * @param  array<mixed>  $item  a resolved menu node
      */
-    public static function menuLabel(array $item, bool $withDesc = false): HtmlString
+    public static function menuLabel(array $item, bool $withDesc = false, bool $drawer = false): HtmlString
     {
         $label = e(is_string($item['label'] ?? null) ? $item['label'] : '');
         $icon = is_string($item['icon'] ?? null) && StorefrontIcons::has($item['icon']) ? $item['icon'] : null;
@@ -566,7 +582,8 @@ final class StorefrontChrome
             return new HtmlString($label);
         }
 
-        $html = $icon === null ? '' : trim(view('theme::partials.sf-icon', ['name' => $icon, 'size' => 16])->render());
+        // The phone menu draws the icon at 20px with its own class (its colour follows the row's state there).
+        $html = $icon === null ? '' : trim(view('theme::partials.sf-icon', $drawer ? ['name' => $icon, 'size' => 20, 'iconClass' => 'sf-nav__ic'] : ['name' => $icon, 'size' => 16])->render());
         $html .= $desc === null
             ? '<span>'.$label.'</span>'
             : '<span class="sf-menu__text"><span>'.$label.'</span><span class="sf-menu__desc">'.e($desc).'</span></span>';
