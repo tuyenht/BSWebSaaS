@@ -61,9 +61,10 @@ final class NotificationFeed
      * to the unread ones. Keyset on id, never OFFSET: $after = the rows older than that notice (the
      * next page); $through = the rows from the newest down to and including that notice (the pages
      * already on screen, drawn again). Each shape reads the reader's slice of its own index, newest
-     * first: every notice site_notifications_feed (site_id, user_id, id DESC), the unread ones
-     * site_notifications_unread_feed (the same, WHERE read_at IS NULL), one group
-     * site_notifications_kind_feed (site_id, user_id, kind, id DESC) when it is rare (a common group
+     * first: every notice site_notifications_feed_covering (site_id, user_id, id DESC), the unread
+     * ones site_notifications_unread_feed (the same, WHERE read_at IS NULL), one group
+     * site_notifications_kind_feed_covering (site_id, user_id, kind, id DESC) when it is rare (both
+     * also carry the search line for matches(); a common group
      * may be found as fast by walking the feed, and the planner may do that). A cursor that is not
      * the reader's, or is gone, matches nothing.
      *
@@ -87,7 +88,12 @@ final class NotificationFeed
         return $query->get();
     }
 
-    /** How far back a search reaches: the 90 days notices are kept (notifications:prune). */
+    /**
+     * How far back a search reaches: the 90 days notices are kept. The walk itself has no time filter
+     * (created_at is not in the index it reads, see matches()); the daily `notifications:prune`
+     * (routes/console.php), whose default this is, removes the older notices, so a search may find a
+     * notice up to a day past it, exactly as the list without a search does.
+     */
     public const int SEARCH_DAYS = 90;
 
     /** A search statement slower than this is logged (the signal to revisit how notices are searched). */
@@ -95,28 +101,39 @@ final class NotificationFeed
 
     /**
      * The search box: the reader's notices whose search line (NotificationSearchText) holds every one
-     * of $words, newest first, narrowed like page() ($kinds, $unread): the id and ulid of at most
-     * $limit. The walk reads the reader's slice of the same index as page() newest first and checks
-     * each row's line (LIKE is not leakproof, so under RLS it is a row filter, never an index
-     * condition), stopping at $limit matches. A notice older than SEARCH_DAYS is never found (a row
-     * filter too); what bounds the walk is the daily prune, which keeps only those days. A word found
-     * nowhere reads the reader's whole slice, which is why the statement's time is logged past
-     * SEARCH_SLOW_MS (without the words: they may be a customer's name or phone). Measured on
-     * 11.8 M notices as app_user under RLS, the heaviest reader (28,158 notices): a word found
-     * nowhere 136 ms (median of 20 warm runs; 200 ms once that site's rows had been rewritten), a
-     * common word 0.3 ms, a reader with ~200 notices 0.2 ms. Bounding the id by the window's oldest
-     * notice instead (a subquery) made the planner read every row by bitmap and sort them, 173 ms
-     * even for a common word, so the bound is a plain filter.
+     * of $words, newest first, narrowed like page() ($kinds, $unread): the ids of at most $limit. They
+     * never leave the server: the page keeps ulids as its cursor (idOf() maps one back) and reads the
+     * rows shown by id (rows()).
+     *
+     * The walk selects only columns of the index it reads, so it is an Index Only Scan of the
+     * reader's slice newest first: site_notifications_feed_covering (site_id, user_id, id DESC)
+     * INCLUDE (search_text), or site_notifications_kind_feed_covering for one group. site_id, user_id
+     * and kind are index conditions (leakproof); each word's LIKE is checked on the index entry (LIKE
+     * is not leakproof, so under RLS it is a filter, never an index condition), stopping at $limit
+     * matches; the table is read only for a page the visibility map does not mark all-visible (rows
+     * changed since the last vacuum). There is no created_at condition: that column is not in the
+     * index, and checking it fetched every row from the table again; the daily prune is what bounds
+     * the walk (SEARCH_DAYS). A word found nowhere still reads the reader's whole slice of the index,
+     * which is why the statement's time is logged past SEARCH_SLOW_MS (without the words: they may be
+     * a customer's name or phone).
+     *
+     * Measured on 11.8 M notices as app_user under RLS (PostgreSQL 17, default settings), the
+     * heaviest reader (28,158 notices), a word found nowhere, max of 20 warm runs
+     * (plans/reports/notifications-search-covering-measure-261114/): freshly vacuumed 9.8 ms (was
+     * 201 ms on the table), after every member of that site marked all read 21 ms, plus 18 days of
+     * new notices 29 ms. The walk is only as fast as the visibility map: once nearly every page
+     * holding the reader's rows changed since the last vacuum (another site's rows rewritten, on
+     * the shared pages) every entry fetches its row again, 192 ms (the old shape 228 ms), until a
+     * vacuum runs.
      *
      * @param  list<string>|null  $kinds
      * @param  list<string>  $words  folded, as NotificationSearchText::words() returns them
-     * @return list<array{id: int, ulid: string}>
+     * @return list<int>
      */
     public function matches(User $user, ?array $kinds, bool $unread, array $words, int $limit): array
     {
         $query = $this->filtered($user, $kinds, $unread)
-            ->where('created_at', '>=', now()->subDays(self::SEARCH_DAYS))
-            ->select(['id', 'ulid'])
+            ->select('id')
             ->orderByDesc('id')
             ->limit($limit);
         foreach ($words as $word) {
@@ -135,10 +152,18 @@ final class NotificationFeed
 
         $found = [];
         foreach ($rows as $row) {
-            $found[] = ['id' => Cast::int($row->id), 'ulid' => Cast::string($row->ulid)];
+            $found[] = Cast::int($row->id);
         }
 
         return $found;
+    }
+
+    /** The id of the reader's notice $ulid (a cursor the page holds), or null when it is not theirs or is gone. */
+    public function idOfUlid(User $user, string $ulid): ?int
+    {
+        $id = $this->idOf($user, $ulid)->toBase()->value('id');
+
+        return $id === null ? null : Cast::int($id);
     }
 
     /**
