@@ -536,7 +536,7 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     file_put_contents($dir.'/product-editor.html', $html);
 
     // Trình đơn on a selling site: a products section with one category and a header setting, so the
-    // phone menu area shows its "Tab Sản phẩm" switch.
+    // phone menu area shows its note about the products tab.
     app(Tenancy::class)->enter(1, function (): void {
         $root = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
         $root->translations()->create(['locale' => 'vi', 'name' => 'Sản phẩm', 'slug' => 'san-pham-xem-truoc']);
@@ -549,7 +549,7 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     app()->forgetInstance(ProductIndexLink::class);
     $this->flushSession();
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/menus')->assertOk()->getContent();
-    expect($html)->toContain('\u0022productsTab\u0022:{\u0022available\u0022:true');
+    expect($html)->toContain('\u0022productsTab\u0022:{\u0022note\u0022:true');
     file_put_contents($dir.'/menus-shop.html', $html);
 
     // The products list on a selling site, with a realistic set: two languages, short and very long names, every
