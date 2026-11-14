@@ -25,6 +25,8 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string $ulid
  * @property string $name
  * @property string $email
+ * @property string|null $job_title
+ * @property string|null $phone stored as E.164 ("+84901234567"); personal data, never on a storefront
  * @property string|null $two_factor_secret
  * @property list<string>|null $two_factor_recovery_codes
  * @property Carbon|null $two_factor_confirmed_at
@@ -43,10 +45,11 @@ class User extends Authenticatable implements MustVerifyEmail
     /**
      * preferences (per-user UI chrome, later rendered into class/data-* attributes)
      * stays out of mass assignment so it is written only through an explicit,
-     * allow-list-validated setter — never a request-data spread.
+     * allow-list-validated setter — never a request-data spread. job_title and phone likewise:
+     * the member's own profile (Account) checks and normalises them, then writes them by name.
      */
     #[\Override]
-    protected $guarded = ['preferences'];
+    protected $guarded = ['preferences', 'job_title', 'phone'];
 
     /** @var list<string> */
     #[\Override]
@@ -55,6 +58,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'remember_token',
         'two_factor_secret',
         'two_factor_recovery_codes',
+        // personal data: shown on purpose by the screens allowed to, never in a serialised user
+        'phone',
     ];
 
     /**

@@ -14,6 +14,7 @@
         'prefs' => ['ri-settings-3', $t('tab_prefs')],
     ];
     $lockId = $readOnly ? 'ac-lockwhy' : null;
+    $profileDirty = '$wire.profileName.trim() !== $wire.savedName || $wire.profileTitle.trim() !== $wire.savedTitle || $wire.profilePhone.trim() !== $wire.savedPhone';
     $glyph = 'size-[calc(1.0625rem+var(--user-text-boost))] shrink-0';
     $small = 'size-[1.15em] shrink-0';
     $providerIcons = ['google' => 'ri-google', 'microsoft' => 'ri-microsoft', 'facebook' => 'ri-facebook-circle', 'yahoo' => 'mail'];
@@ -63,7 +64,7 @@
                         <x-bs-admin::icon :name="$icon" class="{{ $glyph }}" />
                         <span>{{ $label }}</span>
                         @if ($key === 'profile')
-                            <span class="ac-udot" x-cloak x-show="$wire.profileName.trim() !== $wire.savedName">{{ $t('unsaved') }}</span>
+                            <span class="ac-udot" x-cloak x-show="{{ $profileDirty }}">{{ $t('unsaved') }}</span>
                         @endif
                     </button>
                 @endforeach
@@ -93,16 +94,40 @@
                                     </div>
                                 </div>
 
-                                <div x-data="{ max: {{ \App\Modules\Admin\Livewire\Account::NAME_MAX }} }">
-                                    <label class="ac-lab" for="ac-name">{{ $t('name') }} <span class="font-bold text-danger-text" aria-hidden="true">*</span><span class="sr-only">{{ $t('required') }}</span></label>
-                                    <input id="ac-name" class="field ac-in" autocomplete="name" maxlength="140" placeholder="Nguyễn Ngọc Anh"
-                                           wire:model.blur="profileName" @disabled($readOnly)
-                                           @error('profileName') aria-invalid="true" @enderror aria-describedby="ac-name-h">
-                                    @error('profileName')
-                                        <p class="ac-err" id="ac-name-h"><x-bs-admin::icon name="ri-error-warning" class="mt-0.5 {{ $small }}" />{{ $message }}</p>
-                                    @else
-                                        <p class="ac-hint" id="ac-name-h">{{ $t('name_hint') }} <span x-text="@js($t('name_count', ['count' => '__N__'])).replace('__N__', $wire.profileName.length)"></span></p>
-                                    @enderror
+                                <div class="ac-f2">
+                                    <div class="ac-span" x-data="{ max: {{ \App\Modules\Admin\Livewire\Account::NAME_MAX }} }">
+                                        <label class="ac-lab" for="ac-name">{{ $t('name') }} <span class="font-bold text-danger-text" aria-hidden="true">*</span><span class="sr-only">{{ $t('required') }}</span></label>
+                                        <input id="ac-name" class="field ac-in" autocomplete="name" maxlength="140" placeholder="Nguyễn Ngọc Anh"
+                                               wire:model.blur="profileName" @disabled($readOnly)
+                                               @error('profileName') aria-invalid="true" @enderror aria-describedby="ac-name-h">
+                                        @error('profileName')
+                                            <p class="ac-err" id="ac-name-h"><x-bs-admin::icon name="ri-error-warning" class="mt-0.5 {{ $small }}" />{{ $message }}</p>
+                                        @else
+                                            <p class="ac-hint" id="ac-name-h">{{ $t('name_hint') }} <span x-text="@js($t('name_count', ['count' => '__N__'])).replace('__N__', $wire.profileName.length)"></span></p>
+                                        @enderror
+                                    </div>
+                                    <div>
+                                        <label class="ac-lab" for="ac-title">{{ $t('job_title') }}</label>
+                                        <input id="ac-title" class="field ac-in" autocomplete="organization-title" placeholder="{{ $t('job_title_placeholder') }}"
+                                               wire:model.blur="profileTitle" @disabled($readOnly)
+                                               @error('profileTitle') aria-invalid="true" @enderror aria-describedby="ac-title-h">
+                                        @error('profileTitle')
+                                            <p class="ac-err" id="ac-title-h"><x-bs-admin::icon name="ri-error-warning" class="mt-0.5 {{ $small }}" />{{ $message }}</p>
+                                        @else
+                                            <p class="ac-hint" id="ac-title-h">{{ $t('job_title_hint') }}</p>
+                                        @enderror
+                                    </div>
+                                    <div>
+                                        <label class="ac-lab" for="ac-phone">{{ $t('phone') }}</label>
+                                        <input id="ac-phone" class="field ac-in" type="tel" inputmode="tel" autocomplete="tel" placeholder="{{ $t('phone_placeholder') }}"
+                                               wire:model.blur="profilePhone" @disabled($readOnly)
+                                               @error('profilePhone') aria-invalid="true" @enderror aria-describedby="ac-phone-h">
+                                        @error('profilePhone')
+                                            <p class="ac-err" id="ac-phone-h"><x-bs-admin::icon name="ri-error-warning" class="mt-0.5 {{ $small }}" />{{ $message }}</p>
+                                        @else
+                                            <p class="ac-hint" id="ac-phone-h">{{ $t('phone_hint') }}</p>
+                                        @enderror
+                                    </div>
                                 </div>
 
                                 <div class="m-0 h-px bg-border"></div>
@@ -118,7 +143,7 @@
                                     <span wire:loading.remove wire:target="saveProfile">{{ $t('save_profile') }}</span>
                                     <span wire:loading wire:target="saveProfile">{{ $t('saving') }}</span>
                                 </x-bs-admin::button>
-                                <span x-cloak x-show="$wire.profileName.trim() !== $wire.savedName">
+                                <span x-cloak x-show="{{ $profileDirty }}">
                                     <x-bs-admin::button variant="ghost" wire:click="resetProfile">
                                         <x-bs-admin::icon name="ri-arrow-go-back" class="{{ $small }}" />{{ $t('discard') }}
                                     </x-bs-admin::button>
