@@ -1335,6 +1335,25 @@ html.sf-menu-open {
     box-shadow: 0 0 2rem color-mix(in srgb, var(--color-dark) 35%, transparent);
 }
 
+/* The panel scrolls as one; the bar is a thin 4px one in a mid neutral. */
+.sf-drawer__panel {
+    scrollbar-width: thin;
+    scrollbar-color: var(--sf-drawer-line) transparent;
+}
+
+.sf-drawer__panel::-webkit-scrollbar {
+    width: 4px;
+}
+
+.sf-drawer__panel::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sf-drawer__panel::-webkit-scrollbar-thumb {
+    border-radius: 4px;
+    background: var(--sf-drawer-line);
+}
+
 /* The ✕ sits in the dimmed strip beside the panel (at least 64px stays free, even at 320px). In px, so a
    larger text size never pushes it past the screen's edge. A 40px disc with a hairline ring, light on the
    dimmed page; its tap area reaches 48px (the ::after ring), 8 to 56px from the panel's edge. */
@@ -1503,116 +1522,349 @@ html.sf-menu-open {
     background: color-mix(in srgb, var(--color-text-strong) 3%, var(--color-surface));
 }
 
+.sf-nav--mob .sf-nav__nested .sf-nav__panel {
+    padding-inline: 0 0;
+}
+
+/* A second-level group in the product tree is a button: no browser border, the row look of its links. */
+.sf-nav--mob .sf-nav__nested .sf-nav__item--parent > .sf-nav__sublink {
+    justify-content: space-between;
+    width: 100%;
+    border: 0;
+    background: none;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.sf-nav--mob .sf-nav__nested .sf-nav__item--parent.is-open > .sf-nav__sublink {
+    background: var(--sf-drawer-tint);
+}
+
 .sf-nav--mob .sf-nav__item--parent.is-open > .sf-nav__panel,
 html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     display: block;
 }
 
-/* Under the menu: language and text size first (a visitor who needs bigger letters finds them early),
-   right under the last row (its own line is the divider), then the ways to reach the business in a
-   light foot at the panel's bottom. Control borders keep 3:1 against the panel. */
-.sf-drawer__tools,
-.sf-drawer__contact {
+/* Tabs "Menu | Sản phẩm" (only on a site with a product list and a category under it): two equal halves,
+   48px tall, the chosen one with a 3px underline in the brand colour made readable on light. */
+.sf-drawer__tabs {
     display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    padding: 1rem;
+    flex: none;
+    border-bottom: 1px solid var(--sf-drawer-hair);
 }
 
-.sf-drawer__tools {
-    align-items: flex-start;
-    padding: 0.875rem 1rem 0.375rem;
+.sf-drawer__tab {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 48px;
+    padding: 0.5rem 0.375rem;
+    border: 0;
+    background: none;
+    box-shadow: inset 0 -3px 0 transparent;
+    color: var(--color-text);
+    font: inherit;
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.3;
+    text-align: center;
+    cursor: pointer;
 }
 
-.sf-drawer__tools > nav {
-    align-self: stretch;
+.sf-drawer__tab[aria-selected="true"] {
+    box-shadow: inset 0 -3px 0 var(--color-primary-text);
+    color: var(--color-text-strong);
+    font-weight: 700;
 }
 
-.sf-drawer__contact {
-    margin-top: auto;
-    padding: 0.875rem 1rem 1rem;
-    border-top: 1px solid var(--sf-drawer-hair);
-    background: var(--sf-drawer-tint);
+.sf-drawer__tab:focus-visible,
+.sf-drawer__all:focus-visible {
+    outline: 3px solid var(--color-primary-text);
+    outline-offset: -3px;
 }
 
-.sf-drawer__langs ul {
-    margin: 0;
-    padding: 0.25rem;
-    list-style: none;
-    border: 1px solid var(--sf-drawer-line);
-    border-radius: 0.75rem;
+.sf-drawer__pane {
+    flex: none;
 }
 
-.sf-drawer__lang {
+.sf-drawer__all {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 0.5rem;
-    min-height: 3rem;
-    padding: 0.25rem 0.75rem;
-    border-radius: 0.625rem;
+    min-height: max(48px, 3rem);
+    padding: 0.5rem 1rem;
     color: var(--color-text-strong);
     font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.35;
     overflow-wrap: anywhere;
 }
 
-.sf-drawer__lang[aria-current="true"] {
-    position: relative;
-    background: var(--sf-drawer-tint);
-    font-weight: 700;
-}
-
-.sf-drawer__lang[aria-current="true"]::before {
-    content: "";
-    position: absolute;
-    inset-block: 0;
-    inset-inline-start: 0;
-    width: 4px;
-    border-radius: 2px;
-    background: var(--color-primary-text);
-}
-
-.sf-drawer__hint {
-    display: block;
-    color: var(--color-text);
-    font-size: 0.8125rem;
-    font-weight: 500;
-}
-
-.sf-drawer__fs {
-    gap: 0.375rem;
-    min-height: 3.25rem;
-    padding: 0 0.875rem;
-    border: 1px solid var(--sf-drawer-line);
-    border-radius: 999px;
-    background: var(--color-surface);
-    color: var(--color-text-strong);
-    font-size: 0.875rem;
-    font-weight: 600;
-}
-
-.sf-drawer__fs .sf-icon {
-    width: 18px;
-    height: 18px;
-    color: var(--color-text);
-}
-
-.sf-drawer__fs:hover {
-    background: var(--color-surface);
+.sf-drawer__all:dir(rtl) .sf-icon {
+    transform: scaleX(-1);
 }
 
 @media (hover: hover) {
-    .sf-drawer__fs:hover {
+    .sf-drawer__all:hover {
         background: var(--sf-drawer-tint);
     }
 }
 
-/* the drawer's pill always names the current size ("Cỡ chữ: Vừa") */
-.sf-drawer__fs .sf-fs__value {
+/* Under the menu: language and text size (a visitor who needs bigger letters finds them early), each its
+   own row with a top rule, then the ways to reach the business in a light foot at the panel's bottom.
+   Control borders keep 3:1 against the panel. */
+.sf-drawer__tools {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    margin-top: 0.25rem;
+    container: sf-drawer-tools / inline-size;
+}
+
+/* One segmented pill for language and text size: the head (icon, label, for text size the size's
+   name) at the start and the pill at the end; a pill that does not fit drops under the head and fills
+   the width. The chosen segment floats in a muted track with a text-colour ring, never the brand colour. */
+.sf-pr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    box-sizing: border-box;
+    min-height: 56px;
+    padding: 0.5rem 1rem;
+    border-top: 1px solid var(--sf-drawer-hair);
+}
+
+.sf-pr__h {
+    display: flex;
+    flex: 999 1 auto;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+}
+
+.sf-pr__ic {
+    display: flex;
+    flex: none;
+    width: 20px;
+    height: 20px;
+    color: var(--color-text);
+}
+
+.sf-pr__l {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.3;
+}
+
+.sf-pr__t {
+    color: var(--color-text-strong);
+    font-size: 1em;
+    font-weight: 500;
+}
+
+.sf-pr__v {
+    color: var(--color-text);
+    font-size: 0.8125em;
+    font-weight: 500;
+}
+
+/* The current size's name follows the radio that is checked (no script). */
+.sf-pr__v span {
+    display: none;
+}
+
+.sf-pr__v span[data-size="m"] {
     display: inline;
 }
 
-.sf-drawer__call {
+.sf-drawer__fs:has(.sf-pill__a2 input:checked) .sf-pr__v span,
+.sf-drawer__fs:has(.sf-pill__a3 input:checked) .sf-pr__v span {
+    display: none;
+}
+
+.sf-drawer__fs:has(.sf-pill__a2 input:checked) .sf-pr__v span[data-size="l"],
+.sf-drawer__fs:has(.sf-pill__a3 input:checked) .sf-pr__v span[data-size="xl"] {
+    display: inline;
+}
+
+@container sf-drawer-tools (max-width: 18em) {
+    .sf-pr__h {
+        flex-basis: 100%;
+    }
+}
+
+.sf-pill {
+    position: relative;
+    display: flex;
+    flex: 1 0 auto;
+    flex-wrap: wrap;
+    box-sizing: border-box;
+    max-width: 100%;
+    margin: 0;
+    padding: 4px;
+    list-style: none;
+    border-radius: 26px;
+    background: var(--sf-drawer-tint);
+    box-shadow: inset 0 0 0 1px var(--sf-drawer-line);
+}
+
+.sf-drawer__langs li {
+    display: flex;
+    flex: 1 0 auto;
+    max-width: 100%;
+}
+
+.sf-pill__s {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex: 1 0 auto;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 0.875rem;
+    border-radius: 22px;
+    color: var(--color-text);
+    font-size: 0.9375em;
+    font-weight: 500;
+    line-height: 1.2;
+    text-align: center;
+    overflow-wrap: anywhere;
+    transition: background-color 0.15s, box-shadow 0.15s, color 0.15s;
+}
+
+.sf-pill__s[aria-current="true"] {
+    background: var(--color-surface);
+    box-shadow: inset 0 0 0 1.5px var(--color-text-strong), 0 1px 2px rgb(15 23 42 / 16%), 0 2px 6px rgb(15 23 42 / 8%);
+    color: var(--color-text-strong);
+    font-weight: 700;
+}
+
+.sf-drawer__hint {
+    display: block;
+    font-size: 0.8125em;
+    font-weight: 500;
+}
+
+/* Text size: three 48x44 segments whose letter A is drawn at 14, 18 and 22px (fixed pixels: they show the
+   three sizes), all on one baseline; a thumb slides under the chosen one. */
+.sf-pill--fs {
+    flex-wrap: nowrap;
+}
+
+.sf-pill--fs .sf-pill__s {
+    display: block;
+    flex: 1 0 48px;
+    width: 48px;
+    min-width: 48px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+    font-size: 22px;
+    line-height: 44px;
+    cursor: pointer;
+}
+
+.sf-pill__g {
+    display: inline;
+    font-weight: 500;
+    line-height: 1;
+    vertical-align: baseline;
+}
+
+.sf-pill__a1 .sf-pill__g {
+    font-size: 14px;
+}
+
+.sf-pill__a2 .sf-pill__g {
+    font-size: 18px;
+}
+
+.sf-pill__a3 .sf-pill__g {
+    font-size: 22px;
+}
+
+.sf-pill--fs .sf-pill__s:has(input:checked) {
+    color: var(--color-text-strong);
+}
+
+.sf-pill--fs .sf-pill__s:has(input:checked) .sf-pill__g {
+    font-weight: 800;
+}
+
+.sf-pill__th {
+    position: absolute;
+    z-index: 0;
+    inset-block: 4px;
+    inset-inline-start: 4px;
+    width: calc((100% - 8px) / 3);
+    border-radius: 22px;
+    background: var(--color-surface);
+    box-shadow: inset 0 0 0 1.5px var(--color-text-strong), 0 1px 2px rgb(15 23 42 / 16%), 0 2px 6px rgb(15 23 42 / 8%);
+    transition: transform 0.15s ease;
+    pointer-events: none;
+}
+
+.sf-pill--fs:has(.sf-pill__a2 input:checked) .sf-pill__th {
+    transform: translateX(100%);
+}
+
+.sf-pill--fs:has(.sf-pill__a3 input:checked) .sf-pill__th {
+    transform: translateX(200%);
+}
+
+.sf-pill--fs:dir(rtl):has(.sf-pill__a2 input:checked) .sf-pill__th {
+    transform: translateX(-100%);
+}
+
+.sf-pill--fs:dir(rtl):has(.sf-pill__a3 input:checked) .sf-pill__th {
+    transform: translateX(-200%);
+}
+
+.sf-pill__s:focus-visible,
+.sf-pill__s:has(input:focus-visible) {
+    z-index: 2;
+    outline: 3px solid var(--color-primary-text);
+    outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sf-pill__th,
+    .sf-pill__s {
+        transition: none;
+    }
+}
+
+.sf-drawer__fs-in {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.sf-drawer__contact {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: auto;
+    padding: 1rem 1rem 1.25rem;
+    border-top: 1px solid var(--sf-drawer-hair);
+    background: var(--sf-drawer-tint);
+}
+
+.sf-drawer__call,
+.sf-drawer__zalo {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1620,12 +1872,25 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     min-height: 3rem;
     padding: 0.25rem 1rem;
     border-radius: 0.75rem;
-    background: var(--color-primary);
-    color: var(--color-on-primary);
     font-size: 1rem;
     font-weight: 700;
     text-align: center;
     overflow-wrap: anywhere;
+}
+
+.sf-drawer__call {
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+}
+
+.sf-drawer__zalo {
+    background: var(--color-surface);
+    box-shadow: inset 0 0 0 1.5px var(--sf-drawer-line);
+    color: var(--color-text-strong);
+}
+
+.sf-drawer__zmark {
+    flex: none;
 }
 
 .sf-drawer__line {
@@ -1633,10 +1898,57 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     align-items: center;
     gap: 0.625rem;
     min-height: 2.75rem;
+    margin: 0;
     color: var(--color-text-strong);
     font-size: 0.9375rem;
     font-weight: 600;
+    line-height: 1.4;
     overflow-wrap: anywhere;
+}
+
+.sf-drawer__line span {
+    min-width: 0;
+}
+
+.sf-drawer__line--hours {
+    min-height: 1.75rem;
+    color: var(--color-text);
+    font-weight: 400;
+}
+
+.sf-drawer__line .sf-icon {
+    flex: none;
+    color: var(--color-text);
+}
+
+/* The social marks: 44px neutral circles with a hairline ring, centred and wrapping. */
+.sf-drawer__socials {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.625rem;
+    margin: 0.375rem 0 0;
+    padding: 0.875rem 0 0;
+    list-style: none;
+    border-top: 1px solid var(--sf-drawer-hair);
+}
+
+.sf-drawer__social {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-text-strong) 10%, var(--color-surface));
+    box-shadow: inset 0 0 0 1px var(--sf-drawer-line);
+    color: var(--color-text-strong);
+}
+
+.sf-drawer__social:focus-visible,
+.sf-drawer__zalo:focus-visible {
+    outline: 3px solid var(--color-primary-text);
+    outline-offset: 2px;
 }
 
 /* Menu item options (admin "Trình đơn"), for every menu the theme draws: "Hiện trên" one device

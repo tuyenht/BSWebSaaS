@@ -163,7 +163,8 @@ it('renders the storefront home with the full chrome within its query budget', f
     // The home budget plus the three reads any menu costs (items, their labels, link targets).
     // Tokens, header and footer settings share the one settings read the home already makes,
     // and the footer menu rides in the same resolve as the primary one — no query of its own.
-    $budget = 14;
+    // Plus one: the phone menu asks whether the site has a products section (a site without one stops there).
+    $budget = 15;
 
     app(Tenancy::class)->enter(1, function (): void {
         foreach ([
@@ -197,11 +198,75 @@ it('renders the storefront home with the full chrome within its query budget', f
         ->and($count)->toBeLessThanOrEqual($budget);
 });
 
+it('renders the storefront home with the phone menu’s product tab within its query budget', function (): void {
+    // The no-products home below makes 14 reads (the domain and tenancy ones, the locales, the page, the settings, the brand, the three menu
+    // reads, and the phone menu's read of the products section). With a product list it makes 20: six more, listed
+    // from the real run. Site type and enabled modules (2: the
+    // catalog entitlement), whether a product is published (1), the product list's address (1), and the tree
+    // itself (2: the categories below the section, then their names with their routes — two reads however many
+    // categories there are).
+    $budget = 20;
+
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'header', 'value' => ['top_bar' => ['items' => []], 'text_size' => true]]);
+        $menu = Menu::query()->create(['name' => 'Chính', 'handle' => 'primary']);
+        $item = MenuItem::query()->create(['menu_id' => $menu->id, 'link_type' => 'url', 'url' => '/', 'position' => 0]);
+        $item->translations()->create(['locale' => 'vi', 'label' => 'Trang chủ']);
+        MenuAssignment::query()->create(['region_key' => 'primary', 'locale' => 'vi', 'menu_id' => $menu->id]);
+
+        SiteModule::query()->create(['module_key' => 'catalog', 'enabled' => true]);
+        $root = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
+        $root->translations()->create(['locale' => 'vi', 'name' => 'Sản phẩm', 'slug' => 'san-pham']);
+        app(TaxonomyPaths::class)->refreshBranch($root->id);
+        ContentSection::query()->create(['key' => 'products', 'label' => 'Sản phẩm', 'entry_type' => 'post', 'taxonomy_id' => $root->id]);
+        app(RouteSync::class)->syncTaxonomy($root, 'vi', 'san-pham');
+        $product = Product::query()->create(['status' => 'published', 'published_at' => now()]);
+        $product->translations()->create(['locale' => 'vi', 'name' => 'Sản phẩm 1', 'slug' => 'sp-1']);
+        foreach (range(1, 12) as $i) {
+            $parent = $i > 8 ? Taxonomy::query()->where('parent_id', $root->id)->orderBy('id')->first()->id : $root->id;
+            $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'parent_id' => $parent, 'position' => $i]);
+            $category->translations()->create(['locale' => 'vi', 'name' => "Nhóm {$i}", 'slug' => "nhom-{$i}"]);
+            app(TaxonomyPaths::class)->refreshBranch($category->id);
+            app(RouteSync::class)->syncTaxonomy($category, 'vi', "nhom-{$i}");
+        }
+    });
+
+    $html = '';
+    $count = countQueries(function () use (&$html): void {
+        $html = $this->get('http://a.test/')->assertOk()->getContent();
+    });
+
+    expect($html)->toContain('role="tablist"')->toContain('Nhóm 12')->toContain('href="/nhom-1"')
+        ->and($count)->toBeLessThanOrEqual($budget);
+});
+
+it('renders the storefront home with a phone menu and no products within its query budget', function (): void {
+    // A phone menu and a header but no product list: 14 reads, the products section's among them.
+    $budget = 14;
+
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'header', 'value' => ['top_bar' => ['items' => []], 'text_size' => true]]);
+        $menu = Menu::query()->create(['name' => 'Chính', 'handle' => 'primary']);
+        $item = MenuItem::query()->create(['menu_id' => $menu->id, 'link_type' => 'url', 'url' => '/', 'position' => 0]);
+        $item->translations()->create(['locale' => 'vi', 'label' => 'Trang chủ']);
+        MenuAssignment::query()->create(['region_key' => 'primary', 'locale' => 'vi', 'menu_id' => $menu->id]);
+    });
+
+    $html = '';
+    $count = countQueries(function () use (&$html): void {
+        $html = $this->get('http://a.test/')->assertOk()->getContent();
+    });
+
+    expect($html)->toContain('id="mobile-menu"')->not->toContain('role="tablist"')
+        ->and($count)->toBeLessThanOrEqual($budget);
+});
+
 it('renders the site’s 404 page with the full chrome within its query budget', function (): void {
     // The page resolve misses (the route, then the redirect check), then the same chrome as the
     // home: one settings read, the brand, the menus' three reads. The contact page costs nothing
-    // while the site names none, and the suggested links come from the menu already loaded.
-    $budget = 13;
+    // while the site names none, and the suggested links come from the menu already loaded. Plus the
+    // phone menu's one read for a products section.
+    $budget = 14;
 
     app(Tenancy::class)->enter(1, function (): void {
         foreach ([

@@ -91,6 +91,8 @@ it('lists every public language in its own name, links from PathBuilder, and no 
 
     expect($html)
         ->toContain('<nav class="sf-drawer__langs" aria-label="Ngôn ngữ">')
+        ->toContain('<ul class="sf-pill">')->toContain('<span class="sf-pr__t" aria-hidden="true">Ngôn ngữ</span>')
+        ->toMatch('#<a class="sf-pill__s" href="[^"]*" hreflang="vi" lang="vi" dir="ltr"\s+aria-current="true"\s*>#')
         ->toMatch('#href="http://mau\.platform\.test/en/about" hreflang="en" lang="en" dir="ltr"\s*>\s*<span>English#')   // a real translation
         ->toMatch('#href="/ja" hreflang="ja" lang="ja" dir="ltr"\s*>\s*<span>日本語\s*<small class="sf-drawer__hint">\(trang chủ\)</small>#')   // no ja page: its home page, said so
         ->toMatch('#href="http://mau\.platform\.test/ar/about-ar" hreflang="ar" lang="ar" dir="rtl"#')

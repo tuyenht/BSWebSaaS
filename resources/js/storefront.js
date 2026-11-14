@@ -26,7 +26,10 @@ function setOpen(item, open) {
 
 function closeAll(except) {
     document.querySelectorAll('[data-disclosure].is-open').forEach((item) => {
-        if (item !== except) {
+        // A panel nested in another keeps the ones around it: opening it must not close its parent.
+        // A click outside every menu closes the bar's submenus, not the groups in the phone menu: the way to the
+        // visitor's page is open there from the start, and the menu button's own click is "outside".
+        if (item !== except && !(except && item.contains(except)) && !(except === null && item.closest('.sf-drawer'))) {
             setOpen(item, false);
         }
     });
@@ -71,8 +74,11 @@ const burger = document.querySelector('[data-menu-toggle]');
 const panel = burger ? document.getElementById(burger.getAttribute('aria-controls')) : null;
 
 function drawerFocusables() {
-    return Array.from(panel.querySelectorAll('a[href], button:not([disabled])')).filter((el) => el.offsetParent !== null);
+    // A radio group is one tab stop: only its chosen radio counts.
+    return Array.from(panel.querySelectorAll('a[href], button:not([disabled]), input[type="radio"]:checked')).filter((el) => el.offsetParent !== null);
 }
+
+let chooseTab = null;
 
 function setMenu(open, returnFocus = true) {
     burger.setAttribute('aria-expanded', open ? 'true' : 'false');
@@ -80,7 +86,13 @@ function setMenu(open, returnFocus = true) {
     panel.hidden = !open;
     root.classList.toggle('sf-menu-open', open);
     if (open) {
-        const first = panel.querySelector('.sf-nav--mob a[href], .sf-nav--mob button') || panel.querySelector('[data-menu-close]');
+        // Opens on "Menu", or on "Sản phẩm" when the visitor is on a product category.
+        const tabs = chooseTab ? panel.querySelectorAll('[role="tab"]') : [];
+        const here = tabs.length > 1 && document.getElementById(tabs[1].getAttribute('aria-controls')).querySelector('[aria-current]');
+        if (tabs.length) {
+            chooseTab(tabs[here ? 1 : 0]);
+        }
+        const first = panel.querySelector('.sf-drawer__pane:not([hidden]) :is(a[href], button)') || panel.querySelector('[data-menu-close]');
         if (first) {
             first.focus();
         }
@@ -119,6 +131,44 @@ if (burger && panel) {
             }
         }
     });
+        // Tabs "Menu | Sản phẩm" (WAI-ARIA tabs: the chosen tab is the one tab stop, arrows, Home and End move
+    // between them and choose at once). The menu tab is the chosen one each time the drawer opens.
+    const tabList = panel.querySelector('[data-drawer-tabs]');
+    const tabs = tabList ? Array.from(tabList.querySelectorAll('[role="tab"]')) : [];
+
+    chooseTab = (chosen, focus = false) => {
+        tabs.forEach((tab) => {
+            const on = tab === chosen;
+            tab.setAttribute('aria-selected', on ? 'true' : 'false');
+            tab.tabIndex = on ? 0 : -1;
+            document.getElementById(tab.getAttribute('aria-controls')).hidden = !on;
+        });
+        if (focus) {
+            chosen.focus();
+        }
+    };
+
+    tabs.forEach((tab) => tab.addEventListener('click', () => chooseTab(tab)));
+    if (tabList) {
+        tabList.addEventListener('keydown', (event) => {
+            const at = tabs.indexOf(document.activeElement);
+            const step = getComputedStyle(tabList).direction === 'rtl' ? -1 : 1;
+            let to = null;
+            if (event.key === 'ArrowRight') {
+                to = (at + step + tabs.length) % tabs.length;
+            } else if (event.key === 'ArrowLeft') {
+                to = (at - step + tabs.length) % tabs.length;
+            } else if (event.key === 'Home') {
+                to = 0;
+            } else if (event.key === 'End') {
+                to = tabs.length - 1;
+            }
+            if (to !== null && at !== -1) {
+                event.preventDefault();
+                chooseTab(tabs[to], true);
+            }
+        });
+    }
     // Widening the window until the bar shows the full menu: the drawer has no place any more.
     window.addEventListener('resize', () => {
         if (!panel.hidden && burger.offsetParent === null) {
@@ -128,7 +178,10 @@ if (burger && panel) {
 }
 
 // Text size: Vừa → Lớn → Cực lớn, kept in localStorage (the inline boot script in the head applies it before paint).
+// Two controls set it: the top bar's cycling button (a header with no phone menu) and the phone menu's
+// three radio cells; both show the size in force.
 const sizeButtons = document.querySelectorAll('[data-fs-toggle]');
+const sizeRadios = document.querySelectorAll('[data-fs-radio]');
 
 function showSize(size) {
     sizeButtons.forEach((button) => {
@@ -138,26 +191,37 @@ function showSize(size) {
             value.textContent = button.getAttribute('data-label-' + size);
         }
     });
+    sizeRadios.forEach((radio) => {
+        radio.checked = radio.value === size;
+    });
 }
 
-if (sizeButtons.length > 0) {
+function setSize(size) {
+    if (size === 'm') {
+        root.removeAttribute('data-fs');
+    } else {
+        root.setAttribute('data-fs', size);
+    }
+    try {
+        localStorage.setItem('sf-fs', size);
+    } catch {
+        // Storage blocked (private mode): the size still applies to this page.
+    }
+    showSize(size);
+}
+
+if (sizeButtons.length > 0 || sizeRadios.length > 0) {
     const current = root.getAttribute('data-fs');
     showSize(SIZES.includes(current) ? current : 'm');
 
     sizeButtons.forEach((button) => button.addEventListener('click', () => {
         const now = root.getAttribute('data-fs') || 'm';
-        const next = SIZES[(SIZES.indexOf(now) + 1) % SIZES.length];
-        if (next === 'm') {
-            root.removeAttribute('data-fs');
-        } else {
-            root.setAttribute('data-fs', next);
+        setSize(SIZES[(SIZES.indexOf(now) + 1) % SIZES.length]);
+    }));
+    sizeRadios.forEach((radio) => radio.addEventListener('change', () => {
+        if (radio.checked && SIZES.includes(radio.value)) {
+            setSize(radio.value);
         }
-        try {
-            localStorage.setItem('sf-fs', next);
-        } catch {
-            // Storage blocked (private mode): the size still applies to this page.
-        }
-        showSize(next);
     }));
 }
 

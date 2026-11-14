@@ -10,7 +10,7 @@
     },
     "resources/css/storefront.css": {
       "js": 0,
-      "css": 8219
+      "css": 9054
     },
     "resources/css/sf-hero.css": {
       "js": 0,
@@ -145,7 +145,7 @@
       "css": 0
     },
     "resources/js/storefront.js": {
-      "js": 2134,
+      "js": 2253,
       "css": 0
     }
   },

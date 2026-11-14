@@ -78,7 +78,7 @@ final class StorefrontChrome
 
     /**
      * @param  mixed  $raw  the stored `storefront.header` value (an array when set)
-     * @return array{top_bar: list<array{kind: string, text: string, href: string|null, from: string, below: string|null}>, text_size: bool, sticky: bool, mobile_corner: string}|null
+     * @return array{top_bar: list<array{kind: string, text: string, href: string|null, from: string, below: string|null}>, text_size: bool, sticky: bool, mobile_corner: string, drawer_products: bool}|null
      */
     public static function header(mixed $raw, string $locale, string $default): ?array
     {
@@ -121,6 +121,8 @@ final class StorefrontChrome
             'top_bar' => $items,
             'text_size' => ($raw['text_size'] ?? false) === true,
             'sticky' => ($raw['sticky'] ?? true) !== false,
+            // The phone menu's "Sản phẩm" tab: on unless the site switches it off.
+            'drawer_products' => ($raw['drawer_products'] ?? true) !== false,
             // What the phone header's right corner offers: call, search, cart or nothing (search and cart draw nothing until the site has them).
             'mobile_corner' => in_array($raw['mobile_corner'] ?? null, self::MOBILE_CORNERS, true) ? (string) $raw['mobile_corner'] : 'call',
         ];
@@ -275,7 +277,7 @@ final class StorefrontChrome
      * order of NETWORKS. Zalo may be kept as a phone number or an Official Account id: it becomes
      * its zalo.me link.
      *
-     * @return list<array{network: string, label: string, url: string}>
+     * @return list<array{network: string, label: string, url: string, phone: bool}>
      */
     public static function socials(mixed $links): array
     {
@@ -287,7 +289,9 @@ final class StorefrontChrome
         foreach (self::NETWORKS as $network => $label) {
             $url = $network === 'zalo' ? self::zalo($links[$network] ?? null) : self::external($links[$network] ?? null);
             if ($url !== null) {
-                $socials[] = ['network' => $network, 'label' => $label, 'url' => $url];
+                // `phone`: a Zalo given as a mobile number (a chat link), not an Official Account or page.
+                $socials[] = ['network' => $network, 'label' => $label, 'url' => $url,
+                    'phone' => $network === 'zalo' && FloatingContact::clean('zalo', trim(Cast::string($links[$network]))) !== null];
             }
         }
 
