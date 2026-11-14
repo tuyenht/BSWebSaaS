@@ -309,6 +309,7 @@ it('applies an approved change to the website, keeps it as a publish revision an
         expect($move->handle($entry, 'vi', $reviewer, 'approve', changeOf($entry)->version()))->toBe('published');
 
         $live = $entry->fresh();
+        expect(siteWordsOf('entry_search_words', 1, $entry->id))->toBe(['en' => ['ban' => 1, 'en' => 1, 'tin' => 1], 'vi' => ['ban' => 1, 'moi' => 1, 'tin' => 1]]);
         expect($live->translationFor('vi')->title)->toBe('Bản tin mới')
             ->and($live->translationFor('en')->title)->toBe('Bản tin en')
             ->and($live->status)->toBe('published')
@@ -715,9 +716,11 @@ it('approves a two-language change within its query budget', function (): void {
 
         // Measured 36: the workflow lookup, lock + read, the engine's guard and log (~9); per
         // language the translation read/write and block-usage rebuild (~6), plus the route move and
-        // 301 for the one new address (~9); a revision per language (2 each); delete, audit and the
-        // author's notice. It grows with the languages in the change, never with the site's size.
-        expect($queries)->toBeLessThanOrEqual(40);
+        // 301 for the one new address (~9); a revision per language (2 each); the storefront search
+        // words of each language whose title changed (delete + insert, 2 each; measured 42 with
+        // them); delete, audit and the author's notice. It grows with the languages in the change,
+        // never with the site's size.
+        expect($queries)->toBeLessThanOrEqual(44);
     });
 });
 
@@ -753,7 +756,8 @@ it('lets a post be saved and published again after a restore left an open change
         // The restore writes the old content back, which has no layout: the live one becomes none.
         app(RestoreEntryRevision::class)->handle($revision, $publisher);
         $entry = $entry->fresh();
-        expect($entry->template_override)->toBeNull();
+        expect($entry->template_override)->toBeNull()
+            ->and(array_keys(siteWordsOf('entry_search_words', 1, $entry->id)['vi'] ?? []))->toBe(['ban', 'tin', 'vi']);
 
         $change = app(SaveEntryDraft::class)->handle($entry, $author, 'vi', ['title' => 'Bản nháp hai']);
         expect($change->content['shared']['template_override'])->toBeNull();
@@ -761,7 +765,8 @@ it('lets a post be saved and published again after a restore left an open change
         app(ApplyEntryDraft::class)->handle($entry, $publisher, $change->version());
 
         expect($entry->fresh()->translationFor('vi')->title)->toBe('Bản nháp hai')
-            ->and($entry->fresh()->template_override)->toBeNull();
+            ->and($entry->fresh()->template_override)->toBeNull()
+            ->and(array_keys(siteWordsOf('entry_search_words', 1, $entry->id)['vi'] ?? []))->toBe(['ban', 'hai', 'nhap']);
     });
 });
 

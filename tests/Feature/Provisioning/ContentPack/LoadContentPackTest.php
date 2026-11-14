@@ -89,6 +89,7 @@ it('creates every item on the first apply and records the read-back hash of each
         }
     });
     expectProductSearchWordsCurrent($this->siteId);
+    expectSiteSearchWordsCurrent($this->siteId);
 });
 
 it('is idempotent: the second dry run is all unchanged and the second apply writes nothing', function (): void {

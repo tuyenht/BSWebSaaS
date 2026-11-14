@@ -107,6 +107,15 @@ The short window: from the merge in step 2 until the fill in step 3 ends, a work
 
 Rollback: the old code ignores the table, so the table can stay. `down()` drops it, and the source data is not touched.
 
+### The deploy that carries migration 2062 (the storefront search words)
+
+Three new, empty website tables (`entry_search_words`, `product_site_words`, `taxonomy_search_words`); no column changes, no PgBouncer restart. Nothing reads them until the storefront search page ships, so the ordinary order is enough:
+1. Deploy steps 1–2 as usual (migration 2062 runs with the others). Adding the foreign keys briefly locks `sites`, `entries`, `products` and `taxonomies` against writes; the migration gives up after 5 s (`lock_timeout`) and is run again.
+2. After the reload, fill the tables: `docker exec bsweb_prod_app php artisan search:words`. It must exit 0 and print `Checked N item(s) on M site(s); corrected K.`; a re-run must print `corrected 0.` Items saved by workers on the old code before the reload are among those it fills.
+3. Only then may the deploy that turns the storefront search page on go out (migrate → fill → page on). The nightly `search:words --rolling=10000` (21:00 UTC) keeps checking every item in turn.
+
+Rollback: the old code ignores the tables; `down()` drops them and no source data is touched.
+
 ## `.env` changes and the image
 
 - The containers get `.env` through `env_file` **when they are created**. Laravel never overrides a variable the process already has, so after an `.env` edit `optimize` re-caches the old value (26/09: the Cloudflare token replaced in `.env` is still the old one inside `bsweb_prod_app`). Only a recreate (`docker compose up -d app horizon scheduler` in `/opt/bswebsaas/prod`) applies it — a few seconds of downtime.

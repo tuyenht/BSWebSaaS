@@ -59,6 +59,7 @@ it('seeds the measurement page and the news card grid', function (): void {
         ->and($news)->toContain('<a class="sf-chips__chip" href="/tin-nganh">Tin ngành</a>');
     $this->get('http://cwv.platform.test/tin-cong-ty')->assertOk();
     expectProductSearchWordsCurrent($siteId);
+    expectSiteSearchWordsCurrent($siteId);
 });
 
 it('points every photo row at a fixture file the CI job copies', function (): void {

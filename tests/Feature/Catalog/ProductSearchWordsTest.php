@@ -140,9 +140,10 @@ it('writes the words in three statements when a name changes, and none for any o
         $price = countQueries(fn () => $product->update(['price' => 1_200_000]));
         $sku = countQueries(fn () => $product->update(['price' => 1_300_000, 'sku' => 'MK-3']));
 
-        // lock the product, read its names, write the words
-        expect($rename - $address)->toBe(3)
-            ->and($sku - $price)->toBe(3)
+        // lock the product, read its names, write the words; then the storefront words of the
+        // language (or of every language for a SKU): lock and read, delete, insert (ProductSiteWords)
+        expect($rename - $address)->toBe(6)
+            ->and($sku - $price)->toBe(6)
             ->and($address)->toBeLessThanOrEqual(2)
             ->and(storedWords($product))->toContain('dung', 'mk3')->not->toContain('ban')->not->toContain('mk2');
     });

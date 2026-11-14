@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Cms\Models;
 
+use App\Modules\Cms\Support\TaxonomySearchWords;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
 
@@ -30,6 +31,31 @@ class TaxonomyTranslation extends Model
 
     #[\Override]
     protected $guarded = [];
+
+    /**
+     * A language added or removed, or a changed name, rewrites this language's storefront search words
+     * in the same transaction (TaxonomySearchWords), from the name just saved. Other saves write nothing.
+     */
+    #[\Override]
+    protected static function booted(): void
+    {
+        $sync = static function (self $row): void {
+            if (array_key_exists('name', $row->getAttributes())) {
+                TaxonomySearchWords::put($row->site_id, $row->taxonomy_id, $row->locale, $row->name);
+            } else {
+                TaxonomySearchWords::sync($row->site_id, $row->taxonomy_id, $row->locale);
+            }
+        };
+        static::created($sync);
+        static::updated(static function (self $row) use ($sync): void {
+            if ($row->wasChanged('name')) {
+                $sync($row);
+            }
+        });
+        static::deleted(static function (self $row): void {
+            TaxonomySearchWords::put($row->site_id, $row->taxonomy_id, $row->locale, null);
+        });
+    }
 
     /** The label a card shows for this category: its own short label, or its name when it has none. */
     public function cardLabel(): string

@@ -6,6 +6,7 @@ namespace App\Modules\Cms\Models;
 
 use App\Modules\Cms\Casts\SanitizedPageBody;
 use App\Modules\Cms\Concerns\TracksContentChange;
+use App\Modules\Cms\Support\EntrySearchWords;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
@@ -38,6 +39,33 @@ class EntryTranslation extends Model
 
     #[\Override]
     protected $guarded = [];
+
+    /**
+     * A language added or removed, or a changed title or excerpt, rewrites this language's storefront
+     * search words in the same transaction (EntrySearchWords): from the values just saved when the
+     * model holds both, else read again from the row. Other saves write nothing.
+     */
+    #[\Override]
+    protected static function booted(): void
+    {
+        $sync = static function (self $row): void {
+            $attributes = $row->getAttributes();
+            if (array_key_exists('title', $attributes) && array_key_exists('excerpt', $attributes)) {
+                EntrySearchWords::put($row->site_id, $row->entry_id, $row->locale, $row->title, $row->excerpt);
+            } else {
+                EntrySearchWords::sync($row->site_id, $row->entry_id, $row->locale);
+            }
+        };
+        static::created($sync);
+        static::updated(static function (self $row) use ($sync): void {
+            if ($row->wasChanged(['title', 'excerpt'])) {
+                $sync($row);
+            }
+        });
+        static::deleted(static function (self $row): void {
+            EntrySearchWords::put($row->site_id, $row->entry_id, $row->locale, null, null);
+        });
+    }
 
     /** The columns a post or page shows as its main content: heading, text, summary, Google's title and description. */
     public function contentFields(): array

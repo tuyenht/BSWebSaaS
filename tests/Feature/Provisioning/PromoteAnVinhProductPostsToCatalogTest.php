@@ -122,6 +122,7 @@ it('promotes product-posts to Product rows at the identical route, with no redir
 
     expect($summary)->toHaveCount(2);
     expectProductSearchWordsCurrent($site->id);
+    expectSiteSearchWordsCurrent($site->id);
     foreach ($summary as $row) {
         expect($row['action'])->toBe('created');
         expect($row['productUrl'])->toStartWith('/san-pham/');

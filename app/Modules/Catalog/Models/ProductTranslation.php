@@ -3,6 +3,7 @@
 namespace App\Modules\Catalog\Models;
 
 use App\Modules\Catalog\Support\ProductSearchWords;
+use App\Modules\Catalog\Support\ProductSiteWords;
 use App\Modules\Cms\Concerns\TracksContentChange;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
@@ -33,19 +34,24 @@ class ProductTranslation extends Model
     protected $guarded = [];
 
     /**
-     * A new name, a changed one or a language removed rewrites the product's search words in the same
-     * transaction (ProductSearchWords). A save that leaves the name as it was writes nothing.
+     * A new name, a changed one or a language removed rewrites the product's admin search words
+     * (ProductSearchWords) and this language's storefront search words (ProductSiteWords) in the same
+     * transaction; a changed summary rewrites the storefront ones. A save that leaves both as they were
+     * writes nothing.
      */
     #[\Override]
     protected static function booted(): void
     {
         $sync = static function (self $row): void {
             ProductSearchWords::sync($row->site_id, $row->product_id);
+            ProductSiteWords::sync($row->site_id, $row->product_id, $row->locale);
         };
         static::created($sync);
         static::updated(static function (self $row) use ($sync): void {
             if ($row->wasChanged('name')) {
                 $sync($row);
+            } elseif ($row->wasChanged('summary')) {
+                ProductSiteWords::sync($row->site_id, $row->product_id, $row->locale);
             }
         });
         static::deleted($sync);
