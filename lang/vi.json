@@ -4826,5 +4826,11 @@
     "media.lib.ask_purge_all_title": "Dọn sạch Thùng rác?",
     "media.lib.ask_purge_l1": "Xóa vĩnh viễn :n tệp (:size) — không khôi phục được.",
     "media.lib.ask_purge_l2": "Ảnh nằm trong bộ ảnh sản phẩm cũng bị gỡ khỏi sản phẩm đó.",
-    "media.lib.ask_purge_ok": "Xóa vĩnh viễn :n tệp"
+    "media.lib.ask_purge_ok": "Xóa vĩnh viễn :n tệp",
+    "monitoring.quota.subject.warn": "Cloudflare Workers: hôm nay đã dùng :percent% lượt miễn phí",
+    "monitoring.quota.subject.reached": "Cloudflare Workers: đã hết lượt miễn phí hôm nay",
+    "monitoring.quota.subject.unreadable": "Không đọc được số lượt Cloudflare Workers",
+    "monitoring.quota.body.warn": "Hôm nay (ngày tính theo giờ UTC), tài khoản Cloudflare đã dùng :used trên :limit lượt Workers miễn phí, tức :percent%.\n\nBộ đếm về 0 lúc 07:00 giờ Việt Nam sáng mai.\n\nBạn chưa cần làm gì ngay. Nếu con số tăng nhanh, hãy hỏi AI xem lượt đang đi vào đâu. Nâng lên gói trả phí là quyết định của bạn.",
+    "monitoring.quota.body.reached": "Hôm nay (ngày tính theo giờ UTC), tài khoản Cloudflare đã dùng :used trên :limit lượt Workers miễn phí, tức :percent%.\n\nẢnh trên website của khách có thể không tải được cho đến khi bộ đếm về 0 lúc 07:00 giờ Việt Nam sáng mai.\n\nBạn cần làm: trả lời thư này hoặc hỏi AI để chọn cách xử lý. Nâng lên gói trả phí là quyết định của bạn.",
+    "monitoring.quota.body.unreadable": "Hệ thống đã :hours giờ liền không đọc được số lượt Cloudflare Workers đã dùng, nên có thể không báo kịp khi lượt miễn phí sắp hết.\n\nBạn có thể hỏi AI để kiểm tra khóa truy cập Cloudflare. Thư này chỉ gửi một lần mỗi ngày."
 }

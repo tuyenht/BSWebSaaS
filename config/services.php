@@ -50,6 +50,8 @@ return [
     // is unset in most envs. The R2 account id is derived from the R2 endpoint, not stored here.
     'cloudflare' => [
         'api_token' => env('CLOUDFLARE_API_TOKEN'),
+        // Optional: the account id for the Workers quota check; unset = taken from R2_ENDPOINT.
+        'account_id' => env('CLOUDFLARE_ACCOUNT_ID'),
         // The edge cache in front of the public pages: the zone of the platform's domain and a
         // token allowed only "Zone → Cache Purge" on it (a separate token: the one above is the
         // account token for R2). Either unset → nothing is purged; pages age out after

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Monitoring\Providers;
 
+use App\Modules\Monitoring\Console\CheckWorkerQuota;
 use App\Modules\Monitoring\Console\PingHeartbeat;
 use App\Modules\Monitoring\Console\SendDailySummary;
 use App\Modules\Monitoring\ErrorReporter;
@@ -58,7 +59,7 @@ final class MonitoringServiceProvider extends ServiceProvider
         Event::listen(JobProcessed::class, fn () => self::reporter(fn (ErrorReporter $reporter) => $reporter->jobFinished()));
 
         if ($this->app->runningInConsole()) {
-            $this->commands([SendDailySummary::class, PingHeartbeat::class]);
+            $this->commands([SendDailySummary::class, PingHeartbeat::class, CheckWorkerQuota::class]);
         }
     }
 

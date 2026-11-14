@@ -89,3 +89,7 @@ Khởi động lại máy từ trang quản trị của nhà cung cấp. Sau khi
 - Website trả lời bình thường nhưng một chức năng sai: mở phòng Claude, tả lại hiện tượng. Không cần sổ tay này.
 - Website không trả lời: làm mục 1, rồi mục tương ứng; xong mới mở phòng Claude để tìm nguyên nhân gốc.
 - Nghi lộ mật khẩu hoặc mã truy cập: đổi ngay ở nơi cấp (GitHub, Cloudflare, hộp thư), rồi báo một phòng Claude để rà chỗ đang dùng mã cũ.
+
+## 7. Thư báo hết lượt Cloudflare Workers
+
+Gói Workers miễn phí cho 100.000 lượt mỗi ngày UTC cho cả tài khoản (bộ đếm về 0 lúc 07:00 giờ Việt Nam). Mỗi giờ lệnh `monitoring:worker-quota` đọc số lượt đã dùng và gửi thư tới `MONITORING_MAIL_TO` khi chạm 50%, 80% và 100% (mỗi mốc một thư mỗi ngày). Hết lượt thì ảnh trên website của khách có thể không tải được đến lúc bộ đếm về 0: trả lời thư hoặc hỏi AI; nâng gói trả phí là quyết định của chủ. Cần `CLOUDFLARE_API_TOKEN` có quyền đọc Account Analytics; mã tài khoản lấy từ `CLOUDFLARE_ACCOUNT_ID` hoặc từ `R2_ENDPOINT`. Giới hạn và các mốc đổi được bằng `MONITORING_WORKER_QUOTA_LIMIT` và `MONITORING_WORKER_QUOTA_THRESHOLDS`. Sau 6 giờ liền không đọc được số, hệ thống gửi một thư mỗi ngày báo điều đó.
