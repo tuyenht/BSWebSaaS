@@ -213,15 +213,18 @@ it('indexes the customers in the list\'s order, newest first', function (): void
 });
 
 it('plans the customer search on the customer and owner indexes', function (): void {
-    // 2,000 customers with an owner each, analysed: with a handful of rows (and statistics an
-    // earlier test left) the planner reads the primary keys instead, whatever the other indexes
+    // 20,000 customers with an owner each, analysed: with a handful of rows (and statistics an
+    // earlier test left) the planner reads the primary keys instead, whatever the other indexes.
+    // At 2,000 the email lookup was a near tie between its trigram index and a walk of users'
+    // primary key in id order (the merge join wants that order), so a few hundred users left by
+    // earlier tests flipped it; at 20,000 the walk costs ten times more, as on a real platform.
     $admin = DB::connection('pgsql_admin');
     $admin->statement("delete from users where email like 'ix-plan-%'");
     $admin->statement(<<<'SQL'
         insert into users (ulid, name, email, password, created_at, updated_at)
         select lpad(upper(to_hex(i)), 26, 'P'), 'Chủ ' || (array['Nguyễn','Trần','Lê','Phạm','Hoàng'])[1 + i % 5] || ' ' || i,
                'ix-plan-' || i || '@example.test', 'x', now(), now()
-        from generate_series(1, 2000) as i
+        from generate_series(1, 20000) as i
         SQL);
     $admin->statement(<<<'SQL'
         insert into tenants (ulid, name, status, settings, owner_user_id, created_at, updated_at)
