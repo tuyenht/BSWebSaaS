@@ -6,6 +6,7 @@ use App\Modules\Notifications\Support\NotificationFeed;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -124,10 +125,12 @@ function notificationScansOn(array $scans, string $index): array
 }
 
 dataset('notification page indexes', [
-    'every notice, newest first' => ['site_notifications_feed', '(site_id, user_id, id DESC)'],
+    'every notice, newest first, with the search line' => ['site_notifications_feed_covering', '(site_id, user_id, id DESC) INCLUDE (search_text)'],
     'the unread ones, newest first' => ['site_notifications_unread_feed', '(site_id, user_id, id DESC) WHERE (read_at IS NULL)'],
-    'one group, newest first' => ['site_notifications_kind_feed', '(site_id, user_id, kind, id DESC)'],
+    'one group, newest first, with the search line' => ['site_notifications_kind_feed_covering', '(site_id, user_id, kind, id DESC) INCLUDE (search_text)'],
     'the old unread index without id' => ['site_notifications_unread', null],
+    'the old feed without the search line' => ['site_notifications_feed', null],
+    'the old group index without the search line' => ['site_notifications_kind_feed', null],
 ]);
 
 function expectNotificationIndex(string $index, ?string $definition): void
@@ -150,11 +153,15 @@ it('defines each index of the Notifications page as measured, and drops the one 
 
 it('puts the old unread index back on rollback and the new ones again on re-run', function (): void {
     seedNotificationPage();
+    // the later migration that replaced the feed and the group index is rolled back first, as
+    // migrate:rollback would, and run again last
+    $covering = require database_path('migrations/2071_01_01_000000_add_search_text_to_notification_feed_indexes.php');
     $migration = require database_path('migrations/2061_01_01_000000_add_notification_page_indexes.php');
     $admin = DB::connection('pgsql_admin');
     $previous = DB::getDefaultConnection();
     DB::setDefaultConnection('pgsql_admin');
     try {
+        $covering->down();
         $migration->down();
         expectNotificationIndex('site_notifications_unread', '(site_id, user_id) WHERE (read_at IS NULL)');
         expectNotificationIndex('site_notifications_unread_feed', null);
@@ -162,13 +169,77 @@ it('puts the old unread index back on rollback and the new ones again on re-run'
         expectNotificationIndex('site_notifications_feed', '(site_id, user_id, id DESC)');
     } finally {
         $migration->up();
+        $covering->up();
         DB::setDefaultConnection($previous);
     }
     expectNotificationIndex('site_notifications_unread', null);
     expectNotificationIndex('site_notifications_unread_feed', '(site_id, user_id, id DESC) WHERE (read_at IS NULL)');
-    expectNotificationIndex('site_notifications_kind_feed', '(site_id, user_id, kind, id DESC)');
+    expectNotificationIndex('site_notifications_kind_feed', null);
+    expectNotificationIndex('site_notifications_kind_feed_covering', '(site_id, user_id, kind, id DESC) INCLUDE (search_text)');
     expect($admin->table('site_notifications')->count())->toBe(121300);
 })->skip(getenv('CI') !== 'true', 'drops and re-adds indexes: runs on CI\'s own database only');
+
+it('builds the two indexes with the search line before it drops the ones they replace, back on rollback, re-runnable', function (): void {
+    seedNotificationPage();
+    $migration = require database_path('migrations/2071_01_01_000000_add_search_text_to_notification_feed_indexes.php');
+    $admin = DB::connection('pgsql_admin');
+    $previous = DB::getDefaultConnection();
+    DB::setDefaultConnection('pgsql_admin');
+    try {
+        $migration->down();
+        expectNotificationIndex('site_notifications_feed', '(site_id, user_id, id DESC)');
+        expectNotificationIndex('site_notifications_kind_feed', '(site_id, user_id, kind, id DESC)');
+        expectNotificationIndex('site_notifications_feed_covering', null);
+        expectNotificationIndex('site_notifications_kind_feed_covering', null);
+        $migration->down(); // a repeated step is harmless
+
+        // an interrupted CONCURRENTLY build leaves its index INVALID: the next run drops and builds it
+        // again, and the old index stays until then
+        // (a unique build that meets duplicates fails the same way, leaving the name taken)
+        expect(fn () => $admin->statement('CREATE UNIQUE INDEX CONCURRENTLY site_notifications_feed_covering ON site_notifications (site_id)'))
+            ->toThrow(QueryException::class);
+        expect($admin->selectOne("SELECT indisvalid AS v FROM pg_index WHERE indexrelid = to_regclass('site_notifications_feed_covering')")->v)->toBeFalse();
+    } finally {
+        $migration->up();
+        $migration->up();
+        DB::setDefaultConnection($previous);
+    }
+    expectNotificationIndex('site_notifications_feed_covering', '(site_id, user_id, id DESC) INCLUDE (search_text)');
+    expectNotificationIndex('site_notifications_kind_feed_covering', '(site_id, user_id, kind, id DESC) INCLUDE (search_text)');
+    expectNotificationIndex('site_notifications_feed', null);
+    expectNotificationIndex('site_notifications_kind_feed', null);
+    expect($admin->table('site_notifications')->count())->toBe(121300);
+})->skip(getenv('CI') !== 'true', 'drops and re-adds indexes: runs on CI\'s own database only');
+
+/** site_notifications' own storage parameters (reloptions), sorted. */
+function notificationTableOptions(): array
+{
+    $options = DB::selectOne("select coalesce(reloptions, '{}') as o from pg_class where oid = 'public.site_notifications'::regclass")->o;
+    $list = array_values(array_filter(explode(',', trim((string) $options, '{}'))));
+    sort($list);
+
+    return $list;
+}
+
+it('vacuums the notices table once 1 % of it changed, so search speed comes back soon after a mass rewrite', function (): void {
+    expect(notificationTableOptions())->toBe(['autovacuum_vacuum_insert_scale_factor=0.01', 'autovacuum_vacuum_scale_factor=0.01']);
+});
+
+it('puts the server default vacuum thresholds back on rollback and the 1 % ones again on re-run', function (): void {
+    $migration = require database_path('migrations/2072_01_01_000000_set_notification_autovacuum_thresholds.php');
+    $previous = DB::getDefaultConnection();
+    DB::setDefaultConnection('pgsql_admin');
+    try {
+        $migration->down();
+        expect(notificationTableOptions())->toBe([]);
+        $migration->down(); // a repeated step is harmless
+    } finally {
+        $migration->up();
+        $migration->up();
+        DB::setDefaultConnection($previous);
+    }
+    expect(notificationTableOptions())->toBe(['autovacuum_vacuum_insert_scale_factor=0.01', 'autovacuum_vacuum_scale_factor=0.01']);
+})->skip(getenv('CI') !== 'true', 'changes the table\'s storage parameters: runs on CI\'s own database only');
 
 it('counts every tab on the index that serves it, each read led by the website and the reader', function (): void {
     $this->reader = seedNotificationPage();
@@ -185,7 +256,7 @@ it('counts every tab on the index that serves it, each read led by the website a
         expect($scans)->toHaveCount(6)
             ->and(notificationScansOn($scans, 'site_notifications_unread_feed'))->toHaveCount(1)
             ->and($byKind)->toHaveCount(4, 'four group counts with their kinds as an index condition')
-            ->and(array_values(array_unique(array_column($byKind, 0))))->toBe(['site_notifications_kind_feed']);
+            ->and(array_values(array_unique(array_column($byKind, 0))))->toBe(['site_notifications_kind_feed_covering']);
         foreach ($scans as [$index, $cond]) {
             expect($index)->toStartWith('site_notifications_')->and($cond)->toContain('site_id =')->and($cond)->toContain('user_id =');
         }
@@ -247,9 +318,9 @@ it('lists one group on an index led by the reader, a rare group on the kind inde
 })->with([
     // a group that is rare across the table must read only its own rows: walking the feed would
     // read the reader's whole slice for four notices
-    'Bảo mật (several kinds, rare)' => ['security', 4, ['site_notifications_kind_feed']],
+    'Bảo mật (several kinds, rare)' => ['security', 4, ['site_notifications_kind_feed_covering']],
     // a group that is common across the table (here 15 % workflow, 80 % leads) is found within the
     // feed's newest few rows, so the planner may take either index
-    'Duyệt bài (several kinds, common)' => ['workflow', 8, ['site_notifications_kind_feed', 'site_notifications_feed']],
-    'Khách liên hệ (one kind, most notices)' => ['lead', 8, ['site_notifications_kind_feed', 'site_notifications_feed']],
+    'Duyệt bài (several kinds, common)' => ['workflow', 8, ['site_notifications_kind_feed_covering', 'site_notifications_feed_covering']],
+    'Khách liên hệ (one kind, most notices)' => ['lead', 8, ['site_notifications_kind_feed_covering', 'site_notifications_feed_covering']],
 ]);

@@ -26,7 +26,11 @@ final class NotificationSearchText
     /** The facts that are searched (data keys), in the order they are written. */
     public const array FACTS = ['actor', 'title', 'name', 'domains', 'staff', 'member', 'reason', 'note'];
 
-    /** The stored line is cut here. */
+    /**
+     * The stored line is cut here. It is also an INCLUDE column of both feed indexes (2071), and a
+     * btree entry must stay under about 2.7 KB or the insert of a new notice fails: 512 characters of
+     * at most 4 bytes each stay below that. Raise it only with that limit in mind.
+     */
     public const int MAX = 512;
 
     /** What the box takes: longer input is cut, and words past the eighth are ignored. */

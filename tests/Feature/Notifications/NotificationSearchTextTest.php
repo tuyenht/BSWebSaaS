@@ -2,6 +2,7 @@
 
 use App\Modules\Identity\Models\User;
 use App\Modules\Notifications\Models\SiteNotification;
+use App\Modules\Notifications\Registry\NotificationKinds;
 use App\Modules\Notifications\Support\NotificationFeed;
 use App\Modules\Notifications\Support\NotificationSearchText;
 use App\Modules\Notifications\Support\Notify;
@@ -139,29 +140,34 @@ it('logs a failed site without the statement, which would carry the notices\' fa
     Log::shouldHaveReceived('error')->withArgs(fn (string $message, array $context): bool => $context === ['site_id' => 1, 'error' => RuntimeException::class, 'code' => 0])->once();
 });
 
-it('walks only the reader\'s notices on the feed index, the search a row filter after RLS', function (): void {
+it('walks only the reader\'s index entries, Index Only Scan, the search a filter after the website and the reader', function (?string $group, string $index): void {
     $reader = nstReader();
     $others = User::factory()->count(4)->create()->modelKeys();
     $admin = DB::connection('pgsql_admin');
-    // the reader's notices a sliver of the table, as on a large one: 300 of theirs among 40,000
+    // the reader's notices a sliver of the table, as on a large one: 300 of theirs among 40,000, the
+    // oldest of theirs past the 90 days (the daily prune removes those: the walk has no time filter)
     $admin->statement(<<<'SQL'
         insert into site_notifications (ulid, site_id, user_id, kind, data, search_text, created_at)
-        select lpad(v.u::text || 'x' || g::text, 26, '0'), 1, v.u, 'lead.new', '{}', 'khach ' || g, now() - (v.n - g) * interval '5 minutes'
+        select lpad(v.u::text || 'x' || g::text, 26, '0'), 1, v.u, case when g % 3 = 0 then 'workflow.returned' else 'lead.new' end,
+               '{}', 'khach ' || g, now() - (v.n - g) * interval '5 hours'
         from (values (?::bigint, 300), (?::bigint, 10000), (?::bigint, 10000), (?::bigint, 10000), (?::bigint, 10000)) v(u, n)
         cross join lateral generate_series(1, v.n) g
         order by g
     SQL, [$reader->id, ...$others]);
-    $admin->statement('analyze site_notifications');
+    $admin->statement('vacuum analyze site_notifications');
+    $kinds = $group === null ? null : NotificationKinds::ofGroup($group);
 
-    app(Tenancy::class)->enter(1, function () use ($reader): void {
+    app(Tenancy::class)->enter(1, function () use ($reader, $kinds, $index): void {
+        $ids = SiteNotification::query()->where('user_id', $reader->id)->pluck('id', 'ulid');
         $sent = [];
         DB::listen(function (QueryExecuted $query) use (&$sent): void {
             $sent[] = ['sql' => $query->sql, 'bindings' => $query->connection->prepareBindings($query->bindings)];
         });
-        $found = app(NotificationFeed::class)->matches($reader, null, false, ['khach', '29'], 100);
-        expect(array_slice(array_column($found, 'ulid'), 0, 3))->toBe([
-            str_pad($reader->id.'x299', 26, '0', STR_PAD_LEFT), str_pad($reader->id.'x298', 26, '0', STR_PAD_LEFT), str_pad($reader->id.'x297', 26, '0', STR_PAD_LEFT),
-        ])->and($sent)->toHaveCount(1);
+        $found = app(NotificationFeed::class)->matches($reader, $kinds, false, ['khach', '29'], 100);
+        $want = $kinds === null ? ['x299', 'x298', 'x297'] : ['x299', 'x298', 'x296'];
+        expect(array_slice($found, 0, 3))->toBe(array_map(fn (string $n): int => $ids[str_pad($reader->id.$n, 26, '0', STR_PAD_LEFT)], $want))
+            ->and($sent)->toHaveCount(1)
+            ->and($sent[0]['sql'])->toStartWith('select "id" from')->not->toContain('created_at');
 
         $plan = DB::transaction(function () use ($sent): string {
             DB::statement('SET LOCAL enable_seqscan = off');
@@ -171,7 +177,7 @@ it('walks only the reader\'s notices on the feed index, the search a row filter 
         $scans = [];
         $walk = function (array $node) use (&$walk, &$scans): void {
             if (isset($node['Index Name'])) {
-                $scans[$node['Index Name']] = [(string) ($node['Index Cond'] ?? ''), (string) ($node['Filter'] ?? '')];
+                $scans[$node['Index Name']] = [(string) $node['Node Type'], (string) ($node['Index Cond'] ?? ''), (string) ($node['Filter'] ?? '')];
             }
             foreach ($node['Plans'] ?? [] as $child) {
                 $walk($child);
@@ -179,13 +185,20 @@ it('walks only the reader\'s notices on the feed index, the search a row filter 
         };
         $walk(json_decode($plan, true)[0]['Plan']);
 
-        // the walk: the reader's slice newest first on the feed index; the words and the 90 days are
-        // checked on each row it reads
-        expect(array_keys($scans))->toBe(['site_notifications_feed'])
-            ->and($scans['site_notifications_feed'][0])->toContain('site_id =')->toContain('user_id =')
-            ->and($scans['site_notifications_feed'][1])->toContain('search_text')->toContain('created_at >=');
+        // the walk: the reader's slice newest first, entries only (the table is never read for a
+        // page vacuum marked all-visible); the words are checked on each entry it reads
+        expect(array_keys($scans))->toBe([$index])
+            ->and($scans[$index][0])->toBe('Index Only Scan')
+            ->and($scans[$index][1])->toContain('site_id =')->toContain('user_id =')
+            ->and($scans[$index][2])->toContain('search_text')->not->toContain('created_at');
+        if ($kinds !== null) {
+            expect($scans[$index][1])->toContain('kind');
+        }
     });
-});
+})->with([
+    'Tất cả' => [null, 'site_notifications_feed_covering'],
+    'Khách liên hệ' => ['lead', 'site_notifications_kind_feed_covering'],
+]);
 
 it('logs a search slower than the line, with no word typed in the log', function (): void {
     $reader = nstReader();
@@ -225,6 +238,8 @@ it('adds the line as a nullable text column, and takes it away and back without 
     } finally {
         $migration->up();
         $migration->up();
+        // dropping the column dropped the two feed indexes that carry it: the later migration builds them again
+        (require database_path('migrations/2071_01_01_000000_add_search_text_to_notification_feed_indexes.php'))->up();
         DB::setDefaultConnection($previous);
     }
     expect((array) $column())->toBe(['data_type' => 'text', 'is_nullable' => 'YES'])

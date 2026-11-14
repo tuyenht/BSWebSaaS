@@ -215,9 +215,9 @@ it('closes the public product page with the site’s analytics beacon, and never
     previewFresh();
     $preview = (string) $this->actingAs($manager)->get("http://a.test/admin/catalog/{$ulid}/preview")->assertOk()->getContent();
 
-    expect(substr_count($public, 'data-cf-beacon=\'{"token": "'.str_repeat('ab', 16).'"}\''))->toBe(1)
+    expect(substr_count($public, 'data-sf-beacon=\'{"token": "'.str_repeat('ab', 16).'"}\''))->toBe(1)
         ->and($preview)->toContain('<h1 class="product__title">Đồ gá kiểm định</h1>')
-        ->not->toContain('data-cf-beacon')->not->toContain('beacon.min.js');
+        ->not->toContain('data-sf-beacon')->not->toContain('beacon.min.js');
 });
 
 it('previews a product in the public page’s queries plus the admin’s sign-in and permission checks, exactly', function (): void {

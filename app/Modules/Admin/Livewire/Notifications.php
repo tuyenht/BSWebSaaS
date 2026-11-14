@@ -14,6 +14,7 @@ use App\Modules\Notifications\Registry\NotificationKinds;
 use App\Modules\Notifications\Support\NotificationFeed;
 use App\Modules\Notifications\Support\NotificationSearchText;
 use App\Modules\Rbac\Support\PlatformAccess;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Workflow\Services\ReviewQueue;
 use Illuminate\Support\Collection;
@@ -337,8 +338,10 @@ final class Notifications extends Component
     /**
      * One search's rows on screen, whether older matches remain, and how many match (stopping at
      * CAP, like a tab's count): a single walk of the reader's notices (NotificationFeed::matches())
-     * finds the first page's matches and up to CAP of them for the count, or, after "Tải thêm", every
-     * match down to the oldest one on screen; then the rows shown are read by id.
+     * finds the ids of the first page's matches and up to CAP of them for the count, or, after "Tải
+     * thêm", every match down to the oldest one on screen; then the rows shown are read by id, with
+     * the notice the next "Tải thêm" ends at, whose ulid becomes that cursor. The ids stay on the
+     * server: the cursors the page holds are ulids, mapped back to an id here.
      *
      * @param  list<string>|null  $kinds
      * @param  list<string>  $words
@@ -349,7 +352,8 @@ final class Notifications extends Component
         $hits = $feed->matches($user, $kinds, $unread, $words, $this->until === null ? self::CAP : self::MOST + 1);
         $shown = self::PAGE;
         if ($this->until !== null) {
-            $at = array_search($this->until, array_column($hits, 'ulid'), true);
+            $id = $feed->idOfUlid($user, $this->until);
+            $at = $id === null ? false : array_search($id, $hits, true);
             if ($at === false) {
                 // The oldest match on screen was cleaned up meanwhile: start again from the first page.
                 $this->until = null;
@@ -359,9 +363,18 @@ final class Notifications extends Component
             }
         }
 
-        $rows = $feed->rows($user, array_column(array_slice($hits, 0, $shown), 'id'));
         $more = count($hits) > $shown && $shown < self::MOST;
-        $this->nextUntil = $more ? $hits[min($shown - 1 + self::PAGE, count($hits) - 1, self::MOST - 1)]['ulid'] : null;
+        $next = $more ? $hits[min($shown - 1 + self::PAGE, count($hits) - 1, self::MOST - 1)] : null;
+        $ids = array_slice($hits, 0, $shown);
+        $rows = $feed->rows($user, $next === null ? $ids : [...$ids, $next]);
+        $this->nextUntil = null;
+        if ($next !== null) {
+            $this->nextUntil = $rows->first(fn (SiteNotification $row): bool => Cast::int($row->getKey()) === $next)?->ulid;
+            $rows = $rows->reject(fn (SiteNotification $row): bool => Cast::int($row->getKey()) === $next)->values();
+            // The notice the next page ends at was cleaned up between the walk and this read: no
+            // "Tải thêm" this time (it could not move), the next draw walks again.
+            $more = $this->nextUntil !== null;
+        }
 
         return [$rows, $more, min(count($hits), self::CAP)];
     }

@@ -28,16 +28,18 @@ function waSetting(mixed $value, int $site = 1): void
 
 function waSnippet(string $token): string
 {
-    return '<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon=\'{"token": "'.$token.'"}\'></script>';
+    return '<div hidden data-sf-beacon=\'{"token": "'.$token.'"}\' data-src="https://static.cloudflareinsights.com/beacon.min.js"></div>';
 }
 
-it('closes every storefront page with Cloudflare’s beacon, once, just before </body>', function (string $url, int $status): void {
+it('closes every storefront page with the beacon’s token as data, once, just before </body>', function (string $url, int $status): void {
     waSetting(['cloudflare_token' => WA_TOKEN]);
 
     $html = (string) $this->get($url)->assertStatus($status)->getContent();
 
     expect(substr_count($html, 'beacon.min.js'))->toBe(1)
-        ->and(substr_count($html, 'data-cf-beacon'))->toBe(1)
+        ->and(substr_count($html, 'data-sf-beacon'))->toBe(1)
+        ->and($html)->not->toMatch('~<script[^>]*beacon\.min\.js~')
+        ->and($html)->not->toContain('data-cf-beacon')
         ->and($html)->toMatch('~'.preg_quote(waSnippet(WA_TOKEN), '~').'\s*</body>~');
 })->with([
     'the home page' => ['http://a.test/', 200],
@@ -51,7 +53,7 @@ it('prints nothing without a well-formed token', function (mixed $value): void {
 
     $html = (string) $this->get('http://a.test/')->assertOk()->getContent();
 
-    expect($html)->not->toContain('cloudflareinsights')->not->toContain('data-cf-beacon');
+    expect($html)->not->toContain('cloudflareinsights')->not->toContain('data-sf-beacon');
 })->with([
     'no setting' => [null],
     'an empty value' => [[]],
@@ -70,14 +72,14 @@ it('never prints one site’s token on another site', function (): void {
     seedHomepage(2, 'Trang B');
     waSetting(['cloudflare_token' => WA_TOKEN]);
 
-    expect((string) $this->get('http://b.test/')->assertOk()->getContent())->not->toContain('data-cf-beacon');
+    expect((string) $this->get('http://b.test/')->assertOk()->getContent())->not->toContain('data-sf-beacon');
 });
 
 it('never puts the beacon on an admin page', function (): void {
     waSetting(['cloudflare_token' => WA_TOKEN]);
 
     expect((string) $this->get('http://a.test/admin/login')->assertOk()->getContent())
-        ->not->toContain('cloudflareinsights')->not->toContain('data-cf-beacon');
+        ->not->toContain('cloudflareinsights')->not->toContain('data-sf-beacon');
 });
 
 it('leaves the storefront Content-Security-Policy exactly as it is', function (): void {
