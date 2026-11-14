@@ -172,12 +172,11 @@ final readonly class DeleteTaxonomy
             // members': a join copying an invitation's limits right now either waits for this move or
             // has copied them, and its member rows are moved below. Without a target only closed
             // invitations' rows are left (open ones were refused above): they limit nobody, and go.
-            // The limited members' locks first (with members limited there is a target: refused above
-            // otherwise), in the order an accept takes them: its roles lock the member, then it reads
-            // the invitation's rows.
-            // Before the members: the invitations whose rows move, in id order, FOR KEY SHARE (the lock
-            // the moved rows' foreign key takes anyway), so an accept, which holds its invitation FOR
-            // UPDATE and then locks the member, never waits on this delete while this delete waits on it.
+            // Locks in the order an accept takes them (its invitation FOR UPDATE, then the member, then
+            // the invitation's rows): first the invitations whose rows move, in id order, FOR KEY SHARE
+            // (the lock the moved rows' foreign key takes anyway), then the limited members (with
+            // members limited there is a target: refused above otherwise). An accept never waits on
+            // this delete while this delete waits on it.
             if ($targetId !== null) {
                 $this->lockInvitationsLimitedTo($deleted);
             }
