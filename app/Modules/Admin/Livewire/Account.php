@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Livewire;
 
 use App\Modules\Admin\Notifications\TwoFactorDisabledNotification;
+use App\Modules\Admin\Support\EmailChange;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Admin\Support\SignedInDevices;
@@ -27,6 +28,7 @@ use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Support\ContactPhone;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Validator;
@@ -41,7 +43,8 @@ use Throwable;
 
 /**
  * My account (Tài khoản của tôi): the signed-in member's own profile (name, job title, phone),
- * password, two-factor sign-in, signed-in devices, linked sign-in accounts, appearance and
+ * sign-in email (EmailChange), password, two-factor sign-in, signed-in devices, linked sign-in
+ * accounts, appearance and
  * notification choices. Everything here
  * scopes to auth()->user() only; no role is needed, the member's own password gates the
  * sensitive changes.
@@ -184,6 +187,28 @@ final class Account extends Component
     public string $dialogProvider = '';
 
     public string $confirmPassword = '';
+
+    /** Changing the sign-in email: 0 = closed, 1 = new address + password, 2 = the second step, 3 = the new address's code. */
+    #[Locked]
+    public int $emailStep = 0;
+
+    /** The second step this change asks for: 'app' (authenticator or recovery code) or 'mail' (a code to the current address). */
+    #[Locked]
+    public string $emailFactor = '';
+
+    /** Where the code of the current step went (shown in its wording). */
+    #[Locked]
+    public string $emailSentTo = '';
+
+    public string $newEmail = '';
+
+    public string $emailPassword = '';
+
+    public string $emailFactorCode = '';
+
+    public bool $emailUseRecovery = false;
+
+    public string $emailCode = '';
 
     public function boot(): void
     {
@@ -602,6 +627,203 @@ final class Account extends Component
         $this->closeDialog();
     }
 
+    // ───────────────────────────── sign-in email ─────────────────────────────
+
+    /**
+     * "Đổi email": open the change at its first step. An account without a password cannot
+     * change its email (it would pass with no secret at all); it sets one first.
+     */
+    public function openEmailChange(): void
+    {
+        $this->writable();
+        $user = $this->member();
+        app(EmailChange::class)->cancel($user, session()->getId());
+        $this->resetEmailChange();
+        if ($this->lacksPassword($user)) {
+            $this->notify(__('admin.account.em_no_password'), 'info');
+
+            return;
+        }
+
+        $this->emailStep = 1;
+    }
+
+    /** Checked when the member leaves the field. */
+    public function updatedNewEmail(): void
+    {
+        $this->resetErrorBag('newEmail');
+        if (trim($this->newEmail) !== '') {
+            $this->checkNewEmail($this->member());
+        }
+    }
+
+    /**
+     * Step 1: the new address and the password. Whether another account holds the address is not
+     * told here (nor anywhere before its mailbox code is typed), so the change cannot be used to
+     * find out who has an account. Then the second step: the app, or a code to the current address.
+     */
+    public function startEmailChange(): void
+    {
+        $this->writable();
+        $this->resetErrorBag(['newEmail', 'emailPassword']);
+        $user = $this->member();
+        if ($this->emailStep !== 1 || $this->lacksPassword($user)) {
+            return;
+        }
+
+        $new = $this->checkNewEmail($user);
+        if ($this->emailPassword === '') {
+            $this->addError('emailPassword', __('admin.account.dlg_pw_required'));
+
+            return;
+        }
+        if ($new === null || ! $this->passwordMatches($user, $this->emailPassword, 'emailPassword', __('admin.account.dlg_pw_wrong'))) {
+            return;
+        }
+
+        $change = app(EmailChange::class);
+        $this->emailFactor = $change->begin($user, session()->getId(), $new);
+        $this->newEmail = $new;
+        $this->reset('emailPassword', 'emailFactorCode', 'emailUseRecovery', 'emailCode');
+        $this->emailSentTo = '';
+        if ($this->emailFactor === EmailChange::FACTOR_MAIL) {
+            $this->emailSentTo = $user->email;
+            if ($change->sendCode($user, session()->getId(), toNew: false) !== EmailChange::SENT) {
+                $this->notify(__('admin.account.em_wait'), 'info');
+            }
+        }
+        $this->emailStep = 2;
+    }
+
+    /** Step 2: the code of the second step; once it passes, a code goes to the new address. */
+    public function verifyEmailFactor(): void
+    {
+        $this->writable();
+        $this->resetErrorBag('emailFactorCode');
+        $user = $this->member();
+        if ($this->emailStep !== 2) {
+            return;
+        }
+
+        $recovery = $this->emailUseRecovery && $this->emailFactor === EmailChange::FACTOR_APP;
+        $code = $recovery ? trim($this->emailFactorCode) : (string) preg_replace('/\s+/', '', $this->emailFactorCode);
+        if ($recovery ? $code === '' : preg_match('/^\d{6}$/', $code) !== 1) {
+            $this->addError('emailFactorCode', $recovery ? __('admin.account.em_recovery_wrong') : __('admin.account.tfa_code_format'));
+
+            return;
+        }
+
+        $change = app(EmailChange::class);
+        $result = $change->passFactor($user, session()->getId(), $code, $recovery);
+        if ($result !== EmailChange::PASSED) {
+            $this->emailCodeRefused('emailFactorCode', $result, $user, $recovery);
+
+            return;
+        }
+
+        $this->emailSentTo = (string) $change->newAddress($user, session()->getId());
+        $this->reset('emailFactorCode', 'emailUseRecovery', 'emailCode');
+        $this->emailStep = 3;
+        if ($change->sendCode($user, session()->getId(), toNew: true) !== EmailChange::SENT) {
+            $this->notify(__('admin.account.em_wait'), 'info');
+        }
+    }
+
+    /** "Gửi lại mã": the code of the current step again, after the cooldown and within the hourly caps. */
+    public function resendEmailCode(): void
+    {
+        $this->writable();
+        $user = $this->member();
+        $toNew = $this->emailStep === 3;
+        if (! $toNew && ! ($this->emailStep === 2 && $this->emailFactor === EmailChange::FACTOR_MAIL)) {
+            return;
+        }
+
+        match (app(EmailChange::class)->sendCode($user, session()->getId(), $toNew)) {
+            EmailChange::SENT => $this->notify(__('admin.account.em_resent', ['email' => $this->emailSentTo])),
+            EmailChange::WAIT => $this->notify(__('admin.account.em_wait'), 'info'),
+            default => $this->emailChangeGone(),
+        };
+        $this->reset($toNew ? 'emailCode' : 'emailFactorCode');
+    }
+
+    /**
+     * Step 3: the code mailed to the new address. The account moves to the address that code went
+     * to (never the field as it reads now), the old address is told, every other device is signed
+     * out (it signed in under the old address; a support session too) and this one gets a new
+     * session id.
+     */
+    public function confirmEmailChange(): void
+    {
+        $this->writable();
+        $this->resetErrorBag('emailCode');
+        $user = $this->member();
+        if ($this->emailStep !== 3) {
+            return;
+        }
+
+        $code = (string) preg_replace('/\s+/', '', $this->emailCode);
+        if (preg_match('/^\d{6}$/', $code) !== 1) {
+            $this->addError('emailCode', __('admin.account.tfa_code_format'));
+
+            return;
+        }
+
+        $result = app(EmailChange::class)->confirm($user, session()->getId(), $code);
+        if ($result === EmailChange::TAKEN) {
+            $this->addError('emailCode', __('admin.account.em_taken'));
+
+            return;
+        }
+        if ($result !== EmailChange::CHANGED) {
+            $this->emailCodeRefused('emailCode', $result, $user, false);
+
+            return;
+        }
+
+        // Unlike a password change nothing else signs those devices out, so a failure is said out loud.
+        // In its own savepoint: a failed statement there must not abort the request's transaction,
+        // which still has to commit the change.
+        try {
+            $others = DB::transaction(fn (): int => app(SignedInDevices::class)->signOutOthers($user, session()->getId())['members']);
+        } catch (Throwable $e) {
+            if (ConcurrencyError::is($e)) {
+                throw $e;
+            }
+            report($e);
+            $others = null;
+        }
+        session()->regenerate(true);
+        $this->resetEmailChange();
+        match (true) {
+            $others === null => $this->notify(__('admin.account.em_done_others_kept'), 'error'),
+            $others > 0 => $this->notify(__('admin.account.em_done_others', ['count' => $others])),
+            default => $this->notify(__('admin.account.em_done')),
+        };
+    }
+
+    /** "Quay lại": back to the address, which starts the change again (password and second step too). */
+    public function backEmailChange(): void
+    {
+        $this->writable();
+        if ($this->emailStep < 2) {
+            return;
+        }
+
+        app(EmailChange::class)->cancel($this->member(), session()->getId());
+        $new = $this->newEmail;
+        $this->resetEmailChange();
+        $this->newEmail = $new;
+        $this->emailStep = 1;
+    }
+
+    public function cancelEmailChange(): void
+    {
+        $this->writable();
+        app(EmailChange::class)->cancel($this->member(), session()->getId());
+        $this->resetEmailChange();
+    }
+
     // ───────────────────────────── preferences ─────────────────────────────
 
     public function setLocale(string $code): void
@@ -937,6 +1159,61 @@ final class Account extends Component
         }
 
         return true;
+    }
+
+    /** The new address in its stored form (trimmed, lower case), or null with the board's error shown. */
+    private function checkNewEmail(User $user): ?string
+    {
+        $email = Str::lower(trim($this->newEmail));
+        if (! mb_check_encoding($email, 'UTF-8')
+            || mb_strlen($email) > 254
+            || filter_var($email, FILTER_VALIDATE_EMAIL) === false
+            || preg_match('/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/', $email) !== 1) {
+            $this->addError('newEmail', __('admin.account.em_new_bad'));
+
+            return null;
+        }
+        if ($email === Str::lower($user->email)) {
+            $this->addError('newEmail', __('admin.account.em_new_same'));
+
+            return null;
+        }
+
+        return $email;
+    }
+
+    /** A code of the change was refused: say why, on $field (a gone change starts again). */
+    private function emailCodeRefused(string $field, string $result, User $user, bool $recovery): void
+    {
+        $app = $field === 'emailFactorCode' && $this->emailFactor === EmailChange::FACTOR_APP;
+        match ($result) {
+            EmailChange::WRONG => $this->addError($field, match (true) {
+                $app && $recovery => __('admin.account.em_recovery_wrong'),
+                $app => __('admin.account.tfa_code_wrong'),
+                default => __('admin.account.em_code_wrong', ['email' => $this->emailSentTo]),
+            }),
+            EmailChange::LOCKED => $this->addError($field, $app
+                ? __('admin.account.throttled', ['seconds' => app(EmailChange::class)->retryIn($user)])
+                : __('admin.account.em_locked')),
+            EmailChange::EXPIRED => $this->addError($field, __('admin.account.em_code_expired')),
+            default => $this->emailChangeGone(),
+        };
+    }
+
+    /** The pending change is gone (expired, another session, the account changed): start again from the address. */
+    private function emailChangeGone(): void
+    {
+        $new = $this->newEmail;
+        $this->resetEmailChange();
+        $this->newEmail = $new;
+        $this->emailStep = 1;
+        $this->notify(__('admin.account.em_gone'), 'info');
+    }
+
+    private function resetEmailChange(): void
+    {
+        $this->reset('emailStep', 'emailFactor', 'emailSentTo', 'newEmail', 'emailPassword', 'emailFactorCode', 'emailUseRecovery', 'emailCode');
+        $this->resetErrorBag(['newEmail', 'emailPassword', 'emailFactorCode', 'emailCode']);
     }
 
     /** @return array<string, string> field => message, in the order the board checks them */
