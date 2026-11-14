@@ -155,19 +155,20 @@ it('builds the switch from the public languages, falling back to each language�
         ->and(StorefrontChrome::languages($alternates, 'vi', ['vi'], $home))->toBe([]);
 });
 
-it('marks the current page in the drawer with aria-current and a bar, in a named dialog', function (): void {
+it('marks the current page in the drawer with aria-current, a pill and a check mark, in a named dialog', function (): void {
     drawerSite();
 
     $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
 
     expect($html)
-        ->toContain('<div id="mobile-menu" class="sf-drawer" role="dialog" aria-modal="true" aria-label="Menu" hidden>')
+        ->toContain('<div id="mobile-menu" class="sf-drawer sf-drawer--dark" role="dialog" aria-modal="true" aria-label="Menu" hidden>')
         ->toContain('data-menu-close aria-label="Đóng menu"')
-        ->toMatch('#<div class="sf-nav__panel" id="msm-1">.*?<a class="sf-nav__sublink"\s+href="/gioi-thieu"\s+aria-current="page"\s*>Giới thiệu</a>#s');
+        ->toMatch('#<div class="sf-nav__panel" id="msm-1">.*?<a class="sf-nav__sublink"\s+href="/gioi-thieu"\s+aria-current="page"\s*>Giới thiệu\s*<svg class="sf-icon sf-nav__check"#s');
 
+    // the pill is a layer behind the row in the track's grey, never the brand colour, and no bar is left
     $css = (string) StorefrontCss::all();
-    expect($css)->toContain('.sf-nav--mob .sf-nav__link[aria-current]::before')
-        ->toContain('background: var(--color-primary-text);');
+    expect($css)->toContain(".sf-nav--mob :is(.sf-nav__link, .sf-nav__sublink)[aria-current=\"page\"]::after {\n    content: \"\";\n    position: absolute;\n    inset: 2px 8px;\n    z-index: -1;\n    border-radius: 12px;\n    background: var(--sf-dw-track);")
+        ->not->toContain('.sf-nav--mob .sf-nav__link[aria-current]::before');
 });
 
 it('prints no “Menu” title in the open drawer, only the button that opens it', function (): void {
@@ -233,4 +234,57 @@ it('keeps the language, text size and contact blocks in the drawer in that order
         ->and($at('sf-drawer__fs'))->toBeLessThan($at('sf-drawer__contact'))
         ->and($html)->toContain('<a class="sf-drawer__call" href="tel:0901234567">')
         ->toContain('href="mailto:lienhe@mau.test"');
+});
+
+it('gives the phone menu the header bar’s dark tone unless the header asks for a light one', function (mixed $tone, bool $dark): void {
+    $siteId = drawerSite([]);
+    app(Tenancy::class)->enter($siteId, fn () => SiteSetting::query()->where('key', 'header')
+        ->update(['value' => ['top_bar' => ['items' => []], 'text_size' => true, 'drawer_tone' => $tone]]));
+
+    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
+
+    expect($html)->toContain('<div id="mobile-menu" class="sf-drawer'.($dark ? ' sf-drawer--dark' : '').'" role="dialog"');
+})->with([
+    'auto: the bar is dark' => ['auto', true],
+    'not set' => [null, true],
+    'light' => ['light', false],
+    'dark' => ['dark', true],
+    'an unknown word' => ['purple', true],
+    'a list' => [['light'], true],
+]);
+
+it('opens the way to the current page in the phone menu on render, and leaves the desktop bar closed', function (): void {
+    drawerSite([]);
+
+    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
+
+    expect($html)
+        ->toMatch('#<li class="sf-nav__item sf-nav__item--parent is-open" data-disclosure>\s*<a class="sf-nav__link is-trail" href="[^"]+"\s*aria-current="true"\s*>Tin tức</a><button type="button" class="sf-nav__chev is-trail" aria-expanded="true" aria-controls="msm-1"#')
+        ->toMatch('#<li class="sf-nav__item sf-nav__item--parent" data-disclosure>\s*<a class="sf-nav__link is-trail" href="[^"]+"\s*aria-current="true"\s*>Tin tức</a><button type="button" class="sf-nav__chev is-trail" aria-expanded="false" aria-controls="dsm-1"#')
+        ->and(substr_count($html, ' is-open'))->toBe(1);
+
+    // a page with no menu item below a parent: every group starts closed
+    expect($this->get('http://mau.platform.test/')->assertOk()->getContent())
+        ->not->toContain(' is-open')->not->toContain('aria-expanded="true" aria-controls="msm-');
+});
+
+it('puts a check mark after the current page in the phone menu only, and nowhere else', function (): void {
+    drawerSite([]);
+
+    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
+
+    expect(substr_count($html, 'sf-nav__check'))->toBe(1)
+        ->and($html)->toMatch('#<div class="sf-nav__panel" id="msm-1">.*?<a class="sf-nav__sublink"\s+href="/gioi-thieu"\s+aria-current="page"\s*>Giới thiệu\s*<svg class="sf-icon sf-nav__check" width="20" height="20" [^>]*aria-hidden="true"#s')
+        ->and($html)->toMatch('#<div class="sf-nav__panel" id="dsm-1">.*?<a class="sf-nav__sublink"\s+href="/gioi-thieu"\s+aria-current="page"\s*>Giới thiệu</a>#s');
+
+    // on every page: one check per current-page row of the phone menu, none in the desktop bar
+    foreach (['/gioi-thieu', '/'] as $path) {
+        $page = $this->get('http://mau.platform.test'.$path)->assertOk()->getContent();
+        preg_match('#<nav class="sf-nav sf-nav--mob".*?</nav>#s', $page, $mob);
+        preg_match('#<nav class="sf-nav sf-nav--desk".*?</nav>#s', $page, $desk);
+        preg_match_all('#aria-current="page"[^>]*>[^<]*(?:<(?!/a>)[^<]*)*?<svg class="sf-icon sf-nav__check"#s', $mob[0] ?? '', $checked);
+        expect(substr_count($mob[0] ?? '', 'sf-nav__check'))->toBe(substr_count($mob[0] ?? '', 'aria-current="page"'))
+            ->and(count($checked[0]))->toBe(substr_count($mob[0] ?? '', 'aria-current="page"'))
+            ->and($desk[0] ?? '')->not->toBe('')->not->toContain('sf-nav__check');
+    }
 });

@@ -102,7 +102,7 @@
             @endif
             @if (! empty($menu))
                 <nav class="sf-nav sf-nav--desk" aria-label="{{ __('storefront.nav_main') }}">
-                    @include('theme::partials.nav-disclosure', ['items' => $menu, 'depth' => 0, 'idPrefix' => 'dsm'])
+                    @include('theme::partials.nav-disclosure', ['items' => $menu, 'depth' => 0, 'idPrefix' => 'dsm', 'drawer' => false])
                 </nav>
             @endif
             @if (! empty($drawerMenu))
@@ -112,8 +112,9 @@
     </div>
     @if (! empty($drawerMenu))
         {{-- The phone menu: a dialog drawer (focus moves in on open and back to the button on close, Esc,
-             the dimmed area and the ✕ close it). No title word in it: the page's own words are the menu. --}}
-        <div id="mobile-menu" class="sf-drawer" role="dialog" aria-modal="true" aria-label="{{ __('storefront.menu_word') }}" hidden>
+             the dimmed area and the ✕ close it). No title word in it: the page's own words are the menu.
+             Its tone follows the header bar (dark today) unless the header setting asks for light (drawerDark). --}}
+        <div id="mobile-menu" class="sf-drawer{{ \App\Modules\Theme\Chrome\StorefrontChrome::drawerDark($header) ? ' sf-drawer--dark' : '' }}" role="dialog" aria-modal="true" aria-label="{{ __('storefront.menu_word') }}" hidden>
             <div class="sf-drawer__scrim" data-menu-close></div>
             <button type="button" class="sf-drawer__close" data-menu-close aria-label="{{ __('storefront.menu_close') }}">@include('theme::partials.sf-icon', ['name' => 'close', 'size' => 24])</button>
             <div class="sf-drawer__panel">
@@ -153,7 +154,7 @@
                 @endif
                 <div class="sf-drawer__pane"@if ($sfTabs) role="tabpanel" id="msm-pane-menu" aria-labelledby="msm-tab-menu"@endif>
                     <nav class="sf-nav sf-nav--mob" aria-label="{{ __('storefront.nav_main') }}">
-                        @include('theme::partials.nav-disclosure', ['items' => $drawerMenu, 'depth' => 0, 'idPrefix' => 'msm'])
+                        @include('theme::partials.nav-disclosure', ['items' => $drawerMenu, 'depth' => 0, 'idPrefix' => 'msm', 'drawer' => true])
                     </nav>
                 </div>
                 @if ($sfTabs)
@@ -207,6 +208,7 @@
                 @endif
                 @if (($sfOwnCall && $sfCallHref !== null) || $sfZaloHref !== null || $sfEmailHref !== null || $sfHours !== null || $sfSocials !== [])
                     <div class="sf-drawer__contact">
+                        <p class="sf-drawer__cap">{{ __('storefront.drawer_contact') }}</p>
                         @if ($sfOwnCall && $sfCallHref !== null)
                             <a class="sf-drawer__call" href="{{ $sfCallHref }}">@include('theme::partials.sf-icon', ['name' => 'phone', 'size' => 20])<span>{{ __('storefront.call_number', ['phone' => $brand['phone']]) }}</span></a>
                         @endif
