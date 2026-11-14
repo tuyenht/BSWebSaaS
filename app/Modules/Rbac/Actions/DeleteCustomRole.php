@@ -37,7 +37,7 @@ final readonly class DeleteCustomRole
      */
     public function handle(User $actor, Role $role): void
     {
-        app(MembershipLock::class)->forbid($actor, Cast::int($role->site_id));   // roles never change on someone's behalf, nor from outside the site
+        app(MembershipLock::class)->authorize($actor, Cast::int($role->site_id), 'roles.manage');   // never on someone's behalf, from outside the site, or without roles.manage there
         Gate::forUser($actor)->authorize('delete', $role);
         $this->rules->assertManageable($actor, $role);
 

@@ -11,7 +11,6 @@ use App\Modules\Rbac\Models\Invitation;
 use App\Modules\Rbac\Support\MembershipLock;
 use App\Modules\Shared\Support\Cast;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Support\Facades\Gate;
 
 /**
  * Withdraw an invitation that has not been accepted: its link stops working at once. Gated by
@@ -26,8 +25,7 @@ final readonly class RevokeInvitation
      */
     public function handle(User $actor, Invitation $invitation): void
     {
-        app(MembershipLock::class)->forbid($actor, Cast::int($invitation->site_id));   // membership never changes on someone's behalf, nor from outside the site
-        Gate::forUser($actor)->authorize('users.invite');
+        app(MembershipLock::class)->authorize($actor, Cast::int($invitation->site_id), 'users.invite');   // never on someone's behalf, from outside the site, or without users.invite there
 
         if ($invitation->accepted_at !== null || $invitation->revoked_at !== null) {
             throw new InvitationRejectedException('invalid');

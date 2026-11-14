@@ -38,7 +38,7 @@ final readonly class CreateCustomRole
      */
     public function handle(User $actor, string $name, int $level, array $permissions, ?Role $forkFrom = null): Role
     {
-        app(MembershipLock::class)->forbid($actor, app(CurrentSite::class)->id());   // roles never change on someone's behalf, nor from outside the site
+        app(MembershipLock::class)->authorize($actor, app(CurrentSite::class)->id(), 'roles.manage');   // never on someone's behalf, from outside the site, or without roles.manage there
         Gate::forUser($actor)->authorize('create', Role::class);
         $siteId = $this->rules->siteId();
 

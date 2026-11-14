@@ -11,7 +11,7 @@ use DomainException;
  * as opposed to AuthorizationException, which means "you are not allowed to". Its own type so no
  * broad `catch (RuntimeException)` swallows it (a QueryException is one too). The message IS the
  * reason key, one of: custom_roles_disabled · name_invalid · name_reserved · name_taken ·
- * level_invalid · in_use; for an owner recovery (RecoverSiteOwner): reason_required · operator ·
+ * level_invalid · in_use; for an owner recovery (RecoverSiteOwner): not_operator · reason_required · operator ·
  * no_owner_role · already_owner.
  */
 final class RoleChangeRejectedException extends DomainException

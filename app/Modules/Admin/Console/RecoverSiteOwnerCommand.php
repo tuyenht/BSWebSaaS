@@ -8,6 +8,7 @@ use App\Modules\Admin\Notifications\OwnerRecoveredNotification;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Actions\RecoverSiteOwner;
 use App\Modules\Rbac\Exceptions\RoleChangeRejectedException;
+use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Context\SiteTime;
@@ -21,12 +22,14 @@ use Illuminate\Support\Str;
  * owner again, until the platform console has a screen for it. Platform staff change no member on
  * the website's own screens; this is the one audited way round.
  *
- *   site:recover-owner av1.baoson.net new-owner@example.com --reason="Chủ cũ mất hộp thư, xác minh qua hợp đồng"
+ *   site:recover-owner av1.baoson.net new-owner@example.com --operator=staff@example.com --reason="Chủ cũ mất hộp thư, xác minh qua hợp đồng"
  *
- * The new owner must already have an account and must not be platform staff. The owners already
- * there keep their role. A written reason is required; the change is audited, and every owner the
- * website had and the new one get a notice by mail. It asks before changing anything (--yes skips
- * the question).
+ * The operator running it names their own platform account (--operator), which the audit log
+ * records as the actor. The new owner must already have an account and must not be platform
+ * staff. The owners already there keep their role. A written reason is required; the change is
+ * audited, and every owner the website had and the new one get a notice by mail, sent only once
+ * the change is committed. It asks before changing anything (--yes skips the question). An owner
+ * who has no account yet cannot be given this way.
  */
 final class RecoverSiteOwnerCommand extends Command
 {
@@ -34,6 +37,7 @@ final class RecoverSiteOwnerCommand extends Command
     protected $signature = 'site:recover-owner
         {host : Primary hostname of the website}
         {email : Account email of the person who becomes an owner}
+        {--operator= : Your own platform staff account email (required — recorded as who made the change)}
         {--reason= : Why (required — it is written to the audit log and mailed to the owners)}
         {--yes : Do not ask before changing}';
 
@@ -45,6 +49,13 @@ final class RecoverSiteOwnerCommand extends Command
         $host = (string) $this->argument('host');
         $email = Str::lower(trim((string) $this->argument('email')));
         $reason = trim((string) $this->option('reason'));
+        $operatorEmail = Str::lower(trim((string) $this->option('operator')));
+
+        if ($operatorEmail === '') {
+            $this->error('Name your own platform staff account with --operator=<email>: the audit log records who made the change.');
+
+            return self::FAILURE;
+        }
 
         if ($reason === '' || mb_strlen($reason) > RecoverSiteOwner::REASON_MAX) {
             $this->error('Write why with --reason="…" (at most '.RecoverSiteOwner::REASON_MAX.' characters): it goes to the audit log and to the owners.');
@@ -59,6 +70,13 @@ final class RecoverSiteOwnerCommand extends Command
             return self::FAILURE;
         }
 
+        $operator = User::query()->select(['id', 'ulid', 'name', 'email'])->where('email', $operatorEmail)->first();
+        if (! $operator instanceof User || ! app(PlatformAccess::class)->isOperator($operator)) {
+            $this->error("'{$operatorEmail}' is not a platform staff account. Run it with your own staff account in --operator.");
+
+            return self::FAILURE;
+        }
+
         $newOwner = User::query()->select(['id', 'ulid', 'name', 'email'])->where('email', $email)->first();
         if (! $newOwner instanceof User) {
             $this->error("No account has the email '{$email}'. The new owner needs an account first.");
@@ -66,7 +84,10 @@ final class RecoverSiteOwnerCommand extends Command
             return self::FAILURE;
         }
 
-        return $tenancy->enter($resolved->siteId, function () use ($resolved, $newOwner, $reason): int {
+        // The change commits inside the website's tenant context; the notices are built there (they
+        // carry the website) and sent only after it has committed, so a rolled-back change mails nobody.
+        /** @var int|list<array{0: User, 1: OwnerRecoveredNotification}> $done */
+        $done = $tenancy->enter($resolved->siteId, function () use ($resolved, $operator, $newOwner, $reason): int|array {
             $action = app(RecoverSiteOwner::class);
             $siteName = $this->siteName($resolved->siteId, $resolved->primaryHost);
 
@@ -90,28 +111,40 @@ final class RecoverSiteOwnerCommand extends Command
             }
 
             try {
-                $owners = $action->handle($newOwner, $reason);
+                $owners = $action->handle($operator, $newOwner, $reason);
             } catch (RoleChangeRejectedException $e) {
                 return $this->refused($e->reason);
             }
 
             $at = app(SiteTime::class)->now()->format('d/m/Y H:i');
             $locale = app(SiteLocale::class)->default();
+            $notices = [];
             foreach ([...$owners, $newOwner] as $person) {
-                $person->notify((new OwnerRecoveredNotification($siteName, $newOwner->email, $reason, $at))
+                $notices[] = [$person, (new OwnerRecoveredNotification($siteName, $newOwner->email, $reason, $at))
                     ->forCurrentSite()
-                    ->locale($locale));
+                    ->locale($locale)];
             }
 
-            $this->info("{$newOwner->email} is now an owner of {$resolved->primaryHost}. The change is in the audit log; a notice was queued to ".(count($owners) + 1).' address(es).');
-
-            return self::SUCCESS;
+            return $notices;
         });
+
+        if (is_int($done)) {
+            return $done;
+        }
+
+        foreach ($done as [$person, $notice]) {
+            $person->notify($notice);
+        }
+
+        $this->info("{$newOwner->email} is now an owner of {$resolved->primaryHost}. The change is in the audit log; a notice was queued to ".count($done).' address(es).');
+
+        return self::SUCCESS;
     }
 
     private function refused(string $reason): int
     {
         $this->error(match ($reason) {
+            'not_operator' => 'not_operator — the --operator account is not platform staff.',
             'operator' => 'operator — that account is platform staff; staff never become a website\'s owner this way.',
             'already_owner' => 'already_owner — that account is already an owner of this website. Nothing changed.',
             'no_owner_role' => 'no_owner_role — this website has no owner role to give (was it provisioned?).',

@@ -31,7 +31,6 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -386,7 +385,7 @@ final class Index extends Component
     public function openInvite(): void
     {
         $this->ensureOpen();
-        if (! Gate::allows('users.invite') || $this->refusedLocked()) {
+        if (! $this->mayInvite() || $this->refusedLocked()) {
             return;
         }
         if ($this->siteFull()) {
@@ -433,7 +432,7 @@ final class Index extends Component
         ], [], ['inviteEmail' => __('admin.members.inv_email'), 'inviteMessage' => __('admin.members.inv_msg')]);
 
         $actor = $this->actor();
-        if (! Gate::allows('users.invite') || $this->refusedLocked()) {
+        if (! $this->mayInvite() || $this->refusedLocked()) {
             return;
         }
 
@@ -501,7 +500,7 @@ final class Index extends Component
     {
         $title = __('admin.members.title');
         $actor = $this->actor();
-        if (! Gate::allows('users.manage')) {
+        if (! $this->open()) {
             return $this->page('admin::livewire.users.noperm', $title, ['role' => RoleLabel::topOf($actor)]);
         }
 
@@ -511,7 +510,7 @@ final class Index extends Component
         $guard = app(RoleHierarchyGuard::class);
         $siteId = app(CurrentSite::class)->id();
         $onInvites = $this->tab === 'loi-moi';
-        $canInvite = Gate::allows('users.invite');
+        $canInvite = $this->mayInvite();
         $support = app(SupportSession::class)->active();
         $lockedWhy = $this->lockReason();
 
@@ -839,9 +838,16 @@ final class Index extends Component
         return app(MembershipLock::class)->reason($this->actor(), app(CurrentSite::class)->id());
     }
 
+    /** May this person manage the website's members? Their real permission here (MembershipLock::permits — never the platform bypass for staff who hold a role). */
     private function open(): bool
     {
-        return Gate::allows('users.manage');
+        return app(MembershipLock::class)->permits($this->actor(), app(CurrentSite::class)->id(), 'users.manage');
+    }
+
+    /** May this person send invitations here? As open(), for `users.invite`. */
+    private function mayInvite(): bool
+    {
+        return app(MembershipLock::class)->permits($this->actor(), app(CurrentSite::class)->id(), 'users.invite');
     }
 
     /** Every public method: the member may manage members. */

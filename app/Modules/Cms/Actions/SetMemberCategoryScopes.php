@@ -18,7 +18,6 @@ use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
 
 /**
  * Set the categories a member of this site may write in — the one user-facing writer of
@@ -50,11 +49,7 @@ final readonly class SetMemberCategoryScopes
      */
     public function handle(User $actor, User $target, array $taxonomyIds): void
     {
-        app(MembershipLock::class)->forbid($actor, $this->site->id());   // membership never changes on someone's behalf, nor from outside the site
-
-        if (! Gate::forUser($actor)->allows('users.manage')) {
-            throw new AuthorizationException('Managing members needs users.manage.');
-        }
+        app(MembershipLock::class)->authorize($actor, $this->site->id(), 'users.manage');   // never on someone's behalf, from outside the site, or without users.manage there
         if ($actor->id === $target->id) {
             throw new AuthorizationException('Nobody sets their own category limits.');
         }

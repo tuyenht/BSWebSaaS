@@ -15,7 +15,6 @@ use App\Modules\Rbac\Support\RoleHierarchyGuard;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Url;
 
@@ -184,7 +183,7 @@ trait ManagesInvitations
     private function ensureInviter(): void
     {
         $this->ensureOpen();
-        abort_unless(Gate::allows('users.invite'), 403);
+        abort_unless($this->mayInvite(), 403);
     }
 
     /** An invitation of the CURRENT site, addressed by public ulid (the tenant scope and the explicit site keep it to this site). */

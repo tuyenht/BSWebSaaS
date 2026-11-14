@@ -20,6 +20,7 @@ use App\Modules\Provisioning\Exceptions\HostnameNotPlatformSubdomainException;
 use App\Modules\Provisioning\Exceptions\HostnameOwnedByAnotherTenantException;
 use App\Modules\Provisioning\Exceptions\HostnamePendingVerificationException;
 use App\Modules\Provisioning\Exceptions\HostnameReservedLabelException;
+use App\Modules\Provisioning\Exceptions\OwnerChangeRefusedException;
 use App\Modules\Provisioning\Exceptions\SiteLimitReachedException;
 use App\Modules\Provisioning\Exceptions\TenantSelectionException;
 use App\Modules\Rbac\Models\Permission;
@@ -50,7 +51,8 @@ use Spatie\Permission\PermissionRegistrar;
 /**
  * Genesis: provision a site end-to-end and leave it active. Idempotent (anchored on
  * the unique primary domain), so it is safe for An Vinh and for site #2..#10000.
- * A re-run must name the site's own customer (HostnameOwnedByAnotherTenantException).
+ * A re-run must name the site's own customer (HostnameOwnedByAnotherTenantException) and one of
+ * its own owners (OwnerChangeRefusedException): provisioning never changes who owns a website.
  *
  * Order respects the defense layers: global identity/site rows first, then per-site
  * (RLS) config + RBAC inside the tenant context, then flip the site to 'active'.
@@ -176,6 +178,9 @@ final readonly class ProvisionSite
             $tenant = $this->tenantOfExistingSite($site, $data, $hostname);
         }
 
+        // Before any account or role is touched: a re-run never hands the website to someone new.
+        $this->assertOwnerUnchanged($site, $hostname, $data->ownerEmail);
+
         // Functional shape (design.md §15.2): GĐ1 ships only `corporate`. Stamp it idempotently so a
         // re-run also backfills a site provisioned before the type axis existed.
         $siteType = SiteType::query()->where('key', 'corporate')->firstOrFail();
@@ -265,6 +270,42 @@ final readonly class ProvisionSite
         ]);
 
         return $site->refresh();
+    }
+
+    /**
+     * Provisioning gives a website its FIRST owner and never another: on a website that already has
+     * an owner, the email must be one of them (a re-run that finishes or refreshes it). A website
+     * with no owner yet takes one only while it is still being provisioned (a first run that failed
+     * midway); a live website whose owners are gone is recovered with `site:recover-owner`, which is
+     * audited and mailed — never here.
+     *
+     * @throws OwnerChangeRefusedException
+     */
+    private function assertOwnerUnchanged(Site $site, string $hostname, string $email): void
+    {
+        $siteId = $site->id;
+
+        [$hasOwner, $isOwner] = $this->tenancy->enter($siteId, function () use ($siteId, $email): array {
+            $owners = DB::table('model_has_roles')
+                ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+                ->where('model_has_roles.site_id', $siteId)
+                ->where('model_has_roles.model_type', User::class)
+                ->where('roles.site_id', $siteId)
+                ->where('roles.name', 'owner')
+                ->limit(100)
+                ->pluck('model_has_roles.model_id');
+
+            return [
+                $owners->isNotEmpty(),
+                $owners->isNotEmpty() && User::query()->whereIn('id', $owners)->where('email', $email)->exists(),
+            ];
+        });
+
+        if ($isOwner || (! $hasOwner && $site->status === 'provisioning')) {
+            return;
+        }
+
+        throw new OwnerChangeRefusedException($hostname);
     }
 
     /**

@@ -19,7 +19,6 @@ use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 /**
@@ -73,8 +72,7 @@ final readonly class InviteMember
      */
     public function handle(User $actor, string $email, array $roles, ?string $message = null): IssuedInvitation
     {
-        app(MembershipLock::class)->forbid($actor, $this->current->id());   // membership never changes on someone's behalf, nor from outside the site
-        Gate::forUser($actor)->authorize('users.invite');
+        app(MembershipLock::class)->authorize($actor, $this->current->id(), 'users.invite');   // never on someone's behalf, from outside the site, or without users.invite there
 
         if ($roles === []) {
             throw new InvitationRejectedException('no_roles');

@@ -28,7 +28,7 @@ final readonly class RevokeRole
 
     public function handle(User $actor, User $target, Role $role): void
     {
-        app(MembershipLock::class)->forbid($actor, Cast::int($role->site_id));   // membership never changes on someone's behalf, nor from outside the site
+        app(MembershipLock::class)->authorize($actor, Cast::int($role->site_id), 'users.manage');   // never on someone's behalf, from outside the site, or without users.manage there
         $this->guard->assertCanGrant($actor, $role);
 
         DB::transaction(function () use ($target, $role): void {

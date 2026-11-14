@@ -1,8 +1,10 @@
 <?php
 
 use App\Modules\Admin\Livewire\Users\Index;
+use App\Modules\Cms\Actions\SetMemberCategoryScopes;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Actions\AssignRole;
+use App\Modules\Rbac\Actions\CreateCustomRole;
 use App\Modules\Rbac\Actions\InviteMember;
 use App\Modules\Rbac\Actions\RevokeInvitation;
 use App\Modules\Rbac\Actions\RevokeRole;
@@ -12,6 +14,7 @@ use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Rbac\Support\MembershipLock;
 use App\Modules\Rbac\Support\PlatformAccess;
+use App\Modules\Rbac\Support\RoleCeiling;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
@@ -24,8 +27,9 @@ use Livewire\Livewire;
  * Platform staff who open a customer website's admin directly — not through a support session —
  * pass every tenant gate (super_admin, Gate::before). They still invite, remove, re-role and make
  * nobody an owner there, alone or in a bulk selection: the screen says why, and the actions refuse
- * on their own too. Staff who hold a real role on the website act as that member, no more. The
- * website's own owner and admins keep doing all of it.
+ * on their own too. Staff who hold a real role on the website act as that member, no more: one
+ * who is only an editor there manages nobody, though the platform gate would let a super_admin
+ * through. The website's own owner and admins keep doing all of it.
  */
 
 beforeEach(function (): void {
@@ -248,4 +252,84 @@ it('names staff on a site as outside only when they hold no role there', functio
     ]);
 
     expect($verdicts)->toBe([true, false, false, false]);
+});
+
+it('shows staff who are only an editor on the site the no-permission card, and every member write is refused', function (string $method, array $args): void {
+    $owner = staffLockMember('owner');
+    $member = staffLockMember('viewer');
+    $viewerRole = staffLockRole('viewer');
+    app(Tenancy::class)->enter(1, fn () => app(InviteMember::class)->handle($owner->fresh(), 'cho-'.Str::lower(Str::random(8)).'@example.test', [$viewerRole]));
+    $invitation = app(Tenancy::class)->enter(1, fn (): Invitation => Invitation::query()->firstOrFail());
+    $staff = staffLockStaff('editor');
+    $args = array_map(fn (string $arg): string => match ($arg) {
+        'member' => $member->ulid,
+        'invitation' => $invitation->ulid,
+        default => $arg,
+    }, $args);
+
+    staffLockPage($staff, fn (Testable $page) => $page
+        ->assertSee(__('admin.members.noperm_title'))
+        ->assertDontSee($member->email)
+        ->call($method, ...$args)
+        ->assertForbidden());
+
+    $after = app(Tenancy::class)->enter(1, fn (): Invitation => Invitation::query()->firstOrFail());
+    expect(staffLockRoles($member))->toBe(['viewer'])
+        ->and(staffLockRoles($owner))->toBe(['owner'])
+        ->and(app(Tenancy::class)->enter(1, fn (): int => Invitation::query()->count()))->toBe(1)
+        ->and($after->revoked_at)->toBeNull();
+})->with([
+    'open a member' => ['openPanel', ['member']],
+    'save roles' => ['saveRoles', []],
+    'ask to remove' => ['askRemove', ['member']],
+    'remove' => ['confirmRemove', []],
+    'open the invite form' => ['openInvite', []],
+    'send invitations' => ['sendInvites', []],
+    'open the bulk panel' => ['openBulkPanel', []],
+    'mail an invitation again' => ['resendInvitation', ['invitation']],
+    'withdraw an invitation' => ['confirmRevoke', []],
+]);
+
+it('refuses staff who are only an editor on the site in the actions themselves', function (string $path): void {
+    $owner = staffLockMember('owner');
+    $member = staffLockMember('viewer');
+    $other = staffLockMember('contributor');
+    $viewerRole = staffLockRole('viewer');
+    app(Tenancy::class)->enter(1, fn () => app(InviteMember::class)->handle($owner->fresh(), 'cho-'.Str::lower(Str::random(8)).'@example.test', [$viewerRole]));
+    // every viewer permission is one an editor holds: only the missing users.* / roles.manage stop them
+    $staff = staffLockStaff('editor');
+
+    expect(fn () => app(Tenancy::class)->enter(1, fn () => match ($path) {
+        'assign' => app(AssignRole::class)->handle($staff->fresh(), $other->fresh(), $viewerRole),
+        'revoke' => app(RevokeRole::class)->handle($staff->fresh(), $member->fresh(), $viewerRole),
+        'invite' => app(InviteMember::class)->handle($staff->fresh(), 'khac-'.Str::lower(Str::random(8)).'@example.test', [$viewerRole]),
+        'withdraw' => app(RevokeInvitation::class)->handle($staff->fresh(), Invitation::query()->firstOrFail()),
+        'category limits' => app(SetMemberCategoryScopes::class)->handle($staff->fresh(), $member->fresh(), []),
+        'create a role' => app(CreateCustomRole::class)->handle($staff->fresh(), 'Cộng tác', 15, ['entries.view']),
+    }))->toThrow(AuthorizationException::class);
+
+    expect(staffLockRoles($member))->toBe(['viewer'])
+        ->and(staffLockRoles($other))->toBe(['contributor'])
+        ->and(app(Tenancy::class)->enter(1, fn (): array => [
+            Invitation::query()->count(),
+            Invitation::query()->whereNotNull('revoked_at')->count(),
+            Role::query()->where('site_id', 1)->where('is_system', false)->count(),
+        ]))->toBe([1, 0, 0]);
+})->with(['assign', 'revoke', 'invite', 'withdraw', 'category limits', 'create a role']);
+
+it('bounds what staff may put in a role by their own role on the site, not the whole site', function (): void {
+    $outside = staffLockStaff();
+    $editor = staffLockStaff('editor');
+    $ceiling = PermissionRegistry::TENANT_PERMISSIONS;
+
+    [$forOutside, $forEditor] = app(Tenancy::class)->enter(1, fn (): array => [
+        app(RoleCeiling::class)->grantableBy($outside->fresh(), $ceiling),
+        app(RoleCeiling::class)->grantableBy($editor->fresh(), $ceiling),
+    ]);
+
+    $editorHolds = PermissionRegistry::tenantRoleTemplates('corporate')['editor']['permissions'];
+    expect($forOutside)->toBe($ceiling)
+        ->and($forEditor)->not->toContain('users.manage')
+        ->and($forEditor)->not->toContain('roles.manage')
+        ->and(array_diff($forEditor, $editorHolds))->toBe([]);
 });
