@@ -211,6 +211,7 @@ if (typeof window !== 'undefined' && window.Alpine) {
             iconQ: '',
             mv: null,
             ask: null,
+            ptabBusy: false, // the "Sản phẩm" tab switch is saving
             toast: null,
             live: '',
 
@@ -1262,6 +1263,25 @@ if (typeof window !== 'undefined' && window.Alpine) {
                 } else {
                     a.shows = { ...a.shows };
                 }
+            },
+            // The phone menu's "Sản phẩm" tab switch (saved at once, like an area). The switch flips
+            // as it is pressed and flips back if the server refuses or the request fails; while it
+            // saves, a further press is ignored, so one value is never sent twice.
+            async setProductsTab() {
+                if (this.ptabBusy) {
+                    return;
+                }
+                this.ptabBusy = true;
+                const was = this.d.productsTab.on;
+                const next = !was;
+                this.d.productsTab = { ...this.d.productsTab, on: next };
+                const res = await this.server(() => this.$wire.setProductsTab(next));
+                if (res) {
+                    this.notify(next ? t.ptabOn : t.ptabOff);
+                } else {
+                    this.d.productsTab = { ...this.d.productsTab, on: was };
+                }
+                this.ptabBusy = false;
             },
             copyCode(text) {
                 try {

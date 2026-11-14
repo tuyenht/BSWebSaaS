@@ -32,6 +32,7 @@ use App\Modules\Admin\Support\PlatformPlans;
 use App\Modules\Admin\Support\Settings\SetBrandImages;
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Catalog\Support\ProductIndexLink;
 use App\Modules\Cms\Actions\Menus\SaveMenu;
 use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
 use App\Modules\Cms\Data\TaxonomyData;
@@ -55,6 +56,7 @@ use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Shared\Http\SafeHttp;
 use App\Modules\Storefront\Models\ContactClickDaily;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Http\Middleware\SetCurrentSite;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\Plan;
@@ -533,6 +535,23 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('data-seo-fields')->not->toContain('wire:model="excerpt"');
     file_put_contents($dir.'/product-editor.html', $html);
 
+    // Trình đơn on a selling site: a products section with one category and a header setting, so the
+    // phone menu area shows its "Tab Sản phẩm" switch.
+    app(Tenancy::class)->enter(1, function (): void {
+        $root = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
+        $root->translations()->create(['locale' => 'vi', 'name' => 'Sản phẩm', 'slug' => 'san-pham-xem-truoc']);
+        ContentSection::query()->updateOrCreate(['key' => 'products'], ['label' => 'Sản phẩm', 'entry_type' => 'post', 'taxonomy_id' => $root->id]);
+        app(CreateTaxonomy::class)->handle('post_cat', $root->fresh() ?? $root, new TaxonomyData(names: ['vi' => 'Đồ gá']));
+        SiteSetting::query()->updateOrCreate(['group_name' => 'storefront', 'key' => 'header'], ['value' => ['top_bar' => ['items' => []], 'text_size' => false, 'sticky' => true]]);
+    });
+    // What a request reads once (modules, products section) is read again by this new request.
+    app()->forgetInstance(Entitlement::class);
+    app()->forgetInstance(ProductIndexLink::class);
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/menus')->assertOk()->getContent();
+    expect($html)->toContain('\u0022productsTab\u0022:{\u0022available\u0022:true');
+    file_put_contents($dir.'/menus-shop.html', $html);
+
     // The products list on a selling site, with a realistic set: two languages, short and very long names, every
     // price shape (none, plain, one thousand million, on sale with an end date), every stock kind, labels, a
     // three-level category and some products without the English translation. GET-only, like the other screens.
@@ -709,5 +728,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('data-te-page="suspended"');
     file_put_contents($dir.'/error-suspended.html', $html);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 46);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 47);
 });
