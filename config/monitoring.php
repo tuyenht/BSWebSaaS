@@ -4,8 +4,8 @@
  * Production error reporting (Monitoring module). The application tells the operator by mail when
  * something breaks: an unhandled error, an error the code swallowed with report(), a queued job
  * that failed for good, a scheduled command that failed. Off by default: with no recipient (or no
- * sender configured on the `monitoring` mailer in config/mail.php) nothing beyond the normal log
- * happens — dev, CI and tests stay silent.
+ * sender on the `monitoring` mailer in config/mail.php, which falls back to the platform's MAIL_*
+ * settings) nothing beyond the normal log happens — dev, CI and tests stay silent.
  */
 return [
 
