@@ -109,21 +109,35 @@ export function iconGroupsOf(groups, q, hits) {
     return found.length ? [{ group: fill(hits, { n: found.length }), icons: found }] : [];
 }
 
-// The icon that suits an item's name, or '': the icon with the longest search word (over two
-// characters) that the name holds, accents and case ignored; the first in picker order on a tie.
+// The icon that suits an item's name, or '': the icon whose search words hold the longest run of
+// the name's whole words in a row (accents and case ignored; "Đối tác" is "đối tác", never "đổi
+// trả"), a lone word counting only from three letters. On a tie the run with more letters wins,
+// then the first icon in picker order.
 export function suggestIconOf(groups, label) {
-    const text = fold(String(label || '').trim());
-    if (!text) {
+    const words = (s) => fold(s).split(/[^a-z0-9]+/).filter(Boolean);
+    const name = words(String(label || ''));
+    if (!name.length) {
         return '';
     }
     let best = '';
-    let score = 0;
-    groups.forEach((g) => g.icons.forEach((ic) => fold(ic.words || '').split(' ').forEach((w) => {
-        if (w.length > 2 && w.length > score && text.includes(w)) {
-            score = w.length;
-            best = ic.name;
+    let top = [0, 0];
+    groups.forEach((g) => g.icons.forEach((ic) => {
+        const kw = words(ic.words || '');
+        for (let i = 0; i < name.length; i++) {
+            for (let j = 0; j < kw.length; j++) {
+                let n = 0;
+                let chars = 0;
+                while (i + n < name.length && j + n < kw.length && name[i + n] === kw[j + n]) {
+                    chars += name[i + n].length;
+                    n++;
+                }
+                if ((n > 1 || chars > 2) && (n > top[0] || (n === top[0] && chars > top[1]))) {
+                    top = [n, chars];
+                    best = ic.name;
+                }
+            }
         }
-    })));
+    }));
     return best;
 }
 
