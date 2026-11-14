@@ -41,27 +41,27 @@ final class ProductSiteWords
      * Write the words of one product of $siteId again from its stored SKU and translations, in the
      * caller's transaction: of $locale only, or of every language when null. A product or a language
      * that no longer exists keeps no words.
+     *
+     * Two reads, never one: the product row is locked first (the statement waits for a save of the
+     * same product to end), and its translations are read by a statement of their own after the
+     * lock, so they are the ones that save committed. Under READ COMMITTED a locking read joined to
+     * the translations would return the translations of its own snapshot, from before the wait.
      */
     public static function sync(int $siteId, int $productId, ?string $locale = null): void
     {
-        // one statement: lock the product row, then read its SKU and the translations after the lock
-        $query = <<<'SQL'
-            select p.sku, t.locale, t.name, t.summary
-            from products p
-            left join product_translations t on t.product_id = p.id and t.site_id = p.site_id
-            SQL;
-        $bindings = [];
-        if ($locale !== null) {
-            $query .= ' and t.locale = ?';
-            $bindings[] = $locale;
-        }
-        array_push($bindings, $siteId, $productId);
+        $product = DB::selectOne('select sku from products where site_id = ? and id = ? for no key update', [$siteId, $productId]);
         $byLocale = [];
-        foreach (DB::select($query.' where p.site_id = ? and p.id = ? order by t.locale for no key update of p', $bindings) as $row) {
-            $row = (array) $row;
-            $rowLocale = Cast::stringOrNull($row['locale'] ?? null);
-            if ($rowLocale !== null) {
-                $byLocale[$rowLocale] = self::of(Cast::stringOrNull($row['sku'] ?? null), Cast::stringOrNull($row['name'] ?? null), Cast::stringOrNull($row['summary'] ?? null));
+        if (is_object($product)) {
+            $sku = Cast::stringOrNull(((array) $product)['sku'] ?? null);
+            $query = 'select locale, name, summary from product_translations where site_id = ? and product_id = ?';
+            $bindings = [$siteId, $productId];
+            if ($locale !== null) {
+                $query .= ' and locale = ?';
+                $bindings[] = $locale;
+            }
+            foreach (DB::select($query.' order by locale', $bindings) as $row) {
+                $row = (array) $row;
+                $byLocale[Cast::string($row['locale'] ?? '')] = self::of($sku, Cast::stringOrNull($row['name'] ?? null), Cast::stringOrNull($row['summary'] ?? null));
             }
         }
 

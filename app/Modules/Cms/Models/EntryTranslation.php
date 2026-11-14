@@ -7,6 +7,7 @@ namespace App\Modules\Cms\Models;
 use App\Modules\Cms\Casts\SanitizedPageBody;
 use App\Modules\Cms\Concerns\TracksContentChange;
 use App\Modules\Cms\Support\EntrySearchWords;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
@@ -41,9 +42,10 @@ class EntryTranslation extends Model
     protected $guarded = [];
 
     /**
-     * A language added or removed, or a changed title or excerpt, rewrites this language's storefront
-     * search words in the same transaction (EntrySearchWords): from the values just saved when the
-     * model holds both, else read again from the row. Other saves write nothing.
+     * A language added or removed, a changed title or excerpt, or a row moved to another language or
+     * entry rewrites this language's storefront search words in the same transaction
+     * (EntrySearchWords): from the values just saved when the model holds both, else from the saved
+     * row read back; a moved row first takes its words off where it was. Other saves write nothing.
      */
     #[\Override]
     protected static function booted(): void
@@ -53,12 +55,15 @@ class EntryTranslation extends Model
             if (array_key_exists('title', $attributes) && array_key_exists('excerpt', $attributes)) {
                 EntrySearchWords::put($row->site_id, $row->entry_id, $row->locale, $row->title, $row->excerpt);
             } else {
-                EntrySearchWords::sync($row->site_id, $row->entry_id, $row->locale);
+                EntrySearchWords::putSaved($row->site_id, $row->id);
             }
         };
         static::created($sync);
         static::updated(static function (self $row) use ($sync): void {
-            if ($row->wasChanged(['title', 'excerpt'])) {
+            if ($row->wasChanged(['locale', 'entry_id'])) {
+                EntrySearchWords::put($row->site_id, Cast::int($row->getOriginal('entry_id')), Cast::string($row->getOriginal('locale')), null, null);
+                $sync($row);
+            } elseif ($row->wasChanged(['title', 'excerpt'])) {
                 $sync($row);
             }
         });
