@@ -303,7 +303,7 @@ it('loads the flourish heading decoration, round floating buttons of email, Zalo
         ->and(preg_match('/<nav class="sf-fc__float sf-fc__float--right".*?<\/nav>/s', $home, $nav))->toBe(1)
         ->and($nav[0])->toContain('href="mailto:quybv@ckanvinh.vn"')
         ->and(preg_match_all('/<a /', $nav[0]))->toBe(3)
-        ->and(substr_count($home, 'src="https://static.cloudflareinsights.com/beacon.min.js"'))->toBe(1)
+        ->and(substr_count($home, 'data-src="https://static.cloudflareinsights.com/beacon.min.js"'))->toBe(1)
         ->and($home)->toContain($settings['setting:storefront.web_analytics']['value']['cloudflare_token']);
 
     $post = $this->get('http://'.ContentPacks::HOST.'/gia-cong-phay-tien-cnc')->assertOk()->getContent();
