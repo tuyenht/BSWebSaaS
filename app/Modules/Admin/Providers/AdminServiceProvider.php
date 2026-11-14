@@ -6,6 +6,7 @@ use App\Modules\Admin\Console\ReconcileContentUsage;
 use App\Modules\Admin\Console\RecoverSiteOwnerCommand;
 use App\Modules\Admin\Http\Middleware\EnforceSupportSession;
 use App\Modules\Admin\Http\Middleware\ResolveLivewireContext;
+use App\Modules\Admin\Http\Middleware\TrackSignedInDevice;
 use App\Modules\Admin\Listeners\SetTenantReplyTo;
 use App\Modules\Admin\Listeners\TellSiteAboutDomain;
 use App\Modules\Admin\Livewire\Account;
@@ -56,6 +57,7 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Events\DomainNeedsAttention;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Rendering\LayoutSlots;
+use Illuminate\Auth\Events\Login as SignedIn;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Mail\Events\MessageSending;
@@ -187,6 +189,9 @@ final class AdminServiceProvider extends ServiceProvider
         // A website's own domain needs its managers (design.md §28): bell + mail.
         Event::listen(DomainNeedsAttention::class, TellSiteAboutDomain::class);
 
+        // When each session signed in: an ended session the index may have forgotten is told apart by it.
+        Event::listen(SignedIn::class, TrackSignedInDevice::signedIn(...));
+
         // The dynamic menu (content_sections ∩ permissions) for every admin layout render.
         View::composer('admin::layouts.app', function (ViewContract $view): void {
             $view->with('navItems', app(AdminNav::class)->items(Auth::user()));
@@ -222,8 +227,9 @@ final class AdminServiceProvider extends ServiceProvider
         // Livewire's AJAX update endpoint must run inside the tenant context so component
         // interactions stay RLS-isolated (SetCurrentSite resolves the site by host —
         // the admin is on the tenant's own domain). Auth stays at the component/page
-        // level: the guest login and the authed admin share this single route.
+        // level: the guest login and the authed admin share this single route. auth.session (a no-op
+        // for a guest) signs out a session whose password changed elsewhere, as on the admin pages.
         Livewire::setUpdateRoute(fn (array $handle) => Route::post('/livewire/update', $handle)
-            ->middleware(['web', ResolveLivewireContext::class, EnforceSupportSession::class]));
+            ->middleware(['web', ResolveLivewireContext::class, EnforceSupportSession::class, 'auth.session', TrackSignedInDevice::class]));
     }
 }

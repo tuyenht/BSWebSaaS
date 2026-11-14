@@ -125,6 +125,7 @@ Rollback: the old code ignores the tables; `down()` drops them and no source dat
 - The first `docker compose up -d` after the switch to `bsweb/app:prod` recreates app, horizon and scheduler (a few seconds of 502) — which is also what applies an edited `.env`.
 - PgBouncer is pinned by digest (1.26.1), not `:latest`. Changing that line changes the service's config, so the next `docker compose up -d` recreates the pgbouncer container once — a few seconds without database connections.
 - Scripts that read `.env` themselves (the backup and the restore drill) see an edit at their next run.
+- Rotating `APP_KEY` ends every device listed under "Tài khoản của tôi › Phiên đăng nhập" (each member signs in again) and voids the marks of devices signed out from there: the device keys and password fingerprints are keyed with it. Rotate at a quiet hour and expect every member to sign in again.
 - The superuser password is **not** in `.env`. It lives in `/opt/bswebsaas/secrets/db-admin.env` (`DB_ADMIN_PASSWORD` and `POSTGRES_PASSWORD`, the same value; root only), read by the `postgres` and `migrate` services alone.
   - `DB_ADMIN_USERNAME` stays in `.env`: the postgres service, its healthcheck and every `psql -U "$POSTGRES_USER"` in the backup scripts need it.
   - A production app process that loads the password anyway logs a critical line on boot: `docker logs --since 10m bsweb_prod_app 2>&1 | grep -c 'superuser database password'` should print 0.

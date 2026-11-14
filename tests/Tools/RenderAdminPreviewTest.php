@@ -85,6 +85,7 @@ const ADMIN_PREVIEW_SCREENS = [
     'menus' => '/admin/menus',
     'account' => '/admin/account',
     'account-security' => '/admin/account?tab=security',
+    'account-sessions' => '/admin/account?tab=sessions',
     'account-linked' => '/admin/account?tab=linked',
     'account-prefs' => '/admin/account?tab=prefs',
 ];

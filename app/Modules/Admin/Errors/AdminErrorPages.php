@@ -59,17 +59,18 @@ final class AdminErrorPages
     public function render(Throwable $e, Request $request): ?Response
     {
         if (! self::isAdminRequest($request)
-            || $e instanceof AuthenticationException
             || $e instanceof ValidationException
             || $e instanceof HttpResponseException) {
             return null;
         }
         $livewire = $request->hasHeader('X-Livewire');
-        if (! $livewire && $request->wantsJson()) {
-            return null;
+        if ((! $livewire && $request->wantsJson()) || ($e instanceof AuthenticationException && ! $livewire)) {
+            return null; // a page whose sign-in ended goes to the right login (bootstrap/app.php)
         }
 
-        $status = self::status($e);
+        // A Livewire update whose sign-in ended (signed out from another device, or the password
+        // changed elsewhere): "Phiên đã hết hạn", which the page opens on a 419 to sign in again.
+        $status = $e instanceof AuthenticationException ? 419 : self::status($e);
         if (! in_array($status, self::STATUSES, true) || ($status === 500 && (bool) config('app.debug'))) {
             return null;
         }

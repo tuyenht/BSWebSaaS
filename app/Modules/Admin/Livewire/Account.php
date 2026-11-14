@@ -7,6 +7,7 @@ namespace App\Modules\Admin\Livewire;
 use App\Modules\Admin\Notifications\TwoFactorDisabledNotification;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Admin\Support\SettingsRepository;
+use App\Modules\Admin\Support\SignedInDevices;
 use App\Modules\Admin\Support\SocialAuth;
 use App\Modules\Admin\Theme\AdminChromeResolver;
 use App\Modules\Audit\Facades\Audit;
@@ -18,10 +19,13 @@ use App\Modules\Notifications\Registry\NotificationKinds;
 use App\Modules\Notifications\Support\NotificationPreferences;
 use App\Modules\Rbac\Support\RoleLabel;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Shared\Support\ConcurrencyError;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteDirectory;
 use App\Modules\Tenancy\Context\SiteTime;
+use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Support\ContactPhone;
+use Carbon\CarbonImmutable;
 use DateTimeInterface;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
@@ -33,10 +37,12 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Throwable;
 
 /**
  * My account (Tài khoản của tôi): the signed-in member's own profile (name, job title, phone),
- * password, two-factor sign-in, linked sign-in accounts, appearance and notification choices. Everything here
+ * password, two-factor sign-in, signed-in devices, linked sign-in accounts, appearance and
+ * notification choices. Everything here
  * scopes to auth()->user() only; no role is needed, the member's own password gates the
  * sensitive changes.
  *
@@ -47,8 +53,8 @@ use Livewire\Component;
 #[Layout('admin::layouts.app')]
 final class Account extends Component
 {
-    /** The sections the screen shows (the sessions section waits for a per-member session index). */
-    public const array TABS = ['profile', 'security', 'linked', 'prefs'];
+    /** The sections the screen shows. */
+    public const array TABS = ['profile', 'security', 'sessions', 'linked', 'prefs'];
 
     public const int NAME_MAX = 120;
 
@@ -93,6 +99,18 @@ final class Account extends Component
         'system.domain_problem' => ['domains.manage'],
     ];
 
+    /** The icon of each kind of device (board 23). */
+    private const array DEVICE_ICONS = [
+        'windows' => 'ri-computer', 'mac' => 'ri-macbook', 'linux' => 'ri-computer', 'chromeos' => 'ri-computer',
+        'iphone' => 'ri-smartphone', 'ipad' => 'ri-tablet', 'android' => 'ri-android', 'android_tablet' => 'ri-tablet',
+        'other' => 'ri-device',
+    ];
+
+    private const array BROWSER_NAMES = [
+        'chrome' => 'Chrome', 'safari' => 'Safari', 'firefox' => 'Firefox', 'edge' => 'Edge',
+        'samsung' => 'Samsung Internet', 'opera' => 'Opera', 'coccoc' => 'Cốc Cốc',
+    ];
+
     /** Kinds whose sender also mails (the only ones with an e-mail switch). */
     private const array MAILED = ['system.domain_problem'];
 
@@ -131,6 +149,20 @@ final class Account extends Component
 
     #[Locked]
     public bool $passwordChanged = false;
+
+    /** How many of the member's other devices the password change signed out. */
+    #[Locked]
+    public int $passwordOthers = 0;
+
+    /** The short message at the bottom of the screen ("Đã đăng xuất …"). */
+    #[Locked]
+    public string $toast = '';
+
+    #[Locked]
+    public string $toastTone = 'success';
+
+    #[Locked]
+    public int $toastSeq = 0;
 
     /** 0 = idle, 1 = scan the code, 2 = type the code, 3 = keep the recovery codes. */
     #[Locked]
@@ -239,13 +271,16 @@ final class Account extends Component
     // ───────────────────────────── password ─────────────────────────────
 
     /**
-     * Change the member's own password, gated by the current one. Rotating the hash signs out
-     * every other session (AuthenticateSession); this one is re-seeded so the member stays in.
+     * Change the member's own password, gated by the current one. Every other device is signed
+     * out at once (a support session too, on record) and counted for the message; rotating the
+     * hash signs out any session the device index does not know (AuthenticateSession). This one is
+     * re-seeded so the member stays in.
      */
     public function changePassword(): void
     {
         $this->writable();
         $this->passwordChanged = false;
+        $this->passwordOthers = 0;
         $this->resetErrorBag(['current_password', 'password', 'password_confirmation']);
         $user = $this->member();
 
@@ -268,6 +303,8 @@ final class Account extends Component
             return;
         }
 
+        // Counted while the index still knows the old password; then the new one is saved.
+        $others = $this->signOutOthersQuietly($user);
         $user->forceFill(['password' => Hash::make($this->password)])->save();
         // A new session id with the new password: an id copied before the change is worth nothing.
         session()->regenerate(true);
@@ -276,6 +313,77 @@ final class Account extends Component
 
         $this->reset('current_password', 'password', 'password_confirmation');
         $this->passwordChanged = true;
+        $this->passwordOthers = $others;
+    }
+
+    // ───────────────────────────── signed-in devices ─────────────────────────────
+
+    /**
+     * "Đăng xuất thiết bị này" on one of the member's other devices: its session ends at once. Only
+     * a device of the signed-in member, never the one asking; $key is the row's opaque key.
+     */
+    public function signOutDevice(string $key): void
+    {
+        $this->writable();
+        $user = $this->member();
+        if (! SignedInDevices::isKey($key)) {
+            $this->notify(__('admin.account.ses_gone'), 'info');
+
+            return;
+        }
+
+        try {
+            $ended = app(SignedInDevices::class)->signOut($user, session()->getId(), $key);
+        } catch (Throwable $e) {
+            $this->failed($e);
+
+            return;
+        }
+
+        if ($ended === null) {
+            $this->notify(__('admin.account.ses_gone'), 'info');
+
+            return;
+        }
+
+        if ($ended['kind'] === SignedInDevices::KIND_SUPPORT) {
+            // its own record is the support session's end row, on the session's website
+            $this->notify(__('admin.account.ses_out_support'));
+
+            return;
+        }
+        $this->recordSignOut($user, 1);
+        $this->notify(__('admin.account.ses_out_one', ['device' => self::deviceLabel($ended['device'])]));
+    }
+
+    /** "Đăng xuất mọi thiết bị khác": every other session ends, a support session included. */
+    public function signOutOtherDevices(): void
+    {
+        $this->writable();
+        $user = $this->member();
+
+        try {
+            $ended = app(SignedInDevices::class)->signOutOthers($user, session()->getId());
+        } catch (Throwable $e) {
+            $this->failed($e);
+
+            return;
+        }
+
+        if ($ended['members'] > 0) {
+            $this->recordSignOut($user, $ended['members']);
+            $this->notify(__('admin.account.ses_out_all', ['count' => $ended['members']]));
+        } elseif ($ended['support'] > 0) {
+            // only a support session was signed in as the member: its end row is its record
+            $this->notify(__('admin.account.ses_out_support'));
+        }
+    }
+
+    public function dismissToast(?int $seq = null): void
+    {
+        if ($seq === null || $seq === $this->toastSeq) {
+            $this->toast = '';
+        }
     }
 
     // ───────────────────────────── two-factor ─────────────────────────────
@@ -592,6 +700,7 @@ final class Account extends Component
             'locales' => Locales::available(),
             'prefs' => $this->preferenceState($user),
             'noticeGroups' => $this->noticeGroups($user),
+            ...($this->tab === 'sessions' ? $this->deviceRows($user) : ['devices' => [], 'deviceOthers' => 0]),
         ]);
         $view->title(__('admin.account.title'));
 
@@ -599,6 +708,126 @@ final class Account extends Component
     }
 
     // ───────────────────────────── helpers ─────────────────────────────
+
+    /**
+     * The rows of "Phiên đăng nhập": this device first, then the others by last use. A support
+     * session is not listed yet (its row waits for its design); ending every other device still
+     * ends it, so it counts among the others (deviceOthers): the member is never told nobody else is
+     * signed in while staff are. During a support session the staff member's own session is not
+     * shown either.
+     *
+     * @return array{devices: list<array{key: string, current: bool, icon: string, device: string, meta: string, out: string}>, deviceOthers: int}
+     */
+    private function deviceRows(User $user): array
+    {
+        $current = app(CurrentSite::class);
+        $support = app(SupportSession::class)->active();
+        $all = app(SignedInDevices::class)->rows($user, session()->getId(), request()->userAgent(), $current->hasId() ? $current->id() : null);
+        $others = count(array_filter($all, fn (array $row): bool => ! $row['current']));
+        $rows = array_values(array_filter(
+            $all,
+            // staff signed in for support see the member's devices, never their own as "Thiết bị này"
+            fn (array $row): bool => $row['kind'] === SignedInDevices::KIND_MEMBER && ! ($row['current'] && $support),
+        ));
+
+        $siteIds = array_values(array_unique(array_filter(array_column($rows, 'site_id'), is_int(...))));
+        $names = $siteIds === [] ? [] : Site::withTrashed()->whereIn('id', $siteIds)->pluck('name', 'id')->all();
+
+        $shown = [];
+        foreach ($rows as $row) {
+            $device = self::deviceLabel($row['device']);
+            $browser = self::browserLabel($row['browser']);
+            $site = $row['site_id'] === null
+                ? __('admin.account.ses_platform')
+                : (trim(Cast::string($names[$row['site_id']] ?? null)) ?: __('admin.account.ses_site_unknown'));
+            $shown[] = [
+                'key' => $row['key'],
+                'current' => $row['current'],
+                'icon' => self::DEVICE_ICONS[$row['device']] ?? 'ri-device',
+                'device' => $device,
+                'meta' => implode(' · ', [$browser, $site, $row['current'] ? __('admin.account.ses_active') : $this->lastUsed($row['last'])]),
+                'out' => __('admin.account.ses_out_label', ['device' => $device, 'browser' => $browser]),
+            ];
+        }
+
+        return ['devices' => $shown, 'deviceOthers' => $others];
+    }
+
+    /** When a device was last used, in the site's time: the index knows it to THROTTLE seconds. */
+    private function lastUsed(int $timestamp): string
+    {
+        $time = app(SiteTime::class);
+        $at = $time->forDisplay(CarbonImmutable::createFromTimestamp($timestamp));
+        $now = $time->now();
+        if ($at === null) {
+            return '';
+        }
+
+        $seconds = max(0, $now->getTimestamp() - $at->getTimestamp());
+
+        return match (true) {
+            $seconds < SignedInDevices::THROTTLE => __('admin.account.ses_active'),
+            $seconds < 3600 => __('admin.account.ses_minutes', ['n' => intdiv($seconds, 60)]),
+            $at->isSameDay($now) => __('admin.account.ses_hours', ['n' => intdiv($seconds, 3600)]),
+            $at->isSameDay($now->subDay()) => __('admin.account.ses_yesterday', ['time' => $at->format('H:i')]),
+            default => __('admin.account.ses_on', ['date' => $at->format('d/m/Y'), 'time' => $at->format('H:i')]),
+        };
+    }
+
+    private static function deviceLabel(string $device): string
+    {
+        return __('admin.account.ses_dev_'.(in_array($device, SignedInDevices::DEVICES, true) ? $device : 'other'));
+    }
+
+    /** Browser names are names: written as their makers write them, in every language. */
+    private static function browserLabel(string $browser): string
+    {
+        return self::BROWSER_NAMES[$browser] ?? __('admin.account.ses_browser_other');
+    }
+
+    /**
+     * Sign the other devices out after a password change. The password is already changed, so a
+     * failure here only loses the count: rotating the hash still signs those sessions out.
+     */
+    private function signOutOthersQuietly(User $user): int
+    {
+        try {
+            return app(SignedInDevices::class)->signOutOthers($user, session()->getId())['members'];
+        } catch (Throwable $e) {
+            if (ConcurrencyError::is($e)) {
+                throw $e;
+            }
+            report($e);
+
+            return 0;
+        }
+    }
+
+    /** One sign-out on record, on the website the member is on: how many, never which devices. */
+    private function recordSignOut(User $user, int $count): void
+    {
+        Audit::record('auth.session.signed_out', [
+            'actor_id' => $user->getKey(),
+            'actor_label' => $user->email,
+            'meta' => ['count' => $count],
+        ]);
+    }
+
+    private function failed(Throwable $e): void
+    {
+        if (ConcurrencyError::is($e)) {
+            throw $e;
+        }
+        report($e);
+        $this->notify(__('admin.account.ses_failed'), 'error');
+    }
+
+    private function notify(string $message, string $tone = 'success'): void
+    {
+        $this->toast = $message;
+        $this->toastTone = $tone;
+        $this->toastSeq++;
+    }
 
     private function member(): User
     {
