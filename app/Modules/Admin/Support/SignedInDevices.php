@@ -28,13 +28,15 @@ use SessionHandlerInterface;
  * the store, or made under a password the member no longer has (that session is ended there and
  * then, as the middleware would at its next request).
  *
- * Ending a device deletes its session from the store and its entry, and leaves a mark
- * (`signed_in_device_ended:{user}:{key}`, ENDED_TTL). A request of that device still in flight can
+ * Ending a device first leaves a mark (`signed_in_device_ended:{user}:{key}`, ENDED_TTL), then
+ * deletes its entry and its session from the store. A request of that device still in flight can
  * write its old session back when it finishes; the mark keeps that request from indexing it again,
  * and its next request signs it out (TrackSignedInDevice). An entry that is simply missing (expired
  * while the session was kept alive elsewhere, e.g. on the storefront, or dropped from Valkey) is
- * written again instead: only the mark means "signed out". No "remember me" cookie is issued today:
- * if one is added, ending a device must cycle it too.
+ * written again instead: only the mark means "signed out", except for a session signed in longer
+ * than ENDED_TTL ago, whose mark may have run out (see there). No "remember me" cookie is issued
+ * today: if one is added, ending a device must cycle it too. Both the keys and the password
+ * fingerprint are keyed with APP_KEY: rotating it orphans every entry and mark.
  *
  * Holds no request state (Octane): every call names the member and the session it is about.
  */
@@ -65,10 +67,14 @@ final readonly class SignedInDevices
 
     private const string ENDED = 'signed_in_device_ended:';
 
+    /** Where the session keeps when it signed in (set at sign-in, before any of its requests can race). */
+    public const string SIGNED_IN_AT = 'signed_in_device_since';
+
     /**
      * How long an ended session's mark lasts. Only a session written back by a request in flight
-     * can carry an ended key, and only while something keeps it alive; a month outlasts any such
-     * use by far, and a mark is a few bytes.
+     * can carry an ended key, and only while something keeps it alive; a mark is a few bytes. A
+     * mark is never younger than its session's sign-in, so once a session has been signed in this
+     * long its mark may be gone: TrackSignedInDevice then lets it on only while its entry is there.
      */
     public const int ENDED_TTL = 30 * 86400;
 
@@ -312,8 +318,10 @@ final readonly class SignedInDevices
         if ($entry['kind'] === self::KIND_SUPPORT && $entry['code'] !== '') {
             $this->support->endAsMember($user, $entry['code']);
         }
-        self::handler()->destroy($entry['sid']);
+        // The mark before the session goes: if the store fails in between, the session is still
+        // signed out at its next request, never left signed in with nothing marking it ended.
         $this->forget(Cast::int($user->getKey()), $key);
+        self::handler()->destroy($entry['sid']);
     }
 
     /**

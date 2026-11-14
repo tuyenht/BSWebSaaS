@@ -193,8 +193,12 @@ Route::prefix(config('admin.prefix', 'admin'))
             ->name('admin.invitations.accept');
 
         // OAuth2 redirect endpoints (social login + email-sender connect). Guest-reachable
-        // (login needs them pre-auth); the 'email' purpose enforces auth in OAuthController.
-        Route::get('/oauth/{provider}/start', [OAuthController::class, 'start'])->name('admin.oauth.start');
+        // (login needs them pre-auth); the 'email' and 'connect' purposes enforce auth in
+        // OAuthController. A signed-in session passes the same checks as on the admin pages first
+        // (password changed elsewhere, signed out from another device): both act on the account.
+        Route::get('/oauth/{provider}/start', [OAuthController::class, 'start'])
+            ->middleware(['auth.session', TrackSignedInDevice::class])
+            ->name('admin.oauth.start');
         // Social-login session completes here (origin host) via a single-use token from the
         // centralized callback — see the global oauth.callback route below.
         Route::get('/oauth/finish', [OAuthController::class, 'finish'])->name('admin.oauth.finish');

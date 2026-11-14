@@ -1,6 +1,8 @@
 <?php
 
 use App\Modules\Admin\Livewire\Account;
+use App\Modules\Admin\Support\SecretCipher;
+use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Admin\Support\SignedInDevices;
 use App\Modules\Admin\Support\SupportSessions;
 use App\Modules\Admin\Support\SupportSignIn;
@@ -10,8 +12,13 @@ use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use Carbon\CarbonImmutable;
+use Illuminate\Cache\Events\KeyWritten;
 use Illuminate\Http\Request;
+use Illuminate\Redis\RedisManager;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Route;
@@ -581,3 +588,242 @@ it('only lets support staff look at the devices: signing out is refused during a
     'one device' => ['signOutDevice', ['PHONE']],
     'every other device' => ['signOutOtherDevices', []],
 ]);
+
+// ── what an ended session can still reach, and the edges of the index ──────────────
+
+/** A member who may manage settings on website 1, with Google sign-in and the mail OAuth app set up there. */
+function dvOAuthManager(): User
+{
+    config(['admin.encryption_key' => 'base64:'.base64_encode('0123456789abcdef0123456789abcdef')]);
+    app(Tenancy::class)->enter(1, function (): void {
+        app(SettingsRepository::class)->put('oauth_social', 'google', ['client_id' => 'social-client', 'client_secret' => SecretCipher::encrypt('social-secret'), 'enabled' => true]);
+        app(SettingsRepository::class)->put('email', 'config', ['method' => 'smtp_password', 'oauth' => ['client_id' => 'mail-client', 'client_secret' => SecretCipher::encrypt('mail-secret')]]);
+    });
+    $user = User::factory()->create(['password' => Hash::make('old-password-123')]);
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'manager', ['entries.view', 'settings.manage']));
+    app(TeamContext::class)->forget();
+
+    return $user->fresh();
+}
+
+/**
+ * Signs $sid in on an admin page, ends it from another device, then writes it back as a request of
+ * it still in flight would (without its marker when $marker is false).
+ */
+function dvEndedWrittenBack(object $test, User $user, string $sid, bool $marker = true): string
+{
+    $test->actingAs($user)->withCookie(config('session.cookie'), $sid)->get('http://a.test/admin/account')->assertOk();
+    $payload = app('session.store')->getHandler()->read($sid);
+    if (! $marker) {
+        $data = json_decode($payload, true);
+        unset($data[SignedInDevices::MARKER]);
+        $payload = (string) json_encode($data);
+    }
+
+    expect(dvDevices()->signOut($user, dvSid(), SignedInDevices::keyOf($sid)))->not->toBeNull();
+    app('session.store')->getHandler()->write($sid, $payload);
+
+    return $payload;
+}
+
+/** @return list<string> the OAuth states written while $run ran */
+function dvOAuthStates(Closure $run): array
+{
+    $states = [];
+    Event::listen(KeyWritten::class, function (KeyWritten $e) use (&$states): void {
+        if (str_starts_with($e->key, 'oauth-state:')) {
+            $states[] = $e->key;
+        }
+    });
+    $run();
+
+    return $states;
+}
+
+it('refuses the start of an OAuth link or sender connect to an ended session written back by a request in flight', function (string $purpose): void {
+    $user = dvOAuthManager();
+    $sid = dvSid();
+    dvEndedWrittenBack($this, $user, $sid);
+
+    $states = dvOAuthStates(fn () => $this->actingAs($user)->withCookie(config('session.cookie'), $sid)
+        ->get("http://a.test/admin/oauth/google/start?purpose={$purpose}")
+        ->assertRedirectContains('/admin/login'));
+
+    $this->assertGuest();
+    expect($states)->toBe([])
+        ->and(DB::connection('pgsql_admin')->table('social_identities')->where('user_id', $user->id)->count())->toBe(0);
+})->with(['connect', 'email']);
+
+it('refuses the start of an OAuth link or sender connect from a session whose password changed elsewhere', function (string $purpose): void {
+    $user = dvOAuthManager();
+    $sid = dvSid();
+    $this->actingAs($user)->withCookie(config('session.cookie'), $sid)->get('http://a.test/admin/account')->assertOk();
+    $user->forceFill(['password' => Hash::make('new-password-456')])->save();
+
+    $states = dvOAuthStates(fn () => $this->actingAs($user->fresh())->withCookie(config('session.cookie'), $sid)
+        ->get("http://a.test/admin/oauth/google/start?purpose={$purpose}")
+        ->assertRedirectContains('/admin/login'));
+
+    $this->assertGuest();
+    expect($states)->toBe([]);
+})->with(['connect', 'email']);
+
+it('still starts an OAuth link or sender connect from a live session', function (string $purpose, string $client): void {
+    $user = dvOAuthManager();
+    $sid = dvSid();
+    $this->actingAs($user)->withCookie(config('session.cookie'), $sid)->get('http://a.test/admin/account')->assertOk();
+
+    $states = dvOAuthStates(fn () => $this->actingAs($user)->withCookie(config('session.cookie'), $sid)
+        ->get("http://a.test/admin/oauth/google/start?purpose={$purpose}")
+        ->assertRedirectContains('accounts.google.com')
+        ->assertRedirectContains("client_id={$client}"));
+
+    $this->assertAuthenticatedAs($user);
+    expect($states)->toHaveCount(1);
+})->with([
+    'link a sign-in account' => ['connect', 'social-client'],
+    'connect the sender' => ['email', 'mail-client'],
+]);
+
+it('keeps social sign-in open to a guest', function (): void {
+    dvOAuthManager();
+
+    $states = dvOAuthStates(fn () => $this->get('http://a.test/admin/oauth/google/start?purpose=login')
+        ->assertRedirectContains('accounts.google.com')
+        ->assertRedirectContains('client_id=social-client'));
+
+    expect($states)->toHaveCount(1);
+});
+
+it('stamps a session with the time it signed in', function (): void {
+    $user = dvMember();
+    dvThisSession();
+    request()->setLaravelSession(app('session')->driver());
+    $this->travelTo(CarbonImmutable::parse('2026-11-14 08:00:00', 'UTC'));
+
+    auth()->login($user);
+
+    expect(session()->get(SignedInDevices::SIGNED_IN_AT))->toBe(CarbonImmutable::parse('2026-11-14 08:00:00', 'UTC')->getTimestamp());
+});
+
+it('signs out a session written back after it was ended once its mark ran out, signed in over a month ago', function (bool $marker): void {
+    $user = dvMember();
+    $sid = dvSid();
+    $key = SignedInDevices::keyOf($sid);
+    $payload = dvEndedWrittenBack($this, $user, $sid, $marker);
+
+    // kept alive by the storefront alone until its ended mark ran out (Valkey keeps its own clock:
+    // the mark is dropped by hand)
+    $this->travel(SignedInDevices::ENDED_TTL + 60)->seconds();
+    app('session.store')->getHandler()->write($sid, $payload);
+    Redis::del("signed_in_device_ended:{$user->id}:{$key}");
+
+    $this->actingAs($user)->withCookie(config('session.cookie'), $sid)->get('http://a.test/admin/account')
+        ->assertRedirectContains('/admin/login');
+    $this->assertGuest();
+    expect(dvDevices()->exists($user->id, $key))->toBeFalse();
+})->with(['with its marker' => true, 'saved back without its marker' => false]);
+
+it('keeps a session signed in over a month ago while the index still has it', function (): void {
+    $user = dvMember();
+    $sid = dvSid();
+    $open = fn () => $this->actingAs($user)->withCookie(config('session.cookie'), $sid)->get('http://a.test/admin/account');
+    $open()->assertOk();
+    $payload = app('session.store')->getHandler()->read($sid);
+
+    $this->travel(SignedInDevices::ENDED_TTL + 60)->seconds();
+    app('session.store')->getHandler()->write($sid, $payload); // used every day since
+
+    $open()->assertOk();
+    $this->assertAuthenticatedAs($user);
+    expect(session()->get(SignedInDevices::SIGNED_IN_AT))->toBeLessThan(now()->getTimestamp() - SignedInDevices::ENDED_TTL);
+});
+
+it('marks a device ended before its session goes, so it is still signed out when the store fails in between', function (): void {
+    $user = dvMember();
+    dvThisSession();
+    $phone = dvOtherDevice($user, DV_IPHONE);
+    $key = SignedInDevices::keyOf($phone);
+
+    $store = app('session.store');
+    $real = $store->getHandler();
+    $store->setHandler(new class($real) implements SessionHandlerInterface
+    {
+        public function __construct(private SessionHandlerInterface $inner) {}
+
+        public function close(): bool
+        {
+            return $this->inner->close();
+        }
+
+        public function destroy(string $id): bool
+        {
+            throw new RuntimeException('Valkey went away');
+        }
+
+        public function gc(int $max_lifetime): int|false
+        {
+            return $this->inner->gc($max_lifetime);
+        }
+
+        public function open(string $path, string $name): bool
+        {
+            return $this->inner->open($path, $name);
+        }
+
+        public function read(string $id): string|false
+        {
+            return $this->inner->read($id);
+        }
+
+        public function write(string $id, string $data): bool
+        {
+            return $this->inner->write($id, $data);
+        }
+    });
+    try {
+        expect(fn () => dvDevices()->signOut($user, session()->getId(), $key))->toThrow(RuntimeException::class);
+    } finally {
+        $store->setHandler($real);
+    }
+
+    expect(dvAlive($phone))->toBeTrue()
+        ->and(dvDevices()->ended($user->id, $key))->toBeTrue()
+        ->and(dvDevices()->exists($user->id, $key))->toBeFalse();
+    $this->actingAs($user)->withCookie(config('session.cookie'), $phone)->get('http://a.test/admin/account')
+        ->assertRedirectContains('/admin/login');
+    $this->assertGuest();
+});
+
+it('lets the request through, and reports it, when Valkey fails while checking for an ended mark', function (): void {
+    Exceptions::fake();
+    $user = dvMember();
+    $sid = dvSid();
+    dvDevices()->forget($user->id, SignedInDevices::keyOf($sid));
+
+    $config = config('database.redis');
+    $flaky = new class(app(), Arr::pull($config, 'client', 'phpredis'), $config) extends RedisManager
+    {
+        public function __call($method, $parameters)
+        {
+            if (strtolower($method) === 'exists' && str_starts_with((string) ($parameters[0] ?? ''), 'signed_in_device_ended:')) {
+                throw new RuntimeException('Valkey went away');
+            }
+
+            return parent::__call($method, $parameters);
+        }
+    };
+    $real = app('redis');
+    app()->instance('redis', $flaky);
+    Redis::clearResolvedInstance('redis');
+    try {
+        $this->actingAs($user)->withCookie(config('session.cookie'), $sid)->get('http://a.test/admin/account')->assertOk();
+    } finally {
+        app()->instance('redis', $real);
+        Redis::clearResolvedInstance('redis');
+    }
+
+    // fails open: the session store is Valkey too, so in production such a request fails there anyway
+    $this->assertAuthenticatedAs($user);
+    Exceptions::assertReported(fn (RuntimeException $e): bool => $e->getMessage() === 'Valkey went away');
+});

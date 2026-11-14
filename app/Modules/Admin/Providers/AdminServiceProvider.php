@@ -57,6 +57,7 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Events\DomainNeedsAttention;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Rendering\LayoutSlots;
+use Illuminate\Auth\Events\Login as SignedIn;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Mail\Events\MessageSending;
@@ -187,6 +188,9 @@ final class AdminServiceProvider extends ServiceProvider
 
         // A website's own domain needs its managers (design.md §28): bell + mail.
         Event::listen(DomainNeedsAttention::class, TellSiteAboutDomain::class);
+
+        // When each session signed in: an ended session the index may have forgotten is told apart by it.
+        Event::listen(SignedIn::class, TrackSignedInDevice::signedIn(...));
 
         // The dynamic menu (content_sections ∩ permissions) for every admin layout render.
         View::composer('admin::layouts.app', function (ViewContract $view): void {
