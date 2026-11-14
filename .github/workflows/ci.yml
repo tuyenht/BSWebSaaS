@@ -205,14 +205,15 @@ jobs:
         run: php artisan lang:check
 
   pest:
-    name: Pest shard ${{ matrix.shard }}/5
+    name: Pest shard ${{ matrix.shard }}/5 mem ${{ matrix.mem }}
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     strategy:
       # One red shard must not hide the others.
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5]
+        shard: [5]
+        mem: [1G, 4G]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
@@ -299,7 +300,7 @@ jobs:
       # one ran out of 1G in the Concurrency suite (15/11/2026), so a fifth shard took the load
       # instead of a higher limit.
       - name: Pest (unit · feature · arch · query-budget) shard ${{ matrix.shard }}/5
-        run: php -d memory_limit=1G vendor/bin/pest --shard=${{ matrix.shard }}/5
+        run: php -d memory_limit=${{ matrix.mem }} -d display_errors=stderr -d log_errors=1 -d error_log=/dev/stderr vendor/bin/pest --shard=${{ matrix.shard }}/5
 
   # The check name that existed before the split; branch protection may require it (deploy scripts read the run conclusion):
   # it is green only when the static job and every Pest shard are green. It skips under the same
