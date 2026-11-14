@@ -86,7 +86,7 @@ function setMenu(open, returnFocus = true) {
     panel.hidden = !open;
     root.classList.toggle('sf-menu-open', open);
     if (open) {
-        // Opens on "Menu", or on "Sản phẩm" when the visitor is on a product category or a product.
+        // Opens on "Menu", or on "Sản phẩm" when the visitor is on a product category.
         const tabs = chooseTab ? panel.querySelectorAll('[role="tab"]') : [];
         const here = tabs.length > 1 && document.getElementById(tabs[1].getAttribute('aria-controls')).querySelector('[aria-current]');
         if (tabs.length) {

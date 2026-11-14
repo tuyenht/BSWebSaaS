@@ -339,9 +339,9 @@ it('shows the call and Zalo buttons only when the site turned off both the botto
 
 it('draws a Zalo circle only for an Official Account or page link, and never beside the Zalo button', function (): void {
     dpSite('sdt.platform.test', products: false, profile: ['social_links' => ['zalo' => '0912345678']],
-        floating: dpFloating([['key' => 'phone', 'on' => true, 'value' => '0912345678']]));
+        floating: dpFloating([['key' => 'phone', 'on' => true, 'value' => '0912345678'], ['key' => 'zalo', 'on' => true, 'value' => '0912345678']]));
     dpSite('oa.platform.test', products: false, profile: ['social_links' => ['zalo' => 'https://zalo.me/ckanvinh']],
-        floating: dpFloating([['key' => 'phone', 'on' => true, 'value' => '0912345678']]));
+        floating: dpFloating([['key' => 'phone', 'on' => true, 'value' => '0912345678'], ['key' => 'zalo', 'on' => true, 'value' => '0912345678']]));
     dpSite('tat.platform.test', products: false, profile: ['social_links' => ['zalo' => 'https://zalo.me/ckanvinh']]);
 
     expect($this->get('http://sdt.platform.test/gioi-thieu')->assertOk()->getContent())->not->toContain('aria-label="Zalo của Xưởng Mẫu"')
@@ -542,4 +542,49 @@ it('keeps the menu children and draws no tab bar when the product tab is off', f
 
     expect($html)->not->toContain('role="tablist"')
         ->and($pane)->toContain('Nhóm jig');
+});
+
+it('gives every product panel its own id even when two groups both start with a parent', function (): void {
+    $siteId = dpSite();
+    foreach (['a' => 'Nhóm A', 'b' => 'Nhóm B'] as $key => $name) {
+        $top = dpCategory($siteId, ['vi' => $name], slug: "nhom-{$key}");
+        $first = dpCategory($siteId, ['vi' => "Con đầu {$name}"], $top, "con-dau-{$key}");
+        dpCategory($siteId, ['vi' => "Cháu {$name}"], $first, "chau-{$key}");
+    }
+
+    $pane = dpProductsPane($this->get('http://sp.platform.test/gioi-thieu')->assertOk()->getContent());
+    preg_match_all('#\sid="([^"]+)"#', $pane, $ids);
+    preg_match_all('#aria-controls="([^"]+)"#', $pane, $controls);
+
+    expect($controls[1])->toHaveCount(4)
+        ->and($ids[1])->toBe(array_values(array_unique($ids[1])))
+        ->and(array_diff($controls[1], $ids[1]))->toBe([]);
+});
+
+it('keeps a non-product child under the Sản phẩm item and drops only the product groups', function (): void {
+    $siteId = dpSite();
+    dpCategory($siteId, ['vi' => 'Jig & Đồ gá'], slug: 'jig-do-ga');
+    dpMenu($siteId, ['Sản phẩm' => ['/san-pham', ['Nhóm jig' => '/jig-do-ga', 'Bảng giá' => '/bang-gia']]]);
+
+    [$pane] = dpMenuPanes($this->get('http://sp.platform.test/gioi-thieu')->assertOk()->getContent());
+
+    expect($pane)->toContain('Bảng giá')->toContain('href="/bang-gia"')->toContain('aria-expanded')
+        ->not->toContain('Nhóm jig');
+});
+
+it('decides the drawer’s call and Zalo buttons per floating-contact channel', function (): void {
+    $profile = ['social_links' => ['zalo' => '0912345678']];
+    dpSite('mes.platform.test', products: false, profile: $profile,
+        floating: dpFloating([['key' => 'messenger', 'on' => true, 'value' => 'xuongmau']]));
+    dpSite('sdt.platform.test', products: false, profile: $profile,
+        floating: dpFloating([['key' => 'phone', 'on' => true, 'value' => '0912345678']]));
+    dpSite('zl.platform.test', products: false, profile: $profile,
+        floating: dpFloating([['key' => 'zalo', 'on' => true, 'value' => '0912345678']]));
+
+    expect($this->get('http://mes.platform.test/gioi-thieu')->assertOk()->getContent())
+        ->toContain('sf-drawer__call')->toContain('sf-drawer__zalo')
+        ->and($this->get('http://sdt.platform.test/gioi-thieu')->assertOk()->getContent())
+        ->not->toContain('sf-drawer__call')->toContain('sf-drawer__zalo')
+        ->and($this->get('http://zl.platform.test/gioi-thieu')->assertOk()->getContent())
+        ->toContain('sf-drawer__call')->not->toContain('sf-drawer__zalo');
 });

@@ -129,9 +129,10 @@ final readonly class DrawerProducts
 
     /**
      * The phone menu's own tab without the product groups the "Sản phẩm" tab already lists: a top-level
-     * item loses its children when its page is the product list, or when every child is a page of the
-     * product tree. It then stays a plain link (a "#" item links to the product list instead, so it is
-     * never dropped). The desktop menu is not passed through here.
+     * item loses the children the tree lists when its page is the product list (any other child stays), and
+     * all of them when every child is a page of the product tree. With none left it is a plain link (a "#"
+     * item links to the product list instead, so it is never dropped). The desktop menu is not passed
+     * through here.
      *
      * @param  list<array<string, mixed>>  $menu
      * @param  array{url: string, items: list<array<string, mixed>>}  $tree
@@ -150,18 +151,18 @@ final readonly class DrawerProducts
             }
             $url = is_string($item['url'] ?? null) ? $item['url'] : '#';
             $isList = $url !== '#' && self::pathOf($url) === $listPath;
-            $allProducts = true;
+            // The children the product tree does not list (a price list, a single product page) stay.
+            $others = [];
             foreach ($children as $child) {
                 $childUrl = is_array($child) && is_string($child['url'] ?? null) ? $child['url'] : '#';
                 if ($childUrl === '#' || ! isset($known[self::pathOf($childUrl)])) {
-                    $allProducts = false;
-                    break;
+                    $others[] = $child;
                 }
             }
-            if (! $isList && ! $allProducts) {
+            if (! $isList && $others !== []) {
                 continue;
             }
-            $item['children'] = [];
+            $item['children'] = $others;
             if ($url === '#') {
                 $item['url'] = $tree['url'];
             }

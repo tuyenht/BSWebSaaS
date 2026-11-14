@@ -123,16 +123,24 @@
                     $sfName = $brand['name'] ?? '';
                     $sfSocials = \App\Modules\Theme\Chrome\StorefrontChrome::socials($brand['social_links'] ?? null);
                     $sfHours = \App\Modules\Theme\Chrome\StorefrontChrome::hours($brand['business_hours'] ?? null, $brand['opening_hours'] ?? null);
-                    // The call and Zalo buttons only stand in for the floating contact: they show when the site
-                    // turned off both the phone bottom bar and the floating buttons (no widget at all).
-                    $sfOwnContact = empty($floatingContact);
+                    // The call and Zalo buttons never repeat the floating contact (phone bottom bar or round
+                    // buttons): each shows only when that contact does not carry the same channel, so a site that
+                    // turned the floating contact off, or left the call out of it, still offers the call here.
+                    $sfFcKeys = [];
+                    foreach (($floatingContact['buttons'] ?? []) as $sfChannel) {
+                        if (empty($sfChannel['pending'])) {
+                            $sfFcKeys[$sfChannel['key']] = true;
+                        }
+                    }
+                    $sfOwnCall = ! isset($sfFcKeys['phone']);
+                    $sfOwnZalo = ! isset($sfFcKeys['zalo']);
                     $sfZaloSocial = null;
                     foreach ($sfSocials as $sfS) {
                         if ($sfS['network'] === 'zalo') {
                             $sfZaloSocial = $sfS;
                         }
                     }
-                    $sfZaloHref = $sfOwnContact ? ($sfZaloSocial['url'] ?? null) : null;
+                    $sfZaloHref = $sfOwnZalo ? ($sfZaloSocial['url'] ?? null) : null;
                     // A Zalo circle only for an Official Account or page link: a phone-number Zalo is a chat
                     // button's business, and where the Zalo button shows the circle would repeat it.
                     $sfSocials = array_values(array_filter($sfSocials, static fn (array $s): bool => $s['network'] !== 'zalo' || (! $s['phone'] && $sfZaloHref === null)));
@@ -197,9 +205,9 @@
                         @endif
                     </div>
                 @endif
-                @if (($sfOwnContact && $sfCallHref !== null) || $sfZaloHref !== null || $sfEmailHref !== null || $sfHours !== null || $sfSocials !== [])
+                @if (($sfOwnCall && $sfCallHref !== null) || $sfZaloHref !== null || $sfEmailHref !== null || $sfHours !== null || $sfSocials !== [])
                     <div class="sf-drawer__contact">
-                        @if ($sfOwnContact && $sfCallHref !== null)
+                        @if ($sfOwnCall && $sfCallHref !== null)
                             <a class="sf-drawer__call" href="{{ $sfCallHref }}">@include('theme::partials.sf-icon', ['name' => 'phone', 'size' => 20])<span>{{ __('storefront.call_number', ['phone' => $brand['phone']]) }}</span></a>
                         @endif
                         @if ($sfZaloHref !== null)
