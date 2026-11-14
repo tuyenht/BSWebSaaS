@@ -16,6 +16,7 @@ use App\Modules\Cms\Console\ResanitizePageBodies;
 use App\Modules\Cms\Console\SnapshotPublishedEntries;
 use App\Modules\Cms\Events\EntryPublished;
 use App\Modules\Cms\Listeners\AddPublishedPageToMenu;
+use App\Modules\Cms\Listeners\CopyInvitationCategoryScopes;
 use App\Modules\Cms\Listeners\ForgetMemberCategoryScopes;
 use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\Entry;
@@ -35,6 +36,7 @@ use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Cms\Support\CategoryItemCounts;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Support\LayoutSlotBlocks;
+use App\Modules\Rbac\Events\InvitationAccepted;
 use App\Modules\Rbac\Events\SiteMembershipChanged;
 use App\Modules\Shared\Contracts\PageLinks;
 use App\Modules\Theme\Components\ComponentRegistry;
@@ -113,6 +115,8 @@ final class CmsServiceProvider extends ServiceProvider
 
         // A member's category limits on a site follow their roles there (left the site, or never limited).
         Event::listen(SiteMembershipChanged::class, ForgetMemberCategoryScopes::class);
+        // An accepted invitation's category limits become the new member's, in the accepting transaction.
+        Event::listen(InvitationAccepted::class, CopyInvitationCategoryScopes::class);
 
         // "Tự thêm trang mới": a published page joins the menus that asked for new pages.
         Event::listen(EntryPublished::class, AddPublishedPageToMenu::class);

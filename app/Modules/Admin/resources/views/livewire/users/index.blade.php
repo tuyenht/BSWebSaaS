@@ -346,7 +346,7 @@
                     @endforeach
                 </fieldset>
                 @if ($panelError !== '')
-                    <p class="m-0 flex items-start gap-1.5 text-small text-danger-text" role="alert"><x-bs-admin::icon name="ri-error-warning" class="mt-0.5 size-4 shrink-0" /><span>{{ $panelError }}</span></p>
+                    <x-bs-admin::field-error>{{ $panelError }}</x-bs-admin::field-error>
                 @endif
                 <div class="flex flex-col gap-2 rounded-md bg-surface-muted px-3.5 py-3 text-small">
                     <b class="text-text-strong">{{ __('admin.members.pv_title', ['name' => $first($panelMember->name)]) }}</b>
@@ -395,7 +395,7 @@
                     @endforeach
                 </fieldset>
                 @if ($panelError !== '')
-                    <p class="m-0 flex items-start gap-1.5 text-small text-danger-text" role="alert"><x-bs-admin::icon name="ri-error-warning" class="mt-0.5 size-4 shrink-0" /><span>{{ $panelError }}</span></p>
+                    <x-bs-admin::field-error>{{ $panelError }}</x-bs-admin::field-error>
                 @endif
                 <p class="m-0 flex items-start gap-1.5 text-small text-text-muted"><x-bs-admin::icon name="ri-information" class="mt-0.5 size-4 shrink-0 text-info-text" /><span>{{ __('admin.members.panel_bulk_note') }}</span></p>
                 <div class="flex flex-col gap-2 rounded-md bg-surface-muted px-3.5 py-3 text-small">
@@ -454,7 +454,7 @@
                         <textarea id="members-inv-email" rows="2" inputmode="email" autocomplete="off" spellcheck="false" wire:model.blur="inviteEmail"
                             placeholder="ha.vu@anvinh.vn" aria-describedby="members-inv-email-h" @error('inviteEmail') aria-invalid="true" @enderror
                             class="field w-full rounded border border-border-input bg-surface px-3 py-2 text-text-strong"></textarea>
-                        @error('inviteEmail')<p class="m-0 flex items-start gap-1.5 text-small text-danger-text" role="alert"><x-bs-admin::icon name="ri-error-warning" class="mt-0.5 size-4 shrink-0" /><span>{{ $message }}</span></p>@enderror
+                        @error('inviteEmail')<x-bs-admin::field-error>{{ $message }}</x-bs-admin::field-error>@enderror
                         <p id="members-inv-email-h" class="m-0 text-small text-text-muted">{{ __('admin.members.inv_email_hint') }}</p>
                         @if ($validAddr !== [] && $badAddr === [])
                             <p class="m-0"><x-bs-admin::badge color="primary" soft pill><x-bs-admin::icon name="ri-mail" class="size-3.5" />{{ count($validAddr) === 1 ? __('admin.members.inv_addr_one') : __('admin.members.inv_addr_n', ['n' => count($validAddr)]) }}</x-bs-admin::badge></p>
@@ -465,15 +465,76 @@
                         <p id="members-inv-roles-h" class="m-0 text-small text-text-muted">{{ __('admin.members.inv_roles_hint', ['role' => $myRole]) }}</p>
                         @foreach ($assignable as $role)
                             <label class="flex min-h-hit cursor-pointer items-start gap-3 rounded-md border border-border px-3 py-2.5 has-checked:border-primary has-checked:bg-primary/5">
-                                <input type="checkbox" value="{{ $role->name }}" wire:model="inviteRoles" class="mt-1 size-4.5 shrink-0 accent-primary-text">
+                                <input type="checkbox" value="{{ $role->name }}" wire:model.live="inviteRoles" class="mt-1 size-4.5 shrink-0 accent-primary-text">
                                 <span class="flex min-w-0 flex-col">
                                     <span class="text-body font-medium text-text-strong [overflow-wrap:anywhere]">{{ RoleLabel::for($role) }}</span>
                                     <span class="text-small text-text-muted">{{ $describe($role) }}</span>
                                 </span>
                             </label>
                         @endforeach
-                        @error('inviteRoles')<p class="m-0 flex items-start gap-1.5 text-small text-danger-text" role="alert"><x-bs-admin::icon name="ri-error-warning" class="mt-0.5 size-4 shrink-0" /><span>{{ $message }}</span></p>@enderror
+                        @error('inviteRoles')<x-bs-admin::field-error>{{ $message }}</x-bs-admin::field-error>@enderror
                     </fieldset>
+                    @if ($invScope !== null && $invScope['show'])
+                        {{-- "Phạm vi làm việc" (design 22): the post categories the invited person will be limited to --}}
+                        <section class="flex min-w-0 flex-col gap-3 rounded-md border border-border p-3" aria-labelledby="members-inv-sc-h">
+                            <h3 id="members-inv-sc-h" class="m-0 text-[calc(0.875rem+var(--user-text-boost))] font-semibold text-text-strong">{{ __('admin.members.inv_sc_title') }}</h3>
+                            @if ($invScope['high'])
+                                <p class="m-0 flex items-start gap-1.5 text-small text-text-muted"><x-bs-admin::icon name="ri-shield-check" class="mt-0.5 size-4 shrink-0" /><span>{{ __('admin.members.inv_sc_high') }}</span></p>
+                            @elseif ($invScope['none'])
+                                <p class="m-0 flex items-start gap-1.5 text-small text-text-muted"><x-bs-admin::icon name="ri-information" class="mt-0.5 size-4 shrink-0" /><span>{{ __('admin.members.inv_sc_none') }}</span></p>
+                            @else
+                                @if (! $invScope['feat'])
+                                    <p class="m-0 flex items-start gap-1.5 text-small text-text-muted"><x-bs-admin::icon name="ri-lock-2" class="mt-0.5 size-4 shrink-0" /><span>{{ $invScope['upsell'] ? __('admin.members.inv_sc_plan_upsell') : __('admin.members.inv_sc_plan_off') }}</span></p>
+                                @endif
+                                <fieldset class="m-0 flex min-w-0 flex-col gap-1 border-0 border-t border-border p-0 pt-2" wire:key="members-inv-sc-posts">
+                                    <legend class="contents"><span class="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-body font-semibold text-text-strong"><x-bs-admin::icon name="ri-article" class="size-4 shrink-0" />{{ __('admin.members.inv_sc_posts') }}</span></legend>
+                                    @php $allDis = ! $invScope['feat'] || $invScope['limited']; @endphp
+                                    <label @class(['flex min-h-hit items-center gap-2.5', 'cursor-pointer text-text-strong' => ! $allDis, 'cursor-not-allowed text-text-muted' => $allDis])>
+                                        <input type="radio" name="members-inv-sc-posts" value="all" wire:model.live="inviteScope" @checked($invScope['mode'] === 'all') @disabled($allDis) class="size-4.5 shrink-0 accent-primary-text">
+                                        <span>{{ __('admin.members.inv_sc_all') }}</span>
+                                    </label>
+                                    @if ($invScope['limited'])
+                                        <p class="m-0 -mt-1.5 mb-1 ms-7 text-small text-text-muted">{{ __('admin.members.inv_sc_own') }}</p>
+                                    @endif
+                                    <label @class(['flex min-h-hit items-center gap-2.5', 'cursor-pointer text-text-strong' => $invScope['feat'], 'cursor-not-allowed text-text-muted' => ! $invScope['feat']])>
+                                        <input type="radio" name="members-inv-sc-posts" value="only" wire:model.live="inviteScope" @checked($invScope['mode'] === 'only') @disabled(! $invScope['feat']) class="size-4.5 shrink-0 accent-primary-text">
+                                        <span>{{ __('admin.members.inv_sc_only') }}</span>
+                                    </label>
+                                    @if ($invScope['feat'] && $invScope['mode'] === 'only')
+                                        <div class="ms-7 flex min-w-0 flex-col gap-1.5">
+                                            <x-bs-admin::search :label="__('admin.members.inv_sc_q')" :placeholder="__('admin.members.inv_sc_ph')" wire:model.live.debounce.250ms="inviteCatQ" maxlength="100" />
+                                            <p class="m-0 text-small text-text-muted">{{ __('admin.members.inv_sc_hint') }}</p>
+                                            <div class="flex max-h-[340px] min-w-0 flex-col overflow-x-hidden overflow-y-auto rounded border border-border-strong p-1" role="group" aria-label="{{ __('admin.members.inv_sc_tree') }}">
+                                                @foreach ($invTree as $node)
+                                                    <label wire:key="members-inv-sc-{{ $node['ulid'] }}" @style(['--i: '.($node['depth'] * 24).'px'])
+                                                        @class(['relative flex min-h-hit items-center gap-2.5 rounded py-0 pe-2 ps-[calc(8px+var(--i))] hover:bg-surface-hover',
+                                                            'before:absolute before:start-[calc(var(--i)-10px)] before:top-0 before:h-1/2 before:w-2.5 before:border-b before:border-s before:border-border-strong' => $node['depth'] > 0,
+                                                            'cursor-pointer text-text-strong' => ! $node['dis'], 'cursor-not-allowed text-text-muted' => $node['dis']])>
+                                                        @if ($node['inc'])
+                                                            <input type="checkbox" checked disabled class="size-4.5 shrink-0 accent-primary-text">
+                                                        @else
+                                                            <input type="checkbox" value="{{ $node['ulid'] }}" wire:model.live="inviteCategories" @disabled($node['dis']) class="size-4.5 shrink-0 accent-primary-text">
+                                                        @endif
+                                                        <span class="min-w-0 flex-auto [overflow-wrap:anywhere]">@if ($node['path'] !== '')<span class="text-text-muted">{{ $node['path'] }}</span>@endif{{ $node['name'] }}</span>
+                                                        @if ($node['note'] !== '')
+                                                            <span class="shrink-0 text-caption text-text-muted">{{ $node['note'] }}</span>
+                                                        @endif
+                                                    </label>
+                                                @endforeach
+                                                @if ($invTree === [] && trim($inviteCatQ) !== '')
+                                                    <p class="m-0 flex items-start gap-1.5 p-2 text-small text-text-muted">{{ __('admin.members.inv_sc_nohit') }}</p>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    @endif
+                                    @if ($inviteScopeError !== '')
+                                        <x-bs-admin::field-error>{{ $inviteScopeError }}</x-bs-admin::field-error>
+                                    @endif
+                                </fieldset>
+                            @endif
+                            <p class="m-0 flex items-start gap-1.5 text-small text-text-muted"><x-bs-admin::icon name="ri-information" class="mt-0.5 size-4 shrink-0" /><span>{{ __('admin.members.inv_sc_note') }}</span></p>
+                        </section>
+                    @endif
                     <div class="flex flex-col gap-1.5" x-data="{ n: {{ mb_strlen($inviteMessage) }} }">
                         <label for="members-inv-msg" class="flex flex-wrap items-baseline gap-x-2 text-body font-medium text-text-strong">{{ __('admin.members.inv_msg') }} <span class="font-normal text-text-muted">{{ __('admin.members.optional') }}</span><span class="ms-auto text-small font-normal text-text-muted" aria-hidden="true"><span x-text="n">{{ mb_strlen($inviteMessage) }}</span>/500</span></label>
                         <textarea id="members-inv-msg" rows="3" maxlength="500" wire:model="inviteMessage" x-on:input="n = $el.value.length" aria-describedby="members-inv-msg-h"

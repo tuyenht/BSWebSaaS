@@ -86,10 +86,6 @@ final readonly class InviteMember
         $siteId = $this->current->id();
         $message = $message !== null && trim($message) !== '' ? Str::limit(trim($message), 500, '') : null;
 
-        if ($this->isMember($email)) {
-            throw new InvitationRejectedException('already_member');
-        }
-
         $token = Str::random(64);
 
         return DB::transaction(function () use ($actor, $email, $roles, $message, $siteId, $token): IssuedInvitation {
@@ -101,7 +97,15 @@ final readonly class InviteMember
                 // $email is lower case; as text the column compares with a leakproof operator, which
                 // RLS lets the partial (site_id, (email::text)) index serve (a citext `=` it does not).
                 ->whereRaw('email::text = ?', [$email])
+                // Locked: an accept of this invitation running now finishes first, and the refresh then
+                // finds it accepted (no longer open) instead of rewriting an accepted invitation.
+                ->lockForUpdate()
                 ->first();
+
+            // After the lock: someone whose invitation was accepted a moment ago is a member now.
+            if ($this->isMember($email)) {
+                throw new InvitationRejectedException('already_member');
+            }
 
             if ($invitation !== null && $invitation->sent_at->isAfter(now()->subSeconds(self::RESEND_COOLDOWN_SECONDS))) {
                 throw new InvitationRejectedException('resend_too_soon');

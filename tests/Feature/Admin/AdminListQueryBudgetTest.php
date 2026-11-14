@@ -480,6 +480,7 @@ it('keeps the invitations view flat whatever the number of invitations', functio
     $many = $read();
 
     // the counts per state, the role filter's counts, one keyset page with its roles and inviters, and
-    // the inviters still on the site, and the top bar's bell: 170 more invitations add no query
-    expect($many)->toBe($few)->and($few)->toBe(20);
+    // the inviters still on the site, the page's category limits (one read; their names only when
+    // any), and the top bar's bell: 170 more invitations add no query
+    expect($many)->toBe($few)->and($few)->toBe(21);
 });

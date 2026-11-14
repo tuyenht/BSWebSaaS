@@ -7,6 +7,7 @@ namespace App\Modules\Rbac\Actions;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
+use App\Modules\Rbac\Events\InvitationAccepted;
 use App\Modules\Rbac\Exceptions\InvitationRejectedException;
 use App\Modules\Rbac\Models\Invitation;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -30,7 +31,9 @@ use SensitiveParameter;
  * Joining grants the invitation's roles through AssignRole with the INVITER as actor: authority is
  * checked again now, so an inviter since demoted or removed cannot hand out roles they no longer
  * hold. Everything runs in one transaction with the invitation row locked — a double submit or two
- * tabs cannot both accept, and a refused grant leaves no half-created account behind.
+ * tabs cannot both accept, and a refused grant leaves no half-created account behind. The roles in
+ * place, InvitationAccepted lets other modules carry over what else the invitation holds (the post
+ * categories it limits the member to) in that same transaction.
  */
 final readonly class AcceptInvitation
 {
@@ -143,6 +146,10 @@ final readonly class AcceptInvitation
         }
 
         $invitation->forceFill(['accepted_at' => now(), 'accepted_user_id' => $user->getKey()])->save();
+
+        // What the invitation carries besides its roles (the categories it limits the member to)
+        // arrives in this transaction too: a listener's refusal undoes the whole join.
+        event(new InvitationAccepted($invitation, $user));
 
         Audit::record('rbac.invitation.accepted', [
             'actor_id' => $user->getKey(),
