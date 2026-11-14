@@ -327,8 +327,9 @@ final readonly class SeedMeasurementSite
         $menuId = MenuAssignment::query()->where('region_key', 'primary')->where('locale', $locale)->value('menu_id');
         $menu = is_numeric($menuId) ? Menu::query()->find((int) $menuId) : null;
         if ($menu === null) {
+            // No menu of its own (none, or the area follows another one): bind main-<locale> to it.
             $menu = Menu::query()->firstOrCreate(['handle' => 'main-'.$locale], ['name' => 'Menu chính', 'locales' => null]);
-            MenuAssignment::query()->firstOrCreate(['region_key' => 'primary', 'locale' => $locale], ['menu_id' => $menu->id]);
+            MenuAssignment::query()->updateOrCreate(['region_key' => 'primary', 'locale' => $locale], ['menu_id' => $menu->id, 'same_as_region' => null]);
         }
 
         $parent = MenuItem::withTrashed()->firstOrCreate(

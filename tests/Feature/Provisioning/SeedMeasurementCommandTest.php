@@ -2,6 +2,8 @@
 
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\MenuItem;
+use App\Modules\Cms\Models\MenuItemTranslation;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Media\Models\Media;
 use App\Modules\Provisioning\Actions\SeedMeasurementSite;
@@ -29,6 +31,8 @@ function measurementCounts(int $siteId): array
         'products' => Product::query()->count(),
         'media' => Media::query()->count(),
         'settings' => SiteSetting::query()->count(),
+        'menu_items' => MenuItem::withTrashed()->count(),
+        'menu_item_translations' => MenuItemTranslation::query()->count(),
     ]);
 }
 
