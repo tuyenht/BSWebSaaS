@@ -1718,7 +1718,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
 }
 
 .sf-drawer__fs-c + .sf-drawer__fs-c {
-    box-shadow: inset 1px 0 0 var(--sf-drawer-line);
+    border-inline-start: 1px solid var(--sf-drawer-line);
 }
 
 .sf-drawer__fs-c:first-child {

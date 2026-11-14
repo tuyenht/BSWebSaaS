@@ -213,5 +213,5 @@
     @endif
     {{-- Without scripts the menu drawer is simply open below the bar, and the text-size button
          (which needs a script) is not shown. --}}
-    <noscript><style>@media (max-width:{{ $sfMenuXl ? '1279.98' : '1023.98' }}px){.sf-drawer[hidden]{display:block;position:static}.sf-drawer[hidden] :is(.sf-drawer__scrim,.sf-drawer__close){display:none}.sf-drawer[hidden] .sf-drawer__panel{position:static;width:auto;box-shadow:none;animation:none}}.sf-burger,.sf-fs,.sf-drawer__fs,.sf-drawer__tabs{display:none}</style></noscript>
+    <noscript><style>@media (max-width:{{ $sfMenuXl ? '1279.98' : '1023.98' }}px){.sf-drawer[hidden]{display:block;position:static}.sf-drawer[hidden] :is(.sf-drawer__scrim,.sf-drawer__close){display:none}.sf-drawer[hidden] .sf-drawer__panel{position:static;width:auto;box-shadow:none;animation:none}}.sf-drawer__pane[hidden]{display:block}.sf-burger,.sf-fs,.sf-drawer__fs,.sf-drawer__tabs{display:none}</style></noscript>
 </header>

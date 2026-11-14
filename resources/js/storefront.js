@@ -27,7 +27,9 @@ function setOpen(item, open) {
 function closeAll(except) {
     document.querySelectorAll('[data-disclosure].is-open').forEach((item) => {
         // A panel nested in another keeps the ones around it: opening it must not close its parent.
-        if (item !== except && !(except && item.contains(except))) {
+        // A click outside every menu closes the bar's submenus, not the groups in the phone menu: the way to the
+        // visitor's page is open there from the start, and the menu button's own click is "outside".
+        if (item !== except && !(except && item.contains(except)) && !(except === null && item.closest('.sf-drawer'))) {
             setOpen(item, false);
         }
     });
@@ -84,11 +86,13 @@ function setMenu(open, returnFocus = true) {
     panel.hidden = !open;
     root.classList.toggle('sf-menu-open', open);
     if (open) {
-        const firstTab = chooseTab ? panel.querySelector('[role="tab"]') : null;
-        if (firstTab) {
-            chooseTab(firstTab);
+        // Opens on "Menu", or on "Sản phẩm" when the visitor is on a product category or a product.
+        const tabs = chooseTab ? panel.querySelectorAll('[role="tab"]') : [];
+        const here = tabs.length > 1 && document.getElementById(tabs[1].getAttribute('aria-controls')).querySelector('[aria-current]');
+        if (tabs.length) {
+            chooseTab(tabs[here ? 1 : 0]);
         }
-        const first = panel.querySelector('.sf-nav--mob a[href], .sf-nav--mob button') || panel.querySelector('[data-menu-close]');
+        const first = panel.querySelector('.sf-drawer__pane:not([hidden]) :is(a[href], button)') || panel.querySelector('[data-menu-close]');
         if (first) {
             first.focus();
         }

@@ -5,18 +5,19 @@ declare(strict_types=1);
 namespace App\Modules\Storefront\Support;
 
 use App\Modules\Catalog\Support\ProductIndexLink;
+use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
-use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\PathBuilder;
+use Illuminate\Database\Query\JoinClause;
 
 /**
  * The "Sản phẩm" tab of the phone menu: the product category tree under the products section,
  * three levels of categories (a top row, its children and theirs), shaped like menu nodes so the drawer draws it with the same rows as the menu.
  *
  * Two reads for the whole tree (the categories below the products section, then their names and
- * slugs in the page's language and the site's default), none at all unless the site has a product
+ * addresses in the page's language and the site's default, from the routes), none at all unless the site has a product
  * list and a category under it. Names fall back to the site's default language per category, with
- * that language's address. A SCOPED binding like ProductIndexLink: it keeps nothing between
+ * that language's address. A category with no route or no name in either language is left out together with its subtree. A SCOPED binding like ProductIndexLink: it keeps nothing between
  * requests (Octane), the readonly dependencies are the only state.
  */
 final readonly class DrawerProducts
@@ -45,30 +46,41 @@ final readonly class DrawerProducts
             return null;
         }
 
-        $rootPath = '(select root.path from taxonomies root where root.id = ?)';
+        // The root's path is joined in (with its site) instead of read apart or inlined in the filters.
         $rows = Taxonomy::query()
-            ->whereRaw('taxonomies.path <@ '.$rootPath, [$root])
-            ->whereRaw('nlevel(taxonomies.path) between nlevel('.$rootPath.') + 1 and nlevel('.$rootPath.') + ?', [$root, $root, self::DEPTH])
+            ->join('taxonomies as root', function (JoinClause $join) use ($root): void {
+                $join->on('root.site_id', '=', 'taxonomies.site_id')->where('root.id', '=', $root);
+            })
+            ->whereRaw('taxonomies.path <@ root.path')
+            ->whereRaw('nlevel(taxonomies.path) between nlevel(root.path) + 1 and nlevel(root.path) + ?', [self::DEPTH])
             ->orderByRaw('nlevel(taxonomies.path)')
-            ->orderBy('position')
-            ->orderBy('id')
+            ->orderBy('taxonomies.position')
+            ->orderBy('taxonomies.id')
             ->limit(self::MAX_CATEGORIES)
-            ->get(['id', 'parent_id']);
+            ->get(['taxonomies.id', 'taxonomies.parent_id']);
         if ($rows->isEmpty()) {
             return null;
         }
 
-        // One translation per category: the page's language, else the default's.
-        /** @var array<int, TaxonomyTranslation> $names */
+        // One entry per category: its name and address in the page's language, else the default's. Only a
+        // language that has both a non-empty name and a route counts, like a menu link to a category.
+        /** @var array<int, array{locale: string, name: string, path: string}> $names */
         $names = [];
-        $found = TaxonomyTranslation::query()
-            ->whereIn('taxonomy_id', $rows->pluck('id')->all())
-            ->whereIn('locale', array_values(array_unique([$locale, $default])))
-            ->get(['taxonomy_id', 'locale', 'name', 'slug']);
-        foreach ($found as $translation) {
-            $id = (int) $translation->taxonomy_id;
-            if (! isset($names[$id]) || $translation->locale === $locale) {
-                $names[$id] = $translation;
+        $found = SiteRoute::query()
+            ->join('taxonomy_translations as tt', function (JoinClause $join): void {
+                $join->on('tt.taxonomy_id', '=', 'routes.taxonomy_id')
+                    ->on('tt.locale', '=', 'routes.locale')
+                    ->on('tt.site_id', '=', 'routes.site_id');
+            })
+            ->whereIn('routes.taxonomy_id', $rows->pluck('id')->all())
+            ->whereIn('routes.locale', array_values(array_unique([$locale, $default])))
+            ->where('tt.name', '<>', '')
+            ->get(['routes.taxonomy_id', 'routes.locale', 'routes.path', 'tt.name']);
+        foreach ($found as $route) {
+            $id = (int) $route->taxonomy_id;
+            $name = $route->getAttribute('name');   // from the joined translation
+            if (is_string($name) && (! isset($names[$id]) || $route->locale === $locale)) {
+                $names[$id] = ['locale' => $route->locale, 'name' => $name, 'path' => $route->path];
             }
         }
 
@@ -85,7 +97,7 @@ final readonly class DrawerProducts
     /**
      * @param  list<int>  $ids
      * @param  array<int, list<int>>  $children
-     * @param  array<int, TaxonomyTranslation>  $names
+     * @param  array<int, array{locale: string, name: string, path: string}>  $names
      * @return list<array<string, mixed>>
      */
     private function level(array $ids, int $depth, array $children, array $names, string $locale, string $default, string $requestPath): array
@@ -93,20 +105,19 @@ final readonly class DrawerProducts
         $items = [];
         foreach ($ids as $id) {
             $translation = $names[$id] ?? null;
-            if ($translation === null || $translation->name === '') {
-                continue;
+            if ($translation === null) {
+                continue;   // no name or no route in either language: the row is left out, with what is under it
             }
-            $own = $translation->locale === $locale ? $locale : $default;
-            $url = $this->paths->publicUrl($this->paths->forTaxonomy($translation->slug), $own);
+            $url = $this->paths->publicUrl($translation['path'], $translation['locale']);
             $sub = $depth < self::DEPTH ? $this->level($children[$id] ?? [], $depth + 1, $children, $names, $locale, $default, $requestPath) : [];
 
-            $item = ['label' => $translation->name, 'url' => $url, 'active' => $url === $requestPath, 'children' => $sub];
+            $item = ['label' => $translation['name'], 'url' => $url, 'active' => $url === $requestPath, 'children' => $sub];
             if ($depth <= 2 && $sub !== []) {
                 // A row with children opens its sub-list (a button); its own page is the first row inside.
                 $item['url'] = '#';
                 $item['active'] = false;
                 array_unshift($item['children'], [
-                    'label' => __('storefront.category_all', ['name' => $translation->name]),
+                    'label' => __('storefront.category_all', ['name' => $translation['name']]),
                     'url' => $url, 'active' => $url === $requestPath, 'children' => [],
                 ]);
             }

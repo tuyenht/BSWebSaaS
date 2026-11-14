@@ -199,9 +199,12 @@ it('renders the storefront home with the full chrome within its query budget', f
 });
 
 it('renders the storefront home with the phone menu’s product tab within its query budget', function (): void {
-    // The same home as the one above with a product list: six more reads — the site's modules (2), a
-    // published product, the list's address and the tree itself (the categories, their names: two reads
-    // however many categories there are).
+    // The no-products home below makes 14 reads (the domain and tenancy ones, the locales, the page, the settings, the brand, the three menu
+    // reads, and the phone menu's read of the products section). With a product list it makes 20: six more, listed
+    // from the real run. Site type and enabled modules (2: the
+    // catalog entitlement), whether a product is published (1), the product list's address (1), and the tree
+    // itself (2: the categories below the section, then their names with their routes — two reads however many
+    // categories there are).
     $budget = 20;
 
     app(Tenancy::class)->enter(1, function (): void {
@@ -224,6 +227,7 @@ it('renders the storefront home with the phone menu’s product tab within its q
             $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'parent_id' => $parent, 'position' => $i]);
             $category->translations()->create(['locale' => 'vi', 'name' => "Nhóm {$i}", 'slug' => "nhom-{$i}"]);
             app(TaxonomyPaths::class)->refreshBranch($category->id);
+            app(RouteSync::class)->syncTaxonomy($category, 'vi', "nhom-{$i}");
         }
     });
 
@@ -237,7 +241,7 @@ it('renders the storefront home with the phone menu’s product tab within its q
 });
 
 it('renders the storefront home with a phone menu and no products within its query budget', function (): void {
-    // A phone menu and a header but no product list: 13 reads, plus the one for a products section.
+    // A phone menu and a header but no product list: 14 reads, the products section's among them.
     $budget = 14;
 
     app(Tenancy::class)->enter(1, function (): void {
