@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Providers;
 
+use App\Modules\Notifications\Console\FillNotificationSearchText;
 use App\Modules\Notifications\Console\PruneSiteNotifications;
 use Illuminate\Support\ServiceProvider;
 
@@ -18,7 +19,7 @@ final class NotificationsServiceProvider extends ServiceProvider
     {
         // Module commands aren't auto-discovered like app/Console/Commands.
         if ($this->app->runningInConsole()) {
-            $this->commands([PruneSiteNotifications::class]);
+            $this->commands([PruneSiteNotifications::class, FillNotificationSearchText::class]);
         }
     }
 }

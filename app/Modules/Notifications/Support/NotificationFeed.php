@@ -7,9 +7,12 @@ namespace App\Modules\Notifications\Support;
 use App\Modules\Identity\Models\User;
 use App\Modules\Notifications\Models\SiteNotification;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Shared\Support\VietnameseFold;
+use App\Modules\Tenancy\Context\CurrentSite;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * A person's notifications on the current site — what the bell and the Notifications page read.
@@ -82,6 +85,81 @@ final class NotificationFeed
         }
 
         return $query->get();
+    }
+
+    /** How far back a search reaches: the 90 days notices are kept (notifications:prune). */
+    public const int SEARCH_DAYS = 90;
+
+    /** A search statement slower than this is logged (the signal to revisit how notices are searched). */
+    public const int SEARCH_SLOW_MS = 150;
+
+    /**
+     * The search box: the reader's notices whose search line (NotificationSearchText) holds every one
+     * of $words, newest first, narrowed like page() ($kinds, $unread): the id and ulid of at most
+     * $limit. The walk reads the reader's slice of the same index as page() newest first and checks
+     * each row's line (LIKE is not leakproof, so under RLS it is a row filter, never an index
+     * condition), stopping at $limit matches. A notice older than SEARCH_DAYS is never found (a row
+     * filter too); what bounds the walk is the daily prune, which keeps only those days. A word found
+     * nowhere reads the reader's whole slice, which is why the statement's time is logged past
+     * SEARCH_SLOW_MS (without the words: they may be a customer's name or phone). Measured on
+     * 11.8 M notices as app_user under RLS, the heaviest reader (28,158 notices): a word found
+     * nowhere 136 ms (median of 20 warm runs; 200 ms once that site's rows had been rewritten), a
+     * common word 0.3 ms, a reader with ~200 notices 0.2 ms. Bounding the id by the window's oldest
+     * notice instead (a subquery) made the planner read every row by bitmap and sort them, 173 ms
+     * even for a common word, so the bound is a plain filter.
+     *
+     * @param  list<string>|null  $kinds
+     * @param  list<string>  $words  folded, as NotificationSearchText::words() returns them
+     * @return list<array{id: int, ulid: string}>
+     */
+    public function matches(User $user, ?array $kinds, bool $unread, array $words, int $limit): array
+    {
+        $query = $this->filtered($user, $kinds, $unread)
+            ->where('created_at', '>=', now()->subDays(self::SEARCH_DAYS))
+            ->select(['id', 'ulid'])
+            ->orderByDesc('id')
+            ->limit($limit);
+        foreach ($words as $word) {
+            $query->where('search_text', 'like', VietnameseFold::like($word));
+        }
+
+        $started = hrtime(true);
+        $rows = $query->toBase()->get();
+        $ms = (hrtime(true) - $started) / 1e6;
+        if ($ms > self::SEARCH_SLOW_MS) {
+            Log::warning('Notifications search was slow', [
+                'ms' => round($ms, 1), 'site_id' => app(CurrentSite::class)->hasId() ? app(CurrentSite::class)->id() : null,
+                'user_id' => $user->getKey(), 'words' => count($words), 'found' => $rows->count(), 'limit' => $limit,
+            ]);
+        }
+
+        $found = [];
+        foreach ($rows as $row) {
+            $found[] = ['id' => Cast::int($row->id), 'ulid' => Cast::string($row->ulid)];
+        }
+
+        return $found;
+    }
+
+    /**
+     * The notices matches() found, by their ids, newest first, with what the list shows (the
+     * reader's own only).
+     *
+     * @param  list<int>  $ids
+     * @return Collection<int, SiteNotification>
+     */
+    public function rows(User $user, array $ids): Collection
+    {
+        if ($ids === []) {
+            return new Collection;
+        }
+
+        return SiteNotification::query()
+            ->where('user_id', $user->getKey())
+            ->whereIn('id', $ids)
+            ->select(['id', 'ulid', 'kind', 'data', 'read_at', 'created_at'])
+            ->orderByDesc('id')
+            ->get();
     }
 
     /**

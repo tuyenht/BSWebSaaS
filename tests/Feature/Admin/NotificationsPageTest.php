@@ -4,6 +4,7 @@ use App\Modules\Admin\Livewire\Notifications;
 use App\Modules\Admin\Livewire\Platform\Notifications as PlatformNotifications;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
+use App\Modules\Notifications\Support\NotificationSearchText;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
@@ -42,9 +43,10 @@ function npMember(int $site = 1, array $extra = []): User
 function npNotice(User $user, int $site, string $kind = 'lead.new', array $data = [], ?string $at = null, bool $read = false): string
 {
     $ulid = (string) Str::ulid();
+    $data += $kind === 'lead.new' ? ['name' => 'Khách '.$ulid, 'submission' => (string) Str::ulid()] : [];
     DB::connection('pgsql_admin')->table('site_notifications')->insert([
         'ulid' => $ulid, 'site_id' => $site, 'user_id' => $user->id, 'kind' => $kind,
-        'data' => json_encode($data + ($kind === 'lead.new' ? ['name' => 'Khách '.$ulid, 'submission' => (string) Str::ulid()] : [])),
+        'data' => json_encode($data), 'search_text' => NotificationSearchText::for($data),
         'read_at' => $read ? now() : null, 'created_at' => $at ?? now(),
     ]);
 
@@ -61,6 +63,12 @@ function npReadAt(string $ulid): ?string
 function npPage(User $user, array $query = []): Testable
 {
     return app(Tenancy::class)->enter(1, fn () => Livewire::withQueryParams($query)->actingAs($user)->test(Notifications::class));
+}
+
+/** Typing in the search box, on site 1. */
+function npSet(Testable $page, string $q): Testable
+{
+    return app(Tenancy::class)->enter(1, fn () => $page->set('q', $q));
 }
 
 /** Each later request to the page runs on site 1, as the tenancy middleware would. */
@@ -319,4 +327,115 @@ it('shows the platform console\'s page empty, with nothing read from a store', f
     Livewire::actingAs($operator->fresh())->test(PlatformNotifications::class)->call('show', 'chua-doc')
         ->assertSee('Bạn đã đọc hết thông báo.')->call('show', 'duyet-bai')->assertStatus(404);
     Livewire::actingAs(npMember())->test(PlatformNotifications::class)->assertStatus(403);
+});
+
+it('finds the reader\'s notices by their facts with accents and case ignored, never by the sentence\'s wording', function (): void {
+    $me = npMember(extra: ['forms.view']);
+    $other = npMember();
+    npNotice($me, 1, 'lead.new', ['name' => 'Nguyễn Văn Nam']);
+    npNotice($me, 1, 'workflow.pending_review', ['entry' => (string) Str::ulid(), 'title' => 'Máy phay 5 trục', 'actor' => 'Chị Hà']);
+    npNotice($me, 1, 'workflow.returned', ['entry' => (string) Str::ulid(), 'title' => 'Bàn giao dây chuyền', 'actor' => 'Anh Đức', 'note' => 'Thêm bảng dung sai.']);
+    npNotice($me, 1, 'system.domain_problem', ['sentence' => 'failing', 'domains' => 'anvinh.vn', 'until' => '20/11/2026', 'target' => 'sites.example.test']);
+    npNotice($other, 1, 'lead.new', ['name' => 'Nguyễn Văn Nam Khác']);
+    npNotice($me, 2, 'lead.new', ['name' => 'Nguyễn Văn Nam Website Khác']);
+
+    $page = npPage($me)->assertSee('Tìm theo nội dung hoặc người liên quan')->assertSee('Anh Nam, máy phay 5 trục…');
+    npSet($page, 'nguyen nam')->assertSee('Nguyễn Văn Nam')->assertDontSee('Máy phay 5 trục')
+        ->assertDontSee('Nam Khác')->assertDontSee('Website Khác')->assertSee('Đã hiện hết thông báo trong 90 ngày qua (1).');
+    npSet($page, 'NAM  NGUYỄN')->assertSee('Nguyễn Văn Nam');                    // any order, any case
+    npSet($page, 'ay 5')->assertSee('Máy phay 5 trục')->assertDontSee('Nguyễn Văn Nam'); // part of a word
+    npSet($page, 'duc')->assertSee('Bàn giao dây chuyền');                        // who acted, đ → d
+    npSet($page, 'dung sai')->assertSee('Bàn giao dây chuyền');                   // the return note
+    npSet($page, 'anvinh')->assertSee('anvinh.vn');                               // the domain
+    // the fixed wording of a sentence finds nothing: the tabs cover the kinds
+    npSet($page, 'đang chờ bạn duyệt')->assertSee('Không có thông báo nào khớp «đang chờ bạn duyệt»')
+        ->assertSee('Thử từ ngắn hơn, tên người liên quan hoặc một phần tiêu đề bài.')
+        ->assertDontSee('Máy phay 5 trục');
+    // the tabs still count everything (the board's counts ignore the search)
+    $page->assertSeeHtml('id="tb-tab-tat-ca"');
+    expect(collect($page->viewData('tabs'))->firstWhere('key', 'tat-ca')['n'])->toBe('4');
+
+    npCall($page, 'clearSearch')->assertSet('q', '')->assertSee('Nguyễn Văn Nam')->assertSee('Máy phay 5 trục');
+});
+
+it('matches %, _ and \\ typed in the search as plain characters, and a NUL as a space', function (): void {
+    $me = npMember(extra: ['forms.view']);
+    npNotice($me, 1, 'lead.new', ['name' => 'Giảm 50% Phúc'], now()->subMinutes(3)->toDateTimeString());
+    npNotice($me, 1, 'lead.new', ['name' => 'Ông A_B'], now()->subMinutes(2)->toDateTimeString());
+    npNotice($me, 1, 'lead.new', ['name' => 'Thư mục C\\D'], now()->subMinutes(1)->toDateTimeString());
+    npNotice($me, 1, 'lead.new', ['name' => 'Ông AxB 500 Phúc'], now()->toDateTimeString());
+
+    $page = npPage($me, ['tab' => 'khach-lien-he']);
+    npSet($page, '50%')->assertSee('Giảm 50% Phúc')->assertDontSee('Ông AxB 500 Phúc');
+    npSet($page, 'a_b')->assertSee('Ông A_B')->assertDontSee('Ông AxB');
+    npSet($page, 'c\\d')->assertSee('Thư mục C\\D')->assertDontSee('Giảm 50%');
+    npSet($page, "ph\u{0000}50%")->assertOk()->assertSee('Giảm 50% Phúc')->assertDontSee('Ông AxB 500 Phúc');
+});
+
+it('searches within the tab and pages the matches eight at a time', function (): void {
+    $me = npMember(extra: ['forms.view']);
+    foreach (range(1, 20) as $i) {
+        npNotice($me, 1, 'lead.new', ['name' => sprintf('Trần Khách %02d', $i)], now()->subMinutes(100 - $i)->toDateTimeString());
+        npNotice($me, 1, 'workflow.published', ['entry' => (string) Str::ulid(), 'title' => sprintf('Bài Trần %02d', $i), 'actor' => 'Chị Hà'], now()->subMinutes(100 - $i)->toDateTimeString());
+    }
+
+    $page = npSet(npPage($me, ['tab' => 'khach-lien-he']), 'tran')
+        ->assertSee('Trần Khách 20')->assertSee('Trần Khách 13')->assertDontSee('Trần Khách 12')->assertDontSee('Bài Trần')
+        ->assertSee('Đang hiện 8 / 20 thông báo');
+    npCall($page, 'more')->assertSee('Trần Khách 05')->assertDontSee('Trần Khách 04')->assertSee('Đang hiện 16 / 20 thông báo');
+    npCall($page, 'more')->assertSee('Trần Khách 01')->assertDontSee('Tải thêm')->assertSee('Đã hiện hết thông báo trong 90 ngày qua (20).');
+
+    // a new search starts again at its first page
+    npSet($page, 'khach')->assertSee('Trần Khách 13')->assertDontSee('Trần Khách 12');
+    npCall($page, 'show', 'duyet-bai')->assertSee('Không có thông báo nào khớp «khach»');
+});
+
+it('moves a search\'s "Tải thêm" to where the draw on screen ended, with one walk a click, and starts again when that notice is gone', function (): void {
+    $me = npMember(extra: ['forms.view']);
+    $ulids = [];
+    foreach (range(1, 20) as $i) {
+        $ulids[$i] = npNotice($me, 1, 'lead.new', ['name' => sprintf('Võ Khách %02d', $i)], now()->subMinutes(100 - $i)->toDateTimeString());
+    }
+    $page = npSet(npPage($me), 'vo')->assertSee('Đang hiện 8 / 20 thông báo');
+    expect($page->get('nextUntil'))->toBe($ulids[5]);
+
+    $walks = 0;
+    DB::listen(function ($query) use (&$walks): void {
+        $walks += str_contains($query->sql, '"search_text"') ? 1 : 0;
+    });
+    npCall($page, 'more')->assertSee('Võ Khách 05')->assertDontSee('Võ Khách 04')->assertSee('Đang hiện 16 / 20 thông báo');
+    expect($walks)->toBe(1)->and($page->get('nextUntil'))->toBe($ulids[1]);
+
+    // the notice the next page would end at is cleaned up meanwhile: the search starts again at its first page
+    DB::connection('pgsql_admin')->table('site_notifications')->where('ulid', $ulids[1])->delete();
+    npCall($page, 'more')->assertSet('until', null)->assertSee('Võ Khách 13')->assertDontSee('Võ Khách 12')->assertSee('Đang hiện 8 / 19 thông báo');
+});
+
+it('never reaches past the 90 days notices are kept, and keeps the typed words out of the address', function (): void {
+    $me = npMember(extra: ['forms.view']);
+    npNotice($me, 1, 'lead.new', ['name' => 'Lê Cũ'], now()->subDays(91)->toDateTimeString());
+    npNotice($me, 1, 'lead.new', ['name' => 'Lê Mới'], now()->subDays(89)->toDateTimeString());
+
+    npSet(npPage($me), 'le')->assertSee('Lê Mới')->assertDontSee('Lê Cũ')->assertSee('Đã hiện hết thông báo trong 90 ngày qua (1).');
+    expect((new ReflectionProperty(Notifications::class, 'q'))->getAttributes(Livewire\Attributes\Url::class))->toBeEmpty();
+});
+
+it('reads a search in a fixed number of queries, one walk of the reader\'s notices', function (): void {
+    $me = npMember(extra: ['forms.view']);
+    foreach (range(1, 30) as $i) {
+        npNotice($me, 1, 'lead.new', ['name' => 'Phạm Khách '.$i]);
+    }
+    $page = npPage($me);
+
+    $sql = [];
+    DB::listen(function ($query) use (&$sql): void {
+        if (str_contains($query->sql, 'site_notifications')) {
+            $sql[] = $query->sql;
+        }
+    });
+    npSet($page, 'pham');
+
+    // the walk, the rows shown by id, the six tab counts
+    expect($sql)->toHaveCount(3)
+        ->and(collect($sql)->filter(fn (string $q): bool => str_contains($q, '"search_text"'))->count())->toBe(1);
 });

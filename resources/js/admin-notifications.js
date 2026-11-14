@@ -8,7 +8,7 @@
 //    sends the same request again. A refusal or an expired page (any 4xx) is left to Livewire.
 //  The platform console's copy has no store: only the tabs ask the server anything there.
 
-const LOADS = ['show', 'more'];
+const LOADS = ['show', 'more', 'clearSearch'];
 const SAVES = ['read', 'readAll', 'undo', 'open'];
 
 export function bsNotifications() {
