@@ -75,7 +75,7 @@ it('refuses a guest, a website member and a support operator', function (): void
     Livewire::actingAs($support)->test(Edit::class, ['key' => $plan->key])->call('pick', 'workflow.editorial', 'on')->assertForbidden();
 });
 
-it('adds a plan not on sale with its features, and the list says so with no Hoàn tác', function (): void {
+it('adds a plan not on sale with its features, and Hoàn tác on the list takes it back', function (): void {
     $staff = peStaff('billing');
 
     Livewire::actingAs($staff)->test(Edit::class)
@@ -93,9 +93,33 @@ it('adds a plan not on sale with its features, and the list says so with no Hoà
         ->and(AuditLog::query()->where('action', 'tenancy.plan.created')->count())->toBe(1)
         ->and(AuditLog::query()->where('action', 'tenancy.plan.features_changed')->count())->toBe(1);
 
-    // plans are never deleted, so a new plan has nothing to undo: it stops being sold instead
+    // nobody has had the plan yet, so "Hoàn tác" deletes it, its feature rows with it
+    $page = Livewire::actingAs($staff)->test(Index::class)
+        ->assertSet('toast', __('admin.plans_toast_added', ['name' => 'Chuyên nghiệp']));
+    $undo = $page->get('undoAction');
+    expect($undo['kind'] ?? null)->toBe('discard')
+        ->and($undo['plan'] ?? null)->toBe($plan->key)
+        ->and($undo['after']['name'] ?? null)->toBe('Chuyên nghiệp')
+        ->and($undo['after']['features'] ?? null)->toEqualCanonicalizing(['sites.max' => 5, 'workflow.editorial' => true]);
+    $page->call('undo')->assertSet('toast', '');
+    expect(Plan::query()->whereKey($plan->id)->exists())->toBeFalse()
+        ->and(DB::connection('pgsql_admin')->table('plan_features')->where('plan_id', $plan->id)->count())->toBe(0)
+        ->and(AuditLog::query()->where('action', 'tenancy.plan.discarded')->value('meta'))->toMatchArray(['plan' => $plan->key, 'name' => 'Chuyên nghiệp']);
+});
+
+it('adds a plan put on sale at once with no Hoàn tác: a plan once on sale stays', function (): void {
+    $staff = peStaff('billing');
+
+    Livewire::actingAs($staff)->test(Edit::class)
+        ->set('name', 'Đang bán ngay')
+        ->call('toggleSold')
+        ->call('save')
+        ->assertRedirect(route('platform.plans.index'));
+
+    $plan = Plan::query()->where('name', 'Đang bán ngay')->firstOrFail();
+    expect($plan->is_active)->toBeTrue();
     Livewire::actingAs($staff)->test(Index::class)
-        ->assertSet('toast', __('admin.plans_toast_added', ['name' => 'Chuyên nghiệp']))
+        ->assertSet('toast', __('admin.plans_toast_added_sold', ['name' => 'Đang bán ngay']))
         ->assertSet('undoAction', null)
         ->call('undo');
     expect(Plan::query()->whereKey($plan->id)->exists())->toBeTrue();

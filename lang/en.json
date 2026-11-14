@@ -4439,7 +4439,7 @@
     "admin.plans_toast_added": "Plan :name added — not sold yet; turn on \"On sale\" when ready.",
     "admin.plans_toast_added_sold": "Plan :name added — on sale.",
     "admin.plans_toast_refused": "The change was not saved — the plan was just changed elsewhere. Reload the page and try again.",
-    "admin.plans_toast_undo_failed": "This could not be undone — the plan has changed since. Reload the page to check.",
+    "admin.plans_toast_undo_failed": "This could not be undone — the plan has changed since or now has customers. Reload the page to check.",
     "admin.plans_types_title": "Website types",
     "admin.plans_types_desc": "The template a new website starts from: its name in each language, the modules turned on and the role templates. View only for now.",
     "admin.plans_types_failed": "The website types could not be loaded",

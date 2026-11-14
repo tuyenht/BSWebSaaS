@@ -241,10 +241,10 @@ final class Edit extends Component
         $this->customers = app(PlanCatalog::class)->customersOn($saved);
 
         if ($before === null) {
-            // no "Hoàn tác": a plan once added stays (one no longer wanted stops being sold)
             session()->flash('plans.toast', [
                 'text' => __($saved->is_active ? 'admin.plans_toast_added_sold' : 'admin.plans_toast_added', ['name' => $saved->name]),
-                'undo' => null,
+                // a plan just added and not on sale can be taken back; one put on sale stays
+                'undo' => $saved->is_active ? null : ['kind' => 'discard', 'plan' => $saved->key, 'after' => ['name' => $saved->name, 'features' => PlanCatalog::grantsOf($saved)]],
             ]);
         } else {
             session()->flash('plans.toast', [
