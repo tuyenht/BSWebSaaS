@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Support\Menus;
 
+use App\Modules\Catalog\Support\ProductIndexLink;
 use App\Modules\Cms\Actions\Menus\ApplyMenuDraft;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuAssignment;
@@ -16,7 +17,9 @@ use App\Modules\Cms\Navigation\MenuVersion;
 use App\Modules\Cms\Navigation\SpecialLinks;
 use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
+use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Theme\Theming\MenuAreas;
+use App\Modules\Theme\Theming\StorefrontSettings;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -39,6 +42,9 @@ final readonly class MenuScreen
         private SpecialLinks $specials,
         private ApplyMenuDraft $drafts,
         private MenuSources $sources,
+        private ProductIndexLink $products,
+        private Entitlement $entitlement,
+        private StorefrontSettings $settings,
     ) {}
 
     /**
@@ -62,6 +68,7 @@ final readonly class MenuScreen
                 'main' => $code === $main,
             ], $locales),
             'areas' => $this->areas($assignments, $ulids, $locales),
+            'productsTab' => $this->productsTab(),
             'menus' => $menus->map(fn (Menu $row): array => [
                 'key' => $row->ulid,
                 'name' => $row->name,
@@ -88,6 +95,22 @@ final readonly class MenuScreen
         }
 
         return $rows;
+    }
+
+    /**
+     * The phone menu's "Sản phẩm" tab switch: offered only to a site with the catalog and a
+     * products section (one cheap read; the entitlement list is already read per request). On means
+     * the site's header setting exists and does not switch the tab off (a site with no header
+     * setting shows no tab).
+     *
+     * @return array{available: bool, on: bool}
+     */
+    private function productsTab(): array
+    {
+        $available = in_array('catalog', $this->entitlement->entitledModuleKeys(), true) && $this->products->catalogRoot() !== null;
+        $header = $available ? $this->settings->get('storefront', 'header') : null;
+
+        return ['available' => $available, 'on' => is_array($header) && ($header['drawer_products'] ?? true) !== false];
     }
 
     /**

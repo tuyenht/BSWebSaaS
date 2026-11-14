@@ -5,6 +5,7 @@ use App\Modules\Admin\Support\Menus\MenuScreen;
 use App\Modules\Admin\Support\Menus\MenuSelfCheck;
 use App\Modules\Admin\Support\Menus\MenuSourceSearch;
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Catalog\Support\ProductIndexLink;
 use App\Modules\Cms\Actions\Menus\ApplyMenuDraft;
 use App\Modules\Cms\Actions\Menus\SaveMenu;
 use App\Modules\Cms\Models\Entry;
@@ -17,6 +18,10 @@ use App\Modules\Cms\Navigation\MenuItemOptions;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Entitlement\Entitlement;
+use App\Modules\Tenancy\Models\ContentSection;
+use App\Modules\Tenancy\Models\SiteModule;
+use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Chrome\StorefrontIcons;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -314,6 +319,71 @@ it('is closed to someone who may not manage menus, on the page and on every call
     });
 });
 
+/** Site 1 gets the catalog module and a products section, so the phone menu's product tab can be offered. */
+function msShop(): void
+{
+    msIn(1, function (): void {
+        SiteModule::query()->updateOrCreate(['module_key' => 'catalog'], ['enabled' => true]);
+        $root = msCategory('Sản phẩm');
+        ContentSection::query()->updateOrCreate(['key' => 'products'], ['label' => 'Sản phẩm', 'entry_type' => 'post', 'taxonomy_id' => $root->id]);
+    });
+    // What a request reads once (modules, the products section) is read again by the next request, not by this test's next call.
+    app()->forgetInstance(Entitlement::class);
+    app()->forgetInstance(ProductIndexLink::class);
+}
+
+function msHeader(): ?array
+{
+    return msIn(1, fn (): ?array => SiteSetting::query()->where('group_name', 'storefront')->where('key', 'header')->first()?->value);
+}
+
+it('offers the product tab switch only to a site with a products section, and says whether it is on', function (): void {
+    expect(msCall($this->editor, 'load')['productsTab'])->toBe(['available' => false, 'on' => false]);
+
+    msShop();
+    expect(msCall($this->editor, 'load')['productsTab'])->toBe(['available' => true, 'on' => false]);
+
+    msIn(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'header', 'value' => ['sticky' => false]]));
+    expect(msCall($this->editor, 'load')['productsTab'])->toBe(['available' => true, 'on' => true]);
+
+    msIn(1, fn () => SiteSetting::query()->where('key', 'header')->firstOrFail()->update(['value' => ['drawer_products' => false]]));
+    expect(msCall($this->editor, 'load')['productsTab']['on'])->toBeFalse();
+
+    $page = $this->actingAs($this->editor->fresh())->get('http://a.test/admin/menus')->assertOk()->getContent();
+    expect($page)->toContain('productsTab')->toContain(__('menus.ui_ptab_label'));
+});
+
+it('switches the product tab by writing only drawer_products and keeping the rest of the header', function (): void {
+    msShop();
+    msIn(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'header',
+        'value' => ['sticky' => false, 'text_size' => true, 'top_bar' => ['items' => [['kind' => 'text', 'text' => 'Xin chào']]]]]));
+
+    expect(msCall($this->editor, 'setProductsTab', false))->toBe(['ok' => true])
+        ->and(msHeader())->toEqual(['sticky' => false, 'text_size' => true, 'top_bar' => ['items' => [['kind' => 'text', 'text' => 'Xin chào']]], 'drawer_products' => false])
+        ->and(msCall($this->editor, 'load')['productsTab']['on'])->toBeFalse();
+
+    msCall($this->editor, 'setProductsTab', true);
+    expect(msHeader())->toMatchArray(['sticky' => false, 'text_size' => true, 'drawer_products' => true])
+        ->and(msCall($this->editor, 'load')['productsTab']['on'])->toBeTrue();
+});
+
+it('makes the header setting with the website defaults when a site has none, and refuses a non-boolean', function (): void {
+    msShop();
+    expect(msCall($this->editor, 'setProductsTab', 'yes')['ok'])->toBeFalse()->and(msHeader())->toBeNull();
+
+    msCall($this->editor, 'setProductsTab', true);
+    expect(msHeader())->toEqual(['top_bar' => ['items' => []], 'text_size' => false, 'sticky' => true, 'drawer_products' => true]);
+});
+
+it('refuses the product tab switch to someone who may not manage menus', function (): void {
+    msShop();
+    $member = User::factory()->create();
+    msIn(1, fn () => grantRole($member, 'plain-member', ['entries.view']));
+
+    msIn(1, fn () => Livewire::actingAs($member->fresh())->test(MenusIndex::class)->assertForbidden());
+    expect(msHeader())->toBeNull();
+});
+
 it('shows a live row whose parent is in the trash at the top level, so the menu can still be saved', function (): void {
     msIn(1, function (): void {
         $menu = app(SaveMenu::class)->handle(null, 'ồ Menu chính ộ');
@@ -480,7 +550,7 @@ it('wires every call the screen script makes to a public method of the component
     preg_match_all('/\$wire\.([a-zA-Z]+)\(/', $script, $found);
     $calls = array_values(array_unique($found[1]));
 
-    expect($calls)->toContain('load', 'saveDraft', 'assign', 'follow', 'createMenu', 'renameMenu', 'copyMenu', 'copyItem', 'deleteMenu', 'restore', 'setAutoAdd', 'search', 'selfCheck');
+    expect($calls)->toContain('load', 'saveDraft', 'assign', 'follow', 'createMenu', 'renameMenu', 'copyMenu', 'copyItem', 'deleteMenu', 'restore', 'setAutoAdd', 'search', 'selfCheck', 'setProductsTab');
     foreach ($calls as $method) {
         expect((new ReflectionMethod(MenusIndex::class, $method))->isPublic())->toBeTrue();
     }

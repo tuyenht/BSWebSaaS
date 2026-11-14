@@ -18,7 +18,7 @@
         'mvGoTop', 'mvGo', 'movedTo', 'specialMissing', 'added', 'urlBad', 'urlMail', 'urlTel', 'urlHttps',
         'needName', 'staleTitle', 'staleBody', 'staleOk', 'saved', 'netErr', 'leaveTitle', 'leaveBody',
         'leaveSave', 'leaveDrop', 'renamed', 'newMenuName', 'menuCopied', 'delTitle', 'delBodyUsed', 'delBody',
-        'delOk', 'menuDeleted', 'removeKidsTitle', 'removeKidsBody', 'removeKidsOk', 'langsToast', 'areaNone', 'areaMain', 'areaSame', 'areasSet', 'areaSaved', 'codeCopied',
+        'delOk', 'menuDeleted', 'removeKidsTitle', 'removeKidsBody', 'removeKidsOk', 'langsToast', 'areaNone', 'areaMain', 'areaSame', 'areasSet', 'areaSaved', 'ptabOn', 'ptabOff', 'codeCopied',
         'checkOk', 'checkTips', 'checkBad', 'checkAndTips', 'trashKids', 'trashDays', 'restoreNeedsSave', 'restored',
         'iconHits', 'descTaken', 'goneTitle', 'goneBody', 'goneKids', 'goneOk', 'goneRemoved',
     ])->mapWithKeys(fn (string $k): array => [$k => $u($k)])->all();
@@ -284,6 +284,15 @@
                                                 <template x-for="o in areaOptions(a, @js($main))" :key="o.v"><option :value="o.v" x-text="o.l" :selected="o.v === areaValue(a, @js($main))"></option></template>
                                             </select>
                                         </label>
+                                        <template x-if="a.key === 'handheld' && d.productsTab.available">
+                                            <div class="mn-ptab mt-1 flex min-w-0 items-start gap-3 rounded border border-border px-3 py-2.5">
+                                                <span class="flex min-w-0 flex-1 flex-col">
+                                                    <span id="mn-ptab-l" class="text-caption font-semibold leading-normal text-text-strong">{{ $u('ptab_label') }}</span>
+                                                    <span id="mn-ptab-h" class="mt-0.5 text-caption leading-relaxed text-text-muted [overflow-wrap:anywhere] [text-wrap:pretty]">{{ $u('ptab_help') }}</span>
+                                                </span>
+                                                <button type="button" class="switch hit-area" role="switch" :aria-checked="d.productsTab.on ? 'true' : 'false'" aria-labelledby="mn-ptab-l" aria-describedby="mn-ptab-h" x-on:click="setProductsTab()"></button>
+                                            </div>
+                                        </template>
                                         <template x-if="multi">
                                             <div class="mt-0.5 flex flex-col divide-y divide-border rounded border border-border bg-surface-muted px-2.5">
                                                 <template x-for="l in d.locales.filter(x => !x.main)" :key="l.code">

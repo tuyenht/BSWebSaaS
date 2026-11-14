@@ -7,6 +7,7 @@ namespace App\Modules\Admin\Livewire\Menus;
 use App\Modules\Admin\Support\Menus\MenuScreen;
 use App\Modules\Admin\Support\Menus\MenuSelfCheck;
 use App\Modules\Admin\Support\Menus\MenuSourceSearch;
+use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Cms\Actions\Menus\ApplyMenuDraft;
 use App\Modules\Cms\Actions\Menus\AssignMenu;
 use App\Modules\Cms\Actions\Menus\DeleteMenu;
@@ -160,6 +161,35 @@ final class Index extends Component
 
         return $this->attempt(function () use ($area, $locale): array {
             app(AssignMenu::class)->handle($this->actor(), $area, $locale, null);
+
+            return ['ok' => true];
+        });
+    }
+
+    /**
+     * The phone menu's "Sản phẩm" tab on or off: one key (`drawer_products`) of the site's
+     * `storefront.header` setting, the rest of it kept as stored. Saved at once, like the areas
+     * above it. Saving drops the request's settings copy (SiteSetting events), so the website
+     * reads the new value on its next page.
+     *
+     * @return array<string, mixed>
+     */
+    public function setProductsTab(mixed $on): array
+    {
+        if (! is_bool($on)) {
+            return $this->invalid();
+        }
+        Gate::authorize('manage', Menu::class);
+
+        return $this->attempt(function () use ($on): array {
+            $repository = app(SettingsRepository::class);
+            $header = $repository->get('storefront', 'header');
+            if ($header === null) {
+                // A site with no header setting shows no tab; one is made with the defaults the website already applies.
+                $header = ['top_bar' => ['items' => []], 'text_size' => false, 'sticky' => true];
+            }
+            $header['drawer_products'] = $on;
+            $repository->put('storefront', 'header', $header);
 
             return ['ok' => true];
         });

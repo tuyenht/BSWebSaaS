@@ -1263,6 +1263,15 @@ if (typeof window !== 'undefined' && window.Alpine) {
                     a.shows = { ...a.shows };
                 }
             },
+            // The phone menu's "Sản phẩm" tab switch (saved at once, like an area).
+            async setProductsTab() {
+                const next = !this.d.productsTab.on;
+                const res = await this.server(() => this.$wire.setProductsTab(next));
+                if (res) {
+                    this.d.productsTab = { ...this.d.productsTab, on: next };
+                    this.notify(next ? t.ptabOn : t.ptabOff);
+                }
+            },
             copyCode(text) {
                 try {
                     navigator.clipboard.writeText(text);

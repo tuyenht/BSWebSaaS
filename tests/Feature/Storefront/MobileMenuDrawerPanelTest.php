@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Admin\Livewire\Menus\Index;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
@@ -21,6 +22,7 @@ use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Support\Facades\DB;
+use Livewire\Livewire;
 
 /*
  * The phone menu's panel beyond the menu rows: the "Menu | Sản phẩm" tabs and the product category tree
@@ -176,6 +178,24 @@ it('hides the product tab when the header switches it off', function (): void {
 
     expect($this->get('http://sp.platform.test/gioi-thieu')->assertOk()->getContent())
         ->not->toContain('role="tablist"')->not->toContain('Khuôn mẫu');
+});
+
+it('drops the product tab once the Trình đơn screen switches it off, and brings it back when switched on', function (): void {
+    $siteId = dpSite();
+    dpCategory($siteId, ['vi' => 'Khuôn mẫu'], slug: 'khuon-mau');
+    $editor = app(Tenancy::class)->enter($siteId, fn () => menuEditor($siteId));
+    $toggle = function (bool $on) use ($siteId, $editor): void {
+        app(Tenancy::class)->enter($siteId, function () use ($editor, $on): void {
+            Livewire::actingAs($editor->fresh())->test(Index::class)
+                ->call('setProductsTab', $on)->assertReturned(['ok' => true]);
+        });
+    };
+
+    $toggle(false);
+    expect($this->get('http://sp.platform.test/gioi-thieu')->assertOk()->getContent())->not->toContain('role="tablist"');
+
+    $toggle(true);
+    expect($this->get('http://sp.platform.test/gioi-thieu')->assertOk()->getContent())->toContain('role="tablist"')->toContain('Khuôn mẫu');
 });
 
 it('lists twelve or more groups with two child levels and never cuts a long name', function (): void {
