@@ -304,3 +304,18 @@ if (fc) {
         }
     }
 }
+
+// Cloudflare Web Analytics: the server prints the token as data; the beacon script is added once the page has
+// loaded and the browser is idle, so it stays out of the load's main-thread work (a visit that ends sooner goes uncounted).
+const beacon = document.querySelector('[data-sf-beacon]');
+if (beacon) {
+    const add = () => {
+        const script = document.createElement('script');
+        script.defer = true;
+        script.src = beacon.dataset.src;
+        script.dataset.cfBeacon = beacon.dataset.sfBeacon;
+        document.body.append(script);
+    };
+    const idle = () => (window.requestIdleCallback ? requestIdleCallback(add, { timeout: 4000 }) : setTimeout(add, 2000));
+    document.readyState === 'complete' ? idle() : addEventListener('load', idle, { once: true });
+}
