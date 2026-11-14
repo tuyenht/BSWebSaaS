@@ -71,7 +71,7 @@ final readonly class CategoryMoveTargets
 
         $context = [
             'forest' => $forest, 'moving' => $moving, 'branch' => $branch, 'height' => $height, 'from' => $from,
-            'items' => $items, 'governed' => $governed, 'limited' => $this->scopes->isLimited($viewer), 'viewer' => $viewer,
+            'items' => $items, 'governed' => $governed, 'limited' => CategoryScopes::isAxis($moving->vocabulary) && $this->scopes->isLimited($viewer, $moving->vocabulary), 'viewer' => $viewer,
             'limits' => $this->scopes->siteLimits(), 'before' => $forest->ancestors($moving->id),
         ];
         $needle = CategoryScreen::fold($query);
@@ -132,7 +132,7 @@ final readonly class CategoryMoveTargets
             $reason = 'depth_exceeded';
         } elseif ($changesSection && $context['governed']) {
             $reason = 'workflow_governed';
-        } elseif ($context['limited'] && ($parentId === null || ! $this->scopes->coversId($viewer, $parentId))) {
+        } elseif ($context['limited'] && ($parentId === null || ! $this->scopes->coversId($viewer, $parentId, $moving->vocabulary))) {
             $reason = 'outside_category_limits';
         } elseif (! $this->mayChangeReach($context, $parentId === null ? [] : [...$forest->ancestors($parentId), $parentId], $memo)) {
             $reason = 'changes_member_limits';

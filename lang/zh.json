@@ -1574,6 +1574,7 @@
     "catalog.category_label": "分类",
     "catalog.category_placeholder": "— 选择分类 —",
     "catalog.category_invalid": "分类无效。",
+    "catalog.category_scope_only": "您只能编辑以下分类中的产品：:categories。",
     "catalog.description_label": "产品详情 / 技术参数",
     "catalog.card_product": "产品信息",
     "catalog.card_publish": "发布",

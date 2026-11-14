@@ -61,7 +61,8 @@ final readonly class CategoryDeletePreview
 
         $to = $target === null ? null : $forest->sectionOf($target->id);
         $leaving = $from !== null && $items > 0 && ($target === null || $to !== $from) ? $items : 0;
-        $limited = $this->scopes->isLimited($viewer);
+        // judged on the axis of the category's own vocabulary (posts, products); other vocabularies are never limited
+        $limited = CategoryScopes::isAxis($taxonomy->vocabulary) && $this->scopes->isLimited($viewer, $taxonomy->vocabulary);
 
         $excluded = array_flip($merge || $cascade ? $branch : [$taxonomy->id]);
         $candidates = $this->screen->candidates($section, $forest, $excluded, $viewer, outerLevel: false);
@@ -82,7 +83,7 @@ final readonly class CategoryDeletePreview
                 $reason = null;
                 if ($governed && $forest->sectionOf($id) !== $from) {
                     $reason = 'workflow_governed';
-                } elseif ($limited && ! $this->scopes->coversId($viewer, $id)) {
+                } elseif ($limited && ! $this->scopes->coversId($viewer, $id, $taxonomy->vocabulary)) {
                     $reason = 'outside_category_limits';
                 }
                 $options[] = [

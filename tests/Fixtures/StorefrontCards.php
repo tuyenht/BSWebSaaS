@@ -69,11 +69,11 @@ final class StorefrontCards
         return Taxonomy::query()->findOrFail($id);
     }
 
-    /** A category with a translation, an ltree path and (unless $routed is false) its flat route. */
-    public static function category(string $name, string $slug, ?Taxonomy $parent = null, ?string $listTemplate = null, int $position = 0, bool $routed = true): Taxonomy
+    /** A category with a translation, an ltree path and (unless $routed is false) its flat route; a post category unless $vocabulary says otherwise (it never changes later). */
+    public static function category(string $name, string $slug, ?Taxonomy $parent = null, ?string $listTemplate = null, int $position = 0, bool $routed = true, string $vocabulary = 'post_cat'): Taxonomy
     {
         $category = Taxonomy::query()->create([
-            'vocabulary' => 'post_cat', 'parent_id' => $parent?->id, 'list_template' => $listTemplate, 'position' => $position,
+            'vocabulary' => $vocabulary, 'parent_id' => $parent?->id, 'list_template' => $listTemplate, 'position' => $position,
         ]);
         app(TaxonomyPaths::class)->refreshBranch($category->id);
         $category->translations()->create(['locale' => 'vi', 'name' => $name, 'slug' => $slug]);

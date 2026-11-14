@@ -19,12 +19,18 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\Query\JoinClause;
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 
 /**
  * Which categories a member may write in on the current site (member_category_scopes). The single
  * read side of category-scoped write rights: policies, workflow checks and lists ask here.
  *
- *  - No row for the member = every category (not limited).
+ *  - Two axes, each limited on its own: posts (`post_cat`) and products (`product_cat`). A row's axis
+ *    is the vocabulary of the category it names — its OWN category, never the ones it reaches: on a
+ *    mixed tree (product categories filed under a post category) a post row on the parent never
+ *    covers products. A category's vocabulary never changes (a database trigger refuses it), so a
+ *    row never changes axis. Every method takes the axis, posts by default.
+ *  - No row of an axis for the member = every category of that axis (not limited there).
  *  - A row covers its category and every category below it (ltree `<@`, with the parent chain as
  *    the fallback for a category whose path is not written yet).
  *  - Exempt, whatever rows exist: a platform super_admin and anyone holding a role of level
@@ -34,8 +40,8 @@ use Illuminate\Support\Facades\DB;
  *    gates changing the limits (fail-closed when a plan lapses).
  *  - "No primary category" (a page, a post not yet filed) is NOT covered for a limited member.
  *
- * One indexed query per member per request reads the rows with every category they reach; the
- * exemption is looked up only for a member who has rows. Memoized per "site:user"; registered
+ * One indexed query per member and axis per request reads the rows with every category they reach;
+ * the exemption is looked up only for a member who has rows. Memoized per "site:user:axis"; registered
  * scoped (CmsServiceProvider) so nothing outlives an Octane request. Runs inside the tenant context.
  */
 final class CategoryScopes
@@ -46,7 +52,16 @@ final class CategoryScopes
     /** The column selectHasLimits() adds to a list's rows. */
     public const string HAS_LIMITS = 'viewer_has_limits';
 
-    /** @var array<string, array{roots: list<int>, reach: array<int, true>}> */
+    /** The posts axis: limits named by post categories. */
+    public const string POSTS = 'post_cat';
+
+    /** The products axis: limits named by product categories. */
+    public const string PRODUCTS = 'product_cat';
+
+    /** Every vocabulary a member can be limited on. */
+    public const array AXES = [self::POSTS, self::PRODUCTS];
+
+    /** @var array<string, array{roots: list<int>, reach: array<int, true>}> per "site:user:axis" */
     private array $rows = [];
 
     /** @var array<string, bool> */
@@ -69,38 +84,59 @@ final class CategoryScopes
             || $this->levels->maxLevel($user) >= self::EXEMPT_LEVEL;
     }
 
-    /** Is the member limited to some categories on this site? */
-    public function isLimited(User $user): bool
+    /** Whether $vocabulary is one members can be limited on (an axis); facet terms and the like are not. */
+    public static function isAxis(string $vocabulary): bool
     {
-        return $this->read($user)['roots'] !== [] && ! $this->isExempt($user);
+        return in_array($vocabulary, self::AXES, true);
+    }
+
+    /** Is the member limited to some categories of $axis on this site? */
+    public function isLimited(User $user, string $axis = self::POSTS): bool
+    {
+        return $this->read($user, $axis)['roots'] !== [] && ! $this->isExempt($user);
+    }
+
+    /** Is the member limited on any axis (posts or products)? */
+    public function isLimitedOnAnyAxis(User $user): bool
+    {
+        foreach (self::AXES as $axis) {
+            if ($this->isLimited($user, $axis)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
-     * The categories the member's rows name (without their descendants), or null when not limited.
+     * The categories of $axis the member's rows name (without their descendants), or null when not
+     * limited there.
      *
      * @return list<int>|null
      */
-    public function rootIds(User $user): ?array
+    public function rootIds(User $user, string $axis = self::POSTS): ?array
     {
-        return $this->isLimited($user) ? $this->read($user)['roots'] : null;
+        return $this->isLimited($user, $axis) ? $this->read($user, $axis)['roots'] : null;
     }
 
     /**
-     * The categories each of $userIds is limited to (without their descendants), by user id, in one
-     * read for a whole page of members. A member never limited, or holding a role at or above
-     * EXEMPT_LEVEL (the caller leaves those out), has no entry.
+     * The categories of $axis each of $userIds is limited to (without their descendants), by user id,
+     * in one read for a whole page of members. A member never limited there, or holding a role at or
+     * above EXEMPT_LEVEL (the caller leaves those out), has no entry.
      *
      * @param  list<int>  $userIds
      * @return array<int, list<int>>
      */
-    public function rootIdsOf(array $userIds): array
+    public function rootIdsOf(array $userIds, string $axis = self::POSTS): array
     {
         if ($userIds === []) {
             return [];
         }
         $roots = [];
-        $rows = DB::table('member_category_scopes')->where('site_id', $this->site->id())->whereIn('user_id', $userIds)
-            ->orderBy('user_id')->orderBy('taxonomy_id')->limit(1000)->get(['user_id', 'taxonomy_id']);
+        $rows = DB::table('member_category_scopes as s')
+            ->join('taxonomies as t', fn (JoinClause $join) => $join->on('t.id', '=', 's.taxonomy_id')->on('t.site_id', '=', 's.site_id'))
+            ->where('s.site_id', $this->site->id())->whereIn('s.user_id', $userIds)->where('t.vocabulary', self::axis($axis))
+            ->orderBy('s.user_id')->orderBy('s.taxonomy_id')->limit(1000)->get(['s.user_id', 's.taxonomy_id']);
         foreach ($rows as $row) {
             $roots[Cast::int($row->user_id)][] = Cast::int($row->taxonomy_id);
         }
@@ -114,15 +150,15 @@ final class CategoryScopes
      *
      * @return list<int>|null
      */
-    public function allowedTaxonomyIds(User $user): ?array
+    public function allowedTaxonomyIds(User $user, string $axis = self::POSTS): ?array
     {
-        return $this->isLimited($user) ? array_keys($this->read($user)['reach']) : null;
+        return $this->isLimited($user, $axis) ? array_keys($this->read($user, $axis)['reach']) : null;
     }
 
-    /** May the member write content whose primary category is $primary? */
-    public function covers(User $user, ?Taxonomy $primary): bool
+    /** May the member write content of $axis whose primary category is $primary? */
+    public function covers(User $user, ?Taxonomy $primary, string $axis = self::POSTS): bool
     {
-        return $this->coversId($user, $primary?->id);
+        return $this->coversId($user, $primary?->id, $axis);
     }
 
     /**
@@ -139,12 +175,12 @@ final class CategoryScopes
     }
 
     /**
-     * The sentence a limited member sees when a write falls outside their limits, naming the
-     * categories they may write in (in the site's default language).
+     * The sentence a limited member sees when a write falls outside their limits of $axis, naming
+     * the categories they may write in (in the site's default language).
      */
-    public function refusal(User $user): string
+    public function refusal(User $user, string $axis = self::POSTS): string
     {
-        $roots = $this->rootIds($user) ?? [];
+        $roots = $this->rootIds($user, $axis) ?? [];
         $locale = $this->locales->default();
         $names = [];
         foreach (TaxonomyTranslation::query()->whereIn('taxonomy_id', $roots)->orderBy('taxonomy_id')->get(['taxonomy_id', 'locale', 'name']) as $translation) {
@@ -153,15 +189,16 @@ final class CategoryScopes
             }
         }
 
-        return __('entries.category_scope_only', ['categories' => implode(', ', $names)]);
+        return __($axis === self::PRODUCTS ? 'catalog.category_scope_only' : 'entries.category_scope_only', ['categories' => implode(', ', $names)]);
     }
 
     /**
-     * Narrow a query of users (`users`) to those who may write in every one of $categoryIds on this
-     * site — the SQL form of coversId() for lists of people (approvers, who hears of a post): no
-     * limits here, a role at or above EXEMPT_LEVEL, or limits reaching each category (a null id —
-     * content without a category — reaches no limited member). A platform super_admin is matched
-     * only as far as their roles here reach, like every other member list.
+     * Narrow a query of users (`users`) to those who may write in every one of the post categories
+     * $categoryIds on this site — the SQL form of coversId() for lists of people (approvers, who hears
+     * of a post): no post limits here, a role at or above EXEMPT_LEVEL, or post limits reaching each
+     * category (a null id — content without a category — reaches no limited member). Limits on
+     * products play no part. A platform super_admin is matched only as far as their roles here reach,
+     * like every other member list.
      *
      * @param  Builder<User>  $members
      */
@@ -174,8 +211,11 @@ final class CategoryScopes
         $members->where(function (Builder $who) use ($site, $userKey, $categoryIds, $reachable): void {
             $who->whereNotExists(fn (QueryBuilder $limit) => $limit->selectRaw('1')
                 ->from('member_category_scopes')
+                ->join('taxonomies as own', fn (JoinClause $join) => $join
+                    ->on('own.id', '=', 'member_category_scopes.taxonomy_id')->on('own.site_id', '=', 'member_category_scopes.site_id'))
                 ->where('member_category_scopes.site_id', $site)
-                ->whereColumn('member_category_scopes.user_id', $userKey))
+                ->whereColumn('member_category_scopes.user_id', $userKey)
+                ->where('own.vocabulary', self::POSTS))
                 ->orWhereHas('roles', fn (Builder $role) => $role->where('level', '>=', self::EXEMPT_LEVEL));
 
             if ($reachable && $categoryIds !== []) {
@@ -188,6 +228,7 @@ final class CategoryScopes
                             ->join('taxonomies as cat', 'cat.site_id', '=', 'mcs.site_id')
                             ->where('mcs.site_id', $site)
                             ->whereColumn('mcs.user_id', $userKey)
+                            ->where('root.vocabulary', self::POSTS)
                             ->where('cat.id', $categoryId)
                             ->where(fn (QueryBuilder $reach) => $reach->whereColumn('cat.id', 'root.id')->orWhereRaw('cat.path <@ root.path')));
                     }
@@ -221,16 +262,16 @@ final class CategoryScopes
     }
 
     /** covers() for a category known only by id (a picked category, a pending change's target). */
-    public function coversId(User $user, ?int $primaryId): bool
+    public function coversId(User $user, ?int $primaryId, string $axis = self::POSTS): bool
     {
-        if (! $this->isLimited($user)) {
+        if (! $this->isLimited($user, $axis)) {
             return true;
         }
         if ($primaryId === null) {
             return false;
         }
 
-        $read = $this->read($user);
+        $read = $this->read($user, $axis);
         if (isset($read['reach'][$primaryId])) {
             return true;
         }
@@ -246,7 +287,8 @@ final class CategoryScopes
 
     /**
      * The members limited to one of $taxonomyIds on this site, with the highest role level each
-     * holds here (0 for none), by name.
+     * holds here (0 for none), by name. Rows on the named categories, whatever their axis: each row
+     * is typed by the very category it names.
      *
      * @param  list<int>  $taxonomyIds
      * @return list<array{id: int, name: string, level: int}>
@@ -359,16 +401,17 @@ final class CategoryScopes
     }
 
     /**
-     * Add to a list's own query whether $user has limit rows on this site (column HAS_LIMITS), so
-     * the list learns it without a query of its own; hand the value to learnHasLimits().
+     * Add to a list's own query whether $user has limit rows of $axis on this site (column
+     * HAS_LIMITS), so the list learns it without a query of its own; hand the value to
+     * learnHasLimits().
      *
      * @param  Builder<Entry>  $rows
      * @param  list<string>  $columns  the row columns the list reads (all of them by default)
      */
-    public function selectHasLimits(Builder $rows, User $user, array $columns = ['*']): void
+    public function selectHasLimits(Builder $rows, User $user, array $columns = ['*'], string $axis = self::POSTS): void
     {
         $rows->select(array_map(fn (string $column): string => $rows->getModel()->qualifyColumn($column), $columns));
-        [$sql, $bindings] = $this->hasLimitsColumn($user);
+        [$sql, $bindings] = $this->hasLimitsColumn($user, $axis);
         $rows->selectRaw($sql, $bindings);
     }
 
@@ -377,23 +420,25 @@ final class CategoryScopes
      *
      * @return array{0: literal-string, 1: list<mixed>}
      */
-    public function hasLimitsColumn(User $user): array
+    public function hasLimitsColumn(User $user, string $axis = self::POSTS): array
     {
         return [
-            'exists(select 1 from member_category_scopes where member_category_scopes.site_id = ? and member_category_scopes.user_id = ?) as '.self::HAS_LIMITS,
-            [$this->site->id(), $user->getKey()],
+            'exists(select 1 from member_category_scopes join taxonomies as own on own.site_id = member_category_scopes.site_id and own.id = member_category_scopes.taxonomy_id'
+                .' where member_category_scopes.site_id = ? and member_category_scopes.user_id = ? and own.vocabulary = ?) as '.self::HAS_LIMITS,
+            [$this->site->id(), $user->getKey(), self::axis($axis)],
         ];
     }
 
     /**
-     * Take the HAS_LIMITS value a list read: a member without rows is remembered as not limited
-     * for this request (no query of the reader's own). Returns whether rows exist.
+     * Take the HAS_LIMITS value a list read (for the same $axis): a member without rows there is
+     * remembered as not limited on it for this request (no query of the reader's own). Returns
+     * whether rows exist.
      */
-    public function learnHasLimits(User $user, mixed $hasLimits): bool
+    public function learnHasLimits(User $user, mixed $hasLimits, string $axis = self::POSTS): bool
     {
         $has = $hasLimits === true || $hasLimits === 1 || $hasLimits === '1' || $hasLimits === 't' || $hasLimits === 'true';
         if (! $has) {
-            $this->rows[$this->key($user)] ??= ['roots' => [], 'reach' => []];
+            $this->rows[$this->key($user).':'.self::axis($axis)] ??= ['roots' => [], 'reach' => []];
         }
 
         return $has;
@@ -403,7 +448,8 @@ final class CategoryScopes
      * The members limited on this site whose reach a category move changes: their limits cover the
      * moved branch before ($before: the ids above it now) but not after ($after: the new parent and
      * the ids above it), or the other way round. Members whose limits sit inside the branch move
-     * with it and are not concerned.
+     * with it and are not concerned. Rows of every axis count: on a mixed tree a post row above a
+     * product category changes reach too, and counting it more only asks more of the mover.
      *
      * @param  list<int>  $before
      * @param  list<int>  $after
@@ -434,7 +480,7 @@ final class CategoryScopes
      * Every member limited on this site, with the categories their limits name and the highest
      * role level each holds here: for a screen that weighs many moves at once (the "Chuyển tới"
      * targets), which then applies membersReachChangedBy()'s rule to each candidate itself. Two
-     * queries, whatever the number of candidates.
+     * queries, whatever the number of candidates. Rows of every axis, as membersReachChangedBy().
      *
      * @return list<array{id: int, name: string, level: int, roots: list<int>}>
      */
@@ -496,14 +542,18 @@ final class CategoryScopes
     }
 
     /**
-     * The member's scoped categories and every category they reach. A LEFT JOIN on both sides: a
-     * row whose category has no path still counts (the member stays limited); it reaches only itself.
+     * The member's scoped categories of $axis and every category they reach. The axis is read off
+     * the row's own category (`t`), never off the reached ones (`d`): a post row on a post category
+     * reaches its product children in the tree, and must not cover them as products. A LEFT JOIN on
+     * the reached side: a row whose category has no path still counts (the member stays limited);
+     * it reaches only itself.
      *
      * @return array{roots: list<int>, reach: array<int, true>}
      */
-    private function read(User $user): array
+    private function read(User $user, string $axis): array
     {
-        $key = $this->key($user);
+        $axis = self::axis($axis);
+        $key = $this->key($user).':'.$axis;
         if (isset($this->rows[$key])) {
             return $this->rows[$key];
         }
@@ -512,10 +562,10 @@ final class CategoryScopes
         $found = DB::select(<<<'SQL'
             SELECT s.taxonomy_id AS root_id, d.id AS reached_id
             FROM member_category_scopes AS s
-            LEFT JOIN taxonomies AS t ON t.site_id = s.site_id AND t.id = s.taxonomy_id
+            JOIN taxonomies AS t ON t.site_id = s.site_id AND t.id = s.taxonomy_id
             LEFT JOIN taxonomies AS d ON d.site_id = s.site_id AND d.path <@ t.path
-            WHERE s.site_id = ? AND s.user_id = ?
-            SQL, [$site, $user->getKey()]);
+            WHERE s.site_id = ? AND s.user_id = ? AND t.vocabulary = ?
+            SQL, [$site, $user->getKey(), $axis]);
 
         $roots = [];
         $reach = [];
@@ -530,6 +580,16 @@ final class CategoryScopes
         }
 
         return $this->rows[$key] = ['roots' => array_keys($roots), 'reach' => $reach];
+    }
+
+    /** $axis when it is one; anything else is a caller's bug, refused rather than read as "not limited". */
+    private static function axis(string $axis): string
+    {
+        if (! self::isAxis($axis)) {
+            throw new InvalidArgumentException("Members are not limited on the vocabulary [{$axis}].");
+        }
+
+        return $axis;
     }
 
     private function key(User $user): string

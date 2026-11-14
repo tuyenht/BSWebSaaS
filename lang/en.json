@@ -1574,6 +1574,7 @@
     "catalog.category_label": "Category",
     "catalog.category_placeholder": "— Choose a category —",
     "catalog.category_invalid": "Invalid category.",
+    "catalog.category_scope_only": "You can only edit products in: :categories.",
     "catalog.description_label": "Product details / specifications",
     "catalog.card_product": "Product information",
     "catalog.card_publish": "Publish",
