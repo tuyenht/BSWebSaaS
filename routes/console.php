@@ -76,6 +76,10 @@ Schedule::command('monitoring:summary')
     ->timezone(Cast::string(config('monitoring.timezone'), 'Asia/Ho_Chi_Minh'))
     ->withoutOverlapping();
 
+// The Cloudflare Workers free plan allows 100,000 requests per UTC day for the whole account: mail
+// the owner at 50 / 80 / 100 percent. Quiet when the mailer or the Cloudflare token is not set.
+Schedule::command('monitoring:worker-quota')->hourly()->withoutOverlapping(10);
+
 // The scheduler's heartbeat: a data-free ping an outside watcher expects every 5 minutes. Only
 // when an address is configured.
 Schedule::command('monitoring:heartbeat')

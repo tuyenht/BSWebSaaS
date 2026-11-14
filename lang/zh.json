@@ -4826,5 +4826,11 @@
     "media.lib.ask_purge_all_title": "清空回收站？",
     "media.lib.ask_purge_l1": "永久删除 :n 个文件（:size）——无法恢复。",
     "media.lib.ask_purge_l2": "产品图集中的图片也会从该产品中移除。",
-    "media.lib.ask_purge_ok": "永久删除 :n 个文件"
+    "media.lib.ask_purge_ok": "永久删除 :n 个文件",
+    "monitoring.quota.subject.warn": "Cloudflare Workers: :percent% of today's free requests used",
+    "monitoring.quota.subject.reached": "Cloudflare Workers: today's free requests are used up",
+    "monitoring.quota.subject.unreadable": "Cannot read the Cloudflare Workers request count",
+    "monitoring.quota.body.warn": "Today (UTC day), the Cloudflare account has used :used of :limit free Workers requests (:percent%).\n\nThe counter resets at 07:00 Vietnam time tomorrow morning.\n\nNothing to do right now. If the number climbs fast, ask the AI where the requests go. Moving to a paid plan is your call.",
+    "monitoring.quota.body.reached": "Today (UTC day), the Cloudflare account has used :used of :limit free Workers requests (:percent%).\n\nImages on customer websites may stop loading until the counter resets at 07:00 Vietnam time tomorrow morning.\n\nWhat to do: reply to this mail or ask the AI to choose a fix. Moving to a paid plan is your call.",
+    "monitoring.quota.body.unreadable": "The system could not read the Cloudflare Workers request count for :hours hours in a row, so it may not warn in time when the free requests run low.\n\nAsk the AI to check the Cloudflare access token. This mail is sent once a day."
 }

@@ -61,6 +61,16 @@ final readonly class NoticeMailer
     }
 
     /**
+     * A notice that is not about an error (no error-monitor footer). Goes out on the same mailer
+     * and, unlike the error notices, is not held back by the hourly ceiling: the caller sends at
+     * most a few a day.
+     */
+    public function sendPlain(string $subject, string $body): void
+    {
+        $this->send($subject, $body);
+    }
+
+    /**
      * The allow-listed fields of one event, one "Label: value" line each; empty fields are left out.
      *
      * @return list<string>

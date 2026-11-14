@@ -43,6 +43,17 @@ return [
     // How many faults the daily summary lists before it says "and N more".
     'summary_limit' => 50,
 
+    // The Cloudflare Workers free plan: one daily allowance for the whole account, counted per UTC
+    // day (it resets at 07:00 Vietnam time). The owner gets one mail per threshold (percent of the
+    // limit) per day; after `failure_hours` hours in a row without a readable count, one mail a
+    // day says so. Needs CLOUDFLARE_API_TOKEN (Account Analytics: Read) and the account id
+    // (CLOUDFLARE_ACCOUNT_ID, else taken from R2_ENDPOINT).
+    'worker_quota' => [
+        'daily_limit' => (int) env('MONITORING_WORKER_QUOTA_LIMIT', 100_000),
+        'thresholds' => env('MONITORING_WORKER_QUOTA_THRESHOLDS', '50,80,100'),
+        'failure_hours' => 6,
+    ],
+
     // A bare GET to this address every 5 minutes proves the scheduler is alive (healthchecks.io
     // or similar). It carries no data. Empty = no heartbeat.
     'heartbeat_url' => env('MONITORING_HEARTBEAT_URL'),
