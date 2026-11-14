@@ -1203,3 +1203,26 @@ it('stores a full list of channels without adding a built-in one past the most a
 
     expect(FloatingContactInput::stored(['enabled' => true, 'channels' => $channels], ['vi'])['channels'])->toHaveCount(FloatingContact::MAX_CHANNELS);
 });
+
+it('draws the phone preview at the visitor phone width and gives every colour swatch one shared named hit area', function (): void {
+    $admin = fcsAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)->call('setLayout', 'combo')->set('buyOn', true);
+        $html = fcsBare($lw);
+        $hit = 'inline-flex size-control-row shrink-0 cursor-pointer items-center justify-center rounded-full any-pointer-coarse:size-hit';
+
+        // The phone is as wide as the admin window, clamped to 320-390, and the frame grows to fit it.
+        expect($html)->toContain('Math.min(390, Math.max(320, this.win))')
+            ->toContain("'max-width:' + (vw + 14) + 'px'");
+
+        // Buy swatches: each a named, pressed-aware button with the shared hit area around its chip.
+        expect(preg_match_all('/<button type="button" wire:click="setBuyColor\([^"]*\)"[^>]*aria-pressed="[a-z]+"[^>]*aria-label="[^"]+"[^>]*class="'.preg_quote($hit, '/').'"/', $html))
+            ->toBe(count(FloatingContactSettings::BUY_SWATCHES));
+
+        // Channel swatches (the open colour panel of every channel) share the same class, the custom-colour label too.
+        expect(substr_count($html, 'class="'.$hit.'"'))->toBeGreaterThan(count(FloatingContactSettings::BUY_SWATCHES))
+            ->and($html)->toContain('class="'.$hit.' focus-ring-within relative"')
+            ->and($html)->not->toContain('size-[1.625rem] rounded-[7px] any-pointer-coarse:size-11');
+    });
+});

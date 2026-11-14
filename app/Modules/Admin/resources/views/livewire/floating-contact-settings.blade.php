@@ -110,8 +110,9 @@
     $palette = ['#0ea5e9', '#16a34a', '#dc2626', '#f97316', '#7c3aed', '#db2777', '#111827'];
     $icoH = 'flex flex-wrap items-baseline gap-x-2.5 gap-y-1 text-[calc(0.78125rem+var(--user-text-boost))] font-semibold text-text-strong';
     $icoN = 'text-[calc(0.75rem+var(--user-text-boost))] font-normal leading-[1.45] text-text-muted';
-    // A swatch: 28px with a mouse at the default text size, a 44px target on touch and from the next text size up.
-    $swatch = 'inline-flex size-[max(1.75rem,var(--spacing-tap-cell))] shrink-0 cursor-pointer items-center justify-center rounded-full any-pointer-coarse:size-hit';
+    // Every colour swatch (the channels' and the "Mua hàng" button's) shares one transparent hit area: the inline-control
+    // size with a mouse (36 / 40 / 44px across the text sizes), 44px on touch; the coloured chip inside keeps its own size.
+    $swatch = 'inline-flex size-control-row shrink-0 cursor-pointer items-center justify-center rounded-full any-pointer-coarse:size-hit';
     $fieldName = static fn (string $field): string => match (true) {
         str_starts_with($field, 'tips.') => __('admin.fc.f_tip_in', ['lang' => $nameOf(substr($field, 5))]),
         in_array($field, ['value', 'icon', 'color', 'tips', 'img'], true) => __('admin.fc.f_'.$field),
@@ -600,13 +601,17 @@
                                         @foreach (\App\Modules\Admin\Livewire\FloatingContactSettings::BUY_SWATCHES as $sw)
                                             <button type="button" wire:click="setBuyColor({{ Js::from($sw) }})" aria-pressed="{{ $buyColor === $sw ? 'true' : 'false' }}"
                                                     aria-label="{{ $sw === 'brand' ? __('admin.fc.swatch_brand') : __('admin.fc.swatch', ['color' => $sw]) }}" title="{{ $sw === 'brand' ? __('admin.fc.swatch_brand') : $sw }}"
-                                                    @class(['size-[1.625rem] rounded-[7px] any-pointer-coarse:size-11', 'shadow-[0_0_0_2px_var(--color-surface),0_0_0_3px_var(--color-primary-text)]' => $buyColor === $sw, 'shadow-[inset_0_0_0_1px_rgb(0_0_0/0.18)]' => $buyColor !== $sw])
-                                                    style="background: {{ $sw === 'brand' ? 'var(--color-primary)' : $sw }}"></button>
+                                                    class="{{ $swatch }}">
+                                                <span aria-hidden="true" @class(['block size-[1.625rem] rounded-[7px]', 'shadow-[0_0_0_2px_var(--color-surface),0_0_0_3px_var(--color-primary-text)]' => $buyColor === $sw, 'shadow-[inset_0_0_0_1px_rgb(0_0_0/0.18)]' => $buyColor !== $sw])
+                                                      style="background: {{ $sw === 'brand' ? 'var(--color-primary)' : $sw }}"></span>
+                                            </button>
                                         @endforeach
-                                        <label title="{{ __('admin.fc.buy_custom') }}" @class(['relative inline-flex size-[1.625rem] cursor-pointer items-center justify-center overflow-hidden rounded-[7px] focus-ring-within any-pointer-coarse:size-11',
-                                                'shadow-[0_0_0_2px_var(--color-surface),0_0_0_3px_var(--color-primary-text)]' => $customBuy, 'bg-[conic-gradient(#f06548,#f7b84b,#0ab39c,#299cdb,#6559cc,#f06548)]' => ! $customBuy])
-                                               @if ($customBuy) style="background: {{ $buySafe }}" @endif>
-                                            <x-bs-admin::icon name="ri-add" class="pointer-events-none size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))] text-white drop-shadow-[0_0_3px_rgb(0_0_0/0.6)]" />
+                                        <label title="{{ __('admin.fc.buy_custom') }}" class="{{ $swatch }} focus-ring-within relative">
+                                            <span aria-hidden="true" @class(['relative flex size-[1.625rem] items-center justify-center overflow-hidden rounded-[7px]',
+                                                    'shadow-[0_0_0_2px_var(--color-surface),0_0_0_3px_var(--color-primary-text)]' => $customBuy, 'bg-[conic-gradient(#f06548,#f7b84b,#0ab39c,#299cdb,#6559cc,#f06548)]' => ! $customBuy])
+                                                  @if ($customBuy) style="background: {{ $buySafe }}" @endif>
+                                                <x-bs-admin::icon name="ri-add" class="pointer-events-none size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))] text-white drop-shadow-[0_0_3px_rgb(0_0_0/0.6)]" />
+                                            </span>
                                             <input type="color" value="{{ $customBuy ? $buySafe : FloatingContact::BUY_COLOR }}" x-on:change="$wire.setBuyColor($event.target.value)" aria-label="{{ __('admin.fc.buy_custom') }}"
                                                    class="absolute inset-0 size-full cursor-pointer border-0 opacity-0">
                                         </label>
@@ -650,10 +655,10 @@
                      channel (bsFloatingContact.reopenable: a sheet whose cells all fit on the bar is empty). --}}
                 <div class="rounded-md border border-border bg-surface shadow-card"
                      x-data="{
-                         pick: 'desktop', dark: false, k: 1, h: 600,
+                         pick: 'desktop', dark: false, k: 1, h: 600, win: window.innerWidth,
                          get dev() { return $wire.layout === 'horizontal' ? 'mobile' : this.pick },
-                         get vw() { return this.dev === 'mobile' ? 390 : 768 },
-                         fit() { const w = this.$refs.box ? this.$refs.box.clientWidth : 0; this.k = w > 0 ? Math.min(1, w / this.vw) : 1; this.measure(); },
+                         get vw() { return this.dev === 'mobile' ? Math.min(390, Math.max(320, this.win)) : 768 },
+                         fit() { this.win = window.innerWidth; const w = this.$refs.box ? this.$refs.box.clientWidth : 0; this.k = w > 0 ? Math.min(1, w / this.vw) : 1; this.measure(); },
                          measure() {
                              const d = this.$refs.frame ? this.$refs.frame.contentDocument : null, n = d ? d.querySelector('.sf-fc__float') : null;
                              const base = this.dev === 'mobile' ? 600 : 480;
@@ -704,9 +709,10 @@
                             </div>
                         </div>
                     </div>
-                    <div class="flex justify-center bg-surface-muted p-5">
+                    <div class="flex justify-center bg-surface-muted p-3 @min-[26rem]/fc:p-5">
                         <div class="flex w-full flex-col overflow-hidden bg-surface" wire:ignore.self
-                             x-bind:class="dev === 'mobile' ? 'max-w-[20rem] rounded-[26px] border-[7px] border-text-strong shadow-[0_12px_30px_-10px_rgb(0_0_0/0.35)]' : 'rounded-[10px] shadow-[0_10px_30px_-12px_rgb(0_0_0/0.3)]'">
+                             x-bind:style="dev === 'mobile' ? 'max-width:' + (vw + 14) + 'px' : ''"
+                             x-bind:class="dev === 'mobile' ? 'rounded-[26px] border-[7px] border-text-strong shadow-[0_12px_30px_-10px_rgb(0_0_0/0.35)]' : 'rounded-[10px] shadow-[0_10px_30px_-12px_rgb(0_0_0/0.3)]'">
                             <div class="flex h-7 shrink-0 items-center gap-1.5 border-b border-border bg-surface px-3" aria-hidden="true" wire:ignore x-show="dev === 'desktop'">
                                 <span class="size-2 rounded-full bg-danger-base"></span><span class="size-2 rounded-full bg-warning-base"></span><span class="size-2 rounded-full bg-success-base"></span>
                             </div>
