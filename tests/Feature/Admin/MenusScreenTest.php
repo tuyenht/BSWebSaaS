@@ -363,67 +363,46 @@ function msHeader(): ?array
     return msIn(1, fn (): ?array => SiteSetting::query()->where('group_name', 'storefront')->where('key', 'header')->first()?->value);
 }
 
-it('offers the product tab switch only to a site with a products section, and says whether it is on', function (): void {
-    msSettingsRole($this->editor);
-    expect(msCall($this->editor, 'load')['productsTab'])->toBe(['available' => false, 'on' => false]);
-
+it('says whether the phone menu shows the products tab, and links to the product settings only for who may change them', function (): void {
     msShop();
-    expect(msCall($this->editor, 'load')['productsTab'])->toBe(['available' => false, 'on' => false]);   // no header setting: no tab to switch
+    expect(msCall($this->editor, 'load')['productsTab'])->toBe(['note' => false, 'link' => false]);   // no header setting: no tab
 
     msIn(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'header', 'value' => ['sticky' => false]]));
-    expect(msCall($this->editor, 'load')['productsTab'])->toBe(['available' => true, 'on' => true]);
+    expect(msCall($this->editor, 'load')['productsTab'])->toBe(['note' => true, 'link' => false]);    // on, but no settings permission
+
+    msSettingsRole($this->editor);
+    expect(msCall($this->editor, 'load')['productsTab'])->toBe(['note' => true, 'link' => true]);
 
     msIn(1, fn () => SiteSetting::query()->where('key', 'header')->firstOrFail()->update(['value' => ['drawer_products' => false]]));
-    expect(msCall($this->editor, 'load')['productsTab']['on'])->toBeFalse();
+    expect(msCall($this->editor, 'load')['productsTab'])->toBe(['note' => false, 'link' => false]);
 
     $page = $this->actingAs($this->editor->fresh())->get('http://a.test/admin/menus')->assertOk()->getContent();
-    expect($page)->toContain('productsTab')->toContain(__('menus.ui_ptab_label'));
+    expect($page)->toContain('productsTab')->toContain(__('menus.ui_ptab_note'))->toContain(route('admin.settings.catalog'));
 });
 
-it('switches the product tab by writing only drawer_products and keeping the rest of the header', function (): void {
-    msSettingsRole($this->editor);
-    msShop();
-    msIn(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'header',
-        'value' => ['sticky' => false, 'text_size' => true, 'top_bar' => ['items' => [['kind' => 'text', 'text' => 'Xin chào']]]]]));
-
-    expect(msCall($this->editor, 'setProductsTab', false))->toBe(['ok' => true])
-        ->and(msHeader())->toEqual(['sticky' => false, 'text_size' => true, 'top_bar' => ['items' => [['kind' => 'text', 'text' => 'Xin chào']]], 'drawer_products' => false])
-        ->and(msCall($this->editor, 'load')['productsTab']['on'])->toBeFalse();
-
-    msCall($this->editor, 'setProductsTab', true);
-    expect(msHeader())->toMatchArray(['sticky' => false, 'text_size' => true, 'drawer_products' => true])
-        ->and(msCall($this->editor, 'load')['productsTab']['on'])->toBeTrue();
-});
-
-it('writes nothing and offers no switch for a site with no header setting, and refuses a non-boolean', function (): void {
-    msSettingsRole($this->editor);
-    msShop();
-    expect(msCall($this->editor, 'setProductsTab', 'yes')['ok'])->toBeFalse();
-    $refused = msCall($this->editor, 'setProductsTab', true);
-
-    expect($refused['ok'])->toBeFalse()->and($refused['reason'])->toBe('input_invalid')
-        ->and(msHeader())->toBeNull()
-        ->and(msCall($this->editor, 'load')['productsTab'])->toBe(['available' => false, 'on' => false]);
-});
-
-it('offers no switch and writes nothing when the site has a header setting but no catalog or products section', function (): void {
+it('shows no products tab note for a site without the catalog or a products section', function (): void {
     msSettingsRole($this->editor);
     msIn(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'header', 'value' => ['sticky' => false]]));
 
-    $refused = msCall($this->editor, 'setProductsTab', false);
-
-    expect(msCall($this->editor, 'load')['productsTab'])->toBe(['available' => false, 'on' => false])
-        ->and($refused['ok'])->toBeFalse()->and($refused['reason'])->toBe('input_invalid')
-        ->and(msHeader())->toBe(['sticky' => false]);
+    expect(msCall($this->editor, 'load')['productsTab'])->toBe(['note' => false, 'link' => false]);
 });
 
-it('refuses the product tab switch to a menu editor without the site-settings permission, and hides it', function (): void {
+it('no longer saves the products tab switch from the menus screen', function (): void {
+    msSettingsRole($this->editor);
     msShop();
     msIn(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'header', 'value' => ['sticky' => false]]));
 
-    expect(msCall($this->editor, 'load')['productsTab'])->toBe(['available' => false, 'on' => false]);
-    msIn(1, fn () => Livewire::actingAs($this->editor->fresh())->test(MenusIndex::class)->call('setProductsTab', false)->assertForbidden());
+    expect(method_exists(MenusIndex::class, 'setProductsTab'))->toBeFalse();
     expect(msHeader())->toBe(['sticky' => false]);
+});
+
+it('words the empty choice of the phone menu area as using the main menu, and of the other areas as leaving empty', function (): void {
+    $script = (string) file_get_contents(resource_path('js/admin-menus.js'));
+    expect($script)->toContain("a.key === 'handheld' ? t.areaMainMenu : t.areaNone");
+
+    $page = $this->actingAs($this->editor->fresh())->get('http://a.test/admin/menus')->assertOk()->getContent();
+    expect($page)->toContain('areaMainMenu')->toContain('areaNone')
+        ->and(__('menus.ui_areaMainMenu'))->not->toBe(__('menus.ui_areaNone'));
 });
 
 it('refuses the product tab switch to someone who may not manage menus', function (): void {
@@ -601,7 +580,7 @@ it('wires every call the screen script makes to a public method of the component
     preg_match_all('/\$wire\.([a-zA-Z]+)\(/', $script, $found);
     $calls = array_values(array_unique($found[1]));
 
-    expect($calls)->toContain('load', 'saveDraft', 'assign', 'follow', 'createMenu', 'renameMenu', 'copyMenu', 'copyItem', 'deleteMenu', 'restore', 'setAutoAdd', 'search', 'selfCheck', 'setProductsTab');
+    expect($calls)->toContain('load', 'saveDraft', 'assign', 'follow', 'createMenu', 'renameMenu', 'copyMenu', 'copyItem', 'deleteMenu', 'restore', 'setAutoAdd', 'search', 'selfCheck');
     foreach ($calls as $method) {
         expect((new ReflectionMethod(MenusIndex::class, $method))->isPublic())->toBeTrue();
     }

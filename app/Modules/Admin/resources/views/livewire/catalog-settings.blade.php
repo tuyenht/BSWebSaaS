@@ -25,6 +25,27 @@
         </div>
         @error('mode') <p class="mt-2 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
 
+        @if ($productsTabAvailable)
+            <div class="mt-6 border-t border-border pt-4" x-data="{ info: false }">
+                <h6 class="mb-3 text-[calc(0.875rem+var(--user-text-boost))] font-semibold text-text-strong">{{ __('catalog.on_site_title') }}</h6>
+                <div class="flex items-start justify-between gap-4">
+                    <div class="flex min-w-0 flex-col gap-1">
+                        <span id="cs-ptab-l" class="text-[calc(0.8125rem+var(--user-text-boost))] font-medium text-text-strong">{{ __('catalog.drawer_products_label') }}</span>
+                        <button type="button" class="hit-area-row inline-flex items-center gap-1 self-start text-caption text-text-muted hover:text-primary-text"
+                                x-on:click="info = !info" x-bind:aria-expanded="info ? 'true' : 'false'"
+                                aria-controls="cs-ptab-info" aria-label="{{ __('admin.gs.detail_aria', ['label' => __('catalog.drawer_products_label')]) }}">
+                            <x-bs-admin::icon name="ri-information" class="size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))]" />{{ __('admin.gs.detail') }}
+                        </button>
+                        <div id="cs-ptab-info" role="note" x-show="info" x-cloak
+                             class="rounded-lg border border-border bg-surface px-3 py-2.5 text-caption leading-relaxed text-text [overflow-wrap:break-word]">{{ __('catalog.drawer_products_help') }}</div>
+                    </div>
+                    <button type="button" class="switch hit-area" role="switch" aria-checked="{{ $drawerProducts ? 'true' : 'false' }}" aria-labelledby="cs-ptab-l"
+                            wire:click="$toggle('drawerProducts')"></button>
+                </div>
+                @error('drawerProducts') <p class="mt-2 text-sm text-danger-text">{{ $message }}</p> @enderror
+            </div>
+        @endif
+
         <x-slot:footer>
             <div class="flex justify-end">
                 <x-bs-admin::button color="primary" wire:click="save" wire:loading.attr="disabled">{{ __('catalog.save') }}</x-bs-admin::button>
