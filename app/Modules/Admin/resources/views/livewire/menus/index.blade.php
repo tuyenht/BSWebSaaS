@@ -20,7 +20,7 @@
         'leaveSave', 'leaveDrop', 'renamed', 'newMenuName', 'menuCopied', 'delTitle', 'delBodyUsed', 'delBody',
         'delOk', 'menuDeleted', 'removeKidsTitle', 'removeKidsBody', 'removeKidsOk', 'langsToast', 'areaNone', 'areaMain', 'areaSame', 'areasSet', 'areaSaved', 'areaMainMenu', 'codeCopied',
         'checkOk', 'checkTips', 'checkBad', 'checkAndTips', 'trashKids', 'trashDays', 'restoreNeedsSave', 'restored',
-        'iconHits', 'descTaken', 'goneTitle', 'goneBody', 'goneKids', 'goneOk', 'goneRemoved',
+        'iconHits', 'iconTipDone', 'descTaken', 'goneTitle', 'goneBody', 'goneKids', 'goneOk', 'goneRemoved',
     ])->mapWithKeys(fn (string $k): array => [$k => $u($k)])->all();
     $texts += [
         'undone' => __('admin.tree.undone'),
@@ -46,7 +46,7 @@
 <div class="@container" x-ignore wire:ignore.self data-bs-lazy="bsMenus" x-data="bsMenus(@js($config))" x-on:keydown.window="keys($event)">
     {{-- The website icons, drawn once and reused by name (<use>). --}}
     <svg class="hidden" aria-hidden="true">
-        @foreach (array_merge(...array_column($icons, 'icons')) as $icon)
+        @foreach (collect(array_merge(...array_column($icons, 'icons')))->unique('name') as $icon)
             <symbol id="mn-ic-{{ $icon['name'] }}" viewBox="0 0 24 24">
                 @if (\App\Modules\Theme\Chrome\StorefrontIcons::GLYPHS[$icon['name']][0] === 'f')
                     <g fill="currentColor">{!! \App\Modules\Theme\Chrome\StorefrontIcons::GLYPHS[$icon['name']][1] !!}</g>
@@ -548,6 +548,11 @@
                                                             <template x-if="r.it.options.icon"><svg class="size-5" aria-hidden="true"><use :href="'#mn-ic-' + r.it.options.icon"></use></svg></template>
                                                             <span x-text="r.it.options.icon ? {{ $j($u('icon_change')) }} : {{ $j($u('icon_pick')) }}"></span><x-bs-admin::icon name="ri-arrow-down-s" class="size-4" />
                                                         </x-bs-admin::button>
+                                                        <template x-if="!r.it.options.icon && iconTip(r.it)">
+                                                            <x-bs-admin::button variant="outline" color="secondary" title="{{ $u('icon_tip_title') }}" x-on:click.stop="applyIconTip(r.k)">
+                                                                <svg class="size-5 text-primary-text" aria-hidden="true"><use :href="'#mn-ic-' + iconTip(r.it)"></use></svg>{{ $u('icon_tip') }}
+                                                            </x-bs-admin::button>
+                                                        </template>
                                                         <div x-show="iconOpen" x-on:click.stop class="absolute right-0 top-full z-30 mt-1.5 box-border w-[min(308px,calc(100vw-32px))] rounded-md border border-border bg-surface p-2.5 shadow-card">
                                                             <x-bs-admin::search :label="$u('icon_search')" x-model="iconQ" />
                                                             <div class="mt-2 flex max-h-[230px] flex-col gap-2 overflow-auto">

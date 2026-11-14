@@ -1,8 +1,9 @@
 // What the Trình đơn screen sends when "Lưu" is pressed, and the rows it hands the shared tree
 // (resources/js/admin-menus.js), without a browser: `node --test tests/js/admin-menus.test.mjs`.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { buildDraft, goneKeysOf, goneSpanOf, iconGroupsOf, treeRowsOf } from '../../resources/js/admin-menus.js';
+import { buildDraft, goneKeysOf, goneSpanOf, iconGroupsOf, suggestIconOf, treeRowsOf } from '../../resources/js/admin-menus.js';
 
 const opts = (more = {}) => ({ hidden: false, new_tab: false, icon: null, description: {}, cta: false, mega: null, badge: null, device: 'all', ...more });
 const row = (key, parent, labels, more = {}) => ({ key, parent, link: { type: 'url', url: '/' + key }, labels, options: opts(more) });
@@ -100,6 +101,29 @@ const groups = [
     { group: 'Liên hệ', icons: [{ name: 'zalo', label: 'Zalo' }, { name: 'clock', label: 'Giờ mở cửa' }] },
 ];
 
+const worded = [
+    { group: 'Hay dùng', icons: [{ name: 'factory', label: 'Nhà máy', words: 'nhà máy xưởng sản xuất' }, { name: 'phone', label: 'Điện thoại', words: 'điện thoại gọi hotline' }] },
+    { group: 'Liên hệ', icons: [{ name: 'phone', label: 'Điện thoại', words: 'điện thoại gọi hotline' }, { name: 'truck', label: 'Vận chuyển', words: 'vận chuyển giao hàng' }] },
+];
+
+test('the icon picker also finds an icon by its search words and lists a repeated icon once', () => {
+    assert.deepEqual(iconGroupsOf(worded, 'XUONG', ':n khớp'), [{ group: '1 khớp', icons: [worded[0].icons[0]] }]);
+    assert.deepEqual(iconGroupsOf(worded, 'hotline', ':n khớp')[0].icons.map((ic) => ic.name), ['phone']);
+    assert.deepEqual(iconGroupsOf(worded, 'o', ':n khớp')[0].icons.map((ic) => ic.name), ['factory', 'phone', 'truck']);
+});
+
+test('the icon suggested for an item name is the longest run of its whole words in a search phrase, accents ignored', () => {
+    assert.equal(suggestIconOf(worded, 'Nhà máy Bắc Ninh'), 'factory');
+    assert.equal(suggestIconOf(worded, 'GIAO HANG nhanh'), 'truck');
+    assert.equal(suggestIconOf(worded, 'Gọi hotline ngay'), 'phone');
+    assert.equal(suggestIconOf(worded, 'Giao hàng và xưởng'), 'truck');
+    assert.equal(suggestIconOf(worded, 'Xưởng'), 'factory');
+    assert.equal(suggestIconOf(worded, 'In ấn'), '');
+    assert.equal(suggestIconOf(worded, 'Liên hệ'), '');
+    assert.equal(suggestIconOf(worded, '  '), '');
+    assert.equal(suggestIconOf(groups, 'Điện thoại'), '');
+});
+
 test('the icon picker shows every group with icons, or one group of the matches', () => {
     assert.deepEqual(iconGroupsOf(groups, '  ', ':n khớp').map((g) => g.group), ['Hay dùng', 'Liên hệ']);
     const hit = iconGroupsOf(groups, 'DIA CHI', ':n khớp');
@@ -135,4 +159,19 @@ test('a bulk remove of gone rows takes the rows under them once, nested gone row
     const span = goneSpanOf(items);
     assert.deepEqual(span, ['g1', 'a', 'g2', 'b', 'g3']);
     assert.equal(span.length - goneKeysOf(items).length, 2); // a and b ride along; l1 and c stay
+});
+
+test('the suggestion reads the real Vietnamese search words as whole words, not inside other words', () => {
+    const vi = JSON.parse(readFileSync(new URL('../../lang/vi.json', import.meta.url), 'utf8'));
+    const icons = Object.entries(vi)
+        .filter(([key]) => key.startsWith('menus.icon_kw_'))
+        .map(([key, words]) => ({ name: key.slice('menus.icon_kw_'.length), label: '', words }));
+    const real = [{ group: 'all', icons }];
+    const expected = {
+        'Trang chủ': 'home', 'Giới thiệu': 'info', 'Đối tác': 'handshake', 'Chính sách bảo mật': 'privacy',
+        'Cửa hàng': 'shopping-bag', 'Giỏ hàng': 'cart', 'Dự án': 'project', 'Tuyển dụng': 'briefcase', 'Tin tức': 'newspaper',
+    };
+    for (const [label, icon] of Object.entries(expected)) {
+        assert.equal(suggestIconOf(real, label), icon, label);
+    }
 });

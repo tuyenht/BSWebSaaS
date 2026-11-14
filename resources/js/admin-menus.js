@@ -92,16 +92,53 @@ export function buildDraft(items, saved, version) {
     };
 }
 
-// The icon picker's groups ({group, icons: [{name, label}]}) for what is typed: every group with
-// icons when nothing is, else one group of the matches, named by `hits` (":n biểu tượng khớp"),
-// or none. A match is a label or a name that holds the typed words, accents and case ignored.
+// The icon picker's groups ({group, icons: [{name, label, words}]}) for what is typed: every group
+// with icons when nothing is, else one group of the matches (an icon listed in two groups once),
+// named by `hits` (":n biểu tượng khớp"), or none. A match is a label, a name or a search word that
+// holds the typed words, accents and case ignored.
 export function iconGroupsOf(groups, q, hits) {
     const qq = fold(String(q || '').trim());
     if (!qq) {
         return groups.filter((g) => g.icons.length);
     }
-    const found = groups.flatMap((g) => g.icons).filter((ic) => fold(ic.label).includes(qq) || ic.name.includes(qq));
+    const seen = new Set();
+    const found = groups
+        .flatMap((g) => g.icons)
+        .filter((ic) => fold(ic.label).includes(qq) || ic.name.includes(qq) || fold(ic.words || '').includes(qq))
+        .filter((ic) => !seen.has(ic.name) && seen.add(ic.name));
     return found.length ? [{ group: fill(hits, { n: found.length }), icons: found }] : [];
+}
+
+// The icon that suits an item's name, or '': the icon whose search words hold the longest run of
+// the name's whole words in a row (accents and case ignored; "Đối tác" is "đối tác", never "đổi
+// trả"), a lone word counting only from three letters. On a tie the run with more letters wins,
+// then the first icon in picker order.
+export function suggestIconOf(groups, label) {
+    const words = (s) => fold(s).split(/[^a-z0-9]+/).filter(Boolean);
+    const name = words(String(label || ''));
+    if (!name.length) {
+        return '';
+    }
+    let best = '';
+    let top = [0, 0];
+    groups.forEach((g) => g.icons.forEach((ic) => {
+        const kw = words(ic.words || '');
+        for (let i = 0; i < name.length; i++) {
+            for (let j = 0; j < kw.length; j++) {
+                let n = 0;
+                let chars = 0;
+                while (i + n < name.length && j + n < kw.length && name[i + n] === kw[j + n]) {
+                    chars += name[i + n].length;
+                    n++;
+                }
+                if ((n > 1 || chars > 2) && (n > top[0] || (n === top[0] && chars > top[1]))) {
+                    top = [n, chars];
+                    best = ic.name;
+                }
+            }
+        }
+    }));
+    return best;
 }
 
 // The rows that point at something no longer there (the source was deleted for good), in order.
@@ -1352,7 +1389,18 @@ if (typeof window !== 'undefined' && window.Alpine) {
                 return iconGroupsOf(cfg.icons, this.iconQ, t.iconHits);
             },
             get iconTotal() {
-                return cfg.icons.reduce((n, g) => n + g.icons.length, 0);
+                return new Set(cfg.icons.flatMap((g) => g.icons.map((ic) => ic.name))).size;
+            },
+            // The icon guessed from the item's name (nothing for one that has an icon already).
+            iconTip(it) {
+                return it.options.icon ? '' : suggestIconOf(cfg.icons, this.label(it) || this.label(it, cfg.main) || this.fallbackName(it));
+            },
+            applyIconTip(k) {
+                const name = this.iconTip(this.item(k));
+                if (name) {
+                    this.setIcon(k, name);
+                    this.notify(t.iconTipDone, true);
+                }
             },
             setIcon(k, name) {
                 this.setOpt(k, 'icon', name);
