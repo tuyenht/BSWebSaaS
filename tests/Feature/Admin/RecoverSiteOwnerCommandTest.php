@@ -213,3 +213,30 @@ it('sends the notices only after the change has committed', function (): void {
     expect($fake->levels)->toBe([0, 0]);
     Notification::assertCount(2);
 });
+
+it('still queues the other notices and reports the change when one notice cannot be queued', function (): void {
+    recoverMember('owner', attributes: ['email' => 'chu-cu@example.test']);
+    $member = recoverMember('viewer', attributes: ['email' => 'chu-moi@example.test']);
+    $fake = new class extends NotificationFake
+    {
+        public function send($notifiables, $notification)
+        {
+            if ($notifiables instanceof User && $notifiables->email === 'chu-cu@example.test') {
+                throw new RuntimeException('queue is down');
+            }
+
+            parent::send($notifiables, $notification);
+        }
+    };
+    Notification::swap($fake);
+
+    $this->artisan('site:recover-owner', ['--operator' => 'van-hanh@example.test', 'host' => 'a.test', 'email' => $member->email, '--reason' => 'Chủ mất hộp thư', '--yes' => true])
+        ->expectsOutputToContain('chu-moi@example.test is now an owner of a.test. The change is in the audit log; a notice was queued to 1 address(es).')
+        ->expectsOutputToContain('The notice to chu-cu@example.test was not queued.')
+        ->assertSuccessful();
+
+    expect(recoverRoles($member))->toBe(['owner', 'viewer'])
+        ->and(recoverAudit())->toHaveCount(1);
+    Notification::assertSentTo($member, OwnerRecoveredNotification::class);
+    Notification::assertCount(1);
+});

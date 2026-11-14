@@ -132,11 +132,25 @@ final class RecoverSiteOwnerCommand extends Command
             return $done;
         }
 
+        // The change and its audit row are committed: a notice that cannot be queued is reported and
+        // named, and neither stops the others nor turns the run into a failure.
+        $queued = 0;
+        $missed = [];
         foreach ($done as [$person, $notice]) {
-            $person->notify($notice);
+            try {
+                $person->notify($notice);
+                $queued++;
+            } catch (\Throwable $e) {
+                report($e);
+                $missed[] = $person->email;
+            }
         }
 
-        $this->info("{$newOwner->email} is now an owner of {$resolved->primaryHost}. The change is in the audit log; a notice was queued to ".count($done).' address(es).');
+        $this->info("{$newOwner->email} is now an owner of {$resolved->primaryHost}. The change is in the audit log; a notice was queued to {$queued} address(es).");
+
+        foreach ($missed as $email) {
+            $this->warn("The notice to {$email} was not queued. Tell them yourself; the change itself is done.");
+        }
 
         return self::SUCCESS;
     }
