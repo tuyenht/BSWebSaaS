@@ -42,7 +42,7 @@
                     <button type="button" class="switch hit-area" role="switch" aria-checked="{{ $drawerProducts ? 'true' : 'false' }}" aria-labelledby="cs-ptab-l"
                             wire:click="$toggle('drawerProducts')"></button>
                 </div>
-                @error('drawerProducts') <p class="mt-2 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
+                @error('drawerProducts') <p class="mt-2 text-sm text-danger-text">{{ $message }}</p> @enderror
             </div>
         @endif
 
