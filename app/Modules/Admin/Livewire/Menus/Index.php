@@ -168,7 +168,7 @@ final class Index extends Component
 
     /**
      * The phone menu's "Sản phẩm" tab on or off: one key (`drawer_products`) of the site's
-     * `storefront.header` setting, the rest of it kept as stored. Saved at once, like the areas
+     * `storefront.header` setting, the rest of it kept as stored; a site with no header setting is refused (nothing is written). Saved at once, like the areas
      * above it. Saving drops the request's settings copy (SiteSetting events), so the website
      * reads the new value on its next page.
      *
@@ -185,8 +185,8 @@ final class Index extends Component
             $repository = app(SettingsRepository::class);
             $header = $repository->get('storefront', 'header');
             if ($header === null) {
-                // A site with no header setting shows no tab; one is made with the defaults the website already applies.
-                $header = ['top_bar' => ['items' => []], 'text_size' => false, 'sticky' => true];
+                // No header setting: the website shows no tab, and this switch never makes one.
+                return $this->invalid();
             }
             $header['drawer_products'] = $on;
             $repository->put('storefront', 'header', $header);

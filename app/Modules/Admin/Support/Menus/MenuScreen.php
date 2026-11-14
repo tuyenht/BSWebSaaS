@@ -98,19 +98,20 @@ final readonly class MenuScreen
     }
 
     /**
-     * The phone menu's "Sản phẩm" tab switch: offered only to a site with the catalog and a
-     * products section (one cheap read; the entitlement list is already read per request). On means
-     * the site's header setting exists and does not switch the tab off (a site with no header
-     * setting shows no tab).
+     * The phone menu's "Sản phẩm" tab switch: offered only to a site with the catalog, a products
+     * section and a header setting (without one the website shows no tab, so there is nothing to
+     * switch). On means the header setting does not switch the tab off.
      *
      * @return array{available: bool, on: bool}
      */
     private function productsTab(): array
     {
-        $available = in_array('catalog', $this->entitlement->entitledModuleKeys(), true) && $this->products->catalogRoot() !== null;
-        $header = $available ? $this->settings->get('storefront', 'header') : null;
+        $shop = in_array('catalog', $this->entitlement->entitledModuleKeys(), true) && $this->products->catalogRoot() !== null;
+        $header = $shop ? $this->settings->get('storefront', 'header') : null;
 
-        return ['available' => $available, 'on' => is_array($header) && ($header['drawer_products'] ?? true) !== false];
+        return is_array($header)
+            ? ['available' => true, 'on' => ($header['drawer_products'] ?? true) !== false]
+            : ['available' => false, 'on' => false];
     }
 
     /**

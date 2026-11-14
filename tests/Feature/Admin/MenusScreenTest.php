@@ -341,7 +341,7 @@ it('offers the product tab switch only to a site with a products section, and sa
     expect(msCall($this->editor, 'load')['productsTab'])->toBe(['available' => false, 'on' => false]);
 
     msShop();
-    expect(msCall($this->editor, 'load')['productsTab'])->toBe(['available' => true, 'on' => false]);
+    expect(msCall($this->editor, 'load')['productsTab'])->toBe(['available' => false, 'on' => false]);   // no header setting: no tab to switch
 
     msIn(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'header', 'value' => ['sticky' => false]]));
     expect(msCall($this->editor, 'load')['productsTab'])->toBe(['available' => true, 'on' => true]);
@@ -367,12 +367,14 @@ it('switches the product tab by writing only drawer_products and keeping the res
         ->and(msCall($this->editor, 'load')['productsTab']['on'])->toBeTrue();
 });
 
-it('makes the header setting with the website defaults when a site has none, and refuses a non-boolean', function (): void {
+it('writes nothing and offers no switch for a site with no header setting, and refuses a non-boolean', function (): void {
     msShop();
-    expect(msCall($this->editor, 'setProductsTab', 'yes')['ok'])->toBeFalse()->and(msHeader())->toBeNull();
+    expect(msCall($this->editor, 'setProductsTab', 'yes')['ok'])->toBeFalse();
+    $refused = msCall($this->editor, 'setProductsTab', true);
 
-    msCall($this->editor, 'setProductsTab', true);
-    expect(msHeader())->toEqual(['top_bar' => ['items' => []], 'text_size' => false, 'sticky' => true, 'drawer_products' => true]);
+    expect($refused['ok'])->toBeFalse()->and($refused['reason'])->toBe('input_invalid')
+        ->and(msHeader())->toBeNull()
+        ->and(msCall($this->editor, 'load')['productsTab'])->toBe(['available' => false, 'on' => false]);
 });
 
 it('refuses the product tab switch to someone who may not manage menus', function (): void {
