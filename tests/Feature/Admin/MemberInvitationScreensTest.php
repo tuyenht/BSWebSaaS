@@ -311,13 +311,16 @@ it('sends invitations on a fixed number of queries per address: the screen reads
     $one = $count('mot', 1);
     $twenty = $count('hai-muoi', 20);
 
-    // each further address costs only what InviteMember needs: the level check per role (2), the
+    // each further address costs only what InviteMember needs plus the category tree lock (limits
+    // are written under it, and a new invitation reads no limits): the level check per role (2), the
     // account lookup, the lock, the open invitation, the two mail counts, the invitation, its role
     // rows (read + one insert per role) and the audit row — nothing the screen reads again. The fixed
     // part includes the page's two tab counts: the invitations per state (one statement) and the
     // mails of the last 24 hours behind the near-limit note. The "actor holds every permission" check
     // reads spatie's cached catalog, so it costs nothing per permission the invited roles carry.
-    expect($twenty - $one)->toBe(19 * 12)
-        ->and($one)->toBe(28);
+    expect($twenty - $one)->toBe(19 * 13)
+        // + 4 once per send for "Phạm vi làm việc": whether the inviter is limited, may set limits
+        // (membership and level), and what the roles ticked may write
+        ->and($one)->toBe(32);
     Notification::assertSentOnDemandTimes(MemberInvitationNotification::class, 22);
 });

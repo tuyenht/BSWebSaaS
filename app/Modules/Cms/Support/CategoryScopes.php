@@ -263,6 +263,65 @@ final class CategoryScopes
     }
 
     /**
+     * The categories each of $invitationIds limits its new member to (without their descendants), by
+     * invitation id, in one read for a whole page of invitations. An invitation without limits has no
+     * entry.
+     *
+     * @param  list<int>  $invitationIds
+     * @return array<int, list<int>>
+     */
+    public function invitationRootIdsOf(array $invitationIds): array
+    {
+        if ($invitationIds === []) {
+            return [];
+        }
+        $roots = [];
+        $rows = DB::table('invitation_category_scopes')->where('site_id', $this->site->id())->whereIn('invitation_id', $invitationIds)
+            ->orderBy('invitation_id')->orderBy('taxonomy_id')->limit(1000)->get(['invitation_id', 'taxonomy_id']);
+        foreach ($rows as $row) {
+            $roots[Cast::int($row->invitation_id)][] = Cast::int($row->taxonomy_id);
+        }
+
+        return $roots;
+    }
+
+    /**
+     * The invitations still open (neither accepted nor withdrawn; an expired one can be sent again)
+     * that limit their new member to one of $taxonomyIds, with the highest level among the roles each
+     * grants (0 for none), by address: who a category delete would have to move limits for.
+     *
+     * @param  list<int>  $taxonomyIds
+     * @return list<array{id: int, name: string, level: int}>
+     */
+    public function openInvitationsLimitedTo(array $taxonomyIds): array
+    {
+        if ($taxonomyIds === []) {
+            return [];
+        }
+
+        $site = $this->site->id();
+        $rows = DB::table('invitations')
+            ->where('invitations.site_id', $site)
+            ->whereNull('invitations.accepted_at')
+            ->whereNull('invitations.revoked_at')
+            ->whereExists(fn (QueryBuilder $limit) => $limit->selectRaw('1')
+                ->from('invitation_category_scopes')
+                ->where('invitation_category_scopes.site_id', $site)
+                ->whereColumn('invitation_category_scopes.invitation_id', 'invitations.id')
+                ->whereIn('invitation_category_scopes.taxonomy_id', $taxonomyIds))
+            ->selectRaw('invitations.id, invitations.email::text as email, (select coalesce(max(r.level), 0) from invitation_roles ir join roles r on r.id = ir.role_id where ir.site_id = invitations.site_id and ir.invitation_id = invitations.id) as level')
+            ->orderBy('email')->orderBy('invitations.id')
+            ->get();
+
+        $found = [];
+        foreach ($rows as $row) {
+            $found[] = ['id' => Cast::int($row->id), 'name' => Cast::string($row->email), 'level' => Cast::int($row->level)];
+        }
+
+        return $found;
+    }
+
+    /**
      * Users picked by $where, by name, with the highest role level each holds on this site.
      *
      * @param  Closure(Builder<User>): mixed  $where

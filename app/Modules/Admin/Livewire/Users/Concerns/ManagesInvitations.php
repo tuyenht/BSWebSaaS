@@ -6,6 +6,9 @@ namespace App\Modules\Admin\Livewire\Users\Concerns;
 
 use App\Modules\Admin\Support\Members\InvitationDirectory;
 use App\Modules\Admin\Support\Members\MemberDirectory;
+use App\Modules\Cms\Actions\InviteMemberWithCategories;
+use App\Modules\Cms\Exceptions\CategoryScopeRejectedException;
+use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Rbac\Actions\InviteMember;
 use App\Modules\Rbac\Actions\RevokeInvitation;
 use App\Modules\Rbac\Exceptions\InvitationRejectedException;
@@ -65,7 +68,8 @@ trait ManagesInvitations
             return;
         }
         try {
-            $issued = app(InviteMember::class)->handle($this->actor(), $invitation->email, array_values($roles), $invitation->message);
+            // its category limits are kept as they are
+            $issued = app(InviteMemberWithCategories::class)->resend($this->actor(), $invitation, array_values($roles));
             $siteId = app(CurrentSite::class)->id();
             $this->mailInvitation($issued, $this->actor(), $this->siteName($siteId), $this->mailRoles($roles));
         } catch (AuthorizationException) {
@@ -73,7 +77,12 @@ trait ManagesInvitations
 
             return;
         } catch (InvitationRejectedException $e) {
-            $this->say(__('rbac.invitation.error_'.$e->reason), 'error');
+            // withdrawn or accepted by now: said as when it is gone from the list
+            $this->say($e->reason === 'invalid' ? __('admin.members.inv_gone') : __('rbac.invitation.error_'.$e->reason), 'error');
+
+            return;
+        } catch (CategoryScopeRejectedException $e) {
+            $this->say(__('admin.members.inv_sc_err_'.$e->reason), 'error');
 
             return;
         }
@@ -126,7 +135,7 @@ trait ManagesInvitations
         $this->say(__('admin.members.inv_revoked', ['email' => $invitation->email]));
     }
 
-    /** "Mời lại" on a withdrawn invitation: the invite dialog, filled with its address, the roles you may grant and its message. */
+    /** "Mời lại" on a withdrawn invitation: the invite dialog, filled with its address, the roles you may grant, its message and its category limits. */
     public function reinvite(string $ulid): void
     {
         $this->ensureInviter();
@@ -152,6 +161,7 @@ trait ManagesInvitations
         $this->inviteEmail = $invitation->email;
         $this->inviteRoles = array_values(array_intersect(Cast::strings($invitation->roles->pluck('name')->all()), $grantable));
         $this->inviteMessage = (string) $invitation->message;
+        $this->fillInviteScope(app(CategoryScopes::class)->invitationRootIdsOf([$invitation->id])[$invitation->id] ?? []);
         $this->inviteOpen = true;
     }
 

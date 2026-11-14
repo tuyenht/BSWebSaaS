@@ -10,6 +10,7 @@ use App\Modules\Cms\Enums\CategoryChildrenOnDelete;
 use App\Modules\Cms\Enums\CategoryItemsOnDelete;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Exceptions\TaxonomyChangeRejectedException;
+use App\Modules\Cms\Models\InvitationCategoryScope;
 use App\Modules\Cms\Models\MemberCategoryScope;
 use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\SiteRoute;
@@ -28,6 +29,7 @@ use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Query\JoinClause;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -51,7 +53,10 @@ use Illuminate\Support\Facades\DB;
  * detached, or a whole branch deleted with nothing to move onto) the delete is refused
  * (has_scoped_members) until someone changes those members' limits. Moving a limit can widen it,
  * so it is also refused unless the signed-in person could set those limits themselves (see
- * mayMoveLimits); limitedMembers() names the members concerned for the dialog.
+ * mayMoveLimits); limitedMembers() names the members concerned for the dialog. Open invitations
+ * limited to a deleted category (invitation_category_scopes) count like members — their limit becomes
+ * the member's on accept — and limitedInvitations() names them; a closed invitation's limit moves
+ * onto the target, or goes without one.
  *
  * Every address that stops existing answers with a 301: each deleted category page (per language)
  * points to the target's page, else the nearest remaining category above, else the home page; posts
@@ -112,8 +117,11 @@ final readonly class DeleteTaxonomy
                 throw new TaxonomyChangeRejectedException('section_bound');
             }
             $targetId = $this->targetId($deleted, $items, $target);
+            // Invitations first: an accept committing between the two counts is seen by one of them
+            // (still open here, or a limited member below), never by neither.
+            $invited = $this->scopedInvitations($deleted);
             $scoped = $this->scopedMembers($deleted);
-            if ($scoped > 0 && ($targetId === null || ! $this->mayMoveLimits($deleted))) {
+            if (($scoped > 0 || $invited > 0) && ($targetId === null || ! $this->mayMoveLimits($deleted))) {
                 throw new TaxonomyChangeRejectedException('has_scoped_members');
             }
             $leaving = $this->leavingSection($deleted, $targetId);
@@ -160,9 +168,20 @@ final readonly class DeleteTaxonomy
                 ->whereIn('routable_id', $deleted)
                 ->update(['routable_id' => $targetId]);
 
+            // Invitations limited to a deleted category keep their limit on the target too — before the
+            // members': a join copying an invitation's limits right now either waits for this move or
+            // has copied them, and its member rows are moved below. Without a target only closed
+            // invitations' rows are left (open ones were refused above): they limit nobody, and go.
+            // The limited members' locks first (with members limited there is a target: refused above
+            // otherwise), in the order an accept takes them: its roles lock the member, then it reads
+            // the invitation's rows.
+            if ($scoped > 0) {
+                $this->scopes->lockMembers(array_column($this->scopes->membersLimitedTo($deleted), 'id'));
+            }
+            $invitationScopesMoved = $this->moveInvitationScopes($deleted, $targetId);
             // Members limited to a deleted category keep their limit on the target (never "every
             // category" by accident): the rows must be gone before the RESTRICT foreign key is checked.
-            $scopesMoved = $scoped === 0 || $targetId === null ? 0 : $this->moveScopes($deleted, $targetId);
+            $scopesMoved = ($scoped === 0 && $invited === 0) || $targetId === null ? 0 : $this->moveScopes($deleted, $targetId);
 
             // The category rows go last; their translations, routes and (now empty) pivot rows cascade.
             $count = Cast::int(Taxonomy::query()->whereKey($deleted)->delete());
@@ -184,6 +203,7 @@ final readonly class DeleteTaxonomy
                     'redirects' => $retired->count(),
                     'menu_links' => $menuLinks,
                     'scopes_moved' => $scopesMoved,
+                    'invitation_scopes_moved' => $invitationScopesMoved,
                 ],
             ]);
 
@@ -252,7 +272,68 @@ final readonly class DeleteTaxonomy
      */
     private function mayMoveLimits(array $deleted): bool
     {
-        return $this->limits->mayChangeLimitsOf($this->scopes->membersLimitedTo($deleted));
+        return $this->limits->mayChangeLimitsOf([...$this->scopes->membersLimitedTo($deleted), ...$this->scopes->openInvitationsLimitedTo($deleted)]);
+    }
+
+    /**
+     * The open invitations limited to $taxonomy (or, with its sub-categories deleted too, to anything
+     * in its branch), by address: their limits move with a delete like a member's.
+     *
+     * @return list<array{id: int, name: string}>
+     *
+     * @throws AuthorizationException
+     */
+    public function limitedInvitations(Taxonomy $taxonomy, ?CategoryChildrenOnDelete $children = null): array
+    {
+        $this->authorizeManage();
+        $deleted = $children === CategoryChildrenOnDelete::Delete ? array_keys(TaxonomyTree::branchOf($taxonomy->id)) : [$taxonomy->id];
+
+        return array_map(
+            static fn (array $invitation): array => ['id' => $invitation['id'], 'name' => $invitation['name']],
+            $this->scopes->openInvitationsLimitedTo($deleted),
+        );
+    }
+
+    /**
+     * How many limits of open invitations (neither accepted nor withdrawn) name one of the
+     * categories being deleted.
+     *
+     * @param  list<int>  $deleted
+     */
+    private function scopedInvitations(array $deleted): int
+    {
+        return InvitationCategoryScope::query()
+            ->where('invitation_category_scopes.site_id', $this->site->id())
+            ->whereIn('invitation_category_scopes.taxonomy_id', $deleted)
+            ->join('invitations', fn (JoinClause $join) => $join->on('invitations.id', '=', 'invitation_category_scopes.invitation_id')
+                ->on('invitations.site_id', '=', 'invitation_category_scopes.site_id'))
+            ->whereNull('invitations.accepted_at')
+            ->whereNull('invitations.revoked_at')
+            ->count();
+    }
+
+    /**
+     * Point every invitation limit on a deleted category at the target instead (an invitation that
+     * already has the target keeps that one row), or — without a target — drop them: only closed
+     * invitations' are left by then. Returns the rows that moved or went.
+     *
+     * @param  list<int>  $deleted
+     */
+    private function moveInvitationScopes(array $deleted, ?int $targetId): int
+    {
+        $site = $this->site->id();
+        if ($targetId !== null) {
+            $placeholders = implode(', ', array_fill(0, count($deleted), '?'));
+            DB::insert(<<<SQL
+                INSERT INTO invitation_category_scopes (site_id, invitation_id, taxonomy_id, created_at)
+                SELECT DISTINCT site_id, invitation_id, CAST(? AS bigint), now()
+                FROM invitation_category_scopes
+                WHERE site_id = ? AND taxonomy_id IN ({$placeholders})
+                ON CONFLICT (site_id, invitation_id, taxonomy_id) DO NOTHING
+                SQL, [$targetId, $site, ...$deleted]);
+        }
+
+        return Cast::int(InvitationCategoryScope::query()->where('site_id', $site)->whereIn('taxonomy_id', $deleted)->delete());
     }
 
     /**
