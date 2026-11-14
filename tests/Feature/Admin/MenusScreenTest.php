@@ -17,6 +17,9 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Navigation\MenuItemOptions;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Rbac\Models\Permission;
+use App\Modules\Rbac\Models\Role;
+use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Models\ContentSection;
@@ -320,6 +323,16 @@ it('is closed to someone who may not manage menus, on the page and on every call
 });
 
 /** Site 1 gets the catalog module and a products section, so the phone menu's product tab can be offered. */
+/** The editor also gets the site-settings permission, which saving a storefront setting needs. */
+function msSettingsRole(User $user): void
+{
+    msIn(1, function () use ($user): void {
+        Permission::findOrCreate('settings.manage', PermissionRegistry::GUARD);
+        $user->assignRole(Role::findOrCreate('settings-manager', PermissionRegistry::GUARD)->syncPermissions(['settings.manage']));
+    });
+    app(TeamContext::class)->forget();
+}
+
 function msShop(): void
 {
     msIn(1, function (): void {
@@ -338,6 +351,7 @@ function msHeader(): ?array
 }
 
 it('offers the product tab switch only to a site with a products section, and says whether it is on', function (): void {
+    msSettingsRole($this->editor);
     expect(msCall($this->editor, 'load')['productsTab'])->toBe(['available' => false, 'on' => false]);
 
     msShop();
@@ -354,6 +368,7 @@ it('offers the product tab switch only to a site with a products section, and sa
 });
 
 it('switches the product tab by writing only drawer_products and keeping the rest of the header', function (): void {
+    msSettingsRole($this->editor);
     msShop();
     msIn(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'header',
         'value' => ['sticky' => false, 'text_size' => true, 'top_bar' => ['items' => [['kind' => 'text', 'text' => 'Xin chào']]]]]));
@@ -368,6 +383,7 @@ it('switches the product tab by writing only drawer_products and keeping the res
 });
 
 it('writes nothing and offers no switch for a site with no header setting, and refuses a non-boolean', function (): void {
+    msSettingsRole($this->editor);
     msShop();
     expect(msCall($this->editor, 'setProductsTab', 'yes')['ok'])->toBeFalse();
     $refused = msCall($this->editor, 'setProductsTab', true);
@@ -375,6 +391,26 @@ it('writes nothing and offers no switch for a site with no header setting, and r
     expect($refused['ok'])->toBeFalse()->and($refused['reason'])->toBe('input_invalid')
         ->and(msHeader())->toBeNull()
         ->and(msCall($this->editor, 'load')['productsTab'])->toBe(['available' => false, 'on' => false]);
+});
+
+it('offers no switch and writes nothing when the site has a header setting but no catalog or products section', function (): void {
+    msSettingsRole($this->editor);
+    msIn(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'header', 'value' => ['sticky' => false]]));
+
+    $refused = msCall($this->editor, 'setProductsTab', false);
+
+    expect(msCall($this->editor, 'load')['productsTab'])->toBe(['available' => false, 'on' => false])
+        ->and($refused['ok'])->toBeFalse()->and($refused['reason'])->toBe('input_invalid')
+        ->and(msHeader())->toBe(['sticky' => false]);
+});
+
+it('refuses the product tab switch to a menu editor without the site-settings permission, and hides it', function (): void {
+    msShop();
+    msIn(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'header', 'value' => ['sticky' => false]]));
+
+    expect(msCall($this->editor, 'load')['productsTab'])->toBe(['available' => false, 'on' => false]);
+    msIn(1, fn () => Livewire::actingAs($this->editor->fresh())->test(MenusIndex::class)->call('setProductsTab', false)->assertForbidden());
+    expect(msHeader())->toBe(['sticky' => false]);
 });
 
 it('refuses the product tab switch to someone who may not manage menus', function (): void {

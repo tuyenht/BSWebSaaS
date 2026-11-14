@@ -13,6 +13,10 @@ use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
+use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Rbac\Models\Permission;
+use App\Modules\Rbac\Models\Role;
+use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Storefront\Support\DrawerProducts;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
@@ -23,6 +27,7 @@ use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
+use Spatie\Permission\PermissionRegistrar;
 
 /*
  * The phone menu's panel beyond the menu rows: the "Menu | Sản phẩm" tabs and the product category tree
@@ -183,7 +188,13 @@ it('hides the product tab when the header switches it off', function (): void {
 it('drops the product tab once the Trình đơn screen switches it off, and brings it back when switched on', function (): void {
     $siteId = dpSite();
     dpCategory($siteId, ['vi' => 'Khuôn mẫu'], slug: 'khuon-mau');
-    $editor = app(Tenancy::class)->enter($siteId, fn () => menuEditor($siteId));
+    $editor = menuEditor($siteId);
+    app(Tenancy::class)->enter($siteId, function () use ($editor): void {
+        Permission::findOrCreate('settings.manage', PermissionRegistry::GUARD);
+        $editor->assignRole(Role::findOrCreate('settings-manager', PermissionRegistry::GUARD)->syncPermissions(['settings.manage']));
+    });
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+    app(TeamContext::class)->forget();
     $toggle = function (bool $on) use ($siteId, $editor): void {
         app(Tenancy::class)->enter($siteId, function () use ($editor, $on): void {
             Livewire::actingAs($editor->fresh())->test(Index::class)

@@ -7,7 +7,6 @@ namespace App\Modules\Admin\Livewire\Menus;
 use App\Modules\Admin\Support\Menus\MenuScreen;
 use App\Modules\Admin\Support\Menus\MenuSelfCheck;
 use App\Modules\Admin\Support\Menus\MenuSourceSearch;
-use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Cms\Actions\Menus\ApplyMenuDraft;
 use App\Modules\Cms\Actions\Menus\AssignMenu;
 use App\Modules\Cms\Actions\Menus\DeleteMenu;
@@ -27,9 +26,11 @@ use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Identity\Models\User;
 use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
+use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Theming\MenuAreas;
 use Closure;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
@@ -168,9 +169,12 @@ final class Index extends Component
 
     /**
      * The phone menu's "Sản phẩm" tab on or off: one key (`drawer_products`) of the site's
-     * `storefront.header` setting, the rest of it kept as stored; a site with no header setting is refused (nothing is written). Saved at once, like the areas
-     * above it. Saving drops the request's settings copy (SiteSetting events), so the website
-     * reads the new value on its next page.
+     * `storefront.header` setting, the rest of it kept as stored. Writing a storefront setting needs
+     * the site-settings permission as well as the menu one, and the same rule that decides whether
+     * the screen offers the switch (MenuScreen::productsTab) decides whether this writes. Saved at
+     * once, like the areas above it. Saving drops the request's settings copy (SiteSetting events),
+     * so the website reads the new value on its next page. Settings screens write no audit entry,
+     * and neither does this.
      *
      * @return array<string, mixed>
      */
@@ -180,18 +184,24 @@ final class Index extends Component
             return $this->invalid();
         }
         Gate::authorize('manage', Menu::class);
+        abort_unless(Gate::allows('settings.manage'), 403);
 
         return $this->attempt(function () use ($on): array {
-            $repository = app(SettingsRepository::class);
-            $header = $repository->get('storefront', 'header');
-            if ($header === null) {
-                // No header setting: the website shows no tab, and this switch never makes one.
+            if (! app(MenuScreen::class)->productsTab()['available']) {
                 return $this->invalid();
             }
-            $header['drawer_products'] = $on;
-            $repository->put('storefront', 'header', $header);
 
-            return ['ok' => true];
+            return DB::transaction(function () use ($on): array {
+                // The row is locked while its one key changes, so a header saved meanwhile is not overwritten.
+                $row = SiteSetting::query()->where('group_name', 'storefront')->where('key', 'header')->lockForUpdate()->first();
+                if ($row === null) {
+                    return $this->invalid();
+                }
+                $row->value = [...$row->value, 'drawer_products' => $on];
+                $row->save();
+
+                return ['ok' => true];
+            });
         });
     }
 

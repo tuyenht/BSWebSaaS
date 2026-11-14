@@ -290,7 +290,7 @@
                                                     <span id="mn-ptab-l" class="text-caption font-semibold leading-normal text-text-strong">{{ $u('ptab_label') }}</span>
                                                     <span id="mn-ptab-h" class="mt-0.5 text-caption leading-relaxed text-text-muted [overflow-wrap:anywhere] [text-wrap:pretty]">{{ $u('ptab_help') }}</span>
                                                 </span>
-                                                <button type="button" class="switch hit-area" role="switch" :aria-checked="d.productsTab.on ? 'true' : 'false'" aria-labelledby="mn-ptab-l" aria-describedby="mn-ptab-h" x-on:click="setProductsTab()"></button>
+                                                <button type="button" class="switch hit-area" role="switch" :aria-checked="d.productsTab.on ? 'true' : 'false'" :aria-disabled="ptabBusy ? 'true' : null" aria-labelledby="mn-ptab-l" aria-describedby="mn-ptab-h" x-on:click="setProductsTab()"></button>
                                             </div>
                                         </template>
                                         <template x-if="multi">

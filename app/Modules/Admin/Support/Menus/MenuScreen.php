@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Support\Menus;
 
+use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Catalog\Support\ProductIndexLink;
 use App\Modules\Cms\Actions\Menus\ApplyMenuDraft;
 use App\Modules\Cms\Models\Menu;
@@ -19,8 +20,8 @@ use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Theme\Theming\MenuAreas;
-use App\Modules\Theme\Theming\StorefrontSettings;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 /**
@@ -44,7 +45,7 @@ final readonly class MenuScreen
         private MenuSources $sources,
         private ProductIndexLink $products,
         private Entitlement $entitlement,
-        private StorefrontSettings $settings,
+        private SettingsRepository $settings,
     ) {}
 
     /**
@@ -98,20 +99,23 @@ final readonly class MenuScreen
     }
 
     /**
-     * The phone menu's "Sản phẩm" tab switch: offered only to a site with the catalog, a products
-     * section and a header setting (without one the website shows no tab, so there is nothing to
-     * switch). On means the header setting does not switch the tab off.
+     * The phone menu's "Sản phẩm" tab switch: offered only to someone who may change site settings,
+     * on a site with the catalog, a products section and a header setting (without one the website
+     * shows no tab, so there is nothing to switch). On means the header setting does not switch the
+     * tab off. The screen and the endpoint that saves the switch share this one rule.
      *
      * @return array{available: bool, on: bool}
      */
-    private function productsTab(): array
+    public function productsTab(): array
     {
+        $off = ['available' => false, 'on' => false];
+        if (! Gate::allows('settings.manage')) {
+            return $off;
+        }
         $shop = in_array('catalog', $this->entitlement->entitledModuleKeys(), true) && $this->products->catalogRoot() !== null;
         $header = $shop ? $this->settings->get('storefront', 'header') : null;
 
-        return is_array($header)
-            ? ['available' => true, 'on' => ($header['drawer_products'] ?? true) !== false]
-            : ['available' => false, 'on' => false];
+        return $header === null ? $off : ['available' => true, 'on' => ($header['drawer_products'] ?? true) !== false];
     }
 
     /**
