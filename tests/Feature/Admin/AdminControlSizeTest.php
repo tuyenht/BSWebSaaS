@@ -236,11 +236,11 @@ it('draws every on/off switch of the admin with the one shared switch', function
     // workflow 1 (in its row loop), domains 1, the look panel 2 (one in a loop), the floating
     // contact page 5 (the main switch, the dial on the bar, the raised call, one per channel row, the buy button), the general settings
     // page 1 (the Bộ Công Thương notice), the search settings page 1 (in its field loop: Google, sitemap),
-    // the menus screen 3 (auto-add, the large panel, one per display option in a loop), the
+    // the menus screen 4 (auto-add, the phone menu's products tab, the large panel, one per display option in a loop), the
     // integrations page 1 (one per provider, in a loop), a block button's "open in a new tab" 1, the
     // plans list 2 (the upgrade invitation, one per plan row in a loop), the plan editor 1 (on sale),
     // my account 1 (one per notification kind and channel, in a loop)
-    expect($found)->toBe(20);
+    expect($found)->toBe(21);
 });
 
 it('sizes the image picker and theme panel buttons by the shared control tokens', function (string $view, string $marker, string $size): void {
