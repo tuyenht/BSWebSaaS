@@ -158,8 +158,8 @@ it('renders the top bar with safe tel and mailto links and each item’s breakpo
         ->toContain('<a class="sf-topbar__link" href="tel:+84901234567">')
         ->toContain('<a class="sf-topbar__link" href="mailto:lienhe@mau.test">')
         ->toContain('<span>Số 1 Đường Thử</span>')
-        ->toContain('<fieldset class="sf-drawer__fs" data-fs-set>')
-        ->toContain('<legend>Cỡ chữ</legend>')
+        ->toContain('<div class="sf-pr sf-drawer__fs" data-fs-set>')
+        ->toContain('role="radiogroup" aria-labelledby="msm-fs-label"')
         ->toContain('aria-label="Vừa"')
         ->toContain('<script>'.StorefrontChrome::TEXT_SIZE_BOOT.'</script>')
         ->not->toContain('site-header');
@@ -175,7 +175,7 @@ it('keeps the text-size choice in the menu panel, never in the top bar, when the
     expect($topBar)->toContain('sf-topbar__items')->not->toContain('data-fs-toggle')->not->toContain('data-fs-radio')
         ->and(substr_count($html, 'data-fs-toggle'))->toBe(0)
         ->and(substr_count($html, 'data-fs-radio'))->toBe(3)
-        ->and($html)->toContain('<fieldset class="sf-drawer__fs" data-fs-set>');
+        ->and($html)->toContain('<div class="sf-pr sf-drawer__fs" data-fs-set>');
 });
 
 it('draws no top bar where it would hold only the text-size button, and none at a width with nothing in it', function (): void {
@@ -570,7 +570,7 @@ it('picks setting texts in the page language, falling back to the default langua
         ->toContain('<span>1 Test Street</span>')                          // en given
         ->toContain('<p class="sf-footer__about">Short about.</p>')
         ->toContain('<h3 class="sf-factory__title">Nhà máy 1</h3>')        // no en: the vi text
-        ->toContain('<legend>Text size</legend>')
+        ->toContain('id="msm-fs-label">Text size</span>')
         ->toContain('aria-label="Medium"')
         ->toContain('Enterprise code: 0100000001, issued by Sở KH&amp;ĐT Hà Nội')
         ->toMatch('#href="http://mau\.platform\.test/en/about" hreflang="en" lang="en"\s+aria-current="true"\s*>EN</a>#')

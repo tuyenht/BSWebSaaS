@@ -289,19 +289,22 @@ it('writes the tree in the page’s language with the default language where a n
         ->toContain('View all products')->toContain('href="/en/products"');
 });
 
-it('draws the text size as a group of three radios with their names, only when the site turns it on', function (): void {
+it('draws the text size as a segmented pill of three radios with their names and the current size under the label', function (): void {
     dpSite(products: false);
 
     $html = $this->get('http://sp.platform.test/gioi-thieu')->assertOk()->getContent();
 
     expect($html)
-        ->toContain('<fieldset class="sf-drawer__fs" data-fs-set>')
-        ->toContain('<legend>Cỡ chữ</legend>')
-        ->toMatch('#<input class="sf-drawer__fs-in" type="radio" name="sf-fs" value="m" data-fs-radio aria-label="Vừa" title="Vừa" checked>#')
+        ->toContain('<div class="sf-pr sf-drawer__fs" data-fs-set>')
+        ->toContain('<span class="sf-pr__t" id="msm-fs-label">Cỡ chữ</span>')
+        ->toContain('<div class="sf-pill sf-pill--fs" role="radiogroup" aria-labelledby="msm-fs-label">')
+        ->toContain('<span class="sf-pr__v" aria-hidden="true"><span data-size="m">Vừa</span><span data-size="l">Lớn</span><span data-size="xl">Cực lớn</span></span>')
+        ->toMatch('#<input class="sf-drawer__fs-in" type="radio" name="sf-fs" value="m" data-fs-radio aria-label="Vừa" checked>#')
         ->toMatch('#type="radio" name="sf-fs" value="l" data-fs-radio aria-label="Lớn"#')
         ->toMatch('#type="radio" name="sf-fs" value="xl" data-fs-radio aria-label="Cực lớn"#')
         ->and(substr_count($html, 'data-fs-radio'))->toBe(3)
-        ->and(substr_count($html, '<span aria-hidden="true">A</span>'))->toBe(3);
+        ->and(substr_count($html, '<span class="sf-pill__g" aria-hidden="true">A</span>'))->toBe(3)
+        ->and($html)->toContain('sf-pill__a1')->toContain('sf-pill__a2')->toContain('sf-pill__a3');
 });
 
 it('draws no text size group when the site did not turn it on', function (): void {
@@ -311,16 +314,41 @@ it('draws no text size group when the site did not turn it on', function (): voi
         ->not->toContain('sf-drawer__fs"')->not->toContain('data-fs-radio');
 });
 
-it('shows Zalo only when the floating contact has a Zalo channel, with the button’s own link', function (): void {
-    dpSite('co.platform.test', products: false, floating: ['enabled' => true, 'theme' => 'horizontal', 'position' => 'right',
-        'channels' => [['key' => 'phone', 'on' => true, 'value' => '0912345678'], ['key' => 'zalo', 'on' => true, 'value' => '0912345678']]]);
-    dpSite('khong.platform.test', products: false, floating: ['enabled' => true, 'theme' => 'horizontal', 'position' => 'right',
-        'channels' => [['key' => 'phone', 'on' => true, 'value' => '0912345678']]]);
+/** A floating contact setting with these channels. @param  list<array<string, mixed>>  $channels */
+function dpFloating(array $channels, string $theme = 'horizontal'): array
+{
+    return ['enabled' => true, 'theme' => $theme, 'position' => 'right', 'channels' => $channels];
+}
 
-    expect($this->get('http://co.platform.test/gioi-thieu')->assertOk()->getContent())
+it('shows the call and Zalo buttons only when the site turned off both the bottom bar and the floating contact', function (): void {
+    $zalo = ['zalo' => '0912345678'];
+    dpSite('tat.platform.test', products: false, profile: ['social_links' => $zalo]);
+    dpSite('bar.platform.test', products: false, profile: ['social_links' => $zalo],
+        floating: dpFloating([['key' => 'phone', 'on' => true, 'value' => '0912345678'], ['key' => 'zalo', 'on' => true, 'value' => '0912345678']]));
+    dpSite('nut.platform.test', products: false, profile: ['social_links' => $zalo],
+        floating: dpFloating([['key' => 'phone', 'on' => true, 'value' => '0912345678'], ['key' => 'zalo', 'on' => true, 'value' => '0912345678']], 'vertical'));
+
+    expect($this->get('http://tat.platform.test/gioi-thieu')->assertOk()->getContent())
+        ->toContain('<a class="sf-drawer__call" href="tel:0901234567">')
         ->toMatch('#<a class="sf-drawer__zalo" href="https://zalo\.me/\d+" rel="noopener">#')->toContain('Chat Zalo')
-        ->and($this->get('http://khong.platform.test/gioi-thieu')->assertOk()->getContent())
-        ->not->toContain('sf-drawer__zalo');
+        ->and($this->get('http://bar.platform.test/gioi-thieu')->assertOk()->getContent())
+        ->not->toContain('sf-drawer__call')->not->toContain('sf-drawer__zalo')->toContain('href="mailto:lienhe@mau.test"')
+        ->and($this->get('http://nut.platform.test/gioi-thieu')->assertOk()->getContent())
+        ->not->toContain('sf-drawer__call')->not->toContain('sf-drawer__zalo');
+});
+
+it('draws a Zalo circle only for an Official Account or page link, and never beside the Zalo button', function (): void {
+    dpSite('sdt.platform.test', products: false, profile: ['social_links' => ['zalo' => '0912345678']],
+        floating: dpFloating([['key' => 'phone', 'on' => true, 'value' => '0912345678']]));
+    dpSite('oa.platform.test', products: false, profile: ['social_links' => ['zalo' => 'https://zalo.me/ckanvinh']],
+        floating: dpFloating([['key' => 'phone', 'on' => true, 'value' => '0912345678']]));
+    dpSite('tat.platform.test', products: false, profile: ['social_links' => ['zalo' => 'https://zalo.me/ckanvinh']]);
+
+    expect($this->get('http://sdt.platform.test/gioi-thieu')->assertOk()->getContent())->not->toContain('aria-label="Zalo của Xưởng Mẫu"')
+        ->and($this->get('http://oa.platform.test/gioi-thieu')->assertOk()->getContent())
+        ->toContain('aria-label="Zalo của Xưởng Mẫu"')->toContain('href="https://zalo.me/ckanvinh"')
+        ->and($this->get('http://tat.platform.test/gioi-thieu')->assertOk()->getContent())
+        ->not->toContain('aria-label="Zalo của Xưởng Mẫu"')->toContain('<a class="sf-drawer__zalo" href="https://zalo.me/ckanvinh"');
 });
 
 it('draws a second-level parent as a disclosure with its own page first and the grandchildren one step in', function (): void {
@@ -373,9 +401,8 @@ it('opens the way to the category the page is on and marks it', function (): voi
 });
 
 it('draws the Zalo mark in Zalo blue only when the Zalo button exists', function (): void {
-    $floating = static fn (array $channels): array => ['enabled' => true, 'theme' => 'horizontal', 'position' => 'right', 'channels' => $channels];
-    dpSite('co.platform.test', products: false, floating: $floating([['key' => 'zalo', 'on' => true, 'value' => '0912345678']]));
-    dpSite('khong.platform.test', products: false, floating: $floating([['key' => 'phone', 'on' => true, 'value' => '0912345678']]));
+    dpSite('co.platform.test', products: false, profile: ['social_links' => ['zalo' => '0912345678']]);
+    dpSite('khong.platform.test', products: false);
 
     expect($this->get('http://co.platform.test/gioi-thieu')->assertOk()->getContent())
         ->toMatch('#<a class="sf-drawer__zalo"[^>]*><svg class="sf-drawer__zmark" width="20" height="20"[^>]*><path fill="\#0068FF"[^>]*/><path fill="\#fff"[^>]*/></svg><span>Chat Zalo</span>#')
@@ -404,9 +431,9 @@ it('draws no social row without profiles and one named link per profile with the
     $row = substr($html, (int) strpos($html, 'sf-drawer__socials'), 9000);
 
     expect($this->get('http://khong.platform.test/gioi-thieu')->assertOk()->getContent())->not->toContain('sf-drawer__socials')
-        ->and(substr_count($html, 'class="sf-drawer__social"'))->toBe(6)
+        ->and(substr_count($html, 'class="sf-drawer__social"'))->toBe(5)   // the phone-number Zalo is left to the chat button
         ->and($row)->toContain('aria-label="Facebook của Xưởng Mẫu"')->toContain('aria-label="YouTube của Xưởng Mẫu"')
-        ->toContain('aria-label="Zalo của Xưởng Mẫu"')->toContain('aria-label="X của Xưởng Mẫu"')
+        ->not->toContain('aria-label="Zalo của Xưởng Mẫu"')->toContain('aria-label="X của Xưởng Mẫu"')
         ->toContain('rel="noopener"');
 });
 
